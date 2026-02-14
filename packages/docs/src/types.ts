@@ -87,6 +87,31 @@ export interface DocsNav {
   url?: string;
 }
 
+export interface ThemeToggleConfig {
+  /**
+   * Whether to show the light/dark theme toggle in the sidebar.
+   * @default true
+   */
+  enabled?: boolean;
+  /**
+   * The default / forced theme when the toggle is hidden.
+   * Only applies when `enabled` is `false`.
+   * @default "system"
+   *
+   * @example
+   * ```ts
+   * // Hide toggle, force dark mode
+   * themeToggle: { enabled: false, default: "dark" }
+   * ```
+   */
+  default?: "light" | "dark" | "system";
+  /**
+   * Toggle mode — show only light/dark, or include a system option.
+   * @default "light-dark"
+   */
+  mode?: "light-dark" | "light-dark-system";
+}
+
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
@@ -97,6 +122,23 @@ export interface DocsConfig {
    * Customise the title shown at the top of the sidebar.
    */
   nav?: DocsNav;
+  /**
+   * Theme toggle (light/dark mode switcher) in the sidebar.
+   *
+   * - `true` or `undefined` → toggle is shown (default)
+   * - `false` → toggle is hidden, defaults to system theme
+   * - `{ enabled: false, default: "dark" }` → toggle hidden, force dark
+   *
+   * @example
+   * ```ts
+   * // Hide toggle, force dark mode
+   * themeToggle: { enabled: false, default: "dark" }
+   *
+   * // Show toggle with system option
+   * themeToggle: { mode: "light-dark-system" }
+   * ```
+   */
+  themeToggle?: boolean | ThemeToggleConfig;
   /**
    * Custom MDX component overrides.
    *

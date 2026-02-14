@@ -20,4 +20,5 @@ export type {
   OGConfig,
   UIConfig,
   PageFrontmatter,
+  ThemeToggleConfig,
 } from "./types.js";

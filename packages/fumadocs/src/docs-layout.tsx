@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import type { ReactNode, ReactElement } from "react";
-import type { DocsConfig } from "@farming-labs/docs";
+import type { DocsConfig, ThemeToggleConfig } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
@@ -162,6 +162,23 @@ export function createDocsMetadata(config: DocsConfig) {
 
 // ─── createDocsLayout ────────────────────────────────────────────────
 
+/** Resolve the themeToggle config into fumadocs-ui's `themeSwitch` prop. */
+function resolveThemeSwitch(toggle: boolean | ThemeToggleConfig | undefined) {
+  // undefined or true → show toggle (default)
+  if (toggle === undefined || toggle === true) {
+    return { enabled: true };
+  }
+  // false → hide toggle
+  if (toggle === false) {
+    return { enabled: false };
+  }
+  // object → map to fumadocs-ui shape
+  return {
+    enabled: toggle.enabled !== false,
+    mode: toggle.mode,
+  };
+}
+
 export function createDocsLayout(config: DocsConfig) {
   const tocConfig = config.theme?.ui?.layout?.toc;
   const tocEnabled = tocConfig?.enabled !== false;
@@ -170,14 +187,40 @@ export function createDocsLayout(config: DocsConfig) {
   const navTitle = (config.nav?.title as ReactNode) ?? "Docs";
   const navUrl = config.nav?.url ?? `/${config.entry}`;
 
+  // Theme toggle
+  const themeSwitch = resolveThemeSwitch(config.themeToggle);
+
+  // Default theme (for RootProvider) when toggle is hidden
+  const toggleConfig = typeof config.themeToggle === "object" ? config.themeToggle : undefined;
+  const forcedTheme =
+    themeSwitch.enabled === false && toggleConfig?.default && toggleConfig.default !== "system"
+      ? toggleConfig.default
+      : undefined;
+
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     return (
       <DocsLayout
         tree={buildTree(config)}
         nav={{ title: navTitle, url: navUrl }}
+        themeSwitch={themeSwitch}
       >
+        {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
         <DocsPageClient tocEnabled={tocEnabled}>{children}</DocsPageClient>
       </DocsLayout>
     );
   };
+}
+
+/**
+ * Tiny inline script to force a theme when the toggle is hidden.
+ * Sets the class on <html> before React hydrates to avoid FOUC.
+ */
+function ForcedThemeScript({ theme }: { theme: string }) {
+  return (
+    <script
+      dangerouslySetInnerHTML={{
+        __html: `document.documentElement.classList.remove('light','dark');document.documentElement.classList.add('${theme}');`,
+      }}
+    />
+  );
 }

@@ -48,7 +48,10 @@ export default defineDocs({
     titleTemplate: "%s – Docs",
     description: "Awesome docs powered by Fumadocs preset",
   },
-
+  themeToggle: {
+    enabled: false,
+    default: "dark",
+  },
   og: {
     enabled: true,
     type: "dynamic",
