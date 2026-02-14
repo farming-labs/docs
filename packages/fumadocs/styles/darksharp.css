@@ -1,0 +1,206 @@
+/* @farming-labs/fumadocs — darksharp theme CSS
+ * Inspired by better-auth.com — all-black, sharp edges, minimal radius.
+ * Uses fumadocs-ui "black" color preset as the base.
+ */
+@import "fumadocs-ui/css/black.css";
+@import "fumadocs-ui/css/preset.css";
+@import "./base.css";
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.147 0.004 49.25);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.147 0.004 49.25);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.147 0.004 49.25);
+  --primary: oklch(0.216 0.006 56.043);
+  --primary-foreground: oklch(0.985 0.001 106.423);
+  --secondary: oklch(0.97 0.001 106.424);
+  --secondary-foreground: oklch(0.216 0.006 56.043);
+  --muted: oklch(0.97 0.001 106.424);
+  --muted-foreground: oklch(0.553 0.013 58.071);
+  --accent: oklch(0.97 0.001 106.424);
+  --accent-foreground: oklch(0.216 0.006 56.043);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --border: oklch(0.923 0.003 48.717);
+  --input: oklch(0.923 0.003 48.717);
+  --ring: oklch(0.709 0.01 56.259);
+  --sidebar: oklch(0.985 0.001 106.423);
+  --sidebar-foreground: oklch(0.147 0.004 49.25);
+  --sidebar-primary: oklch(0.216 0.006 56.043);
+  --sidebar-primary-foreground: oklch(0.985 0.001 106.423);
+  --sidebar-accent: oklch(0.97 0.001 106.424);
+  --sidebar-accent-foreground: oklch(0.216 0.006 56.043);
+  --sidebar-border: oklch(0.923 0.003 48.717);
+  --sidebar-ring: oklch(0.709 0.01 56.259);
+  --scrollbar-thumb: var(--border);
+  --scrollbar-thumb-hover: var(--ring);
+  --scrollbar-track: transparent;
+  /* Sharp edges — near-zero radius */
+  --radius: 0.2rem;
+  --fd-nav-height: 56px;
+  --fd-banner-height: 0px;
+  --fd-tocnav-height: 0px;
+}
+
+.dark {
+  --background: hsl(0 0% 0%);
+  --foreground: oklch(0.985 0.001 106.423);
+  /* Card = pure black so sidebar blends into background */
+  --card: hsl(0 0% 0%);
+  --card-foreground: oklch(0.985 0.001 106.423);
+  --popover: hsl(0 0% 6%);
+  --popover-foreground: oklch(0.985 0.001 106.423);
+  --primary: oklch(0.985 0.001 106.423);
+  --primary-foreground: oklch(0.216 0.006 56.043);
+  --secondary: hsl(0 0% 10%);
+  --secondary-foreground: oklch(0.985 0.001 106.423);
+  --muted: hsl(0 0% 10%);
+  --muted-foreground: hsl(0 0% 55%);
+  --accent: hsl(0 0% 12%);
+  --accent-foreground: oklch(0.985 0.001 106.423);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: hsl(0 0% 14%);
+  --input: hsl(0 0% 14%);
+  --ring: hsl(0 0% 30%);
+  /* Sidebar: pure black, blending with background */
+  --sidebar: hsl(0 0% 0%);
+  --sidebar-foreground: hsl(0 0% 90%);
+  --sidebar-primary: hsl(0 0% 96%);
+  --sidebar-primary-foreground: hsl(0 0% 4%);
+  --sidebar-accent: hsl(0 0% 14%);
+  --sidebar-accent-foreground: hsl(0 0% 96%);
+  --sidebar-border: hsl(0 0% 14%);
+  --sidebar-ring: hsl(0 0% 30%);
+  --scrollbar-thumb: var(--border);
+  --scrollbar-thumb-hover: var(--ring);
+  --scrollbar-track: transparent;
+}
+
+/* ─── Scroll ──────────────────────────────────────────────────────── */
+
+html {
+  scroll-behavior: auto;
+  scroll-padding-top: calc(
+    var(--fd-nav-height, 56px) +
+    var(--fd-banner-height, 0px) +
+    var(--fd-tocnav-height, 0px) +
+    24px
+  );
+}
+
+html:not([data-anchor-scrolling]) {
+  scroll-behavior: smooth;
+}
+
+/* ─── Custom scrollbar ────────────────────────────────────────────── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ─── Selection ───────────────────────────────────────────────────── */
+
+body {
+  overscroll-behavior: none;
+}
+
+::selection {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+/* ─── Inline code word break ──────────────────────────────────────── */
+
+code:not(pre code) {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Sidebar — dark sidebar styling
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* Sidebar container: blend into background, very subtle right border */
+.dark aside.bg-fd-card {
+  background: hsl(0 0% 0%);
+  border-color: hsl(0 0% 12%);
+}
+
+/* Sidebar links: sharp corners, compact padding, muted text */
+.dark aside a[data-active] {
+  border-radius: 0.2rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8125rem;
+}
+
+/* Active sidebar item: subtle white highlight (not colored) */
+.dark aside a[data-active="true"] {
+  background: hsl(0 0% 14%) !important;
+  color: hsl(0 0% 96%) !important;
+}
+
+/* Hover: subtle highlight */
+.dark aside a[data-active]:hover {
+  background: hsl(0 0% 10%);
+  color: hsl(0 0% 90%);
+}
+
+/* Search button: blend into sidebar */
+.dark aside button.bg-fd-secondary\/50 {
+  background: hsl(0 0% 8%);
+  border-color: hsl(0 0% 14%);
+  border-radius: 0.2rem;
+}
+
+/* Sidebar folder/section labels: slightly brighter */
+.dark aside button.text-fd-muted-foreground {
+  color: hsl(0 0% 60%);
+}
+
+/* Theme toggle button: blend */
+.dark aside button[class*="rounded-full"] {
+  border-color: hsl(0 0% 14%);
+}
+
+/* ─── Feature cards (if used in MDX) ──────────────────────────────── */
+
+.dark [class*="rounded-lg"] {
+  border-radius: 0.2rem;
+}
+
+/* ─── Callout sharp edges ─────────────────────────────────────────── */
+
+.dark [class*="bg-fd-card"] {
+  border-radius: 0.2rem;
+}
+
+/* ─── TOC right panel: blend into background ──────────────────────── */
+
+.dark nav[class*="toc"],
+.dark [class*="fd-toc"] {
+  border-color: hsl(0 0% 12%);
+}

@@ -1,15 +1,2 @@
-@import "fumadocs-ui/css/neutral.css";
-@import "fumadocs-ui/css/preset.css";
-
-/* Code block padding */
-figure[data-rehype-pretty-code-figure] pre {
-  padding: 0.15rem 0.5rem;
-}
-
-figure[data-rehype-pretty-code-figure] pre > code {
-  display: grid;
-}
-
-figure[data-rehype-pretty-code-figure] pre > code > [data-line] {
-  padding: 0 0.25rem;
-}
+/* @deprecated — Use @farming-labs/fumadocs/default/css or @farming-labs/fumadocs/darksharp/css */
+@import "./default.css";

@@ -16,7 +16,19 @@
       "import": "./dist/mdx.js",
       "default": "./dist/mdx.js"
     },
-    "./css": "./styles/fumadocs.css"
+    "./default": {
+      "types": "./dist/default/index.d.ts",
+      "import": "./dist/default/index.js",
+      "default": "./dist/default/index.js"
+    },
+    "./darksharp": {
+      "types": "./dist/darksharp/index.d.ts",
+      "import": "./dist/darksharp/index.js",
+      "default": "./dist/darksharp/index.js"
+    },
+    "./css": "./styles/default.css",
+    "./default/css": "./styles/default.css",
+    "./darksharp/css": "./styles/darksharp.css"
   },
   "files": ["dist", "styles"],
   "keywords": ["docs", "fumadocs", "theme", "documentation"],

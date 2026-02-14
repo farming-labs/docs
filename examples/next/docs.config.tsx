@@ -1,5 +1,5 @@
 import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/fumadocs";
+import { darksharp } from "@farming-labs/fumadocs/darksharp";
 import { MyNote } from "./app/components/my-note";
 import {
   BookOpen,
@@ -13,9 +13,8 @@ import {
 
 export default defineDocs({
   entry: "docs",
-  theme: fumadocs({
+  theme: darksharp({
     ui: {
-      colors: { primary: "#22c55e" },
       components: { Callout: { variant: "outline" } },
       layout: { toc: { enabled: true, depth: 3 } },
     },

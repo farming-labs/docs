@@ -1,0 +1,4 @@
+/* @farming-labs/fumadocs — default theme CSS (neutral color preset) */
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+@import "./base.css";
