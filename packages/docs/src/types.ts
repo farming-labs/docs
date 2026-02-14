@@ -90,6 +90,36 @@ export interface DocsConfig {
    * ```
    */
   components?: Record<string, unknown>;
+  /**
+   * Icon registry for sidebar items.
+   *
+   * Map string labels to React elements. Reference them in page frontmatter
+   * with `icon: "label"` and the matching icon renders in the sidebar.
+   *
+   * @example
+   * ```tsx
+   * import { Book, Terminal, Rocket } from "lucide-react";
+   *
+   * export default defineDocs({
+   *   entry: "docs",
+   *   theme: fumadocs(),
+   *   icons: {
+   *     book: <Book />,
+   *     terminal: <Terminal />,
+   *     rocket: <Rocket />,
+   *   },
+   * });
+   * ```
+   *
+   * Then in `page.mdx` frontmatter:
+   * ```yaml
+   * ---
+   * title: "CLI Reference"
+   * icon: "terminal"
+   * ---
+   * ```
+   */
+  icons?: Record<string, unknown>;
   /** SEO metadata - separate from theme */
   metadata?: DocsMetadata;
   /** Open Graph image handling */

@@ -2,55 +2,137 @@ import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
-import type { ReactNode } from "react";
+import type { ReactNode, ReactElement } from "react";
 import type { DocsConfig } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 
+// ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
+interface PageNode {
+  type: "page";
+  name: string;
+  url: string;
+  icon?: ReactNode;
+}
+interface FolderNode {
+  type: "folder";
+  name: string;
+  icon?: ReactNode;
+  index?: PageNode;
+  children: (PageNode | FolderNode)[];
+}
+type TreeNode = PageNode | FolderNode;
+
+// ─── Helpers ─────────────────────────────────────────────────────────
+
+/** Resolve a frontmatter `icon` string to a ReactNode via the icon registry. */
+function resolveIcon(
+  iconKey: string | undefined,
+  registry: Record<string, unknown> | undefined,
+): ReactNode | undefined {
+  if (!iconKey || !registry) return undefined;
+  return (registry[iconKey] as ReactNode) ?? undefined;
+}
+
+/** Read frontmatter from a page.mdx file. */
+function readFrontmatter(filePath: string): Record<string, unknown> {
+  try {
+    const { data } = matter(fs.readFileSync(filePath, "utf-8"));
+    return data;
+  } catch {
+    return {};
+  }
+}
+
+/** Check if a directory has any subdirectories that contain page.mdx. */
+function hasChildPages(dir: string): boolean {
+  if (!fs.existsSync(dir)) return false;
+  for (const name of fs.readdirSync(dir)) {
+    const full = path.join(dir, name);
+    if (
+      fs.statSync(full).isDirectory() &&
+      fs.existsSync(path.join(full, "page.mdx"))
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// ─── buildTree ───────────────────────────────────────────────────────
+
 function buildTree(config: DocsConfig) {
   const docsDir = path.join(process.cwd(), "app", config.entry);
-  const children: { type: "page"; name: string; url: string }[] = [];
+  const icons = config.icons as Record<string, unknown> | undefined;
+  const rootChildren: TreeNode[] = [];
 
+  // Root page (e.g. /docs)
   if (fs.existsSync(path.join(docsDir, "page.mdx"))) {
-    const { data } = matter(
-      fs.readFileSync(path.join(docsDir, "page.mdx"), "utf-8"),
-    );
-    children.push({
+    const data = readFrontmatter(path.join(docsDir, "page.mdx"));
+    rootChildren.push({
       type: "page",
-      name: data?.title ?? "Docs",
+      name: (data.title as string) ?? "Documentation",
       url: `/${config.entry}`,
+      icon: resolveIcon(data.icon as string | undefined, icons),
     });
   }
 
-  function scan(dir: string, base: string[] = []) {
-    if (!fs.existsSync(dir)) return;
-    for (const name of fs.readdirSync(dir)) {
+  /**
+   * Recursively scan a directory and return tree nodes.
+   *
+   * - If a subdirectory has its own children (nested pages), it becomes a
+   *   **folder** node with collapsible children. Its own `page.mdx` becomes
+   *   the folder's `index` page.
+   * - Otherwise it becomes a simple **page** node.
+   */
+  function scan(dir: string, baseSlug: string[]): TreeNode[] {
+    if (!fs.existsSync(dir)) return [];
+
+    const nodes: TreeNode[] = [];
+    const entries = fs.readdirSync(dir).sort();
+
+    for (const name of entries) {
       const full = path.join(dir, name);
-      if (
-        fs.statSync(full).isDirectory() &&
-        fs.existsSync(path.join(full, "page.mdx"))
-      ) {
-        const { data } = matter(
-          fs.readFileSync(path.join(full, "page.mdx"), "utf-8"),
-        );
-        const slug = [...base, name];
-        children.push({
-          type: "page",
-          name: data?.title ?? name.replace(/-/g, " "),
-          url: `/${config.entry}/${slug.join("/")}`,
+      if (!fs.statSync(full).isDirectory()) continue;
+
+      const pagePath = path.join(full, "page.mdx");
+      if (!fs.existsSync(pagePath)) continue;
+
+      const data = readFrontmatter(pagePath);
+      const slug = [...baseSlug, name];
+      const url = `/${config.entry}/${slug.join("/")}`;
+      const icon = resolveIcon(data.icon as string | undefined, icons);
+      const displayName =
+        (data.title as string) ?? name.replace(/-/g, " ");
+
+      // Does this directory have nested child pages?
+      if (hasChildPages(full)) {
+        // → Folder node (collapsible) with its page as the index
+        const folderChildren = scan(full, slug);
+        nodes.push({
+          type: "folder",
+          name: displayName,
+          icon,
+          index: { type: "page", name: displayName, url, icon },
+          children: folderChildren,
         });
-        scan(full, slug);
+      } else {
+        // → Simple page node
+        nodes.push({ type: "page", name: displayName, url, icon });
       }
     }
-  }
-  scan(docsDir);
 
-  return { name: "Docs", children };
+    return nodes;
+  }
+
+  rootChildren.push(...scan(docsDir, []));
+  return { name: "Docs", children: rootChildren };
 }
 
+// ─── createDocsLayout ────────────────────────────────────────────────
+
 export function createDocsLayout(config: DocsConfig) {
-  // Read TOC settings from the theme config
   const tocConfig = config.theme?.ui?.layout?.toc;
-  const tocEnabled = tocConfig?.enabled !== false; // enabled by default
+  const tocEnabled = tocConfig?.enabled !== false;
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     return (
@@ -58,9 +140,7 @@ export function createDocsLayout(config: DocsConfig) {
         tree={buildTree(config)}
         nav={{ title: "Docs", url: `/${config.entry}` }}
       >
-        <DocsPageClient tocEnabled={tocEnabled}>
-          {children}
-        </DocsPageClient>
+        <DocsPageClient tocEnabled={tocEnabled}>{children}</DocsPageClient>
       </DocsLayout>
     );
   };

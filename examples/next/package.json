@@ -9,8 +9,9 @@
   },
   "dependencies": {
     "@farming-labs/docs": "workspace:*",
-    "@farming-labs/next": "workspace:*",
     "@farming-labs/fumadocs": "workspace:*",
+    "@farming-labs/next": "workspace:*",
+    "lucide-react": "^0.564.0",
     "next": "16.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
