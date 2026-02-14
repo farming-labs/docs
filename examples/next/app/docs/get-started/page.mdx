@@ -1,0 +1,107 @@
+---
+title: "Getting Started"
+description: "Quick start guide"
+tags: ["getting-started"]
+---
+
+# Getting Started
+
+Get up and running in minutes. This guide will walk you through installation and basic configuration.
+
+<Callout type="info">
+  Prerequisites: Node.js 18+ and pnpm (or npm/yarn)
+</Callout>
+
+## Installation
+
+Install the docs package and its peer dependencies:
+
+```bash
+pnpm add @farming-labs/docs fumadocs-ui fumadocs-core
+```
+
+For Next.js projects, you'll also need the MDX loader:
+
+```bash
+pnpm add @next/mdx @mdx-js/loader @mdx-js/react
+```
+
+## Project Setup
+
+### 1. Create the config file
+
+Create a `docs.config.ts` in your project root:
+
+```ts
+import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/docs/theme/fumadocs";
+
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs({
+    ui: { colors: { primary: "#22c55e" } },
+  }),
+  metadata: {
+    titleTemplate: "%s – Docs",
+    description: "Your documentation",
+  },
+});
+```
+
+### 2. Add the layout
+
+Create `app/docs/layout.tsx`:
+
+```tsx
+import docsConfig from "@/docs.config";
+import { createDocsLayout } from "@farming-labs/docs/next";
+
+export default createDocsLayout(docsConfig);
+```
+
+### 3. Add your first page
+
+Create `app/docs/page.mdx`:
+
+```mdx
+# Welcome
+
+This is your first docs page. Write content in MDX and use components like
+<Callout type="info">this</Callout>.
+```
+
+## File Structure
+
+Place your docs under `app/docs/`:
+
+```
+app/
+  docs/
+    layout.tsx      # Layout (one line with createDocsLayout)
+    page.mdx        # /docs
+    introduction/
+      page.mdx      # /docs/introduction
+    guides/
+      advanced/
+        page.mdx    # /docs/guides/advanced
+```
+
+## Custom Components
+
+You can pass your own React components through `docs.config.ts` and use them directly in MDX — no extra imports needed:
+
+<MyNote type="tip">
+  This is a custom component passed via the `components` field in `docs.config.ts`.
+  As long as it matches the expected props, it just works!
+</MyNote>
+
+<MyNote type="warning">
+  You can override any built-in component too — just pass your own under the same name.
+</MyNote>
+
+## Next Steps
+
+- Customize the theme in your config
+- Add more pages and organize with folders
+- Configure metadata and Open Graph images
+- Deploy to Vercel or your preferred host

@@ -1,0 +1,36 @@
+{
+  "name": "@farming-labs/docs",
+  "version": "0.1.0",
+  "description": "Modern, flexible MDX-based docs framework — core types, config, and CLI",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "farming-docs": "./dist/cli/index.js"
+  },
+  "files": ["dist"],
+  "keywords": ["docs", "mdx", "documentation"],
+  "author": "Farming Labs",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.1",
+    "gray-matter": "^4.0.3",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "name": "@farming-labs/fumadocs",
+  "version": "0.1.0",
+  "description": "Fumadocs theme for @farming-labs/docs — layout, provider, MDX components, and styles",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./mdx": {
+      "types": "./dist/mdx.d.ts",
+      "import": "./dist/mdx.js",
+      "default": "./dist/mdx.js"
+    },
+    "./css": "./styles/fumadocs.css"
+  },
+  "files": ["dist", "styles"],
+  "keywords": ["docs", "fumadocs", "theme", "documentation"],
+  "author": "Farming Labs",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "fumadocs-core": "^16.6.1",
+    "fumadocs-ui": "^16.6.1",
+    "gray-matter": "^4.0.3"
+  },
+  "devDependencies": {
+    "@farming-labs/docs": "workspace:*",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "next": ">=14.0.0",
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "@farming-labs/docs": ">=0.1.0",
+    "next": ">=14.0.0",
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  }
+}

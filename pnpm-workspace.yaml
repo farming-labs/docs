@@ -1,0 +1,5 @@
+packages:
+  - "packages/docs"
+  - "packages/next"
+  - "packages/fumadocs"
+  - "examples/*"

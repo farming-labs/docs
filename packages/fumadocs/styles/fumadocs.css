@@ -1,0 +1,15 @@
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
+/* Code block padding */
+figure[data-rehype-pretty-code-figure] pre {
+  padding: 1rem 1.25rem;
+}
+
+figure[data-rehype-pretty-code-figure] pre > code {
+  display: grid;
+}
+
+figure[data-rehype-pretty-code-figure] pre > code > [data-line] {
+  padding: 0 0.25rem;
+}
