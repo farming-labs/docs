@@ -1,5 +1,5 @@
 /* @farming-labs/fumadocs — darksharp theme CSS
- * Inspired by better-auth.com — all-black, sharp edges, minimal radius.
+ * Inspired by all-black, sharp edges, minimal radius.
  * Uses fumadocs-ui "black" color preset as the base.
  */
 @import "fumadocs-ui/css/black.css";
@@ -39,6 +39,11 @@
   --scrollbar-track: transparent;
   /* Sharp edges — near-zero radius */
   --radius: 0.2rem;
+  --radius-sm: 0;
+  --radius-md: 0.1rem;
+  --radius-lg: 0.2rem;
+  --radius-xl: 0.2rem;
+  --radius-2xl: 0.2rem;
   --fd-nav-height: 56px;
   --fd-banner-height: 0px;
   --fd-tocnav-height: 0px;
@@ -141,7 +146,145 @@ code:not(pre code) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
- * Sidebar — dark sidebar styling
+ * Global sharp radius — override all rounded Tailwind utilities
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* Force all rounded elements to sharp edges */
+[class*="rounded-lg"] {
+  border-radius: 0.2rem !important;
+}
+
+[class*="rounded-md"] {
+  border-radius: 0.1rem !important;
+}
+
+[class*="rounded-xl"],
+[class*="rounded-2xl"] {
+  border-radius: 0.2rem !important;
+}
+
+/* ─── Tables ──────────────────────────────────────────────────────── */
+
+table {
+  border-radius: 0 !important;
+  border-collapse: collapse;
+}
+
+/* Table wrapper (fumadocs wraps tables in a div) */
+.prose-no-margin,
+[class*="overflow-auto"] {
+  border-radius: 0 !important;
+}
+
+th, td {
+  border-color: var(--border);
+}
+
+.dark th {
+  background: hsl(0 0% 8%);
+  color: hsl(0 0% 80%);
+  font-weight: 500;
+}
+
+.dark td {
+  background: hsl(0 0% 2%);
+}
+
+.dark tr {
+  border-color: hsl(0 0% 14%);
+}
+
+/* ─── Code blocks ─────────────────────────────────────────────────── */
+
+figure[data-rehype-pretty-code-figure],
+figure[data-rehype-pretty-code-figure] pre {
+  border-radius: 0.2rem !important;
+}
+
+/* Outer code block wrapper (fumadocs wraps in figure > figure) */
+article figure {
+  border-radius: 0.2rem !important;
+  overflow: hidden;
+}
+
+.dark article figure {
+  border-color: hsl(0 0% 14%);
+}
+
+/* Copy button inside code blocks */
+figure button {
+  border-radius: 0.1rem !important;
+}
+
+/* ─── Inline code ─────────────────────────────────────────────────── */
+
+code:not(pre code) {
+  border-radius: 0.1rem !important;
+}
+
+.dark code:not(pre code) {
+  background: hsl(0 0% 10%);
+  border: 1px solid hsl(0 0% 16%);
+  color: hsl(0 0% 85%);
+}
+
+/* ─── KBD (keyboard shortcuts) ────────────────────────────────────── */
+
+kbd {
+  border-radius: 0.1rem !important;
+}
+
+/* ─── Callouts ────────────────────────────────────────────────────── */
+
+[class*="bg-fd-card"],
+[class*="fd-callout"],
+[role="alert"] {
+  border-radius: 0.2rem !important;
+}
+
+.dark [class*="bg-fd-card"] {
+  border-color: hsl(0 0% 14%);
+}
+
+/* ─── Search dialog ───────────────────────────────────────────────── */
+
+[role="dialog"] {
+  border-radius: 0.2rem !important;
+}
+
+[role="dialog"] [class*="rounded"] {
+  border-radius: 0.1rem !important;
+}
+
+/* ─── Popover / Dropdown ──────────────────────────────────────────── */
+
+[data-radix-popper-content-wrapper] > * {
+  border-radius: 0.2rem !important;
+}
+
+/* ─── Nav cards (prev/next page links) ────────────────────────────── */
+
+article a[class*="border"] {
+  border-radius: 0.2rem !important;
+}
+
+.dark article a[class*="border"] {
+  border-color: hsl(0 0% 14%);
+}
+
+.dark article a[class*="border"]:hover {
+  background: hsl(0 0% 8%);
+  border-color: hsl(0 0% 20%);
+}
+
+/* ─── Breadcrumb links ────────────────────────────────────────────── */
+
+article a[class*="text-fd-muted-foreground"] {
+  border-radius: 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Sidebar — better-auth inspired dark sidebar
  * ═══════════════════════════════════════════════════════════════════ */
 
 /* Sidebar container: blend into background, very subtle right border */
@@ -152,7 +295,7 @@ code:not(pre code) {
 
 /* Sidebar links: sharp corners, compact padding, muted text */
 .dark aside a[data-active] {
-  border-radius: 0.2rem;
+  border-radius: 0.2rem !important;
   padding: 0.4rem 0.5rem;
   font-size: 0.8125rem;
 }
@@ -170,37 +313,32 @@ code:not(pre code) {
 }
 
 /* Search button: blend into sidebar */
-.dark aside button.bg-fd-secondary\/50 {
+.dark aside button[class*="bg-fd-secondary"] {
   background: hsl(0 0% 8%);
   border-color: hsl(0 0% 14%);
-  border-radius: 0.2rem;
+  border-radius: 0.2rem !important;
 }
 
-/* Sidebar folder/section labels: slightly brighter */
+/* Sidebar folder/section labels */
 .dark aside button.text-fd-muted-foreground {
   color: hsl(0 0% 60%);
 }
 
-/* Theme toggle button: blend */
+/* Theme toggle */
 .dark aside button[class*="rounded-full"] {
   border-color: hsl(0 0% 14%);
+  border-radius: 9999px !important; /* keep toggle pill shape */
 }
 
-/* ─── Feature cards (if used in MDX) ──────────────────────────────── */
-
-.dark [class*="rounded-lg"] {
-  border-radius: 0.2rem;
-}
-
-/* ─── Callout sharp edges ─────────────────────────────────────────── */
-
-.dark [class*="bg-fd-card"] {
-  border-radius: 0.2rem;
-}
-
-/* ─── TOC right panel: blend into background ──────────────────────── */
+/* ─── TOC right panel ─────────────────────────────────────────────── */
 
 .dark nav[class*="toc"],
 .dark [class*="fd-toc"] {
   border-color: hsl(0 0% 12%);
+}
+
+/* ─── Separator/Divider (hr) ──────────────────────────────────────── */
+
+.dark hr {
+  border-color: hsl(0 0% 14%);
 }
