@@ -1,5 +1,5 @@
 import { defineDocs } from "@farming-labs/docs";
-import { darksharp } from "@farming-labs/fumadocs/darksharp";
+import { pixelBorder } from "@farming-labs/fumadocs/pixel-border";
 import { MyNote } from "./app/components/my-note";
 import {
   BookOpen,
@@ -13,7 +13,7 @@ import {
 
 export default defineDocs({
   entry: "docs",
-  theme: darksharp({
+  theme: pixelBorder({
     ui: {
       components: { Callout: { variant: "outline" } },
       layout: { toc: { enabled: true, depth: 3 } },
@@ -33,7 +33,6 @@ export default defineDocs({
   components: {
     MyNote,
   },
-
   icons: {
     book: <BookOpen size={16} />,
     rocket: <Rocket size={16} />,

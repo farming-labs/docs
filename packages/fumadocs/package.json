@@ -26,9 +26,15 @@
       "import": "./dist/darksharp/index.js",
       "default": "./dist/darksharp/index.js"
     },
+    "./pixel-border": {
+      "types": "./dist/pixel-border/index.d.ts",
+      "import": "./dist/pixel-border/index.js",
+      "default": "./dist/pixel-border/index.js"
+    },
     "./css": "./styles/default.css",
     "./default/css": "./styles/default.css",
-    "./darksharp/css": "./styles/darksharp.css"
+    "./darksharp/css": "./styles/darksharp.css",
+    "./pixel-border/css": "./styles/pixel-border.css"
   },
   "files": ["dist", "styles"],
   "keywords": ["docs", "fumadocs", "theme", "documentation"],

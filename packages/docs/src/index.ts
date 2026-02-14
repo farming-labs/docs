@@ -21,4 +21,6 @@ export type {
   UIConfig,
   PageFrontmatter,
   ThemeToggleConfig,
+  BreadcrumbConfig,
+  SidebarConfig,
 } from "./types.js";

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import type { ReactNode, ReactElement } from "react";
-import type { DocsConfig, ThemeToggleConfig } from "@farming-labs/docs";
+import type { DocsConfig, ThemeToggleConfig, BreadcrumbConfig, SidebarConfig } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
@@ -179,6 +179,19 @@ function resolveThemeSwitch(toggle: boolean | ThemeToggleConfig | undefined) {
   };
 }
 
+/** Resolve sidebar config. */
+function resolveSidebar(sidebar: boolean | SidebarConfig | undefined) {
+  if (sidebar === undefined || sidebar === true) return {};
+  if (sidebar === false) return { enabled: false };
+  return {
+    enabled: sidebar.enabled !== false,
+    component: sidebar.component as ReactNode,
+    footer: sidebar.footer as ReactNode,
+    banner: sidebar.banner as ReactNode,
+    collapsible: sidebar.collapsible,
+  };
+}
+
 export function createDocsLayout(config: DocsConfig) {
   const tocConfig = config.theme?.ui?.layout?.toc;
   const tocEnabled = tocConfig?.enabled !== false;
@@ -197,15 +210,31 @@ export function createDocsLayout(config: DocsConfig) {
       ? toggleConfig.default
       : undefined;
 
+  // Sidebar
+  const sidebarProps = resolveSidebar(config.sidebar);
+
+  // Breadcrumb
+  const breadcrumbConfig = config.breadcrumb;
+  const breadcrumbEnabled =
+    breadcrumbConfig === undefined ||
+    breadcrumbConfig === true ||
+    (typeof breadcrumbConfig === "object" && breadcrumbConfig.enabled !== false);
+
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     return (
       <DocsLayout
         tree={buildTree(config)}
         nav={{ title: navTitle, url: navUrl }}
         themeSwitch={themeSwitch}
+        sidebar={sidebarProps}
       >
         {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
-        <DocsPageClient tocEnabled={tocEnabled}>{children}</DocsPageClient>
+        <DocsPageClient
+          tocEnabled={tocEnabled}
+          breadcrumbEnabled={breadcrumbEnabled}
+        >
+          {children}
+        </DocsPageClient>
       </DocsLayout>
     );
   };

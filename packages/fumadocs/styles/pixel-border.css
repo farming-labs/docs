@@ -1,0 +1,309 @@
+/* @farming-labs/fumadocs — pixel-border theme CSS
+ * Inspired by better-auth.com — rounded, pixel-perfect borders, clean dark UI.
+ * Uses fumadocs-ui "black" color preset as the base.
+ */
+@import "fumadocs-ui/css/black.css";
+@import "fumadocs-ui/css/preset.css";
+@import "./base.css";
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.147 0.004 49.25);
+  --card: oklch(0.985 0.001 106.423);
+  --card-foreground: oklch(0.147 0.004 49.25);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.147 0.004 49.25);
+  --primary: oklch(0.216 0.006 56.043);
+  --primary-foreground: oklch(0.985 0.001 106.423);
+  --secondary: oklch(0.97 0.001 106.424);
+  --secondary-foreground: oklch(0.216 0.006 56.043);
+  --muted: oklch(0.97 0.001 106.424);
+  --muted-foreground: oklch(0.553 0.013 58.071);
+  --accent: oklch(0.97 0.001 106.424);
+  --accent-foreground: oklch(0.216 0.006 56.043);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --border: oklch(0.923 0.003 48.717);
+  --input: oklch(0.923 0.003 48.717);
+  --ring: oklch(0.709 0.01 56.259);
+  --sidebar: oklch(0.985 0.001 106.423);
+  --sidebar-foreground: oklch(0.147 0.004 49.25);
+  --sidebar-primary: oklch(0.216 0.006 56.043);
+  --sidebar-primary-foreground: oklch(0.985 0.001 106.423);
+  --sidebar-accent: oklch(0.97 0.001 106.424);
+  --sidebar-accent-foreground: oklch(0.216 0.006 56.043);
+  --sidebar-border: oklch(0.923 0.003 48.717);
+  --sidebar-ring: oklch(0.709 0.01 56.259);
+  --scrollbar-thumb: var(--border);
+  --scrollbar-thumb-hover: var(--ring);
+  --scrollbar-track: transparent;
+  /* Rounded borders */
+  --radius: 0.625rem;
+  --fd-nav-height: 56px;
+  --fd-banner-height: 0px;
+  --fd-tocnav-height: 0px;
+}
+
+.dark {
+  --background: hsl(0 0% 2%);
+  --foreground: oklch(0.985 0.001 106.423);
+  --card: hsl(0 0% 4%);
+  --card-foreground: oklch(0.985 0.001 106.423);
+  --popover: hsl(0 0% 4%);
+  --popover-foreground: oklch(0.985 0.001 106.423);
+  --primary: oklch(0.985 0.001 106.423);
+  --primary-foreground: oklch(0.216 0.006 56.043);
+  --secondary: hsl(0 0% 8%);
+  --secondary-foreground: oklch(0.985 0.001 106.423);
+  --muted: hsl(0 0% 10%);
+  --muted-foreground: hsl(0 0% 55%);
+  --accent: hsl(0 0% 10%);
+  --accent-foreground: oklch(0.985 0.001 106.423);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: hsl(0 0% 15%);
+  --input: hsl(0 0% 15%);
+  --ring: hsl(0 0% 30%);
+  /* Sidebar: slightly elevated from background */
+  --sidebar: hsl(0 0% 3%);
+  --sidebar-foreground: hsl(0 0% 85%);
+  --sidebar-primary: hsl(0 0% 96%);
+  --sidebar-primary-foreground: hsl(0 0% 4%);
+  --sidebar-accent: hsl(0 0% 12%);
+  --sidebar-accent-foreground: hsl(0 0% 96%);
+  --sidebar-border: hsl(0 0% 15%);
+  --sidebar-ring: hsl(0 0% 30%);
+  --scrollbar-thumb: var(--border);
+  --scrollbar-thumb-hover: var(--ring);
+  --scrollbar-track: transparent;
+}
+
+/* ─── Scroll ──────────────────────────────────────────────────────── */
+
+html {
+  scroll-behavior: auto;
+  scroll-padding-top: calc(
+    var(--fd-nav-height, 56px) +
+    var(--fd-banner-height, 0px) +
+    var(--fd-tocnav-height, 0px) +
+    24px
+  );
+}
+
+html:not([data-anchor-scrolling]) {
+  scroll-behavior: smooth;
+}
+
+/* ─── Custom scrollbar ────────────────────────────────────────────── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ─── Selection ───────────────────────────────────────────────────── */
+
+body {
+  overscroll-behavior: none;
+}
+
+::selection {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+/* ─── Inline code word break ──────────────────────────────────────── */
+
+code:not(pre code) {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Pixel-border theme — better-auth inspired sidebar, clean dark UI
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Sidebar (better-auth style) ─────────────────────────────────── */
+
+/* Sidebar container: blend into background, subtle right border */
+.dark aside.bg-fd-card {
+  background: hsl(0 0% 2%);
+  border-color: hsl(0 0% 12%);
+}
+
+/* All sidebar links: compact, left-border indicator style */
+.dark aside a[data-active] {
+  font-size: 0.825rem;
+  line-height: 1.5;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0.35rem 0.75rem !important;
+  margin-left: 0;
+  border-left: 2px solid transparent;
+  transition: all 0.15s ease;
+  color: hsl(0 0% 50%);
+}
+
+/* Active sidebar item: left border accent + bright text (better-auth style) */
+.dark aside a[data-active="true"] {
+  background: transparent !important;
+  color: hsl(0 0% 98%) !important;
+  border-left: 2px solid hsl(0 0% 98%) !important;
+  border-radius: 0 !important;
+  font-weight: 500;
+}
+
+/* Hover: text brightens, no background */
+.dark aside a[data-active]:hover {
+  background: transparent !important;
+  color: hsl(0 0% 80%);
+  border-left-color: hsl(0 0% 25%);
+}
+
+/* Sidebar section/folder labels: uppercase, small, muted */
+.dark aside button.text-fd-muted-foreground {
+  color: hsl(0 0% 45%);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+/* Search button in sidebar */
+.dark aside button[class*="bg-fd-secondary"] {
+  background: hsl(0 0% 4%);
+  border: 1px solid hsl(0 0% 12%);
+  border-radius: 0.5rem;
+  color: hsl(0 0% 45%);
+  font-size: 0.8125rem;
+}
+
+.dark aside button[class*="bg-fd-secondary"]:hover {
+  border-color: hsl(0 0% 20%);
+  color: hsl(0 0% 65%);
+}
+
+/* Theme toggle in sidebar */
+.dark aside button[class*="rounded-full"] {
+  border-color: hsl(0 0% 12%);
+}
+
+/* ─── Tables: visible borders, rounded wrapper ────────────────────── */
+
+.dark table {
+  border: 1px solid hsl(0 0% 15%);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.dark th {
+  background: hsl(0 0% 6%);
+  color: hsl(0 0% 80%);
+  font-weight: 500;
+  border-color: hsl(0 0% 15%);
+}
+
+.dark td {
+  border-color: hsl(0 0% 12%);
+}
+
+.dark tr:last-child td {
+  border-bottom: none;
+}
+
+/* ─── Code blocks: single border only ─────────────────────────────── */
+
+/* Target ONLY the rehype-pretty-code figure — NOT the outer wrapper */
+figure[data-rehype-pretty-code-figure] {
+  border: 1px solid hsl(0 0% 15%);
+  border-radius: 0.5rem !important;
+  overflow: hidden;
+}
+
+/* The inner shiki figure (with my-4 class) — remove its margin & border */
+figure[data-rehype-pretty-code-figure] > figure,
+figure.shiki,
+figure[data-language] {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove border from the outer prose figure wrapper to prevent double border */
+article figure:not([data-rehype-pretty-code-figure]) {
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+/* Copy button inside code blocks */
+figure[data-rehype-pretty-code-figure] button {
+  border-radius: 0.375rem;
+}
+
+/* ─── Inline code ─────────────────────────────────────────────────── */
+/* 
+.dark code:not(pre code) {
+  background: hsl(0 0% 8%);
+  border: 1px solid hsl(0 0% 16%);
+  color: hsl(0 0% 85%);
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.375rem;
+} */
+
+/* ─── Callouts: visible border ────────────────────────────────────── */
+
+.dark [class*="bg-fd-card"] {
+  border-color: hsl(0 0% 15%);
+}
+
+/* ─── Nav cards (prev/next): visible border ───────────────────────── */
+
+.dark article a[class*="border"] {
+  border-color: hsl(0 0% 15%);
+  border-radius: 0.5rem;
+}
+
+.dark article a[class*="border"]:hover {
+  background: hsl(0 0% 6%);
+  border-color: hsl(0 0% 22%);
+}
+
+/* ─── Search dialog ───────────────────────────────────────────────── */
+
+[role="dialog"] {
+  border-radius: 0.75rem !important;
+}
+
+/* ─── TOC right panel ─────────────────────────────────────────────── */
+
+.dark nav[class*="toc"],
+.dark [class*="fd-toc"] {
+  border-color: hsl(0 0% 12%);
+}
+
+/* ─── Separator/Divider (hr) ──────────────────────────────────────── */
+
+.dark hr {
+  border-color: hsl(0 0% 15%);
+}

@@ -9,6 +9,8 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     theme: config.theme,
     nav: config.nav,
     themeToggle: config.themeToggle,
+    breadcrumb: config.breadcrumb,
+    sidebar: config.sidebar,
     components: config.components,
     icons: config.icons,
     metadata: config.metadata,

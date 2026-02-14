@@ -13,6 +13,7 @@ interface TOCItem {
 
 interface DocsPageClientProps {
   tocEnabled: boolean;
+  breadcrumbEnabled?: boolean;
   children: ReactNode;
 }
 
@@ -20,7 +21,7 @@ interface DocsPageClientProps {
  * Client wrapper for DocsPage that auto-detects headings from the DOM
  * and populates the Table of Contents. Re-scans when the route changes.
  */
-export function DocsPageClient({ tocEnabled, children }: DocsPageClientProps) {
+export function DocsPageClient({ tocEnabled, breadcrumbEnabled = true, children }: DocsPageClientProps) {
   const [toc, setToc] = useState<TOCItem[]>([]);
   const pathname = usePathname();
 
@@ -50,6 +51,7 @@ export function DocsPageClient({ tocEnabled, children }: DocsPageClientProps) {
       toc={toc}
       tableOfContent={{ enabled: tocEnabled }}
       tableOfContentPopover={{ enabled: tocEnabled }}
+      breadcrumb={{ enabled: breadcrumbEnabled }}
     >
       <DocsBody>{children}</DocsBody>
     </DocsPage>

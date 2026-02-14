@@ -112,6 +112,59 @@ export interface ThemeToggleConfig {
   mode?: "light-dark" | "light-dark-system";
 }
 
+export interface BreadcrumbConfig {
+  /**
+   * Whether to show the breadcrumb navigation above page content.
+   * @default true
+   */
+  enabled?: boolean;
+  /**
+   * Custom breadcrumb component. Receives the default breadcrumb as children
+   * so you can wrap/modify it.
+   *
+   * @example
+   * ```tsx
+   * breadcrumb: {
+   *   component: ({ items }) => <MyBreadcrumb items={items} />,
+   * }
+   * ```
+   */
+  component?: unknown; // ReactNode or Component — typed as unknown to stay framework-agnostic
+}
+
+export interface SidebarConfig {
+  /**
+   * Whether to show the sidebar.
+   * @default true
+   */
+  enabled?: boolean;
+  /**
+   * Custom sidebar component to completely replace the default sidebar.
+   * Receives the page tree and config as context.
+   *
+   * @example
+   * ```tsx
+   * sidebar: {
+   *   component: MySidebar,
+   * }
+   * ```
+   */
+  component?: unknown; // ReactNode — typed as unknown to stay framework-agnostic
+  /**
+   * Sidebar footer content (rendered below navigation items).
+   */
+  footer?: unknown; // ReactNode
+  /**
+   * Sidebar banner content (rendered above navigation items).
+   */
+  banner?: unknown; // ReactNode
+  /**
+   * Whether the sidebar is collapsible on desktop.
+   * @default true
+   */
+  collapsible?: boolean;
+}
+
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
@@ -139,6 +192,24 @@ export interface DocsConfig {
    * ```
    */
   themeToggle?: boolean | ThemeToggleConfig;
+  /**
+   * Breadcrumb navigation above page content.
+   *
+   * - `true` or `undefined` → breadcrumb is shown (default)
+   * - `false` → breadcrumb is hidden
+   * - `{ enabled: false }` → breadcrumb is hidden
+   * - `{ component: MyBreadcrumb }` → custom breadcrumb component
+   */
+  breadcrumb?: boolean | BreadcrumbConfig;
+  /**
+   * Sidebar customisation.
+   *
+   * - `true` or `undefined` → default sidebar
+   * - `false` → sidebar is hidden
+   * - `{ component: MySidebar }` → custom sidebar component
+   * - `{ footer: <MyFooter />, banner: <MyBanner /> }` → add footer/banner
+   */
+  sidebar?: boolean | SidebarConfig;
   /**
    * Custom MDX component overrides.
    *
