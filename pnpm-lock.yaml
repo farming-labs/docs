@@ -143,6 +143,9 @@ importers:
       remark-frontmatter:
         specifier: ^5.0.0
         version: 5.0.0
+      remark-gfm:
+        specifier: ^4.0.1
+        version: 4.0.1
       remark-mdx-frontmatter:
         specifier: ^5.0.0
         version: 5.2.0

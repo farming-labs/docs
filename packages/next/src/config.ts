@@ -22,6 +22,8 @@ import { join } from "node:path";
 // @ts-ignore – no types needed at config time
 import createMDX from "@next/mdx";
 // @ts-ignore
+import remarkGfm from "remark-gfm";
+// @ts-ignore
 import remarkFrontmatter from "remark-frontmatter";
 // @ts-ignore
 import remarkMdxFrontmatter from "remark-mdx-frontmatter";
@@ -109,6 +111,7 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     extension: /\.mdx?$/,
     options: {
       remarkPlugins: [
+        remarkGfm, // GFM tables, strikethrough, task lists, autolinks
         remarkFrontmatter,
         // Export frontmatter as `export const metadata = { title, description, ... }`
         // Next.js App Router automatically uses this for page <title> and <meta>.
