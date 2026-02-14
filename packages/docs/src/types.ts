@@ -65,11 +65,38 @@ export interface PageFrontmatter {
   ogImage?: string;
 }
 
+export interface DocsNav {
+  /**
+   * Sidebar title — a plain string or a React element (e.g. a div with an icon).
+   *
+   * @example
+   * ```tsx
+   * // Simple string
+   * nav: { title: "My Docs" }
+   *
+   * // React element with icon
+   * nav: {
+   *   title: <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+   *     <Rocket size={18} /> Example Docs
+   *   </div>
+   * }
+   * ```
+   */
+  title?: unknown; // ReactNode — typed as unknown to stay framework-agnostic
+  /** URL the title links to. Defaults to `/{entry}`. */
+  url?: string;
+}
+
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
   /** Theme configuration - single source of truth for UI */
   theme?: DocsTheme;
+  /**
+   * Sidebar navigation header.
+   * Customise the title shown at the top of the sidebar.
+   */
+  nav?: DocsNav;
   /**
    * Custom MDX component overrides.
    *

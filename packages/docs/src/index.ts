@@ -14,6 +14,7 @@ export { deepMerge } from "./utils.js";
 export { resolveTitle, resolveOGImage } from "./metadata.js";
 export type {
   DocsConfig,
+  DocsNav,
   DocsTheme,
   DocsMetadata,
   OGConfig,

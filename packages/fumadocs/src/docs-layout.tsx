@@ -166,11 +166,15 @@ export function createDocsLayout(config: DocsConfig) {
   const tocConfig = config.theme?.ui?.layout?.toc;
   const tocEnabled = tocConfig?.enabled !== false;
 
+  // Nav title: supports string or ReactNode (component)
+  const navTitle = (config.nav?.title as ReactNode) ?? "Docs";
+  const navUrl = config.nav?.url ?? `/${config.entry}`;
+
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     return (
       <DocsLayout
         tree={buildTree(config)}
-        nav={{ title: "Docs", url: `/${config.entry}` }}
+        nav={{ title: navTitle, url: navUrl }}
       >
         <DocsPageClient tocEnabled={tocEnabled}>{children}</DocsPageClient>
       </DocsLayout>
