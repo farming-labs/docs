@@ -21,13 +21,10 @@ export default defineDocs({
     },
   }),
 
-  // Custom MDX component overrides.
   components: {
     MyNote,
   },
 
-  // Icon registry — map string labels to React elements.
-  // Reference them in page frontmatter: `icon: "rocket"`
   icons: {
     book: <BookOpen size={16} />,
     rocket: <Rocket size={16} />,

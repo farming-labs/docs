@@ -3,7 +3,7 @@
 
 /* Code block padding */
 figure[data-rehype-pretty-code-figure] pre {
-  padding: 1rem 1.25rem;
+  padding: 0.15rem 0.5rem;
 }
 
 figure[data-rehype-pretty-code-figure] pre > code {
