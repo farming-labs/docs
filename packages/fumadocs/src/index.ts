@@ -4,6 +4,6 @@
  */
 
 export { fumadocs, FumadocsUIDefaults } from "./theme.js";
-export { createDocsLayout } from "./docs-layout.js";
+export { createDocsLayout, createDocsMetadata } from "./docs-layout.js";
 export { RootProvider } from "fumadocs-ui/provider/next";
 export type { DocsTheme, UIConfig } from "@farming-labs/docs";

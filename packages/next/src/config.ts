@@ -69,7 +69,9 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     options: {
       remarkPlugins: [
         remarkFrontmatter,
-        remarkMdxFrontmatter,
+        // Export frontmatter as `export const metadata = { title, description, ... }`
+        // Next.js App Router automatically uses this for page <title> and <meta>.
+        [remarkMdxFrontmatter, { name: "metadata" }],
         remarkHeading, // adds id attributes to headings
       ],
       rehypePlugins: [

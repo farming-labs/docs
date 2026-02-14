@@ -128,6 +128,38 @@ function buildTree(config: DocsConfig) {
   return { name: "Docs", children: rootChildren };
 }
 
+// ─── createDocsMetadata ──────────────────────────────────────────────
+
+/**
+ * Build a Next.js Metadata object from the docs config.
+ *
+ * Returns layout-level metadata including `title.template` so each page's
+ * frontmatter `title` is formatted (e.g. "Getting Started – Docs").
+ *
+ * Usage in `app/docs/layout.tsx`:
+ * ```ts
+ * export const metadata = createDocsMetadata(docsConfig);
+ * ```
+ */
+export function createDocsMetadata(config: DocsConfig) {
+  const meta = config.metadata;
+  const template = meta?.titleTemplate ?? "%s";
+  // Extract the suffix from the template for the default title
+  // e.g. "%s – Docs" → default is "Docs"
+  const defaultTitle = template.replace("%s", "").replace(/^[\s–—-]+/, "").trim() || "Docs";
+
+  return {
+    title: {
+      template,
+      default: defaultTitle,
+    },
+    ...(meta?.description ? { description: meta.description } : {}),
+    ...(meta?.twitterCard
+      ? { twitter: { card: meta.twitterCard } }
+      : {}),
+  };
+}
+
 // ─── createDocsLayout ────────────────────────────────────────────────
 
 export function createDocsLayout(config: DocsConfig) {
