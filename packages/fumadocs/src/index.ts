@@ -74,6 +74,9 @@ export { DocsLayout } from "fumadocs-ui/layouts/docs";
 // Scans DOM headings and feeds them to DocsPage's TOC panel
 export { DocsPageClient } from "./docs-page-client.js";
 
+// ─── Page action buttons (Copy Markdown, Open in LLM) ─────────────────
+export { PageActions } from "./page-actions.js";
+
 // ─── Core types (re-exported for convenience) ─────────────────────────
 export type {
   DocsConfig,
@@ -88,6 +91,10 @@ export type {
   ThemeToggleConfig,
   BreadcrumbConfig,
   SidebarConfig,
+  PageActionsConfig,
+  CopyMarkdownConfig,
+  OpenDocsConfig,
+  OpenDocsProvider,
 } from "@farming-labs/docs";
 
 // ─── MDX components (for use in custom layouts or overrides) ──────────

@@ -3,7 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import type { ReactNode, ReactElement } from "react";
-import type { DocsConfig, ThemeToggleConfig, BreadcrumbConfig, SidebarConfig, TypographyConfig, FontStyle } from "@farming-labs/docs";
+import { serializeIcon } from "./serialize-icon.js";
+import type { DocsConfig, ThemeToggleConfig, BreadcrumbConfig, SidebarConfig, TypographyConfig, FontStyle, PageActionsConfig, CopyMarkdownConfig, OpenDocsConfig } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
@@ -267,6 +268,24 @@ export function createDocsLayout(config: DocsConfig) {
   // Typography
   const typography = config.theme?.ui?.typography;
 
+  // Page actions (Copy Markdown, Open in …)
+  const pageActions = config.pageActions;
+  const copyMarkdownEnabled = resolveBool(pageActions?.copyMarkdown);
+  const openDocsEnabled = resolveBool(pageActions?.openDocs);
+
+  // Serialize provider icons to HTML strings so they survive the
+  // server → client component boundary.
+  const rawProviders =
+    typeof pageActions?.openDocs === "object" && pageActions.openDocs.providers
+      ? (pageActions.openDocs.providers as Array<{ name: string; icon?: unknown; urlTemplate: string }>)
+      : undefined;
+
+  const openDocsProviders = rawProviders?.map((p) => ({
+    name: p.name,
+    urlTemplate: p.urlTemplate,
+    iconHtml: p.icon ? serializeIcon(p.icon) : undefined,
+  }));
+
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     return (
       <DocsLayout
@@ -280,6 +299,10 @@ export function createDocsLayout(config: DocsConfig) {
         <DocsPageClient
           tocEnabled={tocEnabled}
           breadcrumbEnabled={breadcrumbEnabled}
+          entry={config.entry}
+          copyMarkdown={copyMarkdownEnabled}
+          openDocs={openDocsEnabled}
+          openDocsProviders={openDocsProviders as any}
         >
           {children}
         </DocsPageClient>
@@ -287,6 +310,14 @@ export function createDocsLayout(config: DocsConfig) {
     );
   };
 }
+
+/** Resolve `boolean | { enabled?: boolean }` to a simple boolean. */
+function resolveBool(v: boolean | { enabled?: boolean } | undefined): boolean {
+  if (v === undefined) return false;
+  if (typeof v === "boolean") return v;
+  return v.enabled !== false;
+}
+
 
 /**
  * Tiny inline script to force a theme when the toggle is hidden.

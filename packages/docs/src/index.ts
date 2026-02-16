@@ -26,4 +26,8 @@ export type {
   ThemeToggleConfig,
   BreadcrumbConfig,
   SidebarConfig,
+  PageActionsConfig,
+  CopyMarkdownConfig,
+  OpenDocsConfig,
+  OpenDocsProvider,
 } from "./types.js";

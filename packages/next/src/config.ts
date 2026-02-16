@@ -66,6 +66,40 @@ export const { GET } = createDocsSearchAPI();
 export const revalidate = false;
 `;
 
+const MDX_RAW_ROUTE_TEMPLATE = `\
+${GENERATED_BANNER}
+import { NextRequest, NextResponse } from "next/server";
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const pagePath = searchParams.get("path");
+  if (!pagePath) {
+    return NextResponse.json({ error: "Missing path parameter" }, { status: 400 });
+  }
+
+  // Sanitize: prevent directory traversal
+  const sanitized = pagePath
+    .replace(/\\.\\./g, "")
+    .replace(/[^a-zA-Z0-9_\\-\\/]/g, "");
+
+  const filePath = join(process.cwd(), "app", sanitized, "page.mdx");
+
+  if (!existsSync(filePath)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const content = readFileSync(filePath, "utf-8");
+  return new NextResponse(content, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "public, max-age=3600, s-maxage=86400",
+    },
+  });
+}
+`;
+
 // ─── Helpers ────────────────────────────────────────────────────────
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
@@ -118,6 +152,13 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
   if (!hasFile(searchRouteDir, "route")) {
     mkdirSync(searchRouteDir, { recursive: true });
     writeFileSync(join(searchRouteDir, "route.ts"), SEARCH_ROUTE_TEMPLATE);
+  }
+
+  // ── 3b. Auto-generate app/api/mdx-raw/route.ts if missing ────
+  const mdxRawRouteDir = join(root, "app", "api", "mdx-raw");
+  if (!hasFile(mdxRawRouteDir, "route")) {
+    mkdirSync(mdxRawRouteDir, { recursive: true });
+    writeFileSync(join(mdxRawRouteDir, "route.ts"), MDX_RAW_ROUTE_TEMPLATE);
   }
 
   // ── 4. Configure MDX compilation ────────────────────────────────

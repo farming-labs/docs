@@ -441,3 +441,34 @@ figure.shiki > div:first-child {
 .dark hr {
   border-color: hsl(0 0% 15%);
 }
+
+/* ─── Breadcrumb (pixel-border overrides) ─────────────────────────── */
+
+.fd-breadcrumb {
+  font-size: 0.75rem;
+  letter-spacing: 0.01em;
+}
+.fd-breadcrumb-link {
+  color: inherit;
+  text-decoration: none;
+  text-transform: uppercase;
+  font-style: var(--font-geist-mono, ui-monospace, monospace);
+
+}
+.fd-breadcrumb-current {
+  font-style: var(--font-geist-mono, ui-monospace, monospace);
+  text-transform: uppercase;
+}
+/* ─── Page Actions (pixel-border overrides) ───────────────────────── */
+
+.fd-page-action-btn {
+  border-radius: 0 !important;
+}
+
+.fd-page-action-menu {
+  border-radius: 0 !important;
+}
+
+.fd-page-action-menu-item {
+  border-radius: 0 !important;
+}

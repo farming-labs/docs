@@ -13,6 +13,7 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     sidebar: config.sidebar,
     components: config.components,
     icons: config.icons,
+    pageActions: config.pageActions,
     metadata: config.metadata,
     og: config.og,
   };

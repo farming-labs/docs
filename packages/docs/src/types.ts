@@ -320,6 +320,86 @@ export interface SidebarConfig {
   collapsible?: boolean;
 }
 
+/**
+ * A single "Open in …" provider shown in the Open dropdown.
+ *
+ * @example
+ * ```ts
+ * { name: "Claude", icon: <ClaudeIcon />, urlTemplate: "https://claude.ai?url={url}" }
+ * ```
+ */
+export interface OpenDocsProvider {
+  /** Display name (e.g. "ChatGPT", "Claude", "Cursor") */
+  name: string;
+  /** Icon element rendered next to the name */
+  icon?: unknown; // ReactNode
+  /**
+   * URL template. `{url}` is replaced with the current page URL.
+   * `{mdxUrl}` is replaced with the `.mdx` variant of the page URL.
+   *
+   * @example "https://claude.ai/new?q=Read+this+doc:+{url}"
+   */
+  urlTemplate: string;
+}
+
+/**
+ * Configuration for the "Open in …" dropdown that lets users
+ * send the current page to an LLM or external tool.
+ *
+ * @example
+ * ```ts
+ * openDocs: {
+ *   enabled: true,
+ *   providers: [
+ *     { name: "ChatGPT", icon: <ChatGPTIcon />, urlTemplate: "https://chatgpt.com/?q={url}" },
+ *     { name: "Claude", icon: <ClaudeIcon />, urlTemplate: "https://claude.ai/new?q={url}" },
+ *   ],
+ * }
+ * ```
+ */
+export interface OpenDocsConfig {
+  /** Whether to show the "Open" dropdown. @default false */
+  enabled?: boolean;
+  /**
+   * List of LLM / tool providers to show in the dropdown.
+   * If not provided, a sensible default list is used.
+   */
+  providers?: OpenDocsProvider[];
+}
+
+/**
+ * Configuration for the "Copy Markdown" button that copies
+ * the current page's content as Markdown to the clipboard.
+ */
+export interface CopyMarkdownConfig {
+  /** Whether to show the "Copy Markdown" button. @default false */
+  enabled?: boolean;
+}
+
+/**
+ * Page-level action buttons shown above the page content
+ * (e.g. "Copy Markdown", "Open in …" dropdown).
+ *
+ * @example
+ * ```ts
+ * pageActions: {
+ *   copyMarkdown: { enabled: true },
+ *   openDocs: {
+ *     enabled: true,
+ *     providers: [
+ *       { name: "Claude", urlTemplate: "https://claude.ai/new?q={url}" },
+ *     ],
+ *   },
+ * }
+ * ```
+ */
+export interface PageActionsConfig {
+  /** "Copy Markdown" button */
+  copyMarkdown?: boolean | CopyMarkdownConfig;
+  /** "Open in …" dropdown with LLM / tool providers */
+  openDocs?: boolean | OpenDocsConfig;
+}
+
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
@@ -415,6 +495,25 @@ export interface DocsConfig {
    * ```
    */
   icons?: Record<string, unknown>;
+  /**
+   * Page action buttons shown above the content area.
+   * Includes "Copy Markdown" and "Open in …" (LLM dropdown).
+   *
+   * @example
+   * ```ts
+   * pageActions: {
+   *   copyMarkdown: { enabled: true },
+   *   openDocs: {
+   *     enabled: true,
+   *     providers: [
+   *       { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}" },
+   *       { name: "Claude", urlTemplate: "https://claude.ai/new?q={url}" },
+   *     ],
+   *   },
+   * }
+   * ```
+   */
+  pageActions?: PageActionsConfig;
   /** SEO metadata - separate from theme */
   metadata?: DocsMetadata;
   /** Open Graph image handling */
