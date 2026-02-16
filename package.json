@@ -7,7 +7,10 @@
     "build": "pnpm --filter '@farming-labs/*' run build",
     "dev": "pnpm --filter example-next dev",
     "typecheck": "pnpm --filter '@farming-labs/*' run typecheck",
-    "release": "bumpp"
+    "release": "bumpp",
+    "release:beta": "bumpp --preid beta",
+    "publish:beta": "pnpm --filter '@farming-labs/*' publish --access public --tag beta --no-git-checks",
+    "publish:latest": "pnpm --filter '@farming-labs/*' publish --access public --no-git-checks"
   },
   "devDependencies": {
     "bumpp": "^10.4.1",

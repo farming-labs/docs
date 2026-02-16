@@ -20,7 +20,7 @@
   --sh-string: #98c379;
   --sh-keyword: #c678dd;
   --sh-comment: #5c6370;
-  --sh-jsxliterals: #56b6c2;
+  /* --sh-jsxliterals: #56b6c2; */
   --sh-property: #e06c75;
-  --sh-entity: #61afef;
+  /* --sh-entity: #61afef; */
 }

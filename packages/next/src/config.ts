@@ -27,8 +27,6 @@ import remarkGfm from "remark-gfm";
 import remarkFrontmatter from "remark-frontmatter";
 // @ts-ignore
 import remarkMdxFrontmatter from "remark-mdx-frontmatter";
-// @ts-ignore
-import { remarkHeading, rehypeToc, rehypeCode } from "fumadocs-core/mdx-plugins";
 
 // ─── Auto-generated file templates ──────────────────────────────────
 
@@ -94,8 +92,16 @@ function readDocsEntry(root: string): string {
 
 // ─── withDocs ───────────────────────────────────────────────────────
 
-export function withDocs(nextConfig: Record<string, unknown> = {}) {
+export async function withDocs(nextConfig: Record<string, unknown> = {}) {
   const root = process.cwd();
+
+  // ── 0. Dynamically import fumadocs-core MDX plugins (ESM-only) ─
+  // Use Function constructor to prevent SWC/Next.js from converting
+  // import() to require() — fumadocs-core only provides an "import" export.
+  const importESM = new Function("specifier", "return import(specifier)");
+  const { remarkHeading, rehypeToc, rehypeCode } = await importESM(
+    "fumadocs-core/mdx-plugins"
+  );
 
   // ── 1. Auto-generate mdx-components.tsx if missing ──────────────
   if (!hasFile(root, "mdx-components")) {

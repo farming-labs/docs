@@ -51,13 +51,13 @@ function HeroSection() {
 
   return (
     <section className="relative min-h-screen flex items-end">
-      <div className="absolute top-14 w-[calc(100%+200px)] z-[999] -left-[100px] mx-auto h-px bg-white/[8%]" />
-      <div className="absolute bottom-16 w-[calc(100%+200px)] z-[999] -left-[100px] mx-auto h-px bg-white/[8%]" />
+      <div className="absolute top-14 w-[calc(100%+400px)] z-[999] -left-[200px] mx-auto h-px bg-white/[8%]" />
+      <div className="absolute bottom-16 w-[calc(100%+400px)] z-[999] -left-[200px] mx-auto h-px bg-white/[8%]" />
       <AnimatedBackground />
       <div className="relative z-[999] w-full pb-12 sm:pb-16 pt-24">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-10 sm:gap-16">
           {/* Left — headline + CTA */}
-          <div className="max-w-[85%] sm:max-w-md">
+          <div className="max-w-[85%] sm:max-w-lg">
             <div className="flex flex-col gap-2">
               <div className="inline-block">
                 <span className="text-[10px] font-mono tracking-[0.2em] text-white/40 px-0 py-1.5 flex items-center">
@@ -82,7 +82,7 @@ function HeroSection() {
               zero boilerplate.
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="mt-8 flex items-center gap-3">
               <Link
                 href="/docs"
                 className="group inline-flex items-center gap-2 bg-white text-black px-5 py-2.5 text-xs font-mono uppercase tracking-wider hover:bg-white/90 transition-all hover:no-underline"
@@ -92,7 +92,7 @@ function HeroSection() {
               </Link>
               <div className="flex font-mono items-center gap-2 border border-white/10 px-4 py-2.5 text-sm text-white/70">
                 <Terminal className="w-3.5 h-3.5 text-white/40" />
-                <span>npx farming-docs init</span>
+                <span>$: <span className="text-[#c678dd]">pnpx</span> @farming-docs/docs <span className="text-white/40">init</span></span>
               </div>
             </div>
           </div>
@@ -157,6 +157,7 @@ function InstallSection() {
             <CodeBlock
               title="Terminal"
               filename="shell"
+              language="bash"
               code="pnpm add @farming-labs/docs @farming-labs/fumadocs @farming-labs/next"
             />
 
