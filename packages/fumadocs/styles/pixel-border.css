@@ -37,8 +37,8 @@
   --scrollbar-thumb: var(--border);
   --scrollbar-thumb-hover: var(--ring);
   --scrollbar-track: transparent;
-  /* Rounded borders */
-  --radius: 0.625rem;
+  /* Sharp corners — no rounding */
+  --radius: 0px;
   --fd-nav-height: 56px;
   --fd-banner-height: 0px;
   --fd-tocnav-height: 0px;
@@ -140,70 +140,159 @@ code:not(pre code) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+ * Global rounded-none: force sharp corners on all UI elements
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* Cards, popovers, dialogs, inputs, buttons, badges */
+[class*="rounded-"],
+[class*="border-radius"],
+.rounded-lg,
+.rounded-md,
+.rounded-xl,
+.rounded-2xl {
+  border-radius: 0 !important;
+}
+
+/* Inline code */
+code:not(pre code) {
+  border-radius: 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
  * Pixel-border theme — better-auth inspired sidebar, clean dark UI
  * ═══════════════════════════════════════════════════════════════════ */
 
 /* ─── Sidebar (better-auth style) ─────────────────────────────────── */
 
-/* Sidebar container: blend into background, subtle right border */
+/* Sidebar container: dark, subtle right border */
 .dark aside.bg-fd-card {
   background: hsl(0 0% 2%);
   border-color: hsl(0 0% 12%);
 }
 
-/* All sidebar links: compact, left-border indicator style */
+/* ── Full-width border separators between top-level items ─────────── */
+/* Negative margins extend the border line across the full sidebar.    */
+
+.dark aside .overscroll-contain > div > a[data-active] {
+  border-top: 1px solid hsl(0 0% 12%);
+  margin-left: -1rem;
+  margin-right: -1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  /* padding-top: 0.75rem; */
+  padding-bottom: 0.75rem;
+}
+
+/* Folder wrappers: border + negative margin but NO padding
+   so the parent link inside aligns with other top-level items.        */
+.dark aside .overscroll-contain > div > div {
+  border-top: 1px solid hsl(0 0% 12%);
+  margin-left: -1rem;
+  margin-right: -1rem;
+  padding: 0 !important;
+}
+
+/* Parent link inside a folder (e.g. "Introduction") — 
+   inherit the same padding as other top-level links from the
+   all-links rule so it aligns flush. No extra padding here.           */
+
+/* First item: no top border */
+.dark aside .overscroll-contain > div > a[data-active]:first-child,
+.dark aside .overscroll-contain > div > div:first-child {
+  border-top: none;
+}
+
+/* ── Sidebar links (all levels) ──────────────────────────────────── */
+
 .dark aside a[data-active] {
-  font-size: 0.825rem;
-  line-height: 1.5;
+  font-size: 0.875rem;
+  line-height: 1.6;
   border-radius: 0 !important;
-  background: transparent !important;
-  padding: 0.35rem 0.75rem !important;
-  margin-left: 0;
-  border-left: 2px solid transparent;
-  transition: all 0.15s ease;
+  padding: 0.5rem 0.625rem !important;
+  transition: color 0.15s ease;
   color: hsl(0 0% 50%);
+  font-weight: 400;
+  background-color: transparent !important;
 }
 
-/* Active sidebar item: left border accent + bright text (better-auth style) */
-.dark aside a[data-active="true"] {
+/* Kill the Tailwind utility bg on active & hover */
+.dark aside a[data-active="true"],
+.dark aside a[data-active="true"]:hover {
   background: transparent !important;
-  color: hsl(0 0% 98%) !important;
-  border-left: 2px solid hsl(0 0% 98%) !important;
-  border-radius: 0 !important;
-  font-weight: 500;
-}
-
-/* Hover: text brightens, no background */
-.dark aside a[data-active]:hover {
-  background: transparent !important;
-  color: hsl(0 0% 80%);
-  border-left-color: hsl(0 0% 25%);
-}
-
-/* Sidebar section/folder labels: uppercase, small, muted */
-.dark aside button.text-fd-muted-foreground {
-  color: hsl(0 0% 45%);
-  font-size: 0.75rem;
+  background-color: transparent !important;
+  color: hsl(0 0% 100%) !important;
   font-weight: 600;
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
 }
 
-/* Search button in sidebar */
+/* Hover on inactive: text brightens only */
+.dark aside a[data-active="false"]:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: hsl(0 0% 80%);
+}
+
+/* ── Child links inside collapsible folders ──────────────────────── */
+/* Smaller text, indented, no border separators.
+   Target only links inside the inner overflow-hidden collapsible
+   content container (which has both data-state and overflow-hidden). */
+
+.dark aside div.overflow-hidden[data-state] a[data-active] {
+  font-size: 0.8125rem !important;
+  padding-left: 2rem !important;
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+  color: hsl(0 0% 45%) !important;
+}
+
+.dark aside div.overflow-hidden[data-state] a[data-active="true"],
+.dark aside div.overflow-hidden[data-state] a[data-active="true"]:hover {
+  color: hsl(0 0% 100%) !important;
+  font-weight: 500 !important;
+}
+
+.dark aside div.overflow-hidden[data-state] a[data-active="false"]:hover {
+  color: hsl(0 0% 75%) !important;
+}
+
+/* ── Folder toggle buttons (section headers) ─────────────────────── */
+
+.dark aside button.text-fd-muted-foreground {
+  color: hsl(0 0% 90%);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.dark aside button.text-fd-muted-foreground:hover {
+  color: hsl(0 0% 100%);
+}
+
+/* ── Search button: full-width, border-y only ────────────────────── */
+
 .dark aside button[class*="bg-fd-secondary"] {
-  background: hsl(0 0% 4%);
-  border: 1px solid hsl(0 0% 12%);
-  border-radius: 0.5rem;
+  background: transparent !important;
+  border: none !important;
+  border-top: 1px solid hsl(0 0% 12%) !important;
+  border-bottom: 1px solid hsl(0 0% 12%) !important;
+  border-radius: 0 !important;
   color: hsl(0 0% 45%);
   font-size: 0.8125rem;
+  padding: 0.5rem 0 !important;
+  width: calc(100% + 2rem) !important;
+  margin-left: -1rem !important;
+  margin-right: -1rem !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
 }
 
 .dark aside button[class*="bg-fd-secondary"]:hover {
-  border-color: hsl(0 0% 20%);
+  background: hsl(0 0% 4%) !important;
   color: hsl(0 0% 65%);
 }
 
-/* Theme toggle in sidebar */
+/* ── Theme toggle ────────────────────────────────────────────────── */
+
 .dark aside button[class*="rounded-full"] {
   border-color: hsl(0 0% 12%);
 }
@@ -212,7 +301,7 @@ code:not(pre code) {
 
 .dark table {
   border: 1px solid hsl(0 0% 15%);
-  border-radius: 0.5rem;
+  border-radius: 0 !important;
   overflow: hidden;
 }
 
@@ -236,7 +325,7 @@ code:not(pre code) {
 /* Target ONLY the rehype-pretty-code figure — NOT the outer wrapper */
 figure[data-rehype-pretty-code-figure] {
   border: 1px solid hsl(0 0% 15%);
-  border-radius: 0.5rem !important;
+  border-radius: 0 !important;
   overflow: hidden;
 }
 
@@ -258,7 +347,7 @@ article figure:not([data-rehype-pretty-code-figure]) {
 
 /* Copy button inside code blocks */
 figure[data-rehype-pretty-code-figure] button {
-  border-radius: 0.375rem;
+  border-radius: 0 !important;
 }
 
 /* ─── Inline code ─────────────────────────────────────────────────── */
@@ -281,7 +370,7 @@ figure[data-rehype-pretty-code-figure] button {
 
 .dark article a[class*="border"] {
   border-color: hsl(0 0% 15%);
-  border-radius: 0.5rem;
+  border-radius: 0 !important;
 }
 
 .dark article a[class*="border"]:hover {
@@ -292,7 +381,7 @@ figure[data-rehype-pretty-code-figure] button {
 /* ─── Search dialog ───────────────────────────────────────────────── */
 
 [role="dialog"] {
-  border-radius: 0.75rem !important;
+  border-radius: 0 !important;
 }
 
 /* ─── TOC right panel ─────────────────────────────────────────────── */
