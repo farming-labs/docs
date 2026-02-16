@@ -3,3 +3,4 @@ packages:
   - "packages/next"
   - "packages/fumadocs"
   - "examples/*"
+  - "website"

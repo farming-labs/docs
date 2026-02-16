@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useTransition } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 // @ts-ignore – resolved by Next.js at runtime
 import { usePathname } from "next/navigation";
 
@@ -55,11 +55,8 @@ const DEFAULT_PROVIDERS: SerializedProvider[] = [
   },
 ];
 
-const mdxCache = new Map<string, string>();
-
 export function PageActions({ copyMarkdown, openDocs, providers }: PageActionsProps) {
   const [copied, setCopied] = useState(false);
-  const [isLoading, startTransition] = useTransition();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -67,38 +64,17 @@ export function PageActions({ copyMarkdown, openDocs, providers }: PageActionsPr
   const resolvedProviders = providers ?? DEFAULT_PROVIDERS;
 
   const handleCopyMarkdown = useCallback(async () => {
-    startTransition(async () => {
-      try {
-        const apiUrl = `/api/mdx-raw?path=${encodeURIComponent(pathname)}`;
-        const cached = mdxCache.get(pathname);
-
-        if (cached) {
-          await navigator.clipboard.writeText(cached);
-        } else {
-          const res = await fetch(apiUrl);
-          if (!res.ok) throw new Error("Failed to fetch MDX");
-          const content = await res.text();
-          mdxCache.set(pathname, content);
-          await navigator.clipboard.writeText(content);
-        }
-
+    try {
+      const article = document.querySelector("article");
+      if (article) {
+        await navigator.clipboard.writeText(article.innerText || "");
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-      } catch {
-        // Fallback: copy rendered text
-        try {
-          const article = document.querySelector("article");
-          if (article) {
-            await navigator.clipboard.writeText(article.innerText || "");
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          }
-        } catch {
-          // silent
-        }
       }
-    });
-  }, [pathname]);
+    } catch {
+      // silent
+    }
+  }, []);
 
   const handleOpen = useCallback(
     (template: string) => {
@@ -141,7 +117,6 @@ export function PageActions({ copyMarkdown, openDocs, providers }: PageActionsPr
           onClick={handleCopyMarkdown}
           className="fd-page-action-btn"
           data-copied={copied}
-          disabled={isLoading}
         >
           {copied ? <CheckIcon /> : <CopyIcon />}
           <span>{copied ? "Copied!" : "Copy Markdown"}</span>

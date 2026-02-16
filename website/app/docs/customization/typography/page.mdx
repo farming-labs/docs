@@ -1,0 +1,80 @@
+---
+title: "Typography"
+description: "Fonts, heading sizes, weights, and spacing"
+icon: "file"
+---
+
+# Typography
+
+Control fonts, heading sizes, weights, line heights, and letter spacing — all from config.
+
+## Font Families
+
+```tsx title="docs.config.tsx"
+typography: {
+  font: {
+    style: {
+      sans: "var(--font-geist-sans, system-ui, sans-serif)",
+      mono: "var(--font-geist-mono, ui-monospace, monospace)",
+    },
+  },
+},
+```
+
+## Heading Styles
+
+Each heading level can be individually configured:
+
+```tsx
+typography: {
+  font: {
+    h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.025em" },
+    h2: { size: "1.5rem", weight: 600, letterSpacing: "-0.015em" },
+    h3: { size: "1.25rem", weight: 600 },
+    h4: { size: "1.125rem", weight: 600 },
+    body: { size: "0.975rem", lineHeight: "1.8" },
+    small: { size: "0.875rem", lineHeight: "1.5" },
+  },
+},
+```
+
+## Font Style Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `size` | `string` | CSS font-size (e.g. `"2rem"`) |
+| `weight` | `number` | Font weight (e.g. `700`) |
+| `lineHeight` | `string` | Line height (e.g. `"1.2"`) |
+| `letterSpacing` | `string` | Letter spacing (e.g. `"-0.02em"`) |
+
+## Using Google Fonts
+
+Load fonts in your `app/layout.tsx` and reference them via CSS variables:
+
+```tsx title="app/layout.tsx"
+import { Geist, Geist_Mono } from "next/font/google";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+// Apply variables to <body>
+<body className={`${geistSans.variable} ${geistMono.variable}`}>
+```
+
+Then reference them in your typography config:
+
+```tsx
+font: {
+  style: {
+    sans: "var(--font-geist-sans)",
+    mono: "var(--font-geist-mono)",
+  },
+}
+```

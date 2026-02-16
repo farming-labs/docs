@@ -1,0 +1,128 @@
+---
+title: "Configuration"
+description: "Everything lives in docs.config.tsx"
+icon: "settings"
+---
+
+# Configuration
+
+All configuration lives in a single `docs.config.tsx` file at the root of your project.
+
+## `defineDocs()`
+
+The `defineDocs()` function is the entry point. It takes a `DocsConfig` object and returns a typed config.
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { pixelBorder } from "@farming-labs/fumadocs/pixel-border";
+
+export default defineDocs({
+  entry: "docs",
+  theme: pixelBorder(),
+});
+```
+
+## Config Options
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `entry` | `string` | The docs directory name under `app/` |
+| `theme` | `DocsTheme` | Theme preset from a theme factory |
+| `nav` | `{ title, url }` | Navigation title (string or ReactNode) and base URL |
+| `icons` | `Record<string, ReactNode>` | Icon registry for frontmatter `icon` fields |
+| `components` | `Record<string, Component>` | Custom MDX components |
+| `breadcrumb` | `{ enabled }` | Enable/disable breadcrumb navigation |
+| `themeToggle` | `{ enabled, default }` | Show/hide theme toggle, set default theme |
+| `pageActions` | `object` | Copy Markdown, Open in LLM buttons |
+| `metadata` | `{ titleTemplate, description }` | Page metadata template |
+
+## Theme Configuration
+
+Pass options to your theme preset:
+
+```tsx title="docs.config.tsx"
+theme: pixelBorder({
+  ui: {
+    colors: { primary: "oklch(0.72 0.19 149)" },
+    layout: { toc: { enabled: true, depth: 3 } },
+    sidebar: { style: "floating" },
+    typography: {
+      font: {
+        h1: { size: "2.25rem", weight: 700 },
+        body: { size: "0.975rem", lineHeight: "1.8" },
+      },
+    },
+  },
+}),
+```
+
+## Navigation
+
+The `nav` option controls the sidebar header. It supports both strings and React components:
+
+```tsx
+nav: {
+  title: (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <Rocket size={14} />
+      <span>My Docs</span>
+    </div>
+  ),
+  url: "/docs",
+},
+```
+
+## Icons
+
+Register icons in the config and reference them in frontmatter:
+
+```tsx title="docs.config.tsx"
+icons: {
+  rocket: <Rocket size={16} />,
+  book: <BookOpen size={16} />,
+},
+```
+
+```mdx title="page.mdx"
+---
+icon: "rocket"
+---
+```
+
+## Custom Components
+
+Pass custom React components that become available in MDX without imports:
+
+```tsx title="docs.config.tsx"
+components: {
+  MyCallout,
+  CustomCard,
+},
+```
+
+```mdx title="page.mdx"
+<MyCallout type="warning">
+  This is automatically available.
+</MyCallout>
+```
+
+## Page Actions
+
+Enable "Copy as Markdown" and "Open in LLM" buttons:
+
+```tsx
+pageActions: {
+  position: "below-title",  // or "above-title"
+  copyMarkdown: { enabled: true },
+  openDocs: {
+    enabled: true,
+    providers: [
+      {
+        name: "ChatGPT",
+        icon: <ChatGPTIcon />,
+        urlTemplate: "https://chatgpt.com/?q=Read+this:+{url}",
+      },
+    ],
+  },
+},
+```

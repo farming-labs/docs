@@ -1,0 +1,100 @@
+---
+title: "Themes"
+description: "Built-in themes and how to create your own"
+icon: "palette"
+---
+
+# Themes
+
+@farming-labs/docs ships with three built-in themes. Each is a preset factory function that you pass to `defineDocs()`.
+
+## Built-in Themes
+
+| Theme | Import | Description |
+|-------|--------|-------------|
+| Default | `@farming-labs/fumadocs` | Neutral colors, standard radius |
+| Darksharp | `@farming-labs/fumadocs/darksharp` | All-black, `rounded-none` |
+| Pixel Border | `@farming-labs/fumadocs/pixel-border` | Inspired by better-auth.com |
+
+## Using a Theme
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { pixelBorder } from "@farming-labs/fumadocs/pixel-border";
+
+export default defineDocs({
+  entry: "docs",
+  theme: pixelBorder(),
+});
+```
+
+Don't forget the matching CSS import:
+
+```css title="app/global.css"
+@import "tailwindcss";
+@import "@farming-labs/fumadocs/pixel-border/css";
+```
+
+## Overriding Theme Defaults
+
+Every theme accepts an overrides object:
+
+```tsx
+theme: pixelBorder({
+  ui: {
+    colors: { primary: "oklch(0.72 0.19 149)" },
+    typography: {
+      font: {
+        h1: { size: "2.5rem", weight: 800 },
+      },
+    },
+  },
+}),
+```
+
+## Creating a Custom Theme
+
+Use `createTheme()` to build your own:
+
+```ts title="my-theme/index.ts"
+import { createTheme } from "@farming-labs/docs";
+
+export const myTheme = createTheme({
+  name: "my-theme",
+  ui: {
+    colors: {
+      primary: "#ff4d8d",
+      background: "#0a0a0a",
+      muted: "#888",
+      border: "#222",
+    },
+    typography: {
+      font: {
+        style: { sans: "Inter, sans-serif" },
+        h1: { size: "2.5rem", weight: 800 },
+      },
+    },
+    layout: {
+      contentWidth: 860,
+      sidebarWidth: 280,
+      toc: { enabled: true, depth: 3 },
+    },
+  },
+});
+```
+
+## Extending a Theme
+
+Use `extendTheme()` to modify an existing preset:
+
+```ts
+import { extendTheme } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/fumadocs";
+
+export const myTheme = extendTheme(fumadocs(), {
+  name: "my-fumadocs",
+  ui: {
+    colors: { primary: "#22c55e" },
+  },
+});
+```

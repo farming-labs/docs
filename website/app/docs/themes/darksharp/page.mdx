@@ -1,0 +1,46 @@
+---
+title: "Darksharp"
+description: "All-black theme with sharp corners"
+icon: "palette"
+---
+
+# Darksharp Theme
+
+An all-black theme with `rounded-none` styling — clean, minimal, and sharp.
+
+## Usage
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { darksharp } from "@farming-labs/fumadocs/darksharp";
+
+export default defineDocs({
+  entry: "docs",
+  theme: darksharp(),
+});
+```
+
+```css title="app/global.css"
+@import "tailwindcss";
+@import "@farming-labs/fumadocs/darksharp/css";
+```
+
+## Defaults
+
+| Property | Value |
+|----------|-------|
+| Primary | Near-white |
+| Background | `#000000` (pure black) |
+| Border radius | `0px` (no rounding) |
+| Content width | 860px |
+| Sidebar width | 286px |
+
+## Customizing
+
+```tsx
+theme: darksharp({
+  ui: {
+    colors: { primary: "oklch(0.65 0.25 270)" },
+  },
+}),
+```

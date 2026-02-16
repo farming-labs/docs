@@ -1,0 +1,89 @@
+---
+title: "Installation"
+description: "Get up and running in minutes"
+icon: "rocket"
+---
+
+# Installation
+
+## Option A: CLI (Recommended)
+
+Run the init command inside an existing Next.js project:
+
+```bash
+npx farming-docs init
+```
+
+The CLI will:
+
+1. Detect your framework (Next.js)
+2. Ask you to pick a theme (`fumadocs`, `darksharp`, or `pixel-border`)
+3. Ask for the docs entry path (default: `docs`)
+4. Generate `docs.config.ts`, `next.config.ts`, `global.css`, and sample pages
+5. Install all required dependencies
+6. Start the dev server and give you a live URL
+
+## Option B: Manual Setup
+
+### 1. Install packages
+
+```bash
+pnpm add @farming-labs/docs @farming-labs/fumadocs @farming-labs/next
+```
+
+### 2. Create `docs.config.tsx`
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/fumadocs";
+
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+  metadata: {
+    titleTemplate: "%s – Docs",
+    description: "My documentation site",
+  },
+});
+```
+
+### 3. Create `next.config.ts`
+
+```ts title="next.config.ts"
+import { withDocs } from "@farming-labs/next/config";
+export default withDocs({});
+```
+
+### 4. Import theme CSS in `app/global.css`
+
+```css title="app/global.css"
+@import "tailwindcss";
+@import "@farming-labs/fumadocs/default/css";
+```
+
+### 5. Write your first doc
+
+Create an MDX file under `app/docs/`:
+
+```
+app/docs/
+  page.mdx              # /docs
+  getting-started/
+    page.mdx            # /docs/getting-started
+```
+
+Each page uses frontmatter for metadata:
+
+```mdx title="app/docs/getting-started/page.mdx"
+---
+title: "Getting Started"
+description: "Your first doc page"
+icon: "rocket"
+---
+
+# Getting Started
+
+Your content here.
+```
+
+That's it — no layout files, no `[[...slug]]` wrappers. The framework handles routing, layout, and metadata from your config.

@@ -1,0 +1,47 @@
+---
+title: "Default"
+description: "Clean, neutral palette with standard border radius"
+icon: "palette"
+---
+
+# Default Theme
+
+The default Fumadocs theme with a neutral color palette and standard border radii.
+
+## Usage
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/fumadocs";
+
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+});
+```
+
+```css title="app/global.css"
+@import "tailwindcss";
+@import "@farming-labs/fumadocs/default/css";
+```
+
+## Defaults
+
+| Property | Value |
+|----------|-------|
+| Primary | `#6366f1` (Indigo) |
+| Background | `#ffffff` |
+| Border radius | Standard |
+| Content width | 768px |
+| Sidebar width | 280px |
+
+## Customizing
+
+```tsx
+theme: fumadocs({
+  ui: {
+    colors: { primary: "#22c55e" },
+    layout: { contentWidth: 900 },
+  },
+}),
+```

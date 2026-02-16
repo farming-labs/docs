@@ -154,6 +154,67 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  website:
+    dependencies:
+      '@farming-labs/docs':
+        specifier: workspace:*
+        version: link:../packages/docs
+      '@farming-labs/fumadocs':
+        specifier: workspace:*
+        version: link:../packages/fumadocs
+      '@farming-labs/next':
+        specifier: workspace:*
+        version: link:../packages/next
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      lucide-react:
+        specifier: ^0.564.0
+        version: 0.564.0(react@19.2.4)
+      next:
+        specifier: 16.1.6
+        version: 16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.4(react@19.2.4)
+      sugar-high:
+        specifier: ^0.9.5
+        version: 0.9.5
+      tailwind-merge:
+        specifier: ^3.0.2
+        version: 3.4.0
+      unicornstudio-react:
+        specifier: latest
+        version: 2.0.1-1(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.18
+        version: 4.1.18
+      '@types/mdx':
+        specifier: ^2.0.13
+        version: 2.0.13
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.11
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.3(@types/react@19.2.14)
+      postcss:
+        specifier: ^8.5.6
+        version: 8.5.6
+      tailwindcss:
+        specifier: ^4.1.18
+        version: 4.1.18
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
 packages:
 
   '@alloc/quick-lru@5.2.0':
@@ -1813,6 +1874,9 @@ packages:
       babel-plugin-macros:
         optional: true
 
+  sugar-high@0.9.5:
+    resolution: {integrity: sha512-eirwp9p7QcMg6EFCD6zrGh4H30uFx2YtfiMJUavagceP6/YUUjLeiQmis7QuwqKB3nXrWXlLaRumCqOd9AKpSA==}
+
   tailwind-merge@3.4.0:
     resolution: {integrity: sha512-uSaO4gnW+b3Y2aWoWfFpX62vn2sR3skfhbjsEnaBI81WD1wBLlHZe5sWf0AqjksNdYTbGBEd0UasQMT3SNV15g==}
 
@@ -1846,6 +1910,17 @@ packages:
 
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+
+  unicornstudio-react@2.0.1-1:
+    resolution: {integrity: sha512-+k2fskodRSLFGoq2Oj1YYbmweRb0sNl0sztq1yoJhNHfIKSINFy2q1nFIfzfVjx34NDnPckw1iIhwVk02DQUtw==}
+    engines: {node: '>=16.0.0'}
+    peerDependencies:
+      next: '*'
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
+    peerDependenciesMeta:
+      next:
+        optional: true
 
   unified@11.0.5:
     resolution: {integrity: sha512-xKvGhPWw3k84Qjh8bI3ZeJjqnyadK+GEFtazSfZv/rKeTkTjOJho6mFqh2SM96iIcZokxiOpg78GazTSg8+KHA==}
@@ -3915,6 +3990,8 @@ snapshots:
       client-only: 0.0.1
       react: 19.2.4
 
+  sugar-high@0.9.5: {}
+
   tailwind-merge@3.4.0: {}
 
   tailwindcss@4.1.18: {}
@@ -3937,6 +4014,13 @@ snapshots:
   typescript@5.9.3: {}
 
   undici-types@6.21.0: {}
+
+  unicornstudio-react@2.0.1-1(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+    dependencies:
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+    optionalDependencies:
+      next: 16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
   unified@11.0.5:
     dependencies:

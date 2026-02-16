@@ -1,0 +1,79 @@
+---
+title: "Sidebar"
+description: "Title, icons, collapsible groups, and styling"
+icon: "layers"
+---
+
+# Sidebar
+
+The sidebar is auto-generated from your file structure. Customize its appearance through config.
+
+## Custom Title
+
+The sidebar title supports strings or React components:
+
+```tsx title="docs.config.tsx"
+nav: {
+  title: (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <Rocket size={14} />
+      <span>My Docs</span>
+    </div>
+  ),
+  url: "/docs",
+},
+```
+
+## Icons
+
+Add icons to sidebar items via frontmatter:
+
+```mdx title="page.mdx"
+---
+title: "Getting Started"
+icon: "rocket"
+---
+```
+
+Register icons in your config:
+
+```tsx title="docs.config.tsx"
+icons: {
+  rocket: <Rocket size={16} />,
+  book: <BookOpen size={16} />,
+},
+```
+
+## Collapsible Groups
+
+Nested directories automatically become collapsible groups. A directory with its own `page.mdx` becomes a folder with an index page:
+
+```
+app/docs/
+  plugins/
+    page.mdx            # Folder index (clickable)
+    organizations/
+      page.mdx           # Child page
+    two-factor/
+      page.mdx           # Child page
+```
+
+## Sidebar Style
+
+```tsx
+theme: pixelBorder({
+  ui: {
+    sidebar: { style: "floating" },
+  },
+}),
+```
+
+## Breadcrumbs
+
+Enable breadcrumb navigation:
+
+```tsx title="docs.config.tsx"
+breadcrumb: { enabled: true },
+```
+
+Shows `Parent / Current Page` with the parent being clickable.

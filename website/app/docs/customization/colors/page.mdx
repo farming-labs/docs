@@ -1,0 +1,61 @@
+---
+title: "Colors"
+description: "Override any color token from config"
+icon: "palette"
+---
+
+# Colors
+
+Override any color token directly from your config. Colors are mapped to `--color-fd-*` CSS variables at runtime.
+
+## Setting Colors
+
+```tsx title="docs.config.tsx"
+theme: pixelBorder({
+  ui: {
+    colors: {
+      primary: "oklch(0.72 0.19 149)",
+      accent: "hsl(220 80% 60%)",
+    },
+  },
+}),
+```
+
+## Available Tokens
+
+| Token | CSS Variable | Description |
+|-------|-------------|-------------|
+| `primary` | `--color-fd-primary` | Primary brand color |
+| `primaryForeground` | `--color-fd-primary-foreground` | Text on primary backgrounds |
+| `background` | `--color-fd-background` | Page background |
+| `foreground` | `--color-fd-foreground` | Default text color |
+| `muted` | `--color-fd-muted` | Muted background |
+| `mutedForeground` | `--color-fd-muted-foreground` | Muted text |
+| `border` | `--color-fd-border` | Border color |
+| `card` | `--color-fd-card` | Card background |
+| `accent` | `--color-fd-accent` | Accent background |
+| `accentForeground` | `--color-fd-accent-foreground` | Text on accent |
+| `secondary` | `--color-fd-secondary` | Secondary background |
+| `ring` | `--color-fd-ring` | Focus ring color |
+
+## How It Works
+
+Only colors you explicitly set are emitted as inline CSS variables. Theme preset defaults stay in the CSS file — your overrides don't break light/dark mode handling.
+
+```tsx
+// Only primary gets overridden — everything else stays as the theme defines
+colors: { primary: "oklch(0.72 0.19 149)" }
+```
+
+## Color Formats
+
+Any valid CSS color value works:
+
+```tsx
+colors: {
+  primary: "#22c55e",                    // hex
+  primary: "rgb(34, 197, 94)",           // rgb
+  primary: "hsl(142 71% 45%)",           // hsl
+  primary: "oklch(0.72 0.19 149)",       // oklch
+}
+```

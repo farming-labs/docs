@@ -1,0 +1,68 @@
+---
+title: "Components"
+description: "Override built-in or add custom MDX components"
+icon: "code"
+---
+
+# Components
+
+Pass custom React components that become available in all MDX files without imports.
+
+## Registering Components
+
+```tsx title="docs.config.tsx"
+import { MyCallout } from "./components/my-callout";
+import { InfoCard } from "./components/info-card";
+
+export default defineDocs({
+  // ...
+  components: {
+    MyCallout,
+    InfoCard,
+  },
+});
+```
+
+## Using in MDX
+
+Once registered, components are available in any MDX file:
+
+```mdx title="page.mdx"
+<MyCallout type="warning">
+  This component is available everywhere — no import needed.
+</MyCallout>
+
+<InfoCard title="Tip">
+  Custom components keep your MDX clean.
+</InfoCard>
+```
+
+## Overriding Built-in Components
+
+You can override built-in components (like `Callout`) by registering a component with the same name:
+
+```tsx
+components: {
+  Callout: MyCustomCallout,
+},
+```
+
+## Component Props
+
+Components receive their props as defined in your implementation. The only requirement is that they must be valid React components.
+
+```tsx title="components/my-callout.tsx"
+export function MyCallout({
+  children,
+  type = "info",
+}: {
+  children: React.ReactNode;
+  type?: "info" | "warning" | "error";
+}) {
+  return (
+    <div className={`callout callout-${type}`}>
+      {children}
+    </div>
+  );
+}
+```
