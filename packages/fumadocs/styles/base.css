@@ -91,7 +91,7 @@ figure.shiki pre > code > [data-line] {
   align-items: center;
   gap: 0;
   font-size: 0.8rem;
-  color: var(--muted-foreground, hsl(240 5% 65%));
+  color: var(--color-fd-muted-foreground);
   margin-bottom: 0.5rem;
 }
 
@@ -120,12 +120,12 @@ figure.shiki pre > code > [data-line] {
 
 .fd-breadcrumb-link:hover {
   opacity: 1;
-  color: var(--foreground, hsl(0 0% 98%));
+  color: var(--color-fd-foreground);
 }
 
 .fd-breadcrumb-current {
   font-weight: 500;
-  color: var(--foreground, hsl(0 0% 98%));
+  color: var(--color-fd-foreground);
 }
 
 /* ─── Page Actions (Copy Markdown / Open in …) ────────────────────── */
@@ -135,7 +135,8 @@ figure.shiki pre > code > [data-line] {
   flex-direction: row;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
+  margin-top: 0.25rem;
 }
 
 .fd-page-action-btn {
@@ -147,10 +148,10 @@ figure.shiki pre > code > [data-line] {
   font-weight: 500;
   line-height: 1;
   height: 2rem;
-  color: var(--muted-foreground, hsl(240 5% 65%));
-  background: var(--secondary, hsl(240 4% 16%));
-  border: 1px solid var(--border, hsl(240 4% 20%));
-  border-radius: var(--radius, 0.375rem);
+  color: var(--color-fd-muted-foreground);
+  background: var(--color-fd-secondary);
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.375rem;
   cursor: pointer;
   white-space: nowrap;
   transition: color 0.15s, background 0.15s, border-color 0.15s;
@@ -158,9 +159,8 @@ figure.shiki pre > code > [data-line] {
 }
 
 .fd-page-action-btn:hover {
-  color: var(--accent-foreground, var(--foreground, hsl(0 0% 98%)));
-  background: var(--accent, hsl(240 4% 20%));
-  border-color: var(--foreground, hsl(0 0% 98%));
+  color: var(--color-fd-accent-foreground);
+  background: var(--color-fd-accent);
 }
 
 .fd-page-action-btn:disabled {
@@ -169,12 +169,12 @@ figure.shiki pre > code > [data-line] {
 }
 
 .fd-page-action-btn[data-copied="true"] {
-  color: var(--foreground, hsl(0 0% 98%));
+  color: var(--color-fd-foreground);
 }
 
 .fd-page-action-btn svg {
   flex-shrink: 0;
-  color: var(--muted-foreground, hsl(240 5% 65%));
+  color: var(--color-fd-muted-foreground);
 }
 
 /* ─── Open dropdown ─────────────────────────────────────────────────── */
@@ -190,10 +190,10 @@ figure.shiki pre > code > [data-line] {
   z-index: 50;
   min-width: 220px;
   padding: 0.375rem;
-  background: var(--card, var(--background, hsl(0 0% 4%)));
-  border: 1px solid var(--border, hsl(240 4% 20%));
-  border-radius: var(--radius, 0.375rem);
-  box-shadow: 0 4px 24px hsl(0 0% 0% / 0.25);
+  background: var(--color-fd-popover);
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 24px hsl(0 0% 0% / 0.15);
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
@@ -213,17 +213,18 @@ figure.shiki pre > code > [data-line] {
   padding: 0.5rem 0.625rem;
   font-size: 0.8125rem;
   font-weight: 400;
-  color: var(--foreground, hsl(0 0% 98%));
+  color: var(--color-fd-popover-foreground);
   background: transparent;
   border: none;
-  border-radius: calc(var(--radius, 0.375rem) - 2px);
+  border-radius: 0.25rem;
   cursor: pointer;
   text-align: left;
-  transition: background 0.1s;
+  transition: background 0.1s, color 0.1s;
 }
 
 .fd-page-action-menu-item:hover {
-  background: var(--accent, hsl(240 4% 20%));
+  background: var(--color-fd-accent);
+  color: var(--color-fd-accent-foreground);
 }
 
 .fd-page-action-menu-icon {

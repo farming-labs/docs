@@ -18,28 +18,31 @@ import {
   Users,
   Mail
 } from "lucide-react";
+import { fumadocs } from "@farming-labs/fumadocs";
+
 
 export default defineDocs({
   entry: "docs",
-  theme: pixelBorder({
-    ui: {
-      components: { Callout: { variant: "outline" }},
-      layout: { toc: { enabled: true, depth: 3 } },
-      sidebar: { style: "floating" },
-      typography: {
-        font: {
-          style: {
-            sans: "var(--font-geist-sans, system-ui, -apple-system, sans-serif)",
-            mono: "var(--font-geist-mono, ui-monospace, monospace)",
-          },
-          h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.025em" },
-          h2: { size: "1.5rem", weight: 600, letterSpacing: "-0.015em" },
-          h3: { size: "1.25rem", weight: 600 },
-          body: { size: "0.975rem", lineHeight: "1.8" },
-        },
-      },
-    },
-  }),
+  // theme: pixelBorder({
+  //   ui: {
+  //     components: { Callout: { variant: "outline" }},
+  //     layout: { toc: { enabled: true, depth: 3 } },
+  //     sidebar: { style: "floating" },
+  //     typography: {
+  //       font: {
+  //         style: {
+  //           sans: "var(--font-geist-sans, system-ui, -apple-system, sans-serif)",
+  //           mono: "var(--font-geist-mono, ui-monospace, monospace)",
+  //         },
+  //         h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.025em" },
+  //         h2: { size: "1.5rem", weight: 600, letterSpacing: "-0.015em" },
+  //         h3: { size: "1.25rem", weight: 600 },
+  //         body: { size: "0.975rem", lineHeight: "1.8" },
+  //       },
+  //     },
+  //   },
+  // }),
+  theme: fumadocs(),
 
   nav: {
     title: (

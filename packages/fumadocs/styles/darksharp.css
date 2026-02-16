@@ -5,80 +5,49 @@
 @import "./presets/black.css";
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.147 0.004 49.25);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.147 0.004 49.25);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.147 0.004 49.25);
-  --primary: oklch(0.216 0.006 56.043);
-  --primary-foreground: oklch(0.985 0.001 106.423);
-  --secondary: oklch(0.97 0.001 106.424);
-  --secondary-foreground: oklch(0.216 0.006 56.043);
-  --muted: oklch(0.97 0.001 106.424);
-  --muted-foreground: oklch(0.553 0.013 58.071);
-  --accent: oklch(0.97 0.001 106.424);
-  --accent-foreground: oklch(0.216 0.006 56.043);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.923 0.003 48.717);
-  --input: oklch(0.923 0.003 48.717);
-  --ring: oklch(0.709 0.01 56.259);
-  --sidebar: oklch(0.985 0.001 106.423);
-  --sidebar-foreground: oklch(0.147 0.004 49.25);
-  --sidebar-primary: oklch(0.216 0.006 56.043);
-  --sidebar-primary-foreground: oklch(0.985 0.001 106.423);
-  --sidebar-accent: oklch(0.97 0.001 106.424);
-  --sidebar-accent-foreground: oklch(0.216 0.006 56.043);
-  --sidebar-border: oklch(0.923 0.003 48.717);
-  --sidebar-ring: oklch(0.709 0.01 56.259);
-  --scrollbar-thumb: var(--border);
-  --scrollbar-thumb-hover: var(--ring);
+  --color-fd-background: oklch(1 0 0);
+  --color-fd-foreground: oklch(0.147 0.004 49.25);
+  --color-fd-card: oklch(1 0 0);
+  --color-fd-card-foreground: oklch(0.147 0.004 49.25);
+  --color-fd-popover: oklch(1 0 0);
+  --color-fd-popover-foreground: oklch(0.147 0.004 49.25);
+  --color-fd-primary: oklch(0.216 0.006 56.043);
+  --color-fd-primary-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-secondary: oklch(0.97 0.001 106.424);
+  --color-fd-secondary-foreground: oklch(0.216 0.006 56.043);
+  --color-fd-muted: oklch(0.97 0.001 106.424);
+  --color-fd-muted-foreground: oklch(0.553 0.013 58.071);
+  --color-fd-accent: oklch(0.97 0.001 106.424);
+  --color-fd-accent-foreground: oklch(0.216 0.006 56.043);
+  --color-fd-border: oklch(0.923 0.003 48.717);
+  --color-fd-ring: oklch(0.709 0.01 56.259);
+  --scrollbar-thumb: var(--color-fd-border);
+  --scrollbar-thumb-hover: var(--color-fd-ring);
   --scrollbar-track: transparent;
-  /* Sharp edges — near-zero radius */
-  --radius: 0.2rem;
-  --radius-sm: 0;
-  --radius-md: 0.1rem;
-  --radius-lg: 0.2rem;
-  --radius-xl: 0.2rem;
-  --radius-2xl: 0.2rem;
   --fd-nav-height: 56px;
   --fd-banner-height: 0px;
   --fd-tocnav-height: 0px;
 }
 
 .dark {
-  --background: hsl(0 0% 0%);
-  --foreground: oklch(0.985 0.001 106.423);
-  /* Card = pure black so sidebar blends into background */
-  --card: hsl(0 0% 0%);
-  --card-foreground: oklch(0.985 0.001 106.423);
-  --popover: hsl(0 0% 6%);
-  --popover-foreground: oklch(0.985 0.001 106.423);
-  --primary: oklch(0.985 0.001 106.423);
-  --primary-foreground: oklch(0.216 0.006 56.043);
-  --secondary: hsl(0 0% 10%);
-  --secondary-foreground: oklch(0.985 0.001 106.423);
-  --muted: hsl(0 0% 10%);
-  --muted-foreground: hsl(0 0% 55%);
-  --accent: hsl(0 0% 12%);
-  --accent-foreground: oklch(0.985 0.001 106.423);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: hsl(0 0% 14%);
-  --input: hsl(0 0% 14%);
-  --ring: hsl(0 0% 30%);
-  /* Sidebar: pure black, blending with background */
-  --sidebar: hsl(0 0% 0%);
-  --sidebar-foreground: hsl(0 0% 90%);
-  --sidebar-primary: hsl(0 0% 96%);
-  --sidebar-primary-foreground: hsl(0 0% 4%);
-  --sidebar-accent: hsl(0 0% 14%);
-  --sidebar-accent-foreground: hsl(0 0% 96%);
-  --sidebar-border: hsl(0 0% 14%);
-  --sidebar-ring: hsl(0 0% 30%);
-  --scrollbar-thumb: var(--border);
-  --scrollbar-thumb-hover: var(--ring);
+  --color-fd-background: hsl(0 0% 0%);
+  --color-fd-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-card: hsl(0 0% 0%);
+  --color-fd-card-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-popover: hsl(0 0% 6%);
+  --color-fd-popover-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-primary: oklch(0.985 0.001 106.423);
+  --color-fd-primary-foreground: oklch(0.216 0.006 56.043);
+  --color-fd-secondary: hsl(0 0% 10%);
+  --color-fd-secondary-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-muted: hsl(0 0% 10%);
+  --color-fd-muted-foreground: hsl(0 0% 55%);
+  --color-fd-accent: hsl(0 0% 12%);
+  --color-fd-accent-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-border: hsl(0 0% 14%);
+  --color-fd-ring: hsl(0 0% 30%);
+  --scrollbar-thumb: var(--color-fd-border);
+  --scrollbar-thumb-hover: var(--color-fd-ring);
   --scrollbar-track: transparent;
 }
 
@@ -132,8 +101,8 @@ body {
 }
 
 ::selection {
-  background: var(--foreground);
-  color: var(--background);
+  background: var(--color-fd-foreground);
+  color: var(--color-fd-background);
 }
 
 /* ─── Inline code word break ──────────────────────────────────────── */
@@ -147,7 +116,6 @@ code:not(pre code) {
  * Global sharp radius — override all rounded Tailwind utilities
  * ═══════════════════════════════════════════════════════════════════ */
 
-/* Force all rounded elements to sharp edges */
 [class*="rounded-lg"] {
   border-radius: 0.2rem !important;
 }
@@ -168,14 +136,13 @@ table {
   border-collapse: collapse;
 }
 
-/* Table wrapper (fumadocs wraps tables in a div) */
 .prose-no-margin,
 [class*="overflow-auto"] {
   border-radius: 0 !important;
 }
 
 th, td {
-  border-color: var(--border);
+  border-color: var(--color-fd-border);
 }
 
 .dark th {
@@ -199,7 +166,6 @@ figure[data-rehype-pretty-code-figure] pre {
   border-radius: 0.2rem !important;
 }
 
-/* Outer code block wrapper (fumadocs wraps in figure > figure) */
 article figure {
   border-radius: 0.2rem !important;
   overflow: hidden;
@@ -209,7 +175,6 @@ article figure {
   border-color: hsl(0 0% 14%);
 }
 
-/* Copy button inside code blocks */
 figure button {
   border-radius: 0.1rem !important;
 }
@@ -285,47 +250,40 @@ article a[class*="text-fd-muted-foreground"] {
  * Sidebar — better-auth inspired dark sidebar
  * ═══════════════════════════════════════════════════════════════════ */
 
-/* Sidebar container: blend into background, very subtle right border */
 .dark aside.bg-fd-card {
   background: hsl(0 0% 0%);
   border-color: hsl(0 0% 12%);
 }
 
-/* Sidebar links: sharp corners, compact padding, muted text */
 .dark aside a[data-active] {
   border-radius: 0.2rem !important;
   padding: 0.4rem 0.5rem;
   font-size: 0.8125rem;
 }
 
-/* Active sidebar item: subtle white highlight (not colored) */
 .dark aside a[data-active="true"] {
   background: hsl(0 0% 14%) !important;
   color: hsl(0 0% 96%) !important;
 }
 
-/* Hover: subtle highlight */
 .dark aside a[data-active]:hover {
   background: hsl(0 0% 10%);
   color: hsl(0 0% 90%);
 }
 
-/* Search button: blend into sidebar */
 .dark aside button[class*="bg-fd-secondary"] {
   background: hsl(0 0% 8%);
   border-color: hsl(0 0% 14%);
   border-radius: 0.2rem !important;
 }
 
-/* Sidebar folder/section labels */
 .dark aside button.text-fd-muted-foreground {
   color: hsl(0 0% 60%);
 }
 
-/* Theme toggle */
 .dark aside button[class*="rounded-full"] {
   border-color: hsl(0 0% 14%);
-  border-radius: 9999px !important; /* keep toggle pill shape */
+  border-radius: 9999px !important;
 }
 
 /* ─── TOC right panel ─────────────────────────────────────────────── */
@@ -339,4 +297,25 @@ article a[class*="text-fd-muted-foreground"] {
 
 .dark hr {
   border-color: hsl(0 0% 14%);
+}
+
+/* ─── Page Actions (darksharp overrides) ─────────────────────────── */
+
+.fd-page-action-btn {
+  border-radius: 0.2rem !important;
+}
+
+.fd-page-action-menu {
+  border-radius: 0.2rem !important;
+  box-shadow: 0 4px 24px hsl(0 0% 0% / 0.4);
+}
+
+.fd-page-action-menu-item {
+  border-radius: 0.1rem !important;
+}
+
+/* ─── Breadcrumb (darksharp overrides) ───────────────────────────── */
+
+.fd-breadcrumb {
+  font-size: 0.75rem;
 }
