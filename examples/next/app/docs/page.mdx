@@ -1,56 +1,76 @@
 ---
-title: "Documentation"
-description: "Welcome to the docs"
-tags: ["intro"]
+title: "Introduction"
+description: "A comprehensive authentication and authorization framework for TypeScript."
 icon: "book"
 ---
 
-# Welcome to the Docs
+# Introduction
 
-This is the root docs page. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Better Auth is a framework-agnostic, universal authentication and authorization framework for TypeScript. It provides a comprehensive set of features out of the box and includes a plugin ecosystem that simplifies adding advanced functionalities.
 
-<Callout type="info">
-  This is a Fumadocs-style callout! Component defaults come from `theme.ui.components`.
-</Callout>
+Whether you need 2FA, passkey, multi-tenancy, multi-session support, or even enterprise features like SSO — it lets you focus on building your application instead of reinventing the wheel.
 
-## Overview
+## Features
 
-Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+Better Auth aims to be the most comprehensive auth library. It provides a wide range of features out of the box and allows you to extend it with plugins.
 
-### Key Features
+- **Framework Agnostic** — Support for most popular frameworks
+- **Email & Password** — Built-in support for secure email and password authentication
+- **Account & Session Management** — Manage user accounts and sessions with ease
+- **Built-In Rate Limiter** — Built-in rate limiter with custom rules
+- **Automatic Database Management** — Automatic database management and migrations
+- **Social Sign-on** — Multiple social sign-on providers
+- **Organization & Access Control** — Manage organizations and access control
+- **Two Factor Authentication** — Secure your users with two factor authentication
+- **Plugin Ecosystem** — Even more capabilities with plugins
 
-- **Simple setup** — Get started in minutes with our intuitive configuration
-- **Flexible theming** — Customize colors, typography, and components
-- **MDX support** — Write documentation with the power of React components
-- **SEO ready** — Built-in metadata and Open Graph support
-
-### Quick Links
-
-Navigate to **Getting Started** to install and configure, or **Introduction** to learn the core concepts.
+...and much more!
 
 ---
 
-## What You Can Build
+## Why Better Auth?
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus imperdiet, nulla et dictum interdum, nisi lorem egestas odio, vitae scelerisque enim ligula venenatis dolor. Maecenas nisl est, ultrices nec congue eget, auctor vitae massa.
+Most existing auth libraries are either too minimal, requiring you to write everything from scratch, or too opinionated, locking you into a specific stack. Better Auth strikes the balance — it gives you a complete, production-ready auth system while remaining flexible enough to customize every aspect.
 
-### Documentation Sites
+### Design Principles
 
-Create beautiful documentation sites with a clean, readable layout. Perfect for open source projects, internal wikis, and product docs.
+1. **TypeScript First** — Full end-to-end type safety, from database schemas to API responses
+2. **Framework Agnostic** — Works with Next.js, Nuxt, SvelteKit, Astro, Express, Hono, and more
+3. **Database Agnostic** — Bring your own database — Prisma, Drizzle, Mongoose, or raw SQL
+4. **Plugin Architecture** — Extend functionality without bloating the core
+5. **Security First** — OWASP best practices, CSRF protection, rate limiting out of the box
 
-### API References
+---
 
-Document your APIs with code examples, type definitions, and interactive snippets. Our MDX integration makes it easy to embed live code.
+## Quick Start
 
-### Tutorials & Guides
+Get up and running in under 5 minutes:
 
-Write step-by-step guides with callouts, tabs, and custom components. Help users get from zero to hero.
+```bash
+npm install better-auth
+```
+
+```ts
+import { betterAuth } from "better-auth";
+
+export const auth = betterAuth({
+  database: {
+    provider: "postgresql",
+    url: process.env.DATABASE_URL,
+  },
+  emailAndPassword: {
+    enabled: true,
+  },
+});
+```
+
+That's it. You now have a fully working authentication system with email/password sign-in, session management, and more.
 
 ---
 
 ## Next Steps
 
-1. Read the [Introduction](/docs/introduction) for core concepts
-2. Follow the [Getting Started](/docs/get-started) guide to set up your project
-3. Customize the theme in your `docs.config.ts`
-4. Start writing your first page in MDX
+- Read the [Installation](/docs/installation) guide for a step-by-step setup
+- Follow the [Basic Usage](/docs/basic-usage) guide to implement your first auth flow
+- Explore [Concepts](/docs/concepts) to understand the architecture
+- Browse [Plugins](/docs/plugins) to extend your auth system

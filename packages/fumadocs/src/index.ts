@@ -88,5 +88,16 @@ export type {
   SidebarConfig,
 } from "@farming-labs/docs";
 
+// ─── MDX components (for use in custom layouts or overrides) ──────────
+export { Tab, Tabs } from "fumadocs-ui/components/tabs";
+export {
+  CodeBlock,
+  CodeBlockTab,
+  CodeBlockTabs,
+  CodeBlockTabsList,
+  CodeBlockTabsTrigger,
+  Pre,
+} from "fumadocs-ui/components/codeblock";
+
 // ─── Core helpers (re-exported for convenience) ───────────────────────
 export { createTheme, extendTheme, deepMerge, defineDocs } from "@farming-labs/docs";

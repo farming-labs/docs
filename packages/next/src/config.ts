@@ -28,9 +28,7 @@ import remarkFrontmatter from "remark-frontmatter";
 // @ts-ignore
 import remarkMdxFrontmatter from "remark-mdx-frontmatter";
 // @ts-ignore
-import rehypePrettyCode from "rehype-pretty-code";
-// @ts-ignore
-import { remarkHeading, rehypeToc } from "fumadocs-core/mdx-plugins";
+import { remarkHeading, rehypeToc, rehypeCode } from "fumadocs-core/mdx-plugins";
 
 // ─── Auto-generated file templates ──────────────────────────────────
 
@@ -57,6 +55,15 @@ import { createDocsLayout, createDocsMetadata } from "@farming-labs/fumadocs";
 
 export const metadata = createDocsMetadata(docsConfig);
 export default createDocsLayout(docsConfig);
+`;
+
+const SEARCH_ROUTE_TEMPLATE = `\
+${GENERATED_BANNER}
+import { createDocsSearchAPI } from "@farming-labs/fumadocs/search";
+
+export const { GET } = createDocsSearchAPI();
+
+export const revalidate = false;
 `;
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -106,7 +113,14 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     writeFileSync(join(layoutDir, "layout.tsx"), DOCS_LAYOUT_TEMPLATE);
   }
 
-  // ── 3. Configure MDX compilation ────────────────────────────────
+  // ── 3. Auto-generate app/api/search/route.ts if missing ────────
+  const searchRouteDir = join(root, "app", "api", "search");
+  if (!hasFile(searchRouteDir, "route")) {
+    mkdirSync(searchRouteDir, { recursive: true });
+    writeFileSync(join(searchRouteDir, "route.ts"), SEARCH_ROUTE_TEMPLATE);
+  }
+
+  // ── 4. Configure MDX compilation ────────────────────────────────
   const withMDX = createMDX({
     extension: /\.mdx?$/,
     options: {
@@ -121,14 +135,14 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
       rehypePlugins: [
         rehypeToc, // extracts TOC data and exports as `toc` from each MDX file
         [
-          rehypePrettyCode,
-          { theme: { dark: "github-dark", light: "github-light" } },
+          rehypeCode,
+          { themes: { dark: "github-dark", light: "github-light" } },
         ],
       ],
     },
   });
 
-  // ── 4. Ensure pageExtensions includes md/mdx ───────────────────
+  // ── 5. Ensure pageExtensions includes md/mdx ───────────────────
   const defaultExts = ["js", "jsx", "md", "mdx", "ts", "tsx"];
   const userExts = nextConfig.pageExtensions as string[] | undefined;
 

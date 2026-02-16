@@ -218,6 +218,7 @@ code:not(pre code) {
   transition: color 0.15s ease;
   color: hsl(0 0% 50%);
   font-weight: 400;
+  overflow: hidden;
   background-color: transparent !important;
 }
 
@@ -243,11 +244,12 @@ code:not(pre code) {
    content container (which has both data-state and overflow-hidden). */
 
 .dark aside div.overflow-hidden[data-state] a[data-active] {
-  font-size: 0.8125rem !important;
+  font-size: 0.785rem !important;
   padding-left: 2rem !important;
   padding-top: 0.25rem !important;
   padding-bottom: 0.25rem !important;
   color: hsl(0 0% 45%) !important;
+  overflow: hidden;
 }
 
 .dark aside div.overflow-hidden[data-state] a[data-active="true"],
@@ -273,8 +275,35 @@ code:not(pre code) {
 .dark aside button.text-fd-muted-foreground:hover {
   color: hsl(0 0% 100%);
 }
+.dark aside a[data-active="true"]::before {
+  background-color: hsl(0 0% 100%) !important; 
+  width: 2px !important;  
+  margin-left: 0.6rem !important;                      
+  inset-inline-start: 0.5rem !important;         
+}
+
+/* Change the static folder guide line */
+.dark aside div.overflow-hidden[data-state]::before {
+  margin-left: 0.5rem !important;
+  height: calc(100% + 20px) !important;
+  /* margin-bottom: -10px !important; */
+  margin-top: -25px !important;
+}
+
+/* ── Folder parent link when children are EXPANDED ────── */
+.dark aside div[data-state="open"] > :last-child {
+  overflow: hidden;
+}
+
+/* ── Folder parent link when children are COLLAPSED ───── */
+/* .dark aside div[data-state="closed"] > a[data-active] {
+  color: hsl(0 0% 60%) !important;
+  font-weight: 400 !important;
+} */
+
 
 /* ── Search button: full-width, border-y only ────────────────────── */
+
 
 .dark aside button[class*="bg-fd-secondary"] {
   background: transparent !important;
@@ -328,31 +357,41 @@ code:not(pre code) {
 
 /* ─── Code blocks: single border only ─────────────────────────────── */
 
-/* Target ONLY the rehype-pretty-code figure — NOT the outer wrapper */
-figure[data-rehype-pretty-code-figure] {
-  border: 1px solid hsl(0 0% 15%);
+/* Target the fumadocs CodeBlock figure (shiki class) */
+figure.shiki {
+  border: 1px solid hsl(0 0% 15%) !important;
   border-radius: 0 !important;
   overflow: hidden;
-}
-
-/* The inner shiki figure (with my-4 class) — remove its margin & border */
-figure[data-rehype-pretty-code-figure] > figure,
-figure.shiki,
-figure[data-language] {
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-  border: none !important;
   box-shadow: none !important;
 }
 
-/* Remove border from the outer prose figure wrapper to prevent double border */
-article figure:not([data-rehype-pretty-code-figure]) {
-  border: none !important;
+/* Copy button inside code blocks */
+figure.shiki button {
   border-radius: 0 !important;
 }
 
-/* Copy button inside code blocks */
-figure[data-rehype-pretty-code-figure] button {
+/* Code block title bar */
+figure.shiki > div:first-child {
+  border-radius: 0 !important;
+}
+
+/* ─── Tabs (package manager / code tabs) ──────────────────────────── */
+
+.dark [role="tablist"] {
+  border-radius: 0 !important;
+}
+
+.dark [role="tablist"] button,
+.dark [role="tab"] {
+  border-radius: 0 !important;
+}
+
+.dark [role="tabpanel"] {
+  border-radius: 0 !important;
+}
+
+/* Tabs container */
+.dark div:has(> [role="tablist"]) {
   border-radius: 0 !important;
 }
 
