@@ -73,9 +73,10 @@ function HeroSection() {
               </div>
             </div>
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-semibold tracking-tighter text-white leading-[0.95]">
-              documentation
+             a documentation
               <br />
-              that just <span className="text-black bg-white -leading-10">works.</span>
+             <div className="mt-2" />
+              that just <span className="text-black bg-white p-0 mt-2">works.</span>
             </h1>
             <p className="mt-4 text-sm sm:text-base font-mono uppercase text-white/45 max-w-md leading-relaxed">
               A modern MDX documentation framework for Next.js. One config file,
