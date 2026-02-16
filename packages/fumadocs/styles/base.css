@@ -70,6 +70,24 @@ code, kbd, pre, samp {
   line-height: var(--fd-small-line-height, 1.5);
 }
 
+/* ─── Callout icon alignment ────────────────────────────────────────── */
+
+/* Callout container: center icon + text vertically */
+[style*="--callout-color"] {
+  align-items: center;
+}
+
+/* Left indicator bar: stretch full height regardless of align-items */
+[style*="--callout-color"] > [role="none"] {
+  align-self: stretch;
+}
+
+/* Icon inside callout: prevent shrinking */
+[style*="--callout-color"] > svg {
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
 /* ─── Code block base styles ─────────────────────────────────────────── */
 
 figure.shiki pre {
