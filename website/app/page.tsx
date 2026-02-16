@@ -73,9 +73,9 @@ function HeroSection() {
               </div>
             </div>
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-semibold tracking-tighter text-white leading-[0.95]">
-             a documentation
+              a documentation
               <br />
-             <div className="mt-2" />
+              <div className="mt-2" />
               that just <span className="text-black bg-white p-0 mt-2">works.</span>
             </h1>
             <p className="mt-4 text-sm sm:text-base font-mono uppercase text-white/45 max-w-md leading-relaxed">
@@ -91,9 +91,9 @@ function HeroSection() {
                 Get Started
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </Link>
-              <div className="flex font-mono items-center gap-2 border border-white/10 px-4 py-2.5 text-sm text-white/70">
+              <div className="flex font-mono items-center gap-2 border border-white/10 border-b-0 px-4 py-2.5 text-sm text-white/70">
                 <Terminal className="w-3.5 h-3.5 text-white/40" />
-                <span>$: <span className="text-[#c678dd]">pnpx</span> @farming-docs/docs <span className="text-white/40">init</span></span>
+                <span><span className="text-[#c678dd]">pnpx</span> @farming-docs/docs <span className="text-white/40">init</span></span>
               </div>
             </div>
           </div>
