@@ -1,36 +1,30 @@
 {
   "name": "@farming-labs/next",
-  "version": "0.0.1",
+  "version": "0.0.2-beta.1",
   "description": "Next.js adapter for @farming-labs/docs — MDX config wrapper",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
     },
     "./config": {
-      "types": "./dist/config.d.ts",
-      "import": "./dist/config.js",
-      "default": "./dist/config.js"
+      "types": "./dist/config.d.mts",
+      "import": "./dist/config.mjs",
+      "default": "./dist/config.mjs"
     }
   },
-  "files": [
-    "dist"
-  ],
-  "keywords": [
-    "docs",
-    "next",
-    "mdx",
-    "documentation"
-  ],
+  "files": ["dist"],
+  "keywords": ["docs", "next", "mdx", "documentation"],
   "author": "Farming Labs",
   "license": "MIT",
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch"
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@mdx-js/loader": "^3.1.0",
@@ -43,6 +37,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "tsdown": "^0.20.3",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {

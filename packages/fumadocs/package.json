@@ -1,40 +1,40 @@
 {
   "name": "@farming-labs/fumadocs",
-  "version": "0.0.1",
+  "version": "0.0.2-beta.1",
   "description": "Fumadocs theme for @farming-labs/docs — layout, provider, MDX components, and styles",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
     },
     "./mdx": {
-      "types": "./dist/mdx.d.ts",
-      "import": "./dist/mdx.js",
-      "default": "./dist/mdx.js"
+      "types": "./dist/mdx.d.mts",
+      "import": "./dist/mdx.mjs",
+      "default": "./dist/mdx.mjs"
     },
     "./default": {
-      "types": "./dist/default/index.d.ts",
-      "import": "./dist/default/index.js",
-      "default": "./dist/default/index.js"
+      "types": "./dist/default/index.d.mts",
+      "import": "./dist/default/index.mjs",
+      "default": "./dist/default/index.mjs"
     },
     "./darksharp": {
-      "types": "./dist/darksharp/index.d.ts",
-      "import": "./dist/darksharp/index.js",
-      "default": "./dist/darksharp/index.js"
+      "types": "./dist/darksharp/index.d.mts",
+      "import": "./dist/darksharp/index.mjs",
+      "default": "./dist/darksharp/index.mjs"
     },
     "./pixel-border": {
-      "types": "./dist/pixel-border/index.d.ts",
-      "import": "./dist/pixel-border/index.js",
-      "default": "./dist/pixel-border/index.js"
+      "types": "./dist/pixel-border/index.d.mts",
+      "import": "./dist/pixel-border/index.mjs",
+      "default": "./dist/pixel-border/index.mjs"
     },
     "./search": {
-      "types": "./dist/search.d.ts",
-      "import": "./dist/search.js",
-      "default": "./dist/search.js"
+      "types": "./dist/search.d.mts",
+      "import": "./dist/search.mjs",
+      "default": "./dist/search.mjs"
     },
     "./css": "./styles/default.css",
     "./base/css": "./styles/base.css",
@@ -50,8 +50,9 @@
   "author": "Farming Labs",
   "license": "MIT",
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch"
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "fumadocs-core": "^16.6.1",
@@ -63,10 +64,11 @@
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "next": ">=14.0.0",
+    "tsdown": "^0.20.3",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "@farming-labs/docs": ">=0.1.0",
+    "@farming-labs/docs": ">=0.0.1",
     "next": ">=14.0.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
