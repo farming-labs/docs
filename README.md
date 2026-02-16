@@ -1,142 +1,164 @@
-# Farming Labs Docs Framework
+# @farming-labs/docs
 
-Modern, flexible MDX-based docs framework with themes, components, and SEO support. Inspired by [Fumadocs](https://github.com/fuma-nama/fumadocs).
+A modern, flexible MDX-based documentation framework. Write markdown, get a polished docs site — no boilerplate required.
 
-## Features
+## Packages
 
-- **MDX pages** – Write docs in MDX with frontmatter
-- **Nested pages** – File-based routing: `/docs/page.mdx`, `/docs/intro/page.mdx`
-- **Theme system** – Colors, typography, layout, component defaults
-- **Fumadocs preset** – Ready-to-use theme with overrides
-- **Metadata & OG** – Title templates, descriptions, dynamic OG images
-- **Framework agnostic** – Core config works with Next.js, Vite, etc.
+| Package | Description |
+|---|---|
+| `@farming-labs/docs` | Core config, types, CLI, and theme utilities |
+| `@farming-labs/fumadocs` | Fumadocs-based theme with `default`, `darksharp`, and `pixel-border` variants |
+| `@farming-labs/next` | Next.js adapter — `withDocs()` config wrapper and auto-generated routes |
 
-## Package Structure
+## Quick Start
 
-```
-packages/docs/             # @farming-labs/docs
-├── index.ts               # defineDocs, types, utils
-└── theme/fumadocs/        # Fumadocs preset (fumadocs-ui)
-    ├── index.ts           # fumadocs() preset
-    └── mdx.ts             # getMDXComponents()
+```bash
+pnpm add @farming-labs/docs @farming-labs/fumadocs @farming-labs/next
 ```
 
-## Page Structure
+### 1. Create `docs.config.tsx`
 
-Docs live under a single entry folder:
-
-```
-content/
-  docs/
-    page.mdx              # Root: /docs
-    introduction/
-      page.mdx            # /docs/introduction
-    getting-started/
-      page.mdx            # /docs/getting-started
-```
-
-**URL mapping:**
-- `docs/page.mdx` → `/docs`
-- `docs/introduction/page.mdx` → `/docs/introduction`
-- `docs/getting-started/page.mdx` → `/docs/getting-started`
-
-## Frontmatter
-
-Each page supports frontmatter:
-
-```yaml
----
-title: "Introduction"
-description: "Learn the basics of our framework"
-tags: ["getting-started"]
-ogImage: "/og/custom.png"
----
-
-# Introduction
-```
-
-## Config (`docs.config.ts`)
-
-```ts
+```tsx
 import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/docs/theme/fumadocs";
+import { fumadocs } from "@farming-labs/fumadocs";
 
 export default defineDocs({
   entry: "docs",
-
-  theme: fumadocs({
-    ui: {
-      colors: { primary: "#22c55e" },
-      components: { Callout: { variant: "outline" } },
-    },
-  }),
-
+  theme: fumadocs(),
   metadata: {
     titleTemplate: "%s – Docs",
-    description: "Awesome docs powered by Fumadocs preset",
-  },
-
-  og: {
-    enabled: true,
-    type: "dynamic",
-    endpoint: "/api/og",
-    defaultImage: "/og/default.png",
+    description: "My documentation site",
   },
 });
 ```
 
-## Theme System
+### 2. Create `next.config.ts`
 
-`theme` is the single source of truth. `ui` inside theme controls:
-
-| Key | Purpose |
-|-----|---------|
-| `colors` | primary, background, muted, border |
-| `typography` | fontFamily, monoFontFamily, scale (h1, h2, body) |
-| `layout` | contentWidth, sidebarWidth, toc, header |
-| `components` | Default props for Callout, CodeBlock, Tabs, etc. |
-
-**Use preset** (install `fumadocs-ui fumadocs-core`):
 ```ts
-theme: fumadocs({ ui: { colors: { primary: "#22c55e" } } })
+import { withDocs } from "@farming-labs/next/config";
+export default withDocs({});
 ```
 
-**Custom theme:**
-```ts
-const myTheme: DocsTheme = {
-  name: "my-theme",
-  ui: {
-    colors: { primary: "#ff4d8d" },
-    layout: { contentWidth: 900 },
-    components: { Callout: { variant: "outline" } },
-  },
-};
-theme: myTheme
+### 3. Import the theme CSS in `app/global.css`
+
+```css
+@import "tailwindcss";
+@import "@farming-labs/fumadocs/default/css";
 ```
 
-## Components in MDX
+### 4. Write docs
 
-Components are provided by your framework adapter (e.g. `mdx-components.tsx`). Default props come from `theme.ui.components`:
+Create MDX pages under `app/docs/`:
+
+```
+app/docs/
+  page.mdx              # /docs
+  installation/
+    page.mdx            # /docs/installation
+  getting-started/
+    page.mdx            # /docs/getting-started
+```
+
+Each page uses frontmatter for metadata:
 
 ```mdx
-<Callout type="info">
-  This is a Fumadocs-style callout
-</Callout>
+---
+title: "Installation"
+description: "Get up and running in minutes"
+icon: "rocket"
+---
+
+# Installation
+
+Your content here.
 ```
 
-## Examples
+That's it — no layout files, no `[[...slug]]` wrappers. The framework handles routing, layout, and metadata from your config.
 
-- **[Next.js](./examples/next)** – App Router, MDX, static generation
+## Themes
 
-## Getting Started
+Three built-in theme variants, all based on Fumadocs:
+
+```tsx
+import { fumadocs } from "@farming-labs/fumadocs";              // default
+import { darksharp } from "@farming-labs/fumadocs/darksharp";   // sharp edges, all-black
+import { pixelBorder } from "@farming-labs/fumadocs/pixel-border"; // better-auth inspired
+```
+
+Import the matching CSS in your `global.css`:
+
+```css
+@import "@farming-labs/fumadocs/default/css";
+/* or */
+@import "@farming-labs/fumadocs/darksharp/css";
+/* or */
+@import "@farming-labs/fumadocs/pixel-border/css";
+```
+
+## Configuration
+
+The `docs.config.tsx` file is the single source of truth. Key options:
+
+```tsx
+export default defineDocs({
+  entry: "docs",           // docs root folder under app/
+  theme: fumadocs(),       // theme preset
+
+  nav: {                   // sidebar header
+    title: "My Docs",      // string or ReactNode
+    url: "/docs",
+  },
+
+  components: {            // custom MDX components
+    MyNote: MyNoteComponent,
+  },
+
+  icons: {                 // icon registry for frontmatter `icon` field
+    rocket: <Rocket size={16} />,
+    code: <Code size={16} />,
+  },
+
+  breadcrumb: { enabled: true },
+
+  themeToggle: {
+    enabled: true,         // show/hide dark mode toggle
+    default: "dark",       // default theme when hidden
+  },
+
+  pageActions: {
+    copyMarkdown: { enabled: true },
+    openDocs: {
+      enabled: true,
+      providers: [
+        { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}" },
+      ],
+    },
+    position: "below-title",
+  },
+
+  metadata: {
+    titleTemplate: "%s – Docs",
+    description: "My docs site",
+  },
+
+  typography: {
+    font: {
+      style: { sans: "system-ui", mono: "ui-monospace" },
+      h1: { size: "2.25rem", weight: 700 },
+      body: { size: "1rem", lineHeight: "1.75" },
+    },
+  },
+});
+```
+
+## Development
 
 ```bash
 pnpm install
 pnpm build
-cd examples/next && pnpm dev
+pnpm dev        # starts the example app
 ```
 
-## Reference
+## License
 
-- [Fumadocs](https://github.com/fuma-nama/fumadocs) – Design inspiration
-- [MDX](https://mdxjs.com/) – MDX spec
+MIT

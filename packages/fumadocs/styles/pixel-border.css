@@ -440,7 +440,6 @@ figure.shiki > div:first-child {
 .fd-page-action-btn {
   border-radius: 0 !important;
   font-size: 0.75rem;
-  text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
