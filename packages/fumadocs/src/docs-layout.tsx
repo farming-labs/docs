@@ -193,6 +193,44 @@ function resolveSidebar(sidebar: boolean | SidebarConfig | undefined) {
   };
 }
 
+// ─── Color CSS variable generation ───────────────────────────────────
+
+const COLOR_MAP: Record<string, string> = {
+  primary: "--color-fd-primary",
+  primaryForeground: "--color-fd-primary-foreground",
+  background: "--color-fd-background",
+  foreground: "--color-fd-foreground",
+  muted: "--color-fd-muted",
+  mutedForeground: "--color-fd-muted-foreground",
+  border: "--color-fd-border",
+  card: "--color-fd-card",
+  cardForeground: "--color-fd-card-foreground",
+  accent: "--color-fd-accent",
+  accentForeground: "--color-fd-accent-foreground",
+  popover: "--color-fd-popover",
+  popoverForeground: "--color-fd-popover-foreground",
+  secondary: "--color-fd-secondary",
+  secondaryForeground: "--color-fd-secondary-foreground",
+  ring: "--color-fd-ring",
+};
+
+function buildColorsCSS(colors?: Record<string, string | undefined>): string {
+  if (!colors) return "";
+  const vars: string[] = [];
+  for (const [key, value] of Object.entries(colors)) {
+    if (!value || !COLOR_MAP[key]) continue;
+    vars.push(`${COLOR_MAP[key]}: ${value};`);
+  }
+  if (vars.length === 0) return "";
+  return `:root, .dark {\n  ${vars.join("\n  ")}\n}`;
+}
+
+function ColorStyle({ colors }: { colors?: Record<string, string | undefined> }) {
+  const css = buildColorsCSS(colors);
+  if (!css) return null;
+  return <style dangerouslySetInnerHTML={{ __html: css }} />;
+}
+
 // ─── Typography CSS variable generation ──────────────────────────────
 
 function buildFontStyleVars(prefix: string, style?: FontStyle): string {
@@ -265,6 +303,9 @@ export function createDocsLayout(config: DocsConfig) {
     breadcrumbConfig === true ||
     (typeof breadcrumbConfig === "object" && breadcrumbConfig.enabled !== false);
 
+  // Colors — only user-provided overrides (preset defaults stay in CSS files)
+  const colors = config.theme?._userColorOverrides as Record<string, string | undefined> | undefined;
+
   // Typography
   const typography = config.theme?.ui?.typography;
 
@@ -295,6 +336,7 @@ export function createDocsLayout(config: DocsConfig) {
         themeSwitch={themeSwitch}
         sidebar={sidebarProps}
       >
+        <ColorStyle colors={colors} />
         <TypographyStyle typography={typography} />
         {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
         <DocsPageClient

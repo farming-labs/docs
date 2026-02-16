@@ -58,10 +58,18 @@ export function createTheme(
   baseTheme: DocsTheme,
 ): (overrides?: Partial<DocsTheme>) => DocsTheme {
   return function themeFactory(overrides: Partial<DocsTheme> = {}): DocsTheme {
-    return deepMerge(
+    const merged = deepMerge(
       baseTheme as Record<string, unknown>,
       overrides as Record<string, unknown>,
     ) as DocsTheme;
+
+    // Track only user-provided color overrides so the runtime only emits
+    // those as inline CSS variables. Preset defaults stay in the CSS file.
+    if (overrides.ui?.colors) {
+      merged._userColorOverrides = { ...overrides.ui.colors } as Record<string, string>;
+    }
+
+    return merged;
   };
 }
 

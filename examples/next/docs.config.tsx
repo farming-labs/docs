@@ -26,6 +26,8 @@ export default defineDocs({
   theme: pixelBorder({
     ui: {
       components: { Callout: { variant: "outline" }},
+      colors: {
+      },
       layout: { toc: { enabled: true, depth: 3 } },
       sidebar: { style: "floating" },
       typography: {

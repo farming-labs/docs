@@ -86,9 +86,24 @@ export interface TypographyConfig {
 }
 
 export interface UIConfig {
-  /** Theme color tokens */
+  /**
+   * Theme color tokens.
+   *
+   * These are mapped to `--color-fd-*` CSS variables at runtime.
+   * Accepts any valid CSS color value (hex, rgb, oklch, hsl, etc.).
+   *
+   * @example
+   * ```ts
+   * colors: {
+   *   primary: "oklch(0.72 0.19 149)",       // green primary
+   *   primaryForeground: "#ffffff",           // white text on primary
+   *   accent: "hsl(220 80% 60%)",            // blue accent
+   * }
+   * ```
+   */
   colors?: {
     primary?: string;
+    primaryForeground?: string;
     background?: string;
     foreground?: string;
     muted?: string;
@@ -98,6 +113,11 @@ export interface UIConfig {
     cardForeground?: string;
     accent?: string;
     accentForeground?: string;
+    secondary?: string;
+    secondaryForeground?: string;
+    popover?: string;
+    popoverForeground?: string;
+    ring?: string;
   };
   /**
    * Typography settings — font families, heading sizes, weights, etc.
@@ -196,6 +216,13 @@ export interface DocsTheme {
   name?: string;
   /** UI configuration — colors, typography, layout, components */
   ui?: UIConfig;
+  /**
+   * @internal
+   * User-provided color overrides tracked by `createTheme`.
+   * Only these colors are emitted as inline CSS variables at runtime.
+   * Preset defaults stay in the theme's CSS file.
+   */
+  _userColorOverrides?: Record<string, string>;
 }
 
 export interface DocsMetadata {

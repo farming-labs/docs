@@ -204,7 +204,7 @@ code:not(pre code) {
 .dark aside a[data-active="true"]:hover {
   background: transparent !important;
   background-color: transparent !important;
-  color: hsl(0 0% 100%) !important;
+  color: var(--color-fd-primary) !important;
   font-weight: 600;
 }
 
@@ -231,7 +231,7 @@ code:not(pre code) {
 
 .dark aside div.overflow-hidden[data-state] a[data-active="true"],
 .dark aside div.overflow-hidden[data-state] a[data-active="true"]:hover {
-  color: hsl(0 0% 100%) !important;
+  color: var(--color-fd-primary) !important;
   font-weight: 500 !important;
 }
 
@@ -253,7 +253,7 @@ code:not(pre code) {
   color: hsl(0 0% 100%);
 }
 .dark aside a[data-active="true"]::before {
-  background-color: hsl(0 0% 100%) !important; 
+  background-color: var(--color-fd-primary) !important; 
   width: 2px !important;  
   margin-left: 0.6rem !important;                      
   inset-inline-start: 0.5rem !important;         

@@ -74,7 +74,7 @@ code, kbd, pre, samp {
 
 /* Callout container: center icon + text vertically */
 [style*="--callout-color"] {
-  align-items: center;
+  align-items: start;
 }
 
 /* Left indicator bar: stretch full height regardless of align-items */
