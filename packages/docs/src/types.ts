@@ -22,6 +22,69 @@
  * });
  * ```
  */
+/**
+ * Font style configuration for a single text element (heading, body, etc.).
+ *
+ * @example
+ * ```ts
+ * h1: { size: "2.25rem", weight: 700, lineHeight: "1.2", letterSpacing: "-0.02em" }
+ * ```
+ */
+export interface FontStyle {
+  /** CSS `font-size` value (e.g. "2.25rem", "36px", "clamp(1.8rem, 3vw, 2.5rem)") */
+  size?: string;
+  /** CSS `font-weight` value (e.g. 700, "bold", "600") */
+  weight?: string | number;
+  /** CSS `line-height` value (e.g. "1.2", "1.5", "28px") */
+  lineHeight?: string;
+  /** CSS `letter-spacing` value (e.g. "-0.02em", "0.05em") */
+  letterSpacing?: string;
+}
+
+/**
+ * Typography configuration for the docs.
+ *
+ * @example
+ * ```ts
+ * typography: {
+ *   font: {
+ *     style: { sans: "Inter, sans-serif", mono: "JetBrains Mono, monospace" },
+ *     h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.02em" },
+ *     h2: { size: "1.75rem", weight: 600 },
+ *     body: { size: "1rem", lineHeight: "1.75" },
+ *   },
+ * }
+ * ```
+ */
+export interface TypographyConfig {
+  /**
+   * Font configuration.
+   */
+  font?: {
+    /**
+     * Font family definitions.
+     */
+    style?: {
+      /** Sans-serif font family — used for body text, headings, and UI elements. */
+      sans?: string;
+      /** Monospace font family — used for code blocks, inline code, and terminal output. */
+      mono?: string;
+    };
+    /** Heading 1 (`<h1>`) style overrides */
+    h1?: FontStyle;
+    /** Heading 2 (`<h2>`) style overrides */
+    h2?: FontStyle;
+    /** Heading 3 (`<h3>`) style overrides */
+    h3?: FontStyle;
+    /** Heading 4 (`<h4>`) style overrides */
+    h4?: FontStyle;
+    /** Body text style */
+    body?: FontStyle;
+    /** Small text style (captions, meta text) */
+    small?: FontStyle;
+  };
+}
+
 export interface UIConfig {
   /** Theme color tokens */
   colors?: {
@@ -36,19 +99,21 @@ export interface UIConfig {
     accent?: string;
     accentForeground?: string;
   };
-  /** Typography settings */
-  typography?: {
-    fontFamily?: string;
-    monoFontFamily?: string;
-    scale?: {
-      h1?: string;
-      h2?: string;
-      h3?: string;
-      h4?: string;
-      body?: string;
-      small?: string;
-    };
-  };
+  /**
+   * Typography settings — font families, heading sizes, weights, etc.
+   *
+   * @example
+   * ```ts
+   * typography: {
+   *   font: {
+   *     style: { sans: "Inter, sans-serif", mono: "JetBrains Mono, monospace" },
+   *     h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.02em" },
+   *     body: { size: "1rem", lineHeight: "1.75" },
+   *   },
+   * }
+   * ```
+   */
+  typography?: TypographyConfig;
   /**
    * Global border-radius. Maps to CSS `--radius`.
    * Use "0px" for sharp corners, "0.5rem" for rounded, etc.

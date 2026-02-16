@@ -23,8 +23,18 @@ const PixelBorderUIDefaults = {
     border: "hsl(0 0% 15%)",
   },
   typography: {
-    fontFamily: "var(--font-geist-sans, system-ui, -apple-system, sans-serif)",
-    monoFontFamily: "var(--font-geist-mono, ui-monospace, monospace)",
+    font: {
+      style: {
+        sans: "var(--font-geist-sans, system-ui, -apple-system, sans-serif)",
+        mono: "var(--font-geist-mono, ui-monospace, monospace)",
+      },
+      h1: { size: "2.25rem", weight: 700, lineHeight: "1.2", letterSpacing: "-0.02em" },
+      h2: { size: "1.5rem", weight: 600, lineHeight: "1.3", letterSpacing: "-0.01em" },
+      h3: { size: "1.25rem", weight: 600, lineHeight: "1.4" },
+      h4: { size: "1.125rem", weight: 600, lineHeight: "1.4" },
+      body: { size: "1rem", weight: 400, lineHeight: "1.75" },
+      small: { size: "0.875rem", weight: 400, lineHeight: "1.5" },
+    },
   },
   layout: {
     contentWidth: 860,

@@ -23,14 +23,21 @@ export default defineDocs({
   entry: "docs",
   theme: pixelBorder({
     ui: {
-      typography: {
-        scale: {
-          h1: "0.2rem",
-        }
-      },
-      components: { Callout: { variant: "outline" } },
+      components: { Callout: { variant: "outline" }},
       layout: { toc: { enabled: true, depth: 3 } },
-      sidebar: {style: "floating"}
+      sidebar: { style: "floating" },
+      typography: {
+        font: {
+          style: {
+            sans: "var(--font-geist-sans, system-ui, -apple-system, sans-serif)",
+            mono: "var(--font-geist-mono, ui-monospace, monospace)",
+          },
+          h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.025em" },
+          h2: { size: "1.5rem", weight: 600, letterSpacing: "-0.015em" },
+          h3: { size: "1.25rem", weight: 600 },
+          body: { size: "0.975rem", lineHeight: "1.8" },
+        },
+      },
     },
   }),
 

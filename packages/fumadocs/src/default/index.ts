@@ -33,13 +33,17 @@ const DefaultUIDefaults = {
     border: "#e5e7eb",
   },
   typography: {
-    fontFamily: "Inter, system-ui, sans-serif",
-    monoFontFamily: "JetBrains Mono, monospace",
-    scale: {
-      h1: "2rem",
-      h2: "1.5rem",
-      h3: "1.25rem",
-      body: "1rem",
+    font: {
+      style: {
+        sans: "Inter, system-ui, sans-serif",
+        mono: "JetBrains Mono, monospace",
+      },
+      h1: { size: "2rem", weight: 700, lineHeight: "1.2", letterSpacing: "-0.02em" },
+      h2: { size: "1.5rem", weight: 600, lineHeight: "1.3" },
+      h3: { size: "1.25rem", weight: 600, lineHeight: "1.4" },
+      h4: { size: "1.125rem", weight: 600, lineHeight: "1.4" },
+      body: { size: "1rem", weight: 400, lineHeight: "1.75" },
+      small: { size: "0.875rem", weight: 400, lineHeight: "1.5" },
     },
   },
   layout: {

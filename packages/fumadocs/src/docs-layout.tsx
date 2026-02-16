@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import type { ReactNode, ReactElement } from "react";
-import type { DocsConfig, ThemeToggleConfig, BreadcrumbConfig, SidebarConfig } from "@farming-labs/docs";
+import type { DocsConfig, ThemeToggleConfig, BreadcrumbConfig, SidebarConfig, TypographyConfig, FontStyle } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
@@ -192,6 +192,50 @@ function resolveSidebar(sidebar: boolean | SidebarConfig | undefined) {
   };
 }
 
+// ─── Typography CSS variable generation ──────────────────────────────
+
+function buildFontStyleVars(prefix: string, style?: FontStyle): string {
+  if (!style) return "";
+  const parts: string[] = [];
+  if (style.size) parts.push(`${prefix}-size: ${style.size};`);
+  if (style.weight != null) parts.push(`${prefix}-weight: ${style.weight};`);
+  if (style.lineHeight) parts.push(`${prefix}-line-height: ${style.lineHeight};`);
+  if (style.letterSpacing) parts.push(`${prefix}-letter-spacing: ${style.letterSpacing};`);
+  return parts.join("\n  ");
+}
+
+function buildTypographyCSS(typo?: TypographyConfig): string {
+  if (!typo?.font) return "";
+
+  const vars: string[] = [];
+  const fontStyle = typo.font.style;
+
+  // Font families
+  if (fontStyle?.sans) vars.push(`--fd-font-sans: ${fontStyle.sans};`);
+  if (fontStyle?.mono) vars.push(`--fd-font-mono: ${fontStyle.mono};`);
+
+  // Heading and body font styles
+  const elements = ["h1", "h2", "h3", "h4", "body", "small"] as const;
+  for (const el of elements) {
+    const style = typo.font[el];
+    if (style) {
+      const cssVars = buildFontStyleVars(`--fd-${el}`, style);
+      if (cssVars) vars.push(cssVars);
+    }
+  }
+
+  if (vars.length === 0) return "";
+  return `:root {\n  ${vars.join("\n  ")}\n}`;
+}
+
+function TypographyStyle({ typography }: { typography?: TypographyConfig }) {
+  const css = buildTypographyCSS(typography);
+  if (!css) return null;
+  return <style dangerouslySetInnerHTML={{ __html: css }} />;
+}
+
+// ─── createDocsLayout ────────────────────────────────────────────────
+
 export function createDocsLayout(config: DocsConfig) {
   const tocConfig = config.theme?.ui?.layout?.toc;
   const tocEnabled = tocConfig?.enabled !== false;
@@ -220,6 +264,9 @@ export function createDocsLayout(config: DocsConfig) {
     breadcrumbConfig === true ||
     (typeof breadcrumbConfig === "object" && breadcrumbConfig.enabled !== false);
 
+  // Typography
+  const typography = config.theme?.ui?.typography;
+
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     return (
       <DocsLayout
@@ -228,6 +275,7 @@ export function createDocsLayout(config: DocsConfig) {
         themeSwitch={themeSwitch}
         sidebar={sidebarProps}
       >
+        <TypographyStyle typography={typography} />
         {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
         <DocsPageClient
           tocEnabled={tocEnabled}

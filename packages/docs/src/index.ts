@@ -20,6 +20,8 @@ export type {
   DocsMetadata,
   OGConfig,
   UIConfig,
+  FontStyle,
+  TypographyConfig,
   PageFrontmatter,
   ThemeToggleConfig,
   BreadcrumbConfig,

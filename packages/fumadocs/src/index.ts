@@ -79,6 +79,8 @@ export type {
   DocsConfig,
   DocsTheme,
   UIConfig,
+  FontStyle,
+  TypographyConfig,
   DocsNav,
   DocsMetadata,
   OGConfig,

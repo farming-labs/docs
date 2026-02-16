@@ -1,14 +1,85 @@
-/* Shared base styles for all @farming-labs/fumadocs themes */
+/* Shared base styles for all @farming-labs/fumadocs themes.
+ *
+ * Typography CSS custom properties:
+ *   --fd-font-sans   — sans-serif font family
+ *   --fd-font-mono   — monospace font family
+ *   --fd-h1-size, --fd-h1-weight, --fd-h1-line-height, --fd-h1-letter-spacing
+ *   --fd-h2-size, --fd-h2-weight, --fd-h2-line-height, --fd-h2-letter-spacing
+ *   --fd-h3-size, --fd-h3-weight, --fd-h3-line-height, --fd-h3-letter-spacing
+ *   --fd-h4-size, --fd-h4-weight, --fd-h4-line-height, --fd-h4-letter-spacing
+ *   --fd-body-size, --fd-body-weight, --fd-body-line-height
+ *   --fd-small-size, --fd-small-weight, --fd-small-line-height
+ *
+ * These are set by createDocsLayout() from the typography config.
+ * Themes can also set defaults directly in CSS.
+ */
 
-/* Code block padding */
-figure[data-rehype-pretty-code-figure] pre {
+/* ─── Font families ──────────────────────────────────────────────────── */
+
+body {
+  font-family: var(--fd-font-sans, var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif));
+}
+
+code, kbd, pre, samp {
+  font-family: var(--fd-font-mono, var(--font-geist-mono, ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace));
+}
+
+/* ─── Prose heading typography ───────────────────────────────────────── */
+
+.prose h1, article h1 {
+  font-size: var(--fd-h1-size, 2.25rem);
+  font-weight: var(--fd-h1-weight, 700);
+  line-height: var(--fd-h1-line-height, 1.2);
+  letter-spacing: var(--fd-h1-letter-spacing, -0.02em);
+}
+
+.prose h2, article h2 {
+  font-size: var(--fd-h2-size, 1.5rem);
+  font-weight: var(--fd-h2-weight, 600);
+  line-height: var(--fd-h2-line-height, 1.3);
+  letter-spacing: var(--fd-h2-letter-spacing, -0.01em);
+}
+
+.prose h3, article h3 {
+  font-size: var(--fd-h3-size, 1.25rem);
+  font-weight: var(--fd-h3-weight, 600);
+  line-height: var(--fd-h3-line-height, 1.4);
+  letter-spacing: var(--fd-h3-letter-spacing, normal);
+}
+
+.prose h4, article h4 {
+  font-size: var(--fd-h4-size, 1.125rem);
+  font-weight: var(--fd-h4-weight, 600);
+  line-height: var(--fd-h4-line-height, 1.4);
+  letter-spacing: var(--fd-h4-letter-spacing, normal);
+}
+
+/* ─── Body text ──────────────────────────────────────────────────────── */
+
+.prose p, .prose li, .prose td, article p {
+  font-size: var(--fd-body-size, 1rem);
+  font-weight: var(--fd-body-weight, 400);
+  line-height: var(--fd-body-line-height, 1.75);
+}
+
+/* ─── Small text (captions, metadata) ─────────────────────────────── */
+
+.prose small, article small, .text-sm {
+  font-size: var(--fd-small-size, 0.875rem);
+  font-weight: var(--fd-small-weight, 400);
+  line-height: var(--fd-small-line-height, 1.5);
+}
+
+/* ─── Code block base styles ─────────────────────────────────────────── */
+
+figure.shiki pre {
   padding: 0.15rem 0.5rem;
 }
 
-figure[data-rehype-pretty-code-figure] pre > code {
+figure.shiki pre > code {
   display: grid;
 }
 
-figure[data-rehype-pretty-code-figure] pre > code > [data-line] {
+figure.shiki pre > code > [data-line] {
   padding: 0 0.25rem;
 }
