@@ -137,20 +137,18 @@ code:not(pre code) {
  * Pixel-border theme — better-auth inspired sidebar, clean dark UI
  * ═══════════════════════════════════════════════════════════════════ */
 
-/* ─── Sidebar (better-auth style) ─────────────────────────────────── */
-.dark aside {
-  position: relative;
+/* ─── Docs grid: pin sidebar left, TOC right, content fills middle ── */
+@media (min-width: 768px) {
+  #nd-docs-layout {
+    grid-template-columns: var(--fd-sidebar-col, 0px) 1fr min-content !important;
+  }
 }
+
+/* ─── Sidebar (better-auth style) ─────────────────────────────────── */
 /* Sidebar container: dark, subtle right border */
-.dark aside.bg-fd-card {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+.dark aside#nd-sidebar {
   background: hsl(0 0% 2%);
   border-color: hsl(0 0% 12%);
-
 }
 
 /* ── Full-width border separators between top-level items ─────────── */

@@ -6,63 +6,227 @@ icon: "code"
 
 # Components
 
-Pass custom React components that become available in all MDX files without imports.
+Pass custom React components that become available in **all MDX files** — no imports needed.
 
-## Registering Components
+## How It Works
+
+When you register components in `docs.config.tsx`, they're merged into the MDX component map via `getMDXComponents()`. The merge order is:
+
+1. **Built-in components** — headings, code blocks, callouts, `Tab`, `Tabs`, etc.
+2. **Your components** — from `docs.config.tsx` (overrides built-ins if names match)
+
+This means you can both **add new components** and **override existing ones**.
+
+---
+
+## Creating a Custom Component
+
+### 1. Create the component
+
+```tsx title="components/info-card.tsx"
+interface InfoCardProps {
+  title: string;
+  children: React.ReactNode;
+  variant?: "default" | "tip" | "warning";
+}
+
+export function InfoCard({
+  title,
+  children,
+  variant = "default",
+}: InfoCardProps) {
+  const colors = {
+    default: "border-white/10 bg-white/[0.02]",
+    tip: "border-emerald-500/20 bg-emerald-500/[0.04]",
+    warning: "border-amber-500/20 bg-amber-500/[0.04]",
+  };
+
+  return (
+    <div className={`border p-4 my-4 ${colors[variant]}`}>
+      <p className="text-sm font-medium mb-1">{title}</p>
+      <div className="text-sm text-fd-muted-foreground">{children}</div>
+    </div>
+  );
+}
+```
+
+### 2. Register in config
 
 ```tsx title="docs.config.tsx"
-import { MyCallout } from "./components/my-callout";
+import { defineDocs } from "@farming-labs/docs";
+import { pixelBorder } from "@farming-labs/fumadocs/pixel-border";
 import { InfoCard } from "./components/info-card";
 
 export default defineDocs({
-  // ...
+  // ...theme, nav, etc.
   components: {
-    MyCallout,
     InfoCard,
   },
 });
 ```
 
-## Using in MDX
+### 3. Use in any MDX file
 
-Once registered, components are available in any MDX file:
+No import needed — just use it directly:
 
-```mdx title="page.mdx"
-<MyCallout type="warning">
-  This component is available everywhere — no import needed.
-</MyCallout>
+```mdx title="app/docs/getting-started/page.mdx"
+# Getting Started
 
-<InfoCard title="Tip">
-  Custom components keep your MDX clean.
+<InfoCard title="Quick Tip" variant="tip">
+  You can use custom components anywhere without importing them.
 </InfoCard>
 ```
 
+---
+
 ## Overriding Built-in Components
 
-You can override built-in components (like `Callout`) by registering a component with the same name:
+You can replace any built-in MDX component by registering one with the **same name**. Your component will take precedence.
 
-```tsx
+### Available built-in components
+
+The following components are available by default (from `fumadocs-ui`):
+
+- `h1`, `h2`, `h3`, `h4`, `h5`, `h6` — heading elements
+- `p`, `a`, `ul`, `ol`, `li` — text and list elements
+- `table`, `thead`, `tbody`, `tr`, `th`, `td` — table elements
+- `pre`, `code` — code blocks and inline code
+- `img` — images
+- `blockquote` — blockquotes
+- `hr` — horizontal rules
+- `Tab`, `Tabs` — tabbed content
+- `Callout` — callout/admonition boxes
+
+### Example: Override the `a` tag
+
+```tsx title="components/custom-link.tsx"
+import Link from "next/link";
+
+export function CustomLink({
+  href,
+  children,
+  ...props
+}: React.AnchorHTMLAttributes<HTMLAnchorElement>) {
+  const isExternal = href?.startsWith("http");
+
+  if (isExternal) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+        {children} ↗
+      </a>
+    );
+  }
+
+  return (
+    <Link href={href || "#"} {...props}>
+      {children}
+    </Link>
+  );
+}
+```
+
+```tsx title="docs.config.tsx"
 components: {
-  Callout: MyCustomCallout,
+  a: CustomLink,
 },
 ```
 
-## Component Props
+Now every link in your MDX files will use `CustomLink` — external links open in a new tab with an arrow indicator.
 
-Components receive their props as defined in your implementation. The only requirement is that they must be valid React components.
+### Example: Override `blockquote`
 
-```tsx title="components/my-callout.tsx"
-export function MyCallout({
+```tsx title="components/custom-blockquote.tsx"
+export function CustomBlockquote({
   children,
-  type = "info",
 }: {
   children: React.ReactNode;
-  type?: "info" | "warning" | "error";
 }) {
   return (
-    <div className={`callout callout-${type}`}>
+    <blockquote className="border-l-2 border-white/20 pl-4 my-4 text-fd-muted-foreground italic">
       {children}
+    </blockquote>
+  );
+}
+```
+
+```tsx title="docs.config.tsx"
+components: {
+  blockquote: CustomBlockquote,
+},
+```
+
+### Example: Override `pre` (code blocks)
+
+```tsx title="components/custom-code-block.tsx"
+export function CustomPre({
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLPreElement>) {
+  return (
+    <div className="relative group my-4">
+      <pre
+        className="border border-white/10 bg-black p-4 overflow-x-auto"
+        {...props}
+      >
+        {children}
+      </pre>
     </div>
   );
 }
 ```
+
+```tsx title="docs.config.tsx"
+components: {
+  pre: CustomPre,
+},
+```
+
+---
+
+## Multiple Components
+
+Register as many components as you need:
+
+```tsx title="docs.config.tsx"
+import { InfoCard } from "./components/info-card";
+import { CustomLink } from "./components/custom-link";
+import { VideoEmbed } from "./components/video-embed";
+import { ApiReference } from "./components/api-reference";
+
+export default defineDocs({
+  // ...
+  components: {
+    // Custom components
+    InfoCard,
+    VideoEmbed,
+    ApiReference,
+
+    // Built-in overrides
+    a: CustomLink,
+  },
+});
+```
+
+Then use them all across your MDX without imports:
+
+```mdx title="page.mdx"
+# API Overview
+
+<InfoCard title="Authentication Required" variant="warning">
+  All endpoints require a valid API key.
+</InfoCard>
+
+<ApiReference endpoint="/api/users" method="GET" />
+
+<VideoEmbed url="https://youtube.com/watch?v=..." />
+```
+
+---
+
+## Component Props
+
+Components receive their props as defined in your implementation. The only requirement is that they must be valid React components (function or class).
+
+For **built-in overrides**, your component should accept the same props as the original element (e.g., `React.AnchorHTMLAttributes` for `a`, `React.HTMLAttributes<HTMLPreElement>` for `pre`).
+
+For **custom components**, define whatever props interface you need.

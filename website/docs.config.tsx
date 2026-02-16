@@ -36,8 +36,7 @@ export default defineDocs({
   nav: {
     title: (
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Rocket size={14} />
-        <span className="uppercase font-mono tracking-tighter">
+        <span className="text-xs uppercase font-mono tracking-tighter">
           @farming-labs/docs
         </span>
       </div>
