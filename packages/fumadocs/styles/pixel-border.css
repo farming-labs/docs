@@ -452,11 +452,10 @@ figure.shiki > div:first-child {
   color: inherit;
   text-decoration: none;
   text-transform: uppercase;
-  font-style: var(--font-geist-mono, ui-monospace, monospace);
-
+  font-family: var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace));
 }
 .fd-breadcrumb-current {
-  font-style: var(--font-geist-mono, ui-monospace, monospace);
+  font-family: var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace));
   text-transform: uppercase;
 }
 /* ─── Page Actions (pixel-border overrides) ───────────────────────── */

@@ -398,6 +398,15 @@ export interface PageActionsConfig {
   copyMarkdown?: boolean | CopyMarkdownConfig;
   /** "Open in …" dropdown with LLM / tool providers */
   openDocs?: boolean | OpenDocsConfig;
+  /**
+   * Where to render the page action buttons relative to the page title.
+   *
+   * - `"below-title"` — render below the first `<h1>` heading (default)
+   * - `"above-title"` — render above the page title / content
+   *
+   * @default "below-title"
+   */
+  position?: "above-title" | "below-title";
 }
 
 export interface DocsConfig {

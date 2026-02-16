@@ -45,7 +45,7 @@ export default defineDocs({
     title: (
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Rocket size={14} />
-        <span style={{ fontWeight: 600 }} className="uppercase">Example Docs</span>
+        <span className="uppercase font-mono tracking-tighter">Example Docs</span>
       </div>
     ),
     url: "/docs",
