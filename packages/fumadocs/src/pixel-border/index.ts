@@ -4,10 +4,17 @@
  * Inspired by better-auth.com — clean dark UI with visible rounded borders,
  * pixel-perfect spacing, and a refined sidebar.
  */
-import { deepMerge } from "@farming-labs/docs";
+import { createTheme } from "@farming-labs/docs";
 import type { DocsTheme } from "@farming-labs/docs";
 
-/* Default UI tweaks for the pixel-border theme */
+/**
+ * Pixel-border UI defaults — better-auth inspired, clean dark UI.
+ *
+ * Theme authors can import and extend:
+ * ```ts
+ * import { PixelBorderUIDefaults } from "@farming-labs/fumadocs/pixel-border";
+ * ```
+ */
 const PixelBorderUIDefaults = {
   colors: {
     primary: "oklch(0.985 0.001 106.423)",
@@ -28,28 +35,21 @@ const PixelBorderUIDefaults = {
   components: {},
 };
 
-const basePixelBorderTheme: DocsTheme = {
-  name: "fumadocs-pixel-border",
-  ui: PixelBorderUIDefaults,
-};
-
 /**
- * Create a pixel-border theme preset, optionally merging overrides.
+ * Pixel-border theme preset factory.
  *
+ * Built with `createTheme` — the same helper theme authors use.
+ * Inspired by better-auth.com — clean dark UI with visible borders.
+ *
+ * @example
  * ```ts
  * import { pixelBorder } from "@farming-labs/fumadocs/pixel-border";
- *
- * export default defineDocs({
- *   entry: "docs",
- *   theme: pixelBorder(),
- * });
+ * export default defineDocs({ theme: pixelBorder() });
  * ```
  */
-export function pixelBorder(overrides: Partial<DocsTheme> = {}): DocsTheme {
-  return deepMerge(
-    basePixelBorderTheme as Record<string, unknown>,
-    overrides as Record<string, unknown>,
-  ) as DocsTheme;
-}
+export const pixelBorder = createTheme({
+  name: "fumadocs-pixel-border",
+  ui: PixelBorderUIDefaults,
+});
 
 export { PixelBorderUIDefaults };

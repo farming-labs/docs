@@ -1,10 +1,8 @@
 /* @farming-labs/fumadocs — darksharp theme CSS
  * Inspired by all-black, sharp edges, minimal radius.
- * Uses fumadocs-ui "black" color preset as the base.
+ * Uses the "black" color preset as the base.
  */
-@import "fumadocs-ui/css/black.css";
-@import "fumadocs-ui/css/preset.css";
-@import "./base.css";
+@import "./presets/black.css";
 
 :root {
   --background: oklch(1 0 0);

@@ -15,12 +15,20 @@
  * CSS: `@import "@farming-labs/fumadocs/darksharp/css";`
  */
 
-import { deepMerge } from "@farming-labs/docs";
+import { createTheme } from "@farming-labs/docs";
 import type { DocsTheme } from "@farming-labs/docs";
 
+/**
+ * Darksharp UI defaults — all-black, sharp edges, zero-radius aesthetic.
+ *
+ * Theme authors can import and extend:
+ * ```ts
+ * import { DarksharpUIDefaults } from "@farming-labs/fumadocs/darksharp";
+ * ```
+ */
 const DarksharpUIDefaults = {
   colors: {
-    primary: "#fafaf9", // near-white primary for dark mode
+    primary: "#fafaf9",
     background: "#000000",
     muted: "#a8a29e",
     border: "#292524",
@@ -48,20 +56,21 @@ const DarksharpUIDefaults = {
   },
 };
 
-const baseDarksharpTheme: DocsTheme = {
+/**
+ * Darksharp theme preset factory.
+ *
+ * Built with `createTheme` — the same helper theme authors use.
+ * All-black background, near-zero border-radius, minimal & sharp aesthetic.
+ *
+ * @example
+ * ```ts
+ * import { darksharp } from "@farming-labs/fumadocs/darksharp";
+ * export default defineDocs({ theme: darksharp() });
+ * ```
+ */
+export const darksharp = createTheme({
   name: "fumadocs-darksharp",
   ui: DarksharpUIDefaults,
-};
-
-/**
- * Create a fumadocs darksharp theme config.
- * All-black background, near-zero border-radius, minimal & sharp aesthetic.
- */
-export function darksharp(overrides: Partial<DocsTheme> = {}): DocsTheme {
-  return deepMerge(
-    baseDarksharpTheme as Record<string, unknown>,
-    overrides as Record<string, unknown>,
-  ) as DocsTheme;
-}
+});
 
 export { DarksharpUIDefaults };

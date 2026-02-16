@@ -32,9 +32,13 @@
       "default": "./dist/pixel-border/index.js"
     },
     "./css": "./styles/default.css",
+    "./base/css": "./styles/base.css",
     "./default/css": "./styles/default.css",
     "./darksharp/css": "./styles/darksharp.css",
-    "./pixel-border/css": "./styles/pixel-border.css"
+    "./pixel-border/css": "./styles/pixel-border.css",
+    "./presets/neutral": "./styles/presets/neutral.css",
+    "./presets/black": "./styles/presets/black.css",
+    "./presets/base": "./styles/presets/base.css"
   },
   "files": ["dist", "styles"],
   "keywords": ["docs", "fumadocs", "theme", "documentation"],

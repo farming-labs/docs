@@ -3,13 +3,40 @@
  * Inspired by Fumadocs: https://github.com/fuma-nama/fumadocs
  */
 
+/**
+ * Fine-grained UI configuration for docs themes.
+ *
+ * Theme authors define defaults for these values in their `createTheme` call.
+ * End users can override any value when calling the theme factory.
+ *
+ * @example
+ * ```ts
+ * const myTheme = createTheme({
+ *   name: "my-theme",
+ *   ui: {
+ *     colors: { primary: "#6366f1", background: "#0a0a0a" },
+ *     radius: "0px",
+ *     codeBlock: { showLineNumbers: true, theme: "github-dark" },
+ *     sidebar: { width: 280, style: "bordered" },
+ *   },
+ * });
+ * ```
+ */
 export interface UIConfig {
+  /** Theme color tokens */
   colors?: {
     primary?: string;
     background?: string;
+    foreground?: string;
     muted?: string;
+    mutedForeground?: string;
     border?: string;
+    card?: string;
+    cardForeground?: string;
+    accent?: string;
+    accentForeground?: string;
   };
+  /** Typography settings */
   typography?: {
     fontFamily?: string;
     monoFontFamily?: string;
@@ -17,12 +44,21 @@ export interface UIConfig {
       h1?: string;
       h2?: string;
       h3?: string;
+      h4?: string;
       body?: string;
+      small?: string;
     };
   };
+  /**
+   * Global border-radius. Maps to CSS `--radius`.
+   * Use "0px" for sharp corners, "0.5rem" for rounded, etc.
+   */
+  radius?: string;
+  /** Layout dimensions */
   layout?: {
     contentWidth?: number;
     sidebarWidth?: number;
+    tocWidth?: number;
     toc?: {
       enabled?: boolean;
       depth?: number;
@@ -32,14 +68,68 @@ export interface UIConfig {
       sticky?: boolean;
     };
   };
+  /** Code block rendering config */
+  codeBlock?: {
+    /** Show line numbers in code blocks @default false */
+    showLineNumbers?: boolean;
+    /** Show copy button @default true */
+    showCopyButton?: boolean;
+    /** Shiki theme name for syntax highlighting */
+    theme?: string;
+    /** Dark mode shiki theme (for dual-theme setups) */
+    darkTheme?: string;
+  };
+  /** Sidebar styling hints (consumed by theme CSS) */
+  sidebar?: {
+    /**
+     * Visual style of the sidebar.
+     * - "default" — standard fumadocs sidebar
+     * - "bordered" — visible bordered sections (like better-auth)
+     * - "floating" — floating card sidebar
+     */
+    style?: "default" | "bordered" | "floating";
+    /** Background color override */
+    background?: string;
+    /** Border color override */
+    borderColor?: string;
+  };
+  /** Card styling */
+  card?: {
+    /** Whether cards have visible borders @default true */
+    bordered?: boolean;
+    /** Card background color override */
+    background?: string;
+  };
   /** Default props/variants for MDX components (Callout, CodeBlock, Tabs, etc.) */
   components?: {
     [key: string]: Record<string, unknown> | ((defaults: unknown) => unknown);
   };
 }
 
+/**
+ * A docs theme configuration.
+ *
+ * Theme authors create these with `createTheme()`. The `name` identifies the
+ * theme (useful for CSS scoping, debugging, analytics). The `ui` object holds
+ * all visual configuration.
+ *
+ * @example
+ * ```ts
+ * import { createTheme } from "@farming-labs/docs";
+ *
+ * export const myTheme = createTheme({
+ *   name: "my-theme",
+ *   ui: {
+ *     colors: { primary: "#ff4d8d" },
+ *     radius: "0px",
+ *   },
+ * });
+ * ```
+ */
 export interface DocsTheme {
+  /** Unique name for this theme (used for CSS scoping and debugging) */
   name?: string;
+  /** UI configuration — colors, typography, layout, components */
   ui?: UIConfig;
 }
 

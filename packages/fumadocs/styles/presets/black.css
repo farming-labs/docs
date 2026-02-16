@@ -1,0 +1,14 @@
+/*
+ * @farming-labs/fumadocs — Black color preset
+ *
+ * Bundles the fumadocs-ui black palette + core preset + shared base styles.
+ * Theme authors import this instead of fumadocs-ui internals directly.
+ *
+ * Usage in your theme CSS:
+ *   @import "@farming-labs/fumadocs/presets/black";
+ *
+ * Then add your own :root / .dark overrides below.
+ */
+@import "fumadocs-ui/css/black.css";
+@import "fumadocs-ui/css/preset.css";
+@import "../base.css";

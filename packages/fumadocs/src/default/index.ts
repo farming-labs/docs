@@ -14,9 +14,17 @@
  * CSS: `@import "@farming-labs/fumadocs/default/css";`
  */
 
-import { deepMerge } from "@farming-labs/docs";
+import { createTheme } from "@farming-labs/docs";
 import type { DocsTheme } from "@farming-labs/docs";
 
+/**
+ * Default UI configuration — neutral palette, standard border-radius.
+ *
+ * Theme authors can import this and extend it:
+ * ```ts
+ * import { DefaultUIDefaults } from "@farming-labs/fumadocs/default";
+ * ```
+ */
 const DefaultUIDefaults = {
   colors: {
     primary: "#6366f1",
@@ -47,20 +55,21 @@ const DefaultUIDefaults = {
   },
 };
 
-const baseFumadocsTheme: DocsTheme = {
+/**
+ * Default fumadocs theme preset factory.
+ *
+ * Built with `createTheme` — the same helper theme authors use.
+ * Merges user overrides on top of sensible defaults.
+ *
+ * @example
+ * ```ts
+ * import { fumadocs } from "@farming-labs/fumadocs/default";
+ * export default defineDocs({ theme: fumadocs({ ui: { colors: { primary: "#22c55e" } } }) });
+ * ```
+ */
+export const fumadocs = createTheme({
   name: "fumadocs-default",
   ui: DefaultUIDefaults,
-};
-
-/**
- * Create a fumadocs default theme config.
- * Merges your overrides on top of sensible defaults (neutral palette, standard border-radius).
- */
-export function fumadocs(overrides: Partial<DocsTheme> = {}): DocsTheme {
-  return deepMerge(
-    baseFumadocsTheme as Record<string, unknown>,
-    overrides as Record<string, unknown>,
-  ) as DocsTheme;
-}
+});
 
 export { DefaultUIDefaults };
