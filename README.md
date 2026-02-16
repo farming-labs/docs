@@ -12,11 +12,30 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 
 ## Quick Start
 
+### Option A: CLI (recommended)
+
+Run `init` inside an existing Next.js project:
+
+```bash
+npx farming-docs init
+```
+
+The CLI will:
+
+1. Detect your framework (Next.js)
+2. Ask you to pick a theme (`fumadocs`)
+3. Ask for the docs entry path (default: `docs`)
+4. Generate `docs.config.ts`, `next.config.ts`, `global.css`, and sample pages
+5. Install all required dependencies
+6. Start the dev server and give you a live URL
+
+### Option B: Manual setup
+
 ```bash
 pnpm add @farming-labs/docs @farming-labs/fumadocs @farming-labs/next
 ```
 
-### 1. Create `docs.config.tsx`
+**1. Create `docs.config.tsx`**
 
 ```tsx
 import { defineDocs } from "@farming-labs/docs";
@@ -32,21 +51,21 @@ export default defineDocs({
 });
 ```
 
-### 2. Create `next.config.ts`
+**2. Create `next.config.ts`**
 
 ```ts
 import { withDocs } from "@farming-labs/next/config";
 export default withDocs({});
 ```
 
-### 3. Import the theme CSS in `app/global.css`
+**3. Import the theme CSS in `app/global.css`**
 
 ```css
 @import "tailwindcss";
 @import "@farming-labs/fumadocs/default/css";
 ```
 
-### 4. Write docs
+**4. Write docs**
 
 Create MDX pages under `app/docs/`:
 
