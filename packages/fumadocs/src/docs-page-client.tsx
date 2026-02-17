@@ -177,7 +177,7 @@ export function DocsPageClient({
       <DocsBody>
         {children}
         {githubFileUrl && (
-          <EditOnGitHub className="bg-transparent underline underline-offset-2 decoration-white/30 decoration-dotted hover:text-white/50 transition-colors hover:no-underline uppercase font-mono" href={githubFileUrl} />
+          <EditOnGitHub href={githubFileUrl} />
         )}
       </DocsBody>
     </DocsPage>
