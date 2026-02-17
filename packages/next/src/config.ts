@@ -21,12 +21,6 @@ import { join } from "node:path";
 
 // @ts-ignore – no types needed at config time
 import createMDX from "@next/mdx";
-// @ts-ignore
-import remarkGfm from "remark-gfm";
-// @ts-ignore
-import remarkFrontmatter from "remark-frontmatter";
-// @ts-ignore
-import remarkMdxFrontmatter from "remark-mdx-frontmatter";
 
 // ─── Auto-generated file templates ──────────────────────────────────
 
@@ -92,16 +86,8 @@ function readDocsEntry(root: string): string {
 
 // ─── withDocs ───────────────────────────────────────────────────────
 
-export async function withDocs(nextConfig: Record<string, unknown> = {}) {
+export function withDocs(nextConfig: Record<string, unknown> = {}) {
   const root = process.cwd();
-
-  // ── 0. Dynamically import fumadocs-core MDX plugins (ESM-only) ─
-  // Use Function constructor to prevent SWC/Next.js from converting
-  // import() to require() — fumadocs-core only provides an "import" export.
-  const importESM = new Function("specifier", "return import(specifier)");
-  const { remarkHeading, rehypeToc, rehypeCode } = await importESM(
-    "fumadocs-core/mdx-plugins"
-  );
 
   // ── 1. Auto-generate mdx-components.tsx if missing ──────────────
   if (!hasFile(root, "mdx-components")) {
@@ -114,7 +100,6 @@ export async function withDocs(nextConfig: Record<string, unknown> = {}) {
   if (existsSync(layoutDir) && !hasFile(layoutDir, "layout")) {
     writeFileSync(join(layoutDir, "layout.tsx"), DOCS_LAYOUT_TEMPLATE);
   } else if (!existsSync(layoutDir)) {
-    // Create the directory and layout if the entry folder doesn't exist yet
     mkdirSync(layoutDir, { recursive: true });
     writeFileSync(join(layoutDir, "layout.tsx"), DOCS_LAYOUT_TEMPLATE);
   }
@@ -127,21 +112,23 @@ export async function withDocs(nextConfig: Record<string, unknown> = {}) {
   }
 
   // ── 4. Configure MDX compilation ────────────────────────────────
+  // All plugins are passed as string specifiers so that loader options
+  // remain JSON-serializable. This is required for Turbopack compatibility.
+  // @mdx-js/loader resolves the strings to actual plugin functions at
+  // compile time.
   const withMDX = createMDX({
     extension: /\.mdx?$/,
     options: {
       remarkPlugins: [
-        remarkGfm, // GFM tables, strikethrough, task lists, autolinks
-        remarkFrontmatter,
-        // Export frontmatter as `export const metadata = { title, description, ... }`
-        // Next.js App Router automatically uses this for page <title> and <meta>.
-        [remarkMdxFrontmatter, { name: "metadata" }],
-        remarkHeading, // adds id attributes to headings
+        "remark-gfm",
+        "remark-frontmatter",
+        ["remark-mdx-frontmatter", { name: "metadata" }],
+        "@farming-labs/next/mdx-plugins/remark-heading",
       ],
       rehypePlugins: [
-        rehypeToc, // extracts TOC data and exports as `toc` from each MDX file
+        "@farming-labs/next/mdx-plugins/rehype-toc",
         [
-          rehypeCode,
+          "@farming-labs/next/mdx-plugins/rehype-code",
           { themes: { dark: "github-dark", light: "github-light" } },
         ],
       ],

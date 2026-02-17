@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
-    "build": "pnpm --filter '@farming-labs/*' run build && next build --webpack",
+    "dev": "next dev",
+    "build": "pnpm --filter '@farming-labs/*' run build && next build",
     "start": "next start"
   },
   "dependencies": {

@@ -1,7 +1,13 @@
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/config.ts"],
+  entry: [
+    "src/index.ts",
+    "src/config.ts",
+    "src/mdx-plugins/remark-heading.ts",
+    "src/mdx-plugins/rehype-toc.ts",
+    "src/mdx-plugins/rehype-code.ts",
+  ],
   format: "esm",
   dts: true,
   clean: true,

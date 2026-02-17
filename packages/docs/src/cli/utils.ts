@@ -88,6 +88,32 @@ export function readFileSafe(filePath: string): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// Global CSS detection
+// ---------------------------------------------------------------------------
+
+/** Common locations where global CSS files live in Next.js projects. */
+const GLOBAL_CSS_CANDIDATES = [
+  "app/globals.css",
+  "app/global.css",
+  "src/app/globals.css",
+  "src/app/global.css",
+  "styles/globals.css",
+  "styles/global.css",
+  "src/styles/globals.css",
+  "src/styles/global.css",
+];
+
+/**
+ * Find existing global CSS files in the project.
+ * Returns relative paths that exist.
+ */
+export function detectGlobalCssFiles(cwd: string): string[] {
+  return GLOBAL_CSS_CANDIDATES.filter((rel) =>
+    fs.existsSync(path.join(cwd, rel)),
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Shell helpers
 // ---------------------------------------------------------------------------
 

@@ -100,12 +100,26 @@ export function nextConfigMergedTemplate(existingContent: string): string {
 // app/layout.tsx (root)
 // ---------------------------------------------------------------------------
 
-export function rootLayoutTemplate(): string {
+export function rootLayoutTemplate(globalCssRelPath = "app/globals.css"): string {
+  // Compute the CSS import path relative to app/layout.tsx
+  // e.g. "app/globals.css" → "./globals.css"
+  // e.g. "app/global.css" → "./global.css"
+  // e.g. "styles/globals.css" → "../styles/globals.css"
+  // e.g. "src/app/globals.css" → "./globals.css" (src/app layout)
+  let cssImport: string;
+  if (globalCssRelPath.startsWith("app/")) {
+    cssImport = "./" + globalCssRelPath.slice("app/".length);
+  } else if (globalCssRelPath.startsWith("src/app/")) {
+    cssImport = "./" + globalCssRelPath.slice("src/app/".length);
+  } else {
+    cssImport = "../" + globalCssRelPath;
+  }
+
   return `\
 import type { Metadata } from "next";
 import { RootProvider } from "@farming-labs/fumadocs";
 import docsConfig from "@/docs.config";
-import "./global.css";
+import "${cssImport}";
 
 export const metadata: Metadata = {
   title: {

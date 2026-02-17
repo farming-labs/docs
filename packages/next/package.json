@@ -15,6 +15,21 @@
       "types": "./dist/config.d.mts",
       "import": "./dist/config.mjs",
       "default": "./dist/config.mjs"
+    },
+    "./mdx-plugins/remark-heading": {
+      "types": "./dist/mdx-plugins/remark-heading.d.mts",
+      "import": "./dist/mdx-plugins/remark-heading.mjs",
+      "default": "./dist/mdx-plugins/remark-heading.mjs"
+    },
+    "./mdx-plugins/rehype-toc": {
+      "types": "./dist/mdx-plugins/rehype-toc.d.mts",
+      "import": "./dist/mdx-plugins/rehype-toc.mjs",
+      "default": "./dist/mdx-plugins/rehype-toc.mjs"
+    },
+    "./mdx-plugins/rehype-code": {
+      "types": "./dist/mdx-plugins/rehype-code.d.mts",
+      "import": "./dist/mdx-plugins/rehype-code.mjs",
+      "default": "./dist/mdx-plugins/rehype-code.mjs"
     }
   },
   "files": ["dist"],
