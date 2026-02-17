@@ -1,7 +1,7 @@
 "use client";
 
 import { DocsBody, DocsPage } from "fumadocs-ui/layouts/docs/page";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 // @ts-ignore – resolved by Next.js at runtime
 import { usePathname, useRouter } from "next/navigation";
 import { PageActions } from "./page-actions.js";
@@ -88,17 +88,6 @@ function PathBreadcrumb({
 }
 
 /**
- * Inserts `el` right after the first <h1> inside `container`.
- * Returns true if successful.
- */
-function insertAfterH1(container: HTMLElement, el: HTMLElement): boolean {
-  const h1 = container.querySelector("h1");
-  if (!h1) return false;
-  h1.insertAdjacentElement("afterend", el);
-  return true;
-}
-
-/**
  * Client wrapper for DocsPage that auto-detects headings from the DOM,
  * populates the Table of Contents, and renders page action buttons
  * (Copy Markdown, Open in LLM). Re-scans when the route changes.
@@ -114,9 +103,7 @@ export function DocsPageClient({
   children,
 }: DocsPageClientProps) {
   const [toc, setToc] = useState<TOCItem[]>([]);
-  const [actionsReady, setActionsReady] = useState(pageActionsPosition !== "below-title");
   const pathname = usePathname();
-  const actionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!tocEnabled) return;
@@ -138,27 +125,7 @@ export function DocsPageClient({
     return () => cancelAnimationFrame(timer);
   }, [tocEnabled, pathname]);
 
-  // Move page actions below the h1 when position is "below-title"
-  useEffect(() => {
-    if (pageActionsPosition !== "below-title") return;
-    setActionsReady(false);
-    const el = actionsRef.current;
-    if (!el) return;
-
-    const timer = requestAnimationFrame(() => {
-      const article = el.closest("article") ?? document.getElementById("nd-page");
-      if (article && insertAfterH1(article, el)) {
-        setActionsReady(true);
-      } else {
-        setActionsReady(true);
-      }
-    });
-
-    return () => cancelAnimationFrame(timer);
-  }, [pageActionsPosition, pathname]);
-
   const showActions = copyMarkdown || openDocs;
-  const isAbove = pageActionsPosition === "above-title";
 
   return (
     <DocsPage
@@ -169,11 +136,7 @@ export function DocsPageClient({
     >
       {breadcrumbEnabled && <PathBreadcrumb pathname={pathname} entry={entry} />}
       {showActions && (
-        <div
-          ref={actionsRef}
-          data-actions-position={pageActionsPosition}
-          style={actionsReady ? undefined : { opacity: 0, position: "absolute", pointerEvents: "none" }}
-        >
+        <div data-actions-position={pageActionsPosition}>
           <PageActions
             copyMarkdown={copyMarkdown}
             openDocs={openDocs}
