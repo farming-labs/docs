@@ -4,6 +4,7 @@ import pc from "picocolors";
 import {
   detectFramework,
   detectPackageManager,
+  detectGlobalCssFiles,
   installCommand,
   devInstallCommand,
   writeFileSafe,
@@ -98,7 +99,47 @@ export async function init() {
   const entryPath = entry as string;
 
   // -----------------------------------------------------------------------
-  // Step 4: Read project info
+  // Step 4: Global CSS file location
+  // -----------------------------------------------------------------------
+
+  const detectedCssFiles = detectGlobalCssFiles(cwd);
+  let globalCssRelPath: string;
+
+  if (detectedCssFiles.length === 1) {
+    // Exactly one found — use it automatically
+    globalCssRelPath = detectedCssFiles[0];
+    p.log.info(`Found global CSS at ${pc.cyan(globalCssRelPath)}`);
+  } else if (detectedCssFiles.length > 1) {
+    // Multiple found — let the user pick
+    const picked = await p.select({
+      message: "Multiple global CSS files found. Which one should we use?",
+      options: detectedCssFiles.map((f) => ({ value: f, label: f })),
+    });
+    if (p.isCancel(picked)) {
+      p.outro(pc.red("Init cancelled."));
+      process.exit(0);
+    }
+    globalCssRelPath = picked as string;
+  } else {
+    // None found — ask the user
+    const cssPath = await p.text({
+      message: "Where is your global CSS file?",
+      placeholder: "app/globals.css",
+      defaultValue: "app/globals.css",
+      validate: (value) => {
+        if (!value) return "CSS file path is required";
+        if (!value.endsWith(".css")) return "Path must end with .css";
+      },
+    });
+    if (p.isCancel(cssPath)) {
+      p.outro(pc.red("Init cancelled."));
+      process.exit(0);
+    }
+    globalCssRelPath = cssPath as string;
+  }
+
+  // -----------------------------------------------------------------------
+  // Step 5: Read project info
   // -----------------------------------------------------------------------
 
   const pkgJson = JSON.parse(readFileSafe(path.join(cwd, "package.json"))!);
@@ -158,22 +199,22 @@ export async function init() {
   }
 
   // app/layout.tsx
-  write("app/layout.tsx", rootLayoutTemplate());
+  write("app/layout.tsx", rootLayoutTemplate(globalCssRelPath));
 
-  // app/global.css — inject fumadocs CSS import into existing file,
-  // or create a new one if it doesn't exist.
-  const globalCssPath = path.join(cwd, "app/global.css");
-  const existingGlobalCss = readFileSafe(globalCssPath);
+  // Global CSS — inject fumadocs CSS import into existing file,
+  // or create a new one at the chosen path.
+  const globalCssAbsPath = path.join(cwd, globalCssRelPath);
+  const existingGlobalCss = readFileSafe(globalCssAbsPath);
   if (existingGlobalCss) {
     const injected = injectCssImport(existingGlobalCss, theme as string);
     if (injected) {
-      writeFileSafe(globalCssPath, injected, true);
-      written.push("app/global.css (updated)");
+      writeFileSafe(globalCssAbsPath, injected, true);
+      written.push(globalCssRelPath + " (updated)");
     } else {
-      skipped.push("app/global.css (already configured)");
+      skipped.push(globalCssRelPath + " (already configured)");
     }
   } else {
-    write("app/global.css", globalCssTemplate(theme as string));
+    write(globalCssRelPath, globalCssTemplate(theme as string));
   }
 
   // app/{entry}/layout.tsx
