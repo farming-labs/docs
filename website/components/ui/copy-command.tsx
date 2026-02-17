@@ -24,11 +24,11 @@ export default function CopyCommand({ command, className = "" }: CopyCommandProp
   return (
     <button
       onClick={copy}
-      className={`group flex font-mono items-center gap-2 border border-white/10 border-b-0 px-4 py-2.5 text-sm text-white/70 hover:bg-white/[0.04] transition-all cursor-pointer ${className}`}
+      className={`group flex font-mono items-center gap-2 border border-white/10 md:border-b-0 px-3 sm:px-4 py-2.5 text-[11px] sm:text-sm text-white/70 hover:bg-white/[0.04] transition-all cursor-pointer overflow-hidden ${className}`}
       title={copied ? "Copied!" : "Copy to clipboard"}
     >
       <Terminal className="w-3.5 h-3.5 text-white/40" />
-      <span className="select-all">{command}</span>
+      <span className="select-all truncate">{command}</span>
       {copied ? (
         <Check className="w-3.5 h-3.5 text-green-400 ml-1" />
       ) : (

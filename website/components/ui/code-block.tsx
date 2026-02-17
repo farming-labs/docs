@@ -16,6 +16,7 @@ interface CodeBlockProps {
 
 export default function CodeBlock({
   code,
+  language,
   title,
   filename,
   showCopy = true,
@@ -39,15 +40,15 @@ export default function CodeBlock({
     <div className={`relative group max-w-full ${className}`}>
       <PixelCard variant="code" className="p-0!">
         {(title || filename) && (
-          <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between border-b border-white/10 px-3 sm:px-4 py-2.5 min-w-0 overflow-hidden">
+            <div className="flex items-center gap-2 min-w-0">
               {filename && (
-                <span className="text-xs font-mono text-white/50">
+                <span className="text-[11px] sm:text-xs font-mono text-white/50 truncate">
                   {filename}
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {title && (
                 <span className="text-[10px] font-mono uppercase tracking-wider text-white/20">
                   {title}
@@ -57,7 +58,7 @@ export default function CodeBlock({
           </div>
         )}
         <div className="relative">
-          <pre className="px-4 py-3.5 text-[13px] leading-relaxed overflow-x-auto font-mono">
+          <pre className="px-3 sm:px-4 py-3.5 text-[12px] sm:text-[13px] leading-relaxed overflow-x-auto font-mono">
             <code
               className="sh-code"
               dangerouslySetInnerHTML={{ __html: highlighted }}

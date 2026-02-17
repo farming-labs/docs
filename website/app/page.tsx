@@ -51,14 +51,14 @@ function HeroSection() {
   ];
 
   return (
-    <section className="relative min-h-screen flex items-end">
-      <div className="absolute top-14 w-[calc(100%+400px)] z-[999] -left-[200px] mx-auto h-px bg-white/[8%]" />
-      <div className="absolute bottom-16 w-[calc(100%+400px)] z-[999] -left-[200px] mx-auto h-px bg-white/[8%]" />
+    <section className="relative min-h-screen flex items-end overflow-hidden">
+      <div className="absolute top-14 left-0 right-0 z-[999] h-px bg-white/[8%]" />
+      <div className="absolute bottom-[70px] sm:bottom-16 left-0 right-0 z-[999] h-px bg-white/[8%]" />
       <AnimatedBackground />
-      <div className="relative z-[999] w-full pb-12 sm:pb-16 pt-24">
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-10 sm:gap-16">
+      <div className="relative z-[999] w-full pb-12 sm:pb-16 pt-24 px-5 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 sm:gap-16">
           {/* Left — headline + CTA */}
-          <div className="max-w-[85%] sm:max-w-lg">
+          <div className="max-w-full sm:max-w-lg">
             <div className="flex flex-col gap-2">
               <div className="inline-block">
                 <span className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
@@ -91,12 +91,12 @@ function HeroSection() {
               <div className="mt-2" />
               that just <span className="text-black bg-white p-0 mt-2">works.</span>
             </h1>
-            <p className="mt-4 text-sm sm:text-base font-mono uppercase text-white/45 max-w-md leading-relaxed">
+            <p className="mt-4 text-xs sm:text-base font-mono uppercase text-white/45 max-w-md leading-relaxed">
               A modern MDX documentation framework for Next.js. One config file,
               zero boilerplate.
             </p>
 
-            <div className="mt-8 flex items-center gap-3">
+            <div className="mt-6 sm:mt-8 flex flex-wrap items-center gap-3">
               <Link
                 href="/docs"
                 className="group inline-flex items-center gap-2 bg-white text-black px-5 py-2.5 text-xs font-mono uppercase tracking-wider hover:bg-white/90 transition-all hover:no-underline"
@@ -109,18 +109,7 @@ function HeroSection() {
           </div>
 
           <div className="sm:max-w-xs">
-            {/* <ul className="space-y-1.5">
-              {features.map((f) => (
-                <li
-                  key={f}
-                  className="text-[11px] sm:text-[12px] text-white/30 font-mono uppercase tracking-wide leading-relaxed flex items-start gap-2"
-                >
-                  <span className="text-white/15 mt-px">—</span>
-                  <span>{f}</span>
-                </li>
-              ))}
-            </ul> */}
-            <div className="mt-6 flex items-center justify-end">
+            <div className="flex justify-end">
               <Link
                 href="https://github.com/farming-labs/docs"
                 className="group uppercase font-mono tracking-tighter text-white/30 hover:text-white/60 hover:no-underline relative ease-in after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:translate-y-[3px] after:bg-white/30 after:opacity-0 after:duration-300 after:content-[''] hover:after:-translate-y-0.5 hover:after:opacity-100 text-[11px] transition-all duration-300"
@@ -140,12 +129,12 @@ function HeroSection() {
 function InstallSection() {
   return (
     <section className="relative z-10 bg-black border-t border-white/[8%]">
-      <div className="mx-auto max-w-6xl px-6 py-24">
-        <div className="mb-16">
+      <div className="mx-auto max-w-6xl px-5 sm:px-6 py-16 sm:py-24">
+        <div className="mb-10 sm:mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-4 block">
             Quick Start
           </span>
-          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tighter text-white">
+          <h2 className="text-2xl sm:text-4xl font-semibold tracking-tighter text-white">
             Up and running in minutes
           </h2>
         </div>
@@ -290,12 +279,12 @@ function ThemesSection() {
 
   return (
     <section className="relative z-10 bg-black border-t border-white/[8%]">
-      <div className="mx-auto max-w-6xl px-6 py-24">
-        <div className="mb-16">
+      <div className="mx-auto max-w-6xl px-5 sm:px-6 py-16 sm:py-24">
+        <div className="mb-10 sm:mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-4 block">
             Themes
           </span>
-          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tighter text-white">
+          <h2 className="text-2xl sm:text-4xl font-semibold tracking-tighter text-white">
             More themes. Your choice.
           </h2>
           <p className="mt-3 text-white/40 max-w-lg">
@@ -358,12 +347,12 @@ function ThemesSection() {
 function ConfigSection() {
   return (
     <section className="relative z-10 bg-black border-t border-white/[8%]">
-      <div className="mx-auto max-w-6xl px-6 py-24">
-        <div className="mb-16">
+      <div className="mx-auto max-w-6xl px-5 sm:px-6 py-16 sm:py-24">
+        <div className="mb-10 sm:mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-4 block">
             Configuration
           </span>
-          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tighter text-white">
+          <h2 className="text-2xl sm:text-4xl font-semibold tracking-tighter text-white">
             One file. Full control.
           </h2>
         </div>
@@ -448,12 +437,12 @@ function PackagesSection() {
 
   return (
     <section className="relative z-10 bg-black border-t border-white/[0.06]">
-      <div className="mx-auto max-w-6xl px-6 py-24">
-        <div className="mb-16">
+      <div className="mx-auto max-w-6xl px-5 sm:px-6 py-16 sm:py-24">
+        <div className="mb-10 sm:mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-4 block">
             Packages
           </span>
-          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tighter text-white">
+          <h2 className="text-2xl sm:text-4xl font-semibold tracking-tighter text-white">
             Modular by design
           </h2>
           <p className="mt-3 text-white/40 max-w-lg">
@@ -482,11 +471,9 @@ function PackagesSection() {
 
 function FooterSection() {
   return (
-    <footer className="relative z-10 bg-black">
-      <div className="absolute bottom-10 left-0 w-full h-px bg-white/[8%]" />
-      <div className="absolute bottom-24 left-0 w-full h-px bg-white/[8%]" />
-      <div className="mx-auto max-w-6xl px-6 py-12">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <footer className="relative z-10 bg-black border-t border-white/[8%]">
+      <div className="mx-auto max-w-6xl px-5 sm:px-6 py-10 sm:py-12">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <div>
             <span className="font-mono text-xs tracking-tighter text-white/40 uppercase">
               <Link
@@ -508,7 +495,7 @@ function FooterSection() {
               </Link>
             </p>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
             <Link
               href="/docs"
               className="text-xs uppercase font-mono text-white/30 hover:text-white/60 transition-colors hover:no-underline"
@@ -538,7 +525,7 @@ function FooterSection() {
 
 export default function Home() {
   return (
-    <div className="min-h-screen w-full overflow-hidden relative bg-black">
+    <div className="min-h-screen w-full overflow-x-hidden relative bg-black">
       <div className="pointer-events-none fixed inset-0 z-[999] hidden lg:block">
         <div className="mx-auto max-w-7xl h-full relative">
           <div className="absolute left-0 top-0 h-full w-px bg-white/[8%]" />
