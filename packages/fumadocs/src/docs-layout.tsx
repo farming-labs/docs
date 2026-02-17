@@ -4,7 +4,7 @@ import path from "node:path";
 import matter from "gray-matter";
 import type { ReactNode, ReactElement } from "react";
 import { serializeIcon } from "./serialize-icon.js";
-import type { DocsConfig, ThemeToggleConfig, BreadcrumbConfig, SidebarConfig, TypographyConfig, FontStyle, PageActionsConfig, CopyMarkdownConfig, OpenDocsConfig } from "@farming-labs/docs";
+import type { DocsConfig, ThemeToggleConfig, BreadcrumbConfig, SidebarConfig, TypographyConfig, FontStyle, PageActionsConfig, CopyMarkdownConfig, OpenDocsConfig, GithubConfig } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
@@ -328,6 +328,16 @@ export function createDocsLayout(config: DocsConfig) {
     iconHtml: p.icon ? serializeIcon(p.icon) : undefined,
   }));
 
+  // GitHub config — normalize string shorthand to object
+  const githubRaw = config.github;
+  const githubUrl = typeof githubRaw === "string"
+    ? githubRaw.replace(/\/$/, "")
+    : githubRaw?.url.replace(/\/$/, "");
+  const githubBranch = typeof githubRaw === "object" ? (githubRaw.branch ?? "main") : "main";
+  const githubDirectory = typeof githubRaw === "object"
+    ? githubRaw.directory?.replace(/^\/|\/$/g, "")
+    : undefined;
+
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     return (
       <DocsLayout
@@ -347,6 +357,9 @@ export function createDocsLayout(config: DocsConfig) {
           openDocs={openDocsEnabled}
           openDocsProviders={openDocsProviders as any}
           pageActionsPosition={pageActionsPosition}
+          githubUrl={githubUrl}
+          githubBranch={githubBranch}
+          githubDirectory={githubDirectory}
         >
           {children}
         </DocsPageClient>

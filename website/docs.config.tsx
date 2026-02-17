@@ -24,7 +24,7 @@ export default defineDocs({
             sans: "var(--font-geist-sans, system-ui, -apple-system, sans-serif)",
             mono: "var(--font-geist-mono, ui-monospace, monospace)",
           },
-          h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.025em" },
+        h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.025em" },
           h2: { size: "1.5rem", weight: 600, letterSpacing: "-0.015em" },
           h3: { size: "1.25rem", weight: 600 },
           body: { size: "0.975rem", lineHeight: "1.8" },
@@ -54,6 +54,11 @@ export default defineDocs({
     layers: <Layers size={16} />,
     zap: <Zap size={16} />,
     code: <Code size={16} />,
+  },
+
+  github: {
+    url: "https://github.com/farming-labs/docs",
+    directory: "website",
   },
 
   breadcrumb: { enabled: true },

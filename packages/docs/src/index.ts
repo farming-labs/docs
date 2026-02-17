@@ -30,4 +30,5 @@ export type {
   CopyMarkdownConfig,
   OpenDocsConfig,
   OpenDocsProvider,
+  GithubConfig,
 } from "./types.js";

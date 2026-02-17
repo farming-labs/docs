@@ -1,6 +1,6 @@
 "use client";
 
-import { DocsBody, DocsPage } from "fumadocs-ui/layouts/docs/page";
+import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page";
 import { useEffect, useState, type ReactNode } from "react";
 // @ts-ignore – resolved by Next.js at runtime
 import { usePathname, useRouter } from "next/navigation";
@@ -29,6 +29,12 @@ interface DocsPageClientProps {
   openDocsProviders?: SerializedProvider[];
   /** Where to render page actions relative to the title */
   pageActionsPosition?: "above-title" | "below-title";
+  /** GitHub repository URL (e.g. "https://github.com/user/repo") */
+  githubUrl?: string;
+  /** GitHub branch name @default "main" */
+  githubBranch?: string;
+  /** Subdirectory in the repo where the docs site lives (for monorepos) */
+  githubDirectory?: string;
   children: ReactNode;
 }
 
@@ -92,6 +98,24 @@ function PathBreadcrumb({
  * populates the Table of Contents, and renders page action buttons
  * (Copy Markdown, Open in LLM). Re-scans when the route changes.
  */
+/**
+ * Build the GitHub URL for the current page's source file.
+ *
+ * Examples:
+ *   No directory:  https://github.com/user/repo/tree/main/app/docs/cli/page.mdx
+ *   With directory: https://github.com/farming-labs/docs/tree/main/website/app/docs/cli/page.mdx
+ */
+function buildGithubFileUrl(
+  githubUrl: string,
+  branch: string,
+  pathname: string,
+  directory?: string,
+): string {
+  const segments = pathname.replace(/^\//, "").replace(/\/$/, "");
+  const dirPrefix = directory ? `${directory}/` : "";
+  return `${githubUrl}/tree/${branch}/${dirPrefix}app/${segments}/page.mdx`;
+}
+
 export function DocsPageClient({
   tocEnabled,
   breadcrumbEnabled = true,
@@ -100,6 +124,9 @@ export function DocsPageClient({
   openDocs = false,
   openDocsProviders,
   pageActionsPosition = "below-title",
+  githubUrl,
+  githubBranch = "main",
+  githubDirectory,
   children,
 }: DocsPageClientProps) {
   const [toc, setToc] = useState<TOCItem[]>([]);
@@ -126,6 +153,9 @@ export function DocsPageClient({
   }, [tocEnabled, pathname]);
 
   const showActions = copyMarkdown || openDocs;
+  const githubFileUrl = githubUrl
+    ? buildGithubFileUrl(githubUrl, githubBranch, pathname, githubDirectory)
+    : undefined;
 
   return (
     <DocsPage
@@ -144,7 +174,12 @@ export function DocsPageClient({
           />
         </div>
       )}
-      <DocsBody>{children}</DocsBody>
+      <DocsBody>
+        {children}
+        {githubFileUrl && (
+          <EditOnGitHub className="bg-transparent underline underline-offset-2 decoration-white/30 decoration-dotted hover:text-white/50 transition-colors hover:no-underline uppercase font-mono" href={githubFileUrl} />
+        )}
+      </DocsBody>
     </DocsPage>
   );
 }

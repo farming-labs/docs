@@ -436,11 +436,72 @@ export interface PageActionsConfig {
   position?: "above-title" | "below-title";
 }
 
+/**
+ * GitHub repository configuration for "Edit on GitHub" links
+ * and source file references.
+ *
+ * @example
+ * ```ts
+ * // Simple repo (not a monorepo)
+ * github: {
+ *   url: "https://github.com/Kinfe123/my-docs",
+ * }
+ *
+ * // Monorepo — docs site lives in "website/" subdirectory
+ * github: {
+ *   url: "https://github.com/farming-labs/docs",
+ *   directory: "website",
+ *   branch: "main",
+ * }
+ * ```
+ *
+ * Or as a simple string (branch defaults to "main", no directory prefix):
+ * ```ts
+ * github: "https://github.com/Kinfe123/my-docs"
+ * ```
+ */
+export interface GithubConfig {
+  /** Repository URL (e.g. "https://github.com/farming-labs/docs") */
+  url: string;
+  /** Branch name. @default "main" */
+  branch?: string;
+  /**
+   * Subdirectory inside the repo where the docs site lives.
+   * Use this for monorepos where the docs app is not at the repo root.
+   *
+   * @example "website" → links point to `website/app/docs/…/page.mdx`
+   */
+  directory?: string;
+}
+
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
   /** Theme configuration - single source of truth for UI */
   theme?: DocsTheme;
+  /**
+   * GitHub repository URL or config. Enables "Edit on GitHub" links
+   * on each docs page footer, pointing to the source `.mdx` file.
+   *
+   * @example
+   * ```ts
+   * // Simple — branch defaults to "main"
+   * github: "https://github.com/Kinfe123/my-docs"
+   *
+   * // Monorepo — docs site lives in "website/" subdirectory
+   * github: {
+   *   url: "https://github.com/farming-labs/docs",
+   *   directory: "website",
+   * }
+   *
+   * // Custom branch
+   * github: {
+   *   url: "https://github.com/Kinfe123/my-docs",
+   *   branch: "develop",
+   * }
+   * ```
+   */
+  github?: string | GithubConfig;
   /**
    * Sidebar navigation header.
    * Customise the title shown at the top of the sidebar.
