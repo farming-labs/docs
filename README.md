@@ -17,7 +17,7 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 Run `init` inside an existing Next.js project:
 
 ```bash
-npx farming-docs init
+npx @farming-labs/docs init
 ```
 
 The CLI will:

@@ -44,7 +44,7 @@ function HeroSection() {
     "Built-in search powered by Orama",
     "MDX first with frontmatter routing",
     "Custom components, icons, code tabs from config",
-    "CLI scaffolding — npx farming-docs init",
+    "CLI scaffolding — npx @farming-labs/docs init",
     "Colors, typography, sidebar — all customizable",
     "Syntax highlighting with Shiki + code titles",
   ];
@@ -93,7 +93,7 @@ function HeroSection() {
               </Link>
               <div className="flex font-mono items-center gap-2 border border-white/10 border-b-0 px-4 py-2.5 text-sm text-white/70">
                 <Terminal className="w-3.5 h-3.5 text-white/40" />
-                <span><span className="text-[#c678dd]">pnpx</span> @farming-docs/docs <span className="text-white/40">init</span></span>
+                <span><span className="text-[#c678dd]">npx</span> @farming-labs/docs <span className="text-white/40">init</span></span>
               </div>
             </div>
           </div>

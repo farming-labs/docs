@@ -26,7 +26,7 @@ function printHelp() {
 ${pc.bold("@farming-labs/docs")} — Documentation framework CLI
 
 ${pc.dim("Usage:")}
-  farming-docs ${pc.cyan("<command>")}
+  npx @farming-labs/docs ${pc.cyan("<command>")}
 
 ${pc.dim("Commands:")}
   ${pc.cyan("init")}    Scaffold docs in your project (default)
