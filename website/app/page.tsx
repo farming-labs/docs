@@ -129,7 +129,7 @@ function HeroSection() {
 
 function InstallSection() {
   return (
-    <section className="relative z-10 bg-black border-t border-white/[0.06]">
+    <section className="relative z-10 bg-black border-t border-white/[8%]">
       <div className="mx-auto max-w-6xl px-6 py-24">
         <div className="mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-4 block">
@@ -279,7 +279,7 @@ function ThemesSection() {
   ];
 
   return (
-    <section className="relative z-10 bg-black border-t border-white/[0.06]">
+    <section className="relative z-10 bg-black border-t border-white/[8%]">
       <div className="mx-auto max-w-6xl px-6 py-24">
         <div className="mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-4 block">
@@ -347,7 +347,7 @@ function ThemesSection() {
 
 function ConfigSection() {
   return (
-    <section className="relative z-10 bg-black border-t border-white/[0.06]">
+    <section className="relative z-10 bg-black border-t border-white/[8%]">
       <div className="mx-auto max-w-6xl px-6 py-24">
         <div className="mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-4 block">
