@@ -573,11 +573,11 @@ export interface AIConfig {
    * ai: {
    *   enabled: true,
    *   mode: "floating",
-   *   trigger: <button className="my-chat-btn">💬 Help</button>,
+   *   triggerComponent: <button className="my-chat-btn">💬 Help</button>,
    * }
    * ```
    */
-  trigger?: React.ReactNode;
+  triggerComponent?: React.ReactNode;
 
   /**
    * The LLM model to use for chat completions.

@@ -522,13 +522,13 @@ export function FloatingAIChat({
   api = "/api/docs",
   position = "bottom-right",
   floatingStyle = "panel",
-  triggerHtml,
+  triggerComponentHtml,
 }: {
   api?: string;
   position?: FloatingPosition;
   floatingStyle?: FloatingStyle;
-  /** Serialized HTML for a custom trigger button. Replaces the default sparkles button. */
-  triggerHtml?: string;
+  /** Serialized HTML for a custom trigger component. Replaces the default sparkles button. */
+  triggerComponentHtml?: string;
 }) {
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -602,13 +602,13 @@ export function FloatingAIChat({
         </div>
       )}
 
-      {/* Floating button (default or custom trigger) */}
+      {/* Floating button (default or custom trigger component) */}
       {!isOpen && (
-        triggerHtml ? (
+        triggerComponentHtml ? (
           <div
             onClick={() => setIsOpen(true)}
             style={{ position: "fixed", zIndex: 9997, ...btnPosition, cursor: "pointer", animation: "fdFadeIn 300ms ease-out" }}
-            dangerouslySetInnerHTML={{ __html: triggerHtml }}
+            dangerouslySetInnerHTML={{ __html: triggerComponentHtml }}
           />
         ) : (
           <button

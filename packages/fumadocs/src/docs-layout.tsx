@@ -347,8 +347,8 @@ export function createDocsLayout(config: DocsConfig) {
   const aiFloatingStyle = aiConfig?.floatingStyle ?? "panel";
   // Serialize the custom trigger component to HTML so it survives
   // the server → client boundary.
-  const aiTriggerHtml = aiConfig?.trigger
-    ? serializeIcon(aiConfig.trigger)
+  const aiTriggerComponentHtml = aiConfig?.triggerComponent
+    ? serializeIcon(aiConfig.triggerComponent)
     : undefined;
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
@@ -367,7 +367,7 @@ export function createDocsLayout(config: DocsConfig) {
             mode={aiMode}
             position={aiPosition}
             floatingStyle={aiFloatingStyle}
-            triggerHtml={aiTriggerHtml}
+            triggerComponentHtml={aiTriggerComponentHtml}
           />
         )}
         <DocsPageClient

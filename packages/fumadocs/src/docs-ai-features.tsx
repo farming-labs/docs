@@ -20,14 +20,14 @@ interface DocsAIFeaturesProps {
   mode: "search" | "floating";
   position?: "bottom-right" | "bottom-left" | "bottom-center";
   floatingStyle?: "panel" | "modal" | "popover";
-  triggerHtml?: string;
+  triggerComponentHtml?: string;
 }
 
 export function DocsAIFeatures({
   mode,
   position = "bottom-right",
   floatingStyle = "panel",
-  triggerHtml,
+  triggerComponentHtml,
 }: DocsAIFeaturesProps) {
   if (mode === "search") {
     return <SearchModeAI />;
@@ -38,7 +38,7 @@ export function DocsAIFeatures({
       api="/api/docs"
       position={position}
       floatingStyle={floatingStyle}
-      triggerHtml={triggerHtml}
+      triggerComponentHtml={triggerComponentHtml}
     />
   );
 }
