@@ -71,6 +71,12 @@ function HeroSection() {
                   v0.0.2-beta.1
                 </span>
               </div>
+              <div className="inline-block mb-2">
+                <span className="text-[10px] font-mono tracking-[0.2em] text-white/40 px-0 py-1.5 flex items-center">
+                  <div className="h-[12px] w-px bg-white/50 mr-2" />
+                  v0.0.2-beta.2
+                </span>
+              </div>
             </div>
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-semibold tracking-tighter text-white leading-[0.95]">
               a documentation
