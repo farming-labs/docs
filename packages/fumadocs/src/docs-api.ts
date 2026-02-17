@@ -37,7 +37,7 @@ interface AIOptions {
   model?: string;
   systemPrompt?: string;
   baseUrl?: string;
-  apiKeyEnv?: string;
+  apiKey?: string;
   maxResults?: number;
 }
 
@@ -97,8 +97,9 @@ function readAIConfig(root: string): AIOptions {
         const baseUrlMatch = content.match(
           /ai\s*:\s*\{[^}]*baseUrl\s*:\s*["']([^"']+)["']/s,
         );
-        const apiKeyEnvMatch = content.match(
-          /ai\s*:\s*\{[^}]*apiKeyEnv\s*:\s*["']([^"']+)["']/s,
+        // Match `apiKey: process.env.SOME_VAR` and resolve it at runtime
+        const apiKeyMatch = content.match(
+          /ai\s*:\s*\{[^}]*apiKey\s*:\s*process\.env\.(\w+)/s,
         );
         const maxResultsMatch = content.match(
           /ai\s*:\s*\{[^}]*maxResults\s*:\s*(\d+)/s,
@@ -111,7 +112,9 @@ function readAIConfig(root: string): AIOptions {
           enabled: true,
           model: modelMatch?.[1],
           baseUrl: baseUrlMatch?.[1],
-          apiKeyEnv: apiKeyEnvMatch?.[1],
+          apiKey: apiKeyMatch?.[1]
+            ? process.env[apiKeyMatch[1]]
+            : undefined,
           maxResults: maxResultsMatch ? parseInt(maxResultsMatch[1], 10) : undefined,
           systemPrompt: systemPromptMatch?.[1],
         };
@@ -209,13 +212,12 @@ async function handleAskAI(
   aiConfig: AIOptions,
 ): Promise<Response> {
   // ── Validate config ────────────────────────────────────────────
-  const apiKeyEnv = aiConfig.apiKeyEnv ?? "OPENAI_API_KEY";
-  const apiKey = process.env[apiKeyEnv];
+  const apiKey = aiConfig.apiKey ?? process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
     return Response.json(
       {
-        error: `AI is enabled but the ${apiKeyEnv} environment variable is not set. Set it in your .env.local file.`,
+        error: `AI is enabled but no API key was found. Either set apiKey in your docs.config or add OPENAI_API_KEY to your .env.local file.`,
       },
       { status: 500 },
     );

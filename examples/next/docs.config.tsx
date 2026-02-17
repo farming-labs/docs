@@ -48,6 +48,7 @@ export default defineDocs({
     mode: "floating",
     position: "bottom-right",
     floatingStyle: "modal",
+    apiKey: process.env.OPENAI_API_KEY,
     triggerComponent: <button className="border text-xs cursor-pointer text-white px-4 py-2 font-mono uppercase rounded-none flex items-center gap-2">
       <SparklesIcon size={16} />
       Ask AI</button>,

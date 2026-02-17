@@ -605,11 +605,24 @@ export interface AIConfig {
   baseUrl?: string;
 
   /**
-   * Environment variable name for the API key.
-   * The handler reads `process.env[apiKeyEnv]` at runtime.
-   * @default "OPENAI_API_KEY"
+   * API key for the LLM provider.
+   * Pass it via an environment variable to keep it out of source control.
+   *
+   * @default process.env.OPENAI_API_KEY
+   *
+   * @example
+   * ```ts
+   * // Default — reads OPENAI_API_KEY automatically
+   * ai: { enabled: true }
+   *
+   * // Custom provider key
+   * ai: {
+   *   enabled: true,
+   *   apiKey: process.env.GROQ_API_KEY,
+   * }
+   * ```
    */
-  apiKeyEnv?: string;
+  apiKey?: string;
 
   /**
    * Maximum number of search results to include as context for the AI.
@@ -764,12 +777,12 @@ export interface DocsConfig {
    * Generation) — it searches relevant docs, builds context, and streams
    * a response from an LLM.
    *
-   * The API key is read from `process.env.OPENAI_API_KEY` (or a custom
-   * env var via `apiKeyEnv`). **Never** put the key in the config file.
+   * The API key defaults to `process.env.OPENAI_API_KEY`. For other providers,
+   * pass the key via `apiKey: process.env.YOUR_KEY`.
    *
    * @example
    * ```ts
-   * // Enable with defaults (gpt-4o-mini, OPENAI_API_KEY env var)
+   * // Enable with defaults (gpt-4o-mini, OPENAI_API_KEY)
    * ai: { enabled: true }
    *
    * // Custom model + system prompt
@@ -783,7 +796,7 @@ export interface DocsConfig {
    * ai: {
    *   enabled: true,
    *   baseUrl: "https://api.groq.com/openai/v1",
-   *   apiKeyEnv: "GROQ_API_KEY",
+   *   apiKey: process.env.GROQ_API_KEY,
    *   model: "llama-3.1-70b-versatile",
    * }
    * ```
