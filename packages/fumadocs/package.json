@@ -36,6 +36,11 @@
       "import": "./dist/search.mjs",
       "default": "./dist/search.mjs"
     },
+    "./api": {
+      "types": "./dist/docs-api.d.mts",
+      "import": "./dist/docs-api.mjs",
+      "default": "./dist/docs-api.mjs"
+    },
     "./css": "./styles/default.css",
     "./base/css": "./styles/base.css",
     "./default/css": "./styles/default.css",

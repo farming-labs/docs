@@ -474,6 +474,164 @@ export interface GithubConfig {
   directory?: string;
 }
 
+/**
+ * Configuration for "Ask AI" — a RAG-powered chat that lets users
+ * ask questions about the documentation content.
+ *
+ * The AI handler searches relevant doc pages, builds context, and
+ * streams a response from an LLM (OpenAI-compatible API).
+ *
+ * The API key is **never** stored in the config. It is read from the
+ * `OPENAI_API_KEY` environment variable at runtime on the server.
+ *
+ * @example
+ * ```ts
+ * ai: {
+ *   enabled: true,
+ *   model: "gpt-4o-mini",
+ *   systemPrompt: "You are a helpful assistant for our developer docs.",
+ * }
+ * ```
+ */
+export interface AIConfig {
+  /**
+   * Whether to enable "Ask AI" functionality.
+   * When enabled, the unified `/api/docs` route handler will accept
+   * POST requests for AI chat.
+   * @default false
+   */
+  enabled?: boolean;
+
+  /**
+   * How the AI chat UI is presented.
+   *
+   * - `"search"` — AI tab integrated into the Cmd+K search dialog (default)
+   * - `"floating"` — A floating chat widget (bubble button + slide-out panel)
+   *
+   * @default "search"
+   *
+   * @example
+   * ```ts
+   * // Floating chat bubble in the bottom-right corner
+   * ai: {
+   *   enabled: true,
+   *   mode: "floating",
+   *   position: "bottom-right",
+   * }
+   * ```
+   */
+  mode?: "search" | "floating";
+
+  /**
+   * Position of the floating chat button on screen.
+   * Only used when `mode` is `"floating"`.
+   *
+   * - `"bottom-right"` — bottom-right corner (default)
+   * - `"bottom-left"` — bottom-left corner
+   * - `"bottom-center"` — bottom center
+   *
+   * @default "bottom-right"
+   */
+  position?: "bottom-right" | "bottom-left" | "bottom-center";
+
+  /**
+   * Visual style of the floating chat when opened.
+   * Only used when `mode` is `"floating"`.
+   *
+   * - `"panel"` — A tall panel that slides up from the button position (default).
+   *   Stays anchored near the floating button. No backdrop overlay.
+   *
+   * - `"modal"` — A centered modal dialog with a backdrop overlay,
+   *   similar to the Cmd+K search dialog. Feels more focused and immersive.
+   *
+   * - `"popover"` — A compact popover near the button. Smaller than the
+   *   panel, suitable for quick questions without taking much screen space.
+   *
+   * @default "panel"
+   *
+   * @example
+   * ```ts
+   * ai: {
+   *   enabled: true,
+   *   mode: "floating",
+   *   position: "bottom-right",
+   *   floatingStyle: "modal",
+   * }
+   * ```
+   */
+  floatingStyle?: "panel" | "modal" | "popover";
+
+  /**
+   * Custom trigger component for the floating chat button.
+   * Only used when `mode` is `"floating"`.
+   *
+   * Pass a React element to replace the default sparkles button.
+   * The element receives an `onClick` handler automatically.
+   *
+   * @example
+   * ```tsx
+   * ai: {
+   *   enabled: true,
+   *   mode: "floating",
+   *   triggerComponent: <button className="my-chat-btn">💬 Help</button>,
+   * }
+   * ```
+   */
+  triggerComponent?: React.ReactNode;
+
+  /**
+   * The LLM model to use for chat completions.
+   * Must be compatible with the OpenAI Chat Completions API.
+   * @default "gpt-4o-mini"
+   */
+  model?: string;
+
+  /**
+   * Custom system prompt prepended to the AI conversation.
+   * The documentation context is automatically appended after this prompt.
+   *
+   * @default "You are a helpful documentation assistant. Answer questions
+   * based on the provided documentation context. Be concise and accurate.
+   * If the answer is not in the context, say so honestly."
+   */
+  systemPrompt?: string;
+
+  /**
+   * Base URL for an OpenAI-compatible API endpoint.
+   * Use this to point to a self-hosted model, Azure OpenAI, or any
+   * compatible provider (e.g. Groq, Together, OpenRouter).
+   * @default "https://api.openai.com/v1"
+   */
+  baseUrl?: string;
+
+  /**
+   * API key for the LLM provider.
+   * Pass it via an environment variable to keep it out of source control.
+   *
+   * @default process.env.OPENAI_API_KEY
+   *
+   * @example
+   * ```ts
+   * // Default — reads OPENAI_API_KEY automatically
+   * ai: { enabled: true }
+   *
+   * // Custom provider key
+   * ai: {
+   *   enabled: true,
+   *   apiKey: process.env.GROQ_API_KEY,
+   * }
+   * ```
+   */
+  apiKey?: string;
+
+  /**
+   * Maximum number of search results to include as context for the AI.
+   * More results = more context but higher token usage.
+   * @default 5
+   */
+  maxResults?: number;
+}
+
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
@@ -611,6 +769,39 @@ export interface DocsConfig {
    * ```
    */
   pageActions?: PageActionsConfig;
+  /**
+   * AI-powered "Ask AI" chat for documentation.
+   *
+   * When enabled, the unified API route handler (`/api/docs`) accepts
+   * POST requests for AI chat. The handler uses RAG (Retrieval-Augmented
+   * Generation) — it searches relevant docs, builds context, and streams
+   * a response from an LLM.
+   *
+   * The API key defaults to `process.env.OPENAI_API_KEY`. For other providers,
+   * pass the key via `apiKey: process.env.YOUR_KEY`.
+   *
+   * @example
+   * ```ts
+   * // Enable with defaults (gpt-4o-mini, OPENAI_API_KEY)
+   * ai: { enabled: true }
+   *
+   * // Custom model + system prompt
+   * ai: {
+   *   enabled: true,
+   *   model: "gpt-4o",
+   *   systemPrompt: "You are an expert on our SDK. Be concise.",
+   * }
+   *
+   * // Use a different provider (e.g. Groq)
+   * ai: {
+   *   enabled: true,
+   *   baseUrl: "https://api.groq.com/openai/v1",
+   *   apiKey: process.env.GROQ_API_KEY,
+   *   model: "llama-3.1-70b-versatile",
+   * }
+   * ```
+   */
+  ai?: AIConfig;
   /** SEO metadata - separate from theme */
   metadata?: DocsMetadata;
   /** Open Graph image handling */

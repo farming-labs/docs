@@ -31,4 +31,5 @@ export type {
   OpenDocsConfig,
   OpenDocsProvider,
   GithubConfig,
+  AIConfig,
 } from "./types.js";

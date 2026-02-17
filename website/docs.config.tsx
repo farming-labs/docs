@@ -32,7 +32,6 @@ export default defineDocs({
       },
     },
   }),
-
   nav: {
     title: (
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -43,7 +42,6 @@ export default defineDocs({
     ),
     url: "/docs",
   },
-
   icons: {
     book: <BookOpen size={16} />,
     rocket: <Rocket size={16} />,
@@ -70,6 +68,11 @@ export default defineDocs({
   metadata: {
     titleTemplate: "%s – @farming-labs/docs",
     description: "A modern, flexible MDX documentation framework.",
+  },
+
+  ai: {
+    enabled: true,
+    mode: "search",
   },
 
   themeToggle: {

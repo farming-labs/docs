@@ -4,8 +4,9 @@ import path from "node:path";
 import matter from "gray-matter";
 import type { ReactNode, ReactElement } from "react";
 import { serializeIcon } from "./serialize-icon.js";
-import type { DocsConfig, ThemeToggleConfig, BreadcrumbConfig, SidebarConfig, TypographyConfig, FontStyle, PageActionsConfig, CopyMarkdownConfig, OpenDocsConfig, GithubConfig } from "@farming-labs/docs";
+import type { DocsConfig, ThemeToggleConfig, BreadcrumbConfig, SidebarConfig, TypographyConfig, FontStyle, PageActionsConfig, CopyMarkdownConfig, OpenDocsConfig, GithubConfig, AIConfig } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
+import { DocsAIFeatures } from "./docs-ai-features.js";
 
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
 interface PageNode {
@@ -338,6 +339,18 @@ export function createDocsLayout(config: DocsConfig) {
     ? githubRaw.directory?.replace(/^\/|\/$/g, "")
     : undefined;
 
+  // AI features — resolved from config, rendered automatically
+  const aiConfig = config.ai as AIConfig | undefined;
+  const aiEnabled = !!aiConfig?.enabled;
+  const aiMode = aiConfig?.mode ?? "search";
+  const aiPosition = aiConfig?.position ?? "bottom-right";
+  const aiFloatingStyle = aiConfig?.floatingStyle ?? "panel";
+  // Serialize the custom trigger component to HTML so it survives
+  // the server → client boundary.
+  const aiTriggerComponentHtml = aiConfig?.triggerComponent
+    ? serializeIcon(aiConfig.triggerComponent)
+    : undefined;
+
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     return (
       <DocsLayout
@@ -349,6 +362,14 @@ export function createDocsLayout(config: DocsConfig) {
         <ColorStyle colors={colors} />
         <TypographyStyle typography={typography} />
         {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
+        {aiEnabled && (
+          <DocsAIFeatures
+            mode={aiMode}
+            position={aiPosition}
+            floatingStyle={aiFloatingStyle}
+            triggerComponentHtml={aiTriggerComponentHtml}
+          />
+        )}
         <DocsPageClient
           tocEnabled={tocEnabled}
           breadcrumbEnabled={breadcrumbEnabled}
