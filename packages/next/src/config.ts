@@ -49,11 +49,11 @@ export const metadata = createDocsMetadata(docsConfig);
 export default createDocsLayout(docsConfig);
 `;
 
-const SEARCH_ROUTE_TEMPLATE = `\
+const DOCS_API_ROUTE_TEMPLATE = `\
 ${GENERATED_BANNER}
-import { createDocsSearchAPI } from "@farming-labs/fumadocs/search";
+import { createDocsAPI } from "@farming-labs/fumadocs/api";
 
-export const { GET } = createDocsSearchAPI();
+export const { GET, POST } = createDocsAPI();
 
 export const revalidate = false;
 `;
@@ -104,11 +104,12 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     writeFileSync(join(layoutDir, "layout.tsx"), DOCS_LAYOUT_TEMPLATE);
   }
 
-  // ── 3. Auto-generate app/api/search/route.ts if missing ────────
-  const searchRouteDir = join(root, "app", "api", "search");
-  if (!hasFile(searchRouteDir, "route")) {
-    mkdirSync(searchRouteDir, { recursive: true });
-    writeFileSync(join(searchRouteDir, "route.ts"), SEARCH_ROUTE_TEMPLATE);
+  // ── 3. Auto-generate app/api/docs/route.ts if missing ──────────
+  // Unified handler: GET = search, POST = AI chat (when enabled).
+  const docsApiRouteDir = join(root, "app", "api", "docs");
+  if (!hasFile(docsApiRouteDir, "route")) {
+    mkdirSync(docsApiRouteDir, { recursive: true });
+    writeFileSync(join(docsApiRouteDir, "route.ts"), DOCS_API_ROUTE_TEMPLATE);
   }
 
   // ── 4. Configure MDX compilation ────────────────────────────────

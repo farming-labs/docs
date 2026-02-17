@@ -60,7 +60,9 @@
 export { createDocsLayout, createDocsMetadata } from "./docs-layout.js";
 
 // ─── Root UI provider ─────────────────────────────────────────────────
-export { RootProvider } from "fumadocs-ui/provider/next";
+// Thin wrapper around fumadocs-ui's RootProvider that defaults the
+// search dialog API path to `/api/docs` (our unified handler).
+export { RootProvider } from "./provider.js";
 
 // ─── Default theme preset (backward compat) ───────────────────────────
 export { fumadocs, DefaultUIDefaults as FumadocsUIDefaults } from "./default/index.js";
@@ -95,6 +97,7 @@ export type {
   CopyMarkdownConfig,
   OpenDocsConfig,
   OpenDocsProvider,
+  AIConfig,
 } from "@farming-labs/docs";
 
 // ─── MDX components (for use in custom layouts or overrides) ──────────

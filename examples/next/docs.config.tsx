@@ -16,7 +16,8 @@ import {
   Code,
   Key,
   Users,
-  Mail
+  Mail,
+  SparklesIcon
 } from "lucide-react";
 import { fumadocs } from "@farming-labs/fumadocs";
 
@@ -25,7 +26,7 @@ export default defineDocs({
   entry: "docs",
   theme: pixelBorder({
     ui: {
-      components: { Callout: { variant: "outline" }},
+      components: { Callout: { variant: "outline" } },
       layout: { toc: { enabled: true, depth: 3 } },
       sidebar: { style: "bordered" },
       typography: {
@@ -42,7 +43,15 @@ export default defineDocs({
       },
     },
   }),
-
+  ai: {
+    enabled: true,
+    mode: "floating",
+    position: "bottom-right",
+    floatingStyle: "modal",
+    trigger: <button className="border text-xs cursor-pointer text-white px-4 py-2 font-mono uppercase rounded-none flex items-center gap-2">
+      <SparklesIcon size={16} />
+      Ask AI</button>,
+  },
   nav: {
     title: (
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -104,7 +113,6 @@ export default defineDocs({
       ],
     },
   },
-
   metadata: {
     titleTemplate: "%s – Docs",
     description: "Awesome docs powered by Fumadocs preset",
