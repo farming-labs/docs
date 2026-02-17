@@ -4,13 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "build": "pnpm --filter '@farming-labs/*' run build && next build --webpack",
     "start": "next start"
   },
   "dependencies": {
-    "@farming-labs/docs": "0.0.2-beta.1",
-    "@farming-labs/fumadocs": "0.0.2-beta.1",
-    "@farming-labs/next": "0.0.2-beta.1",
+    "@farming-labs/docs": "workspace:*",
+    "@farming-labs/fumadocs": "workspace:*",
+    "@farming-labs/next": "workspace:*",
     "clsx": "^2.1.1",
     "lucide-react": "^0.564.0",
     "next": "16.1.6",
