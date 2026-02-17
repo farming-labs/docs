@@ -174,10 +174,14 @@ export function DocsPageClient({
           />
         </div>
       )}
-      <DocsBody>
-        {children}
+      <DocsBody
+        style={{ display: "flex", flexDirection: "column" }}
+      >
+        <div style={{ flex: 1 }}>{children}</div>
         {githubFileUrl && (
-          <EditOnGitHub href={githubFileUrl} />
+          <div className="not-prose" style={{ marginTop: "auto", paddingTop: "1.5rem" }}>
+            <EditOnGitHub href={githubFileUrl} />
+          </div>
         )}
       </DocsBody>
     </DocsPage>
