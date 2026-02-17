@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Github, Terminal } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Github } from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import CodeBlock from "@/components/ui/code-block";
 import PixelCard from "@/components/ui/pixel-card";
+import CopyCommand from "@/components/ui/copy-command";
 
 function Navbar() {
   return (
@@ -103,10 +104,7 @@ function HeroSection() {
                 Get Started
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </Link>
-              <div className="flex font-mono items-center gap-2 border border-white/10 border-b-0 px-4 py-2.5 text-sm text-white/70">
-                <Terminal className="w-3.5 h-3.5 text-white/40" />
-                <span><span className="text-white">pnpx</span> @farming-labs/docs <span className="text-white/40">init</span></span>
-              </div>
+              <CopyCommand command="pnpx @farming-labs/docs init" />
             </div>
           </div>
 
