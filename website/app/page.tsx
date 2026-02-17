@@ -71,10 +71,16 @@ function HeroSection() {
                   v0.0.2-beta.1
                 </span>
               </div>
-              <div className="inline-block mb-2">
+              <div className="inline-block">
                 <span className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
                   v0.0.2-beta.2
+                </span>
+              </div>
+              <div className="inline-block">
+                <span className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
+                  <div className="h-[12px] w-px bg-white/50 mr-2" />
+                  v0.0.2-beta.3
                 </span>
               </div>
             </div>
@@ -99,7 +105,7 @@ function HeroSection() {
               </Link>
               <div className="flex font-mono items-center gap-2 border border-white/10 border-b-0 px-4 py-2.5 text-sm text-white/70">
                 <Terminal className="w-3.5 h-3.5 text-white/40" />
-                <span><span className="text-[#c678dd]">npx</span> @farming-labs/docs <span className="text-white/40">init</span></span>
+                <span><span className="text-white">pnpx</span> @farming-labs/docs <span className="text-white/40">init</span></span>
               </div>
             </div>
           </div>
