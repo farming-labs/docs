@@ -10,6 +10,7 @@ import {
   Layers,
   Zap,
   Code,
+  Lightbulb
 } from "lucide-react";
 
 export default defineDocs({
@@ -52,6 +53,7 @@ export default defineDocs({
     layers: <Layers size={16} />,
     zap: <Zap size={16} />,
     code: <Code size={16} />,
+    lightbulb: <Lightbulb size={16} />,
   },
 
   github: {
