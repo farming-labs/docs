@@ -1,0 +1,203 @@
+---
+title: "Page Actions"
+description: "Add \"Open in LLM\" and \"Copy Markdown\" buttons to your doc pages"
+icon: "file"
+---
+
+# Page Actions
+
+Page actions are buttons rendered above or below the page title. They let users interact with page content — copy it as Markdown, or open it in an LLM provider like ChatGPT or Claude.
+
+## Quick Start
+
+```ts title="docs.config.ts"
+pageActions: {
+  copyMarkdown: { enabled: true },
+  openDocs: { enabled: true },
+}
+```
+
+This adds two buttons: **Copy Markdown** and an **Open in...** dropdown.
+
+## Configuration Reference
+
+All options go inside the `pageActions` object in `docs.config.ts`:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  pageActions: {
+    // ... options
+  },
+});
+```
+
+---
+
+## `pageActions.position`
+
+Where to render the page action buttons relative to the page title.
+
+| Type | Default |
+|------|---------|
+| `"above-title" \| "below-title"` | `"below-title"` |
+
+```ts
+pageActions: {
+  position: "above-title",
+}
+```
+
+---
+
+## Copy Markdown
+
+### `pageActions.copyMarkdown`
+
+Whether to show the "Copy Markdown" button. Copies the current page's content as Markdown to the clipboard.
+
+| Type | Default |
+|------|---------|
+| `boolean \| { enabled: boolean }` | `false` |
+
+```ts
+pageActions: {
+  copyMarkdown: true,
+  // or
+  copyMarkdown: { enabled: true },
+}
+```
+
+---
+
+## Open in LLM
+
+The **Open in...** dropdown lets users send the current page to an LLM or tool. Each provider gets a link that includes the page URL as context.
+
+### `pageActions.openDocs`
+
+Enable the "Open in..." dropdown. Can be a boolean or an object with additional configuration.
+
+| Type | Default |
+|------|---------|
+| `boolean \| OpenDocsConfig` | `false` |
+
+```ts
+pageActions: {
+  openDocs: true,
+}
+```
+
+When set to `true`, a sensible default list of providers is used.
+
+### `pageActions.openDocs.enabled`
+
+Whether to show the "Open in..." dropdown.
+
+| Type | Default |
+|------|---------|
+| `boolean` | `false` |
+
+### `pageActions.openDocs.providers`
+
+Custom list of LLM / tool providers to show in the dropdown. Overrides the default list.
+
+| Type | Default |
+|------|---------|
+| `OpenDocsProvider[]` | Built-in defaults |
+
+Each provider has the following shape:
+
+```ts
+interface OpenDocsProvider {
+  name: string;           // Display name (e.g. "ChatGPT", "Claude")
+  icon?: ReactNode;       // Icon element rendered next to the name
+  urlTemplate: string;    // URL template — {url} and {mdxUrl} are replaced
+}
+```
+
+### Provider URL Templates
+
+The `urlTemplate` string supports two placeholders:
+
+| Placeholder | Replaced with |
+|-------------|---------------|
+| `{url}` | The current page URL (e.g. `https://docs.example.com/docs/installation`) |
+| `{mdxUrl}` | The `.mdx` variant of the page URL (useful for raw source) |
+
+### Custom Providers Example
+
+```ts title="docs.config.ts"
+pageActions: {
+  openDocs: {
+    enabled: true,
+    providers: [
+      {
+        name: "ChatGPT",
+        urlTemplate: "https://chatgpt.com/?q=Read+this+doc:+{url}",
+      },
+      {
+        name: "Claude",
+        urlTemplate: "https://claude.ai/new?q=Read+this+doc:+{url}",
+      },
+      {
+        name: "Cursor",
+        urlTemplate: "https://cursor.sh/chat?context={url}",
+      },
+    ],
+  },
+}
+```
+
+### With Icons (Next.js)
+
+In Next.js, you can pass React elements for icons:
+
+```tsx title="docs.config.tsx"
+import { SiOpenai, SiClaude } from "react-icons/si";
+
+pageActions: {
+  openDocs: {
+    enabled: true,
+    providers: [
+      {
+        name: "ChatGPT",
+        icon: <SiOpenai className="size-4" />,
+        urlTemplate: "https://chatgpt.com/?q={url}",
+      },
+      {
+        name: "Claude",
+        icon: <SiClaude className="size-4" />,
+        urlTemplate: "https://claude.ai/new?q={url}",
+      },
+    ],
+  },
+}
+```
+
+## Full Example
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  pageActions: {
+    position: "below-title",
+    copyMarkdown: { enabled: true },
+    openDocs: {
+      enabled: true,
+      providers: [
+        {
+          name: "ChatGPT",
+          urlTemplate: "https://chatgpt.com/?q=Read+this+documentation:+{url}",
+        },
+        {
+          name: "Claude",
+          urlTemplate: "https://claude.ai/new?q=Read+this+documentation:+{url}",
+        },
+        {
+          name: "Gemini",
+          urlTemplate: "https://gemini.google.com/?q=Read+this+documentation:+{url}",
+        },
+      ],
+    },
+  },
+});
+```

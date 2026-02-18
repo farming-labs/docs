@@ -146,3 +146,21 @@ pageActions: {
   },
 },
 ```
+
+See the full [Page Actions reference](/docs/customization/page-actions) for all options.
+
+## Ask AI
+
+Add a RAG-powered AI chat that lets users ask questions about your docs:
+
+```ts
+ai: {
+  enabled: true,
+  mode: "floating",
+  floatingStyle: "full-modal",
+  model: "gpt-4o-mini",
+  suggestedQuestions: ["How do I get started?"],
+},
+```
+
+See the full [Ask AI reference](/docs/customization/ai-chat) for all options including custom providers, labels, system prompts, and more.

@@ -1,0 +1,355 @@
+---
+title: "Ask AI"
+description: "Add a RAG-powered AI chat to your documentation"
+icon: "zap"
+---
+
+# Ask AI
+
+Add a built-in AI chat that lets users ask questions about your documentation. The AI searches relevant pages, builds context, and streams a response from any OpenAI-compatible LLM.
+
+## Quick Start
+
+```ts title="docs.config.ts"
+ai: {
+  enabled: true,
+}
+```
+
+That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt-4o-mini` by default.
+
+<Tabs items={["Next.js", "SvelteKit"]}>
+  <Tab value="Next.js">
+    Add `OPENAI_API_KEY` to your `.env` file:
+
+    ```bash title=".env"
+    OPENAI_API_KEY=sk-...
+    ```
+
+    The key is automatically read from `process.env.OPENAI_API_KEY`.
+  </Tab>
+  <Tab value="SvelteKit">
+    Add `OPENAI_API_KEY` to your `.env` file:
+
+    ```bash title=".env"
+    OPENAI_API_KEY=sk-...
+    ```
+
+    Pass it through `docs.server.ts` (SvelteKit requires server-only env access):
+
+    ```ts title="src/lib/docs.server.ts"
+    import { createDocsServer } from "@farming-labs/svelte/server";
+    import { env } from "$env/dynamic/private";
+    import config from "@/docs.config";
+
+    export const { load, GET, POST } = createDocsServer({
+      ...config,
+      ai: { apiKey: env.OPENAI_API_KEY, ...config.ai },
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Configuration Reference
+
+All options go inside the `ai` object in `docs.config.ts`:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  ai: {
+    // ... options
+  },
+});
+```
+
+### `enabled`
+
+Whether to enable AI chat functionality.
+
+| Type | Default |
+|------|---------|
+| `boolean` | `false` |
+
+```ts
+ai: {
+  enabled: true,
+}
+```
+
+### `mode`
+
+How the AI chat UI is presented.
+
+| Type | Default |
+|------|---------|
+| `"search" \| "floating"` | `"search"` |
+
+- **`"search"`** — AI tab integrated into the `Cmd+K` search dialog. Users switch between "Search" and "AI" tabs.
+- **`"floating"`** — A floating chat widget with a button on screen. Opens as a panel, modal, or full-screen overlay.
+
+```ts
+ai: {
+  enabled: true,
+  mode: "floating",
+}
+```
+
+### `position`
+
+Position of the floating chat button on screen. Only used when `mode` is `"floating"`.
+
+| Type | Default |
+|------|---------|
+| `"bottom-right" \| "bottom-left" \| "bottom-center"` | `"bottom-right"` |
+
+```ts
+ai: {
+  enabled: true,
+  mode: "floating",
+  position: "bottom-left",
+}
+```
+
+### `floatingStyle`
+
+Visual style of the floating chat when opened. Only used when `mode` is `"floating"`.
+
+| Type | Default |
+|------|---------|
+| `"panel" \| "modal" \| "popover" \| "full-modal"` | `"panel"` |
+
+- **`"panel"`** — A tall panel that slides up from the button position. No backdrop overlay.
+- **`"modal"`** — A centered modal dialog with a backdrop overlay, similar to the `Cmd+K` search dialog.
+- **`"popover"`** — A compact popover near the button. Suitable for quick questions.
+- **`"full-modal"`** — A full-screen immersive overlay. Messages scroll in the center, input is pinned at the bottom, suggested questions appear as horizontal pills.
+
+```ts
+ai: {
+  enabled: true,
+  mode: "floating",
+  floatingStyle: "full-modal",
+}
+```
+
+### `model`
+
+The LLM model to use for chat completions. Must be compatible with the OpenAI Chat Completions API.
+
+| Type | Default |
+|------|---------|
+| `string` | `"gpt-4o-mini"` |
+
+```ts
+ai: {
+  enabled: true,
+  model: "gpt-4o",
+}
+```
+
+Works with any OpenAI-compatible provider — use `baseUrl` to point to a different API.
+
+### `baseUrl`
+
+Base URL for an OpenAI-compatible API endpoint. Use this to point to a self-hosted model, Azure OpenAI, or any compatible provider.
+
+| Type | Default |
+|------|---------|
+| `string` | `"https://api.openai.com/v1"` |
+
+```ts
+ai: {
+  enabled: true,
+  model: "llama-3.1-70b-versatile",
+  baseUrl: "https://api.groq.com/openai/v1",
+}
+```
+
+### `apiKey`
+
+API key for the LLM provider. Falls back to `process.env.OPENAI_API_KEY` if not set.
+
+| Type | Default |
+|------|---------|
+| `string` | `process.env.OPENAI_API_KEY` |
+
+```ts
+ai: {
+  enabled: true,
+  apiKey: process.env.GROQ_API_KEY,
+}
+```
+
+> **Warning:** Never hardcode API keys. Always use environment variables.
+
+### `systemPrompt`
+
+Custom system prompt prepended to the AI conversation. Documentation context is automatically appended after this prompt.
+
+| Type | Default |
+|------|---------|
+| `string` | `"You are a helpful documentation assistant..."` |
+
+```ts
+ai: {
+  enabled: true,
+  systemPrompt: "You are a friendly assistant for Acme Corp. Always mention our support email for complex issues.",
+}
+```
+
+### `maxResults`
+
+Maximum number of search results to include as context for the AI. More results = more context but higher token usage.
+
+| Type | Default |
+|------|---------|
+| `number` | `5` |
+
+```ts
+ai: {
+  enabled: true,
+  maxResults: 10,
+}
+```
+
+### `suggestedQuestions`
+
+Pre-filled suggested questions shown in the AI chat when the conversation is empty. Clicking one fills the input and submits automatically.
+
+| Type | Default |
+|------|---------|
+| `string[]` | `[]` |
+
+```ts
+ai: {
+  enabled: true,
+  suggestedQuestions: [
+    "How do I get started?",
+    "What themes are available?",
+    "How do I create a custom component?",
+  ],
+}
+```
+
+### `aiLabel`
+
+Display name for the AI assistant in the chat UI. Shown as the message label and header title.
+
+| Type | Default |
+|------|---------|
+| `string` | `"AI"` |
+
+```ts
+ai: {
+  enabled: true,
+  aiLabel: "DocsBot",
+}
+```
+
+### `packageName`
+
+The npm package name used in code examples. The AI will use this in import snippets instead of generic placeholders.
+
+| Type | Default |
+|------|---------|
+| `string` | — |
+
+```ts
+ai: {
+  enabled: true,
+  packageName: "@farming-labs/docs",
+}
+```
+
+### `docsUrl`
+
+The public URL of your documentation site. The AI will use this for absolute links instead of relative paths.
+
+| Type | Default |
+|------|---------|
+| `string` | — |
+
+```ts
+ai: {
+  enabled: true,
+  docsUrl: "https://docs.farming-labs.dev",
+}
+```
+
+### `loadingComponent` (Next.js only)
+
+Custom loading indicator shown while the AI is generating a response. Receives `{ name }` (the `aiLabel` value).
+
+| Type | Default |
+|------|---------|
+| `(props: { name: string }) => ReactNode` | Built-in bouncing dots |
+
+```tsx
+ai: {
+  enabled: true,
+  aiLabel: "Sage",
+  loadingComponent: ({ name }) => (
+    <div className="flex items-center gap-2 text-sm text-zinc-400">
+      <span className="animate-pulse">🤔</span>
+      <span>{name} is thinking...</span>
+    </div>
+  ),
+}
+```
+
+### `triggerComponent` (Next.js only)
+
+Custom trigger button for the floating chat. Replaces the default sparkles button. Only used when `mode` is `"floating"`.
+
+| Type | Default |
+|------|---------|
+| `ReactNode` | Built-in sparkles button |
+
+```tsx
+ai: {
+  enabled: true,
+  mode: "floating",
+  triggerComponent: <button className="my-chat-btn">💬 Ask</button>,
+}
+```
+
+## Full Example
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  ai: {
+    enabled: true,
+    mode: "floating",
+    position: "bottom-right",
+    floatingStyle: "full-modal",
+    model: "gpt-4o-mini",
+    aiLabel: "DocsBot",
+    packageName: "@farming-labs/docs",
+    docsUrl: "https://docs.farming-labs.dev",
+    maxResults: 5,
+    suggestedQuestions: [
+      "How do I get started?",
+      "What themes are available?",
+      "How do I configure the sidebar?",
+      "How do I set up AI chat?",
+    ],
+  },
+});
+```
+
+## Using a Different LLM Provider
+
+You can use any OpenAI-compatible API by setting `baseUrl` and `model`:
+
+```ts title="docs.config.ts"
+ai: {
+  enabled: true,
+  baseUrl: "https://api.groq.com/openai/v1",
+  model: "llama-3.1-70b-versatile",
+}
+```
+
+```bash title=".env"
+OPENAI_API_KEY=gsk_...  # Groq uses the same env var name
+```
+
+Other compatible providers: OpenRouter, Together AI, Azure OpenAI, Ollama (local), any vLLM deployment.
