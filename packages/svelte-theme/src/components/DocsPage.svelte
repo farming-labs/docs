@@ -90,51 +90,55 @@
       {@render children()}
     </div>
 
-    {#if editOnGithub}
-      <div class="fd-edit-on-github">
-        <a href={editOnGithub} target="_blank" rel="noopener noreferrer">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-          </svg>
-          Edit on GitHub
-        </a>
-        {#if lastModified}
-          <span class="fd-last-modified">Last updated: {lastModified}</span>
-        {/if}
-      </div>
-    {/if}
+    <footer class="fd-page-footer">
+      {#if editOnGithub || lastModified}
+        <div class="fd-edit-on-github">
+          {#if editOnGithub}
+            <a href={editOnGithub} target="_blank" rel="noopener noreferrer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+              Edit on GitHub
+            </a>
+          {/if}
+          {#if lastModified}
+            <span class="fd-last-modified">Last updated: {lastModified}</span>
+          {/if}
+        </div>
+      {/if}
 
-    {#if previousPage || nextPage}
-      <nav class="fd-page-nav" aria-label="Page navigation">
-        {#if previousPage}
-          <a href={previousPage.url} class="fd-page-nav-card fd-page-nav-prev">
-            <span class="fd-page-nav-label">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-              Previous
-            </span>
-            <span class="fd-page-nav-title">{previousPage.name}</span>
-          </a>
-        {:else}
-          <div></div>
-        {/if}
-        {#if nextPage}
-          <a href={nextPage.url} class="fd-page-nav-card fd-page-nav-next">
-            <span class="fd-page-nav-label">
-              Next
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </span>
-            <span class="fd-page-nav-title">{nextPage.name}</span>
-          </a>
-        {:else}
-          <div></div>
-        {/if}
-      </nav>
-    {/if}
+      {#if previousPage || nextPage}
+        <nav class="fd-page-nav" aria-label="Page navigation">
+          {#if previousPage}
+            <a href={previousPage.url} class="fd-page-nav-card fd-page-nav-prev">
+              <span class="fd-page-nav-label">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+                Previous
+              </span>
+              <span class="fd-page-nav-title">{previousPage.name}</span>
+            </a>
+          {:else}
+            <div></div>
+          {/if}
+          {#if nextPage}
+            <a href={nextPage.url} class="fd-page-nav-card fd-page-nav-next">
+              <span class="fd-page-nav-label">
+                Next
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </span>
+              <span class="fd-page-nav-title">{nextPage.name}</span>
+            </a>
+          {:else}
+            <div></div>
+          {/if}
+        </nav>
+      {/if}
+    </footer>
   </article>
 
   {#if tocEnabled}

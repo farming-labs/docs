@@ -1,0 +1,206 @@
+/* @farming-labs/svelte-theme — darksharp theme overrides
+ * All-black, sharp edges, zero-radius look.
+ * Applied on top of docs.css base styles.
+ */
+
+/* ─── Color overrides (light) ─────────────────────────────────────── */
+
+:root {
+  --color-fd-background: oklch(1 0 0);
+  --color-fd-foreground: oklch(0.147 0.004 49.25);
+  --color-fd-card: oklch(1 0 0);
+  --color-fd-card-foreground: oklch(0.147 0.004 49.25);
+  --color-fd-popover: oklch(1 0 0);
+  --color-fd-popover-foreground: oklch(0.147 0.004 49.25);
+  --color-fd-primary: oklch(0.216 0.006 56.043);
+  --color-fd-primary-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-secondary: oklch(0.97 0.001 106.424);
+  --color-fd-secondary-foreground: oklch(0.216 0.006 56.043);
+  --color-fd-muted: oklch(0.97 0.001 106.424);
+  --color-fd-muted-foreground: oklch(0.553 0.013 58.071);
+  --color-fd-accent: oklch(0.97 0.001 106.424);
+  --color-fd-accent-foreground: oklch(0.216 0.006 56.043);
+  --color-fd-border: oklch(0.923 0.003 48.717);
+  --color-fd-ring: oklch(0.709 0.01 56.259);
+}
+
+/* ─── Color overrides (dark) ──────────────────────────────────────── */
+
+.dark {
+  --color-fd-background: hsl(0 0% 0%);
+  --color-fd-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-card: hsl(0 0% 0%);
+  --color-fd-card-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-popover: hsl(0 0% 6%);
+  --color-fd-popover-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-primary: oklch(0.985 0.001 106.423);
+  --color-fd-primary-foreground: oklch(0.216 0.006 56.043);
+  --color-fd-secondary: hsl(0 0% 10%);
+  --color-fd-secondary-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-muted: hsl(0 0% 10%);
+  --color-fd-muted-foreground: hsl(0 0% 55%);
+  --color-fd-accent: hsl(0 0% 12%);
+  --color-fd-accent-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-border: hsl(0 0% 14%);
+  --color-fd-ring: hsl(0 0% 30%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Sharp radius — override all rounded utilities
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-sidebar,
+.fd-nav,
+.fd-card,
+.fd-callout,
+.fd-code-block,
+.fd-search-dialog,
+.fd-toc,
+[class*="rounded-lg"] {
+  border-radius: 0.2rem !important;
+}
+
+[class*="rounded-md"] {
+  border-radius: 0.1rem !important;
+}
+
+[class*="rounded-xl"],
+[class*="rounded-2xl"] {
+  border-radius: 0.2rem !important;
+}
+
+/* ─── Tables ──────────────────────────────────────────────────────── */
+
+table {
+  border-radius: 0 !important;
+  border-collapse: collapse;
+}
+
+.dark th {
+  background: hsl(0 0% 8%);
+  color: hsl(0 0% 80%);
+  font-weight: 500;
+}
+
+.dark td {
+  background: hsl(0 0% 2%);
+}
+
+.dark tr {
+  border-color: hsl(0 0% 14%);
+}
+
+/* ─── Code blocks ─────────────────────────────────────────────────── */
+
+.fd-code-block,
+.fd-code-block pre {
+  border-radius: 0.2rem !important;
+}
+
+.fd-code-block button {
+  border-radius: 0.1rem !important;
+}
+
+/* ─── Inline code ─────────────────────────────────────────────────── */
+
+code:not(pre code) {
+  border-radius: 0.1rem !important;
+}
+
+.dark code:not(pre code) {
+  background: hsl(0 0% 10%);
+  border: 1px solid hsl(0 0% 16%);
+  color: hsl(0 0% 85%);
+}
+
+/* ─── Callouts ────────────────────────────────────────────────────── */
+
+.dark .fd-card,
+.dark .fd-callout {
+  border-color: hsl(0 0% 14%);
+}
+
+/* ─── Selection ───────────────────────────────────────────────────── */
+
+::selection {
+  background: var(--color-fd-foreground);
+  color: var(--color-fd-background);
+}
+
+/* ─── Sidebar (dark) ──────────────────────────────────────────────── */
+
+.dark .fd-sidebar {
+  background: hsl(0 0% 0%);
+  border-color: hsl(0 0% 12%);
+}
+
+.dark .fd-sidebar a[data-active="true"] {
+  background: hsl(0 0% 14%) !important;
+  color: hsl(0 0% 96%) !important;
+}
+
+.dark .fd-sidebar a:hover {
+  background: hsl(0 0% 10%);
+  color: hsl(0 0% 90%);
+}
+
+/* ─── TOC ─────────────────────────────────────────────────────────── */
+
+.dark .fd-toc {
+  border-color: hsl(0 0% 12%);
+}
+
+/* ─── Separator ───────────────────────────────────────────────────── */
+
+.dark hr {
+  border-color: hsl(0 0% 14%);
+}
+
+/* ─── Nav cards (prev/next) ───────────────────────────────────────── */
+
+.dark .fd-nav-card {
+  border-color: hsl(0 0% 14%);
+}
+
+.dark .fd-nav-card:hover {
+  background: hsl(0 0% 8%);
+  border-color: hsl(0 0% 20%);
+}
+
+/* ─── Search dialog ───────────────────────────────────────────────── */
+
+.fd-search-dialog {
+  border-radius: 0.2rem !important;
+}
+
+/* ─── AI Chat (sharp edges) ───────────────────────────────────────── */
+
+.fd-ai-dialog,
+.fd-ai-bubble-user,
+.fd-ai-bubble-ai,
+.fd-ai-input-wrap,
+.fd-ai-send-btn,
+.fd-ai-close-btn,
+.fd-ai-floating-btn,
+.fd-ai-suggestion,
+.fd-ai-result,
+.fd-ai-esc,
+.fd-ai-clear-btn,
+.fd-ai-fm-input-container,
+.fd-ai-fm-send-btn,
+.fd-ai-fm-close-btn,
+.fd-ai-fm-suggestion,
+.fd-ai-fm-trigger-btn,
+.fd-ai-code-block,
+.fd-ai-code-copy {
+  border-radius: 2px !important;
+}
+
+.fd-ai-floating-btn:hover {
+  box-shadow: 0 0 0 1px var(--color-fd-ring);
+  transform: none;
+}
+
+.fd-ai-fm-trigger-btn:hover {
+  transform: none;
+}

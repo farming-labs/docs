@@ -26,7 +26,9 @@
     "./css": "./styles/docs.css",
     "./fumadocs/css": "./styles/docs.css",
     "./styles/pixel-border.css": "./styles/pixel-border.css",
-    "./pixel-border/css": "./styles/pixel-border-bundle.css"
+    "./styles/darksharp.css": "./styles/darksharp.css",
+    "./pixel-border/css": "./styles/pixel-border-bundle.css",
+    "./darksharp/css": "./styles/darksharp-bundle.css"
   },
   "files": [
     "src",

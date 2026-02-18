@@ -409,6 +409,9 @@ code, kbd, pre, samp {
 .fd-page-article {
   min-width: 0;
   padding: 32px 48px 64px;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - var(--fd-nav-height, 56px));
 }
 
 /* ─── Table of Contents (right column, flush to right edge) ──────────── */
@@ -673,6 +676,7 @@ code, kbd, pre, samp {
   color: var(--color-fd-foreground);
   line-height: 1.75;
   font-size: 15px;
+  flex: 1;
 }
 
 .fd-page-body a {
@@ -1088,6 +1092,11 @@ html.dark pre.shiki {
 
 /* ─── Edit on GitHub ────────────────────────────────────────────────── */
 
+.fd-page-footer {
+  margin-top: auto;
+  padding-top: 16px;
+}
+
 .fd-edit-on-github {
   display: flex;
   align-items: center;
@@ -1212,8 +1221,9 @@ html.dark pre.shiki {
   position: fixed;
   inset: 0;
   z-index: 9998;
-  background: color-mix(in srgb, var(--color-fd-background) 70%, transparent);
-  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   animation: fd-ai-fade-in 150ms ease-out;
 }
 
@@ -1225,7 +1235,9 @@ html.dark pre.shiki {
   background: var(--color-fd-popover);
   border: 1px solid var(--color-fd-border);
   border-radius: 12px;
-  box-shadow: 0 20px 60px color-mix(in srgb, var(--color-fd-background) 60%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-fd-foreground) 5%, transparent),
+    0 16px 48px -8px rgba(0, 0, 0, 0.35);
   overflow: hidden;
   color: var(--color-fd-foreground);
   font-family: var(--fd-font-sans, system-ui, -apple-system, sans-serif);
@@ -1233,47 +1245,61 @@ html.dark pre.shiki {
 
 .fd-ai-tab-bar {
   display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 10px 12px 0;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
   border-bottom: 1px solid var(--color-fd-border);
+  background: var(--color-fd-card);
 }
 
 .fd-ai-tab {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 8px 14px;
+  padding: 10px 20px;
   font-size: 13px;
   font-weight: 500;
   border: none;
-  border-radius: 8px 8px 0 0;
+  border-bottom: 2px solid transparent;
   cursor: pointer;
-  transition: all 150ms;
+  transition: color 150ms, border-color 150ms, background-color 150ms;
   background: transparent;
   color: var(--color-fd-muted-foreground);
-  border-bottom: 2px solid transparent;
   font-family: inherit;
+  margin-bottom: -1px;
+  position: relative;
+}
+
+.fd-ai-tab svg {
+  opacity: 0.7;
+  flex-shrink: 0;
 }
 
 .fd-ai-tab[data-active="true"] {
-  background: var(--color-fd-accent);
   color: var(--color-fd-foreground);
   border-bottom-color: var(--color-fd-primary);
+  background: transparent;
+}
+
+.fd-ai-tab[data-active="true"] svg {
+  opacity: 1;
 }
 
 .fd-ai-tab:hover:not([data-active="true"]) {
   color: var(--color-fd-foreground);
+  background: var(--color-fd-accent);
 }
 
 .fd-ai-esc {
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
   border: 1px solid var(--color-fd-border);
-  font-size: 10px;
-  font-family: inherit;
-  margin-right: 4px;
+  font-size: 11px;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
   color: var(--color-fd-muted-foreground);
+  background: var(--color-fd-secondary);
+  line-height: 1.4;
 }
 
 /* ─── Header ─────────────────────────────────────────────────── */
@@ -1320,6 +1346,11 @@ html.dark pre.shiki {
   color: var(--color-fd-muted-foreground);
 }
 
+.fd-ai-search-wrap svg {
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
 .fd-ai-input {
   flex: 1;
   background: transparent;
@@ -1330,10 +1361,15 @@ html.dark pre.shiki {
   font-family: inherit;
 }
 
+.fd-ai-input::placeholder {
+  color: var(--color-fd-muted-foreground);
+  opacity: 0.7;
+}
+
 .fd-ai-results {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 8px;
+  padding: 8px;
   max-height: 360px;
 }
 
@@ -1347,23 +1383,34 @@ html.dark pre.shiki {
   border-radius: 8px;
   cursor: pointer;
   text-align: left;
-  font-size: 13px;
+  font-size: 14px;
   font-family: inherit;
-  transition: background 100ms;
+  transition: background 100ms, color 100ms;
+  color: var(--color-fd-foreground);
   background: transparent;
   color: var(--color-fd-foreground);
 }
 
+.fd-ai-result svg {
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
 .fd-ai-result[data-active="true"] {
   background: var(--color-fd-accent);
-  color: var(--color-fd-accent-foreground);
+  color: var(--color-fd-foreground);
+}
+
+.fd-ai-result[data-active="true"] svg {
+  opacity: 1;
 }
 
 .fd-ai-result-empty {
-  padding: 32px 16px;
+  padding: 48px 16px;
   text-align: center;
   color: var(--color-fd-muted-foreground);
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .fd-ai-messages {

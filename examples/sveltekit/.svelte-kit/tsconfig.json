@@ -7,9 +7,6 @@
 			"$content/*": [
 				"../src/content/*"
 			],
-			"@/docs.config": [
-				"../docs.config.ts"
-			],
 			"$lib": [
 				"../src/lib"
 			],

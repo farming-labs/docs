@@ -14,18 +14,60 @@ export interface TemplateConfig {
   framework?: "nextjs" | "sveltekit";
 }
 
+interface ThemeInfo {
+  /** Factory function name, e.g. "fumadocs", "darksharp", "pixelBorder" */
+  factory: string;
+  /** Sub-path import, e.g. "@farming-labs/theme" or "@farming-labs/theme/darksharp" */
+  nextImport: string;
+  /** Sub-path import, e.g. "@farming-labs/svelte-theme" or "@farming-labs/svelte-theme/darksharp" */
+  svelteImport: string;
+  /** CSS sub-path for Next.js, e.g. "theme/css" or "theme/darksharp/css" */
+  nextCssImport: string;
+  /** CSS sub-path for SvelteKit */
+  svelteCssTheme: string;
+}
+
+const THEME_INFO: Record<string, ThemeInfo> = {
+  fumadocs: {
+    factory: "fumadocs",
+    nextImport: "@farming-labs/theme",
+    svelteImport: "@farming-labs/svelte-theme",
+    nextCssImport: "default",
+    svelteCssTheme: "fumadocs",
+  },
+  darksharp: {
+    factory: "darksharp",
+    nextImport: "@farming-labs/theme/darksharp",
+    svelteImport: "@farming-labs/svelte-theme/darksharp",
+    nextCssImport: "darksharp",
+    svelteCssTheme: "darksharp",
+  },
+  "pixel-border": {
+    factory: "pixelBorder",
+    nextImport: "@farming-labs/theme/pixel-border",
+    svelteImport: "@farming-labs/svelte-theme/pixel-border",
+    nextCssImport: "pixel-border",
+    svelteCssTheme: "pixel-border",
+  },
+};
+
+function getThemeInfo(theme: string): ThemeInfo {
+  return THEME_INFO[theme] ?? THEME_INFO.fumadocs;
+}
+
 // ---------------------------------------------------------------------------
 // docs.config.ts
 // ---------------------------------------------------------------------------
 
 export function docsConfigTemplate(cfg: TemplateConfig): string {
+  const t = getThemeInfo(cfg.theme);
   return `\
 import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/theme";
+import { ${t.factory} } from "${t.nextImport}";
 
 export default defineDocs({
   entry: "${cfg.entry}",
-  theme: fumadocs({
+  theme: ${t.factory}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -152,9 +194,10 @@ export default function RootLayout({
 // ---------------------------------------------------------------------------
 
 export function globalCssTemplate(theme: string): string {
+  const t = getThemeInfo(theme);
   return `\
 @import "tailwindcss";
-@import "@farming-labs/${theme}/css";
+@import "@farming-labs/theme/${t.nextCssImport}/css";
 `;
 }
 
@@ -166,8 +209,10 @@ export function injectCssImport(
   existingContent: string,
   theme: string,
 ): string | null {
-  const importLine = `@import "@farming-labs/${theme}/css";`;
+  const t = getThemeInfo(theme);
+  const importLine = `@import "@farming-labs/theme/${t.nextCssImport}/css";`;
   if (existingContent.includes(importLine)) return null;
+  if (existingContent.includes("@farming-labs/theme/") && existingContent.includes("/css")) return null;
   // Append after the last @import (or at the end)
   const lines = existingContent.split("\n");
   const lastImportIdx = lines.reduce(
@@ -284,6 +329,7 @@ Start by reading the [Installation](/${cfg.entry}/installation) guide, then foll
 }
 
 export function installationPageTemplate(cfg: TemplateConfig): string {
+  const t = getThemeInfo(cfg.theme);
   return `\
 ---
 title: "Installation"
@@ -310,11 +356,11 @@ Your project includes a \`docs.config.ts\` at the root:
 
 \`\`\`ts
 import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/theme";
+import { ${t.factory} } from "${t.nextImport}";
 
 export default defineDocs({
   entry: "${cfg.entry}",
-  theme: fumadocs({
+  theme: ${t.factory}({
     ui: { colors: { primary: "#6366f1" } },
   }),
 });
@@ -342,6 +388,7 @@ Head to the [Quickstart](/${cfg.entry}/quickstart) guide to start writing your f
 }
 
 export function quickstartPageTemplate(cfg: TemplateConfig): string {
+  const t = getThemeInfo(cfg.theme);
   return `\
 ---
 title: "Quickstart"
@@ -404,7 +451,7 @@ console.log(greet("World"));
 Edit \`docs.config.ts\` to change colors, typography, and component defaults:
 
 \`\`\`ts
-theme: fumadocs({
+theme: ${t.factory}({
   ui: {
     colors: { primary: "#22c55e" },
   },
@@ -428,14 +475,15 @@ Deploy to Vercel, Netlify, or any Node.js hosting platform.
 // ---------------------------------------------------------------------------
 
 export function svelteDocsConfigTemplate(cfg: TemplateConfig): string {
+  const t = getThemeInfo(cfg.theme);
   return `\
 import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/svelte-theme";
+import { ${t.factory} } from "${t.svelteImport}";
 
 export default defineDocs({
   entry: "${cfg.entry}",
   contentDir: "${cfg.entry}",
-  theme: fumadocs({
+  theme: ${t.factory}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -459,7 +507,7 @@ export default defineDocs({
 export function svelteDocsServerTemplate(cfg: TemplateConfig): string {
   return `\
 import { createDocsServer } from "@farming-labs/svelte/server";
-import config from "../../docs.config.js";
+import config from "$lib/docs.config.js";
 
 export const { load, GET, POST } = createDocsServer(config);
 `;
@@ -469,7 +517,7 @@ export function svelteDocsLayoutTemplate(cfg: TemplateConfig): string {
   return `\
 <script>
   import { DocsLayout } from "@farming-labs/svelte-theme";
-  import config from "../../../docs.config.js";
+  import config from "$lib/docs.config.js";
 
   let { data, children } = $props();
 </script>
@@ -490,7 +538,7 @@ export function svelteDocsPageTemplate(cfg: TemplateConfig): string {
   return `\
 <script>
   import { DocsContent } from "@farming-labs/svelte-theme";
-  import config from "../../../../docs.config.js";
+  import config from "$lib/docs.config.js";
 
   let { data } = $props();
 </script>
@@ -579,6 +627,7 @@ Start by reading the [Installation](/${cfg.entry}/installation) guide, then foll
 }
 
 export function svelteInstallationPageTemplate(cfg: TemplateConfig): string {
+  const t = getThemeInfo(cfg.theme);
   return `\
 ---
 title: "Installation"
@@ -602,16 +651,16 @@ pnpm add @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme
 
 ## Configuration
 
-Your project includes a \`docs.config.ts\` at the root:
+Your project includes a \`docs.config.ts\` in \`src/lib/\`:
 
-\`\`\`ts title="docs.config.ts"
+\`\`\`ts title="src/lib/docs.config.ts"
 import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/svelte-theme";
+import { ${t.factory} } from "${t.svelteImport}";
 
 export default defineDocs({
   entry: "${cfg.entry}",
   contentDir: "${cfg.entry}",
-  theme: fumadocs({
+  theme: ${t.factory}({
     ui: { colors: { primary: "#6366f1" } },
   }),
 });
@@ -628,6 +677,7 @@ ${cfg.entry}/                   # Markdown content
     page.md                    # /${cfg.entry}/quickstart
 src/
   lib/
+    docs.config.ts             # Docs configuration
     docs.server.ts             # Server-side docs loader
   routes/
     ${cfg.entry}/
@@ -635,7 +685,6 @@ src/
       +layout.server.js        # Layout data loader
       [...slug]/
         +page.svelte           # Dynamic doc page
-docs.config.ts                 # Docs configuration
 \`\`\`
 
 ## What's Next?
@@ -645,6 +694,7 @@ Head to the [Quickstart](/${cfg.entry}/quickstart) guide to start writing your f
 }
 
 export function svelteQuickstartPageTemplate(cfg: TemplateConfig): string {
+  const t = getThemeInfo(cfg.theme);
   return `\
 ---
 title: "Quickstart"
@@ -692,10 +742,10 @@ console.log(greet("World"));
 
 ## Customizing the Theme
 
-Edit \`docs.config.ts\` to change colors, typography, and component defaults:
+Edit \`src/lib/docs.config.ts\` to change colors, typography, and component defaults:
 
-\`\`\`ts title="docs.config.ts"
-theme: fumadocs({
+\`\`\`ts title="src/lib/docs.config.ts"
+theme: ${t.factory}({
   ui: {
     colors: { primary: "#22c55e" },
   },

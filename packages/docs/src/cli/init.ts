@@ -90,27 +90,23 @@ export async function init() {
   // Step 2: Theme selection
   // -----------------------------------------------------------------------
 
-  const themeOptions =
-    framework === "sveltekit"
-      ? [
-          {
-            value: "default",
-            label: "Default",
-            hint: "Clean, modern docs theme with sidebar, search, and dark mode",
-          },
-          {
-            value: "pixel-border",
-            label: "Pixel Border",
-            hint: "Sharp pixel-art inspired theme with monospace text",
-          },
-        ]
-      : [
-          {
-            value: "fumadocs",
-            label: "Fumadocs",
-            hint: "Clean, modern docs theme with sidebar, search, and dark mode",
-          },
-        ];
+  const themeOptions = [
+    {
+      value: "fumadocs",
+      label: "Fumadocs (Default)",
+      hint: "Clean, modern docs theme with sidebar, search, and dark mode",
+    },
+    {
+      value: "darksharp",
+      label: "Darksharp",
+      hint: "All-black, sharp edges, zero-radius look",
+    },
+    {
+      value: "pixel-border",
+      label: "Pixel Border",
+      hint: "Rounded borders, pixel-perfect spacing, refined sidebar",
+    },
+  ];
 
   const theme = await p.select({
     message: "Which theme would you like to use?",
@@ -443,7 +439,7 @@ function scaffoldSvelteKit(
   skipped: string[],
   written: string[],
 ) {
-  write("docs.config.ts", svelteDocsConfigTemplate(cfg));
+  write("src/lib/docs.config.ts", svelteDocsConfigTemplate(cfg));
 
   write("src/lib/docs.server.ts", svelteDocsServerTemplate(cfg));
   write(
@@ -473,9 +469,10 @@ function scaffoldSvelteKit(
   const existingGlobalCss = readFileSafe(globalCssAbsPath);
 
   const themeMapping: Record<string, string> = {
-    default: "fumadocs",
-    "pixel-border": "pixel-border",
     fumadocs: "fumadocs",
+    darksharp: "darksharp",
+    "pixel-border": "pixel-border",
+    default: "fumadocs",
   };
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";
 
