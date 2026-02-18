@@ -28,14 +28,14 @@ The CLI will:
 ### 1. Install packages
 
 ```bash
-pnpm add @farming-labs/docs @farming-labs/fumadocs @farming-labs/next
+pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/next
 ```
 
 ### 2. Create `docs.config.tsx`
 
 ```tsx title="docs.config.tsx"
 import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/fumadocs";
+import { fumadocs } from "@farming-labs/theme";
 
 export default defineDocs({
   entry: "docs",
@@ -58,7 +58,7 @@ export default withDocs({});
 
 ```css title="app/global.css"
 @import "tailwindcss";
-@import "@farming-labs/fumadocs/default/css";
+@import "@farming-labs/theme/default/css";
 ```
 
 ### 5. Write your first doc

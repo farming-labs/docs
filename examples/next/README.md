@@ -1,6 +1,6 @@
 # Next.js Example
 
-Example docs site using `@farming-labs/docs` with `@farming-labs/fumadocs`.
+Example docs site using `@farming-labs/docs` with `@farming-labs/theme`.
 
 ## Run
 

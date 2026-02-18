@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@farming-labs/docs": "workspace:*",
-    "@farming-labs/fumadocs": "workspace:*",
+    "@farming-labs/theme": "workspace:*",
     "@farming-labs/next": "workspace:*",
     "clsx": "^2.1.1",
     "lucide-react": "^0.564.0",

@@ -35,6 +35,8 @@ interface DocsPageClientProps {
   githubBranch?: string;
   /** Subdirectory in the repo where the docs site lives (for monorepos) */
   githubDirectory?: string;
+  /** Map of pathname → formatted last-modified date string */
+  lastModifiedMap?: Record<string, string>;
   children: ReactNode;
 }
 
@@ -127,6 +129,7 @@ export function DocsPageClient({
   githubUrl,
   githubBranch = "main",
   githubDirectory,
+  lastModifiedMap,
   children,
 }: DocsPageClientProps) {
   const [toc, setToc] = useState<TOCItem[]>([]);
@@ -157,6 +160,11 @@ export function DocsPageClient({
     ? buildGithubFileUrl(githubUrl, githubBranch, pathname, githubDirectory)
     : undefined;
 
+  const normalizedPath = pathname.replace(/\/$/, "") || "/";
+  const lastModified = lastModifiedMap?.[normalizedPath];
+
+  const showFooter = githubFileUrl || lastModified;
+
   return (
     <DocsPage
       toc={toc}
@@ -178,9 +186,14 @@ export function DocsPageClient({
         style={{ display: "flex", flexDirection: "column" }}
       >
         <div style={{ flex: 1 }}>{children}</div>
-        {githubFileUrl && (
-          <div className="not-prose" style={{ marginTop: "auto", paddingTop: "1.5rem" }}>
-            <EditOnGitHub href={githubFileUrl} />
+        {showFooter && (
+          <div className="not-prose fd-page-footer">
+            {githubFileUrl && <EditOnGitHub href={githubFileUrl} />}
+            {lastModified && (
+              <span className="fd-last-updated">
+                Last updated: {lastModified}
+              </span>
+            )}
           </div>
         )}
       </DocsBody>

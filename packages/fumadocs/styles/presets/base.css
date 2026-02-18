@@ -1,12 +1,12 @@
 /*
- * @farming-labs/fumadocs — Base-only preset (no color palette)
+ * @farming-labs/theme — Base-only preset (no color palette)
  *
  * Bundles only the fumadocs-ui core preset + shared base styles,
  * without any color palette. Use this when you want to define all
  * CSS variables (colors, radius, etc.) from scratch.
  *
  * Usage in your theme CSS:
- *   @import "@farming-labs/fumadocs/presets/base";
+ *   @import "@farming-labs/theme/presets/base";
  *
  * Then define ALL required CSS variables (:root / .dark) yourself.
  */

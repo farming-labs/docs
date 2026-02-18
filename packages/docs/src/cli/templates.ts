@@ -19,7 +19,7 @@ export interface TemplateConfig {
 export function docsConfigTemplate(cfg: TemplateConfig): string {
   return `\
 import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/fumadocs";
+import { fumadocs } from "@farming-labs/theme";
 
 export default defineDocs({
   entry: "${cfg.entry}",
@@ -117,7 +117,7 @@ export function rootLayoutTemplate(globalCssRelPath = "app/globals.css"): string
 
   return `\
 import type { Metadata } from "next";
-import { RootProvider } from "@farming-labs/fumadocs";
+import { RootProvider } from "@farming-labs/theme";
 import docsConfig from "@/docs.config";
 import "${cssImport}";
 
@@ -187,7 +187,7 @@ export function injectCssImport(
 export function docsLayoutTemplate(): string {
   return `\
 import docsConfig from "@/docs.config";
-import { createDocsLayout } from "@farming-labs/fumadocs";
+import { createDocsLayout } from "@farming-labs/theme";
 
 export default createDocsLayout(docsConfig);
 `;
@@ -308,7 +308,7 @@ Your project includes a \`docs.config.ts\` at the root:
 
 \`\`\`ts
 import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/fumadocs";
+import { fumadocs } from "@farming-labs/theme";
 
 export default defineDocs({
   entry: "${cfg.entry}",

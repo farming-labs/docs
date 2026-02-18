@@ -130,6 +130,48 @@ function buildTree(config: DocsConfig) {
   return { name: "Docs", children: rootChildren };
 }
 
+// ─── Last Modified Map ───────────────────────────────────────────────
+
+/**
+ * Scan all page.mdx files under the docs entry directory and build
+ * a map of URL pathname → formatted last-modified date string.
+ */
+function buildLastModifiedMap(entry: string): Record<string, string> {
+  const docsDir = path.join(process.cwd(), "app", entry);
+  const map: Record<string, string> = {};
+
+  function formatDate(date: Date): string {
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+
+  function scan(dir: string, slugParts: string[]) {
+    if (!fs.existsSync(dir)) return;
+
+    const pagePath = path.join(dir, "page.mdx");
+    if (fs.existsSync(pagePath)) {
+      const url = slugParts.length === 0
+        ? `/${entry}`
+        : `/${entry}/${slugParts.join("/")}`;
+      const stat = fs.statSync(pagePath);
+      map[url] = formatDate(stat.mtime);
+    }
+
+    for (const name of fs.readdirSync(dir)) {
+      const full = path.join(dir, name);
+      if (fs.statSync(full).isDirectory()) {
+        scan(full, [...slugParts, name]);
+      }
+    }
+  }
+
+  scan(docsDir, []);
+  return map;
+}
+
 // ─── createDocsMetadata ──────────────────────────────────────────────
 
 /**
@@ -356,6 +398,9 @@ export function createDocsLayout(config: DocsConfig) {
     ? serializeIcon(aiConfig.loadingComponent({ name: aiLabel || "AI" }))
     : undefined;
 
+  // Build last-modified map by scanning all page.mdx files
+  const lastModifiedMap = buildLastModifiedMap(config.entry);
+
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     return (
       <DocsLayout
@@ -389,6 +434,7 @@ export function createDocsLayout(config: DocsConfig) {
           githubUrl={githubUrl}
           githubBranch={githubBranch}
           githubDirectory={githubDirectory}
+          lastModifiedMap={lastModifiedMap}
         >
           {children}
         </DocsPageClient>

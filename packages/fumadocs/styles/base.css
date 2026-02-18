@@ -1,7 +1,7 @@
 /* AI Chat & Search Dialog styles */
 @import "./ai.css";
 
-/* Shared base styles for all @farming-labs/fumadocs themes.
+/* Shared base styles for all @farming-labs/theme themes.
  *
  * Typography CSS custom properties:
  *   --fd-font-sans   — sans-serif font family
@@ -265,3 +265,34 @@ figure.shiki pre > code > [data-line] {
 .fd-page-action-menu-label {
   flex: 1;
 }
+
+/* ─── Page Footer (Edit on GitHub + Last Updated) ──────────────────── */
+
+.fd-page-footer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: auto;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-fd-border, hsl(0 0% 80% / 50%));
+  font-size: 0.8125rem;
+}
+
+.fd-last-updated {
+  color: var(--color-fd-muted-foreground, hsl(0 0% 45%));
+  font-size: 0.75rem;
+}
+
+/* ─── Code block copy button: show on hover ────────────────────────── */
+
+figure.shiki > button,
+figure.shiki > div:first-child button {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+figure.shiki:hover > button,
+figure.shiki:hover > div:first-child button {
+  opacity: 1;
+}
+

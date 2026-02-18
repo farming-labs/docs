@@ -264,7 +264,7 @@ export async function init() {
 
   try {
     // Runtime deps
-    exec(`${installCommand(pm)} @farming-labs/docs @farming-labs/next @farming-labs/fumadocs`, cwd);
+    exec(`${installCommand(pm)} @farming-labs/docs @farming-labs/next @farming-labs/theme`, cwd);
 
     // Dev deps (Tailwind + types)
     const devDeps = [

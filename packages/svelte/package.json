@@ -1,0 +1,45 @@
+{
+  "name": "@farming-labs/svelte",
+  "version": "0.0.1",
+  "description": "SvelteKit adapter for @farming-labs/docs — content loading and navigation utilities",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js",
+      "default": "./dist/config.js"
+    },
+    "./content": {
+      "types": "./dist/content.d.ts",
+      "import": "./dist/content.js",
+      "default": "./dist/content.js"
+    }
+  },
+  "files": ["dist"],
+  "keywords": ["docs", "svelte", "sveltekit", "documentation"],
+  "author": "Farming Labs",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3"
+  },
+  "devDependencies": {
+    "@farming-labs/docs": "workspace:*",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "@farming-labs/docs": "*"
+  }
+}

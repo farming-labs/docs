@@ -12,7 +12,7 @@ The default Fumadocs theme with a neutral color palette and standard border radi
 
 ```tsx title="docs.config.tsx"
 import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/fumadocs";
+import { fumadocs } from "@farming-labs/theme";
 
 export default defineDocs({
   entry: "docs",
@@ -22,7 +22,7 @@ export default defineDocs({
 
 ```css title="app/global.css"
 @import "tailwindcss";
-@import "@farming-labs/fumadocs/default/css";
+@import "@farming-labs/theme/default/css";
 ```
 
 ## Defaults

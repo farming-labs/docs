@@ -1,7 +1,7 @@
 /**
  * @deprecated — Import theme presets from sub-paths instead:
- *   `@farming-labs/fumadocs/default`   → fumadocs()
- *   `@farming-labs/fumadocs/darksharp` → darksharp()
+ *   `@farming-labs/theme/default`   → fumadocs()
+ *   `@farming-labs/theme/darksharp` → darksharp()
  *
  * This file re-exports from `./default` for backward compatibility.
  */

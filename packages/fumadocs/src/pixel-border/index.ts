@@ -1,5 +1,5 @@
 /**
- * @farming-labs/fumadocs/pixel-border
+ * @farming-labs/theme/pixel-border
  *
  * Inspired by better-auth.com — clean dark UI with visible rounded borders,
  * pixel-perfect spacing, and a refined sidebar.
@@ -12,7 +12,7 @@ import type { DocsTheme } from "@farming-labs/docs";
  *
  * Theme authors can import and extend:
  * ```ts
- * import { PixelBorderUIDefaults } from "@farming-labs/fumadocs/pixel-border";
+ * import { PixelBorderUIDefaults } from "@farming-labs/theme/pixel-border";
  * ```
  */
 const PixelBorderUIDefaults = {
@@ -53,7 +53,7 @@ const PixelBorderUIDefaults = {
  *
  * @example
  * ```ts
- * import { pixelBorder } from "@farming-labs/fumadocs/pixel-border";
+ * import { pixelBorder } from "@farming-labs/theme/pixel-border";
  * export default defineDocs({ theme: pixelBorder() });
  * ```
  */

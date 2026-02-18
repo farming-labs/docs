@@ -2,5 +2,7 @@ packages:
   - "packages/docs"
   - "packages/next"
   - "packages/fumadocs"
+  - "packages/svelte"
+  - "packages/svelte-theme"
   - "examples/*"
   - "website"

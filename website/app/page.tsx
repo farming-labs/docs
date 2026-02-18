@@ -158,7 +158,7 @@ function InstallSection() {
               title="Terminal"
               filename="shell"
               language="bash"
-              code="pnpm add @farming-labs/docs @farming-labs/fumadocs @farming-labs/next"
+              code="pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/next"
             />
 
             <div className="flex items-start gap-4">
@@ -178,7 +178,7 @@ function InstallSection() {
               title="Config"
               filename="docs.config.tsx"
               code={`import { defineDocs } from "@farming-labs/docs";
-import { pixelBorder } from "@farming-labs/fumadocs/pixel-border";
+import { pixelBorder } from "@farming-labs/theme/pixel-border";
 
 export default defineDocs({
   entry: "docs",
@@ -260,19 +260,19 @@ function ThemesSection() {
     {
       name: "Default",
       description: "Clean, neutral palette with standard border radius",
-      import: '@import "@farming-labs/fumadocs/default/css";',
+      import: '@import "@farming-labs/theme/default/css";',
       colors: ["#6366f1", "#ffffff", "#64748b", "#e5e7eb"],
     },
     {
       name: "Darksharp",
       description: "All-black, sharp corners, no rounded edges",
-      import: '@import "@farming-labs/fumadocs/darksharp/css";',
+      import: '@import "@farming-labs/theme/darksharp/css";',
       colors: ["#fafaf9", "#000000", "#a8a29e", "#262626"],
     },
     {
       name: "Pixel Border",
       description: "Inspired by better-auth.com — refined dark UI",
-      import: '@import "@farming-labs/fumadocs/pixel-border/css";',
+      import: '@import "@farming-labs/theme/pixel-border/css";',
       colors: ["#fafaf9", "#050505", "#8c8c8c", "#262626"],
     },
   ];
@@ -361,7 +361,7 @@ function ConfigSection() {
           title="Full Example"
           filename="docs.config.tsx"
           code={`import { defineDocs } from "@farming-labs/docs";
-import { pixelBorder } from "@farming-labs/fumadocs/pixel-border";
+import { pixelBorder } from "@farming-labs/theme/pixel-border";
 import { Rocket, BookOpen, Code } from "lucide-react";
 
 export default defineDocs({
@@ -424,7 +424,7 @@ function PackagesSection() {
         "Core types, defineDocs(), createTheme(), extendTheme(). Framework agnostic.",
     },
     {
-      name: "@farming-labs/fumadocs",
+      name: "@farming-labs/theme",
       description:
         "Theme presets (default, darksharp, pixel-border), layout components, RootProvider.",
     },

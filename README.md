@@ -7,7 +7,7 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 | Package | Description |
 |---|---|
 | `@farming-labs/docs` | Core config, types, CLI, and theme utilities |
-| `@farming-labs/fumadocs` | Fumadocs-based theme with `default`, `darksharp`, and `pixel-border` variants |
+| `@farming-labs/theme` | Fumadocs-based theme with `default`, `darksharp`, and `pixel-border` variants |
 | `@farming-labs/next` | Next.js adapter — `withDocs()` config wrapper and auto-generated routes |
 
 ## Quick Start
@@ -32,14 +32,14 @@ The CLI will:
 ### Option B: Manual setup
 
 ```bash
-pnpm add @farming-labs/docs @farming-labs/fumadocs @farming-labs/next
+pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/next
 ```
 
 **1. Create `docs.config.tsx`**
 
 ```tsx
 import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/fumadocs";
+import { fumadocs } from "@farming-labs/theme";
 
 export default defineDocs({
   entry: "docs",
@@ -62,7 +62,7 @@ export default withDocs({});
 
 ```css
 @import "tailwindcss";
-@import "@farming-labs/fumadocs/default/css";
+@import "@farming-labs/theme/default/css";
 ```
 
 **4. Write docs**
@@ -99,19 +99,19 @@ That's it — no layout files, no `[[...slug]]` wrappers. The framework handles 
 Three built-in theme variants, all based on Fumadocs:
 
 ```tsx
-import { fumadocs } from "@farming-labs/fumadocs";              // default
-import { darksharp } from "@farming-labs/fumadocs/darksharp";   // sharp edges, all-black
-import { pixelBorder } from "@farming-labs/fumadocs/pixel-border"; // better-auth inspired
+import { fumadocs } from "@farming-labs/theme";              // default
+import { darksharp } from "@farming-labs/theme/darksharp";   // sharp edges, all-black
+import { pixelBorder } from "@farming-labs/theme/pixel-border"; // better-auth inspired
 ```
 
 Import the matching CSS in your `global.css`:
 
 ```css
-@import "@farming-labs/fumadocs/default/css";
+@import "@farming-labs/theme/default/css";
 /* or */
-@import "@farming-labs/fumadocs/darksharp/css";
+@import "@farming-labs/theme/darksharp/css";
 /* or */
-@import "@farming-labs/fumadocs/pixel-border/css";
+@import "@farming-labs/theme/pixel-border/css";
 ```
 
 ## Configuration

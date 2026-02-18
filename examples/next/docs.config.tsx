@@ -1,5 +1,5 @@
 import { defineDocs, extendTheme } from "@farming-labs/docs";
-import { pixelBorder } from "@farming-labs/fumadocs/pixel-border";
+import { pixelBorder } from "@farming-labs/theme/pixel-border";
 import { MyNote } from "./app/components/my-note";
 import {
   BookOpen,
@@ -19,11 +19,16 @@ import {
   Mail,
   SparklesIcon
 } from "lucide-react";
-import { fumadocs } from "@farming-labs/fumadocs";
+import { fumadocs } from "@farming-labs/theme";
 
 
 export default defineDocs({
   entry: "docs",
+  github: {
+    url: "https://github.com/farming-labs/docs",
+    branch: "main",
+    directory: "examples/next",
+  },
   theme: pixelBorder({
     ui: {
       components: { Callout: { variant: "outline" } },

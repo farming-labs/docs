@@ -12,15 +12,15 @@ icon: "palette"
 
 | Theme | Import | Description |
 |-------|--------|-------------|
-| Default | `@farming-labs/fumadocs` | Neutral colors, standard radius |
-| Darksharp | `@farming-labs/fumadocs/darksharp` | All-black, `rounded-none` |
-| Pixel Border | `@farming-labs/fumadocs/pixel-border` | Inspired by better-auth.com |
+| Default | `@farming-labs/theme` | Neutral colors, standard radius |
+| Darksharp | `@farming-labs/theme/darksharp` | All-black, `rounded-none` |
+| Pixel Border | `@farming-labs/theme/pixel-border` | Inspired by better-auth.com |
 
 ## Using a Theme
 
 ```tsx title="docs.config.tsx"
 import { defineDocs } from "@farming-labs/docs";
-import { pixelBorder } from "@farming-labs/fumadocs/pixel-border";
+import { pixelBorder } from "@farming-labs/theme/pixel-border";
 
 export default defineDocs({
   entry: "docs",
@@ -32,7 +32,7 @@ Don't forget the matching CSS import:
 
 ```css title="app/global.css"
 @import "tailwindcss";
-@import "@farming-labs/fumadocs/pixel-border/css";
+@import "@farming-labs/theme/pixel-border/css";
 ```
 
 ## Overriding Theme Defaults
@@ -91,7 +91,7 @@ Use `extendTheme()` to modify an existing preset:
 
 ```ts
 import { extendTheme } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/fumadocs";
+import { fumadocs } from "@farming-labs/theme";
 
 export const myTheme = extendTheme(fumadocs(), {
   name: "my-fumadocs",
