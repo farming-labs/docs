@@ -4,7 +4,7 @@ import { fumadocs, pixelBorder } from "@farming-labs/svelte-theme";
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: pixelBorder({
+  theme: fumadocs({
     ui: {
       colors: {
         primary: "oklch(0.985 0.001 106.423)",
@@ -34,7 +34,7 @@ export default defineDocs({
     model: "gpt-4o-mini",
     maxResults: 5,
     aiLabel: "DocsBot",
-    floatingStyle: "full-modal",
+    floatingStyle: "panel",
     mode: "floating",
     position: "bottom-right",
     packageName: "@farming-labs/docs",
