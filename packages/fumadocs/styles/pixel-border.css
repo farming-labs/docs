@@ -568,7 +568,6 @@ figure.shiki > div:first-child {
 }
 
 .fd-ai-fm-input {
-  font-family: var(--fd-font-mono, ui-monospace, monospace);
   font-size: 13px;
 }
 
