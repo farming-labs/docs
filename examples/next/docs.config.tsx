@@ -24,7 +24,7 @@ import { fumadocs } from "@farming-labs/fumadocs";
 
 export default defineDocs({
   entry: "docs",
-  theme: pixelBorder({
+  theme: fumadocs({
     ui: {
       components: { Callout: { variant: "outline" } },
       layout: { toc: { enabled: true, depth: 3 } },
@@ -47,8 +47,29 @@ export default defineDocs({
     enabled: true,
     mode: "floating",
     position: "bottom-right",
-    floatingStyle: "modal",
+    floatingStyle: "full-modal",
     apiKey: process.env.OPENAI_API_KEY,
+    aiLabel: "DocsBot",
+    suggestedQuestions: [
+      "How do I get started?",
+      "What themes are available?",
+      "How do I create a custom component?",
+      "How do I configure the sidebar?",
+    ],
+    loadingComponent: ({ name }) => (
+      <div className="flex flex-row-reverse gap-2 items-center">
+        <p className="mb-1 text-xs font-medium text-fd-muted-foreground">
+          {name} bot
+        </p>
+        <div className="flex gap-1 items-end text-sm text-fd-muted-foreground">
+          <div className="flex gap-1 items-center opacity-70">
+            <span className="inline-block size-1 bg-fd-primary rounded-full animate-bounce [animation-delay:0ms]" />
+            <span className="inline-block size-1 opacity-80 bg-fd-primary rounded-full animate-bounce [animation-delay:150ms]" />
+            <span className="inline-block size-1 bg-fd-primary rounded-full animate-bounce [animation-delay:300ms]" />
+          </div>
+        </div>
+      </div>
+    ),
     triggerComponent: <button className="border text-xs cursor-pointer text-white px-4 py-2 font-mono uppercase rounded-none flex items-center gap-2">
       <SparklesIcon size={16} />
       Ask AI</button>,

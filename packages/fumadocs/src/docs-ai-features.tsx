@@ -19,8 +19,11 @@ import { DocsSearchDialog, FloatingAIChat } from "./ai-search-dialog.js";
 interface DocsAIFeaturesProps {
   mode: "search" | "floating";
   position?: "bottom-right" | "bottom-left" | "bottom-center";
-  floatingStyle?: "panel" | "modal" | "popover";
+  floatingStyle?: "panel" | "modal" | "popover" | "full-modal";
   triggerComponentHtml?: string;
+  suggestedQuestions?: string[];
+  aiLabel?: string;
+  loadingComponentHtml?: string;
 }
 
 export function DocsAIFeatures({
@@ -28,9 +31,12 @@ export function DocsAIFeatures({
   position = "bottom-right",
   floatingStyle = "panel",
   triggerComponentHtml,
+  suggestedQuestions,
+  aiLabel,
+  loadingComponentHtml,
 }: DocsAIFeaturesProps) {
   if (mode === "search") {
-    return <SearchModeAI />;
+    return <SearchModeAI suggestedQuestions={suggestedQuestions} aiLabel={aiLabel} loadingComponentHtml={loadingComponentHtml} />;
   }
 
   return (
@@ -39,6 +45,9 @@ export function DocsAIFeatures({
       position={position}
       floatingStyle={floatingStyle}
       triggerComponentHtml={triggerComponentHtml}
+      suggestedQuestions={suggestedQuestions}
+      aiLabel={aiLabel}
+      loadingComponentHtml={loadingComponentHtml}
     />
   );
 }
@@ -48,7 +57,7 @@ export function DocsAIFeatures({
  * custom search dialog (with Search + Ask AI tabs) instead of
  * fumadocs' built-in search dialog.
  */
-function SearchModeAI() {
+function SearchModeAI({ suggestedQuestions, aiLabel, loadingComponentHtml }: { suggestedQuestions?: string[]; aiLabel?: string; loadingComponentHtml?: string }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -84,5 +93,5 @@ function SearchModeAI() {
     return () => document.removeEventListener("click", handler, true);
   }, []);
 
-  return <DocsSearchDialog open={open} onOpenChange={setOpen} api="/api/docs" />;
+  return <DocsSearchDialog open={open} onOpenChange={setOpen} api="/api/docs" suggestedQuestions={suggestedQuestions} aiLabel={aiLabel} loadingComponentHtml={loadingComponentHtml} />;
 }

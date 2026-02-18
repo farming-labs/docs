@@ -450,3 +450,189 @@ figure.shiki > div:first-child {
   border-radius: 0 !important;
   font-size: 0.8rem;
 }
+
+/* ─── AI Chat (pixel-border — zero radius, pixel-art, monospace) ── */
+
+.fd-ai-dialog {
+  border-radius: 0 !important;
+  border-width: 1px;
+  box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%));
+}
+
+.fd-ai-tab-bar {
+  gap: 0;
+}
+
+.fd-ai-tab {
+  border-radius: 0 !important;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.fd-ai-header-title {
+  font-size: 13px;
+}
+
+.fd-ai-bubble-user {
+  border-radius: 0 !important;
+  font-size: 12px;
+}
+
+.fd-ai-bubble-ai {
+  border-radius: 0 !important;
+  font-size: 12px;
+}
+
+.fd-ai-bubble-ai pre {
+  border-radius: 0 !important;
+  border: 1px solid var(--color-fd-border, hsl(0 0% 15%));
+}
+
+.fd-ai-bubble-ai code {
+  border-radius: 0 !important;
+}
+
+.fd-ai-input-wrap {
+  border-radius: 0 !important;
+}
+
+.fd-ai-input {
+  font-size: 13px;
+}
+
+.fd-ai-send-btn {
+  border-radius: 0 !important;
+}
+
+.fd-ai-close-btn {
+  border-radius: 0 !important;
+}
+
+.fd-ai-floating-btn {
+  border-radius: 0 !important;
+  box-shadow: 3px 3px 0 0 var(--color-fd-border, hsl(0 0% 15%));
+}
+
+.fd-ai-floating-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%));
+}
+
+.fd-ai-suggestion {
+  border-radius: 0 !important;
+  font-size: 12px;
+}
+
+.fd-ai-result {
+  border-radius: 0 !important;
+}
+
+.fd-ai-esc {
+  border-radius: 0 !important;
+}
+
+.fd-ai-clear-btn {
+  border-radius: 0 !important;
+  letter-spacing: 0.04em;
+}
+
+.fd-ai-msg-label {
+  letter-spacing: 0.06em;
+}
+
+.fd-ai-loading-text {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 11px;
+}
+
+.fd-ai-loading-dot {
+  border-radius: 0;
+  width: 4px;
+  height: 4px;
+}
+
+/* ─── Full-Modal (pixel-border) ──────────────────────────────────── */
+
+.fd-ai-fm-input-container {
+  border-radius: 0 !important;
+  box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%));
+}
+
+.fd-ai-fm-send-btn {
+  border-radius: 0 !important;
+}
+
+.fd-ai-fm-close-btn {
+  border-radius: 0 !important;
+}
+
+.fd-ai-fm-input {
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 13px;
+}
+
+.fd-ai-fm-suggestion {
+  border-radius: 0 !important;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fd-ai-fm-trigger-btn {
+  border-radius: 0 !important;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 12px;
+  box-shadow: 3px 3px 0 0 var(--color-fd-border, hsl(0 0% 15%));
+}
+
+.fd-ai-fm-trigger-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%));
+}
+
+.fd-ai-fm-msg-label {
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 11px;
+}
+
+.fd-ai-fm-msg-content {
+  font-size: 13px;
+}
+
+.fd-ai-fm-msg-content pre {
+  border-radius: 0 !important;
+  border: 1px solid var(--color-fd-border, hsl(0 0% 15%));
+}
+
+.fd-ai-fm-msg-content code {
+  border-radius: 0 !important;
+}
+
+.fd-ai-fm-suggestions-label {
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fd-ai-fm-clear-btn {
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fd-ai-fm-footer-hint {
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 11px;
+}
+
+.fd-ai-fm-thinking-dot {
+  border-radius: 0;
+  width: 5px;
+  height: 5px;
+}

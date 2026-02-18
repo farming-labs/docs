@@ -14,3 +14,65 @@
 .fd-page-action-menu-item {
   border-radius: 0.25rem;
 }
+
+/* ─── AI Chat (default theme — rounded, soft, indigo) ────────────── */
+
+.fd-ai-dialog {
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(99, 102, 241, 0.08), 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.fd-ai-bubble-user {
+  border-radius: 16px 16px 4px 16px;
+}
+
+.fd-ai-bubble-ai {
+  border-radius: 16px 16px 16px 4px;
+}
+
+.fd-ai-input-wrap {
+  border-radius: 10px;
+}
+
+.fd-ai-send-btn {
+  border-radius: 8px;
+}
+
+.fd-ai-floating-btn {
+  border-radius: 26px;
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+}
+
+.fd-ai-floating-btn:hover {
+  box-shadow: 0 10px 40px rgba(99, 102, 241, 0.4);
+}
+
+.fd-ai-suggestion {
+  border-radius: 8px;
+}
+
+.fd-ai-result {
+  border-radius: 8px;
+}
+
+/* ─── Full-Modal (default) ───────────────────────────────────────── */
+
+.fd-ai-fm-input-container {
+  border-radius: 12px;
+}
+
+.fd-ai-fm-send-btn {
+  border-radius: 9999px;
+}
+
+.fd-ai-fm-suggestion {
+  border-radius: 9999px;
+}
+
+.fd-ai-fm-trigger-btn {
+  border-radius: 16px;
+}
+
+.fd-ai-fm-close-btn {
+  border-radius: 9999px;
+}

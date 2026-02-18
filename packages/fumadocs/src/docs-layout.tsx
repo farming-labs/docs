@@ -350,6 +350,11 @@ export function createDocsLayout(config: DocsConfig) {
   const aiTriggerComponentHtml = aiConfig?.triggerComponent
     ? serializeIcon(aiConfig.triggerComponent)
     : undefined;
+  const aiSuggestedQuestions = aiConfig?.suggestedQuestions;
+  const aiLabel = aiConfig?.aiLabel;
+  const aiLoadingComponentHtml = typeof aiConfig?.loadingComponent === "function"
+    ? serializeIcon(aiConfig.loadingComponent({ name: aiLabel || "AI" }))
+    : undefined;
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     return (
@@ -368,6 +373,9 @@ export function createDocsLayout(config: DocsConfig) {
             position={aiPosition}
             floatingStyle={aiFloatingStyle}
             triggerComponentHtml={aiTriggerComponentHtml}
+            suggestedQuestions={aiSuggestedQuestions}
+            aiLabel={aiLabel}
+            loadingComponentHtml={aiLoadingComponentHtml}
           />
         )}
         <DocsPageClient

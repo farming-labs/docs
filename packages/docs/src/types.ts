@@ -547,6 +547,11 @@ export interface AIConfig {
    * - `"popover"` — A compact popover near the button. Smaller than the
    *   panel, suitable for quick questions without taking much screen space.
    *
+   * - `"full-modal"` — A full-screen immersive overlay (inspired by better-auth).
+   *   Messages scroll in the center, input is pinned at the bottom.
+   *   Suggested questions appear as horizontal pills. Best for
+   *   documentation-heavy sites that want a premium AI experience.
+   *
    * @default "panel"
    *
    * @example
@@ -555,11 +560,11 @@ export interface AIConfig {
    *   enabled: true,
    *   mode: "floating",
    *   position: "bottom-right",
-   *   floatingStyle: "modal",
+   *   floatingStyle: "full-modal",
    * }
    * ```
    */
-  floatingStyle?: "panel" | "modal" | "popover";
+  floatingStyle?: "panel" | "modal" | "popover" | "full-modal";
 
   /**
    * Custom trigger component for the floating chat button.
@@ -577,7 +582,7 @@ export interface AIConfig {
    * }
    * ```
    */
-  triggerComponent?: React.ReactNode;
+  triggerComponent?: unknown;
 
   /**
    * The LLM model to use for chat completions.
@@ -630,6 +635,63 @@ export interface AIConfig {
    * @default 5
    */
   maxResults?: number;
+
+  /**
+   * Pre-filled suggested questions shown in the AI chat when empty.
+   * When a user clicks one, it fills the input and submits automatically.
+   *
+   * @example
+   * ```ts
+   * ai: {
+   *   enabled: true,
+   *   suggestedQuestions: [
+   *     "How do I install this?",
+   *     "What themes are available?",
+   *     "How do I create a custom component?",
+   *   ],
+   * }
+   * ```
+   */
+  suggestedQuestions?: string[];
+
+  /**
+   * Display name for the AI assistant in the chat UI.
+   * Shown as the message label, header title, and passed to the loading component.
+   *
+   * @default "AI"
+   *
+   * @example
+   * ```ts
+   * ai: {
+   *   enabled: true,
+   *   aiLabel: "DocsBot",
+   * }
+   * ```
+   */
+  aiLabel?: string;
+
+  /**
+   * Custom loading indicator shown while the AI is generating a response.
+   * Replaces the default "AI is thinking..." indicator.
+   *
+   * Pass a function that receives `{ name }` (the `aiLabel` value) and
+   * returns a React element. This way you don't need to duplicate the label.
+   *
+   * @example
+   * ```tsx
+   * ai: {
+   *   enabled: true,
+   *   aiLabel: "Sage",
+   *   loadingComponent: ({ name }) => (
+   *     <div className="flex items-center gap-2 text-sm text-zinc-400">
+   *       <span className="animate-pulse">🤔</span>
+   *       <span>{name} is thinking...</span>
+   *     </div>
+   *   ),
+   * }
+   * ```
+   */
+  loadingComponent?: (props: { name: string }) => unknown;
 }
 
 export interface DocsConfig {

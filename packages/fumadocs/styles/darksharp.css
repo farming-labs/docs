@@ -319,3 +319,100 @@ article a[class*="text-fd-muted-foreground"] {
 .fd-breadcrumb {
   font-size: 0.75rem;
 }
+
+/* ─── AI Chat (darksharp — sharp edges, high contrast, minimal) ─── */
+
+.fd-ai-dialog {
+  border-radius: 2px;
+  border-width: 1px;
+  box-shadow: 0 4px 24px hsl(0 0% 0% / 0.4);
+}
+
+.fd-ai-tab {
+  border-radius: 2px 2px 0 0;
+}
+
+.fd-ai-bubble-user {
+  border-radius: 2px;
+}
+
+.fd-ai-bubble-ai {
+  border-radius: 2px;
+}
+
+.fd-ai-input-wrap {
+  border-radius: 2px;
+}
+
+.fd-ai-send-btn {
+  border-radius: 2px;
+}
+
+.fd-ai-close-btn {
+  border-radius: 2px;
+}
+
+.fd-ai-floating-btn {
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+.fd-ai-floating-btn:hover {
+  box-shadow: 0 0 0 1px var(--color-fd-ring);
+  transform: none;
+}
+
+.fd-ai-suggestion {
+  border-radius: 2px;
+}
+
+.fd-ai-result {
+  border-radius: 2px;
+}
+
+.fd-ai-esc {
+  border-radius: 2px;
+}
+
+.fd-ai-clear-btn {
+  border-radius: 2px;
+}
+
+/* ─── Full-Modal (darksharp) ─────────────────────────────────────── */
+
+.fd-ai-fm-input-container {
+  border-radius: 2px;
+}
+
+.fd-ai-fm-send-btn {
+  border-radius: 2px;
+}
+
+.fd-ai-fm-close-btn {
+  border-radius: 2px;
+}
+
+.fd-ai-fm-suggestion {
+  border-radius: 2px;
+}
+
+.fd-ai-fm-trigger-btn {
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+.fd-ai-fm-trigger-btn:hover {
+  transform: none;
+}
+
+.fd-ai-fm-msg-content pre {
+  border-radius: 2px;
+}
+
+.fd-ai-fm-msg-content code {
+  border-radius: 2px;
+}
+
+.fd-ai-fm-thinking-dot {
+  border-radius: 2px;
+}
