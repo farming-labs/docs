@@ -14,6 +14,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const geistMonoDocs = Geist_Mono({
+  variable: "--fd-font-mono",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   title: {
     default: "Docs",
@@ -29,7 +34,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${geistMonoDocs.variable}`}>
         <RootProvider>{children}</RootProvider>
       </body>
     </html>
