@@ -485,7 +485,6 @@ import { ${t.factory} } from "${t.svelteImport}";
 
 export default defineDocs({
   entry: "${cfg.entry}",
-  contentDir: "${cfg.entry}",
   theme: ${t.factory}({
     ui: {
       colors: { primary: "#6366f1" },
