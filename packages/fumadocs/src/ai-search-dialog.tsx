@@ -20,6 +20,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { highlight } from "sugar-high";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -37,10 +38,31 @@ interface ChatMessage {
 
 // ─── Markdown renderer ──────────────────────────────────────────────
 
+function buildCodeBlock(lang: string, code: string): string {
+  const trimmed = code.replace(/\n$/, "");
+  // Strip newlines between sh__line spans — <pre> preserves whitespace
+  // and display:block spans already break lines, so raw \n doubles them.
+  const highlighted = highlight(trimmed).replace(/<\/span>\n<span/g, "</span><span");
+  const langLabel = lang ? `<div class="fd-ai-code-lang">${escapeHtml(lang)}</div>` : "";
+  const copyBtn = `<button class="fd-ai-code-copy" onclick="(function(btn){var code=btn.closest('.fd-ai-code-block').querySelector('code').textContent;navigator.clipboard.writeText(code).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy'},1500)})})(this)">Copy</button>`;
+  return `<div class="fd-ai-code-block">`
+    + `<div class="fd-ai-code-header">${langLabel}${copyBtn}</div>`
+    + `<pre><code>${highlighted}</code></pre>`
+    + `</div>`;
+}
+
 function renderMarkdown(text: string): string {
   const codeBlocks: string[] = [];
-  let processed = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, _lang, code) => {
-    codeBlocks.push(`<pre><code>${escapeHtml(code)}</code></pre>`);
+
+  // Complete fences: ```lang\n...\n```
+  let processed = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang, code) => {
+    codeBlocks.push(buildCodeBlock(lang, code));
+    return `\x00CB${codeBlocks.length - 1}\x00`;
+  });
+
+  // Incomplete fence (streaming): opening ``` with no closing one
+  processed = processed.replace(/```(\w*)\n([\s\S]*)$/, (_match, lang, code) => {
+    codeBlocks.push(buildCodeBlock(lang, code));
     return `\x00CB${codeBlocks.length - 1}\x00`;
   });
 

@@ -405,14 +405,29 @@ article a[class*="text-fd-muted-foreground"] {
   transform: none;
 }
 
-.fd-ai-fm-msg-content pre {
-  border-radius: 2px;
-}
-
 .fd-ai-fm-msg-content code {
   border-radius: 2px;
 }
 
 .fd-ai-fm-thinking-dot {
+  border-radius: 2px;
+}
+
+/* ─── Code blocks (darksharp) ────────────────────────────────────── */
+
+.fd-ai-code-block {
+  border-radius: 2px;
+  --sh-class: #7dcfff;
+  --sh-identifier: #d4d4d8;
+  --sh-keyword: #f87171;
+  --sh-string: #86efac;
+  --sh-property: #93c5fd;
+  --sh-entity: #5eead4;
+  --sh-sign: #a1a1aa;
+  --sh-comment: #52525b;
+  --sh-jsxliterals: #c4b5fd;
+}
+
+.fd-ai-code-copy {
   border-radius: 2px;
 }

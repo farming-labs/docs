@@ -24,7 +24,7 @@ import { fumadocs } from "@farming-labs/fumadocs";
 
 export default defineDocs({
   entry: "docs",
-  theme: fumadocs({
+  theme: pixelBorder({
     ui: {
       components: { Callout: { variant: "outline" } },
       layout: { toc: { enabled: true, depth: 3 } },

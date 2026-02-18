@@ -431,17 +431,6 @@
 
 /* ─── Markdown in AI responses ───────────────────────────────────── */
 
-.fd-ai-bubble-ai pre {
-  background: var(--color-fd-muted, #1a1a2e);
-  padding: 12px 16px;
-  border-radius: var(--radius, 8px);
-  overflow-x: auto;
-  margin: 8px 0;
-  font-size: 13px;
-  line-height: 1.5;
-  font-family: var(--fd-font-mono, ui-monospace, monospace);
-}
-
 .fd-ai-bubble-ai code {
   background: var(--color-fd-muted, #1a1a2e);
   padding: 2px 6px;
@@ -453,6 +442,14 @@
 .fd-ai-bubble-ai a {
   color: var(--color-fd-primary, #6366f1);
   text-decoration: underline;
+}
+
+/* Code blocks inside .fd-ai-bubble-ai should not double-style inline code */
+.fd-ai-bubble-ai .fd-ai-code-block code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
 }
 
 .fd-ai-bubble-ai table {
@@ -474,6 +471,86 @@
   font-weight: 600;
   font-size: 12px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Code blocks in AI chat — fd-ai-code-*
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* sugar-high syntax highlight token colors (dark) */
+.fd-ai-code-block {
+  --sh-class: #8be9fd;
+  --sh-identifier: #c9d1d9;
+  --sh-keyword: #ff7b72;
+  --sh-string: #a5d6ff;
+  --sh-property: #79c0ff;
+  --sh-entity: #7ee787;
+  --sh-sign: #8b949e;
+  --sh-comment: #6e7681;
+  --sh-jsxliterals: #d2a8ff;
+  --sh-space: inherit;
+
+  margin: 10px 0;
+  border-radius: var(--radius, 8px);
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  /* background: var(--color-fd-muted, #1a1a2e); */
+  overflow: hidden;
+}
+
+.fd-ai-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.08));
+  background: color-mix(in srgb, var(--color-fd-muted, #1a1a2e) 80%, black);
+  min-height: 32px;
+}
+
+.fd-ai-code-lang {
+  font-size: 11px;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  color: var(--color-fd-muted-foreground, #71717a);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fd-ai-code-copy {
+  font-size: 11px;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  color: var(--color-fd-muted-foreground, #71717a);
+  background: transparent;
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius, 4px);
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.fd-ai-code-copy:hover {
+  color: var(--color-fd-foreground, #e4e4e7);
+  background: color-mix(in srgb, var(--color-fd-accent, rgba(255,255,255,0.05)) 60%, transparent);
+}
+
+.fd-ai-code-block pre {
+  margin: 0;
+  padding: 12px 16px;
+  overflow-x: auto;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.fd-ai-code-block code {
+  font-size: 13px;
+  line-height: 1.45;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* sugar-high: each line is a block span, min-height keeps empty lines visible */
+.fd-ai-code-block .sh__line { display: block; min-height: 1.2em; }
 
 /* ═══════════════════════════════════════════════════════════════════
  * Full-Modal (better-auth inspired) — fd-ai-fm-*
@@ -564,17 +641,6 @@
   color: var(--color-fd-foreground, #e4e4e7);
 }
 
-.fd-ai-fm-msg-content pre {
-  background: var(--color-fd-muted, #1a1a2e);
-  padding: 12px 16px;
-  border-radius: var(--radius, 8px);
-  overflow-x: auto;
-  margin: 8px 0;
-  font-size: 13px;
-  line-height: 1.5;
-  font-family: var(--fd-font-mono, ui-monospace, monospace);
-}
-
 .fd-ai-fm-msg-content code {
   background: var(--color-fd-muted, #1a1a2e);
   padding: 2px 6px;
@@ -583,9 +649,36 @@
   font-family: var(--fd-font-mono, ui-monospace, monospace);
 }
 
+.fd-ai-fm-msg-content .fd-ai-code-block code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
 .fd-ai-fm-msg-content a {
   color: var(--color-fd-primary, #6366f1);
   text-decoration: underline;
+}
+
+.fd-ai-fm-msg-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.fd-ai-fm-msg-content th,
+.fd-ai-fm-msg-content td {
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  padding: 6px 12px;
+  text-align: left;
+}
+
+.fd-ai-fm-msg-content th {
+  background: var(--color-fd-muted, #1a1a2e);
+  font-weight: 600;
+  font-size: 12px;
 }
 
 /* ─── Thinking dots ──────────────────────────────────────────────── */

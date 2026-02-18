@@ -76,3 +76,13 @@
 .fd-ai-fm-close-btn {
   border-radius: 9999px;
 }
+
+/* ─── Code blocks (default) ──────────────────────────────────────── */
+
+.fd-ai-code-block {
+  border-radius: 8px;
+}
+
+.fd-ai-code-copy {
+  border-radius: 4px;
+}

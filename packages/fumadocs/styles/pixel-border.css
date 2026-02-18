@@ -605,11 +605,6 @@ figure.shiki > div:first-child {
   font-size: 13px;
 }
 
-.fd-ai-fm-msg-content pre {
-  border-radius: 0 !important;
-  border: 1px solid var(--color-fd-border, hsl(0 0% 15%));
-}
-
 .fd-ai-fm-msg-content code {
   border-radius: 0 !important;
 }
@@ -635,4 +630,41 @@ figure.shiki > div:first-child {
   border-radius: 0;
   width: 5px;
   height: 5px;
+}
+
+/* ─── Code blocks (pixel-border) ─────────────────────────────────── */
+
+.fd-ai-code-block {
+  border-radius: 0 !important;
+  box-shadow: 3px 3px 0 0 var(--color-fd-border, hsl(0 0% 15%));
+  background: transparent;
+  --sh-class: #66d9ef;
+  --sh-identifier: #f8f8f2;
+  --sh-keyword: #f92672;
+  --sh-string: #e6db74;
+  --sh-property: #a6e22e;
+  --sh-entity: #66d9ef;
+  --sh-sign: #f8f8f2;
+  --sh-comment: #75715e;
+  --sh-jsxliterals: #ae81ff;
+}
+
+.fd-ai-code-header {
+  border-bottom-color: var(--color-fd-border, hsl(0 0% 15%));
+  background: transparent;
+}
+
+.fd-ai-code-lang {
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+}
+
+.fd-ai-code-copy {
+  border-radius: 0 !important;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fd-ai-code-block code {
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
 }
