@@ -119,7 +119,26 @@ export async function init() {
   }
 
   // -----------------------------------------------------------------------
-  // Step 3: Docs entry path
+  // Step 3: Path alias preference
+  // -----------------------------------------------------------------------
+
+  const aliasHint =
+    framework === "nextjs"
+      ? `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`
+      : `Uses ${pc.cyan("$lib/")} prefix (SvelteKit built-in)`;
+
+  const useAlias = await p.confirm({
+    message: `Use path aliases for imports? ${pc.dim(aliasHint)}`,
+    initialValue: false,
+  });
+
+  if (p.isCancel(useAlias)) {
+    p.outro(pc.red("Init cancelled."));
+    process.exit(0);
+  }
+
+  // -----------------------------------------------------------------------
+  // Step 4: Docs entry path
   // -----------------------------------------------------------------------
 
   const entry = await p.text({
@@ -141,7 +160,7 @@ export async function init() {
   const entryPath = entry as string;
 
   // -----------------------------------------------------------------------
-  // Step 4: Global CSS file location
+  // Step 5: Global CSS file location
   // -----------------------------------------------------------------------
 
   const detectedCssFiles = detectGlobalCssFiles(cwd);
@@ -181,10 +200,12 @@ export async function init() {
   }
 
   // -----------------------------------------------------------------------
-  // Step 5: Read project info
+  // Step 6: Read project info
   // -----------------------------------------------------------------------
 
-  const pkgJson = JSON.parse(readFileSafe(path.join(cwd, "package.json"))!);
+  const pkgJsonPath = path.join(cwd, "package.json");
+  const pkgJsonContent = readFileSafe(pkgJsonPath);
+  const pkgJson = pkgJsonContent ? JSON.parse(pkgJsonContent) : { name: "my-project" };
   const projectName = pkgJson.name || "My Project";
 
   const cfg: TemplateConfig = {
@@ -192,10 +213,11 @@ export async function init() {
     theme: theme as string,
     projectName,
     framework,
+    useAlias: useAlias as boolean,
   };
 
   // -----------------------------------------------------------------------
-  // Step 6: Write files
+  // Step 7: Write files
   // -----------------------------------------------------------------------
 
   const s = p.spinner();
@@ -236,7 +258,7 @@ export async function init() {
   }
 
   // -----------------------------------------------------------------------
-  // Step 7: Install dependencies
+  // Step 8: Install dependencies
   // -----------------------------------------------------------------------
 
   const pm = detectPackageManager(cwd);
@@ -289,7 +311,7 @@ export async function init() {
   s2.stop("Dependencies installed");
 
   // -----------------------------------------------------------------------
-  // Step 8: Start dev server
+  // Step 9: Start dev server
   // -----------------------------------------------------------------------
 
   const startDev = await p.confirm({
@@ -396,7 +418,7 @@ function scaffoldNextJs(
     write("next.config.ts", nextConfigTemplate());
   }
 
-  write("app/layout.tsx", rootLayoutTemplate(globalCssRelPath));
+  write("app/layout.tsx", rootLayoutTemplate(cfg, globalCssRelPath));
 
   const globalCssAbsPath = path.join(cwd, globalCssRelPath);
   const existingGlobalCss = readFileSafe(globalCssAbsPath);
@@ -412,7 +434,7 @@ function scaffoldNextJs(
     write(globalCssRelPath, globalCssTemplate(cfg.theme));
   }
 
-  write(`app/${cfg.entry}/layout.tsx`, docsLayoutTemplate());
+  write(`app/${cfg.entry}/layout.tsx`, docsLayoutTemplate(cfg));
   write("postcss.config.mjs", postcssConfigTemplate());
 
   if (!fileExists(path.join(cwd, "tsconfig.json"))) {
@@ -448,7 +470,7 @@ function scaffoldSvelteKit(
   );
   write(
     `src/routes/${cfg.entry}/+layout.server.js`,
-    svelteDocsLayoutServerTemplate(),
+    svelteDocsLayoutServerTemplate(cfg),
   );
   write(
     `src/routes/${cfg.entry}/[...slug]/+page.svelte`,

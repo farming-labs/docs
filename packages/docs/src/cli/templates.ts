@@ -11,19 +11,20 @@ export interface TemplateConfig {
   /** Project name from package.json */
   projectName: string;
   /** Framework being used */
-  framework?: "nextjs" | "sveltekit";
+  framework: "nextjs" | "sveltekit";
+  /** Whether to use path aliases (@/ for Next.js, $lib/ for SvelteKit) */
+  useAlias: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Theme info
+// ---------------------------------------------------------------------------
+
 interface ThemeInfo {
-  /** Factory function name, e.g. "fumadocs", "darksharp", "pixelBorder" */
   factory: string;
-  /** Sub-path import, e.g. "@farming-labs/theme" or "@farming-labs/theme/darksharp" */
   nextImport: string;
-  /** Sub-path import, e.g. "@farming-labs/svelte-theme" or "@farming-labs/svelte-theme/darksharp" */
   svelteImport: string;
-  /** CSS sub-path for Next.js, e.g. "theme/css" or "theme/darksharp/css" */
   nextCssImport: string;
-  /** CSS sub-path for SvelteKit */
   svelteCssTheme: string;
 }
 
@@ -56,8 +57,50 @@ function getThemeInfo(theme: string): ThemeInfo {
 }
 
 // ---------------------------------------------------------------------------
-// docs.config.ts
+// Import path helpers
+//
+// Next.js: docs.config.ts at project root
+//   alias:    @/docs.config
+//   relative: computed from file location to root
+//
+// SvelteKit: docs.config.ts at src/lib/docs.config.ts
+//   alias:    $lib/docs.config.js
+//   relative: computed from file location to src/lib/
 // ---------------------------------------------------------------------------
+
+/** Config import for Next.js app/layout.tsx → root docs.config */
+function nextRootLayoutConfigImport(useAlias: boolean): string {
+  return useAlias ? "@/docs.config" : "../docs.config";
+}
+
+/** Config import for Next.js app/{entry}/layout.tsx → root docs.config */
+function nextDocsLayoutConfigImport(useAlias: boolean): string {
+  return useAlias ? "@/docs.config" : "../../docs.config";
+}
+
+/** Config import for SvelteKit src/lib/docs.server.ts → src/lib/docs.config.js */
+function svelteServerConfigImport(useAlias: boolean): string {
+  return useAlias ? "$lib/docs.config.js" : "./docs.config.js";
+}
+
+/** Config import for SvelteKit src/routes/{entry}/+layout.svelte → src/lib/docs.config.js */
+function svelteLayoutConfigImport(useAlias: boolean): string {
+  return useAlias ? "$lib/docs.config.js" : "../../lib/docs.config.js";
+}
+
+/** Config import for SvelteKit src/routes/{entry}/[...slug]/+page.svelte → src/lib/docs.config.js */
+function sveltePageConfigImport(useAlias: boolean): string {
+  return useAlias ? "$lib/docs.config.js" : "../../../lib/docs.config.js";
+}
+
+/** Server import for SvelteKit +layout.server.js → src/lib/docs.server.js */
+function svelteLayoutServerImport(useAlias: boolean): string {
+  return useAlias ? "$lib/docs.server.js" : "../../lib/docs.server.js";
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Next.js templates
+// ═══════════════════════════════════════════════════════════════════════════
 
 export function docsConfigTemplate(cfg: TemplateConfig): string {
   const t = getThemeInfo(cfg.theme);
@@ -81,10 +124,6 @@ export default defineDocs({
 `;
 }
 
-// ---------------------------------------------------------------------------
-// next.config.ts
-// ---------------------------------------------------------------------------
-
 export function nextConfigTemplate(): string {
   return `\
 import { withDocs } from "@farming-labs/next/config";
@@ -94,24 +133,17 @@ export default withDocs();
 }
 
 export function nextConfigMergedTemplate(existingContent: string): string {
-  // If already has withDocs, return as-is
   if (existingContent.includes("withDocs")) return existingContent;
 
-  // Add the import and wrap the export
   const lines = existingContent.split("\n");
   const importLine = 'import { withDocs } from "@farming-labs/next/config";';
 
-  // Find the default export
-  const exportIdx = lines.findIndex((l) =>
-    l.match(/export\s+default/)
-  );
+  const exportIdx = lines.findIndex((l) => l.match(/export\s+default/));
 
   if (exportIdx === -1) {
-    // No default export found — wrap everything
     return `${importLine}\n\n${existingContent}\n\nexport default withDocs();\n`;
   }
 
-  // Insert import at top (after any existing imports)
   const lastImportIdx = lines.reduce(
     (acc, l, i) => (l.trimStart().startsWith("import ") ? i : acc),
     -1,
@@ -123,12 +155,10 @@ export function nextConfigMergedTemplate(existingContent: string): string {
     lines.unshift(importLine, "");
   }
 
-  // Try to wrap the default export value with withDocs()
   const adjustedExportIdx =
     exportIdx + (lastImportIdx >= 0 && exportIdx > lastImportIdx ? 1 : 0);
   const exportLine = lines[adjustedExportIdx];
 
-  // Simple case: export default { ... } or export default nextConfig;
   const simpleMatch = exportLine.match(
     /^(\s*export\s+default\s+)(.*?)(;?\s*)$/,
   );
@@ -140,16 +170,7 @@ export function nextConfigMergedTemplate(existingContent: string): string {
   return lines.join("\n");
 }
 
-// ---------------------------------------------------------------------------
-// app/layout.tsx (root)
-// ---------------------------------------------------------------------------
-
-export function rootLayoutTemplate(globalCssRelPath = "app/globals.css"): string {
-  // Compute the CSS import path relative to app/layout.tsx
-  // e.g. "app/globals.css" → "./globals.css"
-  // e.g. "app/global.css" → "./global.css"
-  // e.g. "styles/globals.css" → "../styles/globals.css"
-  // e.g. "src/app/globals.css" → "./globals.css" (src/app layout)
+export function rootLayoutTemplate(cfg: TemplateConfig, globalCssRelPath = "app/globals.css"): string {
   let cssImport: string;
   if (globalCssRelPath.startsWith("app/")) {
     cssImport = "./" + globalCssRelPath.slice("app/".length);
@@ -159,10 +180,12 @@ export function rootLayoutTemplate(globalCssRelPath = "app/globals.css"): string
     cssImport = "../" + globalCssRelPath;
   }
 
+  const configImport = nextRootLayoutConfigImport(cfg.useAlias);
+
   return `\
 import type { Metadata } from "next";
 import { RootProvider } from "@farming-labs/theme";
-import docsConfig from "@/docs.config";
+import docsConfig from "${configImport}";
 import "${cssImport}";
 
 export const metadata: Metadata = {
@@ -189,10 +212,6 @@ export default function RootLayout({
 `;
 }
 
-// ---------------------------------------------------------------------------
-// app/global.css
-// ---------------------------------------------------------------------------
-
 export function globalCssTemplate(theme: string): string {
   const t = getThemeInfo(theme);
   return `\
@@ -201,10 +220,6 @@ export function globalCssTemplate(theme: string): string {
 `;
 }
 
-/**
- * Inject the fumadocs CSS import into an existing global.css.
- * Returns the modified content, or null if already present.
- */
 export function injectCssImport(
   existingContent: string,
   theme: string,
@@ -213,7 +228,6 @@ export function injectCssImport(
   const importLine = `@import "@farming-labs/theme/${t.nextCssImport}/css";`;
   if (existingContent.includes(importLine)) return null;
   if (existingContent.includes("@farming-labs/theme/") && existingContent.includes("/css")) return null;
-  // Append after the last @import (or at the end)
   const lines = existingContent.split("\n");
   const lastImportIdx = lines.reduce(
     (acc, l, i) => (l.trimStart().startsWith("@import") ? i : acc),
@@ -227,22 +241,15 @@ export function injectCssImport(
   return lines.join("\n");
 }
 
-// ---------------------------------------------------------------------------
-// app/{entry}/layout.tsx (docs layout)
-// ---------------------------------------------------------------------------
-
-export function docsLayoutTemplate(): string {
+export function docsLayoutTemplate(cfg: TemplateConfig): string {
+  const configImport = nextDocsLayoutConfigImport(cfg.useAlias);
   return `\
-import docsConfig from "@/docs.config";
+import docsConfig from "${configImport}";
 import { createDocsLayout } from "@farming-labs/theme";
 
 export default createDocsLayout(docsConfig);
 `;
 }
-
-// ---------------------------------------------------------------------------
-// postcss.config.mjs
-// ---------------------------------------------------------------------------
 
 export function postcssConfigTemplate(): string {
   return `\
@@ -255,10 +262,6 @@ const config = {
 export default config;
 `;
 }
-
-// ---------------------------------------------------------------------------
-// tsconfig.json (only if missing)
-// ---------------------------------------------------------------------------
 
 export function tsconfigTemplate(): string {
   return `\
@@ -287,7 +290,7 @@ export function tsconfigTemplate(): string {
 }
 
 // ---------------------------------------------------------------------------
-// Sample MDX pages
+// Next.js sample pages
 // ---------------------------------------------------------------------------
 
 export function welcomePageTemplate(cfg: TemplateConfig): string {
@@ -470,9 +473,9 @@ Deploy to Vercel, Netlify, or any Node.js hosting platform.
 `;
 }
 
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════════
 // SvelteKit templates
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════════
 
 export function svelteDocsConfigTemplate(cfg: TemplateConfig): string {
   const t = getThemeInfo(cfg.theme);
@@ -505,19 +508,21 @@ export default defineDocs({
 }
 
 export function svelteDocsServerTemplate(cfg: TemplateConfig): string {
+  const configImport = svelteServerConfigImport(cfg.useAlias);
   return `\
 import { createDocsServer } from "@farming-labs/svelte/server";
-import config from "$lib/docs.config.js";
+import config from "${configImport}";
 
 export const { load, GET, POST } = createDocsServer(config);
 `;
 }
 
 export function svelteDocsLayoutTemplate(cfg: TemplateConfig): string {
+  const configImport = svelteLayoutConfigImport(cfg.useAlias);
   return `\
 <script>
   import { DocsLayout } from "@farming-labs/svelte-theme";
-  import config from "$lib/docs.config.js";
+  import config from "${configImport}";
 
   let { data, children } = $props();
 </script>
@@ -528,17 +533,19 @@ export function svelteDocsLayoutTemplate(cfg: TemplateConfig): string {
 `;
 }
 
-export function svelteDocsLayoutServerTemplate(): string {
+export function svelteDocsLayoutServerTemplate(cfg: TemplateConfig): string {
+  const serverImport = svelteLayoutServerImport(cfg.useAlias);
   return `\
-export { load } from "$lib/docs.server.js";
+export { load } from "${serverImport}";
 `;
 }
 
 export function svelteDocsPageTemplate(cfg: TemplateConfig): string {
+  const configImport = sveltePageConfigImport(cfg.useAlias);
   return `\
 <script>
   import { DocsContent } from "@farming-labs/svelte-theme";
-  import config from "$lib/docs.config.js";
+  import config from "${configImport}";
 
   let { data } = $props();
 </script>
@@ -594,6 +601,10 @@ export function injectSvelteCssImport(
   }
   return lines.join("\n");
 }
+
+// ---------------------------------------------------------------------------
+// SvelteKit sample pages
+// ---------------------------------------------------------------------------
 
 export function svelteWelcomePageTemplate(cfg: TemplateConfig): string {
   return `\
