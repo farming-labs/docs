@@ -621,7 +621,6 @@ figure.shiki > div:first-child {
 }
 
 .fd-ai-fm-footer-hint {
-  font-family: var(--fd-font-mono, ui-monospace, monospace);
   font-size: 11px;
 }
 
