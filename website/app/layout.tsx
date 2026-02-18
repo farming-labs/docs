@@ -12,7 +12,15 @@ const geistMono = Geist_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
 });
+const geistSansDocs = Geist({
+  variable: "--fd-font-sans",
+  subsets: ["latin"],
+});
 
+const geistMonoDocs = Geist_Mono({
+  variable: "--fd-font-mono",
+  subsets: ["latin"],
+});
 export const metadata: Metadata = {
   title: {
     default: "@farming-labs/docs",
@@ -30,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black`}
+        className={`${geistSans.variable} ${geistSansDocs.variable} ${geistMono.variable} ${geistMonoDocs.variable} antialiased bg-black`}
       >
         <RootProvider>{children}</RootProvider>
       </body>
