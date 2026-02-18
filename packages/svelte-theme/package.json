@@ -11,8 +11,20 @@
       "import": "./src/index.js",
       "default": "./src/index.js"
     },
+    "./fumadocs": {
+      "import": "./src/themes/default.js",
+      "default": "./src/themes/default.js"
+    },
+    "./pixel-border": {
+      "import": "./src/themes/pixel-border.js",
+      "default": "./src/themes/pixel-border.js"
+    },
+    "./darksharp": {
+      "import": "./src/themes/darksharp.js",
+      "default": "./src/themes/darksharp.js"
+    },
     "./css": "./styles/docs.css",
-    "./default/css": "./styles/docs.css",
+    "./fumadocs/css": "./styles/docs.css",
     "./styles/pixel-border.css": "./styles/pixel-border.css",
     "./pixel-border/css": "./styles/pixel-border-bundle.css"
   },

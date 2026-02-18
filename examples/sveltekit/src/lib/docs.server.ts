@@ -4,5 +4,5 @@ import config from "@/docs.config";
 
 export const { load, GET, POST } = createDocsServer({
   ...config,
-  ai: { ...config.ai, apiKey: env.OPENAI_API_KEY },
+  ai: { apiKey: env.OPENAI_API_KEY, ...config.ai },
 });

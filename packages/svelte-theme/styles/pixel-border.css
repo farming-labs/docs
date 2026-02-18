@@ -80,6 +80,16 @@
   padding-right: 12px;
 }
 
+.fd-sidebar-folder-content::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: var(--color-fd-border);
+}
+
 .fd-sidebar-top-link.fd-sidebar-first-item,
 .fd-sidebar-folder.fd-sidebar-first-item {
   border-top: none;

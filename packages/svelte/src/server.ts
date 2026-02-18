@@ -9,7 +9,7 @@
  * ```ts
  * // src/lib/docs.server.ts
  * import { createDocsServer } from "@farming-labs/svelte/server";
- * import config from "@/docs.config";
+ * import config from "../../docs.config.js";
  *
  * export const { load, GET, POST } = createDocsServer(config);
  * ```
@@ -47,16 +47,6 @@ interface AIConfigObj {
   docsUrl?: string;
 }
 
-interface DocsConfigInput {
-  entry?: string;
-  github?: string | GithubConfigObj;
-  ai?: AIConfigObj;
-  nav?: { title?: unknown; url?: string };
-  breadcrumb?: boolean | { enabled?: boolean };
-  metadata?: { titleTemplate?: string; description?: string };
-  [key: string]: unknown;
-}
-
 interface UnifiedLoadEvent {
   url: URL;
 }
@@ -89,7 +79,7 @@ export interface DocsServer {
  * @param config - The `DocsConfig` object (from `defineDocs()` in `docs.config.ts`).
  */
 export function createDocsServer(
-  config: DocsConfigInput = {},
+  config: Record<string, any> = {},
 ): DocsServer {
   const entry = (config.entry as string) ?? "docs";
 
@@ -108,6 +98,11 @@ export function createDocsServer(
   );
 
   const aiConfig: AIConfigObj = (config.ai as AIConfigObj) ?? {};
+
+  // Allow top-level apiKey as a shorthand
+  if (config.apiKey && !aiConfig.apiKey) {
+    aiConfig.apiKey = config.apiKey as string;
+  }
 
   // ─── Unified load (tree + page content in one call) ────────
   async function load(event: UnifiedLoadEvent) {

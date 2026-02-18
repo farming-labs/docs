@@ -173,7 +173,7 @@ export { load } from "$lib/docs.server.js";
 **4. Import the theme CSS in `src/app.css`**
 
 ```css
-@import "@farming-labs/svelte-theme/default/css";
+@import "@farming-labs/svelte-theme/fumadocs/css";
 ```
 
 **5. Write docs**
@@ -230,7 +230,7 @@ import { fumadocs } from "@farming-labs/svelte-theme";
 ```
 
 ```css
-@import "@farming-labs/svelte-theme/default/css";
+@import "@farming-labs/svelte-theme/fumadocs/css";
 /* or */
 @import "@farming-labs/svelte-theme/pixel-border/css";
 ```

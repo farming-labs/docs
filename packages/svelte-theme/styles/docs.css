@@ -289,7 +289,7 @@ code, kbd, pre, samp {
 .fd-sidebar-folder-content .fd-sidebar-link-active::before {
   content: '';
   position: absolute;
-  left: -16px;
+  left: -9px;
   top: 25%;
   bottom: 25%;
   width: 2px;
@@ -348,7 +348,7 @@ code, kbd, pre, samp {
 .fd-sidebar-folder-content::before {
   content: '';
   position: absolute;
-  left: -12px;
+  left: 4px;
   top: 4px;
   bottom: 4px;
   width: 1px;

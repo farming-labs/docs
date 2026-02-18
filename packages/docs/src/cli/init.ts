@@ -457,11 +457,11 @@ function scaffoldSvelteKit(
   const existingGlobalCss = readFileSafe(globalCssAbsPath);
 
   const themeMapping: Record<string, string> = {
-    default: "default",
+    default: "fumadocs",
     "pixel-border": "pixel-border",
-    fumadocs: "default",
+    fumadocs: "fumadocs",
   };
-  const cssTheme = themeMapping[cfg.theme] || "default";
+  const cssTheme = themeMapping[cfg.theme] || "fumadocs";
 
   if (existingGlobalCss) {
     const injected = injectSvelteCssImport(existingGlobalCss, cssTheme);
