@@ -230,6 +230,9 @@ importers:
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
+      sugar-high:
+        specifier: ^0.9.5
+        version: 0.9.5
       svelte:
         specifier: '>=5.0.0'
         version: 5.51.3

@@ -1,8 +1,9 @@
 <script>
   import { onMount, tick } from "svelte";
   import { goto } from "$app/navigation";
+  import { renderMarkdown } from "../lib/renderMarkdown.js";
 
-  let { onclose, api = "/api/docs", suggestedQuestions = [], aiLabel = "AI" } = $props();
+  let { onclose, api = "/api/docs", suggestedQuestions = [], aiLabel = "AI", hideAITab = false } = $props();
 
   let tab = $state("search");
   let searchQuery = $state("");
@@ -156,32 +157,6 @@
     aiInput = "";
   }
 
-  function renderAIMarkdown(text) {
-    if (!text) return "";
-    let result = text
-      .replace(/```(\w*)\n([\s\S]*?)```/g, (_m, lang, code) => {
-        const escaped = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n$/, "");
-        const langLabel = lang ? `<span class="fd-ai-code-lang">${lang}</span>` : "";
-        return `<div class="fd-ai-code-block"><div class="fd-ai-code-header">${langLabel}</div><pre><code>${escaped}</code></pre></div>`;
-      })
-      .replace(/```(\w*)\n([\s\S]*)$/, (_m, lang, code) => {
-        const escaped = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        const langLabel = lang ? `<span class="fd-ai-code-lang">${lang}</span>` : "";
-        return `<div class="fd-ai-code-block"><div class="fd-ai-code-header">${langLabel}</div><pre><code>${escaped}</code></pre></div>`;
-      })
-      .replace(/`([^`]+)`/g, "<code>$1</code>")
-      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-      .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<em>$1</em>")
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-      .replace(/^### (.*$)/gm, "<h4>$1</h4>")
-      .replace(/^## (.*$)/gm, "<h3>$1</h3>")
-      .replace(/^# (.*$)/gm, "<h2>$1</h2>")
-      .replace(/^[-*] (.*$)/gm, '<div style="display:flex;gap:8px;padding:2px 0"><span style="opacity:0.5">&bull;</span><span>$1</span></div>')
-      .replace(/\n\n/g, '<div style="height:8px"></div>')
-      .replace(/\n/g, "<br>");
-    return result;
-  }
-
   $effect(() => {
     if (messages.length > 0) {
       tick().then(() => messagesEndEl?.scrollIntoView({ behavior: "smooth" }));
@@ -209,13 +184,15 @@
         </svg>
         Search
       </button>
-      <button onclick={() => switchTab("ai")} class="fd-ai-tab" data-active={tab === "ai"}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-          <path d="M20 3v4" /><path d="M22 5h-4" />
-        </svg>
-        Ask {aiLabel}
-      </button>
+      {#if !hideAITab}
+        <button onclick={() => switchTab("ai")} class="fd-ai-tab" data-active={tab === "ai"}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+            <path d="M20 3v4" /><path d="M22 5h-4" />
+          </svg>
+          Ask {aiLabel}
+        </button>
+      {/if}
       <div style="margin-left:auto;display:flex;gap:4px;align-items:center">
         <kbd class="fd-ai-esc">ESC</kbd>
       </div>
@@ -310,7 +287,7 @@
                 {:else}
                   <div class="fd-ai-bubble-ai">
                     {#if msg.content}
-                      {@html renderAIMarkdown(msg.content)}
+                      {@html renderMarkdown(msg.content)}
                     {:else}
                       <span class="fd-ai-loading">
                         <span class="fd-ai-loading-text">{aiLabel} is thinking</span>

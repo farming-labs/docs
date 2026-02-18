@@ -16,8 +16,17 @@
     "./styles/pixel-border.css": "./styles/pixel-border.css",
     "./pixel-border/css": "./styles/pixel-border-bundle.css"
   },
-  "files": ["src", "styles"],
-  "keywords": ["docs", "svelte", "sveltekit", "theme", "documentation"],
+  "files": [
+    "src",
+    "styles"
+  ],
+  "keywords": [
+    "docs",
+    "svelte",
+    "sveltekit",
+    "theme",
+    "documentation"
+  ],
   "author": "Farming Labs",
   "license": "MIT",
   "scripts": {
@@ -27,7 +36,8 @@
   "dependencies": {
     "@farming-labs/docs": "workspace:*",
     "@farming-labs/svelte": "workspace:*",
-    "gray-matter": "^4.0.3"
+    "gray-matter": "^4.0.3",
+    "sugar-high": "^0.9.5"
   },
   "peerDependencies": {
     "svelte": ">=5.0.0"

@@ -279,20 +279,21 @@ code, kbd, pre, samp {
   text-decoration: none;
 }
 
-.fd-sidebar-link-active {
-  color: var(--color-fd-primary) !important;
-  background: color-mix(in srgb, var(--color-fd-primary) 10%, transparent) !important;
-  font-weight: 500;
+.fd-sidebar-link-active,
+.fd-sidebar-link[data-active="true"] {
+  color: var(--color-fd-foreground) !important;
+  background: var(--color-fd-accent) !important;
+  font-weight: 600;
 }
 
 .fd-sidebar-folder-content .fd-sidebar-link-active::before {
   content: '';
   position: absolute;
-  left: -12px;
+  left: -16px;
   top: 25%;
   bottom: 25%;
   width: 2px;
-  background: var(--color-fd-primary);
+  background: var(--color-fd-foreground);
   border-radius: 1px;
 }
 
@@ -347,7 +348,7 @@ code, kbd, pre, samp {
 .fd-sidebar-folder-content::before {
   content: '';
   position: absolute;
-  left: 0;
+  left: -12px;
   top: 4px;
   bottom: 4px;
   width: 1px;
@@ -817,6 +818,31 @@ html.dark pre.shiki {
   margin: 0;
 }
 
+.fd-codeblock-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  color: var(--color-fd-muted-foreground, #71717a);
+  background: var(--color-fd-secondary, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--color-fd-border);
+  border-bottom: none;
+  border-radius: var(--radius, 12px) var(--radius, 12px) 0 0;
+}
+
+.fd-codeblock-title + .fd-copy-btn ~ pre {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+
+.fd-codeblock:has(.fd-codeblock-title) pre {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+
 .fd-copy-btn {
   position: absolute;
   top: 10px;
@@ -1173,6 +1199,16 @@ html.dark pre.shiki {
   to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
+@keyframes fd-ai-float-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes fd-ai-float-center-in {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
 .fd-ai-overlay {
   position: fixed;
   inset: 0;
@@ -1239,6 +1275,41 @@ html.dark pre.shiki {
   font-family: inherit;
   margin-right: 4px;
   color: var(--color-fd-muted-foreground);
+}
+
+/* ─── Header ─────────────────────────────────────────────────── */
+
+.fd-ai-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.06));
+}
+
+.fd-ai-header-title {
+  font-size: 14px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.fd-ai-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius, 6px);
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--color-fd-muted-foreground, #71717a);
+  transition: all 150ms;
+}
+
+.fd-ai-close-btn:hover {
+  color: var(--color-fd-foreground, #e4e4e7);
+  background: var(--color-fd-accent, rgba(255, 255, 255, 0.06));
 }
 
 .fd-ai-search-wrap {
@@ -1397,33 +1468,13 @@ html.dark pre.shiki {
 }
 
 .fd-ai-bubble-ai {
-  background: var(--color-fd-muted);
+  background: var(--color-fd-muted, rgba(255, 255, 255, 0.04));
   padding: 10px 14px;
-  border-radius: 14px;
+  border-radius: var(--radius, 14px);
   font-size: 13px;
   line-height: 1.6;
   max-width: 95%;
   word-break: break-word;
-}
-
-.fd-ai-bubble-ai code {
-  background: var(--color-fd-secondary);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.875em;
-  font-family: var(--fd-font-mono, ui-monospace, monospace);
-}
-
-.fd-ai-bubble-ai a {
-  color: var(--color-fd-primary);
-  text-decoration: underline;
-}
-
-.fd-ai-bubble-ai .fd-ai-code-block code {
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
-  font-size: inherit;
 }
 
 .fd-ai-chat-footer {
@@ -1504,11 +1555,68 @@ html.dark pre.shiki {
 .fd-ai-loading-dot:nth-child(2) { animation-delay: 0.16s; }
 .fd-ai-loading-dot:nth-child(3) { animation-delay: 0.32s; }
 
+/* ─── Markdown in AI responses ───────────────────────────────── */
+
+.fd-ai-bubble-ai code {
+  background: var(--color-fd-muted, #1a1a2e);
+  padding: 2px 6px;
+  border-radius: var(--radius, 4px);
+  font-size: 0.875em;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+}
+
+.fd-ai-bubble-ai a {
+  color: var(--color-fd-primary, #6366f1);
+  text-decoration: underline;
+}
+
+.fd-ai-bubble-ai .fd-ai-code-block code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+.fd-ai-bubble-ai table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.fd-ai-bubble-ai th,
+.fd-ai-bubble-ai td {
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  padding: 6px 12px;
+  text-align: left;
+}
+
+.fd-ai-bubble-ai th {
+  background: var(--color-fd-muted, #1a1a2e);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Code blocks in AI chat — fd-ai-code-*
+ * ═══════════════════════════════════════════════════════════════════ */
+
 .fd-ai-code-block {
+  --sh-class: #8be9fd;
+  --sh-identifier: #c9d1d9;
+  --sh-keyword: #ff7b72;
+  --sh-string: #a5d6ff;
+  --sh-property: #79c0ff;
+  --sh-entity: #7ee787;
+  --sh-sign: #8b949e;
+  --sh-comment: #6e7681;
+  --sh-jsxliterals: #d2a8ff;
+  --sh-space: inherit;
+
   margin: 10px 0;
-  border-radius: 8px;
-  border: 1px solid var(--color-fd-border);
-  background: var(--color-fd-muted);
+  border-radius: var(--radius, 8px);
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  background: var(--color-fd-muted, #1a1a2e);
   overflow: hidden;
 }
 
@@ -1517,16 +1625,34 @@ html.dark pre.shiki {
   align-items: center;
   justify-content: space-between;
   padding: 6px 12px;
-  border-bottom: 1px solid var(--color-fd-border);
+  border-bottom: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.08));
+  background: color-mix(in srgb, var(--color-fd-muted, #1a1a2e) 80%, black);
   min-height: 32px;
 }
 
 .fd-ai-code-lang {
   font-size: 11px;
   font-family: var(--fd-font-mono, ui-monospace, monospace);
-  color: var(--color-fd-muted-foreground);
+  color: var(--color-fd-muted-foreground, #71717a);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.fd-ai-code-copy {
+  font-size: 11px;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  color: var(--color-fd-muted-foreground, #71717a);
+  background: transparent;
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius, 4px);
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.fd-ai-code-copy:hover {
+  color: var(--color-fd-foreground, #e4e4e7);
+  background: color-mix(in srgb, var(--color-fd-accent, rgba(255,255,255,0.05)) 60%, transparent);
 }
 
 .fd-ai-code-block pre {
@@ -1545,4 +1671,455 @@ html.dark pre.shiki {
   background: transparent;
   padding: 0;
   border-radius: 0;
+}
+
+.fd-ai-code-block .sh__line { display: block; min-height: 1.2em; }
+
+/* ═══════════════════════════════════════════════════════════════
+   Default theme AI overrides — rounded, soft, indigo
+   (matches Next.js fumadocs default.css)
+   ═══════════════════════════════════════════════════════════════ */
+
+.fd-ai-dialog {
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(99, 102, 241, 0.08), 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.fd-ai-bubble-user {
+  border-radius: 16px 16px 4px 16px;
+}
+
+.fd-ai-bubble-ai {
+  border-radius: 16px 16px 16px 4px;
+}
+
+.fd-ai-input-wrap {
+  border-radius: 10px;
+}
+
+.fd-ai-send-btn {
+  border-radius: 8px;
+}
+
+.fd-ai-floating-btn {
+  border-radius: 26px;
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+}
+
+.fd-ai-floating-btn:hover {
+  box-shadow: 0 10px 40px rgba(99, 102, 241, 0.4);
+}
+
+.fd-ai-suggestion {
+  border-radius: 8px;
+}
+
+.fd-ai-result {
+  border-radius: 8px;
+}
+
+.fd-ai-fm-input-container {
+  border-radius: 12px;
+}
+
+.fd-ai-fm-send-btn {
+  border-radius: 9999px;
+}
+
+.fd-ai-fm-suggestion {
+  border-radius: 9999px;
+}
+
+.fd-ai-fm-trigger-btn {
+  border-radius: 16px;
+}
+
+.fd-ai-fm-close-btn {
+  border-radius: 9999px;
+}
+
+.fd-ai-code-block {
+  border-radius: 8px;
+}
+
+.fd-ai-code-copy {
+  border-radius: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Floating AI Chat — fd-ai-floating-* + fd-ai-fm-*
+   (exact port of Next.js fumadocs ai.css)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── Floating trigger button ────────────────────────────────── */
+
+.fd-ai-floating-btn {
+  position: fixed;
+  z-index: 9997;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius, 26px);
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  background: var(--color-fd-primary, #6366f1);
+  color: var(--color-fd-primary-foreground, #fff);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 32px color-mix(in srgb, var(--color-fd-primary, #6366f1) 30%, transparent);
+  transition: all 200ms;
+  animation: fd-ai-fade-in 300ms ease-out;
+}
+
+.fd-ai-floating-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 40px color-mix(in srgb, var(--color-fd-primary, #6366f1) 40%, transparent);
+}
+
+.fd-ai-floating-trigger {
+  position: fixed;
+  z-index: 9997;
+  cursor: pointer;
+  animation: fd-ai-fade-in 300ms ease-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Full-Modal (better-auth inspired) — fd-ai-fm-*
+   ═══════════════════════════════════════════════════════════════ */
+
+.fd-ai-fm-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: color-mix(in srgb, var(--color-fd-background, #000) 80%, transparent);
+  backdrop-filter: blur(8px);
+  z-index: 9998;
+  animation: fd-ai-fade-in 200ms ease-out;
+  padding: 0 8px;
+}
+
+/* ─── Top bar (close button) ─────────────────────────────────── */
+
+.fd-ai-fm-topbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: min(800px, 100%);
+  padding: 12px 0;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.fd-ai-fm-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius, 9999px);
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  background: var(--color-fd-secondary, rgba(255, 255, 255, 0.06));
+  color: var(--color-fd-foreground, #e4e4e7);
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.fd-ai-fm-close-btn:hover {
+  background: var(--color-fd-accent, rgba(255, 255, 255, 0.1));
+}
+
+/* ─── Message list ───────────────────────────────────────────── */
+
+.fd-ai-fm-messages {
+  flex: 1;
+  overflow-y: auto;
+  width: min(800px, 100%);
+  padding: 24px 0 120px;
+  mask-image: linear-gradient(to bottom, transparent, white 3rem, white calc(100% - 8rem), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, white 3rem, white calc(100% - 8rem), transparent 100%);
+}
+
+.fd-ai-fm-messages-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ─── Message ────────────────────────────────────────────────── */
+
+.fd-ai-fm-msg {
+  display: flex;
+  flex-direction: column;
+}
+
+.fd-ai-fm-msg-label {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  color: var(--color-fd-muted-foreground, #71717a);
+}
+
+.fd-ai-fm-msg-label[data-role="assistant"] {
+  color: var(--color-fd-primary, #6366f1);
+}
+
+.fd-ai-fm-msg-content {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--color-fd-foreground, #e4e4e7);
+}
+
+.fd-ai-fm-msg-content code {
+  background: var(--color-fd-muted, #1a1a2e);
+  padding: 2px 6px;
+  border-radius: var(--radius, 4px);
+  font-size: 0.875em;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+}
+
+.fd-ai-fm-msg-content .fd-ai-code-block code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+.fd-ai-fm-msg-content a {
+  color: var(--color-fd-primary, #6366f1);
+  text-decoration: underline;
+}
+
+.fd-ai-fm-msg-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.fd-ai-fm-msg-content th,
+.fd-ai-fm-msg-content td {
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  padding: 6px 12px;
+  text-align: left;
+}
+
+.fd-ai-fm-msg-content th {
+  background: var(--color-fd-muted, #1a1a2e);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* ─── Thinking dots ──────────────────────────────────────────── */
+
+.fd-ai-fm-thinking {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.fd-ai-fm-thinking-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-fd-primary, #6366f1);
+  animation: fd-ai-fm-bounce 1s infinite ease-in-out;
+}
+
+.fd-ai-fm-thinking-dot:nth-child(2) { animation-delay: 150ms; }
+.fd-ai-fm-thinking-dot:nth-child(3) { animation-delay: 300ms; }
+
+@keyframes fd-ai-fm-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* ─── Bottom input bar ───────────────────────────────────────── */
+
+.fd-ai-fm-input-bar {
+  position: fixed;
+  z-index: 9999;
+  transition: width 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+              height 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+              transform 200ms ease-out;
+}
+
+.fd-ai-fm-input-bar--closed {
+  /* inherits position from inline btnPosition styles */
+}
+
+.fd-ai-fm-input-bar--open {
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(800px, calc(100vw - 32px));
+}
+
+.fd-ai-fm-input-container {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius, 12px);
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  background: var(--color-fd-background, #0c0c0c);
+  box-shadow: 0 20px 60px color-mix(in srgb, var(--color-fd-background, #000) 70%, transparent);
+  overflow: hidden;
+}
+
+.fd-ai-fm-input-wrap {
+  display: flex;
+  align-items: flex-start;
+  padding-right: 8px;
+}
+
+.fd-ai-fm-input {
+  flex: 1;
+  padding: 16px;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  color: var(--color-fd-foreground, #e4e4e7);
+  font-size: 14px;
+  font-family: var(--fd-font-sans, system-ui, -apple-system, sans-serif);
+  line-height: 1.5;
+  min-height: 0;
+  max-height: 120px;
+}
+
+.fd-ai-fm-input::placeholder {
+  color: var(--color-fd-muted-foreground, #71717a);
+}
+
+.fd-ai-fm-send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  border: none;
+  cursor: default;
+  transition: all 150ms;
+  background: var(--color-fd-secondary, rgba(255, 255, 255, 0.06));
+  color: var(--color-fd-muted-foreground, #71717a);
+}
+
+.fd-ai-fm-send-btn[data-active="true"] {
+  cursor: pointer;
+  background: var(--color-fd-primary, #6366f1);
+  color: var(--color-fd-primary-foreground, #fff);
+}
+
+/* ─── Suggestions (horizontal pills) ────────────────────────── */
+
+.fd-ai-fm-suggestions-area {
+  padding: 12px 16px 4px;
+}
+
+.fd-ai-fm-suggestions-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-fd-muted-foreground, #71717a);
+  margin-bottom: 8px;
+}
+
+.fd-ai-fm-suggestions {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  mask-image: linear-gradient(to right, transparent 0%, black 1rem, black calc(100% - 1rem), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 1rem, black calc(100% - 1rem), transparent 100%);
+}
+
+.fd-ai-fm-suggestion {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-family: inherit;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--color-fd-border, rgba(255,255,255,0.1)) 50%, transparent);
+  background: color-mix(in srgb, var(--color-fd-muted, rgba(255,255,255,0.04)) 30%, transparent);
+  color: var(--color-fd-muted-foreground, #71717a);
+  cursor: pointer;
+  transition: all 200ms;
+}
+
+.fd-ai-fm-suggestion:hover {
+  background: color-mix(in srgb, var(--color-fd-muted, rgba(255,255,255,0.04)) 50%, transparent);
+  color: var(--color-fd-foreground, #e4e4e7);
+  border-color: var(--color-fd-border, rgba(255, 255, 255, 0.1));
+}
+
+/* ─── Footer bar ─────────────────────────────────────────────── */
+
+.fd-ai-fm-footer-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.06));
+  background: color-mix(in srgb, var(--color-fd-accent, rgba(255,255,255,0.03)) 40%, transparent);
+  font-size: 12px;
+  color: var(--color-fd-muted-foreground, #71717a);
+}
+
+.fd-ai-fm-clear-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--color-fd-muted-foreground, #71717a);
+  transition: color 200ms;
+  padding: 0;
+}
+
+.fd-ai-fm-clear-btn:hover {
+  color: var(--color-fd-foreground, #e4e4e7);
+}
+
+.fd-ai-fm-clear-btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fd-ai-fm-footer-hint {
+  flex: 1;
+}
+
+/* ─── Closed trigger button ──────────────────────────────────── */
+
+.fd-ai-fm-trigger-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  height: 40px;
+  border-radius: var(--radius, 16px);
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  background: var(--color-fd-secondary, rgba(255, 255, 255, 0.06));
+  color: var(--color-fd-muted-foreground, #71717a);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 32px color-mix(in srgb, var(--color-fd-background, #000) 40%, transparent);
+  transition: all 200ms;
+  animation: fd-ai-fade-in 300ms ease-out;
+  white-space: nowrap;
+}
+
+.fd-ai-fm-trigger-btn:hover {
+  background: var(--color-fd-accent, rgba(255, 255, 255, 0.1));
+  color: var(--color-fd-accent-foreground, #fff);
+  transform: scale(1.03);
 }

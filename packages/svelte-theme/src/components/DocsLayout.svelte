@@ -1,6 +1,7 @@
 <script>
   import ThemeToggle from "./ThemeToggle.svelte";
   import AskAIDialog from "./AskAIDialog.svelte";
+  import FloatingAIChat from "./FloatingAIChat.svelte";
   import { page } from "$app/stores";
 
   let {
@@ -238,10 +239,20 @@
   </main>
 </div>
 
+{#if config?.ai?.mode === "floating" && config?.ai?.enabled}
+  <FloatingAIChat
+    suggestedQuestions={config.ai.suggestedQuestions ?? []}
+    aiLabel={config.ai.aiLabel ?? "AI"}
+    position={config.ai.position ?? "bottom-right"}
+    floatingStyle={config.ai.floatingStyle ?? "panel"}
+  />
+{/if}
+
 {#if searchOpen}
   <AskAIDialog
     onclose={closeSearch}
     suggestedQuestions={config?.ai?.suggestedQuestions ?? []}
     aiLabel={config?.ai?.aiLabel ?? "AI"}
+    hideAITab={config?.ai?.mode === "floating"}
   />
 {/if}
