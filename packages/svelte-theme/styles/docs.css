@@ -845,8 +845,8 @@ html.dark pre.shiki {
 
 .fd-copy-btn {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 4px;
+  right: 4px;
   z-index: 2;
   display: inline-flex;
   align-items: center;
