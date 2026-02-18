@@ -74,9 +74,32 @@ export default defineDocs({
 
   ai: {
     enabled: true,
-    mode: "search",
+    mode: "floating",
+    position: "bottom-right",
+    floatingStyle: "full-modal",
+    apiKey: process.env.OPENAI_API_KEY,
+    aiLabel: "DocsBot",
+    suggestedQuestions: [
+      "How do I get started?",
+      "What themes are available?",
+      "How do I create a custom component?",
+      "How do I configure the sidebar?",
+    ],
+    loadingComponent: ({ name }) => (
+      <div className="flex flex-row-reverse gap-2 items-center">
+        <p className="mb-1 text-xs font-medium text-fd-muted-foreground">
+          {name} bot
+        </p>
+        <div className="flex gap-1 items-end text-sm text-fd-muted-foreground">
+          <div className="flex gap-1 items-center opacity-70">
+            <span className="inline-block size-1 bg-fd-primary rounded-full animate-bounce [animation-delay:0ms]" />
+            <span className="inline-block size-1 opacity-80 bg-fd-primary rounded-full animate-bounce [animation-delay:150ms]" />
+            <span className="inline-block size-1 bg-fd-primary rounded-full animate-bounce [animation-delay:300ms]" />
+          </div>
+        </div>
+      </div>
+    ),
   },
-
   themeToggle: {
     enabled: false,
     default: "dark",
