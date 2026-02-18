@@ -1,4 +1,4 @@
-/* @farming-labs/fumadocs — pixel-border theme CSS
+/* @farming-labs/theme — pixel-border theme CSS
  * Inspired by better-auth.com — pixel-perfect borders, clean dark UI.
  * Uses the "black" color preset as the base.
  */
@@ -153,6 +153,9 @@ code:not(pre code) {
 
 /* ── Full-width border separators between top-level items ─────────── */
 /* Negative margins extend the border line across the full sidebar.    */
+.dark aside .overscroll-contain > div {
+  margin-top: -22px;
+}
 
 .dark aside .overscroll-contain > div > a[data-active] {
   border-top: 1px solid hsl(0 0% 12%);

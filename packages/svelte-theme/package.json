@@ -1,0 +1,57 @@
+{
+  "name": "@farming-labs/svelte-theme",
+  "version": "0.0.1",
+  "description": "Svelte UI components for @farming-labs/docs — layout, sidebar, TOC, search, and theme toggle",
+  "type": "module",
+  "svelte": "./src/index.js",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "svelte": "./src/index.js",
+      "import": "./src/index.js",
+      "default": "./src/index.js"
+    },
+    "./fumadocs": {
+      "import": "./src/themes/default.js",
+      "default": "./src/themes/default.js"
+    },
+    "./pixel-border": {
+      "import": "./src/themes/pixel-border.js",
+      "default": "./src/themes/pixel-border.js"
+    },
+    "./darksharp": {
+      "import": "./src/themes/darksharp.js",
+      "default": "./src/themes/darksharp.js"
+    },
+    "./css": "./styles/docs.css",
+    "./fumadocs/css": "./styles/docs.css",
+    "./styles/pixel-border.css": "./styles/pixel-border.css",
+    "./pixel-border/css": "./styles/pixel-border-bundle.css"
+  },
+  "files": [
+    "src",
+    "styles"
+  ],
+  "keywords": [
+    "docs",
+    "svelte",
+    "sveltekit",
+    "theme",
+    "documentation"
+  ],
+  "author": "Farming Labs",
+  "license": "MIT",
+  "scripts": {
+    "build": "echo 'Svelte components are shipped as source'",
+    "typecheck": "echo 'ok'"
+  },
+  "dependencies": {
+    "@farming-labs/docs": "workspace:*",
+    "@farming-labs/svelte": "workspace:*",
+    "gray-matter": "^4.0.3",
+    "sugar-high": "^0.9.5"
+  },
+  "peerDependencies": {
+    "svelte": ">=5.0.0"
+  }
+}

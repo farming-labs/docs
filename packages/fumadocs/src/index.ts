@@ -1,10 +1,10 @@
 /**
- * @farming-labs/fumadocs — generic base exports.
+ * @farming-labs/theme — generic base exports.
  *
  * Theme presets live under sub-paths:
- *   - `@farming-labs/fumadocs/default`      → default neutral theme
- *   - `@farming-labs/fumadocs/darksharp`    → sharp all-black theme
- *   - `@farming-labs/fumadocs/pixel-border` → better-auth inspired rounded borders
+ *   - `@farming-labs/theme/default`      → default neutral theme
+ *   - `@farming-labs/theme/darksharp`    → sharp all-black theme
+ *   - `@farming-labs/theme/pixel-border` → better-auth inspired rounded borders
  *
  * This root export provides layout helpers, the RootProvider, and re-exports
  * the base `fumadocs()` preset from `/default` for backward compatibility.
@@ -33,7 +33,7 @@
  *   DocsPageClient,   // client-side TOC heading scanner
  *   createDocsLayout, // auto-generates a layout component from DocsConfig
  *   createDocsMetadata, // auto-generates Next.js metadata from DocsConfig
- * } from "@farming-labs/fumadocs";
+ * } from "@farming-labs/theme";
  * ```
  *
  * ### CSS:
@@ -42,12 +42,12 @@
  *
  * | Preset | Import path | Description |
  * |--------|-------------|-------------|
- * | Neutral | `@farming-labs/fumadocs/presets/neutral` | Light neutral palette |
- * | Black   | `@farming-labs/fumadocs/presets/black`   | Dark black palette |
- * | Base    | `@farming-labs/fumadocs/presets/base`    | No palette, define all vars yourself |
+ * | Neutral | `@farming-labs/theme/presets/neutral` | Light neutral palette |
+ * | Black   | `@farming-labs/theme/presets/black`   | Dark black palette |
+ * | Base    | `@farming-labs/theme/presets/base`    | No palette, define all vars yourself |
  *
  * ```css
- * @import "@farming-labs/fumadocs/presets/black";
+ * @import "@farming-labs/theme/presets/black";
  *
  * :root {
  *   --radius: 0px;

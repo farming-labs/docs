@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "@farming-labs/fumadocs/pixel-border/css";
+@import "@farming-labs/theme/pixel-border/css";
 
 @theme {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;

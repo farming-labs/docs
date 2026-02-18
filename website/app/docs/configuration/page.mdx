@@ -1,26 +1,46 @@
 ---
 title: "Configuration"
-description: "Everything lives in docs.config.tsx"
+description: "Everything lives in docs.config.ts"
 icon: "settings"
 ---
 
 # Configuration
 
-All configuration lives in a single `docs.config.tsx` file at the root of your project.
+All configuration lives in a single `docs.config.ts` file at the root of your project.
 
 ## `defineDocs()`
 
 The `defineDocs()` function is the entry point. It takes a `DocsConfig` object and returns a typed config.
 
-```tsx title="docs.config.tsx"
-import { defineDocs } from "@farming-labs/docs";
-import { pixelBorder } from "@farming-labs/fumadocs/pixel-border";
+<Tabs items={["Next.js", "SvelteKit"]}>
+  <Tab value="Next.js">
+    ```tsx title="docs.config.tsx"
+    import { defineDocs } from "@farming-labs/docs";
+    import { pixelBorder } from "@farming-labs/theme/pixel-border";
 
-export default defineDocs({
-  entry: "docs",
-  theme: pixelBorder(),
-});
-```
+    export default defineDocs({
+      entry: "docs",
+      theme: pixelBorder(),
+    });
+    ```
+  </Tab>
+  <Tab value="SvelteKit">
+    ```ts title="docs.config.ts"
+    import { defineDocs } from "@farming-labs/docs";
+    import { fumadocs } from "@farming-labs/svelte-theme";
+
+    export default defineDocs({
+      entry: "docs",
+      contentDir: "docs",
+      theme: fumadocs(),
+      nav: {
+        title: "My Docs",
+        url: "/docs",
+      },
+    });
+    ```
+  </Tab>
+</Tabs>
 
 ## Config Options
 

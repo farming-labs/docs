@@ -82,7 +82,7 @@ export function createTheme(
  * @example
  * ```ts
  * import { extendTheme } from "@farming-labs/docs";
- * import { fumadocs } from "@farming-labs/fumadocs/default";
+ * import { fumadocs } from "@farming-labs/theme/default";
  *
  * // Start with fumadocs defaults, override some values
  * export const myTheme = extendTheme(fumadocs(), {

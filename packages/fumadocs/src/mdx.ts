@@ -5,7 +5,7 @@
  * plus Tabs/Tab for tabbed content and InstallTabs for package manager tabs.
  *
  * Usage in mdx-components.tsx:
- *   import { getMDXComponents } from "@farming-labs/fumadocs/mdx";
+ *   import { getMDXComponents } from "@farming-labs/theme/mdx";
  */
 
 import defaultMdxComponents from "fumadocs-ui/mdx";

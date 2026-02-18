@@ -1,7 +1,7 @@
 {
-  "name": "@farming-labs/fumadocs",
-  "version": "0.0.2-beta.3",
-  "description": "Fumadocs theme for @farming-labs/docs — layout, provider, MDX components, and styles",
+  "name": "@farming-labs/theme",
+  "version": "0.0.1",
+  "description": "Theme package for @farming-labs/docs — layout, provider, MDX components, and styles",
   "type": "module",
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",

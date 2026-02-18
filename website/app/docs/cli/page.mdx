@@ -14,48 +14,110 @@ The `@farming-labs/docs` CLI scaffolds a documentation project in seconds.
 npx @farming-labs/docs init
 ```
 
+## Supported Frameworks
+
+| Framework | Detection | Status |
+|-----------|-----------|--------|
+| Next.js | `next` in dependencies | Supported |
+| SvelteKit | `@sveltejs/kit` in dependencies | Supported |
+
 ## What it does
 
-1. **Detects your framework** — Currently supports Next.js (more coming)
-2. **Asks for a theme** — Choose between `fumadocs`, `darksharp`, or `pixel-border`
-3. **Asks for the entry path** — Default is `docs` (creates pages under `app/docs/`)
-4. **Generates files:**
-   - `docs.config.ts` — Full config with your selected theme
-   - `next.config.ts` — Wraps your existing config with `withDocs()`
-   - `app/global.css` — Imports Tailwind and theme CSS
-   - `app/docs/page.mdx` — Sample documentation page
-   - `app/docs/installation/page.mdx` — Sample installation guide
-5. **Installs dependencies** — Runs `pnpm add` (or npm/yarn) for all required packages
-6. **Starts the dev server** — Opens your docs at `http://localhost:3000/docs`
+<Tabs items={["Next.js", "SvelteKit"]}>
+  <Tab value="Next.js">
+    1. **Detects Next.js** via `next` in your `package.json`
+    2. **Asks for a theme** — Choose `fumadocs`
+    3. **Asks for the entry path** — Default is `docs` (creates pages under `app/docs/`)
+    4. **Generates files:**
+       - `docs.config.ts` — Full config with your selected theme
+       - `next.config.ts` — Wraps your existing config with `withDocs()`
+       - `app/global.css` — Imports Tailwind and theme CSS
+       - `app/layout.tsx` — Root layout with RootProvider
+       - `app/docs/layout.tsx` — Docs layout
+       - `app/docs/page.mdx` — Sample documentation page
+       - `app/docs/installation/page.mdx` — Sample installation guide
+       - `app/docs/quickstart/page.mdx` — Sample quickstart guide
+    5. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next`
+    6. **Starts the dev server** — Opens your docs at `http://localhost:3000/docs`
+  </Tab>
+  <Tab value="SvelteKit">
+    1. **Detects SvelteKit** via `@sveltejs/kit` in your `package.json`
+    2. **Asks for a theme** — Choose `default` or `pixel-border`
+    3. **Asks for the entry path** — Default is `docs`
+    4. **Generates files (does not touch `svelte.config.js`):**
+       - `docs.config.ts` — Full config with your selected theme
+       - `src/lib/docs.server.ts` — Server-side docs loader
+       - `src/routes/docs/+layout.svelte` — Docs layout component
+       - `src/routes/docs/+layout.server.js` — Layout data loader
+       - `src/routes/docs/[...slug]/+page.svelte` — Dynamic page component
+       - `src/app.css` — Theme CSS import
+       - `docs/page.md` — Sample documentation page
+       - `docs/installation/page.md` — Sample installation guide
+       - `docs/quickstart/page.md` — Sample quickstart guide
+    5. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/svelte`, `@farming-labs/svelte-theme`
+    6. **Starts the dev server** — Opens your docs at `http://localhost:5173/docs`
+  </Tab>
+</Tabs>
 
 ## Example Output
 
-```
-$ npx @farming-labs/docs init
+<Tabs items={["Next.js", "SvelteKit"]}>
+  <Tab value="Next.js">
+    ```
+    $ npx @farming-labs/docs init
 
-  ┌ @farming-labs/docs init
-  │
-  ◆ Detected framework: Next.js
-  │
-  ◆ Select a theme:
-  │ ● fumadocs (default neutral theme)
-  │ ○ darksharp (all-black, sharp corners)
-  │ ○ pixel-border (better-auth inspired)
-  │
-  ◆ Entry path for docs:
-  │ docs
-  │
-  ◇ Generated docs.config.ts
-  ◇ Generated next.config.ts
-  ◇ Generated app/global.css
-  ◇ Generated app/docs/page.mdx
-  ◇ Generated app/docs/installation/page.mdx
-  │
-  ◇ Installing dependencies...
-  ◇ Starting dev server...
-  │
-  └ Done! Open http://localhost:3000/docs
-```
+      ┌ @farming-labs/docs init
+      │
+      ◆ Detected framework: Next.js
+      │
+      ◆ Select a theme:
+      │ ● fumadocs (default neutral theme)
+      │
+      ◆ Entry path for docs:
+      │ docs
+      │
+      ◇ Generated docs.config.ts
+      ◇ Generated next.config.ts
+      ◇ Generated app/global.css
+      ◇ Generated app/docs/page.mdx
+      ◇ Generated app/docs/installation/page.mdx
+      ◇ Generated app/docs/quickstart/page.mdx
+      │
+      ◇ Installing dependencies...
+      ◇ Starting dev server...
+      │
+      └ Done! Open http://localhost:3000/docs
+    ```
+  </Tab>
+  <Tab value="SvelteKit">
+    ```
+    $ npx @farming-labs/docs init
+
+      ┌ @farming-labs/docs init
+      │
+      ◆ Detected framework: SvelteKit
+      │
+      ◆ Select a theme:
+      │ ● default (clean, modern docs theme)
+      │ ○ pixel-border (pixel-art inspired theme)
+      │
+      ◆ Entry path for docs:
+      │ docs
+      │
+      ◇ Generated docs.config.ts
+      ◇ Generated src/lib/docs.server.ts
+      ◇ Generated src/routes/docs/+layout.svelte
+      ◇ Generated docs/page.md
+      ◇ Generated docs/installation/page.md
+      ◇ Generated docs/quickstart/page.md
+      │
+      ◇ Installing dependencies...
+      ◇ Starting dev server...
+      │
+      └ Done! Open http://localhost:5173/docs
+    ```
+  </Tab>
+</Tabs>
 
 ## Flags
 

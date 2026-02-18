@@ -3,7 +3,7 @@
  *
  * @example
  * ```ts
- * import { fumadocs } from "@farming-labs/fumadocs/default";
+ * import { fumadocs } from "@farming-labs/theme/default";
  *
  * export default defineDocs({
  *   entry: "docs",
@@ -11,7 +11,7 @@
  * });
  * ```
  *
- * CSS: `@import "@farming-labs/fumadocs/default/css";`
+ * CSS: `@import "@farming-labs/theme/default/css";`
  */
 
 import { createTheme } from "@farming-labs/docs";
@@ -22,7 +22,7 @@ import type { DocsTheme } from "@farming-labs/docs";
  *
  * Theme authors can import this and extend it:
  * ```ts
- * import { DefaultUIDefaults } from "@farming-labs/fumadocs/default";
+ * import { DefaultUIDefaults } from "@farming-labs/theme/default";
  * ```
  */
 const DefaultUIDefaults = {
@@ -67,7 +67,7 @@ const DefaultUIDefaults = {
  *
  * @example
  * ```ts
- * import { fumadocs } from "@farming-labs/fumadocs/default";
+ * import { fumadocs } from "@farming-labs/theme/default";
  * export default defineDocs({ theme: fumadocs({ ui: { colors: { primary: "#22c55e" } } }) });
  * ```
  */

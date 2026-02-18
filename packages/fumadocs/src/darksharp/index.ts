@@ -4,7 +4,7 @@
  *
  * @example
  * ```ts
- * import { darksharp } from "@farming-labs/fumadocs/darksharp";
+ * import { darksharp } from "@farming-labs/theme/darksharp";
  *
  * export default defineDocs({
  *   entry: "docs",
@@ -12,7 +12,7 @@
  * });
  * ```
  *
- * CSS: `@import "@farming-labs/fumadocs/darksharp/css";`
+ * CSS: `@import "@farming-labs/theme/darksharp/css";`
  */
 
 import { createTheme } from "@farming-labs/docs";
@@ -23,7 +23,7 @@ import type { DocsTheme } from "@farming-labs/docs";
  *
  * Theme authors can import and extend:
  * ```ts
- * import { DarksharpUIDefaults } from "@farming-labs/fumadocs/darksharp";
+ * import { DarksharpUIDefaults } from "@farming-labs/theme/darksharp";
  * ```
  */
 const DarksharpUIDefaults = {
@@ -68,7 +68,7 @@ const DarksharpUIDefaults = {
  *
  * @example
  * ```ts
- * import { darksharp } from "@farming-labs/fumadocs/darksharp";
+ * import { darksharp } from "@farming-labs/theme/darksharp";
  * export default defineDocs({ theme: darksharp() });
  * ```
  */

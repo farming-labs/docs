@@ -671,6 +671,34 @@ export interface AIConfig {
   aiLabel?: string;
 
   /**
+   * The npm package name used in import examples.
+   * The AI will use this in code snippets instead of generic placeholders.
+   *
+   * @example
+   * ```ts
+   * ai: {
+   *   enabled: true,
+   *   packageName: "@farming-labs/docs",
+   * }
+   * ```
+   */
+  packageName?: string;
+
+  /**
+   * The public URL of the documentation site.
+   * The AI will use this for links instead of relative paths.
+   *
+   * @example
+   * ```ts
+   * ai: {
+   *   enabled: true,
+   *   docsUrl: "https://docs.farming-labs.dev",
+   * }
+   * ```
+   */
+  docsUrl?: string;
+
+  /**
    * Custom loading indicator shown while the AI is generating a response.
    * Replaces the default "AI is thinking..." indicator.
    *
@@ -697,6 +725,8 @@ export interface AIConfig {
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
+  /** Path to the content directory. Defaults to `entry` value. */
+  contentDir?: string;
   /** Theme configuration - single source of truth for UI */
   theme?: DocsTheme;
   /**

@@ -275,7 +275,7 @@ Don't want to start from scratch? Use `extendTheme()` to build on top of a built
 
 ```ts title="my-theme.ts"
 import { extendTheme } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/fumadocs";
+import { fumadocs } from "@farming-labs/theme";
 
 export const myTheme = extendTheme(fumadocs(), {
   name: "my-fumadocs-variant",
@@ -289,7 +289,7 @@ export const myTheme = extendTheme(fumadocs(), {
 Works with any built-in theme:
 
 ```ts
-import { darksharp } from "@farming-labs/fumadocs/darksharp";
+import { darksharp } from "@farming-labs/theme/darksharp";
 
 export const myDark = extendTheme(darksharp(), {
   name: "my-dark-variant",
@@ -309,9 +309,9 @@ export const myDark = extendTheme(darksharp(), {
 Each built-in theme exports its defaults object:
 
 ```ts
-import { DefaultUIDefaults } from "@farming-labs/fumadocs/default";
-import { DarksharpUIDefaults } from "@farming-labs/fumadocs/darksharp";
-import { PixelBorderUIDefaults } from "@farming-labs/fumadocs/pixel-border";
+import { DefaultUIDefaults } from "@farming-labs/theme/default";
+import { DarksharpUIDefaults } from "@farming-labs/theme/darksharp";
+import { PixelBorderUIDefaults } from "@farming-labs/theme/pixel-border";
 import { createTheme } from "@farming-labs/docs";
 
 export const myTheme = createTheme({
@@ -386,8 +386,8 @@ Every theme can ship a CSS file that sits on top of the config. The CSS file:
 
 ```css title="my-theme/theme.css"
 /* Pick a color preset as your base */
-@import "@farming-labs/fumadocs/presets/black";
-/* Or: @import "@farming-labs/fumadocs/presets/neutral"; */
+@import "@farming-labs/theme/presets/black";
+/* Or: @import "@farming-labs/theme/presets/neutral"; */
 
 /* Override CSS variables */
 .dark {
@@ -402,8 +402,8 @@ Two presets are available:
 
 | Preset | Import | Best for |
 |--------|--------|----------|
-| Neutral | `@farming-labs/fumadocs/presets/neutral` | Light-first themes |
-| Black | `@farming-labs/fumadocs/presets/black` | Dark-first themes |
+| Neutral | `@farming-labs/theme/presets/neutral` | Light-first themes |
+| Black | `@farming-labs/theme/presets/black` | Dark-first themes |
 
 ### Component CSS Selectors
 

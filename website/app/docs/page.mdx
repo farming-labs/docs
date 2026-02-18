@@ -1,17 +1,18 @@
 ---
 title: "Introduction"
-description: "A modern, flexible MDX documentation framework for Next.js"
+description: "A modern, flexible documentation framework for Next.js and SvelteKit"
 icon: "book"
 ---
 
 # @farming-labs/docs
 
-A modern MDX documentation framework built on top of [Fumadocs](https://fumadocs.vercel.app). One config file, zero boilerplate, beautiful themes out of the box.
+A modern documentation framework built on top of [Fumadocs](https://fumadocs.vercel.app). One config file, zero boilerplate, beautiful themes out of the box.
 
 ## Why @farming-labs/docs?
 
-- **Zero boilerplate** — No layout files, no `[[...slug]]` wrappers, no `mdx-components.tsx`. Just write MDX.
-- **One config** — Everything in `docs.config.tsx`: theme, colors, typography, icons, components, metadata.
+- **Zero boilerplate** — No layout files, no `[[...slug]]` wrappers. Just write Markdown or MDX.
+- **One config** — Everything in `docs.config.ts`: theme, colors, typography, icons, components, metadata.
+- **Multiple frameworks** — First-class support for both Next.js and SvelteKit.
 - **Three themes** — Default, Darksharp, and Pixel Border. Or build your own with `createTheme()`.
 - **Built-in search** — Full-text search powered by Orama. No API keys.
 - **CLI scaffolding** — `npx @farming-labs/docs init` detects your framework, generates config, installs deps, starts dev.
@@ -21,8 +22,10 @@ A modern MDX documentation framework built on top of [Fumadocs](https://fumadocs
 | Package | Description |
 |---------|-------------|
 | `@farming-labs/docs` | Core types, `defineDocs()`, `createTheme()`, `extendTheme()` |
-| `@farming-labs/fumadocs` | Theme presets, layout components, CSS presets |
+| `@farming-labs/theme` | Next.js theme presets, layout components, CSS presets |
 | `@farming-labs/next` | Next.js adapter — `withDocs()`, MDX processing, search API |
+| `@farming-labs/svelte` | SvelteKit adapter — server-side docs loader, markdown processing |
+| `@farming-labs/svelte-theme` | SvelteKit theme presets, DocsLayout, DocsContent components |
 
 ## Quick Start
 
@@ -30,10 +33,6 @@ A modern MDX documentation framework built on top of [Fumadocs](https://fumadocs
 npx @farming-labs/docs init
 ```
 
-Or install manually:
+The CLI auto-detects your framework (Next.js or SvelteKit) and scaffolds everything you need.
 
-```bash
-pnpm add @farming-labs/docs @farming-labs/fumadocs @farming-labs/next
-```
-
-Then follow the [Installation](/docs/installation) guide.
+Or install manually — see the [Installation](/docs/installation) guide.

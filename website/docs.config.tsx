@@ -1,5 +1,5 @@
 import { defineDocs } from "@farming-labs/docs";
-import { pixelBorder } from "@farming-labs/fumadocs/pixel-border";
+import { pixelBorder } from "@farming-labs/theme/pixel-border";
 import {
   BookOpen,
   Rocket,

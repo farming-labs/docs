@@ -1,11 +1,11 @@
 /*
- * @farming-labs/fumadocs — Neutral color preset
+ * @farming-labs/theme — Neutral color preset
  *
  * Bundles the fumadocs-ui neutral palette + core preset + shared base styles.
  * Theme authors import this instead of fumadocs-ui internals directly.
  *
  * Usage in your theme CSS:
- *   @import "@farming-labs/fumadocs/presets/neutral";
+ *   @import "@farming-labs/theme/presets/neutral";
  *
  * Then add your own :root / .dark overrides below.
  */
