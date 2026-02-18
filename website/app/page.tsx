@@ -55,7 +55,7 @@ function HeroSection() {
       <div className="absolute top-14 left-0 right-0 z-[999] h-px bg-white/[8%]" />
       <div className="absolute bottom-[70px] sm:bottom-16 left-0 right-0 z-[999] h-px bg-white/[8%]" />
       <AnimatedBackground />
-      <div className="relative z-[999] w-full pb-12 sm:pb-16 pt-24 px-5 sm:px-6">
+      <div className="relative z-[999] w-full pb-12 sm:pb-16 pt-24 px-5 sm:px-0">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 sm:gap-16">
           {/* Left — headline + CTA */}
           <div className="max-w-full sm:max-w-lg">
@@ -471,10 +471,12 @@ function PackagesSection() {
 
 function FooterSection() {
   return (
-    <footer className="relative z-10 bg-black border-t border-white/[8%]">
-      <div className="mx-auto max-w-6xl px-5 sm:px-6 py-10 sm:py-12">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <div>
+    <footer className="relative z-10 bg-black">
+      <div className="absolute bottom-10 left-0 w-full h-px bg-white/[8%]" />
+      <div className="absolute bottom-24 left-0 w-full h-px bg-white/[8%]" />
+      <div className="mx-auto max-w-6xl px-6 py-12">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="w-full">
             <span className="font-mono text-xs tracking-tighter text-white/40 uppercase">
               <Link
                 href="https://github.com/farming-labs/docs"
@@ -495,7 +497,7 @@ function FooterSection() {
               </Link>
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+          <div className="flex max-w-full w-full justify-end items-center gap-6">
             <Link
               href="/docs"
               className="text-xs uppercase font-mono text-white/30 hover:text-white/60 transition-colors hover:no-underline"
