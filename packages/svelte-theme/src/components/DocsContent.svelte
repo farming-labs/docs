@@ -1,20 +1,26 @@
 <script>
-  import { DocsPage } from "@farming-labs/svelte-theme";
+  import DocsPage from "./DocsPage.svelte";
 
-  let { data } = $props();
+  let { data, config = null } = $props();
+
+  let titleSuffix = $derived(
+    config?.metadata?.titleTemplate
+      ? config.metadata.titleTemplate.replace("%s", "")
+      : " – Docs"
+  );
 </script>
 
 <svelte:head>
-  <title>{data.title} – Docs</title>
+  <title>{data.title}{titleSuffix}</title>
   {#if data.description}
     <meta name="description" content={data.description} />
   {/if}
 </svelte:head>
 
 <DocsPage
-  entry="docs"
+  entry={config?.entry ?? "docs"}
   tocEnabled={true}
-  breadcrumbEnabled={true}
+  breadcrumbEnabled={config?.breadcrumb?.enabled ?? true}
   previousPage={data.previousPage}
   nextPage={data.nextPage}
   editOnGithub={data.editOnGithub}

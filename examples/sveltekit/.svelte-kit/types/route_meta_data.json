@@ -1,15 +1,12 @@
 {
 	"/": [],
-	"/api/search": [
-		"src/routes/api/search/+server.js"
+	"/api/docs": [
+		"src/routes/api/docs/+server.js"
 	],
 	"/docs": [
-		"src/routes/docs/+page.server.js",
-		"src/routes/docs/+layout.server.js",
 		"src/routes/docs/+layout.server.js"
 	],
 	"/docs/[...slug]": [
-		"src/routes/docs/[...slug]/+page.server.js",
 		"src/routes/docs/+layout.server.js"
 	]
 }

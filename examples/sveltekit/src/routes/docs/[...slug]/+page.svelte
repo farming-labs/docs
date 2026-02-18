@@ -1,26 +1,8 @@
 <script>
-  import { DocsPage } from "@farming-labs/svelte-theme";
+  import { DocsContent } from "@farming-labs/svelte-theme";
+  import config from "@/docs.config";
 
   let { data } = $props();
 </script>
 
-<svelte:head>
-  <title>{data.title} – Docs</title>
-  {#if data.description}
-    <meta name="description" content={data.description} />
-  {/if}
-</svelte:head>
-
-<DocsPage
-  entry="docs"
-  tocEnabled={true}
-  breadcrumbEnabled={true}
-  previousPage={data.previousPage}
-  nextPage={data.nextPage}
-  editOnGithub={data.editOnGithub}
-  lastModified={data.lastModified}
->
-  {#snippet children()}
-    {@html data.html}
-  {/snippet}
-</DocsPage>
+<DocsContent {data} {config} />

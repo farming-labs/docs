@@ -70,13 +70,13 @@ export function loadDocsContent(
         continue;
       }
 
-      if (!name.endsWith(".md") && !name.endsWith(".svx")) continue;
+      if (!name.endsWith(".md") && !name.endsWith(".mdx") && !name.endsWith(".svx")) continue;
 
       const raw = fs.readFileSync(full, "utf-8");
       const { data, content } = matter(raw);
 
-      const baseName = name.replace(/\.(md|svx)$/, "");
-      const isIndex = baseName === "index" || baseName === "+page";
+      const baseName = name.replace(/\.(md|mdx|svx)$/, "");
+      const isIndex = baseName === "index" || baseName === "page" || baseName === "+page";
 
       const slug = isIndex
         ? slugParts.join("/")
@@ -170,7 +170,7 @@ function scanDir(dir: string, slugParts: string[], entry: string): NavNode[] {
 }
 
 function findIndex(dir: string): string | null {
-  for (const name of ["index.md", "index.svx", "+page.md", "+page.svx"]) {
+  for (const name of ["page.md", "page.mdx", "index.md", "index.svx", "+page.md", "+page.svx"]) {
     const p = path.join(dir, name);
     if (fs.existsSync(p)) return p;
   }

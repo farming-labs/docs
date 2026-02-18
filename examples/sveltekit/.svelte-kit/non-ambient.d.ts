@@ -27,23 +27,18 @@ export {};
 
 declare module "$app/types" {
 	export interface AppTypes {
-		RouteId(): "/" | "/api" | "/api/search" | "/docs" | "/docs/concepts" | "/docs/concepts/database" | "/docs/concepts/session-management" | "/docs/get-started" | "/docs/installation" | "/docs/[...slug]";
+		RouteId(): "/" | "/api" | "/api/docs" | "/docs" | "/docs/[...slug]";
 		RouteParams(): {
 			"/docs/[...slug]": { slug: string }
 		};
 		LayoutParams(): {
 			"/": { slug?: string };
 			"/api": Record<string, never>;
-			"/api/search": Record<string, never>;
+			"/api/docs": Record<string, never>;
 			"/docs": { slug?: string };
-			"/docs/concepts": Record<string, never>;
-			"/docs/concepts/database": Record<string, never>;
-			"/docs/concepts/session-management": Record<string, never>;
-			"/docs/get-started": Record<string, never>;
-			"/docs/installation": Record<string, never>;
 			"/docs/[...slug]": { slug: string }
 		};
-		Pathname(): "/" | "/api/search" | "/docs" | `/docs/${string}` & {};
+		Pathname(): "/" | "/api/docs" | `/docs/${string}` & {};
 		ResolvedPathname(): `${"" | `/${string}`}${ReturnType<AppTypes['Pathname']>}`;
 		Asset(): string & {};
 	}

@@ -75,12 +75,6 @@ importers:
       '@farming-labs/svelte-theme':
         specifier: workspace:*
         version: link:../../packages/svelte-theme
-      gray-matter:
-        specifier: ^4.0.3
-        version: 4.0.3
-      shiki:
-        specifier: ^3.22.0
-        version: 3.22.0
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^6.0.0
@@ -211,6 +205,9 @@ importers:
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
+      shiki:
+        specifier: ^3.2.1
+        version: 3.22.0
     devDependencies:
       '@farming-labs/docs':
         specifier: workspace:*

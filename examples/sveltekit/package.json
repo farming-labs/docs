@@ -11,9 +11,7 @@
   "dependencies": {
     "@farming-labs/docs": "workspace:*",
     "@farming-labs/svelte": "workspace:*",
-    "@farming-labs/svelte-theme": "workspace:*",
-    "gray-matter": "^4.0.3",
-    "shiki": "^3.22.0"
+    "@farming-labs/svelte-theme": "workspace:*"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^6.0.0",

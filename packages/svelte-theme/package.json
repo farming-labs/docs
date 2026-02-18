@@ -12,7 +12,9 @@
       "default": "./src/index.js"
     },
     "./css": "./styles/docs.css",
-    "./default/css": "./styles/docs.css"
+    "./default/css": "./styles/docs.css",
+    "./styles/pixel-border.css": "./styles/pixel-border.css",
+    "./pixel-border/css": "./styles/pixel-border-bundle.css"
   },
   "files": ["src", "styles"],
   "keywords": ["docs", "svelte", "sveltekit", "theme", "documentation"],

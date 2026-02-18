@@ -1,0 +1,383 @@
+/*
+ * @farming-labs/svelte-theme — pixel-border theme
+ * Inspired by better-auth.com — clean dark UI, sharp corners, visible borders.
+ * Import AFTER docs.css to override the default neutral preset.
+ */
+
+/* ─── Color Tokens (light) ───────────────────────────────────────── */
+
+:root {
+  --color-fd-background: oklch(1 0 0);
+  --color-fd-foreground: oklch(0.147 0.004 49.25);
+  --color-fd-card: oklch(0.985 0.001 106.423);
+  --color-fd-card-foreground: oklch(0.147 0.004 49.25);
+  --color-fd-popover: oklch(1 0 0);
+  --color-fd-popover-foreground: oklch(0.147 0.004 49.25);
+  --color-fd-primary: oklch(0.216 0.006 56.043);
+  --color-fd-primary-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-secondary: oklch(0.97 0.001 106.424);
+  --color-fd-secondary-foreground: oklch(0.216 0.006 56.043);
+  --color-fd-muted: oklch(0.97 0.001 106.424);
+  --color-fd-muted-foreground: oklch(0.553 0.013 58.071);
+  --color-fd-accent: oklch(0.97 0.001 106.424);
+  --color-fd-accent-foreground: oklch(0.216 0.006 56.043);
+  --color-fd-border: oklch(0.923 0.003 48.717);
+  --color-fd-ring: oklch(0.709 0.01 56.259);
+}
+
+/* ─── Color Tokens (dark) ────────────────────────────────────────── */
+
+.dark {
+  --color-fd-background: hsl(0 0% 2%);
+  --color-fd-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-card: hsl(0 0% 4%);
+  --color-fd-card-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-popover: hsl(0 0% 4%);
+  --color-fd-popover-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-primary: oklch(0.985 0.001 106.423);
+  --color-fd-primary-foreground: oklch(0.216 0.006 56.043);
+  --color-fd-secondary: hsl(0 0% 8%);
+  --color-fd-secondary-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-muted: hsl(0 0% 10%);
+  --color-fd-muted-foreground: hsl(0 0% 55%);
+  --color-fd-accent: hsl(0 0% 10%);
+  --color-fd-accent-foreground: oklch(0.985 0.001 106.423);
+  --color-fd-border: hsl(0 0% 15%);
+  --color-fd-ring: hsl(0 0% 30%);
+}
+
+/* ─── Sharp corners everywhere (both modes) ──────────────────────── */
+
+.fd-sidebar-search-btn,
+.fd-search-dialog,
+.fd-search-overlay .fd-search-dialog,
+.fd-search-result,
+.fd-codeblock,
+.fd-codeblock pre,
+.fd-tabs,
+.fd-tab-trigger,
+.fd-tab-panel,
+.fd-callout,
+.fd-page-nav-card,
+.fd-table-wrapper,
+.fd-copy-btn,
+.fd-sidebar-search-btn kbd,
+.fd-sidebar-collapse-btn,
+.fd-theme-toggle {
+  border-radius: 0 !important;
+}
+
+/* ─── Sidebar (pixel-border style — BOTH light and dark) ─────────── */
+
+/* Full-width border separators between top-level items */
+.fd-sidebar-top-link,
+.fd-sidebar-nav > .fd-sidebar-folder {
+  border-top: 1px solid var(--color-fd-border);
+  margin-left: -12px;
+  margin-right: -12px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.fd-sidebar-top-link.fd-sidebar-first-item,
+.fd-sidebar-folder.fd-sidebar-first-item {
+  border-top: none;
+}
+
+/* Folder trigger — extend to full sidebar width */
+.fd-sidebar-nav > .fd-sidebar-folder > .fd-sidebar-folder-trigger {
+  margin-left: -12px;
+  margin-right: -12px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+/* All sidebar links — sharp corners, transparent bg */
+.fd-sidebar-link {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  border-radius: 0 !important;
+  padding: 0.5rem 0.625rem;
+  font-weight: 400;
+  background-color: transparent !important;
+  transition: color 0.15s ease;
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-sidebar-link:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--color-fd-foreground);
+}
+
+.fd-sidebar-link-active {
+  color: var(--color-fd-primary) !important;
+  font-weight: 600;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.fd-sidebar-link-active:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Folder triggers — sharp corners, transparent bg */
+.fd-sidebar-folder-trigger {
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0 !important;
+}
+
+.fd-sidebar-folder-trigger:hover {
+  background: transparent !important;
+}
+
+/* Child links — smaller, inside folder content */
+.fd-sidebar-child-link {
+  font-size: 0.785rem !important;
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+}
+
+.fd-sidebar-child-link.fd-sidebar-link-active {
+  font-weight: 500 !important;
+}
+
+/* Dark mode — specific color overrides */
+.dark .fd-sidebar {
+  background: hsl(0 0% 2%);
+  border-color: hsl(0 0% 12%);
+}
+
+.dark .fd-sidebar-link {
+  color: hsl(0 0% 50%);
+}
+
+.dark .fd-sidebar-link:hover {
+  color: hsl(0 0% 80%);
+}
+
+.dark .fd-sidebar-folder-trigger {
+  color: hsl(0 0% 90%);
+}
+
+.dark .fd-sidebar-folder-trigger:hover {
+  color: hsl(0 0% 100%);
+}
+
+.dark .fd-sidebar-child-link {
+  color: hsl(0 0% 45%) !important;
+}
+
+.dark .fd-sidebar-child-link:hover {
+  color: hsl(0 0% 75%) !important;
+}
+
+/* Active indicator bar for child links */
+.fd-sidebar-folder-content .fd-sidebar-link-active::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 25%;
+  bottom: 25%;
+  width: 2px;
+  background: var(--color-fd-primary);
+  border-radius: 0;
+}
+
+/* Sidebar icon */
+.fd-sidebar-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.fd-sidebar-link-active .fd-sidebar-icon {
+  opacity: 1;
+}
+
+/* Sidebar search button — full-width, border-y */
+.fd-sidebar-search-btn {
+  background: transparent !important;
+  border: none !important;
+  border-top: 1px solid var(--color-fd-border) !important;
+  border-bottom: 1px solid var(--color-fd-border) !important;
+  border-radius: 0 !important;
+}
+
+.fd-sidebar-search {
+  padding: 0;
+  margin-left: -12px;
+  margin-right: -12px;
+}
+
+.fd-sidebar-search .fd-sidebar-search-btn {
+  width: 100%;
+  padding-left: 12px;
+  padding-right: 12px;
+  margin: 0;
+}
+
+.fd-sidebar-search-btn:hover {
+  background: var(--color-fd-accent) !important;
+}
+
+.dark .fd-sidebar-search-btn {
+  color: hsl(0 0% 45%);
+}
+
+.dark .fd-sidebar-search-btn:hover {
+  background: hsl(0 0% 4%) !important;
+  color: hsl(0 0% 65%);
+}
+
+/* ─── Tables ─────────────────────────────────────────────────────── */
+
+.fd-table-wrapper {
+  border-radius: 0 !important;
+}
+
+.dark .fd-table-wrapper {
+  border-color: hsl(0 0% 15%);
+}
+
+.dark .fd-page-body table th {
+  background: hsl(0 0% 6%);
+  color: hsl(0 0% 80%);
+  font-weight: 500;
+  border-color: hsl(0 0% 15%);
+}
+
+.dark .fd-page-body table td {
+  border-color: hsl(0 0% 12%);
+}
+
+/* ─── Code blocks ────────────────────────────────────────────────── */
+
+.fd-codeblock {
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0 !important;
+  box-shadow: none;
+}
+
+.fd-codeblock pre.shiki {
+  border-radius: 0 !important;
+}
+
+/* ─── Tabs ───────────────────────────────────────────────────────── */
+
+.fd-tabs {
+  border-radius: 0 !important;
+  box-shadow: none;
+}
+
+/* ─── Callouts ───────────────────────────────────────────────────── */
+
+.fd-callout {
+  border-radius: 0 !important;
+}
+
+/* ─── Prev/Next nav cards ────────────────────────────────────────── */
+
+.fd-page-nav-card {
+  border-radius: 0 !important;
+}
+
+.dark .fd-page-nav-card {
+  border-color: hsl(0 0% 15%);
+}
+
+.dark .fd-page-nav-card:hover {
+  background: hsl(0 0% 6%);
+  border-color: hsl(0 0% 22%);
+}
+
+/* ─── Search dialog ──────────────────────────────────────────────── */
+
+.fd-search-overlay .fd-search-dialog {
+  border-radius: 0;
+}
+
+/* ─── Breadcrumb (monospace, uppercase) ───────────────────────────── */
+
+.fd-breadcrumb {
+  font-size: 0.75rem;
+  letter-spacing: 0.01em;
+}
+
+.fd-breadcrumb-parent,
+.fd-breadcrumb-current {
+  font-family: ui-monospace, monospace;
+  text-transform: uppercase;
+}
+
+/* ─── Selection ──────────────────────────────────────────────────── */
+
+::selection {
+  background: var(--color-fd-foreground);
+  color: var(--color-fd-background);
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-fd-border) transparent;
+}
+
+/* ─── HR ─────────────────────────────────────────────────────────── */
+
+.dark hr {
+  border-color: hsl(0 0% 15%);
+}
+
+/* ─── Ask AI dialog (pixel-border variant) ───────────────────────── */
+
+.fd-ai-overlay .fd-ai-dialog,
+.fd-ai-dialog {
+  border-radius: 0 !important;
+  box-shadow: 4px 4px 0 0 var(--color-fd-border);
+}
+
+.fd-ai-tab {
+  border-radius: 0 !important;
+}
+
+.fd-ai-input-wrap {
+  border-radius: 0 !important;
+}
+
+.fd-ai-send-btn {
+  border-radius: 0 !important;
+}
+
+.fd-ai-suggestion {
+  border-radius: 0 !important;
+}
+
+.fd-ai-bubble-user,
+.fd-ai-bubble-ai {
+  border-radius: 0 !important;
+}
+
+.fd-ai-bubble-ai pre {
+  border-radius: 0 !important;
+}
+
+.fd-ai-bubble-ai code {
+  border-radius: 0 !important;
+}
+
+.fd-ai-clear-btn {
+  border-radius: 0 !important;
+}
+
+.fd-ai-esc {
+  border-radius: 0 !important;
+}
+
+.fd-ai-result {
+  border-radius: 0 !important;
+}

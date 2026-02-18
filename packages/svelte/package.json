@@ -20,6 +20,16 @@
       "types": "./dist/content.d.ts",
       "import": "./dist/content.js",
       "default": "./dist/content.js"
+    },
+    "./markdown": {
+      "types": "./dist/markdown.d.ts",
+      "import": "./dist/markdown.js",
+      "default": "./dist/markdown.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
     }
   },
   "files": ["dist"],
@@ -32,7 +42,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "gray-matter": "^4.0.3"
+    "gray-matter": "^4.0.3",
+    "shiki": "^3.2.1"
   },
   "devDependencies": {
     "@farming-labs/docs": "workspace:*",

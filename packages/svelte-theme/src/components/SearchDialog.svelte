@@ -26,7 +26,7 @@
     loading = true;
     debounceTimer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/docs?query=${encodeURIComponent(query)}`);
         if (res.ok) {
           const data = await res.json();
           results = data ?? [];

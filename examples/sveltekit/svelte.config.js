@@ -15,6 +15,7 @@ const config = {
     adapter: adapter(),
     alias: {
       "$content": "src/content",
+      "@/docs.config": "docs.config.ts",
     },
   },
 };
