@@ -4,6 +4,7 @@ import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import CodeBlock from "@/components/ui/code-block";
 import PixelCard from "@/components/ui/pixel-card";
 import CopyCommand from "@/components/ui/copy-command";
+import FrameworkTabs from "@/components/ui/framework-tabs";
 
 function Navbar() {
   return (
@@ -92,8 +93,8 @@ function HeroSection() {
               that just <span className="text-black bg-white p-0 mt-2">works.</span>
             </h1>
             <p className="mt-4 text-xs sm:text-base font-mono uppercase text-white/45 max-w-md leading-relaxed">
-              A modern MDX documentation framework for Next.js. One config file,
-              zero boilerplate.
+              A modern documentation framework that works. One
+              config file, zero boilerplate.
             </p>
 
             <div className="mt-6 sm:mt-8 flex flex-wrap items-center gap-3">
@@ -126,58 +127,43 @@ function HeroSection() {
   );
 }
 
-function InstallSection() {
+function NextJsSteps() {
   return (
-    <section className="relative z-10 bg-black border-t border-white/[8%]">
-      <div className="mx-auto max-w-6xl px-5 sm:px-6 py-16 sm:py-24">
-        <div className="mb-10 sm:mb-16">
-          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-4 block">
-            Quick Start
-          </span>
-          <h2 className="text-2xl sm:text-4xl font-semibold tracking-tighter text-white">
-            Up and running in minutes
-          </h2>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="space-y-6">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            1
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Install</h3>
+            <p className="text-sm text-white/40">
+              Add the core packages to your Next.js project.
+            </p>
+          </div>
         </div>
+        <CodeBlock
+          title="Terminal"
+          filename="shell"
+          language="bash"
+          code="pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/next"
+        />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
-                1
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-white mb-1">
-                  Install
-                </h3>
-                <p className="text-sm text-white/40">
-                  Add the core packages to your Next.js project.
-                </p>
-              </div>
-            </div>
-            <CodeBlock
-              title="Terminal"
-              filename="shell"
-              language="bash"
-              code="pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/next"
-            />
-
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
-                2
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-white mb-1">
-                  Configure
-                </h3>
-                <p className="text-sm text-white/40">
-                  One file. Theme, metadata, components, icons — everything.
-                </p>
-              </div>
-            </div>
-            <CodeBlock
-              title="Config"
-              filename="docs.config.tsx"
-              code={`import { defineDocs } from "@farming-labs/docs";
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            2
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Configure</h3>
+            <p className="text-sm text-white/40">
+              One file. Theme, metadata, components, icons — everything.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Config"
+          filename="docs.config.tsx"
+          code={`import { defineDocs } from "@farming-labs/docs";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
 
 export default defineDocs({
@@ -187,29 +173,27 @@ export default defineDocs({
     titleTemplate: "%s – My Docs",
   },
 });`}
-            />
-          </div>
+        />
+      </div>
 
-          <div className="space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
-                3
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-white mb-1">
-                  Write docs
-                </h3>
-                <p className="text-sm text-white/40">
-                  Create MDX files under{" "}
-                  <code className="text-white/60 text-xs">app/docs/</code>.
-                  That&#39;s it.
-                </p>
-              </div>
-            </div>
-            <CodeBlock
-              title="MDX Page"
-              filename="app/docs/getting-started/page.mdx"
-              code={`---
+      <div className="space-y-6">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            3
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Write docs</h3>
+            <p className="text-sm text-white/40">
+              Create MDX files under{" "}
+              <code className="text-white/60 text-xs">app/docs/</code>.
+              That&#39;s it.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="MDX Page"
+          filename="app/docs/getting-started/page.mdx"
+          code={`---
 title: "Getting Started"
 description: "Set up in 5 minutes"
 icon: "rocket"
@@ -225,31 +209,207 @@ export const auth = betterAuth({
   database: { provider: "postgresql" },
 });
 \`\`\``}
-            />
+        />
 
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
-                4
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-white mb-1">Ship</h3>
-                <p className="text-sm text-white/40">
-                  No layout files. No wrappers. The framework handles
-                  everything.
-                </p>
-              </div>
-            </div>
-            <CodeBlock
-              title="Next Config"
-              filename="next.config.ts"
-              code={`import { withDocs } from "@farming-labs/next/config";
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            4
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Ship</h3>
+            <p className="text-sm text-white/40">
+              No layout files. No wrappers. The framework handles everything.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Next Config"
+          filename="next.config.ts"
+          code={`import { withDocs } from "@farming-labs/next/config";
 
 export default withDocs({});
 
 // That's it. Routing, MDX, search — all handled.`}
-            />
+        />
+      </div>
+    </div>
+  );
+}
+
+function SvelteKitSteps() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="space-y-6">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            1
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Install</h3>
+            <p className="text-sm text-white/40">
+              Add the core packages to your SvelteKit project.
+            </p>
           </div>
         </div>
+        <CodeBlock
+          title="Terminal"
+          filename="shell"
+          language="bash"
+          code="pnpm add @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme"
+        />
+
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            2
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Configure</h3>
+            <p className="text-sm text-white/40">
+              One config file. Theme, metadata, navigation — everything.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Config"
+          filename="docs.config.ts"
+          code={`import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/svelte-theme";
+
+export default defineDocs({
+  entry: "docs",
+  contentDir: "docs",
+  theme: fumadocs(),
+  metadata: {
+    titleTemplate: "%s – My Docs",
+  },
+});`}
+        />
+      </div>
+
+      <div className="space-y-6">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            3
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Write docs</h3>
+            <p className="text-sm text-white/40">
+              Create Markdown files under{" "}
+              <code className="text-white/60 text-xs">docs/</code>.
+              That&#39;s it.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Markdown Page"
+          filename="docs/getting-started/page.md"
+          code={`---
+title: "Getting Started"
+description: "Set up in 5 minutes"
+icon: "rocket"
+---
+
+# Getting Started
+
+Write your content in **Markdown** with
+frontmatter for metadata.
+
+\`\`\`ts title="auth.ts"
+export const auth = betterAuth({
+  database: { provider: "postgresql" },
+});
+\`\`\``}
+        />
+
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            4
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Ship</h3>
+            <p className="text-sm text-white/40">
+              Minimal route setup. The framework handles the rest.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Docs Layout"
+          filename="src/routes/docs/+layout.svelte"
+          code={`<script>
+  import { DocsLayout } from "@farming-labs/svelte-theme";
+  import config from "../../../docs.config.js";
+
+  let { data, children } = $props();
+</script>
+
+<DocsLayout tree={data.tree} {config}>
+  {@render children()}
+</DocsLayout>`}
+        />
+      </div>
+    </div>
+  );
+}
+
+function InstallSection() {
+  return (
+    <section className="relative z-10 bg-black border-t border-white/[8%]">
+      <div className="mx-auto max-w-7xl px-5 sm:px-6 py-16 sm:py-24">
+        <div className="mb-10 sm:mb-16">
+          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-4 block">
+            Quick Start
+          </span>
+          <h2 className="text-2xl sm:text-4xl font-semibold tracking-tighter text-white">
+            Up and running in minutes
+          </h2>
+        </div>
+        <div className="mb-8 relative border border-white/[8%] bg-white/[0.02] p-5 sm:p-6">
+          <div className="-pl-20">
+            <AnimatedBackground />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-r from-black/10 via-black/50 to-black/80 pointer-events-none opacity-100 mix-blend-overlay" />
+          {/* <div
+            className="absolute inset-0 z-[999] pointer-events-none opacity-80 mix-blend-overlay"
+            style={{
+              backgroundImage: "url(/shades.png)",
+              backgroundRepeat: "repeat",
+              backgroundSize: "100% 100%",
+            }}
+          /> */}
+          <div className="flex relative z-[999] flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+            <div className="flex-1">
+              <p className="text-sm text-white/60 mb-1">
+                Easily scaffold your docs with the CLI. It auto-detects your framework and scaffolds everything.
+              </p>
+              <p className="text-[11px] font-mono text-white/30 uppercase tracking-wider">
+                Setup beautiful documentation in seconds
+              </p>
+            </div>
+          </div>
+
+          <CopyCommand className="absolute bottom-0 right-0 border-r-0" command="pnpx @farming-labs/docs init" />
+        </div>
+
+        <div className="mb-4">
+          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/25">
+            Or set up manually
+          </span>
+        </div>
+
+        <FrameworkTabs
+          tabs={[
+            {
+              label: "Next.js",
+              value: "nextjs",
+              content: <NextJsSteps />,
+            },
+            {
+              label: "SvelteKit",
+              value: "sveltekit",
+              content: <SvelteKitSteps />,
+            },
+          ]}
+        />
       </div>
     </section>
   );
@@ -279,7 +439,7 @@ function ThemesSection() {
 
   return (
     <section className="relative z-10 bg-black border-t border-white/[8%]">
-      <div className="mx-auto max-w-6xl px-5 sm:px-6 py-16 sm:py-24">
+      <div className="mx-auto max-w-7xl px-5 sm:px-6 py-16 sm:py-24">
         <div className="mb-10 sm:mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-4 block">
             Themes
@@ -347,7 +507,7 @@ function ThemesSection() {
 function ConfigSection() {
   return (
     <section className="relative z-10 bg-black border-t border-white/[8%]">
-      <div className="mx-auto max-w-6xl px-5 sm:px-6 py-16 sm:py-24">
+      <div className="mx-auto max-w-7xl px-5 sm:px-6 py-16 sm:py-24">
         <div className="mb-10 sm:mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-4 block">
             Configuration
@@ -426,12 +586,22 @@ function PackagesSection() {
     {
       name: "@farming-labs/theme",
       description:
-        "Theme presets (default, darksharp, pixel-border), layout components, RootProvider.",
+        "Theme presets (default, darksharp, pixel-border) for Next.js. Layout components, RootProvider.",
     },
     {
       name: "@farming-labs/next",
       description:
         "Next.js adapter. withDocs() for config, MDX processing, search API generation.",
+    },
+    {
+      name: "@farming-labs/svelte",
+      description:
+        "SvelteKit adapter. Server-side docs loader, markdown processing, search API.",
+    },
+    {
+      name: "@farming-labs/svelte-theme",
+      description:
+        "Theme presets (default, pixel-border) for SvelteKit. DocsLayout, DocsContent components.",
     },
   ];
 
@@ -474,7 +644,7 @@ function FooterSection() {
     <footer className="relative z-10 bg-black">
       <div className="absolute bottom-10 left-0 w-full h-px bg-white/[8%]" />
       <div className="absolute bottom-24 left-0 w-full h-px bg-white/[8%]" />
-      <div className="mx-auto max-w-6xl px-6 py-12">
+      <div className="mx-auto max-w-7xl px-6 py-12">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="w-full">
             <span className="font-mono text-xs tracking-tighter text-white/40 uppercase">
@@ -529,12 +699,12 @@ export default function Home() {
   return (
     <div className="min-h-screen w-full overflow-x-hidden relative bg-black">
       <div className="pointer-events-none fixed inset-0 z-[999] hidden lg:block">
-        <div className="mx-auto max-w-7xl h-full relative">
+        <div className="mx-auto max-w-[90%] h-full relative">
           <div className="absolute left-0 top-0 h-full w-px bg-white/[8%]" />
           <div className="absolute right-0 top-0 h-full w-px bg-white/[8%]" />
         </div>
       </div>
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-[90%] mx-auto">
         <HeroSection />
         <InstallSection />
         <ThemesSection />

@@ -31,6 +31,9 @@ ${pc.dim("Usage:")}
 ${pc.dim("Commands:")}
   ${pc.cyan("init")}    Scaffold docs in your project (default)
 
+${pc.dim("Supported frameworks:")}
+  Next.js, SvelteKit
+
 ${pc.dim("Options:")}
   ${pc.cyan("-h, --help")}       Show this help message
   ${pc.cyan("-v, --version")}    Show version

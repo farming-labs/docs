@@ -8,7 +8,7 @@ icon: "rocket"
 
 ## Option A: CLI (Recommended)
 
-Run the init command inside an existing Next.js project:
+Run the init command inside an existing Next.js or SvelteKit project:
 
 ```bash
 npx @farming-labs/docs init
@@ -16,74 +16,182 @@ npx @farming-labs/docs init
 
 The CLI will:
 
-1. Detect your framework (Next.js)
-2. Ask you to pick a theme (`fumadocs`, `darksharp`, or `pixel-border`)
+1. Detect your framework (Next.js or SvelteKit)
+2. Ask you to pick a theme
 3. Ask for the docs entry path (default: `docs`)
-4. Generate `docs.config.ts`, `next.config.ts`, `global.css`, and sample pages
+4. Generate config, layout, CSS, and sample pages
 5. Install all required dependencies
 6. Start the dev server and give you a live URL
 
 ## Option B: Manual Setup
 
-### 1. Install packages
+<Tabs items={["Next.js", "SvelteKit"]}>
+  <Tab value="Next.js">
+    ### 1. Install packages
 
-```bash
-pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/next
-```
+    ```bash
+    pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/next
+    ```
 
-### 2. Create `docs.config.tsx`
+    ### 2. Create `docs.config.tsx`
 
-```tsx title="docs.config.tsx"
-import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/theme";
+    ```tsx title="docs.config.tsx"
+    import { defineDocs } from "@farming-labs/docs";
+    import { fumadocs } from "@farming-labs/theme";
 
-export default defineDocs({
-  entry: "docs",
-  theme: fumadocs(),
-  metadata: {
-    titleTemplate: "%s – Docs",
-    description: "My documentation site",
-  },
-});
-```
+    export default defineDocs({
+      entry: "docs",
+      theme: fumadocs(),
+      metadata: {
+        titleTemplate: "%s – Docs",
+        description: "My documentation site",
+      },
+    });
+    ```
 
-### 3. Create `next.config.ts`
+    ### 3. Create `next.config.ts`
 
-```ts title="next.config.ts"
-import { withDocs } from "@farming-labs/next/config";
-export default withDocs({});
-```
+    ```ts title="next.config.ts"
+    import { withDocs } from "@farming-labs/next/config";
+    export default withDocs({});
+    ```
 
-### 4. Import theme CSS in `app/global.css`
+    ### 4. Import theme CSS in `app/global.css`
 
-```css title="app/global.css"
-@import "tailwindcss";
-@import "@farming-labs/theme/default/css";
-```
+    ```css title="app/global.css"
+    @import "tailwindcss";
+    @import "@farming-labs/theme/default/css";
+    ```
 
-### 5. Write your first doc
+    ### 5. Write your first doc
 
-Create an MDX file under `app/docs/`:
+    Create an MDX file under `app/docs/`:
 
-```
-app/docs/
-  page.mdx              # /docs
-  getting-started/
-    page.mdx            # /docs/getting-started
-```
+    ```
+    app/docs/
+      page.mdx              # /docs
+      getting-started/
+        page.mdx            # /docs/getting-started
+    ```
 
-Each page uses frontmatter for metadata:
+    Each page uses frontmatter for metadata:
 
-```mdx title="app/docs/getting-started/page.mdx"
----
-title: "Getting Started"
-description: "Your first doc page"
-icon: "rocket"
----
+    ```mdx title="app/docs/getting-started/page.mdx"
+    ---
+    title: "Getting Started"
+    description: "Your first doc page"
+    icon: "rocket"
+    ---
 
-# Getting Started
+    # Getting Started
 
-Your content here.
-```
+    Your content here.
+    ```
 
-That's it — no layout files, no `[[...slug]]` wrappers. The framework handles routing, layout, and metadata from your config.
+    That's it — no layout files, no `[[...slug]]` wrappers. The framework handles routing, layout, and metadata from your config.
+  </Tab>
+  <Tab value="SvelteKit">
+    ### 1. Install packages
+
+    ```bash
+    pnpm add @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme
+    ```
+
+    ### 2. Create `docs.config.ts`
+
+    ```ts title="docs.config.ts"
+    import { defineDocs } from "@farming-labs/docs";
+    import { fumadocs } from "@farming-labs/svelte-theme";
+
+    export default defineDocs({
+      entry: "docs",
+      contentDir: "docs",
+      theme: fumadocs(),
+      nav: {
+        title: "My Docs",
+        url: "/docs",
+      },
+      metadata: {
+        titleTemplate: "%s – Docs",
+        description: "My documentation site",
+      },
+    });
+    ```
+
+    ### 3. Create `src/lib/docs.server.ts`
+
+    ```ts title="src/lib/docs.server.ts"
+    import { createDocsServer } from "@farming-labs/svelte/server";
+    import config from "../../docs.config.js";
+
+    export const { load, GET, POST } = createDocsServer(config);
+    ```
+
+    ### 4. Create route files
+
+    **`src/routes/docs/+layout.svelte`**:
+
+    ```svelte title="src/routes/docs/+layout.svelte"
+    <script>
+      import { DocsLayout } from "@farming-labs/svelte-theme";
+      import config from "../../../docs.config.js";
+
+      let { data, children } = $props();
+    </script>
+
+    <DocsLayout tree={data.tree} {config}>
+      {@render children()}
+    </DocsLayout>
+    ```
+
+    **`src/routes/docs/+layout.server.js`**:
+
+    ```js title="src/routes/docs/+layout.server.js"
+    export { load } from "$lib/docs.server.js";
+    ```
+
+    **`src/routes/docs/[...slug]/+page.svelte`**:
+
+    ```svelte title="src/routes/docs/[...slug]/+page.svelte"
+    <script>
+      import { DocsContent } from "@farming-labs/svelte-theme";
+      import config from "../../../../docs.config.js";
+
+      let { data } = $props();
+    </script>
+
+    <DocsContent {data} {config} />
+    ```
+
+    ### 5. Import theme CSS in `src/app.css`
+
+    ```css title="src/app.css"
+    @import "@farming-labs/svelte-theme/default/css";
+    ```
+
+    ### 6. Write your first doc
+
+    Create Markdown files under `docs/`:
+
+    ```
+    docs/
+      page.md               # /docs
+      getting-started/
+        page.md             # /docs/getting-started
+    ```
+
+    Each page uses frontmatter for metadata:
+
+    ```md title="docs/getting-started/page.md"
+    ---
+    title: "Getting Started"
+    description: "Your first doc page"
+    icon: "rocket"
+    ---
+
+    # Getting Started
+
+    Your content here.
+    ```
+  </Tab>
+</Tabs>

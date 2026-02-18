@@ -6,7 +6,7 @@ import { execSync, spawn } from "node:child_process";
 // Framework detection
 // ---------------------------------------------------------------------------
 
-export type Framework = "nextjs";
+export type Framework = "nextjs" | "sveltekit";
 
 export function detectFramework(cwd: string): Framework | null {
   const pkgPath = path.join(cwd, "package.json");
@@ -19,6 +19,7 @@ export function detectFramework(cwd: string): Framework | null {
   };
 
   if (allDeps["next"]) return "nextjs";
+  if (allDeps["@sveltejs/kit"]) return "sveltekit";
 
   return null;
 }
@@ -91,12 +92,13 @@ export function readFileSafe(filePath: string): string | null {
 // Global CSS detection
 // ---------------------------------------------------------------------------
 
-/** Common locations where global CSS files live in Next.js projects. */
+/** Common locations where global CSS files live in Next.js / SvelteKit projects. */
 const GLOBAL_CSS_CANDIDATES = [
   "app/globals.css",
   "app/global.css",
   "src/app/globals.css",
   "src/app/global.css",
+  "src/app.css",
   "styles/globals.css",
   "styles/global.css",
   "src/styles/globals.css",
