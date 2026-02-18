@@ -2,6 +2,7 @@ import path from "node:path";
 import * as p from "@clack/prompts";
 import pc from "picocolors";
 import {
+  type Framework,
   detectFramework,
   detectPackageManager,
   detectGlobalCssFiles,
@@ -49,26 +50,41 @@ export async function init() {
   // Step 1: Framework detection
   // -----------------------------------------------------------------------
 
-  const framework = detectFramework(cwd);
+  let framework = detectFramework(cwd);
 
-  if (!framework) {
-    p.log.error(
-      "Could not detect a supported framework.\n" +
-        "  Make sure you have a " +
+  if (framework) {
+    const frameworkName = framework === "nextjs" ? "Next.js" : "SvelteKit";
+    p.log.success(`Detected framework: ${pc.cyan(frameworkName)}`);
+  } else {
+    p.log.warn(
+      "Could not auto-detect a framework from " +
         pc.cyan("package.json") +
-        " with " +
-        pc.cyan("next") +
-        " or " +
-        pc.cyan("@sveltejs/kit") +
-        " installed.\n" +
-        "  Supported frameworks: Next.js, SvelteKit",
+        ".",
     );
-    p.outro(pc.red("Init cancelled."));
-    process.exit(1);
-  }
 
-  const frameworkName = framework === "nextjs" ? "Next.js" : "SvelteKit";
-  p.log.success(`Detected framework: ${pc.cyan(frameworkName)}`);
+    const picked = await p.select({
+      message: "Which framework are you using?",
+      options: [
+        {
+          value: "nextjs",
+          label: "Next.js",
+          hint: "React framework with App Router",
+        },
+        {
+          value: "sveltekit",
+          label: "SvelteKit",
+          hint: "Svelte framework with file-based routing",
+        },
+      ],
+    });
+
+    if (p.isCancel(picked)) {
+      p.outro(pc.red("Init cancelled."));
+      process.exit(0);
+    }
+
+    framework = picked as Framework;
+  }
 
   // -----------------------------------------------------------------------
   // Step 2: Theme selection
