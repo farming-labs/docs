@@ -38,6 +38,17 @@ import {
   svelteWelcomePageTemplate,
   svelteInstallationPageTemplate,
   svelteQuickstartPageTemplate,
+  astroDocsConfigTemplate,
+  astroDocsServerTemplate,
+  astroConfigTemplate,
+  astroDocsPageTemplate,
+  astroDocsIndexTemplate,
+  astroApiRouteTemplate,
+  astroGlobalCssTemplate,
+  injectAstroCssImport,
+  astroWelcomePageTemplate,
+  astroInstallationPageTemplate,
+  astroQuickstartPageTemplate,
   type TemplateConfig,
 } from "./templates.js";
 
@@ -53,7 +64,7 @@ export async function init() {
   let framework = detectFramework(cwd);
 
   if (framework) {
-    const frameworkName = framework === "nextjs" ? "Next.js" : "SvelteKit";
+    const frameworkName = framework === "nextjs" ? "Next.js" : framework === "sveltekit" ? "SvelteKit" : "Astro";
     p.log.success(`Detected framework: ${pc.cyan(frameworkName)}`);
   } else {
     p.log.warn(
@@ -74,6 +85,11 @@ export async function init() {
           value: "sveltekit",
           label: "SvelteKit",
           hint: "Svelte framework with file-based routing",
+        },
+        {
+          value: "astro",
+          label: "Astro",
+          hint: "Content-focused framework with island architecture",
         },
       ],
     });
@@ -125,7 +141,9 @@ export async function init() {
   const aliasHint =
     framework === "nextjs"
       ? `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`
-      : `Uses ${pc.cyan("$lib/")} prefix (SvelteKit built-in)`;
+      : framework === "sveltekit"
+      ? `Uses ${pc.cyan("$lib/")} prefix (SvelteKit built-in)`
+      : `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`;
 
   const useAlias = await p.confirm({
     message: `Use path aliases for imports? ${pc.dim(aliasHint)}`,
@@ -167,7 +185,7 @@ export async function init() {
   let globalCssRelPath: string;
 
   const defaultCssPath =
-    framework === "sveltekit" ? "src/app.css" : "app/globals.css";
+    framework === "sveltekit" ? "src/app.css" : framework === "astro" ? "src/styles/global.css" : "app/globals.css";
 
   if (detectedCssFiles.length === 1) {
     globalCssRelPath = detectedCssFiles[0];
@@ -237,6 +255,8 @@ export async function init() {
 
   if (framework === "sveltekit") {
     scaffoldSvelteKit(cwd, cfg, globalCssRelPath, write, skipped, written);
+  } else if (framework === "astro") {
+    scaffoldAstro(cwd, cfg, globalCssRelPath, write, skipped, written);
   } else {
     scaffoldNextJs(cwd, cfg, globalCssRelPath, write, skipped, written);
   }
@@ -271,6 +291,11 @@ export async function init() {
     if (framework === "sveltekit") {
       exec(
         `${installCommand(pm)} @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme`,
+        cwd,
+      );
+    } else if (framework === "astro") {
+      exec(
+        `${installCommand(pm)} @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme`,
         cwd,
       );
     } else {
@@ -333,9 +358,11 @@ export async function init() {
   const devCommand =
     framework === "sveltekit"
       ? { cmd: "npx", args: ["vite", "dev"], waitFor: "ready" }
+      : framework === "astro"
+      ? { cmd: "npx", args: ["astro", "dev"], waitFor: "ready" }
       : { cmd: "npx", args: ["next", "dev", "--webpack"], waitFor: "Ready" };
 
-  const defaultPort = framework === "sveltekit" ? "5173" : "3000";
+  const defaultPort = framework === "sveltekit" ? "5173" : framework === "astro" ? "4321" : "3000";
 
   try {
     const child = await spawnAndWaitFor(
@@ -370,7 +397,7 @@ export async function init() {
     });
   } catch (err) {
     const manualCmd =
-      framework === "sveltekit" ? "npx vite dev" : "npx next dev --webpack";
+      framework === "sveltekit" ? "npx vite dev" : framework === "astro" ? "npx astro dev" : "npx next dev --webpack";
     p.log.error(
       "Could not start dev server. Try running manually:\n" +
         `  ${pc.cyan(manualCmd)}`,
@@ -519,4 +546,55 @@ function scaffoldSvelteKit(
     `${cfg.entry}/quickstart/page.md`,
     svelteQuickstartPageTemplate(cfg),
   );
+}
+
+// ---------------------------------------------------------------------------
+// Astro scaffolding
+// ---------------------------------------------------------------------------
+
+function scaffoldAstro(
+  cwd: string,
+  cfg: TemplateConfig,
+  globalCssRelPath: string,
+  write: (rel: string, content: string, overwrite?: boolean) => void,
+  skipped: string[],
+  written: string[],
+) {
+  write("src/lib/docs.config.ts", astroDocsConfigTemplate(cfg));
+  write("src/lib/docs.server.ts", astroDocsServerTemplate(cfg));
+
+  if (!fileExists(path.join(cwd, "astro.config.mjs")) && !fileExists(path.join(cwd, "astro.config.ts"))) {
+    write("astro.config.mjs", astroConfigTemplate());
+  }
+
+  write(`src/pages/${cfg.entry}/index.astro`, astroDocsIndexTemplate(cfg));
+  write(`src/pages/${cfg.entry}/[...slug].astro`, astroDocsPageTemplate(cfg));
+  write(`src/pages/api/${cfg.entry}.ts`, astroApiRouteTemplate(cfg));
+
+  const globalCssAbsPath = path.join(cwd, globalCssRelPath);
+  const existingGlobalCss = readFileSafe(globalCssAbsPath);
+
+  const themeMapping: Record<string, string> = {
+    fumadocs: "fumadocs",
+    darksharp: "darksharp",
+    "pixel-border": "pixel-border",
+    default: "fumadocs",
+  };
+  const cssTheme = themeMapping[cfg.theme] || "fumadocs";
+
+  if (existingGlobalCss) {
+    const injected = injectAstroCssImport(existingGlobalCss, cssTheme);
+    if (injected) {
+      writeFileSafe(globalCssAbsPath, injected, true);
+      written.push(globalCssRelPath + " (updated)");
+    } else {
+      skipped.push(globalCssRelPath + " (already configured)");
+    }
+  } else {
+    write(globalCssRelPath, astroGlobalCssTemplate(cssTheme));
+  }
+
+  write(`${cfg.entry}/page.md`, astroWelcomePageTemplate(cfg));
+  write(`${cfg.entry}/installation/page.md`, astroInstallationPageTemplate(cfg));
+  write(`${cfg.entry}/quickstart/page.md`, astroQuickstartPageTemplate(cfg));
 }

@@ -6,6 +6,7 @@ import PixelCard from "@/components/ui/pixel-card";
 import CopyCommand from "@/components/ui/copy-command";
 import FrameworkTabs from "@/components/ui/framework-tabs";
 import SvelteRouteTabs from "@/components/ui/svelte-route-tabs";
+import AstroRouteTabs from "@/components/ui/astro-route-tabs";
 
 function Navbar() {
   return (
@@ -395,6 +396,128 @@ export const auth = betterAuth({
   );
 }
 
+function AstroSteps() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="space-y-6">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            1
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Install</h3>
+            <p className="text-sm text-white/40">
+              Add the core packages to your Astro project.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Terminal"
+          filename="shell"
+          language="bash"
+          code="pnpm add @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme"
+        />
+
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            2
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Configure</h3>
+            <p className="text-sm text-white/40">
+              One config file. Theme, metadata, navigation — everything.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Config"
+          filename="docs.config.ts"
+          code={`import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/astro-theme";
+
+export default defineDocs({
+  entry: "docs",
+  contentDir: "docs",
+  theme: fumadocs(),
+  metadata: {
+    titleTemplate: "%s – My Docs",
+  },
+});`}
+        />
+
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            3
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Server</h3>
+            <p className="text-sm text-white/40">
+              Create the server helper. Handles loading, search, and AI.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Server"
+          filename="src/lib/docs.server.ts"
+          code={`import { createDocsServer } from "@farming-labs/astro/server";
+import config from "./docs.config";
+
+export const { load, GET, POST } = createDocsServer(config);`}
+        />
+      </div>
+
+      <div className="space-y-6">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            4
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Write docs</h3>
+            <p className="text-sm text-white/40">
+              Create Markdown files under{" "}
+              <code className="text-white/60 text-xs">docs/</code>.
+              That&#39;s it.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Markdown Page"
+          filename="docs/getting-started/page.md"
+          code={`---
+title: "Getting Started"
+description: "Set up in 5 minutes"
+icon: "rocket"
+---
+
+# Getting Started
+
+Write your content in **Markdown** with
+frontmatter for metadata.
+
+\`\`\`ts title="auth.ts"
+export const auth = betterAuth({
+  database: { provider: "postgresql" },
+});
+\`\`\``}
+        />
+
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            5
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Routes</h3>
+            <p className="text-sm text-white/40">
+              Index page, catch-all route, and API endpoint.
+            </p>
+          </div>
+        </div>
+        <AstroRouteTabs />
+      </div>
+    </div>
+  );
+}
+
 function InstallSection() {
   return (
     <section className="relative z-10 bg-black border-t border-white/[8%]">
@@ -451,6 +574,11 @@ function InstallSection() {
               label: "SvelteKit",
               value: "sveltekit",
               content: <SvelteKitSteps />,
+            },
+            {
+              label: "Astro",
+              value: "astro",
+              content: <AstroSteps />,
             },
           ]}
         />

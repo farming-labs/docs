@@ -33,6 +33,14 @@
     "./pixel-border/css": "./styles/pixel-border-bundle.css",
     "./darksharp/css": "./styles/darksharp-bundle.css"
   },
+  "typesVersions": {
+    "*": {
+      "pixel-border": ["./src/themes/pixel-border.d.ts"],
+      "darksharp": ["./src/themes/darksharp.d.ts"],
+      "fumadocs": ["./src/themes/default.d.ts"],
+      ".": ["./src/index.d.ts"]
+    }
+  },
   "files": [
     "src",
     "styles"

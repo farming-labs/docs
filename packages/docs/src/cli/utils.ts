@@ -6,7 +6,7 @@ import { execSync, spawn } from "node:child_process";
 // Framework detection
 // ---------------------------------------------------------------------------
 
-export type Framework = "nextjs" | "sveltekit";
+export type Framework = "nextjs" | "sveltekit" | "astro";
 
 export function detectFramework(cwd: string): Framework | null {
   const pkgPath = path.join(cwd, "package.json");
@@ -20,6 +20,7 @@ export function detectFramework(cwd: string): Framework | null {
 
   if (allDeps["next"]) return "nextjs";
   if (allDeps["@sveltejs/kit"]) return "sveltekit";
+  if (allDeps["astro"]) return "astro";
 
   return null;
 }

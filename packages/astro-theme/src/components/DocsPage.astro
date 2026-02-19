@@ -1,0 +1,178 @@
+---
+const {
+  tocEnabled = true,
+  breadcrumbEnabled = true,
+  entry = "docs",
+  previousPage = null,
+  nextPage = null,
+  editOnGithub = null,
+  lastModified = null,
+} = Astro.props;
+
+const pathname = Astro.url.pathname;
+const segments = pathname.split("/").filter(Boolean).filter(s => s.toLowerCase() !== entry.toLowerCase());
+const parentLabel = segments.length >= 2 ? segments[segments.length - 2].replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "";
+const currentLabel = segments.length >= 2 ? segments[segments.length - 1].replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "";
+const parentUrl = (() => {
+  if (segments.length < 2) return "";
+  const all = pathname.split("/").filter(Boolean);
+  const parentSegment = segments[segments.length - 2];
+  const parentIndex = all.indexOf(parentSegment);
+  return "/" + all.slice(0, parentIndex + 1).join("/");
+})();
+---
+
+<div class="fd-page">
+  <article class="fd-page-article" id="nd-page">
+    {breadcrumbEnabled && segments.length >= 2 && (
+      <nav class="fd-breadcrumb" aria-label="Breadcrumb">
+        <span class="fd-breadcrumb-item">
+          <a href={parentUrl} class="fd-breadcrumb-parent fd-breadcrumb-link">{parentLabel}</a>
+        </span>
+        <span class="fd-breadcrumb-item">
+          <span class="fd-breadcrumb-sep">/</span>
+          <span class="fd-breadcrumb-current">{currentLabel}</span>
+        </span>
+      </nav>
+    )}
+
+    <div class="fd-page-body">
+      <slot />
+    </div>
+
+    <footer class="fd-page-footer">
+      {(editOnGithub || lastModified) && (
+        <div class="fd-edit-on-github">
+          {editOnGithub && (
+            <a href={editOnGithub} target="_blank" rel="noopener noreferrer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+              Edit on GitHub
+            </a>
+          )}
+          {lastModified && (
+            <span class="fd-last-modified">Last updated: {lastModified}</span>
+          )}
+        </div>
+      )}
+
+      {(previousPage || nextPage) && (
+        <nav class="fd-page-nav" aria-label="Page navigation">
+          {previousPage ? (
+            <a href={previousPage.url} class="fd-page-nav-card fd-page-nav-prev">
+              <span class="fd-page-nav-label">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+                Previous
+              </span>
+              <span class="fd-page-nav-title">{previousPage.name}</span>
+            </a>
+          ) : <div />}
+          {nextPage ? (
+            <a href={nextPage.url} class="fd-page-nav-card fd-page-nav-next">
+              <span class="fd-page-nav-label">
+                Next
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </span>
+              <span class="fd-page-nav-title">{nextPage.name}</span>
+            </a>
+          ) : <div />}
+        </nav>
+      )}
+    </footer>
+  </article>
+
+  {tocEnabled && (
+    <aside class="fd-toc">
+      <div class="fd-toc-inner">
+        <h3 class="fd-toc-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="15" y2="12" />
+            <line x1="3" y1="18" x2="18" y2="18" />
+          </svg>
+          On this page
+        </h3>
+        <ul class="fd-toc-list" id="fd-toc-list"></ul>
+      </div>
+    </aside>
+  )}
+</div>
+
+<script>
+  function initDocsPage() {
+    // Scan headings for TOC
+    const container = document.querySelector('.fd-page-body');
+    const tocList = document.getElementById('fd-toc-list');
+    if (container && tocList) {
+      const headings = container.querySelectorAll('h2[id], h3[id], h4[id]');
+      tocList.innerHTML = '';
+      headings.forEach(el => {
+        const depth = parseInt(el.tagName[1], 10);
+        const li = document.createElement('li');
+        li.className = 'fd-toc-item';
+        const a = document.createElement('a');
+        a.className = 'fd-toc-link';
+        a.href = `#${el.id}`;
+        a.textContent = el.textContent?.replace(/^#\s*/, '') || '';
+        a.style.paddingLeft = `${12 + (depth - 2) * 12}px`;
+        li.appendChild(a);
+        tocList.appendChild(li);
+      });
+
+      // Intersection observer for active heading
+      const observer = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            tocList.querySelectorAll('.fd-toc-link').forEach(link => {
+              link.classList.toggle('fd-toc-link-active', link.getAttribute('href') === `#${entry.target.id}`);
+            });
+          }
+        }
+      }, { rootMargin: '-80px 0px -80% 0px' });
+
+      headings.forEach(el => observer.observe(el));
+    }
+
+    // Copy buttons
+    document.querySelectorAll('.fd-copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const code = btn.getAttribute('data-code')
+          ?.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+        if (!code) return;
+        navigator.clipboard.writeText(code).then(() => {
+          btn.classList.add('fd-copy-btn-copied');
+          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+          setTimeout(() => {
+            btn.classList.remove('fd-copy-btn-copied');
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
+          }, 2000);
+        });
+      });
+    });
+
+    // Tabs
+    document.querySelectorAll('[data-tabs]').forEach(tabs => {
+      tabs.querySelectorAll('.fd-tab-trigger').forEach(trigger => {
+        trigger.addEventListener('click', () => {
+          const val = trigger.getAttribute('data-tab-value');
+          tabs.querySelectorAll('.fd-tab-trigger').forEach(t => {
+            t.classList.toggle('fd-tab-active', t.getAttribute('data-tab-value') === val);
+            t.setAttribute('aria-selected', String(t.getAttribute('data-tab-value') === val));
+          });
+          tabs.querySelectorAll('.fd-tab-panel').forEach(p => {
+            p.classList.toggle('fd-tab-panel-active', p.getAttribute('data-tab-panel') === val);
+          });
+        });
+      });
+    });
+  }
+
+  initDocsPage();
+  document.addEventListener('astro:after-swap', initDocsPage);
+</script>

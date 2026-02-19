@@ -29,7 +29,7 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
-  theme: pixelBorder({
+  theme: fumadocs({
     ui: {
       components: { Callout: { variant: "outline" } },
       layout: { toc: { enabled: true, depth: 3 } },
@@ -52,7 +52,7 @@ export default defineDocs({
     enabled: true,
     mode: "floating",
     position: "bottom-right",
-    floatingStyle: "full-modal",
+    floatingStyle: "panel",
     apiKey: process.env.OPENAI_API_KEY,
     aiLabel: "DocsBot",
     suggestedQuestions: [
@@ -72,9 +72,9 @@ export default defineDocs({
         </div>
       </div>
     ),
-    triggerComponent: <button className="border text-xs cursor-pointer text-white px-4 py-2 font-mono uppercase rounded-none flex items-center gap-2">
-      <SparklesIcon size={16} />
-      Ask AI</button>,
+    // triggerComponent: <button className="border text-xs cursor-pointer text-white px-4 py-2 font-mono uppercase rounded-none flex items-center gap-2">
+    //   <SparklesIcon size={16} />
+    //   Ask AI</button>,
   },
   nav: {
     title: (

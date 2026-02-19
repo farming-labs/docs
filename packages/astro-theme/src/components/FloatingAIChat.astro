@@ -1,0 +1,450 @@
+---
+const {
+  api = "/api/docs",
+  suggestedQuestions = [],
+  aiLabel = "AI",
+  position = "bottom-right",
+  floatingStyle = "panel",
+} = Astro.props;
+
+const isFullModal = floatingStyle === "full-modal";
+
+const BTN_POSITIONS: Record<string, string> = {
+  "bottom-right": "bottom:24px;right:24px",
+  "bottom-left": "bottom:24px;left:24px",
+  "bottom-center": "bottom:24px;left:50%;transform:translateX(-50%)",
+};
+
+const PANEL_POSITIONS: Record<string, string> = {
+  "bottom-right": "bottom:80px;right:24px",
+  "bottom-left": "bottom:80px;left:24px",
+  "bottom-center": "bottom:80px;left:50%;transform:translateX(-50%)",
+};
+
+function getContainerStyle(style: string, pos: string) {
+  switch (style) {
+    case "modal":
+      return "top:50%;left:50%;transform:translate(-50%,-50%);width:min(680px,calc(100vw - 32px));height:min(560px,calc(100vh - 64px))";
+    case "popover":
+      return `${PANEL_POSITIONS[pos] || PANEL_POSITIONS["bottom-right"]};width:min(360px,calc(100vw - 48px));height:min(400px,calc(100vh - 120px))`;
+    case "panel":
+    default:
+      return `${PANEL_POSITIONS[pos] || PANEL_POSITIONS["bottom-right"]};width:min(400px,calc(100vw - 48px));height:min(500px,calc(100vh - 120px))`;
+  }
+}
+
+const btnStyle = BTN_POSITIONS[position] || BTN_POSITIONS["bottom-right"];
+const containerStyle = getContainerStyle(floatingStyle, position);
+---
+
+{isFullModal ? (
+  <Fragment>
+    <!-- Full-modal overlay (hidden by default) -->
+    <div class="fd-ai-fm-overlay" id="fd-float-overlay" style="display:none">
+      <div class="fd-ai-fm-topbar">
+        <button id="fd-float-close-top" class="fd-ai-fm-close-btn" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="fd-ai-fm-messages" id="fd-float-messages"></div>
+    </div>
+
+    <!-- Bottom input bar -->
+    <div class="fd-ai-fm-input-bar fd-ai-fm-input-bar--closed" id="fd-float-bar" style={btnStyle}>
+      <button id="fd-float-trigger" class="fd-ai-fm-trigger-btn" aria-label={`Ask ${aiLabel}`}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+          <path d="M20 3v4"/><path d="M22 5h-4"/>
+        </svg>
+        <span>Ask {aiLabel}</span>
+      </button>
+
+      <div id="fd-float-input-container" class="fd-ai-fm-input-container" style="display:none">
+        <div class="fd-ai-fm-input-wrap">
+          <textarea id="fd-float-input" class="fd-ai-fm-input" placeholder={`Ask ${aiLabel}`} rows="1"></textarea>
+          <button id="fd-float-send" class="fd-ai-fm-send-btn" aria-label="Send" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>
+            </svg>
+          </button>
+        </div>
+
+        {suggestedQuestions.length > 0 && (
+          <div class="fd-ai-fm-suggestions-area" id="fd-float-suggestions">
+            <div class="fd-ai-fm-suggestions-label">Try asking:</div>
+            <div class="fd-ai-fm-suggestions">
+              {suggestedQuestions.map((q: string) => (
+                <button class="fd-ai-fm-suggestion" data-question={q}>{q}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div class="fd-ai-fm-footer-bar">
+          <div class="fd-ai-fm-footer-hint" id="fd-float-footer-hint">
+            AI can be inaccurate, please verify the information.
+          </div>
+          <button class="fd-ai-fm-clear-btn" id="fd-float-clear" style="display:none">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+            </svg>
+            <span>Clear</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </Fragment>
+) : (
+  <Fragment>
+    <!-- Panel/Modal/Popover overlay -->
+    {(floatingStyle === "modal") && (
+      <div class="fd-ai-overlay" id="fd-float-modal-bg" style="display:none"></div>
+    )}
+
+    <!-- Panel/modal/popover container -->
+    <div class="fd-ai-dialog" id="fd-float-dialog" style={`display:none;${containerStyle};animation:fd-ai-float-in 200ms ease-out`}>
+      <div class="fd-ai-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+        </svg>
+        <span class="fd-ai-header-title">Ask {aiLabel}</span>
+        {floatingStyle === "modal" && <kbd class="fd-ai-esc">ESC</kbd>}
+        <button id="fd-float-close" class="fd-ai-close-btn" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;flex:1;min-height:0">
+        <div class="fd-ai-messages" id="fd-float-messages">
+          <div class="fd-ai-empty">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+              <path d="M20 3v4"/><path d="M22 5h-4"/>
+            </svg>
+            <div class="fd-ai-empty-title">Ask anything about the docs</div>
+            <div class="fd-ai-empty-desc">{aiLabel} will search through the documentation and answer your question.</div>
+            {suggestedQuestions.length > 0 && (
+              <div class="fd-ai-suggestions" id="fd-float-suggestions">
+                {suggestedQuestions.map((q: string) => (
+                  <button class="fd-ai-suggestion" data-question={q}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>
+                    </svg>
+                    <span style="flex:1">{q}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div class="fd-ai-chat-footer">
+          <div id="fd-float-clear-wrap" style="display:none;justify-content:flex-end;padding-bottom:8px">
+            <button id="fd-float-clear" class="fd-ai-clear-btn">Clear chat</button>
+          </div>
+          <div class="fd-ai-input-wrap">
+            <input id="fd-float-input" type="text" placeholder="Ask a question..." class="fd-ai-input" />
+            <button id="fd-float-send" class="fd-ai-send-btn" aria-label="Send">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating trigger button -->
+    <button id="fd-float-btn" class="fd-ai-floating-btn" style={btnStyle} aria-label={`Ask ${aiLabel}`}>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+        <path d="M20 3v4"/><path d="M22 5h-4"/>
+      </svg>
+    </button>
+  </Fragment>
+)}
+
+<script define:vars={{ api, aiLabel, isFullModal }}>
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function buildCodeBlock(lang, code) {
+    const trimmed = code.replace(/\n$/, '');
+    const escaped = escapeHtml(trimmed);
+    const lines = escaped.split('\n').map(l => '<span class="sh__line">' + l + '</span>').join('\n');
+    const langLabel = lang ? '<div class="fd-ai-code-lang">' + escapeHtml(lang) + '</div>' : '';
+    const copyBtn = '<button class="fd-ai-code-copy" onclick="(function(btn){var code=btn.closest(\'.fd-ai-code-block\').querySelector(\'code\').textContent;navigator.clipboard.writeText(code).then(function(){btn.textContent=\'Copied!\';setTimeout(function(){btn.textContent=\'Copy\'},1500)})})(this)">Copy</button>';
+    return '<div class="fd-ai-code-block">'
+      + '<div class="fd-ai-code-header">' + langLabel + copyBtn + '</div>'
+      + '<pre><code>' + lines + '</code></pre>'
+      + '</div>';
+  }
+
+  function isTableRow(line) {
+    var t = line.trim();
+    return t.startsWith('|') && t.endsWith('|') && t.includes('|');
+  }
+
+  function isTableSeparator(line) {
+    return /^\|[\s:]*-+[\s:]*(\|[\s:]*-+[\s:]*)*\|$/.test(line.trim());
+  }
+
+  function renderTable(rows) {
+    var parseRow = function(row) {
+      return row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(function(c) { return c.trim(); });
+    };
+    var headerCells = parseRow(rows[0]);
+    var thead = '<thead><tr>' + headerCells.map(function(c) { return '<th>' + c + '</th>'; }).join('') + '</tr></thead>';
+    var bodyRows = rows.slice(1).map(function(row) {
+      var cells = parseRow(row);
+      return '<tr>' + cells.map(function(c) { return '<td>' + c + '</td>'; }).join('') + '</tr>';
+    }).join('');
+    return '<table>' + thead + '<tbody>' + bodyRows + '</tbody></table>';
+  }
+
+  function renderMarkdown(text) {
+    if (!text) return '';
+    var codeBlocks = [];
+    var processed = text.replace(/```(\w*)\n([\s\S]*?)```/g, function(_m, lang, code) {
+      codeBlocks.push(buildCodeBlock(lang, code));
+      return '\x00CB' + (codeBlocks.length - 1) + '\x00';
+    });
+    processed = processed.replace(/```(\w*)\n([\s\S]*)$/, function(_m, lang, code) {
+      codeBlocks.push(buildCodeBlock(lang, code));
+      return '\x00CB' + (codeBlocks.length - 1) + '\x00';
+    });
+    var lines = processed.split('\n');
+    var output = [];
+    var i = 0;
+    while (i < lines.length) {
+      if (isTableRow(lines[i]) && i + 1 < lines.length && isTableSeparator(lines[i + 1])) {
+        var tableLines = [lines[i]];
+        i++; i++;
+        while (i < lines.length && isTableRow(lines[i])) { tableLines.push(lines[i]); i++; }
+        output.push(renderTable(tableLines));
+        continue;
+      }
+      output.push(lines[i]);
+      i++;
+    }
+    var result = output.join('\n');
+    result = result
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+      .replace(/^### (.*$)/gm, '<h4>$1</h4>')
+      .replace(/^## (.*$)/gm, '<h3>$1</h3>')
+      .replace(/^# (.*$)/gm, '<h2>$1</h2>')
+      .replace(/^[-*] (.*$)/gm, '<div style="display:flex;gap:8px;padding:2px 0"><span style="opacity:0.5">\u2022</span><span>$1</span></div>')
+      .replace(/^(\d+)\. (.*$)/gm, '<div style="display:flex;gap:8px;padding:2px 0"><span style="opacity:0.5">$1.</span><span>$2</span></div>')
+      .replace(/\n\n/g, '<div style="height:8px"></div>')
+      .replace(/\n/g, '<br>');
+    result = result.replace(/\x00CB(\d+)\x00/g, function(_m, idx) { return codeBlocks[Number(idx)]; });
+    return result;
+  }
+
+  function initFloatingAI() {
+    let messages = [];
+    let isStreaming = false;
+    let isOpen = false;
+
+    const overlay = document.getElementById('fd-float-overlay');
+    const bar = document.getElementById('fd-float-bar');
+    const trigger = document.getElementById('fd-float-trigger');
+    const closeTop = document.getElementById('fd-float-close-top');
+    const inputContainer = document.getElementById('fd-float-input-container');
+    const input = document.getElementById('fd-float-input');
+    const sendBtn = document.getElementById('fd-float-send');
+    const messagesEl = document.getElementById('fd-float-messages');
+    const suggestionsEl = document.getElementById('fd-float-suggestions');
+    const clearBtn = document.getElementById('fd-float-clear');
+    const footerHint = document.getElementById('fd-float-footer-hint');
+    const floatBtn = document.getElementById('fd-float-btn');
+    const floatDialog = document.getElementById('fd-float-dialog');
+    const floatClose = document.getElementById('fd-float-close');
+    const modalBg = document.getElementById('fd-float-modal-bg');
+    const clearWrap = document.getElementById('fd-float-clear-wrap');
+
+    function openChat() {
+      isOpen = true;
+      if (isFullModal) {
+        if (overlay) overlay.style.display = '';
+        if (bar) { bar.classList.remove('fd-ai-fm-input-bar--closed'); bar.classList.add('fd-ai-fm-input-bar--open'); bar.removeAttribute('style'); }
+        if (trigger) trigger.style.display = 'none';
+        if (inputContainer) inputContainer.style.display = '';
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => input?.focus(), 100);
+      } else {
+        if (floatDialog) floatDialog.style.display = '';
+        if (floatBtn) floatBtn.style.display = 'none';
+        if (modalBg) modalBg.style.display = '';
+        setTimeout(() => input?.focus(), 100);
+      }
+    }
+
+    function closeChat() {
+      isOpen = false;
+      if (isFullModal) {
+        if (overlay) overlay.style.display = 'none';
+        if (bar) { bar.classList.remove('fd-ai-fm-input-bar--open'); bar.classList.add('fd-ai-fm-input-bar--closed'); bar.style.cssText = bar.dataset.btnStyle || ''; }
+        if (trigger) trigger.style.display = '';
+        if (inputContainer) inputContainer.style.display = 'none';
+        document.body.style.overflow = '';
+      } else {
+        if (floatDialog) floatDialog.style.display = 'none';
+        if (floatBtn) floatBtn.style.display = '';
+        if (modalBg) modalBg.style.display = 'none';
+      }
+    }
+
+    function renderMessages() {
+      if (!messagesEl) return;
+      if (messages.length === 0) {
+        if (isFullModal) {
+          messagesEl.innerHTML = '';
+        } else {
+          messagesEl.innerHTML = `
+            <div class="fd-ai-empty">
+              <div class="fd-ai-empty-title">Ask anything about the docs</div>
+              <div class="fd-ai-empty-desc">${aiLabel} will search and answer your question.</div>
+            </div>`;
+        }
+        if (suggestionsEl) suggestionsEl.style.display = '';
+        if (clearBtn) clearBtn.style.display = 'none';
+        if (footerHint) footerHint.style.display = '';
+        if (clearWrap) clearWrap.style.display = 'none';
+        return;
+      }
+      if (suggestionsEl) suggestionsEl.style.display = 'none';
+      if (clearBtn) clearBtn.style.display = '';
+      if (footerHint) footerHint.style.display = 'none';
+      if (clearWrap) clearWrap.style.display = 'flex';
+      messagesEl.innerHTML = messages.map(m => {
+        const label = m.role === 'user' ? 'You' : aiLabel;
+        const renderedContent = m.role === 'user' ? escapeHtml(m.content) : (m.content ? renderMarkdown(m.content) : '<span class="fd-ai-loading"><span class="fd-ai-loading-text">Thinking</span></span>');
+        const bubble = `<div class="${isFullModal ? 'fd-ai-fm-msg-content' : (m.role === 'user' ? 'fd-ai-bubble-user' : 'fd-ai-bubble-ai')}">${renderedContent}</div>`;
+        return `<div class="${isFullModal ? 'fd-ai-fm-msg' : 'fd-ai-msg'}" data-role="${m.role}">
+          <div class="${isFullModal ? 'fd-ai-fm-msg-label' : 'fd-ai-msg-label'}" data-role="${m.role}">${label}</div>
+          ${bubble}
+        </div>`;
+      }).join('');
+      if (isFullModal) {
+        messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: 'smooth' });
+      } else {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+    }
+
+    async function submitQuestion(question) {
+      if (!question.trim() || isStreaming) return;
+      isStreaming = true;
+      messages.push({ role: 'user', content: question });
+      if (input) input.value = '';
+      renderMessages();
+      updateSendBtn();
+
+      try {
+        const res = await fetch(api, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: messages.map(m => ({ role: m.role, content: m.content })) }),
+        });
+        if (!res.ok) {
+          let errMsg = 'Something went wrong.';
+          try { const err = await res.json(); errMsg = err.error || errMsg; } catch {}
+          messages.push({ role: 'assistant', content: errMsg });
+          renderMessages();
+          isStreaming = false;
+          updateSendBtn();
+          return;
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let assistantContent = '';
+        messages.push({ role: 'assistant', content: '' });
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const json = JSON.parse(data);
+                const content = json.choices?.[0]?.delta?.content;
+                if (content) {
+                  assistantContent += content;
+                  messages[messages.length - 1].content = assistantContent;
+                  renderMessages();
+                }
+              } catch {}
+            }
+          }
+        }
+      } catch {
+        messages.push({ role: 'assistant', content: 'Failed to connect.' });
+        renderMessages();
+      }
+      isStreaming = false;
+      updateSendBtn();
+    }
+
+    function updateSendBtn() {
+      if (sendBtn) {
+        const val = input ? input.value.trim() : '';
+        sendBtn.disabled = !val || isStreaming;
+      }
+    }
+
+    // Event listeners
+    trigger?.addEventListener('click', openChat);
+    floatBtn?.addEventListener('click', openChat);
+    closeTop?.addEventListener('click', closeChat);
+    floatClose?.addEventListener('click', closeChat);
+    modalBg?.addEventListener('click', closeChat);
+    overlay?.addEventListener('click', (e) => { if (e.target === overlay) closeChat(); });
+
+    if (bar) bar.dataset.btnStyle = bar.style.cssText;
+
+    sendBtn?.addEventListener('click', () => {
+      if (input?.value) submitQuestion(input.value);
+    });
+
+    input?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (input.value.trim()) submitQuestion(input.value);
+      }
+    });
+
+    input?.addEventListener('input', updateSendBtn);
+
+    clearBtn?.addEventListener('click', () => {
+      if (!isStreaming) { messages = []; renderMessages(); }
+    });
+
+    document.querySelectorAll('[data-question]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const q = btn.getAttribute('data-question');
+        if (q) submitQuestion(q);
+      });
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isOpen) closeChat();
+    });
+  }
+
+  initFloatingAI();
+  document.addEventListener('astro:after-swap', initFloatingAI);
+</script>
