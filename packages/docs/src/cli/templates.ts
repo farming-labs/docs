@@ -508,11 +508,21 @@ export default defineDocs({
 
 export function svelteDocsServerTemplate(cfg: TemplateConfig): string {
   const configImport = svelteServerConfigImport(cfg.useAlias);
+  const contentDirName = cfg.entry ?? "docs";
   return `\
 import { createDocsServer } from "@farming-labs/svelte/server";
 import config from "${configImport}";
 
-export const { load, GET, POST } = createDocsServer(config);
+const contentFiles = import.meta.glob("/${contentDirName}/**/*.{md,mdx,svx}", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
+
+export const { load, GET, POST } = createDocsServer({
+  ...config,
+  _preloadedContent: contentFiles,
+});
 `;
 }
 

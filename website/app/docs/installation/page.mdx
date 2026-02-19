@@ -122,9 +122,18 @@ The CLI will:
 
     ```ts title="src/lib/docs.server.ts"
     import { createDocsServer } from "@farming-labs/svelte/server";
-    import config from "../../docs.config.js";
+    import config from "./docs.config";
 
-    export const { load, GET, POST } = createDocsServer(config);
+    const contentFiles = import.meta.glob("/docs/**/*.{md,mdx,svx}", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>;
+
+    export const { load, GET, POST } = createDocsServer({
+      ...config,
+      _preloadedContent: contentFiles,
+    });
     ```
 
     ### 4. Create route files
@@ -134,7 +143,7 @@ The CLI will:
     ```svelte title="src/routes/docs/+layout.svelte"
     <script>
       import { DocsLayout } from "@farming-labs/svelte-theme";
-      import config from "../../../docs.config.js";
+      import config from "../../lib/docs.config";
 
       let { data, children } = $props();
     </script>
@@ -147,7 +156,7 @@ The CLI will:
     **`src/routes/docs/+layout.server.js`**:
 
     ```js title="src/routes/docs/+layout.server.js"
-    export { load } from "$lib/docs.server.js";
+    export { load } from "../../lib/docs.server";
     ```
 
     **`src/routes/docs/[...slug]/+page.svelte`**:
@@ -155,7 +164,7 @@ The CLI will:
     ```svelte title="src/routes/docs/[...slug]/+page.svelte"
     <script>
       import { DocsContent } from "@farming-labs/svelte-theme";
-      import config from "../../../../docs.config.js";
+      import config from "../../../lib/docs.config";
 
       let { data } = $props();
     </script>

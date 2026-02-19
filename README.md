@@ -129,9 +129,19 @@ export default defineDocs({
 
 ```ts
 import { createDocsServer } from "@farming-labs/svelte/server";
-import config from "../../docs.config.js";
+import config from "./docs.config";
 
-export const { load, GET, POST } = createDocsServer(config);
+// Bundle content at build time (required for serverless deployments)
+const contentFiles = import.meta.glob("/docs/**/*.{md,mdx,svx}", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
+
+export const { load, GET, POST } = createDocsServer({
+  ...config,
+  _preloadedContent: contentFiles,
+});
 ```
 
 **3. Create route files**
@@ -141,7 +151,7 @@ export const { load, GET, POST } = createDocsServer(config);
 ```svelte
 <script>
   import { DocsLayout } from "@farming-labs/svelte-theme";
-  import config from "../../../docs.config.js";
+  import config from "../../lib/docs.config";
 
   let { data, children } = $props();
 </script>
@@ -154,7 +164,7 @@ export const { load, GET, POST } = createDocsServer(config);
 `src/routes/docs/+layout.server.js`:
 
 ```js
-export { load } from "$lib/docs.server.js";
+export { load } from "../../lib/docs.server";
 ```
 
 `src/routes/docs/[...slug]/+page.svelte`:
@@ -162,7 +172,7 @@ export { load } from "$lib/docs.server.js";
 ```svelte
 <script>
   import { DocsContent } from "@farming-labs/svelte-theme";
-  import config from "../../../../docs.config.js";
+  import config from "../../../lib/docs.config";
 
   let { data } = $props();
 </script>

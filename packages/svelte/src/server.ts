@@ -9,9 +9,17 @@
  * ```ts
  * // src/lib/docs.server.ts
  * import { createDocsServer } from "@farming-labs/svelte/server";
- * import config from "../../docs.config.js";
+ * import config from "./docs.config";
  *
- * export const { load, GET, POST } = createDocsServer(config);
+ * // Bundle content at build time for serverless deployments
+ * const contentFiles = import.meta.glob("/docs/**\/*.{md,mdx,svx}", {
+ *   query: "?raw", import: "default", eager: true,
+ * }) as Record<string, string>;
+ *
+ * export const { load, GET, POST } = createDocsServer({
+ *   ...config,
+ *   _preloadedContent: contentFiles,
+ * });
  * ```
  *
  * ```ts
@@ -25,7 +33,7 @@ import path from "node:path";
 import matter from "gray-matter";
 import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
 import { renderMarkdown } from "./markdown.js";
-import type { PageNode } from "./content.js";
+import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
 
 
 interface GithubConfigObj {
@@ -73,10 +81,206 @@ export interface DocsServer {
   POST: (event: RequestEvent) => Promise<Response>;
 }
 
+type ContentFileMap = Record<string, string>;
+
+function stripMarkdownText(content: string): string {
+  return content
+    .replace(/^(import|export)\s.*$/gm, "")
+    .replace(/<[^>]+\/>/g, "")
+    .replace(/<\/?[A-Z][^>]*>/g, "")
+    .replace(/<\/?[a-z][^>]*>/g, "")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/(\*{1,3}|_{1,3})(.*?)\1/g, "$2")
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^>\s+/gm, "")
+    .replace(/^[-*_]{3,}\s*$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function navTreeFromMap(
+  contentMap: ContentFileMap,
+  dirPrefix: string,
+  entry: string,
+): NavTree {
+  interface DirInfo {
+    parts: string[];
+    title: string;
+    url: string;
+    icon?: string;
+  }
+
+  const dirs: DirInfo[] = [];
+
+  for (const key of Object.keys(contentMap)) {
+    if (!key.startsWith(dirPrefix)) continue;
+
+    const rel = key.slice(dirPrefix.length);
+    const segments = rel.split("/");
+    const fileName = segments.pop()!;
+    const base = fileName.replace(/\.(md|mdx|svx)$/, "");
+    if (base !== "page" && base !== "index" && base !== "+page") continue;
+
+    const { data } = matter(contentMap[key]);
+    const dirParts = segments;
+    const slug = dirParts.join("/");
+    const url = slug ? `/${entry}/${slug}` : `/${entry}`;
+    const fallbackTitle =
+      dirParts.length > 0
+        ? dirParts[dirParts.length - 1]
+            .replace(/-/g, " ")
+            .replace(/\b\w/g, (c) => c.toUpperCase())
+        : "Documentation";
+
+    dirs.push({
+      parts: dirParts,
+      title: (data.title as string) ?? fallbackTitle,
+      url,
+      icon: data.icon as string | undefined,
+    });
+  }
+
+  dirs.sort((a, b) => {
+    if (a.parts.length !== b.parts.length)
+      return a.parts.length - b.parts.length;
+    return a.parts.join("/").localeCompare(b.parts.join("/"));
+  });
+
+  const children: NavNode[] = [];
+  const rootInfo = dirs.find((d) => d.parts.length === 0);
+  if (rootInfo) {
+    children.push({
+      type: "page",
+      name: rootInfo.title,
+      url: rootInfo.url,
+      icon: rootInfo.icon,
+    });
+  }
+
+  function buildLevel(parentParts: string[]): NavNode[] {
+    const nodes: NavNode[] = [];
+    const depth = parentParts.length;
+
+    const directChildren = dirs.filter((d) => {
+      if (d.parts.length !== depth + 1) return false;
+      for (let i = 0; i < depth; i++) {
+        if (d.parts[i] !== parentParts[i]) return false;
+      }
+      return true;
+    });
+
+    for (const child of directChildren) {
+      const hasGrandChildren = dirs.some((d) => {
+        if (d.parts.length <= child.parts.length) return false;
+        return child.parts.every((p, i) => d.parts[i] === p);
+      });
+
+      if (hasGrandChildren) {
+        nodes.push({
+          type: "folder",
+          name: child.title,
+          icon: child.icon,
+          index: {
+            type: "page",
+            name: child.title,
+            url: child.url,
+            icon: child.icon,
+          },
+          children: buildLevel(child.parts),
+        });
+      } else {
+        nodes.push({
+          type: "page",
+          name: child.title,
+          url: child.url,
+          icon: child.icon,
+        });
+      }
+    }
+
+    return nodes;
+  }
+
+  children.push(...buildLevel([]));
+  return { name: "Docs", children };
+}
+
+function searchIndexFromMap(
+  contentMap: ContentFileMap,
+  dirPrefix: string,
+  entry: string,
+): ContentPage[] {
+  const pages: ContentPage[] = [];
+
+  for (const [key, raw] of Object.entries(contentMap)) {
+    if (!key.startsWith(dirPrefix)) continue;
+
+    const rel = key.slice(dirPrefix.length);
+    const segments = rel.split("/");
+    const fileName = segments.pop()!;
+    const base = fileName.replace(/\.(md|mdx|svx)$/, "");
+    const isIdx = base === "page" || base === "index" || base === "+page";
+    const slug = isIdx ? segments.join("/") : [...segments, base].join("/");
+    const url = slug ? `/${entry}/${slug}` : `/${entry}`;
+
+    const { data, content } = matter(raw);
+    const title =
+      (data.title as string) ??
+      base.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+    pages.push({
+      slug,
+      url,
+      title,
+      description: data.description as string | undefined,
+      icon: data.icon as string | undefined,
+      content: stripMarkdownText(content),
+      rawContent: content,
+    });
+  }
+
+  return pages;
+}
+
+function findPageInMap(
+  contentMap: ContentFileMap,
+  dirPrefix: string,
+  slug: string,
+): { raw: string; relPath: string } | null {
+  const isIndex = slug === "";
+
+  const candidates = isIndex
+    ? ["page.md", "page.mdx", "index.md"]
+    : [
+        `${slug}/page.md`,
+        `${slug}/page.mdx`,
+        `${slug}/index.md`,
+        `${slug}/index.svx`,
+        `${slug}.md`,
+        `${slug}.svx`,
+      ];
+
+  for (const candidate of candidates) {
+    const key = `${dirPrefix}${candidate}`;
+    if (key in contentMap) {
+      return { raw: contentMap[key], relPath: candidate };
+    }
+  }
+
+  return null;
+}
+
 /**
  * Create all server-side functions needed for a SvelteKit docs site.
  *
  * @param config - The `DocsConfig` object (from `defineDocs()` in `docs.config.ts`).
+ *
+ * Pass `_preloadedContent` (from `import.meta.glob`) to bundle markdown files
+ * at build time — required for serverless deployments (Vercel, Netlify, etc.)
+ * where the filesystem is not available at runtime.
  */
 export function createDocsServer(
   config: Record<string, any> = {},
@@ -97,6 +301,11 @@ export function createDocsServer(
     (config as Record<string, unknown>).contentDir as string | undefined ?? entry,
   );
 
+  const preloaded = config._preloadedContent as ContentFileMap | undefined;
+  const contentDirRel =
+    ((config as Record<string, unknown>).contentDir as string | undefined) ?? entry;
+  const dirPrefix = `/${contentDirRel}/`;
+
   const aiConfig: AIConfigObj = (config.ai as AIConfigObj) ?? {};
 
   // Allow top-level apiKey as a shorthand
@@ -106,50 +315,83 @@ export function createDocsServer(
 
   // ─── Unified load (tree + page content in one call) ────────
   async function load(event: UnifiedLoadEvent) {
-    const tree = loadDocsNavTree(contentDir, entry);
+    const tree = preloaded
+      ? navTreeFromMap(preloaded, dirPrefix, entry)
+      : loadDocsNavTree(contentDir, entry);
     const flatPages = flattenNavTree(tree);
 
-    const prefix = new RegExp(`^/${entry}/?`);
-    const slug = event.url.pathname.replace(prefix, "");
+    const urlPrefix = new RegExp(`^/${entry}/?`);
+    const slug = event.url.pathname.replace(urlPrefix, "");
     const isIndex = slug === "";
 
-    let filePath: string | null = null;
-    let relPath = "";
+    let raw: string;
+    let relPath: string;
+    let lastModified: string;
 
-    if (isIndex) {
-      for (const name of ["page.md", "page.mdx", "index.md"]) {
-        const candidate = path.join(contentDir, name);
-        if (fs.existsSync(candidate)) {
-          filePath = candidate;
-          relPath = name;
-          break;
-        }
+    if (preloaded) {
+      const result = findPageInMap(preloaded, dirPrefix, slug);
+      if (!result) {
+        const err = new Error(
+          `Page not found: /${entry}/${slug}`,
+        ) as Error & { status?: number };
+        err.status = 404;
+        throw err;
       }
+      raw = result.raw;
+      relPath = result.relPath;
+      lastModified = new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
     } else {
-      const candidates = [
-        path.join(contentDir, slug, "page.md"),
-        path.join(contentDir, slug, "page.mdx"),
-        path.join(contentDir, slug, "index.md"),
-        path.join(contentDir, slug, "index.svx"),
-        path.join(contentDir, `${slug}.md`),
-        path.join(contentDir, `${slug}.svx`),
-      ];
-      for (const candidate of candidates) {
-        if (fs.existsSync(candidate)) {
-          filePath = candidate;
-          relPath = path.relative(contentDir, candidate);
-          break;
+      let filePath: string | null = null;
+      relPath = "";
+
+      if (isIndex) {
+        for (const name of ["page.md", "page.mdx", "index.md"]) {
+          const candidate = path.join(contentDir, name);
+          if (fs.existsSync(candidate)) {
+            filePath = candidate;
+            relPath = name;
+            break;
+          }
+        }
+      } else {
+        const candidates = [
+          path.join(contentDir, slug, "page.md"),
+          path.join(contentDir, slug, "page.mdx"),
+          path.join(contentDir, slug, "index.md"),
+          path.join(contentDir, slug, "index.svx"),
+          path.join(contentDir, `${slug}.md`),
+          path.join(contentDir, `${slug}.svx`),
+        ];
+        for (const candidate of candidates) {
+          if (fs.existsSync(candidate)) {
+            filePath = candidate;
+            relPath = path.relative(contentDir, candidate);
+            break;
+          }
         }
       }
+
+      if (!filePath) {
+        const err = new Error(
+          `Page not found: /${entry}/${slug}`,
+        ) as Error & { status?: number };
+        err.status = 404;
+        throw err;
+      }
+
+      raw = fs.readFileSync(filePath, "utf-8");
+      const stat = fs.statSync(filePath);
+      lastModified = stat.mtime.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
     }
 
-    if (!filePath) {
-      const err = new Error(`Page not found: /${entry}/${slug}`) as Error & { status?: number };
-      err.status = 404;
-      throw err;
-    }
-
-    const raw = fs.readFileSync(filePath, "utf-8");
     const { data, content } = matter(raw);
     const html = await renderMarkdown(content);
 
@@ -163,13 +405,6 @@ export function createDocsServer(
     if (githubRepo && githubContentPath) {
       editOnGithub = `${githubRepo}/blob/${githubBranch}/${githubContentPath}/${relPath}`;
     }
-
-    const stat = fs.statSync(filePath);
-    const lastModified = stat.mtime.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
 
     const fallbackTitle = isIndex
       ? "Documentation"
@@ -190,11 +425,13 @@ export function createDocsServer(
   }
 
   // ─── Search index ──────────────────────────────────────────
-  let searchIndex: ReturnType<typeof loadDocsContent> | null = null;
+  let searchIndex: ContentPage[] | null = null;
 
   function getSearchIndex() {
     if (!searchIndex) {
-      searchIndex = loadDocsContent(contentDir, entry);
+      searchIndex = preloaded
+        ? searchIndexFromMap(preloaded, dirPrefix, entry)
+        : loadDocsContent(contentDir, entry);
     }
     return searchIndex;
   }
