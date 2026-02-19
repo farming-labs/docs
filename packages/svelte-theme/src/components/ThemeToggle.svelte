@@ -8,7 +8,14 @@
   let theme = $state("light");
 
   onMount(() => {
-    theme = document.documentElement.classList.contains("dark") ? "dark" : "light";
+    if (document.documentElement.classList.contains("dark")) {
+      theme = "dark";
+    } else if (document.documentElement.classList.contains("light")) {
+      theme = "light";
+    } else {
+      theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.classList.add(theme);
+    }
   });
 
   function toggle() {

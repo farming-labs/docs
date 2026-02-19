@@ -3,6 +3,7 @@
   import AskAIDialog from "./AskAIDialog.svelte";
   import FloatingAIChat from "./FloatingAIChat.svelte";
   import { page } from "$app/stores";
+  import { onMount } from "svelte";
 
   let {
     tree,
@@ -21,6 +22,35 @@
     if (toggle === false) return false;
     if (typeof toggle === "object") return toggle.enabled !== false;
     return true;
+  });
+
+  let forcedTheme = $derived.by(() => {
+    const toggle = config?.themeToggle;
+    if (typeof toggle === "object" && toggle.enabled === false && toggle.default && toggle.default !== "system") {
+      return toggle.default;
+    }
+    return null;
+  });
+
+  let themeInitScript = $derived.by(() => {
+    if (forcedTheme) {
+      return `document.documentElement.classList.remove('light','dark');document.documentElement.classList.add('${forcedTheme}')`;
+    }
+    return [
+      "(function(){",
+      "var m=document.cookie.match(/(?:^|;\\s*)theme=(\\w+)/);",
+      "var t=m?m[1]:(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');",
+      "document.documentElement.classList.remove('light','dark');",
+      "document.documentElement.classList.add(t);",
+      "})()",
+    ].join("");
+  });
+
+  onMount(() => {
+    if (forcedTheme) {
+      document.documentElement.classList.remove("light", "dark");
+      document.documentElement.classList.add(forcedTheme);
+    }
   });
 
   let sidebarOpen = $state(false);
@@ -88,6 +118,10 @@
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
+
+<svelte:head>
+  {@html `<script>${themeInitScript}</script>`}
+</svelte:head>
 
 <div class="fd-layout">
   <!-- Mobile header -->
