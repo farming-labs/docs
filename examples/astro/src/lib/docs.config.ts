@@ -36,7 +36,7 @@ export default defineDocs({
     aiLabel: "DocsBot",
     apiKey: import.meta.env.OPENAI_API_KEY,
     mode: "floating",
-    floatingStyle: "full-modal",
+    floatingStyle: "modal",
     packageName: "@farming-labs/docs",
     docsUrl: "https://docs.farming-labs.dev",
     suggestedQuestions: [
