@@ -37,6 +37,8 @@ const btnStyle = BTN_POSITIONS[position] || BTN_POSITIONS["bottom-right"];
 const containerStyle = getContainerStyle(floatingStyle, position);
 ---
 
+<div id="fd-float-config" data-api={api} data-ai-label={aiLabel} data-full-modal={isFullModal ? "true" : "false"} style="display:none"></div>
+
 {isFullModal ? (
   <Fragment>
     <!-- Full-modal overlay (hidden by default) -->
@@ -168,63 +170,60 @@ const containerStyle = getContainerStyle(floatingStyle, position);
   </Fragment>
 )}
 
-<script define:vars={{ api, aiLabel, isFullModal }}>
-  function escapeHtml(s) {
+<script>
+  import { highlight } from 'sugar-high';
+
+  function escapeHtml(s: string): string {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  function buildCodeBlock(lang, code) {
+  function buildCodeBlock(lang: string, code: string): string {
     const trimmed = code.replace(/\n$/, '');
-    const escaped = escapeHtml(trimmed);
-    const lines = escaped.split('\n').map(l => '<span class="sh__line">' + l + '</span>').join('\n');
-    const langLabel = lang ? '<div class="fd-ai-code-lang">' + escapeHtml(lang) + '</div>' : '';
-    const copyBtn = '<button class="fd-ai-code-copy" onclick="(function(btn){var code=btn.closest(\'.fd-ai-code-block\').querySelector(\'code\').textContent;navigator.clipboard.writeText(code).then(function(){btn.textContent=\'Copied!\';setTimeout(function(){btn.textContent=\'Copy\'},1500)})})(this)">Copy</button>';
-    return '<div class="fd-ai-code-block">'
-      + '<div class="fd-ai-code-header">' + langLabel + copyBtn + '</div>'
-      + '<pre><code>' + lines + '</code></pre>'
-      + '</div>';
+    const highlighted = highlight(trimmed).replace(/<\/span>\n<span/g, '</span><span');
+    const langLabel = lang ? `<div class="fd-ai-code-lang">${escapeHtml(lang)}</div>` : '';
+    const copyBtn = `<button class="fd-ai-code-copy" onclick="(function(btn){var code=btn.closest('.fd-ai-code-block').querySelector('code').textContent;navigator.clipboard.writeText(code).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy'},1500)})})(this)">Copy</button>`;
+    return `<div class="fd-ai-code-block"><div class="fd-ai-code-header">${langLabel}${copyBtn}</div><pre><code>${highlighted}</code></pre></div>`;
   }
 
-  function isTableRow(line) {
-    var t = line.trim();
+  function isTableRow(line: string): boolean {
+    const t = line.trim();
     return t.startsWith('|') && t.endsWith('|') && t.includes('|');
   }
 
-  function isTableSeparator(line) {
+  function isTableSeparator(line: string): boolean {
     return /^\|[\s:]*-+[\s:]*(\|[\s:]*-+[\s:]*)*\|$/.test(line.trim());
   }
 
-  function renderTable(rows) {
-    var parseRow = function(row) {
-      return row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(function(c) { return c.trim(); });
-    };
-    var headerCells = parseRow(rows[0]);
-    var thead = '<thead><tr>' + headerCells.map(function(c) { return '<th>' + c + '</th>'; }).join('') + '</tr></thead>';
-    var bodyRows = rows.slice(1).map(function(row) {
-      var cells = parseRow(row);
-      return '<tr>' + cells.map(function(c) { return '<td>' + c + '</td>'; }).join('') + '</tr>';
+  function renderTable(rows: string[]): string {
+    const parseRow = (row: string) =>
+      row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+    const headerCells = parseRow(rows[0]);
+    const thead = `<thead><tr>${headerCells.map(c => `<th>${c}</th>`).join('')}</tr></thead>`;
+    const bodyRows = rows.slice(1).map(row => {
+      const cells = parseRow(row);
+      return `<tr>${cells.map(c => `<td>${c}</td>`).join('')}</tr>`;
     }).join('');
-    return '<table>' + thead + '<tbody>' + bodyRows + '</tbody></table>';
+    return `<table>${thead}<tbody>${bodyRows}</tbody></table>`;
   }
 
-  function renderMarkdown(text) {
+  function renderMarkdown(text: string): string {
     if (!text) return '';
-    var codeBlocks = [];
-    var processed = text.replace(/```(\w*)\n([\s\S]*?)```/g, function(_m, lang, code) {
+    const codeBlocks: string[] = [];
+    let processed = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_m, lang, code) => {
       codeBlocks.push(buildCodeBlock(lang, code));
-      return '\x00CB' + (codeBlocks.length - 1) + '\x00';
+      return `\x00CB${codeBlocks.length - 1}\x00`;
     });
-    processed = processed.replace(/```(\w*)\n([\s\S]*)$/, function(_m, lang, code) {
+    processed = processed.replace(/```(\w*)\n([\s\S]*)$/, (_m, lang, code) => {
       codeBlocks.push(buildCodeBlock(lang, code));
-      return '\x00CB' + (codeBlocks.length - 1) + '\x00';
+      return `\x00CB${codeBlocks.length - 1}\x00`;
     });
-    var lines = processed.split('\n');
-    var output = [];
-    var i = 0;
+    const lines = processed.split('\n');
+    const output: string[] = [];
+    let i = 0;
     while (i < lines.length) {
       if (isTableRow(lines[i]) && i + 1 < lines.length && isTableSeparator(lines[i + 1])) {
-        var tableLines = [lines[i]];
-        i++; i++;
+        const tableLines = [lines[i]];
+        i += 2;
         while (i < lines.length && isTableRow(lines[i])) { tableLines.push(lines[i]); i++; }
         output.push(renderTable(tableLines));
         continue;
@@ -232,7 +231,7 @@ const containerStyle = getContainerStyle(floatingStyle, position);
       output.push(lines[i]);
       i++;
     }
-    var result = output.join('\n');
+    let result = output.join('\n');
     result = result
       .replace(/`([^`]+)`/g, '<code>$1</code>')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -245,22 +244,32 @@ const containerStyle = getContainerStyle(floatingStyle, position);
       .replace(/^(\d+)\. (.*$)/gm, '<div style="display:flex;gap:8px;padding:2px 0"><span style="opacity:0.5">$1.</span><span>$2</span></div>')
       .replace(/\n\n/g, '<div style="height:8px"></div>')
       .replace(/\n/g, '<br>');
-    result = result.replace(/\x00CB(\d+)\x00/g, function(_m, idx) { return codeBlocks[Number(idx)]; });
+    result = result.replace(/\x00CB(\d+)\x00/g, (_m, idx) => codeBlocks[Number(idx)]);
     return result;
   }
 
+  const THINKING_HTML_FM = `<div class="fd-ai-fm-thinking"><span class="fd-ai-fm-thinking-dot"></span><span class="fd-ai-fm-thinking-dot"></span><span class="fd-ai-fm-thinking-dot"></span></div>`;
+  const THINKING_HTML = `<span class="fd-ai-loading"><span class="fd-ai-loading-text">Thinking</span><span class="fd-ai-loading-dots"><span class="fd-ai-loading-dot"></span><span class="fd-ai-loading-dot"></span><span class="fd-ai-loading-dot"></span></span></span>`;
+
   function initFloatingAI() {
-    let messages = [];
+    const cfgEl = document.getElementById('fd-float-config');
+    if (!cfgEl) return;
+    const api = cfgEl.dataset.api || '/api/docs';
+    const aiLabel = cfgEl.dataset.aiLabel || 'AI';
+    const isFullModal = cfgEl.dataset.fullModal === 'true';
+
+    let messages: Array<{ role: string; content: string }> = [];
     let isStreaming = false;
     let isOpen = false;
+    let renderScheduled = false;
 
     const overlay = document.getElementById('fd-float-overlay');
     const bar = document.getElementById('fd-float-bar');
     const trigger = document.getElementById('fd-float-trigger');
     const closeTop = document.getElementById('fd-float-close-top');
     const inputContainer = document.getElementById('fd-float-input-container');
-    const input = document.getElementById('fd-float-input');
-    const sendBtn = document.getElementById('fd-float-send');
+    const input = document.getElementById('fd-float-input') as HTMLInputElement | HTMLTextAreaElement | null;
+    const sendBtn = document.getElementById('fd-float-send') as HTMLButtonElement | null;
     const messagesEl = document.getElementById('fd-float-messages');
     const suggestionsEl = document.getElementById('fd-float-suggestions');
     const clearBtn = document.getElementById('fd-float-clear');
@@ -303,17 +312,22 @@ const containerStyle = getContainerStyle(floatingStyle, position);
       }
     }
 
-    function renderMessages() {
+    function scheduleRender() {
+      if (renderScheduled) return;
+      renderScheduled = true;
+      requestAnimationFrame(() => {
+        renderScheduled = false;
+        doRender();
+      });
+    }
+
+    function doRender() {
       if (!messagesEl) return;
       if (messages.length === 0) {
         if (isFullModal) {
           messagesEl.innerHTML = '';
         } else {
-          messagesEl.innerHTML = `
-            <div class="fd-ai-empty">
-              <div class="fd-ai-empty-title">Ask anything about the docs</div>
-              <div class="fd-ai-empty-desc">${aiLabel} will search and answer your question.</div>
-            </div>`;
+          messagesEl.innerHTML = `<div class="fd-ai-empty"><div class="fd-ai-empty-title">Ask anything about the docs</div><div class="fd-ai-empty-desc">${aiLabel} will search and answer your question.</div></div>`;
         }
         if (suggestionsEl) suggestionsEl.style.display = '';
         if (clearBtn) clearBtn.style.display = 'none';
@@ -325,15 +339,19 @@ const containerStyle = getContainerStyle(floatingStyle, position);
       if (clearBtn) clearBtn.style.display = '';
       if (footerHint) footerHint.style.display = 'none';
       if (clearWrap) clearWrap.style.display = 'flex';
+
+      const thinkingHtml = isFullModal ? THINKING_HTML_FM : THINKING_HTML;
       messagesEl.innerHTML = messages.map(m => {
         const label = m.role === 'user' ? 'You' : aiLabel;
-        const renderedContent = m.role === 'user' ? escapeHtml(m.content) : (m.content ? renderMarkdown(m.content) : '<span class="fd-ai-loading"><span class="fd-ai-loading-text">Thinking</span></span>');
-        const bubble = `<div class="${isFullModal ? 'fd-ai-fm-msg-content' : (m.role === 'user' ? 'fd-ai-bubble-user' : 'fd-ai-bubble-ai')}">${renderedContent}</div>`;
-        return `<div class="${isFullModal ? 'fd-ai-fm-msg' : 'fd-ai-msg'}" data-role="${m.role}">
-          <div class="${isFullModal ? 'fd-ai-fm-msg-label' : 'fd-ai-msg-label'}" data-role="${m.role}">${label}</div>
-          ${bubble}
-        </div>`;
+        const renderedContent = m.role === 'user'
+          ? escapeHtml(m.content)
+          : (m.content ? renderMarkdown(m.content) : thinkingHtml);
+        const bubbleClass = isFullModal
+          ? 'fd-ai-fm-msg-content'
+          : (m.role === 'user' ? 'fd-ai-bubble-user' : 'fd-ai-bubble-ai');
+        return `<div class="${isFullModal ? 'fd-ai-fm-msg' : 'fd-ai-msg'}" data-role="${m.role}"><div class="${isFullModal ? 'fd-ai-fm-msg-label' : 'fd-ai-msg-label'}" data-role="${m.role}">${label}</div><div class="${bubbleClass}">${renderedContent}</div></div>`;
       }).join('');
+
       if (isFullModal) {
         messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: 'smooth' });
       } else {
@@ -341,34 +359,34 @@ const containerStyle = getContainerStyle(floatingStyle, position);
       }
     }
 
-    async function submitQuestion(question) {
+    async function submitQuestion(question: string) {
       if (!question.trim() || isStreaming) return;
       isStreaming = true;
       messages.push({ role: 'user', content: question });
+      messages.push({ role: 'assistant', content: '' });
       if (input) input.value = '';
-      renderMessages();
+      doRender();
       updateSendBtn();
 
       try {
         const res = await fetch(api, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: messages.map(m => ({ role: m.role, content: m.content })) }),
+          body: JSON.stringify({ messages: messages.filter(m => m.content).map(m => ({ role: m.role, content: m.content })) }),
         });
         if (!res.ok) {
           let errMsg = 'Something went wrong.';
           try { const err = await res.json(); errMsg = err.error || errMsg; } catch {}
-          messages.push({ role: 'assistant', content: errMsg });
-          renderMessages();
+          messages[messages.length - 1].content = errMsg;
+          doRender();
           isStreaming = false;
           updateSendBtn();
           return;
         }
-        const reader = res.body.getReader();
+        const reader = res.body!.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
         let assistantContent = '';
-        messages.push({ role: 'assistant', content: '' });
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -385,17 +403,18 @@ const containerStyle = getContainerStyle(floatingStyle, position);
                 if (content) {
                   assistantContent += content;
                   messages[messages.length - 1].content = assistantContent;
-                  renderMessages();
+                  scheduleRender();
                 }
               } catch {}
             }
           }
         }
       } catch {
-        messages.push({ role: 'assistant', content: 'Failed to connect.' });
-        renderMessages();
+        messages[messages.length - 1].content = messages[messages.length - 1].content || 'Failed to connect.';
+        doRender();
       }
       isStreaming = false;
+      doRender();
       updateSendBtn();
     }
 
@@ -406,7 +425,6 @@ const containerStyle = getContainerStyle(floatingStyle, position);
       }
     }
 
-    // Event listeners
     trigger?.addEventListener('click', openChat);
     floatBtn?.addEventListener('click', openChat);
     closeTop?.addEventListener('click', closeChat);
@@ -430,7 +448,7 @@ const containerStyle = getContainerStyle(floatingStyle, position);
     input?.addEventListener('input', updateSendBtn);
 
     clearBtn?.addEventListener('click', () => {
-      if (!isStreaming) { messages = []; renderMessages(); }
+      if (!isStreaming) { messages = []; doRender(); }
     });
 
     document.querySelectorAll('[data-question]').forEach(btn => {
