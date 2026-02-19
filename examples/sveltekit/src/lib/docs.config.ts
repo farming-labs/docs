@@ -50,7 +50,8 @@ export default defineDocs({
     title: "Example Docs",
     url: "/docs",
   },
-  breadcrumb: { enabled: true },
+  themeToggle: { enabled: false , default: "dark" },
+  breadcrumb: { enabled: false },
   metadata: {
     titleTemplate: "%s – Docs",
     description: "Awesome docs powered by @farming-labs/docs (SvelteKit)",

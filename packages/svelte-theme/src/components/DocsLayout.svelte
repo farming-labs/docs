@@ -9,12 +9,19 @@
     config = null,
     title = undefined,
     titleUrl = undefined,
-    themeToggle = true,
     children,
   } = $props();
 
   let resolvedTitle = $derived(title ?? config?.nav?.title ?? "Docs");
   let resolvedTitleUrl = $derived(titleUrl ?? config?.nav?.url ?? "/docs");
+
+  let showThemeToggle = $derived.by(() => {
+    const toggle = config?.themeToggle;
+    if (toggle === undefined || toggle === true) return true;
+    if (toggle === false) return false;
+    if (typeof toggle === "object") return toggle.enabled !== false;
+    return true;
+  });
 
   let sidebarOpen = $state(false);
   let searchOpen = $state(false);
@@ -227,7 +234,7 @@
       {/if}
     </nav>
 
-    {#if themeToggle}
+    {#if showThemeToggle}
       <div class="fd-sidebar-footer">
         <ThemeToggle />
       </div>

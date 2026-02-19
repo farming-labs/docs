@@ -8,6 +8,24 @@
       ? config.metadata.titleTemplate.replace("%s", "")
       : " – Docs"
   );
+
+  let tocEnabled = $derived(
+    config?.theme?.ui?.layout?.toc?.enabled ?? true
+  );
+
+  let breadcrumbEnabled = $derived.by(() => {
+    const bc = config?.breadcrumb;
+    if (bc === undefined || bc === true) return true;
+    if (bc === false) return false;
+    if (typeof bc === "object") return bc.enabled !== false;
+    return true;
+  });
+
+  let showEditOnGithub = $derived(
+    !!config?.github && !!data.editOnGithub
+  );
+
+  let showLastModified = $derived(!!data.lastModified);
 </script>
 
 <svelte:head>
@@ -19,12 +37,12 @@
 
 <DocsPage
   entry={config?.entry ?? "docs"}
-  tocEnabled={true}
-  breadcrumbEnabled={config?.breadcrumb?.enabled ?? true}
+  {tocEnabled}
+  {breadcrumbEnabled}
   previousPage={data.previousPage}
   nextPage={data.nextPage}
-  editOnGithub={data.editOnGithub}
-  lastModified={data.lastModified}
+  editOnGithub={showEditOnGithub ? data.editOnGithub : null}
+  lastModified={showLastModified ? data.lastModified : null}
 >
   {#snippet children()}
     {@html data.html}
