@@ -94,6 +94,11 @@
 .fd-sidebar-folder.fd-sidebar-first-item {
   border-top: none;
 }
+
+.fd-sidebar-top-link:last-child,
+.fd-sidebar-nav > .fd-sidebar-folder:last-child {
+  border-bottom: 1px solid var(--color-fd-border);
+}
 .fd-sidebar-folder-content::before {
   content: '';
   position: absolute;

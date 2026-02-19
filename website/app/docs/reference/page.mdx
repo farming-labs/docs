@@ -1,0 +1,616 @@
+---
+title: "API Reference"
+description: "Complete reference for all configuration options"
+icon: "code"
+order: 6
+---
+
+# API Reference
+
+Complete reference for every option in `docs.config.ts`. All types are exported from `@farming-labs/docs`.
+
+---
+
+## `defineDocs(config)`
+
+The entry point for configuring your docs. Returns a typed config object.
+
+```ts
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  // ...all options below
+});
+```
+
+---
+
+## `DocsConfig`
+
+Top-level configuration object passed to `defineDocs()`.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `entry` | `string` | **required** | URL path prefix for docs (e.g. `"docs"` → `/docs`) |
+| `contentDir` | `string` | same as `entry` | Path to content files. SvelteKit only — Next.js uses `app/{entry}/` |
+| `theme` | `DocsTheme` | — | Theme preset from a factory (`fumadocs()`, `darksharp()`, `pixelBorder()`) |
+| `github` | `string \| GithubConfig` | — | GitHub repo config for "Edit on GitHub" links |
+| `nav` | `DocsNav` | — | Sidebar header title and URL |
+| `themeToggle` | `boolean \| ThemeToggleConfig` | `true` | Light/dark mode toggle |
+| `breadcrumb` | `boolean \| BreadcrumbConfig` | `true` | Breadcrumb navigation |
+| `sidebar` | `boolean \| SidebarConfig` | `true` | Sidebar visibility and customization |
+| `icons` | `Record<string, unknown>` | — | Icon registry for frontmatter `icon` fields |
+| `components` | `Record<string, unknown>` | — | Custom MDX component overrides |
+| `pageActions` | `PageActionsConfig` | — | "Copy Markdown" and "Open in LLM" buttons |
+| `ai` | `AIConfig` | — | RAG-powered AI chat |
+| `ordering` | `"alphabetical" \| "numeric" \| OrderingItem[]` | `"alphabetical"` | Sidebar page ordering strategy |
+| `metadata` | `DocsMetadata` | — | SEO metadata |
+| `og` | `OGConfig` | — | Open Graph image config |
+
+---
+
+## Ordering
+
+Controls how pages are sorted in the sidebar. Three strategies are available:
+
+### `"alphabetical"` (default)
+
+Pages are sorted alphabetically by folder name. No extra configuration needed.
+
+```ts
+ordering: "alphabetical",
+```
+
+### `"numeric"`
+
+Pages are sorted by the `order` field in frontmatter. Lower numbers appear first. Pages without `order` are sorted alphabetically after ordered pages.
+
+```ts
+ordering: "numeric",
+```
+
+Then in your page frontmatter:
+
+```md
+---
+title: "Installation"
+order: 1
+---
+```
+
+### Slug-based (`OrderingItem[]`)
+
+Pass an array of `{ slug, children? }` objects for explicit control over page order, including nested pages.
+
+```ts
+ordering: [
+  { slug: "installation" },
+  { slug: "cli" },
+  { slug: "configuration" },
+  {
+    slug: "themes",
+    children: [
+      { slug: "default" },
+      { slug: "darksharp" },
+      { slug: "pixel-border" },
+      { slug: "creating-themes" },
+    ],
+  },
+  {
+    slug: "customization",
+    children: [
+      { slug: "colors" },
+      { slug: "typography" },
+      { slug: "sidebar" },
+      { slug: "components" },
+      { slug: "ai-chat" },
+      { slug: "page-actions" },
+    ],
+  },
+  { slug: "reference" },
+],
+```
+
+### `OrderingItem`
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `slug` | `string` | Folder name at this level (not the full path) |
+| `children` | `OrderingItem[]` | Ordering for child pages within this folder |
+
+> Pages not listed in the array appear alphabetically after the listed ones.
+
+---
+
+## `DocsNav`
+
+Sidebar header configuration.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `title` | `string \| ReactNode` | `"Docs"` | Sidebar header title. React elements supported in Next.js |
+| `url` | `string` | `"/{entry}"` | URL the title links to |
+
+```ts
+nav: {
+  title: "My Docs",
+  url: "/docs",
+},
+```
+
+---
+
+## `GithubConfig`
+
+GitHub repository configuration. Enables "Edit on GitHub" links in page footers.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `url` | `string` | **required** | Repository URL (e.g. `"https://github.com/my-org/repo"`) |
+| `branch` | `string` | `"main"` | Branch name |
+| `directory` | `string` | — | Content subdirectory for monorepos |
+
+```ts
+// Simple
+github: "https://github.com/my-org/my-docs",
+
+// Monorepo
+github: {
+  url: "https://github.com/my-org/monorepo",
+  branch: "main",
+  directory: "apps/docs/docs",
+},
+```
+
+> The "Edit on GitHub" link only appears when both `url` and `directory` are provided.
+
+---
+
+## `ThemeToggleConfig`
+
+Light/dark mode toggle in the sidebar.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `enabled` | `boolean` | `true` | Show or hide the toggle |
+| `default` | `"light" \| "dark" \| "system"` | `"system"` | Forced theme when `enabled: false` |
+| `mode` | `"light-dark" \| "light-dark-system"` | `"light-dark"` | Toggle behavior |
+
+```ts
+// Show toggle (default)
+themeToggle: true,
+
+// Hide toggle, follow system preference
+themeToggle: false,
+
+// Hide toggle, force dark mode
+themeToggle: { enabled: false, default: "dark" },
+
+// Show toggle with system option
+themeToggle: { mode: "light-dark-system" },
+```
+
+---
+
+## `BreadcrumbConfig`
+
+Breadcrumb navigation above page content.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `enabled` | `boolean` | `true` | Show or hide breadcrumbs |
+| `component` | `Component` | — | Custom breadcrumb component (Next.js only) |
+
+```ts
+breadcrumb: true,              // show (default)
+breadcrumb: false,             // hide
+breadcrumb: { enabled: false },  // hide
+```
+
+---
+
+## `SidebarConfig`
+
+Sidebar visibility and customization.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `enabled` | `boolean` | `true` | Show or hide the sidebar |
+| `component` | `Component` | — | Custom sidebar component (Next.js only) |
+| `footer` | `ReactNode` | — | Content rendered below nav items |
+| `banner` | `ReactNode` | — | Content rendered above nav items |
+| `collapsible` | `boolean` | `true` | Whether sidebar is collapsible on desktop |
+
+```ts
+sidebar: true,                     // show (default)
+sidebar: false,                    // hide
+sidebar: { collapsible: false },   // non-collapsible
+```
+
+---
+
+## `DocsTheme`
+
+Theme configuration returned by theme factories.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Theme identifier (e.g. `"fumadocs"`, `"darksharp"`) |
+| `ui` | `UIConfig` | Visual configuration — colors, typography, layout |
+
+Created via theme factories:
+
+<Tabs items={["Next.js", "SvelteKit"]}>
+  <Tab value="Next.js">
+    ```ts
+    import { fumadocs } from "@farming-labs/theme";
+    import { darksharp } from "@farming-labs/theme/darksharp";
+    import { pixelBorder } from "@farming-labs/theme/pixel-border";
+
+    theme: fumadocs({ ui: { /* overrides */ } }),
+    ```
+  </Tab>
+  <Tab value="SvelteKit">
+    ```ts
+    import { fumadocs, darksharp, pixelBorder } from "@farming-labs/svelte-theme";
+
+    theme: fumadocs({ ui: { /* overrides */ } }),
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## `UIConfig`
+
+Fine-grained visual configuration passed to theme factories.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `colors` | `ColorsConfig` | Theme color tokens |
+| `typography` | `TypographyConfig` | Font families, heading styles |
+| `radius` | `string` | Global border-radius (e.g. `"0px"`, `"0.5rem"`) |
+| `layout` | `LayoutConfig` | Content width, sidebar width, TOC settings |
+| `codeBlock` | `CodeBlockConfig` | Syntax highlighting and line numbers |
+| `sidebar` | `SidebarStyleConfig` | Sidebar visual style |
+| `card` | `CardConfig` | Card component styling |
+
+### `ColorsConfig`
+
+All color tokens. Accepts any CSS color value (hex, rgb, oklch, hsl).
+
+| Token | Description |
+|-------|-------------|
+| `primary` | Primary brand color |
+| `primaryForeground` | Text color on primary backgrounds |
+| `background` | Page background |
+| `foreground` | Default text color |
+| `muted` | Muted background (e.g. code blocks) |
+| `mutedForeground` | Text on muted backgrounds |
+| `border` | Default border color |
+| `card` | Card background |
+| `cardForeground` | Card text color |
+| `accent` | Accent color |
+| `accentForeground` | Text on accent backgrounds |
+| `secondary` | Secondary color |
+| `secondaryForeground` | Text on secondary backgrounds |
+| `popover` | Popover/dropdown background |
+| `popoverForeground` | Popover text color |
+| `ring` | Focus ring color |
+
+```ts
+colors: {
+  primary: "oklch(0.72 0.19 149)",
+  background: "hsl(0 0% 2%)",
+  border: "#262626",
+},
+```
+
+### `LayoutConfig`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `contentWidth` | `number` | — | Max width of content area in px |
+| `sidebarWidth` | `number` | — | Sidebar width in px |
+| `tocWidth` | `number` | — | Table of contents width in px |
+| `toc.enabled` | `boolean` | `true` | Show table of contents |
+| `toc.depth` | `number` | `3` | Max heading depth for TOC |
+| `header.height` | `number` | — | Header height in px |
+| `header.sticky` | `boolean` | `true` | Sticky header |
+
+### `CodeBlockConfig`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `showLineNumbers` | `boolean` | `false` | Show line numbers |
+| `showCopyButton` | `boolean` | `true` | Show copy button |
+| `theme` | `string` | — | Shiki theme for light mode |
+| `darkTheme` | `string` | — | Shiki theme for dark mode |
+
+### `SidebarStyleConfig`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `style` | `"default" \| "bordered" \| "floating"` | `"default"` | Sidebar visual style |
+| `background` | `string` | — | Background color override |
+| `borderColor` | `string` | — | Border color override |
+
+### `TypographyConfig`
+
+```ts
+typography: {
+  font: {
+    style: {
+      sans: "Inter, sans-serif",
+      mono: "JetBrains Mono, monospace",
+    },
+    h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.02em" },
+    h2: { size: "1.75rem", weight: 600 },
+    h3: { size: "1.25rem", weight: 600 },
+    body: { size: "1rem", lineHeight: "1.75" },
+    small: { size: "0.875rem" },
+  },
+},
+```
+
+### `FontStyle`
+
+Used for each heading level and body text.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `size` | `string` | CSS `font-size` (e.g. `"2.25rem"`, `"clamp(1.8rem, 3vw, 2.5rem)"`) |
+| `weight` | `string \| number` | CSS `font-weight` (e.g. `700`, `"bold"`) |
+| `lineHeight` | `string` | CSS `line-height` (e.g. `"1.2"`, `"28px"`) |
+| `letterSpacing` | `string` | CSS `letter-spacing` (e.g. `"-0.02em"`) |
+
+---
+
+## `AIConfig`
+
+RAG-powered AI chat. See [Ask AI](/docs/customization/ai-chat) for usage guide.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `enabled` | `boolean` | `false` | Enable AI chat |
+| `mode` | `"search" \| "floating"` | `"search"` | UI mode: integrated in search or floating widget |
+| `position` | `"bottom-right" \| "bottom-left" \| "bottom-center"` | `"bottom-right"` | Floating button position (only when `mode: "floating"`) |
+| `floatingStyle` | `"panel" \| "modal" \| "popover" \| "full-modal"` | `"panel"` | Floating chat visual style |
+| `triggerComponent` | `ReactNode` | — | Custom floating button (Next.js only) |
+| `model` | `string` | `"gpt-4o-mini"` | LLM model name (OpenAI-compatible) |
+| `systemPrompt` | `string` | auto-generated | Custom system prompt |
+| `baseUrl` | `string` | `"https://api.openai.com/v1"` | OpenAI-compatible API base URL |
+| `apiKey` | `string` | `process.env.OPENAI_API_KEY` | API key for the LLM provider |
+| `maxResults` | `number` | `5` | Number of doc pages to include as RAG context |
+| `suggestedQuestions` | `string[]` | — | Pre-filled questions shown when chat is empty |
+| `aiLabel` | `string` | `"AI"` | Display name for the AI assistant |
+| `packageName` | `string` | — | Package name the AI uses in import examples |
+| `docsUrl` | `string` | — | Base URL the AI uses for links |
+| `loadingComponent` | `(props: { name: string }) => ReactNode` | — | Custom loading indicator (Next.js only) |
+
+### Floating styles
+
+| Style | Description |
+|-------|-------------|
+| `"panel"` | Tall panel sliding up from the button. No backdrop. |
+| `"modal"` | Centered modal with backdrop overlay, like Cmd+K search. |
+| `"popover"` | Compact popover near the button. |
+| `"full-modal"` | Full-screen immersive overlay with pills for suggested questions. |
+
+---
+
+## `PageActionsConfig`
+
+Action buttons shown on each docs page. See [Page Actions](/docs/customization/page-actions) for usage guide.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `position` | `"above-title" \| "below-title"` | `"below-title"` | Where to render the buttons |
+| `copyMarkdown` | `boolean \| CopyMarkdownConfig` | `false` | "Copy Markdown" button |
+| `openDocs` | `boolean \| OpenDocsConfig` | `false` | "Open in LLM" dropdown |
+
+### `CopyMarkdownConfig`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `enabled` | `boolean` | `false` | Show the button |
+
+### `OpenDocsConfig`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `enabled` | `boolean` | `false` | Show the dropdown |
+| `providers` | `OpenDocsProvider[]` | sensible defaults | LLM/tool providers |
+
+### `OpenDocsProvider`
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Display name (e.g. `"ChatGPT"`, `"Claude"`) |
+| `icon` | `ReactNode` | Icon rendered next to the name |
+| `urlTemplate` | `string` | URL template. `{url}` is replaced with the page URL, `{mdxUrl}` with the MDX URL. |
+
+```ts
+pageActions: {
+  copyMarkdown: { enabled: true },
+  openDocs: {
+    enabled: true,
+    providers: [
+      { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}" },
+      { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+this:+{url}" },
+    ],
+  },
+},
+```
+
+---
+
+## `DocsMetadata`
+
+SEO metadata configuration.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `titleTemplate` | `string` | — | Page title template. `%s` is replaced with the page title. |
+| `description` | `string` | — | Default meta description |
+| `twitterCard` | `"summary" \| "summary_large_image"` | — | Twitter card type |
+
+```ts
+metadata: {
+  titleTemplate: "%s – My Docs",
+  description: "Documentation for my project",
+},
+```
+
+---
+
+## `OGConfig`
+
+Open Graph image configuration.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `enabled` | `boolean` | `false` | Enable OG image generation |
+| `type` | `"static" \| "dynamic"` | — | Static images or dynamic generation |
+| `endpoint` | `string` | — | API endpoint for dynamic OG images |
+| `defaultImage` | `string` | — | Fallback OG image URL |
+
+---
+
+## Page Frontmatter
+
+Each docs page (`.mdx` / `.md`) supports these frontmatter fields:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `title` | `string` | **Required.** Page title, shown in sidebar and page heading |
+| `description` | `string` | Page description, used for meta tags and search |
+| `icon` | `string` | Icon key from the `icons` registry. Shows in sidebar. |
+| `order` | `number` | Sort order in the sidebar (only when `ordering: "numeric"`). Lower numbers first. |
+| `tags` | `string[]` | Tags for categorization |
+| `ogImage` | `string` | Custom Open Graph image path for this page |
+
+```md
+---
+title: "Getting Started"
+description: "Set up your docs in 5 minutes"
+icon: "rocket"
+order: 1
+---
+```
+
+---
+
+## `createTheme(options)`
+
+Create a custom theme from scratch. See [Creating Themes](/docs/themes/creating-themes).
+
+```ts
+import { createTheme } from "@farming-labs/docs";
+
+export const myTheme = createTheme({
+  name: "my-theme",
+  ui: {
+    colors: { primary: "#ff4d8d", background: "#0a0a0a" },
+    radius: "0px",
+    sidebar: { style: "bordered" },
+  },
+});
+```
+
+## `extendTheme(base, overrides)`
+
+Extend an existing theme with overrides.
+
+```ts
+import { extendTheme } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/theme";
+
+export const myTheme = extendTheme(fumadocs(), {
+  ui: {
+    colors: { primary: "oklch(0.72 0.19 149)" },
+  },
+});
+```
+
+---
+
+## SvelteKit Server API
+
+### `createDocsServer(config)`
+
+Creates all server-side functions for a SvelteKit docs site.
+
+```ts
+import { createDocsServer } from "@farming-labs/svelte/server";
+```
+
+**Parameters:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `config` | `DocsConfig` | The config object from `defineDocs()` |
+| `_preloadedContent` | `Record<string, string>` | Pre-loaded markdown files from `import.meta.glob`. Required for serverless. |
+
+**Returns:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `load` | `(event) => Promise<PageData>` | Layout load function (use in `+layout.server.js`) |
+| `GET` | `(event) => Response` | Search endpoint handler |
+| `POST` | `(event) => Promise<Response>` | AI chat endpoint handler |
+
+```ts title="src/lib/docs.server.ts"
+import { createDocsServer } from "@farming-labs/svelte/server";
+import config from "./docs.config";
+
+const contentFiles = import.meta.glob("/docs/**/*.{md,mdx,svx}", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
+
+export const { load, GET, POST } = createDocsServer({
+  ...config,
+  _preloadedContent: contentFiles,
+});
+```
+
+### SvelteKit Components
+
+Imported from `@farming-labs/svelte-theme`:
+
+| Component | Props | Description |
+|-----------|-------|-------------|
+| `DocsLayout` | `tree`, `config`, `title?`, `titleUrl?` | Main layout with sidebar, nav, search, AI |
+| `DocsContent` | `data`, `config` | Page content with TOC, breadcrumb, footer nav |
+| `DocsPage` | `entry`, `tocEnabled`, `breadcrumbEnabled`, `previousPage`, `nextPage`, `editOnGithub`, `lastModified` | Low-level page wrapper (used by `DocsContent`) |
+
+---
+
+## Next.js API
+
+### `withDocs(nextConfig)`
+
+Wraps your Next.js config with docs framework support. Handles MDX, routing, and search index generation.
+
+```ts title="next.config.ts"
+import { withDocs } from "@farming-labs/next/config";
+export default withDocs({});
+```
+
+### `createDocsLayout(config)`
+
+Creates the docs layout component from your config.
+
+```tsx title="app/docs/layout.tsx"
+import { createDocsLayout } from "@farming-labs/theme";
+import config from "@/docs.config";
+
+const { DocsLayout } = createDocsLayout(config);
+
+export default function Layout({ children }) {
+  return <DocsLayout>{children}</DocsLayout>;
+}
+```

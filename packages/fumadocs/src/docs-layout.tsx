@@ -4,7 +4,7 @@ import path from "node:path";
 import matter from "gray-matter";
 import type { ReactNode, ReactElement } from "react";
 import { serializeIcon } from "./serialize-icon.js";
-import type { DocsConfig, ThemeToggleConfig, BreadcrumbConfig, SidebarConfig, TypographyConfig, FontStyle, PageActionsConfig, CopyMarkdownConfig, OpenDocsConfig, GithubConfig, AIConfig } from "@farming-labs/docs";
+import type { DocsConfig, ThemeToggleConfig, BreadcrumbConfig, SidebarConfig, TypographyConfig, FontStyle, PageActionsConfig, CopyMarkdownConfig, OpenDocsConfig, GithubConfig, AIConfig, OrderingItem } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 
@@ -65,9 +65,9 @@ function hasChildPages(dir: string): boolean {
 function buildTree(config: DocsConfig) {
   const docsDir = path.join(process.cwd(), "app", config.entry);
   const icons = config.icons as Record<string, unknown> | undefined;
+  const ordering = config.ordering;
   const rootChildren: TreeNode[] = [];
 
-  // Root page (e.g. /docs)
   if (fs.existsSync(path.join(docsDir, "page.mdx"))) {
     const data = readFrontmatter(path.join(docsDir, "page.mdx"));
     rootChildren.push({
@@ -78,55 +78,83 @@ function buildTree(config: DocsConfig) {
     });
   }
 
-  /**
-   * Recursively scan a directory and return tree nodes.
-   *
-   * - If a subdirectory has its own children (nested pages), it becomes a
-   *   **folder** node with collapsible children. Its own `page.mdx` becomes
-   *   the folder's `index` page.
-   * - Otherwise it becomes a simple **page** node.
-   */
-  function scan(dir: string, baseSlug: string[]): TreeNode[] {
-    if (!fs.existsSync(dir)) return [];
+  function buildNode(dir: string, name: string, baseSlug: string[], slugOrder?: OrderingItem[]): TreeNode | null {
+    const full = path.join(dir, name);
+    if (!fs.statSync(full).isDirectory()) return null;
 
-    const nodes: TreeNode[] = [];
+    const pagePath = path.join(full, "page.mdx");
+    if (!fs.existsSync(pagePath)) return null;
+
+    const data = readFrontmatter(pagePath);
+    const slug = [...baseSlug, name];
+    const url = `/${config.entry}/${slug.join("/")}`;
+    const icon = resolveIcon(data.icon as string | undefined, icons);
+    const displayName = (data.title as string) ?? name.replace(/-/g, " ");
+
+    if (hasChildPages(full)) {
+      const folderChildren = scanDir(full, slug, slugOrder);
+      return {
+        type: "folder",
+        name: displayName,
+        icon,
+        index: { type: "page", name: displayName, url, icon },
+        children: folderChildren,
+      };
+    }
+    return { type: "page", name: displayName, url, icon };
+  }
+
+  function scanDir(dir: string, baseSlug: string[], slugOrder?: OrderingItem[]): TreeNode[] {
+    if (!fs.existsSync(dir)) return [];
     const entries = fs.readdirSync(dir).sort();
 
-    for (const name of entries) {
-      const full = path.join(dir, name);
-      if (!fs.statSync(full).isDirectory()) continue;
+    if (slugOrder) {
+      const nodes: TreeNode[] = [];
+      const slugMap = new Map<string, OrderingItem>();
+      for (const item of slugOrder) slugMap.set(item.slug, item);
 
-      const pagePath = path.join(full, "page.mdx");
-      if (!fs.existsSync(pagePath)) continue;
-
-      const data = readFrontmatter(pagePath);
-      const slug = [...baseSlug, name];
-      const url = `/${config.entry}/${slug.join("/")}`;
-      const icon = resolveIcon(data.icon as string | undefined, icons);
-      const displayName =
-        (data.title as string) ?? name.replace(/-/g, " ");
-
-      // Does this directory have nested child pages?
-      if (hasChildPages(full)) {
-        // → Folder node (collapsible) with its page as the index
-        const folderChildren = scan(full, slug);
-        nodes.push({
-          type: "folder",
-          name: displayName,
-          icon,
-          index: { type: "page", name: displayName, url, icon },
-          children: folderChildren,
-        });
-      } else {
-        // → Simple page node
-        nodes.push({ type: "page", name: displayName, url, icon });
+      for (const item of slugOrder) {
+        if (!entries.includes(item.slug)) continue;
+        const node = buildNode(dir, item.slug, baseSlug, item.children);
+        if (node) nodes.push(node);
       }
+      for (const name of entries) {
+        if (slugMap.has(name)) continue;
+        const node = buildNode(dir, name, baseSlug);
+        if (node) nodes.push(node);
+      }
+      return nodes;
     }
 
+    if (ordering === "numeric") {
+      const nodes: { order: number; node: TreeNode }[] = [];
+      for (const name of entries) {
+        const full = path.join(dir, name);
+        if (!fs.statSync(full).isDirectory()) continue;
+        const pagePath = path.join(full, "page.mdx");
+        if (!fs.existsSync(pagePath)) continue;
+        const data = readFrontmatter(pagePath);
+        const order = typeof data.order === "number" ? data.order : Infinity;
+        const node = buildNode(dir, name, baseSlug);
+        if (node) nodes.push({ order, node });
+      }
+      nodes.sort((a, b) => {
+        if (a.order === b.order) return 0;
+        return a.order - b.order;
+      });
+      return nodes.map((n) => n.node);
+    }
+
+    const nodes: TreeNode[] = [];
+    for (const name of entries) {
+      const node = buildNode(dir, name, baseSlug);
+      if (node) nodes.push(node);
+    }
     return nodes;
   }
 
-  rootChildren.push(...scan(docsDir, []));
+  const rootSlugOrder = Array.isArray(ordering) ? ordering : undefined;
+  rootChildren.push(...scanDir(docsDir, [], rootSlugOrder));
   return { name: "Docs", children: rootChildren };
 }
 

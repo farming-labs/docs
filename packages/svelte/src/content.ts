@@ -9,6 +9,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
+import type { OrderingItem } from "@farming-labs/docs";
 
 export interface PageNode {
   type: "page";
@@ -110,6 +111,7 @@ export function loadDocsContent(
 export function loadDocsNavTree(
   contentDir: string,
   entry: string = "docs",
+  ordering?: "alphabetical" | "numeric" | OrderingItem[],
 ): NavTree {
   const absDir = path.resolve(contentDir);
   const children: NavNode[] = [];
@@ -125,47 +127,95 @@ export function loadDocsNavTree(
     });
   }
 
-  children.push(...scanDir(absDir, [], entry));
+  const rootSlugOrder = Array.isArray(ordering) ? ordering : undefined;
+  children.push(...scanDir(absDir, [], entry, ordering, rootSlugOrder));
   return { name: "Docs", children };
 }
 
-function scanDir(dir: string, slugParts: string[], entry: string): NavNode[] {
+function buildNavNode(
+  dir: string, name: string, slugParts: string[], entry: string,
+  ordering?: "alphabetical" | "numeric" | OrderingItem[],
+  childSlugOrder?: OrderingItem[],
+): NavNode | null {
+  const full = path.join(dir, name);
+  if (!fs.statSync(full).isDirectory()) return null;
+
+  const indexPath = findIndex(full);
+  if (!indexPath) return null;
+
+  const { data } = matter(fs.readFileSync(indexPath, "utf-8"));
+  const slug = [...slugParts, name];
+  const url = `/${entry}/${slug.join("/")}`;
+  const displayName =
+    (data.title as string) ?? name.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const icon = data.icon as string | undefined;
+
+  const childDirs = fs.readdirSync(full).filter((n) => {
+    const p = path.join(full, n);
+    return fs.statSync(p).isDirectory() && findIndex(p) !== null;
+  });
+
+  if (childDirs.length > 0) {
+    return {
+      type: "folder",
+      name: displayName,
+      icon,
+      index: { type: "page", name: displayName, url, icon },
+      children: scanDir(full, slug, entry, ordering, childSlugOrder),
+    };
+  }
+  return { type: "page", name: displayName, url, icon };
+}
+
+function scanDir(
+  dir: string, slugParts: string[], entry: string,
+  ordering?: "alphabetical" | "numeric" | OrderingItem[],
+  slugOrder?: OrderingItem[],
+): NavNode[] {
   if (!fs.existsSync(dir)) return [];
-  const nodes: NavNode[] = [];
   const entries = fs.readdirSync(dir).sort();
 
-  for (const name of entries) {
-    const full = path.join(dir, name);
-    if (!fs.statSync(full).isDirectory()) continue;
+  if (slugOrder) {
+    const nodes: NavNode[] = [];
+    const slugMap = new Set(slugOrder.map((i) => i.slug));
 
-    const indexPath = findIndex(full);
-    if (!indexPath) continue;
-
-    const { data } = matter(fs.readFileSync(indexPath, "utf-8"));
-    const slug = [...slugParts, name];
-    const url = `/${entry}/${slug.join("/")}`;
-    const displayName =
-      (data.title as string) ?? name.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-    const icon = data.icon as string | undefined;
-
-    const childDirs = fs.readdirSync(full).filter((n) => {
-      const p = path.join(full, n);
-      return fs.statSync(p).isDirectory() && findIndex(p) !== null;
-    });
-
-    if (childDirs.length > 0) {
-      nodes.push({
-        type: "folder",
-        name: displayName,
-        icon,
-        index: { type: "page", name: displayName, url, icon },
-        children: scanDir(full, slug, entry),
-      });
-    } else {
-      nodes.push({ type: "page", name: displayName, url, icon });
+    for (const item of slugOrder) {
+      if (!entries.includes(item.slug)) continue;
+      const node = buildNavNode(dir, item.slug, slugParts, entry, ordering, item.children);
+      if (node) nodes.push(node);
     }
+    for (const name of entries) {
+      if (slugMap.has(name)) continue;
+      const node = buildNavNode(dir, name, slugParts, entry, ordering);
+      if (node) nodes.push(node);
+    }
+    return nodes;
   }
 
+  if (ordering === "numeric") {
+    const nodes: { order: number; node: NavNode }[] = [];
+    for (const name of entries) {
+      const full = path.join(dir, name);
+      if (!fs.statSync(full).isDirectory()) continue;
+      const indexPath = findIndex(full);
+      if (!indexPath) continue;
+      const { data } = matter(fs.readFileSync(indexPath, "utf-8"));
+      const order = typeof data.order === "number" ? data.order : Infinity;
+      const node = buildNavNode(dir, name, slugParts, entry, ordering);
+      if (node) nodes.push({ order, node });
+    }
+    nodes.sort((a, b) => {
+      if (a.order === b.order) return 0;
+      return a.order - b.order;
+    });
+    return nodes.map((n) => n.node);
+  }
+
+  const nodes: NavNode[] = [];
+  for (const name of entries) {
+    const node = buildNavNode(dir, name, slugParts, entry, ordering);
+    if (node) nodes.push(node);
+  }
   return nodes;
 }
 

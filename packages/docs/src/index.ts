@@ -32,4 +32,5 @@ export type {
   OpenDocsProvider,
   GithubConfig,
   AIConfig,
+  OrderingItem,
 } from "./types.js";

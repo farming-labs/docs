@@ -105,12 +105,14 @@ function navTreeFromMap(
   contentMap: ContentFileMap,
   dirPrefix: string,
   entry: string,
+  ordering?: "alphabetical" | "numeric" | Array<{ slug: string; children?: any[] }>,
 ): NavTree {
   interface DirInfo {
     parts: string[];
     title: string;
     url: string;
     icon?: string;
+    order: number;
   }
 
   const dirs: DirInfo[] = [];
@@ -140,9 +142,11 @@ function navTreeFromMap(
       title: (data.title as string) ?? fallbackTitle,
       url,
       icon: data.icon as string | undefined,
+      order: typeof data.order === "number" ? data.order : Infinity,
     });
   }
 
+  // Default sort: depth first, then by ordering strategy
   dirs.sort((a, b) => {
     if (a.parts.length !== b.parts.length)
       return a.parts.length - b.parts.length;
@@ -160,8 +164,18 @@ function navTreeFromMap(
     });
   }
 
+  function findSlugOrder(parentParts: string[]): Array<{ slug: string; children?: any[] }> | undefined {
+    if (!Array.isArray(ordering)) return undefined;
+    let items: Array<{ slug: string; children?: any[] }> = ordering;
+    for (const part of parentParts) {
+      const found = items.find((i) => i.slug === part);
+      if (!found?.children) return undefined;
+      items = found.children;
+    }
+    return items;
+  }
+
   function buildLevel(parentParts: string[]): NavNode[] {
-    const nodes: NavNode[] = [];
     const depth = parentParts.length;
 
     const directChildren = dirs.filter((d) => {
@@ -171,6 +185,48 @@ function navTreeFromMap(
       }
       return true;
     });
+
+    const slugOrder = findSlugOrder(parentParts);
+
+    if (slugOrder) {
+      const slugMap = new Set(slugOrder.map((i) => i.slug));
+      const ordered: DirInfo[] = [];
+      for (const item of slugOrder) {
+        const match = directChildren.find((d) => d.parts[depth] === item.slug);
+        if (match) ordered.push(match);
+      }
+      for (const child of directChildren) {
+        if (!slugMap.has(child.parts[depth])) ordered.push(child);
+      }
+      const nodes: NavNode[] = [];
+      for (const child of ordered) {
+        const hasGrandChildren = dirs.some((d) => {
+          if (d.parts.length <= child.parts.length) return false;
+          return child.parts.every((p, i) => d.parts[i] === p);
+        });
+        if (hasGrandChildren) {
+          nodes.push({
+            type: "folder",
+            name: child.title,
+            icon: child.icon,
+            index: { type: "page", name: child.title, url: child.url, icon: child.icon },
+            children: buildLevel(child.parts),
+          });
+        } else {
+          nodes.push({ type: "page", name: child.title, url: child.url, icon: child.icon });
+        }
+      }
+      return nodes;
+    }
+
+    if (ordering === "numeric") {
+      directChildren.sort((a, b) => {
+        if (a.order === b.order) return 0;
+        return a.order - b.order;
+      });
+    }
+
+    const nodes: NavNode[] = [];
 
     for (const child of directChildren) {
       const hasGrandChildren = dirs.some((d) => {
@@ -306,6 +362,8 @@ export function createDocsServer(
     ((config as Record<string, unknown>).contentDir as string | undefined) ?? entry;
   const dirPrefix = `/${contentDirRel}/`;
 
+  const ordering = config.ordering as "alphabetical" | "numeric" | Array<{ slug: string; children?: any[] }> | undefined;
+
   const aiConfig: AIConfigObj = (config.ai as AIConfigObj) ?? {};
 
   // Allow top-level apiKey as a shorthand
@@ -316,8 +374,8 @@ export function createDocsServer(
   // ─── Unified load (tree + page content in one call) ────────
   async function load(event: UnifiedLoadEvent) {
     const tree = preloaded
-      ? navTreeFromMap(preloaded, dirPrefix, entry)
-      : loadDocsNavTree(contentDir, entry);
+      ? navTreeFromMap(preloaded, dirPrefix, entry, ordering)
+      : loadDocsNavTree(contentDir, entry, ordering);
     const flatPages = flattenNavTree(tree);
 
     const urlPrefix = new RegExp(`^/${entry}/?`);

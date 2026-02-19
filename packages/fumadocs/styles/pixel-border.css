@@ -186,6 +186,12 @@ code:not(pre code) {
   border-top: none;
 }
 
+/* Last item: bottom border */
+.dark aside .overscroll-contain > div > a[data-active]:last-child,
+.dark aside .overscroll-contain > div > div:last-child {
+  border-bottom: 1px solid hsl(0 0% 12%);
+}
+
 /* ── Sidebar links (all levels) ──────────────────────────────────── */
 
 .dark aside a[data-active] {

@@ -245,6 +245,8 @@ export interface PageFrontmatter {
   icon?: string;
   /** Path to custom OG image for this page */
   ogImage?: string;
+  /** Sort order in the sidebar. Lower numbers appear first. Pages without `order` are sorted alphabetically after ordered pages. */
+  order?: number;
 }
 
 export interface DocsNav {
@@ -722,6 +724,31 @@ export interface AIConfig {
   loadingComponent?: (props: { name: string }) => unknown;
 }
 
+/**
+ * A single item in the slug-based sidebar ordering.
+ *
+ * @example
+ * ```ts
+ * ordering: [
+ *   { slug: "installation" },
+ *   { slug: "cli" },
+ *   { slug: "themes", children: [
+ *     { slug: "default" },
+ *     { slug: "darksharp" },
+ *     { slug: "pixel-border" },
+ *     { slug: "creating-themes" },
+ *   ]},
+ *   { slug: "reference" },
+ * ]
+ * ```
+ */
+export interface OrderingItem {
+  /** Folder name (not the full path, just the directory name at this level) */
+  slug: string;
+  /** Ordering for child pages within this folder */
+  children?: OrderingItem[];
+}
+
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
@@ -894,6 +921,40 @@ export interface DocsConfig {
    * ```
    */
   ai?: AIConfig;
+  /**
+   * Sidebar ordering strategy.
+   *
+   * - `"alphabetical"` — sort pages alphabetically by folder name (default)
+   * - `"numeric"` — sort by frontmatter `order` field (lower first, unset pages last)
+   * - `OrderingItem[]` — explicit slug-based ordering with nested children
+   *
+   * @default "alphabetical"
+   *
+   * @example
+   * ```ts
+   * // Alphabetical (default)
+   * ordering: "alphabetical",
+   *
+   * // Use frontmatter `order: 1`, `order: 2`, etc.
+   * ordering: "numeric",
+   *
+   * // Explicit slug-based ordering
+   * ordering: [
+   *   { slug: "installation" },
+   *   { slug: "cli" },
+   *   { slug: "configuration" },
+   *   { slug: "themes", children: [
+   *     { slug: "default" },
+   *     { slug: "darksharp" },
+   *     { slug: "pixel-border" },
+   *     { slug: "creating-themes" },
+   *   ]},
+   *   { slug: "customization" },
+   *   { slug: "reference" },
+   * ]
+   * ```
+   */
+  ordering?: "alphabetical" | "numeric" | OrderingItem[];
   /** SEO metadata - separate from theme */
   metadata?: DocsMetadata;
   /** Open Graph image handling */

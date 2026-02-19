@@ -71,7 +71,7 @@ export default defineDocs({
     titleTemplate: "%s – @farming-labs/docs",
     description: "A modern, flexible MDX documentation framework.",
   },
-
+  ordering: "numeric", 
   ai: {
     enabled: true,
     mode: "floating",

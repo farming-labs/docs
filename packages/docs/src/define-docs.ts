@@ -17,6 +17,7 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     icons: config.icons,
     pageActions: config.pageActions,
     ai: config.ai,
+    ordering: config.ordering,
     metadata: config.metadata,
     og: config.og,
   };
