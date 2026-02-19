@@ -14,6 +14,8 @@ export interface TemplateConfig {
   framework: "nextjs" | "sveltekit" | "astro";
   /** Whether to use path aliases (@/ for Next.js, $lib/ for SvelteKit) */
   useAlias: boolean;
+  /** Astro deployment adapter (only used when framework is "astro") */
+  astroAdapter?: "vercel" | "netlify" | "node" | "cloudflare";
 }
 
 // ---------------------------------------------------------------------------
@@ -867,12 +869,28 @@ export const { load, GET, POST } = createDocsServer({
 `;
 }
 
-export function astroConfigTemplate(): string {
+const ASTRO_ADAPTER_INFO: Record<string, { pkg: string; import: string }> = {
+  vercel: { pkg: "@astrojs/vercel", import: "@astrojs/vercel" },
+  netlify: { pkg: "@astrojs/netlify", import: "@astrojs/netlify" },
+  node: { pkg: "@astrojs/node", import: "@astrojs/node" },
+  cloudflare: { pkg: "@astrojs/cloudflare", import: "@astrojs/cloudflare" },
+};
+
+export function getAstroAdapterPkg(adapter: string): string {
+  return ASTRO_ADAPTER_INFO[adapter]?.pkg ?? ASTRO_ADAPTER_INFO.vercel.pkg;
+}
+
+export function astroConfigTemplate(adapter: string = "vercel"): string {
+  const info = ASTRO_ADAPTER_INFO[adapter] ?? ASTRO_ADAPTER_INFO.vercel;
+  const adapterCall = adapter === "node" ? `${adapter}({ mode: "standalone" })` : `${adapter}()`;
+
   return `\
 import { defineConfig } from "astro/config";
+import ${adapter} from "${info.import}";
 
 export default defineConfig({
   output: "server",
+  adapter: ${adapterCall},
 });
 `;
 }
@@ -880,6 +898,8 @@ export default defineConfig({
 export function astroDocsPageTemplate(cfg: TemplateConfig): string {
   const configImport = astroPageConfigImport(cfg.useAlias, 2);
   const serverImport = astroPageServerImport(cfg.useAlias, 2);
+  const t = getThemeInfo(cfg.theme);
+  const cssImport = `@farming-labs/astro-theme/${t.astroCssTheme}/css`;
   return `\
 ---
 import DocsLayout from "@farming-labs/astro-theme/src/components/DocsLayout.astro";
@@ -887,7 +907,7 @@ import DocsContent from "@farming-labs/astro-theme/src/components/DocsContent.as
 import SearchDialog from "@farming-labs/astro-theme/src/components/SearchDialog.astro";
 import config from "${configImport}";
 import { load } from "${serverImport}";
-import "@farming-labs/astro-theme/css";
+import "${cssImport}";
 
 const data = await load(Astro.url.pathname);
 ---
@@ -911,6 +931,8 @@ const data = await load(Astro.url.pathname);
 export function astroDocsIndexTemplate(cfg: TemplateConfig): string {
   const configImport = astroPageConfigImport(cfg.useAlias, 2);
   const serverImport = astroPageServerImport(cfg.useAlias, 2);
+  const t = getThemeInfo(cfg.theme);
+  const cssImport = `@farming-labs/astro-theme/${t.astroCssTheme}/css`;
   return `\
 ---
 import DocsLayout from "@farming-labs/astro-theme/src/components/DocsLayout.astro";
@@ -918,7 +940,7 @@ import DocsContent from "@farming-labs/astro-theme/src/components/DocsContent.as
 import SearchDialog from "@farming-labs/astro-theme/src/components/SearchDialog.astro";
 import config from "${configImport}";
 import { load } from "${serverImport}";
-import "@farming-labs/astro-theme/css";
+import "${cssImport}";
 
 const data = await load(Astro.url.pathname);
 ---

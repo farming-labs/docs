@@ -49,6 +49,7 @@ import {
   astroWelcomePageTemplate,
   astroInstallationPageTemplate,
   astroQuickstartPageTemplate,
+  getAstroAdapterPkg,
   type TemplateConfig,
 } from "./templates.js";
 
@@ -156,7 +157,32 @@ export async function init() {
   }
 
   // -----------------------------------------------------------------------
-  // Step 4: Docs entry path
+  // Step 4: Deployment target (Astro only)
+  // -----------------------------------------------------------------------
+
+  let astroAdapter: "vercel" | "netlify" | "node" | "cloudflare" | undefined;
+
+  if (framework === "astro") {
+    const adapter = await p.select({
+      message: "Where will you deploy?",
+      options: [
+        { value: "vercel", label: "Vercel", hint: "Recommended for most projects" },
+        { value: "netlify", label: "Netlify" },
+        { value: "cloudflare", label: "Cloudflare Pages" },
+        { value: "node", label: "Node.js / Docker", hint: "Self-hosted standalone server" },
+      ],
+    });
+
+    if (p.isCancel(adapter)) {
+      p.outro(pc.red("Init cancelled."));
+      process.exit(0);
+    }
+
+    astroAdapter = adapter as typeof astroAdapter;
+  }
+
+  // -----------------------------------------------------------------------
+  // Step 5: Docs entry path
   // -----------------------------------------------------------------------
 
   const entry = await p.text({
@@ -178,7 +204,7 @@ export async function init() {
   const entryPath = entry as string;
 
   // -----------------------------------------------------------------------
-  // Step 5: Global CSS file location
+  // Step 6: Global CSS file location
   // -----------------------------------------------------------------------
 
   const detectedCssFiles = detectGlobalCssFiles(cwd);
@@ -218,7 +244,7 @@ export async function init() {
   }
 
   // -----------------------------------------------------------------------
-  // Step 6: Read project info
+  // Step 7: Read project info
   // -----------------------------------------------------------------------
 
   const pkgJsonPath = path.join(cwd, "package.json");
@@ -232,10 +258,11 @@ export async function init() {
     projectName,
     framework,
     useAlias: useAlias as boolean,
+    astroAdapter,
   };
 
   // -----------------------------------------------------------------------
-  // Step 7: Write files
+  // Step 8: Write files
   // -----------------------------------------------------------------------
 
   const s = p.spinner();
@@ -278,7 +305,7 @@ export async function init() {
   }
 
   // -----------------------------------------------------------------------
-  // Step 8: Install dependencies
+  // Step 9: Install dependencies
   // -----------------------------------------------------------------------
 
   const pm = detectPackageManager(cwd);
@@ -294,8 +321,9 @@ export async function init() {
         cwd,
       );
     } else if (framework === "astro") {
+      const adapterPkg = getAstroAdapterPkg(cfg.astroAdapter ?? "vercel");
       exec(
-        `${installCommand(pm)} @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme`,
+        `${installCommand(pm)} @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme ${adapterPkg}`,
         cwd,
       );
     } else {
@@ -336,7 +364,7 @@ export async function init() {
   s2.stop("Dependencies installed");
 
   // -----------------------------------------------------------------------
-  // Step 9: Start dev server
+  // Step 10: Start dev server
   // -----------------------------------------------------------------------
 
   const startDev = await p.confirm({
@@ -564,7 +592,7 @@ function scaffoldAstro(
   write("src/lib/docs.server.ts", astroDocsServerTemplate(cfg));
 
   if (!fileExists(path.join(cwd, "astro.config.mjs")) && !fileExists(path.join(cwd, "astro.config.ts"))) {
-    write("astro.config.mjs", astroConfigTemplate());
+    write("astro.config.mjs", astroConfigTemplate(cfg.astroAdapter ?? "vercel"));
   }
 
   write(`src/pages/${cfg.entry}/index.astro`, astroDocsIndexTemplate(cfg));
