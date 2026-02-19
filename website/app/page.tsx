@@ -337,7 +337,7 @@ export const auth = betterAuth({
           filename="src/routes/docs/+layout.svelte"
           code={`<script>
   import { DocsLayout } from "@farming-labs/svelte-theme";
-  import config from "../../../docs.config.js";
+  import config from "../../lib/docs.config";
 
   let { data, children } = $props();
 </script>

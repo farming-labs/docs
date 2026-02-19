@@ -97,9 +97,9 @@ The CLI will:
     pnpm add @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme
     ```
 
-    ### 2. Create `docs.config.ts`
+    ### 2. Create `src/lib/docs.config.ts`
 
-    ```ts title="docs.config.ts"
+    ```ts title="src/lib/docs.config.ts"
     import { defineDocs } from "@farming-labs/docs";
     import { fumadocs } from "@farming-labs/svelte-theme";
 
@@ -171,6 +171,14 @@ The CLI will:
 
     <DocsContent {data} {config} />
     ```
+
+    **`src/routes/api/docs/+server.js`** (for search and AI):
+
+    ```js title="src/routes/api/docs/+server.js"
+    export { GET, POST } from "../../../lib/docs.server";
+    ```
+
+    > **Production note**: The `docs.server.ts` file uses `import.meta.glob` to bundle your markdown files at build time. This is required for serverless deployments (Vercel, Netlify, etc.) where the filesystem is not available at runtime.
 
     ### 5. Import theme CSS in `src/app.css`
 

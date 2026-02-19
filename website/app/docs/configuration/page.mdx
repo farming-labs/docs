@@ -6,26 +6,26 @@ icon: "settings"
 
 # Configuration
 
-All configuration lives in a single `docs.config.ts` file at the root of your project.
-
-## `defineDocs()`
-
-The `defineDocs()` function is the entry point. It takes a `DocsConfig` object and returns a typed config.
+All configuration lives in a single `docs.config.ts` file.
 
 <Tabs items={["Next.js", "SvelteKit"]}>
   <Tab value="Next.js">
+    The config file lives at the **project root** as `docs.config.tsx`:
+
     ```tsx title="docs.config.tsx"
     import { defineDocs } from "@farming-labs/docs";
-    import { pixelBorder } from "@farming-labs/theme/pixel-border";
+    import { fumadocs } from "@farming-labs/theme";
 
     export default defineDocs({
       entry: "docs",
-      theme: pixelBorder(),
+      theme: fumadocs(),
     });
     ```
   </Tab>
   <Tab value="SvelteKit">
-    ```ts title="docs.config.ts"
+    The config file lives at `src/lib/docs.config.ts`:
+
+    ```ts title="src/lib/docs.config.ts"
     import { defineDocs } from "@farming-labs/docs";
     import { fumadocs } from "@farming-labs/svelte-theme";
 
@@ -39,46 +39,151 @@ The `defineDocs()` function is the entry point. It takes a `DocsConfig` object a
       },
     });
     ```
+
+    > SvelteKit requires `contentDir` (path to your markdown files) and `nav` (sidebar title/URL) since routing is handled differently from Next.js.
   </Tab>
 </Tabs>
 
 ## Config Options
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `entry` | `string` | The docs directory name under `app/` |
-| `theme` | `DocsTheme` | Theme preset from a theme factory |
-| `nav` | `{ title, url }` | Navigation title (string or ReactNode) and base URL |
-| `icons` | `Record<string, ReactNode>` | Icon registry for frontmatter `icon` fields |
-| `components` | `Record<string, Component>` | Custom MDX components |
-| `breadcrumb` | `{ enabled }` | Enable/disable breadcrumb navigation |
-| `themeToggle` | `{ enabled, default }` | Show/hide theme toggle, set default theme |
-| `pageActions` | `object` | Copy Markdown, Open in LLM buttons |
-| `metadata` | `{ titleTemplate, description }` | Page metadata template |
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `entry` | `string` | `"docs"` | The docs URL path prefix (e.g. `"docs"` → `/docs`) |
+| `contentDir` | `string` | same as `entry` | Path to content files (SvelteKit only) |
+| `theme` | `DocsTheme` | — | Theme preset from a theme factory |
+| `nav` | `{ title, url }` | — | Sidebar title and base URL |
+| `github` | `string \| GithubConfig` | — | GitHub repo for "Edit on GitHub" links |
+| `themeToggle` | `boolean \| ThemeToggleConfig` | `true` | Light/dark mode toggle |
+| `breadcrumb` | `boolean \| BreadcrumbConfig` | `true` | Breadcrumb navigation |
+| `sidebar` | `boolean \| SidebarConfig` | `true` | Sidebar visibility and style |
+| `icons` | `Record<string, Component>` | — | Icon registry for frontmatter `icon` fields |
+| `components` | `Record<string, Component>` | — | Custom MDX components |
+| `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM buttons |
+| `ai` | `AIConfig` | — | RAG-powered AI chat |
+| `metadata` | `DocsMetadata` | — | SEO metadata template |
+
+## Theme Toggle
+
+Controls the light/dark mode switcher. Works on both Next.js and SvelteKit.
+
+```ts
+// Show toggle (default)
+themeToggle: true,
+
+// Hide toggle, use system preference
+themeToggle: false,
+
+// Hide toggle, force dark mode
+themeToggle: { enabled: false, default: "dark" },
+
+// Show toggle with system option
+themeToggle: { mode: "light-dark-system" },
+```
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `enabled` | `boolean` | `true` | Show/hide the theme toggle |
+| `default` | `"light" \| "dark" \| "system"` | `"system"` | Forced theme when toggle is hidden |
+| `mode` | `"light-dark" \| "light-dark-system"` | `"light-dark"` | Toggle mode |
+
+## GitHub / Edit on GitHub
+
+Enables "Edit on GitHub" links on each docs page footer. The link appears automatically when both `url` and `directory` are set.
+
+```ts
+// Simple — just the repo URL
+github: "https://github.com/my-org/my-docs",
+
+// Monorepo — docs live in a subdirectory
+github: {
+  url: "https://github.com/my-org/my-monorepo",
+  branch: "main",
+  directory: "apps/docs/docs",
+},
+```
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `url` | `string` | — | Repository URL |
+| `branch` | `string` | `"main"` | Branch name |
+| `directory` | `string` | — | Subdirectory for the content files |
+
+## Breadcrumb
+
+Controls the breadcrumb navigation above page content.
+
+```ts
+// Show breadcrumb (default)
+breadcrumb: true,
+
+// Hide breadcrumb
+breadcrumb: false,
+breadcrumb: { enabled: false },
+```
 
 ## Theme Configuration
 
-Pass options to your theme preset:
+Pass options to your theme preset to customize colors, typography, layout, and more:
 
-```tsx title="docs.config.tsx"
-theme: pixelBorder({
-  ui: {
-    colors: { primary: "oklch(0.72 0.19 149)" },
-    layout: { toc: { enabled: true, depth: 3 } },
-    sidebar: { style: "floating" },
-    typography: {
-      font: {
-        h1: { size: "2.25rem", weight: 700 },
-        body: { size: "0.975rem", lineHeight: "1.8" },
+<Tabs items={["Next.js", "SvelteKit"]}>
+  <Tab value="Next.js">
+    ```tsx title="docs.config.tsx"
+    import { pixelBorder } from "@farming-labs/theme/pixel-border";
+
+    theme: pixelBorder({
+      ui: {
+        colors: { primary: "oklch(0.72 0.19 149)" },
+        radius: "0px",
+        layout: {
+          toc: { enabled: true, depth: 3 },
+        },
+        sidebar: { style: "floating" },
+        typography: {
+          font: {
+            h1: { size: "2.25rem", weight: 700 },
+            body: { size: "0.975rem", lineHeight: "1.8" },
+          },
+        },
       },
-    },
-  },
-}),
-```
+    }),
+    ```
+  </Tab>
+  <Tab value="SvelteKit">
+    ```ts title="src/lib/docs.config.ts"
+    import { darksharp } from "@farming-labs/svelte-theme";
+
+    theme: darksharp({
+      ui: {
+        colors: { primary: "oklch(0.72 0.19 149)" },
+        layout: {
+          toc: { enabled: true, depth: 3 },
+        },
+        typography: {
+          font: {
+            h1: { size: "2.25rem", weight: 700 },
+            body: { size: "0.975rem", lineHeight: "1.8" },
+          },
+        },
+      },
+    }),
+    ```
+  </Tab>
+</Tabs>
+
+See [Colors](/docs/customization/colors), [Typography](/docs/customization/typography), and [Sidebar](/docs/customization/sidebar) for full details.
 
 ## Navigation
 
-The `nav` option controls the sidebar header. It supports both strings and React components:
+The `nav` option controls the sidebar header:
+
+```ts
+nav: {
+  title: "My Docs",
+  url: "/docs",
+},
+```
+
+In Next.js, `title` can also be a React element:
 
 ```tsx
 nav: {
@@ -96,50 +201,49 @@ nav: {
 
 Register icons in the config and reference them in frontmatter:
 
-```tsx title="docs.config.tsx"
-icons: {
-  rocket: <Rocket size={16} />,
-  book: <BookOpen size={16} />,
-},
-```
+<Tabs items={["Next.js", "SvelteKit"]}>
+  <Tab value="Next.js">
+    ```tsx title="docs.config.tsx"
+    import { Rocket, BookOpen } from "lucide-react";
 
-```mdx title="page.mdx"
----
-icon: "rocket"
----
-```
+    icons: {
+      rocket: <Rocket size={16} />,
+      book: <BookOpen size={16} />,
+    },
+    ```
 
-## Custom Components
+    ```mdx title="page.mdx"
+    ---
+    icon: "rocket"
+    ---
+    ```
+  </Tab>
+  <Tab value="SvelteKit">
+    SvelteKit uses a built-in icon map. Add `icon` to your page frontmatter:
 
-Pass custom React components that become available in MDX without imports:
+    ```md title="page.md"
+    ---
+    icon: "rocket"
+    ---
+    ```
 
-```tsx title="docs.config.tsx"
-components: {
-  MyCallout,
-  CustomCard,
-},
-```
-
-```mdx title="page.mdx"
-<MyCallout type="warning">
-  This is automatically available.
-</MyCallout>
-```
+    Built-in icons: `book`, `terminal`, `rocket`, `settings`, `shield`, `puzzle`, `zap`, `database`, `key`, `mail`, `file`, `folder`, `link`, `lightbulb`, `code`, `users`, `globe`, `lock`.
+  </Tab>
+</Tabs>
 
 ## Page Actions
 
 Enable "Copy as Markdown" and "Open in LLM" buttons:
 
-```tsx
+```ts
 pageActions: {
-  position: "below-title",  // or "above-title"
+  position: "below-title",
   copyMarkdown: { enabled: true },
   openDocs: {
     enabled: true,
     providers: [
       {
         name: "ChatGPT",
-        icon: <ChatGPTIcon />,
         urlTemplate: "https://chatgpt.com/?q=Read+this:+{url}",
       },
     ],
@@ -153,14 +257,111 @@ See the full [Page Actions reference](/docs/customization/page-actions) for all 
 
 Add a RAG-powered AI chat that lets users ask questions about your docs:
 
-```ts
-ai: {
-  enabled: true,
-  mode: "floating",
-  floatingStyle: "full-modal",
-  model: "gpt-4o-mini",
-  suggestedQuestions: ["How do I get started?"],
-},
-```
+<Tabs items={["Next.js", "SvelteKit"]}>
+  <Tab value="Next.js">
+    ```ts
+    ai: {
+      enabled: true,
+      mode: "floating",
+      floatingStyle: "full-modal",
+      model: "gpt-4o-mini",
+      suggestedQuestions: ["How do I get started?"],
+    },
+    ```
+
+    The API key is read from `process.env.OPENAI_API_KEY` automatically.
+  </Tab>
+  <Tab value="SvelteKit">
+    ```ts
+    ai: {
+      enabled: true,
+      mode: "floating",
+      floatingStyle: "panel",
+      model: "gpt-4o-mini",
+      suggestedQuestions: ["How do I get started?"],
+    },
+    ```
+
+    Pass the API key through `docs.server.ts` (SvelteKit requires server-only env access):
+
+    ```ts title="src/lib/docs.server.ts"
+    import { env } from "$env/dynamic/private";
+
+    export const { load, GET, POST } = createDocsServer({
+      ...config,
+      ai: { apiKey: env.OPENAI_API_KEY, ...config.ai },
+      _preloadedContent: contentFiles,
+    });
+    ```
+  </Tab>
+</Tabs>
 
 See the full [Ask AI reference](/docs/customization/ai-chat) for all options including custom providers, labels, system prompts, and more.
+
+## Full Example
+
+<Tabs items={["Next.js", "SvelteKit"]}>
+  <Tab value="Next.js">
+    ```tsx title="docs.config.tsx"
+    import { defineDocs } from "@farming-labs/docs";
+    import { fumadocs } from "@farming-labs/theme";
+
+    export default defineDocs({
+      entry: "docs",
+      theme: fumadocs({
+        ui: {
+          colors: { primary: "oklch(0.72 0.19 149)" },
+        },
+      }),
+      nav: { title: "My Docs" },
+      github: {
+        url: "https://github.com/my-org/my-docs",
+        directory: "docs",
+      },
+      themeToggle: { enabled: true },
+      breadcrumb: { enabled: true },
+      ai: {
+        enabled: true,
+        model: "gpt-4o-mini",
+        suggestedQuestions: ["How do I get started?"],
+      },
+      metadata: {
+        titleTemplate: "%s – Docs",
+        description: "My documentation site",
+      },
+    });
+    ```
+  </Tab>
+  <Tab value="SvelteKit">
+    ```ts title="src/lib/docs.config.ts"
+    import { defineDocs } from "@farming-labs/docs";
+    import { fumadocs } from "@farming-labs/svelte-theme";
+
+    export default defineDocs({
+      entry: "docs",
+      contentDir: "docs",
+      theme: fumadocs({
+        ui: {
+          colors: { primary: "oklch(0.72 0.19 149)" },
+        },
+      }),
+      nav: { title: "My Docs", url: "/docs" },
+      github: {
+        url: "https://github.com/my-org/my-docs",
+        directory: "docs",
+      },
+      themeToggle: { enabled: true },
+      breadcrumb: { enabled: true },
+      ai: {
+        enabled: true,
+        model: "gpt-4o-mini",
+        suggestedQuestions: ["How do I get started?"],
+      },
+      metadata: {
+        titleTemplate: "%s – Docs",
+        description: "My documentation site",
+      },
+    });
+    ```
+  </Tab>
+</Tabs>

@@ -513,6 +513,7 @@ export function svelteDocsServerTemplate(cfg: TemplateConfig): string {
 import { createDocsServer } from "@farming-labs/svelte/server";
 import config from "${configImport}";
 
+// preload for production
 const contentFiles = import.meta.glob("/${contentDirName}/**/*.{md,mdx,svx}", {
   query: "?raw",
   import: "default",

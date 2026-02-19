@@ -14,6 +14,8 @@ The `@farming-labs/docs` CLI scaffolds a documentation project in seconds.
 npx @farming-labs/docs init
 ```
 
+If the CLI cannot auto-detect your framework (no `next` or `@sveltejs/kit` in `package.json`), it will prompt you to choose one.
+
 ## Supported Frameworks
 
 | Framework | Detection | Status |
@@ -21,14 +23,25 @@ npx @farming-labs/docs init
 | Next.js | `next` in dependencies | Supported |
 | SvelteKit | `@sveltejs/kit` in dependencies | Supported |
 
+## Available Themes
+
+All themes are available for both Next.js and SvelteKit:
+
+| Theme | Description |
+|-------|-------------|
+| `fumadocs` | Clean, neutral docs theme (default) |
+| `darksharp` | All-black, sharp corners, no rounded edges |
+| `pixel-border` | Refined dark UI inspired by better-auth.com |
+
 ## What it does
 
 <Tabs items={["Next.js", "SvelteKit"]}>
   <Tab value="Next.js">
     1. **Detects Next.js** via `next` in your `package.json`
-    2. **Asks for a theme** — Choose `fumadocs`
+    2. **Asks for a theme** — `fumadocs`, `darksharp`, or `pixel-border`
     3. **Asks for the entry path** — Default is `docs` (creates pages under `app/docs/`)
-    4. **Generates files:**
+    4. **Asks about path aliases** — Use `@/` alias or relative paths for imports
+    5. **Generates files:**
        - `docs.config.ts` — Full config with your selected theme
        - `next.config.ts` — Wraps your existing config with `withDocs()`
        - `app/global.css` — Imports Tailwind and theme CSS
@@ -37,16 +50,17 @@ npx @farming-labs/docs init
        - `app/docs/page.mdx` — Sample documentation page
        - `app/docs/installation/page.mdx` — Sample installation guide
        - `app/docs/quickstart/page.mdx` — Sample quickstart guide
-    5. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next`
-    6. **Starts the dev server** — Opens your docs at `http://localhost:3000/docs`
+    6. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next`
+    7. **Starts the dev server** — Opens your docs at `http://localhost:3000/docs`
   </Tab>
   <Tab value="SvelteKit">
     1. **Detects SvelteKit** via `@sveltejs/kit` in your `package.json`
-    2. **Asks for a theme** — Choose `default` or `pixel-border`
+    2. **Asks for a theme** — `fumadocs`, `darksharp`, or `pixel-border`
     3. **Asks for the entry path** — Default is `docs`
-    4. **Generates files (does not touch `svelte.config.js`):**
-       - `docs.config.ts` — Full config with your selected theme
-       - `src/lib/docs.server.ts` — Server-side docs loader
+    4. **Asks about path aliases** — Use `$lib/` alias or relative paths for imports
+    5. **Generates files (does not touch `svelte.config.js`):**
+       - `src/lib/docs.config.ts` — Full config with your selected theme
+       - `src/lib/docs.server.ts` — Server-side docs loader with `import.meta.glob` for production builds
        - `src/routes/docs/+layout.svelte` — Docs layout component
        - `src/routes/docs/+layout.server.js` — Layout data loader
        - `src/routes/docs/[...slug]/+page.svelte` — Dynamic page component
@@ -54,8 +68,10 @@ npx @farming-labs/docs init
        - `docs/page.md` — Sample documentation page
        - `docs/installation/page.md` — Sample installation guide
        - `docs/quickstart/page.md` — Sample quickstart guide
-    5. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/svelte`, `@farming-labs/svelte-theme`
-    6. **Starts the dev server** — Opens your docs at `http://localhost:5173/docs`
+    6. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/svelte`, `@farming-labs/svelte-theme`
+    7. **Starts the dev server** — Opens your docs at `http://localhost:5173/docs`
+
+    > **Production note**: The generated `docs.server.ts` uses `import.meta.glob` to bundle your markdown files at build time. This is required for serverless deployments (Vercel, Netlify, etc.) where the filesystem is not available at runtime.
   </Tab>
 </Tabs>
 
@@ -72,9 +88,15 @@ npx @farming-labs/docs init
       │
       ◆ Select a theme:
       │ ● fumadocs (default neutral theme)
+      │ ○ darksharp (sharp, all-black theme)
+      │ ○ pixel-border (pixel-art inspired theme)
       │
       ◆ Entry path for docs:
       │ docs
+      │
+      ◆ Use path aliases for imports?
+      │ ● Yes (@/ alias)
+      │ ○ No (relative paths)
       │
       ◇ Generated docs.config.ts
       ◇ Generated next.config.ts
@@ -98,15 +120,22 @@ npx @farming-labs/docs init
       ◆ Detected framework: SvelteKit
       │
       ◆ Select a theme:
-      │ ● default (clean, modern docs theme)
+      │ ● fumadocs (default neutral theme)
+      │ ○ darksharp (sharp, all-black theme)
       │ ○ pixel-border (pixel-art inspired theme)
       │
       ◆ Entry path for docs:
       │ docs
       │
-      ◇ Generated docs.config.ts
+      ◆ Use path aliases for imports?
+      │ ● Yes ($lib/ alias)
+      │ ○ No (relative paths)
+      │
+      ◇ Generated src/lib/docs.config.ts
       ◇ Generated src/lib/docs.server.ts
       ◇ Generated src/routes/docs/+layout.svelte
+      ◇ Generated src/routes/docs/+layout.server.js
+      ◇ Generated src/routes/docs/[...slug]/+page.svelte
       ◇ Generated docs/page.md
       ◇ Generated docs/installation/page.md
       ◇ Generated docs/quickstart/page.md
@@ -123,5 +152,255 @@ npx @farming-labs/docs init
 
 | Flag | Description |
 |------|-------------|
-| `--theme <name>` | Skip theme prompt (e.g. `--theme pixel-border`) |
+| `--theme <name>` | Skip theme prompt (e.g. `--theme darksharp`) |
 | `--entry <path>` | Skip entry path prompt (e.g. `--entry docs`) |
+
+## Manual Code
+
+Here is every file the CLI generates, ready to copy-paste if you prefer manual setup.
+
+<Tabs items={["Next.js", "SvelteKit"]}>
+  <Tab value="Next.js">
+    **`docs.config.tsx`**
+
+    ```tsx title="docs.config.tsx"
+    import { defineDocs } from "@farming-labs/docs";
+    import { fumadocs } from "@farming-labs/theme";
+
+    export default defineDocs({
+      entry: "docs",
+      theme: fumadocs(),
+      nav: { title: "My Docs" },
+      breadcrumb: { enabled: true },
+      metadata: {
+        titleTemplate: "%s – Docs",
+        description: "My documentation site",
+      },
+    });
+    ```
+
+    **`next.config.ts`**
+
+    ```ts title="next.config.ts"
+    import { withDocs } from "@farming-labs/next/config";
+    export default withDocs({});
+    ```
+
+    **`app/global.css`**
+
+    ```css title="app/global.css"
+    @import "tailwindcss";
+    @import "@farming-labs/theme/default/css";
+    ```
+
+    **`app/layout.tsx`**
+
+    ```tsx title="app/layout.tsx"
+    import { RootProvider } from "@farming-labs/theme";
+    import "./global.css";
+
+    export default function RootLayout({
+      children,
+    }: {
+      children: React.ReactNode;
+    }) {
+      return (
+        <html lang="en" suppressHydrationWarning>
+          <body>
+            <RootProvider>{children}</RootProvider>
+          </body>
+        </html>
+      );
+    }
+    ```
+
+    **`app/docs/layout.tsx`**
+
+    ```tsx title="app/docs/layout.tsx"
+    import { createDocsLayout } from "@farming-labs/theme";
+    import config from "@/docs.config";
+
+    const { DocsLayout } = createDocsLayout(config);
+
+    export default function Layout({
+      children,
+    }: {
+      children: React.ReactNode;
+    }) {
+      return <DocsLayout>{children}</DocsLayout>;
+    }
+    ```
+
+    **`app/docs/page.mdx`** (sample page)
+
+    ```mdx title="app/docs/page.mdx"
+    ---
+    title: "Introduction"
+    description: "Welcome to the docs"
+    icon: "book"
+    ---
+
+    # Welcome
+
+    This is your documentation home page.
+    ```
+
+    > If you chose `darksharp` or `pixel-border`, the CSS import line will differ:
+    > - Darksharp: `@import "@farming-labs/theme/darksharp/css";`
+    > - Pixel Border: `@import "@farming-labs/theme/pixel-border/css";`
+  </Tab>
+  <Tab value="SvelteKit">
+    **`src/lib/docs.config.ts`**
+
+    ```ts title="src/lib/docs.config.ts"
+    import { defineDocs } from "@farming-labs/docs";
+    import { fumadocs } from "@farming-labs/svelte-theme";
+
+    export default defineDocs({
+      entry: "docs",
+      contentDir: "docs",
+      theme: fumadocs(),
+      nav: {
+        title: "My Docs",
+        url: "/docs",
+      },
+      breadcrumb: { enabled: true },
+      metadata: {
+        titleTemplate: "%s – Docs",
+        description: "My documentation site",
+      },
+    });
+    ```
+
+    **`src/lib/docs.server.ts`**
+
+    ```ts title="src/lib/docs.server.ts"
+    import { createDocsServer } from "@farming-labs/svelte/server";
+    import config from "./docs.config";
+
+    // preloading for production 
+    const contentFiles = import.meta.glob("/docs/**/*.{md,mdx,svx}", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>;
+
+    export const { load, GET, POST } = createDocsServer({
+      ...config,
+      _preloadedContent: contentFiles,
+    });
+    ```
+
+    **`src/routes/docs/+layout.svelte`**
+
+    ```svelte title="src/routes/docs/+layout.svelte"
+    <script>
+      import { DocsLayout } from "@farming-labs/svelte-theme";
+      import config from "../../lib/docs.config";
+
+      let { data, children } = $props();
+    </script>
+
+    <DocsLayout tree={data.tree} {config}>
+      {@render children()}
+    </DocsLayout>
+    ```
+
+    **`src/routes/docs/+layout.server.js`**
+
+    ```js title="src/routes/docs/+layout.server.js"
+    export { load } from "../../lib/docs.server";
+    ```
+
+    **`src/routes/docs/[...slug]/+page.svelte`**
+
+    ```svelte title="src/routes/docs/[...slug]/+page.svelte"
+    <script>
+      import { DocsContent } from "@farming-labs/svelte-theme";
+      import config from "../../../lib/docs.config";
+
+      let { data } = $props();
+    </script>
+
+    <DocsContent {data} {config} />
+    ```
+
+    **`src/routes/api/docs/+server.js`** (search & AI)
+
+    ```js title="src/routes/api/docs/+server.js"
+    export { GET, POST } from "../../../lib/docs.server";
+    ```
+
+    **`src/app.css`**
+
+    ```css title="src/app.css"
+    @import "@farming-labs/svelte-theme/fumadocs/css";
+    ```
+
+    **`docs/page.md`** (sample page)
+
+    ```md title="docs/page.md"
+    ---
+    title: "Introduction"
+    description: "Welcome to the docs"
+    icon: "book"
+    ---
+
+    # Welcome
+
+    This is your documentation home page.
+    ```
+
+    > If you chose `darksharp` or `pixel-border`, swap the theme factory and CSS:
+    > - Darksharp: `import { darksharp } from "@farming-labs/svelte-theme"` + `@import "@farming-labs/svelte-theme/darksharp/css";`
+    > - Pixel Border: `import { pixelBorder } from "@farming-labs/svelte-theme"` + `@import "@farming-labs/svelte-theme/pixel-border/css";`
+  </Tab>
+</Tabs>
+
+## Project Structure
+
+After running `init`, your project will look like this:
+
+<Tabs items={["Next.js", "SvelteKit"]}>
+  <Tab value="Next.js">
+    ```
+    my-app/
+    ├── docs.config.ts          # Docs configuration
+    ├── next.config.ts          # Next.js config with withDocs()
+    ├── app/
+    │   ├── global.css          # Theme CSS import
+    │   ├── layout.tsx          # Root layout
+    │   └── docs/
+    │       ├── layout.tsx      # Docs layout
+    │       ├── page.mdx        # /docs
+    │       ├── installation/
+    │       │   └── page.mdx    # /docs/installation
+    │       └── quickstart/
+    │           └── page.mdx    # /docs/quickstart
+    └── package.json
+    ```
+  </Tab>
+  <Tab value="SvelteKit">
+    ```
+    my-app/
+    ├── docs/                         # Markdown content
+    │   ├── page.md                   # /docs
+    │   ├── installation/
+    │   │   └── page.md               # /docs/installation
+    │   └── quickstart/
+    │       └── page.md               # /docs/quickstart
+    ├── src/
+    │   ├── app.css                   # Theme CSS import
+    │   ├── lib/
+    │   │   ├── docs.config.ts        # Docs configuration
+    │   │   └── docs.server.ts        # Server loader + content bundling
+    │   └── routes/
+    │       └── docs/
+    │           ├── +layout.svelte    # Docs layout
+    │           ├── +layout.server.js # Layout data loader
+    │           └── [...slug]/
+    │               └── +page.svelte  # Dynamic page
+    └── package.json
+    ```
+  </Tab>
+</Tabs>
