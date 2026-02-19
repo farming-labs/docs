@@ -10,6 +10,8 @@ export default defineConfig({
     "packages/next/package.json",
     "packages/svelte/package.json",
     "packages/svelte-theme/package.json",
+    "packages/astro/package.json",
+    "packages/astro-theme/package.json",
   ],
   execute: "pnpm build",
 });
