@@ -9,7 +9,7 @@ order: 1
 
 ## Option A: CLI (Recommended)
 
-Run the init command inside an existing Next.js or SvelteKit project:
+Run the init command inside an existing Next.js, SvelteKit, or Astro project:
 
 ```bash
 npx @farming-labs/docs init
@@ -17,7 +17,7 @@ npx @farming-labs/docs init
 
 The CLI will:
 
-1. Detect your framework (Next.js or SvelteKit)
+1. Detect your framework (Next.js, SvelteKit, or Astro)
 2. Ask you to pick a theme
 3. Ask for the docs entry path (default: `docs`)
 4. Generate config, layout, CSS, and sample pages
@@ -26,7 +26,7 @@ The CLI will:
 
 ## Option B: Manual Setup
 
-<Tabs items={["Next.js", "SvelteKit"]}>
+<Tabs items={["Next.js", "SvelteKit", "Astro"]}>
   <Tab value="Next.js">
     ### 1. Install packages
 
@@ -215,6 +215,117 @@ The CLI will:
     ```
 
     ### 6. Write your first doc
+
+    Create Markdown files under `docs/`:
+
+    ```
+    docs/
+      page.md               # /docs
+      getting-started/
+        page.md             # /docs/getting-started
+    ```
+
+    Each page uses frontmatter for metadata:
+
+    ```md title="docs/getting-started/page.md"
+    ---
+    title: "Getting Started"
+    description: "Your first doc page"
+    icon: "rocket"
+    ---
+
+    # Getting Started
+
+    Your content here.
+    ```
+  </Tab>
+  <Tab value="Astro">
+    ### 1. Install packages
+
+    ```bash
+    pnpm add @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme
+    ```
+
+    ### 2. Create `src/lib/docs.config.ts`
+
+    ```ts title="src/lib/docs.config.ts"
+    import { defineDocs } from "@farming-labs/docs";
+    import { fumadocs } from "@farming-labs/astro-theme";
+
+    export default defineDocs({
+      entry: "docs",
+      contentDir: "docs",
+      theme: fumadocs(),
+      nav: { title: "My Docs", url: "/docs" },
+      metadata: { titleTemplate: "%s – My Docs" },
+    });
+    ```
+
+    ### 3. Create `src/lib/docs.server.ts`
+
+    ```ts title="src/lib/docs.server.ts"
+    import { createDocsServer } from "@farming-labs/astro/server";
+    import config from "./docs.config";
+
+    const contentFiles = import.meta.glob("/docs/**/*.{md,mdx}", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>;
+
+    export const { load, GET, POST } = createDocsServer({
+      ...config,
+      _preloadedContent: contentFiles,
+    });
+    ```
+
+    ### 4. Create page routes
+
+    **`src/pages/docs/index.astro`** and **`src/pages/docs/[...slug].astro`**:
+
+    ```astro title="src/pages/docs/[...slug].astro"
+    ---
+    import DocsLayout from "@farming-labs/astro-theme/src/components/DocsLayout.astro";
+    import DocsContent from "@farming-labs/astro-theme/src/components/DocsContent.astro";
+    import config from "../../lib/docs.config";
+    import { load } from "../../lib/docs.server";
+    import "@farming-labs/astro-theme/css";
+
+    const data = await load(Astro.url.pathname);
+    ---
+
+    <html lang="en">
+      <head><title>{data.title} – Docs</title></head>
+      <body>
+        <DocsLayout tree={data.tree} config={config}>
+          <DocsContent data={data} config={config} />
+        </DocsLayout>
+      </body>
+    </html>
+    ```
+
+    ### 5. Create API route
+
+    **`src/pages/api/docs.ts`**:
+
+    ```ts title="src/pages/api/docs.ts"
+    import type { APIRoute } from "astro";
+    import { GET as docsGET, POST as docsPOST } from "../../lib/docs.server";
+
+    export const GET: APIRoute = async ({ request }) => docsGET({ request });
+    export const POST: APIRoute = async ({ request }) => docsPOST({ request });
+    ```
+
+    ### 6. Astro config
+
+    Enable SSR in `astro.config.mjs`:
+
+    ```js title="astro.config.mjs"
+    import { defineConfig } from "astro/config";
+    export default defineConfig({ output: "server" });
+    ```
+
+    ### 7. Write your first doc
 
     Create Markdown files under `docs/`:
 

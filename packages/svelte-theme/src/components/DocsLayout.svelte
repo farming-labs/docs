@@ -115,12 +115,78 @@
     if (!iconKey) return null;
     return ICON_MAP[iconKey] || null;
   }
+
+  const COLOR_MAP = {
+    primary: "--color-fd-primary",
+    primaryForeground: "--color-fd-primary-foreground",
+    background: "--color-fd-background",
+    foreground: "--color-fd-foreground",
+    muted: "--color-fd-muted",
+    mutedForeground: "--color-fd-muted-foreground",
+    border: "--color-fd-border",
+    card: "--color-fd-card",
+    cardForeground: "--color-fd-card-foreground",
+    accent: "--color-fd-accent",
+    accentForeground: "--color-fd-accent-foreground",
+    popover: "--color-fd-popover",
+    popoverForeground: "--color-fd-popover-foreground",
+    secondary: "--color-fd-secondary",
+    secondaryForeground: "--color-fd-secondary-foreground",
+    ring: "--color-fd-ring",
+  };
+
+  function buildColorsCSS(colors) {
+    if (!colors) return "";
+    const vars = [];
+    for (const [key, value] of Object.entries(colors)) {
+      if (!value || !COLOR_MAP[key]) continue;
+      vars.push(`${COLOR_MAP[key]}: ${value};`);
+    }
+    if (vars.length === 0) return "";
+    return `:root, .dark {\n  ${vars.join("\n  ")}\n}`;
+  }
+
+  function buildFontStyleVars(prefix, style) {
+    if (!style) return "";
+    const parts = [];
+    if (style.size) parts.push(`${prefix}-size: ${style.size};`);
+    if (style.weight != null) parts.push(`${prefix}-weight: ${style.weight};`);
+    if (style.lineHeight) parts.push(`${prefix}-line-height: ${style.lineHeight};`);
+    if (style.letterSpacing) parts.push(`${prefix}-letter-spacing: ${style.letterSpacing};`);
+    return parts.join("\n  ");
+  }
+
+  function buildTypographyCSS(typo) {
+    if (!typo?.font) return "";
+    const vars = [];
+    const fontStyle = typo.font.style;
+    if (fontStyle?.sans) vars.push(`--fd-font-sans: ${fontStyle.sans};`);
+    if (fontStyle?.mono) vars.push(`--fd-font-mono: ${fontStyle.mono};`);
+    for (const el of ["h1", "h2", "h3", "h4", "body", "small"]) {
+      const elStyle = typo.font[el];
+      if (elStyle) {
+        const elVars = buildFontStyleVars(`--fd-${el}`, elStyle);
+        if (elVars) vars.push(elVars);
+      }
+    }
+    if (vars.length === 0) return "";
+    return `:root {\n  ${vars.join("\n  ")}\n}`;
+  }
+
+  let overrideCSS = $derived.by(() => {
+    const colorOverrides = config?.theme?._userColorOverrides;
+    const typography = config?.theme?.ui?.typography;
+    return [buildColorsCSS(colorOverrides), buildTypographyCSS(typography)].filter(Boolean).join("\n");
+  });
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
 
 <svelte:head>
   {@html `<script>${themeInitScript}</script>`}
+  {#if overrideCSS}
+    {@html `<style>${overrideCSS}</style>`}
+  {/if}
 </svelte:head>
 
 <div class="fd-layout">

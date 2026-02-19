@@ -1,0 +1,134 @@
+---
+title: "Social Sign-on"
+description: "Set up OAuth social login with Google, GitHub, Discord, and more."
+icon: "link"
+---
+
+# Social Sign-on
+
+Better Auth supports 20+ social providers via OAuth 2.0. Users can sign in with a single click — no password required.
+
+## Supported Providers
+
+| Provider | ID | Documentation |
+|----------|-----|---------------|
+| Google | `google` | [console.cloud.google.com](https://console.cloud.google.com) |
+| GitHub | `github` | [github.com/settings/developers](https://github.com/settings/developers) |
+| Discord | `discord` | [discord.com/developers](https://discord.com/developers) |
+| Apple | `apple` | [developer.apple.com](https://developer.apple.com) |
+| Microsoft | `microsoft` | [portal.azure.com](https://portal.azure.com) |
+| Twitter / X | `twitter` | [developer.twitter.com](https://developer.twitter.com) |
+| Facebook | `facebook` | [developers.facebook.com](https://developers.facebook.com) |
+| LinkedIn | `linkedin` | [linkedin.com/developers](https://linkedin.com/developers) |
+| Spotify | `spotify` | [developer.spotify.com](https://developer.spotify.com) |
+| Twitch | `twitch` | [dev.twitch.tv](https://dev.twitch.tv) |
+
+## Configuration
+
+### Server-Side
+
+Add providers to your auth config:
+
+```ts
+export const auth = betterAuth({
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    },
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    },
+    discord: {
+      clientId: process.env.DISCORD_CLIENT_ID!,
+      clientSecret: process.env.DISCORD_CLIENT_SECRET!,
+    },
+  },
+});
+```
+
+### Client-Side
+
+Trigger social sign-in from your UI:
+
+```tsx
+import { signIn } from "@/lib/auth-client";
+
+function SignInButtons() {
+  return (
+    <div className="flex flex-col gap-3">
+      <button onClick={() => signIn.social({ provider: "google" })}>
+        Continue with Google
+      </button>
+      <button onClick={() => signIn.social({ provider: "github" })}>
+        Continue with GitHub
+      </button>
+      <button onClick={() => signIn.social({ provider: "discord" })}>
+        Continue with Discord
+      </button>
+    </div>
+  );
+}
+```
+
+## Setting Up Google OAuth
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a new project or select an existing one
+3. Navigate to **APIs & Services → Credentials**
+4. Click **Create Credentials → OAuth Client ID**
+5. Select **Web application**
+6. Add authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
+7. Copy the **Client ID** and **Client Secret** to your `.env`
+
+```bash
+GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="your-client-secret"
+```
+
+## Setting Up GitHub OAuth
+
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+2. Click **New OAuth App**
+3. Set **Homepage URL** to `http://localhost:3000`
+4. Set **Authorization callback URL** to `http://localhost:3000/api/auth/callback/github`
+5. Copy the **Client ID** and generate a **Client Secret**
+
+```bash
+GITHUB_CLIENT_ID="your-client-id"
+GITHUB_CLIENT_SECRET="your-client-secret"
+```
+
+## Account Linking
+
+When a user signs in with a social provider and already has an account with the same email, Better Auth automatically links the accounts:
+
+```ts
+export const auth = betterAuth({
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google", "github"],
+    },
+  },
+});
+```
+
+> **Note:** Only enable account linking for providers you trust to verify email addresses. This prevents account takeover attacks.
+
+## Custom Scopes
+
+Request additional permissions from providers:
+
+```ts
+export const auth = betterAuth({
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      scopes: ["profile", "email", "https://www.googleapis.com/auth/calendar"],
+    },
+  },
+});
+```

@@ -33,7 +33,7 @@ Top-level configuration object passed to `defineDocs()`.
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `entry` | `string` | **required** | URL path prefix for docs (e.g. `"docs"` → `/docs`) |
-| `contentDir` | `string` | same as `entry` | Path to content files. SvelteKit only — Next.js uses `app/{entry}/` |
+| `contentDir` | `string` | same as `entry` | Path to content files. SvelteKit and Astro only — Next.js uses `app/{entry}/` |
 | `theme` | `DocsTheme` | — | Theme preset from a factory (`fumadocs()`, `darksharp()`, `pixelBorder()`) |
 | `github` | `string \| GithubConfig` | — | GitHub repo config for "Edit on GitHub" links |
 | `nav` | `DocsNav` | — | Sidebar header title and URL |
@@ -241,7 +241,7 @@ Theme configuration returned by theme factories.
 
 Created via theme factories:
 
-<Tabs items={["Next.js", "SvelteKit"]}>
+<Tabs items={["Next.js", "SvelteKit", "Astro"]}>
   <Tab value="Next.js">
     ```ts
     import { fumadocs } from "@farming-labs/theme";
@@ -254,6 +254,15 @@ Created via theme factories:
   <Tab value="SvelteKit">
     ```ts
     import { fumadocs, darksharp, pixelBorder } from "@farming-labs/svelte-theme";
+
+    theme: fumadocs({ ui: { /* overrides */ } }),
+    ```
+  </Tab>
+  <Tab value="Astro">
+    ```ts
+    import { fumadocs } from "@farming-labs/astro-theme";
+    import { pixelBorder } from "@farming-labs/astro-theme/pixel-border";
+    import { darksharp } from "@farming-labs/astro-theme/darksharp";
 
     theme: fumadocs({ ui: { /* overrides */ } }),
     ```
@@ -586,6 +595,77 @@ Imported from `@farming-labs/svelte-theme`:
 | `DocsLayout` | `tree`, `config`, `title?`, `titleUrl?` | Main layout with sidebar, nav, search, AI |
 | `DocsContent` | `data`, `config` | Page content with TOC, breadcrumb, footer nav |
 | `DocsPage` | `entry`, `tocEnabled`, `breadcrumbEnabled`, `previousPage`, `nextPage`, `editOnGithub`, `lastModified` | Low-level page wrapper (used by `DocsContent`) |
+
+---
+
+## Astro Server API
+
+### `createDocsServer(config)`
+
+Same as SvelteKit — returns `{ load, GET, POST }`.
+
+```ts
+import { createDocsServer } from "@farming-labs/astro/server";
+```
+
+**Parameters:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `config` | `DocsConfig` | The config object from `defineDocs()` |
+| `_preloadedContent` | `Record<string, string>` | Pre-loaded markdown files from `import.meta.glob`. Required for serverless. |
+
+**Returns:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `load` | `(pathname: string) => Promise<PageData>` | Takes a URL pathname string, returns page data |
+| `GET` | `({ request }) => Response` | Search endpoint handler for `GET /api/docs?query=...` |
+| `POST` | `({ request }) => Promise<Response>` | AI chat endpoint handler with SSE streaming |
+
+```ts title="src/lib/docs.server.ts"
+import { createDocsServer } from "@farming-labs/astro/server";
+import config from "./docs.config";
+
+const contentFiles = import.meta.glob("/docs/**/*.{md,mdx}", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
+
+export const { load, GET, POST } = createDocsServer({
+  ...config,
+  _preloadedContent: contentFiles,
+});
+```
+
+### Astro Components
+
+| Component | Import | Description |
+|-----------|--------|-------------|
+| `DocsLayout` | `@farming-labs/astro-theme/src/components/DocsLayout.astro` | Main layout with sidebar, search, and theme toggle |
+| `DocsContent` | `@farming-labs/astro-theme/src/components/DocsContent.astro` | Page content with metadata |
+| `DocsPage` | `@farming-labs/astro-theme/src/components/DocsPage.astro` | Page structure (TOC, breadcrumb, nav) |
+| `ThemeToggle` | `@farming-labs/astro-theme/src/components/ThemeToggle.astro` | Light/dark toggle |
+| `SearchDialog` | `@farming-labs/astro-theme/src/components/SearchDialog.astro` | Search + AI dialog |
+
+### CSS Imports
+
+Same pattern as SvelteKit:
+
+| Import | Description |
+|--------|-------------|
+| `@farming-labs/astro-theme/css` | Default (fumadocs) theme |
+| `@farming-labs/astro-theme/pixel-border/css` | Pixel border theme |
+| `@farming-labs/astro-theme/darksharp/css` | Darksharp theme |
+
+### Theme Factories
+
+| Factory | Import |
+|---------|--------|
+| `fumadocs()` | `@farming-labs/astro-theme` |
+| `pixelBorder()` | `@farming-labs/astro-theme/pixel-border` |
+| `darksharp()` | `@farming-labs/astro-theme/darksharp` |
 
 ---
 

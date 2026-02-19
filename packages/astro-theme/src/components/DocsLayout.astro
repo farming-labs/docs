@@ -1,0 +1,321 @@
+---
+import ThemeToggle from "./ThemeToggle.astro";
+
+const { tree, config = null, title, titleUrl } = Astro.props;
+
+const resolvedTitle = title ?? config?.nav?.title ?? "Docs";
+const resolvedTitleUrl = titleUrl ?? config?.nav?.url ?? "/docs";
+
+const showThemeToggle = (() => {
+  const toggle = config?.themeToggle;
+  if (toggle === undefined || toggle === true) return true;
+  if (toggle === false) return false;
+  if (typeof toggle === "object") return toggle.enabled !== false;
+  return true;
+})();
+
+const forcedTheme = (() => {
+  const toggle = config?.themeToggle;
+  if (typeof toggle === "object" && toggle.enabled === false && toggle.default && toggle.default !== "system") {
+    return toggle.default;
+  }
+  return null;
+})();
+
+const themeInitScript = forcedTheme
+  ? `document.documentElement.classList.remove('light','dark');document.documentElement.classList.add('${forcedTheme}')`
+  : [
+      "(function(){",
+      "var m=document.cookie.match(/(?:^|;\\s*)theme=(\\w+)/);",
+      "var t=m?m[1]:(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');",
+      "document.documentElement.classList.remove('light','dark');",
+      "document.documentElement.classList.add(t);",
+      "})()",
+    ].join("");
+
+const COLOR_MAP: Record<string, string> = {
+  primary: "--color-fd-primary",
+  primaryForeground: "--color-fd-primary-foreground",
+  background: "--color-fd-background",
+  foreground: "--color-fd-foreground",
+  muted: "--color-fd-muted",
+  mutedForeground: "--color-fd-muted-foreground",
+  border: "--color-fd-border",
+  card: "--color-fd-card",
+  cardForeground: "--color-fd-card-foreground",
+  accent: "--color-fd-accent",
+  accentForeground: "--color-fd-accent-foreground",
+  popover: "--color-fd-popover",
+  popoverForeground: "--color-fd-popover-foreground",
+  secondary: "--color-fd-secondary",
+  secondaryForeground: "--color-fd-secondary-foreground",
+  ring: "--color-fd-ring",
+};
+
+function buildColorsCSS(colors?: Record<string, string | undefined>): string {
+  if (!colors) return "";
+  const vars: string[] = [];
+  for (const [key, value] of Object.entries(colors)) {
+    if (!value || !COLOR_MAP[key]) continue;
+    vars.push(`${COLOR_MAP[key]}: ${value};`);
+  }
+  if (vars.length === 0) return "";
+  return `:root, .dark {\n  ${vars.join("\n  ")}\n}`;
+}
+
+function buildFontStyleVars(prefix: string, style?: { size?: string; weight?: string | number; lineHeight?: string; letterSpacing?: string }): string {
+  if (!style) return "";
+  const parts: string[] = [];
+  if (style.size) parts.push(`${prefix}-size: ${style.size};`);
+  if (style.weight != null) parts.push(`${prefix}-weight: ${style.weight};`);
+  if (style.lineHeight) parts.push(`${prefix}-line-height: ${style.lineHeight};`);
+  if (style.letterSpacing) parts.push(`${prefix}-letter-spacing: ${style.letterSpacing};`);
+  return parts.join("\n  ");
+}
+
+function buildTypographyCSS(typo?: any): string {
+  if (!typo?.font) return "";
+  const vars: string[] = [];
+  const fontStyle = typo.font.style;
+  if (fontStyle?.sans) vars.push(`--fd-font-sans: ${fontStyle.sans};`);
+  if (fontStyle?.mono) vars.push(`--fd-font-mono: ${fontStyle.mono};`);
+  const elements = ["h1", "h2", "h3", "h4", "body", "small"] as const;
+  for (const el of elements) {
+    const elStyle = typo.font[el];
+    if (elStyle) {
+      const elVars = buildFontStyleVars(`--fd-${el}`, elStyle);
+      if (elVars) vars.push(elVars);
+    }
+  }
+  if (vars.length === 0) return "";
+  return `:root {\n  ${vars.join("\n  ")}\n}`;
+}
+
+const colorOverrides = config?.theme?._userColorOverrides as Record<string, string | undefined> | undefined;
+const typography = config?.theme?.ui?.typography;
+const overrideCSS = [buildColorsCSS(colorOverrides), buildTypographyCSS(typography)].filter(Boolean).join("\n");
+
+const currentPath = Astro.url.pathname;
+
+function isActive(url) {
+  const normalised = url.replace(/\/$/, '') || '/';
+  const currentNorm = currentPath.replace(/\/$/, '') || '/';
+  return normalised === currentNorm;
+}
+
+const ICON_MAP = {
+  book: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
+  terminal: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`,
+  rocket: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>`,
+  settings: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  file: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
+  code: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`,
+};
+
+function getIcon(iconKey) {
+  if (!iconKey) return null;
+  return ICON_MAP[iconKey] || null;
+}
+
+const aiConfig = config?.ai;
+const showFloatingAI = aiConfig?.mode === "floating" && aiConfig?.enabled;
+---
+
+<script is:inline set:html={themeInitScript}></script>
+{overrideCSS && <style set:html={overrideCSS} />}
+
+<div class="fd-layout">
+  <header class="fd-header">
+    <button class="fd-menu-btn" id="fd-menu-toggle" aria-label="Toggle sidebar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="3" y1="6" x2="21" y2="6" />
+        <line x1="3" y1="12" x2="21" y2="12" />
+        <line x1="3" y1="18" x2="21" y2="18" />
+      </svg>
+    </button>
+    <a href={resolvedTitleUrl} class="fd-header-title">{resolvedTitle}</a>
+    <button class="fd-search-trigger-mobile" id="fd-search-open-mobile" aria-label="Search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+    </button>
+  </header>
+
+  <div class="fd-sidebar-overlay" id="fd-sidebar-overlay" style="display:none"></div>
+
+  <aside class="fd-sidebar" id="fd-sidebar">
+    <div class="fd-sidebar-header">
+      <a href={resolvedTitleUrl} class="fd-sidebar-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+        {resolvedTitle}
+      </a>
+    </div>
+
+    <div class="fd-sidebar-search">
+      <button class="fd-sidebar-search-btn" id="fd-search-open">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <span>Search</span>
+        <kbd>⌘</kbd><kbd>K</kbd>
+      </button>
+    </div>
+
+    <nav class="fd-sidebar-nav">
+      {tree?.children?.map((node, i) => {
+        if (node.type === "page") {
+          const icon = getIcon(node.icon);
+          return (
+            <a
+              href={node.url}
+              class={`fd-sidebar-link fd-sidebar-top-link ${isActive(node.url) ? 'fd-sidebar-link-active' : ''} ${i === 0 ? 'fd-sidebar-first-item' : ''}`}
+              data-active={isActive(node.url) || undefined}
+            >
+              {icon && <span class="fd-sidebar-icon" set:html={icon} />}
+              {node.name}
+            </a>
+          );
+        } else if (node.type === "folder") {
+          const folderIcon = getIcon(node.icon);
+          return (
+            <details class={`fd-sidebar-folder ${i === 0 ? 'fd-sidebar-first-item' : ''}`} open>
+              <summary class="fd-sidebar-folder-trigger">
+                <span class="fd-sidebar-folder-label">
+                  {folderIcon && <span class="fd-sidebar-icon" set:html={folderIcon} />}
+                  {node.name}
+                </span>
+                <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </summary>
+              <div class="fd-sidebar-folder-content">
+                {node.index && (
+                  <a
+                    href={node.index.url}
+                    class={`fd-sidebar-link fd-sidebar-child-link ${isActive(node.index.url) ? 'fd-sidebar-link-active' : ''}`}
+                    data-active={isActive(node.index.url) || undefined}
+                  >
+                    {node.index.name}
+                  </a>
+                )}
+                {node.children?.map(child => {
+                  if (child.type === "page") {
+                    return (
+                      <a
+                        href={child.url}
+                        class={`fd-sidebar-link fd-sidebar-child-link ${isActive(child.url) ? 'fd-sidebar-link-active' : ''}`}
+                        data-active={isActive(child.url) || undefined}
+                      >
+                        {child.name}
+                      </a>
+                    );
+                  } else if (child.type === "folder") {
+                    return (
+                      <details class="fd-sidebar-folder fd-sidebar-nested-folder" open>
+                        <summary class="fd-sidebar-folder-trigger">
+                          <span class="fd-sidebar-folder-label">{child.name}</span>
+                          <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <polyline points="6 9 12 15 18 9" />
+                          </svg>
+                        </summary>
+                        <div class="fd-sidebar-folder-content">
+                          {child.index && (
+                            <a
+                              href={child.index.url}
+                              class={`fd-sidebar-link fd-sidebar-child-link ${isActive(child.index.url) ? 'fd-sidebar-link-active' : ''}`}
+                              data-active={isActive(child.index.url) || undefined}
+                            >
+                              {child.index.name}
+                            </a>
+                          )}
+                          {child.children?.map(grandchild => {
+                            if (grandchild.type === "page") {
+                              return (
+                                <a
+                                  href={grandchild.url}
+                                  class={`fd-sidebar-link fd-sidebar-child-link ${isActive(grandchild.url) ? 'fd-sidebar-link-active' : ''}`}
+                                  data-active={isActive(grandchild.url) || undefined}
+                                >
+                                  {grandchild.name}
+                                </a>
+                              );
+                            }
+                          })}
+                        </div>
+                      </details>
+                    );
+                  }
+                })}
+              </div>
+            </details>
+          );
+        }
+      })}
+    </nav>
+
+    {showThemeToggle && (
+      <div class="fd-sidebar-footer">
+        <ThemeToggle />
+      </div>
+    )}
+  </aside>
+
+  <main class="fd-main">
+    <slot />
+  </main>
+</div>
+
+<script>
+  // Sidebar toggle
+  const menuBtn = document.getElementById('fd-menu-toggle');
+  const sidebar = document.getElementById('fd-sidebar');
+  const overlay = document.getElementById('fd-sidebar-overlay');
+
+  menuBtn?.addEventListener('click', () => {
+    sidebar?.classList.toggle('fd-sidebar-open');
+    overlay!.style.display = sidebar?.classList.contains('fd-sidebar-open') ? 'block' : 'none';
+  });
+
+  overlay?.addEventListener('click', () => {
+    sidebar?.classList.remove('fd-sidebar-open');
+    overlay!.style.display = 'none';
+  });
+
+  // Search Cmd+K
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      const dialog = document.getElementById('fd-search-dialog');
+      if (dialog) dialog.style.display = dialog.style.display === 'none' ? 'flex' : 'none';
+    }
+    if (e.key === 'Escape') {
+      sidebar?.classList.remove('fd-sidebar-open');
+      overlay!.style.display = 'none';
+      const dialog = document.getElementById('fd-search-dialog');
+      if (dialog) dialog.style.display = 'none';
+    }
+  });
+
+  document.getElementById('fd-search-open')?.addEventListener('click', () => {
+    const dialog = document.getElementById('fd-search-dialog');
+    if (dialog) dialog.style.display = 'flex';
+  });
+
+  document.getElementById('fd-search-open-mobile')?.addEventListener('click', () => {
+    const dialog = document.getElementById('fd-search-dialog');
+    if (dialog) dialog.style.display = 'flex';
+  });
+
+  // Close sidebar on link click (mobile)
+  sidebar?.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => {
+      sidebar?.classList.remove('fd-sidebar-open');
+      overlay!.style.display = 'none';
+    });
+  });
+</script>

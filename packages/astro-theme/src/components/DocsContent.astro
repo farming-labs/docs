@@ -1,0 +1,39 @@
+---
+import DocsPage from "./DocsPage.astro";
+
+const { data, config = null } = Astro.props;
+
+const titleSuffix = config?.metadata?.titleTemplate
+  ? config.metadata.titleTemplate.replace("%s", "")
+  : " – Docs";
+
+const tocEnabled = config?.theme?.ui?.layout?.toc?.enabled ?? true;
+
+const breadcrumbEnabled = (() => {
+  const bc = config?.breadcrumb;
+  if (bc === undefined || bc === true) return true;
+  if (bc === false) return false;
+  if (typeof bc === "object") return bc.enabled !== false;
+  return true;
+})();
+
+const showEditOnGithub = !!config?.github && !!data.editOnGithub;
+const showLastModified = !!data.lastModified;
+---
+
+<head>
+  <title>{data.title}{titleSuffix}</title>
+  {data.description && <meta name="description" content={data.description} />}
+</head>
+
+<DocsPage
+  entry={config?.entry ?? "docs"}
+  tocEnabled={tocEnabled}
+  breadcrumbEnabled={breadcrumbEnabled}
+  previousPage={data.previousPage}
+  nextPage={data.nextPage}
+  editOnGithub={showEditOnGithub ? data.editOnGithub : null}
+  lastModified={showLastModified ? data.lastModified : null}
+>
+  <Fragment set:html={data.html} />
+</DocsPage>

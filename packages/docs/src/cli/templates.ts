@@ -11,9 +11,11 @@ export interface TemplateConfig {
   /** Project name from package.json */
   projectName: string;
   /** Framework being used */
-  framework: "nextjs" | "sveltekit";
+  framework: "nextjs" | "sveltekit" | "astro";
   /** Whether to use path aliases (@/ for Next.js, $lib/ for SvelteKit) */
   useAlias: boolean;
+  /** Astro deployment adapter (only used when framework is "astro") */
+  astroAdapter?: "vercel" | "netlify" | "node" | "cloudflare";
 }
 
 // ---------------------------------------------------------------------------
@@ -24,8 +26,10 @@ interface ThemeInfo {
   factory: string;
   nextImport: string;
   svelteImport: string;
+  astroImport: string;
   nextCssImport: string;
   svelteCssTheme: string;
+  astroCssTheme: string;
 }
 
 const THEME_INFO: Record<string, ThemeInfo> = {
@@ -33,22 +37,28 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     factory: "fumadocs",
     nextImport: "@farming-labs/theme",
     svelteImport: "@farming-labs/svelte-theme",
+    astroImport: "@farming-labs/astro-theme",
     nextCssImport: "default",
     svelteCssTheme: "fumadocs",
+    astroCssTheme: "fumadocs",
   },
   darksharp: {
     factory: "darksharp",
     nextImport: "@farming-labs/theme/darksharp",
     svelteImport: "@farming-labs/svelte-theme/darksharp",
+    astroImport: "@farming-labs/astro-theme/darksharp",
     nextCssImport: "darksharp",
     svelteCssTheme: "darksharp",
+    astroCssTheme: "darksharp",
   },
   "pixel-border": {
     factory: "pixelBorder",
     nextImport: "@farming-labs/theme/pixel-border",
     svelteImport: "@farming-labs/svelte-theme/pixel-border",
+    astroImport: "@farming-labs/astro-theme/pixel-border",
     nextCssImport: "pixel-border",
     svelteCssTheme: "pixel-border",
+    astroCssTheme: "pixel-border",
   },
 };
 
@@ -96,6 +106,26 @@ function sveltePageConfigImport(useAlias: boolean): string {
 /** Server import for SvelteKit +layout.server.js → src/lib/docs.server */
 function svelteLayoutServerImport(useAlias: boolean): string {
   return useAlias ? "$lib/docs.server" : "../../lib/docs.server";
+}
+
+// ---------------------------------------------------------------------------
+// Astro import path helpers
+// ---------------------------------------------------------------------------
+
+function astroServerConfigImport(useAlias: boolean): string {
+  return useAlias ? "@/lib/docs.config" : "./docs.config";
+}
+
+function astroPageConfigImport(useAlias: boolean, depth: number): string {
+  if (useAlias) return "@/lib/docs.config";
+  const prefix = "../".repeat(depth);
+  return `${prefix}lib/docs.config`;
+}
+
+function astroPageServerImport(useAlias: boolean, depth: number): string {
+  if (useAlias) return "@/lib/docs.server";
+  const prefix = "../".repeat(depth);
+  return `${prefix}lib/docs.server`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -780,6 +810,358 @@ Build your docs for production:
 \`\`\`bash
 pnpm build
 \`\`\`
+
+Deploy to Vercel, Netlify, or any Node.js hosting platform.
+`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Astro templates
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function astroDocsConfigTemplate(cfg: TemplateConfig): string {
+  const t = getThemeInfo(cfg.theme);
+  return `\
+import { defineDocs } from "@farming-labs/docs";
+import { ${t.factory} } from "${t.astroImport}";
+
+export default defineDocs({
+  entry: "${cfg.entry}",
+  contentDir: "${cfg.entry}",
+  theme: ${t.factory}({
+    ui: {
+      colors: { primary: "#6366f1" },
+    },
+  }),
+
+  nav: {
+    title: "${cfg.projectName}",
+    url: "/${cfg.entry}",
+  },
+
+  breadcrumb: { enabled: true },
+
+  metadata: {
+    titleTemplate: "%s – ${cfg.projectName}",
+    description: "Documentation for ${cfg.projectName}",
+  },
+});
+`;
+}
+
+export function astroDocsServerTemplate(cfg: TemplateConfig): string {
+  const configImport = astroServerConfigImport(cfg.useAlias);
+  const contentDirName = cfg.entry ?? "docs";
+  return `\
+import { createDocsServer } from "@farming-labs/astro/server";
+import config from "${configImport}";
+
+const contentFiles = import.meta.glob("/${contentDirName}/**/*.{md,mdx}", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
+
+export const { load, GET, POST } = createDocsServer({
+  ...config,
+  _preloadedContent: contentFiles,
+});
+`;
+}
+
+const ASTRO_ADAPTER_INFO: Record<string, { pkg: string; import: string }> = {
+  vercel: { pkg: "@astrojs/vercel", import: "@astrojs/vercel" },
+  netlify: { pkg: "@astrojs/netlify", import: "@astrojs/netlify" },
+  node: { pkg: "@astrojs/node", import: "@astrojs/node" },
+  cloudflare: { pkg: "@astrojs/cloudflare", import: "@astrojs/cloudflare" },
+};
+
+export function getAstroAdapterPkg(adapter: string): string {
+  return ASTRO_ADAPTER_INFO[adapter]?.pkg ?? ASTRO_ADAPTER_INFO.vercel.pkg;
+}
+
+export function astroConfigTemplate(adapter: string = "vercel"): string {
+  const info = ASTRO_ADAPTER_INFO[adapter] ?? ASTRO_ADAPTER_INFO.vercel;
+  const adapterCall = adapter === "node" ? `${adapter}({ mode: "standalone" })` : `${adapter}()`;
+
+  return `\
+import { defineConfig } from "astro/config";
+import ${adapter} from "${info.import}";
+
+export default defineConfig({
+  output: "server",
+  adapter: ${adapterCall},
+});
+`;
+}
+
+export function astroDocsPageTemplate(cfg: TemplateConfig): string {
+  const configImport = astroPageConfigImport(cfg.useAlias, 2);
+  const serverImport = astroPageServerImport(cfg.useAlias, 2);
+  const t = getThemeInfo(cfg.theme);
+  const cssImport = `@farming-labs/astro-theme/${t.astroCssTheme}/css`;
+  return `\
+---
+import DocsLayout from "@farming-labs/astro-theme/src/components/DocsLayout.astro";
+import DocsContent from "@farming-labs/astro-theme/src/components/DocsContent.astro";
+import SearchDialog from "@farming-labs/astro-theme/src/components/SearchDialog.astro";
+import config from "${configImport}";
+import { load } from "${serverImport}";
+import "${cssImport}";
+
+const data = await load(Astro.url.pathname);
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{data.title} – Docs</title>
+  </head>
+  <body>
+    <DocsLayout tree={data.tree} config={config}>
+      <DocsContent data={data} config={config} />
+    </DocsLayout>
+    <SearchDialog config={config} />
+  </body>
+</html>
+`;
+}
+
+export function astroDocsIndexTemplate(cfg: TemplateConfig): string {
+  const configImport = astroPageConfigImport(cfg.useAlias, 2);
+  const serverImport = astroPageServerImport(cfg.useAlias, 2);
+  const t = getThemeInfo(cfg.theme);
+  const cssImport = `@farming-labs/astro-theme/${t.astroCssTheme}/css`;
+  return `\
+---
+import DocsLayout from "@farming-labs/astro-theme/src/components/DocsLayout.astro";
+import DocsContent from "@farming-labs/astro-theme/src/components/DocsContent.astro";
+import SearchDialog from "@farming-labs/astro-theme/src/components/SearchDialog.astro";
+import config from "${configImport}";
+import { load } from "${serverImport}";
+import "${cssImport}";
+
+const data = await load(Astro.url.pathname);
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{data.title} – Docs</title>
+  </head>
+  <body>
+    <DocsLayout tree={data.tree} config={config}>
+      <DocsContent data={data} config={config} />
+    </DocsLayout>
+    <SearchDialog config={config} />
+  </body>
+</html>
+`;
+}
+
+export function astroApiRouteTemplate(cfg: TemplateConfig): string {
+  const serverImport = astroPageServerImport(cfg.useAlias, 2);
+  return `\
+import type { APIRoute } from "astro";
+import { GET as docsGET, POST as docsPOST } from "${serverImport}";
+
+export const GET: APIRoute = async ({ request }) => {
+  return docsGET({ request });
+};
+
+export const POST: APIRoute = async ({ request }) => {
+  return docsPOST({ request });
+};
+`;
+}
+
+export function astroGlobalCssTemplate(theme: string): string {
+  return `\
+@import "@farming-labs/astro-theme/${theme}/css";
+`;
+}
+
+export function astroCssImportLine(theme: string): string {
+  return `@import "@farming-labs/astro-theme/${theme}/css";`;
+}
+
+export function injectAstroCssImport(
+  existingContent: string,
+  theme: string,
+): string | null {
+  const importLine = astroCssImportLine(theme);
+  if (existingContent.includes(importLine)) return null;
+  const lines = existingContent.split("\n");
+  const lastImportIdx = lines.reduce(
+    (acc, l, i) => (l.trimStart().startsWith("@import") ? i : acc),
+    -1,
+  );
+  if (lastImportIdx >= 0) {
+    lines.splice(lastImportIdx + 1, 0, importLine);
+  } else {
+    lines.unshift(importLine);
+  }
+  return lines.join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// Astro sample pages
+// ---------------------------------------------------------------------------
+
+export function astroWelcomePageTemplate(cfg: TemplateConfig): string {
+  return `\
+---
+title: "Documentation"
+description: "Welcome to ${cfg.projectName} documentation"
+---
+
+# Welcome to ${cfg.projectName}
+
+Get started with our documentation. Browse the pages on the left to learn more.
+
+## Overview
+
+This documentation was generated by \`@farming-labs/docs\`. Edit the markdown files in \`${cfg.entry}/\` to customize.
+
+## Features
+
+- **Markdown Support** — Write docs with standard Markdown
+- **Syntax Highlighting** — Code blocks with automatic highlighting
+- **Dark Mode** — Built-in theme switching
+- **Search** — Full-text search across all pages
+- **Responsive** — Works on any screen size
+
+---
+
+## Next Steps
+
+Start by reading the [Installation](/${cfg.entry}/installation) guide, then follow the [Quickstart](/${cfg.entry}/quickstart) to build something.
+`;
+}
+
+export function astroInstallationPageTemplate(cfg: TemplateConfig): string {
+  const t = getThemeInfo(cfg.theme);
+  return `\
+---
+title: "Installation"
+description: "How to install and set up ${cfg.projectName}"
+---
+
+# Installation
+
+Follow these steps to install and configure ${cfg.projectName}.
+
+## Prerequisites
+
+- Node.js 18+
+- A package manager (pnpm, npm, or yarn)
+
+## Install Dependencies
+
+\\\`\\\`\\\`bash
+pnpm add @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme
+\\\`\\\`\\\`
+
+## Configuration
+
+Your project includes a \\\`docs.config.ts\\\` in \\\`src/lib/\\\`:
+
+\\\`\\\`\\\`ts title="src/lib/docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+import { ${t.factory} } from "${t.astroImport}";
+
+export default defineDocs({
+  entry: "${cfg.entry}",
+  contentDir: "${cfg.entry}",
+  theme: ${t.factory}({
+    ui: { colors: { primary: "#6366f1" } },
+  }),
+});
+\\\`\\\`\\\`
+
+## Project Structure
+
+\\\`\\\`\\\`
+${cfg.entry}/                   # Markdown content
+  page.md                      # /${cfg.entry}
+  installation/
+    page.md                    # /${cfg.entry}/installation
+  quickstart/
+    page.md                    # /${cfg.entry}/quickstart
+src/
+  lib/
+    docs.config.ts             # Docs configuration
+    docs.server.ts             # Server-side docs loader
+  pages/
+    ${cfg.entry}/
+      index.astro              # Docs index page
+      [...slug].astro          # Dynamic doc page
+    api/
+      ${cfg.entry}.ts          # Search/AI API route
+\\\`\\\`\\\`
+
+## What's Next?
+
+Head to the [Quickstart](/${cfg.entry}/quickstart) guide to start writing your first page.
+`;
+}
+
+export function astroQuickstartPageTemplate(cfg: TemplateConfig): string {
+  const t = getThemeInfo(cfg.theme);
+  return `\
+---
+title: "Quickstart"
+description: "Get up and running in minutes"
+---
+
+# Quickstart
+
+This guide walks you through creating your first documentation page.
+
+## Creating a Page
+
+Create a new folder under \\\`${cfg.entry}/\\\` with a \\\`page.md\\\` file:
+
+\\\`\\\`\\\`bash
+mkdir -p ${cfg.entry}/my-page
+\\\`\\\`\\\`
+
+Then create \\\`${cfg.entry}/my-page/page.md\\\`:
+
+\\\`\\\`\\\`md
+---
+title: "My Page"
+description: "A custom documentation page"
+---
+
+# My Page
+
+Write your content here using **Markdown**.
+\\\`\\\`\\\`
+
+Your page is now available at \\\`/${cfg.entry}/my-page\\\`.
+
+## Customizing the Theme
+
+Edit \\\`src/lib/docs.config.ts\\\` to change colors, typography, and component defaults:
+
+\\\`\\\`\\\`ts title="src/lib/docs.config.ts"
+theme: ${t.factory}({
+  ui: {
+    colors: { primary: "#22c55e" },
+  },
+}),
+\\\`\\\`\\\`
+
+## Deploying
+
+Build your docs for production:
+
+\\\`\\\`\\\`bash
+pnpm build
+\\\`\\\`\\\`
 
 Deploy to Vercel, Netlify, or any Node.js hosting platform.
 `;

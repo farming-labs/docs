@@ -575,6 +575,7 @@ export function createDocsServer(
 
     const resolvedKey =
       aiConfig.apiKey ??
+      (typeof import.meta !== "undefined" ? (import.meta as any).env?.OPENAI_API_KEY : undefined) ??
       (typeof process !== "undefined" ? process.env?.OPENAI_API_KEY : undefined);
 
     if (!resolvedKey) {

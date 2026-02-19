@@ -1,0 +1,59 @@
+{
+  "name": "@farming-labs/astro-theme",
+  "version": "0.0.2-beta.14",
+  "description": "Astro UI components for @farming-labs/docs — layout, sidebar, TOC, search, and theme toggle",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js",
+      "default": "./src/index.js"
+    },
+    "./src/components/*": "./src/components/*",
+    "./fumadocs": {
+      "types": "./src/themes/default.d.ts",
+      "import": "./src/themes/default.js",
+      "default": "./src/themes/default.js"
+    },
+    "./pixel-border": {
+      "types": "./src/themes/pixel-border.d.ts",
+      "import": "./src/themes/pixel-border.js",
+      "default": "./src/themes/pixel-border.js"
+    },
+    "./darksharp": {
+      "types": "./src/themes/darksharp.d.ts",
+      "import": "./src/themes/darksharp.js",
+      "default": "./src/themes/darksharp.js"
+    },
+    "./css": "./styles/docs.css",
+    "./fumadocs/css": "./styles/docs.css",
+    "./styles/pixel-border.css": "./styles/pixel-border.css",
+    "./styles/darksharp.css": "./styles/darksharp.css",
+    "./pixel-border/css": "./styles/pixel-border-bundle.css",
+    "./darksharp/css": "./styles/darksharp-bundle.css"
+  },
+  "typesVersions": {
+    "*": {
+      "pixel-border": ["./src/themes/pixel-border.d.ts"],
+      "darksharp": ["./src/themes/darksharp.d.ts"],
+      "fumadocs": ["./src/themes/default.d.ts"],
+      ".": ["./src/index.d.ts"]
+    }
+  },
+  "files": ["src", "styles"],
+  "keywords": ["docs", "astro", "theme", "documentation"],
+  "author": "Farming Labs",
+  "license": "MIT",
+  "scripts": {
+    "build": "echo 'Astro components are shipped as source'",
+    "typecheck": "echo 'ok'"
+  },
+  "dependencies": {
+    "@farming-labs/docs": "workspace:*",
+    "@farming-labs/astro": "workspace:*",
+    "sugar-high": "^0.9.5"
+  },
+  "peerDependencies": {
+    "astro": ">=4.0.0"
+  }
+}
