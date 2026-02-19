@@ -12,14 +12,17 @@
       "default": "./src/index.js"
     },
     "./fumadocs": {
+      "types": "./src/themes/default.d.ts",
       "import": "./src/themes/default.js",
       "default": "./src/themes/default.js"
     },
     "./pixel-border": {
+      "types": "./src/themes/pixel-border.d.ts",
       "import": "./src/themes/pixel-border.js",
       "default": "./src/themes/pixel-border.js"
     },
     "./darksharp": {
+      "types": "./src/themes/darksharp.d.ts",
       "import": "./src/themes/darksharp.js",
       "default": "./src/themes/darksharp.js"
     },

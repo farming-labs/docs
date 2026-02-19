@@ -1,1 +1,1 @@
-export { load } from "../../lib/docs.server.js";
+export { load } from "../../lib/docs.server";

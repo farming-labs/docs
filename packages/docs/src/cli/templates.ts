@@ -78,24 +78,24 @@ function nextDocsLayoutConfigImport(useAlias: boolean): string {
   return useAlias ? "@/docs.config" : "../../docs.config";
 }
 
-/** Config import for SvelteKit src/lib/docs.server.ts → src/lib/docs.config.js */
+/** Config import for SvelteKit src/lib/docs.server.ts → src/lib/docs.config */
 function svelteServerConfigImport(useAlias: boolean): string {
-  return useAlias ? "$lib/docs.config.js" : "./docs.config.js";
+  return useAlias ? "$lib/docs.config" : "./docs.config";
 }
 
-/** Config import for SvelteKit src/routes/{entry}/+layout.svelte → src/lib/docs.config.js */
+/** Config import for SvelteKit src/routes/{entry}/+layout.svelte → src/lib/docs.config */
 function svelteLayoutConfigImport(useAlias: boolean): string {
-  return useAlias ? "$lib/docs.config.js" : "../../lib/docs.config.js";
+  return useAlias ? "$lib/docs.config" : "../../lib/docs.config";
 }
 
-/** Config import for SvelteKit src/routes/{entry}/[...slug]/+page.svelte → src/lib/docs.config.js */
+/** Config import for SvelteKit src/routes/{entry}/[...slug]/+page.svelte → src/lib/docs.config */
 function sveltePageConfigImport(useAlias: boolean): string {
-  return useAlias ? "$lib/docs.config.js" : "../../../lib/docs.config.js";
+  return useAlias ? "$lib/docs.config" : "../../../lib/docs.config";
 }
 
-/** Server import for SvelteKit +layout.server.js → src/lib/docs.server.js */
+/** Server import for SvelteKit +layout.server.js → src/lib/docs.server */
 function svelteLayoutServerImport(useAlias: boolean): string {
-  return useAlias ? "$lib/docs.server.js" : "../../lib/docs.server.js";
+  return useAlias ? "$lib/docs.server" : "../../lib/docs.server";
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
