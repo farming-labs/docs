@@ -5,6 +5,7 @@ import CodeBlock from "@/components/ui/code-block";
 import PixelCard from "@/components/ui/pixel-card";
 import CopyCommand from "@/components/ui/copy-command";
 import FrameworkTabs from "@/components/ui/framework-tabs";
+import SvelteRouteTabs from "@/components/ui/svelte-route-tabs";
 
 function Navbar() {
   return (
@@ -174,19 +175,68 @@ export default defineDocs({
   },
 });`}
         />
+
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            3
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Next Config</h3>
+            <p className="text-sm text-white/40">
+              Wrap your config with <code className="text-white/60 text-xs">withDocs()</code>. Handles MDX, routing, and search.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Next Config"
+          filename="next.config.ts"
+          code={`import { withDocs } from "@farming-labs/next/config";
+
+export default withDocs({});`}
+        />
       </div>
 
       <div className="space-y-6">
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
-            3
+            4
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Root Layout</h3>
+            <p className="text-sm text-white/40">
+              Wrap your app with{" "}
+              <code className="text-white/60 text-xs">RootProvider</code> for
+              search, theme switching, and AI.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Root Layout"
+          filename="app/layout.tsx"
+          code={`import { RootProvider } from "@farming-labs/theme";
+import "./global.css";
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <RootProvider>{children}</RootProvider>
+      </body>
+    </html>
+  );
+}`}
+        />
+
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            5
           </div>
           <div>
             <h3 className="text-sm font-medium text-white mb-1">Write docs</h3>
             <p className="text-sm text-white/40">
               Create MDX files under{" "}
               <code className="text-white/60 text-xs">app/docs/</code>.
-              That&#39;s it.
+              Frontmatter for metadata. That&#39;s it.
             </p>
           </div>
         </div>
@@ -211,26 +261,13 @@ export const auth = betterAuth({
 \`\`\``}
         />
 
-        <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
-            4
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-white mb-1">Ship</h3>
-            <p className="text-sm text-white/40">
-              No layout files. No wrappers. The framework handles everything.
-            </p>
-          </div>
-        </div>
-        <CodeBlock
-          title="Next Config"
-          filename="next.config.ts"
-          code={`import { withDocs } from "@farming-labs/next/config";
-
-export default withDocs({});
-
-// That's it. Routing, MDX, search — all handled.`}
-        />
+        <p className="text-xs text-white/30 mt-2">
+          See the full{" "}
+          <a href="/docs/installation" className="text-white/50 underline underline-offset-2 hover:text-white/70">
+            installation walkthrough
+          </a>{" "}
+          for all generated files and options.
+        </p>
       </div>
     </div>
   );
@@ -284,12 +321,32 @@ export default defineDocs({
   },
 });`}
         />
+
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            3
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Server</h3>
+            <p className="text-sm text-white/40">
+              Create the server helper. Handles loading, search, and AI.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Server"
+          filename="src/lib/docs.server.ts"
+          code={`import { createDocsServer } from "@farming-labs/svelte/server";
+import config from "./docs.config";
+
+export const { load, GET, POST } = createDocsServer(config);`}
+        />
       </div>
 
       <div className="space-y-6">
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
-            3
+            4
           </div>
           <div>
             <h3 className="text-sm font-medium text-white mb-1">Write docs</h3>
@@ -323,29 +380,16 @@ export const auth = betterAuth({
 
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
-            4
+            5
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Ship</h3>
+            <h3 className="text-sm font-medium text-white mb-1">Routes</h3>
             <p className="text-sm text-white/40">
-              Minimal route setup. The framework handles the rest.
+              Three small files for layout, server loader, and page.
             </p>
           </div>
         </div>
-        <CodeBlock
-          title="Docs Layout"
-          filename="src/routes/docs/+layout.svelte"
-          code={`<script>
-  import { DocsLayout } from "@farming-labs/svelte-theme";
-  import config from "../../lib/docs.config";
-
-  let { data, children } = $props();
-</script>
-
-<DocsLayout tree={data.tree} {config}>
-  {@render children()}
-</DocsLayout>`}
-        />
+        <SvelteRouteTabs />
       </div>
     </div>
   );

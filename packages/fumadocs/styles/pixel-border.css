@@ -137,6 +137,11 @@ code:not(pre code) {
  * Pixel-border theme — better-auth inspired sidebar, clean dark UI
  * ═══════════════════════════════════════════════════════════════════ */
 
+/* ─── Wider content area on desktop ──────────────────────────────── */
+/* :root {
+  --fd-layout-width: 1400px;
+} */
+
 /* ─── Docs grid: pin sidebar left, TOC right, content fills middle ── */
 @media (min-width: 768px) {
   #nd-docs-layout {

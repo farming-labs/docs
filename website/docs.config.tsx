@@ -55,7 +55,6 @@ export default defineDocs({
     code: <Code size={16} />,
     lightbulb: <Lightbulb size={16} />,
   },
-
   github: {
     url: "https://github.com/farming-labs/docs",
     directory: "website",
