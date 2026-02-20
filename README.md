@@ -464,6 +464,16 @@ import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
 @import "@farming-labs/nuxt-theme/fumadocs/css";
 ```
 
+### All Frameworks — Colorful Theme
+
+A faithful reproduction of the fumadocs default theme with enhanced description support.
+
+Available for all frameworks:
+- Next.js: `import { colorful } from "@farming-labs/theme/colorful"` with `@import "@farming-labs/theme/colorful/css"`
+- SvelteKit: `import { colorful } from "@farming-labs/svelte-theme/colorful"` with `@import "@farming-labs/svelte-theme/colorful/css"`
+- Astro: `import { colorful } from "@farming-labs/astro-theme/colorful"` with `@import "@farming-labs/astro-theme/colorful/css"`
+- Nuxt: `import { colorful } from "@farming-labs/nuxt-theme/colorful"` with `@import "@farming-labs/nuxt-theme/colorful/css"`
+
 ## Configuration
 
 The `docs.config.ts` file is the single source of truth. Key options:

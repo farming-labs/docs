@@ -24,12 +24,19 @@
       "import": "./src/themes/darksharp.js",
       "default": "./src/themes/darksharp.js"
     },
+    "./colorful": {
+      "types": "./src/themes/colorful.d.ts",
+      "import": "./src/themes/colorful.js",
+      "default": "./src/themes/colorful.js"
+    },
     "./css": "./styles/docs.css",
     "./fumadocs/css": "./styles/docs.css",
     "./styles/pixel-border.css": "./styles/pixel-border.css",
     "./styles/darksharp.css": "./styles/darksharp.css",
     "./pixel-border/css": "./styles/pixel-border-bundle.css",
-    "./darksharp/css": "./styles/darksharp-bundle.css"
+    "./darksharp/css": "./styles/darksharp-bundle.css",
+    "./styles/colorful.css": "./styles/colorful.css",
+    "./colorful/css": "./styles/colorful-bundle.css"
   },
   "files": ["src", "styles"],
   "keywords": ["docs", "nuxt", "vue", "theme", "documentation"],

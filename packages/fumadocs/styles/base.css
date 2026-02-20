@@ -105,6 +105,15 @@ figure.shiki pre > code > [data-line] {
   padding: 0 0.25rem;
 }
 
+/* ─── Page description (frontmatter) ─────────────────────────────────── */
+
+.fd-page-description {
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+  line-height: 1.75;
+  color: var(--color-fd-muted-foreground);
+}
+
 /* ─── Breadcrumb ─────────────────────────────────────────────────────── */
 
 .fd-breadcrumb {

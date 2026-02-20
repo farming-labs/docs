@@ -477,6 +477,32 @@ code, kbd, pre, samp {
   border-left-color: var(--color-fd-primary);
 }
 
+/* ─── Directional TOC thumb ──────────────────────────────────────────── */
+
+.fd-toc-thumb-container {
+  position: relative;
+}
+
+.fd-toc-thumb {
+  position: absolute;
+  left: 0;
+  width: 2px;
+  background: var(--color-fd-primary);
+  border-radius: 1px;
+  transform: translateY(var(--fd-top, 0));
+  height: var(--fd-height, 0);
+  transition: transform 0.2s ease, height 0.2s ease;
+  pointer-events: none;
+}
+
+.fd-toc-directional .fd-toc-link {
+  border-left: 2px solid transparent;
+}
+
+.fd-toc-directional .fd-toc-link-active {
+  border-left-color: transparent;
+}
+
 @media (max-width: 1279px) {
   .fd-toc {
     display: none;
@@ -495,6 +521,15 @@ code, kbd, pre, samp {
   .fd-page {
     grid-template-columns: 1fr;
   }
+}
+
+/* ─── Page description (frontmatter) ─────────────────────────────────── */
+
+.fd-page-description {
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+  line-height: 1.75;
+  color: var(--color-fd-muted-foreground);
 }
 
 /* ─── Breadcrumb ─────────────────────────────────────────────────────── */

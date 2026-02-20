@@ -6,6 +6,7 @@
 
   let {
     tocEnabled = true,
+    tocStyle = "default",
     breadcrumbEnabled = true,
     entry = "docs",
     previousPage = null,
@@ -143,7 +144,7 @@
 
   {#if tocEnabled}
     <aside class="fd-toc">
-      <TableOfContents items={tocItems} />
+      <TableOfContents items={tocItems} {tocStyle} />
     </aside>
   {/if}
 </div>

@@ -37,6 +37,8 @@ interface DocsPageClientProps {
   githubDirectory?: string;
   /** Map of pathname → formatted last-modified date string */
   lastModifiedMap?: Record<string, string>;
+  /** Frontmatter description to display below the page title */
+  description?: string;
   children: ReactNode;
 }
 
@@ -126,6 +128,7 @@ export function DocsPageClient({
   githubBranch = "main",
   githubDirectory,
   lastModifiedMap,
+  description,
   children,
 }: DocsPageClientProps) {
   const [toc, setToc] = useState<TOCItem[]>([]);
@@ -178,6 +181,7 @@ export function DocsPageClient({
           />
         </div>
       )}
+      {description && <p className="fd-page-description">{description}</p>}
       <DocsBody
         style={{ display: "flex", flexDirection: "column" }}
       >

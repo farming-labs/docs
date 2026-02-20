@@ -25,6 +25,10 @@ const tocEnabled = computed(
   () => (props.config?.theme as any)?.ui?.layout?.toc?.enabled ?? true
 );
 
+const tocStyle = computed(
+  () => (props.config?.theme as any)?.ui?.layout?.toc?.style ?? "default"
+);
+
 const breadcrumbEnabled = computed(() => {
   const bc = props.config?.breadcrumb;
   if (bc === undefined || bc === true) return true;
@@ -60,12 +64,14 @@ useHead({
   <DocsPage
     :entry="entry"
     :toc-enabled="tocEnabled"
+    :toc-style="tocStyle"
     :breadcrumb-enabled="breadcrumbEnabled"
     :previous-page="data.previousPage ?? null"
     :next-page="data.nextPage ?? null"
     :edit-on-github="showEditOnGithub ? data.editOnGithub : null"
     :last-modified="showLastModified ? data.lastModified : null"
   >
+    <p v-if="data.description" class="fd-page-description">{{ data.description }}</p>
     <div class="fd-docs-content" v-html="data.html" />
   </DocsPage>
 </template>

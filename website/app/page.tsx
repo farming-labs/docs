@@ -44,7 +44,7 @@ function Navbar() {
 function HeroSection() {
   const features = [
     "Zero config — one docs.config.ts, no layout files",
-    "Three themes — default, darksharp, pixel-border",
+    "Four themes — default, darksharp, pixel-border, colorful",
     "Built-in search powered by Orama",
     "MDX first with frontmatter routing",
     "Custom components, icons, code tabs from config",
@@ -779,6 +779,12 @@ function ThemesSection() {
       import: '@import "@farming-labs/theme/pixel-border/css";',
       colors: ["#fafaf9", "#050505", "#8c8c8c", "#262626"],
     },
+    {
+      name: "Colorful",
+      description: "Faithful clone of the fumadocs default neutral theme",
+      import: '@import "@farming-labs/theme/colorful/css";',
+      colors: ["#6366f1", "#f5f5f4", "#64748b", "#e5e7eb"],
+    },
   ];
 
   return (
@@ -800,7 +806,7 @@ function ThemesSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {themes.map((theme) => (
             <PixelCard
               key={theme.name}

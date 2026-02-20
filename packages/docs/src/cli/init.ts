@@ -147,6 +147,11 @@ export async function init() {
       label: "Pixel Border",
       hint: "Rounded borders, pixel-perfect spacing, refined sidebar",
     },
+    {
+      value: "colorful",
+      label: "Colorful",
+      hint: "Fumadocs-style neutral theme with description support",
+    },
   ];
 
   const theme = await p.select({
@@ -597,6 +602,7 @@ function scaffoldSvelteKit(
     fumadocs: "fumadocs",
     darksharp: "darksharp",
     "pixel-border": "pixel-border",
+    colorful: "colorful",
     default: "fumadocs",
   };
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";
@@ -654,6 +660,7 @@ function scaffoldAstro(
     fumadocs: "fumadocs",
     darksharp: "darksharp",
     "pixel-border": "pixel-border",
+    colorful: "colorful",
     default: "fumadocs",
   };
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";

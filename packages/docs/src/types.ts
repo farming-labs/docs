@@ -147,6 +147,13 @@ export interface UIConfig {
     toc?: {
       enabled?: boolean;
       depth?: number;
+      /**
+       * Visual style of the TOC indicator.
+       * - `"default"` — highlight active link text color only
+       * - `"directional"` — animated thumb bar that tracks active headings (fumadocs style)
+       * @default "default"
+       */
+      style?: "default" | "directional";
     };
     header?: {
       height?: number;

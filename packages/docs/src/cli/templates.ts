@@ -68,6 +68,17 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroCssTheme: "pixel-border",
     nuxtCssTheme: "pixel-border",
   },
+  colorful: {
+    factory: "colorful",
+    nextImport: "@farming-labs/theme/colorful",
+    svelteImport: "@farming-labs/svelte-theme/colorful",
+    astroImport: "@farming-labs/astro-theme/colorful",
+    nuxtImport: "@farming-labs/nuxt-theme/colorful",
+    nextCssImport: "colorful",
+    svelteCssTheme: "colorful",
+    astroCssTheme: "colorful",
+    nuxtCssTheme: "colorful",
+  },
 };
 
 function getThemeInfo(theme: string): ThemeInfo {

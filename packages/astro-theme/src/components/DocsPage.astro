@@ -1,6 +1,7 @@
 ---
 const {
   tocEnabled = true,
+  tocStyle = "default",
   breadcrumbEnabled = true,
   entry = "docs",
   previousPage = null,
@@ -85,7 +86,7 @@ const parentUrl = segments.length >= 2
 
   {tocEnabled && (
     <aside class="fd-toc">
-      <div class="fd-toc-inner">
+      <div class={`fd-toc-inner ${tocStyle === "directional" ? "fd-toc-directional" : ""}`}>
         <h3 class="fd-toc-title">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <line x1="3" y1="6" x2="21" y2="6" />
@@ -94,7 +95,10 @@ const parentUrl = segments.length >= 2
           </svg>
           On this page
         </h3>
-        <ul class="fd-toc-list" id="fd-toc-list"></ul>
+        <div class="fd-toc-thumb-container">
+          {tocStyle === "directional" && <div class="fd-toc-thumb" id="fd-toc-thumb" />}
+          <ul class="fd-toc-list" id="fd-toc-list"></ul>
+        </div>
       </div>
     </aside>
   )}
@@ -121,13 +125,26 @@ const parentUrl = segments.length >= 2
         tocList.appendChild(li);
       });
 
-      // Intersection observer for active heading
+      const thumb = document.getElementById('fd-toc-thumb');
+
+      function updateThumb(activeId) {
+        if (!thumb || !tocList) return;
+        const link = tocList.querySelector(`a[href="#${activeId}"]`);
+        if (!link) { thumb.style.setProperty('--fd-height', '0'); return; }
+        const styles = getComputedStyle(link);
+        const top = link.offsetTop + parseFloat(styles.paddingTop);
+        const bottom = link.offsetTop + link.clientHeight - parseFloat(styles.paddingBottom);
+        thumb.style.setProperty('--fd-top', `${top}px`);
+        thumb.style.setProperty('--fd-height', `${bottom - top}px`);
+      }
+
       const observer = new IntersectionObserver((entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
             tocList.querySelectorAll('.fd-toc-link').forEach(link => {
               link.classList.toggle('fd-toc-link-active', link.getAttribute('href') === `#${entry.target.id}`);
             });
+            updateThumb(entry.target.id);
           }
         }
       }, { rootMargin: '-80px 0px -80% 0px' });

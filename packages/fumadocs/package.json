@@ -31,6 +31,11 @@
       "import": "./dist/pixel-border/index.mjs",
       "default": "./dist/pixel-border/index.mjs"
     },
+    "./colorful": {
+      "types": "./dist/colorful/index.d.mts",
+      "import": "./dist/colorful/index.mjs",
+      "default": "./dist/colorful/index.mjs"
+    },
     "./search": {
       "types": "./dist/search.d.mts",
       "import": "./dist/search.mjs",
@@ -46,6 +51,7 @@
     "./default/css": "./styles/default.css",
     "./darksharp/css": "./styles/darksharp.css",
     "./pixel-border/css": "./styles/pixel-border.css",
+    "./colorful/css": "./styles/colorful.css",
     "./presets/neutral": "./styles/presets/neutral.css",
     "./presets/black": "./styles/presets/black.css",
     "./presets/base": "./styles/presets/base.css"

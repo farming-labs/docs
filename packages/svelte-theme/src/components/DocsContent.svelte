@@ -13,6 +13,10 @@
     config?.theme?.ui?.layout?.toc?.enabled ?? true
   );
 
+  let tocStyle = $derived(
+    config?.theme?.ui?.layout?.toc?.style ?? "default"
+  );
+
   let breadcrumbEnabled = $derived.by(() => {
     const bc = config?.breadcrumb;
     if (bc === undefined || bc === true) return true;
@@ -38,6 +42,7 @@
 <DocsPage
   entry={config?.entry ?? "docs"}
   {tocEnabled}
+  {tocStyle}
   {breadcrumbEnabled}
   previousPage={data.previousPage}
   nextPage={data.nextPage}
@@ -45,6 +50,9 @@
   lastModified={showLastModified ? data.lastModified : null}
 >
   {#snippet children()}
+    {#if data.description}
+      <p class="fd-page-description">{data.description}</p>
+    {/if}
     {@html data.html}
   {/snippet}
 </DocsPage>

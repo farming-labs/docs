@@ -6,6 +6,7 @@ import TableOfContents from "./TableOfContents.vue";
 const props = withDefaults(
   defineProps<{
     tocEnabled?: boolean;
+    tocStyle?: "default" | "directional";
     breadcrumbEnabled?: boolean;
     entry?: string;
     previousPage?: { name: string; url: string } | null;
@@ -15,6 +16,7 @@ const props = withDefaults(
   }>(),
   {
     tocEnabled: true,
+    tocStyle: "default",
     breadcrumbEnabled: true,
     entry: "docs",
     previousPage: null,
@@ -138,7 +140,7 @@ watch(() => route.path, () => {
     </article>
 
     <aside v-if="tocEnabled" class="fd-toc">
-      <TableOfContents :items="tocItems" />
+      <TableOfContents :items="tocItems" :toc-style="tocStyle" />
     </aside>
   </div>
 </template>
