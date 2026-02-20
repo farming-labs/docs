@@ -1,6 +1,7 @@
 import { defineDocs, extendTheme } from "@farming-labs/docs";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
 import { MyNote } from "./app/components/my-note";
+import { AskAITrigger } from "./app/components/ask-ai-trigger";
 import {
   BookOpen,
   Rocket,
@@ -72,9 +73,7 @@ export default defineDocs({
         </div>
       </div>
     ),
-    // triggerComponent: <button className="border text-xs cursor-pointer text-white px-4 py-2 font-mono uppercase rounded-none flex items-center gap-2">
-    //   <SparklesIcon size={16} />
-    //   Ask AI</button>,
+    // triggerComponent: <AskAITrigger />,
   },
   nav: {
     title: (

@@ -1,0 +1,51 @@
+{
+  "name": "@farming-labs/nuxt",
+  "version": "0.0.2-beta.14",
+  "description": "Nuxt adapter for @farming-labs/docs — content loading and navigation utilities",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./content": {
+      "types": "./dist/content.d.ts",
+      "import": "./dist/content.js",
+      "default": "./dist/content.js"
+    },
+    "./markdown": {
+      "types": "./dist/markdown.d.ts",
+      "import": "./dist/markdown.js",
+      "default": "./dist/markdown.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
+    }
+  },
+  "files": ["dist"],
+  "keywords": ["docs", "nuxt", "documentation"],
+  "author": "Farming Labs",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "shiki": "^3.2.1"
+  },
+  "devDependencies": {
+    "@farming-labs/docs": "workspace:*",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "@farming-labs/docs": "*"
+  }
+}

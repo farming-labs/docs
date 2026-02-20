@@ -2,13 +2,12 @@
 import DocsLayoutComponent from "@farming-labs/astro-theme/src/components/DocsLayout.astro";
 import DocsContentComponent from "@farming-labs/astro-theme/src/components/DocsContent.astro";
 import SearchDialog from "@farming-labs/astro-theme/src/components/SearchDialog.astro";
-import FloatingAIChat from "@farming-labs/astro-theme/src/components/FloatingAIChat.astro";
+import AskAITrigger from "../../components/AskAITrigger.astro";
 import config from "../../lib/docs.config";
 import { load } from "../../lib/docs.server";
 import "@farming-labs/astro-theme/pixel-border/css";
 
 const data = await load(Astro.url.pathname);
-const showFloatingAI = config?.ai?.enabled && config?.ai?.mode === "floating";
 ---
 
 <html lang="en">
@@ -20,17 +19,9 @@ const showFloatingAI = config?.ai?.enabled && config?.ai?.mode === "floating";
   </head>
   <body>
     <DocsLayoutComponent tree={data.tree} config={config}>
+      <AskAITrigger slot="ai-trigger" />
       <DocsContentComponent data={data} config={config} />
     </DocsLayoutComponent>
     <SearchDialog config={config} />
-    {showFloatingAI && (
-      <FloatingAIChat
-        api="/api/docs"
-        suggestedQuestions={config.ai.suggestedQuestions ?? []}
-        aiLabel={config.ai.aiLabel ?? "AI"}
-        position={config.ai.position ?? "bottom-right"}
-        floatingStyle={config.ai.floatingStyle ?? "panel"}
-      />
-    )}
   </body>
 </html>

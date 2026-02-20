@@ -569,19 +569,44 @@ export interface AIConfig {
   floatingStyle?: "panel" | "modal" | "popover" | "full-modal";
 
   /**
-   * Custom trigger component for the floating chat button.
+   * Custom trigger component for the floating chat button (Next.js only).
    * Only used when `mode` is `"floating"`.
    *
-   * Pass a React element to replace the default sparkles button.
-   * The element receives an `onClick` handler automatically.
+   * The click handler is attached automatically by the wrapper.
+   *
+   * - **Next.js**: Pass a JSX element via this config option.
+   * - **SvelteKit**: Use the `aiTrigger` snippet on `<DocsLayout>`.
+   * - **Nuxt / Vue**: Use the `ai-trigger` slot on `<DocsLayout>`.
+   * - **Astro**: Use `<MyTrigger slot="ai-trigger" />` on `<DocsLayout>`.
    *
    * @example
    * ```tsx
-   * ai: {
-   *   enabled: true,
-   *   mode: "floating",
-   *   triggerComponent: <button className="my-chat-btn">💬 Help</button>,
-   * }
+   * // Next.js — pass JSX directly in config
+   * triggerComponent: <button className="my-chat-btn">Ask AI</button>,
+   * ```
+   *
+   * ```svelte
+   * <!-- SvelteKit — use snippet in layout -->
+   * <DocsLayout {tree} {config}>
+   *   {#snippet aiTrigger()}<AskAITrigger />{/snippet}
+   *   {@render children()}
+   * </DocsLayout>
+   * ```
+   *
+   * ```vue
+   * <!-- Nuxt / Vue — use named slot in layout -->
+   * <DocsLayout :tree="tree" :config="config">
+   *   <template #ai-trigger><AskAITrigger /></template>
+   *   <DocsContent />
+   * </DocsLayout>
+   * ```
+   *
+   * ```astro
+   * <!-- Astro — use named slot in layout -->
+   * <DocsLayout tree={tree} config={config}>
+   *   <AskAITrigger slot="ai-trigger" />
+   *   <DocsContent />
+   * </DocsLayout>
    * ```
    */
   triggerComponent?: unknown;

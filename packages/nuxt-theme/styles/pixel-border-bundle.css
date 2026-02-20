@@ -1,0 +1,6 @@
+/* @farming-labs/svelte-theme — pixel-border theme (bundled)
+ * Single import: includes base docs.css + pixel-border overrides.
+ * Usage: @import "@farming-labs/svelte-theme/pixel-border/css";
+ */
+@import "./docs.css";
+@import "./pixel-border.css";

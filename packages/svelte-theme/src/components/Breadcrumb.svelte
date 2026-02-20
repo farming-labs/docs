@@ -5,8 +5,7 @@
   let { pathname = "", entry = "docs" } = $props();
 
   let segments = $derived.by(() => {
-    const all = pathname.split("/").filter(Boolean);
-    return all.filter((s) => s.toLowerCase() !== entry.toLowerCase());
+    return pathname.split("/").filter(Boolean);
   });
 
   let parentLabel = $derived.by(() => {
@@ -25,10 +24,7 @@
 
   let parentUrl = $derived.by(() => {
     if (segments.length < 2) return "";
-    const all = pathname.split("/").filter(Boolean);
-    const parentSegment = segments[segments.length - 2];
-    const parentIndex = all.indexOf(parentSegment);
-    return "/" + all.slice(0, parentIndex + 1).join("/");
+    return "/" + segments.slice(0, segments.length - 1).join("/");
   });
 </script>
 

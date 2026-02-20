@@ -52,10 +52,7 @@ function PathBreadcrumb({
   entry: string;
 }) {
   const router = useRouter();
-  const allSegments = pathname.split("/").filter(Boolean);
-  const segments = allSegments.filter(
-    (s) => s.toLowerCase() !== entry.toLowerCase(),
-  );
+  const segments = pathname.split("/").filter(Boolean);
 
   if (segments.length < 2) return null;
 
@@ -70,8 +67,7 @@ function PathBreadcrumb({
     .replace(/-/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
-  const parentIndex = allSegments.indexOf(parentSegment);
-  const parentUrl = "/" + allSegments.slice(0, parentIndex + 1).join("/");
+  const parentUrl = "/" + segments.slice(0, segments.length - 1).join("/");
 
   return (
     <nav className="fd-breadcrumb" aria-label="Breadcrumb">

@@ -1,5 +1,6 @@
 ---
 import ThemeToggle from "./ThemeToggle.astro";
+import FloatingAIChat from "./FloatingAIChat.astro";
 
 const { tree, config = null, title, titleUrl } = Astro.props;
 
@@ -60,7 +61,7 @@ function buildColorsCSS(colors?: Record<string, string | undefined>): string {
     vars.push(`${COLOR_MAP[key]}: ${value};`);
   }
   if (vars.length === 0) return "";
-  return `:root, .dark {\n  ${vars.join("\n  ")}\n}`;
+  return `.dark {\n  ${vars.join("\n  ")}\n}`;
 }
 
 function buildFontStyleVars(prefix: string, style?: { size?: string; weight?: string | number; lineHeight?: string; letterSpacing?: string }): string {
@@ -269,6 +270,20 @@ const showFloatingAI = aiConfig?.mode === "floating" && aiConfig?.enabled;
     <slot />
   </main>
 </div>
+
+{showFloatingAI && (
+  <FloatingAIChat
+    api="/api/docs"
+    suggestedQuestions={aiConfig?.suggestedQuestions ?? []}
+    aiLabel={aiConfig?.aiLabel ?? "AI"}
+    position={aiConfig?.position ?? "bottom-right"}
+    floatingStyle={aiConfig?.floatingStyle ?? "panel"}
+  >
+    {Astro.slots.has("ai-trigger") && (
+      <slot name="ai-trigger" slot="trigger" />
+    )}
+  </FloatingAIChat>
+)}
 
 <script>
   // Sidebar toggle

@@ -1,6 +1,6 @@
 ---
 title: "Introduction"
-description: "A modern, flexible documentation framework for Next.js and SvelteKit"
+description: "A modern, flexible documentation framework for Next.js, SvelteKit, Astro, and Nuxt"
 icon: "book"
 ---
 
@@ -12,7 +12,7 @@ A modern documentation framework built on top of [Fumadocs](https://fumadocs.ver
 
 - **Zero boilerplate** — No layout files, no `[[...slug]]` wrappers. Just write Markdown or MDX.
 - **One config** — Everything in `docs.config.ts`: theme, colors, typography, icons, components, metadata.
-- **Multiple frameworks** — First-class support for both Next.js and SvelteKit.
+- **Multiple frameworks** — First-class support for Next.js, SvelteKit, Astro, and Nuxt.
 - **Three themes** — Default, Darksharp, and Pixel Border. Or build your own with `createTheme()`.
 - **Built-in search** — Full-text search powered by Orama. No API keys.
 - **CLI scaffolding** — `npx @farming-labs/docs init` detects your framework, generates config, installs deps, starts dev.
@@ -26,6 +26,10 @@ A modern documentation framework built on top of [Fumadocs](https://fumadocs.ver
 | `@farming-labs/next` | Next.js adapter — `withDocs()`, MDX processing, search API |
 | `@farming-labs/svelte` | SvelteKit adapter — server-side docs loader, markdown processing |
 | `@farming-labs/svelte-theme` | SvelteKit theme presets, DocsLayout, DocsContent components |
+| `@farming-labs/astro` | Astro adapter — server-side docs loader, markdown processing |
+| `@farming-labs/astro-theme` | Astro theme presets, DocsLayout, DocsContent components |
+| `@farming-labs/nuxt` | Nuxt 3 adapter — `defineDocsHandler()`, server-side docs loader, markdown processing |
+| `@farming-labs/nuxt-theme` | Nuxt theme presets, DocsLayout, DocsContent components |
 
 ## Quick Start
 
@@ -35,7 +39,7 @@ The fastest way to get started is with the CLI:
 npx @farming-labs/docs init
 ```
 
-The CLI auto-detects your framework (Next.js or SvelteKit), lets you pick a theme (`fumadocs`, `darksharp`, or `pixel-border`), and scaffolds everything you need — config, routes, CSS, sample pages — then starts the dev server.
+The CLI auto-detects your framework (Next.js, SvelteKit, Astro, or Nuxt), lets you pick a theme (`fumadocs`, `darksharp`, or `pixel-border`), and scaffolds everything you need — config, routes, CSS, sample pages — then starts the dev server.
 
 See the [CLI reference](/docs/cli) for details, or set up manually with the [Installation guide](/docs/installation).
 

@@ -1,0 +1,53 @@
+{
+  "name": "@farming-labs/nuxt-theme",
+  "version": "0.0.2-beta.14",
+  "description": "Nuxt/Vue UI components for @farming-labs/docs — layout, sidebar, TOC, search, and theme toggle",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js",
+      "default": "./src/index.js"
+    },
+    "./fumadocs": {
+      "types": "./src/themes/default.d.ts",
+      "import": "./src/themes/default.js",
+      "default": "./src/themes/default.js"
+    },
+    "./pixel-border": {
+      "types": "./src/themes/pixel-border.d.ts",
+      "import": "./src/themes/pixel-border.js",
+      "default": "./src/themes/pixel-border.js"
+    },
+    "./darksharp": {
+      "types": "./src/themes/darksharp.d.ts",
+      "import": "./src/themes/darksharp.js",
+      "default": "./src/themes/darksharp.js"
+    },
+    "./css": "./styles/docs.css",
+    "./fumadocs/css": "./styles/docs.css",
+    "./styles/pixel-border.css": "./styles/pixel-border.css",
+    "./styles/darksharp.css": "./styles/darksharp.css",
+    "./pixel-border/css": "./styles/pixel-border-bundle.css",
+    "./darksharp/css": "./styles/darksharp-bundle.css"
+  },
+  "files": ["src", "styles"],
+  "keywords": ["docs", "nuxt", "vue", "theme", "documentation"],
+  "author": "Farming Labs",
+  "license": "MIT",
+  "scripts": {
+    "build": "echo 'Nuxt theme components are shipped as source'",
+    "typecheck": "echo 'ok'"
+  },
+  "dependencies": {
+    "@farming-labs/docs": "workspace:*",
+    "sugar-high": "^0.9.5"
+  },
+  "peerDependencies": {
+    "vue": ">=3.0.0",
+    "nuxt": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "nuxt": { "optional": true }
+  }
+}

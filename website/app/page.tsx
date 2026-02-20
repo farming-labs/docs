@@ -99,15 +99,15 @@ function HeroSection() {
               config file, zero boilerplate.
             </p>
 
-            <div className="mt-6 sm:mt-8 flex flex-wrap items-center gap-3">
+            <div className="mt-6 sm:mt-8 flex flex-wrap flex-row-reverse items-center gap-0">
               <Link
                 href="/docs"
-                className="group inline-flex items-center gap-2 bg-white text-black px-5 py-2.5 text-xs font-mono uppercase tracking-wider hover:bg-white/90 transition-all hover:no-underline"
+                className="group inline-flex items-center gap-2 bg-white text-black px-5 py-[11px] mb-[0.5px] text-xs font-mono uppercase tracking-wider hover:bg-white/90 transition-all hover:no-underline"
               >
                 Get Started
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                <ArrowRight className="w-3.5 h-3.5 -rotate-45 group-hover:translate-x-0.5 transition-transform" />
               </Link>
-              <CopyCommand command="pnpx @farming-labs/docs init" />
+              <CopyCommand className="border-l-0 border-white/10" command="pnpx @farming-labs/docs init" />
             </div>
           </div>
 
@@ -518,6 +518,173 @@ export const auth = betterAuth({
   );
 }
 
+function NuxtSteps() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="space-y-6">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            1
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Install</h3>
+            <p className="text-sm text-white/40">
+              Add the core packages to your Nuxt project.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Terminal"
+          filename="shell"
+          language="bash"
+          code="pnpm add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme"
+        />
+
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            2
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Configure</h3>
+            <p className="text-sm text-white/40">
+              One config file. Theme, metadata, navigation — everything.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Config"
+          filename="docs.config.ts"
+          code={`import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
+
+export default defineDocs({
+  entry: "docs",
+  contentDir: "docs",
+  theme: fumadocs(),
+  metadata: {
+    titleTemplate: "%s – My Docs",
+  },
+});`}
+        />
+
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            3
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Nuxt Config</h3>
+            <p className="text-sm text-white/40">
+              Import the theme CSS and configure Nitro server assets.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Nuxt Config"
+          filename="nuxt.config.ts"
+          code={`export default defineNuxtConfig({
+  css: ["@farming-labs/nuxt-theme/fumadocs/css"],
+  nitro: {
+    serverAssets: [
+      { baseName: "docs", dir: "../docs" },
+    ],
+  },
+});`}
+        />
+      </div>
+
+      <div className="space-y-6">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            4
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Server API</h3>
+            <p className="text-sm text-white/40">
+              One handler for docs loading, search, and AI.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="API Handler"
+          filename="server/api/docs.ts"
+          code={`import { defineDocsHandler } from "@farming-labs/nuxt/server";
+import config from "../../docs.config";
+
+export default defineDocsHandler(config, useStorage);`}
+        />
+
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            5
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Write docs</h3>
+            <p className="text-sm text-white/40">
+              Create Markdown files under{" "}
+              <code className="text-white/60 text-xs">docs/</code>.
+              That&apos;s it.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Markdown Page"
+          filename="docs/getting-started/page.md"
+          code={`---
+title: "Getting Started"
+description: "Set up in 5 minutes"
+icon: "rocket"
+---
+
+# Getting Started
+
+Write your content in **Markdown** with
+frontmatter for metadata.
+
+\`\`\`ts title="auth.ts"
+export const auth = betterAuth({
+  database: { provider: "postgresql" },
+});
+\`\`\``}
+        />
+
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+            6
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Page Route</h3>
+            <p className="text-sm text-white/40">
+              A single Vue page that handles all doc routes.
+            </p>
+          </div>
+        </div>
+        <CodeBlock
+          title="Doc Page"
+          filename="pages/docs/[...slug].vue"
+          code={`<script setup lang="ts">
+import { DocsLayout, DocsContent } from "@farming-labs/nuxt-theme";
+import config from "~/docs.config";
+
+const route = useRoute();
+const pathname = computed(() => route.path);
+
+const { data } = await useFetch("/api/docs", {
+  query: { pathname },
+  watch: [pathname],
+});
+</script>
+
+<template>
+  <DocsLayout :tree="data.tree" :config="config">
+    <DocsContent :data="data" :config="config" />
+  </DocsLayout>
+</template>`}
+        />
+      </div>
+    </div>
+  );
+}
+
 function InstallSection() {
   return (
     <section className="relative z-10 bg-black border-t border-white/[8%]">
@@ -579,6 +746,11 @@ function InstallSection() {
               label: "Astro",
               value: "astro",
               content: <AstroSteps />,
+            },
+            {
+              label: "Nuxt",
+              value: "nuxt",
+              content: <NuxtSteps />,
             },
           ]}
         />
@@ -774,6 +946,26 @@ function PackagesSection() {
       name: "@farming-labs/svelte-theme",
       description:
         "Theme presets (default, pixel-border) for SvelteKit. DocsLayout, DocsContent components.",
+    },
+    {
+      name: "@farming-labs/astro",
+      description:
+        "Astro adapter. Server-side docs loader, markdown processing, search API.",
+    },
+    {
+      name: "@farming-labs/astro-theme",
+      description:
+        "Theme presets (default, darksharp, pixel-border) for Astro. DocsLayout, DocsContent components.",
+    },
+    {
+      name: "@farming-labs/nuxt",
+      description:
+        "Nuxt 3 adapter. defineDocsHandler() for API, markdown processing, search API.",
+    },
+    {
+      name: "@farming-labs/nuxt-theme",
+      description:
+        "Theme presets for Nuxt. DocsLayout, DocsContent components.",
     },
   ];
 

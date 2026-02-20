@@ -33,7 +33,7 @@ Top-level configuration object passed to `defineDocs()`.
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `entry` | `string` | **required** | URL path prefix for docs (e.g. `"docs"` → `/docs`) |
-| `contentDir` | `string` | same as `entry` | Path to content files. SvelteKit and Astro only — Next.js uses `app/{entry}/` |
+| `contentDir` | `string` | same as `entry` | Path to content files. SvelteKit, Astro, and Nuxt only — Next.js uses `app/{entry}/` |
 | `theme` | `DocsTheme` | — | Theme preset from a factory (`fumadocs()`, `darksharp()`, `pixelBorder()`) |
 | `github` | `string \| GithubConfig` | — | GitHub repo config for "Edit on GitHub" links |
 | `nav` | `DocsNav` | — | Sidebar header title and URL |
@@ -241,7 +241,7 @@ Theme configuration returned by theme factories.
 
 Created via theme factories:
 
-<Tabs items={["Next.js", "SvelteKit", "Astro"]}>
+<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     ```ts
     import { fumadocs } from "@farming-labs/theme";
@@ -263,6 +263,13 @@ Created via theme factories:
     import { fumadocs } from "@farming-labs/astro-theme";
     import { pixelBorder } from "@farming-labs/astro-theme/pixel-border";
     import { darksharp } from "@farming-labs/astro-theme/darksharp";
+
+    theme: fumadocs({ ui: { /* overrides */ } }),
+    ```
+  </Tab>
+  <Tab value="Nuxt">
+    ```ts
+    import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
 
     theme: fumadocs({ ui: { /* overrides */ } }),
     ```
@@ -386,7 +393,7 @@ RAG-powered AI chat. See [Ask AI](/docs/customization/ai-chat) for usage guide.
 | `mode` | `"search" \| "floating"` | `"search"` | UI mode: integrated in search or floating widget |
 | `position` | `"bottom-right" \| "bottom-left" \| "bottom-center"` | `"bottom-right"` | Floating button position (only when `mode: "floating"`) |
 | `floatingStyle` | `"panel" \| "modal" \| "popover" \| "full-modal"` | `"panel"` | Floating chat visual style |
-| `triggerComponent` | `ReactNode` | — | Custom floating button (Next.js only) |
+| `triggerComponent` | `Component` | — | Custom floating button component |
 | `model` | `string` | `"gpt-4o-mini"` | LLM model name (OpenAI-compatible) |
 | `systemPrompt` | `string` | auto-generated | Custom system prompt |
 | `baseUrl` | `string` | `"https://api.openai.com/v1"` | OpenAI-compatible API base URL |
@@ -396,7 +403,7 @@ RAG-powered AI chat. See [Ask AI](/docs/customization/ai-chat) for usage guide.
 | `aiLabel` | `string` | `"AI"` | Display name for the AI assistant |
 | `packageName` | `string` | — | Package name the AI uses in import examples |
 | `docsUrl` | `string` | — | Base URL the AI uses for links |
-| `loadingComponent` | `(props: { name: string }) => ReactNode` | — | Custom loading indicator (Next.js only) |
+| `loadingComponent` | `(props: { name: string }) => ReactNode` | — | Custom loading indicator |
 
 ### Floating styles
 
@@ -666,6 +673,59 @@ Same pattern as SvelteKit:
 | `fumadocs()` | `@farming-labs/astro-theme` |
 | `pixelBorder()` | `@farming-labs/astro-theme/pixel-border` |
 | `darksharp()` | `@farming-labs/astro-theme/darksharp` |
+
+---
+
+## Nuxt Server API
+
+### `defineDocsHandler(config, useStorage)`
+
+Creates a single Nitro event handler that serves docs loading, search, and AI chat for Nuxt.
+
+```ts
+import { defineDocsHandler } from "@farming-labs/nuxt/server";
+```
+
+**Parameters:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `config` | `DocsConfig` | The config object from `defineDocs()` |
+| `useStorage` | `Function` | Nitro's `useStorage` utility for accessing server assets |
+
+**Returns:**
+
+A Nitro event handler that responds to `GET` (page loading + search) and `POST` (AI chat) requests.
+
+```ts title="server/api/docs.ts"
+import { defineDocsHandler } from "@farming-labs/nuxt/server";
+import config from "../../docs.config";
+
+export default defineDocsHandler(config, useStorage);
+```
+
+> Nuxt uses Nitro's `serverAssets` to load markdown files. Configure `nitro.serverAssets` in `nuxt.config.ts` to point to your docs directory.
+
+### Nuxt Components
+
+Imported from `@farming-labs/nuxt-theme`:
+
+| Component | Props | Description |
+|-----------|-------|-------------|
+| `DocsLayout` | `tree`, `config`, `triggerComponent?` | Main layout with sidebar, nav, search, AI |
+| `DocsContent` | `data`, `config` | Page content with TOC, breadcrumb, footer nav |
+
+### CSS Imports
+
+| Import | Description |
+|--------|-------------|
+| `@farming-labs/nuxt-theme/fumadocs/css` | Default (fumadocs) theme |
+
+### Theme Factories
+
+| Factory | Import |
+|---------|--------|
+| `fumadocs()` | `@farming-labs/nuxt-theme/fumadocs` |
 
 ---
 

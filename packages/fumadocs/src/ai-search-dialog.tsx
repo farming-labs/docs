@@ -638,7 +638,8 @@ export function FloatingAIChat({
             className="fd-ai-floating-btn"
             style={btnPosition}
           >
-            <SparklesIcon size={22} />
+            <SparklesIcon size={16} />
+            <span>Ask {aiName}</span>
           </button>
         )
       )}

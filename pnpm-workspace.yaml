@@ -6,5 +6,7 @@ packages:
   - "packages/fumadocs"
   - "packages/svelte"
   - "packages/svelte-theme"
+  - "packages/nuxt"
+  - "packages/nuxt-theme"
   - "examples/*"
   - "website"

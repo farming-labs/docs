@@ -15,7 +15,7 @@ The `@farming-labs/docs` CLI scaffolds a documentation project in seconds.
 npx @farming-labs/docs init
 ```
 
-If the CLI cannot auto-detect your framework (no `next`, `@sveltejs/kit`, or `astro` in `package.json`), it will prompt you to choose one.
+If the CLI cannot auto-detect your framework (no `next`, `@sveltejs/kit`, `astro`, or `nuxt` in `package.json`), it will prompt you to choose one.
 
 ## Supported Frameworks
 
@@ -24,10 +24,11 @@ If the CLI cannot auto-detect your framework (no `next`, `@sveltejs/kit`, or `as
 | Next.js | `next` in dependencies | Supported |
 | SvelteKit | `@sveltejs/kit` in dependencies | Supported |
 | Astro | `astro` in dependencies | Supported |
+| Nuxt | `nuxt` in dependencies | Supported |
 
 ## Available Themes
 
-All themes are available for Next.js, SvelteKit, and Astro:
+All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
 
 | Theme | Description |
 |-------|-------------|
@@ -37,7 +38,7 @@ All themes are available for Next.js, SvelteKit, and Astro:
 
 ## What it does
 
-<Tabs items={["Next.js", "SvelteKit", "Astro"]}>
+<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     1. **Detects Next.js** via `next` in your `package.json`
     2. **Asks for a theme** — `fumadocs`, `darksharp`, or `pixel-border`
@@ -94,11 +95,26 @@ All themes are available for Next.js, SvelteKit, and Astro:
 
     > **Production note**: The generated `docs.server.ts` uses `import.meta.glob` to bundle your markdown files at build time. This is required for serverless deployments (Vercel, Netlify, etc.) where the filesystem is not available at runtime.
   </Tab>
+  <Tab value="Nuxt">
+    1. **Detects Nuxt** via `nuxt` in your `package.json`
+    2. **Asks for a theme** — `fumadocs`, `darksharp`, or `pixel-border`
+    3. **Asks for the entry path** — Default is `docs`
+    4. **Generates files:**
+       - `docs.config.ts` — Full config with your selected theme
+       - `nuxt.config.ts` — Nuxt config with theme CSS and server assets
+       - `server/api/docs.ts` — API route for docs data, search, and AI
+       - `pages/docs/[...slug].vue` — Dynamic page component
+       - `docs/page.md` — Sample documentation page
+       - `docs/installation/page.md` — Sample installation guide
+       - `docs/quickstart/page.md` — Sample quickstart guide
+    5. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/nuxt`, `@farming-labs/nuxt-theme`
+    6. **Starts the dev server** — Opens your docs at `http://localhost:3000/docs`
+  </Tab>
 </Tabs>
 
 ## Example Output
 
-<Tabs items={["Next.js", "SvelteKit", "Astro"]}>
+<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     ```
     $ npx @farming-labs/docs init
@@ -199,6 +215,36 @@ All themes are available for Next.js, SvelteKit, and Astro:
       └ Done! Open http://localhost:4321/docs
     ```
   </Tab>
+  <Tab value="Nuxt">
+    ```
+    $ npx @farming-labs/docs init
+
+      ┌ @farming-labs/docs init
+      │
+      ◆ Detected framework: Nuxt
+      │
+      ◆ Select a theme:
+      │ ● fumadocs (default neutral theme)
+      │ ○ darksharp (sharp, all-black theme)
+      │ ○ pixel-border (pixel-art inspired theme)
+      │
+      ◆ Entry path for docs:
+      │ docs
+      │
+      ◇ Generated docs.config.ts
+      ◇ Generated nuxt.config.ts
+      ◇ Generated server/api/docs.ts
+      ◇ Generated pages/docs/[...slug].vue
+      ◇ Generated docs/page.md
+      ◇ Generated docs/installation/page.md
+      ◇ Generated docs/quickstart/page.md
+      │
+      ◇ Installing dependencies...
+      ◇ Starting dev server...
+      │
+      └ Done! Open http://localhost:3000/docs
+    ```
+  </Tab>
 </Tabs>
 
 ## Flags
@@ -212,7 +258,7 @@ All themes are available for Next.js, SvelteKit, and Astro:
 
 Here is every file the CLI generates, ready to copy-paste if you prefer manual setup.
 
-<Tabs items={["Next.js", "SvelteKit", "Astro"]}>
+<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     **`docs.config.tsx`**
 
@@ -507,13 +553,92 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     > - Darksharp: `import { darksharp } from "@farming-labs/astro-theme"` + `@farming-labs/astro-theme/darksharp/css`
     > - Pixel Border: `import { pixelBorder } from "@farming-labs/astro-theme"` + `@farming-labs/astro-theme/pixel-border/css`
   </Tab>
+  <Tab value="Nuxt">
+    **`docs.config.ts`**
+
+    ```ts title="docs.config.ts"
+    import { defineDocs } from "@farming-labs/docs";
+    import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
+
+    export default defineDocs({
+      entry: "docs",
+      contentDir: "docs",
+      theme: fumadocs(),
+      nav: {
+        title: "My Docs",
+        url: "/docs",
+      },
+      breadcrumb: { enabled: true },
+      metadata: {
+        titleTemplate: "%s – Docs",
+        description: "My documentation site",
+      },
+    });
+    ```
+
+    **`nuxt.config.ts`**
+
+    ```ts title="nuxt.config.ts"
+    export default defineNuxtConfig({
+      css: ["@farming-labs/nuxt-theme/fumadocs/css"],
+      nitro: {
+        serverAssets: [{ baseName: "docs", dir: "../docs" }],
+      },
+    });
+    ```
+
+    **`server/api/docs.ts`** (search & AI)
+
+    ```ts title="server/api/docs.ts"
+    import { defineDocsHandler } from "@farming-labs/nuxt/server";
+    import config from "../../docs.config";
+    export default defineDocsHandler(config, useStorage);
+    ```
+
+    **`pages/docs/[...slug].vue`**
+
+    ```vue title="pages/docs/[...slug].vue"
+    <script setup lang="ts">
+    import { DocsLayout, DocsContent } from "@farming-labs/nuxt-theme";
+    import config from "~/docs.config";
+    const route = useRoute();
+    const pathname = computed(() => route.path);
+    const { data } = await useFetch("/api/docs", {
+      query: { pathname }, watch: [pathname],
+    });
+    </script>
+    <template>
+      <DocsLayout :tree="data.tree" :config="config">
+        <DocsContent :data="data" :config="config" />
+      </DocsLayout>
+    </template>
+    ```
+
+    **`docs/page.md`** (sample page)
+
+    ```md title="docs/page.md"
+    ---
+    title: "Introduction"
+    description: "Welcome to the docs"
+    icon: "book"
+    ---
+
+    # Welcome
+
+    This is your documentation home page.
+    ```
+
+    > If you chose `darksharp` or `pixel-border`, swap the theme factory and CSS:
+    > - Darksharp: `import { darksharp } from "@farming-labs/nuxt-theme"` + `@farming-labs/nuxt-theme/darksharp/css`
+    > - Pixel Border: `import { pixelBorder } from "@farming-labs/nuxt-theme"` + `@farming-labs/nuxt-theme/pixel-border/css`
+  </Tab>
 </Tabs>
 
 ## Project Structure
 
 After running `init`, your project will look like this:
 
-<Tabs items={["Next.js", "SvelteKit", "Astro"]}>
+<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     ```
     my-app/
@@ -575,6 +700,26 @@ After running `init`, your project will look like this:
     │       └── docs/
     │           ├── index.astro       # /docs
     │           └── [...slug].astro   # /docs/*
+    └── package.json
+    ```
+  </Tab>
+  <Tab value="Nuxt">
+    ```
+    my-app/
+    ├── docs.config.ts                # Docs configuration
+    ├── nuxt.config.ts                # Nuxt config with theme CSS
+    ├── docs/                         # Markdown content
+    │   ├── page.md                   # /docs
+    │   ├── installation/
+    │   │   └── page.md               # /docs/installation
+    │   └── quickstart/
+    │       └── page.md               # /docs/quickstart
+    ├── server/
+    │   └── api/
+    │       └── docs.ts               # Search & AI API route
+    ├── pages/
+    │   └── docs/
+    │       └── [...slug].vue         # Dynamic page
     └── package.json
     ```
   </Tab>

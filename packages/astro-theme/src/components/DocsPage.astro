@@ -10,16 +10,12 @@ const {
 } = Astro.props;
 
 const pathname = Astro.url.pathname;
-const segments = pathname.split("/").filter(Boolean).filter(s => s.toLowerCase() !== entry.toLowerCase());
+const segments = pathname.split("/").filter(Boolean);
 const parentLabel = segments.length >= 2 ? segments[segments.length - 2].replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "";
 const currentLabel = segments.length >= 2 ? segments[segments.length - 1].replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "";
-const parentUrl = (() => {
-  if (segments.length < 2) return "";
-  const all = pathname.split("/").filter(Boolean);
-  const parentSegment = segments[segments.length - 2];
-  const parentIndex = all.indexOf(parentSegment);
-  return "/" + all.slice(0, parentIndex + 1).join("/");
-})();
+const parentUrl = segments.length >= 2
+  ? "/" + segments.slice(0, segments.length - 1).join("/")
+  : "";
 ---
 
 <div class="fd-page">
