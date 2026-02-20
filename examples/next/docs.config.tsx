@@ -34,7 +34,7 @@ export default defineDocs({
   theme: colorful({
     ui: {
       components: { Callout: { variant: "outline" } },
-      layout: { toc: { enabled: true, depth: 3 , style: "directional" } },
+      layout: { toc: { enabled: true, depth: 3, style: "default" } },
       sidebar: { style: "bordered" },
       typography: {
         font: {

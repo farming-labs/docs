@@ -349,6 +349,7 @@ function TypographyStyle({ typography }: { typography?: TypographyConfig }) {
 export function createDocsLayout(config: DocsConfig) {
   const tocConfig = config.theme?.ui?.layout?.toc;
   const tocEnabled = tocConfig?.enabled !== false;
+  const tocStyle = (tocConfig as any)?.style as "default" | "directional" | undefined;
 
   // Nav title: supports string or ReactNode (component)
   const navTitle = (config.nav?.title as ReactNode) ?? "Docs";
@@ -453,6 +454,7 @@ export function createDocsLayout(config: DocsConfig) {
         )}
         <DocsPageClient
           tocEnabled={tocEnabled}
+          tocStyle={tocStyle}
           breadcrumbEnabled={breadcrumbEnabled}
           entry={config.entry}
           copyMarkdown={copyMarkdownEnabled}

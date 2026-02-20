@@ -21,6 +21,7 @@ interface SerializedProvider {
 
 interface DocsPageClientProps {
   tocEnabled: boolean;
+  tocStyle?: "default" | "directional";
   breadcrumbEnabled?: boolean;
   /** The docs entry folder name (e.g. "docs") — used to strip from breadcrumb */
   entry?: string;
@@ -118,6 +119,7 @@ function buildGithubFileUrl(
 
 export function DocsPageClient({
   tocEnabled,
+  tocStyle = "default",
   breadcrumbEnabled = true,
   entry = "docs",
   copyMarkdown = false,
@@ -131,6 +133,7 @@ export function DocsPageClient({
   description,
   children,
 }: DocsPageClientProps) {
+  const fdTocStyle = tocStyle === "directional" ? "clerk" : "default";
   const [toc, setToc] = useState<TOCItem[]>([]);
   const pathname = usePathname();
 
@@ -167,8 +170,8 @@ export function DocsPageClient({
   return (
     <DocsPage
       toc={toc}
-      tableOfContent={{ enabled: tocEnabled, style: "clerk" }}
-      tableOfContentPopover={{ enabled: tocEnabled, style: "clerk" }}
+      tableOfContent={{ enabled: tocEnabled, style: fdTocStyle }}
+      tableOfContentPopover={{ enabled: tocEnabled, style: fdTocStyle }}
       breadcrumb={{ enabled: false }}
     >
       {breadcrumbEnabled && <PathBreadcrumb pathname={pathname} entry={entry} />}
