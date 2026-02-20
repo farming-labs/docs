@@ -19,7 +19,7 @@ ai: {
 
 That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt-4o-mini` by default.
 
-<Tabs items={["Next.js", "SvelteKit"]}>
+<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     Add `OPENAI_API_KEY` to your `.env` file:
 
@@ -54,6 +54,48 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
       ai: { apiKey: env.OPENAI_API_KEY, ...config.ai },
       _preloadedContent: contentFiles,
     });
+    ```
+  </Tab>
+  <Tab value="Astro">
+    Add `OPENAI_API_KEY` to your `.env` file:
+
+    ```bash title=".env"
+    OPENAI_API_KEY=sk-...
+    ```
+
+    Pass it through `docs.server.ts`:
+
+    ```ts title="src/lib/docs.server.ts"
+    import { createDocsServer } from "@farming-labs/astro/server";
+    import config from "./docs.config";
+
+    const contentFiles = import.meta.glob("/docs/**/*.{md,mdx}", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>;
+
+    export const { load, GET, POST } = createDocsServer({
+      ...config,
+      ai: { apiKey: import.meta.env.OPENAI_API_KEY, ...config.ai },
+      _preloadedContent: contentFiles,
+    });
+    ```
+  </Tab>
+  <Tab value="Nuxt">
+    Add `OPENAI_API_KEY` to your `.env` file:
+
+    ```bash title=".env"
+    OPENAI_API_KEY=sk-...
+    ```
+
+    Nuxt automatically reads environment variables via Nitro's runtime config. The `defineDocsHandler` reads `process.env.OPENAI_API_KEY` on the server.
+
+    ```ts title="server/api/docs.ts"
+    import { defineDocsHandler } from "@farming-labs/nuxt/server";
+    import config from "../../docs.config";
+
+    export default defineDocsHandler(config, useStorage);
     ```
   </Tab>
 </Tabs>
@@ -283,13 +325,13 @@ ai: {
 }
 ```
 
-### `loadingComponent` (Next.js only)
+### `loadingComponent`
 
 Custom loading indicator shown while the AI is generating a response. Receives `{ name }` (the `aiLabel` value).
 
 | Type | Default |
 |------|---------|
-| `(props: { name: string }) => ReactNode` | Built-in bouncing dots |
+| `Component` | Built-in bouncing dots |
 
 ```tsx
 ai: {
@@ -304,21 +346,81 @@ ai: {
 }
 ```
 
-### `triggerComponent` (Next.js only)
+### `triggerComponent`
 
-Custom trigger button for the floating chat. Replaces the default sparkles button. Only used when `mode` is `"floating"`.
+Custom trigger button for the floating chat. Replaces the default sparkles button. Only used when `mode` is `"floating"`. Each framework accepts its native component format — pass it as a prop on `DocsLayout` (or a slot in Astro).
 
 | Type | Default |
 |------|---------|
-| `ReactNode` | Built-in sparkles button |
+| `Component` | Built-in sparkles button |
 
-```tsx
-ai: {
-  enabled: true,
-  mode: "floating",
-  triggerComponent: <button className="my-chat-btn">💬 Ask</button>,
-}
-```
+<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
+  <Tab value="Next.js">
+    Pass a React component via `docs.config.tsx`:
+
+    ```tsx title="docs.config.tsx"
+    ai: {
+      enabled: true,
+      mode: "floating",
+      triggerComponent: <button className="my-chat-btn">Ask AI</button>,
+    }
+    ```
+  </Tab>
+  <Tab value="SvelteKit">
+    Import a Svelte component and pass it as a prop on `DocsLayout`:
+
+    ```svelte title="src/routes/docs/+layout.svelte"
+    <script>
+      import { DocsLayout } from "@farming-labs/svelte-theme";
+      import AskAITrigger from "$lib/components/AskAITrigger.svelte";
+      import config from "../../lib/docs.config";
+      let { data, children } = $props();
+    </script>
+
+    <DocsLayout tree={data.tree} {config} triggerComponent={AskAITrigger}>
+      {@render children()}
+    </DocsLayout>
+    ```
+  </Tab>
+  <Tab value="Astro">
+    Use the `trigger-component` slot on `DocsLayout`:
+
+    ```astro title="src/pages/docs/[...slug].astro"
+    ---
+    import DocsLayout from "@farming-labs/astro-theme/src/components/DocsLayout.astro";
+    import AskAITrigger from "../../components/AskAITrigger.astro";
+    ---
+
+    <DocsLayout tree={data.tree} config={config}>
+      <AskAITrigger slot="trigger-component" />
+      <DocsContent data={data} config={config} />
+    </DocsLayout>
+    ```
+  </Tab>
+  <Tab value="Nuxt">
+    Import a Vue component and pass it as a prop on `DocsLayout`:
+
+    ```vue title="pages/docs/[...slug].vue"
+    <script setup lang="ts">
+    import { DocsLayout, DocsContent } from "@farming-labs/nuxt-theme";
+    import AskAITrigger from "~/components/AskAITrigger.vue";
+    import config from "~/docs.config";
+
+    const route = useRoute();
+    const pathname = computed(() => route.path);
+    const { data } = await useFetch("/api/docs", {
+      query: { pathname }, watch: [pathname],
+    });
+    </script>
+
+    <template>
+      <DocsLayout :tree="data.tree" :config="config" :trigger-component="AskAITrigger">
+        <DocsContent :data="data" :config="config" />
+      </DocsLayout>
+    </template>
+    ```
+  </Tab>
+</Tabs>
 
 ## Full Example
 

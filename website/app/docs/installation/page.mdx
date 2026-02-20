@@ -9,7 +9,7 @@ order: 1
 
 ## Option A: CLI (Recommended)
 
-Run the init command inside an existing Next.js, SvelteKit, or Astro project:
+Run the init command inside an existing Next.js, SvelteKit, Astro, or Nuxt project:
 
 ```bash
 npx @farming-labs/docs init
@@ -17,7 +17,7 @@ npx @farming-labs/docs init
 
 The CLI will:
 
-1. Detect your framework (Next.js, SvelteKit, or Astro)
+1. Detect your framework (Next.js, SvelteKit, Astro, or Nuxt)
 2. Ask you to pick a theme
 3. Ask for the docs entry path (default: `docs`)
 4. Generate config, layout, CSS, and sample pages
@@ -26,7 +26,7 @@ The CLI will:
 
 ## Option B: Manual Setup
 
-<Tabs items={["Next.js", "SvelteKit", "Astro"]}>
+<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     ### 1. Install packages
 
@@ -326,6 +326,110 @@ The CLI will:
     ```
 
     ### 7. Write your first doc
+
+    Create Markdown files under `docs/`:
+
+    ```
+    docs/
+      page.md               # /docs
+      getting-started/
+        page.md             # /docs/getting-started
+    ```
+
+    Each page uses frontmatter for metadata:
+
+    ```md title="docs/getting-started/page.md"
+    ---
+    title: "Getting Started"
+    description: "Your first doc page"
+    icon: "rocket"
+    ---
+
+    # Getting Started
+
+    Your content here.
+    ```
+  </Tab>
+  <Tab value="Nuxt">
+    ### 1. Install packages
+
+    ```bash
+    pnpm add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme
+    ```
+
+    ### 2. Create `docs.config.ts`
+
+    ```ts title="docs.config.ts"
+    import { defineDocs } from "@farming-labs/docs";
+    import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
+
+    export default defineDocs({
+      entry: "docs",
+      contentDir: "docs",
+      theme: fumadocs(),
+      nav: {
+        title: "My Docs",
+        url: "/docs",
+      },
+      metadata: {
+        titleTemplate: "%s – Docs",
+        description: "My documentation site",
+      },
+    });
+    ```
+
+    ### 3. Configure `nuxt.config.ts`
+
+    ```ts title="nuxt.config.ts"
+    export default defineNuxtConfig({
+      css: ["@farming-labs/nuxt-theme/fumadocs/css"],
+      nitro: {
+        serverAssets: [{ baseName: "docs", dir: "../docs" }],
+      },
+    });
+    ```
+
+    ### 4. Create `server/api/docs.ts`
+
+    ```ts title="server/api/docs.ts"
+    import { defineDocsHandler } from "@farming-labs/nuxt/server";
+    import config from "../../docs.config";
+
+    export default defineDocsHandler(config, useStorage);
+    ```
+
+    ### 5. Create `pages/docs/[...slug].vue`
+
+    ```vue title="pages/docs/[...slug].vue"
+    <script setup lang="ts">
+    import { DocsLayout, DocsContent } from "@farming-labs/nuxt-theme";
+    import config from "~/docs.config";
+
+    const route = useRoute();
+    const pathname = computed(() => route.path);
+
+    const { data, error } = await useFetch("/api/docs", {
+      query: { pathname },
+      watch: [pathname],
+    });
+
+    if (error.value) {
+      throw createError({ statusCode: 404, statusMessage: "Page not found" });
+    }
+    </script>
+
+    <template>
+      <div v-if="data" class="fd-docs-wrapper">
+        <DocsLayout :tree="data.tree" :config="config">
+          <DocsContent :data="data" :config="config" />
+        </DocsLayout>
+      </div>
+    </template>
+    ```
+
+    > Nuxt uses Nitro's server assets to load markdown files at runtime. The `serverAssets` config in `nuxt.config.ts` tells Nitro where your docs directory is.
+
+    ### 6. Write your first doc
 
     Create Markdown files under `docs/`:
 

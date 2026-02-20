@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { DocsLayout, DocsContent } from "@farming-labs/nuxt-theme";
+import AskAITrigger from "~/components/AskAITrigger.vue";
 import config from "~/docs.config";
 
 const route = useRoute();
@@ -20,7 +21,7 @@ if (error.value) {
 
 <template>
   <div v-if="data" class="fd-docs-wrapper">
-    <DocsLayout :tree="data.tree" :config="config">
+    <DocsLayout :tree="data.tree" :config="config" :trigger-component="AskAITrigger">
       <DocsContent :data="data" :config="config" />
     </DocsLayout>
   </div>

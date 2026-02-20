@@ -1749,11 +1749,6 @@ html.dark pre.shiki {
 
 .fd-ai-floating-btn {
   border-radius: 26px;
-  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
-}
-
-.fd-ai-floating-btn:hover {
-  box-shadow: 0 10px 40px rgba(99, 102, 241, 0.4);
 }
 
 .fd-ai-suggestion {
@@ -1802,24 +1797,32 @@ html.dark pre.shiki {
 .fd-ai-floating-btn {
   position: fixed;
   z-index: 9997;
-  width: 52px;
-  height: 52px;
-  border-radius: var(--radius, 26px);
-  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
-  background: var(--color-fd-primary, #6366f1);
-  color: var(--color-fd-primary-foreground, #fff);
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 32px color-mix(in srgb, var(--color-fd-primary, #6366f1) 30%, transparent);
-  transition: all 200ms;
+  gap: 8px;
+  padding: 8px 12px;
+  height: 40px;
+  border-radius: 16px;
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  background: color-mix(in srgb, var(--color-fd-secondary, #f4f4f5) 80%, transparent);
+  backdrop-filter: blur(4px);
+  color: var(--color-fd-muted-foreground, #71717a);
+  cursor: pointer;
+  font-size: 14px;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-fd-background, #000) 20%, transparent);
+  transition: transform 150ms, background 150ms, color 150ms;
   animation: fd-ai-fade-in 300ms ease-out;
 }
 
 .fd-ai-floating-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 10px 40px color-mix(in srgb, var(--color-fd-primary, #6366f1) 40%, transparent);
+  background: var(--color-fd-accent);
+  color: var(--color-fd-accent-foreground);
+  transform: scale(1.03);
+}
+
+.fd-ai-floating-btn:active {
+  transform: scale(0.97);
 }
 
 .fd-ai-floating-trigger {
@@ -2148,24 +2151,28 @@ html.dark pre.shiki {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 8px 12px;
   height: 40px;
-  border-radius: var(--radius, 16px);
+  border-radius: 16px;
   border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
-  background: var(--color-fd-secondary, rgba(255, 255, 255, 0.06));
+  background: color-mix(in srgb, var(--color-fd-secondary, #f4f4f5) 80%, transparent);
+  backdrop-filter: blur(4px);
   color: var(--color-fd-muted-foreground, #71717a);
   font-family: inherit;
   font-size: 14px;
   cursor: pointer;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 8px 32px color-mix(in srgb, var(--color-fd-background, #000) 40%, transparent);
-  transition: all 200ms;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-fd-background, #000) 20%, transparent);
+  transition: transform 150ms, background 150ms, color 150ms;
   animation: fd-ai-fade-in 300ms ease-out;
   white-space: nowrap;
 }
 
 .fd-ai-fm-trigger-btn:hover {
-  background: var(--color-fd-accent, rgba(255, 255, 255, 0.1));
-  color: var(--color-fd-accent-foreground, #fff);
+  background: var(--color-fd-accent);
+  color: var(--color-fd-accent-foreground);
   transform: scale(1.03);
+}
+
+.fd-ai-fm-trigger-btn:active {
+  transform: scale(0.97);
 }

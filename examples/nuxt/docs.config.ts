@@ -33,8 +33,7 @@ export default defineDocs({
     model: "gpt-4o-mini",
     maxResults: 5,
     aiLabel: "DocsBot",
-    floatingStyle: "modal",
-    triggerComponent: "Ask AI",
+    floatingStyle: "full-modal",
     mode: "floating",
     position: "bottom-right",
     suggestedQuestions: [

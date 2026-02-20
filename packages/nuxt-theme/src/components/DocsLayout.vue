@@ -19,8 +19,9 @@ const props = withDefaults(
     config?: Record<string, any> | null;
     title?: string;
     titleUrl?: string;
+    triggerComponent?: object | null;
   }>(),
-  { config: null, title: undefined, titleUrl: undefined }
+  { config: null, title: undefined, titleUrl: undefined, triggerComponent: null }
 );
 
 const route = useRoute();
@@ -100,7 +101,7 @@ function buildColorsCSS(colors: Record<string, string> | undefined): string {
     vars.push(`${COLOR_MAP[key]}: ${value};`);
   }
   if (vars.length === 0) return "";
-  return `:root, .dark {\n  ${vars.join("\n  ")}\n}`;
+  return `.dark {\n  ${vars.join("\n  ")}\n}`;
 }
 
 // ─── Typography CSS variable generation ──────────────────────
@@ -345,6 +346,7 @@ const showFloatingAI = computed(
     :ai-label="config?.ai?.aiLabel ?? 'AI'"
     :position="config?.ai?.position ?? 'bottom-right'"
     :floating-style="config?.ai?.floatingStyle ?? 'panel'"
+    :trigger-component="triggerComponent"
   />
 
   <SearchDialog v-if="searchOpen" @close="closeSearch" />

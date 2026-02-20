@@ -7,8 +7,7 @@ const props = withDefaults(
 );
 
 const segments = computed(() => {
-  const all = props.pathname.split("/").filter(Boolean);
-  return all.filter((s) => s.toLowerCase() !== props.entry.toLowerCase());
+  return props.pathname.split("/").filter(Boolean);
 });
 
 const parentLabel = computed(() => {
@@ -27,10 +26,7 @@ const currentLabel = computed(() => {
 
 const parentUrl = computed(() => {
   if (segments.value.length < 2) return "";
-  const all = props.pathname.split("/").filter(Boolean);
-  const parentSegment = segments.value[segments.value.length - 2];
-  const parentIndex = all.indexOf(parentSegment);
-  return "/" + all.slice(0, parentIndex + 1).join("/");
+  return "/" + segments.value.slice(0, segments.value.length - 1).join("/");
 });
 </script>
 

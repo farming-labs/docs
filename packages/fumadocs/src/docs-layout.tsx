@@ -293,7 +293,7 @@ function buildColorsCSS(colors?: Record<string, string | undefined>): string {
     vars.push(`${COLOR_MAP[key]}: ${value};`);
   }
   if (vars.length === 0) return "";
-  return `:root, .dark {\n  ${vars.join("\n  ")}\n}`;
+  return `.dark {\n  ${vars.join("\n  ")}\n}`;
 }
 
 function ColorStyle({ colors }: { colors?: Record<string, string | undefined> }) {

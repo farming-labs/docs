@@ -7,6 +7,8 @@ const {
   floatingStyle = "panel",
 } = Astro.props;
 
+const hasCustomTrigger = Astro.slots.has("trigger");
+
 const isFullModal = floatingStyle === "full-modal";
 
 const BTN_POSITIONS: Record<string, string> = {
@@ -55,13 +57,19 @@ const containerStyle = getContainerStyle(floatingStyle, position);
 
     <!-- Bottom input bar -->
     <div class="fd-ai-fm-input-bar fd-ai-fm-input-bar--closed" id="fd-float-bar" style={btnStyle}>
-      <button id="fd-float-trigger" class="fd-ai-fm-trigger-btn" aria-label={`Ask ${aiLabel}`}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
-          <path d="M20 3v4"/><path d="M22 5h-4"/>
-        </svg>
-        <span>Ask {aiLabel}</span>
-      </button>
+      {hasCustomTrigger ? (
+        <div id="fd-float-trigger" class="fd-ai-floating-trigger">
+          <slot name="trigger" />
+        </div>
+      ) : (
+        <button id="fd-float-trigger" class="fd-ai-fm-trigger-btn" aria-label={`Ask ${aiLabel}`}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+            <path d="M20 3v4"/><path d="M22 5h-4"/>
+          </svg>
+          <span>Ask {aiLabel}</span>
+        </button>
+      )}
 
       <div id="fd-float-input-container" class="fd-ai-fm-input-container" style="display:none">
         <div class="fd-ai-fm-input-wrap">
@@ -161,12 +169,19 @@ const containerStyle = getContainerStyle(floatingStyle, position);
     </div>
 
     <!-- Floating trigger button -->
-    <button id="fd-float-btn" class="fd-ai-floating-btn" style={btnStyle} aria-label={`Ask ${aiLabel}`}>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
-        <path d="M20 3v4"/><path d="M22 5h-4"/>
-      </svg>
-    </button>
+    {hasCustomTrigger ? (
+      <div id="fd-float-btn" class="fd-ai-floating-trigger" style={btnStyle}>
+        <slot name="trigger" />
+      </div>
+    ) : (
+      <button id="fd-float-btn" class="fd-ai-floating-btn" style={btnStyle} aria-label={`Ask ${aiLabel}`}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+          <path d="M20 3v4"/><path d="M22 5h-4"/>
+        </svg>
+        <span>Ask {aiLabel}</span>
+      </button>
+    )}
   </Fragment>
 )}
 

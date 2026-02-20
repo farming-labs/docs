@@ -9,6 +9,7 @@ const props = withDefaults(
     aiLabel?: string;
     position?: string;
     floatingStyle?: "panel" | "modal" | "popover" | "full-modal";
+    triggerComponent?: object | null;
   }>(),
   {
     api: "/api/docs",
@@ -16,6 +17,7 @@ const props = withDefaults(
     aiLabel: "AI",
     position: "bottom-right",
     floatingStyle: "panel",
+    triggerComponent: null,
   }
 );
 
@@ -170,15 +172,8 @@ function handleFmKeyDown(e: KeyboardEvent) {
 </script>
 
 <template>
-  <div v-if="mounted" style="display:contents">
-    <!--
-      Every piece is its own Teleport with an explicit v-if guard.
-      No nested <template v-if>/<template v-else> — avoids Vue/Teleport
-      rendering quirks where teleported DOM from a false branch persists.
-    -->
-
     <!-- ═══ FULL-MODAL: overlay + messages (only when full-modal AND open) ═══ -->
-    <Teleport to="body" v-if="isFullModal && isOpen">
+    <Teleport to="body" v-if="mounted && isFullModal && isOpen">
       <div class="fd-ai-fm-overlay" @click.self="isOpen = false" @keydown="handleKeydown">
         <div class="fd-ai-fm-topbar">
           <button class="fd-ai-fm-close-btn" type="button" aria-label="Close" @click="isOpen = false">
@@ -210,14 +205,22 @@ function handleFmKeyDown(e: KeyboardEvent) {
     </Teleport>
 
     <!-- ═══ FULL-MODAL: bottom input bar (only when full-modal) ═══ -->
-    <Teleport to="body" v-if="isFullModal">
+    <Teleport to="body" v-if="mounted && isFullModal">
       <div
         class="fd-ai-fm-input-bar"
         :class="isOpen ? 'fd-ai-fm-input-bar--open' : 'fd-ai-fm-input-bar--closed'"
         :style="isOpen ? undefined : btnStyle"
       >
+        <div
+          v-if="!isOpen && triggerComponent"
+          class="fd-ai-floating-trigger"
+          :style="btnStyle"
+          @click="isOpen = true"
+        >
+          <component :is="triggerComponent" />
+        </div>
         <button
-          v-if="!isOpen"
+          v-else-if="!isOpen"
           class="fd-ai-fm-trigger-btn"
           type="button"
           :aria-label="`Ask ${label}`"
@@ -306,12 +309,12 @@ function handleFmKeyDown(e: KeyboardEvent) {
     </Teleport>
 
     <!-- ═══ PANEL/MODAL/POPOVER: backdrop (only for modal style when open) ═══ -->
-    <Teleport to="body" v-if="!isFullModal && isOpen && isModal">
+    <Teleport to="body" v-if="mounted && !isFullModal && isOpen && isModal">
       <div class="fd-ai-overlay" @click="isOpen = false" />
     </Teleport>
 
     <!-- ═══ PANEL/MODAL/POPOVER: dialog (only when NOT full-modal AND open) ═══ -->
-    <Teleport to="body" v-if="!isFullModal && isOpen">
+    <Teleport to="body" v-if="mounted && !isFullModal && isOpen">
       <div
         class="fd-ai-dialog"
         :style="`${containerStyle};animation:${animation}`"
@@ -406,19 +409,28 @@ function handleFmKeyDown(e: KeyboardEvent) {
     </Teleport>
 
     <!-- ═══ PANEL/MODAL/POPOVER: icon trigger (only when NOT full-modal AND NOT open) ═══ -->
-    <Teleport to="body" v-if="!isFullModal && !isOpen">
+    <Teleport to="body" v-if="mounted && !isFullModal && !isOpen">
+      <div
+        v-if="triggerComponent"
+        class="fd-ai-floating-trigger"
+        :style="btnStyle"
+        @click="isOpen = true"
+      >
+        <component :is="triggerComponent" />
+      </div>
       <button
+        v-else
         type="button"
         class="fd-ai-floating-btn"
         :style="btnStyle"
         :aria-label="`Ask ${label}`"
         @click="isOpen = true"
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
           <path d="M20 3v4" /><path d="M22 5h-4" />
         </svg>
+        <span>Ask {{ label }}</span>
       </button>
     </Teleport>
-  </div>
 </template>

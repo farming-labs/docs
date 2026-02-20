@@ -11,6 +11,7 @@
     title = undefined,
     titleUrl = undefined,
     children,
+    triggerComponent = null,
   } = $props();
 
   let resolvedTitle = $derived(title ?? config?.nav?.title ?? "Docs");
@@ -143,7 +144,7 @@
       vars.push(`${COLOR_MAP[key]}: ${value};`);
     }
     if (vars.length === 0) return "";
-    return `:root, .dark {\n  ${vars.join("\n  ")}\n}`;
+    return `.dark {\n  ${vars.join("\n  ")}\n}`;
   }
 
   function buildFontStyleVars(prefix, style) {
@@ -352,6 +353,7 @@
     aiLabel={config.ai.aiLabel ?? "AI"}
     position={config.ai.position ?? "bottom-right"}
     floatingStyle={config.ai.floatingStyle ?? "panel"}
+    {triggerComponent}
   />
 {/if}
 

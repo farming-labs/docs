@@ -2137,22 +2137,7 @@ const plugins = [
 _LjnL0dg5lOMwqa57WlL1NbWM1yRh4JheHBfyCabUMPA
 ];
 
-const assets = {
-  "/index.mjs": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"1a8d0-VibXfTzg25VfkH0V1HN+qXohdqk\"",
-    "mtime": "2026-02-20T12:56:51.220Z",
-    "size": 108752,
-    "path": "index.mjs"
-  },
-  "/index.mjs.map": {
-    "type": "application/json",
-    "etag": "\"6befb-JQTjYawcps/94LlWrxbc3X9UzkQ\"",
-    "mtime": "2026-02-20T12:56:51.221Z",
-    "size": 442107,
-    "path": "index.mjs.map"
-  }
-};
+const assets = {};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -2981,8 +2966,7 @@ const config = defineDocs({
     model: "gpt-4o-mini",
     maxResults: 5,
     aiLabel: "DocsBot",
-    floatingStyle: "modal",
-    triggerComponent: "Ask AI",
+    floatingStyle: "full-modal",
     mode: "floating",
     position: "bottom-right",
     suggestedQuestions: [

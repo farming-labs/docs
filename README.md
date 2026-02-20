@@ -11,12 +11,16 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 | `@farming-labs/next` | Next.js adapter — `withDocs()` config wrapper and auto-generated routes |
 | `@farming-labs/svelte` | SvelteKit adapter — server-side docs loader and markdown processing |
 | `@farming-labs/svelte-theme` | Fumadocs-based theme for SvelteKit with `default` and `pixel-border` variants |
+| `@farming-labs/astro` | Astro adapter — server-side docs loader and markdown processing |
+| `@farming-labs/astro-theme` | Fumadocs-based theme for Astro with `default`, `darksharp`, and `pixel-border` variants |
+| `@farming-labs/nuxt` | Nuxt 3 adapter — `defineDocsHandler()`, server-side docs loader, markdown processing |
+| `@farming-labs/nuxt-theme` | Fumadocs-based theme for Nuxt with `default` variant |
 
 ## Quick Start
 
 ### Option A: CLI (recommended)
 
-Run `init` inside an existing Next.js or SvelteKit project:
+Run `init` inside an existing Next.js, SvelteKit, Astro, or Nuxt project:
 
 ```bash
 npx @farming-labs/docs init
@@ -24,7 +28,7 @@ npx @farming-labs/docs init
 
 The CLI will:
 
-1. Detect your framework (Next.js or SvelteKit)
+1. Detect your framework (Next.js, SvelteKit, Astro, or Nuxt)
 2. Ask you to pick a theme
 3. Ask for the docs entry path (default: `docs`)
 4. Generate config, layout, CSS, and sample pages
@@ -213,6 +217,197 @@ icon: "rocket"
 Your content here.
 ```
 
+#### Astro
+
+```bash
+pnpm add @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme
+```
+
+**1. Create `src/lib/docs.config.ts`**
+
+```ts
+import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/astro-theme";
+
+export default defineDocs({
+  entry: "docs",
+  contentDir: "docs",
+  theme: fumadocs(),
+  nav: {
+    title: "My Docs",
+    url: "/docs",
+  },
+  metadata: {
+    titleTemplate: "%s – Docs",
+    description: "My documentation site",
+  },
+});
+```
+
+**2. Create `src/lib/docs.server.ts`**
+
+```ts
+import { createDocsServer } from "@farming-labs/astro/server";
+import config from "./docs.config";
+
+const contentFiles = import.meta.glob("/docs/**/*.{md,mdx}", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
+
+export const { load, GET, POST } = createDocsServer({
+  ...config,
+  _preloadedContent: contentFiles,
+});
+```
+
+**3. Create page routes**
+
+`src/pages/docs/[...slug].astro`:
+
+```astro
+---
+import DocsLayout from "@farming-labs/astro-theme/src/components/DocsLayout.astro";
+import DocsContent from "@farming-labs/astro-theme/src/components/DocsContent.astro";
+import config from "../../lib/docs.config";
+import { load } from "../../lib/docs.server";
+import "@farming-labs/astro-theme/css";
+
+const data = await load(Astro.url.pathname);
+---
+
+<html lang="en">
+  <head><title>{data.title} – Docs</title></head>
+  <body>
+    <DocsLayout tree={data.tree} config={config}>
+      <DocsContent data={data} config={config} />
+    </DocsLayout>
+  </body>
+</html>
+```
+
+**4. Create API route**
+
+`src/pages/api/docs.ts`:
+
+```ts
+import type { APIRoute } from "astro";
+import { GET as docsGET, POST as docsPOST } from "../../lib/docs.server";
+
+export const GET: APIRoute = async ({ request }) => docsGET({ request });
+export const POST: APIRoute = async ({ request }) => docsPOST({ request });
+```
+
+**5. Enable SSR in `astro.config.mjs`**
+
+```js
+import { defineConfig } from "astro/config";
+export default defineConfig({ output: "server" });
+```
+
+**6. Write docs**
+
+Create markdown files under `docs/`:
+
+```
+docs/
+  page.md               # /docs
+  installation/
+    page.md             # /docs/installation
+  getting-started/
+    page.md             # /docs/getting-started
+```
+
+#### Nuxt
+
+```bash
+pnpm add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme
+```
+
+**1. Create `docs.config.ts`**
+
+```ts
+import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
+
+export default defineDocs({
+  entry: "docs",
+  contentDir: "docs",
+  theme: fumadocs(),
+  nav: {
+    title: "My Docs",
+    url: "/docs",
+  },
+  metadata: {
+    titleTemplate: "%s – Docs",
+    description: "My documentation site",
+  },
+});
+```
+
+**2. Configure `nuxt.config.ts`**
+
+```ts
+export default defineNuxtConfig({
+  css: ["@farming-labs/nuxt-theme/fumadocs/css"],
+  nitro: {
+    serverAssets: [{ baseName: "docs", dir: "../docs" }],
+  },
+});
+```
+
+**3. Create `server/api/docs.ts`**
+
+```ts
+import { defineDocsHandler } from "@farming-labs/nuxt/server";
+import config from "../../docs.config";
+
+export default defineDocsHandler(config, useStorage);
+```
+
+**4. Create `pages/docs/[...slug].vue`**
+
+```vue
+<script setup lang="ts">
+import { DocsLayout, DocsContent } from "@farming-labs/nuxt-theme";
+import config from "~/docs.config";
+
+const route = useRoute();
+const pathname = computed(() => route.path);
+
+const { data, error } = await useFetch("/api/docs", {
+  query: { pathname },
+  watch: [pathname],
+});
+
+if (error.value) {
+  throw createError({ statusCode: 404, statusMessage: "Page not found" });
+}
+</script>
+
+<template>
+  <div v-if="data" class="fd-docs-wrapper">
+    <DocsLayout :tree="data.tree" :config="config">
+      <DocsContent :data="data" :config="config" />
+    </DocsLayout>
+  </div>
+</template>
+```
+
+**5. Write docs**
+
+Create markdown files under `docs/`:
+
+```
+docs/
+  page.md               # /docs
+  installation/
+    page.md             # /docs/installation
+  getting-started/
+    page.md             # /docs/getting-started
+```
+
 ## Themes
 
 Three built-in theme variants, all based on Fumadocs:
@@ -243,6 +438,30 @@ import { fumadocs } from "@farming-labs/svelte-theme";
 @import "@farming-labs/svelte-theme/fumadocs/css";
 /* or */
 @import "@farming-labs/svelte-theme/pixel-border/css";
+```
+
+### Astro
+
+```ts
+import { fumadocs } from "@farming-labs/astro-theme";
+```
+
+```css
+@import "@farming-labs/astro-theme/css";
+/* or */
+@import "@farming-labs/astro-theme/pixel-border/css";
+/* or */
+@import "@farming-labs/astro-theme/darksharp/css";
+```
+
+### Nuxt
+
+```ts
+import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
+```
+
+```css
+@import "@farming-labs/nuxt-theme/fumadocs/css";
 ```
 
 ## Configuration
