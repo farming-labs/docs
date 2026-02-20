@@ -6,7 +6,7 @@ import { execSync, spawn } from "node:child_process";
 // Framework detection
 // ---------------------------------------------------------------------------
 
-export type Framework = "nextjs" | "sveltekit" | "astro";
+export type Framework = "nextjs" | "sveltekit" | "astro" | "nuxt";
 
 export function detectFramework(cwd: string): Framework | null {
   const pkgPath = path.join(cwd, "package.json");
@@ -21,6 +21,7 @@ export function detectFramework(cwd: string): Framework | null {
   if (allDeps["next"]) return "nextjs";
   if (allDeps["@sveltejs/kit"]) return "sveltekit";
   if (allDeps["astro"]) return "astro";
+  if (allDeps["nuxt"]) return "nuxt";
 
   return null;
 }
@@ -104,6 +105,8 @@ const GLOBAL_CSS_CANDIDATES = [
   "styles/global.css",
   "src/styles/globals.css",
   "src/styles/global.css",
+  "assets/css/main.css",
+  "assets/main.css",
 ];
 
 /**

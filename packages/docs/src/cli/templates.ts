@@ -11,8 +11,8 @@ export interface TemplateConfig {
   /** Project name from package.json */
   projectName: string;
   /** Framework being used */
-  framework: "nextjs" | "sveltekit" | "astro";
-  /** Whether to use path aliases (@/ for Next.js, $lib/ for SvelteKit) */
+  framework: "nextjs" | "sveltekit" | "astro" | "nuxt";
+  /** Whether to use path aliases (@/ for Next.js, $lib/ for SvelteKit, ~/ for Nuxt) */
   useAlias: boolean;
   /** Astro deployment adapter (only used when framework is "astro") */
   astroAdapter?: "vercel" | "netlify" | "node" | "cloudflare";
@@ -27,9 +27,11 @@ interface ThemeInfo {
   nextImport: string;
   svelteImport: string;
   astroImport: string;
+  nuxtImport: string;
   nextCssImport: string;
   svelteCssTheme: string;
   astroCssTheme: string;
+  nuxtCssTheme: string;
 }
 
 const THEME_INFO: Record<string, ThemeInfo> = {
@@ -38,27 +40,33 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     nextImport: "@farming-labs/theme",
     svelteImport: "@farming-labs/svelte-theme",
     astroImport: "@farming-labs/astro-theme",
+    nuxtImport: "@farming-labs/nuxt-theme",
     nextCssImport: "default",
     svelteCssTheme: "fumadocs",
     astroCssTheme: "fumadocs",
+    nuxtCssTheme: "fumadocs",
   },
   darksharp: {
     factory: "darksharp",
     nextImport: "@farming-labs/theme/darksharp",
     svelteImport: "@farming-labs/svelte-theme/darksharp",
     astroImport: "@farming-labs/astro-theme/darksharp",
+    nuxtImport: "@farming-labs/nuxt-theme/darksharp",
     nextCssImport: "darksharp",
     svelteCssTheme: "darksharp",
     astroCssTheme: "darksharp",
+    nuxtCssTheme: "darksharp",
   },
   "pixel-border": {
     factory: "pixelBorder",
     nextImport: "@farming-labs/theme/pixel-border",
     svelteImport: "@farming-labs/svelte-theme/pixel-border",
     astroImport: "@farming-labs/astro-theme/pixel-border",
+    nuxtImport: "@farming-labs/nuxt-theme/pixel-border",
     nextCssImport: "pixel-border",
     svelteCssTheme: "pixel-border",
     astroCssTheme: "pixel-border",
+    nuxtCssTheme: "pixel-border",
   },
 };
 
@@ -1165,4 +1173,349 @@ pnpm build
 
 Deploy to Vercel, Netlify, or any Node.js hosting platform.
 `;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Nuxt templates
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function nuxtDocsConfigTemplate(cfg: TemplateConfig): string {
+  const t = getThemeInfo(cfg.theme);
+  return `\
+import { defineDocs } from "@farming-labs/docs";
+import { ${t.factory} } from "${t.nuxtImport}";
+
+export default defineDocs({
+  entry: "${cfg.entry}",
+  contentDir: "${cfg.entry}",
+  theme: ${t.factory}({
+    ui: {
+      colors: { primary: "#6366f1" },
+    },
+  }),
+
+  nav: {
+    title: "${cfg.projectName}",
+    url: "/${cfg.entry}",
+  },
+
+  breadcrumb: { enabled: true },
+
+  metadata: {
+    titleTemplate: "%s – ${cfg.projectName}",
+    description: "Documentation for ${cfg.projectName}",
+  },
+});
+`;
+}
+
+export function nuxtDocsServerTemplate(cfg: TemplateConfig): string {
+  const contentDirName = cfg.entry ?? "docs";
+  return `\
+import { createDocsServer } from "@farming-labs/nuxt/server";
+import config from "../../docs.config";
+
+const contentFiles = import.meta.glob("/${contentDirName}/**/*.{md,mdx}", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
+
+export const docsServer = createDocsServer({
+  ...config,
+  _preloadedContent: contentFiles,
+});
+`;
+}
+
+export function nuxtServerApiDocsGetTemplate(): string {
+  return `\
+import { getRequestURL } from "h3";
+import { docsServer } from "../utils/docs-server";
+
+export default defineEventHandler((event) => {
+  const url = getRequestURL(event);
+  const request = new Request(url.href, {
+    method: event.method,
+    headers: event.headers,
+  });
+  return docsServer.GET({ request });
+});
+`;
+}
+
+export function nuxtServerApiDocsPostTemplate(): string {
+  return `\
+import { getRequestURL, readRawBody } from "h3";
+import { docsServer } from "../utils/docs-server";
+
+export default defineEventHandler(async (event) => {
+  const url = getRequestURL(event);
+  const body = await readRawBody(event);
+  const request = new Request(url.href, {
+    method: "POST",
+    headers: event.headers,
+    body: body ?? undefined,
+  });
+  return docsServer.POST({ request });
+});
+`;
+}
+
+export function nuxtServerApiDocsLoadTemplate(): string {
+  return `\
+import { getQuery } from "h3";
+import { docsServer } from "../../utils/docs-server";
+
+export default defineEventHandler(async (event) => {
+  const query = getQuery(event);
+  const pathname = (query.pathname as string) ?? "/docs";
+  return docsServer.load(pathname);
+});
+`;
+}
+
+export function nuxtDocsPageTemplate(cfg: TemplateConfig): string {
+  const configImport = cfg.useAlias ? "~/docs.config" : "../../docs.config";
+  return `\
+<script setup lang="ts">
+import { DocsLayout, DocsContent } from "@farming-labs/nuxt-theme";
+import config from "${configImport}";
+
+const route = useRoute();
+const pathname = computed(() => route.path);
+
+const { data, error } = await useAsyncData(\`docs-\${pathname.value}\`, () =>
+  $fetch("/api/docs/load", {
+    query: { pathname: pathname.value },
+  })
+);
+
+if (error.value) {
+  throw createError({
+    statusCode: 404,
+    statusMessage: "Page not found",
+  });
+}
+</script>
+
+<template>
+  <div v-if="data" class="fd-docs-wrapper">
+    <DocsLayout :tree="data.tree" :config="config">
+      <DocsContent :data="data" :config="config" />
+    </DocsLayout>
+  </div>
+</template>
+`;
+}
+
+export function nuxtConfigTemplate(cfg: TemplateConfig): string {
+  const t = getThemeInfo(cfg.theme);
+  return `\
+export default defineNuxtConfig({
+  compatibilityDate: "2024-11-01",
+
+  css: ["@farming-labs/nuxt-theme/${t.nuxtCssTheme}/css"],
+
+  vite: {
+    optimizeDeps: {
+      include: ["@farming-labs/docs", "@farming-labs/nuxt", "@farming-labs/nuxt-theme"],
+    },
+  },
+
+  nitro: {
+    moduleSideEffects: ["@farming-labs/nuxt/server"],
+  },
+});
+`;
+}
+
+export function nuxtWelcomePageTemplate(cfg: TemplateConfig): string {
+  return `\
+---
+order: 1
+title: Documentation
+description: Welcome to ${cfg.projectName} documentation
+icon: book
+---
+
+# Welcome to ${cfg.projectName}
+
+Get started with our documentation. Browse the pages on the left to learn more.
+
+## Overview
+
+This documentation was generated by \`@farming-labs/docs\`. Edit the markdown files in \`${cfg.entry}/\` to customize.
+
+## Features
+
+- **Markdown Support** — Write docs with standard Markdown
+- **Syntax Highlighting** — Code blocks with automatic highlighting
+- **Dark Mode** — Built-in theme switching
+- **Search** — Full-text search across all pages (⌘K)
+- **Responsive** — Works on any screen size
+
+---
+
+## Next Steps
+
+Start by reading the [Installation](/${cfg.entry}/installation) guide, then follow the [Quickstart](/${cfg.entry}/quickstart) to build something.
+`;
+}
+
+export function nuxtInstallationPageTemplate(cfg: TemplateConfig): string {
+  const t = getThemeInfo(cfg.theme);
+  return `\
+---
+order: 3
+title: Installation
+description: How to install and set up ${cfg.projectName}
+icon: terminal
+---
+
+# Installation
+
+Follow these steps to install and configure ${cfg.projectName}.
+
+## Prerequisites
+
+- Node.js 18+
+- A package manager (pnpm, npm, or yarn)
+
+## Install Dependencies
+
+\`\`\`bash
+pnpm add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme
+\`\`\`
+
+## Configuration
+
+Your project includes a \`docs.config.ts\` at the root:
+
+\`\`\`ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+import { ${t.factory} } from "${t.nuxtImport}";
+
+export default defineDocs({
+  entry: "${cfg.entry}",
+  contentDir: "${cfg.entry}",
+  theme: ${t.factory}({
+    ui: { colors: { primary: "#6366f1" } },
+  }),
+});
+\`\`\`
+
+## Project Structure
+
+\`\`\`
+${cfg.entry}/                   # Markdown content
+  page.md
+  installation/page.md
+  quickstart/page.md
+server/
+  utils/docs-server.ts          # createDocsServer + preloaded content
+  api/docs/
+    load.get.ts                 # Page data API
+    docs.get.ts                 # Search API
+    docs.post.ts                # AI chat API
+pages/
+  ${cfg.entry}/[[...slug]].vue   # Docs catch-all page
+docs.config.ts
+nuxt.config.ts
+\`\`\`
+
+## What's Next?
+
+Head to the [Quickstart](/${cfg.entry}/quickstart) guide to start writing your first page.
+`;
+}
+
+export function nuxtQuickstartPageTemplate(cfg: TemplateConfig): string {
+  const t = getThemeInfo(cfg.theme);
+  return `\
+---
+order: 2
+title: Quickstart
+description: Get up and running in minutes
+icon: rocket
+---
+
+# Quickstart
+
+This guide walks you through creating your first documentation page.
+
+## Creating a Page
+
+Create a new folder under \`${cfg.entry}/\` with a \`page.md\` file:
+
+\`\`\`bash
+mkdir -p ${cfg.entry}/my-page
+\`\`\`
+
+Then create \`${cfg.entry}/my-page/page.md\`:
+
+\`\`\`md
+---
+title: "My Page"
+description: "A custom documentation page"
+---
+
+# My Page
+
+Write your content here using **Markdown**.
+\`\`\`
+
+Your page is now available at \`/${cfg.entry}/my-page\`.
+
+## Customizing the Theme
+
+Edit \`docs.config.ts\` to change colors and typography:
+
+\`\`\`ts
+theme: ${t.factory}({
+  ui: {
+    colors: { primary: "#22c55e" },
+  },
+}),
+\`\`\`
+
+## Deploying
+
+Build your docs for production:
+
+\`\`\`bash
+pnpm build
+\`\`\`
+
+Deploy to Vercel, Netlify, or any Node.js hosting platform.
+`;
+}
+
+export function nuxtGlobalCssTemplate(theme: string): string {
+  return `\
+@import "@farming-labs/nuxt-theme/${theme}/css";
+`;
+}
+
+export function nuxtCssImportLine(theme: string): string {
+  return `@import "@farming-labs/nuxt-theme/${theme}/css";`;
+}
+
+export function injectNuxtCssImport(
+  existingContent: string,
+  theme: string,
+): string | null {
+  const importLine = nuxtCssImportLine(theme);
+  if (existingContent.includes(importLine)) return null;
+  const lines = existingContent.split("\n");
+  const lastImportIdx = lines.reduce(
+    (acc, l, i) => (l.trimStart().startsWith("@import") ? i : acc),
+    -1,
+  );
+  if (lastImportIdx >= 0) {
+    lines.splice(lastImportIdx + 1, 0, importLine);
+  } else {
+    lines.unshift(importLine);
+  }
+  return lines.join("\n");
 }
