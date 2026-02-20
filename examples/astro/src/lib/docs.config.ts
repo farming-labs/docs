@@ -1,10 +1,10 @@
 import { defineDocs } from "@farming-labs/docs";
-import { pixelBorder } from "@farming-labs/astro-theme/pixel-border";
+import { colorful } from "@farming-labs/astro-theme/colorful";
 
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: pixelBorder({
+  theme: colorful({
     ui: {
       colors: {
         primary: "oklch(0.985 0.001 106.423)",

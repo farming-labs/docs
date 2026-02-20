@@ -477,30 +477,35 @@ code, kbd, pre, samp {
   border-left-color: var(--color-fd-primary);
 }
 
-/* ─── Directional TOC thumb ──────────────────────────────────────────── */
+/* ─── Clerk TOC (tree-line style) ────────────────────────────────────── */
 
-.fd-toc-thumb-container {
-  position: relative;
+.fd-toc-clerk {
+  border-left: none !important;
 }
 
-.fd-toc-thumb {
-  position: absolute;
-  left: 0;
-  width: 2px;
-  background: var(--color-fd-primary);
-  border-radius: 1px;
-  transform: translateY(var(--fd-top, 0));
-  height: var(--fd-height, 0);
-  transition: transform 0.2s ease, height 0.2s ease;
-  pointer-events: none;
+.fd-toc-clerk .fd-toc-link {
+  display: block;
+  border-left: none;
+  margin-left: 0;
+  color: var(--color-fd-muted-foreground);
+  text-decoration: none;
+  transition: color 0.15s;
 }
 
-.fd-toc-directional .fd-toc-link {
-  border-left: 2px solid transparent;
+.fd-toc-clerk .fd-toc-link:hover {
+  color: var(--color-fd-foreground);
 }
 
-.fd-toc-directional .fd-toc-link-active {
-  border-left-color: transparent;
+.fd-toc-clerk .fd-toc-link[data-active="true"] {
+  color: var(--color-fd-primary);
+}
+
+.fd-toc-clerk-mask {
+  overflow: hidden;
+}
+
+.fd-toc-clerk-thumb {
+  width: 100%;
 }
 
 @media (max-width: 1279px) {

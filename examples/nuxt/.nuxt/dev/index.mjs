@@ -7,7 +7,7 @@ import { parentPort, threadId } from 'node:worker_threads';
 import { escapeHtml } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/@vue+shared@3.5.28/node_modules/@vue/shared/dist/shared.cjs.js';
 import { defineDocsHandler } from 'file:///Users/mac/oss/docs_/packages/nuxt/dist/server.js';
 import { defineDocs } from 'file:///Users/mac/oss/docs_/packages/docs/dist/index.mjs';
-import { fumadocs } from 'file:///Users/mac/oss/docs_/packages/nuxt-theme/src/themes/default.js';
+import { colorful } from 'file:///Users/mac/oss/docs_/packages/nuxt-theme/src/themes/colorful.js';
 import { createRenderer, getRequestDependencies, getPreloadLinks, getPrefetchLinks } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/vue-bundle-renderer@2.2.0/node_modules/vue-bundle-renderer/dist/runtime.mjs';
 import { parseURL, withoutBase, joinURL, getQuery, withQuery, withTrailingSlash, decodePath, withLeadingSlash, withoutTrailingSlash, joinRelativeURL } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/ufo@1.6.3/node_modules/ufo/dist/index.mjs';
 import { renderToString } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/vue@3.5.28_typescript@5.9.3/node_modules/vue/server-renderer/index.mjs';
@@ -2937,7 +2937,7 @@ const styles$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
 const config = defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: fumadocs({
+  theme: colorful({
     ui: {
       colors: {
         primary: "oklch(0.985 0.001 106.423)",

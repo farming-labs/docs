@@ -1,7 +1,7 @@
 export default defineNuxtConfig({
   compatibilityDate: "2024-11-01",
 
-  css: ["@farming-labs/nuxt-theme/fumadocs/css"],
+  css: ["@farming-labs/nuxt-theme/colorful/css"],
 
   vite: {
     optimizeDeps: {

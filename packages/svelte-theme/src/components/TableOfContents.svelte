@@ -2,67 +2,85 @@
   import { onMount, onDestroy, tick } from "svelte";
 
   let { items = [], tocStyle = "default" } = $props();
-  let activeId = $state("");
-  let activeIds = $state([]);
+  let activeIds = $state(new Set());
+  let observer;
+  let listEl;
+
+  let svgPath = $state("");
+  let svgWidth = $state(0);
+  let svgHeight = $state(0);
   let thumbTop = $state(0);
   let thumbHeight = $state(0);
-  let tocListEl;
-  let observer;
 
   const isDirectional = $derived(tocStyle === "directional");
 
-  function updateThumb() {
-    if (!isDirectional || !tocListEl || activeIds.length === 0) {
+  function getItemOffset(depth) {
+    if (depth <= 2) return 14;
+    if (depth === 3) return 26;
+    return 36;
+  }
+
+  function getLineOffset(depth) {
+    return depth >= 3 ? 10 : 0;
+  }
+
+  function buildSvgPath() {
+    if (!listEl) return;
+    const links = listEl.querySelectorAll(".fd-toc-clerk-link");
+    if (links.length === 0) { svgPath = ""; return; }
+
+    let d = [];
+    let w = 0, h = 0;
+
+    links.forEach((el, i) => {
+      if (i >= items.length) return;
+      const depth = items[i].depth;
+      const x = getLineOffset(depth) + 1;
+      const styles = getComputedStyle(el);
+      const top = el.offsetTop + parseFloat(styles.paddingTop);
+      const bottom = el.offsetTop + el.clientHeight - parseFloat(styles.paddingBottom);
+      w = Math.max(x, w);
+      h = Math.max(h, bottom);
+      d.push(`${i === 0 ? "M" : "L"}${x} ${top}`);
+      d.push(`L${x} ${bottom}`);
+    });
+
+    svgPath = d.join(" ");
+    svgWidth = w + 1;
+    svgHeight = h;
+  }
+
+  function calcThumb() {
+    if (!listEl || activeIds.size === 0) {
       thumbTop = 0;
       thumbHeight = 0;
       return;
     }
 
-    let upper = Number.MAX_VALUE;
-    let lower = 0;
-
+    let upper = Infinity, lower = 0;
     for (const id of activeIds) {
-      const link = tocListEl.querySelector(`a[href="#${id}"]`);
-      if (!link) continue;
-      const styles = getComputedStyle(link);
-      upper = Math.min(upper, link.offsetTop + parseFloat(styles.paddingTop));
-      lower = Math.max(
-        lower,
-        link.offsetTop + link.clientHeight - parseFloat(styles.paddingBottom)
-      );
+      const el = listEl.querySelector(`a[href="#${id}"]`);
+      if (!el) continue;
+      const styles = getComputedStyle(el);
+      upper = Math.min(upper, el.offsetTop + parseFloat(styles.paddingTop));
+      lower = Math.max(lower, el.offsetTop + el.clientHeight - parseFloat(styles.paddingBottom));
     }
 
-    if (upper === Number.MAX_VALUE) {
+    if (upper === Infinity) {
       thumbTop = 0;
       thumbHeight = 0;
-    } else {
-      thumbTop = upper;
-      thumbHeight = lower - upper;
+      return;
     }
+
+    thumbTop = upper;
+    thumbHeight = lower - upper;
   }
 
-  onMount(() => {
-    observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            activeId = entry.target.id;
-            activeIds = [entry.target.id];
-          }
-        }
-        tick().then(updateThumb);
-      },
-      { rootMargin: "-80px 0px -80% 0px" }
-    );
-
-    observeHeadings();
-  });
-
-  $effect(() => {
-    void items;
-    observeHeadings();
-    tick().then(updateThumb);
-  });
+  function maskSvgUrl() {
+    if (!svgPath) return "none";
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgWidth} ${svgHeight}"><path d="${svgPath}" stroke="black" stroke-width="1" fill="none"/></svg>`;
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+  }
 
   function observeHeadings() {
     if (!observer) return;
@@ -72,6 +90,80 @@
       if (el) observer.observe(el);
     }
   }
+
+  function isActive(item) {
+    return activeIds.has(item.url.slice(1));
+  }
+
+  function hasDiagonal(index) {
+    if (index === 0) return false;
+    return items[index - 1].depth !== items[index].depth;
+  }
+
+  function getDiagonalCoords(index) {
+    const upperOffset = getLineOffset(items[index - 1].depth);
+    const currentOffset = getLineOffset(items[index].depth);
+    return { upperOffset, currentOffset };
+  }
+
+  function verticalLineStyle(item, index) {
+    const prevDepth = index > 0 ? items[index - 1].depth : item.depth;
+    const nextDepth = index < items.length - 1 ? items[index + 1].depth : item.depth;
+    return {
+      position: "absolute",
+      left: `${getLineOffset(item.depth)}px`,
+      top: prevDepth !== item.depth ? "6px" : "0",
+      bottom: nextDepth !== item.depth ? "6px" : "0",
+      width: "1px",
+      background: "hsla(0, 0%, 50%, 0.1)",
+    };
+  }
+
+  function styleObj(obj) {
+    return Object.entries(obj).map(([k, v]) => `${k}:${v}`).join(";");
+  }
+
+  onMount(() => {
+    observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            activeIds.add(entry.target.id);
+          } else {
+            activeIds.delete(entry.target.id);
+          }
+        }
+        activeIds = new Set(activeIds);
+      },
+      { rootMargin: "-80px 0px -80% 0px" }
+    );
+    observeHeadings();
+
+    if (isDirectional) {
+      tick().then(() => {
+        buildSvgPath();
+        calcThumb();
+      });
+    }
+  });
+
+  $effect(() => {
+    void items;
+    observeHeadings();
+    if (isDirectional) {
+      tick().then(() => {
+        buildSvgPath();
+        calcThumb();
+      });
+    }
+  });
+
+  $effect(() => {
+    void activeIds;
+    if (isDirectional) {
+      calcThumb();
+    }
+  });
 
   onDestroy(() => {
     observer?.disconnect();
@@ -89,28 +181,56 @@
   </h3>
   {#if items.length === 0}
     <p class="fd-toc-empty">No Headings</p>
+  {:else if !isDirectional}
+    <ul class="fd-toc-list">
+      {#each items as item}
+        <li class="fd-toc-item">
+          <a
+            href={item.url}
+            class="fd-toc-link"
+            class:fd-toc-link-active={isActive(item)}
+            style:padding-left="{12 + (item.depth - 2) * 12}px"
+          >
+            {item.title}
+          </a>
+        </li>
+      {/each}
+    </ul>
   {:else}
-    <div class="fd-toc-thumb-container">
-      {#if isDirectional}
+    <ul class="fd-toc-list fd-toc-clerk" style="position:relative;" bind:this={listEl}>
+      {#each items as item, index}
+        <li class="fd-toc-item">
+          <a
+            href={item.url}
+            class="fd-toc-link fd-toc-clerk-link"
+            data-active={isActive(item) ? "true" : undefined}
+            style="position:relative; padding-left:{getItemOffset(item.depth)}px; padding-top:6px; padding-bottom:6px; font-size:{item.depth <= 2 ? '14' : '13'}px; overflow-wrap:anywhere;"
+          >
+            <div style={styleObj(verticalLineStyle(item, index))}></div>
+
+            {#if hasDiagonal(index)}
+              {@const d = getDiagonalCoords(index)}
+              <svg viewBox="0 0 16 16" width="16" height="16" style="position:absolute; top:-6px; left:0;">
+                <line x1={d.upperOffset} y1="0" x2={d.currentOffset} y2="12" stroke="hsla(0, 0%, 50%, 0.1)" stroke-width="1" />
+              </svg>
+            {/if}
+
+            {item.title}
+          </a>
+        </li>
+      {/each}
+
+      {#if svgPath}
         <div
-          class="fd-toc-thumb"
-          style="--fd-top: {thumbTop}px; --fd-height: {thumbHeight}px;"
-        ></div>
+          class="fd-toc-clerk-mask"
+          style="position:absolute; left:0; top:0; width:{svgWidth}px; height:{svgHeight}px; pointer-events:none; mask-image:{maskSvgUrl()}; -webkit-mask-image:{maskSvgUrl()}; mask-repeat:no-repeat; -webkit-mask-repeat:no-repeat;"
+        >
+          <div
+            class="fd-toc-clerk-thumb"
+            style="margin-top:{thumbTop}px; height:{thumbHeight}px; background:var(--color-fd-primary); transition:all 0.15s; will-change:height,margin-top;"
+          ></div>
+        </div>
       {/if}
-      <ul class="fd-toc-list" bind:this={tocListEl}>
-        {#each items as item}
-          <li class="fd-toc-item">
-            <a
-              href={item.url}
-              class="fd-toc-link"
-              class:fd-toc-link-active={activeId === item.url.slice(1)}
-              style:padding-left="{12 + (item.depth - 2) * 12}px"
-            >
-              {item.title}
-            </a>
-          </li>
-        {/each}
-      </ul>
-    </div>
+    </ul>
   {/if}
 </div>

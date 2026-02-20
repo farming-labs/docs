@@ -1,10 +1,10 @@
 import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
+import { colorful } from "@farming-labs/nuxt-theme/colorful";
 
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: fumadocs({
+  theme: colorful({
     ui: {
       colors: {
         primary: "oklch(0.985 0.001 106.423)",

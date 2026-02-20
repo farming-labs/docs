@@ -167,8 +167,8 @@ export function DocsPageClient({
   return (
     <DocsPage
       toc={toc}
-      tableOfContent={{ enabled: tocEnabled }}
-      tableOfContentPopover={{ enabled: tocEnabled }}
+      tableOfContent={{ enabled: tocEnabled, style: "clerk" }}
+      tableOfContentPopover={{ enabled: tocEnabled, style: "clerk" }}
       breadcrumb={{ enabled: false }}
     >
       {breadcrumbEnabled && <PathBreadcrumb pathname={pathname} entry={entry} />}

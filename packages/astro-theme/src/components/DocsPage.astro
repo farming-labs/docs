@@ -86,7 +86,7 @@ const parentUrl = segments.length >= 2
 
   {tocEnabled && (
     <aside class="fd-toc">
-      <div class={`fd-toc-inner ${tocStyle === "directional" ? "fd-toc-directional" : ""}`}>
+      <div class={`fd-toc-inner ${tocStyle === "directional" ? "fd-toc-directional" : ""}`} data-toc-style={tocStyle}>
         <h3 class="fd-toc-title">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <line x1="3" y1="6" x2="21" y2="6" />
@@ -95,57 +95,204 @@ const parentUrl = segments.length >= 2
           </svg>
           On this page
         </h3>
-        <div class="fd-toc-thumb-container">
-          {tocStyle === "directional" && <div class="fd-toc-thumb" id="fd-toc-thumb" />}
-          <ul class="fd-toc-list" id="fd-toc-list"></ul>
-        </div>
+        <ul class={`fd-toc-list ${tocStyle === "directional" ? "fd-toc-clerk" : ""}`} id="fd-toc-list" style={tocStyle === "directional" ? "position:relative" : ""}></ul>
       </div>
     </aside>
   )}
 </div>
 
 <script>
+  function getItemOffset(depth) {
+    if (depth <= 2) return 14;
+    if (depth === 3) return 26;
+    return 36;
+  }
+
+  function getLineOffset(depth) {
+    return depth >= 3 ? 10 : 0;
+  }
+
   function initDocsPage() {
-    // Scan headings for TOC
     const container = document.querySelector('.fd-page-body');
     const tocList = document.getElementById('fd-toc-list');
     if (container && tocList) {
       const headings = container.querySelectorAll('h2[id], h3[id], h4[id]');
       tocList.innerHTML = '';
+      const isClerk = tocList.closest('[data-toc-style]')?.getAttribute('data-toc-style') === 'directional';
+
+      const tocItems = [];
       headings.forEach(el => {
-        const depth = parseInt(el.tagName[1], 10);
+        tocItems.push({
+          id: el.id,
+          title: el.textContent?.replace(/^#\s*/, '') || '',
+          depth: parseInt(el.tagName[1], 10),
+        });
+      });
+
+      tocItems.forEach((item, index) => {
         const li = document.createElement('li');
         li.className = 'fd-toc-item';
         const a = document.createElement('a');
-        a.className = 'fd-toc-link';
-        a.href = `#${el.id}`;
-        a.textContent = el.textContent?.replace(/^#\s*/, '') || '';
-        a.style.paddingLeft = `${12 + (depth - 2) * 12}px`;
+        a.href = `#${item.id}`;
+
+        if (isClerk) {
+          a.className = 'fd-toc-link fd-toc-clerk-link';
+          a.style.position = 'relative';
+          a.style.paddingLeft = `${getItemOffset(item.depth)}px`;
+          a.style.paddingTop = '6px';
+          a.style.paddingBottom = '6px';
+          a.style.fontSize = item.depth <= 2 ? '14px' : '13px';
+          a.style.overflowWrap = 'anywhere';
+
+          const prevDepth = index > 0 ? tocItems[index - 1].depth : item.depth;
+          const nextDepth = index < tocItems.length - 1 ? tocItems[index + 1].depth : item.depth;
+          const lineDiv = document.createElement('div');
+          lineDiv.style.position = 'absolute';
+          lineDiv.style.left = `${getLineOffset(item.depth)}px`;
+          lineDiv.style.top = prevDepth !== item.depth ? '6px' : '0';
+          lineDiv.style.bottom = nextDepth !== item.depth ? '6px' : '0';
+          lineDiv.style.width = '1px';
+          lineDiv.style.background = 'hsla(0, 0%, 50%, 0.1)';
+          a.appendChild(lineDiv);
+
+          if (index > 0 && tocItems[index - 1].depth !== item.depth) {
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('viewBox', '0 0 16 16');
+            svg.setAttribute('width', '16');
+            svg.setAttribute('height', '16');
+            svg.style.position = 'absolute';
+            svg.style.top = '-6px';
+            svg.style.left = '0';
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', String(getLineOffset(tocItems[index - 1].depth)));
+            line.setAttribute('y1', '0');
+            line.setAttribute('x2', String(getLineOffset(item.depth)));
+            line.setAttribute('y2', '12');
+            line.setAttribute('stroke', 'hsla(0, 0%, 50%, 0.1)');
+            line.setAttribute('stroke-width', '1');
+            svg.appendChild(line);
+            a.appendChild(svg);
+          }
+
+          a.appendChild(document.createTextNode(item.title));
+        } else {
+          a.className = 'fd-toc-link';
+          a.style.paddingLeft = `${12 + (item.depth - 2) * 12}px`;
+          a.textContent = item.title;
+        }
+
         li.appendChild(a);
         tocList.appendChild(li);
       });
 
-      const thumb = document.getElementById('fd-toc-thumb');
+      let maskEl = null;
+      let thumbEl = null;
 
-      function updateThumb(activeId) {
-        if (!thumb || !tocList) return;
-        const link = tocList.querySelector(`a[href="#${activeId}"]`);
-        if (!link) { thumb.style.setProperty('--fd-height', '0'); return; }
-        const styles = getComputedStyle(link);
-        const top = link.offsetTop + parseFloat(styles.paddingTop);
-        const bottom = link.offsetTop + link.clientHeight - parseFloat(styles.paddingBottom);
-        thumb.style.setProperty('--fd-top', `${top}px`);
-        thumb.style.setProperty('--fd-height', `${bottom - top}px`);
+      if (isClerk) {
+        function buildSvgPath() {
+          const links = tocList.querySelectorAll('.fd-toc-clerk-link');
+          if (links.length === 0) return null;
+          const d = [];
+          let w = 0, h = 0;
+          links.forEach((el, i) => {
+            if (i >= tocItems.length) return;
+            const depth = tocItems[i].depth;
+            const x = getLineOffset(depth) + 1;
+            const styles = getComputedStyle(el);
+            const top = el.offsetTop + parseFloat(styles.paddingTop);
+            const bottom = el.offsetTop + el.clientHeight - parseFloat(styles.paddingBottom);
+            w = Math.max(x, w);
+            h = Math.max(h, bottom);
+            d.push(`${i === 0 ? "M" : "L"}${x} ${top}`);
+            d.push(`L${x} ${bottom}`);
+          });
+          return { path: d.join(" "), width: w + 1, height: h };
+        }
+
+        function updateThumb(activeSet) {
+          if (!thumbEl) return;
+          const links = tocList.querySelectorAll('.fd-toc-clerk-link');
+          if (activeSet.size === 0 || links.length === 0) {
+            thumbEl.style.marginTop = '0px';
+            thumbEl.style.height = '0px';
+            return;
+          }
+          let upper = Infinity, lower = 0;
+          for (const id of activeSet) {
+            const el = tocList.querySelector(`a[href="#${id}"]`);
+            if (!el) continue;
+            const styles = getComputedStyle(el);
+            upper = Math.min(upper, el.offsetTop + parseFloat(styles.paddingTop));
+            lower = Math.max(lower, el.offsetTop + el.clientHeight - parseFloat(styles.paddingBottom));
+          }
+          if (upper === Infinity) {
+            thumbEl.style.marginTop = '0px';
+            thumbEl.style.height = '0px';
+            return;
+          }
+          thumbEl.style.marginTop = `${upper}px`;
+          thumbEl.style.height = `${lower - upper}px`;
+        }
+
+        requestAnimationFrame(() => {
+          const svgData = buildSvgPath();
+          if (svgData) {
+            maskEl = document.createElement('div');
+            maskEl.className = 'fd-toc-clerk-mask';
+            maskEl.style.position = 'absolute';
+            maskEl.style.left = '0';
+            maskEl.style.top = '0';
+            maskEl.style.width = svgData.width + 'px';
+            maskEl.style.height = svgData.height + 'px';
+            maskEl.style.pointerEvents = 'none';
+            const maskSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgData.width} ${svgData.height}"><path d="${svgData.path}" stroke="black" stroke-width="1" fill="none"/></svg>`;
+            const maskUrl = `url("data:image/svg+xml,${encodeURIComponent(maskSvg)}")`;
+            maskEl.style.maskImage = maskUrl;
+            maskEl.style.webkitMaskImage = maskUrl;
+            maskEl.style.maskRepeat = 'no-repeat';
+            maskEl.style.webkitMaskRepeat = 'no-repeat';
+
+            thumbEl = document.createElement('div');
+            thumbEl.className = 'fd-toc-clerk-thumb';
+            thumbEl.style.background = 'var(--color-fd-primary)';
+            thumbEl.style.transition = 'all 0.15s';
+            thumbEl.style.willChange = 'height, margin-top';
+            thumbEl.style.marginTop = '0px';
+            thumbEl.style.height = '0px';
+            maskEl.appendChild(thumbEl);
+            tocList.appendChild(maskEl);
+          }
+        });
+
+        var clerkActiveSet = new Set();
       }
+
+      const activeSet = new Set();
 
       const observer = new IntersectionObserver((entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
-            tocList.querySelectorAll('.fd-toc-link').forEach(link => {
-              link.classList.toggle('fd-toc-link-active', link.getAttribute('href') === `#${entry.target.id}`);
-            });
-            updateThumb(entry.target.id);
+            activeSet.add(entry.target.id);
+          } else {
+            activeSet.delete(entry.target.id);
           }
+        }
+
+        if (isClerk) {
+          tocList.querySelectorAll('.fd-toc-clerk-link').forEach(link => {
+            const id = link.getAttribute('href')?.slice(1);
+            if (activeSet.has(id)) {
+              link.setAttribute('data-active', 'true');
+            } else {
+              link.removeAttribute('data-active');
+            }
+          });
+          if (typeof updateThumb === 'function') updateThumb(activeSet);
+        } else {
+          tocList.querySelectorAll('.fd-toc-link').forEach(link => {
+            const id = link.getAttribute('href')?.slice(1);
+            link.classList.toggle('fd-toc-link-active', activeSet.has(id));
+          });
         }
       }, { rootMargin: '-80px 0px -80% 0px' });
 

@@ -34,7 +34,7 @@ export default defineDocs({
   theme: colorful({
     ui: {
       components: { Callout: { variant: "outline" } },
-      layout: { toc: { enabled: true, depth: 3 } },
+      layout: { toc: { enabled: true, depth: 3 , style: "directional" } },
       sidebar: { style: "bordered" },
       typography: {
         font: {
@@ -85,7 +85,6 @@ export default defineDocs({
     ),
     url: "/docs",
   },
-
   components: {
     MyNote,
   },
@@ -142,7 +141,7 @@ export default defineDocs({
     description: "Awesome docs powered by Fumadocs preset",
   },
   themeToggle: {
-    enabled: false,
+    enabled: true,
     default: "dark",
   },
   og: {

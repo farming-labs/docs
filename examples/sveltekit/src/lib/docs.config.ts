@@ -1,10 +1,10 @@
 import { defineDocs } from "@farming-labs/docs";
-import { fumadocs, pixelBorder } from "@farming-labs/svelte-theme";
+import { colorful } from "@farming-labs/svelte-theme/colorful";
 
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: fumadocs({
+  theme: colorful({
     ui: {
       colors: {
         primary: "oklch(0.985 0.001 106.423)",
