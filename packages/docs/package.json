@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/docs",
-  "version": "0.0.2-beta.16",
+  "version": "0.0.2-beta.17",
   "description": "Modern, flexible MDX-based docs framework — core types, config, and CLI",
   "type": "module",
   "main": "./dist/index.mjs",
