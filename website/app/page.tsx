@@ -54,8 +54,8 @@ function HeroSection() {
   ];
 
   return (
-    <section className="relative min-h-screen flex items-end overflow-hidden">
-      <div className="absolute top-14 left-0 right-0 z-[999] h-px bg-white/[8%]" />
+    <section className="relative min-h-screen flex items-end overflow-y-hidden">
+      <div className="absolute w-full top-14 right-0 z-[999] h-px bg-white/[8%]" /> 
       <div className="absolute bottom-[70px] sm:bottom-16 left-0 right-0 z-[999] h-px bg-white/[8%]" />
       <AnimatedBackground />
       <div className="relative z-[999] w-full pb-12 sm:pb-16 pt-24 px-5 sm:px-0">
@@ -78,13 +78,13 @@ function HeroSection() {
               <div className="inline-block">
                 <span className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
-                  v0.0.2-beta.2
+                  v0.0.2-beta.5
                 </span>
               </div>
               <div className="inline-block">
                 <span className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
-                  v0.0.2-beta.3
+                  v0.0.2-beta.10
                 </span>
               </div>
             </div>
@@ -1082,7 +1082,7 @@ function FooterSection() {
 
 export default function Home() {
   return (
-    <div className="min-h-screen w-full overflow-x-hidden relative bg-black">
+    <div className="min-h-screen w-full overflow-y-hidden relative bg-black">
       <div className="pointer-events-none fixed inset-0 z-[999] hidden lg:block">
         <div className="mx-auto max-w-[90%] h-full relative">
           <div className="absolute left-0 top-0 h-full w-px bg-white/[8%]" />
