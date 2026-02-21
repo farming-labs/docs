@@ -485,8 +485,11 @@ function buildInitialState(presetKey?: PresetKey): ThemeState {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-4">
-      <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-white/30 mb-2.5 select-none">
-        {title}
+      <div className="flex items-center gap-2.5 mb-2.5 select-none">
+        <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-white/30 shrink-0">
+          {title}
+        </span>
+        <div className="flex-1 h-px bg-white/[6%]" />
       </div>
       {children}
     </div>
@@ -996,7 +999,7 @@ export function ThemeCustomizer() {
             </span>
           </div>
           {/* Content */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden  min-h-0">
             {activeView === "customize" ? (
               <div className="px-4 py-3">
                 {/* Presets */}
@@ -1009,7 +1012,7 @@ export function ThemeCustomizer() {
                         <button
                           key={key}
                           onClick={() => setPreset(key)}
-                          className="text-left px-3 py-2.5 rounded-lg border transition-all cursor-pointer"
+                          className="text-left rounded-sm px-3 py-2.5 border border-white/[6%] transition-all cursor-pointer"
                           style={{
                             borderColor: active ? `${p.colors.primary}60` : "rgba(255,255,255,0.06)",
                             background: active ? `${p.colors.primary}08` : "transparent",
@@ -1038,7 +1041,7 @@ export function ThemeCustomizer() {
 
                 {/* Primary Color Quick Swatches */}
                 <Section title="Primary Color">
-                  <div className="flex flex-wrap gap-1 mb-2">
+                  <div className="flex flex-wrap mt-2 gap-1 mb-2">
                     {PRIMARY_SWATCHES.map((s) => (
                       <button
                         key={s.color}
