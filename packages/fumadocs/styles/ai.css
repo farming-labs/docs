@@ -730,6 +730,7 @@
 .fd-ai-fm-input-bar--open {
   bottom: 16px;
   left: 50%;
+  right: auto;
   transform: translateX(-50%);
   width: min(800px, calc(100vw - 32px));
 }

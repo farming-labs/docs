@@ -38,7 +38,9 @@ interface DocsPageClientProps {
   githubDirectory?: string;
   /** Map of pathname → formatted last-modified date string */
   lastModifiedMap?: Record<string, string>;
-  /** Frontmatter description to display below the page title */
+  /** Map of pathname → frontmatter description */
+  descriptionMap?: Record<string, string>;
+  /** Frontmatter description to display below the page title (overrides descriptionMap) */
   description?: string;
   children: ReactNode;
 }
@@ -130,12 +132,16 @@ export function DocsPageClient({
   githubBranch = "main",
   githubDirectory,
   lastModifiedMap,
+  descriptionMap,
   description,
   children,
 }: DocsPageClientProps) {
-  const fdTocStyle = tocStyle === "directional" ? "clerk" : "default";
+  const fdTocStyle = tocStyle === "directional" ? "clerk" : undefined;
   const [toc, setToc] = useState<TOCItem[]>([]);
   const pathname = usePathname();
+
+  const pageDescription = description
+    ?? descriptionMap?.[pathname.replace(/\/$/, "") || "/"];
 
   useEffect(() => {
     if (!tocEnabled) return;
@@ -156,6 +162,33 @@ export function DocsPageClient({
 
     return () => cancelAnimationFrame(timer);
   }, [tocEnabled, pathname]);
+
+  // Inject frontmatter description right below the first h1 on the page
+  useEffect(() => {
+    if (!pageDescription) return;
+
+    const timer = requestAnimationFrame(() => {
+      const container = document.getElementById("nd-page");
+      if (!container) return;
+
+      const existingDesc = container.querySelector(".fd-page-description");
+      if (existingDesc) existingDesc.remove();
+
+      const h1 = container.querySelector("h1");
+      if (!h1) return;
+
+      const descEl = document.createElement("p");
+      descEl.className = "fd-page-description";
+      descEl.textContent = pageDescription;
+      h1.insertAdjacentElement("afterend", descEl);
+    });
+
+    return () => {
+      cancelAnimationFrame(timer);
+      const desc = document.querySelector("#nd-page .fd-page-description");
+      if (desc) desc.remove();
+    };
+  }, [pageDescription, pathname]);
 
   const showActions = copyMarkdown || openDocs;
   const githubFileUrl = githubUrl
@@ -184,7 +217,6 @@ export function DocsPageClient({
           />
         </div>
       )}
-      {description && <p className="fd-page-description">{description}</p>}
       <DocsBody
         style={{ display: "flex", flexDirection: "column" }}
       >
