@@ -783,7 +783,7 @@ function ThemesSection() {
       name: "Colorful",
       description: "Faithful clone of the fumadocs default neutral theme",
       import: '@import "@farming-labs/theme/colorful/css";',
-      colors: ["#6366f1", "#f5f5f4", "#64748b", "#e5e7eb"],
+      colors: ["#FFFF00", "#f5f5f4", "#64748b", "#e5e7eb"],
     },
   ];
 
@@ -851,20 +851,20 @@ function ThemesSection() {
         </div>
 
         <div className="mt-10 flex items-center gap-4">
-          <Link
-            href="/themes"
-            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[3%] px-5 py-2.5 text-sm font-medium text-white/80 transition-all hover:bg-white/[6%] hover:text-white hover:border-white/20 hover:no-underline"
+         <a href="/themes" 
+          >
+          <span
+             
+            className="inline-flex items-center gap-2 rounded-none uppercase font-mono text-xs border border-white/10 bg-white/[3%] px-5 py-2.5 cursor-pointer text-white/80 transition-all hover:bg-white/[6%] hover:text-white hover:border-white/20 hover:no-underline"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="13.5" cy="6.5" r="2.5" /><circle cx="17.5" cy="10.5" r="2.5" /><circle cx="8.5" cy="7.5" r="2.5" /><circle cx="6.5" cy="12.5" r="2.5" />
               <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
             </svg>
-            Theme Configurator
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-          <span className="text-xs text-white/30">
-            Live preview &amp; export CSS + config
+            expore themes
+            <ArrowRight className="w-3.5 h-3.5 -rotate-45 hover:rotate-0 transition-transform duration-300" />
           </span>
+          </a>
         </div>
       </div>
     </section>

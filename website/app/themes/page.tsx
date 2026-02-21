@@ -38,37 +38,28 @@ const themes = [
 
 export default function ThemesPage() {
   return (
-    <div className="min-h-dvh bg-black text-white" style={{ fontFamily: "var(--font-geist-sans, system-ui, sans-serif)" }}>
-      {/* Header */}
+    <div className="min-h-dvh relative bg-black text-white" style={{ fontFamily: "var(--font-geist-sans, system-ui, sans-serif)" }}>
+      <div className="pointer-events-none fixed inset-0 z-[999] hidden lg:block">
+        <div className="mx-auto max-w-[90%] h-full relative">
+          <div className="absolute left-0 top-0 h-full w-px bg-white/[8%]" />
+          <div className="absolute right-0 top-0 h-full w-px bg-white/[8%]" />
+        </div>
+      </div>
       <header className="border-b border-white/[6%] px-6 py-5">
-        <div className="mx-auto max-w-5xl flex items-center justify-between">
+        <div className="mx-auto max-w-[90%] mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight">Themes</h1>
+            <h1 className="text-lg uppercase font-mono tracking-wide">Themes</h1>
             <p className="text-[13px] text-white/40 mt-0.5">
               Pick a preset and customize it live on the docs.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="text-[13px] text-white/40 hover:text-white/70 transition-colors hover:no-underline"
-            >
-              Home
-            </Link>
-            <Link
-              href="/docs"
-              className="text-[13px] text-white/40 hover:text-white/70 transition-colors hover:no-underline"
-            >
-              Docs
-            </Link>
-          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-12">
+      <main className="overflow-x-hidden mx-auto max-w-[90%] mx-auto px-6 py-12">
         {/* Info */}
         <div className="mb-10 max-w-2xl">
-          <p className="text-[14px] text-white/50 leading-relaxed">
+          <p className="text-[13px] text-white/40 leading-relaxed">
             Each theme ships as a single CSS import and a factory function.
             Click <strong className="text-white/80">Try it live</strong> to
             open the docs with that theme applied and the customizer drawer
@@ -77,25 +68,24 @@ export default function ThemesPage() {
           </p>
         </div>
 
-        {/* Theme Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {themes.map((theme) => (
             <div
               key={theme.key}
-              className="group relative rounded-xl border border-white/[6%] bg-white/[2%] p-6 transition-all hover:border-white/[12%] hover:bg-white/[3%]"
+              className="group relative rounded-none border border-white/[6%] bg-white/[2%] p-6 transition-all hover:border-white/[12%] hover:bg-white/[3%]"
             >
               {/* Color swatches */}
               <div className="flex items-center gap-2 mb-4">
                 {theme.colors.map((c, i) => (
                   <div
                     key={i}
-                    className="size-4 rounded-[3px] border border-white/10"
+                    className="size-4 rounded-none border border-white/10"
                     style={{ backgroundColor: c }}
                   />
                 ))}
               </div>
 
-              <h2 className="text-[15px] font-semibold tracking-tight mb-1">
+              <h2 className="text-sm uppercase font-mono tracking-wide mb-1">
                 {theme.name}
               </h2>
               <p className="text-[12px] text-white/40 mb-4 leading-relaxed">
@@ -108,37 +98,20 @@ export default function ThemesPage() {
 
               <Link
                 href={`/docs?theme=${theme.key}`}
-                className="inline-flex items-center gap-2 text-[12px] font-medium px-4 py-2 rounded-lg border transition-all hover:no-underline"
+                className="inline-flex group items-center gap-2 text-[11px] font-mono px-4 py-2 rounded-none uppercase border transition-all hover:no-underline"
                 style={{
-                  borderColor: `${theme.accent}40`,
+                  borderColor: `${theme.accent}20`,
                   color: theme.accent,
-                  background: `${theme.accent}08`,
+                  background: `${theme.accent}04`,
                 }}
               >
                 Try it live
-                <ArrowRight className="size-3.5" />
+                <ArrowRight className="size-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
               </Link>
             </div>
           ))}
         </div>
-
-        {/* Custom Theme CTA */}
-        <div className="mt-12 rounded-xl border border-white/[6%] bg-white/[2%] p-8 text-center">
-          <h3 className="text-[15px] font-semibold tracking-tight mb-2">
-            Build your own
-          </h3>
-          <p className="text-[13px] text-white/40 mb-5 max-w-md mx-auto">
-            Start from any preset and customize every color, layout option, and
-            feature toggle. The customizer generates the CSS and config for you.
-          </p>
-          <Link
-            href="/docs?theme=default"
-            className="inline-flex items-center gap-2 text-[13px] font-medium px-5 py-2.5 rounded-lg border border-white/10 bg-white/[4%] text-white/80 transition-all hover:bg-white/[7%] hover:text-white hover:border-white/20 hover:no-underline"
-          >
-            Open Customizer
-            <ArrowRight className="size-3.5" />
-          </Link>
-        </div>
+        <div className="h-px w-[calc(100%+200px)] -ml-[100px]  mx-auto bg-white/[8%] my-12" />
       </main>
     </div>
   );
