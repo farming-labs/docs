@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { highlight } from "sugar-high";
 
 
-type PresetKey = "default" | "colorful" | "darksharp" | "pixel-border";
+type PresetKey = "default" | "colorful" | "darksharp" | "pixel-border" | "shiny";
 type SidebarStyle = "default" | "bordered" | "floating";
 type TocStyle = "default" | "directional";
 
@@ -139,6 +139,26 @@ const PRESETS: Record<
     sidebar: "bordered",
     toc: { style: "default" },
     radius: "0px",
+  },
+  shiny: {
+    label: "Shiny",
+    desc: "Clerk-inspired, polished purple",
+    cssImport: "@farming-labs/theme/shiny/css",
+    themeImport: { from: "@farming-labs/theme/shiny", name: "shiny" },
+    colors: {
+      primary: "hsl(256, 100%, 72%)",
+      primaryForeground: "#ffffff",
+      background: "hsl(240, 10%, 7%)",
+      foreground: "hsl(0, 0%, 95%)",
+      muted: "hsl(240, 5%, 16%)",
+      mutedForeground: "hsl(240, 4%, 58%)",
+      border: "hsl(240, 5%, 18%)",
+      card: "hsl(240, 8%, 10%)",
+      ring: "hsl(256, 85%, 65%)",
+    },
+    sidebar: "default",
+    toc: { style: "default" },
+    radius: "0.75rem",
   },
 };
 
