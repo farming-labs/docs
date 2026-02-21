@@ -17,7 +17,7 @@ export default defineDocs({
   entry: "docs",
   theme: pixelBorder({
     ui: {
-      layout: { toc: { enabled: true, depth: 3 } },
+      layout: { toc: { enabled: true, depth: 3, style: "directional" } },
       sidebar: { style: "floating" },
       typography: {
         font: {

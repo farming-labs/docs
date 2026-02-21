@@ -1,0 +1,744 @@
+/*
+ * darksharp theme — CSS override
+ * Dynamically injected to override the pixel-border base theme.
+ * Every declaration uses !important so it wins over the previously loaded theme.
+ * Source: packages/fumadocs/styles/darksharp.css
+ */
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Color variables
+ * ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  --color-fd-background: oklch(1 0 0) !important;
+  --color-fd-foreground: oklch(0.147 0.004 49.25) !important;
+  --color-fd-card: oklch(1 0 0) !important;
+  --color-fd-card-foreground: oklch(0.147 0.004 49.25) !important;
+  --color-fd-popover: oklch(1 0 0) !important;
+  --color-fd-popover-foreground: oklch(0.147 0.004 49.25) !important;
+  --color-fd-primary: oklch(0.216 0.006 56.043) !important;
+  --color-fd-primary-foreground: oklch(0.985 0.001 106.423) !important;
+  --color-fd-secondary: oklch(0.97 0.001 106.424) !important;
+  --color-fd-secondary-foreground: oklch(0.216 0.006 56.043) !important;
+  --color-fd-muted: oklch(0.97 0.001 106.424) !important;
+  --color-fd-muted-foreground: oklch(0.553 0.013 58.071) !important;
+  --color-fd-accent: oklch(0.97 0.001 106.424) !important;
+  --color-fd-accent-foreground: oklch(0.216 0.006 56.043) !important;
+  --color-fd-border: oklch(0.923 0.003 48.717) !important;
+  --color-fd-ring: oklch(0.709 0.01 56.259) !important;
+  --scrollbar-thumb: var(--color-fd-border) !important;
+  --scrollbar-thumb-hover: var(--color-fd-ring) !important;
+  --scrollbar-track: transparent !important;
+  --fd-nav-height: 56px !important;
+  --fd-banner-height: 0px !important;
+  --fd-tocnav-height: 0px !important;
+  --radius: 0.2rem !important;
+}
+
+.dark {
+  --color-fd-background: hsl(0 0% 0%) !important;
+  --color-fd-foreground: oklch(0.985 0.001 106.423) !important;
+  --color-fd-card: hsl(0 0% 0%) !important;
+  --color-fd-card-foreground: oklch(0.985 0.001 106.423) !important;
+  --color-fd-popover: hsl(0 0% 6%) !important;
+  --color-fd-popover-foreground: oklch(0.985 0.001 106.423) !important;
+  --color-fd-primary: oklch(0.985 0.001 106.423) !important;
+  --color-fd-primary-foreground: oklch(0.216 0.006 56.043) !important;
+  --color-fd-secondary: hsl(0 0% 10%) !important;
+  --color-fd-secondary-foreground: oklch(0.985 0.001 106.423) !important;
+  --color-fd-muted: hsl(0 0% 10%) !important;
+  --color-fd-muted-foreground: hsl(0 0% 55%) !important;
+  --color-fd-accent: hsl(0 0% 12%) !important;
+  --color-fd-accent-foreground: oklch(0.985 0.001 106.423) !important;
+  --color-fd-border: hsl(0 0% 14%) !important;
+  --color-fd-ring: hsl(0 0% 30%) !important;
+  --scrollbar-thumb: var(--color-fd-border) !important;
+  --scrollbar-thumb-hover: var(--color-fd-ring) !important;
+  --scrollbar-track: transparent !important;
+}
+
+/* ─── Scroll ──────────────────────────────────────────────────────── */
+
+html {
+  scroll-behavior: auto !important;
+  scroll-padding-top: calc(
+    var(--fd-nav-height, 56px) +
+    var(--fd-banner-height, 0px) +
+    var(--fd-tocnav-height, 0px) +
+    24px
+  ) !important;
+}
+
+html:not([data-anchor-scrolling]) {
+  scroll-behavior: smooth !important;
+}
+
+/* ─── Custom scrollbar ────────────────────────────────────────────── */
+
+* {
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track) !important;
+}
+
+::-webkit-scrollbar {
+  width: 12px !important;
+  height: 12px !important;
+}
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track) !important;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb) !important;
+  border-radius: 9999px !important;
+  border: 3px solid transparent !important;
+  background-clip: content-box !important;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover) !important;
+}
+::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+/* ─── Selection ───────────────────────────────────────────────────── */
+
+body {
+  overscroll-behavior: none !important;
+}
+
+::selection {
+  background: var(--color-fd-foreground) !important;
+  color: var(--color-fd-background) !important;
+}
+
+/* ─── Inline code word break ──────────────────────────────────────── */
+
+code:not(pre code) {
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Global sharp radius — 0.2rem / 0.1rem (darksharp)
+ * ═══════════════════════════════════════════════════════════════════ */
+
+[class*="rounded-lg"] {
+  border-radius: 0.2rem !important;
+}
+
+[class*="rounded-md"] {
+  border-radius: 0.1rem !important;
+}
+
+[class*="rounded-xl"],
+[class*="rounded-2xl"] {
+  border-radius: 0.2rem !important;
+}
+
+/* Reset pixel-border's blanket rounded-none rule */
+[class*="rounded-"],
+[class*="border-radius"],
+.rounded-lg,
+.rounded-md,
+.rounded-xl,
+.rounded-2xl {
+  border-radius: 0.2rem !important;
+}
+
+/* ─── Tables ──────────────────────────────────────────────────────── */
+
+table {
+  border-radius: 0 !important;
+  border-collapse: collapse !important;
+}
+
+.prose-no-margin,
+[class*="overflow-auto"] {
+  border-radius: 0 !important;
+}
+
+th, td {
+  border-color: var(--color-fd-border) !important;
+}
+
+.dark th {
+  background: hsl(0 0% 8%) !important;
+  color: hsl(0 0% 80%) !important;
+  font-weight: 500 !important;
+}
+
+.dark td {
+  background: hsl(0 0% 2%) !important;
+}
+
+.dark tr {
+  border-color: hsl(0 0% 14%) !important;
+}
+
+/* ─── Code blocks ─────────────────────────────────────────────────── */
+
+figure[data-rehype-pretty-code-figure],
+figure[data-rehype-pretty-code-figure] pre {
+  border-radius: 0.2rem !important;
+}
+
+article figure {
+  border-radius: 0.2rem !important;
+  overflow: hidden !important;
+}
+
+.dark article figure {
+  border-color: hsl(0 0% 14%) !important;
+}
+
+figure button {
+  border-radius: 0.1rem !important;
+}
+
+/* Reset pixel-border code block overrides */
+figure.shiki {
+  border: 1px solid hsl(0 0% 14%) !important;
+  border-radius: 0.2rem !important;
+  overflow: hidden !important;
+  box-shadow: none !important;
+}
+
+figure.shiki button {
+  border-radius: 0.1rem !important;
+}
+
+figure.shiki > div:first-child {
+  border-radius: 0.2rem !important;
+}
+
+/* ─── Inline code ─────────────────────────────────────────────────── */
+
+code:not(pre code) {
+  border-radius: 0.1rem !important;
+}
+
+.dark code:not(pre code) {
+  background: hsl(0 0% 10%) !important;
+  border: 1px solid hsl(0 0% 16%) !important;
+  color: hsl(0 0% 85%) !important;
+}
+
+/* ─── KBD (keyboard shortcuts) ────────────────────────────────────── */
+
+kbd {
+  border-radius: 0.1rem !important;
+}
+
+/* ─── Callouts ────────────────────────────────────────────────────── */
+
+[class*="bg-fd-card"],
+[class*="fd-callout"],
+[role="alert"] {
+  border-radius: 0.2rem !important;
+}
+
+.dark [class*="bg-fd-card"] {
+  border-color: hsl(0 0% 14%) !important;
+}
+
+/* ─── Search dialog ───────────────────────────────────────────────── */
+
+[role="dialog"] {
+  border-radius: 0.2rem !important;
+}
+
+[role="dialog"] [class*="rounded"] {
+  border-radius: 0.1rem !important;
+}
+
+/* ─── Popover / Dropdown ──────────────────────────────────────────── */
+
+[data-radix-popper-content-wrapper] > * {
+  border-radius: 0.2rem !important;
+}
+
+/* ─── Nav cards (prev/next page links) ────────────────────────────── */
+
+article a[class*="border"] {
+  border-radius: 0.2rem !important;
+}
+
+.dark article a[class*="border"] {
+  border-color: hsl(0 0% 14%) !important;
+}
+
+.dark article a[class*="border"]:hover {
+  background: hsl(0 0% 8%) !important;
+  border-color: hsl(0 0% 20%) !important;
+}
+
+/* ─── Page footer (Edit on GitHub + Last Updated) ────────────────── */
+
+.fd-page-footer {
+  border-color: hsl(0 0% 14%) !important;
+  padding-top: 1rem !important;
+  margin-top: 2rem !important;
+}
+
+.fd-page-footer a {
+  border-radius: 0.15rem !important;
+  font-size: 0.8125rem !important;
+  border-color: hsl(0 0% 14%) !important;
+}
+
+.fd-page-footer a:hover {
+  background: hsl(0 0% 8%) !important;
+  border-color: hsl(0 0% 20%) !important;
+}
+
+.fd-last-updated {
+  color: hsl(0 0% 45%) !important;
+  font-size: 0.75rem !important;
+  font-family: var(--font-geist-mono, monospace) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+}
+
+/* ─── Breadcrumb links ────────────────────────────────────────────── */
+
+article a[class*="text-fd-muted-foreground"] {
+  border-radius: 0 !important;
+}
+
+/* ─── Tabs (reset pixel-border tab overrides) ─────────────────────── */
+
+.dark [role="tablist"] {
+  border-radius: 0.1rem !important;
+}
+
+.dark [role="tablist"] button,
+.dark [role="tab"] {
+  border-radius: 0.1rem !important;
+}
+
+.dark [role="tabpanel"] {
+  border-radius: 0.1rem !important;
+}
+
+.dark div:has(> [role="tablist"]) {
+  border-radius: 0.1rem !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Sidebar — darksharp style (reset pixel-border sidebar)
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.dark aside.bg-fd-card,
+.dark aside#nd-sidebar {
+  background: hsl(0 0% 0%) !important;
+  border-color: hsl(0 0% 12%) !important;
+}
+
+/* Reset pixel-border's full-width separator overrides */
+.dark aside .overscroll-contain > div {
+  margin-top: 0 !important;
+}
+
+.dark aside .overscroll-contain > div > a[data-active] {
+  border-top: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+  padding-bottom: 0.4rem !important;
+}
+
+.dark aside .overscroll-contain > div > div {
+  border-top: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding: 0 !important;
+}
+
+.dark aside .overscroll-contain > div > a[data-active]:first-child,
+.dark aside .overscroll-contain > div > div:first-child {
+  border-top: none !important;
+}
+
+.dark aside .overscroll-contain > div > a[data-active]:last-child,
+.dark aside .overscroll-contain > div > div:last-child {
+  border-bottom: none !important;
+}
+
+/* Sidebar links (darksharp style) */
+.dark aside a[data-active] {
+  border-radius: 0.2rem !important;
+  padding: 0.4rem 0.5rem !important;
+  font-size: 0.8125rem !important;
+  line-height: 1.6 !important;
+  transition: color 0.15s ease !important;
+  font-weight: 400 !important;
+  overflow: hidden !important;
+  background-color: transparent !important;
+}
+
+.dark aside a[data-active="true"] {
+  background: hsl(0 0% 14%) !important;
+  color: hsl(0 0% 96%) !important;
+  font-weight: 500 !important;
+}
+
+/* Reset pixel-border active indicator bar */
+.dark aside a[data-active="true"]::before {
+  background-color: transparent !important;
+  width: 0 !important;
+  display: none !important;
+}
+
+.dark aside a[data-active="true"]:hover {
+  background: hsl(0 0% 14%) !important;
+  color: hsl(0 0% 96%) !important;
+}
+
+.dark aside a[data-active]:hover {
+  background: hsl(0 0% 10%) !important;
+  color: hsl(0 0% 90%) !important;
+}
+
+/* Reset pixel-border child link overrides */
+.dark aside div.overflow-hidden[data-state] a[data-active] {
+  font-size: 0.8125rem !important;
+  padding-left: 0.5rem !important;
+  padding-top: 0.4rem !important;
+  padding-bottom: 0.4rem !important;
+  color: inherit !important;
+  overflow: hidden !important;
+}
+
+.dark aside div.overflow-hidden[data-state] a[data-active="true"],
+.dark aside div.overflow-hidden[data-state] a[data-active="true"]:hover {
+  background: hsl(0 0% 14%) !important;
+  color: hsl(0 0% 96%) !important;
+  font-weight: 500 !important;
+}
+
+.dark aside div.overflow-hidden[data-state] a[data-active="false"]:hover {
+  color: hsl(0 0% 90%) !important;
+}
+
+/* Reset pixel-border folder guide line */
+.dark aside div.overflow-hidden[data-state]::before {
+  margin-left: 0 !important;
+  height: auto !important;
+  margin-top: 0 !important;
+}
+
+/* Search button (darksharp style) */
+.dark aside button[class*="bg-fd-secondary"] {
+  background: hsl(0 0% 8%) !important;
+  border: 1px solid hsl(0 0% 14%) !important;
+  border-radius: 0.2rem !important;
+  width: auto !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding: 0.5rem 0.75rem !important;
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
+}
+
+.dark aside button[class*="bg-fd-secondary"]:hover {
+  background: hsl(0 0% 12%) !important;
+  color: inherit !important;
+}
+
+/* Folder toggle buttons */
+.dark aside button.text-fd-muted-foreground {
+  color: hsl(0 0% 60%) !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+
+.dark aside button.text-fd-muted-foreground:hover {
+  color: hsl(0 0% 80%) !important;
+}
+
+.dark aside button[class*="rounded-full"] {
+  border-color: hsl(0 0% 14%) !important;
+  border-radius: 9999px !important;
+}
+
+/* Folder open/closed states reset */
+.dark aside div[data-state="open"] > :last-child {
+  overflow: hidden !important;
+}
+
+/* ─── TOC right panel ─────────────────────────────────────────────── */
+
+.dark nav[class*="toc"],
+.dark [class*="fd-toc"] {
+  border-color: hsl(0 0% 12%) !important;
+}
+
+/* ─── Separator/Divider (hr) ──────────────────────────────────────── */
+
+.dark hr {
+  border-color: hsl(0 0% 14%) !important;
+}
+
+/* ─── Page Actions (darksharp overrides) ─────────────────────────── */
+
+.fd-page-action-btn {
+  border-radius: 0.2rem !important;
+  font-size: 0.8125rem !important;
+  letter-spacing: normal !important;
+}
+
+.fd-page-action-menu {
+  border-radius: 0.2rem !important;
+  box-shadow: 0 4px 24px hsl(0 0% 0% / 0.4) !important;
+}
+
+.fd-page-action-menu-item {
+  border-radius: 0.1rem !important;
+  font-size: 0.8125rem !important;
+}
+
+/* ─── Breadcrumb (darksharp overrides) ───────────────────────────── */
+
+.fd-breadcrumb {
+  font-size: 0.75rem !important;
+  letter-spacing: normal !important;
+}
+
+.fd-breadcrumb-link {
+  text-transform: none !important;
+  font-family: inherit !important;
+}
+
+.fd-breadcrumb-current {
+  font-family: inherit !important;
+  text-transform: none !important;
+}
+
+/* ─── AI Chat (darksharp — sharp edges, high contrast, minimal) ─── */
+
+.fd-ai-dialog {
+  border-radius: 2px !important;
+  border-width: 1px !important;
+  box-shadow: 0 4px 24px hsl(0 0% 0% / 0.4) !important;
+}
+
+.fd-ai-tab-bar {
+  gap: 2px !important;
+}
+
+.fd-ai-tab {
+  border-radius: 2px 2px 0 0 !important;
+  font-size: 13px !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-header-title {
+  font-size: 14px !important;
+}
+
+.fd-ai-bubble-user {
+  border-radius: 2px !important;
+  font-size: 13px !important;
+}
+
+.fd-ai-bubble-ai {
+  border-radius: 2px !important;
+  font-size: 13px !important;
+}
+
+.fd-ai-bubble-ai pre {
+  border-radius: 2px !important;
+  border: none !important;
+}
+
+.fd-ai-bubble-ai code {
+  border-radius: 2px !important;
+}
+
+.fd-ai-input-wrap {
+  border-radius: 2px !important;
+}
+
+.fd-ai-input {
+  font-size: 14px !important;
+}
+
+.fd-ai-send-btn {
+  border-radius: 2px !important;
+}
+
+.fd-ai-close-btn {
+  border-radius: 2px !important;
+}
+
+.fd-ai-floating-btn {
+  border-radius: 2px !important;
+  box-shadow: none !important;
+}
+
+.fd-ai-floating-btn:hover {
+  box-shadow: 0 0 0 1px var(--color-fd-ring) !important;
+  transform: none !important;
+}
+
+.fd-ai-suggestion {
+  border-radius: 2px !important;
+  font-size: 13px !important;
+}
+
+.fd-ai-result {
+  border-radius: 2px !important;
+}
+
+.fd-ai-esc {
+  border-radius: 2px !important;
+}
+
+.fd-ai-clear-btn {
+  border-radius: 2px !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-msg-label {
+  letter-spacing: normal !important;
+}
+
+.fd-ai-loading-text {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-size: 12px !important;
+}
+
+.fd-ai-loading-dot {
+  border-radius: 50% !important;
+  width: 5px !important;
+  height: 5px !important;
+}
+
+/* ─── Full-Modal (darksharp) ─────────────────────────────────────── */
+
+.fd-ai-fm-input-container {
+  border-radius: 2px !important;
+  box-shadow: 0 4px 24px hsl(0 0% 0% / 0.4) !important;
+}
+
+.fd-ai-fm-send-btn {
+  border-radius: 2px !important;
+}
+
+.fd-ai-fm-close-btn {
+  border-radius: 2px !important;
+}
+
+.fd-ai-fm-input {
+  font-size: 14px !important;
+}
+
+.fd-ai-fm-suggestion {
+  border-radius: 2px !important;
+  font-family: inherit !important;
+  font-size: 12px !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-fm-trigger-btn {
+  border-radius: 2px !important;
+  box-shadow: none !important;
+  font-family: inherit !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-size: 14px !important;
+}
+
+.fd-ai-fm-trigger-btn:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.fd-ai-fm-msg-label {
+  font-family: inherit !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  font-size: 13px !important;
+}
+
+.fd-ai-fm-msg-content {
+  font-size: 14px !important;
+}
+
+.fd-ai-fm-msg-content code {
+  border-radius: 2px !important;
+}
+
+.fd-ai-fm-suggestions-label {
+  font-family: inherit !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-fm-clear-btn {
+  font-family: inherit !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-fm-footer-hint {
+  font-size: 12px !important;
+}
+
+.fd-ai-fm-thinking-dot {
+  border-radius: 2px !important;
+  width: 6px !important;
+  height: 6px !important;
+}
+
+/* ─── Code blocks (darksharp) ────────────────────────────────────── */
+
+.fd-ai-code-block {
+  border-radius: 2px !important;
+  box-shadow: none !important;
+  background: var(--color-fd-muted, #1a1a2e) !important;
+  --sh-class: #7dcfff !important;
+  --sh-identifier: #d4d4d8 !important;
+  --sh-keyword: #f87171 !important;
+  --sh-string: #86efac !important;
+  --sh-property: #93c5fd !important;
+  --sh-entity: #5eead4 !important;
+  --sh-sign: #a1a1aa !important;
+  --sh-comment: #52525b !important;
+  --sh-jsxliterals: #c4b5fd !important;
+}
+
+.fd-ai-code-header {
+  border-bottom-color: var(--color-fd-border, rgba(255, 255, 255, 0.08)) !important;
+  background: color-mix(in srgb, var(--color-fd-muted, #1a1a2e) 80%, black) !important;
+}
+
+.fd-ai-code-lang {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+}
+
+.fd-ai-code-copy {
+  border-radius: 2px !important;
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-code-block code {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Grid reset — docs layout
+ * ═══════════════════════════════════════════════════════════════════ */
+
+@media (min-width: 768px) {
+  #nd-docs-layout {
+    grid-template-columns: var(--fd-sidebar-col, 0px) 1fr min-content !important;
+  }
+}

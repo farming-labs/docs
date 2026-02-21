@@ -1,0 +1,566 @@
+/* @farming-labs/theme — default (fumadocs) override
+ * Injected by the theme customizer to fully override the base pixel-border theme.
+ * Every declaration uses !important to win over the build-time pixel-border CSS.
+ *
+ * This file resets:
+ *   - Color variables (keeping same vars for customizer compatibility)
+ *   - Border-radius (undoes pixel-border's global `border-radius: 0`)
+ *   - Sidebar (reverts better-auth style to clean fumadocs default)
+ *   - Tables, code blocks, tabs, cards, nav cards, search/dialogs
+ *   - Breadcrumb (removes monospace/uppercase pixel-border styling)
+ *   - Page actions, AI Chat, AI Full-Modal, AI Code blocks
+ */
+
+/* ─── Color Variables ───────────────────────────────────────────── */
+
+:root, .dark {
+  --color-fd-secondary: hsl(0 0% 10%) !important;
+  --color-fd-secondary-foreground: hsl(0 0% 98%) !important;
+  --color-fd-accent: hsl(0 0% 10%) !important;
+  --color-fd-accent-foreground: hsl(0 0% 98%) !important;
+  --color-fd-popover: hsl(0 0% 5%) !important;
+  --color-fd-popover-foreground: hsl(0 0% 98%) !important;
+  --color-fd-card-foreground: hsl(0 0% 98%) !important;
+  --radius: 0.5rem !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Reset pixel-border aggressive rounded-none
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.rounded-lg, [class*="rounded-lg"] {
+  border-radius: 0.5rem !important;
+}
+.rounded-md, [class*="rounded-md"] {
+  border-radius: 0.375rem !important;
+}
+.rounded-xl, [class*="rounded-xl"] {
+  border-radius: 0.75rem !important;
+}
+.rounded-2xl, [class*="rounded-2xl"] {
+  border-radius: 1rem !important;
+}
+.rounded-full, [class*="rounded-full"] {
+  border-radius: 9999px !important;
+}
+.rounded-sm, [class*="rounded-sm"] {
+  border-radius: 0.125rem !important;
+}
+code:not(pre code) {
+  border-radius: 0.25rem !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Sidebar — clean fumadocs default style
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.dark aside#nd-sidebar {
+  background: var(--color-fd-background) !important;
+  border-color: var(--color-fd-border) !important;
+}
+
+.dark aside .overscroll-contain > div {
+  margin-top: 0 !important;
+}
+
+.dark aside .overscroll-contain > div > a[data-active] {
+  border-top: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+  padding-bottom: 0.375rem !important;
+}
+
+.dark aside .overscroll-contain > div > div {
+  border-top: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding: 0 !important;
+}
+
+.dark aside .overscroll-contain > div > a[data-active]:first-child,
+.dark aside .overscroll-contain > div > div:first-child {
+  border-top: none !important;
+}
+
+.dark aside .overscroll-contain > div > a[data-active]:last-child,
+.dark aside .overscroll-contain > div > div:last-child {
+  border-bottom: none !important;
+}
+
+.dark aside a[data-active] {
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  border-radius: 0.375rem !important;
+  padding: 0.375rem 0.5rem !important;
+  transition: all 0.15s ease !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-weight: 400 !important;
+  background-color: transparent !important;
+}
+
+.dark aside a[data-active="true"],
+.dark aside a[data-active="true"]:hover {
+  background: var(--color-fd-accent) !important;
+  background-color: var(--color-fd-accent) !important;
+  color: var(--color-fd-primary) !important;
+  font-weight: 500 !important;
+}
+
+.dark aside a[data-active="false"]:hover {
+  background: var(--color-fd-accent) !important;
+  background-color: var(--color-fd-accent) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+.dark aside a[data-active="true"]::before {
+  background-color: var(--color-fd-primary) !important;
+  width: 2px !important;
+  margin-left: 0 !important;
+  inset-inline-start: 0 !important;
+}
+
+.dark aside div.overflow-hidden[data-state] a[data-active] {
+  font-size: 0.8125rem !important;
+  padding-left: 1.5rem !important;
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+  color: var(--color-fd-muted-foreground) !important;
+}
+
+.dark aside div.overflow-hidden[data-state] a[data-active="true"],
+.dark aside div.overflow-hidden[data-state] a[data-active="true"]:hover {
+  color: var(--color-fd-primary) !important;
+  font-weight: 500 !important;
+}
+
+.dark aside div.overflow-hidden[data-state] a[data-active="false"]:hover {
+  color: var(--color-fd-foreground) !important;
+}
+
+.dark aside div.overflow-hidden[data-state]::before {
+  margin-left: 0 !important;
+  height: auto !important;
+  margin-top: 0 !important;
+}
+
+.dark aside button.text-fd-muted-foreground {
+  color: var(--color-fd-foreground) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+
+.dark aside button[class*="bg-fd-secondary"] {
+  background: var(--color-fd-secondary) !important;
+  border: 1px solid var(--color-fd-border) !important;
+  border-top: 1px solid var(--color-fd-border) !important;
+  border-bottom: 1px solid var(--color-fd-border) !important;
+  border-radius: 0.375rem !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-size: 0.8125rem !important;
+  padding: 0.5rem 0.75rem !important;
+  width: auto !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
+}
+
+.dark aside button[class*="bg-fd-secondary"]:hover {
+  background: var(--color-fd-accent) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+.dark aside button[class*="rounded-full"] {
+  border-color: var(--color-fd-border) !important;
+  border-radius: 9999px !important;
+}
+
+/* ─── Tables ──────────────────────────────────────────────────── */
+
+.dark table {
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 0.5rem !important;
+  overflow: hidden !important;
+}
+
+.dark th {
+  background: var(--color-fd-muted) !important;
+  color: var(--color-fd-foreground) !important;
+  font-weight: 500 !important;
+  border-color: var(--color-fd-border) !important;
+}
+
+.dark td {
+  border-color: var(--color-fd-border) !important;
+  background: transparent !important;
+}
+
+/* ─── Code blocks ─────────────────────────────────────────────── */
+
+figure.shiki {
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: none !important;
+}
+
+figure.shiki button {
+  border-radius: 0.25rem !important;
+}
+
+figure.shiki > div:first-child {
+  border-radius: 0.5rem 0.5rem 0 0 !important;
+}
+
+figure[data-rehype-pretty-code-figure],
+figure[data-rehype-pretty-code-figure] pre {
+  border-radius: 0.5rem !important;
+}
+
+article figure {
+  border-radius: 0.5rem !important;
+}
+
+figure button {
+  border-radius: 0.25rem !important;
+}
+
+/* ─── Tabs ────────────────────────────────────────────────────── */
+
+.dark [role="tablist"] {
+  border-radius: 0.375rem !important;
+}
+
+.dark [role="tablist"] button,
+.dark [role="tab"] {
+  border-radius: 0.25rem !important;
+}
+
+.dark [role="tabpanel"] {
+  border-radius: 0 0 0.5rem 0.5rem !important;
+}
+
+.dark div:has(> [role="tablist"]) {
+  border-radius: 0.5rem !important;
+}
+
+/* ─── Cards, callouts ────────────────────────────────────────── */
+
+[class*="bg-fd-card"],
+[class*="fd-callout"],
+[role="alert"] {
+  border-radius: 0.5rem !important;
+}
+
+.dark [class*="bg-fd-card"] {
+  border-color: var(--color-fd-border) !important;
+}
+
+/* ─── Nav cards (prev/next) ───────────────────────────────────── */
+
+article a[class*="border"] {
+  border-radius: 0.5rem !important;
+}
+
+.dark article a[class*="border"] {
+  border-color: var(--color-fd-border) !important;
+}
+
+.dark article a[class*="border"]:hover {
+  background: var(--color-fd-accent) !important;
+  border-color: var(--color-fd-border) !important;
+}
+
+/* ─── Page footer (Edit on GitHub + Last Updated) ────────────── */
+
+.fd-page-footer {
+  border-color: var(--color-fd-border) !important;
+  padding-top: 1rem !important;
+  margin-top: 2rem !important;
+}
+
+.fd-page-footer a {
+  border-radius: 0.375rem !important;
+  font-size: 0.8125rem !important;
+}
+
+.fd-last-updated {
+  color: var(--color-fd-muted-foreground) !important;
+  font-size: 0.75rem !important;
+}
+
+/* ─── Search / dialogs ───────────────────────────────────────── */
+
+[role="dialog"] {
+  border-radius: 0.5rem !important;
+}
+
+[role="dialog"] [class*="rounded"] {
+  border-radius: 0.375rem !important;
+}
+
+[data-radix-popper-content-wrapper] > * {
+  border-radius: 0.5rem !important;
+}
+
+/* ─── Breadcrumb ─────────────────────────────────────────────── */
+
+.fd-breadcrumb {
+  font-size: 0.8125rem !important;
+  letter-spacing: normal !important;
+}
+
+.fd-breadcrumb-link {
+  text-transform: none !important;
+  font-family: inherit !important;
+}
+
+.fd-breadcrumb-current {
+  text-transform: none !important;
+  font-family: inherit !important;
+}
+
+/* ─── Page Actions (default theme) ───────────────────────────── */
+
+.fd-page-action-btn {
+  border-radius: 0.375rem !important;
+  font-size: 0.8125rem !important;
+  letter-spacing: normal !important;
+}
+
+.fd-page-action-menu {
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+}
+
+.fd-page-action-menu-item {
+  border-radius: 0.25rem !important;
+  font-size: 0.8125rem !important;
+}
+
+/* ─── AI Chat (default theme — rounded, soft, indigo) ────────── */
+
+.fd-ai-dialog {
+  border-radius: 12px !important;
+  border-width: 1px !important;
+  box-shadow: 0 20px 60px rgba(99, 102, 241, 0.08), 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+}
+
+.fd-ai-tab-bar {
+  gap: 2px !important;
+}
+
+.fd-ai-tab {
+  border-radius: 8px 8px 0 0 !important;
+  font-size: 13px !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-header-title {
+  font-size: 14px !important;
+}
+
+.fd-ai-bubble-user {
+  border-radius: 16px 16px 4px 16px !important;
+  font-size: 13px !important;
+}
+
+.fd-ai-bubble-ai {
+  border-radius: 16px 16px 16px 4px !important;
+  font-size: 13px !important;
+}
+
+.fd-ai-bubble-ai pre {
+  border-radius: 0 !important;
+  border: none !important;
+}
+
+.fd-ai-bubble-ai code {
+  border-radius: 4px !important;
+}
+
+.fd-ai-input-wrap {
+  border-radius: 10px !important;
+}
+
+.fd-ai-input {
+  font-size: 14px !important;
+}
+
+.fd-ai-send-btn {
+  border-radius: 8px !important;
+}
+
+.fd-ai-close-btn {
+  border-radius: 6px !important;
+}
+
+.fd-ai-floating-btn {
+  border-radius: 26px !important;
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3) !important;
+}
+
+.fd-ai-floating-btn:hover {
+  transform: scale(1.03) !important;
+  box-shadow: 0 10px 40px rgba(99, 102, 241, 0.4) !important;
+}
+
+.fd-ai-suggestion {
+  border-radius: 8px !important;
+  font-size: 13px !important;
+}
+
+.fd-ai-result {
+  border-radius: 8px !important;
+}
+
+.fd-ai-esc {
+  border-radius: 4px !important;
+}
+
+.fd-ai-clear-btn {
+  border-radius: 4px !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-msg-label {
+  letter-spacing: 0.05em !important;
+}
+
+.fd-ai-loading-text {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-size: 12px !important;
+}
+
+.fd-ai-loading-dot {
+  border-radius: 50% !important;
+  width: 5px !important;
+  height: 5px !important;
+}
+
+/* ─── AI Full-Modal (default theme) ──────────────────────────── */
+
+.fd-ai-fm-input-container {
+  border-radius: 12px !important;
+  box-shadow: 0 20px 60px color-mix(in srgb, var(--color-fd-background, #000) 70%, transparent) !important;
+}
+
+.fd-ai-fm-send-btn {
+  border-radius: 9999px !important;
+}
+
+.fd-ai-fm-close-btn {
+  border-radius: 9999px !important;
+}
+
+.fd-ai-fm-input {
+  font-size: 14px !important;
+}
+
+.fd-ai-fm-suggestion {
+  border-radius: 9999px !important;
+  font-family: inherit !important;
+  font-size: 12px !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-fm-trigger-btn {
+  border-radius: 16px !important;
+  font-family: inherit !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-size: 14px !important;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-fd-background, #000) 20%, transparent) !important;
+}
+
+.fd-ai-fm-trigger-btn:hover {
+  transform: scale(1.03) !important;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-fd-background, #000) 20%, transparent) !important;
+}
+
+.fd-ai-fm-msg-label {
+  font-family: inherit !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  font-size: 13px !important;
+}
+
+.fd-ai-fm-msg-content {
+  font-size: 14px !important;
+}
+
+.fd-ai-fm-msg-content code {
+  border-radius: 4px !important;
+}
+
+.fd-ai-fm-suggestions-label {
+  font-family: inherit !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-fm-clear-btn {
+  font-family: inherit !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-fm-footer-hint {
+  font-size: 12px !important;
+}
+
+.fd-ai-fm-thinking-dot {
+  border-radius: 9999px !important;
+  width: 6px !important;
+  height: 6px !important;
+}
+
+/* ─── AI Code blocks (default theme) ─────────────────────────── */
+
+.fd-ai-code-block {
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  background: var(--color-fd-muted, #1a1a2e) !important;
+  --sh-class: #8be9fd !important;
+  --sh-identifier: #c9d1d9 !important;
+  --sh-keyword: #ff7b72 !important;
+  --sh-string: #a5d6ff !important;
+  --sh-property: #79c0ff !important;
+  --sh-entity: #7ee787 !important;
+  --sh-sign: #8b949e !important;
+  --sh-comment: #6e7681 !important;
+  --sh-jsxliterals: #d2a8ff !important;
+}
+
+.fd-ai-code-header {
+  border-bottom-color: var(--color-fd-border, rgba(255, 255, 255, 0.08)) !important;
+  background: color-mix(in srgb, var(--color-fd-muted, #1a1a2e) 80%, black) !important;
+}
+
+.fd-ai-code-lang {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+}
+
+.fd-ai-code-copy {
+  border-radius: 4px !important;
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-code-block code {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+}
+
+/* ─── Grid reset ─────────────────────────────────────────────── */
+
+@media (min-width: 768px) {
+  #nd-docs-layout {
+    grid-template-columns: var(--fd-sidebar-col, 0px) 1fr min-content !important;
+  }
+}

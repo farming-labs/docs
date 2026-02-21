@@ -702,14 +702,14 @@ function InstallSection() {
             <AnimatedBackground />
           </div>
           <div className="absolute inset-0 bg-gradient-to-r from-black/10 via-black/50 to-black/80 pointer-events-none opacity-100 mix-blend-overlay" />
-          {/* <div
+          <div
             className="absolute inset-0 z-[999] pointer-events-none opacity-80 mix-blend-overlay"
             style={{
               backgroundImage: "url(/shades.png)",
               backgroundRepeat: "repeat",
               backgroundSize: "100% 100%",
             }}
-          /> */}
+          />
           <div className="flex relative z-[999] flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
             <div className="flex-1">
               <p className="text-sm text-white/60 mb-1">
@@ -848,6 +848,23 @@ function ThemesSection() {
   },
 }),`}
           />
+        </div>
+
+        <div className="mt-10 flex items-center gap-4">
+          <Link
+            href="/themes"
+            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[3%] px-5 py-2.5 text-sm font-medium text-white/80 transition-all hover:bg-white/[6%] hover:text-white hover:border-white/20 hover:no-underline"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="13.5" cy="6.5" r="2.5" /><circle cx="17.5" cy="10.5" r="2.5" /><circle cx="8.5" cy="7.5" r="2.5" /><circle cx="6.5" cy="12.5" r="2.5" />
+              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+            </svg>
+            Theme Configurator
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+          <span className="text-xs text-white/30">
+            Live preview &amp; export CSS + config
+          </span>
         </div>
       </div>
     </section>
