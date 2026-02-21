@@ -1,0 +1,725 @@
+/*
+ * pixel-border theme — CSS override
+ * Dynamically injected to re-apply the pixel-border theme after another theme was loaded.
+ * Every declaration uses !important so it wins over the previously loaded theme.
+ * Source: packages/fumadocs/styles/pixel-border.css
+ */
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Color variables
+ * ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  --color-fd-background: oklch(1 0 0) !important;
+  --color-fd-foreground: oklch(0.147 0.004 49.25) !important;
+  --color-fd-card: oklch(0.985 0.001 106.423) !important;
+  --color-fd-card-foreground: oklch(0.147 0.004 49.25) !important;
+  --color-fd-popover: oklch(1 0 0) !important;
+  --color-fd-popover-foreground: oklch(0.147 0.004 49.25) !important;
+  --color-fd-primary: oklch(0.216 0.006 56.043) !important;
+  --color-fd-primary-foreground: oklch(0.985 0.001 106.423) !important;
+  --color-fd-secondary: oklch(0.97 0.001 106.424) !important;
+  --color-fd-secondary-foreground: oklch(0.216 0.006 56.043) !important;
+  --color-fd-muted: oklch(0.97 0.001 106.424) !important;
+  --color-fd-muted-foreground: oklch(0.553 0.013 58.071) !important;
+  --color-fd-accent: oklch(0.97 0.001 106.424) !important;
+  --color-fd-accent-foreground: oklch(0.216 0.006 56.043) !important;
+  --color-fd-border: oklch(0.923 0.003 48.717) !important;
+  --color-fd-ring: oklch(0.709 0.01 56.259) !important;
+  --scrollbar-thumb: var(--color-fd-border) !important;
+  --scrollbar-thumb-hover: var(--color-fd-ring) !important;
+  --scrollbar-track: transparent !important;
+  --radius: 0px !important;
+  --fd-nav-height: 56px !important;
+  --fd-banner-height: 0px !important;
+  --fd-tocnav-height: 0px !important;
+}
+
+.dark {
+  --color-fd-background: hsl(0 0% 2%) !important;
+  --color-fd-foreground: oklch(0.985 0.001 106.423) !important;
+  --color-fd-card: hsl(0 0% 4%) !important;
+  --color-fd-card-foreground: oklch(0.985 0.001 106.423) !important;
+  --color-fd-popover: hsl(0 0% 4%) !important;
+  --color-fd-popover-foreground: oklch(0.985 0.001 106.423) !important;
+  --color-fd-primary: oklch(0.985 0.001 106.423) !important;
+  --color-fd-primary-foreground: oklch(0.216 0.006 56.043) !important;
+  --color-fd-secondary: hsl(0 0% 8%) !important;
+  --color-fd-secondary-foreground: oklch(0.985 0.001 106.423) !important;
+  --color-fd-muted: hsl(0 0% 10%) !important;
+  --color-fd-muted-foreground: hsl(0 0% 55%) !important;
+  --color-fd-accent: hsl(0 0% 10%) !important;
+  --color-fd-accent-foreground: oklch(0.985 0.001 106.423) !important;
+  --color-fd-border: hsl(0 0% 15%) !important;
+  --color-fd-ring: hsl(0 0% 30%) !important;
+  --scrollbar-thumb: var(--color-fd-border) !important;
+  --scrollbar-thumb-hover: var(--color-fd-ring) !important;
+  --scrollbar-track: transparent !important;
+}
+
+/* ─── Scroll ──────────────────────────────────────────────────────── */
+
+html {
+  scroll-behavior: auto !important;
+  scroll-padding-top: calc(
+    var(--fd-nav-height, 56px) +
+    var(--fd-banner-height, 0px) +
+    var(--fd-tocnav-height, 0px) +
+    24px
+  ) !important;
+}
+
+html:not([data-anchor-scrolling]) {
+  scroll-behavior: smooth !important;
+}
+
+/* ─── Custom scrollbar ────────────────────────────────────────────── */
+
+* {
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track) !important;
+}
+
+::-webkit-scrollbar {
+  width: 12px !important;
+  height: 12px !important;
+}
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track) !important;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb) !important;
+  border-radius: 9999px !important;
+  border: 3px solid transparent !important;
+  background-clip: content-box !important;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover) !important;
+}
+::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+/* ─── Selection ───────────────────────────────────────────────────── */
+
+body {
+  overscroll-behavior: none !important;
+}
+
+::selection {
+  background: var(--color-fd-foreground) !important;
+  color: var(--color-fd-background) !important;
+}
+
+/* ─── Inline code word break ──────────────────────────────────────── */
+
+code:not(pre code) {
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Rounded-none: force sharp corners — scoped to docs layout only
+ * ═══════════════════════════════════════════════════════════════════ */
+
+#nd-docs-layout [class*="rounded-"],
+#nd-docs-layout [class*="border-radius"],
+#nd-docs-layout .rounded-lg,
+#nd-docs-layout .rounded-md,
+#nd-docs-layout .rounded-xl,
+#nd-docs-layout .rounded-2xl {
+  border-radius: 0 !important;
+}
+
+#nd-docs-layout code:not(pre code) {
+  border-radius: 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Docs grid: pin sidebar left, TOC right, content fills middle
+ * ═══════════════════════════════════════════════════════════════════ */
+
+@media (min-width: 768px) {
+  #nd-docs-layout {
+    grid-template-columns: var(--fd-sidebar-col, 0px) 1fr min-content !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Sidebar (pixel-border / better-auth style)
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.dark aside#nd-sidebar,
+.dark aside.bg-fd-card {
+  background: hsl(0 0% 2%) !important;
+  border-color: hsl(0 0% 12%) !important;
+}
+
+/* ── Full-width border separators between top-level items ─────────── */
+
+.dark aside .overscroll-contain > div {
+  /* margin-top: -22px !important; */
+}
+
+.dark aside .overscroll-contain > div > a[data-active] {
+  border-top: 1px solid hsl(0 0% 12%) !important;
+  margin-left: -1rem !important;
+  margin-right: -1rem !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+  padding-bottom: 0.75rem !important;
+}
+
+.dark aside .overscroll-contain > div > div {
+  border-top: 1px solid hsl(0 0% 12%) !important;
+  margin-left: -1rem !important;
+  margin-right: -1rem !important;
+  padding: 0 !important;
+}
+
+.dark aside .overscroll-contain > div > a[data-active]:first-child,
+.dark aside .overscroll-contain > div > div:first-child {
+  border-top: none !important;
+}
+
+.dark aside .overscroll-contain > div > a[data-active]:last-child,
+.dark aside .overscroll-contain > div > div:last-child {
+  border-bottom: 1px solid hsl(0 0% 12%) !important;
+}
+
+/* ── Sidebar links (all levels) ──────────────────────────────────── */
+
+.dark aside a[data-active] {
+  font-size: 0.875rem !important;
+  line-height: 1.6 !important;
+  border-radius: 0 !important;
+  padding: 0.5rem 0.625rem !important;
+  transition: color 0.15s ease !important;
+  color: hsl(0 0% 50%) !important;
+  font-weight: 400 !important;
+  overflow: hidden !important;
+  background-color: transparent !important;
+}
+
+.dark aside a[data-active="true"],
+.dark aside a[data-active="true"]:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--color-fd-primary) !important;
+  font-weight: 600 !important;
+}
+
+.dark aside a[data-active="false"]:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: hsl(0 0% 80%) !important;
+}
+
+/* ── Child links inside collapsible folders ──────────────────────── */
+
+.dark aside div.overflow-hidden[data-state] a[data-active] {
+  font-size: 0.785rem !important;
+  padding-left: 2rem !important;
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+  color: hsl(0 0% 45%) !important;
+  overflow: hidden !important;
+}
+
+.dark aside div.overflow-hidden[data-state] a[data-active="true"],
+.dark aside div.overflow-hidden[data-state] a[data-active="true"]:hover {
+  color: var(--color-fd-primary) !important;
+  font-weight: 500 !important;
+}
+
+.dark aside div.overflow-hidden[data-state] a[data-active="false"]:hover {
+  color: hsl(0 0% 75%) !important;
+}
+
+/* ── Folder toggle buttons (section headers) ─────────────────────── */
+
+.dark aside button.text-fd-muted-foreground {
+  color: hsl(0 0% 90%) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+
+.dark aside button.text-fd-muted-foreground:hover {
+  color: hsl(0 0% 100%) !important;
+}
+
+/* Active indicator bar */
+.dark aside a[data-active="true"]::before {
+  background-color: var(--color-fd-primary) !important;
+  width: 2px !important;
+  margin-left: 0.6rem !important;
+  inset-inline-start: 0.5rem !important;
+}
+
+/* Folder guide line */
+.dark aside div.overflow-hidden[data-state]::before {
+  margin-left: 0.5rem !important;
+  height: calc(100% + 20px) !important;
+  margin-top: -25px !important;
+}
+
+/* Folder open state */
+.dark aside div[data-state="open"] > :last-child {
+  overflow: hidden !important;
+}
+
+/* ── Search button: full-width, border-y only ────────────────────── */
+
+.dark aside button[class*="bg-fd-secondary"] {
+  background: transparent !important;
+  border: none !important;
+  border-top: 1px solid hsl(0 0% 12%) !important;
+  border-bottom: 1px solid hsl(0 0% 12%) !important;
+  border-radius: 0 !important;
+  color: hsl(0 0% 45%) !important;
+  font-size: 0.8125rem !important;
+  padding: 0.5rem 0 !important;
+  width: calc(100% + 2rem) !important;
+  margin-left: -1rem !important;
+  margin-right: -1rem !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+.dark aside button[class*="bg-fd-secondary"]:hover {
+  background: hsl(0 0% 4%) !important;
+  color: hsl(0 0% 65%) !important;
+}
+
+/* ── Theme toggle ────────────────────────────────────────────────── */
+
+.dark aside button[class*="rounded-full"] {
+  border-color: hsl(0 0% 12%) !important;
+}
+
+/* ─── Tables: visible borders ────────────────────────────────────── */
+
+.dark table {
+  border: 1px solid hsl(0 0% 15%) !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+}
+
+.dark th {
+  background: hsl(0 0% 6%) !important;
+  color: hsl(0 0% 80%) !important;
+  font-weight: 500 !important;
+  border-color: hsl(0 0% 15%) !important;
+}
+
+.dark td {
+  border-color: hsl(0 0% 12%) !important;
+}
+
+.dark tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* ─── Code blocks: single border only ─────────────────────────────── */
+
+figure.shiki {
+  border: 1px solid hsl(0 0% 15%) !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+  box-shadow: none !important;
+}
+
+figure.shiki button {
+  border-radius: 0 !important;
+}
+
+figure.shiki > div:first-child {
+  border-radius: 0 !important;
+}
+
+figure[data-rehype-pretty-code-figure],
+figure[data-rehype-pretty-code-figure] pre {
+  border-radius: 0 !important;
+}
+
+article figure {
+  border-radius: 0 !important;
+  overflow: hidden !important;
+}
+
+figure button {
+  border-radius: 0 !important;
+}
+
+/* ─── Tabs (package manager / code tabs) ──────────────────────────── */
+
+.dark [role="tablist"] {
+  border-radius: 0 !important;
+}
+
+.dark [role="tablist"] button,
+.dark [role="tab"] {
+  border-radius: 0 !important;
+}
+
+.dark [role="tabpanel"] {
+  border-radius: 0 !important;
+}
+
+.dark div:has(> [role="tablist"]) {
+  border-radius: 0 !important;
+}
+
+/* ─── Callouts: visible border ────────────────────────────────────── */
+
+[class*="bg-fd-card"],
+[class*="fd-callout"],
+[role="alert"] {
+  border-radius: 0 !important;
+}
+
+.dark [class*="bg-fd-card"] {
+  border-color: hsl(0 0% 15%) !important;
+}
+
+/* ─── Nav cards (prev/next): visible border ───────────────────────── */
+
+article a[class*="border"] {
+  border-radius: 0 !important;
+}
+
+.dark article a[class*="border"] {
+  border-color: hsl(0 0% 15%) !important;
+  border-radius: 0 !important;
+}
+
+.dark article a[class*="border"]:hover {
+  background: hsl(0 0% 6%) !important;
+  border-color: hsl(0 0% 22%) !important;
+}
+
+/* ─── Page footer (Edit on GitHub + Last Updated) ────────────────── */
+
+.fd-page-footer {
+  border-color: hsl(0 0% 15%) !important;
+  padding-top: 1rem !important;
+  margin-top: 2rem !important;
+}
+
+.fd-page-footer a {
+  border-radius: 0 !important;
+  font-size: 0.8125rem !important;
+  border-color: hsl(0 0% 15%) !important;
+}
+
+.fd-page-footer a:hover {
+  background: hsl(0 0% 6%) !important;
+  border-color: hsl(0 0% 22%) !important;
+}
+
+.fd-last-updated {
+  color: hsl(0 0% 40%) !important;
+  font-size: 0.75rem !important;
+}
+
+/* ─── Search dialog ───────────────────────────────────────────────── */
+
+[role="dialog"] {
+  border-radius: 0 !important;
+}
+
+[role="dialog"] [class*="rounded"] {
+  border-radius: 0 !important;
+}
+
+/* ─── TOC right panel ─────────────────────────────────────────────── */
+
+.dark nav[class*="toc"],
+.dark [class*="fd-toc"] {
+  border-color: hsl(0 0% 12%) !important;
+}
+
+/* ─── Separator/Divider (hr) ──────────────────────────────────────── */
+
+.dark hr {
+  border-color: hsl(0 0% 15%) !important;
+}
+
+/* ─── Inline code ─────────────────────────────────────────────────── */
+
+code:not(pre code) {
+  border-radius: 0 !important;
+}
+
+/* ─── KBD (keyboard shortcuts) ────────────────────────────────────── */
+
+kbd {
+  border-radius: 0 !important;
+}
+
+/* ─── Popover / Dropdown ──────────────────────────────────────────── */
+
+[data-radix-popper-content-wrapper] > * {
+  border-radius: 0 !important;
+}
+
+/* ─── Breadcrumb links ────────────────────────────────────────────── */
+
+article a[class*="text-fd-muted-foreground"] {
+  border-radius: 0 !important;
+}
+
+/* ─── Breadcrumb (pixel-border overrides) ─────────────────────────── */
+
+.fd-breadcrumb {
+  font-size: 0.75rem !important;
+  letter-spacing: 0.01em !important;
+}
+
+.fd-breadcrumb-link {
+  color: inherit !important;
+  text-decoration: none !important;
+  text-transform: uppercase !important;
+  font-family: var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace)) !important;
+}
+
+.fd-breadcrumb-current {
+  font-family: var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace)) !important;
+  text-transform: uppercase !important;
+}
+
+/* ─── Page Actions (pixel-border overrides) ───────────────────────── */
+
+.fd-page-action-btn {
+  border-radius: 0 !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.03em !important;
+}
+
+.fd-page-action-menu {
+  border-radius: 0 !important;
+  box-shadow: 0 4px 24px hsl(0 0% 0% / 0.5) !important;
+}
+
+.fd-page-action-menu-item {
+  border-radius: 0 !important;
+  font-size: 0.8rem !important;
+}
+
+/* ─── AI Chat (pixel-border — zero radius, pixel-art, monospace) ── */
+
+.fd-ai-dialog {
+  border-radius: 0 !important;
+  border-width: 1px !important;
+  box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%)) !important;
+}
+
+.fd-ai-tab-bar {
+  gap: 0 !important;
+}
+
+.fd-ai-tab {
+  border-radius: 0 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.04em !important;
+}
+
+.fd-ai-header-title {
+  font-size: 13px !important;
+}
+
+.fd-ai-bubble-user {
+  border-radius: 0 !important;
+  font-size: 12px !important;
+}
+
+.fd-ai-bubble-ai {
+  border-radius: 0 !important;
+  font-size: 12px !important;
+}
+
+.fd-ai-bubble-ai pre {
+  border-radius: 0 !important;
+  border: 1px solid var(--color-fd-border, hsl(0 0% 15%)) !important;
+}
+
+.fd-ai-bubble-ai code {
+  border-radius: 0 !important;
+}
+
+.fd-ai-input-wrap {
+  border-radius: 0 !important;
+}
+
+.fd-ai-input {
+  font-size: 13px !important;
+}
+
+.fd-ai-send-btn {
+  border-radius: 0 !important;
+}
+
+.fd-ai-close-btn {
+  border-radius: 0 !important;
+}
+
+.fd-ai-floating-btn {
+  border-radius: 0 !important;
+  box-shadow: 3px 3px 0 0 var(--color-fd-border, hsl(0 0% 15%)) !important;
+}
+
+.fd-ai-floating-btn:hover {
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%)) !important;
+}
+
+.fd-ai-suggestion {
+  border-radius: 0 !important;
+  font-size: 12px !important;
+}
+
+.fd-ai-result {
+  border-radius: 0 !important;
+}
+
+.fd-ai-esc {
+  border-radius: 0 !important;
+}
+
+.fd-ai-clear-btn {
+  border-radius: 0 !important;
+  letter-spacing: 0.04em !important;
+}
+
+.fd-ai-msg-label {
+  letter-spacing: 0.06em !important;
+}
+
+.fd-ai-loading-text {
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  font-size: 11px !important;
+}
+
+.fd-ai-loading-dot {
+  border-radius: 0 !important;
+  width: 4px !important;
+  height: 4px !important;
+}
+
+/* ─── Full-Modal (pixel-border) ──────────────────────────────────── */
+
+.fd-ai-fm-input-container {
+  border-radius: 0 !important;
+  box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%)) !important;
+}
+
+.fd-ai-fm-send-btn {
+  border-radius: 0 !important;
+}
+
+.fd-ai-fm-close-btn {
+  border-radius: 0 !important;
+}
+
+.fd-ai-fm-input {
+  font-size: 13px !important;
+}
+
+.fd-ai-fm-suggestion {
+  border-radius: 0 !important;
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  font-size: 11px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+
+.fd-ai-fm-trigger-btn {
+  border-radius: 0 !important;
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  font-size: 12px !important;
+  box-shadow: 3px 3px 0 0 var(--color-fd-border, hsl(0 0% 15%)) !important;
+}
+
+.fd-ai-fm-trigger-btn:hover {
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%)) !important;
+}
+
+.fd-ai-fm-msg-label {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  font-size: 11px !important;
+}
+
+.fd-ai-fm-msg-content {
+  font-size: 13px !important;
+}
+
+.fd-ai-fm-msg-content code {
+  border-radius: 0 !important;
+}
+
+.fd-ai-fm-suggestions-label {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+
+.fd-ai-fm-clear-btn {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+
+.fd-ai-fm-footer-hint {
+  font-size: 11px !important;
+}
+
+.fd-ai-fm-thinking-dot {
+  border-radius: 0 !important;
+  width: 5px !important;
+  height: 5px !important;
+}
+
+/* ─── Code blocks (pixel-border) ─────────────────────────────────── */
+
+.fd-ai-code-block {
+  border-radius: 0 !important;
+  box-shadow: 3px 3px 0 0 var(--color-fd-border, hsl(0 0% 15%)) !important;
+  background: transparent !important;
+  --sh-class: #66d9ef !important;
+  --sh-identifier: #f8f8f2 !important;
+  --sh-keyword: #f92672 !important;
+  --sh-string: #e6db74 !important;
+  --sh-property: #a6e22e !important;
+  --sh-entity: #66d9ef !important;
+  --sh-sign: #f8f8f2 !important;
+  --sh-comment: #75715e !important;
+  --sh-jsxliterals: #ae81ff !important;
+}
+
+.fd-ai-code-header {
+  border-bottom-color: var(--color-fd-border, hsl(0 0% 15%)) !important;
+  background: transparent !important;
+}
+
+.fd-ai-code-lang {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+}
+
+.fd-ai-code-copy {
+  border-radius: 0 !important;
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+
+.fd-ai-code-block code {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+}

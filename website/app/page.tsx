@@ -54,8 +54,8 @@ function HeroSection() {
   ];
 
   return (
-    <section className="relative min-h-screen flex items-end overflow-hidden">
-      <div className="absolute top-14 left-0 right-0 z-[999] h-px bg-white/[8%]" />
+    <section className="relative min-h-screen flex items-end overflow-y-hidden">
+      <div className="absolute w-full top-14 right-0 z-[999] h-px bg-white/[8%]" /> 
       <div className="absolute bottom-[70px] sm:bottom-16 left-0 right-0 z-[999] h-px bg-white/[8%]" />
       <AnimatedBackground />
       <div className="relative z-[999] w-full pb-12 sm:pb-16 pt-24 px-5 sm:px-0">
@@ -78,13 +78,13 @@ function HeroSection() {
               <div className="inline-block">
                 <span className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
-                  v0.0.2-beta.2
+                  v0.0.2-beta.5
                 </span>
               </div>
               <div className="inline-block">
                 <span className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
-                  v0.0.2-beta.3
+                  v0.0.2-beta.10
                 </span>
               </div>
             </div>
@@ -702,14 +702,14 @@ function InstallSection() {
             <AnimatedBackground />
           </div>
           <div className="absolute inset-0 bg-gradient-to-r from-black/10 via-black/50 to-black/80 pointer-events-none opacity-100 mix-blend-overlay" />
-          {/* <div
+          <div
             className="absolute inset-0 z-[999] pointer-events-none opacity-80 mix-blend-overlay"
             style={{
               backgroundImage: "url(/shades.png)",
               backgroundRepeat: "repeat",
               backgroundSize: "100% 100%",
             }}
-          /> */}
+          />
           <div className="flex relative z-[999] flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
             <div className="flex-1">
               <p className="text-sm text-white/60 mb-1">
@@ -783,7 +783,7 @@ function ThemesSection() {
       name: "Colorful",
       description: "Faithful clone of the fumadocs default neutral theme",
       import: '@import "@farming-labs/theme/colorful/css";',
-      colors: ["#6366f1", "#f5f5f4", "#64748b", "#e5e7eb"],
+      colors: ["#FFFF00", "#f5f5f4", "#64748b", "#e5e7eb"],
     },
   ];
 
@@ -848,6 +848,21 @@ function ThemesSection() {
   },
 }),`}
           />
+        </div>
+
+        <div className="mt-10 flex items-center gap-4">
+          <a className="group" href="/themes">
+            <span
+              className="inline-flex group items-center gap-2 rounded-none uppercase font-mono text-xs border border-white/10 bg-white/[3%] px-5 py-2.5 cursor-pointer text-white/80 transition-all hover:bg-white/[4%] hover:text-white hover:border-white/10 hover:no-underline"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="13.5" cy="6.5" r="2.5" /><circle cx="17.5" cy="10.5" r="2.5" /><circle cx="8.5" cy="7.5" r="2.5" /><circle cx="6.5" cy="12.5" r="2.5" />
+                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+              </svg>
+              expore themes
+              <ArrowRight className="w-3.5 h-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
+            </span>
+          </a>
         </div>
       </div>
     </section>
@@ -1067,7 +1082,7 @@ function FooterSection() {
 
 export default function Home() {
   return (
-    <div className="min-h-screen w-full overflow-x-hidden relative bg-black">
+    <div className="min-h-screen w-full overflow-y-hidden relative bg-black">
       <div className="pointer-events-none fixed inset-0 z-[999] hidden lg:block">
         <div className="mx-auto max-w-[90%] h-full relative">
           <div className="absolute left-0 top-0 h-full w-px bg-white/[8%]" />

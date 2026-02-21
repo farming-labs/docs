@@ -113,19 +113,19 @@ code:not(pre code) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
- * Global sharp radius — override all rounded Tailwind utilities
+ * Sharp radius — scoped to docs layout only
  * ═══════════════════════════════════════════════════════════════════ */
 
-[class*="rounded-lg"] {
+#nd-docs-layout [class*="rounded-lg"] {
   border-radius: 0.2rem !important;
 }
 
-[class*="rounded-md"] {
+#nd-docs-layout [class*="rounded-md"] {
   border-radius: 0.1rem !important;
 }
 
-[class*="rounded-xl"],
-[class*="rounded-2xl"] {
+#nd-docs-layout [class*="rounded-xl"],
+#nd-docs-layout [class*="rounded-2xl"] {
   border-radius: 0.2rem !important;
 }
 

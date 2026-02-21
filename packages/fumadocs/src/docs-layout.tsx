@@ -200,6 +200,41 @@ function buildLastModifiedMap(entry: string): Record<string, string> {
   return map;
 }
 
+/**
+ * Scan all page.mdx files and build a map of URL pathname → description
+ * from the frontmatter `description` field.
+ */
+function buildDescriptionMap(entry: string): Record<string, string> {
+  const docsDir = path.join(process.cwd(), "app", entry);
+  const map: Record<string, string> = {};
+
+  function scan(dir: string, slugParts: string[]) {
+    if (!fs.existsSync(dir)) return;
+
+    const pagePath = path.join(dir, "page.mdx");
+    if (fs.existsSync(pagePath)) {
+      const data = readFrontmatter(pagePath);
+      const desc = data.description as string | undefined;
+      if (desc) {
+        const url = slugParts.length === 0
+          ? `/${entry}`
+          : `/${entry}/${slugParts.join("/")}`;
+        map[url] = desc;
+      }
+    }
+
+    for (const name of fs.readdirSync(dir)) {
+      const full = path.join(dir, name);
+      if (fs.statSync(full).isDirectory()) {
+        scan(full, [...slugParts, name]);
+      }
+    }
+  }
+
+  scan(docsDir, []);
+  return map;
+}
+
 // ─── createDocsMetadata ──────────────────────────────────────────────
 
 /**
@@ -430,6 +465,9 @@ export function createDocsLayout(config: DocsConfig) {
   // Build last-modified map by scanning all page.mdx files
   const lastModifiedMap = buildLastModifiedMap(config.entry);
 
+  // Build description map from frontmatter
+  const descriptionMap = buildDescriptionMap(config.entry);
+
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     return (
       <DocsLayout
@@ -465,6 +503,7 @@ export function createDocsLayout(config: DocsConfig) {
           githubBranch={githubBranch}
           githubDirectory={githubDirectory}
           lastModifiedMap={lastModifiedMap}
+          descriptionMap={descriptionMap}
         >
           {children}
         </DocsPageClient>

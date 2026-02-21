@@ -1,4 +1,5 @@
 import { defineDocs } from "@farming-labs/docs";
+import { colorful } from "@farming-labs/theme/colorful";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
 import {
   BookOpen,
@@ -17,7 +18,7 @@ export default defineDocs({
   entry: "docs",
   theme: pixelBorder({
     ui: {
-      layout: { toc: { enabled: true, depth: 3 } },
+      layout: { toc: { enabled: true, depth: 3, style: "directional" } },
       sidebar: { style: "floating" },
       typography: {
         font: {
