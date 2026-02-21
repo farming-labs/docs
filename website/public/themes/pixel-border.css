@@ -158,7 +158,7 @@ code:not(pre code) {
 /* ── Full-width border separators between top-level items ─────────── */
 
 .dark aside .overscroll-contain > div {
-  margin-top: -22px !important;
+  /* margin-top: -22px !important; */
 }
 
 .dark aside .overscroll-contain > div > a[data-active] {

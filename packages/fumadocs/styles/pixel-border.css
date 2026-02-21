@@ -157,7 +157,6 @@ code:not(pre code) {
 }
 
 /* ── Full-width border separators between top-level items ─────────── */
-/* Negative margins extend the border line across the full sidebar.    */
 .dark aside .overscroll-contain > div {
   margin-top: -22px;
 }
@@ -168,12 +167,9 @@ code:not(pre code) {
   margin-right: -1rem;
   padding-left: 1rem;
   padding-right: 1rem;
-  /* padding-top: 0.75rem; */
   padding-bottom: 0.75rem;
 }
 
-/* Folder wrappers: border + negative margin but NO padding
-   so the parent link inside aligns with other top-level items.        */
 .dark aside .overscroll-contain > div > div {
   border-top: 1px solid hsl(0 0% 12%);
   margin-left: -1rem;
@@ -181,17 +177,11 @@ code:not(pre code) {
   padding: 0 !important;
 }
 
-/* Parent link inside a folder (e.g. "Introduction") — 
-   inherit the same padding as other top-level links from the
-   all-links rule so it aligns flush. No extra padding here.           */
-
-/* First item: no top border */
 .dark aside .overscroll-contain > div > a[data-active]:first-child,
 .dark aside .overscroll-contain > div > div:first-child {
   border-top: none;
 }
 
-/* Last item: bottom border */
 .dark aside .overscroll-contain > div > a[data-active]:last-child,
 .dark aside .overscroll-contain > div > div:last-child {
   border-bottom: 1px solid hsl(0 0% 12%);
@@ -211,7 +201,6 @@ code:not(pre code) {
   background-color: transparent !important;
 }
 
-/* Kill the Tailwind utility bg on active & hover */
 .dark aside a[data-active="true"],
 .dark aside a[data-active="true"]:hover {
   background: transparent !important;
@@ -220,7 +209,6 @@ code:not(pre code) {
   font-weight: 600;
 }
 
-/* Hover on inactive: text brightens only */
 .dark aside a[data-active="false"]:hover {
   background: transparent !important;
   background-color: transparent !important;
@@ -228,9 +216,6 @@ code:not(pre code) {
 }
 
 /* ── Child links inside collapsible folders ──────────────────────── */
-/* Smaller text, indented, no border separators.
-   Target only links inside the inner overflow-hidden collapsible
-   content container (which has both data-state and overflow-hidden). */
 
 .dark aside div.overflow-hidden[data-state] a[data-active] {
   font-size: 0.785rem !important;
@@ -264,35 +249,25 @@ code:not(pre code) {
 .dark aside button.text-fd-muted-foreground:hover {
   color: hsl(0 0% 100%);
 }
+
 .dark aside a[data-active="true"]::before {
-  background-color: var(--color-fd-primary) !important; 
-  width: 2px !important;  
-  margin-left: 0.6rem !important;                      
-  inset-inline-start: 0.5rem !important;         
+  background-color: var(--color-fd-primary) !important;
+  width: 2px !important;
+  margin-left: 0.6rem !important;
+  inset-inline-start: 0.5rem !important;
 }
 
-/* Change the static folder guide line */
 .dark aside div.overflow-hidden[data-state]::before {
   margin-left: 0.5rem !important;
   height: calc(100% + 20px) !important;
-  /* margin-bottom: -10px !important; */
   margin-top: -25px !important;
 }
 
-/* ── Folder parent link when children are EXPANDED ────── */
 .dark aside div[data-state="open"] > :last-child {
   overflow: hidden;
 }
 
-/* ── Folder parent link when children are COLLAPSED ───── */
-/* .dark aside div[data-state="closed"] > a[data-active] {
-  color: hsl(0 0% 60%) !important;
-  font-weight: 400 !important;
-} */
-
-
 /* ── Search button: full-width, border-y only ────────────────────── */
-
 
 .dark aside button[class*="bg-fd-secondary"] {
   background: transparent !important;

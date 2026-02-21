@@ -295,7 +295,6 @@ function buildColorCSS(colors: Colors): string {
 [data-customizer] [class*="rounded-full"] { border-radius: 9999px !important; }
 [data-customizer] [class*="rounded-[4px]"] { border-radius: 4px !important; }
 [data-customizer] [class*="rounded-[3px]"] { border-radius: 3px !important; }
-[data-customizer] select { border-radius: 0.375rem !important; }
 [data-customizer] input { border-radius: 0.375rem !important; }
 [data-customizer] button { font-size: inherit !important; letter-spacing: inherit !important; text-transform: inherit !important; }
 [data-customizer] pre { border-radius: 0 !important; }
@@ -316,71 +315,80 @@ function buildConfigCSS(state: ThemeState): string {
     rules.push(`#nd-docs-layout { --fd-toc-width: 0px !important; }`);
   }
 
-  // TOC style switching — CSS-only approach with !important to override any
-  // stale inline styles and guarantee only one style is visible at a time.
-  // TOC mode is controlled by #nd-toc[data-cz-toc-style="..."].
-  // This prevents mixed state (directional + default) during quick switches.
+  // TOC style switching — purely CSS-driven via data-cz-toc-style attribute.
+  // BOTH rule sets are always present; only the one matching the current
+  // attribute value applies. This guarantees mutual exclusivity.
   rules.push(`
-    #nd-toc[data-cz-toc-style="default"] > div[class*="relative"] > div[class*="absolute"][class*="start-0"] {
+    /* ── DEFAULT: straight left-border, inset shadow on active ────── */
+    #nd-toc[data-cz-toc-style="default"] [role="none"],
+    #nd-toc[data-cz-toc-style="default"] [style*="--fd-top"],
+    #nd-toc[data-cz-toc-style="default"] [style*="--fd-height"],
+    #nd-toc[data-cz-toc-style="default"] svg.absolute,
+    #nd-toc[data-cz-toc-style="default"] > div > div:first-child:not([class*="flex-col"]) {
       display: none !important;
+      visibility: hidden !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      opacity: 0 !important;
     }
+    #nd-toc[data-cz-toc-style="default"] > div > div[class*="flex"][class*="flex-col"],
     #nd-toc[data-cz-toc-style="default"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] {
       border-left: 1px solid var(--color-fd-border) !important;
       padding-left: 0 !important;
     }
+    #nd-toc[data-cz-toc-style="default"] > div > div[class*="flex"][class*="flex-col"] > a,
     #nd-toc[data-cz-toc-style="default"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a {
       border-left: none !important;
       margin-left: 0 !important;
       padding-inline-start: 12px !important;
       box-shadow: none !important;
     }
+    #nd-toc[data-cz-toc-style="default"] > div > div[class*="flex"][class*="flex-col"] > a::before,
     #nd-toc[data-cz-toc-style="default"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a::before {
       display: none !important;
     }
-    #nd-toc[data-cz-toc-style="default"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a > div[class*="absolute"][class*="w-px"] {
+    #nd-toc[data-cz-toc-style="default"] div[class*="absolute"][class*="w-px"] {
       display: none !important;
     }
-    #nd-toc[data-cz-toc-style="default"] > div[class*="relative"] [class*="bg-fd-foreground/10"] {
-      display: none !important;
-    }
-    #nd-toc[data-cz-toc-style="default"] [style*="--fd-top"],
-    #nd-toc[data-cz-toc-style="default"] [style*="--fd-height"] {
-      display: none !important;
-    }
-    #nd-toc[data-cz-toc-style="default"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a[data-active="true"] {
+    #nd-toc[data-cz-toc-style="default"] a[data-active="true"] {
       box-shadow: inset 2px 0 0 var(--color-fd-primary) !important;
       color: var(--color-fd-primary) !important;
     }
 
-    #nd-toc[data-cz-toc-style="directional"] > div[class*="relative"] > div[class*="absolute"][class*="start-0"] {
-      display: block !important;
-    }
+    /* ── DIRECTIONAL: tree-line SVG, per-link line segments ───────── */
+    #nd-toc[data-cz-toc-style="directional"] > div > div[class*="flex"][class*="flex-col"],
     #nd-toc[data-cz-toc-style="directional"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] {
       border-left: none !important;
       padding-left: 0 !important;
     }
+    #nd-toc[data-cz-toc-style="directional"] > div > div[class*="flex"][class*="flex-col"] > a,
     #nd-toc[data-cz-toc-style="directional"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a {
       border-left: none !important;
       margin-left: 0 !important;
       box-shadow: none !important;
     }
-    #nd-toc[data-cz-toc-style="directional"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a,
-    #nd-toc[data-cz-toc-style="directional"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a[data-active="true"] {
-      border-left: none !important;
-      box-shadow: none !important;
-    }
-    #nd-toc[data-cz-toc-style="directional"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a[data-active="true"] {
-      border-left: none !important;
-      box-shadow: none !important;
-    }
+    #nd-toc[data-cz-toc-style="directional"] > div > div[class*="flex"][class*="flex-col"] > a::before,
     #nd-toc[data-cz-toc-style="directional"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a::before {
       display: none !important;
     }
-    #nd-toc[data-cz-toc-style="directional"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a > div[class*="absolute"][class*="w-px"] {
-      display: block !important;
-    }
+    #nd-toc[data-cz-toc-style="directional"] [role="none"],
     #nd-toc[data-cz-toc-style="directional"] [style*="--fd-top"],
     #nd-toc[data-cz-toc-style="directional"] [style*="--fd-height"] {
+      display: block !important;
+      visibility: visible !important;
+      height: auto !important;
+      overflow: visible !important;
+      opacity: 1 !important;
+    }
+    #nd-toc[data-cz-toc-style="directional"] svg.absolute,
+    #nd-toc[data-cz-toc-style="directional"] > div > div:first-child:not([class*="flex-col"]) {
+      display: block !important;
+      visibility: visible !important;
+      height: auto !important;
+      overflow: visible !important;
+      opacity: 1 !important;
+    }
+    #nd-toc[data-cz-toc-style="directional"] div[class*="absolute"][class*="w-px"] {
       display: block !important;
     }
   `);
@@ -578,7 +586,7 @@ function ToggleSwitch({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex items-center justify-between cursor-pointer text-[12px] text-white/60 mb-2 select-none hover:text-white/80 transition-colors">
+    <label className="flex mt-5 items-center justify-between cursor-pointer text-[12px] text-white/60 mb-2 select-none hover:text-white/80 transition-colors">
       {label}
       <button
         role="switch"
@@ -607,20 +615,83 @@ function SelectField({
   options: { value: string; label: string }[];
   onChange: (v: string) => void;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isOpen]);
+
+  const selected = options.find((o) => o.value === value);
+
   return (
-    <div className="flex items-center justify-between mb-2">
+    <div ref={containerRef} className="flex items-center justify-between mb-2 relative">
       <span className="text-[12px] text-white/60 select-none">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="bg-white/[3%] border border-white/[8%] rounded-md text-[11px] text-white/70 px-2 py-1 cursor-pointer outline-none focus:border-white/20 transition-colors"
+      <span
+        onClick={() => setIsOpen((v) => !v)}
+        className="flex items-center gap-1.5 bg-white/[3%] border border-white/[8%] rounded-sm text-[11px] text-white/70 px-2.5 py-1.5 cursor-pointer outline-none hover:border-white/15 hover:bg-white/[5%] transition-colors min-w-[120px] justify-between"
       >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+        <span className="truncate">{selected?.label ?? value}</span>
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="shrink-0 opacity-40 transition-transform"
+          style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </span>
+      {isOpen && (
+        <div
+          className="absolute right-0 top-full mt-1 z-[100] min-w-[140px] py-1 border border-white/[10%] rounded-lg shadow-xl overflow-hidden"
+          style={{ background: "#111113", backdropFilter: "blur(12px)" }}
+        >
+          {options.map((o) => {
+            const active = o.value === value;
+            return (
+              <div
+                key={o.value}
+                onClick={() => {
+                  onChange(o.value);
+                  setIsOpen(false);
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 text-[11px] cursor-pointer transition-colors"
+                style={{
+                  color: active ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.55)",
+                  background: active ? "rgba(255,255,255,0.06)" : "transparent",
+                }}
+                onMouseEnter={(e) => {
+                  if (!active) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
+                }}
+                onMouseLeave={(e) => {
+                  if (!active) (e.currentTarget as HTMLElement).style.background = "transparent";
+                }}
+              >
+                <span
+                  className="size-1 rounded-full shrink-0"
+                  style={{
+                    background: active ? "var(--cz-accent, #6366f1)" : "transparent",
+                  }}
+                />
+                {o.label}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -751,9 +822,7 @@ function CodeOutput({
               <div key={i}>{i + 1}</div>
             ))}
           </div>
-          {/* Divider */}
           <div className="shrink-0 w-px" style={{ background: "rgba(255,255,255,0.05)" }} />
-          {/* Code */}
           <pre
             className="flex-1 pl-4 pr-4 text-[10.5px] leading-[1.75] font-mono overflow-x-auto"
             style={{ margin: 0, background: "transparent" }}
@@ -952,23 +1021,27 @@ export function ThemeCustomizer() {
     }
   }, [hasCustomized, state.themeToggle.enabled, state.themeToggle.default]);
 
-  // Set TOC style attribute only when customizer has been used
+  // Set TOC style attribute and aggressively clean stale inline styles
   useEffect(() => {
     const toc = document.getElementById("nd-toc");
     if (!toc) return;
+
     if (!hasCustomized) {
       toc.removeAttribute("data-cz-toc-style");
       return;
     }
-    toc.setAttribute("data-cz-toc-style", state.toc.enabled ? state.toc.style : "hidden");
-    const scrollDiv = toc.children[1] as HTMLElement | undefined;
-    if (!scrollDiv || scrollDiv.children.length < 2) return;
-    const clerkSvg = scrollDiv.children[0] as HTMLElement;
-    const itemsDiv = scrollDiv.children[1] as HTMLElement;
-    clerkSvg.style.removeProperty("display");
-    itemsDiv.style.removeProperty("border-left");
-    itemsDiv.style.removeProperty("padding-left");
-  }, [hasCustomized, state.toc.style, state.toc.enabled]);
+
+    const newStyle = state.toc.enabled ? state.toc.style : "hidden";
+    toc.setAttribute("data-cz-toc-style", newStyle);
+
+    toc.querySelectorAll<HTMLElement>("*").forEach((el) => {
+      el.style.removeProperty("display");
+      el.style.removeProperty("border-left");
+      el.style.removeProperty("padding-left");
+      el.style.removeProperty("box-shadow");
+      el.style.removeProperty("margin-left");
+    });
+  }, [hasCustomized, state.toc.style, state.toc.enabled, state.preset]);
 
   // Direct DOM manipulation for nav cards + edit link border-radius
   useEffect(() => {
@@ -1000,7 +1073,6 @@ export function ThemeCustomizer() {
     document.documentElement.classList.remove("light");
     document.documentElement.classList.add("dark");
     document.documentElement.style.colorScheme = "dark";
-    // Clean up injected toggle button
     const toggleBtn = document.getElementById("cz-theme-toggle");
     if (toggleBtn) toggleBtn.remove();
     router.replace("/docs", { scroll: false });
@@ -1008,20 +1080,16 @@ export function ThemeCustomizer() {
 
   return (
     <>
-      {/* Preset structural CSS — only inject on /docs pages to avoid bleeding onto landing page */}
       {isDocsPage && (open || hasCustomized) && presetCSS && (
         <style dangerouslySetInnerHTML={{ __html: presetCSS }} />
       )}
-      {/* User color overrides — applied on top of the preset CSS */}
       {isDocsPage && (open || hasCustomized) && (
         <style dangerouslySetInnerHTML={{ __html: colorCSS }} />
       )}
-      {/* Live config overrides — TOC, breadcrumb, AI position/visibility */}
       {isDocsPage && (open || hasCustomized) && configCSS && (
         <style dangerouslySetInnerHTML={{ __html: configCSS }} />
       )}
 
-      {/* Floating toggle button — icon only, minimal */}
       <button
         onClick={() => {
           setOpen((v) => {
@@ -1042,7 +1110,6 @@ export function ThemeCustomizer() {
         )}
       </button>
 
-      {/* Backdrop */}
       {open && (
         <div
           className="fixed inset-0 z-[10009] bg-black/30 backdrop-blur-[2px] transition-opacity"

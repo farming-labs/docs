@@ -365,63 +365,56 @@ article a[class*="text-fd-muted-foreground"] {
   border-bottom: none !important;
 }
 
-/* Sidebar links (darksharp style) */
+/* Sidebar links (darksharp style — fumadocs pattern) */
 .dark aside a[data-active] {
-  border-radius: 0.2rem !important;
-  padding: 0.4rem 0.5rem !important;
-  font-size: 0.8125rem !important;
-  line-height: 1.6 !important;
-  transition: color 0.15s ease !important;
+  border-radius: 4px !important;
+  padding: 0.5rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.43 !important;
+  transition: all 0.15s ease !important;
   font-weight: 400 !important;
-  overflow: hidden !important;
+  color: var(--color-fd-muted-foreground) !important;
   background-color: transparent !important;
 }
 
-.dark aside a[data-active="true"] {
-  background: hsl(0 0% 14%) !important;
-  color: hsl(0 0% 96%) !important;
+.dark aside a[data-active="true"],
+.dark aside a[data-active="true"]:hover {
+  background: color-mix(in srgb, var(--color-fd-primary) 10%, transparent) !important;
+  background-color: color-mix(in srgb, var(--color-fd-primary) 10%, transparent) !important;
+  color: var(--color-fd-primary) !important;
   font-weight: 500 !important;
 }
 
-/* Reset pixel-border active indicator bar */
 .dark aside a[data-active="true"]::before {
   background-color: transparent !important;
   width: 0 !important;
-  display: none !important;
 }
 
-.dark aside a[data-active="true"]:hover {
-  background: hsl(0 0% 14%) !important;
-  color: hsl(0 0% 96%) !important;
+.dark aside a[data-active="false"]:hover {
+  background: var(--color-fd-accent) !important;
+  background-color: var(--color-fd-accent) !important;
+  color: var(--color-fd-foreground) !important;
 }
 
-.dark aside a[data-active]:hover {
-  background: hsl(0 0% 10%) !important;
-  color: hsl(0 0% 90%) !important;
-}
-
-/* Reset pixel-border child link overrides */
 .dark aside div.overflow-hidden[data-state] a[data-active] {
   font-size: 0.8125rem !important;
-  padding-left: 0.5rem !important;
-  padding-top: 0.4rem !important;
-  padding-bottom: 0.4rem !important;
-  color: inherit !important;
-  overflow: hidden !important;
+  padding-left: 1.5rem !important;
+  padding-top: 0.375rem !important;
+  padding-bottom: 0.375rem !important;
+  color: var(--color-fd-muted-foreground) !important;
 }
 
 .dark aside div.overflow-hidden[data-state] a[data-active="true"],
 .dark aside div.overflow-hidden[data-state] a[data-active="true"]:hover {
-  background: hsl(0 0% 14%) !important;
-  color: hsl(0 0% 96%) !important;
+  color: var(--color-fd-primary) !important;
   font-weight: 500 !important;
+  background: color-mix(in srgb, var(--color-fd-primary) 10%, transparent) !important;
 }
 
 .dark aside div.overflow-hidden[data-state] a[data-active="false"]:hover {
-  color: hsl(0 0% 90%) !important;
+  color: var(--color-fd-foreground) !important;
 }
 
-/* Reset pixel-border folder guide line */
 .dark aside div.overflow-hidden[data-state]::before {
   margin-left: 0 !important;
   height: auto !important;
@@ -432,31 +425,29 @@ article a[class*="text-fd-muted-foreground"] {
 .dark aside button[class*="bg-fd-secondary"] {
   background: hsl(0 0% 8%) !important;
   border: 1px solid hsl(0 0% 14%) !important;
-  border-radius: 0.2rem !important;
+  border-radius: 4px !important;
   width: auto !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
-  padding: 0.5rem 0.75rem !important;
-  padding-left: 0.75rem !important;
-  padding-right: 0.75rem !important;
+  padding: 0.375rem 0.5rem !important;
 }
 
 .dark aside button[class*="bg-fd-secondary"]:hover {
   background: hsl(0 0% 12%) !important;
-  color: inherit !important;
+  color: var(--color-fd-foreground) !important;
 }
 
 /* Folder toggle buttons */
 .dark aside button.text-fd-muted-foreground {
-  color: hsl(0 0% 60%) !important;
-  font-size: inherit !important;
-  font-weight: inherit !important;
+  color: var(--color-fd-foreground) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
   letter-spacing: normal !important;
   text-transform: none !important;
 }
 
 .dark aside button.text-fd-muted-foreground:hover {
-  color: hsl(0 0% 80%) !important;
+  color: hsl(0 0% 100%) !important;
 }
 
 .dark aside button[class*="rounded-full"] {
@@ -464,7 +455,6 @@ article a[class*="text-fd-muted-foreground"] {
   border-radius: 9999px !important;
 }
 
-/* Folder open/closed states reset */
 .dark aside div[data-state="open"] > :last-child {
   overflow: hidden !important;
 }
