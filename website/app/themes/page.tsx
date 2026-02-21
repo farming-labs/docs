@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 const themes = [
   {
@@ -45,7 +45,7 @@ export default function ThemesPage() {
           <div className="absolute right-0 top-0 h-full w-px bg-white/[8%]" />
         </div>
       </div>
-      <header className="border-b border-white/[6%] px-6 py-5">
+      <header className="border-b border-white/[8%] px-6 py-5">
         <div className="mx-auto max-w-[90%] mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-lg uppercase font-mono tracking-wide">Themes</h1>
@@ -53,6 +53,13 @@ export default function ThemesPage() {
               Pick a preset and customize it live on the docs.
             </p>
           </div>
+          <Link
+            href="/"
+            className="inline-flex group border border-white/[8%] items-center gap-2 text-[11px] font-mono px-4 py-2 rounded-none uppercase transition-all hover:no-underline"
+          >
+            <ArrowLeft className="size-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
+            Back to home
+          </Link>
         </div>
       </header>
 
