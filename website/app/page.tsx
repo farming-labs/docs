@@ -701,9 +701,9 @@ function InstallSection() {
           <div className="-pl-20">
             <AnimatedBackground />
           </div>
-          <div className="absolute inset-0 bg-gradient-to-r from-black/10 via-black/50 to-black/80 pointer-events-none opacity-100 mix-blend-overlay" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/85 to-black/95 md:from-black/10 md:via-black/50 md:to-black/80 pointer-events-none opacity-100 md:mix-blend-overlay" />
           <div
-            className="absolute inset-0 z-[999] pointer-events-none opacity-80 mix-blend-overlay"
+            className="absolute inset-0 z-[999] pointer-events-none opacity-80 md:opacity-80 mix-blend-overlay"
             style={{
               backgroundImage: "url(/shades.png)",
               backgroundRepeat: "repeat",
@@ -724,7 +724,7 @@ function InstallSection() {
           </div>
 
           <div className="relative z-[999] flex justify-end mt-4">
-            <CopyCommand className="border-r-0 border-b-0 sm:border-b" command="pnpx @farming-labs/docs init" />
+            <CopyCommand className="backdrop-blur-sm md:backdrop-blur-none border-r-0 border-b-0 sm:border-b" command="pnpx @farming-labs/docs init" />
           </div>
         </div>
 
