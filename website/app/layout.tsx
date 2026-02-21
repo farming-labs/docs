@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { RootProvider } from "@farming-labs/theme";
-import { Suspense } from "react";
-import { ThemeCustomizer } from "@/components/theme-customizer";
 import "./global.css";
 
 const geistSans = Geist({
@@ -44,9 +42,6 @@ export default function RootLayout({
       >
         <RootProvider>
           {children}
-          <Suspense>
-            <ThemeCustomizer />
-          </Suspense>
         </RootProvider>
       </body>
     </html>
