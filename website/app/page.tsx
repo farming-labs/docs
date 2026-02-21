@@ -54,7 +54,7 @@ function HeroSection() {
   ];
 
   return (
-    <section className="relative min-h-screen flex items-end overflow-y-hidden">
+    <section className="relative md:mx-0 -mx-[5%] min-h-screen flex items-end overflow-y-hidden">
       <div className="absolute w-full top-14 right-0 z-[999] h-px bg-white/[8%]" /> 
       <div className="absolute bottom-[70px] sm:bottom-16 left-0 right-0 z-[999] h-px bg-white/[8%]" />
       <AnimatedBackground />
@@ -99,7 +99,7 @@ function HeroSection() {
               config file, zero boilerplate.
             </p>
 
-            <div className="mt-6 sm:mt-8 flex flex-wrap flex-row-reverse items-center gap-0">
+            <div className="-mb-5 sm:mb-0 mt-6 sm:mt-8 flex flex-col md:flex-wrap md:flex-row-reverse items-start md:items-center gap-0">
               <Link
                 href="/docs"
                 className="group inline-flex items-center gap-2 bg-white text-black px-5 py-[11px] mb-[0.5px] text-xs font-mono uppercase tracking-wider hover:bg-white/90 transition-all hover:no-underline"
@@ -107,7 +107,7 @@ function HeroSection() {
                 Get Started
                 <ArrowRight className="w-3.5 h-3.5 -rotate-45 group-hover:translate-x-0.5 transition-transform" />
               </Link>
-              <CopyCommand className="border-l-0 border-white/10" command="pnpx @farming-labs/docs init" />
+              <CopyCommand className="border-b-0 sm:border-b border-l-0 border-white/10" command="pnpx @farming-labs/docs init" />
             </div>
           </div>
 
@@ -697,7 +697,7 @@ function InstallSection() {
             Up and running in minutes
           </h2>
         </div>
-        <div className="mb-8 relative border border-white/[8%] bg-white/[0.02] p-5 sm:p-6">
+        <div className="mb-8 relative border border-white/[8%] bg-white/[0.02] overflow-hidden">
           <div className="-pl-20">
             <AnimatedBackground />
           </div>
@@ -710,18 +710,22 @@ function InstallSection() {
               backgroundSize: "100% 100%",
             }}
           />
-          <div className="flex relative z-[999] flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-            <div className="flex-1">
-              <p className="text-sm text-white/60 mb-1">
-                Easily scaffold your docs with the CLI. It auto-detects your framework and scaffolds everything.
-              </p>
-              <p className="text-[11px] font-mono text-white/30 uppercase tracking-wider">
-                Setup beautiful documentation in seconds
-              </p>
+          <div className="relative z-[999] p-5 sm:p-4 pb-0 sm:pb-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+              <div className="flex-1">
+                <p className="text-sm text-white/60 mb-1">
+                  Easily scaffold your docs with the CLI. It auto-detects your framework and scaffolds everything.
+                </p>
+                <p className="text-[11px] font-mono text-white/30 uppercase tracking-wider">
+                  Setup beautiful documentation in seconds
+                </p>
+              </div>
             </div>
           </div>
 
-          <CopyCommand className="absolute bottom-0 right-0 border-r-0" command="pnpx @farming-labs/docs init" />
+          <div className="relative z-[999] flex justify-end mt-4">
+            <CopyCommand className="border-r-0 border-b-0 sm:border-b" command="pnpx @farming-labs/docs init" />
+          </div>
         </div>
 
         <div className="mb-4">
@@ -1083,7 +1087,7 @@ function FooterSection() {
 export default function Home() {
   return (
     <div className="min-h-screen w-full overflow-y-hidden relative bg-black">
-      <div className="pointer-events-none fixed inset-0 z-[999] hidden lg:block">
+      <div className="pointer-events-none fixed inset-0 z-[999]">
         <div className="mx-auto max-w-[90%] h-full relative">
           <div className="absolute left-0 top-0 h-full w-px bg-white/[8%]" />
           <div className="absolute right-0 top-0 h-full w-px bg-white/[8%]" />

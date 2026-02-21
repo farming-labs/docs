@@ -775,7 +775,7 @@ function CodeOutput({
           style={{
             borderColor: copied ? "rgba(34,197,94,0.35)" : "rgba(255,255,255,0.07)",
             color: copied ? "#4ade80" : "rgba(255,255,255,0.4)",
-            background: copied ? "rgba(34,197,94,0.05)" : "transparent",
+            background: copied ? "transparent/90" : "transparent",
           }}
         >
           {copied ? (
