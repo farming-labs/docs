@@ -115,21 +115,21 @@ code:not(pre code) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
- * Global rounded-none: force sharp corners on all UI elements
+ * Rounded-none: scoped to docs layout to avoid bleeding onto landing page
  * ═══════════════════════════════════════════════════════════════════ */
 
-/* Cards, popovers, dialogs, inputs, buttons, badges */
-[class*="rounded-"],
-[class*="border-radius"],
-.rounded-lg,
-.rounded-md,
-.rounded-xl,
-.rounded-2xl {
+/* Cards, popovers, dialogs, inputs, buttons, badges — docs only */
+#nd-docs-layout [class*="rounded-"],
+#nd-docs-layout [class*="border-radius"],
+#nd-docs-layout .rounded-lg,
+#nd-docs-layout .rounded-md,
+#nd-docs-layout .rounded-xl,
+#nd-docs-layout .rounded-2xl {
   border-radius: 0 !important;
 }
 
-/* Inline code */
-code:not(pre code) {
+/* Inline code — docs only */
+#nd-docs-layout code:not(pre code) {
   border-radius: 0 !important;
 }
 

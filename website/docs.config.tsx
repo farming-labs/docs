@@ -1,4 +1,5 @@
 import { defineDocs } from "@farming-labs/docs";
+import { colorful } from "@farming-labs/theme/colorful";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
 import {
   BookOpen,

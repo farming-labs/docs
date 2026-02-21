@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { highlight } from "sugar-high";
 
 
 type PresetKey = "default" | "colorful" | "darksharp" | "pixel-border";
@@ -63,12 +64,12 @@ const PRESETS: Record<
     colors: {
       primary: "#6366f1",
       primaryForeground: "#ffffff",
-      background: "#0a0a0a",
+      background: "#0c0c0c",
       foreground: "#fafafa",
       muted: "#262626",
       mutedForeground: "#a3a3a3",
       border: "#262626",
-      card: "#111111",
+      card: "#141414",
       ring: "#6366f1",
     },
     sidebar: "default",
@@ -81,15 +82,16 @@ const PRESETS: Record<
     cssImport: "@farming-labs/theme/colorful/css",
     themeImport: { from: "@farming-labs/theme/colorful", name: "colorful" },
     colors: {
-      primary: "#eab308",
-      primaryForeground: "#0a0a0a",
-      background: "#0a0a0a",
-      foreground: "#fafafa",
-      muted: "#262626",
-      mutedForeground: "#a3a3a3",
-      border: "#262626",
-      card: "#111111",
-      ring: "#eab308",
+      // Match examples/next colorful baseline exactly
+      primary: "hsl(45, 100%, 60%)",
+      primaryForeground: "hsl(0, 0%, 5%)",
+      background: "hsl(0, 0%, 7.04%)",
+      foreground: "hsl(0, 0%, 92%)",
+      muted: "hsl(0, 0%, 12.9%)",
+      mutedForeground: "hsla(0, 0%, 70%, 0.8)",
+      border: "hsla(0, 0%, 40%, 20%)",
+      card: "hsl(0, 0%, 9.8%)",
+      ring: "hsl(45, 90%, 55%)",
     },
     sidebar: "bordered",
     toc: { style: "directional" },
@@ -270,22 +272,25 @@ function generateConfig(state: ThemeState): string {
 // ─── CSS Variable Injection (user color overrides on top of preset CSS) ──────
 
 function buildColorCSS(colors: Colors): string {
-  return `:root, .dark, :root.dark, :root.light, .light {
+  const parts: string[] = [];
+
+  parts.push(`:root, .dark, :root.dark, :root.light, .light {
   --color-fd-primary: ${colors.primary} !important;
   --color-fd-primary-foreground: ${colors.primaryForeground} !important;
   --color-fd-ring: ${colors.ring} !important;
-}
-.dark, :root.dark {
+}`);
+
+  parts.push(`.dark, :root.dark {
   --color-fd-background: ${colors.background} !important;
   --color-fd-foreground: ${colors.foreground} !important;
   --color-fd-muted: ${colors.muted} !important;
   --color-fd-muted-foreground: ${colors.mutedForeground} !important;
   --color-fd-border: ${colors.border} !important;
   --color-fd-card: ${colors.card} !important;
-}
-.dark body, :root.dark body { background-color: ${colors.background} !important; }
-/* Isolate customizer drawer from theme overrides */
-[data-customizer] [class*="rounded-md"] { border-radius: 0.375rem !important; }
+}`);
+
+  // Isolate customizer drawer from theme radius/font overrides
+  parts.push(`[data-customizer] [class*="rounded-md"] { border-radius: 0.375rem !important; }
 [data-customizer] [class*="rounded-lg"] { border-radius: 0.5rem !important; }
 [data-customizer] [class*="rounded-full"] { border-radius: 9999px !important; }
 [data-customizer] [class*="rounded-[4px]"] { border-radius: 4px !important; }
@@ -294,9 +299,10 @@ function buildColorCSS(colors: Colors): string {
 [data-customizer] input { border-radius: 0.375rem !important; }
 [data-customizer] button { font-size: inherit !important; letter-spacing: inherit !important; text-transform: inherit !important; }
 [data-customizer] pre { border-radius: 0 !important; }
-/* Theme toggle pill isolation */
 #cz-theme-toggle { border-radius: 9999px !important; border: 1px solid var(--color-fd-border) !important; padding: 0.25rem !important; }
-#cz-theme-toggle span { border-radius: 9999px !important; }`;
+#cz-theme-toggle span { border-radius: 9999px !important; }`);
+
+  return parts.join("\n");
 }
 
 // ─── Live Config CSS (TOC, breadcrumb, AI position/visibility) ──────
@@ -310,48 +316,74 @@ function buildConfigCSS(state: ThemeState): string {
     rules.push(`#nd-docs-layout { --fd-toc-width: 0px !important; }`);
   }
 
-  // TOC style: the site renders directional (clerk) by default.
-  // When user picks "default", hide the clerk SVG tree-line via structural
-  // selectors and add a simple left-border. The clerk SVG is the first child
-  // div inside the scroll container (#nd-toc > div:last-child > div:first-child).
-  if (state.toc.style === "default" && state.toc.enabled) {
-    rules.push(`
-      #nd-toc > div:last-child > div:first-child {
-        display: none !important;
-      }
-      #nd-toc > div:last-child > div:last-child {
-        border-left: 1px solid var(--color-fd-border) !important;
-        padding-left: 0 !important;
-      }
-      #nd-toc > div:last-child > div:last-child > a {
-        border-left: 2px solid transparent !important;
-        margin-left: -1px !important;
-        padding-inline-start: 12px !important;
-      }
-      #nd-toc > div:last-child > div:last-child > a[data-active="true"] {
-        border-left-color: var(--color-fd-primary) !important;
-        color: var(--color-fd-primary) !important;
-      }
-    `);
-  }
+  // TOC style switching — CSS-only approach with !important to override any
+  // stale inline styles and guarantee only one style is visible at a time.
+  // TOC mode is controlled by #nd-toc[data-cz-toc-style="..."].
+  // This prevents mixed state (directional + default) during quick switches.
+  rules.push(`
+    #nd-toc[data-cz-toc-style="default"] > div[class*="relative"] > div[class*="absolute"][class*="start-0"] {
+      display: none !important;
+    }
+    #nd-toc[data-cz-toc-style="default"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] {
+      border-left: 1px solid var(--color-fd-border) !important;
+      padding-left: 0 !important;
+    }
+    #nd-toc[data-cz-toc-style="default"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a {
+      border-left: none !important;
+      margin-left: 0 !important;
+      padding-inline-start: 12px !important;
+      box-shadow: none !important;
+    }
+    #nd-toc[data-cz-toc-style="default"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a::before {
+      display: none !important;
+    }
+    #nd-toc[data-cz-toc-style="default"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a > div[class*="absolute"][class*="w-px"] {
+      display: none !important;
+    }
+    #nd-toc[data-cz-toc-style="default"] > div[class*="relative"] [class*="bg-fd-foreground/10"] {
+      display: none !important;
+    }
+    #nd-toc[data-cz-toc-style="default"] [style*="--fd-top"],
+    #nd-toc[data-cz-toc-style="default"] [style*="--fd-height"] {
+      display: none !important;
+    }
+    #nd-toc[data-cz-toc-style="default"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a[data-active="true"] {
+      box-shadow: inset 2px 0 0 var(--color-fd-primary) !important;
+      color: var(--color-fd-primary) !important;
+    }
 
-  // When "directional" is selected, ensure the clerk SVG is visible and remove
-  // any default-style overrides that might persist from inline styles.
-  if (state.toc.style === "directional" && state.toc.enabled) {
-    rules.push(`
-      #nd-toc > div:last-child > div:first-child {
-        display: block !important;
-      }
-      #nd-toc > div:last-child > div:last-child {
-        border-left: none !important;
-        padding-left: revert !important;
-      }
-      #nd-toc > div:last-child > div:last-child > a {
-        border-left: none !important;
-        margin-left: 0 !important;
-      }
-    `);
-  }
+    #nd-toc[data-cz-toc-style="directional"] > div[class*="relative"] > div[class*="absolute"][class*="start-0"] {
+      display: block !important;
+    }
+    #nd-toc[data-cz-toc-style="directional"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] {
+      border-left: none !important;
+      padding-left: 0 !important;
+    }
+    #nd-toc[data-cz-toc-style="directional"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a {
+      border-left: none !important;
+      margin-left: 0 !important;
+      box-shadow: none !important;
+    }
+    #nd-toc[data-cz-toc-style="directional"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a,
+    #nd-toc[data-cz-toc-style="directional"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a[data-active="true"] {
+      border-left: none !important;
+      box-shadow: none !important;
+    }
+    #nd-toc[data-cz-toc-style="directional"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a[data-active="true"] {
+      border-left: none !important;
+      box-shadow: none !important;
+    }
+    #nd-toc[data-cz-toc-style="directional"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a::before {
+      display: none !important;
+    }
+    #nd-toc[data-cz-toc-style="directional"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a > div[class*="absolute"][class*="w-px"] {
+      display: block !important;
+    }
+    #nd-toc[data-cz-toc-style="directional"] [style*="--fd-top"],
+    #nd-toc[data-cz-toc-style="directional"] [style*="--fd-height"] {
+      display: block !important;
+    }
+  `);
 
   // TOC depth filtering
   if (state.toc.enabled && state.toc.depth === 2) {
@@ -595,6 +627,18 @@ function SelectField({
 
 // ─── Code Block ───────────────────────────────────────────────────────────────
 
+const SH_VARS = {
+  "--sh-class":      "#7dd3fc",
+  "--sh-identifier": "#e2e8f0",
+  "--sh-sign":       "#64748b",
+  "--sh-string":     "#86efac",
+  "--sh-keyword":    "#c084fc",
+  "--sh-comment":    "#475569",
+  "--sh-jsxliterals":"#fda4af",
+  "--sh-property":   "#93c5fd",
+  "--sh-entity":     "#fcd34d",
+} as React.CSSProperties;
+
 function CodeOutput({
   cssCode,
   configCode,
@@ -605,6 +649,11 @@ function CodeOutput({
   const [tab, setTab] = useState<"css" | "config">("css");
   const [copied, setCopied] = useState(false);
   const code = tab === "css" ? cssCode : configCode;
+  const fileName = tab === "css" ? "global.css" : "docs.config.ts";
+
+  const highlighted = useMemo(() => highlight(code), [code]);
+
+  const lines = useMemo(() => highlighted.split("\n"), [highlighted]);
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(code);
@@ -613,49 +662,109 @@ function CodeOutput({
   }, [code]);
 
   return (
-    <div className="border-t border-white/[6%]">
-      <div className="flex items-center justify-between px-4 py-2">
-        <div className="flex">
-          {(["css", "config"] as const).map((t) => (
-            <button
+    <div className="flex flex-col h-full">
+      {/* Tab bar */}
+      <div
+        className="flex items-center border-b shrink-0"
+        style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(0,0,0,0.25)" }}
+      >
+        {(["css", "config"] as const).map((t) => {
+          const active = tab === t;
+          const label = t === "css" ? "global.css" : "docs.config.ts";
+          return (
+            <span
               key={t}
               onClick={() => setTab(t)}
-              className="text-[11px] px-3 py-1 rounded-md transition-colors cursor-pointer"
+              className="relative flex items-center gap-1.5 px-3.5 py-2.5 text-[10px] font-mono transition-colors cursor-pointer border-r"
               style={{
-                background: tab === t ? "rgba(255,255,255,0.06)" : "transparent",
-                color: tab === t ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)",
-                fontWeight: tab === t ? 500 : 400,
+                borderRightColor: "rgba(255,255,255,0.05)",
+                color: active ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.3)",
+                background: active ? "rgba(255,255,255,0.04)" : "transparent",
               }}
             >
-              {t === "css" ? "global.css" : "docs.config.ts"}
-            </button>
-          ))}
-        </div>
-        <button
+              <span
+                className="size-1.5 rounded-full shrink-0"
+                style={{ background: t === "css" ? "#38bdf8" : "#a78bfa" }}
+              />
+              {label}
+              {active && (
+                <span
+                  className="absolute bottom-0 left-0 right-0 h-px"
+                  style={{ background: t === "css" ? "#38bdf8" : "#a78bfa" }}
+                />
+              )}
+            </span>
+          );
+        })}
+        <div className="flex-1" />
+        {/* Copy button */}
+        <span
           onClick={handleCopy}
-          className="text-[11px] px-3 py-1 rounded-md border transition-all cursor-pointer flex items-center gap-1.5"
+          className="flex items-center gap-1.5 px-3 py-1.5 mr-2 text-[10px] font-mono uppercase rounded-none transition-all cursor-pointer border"
           style={{
-            borderColor: copied ? "rgba(34,197,94,0.4)" : "rgba(255,255,255,0.08)",
-            color: copied ? "#22c55e" : "rgba(255,255,255,0.5)",
-            background: copied ? "rgba(34,197,94,0.06)" : "transparent",
+            borderColor: copied ? "rgba(34,197,94,0.35)" : "rgba(255,255,255,0.07)",
+            color: copied ? "#4ade80" : "rgba(255,255,255,0.4)",
+            background: copied ? "rgba(34,197,94,0.05)" : "transparent",
           }}
         >
           {copied ? (
             <>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
               Copied
             </>
           ) : (
             <>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="14" height="14" x="8" y="8" rx="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="14" height="14" x="8" y="8" rx="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg>
               Copy
             </>
           )}
-        </button>
+        </span>
       </div>
-      <pre className="px-4 pb-3 text-[11px] leading-[1.7] font-mono text-white/50 overflow-auto max-h-[200px] select-all">
-        {code}
-      </pre>
+
+      {/* Code area */}
+      <div
+        className="flex-1 overflow-auto"
+        style={{ ...SH_VARS, background: "rgba(0,0,0,0.2)" }}
+      >
+        {/* file path breadcrumb */}
+        <div
+          className="sticky top-0 flex items-center gap-1.5 px-4 py-1.5 text-[9px] font-mono border-b"
+          style={{
+            background: "rgba(0,0,0,0.35)",
+            borderColor: "rgba(255,255,255,0.04)",
+            color: "rgba(255,255,255,0.2)",
+            backdropFilter: "blur(4px)",
+          }}
+        >
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+          {fileName}
+        </div>
+
+        {/* Line-numbered code */}
+        <div className="flex min-w-0 py-3">
+          {/* Line numbers */}
+          <div
+            className="select-none shrink-0 text-right pr-4 pl-4 text-[10.5px] leading-[1.75] font-mono"
+            style={{ color: "rgba(255,255,255,0.12)", minWidth: "3rem" }}
+          >
+            {lines.map((_, i) => (
+              <div key={i}>{i + 1}</div>
+            ))}
+          </div>
+          {/* Divider */}
+          <div className="shrink-0 w-px" style={{ background: "rgba(255,255,255,0.05)" }} />
+          {/* Code */}
+          <pre
+            className="flex-1 pl-4 pr-4 text-[10.5px] leading-[1.75] font-mono overflow-x-auto"
+            style={{ margin: 0, background: "transparent" }}
+          >
+            <code
+              dangerouslySetInnerHTML={{ __html: highlighted }}
+              style={{ display: "block", whiteSpace: "pre" }}
+            />
+          </pre>
+        </div>
+      </div>
     </div>
   );
 }
@@ -665,6 +774,9 @@ function CodeOutput({
 export function ThemeCustomizer() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
+  // Only inject theme CSS when on the docs section — prevents bleeding onto the landing page
+  const isDocsPage = pathname.startsWith("/docs");
   const [open, setOpen] = useState(false);
   const [activeView, setActiveView] = useState<"customize" | "code">("customize");
 
@@ -697,6 +809,13 @@ export function ThemeCustomizer() {
     }
   }, [themeParam, loadPresetCSS]);
 
+ // Load preset CSS on first open when no URL param triggered it
+  useEffect(() => {
+    if (open && !presetCSS) {
+      loadPresetCSS(state.preset);
+    }
+  }, [open, presetCSS, state.preset, loadPresetCSS]);
+
   const setPreset = useCallback((key: PresetKey) => {
     const p = PRESETS[key];
     setState((s) => ({
@@ -725,7 +844,10 @@ export function ThemeCustomizer() {
 
   const cssCode = useMemo(() => generateCSS(state), [state]);
   const configCode = useMemo(() => generateConfig(state), [state]);
-  const colorCSS = useMemo(() => buildColorCSS(state.colors), [state.colors]);
+  const colorCSS = useMemo(
+    () => buildColorCSS(state.colors),
+    [state.colors]
+  );
   const configCSS = useMemo(() => buildConfigCSS(state), [state]);
 
   // Live theme toggle: switch light/dark mode when config changes
@@ -830,31 +952,22 @@ export function ThemeCustomizer() {
     }
   }, [hasCustomized, state.themeToggle.enabled, state.themeToggle.default]);
 
-  // Direct DOM manipulation for TOC style switching — more reliable than CSS selectors
+  // Set TOC style attribute only when customizer has been used
   useEffect(() => {
-    if (!hasCustomized) return;
     const toc = document.getElementById("nd-toc");
     if (!toc) return;
+    if (!hasCustomized) {
+      toc.removeAttribute("data-cz-toc-style");
+      return;
+    }
+    toc.setAttribute("data-cz-toc-style", state.toc.enabled ? state.toc.style : "hidden");
     const scrollDiv = toc.children[1] as HTMLElement | undefined;
     if (!scrollDiv || scrollDiv.children.length < 2) return;
     const clerkSvg = scrollDiv.children[0] as HTMLElement;
     const itemsDiv = scrollDiv.children[1] as HTMLElement;
-
-    if (state.toc.style === "default" && state.toc.enabled) {
-      clerkSvg.style.display = "none";
-      itemsDiv.style.borderLeft = "1px solid var(--color-fd-border)";
-      itemsDiv.style.paddingLeft = "0";
-    } else {
-      clerkSvg.style.display = "";
-      itemsDiv.style.borderLeft = "";
-      itemsDiv.style.paddingLeft = "";
-    }
-
-    return () => {
-      clerkSvg.style.display = "";
-      itemsDiv.style.borderLeft = "";
-      itemsDiv.style.paddingLeft = "";
-    };
+    clerkSvg.style.removeProperty("display");
+    itemsDiv.style.removeProperty("border-left");
+    itemsDiv.style.removeProperty("padding-left");
   }, [hasCustomized, state.toc.style, state.toc.enabled]);
 
   // Direct DOM manipulation for nav cards + edit link border-radius
@@ -895,16 +1008,16 @@ export function ThemeCustomizer() {
 
   return (
     <>
-      {/* Preset structural CSS — the full theme override from /themes/{preset}.css */}
-      {(open || hasCustomized) && presetCSS && (
+      {/* Preset structural CSS — only inject on /docs pages to avoid bleeding onto landing page */}
+      {isDocsPage && (open || hasCustomized) && presetCSS && (
         <style dangerouslySetInnerHTML={{ __html: presetCSS }} />
       )}
       {/* User color overrides — applied on top of the preset CSS */}
-      {(open || hasCustomized) && (
+      {isDocsPage && (open || hasCustomized) && (
         <style dangerouslySetInnerHTML={{ __html: colorCSS }} />
       )}
       {/* Live config overrides — TOC, breadcrumb, AI position/visibility */}
-      {(open || hasCustomized) && configCSS && (
+      {isDocsPage && (open || hasCustomized) && configCSS && (
         <style dangerouslySetInnerHTML={{ __html: configCSS }} />
       )}
 
@@ -999,7 +1112,7 @@ export function ThemeCustomizer() {
             </span>
           </div>
           {/* Content */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden  min-h-0">
+          <div className={`flex-1 min-h-0 ${activeView === "code" ? "flex flex-col overflow-hidden" : "overflow-y-auto overflow-x-hidden"}`}>
             {activeView === "customize" ? (
               <div className="px-4 py-3">
                 {/* Presets */}
