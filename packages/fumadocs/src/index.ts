@@ -79,6 +79,9 @@ export { DocsPageClient } from "./docs-page-client.js";
 // ─── Page action buttons (Copy Markdown, Open in LLM) ─────────────────
 export { PageActions } from "./page-actions.js";
 
+// ─── Built-in Command Palette Search ────────────────────────────────
+export { DocsCommandSearch } from "./docs-command-search.js";
+
 // ─── Core types (re-exported for convenience) ─────────────────────────
 export type {
   DocsConfig,

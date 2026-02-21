@@ -7,6 +7,7 @@ import { serializeIcon } from "./serialize-icon.js";
 import type { DocsConfig, ThemeToggleConfig, BreadcrumbConfig, SidebarConfig, TypographyConfig, FontStyle, PageActionsConfig, CopyMarkdownConfig, OpenDocsConfig, GithubConfig, AIConfig, OrderingItem } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
+import { DocsCommandSearch } from "./docs-command-search.js";
 
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
 interface PageNode {
@@ -479,6 +480,7 @@ export function createDocsLayout(config: DocsConfig) {
         <ColorStyle colors={colors} />
         <TypographyStyle typography={typography} />
         {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
+        <DocsCommandSearch />
         {aiEnabled && (
           <DocsAIFeatures
             mode={aiMode}

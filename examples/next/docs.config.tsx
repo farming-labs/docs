@@ -31,7 +31,7 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
-  theme: pixelBorder({
+  theme: colorful({
     ui: {
       components: { Callout: { variant: "outline" } },
       layout: { toc: { enabled: true, depth: 3, style: "directional" } },

@@ -86,3 +86,20 @@
 .fd-ai-code-copy {
   border-radius: 4px;
 }
+
+/* ─── Omni Command Palette (default theme) ──────────────────────── */
+
+.omni-content {
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-fd-border, #262626);
+  background: var(--color-fd-popover, hsl(0 0% 5%));
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.omni-item {
+  border-radius: 0.375rem;
+}
+
+.omni-highlight {
+  background: color-mix(in srgb, var(--color-fd-primary, #6366f1) 25%, transparent);
+}

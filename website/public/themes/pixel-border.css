@@ -723,3 +723,39 @@ article a[class*="text-fd-muted-foreground"] {
 .fd-ai-code-block code {
   font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
 }
+
+/* ─── Omni Command Palette — pixel-border theme ──────────────── */
+
+.omni-content {
+  border-radius: 0 !important;
+  border: 2px solid var(--color-fd-border, hsl(0 0% 15%)) !important;
+  box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%)),
+              0 24px 60px -12px rgba(0, 0, 0, 0.5) !important;
+}
+.omni-item {
+  border-radius: 0 !important;
+}
+.omni-kbd, .omni-kbd-sm {
+  border-radius: 0 !important;
+  border: 1px solid var(--color-fd-border, hsl(0 0% 15%)) !important;
+}
+.omni-close-btn {
+  border-radius: 0 !important;
+}
+.omni-empty-icon {
+  border-radius: 0 !important;
+}
+.omni-search-input {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+}
+.omni-group-label {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  letter-spacing: 0.08em !important;
+}
+.omni-footer-inner {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+}
+.omni-highlight {
+  background: color-mix(in srgb, var(--color-fd-primary, #6366f1) 25%, transparent) !important;
+  border-radius: 0 !important;
+}

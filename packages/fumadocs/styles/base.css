@@ -1,6 +1,9 @@
 /* AI Chat & Search Dialog styles */
 @import "./ai.css";
 
+/* Omni Command Palette — built-in search */
+@import "./omni.css";
+
 /* Shared base styles for all @farming-labs/theme themes.
  *
  * Typography CSS custom properties:
