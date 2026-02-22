@@ -1,7 +1,8 @@
 "use client";
 
 import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 // @ts-ignore – resolved by Next.js at runtime
 import { usePathname, useRouter } from "next/navigation";
 import { PageActions } from "./page-actions.js";
@@ -30,6 +31,8 @@ interface DocsPageClientProps {
   openDocsProviders?: SerializedProvider[];
   /** Where to render page actions relative to the title */
   pageActionsPosition?: "above-title" | "below-title";
+  /** Horizontal alignment of page action buttons */
+  pageActionsAlignment?: "left" | "right";
   /** GitHub repository URL (e.g. "https://github.com/user/repo") */
   githubUrl?: string;
   /** GitHub branch name @default "main" */
@@ -128,6 +131,7 @@ export function DocsPageClient({
   openDocs = false,
   openDocsProviders,
   pageActionsPosition = "below-title",
+  pageActionsAlignment = "left",
   githubUrl,
   githubBranch = "main",
   githubDirectory,
@@ -139,6 +143,7 @@ export function DocsPageClient({
   const fdTocStyle = tocStyle === "directional" ? "clerk" : undefined;
   const [toc, setToc] = useState<TOCItem[]>([]);
   const pathname = usePathname();
+  const [actionsPortalTarget, setActionsPortalTarget] = useState<HTMLElement | null>(null);
 
   const pageDescription = description
     ?? descriptionMap?.[pathname.replace(/\/$/, "") || "/"];
@@ -198,7 +203,62 @@ export function DocsPageClient({
   const normalizedPath = pathname.replace(/\/$/, "") || "/";
   const lastModified = lastModifiedMap?.[normalizedPath];
 
-  const showFooter = githubFileUrl || lastModified;
+  const showFooter = !!githubFileUrl;
+
+  // Inject: last-updated, separator, and page-actions portal target after h1
+  useEffect(() => {
+    const timer = requestAnimationFrame(() => {
+      const container = document.getElementById("nd-page");
+      if (!container) return;
+
+      // Clean up any previously injected elements
+      container.querySelectorAll(".fd-below-title-block").forEach(el => el.remove());
+
+      const h1 = container.querySelector("h1");
+      if (!h1) return;
+
+      // Find the insertion point: after h1, after description if present
+      let insertAfter: Element = h1;
+      const desc = container.querySelector(".fd-page-description");
+      if (desc) insertAfter = desc;
+
+      // Create wrapper for below-title elements
+      const wrapper = document.createElement("div");
+      wrapper.className = "fd-below-title-block not-prose";
+
+      // Last updated text
+      if (lastModified) {
+        const lastUpdatedEl = document.createElement("p");
+        lastUpdatedEl.className = "fd-last-updated-inline";
+        lastUpdatedEl.textContent = `Last updated ${lastModified}`;
+        wrapper.appendChild(lastUpdatedEl);
+      }
+
+      // Separator
+      if (lastModified || showActions) {
+        const hr = document.createElement("hr");
+        hr.className = "fd-title-separator";
+        wrapper.appendChild(hr);
+      }
+
+      // Portal target for page actions (React component)
+      if (showActions) {
+        const portalEl = document.createElement("div");
+        portalEl.className = "fd-actions-portal";
+        portalEl.setAttribute("data-actions-alignment", pageActionsAlignment);
+        wrapper.appendChild(portalEl);
+        setActionsPortalTarget(portalEl);
+      }
+
+      insertAfter.insertAdjacentElement("afterend", wrapper);
+    });
+
+    return () => {
+      cancelAnimationFrame(timer);
+      setActionsPortalTarget(null);
+      document.querySelectorAll("#nd-page .fd-below-title-block").forEach(el => el.remove());
+    };
+  }, [lastModified, showActions, pageActionsAlignment, pathname]);
 
   return (
     <DocsPage
@@ -208,14 +268,14 @@ export function DocsPageClient({
       breadcrumb={{ enabled: false }}
     >
       {breadcrumbEnabled && <PathBreadcrumb pathname={pathname} entry={entry} />}
-      {showActions && (
-        <div data-actions-position={pageActionsPosition}>
-          <PageActions
-            copyMarkdown={copyMarkdown}
-            openDocs={openDocs}
-            providers={openDocsProviders}
-          />
-        </div>
+      {/* Page actions rendered into portal target (injected after h1) */}
+      {showActions && actionsPortalTarget && createPortal(
+        <PageActions
+          copyMarkdown={copyMarkdown}
+          openDocs={openDocs}
+          providers={openDocsProviders}
+        />,
+        actionsPortalTarget,
       )}
       <DocsBody
         style={{ display: "flex", flexDirection: "column" }}
@@ -224,11 +284,6 @@ export function DocsPageClient({
         {showFooter && (
           <div className="not-prose fd-page-footer">
             {githubFileUrl && <EditOnGitHub href={githubFileUrl} />}
-            {lastModified && (
-              <span className="fd-last-updated">
-                Last updated: {lastModified}
-              </span>
-            )}
           </div>
         )}
       </DocsBody>

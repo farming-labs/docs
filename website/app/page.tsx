@@ -795,6 +795,12 @@ function ThemesSection() {
       import: '@import "@farming-labs/theme/shiny/css";',
       colors: ["#6c47ff", "#f7f7f8", "#73738c", "#e5e5ea"],
     },
+    {
+      name: "DarkBold",
+      description: "Pure monochrome design — clean, bold, minimal",
+      import: '@import "@farming-labs/theme/darkbold/css";',
+      colors: ["#000", "#fff", "#888", "#eaeaea"],
+    },
   ];
 
   return (

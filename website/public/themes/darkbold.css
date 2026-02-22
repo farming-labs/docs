@@ -1,0 +1,640 @@
+/* @farming-labs/theme — darkbold
+ * Injected by the theme customizer — all declarations use !important.
+ * Pure monochrome design, Geist typography, no accent colors.
+ */
+
+/* ─── Color Variables ───────────────────────────────────────────── */
+
+:root, .dark {
+  --color-fd-primary: #fff !important;
+  --color-fd-primary-foreground: #000 !important;
+  --color-fd-ring: #fff !important;
+  --color-fd-secondary: #1a1a1a !important;
+  --color-fd-secondary-foreground: #ededed !important;
+  --color-fd-accent: #1a1a1a !important;
+  --color-fd-accent-foreground: #ededed !important;
+  --color-fd-popover: #111 !important;
+  --color-fd-popover-foreground: #ededed !important;
+  --color-fd-card-foreground: #ededed !important;
+  --radius: 0.5rem !important;
+}
+
+.dark {
+  --color-fd-background: #0a0a0a !important;
+  --color-fd-foreground: #ededed !important;
+  --color-fd-muted: #1a1a1a !important;
+  --color-fd-muted-foreground: #888 !important;
+  --color-fd-border: #333 !important;
+  --color-fd-card: #111 !important;
+}
+
+/* ─── Sidebar variables ──────────────────────────────────────────── */
+
+.dark .fd-sidebar {
+  --color-fd-muted: #1a1a1a !important;
+  --color-fd-secondary: #1a1a1a !important;
+  --color-fd-muted-foreground: #888 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Reset pixel-border rounded-none — apply darkbold radii
+ * ═══════════════════════════════════════════════════════════════════ */
+
+#nd-docs-layout .rounded-lg, #nd-docs-layout [class*="rounded-lg"] {
+  border-radius: 0.5rem !important;
+}
+#nd-docs-layout .rounded-md, #nd-docs-layout [class*="rounded-md"] {
+  border-radius: 0.375rem !important;
+}
+#nd-docs-layout .rounded-xl, #nd-docs-layout [class*="rounded-xl"] {
+  border-radius: 0.75rem !important;
+}
+#nd-docs-layout .rounded-2xl, #nd-docs-layout [class*="rounded-2xl"] {
+  border-radius: 1rem !important;
+}
+#nd-docs-layout .rounded-full, #nd-docs-layout [class*="rounded-full"] {
+  border-radius: 9999px !important;
+}
+#nd-docs-layout .rounded-sm, #nd-docs-layout [class*="rounded-sm"] {
+  border-radius: 0.125rem !important;
+}
+#nd-docs-layout code:not(pre code) {
+  border-radius: 4px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * SIDEBAR — DarkBold: borderless, no icons, plain text only
+ * ═══════════════════════════════════════════════════════════════════ */
+
+aside#nd-sidebar,
+aside,
+#nd-docs-layout aside,
+.dark aside#nd-sidebar,
+.dark aside,
+.dark #nd-docs-layout aside {
+  border: none !important;
+  border-right: none !important;
+  border-left: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  background: var(--color-fd-background) !important;
+}
+
+/* ── Hide sidebar link icons — DarkBold sidebar is text-only ──────── */
+aside a > svg:first-child,
+aside a > img:first-child,
+.dark aside a > svg:first-child,
+.dark aside a > img:first-child {
+  display: none !important;
+}
+
+/* ── Hide TOC heading icon ──────────────────────────────────────── */
+#nd-toc h3 > svg,
+#nd-toc h3 > img,
+.dark #nd-toc h3 > svg,
+.dark #nd-toc h3 > img {
+  display: none !important;
+}
+
+/* ── Header border removal ──────────────────────────────────────── */
+header,
+[role="banner"],
+#nd-docs-layout > header,
+nav[class*="header"],
+.dark header,
+.dark [role="banner"] {
+  border-bottom: none !important;
+  border-bottom-color: transparent !important;
+}
+
+/* ── Sidebar footer border removal ──────────────────────────────── */
+aside .border-t,
+aside [class*="border-t"],
+.dark aside .border-t,
+.dark aside [class*="border-t"] {
+  border-top-color: transparent !important;
+}
+
+/* ── Sidebar links — DarkBold: 14px, 400 weight, minimal padding ─── */
+.dark aside a[data-active] {
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  border-radius: 6px !important;
+  padding: 6px 8px !important;
+  transition: color 0.15s ease !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-weight: 400 !important;
+  background-color: transparent !important;
+}
+
+.dark aside a[data-active="true"],
+.dark aside a[data-active="true"]:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #fff !important;
+  font-weight: 500 !important;
+}
+
+.dark aside a[data-active="false"]:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+.dark aside a[data-active="true"]::before {
+  background-color: transparent !important;
+  width: 0 !important;
+}
+
+/* ── Nested sidebar items ───────────────────────────────────────── */
+.dark aside div.overflow-hidden[data-state] a[data-active] {
+  font-size: 0.8125rem !important;
+  padding-left: 1.5rem !important;
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+  color: var(--color-fd-muted-foreground) !important;
+}
+
+.dark aside div.overflow-hidden[data-state] a[data-active="true"],
+.dark aside div.overflow-hidden[data-state] a[data-active="true"]:hover {
+  color: #fff !important;
+  font-weight: 500 !important;
+  background: transparent !important;
+}
+
+.dark aside div.overflow-hidden[data-state] a[data-active="false"]:hover {
+  color: var(--color-fd-foreground) !important;
+}
+
+/* ── Sidebar internal borders/separators cleanup ────────────────── */
+.dark aside .overscroll-contain > div {
+  margin-top: 0 !important;
+}
+
+.dark aside .overscroll-contain > div > a[data-active] {
+  border-top: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+.dark aside .overscroll-contain > div > div {
+  border-top: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding: 0 !important;
+}
+
+.dark aside .overscroll-contain > div > a[data-active]:first-child,
+.dark aside .overscroll-contain > div > div:first-child {
+  border-top: none !important;
+}
+
+.dark aside .overscroll-contain > div > a[data-active]:last-child,
+.dark aside .overscroll-contain > div > div:last-child {
+  border-bottom: none !important;
+}
+
+.dark aside div.overflow-hidden[data-state]::before {
+  margin-left: 0 !important;
+  height: auto !important;
+  margin-top: 0 !important;
+}
+
+/* ── Sidebar category headings ──────────────────────────────────── */
+.dark aside button.text-fd-muted-foreground {
+  color: var(--color-fd-foreground) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+
+/* ── Sidebar search button ──────────────────────────────────────── */
+.dark aside button[class*="bg-fd-secondary"] {
+  background: var(--color-fd-secondary) !important;
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 6px !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-size: 0.875rem !important;
+  padding: 6px 8px !important;
+}
+
+.dark aside button[class*="bg-fd-secondary"]:hover {
+  background: var(--color-fd-accent) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+.dark aside button[class*="rounded-full"] {
+  border-color: var(--color-fd-border) !important;
+  border-radius: 9999px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * CARDS
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-card {
+  border-radius: 8px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  background: var(--color-fd-card) !important;
+  box-shadow: none !important;
+}
+
+.fd-card:hover {
+  border-color: #555 !important;
+  box-shadow: none !important;
+}
+
+.fd-card-icon {
+  border-radius: 6px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  background: var(--color-fd-secondary) !important;
+}
+
+.fd-page-nav-card {
+  border-radius: 8px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * INLINE CODE
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-docs-content :not(pre) > code {
+  padding: 1px 4px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  font-size: 0.875rem !important;
+  border-radius: 4px !important;
+  background: var(--color-fd-muted) !important;
+  color: var(--color-fd-foreground) !important;
+  font-weight: 400 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * CONTENT LINKS — underline, no accent color
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-docs-content a:not(.fd-page-nav-card):not([class]) {
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+  text-decoration-color: var(--color-fd-border) !important;
+  text-decoration-thickness: 1px !important;
+  font-weight: 500 !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+.fd-docs-content a:not(.fd-page-nav-card):not([class]):hover {
+  text-decoration-color: var(--color-fd-foreground) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * TABLES
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-docs-content table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  background: var(--color-fd-card) !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  overflow: hidden !important;
+}
+
+.fd-docs-content th {
+  background: var(--color-fd-muted) !important;
+  font-weight: 500 !important;
+  font-size: 0.8125rem !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  color: var(--color-fd-muted-foreground) !important;
+}
+
+.fd-docs-content th,
+.fd-docs-content td {
+  padding: 0.75rem 1rem !important;
+  border-bottom: 1px solid var(--color-fd-border) !important;
+  font-size: 0.875rem !important;
+}
+
+.fd-docs-content tr:last-child td {
+  border-bottom: none !important;
+}
+
+.dark table {
+  border-radius: 8px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * CODE BLOCKS
+ * ═══════════════════════════════════════════════════════════════════ */
+
+figure.shiki {
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+.dark figure.shiki {
+  border-color: #333 !important;
+}
+
+figure.shiki button {
+  border-radius: 4px !important;
+}
+
+figure.shiki > div:first-child {
+  border-radius: 8px 8px 0 0 !important;
+}
+
+figure[data-rehype-pretty-code-figure],
+figure[data-rehype-pretty-code-figure] pre {
+  border-radius: 8px !important;
+}
+
+article figure {
+  border-radius: 8px !important;
+}
+
+figure button {
+  border-radius: 4px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * BLOCKQUOTES
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-docs-content blockquote {
+  border-left: 3px solid var(--color-fd-border) !important;
+  padding-left: 1rem !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-style: normal !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * TABS — bottom border indicator
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.dark [role="tablist"] {
+  border-radius: 0 !important;
+  border-bottom: 1px solid var(--color-fd-border) !important;
+}
+
+.dark [role="tablist"] button,
+.dark [role="tab"] {
+  border-radius: 0 !important;
+  font-size: 0.875rem !important;
+  font-weight: 400 !important;
+  color: var(--color-fd-muted-foreground) !important;
+  border-bottom: 2px solid transparent !important;
+}
+
+.dark [role="tab"][aria-selected="true"],
+.dark [role="tab"][data-state="active"] {
+  color: var(--color-fd-foreground) !important;
+  border-bottom-color: var(--color-fd-foreground) !important;
+  font-weight: 500 !important;
+}
+
+.dark [role="tabpanel"] {
+  border-radius: 0 0 8px 8px !important;
+}
+
+.dark div:has(> [role="tablist"]) {
+  border-radius: 8px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * CALLOUTS, NAV CARDS
+ * ═══════════════════════════════════════════════════════════════════ */
+
+[class*="bg-fd-card"],
+[class*="fd-callout"],
+[role="alert"] {
+  border-radius: 8px !important;
+}
+
+article a[class*="border"] {
+  border-radius: 8px !important;
+}
+
+.dark article a[class*="border"] {
+  border-color: var(--color-fd-border) !important;
+}
+
+.dark article a[class*="border"]:hover {
+  background: var(--color-fd-accent) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * PAGE FOOTER
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-page-footer {
+  border-color: var(--color-fd-border) !important;
+  padding-top: 1rem !important;
+  margin-top: 2rem !important;
+}
+
+.fd-page-footer a {
+  border-radius: 6px !important;
+  font-size: 0.8125rem !important;
+}
+
+.fd-last-updated {
+  color: var(--color-fd-muted-foreground) !important;
+  font-size: 0.75rem !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * SEARCH / DIALOGS
+ * ═══════════════════════════════════════════════════════════════════ */
+
+[role="dialog"] {
+  border-radius: 12px !important;
+}
+
+[role="dialog"] [class*="rounded"] {
+  border-radius: 6px !important;
+}
+
+[data-radix-popper-content-wrapper] > * {
+  border-radius: 8px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * BREADCRUMB
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-breadcrumb {
+  font-size: 0.8125rem !important;
+  letter-spacing: normal !important;
+}
+
+.fd-breadcrumb-link {
+  text-transform: none !important;
+  font-family: inherit !important;
+}
+
+.fd-breadcrumb-current {
+  text-transform: none !important;
+  font-family: inherit !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * PAGE ACTIONS
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-page-action-btn {
+  border-radius: 6px !important;
+  font-size: 0.8125rem !important;
+  letter-spacing: normal !important;
+}
+
+.fd-page-action-menu {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+.fd-page-action-menu-item {
+  border-radius: 4px !important;
+  font-size: 0.8125rem !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * AI CHAT
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-ai-dialog {
+  border-radius: 12px !important;
+  border-width: 1px !important;
+  box-shadow: 0 16px 70px rgba(0, 0, 0, 0.25) !important;
+}
+
+.fd-ai-tab-bar { gap: 2px !important; }
+.fd-ai-tab { border-radius: 8px 8px 0 0 !important; font-size: 13px !important; letter-spacing: normal !important; }
+.fd-ai-header-title { font-size: 14px !important; }
+.fd-ai-bubble-user { border-radius: 16px 16px 4px 16px !important; font-size: 13px !important; }
+.fd-ai-bubble-ai { border-radius: 16px 16px 16px 4px !important; font-size: 13px !important; }
+.fd-ai-bubble-ai pre { border-radius: 0 !important; border: none !important; }
+.fd-ai-bubble-ai code { border-radius: 4px !important; }
+.fd-ai-input-wrap { border-radius: 8px !important; }
+.fd-ai-input { font-size: 14px !important; }
+.fd-ai-send-btn { border-radius: 8px !important; }
+.fd-ai-close-btn { border-radius: 6px !important; }
+
+.dark .fd-ai-floating-btn {
+  border-radius: 6px !important;
+  background: #000 !important;
+  color: #fff !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+.dark .fd-ai-floating-btn:hover {
+  background: #111 !important;
+  transform: none !important;
+}
+
+:root:not(.dark) .fd-ai-floating-btn {
+  border-radius: 6px !important;
+  background: #000 !important;
+  color: #fff !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+}
+
+:root:not(.dark) .fd-ai-floating-btn:hover {
+  background: #111 !important;
+  transform: none !important;
+}
+
+.fd-ai-suggestion { border-radius: 8px !important; font-size: 13px !important; }
+.fd-ai-result { border-radius: 8px !important; }
+.fd-ai-esc { border-radius: 4px !important; }
+.fd-ai-clear-btn { border-radius: 4px !important; letter-spacing: normal !important; }
+.fd-ai-msg-label { letter-spacing: 0.05em !important; }
+.fd-ai-loading-text { text-transform: none !important; letter-spacing: normal !important; font-size: 12px !important; }
+.fd-ai-loading-dot { border-radius: 50% !important; width: 5px !important; height: 5px !important; }
+
+/* AI Full-Modal */
+.fd-ai-fm-input-container { border-radius: 10px !important; box-shadow: 0 16px 70px rgba(0, 0, 0, 0.2) !important; }
+.fd-ai-fm-send-btn { border-radius: 9999px !important; }
+.fd-ai-fm-close-btn { border-radius: 9999px !important; }
+.fd-ai-fm-input { font-size: 14px !important; }
+.fd-ai-fm-suggestion { border-radius: 9999px !important; font-family: inherit !important; font-size: 12px !important; text-transform: none !important; letter-spacing: normal !important; }
+.fd-ai-fm-trigger-btn { border-radius: 16px !important; font-family: inherit !important; text-transform: none !important; letter-spacing: normal !important; font-size: 14px !important; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important; }
+.fd-ai-fm-trigger-btn:hover { transform: scale(1.03) !important; }
+.fd-ai-fm-msg-label { font-family: inherit !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 13px !important; }
+.fd-ai-fm-msg-content { font-size: 14px !important; }
+.fd-ai-fm-msg-content code { border-radius: 4px !important; }
+.fd-ai-fm-suggestions-label { font-family: inherit !important; text-transform: none !important; letter-spacing: normal !important; }
+.fd-ai-fm-clear-btn { font-family: inherit !important; text-transform: none !important; letter-spacing: normal !important; }
+.fd-ai-fm-footer-hint { font-size: 12px !important; }
+.fd-ai-fm-thinking-dot { border-radius: 9999px !important; width: 6px !important; height: 6px !important; }
+
+/* AI Code blocks */
+.fd-ai-code-block { border-radius: 8px !important; box-shadow: none !important; background: var(--color-fd-muted, #1a1a1a) !important; }
+.fd-ai-code-header { border-bottom-color: var(--color-fd-border, rgba(255, 255, 255, 0.08)) !important; background: color-mix(in srgb, var(--color-fd-muted, #1a1a1a) 80%, black) !important; }
+.fd-ai-code-lang { font-family: var(--fd-font-mono, ui-monospace, monospace) !important; }
+.fd-ai-code-copy { border-radius: 4px !important; font-family: var(--fd-font-mono, ui-monospace, monospace) !important; text-transform: none !important; letter-spacing: normal !important; }
+.fd-ai-code-block code { font-family: var(--fd-font-mono, ui-monospace, monospace) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════
+ * COMMAND PALETTE
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.omni-content {
+  border-radius: 12px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  background: var(--color-fd-popover) !important;
+  box-shadow: 0 16px 70px rgba(0, 0, 0, 0.2) !important;
+}
+.omni-item { border-radius: 6px !important; }
+.omni-item-active { background: var(--color-fd-accent) !important; }
+.omni-highlight { background: rgba(255, 255, 255, 0.1) !important; color: var(--color-fd-foreground) !important; }
+.omni-search-input:focus { caret-color: var(--color-fd-foreground) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════
+ * TOC — left-border indicator, monochrome, 14px
+ * ═══════════════════════════════════════════════════════════════════ */
+
+#nd-toc a[data-active="true"] {
+  color: var(--color-fd-foreground) !important;
+  font-weight: 500 !important;
+}
+
+#nd-toc a[data-active="false"] {
+  color: var(--color-fd-muted-foreground) !important;
+}
+
+#nd-toc a {
+  font-size: 0.875rem !important;
+  line-height: 1.3 !important;
+}
+
+#nd-toc h3 {
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * GRID / LAYOUT
+ * ═══════════════════════════════════════════════════════════════════ */
+
+@media (min-width: 768px) {
+  #nd-docs-layout {
+    grid-template-columns: var(--fd-sidebar-col, 0px) 1fr min-content !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * TYPOGRAPHY — tight letter-spacing
+ * ═══════════════════════════════════════════════════════════════════ */
+
+h1 { letter-spacing: -0.06em !important; }
+h2 { letter-spacing: -0.04em !important; }
+h3 { letter-spacing: -0.02em !important; }

@@ -23,6 +23,7 @@ import {
   SparklesIcon
 } from "lucide-react";
 import { fumadocs } from "@farming-labs/theme";
+import { darkbold } from "@farming-labs/theme/darkbold";
 
 
 export default defineDocs({
@@ -32,11 +33,11 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
-  theme: shiny({
+  theme: darkbold({
     ui: {
       components: { Callout: { variant: "outline" } },
-      layout: { toc: { enabled: true, depth: 3, style: "directional" } },
-      sidebar: { style: "bordered" },
+      layout: { toc: { enabled: true, depth: 3, style: "default" } },
+      sidebar: { style: "default" },
       typography: {
         font: {
           style: {
@@ -110,6 +111,7 @@ export default defineDocs({
   breadcrumb: { enabled: true },
 
   pageActions: {
+    alignment: "right",
     copyMarkdown: { enabled: true },
     openDocs: {
       enabled: true,

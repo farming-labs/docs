@@ -422,6 +422,7 @@ export function createDocsLayout(config: DocsConfig) {
   const copyMarkdownEnabled = resolveBool(pageActions?.copyMarkdown);
   const openDocsEnabled = resolveBool(pageActions?.openDocs);
   const pageActionsPosition = pageActions?.position ?? "below-title";
+  const pageActionsAlignment = pageActions?.alignment ?? "left";
 
   // Serialize provider icons to HTML strings so they survive the
   // server → client component boundary.
@@ -501,6 +502,7 @@ export function createDocsLayout(config: DocsConfig) {
           openDocs={openDocsEnabled}
           openDocsProviders={openDocsProviders as any}
           pageActionsPosition={pageActionsPosition}
+          pageActionsAlignment={pageActionsAlignment}
           githubUrl={githubUrl}
           githubBranch={githubBranch}
           githubDirectory={githubDirectory}

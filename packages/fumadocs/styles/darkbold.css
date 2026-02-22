@@ -1,0 +1,569 @@
+/* @farming-labs/theme — darkbold theme CSS
+ * Pure monochrome design, clean typography, Geist font, no accent colors.
+ */
+@import "./presets/neutral.css";
+
+/* ─── DarkBold color overrides ──────────────────────────────────── */
+
+:root {
+  --color-fd-primary: #000;
+  --color-fd-primary-foreground: #fff;
+  --color-fd-ring: #000;
+
+  --color-fd-background: #fff;
+  --color-fd-foreground: #111;
+  --color-fd-card: #fff;
+  --color-fd-card-foreground: #111;
+  --color-fd-popover: #fff;
+  --color-fd-popover-foreground: #111;
+  --color-fd-secondary: #fafafa;
+  --color-fd-secondary-foreground: #111;
+  --color-fd-muted: #fafafa;
+  --color-fd-muted-foreground: #666;
+  --color-fd-accent: #f5f5f5;
+  --color-fd-accent-foreground: #111;
+  --color-fd-border: #eaeaea;
+}
+
+.dark {
+  --color-fd-primary: #fff;
+  --color-fd-primary-foreground: #000;
+  --color-fd-ring: #fff;
+
+  --color-fd-background: #0a0a0a;
+  --color-fd-foreground: #ededed;
+  --color-fd-card: #111;
+  --color-fd-card-foreground: #ededed;
+  --color-fd-popover: #111;
+  --color-fd-popover-foreground: #ededed;
+  --color-fd-secondary: #1a1a1a;
+  --color-fd-secondary-foreground: #ededed;
+  --color-fd-muted: #1a1a1a;
+  --color-fd-muted-foreground: #888;
+  --color-fd-accent: #1a1a1a;
+  --color-fd-accent-foreground: #ededed;
+  --color-fd-border: #333;
+}
+
+/* ─── Typography — Geist-inspired, DarkBold exact values ─────────── */
+
+h1 {
+  letter-spacing: -0.06em;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+h2 {
+  letter-spacing: -0.04em;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+h3 {
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* Body / paragraph text — DarkBold uses 16px, 1.6 line-height */
+.fd-docs-content p {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * SIDEBAR — DarkBold: borderless, no icons, plain text only
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* Remove ALL sidebar borders */
+aside,
+#nd-sidebar,
+aside#nd-sidebar,
+#nd-docs-layout aside {
+  border: none;
+  border-right: none;
+  border-left: none;
+  border-color: transparent;
+  box-shadow: none;
+  background: var(--color-fd-background);
+}
+
+/* ── Hide sidebar link icons — DarkBold sidebar is text-only ──────── */
+aside a > svg:first-child,
+aside a > img:first-child {
+  display: none;
+}
+
+/* ── Hide TOC heading icon ──────────────────────────────────────── */
+#nd-toc h3 > svg,
+#nd-toc h3 > img {
+  display: none;
+}
+
+/* ── Sidebar links — match DarkBold: 14px, 400 weight, minimal pad ─ */
+aside a[data-active] {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  font-weight: 400;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--color-fd-muted-foreground);
+  transition: color 150ms;
+}
+
+aside a[data-active]:hover {
+  color: var(--color-fd-foreground);
+  background: transparent;
+}
+
+/* Active sidebar item — DarkBold uses foreground color, 500 weight */
+aside a[data-active="true"] {
+  color: var(--color-fd-foreground);
+  font-weight: 500;
+  background: transparent;
+  background-color: transparent;
+}
+
+aside a[data-active="true"]::before {
+  background-color: transparent;
+  width: 0;
+}
+
+/* Category/folder headings in sidebar */
+aside button.text-fd-muted-foreground {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.875rem;
+  color: var(--color-fd-foreground);
+}
+
+/* Search button in sidebar */
+aside button[class*="bg-fd-secondary"] {
+  background: var(--color-fd-accent);
+  border: 1px solid var(--color-fd-border);
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+/* Sidebar footer border removal */
+aside .border-t,
+aside [class*="border-t"] {
+  border-top-color: transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * HEADER — DarkBold: no bottom border, transparent background
+ * ═══════════════════════════════════════════════════════════════════ */
+
+header,
+[role="banner"],
+#nd-docs-layout > header,
+nav[class*="header"] {
+  border-bottom: none;
+  border-color: transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * CONTENT — links, code, tables, etc.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* Links in prose — DarkBold uses underline, dark text */
+.fd-docs-content a:not(.fd-page-nav-card):not([class]) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--color-fd-border);
+  text-decoration-thickness: 1px;
+  font-weight: 500;
+  color: var(--color-fd-foreground);
+  transition: text-decoration-color 150ms;
+}
+
+.fd-docs-content a:not(.fd-page-nav-card):not([class]):hover {
+  text-decoration-color: var(--color-fd-foreground);
+}
+
+/* Inline code */
+.fd-docs-content :not(pre) > code {
+  padding: 1px 4px;
+  border: 1px solid var(--color-fd-border);
+  font-size: 0.875rem;
+  border-radius: 4px;
+  background: var(--color-fd-muted);
+  color: var(--color-fd-foreground);
+  font-weight: 400;
+}
+
+/* Tables */
+.fd-docs-content table {
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--color-fd-card);
+  border-radius: 8px;
+  border: 1px solid var(--color-fd-border);
+  overflow: hidden;
+  width: 100%;
+}
+
+.fd-docs-content th {
+  background: var(--color-fd-muted);
+  font-weight: 500;
+  font-size: 0.8125rem;
+  color: var(--color-fd-muted-foreground);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.fd-docs-content th,
+.fd-docs-content td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-fd-border);
+  font-size: 0.875rem;
+}
+
+.fd-docs-content tr:last-child td {
+  border-bottom: none;
+}
+
+/* Blockquotes */
+.fd-docs-content blockquote {
+  border-left: 3px solid var(--color-fd-border);
+  padding-left: 1rem;
+  color: var(--color-fd-muted-foreground);
+  font-style: normal;
+  margin: 1rem 0;
+}
+
+/* Horizontal rule */
+.fd-docs-content hr {
+  border-color: var(--color-fd-border);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * CARDS
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-card {
+  display: block;
+  border-radius: 8px;
+  border: 1px solid var(--color-fd-border);
+  background: var(--color-fd-card);
+  padding: 1.25rem;
+  font-size: 0.875rem;
+  color: var(--color-fd-card-foreground);
+  box-shadow: none;
+  transition: background-color 150ms, border-color 150ms;
+}
+
+.fd-card:hover {
+  border-color: #999;
+  box-shadow: none;
+}
+
+.dark .fd-card:hover {
+  border-color: #555;
+}
+
+.fd-card-icon {
+  margin-bottom: 0.5rem;
+  width: fit-content;
+  border-radius: 6px;
+  border: 1px solid var(--color-fd-border);
+  padding: 0.5rem;
+  color: var(--color-fd-muted-foreground);
+  background: var(--color-fd-secondary);
+}
+
+.fd-card-title {
+  font-weight: 500;
+  font-size: 0.9375rem;
+}
+
+.fd-card-description {
+  color: var(--color-fd-muted-foreground);
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.fd-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .fd-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.fd-page-nav-card {
+  border-radius: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * CODE BLOCKS
+ * ═══════════════════════════════════════════════════════════════════ */
+
+figure.shiki {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--color-fd-border);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * TABS — DarkBold: bottom border indicator, no background
+ * ═══════════════════════════════════════════════════════════════════ */
+
+[role="tablist"] {
+  border-bottom: 1px solid var(--color-fd-border);
+}
+
+[role="tab"] {
+  font-size: 0.875rem;
+  font-weight: 400;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0;
+  color: var(--color-fd-muted-foreground);
+  border-bottom: 2px solid transparent;
+  transition: color 150ms, border-color 150ms;
+}
+
+[role="tab"][aria-selected="true"],
+[role="tab"][data-state="active"] {
+  color: var(--color-fd-foreground);
+  border-bottom-color: var(--color-fd-foreground);
+  font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * CALLOUT, ACCORDION
+ * ═══════════════════════════════════════════════════════════════════ */
+
+[style*="--callout-color"] {
+  border-radius: 8px;
+  border-width: 1px;
+}
+
+details {
+  border: 1px solid var(--color-fd-border);
+  border-radius: 8px;
+  padding: 0;
+  margin: 0.75rem 0;
+  overflow: hidden;
+}
+
+details summary {
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  color: var(--color-fd-foreground);
+  background: var(--color-fd-secondary);
+  transition: background 150ms;
+}
+
+details summary:hover {
+  background: var(--color-fd-accent);
+}
+
+details[open] summary {
+  border-bottom: 1px solid var(--color-fd-border);
+}
+
+details > :not(summary) {
+  padding: 0.75rem 1rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * TOC — style varies by config: "default" or "directional"
+ *
+ * "default" → text color only, hide .toc-thumb
+ * "directional" → animated .toc-thumb bar (clerk style)
+ *
+ * We only override text colors here. The active indicator is
+ * handled by fumadocs-ui based on the style prop.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+#nd-toc a[data-active="true"] {
+  color: var(--color-fd-foreground);
+  font-weight: 500;
+}
+
+#nd-toc a[data-active="false"] {
+  color: var(--color-fd-muted-foreground);
+}
+
+#nd-toc a {
+  font-size: 0.875rem;
+  line-height: 1.3;
+}
+
+#nd-toc h3 {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * COMMAND PALETTE
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.omni-content {
+  border-radius: 12px;
+  border: 1px solid var(--color-fd-border);
+  background: var(--color-fd-popover);
+  box-shadow: 0 16px 70px rgba(0, 0, 0, 0.12);
+}
+
+.omni-item {
+  border-radius: 6px;
+}
+
+.omni-item-active {
+  background: var(--color-fd-accent);
+}
+
+.omni-highlight {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--color-fd-foreground);
+}
+
+.dark .omni-highlight {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.omni-search-input:focus {
+  caret-color: var(--color-fd-foreground);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * PAGE FOOTER, ACTIONS, DESCRIPTION
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-page-footer {
+  border-top: 1px solid var(--color-fd-border);
+}
+
+.fd-page-description {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-page-action-btn {
+  border-radius: 6px;
+  font-size: 0.8125rem;
+}
+
+.fd-page-action-menu {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.fd-page-action-menu-item {
+  border-radius: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * AI CHAT
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-ai-dialog {
+  border-radius: 12px;
+  box-shadow: 0 16px 70px rgba(0, 0, 0, 0.12);
+}
+
+.fd-ai-bubble-user {
+  border-radius: 16px 16px 4px 16px;
+}
+
+.fd-ai-bubble-ai {
+  border-radius: 16px 16px 16px 4px;
+}
+
+.fd-ai-input-wrap {
+  border-radius: 8px;
+}
+
+.fd-ai-send-btn {
+  border-radius: 8px;
+}
+
+.dark .fd-ai-floating-btn {
+  border-radius: 999px;
+  background: #000;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.dark .fd-ai-floating-btn:hover {
+  background: #111;
+}
+
+:root:not(.dark) .fd-ai-floating-btn {
+  border-radius: 999px;
+  background: #000;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+:root:not(.dark) .fd-ai-floating-btn:hover {
+  background: #111;
+}
+
+.fd-ai-suggestion {
+  border-radius: 8px;
+}
+
+.fd-ai-result {
+  border-radius: 8px;
+}
+
+.fd-ai-fm-input-container {
+  border-radius: 10px;
+}
+
+.fd-ai-fm-send-btn {
+  border-radius: 9999px;
+}
+
+.fd-ai-fm-suggestion {
+  border-radius: 9999px;
+}
+
+.fd-ai-fm-trigger-btn {
+  border-radius: 16px;
+}
+
+.fd-ai-fm-close-btn {
+  border-radius: 9999px;
+}
+
+.fd-ai-code-block {
+  border-radius: 8px;
+}
+
+.fd-ai-code-copy {
+  border-radius: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * SCROLLBAR — subtle
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.fd-sidebar::-webkit-scrollbar-thumb {
+  background: var(--color-fd-border);
+  border-radius: 4px;
+}
+
+.fd-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}

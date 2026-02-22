@@ -161,6 +161,32 @@ figure.shiki pre > code > [data-line] {
   color: var(--color-fd-foreground);
 }
 
+/* ─── Below-title block (Last Updated + Separator + Actions) ──────── */
+
+.fd-below-title-block {
+  margin-top: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.fd-last-updated-inline {
+  color: var(--color-fd-muted-foreground);
+  font-size: 0.875rem;
+  font-weight: 400;
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
+}
+
+.fd-title-separator {
+  border: none;
+  border-top: 1px solid var(--color-fd-border);
+  margin: 0 0 0.75rem;
+}
+
+.fd-actions-portal [data-page-actions] {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 /* ─── Page Actions (Copy Markdown / Open in …) ────────────────────── */
 
 [data-page-actions] {
@@ -170,6 +196,14 @@ figure.shiki pre > code > [data-line] {
   gap: 0.5rem;
   margin-bottom: 0.75rem;
   margin-top: 0.25rem;
+}
+
+[data-actions-alignment="right"] > [data-page-actions] {
+  justify-content: flex-end;
+}
+
+[data-actions-alignment="left"] > [data-page-actions] {
+  justify-content: flex-start;
 }
 
 .fd-page-action-btn {

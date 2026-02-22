@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { highlight } from "sugar-high";
 
 
-type PresetKey = "default" | "colorful" | "darksharp" | "pixel-border" | "shiny";
+type PresetKey = "default" | "colorful" | "darksharp" | "pixel-border" | "shiny" | "darkbold";
 type SidebarStyle = "default" | "bordered" | "floating";
 type TocStyle = "default" | "directional";
 
@@ -159,6 +159,26 @@ const PRESETS: Record<
     sidebar: "default",
     toc: { style: "default" },
     radius: "0.75rem",
+  },
+  darkbold: {
+    label: "DarkBold",
+    desc: "Pure monochrome, Geist typography",
+    cssImport: "@farming-labs/theme/darkbold/css",
+    themeImport: { from: "@farming-labs/theme/darkbold", name: "darkbold" },
+    colors: {
+      primary: "#ffffff",
+      primaryForeground: "#000000",
+      background: "#0a0a0a",
+      foreground: "#ededed",
+      muted: "#1a1a1a",
+      mutedForeground: "#888888",
+      border: "#333333",
+      card: "#111111",
+      ring: "#ffffff",
+    },
+    sidebar: "default",
+    toc: { style: "default" },
+    radius: "0.5rem",
   },
 };
 

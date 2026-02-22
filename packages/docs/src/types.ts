@@ -443,6 +443,15 @@ export interface PageActionsConfig {
    * @default "below-title"
    */
   position?: "above-title" | "below-title";
+  /**
+   * Horizontal alignment of page action buttons.
+   *
+   * - `"left"` — align to the left (default for most themes)
+   * - `"right"` — align to the right (Vercel style)
+   *
+   * @default "left"
+   */
+  alignment?: "left" | "right";
 }
 
 /**
