@@ -370,6 +370,8 @@ function buildConfigCSS(state: ThemeState): string {
     #nd-toc[data-cz-toc-style="default"] div[class*="absolute"][class*="w-px"] {
       display: none !important;
     }
+    #nd-toc[data-cz-toc-style="default"] > div > div[class*="flex"][class*="flex-col"] > a[data-active="true"],
+    #nd-toc[data-cz-toc-style="default"] > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a[data-active="true"],
     #nd-toc[data-cz-toc-style="default"] a[data-active="true"] {
       box-shadow: inset 2px 0 0 var(--color-fd-primary) !important;
       color: var(--color-fd-primary) !important;

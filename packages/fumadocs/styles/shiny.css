@@ -457,6 +457,15 @@ details > :not(summary) {
   opacity: 1;
 }
 
+#nd-toc a[data-active="true"] {
+  box-shadow: inset 2px 0 0 var(--color-fd-primary);
+  color: var(--color-fd-primary);
+}
+
+#nd-toc a[data-active="false"] {
+  box-shadow: none;
+}
+
 /* ─── Page footer (shiny) ───────────────────────────────────────────── */
 
 .fd-page-footer {
