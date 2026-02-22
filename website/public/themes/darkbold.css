@@ -148,6 +148,11 @@ aside [class*="border-t"],
   width: 0 !important;
 }
 
+.dark aside button[class*="bg-fd-secondary"] {
+  margin-left: -2px !important;
+  margin-right: 0px !important;
+}
+
 /* ── Nested sidebar items ───────────────────────────────────────── */
 .dark aside div.overflow-hidden[data-state] a[data-active] {
   font-size: 0.8125rem !important;
@@ -221,6 +226,7 @@ aside [class*="border-t"],
   color: var(--color-fd-muted-foreground) !important;
   font-size: 0.875rem !important;
   padding: 6px 8px !important;
+  max-width:250px;
 }
 
 .dark aside button[class*="bg-fd-secondary"]:hover {
