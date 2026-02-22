@@ -789,6 +789,12 @@ function ThemesSection() {
       import: '@import "@farming-labs/theme/colorful/css";',
       colors: ["#FFFF00", "#f5f5f4", "#64748b", "#e5e7eb"],
     },
+    {
+      name: "Shiny",
+      description: "Clerk docs-inspired — clean, polished purple accents",
+      import: '@import "@farming-labs/theme/shiny/css";',
+      colors: ["#6c47ff", "#f7f7f8", "#73738c", "#e5e5ea"],
+    },
   ];
 
   return (

@@ -259,7 +259,12 @@ export function DocsCommandSearch() {
       const button = target.closest("button");
       if (!button) return;
       const text = button.textContent || "";
-      if (text.includes("Search") && (text.includes("⌘") || text.includes("K"))) {
+      const ariaLabel = (button.getAttribute("aria-label") || "").toLowerCase();
+      const isSearchButton =
+        (text.includes("Search") && (text.includes("⌘") || text.includes("K"))) ||
+        ariaLabel.includes("search") ||
+        text === "Open Search";
+      if (isSearchButton) {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();

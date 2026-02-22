@@ -1,0 +1,711 @@
+/* @farming-labs/theme — shiny (Clerk-inspired) override
+ * Injected by the theme customizer to fully override the base pixel-border theme.
+ * Every declaration uses !important to win over the build-time pixel-border CSS.
+ *
+ * Clerk docs-inspired: clean, polished purple accents, rounded corners,
+ * no colored shadows, dark Ask AI button, clean TOC.
+ */
+
+/* ─── Color Variables ───────────────────────────────────────────── */
+
+:root, .dark {
+  --color-fd-primary: hsl(256, 100%, 72%) !important;
+  --color-fd-primary-foreground: #ffffff !important;
+  --color-fd-ring: hsl(256, 85%, 65%) !important;
+  --color-fd-secondary: hsl(240, 6%, 14%) !important;
+  --color-fd-secondary-foreground: hsl(0, 0%, 90%) !important;
+  --color-fd-accent: hsl(240, 6%, 16%) !important;
+  --color-fd-accent-foreground: hsl(0, 0%, 90%) !important;
+  --color-fd-popover: hsl(240, 8%, 10%) !important;
+  --color-fd-popover-foreground: hsl(0, 0%, 95%) !important;
+  --color-fd-card-foreground: hsl(0, 0%, 95%) !important;
+  --radius: 0.75rem !important;
+}
+
+.dark {
+  --color-fd-background: hsl(240, 10%, 7%) !important;
+  --color-fd-foreground: hsl(0, 0%, 95%) !important;
+  --color-fd-muted: hsl(240, 5%, 16%) !important;
+  --color-fd-muted-foreground: hsl(240, 4%, 58%) !important;
+  --color-fd-border: hsl(240, 5%, 18%) !important;
+  --color-fd-card: hsl(240, 8%, 10%) !important;
+}
+
+/* ─── Sidebar shiny variables ──────────────────────────────────── */
+
+.dark .fd-sidebar {
+  --color-fd-muted: hsl(240, 5%, 14%) !important;
+  --color-fd-secondary: hsl(240, 6%, 16%) !important;
+  --color-fd-muted-foreground: hsl(240, 4%, 56%) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Reset pixel-border global rounded-none — apply shiny radii
+ * ═══════════════════════════════════════════════════════════════════ */
+
+#nd-docs-layout .rounded-lg, #nd-docs-layout [class*="rounded-lg"] {
+  border-radius: 0.5rem !important;
+}
+#nd-docs-layout .rounded-md, #nd-docs-layout [class*="rounded-md"] {
+  border-radius: 0.375rem !important;
+}
+#nd-docs-layout .rounded-xl, #nd-docs-layout [class*="rounded-xl"] {
+  border-radius: 0.75rem !important;
+}
+#nd-docs-layout .rounded-2xl, #nd-docs-layout [class*="rounded-2xl"] {
+  border-radius: 1rem !important;
+}
+#nd-docs-layout .rounded-full, #nd-docs-layout [class*="rounded-full"] {
+  border-radius: 9999px !important;
+}
+#nd-docs-layout .rounded-sm, #nd-docs-layout [class*="rounded-sm"] {
+  border-radius: 0.125rem !important;
+}
+#nd-docs-layout code:not(pre code) {
+  border-radius: 6px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Sidebar — shiny/Clerk style
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.dark aside#nd-sidebar {
+  background: var(--color-fd-background) !important;
+  border-color: var(--color-fd-border) !important;
+}
+
+.dark aside .overscroll-contain > div {
+  margin-top: 0 !important;
+}
+
+.dark aside .overscroll-contain > div > a[data-active] {
+  border-top: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+  padding-bottom: 0.375rem !important;
+}
+
+.dark aside .overscroll-contain > div > div {
+  border-top: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding: 0 !important;
+}
+
+.dark aside .overscroll-contain > div > a[data-active]:first-child,
+.dark aside .overscroll-contain > div > div:first-child {
+  border-top: none !important;
+}
+
+.dark aside .overscroll-contain > div > a[data-active]:last-child,
+.dark aside .overscroll-contain > div > div:last-child {
+  border-bottom: none !important;
+}
+
+.dark aside a[data-active] {
+  font-size: 0.875rem !important;
+  line-height: 1.43 !important;
+  border-radius: 8px !important;
+  padding: 0.5rem !important;
+  transition: all 0.15s ease !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-weight: 400 !important;
+  background-color: transparent !important;
+}
+
+.dark aside a[data-active="true"],
+.dark aside a[data-active="true"]:hover {
+  background: hsl(256, 40%, 16%) !important;
+  background-color: hsl(256, 40%, 16%) !important;
+  color: hsl(256, 100%, 78%) !important;
+  font-weight: 500 !important;
+}
+
+.dark aside a[data-active="false"]:hover {
+  background: var(--color-fd-accent) !important;
+  background-color: var(--color-fd-accent) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+.dark aside a[data-active="true"]::before {
+  background-color: transparent !important;
+  width: 0 !important;
+}
+
+.dark aside div.overflow-hidden[data-state] a[data-active] {
+  font-size: 0.8125rem !important;
+  padding-left: 1.5rem !important;
+  padding-top: 0.375rem !important;
+  padding-bottom: 0.375rem !important;
+  color: var(--color-fd-muted-foreground) !important;
+}
+
+.dark aside div.overflow-hidden[data-state] a[data-active="true"],
+.dark aside div.overflow-hidden[data-state] a[data-active="true"]:hover {
+  color: hsl(256, 100%, 78%) !important;
+  font-weight: 500 !important;
+  background: hsl(256, 40%, 16%) !important;
+}
+
+.dark aside div.overflow-hidden[data-state] a[data-active="false"]:hover {
+  color: var(--color-fd-foreground) !important;
+}
+
+.dark aside div.overflow-hidden[data-state]::before {
+  margin-left: 0 !important;
+  height: auto !important;
+  margin-top: 0 !important;
+}
+
+.dark aside button.text-fd-muted-foreground {
+  color: var(--color-fd-foreground) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+
+.dark aside button[class*="bg-fd-secondary"] {
+  background: var(--color-fd-secondary) !important;
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 8px !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-size: 0.875rem !important;
+  width: auto !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding: 0.375rem 0.5rem !important;
+}
+
+.dark aside button[class*="bg-fd-secondary"]:hover {
+  background: var(--color-fd-accent) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+.dark aside button[class*="rounded-full"] {
+  border-color: var(--color-fd-border) !important;
+  border-radius: 9999px !important;
+}
+
+/* ─── Cards (shiny/Clerk style — clean, subtle shadow) ──────── */
+
+.fd-card {
+  border-radius: 0.75rem !important;
+  border: 1px solid var(--color-fd-border) !important;
+  background: var(--color-fd-card) !important;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04) !important;
+}
+
+.fd-card:hover {
+  border-color: var(--color-fd-primary) !important;
+  box-shadow: 0 2px 8px 0 rgb(0 0 0 / 0.06) !important;
+}
+
+.fd-card-icon {
+  border-radius: 0.5rem !important;
+  border: 1px solid var(--color-fd-border) !important;
+  background: var(--color-fd-secondary) !important;
+}
+
+.fd-page-nav-card {
+  border-radius: 0.75rem !important;
+}
+
+/* ─── Inline code (Clerk style — subtle) ────────────────────── */
+
+.fd-docs-content :not(pre) > code {
+  padding: 2px 6px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  font-size: 0.8125rem !important;
+  border-radius: 6px !important;
+  background: var(--color-fd-muted) !important;
+  color: var(--color-fd-foreground) !important;
+  font-weight: 450 !important;
+}
+
+/* ─── Links in prose (purple underline like Clerk) ─────────── */
+
+.fd-docs-content a:not(.fd-page-nav-card):not([class]) {
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+  text-decoration-color: var(--color-fd-primary) !important;
+  text-decoration-thickness: 1.5px !important;
+  font-weight: 500 !important;
+  color: var(--color-fd-primary) !important;
+}
+
+.fd-docs-content a:not(.fd-page-nav-card):not([class]):hover {
+  opacity: 0.8 !important;
+}
+
+/* ─── Tables (clean, rounded like Clerk) ────────────────────── */
+
+.fd-docs-content table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  background: var(--color-fd-card) !important;
+  border-radius: 0.75rem !important;
+  border: 1px solid var(--color-fd-border) !important;
+  overflow: hidden !important;
+}
+
+.fd-docs-content th {
+  background: var(--color-fd-muted) !important;
+  font-weight: 600 !important;
+  font-size: 0.8125rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.03em !important;
+  color: var(--color-fd-muted-foreground) !important;
+}
+
+.fd-docs-content th,
+.fd-docs-content td {
+  padding: 0.75rem 1rem !important;
+  border-bottom: 1px solid var(--color-fd-border) !important;
+  font-size: 0.875rem !important;
+}
+
+.fd-docs-content tr:last-child td {
+  border-bottom: none !important;
+}
+
+.dark table {
+  border-radius: 0.75rem !important;
+}
+
+/* ─── Code blocks (Clerk style — rounded wrapper) ──────────── */
+
+figure.shiki {
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 0.625rem !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+.dark figure.shiki {
+  border-color: hsl(240, 5%, 20%) !important;
+}
+
+figure.shiki button {
+  border-radius: 0.25rem !important;
+}
+
+figure.shiki > div:first-child {
+  border-radius: 0.625rem 0.625rem 0 0 !important;
+}
+
+figure[data-rehype-pretty-code-figure],
+figure[data-rehype-pretty-code-figure] pre {
+  border-radius: 0.625rem !important;
+}
+
+article figure {
+  border-radius: 0.625rem !important;
+}
+
+figure button {
+  border-radius: 0.25rem !important;
+}
+
+/* ─── Blockquotes (purple left border like Clerk) ──────────── */
+
+.fd-docs-content blockquote {
+  border-left: 3px solid var(--color-fd-primary) !important;
+  padding-left: 1rem !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-style: normal !important;
+}
+
+/* ─── Tabs (Clerk style — underline active) ────────────────── */
+
+.dark [role="tablist"] {
+  border-radius: 0 !important;
+  border-bottom: 1px solid var(--color-fd-border) !important;
+}
+
+.dark [role="tablist"] button,
+.dark [role="tab"] {
+  border-radius: 0 !important;
+  font-size: 0.8125rem !important;
+  font-weight: 450 !important;
+  color: var(--color-fd-muted-foreground) !important;
+  border-bottom: 2px solid transparent !important;
+}
+
+.dark [role="tab"][aria-selected="true"],
+.dark [role="tab"][data-state="active"] {
+  color: var(--color-fd-foreground) !important;
+  border-bottom-color: var(--color-fd-primary) !important;
+  font-weight: 500 !important;
+}
+
+.dark [role="tabpanel"] {
+  border-radius: 0 0 0.625rem 0.625rem !important;
+}
+
+.dark div:has(> [role="tablist"]) {
+  border-radius: 0.625rem !important;
+}
+
+/* ─── Cards, callouts ────────────────────────────────────────── */
+
+[class*="bg-fd-card"],
+[class*="fd-callout"],
+[role="alert"] {
+  border-radius: 0.625rem !important;
+}
+
+/* ─── Nav cards (prev/next) ───────────────────────────────────── */
+
+article a[class*="border"] {
+  border-radius: 0.75rem !important;
+}
+
+.dark article a[class*="border"] {
+  border-color: var(--color-fd-border) !important;
+}
+
+.dark article a[class*="border"]:hover {
+  background: var(--color-fd-accent) !important;
+}
+
+/* ─── Page footer (Edit on GitHub + Last Updated) ────────────── */
+
+.fd-page-footer {
+  border-color: var(--color-fd-border) !important;
+  padding-top: 1rem !important;
+  margin-top: 2rem !important;
+}
+
+.fd-page-footer a {
+  border-radius: 0.5rem !important;
+  font-size: 0.8125rem !important;
+}
+
+.fd-last-updated {
+  color: var(--color-fd-muted-foreground) !important;
+  font-size: 0.75rem !important;
+}
+
+/* ─── Search / dialogs ───────────────────────────────────────── */
+
+[role="dialog"] {
+  border-radius: 0.875rem !important;
+}
+
+[role="dialog"] [class*="rounded"] {
+  border-radius: 0.375rem !important;
+}
+
+[data-radix-popper-content-wrapper] > * {
+  border-radius: 0.5rem !important;
+}
+
+/* ─── Breadcrumb ─────────────────────────────────────────────── */
+
+.fd-breadcrumb {
+  font-size: 0.8125rem !important;
+  letter-spacing: normal !important;
+}
+
+.fd-breadcrumb-link {
+  text-transform: none !important;
+  font-family: inherit !important;
+}
+
+.fd-breadcrumb-current {
+  text-transform: none !important;
+  font-family: inherit !important;
+}
+
+/* ─── Page Actions (shiny theme) ─────────────────────────────── */
+
+.fd-page-action-btn {
+  border-radius: 0.5rem !important;
+  font-size: 0.8125rem !important;
+  letter-spacing: normal !important;
+}
+
+.fd-page-action-menu {
+  border-radius: 0.75rem !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04) !important;
+}
+
+.fd-page-action-menu-item {
+  border-radius: 0.375rem !important;
+  font-size: 0.8125rem !important;
+}
+
+/* ─── AI Chat (shiny — no purple shadows, Clerk style) ───────── */
+
+.fd-ai-dialog {
+  border-radius: 16px !important;
+  border-width: 1px !important;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.08), 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+}
+
+.fd-ai-tab-bar {
+  gap: 2px !important;
+}
+
+.fd-ai-tab {
+  border-radius: 8px 8px 0 0 !important;
+  font-size: 13px !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-header-title {
+  font-size: 14px !important;
+}
+
+.fd-ai-bubble-user {
+  border-radius: 18px 18px 4px 18px !important;
+  font-size: 13px !important;
+}
+
+.fd-ai-bubble-ai {
+  border-radius: 18px 18px 18px 4px !important;
+  font-size: 13px !important;
+}
+
+.fd-ai-bubble-ai pre {
+  border-radius: 0 !important;
+  border: none !important;
+}
+
+.fd-ai-bubble-ai code {
+  border-radius: 4px !important;
+}
+
+.fd-ai-input-wrap {
+  border-radius: 12px !important;
+}
+
+.fd-ai-input {
+  font-size: 14px !important;
+}
+
+.fd-ai-send-btn {
+  border-radius: 10px !important;
+}
+
+.fd-ai-close-btn {
+  border-radius: 6px !important;
+}
+
+/* Ask AI button: dark, no purple shadow — matches Clerk exactly */
+.fd-ai-floating-btn {
+  border-radius: 6px !important;
+  background: hsl(240, 6%, 15%) !important;
+  color: #fff !important;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.07), 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+  border: none !important;
+}
+
+.fd-ai-floating-btn:hover {
+  background: hsl(240, 6%, 20%) !important;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1), 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+  transform: none !important;
+}
+
+.fd-ai-suggestion {
+  border-radius: 10px !important;
+  font-size: 13px !important;
+}
+
+.fd-ai-result {
+  border-radius: 10px !important;
+}
+
+.fd-ai-esc {
+  border-radius: 4px !important;
+}
+
+.fd-ai-clear-btn {
+  border-radius: 4px !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-msg-label {
+  letter-spacing: 0.05em !important;
+}
+
+.fd-ai-loading-text {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-size: 12px !important;
+}
+
+.fd-ai-loading-dot {
+  border-radius: 50% !important;
+  width: 5px !important;
+  height: 5px !important;
+}
+
+/* ─── AI Full-Modal (shiny theme) ─────────────────────────────── */
+
+.fd-ai-fm-input-container {
+  border-radius: 14px !important;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.12) !important;
+}
+
+.fd-ai-fm-send-btn {
+  border-radius: 9999px !important;
+}
+
+.fd-ai-fm-close-btn {
+  border-radius: 9999px !important;
+}
+
+.fd-ai-fm-input {
+  font-size: 14px !important;
+}
+
+.fd-ai-fm-suggestion {
+  border-radius: 9999px !important;
+  font-family: inherit !important;
+  font-size: 12px !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-fm-trigger-btn {
+  border-radius: 18px !important;
+  font-family: inherit !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-size: 14px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.fd-ai-fm-trigger-btn:hover {
+  transform: scale(1.03) !important;
+}
+
+.fd-ai-fm-msg-label {
+  font-family: inherit !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  font-size: 13px !important;
+}
+
+.fd-ai-fm-msg-content {
+  font-size: 14px !important;
+}
+
+.fd-ai-fm-msg-content code {
+  border-radius: 4px !important;
+}
+
+.fd-ai-fm-suggestions-label {
+  font-family: inherit !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-fm-clear-btn {
+  font-family: inherit !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-fm-footer-hint {
+  font-size: 12px !important;
+}
+
+.fd-ai-fm-thinking-dot {
+  border-radius: 9999px !important;
+  width: 6px !important;
+  height: 6px !important;
+}
+
+/* ─── AI Code blocks (shiny theme) ────────────────────────────── */
+
+.fd-ai-code-block {
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  background: var(--color-fd-muted, #1a1a2e) !important;
+  --sh-class: #8be9fd !important;
+  --sh-identifier: #c9d1d9 !important;
+  --sh-keyword: #ff7b72 !important;
+  --sh-string: #a5d6ff !important;
+  --sh-property: #79c0ff !important;
+  --sh-entity: #7ee787 !important;
+  --sh-sign: #8b949e !important;
+  --sh-comment: #6e7681 !important;
+  --sh-jsxliterals: #d2a8ff !important;
+}
+
+.fd-ai-code-header {
+  border-bottom-color: var(--color-fd-border, rgba(255, 255, 255, 0.08)) !important;
+  background: color-mix(in srgb, var(--color-fd-muted, #1a1a2e) 80%, black) !important;
+}
+
+.fd-ai-code-lang {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+}
+
+.fd-ai-code-copy {
+  border-radius: 6px !important;
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.fd-ai-code-block code {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+}
+
+/* ─── Omni Command Palette — shiny theme ─────────────────────── */
+
+.omni-content {
+  border-radius: 0.875rem !important;
+  border: 1px solid var(--color-fd-border) !important;
+  background: var(--color-fd-popover) !important;
+  box-shadow: 0 24px 80px -12px rgba(0, 0, 0, 0.12),
+              0 8px 30px rgba(0, 0, 0, 0.08) !important;
+}
+.omni-item {
+  border-radius: 0.5rem !important;
+}
+.omni-item-active {
+  background: color-mix(in srgb, var(--color-fd-primary) 10%, transparent) !important;
+}
+.omni-highlight {
+  background: color-mix(in srgb, var(--color-fd-primary) 20%, transparent) !important;
+  color: var(--color-fd-primary) !important;
+}
+.omni-search-input:focus {
+  caret-color: var(--color-fd-primary) !important;
+}
+
+/* ─── TOC (shiny — clean left-border indicator like Clerk) ───── */
+
+.toc-thumb {
+  background: var(--color-fd-border) !important;
+  opacity: 1 !important;
+}
+
+/* Remove purple background from TOC active items */
+a[data-active="true"]:not(aside a) {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Ensure the default TOC left-border indicator is visible */
+#nd-toc > div > div[class*="flex"][class*="flex-col"] > a[data-active="true"],
+#nd-toc > div[class*="relative"] > div[class*="flex"][class*="flex-col"] > a[data-active="true"],
+#nd-toc a[data-active="true"] {
+  box-shadow: inset 2px 0 0 var(--color-fd-primary) !important;
+  color: var(--color-fd-primary) !important;
+}
+
+/* ─── Grid reset ─────────────────────────────────────────────── */
+
+@media (min-width: 768px) {
+  #nd-docs-layout {
+    grid-template-columns: var(--fd-sidebar-col, 0px) 1fr min-content !important;
+  }
+}

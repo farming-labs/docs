@@ -1,0 +1,488 @@
+/* @farming-labs/theme — shiny theme CSS
+ * Clerk docs-inspired clean, polished light/dark theme with purple accents.
+ */
+@import "./presets/neutral.css";
+
+/* ─── Shiny color overrides ───────────────────────────────────────── */
+
+:root {
+  --color-fd-primary: hsl(256, 100%, 64%);
+  --color-fd-primary-foreground: hsl(0, 0%, 100%);
+  --color-fd-ring: hsl(256, 85%, 60%);
+
+  --color-fd-background: hsl(240, 6%, 97%);
+  --color-fd-foreground: hsl(240, 10%, 8%);
+  --color-fd-card: hsl(0, 0%, 100%);
+  --color-fd-card-foreground: hsl(240, 10%, 8%);
+  --color-fd-popover: hsl(0, 0%, 100%);
+  --color-fd-popover-foreground: hsl(240, 10%, 8%);
+  --color-fd-secondary: hsl(240, 5%, 96%);
+  --color-fd-secondary-foreground: hsl(240, 6%, 10%);
+  --color-fd-muted: hsl(240, 5%, 96%);
+  --color-fd-muted-foreground: hsl(240, 4%, 46%);
+  --color-fd-accent: hsl(240, 5%, 94%);
+  --color-fd-accent-foreground: hsl(240, 6%, 10%);
+  --color-fd-border: hsl(240, 6%, 90%);
+}
+
+.dark {
+  --color-fd-primary: hsl(256, 100%, 72%);
+  --color-fd-primary-foreground: hsl(0, 0%, 100%);
+  --color-fd-ring: hsl(256, 85%, 65%);
+
+  --color-fd-background: hsl(240, 10%, 7%);
+  --color-fd-foreground: hsl(0, 0%, 95%);
+  --color-fd-card: hsl(240, 8%, 10%);
+  --color-fd-card-foreground: hsl(0, 0%, 95%);
+  --color-fd-popover: hsl(240, 8%, 10%);
+  --color-fd-popover-foreground: hsl(0, 0%, 95%);
+  --color-fd-secondary: hsl(240, 6%, 14%);
+  --color-fd-secondary-foreground: hsl(0, 0%, 90%);
+  --color-fd-muted: hsl(240, 5%, 16%);
+  --color-fd-muted-foreground: hsl(240, 4%, 58%);
+  --color-fd-accent: hsl(240, 6%, 16%);
+  --color-fd-accent-foreground: hsl(0, 0%, 90%);
+  --color-fd-border: hsl(240, 5%, 18%);
+}
+
+/* ─── Description under title ──────────────────────────────────────── */
+
+.fd-page-description {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--color-fd-muted-foreground);
+}
+
+/* ─── Page Actions (shiny theme) ────────────────────────────────────── */
+
+.fd-page-action-btn {
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.fd-page-action-menu {
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+.fd-page-action-menu-item {
+  border-radius: 0.375rem;
+}
+
+/* ─── AI Chat (shiny theme) ──────────────────────────────────────────── */
+
+.fd-ai-dialog {
+  border-radius: 16px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.08), 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.fd-ai-bubble-user {
+  border-radius: 18px 18px 4px 18px;
+}
+
+.fd-ai-bubble-ai {
+  border-radius: 18px 18px 18px 4px;
+}
+
+.fd-ai-input-wrap {
+  border-radius: 12px;
+}
+
+.fd-ai-send-btn {
+  border-radius: 10px;
+}
+
+.fd-ai-floating-btn {
+  border-radius: 6px;
+  background: hsl(240, 6%, 15%);
+  color: #fff;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.07), 0 1px 3px rgba(0, 0, 0, 0.2);
+  border: none;
+}
+
+.fd-ai-floating-btn:hover {
+  background: hsl(240, 6%, 20%);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1), 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+:root .fd-ai-floating-btn {
+  background: hsl(240, 7%, 14%);
+  color: #fff;
+}
+
+:root .fd-ai-floating-btn:hover {
+  background: hsl(240, 7%, 20%);
+}
+
+.fd-ai-suggestion {
+  border-radius: 10px;
+}
+
+.fd-ai-result {
+  border-radius: 10px;
+}
+
+/* ─── Full-Modal ────────────────────────────────────────────────────── */
+
+.fd-ai-fm-input-container {
+  border-radius: 14px;
+}
+
+.fd-ai-fm-send-btn {
+  border-radius: 9999px;
+}
+
+.fd-ai-fm-suggestion {
+  border-radius: 9999px;
+}
+
+.fd-ai-fm-trigger-btn {
+  border-radius: 18px;
+}
+
+.fd-ai-fm-close-btn {
+  border-radius: 9999px;
+}
+
+/* ─── Code blocks (shiny) ────────────────────────────────────────────── */
+
+.fd-ai-code-block {
+  border-radius: 10px;
+}
+
+.fd-ai-code-copy {
+  border-radius: 6px;
+}
+
+/* ─── Sidebar shiny overrides ────────────────────────────────────────── */
+
+:root .fd-sidebar {
+  --color-fd-muted: hsl(240, 5%, 96%);
+  --color-fd-secondary: hsl(240, 5%, 94%);
+  --color-fd-muted-foreground: hsl(240, 4%, 46%);
+}
+
+.dark .fd-sidebar {
+  --color-fd-muted: hsl(240, 5%, 14%);
+  --color-fd-secondary: hsl(240, 6%, 16%);
+  --color-fd-muted-foreground: hsl(240, 4%, 56%);
+}
+
+/* Active sidebar item: subtle purple tint — scoped to sidebar only */
+:root aside [data-active="true"] > a,
+:root aside a[data-active="true"] {
+  background: hsl(256, 100%, 97%);
+  color: hsl(256, 100%, 50%);
+  font-weight: 500;
+}
+
+.dark aside [data-active="true"] > a,
+.dark aside a[data-active="true"] {
+  background: hsl(256, 40%, 16%);
+  color: hsl(256, 100%, 78%);
+  font-weight: 500;
+}
+
+/* ─── Cards (shiny style — clean, subtle shadow) ────────────────────── */
+
+.fd-card {
+  display: block;
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-fd-border);
+  background: var(--color-fd-card);
+  padding: 1.25rem;
+  font-size: 0.875rem;
+  color: var(--color-fd-card-foreground);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  transition: background-color 150ms, border-color 150ms, box-shadow 150ms;
+}
+
+.fd-card:hover {
+  border-color: var(--color-fd-primary);
+  box-shadow: 0 2px 8px 0 rgb(0 0 0 / 0.06);
+}
+
+.fd-card-icon {
+  margin-bottom: 0.625rem;
+  width: fit-content;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-fd-border);
+  padding: 0.5rem;
+  color: var(--color-fd-muted-foreground);
+  background: var(--color-fd-secondary);
+}
+
+.fd-card-title {
+  font-weight: 500;
+  font-size: 0.9375rem;
+}
+
+.fd-card-description {
+  color: var(--color-fd-muted-foreground);
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+/* ─── Cards grid ──────────────────────────────────────────────────── */
+
+.fd-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .fd-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ─── Page nav cards (shiny style) ─────────────────────────────────── */
+
+.fd-page-nav-card {
+  border-radius: 0.75rem;
+}
+
+/* ─── Inline code (Clerk style — subtle, no heavy borders) ─────────── */
+
+.fd-docs-content :not(pre) > code {
+  padding: 2px 6px;
+  border: 1px solid var(--color-fd-border);
+  font-size: 0.8125rem;
+  border-radius: 6px;
+  background: var(--color-fd-muted);
+  color: var(--color-fd-foreground);
+  font-weight: 450;
+}
+
+/* ─── Links in prose (purple underline like Clerk) ─────────────────── */
+
+.fd-docs-content a:not(.fd-page-nav-card):not([class]) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--color-fd-primary);
+  text-decoration-thickness: 1.5px;
+  font-weight: 500;
+  color: var(--color-fd-primary);
+  transition: opacity 150ms;
+}
+
+.fd-docs-content a:not(.fd-page-nav-card):not([class]):hover {
+  opacity: 0.8;
+}
+
+/* ─── Tables (clean, rounded like Clerk) ───────────────────────────── */
+
+.fd-docs-content table {
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--color-fd-card);
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-fd-border);
+  overflow: hidden;
+  width: 100%;
+}
+
+.fd-docs-content th {
+  background: var(--color-fd-muted);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-docs-content th,
+.fd-docs-content td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-fd-border);
+  font-size: 0.875rem;
+}
+
+.fd-docs-content tr:last-child td {
+  border-bottom: none;
+}
+
+/* ─── Blockquotes (purple left border like Clerk) ──────────────────── */
+
+.fd-docs-content blockquote {
+  border-left: 3px solid var(--color-fd-primary);
+  padding-left: 1rem;
+  color: var(--color-fd-muted-foreground);
+  font-style: normal;
+  margin: 1rem 0;
+}
+
+/* ─── Horizontal rule ──────────────────────────────────────────────── */
+
+.fd-docs-content hr {
+  border-color: var(--color-fd-border);
+}
+
+/* ─── Code blocks (Clerk-style dark, no radius on inner, rounded wrapper) */
+
+figure.shiki {
+  border-radius: 0.625rem;
+  overflow: hidden;
+  border: 1px solid var(--color-fd-border);
+}
+
+:root figure.shiki {
+  border-color: hsl(240, 6%, 88%);
+}
+
+.dark figure.shiki {
+  border-color: hsl(240, 5%, 20%);
+}
+
+/* ─── Tabs (Clerk code tab style) ───────────────────────────────────── */
+
+[role="tablist"] {
+  border-bottom: 1px solid var(--color-fd-border);
+}
+
+[role="tab"] {
+  font-size: 0.8125rem;
+  font-weight: 450;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0;
+  color: var(--color-fd-muted-foreground);
+  border-bottom: 2px solid transparent;
+  transition: color 150ms, border-color 150ms;
+}
+
+[role="tab"][aria-selected="true"],
+[role="tab"][data-state="active"] {
+  color: var(--color-fd-foreground);
+  border-bottom-color: var(--color-fd-primary);
+  font-weight: 500;
+}
+
+/* ─── Callout (clean, subtle) ───────────────────────────────────────── */
+
+[style*="--callout-color"] {
+  border-radius: 0.625rem;
+  border-width: 1px;
+}
+
+/* ─── Accordion ────────────────────────────────────────────────────── */
+
+details {
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.625rem;
+  padding: 0;
+  margin: 0.75rem 0;
+  overflow: hidden;
+}
+
+details summary {
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  color: var(--color-fd-foreground);
+  background: var(--color-fd-secondary);
+  transition: background 150ms;
+}
+
+details summary:hover {
+  background: var(--color-fd-accent);
+}
+
+details[open] summary {
+  border-bottom: 1px solid var(--color-fd-border);
+}
+
+details > :not(summary) {
+  padding: 0.75rem 1rem;
+}
+
+/* ─── Steps indicator (numbered circles like Clerk) ─────────────────── */
+
+[data-type="step"] {
+  counter-increment: step;
+  position: relative;
+  padding-left: 2.5rem;
+}
+
+[data-type="step"]::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0.125rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: var(--color-fd-primary);
+  color: var(--color-fd-primary-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── Omni Command Palette (shiny theme) ─────────────────────────── */
+
+.omni-content {
+  border-radius: 0.875rem;
+  border: 1px solid var(--color-fd-border);
+  background: var(--color-fd-popover);
+  box-shadow: 0 24px 80px -12px rgba(0, 0, 0, 0.12), 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+.omni-item {
+  border-radius: 0.5rem;
+}
+
+.omni-item-active {
+  background: color-mix(in srgb, var(--color-fd-primary) 10%, transparent);
+}
+
+.omni-highlight {
+  background: color-mix(in srgb, var(--color-fd-primary) 20%, transparent);
+  color: var(--color-fd-primary);
+}
+
+.omni-search-input:focus {
+  caret-color: var(--color-fd-primary);
+}
+
+/* ─── TOC (shiny) ───────────────────────────────────────────────────── */
+
+.toc-thumb {
+  background: var(--color-fd-border);
+  opacity: 1;
+}
+
+#nd-toc a[data-active="true"] {
+  box-shadow: inset 2px 0 0 var(--color-fd-primary);
+  color: var(--color-fd-primary);
+}
+
+#nd-toc a[data-active="false"] {
+  box-shadow: none;
+}
+
+/* ─── Page footer (shiny) ───────────────────────────────────────────── */
+
+.fd-page-footer {
+  border-top: 1px solid var(--color-fd-border);
+}
+
+/* ─── Scrollbar (subtle) ────────────────────────────────────────────── */
+
+.fd-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.fd-sidebar::-webkit-scrollbar-thumb {
+  background: var(--color-fd-border);
+  border-radius: 4px;
+}
+
+.fd-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}

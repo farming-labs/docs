@@ -3,6 +3,7 @@ import { pixelBorder } from "@farming-labs/theme/pixel-border";
 import { MyNote } from "./app/components/my-note";
 import { AskAITrigger } from "./app/components/ask-ai-trigger";
 import { colorful } from "@farming-labs/theme/colorful"
+import { shiny } from "@farming-labs/theme/shiny"
 import {
   BookOpen,
   Rocket,
@@ -31,7 +32,7 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
-  theme: colorful({
+  theme: shiny({
     ui: {
       components: { Callout: { variant: "outline" } },
       layout: { toc: { enabled: true, depth: 3, style: "directional" } },
