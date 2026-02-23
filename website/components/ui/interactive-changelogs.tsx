@@ -1,7 +1,7 @@
 "use client";
 
 import { Copy, GitPullRequest, Hash, Check } from "lucide-react";
-import { MeshGradient, Dithering } from "@paper-design/shaders-react";
+import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -90,38 +90,8 @@ export function Component() {
     <section className="relative w-full overflow-hidden bg-white dark:bg-black text-black dark:text-white min-h-dvh">
       {/* shader header */}
       <div className="relative w-full overflow-hidden">
-        <div className="hidden dark:block">
-          <MeshGradient
-            colors={["#ffffff", "#e0e0e0", "#f5f5f5", "#d4d4d4"]}
-            swirl={0.55}
-            distortion={0.85}
-            speed={0.1}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-          />
-          <Dithering
-            colors={["#ffffff", "#f2f2f2", "#eaeaea"]}
-            intensity={0.18}
-            shape="simplex"
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black/60" />
-        </div>
-        <div className="block dark:hidden">
-          <MeshGradient
-            colors={["#000000", "#1a1a1a", "#0a0a0a", "#2a2a2a"]}
-            swirl={0.55}
-            distortion={0.85}
-            speed={0.1}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-          />
-          <Dithering
-            colors={["#000000", "#111111", "#1a1a1a"]}
-            intensity={0.18}
-            shape="simplex"
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/20 to-white/40" />
-        </div>
+        <AnimatedBackground />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/60" />
 
         <div className="relative container mx-auto max-w-5xl px-6 py-16 text-left">
           <div className="flex flex-col gap-3">
@@ -129,7 +99,7 @@ export function Component() {
               <GitPullRequest className="size-4" />
               <p className="font-mono uppercase">Changelog</p>
             </div>
-            <h1 className="text-4xl tracking-tight font-semibold text-white dark:text-white leading-snug">
+            <h1 className="text-4xl tracking-tight font-bold text-white dark:text-white leading-snug">
               Latest Enhancements
               <br /> & Platform News
             </h1>
