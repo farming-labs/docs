@@ -19,12 +19,7 @@ export const authClient = createAuthClient({
   baseURL: "http://localhost:3000",
 });
 
-export const {
-  signIn,
-  signUp,
-  signOut,
-  useSession,
-} = authClient;
+export const { signIn, signUp, signOut, useSession } = authClient;
 ```
 
 ## Sign Up
@@ -183,14 +178,14 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
 ## Quick Reference
 
-| Action | Method |
-|--------|--------|
-| Sign up | `signUp.email({ email, password, name })` |
-| Sign in (email) | `signIn.email({ email, password })` |
-| Sign in (social) | `signIn.social({ provider })` |
-| Get session | `useSession()` hook |
-| Sign out | `signOut()` |
-| Server session | `auth.api.getSession({ headers })` |
+| Action           | Method                                    |
+| ---------------- | ----------------------------------------- |
+| Sign up          | `signUp.email({ email, password, name })` |
+| Sign in (email)  | `signIn.email({ email, password })`       |
+| Sign in (social) | `signIn.social({ provider })`             |
+| Get session      | `useSession()` hook                       |
+| Sign out         | `signOut()`                               |
+| Server session   | `auth.api.getSession({ headers })`        |
 
 ---
 

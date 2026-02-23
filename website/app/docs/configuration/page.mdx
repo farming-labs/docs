@@ -22,6 +22,7 @@ All configuration lives in a single `docs.config.ts` file.
       theme: fumadocs(),
     });
     ```
+
   </Tab>
   <Tab value="SvelteKit">
     The config file lives at `src/lib/docs.config.ts`:
@@ -42,6 +43,7 @@ All configuration lives in a single `docs.config.ts` file.
     ```
 
     > SvelteKit, Astro, and Nuxt require `contentDir` (path to your markdown files) and `nav` (sidebar title/URL) since routing is handled differently from Next.js.
+
   </Tab>
   <Tab value="Astro">
     The config file lives at `src/lib/docs.config.ts`:
@@ -60,6 +62,7 @@ All configuration lives in a single `docs.config.ts` file.
       },
     });
     ```
+
   </Tab>
   <Tab value="Nuxt">
     The config file lives at the **project root** as `docs.config.ts`:
@@ -78,26 +81,27 @@ All configuration lives in a single `docs.config.ts` file.
       },
     });
     ```
+
   </Tab>
 </Tabs>
 
 ## Config Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `entry` | `string` | `"docs"` | The docs URL path prefix (e.g. `"docs"` → `/docs`) |
-| `contentDir` | `string` | same as `entry` | Path to content files (SvelteKit, Astro, Nuxt) |
-| `theme` | `DocsTheme` | — | Theme preset from a theme factory |
-| `nav` | `{ title, url }` | — | Sidebar title and base URL |
-| `github` | `string \| GithubConfig` | — | GitHub repo for "Edit on GitHub" links |
-| `themeToggle` | `boolean \| ThemeToggleConfig` | `true` | Light/dark mode toggle |
-| `breadcrumb` | `boolean \| BreadcrumbConfig` | `true` | Breadcrumb navigation |
-| `sidebar` | `boolean \| SidebarConfig` | `true` | Sidebar visibility and style |
-| `icons` | `Record<string, Component>` | — | Icon registry for frontmatter `icon` fields |
-| `components` | `Record<string, Component>` | — | Custom MDX components |
-| `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM buttons |
-| `ai` | `AIConfig` | — | RAG-powered AI chat |
-| `metadata` | `DocsMetadata` | — | SEO metadata template |
+| Option        | Type                           | Default         | Description                                        |
+| ------------- | ------------------------------ | --------------- | -------------------------------------------------- |
+| `entry`       | `string`                       | `"docs"`        | The docs URL path prefix (e.g. `"docs"` → `/docs`) |
+| `contentDir`  | `string`                       | same as `entry` | Path to content files (SvelteKit, Astro, Nuxt)     |
+| `theme`       | `DocsTheme`                    | —               | Theme preset from a theme factory                  |
+| `nav`         | `{ title, url }`               | —               | Sidebar title and base URL                         |
+| `github`      | `string \| GithubConfig`       | —               | GitHub repo for "Edit on GitHub" links             |
+| `themeToggle` | `boolean \| ThemeToggleConfig` | `true`          | Light/dark mode toggle                             |
+| `breadcrumb`  | `boolean \| BreadcrumbConfig`  | `true`          | Breadcrumb navigation                              |
+| `sidebar`     | `boolean \| SidebarConfig`     | `true`          | Sidebar visibility and style                       |
+| `icons`       | `Record<string, Component>`    | —               | Icon registry for frontmatter `icon` fields        |
+| `components`  | `Record<string, Component>`    | —               | Custom MDX components                              |
+| `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
+| `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
+| `metadata`    | `DocsMetadata`                 | —               | SEO metadata template                              |
 
 ## Theme Toggle
 
@@ -117,11 +121,11 @@ themeToggle: { enabled: false, default: "dark" },
 themeToggle: { mode: "light-dark-system" },
 ```
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `enabled` | `boolean` | `true` | Show/hide the theme toggle |
-| `default` | `"light" \| "dark" \| "system"` | `"system"` | Forced theme when toggle is hidden |
-| `mode` | `"light-dark" \| "light-dark-system"` | `"light-dark"` | Toggle mode |
+| Property  | Type                                  | Default        | Description                        |
+| --------- | ------------------------------------- | -------------- | ---------------------------------- |
+| `enabled` | `boolean`                             | `true`         | Show/hide the theme toggle         |
+| `default` | `"light" \| "dark" \| "system"`       | `"system"`     | Forced theme when toggle is hidden |
+| `mode`    | `"light-dark" \| "light-dark-system"` | `"light-dark"` | Toggle mode                        |
 
 ## GitHub / Edit on GitHub
 
@@ -139,11 +143,11 @@ github: {
 },
 ```
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `url` | `string` | — | Repository URL |
-| `branch` | `string` | `"main"` | Branch name |
-| `directory` | `string` | — | Subdirectory for the content files |
+| Property    | Type     | Default  | Description                        |
+| ----------- | -------- | -------- | ---------------------------------- |
+| `url`       | `string` | —        | Repository URL                     |
+| `branch`    | `string` | `"main"` | Branch name                        |
+| `directory` | `string` | —        | Subdirectory for the content files |
 
 ## Breadcrumb
 
@@ -184,6 +188,7 @@ Pass options to your theme preset to customize colors, typography, layout, and m
       },
     }),
     ```
+
   </Tab>
   <Tab value="SvelteKit">
     ```ts title="src/lib/docs.config.ts"
@@ -204,6 +209,7 @@ Pass options to your theme preset to customize colors, typography, layout, and m
       },
     }),
     ```
+
   </Tab>
   <Tab value="Astro">
     ```ts title="src/lib/docs.config.ts"
@@ -224,6 +230,7 @@ Pass options to your theme preset to customize colors, typography, layout, and m
       },
     }),
     ```
+
   </Tab>
   <Tab value="Nuxt">
     ```ts title="docs.config.ts"
@@ -244,6 +251,7 @@ Pass options to your theme preset to customize colors, typography, layout, and m
       },
     }),
     ```
+
   </Tab>
 </Tabs>
 
@@ -294,6 +302,7 @@ Register icons in the config and reference them in frontmatter:
     icon: "rocket"
     ---
     ```
+
   </Tab>
   <Tab value="SvelteKit">
     SvelteKit uses a built-in icon map. Add `icon` to your page frontmatter:
@@ -305,6 +314,7 @@ Register icons in the config and reference them in frontmatter:
     ```
 
     Built-in icons: `book`, `terminal`, `rocket`, `settings`, `shield`, `puzzle`, `zap`, `database`, `key`, `mail`, `file`, `folder`, `link`, `lightbulb`, `code`, `users`, `globe`, `lock`.
+
   </Tab>
   <Tab value="Astro">
     Astro uses a built-in icon map. Add `icon` to your page frontmatter:
@@ -316,6 +326,7 @@ Register icons in the config and reference them in frontmatter:
     ```
 
     Built-in icons: `book`, `terminal`, `rocket`, `settings`, `shield`, `puzzle`, `zap`, `database`, `key`, `mail`, `file`, `folder`, `link`, `lightbulb`, `code`, `users`, `globe`, `lock`.
+
   </Tab>
   <Tab value="Nuxt">
     Nuxt uses a built-in icon map. Add `icon` to your page frontmatter:
@@ -327,6 +338,7 @@ Register icons in the config and reference them in frontmatter:
     ```
 
     Built-in icons: `book`, `terminal`, `rocket`, `settings`, `shield`, `puzzle`, `zap`, `database`, `key`, `mail`, `file`, `folder`, `link`, `lightbulb`, `code`, `users`, `globe`, `lock`.
+
   </Tab>
 </Tabs>
 
@@ -369,6 +381,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
     ```
 
     The API key is read from `process.env.OPENAI_API_KEY` automatically.
+
   </Tab>
   <Tab value="SvelteKit">
     ```ts
@@ -392,6 +405,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
       _preloadedContent: contentFiles,
     });
     ```
+
   </Tab>
   <Tab value="Astro">
     ```ts
@@ -413,6 +427,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
       _preloadedContent: contentFiles,
     });
     ```
+
   </Tab>
   <Tab value="Nuxt">
     ```ts
@@ -435,6 +450,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
       ai: { apiKey: process.env.OPENAI_API_KEY, ...config.ai },
     }, useStorage);
     ```
+
   </Tab>
 </Tabs>
 
@@ -473,6 +489,7 @@ See the full [Ask AI reference](/docs/customization/ai-chat) for all options inc
       },
     });
     ```
+
   </Tab>
   <Tab value="SvelteKit">
     ```ts title="src/lib/docs.config.ts"
@@ -505,6 +522,7 @@ See the full [Ask AI reference](/docs/customization/ai-chat) for all options inc
       },
     });
     ```
+
   </Tab>
   <Tab value="Astro">
     ```ts title="src/lib/docs.config.ts"
@@ -537,6 +555,7 @@ See the full [Ask AI reference](/docs/customization/ai-chat) for all options inc
       },
     });
     ```
+
   </Tab>
   <Tab value="Nuxt">
     ```ts title="docs.config.ts"
@@ -569,5 +588,6 @@ See the full [Ask AI reference](/docs/customization/ai-chat) for all options inc
       },
     });
     ```
+
   </Tab>
 </Tabs>

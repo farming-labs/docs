@@ -12,7 +12,8 @@ export function AskAITrigger() {
         padding: "8px 12px",
         height: "40px",
         borderRadius: "16px",
-        boxShadow: "0 1px 3px color-mix(in srgb, var(--color-fd-background, #000) 20%, transparent)",
+        boxShadow:
+          "0 1px 3px color-mix(in srgb, var(--color-fd-background, #000) 20%, transparent)",
         transition: "transform 150ms, background 150ms, color 150ms",
       }}
     >

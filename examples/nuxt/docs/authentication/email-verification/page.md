@@ -45,11 +45,11 @@ Sign Up → Generate Token → Send Email → User Clicks → Verify → Done
 
 ## Configuration Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `sendOnSignUp` | `boolean` | `true` | Send verification email on sign up |
-| `autoSignInAfterVerification` | `boolean` | `false` | Auto sign-in after verification |
-| `expiresIn` | `number` | `3600` | Token expiry in seconds (1 hour) |
+| Option                        | Type      | Default | Description                        |
+| ----------------------------- | --------- | ------- | ---------------------------------- |
+| `sendOnSignUp`                | `boolean` | `true`  | Send verification email on sign up |
+| `autoSignInAfterVerification` | `boolean` | `false` | Auto sign-in after verification    |
+| `expiresIn`                   | `number`  | `3600`  | Token expiry in seconds (1 hour)   |
 
 ## Custom Email Templates
 
@@ -62,12 +62,7 @@ import { VerificationEmail } from "./emails/verification";
 export const auth = betterAuth({
   emailVerification: {
     sendVerificationEmail: async ({ user, url }) => {
-      const html = render(
-        <VerificationEmail
-          name={user.name}
-          verificationUrl={url}
-        />
-      );
+      const html = render(<VerificationEmail name={user.name} verificationUrl={url} />);
 
       await resend.emails.send({
         from: "noreply@yourapp.com",

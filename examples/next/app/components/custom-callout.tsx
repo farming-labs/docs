@@ -18,11 +18,7 @@ const icons: Record<string, string> = {
  * Example custom Callout component that overrides fumadocs' built-in Callout.
  * It must accept the same props interface.
  */
-export function CustomCallout({
-  type = "info",
-  title,
-  children,
-}: CustomCalloutProps) {
+export function CustomCallout({ type = "info", title, children }: CustomCalloutProps) {
   return (
     <div
       style={{
@@ -36,9 +32,7 @@ export function CustomCallout({
     >
       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
         <span style={{ fontSize: "1.25rem" }}>{icons[type] ?? "💡"}</span>
-        {title && (
-          <strong style={{ color: "#f0f0f0" }}>{title}</strong>
-        )}
+        {title && <strong style={{ color: "#f0f0f0" }}>{title}</strong>}
       </div>
       <div style={{ marginTop: "0.5rem" }}>{children}</div>
     </div>

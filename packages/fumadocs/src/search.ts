@@ -25,9 +25,6 @@ import { createDocsAPI } from "./docs-api.js";
  * @deprecated Use `createDocsAPI` from `@farming-labs/theme/api` instead.
  * This function is kept for backward compatibility.
  */
-export function createDocsSearchAPI(options?: {
-  entry?: string;
-  language?: string;
-}) {
+export function createDocsSearchAPI(options?: { entry?: string; language?: string }) {
   return createDocsAPI({ entry: options?.entry, language: options?.language });
 }

@@ -8,12 +8,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const title = searchParams.get("title") ?? "Docs";
 
-  return new Response(
-    `<!DOCTYPE html><html><body><h1>${title}</h1></body></html>`,
-    {
-      headers: {
-        "Content-Type": "text/html",
-      },
-    }
-  );
+  return new Response(`<!DOCTYPE html><html><body><h1>${title}</h1></body></html>`, {
+    headers: {
+      "Content-Type": "text/html",
+    },
+  });
 }

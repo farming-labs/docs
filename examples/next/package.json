@@ -9,8 +9,8 @@
   },
   "dependencies": {
     "@farming-labs/docs": "workspace:*",
-    "@farming-labs/theme": "workspace:*",
     "@farming-labs/next": "workspace:*",
+    "@farming-labs/theme": "workspace:*",
     "lucide-react": "^0.564.0",
     "next": "16.1.6",
     "react": "^19.0.0",

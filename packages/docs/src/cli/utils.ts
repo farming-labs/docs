@@ -34,7 +34,8 @@ export type PackageManager = "pnpm" | "yarn" | "npm" | "bun";
 
 export function detectPackageManager(cwd: string): PackageManager {
   if (fs.existsSync(path.join(cwd, "pnpm-lock.yaml"))) return "pnpm";
-  if (fs.existsSync(path.join(cwd, "bun.lockb")) || fs.existsSync(path.join(cwd, "bun.lock"))) return "bun";
+  if (fs.existsSync(path.join(cwd, "bun.lockb")) || fs.existsSync(path.join(cwd, "bun.lock")))
+    return "bun";
   if (fs.existsSync(path.join(cwd, "yarn.lock"))) return "yarn";
   return "npm";
 }
@@ -62,11 +63,7 @@ export function runCommand(pm: PackageManager): string {
  * Write a file, creating parent directories as needed.
  * Returns true if the file was written, false if it already existed and was skipped.
  */
-export function writeFileSafe(
-  filePath: string,
-  content: string,
-  overwrite = false,
-): boolean {
+export function writeFileSafe(filePath: string, content: string, overwrite = false): boolean {
   if (fs.existsSync(filePath) && !overwrite) {
     return false;
   }
@@ -114,9 +111,7 @@ const GLOBAL_CSS_CANDIDATES = [
  * Returns relative paths that exist.
  */
 export function detectGlobalCssFiles(cwd: string): string[] {
-  return GLOBAL_CSS_CANDIDATES.filter((rel) =>
-    fs.existsSync(path.join(cwd, rel)),
-  );
+  return GLOBAL_CSS_CANDIDATES.filter((rel) => fs.existsSync(path.join(cwd, rel)));
 }
 
 // ---------------------------------------------------------------------------

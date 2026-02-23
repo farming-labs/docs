@@ -42,17 +42,6 @@ function Navbar() {
 }
 
 function HeroSection() {
-  const features = [
-    "Zero config — one docs.config.ts, no layout files",
-    "Four themes — default, darksharp, pixel-border, colorful",
-    "Built-in search powered by Orama",
-    "MDX first with frontmatter routing",
-    "Custom components, icons, code tabs from config",
-    "CLI scaffolding — npx @farming-labs/docs init",
-    "Colors, typography, sidebar — all customizable",
-    "Syntax highlighting with Shiki + code titles",
-  ];
-
   return (
     <section className="relative md:mx-0 -mx-[5%] min-h-screen flex items-end overflow-y-hidden">
       <div className="absolute top-14 right-0 z-[999] h-px bg-white/[8%]" />
@@ -63,31 +52,46 @@ function HeroSection() {
           <div className="max-w-full sm:max-w-lg">
             <div className="flex flex-col gap-2">
               <div className="inline-block">
-                <a href="/changelog#v0.0.1" className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
+                <a
+                  href="/changelog#v0.0.1"
+                  className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center"
+                >
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
                   v0.0.1
                 </a>
               </div>
               <div className="inline-block">
-                <a href="/changelog#v0.0.2-beta.16-20" className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
+                <a
+                  href="/changelog#v0.0.2-beta.16-20"
+                  className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center"
+                >
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
                   v0.0.2-beta.20
                 </a>
               </div>
               <div className="inline-block">
-                <a href="/changelog#v0.0.2-beta.11-15" className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
+                <a
+                  href="/changelog#v0.0.2-beta.11-15"
+                  className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center"
+                >
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
                   v0.0.2-beta.15
                 </a>
               </div>
               <div className="inline-block">
-                <a href="/changelog#v0.0.2-beta.5-10" className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
+                <a
+                  href="/changelog#v0.0.2-beta.5-10"
+                  className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center"
+                >
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
                   v0.0.2-beta.10
                 </a>
               </div>
               <div className="inline-block">
-                <a href="/changelog#v0.0.2-beta.1-4" className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
+                <a
+                  href="/changelog#v0.0.2-beta.1-4"
+                  className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center"
+                >
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
                   v0.0.2-beta.4
                 </a>
@@ -100,8 +104,7 @@ function HeroSection() {
               that just <span className="text-black bg-white p-0 mt-2">works.</span>
             </h1>
             <p className="mt-4 text-xs sm:text-base font-mono uppercase text-white/45 max-w-md leading-relaxed">
-              A modern documentation framework that works. One
-              config file, zero boilerplate.
+              A modern documentation framework that works. One config file, zero boilerplate.
             </p>
 
             <div className="-mb-5 sm:mb-0 mt-6 sm:mt-8 flex flex-col md:flex-wrap md:flex-row-reverse items-start md:items-center gap-0">
@@ -112,7 +115,10 @@ function HeroSection() {
                 Get Started
                 <ArrowRight className="w-3.5 h-3.5 -rotate-45 group-hover:translate-x-0.5 transition-transform" />
               </Link>
-              <CopyCommand className="border-b-0 sm:border-b border-l-0 border-white/10" command="pnpx @farming-labs/docs init" />
+              <CopyCommand
+                className="border-b-0 sm:border-b border-l-0 border-white/10"
+                command="pnpx @farming-labs/docs init"
+              />
             </div>
           </div>
 
@@ -144,9 +150,7 @@ function NextJsSteps() {
           </div>
           <div>
             <h3 className="text-sm font-medium text-white mb-1">Install</h3>
-            <p className="text-sm text-white/40">
-              Add the core packages to your Next.js project.
-            </p>
+            <p className="text-sm text-white/40">Add the core packages to your Next.js project.</p>
           </div>
         </div>
         <CodeBlock
@@ -189,7 +193,8 @@ export default defineDocs({
           <div>
             <h3 className="text-sm font-medium text-white mb-1">Next Config</h3>
             <p className="text-sm text-white/40">
-              Wrap your config with <code className="text-white/60 text-xs">withDocs()</code>. Handles MDX, routing, and search.
+              Wrap your config with <code className="text-white/60 text-xs">withDocs()</code>.
+              Handles MDX, routing, and search.
             </p>
           </div>
         </div>
@@ -210,8 +215,7 @@ export default withDocs({});`}
           <div>
             <h3 className="text-sm font-medium text-white mb-1">Root Layout</h3>
             <p className="text-sm text-white/40">
-              Wrap your app with{" "}
-              <code className="text-white/60 text-xs">RootProvider</code> for
+              Wrap your app with <code className="text-white/60 text-xs">RootProvider</code> for
               search, theme switching, and AI.
             </p>
           </div>
@@ -240,8 +244,7 @@ export default function RootLayout({ children }) {
           <div>
             <h3 className="text-sm font-medium text-white mb-1">Write docs</h3>
             <p className="text-sm text-white/40">
-              Create MDX files under{" "}
-              <code className="text-white/60 text-xs">app/docs/</code>.
+              Create MDX files under <code className="text-white/60 text-xs">app/docs/</code>.
               Frontmatter for metadata. That&#39;s it.
             </p>
           </div>
@@ -269,7 +272,10 @@ export const auth = betterAuth({
 
         <p className="text-xs text-white/30 mt-2">
           See the full{" "}
-          <a href="/docs/installation" className="text-white/50 underline underline-offset-2 hover:text-white/70">
+          <a
+            href="/docs/installation"
+            className="text-white/50 underline underline-offset-2 hover:text-white/70"
+          >
             installation walkthrough
           </a>{" "}
           for all generated files and options.
@@ -357,8 +363,7 @@ export const { load, GET, POST } = createDocsServer(config);`}
           <div>
             <h3 className="text-sm font-medium text-white mb-1">Write docs</h3>
             <p className="text-sm text-white/40">
-              Create Markdown files under{" "}
-              <code className="text-white/60 text-xs">docs/</code>.
+              Create Markdown files under <code className="text-white/60 text-xs">docs/</code>.
               That&#39;s it.
             </p>
           </div>
@@ -411,9 +416,7 @@ function AstroSteps() {
           </div>
           <div>
             <h3 className="text-sm font-medium text-white mb-1">Install</h3>
-            <p className="text-sm text-white/40">
-              Add the core packages to your Astro project.
-            </p>
+            <p className="text-sm text-white/40">Add the core packages to your Astro project.</p>
           </div>
         </div>
         <CodeBlock
@@ -479,8 +482,7 @@ export const { load, GET, POST } = createDocsServer(config);`}
           <div>
             <h3 className="text-sm font-medium text-white mb-1">Write docs</h3>
             <p className="text-sm text-white/40">
-              Create Markdown files under{" "}
-              <code className="text-white/60 text-xs">docs/</code>.
+              Create Markdown files under <code className="text-white/60 text-xs">docs/</code>.
               That&#39;s it.
             </p>
           </div>
@@ -512,9 +514,7 @@ export const auth = betterAuth({
           </div>
           <div>
             <h3 className="text-sm font-medium text-white mb-1">Routes</h3>
-            <p className="text-sm text-white/40">
-              Index page, catch-all route, and API endpoint.
-            </p>
+            <p className="text-sm text-white/40">Index page, catch-all route, and API endpoint.</p>
           </div>
         </div>
         <AstroRouteTabs />
@@ -533,9 +533,7 @@ function NuxtSteps() {
           </div>
           <div>
             <h3 className="text-sm font-medium text-white mb-1">Install</h3>
-            <p className="text-sm text-white/40">
-              Add the core packages to your Nuxt project.
-            </p>
+            <p className="text-sm text-white/40">Add the core packages to your Nuxt project.</p>
           </div>
         </div>
         <CodeBlock
@@ -604,9 +602,7 @@ export default defineDocs({
           </div>
           <div>
             <h3 className="text-sm font-medium text-white mb-1">Server API</h3>
-            <p className="text-sm text-white/40">
-              One handler for docs loading, search, and AI.
-            </p>
+            <p className="text-sm text-white/40">One handler for docs loading, search, and AI.</p>
           </div>
         </div>
         <CodeBlock
@@ -625,8 +621,7 @@ export default defineDocsHandler(config, useStorage);`}
           <div>
             <h3 className="text-sm font-medium text-white mb-1">Write docs</h3>
             <p className="text-sm text-white/40">
-              Create Markdown files under{" "}
-              <code className="text-white/60 text-xs">docs/</code>.
+              Create Markdown files under <code className="text-white/60 text-xs">docs/</code>.
               That&apos;s it.
             </p>
           </div>
@@ -658,9 +653,7 @@ export const auth = betterAuth({
           </div>
           <div>
             <h3 className="text-sm font-medium text-white mb-1">Page Route</h3>
-            <p className="text-sm text-white/40">
-              A single Vue page that handles all doc routes.
-            </p>
+            <p className="text-sm text-white/40">A single Vue page that handles all doc routes.</p>
           </div>
         </div>
         <CodeBlock
@@ -719,7 +712,8 @@ function InstallSection() {
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
               <div className="flex-1">
                 <p className="text-sm text-white/60 mb-1">
-                  Easily scaffold your docs with the CLI. It auto-detects your framework and scaffolds everything.
+                  Easily scaffold your docs with the CLI. It auto-detects your framework and
+                  scaffolds everything.
                 </p>
                 <p className="text-[11px] font-mono text-white/30 uppercase tracking-wider">
                   Setup beautiful documentation in seconds
@@ -729,7 +723,10 @@ function InstallSection() {
           </div>
 
           <div className="relative z-[999] flex justify-end mt-4">
-            <CopyCommand className="backdrop-blur-sm md:backdrop-blur-none border-r-0 border-b-0 sm:border-b" command="pnpx @farming-labs/docs init" />
+            <CopyCommand
+              className="backdrop-blur-sm md:backdrop-blur-none border-r-0 border-b-0 sm:border-b"
+              command="pnpx @farming-labs/docs init"
+            />
           </div>
         </div>
 
@@ -826,10 +823,8 @@ function ThemesSection() {
           </h2>
           <p className="mt-3 text-white/40 max-w-lg">
             Pick a preset or build your own with{" "}
-            <code className="text-white/60 text-xs font-mono">
-              createTheme()
-            </code>
-            . Override any styles from config.
+            <code className="text-white/60 text-xs font-mono">createTheme()</code>. Override any
+            styles from config.
           </p>
         </div>
 
@@ -850,14 +845,10 @@ function ThemesSection() {
                 ))}
               </div>
               <hr className="border-white/[6%] opacity-60 -mx-10" />
-              <h3 className="text-xs uppercase font-mono pt-2 text-white mb-0">
-                {theme.name}
-              </h3>
+              <h3 className="text-xs uppercase font-mono pt-2 text-white mb-0">{theme.name}</h3>
               <hr className="my-2 border-white/[6%] opacity-60 -mx-10" />
               <p className="text-xs text-white/40 mb-4">{theme.description}</p>
-              <code className="text-[11px] font-mono text-white/25 break-all">
-                {theme.import}
-              </code>
+              <code className="text-[11px] font-mono text-white/25 break-all">{theme.import}</code>
             </PixelCard>
           ))}
         </div>
@@ -879,11 +870,21 @@ function ThemesSection() {
 
         <div className="mt-10 flex items-center gap-4">
           <a className="group" href="/themes">
-            <span
-              className="inline-flex group items-center gap-2 rounded-none uppercase font-mono text-xs border border-white/10 bg-white/[3%] px-5 py-2.5 cursor-pointer text-white/80 transition-all hover:bg-white/[4%] hover:text-white hover:border-white/10 hover:no-underline"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="13.5" cy="6.5" r="2.5" /><circle cx="17.5" cy="10.5" r="2.5" /><circle cx="8.5" cy="7.5" r="2.5" /><circle cx="6.5" cy="12.5" r="2.5" />
+            <span className="inline-flex group items-center gap-2 rounded-none uppercase font-mono text-xs border border-white/10 bg-white/[3%] px-5 py-2.5 cursor-pointer text-white/80 transition-all hover:bg-white/[4%] hover:text-white hover:border-white/10 hover:no-underline">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="13.5" cy="6.5" r="2.5" />
+                <circle cx="17.5" cy="10.5" r="2.5" />
+                <circle cx="8.5" cy="7.5" r="2.5" />
+                <circle cx="6.5" cy="12.5" r="2.5" />
                 <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
               </svg>
               expore themes
@@ -972,8 +973,7 @@ function PackagesSection() {
   const packages = [
     {
       name: "@farming-labs/docs",
-      description:
-        "Core types, defineDocs(), createTheme(), extendTheme(). Framework agnostic.",
+      description: "Core types, defineDocs(), createTheme(), extendTheme(). Framework agnostic.",
     },
     {
       name: "@farming-labs/theme",
@@ -982,13 +982,11 @@ function PackagesSection() {
     },
     {
       name: "@farming-labs/next",
-      description:
-        "Next.js adapter. withDocs() for config, MDX processing, search API generation.",
+      description: "Next.js adapter. withDocs() for config, MDX processing, search API generation.",
     },
     {
       name: "@farming-labs/svelte",
-      description:
-        "SvelteKit adapter. Server-side docs loader, markdown processing, search API.",
+      description: "SvelteKit adapter. Server-side docs loader, markdown processing, search API.",
     },
     {
       name: "@farming-labs/svelte-theme",
@@ -997,8 +995,7 @@ function PackagesSection() {
     },
     {
       name: "@farming-labs/astro",
-      description:
-        "Astro adapter. Server-side docs loader, markdown processing, search API.",
+      description: "Astro adapter. Server-side docs loader, markdown processing, search API.",
     },
     {
       name: "@farming-labs/astro-theme",
@@ -1007,13 +1004,11 @@ function PackagesSection() {
     },
     {
       name: "@farming-labs/nuxt",
-      description:
-        "Nuxt 3 adapter. defineDocsHandler() for API, markdown processing, search API.",
+      description: "Nuxt 3 adapter. defineDocsHandler() for API, markdown processing, search API.",
     },
     {
       name: "@farming-labs/nuxt-theme",
-      description:
-        "Theme presets for Nuxt. DocsLayout, DocsContent components.",
+      description: "Theme presets for Nuxt. DocsLayout, DocsContent components.",
     },
   ];
 
@@ -1028,8 +1023,7 @@ function PackagesSection() {
             Modular by design
           </h2>
           <p className="mt-3 text-white/40 max-w-lg">
-            Only install what you need. Core stays lean, framework adapters and
-            themes are separate.
+            Only install what you need. Core stays lean, framework adapters and themes are separate.
           </p>
         </div>
 

@@ -23,17 +23,10 @@ export const auth = betterAuth({
           permissions: ["*"], // All permissions
         },
         admin: {
-          permissions: [
-            "member:read",
-            "member:invite",
-            "member:remove",
-            "organization:update",
-          ],
+          permissions: ["member:read", "member:invite", "member:remove", "organization:update"],
         },
         member: {
-          permissions: [
-            "member:read",
-          ],
+          permissions: ["member:read"],
         },
       },
     }),
@@ -159,11 +152,11 @@ if (membership.role !== "admin" && membership.role !== "owner") {
 
 The plugin adds these tables:
 
-| Table | Description |
-|-------|-------------|
+| Table          | Description                                 |
+| -------------- | ------------------------------------------- |
 | `organization` | Organization details (name, slug, metadata) |
-| `member` | User-organization relationship with roles |
-| `invitation` | Pending invitations |
+| `member`       | User-organization relationship with roles   |
+| `invitation`   | Pending invitations                         |
 
 ## Permissions
 
@@ -175,9 +168,15 @@ organization({
     owner: { permissions: ["*"] },
     admin: {
       permissions: [
-        "member:read", "member:invite", "member:remove",
-        "project:create", "project:read", "project:update", "project:delete",
-        "billing:read", "billing:update",
+        "member:read",
+        "member:invite",
+        "member:remove",
+        "project:create",
+        "project:read",
+        "project:update",
+        "project:delete",
+        "billing:read",
+        "billing:update",
       ],
     },
     viewer: {

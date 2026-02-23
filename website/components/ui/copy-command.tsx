@@ -11,7 +11,7 @@ interface CopyCommandProps {
 
 export default function CopyCommand({ command, className = "" }: CopyCommandProps) {
   const [copied, setCopied] = useState(false);
-  const [splitted , setSplitted] = useState<string[]>(command.split(" "));
+  const [splitted, setSplitted] = useState<string[]>(command.split(" "));
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(command);
@@ -30,10 +30,21 @@ export default function CopyCommand({ command, className = "" }: CopyCommandProp
     >
       <Terminal className="w-3.5 h-3.5 text-white/40" />
       <span className="select-all truncate flex items-center gap-2">
-      {splitted.map((item, index) => (
-        <span className={cn("inline-block" , index === 0 ? "text-white" : index === splitted.length - 1 ? "text-white/50" : "text-white/30")} key={index}>{item}</span>
-      ))}
-
+        {splitted.map((item, index) => (
+          <span
+            className={cn(
+              "inline-block",
+              index === 0
+                ? "text-white"
+                : index === splitted.length - 1
+                  ? "text-white/50"
+                  : "text-white/30",
+            )}
+            key={index}
+          >
+            {item}
+          </span>
+        ))}
       </span>
       {copied ? (
         <Check className="w-3.5 h-3.5 text-green-400 ml-1" />

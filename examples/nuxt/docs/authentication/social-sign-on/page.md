@@ -10,18 +10,18 @@ Better Auth supports 20+ social providers via OAuth 2.0. Users can sign in with 
 
 ## Supported Providers
 
-| Provider | ID | Documentation |
-|----------|-----|---------------|
-| Google | `google` | [console.cloud.google.com](https://console.cloud.google.com) |
-| GitHub | `github` | [github.com/settings/developers](https://github.com/settings/developers) |
-| Discord | `discord` | [discord.com/developers](https://discord.com/developers) |
-| Apple | `apple` | [developer.apple.com](https://developer.apple.com) |
-| Microsoft | `microsoft` | [portal.azure.com](https://portal.azure.com) |
-| Twitter / X | `twitter` | [developer.twitter.com](https://developer.twitter.com) |
-| Facebook | `facebook` | [developers.facebook.com](https://developers.facebook.com) |
-| LinkedIn | `linkedin` | [linkedin.com/developers](https://linkedin.com/developers) |
-| Spotify | `spotify` | [developer.spotify.com](https://developer.spotify.com) |
-| Twitch | `twitch` | [dev.twitch.tv](https://dev.twitch.tv) |
+| Provider    | ID          | Documentation                                                            |
+| ----------- | ----------- | ------------------------------------------------------------------------ |
+| Google      | `google`    | [console.cloud.google.com](https://console.cloud.google.com)             |
+| GitHub      | `github`    | [github.com/settings/developers](https://github.com/settings/developers) |
+| Discord     | `discord`   | [discord.com/developers](https://discord.com/developers)                 |
+| Apple       | `apple`     | [developer.apple.com](https://developer.apple.com)                       |
+| Microsoft   | `microsoft` | [portal.azure.com](https://portal.azure.com)                             |
+| Twitter / X | `twitter`   | [developer.twitter.com](https://developer.twitter.com)                   |
+| Facebook    | `facebook`  | [developers.facebook.com](https://developers.facebook.com)               |
+| LinkedIn    | `linkedin`  | [linkedin.com/developers](https://linkedin.com/developers)               |
+| Spotify     | `spotify`   | [developer.spotify.com](https://developer.spotify.com)                   |
+| Twitch      | `twitch`    | [dev.twitch.tv](https://dev.twitch.tv)                                   |
 
 ## Configuration
 
@@ -58,15 +58,9 @@ import { signIn } from "@/lib/auth-client";
 function SignInButtons() {
   return (
     <div className="flex flex-col gap-3">
-      <button onClick={() => signIn.social({ provider: "google" })}>
-        Continue with Google
-      </button>
-      <button onClick={() => signIn.social({ provider: "github" })}>
-        Continue with GitHub
-      </button>
-      <button onClick={() => signIn.social({ provider: "discord" })}>
-        Continue with Discord
-      </button>
+      <button onClick={() => signIn.social({ provider: "google" })}>Continue with Google</button>
+      <button onClick={() => signIn.social({ provider: "github" })}>Continue with GitHub</button>
+      <button onClick={() => signIn.social({ provider: "discord" })}>Continue with Discord</button>
     </div>
   );
 }

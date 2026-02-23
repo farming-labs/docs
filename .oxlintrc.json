@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "rules": {
+    "noUnusedVariables": "warn"
+  },
+  "ignorePatterns": [
+    "node_modules/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.next/**",
+    "**/.nuxt/**",
+    "**/.svelte-kit/**",
+    "**/.astro/**",
+    "**/build/**",
+    "**/.turbo/**",
+    "website/public/**",
+    "**/*.css",
+    "**/*.mdx",
+    "**/*.md",
+    "**/*.svelte",
+    "**/*.vue",
+    "**/*.astro"
+  ]
+}

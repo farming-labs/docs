@@ -9,12 +9,12 @@ Better Auth uses your existing database — no proprietary backend required. It 
 
 ## Supported Databases
 
-| Database | Adapter | ORM Support |
-|----------|---------|-------------|
-| PostgreSQL | `postgresql` | Prisma, Drizzle, raw SQL |
-| MySQL | `mysql` | Prisma, Drizzle, raw SQL |
-| SQLite | `sqlite` | Prisma, Drizzle, better-sqlite3 |
-| MongoDB | `mongodb` | Mongoose |
+| Database   | Adapter      | ORM Support                     |
+| ---------- | ------------ | ------------------------------- |
+| PostgreSQL | `postgresql` | Prisma, Drizzle, raw SQL        |
+| MySQL      | `mysql`      | Prisma, Drizzle, raw SQL        |
+| SQLite     | `sqlite`     | Prisma, Drizzle, better-sqlite3 |
+| MongoDB    | `mongodb`    | Mongoose                        |
 
 ## Configuration
 
@@ -61,46 +61,46 @@ Better Auth creates and manages these tables automatically:
 
 ### `user`
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | `string` | Primary key |
-| `name` | `string` | User's display name |
-| `email` | `string` | Unique email address |
-| `emailVerified` | `boolean` | Whether email is verified |
-| `image` | `string?` | Profile image URL |
-| `createdAt` | `datetime` | Account creation timestamp |
-| `updatedAt` | `datetime` | Last update timestamp |
+| Column          | Type       | Description                |
+| --------------- | ---------- | -------------------------- |
+| `id`            | `string`   | Primary key                |
+| `name`          | `string`   | User's display name        |
+| `email`         | `string`   | Unique email address       |
+| `emailVerified` | `boolean`  | Whether email is verified  |
+| `image`         | `string?`  | Profile image URL          |
+| `createdAt`     | `datetime` | Account creation timestamp |
+| `updatedAt`     | `datetime` | Last update timestamp      |
 
 ### `session`
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | `string` | Primary key |
-| `userId` | `string` | Foreign key → user |
-| `token` | `string` | Session token (hashed) |
+| Column      | Type       | Description              |
+| ----------- | ---------- | ------------------------ |
+| `id`        | `string`   | Primary key              |
+| `userId`    | `string`   | Foreign key → user       |
+| `token`     | `string`   | Session token (hashed)   |
 | `expiresAt` | `datetime` | When the session expires |
-| `ipAddress` | `string?` | Client IP address |
-| `userAgent` | `string?` | Client user agent |
+| `ipAddress` | `string?`  | Client IP address        |
+| `userAgent` | `string?`  | Client user agent        |
 
 ### `account`
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | `string` | Primary key |
-| `userId` | `string` | Foreign key → user |
-| `providerId` | `string` | Auth provider (e.g., "google") |
-| `accountId` | `string` | Provider-specific user ID |
-| `accessToken` | `string?` | OAuth access token |
-| `refreshToken` | `string?` | OAuth refresh token |
+| Column         | Type      | Description                    |
+| -------------- | --------- | ------------------------------ |
+| `id`           | `string`  | Primary key                    |
+| `userId`       | `string`  | Foreign key → user             |
+| `providerId`   | `string`  | Auth provider (e.g., "google") |
+| `accountId`    | `string`  | Provider-specific user ID      |
+| `accessToken`  | `string?` | OAuth access token             |
+| `refreshToken` | `string?` | OAuth refresh token            |
 
 ### `verification`
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | `string` | Primary key |
-| `identifier` | `string` | What's being verified (email) |
-| `value` | `string` | Verification token |
-| `expiresAt` | `datetime` | Token expiry |
+| Column       | Type       | Description                   |
+| ------------ | ---------- | ----------------------------- |
+| `id`         | `string`   | Primary key                   |
+| `identifier` | `string`   | What's being verified (email) |
+| `value`      | `string`   | Verification token            |
+| `expiresAt`  | `datetime` | Token expiry                  |
 
 ## Migrations
 
@@ -123,7 +123,8 @@ npx @better-auth/cli generate
 This creates SQL files you can review and apply manually.
 
 <Callout>
-  When using Prisma, run `npx @better-auth/cli generate --prisma` to generate Prisma schema additions instead of raw SQL.
+  When using Prisma, run `npx @better-auth/cli generate --prisma` to generate Prisma schema
+  additions instead of raw SQL.
 </Callout>
 
 ## Custom Fields

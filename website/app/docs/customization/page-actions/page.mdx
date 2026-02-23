@@ -1,6 +1,6 @@
 ---
 title: "Page Actions"
-description: "Add \"Open in LLM\" and \"Copy Markdown\" buttons to your doc pages"
+description: 'Add "Open in LLM" and "Copy Markdown" buttons to your doc pages'
 icon: "file"
 order: 5.6
 ---
@@ -38,8 +38,8 @@ export default defineDocs({
 
 Where to render the page action buttons relative to the page title.
 
-| Type | Default |
-|------|---------|
+| Type                             | Default         |
+| -------------------------------- | --------------- |
 | `"above-title" \| "below-title"` | `"below-title"` |
 
 ```ts
@@ -56,8 +56,8 @@ pageActions: {
 
 Whether to show the "Copy Markdown" button. Copies the current page's content as Markdown to the clipboard.
 
-| Type | Default |
-|------|---------|
+| Type                              | Default |
+| --------------------------------- | ------- |
 | `boolean \| { enabled: boolean }` | `false` |
 
 ```ts
@@ -78,8 +78,8 @@ The **Open in...** dropdown lets users send the current page to an LLM or tool. 
 
 Enable the "Open in..." dropdown. Can be a boolean or an object with additional configuration.
 
-| Type | Default |
-|------|---------|
+| Type                        | Default |
+| --------------------------- | ------- |
 | `boolean \| OpenDocsConfig` | `false` |
 
 ```ts
@@ -94,25 +94,25 @@ When set to `true`, a sensible default list of providers is used.
 
 Whether to show the "Open in..." dropdown.
 
-| Type | Default |
-|------|---------|
+| Type      | Default |
+| --------- | ------- |
 | `boolean` | `false` |
 
 ### `pageActions.openDocs.providers`
 
 Custom list of LLM / tool providers to show in the dropdown. Overrides the default list.
 
-| Type | Default |
-|------|---------|
+| Type                 | Default           |
+| -------------------- | ----------------- |
 | `OpenDocsProvider[]` | Built-in defaults |
 
 Each provider has the following shape:
 
 ```ts
 interface OpenDocsProvider {
-  name: string;           // Display name (e.g. "ChatGPT", "Claude")
-  icon?: ReactNode;       // Icon element rendered next to the name
-  urlTemplate: string;    // URL template — {url} and {mdxUrl} are replaced
+  name: string; // Display name (e.g. "ChatGPT", "Claude")
+  icon?: ReactNode; // Icon element rendered next to the name
+  urlTemplate: string; // URL template — {url} and {mdxUrl} are replaced
 }
 ```
 
@@ -120,10 +120,10 @@ interface OpenDocsProvider {
 
 The `urlTemplate` string supports two placeholders:
 
-| Placeholder | Replaced with |
-|-------------|---------------|
-| `{url}` | The current page URL (e.g. `https://docs.example.com/docs/installation`) |
-| `{mdxUrl}` | The `.mdx` variant of the page URL (useful for raw source) |
+| Placeholder | Replaced with                                                            |
+| ----------- | ------------------------------------------------------------------------ |
+| `{url}`     | The current page URL (e.g. `https://docs.example.com/docs/installation`) |
+| `{mdxUrl}`  | The `.mdx` variant of the page URL (useful for raw source)               |
 
 ### Custom Providers Example
 

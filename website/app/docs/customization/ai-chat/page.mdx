@@ -28,6 +28,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
     ```
 
     The key is automatically read from `process.env.OPENAI_API_KEY`.
+
   </Tab>
   <Tab value="SvelteKit">
     Add `OPENAI_API_KEY` to your `.env` file:
@@ -55,6 +56,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
       _preloadedContent: contentFiles,
     });
     ```
+
   </Tab>
   <Tab value="Astro">
     Add `OPENAI_API_KEY` to your `.env` file:
@@ -81,6 +83,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
       _preloadedContent: contentFiles,
     });
     ```
+
   </Tab>
   <Tab value="Nuxt">
     Add `OPENAI_API_KEY` to your `.env` file:
@@ -97,6 +100,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
 
     export default defineDocsHandler(config, useStorage);
     ```
+
   </Tab>
 </Tabs>
 
@@ -116,8 +120,8 @@ export default defineDocs({
 
 Whether to enable AI chat functionality.
 
-| Type | Default |
-|------|---------|
+| Type      | Default |
+| --------- | ------- |
 | `boolean` | `false` |
 
 ```ts
@@ -130,8 +134,8 @@ ai: {
 
 How the AI chat UI is presented.
 
-| Type | Default |
-|------|---------|
+| Type                     | Default    |
+| ------------------------ | ---------- |
 | `"search" \| "floating"` | `"search"` |
 
 - **`"search"`** — AI tab integrated into the `Cmd+K` search dialog. Users switch between "Search" and "AI" tabs.
@@ -148,8 +152,8 @@ ai: {
 
 Position of the floating chat button on screen. Only used when `mode` is `"floating"`.
 
-| Type | Default |
-|------|---------|
+| Type                                                 | Default          |
+| ---------------------------------------------------- | ---------------- |
 | `"bottom-right" \| "bottom-left" \| "bottom-center"` | `"bottom-right"` |
 
 ```ts
@@ -164,8 +168,8 @@ ai: {
 
 Visual style of the floating chat when opened. Only used when `mode` is `"floating"`.
 
-| Type | Default |
-|------|---------|
+| Type                                              | Default   |
+| ------------------------------------------------- | --------- |
 | `"panel" \| "modal" \| "popover" \| "full-modal"` | `"panel"` |
 
 - **`"panel"`** — A tall panel that slides up from the button position. No backdrop overlay.
@@ -185,8 +189,8 @@ ai: {
 
 The LLM model to use for chat completions. Must be compatible with the OpenAI Chat Completions API.
 
-| Type | Default |
-|------|---------|
+| Type     | Default         |
+| -------- | --------------- |
 | `string` | `"gpt-4o-mini"` |
 
 ```ts
@@ -202,8 +206,8 @@ Works with any OpenAI-compatible provider — use `baseUrl` to point to a differ
 
 Base URL for an OpenAI-compatible API endpoint. Use this to point to a self-hosted model, Azure OpenAI, or any compatible provider.
 
-| Type | Default |
-|------|---------|
+| Type     | Default                       |
+| -------- | ----------------------------- |
 | `string` | `"https://api.openai.com/v1"` |
 
 ```ts
@@ -218,8 +222,8 @@ ai: {
 
 API key for the LLM provider. Falls back to `process.env.OPENAI_API_KEY` if not set.
 
-| Type | Default |
-|------|---------|
+| Type     | Default                      |
+| -------- | ---------------------------- |
 | `string` | `process.env.OPENAI_API_KEY` |
 
 ```ts
@@ -235,8 +239,8 @@ ai: {
 
 Custom system prompt prepended to the AI conversation. Documentation context is automatically appended after this prompt.
 
-| Type | Default |
-|------|---------|
+| Type     | Default                                          |
+| -------- | ------------------------------------------------ |
 | `string` | `"You are a helpful documentation assistant..."` |
 
 ```ts
@@ -250,9 +254,9 @@ ai: {
 
 Maximum number of search results to include as context for the AI. More results = more context but higher token usage.
 
-| Type | Default |
-|------|---------|
-| `number` | `5` |
+| Type     | Default |
+| -------- | ------- |
+| `number` | `5`     |
 
 ```ts
 ai: {
@@ -265,9 +269,9 @@ ai: {
 
 Pre-filled suggested questions shown in the AI chat when the conversation is empty. Clicking one fills the input and submits automatically.
 
-| Type | Default |
-|------|---------|
-| `string[]` | `[]` |
+| Type       | Default |
+| ---------- | ------- |
+| `string[]` | `[]`    |
 
 ```ts
 ai: {
@@ -284,9 +288,9 @@ ai: {
 
 Display name for the AI assistant in the chat UI. Shown as the message label and header title.
 
-| Type | Default |
-|------|---------|
-| `string` | `"AI"` |
+| Type     | Default |
+| -------- | ------- |
+| `string` | `"AI"`  |
 
 ```ts
 ai: {
@@ -299,9 +303,9 @@ ai: {
 
 The npm package name used in code examples. The AI will use this in import snippets instead of generic placeholders.
 
-| Type | Default |
-|------|---------|
-| `string` | — |
+| Type     | Default |
+| -------- | ------- |
+| `string` | —       |
 
 ```ts
 ai: {
@@ -314,9 +318,9 @@ ai: {
 
 The public URL of your documentation site. The AI will use this for absolute links instead of relative paths.
 
-| Type | Default |
-|------|---------|
-| `string` | — |
+| Type     | Default |
+| -------- | ------- |
+| `string` | —       |
 
 ```ts
 ai: {
@@ -329,8 +333,8 @@ ai: {
 
 Custom loading indicator shown while the AI is generating a response. Receives `{ name }` (the `aiLabel` value).
 
-| Type | Default |
-|------|---------|
+| Type        | Default                |
+| ----------- | ---------------------- |
 | `Component` | Built-in bouncing dots |
 
 ```tsx
@@ -350,8 +354,8 @@ ai: {
 
 Custom trigger button for the floating chat. Replaces the default sparkles button. Only used when `mode` is `"floating"`. Each framework accepts its native component format — pass it as a prop on `DocsLayout` (or a slot in Astro).
 
-| Type | Default |
-|------|---------|
+| Type        | Default                  |
+| ----------- | ------------------------ |
 | `Component` | Built-in sparkles button |
 
 <Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
@@ -365,6 +369,7 @@ Custom trigger button for the floating chat. Replaces the default sparkles butto
       triggerComponent: <button className="my-chat-btn">Ask AI</button>,
     }
     ```
+
   </Tab>
   <Tab value="SvelteKit">
     Import a Svelte component and pass it as a prop on `DocsLayout`:
@@ -381,6 +386,7 @@ Custom trigger button for the floating chat. Replaces the default sparkles butto
       {@render children()}
     </DocsLayout>
     ```
+
   </Tab>
   <Tab value="Astro">
     Use the `trigger-component` slot on `DocsLayout`:
@@ -396,6 +402,7 @@ Custom trigger button for the floating chat. Replaces the default sparkles butto
       <DocsContent data={data} config={config} />
     </DocsLayout>
     ```
+
   </Tab>
   <Tab value="Nuxt">
     Import a Vue component and pass it as a prop on `DocsLayout`:
@@ -419,6 +426,7 @@ Custom trigger button for the floating chat. Replaces the default sparkles butto
       </DocsLayout>
     </template>
     ```
+
   </Tab>
 </Tabs>
 

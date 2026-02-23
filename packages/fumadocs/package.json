@@ -2,6 +2,18 @@
   "name": "@farming-labs/theme",
   "version": "0.0.2-beta.21",
   "description": "Theme package for @farming-labs/docs — layout, provider, MDX components, and styles",
+  "keywords": [
+    "docs",
+    "documentation",
+    "fumadocs",
+    "theme"
+  ],
+  "license": "MIT",
+  "author": "Farming Labs",
+  "files": [
+    "dist",
+    "styles"
+  ],
   "type": "module",
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
@@ -74,18 +86,6 @@
     "./presets/black": "./styles/presets/black.css",
     "./presets/base": "./styles/presets/base.css"
   },
-  "files": [
-    "dist",
-    "styles"
-  ],
-  "keywords": [
-    "docs",
-    "fumadocs",
-    "theme",
-    "documentation"
-  ],
-  "author": "Farming Labs",
-  "license": "MIT",
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",

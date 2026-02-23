@@ -5,7 +5,8 @@ const themes = [
   {
     key: "default",
     name: "Default",
-    description: "Clean neutral palette with an indigo accent. Great starting point for any project.",
+    description:
+      "Clean neutral palette with an indigo accent. Great starting point for any project.",
     import: '@import "@farming-labs/theme/default/css";',
     colors: ["#6366f1", "#0a0a0a", "#fafafa", "#262626"],
     accent: "#6366f1",
@@ -13,7 +14,8 @@ const themes = [
   {
     key: "colorful",
     name: "Colorful",
-    description: "Warm amber accent with a tree-line directional TOC. Inspired by fumadocs default.",
+    description:
+      "Warm amber accent with a tree-line directional TOC. Inspired by fumadocs default.",
     import: '@import "@farming-labs/theme/colorful/css";',
     colors: ["#eab308", "#0a0a0a", "#fafafa", "#262626"],
     accent: "#eab308",
@@ -55,8 +57,11 @@ const themes = [
 
 export default function ThemesPage() {
   return (
-    <div className="min-h-dvh relative bg-black text-white" style={{ fontFamily: "var(--font-geist-sans, system-ui, sans-serif)" }}>
-     <div className="absolute w-full top-14 right-0 z-[999] h-px bg-white/[8%]" />
+    <div
+      className="min-h-dvh relative bg-black text-white"
+      style={{ fontFamily: "var(--font-geist-sans, system-ui, sans-serif)" }}
+    >
+      <div className="absolute w-full top-14 right-0 z-[999] h-px bg-white/[8%]" />
       <div className="pointer-events-none fixed inset-0 z-[999] hidden lg:block">
         <div className="mx-auto max-w-[90%] h-full relative">
           <div className="absolute left-0 top-0 h-full w-px bg-white/[8%]" />
@@ -67,11 +72,26 @@ export default function ThemesPage() {
         <div className="mx-auto max-w-[90%] mx-auto flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 text-xs font-medium text-white/80 dark:text-white/80 pb-8">
-              <Link href={"/"} className="hover:text-white transition-colors hover:no-underline font-mono uppercase text-black/50 dark:text-white/50">
+              <Link
+                href={"/"}
+                className="hover:text-white transition-colors hover:no-underline font-mono uppercase text-black/50 dark:text-white/50"
+              >
                 Home <span className="ml-2 text-black/50 dark:text-white/50">/</span>
               </Link>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="13.5" cy="6.5" r="2.5" /><circle cx="17.5" cy="10.5" r="2.5" /><circle cx="8.5" cy="7.5" r="2.5" /><circle cx="6.5" cy="12.5" r="2.5" />
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="13.5" cy="6.5" r="2.5" />
+                <circle cx="17.5" cy="10.5" r="2.5" />
+                <circle cx="8.5" cy="7.5" r="2.5" />
+                <circle cx="6.5" cy="12.5" r="2.5" />
                 <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
               </svg>
               <p className="font-mono uppercase">Themes</p>
@@ -84,11 +104,10 @@ export default function ThemesPage() {
         {/* Info */}
         <div className="mb-10 max-w-2xl">
           <p className="text-[13px] text-white/40 leading-relaxed">
-            Each theme ships as a single CSS import and a factory function.
-            Click <strong className="text-white/80">Try it live</strong> to
-            open the docs with that theme applied and the customizer drawer
-            open — tweak colors, layout, and features in real time, then copy
-            the generated CSS and config.
+            Each theme ships as a single CSS import and a factory function. Click{" "}
+            <strong className="text-white/80">Try it live</strong> to open the docs with that theme
+            applied and the customizer drawer open — tweak colors, layout, and features in real
+            time, then copy the generated CSS and config.
           </p>
         </div>
 
@@ -109,12 +128,8 @@ export default function ThemesPage() {
                 ))}
               </div>
 
-              <h2 className="text-sm uppercase font-mono tracking-wide mb-1">
-                {theme.name}
-              </h2>
-              <p className="text-[12px] text-white/40 mb-4 leading-relaxed">
-                {theme.description}
-              </p>
+              <h2 className="text-sm uppercase font-mono tracking-wide mb-1">{theme.name}</h2>
+              <p className="text-[12px] text-white/40 mb-4 leading-relaxed">{theme.description}</p>
 
               <code className="block text-[11px] font-mono text-white/20 mb-5 break-all">
                 {theme.import}

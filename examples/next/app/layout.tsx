@@ -30,14 +30,12 @@ export const metadata: Metadata = {
   description: docsConfig.metadata?.description,
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistSansDocs.variable} ${geistMono.variable} ${geistMonoDocs.variable}`}>
+      <body
+        className={`${geistSans.variable} ${geistSansDocs.variable} ${geistMono.variable} ${geistMonoDocs.variable}`}
+      >
         <RootProvider>{children}</RootProvider>
       </body>
     </html>

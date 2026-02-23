@@ -48,7 +48,7 @@ export const AnimatedBackground = () => {
     <div
       className={cn(
         "absolute inset-0 w-full h-full overflow-hidden",
-        "flex items-center justify-center"
+        "flex items-center justify-center",
       )}
     >
       <div className={cn("w-full h-full", isMobile && "min-h-screen")}>

@@ -8,28 +8,58 @@
 /* ─── Animations ─────────────────────────────────────────────────── */
 
 @keyframes fd-ai-dot {
-  0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
-  40% { transform: scale(1); opacity: 1; }
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes fd-ai-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes fd-ai-slide-up {
-  from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 @keyframes fd-ai-float-in {
-  from { opacity: 0; transform: translateY(12px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes fd-ai-float-center-in {
-  from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 /* ─── Overlay ────────────────────────────────────────────────────── */
@@ -254,7 +284,7 @@
   border-radius: var(--radius, 8px);
   border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.08));
   background: var(--color-fd-background, rgba(255, 255, 255, 0.01));
-  opacity: 0.6; 
+  opacity: 0.6;
   color: var(--color-fd-foreground, #e4e4e7);
   font-size: 13px;
   font-family: inherit;
@@ -394,8 +424,12 @@
   animation: fd-ai-dot 1.4s infinite ease-in-out both;
 }
 
-.fd-ai-loading-dot:nth-child(2) { animation-delay: 0.16s; }
-.fd-ai-loading-dot:nth-child(3) { animation-delay: 0.32s; }
+.fd-ai-loading-dot:nth-child(2) {
+  animation-delay: 0.16s;
+}
+.fd-ai-loading-dot:nth-child(3) {
+  animation-delay: 0.32s;
+}
 
 /* ─── Floating trigger button ────────────────────────────────────── */
 
@@ -416,7 +450,10 @@
   cursor: pointer;
   font-size: 14px;
   box-shadow: 0 1px 3px color-mix(in srgb, var(--color-fd-background, #000) 20%, transparent);
-  transition: transform 150ms, background 150ms, color 150ms;
+  transition:
+    transform 150ms,
+    background 150ms,
+    color 150ms;
   animation: fd-ai-fade-in 300ms ease-out;
 }
 
@@ -536,7 +573,11 @@
 
 .fd-ai-code-copy:hover {
   color: var(--color-fd-foreground, #e4e4e7);
-  background: color-mix(in srgb, var(--color-fd-accent, rgba(255,255,255,0.05)) 60%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-fd-accent, rgba(255, 255, 255, 0.05)) 60%,
+    transparent
+  );
 }
 
 .fd-ai-code-block pre {
@@ -558,7 +599,10 @@
 }
 
 /* sugar-high: each line is a block span, min-height keeps empty lines visible */
-.fd-ai-code-block .sh__line { display: block; min-height: 1.2em; }
+.fd-ai-code-block .sh__line {
+  display: block;
+  min-height: 1.2em;
+}
 
 /* ═══════════════════════════════════════════════════════════════════
  * Full-Modal (better-auth inspired) — fd-ai-fm-*
@@ -615,8 +659,20 @@
   overflow-y: auto;
   width: min(800px, 100%);
   padding: 24px 0 120px;
-  mask-image: linear-gradient(to bottom, transparent, white 3rem, white calc(100% - 8rem), transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent, white 3rem, white calc(100% - 8rem), transparent 100%);
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    white 3rem,
+    white calc(100% - 8rem),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    white 3rem,
+    white calc(100% - 8rem),
+    transparent 100%
+  );
 }
 
 .fd-ai-fm-messages-inner {
@@ -705,12 +761,24 @@
   animation: fd-ai-fm-bounce 1s infinite ease-in-out;
 }
 
-.fd-ai-fm-thinking-dot:nth-child(2) { animation-delay: 150ms; }
-.fd-ai-fm-thinking-dot:nth-child(3) { animation-delay: 300ms; }
+.fd-ai-fm-thinking-dot:nth-child(2) {
+  animation-delay: 150ms;
+}
+.fd-ai-fm-thinking-dot:nth-child(3) {
+  animation-delay: 300ms;
+}
 
 @keyframes fd-ai-fm-bounce {
-  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-  40% { transform: scale(1); opacity: 1; }
+  0%,
+  80%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* ─── Bottom input bar ───────────────────────────────────────────── */
@@ -718,9 +786,10 @@
 .fd-ai-fm-input-bar {
   position: fixed;
   z-index: 9999;
-  transition: width 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
-              height 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
-              transform 200ms ease-out;
+  transition:
+    width 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    height 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    transform 200ms ease-out;
 }
 
 .fd-ai-fm-input-bar--closed {
@@ -809,8 +878,20 @@
   gap: 8px;
   overflow-x: auto;
   padding-bottom: 4px;
-  mask-image: linear-gradient(to right, transparent 0%, black 1rem, black calc(100% - 1rem), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 1rem, black calc(100% - 1rem), transparent 100%);
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 1rem,
+    black calc(100% - 1rem),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 1rem,
+    black calc(100% - 1rem),
+    transparent 100%
+  );
 }
 
 .fd-ai-fm-suggestion {
@@ -820,15 +901,16 @@
   font-size: 12px;
   font-family: inherit;
   border-radius: 9999px;
-  border: 1px solid color-mix(in srgb, var(--color-fd-border, rgba(255,255,255,0.1)) 50%, transparent);
-  background: color-mix(in srgb, var(--color-fd-muted, rgba(255,255,255,0.04)) 30%, transparent);
+  border: 1px solid
+    color-mix(in srgb, var(--color-fd-border, rgba(255, 255, 255, 0.1)) 50%, transparent);
+  background: color-mix(in srgb, var(--color-fd-muted, rgba(255, 255, 255, 0.04)) 30%, transparent);
   color: var(--color-fd-muted-foreground, #71717a);
   cursor: pointer;
   transition: all 200ms;
 }
 
 .fd-ai-fm-suggestion:hover {
-  background: color-mix(in srgb, var(--color-fd-muted, rgba(255,255,255,0.04)) 50%, transparent);
+  background: color-mix(in srgb, var(--color-fd-muted, rgba(255, 255, 255, 0.04)) 50%, transparent);
   color: var(--color-fd-foreground, #e4e4e7);
   border-color: var(--color-fd-border, rgba(255, 255, 255, 0.1));
 }
@@ -841,7 +923,11 @@
   gap: 4px;
   padding: 8px 16px;
   border-top: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.06));
-  background: color-mix(in srgb, var(--color-fd-accent, rgba(255,255,255,0.03)) 40%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-fd-accent, rgba(255, 255, 255, 0.03)) 40%,
+    transparent
+  );
   font-size: 12px;
   color: var(--color-fd-muted-foreground, #71717a);
 }
@@ -886,7 +972,11 @@
   gap: 4px;
   padding: 8px 16px;
   border-top: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.06));
-  background: color-mix(in srgb, var(--color-fd-accent, rgba(255,255,255,0.03)) 40%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-fd-accent, rgba(255, 255, 255, 0.03)) 40%,
+    transparent
+  );
   font-size: 12px;
   color: var(--color-fd-muted-foreground, #71717a);
   border-radius: 0 0 var(--radius, 12px) var(--radius, 12px);
@@ -915,7 +1005,10 @@
   font-size: 14px;
   cursor: pointer;
   box-shadow: 0 1px 3px color-mix(in srgb, var(--color-fd-background, #000) 20%, transparent);
-  transition: transform 150ms, background 150ms, color 150ms;
+  transition:
+    transform 150ms,
+    background 150ms,
+    color 150ms;
   animation: fd-ai-fade-in 300ms ease-out;
   white-space: nowrap;
 }

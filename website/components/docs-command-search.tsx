@@ -69,7 +69,7 @@ const docsSource: OmniSource = {
           href: r.url,
           icon: iconForType(r.type),
           keywords: [r.type],
-        })
+        }),
       );
     } catch {
       return [];

@@ -30,7 +30,7 @@ import { betterAuth } from "better-auth";
 export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days (in seconds)
-    updateAge: 60 * 60 * 24,      // Update session every 24 hours
+    updateAge: 60 * 60 * 24, // Update session every 24 hours
     cookieCache: {
       enabled: true,
       maxAge: 5 * 60, // Cache for 5 minutes
@@ -41,12 +41,12 @@ export const auth = betterAuth({
 
 ### Configuration Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `expiresIn` | `number` | `604800` | Session duration in seconds (7 days) |
-| `updateAge` | `number` | `86400` | How often to refresh the session (24h) |
-| `cookieCache.enabled` | `boolean` | `false` | Enable client-side session caching |
-| `cookieCache.maxAge` | `number` | `300` | Cache duration in seconds |
+| Option                | Type      | Default  | Description                            |
+| --------------------- | --------- | -------- | -------------------------------------- |
+| `expiresIn`           | `number`  | `604800` | Session duration in seconds (7 days)   |
+| `updateAge`           | `number`  | `86400`  | How often to refresh the session (24h) |
+| `cookieCache.enabled` | `boolean` | `false`  | Enable client-side session caching     |
+| `cookieCache.maxAge`  | `number`  | `300`    | Cache duration in seconds              |
 
 ## Retrieving Sessions
 

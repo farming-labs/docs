@@ -86,24 +86,14 @@ function readAIConfig(root: string): AIOptions {
           return {};
         }
 
-        const enabledMatch = content.match(
-          /ai\s*:\s*\{[^}]*enabled\s*:\s*(true|false)/s,
-        );
+        const enabledMatch = content.match(/ai\s*:\s*\{[^}]*enabled\s*:\s*(true|false)/s);
         if (enabledMatch && enabledMatch[1] === "false") return {};
 
-        const modelMatch = content.match(
-          /ai\s*:\s*\{[^}]*model\s*:\s*["']([^"']+)["']/s,
-        );
-        const baseUrlMatch = content.match(
-          /ai\s*:\s*\{[^}]*baseUrl\s*:\s*["']([^"']+)["']/s,
-        );
+        const modelMatch = content.match(/ai\s*:\s*\{[^}]*model\s*:\s*["']([^"']+)["']/s);
+        const baseUrlMatch = content.match(/ai\s*:\s*\{[^}]*baseUrl\s*:\s*["']([^"']+)["']/s);
         // Match `apiKey: process.env.SOME_VAR` and resolve it at runtime
-        const apiKeyMatch = content.match(
-          /ai\s*:\s*\{[^}]*apiKey\s*:\s*process\.env\.(\w+)/s,
-        );
-        const maxResultsMatch = content.match(
-          /ai\s*:\s*\{[^}]*maxResults\s*:\s*(\d+)/s,
-        );
+        const apiKeyMatch = content.match(/ai\s*:\s*\{[^}]*apiKey\s*:\s*process\.env\.(\w+)/s);
+        const maxResultsMatch = content.match(/ai\s*:\s*\{[^}]*maxResults\s*:\s*(\d+)/s);
         const systemPromptMatch = content.match(
           /ai\s*:\s*\{[^}]*systemPrompt\s*:\s*["'`]([^"'`]+)["'`]/s,
         );
@@ -112,9 +102,7 @@ function readAIConfig(root: string): AIOptions {
           enabled: true,
           model: modelMatch?.[1],
           baseUrl: baseUrlMatch?.[1],
-          apiKey: apiKeyMatch?.[1]
-            ? process.env[apiKeyMatch[1]]
-            : undefined,
+          apiKey: apiKeyMatch?.[1] ? process.env[apiKeyMatch[1]] : undefined,
           maxResults: maxResultsMatch ? parseInt(maxResultsMatch[1], 10) : undefined,
           systemPrompt: systemPromptMatch?.[1],
         };
@@ -162,10 +150,7 @@ function scanDocsDir(docsDir: string, entry: string): SearchIndex[] {
           "Documentation";
         const description = data.description as string | undefined;
         const content = stripMdx(raw);
-        const url =
-          slugParts.length === 0
-            ? `/${entry}`
-            : `/${entry}/${slugParts.join("/")}`;
+        const url = slugParts.length === 0 ? `/${entry}` : `/${entry}/${slugParts.join("/")}`;
 
         indexes.push({ title, description, content, url });
       } catch {
@@ -244,10 +229,7 @@ async function handleAskAI(
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
   if (!lastUserMessage) {
-    return Response.json(
-      { error: "At least one user message is required." },
-      { status: 400 },
-    );
+    return Response.json({ error: "At least one user message is required." }, { status: 400 });
   }
 
   // ── Search for relevant docs (RAG retrieval) ───────────────────
@@ -291,10 +273,7 @@ async function handleAskAI(
   ];
 
   // ── Stream from LLM ────────────────────────────────────────────
-  const baseUrl = (aiConfig.baseUrl ?? "https://api.openai.com/v1").replace(
-    /\/$/,
-    "",
-  );
+  const baseUrl = (aiConfig.baseUrl ?? "https://api.openai.com/v1").replace(/\/$/, "");
   const model = aiConfig.model ?? "gpt-4o-mini";
 
   const llmResponse = await fetch(`${baseUrl}/chat/completions`, {
@@ -360,10 +339,13 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const indexes = scanDocsDir(docsDir, entry);
 
   // Create the fumadocs-core search API (provides GET handler)
-  const searchAPI = createSearchAPI("simple" as const, {
-    language,
-    indexes,
-  } as any);
+  const searchAPI = createSearchAPI(
+    "simple" as const,
+    {
+      language,
+      indexes,
+    } as any,
+  );
 
   return {
     /**

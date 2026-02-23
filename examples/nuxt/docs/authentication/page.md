@@ -10,14 +10,14 @@ Better Auth supports multiple authentication methods out of the box. You can ena
 
 ## Available Methods
 
-| Method | Built-in | Plugin Required |
-|--------|----------|-----------------|
-| Email & Password | ✅ | — |
-| Social Sign-on (OAuth) | ✅ | — |
-| Magic Link | — | ✅ `magic-link` |
-| Passkeys (WebAuthn) | — | ✅ `passkey` |
-| Phone / SMS | — | ✅ `phone-number` |
-| Anonymous Auth | — | ✅ `anonymous` |
+| Method                 | Built-in | Plugin Required   |
+| ---------------------- | -------- | ----------------- |
+| Email & Password       | ✅       | —                 |
+| Social Sign-on (OAuth) | ✅       | —                 |
+| Magic Link             | —        | ✅ `magic-link`   |
+| Passkeys (WebAuthn)    | —        | ✅ `passkey`      |
+| Phone / SMS            | —        | ✅ `phone-number` |
+| Anonymous Auth         | —        | ✅ `anonymous`    |
 
 ## Email & Password
 
@@ -27,9 +27,9 @@ The most common authentication method. Enable it in your auth config:
 export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: true,  // Optional
-    minPasswordLength: 8,            // Default: 8
-    maxPasswordLength: 128,          // Default: 128
+    requireEmailVerification: true, // Optional
+    minPasswordLength: 8, // Default: 8
+    maxPasswordLength: 128, // Default: 128
   },
 });
 ```
@@ -43,8 +43,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     password: {
-      hash: "bcrypt",          // "argon2" | "bcrypt" | "scrypt"
-      saltRounds: 12,          // For bcrypt
+      hash: "bcrypt", // "argon2" | "bcrypt" | "scrypt"
+      saltRounds: 12, // For bcrypt
     },
   },
 });

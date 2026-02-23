@@ -64,7 +64,10 @@ export type OmniCommandPaletteProps = {
   portalContainer?: HTMLElement | null;
 };
 
-const DEFAULT_OPEN_KEYS = [{ key: "k", meta: true }, { key: "k", ctrl: true }];
+const DEFAULT_OPEN_KEYS = [
+  { key: "k", meta: true },
+  { key: "k", ctrl: true },
+];
 const DEFAULT_PLACEHOLDER = "Search documentation…";
 const DEFAULT_STORAGE_KEY = "omni:recents";
 const DEFAULT_DEBOUNCE = 120;
@@ -127,17 +130,17 @@ function useHotkeys(
     ctrl?: boolean;
     alt?: boolean;
     shift?: boolean;
-  }>
+  }>,
 ) {
   React.useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       for (const h of handlers) {
         const match =
           e.key.toLowerCase() === h.key.toLowerCase() &&
-          (!!h.meta === e.metaKey) &&
-          (!!h.ctrl === e.ctrlKey) &&
-          (!!h.alt === e.altKey) &&
-          (!!h.shift === e.shiftKey);
+          !!h.meta === e.metaKey &&
+          !!h.ctrl === e.ctrlKey &&
+          !!h.alt === e.altKey &&
+          !!h.shift === e.shiftKey;
         if (match) {
           e.preventDefault();
           h.handler(e);
@@ -196,10 +199,10 @@ export function OmniCommandPalette({
   }
 
   useHotkeys(
-    openKeys.map(kb => ({
+    openKeys.map((kb) => ({
       ...kb,
       handler: () => setOpen(!open),
-    }))
+    })),
   );
 
   React.useEffect(() => {
@@ -214,7 +217,7 @@ export function OmniCommandPalette({
           continue;
         }
         const markLoading = (on: boolean) =>
-          setLoadingIds(prev => {
+          setLoadingIds((prev) => {
             const copy = new Set(prev);
             if (on) copy.add(src.id);
             else copy.delete(src.id);
@@ -252,20 +255,20 @@ export function OmniCommandPalette({
       items: Array<OmniItem & { _score: number; _indices: number[] }>;
     }> = [];
 
-    const sourceById = new Map(sources.map(s => [s.id, s]));
+    const sourceById = new Map(sources.map((s) => [s.id, s]));
     const pinned: OmniItem[] = [];
 
     for (const [sid, items] of Object.entries(results)) {
       const srcMeta = sourceById.get(sid);
       if (!srcMeta) continue;
-      let arr = (items ?? []).map(item => {
+      let arr = (items ?? []).map((item) => {
         const { score, indices } = fuzzyScore(q, item.label, item.keywords ?? []);
         return { ...item, _score: q ? score : 0, _indices: q ? indices : [] };
       });
 
       if (!q && showPinnedFirst) {
         for (const it of arr) if (it.pinned && !it.disabled) pinned.push(it);
-        arr = arr.filter(i => !i.pinned);
+        arr = arr.filter((i) => !i.pinned);
       }
 
       if (q) arr.sort((a, b) => b._score - a._score || a.label.localeCompare(b.label));
@@ -283,7 +286,7 @@ export function OmniCommandPalette({
       finalGroups.push({
         id: "__pinned",
         label: "Pinned",
-        items: pinned.map(p => ({ ...p, _score: 0, _indices: [] })),
+        items: pinned.map((p) => ({ ...p, _score: 0, _indices: [] })),
       });
     }
 
@@ -291,7 +294,7 @@ export function OmniCommandPalette({
       finalGroups.push({
         id: "__recents",
         label: "Recent",
-        items: recents.map(r => ({
+        items: recents.map((r) => ({
           id: r.id,
           label: r.label,
           subtitle: "Recently used",
@@ -308,14 +311,11 @@ export function OmniCommandPalette({
     return finalGroups;
   }, [results, sources, debouncedQuery, showPinnedFirst, showRecents, recents]);
 
-  const flatItems = React.useMemo(
-    () => groups.flatMap(g => g.items),
-    [groups]
-  );
+  const flatItems = React.useMemo(() => groups.flatMap((g) => g.items), [groups]);
 
   const activeIndex = React.useMemo(() => {
     if (!activeId) return -1;
-    return flatItems.findIndex(i => i.id === activeId);
+    return flatItems.findIndex((i) => i.id === activeId);
   }, [activeId, flatItems]);
 
   function moveActive(delta: number) {
@@ -337,7 +337,7 @@ export function OmniCommandPalette({
         href: item.href,
         shortcut: item.shortcut,
       };
-      const next = [entry, ...recents.filter(r => r.id !== entry.id)].slice(0, maxRecents);
+      const next = [entry, ...recents.filter((r) => r.id !== entry.id)].slice(0, maxRecents);
       setRecents(next);
       localStorage.setItem(storageKey, JSON.stringify(next));
     } catch {}
@@ -428,12 +428,11 @@ export function OmniCommandPalette({
 
             {groups.map((g) => (
               <div key={g.id} className="omni-group">
-                {g.items.length > 0 && (
-                  <div className="omni-group-label">{g.label}</div>
-                )}
+                {g.items.length > 0 && <div className="omni-group-label">{g.label}</div>}
                 <div className="omni-group-items">
                   {g.items.map((item) => {
-                    const active = item.id === activeId || (activeId == null && flatItems.indexOf(item) === 0);
+                    const active =
+                      item.id === activeId || (activeId == null && flatItems.indexOf(item) === 0);
                     const nodeId = `omni-item-${item.id}`;
                     return (
                       <button
@@ -449,7 +448,7 @@ export function OmniCommandPalette({
                         className={cn(
                           "omni-item",
                           active && "omni-item-active",
-                          item.disabled && "omni-item-disabled"
+                          item.disabled && "omni-item-disabled",
                         )}
                       >
                         {renderItem ? (
@@ -462,7 +461,10 @@ export function OmniCommandPalette({
 
                             <div className="omni-item-text">
                               <div className="omni-item-label">
-                                {renderHighlighted(item.label, item as OmniItem & { _indices?: number[] })}
+                                {renderHighlighted(
+                                  item.label,
+                                  item as OmniItem & { _indices?: number[] },
+                                )}
                               </div>
                               {item.subtitle && (
                                 <div className="omni-item-subtitle">{item.subtitle}</div>
@@ -475,14 +477,22 @@ export function OmniCommandPalette({
                               </span>
                             )}
                             {item.href && (
-                              <a href={item.href} target="_blank" rel="noopener noreferrer" className="omni-item-badge" aria-hidden>
+                              <a
+                                href={item.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="omni-item-badge"
+                                aria-hidden
+                              >
                                 <ExternalLink className="size-3.5" />
                               </a>
                             )}
                             {item.shortcut && (
                               <span className="omni-item-shortcuts">
                                 {item.shortcut.map((s, i) => (
-                                  <kbd key={i} className="omni-kbd-sm">{s}</kbd>
+                                  <kbd key={i} className="omni-kbd-sm">
+                                    {s}
+                                  </kbd>
                                 ))}
                               </span>
                             )}
@@ -554,7 +564,9 @@ function renderHighlighted(label: string, item: OmniItem & { _indices?: number[]
         p++;
       }
       out.push(
-        <mark key={`m-${pos}`} className="omni-highlight">{run}</mark>
+        <mark key={`m-${pos}`} className="omni-highlight">
+          {run}
+        </mark>,
       );
       pos = p - 1;
     } else {
@@ -563,4 +575,3 @@ function renderHighlighted(label: string, item: OmniItem & { _indices?: number[]
   }
   return out;
 }
-

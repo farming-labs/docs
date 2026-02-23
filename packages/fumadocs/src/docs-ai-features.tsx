@@ -38,11 +38,23 @@ export function DocsAIFeatures({
   loadingComponentHtml,
 }: DocsAIFeaturesProps) {
   if (mode === "search") {
-    return <SearchModeAI suggestedQuestions={suggestedQuestions} aiLabel={aiLabel} loadingComponentHtml={loadingComponentHtml} />;
+    return (
+      <SearchModeAI
+        suggestedQuestions={suggestedQuestions}
+        aiLabel={aiLabel}
+        loadingComponentHtml={loadingComponentHtml}
+      />
+    );
   }
 
   if (mode === "sidebar-icon") {
-    return <SidebarIconModeAI suggestedQuestions={suggestedQuestions} aiLabel={aiLabel} loadingComponentHtml={loadingComponentHtml} />;
+    return (
+      <SidebarIconModeAI
+        suggestedQuestions={suggestedQuestions}
+        aiLabel={aiLabel}
+        loadingComponentHtml={loadingComponentHtml}
+      />
+    );
   }
 
   return (
@@ -63,7 +75,15 @@ export function DocsAIFeatures({
  * custom search dialog (with Search + Ask AI tabs) instead of
  * fumadocs' built-in search dialog.
  */
-function SearchModeAI({ suggestedQuestions, aiLabel, loadingComponentHtml }: { suggestedQuestions?: string[]; aiLabel?: string; loadingComponentHtml?: string }) {
+function SearchModeAI({
+  suggestedQuestions,
+  aiLabel,
+  loadingComponentHtml,
+}: {
+  suggestedQuestions?: string[];
+  aiLabel?: string;
+  loadingComponentHtml?: string;
+}) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -99,7 +119,16 @@ function SearchModeAI({ suggestedQuestions, aiLabel, loadingComponentHtml }: { s
     return () => document.removeEventListener("click", handler, true);
   }, []);
 
-  return <DocsSearchDialog open={open} onOpenChange={setOpen} api="/api/docs" suggestedQuestions={suggestedQuestions} aiLabel={aiLabel} loadingComponentHtml={loadingComponentHtml} />;
+  return (
+    <DocsSearchDialog
+      open={open}
+      onOpenChange={setOpen}
+      api="/api/docs"
+      suggestedQuestions={suggestedQuestions}
+      aiLabel={aiLabel}
+      loadingComponentHtml={loadingComponentHtml}
+    />
+  );
 }
 
 /**
@@ -107,7 +136,15 @@ function SearchModeAI({ suggestedQuestions, aiLabel, loadingComponentHtml }: { s
  * in the sidebar header. The search button opens the Cmd+K search dialog,
  * and the AI sparkle button opens a pure AI modal (no search tabs).
  */
-function SidebarIconModeAI({ suggestedQuestions, aiLabel, loadingComponentHtml }: { suggestedQuestions?: string[]; aiLabel?: string; loadingComponentHtml?: string }) {
+function SidebarIconModeAI({
+  suggestedQuestions,
+  aiLabel,
+  loadingComponentHtml,
+}: {
+  suggestedQuestions?: string[];
+  aiLabel?: string;
+  loadingComponentHtml?: string;
+}) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
 
@@ -127,8 +164,12 @@ function SidebarIconModeAI({ suggestedQuestions, aiLabel, loadingComponentHtml }
 
   // Listen for custom events from SidebarSearchWithAI component
   useEffect(() => {
-    function onSearch() { setSearchOpen(true); }
-    function onAI() { setAiOpen(true); }
+    function onSearch() {
+      setSearchOpen(true);
+    }
+    function onAI() {
+      setAiOpen(true);
+    }
     window.addEventListener("fd-open-search", onSearch);
     window.addEventListener("fd-open-ai", onAI);
     return () => {
@@ -139,8 +180,22 @@ function SidebarIconModeAI({ suggestedQuestions, aiLabel, loadingComponentHtml }
 
   return (
     <>
-      <DocsSearchDialog open={searchOpen} onOpenChange={setSearchOpen} api="/api/docs" suggestedQuestions={suggestedQuestions} aiLabel={aiLabel} loadingComponentHtml={loadingComponentHtml} />
-      <AIModalDialog open={aiOpen} onOpenChange={setAiOpen} api="/api/docs" suggestedQuestions={suggestedQuestions} aiLabel={aiLabel} loadingComponentHtml={loadingComponentHtml} />
+      <DocsSearchDialog
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        api="/api/docs"
+        suggestedQuestions={suggestedQuestions}
+        aiLabel={aiLabel}
+        loadingComponentHtml={loadingComponentHtml}
+      />
+      <AIModalDialog
+        open={aiOpen}
+        onOpenChange={setAiOpen}
+        api="/api/docs"
+        suggestedQuestions={suggestedQuestions}
+        aiLabel={aiLabel}
+        loadingComponentHtml={loadingComponentHtml}
+      />
     </>
   );
 }

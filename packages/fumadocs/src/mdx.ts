@@ -17,9 +17,9 @@ const extendedMdxComponents = {
   Tabs,
 };
 
-export function getMDXComponents<
-  T extends Record<string, unknown> = Record<string, unknown>,
->(overrides?: T): typeof extendedMdxComponents & T {
+export function getMDXComponents<T extends Record<string, unknown> = Record<string, unknown>>(
+  overrides?: T,
+): typeof extendedMdxComponents & T {
   return {
     ...extendedMdxComponents,
     ...overrides,

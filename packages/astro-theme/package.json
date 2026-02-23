@@ -2,7 +2,35 @@
   "name": "@farming-labs/astro-theme",
   "version": "0.0.2-beta.21",
   "description": "Astro UI components for @farming-labs/docs — layout, sidebar, TOC, search, and theme toggle",
+  "keywords": [
+    "astro",
+    "docs",
+    "documentation",
+    "theme"
+  ],
+  "license": "MIT",
+  "author": "Farming Labs",
+  "files": [
+    "src",
+    "styles"
+  ],
   "type": "module",
+  "typesVersions": {
+    "*": {
+      "pixel-border": [
+        "./src/themes/pixel-border.d.ts"
+      ],
+      "darksharp": [
+        "./src/themes/darksharp.d.ts"
+      ],
+      "fumadocs": [
+        "./src/themes/default.d.ts"
+      ],
+      ".": [
+        "./src/index.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "types": "./src/index.d.ts",
@@ -39,25 +67,13 @@
     "./styles/colorful.css": "./styles/colorful.css",
     "./colorful/css": "./styles/colorful-bundle.css"
   },
-  "typesVersions": {
-    "*": {
-      "pixel-border": ["./src/themes/pixel-border.d.ts"],
-      "darksharp": ["./src/themes/darksharp.d.ts"],
-      "fumadocs": ["./src/themes/default.d.ts"],
-      ".": ["./src/index.d.ts"]
-    }
-  },
-  "files": ["src", "styles"],
-  "keywords": ["docs", "astro", "theme", "documentation"],
-  "author": "Farming Labs",
-  "license": "MIT",
   "scripts": {
     "build": "echo 'Astro components are shipped as source'",
     "typecheck": "echo 'ok'"
   },
   "dependencies": {
-    "@farming-labs/docs": "workspace:*",
     "@farming-labs/astro": "workspace:*",
+    "@farming-labs/docs": "workspace:*",
     "sugar-high": "^0.9.5"
   },
   "peerDependencies": {

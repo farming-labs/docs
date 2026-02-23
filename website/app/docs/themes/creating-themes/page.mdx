@@ -42,7 +42,7 @@ That's it. Users can override any of your defaults:
 ```tsx
 theme: myTheme({
   ui: { colors: { primary: "#3b82f6" } },
-})
+});
 ```
 
 ---
@@ -56,7 +56,7 @@ Here's everything you can configure in `createTheme()`.
 Unique identifier for your theme. Used for debugging and CSS scoping.
 
 ```ts
-name: "my-theme"
+name: "my-theme";
 ```
 
 ### `ui.colors`
@@ -112,12 +112,12 @@ typography: {
 
 Each heading/text style accepts these properties:
 
-| Property | Type | Example |
-|----------|------|---------|
-| `size` | `string` | `"2.25rem"`, `"36px"` |
-| `weight` | `number \| string` | `700`, `"bold"` |
-| `lineHeight` | `string` | `"1.2"`, `"28px"` |
-| `letterSpacing` | `string` | `"-0.02em"` |
+| Property        | Type               | Example               |
+| --------------- | ------------------ | --------------------- |
+| `size`          | `string`           | `"2.25rem"`, `"36px"` |
+| `weight`        | `number \| string` | `700`, `"bold"`       |
+| `lineHeight`    | `string`           | `"1.2"`, `"28px"`     |
+| `letterSpacing` | `string`           | `"-0.02em"`           |
 
 **Tip:** Use CSS variables for fonts so users can load them with `next/font`:
 
@@ -133,9 +133,9 @@ style: {
 Global border radius. Maps to CSS `--radius`.
 
 ```ts
-radius: "0.5rem"   // rounded
-radius: "0px"      // sharp corners
-radius: "0.75rem"  // more rounded
+radius: "0.5rem"; // rounded
+radius: "0px"; // sharp corners
+radius: "0.75rem"; // more rounded
 ```
 
 ### `ui.layout`
@@ -183,11 +183,11 @@ sidebar: {
 }
 ```
 
-| Style | Description |
-|-------|-------------|
-| `"default"` | Standard fumadocs sidebar |
+| Style        | Description                                             |
+| ------------ | ------------------------------------------------------- |
+| `"default"`  | Standard fumadocs sidebar                               |
 | `"bordered"` | Visible bordered sections (inspired by better-auth.com) |
-| `"floating"` | Floating card sidebar with subtle shadow |
+| `"floating"` | Floating card sidebar with subtle shadow                |
 
 ### `ui.card`
 
@@ -401,10 +401,10 @@ Every theme can ship a CSS file that sits on top of the config. The CSS file:
 
 Two presets are available:
 
-| Preset | Import | Best for |
-|--------|--------|----------|
+| Preset  | Import                                | Best for           |
+| ------- | ------------------------------------- | ------------------ |
 | Neutral | `@farming-labs/theme/presets/neutral` | Light-first themes |
-| Black | `@farming-labs/theme/presets/black` | Dark-first themes |
+| Black   | `@farming-labs/theme/presets/black`   | Dark-first themes  |
 
 ### Component CSS Selectors
 
@@ -564,9 +564,15 @@ code:not(pre code) {
 #### Breadcrumb
 
 ```css
-.fd-breadcrumb { font-size: 0.75rem; }
-.fd-breadcrumb-link { text-decoration: none; }
-.fd-breadcrumb-current { font-weight: 500; }
+.fd-breadcrumb {
+  font-size: 0.75rem;
+}
+.fd-breadcrumb-link {
+  text-decoration: none;
+}
+.fd-breadcrumb-current {
+  font-weight: 500;
+}
 ```
 
 #### Page Action Buttons

@@ -50,7 +50,7 @@ export default defineDocs({
     title: "Example Docs",
     url: "/docs",
   },
-  themeToggle: { enabled: false , default: "light" },
+  themeToggle: { enabled: false, default: "light" },
   breadcrumb: { enabled: false },
   metadata: {
     titleTemplate: "%s – Docs",

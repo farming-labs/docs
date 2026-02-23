@@ -56,13 +56,7 @@ interface DocsPageClientProps {
  * Path-based breadcrumb that shows only parent / current folder.
  * Skips the entry segment (e.g. "docs"). Parent is clickable.
  */
-function PathBreadcrumb({
-  pathname,
-  entry,
-}: {
-  pathname: string;
-  entry: string;
-}) {
+function PathBreadcrumb({ pathname, entry }: { pathname: string; entry: string }) {
   const router = useRouter();
   const segments = pathname.split("/").filter(Boolean);
 
@@ -71,13 +65,9 @@ function PathBreadcrumb({
   const parentSegment = segments[segments.length - 2];
   const currentSegment = segments[segments.length - 1];
 
-  const parentLabel = parentSegment
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const parentLabel = parentSegment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-  const currentLabel = currentSegment
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const currentLabel = currentSegment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   const parentUrl = "/" + segments.slice(0, segments.length - 1).join("/");
 
@@ -151,8 +141,7 @@ export function DocsPageClient({
   const pathname = usePathname();
   const [actionsPortalTarget, setActionsPortalTarget] = useState<HTMLElement | null>(null);
 
-  const pageDescription = description
-    ?? descriptionMap?.[pathname.replace(/\/$/, "") || "/"];
+  const pageDescription = description ?? descriptionMap?.[pathname.replace(/\/$/, "") || "/"];
 
   useEffect(() => {
     if (!tocEnabled) return;
@@ -223,7 +212,7 @@ export function DocsPageClient({
       const container = document.getElementById("nd-page");
       if (!container) return;
 
-      container.querySelectorAll(".fd-below-title-block").forEach(el => el.remove());
+      container.querySelectorAll(".fd-below-title-block").forEach((el) => el.remove());
 
       const h1 = container.querySelector("h1");
       if (!h1) return;
@@ -262,9 +251,16 @@ export function DocsPageClient({
     return () => {
       cancelAnimationFrame(timer);
       setActionsPortalTarget(null);
-      document.querySelectorAll("#nd-page .fd-below-title-block").forEach(el => el.remove());
+      document.querySelectorAll("#nd-page .fd-below-title-block").forEach((el) => el.remove());
     };
-  }, [lastModified, needsBelowTitleBlock, showLastUpdatedBelowTitle, showActions, pageActionsAlignment, pathname]);
+  }, [
+    lastModified,
+    needsBelowTitleBlock,
+    showLastUpdatedBelowTitle,
+    showActions,
+    pageActionsAlignment,
+    pathname,
+  ]);
 
   return (
     <DocsPage
@@ -274,17 +270,17 @@ export function DocsPageClient({
       breadcrumb={{ enabled: false }}
     >
       {breadcrumbEnabled && <PathBreadcrumb pathname={pathname} entry={entry} />}
-      {showActions && actionsPortalTarget && createPortal(
-        <PageActions
-          copyMarkdown={copyMarkdown}
-          openDocs={openDocs}
-          providers={openDocsProviders}
-        />,
-        actionsPortalTarget,
-      )}
-      <DocsBody
-        style={{ display: "flex", flexDirection: "column" }}
-      >
+      {showActions &&
+        actionsPortalTarget &&
+        createPortal(
+          <PageActions
+            copyMarkdown={copyMarkdown}
+            openDocs={openDocs}
+            providers={openDocsProviders}
+          />,
+          actionsPortalTarget,
+        )}
+      <DocsBody style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ flex: 1 }}>{children}</div>
         {showFooter && (
           <div className="not-prose fd-page-footer">

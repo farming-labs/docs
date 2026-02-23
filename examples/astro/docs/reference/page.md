@@ -21,9 +21,15 @@ import { betterAuth } from "better-auth";
 const auth = betterAuth({
   database: { provider: "postgresql", url: "..." },
   emailAndPassword: { enabled: true },
-  socialProviders: { /* ... */ },
-  plugins: [ /* ... */ ],
-  session: { /* ... */ },
+  socialProviders: {
+    /* ... */
+  },
+  plugins: [
+    /* ... */
+  ],
+  session: {
+    /* ... */
+  },
 });
 ```
 
@@ -31,14 +37,14 @@ const auth = betterAuth({
 
 The server-side API object. Use this in server components, API routes, and middleware.
 
-| Method | Description |
-|--------|-------------|
-| `getSession({ headers })` | Get the current session |
-| `createUser({ email, password, name })` | Create a new user |
-| `deleteUser({ userId })` | Delete a user |
-| `listUsers({ limit, offset })` | List all users |
-| `revokeSession({ sessionId })` | Revoke a specific session |
-| `revokeAllSessions({ userId })` | Revoke all sessions for a user |
+| Method                                  | Description                    |
+| --------------------------------------- | ------------------------------ |
+| `getSession({ headers })`               | Get the current session        |
+| `createUser({ email, password, name })` | Create a new user              |
+| `deleteUser({ userId })`                | Delete a user                  |
+| `listUsers({ limit, offset })`          | List all users                 |
+| `revokeSession({ sessionId })`          | Revoke a specific session      |
+| `revokeAllSessions({ userId })`         | Revoke all sessions for a user |
 
 ### `auth.handler`
 
@@ -60,7 +66,9 @@ import { createAuthClient } from "better-auth/react";
 
 const authClient = createAuthClient({
   baseURL: "http://localhost:3000",
-  plugins: [ /* client plugins */ ],
+  plugins: [
+    /* client plugins */
+  ],
 });
 ```
 
@@ -118,35 +126,35 @@ Better Auth exposes these HTTP endpoints:
 
 ### Authentication
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/auth/sign-up/email` | Register with email/password |
-| `POST` | `/api/auth/sign-in/email` | Sign in with email/password |
-| `POST` | `/api/auth/sign-in/social` | Initiate social sign-in |
-| `GET` | `/api/auth/callback/:provider` | OAuth callback handler |
-| `POST` | `/api/auth/sign-out` | Sign out current session |
-| `GET` | `/api/auth/session` | Get current session |
+| Method | Path                           | Description                  |
+| ------ | ------------------------------ | ---------------------------- |
+| `POST` | `/api/auth/sign-up/email`      | Register with email/password |
+| `POST` | `/api/auth/sign-in/email`      | Sign in with email/password  |
+| `POST` | `/api/auth/sign-in/social`     | Initiate social sign-in      |
+| `GET`  | `/api/auth/callback/:provider` | OAuth callback handler       |
+| `POST` | `/api/auth/sign-out`           | Sign out current session     |
+| `GET`  | `/api/auth/session`            | Get current session          |
 
 ### Email Verification
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/auth/verify-email` | Verify email with token |
+| Method | Path                                | Description               |
+| ------ | ----------------------------------- | ------------------------- |
+| `GET`  | `/api/auth/verify-email`            | Verify email with token   |
 | `POST` | `/api/auth/send-verification-email` | Resend verification email |
 
 ### Password Reset
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/auth/forget-password` | Request password reset |
-| `POST` | `/api/auth/reset-password` | Reset password with token |
+| Method | Path                        | Description               |
+| ------ | --------------------------- | ------------------------- |
+| `POST` | `/api/auth/forget-password` | Request password reset    |
+| `POST` | `/api/auth/reset-password`  | Reset password with token |
 
 ### User Management
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/auth/user` | Get current user |
-| `PATCH` | `/api/auth/user` | Update user profile |
+| Method   | Path             | Description         |
+| -------- | ---------------- | ------------------- |
+| `GET`    | `/api/auth/user` | Get current user    |
+| `PATCH`  | `/api/auth/user` | Update user profile |
 | `DELETE` | `/api/auth/user` | Delete user account |
 
 ## Error Handling
@@ -163,14 +171,14 @@ interface AuthError {
 
 Common error codes:
 
-| Code | Status | Description |
-|------|--------|-------------|
-| `USER_NOT_FOUND` | 404 | User doesn't exist |
-| `INVALID_CREDENTIALS` | 401 | Wrong email or password |
-| `EMAIL_NOT_VERIFIED` | 403 | Email not yet verified |
-| `SESSION_EXPIRED` | 401 | Session has expired |
-| `RATE_LIMIT_EXCEEDED` | 429 | Too many requests |
-| `INVALID_TOKEN` | 400 | Invalid or expired token |
+| Code                  | Status | Description              |
+| --------------------- | ------ | ------------------------ |
+| `USER_NOT_FOUND`      | 404    | User doesn't exist       |
+| `INVALID_CREDENTIALS` | 401    | Wrong email or password  |
+| `EMAIL_NOT_VERIFIED`  | 403    | Email not yet verified   |
+| `SESSION_EXPIRED`     | 401    | Session has expired      |
+| `RATE_LIMIT_EXCEEDED` | 429    | Too many requests        |
+| `INVALID_TOKEN`       | 400    | Invalid or expired token |
 
 ## TypeScript
 

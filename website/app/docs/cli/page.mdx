@@ -19,23 +19,23 @@ If the CLI cannot auto-detect your framework (no `next`, `@sveltejs/kit`, `astro
 
 ## Supported Frameworks
 
-| Framework | Detection | Status |
-|-----------|-----------|--------|
-| Next.js | `next` in dependencies | Supported |
+| Framework | Detection                       | Status    |
+| --------- | ------------------------------- | --------- |
+| Next.js   | `next` in dependencies          | Supported |
 | SvelteKit | `@sveltejs/kit` in dependencies | Supported |
-| Astro | `astro` in dependencies | Supported |
-| Nuxt | `nuxt` in dependencies | Supported |
+| Astro     | `astro` in dependencies         | Supported |
+| Nuxt      | `nuxt` in dependencies          | Supported |
 
 ## Available Themes
 
 All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
 
-| Theme | Description |
-|-------|-------------|
-| `fumadocs` | Clean, neutral docs theme (default) |
-| `darksharp` | All-black, sharp corners, no rounded edges |
-| `pixel-border` | Refined dark UI inspired by better-auth.com |
-| `colorful` | Faithful clone of the fumadocs default neutral theme |
+| Theme          | Description                                          |
+| -------------- | ---------------------------------------------------- |
+| `fumadocs`     | Clean, neutral docs theme (default)                  |
+| `darksharp`    | All-black, sharp corners, no rounded edges           |
+| `pixel-border` | Refined dark UI inspired by better-auth.com          |
+| `colorful`     | Faithful clone of the fumadocs default neutral theme |
 
 ## What it does
 
@@ -76,6 +76,7 @@ All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
     7. **Starts the dev server** — Opens your docs at `http://localhost:5173/docs`
 
     > **Production note**: The generated `docs.server.ts` uses `import.meta.glob` to bundle your markdown files at build time. This is required for serverless deployments (Vercel, Netlify, etc.) where the filesystem is not available at runtime.
+
   </Tab>
   <Tab value="Astro">
     1. **Detects Astro** via `astro` in your `package.json`
@@ -95,6 +96,7 @@ All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
     6. **Starts the dev server** — Opens your docs at `http://localhost:4321/docs`
 
     > **Production note**: The generated `docs.server.ts` uses `import.meta.glob` to bundle your markdown files at build time. This is required for serverless deployments (Vercel, Netlify, etc.) where the filesystem is not available at runtime.
+
   </Tab>
   <Tab value="Nuxt">
     1. **Detects Nuxt** via `nuxt` in your `package.json`
@@ -148,6 +150,7 @@ All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
       │
       └ Done! Open http://localhost:3000/docs
     ```
+
   </Tab>
   <Tab value="SvelteKit">
     ```
@@ -183,6 +186,7 @@ All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
       │
       └ Done! Open http://localhost:5173/docs
     ```
+
   </Tab>
   <Tab value="Astro">
     ```
@@ -215,6 +219,7 @@ All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
       │
       └ Done! Open http://localhost:4321/docs
     ```
+
   </Tab>
   <Tab value="Nuxt">
     ```
@@ -245,13 +250,14 @@ All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
       │
       └ Done! Open http://localhost:3000/docs
     ```
+
   </Tab>
 </Tabs>
 
 ## Flags
 
-| Flag | Description |
-|------|-------------|
+| Flag             | Description                                  |
+| ---------------- | -------------------------------------------- |
 | `--theme <name>` | Skip theme prompt (e.g. `--theme darksharp`) |
 | `--entry <path>` | Skip entry path prompt (e.g. `--entry docs`) |
 
@@ -348,6 +354,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     > If you chose `darksharp` or `pixel-border`, the CSS import line will differ:
     > - Darksharp: `@import "@farming-labs/theme/darksharp/css";`
     > - Pixel Border: `@import "@farming-labs/theme/pixel-border/css";`
+
   </Tab>
   <Tab value="SvelteKit">
     **`src/lib/docs.config.ts`**
@@ -378,7 +385,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     import { createDocsServer } from "@farming-labs/svelte/server";
     import config from "./docs.config";
 
-    // preloading for production 
+    // preloading for production
     const contentFiles = import.meta.glob("/docs/**/*.{md,mdx,svx}", {
       query: "?raw",
       import: "default",
@@ -454,6 +461,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     > If you chose `darksharp` or `pixel-border`, swap the theme factory and CSS:
     > - Darksharp: `import { darksharp } from "@farming-labs/svelte-theme"` + `@import "@farming-labs/svelte-theme/darksharp/css";`
     > - Pixel Border: `import { pixelBorder } from "@farming-labs/svelte-theme"` + `@import "@farming-labs/svelte-theme/pixel-border/css";`
+
   </Tab>
   <Tab value="Astro">
     **`src/lib/docs.config.ts`**
@@ -553,6 +561,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     > If you chose `darksharp` or `pixel-border`, swap the theme factory and CSS:
     > - Darksharp: `import { darksharp } from "@farming-labs/astro-theme"` + `@farming-labs/astro-theme/darksharp/css`
     > - Pixel Border: `import { pixelBorder } from "@farming-labs/astro-theme"` + `@farming-labs/astro-theme/pixel-border/css`
+
   </Tab>
   <Tab value="Nuxt">
     **`docs.config.ts`**
@@ -632,6 +641,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     > If you chose `darksharp` or `pixel-border`, swap the theme factory and CSS:
     > - Darksharp: `import { darksharp } from "@farming-labs/nuxt-theme"` + `@farming-labs/nuxt-theme/darksharp/css`
     > - Pixel Border: `import { pixelBorder } from "@farming-labs/nuxt-theme"` + `@farming-labs/nuxt-theme/pixel-border/css`
+
   </Tab>
 </Tabs>
 
@@ -641,87 +651,87 @@ After running `init`, your project will look like this:
 
 <Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
-    ```
-    my-app/
-    ├── docs.config.ts          # Docs configuration
-    ├── next.config.ts          # Next.js config with withDocs()
-    ├── app/
-    │   ├── global.css          # Theme CSS import
-    │   ├── layout.tsx          # Root layout
-    │   └── docs/
-    │       ├── layout.tsx      # Docs layout
-    │       ├── page.mdx        # /docs
-    │       ├── installation/
-    │       │   └── page.mdx    # /docs/installation
-    │       └── quickstart/
-    │           └── page.mdx    # /docs/quickstart
-    └── package.json
-    ```
+```
+my-app/
+├── docs.config.ts        # Docs configuration
+├── next.config.ts        # Next.js config with withDocs()
+├── app/
+│   ├── global.css        # Theme CSS import
+│   ├── layout.tsx        # Root layout
+│   └── docs/
+│       ├── layout.tsx    # Docs layout
+│       ├── page.mdx      # /docs
+│       ├── installation/
+│       │   └── page.mdx  # /docs/installation
+│       └── quickstart/
+│           └── page.mdx  # /docs/quickstart
+└── package.json
+```
   </Tab>
   <Tab value="SvelteKit">
-    ```
-    my-app/
-    ├── docs/                         # Markdown content
-    │   ├── page.md                   # /docs
-    │   ├── installation/
-    │   │   └── page.md               # /docs/installation
-    │   └── quickstart/
-    │       └── page.md               # /docs/quickstart
-    ├── src/
-    │   ├── app.css                   # Theme CSS import
-    │   ├── lib/
-    │   │   ├── docs.config.ts        # Docs configuration
-    │   │   └── docs.server.ts        # Server loader + content bundling
-    │   └── routes/
-    │       └── docs/
-    │           ├── +layout.svelte    # Docs layout
-    │           ├── +layout.server.js # Layout data loader
-    │           └── [...slug]/
-    │               └── +page.svelte  # Dynamic page
-    └── package.json
-    ```
+```
+my-app/
+├── docs/                     # Markdown content
+│   ├── page.md               # /docs
+│   ├── installation/
+│   │   └── page.md           # /docs/installation
+│   └── quickstart/
+│       └── page.md           # /docs/quickstart
+├── src/
+│   ├── app.css               # Theme CSS import
+│   ├── lib/
+│   │   ├── docs.config.ts    # Docs configuration
+│   │   └── docs.server.ts    # Server loader + content bundling
+│   └── routes/
+│       └── docs/
+│           ├── +layout.svelte      # Docs layout
+│           ├── +layout.server.js   # Layout data loader
+│           └── [...slug]/
+│               └── +page.svelte    # Dynamic page
+└── package.json
+```
   </Tab>
   <Tab value="Astro">
-    ```
-    my-app/
-    ├── astro.config.mjs              # Astro config with SSR
-    ├── docs/                         # Markdown content
-    │   ├── page.md                   # /docs
-    │   ├── installation/
-    │   │   └── page.md               # /docs/installation
-    │   └── quickstart/
-    │       └── page.md               # /docs/quickstart
-    ├── src/
-    │   ├── lib/
-    │   │   ├── docs.config.ts        # Docs configuration
-    │   │   └── docs.server.ts        # Server loader + content bundling
-    │   └── pages/
-    │       ├── api/
-    │       │   └── docs.ts           # Search & AI API route
-    │       └── docs/
-    │           ├── index.astro       # /docs
-    │           └── [...slug].astro   # /docs/*
-    └── package.json
-    ```
+```
+my-app/
+├── astro.config.mjs          # Astro config with SSR
+├── docs/                     # Markdown content
+│   ├── page.md               # /docs
+│   ├── installation/
+│   │   └── page.md           # /docs/installation
+│   └── quickstart/
+│       └── page.md           # /docs/quickstart
+├── src/
+│   ├── lib/
+│   │   ├── docs.config.ts    # Docs configuration
+│   │   └── docs.server.ts    # Server loader + content bundling
+│   └── pages/
+│       ├── api/
+│       │   └── docs.ts       # Search & AI API route
+│       └── docs/
+│           ├── index.astro   # /docs
+│           └── [...slug].astro  # /docs/*
+└── package.json
+```
   </Tab>
   <Tab value="Nuxt">
-    ```
-    my-app/
-    ├── docs.config.ts                # Docs configuration
-    ├── nuxt.config.ts                # Nuxt config with theme CSS
-    ├── docs/                         # Markdown content
-    │   ├── page.md                   # /docs
-    │   ├── installation/
-    │   │   └── page.md               # /docs/installation
-    │   └── quickstart/
-    │       └── page.md               # /docs/quickstart
-    ├── server/
-    │   └── api/
-    │       └── docs.ts               # Search & AI API route
-    ├── pages/
-    │   └── docs/
-    │       └── [...slug].vue         # Dynamic page
-    └── package.json
-    ```
+```
+my-app/
+├── docs.config.ts            # Docs configuration
+├── nuxt.config.ts            # Nuxt config with theme CSS
+├── docs/                     # Markdown content
+│   ├── page.md               # /docs
+│   ├── installation/
+│   │   └── page.md           # /docs/installation
+│   └── quickstart/
+│       └── page.md           # /docs/quickstart
+├── server/
+│   └── api/
+│       └── docs.ts           # Search & AI API route
+├── pages/
+│   └── docs/
+│       └── [...slug].vue     # Dynamic page
+└── package.json
+```
   </Tab>
 </Tabs>
