@@ -63,13 +63,13 @@ export default function ThemesPage() {
     >
       <div className="absolute w-full top-14 right-0 z-[999] h-px bg-white/[8%]" />
       <div className="pointer-events-none fixed inset-0 z-[999] hidden lg:block">
-        <div className="mx-auto max-w-[90%] h-full relative">
+        <div className="mx-auto md:max-w-[90%] max-w-full h-full relative">
           <div className="absolute left-0 top-0 h-full w-px bg-white/[8%]" />
           <div className="absolute right-0 top-0 h-full w-px bg-white/[8%]" />
         </div>
       </div>
       <header className="px-6 py-5">
-        <div className="mx-auto max-w-[90%] mx-auto flex items-center justify-between">
+        <div className="mx-auto md:max-w-[90%] max-w-full mx-auto flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 text-xs font-medium text-white/80 dark:text-white/80 pb-8">
               <Link
@@ -100,7 +100,7 @@ export default function ThemesPage() {
         </div>
       </header>
 
-      <main className="overflow-x-hidden mx-auto max-w-[90%] mx-auto px-6 py-12">
+      <main className="overflow-x-hidden mx-auto md:max-w-[90%] max-w-full mx-auto px-6 py-12">
         {/* Info */}
         <div className="mb-10 max-w-2xl">
           <p className="text-[13px] text-white/40 leading-relaxed">
