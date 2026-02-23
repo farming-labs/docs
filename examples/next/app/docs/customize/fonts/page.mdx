@@ -1,0 +1,49 @@
+---
+title: Fonts
+description: Configure custom fonts for your documentation.
+---
+
+# Fonts
+
+Customize the typography of your documentation with custom fonts.
+
+## Font Configuration
+
+```tsx
+theme: greentree({
+  ui: {
+    typography: {
+      font: {
+        style: {
+          sans: "Inter, system-ui, sans-serif",
+          mono: "JetBrains Mono, monospace",
+        },
+        h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.025em" },
+        h2: { size: "1.5rem", weight: 600 },
+        body: { size: "0.975rem", lineHeight: "1.8" },
+      },
+    },
+  },
+})
+```
+
+## Using Google Fonts
+
+Install and configure fonts in your `layout.tsx`:
+
+```tsx
+import { Inter, JetBrains_Mono } from "next/font/google";
+
+const inter = Inter({ subsets: ["latin"] });
+const jetbrains = JetBrains_Mono({ subsets: ["latin"] });
+```
+
+## Font Size Scale
+
+| Element | Default Size | Weight |
+|---------|-------------|--------|
+| `h1` | `2.25rem` | 700 |
+| `h2` | `1.5rem` | 600 |
+| `h3` | `1.25rem` | 600 |
+| `body` | `0.975rem` | 400 |
+| `small` | `0.875rem` | 400 |

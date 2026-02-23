@@ -34,6 +34,23 @@ const themes = [
     colors: ["#fbfbfa", "#050505", "#8c8c8c", "#262626"],
     accent: "#fbfbfa",
   },
+  {
+    key: "shiny",
+    name: "Shiny",
+    description: "Clerk-inspired, polished purple",
+    import: '@import "@farming-labs/theme/shiny/css";',
+    colors: ["#f0f0f0", "#000000", "#a8a29e", "#292524"],
+    accent: "#f0f0f0",
+  },
+  // GreenTree
+  {
+    key: "greentree",
+    name: "GreenTree",
+    description: "Mintlify-inspired, emerald green",
+    import: '@import "@farming-labs/theme/greentree/css";',
+    colors: ["#0D9373", "#26BD6C", "#171A18", "#DFE1E0"],
+    accent: "#0D9373",
+  },
 ];
 
 export default function ThemesPage() {

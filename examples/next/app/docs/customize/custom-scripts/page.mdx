@@ -1,0 +1,57 @@
+---
+title: Custom Scripts
+description: Add custom scripts and analytics to your docs.
+---
+
+# Custom Scripts
+
+Add analytics, tracking, or other custom scripts to your documentation.
+
+## Analytics
+
+### Google Analytics
+
+Add to your `layout.tsx`:
+
+```tsx
+import Script from "next/script";
+
+export default function Layout({ children }) {
+  return (
+    <>
+      <Script src="https://www.googletagmanager.com/gtag/js?id=G-XXXXX" />
+      <Script id="google-analytics">
+        {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-XXXXX');
+        `}
+      </Script>
+      {children}
+    </>
+  );
+}
+```
+
+### Plausible
+
+```tsx
+<Script
+  defer
+  data-domain="yourdomain.com"
+  src="https://plausible.io/js/script.js"
+/>
+```
+
+## Custom Head Tags
+
+Add meta tags or link elements in your layout:
+
+```tsx
+export const metadata = {
+  other: {
+    "google-site-verification": "your-verification-code",
+  },
+};
+```

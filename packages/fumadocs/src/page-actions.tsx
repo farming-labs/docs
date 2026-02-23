@@ -119,7 +119,7 @@ export function PageActions({ copyMarkdown, openDocs, providers }: PageActionsPr
           data-copied={copied}
         >
           {copied ? <CheckIcon /> : <CopyIcon />}
-          <span>{copied ? "Copied!" : "Copy Markdown"}</span>
+          <span>{copied ? "Copied!" : "Copy page"}</span>
         </button>
       )}
 

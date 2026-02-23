@@ -501,8 +501,9 @@ article a[class*="border"] {
 }
 
 .fd-page-action-menu {
-  border-radius: 8px !important;
+  border-radius: 0px !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  padding: 0px !important;
 }
 
 .fd-page-action-menu-item {

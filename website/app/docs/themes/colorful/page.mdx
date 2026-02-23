@@ -1,0 +1,50 @@
+---
+title: "Colorful"
+description: "Warm amber accent with Inter typography and a clean layout"
+icon: "palette"
+order: 4.4
+---
+
+# Colorful Theme
+
+A warm, vibrant theme with an amber primary accent, Inter typography, and directional TOC styling.
+
+## Usage
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { colorful } from "@farming-labs/theme/colorful";
+
+export default defineDocs({
+  entry: "docs",
+  theme: colorful(),
+});
+```
+
+```css title="app/global.css"
+@import "tailwindcss";
+@import "@farming-labs/theme/colorful/css";
+```
+
+## Defaults
+
+| Property | Value |
+|----------|-------|
+| Primary | `hsl(40, 96%, 40%)` (Amber) |
+| Background | `#ffffff` |
+| Border | `#e5e7eb` |
+| Border radius | Standard |
+| Content width | 768px |
+| Sidebar width | 260px |
+| TOC style | Directional |
+
+## Customizing
+
+```tsx
+theme: colorful({
+  ui: {
+    colors: { primary: "hsl(210, 96%, 45%)" },
+    layout: { contentWidth: 900 },
+  },
+}),
+```

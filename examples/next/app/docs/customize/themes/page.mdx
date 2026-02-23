@@ -1,0 +1,66 @@
+---
+title: Themes
+description: Choose and configure documentation themes.
+---
+
+# Themes
+
+Themes control the visual appearance of your documentation site.
+
+## Applying a Theme
+
+```tsx
+import { defineDocs } from "@farming-labs/docs";
+import { greentree } from "@farming-labs/theme/greentree";
+
+export default defineDocs({
+  theme: greentree(),
+});
+```
+
+## Theme Options
+
+Each theme accepts an options object:
+
+```tsx
+theme: greentree({
+  ui: {
+    colors: {
+      primary: "#0D9373",
+      background: "#FFFFFF",
+      foreground: "#1A1A1A",
+    },
+    radius: "0.5rem",
+    sidebar: { style: "default", width: 240 },
+    layout: { toc: { style: "default" } },
+  },
+})
+```
+
+## Creating a Custom Theme
+
+```tsx
+import { createTheme } from "@farming-labs/theme";
+
+export const myTheme = createTheme({
+  name: "my-theme",
+  ui: {
+    colors: {
+      primary: "#6366F1",
+      background: "#0F0F10",
+    },
+  },
+});
+```
+
+## Color Tokens
+
+| Token | Description |
+|-------|-------------|
+| `primary` | Primary brand color |
+| `background` | Page background |
+| `foreground` | Main text color |
+| `muted` | Muted background |
+| `mutedForeground` | Muted text |
+| `border` | Border color |
+| `accent` | Accent/hover background |

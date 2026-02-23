@@ -1,0 +1,62 @@
+---
+title: "DarkBold"
+description: "Pure monochrome design with Geist typography and clean minimalism"
+icon: "palette"
+order: 4.6
+---
+
+# DarkBold Theme
+
+A pure monochrome design inspired by [Vercel](https://vercel.com/docs) — featuring Geist typography, tight letter-spacing, and clean minimalism.
+
+## Usage
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { darkbold } from "@farming-labs/theme/darkbold";
+
+export default defineDocs({
+  entry: "docs",
+  theme: darkbold(),
+});
+```
+
+```css title="app/global.css"
+@import "tailwindcss";
+@import "@farming-labs/theme/darkbold/css";
+```
+
+## Defaults
+
+| Property | Value |
+|----------|-------|
+| Primary | `#000` (Black) |
+| Background | `#fff` |
+| Border | `#eaeaea` |
+| Border radius | Standard |
+| Content width | 768px |
+| Sidebar width | 260px |
+| Font | Geist, Geist Mono |
+
+## Typography
+
+DarkBold uses the Geist font family with tighter letter-spacing for headings:
+
+- **H1**: 2.5rem, weight 600, letter-spacing -0.06em
+- **H2**: 2rem, weight 600, letter-spacing -0.04em
+- **H3**: 1.5rem, weight 600, letter-spacing -0.02em
+
+## Customizing
+
+```tsx
+theme: darkbold({
+  ui: {
+    colors: { primary: "#0070f3" },
+    typography: {
+      font: {
+        h1: { size: "3rem", weight: 700 },
+      },
+    },
+  },
+}),
+```

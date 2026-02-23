@@ -1,0 +1,76 @@
+---
+title: Images & Embeds
+description: Add images, videos, and embedded content to your docs.
+---
+
+# Images & Embeds
+
+Enrich your documentation with visual content.
+
+## Images
+
+### Standard Markdown
+
+```markdown
+![Alt text](/images/screenshot.png)
+```
+
+### With Custom Sizing
+
+```mdx
+<img src="/images/diagram.png" alt="Architecture" width={600} />
+```
+
+## Videos
+
+Embed videos from YouTube or other platforms:
+
+```mdx
+<iframe
+  width="560"
+  height="315"
+  src="https://www.youtube.com/embed/VIDEO_ID"
+  title="Tutorial Video"
+  allowFullScreen
+/>
+```
+
+## Callouts
+
+Use callouts to highlight important information:
+
+```mdx
+<Callout type="info">
+  This is helpful information for the reader.
+</Callout>
+
+<Callout type="warning">
+  Be careful when using this feature in production.
+</Callout>
+
+<Callout type="error">
+  This action cannot be undone.
+</Callout>
+```
+
+## Cards
+
+Link to related content with cards:
+
+```mdx
+<Card title="Getting Started" href="/docs/getting-started">
+  Learn the basics of our framework.
+</Card>
+```
+
+## Tabs
+
+Show content in tabs:
+
+```mdx
+<Tabs items={["npm", "pnpm", "yarn"]}>
+  <Tab value="npm">npm install package</Tab>
+  <Tab value="pnpm">pnpm add package</Tab>
+  <Tab value="yarn">yarn add package</Tab>
+</Tabs>
+```

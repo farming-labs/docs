@@ -329,6 +329,12 @@ figure.shiki pre > code > [data-line] {
   font-size: 0.75rem;
 }
 
+.fd-last-updated-footer {
+  color: var(--color-fd-muted-foreground, hsl(0 0% 45%));
+  font-size: 0.8125rem;
+  margin-left: auto;
+}
+
 /* ─── Code block copy button: show on hover ────────────────────────── */
 
 figure.shiki > button,
@@ -342,3 +348,40 @@ figure.shiki:hover > div:first-child button {
   opacity: 1;
 }
 
+/* ─── Sidebar AI trigger (sidebar-icon mode) ───────────────────────── */
+
+.fd-sidebar-ai-trigger-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.fd-sidebar-search-flex {
+  flex: 1;
+  min-width: 0;
+}
+
+.fd-sidebar-ai-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  min-width: 38px;
+  border-radius: 8px;
+  border: 1px solid var(--color-fd-border, hsl(0 0% 80% / 50%));
+  background: var(--color-fd-secondary, hsl(0 0% 96%));
+  color: var(--color-fd-muted-foreground, hsl(0 0% 45%));
+  cursor: pointer;
+  transition: background-color 150ms, color 150ms, border-color 150ms;
+}
+
+.fd-sidebar-ai-btn:hover {
+  background: var(--color-fd-accent, hsl(0 0% 90%));
+  color: var(--color-fd-primary, hsl(220 100% 50%));
+  border-color: var(--color-fd-primary, hsl(220 100% 50%));
+}
+
+.fd-sidebar-ai-btn svg {
+  width: 16px;
+  height: 16px;
+}

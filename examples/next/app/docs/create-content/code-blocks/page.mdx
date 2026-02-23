@@ -1,0 +1,71 @@
+---
+title: Code Blocks
+description: Syntax highlighting and code block features.
+---
+
+# Code Blocks
+
+Display beautifully highlighted code in your documentation.
+
+## Basic Code Block
+
+````markdown
+```javascript
+function greet(name) {
+  return `Hello, ${name}!`;
+}
+```
+````
+
+## Supported Languages
+
+Code blocks support 100+ programming languages including:
+
+- JavaScript / TypeScript
+- Python
+- Go
+- Rust
+- Ruby
+- PHP
+- And many more
+
+## Line Highlighting
+
+Highlight specific lines to draw attention:
+
+````markdown
+```tsx {3-5}
+function App() {
+  return (
+    <div>
+      <h1>Hello World</h1>
+    </div>
+  );
+}
+```
+````
+
+## File Names
+
+Add a filename to your code block:
+
+````markdown
+```tsx title="app/page.tsx"
+export default function Page() {
+  return <h1>Hello</h1>;
+}
+```
+````
+
+## Line Numbers
+
+Enable line numbers for longer code blocks:
+
+````markdown
+```tsx showLineNumbers
+const a = 1;
+const b = 2;
+const c = a + b;
+console.log(c);
+```
+````

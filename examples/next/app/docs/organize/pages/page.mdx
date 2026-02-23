@@ -1,0 +1,61 @@
+---
+title: Pages
+description: Configure page metadata, titles, and frontmatter properties.
+---
+
+# Pages
+
+Every documentation page is an MDX file with frontmatter metadata.
+
+## Frontmatter
+
+```mdx
+---
+title: My Page Title
+description: A brief description of this page.
+icon: rocket
+order: 1
+---
+```
+
+## Available Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `title` | `string` | Page title displayed in sidebar and heading |
+| `description` | `string` | Page description for SEO and previews |
+| `icon` | `string` | Icon key from the icons registry |
+| `order` | `number` | Sort order when using numeric ordering |
+
+## Page Descriptions
+
+Descriptions appear below the page title and in search results:
+
+```mdx
+---
+title: Authentication
+description: Learn how to implement user authentication.
+---
+```
+
+## Icons
+
+Reference icons from your `docs.config.tsx` icons registry:
+
+```tsx
+export default defineDocs({
+  icons: {
+    rocket: <Rocket size={16} />,
+    shield: <Shield size={16} />,
+  },
+});
+```
+
+Then use them in frontmatter:
+
+```mdx
+---
+title: Security
+icon: shield
+---
+```

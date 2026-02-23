@@ -132,11 +132,22 @@ function buildTypographyCSS(typo: Record<string, any> | undefined): string {
   return `:root {\n  ${vars.join("\n  ")}\n}`;
 }
 
+function buildLayoutCSS(layout: Record<string, any> | undefined): string {
+  if (!layout) return "";
+  const vars: string[] = [];
+  if (layout.sidebarWidth) vars.push(`--fd-sidebar-width: ${layout.sidebarWidth}px;`);
+  if (layout.contentWidth) vars.push(`--fd-content-width: ${layout.contentWidth}px;`);
+  if (layout.tocWidth) vars.push(`--fd-toc-width: ${layout.tocWidth}px;`);
+  if (vars.length === 0) return "";
+  return `:root {\n  ${vars.join("\n  ")}\n}`;
+}
+
 const overrideCSS = computed(() => {
   const colorOverrides = (props.config?.theme as any)?._userColorOverrides
     ?? (props.config?.theme as any)?.ui?.colors;
   const typography = (props.config?.theme as any)?.ui?.typography;
-  return [buildColorsCSS(colorOverrides), buildTypographyCSS(typography)].filter(Boolean).join("\n");
+  const layout = (props.config?.theme as any)?.ui?.layout;
+  return [buildColorsCSS(colorOverrides), buildTypographyCSS(typography), buildLayoutCSS(layout)].filter(Boolean).join("\n");
 });
 
 useHead(() => ({

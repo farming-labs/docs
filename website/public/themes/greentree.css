@@ -1,0 +1,997 @@
+/* @farming-labs/theme — greentree
+ * Injected by the theme customizer — all declarations use !important.
+ * Self-contained: no @import needed since this overlays the build-time base theme.
+ */
+
+/* ─── GreenTree color overrides ────────────────────────────────── */
+
+:root {
+  --color-fd-primary: #0D9373 !important;
+  --color-fd-primary-foreground: #fff !important;
+  --color-fd-ring: #0D9373 !important;
+
+  --color-fd-background: #fff !important;
+  --color-fd-foreground: #171A18 !important;
+  --color-fd-card: #fff !important;
+  --color-fd-card-foreground: #171A18 !important;
+  --color-fd-popover: #fff !important;
+  --color-fd-popover-foreground: #171A18 !important;
+  --color-fd-secondary: #f6f8f7 !important;
+  --color-fd-secondary-foreground: #171A18 !important;
+  --color-fd-muted: #f6f8f7 !important;
+  --color-fd-muted-foreground: #505351 !important;
+  --color-fd-accent: #f0f5f3 !important;
+  --color-fd-accent-foreground: #171A18 !important;
+  --color-fd-border: #DFE1E0 !important;
+
+  --radius: 0.5rem !important;
+  --scrollbar-thumb: var(--color-fd-border) !important;
+  --scrollbar-thumb-hover: var(--color-fd-ring) !important;
+  --scrollbar-track: transparent !important;
+}
+
+.dark {
+  --color-fd-primary: #26BD6C !important;
+  --color-fd-primary-foreground: #0A0D0D !important;
+  --color-fd-ring: #26BD6C !important;
+
+  --color-fd-background: #0A0D0D !important;
+  --color-fd-foreground: #E5E7E6 !important;
+  --color-fd-card: #111413 !important;
+  --color-fd-card-foreground: #E5E7E6 !important;
+  --color-fd-popover: #111413 !important;
+  --color-fd-popover-foreground: #E5E7E6 !important;
+  --color-fd-secondary: #1A1D1C !important;
+  --color-fd-secondary-foreground: #E5E7E6 !important;
+  --color-fd-muted: #1A1D1C !important;
+  --color-fd-muted-foreground: #8A8D8B !important;
+  --color-fd-accent: #1A1D1C !important;
+  --color-fd-accent-foreground: #E5E7E6 !important;
+  --color-fd-border: #2A2D2C !important;
+
+  --scrollbar-thumb: var(--color-fd-border) !important;
+  --scrollbar-thumb-hover: var(--color-fd-ring) !important;
+  --scrollbar-track: transparent !important;
+}
+
+/* ─── Typography ────────────── */
+
+h1 {
+  letter-spacing: -0.025em !important;
+  font-weight: 500 !important;
+  line-height: 1.2 !important;
+}
+
+h2 {
+  letter-spacing: -0.02em !important;
+  font-weight: 600 !important;
+  line-height: 1.25 !important;
+}
+
+h3 {
+  letter-spacing: -0.01em !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+}
+
+.fd-docs-content p {
+  font-size: 1rem !important;
+  line-height: 1.7 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * SIDEBAR — GreenTree: no border, green active background
+ * Selectors use #nd-docs-layout to beat pixel-border's specificity.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+#nd-docs-layout aside,
+aside#nd-sidebar,
+aside,
+#nd-sidebar {
+  border: none !important;
+  border-right: none !important;
+  border-left: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  background: var(--color-fd-background) !important;
+}
+
+/* Override pixel-border's aggressive border-radius:0 reset for sidebar links */
+#nd-docs-layout aside a[data-active],
+#nd-docs-layout aside a[data-active].rounded-lg,
+#nd-docs-layout aside a[class*="rounded-"] {
+  border-radius: 8px !important;
+}
+
+/* ── Sidebar links — 14px, 500 weight ────────────────────────── */
+#nd-docs-layout aside a[data-active] {
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  font-weight: 500 !important;
+  padding: 6px 10px !important;
+  border-radius: 8px !important;
+  color: var(--color-fd-muted-foreground) !important;
+  transition: color 150ms, background-color 150ms !important;
+  overflow: visible !important;
+  background-color: transparent !important;
+}
+
+.dark #nd-docs-layout aside a[data-active] {
+  color: var(--color-fd-muted-foreground) !important;
+  font-weight: 500 !important;
+  overflow: visible !important;
+  background-color: transparent !important;
+}
+
+.dark #nd-docs-layout aside a[data-active="false"]:hover {
+  color: var(--color-fd-foreground) !important;
+  background: var(--color-fd-accent) !important;
+}
+
+#nd-docs-layout aside a[data-active]:hover {
+  color: var(--color-fd-foreground) !important;
+  background: var(--color-fd-accent) !important;
+}
+
+/* Active sidebar item — green background */
+#nd-docs-layout aside a[data-active="true"],
+#nd-docs-layout aside a[data-active="true"]:hover {
+  color: var(--color-fd-primary) !important;
+  font-weight: 600 !important;
+  background: rgba(13, 147, 115, 0.08) !important;
+  background-color: rgba(13, 147, 115, 0.08) !important;
+}
+
+.dark #nd-docs-layout aside a[data-active="true"],
+.dark #nd-docs-layout aside a[data-active="true"]:hover {
+  background: rgba(38, 189, 108, 0.1) !important;
+  background-color: rgba(38, 189, 108, 0.1) !important;
+  color: var(--color-fd-primary) !important;
+}
+
+/* Remove the active indicator bar from pixel-border */
+#nd-docs-layout aside a[data-active="true"]::before,
+.dark #nd-docs-layout aside a[data-active="true"]::before {
+  background-color: transparent !important;
+  background: transparent !important;
+  width: 0 !important;
+  display: none !important;
+}
+
+/* Remove pixel-border's border-top on sidebar links */
+#nd-docs-layout aside .overscroll-contain > div > a[data-active],
+.dark #nd-docs-layout aside .overscroll-contain > div > a[data-active] {
+  border-top: none !important;
+  border-bottom: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+#nd-docs-layout aside .overscroll-contain > div > a[data-active]:first-child,
+#nd-docs-layout aside .overscroll-contain > div > a[data-active]:last-child,
+.dark #nd-docs-layout aside .overscroll-contain > div > a[data-active]:first-child,
+.dark #nd-docs-layout aside .overscroll-contain > div > a[data-active]:last-child {
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+/* Remove pixel-border's folder guide line */
+#nd-docs-layout aside div.overflow-hidden[data-state]::before,
+.dark #nd-docs-layout aside div.overflow-hidden[data-state]::before {
+  display: none !important;
+}
+
+/* Reset pixel-border's border-top and negative margins on sidebar folder containers */
+#nd-docs-layout aside .overscroll-contain > div > div,
+.dark #nd-docs-layout aside .overscroll-contain > div > div {
+  border-top: none !important;
+  border-bottom: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding: 0 !important;
+}
+
+/* ── Child links inside collapsible folders ──────────────────────── */
+#nd-docs-layout aside div.overflow-hidden[data-state] a[data-active],
+.dark #nd-docs-layout aside div.overflow-hidden[data-state] a[data-active] {
+  font-size: 0.825rem !important;
+  border-radius: 8px !important;
+}
+
+#nd-docs-layout aside div.overflow-hidden[data-state] a[data-active="true"],
+.dark #nd-docs-layout aside div.overflow-hidden[data-state] a[data-active="true"] {
+  color: var(--color-fd-primary) !important;
+  font-weight: 600 !important;
+}
+
+/* ── Flat sidebar — category headings ─────────────────────────── */
+
+#nd-docs-layout aside a[data-active].w-full {
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  color: var(--color-fd-foreground) !important;
+  padding-top: 1rem !important;
+  padding-bottom: 0.25rem !important;
+  margin-top: 0.5rem !important;
+  background: transparent !important;
+}
+
+#nd-docs-layout aside a[data-active].w-full:first-child {
+  margin-top: 0 !important;
+}
+
+#nd-docs-layout aside a[data-active="true"].w-full {
+  color: var(--color-fd-primary) !important;
+}
+
+#nd-docs-layout aside div.w-full:not([role]) {
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  color: var(--color-fd-foreground) !important;
+  padding-top: 1rem !important;
+  padding-bottom: 0.25rem !important;
+  margin-top: 0.5rem !important;
+}
+
+/* Search button in sidebar — reset pixel-border's aggressive layout overrides */
+#nd-docs-layout aside button[class*="bg-fd-secondary"] {
+  background: transparent !important;
+  border: 1px solid var(--color-fd-border) !important;
+  border-top: 1px solid var(--color-fd-border) !important;
+  border-bottom: 1px solid var(--color-fd-border) !important;
+  border-radius: 8px !important;
+  font-size: 0.875rem !important;
+  color: var(--color-fd-muted-foreground) !important;
+  width: auto !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding: 8px 10px !important;
+}
+
+/* Sidebar folder toggle buttons — clean styling */
+#nd-docs-layout aside button[data-open],
+#nd-docs-layout aside button[class*="text-fd-muted"] {
+  border-radius: 6px !important;
+}
+
+/* Sidebar folder parent links with expand icon */
+#nd-docs-layout aside a[data-active] + button,
+#nd-docs-layout aside [role="button"] {
+  color: var(--color-fd-muted-foreground) !important;
+  opacity: 0.6 !important;
+  transition: opacity 150ms !important;
+}
+
+#nd-docs-layout aside a[data-active] + button:hover,
+#nd-docs-layout aside [role="button"]:hover {
+  opacity: 1 !important;
+}
+
+/* Override pixel-border's global border-radius:0 reset — restore Tailwind defaults.
+ * pixel-border uses #nd-docs-layout [class*="rounded-"] { border-radius: 0 !important }
+ * which has specificity (1,1,0). We use the same specificity here; since this <style>
+ * tag appears later in source order, our !important rules win. */
+#nd-docs-layout .rounded,
+#nd-docs-layout [class~="rounded"] {
+  border-radius: 0.25rem !important;
+}
+#nd-docs-layout .rounded-sm {
+  border-radius: 0.125rem !important;
+}
+#nd-docs-layout .rounded-md,
+#nd-docs-layout [class*="rounded-md"] {
+  border-radius: 0.375rem !important;
+}
+#nd-docs-layout .rounded-lg,
+#nd-docs-layout [class*="rounded-lg"] {
+  border-radius: 0.5rem !important;
+}
+#nd-docs-layout .rounded-xl,
+#nd-docs-layout [class*="rounded-xl"] {
+  border-radius: 0.75rem !important;
+}
+#nd-docs-layout .rounded-2xl,
+#nd-docs-layout [class*="rounded-2xl"] {
+  border-radius: 1rem !important;
+}
+#nd-docs-layout .rounded-3xl {
+  border-radius: 1.5rem !important;
+}
+#nd-docs-layout .rounded-full,
+#nd-docs-layout [class*="rounded-full"] {
+  border-radius: 9999px !important;
+}
+#nd-docs-layout code:not(pre code) {
+  border-radius: 6px !important;
+}
+
+/* ── Sidebar search + AI row ─────────────────────────────────── */
+
+.fd-sidebar-search-ai-row {
+  display: flex !important;
+  gap: 8px !important;
+  align-items: stretch !important;
+  width: 100% !important;
+}
+
+.fd-sidebar-search-btn {
+  flex: 1 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 10px !important;
+  font-size: 0.875rem !important;
+  color: var(--color-fd-muted-foreground) !important;
+  background: transparent !important;
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+}
+
+.fd-sidebar-search-btn:hover {
+  background: var(--color-fd-secondary) !important;
+}
+
+.fd-sidebar-search-kbd {
+  display: flex !important;
+  gap: 2px !important;
+  margin-left: auto !important;
+  font-size: 0.75rem !important;
+  opacity: 0.6 !important;
+}
+
+.fd-sidebar-search-kbd kbd {
+  font-family: inherit !important;
+  font-size: 0.7rem !important;
+  padding: 1px 4px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 4px !important;
+  background: var(--color-fd-muted) !important;
+}
+
+.fd-sidebar-ai-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 38px !important;
+  min-width: 38px !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  background: transparent !important;
+  color: var(--color-fd-muted-foreground) !important;
+  cursor: pointer !important;
+  transition: background-color 150ms, color 150ms, border-color 150ms !important;
+}
+
+.fd-sidebar-ai-btn:hover {
+  background: var(--color-fd-accent) !important;
+  color: var(--color-fd-primary) !important;
+  border-color: var(--color-fd-primary) !important;
+}
+
+/* ── Copy page button — split button group ───── */
+
+.fd-page-actions {
+  display: flex !important;
+  gap: 0 !important;
+  align-items: stretch !important;
+}
+
+.fd-page-action-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px 12px !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
+  color: var(--color-fd-muted-foreground) !important;
+  background: transparent !important;
+  border: 1px solid var(--color-fd-border) !important;
+  cursor: pointer !important;
+  transition: background-color 150ms, color 150ms !important;
+  white-space: nowrap !important;
+}
+
+.fd-page-action-btn:hover {
+  background: var(--color-fd-accent) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+.fd-page-actions .fd-page-action-btn:first-child {
+  border-radius: 8px 0 0 8px !important;
+  border-right: none !important;
+}
+
+.fd-page-actions .fd-page-action-dropdown:last-child .fd-page-action-btn,
+.fd-page-actions > .fd-page-action-btn:last-child {
+  border-radius: 0 8px 8px 0 !important;
+  border-left: 1px solid var(--color-fd-border) !important;
+  padding: 6px 8px !important;
+}
+
+.fd-page-actions .fd-page-action-btn:only-child {
+  border-radius: 8px !important;
+  border: 1px solid var(--color-fd-border) !important;
+}
+
+.fd-page-action-dropdown {
+  position: relative !important;
+}
+
+/* Sidebar footer border removal */
+#nd-docs-layout aside .border-t,
+#nd-docs-layout aside [class*="border-t"],
+aside .border-t,
+aside [class*="border-t"] {
+  border-top-color: transparent !important;
+}
+
+/* Reset pixel-border's breadcrumb overrides */
+#nd-docs-layout .fd-breadcrumb {
+  font-size: 0.8125rem !important;
+  letter-spacing: normal !important;
+}
+#nd-docs-layout .fd-breadcrumb-link,
+#nd-docs-layout .fd-breadcrumb-current {
+  font-family: inherit !important;
+  text-transform: none !important;
+}
+
+/* Reset pixel-border's last-updated styling */
+#nd-docs-layout .fd-last-updated {
+  color: var(--color-fd-muted-foreground) !important;
+  font-size: 0.8125rem !important;
+}
+
+/* Reset pixel-border's aggressive scrollbar */
+#nd-docs-layout ::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+}
+#nd-docs-layout ::-webkit-scrollbar-thumb {
+  border: none !important;
+  background-clip: padding-box !important;
+}
+
+/* Override pixel-border's sidebar search button radius */
+#nd-docs-layout aside button[class*="rounded"] {
+  border-radius: 8px !important;
+}
+
+/* Reset pixel-border's selection colors */
+#nd-docs-layout ::selection {
+  background: var(--color-fd-primary) !important;
+  color: var(--color-fd-primary-foreground) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * HEADER — clean, no heavy border
+ * ═══════════════════════════════════════════════════════════════════ */
+
+#nd-docs-layout > header,
+header,
+[role="banner"],
+nav[class*="header"] {
+  border-bottom: 1px solid var(--color-fd-border) !important;
+}
+
+/* Override pixel-border's aggressive selectors for search dialog */
+#nd-docs-layout [role="dialog"],
+[role="dialog"] {
+  border-radius: 12px !important;
+}
+
+#nd-docs-layout [role="dialog"] [class*="rounded"] {
+  border-radius: inherit !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * CONTENT — links, code, tables, etc.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* Links in prose — green colored */
+.fd-docs-content a:not(.fd-page-nav-card):not([class]) {
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+  text-decoration-color: rgba(13, 147, 115, 0.3) !important;
+  text-decoration-thickness: 1px !important;
+  font-weight: 500 !important;
+  color: var(--color-fd-primary) !important;
+  transition: text-decoration-color 150ms !important;
+}
+
+.fd-docs-content a:not(.fd-page-nav-card):not([class]):hover {
+  text-decoration-color: var(--color-fd-primary) !important;
+}
+
+/* Inline code */
+.fd-docs-content :not(pre) > code {
+  padding: 2px 5px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  font-size: 0.875rem !important;
+  border-radius: 6px !important;
+  background: var(--color-fd-muted) !important;
+  color: var(--color-fd-foreground) !important;
+  font-weight: 400 !important;
+}
+
+/* Tables */
+#nd-docs-layout .fd-docs-content table,
+.fd-docs-content table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  background: var(--color-fd-card) !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  overflow: hidden !important;
+  width: 100% !important;
+}
+
+.fd-docs-content th {
+  background: var(--color-fd-muted) !important;
+  font-weight: 500 !important;
+  font-size: 0.8125rem !important;
+  color: var(--color-fd-muted-foreground) !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.fd-docs-content th,
+.fd-docs-content td {
+  padding: 0.75rem 1rem !important;
+  border-bottom: 1px solid var(--color-fd-border) !important;
+  font-size: 0.875rem !important;
+}
+
+.fd-docs-content tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* Blockquotes */
+.fd-docs-content blockquote {
+  border-left: 3px solid var(--color-fd-primary) !important;
+  padding-left: 1rem !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-style: normal !important;
+  margin: 1rem 0 !important;
+}
+
+/* Horizontal rule */
+.fd-docs-content hr {
+  border-color: var(--color-fd-border) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * CARDS
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-card {
+  display: block !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  background: var(--color-fd-card) !important;
+  padding: 1.25rem !important;
+  font-size: 0.875rem !important;
+  color: var(--color-fd-card-foreground) !important;
+  box-shadow: none !important;
+  transition: background-color 150ms, border-color 150ms !important;
+}
+
+.fd-card:hover {
+  border-color: var(--color-fd-primary) !important;
+  box-shadow: none !important;
+}
+
+.fd-card-icon {
+  margin-bottom: 0.5rem !important;
+  width: fit-content !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  padding: 0.5rem !important;
+  color: var(--color-fd-primary) !important;
+  background: rgba(13, 147, 115, 0.06) !important;
+}
+
+.dark .fd-card-icon {
+  background: rgba(38, 189, 108, 0.08) !important;
+}
+
+.fd-card-title {
+  font-weight: 500 !important;
+  font-size: 0.9375rem !important;
+}
+
+.fd-card-description {
+  color: var(--color-fd-muted-foreground) !important;
+  margin-top: 0.25rem !important;
+  font-size: 0.8125rem !important;
+  line-height: 1.5 !important;
+}
+
+.fd-cards {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 0.75rem !important;
+}
+
+@media (min-width: 640px) {
+  .fd-cards {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+#nd-docs-layout .fd-page-nav-card,
+.fd-page-nav-card {
+  border-radius: 12px !important;
+}
+
+#nd-docs-layout article a[class*="border"] {
+  border-radius: 12px !important;
+  border-color: var(--color-fd-border) !important;
+}
+
+#nd-docs-layout article a[class*="border"]:hover {
+  background: var(--color-fd-accent) !important;
+  border-color: var(--color-fd-primary) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * CODE BLOCKS
+ * ═══════════════════════════════════════════════════════════════════ */
+
+#nd-docs-layout figure.shiki,
+figure.shiki {
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--color-fd-border) !important;
+}
+
+#nd-docs-layout figure.shiki button {
+  border-radius: 6px !important;
+}
+
+#nd-docs-layout figure.shiki > div:first-child {
+  border-radius: 10px !important;
+}
+
+#nd-docs-layout figure[data-rehype-pretty-code-figure],
+#nd-docs-layout figure[data-rehype-pretty-code-figure] pre {
+  border-radius: 10px !important;
+}
+
+#nd-docs-layout article figure {
+  border-radius: 10px !important;
+  overflow: hidden !important;
+}
+
+#nd-docs-layout figure button {
+  border-radius: 6px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * TABS — bottom border indicator
+ * ═══════════════════════════════════════════════════════════════════ */
+
+#nd-docs-layout [role="tablist"],
+[role="tablist"] {
+  border-bottom: 1px solid var(--color-fd-border) !important;
+  border-radius: 0 !important;
+}
+
+#nd-docs-layout [role="tab"],
+[role="tab"] {
+  font-size: 0.875rem !important;
+  font-weight: 400 !important;
+  padding: 0.5rem 0.75rem !important;
+  border-radius: 0 !important;
+  color: var(--color-fd-muted-foreground) !important;
+  border-bottom: 2px solid transparent !important;
+  transition: color 150ms, border-color 150ms !important;
+}
+
+#nd-docs-layout [role="tab"][aria-selected="true"],
+#nd-docs-layout [role="tab"][data-state="active"],
+[role="tab"][aria-selected="true"],
+[role="tab"][data-state="active"] {
+  color: var(--color-fd-primary) !important;
+  border-bottom-color: var(--color-fd-primary) !important;
+  font-weight: 500 !important;
+}
+
+#nd-docs-layout [role="tabpanel"] {
+  border-radius: 0 !important;
+}
+
+#nd-docs-layout div:has(> [role="tablist"]) {
+  border-radius: 10px !important;
+  overflow: hidden !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * CALLOUT, ACCORDION
+ * ═══════════════════════════════════════════════════════════════════ */
+
+#nd-docs-layout [style*="--callout-color"],
+[style*="--callout-color"] {
+  border-radius: 10px !important;
+  border-width: 1px !important;
+}
+
+#nd-docs-layout [class*="bg-fd-card"],
+#nd-docs-layout [class*="fd-callout"],
+#nd-docs-layout [role="alert"] {
+  border-radius: 10px !important;
+}
+
+details {
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 10px !important;
+  padding: 0 !important;
+  margin: 0.75rem 0 !important;
+  overflow: hidden !important;
+}
+
+details summary {
+  padding: 0.75rem 1rem !important;
+  font-weight: 500 !important;
+  font-size: 0.9375rem !important;
+  cursor: pointer !important;
+  color: var(--color-fd-foreground) !important;
+  background: var(--color-fd-secondary) !important;
+  transition: background 150ms !important;
+}
+
+details summary:hover {
+  background: var(--color-fd-accent) !important;
+}
+
+details[open] summary {
+  border-bottom: 1px solid var(--color-fd-border) !important;
+}
+
+details > :not(summary) {
+  padding: 0.75rem 1rem !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * TOC
+ * ═══════════════════════════════════════════════════════════════════ */
+
+#nd-toc a[data-active="true"] {
+  color: var(--color-fd-primary) !important;
+  font-weight: 500 !important;
+}
+
+#nd-toc a[data-active="false"] {
+  color: var(--color-fd-muted-foreground) !important;
+}
+
+#nd-toc a {
+  font-size: 0.875rem !important;
+  line-height: 1.3 !important;
+}
+
+#nd-toc h3 {
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * COMMAND PALETTE
+ * ═══════════════════════════════════════════════════════════════════ */
+
+#nd-docs-layout .omni-content,
+.omni-content {
+  border-radius: 12px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  background: var(--color-fd-popover) !important;
+  box-shadow: 0 16px 70px rgba(0, 0, 0, 0.1) !important;
+}
+
+#nd-docs-layout .omni-item,
+.omni-item {
+  border-radius: 8px !important;
+}
+
+.omni-item-active {
+  background: var(--color-fd-accent) !important;
+}
+
+#nd-docs-layout .omni-highlight,
+.omni-highlight {
+  background: rgba(13, 147, 115, 0.1) !important;
+  color: var(--color-fd-primary) !important;
+  border-radius: 4px !important;
+}
+
+.dark .omni-highlight {
+  background: rgba(38, 189, 108, 0.15) !important;
+}
+
+.omni-search-input:focus {
+  caret-color: var(--color-fd-primary) !important;
+}
+
+#nd-docs-layout .omni-kbd,
+#nd-docs-layout .omni-kbd-sm,
+.omni-kbd,
+.omni-kbd-sm {
+  border-radius: 4px !important;
+}
+
+#nd-docs-layout .omni-close-btn,
+.omni-close-btn {
+  border-radius: 6px !important;
+}
+
+/* Override pixel-border popover radius */
+#nd-docs-layout [data-radix-popper-content-wrapper] > * {
+  border-radius: 10px !important;
+}
+
+/* Override pixel-border KBD radius */
+#nd-docs-layout kbd {
+  border-radius: 4px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * PAGE FOOTER, ACTIONS, DESCRIPTION
+ * ═══════════════════════════════════════════════════════════════════ */
+
+#nd-docs-layout .fd-page-footer,
+.fd-page-footer {
+  border-top: 1px solid var(--color-fd-border) !important;
+}
+
+#nd-docs-layout .fd-page-footer a {
+  border-radius: 8px !important;
+  font-size: 0.8125rem !important;
+  border-color: var(--color-fd-border) !important;
+}
+
+#nd-docs-layout .fd-page-footer a:hover {
+  background: var(--color-fd-accent) !important;
+  border-color: var(--color-fd-border) !important;
+}
+
+.fd-page-description {
+  margin-bottom: 1rem !important;
+  font-size: 1rem !important;
+  line-height: 1.7 !important;
+  color: var(--color-fd-muted-foreground) !important;
+}
+
+#nd-docs-layout .fd-page-action-btn,
+.fd-page-action-btn {
+  border-radius: 8px !important;
+  font-size: 0.8125rem !important;
+  letter-spacing: normal !important;
+}
+
+#nd-docs-layout .fd-page-action-menu,
+.fd-page-action-menu {
+  border-radius: 10px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+#nd-docs-layout .fd-page-action-menu-item,
+.fd-page-action-menu-item {
+  border-radius: 6px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * AI CHAT
+ * ═══════════════════════════════════════════════════════════════════ */
+
+#nd-docs-layout .fd-ai-dialog,
+.fd-ai-dialog {
+  border-radius: 14px !important;
+  box-shadow: 0 16px 70px rgba(0, 0, 0, 0.1) !important;
+}
+
+#nd-docs-layout .fd-ai-bubble-user,
+.fd-ai-bubble-user {
+  border-radius: 16px 16px 4px 16px !important;
+}
+
+#nd-docs-layout .fd-ai-bubble-ai,
+.fd-ai-bubble-ai {
+  border-radius: 16px 16px 16px 4px !important;
+}
+
+#nd-docs-layout .fd-ai-input-wrap,
+.fd-ai-input-wrap {
+  border-radius: 10px !important;
+}
+
+#nd-docs-layout .fd-ai-send-btn,
+.fd-ai-send-btn {
+  border-radius: 10px !important;
+}
+
+.dark .fd-ai-floating-btn {
+  border-radius: 999px !important;
+  background: var(--color-fd-primary) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(38, 189, 108, 0.25) !important;
+  border: none !important;
+}
+
+.dark .fd-ai-floating-btn:hover {
+  filter: brightness(1.1) !important;
+}
+
+:root:not(.dark) .fd-ai-floating-btn {
+  border-radius: 999px !important;
+  background: var(--color-fd-primary) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(13, 147, 115, 0.2) !important;
+  border: none !important;
+}
+
+:root:not(.dark) .fd-ai-floating-btn:hover {
+  filter: brightness(1.1) !important;
+}
+
+#nd-docs-layout .fd-ai-suggestion,
+.fd-ai-suggestion {
+  border-radius: 10px !important;
+}
+
+#nd-docs-layout .fd-ai-result,
+.fd-ai-result {
+  border-radius: 10px !important;
+}
+
+#nd-docs-layout .fd-ai-fm-input-container,
+.fd-ai-fm-input-container {
+  border-radius: 12px !important;
+}
+
+#nd-docs-layout .fd-ai-fm-send-btn,
+.fd-ai-fm-send-btn {
+  border-radius: 9999px !important;
+}
+
+#nd-docs-layout .fd-ai-fm-suggestion,
+.fd-ai-fm-suggestion {
+  border-radius: 9999px !important;
+}
+
+#nd-docs-layout .fd-ai-fm-trigger-btn,
+.fd-ai-fm-trigger-btn {
+  border-radius: 16px !important;
+}
+
+#nd-docs-layout .fd-ai-fm-close-btn,
+.fd-ai-fm-close-btn {
+  border-radius: 9999px !important;
+}
+
+#nd-docs-layout .fd-ai-code-block,
+.fd-ai-code-block {
+  border-radius: 10px !important;
+}
+
+#nd-docs-layout .fd-ai-code-copy,
+.fd-ai-code-copy {
+  border-radius: 6px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * SCROLLBAR — subtle
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-sidebar::-webkit-scrollbar {
+  width: 4px !important;
+}
+
+.fd-sidebar::-webkit-scrollbar-thumb {
+  background: var(--color-fd-border) !important;
+  border-radius: 4px !important;
+}
+
+.fd-sidebar::-webkit-scrollbar-track {
+  background: transparent !important;
+}

@@ -1,0 +1,59 @@
+---
+title: Quickstart
+description: Get your documentation site running in under 5 minutes.
+---
+
+# Quickstart
+
+Follow these steps to create your first documentation site.
+
+## Create a New Project
+
+```bash
+npx create-docs-app my-docs
+cd my-docs
+pnpm install
+```
+
+## Start the Development Server
+
+```bash
+pnpm dev
+```
+
+Your docs site will be available at `http://localhost:3000/docs`.
+
+## Project Structure
+
+```
+my-docs/
+├── app/
+│   └── docs/
+│       ├── page.mdx          # Home page
+│       └── getting-started/
+│           └── page.mdx      # Getting started page
+├── docs.config.tsx            # Configuration
+├── package.json
+└── tsconfig.json
+```
+
+## Add Your First Page
+
+Create a new file at `app/docs/my-page/page.mdx`:
+
+```mdx
+---
+title: My First Page
+description: This is my first documentation page.
+---
+
+# My First Page
+
+Hello, world!
+```
+
+## Next Steps
+
+- Configure your [sidebar navigation](/docs/organize/navigation)
+- Add [custom themes](/docs/customize/themes)
+- Set up [AI-powered search](/docs/getting-started/ai-native)

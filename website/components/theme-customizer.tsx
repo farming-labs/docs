@@ -21,7 +21,7 @@ interface Colors {
   ring: string;
 }
 
-type AIMode = "floating" | "search";
+type AIMode = "floating" | "search" | "sidebar-icon";
 type AIPosition = "bottom-right" | "bottom-left" | "bottom-center";
 type AIFloatingStyle = "panel" | "modal" | "popover" | "full-modal";
 
@@ -54,6 +54,7 @@ const PRESETS: Record<
     sidebar: SidebarStyle;
     toc: { style: TocStyle };
     radius: string;
+    ai?: { mode: AIMode };
   }
 > = {
   default: {
@@ -481,6 +482,45 @@ function buildConfigCSS(state: ThemeState): string {
     `);
   }
 
+  // sidebar-icon AI mode: hide floating button, show sidebar Ask AI button
+  if (state.ai.enabled && state.ai.mode === "sidebar-icon") {
+    rules.push(`
+      .fd-ai-floating-btn, .fd-ai-floating-trigger,
+      .fd-ai-fm-input-bar, .fd-ai-fm-trigger-btn { display: none !important; }
+      .fd-sidebar-ai-btn-injected {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 36px !important;
+        min-width: 36px !important;
+        height: 36px !important;
+        border-radius: 8px !important;
+        border: 1px solid var(--color-fd-border) !important;
+        background: transparent !important;
+        color: var(--color-fd-muted-foreground) !important;
+        cursor: pointer !important;
+        transition: background-color 150ms, color 150ms, border-color 150ms !important;
+        flex-shrink: 0 !important;
+      }
+      .fd-sidebar-ai-btn-injected:hover {
+        background: var(--color-fd-accent) !important;
+        color: var(--color-fd-primary) !important;
+        border-color: var(--color-fd-primary) !important;
+      }
+      .fd-cz-search-ai-row {
+        display: flex !important;
+        gap: 6px !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        padding: 0 !important;
+      }
+      .fd-cz-search-ai-row > button:first-child {
+        flex: 1 !important;
+        min-width: 0 !important;
+      }
+    `);
+  }
+
   // AI position override — only apply to closed trigger, not the open input bar
   if (state.ai.enabled && state.ai.mode === "floating") {
     const pos = state.ai.position;
@@ -518,14 +558,10 @@ function buildConfigCSS(state: ThemeState): string {
 const MOON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-full"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
 const SUN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-full"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`;
 
-const presetCSSCache: Partial<Record<PresetKey, string>> = {};
-
 async function fetchPresetCSS(preset: PresetKey): Promise<string> {
-  if (presetCSSCache[preset]) return presetCSSCache[preset]!;
   try {
-    const res = await fetch(`/themes/${preset}.css`);
+    const res = await fetch(`/themes/${preset}.css?v=${Date.now()}`);
     const css = await res.text();
-    presetCSSCache[preset] = css;
     return css;
   } catch {
     return "";
@@ -553,7 +589,7 @@ function buildInitialState(presetKey?: PresetKey): ThemeState {
     toc: { enabled: true, depth: 3, style: p.toc.style },
     ai: {
       enabled: true,
-      mode: "floating",
+      mode: p.ai?.mode ?? "floating",
       position: "bottom-right",
       floatingStyle: "panel",
     },
@@ -913,6 +949,7 @@ export function ThemeCustomizer() {
         radius: p.radius,
         sidebar: p.sidebar,
         toc: { ...s.toc, style: p.toc.style },
+        ai: { ...s.ai, mode: p.ai?.mode ?? "floating" },
       }));
       setOpen(true);
       setHasCustomized(true);
@@ -936,6 +973,7 @@ export function ThemeCustomizer() {
       radius: p.radius,
       sidebar: p.sidebar,
       toc: { ...s.toc, style: p.toc.style },
+      ai: { ...s.ai, mode: p.ai?.mode ?? "floating" },
     }));
     setHasCustomized(true);
     loadPresetCSS(key);
@@ -952,6 +990,50 @@ export function ThemeCustomizer() {
       return next;
     });
   }, []);
+
+  // Inject/remove Ask AI button next to search when sidebar-icon mode is active
+  useEffect(() => {
+    if (!hasCustomized || !isDocsPage) return;
+
+    const inject = () => {
+      const existing = document.querySelector(".fd-cz-search-ai-row");
+      if (state.ai.enabled && state.ai.mode === "sidebar-icon") {
+        if (existing) return;
+        const sidebar = document.querySelector("#nd-docs-layout aside");
+        if (!sidebar) return;
+        const searchBtn = sidebar.querySelector('button[class*="bg-fd-secondary"]')
+          ?? sidebar.querySelector('button:has(> svg)');
+        if (!searchBtn || !searchBtn.parentElement) return;
+        const wrapper = document.createElement("div");
+        wrapper.className = "fd-cz-search-ai-row";
+        searchBtn.parentElement.insertBefore(wrapper, searchBtn);
+        wrapper.appendChild(searchBtn);
+        const aiBtn = document.createElement("button");
+        aiBtn.className = "fd-sidebar-ai-btn-injected";
+        aiBtn.title = "Ask AI";
+        aiBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>`;
+        aiBtn.onclick = () => {
+          const searchTrigger = document.querySelector<HTMLButtonElement>('button[data-search-full]');
+          if (searchTrigger) { searchTrigger.click(); return; }
+          const omniBtn = document.querySelector<HTMLButtonElement>('[class*="fd-ai"], .fd-ai-floating-btn');
+          if (omniBtn) omniBtn.click();
+        };
+        wrapper.appendChild(aiBtn);
+      } else {
+        if (existing) {
+          const searchBtn = existing.querySelector("button:not(.fd-sidebar-ai-btn-injected)");
+          if (searchBtn && existing.parentElement) {
+            existing.parentElement.insertBefore(searchBtn, existing);
+          }
+          existing.remove();
+        }
+      }
+    };
+
+    inject();
+    const timer = setTimeout(inject, 300);
+    return () => clearTimeout(timer);
+  }, [state.ai.enabled, state.ai.mode, hasCustomized, isDocsPage, presetCSS]);
 
   const cssCode = useMemo(() => generateCSS(state), [state]);
   const configCode = useMemo(() => generateConfig(state), [state]);
@@ -1259,6 +1341,13 @@ export function ThemeCustomizer() {
                       );
                     })}
                   </div>
+                  <a
+                    href="/themes"
+                    className="mt-2 flex items-center justify-center gap-1.5 rounded-sm px-3 py-2 border border-white/[6%] text-[11px] text-white/50 hover:text-white/80 hover:border-white/15 transition-all cursor-pointer"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                    Explore more themes
+                  </a>
                 </Section>
 
                 {/* Primary Color Quick Swatches */}
@@ -1347,6 +1436,7 @@ export function ThemeCustomizer() {
                         options={[
                           { value: "floating", label: "Floating" },
                           { value: "search", label: "Search" },
+                          { value: "sidebar-icon", label: "Sidebar Icon" },
                         ]}
                         onChange={(v) => {
                           setHasCustomized(true);

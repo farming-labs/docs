@@ -1,0 +1,64 @@
+---
+title: Navigation
+description: Configure navigation and sidebar ordering.
+---
+
+# Navigation
+
+Control how pages appear in the sidebar and how they're ordered.
+
+## Sidebar Ordering
+
+By default, pages are sorted alphabetically. You can change this:
+
+### Alphabetical (Default)
+
+```tsx
+export default defineDocs({
+  ordering: "alphabetical",
+});
+```
+
+### Numeric Ordering
+
+Use the `order` frontmatter field:
+
+```mdx
+---
+title: First Page
+order: 1
+---
+```
+
+```tsx
+export default defineDocs({
+  ordering: "numeric",
+});
+```
+
+### Custom Ordering
+
+Specify exact page order:
+
+```tsx
+export default defineDocs({
+  ordering: [
+    { slug: "getting-started" },
+    { slug: "installation" },
+    { slug: "concepts", children: [
+      { slug: "database" },
+      { slug: "session-management" },
+    ]},
+  ],
+});
+```
+
+## Breadcrumbs
+
+Enable breadcrumb navigation:
+
+```tsx
+export default defineDocs({
+  breadcrumb: { enabled: true },
+});
+```

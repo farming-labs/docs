@@ -4,11 +4,11 @@ import path from "node:path";
 import matter from "gray-matter";
 import type { ReactNode, ReactElement } from "react";
 import { serializeIcon } from "./serialize-icon.js";
-import type { DocsConfig, ThemeToggleConfig, BreadcrumbConfig, SidebarConfig, TypographyConfig, FontStyle, PageActionsConfig, CopyMarkdownConfig, OpenDocsConfig, GithubConfig, AIConfig, OrderingItem } from "@farming-labs/docs";
+import type { DocsConfig, ThemeToggleConfig, BreadcrumbConfig, SidebarConfig, TypographyConfig, FontStyle, PageActionsConfig, CopyMarkdownConfig, OpenDocsConfig, GithubConfig, AIConfig, OrderingItem, LastUpdatedConfig } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
-
+import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
 interface PageNode {
   type: "page";
@@ -22,6 +22,8 @@ interface FolderNode {
   icon?: ReactNode;
   index?: PageNode;
   children: (PageNode | FolderNode)[];
+  collapsible?: boolean;
+  defaultOpen?: boolean;
 }
 type TreeNode = PageNode | FolderNode;
 
@@ -63,7 +65,7 @@ function hasChildPages(dir: string): boolean {
 
 // ─── buildTree ───────────────────────────────────────────────────────
 
-function buildTree(config: DocsConfig) {
+function buildTree(config: DocsConfig, flat = false) {
   const docsDir = path.join(process.cwd(), "app", config.entry);
   const icons = config.icons as Record<string, unknown> | undefined;
   const ordering = config.ordering;
@@ -100,6 +102,7 @@ function buildTree(config: DocsConfig) {
         icon,
         index: { type: "page", name: displayName, url, icon },
         children: folderChildren,
+        ...(flat ? { collapsible: false, defaultOpen: true } : {}),
       };
     }
     return { type: "page", name: displayName, url, icon };
@@ -158,6 +161,7 @@ function buildTree(config: DocsConfig) {
   rootChildren.push(...scanDir(docsDir, [], rootSlugOrder));
   return { name: "Docs", children: rootChildren };
 }
+
 
 // ─── Last Modified Map ───────────────────────────────────────────────
 
@@ -297,6 +301,7 @@ function resolveSidebar(sidebar: boolean | SidebarConfig | undefined) {
     footer: sidebar.footer as ReactNode,
     banner: sidebar.banner as ReactNode,
     collapsible: sidebar.collapsible,
+    flat: sidebar.flat,
   };
 }
 
@@ -380,6 +385,39 @@ function TypographyStyle({ typography }: { typography?: TypographyConfig }) {
   return <style dangerouslySetInnerHTML={{ __html: css }} />;
 }
 
+// ─── Layout CSS variable generation ──────────────────────────────────
+
+interface LayoutDimensions {
+  sidebarWidth?: number;
+  contentWidth?: number;
+  tocWidth?: number;
+}
+
+function LayoutStyle({ layout }: { layout?: LayoutDimensions }) {
+  if (!layout) return null;
+  const rootVars: string[] = [];
+  const gridVars: string[] = [];
+  if (layout.sidebarWidth) {
+    const v = `--fd-sidebar-width: ${layout.sidebarWidth}px`;
+    rootVars.push(`${v};`);
+    gridVars.push(`${v} !important;`);
+  }
+  if (layout.contentWidth) {
+    rootVars.push(`--fd-content-width: ${layout.contentWidth}px;`);
+  }
+  if (layout.tocWidth) {
+    const v = `--fd-toc-width: ${layout.tocWidth}px`;
+    rootVars.push(`${v};`);
+    gridVars.push(`${v} !important;`);
+  }
+  if (rootVars.length === 0) return null;
+  const parts = [`:root {\n  ${rootVars.join("\n  ")}\n}`];
+  if (gridVars.length > 0) {
+    parts.push(`[style*="fd-sidebar-col"] {\n  ${gridVars.join("\n  ")}\n}`);
+  }
+  return <style dangerouslySetInnerHTML={{ __html: parts.join("\n") }} />;
+}
+
 // ─── createDocsLayout ────────────────────────────────────────────────
 
 export function createDocsLayout(config: DocsConfig) {
@@ -402,7 +440,9 @@ export function createDocsLayout(config: DocsConfig) {
       : undefined;
 
   // Sidebar
-  const sidebarProps = resolveSidebar(config.sidebar);
+  const resolvedSidebar = resolveSidebar(config.sidebar);
+  const sidebarFlat = resolvedSidebar.flat;
+  const { flat: _sidebarFlat, ...sidebarProps } = resolvedSidebar;
 
   // Breadcrumb
   const breadcrumbConfig = config.breadcrumb;
@@ -417,12 +457,20 @@ export function createDocsLayout(config: DocsConfig) {
   // Typography
   const typography = config.theme?.ui?.typography;
 
+  // Layout dimensions (sidebar width, content width, toc width)
+  const layoutDimensions = config.theme?.ui?.layout;
+
   // Page actions (Copy Markdown, Open in …)
   const pageActions = config.pageActions;
   const copyMarkdownEnabled = resolveBool(pageActions?.copyMarkdown);
   const openDocsEnabled = resolveBool(pageActions?.openDocs);
   const pageActionsPosition = pageActions?.position ?? "below-title";
-  const pageActionsAlignment = pageActions?.alignment ?? "right";
+  const pageActionsAlignment = pageActions?.alignment ?? "left";
+
+  // Last updated config — normalize boolean/object to position string
+  const lastUpdatedRaw = config.lastUpdated;
+  const lastUpdatedEnabled = lastUpdatedRaw !== false && (typeof lastUpdatedRaw !== "object" || lastUpdatedRaw.enabled !== false);
+  const lastUpdatedPosition: "footer" | "below-title" = typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
 
   // Serialize provider icons to HTML strings so they survive the
   // server → client component boundary.
@@ -450,7 +498,7 @@ export function createDocsLayout(config: DocsConfig) {
   // AI features — resolved from config, rendered automatically
   const aiConfig = config.ai as AIConfig | undefined;
   const aiEnabled = !!aiConfig?.enabled;
-  const aiMode = aiConfig?.mode ?? "search";
+  const aiMode = aiConfig?.mode ?? "search" as "search" | "floating" | "sidebar-icon";
   const aiPosition = aiConfig?.position ?? "bottom-right";
   const aiFloatingStyle = aiConfig?.floatingStyle ?? "panel";
   // Serialize the custom trigger component to HTML so it survives
@@ -473,13 +521,17 @@ export function createDocsLayout(config: DocsConfig) {
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     return (
       <DocsLayout
-        tree={buildTree(config)}
+        tree={buildTree(config, !!sidebarFlat)}
         nav={{ title: navTitle, url: navUrl }}
         themeSwitch={themeSwitch}
         sidebar={sidebarProps}
+        {...(aiMode === "sidebar-icon" && aiEnabled ? {
+          searchToggle: { components: { lg: <SidebarSearchWithAI /> } }
+        } : {})}
       >
         <ColorStyle colors={colors} />
         <TypographyStyle typography={typography} />
+        <LayoutStyle layout={layoutDimensions} />
         {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
         <DocsCommandSearch />
         {aiEnabled && (
@@ -507,6 +559,8 @@ export function createDocsLayout(config: DocsConfig) {
           githubBranch={githubBranch}
           githubDirectory={githubDirectory}
           lastModifiedMap={lastModifiedMap}
+          lastUpdatedEnabled={lastUpdatedEnabled}
+          lastUpdatedPosition={lastUpdatedPosition}
           descriptionMap={descriptionMap}
         >
           {children}

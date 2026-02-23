@@ -1,0 +1,44 @@
+---
+title: Migration Guide
+description: Migrate from other documentation frameworks.
+---
+
+# Migration Guide
+
+Moving from another documentation framework? This guide covers the key
+differences and migration steps.
+
+## From Docusaurus
+
+1. **Content Format**: Both use MDX, so your content files can be reused with
+   minimal changes.
+2. **Configuration**: Replace `docusaurus.config.js` with `docs.config.tsx`.
+3. **Sidebar**: Sidebars are generated automatically from the file system.
+
+## From Nextra
+
+1. **File Structure**: Similar file-based routing approach.
+2. **Theme**: Replace Nextra's theme configuration with our theme system.
+3. **MDX Components**: Custom components can be mapped in the config.
+
+## From VitePress
+
+1. **Runtime**: VitePress uses Vite; we use Next.js.
+2. **Markdown**: VitePress uses standard Markdown; we use MDX.
+3. **Configuration**: Replace `.vitepress/config.ts` with `docs.config.tsx`.
+
+## Common Migration Steps
+
+```bash
+# 1. Install dependencies
+pnpm add @farming-labs/docs @farming-labs/theme
+
+# 2. Create the configuration
+touch docs.config.tsx
+
+# 3. Move your content
+cp -r old-docs/content/* app/docs/
+
+# 4. Start development
+pnpm dev
+```
