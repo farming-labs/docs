@@ -55,7 +55,7 @@ function HeroSection() {
 
   return (
     <section className="relative md:mx-0 -mx-[5%] min-h-screen flex items-end overflow-y-hidden">
-      <div className="absolute w-full top-14 right-0 z-[999] h-px bg-white/[8%]" /> 
+      <div className="absolute w-full top-14 right-0 z-[999] h-px bg-white/[8%]" />
       <div className="absolute bottom-[70px] sm:bottom-16 left-0 right-0 z-[999] h-px bg-white/[8%]" />
       <AnimatedBackground />
       <div className="relative z-[999] w-full pb-12 sm:pb-16 pt-24 px-5 sm:px-0">
@@ -64,28 +64,34 @@ function HeroSection() {
           <div className="max-w-full sm:max-w-lg">
             <div className="flex flex-col gap-2">
               <div className="inline-block">
-                <span className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
+                <a href="/changelog#v0.0.1" className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
                   v0.0.1
-                </span>
+                </a>
               </div>
               <div className="inline-block">
-                <span className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
+                <a href="/changelog#v0.0.2-beta.16-20" className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
-                  v0.0.2-beta.1
-                </span>
+                  v0.0.2-beta.20
+                </a>
               </div>
               <div className="inline-block">
-                <span className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
+                <a href="/changelog#v0.0.2-beta.11-15" className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
-                  v0.0.2-beta.5
-                </span>
+                  v0.0.2-beta.15
+                </a>
               </div>
               <div className="inline-block">
-                <span className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
+                <a href="/changelog#v0.0.2-beta.5-10" className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
                   v0.0.2-beta.10
-                </span>
+                </a>
+              </div>
+              <div className="inline-block">
+                <a href="/changelog#v0.0.2-beta.1-4" className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center">
+                  <div className="h-[12px] w-px bg-white/50 mr-2" />
+                  v0.0.2-beta.4
+                </a>
               </div>
             </div>
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-semibold tracking-tighter text-white leading-[0.95]">

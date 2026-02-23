@@ -43,7 +43,7 @@ const releases: Release[] = [
   },
 
   {
-    version: "v0.0.1-beta.16-20",
+    version: "v0.0.2-beta.16-20",
     title: "beta.16–20: Polish, Docs & Mobile Fixes",
     date: "Feb 18–19, 2026",
     isBeta: true,
@@ -64,7 +64,7 @@ const releases: Release[] = [
     ],
   },
   {
-    version: "v0.0.1-beta.11-15",
+    version: "v0.0.2-beta.11-15",
     title: "beta.11–15: GreenTree, AI Sidebar & Customizer",
     date: "Feb 15–17, 2026",
     isBeta: true,
@@ -87,7 +87,7 @@ const releases: Release[] = [
     ],
   },
   {
-    version: "v0.0.1-beta.5-10",
+    version: "v0.0.2-beta.5-10",
     title: "beta.5–10: Themes, Layout & Cross-Framework",
     date: "Feb 11–14, 2026",
     isBeta: true,
@@ -110,7 +110,7 @@ const releases: Release[] = [
     ],
   },
   {
-    version: "v0.0.1-beta.1-4",
+    version: "v0.0.2-beta.1-4",
     title: "beta.1–4: Core, Themes & Customizer",
     date: "Feb 7–10, 2026",
     isBeta: true,
