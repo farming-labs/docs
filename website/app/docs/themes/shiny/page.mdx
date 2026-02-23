@@ -1,0 +1,50 @@
+---
+title: "Shiny"
+description: "Clerk-inspired theme with purple accents and a polished light/dark design"
+icon: "palette"
+order: 4.5
+---
+
+# Shiny Theme
+
+Inspired by [Clerk](https://clerk.com/docs) — a clean, polished UI with purple accents and a professional light/dark design.
+
+## Usage
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { shiny } from "@farming-labs/theme/shiny";
+
+export default defineDocs({
+  entry: "docs",
+  theme: shiny(),
+});
+```
+
+```css title="app/global.css"
+@import "tailwindcss";
+@import "@farming-labs/theme/shiny/css";
+```
+
+## Defaults
+
+| Property | Value |
+|----------|-------|
+| Primary | `hsl(256, 100%, 64%)` (Purple) |
+| Background | `#f7f7f8` |
+| Border | `#e5e5ea` |
+| Border radius | Standard |
+| Content width | 768px |
+| Sidebar width | 280px |
+| Header height | 64px |
+
+## Customizing
+
+```tsx
+theme: shiny({
+  ui: {
+    colors: { primary: "hsl(170, 80%, 45%)" },
+    layout: { sidebarWidth: 300 },
+  },
+}),
+```

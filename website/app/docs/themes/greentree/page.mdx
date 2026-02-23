@@ -1,0 +1,51 @@
+---
+title: "GreenTree"
+description: "Mintlify-inspired theme with emerald green accent and Inter typography"
+icon: "palette"
+order: 4.7
+---
+
+# GreenTree Theme
+
+Inspired by [Mintlify](https://mintlify.com/docs) — a clean, modern design with an emerald green accent, Inter typography, and a compact sidebar.
+
+## Usage
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { greentree } from "@farming-labs/theme/greentree";
+
+export default defineDocs({
+  entry: "docs",
+  theme: greentree(),
+});
+```
+
+```css title="app/global.css"
+@import "tailwindcss";
+@import "@farming-labs/theme/greentree/css";
+```
+
+## Defaults
+
+| Property | Value |
+|----------|-------|
+| Primary | `#0D9373` (Emerald) |
+| Background | `#fff` |
+| Muted | `#505351` |
+| Border | `#DFE1E0` |
+| Border radius | Standard |
+| Content width | 768px |
+| Sidebar width | 240px |
+| Header height | 56px |
+
+## Customizing
+
+```tsx
+theme: greentree({
+  ui: {
+    colors: { primary: "#2563eb" },
+    layout: { sidebarWidth: 280 },
+  },
+}),
+```
