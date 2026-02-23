@@ -901,3 +901,100 @@ function TrashIcon() {
     </svg>
   );
 }
+
+// ─── Pure AI Modal (no search tabs, centered modal with footer) ─────
+
+export function AIModalDialog({
+  open,
+  onOpenChange,
+  api = "/api/docs",
+  suggestedQuestions,
+  aiLabel,
+  loadingComponentHtml,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  api?: string;
+  suggestedQuestions?: string[];
+  aiLabel?: string;
+  loadingComponentHtml?: string;
+}) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [aiInput, setAiInput] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: globalThis.KeyboardEvent) => { if (e.key === "Escape") onOpenChange(false); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, onOpenChange]);
+
+  useEffect(() => {
+    if (open) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  if (!open) return null;
+
+  const aiName = aiLabel || "AI";
+
+  return createPortal(
+    <>
+      <div onClick={() => onOpenChange(false)} className="fd-ai-overlay" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        className="fd-ai-dialog fd-ai-modal-pure"
+        style={{
+          left: "50%", top: "50%", transform: "translate(-50%, -50%)",
+          width: "min(680px, calc(100vw - 32px))",
+          height: "min(560px, calc(100vh - 64px))",
+          animation: "fd-ai-float-center-in 200ms ease-out",
+        }}
+      >
+        <div className="fd-ai-header">
+          <SparklesIcon size={16} />
+          <span className="fd-ai-header-title">Ask {aiName}</span>
+          <kbd className="fd-ai-esc">ESC</kbd>
+          <button onClick={() => onOpenChange(false)} className="fd-ai-close-btn">
+            <XIcon />
+          </button>
+        </div>
+
+        <AIChat
+          api={api}
+          messages={messages}
+          setMessages={setMessages}
+          aiInput={aiInput}
+          setAiInput={setAiInput}
+          isStreaming={isStreaming}
+          setIsStreaming={setIsStreaming}
+          suggestedQuestions={suggestedQuestions}
+          aiLabel={aiLabel}
+          loadingComponentHtml={loadingComponentHtml}
+        />
+
+        <div className="fd-ai-modal-footer">
+          {messages.length > 0 ? (
+            <button
+              className="fd-ai-fm-clear-btn"
+              onClick={() => { if (!isStreaming) { setMessages([]); setAiInput(""); } }}
+              aria-disabled={isStreaming}
+            >
+              <TrashIcon />
+              <span>Clear chat</span>
+            </button>
+          ) : (
+            <div className="fd-ai-modal-footer-hint">
+              AI can be inaccurate, please verify the information.
+            </div>
+          )}
+        </div>
+      </div>
+    </>,
+    document.body,
+  );
+}

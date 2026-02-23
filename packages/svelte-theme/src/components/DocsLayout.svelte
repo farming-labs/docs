@@ -174,10 +174,21 @@
     return `:root {\n  ${vars.join("\n  ")}\n}`;
   }
 
+  function buildLayoutCSS(layout) {
+    if (!layout) return "";
+    const vars = [];
+    if (layout.sidebarWidth) vars.push(`--fd-sidebar-width: ${layout.sidebarWidth}px;`);
+    if (layout.contentWidth) vars.push(`--fd-content-width: ${layout.contentWidth}px;`);
+    if (layout.tocWidth) vars.push(`--fd-toc-width: ${layout.tocWidth}px;`);
+    if (vars.length === 0) return "";
+    return `:root {\n  ${vars.join("\n  ")}\n}`;
+  }
+
   let overrideCSS = $derived.by(() => {
     const colorOverrides = config?.theme?._userColorOverrides;
     const typography = config?.theme?.ui?.typography;
-    return [buildColorsCSS(colorOverrides), buildTypographyCSS(typography)].filter(Boolean).join("\n");
+    const layout = config?.theme?.ui?.layout;
+    return [buildColorsCSS(colorOverrides), buildTypographyCSS(typography), buildLayoutCSS(layout)].filter(Boolean).join("\n");
   });
 </script>
 

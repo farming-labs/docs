@@ -101,6 +101,17 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroCssTheme: "shiny",
     nuxtCssTheme: "shiny",
   },
+  greentree: {
+    factory: "greentree",
+    nextImport: "@farming-labs/theme/greentree",
+    svelteImport: "@farming-labs/svelte-theme/greentree",
+    astroImport: "@farming-labs/astro-theme/greentree",
+    nuxtImport: "@farming-labs/nuxt-theme/greentree",
+    nextCssImport: "greentree",
+    svelteCssTheme: "greentree",
+    astroCssTheme: "greentree",
+    nuxtCssTheme: "greentree",
+  },
 };
 
 function getThemeInfo(theme: string): ThemeInfo {

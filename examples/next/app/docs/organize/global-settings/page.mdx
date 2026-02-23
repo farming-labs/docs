@@ -1,0 +1,37 @@
+---
+title: Global Settings
+description: Configure global settings for your documentation site.
+---
+
+# Global Settings
+
+Global settings are configured in `docs.config.tsx` and apply to every page
+in your documentation.
+
+## Configuration File
+
+```tsx
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  metadata: {
+    titleTemplate: "%s – My Docs",
+    description: "My awesome documentation",
+  },
+  themeToggle: {
+    enabled: true,
+    default: "dark",
+  },
+});
+```
+
+## Available Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `entry` | `string` | `"docs"` | Directory containing docs pages |
+| `metadata` | `object` | — | SEO metadata configuration |
+| `themeToggle` | `object` | `{ enabled: true }` | Dark/light mode toggle |
+| `nav` | `object` | — | Navigation title and URL |
+| `sidebar` | `object` | — | Sidebar configuration |

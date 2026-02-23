@@ -1,0 +1,41 @@
+---
+title: Custom Domain
+description: Connect your own domain to your documentation site.
+icon: link
+---
+
+Set up a custom domain so your docs are served from your own URL (e.g., `docs.yoursite.com`).
+
+## DNS Configuration
+
+Add a CNAME record pointing to your deployment:
+
+```
+Type: CNAME
+Name: docs
+Value: your-project.vercel.app
+```
+
+## Verifying Ownership
+
+After adding the DNS record, verify ownership in your dashboard:
+
+1. Navigate to **Settings → Domains**
+2. Click **Add Domain**
+3. Enter your custom domain
+4. Wait for DNS propagation (usually under 5 minutes)
+
+## SSL Certificates
+
+SSL certificates are provisioned automatically. No manual configuration is needed.
+
+## Subpath Routing
+
+You can also serve docs from a subpath like `yoursite.com/docs`:
+
+```ts
+export default defineDocs({
+  entry: "docs",
+  basePath: "/docs",
+});
+```

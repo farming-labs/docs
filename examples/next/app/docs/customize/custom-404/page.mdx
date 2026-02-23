@@ -1,0 +1,37 @@
+---
+title: Custom 404 Page
+description: Customize the 404 error page for your documentation.
+---
+
+# Custom 404 Page
+
+Create a custom 404 page for when users navigate to non-existent documentation
+pages.
+
+## Create the Page
+
+Add a `not-found.tsx` file in your docs directory:
+
+```tsx
+// app/docs/not-found.tsx
+export default function NotFound() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[50vh]">
+      <h1 className="text-4xl font-bold">404</h1>
+      <p className="text-muted-foreground mt-2">
+        This page could not be found.
+      </p>
+      <a href="/docs" className="mt-4 text-primary underline">
+        Go back to docs
+      </a>
+    </div>
+  );
+}
+```
+
+## Best Practices
+
+1. Include a search bar to help users find what they're looking for
+2. Link back to the docs home page
+3. Show suggested pages based on the URL
+4. Keep the design consistent with your docs theme

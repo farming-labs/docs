@@ -162,6 +162,11 @@ export async function init() {
       label: "Shiny",
       hint: "Glossy, modern look with subtle shimmer effects",
     },
+    {
+      value: "greentree",
+      label: "GreenTree",
+      hint: "Emerald green accent, Inter font, Mintlify-inspired",
+    },
   ];
 
   const theme = await p.select({
@@ -615,6 +620,7 @@ function scaffoldSvelteKit(
     colorful: "colorful",
     darkbold: "darkbold",
     shiny: "shiny",
+    greentree: "greentree",
     default: "fumadocs",
   };
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";
@@ -675,6 +681,7 @@ function scaffoldAstro(
     colorful: "colorful",
     darkbold: "darkbold",
     shiny: "shiny",
+    greentree: "greentree",
     default: "fumadocs",
   };
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";
@@ -727,6 +734,7 @@ function scaffoldNuxt(
     colorful: "colorful",
     darkbold: "darkbold",
     shiny: "shiny",
+    greentree: "greentree",
     default: "fumadocs",
   };
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";

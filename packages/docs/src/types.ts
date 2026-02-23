@@ -354,6 +354,18 @@ export interface SidebarConfig {
    * @default true
    */
   collapsible?: boolean;
+
+  /**
+   * When true, all folder children are rendered flat in the sidebar
+   * (no collapsible sections). Folder index pages appear as category
+   * headings with all children listed directly below them.
+   *
+   * This creates a Mintlify-style sidebar where all navigation items
+   * are always visible.
+   *
+   * @default false
+   */
+  flat?: boolean;
 }
 
 /**
@@ -446,12 +458,37 @@ export interface PageActionsConfig {
   /**
    * Horizontal alignment of page action buttons.
    *
-   * - `"left"` — align to the left (default for most themes)
-   * - `"right"` — align to the right (Vercel style)
+   * - `"left"` — align to the left (default)
+   * - `"right"` — align to the right
    *
    * @default "left"
    */
   alignment?: "left" | "right";
+}
+
+/**
+ * Configuration for the "Last updated" date display.
+ *
+ * @example
+ * ```ts
+ * lastUpdated: { position: "below-title" }
+ * ```
+ */
+export interface LastUpdatedConfig {
+  /**
+   * Whether to show the "Last updated" date.
+   * @default true
+   */
+  enabled?: boolean;
+  /**
+   * Where to render the "Last updated" date.
+   *
+   * - `"footer"` — next to the "Edit on GitHub" link at the bottom (default)
+   * - `"below-title"` — below the page title/description, above the content
+   *
+   * @default "footer"
+   */
+  position?: "footer" | "below-title";
 }
 
 /**
@@ -538,7 +575,7 @@ export interface AIConfig {
    * }
    * ```
    */
-  mode?: "search" | "floating";
+  mode?: "search" | "floating" | "sidebar-icon";
 
   /**
    * Position of the floating chat button on screen.
@@ -929,6 +966,24 @@ export interface DocsConfig {
    * ```
    */
   pageActions?: PageActionsConfig;
+  /**
+   * Configuration for the "Last updated" date display.
+   *
+   * - `true` or `undefined` → shown in footer next to "Edit on GitHub" (default)
+   * - `false` → hidden
+   * - `{ position: "below-title" }` → shown below the page title
+   * - `{ position: "footer" }` → shown next to "Edit on GitHub" (default)
+   *
+   * @example
+   * ```ts
+   * // Show below title (Mintlify style)
+   * lastUpdated: { position: "below-title" }
+   *
+   * // Hide entirely
+   * lastUpdated: false
+   * ```
+   */
+  lastUpdated?: boolean | LastUpdatedConfig;
   /**
    * AI-powered "Ask AI" chat for documentation.
    *

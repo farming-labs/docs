@@ -33,4 +33,5 @@ export type {
   GithubConfig,
   AIConfig,
   OrderingItem,
+  LastUpdatedConfig,
 } from "./types.js";

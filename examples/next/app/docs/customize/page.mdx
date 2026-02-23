@@ -1,0 +1,45 @@
+---
+title: Customize
+icon: settings
+description: Customize the look and feel of your documentation.
+---
+
+# Customize
+
+Make your documentation site uniquely yours with themes, fonts, and custom
+components.
+
+## Theming
+
+Choose from built-in themes or create your own:
+
+```tsx
+import { greentree } from "@farming-labs/theme/greentree";
+
+export default defineDocs({
+  theme: greentree({ /* overrides */ }),
+});
+```
+
+## Available Themes
+
+| Theme | Description |
+|-------|-------------|
+| `fumadocs` | Default theme with clean design |
+| `darkbold` | Monochrome Vercel-inspired theme |
+| `greentree` | Green-accented Mintlify-inspired theme |
+| `colorful` | Vibrant colorful theme |
+| `shiny` | Glossy modern theme |
+
+## Quick Customization
+
+Override any theme value:
+
+```tsx
+theme: greentree({
+  ui: {
+    colors: { primary: "#FF6B35" },
+    sidebar: { style: "bordered" },
+  },
+})
+```

@@ -801,6 +801,12 @@ function ThemesSection() {
       import: '@import "@farming-labs/theme/darkbold/css";',
       colors: ["#000", "#fff", "#888", "#eaeaea"],
     },
+    {
+      name: "GreenTree",
+      description: "Mintlify-inspired — emerald green, Inter font, modern",
+      import: '@import "@farming-labs/theme/greentree/css";',
+      colors: ["#0D9373", "#26BD6C", "#171A18", "#DFE1E0"],
+    },
   ];
 
   return (

@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { fumadocs } from "@farming-labs/theme";
 import { darkbold } from "@farming-labs/theme/darkbold";
+import { greentree } from "@farming-labs/theme/greentree";
+import { darksharp } from "@farming-labs/theme/darksharp";
 
 
 export default defineDocs({
@@ -33,10 +35,13 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
-  theme: darkbold({
+  theme: greentree({
     ui: {
       components: { Callout: { variant: "outline" } },
-      layout: { toc: { enabled: true, depth: 3, style: "default" } },
+      layout: {
+        toc: { enabled: true, depth: 3, style: "default" },
+        sidebarWidth: 300,
+      },
       sidebar: { style: "default" },
       typography: {
         font: {
@@ -54,11 +59,11 @@ export default defineDocs({
   }),
   ai: {
     enabled: true,
-    mode: "floating",
+    mode: "sidebar-icon",
     position: "bottom-right",
-    floatingStyle: "panel",
+    floatingStyle: "modal",
     apiKey: process.env.OPENAI_API_KEY,
-    aiLabel: "DocsBot",
+    aiLabel: "AI",
     suggestedQuestions: [
       "How do I get started?",
       "What themes are available?",
@@ -108,7 +113,10 @@ export default defineDocs({
     email: <Mail size={13} />,
   },
 
+  sidebar: { flat: true },
   breadcrumb: { enabled: true },
+
+  lastUpdated: { position: "below-title" },
 
   pageActions: {
     alignment: "right",
@@ -139,6 +147,33 @@ export default defineDocs({
       ],
     },
   },
+  ordering: [
+    { slug: "getting-started", children: [
+      { slug: "quickstart" },
+      { slug: "ai-native" },
+      { slug: "migration-guide" },
+    ]},
+    { slug: "organize", children: [
+      { slug: "global-settings" },
+      { slug: "navigation" },
+      { slug: "pages" },
+      { slug: "hidden-pages" },
+      { slug: "exclude-files" },
+    ]},
+    { slug: "customize", children: [
+      { slug: "custom-domain" },
+      { slug: "themes" },
+      { slug: "fonts" },
+      { slug: "custom-scripts" },
+      { slug: "react-components" },
+      { slug: "custom-404" },
+    ]},
+    { slug: "create-content", children: [
+      { slug: "format-text" },
+      { slug: "code-blocks" },
+      { slug: "images-embeds" },
+    ]},
+  ],
   metadata: {
     titleTemplate: "%s – Docs",
     description: "Awesome docs powered by Fumadocs preset",

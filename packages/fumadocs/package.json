@@ -46,6 +46,11 @@
       "import": "./dist/darkbold/index.mjs",
       "default": "./dist/darkbold/index.mjs"
     },
+    "./greentree": {
+      "types": "./dist/greentree/index.d.mts",
+      "import": "./dist/greentree/index.mjs",
+      "default": "./dist/greentree/index.mjs"
+    },
     "./search": {
       "types": "./dist/search.d.mts",
       "import": "./dist/search.mjs",
@@ -64,6 +69,7 @@
     "./colorful/css": "./styles/colorful.css",
     "./shiny/css": "./styles/shiny.css",
     "./darkbold/css": "./styles/darkbold.css",
+    "./greentree/css": "./styles/greentree.css",
     "./presets/neutral": "./styles/presets/neutral.css",
     "./presets/black": "./styles/presets/black.css",
     "./presets/base": "./styles/presets/base.css"

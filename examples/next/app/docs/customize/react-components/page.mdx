@@ -1,0 +1,62 @@
+---
+title: React
+description: Add custom React components to your MDX pages.
+---
+
+# Custom React Components
+
+Extend your documentation with interactive React components.
+
+## Registering Components
+
+Add components in your `docs.config.tsx`:
+
+```tsx
+import { MyChart } from "./app/components/my-chart";
+import { InteractiveDemo } from "./app/components/demo";
+
+export default defineDocs({
+  components: {
+    MyChart,
+    InteractiveDemo,
+  },
+});
+```
+
+## Using in MDX
+
+Once registered, use them directly in your MDX files:
+
+```mdx
+# My Page
+
+Here's an interactive chart:
+
+<MyChart data={[1, 2, 3, 4, 5]} />
+
+And a live demo:
+
+<InteractiveDemo />
+```
+
+## Built-in Components
+
+| Component | Description |
+|-----------|-------------|
+| `Callout` | Highlighted information blocks |
+| `Card` | Content cards with links |
+| `Steps` | Numbered step-by-step guides |
+| `Tabs` | Tabbed content sections |
+| `Accordion` | Collapsible content sections |
+
+## Component Variants
+
+```mdx
+<Callout type="info">
+  This is an informational callout.
+</Callout>
+
+<Callout type="warning">
+  Be careful with this operation.
+</Callout>
+```

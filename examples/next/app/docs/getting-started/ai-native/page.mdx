@@ -1,0 +1,60 @@
+---
+title: AI-Native
+description: Configure AI-powered search and chat for your documentation.
+---
+
+# AI-Native Features
+
+Our framework includes built-in AI capabilities that make your docs smarter.
+
+## Enable AI Search
+
+Add the AI configuration to your `docs.config.tsx`:
+
+```tsx
+export default defineDocs({
+  ai: {
+    enabled: true,
+    mode: "floating",
+    position: "bottom-right",
+    apiKey: process.env.OPENAI_API_KEY,
+  },
+});
+```
+
+## AI Modes
+
+| Mode | Description |
+|------|-------------|
+| `search` | Integrated into the Cmd+K search dialog |
+| `floating` | Floating chat widget with slide-out panel |
+
+## Suggested Questions
+
+Pre-populate your AI chat with common questions:
+
+```tsx
+ai: {
+  suggestedQuestions: [
+    "How do I get started?",
+    "What themes are available?",
+    "How do I deploy my docs?",
+  ],
+}
+```
+
+## Custom Loading States
+
+You can customize the loading animation:
+
+```tsx
+ai: {
+  loadingComponent: ({ name }) => (
+    <div className="flex gap-1">
+      <span className="animate-bounce">.</span>
+      <span className="animate-bounce delay-100">.</span>
+      <span className="animate-bounce delay-200">.</span>
+    </div>
+  ),
+}
+```

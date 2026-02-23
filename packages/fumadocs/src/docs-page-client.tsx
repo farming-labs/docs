@@ -41,6 +41,10 @@ interface DocsPageClientProps {
   githubDirectory?: string;
   /** Map of pathname → formatted last-modified date string */
   lastModifiedMap?: Record<string, string>;
+  /** Whether to show "Last updated" at all */
+  lastUpdatedEnabled?: boolean;
+  /** Where to show the "Last updated" date: "footer" (next to Edit on GitHub) or "below-title" */
+  lastUpdatedPosition?: "footer" | "below-title";
   /** Map of pathname → frontmatter description */
   descriptionMap?: Record<string, string>;
   /** Frontmatter description to display below the page title (overrides descriptionMap) */
@@ -131,11 +135,13 @@ export function DocsPageClient({
   openDocs = false,
   openDocsProviders,
   pageActionsPosition = "below-title",
-  pageActionsAlignment = "right",
+  pageActionsAlignment = "left",
   githubUrl,
   githubBranch = "main",
   githubDirectory,
   lastModifiedMap,
+  lastUpdatedEnabled = true,
+  lastUpdatedPosition = "footer",
   descriptionMap,
   description,
   children,
@@ -201,47 +207,47 @@ export function DocsPageClient({
     : undefined;
 
   const normalizedPath = pathname.replace(/\/$/, "") || "/";
-  const lastModified = lastModifiedMap?.[normalizedPath];
+  const lastModified = lastUpdatedEnabled ? lastModifiedMap?.[normalizedPath] : undefined;
 
-  const showFooter = !!githubFileUrl;
+  const showLastUpdatedBelowTitle = !!lastModified && lastUpdatedPosition === "below-title";
+  const showLastUpdatedInFooter = !!lastModified && lastUpdatedPosition === "footer";
+  const showFooter = !!githubFileUrl || showLastUpdatedInFooter;
 
-  // Inject: last-updated, separator, and page-actions portal target after h1
+  const needsBelowTitleBlock = showLastUpdatedBelowTitle || showActions;
+
+  // Inject: last-updated (below-title mode), separator, and page-actions portal target after h1
   useEffect(() => {
+    if (!needsBelowTitleBlock) return;
+
     const timer = requestAnimationFrame(() => {
       const container = document.getElementById("nd-page");
       if (!container) return;
 
-      // Clean up any previously injected elements
       container.querySelectorAll(".fd-below-title-block").forEach(el => el.remove());
 
       const h1 = container.querySelector("h1");
       if (!h1) return;
 
-      // Find the insertion point: after h1, after description if present
       let insertAfter: Element = h1;
       const desc = container.querySelector(".fd-page-description");
       if (desc) insertAfter = desc;
 
-      // Create wrapper for below-title elements
       const wrapper = document.createElement("div");
       wrapper.className = "fd-below-title-block not-prose";
 
-      // Last updated text
-      if (lastModified) {
+      if (showLastUpdatedBelowTitle) {
         const lastUpdatedEl = document.createElement("p");
         lastUpdatedEl.className = "fd-last-updated-inline";
         lastUpdatedEl.textContent = `Last updated ${lastModified}`;
         wrapper.appendChild(lastUpdatedEl);
       }
 
-      // Separator
-      if (lastModified || showActions) {
+      if (showLastUpdatedBelowTitle || showActions) {
         const hr = document.createElement("hr");
         hr.className = "fd-title-separator";
         wrapper.appendChild(hr);
       }
 
-      // Portal target for page actions (React component)
       if (showActions) {
         const portalEl = document.createElement("div");
         portalEl.className = "fd-actions-portal";
@@ -258,7 +264,7 @@ export function DocsPageClient({
       setActionsPortalTarget(null);
       document.querySelectorAll("#nd-page .fd-below-title-block").forEach(el => el.remove());
     };
-  }, [lastModified, showActions, pageActionsAlignment, pathname]);
+  }, [lastModified, needsBelowTitleBlock, showLastUpdatedBelowTitle, showActions, pageActionsAlignment, pathname]);
 
   return (
     <DocsPage
@@ -268,7 +274,6 @@ export function DocsPageClient({
       breadcrumb={{ enabled: false }}
     >
       {breadcrumbEnabled && <PathBreadcrumb pathname={pathname} entry={entry} />}
-      {/* Page actions rendered into portal target (injected after h1) */}
       {showActions && actionsPortalTarget && createPortal(
         <PageActions
           copyMarkdown={copyMarkdown}
@@ -284,6 +289,9 @@ export function DocsPageClient({
         {showFooter && (
           <div className="not-prose fd-page-footer">
             {githubFileUrl && <EditOnGitHub href={githubFileUrl} />}
+            {showLastUpdatedInFooter && lastModified && (
+              <span className="fd-last-updated-footer">Last updated {lastModified}</span>
+            )}
           </div>
         )}
       </DocsBody>
