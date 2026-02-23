@@ -13,6 +13,12 @@
     "**/.astro/**",
     "**/build/**",
     "**/.turbo/**",
-    "website/public/**"
+    "website/public/**",
+    "**/*.css",
+    "**/*.mdx",
+    "**/*.md",
+    "**/*.svelte",
+    "**/*.vue",
+    "**/*.astro"
   ]
 }

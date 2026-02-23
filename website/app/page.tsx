@@ -42,17 +42,6 @@ function Navbar() {
 }
 
 function HeroSection() {
-  const features = [
-    "Zero config — one docs.config.ts, no layout files",
-    "Four themes — default, darksharp, pixel-border, colorful",
-    "Built-in search powered by Orama",
-    "MDX first with frontmatter routing",
-    "Custom components, icons, code tabs from config",
-    "CLI scaffolding — npx @farming-labs/docs init",
-    "Colors, typography, sidebar — all customizable",
-    "Syntax highlighting with Shiki + code titles",
-  ];
-
   return (
     <section className="relative md:mx-0 -mx-[5%] min-h-screen flex items-end overflow-y-hidden">
       <div className="absolute top-14 right-0 z-[999] h-px bg-white/[8%]" />

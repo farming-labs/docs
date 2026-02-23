@@ -17,11 +17,13 @@
     "lint:fix": "oxlint --fix ."
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
     "bumpp": "^10.4.1",
     "oxfmt": "^0.35.0",
     "oxlint": "^1.50.0",
     "playwright": "^1.58.2",
     "puppeteer": "^24.37.5",
+    "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"
   },
   "packageManager": "pnpm@10.18.3"

@@ -13,6 +13,15 @@
     "**/.astro/**",
     "**/build/**",
     "**/.turbo/**",
-    "website/public/**"
+    "website/public/**",
+    "**/*.css",
+    "**/*.mdx",
+    "**/*.md",
+    "**/*.json",
+    "**/*.svelte",
+    "**/*.vue",
+    "**/*.astro",
+    "**/*.yaml",
+    "**/*.yml"
   ]
 }

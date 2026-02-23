@@ -193,35 +193,38 @@ export function Component() {
 
   return (
     <section className="relative w-full overflow-hidden bg-white dark:bg-black text-black dark:text-white min-h-dvh">
+      <div className="absolute max-w-[90%] mx-auto top-6 left-6 md:left-24 flex text-xs font-medium z-[999] gap-2">
+        <Link
+          href={"/"}
+          className="hover:text-white transition-colors hover:no-underline font-mono uppercase text-black/50 dark:text-white/50"
+        >
+          Home <span className="ml-2 text-black/50 dark:text-white/50">/</span>
+        </Link>
+        <GitPullRequest className="size-4" />
+        <p className="font-mono uppercase">Changelog</p>
+      </div>
       <div className="absolute w-full top-14 right-0 z-[999] h-px bg-white/[8%]" />
       <div className="relative max-w-full md:max-w-[90%] mx-auto overflow-hidden">
         <AnimatedBackground />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-black/60" />
-        <div className="relative container mx-auto max-w-full px-6 pt-6 pb-16 text-left">
+        <div className="relative container h-full mx-auto max-w-full px-6 pt-20 md:pt-32 pb-6 text-left">
           <div className="absolute left-0 md:left-0 top-0 h-full w-px bg-white/[8%]" />
           <div className="absolute right-0 md:right-0 top-0 h-full w-px bg-white/[8%]" />
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 text-xs font-medium text-white/80 dark:text-white/80 pb-8">
-              <Link
-                href={"/"}
-                className="hover:text-white transition-colors hover:no-underline font-mono uppercase text-black/50 dark:text-white/50"
-              >
-                Home <span className="ml-2 text-black/50 dark:text-white/50">/</span>
-              </Link>
-              <GitPullRequest className="size-4" />
-              <p className="font-mono uppercase">Changelog</p>
+          <div className="flex flex-col gap-3 h-full">
+
+            <div className="flex flex-col gap-2 justify-end items-start">
+              <h1 className="text-4xl tracking-tighter md:font-bold text-white dark:text-white leading-snug">
+                Latest Updates
+                <br /> & Improvements
+              </h1>
+              <p className="text-white/60 dark:text-white/50 text-sm max-w-lg mt-1">
+                All notable changes to{" "}
+                <code className="font-mono text-white/80 dark:text-white/80">
+                  @farming-labs/docs
+                </code>{" "}
+                are documented here & other related libraries complementing it
+              </p>
             </div>
-            <h1 className="text-4xl tracking-tighter md:font-bold text-white dark:text-white leading-snug">
-              Latest Updates
-              <br /> & Improvements
-            </h1>
-            <p className="text-white/60 dark:text-white/50 text-sm max-w-lg mt-1">
-              All notable changes to{" "}
-              <code className="font-mono text-white/80 dark:text-white/80">
-                @farming-labs/docs
-              </code>{" "}
-              are documented here. Click a version anchor to get a shareable link.
-            </p>
           </div>
         </div>
       </div>
@@ -250,9 +253,8 @@ export function Component() {
           <div
             key={item.version}
             id={item.version}
-            className={`relative flex flex-col lg:flex-row w-full gap-6 lg:gap-0 scroll-mt-20 ${
-              item.isBeta ? "py-10" : "py-16"
-            }`}
+            className={`relative flex flex-col lg:flex-row w-full gap-6 lg:gap-0 scroll-mt-20 ${item.isBeta ? "py-10" : "py-16"
+              }`}
           >
             <div className="lg:sticky top-20 h-fit shrink-0">
               <div className="lg:w-40">
@@ -267,7 +269,7 @@ export function Component() {
                     {item.version}
                   </span>
                 </a>
-                <time className="text-black/40 dark:text-white/40 text-sm font-medium block mt-1">
+                <time className="text-black/40 font-mono text-[11px] uppercase dark:text-white/40 tracking-tight block mt-1">
                   {item.date}
                 </time>
                 {item.pinned && (
@@ -323,11 +325,10 @@ export function Component() {
 
             {idx < orderedReleases.length - 1 && (
               <div
-                className={`absolute bottom-0 left-0 right-0 h-px ${
-                  item.isBeta && orderedReleases[idx + 1]?.isBeta
-                    ? "bg-black/[4%] dark:bg-white/[4%]"
-                    : "bg-black/[8%] dark:bg-white/[8%]"
-                }`}
+                className={`absolute bottom-0 left-0 right-0 h-px ${item.isBeta && orderedReleases[idx + 1]?.isBeta
+                  ? "bg-black/[4%] dark:bg-white/[4%]"
+                  : "bg-black/[8%] dark:bg-white/[8%]"
+                  }`}
               />
             )}
           </div>
