@@ -651,32 +651,87 @@ After running `init`, your project will look like this:
 
 <Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
-    ``` my-app/ ├── docs.config.ts # Docs configuration ├── next.config.ts # Next.js config with
-    withDocs() ├── app/ │ ├── global.css # Theme CSS import │ ├── layout.tsx # Root layout │ └──
-    docs/ │ ├── layout.tsx # Docs layout │ ├── page.mdx # /docs │ ├── installation/ │ │ └── page.mdx
-    # /docs/installation │ └── quickstart/ │ └── page.mdx # /docs/quickstart └── package.json ```
+```
+my-app/
+├── docs.config.ts        # Docs configuration
+├── next.config.ts        # Next.js config with withDocs()
+├── app/
+│   ├── global.css        # Theme CSS import
+│   ├── layout.tsx        # Root layout
+│   └── docs/
+│       ├── layout.tsx    # Docs layout
+│       ├── page.mdx      # /docs
+│       ├── installation/
+│       │   └── page.mdx  # /docs/installation
+│       └── quickstart/
+│           └── page.mdx  # /docs/quickstart
+└── package.json
+```
   </Tab>
   <Tab value="SvelteKit">
-    ``` my-app/ ├── docs/ # Markdown content │ ├── page.md # /docs │ ├── installation/ │ │ └──
-    page.md # /docs/installation │ └── quickstart/ │ └── page.md # /docs/quickstart ├── src/ │ ├──
-    app.css # Theme CSS import │ ├── lib/ │ │ ├── docs.config.ts # Docs configuration │ │ └──
-    docs.server.ts # Server loader + content bundling │ └── routes/ │ └── docs/ │ ├── +layout.svelte
-    # Docs layout │ ├── +layout.server.js # Layout data loader │ └── [...slug]/ │ └── +page.svelte #
-    Dynamic page └── package.json ```
+```
+my-app/
+├── docs/                     # Markdown content
+│   ├── page.md               # /docs
+│   ├── installation/
+│   │   └── page.md           # /docs/installation
+│   └── quickstart/
+│       └── page.md           # /docs/quickstart
+├── src/
+│   ├── app.css               # Theme CSS import
+│   ├── lib/
+│   │   ├── docs.config.ts    # Docs configuration
+│   │   └── docs.server.ts    # Server loader + content bundling
+│   └── routes/
+│       └── docs/
+│           ├── +layout.svelte      # Docs layout
+│           ├── +layout.server.js   # Layout data loader
+│           └── [...slug]/
+│               └── +page.svelte    # Dynamic page
+└── package.json
+```
   </Tab>
   <Tab value="Astro">
-    ``` my-app/ ├── astro.config.mjs # Astro config with SSR ├── docs/ # Markdown content │ ├──
-    page.md # /docs │ ├── installation/ │ │ └── page.md # /docs/installation │ └── quickstart/ │ └──
-    page.md # /docs/quickstart ├── src/ │ ├── lib/ │ │ ├── docs.config.ts # Docs configuration │ │
-    └── docs.server.ts # Server loader + content bundling │ └── pages/ │ ├── api/ │ │ └── docs.ts #
-    Search & AI API route │ └── docs/ │ ├── index.astro # /docs │ └── [...slug].astro # /docs/* └──
-    package.json ```
+```
+my-app/
+├── astro.config.mjs          # Astro config with SSR
+├── docs/                     # Markdown content
+│   ├── page.md               # /docs
+│   ├── installation/
+│   │   └── page.md           # /docs/installation
+│   └── quickstart/
+│       └── page.md           # /docs/quickstart
+├── src/
+│   ├── lib/
+│   │   ├── docs.config.ts    # Docs configuration
+│   │   └── docs.server.ts    # Server loader + content bundling
+│   └── pages/
+│       ├── api/
+│       │   └── docs.ts       # Search & AI API route
+│       └── docs/
+│           ├── index.astro   # /docs
+│           └── [...slug].astro  # /docs/*
+└── package.json
+```
   </Tab>
   <Tab value="Nuxt">
-    ``` my-app/ ├── docs.config.ts # Docs configuration ├── nuxt.config.ts # Nuxt config with theme
-    CSS ├── docs/ # Markdown content │ ├── page.md # /docs │ ├── installation/ │ │ └── page.md #
-    /docs/installation │ └── quickstart/ │ └── page.md # /docs/quickstart ├── server/ │ └── api/ │
-    └── docs.ts # Search & AI API route ├── pages/ │ └── docs/ │ └── [...slug].vue # Dynamic page
-    └── package.json ```
+```
+my-app/
+├── docs.config.ts            # Docs configuration
+├── nuxt.config.ts            # Nuxt config with theme CSS
+├── docs/                     # Markdown content
+│   ├── page.md               # /docs
+│   ├── installation/
+│   │   └── page.md           # /docs/installation
+│   └── quickstart/
+│       └── page.md           # /docs/quickstart
+├── server/
+│   └── api/
+│       └── docs.ts           # Search & AI API route
+├── pages/
+│   └── docs/
+│       └── [...slug].vue     # Dynamic page
+└── package.json
+```
   </Tab>
 </Tabs>
