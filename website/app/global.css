@@ -5,7 +5,11 @@
   --font-mono: var(--font-geist-mono), ui-monospace, "Cascadia Code",
     "Source Code Pro", Menlo, Consolas, monospace;
 }
-
+.fd-page-action-btn {
+  text-transform: uppercase;
+  box-shadow: 2px 2px 0 0 var(--color-fd-border, #262626);
+  font-family: var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace)) !important;
+}
 ::selection {
   background: white;
   color: black;

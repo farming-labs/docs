@@ -55,12 +55,11 @@ function HeroSection() {
 
   return (
     <section className="relative md:mx-0 -mx-[5%] min-h-screen flex items-end overflow-y-hidden">
-      <div className="absolute w-full top-14 right-0 z-[999] h-px bg-white/[8%]" />
+      <div className="absolute top-14 right-0 z-[999] h-px bg-white/[8%]" />
       <div className="absolute bottom-[70px] sm:bottom-16 left-0 right-0 z-[999] h-px bg-white/[8%]" />
       <AnimatedBackground />
       <div className="relative z-[999] w-full pb-12 sm:pb-16 pt-24 px-5 sm:px-0">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 sm:gap-16">
-          {/* Left — headline + CTA */}
           <div className="max-w-full sm:max-w-lg">
             <div className="flex flex-col gap-2">
               <div className="inline-block">
@@ -1122,7 +1121,6 @@ export default function Home() {
         <InstallSection />
         <ThemesSection />
         <ConfigSection />
-        {/* <PackagesSection /> */}
         <FooterSection />
       </div>
     </div>

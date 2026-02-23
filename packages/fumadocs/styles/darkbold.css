@@ -455,6 +455,8 @@ details > :not(summary) {
 .fd-page-action-btn {
   border-radius: 6px;
   font-size: 0.8125rem;
+  text-transform: uppercase;
+  box-shadow: 0 4px 24px hsl(0 0% 0% / 0.4);
 }
 
 .fd-page-action-menu {

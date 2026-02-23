@@ -478,11 +478,12 @@ article a[class*="text-fd-muted-foreground"] {
   border-radius: 0.2rem !important;
   font-size: 0.8125rem !important;
   letter-spacing: normal !important;
+  text-transform: uppercase !important;
+
 }
 
 .fd-page-action-menu {
   border-radius: 0.2rem !important;
-  padding: 0px !important;
   box-shadow: 0 4px 24px hsl(0 0% 0% / 0.4) !important;
 }
 
