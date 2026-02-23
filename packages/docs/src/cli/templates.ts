@@ -79,6 +79,28 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroCssTheme: "colorful",
     nuxtCssTheme: "colorful",
   },
+  darkbold: {
+    factory: "darkbold",
+    nextImport: "@farming-labs/theme/darkbold",
+    svelteImport: "@farming-labs/svelte-theme/darkbold",
+    astroImport: "@farming-labs/astro-theme/darkbold",
+    nuxtImport: "@farming-labs/nuxt-theme/darkbold",
+    nextCssImport: "darkbold",
+    svelteCssTheme: "darkbold",
+    astroCssTheme: "darkbold",
+    nuxtCssTheme: "darkbold",
+  },
+  shiny: {
+    factory: "shiny",
+    nextImport: "@farming-labs/theme/shiny",
+    svelteImport: "@farming-labs/svelte-theme/shiny",
+    astroImport: "@farming-labs/astro-theme/shiny",
+    nuxtImport: "@farming-labs/nuxt-theme/shiny",
+    nextCssImport: "shiny",
+    svelteCssTheme: "shiny",
+    astroCssTheme: "shiny",
+    nuxtCssTheme: "shiny",
+  },
 };
 
 function getThemeInfo(theme: string): ThemeInfo {

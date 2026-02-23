@@ -152,6 +152,16 @@ export async function init() {
       label: "Colorful",
       hint: "Fumadocs-style neutral theme with description support",
     },
+    {
+      value: "darkbold",
+      label: "DarkBold",
+      hint: "Pure monochrome, Geist typography, clean minimalism",
+    },
+    {
+      value: "shiny",
+      label: "Shiny",
+      hint: "Glossy, modern look with subtle shimmer effects",
+    },
   ];
 
   const theme = await p.select({
@@ -603,6 +613,8 @@ function scaffoldSvelteKit(
     darksharp: "darksharp",
     "pixel-border": "pixel-border",
     colorful: "colorful",
+    darkbold: "darkbold",
+    shiny: "shiny",
     default: "fumadocs",
   };
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";
@@ -661,6 +673,8 @@ function scaffoldAstro(
     darksharp: "darksharp",
     "pixel-border": "pixel-border",
     colorful: "colorful",
+    darkbold: "darkbold",
+    shiny: "shiny",
     default: "fumadocs",
   };
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";
@@ -710,6 +724,9 @@ function scaffoldNuxt(
     fumadocs: "fumadocs",
     darksharp: "darksharp",
     "pixel-border": "pixel-border",
+    colorful: "colorful",
+    darkbold: "darkbold",
+    shiny: "shiny",
     default: "fumadocs",
   };
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";
