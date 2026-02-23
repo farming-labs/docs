@@ -1342,7 +1342,7 @@ export function ThemeCustomizer() {
                     })}
                   </div>
                   <a
-                    href="/docs/themes"
+                    href="/themes"
                     className="mt-2 flex items-center justify-center gap-1.5 rounded-sm px-3 py-2 border border-white/[6%] text-[11px] text-white/50 hover:text-white/80 hover:border-white/15 transition-all cursor-pointer"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
