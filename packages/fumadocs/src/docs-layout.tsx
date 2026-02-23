@@ -422,7 +422,7 @@ export function createDocsLayout(config: DocsConfig) {
   const copyMarkdownEnabled = resolveBool(pageActions?.copyMarkdown);
   const openDocsEnabled = resolveBool(pageActions?.openDocs);
   const pageActionsPosition = pageActions?.position ?? "below-title";
-  const pageActionsAlignment = pageActions?.alignment ?? "left";
+  const pageActionsAlignment = pageActions?.alignment ?? "right";
 
   // Serialize provider icons to HTML strings so they survive the
   // server → client component boundary.

@@ -131,7 +131,7 @@ export function DocsPageClient({
   openDocs = false,
   openDocsProviders,
   pageActionsPosition = "below-title",
-  pageActionsAlignment = "left",
+  pageActionsAlignment = "right",
   githubUrl,
   githubBranch = "main",
   githubDirectory,
