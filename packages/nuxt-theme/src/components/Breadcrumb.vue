@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-const props = withDefaults(
-  defineProps<{ pathname?: string; entry?: string }>(),
-  { pathname: "", entry: "docs" }
-);
+const props = withDefaults(defineProps<{ pathname?: string; entry?: string }>(), {
+  pathname: "",
+  entry: "docs",
+});
 
 const segments = computed(() => {
   return props.pathname.split("/").filter(Boolean);

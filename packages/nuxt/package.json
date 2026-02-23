@@ -2,6 +2,16 @@
   "name": "@farming-labs/nuxt",
   "version": "0.0.2-beta.21",
   "description": "Nuxt adapter for @farming-labs/docs — content loading and navigation utilities",
+  "keywords": [
+    "docs",
+    "documentation",
+    "nuxt"
+  ],
+  "license": "MIT",
+  "author": "Farming Labs",
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -27,10 +37,6 @@
       "default": "./dist/server.js"
     }
   },
-  "files": ["dist"],
-  "keywords": ["docs", "nuxt", "documentation"],
-  "author": "Farming Labs",
-  "license": "MIT",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",

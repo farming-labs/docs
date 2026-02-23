@@ -30,23 +30,23 @@ export default defineDocs({
 
 Top-level configuration object passed to `defineDocs()`.
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `entry` | `string` | **required** | URL path prefix for docs (e.g. `"docs"` → `/docs`) |
-| `contentDir` | `string` | same as `entry` | Path to content files. SvelteKit, Astro, and Nuxt only — Next.js uses `app/{entry}/` |
-| `theme` | `DocsTheme` | — | Theme preset from a factory (`fumadocs()`, `darksharp()`, `pixelBorder()`) |
-| `github` | `string \| GithubConfig` | — | GitHub repo config for "Edit on GitHub" links |
-| `nav` | `DocsNav` | — | Sidebar header title and URL |
-| `themeToggle` | `boolean \| ThemeToggleConfig` | `true` | Light/dark mode toggle |
-| `breadcrumb` | `boolean \| BreadcrumbConfig` | `true` | Breadcrumb navigation |
-| `sidebar` | `boolean \| SidebarConfig` | `true` | Sidebar visibility and customization |
-| `icons` | `Record<string, unknown>` | — | Icon registry for frontmatter `icon` fields |
-| `components` | `Record<string, unknown>` | — | Custom MDX component overrides |
-| `pageActions` | `PageActionsConfig` | — | "Copy Markdown" and "Open in LLM" buttons |
-| `ai` | `AIConfig` | — | RAG-powered AI chat |
-| `ordering` | `"alphabetical" \| "numeric" \| OrderingItem[]` | `"alphabetical"` | Sidebar page ordering strategy |
-| `metadata` | `DocsMetadata` | — | SEO metadata |
-| `og` | `OGConfig` | — | Open Graph image config |
+| Property      | Type                                            | Default          | Description                                                                          |
+| ------------- | ----------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------ |
+| `entry`       | `string`                                        | **required**     | URL path prefix for docs (e.g. `"docs"` → `/docs`)                                   |
+| `contentDir`  | `string`                                        | same as `entry`  | Path to content files. SvelteKit, Astro, and Nuxt only — Next.js uses `app/{entry}/` |
+| `theme`       | `DocsTheme`                                     | —                | Theme preset from a factory (`fumadocs()`, `darksharp()`, `pixelBorder()`)           |
+| `github`      | `string \| GithubConfig`                        | —                | GitHub repo config for "Edit on GitHub" links                                        |
+| `nav`         | `DocsNav`                                       | —                | Sidebar header title and URL                                                         |
+| `themeToggle` | `boolean \| ThemeToggleConfig`                  | `true`           | Light/dark mode toggle                                                               |
+| `breadcrumb`  | `boolean \| BreadcrumbConfig`                   | `true`           | Breadcrumb navigation                                                                |
+| `sidebar`     | `boolean \| SidebarConfig`                      | `true`           | Sidebar visibility and customization                                                 |
+| `icons`       | `Record<string, unknown>`                       | —                | Icon registry for frontmatter `icon` fields                                          |
+| `components`  | `Record<string, unknown>`                       | —                | Custom MDX component overrides                                                       |
+| `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
+| `ai`          | `AIConfig`                                      | —                | RAG-powered AI chat                                                                  |
+| `ordering`    | `"alphabetical" \| "numeric" \| OrderingItem[]` | `"alphabetical"` | Sidebar page ordering strategy                                                       |
+| `metadata`    | `DocsMetadata`                                  | —                | SEO metadata                                                                         |
+| `og`          | `OGConfig`                                      | —                | Open Graph image config                                                              |
 
 ---
 
@@ -114,10 +114,10 @@ ordering: [
 
 ### `OrderingItem`
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `slug` | `string` | Folder name at this level (not the full path) |
-| `children` | `OrderingItem[]` | Ordering for child pages within this folder |
+| Property   | Type             | Description                                   |
+| ---------- | ---------------- | --------------------------------------------- |
+| `slug`     | `string`         | Folder name at this level (not the full path) |
+| `children` | `OrderingItem[]` | Ordering for child pages within this folder   |
 
 > Pages not listed in the array appear alphabetically after the listed ones.
 
@@ -127,10 +127,10 @@ ordering: [
 
 Sidebar header configuration.
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `title` | `string \| ReactNode` | `"Docs"` | Sidebar header title. React elements supported in Next.js |
-| `url` | `string` | `"/{entry}"` | URL the title links to |
+| Property | Type                  | Default      | Description                                               |
+| -------- | --------------------- | ------------ | --------------------------------------------------------- |
+| `title`  | `string \| ReactNode` | `"Docs"`     | Sidebar header title. React elements supported in Next.js |
+| `url`    | `string`              | `"/{entry}"` | URL the title links to                                    |
 
 ```ts
 nav: {
@@ -145,11 +145,11 @@ nav: {
 
 GitHub repository configuration. Enables "Edit on GitHub" links in page footers.
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `url` | `string` | **required** | Repository URL (e.g. `"https://github.com/my-org/repo"`) |
-| `branch` | `string` | `"main"` | Branch name |
-| `directory` | `string` | — | Content subdirectory for monorepos |
+| Property    | Type     | Default      | Description                                              |
+| ----------- | -------- | ------------ | -------------------------------------------------------- |
+| `url`       | `string` | **required** | Repository URL (e.g. `"https://github.com/my-org/repo"`) |
+| `branch`    | `string` | `"main"`     | Branch name                                              |
+| `directory` | `string` | —            | Content subdirectory for monorepos                       |
 
 ```ts
 // Simple
@@ -171,11 +171,11 @@ github: {
 
 Light/dark mode toggle in the sidebar.
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `enabled` | `boolean` | `true` | Show or hide the toggle |
-| `default` | `"light" \| "dark" \| "system"` | `"system"` | Forced theme when `enabled: false` |
-| `mode` | `"light-dark" \| "light-dark-system"` | `"light-dark"` | Toggle behavior |
+| Property  | Type                                  | Default        | Description                        |
+| --------- | ------------------------------------- | -------------- | ---------------------------------- |
+| `enabled` | `boolean`                             | `true`         | Show or hide the toggle            |
+| `default` | `"light" \| "dark" \| "system"`       | `"system"`     | Forced theme when `enabled: false` |
+| `mode`    | `"light-dark" \| "light-dark-system"` | `"light-dark"` | Toggle behavior                    |
 
 ```ts
 // Show toggle (default)
@@ -197,10 +197,10 @@ themeToggle: { mode: "light-dark-system" },
 
 Breadcrumb navigation above page content.
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `enabled` | `boolean` | `true` | Show or hide breadcrumbs |
-| `component` | `Component` | — | Custom breadcrumb component (Next.js only) |
+| Property    | Type        | Default | Description                                |
+| ----------- | ----------- | ------- | ------------------------------------------ |
+| `enabled`   | `boolean`   | `true`  | Show or hide breadcrumbs                   |
+| `component` | `Component` | —       | Custom breadcrumb component (Next.js only) |
 
 ```ts
 breadcrumb: true,              // show (default)
@@ -214,13 +214,13 @@ breadcrumb: { enabled: false },  // hide
 
 Sidebar visibility and customization.
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `enabled` | `boolean` | `true` | Show or hide the sidebar |
-| `component` | `Component` | — | Custom sidebar component (Next.js only) |
-| `footer` | `ReactNode` | — | Content rendered below nav items |
-| `banner` | `ReactNode` | — | Content rendered above nav items |
-| `collapsible` | `boolean` | `true` | Whether sidebar is collapsible on desktop |
+| Property      | Type        | Default | Description                               |
+| ------------- | ----------- | ------- | ----------------------------------------- |
+| `enabled`     | `boolean`   | `true`  | Show or hide the sidebar                  |
+| `component`   | `Component` | —       | Custom sidebar component (Next.js only)   |
+| `footer`      | `ReactNode` | —       | Content rendered below nav items          |
+| `banner`      | `ReactNode` | —       | Content rendered above nav items          |
+| `collapsible` | `boolean`   | `true`  | Whether sidebar is collapsible on desktop |
 
 ```ts
 sidebar: true,                     // show (default)
@@ -234,10 +234,10 @@ sidebar: { collapsible: false },   // non-collapsible
 
 Theme configuration returned by theme factories.
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `name` | `string` | Theme identifier (e.g. `"fumadocs"`, `"darksharp"`) |
-| `ui` | `UIConfig` | Visual configuration — colors, typography, layout |
+| Property | Type       | Description                                         |
+| -------- | ---------- | --------------------------------------------------- |
+| `name`   | `string`   | Theme identifier (e.g. `"fumadocs"`, `"darksharp"`) |
+| `ui`     | `UIConfig` | Visual configuration — colors, typography, layout   |
 
 Created via theme factories:
 
@@ -251,6 +251,7 @@ Created via theme factories:
 
     theme: fumadocs({ ui: { /* overrides */ } }),
     ```
+
   </Tab>
   <Tab value="SvelteKit">
     ```ts
@@ -259,6 +260,7 @@ Created via theme factories:
 
     theme: fumadocs({ ui: { /* overrides */ } }),
     ```
+
   </Tab>
   <Tab value="Astro">
     ```ts
@@ -269,6 +271,7 @@ Created via theme factories:
 
     theme: fumadocs({ ui: { /* overrides */ } }),
     ```
+
   </Tab>
   <Tab value="Nuxt">
     ```ts
@@ -277,6 +280,7 @@ Created via theme factories:
 
     theme: fumadocs({ ui: { /* overrides */ } }),
     ```
+
   </Tab>
 </Tabs>
 
@@ -286,38 +290,38 @@ Created via theme factories:
 
 Fine-grained visual configuration passed to theme factories.
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `colors` | `ColorsConfig` | Theme color tokens |
-| `typography` | `TypographyConfig` | Font families, heading styles |
-| `radius` | `string` | Global border-radius (e.g. `"0px"`, `"0.5rem"`) |
-| `layout` | `LayoutConfig` | Content width, sidebar width, TOC settings |
-| `codeBlock` | `CodeBlockConfig` | Syntax highlighting and line numbers |
-| `sidebar` | `SidebarStyleConfig` | Sidebar visual style |
-| `card` | `CardConfig` | Card component styling |
+| Property     | Type                 | Description                                     |
+| ------------ | -------------------- | ----------------------------------------------- |
+| `colors`     | `ColorsConfig`       | Theme color tokens                              |
+| `typography` | `TypographyConfig`   | Font families, heading styles                   |
+| `radius`     | `string`             | Global border-radius (e.g. `"0px"`, `"0.5rem"`) |
+| `layout`     | `LayoutConfig`       | Content width, sidebar width, TOC settings      |
+| `codeBlock`  | `CodeBlockConfig`    | Syntax highlighting and line numbers            |
+| `sidebar`    | `SidebarStyleConfig` | Sidebar visual style                            |
+| `card`       | `CardConfig`         | Card component styling                          |
 
 ### `ColorsConfig`
 
 All color tokens. Accepts any CSS color value (hex, rgb, oklch, hsl).
 
-| Token | Description |
-|-------|-------------|
-| `primary` | Primary brand color |
-| `primaryForeground` | Text color on primary backgrounds |
-| `background` | Page background |
-| `foreground` | Default text color |
-| `muted` | Muted background (e.g. code blocks) |
-| `mutedForeground` | Text on muted backgrounds |
-| `border` | Default border color |
-| `card` | Card background |
-| `cardForeground` | Card text color |
-| `accent` | Accent color |
-| `accentForeground` | Text on accent backgrounds |
-| `secondary` | Secondary color |
-| `secondaryForeground` | Text on secondary backgrounds |
-| `popover` | Popover/dropdown background |
-| `popoverForeground` | Popover text color |
-| `ring` | Focus ring color |
+| Token                 | Description                         |
+| --------------------- | ----------------------------------- |
+| `primary`             | Primary brand color                 |
+| `primaryForeground`   | Text color on primary backgrounds   |
+| `background`          | Page background                     |
+| `foreground`          | Default text color                  |
+| `muted`               | Muted background (e.g. code blocks) |
+| `mutedForeground`     | Text on muted backgrounds           |
+| `border`              | Default border color                |
+| `card`                | Card background                     |
+| `cardForeground`      | Card text color                     |
+| `accent`              | Accent color                        |
+| `accentForeground`    | Text on accent backgrounds          |
+| `secondary`           | Secondary color                     |
+| `secondaryForeground` | Text on secondary backgrounds       |
+| `popover`             | Popover/dropdown background         |
+| `popoverForeground`   | Popover text color                  |
+| `ring`                | Focus ring color                    |
 
 ```ts
 colors: {
@@ -329,32 +333,32 @@ colors: {
 
 ### `LayoutConfig`
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `contentWidth` | `number` | — | Max width of content area in px |
-| `sidebarWidth` | `number` | — | Sidebar width in px |
-| `tocWidth` | `number` | — | Table of contents width in px |
-| `toc.enabled` | `boolean` | `true` | Show table of contents |
-| `toc.depth` | `number` | `3` | Max heading depth for TOC |
-| `header.height` | `number` | — | Header height in px |
-| `header.sticky` | `boolean` | `true` | Sticky header |
+| Property        | Type      | Default | Description                     |
+| --------------- | --------- | ------- | ------------------------------- |
+| `contentWidth`  | `number`  | —       | Max width of content area in px |
+| `sidebarWidth`  | `number`  | —       | Sidebar width in px             |
+| `tocWidth`      | `number`  | —       | Table of contents width in px   |
+| `toc.enabled`   | `boolean` | `true`  | Show table of contents          |
+| `toc.depth`     | `number`  | `3`     | Max heading depth for TOC       |
+| `header.height` | `number`  | —       | Header height in px             |
+| `header.sticky` | `boolean` | `true`  | Sticky header                   |
 
 ### `CodeBlockConfig`
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `showLineNumbers` | `boolean` | `false` | Show line numbers |
-| `showCopyButton` | `boolean` | `true` | Show copy button |
-| `theme` | `string` | — | Shiki theme for light mode |
-| `darkTheme` | `string` | — | Shiki theme for dark mode |
+| Property          | Type      | Default | Description                |
+| ----------------- | --------- | ------- | -------------------------- |
+| `showLineNumbers` | `boolean` | `false` | Show line numbers          |
+| `showCopyButton`  | `boolean` | `true`  | Show copy button           |
+| `theme`           | `string`  | —       | Shiki theme for light mode |
+| `darkTheme`       | `string`  | —       | Shiki theme for dark mode  |
 
 ### `SidebarStyleConfig`
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `style` | `"default" \| "bordered" \| "floating"` | `"default"` | Sidebar visual style |
-| `background` | `string` | — | Background color override |
-| `borderColor` | `string` | — | Border color override |
+| Property      | Type                                    | Default     | Description               |
+| ------------- | --------------------------------------- | ----------- | ------------------------- |
+| `style`       | `"default" \| "bordered" \| "floating"` | `"default"` | Sidebar visual style      |
+| `background`  | `string`                                | —           | Background color override |
+| `borderColor` | `string`                                | —           | Border color override     |
 
 ### `TypographyConfig`
 
@@ -378,12 +382,12 @@ typography: {
 
 Used for each heading level and body text.
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `size` | `string` | CSS `font-size` (e.g. `"2.25rem"`, `"clamp(1.8rem, 3vw, 2.5rem)"`) |
-| `weight` | `string \| number` | CSS `font-weight` (e.g. `700`, `"bold"`) |
-| `lineHeight` | `string` | CSS `line-height` (e.g. `"1.2"`, `"28px"`) |
-| `letterSpacing` | `string` | CSS `letter-spacing` (e.g. `"-0.02em"`) |
+| Property        | Type               | Description                                                        |
+| --------------- | ------------------ | ------------------------------------------------------------------ |
+| `size`          | `string`           | CSS `font-size` (e.g. `"2.25rem"`, `"clamp(1.8rem, 3vw, 2.5rem)"`) |
+| `weight`        | `string \| number` | CSS `font-weight` (e.g. `700`, `"bold"`)                           |
+| `lineHeight`    | `string`           | CSS `line-height` (e.g. `"1.2"`, `"28px"`)                         |
+| `letterSpacing` | `string`           | CSS `letter-spacing` (e.g. `"-0.02em"`)                            |
 
 ---
 
@@ -391,31 +395,31 @@ Used for each heading level and body text.
 
 RAG-powered AI chat. See [Ask AI](/docs/customization/ai-chat) for usage guide.
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `enabled` | `boolean` | `false` | Enable AI chat |
-| `mode` | `"search" \| "floating"` | `"search"` | UI mode: integrated in search or floating widget |
-| `position` | `"bottom-right" \| "bottom-left" \| "bottom-center"` | `"bottom-right"` | Floating button position (only when `mode: "floating"`) |
-| `floatingStyle` | `"panel" \| "modal" \| "popover" \| "full-modal"` | `"panel"` | Floating chat visual style |
-| `triggerComponent` | `Component` | — | Custom floating button component |
-| `model` | `string` | `"gpt-4o-mini"` | LLM model name (OpenAI-compatible) |
-| `systemPrompt` | `string` | auto-generated | Custom system prompt |
-| `baseUrl` | `string` | `"https://api.openai.com/v1"` | OpenAI-compatible API base URL |
-| `apiKey` | `string` | `process.env.OPENAI_API_KEY` | API key for the LLM provider |
-| `maxResults` | `number` | `5` | Number of doc pages to include as RAG context |
-| `suggestedQuestions` | `string[]` | — | Pre-filled questions shown when chat is empty |
-| `aiLabel` | `string` | `"AI"` | Display name for the AI assistant |
-| `packageName` | `string` | — | Package name the AI uses in import examples |
-| `docsUrl` | `string` | — | Base URL the AI uses for links |
-| `loadingComponent` | `(props: { name: string }) => ReactNode` | — | Custom loading indicator |
+| Property             | Type                                                 | Default                       | Description                                             |
+| -------------------- | ---------------------------------------------------- | ----------------------------- | ------------------------------------------------------- |
+| `enabled`            | `boolean`                                            | `false`                       | Enable AI chat                                          |
+| `mode`               | `"search" \| "floating"`                             | `"search"`                    | UI mode: integrated in search or floating widget        |
+| `position`           | `"bottom-right" \| "bottom-left" \| "bottom-center"` | `"bottom-right"`              | Floating button position (only when `mode: "floating"`) |
+| `floatingStyle`      | `"panel" \| "modal" \| "popover" \| "full-modal"`    | `"panel"`                     | Floating chat visual style                              |
+| `triggerComponent`   | `Component`                                          | —                             | Custom floating button component                        |
+| `model`              | `string`                                             | `"gpt-4o-mini"`               | LLM model name (OpenAI-compatible)                      |
+| `systemPrompt`       | `string`                                             | auto-generated                | Custom system prompt                                    |
+| `baseUrl`            | `string`                                             | `"https://api.openai.com/v1"` | OpenAI-compatible API base URL                          |
+| `apiKey`             | `string`                                             | `process.env.OPENAI_API_KEY`  | API key for the LLM provider                            |
+| `maxResults`         | `number`                                             | `5`                           | Number of doc pages to include as RAG context           |
+| `suggestedQuestions` | `string[]`                                           | —                             | Pre-filled questions shown when chat is empty           |
+| `aiLabel`            | `string`                                             | `"AI"`                        | Display name for the AI assistant                       |
+| `packageName`        | `string`                                             | —                             | Package name the AI uses in import examples             |
+| `docsUrl`            | `string`                                             | —                             | Base URL the AI uses for links                          |
+| `loadingComponent`   | `(props: { name: string }) => ReactNode`             | —                             | Custom loading indicator                                |
 
 ### Floating styles
 
-| Style | Description |
-|-------|-------------|
-| `"panel"` | Tall panel sliding up from the button. No backdrop. |
-| `"modal"` | Centered modal with backdrop overlay, like Cmd+K search. |
-| `"popover"` | Compact popover near the button. |
+| Style          | Description                                                       |
+| -------------- | ----------------------------------------------------------------- |
+| `"panel"`      | Tall panel sliding up from the button. No backdrop.               |
+| `"modal"`      | Centered modal with backdrop overlay, like Cmd+K search.          |
+| `"popover"`    | Compact popover near the button.                                  |
 | `"full-modal"` | Full-screen immersive overlay with pills for suggested questions. |
 
 ---
@@ -424,32 +428,32 @@ RAG-powered AI chat. See [Ask AI](/docs/customization/ai-chat) for usage guide.
 
 Action buttons shown on each docs page. See [Page Actions](/docs/customization/page-actions) for usage guide.
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `position` | `"above-title" \| "below-title"` | `"below-title"` | Where to render the buttons |
-| `copyMarkdown` | `boolean \| CopyMarkdownConfig` | `false` | "Copy Markdown" button |
-| `openDocs` | `boolean \| OpenDocsConfig` | `false` | "Open in LLM" dropdown |
+| Property       | Type                             | Default         | Description                 |
+| -------------- | -------------------------------- | --------------- | --------------------------- |
+| `position`     | `"above-title" \| "below-title"` | `"below-title"` | Where to render the buttons |
+| `copyMarkdown` | `boolean \| CopyMarkdownConfig`  | `false`         | "Copy Markdown" button      |
+| `openDocs`     | `boolean \| OpenDocsConfig`      | `false`         | "Open in LLM" dropdown      |
 
 ### `CopyMarkdownConfig`
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
+| Property  | Type      | Default | Description     |
+| --------- | --------- | ------- | --------------- |
 | `enabled` | `boolean` | `false` | Show the button |
 
 ### `OpenDocsConfig`
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `enabled` | `boolean` | `false` | Show the dropdown |
+| Property    | Type                 | Default           | Description        |
+| ----------- | -------------------- | ----------------- | ------------------ |
+| `enabled`   | `boolean`            | `false`           | Show the dropdown  |
 | `providers` | `OpenDocsProvider[]` | sensible defaults | LLM/tool providers |
 
 ### `OpenDocsProvider`
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `name` | `string` | Display name (e.g. `"ChatGPT"`, `"Claude"`) |
-| `icon` | `ReactNode` | Icon rendered next to the name |
-| `urlTemplate` | `string` | URL template. `{url}` is replaced with the page URL, `{mdxUrl}` with the MDX URL. |
+| Property      | Type        | Description                                                                       |
+| ------------- | ----------- | --------------------------------------------------------------------------------- |
+| `name`        | `string`    | Display name (e.g. `"ChatGPT"`, `"Claude"`)                                       |
+| `icon`        | `ReactNode` | Icon rendered next to the name                                                    |
+| `urlTemplate` | `string`    | URL template. `{url}` is replaced with the page URL, `{mdxUrl}` with the MDX URL. |
 
 ```ts
 pageActions: {
@@ -470,11 +474,11 @@ pageActions: {
 
 SEO metadata configuration.
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `titleTemplate` | `string` | — | Page title template. `%s` is replaced with the page title. |
-| `description` | `string` | — | Default meta description |
-| `twitterCard` | `"summary" \| "summary_large_image"` | — | Twitter card type |
+| Property        | Type                                 | Default | Description                                                |
+| --------------- | ------------------------------------ | ------- | ---------------------------------------------------------- |
+| `titleTemplate` | `string`                             | —       | Page title template. `%s` is replaced with the page title. |
+| `description`   | `string`                             | —       | Default meta description                                   |
+| `twitterCard`   | `"summary" \| "summary_large_image"` | —       | Twitter card type                                          |
 
 ```ts
 metadata: {
@@ -489,12 +493,12 @@ metadata: {
 
 Open Graph image configuration.
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `enabled` | `boolean` | `false` | Enable OG image generation |
-| `type` | `"static" \| "dynamic"` | — | Static images or dynamic generation |
-| `endpoint` | `string` | — | API endpoint for dynamic OG images |
-| `defaultImage` | `string` | — | Fallback OG image URL |
+| Property       | Type                    | Default | Description                         |
+| -------------- | ----------------------- | ------- | ----------------------------------- |
+| `enabled`      | `boolean`               | `false` | Enable OG image generation          |
+| `type`         | `"static" \| "dynamic"` | —       | Static images or dynamic generation |
+| `endpoint`     | `string`                | —       | API endpoint for dynamic OG images  |
+| `defaultImage` | `string`                | —       | Fallback OG image URL               |
 
 ---
 
@@ -502,14 +506,14 @@ Open Graph image configuration.
 
 Each docs page (`.mdx` / `.md`) supports these frontmatter fields:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `title` | `string` | **Required.** Page title, shown in sidebar and page heading |
-| `description` | `string` | Page description, used for meta tags and search |
-| `icon` | `string` | Icon key from the `icons` registry. Shows in sidebar. |
-| `order` | `number` | Sort order in the sidebar (only when `ordering: "numeric"`). Lower numbers first. |
-| `tags` | `string[]` | Tags for categorization |
-| `ogImage` | `string` | Custom Open Graph image path for this page |
+| Property      | Type       | Description                                                                       |
+| ------------- | ---------- | --------------------------------------------------------------------------------- |
+| `title`       | `string`   | **Required.** Page title, shown in sidebar and page heading                       |
+| `description` | `string`   | Page description, used for meta tags and search                                   |
+| `icon`        | `string`   | Icon key from the `icons` registry. Shows in sidebar.                             |
+| `order`       | `number`   | Sort order in the sidebar (only when `ordering: "numeric"`). Lower numbers first. |
+| `tags`        | `string[]` | Tags for categorization                                                           |
+| `ogImage`     | `string`   | Custom Open Graph image path for this page                                        |
 
 ```md
 ---
@@ -568,18 +572,18 @@ import { createDocsServer } from "@farming-labs/svelte/server";
 
 **Parameters:**
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `config` | `DocsConfig` | The config object from `defineDocs()` |
+| Property            | Type                     | Description                                                                 |
+| ------------------- | ------------------------ | --------------------------------------------------------------------------- |
+| `config`            | `DocsConfig`             | The config object from `defineDocs()`                                       |
 | `_preloadedContent` | `Record<string, string>` | Pre-loaded markdown files from `import.meta.glob`. Required for serverless. |
 
 **Returns:**
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `load` | `(event) => Promise<PageData>` | Layout load function (use in `+layout.server.js`) |
-| `GET` | `(event) => Response` | Search endpoint handler |
-| `POST` | `(event) => Promise<Response>` | AI chat endpoint handler |
+| Property | Type                           | Description                                       |
+| -------- | ------------------------------ | ------------------------------------------------- |
+| `load`   | `(event) => Promise<PageData>` | Layout load function (use in `+layout.server.js`) |
+| `GET`    | `(event) => Response`          | Search endpoint handler                           |
+| `POST`   | `(event) => Promise<Response>` | AI chat endpoint handler                          |
 
 ```ts title="src/lib/docs.server.ts"
 import { createDocsServer } from "@farming-labs/svelte/server";
@@ -601,11 +605,11 @@ export const { load, GET, POST } = createDocsServer({
 
 Imported from `@farming-labs/svelte-theme`:
 
-| Component | Props | Description |
-|-----------|-------|-------------|
-| `DocsLayout` | `tree`, `config`, `title?`, `titleUrl?` | Main layout with sidebar, nav, search, AI |
-| `DocsContent` | `data`, `config` | Page content with TOC, breadcrumb, footer nav |
-| `DocsPage` | `entry`, `tocEnabled`, `breadcrumbEnabled`, `previousPage`, `nextPage`, `editOnGithub`, `lastModified` | Low-level page wrapper (used by `DocsContent`) |
+| Component     | Props                                                                                                  | Description                                    |
+| ------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| `DocsLayout`  | `tree`, `config`, `title?`, `titleUrl?`                                                                | Main layout with sidebar, nav, search, AI      |
+| `DocsContent` | `data`, `config`                                                                                       | Page content with TOC, breadcrumb, footer nav  |
+| `DocsPage`    | `entry`, `tocEnabled`, `breadcrumbEnabled`, `previousPage`, `nextPage`, `editOnGithub`, `lastModified` | Low-level page wrapper (used by `DocsContent`) |
 
 ---
 
@@ -621,18 +625,18 @@ import { createDocsServer } from "@farming-labs/astro/server";
 
 **Parameters:**
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `config` | `DocsConfig` | The config object from `defineDocs()` |
+| Property            | Type                     | Description                                                                 |
+| ------------------- | ------------------------ | --------------------------------------------------------------------------- |
+| `config`            | `DocsConfig`             | The config object from `defineDocs()`                                       |
 | `_preloadedContent` | `Record<string, string>` | Pre-loaded markdown files from `import.meta.glob`. Required for serverless. |
 
 **Returns:**
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `load` | `(pathname: string) => Promise<PageData>` | Takes a URL pathname string, returns page data |
-| `GET` | `({ request }) => Response` | Search endpoint handler for `GET /api/docs?query=...` |
-| `POST` | `({ request }) => Promise<Response>` | AI chat endpoint handler with SSE streaming |
+| Property | Type                                      | Description                                           |
+| -------- | ----------------------------------------- | ----------------------------------------------------- |
+| `load`   | `(pathname: string) => Promise<PageData>` | Takes a URL pathname string, returns page data        |
+| `GET`    | `({ request }) => Response`               | Search endpoint handler for `GET /api/docs?query=...` |
+| `POST`   | `({ request }) => Promise<Response>`      | AI chat endpoint handler with SSE streaming           |
 
 ```ts title="src/lib/docs.server.ts"
 import { createDocsServer } from "@farming-labs/astro/server";
@@ -652,31 +656,31 @@ export const { load, GET, POST } = createDocsServer({
 
 ### Astro Components
 
-| Component | Import | Description |
-|-----------|--------|-------------|
-| `DocsLayout` | `@farming-labs/astro-theme/src/components/DocsLayout.astro` | Main layout with sidebar, search, and theme toggle |
-| `DocsContent` | `@farming-labs/astro-theme/src/components/DocsContent.astro` | Page content with metadata |
-| `DocsPage` | `@farming-labs/astro-theme/src/components/DocsPage.astro` | Page structure (TOC, breadcrumb, nav) |
-| `ThemeToggle` | `@farming-labs/astro-theme/src/components/ThemeToggle.astro` | Light/dark toggle |
-| `SearchDialog` | `@farming-labs/astro-theme/src/components/SearchDialog.astro` | Search + AI dialog |
+| Component      | Import                                                        | Description                                        |
+| -------------- | ------------------------------------------------------------- | -------------------------------------------------- |
+| `DocsLayout`   | `@farming-labs/astro-theme/src/components/DocsLayout.astro`   | Main layout with sidebar, search, and theme toggle |
+| `DocsContent`  | `@farming-labs/astro-theme/src/components/DocsContent.astro`  | Page content with metadata                         |
+| `DocsPage`     | `@farming-labs/astro-theme/src/components/DocsPage.astro`     | Page structure (TOC, breadcrumb, nav)              |
+| `ThemeToggle`  | `@farming-labs/astro-theme/src/components/ThemeToggle.astro`  | Light/dark toggle                                  |
+| `SearchDialog` | `@farming-labs/astro-theme/src/components/SearchDialog.astro` | Search + AI dialog                                 |
 
 ### CSS Imports
 
 Same pattern as SvelteKit:
 
-| Import | Description |
-|--------|-------------|
-| `@farming-labs/astro-theme/css` | Default (fumadocs) theme |
-| `@farming-labs/astro-theme/pixel-border/css` | Pixel border theme |
-| `@farming-labs/astro-theme/darksharp/css` | Darksharp theme |
+| Import                                       | Description              |
+| -------------------------------------------- | ------------------------ |
+| `@farming-labs/astro-theme/css`              | Default (fumadocs) theme |
+| `@farming-labs/astro-theme/pixel-border/css` | Pixel border theme       |
+| `@farming-labs/astro-theme/darksharp/css`    | Darksharp theme          |
 
 ### Theme Factories
 
-| Factory | Import |
-|---------|--------|
-| `fumadocs()` | `@farming-labs/astro-theme` |
+| Factory         | Import                                   |
+| --------------- | ---------------------------------------- |
+| `fumadocs()`    | `@farming-labs/astro-theme`              |
 | `pixelBorder()` | `@farming-labs/astro-theme/pixel-border` |
-| `darksharp()` | `@farming-labs/astro-theme/darksharp` |
+| `darksharp()`   | `@farming-labs/astro-theme/darksharp`    |
 
 ---
 
@@ -692,10 +696,10 @@ import { defineDocsHandler } from "@farming-labs/nuxt/server";
 
 **Parameters:**
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `config` | `DocsConfig` | The config object from `defineDocs()` |
-| `useStorage` | `Function` | Nitro's `useStorage` utility for accessing server assets |
+| Property     | Type         | Description                                              |
+| ------------ | ------------ | -------------------------------------------------------- |
+| `config`     | `DocsConfig` | The config object from `defineDocs()`                    |
+| `useStorage` | `Function`   | Nitro's `useStorage` utility for accessing server assets |
 
 **Returns:**
 
@@ -714,21 +718,21 @@ export default defineDocsHandler(config, useStorage);
 
 Imported from `@farming-labs/nuxt-theme`:
 
-| Component | Props | Description |
-|-----------|-------|-------------|
-| `DocsLayout` | `tree`, `config`, `triggerComponent?` | Main layout with sidebar, nav, search, AI |
-| `DocsContent` | `data`, `config` | Page content with TOC, breadcrumb, footer nav |
+| Component     | Props                                 | Description                                   |
+| ------------- | ------------------------------------- | --------------------------------------------- |
+| `DocsLayout`  | `tree`, `config`, `triggerComponent?` | Main layout with sidebar, nav, search, AI     |
+| `DocsContent` | `data`, `config`                      | Page content with TOC, breadcrumb, footer nav |
 
 ### CSS Imports
 
-| Import | Description |
-|--------|-------------|
+| Import                                  | Description              |
+| --------------------------------------- | ------------------------ |
 | `@farming-labs/nuxt-theme/fumadocs/css` | Default (fumadocs) theme |
 
 ### Theme Factories
 
-| Factory | Import |
-|---------|--------|
+| Factory      | Import                              |
+| ------------ | ----------------------------------- |
 | `fumadocs()` | `@farming-labs/nuxt-theme/fumadocs` |
 
 ---
@@ -743,11 +747,7 @@ Client-side provider that wraps your entire app. Enables search, theme switching
 import { RootProvider } from "@farming-labs/theme";
 import "./global.css";
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
@@ -758,11 +758,11 @@ export default function RootLayout({
 }
 ```
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `search` | `SearchProviderProps` | `{ options: { api: "/api/docs" } }` | Search configuration. API defaults to the unified docs handler. |
-| `theme` | `ThemeProviderProps` | — | Theme provider options (passed to `next-themes`) |
-| `children` | `ReactNode` | **required** | Your app content |
+| Prop       | Type                  | Default                             | Description                                                     |
+| ---------- | --------------------- | ----------------------------------- | --------------------------------------------------------------- |
+| `search`   | `SearchProviderProps` | `{ options: { api: "/api/docs" } }` | Search configuration. API defaults to the unified docs handler. |
+| `theme`    | `ThemeProviderProps`  | —                                   | Theme provider options (passed to `next-themes`)                |
+| `children` | `ReactNode`           | **required**                        | Your app content                                                |
 
 > `suppressHydrationWarning` on `<html>` prevents React warnings caused by the theme class being injected before hydration.
 

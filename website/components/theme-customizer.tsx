@@ -4,7 +4,6 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { highlight } from "sugar-high";
 
-
 type PresetKey = "default" | "colorful" | "darksharp" | "pixel-border" | "shiny" | "darkbold";
 type SidebarStyle = "default" | "bordered" | "floating";
 type TocStyle = "default" | "directional";
@@ -218,28 +217,17 @@ function generateCSS(state: ThemeState): string {
   const overrides: string[] = [];
   const dc = state.colors;
   const pc = preset.colors;
-  if (dc.primary !== pc.primary)
-    overrides.push(`  --color-fd-primary: ${dc.primary};`);
+  if (dc.primary !== pc.primary) overrides.push(`  --color-fd-primary: ${dc.primary};`);
   if (dc.primaryForeground !== pc.primaryForeground)
-    overrides.push(
-      `  --color-fd-primary-foreground: ${dc.primaryForeground};`
-    );
-  if (dc.background !== pc.background)
-    overrides.push(`  --color-fd-background: ${dc.background};`);
-  if (dc.foreground !== pc.foreground)
-    overrides.push(`  --color-fd-foreground: ${dc.foreground};`);
-  if (dc.muted !== pc.muted)
-    overrides.push(`  --color-fd-muted: ${dc.muted};`);
+    overrides.push(`  --color-fd-primary-foreground: ${dc.primaryForeground};`);
+  if (dc.background !== pc.background) overrides.push(`  --color-fd-background: ${dc.background};`);
+  if (dc.foreground !== pc.foreground) overrides.push(`  --color-fd-foreground: ${dc.foreground};`);
+  if (dc.muted !== pc.muted) overrides.push(`  --color-fd-muted: ${dc.muted};`);
   if (dc.mutedForeground !== pc.mutedForeground)
-    overrides.push(
-      `  --color-fd-muted-foreground: ${dc.mutedForeground};`
-    );
-  if (dc.border !== pc.border)
-    overrides.push(`  --color-fd-border: ${dc.border};`);
-  if (dc.card !== pc.card)
-    overrides.push(`  --color-fd-card: ${dc.card};`);
-  if (dc.ring !== pc.ring)
-    overrides.push(`  --color-fd-ring: ${dc.ring};`);
+    overrides.push(`  --color-fd-muted-foreground: ${dc.mutedForeground};`);
+  if (dc.border !== pc.border) overrides.push(`  --color-fd-border: ${dc.border};`);
+  if (dc.card !== pc.card) overrides.push(`  --color-fd-card: ${dc.card};`);
+  if (dc.ring !== pc.ring) overrides.push(`  --color-fd-ring: ${dc.ring};`);
 
   if (overrides.length > 0) {
     lines.push(`/* Custom color overrides */`);
@@ -269,10 +257,8 @@ function generateConfig(state: ThemeState): string {
   const tocParts: string[] = [];
   if (!state.toc.enabled) tocParts.push(`enabled: false`);
   if (state.toc.depth !== 3) tocParts.push(`depth: ${state.toc.depth}`);
-  if (state.toc.style !== preset.toc.style)
-    tocParts.push(`style: "${state.toc.style}"`);
-  if (tocParts.length > 0)
-    uiOverrides.push(`      toc: { ${tocParts.join(", ")} },`);
+  if (state.toc.style !== preset.toc.style) tocParts.push(`style: "${state.toc.style}"`);
+  if (tocParts.length > 0) uiOverrides.push(`      toc: { ${tocParts.join(", ")} },`);
 
   if (uiOverrides.length > 0) {
     lines.push(`  theme: ${themeImport.name}({`);
@@ -638,9 +624,7 @@ function ColorSwatch({
         onChange={(e) => onChange(e.target.value)}
         className="absolute opacity-0 w-0 h-0"
       />
-      <span className="text-[11px] text-white/40 w-[72px] shrink-0 select-none">
-        {label}
-      </span>
+      <span className="text-[11px] text-white/40 w-[72px] shrink-0 select-none">{label}</span>
       <input
         type="text"
         value={value}
@@ -752,7 +736,8 @@ function SelectField({
                   background: active ? "rgba(255,255,255,0.06)" : "transparent",
                 }}
                 onMouseEnter={(e) => {
-                  if (!active) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
+                  if (!active)
+                    (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
                 }}
                 onMouseLeave={(e) => {
                   if (!active) (e.currentTarget as HTMLElement).style.background = "transparent";
@@ -777,24 +762,18 @@ function SelectField({
 // ─── Code Block ───────────────────────────────────────────────────────────────
 
 const SH_VARS = {
-  "--sh-class":      "#7dd3fc",
+  "--sh-class": "#7dd3fc",
   "--sh-identifier": "#e2e8f0",
-  "--sh-sign":       "#64748b",
-  "--sh-string":     "#86efac",
-  "--sh-keyword":    "#c084fc",
-  "--sh-comment":    "#475569",
-  "--sh-jsxliterals":"#fda4af",
-  "--sh-property":   "#93c5fd",
-  "--sh-entity":     "#fcd34d",
+  "--sh-sign": "#64748b",
+  "--sh-string": "#86efac",
+  "--sh-keyword": "#c084fc",
+  "--sh-comment": "#475569",
+  "--sh-jsxliterals": "#fda4af",
+  "--sh-property": "#93c5fd",
+  "--sh-entity": "#fcd34d",
 } as React.CSSProperties;
 
-function CodeOutput({
-  cssCode,
-  configCode,
-}: {
-  cssCode: string;
-  configCode: string;
-}) {
+function CodeOutput({ cssCode, configCode }: { cssCode: string; configCode: string }) {
   const [tab, setTab] = useState<"css" | "config">("css");
   const [copied, setCopied] = useState(false);
   const code = tab === "css" ? cssCode : configCode;
@@ -858,12 +837,31 @@ function CodeOutput({
         >
           {copied ? (
             <>
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+              <svg
+                width="9"
+                height="9"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
               Copied
             </>
           ) : (
             <>
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="14" height="14" x="8" y="8" rx="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg>
+              <svg
+                width="9"
+                height="9"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <rect width="14" height="14" x="8" y="8" rx="2" />
+                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+              </svg>
               Copy
             </>
           )}
@@ -871,10 +869,7 @@ function CodeOutput({
       </div>
 
       {/* Code area */}
-      <div
-        className="flex-1 overflow-auto"
-        style={{ ...SH_VARS, background: "rgba(0,0,0,0.2)" }}
-      >
+      <div className="flex-1 overflow-auto" style={{ ...SH_VARS, background: "rgba(0,0,0,0.2)" }}>
         {/* file path breadcrumb */}
         <div
           className="sticky top-0 flex items-center gap-1.5 px-4 py-1.5 text-[9px] font-mono border-b"
@@ -885,7 +880,17 @@ function CodeOutput({
             backdropFilter: "blur(4px)",
           }}
         >
-          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <svg
+            width="9"
+            height="9"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
           {fileName}
         </div>
 
@@ -957,27 +962,30 @@ export function ThemeCustomizer() {
     }
   }, [themeParam, loadPresetCSS]);
 
- // Load preset CSS on first open when no URL param triggered it
+  // Load preset CSS on first open when no URL param triggered it
   useEffect(() => {
     if (open && !presetCSS) {
       loadPresetCSS(state.preset);
     }
   }, [open, presetCSS, state.preset, loadPresetCSS]);
 
-  const setPreset = useCallback((key: PresetKey) => {
-    const p = PRESETS[key];
-    setState((s) => ({
-      ...s,
-      preset: key,
-      colors: { ...p.colors },
-      radius: p.radius,
-      sidebar: p.sidebar,
-      toc: { ...s.toc, style: p.toc.style },
-      ai: { ...s.ai, mode: p.ai?.mode ?? "floating" },
-    }));
-    setHasCustomized(true);
-    loadPresetCSS(key);
-  }, [loadPresetCSS]);
+  const setPreset = useCallback(
+    (key: PresetKey) => {
+      const p = PRESETS[key];
+      setState((s) => ({
+        ...s,
+        preset: key,
+        colors: { ...p.colors },
+        radius: p.radius,
+        sidebar: p.sidebar,
+        toc: { ...s.toc, style: p.toc.style },
+        ai: { ...s.ai, mode: p.ai?.mode ?? "floating" },
+      }));
+      setHasCustomized(true);
+      loadPresetCSS(key);
+    },
+    [loadPresetCSS],
+  );
 
   const setColor = useCallback((field: keyof Colors, value: string) => {
     setHasCustomized(true);
@@ -1001,8 +1009,9 @@ export function ThemeCustomizer() {
         if (existing) return;
         const sidebar = document.querySelector("#nd-docs-layout aside");
         if (!sidebar) return;
-        const searchBtn = sidebar.querySelector('button[class*="bg-fd-secondary"]')
-          ?? sidebar.querySelector('button:has(> svg)');
+        const searchBtn =
+          sidebar.querySelector('button[class*="bg-fd-secondary"]') ??
+          sidebar.querySelector("button:has(> svg)");
         if (!searchBtn || !searchBtn.parentElement) return;
         const wrapper = document.createElement("div");
         wrapper.className = "fd-cz-search-ai-row";
@@ -1013,9 +1022,16 @@ export function ThemeCustomizer() {
         aiBtn.title = "Ask AI";
         aiBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>`;
         aiBtn.onclick = () => {
-          const searchTrigger = document.querySelector<HTMLButtonElement>('button[data-search-full]');
-          if (searchTrigger) { searchTrigger.click(); return; }
-          const omniBtn = document.querySelector<HTMLButtonElement>('[class*="fd-ai"], .fd-ai-floating-btn');
+          const searchTrigger = document.querySelector<HTMLButtonElement>(
+            "button[data-search-full]",
+          );
+          if (searchTrigger) {
+            searchTrigger.click();
+            return;
+          }
+          const omniBtn = document.querySelector<HTMLButtonElement>(
+            '[class*="fd-ai"], .fd-ai-floating-btn',
+          );
           if (omniBtn) omniBtn.click();
         };
         wrapper.appendChild(aiBtn);
@@ -1037,10 +1053,7 @@ export function ThemeCustomizer() {
 
   const cssCode = useMemo(() => generateCSS(state), [state]);
   const configCode = useMemo(() => generateConfig(state), [state]);
-  const colorCSS = useMemo(
-    () => buildColorCSS(state.colors),
-    [state.colors]
-  );
+  const colorCSS = useMemo(() => buildColorCSS(state.colors), [state.colors]);
   const configCSS = useMemo(() => buildConfigCSS(state), [state]);
 
   // Live theme toggle: switch light/dark mode when config changes
@@ -1101,7 +1114,9 @@ export function ThemeCustomizer() {
           }
         });
 
-        const existingToggleRow = document.querySelector("aside .flex.text-fd-muted-foreground.items-center");
+        const existingToggleRow = document.querySelector(
+          "aside .flex.text-fd-muted-foreground.items-center",
+        );
         if (existingToggleRow) {
           existingToggleRow.appendChild(toggleContainer);
         } else {
@@ -1115,7 +1130,9 @@ export function ThemeCustomizer() {
             }
             toggleRow.appendChild(toggleContainer);
           } else {
-            const sidebar = document.querySelector("aside#nd-sidebar > div") ?? document.querySelector("aside > div");
+            const sidebar =
+              document.querySelector("aside#nd-sidebar > div") ??
+              document.querySelector("aside > div");
             if (sidebar) {
               const footer = document.createElement("div");
               footer.className = "flex flex-col border-t p-4 pt-2";
@@ -1135,7 +1152,6 @@ export function ThemeCustomizer() {
       if (sunIcon) sunIcon.className = `${iconClass} ${isLight ? activeClass : inactiveClass}`;
       if (moonIcon) moonIcon.className = `${iconClass} ${!isLight ? activeClass : inactiveClass}`;
       toggleContainer.style.display = "inline-flex";
-
     } else {
       const toggleContainer = document.getElementById("cz-theme-toggle");
       if (toggleContainer) toggleContainer.style.display = "none";
@@ -1225,10 +1241,34 @@ export function ThemeCustomizer() {
         title={open ? "Close customizer" : "Customize theme"}
       >
         {open ? (
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="rgba(255,255,255,0.5)"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
         ) : (
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:stroke-white/80 group-hover:rotate-12 transition-all">
-            <circle cx="13.5" cy="6.5" r="2.5" /><circle cx="17.5" cy="10.5" r="2.5" /><circle cx="8.5" cy="7.5" r="2.5" /><circle cx="6.5" cy="12.5" r="2.5" />
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="rgba(255,255,255,0.45)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="group-hover:stroke-white/80 group-hover:rotate-12 transition-all"
+          >
+            <circle cx="13.5" cy="6.5" r="2.5" />
+            <circle cx="17.5" cy="10.5" r="2.5" />
+            <circle cx="8.5" cy="7.5" r="2.5" />
+            <circle cx="6.5" cy="12.5" r="2.5" />
             <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
           </svg>
         )}
@@ -1254,12 +1294,8 @@ export function ThemeCustomizer() {
         <div className="flex flex-col h-full bg-[#0a0a0b] border-l border-white/[6%] shadow-2xl">
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/[6%]">
             <div>
-              <div className="text-[13px] font-mono uppercase text-white">
-                Customize
-              </div>
-              <div className="text-[10px] text-white/30 mt-0.5">
-                Live preview on these docs
-              </div>
+              <div className="text-[13px] font-mono uppercase text-white">Customize</div>
+              <div className="text-[10px] text-white/30 mt-0.5">Live preview on these docs</div>
             </div>
             <div className="flex items-center gap-1">
               <span
@@ -1272,7 +1308,18 @@ export function ThemeCustomizer() {
                 onClick={() => setOpen(false)}
                 className="size-7 rounded-none flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[5%] transition-colors cursor-pointer"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
               </button>
             </div>
           </div>
@@ -1283,7 +1330,8 @@ export function ThemeCustomizer() {
               className="text-[12px] font-mono uppercase py-2.5 transition-colors cursor-pointer text-center"
               style={{
                 background: activeView === "customize" ? "rgba(255,255,255,0.06)" : "transparent",
-                color: activeView === "customize" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)",
+                color:
+                  activeView === "customize" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)",
                 fontWeight: activeView === "customize" ? 500 : 400,
               }}
             >
@@ -1303,7 +1351,9 @@ export function ThemeCustomizer() {
             </span>
           </div>
           {/* Content */}
-          <div className={`flex-1 min-h-0 ${activeView === "code" ? "flex flex-col overflow-hidden" : "overflow-y-auto overflow-x-hidden"}`}>
+          <div
+            className={`flex-1 min-h-0 ${activeView === "code" ? "flex flex-col overflow-hidden" : "overflow-y-auto overflow-x-hidden"}`}
+          >
             {activeView === "customize" ? (
               <div className="px-4 py-3">
                 {/* Presets */}
@@ -1318,7 +1368,9 @@ export function ThemeCustomizer() {
                           onClick={() => setPreset(key)}
                           className="text-left rounded-sm px-3 py-2.5 border border-white/[6%] transition-all cursor-pointer"
                           style={{
-                            borderColor: active ? `${p.colors.primary}60` : "rgba(255,255,255,0.06)",
+                            borderColor: active
+                              ? `${p.colors.primary}60`
+                              : "rgba(255,255,255,0.06)",
                             background: active ? `${p.colors.primary}08` : "transparent",
                           }}
                         >
@@ -1334,9 +1386,7 @@ export function ThemeCustomizer() {
                               {p.label}
                             </span>
                           </div>
-                          <div className="text-[9px] text-white/25 leading-tight">
-                            {p.desc}
-                          </div>
+                          <div className="text-[9px] text-white/25 leading-tight">{p.desc}</div>
                         </button>
                       );
                     })}
@@ -1345,7 +1395,20 @@ export function ThemeCustomizer() {
                     href="/themes"
                     className="mt-2 flex items-center justify-center gap-1.5 rounded-sm px-3 py-2 border border-white/[6%] text-[11px] text-white/50 hover:text-white/80 hover:border-white/15 transition-all cursor-pointer"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+                      <path d="M2 12h20" />
+                    </svg>
                     Explore more themes
                   </a>
                 </Section>
@@ -1369,18 +1432,50 @@ export function ThemeCustomizer() {
                       />
                     ))}
                   </div>
-                  <ColorSwatch label="Primary" value={state.colors.primary} onChange={(v) => setColor("primary", v)} />
+                  <ColorSwatch
+                    label="Primary"
+                    value={state.colors.primary}
+                    onChange={(v) => setColor("primary", v)}
+                  />
                 </Section>
 
                 {/* Colors */}
                 <Section title="Colors">
-                  <ColorSwatch label="Background" value={state.colors.background} onChange={(v) => setColor("background", v)} />
-                  <ColorSwatch label="Foreground" value={state.colors.foreground} onChange={(v) => setColor("foreground", v)} />
-                  <ColorSwatch label="Muted Text" value={state.colors.mutedForeground} onChange={(v) => setColor("mutedForeground", v)} />
-                  <ColorSwatch label="Border" value={state.colors.border} onChange={(v) => setColor("border", v)} />
-                  <ColorSwatch label="Card" value={state.colors.card} onChange={(v) => setColor("card", v)} />
-                  <ColorSwatch label="Muted BG" value={state.colors.muted} onChange={(v) => setColor("muted", v)} />
-                  <ColorSwatch label="Ring" value={state.colors.ring} onChange={(v) => setColor("ring", v)} />
+                  <ColorSwatch
+                    label="Background"
+                    value={state.colors.background}
+                    onChange={(v) => setColor("background", v)}
+                  />
+                  <ColorSwatch
+                    label="Foreground"
+                    value={state.colors.foreground}
+                    onChange={(v) => setColor("foreground", v)}
+                  />
+                  <ColorSwatch
+                    label="Muted Text"
+                    value={state.colors.mutedForeground}
+                    onChange={(v) => setColor("mutedForeground", v)}
+                  />
+                  <ColorSwatch
+                    label="Border"
+                    value={state.colors.border}
+                    onChange={(v) => setColor("border", v)}
+                  />
+                  <ColorSwatch
+                    label="Card"
+                    value={state.colors.card}
+                    onChange={(v) => setColor("card", v)}
+                  />
+                  <ColorSwatch
+                    label="Muted BG"
+                    value={state.colors.muted}
+                    onChange={(v) => setColor("muted", v)}
+                  />
+                  <ColorSwatch
+                    label="Ring"
+                    value={state.colors.ring}
+                    onChange={(v) => setColor("ring", v)}
+                  />
                 </Section>
 
                 {/* Layout */}
@@ -1393,7 +1488,10 @@ export function ThemeCustomizer() {
                       { value: "bordered", label: "Bordered" },
                       { value: "floating", label: "Floating" },
                     ]}
-                    onChange={(v) => { setHasCustomized(true); setState((s) => ({ ...s, sidebar: v as SidebarStyle })); }}
+                    onChange={(v) => {
+                      setHasCustomized(true);
+                      setState((s) => ({ ...s, sidebar: v as SidebarStyle }));
+                    }}
                   />
                   <SelectField
                     label="TOC Style"
@@ -1402,7 +1500,10 @@ export function ThemeCustomizer() {
                       { value: "default", label: "Default" },
                       { value: "directional", label: "Directional (tree)" },
                     ]}
-                    onChange={(v) => { setHasCustomized(true); setState((s) => ({ ...s, toc: { ...s.toc, style: v as TocStyle } })); }}
+                    onChange={(v) => {
+                      setHasCustomized(true);
+                      setState((s) => ({ ...s, toc: { ...s.toc, style: v as TocStyle } }));
+                    }}
                   />
                   <SelectField
                     label="TOC Depth"
@@ -1412,12 +1513,18 @@ export function ThemeCustomizer() {
                       { value: "3", label: "H2 + H3" },
                       { value: "4", label: "H2 – H4" },
                     ]}
-                    onChange={(v) => { setHasCustomized(true); setState((s) => ({ ...s, toc: { ...s.toc, depth: Number(v) } })); }}
+                    onChange={(v) => {
+                      setHasCustomized(true);
+                      setState((s) => ({ ...s, toc: { ...s.toc, depth: Number(v) } }));
+                    }}
                   />
                   <ToggleSwitch
                     label="TOC Visible"
                     checked={state.toc.enabled}
-                    onChange={(v) => { setHasCustomized(true); setState((s) => ({ ...s, toc: { ...s.toc, enabled: v } })); }}
+                    onChange={(v) => {
+                      setHasCustomized(true);
+                      setState((s) => ({ ...s, toc: { ...s.toc, enabled: v } }));
+                    }}
                   />
                 </Section>
 
@@ -1426,7 +1533,10 @@ export function ThemeCustomizer() {
                   <ToggleSwitch
                     label="Enabled"
                     checked={state.ai.enabled}
-                    onChange={(v) => { setHasCustomized(true); setState((s) => ({ ...s, ai: { ...s.ai, enabled: v } })); }}
+                    onChange={(v) => {
+                      setHasCustomized(true);
+                      setState((s) => ({ ...s, ai: { ...s.ai, enabled: v } }));
+                    }}
                   />
                   {state.ai.enabled && (
                     <>
@@ -1492,7 +1602,10 @@ export function ThemeCustomizer() {
                   <ToggleSwitch
                     label="Breadcrumb"
                     checked={state.breadcrumb}
-                    onChange={(v) => { setHasCustomized(true); setState((s) => ({ ...s, breadcrumb: v })); }}
+                    onChange={(v) => {
+                      setHasCustomized(true);
+                      setState((s) => ({ ...s, breadcrumb: v }));
+                    }}
                   />
                 </Section>
               </div>
@@ -1500,7 +1613,6 @@ export function ThemeCustomizer() {
               <CodeOutput cssCode={cssCode} configCode={configCode} />
             )}
           </div>
-
         </div>
       </div>
     </>

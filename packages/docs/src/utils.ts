@@ -28,7 +28,7 @@ export function deepMerge<T extends Record<string, unknown>>(
     ) {
       result[key] = deepMerge(
         targetVal as Record<string, unknown>,
-        sourceVal as Record<string, unknown>
+        sourceVal as Record<string, unknown>,
       ) as T[keyof T];
     } else if (sourceVal !== undefined) {
       result[key] = sourceVal as T[keyof T];

@@ -5,7 +5,7 @@ const config = {
   kit: {
     adapter: adapter(),
     alias: {
-      "$content": "src/content",
+      $content: "src/content",
     },
   },
 };

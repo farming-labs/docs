@@ -31,11 +31,7 @@ interface InfoCardProps {
   variant?: "default" | "tip" | "warning";
 }
 
-export function InfoCard({
-  title,
-  children,
-  variant = "default",
-}: InfoCardProps) {
+export function InfoCard({ title, children, variant = "default" }: InfoCardProps) {
   const colors = {
     default: "border-white/10 bg-white/[0.02]",
     tip: "border-emerald-500/20 bg-emerald-500/[0.04]",
@@ -137,11 +133,7 @@ Now every link in your MDX files will use `CustomLink` — external links open i
 ### Example: Override `blockquote`
 
 ```tsx title="components/custom-blockquote.tsx"
-export function CustomBlockquote({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function CustomBlockquote({ children }: { children: React.ReactNode }) {
   return (
     <blockquote className="border-l-2 border-white/20 pl-4 my-4 text-fd-muted-foreground italic">
       {children}
@@ -159,16 +151,10 @@ components: {
 ### Example: Override `pre` (code blocks)
 
 ```tsx title="components/custom-code-block.tsx"
-export function CustomPre({
-  children,
-  ...props
-}: React.HTMLAttributes<HTMLPreElement>) {
+export function CustomPre({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) {
   return (
     <div className="relative group my-4">
-      <pre
-        className="border border-white/10 bg-black p-4 overflow-x-auto"
-        {...props}
-      >
+      <pre className="border border-white/10 bg-black p-4 overflow-x-auto" {...props}>
         {children}
       </pre>
     </div>

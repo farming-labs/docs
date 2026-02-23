@@ -27,9 +27,7 @@ export function MyNote({ children, type = "info" }: MyNoteProps) {
         fontSize: "0.95rem",
       }}
     >
-      <strong style={{ textTransform: "uppercase", fontSize: "0.8rem" }}>
-        {type}
-      </strong>
+      <strong style={{ textTransform: "uppercase", fontSize: "0.8rem" }}>{type}</strong>
       <div style={{ marginTop: "0.25rem" }}>{children}</div>
     </div>
   );

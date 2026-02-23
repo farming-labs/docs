@@ -17,19 +17,21 @@ Choose from built-in themes or create your own:
 import { greentree } from "@farming-labs/theme/greentree";
 
 export default defineDocs({
-  theme: greentree({ /* overrides */ }),
+  theme: greentree({
+    /* overrides */
+  }),
 });
 ```
 
 ## Available Themes
 
-| Theme | Description |
-|-------|-------------|
-| `fumadocs` | Default theme with clean design |
-| `darkbold` | Monochrome Vercel-inspired theme |
+| Theme       | Description                            |
+| ----------- | -------------------------------------- |
+| `fumadocs`  | Default theme with clean design        |
+| `darkbold`  | Monochrome Vercel-inspired theme       |
 | `greentree` | Green-accented Mintlify-inspired theme |
-| `colorful` | Vibrant colorful theme |
-| `shiny` | Glossy modern theme |
+| `colorful`  | Vibrant colorful theme                 |
+| `shiny`     | Glossy modern theme                    |
 
 ## Quick Customization
 
@@ -41,5 +43,5 @@ theme: greentree({
     colors: { primary: "#FF6B35" },
     sidebar: { style: "bordered" },
   },
-})
+});
 ```

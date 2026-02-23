@@ -2,14 +2,7 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import {
-  useState,
-  useEffect,
-  useRef,
-  useMemo,
-  useCallback,
-  type ReactNode,
-} from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 
 function cn(...classes: Array<string | undefined | null | false>) {
   return classes.filter(Boolean).join(" ");
@@ -76,7 +69,11 @@ function HighlightedLabel({ label, indices }: { label: string; indices: number[]
         run += label[p];
         p++;
       }
-      out.push(<mark key={`m-${pos}`} className="omni-highlight">{run}</mark>);
+      out.push(
+        <mark key={`m-${pos}`} className="omni-highlight">
+          {run}
+        </mark>,
+      );
       pos = p - 1;
     } else {
       out.push(<span key={`t-${pos}`}>{label[pos]}</span>);
@@ -87,55 +84,127 @@ function HighlightedLabel({ label, indices }: { label: string; indices: number[]
 
 function SearchIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
     </svg>
   );
 }
 
 function FileIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4" />
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
     </svg>
   );
 }
 
 function HashIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="4" x2="20" y1="9" y2="9" /><line x1="4" x2="20" y1="15" y2="15" /><line x1="10" x2="8" y1="3" y2="21" /><line x1="16" x2="14" y1="3" y2="21" />
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="4" x2="20" y1="9" y2="9" />
+      <line x1="4" x2="20" y1="15" y2="15" />
+      <line x1="10" x2="8" y1="3" y2="21" />
+      <line x1="16" x2="14" y1="3" y2="21" />
     </svg>
   );
 }
 
 function TypeIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="4 7 4 4 20 4 20 7" /><line x1="9" x2="15" y1="20" y2="20" /><line x1="12" x2="12" y1="4" y2="20" />
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="4 7 4 4 20 4 20 7" />
+      <line x1="9" x2="15" y1="20" y2="20" />
+      <line x1="12" x2="12" y1="4" y2="20" />
     </svg>
   );
 }
 
 function CloseIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
     </svg>
   );
 }
 
 function EnterIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="9 10 4 15 9 20" /><path d="M20 4v7a4 4 0 0 1-4 4H4" />
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="9 10 4 15 9 20" />
+      <path d="M20 4v7a4 4 0 0 1-4 4H4" />
     </svg>
   );
 }
 
 function ArrowUpIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="m18 15-6-6-6 6" />
     </svg>
   );
@@ -143,7 +212,16 @@ function ArrowUpIcon() {
 
 function ArrowDownIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="m6 9 6 6 6-6" />
     </svg>
   );
@@ -151,15 +229,35 @@ function ArrowDownIcon() {
 
 function ExternalLinkIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M15 3h6v6" />
+      <path d="M10 14 21 3" />
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
     </svg>
   );
 }
 
 function ChevronRightIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="m9 18 6-6-6-6" />
     </svg>
   );
@@ -167,7 +265,17 @@ function ChevronRightIcon() {
 
 function LoaderIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="omni-spin">
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="omni-spin"
+    >
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
   );
@@ -175,26 +283,44 @@ function LoaderIcon() {
 
 function HistoryIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" />
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+      <path d="M12 7v5l4 2" />
     </svg>
   );
 }
 
 function iconForType(type: string) {
   switch (type) {
-    case "heading": return <HashIcon />;
-    case "text": return <TypeIcon />;
-    default: return <FileIcon />;
+    case "heading":
+      return <HashIcon />;
+    case "text":
+      return <TypeIcon />;
+    default:
+      return <FileIcon />;
   }
 }
 
 function labelForType(type: string) {
   switch (type) {
-    case "page": return "Page";
-    case "heading": return "Section";
-    case "text": return "Content";
-    default: return "Result";
+    case "page":
+      return "Page";
+    case "heading":
+      return "Section";
+    case "text":
+      return "Content";
+    default:
+      return "Result";
   }
 }
 
@@ -232,7 +358,7 @@ export function DocsCommandSearch() {
     try {
       const raw = localStorage.getItem("fd:omni:recents");
       if (raw) setRecents(JSON.parse(raw));
-    } catch { }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -307,11 +433,13 @@ export function DocsCommandSearch() {
           setResults(items);
           setActiveIndex(0);
         }
-      } catch { }
+      } catch {}
       if (!cancelled) setLoading(false);
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [debouncedQuery]);
 
   useEffect(() => {
@@ -327,27 +455,35 @@ export function DocsCommandSearch() {
   useEffect(() => {
     if (!open) return;
     function handler(e: KeyboardEvent) {
-      if (e.key === "Escape") { setOpen(false); }
+      if (e.key === "Escape") {
+        setOpen(false);
+      }
     }
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [open]);
 
-  const saveRecent = useCallback((item: ResultItem) => {
-    try {
-      const entry: RecentEntry = { id: item.id, label: item.label, url: item.url };
-      const next = [entry, ...recents.filter(r => r.id !== entry.id)].slice(0, 8);
-      setRecents(next);
-      localStorage.setItem("fd:omni:recents", JSON.stringify(next));
-    } catch { }
-  }, [recents]);
+  const saveRecent = useCallback(
+    (item: ResultItem) => {
+      try {
+        const entry: RecentEntry = { id: item.id, label: item.label, url: item.url };
+        const next = [entry, ...recents.filter((r) => r.id !== entry.id)].slice(0, 8);
+        setRecents(next);
+        localStorage.setItem("fd:omni:recents", JSON.stringify(next));
+      } catch {}
+    },
+    [recents],
+  );
 
-  const execute = useCallback((item: ResultItem) => {
-    saveRecent(item);
-    setOpen(false);
-    if (item.url.startsWith("http")) window.open(item.url, "_blank", "noopener");
-    else window.location.href = item.url;
-  }, [saveRecent]);
+  const execute = useCallback(
+    (item: ResultItem) => {
+      saveRecent(item);
+      setOpen(false);
+      if (item.url.startsWith("http")) window.open(item.url, "_blank", "noopener");
+      else window.location.href = item.url;
+    },
+    [saveRecent],
+  );
 
   const displayItems = useMemo(() => {
     if (results.length > 0) return results;
@@ -356,9 +492,14 @@ export function DocsCommandSearch() {
 
   const recentItems = useMemo((): ResultItem[] => {
     if (query.trim() || results.length > 0) return [];
-    return recents.map(r => ({
-      id: r.id, label: r.label, subtitle: "Recently viewed",
-      url: r.url, icon: <FileIcon />, score: 0, indices: [],
+    return recents.map((r) => ({
+      id: r.id,
+      label: r.label,
+      subtitle: "Recently viewed",
+      url: r.url,
+      icon: <FileIcon />,
+      score: 0,
+      indices: [],
     }));
   }, [query, results, recents]);
 
@@ -375,9 +516,13 @@ export function DocsCommandSearch() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "ArrowDown") { e.preventDefault(); moveActive(1); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); moveActive(-1); }
-    else if (e.key === "Enter") {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      moveActive(1);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      moveActive(-1);
+    } else if (e.key === "Enter") {
       e.preventDefault();
       const allItems = [...recentItems, ...displayItems];
       if (allItems[activeIndex]) execute(allItems[activeIndex]);
@@ -394,7 +539,9 @@ export function DocsCommandSearch() {
       <div className="omni-content" role="dialog" aria-label="Search documentation">
         <div className="omni-header">
           <div className="omni-search-row">
-            <span className="omni-search-icon"><SearchIcon /></span>
+            <span className="omni-search-icon">
+              <SearchIcon />
+            </span>
             <input
               ref={inputRef}
               type="text"
@@ -415,7 +562,9 @@ export function DocsCommandSearch() {
 
         <div className="omni-body" ref={listRef} role="listbox" aria-label="Search results">
           {loading && (
-            <div className="omni-loading"><LoaderIcon /> Searching…</div>
+            <div className="omni-loading">
+              <LoaderIcon /> Searching…
+            </div>
           )}
 
           {recentItems.length > 0 && (
@@ -443,7 +592,9 @@ export function DocsCommandSearch() {
                       rel="noopener noreferrer"
                       className="omni-item-ext"
                       title="Open in new tab"
-                      onClick={(e) => { e.stopPropagation(); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
                     >
                       <ExternalLinkIcon />
                     </a>
@@ -483,7 +634,9 @@ export function DocsCommandSearch() {
                         rel="noopener noreferrer"
                         className="omni-item-ext"
                         title="Open in new tab"
-                        onClick={(e) => { e.stopPropagation(); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
                       >
                         <ExternalLinkIcon />
                       </a>
@@ -497,7 +650,9 @@ export function DocsCommandSearch() {
 
           {allItems.length === 0 && !loading && (
             <div className="omni-empty">
-              <div className="omni-empty-icon"><HistoryIcon /></div>
+              <div className="omni-empty-icon">
+                <HistoryIcon />
+              </div>
               {debouncedQuery
                 ? "No results found. Try a different query."
                 : "Type to search the docs, or browse recent items."}
@@ -508,14 +663,21 @@ export function DocsCommandSearch() {
         <div className="omni-footer">
           <div className="omni-footer-inner">
             <div className="omni-footer-hints">
-              <span className="omni-footer-hint"><EnterIcon /> to select</span>
-              <span className="omni-footer-hint"><ArrowUpIcon /><ArrowDownIcon /> to navigate</span>
-              <span className="omni-footer-hint omni-footer-hint-desktop"><CloseIcon /> to close</span>
+              <span className="omni-footer-hint">
+                <EnterIcon /> to select
+              </span>
+              <span className="omni-footer-hint">
+                <ArrowUpIcon />
+                <ArrowDownIcon /> to navigate
+              </span>
+              <span className="omni-footer-hint omni-footer-hint-desktop">
+                <CloseIcon /> to close
+              </span>
             </div>
           </div>
         </div>
       </div>
     </>,
-    document.body
+    document.body,
   );
 }

@@ -5,14 +5,17 @@ export default defineNuxtConfig({
 
   vite: {
     optimizeDeps: {
-      include: ["@farming-labs/docs", "@farming-labs/nuxt", "@farming-labs/nuxt-theme", "sugar-high"],
+      include: [
+        "@farming-labs/docs",
+        "@farming-labs/nuxt",
+        "@farming-labs/nuxt-theme",
+        "sugar-high",
+      ],
     },
   },
 
   nitro: {
     moduleSideEffects: ["@farming-labs/nuxt/server"],
-    serverAssets: [
-      { baseName: "docs", dir: "../docs" },
-    ],
+    serverAssets: [{ baseName: "docs", dir: "../docs" }],
   },
 });

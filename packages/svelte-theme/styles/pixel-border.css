@@ -81,7 +81,7 @@
 }
 
 .fd-sidebar-folder-content::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 4px;
   top: 4px;
@@ -100,7 +100,7 @@
   border-bottom: 1px solid var(--color-fd-border);
 }
 .fd-sidebar-folder-content::before {
-  content: '';
+  content: "";
   position: absolute;
   left: -4px;
   top: 3px;
@@ -213,7 +213,7 @@
 
 /* Active indicator bar for child links */
 .fd-sidebar-folder-content .fd-sidebar-link-active::before {
-  content: '';
+  content: "";
   position: absolute;
   left: -16px;
   top: 25%;
@@ -246,7 +246,6 @@
   border-top: 1px solid var(--color-fd-border) !important;
   border-bottom: 1px solid var(--color-fd-border) !important;
   border-radius: 0 !important;
-  
 }
 
 .fd-sidebar-search {

@@ -2,6 +2,19 @@
   "name": "@farming-labs/nuxt-theme",
   "version": "0.0.2-beta.21",
   "description": "Nuxt/Vue UI components for @farming-labs/docs — layout, sidebar, TOC, search, and theme toggle",
+  "keywords": [
+    "docs",
+    "documentation",
+    "nuxt",
+    "theme",
+    "vue"
+  ],
+  "license": "MIT",
+  "author": "Farming Labs",
+  "files": [
+    "src",
+    "styles"
+  ],
   "type": "module",
   "exports": {
     ".": {
@@ -38,10 +51,6 @@
     "./styles/colorful.css": "./styles/colorful.css",
     "./colorful/css": "./styles/colorful-bundle.css"
   },
-  "files": ["src", "styles"],
-  "keywords": ["docs", "nuxt", "vue", "theme", "documentation"],
-  "author": "Farming Labs",
-  "license": "MIT",
   "scripts": {
     "build": "echo 'Nuxt theme components are shipped as source'",
     "typecheck": "echo 'ok'"
@@ -51,10 +60,12 @@
     "sugar-high": "^0.9.5"
   },
   "peerDependencies": {
-    "vue": ">=3.0.0",
-    "nuxt": ">=3.0.0"
+    "nuxt": ">=3.0.0",
+    "vue": ">=3.0.0"
   },
   "peerDependenciesMeta": {
-    "nuxt": { "optional": true }
+    "nuxt": {
+      "optional": true
+    }
   }
 }

@@ -23,7 +23,7 @@ const props = withDefaults(
     nextPage: null,
     editOnGithub: null,
     lastModified: null,
-  }
+  },
 );
 
 const route = useRoute();
@@ -87,10 +87,13 @@ onMounted(() => {
   wireInteractive();
 });
 
-watch(() => route.path, () => {
-  scanHeadings();
-  wireInteractive();
-});
+watch(
+  () => route.path,
+  () => {
+    scanHeadings();
+    wireInteractive();
+  },
+);
 </script>
 
 <template>
@@ -105,7 +108,16 @@ watch(() => route.path, () => {
       <footer class="fd-page-footer">
         <div v-if="editOnGithub || lastModified" class="fd-edit-on-github">
           <a v-if="editOnGithub" :href="editOnGithub" target="_blank" rel="noopener noreferrer">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
               <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
             </svg>
@@ -115,9 +127,22 @@ watch(() => route.path, () => {
         </div>
 
         <nav v-if="previousPage || nextPage" class="fd-page-nav" aria-label="Page navigation">
-          <NuxtLink v-if="previousPage" :to="previousPage.url" class="fd-page-nav-card fd-page-nav-prev">
+          <NuxtLink
+            v-if="previousPage"
+            :to="previousPage.url"
+            class="fd-page-nav-card fd-page-nav-prev"
+          >
             <span class="fd-page-nav-label">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <polyline points="15 18 9 12 15 6" />
               </svg>
               Previous
@@ -128,7 +153,16 @@ watch(() => route.path, () => {
           <NuxtLink v-if="nextPage" :to="nextPage.url" class="fd-page-nav-card fd-page-nav-next">
             <span class="fd-page-nav-label">
               Next
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <polyline points="9 18 15 12 9 6" />
               </svg>
             </span>

@@ -2,7 +2,36 @@
   "name": "@farming-labs/svelte-theme",
   "version": "0.0.2-beta.21",
   "description": "Svelte UI components for @farming-labs/docs — layout, sidebar, TOC, search, and theme toggle",
+  "keywords": [
+    "docs",
+    "documentation",
+    "svelte",
+    "sveltekit",
+    "theme"
+  ],
+  "license": "MIT",
+  "author": "Farming Labs",
+  "files": [
+    "src",
+    "styles"
+  ],
   "type": "module",
+  "typesVersions": {
+    "*": {
+      "pixel-border": [
+        "./src/themes/pixel-border.d.ts"
+      ],
+      "darksharp": [
+        "./src/themes/darksharp.d.ts"
+      ],
+      "fumadocs": [
+        "./src/themes/default.d.ts"
+      ],
+      ".": [
+        "./src/index.d.ts"
+      ]
+    }
+  },
   "svelte": "./src/index.js",
   "exports": {
     ".": {
@@ -40,27 +69,6 @@
     "./styles/colorful.css": "./styles/colorful.css",
     "./colorful/css": "./styles/colorful-bundle.css"
   },
-  "typesVersions": {
-    "*": {
-      "pixel-border": ["./src/themes/pixel-border.d.ts"],
-      "darksharp": ["./src/themes/darksharp.d.ts"],
-      "fumadocs": ["./src/themes/default.d.ts"],
-      ".": ["./src/index.d.ts"]
-    }
-  },
-  "files": [
-    "src",
-    "styles"
-  ],
-  "keywords": [
-    "docs",
-    "svelte",
-    "sveltekit",
-    "theme",
-    "documentation"
-  ],
-  "author": "Farming Labs",
-  "license": "MIT",
   "scripts": {
     "build": "echo 'Svelte components are shipped as source'",
     "typecheck": "echo 'ok'"

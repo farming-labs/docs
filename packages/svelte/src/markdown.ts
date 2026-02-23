@@ -65,11 +65,7 @@ function renderCallout(type: string, content: string): string {
   return `<div class="fd-callout fd-callout-${type}" role="note"><div class="fd-callout-indicator" role="none"></div><div class="fd-callout-icon">${icon}</div><div class="fd-callout-content"><p class="fd-callout-title">${label}</p><p>${content}</p></div></div>`;
 }
 
-function highlightCode(
-  hl: Highlighter,
-  code: string,
-  lang: string,
-): { html: string; raw: string } {
+function highlightCode(hl: Highlighter, code: string, lang: string): { html: string; raw: string } {
   if (lang === "sh" || lang === "shell") lang = "bash";
   if (lang === "env") lang = "dotenv";
 
@@ -87,10 +83,7 @@ function highlightCode(
       raw: trimmedCode,
     };
   } catch {
-    const escaped = trimmedCode
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+    const escaped = trimmedCode.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     return {
       html: `<pre class="shiki"><code>${escaped}</code></pre>`,
       raw: trimmedCode,
@@ -147,9 +140,7 @@ export async function renderMarkdown(content: string): Promise<string> {
   result = result.replace(
     /<Tabs\s+items=\{?\[([^\]]+)\]\}?>([\s\S]*?)<\/Tabs>/g,
     (_: string, itemsStr: string, body: string) => {
-      const items = itemsStr
-        .split(",")
-        .map((s: string) => s.trim().replace(/^["']|["']$/g, ""));
+      const items = itemsStr.split(",").map((s: string) => s.trim().replace(/^["']|["']$/g, ""));
       const panels: { value: string; html: string }[] = [];
       const tabRegex = /<Tab\s+value=["']([^"']+)["']>([\s\S]*?)<\/Tab>/g;
       let tabMatch: RegExpExecArray | null;
@@ -214,37 +205,30 @@ export async function renderMarkdown(content: string): Promise<string> {
 
   // ── Callouts / blockquotes (before inline formatting) ──
   const calloutBlocks: string[] = [];
-  result = result.replace(
-    /(?:^>\s*.+\n?)+/gm,
-    (block: string) => {
-      const lines = block.split("\n").filter(Boolean);
-      const inner = lines.map((l: string) => l.replace(/^>\s?/, "")).join("\n");
+  result = result.replace(/(?:^>\s*.+\n?)+/gm, (block: string) => {
+    const lines = block.split("\n").filter(Boolean);
+    const inner = lines.map((l: string) => l.replace(/^>\s?/, "")).join("\n");
 
-      const ghMatch = inner.match(
-        /^\[!(NOTE|WARNING|TIP|IMPORTANT|CAUTION)\]\s*\n?([\s\S]*)/i,
-      );
-      if (ghMatch) {
-        const type = ghMatch[1].toLowerCase();
-        const calloutContent = ghMatch[2].trim();
-        const placeholder = `%%CALLOUT_${calloutBlocks.length}%%`;
-        calloutBlocks.push(renderCallout(type, calloutContent));
-        return placeholder;
-      }
+    const ghMatch = inner.match(/^\[!(NOTE|WARNING|TIP|IMPORTANT|CAUTION)\]\s*\n?([\s\S]*)/i);
+    if (ghMatch) {
+      const type = ghMatch[1].toLowerCase();
+      const calloutContent = ghMatch[2].trim();
+      const placeholder = `%%CALLOUT_${calloutBlocks.length}%%`;
+      calloutBlocks.push(renderCallout(type, calloutContent));
+      return placeholder;
+    }
 
-      const boldMatch = inner.match(
-        /^\*\*(Note|Warning|Tip|Important|Caution):\*\*\s*([\s\S]*)/i,
-      );
-      if (boldMatch) {
-        const type = boldMatch[1].toLowerCase();
-        const calloutContent = boldMatch[2].trim();
-        const placeholder = `%%CALLOUT_${calloutBlocks.length}%%`;
-        calloutBlocks.push(renderCallout(type, calloutContent));
-        return placeholder;
-      }
+    const boldMatch = inner.match(/^\*\*(Note|Warning|Tip|Important|Caution):\*\*\s*([\s\S]*)/i);
+    if (boldMatch) {
+      const type = boldMatch[1].toLowerCase();
+      const calloutContent = boldMatch[2].trim();
+      const placeholder = `%%CALLOUT_${calloutBlocks.length}%%`;
+      calloutBlocks.push(renderCallout(type, calloutContent));
+      return placeholder;
+    }
 
-      return `<blockquote><p>${inner}</p></blockquote>`;
-    },
-  );
+    return `<blockquote><p>${inner}</p></blockquote>`;
+  });
 
   // Inline formatting
   result = result.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
@@ -252,10 +236,7 @@ export async function renderMarkdown(content: string): Promise<string> {
   result = result.replace(/\*(.+?)\*/g, "<em>$1</em>");
 
   // Links
-  result = result.replace(
-    /\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2">$1</a>',
-  );
+  result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
 
   // Horizontal rules
   result = result.replace(/^---$/gm, "<hr />");
@@ -279,10 +260,7 @@ export async function renderMarkdown(content: string): Promise<string> {
         );
       const headerHtml = headers.map((h: string) => `<th>${h}</th>`).join("");
       const rowsHtml = rows
-        .map(
-          (row: string[]) =>
-            `<tr>${row.map((c: string) => `<td>${c}</td>`).join("")}</tr>`,
-        )
+        .map((row: string[]) => `<tr>${row.map((c: string) => `<td>${c}</td>`).join("")}</tr>`)
         .join("");
       return `<div class="fd-table-wrapper"><table><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
     },
@@ -314,8 +292,7 @@ export async function renderMarkdown(content: string): Promise<string> {
     .map((block: string) => {
       block = block.trim();
       if (!block) return "";
-      if (/^<(h[1-6]|pre|ul|ol|blockquote|hr|table|div)/.test(block))
-        return block;
+      if (/^<(h[1-6]|pre|ul|ol|blockquote|hr|table|div)/.test(block)) return block;
       if (/^%%(CODEBLOCK|CALLOUT|TABS)_\d+%%$/.test(block)) return block;
       return `<p>${block}</p>`;
     })

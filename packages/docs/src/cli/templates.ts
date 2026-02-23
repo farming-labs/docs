@@ -237,13 +237,10 @@ export function nextConfigMergedTemplate(existingContent: string): string {
     lines.unshift(importLine, "");
   }
 
-  const adjustedExportIdx =
-    exportIdx + (lastImportIdx >= 0 && exportIdx > lastImportIdx ? 1 : 0);
+  const adjustedExportIdx = exportIdx + (lastImportIdx >= 0 && exportIdx > lastImportIdx ? 1 : 0);
   const exportLine = lines[adjustedExportIdx];
 
-  const simpleMatch = exportLine.match(
-    /^(\s*export\s+default\s+)(.*?)(;?\s*)$/,
-  );
+  const simpleMatch = exportLine.match(/^(\s*export\s+default\s+)(.*?)(;?\s*)$/);
   if (simpleMatch) {
     const [, prefix, value, suffix] = simpleMatch;
     lines[adjustedExportIdx] = `${prefix}withDocs(${value})${suffix}`;
@@ -252,7 +249,10 @@ export function nextConfigMergedTemplate(existingContent: string): string {
   return lines.join("\n");
 }
 
-export function rootLayoutTemplate(cfg: TemplateConfig, globalCssRelPath = "app/globals.css"): string {
+export function rootLayoutTemplate(
+  cfg: TemplateConfig,
+  globalCssRelPath = "app/globals.css",
+): string {
   let cssImport: string;
   if (globalCssRelPath.startsWith("app/")) {
     cssImport = "./" + globalCssRelPath.slice("app/".length);
@@ -302,14 +302,12 @@ export function globalCssTemplate(theme: string): string {
 `;
 }
 
-export function injectCssImport(
-  existingContent: string,
-  theme: string,
-): string | null {
+export function injectCssImport(existingContent: string, theme: string): string | null {
   const t = getThemeInfo(theme);
   const importLine = `@import "@farming-labs/theme/${t.nextCssImport}/css";`;
   if (existingContent.includes(importLine)) return null;
-  if (existingContent.includes("@farming-labs/theme/") && existingContent.includes("/css")) return null;
+  if (existingContent.includes("@farming-labs/theme/") && existingContent.includes("/css"))
+    return null;
   const lines = existingContent.split("\n");
   const lastImportIdx = lines.reduce(
     (acc, l, i) => (l.trimStart().startsWith("@import") ? i : acc),
@@ -675,10 +673,7 @@ export function svelteCssImportLine(theme: string): string {
   return `@import "@farming-labs/svelte-theme/${theme}/css";`;
 }
 
-export function injectSvelteCssImport(
-  existingContent: string,
-  theme: string,
-): string | null {
+export function injectSvelteCssImport(existingContent: string, theme: string): string | null {
   const importLine = svelteCssImportLine(theme);
   if (existingContent.includes(importLine)) return null;
   const lines = existingContent.split("\n");
@@ -1039,10 +1034,7 @@ export function astroCssImportLine(theme: string): string {
   return `@import "@farming-labs/astro-theme/${theme}/css";`;
 }
 
-export function injectAstroCssImport(
-  existingContent: string,
-  theme: string,
-): string | null {
+export function injectAstroCssImport(existingContent: string, theme: string): string | null {
   const importLine = astroCssImportLine(theme);
   if (existingContent.includes(importLine)) return null;
   const lines = existingContent.split("\n");
@@ -1545,10 +1537,7 @@ export function nuxtCssImportLine(theme: string): string {
   return `@import "@farming-labs/nuxt-theme/${theme}/css";`;
 }
 
-export function injectNuxtCssImport(
-  existingContent: string,
-  theme: string,
-): string | null {
+export function injectNuxtCssImport(existingContent: string, theme: string): string | null {
   const importLine = nuxtCssImportLine(theme);
   if (existingContent.includes(importLine)) return null;
   const lines = existingContent.split("\n");

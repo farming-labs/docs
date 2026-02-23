@@ -54,9 +54,7 @@ import { deepMerge } from "./utils.js";
  * });
  * ```
  */
-export function createTheme(
-  baseTheme: DocsTheme,
-): (overrides?: Partial<DocsTheme>) => DocsTheme {
+export function createTheme(baseTheme: DocsTheme): (overrides?: Partial<DocsTheme>) => DocsTheme {
   return function themeFactory(overrides: Partial<DocsTheme> = {}): DocsTheme {
     const merged = deepMerge(
       baseTheme as Record<string, unknown>,
@@ -91,10 +89,7 @@ export function createTheme(
  * });
  * ```
  */
-export function extendTheme(
-  baseTheme: DocsTheme,
-  extensions: Partial<DocsTheme>,
-): DocsTheme {
+export function extendTheme(baseTheme: DocsTheme, extensions: Partial<DocsTheme>): DocsTheme {
   return deepMerge(
     baseTheme as Record<string, unknown>,
     extensions as Record<string, unknown>,

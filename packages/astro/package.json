@@ -2,6 +2,16 @@
   "name": "@farming-labs/astro",
   "version": "0.0.2-beta.21",
   "description": "Astro adapter for @farming-labs/docs — content loading and navigation utilities",
+  "keywords": [
+    "astro",
+    "docs",
+    "documentation"
+  ],
+  "license": "MIT",
+  "author": "Farming Labs",
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -27,10 +37,6 @@
       "default": "./dist/server.js"
     }
   },
-  "files": ["dist"],
-  "keywords": ["docs", "astro", "documentation"],
-  "author": "Farming Labs",
-  "license": "MIT",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",

@@ -2,6 +2,19 @@
   "name": "@farming-labs/docs",
   "version": "0.0.2-beta.21",
   "description": "Modern, flexible MDX-based docs framework — core types, config, and CLI",
+  "keywords": [
+    "docs",
+    "documentation",
+    "mdx"
+  ],
+  "license": "MIT",
+  "author": "Farming Labs",
+  "bin": {
+    "docs": "./dist/cli/index.mjs"
+  },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
@@ -13,13 +26,6 @@
       "default": "./dist/index.mjs"
     }
   },
-  "bin": {
-    "docs": "./dist/cli/index.mjs"
-  },
-  "files": ["dist"],
-  "keywords": ["docs", "mdx", "documentation"],
-  "author": "Farming Labs",
-  "license": "MIT",
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",

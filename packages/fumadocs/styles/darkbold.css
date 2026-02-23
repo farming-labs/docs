@@ -252,7 +252,9 @@ nav[class*="header"] {
   font-size: 0.875rem;
   color: var(--color-fd-card-foreground);
   box-shadow: none;
-  transition: background-color 150ms, border-color 150ms;
+  transition:
+    background-color 150ms,
+    border-color 150ms;
 }
 
 .fd-card:hover {
@@ -327,7 +329,9 @@ figure.shiki {
   border-radius: 0;
   color: var(--color-fd-muted-foreground);
   border-bottom: 2px solid transparent;
-  transition: color 150ms, border-color 150ms;
+  transition:
+    color 150ms,
+    border-color 150ms;
 }
 
 [role="tab"][aria-selected="true"],

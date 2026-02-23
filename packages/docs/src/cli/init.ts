@@ -87,11 +87,7 @@ export async function init() {
             : "Nuxt";
     p.log.success(`Detected framework: ${pc.cyan(frameworkName)}`);
   } else {
-    p.log.warn(
-      "Could not auto-detect a framework from " +
-        pc.cyan("package.json") +
-        ".",
-    );
+    p.log.warn("Could not auto-detect a framework from " + pc.cyan("package.json") + ".");
 
     const picked = await p.select({
       message: "Which framework are you using?",
@@ -386,10 +382,7 @@ export async function init() {
         cwd,
       );
     } else {
-      exec(
-        `${installCommand(pm)} @farming-labs/docs @farming-labs/next @farming-labs/theme`,
-        cwd,
-      );
+      exec(`${installCommand(pm)} @farming-labs/docs @farming-labs/next @farming-labs/theme`, cwd);
 
       const devDeps = [
         "@tailwindcss/postcss",
@@ -412,11 +405,7 @@ export async function init() {
       "Dependency installation failed. Run the install command manually:\n" +
         `  ${pc.cyan(`${installCommand(pm)} @farming-labs/docs`)}`,
     );
-    p.outro(
-      pc.yellow(
-        "Setup partially complete. Install deps and run dev server manually.",
-      ),
-    );
+    p.outro(pc.yellow("Setup partially complete. Install deps and run dev server manually."));
     process.exit(1);
   }
 
@@ -452,7 +441,13 @@ export async function init() {
           : { cmd: "npx", args: ["next", "dev", "--webpack"], waitFor: "Ready" };
 
   const defaultPort =
-    framework === "sveltekit" ? "5173" : framework === "astro" ? "4321" : framework === "nuxt" ? "3000" : "3000";
+    framework === "sveltekit"
+      ? "5173"
+      : framework === "astro"
+        ? "4321"
+        : framework === "nuxt"
+          ? "3000"
+          : "3000";
 
   try {
     const child = await spawnAndWaitFor(
@@ -494,10 +489,7 @@ export async function init() {
           : framework === "nuxt"
             ? "npx nuxt dev"
             : "npx next dev --webpack";
-    p.log.error(
-      "Could not start dev server. Try running manually:\n" +
-        `  ${pc.cyan(manualCmd)}`,
-    );
+    p.log.error("Could not start dev server. Try running manually:\n" + `  ${pc.cyan(manualCmd)}`);
     p.outro(pc.yellow("Setup complete. Start the server manually."));
     process.exit(1);
   }
@@ -565,10 +557,7 @@ function scaffoldNextJs(
   }
 
   write(`app/${cfg.entry}/page.mdx`, welcomePageTemplate(cfg));
-  write(
-    `app/${cfg.entry}/installation/page.mdx`,
-    installationPageTemplate(cfg),
-  );
+  write(`app/${cfg.entry}/installation/page.mdx`, installationPageTemplate(cfg));
   write(`app/${cfg.entry}/quickstart/page.mdx`, quickstartPageTemplate(cfg));
 }
 
@@ -587,27 +576,13 @@ function scaffoldSvelteKit(
   write("src/lib/docs.config.ts", svelteDocsConfigTemplate(cfg));
 
   write("src/lib/docs.server.ts", svelteDocsServerTemplate(cfg));
-  write(
-    `src/routes/${cfg.entry}/+layout.svelte`,
-    svelteDocsLayoutTemplate(cfg),
-  );
-  write(
-    `src/routes/${cfg.entry}/+layout.server.js`,
-    svelteDocsLayoutServerTemplate(cfg),
-  );
-  write(
-    `src/routes/${cfg.entry}/[...slug]/+page.svelte`,
-    svelteDocsPageTemplate(cfg),
-  );
+  write(`src/routes/${cfg.entry}/+layout.svelte`, svelteDocsLayoutTemplate(cfg));
+  write(`src/routes/${cfg.entry}/+layout.server.js`, svelteDocsLayoutServerTemplate(cfg));
+  write(`src/routes/${cfg.entry}/[...slug]/+page.svelte`, svelteDocsPageTemplate(cfg));
 
-  const existingRootLayout = readFileSafe(
-    path.join(cwd, "src/routes/+layout.svelte"),
-  );
+  const existingRootLayout = readFileSafe(path.join(cwd, "src/routes/+layout.svelte"));
   if (!existingRootLayout) {
-    write(
-      "src/routes/+layout.svelte",
-      svelteRootLayoutTemplate(globalCssRelPath),
-    );
+    write("src/routes/+layout.svelte", svelteRootLayoutTemplate(globalCssRelPath));
   }
 
   const globalCssAbsPath = path.join(cwd, globalCssRelPath);
@@ -638,14 +613,8 @@ function scaffoldSvelteKit(
   }
 
   write(`${cfg.entry}/page.md`, svelteWelcomePageTemplate(cfg));
-  write(
-    `${cfg.entry}/installation/page.md`,
-    svelteInstallationPageTemplate(cfg),
-  );
-  write(
-    `${cfg.entry}/quickstart/page.md`,
-    svelteQuickstartPageTemplate(cfg),
-  );
+  write(`${cfg.entry}/installation/page.md`, svelteInstallationPageTemplate(cfg));
+  write(`${cfg.entry}/quickstart/page.md`, svelteQuickstartPageTemplate(cfg));
 }
 
 // ---------------------------------------------------------------------------
@@ -663,7 +632,10 @@ function scaffoldAstro(
   write("src/lib/docs.config.ts", astroDocsConfigTemplate(cfg));
   write("src/lib/docs.server.ts", astroDocsServerTemplate(cfg));
 
-  if (!fileExists(path.join(cwd, "astro.config.mjs")) && !fileExists(path.join(cwd, "astro.config.ts"))) {
+  if (
+    !fileExists(path.join(cwd, "astro.config.mjs")) &&
+    !fileExists(path.join(cwd, "astro.config.ts"))
+  ) {
     write("astro.config.mjs", astroConfigTemplate(cfg.astroAdapter ?? "vercel"));
   }
 
@@ -723,7 +695,10 @@ function scaffoldNuxt(
   write(`pages/${cfg.entry}/[[...slug]].vue`, nuxtDocsPageTemplate(cfg));
 
   const nuxtConfigPath = path.join(cwd, "nuxt.config.ts");
-  if (!fileExists(path.join(cwd, "nuxt.config.ts")) && !fileExists(path.join(cwd, "nuxt.config.js"))) {
+  if (
+    !fileExists(path.join(cwd, "nuxt.config.ts")) &&
+    !fileExists(path.join(cwd, "nuxt.config.js"))
+  ) {
     write("nuxt.config.ts", nuxtConfigTemplate(cfg));
   }
 

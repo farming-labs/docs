@@ -4,7 +4,21 @@ import path from "node:path";
 import matter from "gray-matter";
 import type { ReactNode, ReactElement } from "react";
 import { serializeIcon } from "./serialize-icon.js";
-import type { DocsConfig, ThemeToggleConfig, BreadcrumbConfig, SidebarConfig, TypographyConfig, FontStyle, PageActionsConfig, CopyMarkdownConfig, OpenDocsConfig, GithubConfig, AIConfig, OrderingItem, LastUpdatedConfig } from "@farming-labs/docs";
+import type {
+  DocsConfig,
+  ThemeToggleConfig,
+  BreadcrumbConfig,
+  SidebarConfig,
+  TypographyConfig,
+  FontStyle,
+  PageActionsConfig,
+  CopyMarkdownConfig,
+  OpenDocsConfig,
+  GithubConfig,
+  AIConfig,
+  OrderingItem,
+  LastUpdatedConfig,
+} from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
@@ -53,10 +67,7 @@ function hasChildPages(dir: string): boolean {
   if (!fs.existsSync(dir)) return false;
   for (const name of fs.readdirSync(dir)) {
     const full = path.join(dir, name);
-    if (
-      fs.statSync(full).isDirectory() &&
-      fs.existsSync(path.join(full, "page.mdx"))
-    ) {
+    if (fs.statSync(full).isDirectory() && fs.existsSync(path.join(full, "page.mdx"))) {
       return true;
     }
   }
@@ -81,7 +92,12 @@ function buildTree(config: DocsConfig, flat = false) {
     });
   }
 
-  function buildNode(dir: string, name: string, baseSlug: string[], slugOrder?: OrderingItem[]): TreeNode | null {
+  function buildNode(
+    dir: string,
+    name: string,
+    baseSlug: string[],
+    slugOrder?: OrderingItem[],
+  ): TreeNode | null {
     const full = path.join(dir, name);
     if (!fs.statSync(full).isDirectory()) return null;
 
@@ -162,7 +178,6 @@ function buildTree(config: DocsConfig, flat = false) {
   return { name: "Docs", children: rootChildren };
 }
 
-
 // ─── Last Modified Map ───────────────────────────────────────────────
 
 /**
@@ -186,9 +201,7 @@ function buildLastModifiedMap(entry: string): Record<string, string> {
 
     const pagePath = path.join(dir, "page.mdx");
     if (fs.existsSync(pagePath)) {
-      const url = slugParts.length === 0
-        ? `/${entry}`
-        : `/${entry}/${slugParts.join("/")}`;
+      const url = slugParts.length === 0 ? `/${entry}` : `/${entry}/${slugParts.join("/")}`;
       const stat = fs.statSync(pagePath);
       map[url] = formatDate(stat.mtime);
     }
@@ -221,9 +234,7 @@ function buildDescriptionMap(entry: string): Record<string, string> {
       const data = readFrontmatter(pagePath);
       const desc = data.description as string | undefined;
       if (desc) {
-        const url = slugParts.length === 0
-          ? `/${entry}`
-          : `/${entry}/${slugParts.join("/")}`;
+        const url = slugParts.length === 0 ? `/${entry}` : `/${entry}/${slugParts.join("/")}`;
         map[url] = desc;
       }
     }
@@ -258,7 +269,11 @@ export function createDocsMetadata(config: DocsConfig) {
   const template = meta?.titleTemplate ?? "%s";
   // Extract the suffix from the template for the default title
   // e.g. "%s – Docs" → default is "Docs"
-  const defaultTitle = template.replace("%s", "").replace(/^[\s–—-]+/, "").trim() || "Docs";
+  const defaultTitle =
+    template
+      .replace("%s", "")
+      .replace(/^[\s–—-]+/, "")
+      .trim() || "Docs";
 
   return {
     title: {
@@ -266,9 +281,7 @@ export function createDocsMetadata(config: DocsConfig) {
       default: defaultTitle,
     },
     ...(meta?.description ? { description: meta.description } : {}),
-    ...(meta?.twitterCard
-      ? { twitter: { card: meta.twitterCard } }
-      : {}),
+    ...(meta?.twitterCard ? { twitter: { card: meta.twitterCard } } : {}),
   };
 }
 
@@ -467,7 +480,9 @@ export function createDocsLayout(config: DocsConfig) {
     (typeof breadcrumbConfig === "object" && breadcrumbConfig.enabled !== false);
 
   // Colors — only user-provided overrides (preset defaults stay in CSS files)
-  const colors = config.theme?._userColorOverrides as Record<string, string | undefined> | undefined;
+  const colors = config.theme?._userColorOverrides as
+    | Record<string, string | undefined>
+    | undefined;
 
   // Typography
   const typography = config.theme?.ui?.typography;
@@ -484,14 +499,21 @@ export function createDocsLayout(config: DocsConfig) {
 
   // Last updated config — normalize boolean/object to position string
   const lastUpdatedRaw = config.lastUpdated;
-  const lastUpdatedEnabled = lastUpdatedRaw !== false && (typeof lastUpdatedRaw !== "object" || lastUpdatedRaw.enabled !== false);
-  const lastUpdatedPosition: "footer" | "below-title" = typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
+  const lastUpdatedEnabled =
+    lastUpdatedRaw !== false &&
+    (typeof lastUpdatedRaw !== "object" || lastUpdatedRaw.enabled !== false);
+  const lastUpdatedPosition: "footer" | "below-title" =
+    typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
 
   // Serialize provider icons to HTML strings so they survive the
   // server → client component boundary.
   const rawProviders =
     typeof pageActions?.openDocs === "object" && pageActions.openDocs.providers
-      ? (pageActions.openDocs.providers as Array<{ name: string; icon?: unknown; urlTemplate: string }>)
+      ? (pageActions.openDocs.providers as Array<{
+          name: string;
+          icon?: unknown;
+          urlTemplate: string;
+        }>)
       : undefined;
 
   const openDocsProviders = rawProviders?.map((p) => ({
@@ -502,18 +524,18 @@ export function createDocsLayout(config: DocsConfig) {
 
   // GitHub config — normalize string shorthand to object
   const githubRaw = config.github;
-  const githubUrl = typeof githubRaw === "string"
-    ? githubRaw.replace(/\/$/, "")
-    : githubRaw?.url.replace(/\/$/, "");
+  const githubUrl =
+    typeof githubRaw === "string"
+      ? githubRaw.replace(/\/$/, "")
+      : githubRaw?.url.replace(/\/$/, "");
   const githubBranch = typeof githubRaw === "object" ? (githubRaw.branch ?? "main") : "main";
-  const githubDirectory = typeof githubRaw === "object"
-    ? githubRaw.directory?.replace(/^\/|\/$/g, "")
-    : undefined;
+  const githubDirectory =
+    typeof githubRaw === "object" ? githubRaw.directory?.replace(/^\/|\/$/g, "") : undefined;
 
   // AI features — resolved from config, rendered automatically
   const aiConfig = config.ai as AIConfig | undefined;
   const aiEnabled = !!aiConfig?.enabled;
-  const aiMode = aiConfig?.mode ?? "search" as "search" | "floating" | "sidebar-icon";
+  const aiMode = aiConfig?.mode ?? ("search" as "search" | "floating" | "sidebar-icon");
   const aiPosition = aiConfig?.position ?? "bottom-right";
   const aiFloatingStyle = aiConfig?.floatingStyle ?? "panel";
   // Serialize the custom trigger component to HTML so it survives
@@ -523,9 +545,10 @@ export function createDocsLayout(config: DocsConfig) {
     : undefined;
   const aiSuggestedQuestions = aiConfig?.suggestedQuestions;
   const aiLabel = aiConfig?.aiLabel;
-  const aiLoadingComponentHtml = typeof aiConfig?.loadingComponent === "function"
-    ? serializeIcon(aiConfig.loadingComponent({ name: aiLabel || "AI" }))
-    : undefined;
+  const aiLoadingComponentHtml =
+    typeof aiConfig?.loadingComponent === "function"
+      ? serializeIcon(aiConfig.loadingComponent({ name: aiLabel || "AI" }))
+      : undefined;
 
   // Build last-modified map by scanning all page.mdx files
   const lastModifiedMap = buildLastModifiedMap(config.entry);
@@ -540,9 +563,11 @@ export function createDocsLayout(config: DocsConfig) {
         nav={{ title: navTitle, url: navUrl }}
         themeSwitch={themeSwitch}
         sidebar={sidebarProps}
-        {...(aiMode === "sidebar-icon" && aiEnabled ? {
-          searchToggle: { components: { lg: <SidebarSearchWithAI /> } }
-        } : {})}
+        {...(aiMode === "sidebar-icon" && aiEnabled
+          ? {
+              searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
+            }
+          : {})}
       >
         <ColorStyle colors={colors} />
         <TypographyStyle typography={typography} />
@@ -591,7 +616,6 @@ function resolveBool(v: boolean | { enabled?: boolean } | undefined): boolean {
   if (typeof v === "boolean") return v;
   return v.enabled !== false;
 }
-
 
 /**
  * Tiny inline script to force a theme when the toggle is hidden.

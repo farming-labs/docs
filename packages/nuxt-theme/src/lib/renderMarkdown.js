@@ -16,10 +16,12 @@ function buildCodeBlock(lang, code) {
   const highlighted = highlight(trimmed).replace(/<\/span>\n<span/g, "</span><span");
   const langLabel = lang ? `<div class="fd-ai-code-lang">${escapeHtml(lang)}</div>` : "";
   const copyBtn = `<button class="fd-ai-code-copy" onclick="(function(btn){var code=btn.closest('.fd-ai-code-block').querySelector('code').textContent;navigator.clipboard.writeText(code).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy'},1500)})})(this)">Copy</button>`;
-  return `<div class="fd-ai-code-block">`
-    + `<div class="fd-ai-code-header">${langLabel}${copyBtn}</div>`
-    + `<pre><code>${highlighted}</code></pre>`
-    + `</div>`;
+  return (
+    `<div class="fd-ai-code-block">` +
+    `<div class="fd-ai-code-header">${langLabel}${copyBtn}</div>` +
+    `<pre><code>${highlighted}</code></pre>` +
+    `</div>`
+  );
 }
 
 function isTableRow(line) {
@@ -33,15 +35,23 @@ function isTableSeparator(line) {
 
 function renderTable(rows) {
   const parseRow = (row) =>
-    row.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => c.trim());
+    row
+      .trim()
+      .replace(/^\|/, "")
+      .replace(/\|$/, "")
+      .split("|")
+      .map((c) => c.trim());
 
   const headerCells = parseRow(rows[0]);
-  const thead = `<thead><tr>${headerCells.map(c => `<th>${c}</th>`).join("")}</tr></thead>`;
+  const thead = `<thead><tr>${headerCells.map((c) => `<th>${c}</th>`).join("")}</tr></thead>`;
 
-  const bodyRows = rows.slice(1).map(row => {
-    const cells = parseRow(row);
-    return `<tr>${cells.map(c => `<td>${c}</td>`).join("")}</tr>`;
-  }).join("");
+  const bodyRows = rows
+    .slice(1)
+    .map((row) => {
+      const cells = parseRow(row);
+      return `<tr>${cells.map((c) => `<td>${c}</td>`).join("")}</tr>`;
+    })
+    .join("");
 
   return `<table>${thead}<tbody>${bodyRows}</tbody></table>`;
 }

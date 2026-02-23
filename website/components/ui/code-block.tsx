@@ -59,10 +59,7 @@ export default function CodeBlock({
         )}
         <div className="relative">
           <pre className="px-3 sm:px-4 py-3.5 text-[12px] sm:text-[13px] leading-relaxed overflow-x-auto font-mono">
-            <code
-              className="sh-code"
-              dangerouslySetInnerHTML={{ __html: highlighted }}
-            />
+            <code className="sh-code" dangerouslySetInnerHTML={{ __html: highlighted }} />
           </pre>
           {showCopy && (
             <button

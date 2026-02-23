@@ -51,10 +51,7 @@ export interface ContentPage {
  *   content/docs/installation.md → /docs/installation
  *   content/docs/guides/auth.md  → /docs/guides/auth
  */
-export function loadDocsContent(
-  contentDir: string,
-  entry: string = "docs",
-): ContentPage[] {
+export function loadDocsContent(contentDir: string, entry: string = "docs"): ContentPage[] {
   const pages: ContentPage[] = [];
   const absDir = path.resolve(contentDir);
 
@@ -79,9 +76,7 @@ export function loadDocsContent(
       const baseName = name.replace(/\.(md|mdx|svx)$/, "");
       const isIndex = baseName === "index" || baseName === "page" || baseName === "+page";
 
-      const slug = isIndex
-        ? slugParts.join("/")
-        : [...slugParts, baseName].join("/");
+      const slug = isIndex ? slugParts.join("/") : [...slugParts, baseName].join("/");
 
       const url = slug ? `/${entry}/${slug}` : `/${entry}`;
 
@@ -133,7 +128,10 @@ export function loadDocsNavTree(
 }
 
 function buildNavNode(
-  dir: string, name: string, slugParts: string[], entry: string,
+  dir: string,
+  name: string,
+  slugParts: string[],
+  entry: string,
   ordering?: "alphabetical" | "numeric" | OrderingItem[],
   childSlugOrder?: OrderingItem[],
 ): NavNode | null {
@@ -168,7 +166,9 @@ function buildNavNode(
 }
 
 function scanDir(
-  dir: string, slugParts: string[], entry: string,
+  dir: string,
+  slugParts: string[],
+  entry: string,
   ordering?: "alphabetical" | "numeric" | OrderingItem[],
   slugOrder?: OrderingItem[],
 ): NavNode[] {

@@ -6,43 +6,43 @@
 /* ─── GreenTree color overrides ────────────────────────────────── */
 
 :root {
-  --color-fd-primary: #0D9373;
+  --color-fd-primary: #0d9373;
   --color-fd-primary-foreground: #fff;
-  --color-fd-ring: #0D9373;
+  --color-fd-ring: #0d9373;
 
   --color-fd-background: #fff;
-  --color-fd-foreground: #171A18;
+  --color-fd-foreground: #171a18;
   --color-fd-card: #fff;
-  --color-fd-card-foreground: #171A18;
+  --color-fd-card-foreground: #171a18;
   --color-fd-popover: #fff;
-  --color-fd-popover-foreground: #171A18;
+  --color-fd-popover-foreground: #171a18;
   --color-fd-secondary: #f6f8f7;
-  --color-fd-secondary-foreground: #171A18;
+  --color-fd-secondary-foreground: #171a18;
   --color-fd-muted: #f6f8f7;
   --color-fd-muted-foreground: #505351;
   --color-fd-accent: #f0f5f3;
-  --color-fd-accent-foreground: #171A18;
-  --color-fd-border: #DFE1E0;
+  --color-fd-accent-foreground: #171a18;
+  --color-fd-border: #dfe1e0;
 }
 
 .dark {
-  --color-fd-primary: #26BD6C;
-  --color-fd-primary-foreground: #0A0D0D;
-  --color-fd-ring: #26BD6C;
+  --color-fd-primary: #26bd6c;
+  --color-fd-primary-foreground: #0a0d0d;
+  --color-fd-ring: #26bd6c;
 
-  --color-fd-background: #0A0D0D;
-  --color-fd-foreground: #E5E7E6;
+  --color-fd-background: #0a0d0d;
+  --color-fd-foreground: #e5e7e6;
   --color-fd-card: #111413;
-  --color-fd-card-foreground: #E5E7E6;
+  --color-fd-card-foreground: #e5e7e6;
   --color-fd-popover: #111413;
-  --color-fd-popover-foreground: #E5E7E6;
-  --color-fd-secondary: #1A1D1C;
-  --color-fd-secondary-foreground: #E5E7E6;
-  --color-fd-muted: #1A1D1C;
-  --color-fd-muted-foreground: #8A8D8B;
-  --color-fd-accent: #1A1D1C;
-  --color-fd-accent-foreground: #E5E7E6;
-  --color-fd-border: #2A2D2C;
+  --color-fd-popover-foreground: #e5e7e6;
+  --color-fd-secondary: #1a1d1c;
+  --color-fd-secondary-foreground: #e5e7e6;
+  --color-fd-muted: #1a1d1c;
+  --color-fd-muted-foreground: #8a8d8b;
+  --color-fd-accent: #1a1d1c;
+  --color-fd-accent-foreground: #e5e7e6;
+  --color-fd-border: #2a2d2c;
 }
 
 /* ─── Typography — Inter, Mintlify-style values ──────────────── */
@@ -94,7 +94,9 @@ aside a[data-active] {
   padding: 6px 10px;
   border-radius: 8px;
   color: var(--color-fd-muted-foreground);
-  transition: color 150ms, background-color 150ms;
+  transition:
+    color 150ms,
+    background-color 150ms;
 }
 
 aside a[data-active]:hover {
@@ -265,7 +267,9 @@ nav[class*="header"] {
   font-size: 0.875rem;
   color: var(--color-fd-card-foreground);
   box-shadow: none;
-  transition: background-color 150ms, border-color 150ms;
+  transition:
+    background-color 150ms,
+    border-color 150ms;
 }
 
 .fd-card:hover {
@@ -340,7 +344,9 @@ figure.shiki {
   border-radius: 0;
   color: var(--color-fd-muted-foreground);
   border-bottom: 2px solid transparent;
-  transition: color 150ms, border-color 150ms;
+  transition:
+    color 150ms,
+    border-color 150ms;
 }
 
 [role="tab"][aria-selected="true"],
@@ -622,7 +628,10 @@ details > :not(summary) {
   background: transparent;
   color: var(--color-fd-muted-foreground);
   cursor: pointer;
-  transition: background-color 150ms, color 150ms, border-color 150ms;
+  transition:
+    background-color 150ms,
+    color 150ms,
+    border-color 150ms;
 }
 
 .fd-sidebar-ai-btn:hover {
@@ -657,7 +666,9 @@ details > :not(summary) {
   background: transparent;
   border: 1px solid var(--color-fd-border);
   cursor: pointer;
-  transition: background-color 150ms, color 150ms;
+  transition:
+    background-color 150ms,
+    color 150ms;
   white-space: nowrap;
 }
 

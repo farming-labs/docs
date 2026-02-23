@@ -18,16 +18,12 @@ const props = defineProps<{
 const titleSuffix = computed(() =>
   props.config?.metadata?.titleTemplate
     ? String(props.config.metadata.titleTemplate).replace("%s", "")
-    : " – Docs"
+    : " – Docs",
 );
 
-const tocEnabled = computed(
-  () => (props.config?.theme as any)?.ui?.layout?.toc?.enabled ?? true
-);
+const tocEnabled = computed(() => (props.config?.theme as any)?.ui?.layout?.toc?.enabled ?? true);
 
-const tocStyle = computed(
-  () => (props.config?.theme as any)?.ui?.layout?.toc?.style ?? "default"
-);
+const tocStyle = computed(() => (props.config?.theme as any)?.ui?.layout?.toc?.style ?? "default");
 
 const breadcrumbEnabled = computed(() => {
   const bc = props.config?.breadcrumb;
@@ -37,26 +33,19 @@ const breadcrumbEnabled = computed(() => {
   return true;
 });
 
-const showEditOnGithub = computed(
-  () => !!props.config?.github && !!props.data.editOnGithub
-);
+const showEditOnGithub = computed(() => !!props.config?.github && !!props.data.editOnGithub);
 const showLastModified = computed(() => !!props.data.lastModified);
 
 const entry = computed(() => (props.config?.entry as string) ?? "docs");
 
 const metaDescription = computed(
-  () =>
-    props.data.description ??
-    (props.config?.metadata as any)?.description ??
-    undefined
+  () => props.data.description ?? (props.config?.metadata as any)?.description ?? undefined,
 );
 
 useHead({
   title: () => `${props.data.title}${titleSuffix.value}`,
   meta: () =>
-    metaDescription.value
-      ? [{ name: "description", content: metaDescription.value }]
-      : [],
+    metaDescription.value ? [{ name: "description", content: metaDescription.value }] : [],
 });
 </script>
 

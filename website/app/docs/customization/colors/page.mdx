@@ -24,20 +24,20 @@ theme: pixelBorder({
 
 ## Available Tokens
 
-| Token | CSS Variable | Description |
-|-------|-------------|-------------|
-| `primary` | `--color-fd-primary` | Primary brand color |
+| Token               | CSS Variable                    | Description                 |
+| ------------------- | ------------------------------- | --------------------------- |
+| `primary`           | `--color-fd-primary`            | Primary brand color         |
 | `primaryForeground` | `--color-fd-primary-foreground` | Text on primary backgrounds |
-| `background` | `--color-fd-background` | Page background |
-| `foreground` | `--color-fd-foreground` | Default text color |
-| `muted` | `--color-fd-muted` | Muted background |
-| `mutedForeground` | `--color-fd-muted-foreground` | Muted text |
-| `border` | `--color-fd-border` | Border color |
-| `card` | `--color-fd-card` | Card background |
-| `accent` | `--color-fd-accent` | Accent background |
-| `accentForeground` | `--color-fd-accent-foreground` | Text on accent |
-| `secondary` | `--color-fd-secondary` | Secondary background |
-| `ring` | `--color-fd-ring` | Focus ring color |
+| `background`        | `--color-fd-background`         | Page background             |
+| `foreground`        | `--color-fd-foreground`         | Default text color          |
+| `muted`             | `--color-fd-muted`              | Muted background            |
+| `mutedForeground`   | `--color-fd-muted-foreground`   | Muted text                  |
+| `border`            | `--color-fd-border`             | Border color                |
+| `card`              | `--color-fd-card`               | Card background             |
+| `accent`            | `--color-fd-accent`             | Accent background           |
+| `accentForeground`  | `--color-fd-accent-foreground`  | Text on accent              |
+| `secondary`         | `--color-fd-secondary`          | Secondary background        |
+| `ring`              | `--color-fd-ring`               | Focus ring color            |
 
 ## How It Works
 
@@ -45,7 +45,9 @@ Only colors you explicitly set are emitted as inline CSS variables. Theme preset
 
 ```tsx
 // Only primary gets overridden — everything else stays as the theme defines
-colors: { primary: "oklch(0.72 0.19 149)" }
+colors: {
+  primary: "oklch(0.72 0.19 149)";
+}
 ```
 
 ## Color Formats

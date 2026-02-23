@@ -21,9 +21,7 @@ export default function FrameworkTabs({ tabs }: FrameworkTabsProps) {
             key={tab.value}
             onClick={() => setActive(tab.value)}
             className={`px-4 py-2 text-[11px] font-mono uppercase tracking-wider transition-colors relative ${
-              active === tab.value
-                ? "text-white"
-                : "text-white/30 hover:text-white/60"
+              active === tab.value ? "text-white" : "text-white/30 hover:text-white/60"
             }`}
           >
             {tab.label}
@@ -34,10 +32,7 @@ export default function FrameworkTabs({ tabs }: FrameworkTabsProps) {
         ))}
       </div>
       {tabs.map((tab) => (
-        <div
-          key={tab.value}
-          className={active === tab.value ? "block" : "hidden"}
-        >
+        <div key={tab.value} className={active === tab.value ? "block" : "hidden"}>
           {tab.content}
         </div>
       ))}

@@ -168,7 +168,7 @@ onMounted(() => {
       }
       activeIds.value = next;
     },
-    { rootMargin: "-80px 0px -80% 0px" }
+    { rootMargin: "-80px 0px -80% 0px" },
   );
   observeHeadings();
 
@@ -180,21 +180,29 @@ onMounted(() => {
   }
 });
 
-watch(items, () => {
-  observeHeadings();
-  if (isDirectional.value) {
-    nextTick(() => {
-      buildSvgPath();
-      calcThumb();
-    });
-  }
-}, { flush: "post" });
+watch(
+  items,
+  () => {
+    observeHeadings();
+    if (isDirectional.value) {
+      nextTick(() => {
+        buildSvgPath();
+        calcThumb();
+      });
+    }
+  },
+  { flush: "post" },
+);
 
-watch(activeIds, () => {
-  if (isDirectional.value) {
-    calcThumb();
-  }
-}, { deep: true });
+watch(
+  activeIds,
+  () => {
+    if (isDirectional.value) {
+      calcThumb();
+    }
+  },
+  { deep: true },
+);
 
 watch(isDirectional, (val) => {
   if (val) {
@@ -213,7 +221,15 @@ onUnmounted(() => {
 <template>
   <div ref="containerRef" class="fd-toc-inner" :class="{ 'fd-toc-directional': isDirectional }">
     <h3 class="fd-toc-title">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+      >
         <line x1="3" y1="6" x2="21" y2="6" />
         <line x1="3" y1="12" x2="15" y2="12" />
         <line x1="3" y1="18" x2="18" y2="18" />
@@ -237,7 +253,7 @@ onUnmounted(() => {
     </ul>
 
     <!-- Clerk / directional style -->
-    <ul v-else ref="listRef" class="fd-toc-list fd-toc-clerk" style="position: relative;">
+    <ul v-else ref="listRef" class="fd-toc-list fd-toc-clerk" style="position: relative">
       <li v-for="(item, index) in items" :key="item.url" class="fd-toc-item">
         <a
           :href="item.url"
@@ -254,7 +270,7 @@ onUnmounted(() => {
             viewBox="0 0 16 16"
             width="16"
             height="16"
-            style="position: absolute; top: -6px; left: 0;"
+            style="position: absolute; top: -6px; left: 0"
           >
             <line
               :x1="diagonalSvg(index).upperOffset"

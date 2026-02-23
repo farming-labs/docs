@@ -4,17 +4,17 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 
 ## Packages
 
-| Package | Description |
-|---|---|
-| `@farming-labs/docs` | Core config, types, CLI, and theme utilities |
-| `@farming-labs/theme` | Fumadocs-based theme for Next.js with `default`, `darksharp`, and `pixel-border` variants |
-| `@farming-labs/next` | Next.js adapter — `withDocs()` config wrapper and auto-generated routes |
-| `@farming-labs/svelte` | SvelteKit adapter — server-side docs loader and markdown processing |
-| `@farming-labs/svelte-theme` | Fumadocs-based theme for SvelteKit with `default` and `pixel-border` variants |
-| `@farming-labs/astro` | Astro adapter — server-side docs loader and markdown processing |
-| `@farming-labs/astro-theme` | Fumadocs-based theme for Astro with `default`, `darksharp`, and `pixel-border` variants |
-| `@farming-labs/nuxt` | Nuxt 3 adapter — `defineDocsHandler()`, server-side docs loader, markdown processing |
-| `@farming-labs/nuxt-theme` | Fumadocs-based theme for Nuxt with `default` variant |
+| Package                      | Description                                                                               |
+| ---------------------------- | ----------------------------------------------------------------------------------------- |
+| `@farming-labs/docs`         | Core config, types, CLI, and theme utilities                                              |
+| `@farming-labs/theme`        | Fumadocs-based theme for Next.js with `default`, `darksharp`, and `pixel-border` variants |
+| `@farming-labs/next`         | Next.js adapter — `withDocs()` config wrapper and auto-generated routes                   |
+| `@farming-labs/svelte`       | SvelteKit adapter — server-side docs loader and markdown processing                       |
+| `@farming-labs/svelte-theme` | Fumadocs-based theme for SvelteKit with `default` and `pixel-border` variants             |
+| `@farming-labs/astro`        | Astro adapter — server-side docs loader and markdown processing                           |
+| `@farming-labs/astro-theme`  | Fumadocs-based theme for Astro with `default`, `darksharp`, and `pixel-border` variants   |
+| `@farming-labs/nuxt`         | Nuxt 3 adapter — `defineDocsHandler()`, server-side docs loader, markdown processing      |
+| `@farming-labs/nuxt-theme`   | Fumadocs-based theme for Nuxt with `default` variant                                      |
 
 ## Quick Start
 
@@ -415,8 +415,8 @@ Three built-in theme variants, all based on Fumadocs:
 ### Next.js
 
 ```tsx
-import { fumadocs } from "@farming-labs/theme";              // default
-import { darksharp } from "@farming-labs/theme/darksharp";   // sharp edges, all-black
+import { fumadocs } from "@farming-labs/theme"; // default
+import { darksharp } from "@farming-labs/theme/darksharp"; // sharp edges, all-black
 import { pixelBorder } from "@farming-labs/theme/pixel-border"; // better-auth inspired
 ```
 
@@ -469,6 +469,7 @@ import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
 A faithful reproduction of the fumadocs default theme with enhanced description support.
 
 Available for all frameworks:
+
 - Next.js: `import { colorful } from "@farming-labs/theme/colorful"` with `@import "@farming-labs/theme/colorful/css"`
 - SvelteKit: `import { colorful } from "@farming-labs/svelte-theme/colorful"` with `@import "@farming-labs/svelte-theme/colorful/css"`
 - Astro: `import { colorful } from "@farming-labs/astro-theme/colorful"` with `@import "@farming-labs/astro-theme/colorful/css"`
@@ -480,10 +481,11 @@ The `docs.config.ts` file is the single source of truth. Key options:
 
 ```tsx
 export default defineDocs({
-  entry: "docs",           // docs root folder
-  theme: fumadocs(),       // theme preset
+  entry: "docs", // docs root folder
+  theme: fumadocs(), // theme preset
 
-  nav: {                   // sidebar header
+  nav: {
+    // sidebar header
     title: "My Docs",
     url: "/docs",
   },

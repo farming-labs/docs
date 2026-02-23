@@ -63,7 +63,9 @@
 
 .fd-page-action-menu {
   border-radius: 0.75rem;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 
 .fd-page-action-menu-item {
@@ -74,7 +76,9 @@
 
 .fd-ai-dialog {
   border-radius: 16px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.08), 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.08),
+    0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 .fd-ai-bubble-user {
@@ -97,13 +101,17 @@
   border-radius: 6px;
   background: hsl(240, 6%, 15%);
   color: #fff;
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.07), 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.07),
+    0 1px 3px rgba(0, 0, 0, 0.2);
   border: none;
 }
 
 .fd-ai-floating-btn:hover {
   background: hsl(240, 6%, 20%);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1), 0 2px 6px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 :root .fd-ai-floating-btn {
@@ -194,8 +202,13 @@
   padding: 1.25rem;
   font-size: 0.875rem;
   color: var(--color-fd-card-foreground);
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
-  transition: background-color 150ms, border-color 150ms, box-shadow 150ms;
+  box-shadow:
+    0 1px 3px 0 rgb(0 0 0 / 0.04),
+    0 1px 2px -1px rgb(0 0 0 / 0.04);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
 }
 
 .fd-card:hover {
@@ -350,7 +363,9 @@ figure.shiki {
   border-radius: 0;
   color: var(--color-fd-muted-foreground);
   border-bottom: 2px solid transparent;
-  transition: color 150ms, border-color 150ms;
+  transition:
+    color 150ms,
+    border-color 150ms;
 }
 
 [role="tab"][aria-selected="true"],
@@ -430,7 +445,9 @@ details > :not(summary) {
   border-radius: 0.875rem;
   border: 1px solid var(--color-fd-border);
   background: var(--color-fd-popover);
-  box-shadow: 0 24px 80px -12px rgba(0, 0, 0, 0.12), 0 8px 30px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 24px 80px -12px rgba(0, 0, 0, 0.12),
+    0 8px 30px rgba(0, 0, 0, 0.08);
 }
 
 .omni-item {

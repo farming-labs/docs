@@ -2,6 +2,17 @@
   "name": "@farming-labs/svelte",
   "version": "0.0.2-beta.21",
   "description": "SvelteKit adapter for @farming-labs/docs — content loading and navigation utilities",
+  "keywords": [
+    "docs",
+    "documentation",
+    "svelte",
+    "sveltekit"
+  ],
+  "license": "MIT",
+  "author": "Farming Labs",
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -32,10 +43,6 @@
       "default": "./dist/server.js"
     }
   },
-  "files": ["dist"],
-  "keywords": ["docs", "svelte", "sveltekit", "documentation"],
-  "author": "Farming Labs",
-  "license": "MIT",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",

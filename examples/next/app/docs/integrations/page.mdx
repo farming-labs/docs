@@ -10,16 +10,16 @@ Better Auth is framework-agnostic but provides first-class integrations for popu
 
 ## Supported Frameworks
 
-| Framework | Handler | Client SDK |
-|-----------|---------|------------|
-| **Next.js** | `toNextJsHandler` | `better-auth/react` |
-| **Nuxt** | `toH3Handler` | `better-auth/vue` |
-| **SvelteKit** | `toSvelteKitHandler` | `better-auth/svelte` |
-| **Astro** | Built-in support | `better-auth/react` or vanilla |
-| **Express** | `toNodeHandler` | Any client SDK |
-| **Hono** | `toHonoHandler` | Any client SDK |
-| **Elysia (Bun)** | `toElysiaHandler` | Any client SDK |
-| **Fastify** | `toNodeHandler` | Any client SDK |
+| Framework        | Handler              | Client SDK                     |
+| ---------------- | -------------------- | ------------------------------ |
+| **Next.js**      | `toNextJsHandler`    | `better-auth/react`            |
+| **Nuxt**         | `toH3Handler`        | `better-auth/vue`              |
+| **SvelteKit**    | `toSvelteKitHandler` | `better-auth/svelte`           |
+| **Astro**        | Built-in support     | `better-auth/react` or vanilla |
+| **Express**      | `toNodeHandler`      | Any client SDK                 |
+| **Hono**         | `toHonoHandler`      | Any client SDK                 |
+| **Elysia (Bun)** | `toElysiaHandler`    | Any client SDK                 |
+| **Fastify**      | `toNodeHandler`      | Any client SDK                 |
 
 ## Next.js
 

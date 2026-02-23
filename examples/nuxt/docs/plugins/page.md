@@ -30,6 +30,7 @@ export const auth = betterAuth({
 ```
 
 Each plugin can:
+
 - **Add API endpoints** — e.g., `/api/auth/two-factor/verify`
 - **Extend the database schema** — e.g., add an `organization` table
 - **Add client-side utilities** — e.g., `authClient.twoFactor.verify()`
@@ -39,37 +40,37 @@ Each plugin can:
 
 ### Authentication
 
-| Plugin | Description |
-|--------|-------------|
-| [Two Factor](/docs/plugins/two-factor) | TOTP, SMS, and backup codes |
-| Passkey | WebAuthn / FIDO2 passwordless authentication |
-| Magic Link | Passwordless email authentication |
-| Phone Number | SMS-based authentication |
-| Anonymous | Allow anonymous/guest users |
+| Plugin                                 | Description                                  |
+| -------------------------------------- | -------------------------------------------- |
+| [Two Factor](/docs/plugins/two-factor) | TOTP, SMS, and backup codes                  |
+| Passkey                                | WebAuthn / FIDO2 passwordless authentication |
+| Magic Link                             | Passwordless email authentication            |
+| Phone Number                           | SMS-based authentication                     |
+| Anonymous                              | Allow anonymous/guest users                  |
 
 ### Authorization & Access Control
 
-| Plugin | Description |
-|--------|-------------|
+| Plugin                                       | Description                          |
+| -------------------------------------------- | ------------------------------------ |
 | [Organizations](/docs/plugins/organizations) | Multi-tenant organization management |
-| Admin | Admin dashboard and user management |
-| RBAC | Role-based access control |
+| Admin                                        | Admin dashboard and user management  |
+| RBAC                                         | Role-based access control            |
 
 ### Enterprise
 
-| Plugin | Description |
-|--------|-------------|
+| Plugin        | Description                                   |
+| ------------- | --------------------------------------------- |
 | OIDC Provider | Turn your app into an OpenID Connect provider |
-| SAML | Enterprise SSO with SAML 2.0 |
-| SCIM | Automated user provisioning |
+| SAML          | Enterprise SSO with SAML 2.0                  |
+| SCIM          | Automated user provisioning                   |
 
 ### Utilities
 
-| Plugin | Description |
-|--------|-------------|
-| Rate Limit | Advanced rate limiting rules |
-| Captcha | Bot protection with CAPTCHA |
-| Webhook | Real-time auth event notifications |
+| Plugin     | Description                        |
+| ---------- | ---------------------------------- |
+| Rate Limit | Advanced rate limiting rules       |
+| Captcha    | Bot protection with CAPTCHA        |
+| Webhook    | Real-time auth event notifications |
 
 ## Client-Side Plugin Setup
 
@@ -81,10 +82,7 @@ import { twoFactorClient } from "better-auth/client/plugins";
 import { organizationClient } from "better-auth/client/plugins";
 
 export const authClient = createAuthClient({
-  plugins: [
-    twoFactorClient(),
-    organizationClient(),
-  ],
+  plugins: [twoFactorClient(), organizationClient()],
 });
 ```
 

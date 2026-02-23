@@ -57,7 +57,9 @@
 
 html {
   scroll-behavior: auto;
-  scroll-padding-top: calc(var(--fd-nav-height, 56px) + var(--fd-banner-height, 0px) + var(--fd-tocnav-height, 0px) + 24px);
+  scroll-padding-top: calc(
+    var(--fd-nav-height, 56px) + var(--fd-banner-height, 0px) + var(--fd-tocnav-height, 0px) + 24px
+  );
 }
 
 html:not([data-anchor-scrolling]) {
@@ -156,11 +158,11 @@ code:not(pre code) {
 }
 
 /* ── Full-width border separators between top-level items ─────────── */
-.dark aside .overscroll-contain>div {
+.dark aside .overscroll-contain > div {
   margin-top: -22px;
 }
 
-.dark aside .overscroll-contain>div>a[data-active] {
+.dark aside .overscroll-contain > div > a[data-active] {
   border-top: 1px solid hsl(0 0% 12%);
   margin-left: -1rem;
   margin-right: -1rem;
@@ -169,20 +171,20 @@ code:not(pre code) {
   padding-bottom: 0.75rem;
 }
 
-.dark aside .overscroll-contain>div>div {
+.dark aside .overscroll-contain > div > div {
   border-top: 1px solid hsl(0 0% 12%);
   margin-left: -1rem;
   margin-right: -1rem;
   padding: 0 !important;
 }
 
-.dark aside .overscroll-contain>div>a[data-active]:first-child,
-.dark aside .overscroll-contain>div>div:first-child {
+.dark aside .overscroll-contain > div > a[data-active]:first-child,
+.dark aside .overscroll-contain > div > div:first-child {
   border-top: none;
 }
 
-.dark aside .overscroll-contain>div>a[data-active]:last-child,
-.dark aside .overscroll-contain>div>div:last-child {
+.dark aside .overscroll-contain > div > a[data-active]:last-child,
+.dark aside .overscroll-contain > div > div:last-child {
   border-bottom: 1px solid hsl(0 0% 12%);
 }
 
@@ -262,7 +264,7 @@ code:not(pre code) {
   margin-top: -25px !important;
 }
 
-.dark aside div[data-state="open"]> :last-child {
+.dark aside div[data-state="open"] > :last-child {
   overflow: hidden;
 }
 
@@ -334,7 +336,7 @@ figure.shiki button {
 }
 
 /* Code block title bar */
-figure.shiki>div:first-child {
+figure.shiki > div:first-child {
   border-radius: 0 !important;
 }
 
@@ -663,7 +665,8 @@ figure.shiki>div:first-child {
 .omni-content {
   border-radius: 0 !important;
   border: 2px solid var(--color-fd-border, hsl(0 0% 15%));
-  box-shadow: 3px 3px 0 0 var(--color-fd-border, hsl(0 0% 15%)),
+  box-shadow:
+    3px 3px 0 0 var(--color-fd-border, hsl(0 0% 15%)),
     0 0 0 1px rgba(255, 255, 255, 0.02);
 }
 

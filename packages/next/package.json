@@ -2,6 +2,17 @@
   "name": "@farming-labs/next",
   "version": "0.0.2-beta.21",
   "description": "Next.js adapter for @farming-labs/docs — MDX config wrapper",
+  "keywords": [
+    "docs",
+    "documentation",
+    "mdx",
+    "next"
+  ],
+  "license": "MIT",
+  "author": "Farming Labs",
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
@@ -32,10 +43,6 @@
       "default": "./dist/mdx-plugins/rehype-code.mjs"
     }
   },
-  "files": ["dist"],
-  "keywords": ["docs", "next", "mdx", "documentation"],
-  "author": "Farming Labs",
-  "license": "MIT",
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",

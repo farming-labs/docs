@@ -9,12 +9,12 @@ Better Auth supports multiple database adapters and automatically manages your s
 
 ## Supported Databases
 
-| Database   | Adapter     | Status      |
-|-----------|-------------|-------------|
-| PostgreSQL | Built-in    | Stable     |
-| MySQL      | Built-in    | Stable     |
-| SQLite     | Built-in    | Stable     |
-| MongoDB    | Plugin      | Stable     |
+| Database   | Adapter  | Status |
+| ---------- | -------- | ------ |
+| PostgreSQL | Built-in | Stable |
+| MySQL      | Built-in | Stable |
+| SQLite     | Built-in | Stable |
+| MongoDB    | Plugin   | Stable |
 
 ## Configuration
 

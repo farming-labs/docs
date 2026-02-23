@@ -22,7 +22,7 @@ When a user signs in:
 export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days
-    updateAge: 60 * 60 * 24,      // refresh every 24 hours
+    updateAge: 60 * 60 * 24, // refresh every 24 hours
   },
 });
 ```

@@ -44,7 +44,9 @@
 
 .fd-ai-dialog {
   border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(180, 140, 20, 0.08), 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow:
+    0 20px 60px rgba(180, 140, 20, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .fd-ai-bubble-user {
@@ -131,7 +133,9 @@
   font-size: 0.875rem;
   color: var(--color-fd-card-foreground);
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-  transition: background-color 150ms, border-color 150ms;
+  transition:
+    background-color 150ms,
+    border-color 150ms;
 }
 
 .fd-card:hover {
@@ -243,7 +247,9 @@
   border-radius: 0.75rem;
   border: 1px solid var(--color-fd-border);
   background: var(--color-fd-popover);
-  box-shadow: 0 24px 60px -12px rgba(180, 140, 20, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  box-shadow:
+    0 24px 60px -12px rgba(180, 140, 20, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .omni-item-active {
@@ -258,4 +264,3 @@
 .omni-search-input:focus {
   caret-color: var(--color-fd-primary);
 }
-

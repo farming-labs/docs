@@ -4,10 +4,7 @@ import type { DocsMetadata, OGConfig, PageFrontmatter } from "./types.js";
  * Resolve page title using metadata titleTemplate.
  * %s is replaced with page title.
  */
-export function resolveTitle(
-  pageTitle: string,
-  metadata?: DocsMetadata
-): string {
+export function resolveTitle(pageTitle: string, metadata?: DocsMetadata): string {
   const template = metadata?.titleTemplate ?? "%s";
   return template.replace("%s", pageTitle);
 }
@@ -18,7 +15,7 @@ export function resolveTitle(
 export function resolveOGImage(
   page: PageFrontmatter,
   ogConfig?: OGConfig,
-  baseUrl?: string
+  baseUrl?: string,
 ): string | undefined {
   if (!ogConfig?.enabled) return undefined;
 

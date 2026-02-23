@@ -18,11 +18,11 @@ import { twoFactor } from "better-auth/plugins";
 export const auth = betterAuth({
   plugins: [
     twoFactor({
-      issuer: "MyApp",          // Shows in authenticator apps
+      issuer: "MyApp", // Shows in authenticator apps
       backupCodes: {
         enabled: true,
-        count: 10,              // Number of backup codes
-        length: 8,              // Length of each code
+        count: 10, // Number of backup codes
+        length: 8, // Length of each code
       },
     }),
   ],
@@ -133,12 +133,12 @@ const { error } = await authClient.twoFactor.disable({
 
 ## Configuration Reference
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `issuer` | `string` | required | Name shown in authenticator apps |
-| `period` | `number` | `30` | TOTP code rotation period (seconds) |
-| `digits` | `number` | `6` | Number of digits in TOTP code |
-| `algorithm` | `string` | `"SHA1"` | Hash algorithm |
-| `backupCodes.enabled` | `boolean` | `true` | Enable backup codes |
-| `backupCodes.count` | `number` | `10` | Number of backup codes |
-| `backupCodes.length` | `number` | `8` | Length of each backup code |
+| Option                | Type      | Default  | Description                         |
+| --------------------- | --------- | -------- | ----------------------------------- |
+| `issuer`              | `string`  | required | Name shown in authenticator apps    |
+| `period`              | `number`  | `30`     | TOTP code rotation period (seconds) |
+| `digits`              | `number`  | `6`      | Number of digits in TOTP code       |
+| `algorithm`           | `string`  | `"SHA1"` | Hash algorithm                      |
+| `backupCodes.enabled` | `boolean` | `true`   | Enable backup codes                 |
+| `backupCodes.count`   | `number`  | `10`     | Number of backup codes              |
+| `backupCodes.length`  | `number`  | `8`      | Length of each backup code          |

@@ -35,7 +35,6 @@ import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
 import { renderMarkdown } from "./markdown.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
 
-
 interface GithubConfigObj {
   url: string;
   branch?: string;
@@ -123,9 +122,7 @@ function navTreeFromMap(
     const url = slug ? `/${entry}/${slug}` : `/${entry}`;
     const fallbackTitle =
       dirParts.length > 0
-        ? dirParts[dirParts.length - 1]
-            .replace(/-/g, " ")
-            .replace(/\b\w/g, (c) => c.toUpperCase())
+        ? dirParts[dirParts.length - 1].replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
         : "Documentation";
 
     dirs.push({
@@ -138,8 +135,7 @@ function navTreeFromMap(
   }
 
   dirs.sort((a, b) => {
-    if (a.parts.length !== b.parts.length)
-      return a.parts.length - b.parts.length;
+    if (a.parts.length !== b.parts.length) return a.parts.length - b.parts.length;
     return a.parts.join("/").localeCompare(b.parts.join("/"));
   });
 
@@ -154,7 +150,9 @@ function navTreeFromMap(
     });
   }
 
-  function findSlugOrder(parentParts: string[]): Array<{ slug: string; children?: any[] }> | undefined {
+  function findSlugOrder(
+    parentParts: string[],
+  ): Array<{ slug: string; children?: any[] }> | undefined {
     if (!Array.isArray(ordering)) return undefined;
     let items: Array<{ slug: string; children?: any[] }> = ordering;
     for (const part of parentParts) {
@@ -274,8 +272,7 @@ function searchIndexFromMap(
 
     const { data, content } = matter(raw);
     const title =
-      (data.title as string) ??
-      base.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      (data.title as string) ?? base.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
     pages.push({
       slug,
@@ -328,23 +325,19 @@ function findPageInMap(
  * at build time — required for serverless deployments (Vercel, Netlify, etc.)
  * where the filesystem is not available at runtime.
  */
-export function createDocsServer(
-  config: Record<string, any> = {},
-): DocsServer {
+export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   const entry = (config.entry as string) ?? "docs";
 
   const githubRaw = config.github;
   const github: GithubConfigObj | null =
-    typeof githubRaw === "string"
-      ? { url: githubRaw }
-      : (githubRaw as GithubConfigObj) ?? null;
+    typeof githubRaw === "string" ? { url: githubRaw } : ((githubRaw as GithubConfigObj) ?? null);
 
   const githubRepo = github?.url;
   const githubBranch = github?.branch ?? "main";
   const githubContentPath = github?.directory;
 
   const contentDir = path.resolve(
-    (config as Record<string, unknown>).contentDir as string | undefined ?? entry,
+    ((config as Record<string, unknown>).contentDir as string | undefined) ?? entry,
   );
 
   const preloaded = config._preloadedContent as ContentFileMap | undefined;
@@ -352,7 +345,11 @@ export function createDocsServer(
     ((config as Record<string, unknown>).contentDir as string | undefined) ?? entry;
   const dirPrefix = `/${contentDirRel}/`;
 
-  const ordering = config.ordering as "alphabetical" | "numeric" | Array<{ slug: string; children?: any[] }> | undefined;
+  const ordering = config.ordering as
+    | "alphabetical"
+    | "numeric"
+    | Array<{ slug: string; children?: any[] }>
+    | undefined;
 
   const aiConfig: AIConfigObj = (config.ai as AIConfigObj) ?? {};
 
@@ -378,9 +375,7 @@ export function createDocsServer(
     if (preloaded) {
       const result = findPageInMap(preloaded, dirPrefix, slug);
       if (!result) {
-        const err = new Error(
-          `Page not found: /${entry}/${slug}`,
-        ) as Error & { status?: number };
+        const err = new Error(`Page not found: /${entry}/${slug}`) as Error & { status?: number };
         err.status = 404;
         throw err;
       }
@@ -423,9 +418,7 @@ export function createDocsServer(
       }
 
       if (!filePath) {
-        const err = new Error(
-          `Page not found: /${entry}/${slug}`,
-        ) as Error & { status?: number };
+        const err = new Error(`Page not found: /${entry}/${slug}`) as Error & { status?: number };
         err.status = 404;
         throw err;
       }
@@ -445,8 +438,7 @@ export function createDocsServer(
     const currentUrl = isIndex ? `/${entry}` : `/${entry}/${slug}`;
     const currentIndex = flatPages.findIndex((p) => p.url === currentUrl);
     const previousPage = currentIndex > 0 ? flatPages[currentIndex - 1] : null;
-    const nextPage =
-      currentIndex < flatPages.length - 1 ? flatPages[currentIndex + 1] : null;
+    const nextPage = currentIndex < flatPages.length - 1 ? flatPages[currentIndex + 1] : null;
 
     let editOnGithub: string | undefined;
     if (githubRepo && githubContentPath) {
@@ -455,7 +447,7 @@ export function createDocsServer(
 
     const fallbackTitle = isIndex
       ? "Documentation"
-      : slug.split("/").pop()?.replace(/-/g, " ") ?? "Documentation";
+      : (slug.split("/").pop()?.replace(/-/g, " ") ?? "Documentation");
 
     return {
       tree,
@@ -522,10 +514,11 @@ export function createDocsServer(
   }
 
   // ─── POST /api/docs — AI chat with RAG ────────────────────
-  const projectName =
-    (typeof (config.nav as Record<string, unknown>)?.title === "string"
+  const projectName = (
+    typeof (config.nav as Record<string, unknown>)?.title === "string"
       ? (config.nav as Record<string, unknown>).title
-      : null) as string | null;
+      : null
+  ) as string | null;
   const packageName = aiConfig.packageName;
   const docsUrl = aiConfig.docsUrl;
 
@@ -540,7 +533,9 @@ export function createDocsServer(
       lines.push(`When showing import examples, always use "${packageName}" as the package name.`);
     }
     if (docsUrl) {
-      lines.push(`When linking to documentation pages, use "${docsUrl}" as the base URL (e.g. ${docsUrl}/docs/get-started).`);
+      lines.push(
+        `When linking to documentation pages, use "${docsUrl}" as the base URL (e.g. ${docsUrl}/docs/get-started).`,
+      );
     }
     return lines.join(" ");
   }
@@ -556,8 +551,7 @@ export function createDocsServer(
     if (!aiConfig.enabled) {
       return new Response(
         JSON.stringify({
-          error:
-            "AI is not enabled. Set `ai: { enabled: true }` in your docs config to enable it.",
+          error: "AI is not enabled. Set `ai: { enabled: true }` in your docs config to enable it.",
         }),
         { status: 404, headers: { "Content-Type": "application/json" } },
       );
@@ -598,10 +592,10 @@ export function createDocsServer(
 
     const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
     if (!lastUserMessage) {
-      return new Response(
-        JSON.stringify({ error: "At least one user message is required." }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ error: "At least one user message is required." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const maxResults = aiConfig.maxResults ?? 5;

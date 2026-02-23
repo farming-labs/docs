@@ -26,23 +26,16 @@ export const metadata: Metadata = {
     default: "@farming-labs/docs",
     template: "%s – @farming-labs/docs",
   },
-  description:
-    "A modern, flexible MDX documentation framework. One config, zero boilerplate.",
+  description: "A modern, flexible MDX documentation framework. One config, zero boilerplate.",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistSansDocs.variable} ${geistMono.variable} ${geistMonoDocs.variable} antialiased bg-fd-background`}
       >
-        <RootProvider>
-          {children}
-        </RootProvider>
+        <RootProvider>{children}</RootProvider>
       </body>
     </html>
   );

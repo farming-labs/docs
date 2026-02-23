@@ -45,10 +45,12 @@ function buildCodeBlock(lang: string, code: string): string {
   const highlighted = highlight(trimmed).replace(/<\/span>\n<span/g, "</span><span");
   const langLabel = lang ? `<div class="fd-ai-code-lang">${escapeHtml(lang)}</div>` : "";
   const copyBtn = `<button class="fd-ai-code-copy" onclick="(function(btn){var code=btn.closest('.fd-ai-code-block').querySelector('code').textContent;navigator.clipboard.writeText(code).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy'},1500)})})(this)">Copy</button>`;
-  return `<div class="fd-ai-code-block">`
-    + `<div class="fd-ai-code-header">${langLabel}${copyBtn}</div>`
-    + `<pre><code>${highlighted}</code></pre>`
-    + `</div>`;
+  return (
+    `<div class="fd-ai-code-block">` +
+    `<div class="fd-ai-code-header">${langLabel}${copyBtn}</div>` +
+    `<pre><code>${highlighted}</code></pre>` +
+    `</div>`
+  );
 }
 
 function renderMarkdown(text: string): string {
@@ -127,15 +129,23 @@ function isTableSeparator(line: string): boolean {
 
 function renderTable(rows: string[]): string {
   const parseRow = (row: string) =>
-    row.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => c.trim());
+    row
+      .trim()
+      .replace(/^\|/, "")
+      .replace(/\|$/, "")
+      .split("|")
+      .map((c) => c.trim());
 
   const headerCells = parseRow(rows[0]);
-  const thead = `<thead><tr>${headerCells.map(c => `<th>${c}</th>`).join("")}</tr></thead>`;
+  const thead = `<thead><tr>${headerCells.map((c) => `<th>${c}</th>`).join("")}</tr></thead>`;
 
-  const bodyRows = rows.slice(1).map(row => {
-    const cells = parseRow(row);
-    return `<tr>${cells.map(c => `<td>${c}</td>`).join("")}</tr>`;
-  }).join("");
+  const bodyRows = rows
+    .slice(1)
+    .map((row) => {
+      const cells = parseRow(row);
+      return `<tr>${cells.map((c) => `<td>${c}</td>`).join("")}</tr>`;
+    })
+    .join("");
 
   return `<table>${thead}<tbody>${bodyRows}</tbody></table>`;
 }
@@ -144,41 +154,91 @@ function renderTable(rows: string[]): string {
 
 function SearchIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
     </svg>
   );
 }
 
 function SparklesIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-      <path d="M20 3v4" /><path d="M22 5h-4" />
+      <path d="M20 3v4" />
+      <path d="M22 5h-4" />
     </svg>
   );
 }
 
 function FileIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4" />
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
     </svg>
   );
 }
 
 function ArrowUpIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m5 12 7-7 7 7" /><path d="M12 19V5" />
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m5 12 7-7 7 7" />
+      <path d="M12 19V5" />
     </svg>
   );
 }
 
 function XIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
     </svg>
   );
 }
@@ -208,7 +268,18 @@ function LoadingDots() {
 
 // ─── Shared AI Chat Component ───────────────────────────────────────
 
-function AIChat({ api, messages, setMessages, aiInput, setAiInput, isStreaming, setIsStreaming, suggestedQuestions, aiLabel, loadingComponentHtml }: {
+function AIChat({
+  api,
+  messages,
+  setMessages,
+  aiInput,
+  setAiInput,
+  isStreaming,
+  setIsStreaming,
+  suggestedQuestions,
+  aiLabel,
+  loadingComponentHtml,
+}: {
   api: string;
   messages: ChatMessage[];
   setMessages: (m: ChatMessage[]) => void;
@@ -224,71 +295,90 @@ function AIChat({ api, messages, setMessages, aiInput, setAiInput, isStreaming, 
   const aiInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
-  useEffect(() => { aiInputRef.current?.focus(); }, []);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+  useEffect(() => {
+    aiInputRef.current?.focus();
+  }, []);
 
-  const submitQuestion = useCallback(async (question: string) => {
-    if (!question.trim() || isStreaming) return;
-    const userMessage: ChatMessage = { role: "user", content: question };
-    const newMessages = [...messages, userMessage];
-    setAiInput("");
-    setIsStreaming(true);
-    setMessages([...newMessages, { role: "assistant", content: "" }]);
+  const submitQuestion = useCallback(
+    async (question: string) => {
+      if (!question.trim() || isStreaming) return;
+      const userMessage: ChatMessage = { role: "user", content: question };
+      const newMessages = [...messages, userMessage];
+      setAiInput("");
+      setIsStreaming(true);
+      setMessages([...newMessages, { role: "assistant", content: "" }]);
 
-    try {
-      const res = await fetch(api, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages.map((m) => ({ role: m.role, content: m.content })) }),
-      });
+      try {
+        const res = await fetch(api, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          }),
+        });
 
-      if (!res.ok) {
-        let errMsg = "Something went wrong.";
-        try { const err = await res.json(); errMsg = err.error || errMsg; } catch {}
-        setMessages([...newMessages, { role: "assistant", content: errMsg }]);
-        setIsStreaming(false);
-        return;
-      }
+        if (!res.ok) {
+          let errMsg = "Something went wrong.";
+          try {
+            const err = await res.json();
+            errMsg = err.error || errMsg;
+          } catch {}
+          setMessages([...newMessages, { role: "assistant", content: errMsg }]);
+          setIsStreaming(false);
+          return;
+        }
 
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let assistantContent = "";
+        const reader = res.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let assistantContent = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6).trim();
-            if (data === "[DONE]") continue;
-            try {
-              const json = JSON.parse(data);
-              const content = json.choices?.[0]?.delta?.content;
-              if (content) {
-                assistantContent += content;
-                setMessages([...newMessages, { role: "assistant", content: assistantContent }]);
-              }
-            } catch {}
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const data = line.slice(6).trim();
+              if (data === "[DONE]") continue;
+              try {
+                const json = JSON.parse(data);
+                const content = json.choices?.[0]?.delta?.content;
+                if (content) {
+                  assistantContent += content;
+                  setMessages([...newMessages, { role: "assistant", content: assistantContent }]);
+                }
+              } catch {}
+            }
           }
         }
+        if (assistantContent)
+          setMessages([...newMessages, { role: "assistant", content: assistantContent }]);
+      } catch {
+        setMessages([
+          ...newMessages,
+          { role: "assistant", content: "Failed to connect. Please try again." },
+        ]);
       }
-      if (assistantContent) setMessages([...newMessages, { role: "assistant", content: assistantContent }]);
-    } catch {
-      setMessages([...newMessages, { role: "assistant", content: "Failed to connect. Please try again." }]);
-    }
-    setIsStreaming(false);
-  }, [messages, api, isStreaming, setMessages, setAiInput, setIsStreaming]);
+      setIsStreaming(false);
+    },
+    [messages, api, isStreaming, setMessages, setAiInput, setIsStreaming],
+  );
 
   const handleAskAI = useCallback(async () => {
     await submitQuestion(aiInput);
   }, [aiInput, submitQuestion]);
 
   const handleAIKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAskAI(); }
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleAskAI();
+    }
   };
 
   const canSend = !!(aiInput.trim() && !isStreaming);
@@ -301,7 +391,8 @@ function AIChat({ api, messages, setMessages, aiInput, setAiInput, isStreaming, 
             <SparklesIcon size={20} />
             <div className="fd-ai-empty-title">Ask anything about the docs</div>
             <div className="fd-ai-empty-desc">
-              {label} will search through the documentation and answer your question with relevant context.
+              {label} will search through the documentation and answer your question with relevant
+              context.
             </div>
             {suggestedQuestions && suggestedQuestions.length > 0 && (
               <div className="fd-ai-suggestions">
@@ -317,19 +408,18 @@ function AIChat({ api, messages, setMessages, aiInput, setAiInput, isStreaming, 
         ) : (
           messages.map((msg, i) => (
             <div key={i} className="fd-ai-msg" data-role={msg.role}>
-              <div className="fd-ai-msg-label">
-                {msg.role === "user" ? "You" : label}
-              </div>
+              <div className="fd-ai-msg-label">{msg.role === "user" ? "You" : label}</div>
               {msg.role === "user" ? (
                 <div className="fd-ai-bubble-user">{msg.content}</div>
               ) : (
                 <div className="fd-ai-bubble-ai">
-                  {msg.content
-                    ? <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
-                    : loadingComponentHtml
-                      ? <div dangerouslySetInnerHTML={{ __html: loadingComponentHtml }} />
-                      : <DefaultLoadingIndicator label={label} />
-                  }
+                  {msg.content ? (
+                    <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                  ) : loadingComponentHtml ? (
+                    <div dangerouslySetInnerHTML={{ __html: loadingComponentHtml }} />
+                  ) : (
+                    <DefaultLoadingIndicator label={label} />
+                  )}
                 </div>
               )}
             </div>
@@ -341,7 +431,13 @@ function AIChat({ api, messages, setMessages, aiInput, setAiInput, isStreaming, 
       <div className="fd-ai-chat-footer">
         {messages.length > 0 && (
           <div style={{ display: "flex", justifyContent: "flex-end", paddingBottom: 8 }}>
-            <button onClick={() => { setMessages([]); setAiInput(""); }} className="fd-ai-clear-btn">
+            <button
+              onClick={() => {
+                setMessages([]);
+                setAiInput("");
+              }}
+              className="fd-ai-clear-btn"
+            >
               Clear chat
             </button>
           </div>
@@ -358,7 +454,12 @@ function AIChat({ api, messages, setMessages, aiInput, setAiInput, isStreaming, 
             className="fd-ai-input"
             style={{ opacity: isStreaming ? 0.5 : 1 }}
           />
-          <button onClick={handleAskAI} disabled={!canSend} className="fd-ai-send-btn" data-active={canSend}>
+          <button
+            onClick={handleAskAI}
+            disabled={!canSend}
+            className="fd-ai-send-btn"
+            data-active={canSend}
+          >
             <ArrowUpIcon />
           </button>
         </div>
@@ -369,7 +470,14 @@ function AIChat({ api, messages, setMessages, aiInput, setAiInput, isStreaming, 
 
 // ─── Search Dialog (Cmd+K) mode ─────────────────────────────────────
 
-export function DocsSearchDialog({ open, onOpenChange, api = "/api/docs", suggestedQuestions, aiLabel, loadingComponentHtml }: {
+export function DocsSearchDialog({
+  open,
+  onOpenChange,
+  api = "/api/docs",
+  suggestedQuestions,
+  aiLabel,
+  loadingComponentHtml,
+}: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   api?: string;
@@ -389,12 +497,21 @@ export function DocsSearchDialog({ open, onOpenChange, api = "/api/docs", sugges
   const [isStreaming, setIsStreaming] = useState(false);
 
   useEffect(() => {
-    if (open) { setSearchQuery(""); setSearchResults([]); setActiveIndex(0); setTimeout(() => { if (tab === "search") searchInputRef.current?.focus(); }, 50); }
+    if (open) {
+      setSearchQuery("");
+      setSearchResults([]);
+      setActiveIndex(0);
+      setTimeout(() => {
+        if (tab === "search") searchInputRef.current?.focus();
+      }, 50);
+    }
   }, [open, tab]);
 
   useEffect(() => {
     if (!open) return;
-    const handler = (e: globalThis.KeyboardEvent) => { if (e.key === "Escape") onOpenChange(false); };
+    const handler = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") onOpenChange(false);
+    };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [open, onOpenChange]);
@@ -402,16 +519,26 @@ export function DocsSearchDialog({ open, onOpenChange, api = "/api/docs", sugges
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [open]);
 
   useEffect(() => {
-    if (!searchQuery.trim() || tab !== "search") { setSearchResults([]); setActiveIndex(0); return; }
+    if (!searchQuery.trim() || tab !== "search") {
+      setSearchResults([]);
+      setActiveIndex(0);
+      return;
+    }
     setIsSearching(true);
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(`${api}?query=${encodeURIComponent(searchQuery)}`);
-        if (res.ok) { const data = await res.json(); setSearchResults(data); setActiveIndex(0); }
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults(data);
+          setActiveIndex(0);
+        }
       } catch {}
       setIsSearching(false);
     }, 150);
@@ -419,9 +546,17 @@ export function DocsSearchDialog({ open, onOpenChange, api = "/api/docs", sugges
   }, [searchQuery, api, tab]);
 
   const handleSearchKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex((i) => Math.min(i + 1, searchResults.length - 1)); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex((i) => Math.max(i - 1, 0)); }
-    else if (e.key === "Enter" && searchResults[activeIndex]) { e.preventDefault(); onOpenChange(false); window.location.href = searchResults[activeIndex].url; }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, searchResults.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && searchResults[activeIndex]) {
+      e.preventDefault();
+      onOpenChange(false);
+      window.location.href = searchResults[activeIndex].url;
+    }
   };
 
   if (!open) return null;
@@ -437,14 +572,25 @@ export function DocsSearchDialog({ open, onOpenChange, api = "/api/docs", sugges
         onClick={(e) => e.stopPropagation()}
         className="fd-ai-dialog"
         style={{
-          left: "50%", top: "50%", transform: "translate(-50%, -50%)",
-          width: "min(680px, calc(100vw - 32px))", maxHeight: "min(560px, calc(100vh - 64px))",
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "min(680px, calc(100vw - 32px))",
+          maxHeight: "min(560px, calc(100vh - 64px))",
           animation: "fd-ai-slide-up 200ms ease-out",
         }}
       >
         <div className="fd-ai-tab-bar">
-          <button onClick={() => setTab("search")} className="fd-ai-tab" data-active={tab === "search"}><SearchIcon /> Search</button>
-          <button onClick={() => setTab("ai")} className="fd-ai-tab" data-active={tab === "ai"}><SparklesIcon /> Ask {aiName}</button>
+          <button
+            onClick={() => setTab("search")}
+            className="fd-ai-tab"
+            data-active={tab === "search"}
+          >
+            <SearchIcon /> Search
+          </button>
+          <button onClick={() => setTab("ai")} className="fd-ai-tab" data-active={tab === "ai"}>
+            <SparklesIcon /> Ask {aiName}
+          </button>
           <div style={{ marginLeft: "auto", display: "flex", gap: 4, alignItems: "center" }}>
             <kbd className="fd-ai-esc">ESC</kbd>
           </div>
@@ -454,17 +600,44 @@ export function DocsSearchDialog({ open, onOpenChange, api = "/api/docs", sugges
           <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
             <div className="fd-ai-search-wrap">
               <SearchIcon />
-              <input ref={searchInputRef} type="text" placeholder="Search documentation..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={handleSearchKeyDown} className="fd-ai-input" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search documentation..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                className="fd-ai-input"
+              />
               {isSearching && <LoadingDots />}
             </div>
             <div className="fd-ai-results">
-              {searchResults.length > 0 ? searchResults.map((result, i) => (
-                <button key={result.id} onClick={() => { onOpenChange(false); window.location.href = result.url; }} onMouseEnter={() => setActiveIndex(i)} className="fd-ai-result" data-active={i === activeIndex}>
-                  <FileIcon /><span dangerouslySetInnerHTML={{ __html: result.content }} style={{ flex: 1 }} />
-                </button>
-              )) : (
+              {searchResults.length > 0 ? (
+                searchResults.map((result, i) => (
+                  <button
+                    key={result.id}
+                    onClick={() => {
+                      onOpenChange(false);
+                      window.location.href = result.url;
+                    }}
+                    onMouseEnter={() => setActiveIndex(i)}
+                    className="fd-ai-result"
+                    data-active={i === activeIndex}
+                  >
+                    <FileIcon />
+                    <span
+                      dangerouslySetInnerHTML={{ __html: result.content }}
+                      style={{ flex: 1 }}
+                    />
+                  </button>
+                ))
+              ) : (
                 <div className="fd-ai-result-empty">
-                  {searchQuery.trim() ? (isSearching ? "Searching..." : `No results found. Try the Ask ${aiName} tab.`) : "Type to search the docs"}
+                  {searchQuery.trim()
+                    ? isSearching
+                      ? "Searching..."
+                      : `No results found. Try the Ask ${aiName} tab.`
+                    : "Type to search the docs"}
                 </div>
               )}
             </div>
@@ -472,7 +645,18 @@ export function DocsSearchDialog({ open, onOpenChange, api = "/api/docs", sugges
         )}
 
         {tab === "ai" && (
-          <AIChat api={api} messages={messages} setMessages={setMessages} aiInput={aiInput} setAiInput={setAiInput} isStreaming={isStreaming} setIsStreaming={setIsStreaming} suggestedQuestions={suggestedQuestions} aiLabel={aiLabel} loadingComponentHtml={loadingComponentHtml} />
+          <AIChat
+            api={api}
+            messages={messages}
+            setMessages={setMessages}
+            aiInput={aiInput}
+            setAiInput={setAiInput}
+            isStreaming={isStreaming}
+            setIsStreaming={setIsStreaming}
+            suggestedQuestions={suggestedQuestions}
+            aiLabel={aiLabel}
+            loadingComponentHtml={loadingComponentHtml}
+          />
         )}
       </div>
     </>,
@@ -507,7 +691,9 @@ function getContainerStyles(style: FloatingStyle, position: FloatingPosition): R
   switch (style) {
     case "modal":
       return {
-        top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
         width: "min(680px, calc(100vw - 32px))",
         height: "min(560px, calc(100vh - 64px))",
       };
@@ -556,41 +742,50 @@ export function FloatingAIChat({
   const [aiInput, setAiInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
-      const handler = (e: globalThis.KeyboardEvent) => { if (e.key === "Escape") setIsOpen(false); };
+      const handler = (e: globalThis.KeyboardEvent) => {
+        if (e.key === "Escape") setIsOpen(false);
+      };
       document.addEventListener("keydown", handler);
       return () => document.removeEventListener("keydown", handler);
     }
   }, [isOpen]);
 
   useEffect(() => {
-    if (isOpen && (floatingStyle === "modal" || floatingStyle === "full-modal")) document.body.style.overflow = "hidden";
+    if (isOpen && (floatingStyle === "modal" || floatingStyle === "full-modal"))
+      document.body.style.overflow = "hidden";
     else document.body.style.overflow = "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [isOpen, floatingStyle]);
 
   if (!mounted) return null;
 
   if (floatingStyle === "full-modal") {
-    return <FullModalAIChat
-      api={api}
-      isOpen={isOpen}
-      setIsOpen={setIsOpen}
-      messages={messages}
-      setMessages={setMessages}
-      aiInput={aiInput}
-      setAiInput={setAiInput}
-      isStreaming={isStreaming}
-      setIsStreaming={setIsStreaming}
-      suggestedQuestions={suggestedQuestions}
-      aiLabel={aiLabel}
-      loadingComponentHtml={loadingComponentHtml}
-      triggerComponentHtml={triggerComponentHtml}
-      position={position}
-    />;
+    return (
+      <FullModalAIChat
+        api={api}
+        isOpen={isOpen}
+        setIsOpen={setIsOpen}
+        messages={messages}
+        setMessages={setMessages}
+        aiInput={aiInput}
+        setAiInput={setAiInput}
+        isStreaming={isStreaming}
+        setIsStreaming={setIsStreaming}
+        suggestedQuestions={suggestedQuestions}
+        aiLabel={aiLabel}
+        loadingComponentHtml={loadingComponentHtml}
+        triggerComponentHtml={triggerComponentHtml}
+        position={position}
+      />
+    );
   }
 
   const btnPosition = BTN_POSITIONS[position] || BTN_POSITIONS["bottom-right"];
@@ -600,9 +795,7 @@ export function FloatingAIChat({
 
   return createPortal(
     <>
-      {isOpen && isModal && (
-        <div onClick={() => setIsOpen(false)} className="fd-ai-overlay" />
-      )}
+      {isOpen && isModal && <div onClick={() => setIsOpen(false)} className="fd-ai-overlay" />}
 
       {isOpen && (
         <div
@@ -619,12 +812,23 @@ export function FloatingAIChat({
             </button>
           </div>
 
-          <AIChat api={api} messages={messages} setMessages={setMessages} aiInput={aiInput} setAiInput={setAiInput} isStreaming={isStreaming} setIsStreaming={setIsStreaming} suggestedQuestions={suggestedQuestions} aiLabel={aiLabel} loadingComponentHtml={loadingComponentHtml} />
+          <AIChat
+            api={api}
+            messages={messages}
+            setMessages={setMessages}
+            aiInput={aiInput}
+            setAiInput={setAiInput}
+            isStreaming={isStreaming}
+            setIsStreaming={setIsStreaming}
+            suggestedQuestions={suggestedQuestions}
+            aiLabel={aiLabel}
+            loadingComponentHtml={loadingComponentHtml}
+          />
         </div>
       )}
 
-      {!isOpen && (
-        triggerComponentHtml ? (
+      {!isOpen &&
+        (triggerComponentHtml ? (
           <div
             onClick={() => setIsOpen(true)}
             className="fd-ai-floating-trigger"
@@ -641,8 +845,7 @@ export function FloatingAIChat({
             <SparklesIcon size={16} />
             <span>Ask {aiName}</span>
           </button>
-        )
-      )}
+        ))}
     </>,
     document.body,
   );
@@ -697,61 +900,73 @@ function FullModalAIChat({
     }
   }, [messages]);
 
-  const submitQuestion = useCallback(async (question: string) => {
-    if (!question.trim() || isStreaming) return;
-    const userMessage: ChatMessage = { role: "user", content: question };
-    const newMessages = [...messages, userMessage];
-    setAiInput("");
-    setIsStreaming(true);
-    setMessages([...newMessages, { role: "assistant", content: "" }]);
+  const submitQuestion = useCallback(
+    async (question: string) => {
+      if (!question.trim() || isStreaming) return;
+      const userMessage: ChatMessage = { role: "user", content: question };
+      const newMessages = [...messages, userMessage];
+      setAiInput("");
+      setIsStreaming(true);
+      setMessages([...newMessages, { role: "assistant", content: "" }]);
 
-    try {
-      const res = await fetch(api, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages.map((m) => ({ role: m.role, content: m.content })) }),
-      });
+      try {
+        const res = await fetch(api, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          }),
+        });
 
-      if (!res.ok) {
-        let errMsg = "Something went wrong.";
-        try { const err = await res.json(); errMsg = err.error || errMsg; } catch {}
-        setMessages([...newMessages, { role: "assistant", content: errMsg }]);
-        setIsStreaming(false);
-        return;
-      }
+        if (!res.ok) {
+          let errMsg = "Something went wrong.";
+          try {
+            const err = await res.json();
+            errMsg = err.error || errMsg;
+          } catch {}
+          setMessages([...newMessages, { role: "assistant", content: errMsg }]);
+          setIsStreaming(false);
+          return;
+        }
 
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let assistantContent = "";
+        const reader = res.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let assistantContent = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6).trim();
-            if (data === "[DONE]") continue;
-            try {
-              const json = JSON.parse(data);
-              const content = json.choices?.[0]?.delta?.content;
-              if (content) {
-                assistantContent += content;
-                setMessages([...newMessages, { role: "assistant", content: assistantContent }]);
-              }
-            } catch {}
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const data = line.slice(6).trim();
+              if (data === "[DONE]") continue;
+              try {
+                const json = JSON.parse(data);
+                const content = json.choices?.[0]?.delta?.content;
+                if (content) {
+                  assistantContent += content;
+                  setMessages([...newMessages, { role: "assistant", content: assistantContent }]);
+                }
+              } catch {}
+            }
           }
         }
+        if (assistantContent)
+          setMessages([...newMessages, { role: "assistant", content: assistantContent }]);
+      } catch {
+        setMessages([
+          ...newMessages,
+          { role: "assistant", content: "Failed to connect. Please try again." },
+        ]);
       }
-      if (assistantContent) setMessages([...newMessages, { role: "assistant", content: assistantContent }]);
-    } catch {
-      setMessages([...newMessages, { role: "assistant", content: "Failed to connect. Please try again." }]);
-    }
-    setIsStreaming(false);
-  }, [messages, api, isStreaming, setMessages, setAiInput, setIsStreaming]);
+      setIsStreaming(false);
+    },
+    [messages, api, isStreaming, setMessages, setAiInput, setIsStreaming],
+  );
 
   const canSend = !!(aiInput.trim() && !isStreaming);
   const showSuggestions = messages.length === 0 && !isStreaming;
@@ -769,7 +984,9 @@ function FullModalAIChat({
       {isOpen && (
         <div
           className="fd-ai-fm-overlay"
-          onClick={(e) => { if (e.target === e.currentTarget) setIsOpen(false); }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsOpen(false);
+          }}
         >
           {/* Close button */}
           <div className="fd-ai-fm-topbar">
@@ -787,18 +1004,17 @@ function FullModalAIChat({
                     {msg.role === "user" ? "you" : label}
                   </div>
                   <div className="fd-ai-fm-msg-content">
-                    {msg.content
-                      ? <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
-                      : loadingComponentHtml
-                        ? <div dangerouslySetInnerHTML={{ __html: loadingComponentHtml }} />
-                        : (
-                          <div className="fd-ai-fm-thinking">
-                            <span className="fd-ai-fm-thinking-dot" />
-                            <span className="fd-ai-fm-thinking-dot" />
-                            <span className="fd-ai-fm-thinking-dot" />
-                          </div>
-                        )
-                    }
+                    {msg.content ? (
+                      <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                    ) : loadingComponentHtml ? (
+                      <div dangerouslySetInnerHTML={{ __html: loadingComponentHtml }} />
+                    ) : (
+                      <div className="fd-ai-fm-thinking">
+                        <span className="fd-ai-fm-thinking-dot" />
+                        <span className="fd-ai-fm-thinking-dot" />
+                        <span className="fd-ai-fm-thinking-dot" />
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -862,7 +1078,11 @@ function FullModalAIChat({
                 <div className="fd-ai-fm-suggestions-label">Try asking:</div>
                 <div className="fd-ai-fm-suggestions">
                   {suggestedQuestions.map((q, i) => (
-                    <button key={i} onClick={() => submitQuestion(q)} className="fd-ai-fm-suggestion">
+                    <button
+                      key={i}
+                      onClick={() => submitQuestion(q)}
+                      className="fd-ai-fm-suggestion"
+                    >
                       {q}
                     </button>
                   ))}
@@ -874,7 +1094,12 @@ function FullModalAIChat({
               {messages.length > 0 ? (
                 <button
                   className="fd-ai-fm-clear-btn"
-                  onClick={() => { if (!isStreaming) { setMessages([]); setAiInput(""); } }}
+                  onClick={() => {
+                    if (!isStreaming) {
+                      setMessages([]);
+                      setAiInput("");
+                    }
+                  }}
                   aria-disabled={isStreaming}
                 >
                   <TrashIcon />
@@ -896,8 +1121,19 @@ function FullModalAIChat({
 
 function TrashIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 6h18" />
+      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
     </svg>
   );
 }
@@ -925,7 +1161,9 @@ export function AIModalDialog({
 
   useEffect(() => {
     if (!open) return;
-    const handler = (e: globalThis.KeyboardEvent) => { if (e.key === "Escape") onOpenChange(false); };
+    const handler = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") onOpenChange(false);
+    };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [open, onOpenChange]);
@@ -933,7 +1171,9 @@ export function AIModalDialog({
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [open]);
 
   if (!open) return null;
@@ -949,7 +1189,9 @@ export function AIModalDialog({
         onClick={(e) => e.stopPropagation()}
         className="fd-ai-dialog fd-ai-modal-pure"
         style={{
-          left: "50%", top: "50%", transform: "translate(-50%, -50%)",
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
           width: "min(680px, calc(100vw - 32px))",
           height: "min(560px, calc(100vh - 64px))",
           animation: "fd-ai-float-center-in 200ms ease-out",
@@ -981,7 +1223,12 @@ export function AIModalDialog({
           {messages.length > 0 ? (
             <button
               className="fd-ai-fm-clear-btn"
-              onClick={() => { if (!isStreaming) { setMessages([]); setAiInput(""); } }}
+              onClick={() => {
+                if (!isStreaming) {
+                  setMessages([]);
+                  setAiInput("");
+                }
+              }}
               aria-disabled={isStreaming}
             >
               <TrashIcon />
