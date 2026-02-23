@@ -134,12 +134,16 @@ function buildTypographyCSS(typo: Record<string, any> | undefined): string {
 
 function buildLayoutCSS(layout: Record<string, any> | undefined): string {
   if (!layout) return "";
-  const vars: string[] = [];
-  if (layout.sidebarWidth) vars.push(`--fd-sidebar-width: ${layout.sidebarWidth}px;`);
-  if (layout.contentWidth) vars.push(`--fd-content-width: ${layout.contentWidth}px;`);
-  if (layout.tocWidth) vars.push(`--fd-toc-width: ${layout.tocWidth}px;`);
-  if (vars.length === 0) return "";
-  return `:root {\n  ${vars.join("\n  ")}\n}`;
+  const rootVars: string[] = [];
+  const desktopVars: string[] = [];
+  if (layout.sidebarWidth) desktopVars.push(`--fd-sidebar-width: ${layout.sidebarWidth}px;`);
+  if (layout.contentWidth) rootVars.push(`--fd-content-width: ${layout.contentWidth}px;`);
+  if (layout.tocWidth) desktopVars.push(`--fd-toc-width: ${layout.tocWidth}px;`);
+  if (rootVars.length === 0 && desktopVars.length === 0) return "";
+  const parts: string[] = [];
+  if (rootVars.length > 0) parts.push(`:root {\n  ${rootVars.join("\n  ")}\n}`);
+  if (desktopVars.length > 0) parts.push(`@media (min-width: 1024px) {\n  :root {\n    ${desktopVars.join("\n    ")}\n  }\n}`);
+  return parts.join("\n");
 }
 
 const overrideCSS = computed(() => {

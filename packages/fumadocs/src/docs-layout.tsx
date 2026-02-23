@@ -395,26 +395,41 @@ interface LayoutDimensions {
 
 function LayoutStyle({ layout }: { layout?: LayoutDimensions }) {
   if (!layout) return null;
+
   const rootVars: string[] = [];
-  const gridVars: string[] = [];
+  const desktopRootVars: string[] = [];
+  const desktopGridVars: string[] = [];
+
   if (layout.sidebarWidth) {
     const v = `--fd-sidebar-width: ${layout.sidebarWidth}px`;
-    rootVars.push(`${v};`);
-    gridVars.push(`${v} !important;`);
+    desktopRootVars.push(`${v};`);
+    desktopGridVars.push(`${v} !important;`);
   }
   if (layout.contentWidth) {
     rootVars.push(`--fd-content-width: ${layout.contentWidth}px;`);
   }
   if (layout.tocWidth) {
     const v = `--fd-toc-width: ${layout.tocWidth}px`;
-    rootVars.push(`${v};`);
-    gridVars.push(`${v} !important;`);
+    desktopRootVars.push(`${v};`);
+    desktopGridVars.push(`${v} !important;`);
   }
-  if (rootVars.length === 0) return null;
-  const parts = [`:root {\n  ${rootVars.join("\n  ")}\n}`];
-  if (gridVars.length > 0) {
-    parts.push(`[style*="fd-sidebar-col"] {\n  ${gridVars.join("\n  ")}\n}`);
+
+  if (rootVars.length === 0 && desktopRootVars.length === 0) return null;
+
+  const parts: string[] = [];
+
+  if (rootVars.length > 0) {
+    parts.push(`:root {\n  ${rootVars.join("\n  ")}\n}`);
   }
+
+  if (desktopRootVars.length > 0) {
+    const inner = [`:root {\n    ${desktopRootVars.join("\n    ")}\n  }`];
+    if (desktopGridVars.length > 0) {
+      inner.push(`[style*="fd-sidebar-col"] {\n    ${desktopGridVars.join("\n    ")}\n  }`);
+    }
+    parts.push(`@media (min-width: 1024px) {\n  ${inner.join("\n  ")}\n}`);
+  }
+
   return <style dangerouslySetInnerHTML={{ __html: parts.join("\n") }} />;
 }
 
