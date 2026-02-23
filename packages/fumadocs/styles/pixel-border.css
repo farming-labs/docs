@@ -338,34 +338,6 @@ figure.shiki>div:first-child {
   border-radius: 0 !important;
 }
 
-/* Titled code blocks: diagonal stripe background on the title bar */
-figure.shiki:has(figcaption)>div:first-child {
-  position: relative;
-}
-
-figure.shiki:has(figcaption)>div:first-child::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(-45deg,
-      currentColor,
-      currentColor 1px,
-      transparent 1px,
-      transparent 6px);
-  opacity: 0.03;
-  pointer-events: none;
-}
-
-.dark figure.shiki:has(figcaption)>div:first-child::before {
-  opacity: 0.05;
-}
-
-figure.shiki:has(figcaption) figcaption {
-  font-family: var(--fd-font-mono, ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace);
-  font-size: 0.75rem;
-  letter-spacing: 0.01em;
-}
-
 /* ─── Tabs (package manager / code tabs) ──────────────────────────── */
 
 .dark [role="tablist"] {
@@ -706,8 +678,6 @@ figure.shiki:has(figcaption) figcaption {
 }
 
 .omni-close-btn {
-  background: transparent !important;
-  border: 1px solid var(--color-fd-border, hsl(0 0% 15%));
   border-radius: 0 !important;
 }
 

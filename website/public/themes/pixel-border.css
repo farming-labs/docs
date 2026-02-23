@@ -493,6 +493,9 @@ article a[class*="text-fd-muted-foreground"] {
 /* ─── Page Actions (pixel-border overrides) ───────────────────────── */
 
 .fd-page-action-btn {
+  text-transform: uppercase;
+  box-shadow: 2px 2px 0 0 var(--color-fd-border, #262626);
+  font-family: var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace)) !important;
   border-radius: 0 !important;
   font-size: 0.75rem !important;
   letter-spacing: 0.03em !important;
@@ -596,7 +599,6 @@ article a[class*="text-fd-muted-foreground"] {
 .fd-ai-msg-label {
   letter-spacing: 0.06em !important;
 }
-
 .fd-ai-loading-text {
   text-transform: uppercase !important;
   letter-spacing: 0.04em !important;
