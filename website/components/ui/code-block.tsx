@@ -41,20 +41,22 @@ export default function CodeBlock({
       <PixelCard variant="code" className="p-0!">
         {(title || filename) && (
           <div
-            className="relative flex items-center justify-between border-b border-white/10 px-3 sm:px-4 py-2.5 min-w-0 overflow-hidden bg-[repeating-linear-gradient(-45deg,#ffffff,#ffffff_1px,transparent_1px,transparent_6px)] bg-clip-padding"
-            style={{ backgroundSize: "8px 8px" }}
+            className="flex items-center justify-between px-3 sm:px-4 py-2.5 min-w-0 overflow-hidden"
+            style={{
+              borderBottom: "1px solid color-mix(in srgb, var(--color-fd-foreground, #fff) 10%, transparent)",
+              backgroundImage: "repeating-linear-gradient(-45deg, color-mix(in srgb, var(--color-fd-foreground, #fff) 7%, transparent), color-mix(in srgb, var(--color-fd-foreground, #fff) 7%, transparent) 1px, transparent 1px, transparent 6px)",
+            }}
           >
-            <div className="absolute inset-0 bg-black/95" />
-            <div className="relative z-10 flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
               {filename && (
-                <span className="text-[11px] sm:text-xs font-mono text-white/50 truncate">
+                <span className="text-[11px] sm:text-xs font-mono truncate" style={{ color: "color-mix(in srgb, var(--color-fd-foreground, #fff) 50%, transparent)" }}>
                   {filename}
                 </span>
               )}
             </div>
-            <div className="relative z-[999] flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {title && (
-                <span className="text-[9.5px] border px-2 bg-black border-white/10 font-mono uppercase tracking-wider text-white/20">
+                <span className="text-[9.5px] border px-2 font-mono uppercase tracking-wider" style={{ backgroundColor: "var(--color-fd-background, #000)", borderColor: "color-mix(in srgb, var(--color-fd-foreground, #fff) 10%, transparent)", color: "color-mix(in srgb, var(--color-fd-foreground, #fff) 20%, transparent)" }}>
                   {title}
                 </span>
               )}

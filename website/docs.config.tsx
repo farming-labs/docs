@@ -137,48 +137,42 @@ export default defineDocs({
   },
   sidebar: {
     banner: (
-      <div className="-mx-4 -mt-3 relative  bg-[repeating-linear-gradient(-45deg,#ffffff,#ffffff_1px,transparent_1px,transparent_6px)] bg-clip-padding" style={{
+      <div className="-mx-4 relative mt-2" style={{
         padding: "12px 16px",
         borderBottom: "1px solid var(--color-fd-border)",
+        borderTop: "1px solid var(--color-fd-border)",
         fontSize: "13px",
         color: "var(--color-fd-muted-foreground)",
+        backgroundImage: "repeating-linear-gradient(-45deg, color-mix(in srgb, var(--color-fd-border) 2%, transparent), color-mix(in srgb, var(--color-fd-foreground) 7%, transparent) 1px, transparent 1px, transparent 6px)",
       }}>
-        <div className="absolute inset-0 bg-black/95" />
-        <div className="relative z-[999]">
-
           <div className="font-mono tracking-tighter" style={{ fontWeight: 600, marginBottom: 4, color: "var(--color-fd-foreground)" }}>
-            <span className="text-white/40">
-              <Pin size={12} className="inline-flex" /> </span>
-            <a className="lowercase text-[11px] underline underline-offset-2 decoration-white/30 decoration-dotted hover:underline-offset-2 hover:decoration-white/50 hover:decoration-dotted hover:text-white/50 transition-colors mr-1" href="/changelog#v0.0.1-beta.16-20">
-              v0.0.1.beta.20
+            <span style={{ opacity: 0.4 }}>
+              <Pin size={12} className="inline-flex" />{" "}
+            </span>
+            <a className="lowercase cursor-pointer text-[11px] underline underline-offset-2 decoration-dotted transition-colors mr-1" style={{ textDecorationColor: "color-mix(in srgb, var(--color-fd-foreground) 30%, transparent)" }} href="/changelog#v0.0.1-beta.16-20">
+              v0.0.1.beta.26
             </a>
           </div>
           <span className="text-[11px]">Check out the new features and improvements that were added in this release.</span>
-        </div>
       </div>
     ),
     footer: (
       <div
-        className="-mx-4 mr-1 -my-2 flex items-center justify-center relative bg-[repeating-linear-gradient(-45deg,#ffffff,#ffffff_1px,transparent_1px,transparent_6px)] bg-clip-padding font-mono uppercase"
+        className="-mx-4 -my-2 -mb-4 flex items-center justify-center font-mono uppercase"
         style={{
           padding: "12px 16px",
-          // borderTop: "1px solid var(--color-fd-border)",
           fontSize: "12px",
-          // color: "var(--color-fd-muted-foreground)",
+          backgroundImage: "repeating-linear-gradient(-45deg, color-mix(in srgb, var(--color-fd-border) 7%, transparent), color-mix(in srgb, var(--color-fd-foreground) 7%, transparent) 1px, transparent 1px, transparent 6px)",
         }}>
-        <div className="absolute inset-0 bg-black/95" />
-        <div className="relative z-[999]">
-          <div className="flex gap-2 items-center text-white/40">
+          <div className="flex gap-2 items-center" style={{ opacity: 0.4, color: "var(--color-fd-muted-foreground)" }}>
             <Package size={14} className="inline-flex mb-[1px]" />
             <span className="text-[11px]">
-              Built with <span className="text-white/50">
-                <a href="https://github.com/farming-labs" target="_blank" className="text-white/50 underline underline-offset-2 decoration-white/30 decoration-dotted hover:underline-offset-2 hover:decoration-white/50 hover:decoration-dotted hover:text-white/50 transition-colors">
-                  @farming-labs
-                </a>
-              </span>
+              Built with{" "}
+              <a href="https://github.com/farming-labs" target="_blank" className="underline underline-offset-2 decoration-dotted transition-colors text-white" style={{ textDecorationColor: "color-mix(in srgb, var(--color-fd-foreground) 30%, transparent)" }}>
+                @farming-labs
+              </a>
             </span>
           </div>
-        </div>
       </div>
     ),
   },

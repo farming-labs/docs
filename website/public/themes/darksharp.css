@@ -478,6 +478,9 @@ article a[class*="text-fd-muted-foreground"] {
   border-radius: 0.2rem !important;
   font-size: 0.8125rem !important;
   letter-spacing: normal !important;
+  box-shadow: none !important;
+  text-transform: capitalize !important; 
+  font-family: var(--fd-font-sans, var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif)) !important;
 
 }
 

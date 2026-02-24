@@ -450,11 +450,13 @@ figure.shiki > div:first-child {
 }
 
 /* ─── Page Actions (pixel-border overrides) ───────────────────────── */
-
 .fd-page-action-btn {
   border-radius: 0 !important;
   font-size: 0.75rem;
   letter-spacing: 0.03em;
+  text-transform: uppercase;
+  box-shadow: 2px 2px 0 0 var(--color-fd-border, #262626);
+  font-family: var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace)) !important;
 }
 
 .fd-page-action-menu {
