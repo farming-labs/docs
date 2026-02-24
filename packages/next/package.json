@@ -41,6 +41,11 @@
       "types": "./dist/mdx-plugins/rehype-code.d.mts",
       "import": "./dist/mdx-plugins/rehype-code.mjs",
       "default": "./dist/mdx-plugins/rehype-code.mjs"
+    },
+    "./mdx-plugins/remark-og": {
+      "types": "./dist/mdx-plugins/remark-og.d.mts",
+      "import": "./dist/mdx-plugins/remark-og.mjs",
+      "default": "./dist/mdx-plugins/remark-og.mjs"
     }
   },
   "scripts": {

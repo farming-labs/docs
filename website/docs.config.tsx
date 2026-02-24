@@ -134,9 +134,15 @@ export default defineDocs({
     siteDescription:
       "A modern, flexible MDX documentation framework for Next.js, SvelteKit, Astro, and Nuxt.",
   },
+  og: {
+    enabled: true,
+    type: "dynamic",
+    endpoint: "/api/og",
+  },
   metadata: {
     titleTemplate: "%s – @farming-labs/docs",
     description: "A modern, flexible MDX documentation framework.",
+    twitterCard: "summary_large_image",
   },
   ordering: "numeric",
   ai: {

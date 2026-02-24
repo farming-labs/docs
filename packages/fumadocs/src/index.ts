@@ -57,7 +57,7 @@
  */
 
 // ─── Layout + metadata helpers ────────────────────────────────────────
-export { createDocsLayout, createDocsMetadata } from "./docs-layout.js";
+export { createDocsLayout, createDocsMetadata, createPageMetadata } from "./docs-layout.js";
 
 // ─── Root UI provider ─────────────────────────────────────────────────
 // Thin wrapper around fumadocs-ui's RootProvider that defaults the

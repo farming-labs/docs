@@ -73,7 +73,6 @@ function readDocsEntry(root: string): string {
     if (existsSync(configPath)) {
       try {
         const content = readFileSync(configPath, "utf-8");
-        // Match entry: "..." or entry: '...' in the config
         const match = content.match(/entry\s*:\s*["']([^"']+)["']/);
         if (match) return match[1];
       } catch {
@@ -82,6 +81,23 @@ function readDocsEntry(root: string): string {
     }
   }
   return "docs";
+}
+
+/** Read the OG endpoint from docs.config.ts[x] (returns undefined if not set). */
+function readOgEndpoint(root: string): string | undefined {
+  for (const ext of FILE_EXTS) {
+    const configPath = join(root, `docs.config.${ext}`);
+    if (existsSync(configPath)) {
+      try {
+        const content = readFileSync(configPath, "utf-8");
+        const match = content.match(/endpoint\s*:\s*["']([^"']+)["']/);
+        if (match && match[1]) return match[1];
+      } catch {
+        // fall through
+      }
+    }
+  }
+  return undefined;
 }
 
 // ─── withDocs ───────────────────────────────────────────────────────
@@ -113,15 +129,23 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
   }
 
   // ── 4. Configure MDX compilation ────────────────────────────────
+  const ogEndpoint = readOgEndpoint(root);
+  const remarkPlugins: unknown[] = [
+    "remark-gfm",
+    "remark-frontmatter",
+  ];
+  if (ogEndpoint) {
+    remarkPlugins.push(["@farming-labs/next/mdx-plugins/remark-og", { endpoint: ogEndpoint }]);
+  }
+  remarkPlugins.push(
+    ["remark-mdx-frontmatter", { name: "metadata" }],
+    "@farming-labs/next/mdx-plugins/remark-heading",
+  );
+
   const withMDX = createMDX({
     extension: /\.mdx?$/,
     options: {
-      remarkPlugins: [
-        "remark-gfm",
-        "remark-frontmatter",
-        ["remark-mdx-frontmatter", { name: "metadata" }],
-        "@farming-labs/next/mdx-plugins/remark-heading",
-      ],
+      remarkPlugins,
       rehypePlugins: [
         "@farming-labs/next/mdx-plugins/rehype-toc",
         [

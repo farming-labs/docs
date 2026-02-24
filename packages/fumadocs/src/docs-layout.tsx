@@ -266,16 +266,15 @@ function buildDescriptionMap(entry: string): Record<string, string> {
  */
 export function createDocsMetadata(config: DocsConfig) {
   const meta = config.metadata;
+  const og = config.og;
   const template = meta?.titleTemplate ?? "%s";
-  // Extract the suffix from the template for the default title
-  // e.g. "%s – Docs" → default is "Docs"
   const defaultTitle =
     template
       .replace("%s", "")
       .replace(/^[\s–—-]+/, "")
       .trim() || "Docs";
 
-  return {
+  const result: Record<string, unknown> = {
     title: {
       template,
       default: defaultTitle,
@@ -283,6 +282,62 @@ export function createDocsMetadata(config: DocsConfig) {
     ...(meta?.description ? { description: meta.description } : {}),
     ...(meta?.twitterCard ? { twitter: { card: meta.twitterCard } } : {}),
   };
+
+  if (og?.enabled !== false && og?.endpoint) {
+    const ogUrl = `${og.endpoint}?title=${encodeURIComponent(defaultTitle)}${meta?.description ? `&description=${encodeURIComponent(meta.description)}` : ""}`;
+    result.openGraph = {
+      images: [{ url: ogUrl, width: 1200, height: 630 }],
+    };
+    result.twitter = {
+      ...(result.twitter as object),
+      card: meta?.twitterCard ?? "summary_large_image",
+      images: [ogUrl],
+    };
+  }
+
+  return result;
+}
+
+/**
+ * Generate page-level metadata with dynamic OG images.
+ *
+ * Usage in a docs page or [[...slug]] route:
+ * ```ts
+ * export function generateMetadata({ params }) {
+ *   const page = getPage(params.slug);
+ *   return createPageMetadata(docsConfig, {
+ *     title: page.data.title,
+ *     description: page.data.description,
+ *   });
+ * }
+ * ```
+ */
+export function createPageMetadata(
+  config: DocsConfig,
+  page: { title: string; description?: string }
+) {
+  const og = config.og;
+  const result: Record<string, unknown> = {
+    title: page.title,
+    ...(page.description ? { description: page.description } : {}),
+  };
+
+  if (og?.enabled !== false && og?.endpoint) {
+    const ogUrl = `${og.endpoint}?title=${encodeURIComponent(page.title)}${page.description ? `&description=${encodeURIComponent(page.description)}` : ""}`;
+    result.openGraph = {
+      title: page.title,
+      description: page.description,
+      images: [{ url: ogUrl, width: 1200, height: 630 }],
+    };
+    result.twitter = {
+      card: "summary_large_image",
+      title: page.title,
+      description: page.description,
+      images: [ogUrl],
+    };
+  }
+
+  return result;
 }
 
 // ─── createDocsLayout ────────────────────────────────────────────────

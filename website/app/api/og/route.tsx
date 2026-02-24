@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
             bottom: 0,
             width: "100%",
             height: "100%",
-            opacity: 0,
+            opacity: 0.06,
             backgroundImage:
               "repeating-linear-gradient(-45deg, #ffffff, #ffffff 1px, transparent 1px, transparent 6px)",
           }}
@@ -110,30 +110,30 @@ export async function GET(request: NextRequest) {
           }}
         />
 
-        {/* Top branding */}
+        {/* ── Top branding ── */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: "8px",
-            padding: "18px 80px",
+            padding: "50px 80px",
             position: "relative",
             zIndex: 10,
           }}
         >
           <div
             style={{
-              height: "12px",
+              height: "14px",
               width: "1px",
-              backgroundColor: "rgba(255,255,255,0.5)",
+              backgroundColor: "rgba(255,255,255,0.4)",
             }}
           />
           <span
             style={{
               fontFamily: '"JetBrains Mono"',
-              fontSize: "11px",
-              color: "rgba(255,255,255,0.35)",
-              letterSpacing: "-0.02em",
+              fontSize: "14px",
+              color: "rgba(255,255,255,0.4)",
+              letterSpacing: "-0.03em",
               textTransform: "uppercase" as const,
             }}
           >
@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
           </span>
         </div>
 
-        {/* Main content */}
+        {/* ── Main content ── */}
         <div
           style={{
             display: "flex",
@@ -188,13 +188,13 @@ export async function GET(request: NextRequest) {
           )}
         </div>
 
-        {/* Bottom bar */}
+        {/* ── Bottom bar ── */}
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            padding: "20px 80px",
+            padding: "40px 80px",
             position: "relative",
             zIndex: 10,
           }}
@@ -203,17 +203,17 @@ export async function GET(request: NextRequest) {
             <span
               style={{
                 fontFamily: '"JetBrains Mono"',
-                fontSize: "10px",
+                fontSize: "14px",
                 color: "rgba(255,255,255,0.25)",
                 textTransform: "uppercase" as const,
-                letterSpacing: "0.08em",
+                letterSpacing: "0.03em",
               }}
             >
               documentation
             </span>
             <div
               style={{
-                height: "10px",
+                height: "14px",
                 width: "1px",
                 backgroundColor: "rgba(255,255,255,0.15)",
               }}
@@ -221,13 +221,13 @@ export async function GET(request: NextRequest) {
             <span
               style={{
                 fontFamily: '"JetBrains Mono"',
-                fontSize: "10px",
+                fontSize: "14px",
                 color: "rgba(255,255,255,0.2)",
                 textTransform: "uppercase" as const,
-                letterSpacing: "0.05em",
+                letterSpacing: "0.03em",
               }}
             >
-              farming-labs.com
+              docs.farming-labs.com
             </span>
           </div>
           <div
@@ -243,7 +243,7 @@ export async function GET(request: NextRequest) {
               letterSpacing: "0.06em",
             }}
           >
-            Read docs →
+            get started →
           </div>
         </div>
       </div>
