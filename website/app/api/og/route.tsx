@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
           bottom: 0,
           width: "100%",
           height: "100%",
-          opacity: 0.07,
+          opacity: 0.09,
           backgroundImage:
             "repeating-linear-gradient(-45deg, #ffffff, #ffffff 1px, transparent 1px, transparent 6px)",
         }}
