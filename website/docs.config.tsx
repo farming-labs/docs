@@ -14,6 +14,15 @@ import {
   Lightbulb,
   Pin,
   Package,
+  Circle,
+  Triangle,
+  Grid2x2,
+  Rainbow,
+  Sparkles,
+  Bold,
+  TreePine,
+  Bot,
+  MousePointerClick,
 } from "lucide-react";
 
 export default defineDocs({
@@ -55,6 +64,15 @@ export default defineDocs({
     zap: <Zap size={16} />,
     code: <Code size={16} />,
     lightbulb: <Lightbulb size={16} />,
+    circle: <Circle size={16} />,
+    triangle: <Triangle size={16} />,
+    grid2x2: <Grid2x2 size={16} />,
+    rainbow: <Rainbow size={16} />,
+    sparkles: <Sparkles size={16} />,
+    bold: <Bold size={16} />,
+    treePine: <TreePine size={16} />,
+    bot: <Bot size={16} />,
+    mousePointerClick: <MousePointerClick size={16} />,
   },
   github: {
     url: "https://github.com/farming-labs/docs",
