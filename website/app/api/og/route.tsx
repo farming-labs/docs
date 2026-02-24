@@ -203,7 +203,7 @@ export async function GET(request: NextRequest) {
             style={{
               fontFamily: '"JetBrains Mono"',
               fontSize: "14px",
-              color: "rgba(255,255,255,0.25)",
+              color: "rgba(255,255,255,0.4)",
               textTransform: "uppercase" as const,
               letterSpacing: "0.03em",
             }}
@@ -221,7 +221,7 @@ export async function GET(request: NextRequest) {
             style={{
               fontFamily: '"JetBrains Mono"',
               fontSize: "14px",
-              color: "rgba(255,255,255,0.25)",
+              color: "rgba(255,255,255,0.4)",
               textTransform: "uppercase" as const,
               letterSpacing: "0.03em",
             }}
