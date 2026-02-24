@@ -425,6 +425,29 @@ figure.shiki > div:first-child {
   font-family: var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace));
   text-transform: uppercase;
 }
+/* llms.txt links */
+.fd-llms-txt-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fd-llms-txt-link {
+  color: var(--color-fd-muted-foreground, hsl(0 0% 45%));
+  font-size: 0.65rem !important;
+  font-family: var(--fd-font-mono, ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace);
+  text-decoration: none;
+  padding: 0.015rem 0.4rem !important;
+  border-radius: 0px !important; 
+  border: 0.5px solid var(--color-fd-border, hsl(0 0% 80% / 50%));
+  transition: color 150ms, border-color 150ms;
+}
+
+.fd-llms-txt-link:hover {
+  color: var(--color-fd-foreground, hsl(0 0% 10%)) !important;
+  border: 0.5px solid var(--color-fd-muted-foreground, hsl(0 0% 10% / 10%)) !important;
+  text-decoration: none;
+}
 
 /* ─── Page Actions (pixel-border overrides) ───────────────────────── */
 

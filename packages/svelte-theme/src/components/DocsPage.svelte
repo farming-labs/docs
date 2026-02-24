@@ -13,6 +13,7 @@
     nextPage = null,
     editOnGithub = null,
     lastModified = null,
+    llmsTxtEnabled = false,
     children,
   } = $props();
 
@@ -92,7 +93,7 @@
     </div>
 
     <footer class="fd-page-footer">
-      {#if editOnGithub || lastModified}
+      {#if editOnGithub || lastModified || llmsTxtEnabled}
         <div class="fd-edit-on-github">
           {#if editOnGithub}
             <a href={editOnGithub} target="_blank" rel="noopener noreferrer">
@@ -102,6 +103,12 @@
               </svg>
               Edit on GitHub
             </a>
+          {/if}
+          {#if llmsTxtEnabled}
+            <span class="fd-llms-txt-links">
+              <a href="/api/docs?format=llms" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms.txt</a>
+              <a href="/api/docs?format=llms-full" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms-full.txt</a>
+            </span>
           {/if}
           {#if lastModified}
             <span class="fd-last-modified">Last updated: {lastModified}</span>

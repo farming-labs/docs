@@ -20,6 +20,13 @@ const breadcrumbEnabled = (() => {
 
 const showEditOnGithub = !!config?.github && !!data.editOnGithub;
 const showLastModified = !!data.lastModified;
+
+const llmsTxtEnabled = (() => {
+  const cfg = config?.llmsTxt;
+  if (cfg === true) return true;
+  if (typeof cfg === "object" && cfg !== null) return cfg.enabled !== false;
+  return false;
+})();
 ---
 
 <head>
@@ -36,6 +43,7 @@ const showLastModified = !!data.lastModified;
   nextPage={data.nextPage}
   editOnGithub={showEditOnGithub ? data.editOnGithub : null}
   lastModified={showLastModified ? data.lastModified : null}
+  llmsTxtEnabled={llmsTxtEnabled}
 >
   {data.description && <p class="fd-page-description">{data.description}</p>}
   <Fragment set:html={data.html} />

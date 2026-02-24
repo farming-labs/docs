@@ -474,6 +474,33 @@ export interface PageActionsConfig {
  * lastUpdated: { position: "below-title" }
  * ```
  */
+/**
+ * Configuration for auto-generated `/llms.txt` and `/llms-full.txt` routes.
+ *
+ * @see https://llmstxt.org
+ */
+export interface LlmsTxtConfig {
+  /**
+   * Whether to enable llms.txt generation.
+   * @default true
+   */
+  enabled?: boolean;
+  /**
+   * Base URL for your docs site (used to build absolute links in llms.txt).
+   * @example "https://docs.example.com"
+   */
+  baseUrl?: string;
+  /**
+   * Site title shown at the top of llms.txt.
+   * Falls back to `nav.title` if not set.
+   */
+  siteTitle?: string;
+  /**
+   * Site description shown below the title.
+   */
+  siteDescription?: string;
+}
+
 export interface LastUpdatedConfig {
   /**
    * Whether to show the "Last updated" date.
@@ -1051,6 +1078,21 @@ export interface DocsConfig {
    * ```
    */
   ordering?: "alphabetical" | "numeric" | OrderingItem[];
+  /**
+   * Auto-generate `/llms.txt` and `/llms-full.txt` routes for LLM-friendly
+   * documentation. These files let AI tools quickly understand your docs.
+   *
+   * @example
+   * ```ts
+   * llmsTxt: {
+   *   enabled: true,
+   *   baseUrl: "https://docs.example.com",
+   * }
+   * ```
+   *
+   * @see https://llmstxt.org
+   */
+  llmsTxt?: boolean | LlmsTxtConfig;
   /** SEO metadata - separate from theme */
   metadata?: DocsMetadata;
   /** Open Graph image handling */

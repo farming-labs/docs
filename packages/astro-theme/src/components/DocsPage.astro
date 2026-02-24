@@ -8,6 +8,7 @@ const {
   nextPage = null,
   editOnGithub = null,
   lastModified = null,
+  llmsTxtEnabled = false,
 } = Astro.props;
 
 const pathname = Astro.url.pathname;
@@ -38,7 +39,7 @@ const parentUrl = segments.length >= 2
     </div>
 
     <footer class="fd-page-footer">
-      {(editOnGithub || lastModified) && (
+      {(editOnGithub || lastModified || llmsTxtEnabled) && (
         <div class="fd-edit-on-github">
           {editOnGithub && (
             <a href={editOnGithub} target="_blank" rel="noopener noreferrer">
@@ -48,6 +49,12 @@ const parentUrl = segments.length >= 2
               </svg>
               Edit on GitHub
             </a>
+          )}
+          {llmsTxtEnabled && (
+            <span class="fd-llms-txt-links">
+              <a href="/api/docs?format=llms" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms.txt</a>
+              <a href="/api/docs?format=llms-full" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms-full.txt</a>
+            </span>
           )}
           {lastModified && (
             <span class="fd-last-modified">Last updated: {lastModified}</span>

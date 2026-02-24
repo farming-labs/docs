@@ -30,6 +30,13 @@
   );
 
   let showLastModified = $derived(!!data.lastModified);
+
+  let llmsTxtEnabled = $derived.by(() => {
+    const cfg = config?.llmsTxt;
+    if (cfg === true) return true;
+    if (typeof cfg === "object" && cfg !== null) return cfg.enabled !== false;
+    return false;
+  });
 </script>
 
 <svelte:head>
@@ -48,6 +55,7 @@
   nextPage={data.nextPage}
   editOnGithub={showEditOnGithub ? data.editOnGithub : null}
   lastModified={showLastModified ? data.lastModified : null}
+  {llmsTxtEnabled}
 >
   {#snippet children()}
     {#if data.description}

@@ -13,6 +13,7 @@ const props = withDefaults(
     nextPage?: { name: string; url: string } | null;
     editOnGithub?: string | null;
     lastModified?: string | null;
+    llmsTxtEnabled?: boolean;
   }>(),
   {
     tocEnabled: true,
@@ -23,6 +24,7 @@ const props = withDefaults(
     nextPage: null,
     editOnGithub: null,
     lastModified: null,
+    llmsTxtEnabled: false,
   },
 );
 
@@ -106,7 +108,7 @@ watch(
       </div>
 
       <footer class="fd-page-footer">
-        <div v-if="editOnGithub || lastModified" class="fd-edit-on-github">
+        <div v-if="editOnGithub || lastModified || llmsTxtEnabled" class="fd-edit-on-github">
           <a v-if="editOnGithub" :href="editOnGithub" target="_blank" rel="noopener noreferrer">
             <svg
               width="14"
@@ -123,6 +125,10 @@ watch(
             </svg>
             Edit on GitHub
           </a>
+          <span v-if="llmsTxtEnabled" class="fd-llms-txt-links">
+            <a href="/api/docs?format=llms" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms.txt</a>
+            <a href="/api/docs?format=llms-full" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms-full.txt</a>
+          </span>
           <span v-if="lastModified" class="fd-last-modified">Last updated: {{ lastModified }}</span>
         </div>
 

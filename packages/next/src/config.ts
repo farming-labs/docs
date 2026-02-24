@@ -113,10 +113,6 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
   }
 
   // ── 4. Configure MDX compilation ────────────────────────────────
-  // All plugins are passed as string specifiers so that loader options
-  // remain JSON-serializable. This is required for Turbopack compatibility.
-  // @mdx-js/loader resolves the strings to actual plugin functions at
-  // compile time.
   const withMDX = createMDX({
     extension: /\.mdx?$/,
     options: {

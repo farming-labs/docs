@@ -409,6 +409,29 @@ figure.shiki:has(figcaption) figcaption {
   margin-left: auto;
 }
 
+.fd-llms-txt-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fd-llms-txt-link {
+  color: var(--color-fd-muted-foreground, hsl(0 0% 45%));
+  font-size: 0.75rem;
+  font-family: var(--fd-font-mono, ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace);
+  text-decoration: none;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--color-fd-border, hsl(0 0% 80% / 50%));
+  transition: color 150ms, border-color 150ms;
+}
+
+.fd-llms-txt-link:hover {
+  /* color: var(--color-fd-foreground, hsl(0 0% 10%));
+  border-color: var(--color-fd-foreground, hsl(0 0% 10%)); */
+  text-decoration: none;
+}
+
 /* ─── Code block copy button: show on hover ────────────────────────── */
 
 figure.shiki > button,
