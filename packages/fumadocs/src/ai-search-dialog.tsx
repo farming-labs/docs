@@ -243,25 +243,117 @@ function XIcon() {
   );
 }
 
-function DefaultLoadingIndicator({ label }: { label: string }) {
-  return (
-    <span className="fd-ai-loading">
-      <span className="fd-ai-loading-text">{label} is thinking</span>
-      <span className="fd-ai-loading-dots">
-        <span className="fd-ai-loading-dot" />
-        <span className="fd-ai-loading-dot" />
-        <span className="fd-ai-loading-dot" />
-      </span>
-    </span>
-  );
+type LoaderVariant =
+  | "shimmer-dots"
+  | "circular"
+  | "dots"
+  | "typing"
+  | "wave"
+  | "bars"
+  | "pulse"
+  | "pulse-dot"
+  | "terminal"
+  | "text-blink"
+  | "text-shimmer"
+  | "loading-dots";
+
+function LoaderIndicator({ variant = "shimmer-dots" }: { variant?: LoaderVariant; label?: string }) {
+  const text = "Thinking";
+
+  switch (variant) {
+    case "circular":
+      return <div className="fd-ai-loader"><div className="fd-ai-loader-circular" /><span className="sr-only">Loading</span></div>;
+    case "dots":
+      return (
+        <div className="fd-ai-loader">
+          <span className="fd-ai-loader-dots">
+            <span className="fd-ai-loader-bounce-dot" />
+            <span className="fd-ai-loader-bounce-dot" />
+            <span className="fd-ai-loader-bounce-dot" />
+          </span>
+        </div>
+      );
+    case "typing":
+      return (
+        <div className="fd-ai-loader">
+          <span className="fd-ai-loader-typing-dots">
+            <span className="fd-ai-loader-typing-dot" />
+            <span className="fd-ai-loader-typing-dot" />
+            <span className="fd-ai-loader-typing-dot" />
+          </span>
+        </div>
+      );
+    case "wave":
+      return (
+        <div className="fd-ai-loader">
+          <span className="fd-ai-loader-wave">
+            <span className="fd-ai-loader-wave-bar" />
+            <span className="fd-ai-loader-wave-bar" />
+            <span className="fd-ai-loader-wave-bar" />
+            <span className="fd-ai-loader-wave-bar" />
+            <span className="fd-ai-loader-wave-bar" />
+          </span>
+        </div>
+      );
+    case "bars":
+      return (
+        <div className="fd-ai-loader">
+          <span className="fd-ai-loader-bars">
+            <span className="fd-ai-loader-bar" />
+            <span className="fd-ai-loader-bar" />
+            <span className="fd-ai-loader-bar" />
+          </span>
+        </div>
+      );
+    case "pulse":
+      return <div className="fd-ai-loader"><div className="fd-ai-loader-pulse" /></div>;
+    case "pulse-dot":
+      return <div className="fd-ai-loader"><div className="fd-ai-loader-pulse-dot" /></div>;
+    case "terminal":
+      return (
+        <div className="fd-ai-loader">
+          <span className="fd-ai-loader-terminal">
+            <span className="fd-ai-loader-terminal-prompt">{">"}</span>
+            <span className="fd-ai-loader-terminal-cursor" />
+          </span>
+        </div>
+      );
+    case "text-blink":
+      return <div className="fd-ai-loader"><span className="fd-ai-loader-text-blink">{text}</span></div>;
+    case "text-shimmer":
+      return <div className="fd-ai-loader"><span className="fd-ai-loader-shimmer-text">{text}</span></div>;
+    case "loading-dots":
+      return (
+        <div className="fd-ai-loader">
+          <span className="fd-ai-loader-text">{text}</span>
+          <span className="fd-ai-loader-text-dots">
+            <span className="fd-ai-loader-text-dot">.</span>
+            <span className="fd-ai-loader-text-dot">.</span>
+            <span className="fd-ai-loader-text-dot">.</span>
+          </span>
+        </div>
+      );
+    case "shimmer-dots":
+    default:
+      return (
+        <div className="fd-ai-loader">
+          <span className="fd-ai-loader-shimmer-text">{text}</span>
+          <span className="fd-ai-loader-typing-dots">
+            <span className="fd-ai-loader-typing-dot" />
+            <span className="fd-ai-loader-typing-dot" />
+            <span className="fd-ai-loader-typing-dot" />
+          </span>
+        </div>
+      );
+  }
 }
 
-function LoadingDots() {
+function InlineLoaderDots() {
   return (
-    <span className="fd-ai-loading-dots">
-      <span className="fd-ai-loading-dot" />
-      <span className="fd-ai-loading-dot" />
-      <span className="fd-ai-loading-dot" />
+    <span className="fd-ai-loader-typing-dots" style={{ marginLeft: 0 }}>
+      <span className="fd-ai-loader-typing-dot" />
+      <span className="fd-ai-loader-typing-dot" />
+      <span className="fd-ai-loader-typing-dot" />
     </span>
   );
 }
@@ -278,6 +370,7 @@ function AIChat({
   setIsStreaming,
   suggestedQuestions,
   aiLabel,
+  loaderVariant,
   loadingComponentHtml,
 }: {
   api: string;
@@ -289,6 +382,7 @@ function AIChat({
   setIsStreaming: (v: boolean) => void;
   suggestedQuestions?: string[];
   aiLabel?: string;
+  loaderVariant?: LoaderVariant;
   loadingComponentHtml?: string;
 }) {
   const label = aiLabel || "AI";
@@ -414,11 +508,14 @@ function AIChat({
               ) : (
                 <div className="fd-ai-bubble-ai">
                   {msg.content ? (
-                    <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                    <div
+                      className={isStreaming && i === messages.length - 1 ? "fd-ai-streaming" : undefined}
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                    />
                   ) : loadingComponentHtml ? (
                     <div dangerouslySetInnerHTML={{ __html: loadingComponentHtml }} />
                   ) : (
-                    <DefaultLoadingIndicator label={label} />
+                    <LoaderIndicator variant={loaderVariant} label={label} />
                   )}
                 </div>
               )}
@@ -476,6 +573,7 @@ export function DocsSearchDialog({
   api = "/api/docs",
   suggestedQuestions,
   aiLabel,
+  loaderVariant,
   loadingComponentHtml,
 }: {
   open: boolean;
@@ -483,6 +581,7 @@ export function DocsSearchDialog({
   api?: string;
   suggestedQuestions?: string[];
   aiLabel?: string;
+  loaderVariant?: LoaderVariant;
   loadingComponentHtml?: string;
 }) {
   const [tab, setTab] = useState<"search" | "ai">("search");
@@ -609,7 +708,7 @@ export function DocsSearchDialog({
                 onKeyDown={handleSearchKeyDown}
                 className="fd-ai-input"
               />
-              {isSearching && <LoadingDots />}
+              {isSearching && <InlineLoaderDots />}
             </div>
             <div className="fd-ai-results">
               {searchResults.length > 0 ? (
@@ -655,6 +754,7 @@ export function DocsSearchDialog({
             setIsStreaming={setIsStreaming}
             suggestedQuestions={suggestedQuestions}
             aiLabel={aiLabel}
+            loaderVariant={loaderVariant}
             loadingComponentHtml={loadingComponentHtml}
           />
         )}
@@ -726,6 +826,7 @@ export function FloatingAIChat({
   triggerComponentHtml,
   suggestedQuestions,
   aiLabel,
+  loaderVariant,
   loadingComponentHtml,
 }: {
   api?: string;
@@ -734,6 +835,7 @@ export function FloatingAIChat({
   triggerComponentHtml?: string;
   suggestedQuestions?: string[];
   aiLabel?: string;
+  loaderVariant?: LoaderVariant;
   loadingComponentHtml?: string;
 }) {
   const [mounted, setMounted] = useState(false);
@@ -781,6 +883,7 @@ export function FloatingAIChat({
         setIsStreaming={setIsStreaming}
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
+        loaderVariant={loaderVariant}
         loadingComponentHtml={loadingComponentHtml}
         triggerComponentHtml={triggerComponentHtml}
         position={position}
@@ -822,6 +925,7 @@ export function FloatingAIChat({
             setIsStreaming={setIsStreaming}
             suggestedQuestions={suggestedQuestions}
             aiLabel={aiLabel}
+            loaderVariant={loaderVariant}
             loadingComponentHtml={loadingComponentHtml}
           />
         </div>
@@ -865,6 +969,7 @@ function FullModalAIChat({
   setIsStreaming,
   suggestedQuestions,
   aiLabel,
+  loaderVariant,
   loadingComponentHtml,
   triggerComponentHtml,
   position,
@@ -880,6 +985,7 @@ function FullModalAIChat({
   setIsStreaming: (v: boolean) => void;
   suggestedQuestions?: string[];
   aiLabel?: string;
+  loaderVariant?: LoaderVariant;
   loadingComponentHtml?: string;
   triggerComponentHtml?: string;
   position: FloatingPosition;
@@ -1005,15 +1111,14 @@ function FullModalAIChat({
                   </div>
                   <div className="fd-ai-fm-msg-content">
                     {msg.content ? (
-                      <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                      <div
+                        className={isStreaming && i === messages.length - 1 ? "fd-ai-streaming" : undefined}
+                        dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                      />
                     ) : loadingComponentHtml ? (
                       <div dangerouslySetInnerHTML={{ __html: loadingComponentHtml }} />
                     ) : (
-                      <div className="fd-ai-fm-thinking">
-                        <span className="fd-ai-fm-thinking-dot" />
-                        <span className="fd-ai-fm-thinking-dot" />
-                        <span className="fd-ai-fm-thinking-dot" />
-                      </div>
+                      <LoaderIndicator variant={loaderVariant} label={label} />
                     )}
                   </div>
                 </div>
@@ -1059,7 +1164,7 @@ function FullModalAIChat({
               />
               {isStreaming ? (
                 <button className="fd-ai-fm-send-btn" onClick={() => setIsStreaming(false)}>
-                  <LoadingDots />
+                  <InlineLoaderDots />
                 </button>
               ) : (
                 <button
@@ -1146,6 +1251,7 @@ export function AIModalDialog({
   api = "/api/docs",
   suggestedQuestions,
   aiLabel,
+  loaderVariant,
   loadingComponentHtml,
 }: {
   open: boolean;
@@ -1153,6 +1259,7 @@ export function AIModalDialog({
   api?: string;
   suggestedQuestions?: string[];
   aiLabel?: string;
+  loaderVariant?: LoaderVariant;
   loadingComponentHtml?: string;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -1216,6 +1323,7 @@ export function AIModalDialog({
           setIsStreaming={setIsStreaming}
           suggestedQuestions={suggestedQuestions}
           aiLabel={aiLabel}
+          loaderVariant={loaderVariant}
           loadingComponentHtml={loadingComponentHtml}
         />
 

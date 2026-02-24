@@ -288,11 +288,13 @@ const suggestedQuestions = config?.ai?.suggestedQuestions ?? [];
         aiMessages.innerHTML = '<div class="fd-ai-empty"><div class="fd-ai-empty-title">Ask anything about the docs</div></div>';
         return;
       }
-      const THINKING = `<span class="fd-ai-loading"><span class="fd-ai-loading-text">Thinking</span><span class="fd-ai-loading-dots"><span class="fd-ai-loading-dot"></span><span class="fd-ai-loading-dot"></span><span class="fd-ai-loading-dot"></span></span></span>`;
-      aiMessages.innerHTML = messages.map(m => {
+      const THINKING = `<div class="fd-ai-loader"><span class="fd-ai-loader-shimmer-text">Thinking</span><span class="fd-ai-loader-typing-dots"><span class="fd-ai-loader-typing-dot"></span><span class="fd-ai-loader-typing-dot"></span><span class="fd-ai-loader-typing-dot"></span></span></div>`;
+      const isLast = (i: number) => i === messages.length - 1;
+      aiMessages.innerHTML = messages.map((m, i) => {
+        const streaming = isStreaming && isLast(i) && m.role === 'assistant' && m.content;
         const renderedContent = m.role === 'user'
           ? escapeHtml(m.content)
-          : (m.content ? renderMarkdown(m.content) : THINKING);
+          : (m.content ? `<div${streaming ? ' class="fd-ai-streaming"' : ''}>${renderMarkdown(m.content)}</div>` : THINKING);
         return `<div class="fd-ai-msg" data-role="${m.role}"><div class="fd-ai-msg-label">${m.role === 'user' ? 'You' : aiLabel}</div><div class="${m.role === 'user' ? 'fd-ai-bubble-user' : 'fd-ai-bubble-ai'}">${renderedContent}</div></div>`;
       }).join('');
       aiMessages.scrollTop = aiMessages.scrollHeight;

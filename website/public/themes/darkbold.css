@@ -564,8 +564,8 @@ article a[class*="border"] {
 .fd-ai-esc { border-radius: 4px !important; }
 .fd-ai-clear-btn { border-radius: 4px !important; letter-spacing: normal !important; }
 .fd-ai-msg-label { letter-spacing: 0.05em !important; }
-.fd-ai-loading-text { text-transform: none !important; letter-spacing: normal !important; font-size: 12px !important; }
-.fd-ai-loading-dot { border-radius: 50% !important; width: 5px !important; height: 5px !important; }
+.fd-ai-loader-shimmer-text { text-transform: none !important; letter-spacing: normal !important; font-size: 12px !important; }
+.fd-ai-loader-typing-dot { border-radius: 50% !important; width: 5px !important; height: 5px !important; }
 
 /* AI Full-Modal */
 .fd-ai-fm-input-container { border-radius: 10px !important; box-shadow: 0 16px 70px rgba(0, 0, 0, 0.2) !important; }
@@ -581,7 +581,7 @@ article a[class*="border"] {
 .fd-ai-fm-suggestions-label { font-family: inherit !important; text-transform: none !important; letter-spacing: normal !important; }
 .fd-ai-fm-clear-btn { font-family: inherit !important; text-transform: none !important; letter-spacing: normal !important; }
 .fd-ai-fm-footer-hint { font-size: 12px !important; }
-.fd-ai-fm-thinking-dot { border-radius: 9999px !important; width: 6px !important; height: 6px !important; }
+.fd-ai-loader-typing-dot { border-radius: 9999px !important; width: 6px !important; height: 6px !important; }
 
 /* AI Code blocks */
 .fd-ai-code-block { border-radius: 8px !important; box-shadow: none !important; background: var(--color-fd-muted, #1a1a1a) !important; }

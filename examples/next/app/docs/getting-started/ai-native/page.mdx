@@ -45,16 +45,12 @@ ai: {
 
 ## Custom Loading States
 
-You can customize the loading animation:
+You can customize the loading indicator variant:
 
-```tsx
+```ts
 ai: {
-  loadingComponent: ({ name }) => (
-    <div className="flex gap-1">
-      <span className="animate-bounce">.</span>
-      <span className="animate-bounce delay-100">.</span>
-      <span className="animate-bounce delay-200">.</span>
-    </div>
-  ),
+  loader: "wave", // or "dots", "typing", "circular", "terminal", etc.
 }
 ```
+
+Available variants: `"shimmer-dots"` (default), `"circular"`, `"dots"`, `"typing"`, `"wave"`, `"bars"`, `"pulse"`, `"pulse-dot"`, `"terminal"`, `"text-blink"`, `"text-shimmer"`, `"loading-dots"`.

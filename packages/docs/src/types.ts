@@ -806,11 +806,50 @@ export interface AIConfig {
   docsUrl?: string;
 
   /**
-   * Custom loading indicator shown while the AI is generating a response.
-   * Replaces the default "AI is thinking..." indicator.
+   * Loading indicator variant shown while the AI generates a response.
    *
-   * Pass a function that receives `{ name }` (the `aiLabel` value) and
-   * returns a React element. This way you don't need to duplicate the label.
+   * - `"shimmer-dots"` — shimmer text + typing dots (default)
+   * - `"circular"` — spinning ring
+   * - `"dots"` — bouncing dots
+   * - `"typing"` — typing dots
+   * - `"wave"` — wave bars
+   * - `"bars"` — thick wave bars
+   * - `"pulse"` — pulsing ring
+   * - `"pulse-dot"` — pulsing dot
+   * - `"terminal"` — blinking terminal cursor
+   * - `"text-blink"` — blinking text
+   * - `"text-shimmer"` — shimmer text only
+   * - `"loading-dots"` — "Thinking..." with animated dots
+   *
+   * @default "shimmer-dots"
+   *
+   * @example
+   * ```ts
+   * ai: {
+   *   enabled: true,
+   *   loader: "wave",
+   * }
+   * ```
+   */
+  loader?:
+    | "shimmer-dots"
+    | "circular"
+    | "dots"
+    | "typing"
+    | "wave"
+    | "bars"
+    | "pulse"
+    | "pulse-dot"
+    | "terminal"
+    | "text-blink"
+    | "text-shimmer"
+    | "loading-dots";
+
+  /**
+   * Custom loading indicator that overrides the built-in `loader` variant.
+   * Receives `{ name }` (the `aiLabel` value) and returns a React element.
+   *
+   * Only works in Next.js. For other frameworks, use the `loader` option.
    *
    * @example
    * ```tsx

@@ -7,19 +7,6 @@
 
 /* ─── Animations ─────────────────────────────────────────────────── */
 
-@keyframes fd-ai-dot {
-  0%,
-  80%,
-  100% {
-    transform: scale(0);
-    opacity: 0.5;
-  }
-  40% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
 @keyframes fd-ai-fade-in {
   from {
     opacity: 0;
@@ -343,6 +330,12 @@
   line-height: 1.6;
   max-width: 95%;
   word-break: break-word;
+  animation: fd-ai-msg-in 300ms ease-out;
+}
+
+@keyframes fd-ai-msg-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ─── Chat input ─────────────────────────────────────────────────── */
@@ -397,38 +390,274 @@
   color: var(--color-fd-primary-foreground, #fff);
 }
 
-/* ─── Loading indicator ──────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+ * AI Loader variants — fd-ai-loader-*
+ * Default: "shimmer-dots" (shimmer text + typing dots in a row)
+ * ═══════════════════════════════════════════════════════════════════ */
 
-.fd-ai-loading {
+.fd-ai-loader {
   display: inline-flex;
+  align-items: center;
   gap: 6px;
-  align-items: center;
+  animation: fd-ai-loader-in 300ms ease-out;
 }
 
-.fd-ai-loading-text {
-  font-size: 12px;
-  color: var(--color-fd-muted-foreground, #888);
+@keyframes fd-ai-loader-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.fd-ai-loading-dots {
+/* ── shimmer-dots (default): shimmer text + typing dots ──────────── */
+
+.fd-ai-loader-shimmer-text {
+  font-size: 13px;
+  font-weight: 500;
+  background: linear-gradient(
+    to right,
+    var(--color-fd-muted-foreground, #888) 40%,
+    var(--color-fd-foreground, #fff) 60%,
+    var(--color-fd-muted-foreground, #888) 80%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: fd-ai-shimmer-text 3s linear infinite;
+}
+
+@keyframes fd-ai-shimmer-text {
+  0% { background-position: 150% center; }
+  100% { background-position: -150% center; }
+}
+
+.fd-ai-loader-typing-dots {
   display: inline-flex;
-  gap: 3px;
   align-items: center;
+  gap: 2px;
 }
 
-.fd-ai-loading-dot {
-  width: 5px;
-  height: 5px;
+.fd-ai-loader-typing-dot {
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
-  background: var(--color-fd-muted-foreground, #888);
-  animation: fd-ai-dot 1.4s infinite ease-in-out both;
+  background: var(--color-fd-primary, #6366f1);
+  animation: fd-ai-typing 1s infinite;
 }
 
-.fd-ai-loading-dot:nth-child(2) {
-  animation-delay: 0.16s;
+.fd-ai-loader-typing-dot:nth-child(2) { animation-delay: 250ms; }
+.fd-ai-loader-typing-dot:nth-child(3) { animation-delay: 500ms; }
+
+@keyframes fd-ai-typing {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(-2px); opacity: 1; }
 }
-.fd-ai-loading-dot:nth-child(3) {
-  animation-delay: 0.32s;
+
+/* ── circular: spinning ring ─────────────────────────────────────── */
+
+.fd-ai-loader-circular {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-fd-primary, #6366f1);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: fd-ai-spin 0.8s linear infinite;
+}
+
+@keyframes fd-ai-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── dots: bouncing dots ─────────────────────────────────────────── */
+
+.fd-ai-loader-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.fd-ai-loader-bounce-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-fd-primary, #6366f1);
+  animation: fd-ai-bounce-dots 1.4s ease-in-out infinite;
+}
+
+.fd-ai-loader-bounce-dot:nth-child(2) { animation-delay: 160ms; }
+.fd-ai-loader-bounce-dot:nth-child(3) { animation-delay: 320ms; }
+
+@keyframes fd-ai-bounce-dots {
+  0%, 100% { transform: scale(0.8); opacity: 0.5; }
+  50% { transform: scale(1.2); opacity: 1; }
+}
+
+/* ── wave: wave bars ─────────────────────────────────────────────── */
+
+.fd-ai-loader-wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 16px;
+}
+
+.fd-ai-loader-wave-bar {
+  width: 2px;
+  border-radius: 2px;
+  background: var(--color-fd-primary, #6366f1);
+  animation: fd-ai-wave 1s ease-in-out infinite;
+}
+
+.fd-ai-loader-wave-bar:nth-child(1) { height: 6px; animation-delay: 0ms; }
+.fd-ai-loader-wave-bar:nth-child(2) { height: 10px; animation-delay: 100ms; }
+.fd-ai-loader-wave-bar:nth-child(3) { height: 14px; animation-delay: 200ms; }
+.fd-ai-loader-wave-bar:nth-child(4) { height: 10px; animation-delay: 300ms; }
+.fd-ai-loader-wave-bar:nth-child(5) { height: 6px; animation-delay: 400ms; }
+
+@keyframes fd-ai-wave {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.6); }
+}
+
+/* ── pulse: pulsing ring ─────────────────────────────────────────── */
+
+.fd-ai-loader-pulse {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-fd-primary, #6366f1);
+  border-radius: 50%;
+  animation: fd-ai-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes fd-ai-pulse {
+  0%, 100% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 0.4; }
+}
+
+/* ── pulse-dot: pulsing dot ──────────────────────────────────────── */
+
+.fd-ai-loader-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-fd-primary, #6366f1);
+  animation: fd-ai-pulse-dot 1.2s ease-in-out infinite;
+}
+
+@keyframes fd-ai-pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.5); opacity: 1; }
+}
+
+/* ── terminal: blinking cursor ───────────────────────────────────── */
+
+.fd-ai-loader-terminal {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.fd-ai-loader-terminal-prompt {
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  font-size: 13px;
+  color: var(--color-fd-primary, #6366f1);
+}
+
+.fd-ai-loader-terminal-cursor {
+  width: 7px;
+  height: 14px;
+  background: var(--color-fd-primary, #6366f1);
+  animation: fd-ai-blink 1s step-end infinite;
+}
+
+@keyframes fd-ai-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ── text-shimmer: shimmer text only ─────────────────────────────── */
+/* (reuses .fd-ai-loader-shimmer-text above) */
+
+/* ── text-blink: blinking text ───────────────────────────────────── */
+
+.fd-ai-loader-text-blink {
+  font-size: 13px;
+  font-weight: 500;
+  animation: fd-ai-text-blink 2s ease-in-out infinite;
+}
+
+@keyframes fd-ai-text-blink {
+  0%, 100% { color: var(--color-fd-primary, #6366f1); }
+  50% { color: var(--color-fd-muted-foreground, #888); }
+}
+
+/* ── loading-dots: "Thinking..." with animated dots ──────────────── */
+
+.fd-ai-loader-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-fd-primary, #6366f1);
+}
+
+.fd-ai-loader-text-dots {
+  display: inline-flex;
+}
+
+.fd-ai-loader-text-dot {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-fd-primary, #6366f1);
+  animation: fd-ai-loading-dots 1.4s infinite;
+}
+
+.fd-ai-loader-text-dot:nth-child(1) { animation-delay: 200ms; }
+.fd-ai-loader-text-dot:nth-child(2) { animation-delay: 400ms; }
+.fd-ai-loader-text-dot:nth-child(3) { animation-delay: 600ms; }
+
+@keyframes fd-ai-loading-dots {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+/* ── bars: thick wave bars ───────────────────────────────────────── */
+
+.fd-ai-loader-bars {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 3px;
+  height: 16px;
+}
+
+.fd-ai-loader-bar {
+  width: 4px;
+  background: var(--color-fd-primary, #6366f1);
+  animation: fd-ai-wave-bars 1.2s ease-in-out infinite;
+}
+
+.fd-ai-loader-bar:nth-child(1) { animation-delay: 0s; }
+.fd-ai-loader-bar:nth-child(2) { animation-delay: 0.2s; }
+.fd-ai-loader-bar:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes fd-ai-wave-bars {
+  0%, 100% { transform: scaleY(1); opacity: 0.5; }
+  50% { transform: scaleY(0.6); opacity: 1; }
+}
+
+/* ─── Streaming cursor ───────────────────────────────────────────── */
+
+.fd-ai-streaming::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--color-fd-primary, #6366f1);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: fd-ai-cursor-blink 0.8s step-end infinite;
+}
+
+@keyframes fd-ai-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 /* ─── Floating trigger button ────────────────────────────────────── */
@@ -747,39 +976,7 @@
 
 /* ─── Thinking dots ──────────────────────────────────────────────── */
 
-.fd-ai-fm-thinking {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.fd-ai-fm-thinking-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 9999px;
-  background: var(--color-fd-primary, #6366f1);
-  animation: fd-ai-fm-bounce 1s infinite ease-in-out;
-}
-
-.fd-ai-fm-thinking-dot:nth-child(2) {
-  animation-delay: 150ms;
-}
-.fd-ai-fm-thinking-dot:nth-child(3) {
-  animation-delay: 300ms;
-}
-
-@keyframes fd-ai-fm-bounce {
-  0%,
-  80%,
-  100% {
-    transform: scale(0.6);
-    opacity: 0.4;
-  }
-  40% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
+/* Full-modal now uses the shared .fd-ai-loader indicator */
 
 /* ─── Bottom input bar ───────────────────────────────────────────── */
 

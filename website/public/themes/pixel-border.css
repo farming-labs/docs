@@ -599,16 +599,20 @@ article a[class*="text-fd-muted-foreground"] {
 .fd-ai-msg-label {
   letter-spacing: 0.06em !important;
 }
-.fd-ai-loading-text {
+.fd-ai-loader-shimmer-text {
   text-transform: uppercase !important;
   letter-spacing: 0.04em !important;
   font-size: 11px !important;
 }
 
-.fd-ai-loading-dot {
+.fd-ai-loader-typing-dot {
   border-radius: 0 !important;
   width: 4px !important;
   height: 4px !important;
+}
+
+.fd-ai-loader-shimmer-text {
+  border-radius: 0 !important;
 }
 
 /* ─── Full-Modal (pixel-border) ──────────────────────────────────── */
@@ -683,7 +687,7 @@ article a[class*="text-fd-muted-foreground"] {
   font-size: 11px !important;
 }
 
-.fd-ai-fm-thinking-dot {
+.fd-ai-loader-typing-dot {
   border-radius: 0 !important;
   width: 5px !important;
   height: 5px !important;

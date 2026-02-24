@@ -213,12 +213,15 @@ function handleFmKeyDown(e: KeyboardEvent) {
             </div>
             <div class="fd-ai-fm-msg-content">
               <template v-if="msg.content">
-                <div v-html="renderMarkdown(msg.content)" />
+                <div :class="isStreaming && i === messages.length - 1 && msg.role === 'assistant' ? 'fd-ai-streaming' : ''" v-html="renderMarkdown(msg.content)" />
               </template>
-              <div v-else class="fd-ai-fm-thinking">
-                <span class="fd-ai-fm-thinking-dot" />
-                <span class="fd-ai-fm-thinking-dot" />
-                <span class="fd-ai-fm-thinking-dot" />
+              <div v-else class="fd-ai-loader">
+                <span class="fd-ai-loader-shimmer-text">Thinking</span>
+                <span class="fd-ai-loader-typing-dots">
+                  <span class="fd-ai-loader-typing-dot" />
+                  <span class="fd-ai-loader-typing-dot" />
+                  <span class="fd-ai-loader-typing-dot" />
+                </span>
               </div>
             </div>
           </div>
@@ -286,10 +289,10 @@ function handleFmKeyDown(e: KeyboardEvent) {
             aria-label="Stop"
             @click="isStreaming = false"
           >
-            <span class="fd-ai-loading-dots">
-              <span class="fd-ai-loading-dot" />
-              <span class="fd-ai-loading-dot" />
-              <span class="fd-ai-loading-dot" />
+            <span class="fd-ai-loader-typing-dots" style="margin-left:0">
+              <span class="fd-ai-loader-typing-dot" />
+              <span class="fd-ai-loader-typing-dot" />
+              <span class="fd-ai-loader-typing-dot" />
             </span>
           </button>
           <button
@@ -427,16 +430,16 @@ function handleFmKeyDown(e: KeyboardEvent) {
             <div v-if="msg.role === 'user'" class="fd-ai-bubble-user">{{ msg.content }}</div>
             <div v-else class="fd-ai-bubble-ai">
               <template v-if="msg.content">
-                <div v-html="renderMarkdown(msg.content)" />
+                <div :class="isStreaming && i === messages.length - 1 ? 'fd-ai-streaming' : ''" v-html="renderMarkdown(msg.content)" />
               </template>
-              <span v-else class="fd-ai-loading">
-                <span class="fd-ai-loading-text">{{ label }} is thinking</span>
-                <span class="fd-ai-loading-dots">
-                  <span class="fd-ai-loading-dot" />
-                  <span class="fd-ai-loading-dot" />
-                  <span class="fd-ai-loading-dot" />
+              <div v-else class="fd-ai-loader">
+                <span class="fd-ai-loader-shimmer-text">Thinking</span>
+                <span class="fd-ai-loader-typing-dots">
+                  <span class="fd-ai-loader-typing-dot" />
+                  <span class="fd-ai-loader-typing-dot" />
+                  <span class="fd-ai-loader-typing-dot" />
                 </span>
-              </span>
+              </div>
             </div>
           </div>
         </template>

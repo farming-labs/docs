@@ -478,7 +478,6 @@ article a[class*="text-fd-muted-foreground"] {
   border-radius: 0.2rem !important;
   font-size: 0.8125rem !important;
   letter-spacing: normal !important;
-  text-transform: uppercase !important;
 
 }
 
@@ -598,17 +597,18 @@ article a[class*="text-fd-muted-foreground"] {
   letter-spacing: normal !important;
 }
 
-.fd-ai-loading-text {
+.fd-ai-loader-shimmer-text {
   text-transform: none !important;
   letter-spacing: normal !important;
   font-size: 12px !important;
 }
 
-.fd-ai-loading-dot {
+.fd-ai-loader-typing-dot {
   border-radius: 50% !important;
   width: 5px !important;
   height: 5px !important;
 }
+
 
 /* ─── Full-Modal (darksharp) ─────────────────────────────────────── */
 
@@ -682,7 +682,7 @@ article a[class*="text-fd-muted-foreground"] {
   font-size: 12px !important;
 }
 
-.fd-ai-fm-thinking-dot {
+.fd-ai-loader-typing-dot {
   border-radius: 2px !important;
   width: 6px !important;
   height: 6px !important;

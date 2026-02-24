@@ -25,6 +25,7 @@ interface DocsAIFeaturesProps {
   triggerComponentHtml?: string;
   suggestedQuestions?: string[];
   aiLabel?: string;
+  loaderVariant?: string;
   loadingComponentHtml?: string;
 }
 
@@ -35,6 +36,7 @@ export function DocsAIFeatures({
   triggerComponentHtml,
   suggestedQuestions,
   aiLabel,
+  loaderVariant,
   loadingComponentHtml,
 }: DocsAIFeaturesProps) {
   if (mode === "search") {
@@ -42,6 +44,7 @@ export function DocsAIFeatures({
       <SearchModeAI
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
+        loaderVariant={loaderVariant}
         loadingComponentHtml={loadingComponentHtml}
       />
     );
@@ -52,6 +55,7 @@ export function DocsAIFeatures({
       <SidebarIconModeAI
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
+        loaderVariant={loaderVariant}
         loadingComponentHtml={loadingComponentHtml}
       />
     );
@@ -65,23 +69,21 @@ export function DocsAIFeatures({
       triggerComponentHtml={triggerComponentHtml}
       suggestedQuestions={suggestedQuestions}
       aiLabel={aiLabel}
+      loaderVariant={loaderVariant as any}
       loadingComponentHtml={loadingComponentHtml}
     />
   );
 }
 
-/**
- * Search mode: intercepts Cmd+K / Ctrl+K globally and opens the
- * custom search dialog (with Search + Ask AI tabs) instead of
- * fumadocs' built-in search dialog.
- */
 function SearchModeAI({
   suggestedQuestions,
   aiLabel,
+  loaderVariant,
   loadingComponentHtml,
 }: {
   suggestedQuestions?: string[];
   aiLabel?: string;
+  loaderVariant?: string;
   loadingComponentHtml?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -95,18 +97,15 @@ function SearchModeAI({
         setOpen(true);
       }
     }
-    // Use capture phase so we intercept before fumadocs' handler
     document.addEventListener("keydown", handler, true);
     return () => document.removeEventListener("keydown", handler, true);
   }, []);
 
-  // Also intercept sidebar search button clicks
   useEffect(() => {
     function handler(e: MouseEvent) {
       const target = e.target as HTMLElement;
       const button = target.closest("button");
       if (!button) return;
-      // Fumadocs search button has text "Search" and ⌘ K badge
       const text = button.textContent || "";
       if (text.includes("Search") && (text.includes("⌘") || text.includes("K"))) {
         e.preventDefault();
@@ -126,29 +125,26 @@ function SearchModeAI({
       api="/api/docs"
       suggestedQuestions={suggestedQuestions}
       aiLabel={aiLabel}
+      loaderVariant={loaderVariant as any}
       loadingComponentHtml={loadingComponentHtml}
     />
   );
 }
 
-/**
- * Sidebar-icon mode: injects a sparkle icon button next to the search bar
- * in the sidebar header. The search button opens the Cmd+K search dialog,
- * and the AI sparkle button opens a pure AI modal (no search tabs).
- */
 function SidebarIconModeAI({
   suggestedQuestions,
   aiLabel,
+  loaderVariant,
   loadingComponentHtml,
 }: {
   suggestedQuestions?: string[];
   aiLabel?: string;
+  loaderVariant?: string;
   loadingComponentHtml?: string;
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
 
-  // Intercept Cmd+K / Ctrl+K for search
   useEffect(() => {
     function handler(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -162,7 +158,6 @@ function SidebarIconModeAI({
     return () => document.removeEventListener("keydown", handler, true);
   }, []);
 
-  // Listen for custom events from SidebarSearchWithAI component
   useEffect(() => {
     function onSearch() {
       setSearchOpen(true);
@@ -186,6 +181,7 @@ function SidebarIconModeAI({
         api="/api/docs"
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
+        loaderVariant={loaderVariant as any}
         loadingComponentHtml={loadingComponentHtml}
       />
       <AIModalDialog
@@ -194,6 +190,7 @@ function SidebarIconModeAI({
         api="/api/docs"
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
+        loaderVariant={loaderVariant as any}
         loadingComponentHtml={loadingComponentHtml}
       />
     </>

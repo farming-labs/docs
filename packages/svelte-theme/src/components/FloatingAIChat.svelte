@@ -226,19 +226,24 @@
         <!-- Scrollable message list -->
         <div bind:this={fmListEl} class="fd-ai-fm-messages">
           <div class="fd-ai-fm-messages-inner">
-            {#each messages as msg}
+            {#each messages as msg, i}
               <div class="fd-ai-fm-msg" data-role={msg.role}>
                 <div class="fd-ai-fm-msg-label" data-role={msg.role}>
                   {msg.role === "user" ? "you" : label}
                 </div>
                 <div class="fd-ai-fm-msg-content">
                   {#if msg.content}
-                    {@html renderMarkdown(msg.content)}
+                    <div class={isStreaming && i === messages.length - 1 && msg.role === 'assistant' ? 'fd-ai-streaming' : ''}>
+                      {@html renderMarkdown(msg.content)}
+                    </div>
                   {:else}
-                    <div class="fd-ai-fm-thinking">
-                      <span class="fd-ai-fm-thinking-dot"></span>
-                      <span class="fd-ai-fm-thinking-dot"></span>
-                      <span class="fd-ai-fm-thinking-dot"></span>
+                    <div class="fd-ai-loader">
+                      <span class="fd-ai-loader-shimmer-text">Thinking</span>
+                      <span class="fd-ai-loader-typing-dots">
+                        <span class="fd-ai-loader-typing-dot"></span>
+                        <span class="fd-ai-loader-typing-dot"></span>
+                        <span class="fd-ai-loader-typing-dot"></span>
+                      </span>
                     </div>
                   {/if}
                 </div>
@@ -292,10 +297,10 @@
             ></textarea>
             {#if isStreaming}
               <button class="fd-ai-fm-send-btn" onclick={() => isStreaming = false} aria-label="Stop">
-                <span class="fd-ai-loading-dots">
-                  <span class="fd-ai-loading-dot"></span>
-                  <span class="fd-ai-loading-dot"></span>
-                  <span class="fd-ai-loading-dot"></span>
+                <span class="fd-ai-loader-typing-dots" style="margin-left:0">
+                  <span class="fd-ai-loader-typing-dot"></span>
+                  <span class="fd-ai-loader-typing-dot"></span>
+                  <span class="fd-ai-loader-typing-dot"></span>
                 </span>
               </button>
             {:else}
@@ -407,7 +412,7 @@
                 {/if}
               </div>
             {:else}
-              {#each messages as msg}
+              {#each messages as msg, i}
                 <div class="fd-ai-msg" data-role={msg.role}>
                   <div class="fd-ai-msg-label">
                     {msg.role === "user" ? "You" : label}
@@ -417,16 +422,18 @@
                   {:else}
                     <div class="fd-ai-bubble-ai">
                       {#if msg.content}
-                        {@html renderMarkdown(msg.content)}
+                        <div class={isStreaming && i === messages.length - 1 ? 'fd-ai-streaming' : ''}>
+                          {@html renderMarkdown(msg.content)}
+                        </div>
                       {:else}
-                        <span class="fd-ai-loading">
-                          <span class="fd-ai-loading-text">{label} is thinking</span>
-                          <span class="fd-ai-loading-dots">
-                            <span class="fd-ai-loading-dot"></span>
-                            <span class="fd-ai-loading-dot"></span>
-                            <span class="fd-ai-loading-dot"></span>
+                        <div class="fd-ai-loader">
+                          <span class="fd-ai-loader-shimmer-text">Thinking</span>
+                          <span class="fd-ai-loader-typing-dots">
+                            <span class="fd-ai-loader-typing-dot"></span>
+                            <span class="fd-ai-loader-typing-dot"></span>
+                            <span class="fd-ai-loader-typing-dot"></span>
                           </span>
-                        </span>
+                        </div>
                       {/if}
                     </div>
                   {/if}

@@ -329,13 +329,30 @@ ai: {
 }
 ```
 
+### `loader`
+
+Loading indicator variant shown while the AI generates a response.
+
+| Type     | Default          |
+| -------- | ---------------- |
+| `string` | `"shimmer-dots"` |
+
+Available variants: `"shimmer-dots"`, `"circular"`, `"dots"`, `"typing"`, `"wave"`, `"bars"`, `"pulse"`, `"pulse-dot"`, `"terminal"`, `"text-blink"`, `"text-shimmer"`, `"loading-dots"`.
+
+```ts
+ai: {
+  enabled: true,
+  loader: "wave",
+}
+```
+
 ### `loadingComponent`
 
-Custom loading indicator shown while the AI is generating a response. Receives `{ name }` (the `aiLabel` value).
+Custom React component that completely overrides the built-in `loader` variant. Receives `{ name }` (the `aiLabel` value). Only works in Next.js — for other frameworks, use the `loader` option.
 
-| Type        | Default                |
-| ----------- | ---------------------- |
-| `Component` | Built-in bouncing dots |
+| Type                                       | Default |
+| ------------------------------------------ | ------- |
+| `(props: { name: string }) => ReactNode`   | —       |
 
 ```tsx
 ai: {

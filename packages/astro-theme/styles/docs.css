@@ -1329,19 +1329,6 @@ html.dark pre.shiki {
  * AI Chat & Search Dialog — base styles (fd-ai-*)
  * ═══════════════════════════════════════════════════════════════════════ */
 
-@keyframes fd-ai-dot {
-  0%,
-  80%,
-  100% {
-    transform: scale(0);
-    opacity: 0.5;
-  }
-  40% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
 @keyframes fd-ai-fade-in {
   from {
     opacity: 0;
@@ -1693,6 +1680,12 @@ html.dark pre.shiki {
   line-height: 1.6;
   max-width: 95%;
   word-break: break-word;
+  animation: fd-ai-msg-in 300ms ease-out;
+}
+
+@keyframes fd-ai-msg-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .fd-ai-chat-footer {
@@ -1745,36 +1738,70 @@ html.dark pre.shiki {
   color: var(--color-fd-primary-foreground);
 }
 
-.fd-ai-loading {
+.fd-ai-loader {
   display: inline-flex;
+  align-items: center;
   gap: 6px;
-  align-items: center;
+  animation: fd-ai-loader-in 300ms ease-out;
 }
 
-.fd-ai-loading-text {
-  font-size: 12px;
-  color: var(--color-fd-muted-foreground);
+@keyframes fd-ai-loader-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.fd-ai-loading-dots {
+.fd-ai-loader-shimmer-text {
+  font-size: 13px;
+  font-weight: 500;
+  background: linear-gradient(to right, var(--color-fd-muted-foreground, #888) 40%, var(--color-fd-foreground, #fff) 60%, var(--color-fd-muted-foreground, #888) 80%);
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: fd-ai-shimmer-text 3s linear infinite;
+}
+
+@keyframes fd-ai-shimmer-text {
+  0% { background-position: 150% center; }
+  100% { background-position: -150% center; }
+}
+
+.fd-ai-loader-typing-dots {
   display: inline-flex;
-  gap: 3px;
   align-items: center;
+  gap: 2px;
 }
 
-.fd-ai-loading-dot {
-  width: 5px;
-  height: 5px;
+.fd-ai-loader-typing-dot {
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
-  background: var(--color-fd-muted-foreground);
-  animation: fd-ai-dot 1.4s infinite ease-in-out both;
+  background: var(--color-fd-primary, #6366f1);
+  animation: fd-ai-typing 1s infinite;
 }
 
-.fd-ai-loading-dot:nth-child(2) {
-  animation-delay: 0.16s;
+.fd-ai-loader-typing-dot:nth-child(2) { animation-delay: 250ms; }
+.fd-ai-loader-typing-dot:nth-child(3) { animation-delay: 500ms; }
+
+@keyframes fd-ai-typing {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(-2px); opacity: 1; }
 }
-.fd-ai-loading-dot:nth-child(3) {
-  animation-delay: 0.32s;
+
+.fd-ai-streaming::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--color-fd-primary, #6366f1);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: fd-ai-cursor-blink 0.8s step-end infinite;
+}
+
+@keyframes fd-ai-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 /* ─── Markdown in AI responses ───────────────────────────────── */
@@ -2166,41 +2193,7 @@ html.dark pre.shiki {
   font-size: 12px;
 }
 
-/* ─── Thinking dots ──────────────────────────────────────────── */
-
-.fd-ai-fm-thinking {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.fd-ai-fm-thinking-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 9999px;
-  background: var(--color-fd-primary, #6366f1);
-  animation: fd-ai-fm-bounce 1s infinite ease-in-out;
-}
-
-.fd-ai-fm-thinking-dot:nth-child(2) {
-  animation-delay: 150ms;
-}
-.fd-ai-fm-thinking-dot:nth-child(3) {
-  animation-delay: 300ms;
-}
-
-@keyframes fd-ai-fm-bounce {
-  0%,
-  80%,
-  100% {
-    transform: scale(0.6);
-    opacity: 0.4;
-  }
-  40% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
+/* Full-modal now uses the shared .fd-ai-loader indicator */
 
 /* ─── Bottom input bar ───────────────────────────────────────── */
 

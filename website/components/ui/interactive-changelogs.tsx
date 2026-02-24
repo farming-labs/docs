@@ -193,7 +193,7 @@ export function Component() {
 
   return (
     <section className="relative w-full overflow-hidden bg-white dark:bg-black text-black dark:text-white min-h-dvh">
-      <div className="absolute max-w-[90%] mx-auto top-6 left-6 md:left-24 flex text-xs font-medium z-[999] gap-2">
+      <div className="absolute max-w-[90%] mx-auto top-6 left-6 md:left-24 2xl:left-32 flex text-xs font-medium z-[999] gap-2">
         <Link
           href={"/"}
           className="hover:text-white transition-colors hover:no-underline font-mono uppercase text-black/50 dark:text-white/50"
