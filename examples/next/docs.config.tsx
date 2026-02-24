@@ -69,17 +69,7 @@ export default defineDocs({
       "How do I create a custom component?",
       "How do I configure the sidebar?",
     ],
-    loadingComponent: ({ name }) => (
-      <div className="flex justify-start gap-2 items-center">
-        <div className="flex gap-1 items-end text-sm text-fd-muted-foreground">
-          <div className="flex gap-1 items-center opacity-70">
-            <span className="inline-block size-1 bg-fd-primary rounded-full animate-bounce [animation-delay:0ms]" />
-            <span className="inline-block size-1 opacity-80 bg-fd-primary rounded-full animate-bounce [animation-delay:150ms]" />
-            <span className="inline-block size-1 bg-fd-primary rounded-full animate-bounce [animation-delay:300ms]" />
-          </div>
-        </div>
-      </div>
-    ),
+    loader: "shimmer-dots",
     // triggerComponent: <AskAITrigger />,
   },
   nav: {

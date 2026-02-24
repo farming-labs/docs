@@ -556,13 +556,13 @@ figure.shiki > div:first-child {
   letter-spacing: 0.06em;
 }
 
-.fd-ai-loading-text {
+.fd-ai-loader-shimmer-text {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-size: 11px;
 }
 
-.fd-ai-loading-dot {
+.fd-ai-loader-typing-dot {
   border-radius: 0;
   width: 4px;
   height: 4px;
@@ -640,11 +640,7 @@ figure.shiki > div:first-child {
   font-size: 11px;
 }
 
-.fd-ai-fm-thinking-dot {
-  border-radius: 0;
-  width: 5px;
-  height: 5px;
-}
+/* Full-modal now uses .fd-ai-loader-typing-dot (see above) */
 
 /* ─── Code blocks (pixel-border) ─────────────────────────────────── */
 

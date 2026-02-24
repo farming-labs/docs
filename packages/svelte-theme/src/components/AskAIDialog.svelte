@@ -213,10 +213,10 @@
             onkeydown={handleSearchKeydown}
           />
           {#if isSearching}
-            <span class="fd-ai-loading-dots">
-              <span class="fd-ai-loading-dot"></span>
-              <span class="fd-ai-loading-dot"></span>
-              <span class="fd-ai-loading-dot"></span>
+            <span class="fd-ai-loader-typing-dots" style="margin-left:0">
+              <span class="fd-ai-loader-typing-dot"></span>
+              <span class="fd-ai-loader-typing-dot"></span>
+              <span class="fd-ai-loader-typing-dot"></span>
             </span>
           {/if}
         </div>
@@ -276,7 +276,7 @@
               {/if}
             </div>
           {:else}
-            {#each messages as msg}
+            {#each messages as msg, i}
               <div class="fd-ai-msg" data-role={msg.role}>
                 <div class="fd-ai-msg-label">
                   {msg.role === "user" ? "You" : aiLabel}
@@ -286,16 +286,18 @@
                 {:else}
                   <div class="fd-ai-bubble-ai">
                     {#if msg.content}
-                      {@html renderMarkdown(msg.content)}
+                      <div class={isStreaming && i === messages.length - 1 ? 'fd-ai-streaming' : ''}>
+                        {@html renderMarkdown(msg.content)}
+                      </div>
                     {:else}
-                      <span class="fd-ai-loading">
-                        <span class="fd-ai-loading-text">{aiLabel} is thinking</span>
-                        <span class="fd-ai-loading-dots">
-                          <span class="fd-ai-loading-dot"></span>
-                          <span class="fd-ai-loading-dot"></span>
-                          <span class="fd-ai-loading-dot"></span>
+                      <div class="fd-ai-loader">
+                        <span class="fd-ai-loader-shimmer-text">Thinking</span>
+                        <span class="fd-ai-loader-typing-dots">
+                          <span class="fd-ai-loader-typing-dot"></span>
+                          <span class="fd-ai-loader-typing-dot"></span>
+                          <span class="fd-ai-loader-typing-dot"></span>
                         </span>
-                      </span>
+                      </div>
                     {/if}
                   </div>
                 {/if}

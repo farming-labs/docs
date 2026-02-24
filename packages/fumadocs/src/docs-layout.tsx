@@ -548,6 +548,7 @@ export function createDocsLayout(config: DocsConfig) {
     : undefined;
   const aiSuggestedQuestions = aiConfig?.suggestedQuestions;
   const aiLabel = aiConfig?.aiLabel;
+  const aiLoaderVariant = aiConfig?.loader;
   const aiLoadingComponentHtml =
     typeof aiConfig?.loadingComponent === "function"
       ? serializeIcon(aiConfig.loadingComponent({ name: aiLabel || "AI" }))
@@ -585,6 +586,7 @@ export function createDocsLayout(config: DocsConfig) {
             triggerComponentHtml={aiTriggerComponentHtml}
             suggestedQuestions={aiSuggestedQuestions}
             aiLabel={aiLabel}
+            loaderVariant={aiLoaderVariant}
             loadingComponentHtml={aiLoadingComponentHtml}
           />
         )}

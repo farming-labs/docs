@@ -437,13 +437,13 @@ article a[class*="border"] {
   letter-spacing: 0.05em !important;
 }
 
-.fd-ai-loading-text {
+.fd-ai-loader-shimmer-text {
   text-transform: none !important;
   letter-spacing: normal !important;
   font-size: 12px !important;
 }
 
-.fd-ai-loading-dot {
+.fd-ai-loader-typing-dot {
   border-radius: 50% !important;
   width: 5px !important;
   height: 5px !important;
@@ -521,7 +521,7 @@ article a[class*="border"] {
   font-size: 12px !important;
 }
 
-.fd-ai-fm-thinking-dot {
+.fd-ai-loader-typing-dot {
   border-radius: 9999px !important;
   width: 6px !important;
   height: 6px !important;

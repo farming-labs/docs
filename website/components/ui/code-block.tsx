@@ -40,17 +40,21 @@ export default function CodeBlock({
     <div className={`relative group max-w-full ${className}`}>
       <PixelCard variant="code" className="p-0!">
         {(title || filename) && (
-          <div className="flex items-center justify-between border-b border-white/10 px-3 sm:px-4 py-2.5 min-w-0 overflow-hidden">
-            <div className="flex items-center gap-2 min-w-0">
+          <div
+            className="relative flex items-center justify-between border-b border-white/10 px-3 sm:px-4 py-2.5 min-w-0 overflow-hidden bg-[repeating-linear-gradient(-45deg,#ffffff,#ffffff_1px,transparent_1px,transparent_6px)] bg-clip-padding"
+            style={{ backgroundSize: "8px 8px" }}
+          >
+            <div className="absolute inset-0 bg-black/95" />
+            <div className="relative z-10 flex items-center gap-2 min-w-0">
               {filename && (
                 <span className="text-[11px] sm:text-xs font-mono text-white/50 truncate">
                   {filename}
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="relative z-[999] flex items-center gap-2 flex-shrink-0">
               {title && (
-                <span className="text-[10px] font-mono uppercase tracking-wider text-white/20">
+                <span className="text-[9.5px] border px-2 bg-black border-white/10 font-mono uppercase tracking-wider text-white/20">
                   {title}
                 </span>
               )}
