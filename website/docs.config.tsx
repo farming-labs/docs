@@ -181,7 +181,7 @@ export default defineDocs({
             <Pin size={12} className="inline-flex" />{" "}
           </span>
           <a
-            className="lowercase cursor-pointer text-[11px] underline underline-offset-2 decoration-dotted transition-colors mr-1"
+            className="lowercase cursor-pointer text-[12px] underline underline-offset-2 decoration-dotted transition-colors mr-1"
             style={{
               textDecorationColor:
                 "color-mix(in srgb, var(--color-fd-foreground) 30%, transparent)",
@@ -191,7 +191,7 @@ export default defineDocs({
             v0.0.2.beta.26
           </a>
         </div>
-        <span className="text-[11px]">
+        <span className="uppercase font-mono text-[10px] tracking-tight">
           Check out the new features and improvements that were added in this release.
         </span>
       </div>
