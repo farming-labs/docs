@@ -12,6 +12,8 @@ import {
   Zap,
   Code,
   Lightbulb,
+  Pin,
+  Package,
 } from "lucide-react";
 
 export default defineDocs({
@@ -114,7 +116,6 @@ export default defineDocs({
     siteDescription:
       "A modern, flexible MDX documentation framework for Next.js, SvelteKit, Astro, and Nuxt.",
   },
-
   metadata: {
     titleTemplate: "%s – @farming-labs/docs",
     description: "A modern, flexible MDX documentation framework.",
@@ -133,6 +134,53 @@ export default defineDocs({
       "How do I create a custom component?",
       "How do I configure the sidebar?",
     ],
+  },
+  sidebar: {
+    banner: (
+      <div className="-mx-4 -mt-3 relative  bg-[repeating-linear-gradient(-45deg,#ffffff,#ffffff_1px,transparent_1px,transparent_6px)] bg-clip-padding" style={{
+        padding: "12px 16px",
+        borderBottom: "1px solid var(--color-fd-border)",
+        fontSize: "13px",
+        color: "var(--color-fd-muted-foreground)",
+      }}>
+        <div className="absolute inset-0 bg-black/95" />
+        <div className="relative z-[999]">
+
+          <div className="font-mono tracking-tighter" style={{ fontWeight: 600, marginBottom: 4, color: "var(--color-fd-foreground)" }}>
+            <span className="text-white/40">
+              <Pin size={12} className="inline-flex" /> </span>
+            <a className="lowercase text-[11px] underline underline-offset-2 decoration-white/30 decoration-dotted hover:underline-offset-2 hover:decoration-white/50 hover:decoration-dotted hover:text-white/50 transition-colors mr-1" href="/changelog#v0.0.1-beta.16-20">
+              v0.0.1.beta.20
+            </a>
+          </div>
+          <span className="text-[11px]">Check out the new features and improvements that were added in this release.</span>
+        </div>
+      </div>
+    ),
+    footer: (
+      <div
+        className="-mx-4 mr-1 -my-2 flex items-center justify-center relative bg-[repeating-linear-gradient(-45deg,#ffffff,#ffffff_1px,transparent_1px,transparent_6px)] bg-clip-padding font-mono uppercase"
+        style={{
+          padding: "12px 16px",
+          // borderTop: "1px solid var(--color-fd-border)",
+          fontSize: "12px",
+          // color: "var(--color-fd-muted-foreground)",
+        }}>
+        <div className="absolute inset-0 bg-black/95" />
+        <div className="relative z-[999]">
+          <div className="flex gap-2 items-center text-white/40">
+            <Package size={14} className="inline-flex mb-[1px]" />
+            <span className="text-[11px]">
+              Built with <span className="text-white/50">
+                <a href="https://github.com/farming-labs" target="_blank" className="text-white/50 underline underline-offset-2 decoration-white/30 decoration-dotted hover:underline-offset-2 hover:decoration-white/50 hover:decoration-dotted hover:text-white/50 transition-colors">
+                  @farming-labs
+                </a>
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+    ),
   },
   themeToggle: {
     enabled: false,

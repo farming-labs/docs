@@ -13,6 +13,8 @@
     children,
     triggerComponent = null,
     sidebar = undefined,
+    sidebarHeader = undefined,
+    sidebarFooter = undefined,
   } = $props();
 
   let resolvedTitle = $derived(title ?? config?.nav?.title ?? "Docs");
@@ -252,106 +254,124 @@
       </button>
     </div>
 
+    {#if sidebarHeader}
+      <div class="fd-sidebar-banner">
+        {@render sidebarHeader()}
+      </div>
+    {/if}
+
     <nav class="fd-sidebar-nav">
-      {#if sidebar}
-        {@render sidebar({ tree, isActive })}
-      {:else if tree?.children}
-        {#each tree.children as node, i}
-          {#if node.type === "page"}
-            <a
-              href={node.url}
-              class="fd-sidebar-link fd-sidebar-top-link"
-              class:fd-sidebar-link-active={isActive(node.url)}
-              class:fd-sidebar-first-item={i === 0}
-              data-active={isActive(node.url)}
-              onclick={closeSidebar}
-            >
-              {#if getIcon(node.icon)}
-                <span class="fd-sidebar-icon">{@html getIcon(node.icon)}</span>
-              {/if}
-              {node.name}
-            </a>
-          {:else if node.type === "folder"}
-            <details class="fd-sidebar-folder" class:fd-sidebar-first-item={i === 0} open>
-              <summary class="fd-sidebar-folder-trigger">
-                <span class="fd-sidebar-folder-label">
-                  {#if getIcon(node.icon)}
-                    <span class="fd-sidebar-icon">{@html getIcon(node.icon)}</span>
-                  {/if}
-                  {node.name}
-                </span>
-                <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </summary>
-              <div class="fd-sidebar-folder-content">
-                {#if node.index}
-                  <a
-                    href={node.index.url}
-                    class="fd-sidebar-link fd-sidebar-child-link"
-                    class:fd-sidebar-link-active={isActive(node.index.url)}
-                    data-active={isActive(node.index.url)}
-                    onclick={closeSidebar}
-                  >
-                    {node.index.name}
-                  </a>
+      {#snippet defaultSidebar()}
+        {#if tree?.children}
+          {#each tree.children as node, i}
+            {#if node.type === "page"}
+              <a
+                href={node.url}
+                class="fd-sidebar-link fd-sidebar-top-link"
+                class:fd-sidebar-link-active={isActive(node.url)}
+                class:fd-sidebar-first-item={i === 0}
+                data-active={isActive(node.url)}
+                onclick={closeSidebar}
+              >
+                {#if getIcon(node.icon)}
+                  <span class="fd-sidebar-icon">{@html getIcon(node.icon)}</span>
                 {/if}
-                {#each node.children as child}
-                  {#if child.type === "page"}
+                {node.name}
+              </a>
+            {:else if node.type === "folder"}
+              <details class="fd-sidebar-folder" class:fd-sidebar-first-item={i === 0} open>
+                <summary class="fd-sidebar-folder-trigger">
+                  <span class="fd-sidebar-folder-label">
+                    {#if getIcon(node.icon)}
+                      <span class="fd-sidebar-icon">{@html getIcon(node.icon)}</span>
+                    {/if}
+                    {node.name}
+                  </span>
+                  <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </summary>
+                <div class="fd-sidebar-folder-content">
+                  {#if node.index}
                     <a
-                      href={child.url}
+                      href={node.index.url}
                       class="fd-sidebar-link fd-sidebar-child-link"
-                      class:fd-sidebar-link-active={isActive(child.url)}
-                      data-active={isActive(child.url)}
+                      class:fd-sidebar-link-active={isActive(node.index.url)}
+                      data-active={isActive(node.index.url)}
                       onclick={closeSidebar}
                     >
-                      {child.name}
+                      {node.index.name}
                     </a>
-                  {:else if child.type === "folder"}
-                    <details class="fd-sidebar-folder fd-sidebar-nested-folder" open>
-                      <summary class="fd-sidebar-folder-trigger">
-                        <span class="fd-sidebar-folder-label">
-                          {child.name}
-                        </span>
-                        <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                          <polyline points="6 9 12 15 18 9" />
-                        </svg>
-                      </summary>
-                      <div class="fd-sidebar-folder-content">
-                        {#if child.index}
-                          <a
-                            href={child.index.url}
-                            class="fd-sidebar-link fd-sidebar-child-link"
-                            class:fd-sidebar-link-active={isActive(child.index.url)}
-                            data-active={isActive(child.index.url)}
-                            onclick={closeSidebar}
-                          >
-                            {child.index.name}
-                          </a>
-                        {/if}
-                        {#each child.children as grandchild}
-                          {#if grandchild.type === "page"}
+                  {/if}
+                  {#each node.children as child}
+                    {#if child.type === "page"}
+                      <a
+                        href={child.url}
+                        class="fd-sidebar-link fd-sidebar-child-link"
+                        class:fd-sidebar-link-active={isActive(child.url)}
+                        data-active={isActive(child.url)}
+                        onclick={closeSidebar}
+                      >
+                        {child.name}
+                      </a>
+                    {:else if child.type === "folder"}
+                      <details class="fd-sidebar-folder fd-sidebar-nested-folder" open>
+                        <summary class="fd-sidebar-folder-trigger">
+                          <span class="fd-sidebar-folder-label">
+                            {child.name}
+                          </span>
+                          <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <polyline points="6 9 12 15 18 9" />
+                          </svg>
+                        </summary>
+                        <div class="fd-sidebar-folder-content">
+                          {#if child.index}
                             <a
-                              href={grandchild.url}
+                              href={child.index.url}
                               class="fd-sidebar-link fd-sidebar-child-link"
-                              class:fd-sidebar-link-active={isActive(grandchild.url)}
-                              data-active={isActive(grandchild.url)}
+                              class:fd-sidebar-link-active={isActive(child.index.url)}
+                              data-active={isActive(child.index.url)}
                               onclick={closeSidebar}
                             >
-                              {grandchild.name}
+                              {child.index.name}
                             </a>
                           {/if}
-                        {/each}
-                      </div>
-                    </details>
-                  {/if}
-                {/each}
-              </div>
-            </details>
-          {/if}
-        {/each}
+                          {#each child.children as grandchild}
+                            {#if grandchild.type === "page"}
+                              <a
+                                href={grandchild.url}
+                                class="fd-sidebar-link fd-sidebar-child-link"
+                                class:fd-sidebar-link-active={isActive(grandchild.url)}
+                                data-active={isActive(grandchild.url)}
+                                onclick={closeSidebar}
+                              >
+                                {grandchild.name}
+                              </a>
+                            {/if}
+                          {/each}
+                        </div>
+                      </details>
+                    {/if}
+                  {/each}
+                </div>
+              </details>
+            {/if}
+          {/each}
+        {/if}
+      {/snippet}
+
+      {#if sidebar}
+        {@render sidebar({ tree, isActive })}
+      {:else}
+        {@render defaultSidebar()}
       {/if}
     </nav>
+
+    {#if sidebarFooter}
+      <div class="fd-sidebar-footer-custom">
+        {@render sidebarFooter()}
+      </div>
+    {/if}
 
     {#if showThemeToggle}
       <div class="fd-sidebar-footer">

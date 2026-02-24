@@ -67,13 +67,97 @@ Render all sidebar items without collapsible sections (Mintlify-style):
 sidebar: { flat: true },
 ```
 
+## Sidebar Header & Footer
+
+Add custom content above and below the navigation items using `banner` and `footer`:
+
+```tsx title="docs.config.tsx"
+sidebar: {
+  banner: (
+    <div style={{
+      padding: "12px 16px",
+      borderBottom: "1px solid var(--color-fd-border)",
+      fontSize: "13px",
+    }}>
+      <strong>v2.0 is here</strong>
+      <p style={{ margin: 0 }}>Check out the new features.</p>
+    </div>
+  ),
+  footer: (
+    <div style={{
+      padding: "12px 16px",
+      borderTop: "1px solid var(--color-fd-border)",
+      fontSize: "12px",
+      color: "var(--color-fd-muted-foreground)",
+    }}>
+      Built with @farming-labs/docs
+    </div>
+  ),
+},
+```
+
+The `banner` renders above the navigation items and `footer` renders below them, both inheriting the theme's sidebar styling automatically.
+
+For non-React frameworks, use named slots:
+
+<Tabs items={["SvelteKit", "Astro", "Nuxt"]}>
+  <Tab value="SvelteKit">
+    Pass `sidebarHeader` and `sidebarFooter` snippets:
+
+    ```svelte title="+layout.svelte"
+    <DocsLayout tree={data.tree} config={data.config}>
+      {#snippet sidebarHeader()}
+        <div class="sidebar-promo">v2.0 is here</div>
+      {/snippet}
+      {#snippet sidebarFooter()}
+        <div class="sidebar-credits">Built with docs</div>
+      {/snippet}
+      {@render children()}
+    </DocsLayout>
+    ```
+
+  </Tab>
+  <Tab value="Astro">
+    Use `sidebar-header` and `sidebar-footer` named slots:
+
+    ```astro title="layouts/docs.astro"
+    <DocsLayout tree={tree} config={config}>
+      <div slot="sidebar-header" class="sidebar-promo">
+        v2.0 is here
+      </div>
+      <div slot="sidebar-footer" class="sidebar-credits">
+        Built with docs
+      </div>
+      <slot />
+    </DocsLayout>
+    ```
+
+  </Tab>
+  <Tab value="Nuxt">
+    Use `#sidebar-header` and `#sidebar-footer` slots:
+
+    ```vue title="layouts/docs.vue"
+    <DocsLayout :tree="tree" :config="config">
+      <template #sidebar-header>
+        <div class="sidebar-promo">v2.0 is here</div>
+      </template>
+      <template #sidebar-footer>
+        <div class="sidebar-credits">Built with docs</div>
+      </template>
+      <slot />
+    </DocsLayout>
+    ```
+
+  </Tab>
+</Tabs>
+
 ## Custom Sidebar Component
 
-Replace the default sidebar navigation with your own component. The component receives the full page tree with all parent-child relationships, so you have everything you need to build a completely custom sidebar.
+Replace the entire sidebar navigation with your own component. The component receives the full page tree with all parent-child relationships.
 
 <Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
-    Pass a render function via `sidebar.component` in your config. It receives `tree`, `collapsible`, and `flat` as props:
+    Pass a render function via `sidebar.component` in your config:
 
     ```tsx title="docs.config.tsx"
     import type { SidebarComponentProps } from "@farming-labs/docs";
@@ -131,7 +215,7 @@ Replace the default sidebar navigation with your own component. The component re
 
   </Tab>
   <Tab value="SvelteKit">
-    Use the `sidebar` snippet on `<DocsLayout>`. It receives `tree` and `isActive` as props:
+    Use the `sidebar` snippet on `<DocsLayout>`. It receives `tree` and `isActive`:
 
     ```svelte title="+layout.svelte"
     <script>
@@ -169,7 +253,7 @@ Replace the default sidebar navigation with your own component. The component re
 
   </Tab>
   <Tab value="Astro">
-    Use the `sidebar` named slot on `<DocsLayout>`. Pass the `tree` prop to your custom component:
+    Use the `sidebar` named slot:
 
     ```astro title="layouts/docs.astro"
     ---
@@ -186,7 +270,7 @@ Replace the default sidebar navigation with your own component. The component re
 
   </Tab>
   <Tab value="Nuxt">
-    Use the `#sidebar` scoped slot on `<DocsLayout>`. It provides `tree` and `isActive` as slot props:
+    Use the `#sidebar` scoped slot:
 
     ```vue title="layouts/docs.vue"
     <template>

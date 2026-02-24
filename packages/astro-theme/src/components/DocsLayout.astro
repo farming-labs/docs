@@ -182,6 +182,12 @@ const showFloatingAI = aiConfig?.mode === "floating" && aiConfig?.enabled;
       </button>
     </div>
 
+    {Astro.slots.has("sidebar-header") && (
+      <div class="fd-sidebar-banner">
+        <slot name="sidebar-header" />
+      </div>
+    )}
+
     {Astro.slots.has("sidebar") ? (
       <nav class="fd-sidebar-nav">
         <slot name="sidebar" />
@@ -278,6 +284,12 @@ const showFloatingAI = aiConfig?.mode === "floating" && aiConfig?.enabled;
         }
       })}
     </nav>
+    )}
+
+    {Astro.slots.has("sidebar-footer") && (
+      <div class="fd-sidebar-footer-custom">
+        <slot name="sidebar-footer" />
+      </div>
     )}
 
     {showThemeToggle && (

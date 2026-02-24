@@ -303,6 +303,10 @@ const showFloatingAI = computed(
           </button>
         </div>
 
+        <div v-if="$slots['sidebar-header']" class="fd-sidebar-banner">
+          <slot name="sidebar-header" />
+        </div>
+
         <nav class="fd-sidebar-nav">
           <slot name="sidebar" :tree="tree" :is-active="isActive">
             <template v-if="tree?.children">
@@ -423,6 +427,10 @@ const showFloatingAI = computed(
             </template>
           </slot>
         </nav>
+
+        <div v-if="$slots['sidebar-footer']" class="fd-sidebar-footer-custom">
+          <slot name="sidebar-footer" />
+        </div>
 
         <div v-if="showThemeToggle" class="fd-sidebar-footer">
           <ThemeToggle />
