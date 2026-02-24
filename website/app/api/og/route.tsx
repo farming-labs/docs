@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
           bottom: 0,
           width: "100%",
           height: "100%",
-          opacity: 0.06,
+          opacity: 0.07,
           backgroundImage:
             "repeating-linear-gradient(-45deg, #ffffff, #ffffff 1px, transparent 1px, transparent 6px)",
         }}
@@ -221,7 +221,7 @@ export async function GET(request: NextRequest) {
             style={{
               fontFamily: '"JetBrains Mono"',
               fontSize: "14px",
-              color: "rgba(255,255,255,0.2)",
+              color: "rgba(255,255,255,0.25)",
               textTransform: "uppercase" as const,
               letterSpacing: "0.03em",
             }}
