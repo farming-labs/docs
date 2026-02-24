@@ -49,7 +49,7 @@ function HeroSection() {
       <div className="relative z-[999] w-full pb-12 sm:pb-16 pt-24 px-5 sm:px-0">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 sm:gap-16">
           <div className="max-w-full sm:max-w-lg">
-            {/* <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2">
               <div className="inline-block">
                 <a
                   href="/changelog#v0.0.1"
@@ -95,7 +95,7 @@ function HeroSection() {
                   v0.0.2-beta.4
                 </a>
               </div>
-            </div> */}
+            </div>
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-semibold tracking-tighter text-white leading-[0.95]">
               a documentation
               <br />
