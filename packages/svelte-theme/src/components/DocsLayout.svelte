@@ -12,6 +12,7 @@
     titleUrl = undefined,
     children,
     triggerComponent = null,
+    sidebar = undefined,
   } = $props();
 
   let resolvedTitle = $derived(title ?? config?.nav?.title ?? "Docs");
@@ -252,7 +253,9 @@
     </div>
 
     <nav class="fd-sidebar-nav">
-      {#if tree?.children}
+      {#if sidebar}
+        {@render sidebar({ tree, isActive })}
+      {:else if tree?.children}
         {#each tree.children as node, i}
           {#if node.type === "page"}
             <a

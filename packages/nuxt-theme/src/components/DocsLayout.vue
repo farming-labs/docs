@@ -304,122 +304,124 @@ const showFloatingAI = computed(
         </div>
 
         <nav class="fd-sidebar-nav">
-          <template v-if="tree?.children">
-            <template v-for="(node, i) in tree.children" :key="node.name + (node.url ?? '')">
-              <NuxtLink
-                v-if="node.type === 'page'"
-                :to="node.url!"
-                class="fd-sidebar-link fd-sidebar-top-link"
-                :class="{
-                  'fd-sidebar-link-active': isActive(node.url ?? ''),
-                  'fd-sidebar-first-item': i === 0,
-                }"
-                @click="closeSidebar"
-              >
-                <span
-                  v-if="getIcon(node.icon)"
-                  class="fd-sidebar-icon"
-                  v-html="getIcon(node.icon)"
-                />
-                {{ node.name }}
-              </NuxtLink>
-              <details
-                v-else-if="node.type === 'folder'"
-                class="fd-sidebar-folder"
-                :class="{ 'fd-sidebar-first-item': i === 0 }"
-                open
-              >
-                <summary class="fd-sidebar-folder-trigger">
-                  <span class="fd-sidebar-folder-label">
-                    <span
-                      v-if="getIcon(node.icon)"
-                      class="fd-sidebar-icon"
-                      v-html="getIcon(node.icon)"
-                    />
-                    {{ node.name }}
-                  </span>
-                  <svg
-                    class="fd-sidebar-chevron"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </summary>
-                <div class="fd-sidebar-folder-content">
-                  <NuxtLink
-                    v-if="node.index"
-                    :to="node.index.url"
-                    class="fd-sidebar-link fd-sidebar-child-link"
-                    :class="{ 'fd-sidebar-link-active': isActive(node.index.url) }"
-                    @click="closeSidebar"
-                  >
-                    {{ node.index.name }}
-                  </NuxtLink>
-                  <template
-                    v-for="child in node.children"
-                    :key="child.name + ((child as any).url ?? '')"
-                  >
+          <slot name="sidebar" :tree="tree" :is-active="isActive">
+            <template v-if="tree?.children">
+              <template v-for="(node, i) in tree.children" :key="node.name + (node.url ?? '')">
+                <NuxtLink
+                  v-if="node.type === 'page'"
+                  :to="node.url!"
+                  class="fd-sidebar-link fd-sidebar-top-link"
+                  :class="{
+                    'fd-sidebar-link-active': isActive(node.url ?? ''),
+                    'fd-sidebar-first-item': i === 0,
+                  }"
+                  @click="closeSidebar"
+                >
+                  <span
+                    v-if="getIcon(node.icon)"
+                    class="fd-sidebar-icon"
+                    v-html="getIcon(node.icon)"
+                  />
+                  {{ node.name }}
+                </NuxtLink>
+                <details
+                  v-else-if="node.type === 'folder'"
+                  class="fd-sidebar-folder"
+                  :class="{ 'fd-sidebar-first-item': i === 0 }"
+                  open
+                >
+                  <summary class="fd-sidebar-folder-trigger">
+                    <span class="fd-sidebar-folder-label">
+                      <span
+                        v-if="getIcon(node.icon)"
+                        class="fd-sidebar-icon"
+                        v-html="getIcon(node.icon)"
+                      />
+                      {{ node.name }}
+                    </span>
+                    <svg
+                      class="fd-sidebar-chevron"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </summary>
+                  <div class="fd-sidebar-folder-content">
                     <NuxtLink
-                      v-if="child.type === 'page'"
-                      :to="(child as any).url"
+                      v-if="node.index"
+                      :to="node.index.url"
                       class="fd-sidebar-link fd-sidebar-child-link"
-                      :class="{ 'fd-sidebar-link-active': isActive((child as any).url) }"
+                      :class="{ 'fd-sidebar-link-active': isActive(node.index.url) }"
                       @click="closeSidebar"
                     >
-                      {{ child.name }}
+                      {{ node.index.name }}
                     </NuxtLink>
-                    <details
-                      v-else-if="child.type === 'folder'"
-                      class="fd-sidebar-folder fd-sidebar-nested-folder"
-                      open
+                    <template
+                      v-for="child in node.children"
+                      :key="child.name + ((child as any).url ?? '')"
                     >
-                      <summary class="fd-sidebar-folder-trigger">
-                        <span class="fd-sidebar-folder-label">{{ child.name }}</span>
-                        <svg
-                          class="fd-sidebar-chevron"
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                        >
-                          <polyline points="6 9 12 15 18 9" />
-                        </svg>
-                      </summary>
-                      <div class="fd-sidebar-folder-content">
-                        <NuxtLink
-                          v-if="(child as any).index"
-                          :to="(child as any).index.url"
-                          class="fd-sidebar-link fd-sidebar-child-link"
-                          :class="{ 'fd-sidebar-link-active': isActive((child as any).index.url) }"
-                          @click="closeSidebar"
-                        >
-                          {{ (child as any).index.name }}
-                        </NuxtLink>
-                        <NuxtLink
-                          v-for="grandchild in (child as any).children"
-                          v-if="grandchild.type === 'page'"
-                          :key="grandchild.url"
-                          :to="grandchild.url"
-                          class="fd-sidebar-link fd-sidebar-child-link"
-                          :class="{ 'fd-sidebar-link-active': isActive(grandchild.url) }"
-                          @click="closeSidebar"
-                        >
-                          {{ grandchild.name }}
-                        </NuxtLink>
-                      </div>
-                    </details>
-                  </template>
-                </div>
-              </details>
+                      <NuxtLink
+                        v-if="child.type === 'page'"
+                        :to="(child as any).url"
+                        class="fd-sidebar-link fd-sidebar-child-link"
+                        :class="{ 'fd-sidebar-link-active': isActive((child as any).url) }"
+                        @click="closeSidebar"
+                      >
+                        {{ child.name }}
+                      </NuxtLink>
+                      <details
+                        v-else-if="child.type === 'folder'"
+                        class="fd-sidebar-folder fd-sidebar-nested-folder"
+                        open
+                      >
+                        <summary class="fd-sidebar-folder-trigger">
+                          <span class="fd-sidebar-folder-label">{{ child.name }}</span>
+                          <svg
+                            class="fd-sidebar-chevron"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                          >
+                            <polyline points="6 9 12 15 18 9" />
+                          </svg>
+                        </summary>
+                        <div class="fd-sidebar-folder-content">
+                          <NuxtLink
+                            v-if="(child as any).index"
+                            :to="(child as any).index.url"
+                            class="fd-sidebar-link fd-sidebar-child-link"
+                            :class="{ 'fd-sidebar-link-active': isActive((child as any).index.url) }"
+                            @click="closeSidebar"
+                          >
+                            {{ (child as any).index.name }}
+                          </NuxtLink>
+                          <NuxtLink
+                            v-for="grandchild in (child as any).children"
+                            v-if="grandchild.type === 'page'"
+                            :key="grandchild.url"
+                            :to="grandchild.url"
+                            class="fd-sidebar-link fd-sidebar-child-link"
+                            :class="{ 'fd-sidebar-link-active': isActive(grandchild.url) }"
+                            @click="closeSidebar"
+                          >
+                            {{ grandchild.name }}
+                          </NuxtLink>
+                        </div>
+                      </details>
+                    </template>
+                  </div>
+                </details>
+              </template>
             </template>
-          </template>
+          </slot>
         </nav>
 
         <div v-if="showThemeToggle" class="fd-sidebar-footer">

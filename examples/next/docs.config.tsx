@@ -102,7 +102,7 @@ export default defineDocs({
     email: <Mail size={13} />,
   },
 
-  sidebar: { flat: true },
+  sidebar: { flat: true },  
   breadcrumb: { enabled: true },
 
   lastUpdated: { position: "below-title" },

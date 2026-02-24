@@ -323,6 +323,59 @@ export interface BreadcrumbConfig {
   component?: unknown; // ReactNode or Component — typed as unknown to stay framework-agnostic
 }
 
+/**
+ * A leaf page in the sidebar tree.
+ */
+export interface SidebarPageNode {
+  type: "page";
+  name: string;
+  url: string;
+  icon?: unknown;
+}
+
+/**
+ * A folder (group) in the sidebar tree. May contain child pages
+ * and nested folders, forming a recursive hierarchy.
+ */
+export interface SidebarFolderNode {
+  type: "folder";
+  name: string;
+  icon?: unknown;
+  /** Index page for this folder (the folder's own landing page). */
+  index?: SidebarPageNode;
+  /** Child pages and sub-folders. */
+  children: SidebarNode[];
+  /** Whether this folder section is collapsible. */
+  collapsible?: boolean;
+  /** Whether this folder starts open. */
+  defaultOpen?: boolean;
+}
+
+/** A node in the sidebar tree — either a page or a folder. */
+export type SidebarNode = SidebarPageNode | SidebarFolderNode;
+
+/** The full sidebar tree passed to custom sidebar components. */
+export interface SidebarTree {
+  name: string;
+  children: SidebarNode[];
+}
+
+/**
+ * Props passed to a custom sidebar component.
+ *
+ * Contains all the information needed to build a fully custom sidebar:
+ * the complete page tree with parent-child relationships, and the
+ * current sidebar configuration.
+ */
+export interface SidebarComponentProps {
+  /** Full page tree with all parent-child-folder relationships. */
+  tree: SidebarTree;
+  /** Whether folders are collapsible. */
+  collapsible: boolean;
+  /** Whether folders are rendered flat (Mintlify-style). */
+  flat: boolean;
+}
+
 export interface SidebarConfig {
   /**
    * Whether to show the sidebar.
@@ -330,17 +383,46 @@ export interface SidebarConfig {
    */
   enabled?: boolean;
   /**
-   * Custom sidebar component to completely replace the default sidebar.
-   * Receives the page tree and config as context.
+   * Custom sidebar component to replace the default navigation.
    *
-   * @example
+   * **Next.js** — Pass a render function that receives `SidebarComponentProps`:
    * ```tsx
    * sidebar: {
-   *   component: MySidebar,
+   *   component: ({ tree, collapsible, flat }) => (
+   *     <MySidebar tree={tree} />
+   *   ),
    * }
    * ```
+   *
+   * **Astro** — Use the `sidebar` named slot on `<DocsLayout>`:
+   * ```astro
+   * <DocsLayout tree={tree} config={config}>
+   *   <MySidebar slot="sidebar" tree={tree} />
+   *   <slot />
+   * </DocsLayout>
+   * ```
+   *
+   * **SvelteKit** — Use the `sidebar` snippet on `<DocsLayout>`:
+   * ```svelte
+   * <DocsLayout {tree} {config}>
+   *   {#snippet sidebar({ tree, isActive })}
+   *     <MySidebarNav {tree} {isActive} />
+   *   {/snippet}
+   *   {@render children()}
+   * </DocsLayout>
+   * ```
+   *
+   * **Nuxt / Vue** — Use the `#sidebar` scoped slot on `<DocsLayout>`:
+   * ```vue
+   * <DocsLayout :tree="tree" :config="config">
+   *   <template #sidebar="{ tree, isActive }">
+   *     <MySidebarNav :tree="tree" :is-active="isActive" />
+   *   </template>
+   *   <DocsContent />
+   * </DocsLayout>
+   * ```
    */
-  component?: unknown; // ReactNode — typed as unknown to stay framework-agnostic
+  component?: (props: SidebarComponentProps) => unknown;
   /**
    * Sidebar footer content (rendered below navigation items).
    */

@@ -182,6 +182,11 @@ const showFloatingAI = aiConfig?.mode === "floating" && aiConfig?.enabled;
       </button>
     </div>
 
+    {Astro.slots.has("sidebar") ? (
+      <nav class="fd-sidebar-nav">
+        <slot name="sidebar" />
+      </nav>
+    ) : (
     <nav class="fd-sidebar-nav">
       {tree?.children?.map((node, i) => {
         if (node.type === "page") {
@@ -273,6 +278,7 @@ const showFloatingAI = aiConfig?.mode === "floating" && aiConfig?.enabled;
         }
       })}
     </nav>
+    )}
 
     {showThemeToggle && (
       <div class="fd-sidebar-footer">

@@ -310,7 +310,7 @@ function resolveSidebar(sidebar: boolean | SidebarConfig | undefined) {
   if (sidebar === false) return { enabled: false };
   return {
     enabled: sidebar.enabled !== false,
-    component: sidebar.component as ReactNode,
+    componentFn: typeof sidebar.component === "function" ? sidebar.component : undefined,
     footer: sidebar.footer as ReactNode,
     banner: sidebar.banner as ReactNode,
     collapsible: sidebar.collapsible,
@@ -470,7 +470,8 @@ export function createDocsLayout(config: DocsConfig) {
   // Sidebar
   const resolvedSidebar = resolveSidebar(config.sidebar);
   const sidebarFlat = resolvedSidebar.flat;
-  const { flat: _sidebarFlat, ...sidebarProps } = resolvedSidebar;
+  const sidebarComponentFn = resolvedSidebar.componentFn;
+  const { flat: _sidebarFlat, componentFn: _componentFn, ...sidebarProps } = resolvedSidebar;
 
   // Breadcrumb
   const breadcrumbConfig = config.breadcrumb;
@@ -561,12 +562,23 @@ export function createDocsLayout(config: DocsConfig) {
   const descriptionMap = buildDescriptionMap(config.entry);
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
+    const tree = buildTree(config, !!sidebarFlat);
+
+    const finalSidebarProps = { ...sidebarProps } as Record<string, unknown>;
+    if (sidebarComponentFn) {
+      finalSidebarProps.component = (sidebarComponentFn as Function)({
+        tree,
+        collapsible: sidebarProps.collapsible !== false,
+        flat: !!sidebarFlat,
+      }) as ReactNode;
+    }
+
     return (
       <DocsLayout
-        tree={buildTree(config, !!sidebarFlat)}
+        tree={tree}
         nav={{ title: navTitle, url: navUrl }}
         themeSwitch={themeSwitch}
-        sidebar={sidebarProps}
+        sidebar={finalSidebarProps}
         {...(aiMode === "sidebar-icon" && aiEnabled
           ? {
               searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
