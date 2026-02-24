@@ -290,10 +290,20 @@ export function DocsPageClient({
             {githubFileUrl && <EditOnGitHub href={githubFileUrl} />}
             {llmsTxtEnabled && (
               <span className="fd-llms-txt-links">
-                <a href="/api/docs?format=llms" target="_blank" rel="noopener noreferrer" className="fd-llms-txt-link">
+                <a
+                  href="/api/docs?format=llms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="fd-llms-txt-link"
+                >
                   llms.txt
                 </a>
-                <a href="/api/docs?format=llms-full" target="_blank" rel="noopener noreferrer" className="fd-llms-txt-link">
+                <a
+                  href="/api/docs?format=llms-full"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="fd-llms-txt-link"
+                >
                   llms-full.txt
                 </a>
               </span>

@@ -513,12 +513,10 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     | { baseUrl?: string; siteTitle?: string; siteDescription?: string }
     | undefined;
 
-  const llmsBaseUrl =
-    typeof llmsTxtConfig === "object" ? (llmsTxtConfig.baseUrl ?? "") : "";
+  const llmsBaseUrl = typeof llmsTxtConfig === "object" ? (llmsTxtConfig.baseUrl ?? "") : "";
   const llmsTitle =
     typeof llmsTxtConfig === "object" ? (llmsTxtConfig.siteTitle ?? llmsSiteTitle) : llmsSiteTitle;
-  const llmsDesc =
-    typeof llmsTxtConfig === "object" ? llmsTxtConfig.siteDescription : undefined;
+  const llmsDesc = typeof llmsTxtConfig === "object" ? llmsTxtConfig.siteDescription : undefined;
 
   function buildLlmsTxt(full: boolean): string {
     const pages = getSearchIndex();
@@ -549,7 +547,10 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     if (format === "llms" || format === "llms-full") {
       return new Response(buildLlmsTxt(format === "llms-full"), {
-        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" },
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "public, max-age=3600",
+        },
       });
     }
 

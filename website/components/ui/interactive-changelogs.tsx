@@ -211,7 +211,6 @@ export function Component() {
           <div className="absolute left-0 md:left-0 top-0 h-full w-px bg-white/[8%]" />
           <div className="absolute right-0 md:right-0 top-0 h-full w-px bg-white/[8%]" />
           <div className="flex flex-col gap-3 h-full">
-
             <div className="flex flex-col gap-2 justify-end items-start">
               <h1 className="text-4xl tracking-tighter md:font-bold text-white dark:text-white leading-snug">
                 Latest Updates
@@ -253,8 +252,9 @@ export function Component() {
           <div
             key={item.version}
             id={item.version}
-            className={`relative flex flex-col lg:flex-row w-full gap-6 lg:gap-0 scroll-mt-20 ${item.isBeta ? "py-10" : "py-16"
-              }`}
+            className={`relative flex flex-col lg:flex-row w-full gap-6 lg:gap-0 scroll-mt-20 ${
+              item.isBeta ? "py-10" : "py-16"
+            }`}
           >
             <div className="lg:sticky top-20 h-fit shrink-0">
               <div className="lg:w-40">
@@ -325,10 +325,11 @@ export function Component() {
 
             {idx < orderedReleases.length - 1 && (
               <div
-                className={`absolute bottom-0 left-0 right-0 h-px ${item.isBeta && orderedReleases[idx + 1]?.isBeta
-                  ? "bg-black/[4%] dark:bg-white/[4%]"
-                  : "bg-black/[8%] dark:bg-white/[8%]"
-                  }`}
+                className={`absolute bottom-0 left-0 right-0 h-px ${
+                  item.isBeta && orderedReleases[idx + 1]?.isBeta
+                    ? "bg-black/[4%] dark:bg-white/[4%]"
+                    : "bg-black/[8%] dark:bg-white/[8%]"
+                }`}
               />
             )}
           </div>

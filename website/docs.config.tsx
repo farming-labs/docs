@@ -111,7 +111,8 @@ export default defineDocs({
   llmsTxt: {
     enabled: true,
     baseUrl: "https://farming-labs-docs.vercel.app",
-    siteDescription: "A modern, flexible MDX documentation framework for Next.js, SvelteKit, Astro, and Nuxt.",
+    siteDescription:
+      "A modern, flexible MDX documentation framework for Next.js, SvelteKit, Astro, and Nuxt.",
   },
 
   metadata: {
