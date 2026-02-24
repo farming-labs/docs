@@ -212,20 +212,67 @@ breadcrumb: { enabled: false },  // hide
 
 ## `SidebarConfig`
 
-Sidebar visibility and customization.
+Sidebar visibility and customization. See [Sidebar](/docs/customization/sidebar) for the full guide including custom sidebar components.
 
-| Property      | Type        | Default | Description                               |
-| ------------- | ----------- | ------- | ----------------------------------------- |
-| `enabled`     | `boolean`   | `true`  | Show or hide the sidebar                  |
-| `component`   | `Component` | —       | Custom sidebar component (Next.js only)   |
-| `footer`      | `ReactNode` | —       | Content rendered below nav items          |
-| `banner`      | `ReactNode` | —       | Content rendered above nav items          |
-| `collapsible` | `boolean`   | `true`  | Whether sidebar is collapsible on desktop |
+| Property      | Type                                             | Default | Description                                                                                                  |
+| ------------- | ------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------ |
+| `enabled`     | `boolean`                                        | `true`  | Show or hide the sidebar                                                                                     |
+| `component`   | `(props: SidebarComponentProps) => ReactNode`    | —       | Custom sidebar render function. Receives `{ tree, collapsible, flat }`. Next.js only — other frameworks use slots. |
+| `footer`      | `ReactNode`                                      | —       | Content rendered below nav items                                                                             |
+| `banner`      | `ReactNode`                                      | —       | Content rendered above nav items                                                                             |
+| `collapsible` | `boolean`                                        | `true`  | Whether sidebar is collapsible on desktop                                                                    |
+| `flat`        | `boolean`                                        | `false` | Render all items flat (Mintlify-style, no collapsible groups)                                                |
+
+### `SidebarComponentProps`
+
+Props passed to a custom sidebar component:
+
+| Property      | Type          | Description                                     |
+| ------------- | ------------- | ----------------------------------------------- |
+| `tree`        | `SidebarTree` | Full page tree with all parent-child relationships |
+| `collapsible` | `boolean`     | Whether folders are collapsible                  |
+| `flat`        | `boolean`     | Whether folders are rendered flat                |
+
+### `SidebarTree`
+
+| Property   | Type             | Description              |
+| ---------- | ---------------- | ------------------------ |
+| `name`     | `string`         | Root name (e.g. "Docs")  |
+| `children` | `SidebarNode[]`  | Top-level sidebar items  |
+
+### `SidebarNode`
+
+A union of `SidebarPageNode | SidebarFolderNode`.
+
+**`SidebarPageNode`**
+
+| Property | Type      | Description         |
+| -------- | --------- | ------------------- |
+| `type`   | `"page"`  | Node type           |
+| `name`   | `string`  | Display name        |
+| `url`    | `string`  | Page URL            |
+| `icon`   | `unknown` | Icon from registry  |
+
+**`SidebarFolderNode`**
+
+| Property      | Type               | Description                   |
+| ------------- | ------------------ | ----------------------------- |
+| `type`        | `"folder"`         | Node type                     |
+| `name`        | `string`           | Display name                  |
+| `icon`        | `unknown`          | Icon from registry            |
+| `index`       | `SidebarPageNode`  | Folder's landing page         |
+| `children`    | `SidebarNode[]`    | Child pages and sub-folders   |
+| `collapsible` | `boolean`          | Whether this folder collapses |
+| `defaultOpen` | `boolean`          | Whether it starts open        |
 
 ```ts
 sidebar: true,                     // show (default)
 sidebar: false,                    // hide
 sidebar: { collapsible: false },   // non-collapsible
+sidebar: { flat: true },           // Mintlify-style flat
+sidebar: {                         // custom component
+  component: ({ tree }) => <MySidebar tree={tree} />,
+},
 ```
 
 ---

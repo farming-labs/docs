@@ -59,6 +59,202 @@ app/docs/
       page.mdx           # Child page
 ```
 
+## Flat Mode
+
+Render all sidebar items without collapsible sections (Mintlify-style):
+
+```tsx title="docs.config.tsx"
+sidebar: { flat: true },
+```
+
+## Custom Sidebar Component
+
+Replace the default sidebar navigation with your own component. The component receives the full page tree with all parent-child relationships, so you have everything you need to build a completely custom sidebar.
+
+<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
+  <Tab value="Next.js">
+    Pass a render function via `sidebar.component` in your config. It receives `tree`, `collapsible`, and `flat` as props:
+
+    ```tsx title="docs.config.tsx"
+    import type { SidebarComponentProps } from "@farming-labs/docs";
+
+    sidebar: {
+      component: ({ tree, collapsible, flat }: SidebarComponentProps) => (
+        <MySidebar tree={tree} />
+      ),
+    },
+    ```
+
+    Your component receives the full tree structure:
+
+    ```tsx title="components/MySidebar.tsx"
+    "use client";
+    import { usePathname } from "next/navigation";
+    import type { SidebarTree, SidebarNode } from "@farming-labs/docs";
+
+    export function MySidebar({ tree }: { tree: SidebarTree }) {
+      const pathname = usePathname();
+
+      function renderNode(node: SidebarNode) {
+        if (node.type === "page") {
+          return (
+            <a
+              href={node.url}
+              className={pathname === node.url ? "active" : ""}
+            >
+              {node.name}
+            </a>
+          );
+        }
+
+        // node.type === "folder"
+        return (
+          <details open>
+            <summary>{node.name}</summary>
+            <div>
+              {node.index && (
+                <a href={node.index.url}>{node.index.name}</a>
+              )}
+              {node.children.map((child) => renderNode(child))}
+            </div>
+          </details>
+        );
+      }
+
+      return (
+        <nav>
+          {tree.children.map((node) => renderNode(node))}
+        </nav>
+      );
+    }
+    ```
+
+  </Tab>
+  <Tab value="SvelteKit">
+    Use the `sidebar` snippet on `<DocsLayout>`. It receives `tree` and `isActive` as props:
+
+    ```svelte title="+layout.svelte"
+    <script>
+      import DocsLayout from "@farming-labs/svelte-theme/DocsLayout.svelte";
+      let { data, children } = $props();
+    </script>
+
+    <DocsLayout tree={data.tree} config={data.config}>
+      {#snippet sidebar({ tree, isActive })}
+        <nav>
+          {#each tree.children as node}
+            {#if node.type === "page"}
+              <a
+                href={node.url}
+                class:active={isActive(node.url)}
+              >
+                {node.name}
+              </a>
+            {:else}
+              <details open>
+                <summary>{node.name}</summary>
+                {#each node.children as child}
+                  {#if child.type === "page"}
+                    <a href={child.url}>{child.name}</a>
+                  {/if}
+                {/each}
+              </details>
+            {/if}
+          {/each}
+        </nav>
+      {/snippet}
+      {@render children()}
+    </DocsLayout>
+    ```
+
+  </Tab>
+  <Tab value="Astro">
+    Use the `sidebar` named slot on `<DocsLayout>`. Pass the `tree` prop to your custom component:
+
+    ```astro title="layouts/docs.astro"
+    ---
+    import DocsLayout from "@farming-labs/astro-theme/DocsLayout.astro";
+    import MySidebar from "../components/MySidebar.astro";
+    const { tree, config } = Astro.props;
+    ---
+
+    <DocsLayout tree={tree} config={config}>
+      <MySidebar slot="sidebar" tree={tree} />
+      <slot />
+    </DocsLayout>
+    ```
+
+  </Tab>
+  <Tab value="Nuxt">
+    Use the `#sidebar` scoped slot on `<DocsLayout>`. It provides `tree` and `isActive` as slot props:
+
+    ```vue title="layouts/docs.vue"
+    <template>
+      <DocsLayout :tree="tree" :config="config">
+        <template #sidebar="{ tree, isActive }">
+          <nav>
+            <template v-for="node in tree.children" :key="node.name">
+              <a
+                v-if="node.type === 'page'"
+                :href="node.url"
+                :class="{ active: isActive(node.url) }"
+              >
+                {{ node.name }}
+              </a>
+              <details v-else open>
+                <summary>{{ node.name }}</summary>
+                <a
+                  v-for="child in node.children"
+                  v-if="child.type === 'page'"
+                  :key="child.url"
+                  :href="child.url"
+                >
+                  {{ child.name }}
+                </a>
+              </details>
+            </template>
+          </nav>
+        </template>
+        <slot />
+      </DocsLayout>
+    </template>
+    ```
+
+  </Tab>
+</Tabs>
+
+### Tree Structure
+
+The `tree` prop has this shape:
+
+```ts
+interface SidebarTree {
+  name: string;
+  children: SidebarNode[];
+}
+
+type SidebarNode = SidebarPageNode | SidebarFolderNode;
+
+interface SidebarPageNode {
+  type: "page";
+  name: string;
+  url: string;
+  icon?: unknown;
+}
+
+interface SidebarFolderNode {
+  type: "folder";
+  name: string;
+  icon?: unknown;
+  index?: SidebarPageNode;    // folder's own landing page
+  children: SidebarNode[];    // recursive children
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+}
+```
+
+All types are exported from `@farming-labs/docs` for full type safety.
+
 ## Sidebar Style
 
 ```tsx
