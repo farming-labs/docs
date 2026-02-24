@@ -43,20 +43,35 @@ export default function CodeBlock({
           <div
             className="flex items-center justify-between px-3 sm:px-4 py-2.5 min-w-0 overflow-hidden"
             style={{
-              borderBottom: "1px solid color-mix(in srgb, var(--color-fd-foreground, #fff) 10%, transparent)",
-              backgroundImage: "repeating-linear-gradient(-45deg, color-mix(in srgb, var(--color-fd-foreground, #fff) 7%, transparent), color-mix(in srgb, var(--color-fd-foreground, #fff) 7%, transparent) 1px, transparent 1px, transparent 6px)",
+              borderBottom:
+                "1px solid color-mix(in srgb, var(--color-fd-foreground, #fff) 10%, transparent)",
+              backgroundImage:
+                "repeating-linear-gradient(-45deg, color-mix(in srgb, var(--color-fd-foreground, #fff) 7%, transparent), color-mix(in srgb, var(--color-fd-foreground, #fff) 7%, transparent) 1px, transparent 1px, transparent 6px)",
             }}
           >
             <div className="flex items-center gap-2 min-w-0">
               {filename && (
-                <span className="text-[11px] sm:text-xs font-mono truncate" style={{ color: "color-mix(in srgb, var(--color-fd-foreground, #fff) 50%, transparent)" }}>
+                <span
+                  className="text-[11px] sm:text-xs font-mono truncate"
+                  style={{
+                    color: "color-mix(in srgb, var(--color-fd-foreground, #fff) 50%, transparent)",
+                  }}
+                >
                   {filename}
                 </span>
               )}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {title && (
-                <span className="text-[9.5px] border px-2 font-mono uppercase tracking-wider" style={{ backgroundColor: "var(--color-fd-background, #000)", borderColor: "color-mix(in srgb, var(--color-fd-foreground, #fff) 10%, transparent)", color: "color-mix(in srgb, var(--color-fd-foreground, #fff) 20%, transparent)" }}>
+                <span
+                  className="text-[9.5px] border px-2 font-mono uppercase tracking-wider"
+                  style={{
+                    backgroundColor: "var(--color-fd-background, #000)",
+                    borderColor:
+                      "color-mix(in srgb, var(--color-fd-foreground, #fff) 10%, transparent)",
+                    color: "color-mix(in srgb, var(--color-fd-foreground, #fff) 20%, transparent)",
+                  }}
+                >
                   {title}
                 </span>
               )}
