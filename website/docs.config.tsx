@@ -180,9 +180,9 @@ export default defineDocs({
               textDecorationColor:
                 "color-mix(in srgb, var(--color-fd-foreground) 30%, transparent)",
             }}
-            href="/changelog#v0.0.1-beta.16-20"
+            href="/changelog#v0.0.2-beta.16-20"
           >
-            v0.0.1.beta.26
+            v0.0.2.beta.26
           </a>
         </div>
         <span className="text-[11px]">
