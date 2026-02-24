@@ -460,11 +460,17 @@ figure.shiki > div:first-child {
 .fd-page-action-menu {
   border-radius: 0 !important;
   box-shadow: 0 4px 24px hsl(0 0% 0% / 0.5);
+  padding: 0px !important;
+  box-shadow: 2px 2px 0 0 var(--color-fd-border, #262626);
 }
 
 .fd-page-action-menu-item {
   border-radius: 0 !important;
-  font-size: 0.8rem;
+  font-size: 0.68rem;
+  border-top: 1px solid var(--color-fd-border, #262626);
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground, hsl(0 0% 45%));
+  font-family: var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace)) !important;
 }
 
 /* ─── AI Chat (pixel-border — zero radius, pixel-art, monospace) ── */

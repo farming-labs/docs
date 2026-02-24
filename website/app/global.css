@@ -2,9 +2,8 @@
 @import "@farming-labs/theme/pixel-border/css";
 @theme {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono:
-    var(--font-geist-mono), ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas,
-    monospace;
+  --font-mono: var(--font-geist-mono), ui-monospace, "Cascadia Code",
+    "Source Code Pro", Menlo, Consolas, monospace;
 }
 .fd-page-action-btn {
   text-transform: uppercase;
@@ -15,6 +14,7 @@
   background: white;
   color: black;
 }
+
 
 /* sugar-high syntax highlighting tokens */
 .sh-code {
