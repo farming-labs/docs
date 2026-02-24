@@ -314,7 +314,7 @@ export function createDocsMetadata(config: DocsConfig) {
  */
 export function createPageMetadata(
   config: DocsConfig,
-  page: { title: string; description?: string }
+  page: { title: string; description?: string },
 ) {
   const og = config.og;
   const result: Record<string, unknown> = {

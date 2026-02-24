@@ -130,10 +130,7 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
 
   // ── 4. Configure MDX compilation ────────────────────────────────
   const ogEndpoint = readOgEndpoint(root);
-  const remarkPlugins: unknown[] = [
-    "remark-gfm",
-    "remark-frontmatter",
-  ];
+  const remarkPlugins: unknown[] = ["remark-gfm", "remark-frontmatter"];
   if (ogEndpoint) {
     remarkPlugins.push(["@farming-labs/next/mdx-plugins/remark-og", { endpoint: ogEndpoint }]);
   }
