@@ -1103,7 +1103,6 @@ function FooterSection() {
 export default function Home() {
   return (
     <div className="min-h-screen w-full overflow-y-hidden relative bg-black">
-      
       <div className="absolute top-14 w-full right-0 z-[999] h-px bg-white/[8%]" />
       <div className="pointer-events-none fixed inset-0 z-[999]">
         <div className="mx-auto max-w-[90%] h-full relative">
