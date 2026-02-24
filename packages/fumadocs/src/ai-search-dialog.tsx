@@ -257,12 +257,22 @@ type LoaderVariant =
   | "text-shimmer"
   | "loading-dots";
 
-function LoaderIndicator({ variant = "shimmer-dots" }: { variant?: LoaderVariant; label?: string }) {
+function LoaderIndicator({
+  variant = "shimmer-dots",
+}: {
+  variant?: LoaderVariant;
+  label?: string;
+}) {
   const text = "Thinking";
 
   switch (variant) {
     case "circular":
-      return <div className="fd-ai-loader"><div className="fd-ai-loader-circular" /><span className="sr-only">Loading</span></div>;
+      return (
+        <div className="fd-ai-loader">
+          <div className="fd-ai-loader-circular" />
+          <span className="sr-only">Loading</span>
+        </div>
+      );
     case "dots":
       return (
         <div className="fd-ai-loader">
@@ -306,9 +316,17 @@ function LoaderIndicator({ variant = "shimmer-dots" }: { variant?: LoaderVariant
         </div>
       );
     case "pulse":
-      return <div className="fd-ai-loader"><div className="fd-ai-loader-pulse" /></div>;
+      return (
+        <div className="fd-ai-loader">
+          <div className="fd-ai-loader-pulse" />
+        </div>
+      );
     case "pulse-dot":
-      return <div className="fd-ai-loader"><div className="fd-ai-loader-pulse-dot" /></div>;
+      return (
+        <div className="fd-ai-loader">
+          <div className="fd-ai-loader-pulse-dot" />
+        </div>
+      );
     case "terminal":
       return (
         <div className="fd-ai-loader">
@@ -319,9 +337,17 @@ function LoaderIndicator({ variant = "shimmer-dots" }: { variant?: LoaderVariant
         </div>
       );
     case "text-blink":
-      return <div className="fd-ai-loader"><span className="fd-ai-loader-text-blink">{text}</span></div>;
+      return (
+        <div className="fd-ai-loader">
+          <span className="fd-ai-loader-text-blink">{text}</span>
+        </div>
+      );
     case "text-shimmer":
-      return <div className="fd-ai-loader"><span className="fd-ai-loader-shimmer-text">{text}</span></div>;
+      return (
+        <div className="fd-ai-loader">
+          <span className="fd-ai-loader-shimmer-text">{text}</span>
+        </div>
+      );
     case "loading-dots":
       return (
         <div className="fd-ai-loader">
@@ -509,7 +535,9 @@ function AIChat({
                 <div className="fd-ai-bubble-ai">
                   {msg.content ? (
                     <div
-                      className={isStreaming && i === messages.length - 1 ? "fd-ai-streaming" : undefined}
+                      className={
+                        isStreaming && i === messages.length - 1 ? "fd-ai-streaming" : undefined
+                      }
                       dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
                     />
                   ) : loadingComponentHtml ? (
@@ -1112,7 +1140,9 @@ function FullModalAIChat({
                   <div className="fd-ai-fm-msg-content">
                     {msg.content ? (
                       <div
-                        className={isStreaming && i === messages.length - 1 ? "fd-ai-streaming" : undefined}
+                        className={
+                          isStreaming && i === messages.length - 1 ? "fd-ai-streaming" : undefined
+                        }
                         dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
                       />
                     ) : loadingComponentHtml ? (

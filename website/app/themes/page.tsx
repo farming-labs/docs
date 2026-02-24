@@ -114,13 +114,7 @@ export default defineDocs({
 
 type Theme = (typeof themes)[number];
 
-function CodeModal({
-  theme,
-  onClose,
-}: {
-  theme: Theme;
-  onClose: () => void;
-}) {
+function CodeModal({ theme, onClose }: { theme: Theme; onClose: () => void }) {
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -135,10 +129,7 @@ function CodeModal({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative z-10 w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
@@ -166,30 +157,15 @@ function CodeModal({
 
         {/* Code blocks */}
         <div className="space-y-4">
-          <CodeBlock
-            title="Config"
-            filename="docs.config.ts"
-            code={theme.configSnippet}
-          />
-          <CodeBlock
-            title="Styles"
-            filename="global.css"
-            language="css"
-            code={theme.globalCss}
-          />
+          <CodeBlock title="Config" filename="docs.config.ts" code={theme.configSnippet} />
+          <CodeBlock title="Styles" filename="global.css" language="css" code={theme.globalCss} />
         </div>
       </div>
     </div>
   );
 }
 
-function ThemeCard({
-  theme,
-  onShowCode,
-}: {
-  theme: Theme;
-  onShowCode: () => void;
-}) {
+function ThemeCard({ theme, onShowCode }: { theme: Theme; onShowCode: () => void }) {
   return (
     <div className="group relative rounded-none border border-white/[6%] bg-white/[2%] p-6 transition-all hover:border-white/[12%] hover:bg-white/[3%]">
       <div className="flex items-center gap-2 mb-4">
@@ -295,19 +271,13 @@ export default function ThemesPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {themes.map((theme) => (
-            <ThemeCard
-              key={theme.key}
-              theme={theme}
-              onShowCode={() => setActiveTheme(theme)}
-            />
+            <ThemeCard key={theme.key} theme={theme} onShowCode={() => setActiveTheme(theme)} />
           ))}
         </div>
         <div className="h-px w-[calc(100%+200px)] -ml-[100px] mx-auto bg-white/[8%] my-12" />
       </main>
 
-      {activeTheme && (
-        <CodeModal theme={activeTheme} onClose={closeModal} />
-      )}
+      {activeTheme && <CodeModal theme={activeTheme} onClose={closeModal} />}
     </div>
   );
 }
