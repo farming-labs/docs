@@ -45,6 +45,8 @@ interface DocsPageClientProps {
   lastUpdatedEnabled?: boolean;
   /** Where to show the "Last updated" date: "footer" (next to Edit on GitHub) or "below-title" */
   lastUpdatedPosition?: "footer" | "below-title";
+  /** Whether llms.txt is enabled — shows links in footer */
+  llmsTxtEnabled?: boolean;
   /** Map of pathname → frontmatter description */
   descriptionMap?: Record<string, string>;
   /** Frontmatter description to display below the page title (overrides descriptionMap) */
@@ -132,6 +134,7 @@ export function DocsPageClient({
   lastModifiedMap,
   lastUpdatedEnabled = true,
   lastUpdatedPosition = "footer",
+  llmsTxtEnabled = false,
   descriptionMap,
   description,
   children,
@@ -200,7 +203,7 @@ export function DocsPageClient({
 
   const showLastUpdatedBelowTitle = !!lastModified && lastUpdatedPosition === "below-title";
   const showLastUpdatedInFooter = !!lastModified && lastUpdatedPosition === "footer";
-  const showFooter = !!githubFileUrl || showLastUpdatedInFooter;
+  const showFooter = !!githubFileUrl || showLastUpdatedInFooter || llmsTxtEnabled;
 
   const needsBelowTitleBlock = showLastUpdatedBelowTitle || showActions;
 
@@ -285,6 +288,16 @@ export function DocsPageClient({
         {showFooter && (
           <div className="not-prose fd-page-footer">
             {githubFileUrl && <EditOnGitHub href={githubFileUrl} />}
+            {llmsTxtEnabled && (
+              <span className="fd-llms-txt-links">
+                <a href="/api/docs?format=llms" target="_blank" rel="noopener noreferrer" className="fd-llms-txt-link">
+                  llms.txt
+                </a>
+                <a href="/api/docs?format=llms-full" target="_blank" rel="noopener noreferrer" className="fd-llms-txt-link">
+                  llms-full.txt
+                </a>
+              </span>
+            )}
             {showLastUpdatedInFooter && lastModified && (
               <span className="fd-last-updated-footer">Last updated {lastModified}</span>
             )}

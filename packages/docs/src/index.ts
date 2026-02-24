@@ -34,4 +34,5 @@ export type {
   AIConfig,
   OrderingItem,
   LastUpdatedConfig,
+  LlmsTxtConfig,
 } from "./types.js";

@@ -36,6 +36,13 @@ const breadcrumbEnabled = computed(() => {
 const showEditOnGithub = computed(() => !!props.config?.github && !!props.data.editOnGithub);
 const showLastModified = computed(() => !!props.data.lastModified);
 
+const llmsTxtEnabled = computed(() => {
+  const cfg = props.config?.llmsTxt;
+  if (cfg === true) return true;
+  if (typeof cfg === "object" && cfg !== null) return (cfg as { enabled?: boolean }).enabled !== false;
+  return false;
+});
+
 const entry = computed(() => (props.config?.entry as string) ?? "docs");
 
 const metaDescription = computed(
@@ -59,6 +66,7 @@ useHead({
     :next-page="data.nextPage ?? null"
     :edit-on-github="showEditOnGithub ? data.editOnGithub : null"
     :last-modified="showLastModified ? data.lastModified : null"
+    :llms-txt-enabled="llmsTxtEnabled"
   >
     <p v-if="data.description" class="fd-page-description">{{ data.description }}</p>
     <div class="fd-docs-content" v-html="data.html" />

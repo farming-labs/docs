@@ -479,9 +479,59 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       .sort((a, b) => b.score - a.score);
   }
 
-  // ─── GET /api/docs?query=… — full-text search ────────────
+  // ─── llms.txt content builder ────────────────────────────────
+  const llmsSiteTitle =
+    typeof (config as Record<string, unknown>).nav === "object" &&
+    typeof ((config as Record<string, unknown>).nav as Record<string, unknown>)?.title === "string"
+      ? ((config as Record<string, unknown>).nav as Record<string, string>).title
+      : "Documentation";
+
+  const llmsTxtConfig = (config as Record<string, unknown>).llmsTxt as
+    | boolean
+    | { baseUrl?: string; siteTitle?: string; siteDescription?: string }
+    | undefined;
+
+  const llmsBaseUrl =
+    typeof llmsTxtConfig === "object" ? (llmsTxtConfig.baseUrl ?? "") : "";
+  const llmsTitle =
+    typeof llmsTxtConfig === "object" ? (llmsTxtConfig.siteTitle ?? llmsSiteTitle) : llmsSiteTitle;
+  const llmsDesc =
+    typeof llmsTxtConfig === "object" ? llmsTxtConfig.siteDescription : undefined;
+
+  function buildLlmsTxt(full: boolean): string {
+    const pages = getSearchIndex();
+    let out = `# ${llmsTitle}\n\n`;
+    if (llmsDesc) out += `> ${llmsDesc}\n\n`;
+
+    if (full) {
+      for (const page of pages) {
+        out += `## ${page.title}\n\n`;
+        out += `URL: ${llmsBaseUrl}${page.url}\n\n`;
+        if (page.description) out += `${page.description}\n\n`;
+        out += `${page.content}\n\n---\n\n`;
+      }
+    } else {
+      out += `## Pages\n\n`;
+      for (const page of pages) {
+        out += `- [${page.title}](${llmsBaseUrl}${page.url})`;
+        if (page.description) out += `: ${page.description}`;
+        out += `\n`;
+      }
+    }
+    return out;
+  }
+
+  // ─── GET /api/docs?query=… | ?format=llms | ?format=llms-full ──
   function GET(context: { request: Request }): Response {
     const url = new URL(context.request.url);
+    const format = url.searchParams.get("format");
+
+    if (format === "llms" || format === "llms-full") {
+      return new Response(buildLlmsTxt(format === "llms-full"), {
+        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" },
+      });
+    }
+
     const query = url.searchParams.get("query")?.toLowerCase().trim();
     if (!query) {
       return new Response(JSON.stringify([]), {

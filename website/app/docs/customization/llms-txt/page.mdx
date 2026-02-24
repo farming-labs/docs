@@ -1,0 +1,156 @@
+---
+title: "llms.txt"
+description: "Auto-generate llms.txt and llms-full.txt for LLM-friendly documentation"
+icon: "zap"
+order: 5.8
+---
+
+# llms.txt
+
+Serve [`llms.txt`](https://llmstxt.org) content through your existing docs API — no extra route files needed. Just enable it in your config.
+
+## What is llms.txt?
+
+`llms.txt` is a standard for making website content accessible to LLMs. It's served via query params on your existing `/api/docs` endpoint:
+
+- **`/api/docs?format=llms`** — A concise markdown listing of all pages with titles, URLs, and descriptions
+- **`/api/docs?format=llms-full`** — The full stripped content of every page, ready for LLM consumption
+
+## Quick Start
+
+```ts title="docs.config.ts"
+llmsTxt: {
+  enabled: true,
+  baseUrl: "https://docs.example.com",
+}
+```
+
+That's it. The existing API handler serves the content automatically — no extra route files needed.
+
+---
+
+## Configuration Reference
+
+All options go inside the `llmsTxt` object in `docs.config.ts`:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  llmsTxt: {
+    // ... options
+  },
+});
+```
+
+### `llmsTxt.enabled`
+
+Enable or disable llms.txt generation.
+
+| Type      | Default |
+| --------- | ------- |
+| `boolean` | `false` |
+
+### `llmsTxt.baseUrl`
+
+Base URL prepended to all page links in the generated files.
+
+| Type     | Default |
+| -------- | ------- |
+| `string` | `""`    |
+
+```ts
+llmsTxt: {
+  enabled: true,
+  baseUrl: "https://docs.example.com",
+}
+```
+
+### `llmsTxt.siteTitle`
+
+Title shown at the top of the generated files. Falls back to `nav.title` if not set.
+
+| Type     | Default         |
+| -------- | --------------- |
+| `string` | `nav.title`     |
+
+### `llmsTxt.siteDescription`
+
+Description shown below the title.
+
+| Type     | Default     |
+| -------- | ----------- |
+| `string` | `undefined` |
+
+---
+
+## How It Works
+
+No extra route files are needed. The existing API handler (`/api/docs` on Next.js, or your framework's equivalent) serves the llms.txt content when you pass the `format` query parameter:
+
+- `GET /api/docs?format=llms` — concise page listing
+- `GET /api/docs?format=llms-full` — full page content
+
+This works identically across Next.js, SvelteKit, Astro, and Nuxt — just enable `llmsTxt` in your config and the existing `createDocsAPI()` / `createDocsServer()` handler takes care of the rest.
+
+---
+
+## Output Example
+
+### `/api/docs?format=llms`
+
+```markdown
+# My Documentation
+
+> A modern docs framework
+
+## Pages
+
+- [Introduction](https://docs.example.com/docs): Getting started guide
+- [Installation](https://docs.example.com/docs/installation): How to install
+- [Configuration](https://docs.example.com/docs/configuration): Config reference
+```
+
+### `/api/docs?format=llms-full`
+
+```markdown
+# My Documentation
+
+> A modern docs framework
+
+## Introduction
+
+URL: https://docs.example.com/docs
+
+Getting started guide
+
+Full page content here...
+
+---
+
+## Installation
+
+URL: https://docs.example.com/docs/installation
+
+How to install
+
+Full page content here...
+```
+
+---
+
+## Footer Links
+
+When enabled, `llms.txt` and `llms-full.txt` links automatically appear in the page footer next to "Edit on GitHub", pointing to `/api/docs?format=llms` and `/api/docs?format=llms-full` respectively.
+
+## Full Example
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  llmsTxt: {
+    enabled: true,
+    baseUrl: "https://docs.example.com",
+    siteTitle: "My Project Docs",
+    siteDescription: "Comprehensive documentation for My Project",
+  },
+});
+```

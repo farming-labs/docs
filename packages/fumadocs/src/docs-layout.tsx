@@ -505,6 +505,9 @@ export function createDocsLayout(config: DocsConfig) {
   const lastUpdatedPosition: "footer" | "below-title" =
     typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
 
+  // llms.txt config
+  const llmsTxtEnabled = resolveBool(config.llmsTxt);
+
   // Serialize provider icons to HTML strings so they survive the
   // server → client component boundary.
   const rawProviders =
@@ -601,6 +604,7 @@ export function createDocsLayout(config: DocsConfig) {
           lastModifiedMap={lastModifiedMap}
           lastUpdatedEnabled={lastUpdatedEnabled}
           lastUpdatedPosition={lastUpdatedPosition}
+          llmsTxtEnabled={llmsTxtEnabled}
           descriptionMap={descriptionMap}
         >
           {children}
