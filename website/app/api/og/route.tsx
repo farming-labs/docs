@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
       >
         <div
           style={{
-            height: "14px",
+            height: "20px",
             width: "1px",
             backgroundColor: "rgba(255,255,255,0.4)",
           }}
@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
         <span
           style={{
             fontFamily: '"JetBrains Mono"',
-            fontSize: "14px",
+            fontSize: "20px",
             color: "rgba(255,255,255,0.4)",
             letterSpacing: "-0.03em",
             textTransform: "uppercase" as const,
@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
           <p
             style={{
               fontFamily: '"JetBrains Mono"',
-              fontSize: "14px",
+              fontSize: "22px",
               color: "rgba(255,255,255,0.4)",
               letterSpacing: "0.03em",
               textTransform: "uppercase" as const,
@@ -202,7 +202,7 @@ export async function GET(request: NextRequest) {
           <span
             style={{
               fontFamily: '"JetBrains Mono"',
-              fontSize: "14px",
+              fontSize: "20px",
               color: "rgba(255,255,255,0.4)",
               textTransform: "uppercase" as const,
               letterSpacing: "0.03em",
@@ -212,7 +212,7 @@ export async function GET(request: NextRequest) {
           </span>
           <div
             style={{
-              height: "14px",
+              height: "20px",
               width: "1px",
               backgroundColor: "rgba(255,255,255,0.15)",
             }}
@@ -220,7 +220,7 @@ export async function GET(request: NextRequest) {
           <span
             style={{
               fontFamily: '"JetBrains Mono"',
-              fontSize: "14px",
+              fontSize: "20px",
               color: "rgba(255,255,255,0.4)",
               textTransform: "uppercase" as const,
               letterSpacing: "0.03em",
@@ -235,9 +235,9 @@ export async function GET(request: NextRequest) {
             alignItems: "center",
             backgroundColor: "#ffffff",
             color: "#000000",
-            padding: "7px 18px",
+            padding: "12px 24px",
             fontFamily: '"JetBrains Mono"',
-            fontSize: "10px",
+            fontSize: "16px",
             textTransform: "uppercase" as const,
             letterSpacing: "0.06em",
           }}
