@@ -539,7 +539,7 @@ metadata: {
 
 ## `OGConfig`
 
-Open Graph image configuration.
+Open Graph image configuration. When `endpoint` is set, each docs page gets a dynamic OG image: the framework passes the page’s `title` and `description` (from frontmatter) to the endpoint, and the layout injects the resulting image URL into `og:image` and `twitter:image` meta tags.
 
 | Property       | Type                    | Default | Description                         |
 | -------------- | ----------------------- | ------- | ----------------------------------- |
@@ -547,6 +547,24 @@ Open Graph image configuration.
 | `type`         | `"static" \| "dynamic"` | —       | Static images or dynamic generation |
 | `endpoint`     | `string`                | —       | API endpoint for dynamic OG images  |
 | `defaultImage` | `string`                | —       | Fallback OG image URL               |
+
+**Example (Next.js):** In `docs.config.tsx`, set `og.endpoint` to your OG route path. Then implement `app/api/og/route.tsx` (or `route.ts`) that accepts `title` and `description` query params and returns a 1200×630 image (e.g. using `ImageResponse` from `next/og`).
+
+```ts
+og: {
+  enabled: true,
+  type: "dynamic",
+  endpoint: "/api/og",
+},
+```
+
+**Testing your OG image**
+
+1. Start the dev server for the app that serves the OG route (e.g. `cd website && pnpm dev` or `cd examples/next && pnpm dev`).
+2. Open the OG URL in the browser, e.g.  
+   `http://localhost:3000/api/og?title=Test&description=My+description`  
+   (use your app’s port if different).
+3. After changing the OG route code, refresh the page. If the image doesn’t update, do a **hard refresh** (e.g. **Cmd+Shift+R** on macOS, **Ctrl+Shift+R** on Windows) or open the URL in a private/incognito window. You can also add a cache-busting query param (e.g. `&_=1`, `&_=2`) to force a new request.
 
 ---
 
