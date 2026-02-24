@@ -214,7 +214,7 @@ export async function GET(request: NextRequest) {
             style={{
               height: "20px",
               width: "1px",
-              backgroundColor: "rgba(255,255,255,0.15)",
+              backgroundColor: "rgba(255,255,255,0.4)",
             }}
           />
           <span
