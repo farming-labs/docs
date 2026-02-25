@@ -256,14 +256,21 @@ All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
 
 ## Flags
 
-| Flag             | Description                                  |
-| ---------------- | -------------------------------------------- |
-| `--theme <name>` | Skip theme prompt (e.g. `--theme darksharp`) |
-| `--entry <path>` | Skip entry path prompt (e.g. `--entry docs`) |
+| Flag                  | Description                                                                 |
+| --------------------- | --------------------------------------------------------------------------- |
+| `--template <name>`   | Clone an example and get started: `next`, `nuxt`, `sveltekit`, or `astro`  |
+| `--theme <name>`      | Skip theme prompt (e.g. `--theme darksharp`)                                |
+| `--entry <path>`      | Skip entry path prompt (e.g. `--entry docs`)                                |
+
+**Starting from scratch?** Use `--template` in an empty folder — the CLI clones the corresponding example from the repo (e.g. `examples/next`) into the current directory and runs install. No prompts; then run your dev server and you're set.
 
 ## Manual Code
 
 Here is every file the CLI generates, ready to copy-paste if you prefer manual setup.
+
+<Callout type="info" title="Theme CSS in global styles">
+  For each framework, add your **theme's CSS** to the global stylesheet (or config) shown below. The import must match the theme you use in `docs.config` (e.g. `default`, `greentree`, `darksharp`). Without it, docs pages will lack the correct styling.
+</Callout>
 
 <Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
@@ -292,7 +299,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     export default withDocs({});
     ```
 
-    **`app/global.css`**
+    **`app/global.css`** — add your theme's CSS here so docs styling applies.
 
     ```css title="app/global.css"
     @import "tailwindcss";
@@ -438,7 +445,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     export { GET, POST } from "../../../lib/docs.server";
     ```
 
-    **`src/app.css`**
+    **`src/app.css`** — add your theme's CSS here so docs styling applies.
 
     ```css title="src/app.css"
     @import "@farming-labs/svelte-theme/fumadocs/css";
@@ -504,7 +511,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     });
     ```
 
-    **`src/pages/docs/index.astro`** and **`src/pages/docs/[...slug].astro`**
+    **`src/pages/docs/index.astro`** and **`src/pages/docs/[...slug].astro`** — import your theme's CSS in each (e.g. `@farming-labs/astro-theme/css` for default; use `greentree/css` etc. for other themes).
 
     ```astro title="src/pages/docs/[...slug].astro"
     ---
@@ -586,7 +593,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     });
     ```
 
-    **`nuxt.config.ts`**
+    **`nuxt.config.ts`** — add your theme's CSS in the `css` array so docs styling applies.
 
     ```ts title="nuxt.config.ts"
     export default defineNuxtConfig({

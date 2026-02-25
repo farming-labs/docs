@@ -9,7 +9,9 @@ order: 1
 
 ## Option A: CLI (Recommended)
 
-Run the init command inside an existing Next.js, SvelteKit, Astro, or Nuxt project:
+**Starting from scratch?** Use **`--template`** in an empty folder to clone a full example (Next.js, Nuxt, SvelteKit, or Astro) and run install — no prompts. See the `--template` section below.
+
+**Adding docs to an existing app?** Run the init command inside your Next.js, SvelteKit, Astro, or Nuxt project:
 
 ```bash
 npx @farming-labs/docs init
@@ -24,7 +26,23 @@ The CLI will:
 5. Install all required dependencies
 6. Start the dev server and give you a live URL
 
+**Starting from scratch or want a full example?** Use **`--template`** in an empty directory to clone a ready-to-run docs app. No prompts — the CLI copies the example and runs install:
+
+```bash
+mkdir my-docs && cd my-docs
+npx @farming-labs/docs init --template next     # Next.js
+npx @farming-labs/docs init --template nuxt     # Nuxt
+npx @farming-labs/docs init --template sveltekit # SvelteKit
+npx @farming-labs/docs init --template astro    # Astro
+```
+
+This clones the corresponding `examples/*` folder from the repo into the current directory and runs install. Then run your dev server and you're set.
+
 ## Option B: Manual Setup
+
+<Callout type="info" title="Theme CSS in global styles">
+  For each framework below, add your **theme's CSS** to your global stylesheet (e.g. `app/global.css`, `src/app.css`, or `nuxt.config`). The import path must match the theme you use in `docs.config` — e.g. `default`, `greentree`, `darksharp`. Without it, docs pages will lack the correct styling.
+</Callout>
 
 <Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
@@ -83,6 +101,8 @@ The CLI will:
     > `RootProvider` automatically configures the search API endpoint (`/api/docs`) and handles theme persistence. The `suppressHydrationWarning` on `<html>` prevents React warnings from the theme class injection.
 
     ### 5. Import theme CSS in `app/global.css`
+
+    Add your theme's CSS to your global stylesheet so docs styling applies. Use the import that matches the theme in your config (e.g. `default` below; for `greentree` use `@farming-labs/theme/greentree/css`).
 
     ```css title="app/global.css"
     @import "tailwindcss";
@@ -211,6 +231,8 @@ The CLI will:
 
     ### 5. Import theme CSS in `src/app.css`
 
+    Add your theme's CSS to your global stylesheet so docs styling applies. Use the import that matches the theme in your config (e.g. `fumadocs` below; for `greentree` use `@farming-labs/svelte-theme/greentree/css`).
+
     ```css title="src/app.css"
     @import "@farming-labs/svelte-theme/fumadocs/css";
     ```
@@ -282,6 +304,8 @@ The CLI will:
     ```
 
     ### 4. Create page routes
+
+    Import your theme's CSS in each docs page (or in a global CSS file and import that). The example below uses `@farming-labs/astro-theme/css` (default); for other themes use e.g. `@farming-labs/astro-theme/greentree/css`.
 
     **`src/pages/docs/index.astro`** and **`src/pages/docs/[...slug].astro`**:
 
@@ -364,7 +388,7 @@ The CLI will:
 
     ```ts title="docs.config.ts"
     import { defineDocs } from "@farming-labs/docs";
-    import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
+    import { fumadocs } from "@farming-labs/nuxt-themeumadocs";
 
     export default defineDocs({
       entry: "docs",
@@ -382,6 +406,8 @@ The CLI will:
     ```
 
     ### 3. Configure `nuxt.config.ts`
+
+    Add your theme's CSS via the `css` array so docs styling applies. Use the path that matches the theme in your config (e.g. `fumadocs` below; for `greentree` use `@farming-labs/nuxt-theme/greentree/css`).
 
     ```ts title="nuxt.config.ts"
     export default defineNuxtConfig({

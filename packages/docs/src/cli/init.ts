@@ -14,6 +14,17 @@ import {
   exec,
   spawnAndWaitFor,
 } from "./utils.js";
+
+const EXAMPLES_REPO = "farming-labs/docs";
+const VALID_TEMPLATES = ["next", "nuxt", "sveltekit", "astro"] as const;
+type TemplateName = (typeof VALID_TEMPLATES)[number];
+
+export interface InitOptions {
+  template?: string;
+  theme?: string;
+  entry?: string;
+}
+
 import {
   docsConfigTemplate,
   nextConfigTemplate,
@@ -65,10 +76,64 @@ import {
   type TemplateConfig,
 } from "./templates.js";
 
-export async function init() {
+export async function init(options: InitOptions = {}) {
   const cwd = process.cwd();
 
   p.intro(pc.bgCyan(pc.black(" @farming-labs/docs ")));
+
+  // -----------------------------------------------------------------------
+  // Template: clone example from repo (--template next | nuxt | sveltekit | astro)
+  // -----------------------------------------------------------------------
+
+  if (options.template) {
+    const template = options.template.toLowerCase();
+    if (!VALID_TEMPLATES.includes(template as TemplateName)) {
+      p.log.error(
+        `Invalid ${pc.cyan("--template")}. Use one of: ${VALID_TEMPLATES.map((t) => pc.cyan(t)).join(", ")}`,
+      );
+      process.exit(1);
+    }
+
+    const templateLabel =
+      template === "next"
+        ? "Next.js"
+        : template === "nuxt"
+          ? "Nuxt"
+          : template === "sveltekit"
+            ? "SvelteKit"
+            : "Astro";
+
+    p.log.step(`Cloning ${pc.cyan(`examples/${template}`)} from ${pc.cyan(EXAMPLES_REPO)}...`);
+
+    try {
+      exec(`npx degit ${EXAMPLES_REPO}/examples/${template} . --force`, cwd);
+    } catch (err) {
+      p.log.error("Failed to clone the example. Check your connection and that the repo exists.");
+      process.exit(1);
+    }
+
+    p.log.success(`Cloned ${templateLabel} example. Installing dependencies...`);
+
+    const pm = detectPackageManager(cwd);
+    try {
+      if (pm === "pnpm") {
+        exec("pnpm install", cwd);
+      } else if (pm === "yarn") {
+        exec("yarn install", cwd);
+      } else if (pm === "bun") {
+        exec("bun install", cwd);
+      } else {
+        exec("npm install", cwd);
+      }
+    } catch {
+      p.log.warn("Dependency install failed. Run your package manager install command manually.");
+    }
+
+    p.outro(
+      pc.green(`Done! Run ${pc.cyan(pm === "yarn" ? "yarn dev" : pm === "bun" ? "bun dev" : `${pm} run dev`)} to start the dev server.`),
+    );
+    process.exit(0);
+  }
 
   // -----------------------------------------------------------------------
   // Step 1: Framework detection

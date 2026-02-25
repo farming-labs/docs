@@ -6,9 +6,32 @@ import { init } from "./init.js";
 const args = process.argv.slice(2);
 const command = args[0];
 
+/** Parse flags like --template next, --theme darksharp, --entry docs */
+function parseFlags(argv: string[]): Record<string, string | undefined> {
+  const flags: Record<string, string | undefined> = {};
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg.startsWith("--") && arg.includes("=")) {
+      const [key, value] = arg.slice(2).split("=");
+      flags[key] = value;
+    } else if (arg.startsWith("--") && argv[i + 1] && !argv[i + 1].startsWith("--")) {
+      flags[arg.slice(2)] = argv[i + 1];
+      i++;
+    }
+  }
+  return flags;
+}
+
 async function main() {
+  const flags = parseFlags(args);
+  const initOptions = {
+    template: flags.template,
+    theme: flags.theme,
+    entry: flags.entry,
+  };
+
   if (!command || command === "init") {
-    await init();
+    await init(initOptions);
   } else if (command === "--help" || command === "-h") {
     printHelp();
   } else if (command === "--version" || command === "-v") {
@@ -34,9 +57,12 @@ ${pc.dim("Commands:")}
 ${pc.dim("Supported frameworks:")}
   Next.js, SvelteKit, Astro, Nuxt
 
-${pc.dim("Options:")}
-  ${pc.cyan("-h, --help")}       Show this help message
-  ${pc.cyan("-v, --version")}    Show version
+${pc.dim("Options for init:")}
+  ${pc.cyan("--template <name>")}  Clone an example (${pc.dim("next")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}) and get started
+  ${pc.cyan("--theme <name>")}     Skip theme prompt (e.g. ${pc.dim("darksharp")}, ${pc.dim("greentree")})
+  ${pc.cyan("--entry <path>")}     Skip entry path prompt (e.g. ${pc.dim("docs")})
+  ${pc.cyan("-h, --help")}         Show this help message
+  ${pc.cyan("-v, --version")}     Show version
 `);
 }
 

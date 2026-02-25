@@ -329,7 +329,7 @@ pnpm add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme
 
 ```ts
 import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
+import { fumadocs } from "@farming-labs/nuxt-theme";
 
 export default defineDocs({
   entry: "docs",
