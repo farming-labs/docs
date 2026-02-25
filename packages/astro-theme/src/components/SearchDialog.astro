@@ -35,6 +35,7 @@ const suggestedQuestions = config?.ai?.suggestedQuestions ?? [];
           <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
         </svg>
         <input id="fd-search-input" class="fd-ai-input" placeholder="Search documentation..." type="text" />
+        <kbd class="fd-search-kbd" aria-label="Shortcut: Command K">⌘K</kbd>
       </div>
       <div class="fd-ai-results" id="fd-search-results">
         <div class="fd-ai-result-empty">Type to search the docs</div>
@@ -157,8 +158,59 @@ const suggestedQuestions = config?.ai?.suggestedQuestions ?? [];
     const aiPanel = document.getElementById('fd-ai-panel');
     let debounceTimer: ReturnType<typeof setTimeout>;
 
+    function openSearch() {
+      if (dialog) {
+        dialog.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => searchInput?.focus(), 50);
+      }
+    }
+
+    function closeSearch() {
+      if (dialog) {
+        dialog.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+    }
+
+    function toggleSearch() {
+      if (!dialog) return;
+      const isOpen = dialog.style.display !== 'none';
+      if (isOpen) closeSearch();
+      else openSearch();
+    }
+
+    // Omni command: ⌘K / Ctrl+K opens search by default (same as fumadocs DocsCommandSearch) — register once per page
+    if (!document.body.hasAttribute('data-fd-cmdk-registered')) {
+      document.body.setAttribute('data-fd-cmdk-registered', 'true');
+      document.addEventListener('keydown', function onCmdK(e) {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+          e.preventDefault();
+          const d = document.getElementById('fd-search-dialog');
+          if (d) {
+            const isOpen = d.style.display !== 'none';
+            if (isOpen) {
+              d.style.display = 'none';
+              document.body.style.overflow = '';
+            } else {
+              d.style.display = 'flex';
+              document.body.style.overflow = 'hidden';
+              setTimeout(() => document.getElementById('fd-search-input')?.focus(), 50);
+            }
+          }
+        }
+        if (e.key === 'Escape') {
+          const d = document.getElementById('fd-search-dialog');
+          if (d && d.style.display !== 'none') {
+            d.style.display = 'none';
+            document.body.style.overflow = '';
+          }
+        }
+      });
+    }
+
     dialog?.addEventListener('click', (e) => {
-      if (e.target === dialog) dialog.style.display = 'none';
+      if (e.target === dialog) closeSearch();
     });
 
     dialog?.querySelector('.fd-ai-dialog')?.addEventListener('click', (e) => {
@@ -201,7 +253,7 @@ const suggestedQuestions = config?.ai?.suggestedQuestions ?? [];
                 </a>
               `).join('');
               searchResults!.querySelectorAll('a').forEach(a => {
-                a.addEventListener('click', () => { dialog!.style.display = 'none'; });
+                a.addEventListener('click', closeSearch);
               });
             }
           }
@@ -215,6 +267,7 @@ const suggestedQuestions = config?.ai?.suggestedQuestions ?? [];
     const aiMessages = document.getElementById('fd-ai-messages');
     let messages: Array<{ role: string; content: string }> = [];
     let isStreaming = false;
+    let streamRenderThrottle: ReturnType<typeof setTimeout> | null = null;
 
     let renderScheduled = false;
     function scheduleRender() {
@@ -268,7 +321,12 @@ const suggestedQuestions = config?.ai?.suggestedQuestions ?? [];
                 if (content) {
                   assistantContent += content;
                   messages[messages.length - 1].content = assistantContent;
-                  scheduleRender();
+                  if (!streamRenderThrottle) {
+                    streamRenderThrottle = setTimeout(() => {
+                      streamRenderThrottle = null;
+                      doRender();
+                    }, 80);
+                  }
                 }
               } catch {}
             }
@@ -287,6 +345,18 @@ const suggestedQuestions = config?.ai?.suggestedQuestions ?? [];
       if (messages.length === 0) {
         aiMessages.innerHTML = '<div class="fd-ai-empty"><div class="fd-ai-empty-title">Ask anything about the docs</div></div>';
         return;
+      }
+      const lastMsg = messages[messages.length - 1];
+      const isStreamingLast = isStreaming && lastMsg.role === 'assistant' && lastMsg.content;
+      const wrappers = aiMessages.querySelectorAll('.fd-ai-msg');
+      if (isStreamingLast && wrappers.length === messages.length) {
+        const lastWrapper = wrappers[wrappers.length - 1];
+        const contentDiv = lastWrapper.querySelector('.fd-ai-bubble-ai');
+        if (contentDiv) {
+          contentDiv.innerHTML = `<div class="fd-ai-streaming">${renderMarkdown(lastMsg.content)}</div>`;
+          aiMessages.scrollTop = aiMessages.scrollHeight;
+          return;
+        }
       }
       const THINKING = `<div class="fd-ai-loader"><span class="fd-ai-loader-shimmer-text">Thinking</span><span class="fd-ai-loader-typing-dots"><span class="fd-ai-loader-typing-dot"></span><span class="fd-ai-loader-typing-dot"></span><span class="fd-ai-loader-typing-dot"></span></span></div>`;
       const isLast = (i: number) => i === messages.length - 1;

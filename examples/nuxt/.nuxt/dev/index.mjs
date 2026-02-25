@@ -5,9 +5,9 @@ import { resolve, dirname, join } from 'node:path';
 import nodeCrypto from 'node:crypto';
 import { parentPort, threadId } from 'node:worker_threads';
 import { escapeHtml } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/@vue+shared@3.5.28/node_modules/@vue/shared/dist/shared.cjs.js';
-import { defineDocsHandler } from 'file:///Users/mac/oss/docs_/packages/nuxt/dist/server.js';
-import { defineDocs } from 'file:///Users/mac/oss/docs_/packages/docs/dist/index.mjs';
-import { colorful } from 'file:///Users/mac/oss/docs_/packages/nuxt-theme/src/themes/colorful.js';
+import { defineDocsHandler } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/@farming-labs+nuxt@0.0.2_@farming-labs+docs@0.0.2/node_modules/@farming-labs/nuxt/dist/server.js';
+import { defineDocs } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/@farming-labs+docs@0.0.2/node_modules/@farming-labs/docs/dist/index.mjs';
+import { greentree } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.2_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@_3166a39695409f1be2d6931ff450096b/node_modules/@farming-labs/nuxt-theme/src/themes/greentree.js';
 import { createRenderer, getRequestDependencies, getPreloadLinks, getPrefetchLinks } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/vue-bundle-renderer@2.2.0/node_modules/vue-bundle-renderer/dist/runtime.mjs';
 import { parseURL, withoutBase, joinURL, getQuery, withQuery, withTrailingSlash, decodePath, withLeadingSlash, withoutTrailingSlash, joinRelativeURL } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/ufo@1.6.3/node_modules/ufo/dist/index.mjs';
 import { renderToString } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/vue@3.5.28_typescript@5.9.3/node_modules/vue/server-renderer/index.mjs';
@@ -2059,7 +2059,7 @@ const asyncContext = getContext("nuxt-dev", {
 	asyncContext: true,
 	AsyncLocalStorage
 });
-const _LjnL0dg5lOMwqa57WlL1NbWM1yRh4JheHBfyCabUMPA = (nitroApp) => {
+const _j3L8BAZ9L_EtT3vsMSVb_IKqusQA9M39XQul7NlHwRs = (nitroApp) => {
 	const handler = nitroApp.h3App.handler;
 	nitroApp.h3App.handler = (event) => {
 		return asyncContext.callAsync({
@@ -2134,7 +2134,7 @@ function onConsoleLog(callback) {
 
 const plugins = [
   _86PzhwlKpSp0zyNklczts0h7yuldipqeiC0UfgB33SM,
-_LjnL0dg5lOMwqa57WlL1NbWM1yRh4JheHBfyCabUMPA
+_j3L8BAZ9L_EtT3vsMSVb_IKqusQA9M39XQul7NlHwRs
 ];
 
 const assets = {};
@@ -2587,14 +2587,14 @@ async function getIslandContext(event) {
 }
 
 const _lazy_xZ09yu = () => Promise.resolve().then(function () { return docs$1; });
-const _lazy_ZxEm7k = () => Promise.resolve().then(function () { return renderer$1; });
+const _lazy_6IlIun = () => Promise.resolve().then(function () { return renderer$1; });
 
 const handlers = [
   { route: '', handler: __8j2qC, lazy: false, middleware: true, method: undefined },
   { route: '/api/docs', handler: _lazy_xZ09yu, lazy: true, middleware: false, method: undefined },
-  { route: '/__nuxt_error', handler: _lazy_ZxEm7k, lazy: true, middleware: false, method: undefined },
+  { route: '/__nuxt_error', handler: _lazy_6IlIun, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_island/**', handler: _SxA8c9, lazy: false, middleware: false, method: undefined },
-  { route: '/**', handler: _lazy_ZxEm7k, lazy: true, middleware: false, method: undefined }
+  { route: '/**', handler: _lazy_6IlIun, lazy: true, middleware: false, method: undefined }
 ];
 
 function createNitroApp() {
@@ -2937,7 +2937,7 @@ const styles$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
 const config = defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: colorful({
+  theme: greentree({
     ui: {
       colors: {
         primary: "oklch(0.985 0.001 106.423)",

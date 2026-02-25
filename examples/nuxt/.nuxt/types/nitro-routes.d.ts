@@ -7,7 +7,7 @@ declare module "nitropack/types" {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/docs').default>>>>
     }
     '/__nuxt_error': {
-      'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../../../node_modules/.pnpm/@nuxt+nitro-server@3.21.1_@vercel+functions@2.2.13_db0@0.3.4_ioredis@5.9.3_magicast@0.5_ece7d3f6fbea6dcf46107df7e6b50295/node_modules/@nuxt/nitro-server/dist/runtime/handlers/renderer').default>>>>
+      'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../../../node_modules/.pnpm/@nuxt+nitro-server@3.21.1_@vercel+functions@2.2.13_db0@0.3.4_ioredis@5.9.3_magicast@0.5_d99ab3538c707163355b11c1e5a9b59c/node_modules/@nuxt/nitro-server/dist/runtime/handlers/renderer').default>>>>
     }
     '/__nuxt_island/**': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/#internal/nuxt/island-renderer').default>>>>
