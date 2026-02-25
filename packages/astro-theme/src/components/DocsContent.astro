@@ -53,10 +53,19 @@ const DEFAULT_OPEN_PROVIDERS = [
 
 const openDocsProviders = (() => {
   const pa = config?.pageActions;
-  const od = typeof pa?.openDocs === "object" ? pa.openDocs : null;
-  const list = od?.providers;
+  const od = pa && typeof pa === "object" && pa.openDocs != null ? pa.openDocs : null;
+  const list =
+    od && typeof od === "object" && "providers" in od
+      ? (od as { providers?: Array<{ name?: string; urlTemplate?: string }> }).providers
+      : undefined;
   if (Array.isArray(list) && list.length > 0) {
-    return list.map((p) => ({ name: p.name, urlTemplate: p.urlTemplate || "" })).filter((p) => p.urlTemplate);
+    const mapped = list
+      .map((p) => ({
+        name: typeof p?.name === "string" ? p.name : "Open",
+        urlTemplate: typeof (p as { urlTemplate?: string })?.urlTemplate === "string" ? (p as { urlTemplate: string }).urlTemplate : "",
+      }))
+      .filter((p) => p.urlTemplate.length > 0);
+    if (mapped.length > 0) return mapped;
   }
   return DEFAULT_OPEN_PROVIDERS;
 })();

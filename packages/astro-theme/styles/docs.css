@@ -753,6 +753,17 @@ samp {
   flex: 1;
 }
 
+/* No underline on page action buttons or menu items (they sit inside .fd-page-body) */
+.fd-page-actions a,
+.fd-page-actions button,
+.fd-page-action-menu-item,
+.fd-page-action-btn {
+  text-decoration: none !important;
+}
+.fd-page-action-menu-item:hover {
+  text-decoration: none !important;
+}
+
 /* ─── Theme Toggle ───────────────────────────────────────────────────── */
 
 .fd-theme-toggle {
@@ -892,7 +903,7 @@ samp {
   flex: 1;
 }
 
-.fd-page-body a {
+.fd-page-body a:not(.fd-page-action-menu-item) {
   color: var(--color-fd-foreground);
   font-weight: 500;
   text-decoration: underline;
