@@ -345,9 +345,7 @@ export default config;
 
 /** @param useAlias - When false, paths (e.g. @/*) are omitted so no alias is added. */
 export function tsconfigTemplate(useAlias = false): string {
-  const pathsBlock = useAlias
-    ? ',\n    "paths": { "@/*": ["./*"] }'
-    : "";
+  const pathsBlock = useAlias ? ',\n    "paths": { "@/*": ["./*"] }' : "";
   return `\
 {
   "compilerOptions": {

@@ -130,7 +130,9 @@ export async function init(options: InitOptions = {}) {
     }
 
     p.outro(
-      pc.green(`Done! Run ${pc.cyan(pm === "yarn" ? "yarn dev" : pm === "bun" ? "bun dev" : `${pm} run dev`)} to start the dev server.`),
+      pc.green(
+        `Done! Run ${pc.cyan(pm === "yarn" ? "yarn dev" : pm === "bun" ? "bun dev" : `${pm} run dev`)} to start the dev server.`,
+      ),
     );
     process.exit(0);
   }

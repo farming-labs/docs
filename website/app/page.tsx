@@ -238,8 +238,10 @@ export default function RootLayout({ children }) {
         />
 
         <p className="text-xs text-white/50 -mt-1 mb-2">
-          In <code className="text-white/70">app/global.css</code>, import your theme&apos;s CSS so docs styling applies (e.g.{" "}
-          <code className="text-white/70">{`@import "@farming-labs/theme/default/css";`}</code> — use the path that matches your theme).
+          In <code className="text-white/70">app/global.css</code>, import your theme&apos;s CSS so
+          docs styling applies (e.g.{" "}
+          <code className="text-white/70">{`@import "@farming-labs/theme/default/css";`}</code> —
+          use the path that matches your theme).
         </p>
 
         <div className="flex items-start gap-4">
