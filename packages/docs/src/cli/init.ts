@@ -144,7 +144,9 @@ export async function init(options: InitOptions = {}) {
       process.exit(1);
     }
 
-    p.log.success(`Bootstrapped ${pc.cyan(`'${projectName}'`)}. Installing dependencies with pnpm...`);
+    p.log.success(
+      `Bootstrapped ${pc.cyan(`'${projectName}'`)}. Installing dependencies with pnpm...`,
+    );
 
     try {
       exec("pnpm install", targetDir);
@@ -153,7 +155,9 @@ export async function init(options: InitOptions = {}) {
     }
 
     p.outro(
-      pc.green(`Done! Run ${pc.cyan(`cd ${projectName} && pnpm run dev`)} to start the dev server.`),
+      pc.green(
+        `Done! Run ${pc.cyan(`cd ${projectName} && pnpm run dev`)} to start the dev server.`,
+      ),
     );
     process.exit(0);
   }
