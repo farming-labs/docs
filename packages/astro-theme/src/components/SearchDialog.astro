@@ -1,387 +1,370 @@
 ---
 const { config = null } = Astro.props;
-const aiMode = config?.ai?.mode ?? "search";
-const aiInSearch = config?.ai?.enabled && aiMode !== "floating";
-const aiLabel = config?.ai?.aiLabel ?? "AI";
-const suggestedQuestions = config?.ai?.suggestedQuestions ?? [];
 ---
 
-<div id="fd-search-config" data-ai-label={aiLabel} style="display:none"></div>
-<div class="fd-ai-overlay" id="fd-search-dialog" style="display:none">
-  <div class="fd-ai-dialog" style="left:50%;top:12%;transform:translateX(-50%);width:min(640px,calc(100vw - 32px));max-height:min(520px,calc(100vh - 120px));animation:fd-ai-slide-up 200ms ease-out">
-    <div class="fd-ai-tab-bar">
-      <button class="fd-ai-tab" data-tab="search" data-active="true">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-        </svg>
-        Search
-      </button>
-      {aiInSearch && (
-        <button class="fd-ai-tab" data-tab="ai">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+<!-- Omni command palette — same structure as website/components/ui/omni-command-palette.tsx -->
+<div id="fd-search-dialog" style="display: none;">
+  <div class="omni-overlay" id="fd-omni-overlay" aria-hidden="true"></div>
+  <div class="omni-content" id="fd-omni-content" role="dialog" aria-label="Search documentation">
+    <div class="omni-header">
+      <div class="omni-search-row">
+        <span class="omni-search-icon" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
           </svg>
-          Ask {aiLabel}
+        </span>
+        <input
+          type="text"
+          id="fd-omni-input"
+          class="omni-search-input"
+          role="combobox"
+          aria-expanded="true"
+          aria-controls="fd-omni-listbox"
+          placeholder="Search documentation…"
+          autocomplete="off"
+        />
+        <kbd class="omni-kbd">⌘K</kbd>
+        <button type="button" aria-label="Close" class="omni-close-btn" id="fd-omni-close">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
         </button>
-      )}
-      <span style="margin-left:auto;display:flex;align-items:center;padding-right:12px">
-        <kbd class="fd-ai-esc">ESC</kbd>
-      </span>
+      </div>
     </div>
 
-    <div id="fd-search-panel" style="display:flex;flex-direction:column;flex:1;min-height:0">
-      <div class="fd-ai-search-wrap">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+    <div class="omni-body" id="fd-omni-listbox" role="listbox" aria-label="Search results">
+      <div class="omni-loading" id="fd-omni-loading" style="display: none;">
+        <svg class="omni-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
         </svg>
-        <input id="fd-search-input" class="fd-ai-input" placeholder="Search documentation..." type="text" />
-        <kbd class="fd-search-kbd" aria-label="Shortcut: Command K">⌘K</kbd>
+        Searching…
       </div>
-      <div class="fd-ai-results" id="fd-search-results">
-        <div class="fd-ai-result-empty">Type to search the docs</div>
+      <div id="fd-omni-recent-group" class="omni-group" style="display: none;">
+        <div class="omni-group-label">Recent</div>
+        <div class="omni-group-items" id="fd-omni-recent-items"></div>
+      </div>
+      <div id="fd-omni-docs-group" class="omni-group" style="display: none;">
+        <div class="omni-group-label">Documentation</div>
+        <div class="omni-group-items" id="fd-omni-docs-items"></div>
+      </div>
+      <div class="omni-empty" id="fd-omni-empty">
+        <div class="omni-empty-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+        </div>
+        <span id="fd-omni-empty-text">Type to search the docs, or browse recent items.</span>
       </div>
     </div>
 
-    {aiInSearch && (
-      <div id="fd-ai-panel" style="display:none;flex-direction:column;flex:1;min-height:0">
-        <div class="fd-ai-messages" id="fd-ai-messages">
-          <div class="fd-ai-empty">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-              <path d="M20 3v4" /><path d="M22 5h-4" />
+    <div class="omni-footer">
+      <div class="omni-footer-inner">
+        <div class="omni-footer-hints">
+          <span class="omni-footer-hint">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <polyline points="9 18 15 12 9 6" />
             </svg>
-            <div class="fd-ai-empty-title">Ask anything about the docs</div>
-            <div class="fd-ai-empty-desc">{aiLabel} will search through the documentation and answer your question.</div>
-          </div>
-        </div>
-        <div class="fd-ai-chat-footer">
-          <div class="fd-ai-input-wrap">
-            <input id="fd-ai-input" class="fd-ai-input" placeholder="Ask a question..." type="text" />
-            <button id="fd-ai-send" class="fd-ai-send-btn" aria-label="Send">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m5 12 7-7 7 7" /><path d="M12 19V5" />
-              </svg>
-            </button>
-          </div>
+            to select
+          </span>
+          <span class="omni-footer-hint">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M18 15l-6-6-6 6" />
+            </svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+            to navigate
+          </span>
+          <span class="omni-footer-hint omni-footer-hint-desktop">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+            to close
+          </span>
         </div>
       </div>
-    )}
+    </div>
   </div>
 </div>
 
-<script>
-  import { highlight } from 'sugar-high';
+<script is:inline>
+(function () {
+  var STORAGE_KEY = "fd:omni:recents";
+  var MAX_RECENTS = 8;
+  var DEBOUNCE_MS = 150;
 
-  function escapeHtml(s: string): string {
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  function getDialog() { return document.getElementById("fd-search-dialog"); }
+  function getOverlay() { return document.getElementById("fd-omni-overlay"); }
+  function getContent() { return document.getElementById("fd-omni-content"); }
+  function getInput() { return document.getElementById("fd-omni-input"); }
+  function getListbox() { return document.getElementById("fd-omni-listbox"); }
+  function getLoading() { return document.getElementById("fd-omni-loading"); }
+  function getRecentGroup() { return document.getElementById("fd-omni-recent-group"); }
+  function getRecentItems() { return document.getElementById("fd-omni-recent-items"); }
+  function getDocsGroup() { return document.getElementById("fd-omni-docs-group"); }
+  function getDocsItems() { return document.getElementById("fd-omni-docs-items"); }
+  function getEmpty() { return document.getElementById("fd-omni-empty"); }
+  function getEmptyText() { return document.getElementById("fd-omni-empty-text"); }
+
+  function getRecents() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
   }
 
-  function buildCodeBlock(lang: string, code: string): string {
-    const trimmed = code.replace(/\n$/, '');
-    const highlighted = highlight(trimmed).replace(/<\/span>\n<span/g, '</span><span');
-    const langLabel = lang ? `<div class="fd-ai-code-lang">${escapeHtml(lang)}</div>` : '';
-    const copyBtn = `<button class="fd-ai-code-copy" onclick="(function(btn){var code=btn.closest('.fd-ai-code-block').querySelector('code').textContent;navigator.clipboard.writeText(code).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy'},1500)})})(this)">Copy</button>`;
-    return `<div class="fd-ai-code-block"><div class="fd-ai-code-header">${langLabel}${copyBtn}</div><pre><code>${highlighted}</code></pre></div>`;
+  function saveRecent(entry) {
+    try {
+      var recents = getRecents();
+      var next = [entry].concat(recents.filter(function (r) { return r.id !== entry.id; })).slice(0, MAX_RECENTS);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch (e) {}
   }
 
-  function isTableRow(line: string): boolean {
-    const t = line.trim();
-    return t.startsWith('|') && t.endsWith('|') && t.includes('|');
+  function openDialog() {
+    var dialog = getDialog();
+    if (dialog) {
+      dialog.style.display = "block";
+      document.body.style.overflow = "hidden";
+      setTimeout(function () {
+        var input = getInput();
+        if (input) { input.value = ""; input.focus(); }
+        render();
+      }, 10);
+    }
   }
 
-  function isTableSeparator(line: string): boolean {
-    return /^\|[\s:]*-+[\s:]*(\|[\s:]*-+[\s:]*)*\|$/.test(line.trim());
+  function closeDialog() {
+    var dialog = getDialog();
+    if (dialog) {
+      dialog.style.display = "none";
+      document.body.style.overflow = "";
+    }
   }
 
-  function renderTable(rows: string[]): string {
-    const parseRow = (row: string) =>
-      row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
-    const headerCells = parseRow(rows[0]);
-    const thead = `<thead><tr>${headerCells.map(c => `<th>${c}</th>`).join('')}</tr></thead>`;
-    const bodyRows = rows.slice(1).map(row => {
-      const cells = parseRow(row);
-      return `<tr>${cells.map(c => `<td>${c}</td>`).join('')}</tr>`;
-    }).join('');
-    return `<table>${thead}<tbody>${bodyRows}</tbody></table>`;
+  function stripHtml(html) {
+    if (typeof document === "undefined") return (html || "").replace(/<[^>]+>/g, "");
+    var el = document.createElement("div");
+    el.innerHTML = html || "";
+    return el.textContent || el.innerText || "";
   }
 
-  function renderMarkdown(text: string): string {
-    if (!text) return '';
-    const codeBlocks: string[] = [];
-    let processed = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_m, lang, code) => {
-      codeBlocks.push(buildCodeBlock(lang, code));
-      return `\x00CB${codeBlocks.length - 1}\x00`;
-    });
-    processed = processed.replace(/```(\w*)\n([\s\S]*)$/, (_m, lang, code) => {
-      codeBlocks.push(buildCodeBlock(lang, code));
-      return `\x00CB${codeBlocks.length - 1}\x00`;
-    });
-    const lines = processed.split('\n');
-    const output: string[] = [];
-    let i = 0;
-    while (i < lines.length) {
-      if (isTableRow(lines[i]) && i + 1 < lines.length && isTableSeparator(lines[i + 1])) {
-        const tableLines = [lines[i]];
-        i += 2;
-        while (i < lines.length && isTableRow(lines[i])) { tableLines.push(lines[i]); i++; }
-        output.push(renderTable(tableLines));
-        continue;
+  var fileIconSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>';
+  var externalSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+  var chevronSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>';
+
+  function renderItem(item, active, isRecent) {
+    var label = (item.label || item.content || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    var subtitle = (item.subtitle || item.description || (isRecent ? "Recently viewed" : "Page")).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    var url = item.url || "#";
+    var id = (item.id || url).replace(/[^a-zA-Z0-9-_]/g, "_");
+    var activeClass = active ? " omni-item-active" : "";
+    return (
+      '<button type="button" class="omni-item' + activeClass + '" data-id="' + id + '" data-url="' + url.replace(/"/g, "&quot;") + '" role="option" aria-selected="' + (active ? "true" : "false") + '">' +
+        '<div class="omni-item-icon">' + fileIconSvg + '</div>' +
+        '<div class="omni-item-text">' +
+          '<div class="omni-item-label">' + label + '</div>' +
+          '<div class="omni-item-subtitle">' + subtitle + '</div>' +
+        '</div>' +
+        '<a href="' + url + '" class="omni-item-ext" title="Open in new tab" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">' + externalSvg + '</a>' +
+        '<span class="omni-item-chevron" aria-hidden="true">' + chevronSvg + '</span>' +
+      '</button>'
+    );
+  }
+
+  var debounceTimer = null;
+  var currentResults = [];
+  var recentsList = [];
+  var activeIndex = 0;
+
+  function allItems() {
+    var q = (getInput() && getInput().value || "").trim();
+    if (q && currentResults.length) return currentResults;
+    return recentsList;
+  }
+
+  function render() {
+    var input = getInput();
+    var q = input ? input.value.trim() : "";
+    var loadingEl = getLoading();
+    var recentGroup = getRecentGroup();
+    var recentItemsEl = getRecentItems();
+    var docsGroup = getDocsGroup();
+    var docsItemsEl = getDocsItems();
+    var emptyEl = getEmpty();
+    var emptyText = getEmptyText();
+
+    recentsList = !q ? getRecents() : [];
+    if (loadingEl && !q) loadingEl.style.display = "none";
+
+    if (!q) {
+      currentResults = [];
+      if (recentGroup) recentGroup.style.display = recentsList.length ? "block" : "none";
+      if (recentItemsEl) {
+        recentItemsEl.innerHTML = recentsList.map(function (r, i) {
+          return renderItem(
+            { id: r.id, label: r.label, url: r.url, subtitle: "Recently viewed" },
+            i === activeIndex,
+            true
+          );
+        }).join("");
       }
-      output.push(lines[i]);
-      i++;
+      if (docsGroup) docsGroup.style.display = "none";
+      if (docsItemsEl) docsItemsEl.innerHTML = "";
+      if (emptyEl) emptyEl.style.display = (recentsList.length === 0) ? "block" : "none";
+      if (emptyText) emptyText.textContent = "Type to search the docs, or browse recent items.";
+    } else {
+      if (recentGroup) recentGroup.style.display = "none";
+      if (docsGroup) docsGroup.style.display = currentResults.length ? "block" : "none";
+      if (docsItemsEl) {
+        docsItemsEl.innerHTML = currentResults.map(function (r, i) {
+          return renderItem(
+            { id: r.url, label: r.content, url: r.url, subtitle: r.description || "Page" },
+            i === activeIndex,
+            false
+          );
+        }).join("");
+      }
+      if (emptyEl) emptyEl.style.display = (currentResults.length === 0 && !loadingEl.style.display) ? "none" : (currentResults.length === 0 ? "block" : "none");
+      if (emptyText) emptyText.textContent = "No results found. Try a different query.";
     }
-    let result = output.join('\n');
-    result = result
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-      .replace(/^### (.*$)/gm, '<h4>$1</h4>')
-      .replace(/^## (.*$)/gm, '<h3>$1</h3>')
-      .replace(/^# (.*$)/gm, '<h2>$1</h2>')
-      .replace(/^[-*] (.*$)/gm, '<div style="display:flex;gap:8px;padding:2px 0"><span style="opacity:0.5">\u2022</span><span>$1</span></div>')
-      .replace(/^(\d+)\. (.*$)/gm, '<div style="display:flex;gap:8px;padding:2px 0"><span style="opacity:0.5">$1.</span><span>$2</span></div>')
-      .replace(/\n\n/g, '<div style="height:8px"></div>')
-      .replace(/\n/g, '<br>');
-    result = result.replace(/\x00CB(\d+)\x00/g, (_m, idx) => codeBlocks[Number(idx)]);
-    return result;
+
+    bindItemClicks();
+    scrollActiveIntoView();
   }
 
-  function initSearchDialog() {
-    const cfgEl = document.getElementById('fd-search-config');
-    const aiLabel = cfgEl?.dataset.aiLabel || 'AI';
-    const dialog = document.getElementById('fd-search-dialog');
-    const searchInput = document.getElementById('fd-search-input');
-    const searchResults = document.getElementById('fd-search-results');
-    const tabs = dialog?.querySelectorAll('.fd-ai-tab');
-    const searchPanel = document.getElementById('fd-search-panel');
-    const aiPanel = document.getElementById('fd-ai-panel');
-    let debounceTimer: ReturnType<typeof setTimeout>;
-
-    function openSearch() {
-      if (dialog) {
-        dialog.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        setTimeout(() => searchInput?.focus(), 50);
-      }
-    }
-
-    function closeSearch() {
-      if (dialog) {
-        dialog.style.display = 'none';
-        document.body.style.overflow = '';
-      }
-    }
-
-    function toggleSearch() {
-      if (!dialog) return;
-      const isOpen = dialog.style.display !== 'none';
-      if (isOpen) closeSearch();
-      else openSearch();
-    }
-
-    // Omni command: ⌘K / Ctrl+K opens search by default (same as fumadocs DocsCommandSearch) — register once per page
-    if (!document.body.hasAttribute('data-fd-cmdk-registered')) {
-      document.body.setAttribute('data-fd-cmdk-registered', 'true');
-      document.addEventListener('keydown', function onCmdK(e) {
-        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-          e.preventDefault();
-          const d = document.getElementById('fd-search-dialog');
-          if (d) {
-            const isOpen = d.style.display !== 'none';
-            if (isOpen) {
-              d.style.display = 'none';
-              document.body.style.overflow = '';
-            } else {
-              d.style.display = 'flex';
-              document.body.style.overflow = 'hidden';
-              setTimeout(() => document.getElementById('fd-search-input')?.focus(), 50);
-            }
-          }
-        }
-        if (e.key === 'Escape') {
-          const d = document.getElementById('fd-search-dialog');
-          if (d && d.style.display !== 'none') {
-            d.style.display = 'none';
-            document.body.style.overflow = '';
-          }
-        }
+  function bindItemClicks() {
+    var listbox = getListbox();
+    if (!listbox) return;
+    listbox.querySelectorAll(".omni-item[data-url]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var url = btn.getAttribute("data-url");
+        if (!url) return;
+        var label = btn.querySelector(".omni-item-label");
+        saveRecent({ id: url, label: label ? label.textContent : url, url: url });
+        if (url.startsWith("http")) window.open(url, "_blank", "noopener");
+        else window.location.href = url;
+        closeDialog();
       });
-    }
-
-    dialog?.addEventListener('click', (e) => {
-      if (e.target === dialog) closeSearch();
-    });
-
-    dialog?.querySelector('.fd-ai-dialog')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
-
-    tabs?.forEach(tab => {
-      tab.addEventListener('click', () => {
-        const target = tab.getAttribute('data-tab');
-        tabs.forEach(t => t.removeAttribute('data-active'));
-        tab.setAttribute('data-active', 'true');
-        if (searchPanel) searchPanel.style.display = target === 'search' ? 'flex' : 'none';
-        if (aiPanel) aiPanel.style.display = target === 'ai' ? 'flex' : 'none';
-        if (target === 'search') searchInput?.focus();
-        else document.getElementById('fd-ai-input')?.focus();
+      btn.addEventListener("mouseenter", function () {
+        var idx = Array.prototype.indexOf.call(listbox.querySelectorAll(".omni-item[data-url]"), btn);
+        if (idx >= 0) { activeIndex = idx; render(); }
       });
     });
+  }
 
-    searchInput?.addEventListener('input', () => {
-      clearTimeout(debounceTimer);
-      const query = (searchInput as HTMLInputElement).value.trim();
-      if (!query) {
-        if (searchResults) searchResults.innerHTML = '<div class="fd-ai-result-empty">Type to search the docs</div>';
-        return;
-      }
-      debounceTimer = setTimeout(async () => {
-        try {
-          const res = await fetch(`/api/docs?query=${encodeURIComponent(query)}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.length === 0) {
-              searchResults!.innerHTML = `<div class="fd-ai-result-empty">No results found</div>`;
-            } else {
-              searchResults!.innerHTML = data.map((r: any) => `
-                <a href="${r.url}" class="fd-ai-result" style="display:flex;align-items:center;gap:8px;text-decoration:none">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4" />
-                  </svg>
-                  <span style="flex:1">${r.content}</span>
-                </a>
-              `).join('');
-              searchResults!.querySelectorAll('a').forEach(a => {
-                a.addEventListener('click', closeSearch);
-              });
-            }
-          }
-        } catch {}
-      }, 150);
-    });
+  function scrollActiveIntoView() {
+    var listbox = getListbox();
+    if (!listbox) return;
+    var items = listbox.querySelectorAll(".omni-item[data-url]");
+    if (items[activeIndex]) items[activeIndex].scrollIntoView({ block: "nearest" });
+  }
 
-    // AI chat
-    const aiInput = document.getElementById('fd-ai-input') as HTMLInputElement | null;
-    const aiSend = document.getElementById('fd-ai-send');
-    const aiMessages = document.getElementById('fd-ai-messages');
-    let messages: Array<{ role: string; content: string }> = [];
-    let isStreaming = false;
-    let streamRenderThrottle: ReturnType<typeof setTimeout> | null = null;
+  function moveActive(delta) {
+    var items = allItems();
+    if (!items.length) return;
+    activeIndex = activeIndex + delta;
+    if (activeIndex < 0) activeIndex = items.length - 1;
+    if (activeIndex >= items.length) activeIndex = 0;
+    render();
+  }
 
-    let renderScheduled = false;
-    function scheduleRender() {
-      if (renderScheduled) return;
-      renderScheduled = true;
-      requestAnimationFrame(() => { renderScheduled = false; doRender(); });
+  function executeActive() {
+    var items = allItems();
+    if (items[activeIndex]) {
+      var it = items[activeIndex];
+      saveRecent({ id: it.url, label: it.content || it.label, url: it.url });
+      if (it.url.startsWith("http")) window.open(it.url, "_blank", "noopener");
+      else window.location.href = it.url;
+      closeDialog();
     }
+  }
 
-    async function submitAI(question: string) {
-      if (!question.trim() || isStreaming) return;
-      isStreaming = true;
-      messages.push({ role: 'user', content: question });
-      messages.push({ role: 'assistant', content: '' });
-      if (aiInput) aiInput.value = '';
-      doRender();
+  function onInput() {
+    var input = getInput();
+    var q = (input && input.value || "").trim();
+    if (getLoading()) getLoading().style.display = "none";
+    currentResults = [];
+    activeIndex = 0;
+    if (getDocsGroup()) getDocsGroup().style.display = "none";
+    if (getDocsItems()) getDocsItems().innerHTML = "";
+    if (getRecentGroup()) getRecentGroup().style.display = !q && getRecents().length ? "block" : "none";
+    if (getEmpty()) getEmpty().style.display = "block";
+    if (getEmptyText()) getEmptyText().textContent = !q ? "Type to search the docs, or browse recent items." : "No results found. Try a different query.";
+    render();
 
-      try {
-        const res = await fetch('/api/docs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: messages.filter(m => m.content).map(m => ({ role: m.role, content: m.content })) }),
+    clearTimeout(debounceTimer);
+    if (!q) return;
+    debounceTimer = setTimeout(function () {
+      if (getLoading()) getLoading().style.display = "flex";
+      fetch("/api/docs?query=" + encodeURIComponent(q))
+        .then(function (res) { return res.ok ? res.json() : []; })
+        .then(function (data) {
+          currentResults = Array.isArray(data) ? data : [];
+          activeIndex = 0;
+          if (getLoading()) getLoading().style.display = "none";
+          render();
+        })
+        .catch(function () {
+          if (getLoading()) getLoading().style.display = "none";
+          render();
         });
-
-        if (!res.ok) {
-          let errMsg = 'Something went wrong.';
-          try { const err = await res.json(); errMsg = err.error || errMsg; } catch {}
-          messages[messages.length - 1].content = errMsg;
-          doRender();
-          isStreaming = false;
-          return;
-        }
-
-        const reader = res.body!.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let assistantContent = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6).trim();
-              if (data === '[DONE]') continue;
-              try {
-                const json = JSON.parse(data);
-                const content = json.choices?.[0]?.delta?.content;
-                if (content) {
-                  assistantContent += content;
-                  messages[messages.length - 1].content = assistantContent;
-                  if (!streamRenderThrottle) {
-                    streamRenderThrottle = setTimeout(() => {
-                      streamRenderThrottle = null;
-                      doRender();
-                    }, 80);
-                  }
-                }
-              } catch {}
-            }
-          }
-        }
-      } catch {
-        messages[messages.length - 1].content = messages[messages.length - 1].content || 'Failed to connect.';
-        doRender();
-      }
-      isStreaming = false;
-      doRender();
-    }
-
-    function doRender() {
-      if (!aiMessages) return;
-      if (messages.length === 0) {
-        aiMessages.innerHTML = '<div class="fd-ai-empty"><div class="fd-ai-empty-title">Ask anything about the docs</div></div>';
-        return;
-      }
-      const lastMsg = messages[messages.length - 1];
-      const isStreamingLast = isStreaming && lastMsg.role === 'assistant' && lastMsg.content;
-      const wrappers = aiMessages.querySelectorAll('.fd-ai-msg');
-      if (isStreamingLast && wrappers.length === messages.length) {
-        const lastWrapper = wrappers[wrappers.length - 1];
-        const contentDiv = lastWrapper.querySelector('.fd-ai-bubble-ai');
-        if (contentDiv) {
-          contentDiv.innerHTML = `<div class="fd-ai-streaming">${renderMarkdown(lastMsg.content)}</div>`;
-          aiMessages.scrollTop = aiMessages.scrollHeight;
-          return;
-        }
-      }
-      const THINKING = `<div class="fd-ai-loader"><span class="fd-ai-loader-shimmer-text">Thinking</span><span class="fd-ai-loader-typing-dots"><span class="fd-ai-loader-typing-dot"></span><span class="fd-ai-loader-typing-dot"></span><span class="fd-ai-loader-typing-dot"></span></span></div>`;
-      const isLast = (i: number) => i === messages.length - 1;
-      aiMessages.innerHTML = messages.map((m, i) => {
-        const streaming = isStreaming && isLast(i) && m.role === 'assistant' && m.content;
-        const renderedContent = m.role === 'user'
-          ? escapeHtml(m.content)
-          : (m.content ? `<div${streaming ? ' class="fd-ai-streaming"' : ''}>${renderMarkdown(m.content)}</div>` : THINKING);
-        return `<div class="fd-ai-msg" data-role="${m.role}"><div class="fd-ai-msg-label">${m.role === 'user' ? 'You' : aiLabel}</div><div class="${m.role === 'user' ? 'fd-ai-bubble-user' : 'fd-ai-bubble-ai'}">${renderedContent}</div></div>`;
-      }).join('');
-      aiMessages.scrollTop = aiMessages.scrollHeight;
-    }
-
-    aiSend?.addEventListener('click', () => {
-      if (aiInput?.value) submitAI(aiInput.value);
-    });
-
-    aiInput?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        if (aiInput.value) submitAI(aiInput.value);
-      }
-    });
+    }, DEBOUNCE_MS);
   }
 
-  initSearchDialog();
-  document.addEventListener('astro:after-swap', initSearchDialog);
+  function init() {
+    var dialog = getDialog();
+    var overlay = getOverlay();
+    var content = getContent();
+    var input = getInput();
+    var closeBtn = document.getElementById("fd-omni-close");
+
+    if (!dialog || !input) return;
+
+    overlay && overlay.addEventListener("click", closeDialog);
+    closeBtn && closeBtn.addEventListener("click", closeDialog);
+    content && content.addEventListener("click", function (e) { e.stopPropagation(); });
+
+    input.addEventListener("input", onInput);
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown") { e.preventDefault(); moveActive(1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); moveActive(-1); }
+      else if (e.key === "Enter") { e.preventDefault(); executeActive(); }
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") closeDialog();
+    });
+
+    if (!document.body.hasAttribute("data-fd-cmdk-registered")) {
+      document.body.setAttribute("data-fd-cmdk-registered", "true");
+      document.addEventListener("keydown", function (e) {
+        if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+          e.preventDefault();
+          if (getDialog().style.display !== "none") closeDialog();
+          else openDialog();
+        }
+      });
+    }
+  }
+
+  function setOpen(open) {
+    if (open) openDialog();
+    else closeDialog();
+  }
+  window.__fdOmniSearchOpen = openDialog;
+  window.__fdOmniSearchClose = closeDialog;
+  window.__fdOmniSearchSetOpen = setOpen;
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+  document.addEventListener("astro:page-load", init);
+})();
 </script>

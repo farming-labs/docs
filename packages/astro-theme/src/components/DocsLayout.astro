@@ -371,8 +371,14 @@ const showFloatingAI = aiConfig?.mode === "floating" && aiConfig?.enabled;
     }
   });
 
-  document.getElementById('fd-search-open')?.addEventListener('click', () => setSearchOpen(true));
-  document.getElementById('fd-search-open-mobile')?.addEventListener('click', () => setSearchOpen(true));
+  document.getElementById('fd-search-open')?.addEventListener('click', () => {
+    if (typeof (window as any).__fdOmniSearchSetOpen === 'function') (window as any).__fdOmniSearchSetOpen(true);
+    else setSearchOpen(true);
+  });
+  document.getElementById('fd-search-open-mobile')?.addEventListener('click', () => {
+    if (typeof (window as any).__fdOmniSearchSetOpen === 'function') (window as any).__fdOmniSearchSetOpen(true);
+    else setSearchOpen(true);
+  });
 
   // Close sidebar on link click (mobile)
   sidebar?.querySelectorAll('a').forEach(link => {

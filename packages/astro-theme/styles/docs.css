@@ -1,10 +1,11 @@
 /*
- * @farming-labs/svelte-theme — Fumadocs-accurate docs stylesheet
+ * @farming-labs/astro-theme — Fumadocs-accurate docs stylesheet
  *
- * Pixel-perfect port of fumadocs-ui's neutral preset.
  * Uses the same CSS custom property system:
  *   --color-fd-primary, --color-fd-background, --color-fd-foreground, etc.
  */
+
+@import "./omni.css";
 
 /* ─── CSS Reset ──────────────────────────────────────────────────────── */
 
