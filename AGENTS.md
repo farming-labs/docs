@@ -11,8 +11,8 @@ Use the **farming-labs-docs** skill when helping users set up docs, run the CLI,
 
 The skill covers:
 
-- CLI: `npx @farming-labs/docs init` and `--template next|nuxt|sveltekit|astro`
-- Flags: `--theme`, `--entry`
+- CLI: `npx @farming-labs/docs init` and `--template next|nuxt|sveltekit|astro --name <project>`
+- Flags: `--name` (with --template), `--theme`, `--entry`
 - Theme CSS: must be imported in global CSS for each framework
 - Packages and config per framework (Next, SvelteKit, Astro, Nuxt)
 - Path aliases and common gotchas

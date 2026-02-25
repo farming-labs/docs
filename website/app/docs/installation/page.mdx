@@ -9,7 +9,7 @@ order: 1
 
 ## Option A: CLI (Recommended)
 
-**Starting from scratch?** Use **`--template`** in an empty folder to clone a full example (Next.js, Nuxt, SvelteKit, or Astro) and run install — no prompts. See the `--template` section below.
+**Starting from scratch?** Use **`--template`** with **`--name <project>`** to bootstrap a new docs project (Next.js, Nuxt, SvelteKit, or Astro). No prompts — the CLI creates the project folder and runs install. See the `--template` section below.
 
 **Adding docs to an existing app?** Run the init command inside your Next.js, SvelteKit, Astro, or Nuxt project:
 
@@ -26,17 +26,16 @@ The CLI will:
 5. Install all required dependencies
 6. Start the dev server and give you a live URL
 
-**Starting from scratch or want a full example?** Use **`--template`** in an empty directory to clone a ready-to-run docs app. No prompts — the CLI copies the example and runs install:
+**Starting from scratch or want a full example?** Use **`--template`** with **`--name <project>`** to bootstrap a ready-to-run docs app. The CLI creates the project folder, bootstraps it with the chosen framework, and runs install:
 
 ```bash
-mkdir my-docs && cd my-docs
-npx @farming-labs/docs init --template next     # Next.js
-npx @farming-labs/docs init --template nuxt     # Nuxt
-npx @farming-labs/docs init --template sveltekit # SvelteKit
-npx @farming-labs/docs init --template astro    # Astro
+npx @farming-labs/docs init --template next --name my-docs     # Next.js
+npx @farming-labs/docs init --template nuxt --name my-docs     # Nuxt
+npx @farming-labs/docs init --template sveltekit --name my-docs # SvelteKit
+npx @farming-labs/docs init --template astro --name my-docs    # Astro
 ```
 
-This clones the corresponding `examples/*` folder from the repo into the current directory and runs install. Then run your dev server and you're set.
+Replace `my-docs` with your project name. Then run `cd my-docs && pnpm run dev` (or your package manager’s dev command) to start the dev server.
 
 ## Option B: Manual Setup
 

@@ -18,13 +18,14 @@ description: Get started with @farming-labs/docs — MDX-based documentation for
 | Scenario | Command |
 | -------- | ------- |
 | Add docs to existing app | `npx @farming-labs/docs init` |
-| Start from scratch (clone example) | `mkdir my-docs && cd my-docs` then `npx @farming-labs/docs init --template <next \| nuxt \| sveltekit \| astro>` |
+| Start from scratch (bootstrap project) | `npx @farming-labs/docs init --template <next \| nuxt \| sveltekit \| astro> --name <project-name>` |
 
 ### CLI flags
 
 | Flag | Description |
 | ---- | ----------- |
-| `--template <name>` | Clone example: `next`, `nuxt`, `sveltekit`, `astro`. Use in an empty folder. |
+| `--template <name>` | Bootstrap a project: `next`, `nuxt`, `sveltekit`, `astro`. Use with `--name`. |
+| `--name <project>` | Project folder name when using `--template`; prompt if omitted (e.g. `my-docs`). |
 | `--theme <name>` | Skip theme prompt (e.g. `--theme fumadocs`, `--theme greentree`). |
 | `--entry <path>` | Skip entry path prompt (default `docs`). |
 
@@ -118,7 +119,7 @@ If the user chooses “no alias”, generated code uses relative paths to `docs.
 
 1. **Theme CSS missing** — Docs look unstyled until the theme CSS is imported in the global stylesheet (or Nuxt `css`).
 2. **Wrong theme package** — Use the theme package for the same framework (e.g. `@farming-labs/svelte-theme` for SvelteKit, not `@farming-labs/theme`).
-3. **From scratch** — Use `--template` in an **empty** directory; the CLI clones the example and runs install.
+3. **From scratch** — Use `--template` with `--name <project>`; the CLI bootstraps a project with that name and runs install.
 4. **Existing project** — Run `init` in the project root; the CLI detects the framework and scaffolds files.
 
 ---

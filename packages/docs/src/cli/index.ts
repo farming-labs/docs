@@ -6,7 +6,7 @@ import { init } from "./init.js";
 const args = process.argv.slice(2);
 const command = args[0];
 
-/** Parse flags like --template next, --theme darksharp, --entry docs */
+/** Parse flags like --template next, --name my-docs, --theme darksharp, --entry docs */
 function parseFlags(argv: string[]): Record<string, string | undefined> {
   const flags: Record<string, string | undefined> = {};
   for (let i = 0; i < argv.length; i++) {
@@ -26,6 +26,7 @@ async function main() {
   const flags = parseFlags(args);
   const initOptions = {
     template: flags.template,
+    name: flags.name,
     theme: flags.theme,
     entry: flags.entry,
   };
@@ -58,7 +59,8 @@ ${pc.dim("Supported frameworks:")}
   Next.js, SvelteKit, Astro, Nuxt
 
 ${pc.dim("Options for init:")}
-  ${pc.cyan("--template <name>")}  Clone an example (${pc.dim("next")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}) and get started
+  ${pc.cyan("--template <name>")}  Bootstrap a project (${pc.dim("next")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); use with ${pc.cyan("--name")}
+  ${pc.cyan("--name <project>")}  Project folder name when using ${pc.cyan("--template")}; prompt if omitted (e.g. ${pc.dim("my-docs")})
   ${pc.cyan("--theme <name>")}     Skip theme prompt (e.g. ${pc.dim("darksharp")}, ${pc.dim("greentree")})
   ${pc.cyan("--entry <path>")}     Skip entry path prompt (e.g. ${pc.dim("docs")})
   ${pc.cyan("-h, --help")}         Show this help message

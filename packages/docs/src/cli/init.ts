@@ -21,6 +21,7 @@ type TemplateName = (typeof VALID_TEMPLATES)[number];
 
 export interface InitOptions {
   template?: string;
+  name?: string;
   theme?: string;
   entry?: string;
 }
@@ -82,7 +83,7 @@ export async function init(options: InitOptions = {}) {
   p.intro(pc.bgCyan(pc.black(" @farming-labs/docs ")));
 
   // -----------------------------------------------------------------------
-  // Template: clone example from repo (--template next | nuxt | sveltekit | astro)
+  // Template: bootstrap project with --template and --name
   // -----------------------------------------------------------------------
 
   if (options.template) {
@@ -94,6 +95,26 @@ export async function init(options: InitOptions = {}) {
       process.exit(1);
     }
 
+    let projectName = options.name?.trim();
+    if (!projectName) {
+      const nameAnswer = await p.text({
+        message: "Project name? (we'll create this folder and bootstrap the app here)",
+        placeholder: "my-docs",
+        defaultValue: "my-docs",
+        validate: (value) => {
+          const v = (value ?? "").trim();
+          if (!v) return "Project name is required";
+          if (v.includes("/") || v.includes("\\")) return "Project name cannot contain path separators";
+          if (v.includes(" ")) return "Project name cannot contain spaces";
+        },
+      });
+      if (p.isCancel(nameAnswer)) {
+        p.outro(pc.red("Init cancelled."));
+        process.exit(0);
+      }
+      projectName = (nameAnswer as string).trim();
+    }
+
     const templateLabel =
       template === "next"
         ? "Next.js"
@@ -103,36 +124,43 @@ export async function init(options: InitOptions = {}) {
             ? "SvelteKit"
             : "Astro";
 
-    p.log.step(`Cloning ${pc.cyan(`examples/${template}`)} from ${pc.cyan(EXAMPLES_REPO)}...`);
+    const targetDir = path.join(cwd, projectName);
+    const fs = await import("node:fs");
+    if (fs.existsSync(targetDir)) {
+      p.log.error(`Directory ${pc.cyan(projectName)} already exists. Choose a different ${pc.cyan("--name")} or remove it.`);
+      process.exit(1);
+    }
+    fs.mkdirSync(targetDir, { recursive: true });
+
+    p.log.step(`Bootstrapping project with ${pc.cyan(`'${projectName}'`)} (${templateLabel})...`);
 
     try {
-      exec(`npx degit ${EXAMPLES_REPO}/examples/${template} . --force`, cwd);
+      exec(`npx degit ${EXAMPLES_REPO}/examples/${template} . --force`, targetDir);
     } catch (err) {
-      p.log.error("Failed to clone the example. Check your connection and that the repo exists.");
+      p.log.error("Failed to bootstrap. Check your connection and that the repo exists.");
       process.exit(1);
     }
 
-    p.log.success(`Cloned ${templateLabel} example. Installing dependencies...`);
+    p.log.success(`Bootstrapped ${pc.cyan(`'${projectName}'`)}. Installing dependencies...`);
 
-    const pm = detectPackageManager(cwd);
+    const pm = detectPackageManager(targetDir);
     try {
       if (pm === "pnpm") {
-        exec("pnpm install", cwd);
+        exec("pnpm install", targetDir);
       } else if (pm === "yarn") {
-        exec("yarn install", cwd);
+        exec("yarn install", targetDir);
       } else if (pm === "bun") {
-        exec("bun install", cwd);
+        exec("bun install", targetDir);
       } else {
-        exec("npm install", cwd);
+        exec("npm install", targetDir);
       }
     } catch {
       p.log.warn("Dependency install failed. Run your package manager install command manually.");
     }
 
+    const devCmd = pm === "yarn" ? "yarn dev" : pm === "bun" ? "bun dev" : `${pm} run dev`;
     p.outro(
-      pc.green(
-        `Done! Run ${pc.cyan(pm === "yarn" ? "yarn dev" : pm === "bun" ? "bun dev" : `${pm} run dev`)} to start the dev server.`,
-      ),
+      pc.green(`Done! Run ${pc.cyan(`cd ${projectName} && ${devCmd}`)} to start the dev server.`),
     );
     process.exit(0);
   }

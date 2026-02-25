@@ -256,13 +256,14 @@ All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
 
 ## Flags
 
-| Flag                  | Description                                                                 |
-| --------------------- | --------------------------------------------------------------------------- |
-| `--template <name>`   | Clone an example and get started: `next`, `nuxt`, `sveltekit`, or `astro`  |
-| `--theme <name>`      | Skip theme prompt (e.g. `--theme darksharp`)                                |
-| `--entry <path>`      | Skip entry path prompt (e.g. `--entry docs`)                                |
+| Flag                    | Description                                                                 |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `--template <name>`     | Bootstrap a project: `next`, `nuxt`, `sveltekit`, or `astro`. Use with `--name`. |
+| `--name <project>`      | Project folder name when using `--template`; prompt if omitted (e.g. `my-docs`) |
+| `--theme <name>`        | Skip theme prompt (e.g. `--theme darksharp`)                                |
+| `--entry <path>`        | Skip entry path prompt (e.g. `--entry docs`)                                |
 
-**Starting from scratch?** Use `--template` in an empty folder — the CLI clones the corresponding example from the repo (e.g. `examples/next`) into the current directory and runs install. No prompts; then run your dev server and you're set.
+**Starting from scratch?** Use `--template` with `--name <project>`. The CLI bootstraps a project with the given name, installs dependencies, and then you run `cd <project> && pnpm run dev` to start.
 
 ## Manual Code
 
