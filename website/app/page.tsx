@@ -53,7 +53,7 @@ function HeroSection() {
               <div className="inline-block">
                 <a
                   href="/changelog#v0.0.1"
-                  className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center"
+                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted hover:text-white hover:underline-offset-2 hover:decoration-white/30 text-white/40 px-0 py-1.5 flex items-center"
                 >
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
                   v0.0.1
@@ -62,7 +62,7 @@ function HeroSection() {
               <div className="inline-block">
                 <a
                   href="/changelog#v0.0.2-beta.16-20"
-                  className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center"
+                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted hover:text-white hover:underline-offset-2 hover:decoration-white/30 text-white/40 px-0 py-1.5 flex items-center"
                 >
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
                   v0.0.2-beta.20
@@ -71,7 +71,7 @@ function HeroSection() {
               <div className="inline-block">
                 <a
                   href="/changelog#v0.0.2-beta.11-15"
-                  className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center"
+                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted hover:text-white hover:underline-offset-2 hover:decoration-white/30 text-white/40 px-0 py-1.5 flex items-center"
                 >
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
                   v0.0.2-beta.15
@@ -80,7 +80,7 @@ function HeroSection() {
               <div className="inline-block">
                 <a
                   href="/changelog#v0.0.2-beta.5-10"
-                  className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center"
+                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted hover:text-white hover:underline-offset-2 hover:decoration-white/30 text-white/40 px-0 py-1.5 flex items-center"
                 >
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
                   v0.0.2-beta.10
@@ -89,7 +89,7 @@ function HeroSection() {
               <div className="inline-block">
                 <a
                   href="/changelog#v0.0.2-beta.1-4"
-                  className="text-[10px] font-mono tracking-tighter text-white/40 px-0 py-1.5 flex items-center"
+                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted hover:text-white hover:underline-offset-2 hover:decoration-white/30 text-white/40 px-0 py-1.5 flex items-center"
                 >
                   <div className="h-[12px] w-px bg-white/50 mr-2" />
                   v0.0.2-beta.4
