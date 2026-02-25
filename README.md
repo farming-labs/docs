@@ -508,8 +508,13 @@ export default defineDocs({
 
 This repo includes an **agent skill** so assistants can help with @farming-labs/docs setup and usage. The skill covers CLI (`init`, `--template`), manual setup per framework, themes, and theme CSS.
 
-- **Install with [Skills CLI](https://skills.sh/):** `npx skills add farming-labs/docs`
-- **Skill file:** [skills/farming-labs-docs/SKILL.md](./skills/farming-labs-docs/SKILL.md)  
+Install the skill with the [Skills CLI](https://skills.sh/) (format: `npx skills add <owner/repo>`):
+
+```bash
+npx skills add farming-labs/docs
+```
+
+- **Skill file:** [skills/farming-labs-docs/SKILL.md](./skills/farming-labs-docs/SKILL.md)
 - **Full instructions:** [skills/README.md](./skills/README.md)
 
 ## Development
