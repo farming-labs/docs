@@ -1,10 +1,10 @@
 import { defineDocs } from "@farming-labs/docs";
-import { colorful } from "@farming-labs/nuxt-theme/colorful";
+import { greentree } from "@farming-labs/nuxt-theme/greentree";
 
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: colorful({
+  theme: greentree({
     ui: {
       colors: {
         primary: "oklch(0.985 0.001 106.423)",
@@ -35,6 +35,7 @@ export default defineDocs({
     aiLabel: "DocsBot",
     floatingStyle: "full-modal",
     mode: "floating",
+    
     position: "bottom-right",
     suggestedQuestions: [
       "How do I get started?",

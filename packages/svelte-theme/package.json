@@ -29,6 +29,9 @@
       ],
       ".": [
         "./src/index.d.ts"
+      ],
+      "greentree": [
+        "./src/themes/greentree.d.ts"
       ]
     }
   },
@@ -67,7 +70,14 @@
     "./pixel-border/css": "./styles/pixel-border-bundle.css",
     "./darksharp/css": "./styles/darksharp-bundle.css",
     "./styles/colorful.css": "./styles/colorful.css",
-    "./colorful/css": "./styles/colorful-bundle.css"
+    "./colorful/css": "./styles/colorful-bundle.css",
+    "./greentree": {
+      "types": "./src/themes/greentree.d.ts",
+      "import": "./src/themes/greentree.js",
+      "default": "./src/themes/greentree.js"
+    },
+    "./styles/greentree.css": "./styles/greentree.css",
+    "./greentree/css": "./styles/greentree-bundle.css"
   },
   "scripts": {
     "build": "echo 'Svelte components are shipped as source'",

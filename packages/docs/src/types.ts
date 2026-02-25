@@ -464,10 +464,13 @@ export interface OpenDocsProvider {
   /** Icon element rendered next to the name */
   icon?: unknown; // ReactNode
   /**
-   * URL template. `{url}` is replaced with the current page URL.
-   * `{mdxUrl}` is replaced with the `.mdx` variant of the page URL.
+   * URL template. Placeholders:
+   * - `{url}` — current page URL (encoded).
+   * - `{mdxUrl}` — page URL with `.mdx` suffix (encoded).
+   * - `{githubUrl}` — GitHub edit URL for the current page (same as "Edit on GitHub"). Requires `github` in config.
    *
    * @example "https://claude.ai/new?q=Read+this+doc:+{url}"
+   * @example "{githubUrl}" — open current page file on GitHub (edit view)
    */
   urlTemplate: string;
 }

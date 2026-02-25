@@ -1,10 +1,10 @@
 import { defineDocs } from "@farming-labs/docs";
-import { colorful } from "@farming-labs/svelte-theme/colorful";
+import { greentree } from "@farming-labs/svelte-theme/greentree";
 
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: colorful({
+  theme: greentree({
     ui: {
       colors: {
         primary: "oklch(0.985 0.001 106.423)",

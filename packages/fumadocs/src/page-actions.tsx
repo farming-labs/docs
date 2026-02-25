@@ -15,6 +15,8 @@ interface PageActionsProps {
   copyMarkdown?: boolean;
   openDocs?: boolean;
   providers?: SerializedProvider[];
+  /** GitHub file URL (edit view) for the current page. Used when urlTemplate contains {githubUrl}. */
+  githubFileUrl?: string | null;
 }
 
 const CopyIcon = () => (
@@ -92,7 +94,12 @@ const DEFAULT_PROVIDERS: SerializedProvider[] = [
   },
 ];
 
-export function PageActions({ copyMarkdown, openDocs, providers }: PageActionsProps) {
+export function PageActions({
+  copyMarkdown,
+  openDocs,
+  providers,
+  githubFileUrl,
+}: PageActionsProps) {
   const [copied, setCopied] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -115,15 +122,20 @@ export function PageActions({ copyMarkdown, openDocs, providers }: PageActionsPr
 
   const handleOpen = useCallback(
     (template: string) => {
+      if (/\{githubUrl\}/.test(template) && !githubFileUrl) {
+        setDropdownOpen(false);
+        return;
+      }
       const pageUrl = window.location.href;
       const mdxUrl = `${window.location.origin}${pathname}.mdx`;
-      const url = template
+      let url = template
         .replace(/\{url\}/g, encodeURIComponent(pageUrl))
-        .replace(/\{mdxUrl\}/g, encodeURIComponent(mdxUrl));
+        .replace(/\{mdxUrl\}/g, encodeURIComponent(mdxUrl))
+        .replace(/\{githubUrl\}/g, githubFileUrl ?? "");
       window.open(url, "_blank", "noopener,noreferrer");
       setDropdownOpen(false);
     },
-    [pathname],
+    [pathname, githubFileUrl],
   );
 
   // Close dropdown on click outside

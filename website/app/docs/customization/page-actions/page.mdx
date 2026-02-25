@@ -118,12 +118,13 @@ interface OpenDocsProvider {
 
 ### Provider URL Templates
 
-The `urlTemplate` string supports two placeholders:
+The `urlTemplate` string supports these placeholders:
 
-| Placeholder | Replaced with                                                            |
-| ----------- | ------------------------------------------------------------------------ |
-| `{url}`     | The current page URL (e.g. `https://docs.example.com/docs/installation`) |
-| `{mdxUrl}`  | The `.mdx` variant of the page URL (useful for raw source)               |
+| Placeholder   | Replaced with                                                                 |
+| ------------- | ----------------------------------------------------------------------------- |
+| `{url}`       | The current page URL (e.g. `https://docs.example.com/docs/installation`)      |
+| `{mdxUrl}`    | The `.mdx` variant of the page URL (useful for raw source)                    |
+| `{githubUrl}` | GitHub **edit** URL for the current page (same as "Edit on GitHub"). Requires `github` in config. Use `urlTemplate: "{githubUrl}"` so "Open in GitHub" opens the file on GitHub. |
 
 ### Custom Providers Example
 
@@ -142,12 +143,14 @@ pageActions: {
       },
       {
         name: "Cursor",
-        urlTemplate: "https://cursor.sh/chat?context={url}",
+        urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}",
       },
     ],
   },
 }
 ```
+
+**Cursor deeplink:** The example uses the web format (`https://cursor.com/link/prompt?text=...`). To open the Cursor app directly instead, use the app scheme: `cursor://anysphere.cursor-deeplink/prompt?text=Read+this+documentation:+{url}`.
 
 ### With Icons (Next.js)
 

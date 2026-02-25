@@ -101,11 +101,11 @@ function PathBreadcrumb({ pathname, entry }: { pathname: string; entry: string }
  * (Copy Markdown, Open in LLM). Re-scans when the route changes.
  */
 /**
- * Build the GitHub URL for the current page's source file.
+ * Build the GitHub URL for the current page's source file (edit view).
  *
  * Examples:
- *   No directory:  https://github.com/user/repo/tree/main/app/docs/cli/page.mdx
- *   With directory: https://github.com/farming-labs/docs/tree/main/website/app/docs/cli/page.mdx
+ *   No directory:  https://github.com/user/repo/edit/main/app/docs/cli/page.mdx
+ *   With directory: https://github.com/farming-labs/docs/edit/main/website/app/docs/cli/page.mdx
  */
 function buildGithubFileUrl(
   githubUrl: string,
@@ -115,7 +115,8 @@ function buildGithubFileUrl(
 ): string {
   const segments = pathname.replace(/^\//, "").replace(/\/$/, "");
   const dirPrefix = directory ? `${directory}/` : "";
-  return `${githubUrl}/tree/${branch}/${dirPrefix}app/${segments}/page.mdx`;
+  const path = `${dirPrefix}app/${segments}/page.mdx`;
+  return `${githubUrl}/edit/${branch}/${path}`;
 }
 
 export function DocsPageClient({
@@ -280,6 +281,7 @@ export function DocsPageClient({
             copyMarkdown={copyMarkdown}
             openDocs={openDocs}
             providers={openDocsProviders}
+            githubFileUrl={githubFileUrl}
           />,
           actionsPortalTarget,
         )}
