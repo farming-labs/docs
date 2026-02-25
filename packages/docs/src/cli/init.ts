@@ -144,26 +144,16 @@ export async function init(options: InitOptions = {}) {
       process.exit(1);
     }
 
-    p.log.success(`Bootstrapped ${pc.cyan(`'${projectName}'`)}. Installing dependencies...`);
+    p.log.success(`Bootstrapped ${pc.cyan(`'${projectName}'`)}. Installing dependencies with pnpm...`);
 
-    const pm = detectPackageManager(targetDir);
     try {
-      if (pm === "pnpm") {
-        exec("pnpm install", targetDir);
-      } else if (pm === "yarn") {
-        exec("yarn install", targetDir);
-      } else if (pm === "bun") {
-        exec("bun install", targetDir);
-      } else {
-        exec("npm install", targetDir);
-      }
+      exec("pnpm install", targetDir);
     } catch {
-      p.log.warn("Dependency install failed. Run your package manager install command manually.");
+      p.log.warn("pnpm install failed. Run pnpm install manually inside the project.");
     }
 
-    const devCmd = pm === "yarn" ? "yarn dev" : pm === "bun" ? "bun dev" : `${pm} run dev`;
     p.outro(
-      pc.green(`Done! Run ${pc.cyan(`cd ${projectName} && ${devCmd}`)} to start the dev server.`),
+      pc.green(`Done! Run ${pc.cyan(`cd ${projectName} && pnpm run dev`)} to start the dev server.`),
     );
     process.exit(0);
   }
