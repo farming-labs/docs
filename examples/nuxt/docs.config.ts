@@ -35,7 +35,7 @@ export default defineDocs({
     aiLabel: "DocsBot",
     floatingStyle: "full-modal",
     mode: "floating",
-    
+
     position: "bottom-right",
     suggestedQuestions: [
       "How do I get started?",

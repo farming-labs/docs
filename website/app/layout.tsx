@@ -35,15 +35,13 @@ export const metadata: Metadata = {
   // Static OG image for base URL (/) only. Docs and other routes override with dynamic OG.
   openGraph: {
     title: "a documentation that just works.",
-    description:
-      "A modern documentation framework that works. One config file, zero boilerplate.",
+    description: "A modern documentation framework that works. One config file, zero boilerplate.",
     images: [{ url: "/og.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "a documentation that just works.",
-    description:
-      "A modern documentation framework that works. One config file, zero boilerplate.",
+    description: "A modern documentation framework that works. One config file, zero boilerplate.",
   },
 };
 
