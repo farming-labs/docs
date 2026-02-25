@@ -61,6 +61,7 @@ export default function CopyCommandTemplate({ className = "" }: CopyCommandTempl
         <span className="text-white/30">--template</span>
         <span className="inline-block w-[6ch] min-w-[6ch] overflow-hidden py-0.5 align-baseline text-left">
           <AnimatePresence mode="wait">
+            {/*@ts-ignore */}
             <motion.span
               key={currentTemplate}
               className="inline-block text-white/50"
