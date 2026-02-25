@@ -343,7 +343,11 @@ export default config;
 `;
 }
 
-export function tsconfigTemplate(): string {
+/** @param useAlias - When false, paths (e.g. @/*) are omitted so no alias is added. */
+export function tsconfigTemplate(useAlias = false): string {
+  const pathsBlock = useAlias
+    ? ',\n    "paths": { "@/*": ["./*"] }'
+    : "";
   return `\
 {
   "compilerOptions": {
@@ -360,8 +364,7 @@ export function tsconfigTemplate(): string {
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./*"] }
+    "plugins": [{ "name": "next" }]${pathsBlock}
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
@@ -1247,9 +1250,10 @@ export default defineDocs({
 
 export function nuxtDocsServerTemplate(cfg: TemplateConfig): string {
   const contentDirName = cfg.entry ?? "docs";
+  const configImport = cfg.useAlias ? "~/docs.config" : "../../docs.config";
   return `\
 import { createDocsServer } from "@farming-labs/nuxt/server";
-import config from "../../docs.config";
+import config from "${configImport}";
 
 const contentFiles = import.meta.glob("/${contentDirName}/**/*.{md,mdx}", {
   query: "?raw",

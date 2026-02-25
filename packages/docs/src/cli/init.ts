@@ -553,7 +553,7 @@ function scaffoldNextJs(
   write("postcss.config.mjs", postcssConfigTemplate());
 
   if (!fileExists(path.join(cwd, "tsconfig.json"))) {
-    write("tsconfig.json", tsconfigTemplate());
+    write("tsconfig.json", tsconfigTemplate(cfg.useAlias));
   }
 
   write(`app/${cfg.entry}/page.mdx`, welcomePageTemplate(cfg));
