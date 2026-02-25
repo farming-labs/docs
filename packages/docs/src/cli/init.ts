@@ -156,7 +156,7 @@ export async function init(options: InitOptions = {}) {
 
     p.outro(
       pc.green(
-        `Done! Run ${pc.cyan(`cd ${projectName} && pnpm run dev`)} to start the dev server.`,
+        `Done! Run ${pc.cyan(`cd ${projectName} && pnpm dev`)} to start the dev server and navigate to the /docs.`,
       ),
     );
     process.exit(0);
