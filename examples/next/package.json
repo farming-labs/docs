@@ -8,9 +8,9 @@
     "start": "next start"
   },
   "dependencies": {
-    "@farming-labs/docs": "workspace:*",
-    "@farming-labs/next": "workspace:*",
-    "@farming-labs/theme": "workspace:*",
+    "@farming-labs/docs": "0.0.2",
+    "@farming-labs/next": "0.0.2",
+    "@farming-labs/theme": "0.0.2",
     "lucide-react": "^0.564.0",
     "next": "16.1.6",
     "react": "^19.0.0",
