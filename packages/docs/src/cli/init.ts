@@ -104,7 +104,8 @@ export async function init(options: InitOptions = {}) {
         validate: (value) => {
           const v = (value ?? "").trim();
           if (!v) return "Project name is required";
-          if (v.includes("/") || v.includes("\\")) return "Project name cannot contain path separators";
+          if (v.includes("/") || v.includes("\\"))
+            return "Project name cannot contain path separators";
           if (v.includes(" ")) return "Project name cannot contain spaces";
         },
       });
@@ -127,7 +128,9 @@ export async function init(options: InitOptions = {}) {
     const targetDir = path.join(cwd, projectName);
     const fs = await import("node:fs");
     if (fs.existsSync(targetDir)) {
-      p.log.error(`Directory ${pc.cyan(projectName)} already exists. Choose a different ${pc.cyan("--name")} or remove it.`);
+      p.log.error(
+        `Directory ${pc.cyan(projectName)} already exists. Choose a different ${pc.cyan("--name")} or remove it.`,
+      );
       process.exit(1);
     }
     fs.mkdirSync(targetDir, { recursive: true });
