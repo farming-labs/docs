@@ -49,7 +49,9 @@ export default defineDocs({
   }),
   nav: {
     title: (
-      <div style={{ display: "flex", alignItems: "center", gap: 2 , justifyContent: "space-between" }}>
+      <div
+        style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "space-between" }}
+      >
         <div className="flex items-center gap-2 text-xs font-medium text-white/80 dark:text-white/80">
           <a
             href={"/"}
@@ -60,8 +62,6 @@ export default defineDocs({
           <Book className="text-black dark:text-white/50" size={14} />
           <p className="font-mono uppercase text-black dark:text-white/50">docs</p>
         </div>
-
-
       </div>
     ),
     url: "/docs",
@@ -224,8 +224,8 @@ export default defineDocs({
           style={{ color: "var(--color-fd-muted-foreground)" }}
         >
           <span className="text-[10px] tracking-wide">Theme</span>
-        
-        <SidebarThemeToggle />
+
+          <SidebarThemeToggle />
         </div>
         <div
           className="flex gap-2 items-center justify-center"

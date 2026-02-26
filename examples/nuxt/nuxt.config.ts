@@ -9,11 +9,7 @@ export default defineNuxtConfig({
 
   vite: {
     optimizeDeps: {
-      include: [
-        "@farming-labs/docs",
-        "@farming-labs/nuxt",
-        "@farming-labs/nuxt-theme",
-      ],
+      include: ["@farming-labs/docs", "@farming-labs/nuxt", "@farming-labs/nuxt-theme"],
     },
   },
 

@@ -63,12 +63,19 @@ export default defineDocs({
     openDocs: {
       enabled: true,
       providers: [
-        { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?hints=search&q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." },
-        { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." },
+        {
+          name: "ChatGPT",
+          urlTemplate:
+            "https://chatgpt.com/?hints=search&q=Read+{mdxUrl},+I+want+to+ask+questions+about+it.",
+        },
+        {
+          name: "Claude",
+          urlTemplate: "https://claude.ai/new?q=Read+{mdxUrl},+I+want+to+ask+questions+about+it.",
+        },
       ],
     },
   },
-  lastUpdated: { enabled: true  , position: "below-title"},
+  lastUpdated: { enabled: true, position: "below-title" },
   llmsTxt: { enabled: true, baseUrl: "https://docs.farming-labs.dev" },
   ordering: "numeric",
 });

@@ -5,8 +5,8 @@ import { resolve, dirname, join } from 'node:path';
 import nodeCrypto from 'node:crypto';
 import { parentPort, threadId } from 'node:worker_threads';
 import { escapeHtml } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/@vue+shared@3.5.28/node_modules/@vue/shared/dist/shared.cjs.js';
-import { defineDocsHandler } from 'file:///Users/mac/oss/docs_/packages/nuxt/dist/server.js';
-import { defineDocs } from 'file:///Users/mac/oss/docs_/packages/docs/dist/index.mjs';
+import { defineDocsHandler } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/@farming-labs+nuxt@0.0.2_@farming-labs+docs@0.0.2/node_modules/@farming-labs/nuxt/dist/server.js';
+import { defineDocs } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/@farming-labs+docs@0.0.2/node_modules/@farming-labs/docs/dist/index.mjs';
 import { colorful } from '@farming-labs/nuxt-theme/colorful';
 import { createRenderer, getRequestDependencies, getPreloadLinks, getPrefetchLinks } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/vue-bundle-renderer@2.2.0/node_modules/vue-bundle-renderer/dist/runtime.mjs';
 import { parseURL, withoutBase, joinURL, getQuery, withQuery, withTrailingSlash, decodePath, withLeadingSlash, withoutTrailingSlash, joinRelativeURL } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/ufo@1.6.3/node_modules/ufo/dist/index.mjs';
@@ -2137,22 +2137,7 @@ const plugins = [
 _j3L8BAZ9L_EtT3vsMSVb_IKqusQA9M39XQul7NlHwRs
 ];
 
-const assets = {
-  "/index.mjs.map": {
-    "type": "application/json",
-    "etag": "\"6c552-ifkOUhxi+3v6ZQXP04T2ie7QlAw\"",
-    "mtime": "2026-02-26T12:09:05.048Z",
-    "size": 443730,
-    "path": "index.mjs.map"
-  },
-  "/index.mjs": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"1a8ec-vL884oMxJtvDWtleZoA3CZjIq7E\"",
-    "mtime": "2026-02-26T12:09:05.048Z",
-    "size": 108780,
-    "path": "index.mjs"
-  }
-};
+const assets = {};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -3003,8 +2988,14 @@ const config = defineDocs({
     openDocs: {
       enabled: true,
       providers: [
-        { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?hints=search&q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." },
-        { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." }
+        {
+          name: "ChatGPT",
+          urlTemplate: "https://chatgpt.com/?hints=search&q=Read+{mdxUrl},+I+want+to+ask+questions+about+it."
+        },
+        {
+          name: "Claude",
+          urlTemplate: "https://claude.ai/new?q=Read+{mdxUrl},+I+want+to+ask+questions+about+it."
+        }
       ]
     }
   },

@@ -61,16 +61,8 @@ export function SidebarThemeToggle() {
         color: "var(--color-fd-muted-foreground)",
       }}
     >
-      <Sun
-        size={14}
-        className={!isDark ? "opacity-100" : "opacity-40"}
-        aria-hidden
-      />
-      <Moon
-        size={14}
-        className={isDark ? "opacity-100" : "opacity-40"}
-        aria-hidden
-      />
+      <Sun size={14} className={!isDark ? "opacity-100" : "opacity-40"} aria-hidden />
+      <Moon size={14} className={isDark ? "opacity-100" : "opacity-40"} aria-hidden />
     </button>
   );
 }
