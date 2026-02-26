@@ -204,3 +204,21 @@ code:not(pre code) {
 .fd-ai-fm-trigger-btn:hover {
   transform: none;
 }
+
+.fd-ai-floating-trigger .ask-ai-trigger {
+  font-family: var(--fd-font-sans, inherit);
+  border-radius: 2px !important;
+}
+
+.fd-ai-floating-trigger .ask-ai-trigger:hover {
+  box-shadow: 0 0 0 1px var(--color-fd-ring);
+  transform: none;
+}
+
+.fd-ai-fm-input-bar .fd-ai-floating-trigger .ask-ai-trigger {
+  border-radius: 2px !important;
+}
+
+.fd-ai-fm-input-bar .fd-ai-floating-trigger .ask-ai-trigger:hover {
+  transform: none;
+}

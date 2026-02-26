@@ -1,10 +1,12 @@
 /*
- * @farming-labs/svelte-theme — Fumadocs-accurate docs stylesheet
+ * @farming-labs/nuxt-theme — Fumadocs-accurate docs stylesheet
  *
  * Pixel-perfect port of fumadocs-ui's neutral preset.
  * Uses the same CSS custom property system:
  *   --color-fd-primary, --color-fd-background, --color-fd-foreground, etc.
  */
+
+@import "./omni.css";
 
 /* ─── CSS Reset ──────────────────────────────────────────────────────── */
 
@@ -70,10 +72,11 @@ html {
 
 body {
   font-family: var(--fd-font-sans, ui-sans-serif, system-ui, -apple-system, sans-serif);
+  font-size: var(--fd-body-size, 1rem);
+  font-weight: var(--fd-body-weight, 400);
+  line-height: var(--fd-body-line-height, 1.75);
   background: var(--color-fd-background);
   color: var(--color-fd-foreground);
-  line-height: 1.5;
-  font-size: 14px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -88,6 +91,7 @@ samp {
     "Cascadia Code",
     "Source Code Pro",
     Menlo,
+    Consolas,
     monospace
   );
 }
@@ -511,6 +515,11 @@ samp {
 
 /* ─── Clerk TOC (tree-line style) ────────────────────────────────────── */
 
+.fd-toc-clerk-wrap {
+  position: relative;
+  min-height: 0;
+}
+
 .fd-toc-clerk {
   border-left: none !important;
 }
@@ -560,13 +569,155 @@ samp {
   }
 }
 
-/* ─── Page description (frontmatter) ─────────────────────────────────── */
+/* ─── Page title + description (match Astro: title first, then description) ─────── */
+
+.fd-page-title {
+  font-size: var(--fd-h1-size, 2.25rem);
+  font-weight: var(--fd-h1-weight, 700);
+  line-height: var(--fd-h1-line-height, 1.2);
+  letter-spacing: var(--fd-h1-letter-spacing, -0.025em);
+  margin: 0 0 0.5rem;
+  scroll-margin-top: 80px;
+}
 
 .fd-page-description {
+  margin-top: 0;
   margin-bottom: 1rem;
-  font-size: 1.125rem;
-  line-height: 1.75;
+  font-size: var(--fd-body-size, 1.125rem);
+  font-weight: var(--fd-body-weight, 400);
+  line-height: var(--fd-body-line-height, 1.75);
   color: var(--color-fd-muted-foreground);
+}
+
+/* ─── Page Actions (Copy page / Open in …) ─────────────────────────────── */
+
+.fd-page-actions-divider {
+  border: none;
+  border-top: 1px solid var(--color-fd-border);
+  margin: 1rem 0 0.75rem;
+}
+
+.fd-page-actions,
+[data-page-actions] {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  width: 100%;
+}
+
+.fd-page-actions[data-actions-alignment="right"],
+[data-page-actions][data-actions-alignment="right"] {
+  justify-content: flex-end;
+}
+
+.fd-page-actions[data-actions-alignment="left"],
+[data-page-actions][data-actions-alignment="left"] {
+  justify-content: flex-start;
+}
+
+.fd-page-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1;
+  min-height: 2rem;
+  color: var(--color-fd-muted-foreground);
+  background: var(--color-fd-secondary);
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
+  user-select: none;
+}
+
+.fd-page-action-btn:hover {
+  color: var(--color-fd-accent-foreground);
+  background: var(--color-fd-accent);
+}
+
+.fd-page-action-btn[data-copied="true"] {
+  color: var(--color-fd-foreground);
+}
+
+.fd-page-action-btn svg {
+  flex-shrink: 0;
+}
+
+.fd-page-action-dropdown {
+  position: relative;
+}
+
+.fd-page-action-menu {
+  position: absolute;
+  top: calc(100% + 0.375rem);
+  left: 0;
+  z-index: 50;
+  min-width: 220px;
+  padding: 0.375rem;
+  background: var(--color-fd-popover, var(--color-fd-background));
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 24px hsl(0 0% 0% / 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.fd-page-action-menu[hidden] {
+  display: none !important;
+}
+
+.fd-page-action-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.35rem 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--color-fd-foreground);
+  background: transparent;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+  transition: background 0.1s, color 0.1s;
+}
+
+.fd-page-action-menu-item:hover {
+  background: var(--color-fd-accent);
+  color: var(--color-fd-accent-foreground);
+}
+
+.fd-page-action-menu-label {
+  flex: 1;
+}
+
+.fd-page-actions a,
+.fd-page-actions button,
+.fd-page-action-menu-item,
+.fd-page-action-btn {
+  text-decoration: none !important;
+}
+
+.fd-page-action-menu-item:hover {
+  text-decoration: none !important;
+}
+
+.fd-last-modified-below-title {
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
 }
 
 /* ─── Breadcrumb ─────────────────────────────────────────────────────── */
@@ -575,9 +726,10 @@ samp {
   display: flex;
   align-items: center;
   gap: 0;
-  font-size: 13px;
+  font-size: var(--fd-small-size, 0.8125rem);
+  font-family: var(--fd-font-sans, inherit);
   color: var(--color-fd-muted-foreground);
-  margin-bottom: 8px;
+  margin-bottom: 2rem;
 }
 
 .fd-breadcrumb-item {
@@ -588,7 +740,7 @@ samp {
 .fd-breadcrumb-sep {
   margin: 0 6px;
   opacity: 0.4;
-  font-size: 12px;
+  font-size: var(--fd-small-size, 0.75rem);
 }
 
 .fd-breadcrumb-parent {
@@ -805,6 +957,9 @@ samp {
 
 .fd-page-body p {
   margin: 0 0 16px;
+  font-size: var(--fd-body-size, 1rem);
+  font-weight: var(--fd-body-weight, 400);
+  line-height: var(--fd-body-line-height, 1.75);
 }
 
 .fd-page-body ul,
@@ -815,6 +970,9 @@ samp {
 
 .fd-page-body li {
   margin: 4px 0;
+  font-size: var(--fd-body-size, 1rem);
+  font-weight: var(--fd-body-weight, 400);
+  line-height: var(--fd-body-line-height, 1.75);
 }
 
 .fd-page-body li::marker {
@@ -1245,7 +1403,8 @@ html.dark pre.shiki {
 
 .fd-last-modified {
   color: var(--color-fd-muted-foreground);
-  font-size: 12px;
+  font-size: var(--fd-small-size, 0.75rem);
+  font-weight: var(--fd-small-weight, 400);
 }
 
 @media (max-width: 640px) {
@@ -1304,7 +1463,7 @@ html.dark pre.shiki {
 
 .fd-page-nav-card:hover {
   background: var(--color-fd-accent);
-  border-color: var(--color-fd-ring);
+  border-color: var(--color-fd-border);
 }
 
 .fd-page-nav-next {
@@ -2038,7 +2197,8 @@ html.dark pre.shiki {
   backdrop-filter: blur(4px);
   color: var(--color-fd-muted-foreground, #71717a);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--fd-small-size, 0.875rem);
+  font-family: var(--fd-font-sans, inherit);
   box-shadow: 0 1px 3px color-mix(in srgb, var(--color-fd-background, #000) 20%, transparent);
   transition:
     transform 150ms,
@@ -2062,6 +2222,36 @@ html.dark pre.shiki {
   z-index: 9997;
   cursor: pointer;
   animation: fd-ai-fade-in 300ms ease-out;
+}
+
+/* Custom Ask AI trigger (e.g. triggerComponent): same base as .fd-ai-floating-btn */
+.fd-ai-floating-trigger .ask-ai-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  height: 40px;
+  border-radius: 16px;
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  background: color-mix(in srgb, var(--color-fd-secondary, #f4f4f5) 80%, transparent);
+  backdrop-filter: blur(4px);
+  color: var(--color-fd-muted-foreground, #71717a);
+  cursor: pointer;
+  font-size: var(--fd-small-size, 0.875rem);
+  font-family: var(--fd-font-sans, inherit);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-fd-background, #000) 20%, transparent);
+  transition: transform 150ms, background 150ms, color 150ms;
+}
+
+.fd-ai-floating-trigger .ask-ai-trigger:hover {
+  background: var(--color-fd-accent);
+  color: var(--color-fd-accent-foreground);
+  transform: scale(1.03);
+}
+
+.fd-ai-floating-trigger .ask-ai-trigger:active {
+  transform: scale(0.97);
 }
 
 /* ═══════════════════════════════════════════════════════════════

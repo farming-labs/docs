@@ -37,6 +37,7 @@ function getContainerStyle(style: string, pos: string) {
 
 const btnStyle = BTN_POSITIONS[position] || BTN_POSITIONS["bottom-right"];
 const containerStyle = getContainerStyle(floatingStyle, position);
+const dialogAnimation = floatingStyle === "modal" ? "fd-ai-modal-in" : "fd-ai-float-in";
 ---
 
 <div id="fd-float-config" data-api={api} data-ai-label={aiLabel} data-full-modal={isFullModal ? "true" : "false"} style="display:none"></div>
@@ -114,7 +115,7 @@ const containerStyle = getContainerStyle(floatingStyle, position);
     )}
 
     <!-- Panel/modal/popover container -->
-    <div class="fd-ai-dialog" id="fd-float-dialog" style={`display:none;${containerStyle};animation:fd-ai-float-in 200ms ease-out`}>
+    <div class="fd-ai-dialog" id="fd-float-dialog" style={`display:none;${containerStyle};animation:${dialogAnimation} 200ms ease-out`}>
       <div class="fd-ai-header">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
@@ -278,6 +279,7 @@ const containerStyle = getContainerStyle(floatingStyle, position);
     let isStreaming = false;
     let isOpen = false;
     let renderScheduled = false;
+    let streamRenderThrottle: ReturnType<typeof setTimeout> | null = null;
 
     const overlay = document.getElementById('fd-float-overlay');
     const bar = document.getElementById('fd-float-bar');
@@ -309,18 +311,19 @@ const containerStyle = getContainerStyle(floatingStyle, position);
         if (floatDialog) floatDialog.style.display = '';
         if (floatBtn) floatBtn.style.display = 'none';
         if (modalBg) modalBg.style.display = '';
+        document.body.style.overflow = 'hidden';
         setTimeout(() => input?.focus(), 100);
       }
     }
 
     function closeChat() {
       isOpen = false;
+      document.body.style.overflow = '';
       if (isFullModal) {
         if (overlay) overlay.style.display = 'none';
         if (bar) { bar.classList.remove('fd-ai-fm-input-bar--open'); bar.classList.add('fd-ai-fm-input-bar--closed'); bar.style.cssText = bar.dataset.btnStyle || ''; }
         if (trigger) trigger.style.display = '';
         if (inputContainer) inputContainer.style.display = 'none';
-        document.body.style.overflow = '';
       } else {
         if (floatDialog) floatDialog.style.display = 'none';
         if (floatBtn) floatBtn.style.display = '';
@@ -355,6 +358,20 @@ const containerStyle = getContainerStyle(floatingStyle, position);
       if (clearBtn) clearBtn.style.display = '';
       if (footerHint) footerHint.style.display = 'none';
       if (clearWrap) clearWrap.style.display = 'flex';
+
+      const lastMsg = messages[messages.length - 1];
+      const isStreamingLast = isStreaming && lastMsg.role === 'assistant' && lastMsg.content;
+      const wrappers = messagesEl.querySelectorAll(isFullModal ? '.fd-ai-fm-msg' : '.fd-ai-msg');
+      if (isStreamingLast && wrappers.length === messages.length) {
+        const lastWrapper = wrappers[wrappers.length - 1];
+        const contentDiv = lastWrapper.querySelector(isFullModal ? '.fd-ai-fm-msg-content' : '.fd-ai-bubble-ai');
+        if (contentDiv) {
+          contentDiv.innerHTML = `<div class="fd-ai-streaming">${renderMarkdown(lastMsg.content)}</div>`;
+          if (isFullModal) messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: 'auto' });
+          else messagesEl.scrollTop = messagesEl.scrollHeight;
+          return;
+        }
+      }
 
       const thinking = thinkingHtml(aiLabel);
       messagesEl.innerHTML = messages.map((m, i) => {
@@ -420,7 +437,12 @@ const containerStyle = getContainerStyle(floatingStyle, position);
                 if (content) {
                   assistantContent += content;
                   messages[messages.length - 1].content = assistantContent;
-                  scheduleRender();
+                  if (!streamRenderThrottle) {
+                    streamRenderThrottle = setTimeout(() => {
+                      streamRenderThrottle = null;
+                      doRender();
+                    }, 80);
+                  }
                 }
               } catch {}
             }

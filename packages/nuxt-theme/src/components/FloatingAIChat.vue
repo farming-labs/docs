@@ -243,7 +243,7 @@ function handleFmKeyDown(e: KeyboardEvent) {
         :style="btnStyle"
         @click="isOpen = true"
       >
-        <component :is="triggerComponent" />
+        <component :is="triggerComponent" :ai-label="label" />
       </div>
       <button
         v-else-if="!isOpen"
@@ -499,7 +499,7 @@ function handleFmKeyDown(e: KeyboardEvent) {
       :style="btnStyle"
       @click="isOpen = true"
     >
-      <component :is="triggerComponent" />
+      <component :is="triggerComponent" :ai-label="label" />
     </div>
     <button
       v-else

@@ -23,7 +23,9 @@ import {
   TreePine,
   Bot,
   MousePointerClick,
+  Book,
 } from "lucide-react";
+import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 
 export default defineDocs({
   entry: "docs",
@@ -47,8 +49,19 @@ export default defineDocs({
   }),
   nav: {
     title: (
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span className="text-xs uppercase font-mono tracking-tighter">@farming-labs/docs</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 2 , justifyContent: "space-between" }}>
+        <div className="flex items-center gap-2 text-xs font-medium text-white/80 dark:text-white/80">
+          <a
+            href={"/"}
+            className="hover:text-white transition-colors hover:no-underline font-mono uppercase text-black/50 dark:text-white/50"
+          >
+            Home <span className="ml-2 text-black/50 dark:text-white/50">/</span>
+          </a>
+          <Book size={14} />
+          <p className="font-mono uppercase text-black dark:text-white/50">docs</p>
+        </div>
+
+
       </div>
     ),
     url: "/docs",
@@ -198,7 +211,7 @@ export default defineDocs({
     ),
     footer: (
       <div
-        className="-mx-4 -my-2 -mb-4 flex items-center justify-center font-mono uppercase"
+        className="-mx-4 -my-2 -mb-4 flex flex-col gap-3 font-mono uppercase"
         style={{
           padding: "12px 16px",
           fontSize: "12px",
@@ -207,7 +220,15 @@ export default defineDocs({
         }}
       >
         <div
-          className="flex gap-2 items-center"
+          className="flex -mx-4 px-2 -pt-5 pb-2 items-center border-b border-input/30 justify-between"
+          style={{ color: "var(--color-fd-muted-foreground)" }}
+        >
+          <span className="text-[10px] tracking-wide">Theme</span>
+        
+        <SidebarThemeToggle />
+        </div>
+        <div
+          className="flex gap-2 items-center justify-center"
           style={{ opacity: 0.4, color: "var(--color-fd-muted-foreground)" }}
         >
           <Package size={14} className="inline-flex mb-[1px]" />
@@ -216,7 +237,7 @@ export default defineDocs({
             <a
               href="https://github.com/farming-labs"
               target="_blank"
-              className="underline underline-offset-2 decoration-dotted transition-colors text-white"
+              className="underline underline-offset-2 decoration-dotted transition-colors text-black dark:text-white"
               style={{
                 textDecorationColor:
                   "color-mix(in srgb, var(--color-fd-foreground) 30%, transparent)",
@@ -231,6 +252,6 @@ export default defineDocs({
   },
   themeToggle: {
     enabled: false,
-    default: "dark",
+    default: "light",
   },
 });

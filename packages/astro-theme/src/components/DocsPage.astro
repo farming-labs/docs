@@ -35,7 +35,9 @@ const parentUrl = segments.length >= 2
     )}
 
     <div class="fd-page-body">
-      <slot />
+      <div class="fd-docs-content">
+        <slot />
+      </div>
     </div>
 
     <footer class="fd-page-footer">
@@ -92,7 +94,7 @@ const parentUrl = segments.length >= 2
   </article>
 
   {tocEnabled && (
-    <aside class="fd-toc">
+    <aside class="fd-toc" id="fd-toc" data-toc-ready="false">
       <div class={`fd-toc-inner ${tocStyle === "directional" ? "fd-toc-directional" : ""}`} data-toc-style={tocStyle}>
         <h3 class="fd-toc-title">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -122,9 +124,9 @@ const parentUrl = segments.length >= 2
   function initDocsPage() {
     const container = document.querySelector('.fd-page-body');
     const tocList = document.getElementById('fd-toc-list');
+    const tocAside = document.getElementById('fd-toc');
     if (container && tocList) {
       const headings = container.querySelectorAll('h2[id], h3[id], h4[id]');
-      tocList.innerHTML = '';
       const isClerk = tocList.closest('[data-toc-style]')?.getAttribute('data-toc-style') === 'directional';
 
       const tocItems = [];
@@ -136,6 +138,7 @@ const parentUrl = segments.length >= 2
         });
       });
 
+      const fragment = document.createDocumentFragment();
       tocItems.forEach((item, index) => {
         const li = document.createElement('li');
         li.className = 'fd-toc-item';
@@ -189,8 +192,10 @@ const parentUrl = segments.length >= 2
         }
 
         li.appendChild(a);
-        tocList.appendChild(li);
+        fragment.appendChild(li);
       });
+
+      tocList.replaceChildren(fragment);
 
       let maskEl = null;
       let thumbEl = null;
@@ -275,6 +280,31 @@ const parentUrl = segments.length >= 2
       }
 
       const activeSet = new Set();
+      let tocUpdateScheduled = false;
+
+      function scheduleTocActiveUpdate() {
+        if (tocUpdateScheduled) return;
+        tocUpdateScheduled = true;
+        requestAnimationFrame(() => {
+          tocUpdateScheduled = false;
+          if (isClerk) {
+            tocList.querySelectorAll('.fd-toc-clerk-link').forEach(link => {
+              const id = link.getAttribute('href')?.slice(1);
+              if (activeSet.has(id)) {
+                link.setAttribute('data-active', 'true');
+              } else {
+                link.removeAttribute('data-active');
+              }
+            });
+            if (typeof updateThumb === 'function') updateThumb(activeSet);
+          } else {
+            tocList.querySelectorAll('.fd-toc-link').forEach(link => {
+              const id = link.getAttribute('href')?.slice(1);
+              link.classList.toggle('fd-toc-link-active', activeSet.has(id));
+            });
+          }
+        });
+      }
 
       const observer = new IntersectionObserver((entries) => {
         for (const entry of entries) {
@@ -284,26 +314,12 @@ const parentUrl = segments.length >= 2
             activeSet.delete(entry.target.id);
           }
         }
-
-        if (isClerk) {
-          tocList.querySelectorAll('.fd-toc-clerk-link').forEach(link => {
-            const id = link.getAttribute('href')?.slice(1);
-            if (activeSet.has(id)) {
-              link.setAttribute('data-active', 'true');
-            } else {
-              link.removeAttribute('data-active');
-            }
-          });
-          if (typeof updateThumb === 'function') updateThumb(activeSet);
-        } else {
-          tocList.querySelectorAll('.fd-toc-link').forEach(link => {
-            const id = link.getAttribute('href')?.slice(1);
-            link.classList.toggle('fd-toc-link-active', activeSet.has(id));
-          });
-        }
+        scheduleTocActiveUpdate();
       }, { rootMargin: '-80px 0px -80% 0px' });
 
       headings.forEach(el => observer.observe(el));
+
+      if (tocAside) tocAside.setAttribute('data-toc-ready', 'true');
     }
 
     // Copy buttons
@@ -340,6 +356,17 @@ const parentUrl = segments.length >= 2
     });
   }
 
-  initDocsPage();
-  document.addEventListener('astro:after-swap', initDocsPage);
+  function runTocWhenIdle() {
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(() => initDocsPage(), { timeout: 300 });
+    } else {
+      setTimeout(initDocsPage, 0);
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', runTocWhenIdle);
+  } else {
+    runTocWhenIdle();
+  }
+  document.addEventListener('astro:after-swap', () => setTimeout(initDocsPage, 0));
 </script>

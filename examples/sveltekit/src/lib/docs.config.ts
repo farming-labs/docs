@@ -1,10 +1,11 @@
 import { defineDocs } from "@farming-labs/docs";
-import { greentree } from "@farming-labs/svelte-theme/greentree";
+import { pixelBorder } from "@farming-labs/svelte-theme";
+import { colorful } from "@farming-labs/svelte-theme/colorful";
 
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: greentree({
+  theme: pixelBorder({
     ui: {
       colors: {
         primary: "oklch(0.985 0.001 106.423)",
@@ -50,10 +51,24 @@ export default defineDocs({
     title: "Example Docs",
     url: "/docs",
   },
-  themeToggle: { enabled: false, default: "light" },
-  breadcrumb: { enabled: false },
+  themeToggle: { enabled: true, default: "dark" },
+  breadcrumb: { enabled: true },
   metadata: {
     titleTemplate: "%s – Docs",
     description: "Awesome docs powered by @farming-labs/docs (SvelteKit)",
   },
+  pageActions: {
+    alignment: "right",
+    copyMarkdown: { enabled: true },
+    openDocs: {
+      enabled: true,
+      providers: [
+        { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?hints=search&q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." },
+        { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." },
+      ],
+    },
+  },
+  lastUpdated: { enabled: true  , position: "below-title"},
+  llmsTxt: { enabled: true, baseUrl: "https://docs.farming-labs.dev" },
+  ordering: "numeric",
 });

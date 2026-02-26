@@ -24,7 +24,7 @@ const ColorfulUIDefaults = {
   layout: {
     contentWidth: 768,
     sidebarWidth: 260,
-    toc: { enabled: true, depth: 3, style: "directional" },
+    toc: { enabled: true, depth: 3, style: "default" },
     header: { height: 56, sticky: true },
   },
   components: {

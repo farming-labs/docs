@@ -26,7 +26,7 @@
         "../../../node_modules/.pnpm/@nuxt+schema@3.21.1/node_modules/@nuxt/schema"
       ],
       "nuxt": [
-        "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_4a478958fcc949096a04e5ed26c644ea/node_modules/nuxt"
+        "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt"
       ],
       "vite/client": [
         "../../../node_modules/.pnpm/vite@6.4.1_@types+node@22.19.11_jiti@2.6.1_lightningcss@1.30.2_terser@5.46.0_yaml@2.8.2/node_modules/vite/client"
@@ -104,19 +104,19 @@
         "../server/*"
       ],
       "#app": [
-        "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_4a478958fcc949096a04e5ed26c644ea/node_modules/nuxt/dist/app"
+        "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/app"
       ],
       "#app/*": [
-        "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_4a478958fcc949096a04e5ed26c644ea/node_modules/nuxt/dist/app/*"
+        "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/app/*"
       ],
       "vue-demi": [
-        "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_4a478958fcc949096a04e5ed26c644ea/node_modules/nuxt/dist/app/compat/vue-demi"
+        "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/app/compat/vue-demi"
       ],
       "#vue-router": [
         "../../../node_modules/.pnpm/vue-router@4.6.4_vue@3.5.28_typescript@5.9.3_/node_modules/vue-router"
       ],
       "#unhead/composables": [
-        "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_4a478958fcc949096a04e5ed26c644ea/node_modules/nuxt/dist/head/runtime/composables/v3"
+        "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/head/runtime/composables/v3"
       ],
       "#imports": [
         "./imports"
@@ -172,16 +172,16 @@
     "../../../node_modules/.pnpm/@nuxt+telemetry@2.7.0_@nuxt+kit@3.21.1_magicast@0.5.2_/node_modules/runtime",
     "../../../node_modules/.pnpm/@nuxt+telemetry@2.7.0_@nuxt+kit@3.21.1_magicast@0.5.2_/node_modules/dist/runtime",
     "..",
-    "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_4a478958fcc949096a04e5ed26c644ea/node_modules/nuxt/dist/app",
-    "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_4a478958fcc949096a04e5ed26c644ea/node_modules/nuxt/dist/app/compat/vue-demi",
+    "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/app",
+    "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/app/compat/vue-demi",
     "../../../node_modules/.pnpm/vue-router@4.6.4_vue@3.5.28_typescript@5.9.3_/node_modules/vue-router/vue-router.node",
-    "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_4a478958fcc949096a04e5ed26c644ea/node_modules/nuxt/dist/head/runtime/composables/v3"
+    "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/head/runtime/composables/v3"
   ],
   "exclude": [
     "../dist",
     "../.data",
     "../../../node_modules",
-    "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_4a478958fcc949096a04e5ed26c644ea/node_modules/nuxt/node_modules",
+    "../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/node_modules",
     "../../../node_modules/.pnpm/@nuxt+devtools@3.2.1_vite@7.3.1_@types+node@22.19.11_jiti@2.6.1_lightningcss@1.30.2_ter_ed18ff778de12c2d0edc004a35af2161/node_modules/@nuxt/devtools/node_modules",
     "../../../node_modules/.pnpm/@nuxt+telemetry@2.7.0_@nuxt+kit@3.21.1_magicast@0.5.2_/node_modules/@nuxt/telemetry/node_modules",
     "../../../node_modules/.pnpm/@nuxt+devtools@3.2.1_vite@7.3.1_@types+node@22.19.11_jiti@2.6.1_lightningcss@1.30.2_ter_ed18ff778de12c2d0edc004a35af2161/node_modules/runtime/server",

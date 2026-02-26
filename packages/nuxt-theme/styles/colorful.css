@@ -16,11 +16,12 @@
   --color-fd-primary-foreground: hsl(0, 0%, 5%);
   --color-fd-ring: hsl(45, 90%, 55%);
 }
-
-/* ─── Description under title ──────────────────────────────────────── */
+.fd-table-wrapper  {
+  border: none !important;
+}
+/* ─── Page description (below title, match Next.js) ─────────────────── */
 
 .fd-page-description {
-  margin-bottom: 1rem;
   font-size: 1.125rem;
   line-height: 1.75;
   color: var(--color-fd-muted-foreground);
@@ -147,4 +148,49 @@
 
 .fd-docs-content hr {
   border-color: var(--color-fd-border);
+}
+
+/* ─── Omni Command Palette (colorful theme) ─────────────────────────── */
+
+.omni-content {
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-fd-border);
+  background: var(--color-fd-popover);
+  box-shadow:
+    0 24px 60px -12px rgba(180, 140, 20, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.omni-item-active {
+  background: color-mix(in srgb, var(--color-fd-primary) 15%, transparent);
+}
+
+.omni-highlight {
+  background: color-mix(in srgb, var(--color-fd-primary) 30%, transparent);
+  color: var(--color-fd-primary-foreground);
+}
+
+.omni-search-input:focus {
+  caret-color: var(--color-fd-primary);
+}
+
+/* ─── Ask AI button (floating + custom trigger) — sync with Next.js ───── */
+
+.fd-ai-floating-btn {
+  border-radius: 26px;
+  box-shadow: 0 8px 32px rgba(180, 140, 20, 0.3);
+}
+
+.fd-ai-floating-btn:hover {
+  box-shadow: 0 10px 40px rgba(180, 140, 20, 0.4);
+}
+
+.fd-ai-floating-trigger .ask-ai-trigger {
+  font-family: var(--fd-font-sans, inherit);
+  border-radius: 26px !important;
+  box-shadow: 0 8px 32px rgba(180, 140, 20, 0.3) !important;
+}
+
+.fd-ai-floating-trigger .ask-ai-trigger:hover {
+  box-shadow: 0 10px 40px rgba(180, 140, 20, 0.4);
 }

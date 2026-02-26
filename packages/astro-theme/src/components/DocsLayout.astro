@@ -2,7 +2,10 @@
 import ThemeToggle from "./ThemeToggle.astro";
 import FloatingAIChat from "./FloatingAIChat.astro";
 
-const { tree, config = null, title, titleUrl } = Astro.props;
+const { tree, config = null, title, titleUrl, flatPages = null } = Astro.props;
+
+const sidebarFlat = !!(config?.sidebar && typeof config.sidebar === "object" && (config.sidebar as { flat?: boolean }).flat);
+const useFlatSidebar = sidebarFlat && Array.isArray(flatPages) && flatPages.length > 0;
 
 const resolvedTitle = title ?? config?.nav?.title ?? "Docs";
 const resolvedTitleUrl = titleUrl ?? config?.nav?.url ?? "/docs";
@@ -192,6 +195,22 @@ const showFloatingAI = aiConfig?.mode === "floating" && aiConfig?.enabled;
       <nav class="fd-sidebar-nav">
         <slot name="sidebar" />
       </nav>
+    ) : useFlatSidebar ? (
+      <nav class="fd-sidebar-nav">
+        {flatPages.map((page, i) => {
+          const icon = getIcon(page.icon);
+          return (
+            <a
+              href={page.url}
+              class={`fd-sidebar-link fd-sidebar-top-link ${isActive(page.url) ? 'fd-sidebar-link-active' : ''} ${i === 0 ? 'fd-sidebar-first-item' : ''}`}
+              data-active={isActive(page.url) || undefined}
+            >
+              {icon && <span class="fd-sidebar-icon" set:html={icon} />}
+              {page.name}
+            </a>
+          );
+        })}
+      </nav>
     ) : (
     <nav class="fd-sidebar-nav">
       {tree?.children?.map((node, i) => {
@@ -334,29 +353,31 @@ const showFloatingAI = aiConfig?.mode === "floating" && aiConfig?.enabled;
     overlay!.style.display = 'none';
   });
 
-  // Search Cmd+K
-  document.addEventListener('keydown', (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-      e.preventDefault();
-      const dialog = document.getElementById('fd-search-dialog');
-      if (dialog) dialog.style.display = dialog.style.display === 'none' ? 'flex' : 'none';
+  // Search Cmd+K — lock body scroll when open, always restore on close
+  function setSearchOpen(open: boolean) {
+    const dialog = document.getElementById('fd-search-dialog');
+    if (dialog) {
+      dialog.style.display = open ? 'flex' : 'none';
+      document.body.style.overflow = open ? 'hidden' : '';
     }
+  }
+
+  document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       sidebar?.classList.remove('fd-sidebar-open');
       overlay!.style.display = 'none';
-      const dialog = document.getElementById('fd-search-dialog');
-      if (dialog) dialog.style.display = 'none';
+      setSearchOpen(false);
+      document.body.style.overflow = '';
     }
   });
 
   document.getElementById('fd-search-open')?.addEventListener('click', () => {
-    const dialog = document.getElementById('fd-search-dialog');
-    if (dialog) dialog.style.display = 'flex';
+    if (typeof (window as any).__fdOmniSearchSetOpen === 'function') (window as any).__fdOmniSearchSetOpen(true);
+    else setSearchOpen(true);
   });
-
   document.getElementById('fd-search-open-mobile')?.addEventListener('click', () => {
-    const dialog = document.getElementById('fd-search-dialog');
-    if (dialog) dialog.style.display = 'flex';
+    if (typeof (window as any).__fdOmniSearchSetOpen === 'function') (window as any).__fdOmniSearchSetOpen(true);
+    else setSearchOpen(true);
   });
 
   // Close sidebar on link click (mobile)

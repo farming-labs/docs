@@ -27,6 +27,78 @@ const llmsTxtEnabled = (() => {
   if (typeof cfg === "object" && cfg !== null) return cfg.enabled !== false;
   return false;
 })();
+
+const copyMarkdownEnabled = (() => {
+  const pa = config?.pageActions;
+  if (!pa) return false;
+  const cm = pa.copyMarkdown;
+  if (cm === true) return true;
+  if (typeof cm === "object" && cm !== null) return cm.enabled !== false;
+  return false;
+})();
+
+const openDocsEnabled = (() => {
+  const pa = config?.pageActions;
+  if (!pa) return false;
+  const od = pa.openDocs;
+  if (od === true) return true;
+  if (typeof od === "object" && od !== null) return od.enabled !== false;
+  return false;
+})();
+
+const DEFAULT_OPEN_PROVIDERS = [
+  { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?hints=search&q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." },
+  { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." },
+];
+
+const openDocsProviders = (() => {
+  const pa = config?.pageActions;
+  const od = pa && typeof pa === "object" && pa.openDocs != null ? pa.openDocs : null;
+  const list =
+    od && typeof od === "object" && "providers" in od
+      ? (od as { providers?: Array<{ name?: string; urlTemplate?: string }> }).providers
+      : undefined;
+  if (Array.isArray(list) && list.length > 0) {
+    const mapped = list
+      .map((p) => ({
+        name: typeof p?.name === "string" ? p.name : "Open",
+        urlTemplate: typeof (p as { urlTemplate?: string })?.urlTemplate === "string" ? (p as { urlTemplate: string }).urlTemplate : "",
+      }))
+      .filter((p) => p.urlTemplate.length > 0);
+    if (mapped.length > 0) return mapped;
+  }
+  return DEFAULT_OPEN_PROVIDERS;
+})();
+
+const pathname = Astro.url.pathname;
+const githubFileUrl = config?.github && data.editOnGithub ? data.editOnGithub : null;
+
+const pageActionsPosition = (() => {
+  const pa = config?.pageActions;
+  if (typeof pa === "object" && pa !== null && pa.position) return pa.position;
+  return "below-title";
+})();
+
+const pageActionsAlignment = (() => {
+  const pa = config?.pageActions;
+  if (typeof pa === "object" && pa !== null && pa.alignment) return pa.alignment;
+  return "left";
+})();
+
+const lastUpdatedConfig = (() => {
+  const lu = config?.lastUpdated;
+  if (lu === false) return { enabled: false, position: "footer" as const };
+  if (lu === true || lu === undefined) return { enabled: true, position: "footer" as const };
+  return {
+    enabled: (lu as { enabled?: boolean }).enabled !== false,
+    position: ((lu as { position?: "footer" | "below-title" }).position ?? "footer") as "footer" | "below-title",
+  };
+})();
+
+const showLastUpdatedInFooter = !!data.lastModified && lastUpdatedConfig.enabled && lastUpdatedConfig.position === "footer";
+const showLastUpdatedBelowTitle = !!data.lastModified && lastUpdatedConfig.enabled && lastUpdatedConfig.position === "below-title";
+
+const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*/i, "");
 ---
 
 <head>
@@ -42,9 +114,197 @@ const llmsTxtEnabled = (() => {
   previousPage={data.previousPage}
   nextPage={data.nextPage}
   editOnGithub={showEditOnGithub ? data.editOnGithub : null}
-  lastModified={showLastModified ? data.lastModified : null}
+  lastModified={showLastUpdatedInFooter ? data.lastModified : null}
   llmsTxtEnabled={llmsTxtEnabled}
 >
+  {pageActionsPosition === "above-title" && (copyMarkdownEnabled || openDocsEnabled) && (
+    <div class="fd-page-actions" data-page-actions data-actions-alignment={pageActionsAlignment}>
+      {copyMarkdownEnabled && (
+        <>
+          {"rawMarkdown" in data && data.rawMarkdown != null && typeof data.rawMarkdown === "string" && (
+            <textarea id="fd-page-raw-markdown" hidden aria-hidden="true" readonly>{data.rawMarkdown}</textarea>
+          )}
+          <button type="button" class="fd-page-action-btn" data-copy-page aria-label="Copy page content">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+            <span data-copy-label>Copy page</span>
+          </button>
+        </>
+      )}
+      {openDocsEnabled && openDocsProviders.length > 0 && (
+        <div class="fd-page-action-dropdown" data-open-dropdown>
+          <button type="button" class="fd-page-action-btn" aria-expanded="false" aria-haspopup="true" data-dropdown-trigger>
+            <span>Open in</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          <div class="fd-page-action-menu" role="menu" hidden data-dropdown-menu>
+            {openDocsProviders.map((provider) => (
+              <a
+                role="menuitem"
+                class="fd-page-action-menu-item"
+                href="#"
+                data-open-provider
+                data-name={provider.name}
+                data-url-template={provider.urlTemplate}
+              >
+                <span class="fd-page-action-menu-label">Open in {provider.name}</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )}
+  <h1 class="fd-page-title">{data.title}</h1>
   {data.description && <p class="fd-page-description">{data.description}</p>}
-  <Fragment set:html={data.html} />
+  {showLastUpdatedBelowTitle && data.lastModified && (
+    <p class="fd-last-modified fd-last-modified-below-title">Last updated: {data.lastModified}</p>
+  )}
+  {pageActionsPosition === "below-title" && (copyMarkdownEnabled || openDocsEnabled) && (
+    <>
+      <hr class="fd-page-actions-divider" aria-hidden="true" />
+      <div class="fd-page-actions" data-page-actions data-actions-alignment={pageActionsAlignment}>
+        {copyMarkdownEnabled && (
+          <>
+            {"rawMarkdown" in data && data.rawMarkdown != null && typeof data.rawMarkdown === "string" && (
+              <textarea id="fd-page-raw-markdown" hidden aria-hidden="true" readonly>{data.rawMarkdown}</textarea>
+            )}
+            <button type="button" class="fd-page-action-btn" data-copy-page aria-label="Copy page content">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              <span data-copy-label>Copy page</span>
+            </button>
+          </>
+        )}
+        {openDocsEnabled && openDocsProviders.length > 0 && (
+          <div class="fd-page-action-dropdown" data-open-dropdown>
+            <button type="button" class="fd-page-action-btn" aria-expanded="false" aria-haspopup="true" data-dropdown-trigger>
+              <span>Open in</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            <div class="fd-page-action-menu" role="menu" hidden data-dropdown-menu>
+              {openDocsProviders.map((provider) => (
+                <a
+                  role="menuitem"
+                  class="fd-page-action-menu-item"
+                  href="#"
+                  data-open-provider
+                  data-name={provider.name}
+                  data-url-template={provider.urlTemplate}
+                >
+                  <span class="fd-page-action-menu-label">Open in {provider.name}</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                    <polyline points="15 3 21 3 21 9" />
+                    <line x1="10" y1="14" x2="21" y2="3" />
+                  </svg>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  )}
+  <Fragment set:html={htmlWithoutFirstH1} />
 </DocsPage>
+
+{(copyMarkdownEnabled || openDocsEnabled) && (
+  <script define:vars={{ pathname, openDocsProviders, githubFileUrl }}>
+    (function () {
+      var pathnameVal = typeof pathname === "string" ? pathname : "";
+      var providers = Array.isArray(openDocsProviders) ? openDocsProviders : [];
+      var githubFileUrlVal = githubFileUrl || "";
+
+      function init() {
+        document.querySelectorAll("[data-copy-page]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var text = "";
+            var rawEl = document.getElementById("fd-page-raw-markdown");
+            if (rawEl && rawEl.value && rawEl.value.length > 0) {
+              text = rawEl.value;
+            } else {
+              var article = document.querySelector("#nd-page");
+              if (article) text = article.innerText || "";
+            }
+            if (!text) return;
+            var label = btn.querySelector("[data-copy-label]");
+            navigator.clipboard.writeText(text).then(
+              function () {
+                if (label) label.textContent = "Copied!";
+                btn.setAttribute("data-copied", "true");
+                setTimeout(function () {
+                  if (label) label.textContent = "Copy page";
+                  btn.removeAttribute("data-copied");
+                }, 2000);
+              },
+              function () {
+                if (label) label.textContent = "Copy failed";
+                setTimeout(function () {
+                  if (label) label.textContent = "Copy page";
+                }, 2000);
+              }
+            );
+          });
+        });
+
+        document.querySelectorAll("[data-dropdown-trigger]").forEach(function (trigger) {
+          var dropdown = trigger.closest("[data-open-dropdown]");
+          var menu = dropdown ? dropdown.querySelector("[data-dropdown-menu]") : null;
+          if (!menu) return;
+
+          trigger.addEventListener("click", function (e) {
+            e.preventDefault();
+            var open = menu.hidden;
+            menu.hidden = !open;
+            trigger.setAttribute("aria-expanded", String(!open));
+          });
+
+          document.addEventListener("click", function (e) {
+            if (!menu.hidden && dropdown && !dropdown.contains(e.target)) {
+              menu.hidden = true;
+              trigger.setAttribute("aria-expanded", "false");
+            }
+          });
+        });
+
+        document.querySelectorAll("[data-open-provider]").forEach(function (el) {
+          el.addEventListener("click", function (e) {
+            e.preventDefault();
+            var urlTemplate = el.getAttribute("data-url-template") || "";
+            var pageUrl = window.location.href;
+            var mdxUrl = window.location.origin + pathnameVal + (pathnameVal.endsWith("/") ? "page.mdx" : ".mdx");
+            var url = urlTemplate
+              .replace(/\{url\}/g, encodeURIComponent(pageUrl))
+              .replace(/\{mdxUrl\}/g, encodeURIComponent(mdxUrl))
+              .replace(/\{githubUrl\}/g, githubFileUrlVal);
+            window.open(url, "_blank", "noopener,noreferrer");
+            var menu = el.closest("[data-dropdown-menu]");
+            var triggerEl = document.querySelector("[data-dropdown-trigger]");
+            if (menu) menu.hidden = true;
+            if (triggerEl) triggerEl.setAttribute("aria-expanded", "false");
+          });
+        });
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+      } else {
+        init();
+      }
+    })();
+  </script>
+)}

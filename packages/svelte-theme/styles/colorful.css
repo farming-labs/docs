@@ -84,6 +84,57 @@
   }
 }
 
+/* ─── Omni Command Palette — colorful theme ────────────────────────── */
+
+.omni-content {
+  border-radius: 0.75rem;
+}
+
+.omni-item-active {
+  background: color-mix(in srgb, var(--color-fd-primary) 15%, transparent);
+}
+
+.omni-highlight {
+  background: color-mix(in srgb, var(--color-fd-primary) 30%, transparent);
+}
+
+.omni-search-input:focus {
+  caret-color: var(--color-fd-primary);
+}
+
+/* ─── Page Actions — colorful theme ────────────────────────────────── */
+
+.fd-page-action-btn {
+  border-radius: 0.375rem !important;
+  font-size: 0.8125rem !important;
+  letter-spacing: normal !important;
+  box-shadow: none !important;
+  text-transform: capitalize !important;
+  font-family: var(--fd-font-sans, ui-sans-serif, system-ui, sans-serif) !important;
+}
+
+.fd-page-action-dropdown {
+  position: relative !important;
+}
+
+.fd-page-action-menu {
+  border-radius: 0.5rem !important;
+  border: 1px solid var(--color-fd-border) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+  background: var(--color-fd-popover) !important;
+}
+
+.fd-page-action-menu-item {
+  border-radius: 0.25rem !important;
+  font-size: 0.8125rem !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+.fd-page-action-menu-item:hover {
+  background: var(--color-fd-accent) !important;
+  color: var(--color-fd-accent-foreground) !important;
+}
+
 /* ─── Page nav cards ───────────────────────────────────────────────── */
 
 .fd-page-nav-card {
@@ -147,4 +198,25 @@
 
 .fd-docs-content hr {
   border-color: var(--color-fd-border);
+}
+
+/* ─── Ask AI button (floating + custom trigger) — sync with Next.js ───── */
+
+.fd-ai-floating-btn {
+  border-radius: 26px;
+  box-shadow: 0 8px 32px rgba(180, 140, 20, 0.3);
+}
+
+.fd-ai-floating-btn:hover {
+  box-shadow: 0 10px 40px rgba(180, 140, 20, 0.4);
+}
+
+.fd-ai-floating-trigger .ask-ai-trigger {
+  font-family: var(--fd-font-sans, inherit);
+  border-radius: 26px !important;
+  box-shadow: 0 8px 32px rgba(180, 140, 20, 0.3) !important;
+}
+
+.fd-ai-floating-trigger .ask-ai-trigger:hover {
+  box-shadow: 0 10px 40px rgba(180, 140, 20, 0.4);
 }

@@ -7,7 +7,7 @@ import { parentPort, threadId } from 'node:worker_threads';
 import { escapeHtml } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/@vue+shared@3.5.28/node_modules/@vue/shared/dist/shared.cjs.js';
 import { defineDocsHandler } from 'file:///Users/mac/oss/docs_/packages/nuxt/dist/server.js';
 import { defineDocs } from 'file:///Users/mac/oss/docs_/packages/docs/dist/index.mjs';
-import { colorful } from 'file:///Users/mac/oss/docs_/packages/nuxt-theme/src/themes/colorful.js';
+import { colorful } from '@farming-labs/nuxt-theme/colorful';
 import { createRenderer, getRequestDependencies, getPreloadLinks, getPrefetchLinks } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/vue-bundle-renderer@2.2.0/node_modules/vue-bundle-renderer/dist/runtime.mjs';
 import { parseURL, withoutBase, joinURL, getQuery, withQuery, withTrailingSlash, decodePath, withLeadingSlash, withoutTrailingSlash, joinRelativeURL } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/ufo@1.6.3/node_modules/ufo/dist/index.mjs';
 import { renderToString } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/vue@3.5.28_typescript@5.9.3/node_modules/vue/server-renderer/index.mjs';
@@ -39,7 +39,7 @@ import { createHead as createHead$1, propsToString, renderSSRHead } from 'file:/
 import { DeprecationsPlugin, PromisesPlugin, TemplateParamsPlugin, AliasSortingPlugin } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/unhead@2.1.4/node_modules/unhead/dist/plugins.mjs';
 import { walkResolver } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/unhead@2.1.4/node_modules/unhead/dist/utils.mjs';
 
-const serverAssets = [{"baseName":"docs","dir":"/Users/mac/oss/docs_/examples/nuxt/docs"},{"baseName":"server","dir":"/Users/mac/oss/docs_/examples/nuxt/server/assets"}];
+const serverAssets = [{"baseName":"docs","dir":"/Users/mac/oss/docs_/examples/nuxt/server/docs"},{"baseName":"server","dir":"/Users/mac/oss/docs_/examples/nuxt/server/assets"}];
 
 const assets$1 = createStorage();
 
@@ -2059,7 +2059,7 @@ const asyncContext = getContext("nuxt-dev", {
 	asyncContext: true,
 	AsyncLocalStorage
 });
-const _LjnL0dg5lOMwqa57WlL1NbWM1yRh4JheHBfyCabUMPA = (nitroApp) => {
+const _j3L8BAZ9L_EtT3vsMSVb_IKqusQA9M39XQul7NlHwRs = (nitroApp) => {
 	const handler = nitroApp.h3App.handler;
 	nitroApp.h3App.handler = (event) => {
 		return asyncContext.callAsync({
@@ -2134,10 +2134,25 @@ function onConsoleLog(callback) {
 
 const plugins = [
   _86PzhwlKpSp0zyNklczts0h7yuldipqeiC0UfgB33SM,
-_LjnL0dg5lOMwqa57WlL1NbWM1yRh4JheHBfyCabUMPA
+_j3L8BAZ9L_EtT3vsMSVb_IKqusQA9M39XQul7NlHwRs
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"6c552-ifkOUhxi+3v6ZQXP04T2ie7QlAw\"",
+    "mtime": "2026-02-26T12:09:05.048Z",
+    "size": 443730,
+    "path": "index.mjs.map"
+  },
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1a8ec-vL884oMxJtvDWtleZoA3CZjIq7E\"",
+    "mtime": "2026-02-26T12:09:05.048Z",
+    "size": 108780,
+    "path": "index.mjs"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -2587,14 +2602,14 @@ async function getIslandContext(event) {
 }
 
 const _lazy_xZ09yu = () => Promise.resolve().then(function () { return docs$1; });
-const _lazy_ZxEm7k = () => Promise.resolve().then(function () { return renderer$1; });
+const _lazy_6IlIun = () => Promise.resolve().then(function () { return renderer$1; });
 
 const handlers = [
   { route: '', handler: __8j2qC, lazy: false, middleware: true, method: undefined },
   { route: '/api/docs', handler: _lazy_xZ09yu, lazy: true, middleware: false, method: undefined },
-  { route: '/__nuxt_error', handler: _lazy_ZxEm7k, lazy: true, middleware: false, method: undefined },
+  { route: '/__nuxt_error', handler: _lazy_6IlIun, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_island/**', handler: _SxA8c9, lazy: false, middleware: false, method: undefined },
-  { route: '/**', handler: _lazy_ZxEm7k, lazy: true, middleware: false, method: undefined }
+  { route: '/**', handler: _lazy_6IlIun, lazy: true, middleware: false, method: undefined }
 ];
 
 function createNitroApp() {
@@ -2939,10 +2954,10 @@ const config = defineDocs({
   contentDir: "docs",
   theme: colorful({
     ui: {
-      colors: {
-        primary: "oklch(0.985 0.001 106.423)",
-        background: "hsl(0 0% 2%)"
-      },
+      // colors: {
+      //   primary: "oklch(0.985 0.001 106.423)",
+      //   background: "hsl(0 0% 2%)",
+      // },
       typography: {
         font: {
           style: {
@@ -2982,6 +2997,18 @@ const config = defineDocs({
     titleTemplate: "%s \u2013 Docs",
     description: "Awesome docs powered by @farming-labs/docs (Nuxt)"
   },
+  pageActions: {
+    alignment: "right",
+    copyMarkdown: { enabled: true },
+    openDocs: {
+      enabled: true,
+      providers: [
+        { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?hints=search&q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." },
+        { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." }
+      ]
+    }
+  },
+  llmsTxt: { enabled: true, baseUrl: "https://docs.farming-labs.dev" },
   ordering: "numeric"
 });
 

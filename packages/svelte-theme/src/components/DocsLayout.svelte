@@ -1,5 +1,6 @@
 <script>
   import ThemeToggle from "./ThemeToggle.svelte";
+  import SearchDialog from "./SearchDialog.svelte";
   import AskAIDialog from "./AskAIDialog.svelte";
   import FloatingAIChat from "./FloatingAIChat.svelte";
   import { page } from "$app/stores";
@@ -396,10 +397,5 @@
 {/if}
 
 {#if searchOpen}
-  <AskAIDialog
-    onclose={closeSearch}
-    suggestedQuestions={config?.ai?.suggestedQuestions ?? []}
-    aiLabel={config?.ai?.aiLabel ?? "AI"}
-    hideAITab={config?.ai?.mode === "floating"}
-  />
+  <SearchDialog onclose={closeSearch} />
 {/if}

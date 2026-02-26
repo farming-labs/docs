@@ -233,7 +233,7 @@ figure.shiki:has(figcaption) figcaption {
 
 .fd-last-updated-inline {
   color: var(--color-fd-muted-foreground);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 400;
   margin: 0 0 0.75rem;
   line-height: 1.5;
@@ -401,12 +401,12 @@ figure.shiki:has(figcaption) figcaption {
 
 .fd-last-updated {
   color: var(--color-fd-muted-foreground, hsl(0 0% 45%));
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
 }
 
 .fd-last-updated-footer {
   color: var(--color-fd-muted-foreground, hsl(0 0% 45%));
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   margin-left: auto;
 }
 

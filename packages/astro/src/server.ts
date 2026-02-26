@@ -61,6 +61,7 @@ export interface DocsServer {
     title: string;
     description?: string;
     html: string;
+    rawMarkdown?: string;
     slug?: string;
     previousPage: PageNode | null;
     nextPage: PageNode | null;
@@ -455,6 +456,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       title: (data.title as string) ?? fallbackTitle,
       description: data.description as string | undefined,
       html,
+      rawMarkdown: content,
       ...(isIndex ? {} : { slug }),
       previousPage,
       nextPage,
