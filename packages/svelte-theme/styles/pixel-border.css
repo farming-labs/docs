@@ -599,3 +599,85 @@
 .fd-ai-code-block code {
   font-family: var(--fd-font-mono, ui-monospace, monospace);
 }
+
+/* ─── Omni Command Palette — pixel-border theme ──────────────────── */
+
+.omni-content {
+  border-radius: 0 !important;
+  border: 2px solid var(--color-fd-border, hsl(0 0% 15%)) !important;
+  box-shadow:
+    4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%)),
+    0 24px 60px -12px rgba(0, 0, 0, 0.5) !important;
+}
+
+.omni-item {
+  border-radius: 0 !important;
+}
+
+.omni-kbd,
+.omni-kbd-sm {
+  border-radius: 0 !important;
+  border: 1px solid var(--color-fd-border, hsl(0 0% 15%)) !important;
+}
+
+.omni-close-btn {
+  border-radius: 0 !important;
+}
+
+.omni-empty-icon {
+  border-radius: 0 !important;
+}
+
+.omni-search-input {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+}
+
+.omni-group-label {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  letter-spacing: 0.08em !important;
+}
+
+.omni-footer-inner {
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+}
+
+.omni-highlight {
+  background: color-mix(in srgb, var(--color-fd-primary, #6366f1) 25%, transparent) !important;
+  border-radius: 0 !important;
+}
+
+/* ─── Page Actions — pixel-border theme ─────────────────────────── */
+
+.fd-page-action-btn {
+  text-transform: uppercase !important;
+  box-shadow: 2px 2px 0 0 var(--color-fd-border, #262626) !important;
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  border-radius: 0 !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.03em !important;
+}
+
+.fd-page-action-dropdown {
+  position: relative !important;
+}
+
+.fd-page-action-menu {
+  border-radius: 0 !important;
+  border: 2px solid var(--color-fd-border, #262626) !important;
+  box-shadow: 2px 2px 0 0 var(--color-fd-border, #262626), 0 4px 24px hsl(0 0% 0% / 0.5) !important;
+  padding: 0 !important;
+}
+
+.fd-page-action-menu-item {
+  border-radius: 0 !important;
+  font-size: 0.8rem !important;
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.03em !important;
+  color: var(--color-fd-muted-foreground) !important;
+  border-top: 1px solid var(--color-fd-border, #262626) !important;
+}
+
+.fd-page-action-menu-item:first-child {
+  border-top: none !important;
+}
