@@ -15,13 +15,13 @@ export default function FrameworkTabs({ tabs }: FrameworkTabsProps) {
 
   return (
     <div>
-      <div className="flex items-center gap-0 mb-4 border-b border-white/[8%]">
+      <div className="flex items-center gap-0 mb-4 border-b border-black/[8%] dark:border-white/[8%]">
         {tabs.map((tab) => (
           <button
             key={tab.value}
             onClick={() => setActive(tab.value)}
             className={`px-4 py-2 text-[11px] font-mono uppercase tracking-wider transition-colors relative ${
-              active === tab.value ? "text-white" : "text-white/30 hover:text-white/60"
+              active === tab.value ? "text-black dark:text-white" : "text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60"
             }`}
           >
             {tab.label}

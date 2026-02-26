@@ -11,27 +11,27 @@ import InitBlockTabs from "@/components/ui/init-block-tabs";
 
 function Navbar() {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[1000] border-b border-white/5 bg-black/40 backdrop-blur-xl">
+    <nav className="fixed top-0 left-0 right-0 z-[1000] border-b border-black/10 dark:border-white/5 bg-white/80 dark:bg-black/40 backdrop-blur-xl">
       <div className="mx-auto max-w-6xl flex items-center justify-between px-6 h-14">
         {/* <div className="h-px w-full bg-white/5" /> */}
 
         {/* <Link
           href="/"
-          className="font-mono text-sm tracking-tighter text-white uppercase hover:no-underline"
+          className="font-mono text-sm tracking-tighter text-black dark:text-white uppercase hover:no-underline"
         >
           @farming-labs/docs
         </Link>
         <div className="flex items-center gap-6">
           <Link
             href="/docs"
-            className="text-sm text-white/60 hover:text-white transition-colors hover:no-underline"
+            className="text-sm text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors hover:no-underline"
           >
             Docs
           </Link>
           <Link
             href="https://github.com/farming-labs/docs"
             target="_blank"
-            className="text-sm text-white/60 hover:text-white transition-colors hover:no-underline"
+            className="text-sm text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors hover:no-underline"
           >
             GitHub
             <ArrowUpRight className="inline w-3 h-3 ml-0.5 mb-0.5" />
@@ -45,7 +45,7 @@ function Navbar() {
 function HeroSection() {
   return (
     <section className="relative md:mx-0 -mx-[5%] min-h-screen flex items-end overflow-y-hidden">
-      <div className="absolute bottom-[70px] sm:bottom-16 left-0 right-0 z-[999] h-px bg-white/[8%]" />
+      <div className="absolute bottom-[70px] sm:bottom-16 left-0 right-0 z-[999] h-px bg-black/[8%] dark:bg-white/[8%]" />
       <AnimatedBackground />
       <div className="relative z-[999] w-full pb-12 sm:pb-16 pt-24 px-5 sm:px-0">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 sm:gap-16">
@@ -54,69 +54,69 @@ function HeroSection() {
               <div className="inline-block">
                 <a
                   href="/changelog#v0.0.1"
-                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted hover:text-white hover:underline-offset-2 hover:decoration-white/30 text-white/40 px-0 py-1.5 flex items-center"
+                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
                 >
-                  <div className="h-[12px] w-px bg-white/50 mr-2" />
+                  <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
                   v0.0.1
                 </a>
               </div>
               <div className="inline-block">
                 <a
                   href="/changelog#v0.0.2-beta.16-20"
-                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted hover:text-white hover:underline-offset-2 hover:decoration-white/30 text-white/40 px-0 py-1.5 flex items-center"
+                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
                 >
-                  <div className="h-[12px] w-px bg-white/50 mr-2" />
+                  <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
                   v0.0.2-beta.20
                 </a>
               </div>
               <div className="inline-block">
                 <a
                   href="/changelog#v0.0.2-beta.11-15"
-                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted hover:text-white hover:underline-offset-2 hover:decoration-white/30 text-white/40 px-0 py-1.5 flex items-center"
+                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
                 >
-                  <div className="h-[12px] w-px bg-white/50 mr-2" />
+                  <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
                   v0.0.2-beta.15
                 </a>
               </div>
               <div className="inline-block">
                 <a
                   href="/changelog#v0.0.2-beta.5-10"
-                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted hover:text-white hover:underline-offset-2 hover:decoration-white/30 text-white/40 px-0 py-1.5 flex items-center"
+                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
                 >
-                  <div className="h-[12px] w-px bg-white/50 mr-2" />
+                  <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
                   v0.0.2-beta.10
                 </a>
               </div>
               <div className="inline-block">
                 <a
                   href="/changelog#v0.0.2-beta.1-4"
-                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted hover:text-white hover:underline-offset-2 hover:decoration-white/30 text-white/40 px-0 py-1.5 flex items-center"
+                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
                 >
-                  <div className="h-[12px] w-px bg-white/50 mr-2" />
+                  <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
                   v0.0.2-beta.4
                 </a>
               </div>
             </div>
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-semibold tracking-tighter text-white leading-[0.95]">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-semibold tracking-tighter text-black dark:text-white leading-[0.95]">
               a documentation
               <br />
               <div className="mt-2" />
-              that just <span className="text-black bg-white p-0 mt-2">works.</span>
+              that just <span className="bg-black text-white dark:bg-white dark:text-black p-0 mt-2">works.</span>
             </h1>
-            <p className="mt-4 text-xs sm:text-base font-mono uppercase text-white/45 max-w-md leading-relaxed">
+            <p className="mt-4 text-xs sm:text-base font-mono uppercase text-black/45 dark:text-white/45 max-w-md leading-relaxed">
               A modern documentation framework that works. One config file, zero boilerplate.
             </p>
 
             <div className="-mb-5 sm:mb-0 mt-6 sm:mt-8 flex flex-col md:flex-wrap md:flex-row-reverse items-start md:items-center gap-0">
               <Link
                 href="/docs"
-                className="group inline-flex items-center gap-2 bg-white text-black px-5 py-[11px] mb-[0.5px] text-xs font-mono uppercase tracking-wider hover:bg-white/90 transition-all hover:no-underline"
+                className="group inline-flex items-center gap-2 bg-black text-white dark:bg-white dark:text-black px-5 py-[11px] mb-[0.5px] text-xs font-mono uppercase tracking-wider hover:bg-black/90 dark:hover:bg-white/90 transition-all hover:no-underline"
               >
                 Get Started
                 <ArrowRight className="w-3.5 h-3.5 -rotate-45 group-hover:translate-x-0.5 transition-transform" />
               </Link>
               <CopyCommand
-                className="border-b-0 sm:border-b border-l-0 border-white/10"
+                className="border-b-0 sm:border-b border-l-0 border-black/10 dark:border-white/10"
                 command="pnpx @farming-labs/docs init"
               />
             </div>
@@ -126,7 +126,7 @@ function HeroSection() {
             <div className="flex justify-end">
               <Link
                 href="https://github.com/farming-labs/docs"
-                className="group uppercase font-mono tracking-tighter text-white/30 hover:text-white/60 hover:no-underline relative ease-in after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:translate-y-[3px] after:bg-white/30 after:opacity-0 after:duration-300 after:content-[''] hover:after:-translate-y-0.5 hover:after:opacity-100 text-[11px] transition-all duration-300"
+                className="group uppercase font-mono tracking-tighter text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60 hover:no-underline relative ease-in after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:translate-y-[3px] after:bg-black/30 dark:after:bg-white/30 after:opacity-0 after:duration-300 after:content-[''] hover:after:-translate-y-0.5 hover:after:opacity-100 text-[11px] transition-all duration-300"
               >
                 <Github className="w-3 h-3 mr-1 inline-flex mb-1" />
                 GET THE GITHUB
@@ -145,12 +145,12 @@ function NextJsSteps() {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="space-y-6">
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             1
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Install</h3>
-            <p className="text-sm text-white/40">Add the core packages to your Next.js project.</p>
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Install</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">Add the core packages to your Next.js project.</p>
           </div>
         </div>
         <CodeBlock
@@ -161,12 +161,12 @@ function NextJsSteps() {
         />
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             2
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Configure</h3>
-            <p className="text-sm text-white/40">
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Configure</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">
               One file. Theme, metadata, components, icons — everything.
             </p>
           </div>
@@ -187,13 +187,13 @@ export default defineDocs({
         />
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             3
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Next Config</h3>
-            <p className="text-sm text-white/40">
-              Wrap your config with <code className="text-white/60 text-xs">withDocs()</code>.
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Next Config</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">
+              Wrap your config with <code className="text-black/60 dark:text-white/60 text-xs">withDocs()</code>.
               Handles MDX, routing, and search.
             </p>
           </div>
@@ -209,13 +209,13 @@ export default withDocs({});`}
 
       <div className="space-y-6">
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             4
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Root Layout</h3>
-            <p className="text-sm text-white/40">
-              Wrap your app with <code className="text-white/60 text-xs">RootProvider</code> for
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Root Layout</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">
+              Wrap your app with <code className="text-black/60 dark:text-white/60 text-xs">RootProvider</code> for
               search, theme switching, and AI.
             </p>
           </div>
@@ -237,21 +237,21 @@ export default function RootLayout({ children }) {
 }`}
         />
 
-        <p className="text-xs text-white/50 -mt-1 mb-2">
-          In <code className="text-white/70">app/global.css</code>, import your theme&apos;s CSS so
+        <p className="text-xs text-black/50 dark:text-white/50 -mt-1 mb-2">
+          In <code className="text-black/70 dark:text-white/70">app/global.css</code>, import your theme&apos;s CSS so
           docs styling applies (e.g.{" "}
-          <code className="text-white/70">{`@import "@farming-labs/theme/default/css";`}</code> —
+          <code className="text-black/70 dark:text-white/70">{`@import "@farming-labs/theme/default/css";`}</code> —
           use the path that matches your theme).
         </p>
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             5
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Write docs</h3>
-            <p className="text-sm text-white/40">
-              Create MDX files under <code className="text-white/60 text-xs">app/docs/</code>.
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Write docs</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">
+              Create MDX files under <code className="text-black/60 dark:text-white/60 text-xs">app/docs/</code>.
               Frontmatter for metadata. That&#39;s it.
             </p>
           </div>
@@ -277,11 +277,11 @@ export const auth = betterAuth({
 \`\`\``}
         />
 
-        <p className="text-xs text-white/30 mt-2">
+        <p className="text-xs text-black/30 dark:text-white/30 mt-2">
           See the full{" "}
           <a
             href="/docs/installation"
-            className="text-white/50 underline underline-offset-2 hover:text-white/70"
+            className="text-black/50 dark:text-white/50 underline underline-offset-2 hover:text-black/70 dark:hover:text-white/70"
           >
             installation walkthrough
           </a>{" "}
@@ -297,12 +297,12 @@ function SvelteKitSteps() {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="space-y-6">
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             1
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Install</h3>
-            <p className="text-sm text-white/40">
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Install</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">
               Add the core packages to your SvelteKit project.
             </p>
           </div>
@@ -315,12 +315,12 @@ function SvelteKitSteps() {
         />
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             2
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Configure</h3>
-            <p className="text-sm text-white/40">
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Configure</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">
               One config file. Theme, metadata, navigation — everything.
             </p>
           </div>
@@ -342,12 +342,12 @@ export default defineDocs({
         />
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             3
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Server</h3>
-            <p className="text-sm text-white/40">
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Server</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">
               Create the server helper. Handles loading, search, and AI.
             </p>
           </div>
@@ -364,13 +364,13 @@ export const { load, GET, POST } = createDocsServer(config);`}
 
       <div className="space-y-6">
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             4
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Write docs</h3>
-            <p className="text-sm text-white/40">
-              Create Markdown files under <code className="text-white/60 text-xs">docs/</code>.
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Write docs</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">
+              Create Markdown files under <code className="text-black/60 dark:text-white/60 text-xs">docs/</code>.
               That&#39;s it.
             </p>
           </div>
@@ -397,12 +397,12 @@ export const auth = betterAuth({
         />
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             5
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Routes</h3>
-            <p className="text-sm text-white/40">
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Routes</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">
               Three small files for layout, server loader, and page.
             </p>
           </div>
@@ -418,12 +418,12 @@ function AstroSteps() {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="space-y-6">
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             1
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Install</h3>
-            <p className="text-sm text-white/40">Add the core packages to your Astro project.</p>
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Install</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">Add the core packages to your Astro project.</p>
           </div>
         </div>
         <CodeBlock
@@ -434,12 +434,12 @@ function AstroSteps() {
         />
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             2
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Configure</h3>
-            <p className="text-sm text-white/40">
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Configure</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">
               One config file. Theme, metadata, navigation — everything.
             </p>
           </div>
@@ -461,12 +461,12 @@ export default defineDocs({
         />
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             3
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Server</h3>
-            <p className="text-sm text-white/40">
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Server</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">
               Create the server helper. Handles loading, search, and AI.
             </p>
           </div>
@@ -483,13 +483,13 @@ export const { load, GET, POST } = createDocsServer(config);`}
 
       <div className="space-y-6">
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             4
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Write docs</h3>
-            <p className="text-sm text-white/40">
-              Create Markdown files under <code className="text-white/60 text-xs">docs/</code>.
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Write docs</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">
+              Create Markdown files under <code className="text-black/60 dark:text-white/60 text-xs">docs/</code>.
               That&#39;s it.
             </p>
           </div>
@@ -516,12 +516,12 @@ export const auth = betterAuth({
         />
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             5
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Routes</h3>
-            <p className="text-sm text-white/40">Index page, catch-all route, and API endpoint.</p>
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Routes</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">Index page, catch-all route, and API endpoint.</p>
           </div>
         </div>
         <AstroRouteTabs />
@@ -535,12 +535,12 @@ function NuxtSteps() {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="space-y-6">
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             1
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Install</h3>
-            <p className="text-sm text-white/40">Add the core packages to your Nuxt project.</p>
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Install</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">Add the core packages to your Nuxt project.</p>
           </div>
         </div>
         <CodeBlock
@@ -551,12 +551,12 @@ function NuxtSteps() {
         />
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             2
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Configure</h3>
-            <p className="text-sm text-white/40">
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Configure</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">
               One config file. Theme, metadata, navigation — everything.
             </p>
           </div>
@@ -578,12 +578,12 @@ export default defineDocs({
         />
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             3
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Nuxt Config</h3>
-            <p className="text-sm text-white/40">
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Nuxt Config</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">
               Import the theme CSS and configure Nitro server assets.
             </p>
           </div>
@@ -604,12 +604,12 @@ export default defineDocs({
 
       <div className="space-y-6">
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             4
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Server API</h3>
-            <p className="text-sm text-white/40">One handler for docs loading, search, and AI.</p>
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Server API</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">One handler for docs loading, search, and AI.</p>
           </div>
         </div>
         <CodeBlock
@@ -622,13 +622,13 @@ export default defineDocsHandler(config, useStorage);`}
         />
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             5
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Write docs</h3>
-            <p className="text-sm text-white/40">
-              Create Markdown files under <code className="text-white/60 text-xs">docs/</code>.
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Write docs</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">
+              Create Markdown files under <code className="text-black/60 dark:text-white/60 text-xs">docs/</code>.
               That&apos;s it.
             </p>
           </div>
@@ -655,12 +655,12 @@ export const auth = betterAuth({
         />
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-white/10 text-xs font-mono text-white/40">
+          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/10 text-xs font-mono text-black/40 dark:text-white/40">
             6
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white mb-1">Page Route</h3>
-            <p className="text-sm text-white/40">A single Vue page that handles all doc routes.</p>
+            <h3 className="text-sm font-medium text-black dark:text-white mb-1">Page Route</h3>
+            <p className="text-sm text-black/40 dark:text-white/40">A single Vue page that handles all doc routes.</p>
           </div>
         </div>
         <CodeBlock
@@ -692,13 +692,13 @@ const { data } = await useFetch("/api/docs", {
 
 function InstallSection() {
   return (
-    <section className="relative z-10 bg-black border-t border-white/[8%]">
+    <section className="relative z-10 bg-white dark:bg-black border-t border-black/[8%] dark:border-white/[8%]">
       <div className="mx-auto max-w-7xl px-5 sm:px-6 py-16 sm:py-24">
         <div className="mb-10 sm:mb-16">
-          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-4 block">
+          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-black/30 dark:text-white/30 mb-4 block">
             Quick Start
           </span>
-          <h2 className="text-2xl sm:text-4xl font-semibold tracking-tighter text-white">
+          <h2 className="text-2xl sm:text-4xl font-semibold tracking-tighter text-black dark:text-white">
             Up and running in minutes
           </h2>
         </div>
@@ -707,7 +707,7 @@ function InstallSection() {
         </div>
 
         <div className="mb-4">
-          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/25">
+          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-black/25 dark:text-white/25">
             Or set up manually
           </span>
         </div>
@@ -788,18 +788,18 @@ function ThemesSection() {
   ];
 
   return (
-    <section className="relative z-10 bg-black border-t border-white/[8%]">
+    <section className="relative z-10 bg-white dark:bg-black border-t border-black/[8%] dark:border-white/[8%]">
       <div className="mx-auto max-w-7xl px-5 sm:px-6 py-16 sm:py-24">
         <div className="mb-10 sm:mb-16">
-          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-4 block">
+          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-black/30 dark:text-white/30 mb-4 block">
             Themes
           </span>
-          <h2 className="text-2xl sm:text-4xl font-semibold tracking-tighter text-white">
+          <h2 className="text-2xl sm:text-4xl font-semibold tracking-tighter text-black dark:text-white">
             More themes. Your choice.
           </h2>
-          <p className="mt-3 text-white/40 max-w-lg">
+          <p className="mt-3 text-black/40 dark:text-white/40 max-w-lg">
             Pick a preset or build your own with{" "}
-            <code className="text-white/60 text-xs font-mono">createTheme()</code>. Override any
+            <code className="text-black/60 dark:text-white/60 text-xs font-mono">createTheme()</code>. Override any
             styles from config.
           </p>
         </div>
@@ -815,16 +815,16 @@ function ThemesSection() {
                 {theme.colors.map((c, i) => (
                   <div
                     key={i}
-                    className="w-4 h-4 border border-white/10"
+                    className="w-4 h-4 border border-black/10 dark:border-white/10"
                     style={{ backgroundColor: c }}
                   />
                 ))}
               </div>
-              <hr className="border-white/[6%] opacity-60 -mx-10" />
-              <h3 className="text-xs uppercase font-mono pt-2 text-white mb-0">{theme.name}</h3>
-              <hr className="my-2 border-white/[6%] opacity-60 -mx-10" />
-              <p className="text-xs text-white/40 mb-4">{theme.description}</p>
-              <code className="text-[11px] font-mono text-white/25 break-all">{theme.import}</code>
+              <hr className="border-black/[6%] dark:border-white/[6%] opacity-60 -mx-10" />
+              <h3 className="text-xs uppercase font-mono pt-2 text-black dark:text-white mb-0">{theme.name}</h3>
+              <hr className="my-2 border-black/[6%] dark:border-white/[6%] opacity-60 -mx-10" />
+              <p className="text-xs text-black/40 dark:text-white/40 mb-4">{theme.description}</p>
+              <code className="text-[11px] font-mono text-black/25 dark:text-white/25 break-all">{theme.import}</code>
             </PixelCard>
           ))}
         </div>
@@ -846,7 +846,7 @@ function ThemesSection() {
 
         <div className="mt-10 flex items-center gap-4">
           <a className="group" href="/themes">
-            <span className="inline-flex group items-center gap-2 rounded-none uppercase font-mono text-xs border border-white/10 bg-white/[3%] px-5 py-2.5 cursor-pointer text-white/80 transition-all hover:bg-white/[4%] hover:text-white hover:border-white/10 hover:no-underline">
+            <span className="inline-flex group items-center gap-2 rounded-none uppercase font-mono text-xs border border-black/10 dark:border-white/10 bg-black/[3%] dark:bg-white/[3%] px-5 py-2.5 cursor-pointer text-black/80 dark:text-white/80 transition-all hover:bg-black/[4%] dark:hover:bg-white/[4%] hover:text-black dark:hover:text-white hover:border-black/10 dark:hover:border-white/10 hover:no-underline">
               <svg
                 width="14"
                 height="14"
@@ -875,13 +875,13 @@ function ThemesSection() {
 
 function ConfigSection() {
   return (
-    <section className="relative z-10 bg-black border-t border-white/[8%]">
+    <section className="relative z-10 bg-white dark:bg-black border-t border-black/[8%] dark:border-white/[8%]">
       <div className="mx-auto max-w-7xl px-5 sm:px-6 py-16 sm:py-24">
         <div className="mb-10 sm:mb-16">
-          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-4 block">
+          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-black/30 dark:text-white/30 mb-4 block">
             Configuration
           </span>
-          <h2 className="text-2xl sm:text-4xl font-semibold tracking-tighter text-white">
+          <h2 className="text-2xl sm:text-4xl font-semibold tracking-tighter text-black dark:text-white">
             One file. Full control.
           </h2>
         </div>
@@ -989,16 +989,16 @@ function PackagesSection() {
   ];
 
   return (
-    <section className="relative z-10 bg-black border-t border-white/[0.06]">
+    <section className="relative z-10 bg-white dark:bg-black border-t border-black/[0.06] dark:border-white/[0.06]">
       <div className="mx-auto max-w-6xl px-5 sm:px-6 py-16 sm:py-24">
         <div className="mb-10 sm:mb-16">
-          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/30 mb-4 block">
+          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-black/30 dark:text-white/30 mb-4 block">
             Packages
           </span>
-          <h2 className="text-2xl sm:text-4xl font-semibold tracking-tighter text-white">
+          <h2 className="text-2xl sm:text-4xl font-semibold tracking-tighter text-black dark:text-white">
             Modular by design
           </h2>
-          <p className="mt-3 text-white/40 max-w-lg">
+          <p className="mt-3 text-black/40 dark:text-white/40 max-w-lg">
             Only install what you need. Core stays lean, framework adapters and themes are separate.
           </p>
         </div>
@@ -1007,12 +1007,12 @@ function PackagesSection() {
           {packages.map((pkg) => (
             <div
               key={pkg.name}
-              className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8 border border-white/[0.06] bg-white/[0.01] p-5 hover:bg-white/[0.03] transition-all"
+              className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8 border border-black/[0.06] dark:border-white/[0.06] bg-black/[0.01] dark:bg-white/[0.01] p-5 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-all"
             >
-              <code className="text-sm font-mono text-white/80 shrink-0 min-w-[250px]">
+              <code className="text-sm font-mono text-black/80 dark:text-white/80 shrink-0 min-w-[250px]">
                 {pkg.name}
               </code>
-              <p className="text-sm text-white/35">{pkg.description}</p>
+              <p className="text-sm text-black/35 dark:text-white/35">{pkg.description}</p>
             </div>
           ))}
         </div>
@@ -1023,27 +1023,27 @@ function PackagesSection() {
 
 function FooterSection() {
   return (
-    <footer className="relative z-10 bg-black">
-      <div className="absolute bottom-10 left-0 w-full h-px bg-white/[8%]" />
-      <div className="absolute bottom-24 left-0 w-full h-px bg-white/[8%]" />
+    <footer className="relative z-10 bg-white dark:bg-black">
+      <div className="absolute bottom-10 left-0 w-full h-px bg-black/[8%] dark:bg-white/[8%]" />
+      <div className="absolute bottom-24 left-0 w-full h-px bg-black/[8%] dark:bg-white/[8%]" />
       <div className="mx-auto max-w-7xl px-6 py-12">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="w-full">
-            <span className="font-mono text-xs tracking-tighter text-white/40 uppercase">
+            <span className="font-mono text-xs tracking-tighter text-black/40 dark:text-white/40 uppercase">
               <Link
                 href="https://github.com/farming-labs/docs"
                 target="_blank"
-                className="text-white/30 hover:underline hover:underline-offset-2 hover:decoration-white/30 hover:decoration-dotted hover:text-white/50 transition-colors no-underline lowercase font-mono"
+                className="text-black/30 dark:text-white/30 hover:underline hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 hover:decoration-dotted hover:text-black/50 dark:hover:text-white/50 transition-colors no-underline lowercase font-mono"
               >
                 @farming-labs/docs
               </Link>
             </span>
-            <p className="text-[10px] uppercase font-mono text-white/30 mt-1">
+            <p className="text-[10px] uppercase font-mono text-black/30 dark:text-white/30 mt-1">
               Built by{" "}
               <Link
                 href="https://x.com/kinfishT"
                 target="_blank"
-                className="text-white/30 underline underline-offset-2 decoration-white/30 decoration-dotted hover:text-white/50 transition-colors hover:no-underline uppercase font-mono"
+                className="text-black/30 dark:text-white/30 underline underline-offset-2 decoration-black/30 dark:decoration-white/30 decoration-dotted hover:text-black/50 dark:hover:text-white/50 transition-colors hover:no-underline uppercase font-mono"
               >
                 @kinfish
               </Link>
@@ -1052,21 +1052,21 @@ function FooterSection() {
           <div className="flex max-w-full w-full justify-end items-center gap-6">
             <Link
               href="/docs"
-              className="text-xs uppercase font-mono text-white/30 hover:text-white/60 transition-colors hover:no-underline"
+              className="text-xs uppercase font-mono text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60 transition-colors hover:no-underline"
             >
               Documentation
             </Link>
             <Link
               href="https://github.com/farming-labs/docs"
               target="_blank"
-              className="text-xs uppercase font-mono text-white/30 hover:text-white/60 transition-colors hover:no-underline"
+              className="text-xs uppercase font-mono text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60 transition-colors hover:no-underline"
             >
               GitHub
             </Link>
             <Link
               href="https://www.npmjs.com/package/@farming-labs/docs"
               target="_blank"
-              className="text-xs uppercase font-mono text-white/30 hover:text-white/60 transition-colors hover:no-underline"
+              className="text-xs uppercase font-mono text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60 transition-colors hover:no-underline"
             >
               npm
             </Link>
@@ -1079,12 +1079,12 @@ function FooterSection() {
 
 export default function Home() {
   return (
-    <div className="min-h-screen w-full overflow-y-hidden relative bg-black">
-      <div className="absolute top-14 w-full right-0 z-[999] h-px bg-white/[8%]" />
+    <div className="min-h-screen w-full overflow-y-hidden relative bg-white dark:bg-black">
+      <div className="absolute top-14 w-full right-0 z-[999] h-px bg-black/[8%] dark:bg-white/[8%]" />
       <div className="pointer-events-none fixed inset-0 z-[999]">
         <div className="mx-auto max-w-[90%] h-full relative">
-          <div className="absolute left-0 top-0 h-full w-px bg-white/[8%]" />
-          <div className="absolute right-0 top-0 h-full w-px bg-white/[8%]" />
+          <div className="absolute left-0 top-0 h-full w-px bg-black/[8%] dark:bg-white/[8%]" />
+          <div className="absolute right-0 top-0 h-full w-px bg-black/[8%] dark:bg-white/[8%]" />
         </div>
       </div>
       <div className="max-w-[90%] mx-auto">

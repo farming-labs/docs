@@ -40,38 +40,17 @@ export default function CodeBlock({
     <div className={`relative group max-w-full ${className}`}>
       <PixelCard variant="code" className="p-0!">
         {(title || filename) && (
-          <div
-            className="flex items-center justify-between px-3 sm:px-4 py-2.5 min-w-0 overflow-hidden"
-            style={{
-              borderBottom:
-                "1px solid color-mix(in srgb, var(--color-fd-foreground, #fff) 10%, transparent)",
-              backgroundImage:
-                "repeating-linear-gradient(-45deg, color-mix(in srgb, var(--color-fd-foreground, #fff) 7%, transparent), color-mix(in srgb, var(--color-fd-foreground, #fff) 7%, transparent) 1px, transparent 1px, transparent 6px)",
-            }}
-          >
+          <div className="code-block-header flex items-center justify-between px-3 sm:px-4 py-2.5 min-w-0 overflow-hidden border-b border-neutral-200 dark:border-white/10 bg-neutral-100/80">
             <div className="flex items-center gap-2 min-w-0">
               {filename && (
-                <span
-                  className="text-[11px] sm:text-xs font-mono truncate"
-                  style={{
-                    color: "color-mix(in srgb, var(--color-fd-foreground, #fff) 50%, transparent)",
-                  }}
-                >
+                <span className="text-[11px] sm:text-xs font-mono truncate text-neutral-500 dark:text-[color-mix(in_srgb,var(--color-fd-foreground,#fff)_50%,transparent)]">
                   {filename}
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               {title && (
-                <span
-                  className="text-[9.5px] border px-2 font-mono uppercase tracking-wider"
-                  style={{
-                    backgroundColor: "var(--color-fd-background, #000)",
-                    borderColor:
-                      "color-mix(in srgb, var(--color-fd-foreground, #fff) 10%, transparent)",
-                    color: "color-mix(in srgb, var(--color-fd-foreground, #fff) 20%, transparent)",
-                  }}
-                >
+                <span className="text-[9.5px] border px-2 font-mono uppercase tracking-wider bg-white dark:bg-(--color-fd-background,#000) border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-[color-mix(in_srgb,var(--color-fd-foreground,#fff)_20%,transparent)]">
                   {title}
                 </span>
               )}
@@ -79,13 +58,13 @@ export default function CodeBlock({
           </div>
         )}
         <div className="relative">
-          <pre className="px-3 sm:px-4 py-3.5 text-[12px] sm:text-[13px] leading-relaxed overflow-x-auto font-mono">
+          <pre className="px-3 sm:px-4 py-3.5 text-[12px] sm:text-[13px] leading-relaxed overflow-x-auto font-mono text-neutral-800 dark:text-inherit">
             <code className="sh-code" dangerouslySetInnerHTML={{ __html: highlighted }} />
           </pre>
           {showCopy && (
             <button
               onClick={copyToClipboard}
-              className="absolute top-2.5 right-2.5 p-1.5 border border-white/10 bg-black/80 hover:bg-white/10 transition-colors duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100"
+              className="absolute top-2.5 right-2.5 p-1.5 border border-black/10 dark:border-white/10 bg-white/90 dark:bg-black/80 hover:bg-black/10 dark:hover:bg-white/10 transition-colors duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100"
               title={copied ? "Copied!" : "Copy code"}
             >
               {copied ? (
@@ -101,7 +80,7 @@ export default function CodeBlock({
                   />
                 </svg>
               ) : (
-                <Copy className="w-3.5 h-3.5 text-white/50" />
+                <Copy className="w-3.5 h-3.5 text-black/50 dark:text-white/50" />
               )}
             </button>
           )}

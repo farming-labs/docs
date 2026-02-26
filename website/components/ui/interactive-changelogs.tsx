@@ -203,22 +203,22 @@ export function Component() {
         <GitPullRequest className="size-4" />
         <p className="font-mono uppercase">Changelog</p>
       </div>
-      <div className="absolute w-full top-14 right-0 z-[999] h-px bg-white/[8%]" />
+      <div className="absolute w-full top-14 right-0 z-[999] h-px bg-black/[8%] dark:bg-white/[8%]" />
       <div className="relative max-w-full md:max-w-[90%] mx-auto overflow-hidden">
         <AnimatedBackground />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-black/60" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/50 to-white/60 dark:via-black/50 dark:to-black/60" />
         <div className="relative container h-full mx-auto max-w-full px-6 pt-20 md:pt-32 pb-6 text-left">
-          <div className="absolute left-0 md:left-0 top-0 h-full w-px bg-white/[8%]" />
-          <div className="absolute right-0 md:right-0 top-0 h-full w-px bg-white/[8%]" />
+          <div className="absolute left-0 md:left-0 top-0 h-full w-px bg-black/[8%] dark:bg-white/[8%]" />
+          <div className="absolute right-0 md:right-0 top-0 h-full w-px bg-black/[8%] dark:bg-white/[8%]" />
           <div className="flex flex-col gap-3 h-full">
             <div className="flex flex-col gap-2 justify-end items-start">
-              <h1 className="text-4xl tracking-tighter md:font-bold text-white dark:text-white leading-snug">
+              <h1 className="text-4xl tracking-tighter md:font-bold text-black dark:text-white leading-snug">
                 Latest Updates
                 <br /> & Improvements
               </h1>
-              <p className="text-white/60 dark:text-white/50 text-sm max-w-lg mt-1">
+              <p className="text-black/60 dark:text-white/50 text-sm max-w-lg mt-1">
                 All notable changes to{" "}
-                <code className="font-mono text-white/80 dark:text-white/80">
+                <code className="font-mono text-black/80 dark:text-white/80">
                   @farming-labs/docs
                 </code>{" "}
                 are documented here & other related libraries complementing it

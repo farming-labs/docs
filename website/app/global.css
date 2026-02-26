@@ -17,15 +17,33 @@
 }
 
 
-/* sugar-high syntax highlighting tokens */
+/* sugar-high syntax highlighting tokens (dark code block) */
 .sh-code {
   --sh-class: #e5c07b;
   --sh-identifier: #c8ccd4;
-  /* --sh-sign: #56b6c2; */
   --sh-string: #98c379;
   --sh-keyword: #c678dd;
   --sh-comment: #5c6370;
-  /* --sh-jsxliterals: #56b6c2; */
   --sh-property: #e06c75;
-  /* --sh-entity: #61afef; */
+}
+
+/* light mode code block: darker tokens on light bg */
+:root:not(.dark) .sh-code {
+  --sh-class: #b45309;
+  --sh-identifier: #1f2937;
+  --sh-string: #0d9488;
+  --sh-keyword: #7c3aed;
+  --sh-comment: #6b7280;
+  --sh-property: #dc2626;
+}
+
+.dark .code-block-header {
+  background-color: transparent;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--color-fd-foreground, #fff) 7%, transparent),
+    color-mix(in srgb, var(--color-fd-foreground, #fff) 7%, transparent) 1px,
+    transparent 1px,
+    transparent 6px
+  );
 }
