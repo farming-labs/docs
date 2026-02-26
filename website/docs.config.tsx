@@ -23,6 +23,7 @@ import {
   TreePine,
   Bot,
   MousePointerClick,
+  Book,
 } from "lucide-react";
 
 export default defineDocs({
@@ -47,45 +48,55 @@ export default defineDocs({
   }),
   nav: {
     title: (
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span className="text-xs uppercase font-mono tracking-tighter">@farming-labs/docs</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <div className="flex items-center gap-2 text-xs font-medium text-white/80 dark:text-white/80">
+          <a
+            href={"/"}
+            className="hover:text-white transition-colors hover:no-underline font-mono uppercase text-black/50 dark:text-white/50"
+          >
+            Home <span className="ml-2 text-black/50 dark:text-white/50">/</span>
+          </a>
+         <Book size={14} /> 
+          <p className="font-mono uppercase">docs</p>
+        </div>
+
       </div>
     ),
-    url: "/docs",
+url: "/docs",
   },
-  icons: {
-    book: <BookOpen size={16} />,
+icons: {
+  book: <BookOpen size={16} />,
     rocket: <Rocket size={16} />,
-    terminal: <Terminal size={16} />,
-    file: <FileText size={16} />,
-    settings: <Settings size={16} />,
-    palette: <Palette size={16} />,
-    layers: <Layers size={16} />,
-    zap: <Zap size={16} />,
-    code: <Code size={16} />,
-    lightbulb: <Lightbulb size={16} />,
-    circle: <Circle size={16} />,
-    triangle: <Triangle size={16} />,
-    grid2x2: <Grid2x2 size={16} />,
-    rainbow: <Rainbow size={16} />,
-    sparkles: <Sparkles size={16} />,
-    bold: <Bold size={16} />,
-    treePine: <TreePine size={16} />,
-    bot: <Bot size={16} />,
-    mousePointerClick: <MousePointerClick size={16} />,
+      terminal: <Terminal size={16} />,
+        file: <FileText size={16} />,
+          settings: <Settings size={16} />,
+            palette: <Palette size={16} />,
+              layers: <Layers size={16} />,
+                zap: <Zap size={16} />,
+                  code: <Code size={16} />,
+                    lightbulb: <Lightbulb size={16} />,
+                      circle: <Circle size={16} />,
+                        triangle: <Triangle size={16} />,
+                          grid2x2: <Grid2x2 size={16} />,
+                            rainbow: <Rainbow size={16} />,
+                              sparkles: <Sparkles size={16} />,
+                                bold: <Bold size={16} />,
+                                  treePine: <TreePine size={16} />,
+                                    bot: <Bot size={16} />,
+                                      mousePointerClick: <MousePointerClick size={16} />,
   },
-  github: {
-    url: "https://github.com/farming-labs/docs",
+github: {
+  url: "https://github.com/farming-labs/docs",
     directory: "website",
   },
 
-  breadcrumb: { enabled: true },
+breadcrumb: { enabled: true },
 
-  pageActions: {
-    copyMarkdown: { enabled: true },
-    alignment: "right",
+pageActions: {
+  copyMarkdown: { enabled: true },
+  alignment: "right",
     openDocs: {
-      enabled: true,
+    enabled: true,
       providers: [
         {
           name: "GitHub",
@@ -126,76 +137,76 @@ export default defineDocs({
         },
       ],
     },
-  },
+},
 
-  llmsTxt: {
-    enabled: true,
+llmsTxt: {
+  enabled: true,
     baseUrl: "https://farming-labs-docs.vercel.app",
-    siteDescription:
-      "A modern, flexible MDX documentation framework for Next.js, SvelteKit, Astro, and Nuxt.",
+      siteDescription:
+  "A modern, flexible MDX documentation framework for Next.js, SvelteKit, Astro, and Nuxt.",
   },
-  og: {
-    enabled: true,
+og: {
+  enabled: true,
     type: "dynamic",
-    endpoint: "/api/og",
+      endpoint: "/api/og",
   },
-  metadata: {
-    titleTemplate: "%s – @farming-labs/docs",
+metadata: {
+  titleTemplate: "%s – @farming-labs/docs",
     description: "A modern, flexible MDX documentation framework.",
-    twitterCard: "summary_large_image",
+      twitterCard: "summary_large_image",
   },
-  ordering: "numeric",
+ordering: "numeric",
   ai: {
-    enabled: true,
+  enabled: true,
     mode: "floating",
-    position: "bottom-right",
-    floatingStyle: "full-modal",
-    apiKey: process.env.OPENAI_API_KEY,
-    aiLabel: "DocsBot",
-    suggestedQuestions: [
-      "How do I get started?",
-      "What themes are available?",
-      "How do I create a custom component?",
-      "How do I configure the sidebar?",
-    ],
+      position: "bottom-right",
+        floatingStyle: "full-modal",
+          apiKey: process.env.OPENAI_API_KEY,
+            aiLabel: "DocsBot",
+              suggestedQuestions: [
+                "How do I get started?",
+                "What themes are available?",
+                "How do I create a custom component?",
+                "How do I configure the sidebar?",
+              ],
   },
-  sidebar: {
-    banner: (
+sidebar: {
+  banner: (
+    <div
+      className="-mx-4 relative mt-2"
+      style={{
+        padding: "12px 16px",
+        borderBottom: "1px solid var(--color-fd-border)",
+        borderTop: "1px solid var(--color-fd-border)",
+        fontSize: "13px",
+        color: "var(--color-fd-muted-foreground)",
+        backgroundImage:
+          "repeating-linear-gradient(-45deg, color-mix(in srgb, var(--color-fd-border) 2%, transparent), color-mix(in srgb, var(--color-fd-foreground) 7%, transparent) 1px, transparent 1px, transparent 6px)",
+      }}
+    >
       <div
-        className="-mx-4 relative mt-2"
-        style={{
-          padding: "12px 16px",
-          borderBottom: "1px solid var(--color-fd-border)",
-          borderTop: "1px solid var(--color-fd-border)",
-          fontSize: "13px",
-          color: "var(--color-fd-muted-foreground)",
-          backgroundImage:
-            "repeating-linear-gradient(-45deg, color-mix(in srgb, var(--color-fd-border) 2%, transparent), color-mix(in srgb, var(--color-fd-foreground) 7%, transparent) 1px, transparent 1px, transparent 6px)",
-        }}
+        className="font-mono tracking-tighter"
+        style={{ fontWeight: 600, marginBottom: 4, color: "var(--color-fd-foreground)" }}
       >
-        <div
-          className="font-mono tracking-tighter"
-          style={{ fontWeight: 600, marginBottom: 4, color: "var(--color-fd-foreground)" }}
-        >
-          <span style={{ opacity: 0.4 }}>
-            <Pin size={12} className="inline-flex" />{" "}
-          </span>
-          <a
-            className="lowercase cursor-pointer text-[12px] underline underline-offset-2 decoration-dotted transition-colors mr-1"
-            style={{
-              textDecorationColor:
-                "color-mix(in srgb, var(--color-fd-foreground) 30%, transparent)",
-            }}
-            href="/changelog#v0.0.2-beta.16-20"
-          >
-            v0.0.2.beta.26
-          </a>
-        </div>
-        <span className="uppercase font-mono text-[10px] tracking-tight">
-          Check out the new features and improvements that were added in this release.
+        <span style={{ opacity: 0.4 }}>
+          <Pin size={12} className="inline-flex" />{" "}
         </span>
+        <a
+          className="lowercase cursor-pointer text-[12px] underline underline-offset-2 decoration-dotted transition-colors mr-1"
+          style={{
+            textDecorationColor:
+              "color-mix(in srgb, var(--color-fd-foreground) 30%, transparent)",
+          }}
+          href="/changelog#v0.0.2-beta.16-20"
+        >
+          v0.0.2.beta.26
+        </a>
       </div>
-    ),
+      <span className="uppercase font-mono text-[10px] tracking-tight">
+        Check out the new features and improvements that were added in this release.
+      </span>
+    </div>
+  ),
     footer: (
       <div
         className="-mx-4 -my-2 -mb-4 flex items-center justify-center font-mono uppercase"
@@ -229,8 +240,8 @@ export default defineDocs({
       </div>
     ),
   },
-  themeToggle: {
-    enabled: false,
+themeToggle: {
+  enabled: false,
     default: "dark",
   },
 });

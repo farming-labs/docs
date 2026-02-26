@@ -51,6 +51,7 @@ export default defineDocs({
     description: "Awesome docs powered by @farming-labs/docs (Nuxt)",
   },
   pageActions: {
+    alignment: "right",
     copyMarkdown: { enabled: true },
     openDocs: {
       enabled: true,

@@ -2137,7 +2137,22 @@ const plugins = [
 _j3L8BAZ9L_EtT3vsMSVb_IKqusQA9M39XQul7NlHwRs
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"6c552-ifkOUhxi+3v6ZQXP04T2ie7QlAw\"",
+    "mtime": "2026-02-26T12:09:05.048Z",
+    "size": 443730,
+    "path": "index.mjs.map"
+  },
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1a8ec-vL884oMxJtvDWtleZoA3CZjIq7E\"",
+    "mtime": "2026-02-26T12:09:05.048Z",
+    "size": 108780,
+    "path": "index.mjs"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -2983,6 +2998,7 @@ const config = defineDocs({
     description: "Awesome docs powered by @farming-labs/docs (Nuxt)"
   },
   pageActions: {
+    alignment: "right",
     copyMarkdown: { enabled: true },
     openDocs: {
       enabled: true,
