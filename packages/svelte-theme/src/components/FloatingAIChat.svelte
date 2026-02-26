@@ -268,7 +268,7 @@
             class="fd-ai-floating-trigger"
             style={btnStyle}
           >
-            <svelte:component this={triggerComponent} />
+            <svelte:component this={triggerComponent} aiLabel={label} />
           </div>
         {:else}
           <button
@@ -486,7 +486,7 @@
           class="fd-ai-floating-trigger"
           style={btnStyle}
         >
-          <svelte:component this={triggerComponent} />
+          <svelte:component this={triggerComponent} aiLabel={label} />
         </div>
       {:else}
         <button

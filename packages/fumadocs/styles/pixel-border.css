@@ -150,20 +150,20 @@ code:not(pre code) {
   }
 }
 
-/* ─── Sidebar (better-auth style) ─────────────────────────────────── */
-/* Sidebar container: dark, subtle right border */
-.dark aside#nd-sidebar {
-  background: hsl(0 0% 2%);
-  border-color: hsl(0 0% 12%);
+/* ─── Sidebar (better-auth style) — light + dark ───────────────────── */
+/* Sidebar container: use theme variables for both modes */
+aside#nd-sidebar {
+  background: var(--color-fd-background);
+  border-color: var(--color-fd-border);
 }
 
 /* ── Full-width border separators between top-level items ─────────── */
-.dark aside .overscroll-contain > div {
+aside .overscroll-contain > div {
   margin-top: -22px;
 }
 
-.dark aside .overscroll-contain > div > a[data-active] {
-  border-top: 1px solid hsl(0 0% 12%);
+aside .overscroll-contain > div > a[data-active] {
+  border-top: 1px solid var(--color-fd-border);
   margin-left: -1rem;
   margin-right: -1rem;
   padding-left: 1rem;
@@ -171,112 +171,112 @@ code:not(pre code) {
   padding-bottom: 0.75rem;
 }
 
-.dark aside .overscroll-contain > div > div {
-  border-top: 1px solid hsl(0 0% 12%);
+aside .overscroll-contain > div > div {
+  border-top: 1px solid var(--color-fd-border);
   margin-left: -1rem;
   margin-right: -1rem;
   padding: 0 !important;
 }
 
-.dark aside .overscroll-contain > div > a[data-active]:first-child,
-.dark aside .overscroll-contain > div > div:first-child {
+aside .overscroll-contain > div > a[data-active]:first-child,
+aside .overscroll-contain > div > div:first-child {
   border-top: none;
 }
 
-.dark aside .overscroll-contain > div > a[data-active]:last-child,
-.dark aside .overscroll-contain > div > div:last-child {
-  border-bottom: 1px solid hsl(0 0% 12%);
+aside .overscroll-contain > div > a[data-active]:last-child,
+aside .overscroll-contain > div > div:last-child {
+  border-bottom: 1px solid var(--color-fd-border);
 }
 
 /* ── Sidebar links (all levels) ──────────────────────────────────── */
 
-.dark aside a[data-active] {
+aside a[data-active] {
   font-size: 0.875rem;
   line-height: 1.6;
   border-radius: 0 !important;
   padding: 0.5rem 0.625rem !important;
   transition: color 0.15s ease;
-  color: hsl(0 0% 50%);
+  color: var(--color-fd-muted-foreground);
   font-weight: 400;
   overflow: hidden;
   background-color: transparent !important;
 }
 
-.dark aside a[data-active="true"],
-.dark aside a[data-active="true"]:hover {
+aside a[data-active="true"],
+aside a[data-active="true"]:hover {
   background: transparent !important;
   background-color: transparent !important;
   color: var(--color-fd-primary) !important;
   font-weight: 600;
 }
 
-.dark aside a[data-active="false"]:hover {
+aside a[data-active="false"]:hover {
   background: transparent !important;
   background-color: transparent !important;
-  color: hsl(0 0% 80%);
+  color: var(--color-fd-foreground);
 }
 
 /* ── Child links inside collapsible folders ──────────────────────── */
 
-.dark aside div.overflow-hidden[data-state] a[data-active] {
+aside div.overflow-hidden[data-state] a[data-active] {
   font-size: 0.785rem !important;
   padding-left: 2rem !important;
   padding-top: 0.25rem !important;
   padding-bottom: 0.25rem !important;
-  color: hsl(0 0% 45%) !important;
+  color: var(--color-fd-muted-foreground) !important;
   overflow: hidden;
 }
 
-.dark aside div.overflow-hidden[data-state] a[data-active="true"],
-.dark aside div.overflow-hidden[data-state] a[data-active="true"]:hover {
+aside div.overflow-hidden[data-state] a[data-active="true"],
+aside div.overflow-hidden[data-state] a[data-active="true"]:hover {
   color: var(--color-fd-primary) !important;
   font-weight: 500 !important;
 }
 
-.dark aside div.overflow-hidden[data-state] a[data-active="false"]:hover {
-  color: hsl(0 0% 75%) !important;
+aside div.overflow-hidden[data-state] a[data-active="false"]:hover {
+  color: var(--color-fd-foreground) !important;
 }
 
 /* ── Folder toggle buttons (section headers) ─────────────────────── */
 
-.dark aside button.text-fd-muted-foreground {
-  color: hsl(0 0% 90%);
+aside button.text-fd-muted-foreground {
+  color: var(--color-fd-foreground);
   font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: normal;
   text-transform: none;
 }
 
-.dark aside button.text-fd-muted-foreground:hover {
-  color: hsl(0 0% 100%);
+aside button.text-fd-muted-foreground:hover {
+  color: var(--color-fd-foreground);
 }
 
-.dark aside a[data-active="true"]::before {
+aside a[data-active="true"]::before {
   background-color: var(--color-fd-primary) !important;
   width: 2px !important;
   margin-left: 0.6rem !important;
   inset-inline-start: 0.5rem !important;
 }
 
-.dark aside div.overflow-hidden[data-state]::before {
+aside div.overflow-hidden[data-state]::before {
   margin-left: 0.5rem !important;
   height: calc(100% + 20px) !important;
   margin-top: -25px !important;
 }
 
-.dark aside div[data-state="open"] > :last-child {
+aside div[data-state="open"] > :last-child {
   overflow: hidden;
 }
 
-/* ── Search button: full-width, border-y only ────────────────────── */
+/* ── Search button: full-width, border-y only (light + dark) ───────── */
 
-.dark aside button[class*="bg-fd-secondary"] {
+aside button[class*="bg-fd-secondary"] {
   background: transparent !important;
   border: none !important;
-  border-top: 1px solid hsl(0 0% 12%) !important;
-  border-bottom: 1px solid hsl(0 0% 12%) !important;
+  border-top: 1px solid var(--color-fd-border) !important;
+  border-bottom: 1px solid var(--color-fd-border) !important;
   border-radius: 0 !important;
-  color: hsl(0 0% 45%);
+  color: var(--color-fd-muted-foreground);
   font-size: 0.8125rem;
   padding: 0.5rem 0 !important;
   width: calc(100% + 2rem) !important;
@@ -286,45 +286,45 @@ code:not(pre code) {
   padding-right: 1rem !important;
 }
 
-.dark aside button[class*="bg-fd-secondary"]:hover {
-  background: hsl(0 0% 4%) !important;
-  color: hsl(0 0% 65%);
+aside button[class*="bg-fd-secondary"]:hover {
+  background: var(--color-fd-accent) !important;
+  color: var(--color-fd-foreground);
 }
 
-/* ── Theme toggle ────────────────────────────────────────────────── */
+/* ── Theme toggle in sidebar (light + dark) ───────────────────────── */
 
-.dark aside button[class*="rounded-full"] {
-  border-color: hsl(0 0% 12%);
+aside button[class*="rounded-full"] {
+  border-color: var(--color-fd-border);
 }
 
-/* ─── Tables: visible borders, rounded wrapper ────────────────────── */
+/* ─── Tables: visible borders, rounded-none (light + dark) ─────────── */
 
-.dark table {
-  border: 1px solid hsl(0 0% 15%);
+table {
+  border: 1px solid var(--color-fd-border);
   border-radius: 0 !important;
   overflow: hidden;
 }
 
-.dark th {
-  background: hsl(0 0% 6%);
-  color: hsl(0 0% 80%);
+th {
+  background: var(--color-fd-muted);
+  color: var(--color-fd-foreground);
   font-weight: 500;
-  border-color: hsl(0 0% 15%);
+  border-color: var(--color-fd-border);
 }
 
-.dark td {
-  border-color: hsl(0 0% 12%);
+td {
+  border-color: var(--color-fd-border);
 }
 
-.dark tr:last-child td {
+tr:last-child td {
   border-bottom: none;
 }
 
-/* ─── Code blocks: single border only ─────────────────────────────── */
+/* ─── Code blocks: single border, rounded-none (light + dark) ───────── */
 
 /* Target the fumadocs CodeBlock figure (shiki class) */
 figure.shiki {
-  border: 1px solid hsl(0 0% 15%) !important;
+  border: 1px solid var(--color-fd-border) !important;
   border-radius: 0 !important;
   overflow: hidden;
   box-shadow: none !important;
@@ -340,23 +340,23 @@ figure.shiki > div:first-child {
   border-radius: 0 !important;
 }
 
-/* ─── Tabs (package manager / code tabs) ──────────────────────────── */
+/* ─── Tabs (package manager / code tabs) — light + dark ────────────── */
 
-.dark [role="tablist"] {
+[role="tablist"] {
   border-radius: 0 !important;
 }
 
-.dark [role="tablist"] button,
-.dark [role="tab"] {
+[role="tablist"] button,
+[role="tab"] {
   border-radius: 0 !important;
 }
 
-.dark [role="tabpanel"] {
+[role="tabpanel"] {
   border-radius: 0 !important;
 }
 
 /* Tabs container */
-.dark div:has(> [role="tablist"]) {
+div:has(> [role="tablist"]) {
   border-radius: 0 !important;
 }
 
@@ -370,22 +370,22 @@ figure.shiki > div:first-child {
   padding: 0.125rem 0.375rem;
 } */
 
-/* ─── Callouts: visible border ────────────────────────────────────── */
+/* ─── Callouts: visible border (light + dark) ──────────────────────── */
 
-.dark [class*="bg-fd-card"] {
-  border-color: hsl(0 0% 15%);
+[class*="bg-fd-card"] {
+  border-color: var(--color-fd-border);
 }
 
-/* ─── Nav cards (prev/next): visible border ───────────────────────── */
+/* ─── Nav cards (prev/next): visible border, rounded-none ──────────── */
 
-.dark article a[class*="border"] {
-  border-color: hsl(0 0% 15%);
+article a[class*="border"] {
+  border-color: var(--color-fd-border);
   border-radius: 0 !important;
 }
 
-.dark article a[class*="border"]:hover {
-  background: hsl(0 0% 6%);
-  border-color: hsl(0 0% 22%);
+article a[class*="border"]:hover {
+  background: var(--color-fd-muted);
+  border-color: var(--color-fd-ring);
 }
 
 /* ─── Search dialog ───────────────────────────────────────────────── */
@@ -394,17 +394,17 @@ figure.shiki > div:first-child {
   border-radius: 0 !important;
 }
 
-/* ─── TOC right panel ─────────────────────────────────────────────── */
+/* ─── TOC right panel (light + dark) ───────────────────────────────── */
 
-.dark nav[class*="toc"],
-.dark [class*="fd-toc"] {
-  border-color: hsl(0 0% 12%);
+nav[class*="toc"],
+[class*="fd-toc"] {
+  border-color: var(--color-fd-border);
 }
 
-/* ─── Separator/Divider (hr) ──────────────────────────────────────── */
+/* ─── Separator/Divider (hr) — light + dark ─────────────────────────── */
 
-.dark hr {
-  border-color: hsl(0 0% 15%);
+hr {
+  border-color: var(--color-fd-border);
 }
 
 /* ─── Breadcrumb (pixel-border overrides) ─────────────────────────── */

@@ -441,7 +441,7 @@ aside [class*="border-t"] {
 /* Reset pixel-border's last-updated styling */
 #nd-docs-layout .fd-last-updated {
   color: var(--color-fd-muted-foreground) !important;
-  font-size: 0.8125rem !important;
+  font-size: 0.75rem !important;
 }
 
 /* Reset pixel-border's aggressive scrollbar */

@@ -71,10 +71,11 @@ html {
 
 body {
   font-family: var(--fd-font-sans, ui-sans-serif, system-ui, -apple-system, sans-serif);
+  font-size: var(--fd-body-size, 1rem);
+  font-weight: var(--fd-body-weight, 400);
+  line-height: var(--fd-body-line-height, 1.75);
   background: var(--color-fd-background);
   color: var(--color-fd-foreground);
-  line-height: 1.5;
-  font-size: 14px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -89,6 +90,7 @@ samp {
     "Cascadia Code",
     "Source Code Pro",
     Menlo,
+    Consolas,
     monospace
   );
 }
@@ -585,10 +587,10 @@ samp {
 .fd-page-description {
   margin-top: 0;
   margin-bottom: 1rem;
-  font-size: 1.125rem;
-  line-height: 1.75;
+  font-size: var(--fd-body-size, 1.125rem);
+  font-weight: var(--fd-body-weight, 400);
+  line-height: var(--fd-body-line-height, 1.75);
   color: var(--color-fd-muted-foreground);
-  font-weight: 400;
 }
 
 /* ─── Breadcrumb ─────────────────────────────────────────────────────── */
@@ -597,7 +599,8 @@ samp {
   display: flex;
   align-items: center;
   gap: 0;
-  font-size: 13px;
+  font-size: var(--fd-small-size, 0.8125rem);
+  font-family: var(--fd-font-sans, inherit);
   color: var(--color-fd-muted-foreground);
   margin-bottom: 2rem;
 }
@@ -610,7 +613,7 @@ samp {
 .fd-breadcrumb-sep {
   margin: 0 6px;
   opacity: 0.4;
-  font-size: 12px;
+  font-size: var(--fd-small-size, 0.75rem);
 }
 
 .fd-breadcrumb-parent {
@@ -953,6 +956,9 @@ samp {
 
 .fd-page-body p {
   margin: 0 0 16px;
+  font-size: var(--fd-body-size, 1rem);
+  font-weight: var(--fd-body-weight, 400);
+  line-height: var(--fd-body-line-height, 1.75);
 }
 
 .fd-page-body ul,
@@ -963,6 +969,9 @@ samp {
 
 .fd-page-body li {
   margin: 4px 0;
+  font-size: var(--fd-body-size, 1rem);
+  font-weight: var(--fd-body-weight, 400);
+  line-height: var(--fd-body-line-height, 1.75);
 }
 
 .fd-page-body li::marker {
@@ -1393,7 +1402,8 @@ html.dark pre.shiki {
 
 .fd-last-modified {
   color: var(--color-fd-muted-foreground);
-  font-size: 12px;
+  font-size: var(--fd-small-size, 0.75rem);
+  font-weight: var(--fd-small-weight, 400);
 }
 
 .fd-last-modified-below-title {
@@ -2209,7 +2219,8 @@ html.dark pre.shiki {
   backdrop-filter: blur(4px);
   color: var(--color-fd-muted-foreground, #71717a);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--fd-small-size, 0.875rem);
+  font-family: var(--fd-font-sans, inherit);
   box-shadow: 0 1px 3px color-mix(in srgb, var(--color-fd-background, #000) 20%, transparent);
   transition:
     transform 150ms,
@@ -2233,6 +2244,36 @@ html.dark pre.shiki {
   z-index: 9997;
   cursor: pointer;
   animation: fd-ai-fade-in 300ms ease-out;
+}
+
+/* Custom Ask AI trigger (e.g. triggerComponent): same base as .fd-ai-floating-btn */
+.fd-ai-floating-trigger .ask-ai-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  height: 40px;
+  border-radius: 16px;
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  background: color-mix(in srgb, var(--color-fd-secondary, #f4f4f5) 80%, transparent);
+  backdrop-filter: blur(4px);
+  color: var(--color-fd-muted-foreground, #71717a);
+  cursor: pointer;
+  font-size: var(--fd-small-size, 0.875rem);
+  font-family: var(--fd-font-sans, inherit);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-fd-background, #000) 20%, transparent);
+  transition: transform 150ms, background 150ms, color 150ms;
+}
+
+.fd-ai-floating-trigger .ask-ai-trigger:hover {
+  background: var(--color-fd-accent);
+  color: var(--color-fd-accent-foreground);
+  transform: scale(1.03);
+}
+
+.fd-ai-floating-trigger .ask-ai-trigger:active {
+  transform: scale(0.97);
 }
 
 /* ═══════════════════════════════════════════════════════════════

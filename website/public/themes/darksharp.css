@@ -293,7 +293,7 @@ article a[class*="border"] {
 
 .fd-last-updated {
   color: hsl(0 0% 45%) !important;
-  font-size: 0.75rem !important;
+  font-size: 0.6875rem !important;
   font-family: var(--font-geist-mono, monospace) !important;
   text-transform: uppercase !important;
   letter-spacing: 0.05em !important;

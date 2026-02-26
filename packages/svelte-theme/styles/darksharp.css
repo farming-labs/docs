@@ -205,6 +205,25 @@ code:not(pre code) {
   transform: none;
 }
 
+/* Custom Ask AI trigger — same as fd-ai-floating-btn for theme */
+.fd-ai-floating-trigger .ask-ai-trigger {
+  font-family: var(--fd-font-sans, inherit);
+  border-radius: 2px !important;
+}
+
+.fd-ai-floating-trigger .ask-ai-trigger:hover {
+  box-shadow: 0 0 0 1px var(--color-fd-ring);
+  transform: none;
+}
+
+.fd-ai-fm-input-bar .fd-ai-floating-trigger .ask-ai-trigger {
+  border-radius: 2px !important;
+}
+
+.fd-ai-fm-input-bar .fd-ai-floating-trigger .ask-ai-trigger:hover {
+  transform: none;
+}
+
 /* ─── Omni Command Palette — darksharp theme ────────────────────── */
 
 .omni-content {

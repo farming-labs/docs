@@ -502,6 +502,44 @@ details > :not(summary) {
   filter: brightness(1.1);
 }
 
+/* Custom Ask AI trigger — same as fd-ai-floating-btn for theme */
+.dark .fd-ai-floating-trigger .ask-ai-trigger {
+  font-family: var(--fd-font-sans, inherit);
+  border-radius: 999px !important;
+  background: var(--color-fd-primary) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(38, 189, 108, 0.25) !important;
+  border: none !important;
+}
+
+.dark .fd-ai-floating-trigger .ask-ai-trigger:hover {
+  filter: brightness(1.1);
+}
+
+:root:not(.dark) .fd-ai-floating-trigger .ask-ai-trigger {
+  font-family: var(--fd-font-sans, inherit);
+  border-radius: 999px !important;
+  background: var(--color-fd-primary) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(13, 147, 115, 0.2) !important;
+  border: none !important;
+}
+
+:root:not(.dark) .fd-ai-floating-trigger .ask-ai-trigger:hover {
+  filter: brightness(1.1);
+}
+
+.fd-ai-fm-input-bar .fd-ai-floating-trigger .ask-ai-trigger {
+  border-radius: 999px !important;
+  background: var(--color-fd-primary) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.fd-ai-fm-input-bar .fd-ai-floating-trigger .ask-ai-trigger:hover {
+  filter: brightness(1.1);
+}
+
 .fd-ai-suggestion,
 .fd-ai-result {
   border-radius: 10px;

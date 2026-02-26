@@ -386,7 +386,7 @@ article a[class*="border"] {
 
 .fd-last-updated {
   color: var(--color-fd-muted-foreground) !important;
-  font-size: 0.75rem !important;
+  font-size: 0.6875rem !important;
 }
 
 /* ─── Search / dialogs ───────────────────────────────────────── */

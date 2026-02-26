@@ -1,5 +1,5 @@
 /*
- * @farming-labs/svelte-theme — pixel-border theme
+ * @farming-labs/nuxt-theme — pixel-border theme
  * Inspired by better-auth.com — clean dark UI, sharp corners, visible borders.
  * Import AFTER docs.css to override the default neutral preset.
  */
@@ -23,6 +23,13 @@
   --color-fd-accent-foreground: oklch(0.216 0.006 56.043);
   --color-fd-border: oklch(0.923 0.003 48.717);
   --color-fd-ring: oklch(0.709 0.01 56.259);
+  --scrollbar-thumb: var(--color-fd-border);
+  --scrollbar-thumb-hover: var(--color-fd-ring);
+  --scrollbar-track: transparent;
+  --radius: 0px;
+  --fd-nav-height: 56px;
+  --fd-banner-height: 0px;
+  --fd-tocnav-height: 0px;
 }
 
 /* ─── Color Tokens (dark) ────────────────────────────────────────── */
@@ -44,6 +51,71 @@
   --color-fd-accent-foreground: oklch(0.985 0.001 106.423);
   --color-fd-border: hsl(0 0% 15%);
   --color-fd-ring: hsl(0 0% 30%);
+  --scrollbar-thumb: var(--color-fd-border);
+  --scrollbar-thumb-hover: var(--color-fd-ring);
+  --scrollbar-track: transparent;
+}
+
+/* ─── Scroll (light + dark) ──────────────────────────────────────── */
+
+html {
+  scroll-behavior: auto;
+  scroll-padding-top: calc(
+    var(--fd-nav-height, 56px) + var(--fd-banner-height, 0px) + var(--fd-tocnav-height, 0px) + 24px
+  );
+}
+
+html:not([data-anchor-scrolling]) {
+  scroll-behavior: smooth;
+}
+
+/* ─── Custom scrollbar (light + dark) ─────────────────────────────── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ─── Selection (light + dark) ───────────────────────────────────── */
+
+body {
+  overscroll-behavior: none;
+}
+
+::selection {
+  background: var(--color-fd-foreground);
+  color: var(--color-fd-background);
+}
+
+/* ─── Inline code word break ─────────────────────────────────────── */
+
+code:not(pre code) {
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* ─── Sharp corners everywhere (both modes) ──────────────────────── */
@@ -460,6 +532,31 @@
 }
 
 .fd-ai-floating-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%));
+}
+
+.fd-ai-floating-trigger .ask-ai-trigger {
+  font-family: var(--fd-font-sans, inherit);
+  border-radius: 0 !important;
+  box-shadow: 3px 3px 0 0 var(--color-fd-border, hsl(0 0% 15%)) !important;
+}
+
+.fd-ai-floating-trigger .ask-ai-trigger:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%));
+}
+
+.fd-ai-fm-input-bar .fd-ai-floating-trigger .ask-ai-trigger {
+  border-radius: 0 !important;
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  font-size: 12px !important;
+  box-shadow: 3px 3px 0 0 var(--color-fd-border, hsl(0 0% 15%)) !important;
+}
+
+.fd-ai-fm-input-bar .fd-ai-floating-trigger .ask-ai-trigger:hover {
   transform: translate(-1px, -1px);
   box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%));
 }

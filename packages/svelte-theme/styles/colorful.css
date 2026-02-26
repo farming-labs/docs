@@ -199,3 +199,24 @@
 .fd-docs-content hr {
   border-color: var(--color-fd-border);
 }
+
+/* ─── Ask AI button (floating + custom trigger) — sync with Next.js ───── */
+
+.fd-ai-floating-btn {
+  border-radius: 26px;
+  box-shadow: 0 8px 32px rgba(180, 140, 20, 0.3);
+}
+
+.fd-ai-floating-btn:hover {
+  box-shadow: 0 10px 40px rgba(180, 140, 20, 0.4);
+}
+
+.fd-ai-floating-trigger .ask-ai-trigger {
+  font-family: var(--fd-font-sans, inherit);
+  border-radius: 26px !important;
+  box-shadow: 0 8px 32px rgba(180, 140, 20, 0.3) !important;
+}
+
+.fd-ai-floating-trigger .ask-ai-trigger:hover {
+  box-shadow: 0 10px 40px rgba(180, 140, 20, 0.4);
+}
