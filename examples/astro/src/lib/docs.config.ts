@@ -66,8 +66,8 @@ export default defineDocs({
       ],
     }
   },
-  llmsTxt: {enabled: true , baseUrl: "https://docs.farming-labs.dev"},
-lastUpdated: {enabled: true,position: "below-title"},
+  llmsTxt: { enabled: true, baseUrl: "https://docs.farming-labs.dev" },
+  lastUpdated: { enabled: true, position: "below-title" },
   themeToggle: { enabled: false, default: "dark" },
   breadcrumb: { enabled: true },
   metadata: {

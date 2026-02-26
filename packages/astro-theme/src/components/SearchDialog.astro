@@ -162,17 +162,18 @@ const { config = null } = Astro.props;
     var subtitle = (item.subtitle || item.description || (isRecent ? "Recently viewed" : "Page")).replace(/</g, "&lt;").replace(/>/g, "&gt;");
     var url = item.url || "#";
     var id = (item.id || url).replace(/[^a-zA-Z0-9-_]/g, "_");
+    var safeUrl = url.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
     var activeClass = active ? " omni-item-active" : "";
     return (
-      '<button type="button" class="omni-item' + activeClass + '" data-id="' + id + '" data-url="' + url.replace(/"/g, "&quot;") + '" role="option" aria-selected="' + (active ? "true" : "false") + '">' +
+      '<div class="omni-item' + activeClass + '" data-id="' + id + '" data-url="' + url.replace(/"/g, "&quot;") + '" role="option" aria-selected="' + (active ? "true" : "false") + '" tabindex="-1">' +
         '<div class="omni-item-icon">' + fileIconSvg + '</div>' +
         '<div class="omni-item-text">' +
           '<div class="omni-item-label">' + label + '</div>' +
           '<div class="omni-item-subtitle">' + subtitle + '</div>' +
         '</div>' +
-        '<a href="' + url + '" class="omni-item-ext" title="Open in new tab" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">' + externalSvg + '</a>' +
+        '<a href="' + safeUrl + '" class="omni-item-ext" title="Open in new tab" target="_blank" rel="noopener noreferrer" data-ext-url="' + url.replace(/"/g, "&quot;") + '">' + externalSvg + '</a>' +
         '<span class="omni-item-chevron" aria-hidden="true">' + chevronSvg + '</span>' +
-      '</button>'
+      '</div>'
     );
   }
 
@@ -233,34 +234,59 @@ const { config = null } = Astro.props;
       if (emptyText) emptyText.textContent = "No results found. Try a different query.";
     }
 
-    bindItemClicks();
     scrollActiveIntoView();
   }
 
-  function bindItemClicks() {
+  function bindListboxDelegation() {
     var listbox = getListbox();
-    if (!listbox) return;
-    listbox.querySelectorAll(".omni-item[data-url]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var url = btn.getAttribute("data-url");
+    if (!listbox || listbox._fdOmniBound) return;
+    listbox._fdOmniBound = true;
+    listbox.addEventListener("click", function (e) {
+      var ext = e.target.closest && e.target.closest("a.omni-item-ext");
+      if (ext) {
+        e.preventDefault();
+        e.stopPropagation();
+        var url = ext.getAttribute("data-ext-url") || ext.getAttribute("href");
+        if (url) {
+          try {
+            window.open(url, "_blank", "noopener,noreferrer");
+          } catch (err) {
+            window.location.href = url;
+          }
+        }
+        return;
+      }
+      var row = e.target.closest && e.target.closest(".omni-item[data-url]");
+      if (row) {
+        e.preventDefault();
+        var url = row.getAttribute("data-url");
         if (!url) return;
-        var label = btn.querySelector(".omni-item-label");
-        saveRecent({ id: url, label: label ? label.textContent : url, url: url });
-        if (url.startsWith("http")) window.open(url, "_blank", "noopener");
+        var labelEl = row.querySelector(".omni-item-label");
+        var label = labelEl ? labelEl.textContent : url;
+        saveRecent({ id: url, label: label, url: url });
+        if (url.startsWith("http")) window.open(url, "_blank", "noopener,noreferrer");
         else window.location.href = url;
         closeDialog();
-      });
-      btn.addEventListener("mouseenter", function () {
-        var idx = Array.prototype.indexOf.call(listbox.querySelectorAll(".omni-item[data-url]"), btn);
-        if (idx >= 0) { activeIndex = idx; render(); }
-      });
+      }
+    });
+    listbox.addEventListener("mouseover", function (e) {
+      var row = e.target.closest && e.target.closest(".omni-item[data-url]");
+      if (row) {
+        var container = row.closest("#fd-omni-recent-items") || row.closest("#fd-omni-docs-items");
+        if (container) {
+          var items = container.querySelectorAll(".omni-item[data-url]");
+          var idx = Array.prototype.indexOf.call(items, row);
+          if (idx >= 0) { activeIndex = idx; render(); }
+        }
+      }
     });
   }
 
   function scrollActiveIntoView() {
-    var listbox = getListbox();
-    if (!listbox) return;
-    var items = listbox.querySelectorAll(".omni-item[data-url]");
+    var q = getInput() && getInput().value.trim();
+    var container = q ? getDocsItems() : getRecentItems();
+    if (!container) return;
+    var items = container.querySelectorAll(".omni-item[data-url]");
     if (items[activeIndex]) items[activeIndex].scrollIntoView({ block: "nearest" });
   }
 
@@ -350,6 +376,7 @@ const { config = null } = Astro.props;
         }
       });
     }
+    bindListboxDelegation();
   }
 
   function setOpen(open) {
