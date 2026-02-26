@@ -53,11 +53,11 @@ export default defineDocs({
         <div className="flex items-center gap-2 text-xs font-medium text-white/80 dark:text-white/80">
           <a
             href={"/"}
-            className="hover:text-white transition-colors hover:no-underline font-mono uppercase text-black/50 dark:text-white/50"
+            className="hover:text-black dark:hover:text-white transition-colors hover:no-underline font-mono uppercase text-black/50 dark:text-white/50"
           >
             Home <span className="ml-2 text-black/50 dark:text-white/50">/</span>
           </a>
-          <Book size={14} />
+          <Book className="text-black dark:text-white/50" size={14} />
           <p className="font-mono uppercase text-black dark:text-white/50">docs</p>
         </div>
 
