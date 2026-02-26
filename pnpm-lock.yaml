@@ -128,14 +128,14 @@ importers:
   examples/sveltekit:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.0.2
-        version: 0.0.2
+        specifier: workspace:*
+        version: link:../../packages/docs
       '@farming-labs/svelte':
-        specifier: 0.0.2
-        version: 0.0.2(@farming-labs/docs@0.0.2)
+        specifier: workspace:*
+        version: link:../../packages/svelte
       '@farming-labs/svelte-theme':
-        specifier: 0.0.2
-        version: 0.0.2(svelte@5.51.3)
+        specifier: workspace:*
+        version: link:../../packages/svelte-theme
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^6.0.0
@@ -980,16 +980,6 @@ packages:
       next: '>=16.0.0'
       react: '>=19.2.0'
       react-dom: '>=19.2.0'
-
-  '@farming-labs/svelte-theme@0.0.2':
-    resolution: {integrity: sha512-tSreNjzEmrrZStn1evHyRzziR3REN+ApgjQqq1F8l4+GXKZBlPx71yjWFrxBgw0lQ1NwBlhZ4byasDwQYWeQ3g==}
-    peerDependencies:
-      svelte: '>=5.0.0'
-
-  '@farming-labs/svelte@0.0.2':
-    resolution: {integrity: sha512-lw5fPT94Ogca1SsFuvyaZKMSyzisldQLPJn7dyU9bfZrfLfi+yTeJw6mKFw3YBt8G6mCP+xVRTzNnT6YH8SrKQ==}
-    peerDependencies:
-      '@farming-labs/docs': '*'
 
   '@farming-labs/theme@0.0.2':
     resolution: {integrity: sha512-qH5IBIRVSmseMaEBI6q/qJPfUdOgPF4uowYO1TR03Dkt77pt6ueijHqCySgGlIi8bSW/xPd38P8ItYOLXWmwiQ==}
@@ -7236,20 +7226,6 @@ snapshots:
       - waku
       - webpack
       - zod
-
-  '@farming-labs/svelte-theme@0.0.2(svelte@5.51.3)':
-    dependencies:
-      '@farming-labs/docs': 0.0.2
-      '@farming-labs/svelte': 0.0.2(@farming-labs/docs@0.0.2)
-      gray-matter: 4.0.3
-      sugar-high: 0.9.5
-      svelte: 5.51.3
-
-  '@farming-labs/svelte@0.0.2(@farming-labs/docs@0.0.2)':
-    dependencies:
-      '@farming-labs/docs': 0.0.2
-      gray-matter: 4.0.3
-      shiki: 3.22.0
 
   '@farming-labs/theme@0.0.2(@farming-labs/docs@0.0.2)(@mdx-js/mdx@3.1.1)(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.1.18)':
     dependencies:
