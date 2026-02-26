@@ -101,7 +101,10 @@ function HeroSection() {
               a documentation
               <br />
               <div className="mt-2" />
-              that just <span className="bg-black text-white dark:bg-white dark:text-black p-0 mt-2">works.</span>
+              that just{" "}
+              <span className="bg-black text-white dark:bg-white dark:text-black p-0 mt-2">
+                works.
+              </span>
             </h1>
             <p className="mt-4 text-xs sm:text-base font-mono uppercase text-black/45 dark:text-white/45 max-w-md leading-relaxed">
               A modern documentation framework that works. One config file, zero boilerplate.
@@ -150,7 +153,9 @@ function NextJsSteps() {
           </div>
           <div>
             <h3 className="text-sm font-medium text-black dark:text-white mb-1">Install</h3>
-            <p className="text-sm text-black/40 dark:text-white/40">Add the core packages to your Next.js project.</p>
+            <p className="text-sm text-black/40 dark:text-white/40">
+              Add the core packages to your Next.js project.
+            </p>
           </div>
         </div>
         <CodeBlock
@@ -193,8 +198,9 @@ export default defineDocs({
           <div>
             <h3 className="text-sm font-medium text-black dark:text-white mb-1">Next Config</h3>
             <p className="text-sm text-black/40 dark:text-white/40">
-              Wrap your config with <code className="text-black/60 dark:text-white/60 text-xs">withDocs()</code>.
-              Handles MDX, routing, and search.
+              Wrap your config with{" "}
+              <code className="text-black/60 dark:text-white/60 text-xs">withDocs()</code>. Handles
+              MDX, routing, and search.
             </p>
           </div>
         </div>
@@ -215,7 +221,8 @@ export default withDocs({});`}
           <div>
             <h3 className="text-sm font-medium text-black dark:text-white mb-1">Root Layout</h3>
             <p className="text-sm text-black/40 dark:text-white/40">
-              Wrap your app with <code className="text-black/60 dark:text-white/60 text-xs">RootProvider</code> for
+              Wrap your app with{" "}
+              <code className="text-black/60 dark:text-white/60 text-xs">RootProvider</code> for
               search, theme switching, and AI.
             </p>
           </div>
@@ -238,10 +245,10 @@ export default function RootLayout({ children }) {
         />
 
         <p className="text-xs text-black/50 dark:text-white/50 -mt-1 mb-2">
-          In <code className="text-black/70 dark:text-white/70">app/global.css</code>, import your theme&apos;s CSS so
-          docs styling applies (e.g.{" "}
-          <code className="text-black/70 dark:text-white/70">{`@import "@farming-labs/theme/default/css";`}</code> —
-          use the path that matches your theme).
+          In <code className="text-black/70 dark:text-white/70">app/global.css</code>, import your
+          theme&apos;s CSS so docs styling applies (e.g.{" "}
+          <code className="text-black/70 dark:text-white/70">{`@import "@farming-labs/theme/default/css";`}</code>{" "}
+          — use the path that matches your theme).
         </p>
 
         <div className="flex items-start gap-4">
@@ -251,7 +258,8 @@ export default function RootLayout({ children }) {
           <div>
             <h3 className="text-sm font-medium text-black dark:text-white mb-1">Write docs</h3>
             <p className="text-sm text-black/40 dark:text-white/40">
-              Create MDX files under <code className="text-black/60 dark:text-white/60 text-xs">app/docs/</code>.
+              Create MDX files under{" "}
+              <code className="text-black/60 dark:text-white/60 text-xs">app/docs/</code>.
               Frontmatter for metadata. That&#39;s it.
             </p>
           </div>
@@ -370,8 +378,9 @@ export const { load, GET, POST } = createDocsServer(config);`}
           <div>
             <h3 className="text-sm font-medium text-black dark:text-white mb-1">Write docs</h3>
             <p className="text-sm text-black/40 dark:text-white/40">
-              Create Markdown files under <code className="text-black/60 dark:text-white/60 text-xs">docs/</code>.
-              That&#39;s it.
+              Create Markdown files under{" "}
+              <code className="text-black/60 dark:text-white/60 text-xs">docs/</code>. That&#39;s
+              it.
             </p>
           </div>
         </div>
@@ -423,7 +432,9 @@ function AstroSteps() {
           </div>
           <div>
             <h3 className="text-sm font-medium text-black dark:text-white mb-1">Install</h3>
-            <p className="text-sm text-black/40 dark:text-white/40">Add the core packages to your Astro project.</p>
+            <p className="text-sm text-black/40 dark:text-white/40">
+              Add the core packages to your Astro project.
+            </p>
           </div>
         </div>
         <CodeBlock
@@ -489,8 +500,9 @@ export const { load, GET, POST } = createDocsServer(config);`}
           <div>
             <h3 className="text-sm font-medium text-black dark:text-white mb-1">Write docs</h3>
             <p className="text-sm text-black/40 dark:text-white/40">
-              Create Markdown files under <code className="text-black/60 dark:text-white/60 text-xs">docs/</code>.
-              That&#39;s it.
+              Create Markdown files under{" "}
+              <code className="text-black/60 dark:text-white/60 text-xs">docs/</code>. That&#39;s
+              it.
             </p>
           </div>
         </div>
@@ -521,7 +533,9 @@ export const auth = betterAuth({
           </div>
           <div>
             <h3 className="text-sm font-medium text-black dark:text-white mb-1">Routes</h3>
-            <p className="text-sm text-black/40 dark:text-white/40">Index page, catch-all route, and API endpoint.</p>
+            <p className="text-sm text-black/40 dark:text-white/40">
+              Index page, catch-all route, and API endpoint.
+            </p>
           </div>
         </div>
         <AstroRouteTabs />
@@ -540,7 +554,9 @@ function NuxtSteps() {
           </div>
           <div>
             <h3 className="text-sm font-medium text-black dark:text-white mb-1">Install</h3>
-            <p className="text-sm text-black/40 dark:text-white/40">Add the core packages to your Nuxt project.</p>
+            <p className="text-sm text-black/40 dark:text-white/40">
+              Add the core packages to your Nuxt project.
+            </p>
           </div>
         </div>
         <CodeBlock
@@ -609,7 +625,9 @@ export default defineDocs({
           </div>
           <div>
             <h3 className="text-sm font-medium text-black dark:text-white mb-1">Server API</h3>
-            <p className="text-sm text-black/40 dark:text-white/40">One handler for docs loading, search, and AI.</p>
+            <p className="text-sm text-black/40 dark:text-white/40">
+              One handler for docs loading, search, and AI.
+            </p>
           </div>
         </div>
         <CodeBlock
@@ -628,8 +646,9 @@ export default defineDocsHandler(config, useStorage);`}
           <div>
             <h3 className="text-sm font-medium text-black dark:text-white mb-1">Write docs</h3>
             <p className="text-sm text-black/40 dark:text-white/40">
-              Create Markdown files under <code className="text-black/60 dark:text-white/60 text-xs">docs/</code>.
-              That&apos;s it.
+              Create Markdown files under{" "}
+              <code className="text-black/60 dark:text-white/60 text-xs">docs/</code>. That&apos;s
+              it.
             </p>
           </div>
         </div>
@@ -660,7 +679,9 @@ export const auth = betterAuth({
           </div>
           <div>
             <h3 className="text-sm font-medium text-black dark:text-white mb-1">Page Route</h3>
-            <p className="text-sm text-black/40 dark:text-white/40">A single Vue page that handles all doc routes.</p>
+            <p className="text-sm text-black/40 dark:text-white/40">
+              A single Vue page that handles all doc routes.
+            </p>
           </div>
         </div>
         <CodeBlock
@@ -799,8 +820,10 @@ function ThemesSection() {
           </h2>
           <p className="mt-3 text-black/40 dark:text-white/40 max-w-lg">
             Pick a preset or build your own with{" "}
-            <code className="text-black/60 dark:text-white/60 text-xs font-mono">createTheme()</code>. Override any
-            styles from config.
+            <code className="text-black/60 dark:text-white/60 text-xs font-mono">
+              createTheme()
+            </code>
+            . Override any styles from config.
           </p>
         </div>
 
@@ -821,10 +844,14 @@ function ThemesSection() {
                 ))}
               </div>
               <hr className="border-black/[6%] dark:border-white/[6%] opacity-60 -mx-10" />
-              <h3 className="text-xs uppercase font-mono pt-2 text-black dark:text-white mb-0">{theme.name}</h3>
+              <h3 className="text-xs uppercase font-mono pt-2 text-black dark:text-white mb-0">
+                {theme.name}
+              </h3>
               <hr className="my-2 border-black/[6%] dark:border-white/[6%] opacity-60 -mx-10" />
               <p className="text-xs text-black/40 dark:text-white/40 mb-4">{theme.description}</p>
-              <code className="text-[11px] font-mono text-black/25 dark:text-white/25 break-all">{theme.import}</code>
+              <code className="text-[11px] font-mono text-black/25 dark:text-white/25 break-all">
+                {theme.import}
+              </code>
             </PixelCard>
           ))}
         </div>

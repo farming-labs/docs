@@ -21,7 +21,9 @@ export default function FrameworkTabs({ tabs }: FrameworkTabsProps) {
             key={tab.value}
             onClick={() => setActive(tab.value)}
             className={`px-4 py-2 text-[11px] font-mono uppercase tracking-wider transition-colors relative ${
-              active === tab.value ? "text-black dark:text-white" : "text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60"
+              active === tab.value
+                ? "text-black dark:text-white"
+                : "text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60"
             }`}
           >
             {tab.label}

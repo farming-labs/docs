@@ -196,7 +196,7 @@ export function Component() {
       <div className="absolute max-w-[90%] mx-auto top-6 left-6 md:left-24 2xl:left-32 flex text-xs font-medium z-[999] gap-2">
         <Link
           href={"/"}
-          className="hover:text-white transition-colors hover:no-underline font-mono uppercase text-black/50 dark:text-white/50"
+          className="hover:text-neutral-900 dark:hover:text-white transition-colors hover:no-underline font-mono uppercase text-neutral-500 dark:text-white/50"
         >
           Home <span className="ml-2 text-black/50 dark:text-white/50">/</span>
         </Link>

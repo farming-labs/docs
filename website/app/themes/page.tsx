@@ -129,34 +129,37 @@ function CodeModal({ theme, onClose }: { theme: Theme; onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/50 dark:bg-black/80 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
-      <div className="relative z-10 w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
+      <div className="relative z-10 w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto rounded-none border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 shadow-xl dark:shadow-none">
+        <div className="flex items-center justify-between mb-4 p-4 border-b border-neutral-200 dark:border-white/10">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               {theme.colors.map((c, i) => (
                 <div
                   key={i}
-                  className="size-3 rounded-none border border-white/10"
+                  className="size-3 rounded-none border border-neutral-300 dark:border-white/10"
                   style={{ backgroundColor: c }}
                 />
               ))}
             </div>
-            <span className="text-xs font-mono uppercase tracking-wide text-white/60">
+            <span className="text-xs font-mono uppercase tracking-wide text-neutral-500 dark:text-white/60">
               {theme.name}
             </span>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-white/40 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:text-white/40 dark:hover:text-white transition-colors cursor-pointer"
           >
             <X className="size-4" />
           </button>
         </div>
 
         {/* Code blocks */}
-        <div className="space-y-4">
+        <div className="space-y-4 p-4">
           <CodeBlock title="Config" filename="docs.config.ts" code={theme.configSnippet} />
           <CodeBlock title="Styles" filename="global.css" language="css" code={theme.globalCss} />
         </div>
@@ -167,21 +170,25 @@ function CodeModal({ theme, onClose }: { theme: Theme; onClose: () => void }) {
 
 function ThemeCard({ theme, onShowCode }: { theme: Theme; onShowCode: () => void }) {
   return (
-    <div className="group relative rounded-none border border-white/[6%] bg-white/[2%] p-6 transition-all hover:border-white/[12%] hover:bg-white/[3%]">
+    <div className="group relative rounded-none border border-neutral-200 dark:border-white/[6%] bg-neutral-50/80 dark:bg-white/[2%] p-6 transition-all hover:border-neutral-300 hover:bg-neutral-100/80 dark:hover:border-white/[12%] dark:hover:bg-white/[3%]">
       <div className="flex items-center gap-2 mb-4">
         {theme.colors.map((c, i) => (
           <div
             key={i}
-            className="size-4 rounded-none border border-white/10"
+            className="size-4 rounded-none border border-neutral-300 dark:border-white/10"
             style={{ backgroundColor: c }}
           />
         ))}
       </div>
 
-      <h2 className="text-sm uppercase font-mono tracking-wide mb-1">{theme.name}</h2>
-      <p className="text-[12px] text-white/40 mb-4 leading-relaxed">{theme.description}</p>
+      <h2 className="text-sm uppercase font-mono tracking-wide mb-1 text-neutral-900 dark:text-white">
+        {theme.name}
+      </h2>
+      <p className="text-[12px] text-neutral-500 dark:text-white/40 mb-4 leading-relaxed">
+        {theme.description}
+      </p>
 
-      <code className="block text-[11px] font-mono text-white/20 mb-5 break-all">
+      <code className="block text-[11px] font-mono text-neutral-400 dark:text-white/20 mb-5 break-all">
         {theme.cssImport}
       </code>
 
@@ -201,7 +208,7 @@ function ThemeCard({ theme, onShowCode }: { theme: Theme; onShowCode: () => void
 
         <button
           onClick={onShowCode}
-          className="inline-flex items-center gap-1.5 text-[11px] font-mono px-4 py-2 rounded-none uppercase border border-white/[6%] text-white/40 hover:border-white/[12%] hover:text-white/60 transition-all cursor-pointer"
+          className="inline-flex items-center gap-1.5 text-[11px] font-mono px-4 py-2 rounded-none uppercase border border-neutral-300 dark:border-white/[6%] text-neutral-500 dark:text-white/40 hover:border-neutral-400 hover:text-neutral-700 dark:hover:border-white/[12%] dark:hover:text-white/60 transition-all cursor-pointer"
         >
           <span className="ml-0.5">Show code</span>
         </button>
@@ -217,25 +224,25 @@ export default function ThemesPage() {
 
   return (
     <div
-      className="min-h-dvh relative bg-black text-white"
+      className="min-h-dvh relative bg-white text-neutral-900 dark:bg-black dark:text-white"
       style={{ fontFamily: "var(--font-geist-sans, system-ui, sans-serif)" }}
     >
-      <div className="absolute w-full top-14 right-0 z-[999] h-px bg-white/[8%]" />
+      <div className="absolute w-full top-14 right-0 z-[999] h-px bg-neutral-200 dark:bg-white/[8%]" />
       <div className="pointer-events-none fixed inset-0 z-[999] hidden lg:block">
         <div className="mx-auto md:max-w-[90%] max-w-full h-full relative">
-          <div className="absolute left-0 top-0 h-full w-px bg-white/[8%]" />
-          <div className="absolute right-0 top-0 h-full w-px bg-white/[8%]" />
+          <div className="absolute left-0 top-0 h-full w-px bg-neutral-200 dark:bg-white/[8%]" />
+          <div className="absolute right-0 top-0 h-full w-px bg-neutral-200 dark:bg-white/[8%]" />
         </div>
       </div>
       <header className="px-6 py-5">
         <div className="mx-auto md:max-w-[90%] max-w-full flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-white/80 dark:text-white/80 pb-8">
+            <div className="flex items-center gap-2 text-xs font-medium text-neutral-600 dark:text-white/80 pb-8">
               <Link
                 href={"/"}
-                className="hover:text-white transition-colors hover:no-underline font-mono uppercase text-black/50 dark:text-white/50"
+                className="hover:text-neutral-900 dark:hover:text-white transition-colors hover:no-underline font-mono uppercase text-neutral-500 dark:text-white/50"
               >
-                Home <span className="ml-2 text-black/50 dark:text-white/50">/</span>
+                Home <span className="ml-2 text-neutral-400 dark:text-white/50">/</span>
               </Link>
               <svg
                 width="14"
@@ -261,11 +268,12 @@ export default function ThemesPage() {
 
       <main className="overflow-x-hidden mx-auto md:max-w-[90%] max-w-full px-6 py-12">
         <div className="mb-10 max-w-2xl">
-          <p className="text-[13px] text-white/40 leading-relaxed">
+          <p className="text-[13px] text-neutral-500 dark:text-white/40 leading-relaxed">
             Each theme ships as a single CSS import and a factory function. Click{" "}
-            <strong className="text-white/80">Try it live</strong> to open the docs with that theme
-            applied and the customizer drawer open, or click{" "}
-            <strong className="text-white/80">Show code</strong> to see the config files you need.
+            <strong className="text-neutral-800 dark:text-white/80">Try it live</strong> to open the
+            docs with that theme applied and the customizer drawer open, or click{" "}
+            <strong className="text-neutral-800 dark:text-white/80">Show code</strong> to see the
+            config files you need.
           </p>
         </div>
 
@@ -274,7 +282,7 @@ export default function ThemesPage() {
             <ThemeCard key={theme.key} theme={theme} onShowCode={() => setActiveTheme(theme)} />
           ))}
         </div>
-        <div className="h-px w-[calc(100%+200px)] -ml-[100px] mx-auto bg-white/[8%] my-12" />
+        <div className="h-px w-[calc(100%+200px)] -ml-[100px] mx-auto bg-neutral-200 dark:bg-white/[8%] my-12" />
       </main>
 
       {activeTheme && <CodeModal theme={activeTheme} onClose={closeModal} />}

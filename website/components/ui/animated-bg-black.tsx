@@ -56,12 +56,7 @@ export const AnimatedBackground = () => {
 
   if (!isClient) {
     return (
-      <div
-        className={cn(
-          "absolute inset-0 w-full h-full",
-          isDark ? "bg-black" : "bg-white",
-        )}
-      >
+      <div className={cn("absolute inset-0 w-full h-full", isDark ? "bg-black" : "bg-white")}>
         <div
           className={cn(
             "w-full h-full animate-pulse",

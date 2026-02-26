@@ -18,7 +18,9 @@ export default function InitBlockTabs() {
           type="button"
           onClick={() => setActive(TAB_EXISTING)}
           className={`px-4 mx-1 py-2 text-[11px] font-mono uppercase tracking-wider transition-colors relative ${
-            active === TAB_EXISTING ? "text-black dark:text-white" : "text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60"
+            active === TAB_EXISTING
+              ? "text-black dark:text-white"
+              : "text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60"
           }`}
         >
           Existing project
@@ -30,7 +32,9 @@ export default function InitBlockTabs() {
           type="button"
           onClick={() => setActive(TAB_SCRATCH)}
           className={`px-4 py-2 text-[11px] font-mono uppercase tracking-wider transition-colors relative ${
-            active === TAB_SCRATCH ? "text-black dark:text-white" : "text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60"
+            active === TAB_SCRATCH
+              ? "text-black dark:text-white"
+              : "text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60"
           }`}
         >
           From scratch
@@ -83,7 +87,9 @@ export default function InitBlockTabs() {
                 <div className="flex-1">
                   <p className="text-sm text-black/60 dark:text-white/60 mb-1">
                     Use the same command with{" "}
-                    <code className="text-black/80 dark:text-white/80 font-mono text-xs">--template</code>
+                    <code className="text-black/80 dark:text-white/80 font-mono text-xs">
+                      --template
+                    </code>
                   </p>
                   <p className="text-[11px] font-mono text-black/30 dark:text-white/30 uppercase tracking-wider">
                     Copy the command when the template you want is shown
