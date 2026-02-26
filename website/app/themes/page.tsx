@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, X } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import CodeBlock from "@/components/ui/code-block";
+import { useIsDark } from "@/components/ui/animated-bg-black";
 
 const themes = [
   {
@@ -168,7 +169,15 @@ function CodeModal({ theme, onClose }: { theme: Theme; onClose: () => void }) {
   );
 }
 
-function ThemeCard({ theme, onShowCode }: { theme: Theme; onShowCode: () => void }) {
+function ThemeCard({
+  theme,
+  onShowCode,
+  isDark,
+}: {
+  theme: Theme;
+  onShowCode: () => void;
+  isDark: boolean;
+}) {
   return (
     <div className="group relative rounded-none border border-neutral-200 dark:border-white/[6%] bg-neutral-50/80 dark:bg-white/[2%] p-6 transition-all hover:border-neutral-300 hover:bg-neutral-100/80 dark:hover:border-white/[12%] dark:hover:bg-white/[3%]">
       <div className="flex items-center gap-2 mb-4">
@@ -195,11 +204,11 @@ function ThemeCard({ theme, onShowCode }: { theme: Theme; onShowCode: () => void
       <div className="flex items-center gap-2">
         <Link
           href={`/docs?theme=${theme.key}`}
-          className="inline-flex items-center gap-2 text-[11px] font-mono px-4 py-2 rounded-none uppercase border transition-all hover:no-underline"
+          className="inline-flex items-center gap-2 text-[11px] font-mono px-4 py-2 rounded-none uppercase border transition-all hover:no-underline border-neutral-300 dark:border-transparent shadow-sm dark:shadow-none hover:opacity-90"
           style={{
-            borderColor: `${theme.accent}20`,
+            borderColor: isDark ? `${theme.accent}20` : `${theme.accent}40`,
             color: theme.accent,
-            background: `${theme.accent}04`,
+            background: isDark ? `${theme.accent}04` : `${theme.accent}12`,
           }}
         >
           Try it live
@@ -208,7 +217,7 @@ function ThemeCard({ theme, onShowCode }: { theme: Theme; onShowCode: () => void
 
         <button
           onClick={onShowCode}
-          className="inline-flex items-center gap-1.5 text-[11px] font-mono px-4 py-2 rounded-none uppercase border border-neutral-300 dark:border-white/[6%] text-neutral-500 dark:text-white/40 hover:border-neutral-400 hover:text-neutral-700 dark:hover:border-white/[12%] dark:hover:text-white/60 transition-all cursor-pointer"
+          className="inline-flex items-center gap-1.5 text-[11px] font-mono px-4 py-2 rounded-none uppercase border border-neutral-300 dark:border-white/6 text-neutral-500 dark:text-white/40 hover:border-neutral-400 hover:text-neutral-700 dark:hover:border-white/12 dark:hover:text-white/60 transition-all cursor-pointer"
         >
           <span className="ml-0.5">Show code</span>
         </button>
@@ -219,7 +228,7 @@ function ThemeCard({ theme, onShowCode }: { theme: Theme; onShowCode: () => void
 
 export default function ThemesPage() {
   const [activeTheme, setActiveTheme] = useState<Theme | null>(null);
-
+  const isDark = useIsDark();
   const closeModal = useCallback(() => setActiveTheme(null), []);
 
   return (
@@ -279,7 +288,12 @@ export default function ThemesPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {themes.map((theme) => (
-            <ThemeCard key={theme.key} theme={theme} onShowCode={() => setActiveTheme(theme)} />
+            <ThemeCard
+              key={theme.key}
+              theme={theme}
+              onShowCode={() => setActiveTheme(theme)}
+              isDark={isDark}
+            />
           ))}
         </div>
         <div className="h-px w-[calc(100%+200px)] -ml-[100px] mx-auto bg-neutral-200 dark:bg-white/[8%] my-12" />
