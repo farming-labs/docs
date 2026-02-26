@@ -66,6 +66,7 @@ export default defineDocs({
       ],
     }
   },
+lastUpdated: {enabled: true,position: "below-title"},
   themeToggle: { enabled: false, default: "dark" },
   breadcrumb: { enabled: true },
   metadata: {
