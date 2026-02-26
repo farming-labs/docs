@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from "vue";
+import { useRoute } from "vue-router";
 import Breadcrumb from "./Breadcrumb.vue";
 import TableOfContents from "./TableOfContents.vue";
 
@@ -104,7 +105,9 @@ watch(
       <Breadcrumb v-if="breadcrumbEnabled" :pathname="route.path" :entry="entry" />
 
       <div class="fd-page-body">
-        <slot />
+        <div class="fd-docs-content">
+          <slot />
+        </div>
       </div>
 
       <footer class="fd-page-footer">

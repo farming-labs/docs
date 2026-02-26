@@ -22,7 +22,38 @@ const thumbTop = ref(0);
 const thumbHeight = ref(0);
 const svgPath = ref("");
 
+const ACTIVE_ZONE_TOP = 120; // px from top of viewport — heading "active" when near this line
+
 let observer: IntersectionObserver | null = null;
+let scrollRafId = 0;
+
+function getActiveIdFromScroll(): Set<string> {
+  const ids = items.value.map((item) => item.url.slice(1));
+  let bestId: string | null = null;
+  let bestDistance = Infinity;
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const rect = el.getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    const distance = Math.abs(mid - ACTIVE_ZONE_TOP);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestId = id;
+    }
+  }
+  return bestId ? new Set([bestId]) : new Set();
+}
+
+function updateActiveFromScroll() {
+  scrollRafId = 0;
+  activeIds.value = getActiveIdFromScroll();
+}
+
+function scheduleActiveUpdate() {
+  if (scrollRafId !== 0) return;
+  scrollRafId = requestAnimationFrame(updateActiveFromScroll);
+}
 
 function getItemOffset(depth: number): number {
   if (depth <= 2) return 14;
@@ -155,41 +186,49 @@ function maskSvgUrl(): string {
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 
+function onScroll() {
+  scheduleActiveUpdate();
+}
+
 onMounted(() => {
   observer = new IntersectionObserver(
-    (entries) => {
-      const next = new Set(activeIds.value);
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          next.add(entry.target.id);
-        } else {
-          next.delete(entry.target.id);
-        }
-      }
-      activeIds.value = next;
+    () => {
+      scheduleActiveUpdate();
     },
-    { rootMargin: "-80px 0px -80% 0px" },
+    { rootMargin: "-80px 0px -60% 0px" },
   );
   observeHeadings();
+  window.addEventListener("scroll", onScroll, { passive: true, capture: true });
+  document.addEventListener("scroll", onScroll, { passive: true, capture: true });
 
-  if (isDirectional.value) {
-    nextTick(() => {
+  nextTick(() => {
+    activeIds.value = getActiveIdFromScroll();
+    if (isDirectional.value) {
       buildSvgPath();
       calcThumb();
-    });
-  }
+    }
+  });
+  // Run again after content has finished rendering (e.g. after async slot)
+  setTimeout(() => {
+    activeIds.value = getActiveIdFromScroll();
+    if (isDirectional.value) {
+      buildSvgPath();
+      calcThumb();
+    }
+  }, 150);
 });
 
 watch(
   items,
   () => {
     observeHeadings();
-    if (isDirectional.value) {
-      nextTick(() => {
+    nextTick(() => {
+      activeIds.value = getActiveIdFromScroll();
+      if (isDirectional.value) {
         buildSvgPath();
         calcThumb();
-      });
-    }
+      }
+    });
   },
   { flush: "post" },
 );
@@ -214,6 +253,10 @@ watch(isDirectional, (val) => {
 });
 
 onUnmounted(() => {
+  if (scrollRafId) cancelAnimationFrame(scrollRafId);
+  scrollRafId = 0;
+  window.removeEventListener("scroll", onScroll, { capture: true });
+  document.removeEventListener("scroll", onScroll, { capture: true });
   observer?.disconnect();
 });
 </script>
@@ -252,41 +295,42 @@ onUnmounted(() => {
       </li>
     </ul>
 
-    <!-- Clerk / directional style -->
-    <ul v-else ref="listRef" class="fd-toc-list fd-toc-clerk" style="position: relative">
-      <li v-for="(item, index) in items" :key="item.url" class="fd-toc-item">
-        <a
-          :href="item.url"
-          class="fd-toc-link fd-toc-clerk-link"
-          :style="clerkLinkStyle(item)"
-          :data-active="isActive(item) || undefined"
-        >
-          <!-- Vertical line segment -->
-          <div :style="verticalLineStyle(item, index)" />
-
-          <!-- Diagonal SVG connector when depth changes -->
-          <svg
-            v-if="hasDiagonal(index)"
-            viewBox="0 0 16 16"
-            width="16"
-            height="16"
-            style="position: absolute; top: -6px; left: 0"
+    <!-- Clerk / directional style: wrapper for valid HTML (ul may not contain div) -->
+    <div v-else class="fd-toc-clerk-wrap" style="position: relative">
+      <ul ref="listRef" class="fd-toc-list fd-toc-clerk">
+        <li v-for="(item, index) in items" :key="item.url" class="fd-toc-item">
+          <a
+            :href="item.url"
+            class="fd-toc-link fd-toc-clerk-link"
+            :style="clerkLinkStyle(item)"
+            :data-active="isActive(item) || undefined"
           >
-            <line
-              :x1="diagonalSvg(index).upperOffset"
-              y1="0"
-              :x2="diagonalSvg(index).currentOffset"
-              y2="12"
-              stroke="hsla(0, 0%, 50%, 0.1)"
-              stroke-width="1"
-            />
-          </svg>
+            <!-- Vertical line segment -->
+            <div :style="verticalLineStyle(item, index)" />
 
-          {{ item.title }}
-        </a>
-      </li>
+            <!-- Diagonal SVG connector when depth changes -->
+            <svg
+              v-if="hasDiagonal(index)"
+              viewBox="0 0 16 16"
+              width="16"
+              height="16"
+              style="position: absolute; top: -6px; left: 0"
+            >
+              <line
+                :x1="diagonalSvg(index).upperOffset"
+                y1="0"
+                :x2="diagonalSvg(index).currentOffset"
+                y2="12"
+                stroke="hsla(0, 0%, 50%, 0.1)"
+                stroke-width="1"
+              />
+            </svg>
 
-      <!-- Mask container with thumb for active highlight -->
+            {{ item.title }}
+          </a>
+        </li>
+      </ul>
+      <!-- Mask container with thumb for active highlight (sibling to ul for valid HTML) -->
       <div
         v-if="svgPath"
         class="fd-toc-clerk-mask"
@@ -313,6 +357,6 @@ onUnmounted(() => {
           }"
         />
       </div>
-    </ul>
+    </div>
   </div>
 </template>
