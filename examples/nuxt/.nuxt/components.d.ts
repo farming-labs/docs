@@ -14,6 +14,7 @@ type HydrationStrategies = {
 type LazyComponent<T> = DefineComponent<HydrationStrategies, {}, {}, {}, {}, {}, {}, { hydrated: () => void }> & T
 
 
+export const AskAITrigger: typeof import("../components/AskAITrigger.vue")['default']
 export const NuxtWelcome: typeof import("../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/app/components/welcome.vue")['default']
 export const NuxtLayout: typeof import("../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/app/components/nuxt-layout")['default']
 export const NuxtErrorBoundary: typeof import("../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/app/components/nuxt-error-boundary.vue")['default']
@@ -37,6 +38,7 @@ export const Head: typeof import("../../../node_modules/.pnpm/nuxt@3.21.1_@parce
 export const Html: typeof import("../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/head/runtime/components")['Html']
 export const Body: typeof import("../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/head/runtime/components")['Body']
 export const NuxtIsland: typeof import("../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/app/components/nuxt-island")['default']
+export const LazyAskAITrigger: LazyComponent<typeof import("../components/AskAITrigger.vue")['default']>
 export const LazyNuxtWelcome: LazyComponent<typeof import("../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/app/components/welcome.vue")['default']>
 export const LazyNuxtLayout: LazyComponent<typeof import("../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/app/components/nuxt-layout")['default']>
 export const LazyNuxtErrorBoundary: LazyComponent<typeof import("../../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/app/components/nuxt-error-boundary.vue")['default']>

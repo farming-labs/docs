@@ -1,15 +1,15 @@
 import { defineDocs } from "@farming-labs/docs";
 import { greentree } from "@farming-labs/nuxt-theme/greentree";
-
+import { colorful } from "@farming-labs/nuxt-theme/colorful";
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: greentree({
+  theme: colorful({
     ui: {
-      colors: {
-        primary: "oklch(0.985 0.001 106.423)",
-        background: "hsl(0 0% 2%)",
-      },
+      // colors: {
+      //   primary: "oklch(0.985 0.001 106.423)",
+      //   background: "hsl(0 0% 2%)",
+      // },
       typography: {
         font: {
           style: {
@@ -50,5 +50,16 @@ export default defineDocs({
     titleTemplate: "%s – Docs",
     description: "Awesome docs powered by @farming-labs/docs (Nuxt)",
   },
+  pageActions: {
+    copyMarkdown: { enabled: true },
+    openDocs: {
+      enabled: true,
+      providers: [
+        { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?hints=search&q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." },
+        { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." },
+      ],
+    }
+  },
+  llmsTxt: { enabled: true, baseUrl: "https://docs.farming-labs.dev" },
   ordering: "numeric",
 });

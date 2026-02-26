@@ -5,9 +5,9 @@ import { resolve, dirname, join } from 'node:path';
 import nodeCrypto from 'node:crypto';
 import { parentPort, threadId } from 'node:worker_threads';
 import { escapeHtml } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/@vue+shared@3.5.28/node_modules/@vue/shared/dist/shared.cjs.js';
-import { defineDocsHandler } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/@farming-labs+nuxt@0.0.2_@farming-labs+docs@0.0.2/node_modules/@farming-labs/nuxt/dist/server.js';
-import { defineDocs } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/@farming-labs+docs@0.0.2/node_modules/@farming-labs/docs/dist/index.mjs';
-import { greentree } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.2_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@_3166a39695409f1be2d6931ff450096b/node_modules/@farming-labs/nuxt-theme/src/themes/greentree.js';
+import { defineDocsHandler } from 'file:///Users/mac/oss/docs_/packages/nuxt/dist/server.js';
+import { defineDocs } from 'file:///Users/mac/oss/docs_/packages/docs/dist/index.mjs';
+import { colorful } from '@farming-labs/nuxt-theme/colorful';
 import { createRenderer, getRequestDependencies, getPreloadLinks, getPrefetchLinks } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/vue-bundle-renderer@2.2.0/node_modules/vue-bundle-renderer/dist/runtime.mjs';
 import { parseURL, withoutBase, joinURL, getQuery, withQuery, withTrailingSlash, decodePath, withLeadingSlash, withoutTrailingSlash, joinRelativeURL } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/ufo@1.6.3/node_modules/ufo/dist/index.mjs';
 import { renderToString } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/vue@3.5.28_typescript@5.9.3/node_modules/vue/server-renderer/index.mjs';
@@ -39,7 +39,7 @@ import { createHead as createHead$1, propsToString, renderSSRHead } from 'file:/
 import { DeprecationsPlugin, PromisesPlugin, TemplateParamsPlugin, AliasSortingPlugin } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/unhead@2.1.4/node_modules/unhead/dist/plugins.mjs';
 import { walkResolver } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/unhead@2.1.4/node_modules/unhead/dist/utils.mjs';
 
-const serverAssets = [{"baseName":"docs","dir":"/Users/mac/oss/docs_/examples/nuxt/docs"},{"baseName":"server","dir":"/Users/mac/oss/docs_/examples/nuxt/server/assets"}];
+const serverAssets = [{"baseName":"docs","dir":"/Users/mac/oss/docs_/examples/nuxt/server/docs"},{"baseName":"server","dir":"/Users/mac/oss/docs_/examples/nuxt/server/assets"}];
 
 const assets$1 = createStorage();
 
@@ -2937,12 +2937,12 @@ const styles$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
 const config = defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: greentree({
+  theme: colorful({
     ui: {
-      colors: {
-        primary: "oklch(0.985 0.001 106.423)",
-        background: "hsl(0 0% 2%)"
-      },
+      // colors: {
+      //   primary: "oklch(0.985 0.001 106.423)",
+      //   background: "hsl(0 0% 2%)",
+      // },
       typography: {
         font: {
           style: {
@@ -2982,6 +2982,17 @@ const config = defineDocs({
     titleTemplate: "%s \u2013 Docs",
     description: "Awesome docs powered by @farming-labs/docs (Nuxt)"
   },
+  pageActions: {
+    copyMarkdown: { enabled: true },
+    openDocs: {
+      enabled: true,
+      providers: [
+        { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?hints=search&q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." },
+        { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." }
+      ]
+    }
+  },
+  llmsTxt: { enabled: true, baseUrl: "https://docs.farming-labs.dev" },
   ordering: "numeric"
 });
 
