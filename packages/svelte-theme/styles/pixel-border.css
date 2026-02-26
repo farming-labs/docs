@@ -310,7 +310,16 @@
 }
 
 .fd-codeblock-title {
-  border-bottom-color: var(--color-fd-border);
+  border-bottom: 1px solid var(--color-fd-border) !important;
+  border-radius: 0 !important;
+  background-color: color-mix(in srgb, var(--color-fd-secondary, hsl(0 0% 8%)) 55%, transparent) !important;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--color-fd-foreground, #fff) 4%, transparent),
+    color-mix(in srgb, var(--color-fd-foreground, #fff) 4%, transparent) 1px,
+    transparent 1px,
+    transparent 6px
+  ) !important;
 }
 
 .fd-codeblock-title .fd-copy-btn {
