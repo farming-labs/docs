@@ -130,6 +130,8 @@ const { config = null } = Astro.props;
     if (dialog) {
       dialog.style.display = "block";
       document.body.style.overflow = "hidden";
+      bindListboxDelegation();
+      ensureListboxClickBound();
       setTimeout(function () {
         var input = getInput();
         if (input) { input.value = ""; input.focus(); }
@@ -237,49 +239,95 @@ const { config = null } = Astro.props;
     scrollActiveIntoView();
   }
 
+  function navigateToUrl(url, newTab) {
+    if (!url) return;
+    if (newTab || url.startsWith("http")) {
+      try {
+        window.open(url, "_blank", "noopener,noreferrer");
+      } catch (err) {
+        window.location.assign(url);
+      }
+    } else {
+      window.location.assign(url);
+    }
+  }
+
+  function handleOmniItemClick(e) {
+    var dialog = getDialog();
+    if (!dialog || dialog.style.display === "none") return;
+    var withinDialog = e.target.closest && e.target.closest("#fd-search-dialog");
+    if (!withinDialog) return;
+
+    var ext = e.target.closest && e.target.closest("a.omni-item-ext");
+    if (ext) {
+      e.preventDefault();
+      e.stopPropagation();
+      var url = ext.getAttribute("data-ext-url") || ext.getAttribute("href");
+      navigateToUrl(url, true);
+      return;
+    }
+    var row = e.target.closest && e.target.closest(".omni-item[data-url]");
+    if (row) {
+      e.preventDefault();
+      e.stopPropagation();
+      var url = row.getAttribute("data-url");
+      if (!url) return;
+      var labelEl = row.querySelector(".omni-item-label");
+      var label = labelEl ? labelEl.textContent : url;
+      saveRecent({ id: url, label: label, url: url });
+      closeDialog();
+      navigateToUrl(url, url.startsWith("http"));
+    }
+  }
+
+  function handleOmniItemMouseOver(e) {
+    var dialog = getDialog();
+    if (!dialog || dialog.style.display === "none") return;
+    var row = e.target.closest && e.target.closest(".omni-item[data-url]");
+    if (row) {
+      var container = row.closest("#fd-omni-recent-items") || row.closest("#fd-omni-docs-items");
+      if (container) {
+        var items = container.querySelectorAll(".omni-item[data-url]");
+        var idx = Array.prototype.indexOf.call(items, row);
+        if (idx >= 0) { activeIndex = idx; render(); }
+      }
+    }
+  }
+
   function bindListboxDelegation() {
+    if (document.body.hasAttribute("data-fd-omni-click-delegation")) return;
+    document.body.setAttribute("data-fd-omni-click-delegation", "true");
+    document.addEventListener("click", handleOmniItemClick, true);
+    document.addEventListener("mouseover", handleOmniItemMouseOver, true);
+  }
+
+  function ensureListboxClickBound() {
     var listbox = getListbox();
-    if (!listbox || listbox._fdOmniBound) return;
-    listbox._fdOmniBound = true;
-    listbox.addEventListener("click", function (e) {
+    if (!listbox || listbox._fdOmniClickBound) return;
+    listbox._fdOmniClickBound = true;
+    function onListboxClick(e) {
       var ext = e.target.closest && e.target.closest("a.omni-item-ext");
       if (ext) {
         e.preventDefault();
         e.stopPropagation();
         var url = ext.getAttribute("data-ext-url") || ext.getAttribute("href");
-        if (url) {
-          try {
-            window.open(url, "_blank", "noopener,noreferrer");
-          } catch (err) {
-            window.location.href = url;
-          }
-        }
+        navigateToUrl(url, true);
         return;
       }
       var row = e.target.closest && e.target.closest(".omni-item[data-url]");
       if (row) {
         e.preventDefault();
+        e.stopPropagation();
         var url = row.getAttribute("data-url");
         if (!url) return;
         var labelEl = row.querySelector(".omni-item-label");
         var label = labelEl ? labelEl.textContent : url;
         saveRecent({ id: url, label: label, url: url });
-        if (url.startsWith("http")) window.open(url, "_blank", "noopener,noreferrer");
-        else window.location.href = url;
         closeDialog();
+        navigateToUrl(url, url.startsWith("http"));
       }
-    });
-    listbox.addEventListener("mouseover", function (e) {
-      var row = e.target.closest && e.target.closest(".omni-item[data-url]");
-      if (row) {
-        var container = row.closest("#fd-omni-recent-items") || row.closest("#fd-omni-docs-items");
-        if (container) {
-          var items = container.querySelectorAll(".omni-item[data-url]");
-          var idx = Array.prototype.indexOf.call(items, row);
-          if (idx >= 0) { activeIndex = idx; render(); }
-        }
-      }
-    });
+    }
+    listbox.addEventListener("click", onListboxClick, true);
   }
 
   function scrollActiveIntoView() {

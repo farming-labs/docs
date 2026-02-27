@@ -1,10 +1,14 @@
 <script>
   import { onMount, onDestroy, tick } from "svelte";
 
+  const ACTIVE_ZONE_TOP = 120;
+  const HYSTERESIS_PX = 65;
+
   let { items = [], tocStyle = "default" } = $props();
   let activeIds = $state(new Set());
-  let observer;
-  let listEl;
+  let listEl = $state(null);
+  let lastStableId = null;
+  let scrollRafId = 0;
 
   let svgPath = $state("");
   let svgWidth = $state(0);
@@ -13,6 +17,63 @@
   let thumbHeight = $state(0);
 
   const isDirectional = $derived(tocStyle === "directional");
+
+  function getDistanceToZone(id) {
+    const el = document.getElementById(id);
+    if (!el) return Infinity;
+    const rect = el.getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    return Math.abs(mid - ACTIVE_ZONE_TOP);
+  }
+
+  function getClosestId() {
+    const ids = items.map((item) => item.url.slice(1));
+    let bestId = null;
+    let bestDistance = Infinity;
+    for (const id of ids) {
+      const d = getDistanceToZone(id);
+      if (d < bestDistance) {
+        bestDistance = d;
+        bestId = id;
+      }
+    }
+    return bestId;
+  }
+
+  function isInView(id) {
+    const el = document.getElementById(id);
+    if (!el) return false;
+    const rect = el.getBoundingClientRect();
+    return rect.top < window.innerHeight && rect.bottom > 0;
+  }
+
+  function updateActiveFromScroll() {
+    scrollRafId = 0;
+    const newId = getClosestId();
+    if (!newId) {
+      activeIds = new Set();
+      return;
+    }
+    if (lastStableId === null) {
+      lastStableId = newId;
+      activeIds = new Set([newId]);
+      return;
+    }
+    if (newId === lastStableId) {
+      activeIds = new Set([newId]);
+      return;
+    }
+    const newDist = getDistanceToZone(newId);
+    const currentDist = getDistanceToZone(lastStableId);
+    const switchToNew = newDist <= currentDist - HYSTERESIS_PX || !isInView(lastStableId);
+    if (switchToNew) lastStableId = newId;
+    activeIds = new Set([lastStableId]);
+  }
+
+  function scheduleActiveUpdate() {
+    if (scrollRafId !== 0) return;
+    scrollRafId = requestAnimationFrame(updateActiveFromScroll);
+  }
 
   function getItemOffset(depth) {
     if (depth <= 2) return 14;
@@ -82,15 +143,6 @@
     return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
   }
 
-  function observeHeadings() {
-    if (!observer) return;
-    observer.disconnect();
-    for (const item of items) {
-      const el = document.querySelector(item.url);
-      if (el) observer.observe(el);
-    }
-  }
-
   function isActive(item) {
     return activeIds.has(item.url.slice(1));
   }
@@ -124,33 +176,32 @@
   }
 
   onMount(() => {
-    observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            activeIds.add(entry.target.id);
-          } else {
-            activeIds.delete(entry.target.id);
-          }
-        }
-        activeIds = new Set(activeIds);
-      },
-      { rootMargin: "-80px 0px -80% 0px" }
-    );
-    observeHeadings();
+    const onScroll = () => scheduleActiveUpdate();
+    window.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    document.addEventListener("scroll", onScroll, { passive: true, capture: true });
 
-    if (isDirectional) {
-      tick().then(() => {
+    tick().then(() => {
+      const id = getClosestId();
+      if (id) {
+        lastStableId = id;
+        activeIds = new Set([id]);
+      }
+      if (isDirectional) {
         buildSvgPath();
         calcThumb();
-      });
-    }
+      }
+    });
+
+    return () => {
+      window.removeEventListener("scroll", onScroll, { capture: true });
+      document.removeEventListener("scroll", onScroll, { capture: true });
+      if (scrollRafId) cancelAnimationFrame(scrollRafId);
+    };
   });
 
   $effect(() => {
     void items;
-    observeHeadings();
-    if (isDirectional) {
+    if (isDirectional && listEl) {
       tick().then(() => {
         buildSvgPath();
         calcThumb();
@@ -165,9 +216,7 @@
     }
   });
 
-  onDestroy(() => {
-    observer?.disconnect();
-  });
+  onDestroy(() => {});
 </script>
 
 <div class="fd-toc-inner" class:fd-toc-directional={isDirectional}>

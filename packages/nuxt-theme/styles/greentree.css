@@ -86,9 +86,8 @@ aside#nd-sidebar,
 #nd-docs-layout aside,
 .fd-sidebar {
   border: none;
-  border-right: none;
+  border-right: 1px solid var(--color-fd-border);
   border-left: none;
-  border-color: transparent;
   box-shadow: none;
   background: var(--color-fd-background);
 }
@@ -174,17 +173,13 @@ aside a[data-active="true"],
   background-color: rgba(38, 189, 108, 0.1) !important;
 }
 
-aside a[data-active="true"]::before,
-.fd-sidebar .fd-sidebar-link-active::before,
-.fd-sidebar .fd-sidebar-link[data-active="true"]::before,
-.fd-sidebar .fd-sidebar-top-link.fd-sidebar-link-active::before,
-.fd-sidebar .fd-sidebar-top-link[data-active="true"]::before,
+/* Left highlight line — only for links that are children inside a folder (not for top-level links with no children) */
 .fd-sidebar-folder-content .fd-sidebar-link-active::before,
 .fd-sidebar-folder-content .fd-sidebar-link[data-active="true"]::before {
   content: "" !important;
   display: block !important;
   position: absolute !important;
-  left: 0 !important;
+  left: -9px !important;
   top: 20% !important;
   bottom: 20% !important;
   width: 3px !important;
@@ -222,14 +217,14 @@ aside a[data-active].w-full,
   font-weight: 600;
   font-size: 0.875rem;
   color: var(--color-fd-foreground);
-  padding: 7px 10px 8px 10px;
+  padding: 4px 10px 4px 10px;
   margin-top: 0;
   border: none;
   background: transparent !important;
 }
 
 .dark .fd-sidebar .fd-sidebar-folder-trigger {
-  color: var(--color-fd-foreground);
+  color: var(--color-fd-muted-foreground);
 }
 
 .fd-sidebar .fd-sidebar-folder-trigger:hover {
@@ -308,7 +303,7 @@ aside .border-t,
 aside [class*="border-t"],
 .fd-sidebar .fd-sidebar-footer,
 .fd-sidebar .fd-sidebar-footer-custom {
-  border-top-color: transparent;
+  border-top: 1px solid var(--color-fd-border);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -525,21 +520,31 @@ details > :not(summary) {
   padding: 0.75rem 1rem;
 }
 
-#nd-toc a[data-active="true"] {
+/* TOC — use .fd-toc (matches layout); transition reduces flash when scroll spy toggles active */
+.fd-toc .fd-toc-link,
+.fd-toc .fd-toc-clerk-link {
+  transition: color 0.2s ease;
+}
+
+.fd-toc .fd-toc-link-active,
+.fd-toc .fd-toc-link[data-active="true"],
+.fd-toc .fd-toc-clerk-link[data-active="true"] {
   color: var(--color-fd-primary);
   font-weight: 500;
 }
 
-#nd-toc a[data-active="false"] {
+.fd-toc .fd-toc-link:not(.fd-toc-link-active):not([data-active="true"]),
+.fd-toc .fd-toc-clerk-link:not([data-active="true"]) {
   color: var(--color-fd-muted-foreground);
 }
 
-#nd-toc a {
+.fd-toc .fd-toc-link,
+.fd-toc .fd-toc-clerk-link {
   font-size: 0.875rem;
   line-height: 1.3;
 }
 
-#nd-toc h3 {
+.fd-toc .fd-toc-title {
   font-size: 0.875rem;
   font-weight: 500;
 }

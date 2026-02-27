@@ -89,9 +89,8 @@ aside#nd-sidebar,
 aside,
 #nd-sidebar {
   border: none !important;
-  border-right: none !important;
+  border-right: 1px solid var(--color-fd-border) !important;
   border-left: none !important;
-  border-color: transparent !important;
   box-shadow: none !important;
   background: var(--color-fd-background) !important;
 }
@@ -133,7 +132,6 @@ aside,
   background: var(--color-fd-accent) !important;
 }
 
-/* Active sidebar item — green background + left highlight line */
 #nd-docs-layout aside a[data-active="true"],
 #nd-docs-layout aside a[data-active="true"]:hover {
   position: relative !important;
@@ -424,12 +422,12 @@ aside,
   position: relative !important;
 }
 
-/* Sidebar footer border removal */
+/* Sidebar footer border */
 #nd-docs-layout aside .border-t,
 #nd-docs-layout aside [class*="border-t"],
 aside .border-t,
 aside [class*="border-t"] {
-  border-top-color: transparent !important;
+  border-top: 1px solid var(--color-fd-border) !important;
 }
 
 /* Reset pixel-border's breadcrumb overrides */

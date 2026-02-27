@@ -281,14 +281,46 @@ const parentUrl = segments.length >= 2
 
       const activeSet = new Set();
       let tocUpdateScheduled = false;
+      let lastStableId = null;
+      let scrollRafId = 0;
+      const ACTIVE_ZONE_TOP = 120;
+      const HYSTERESIS_PX = 65; /* same as Nuxt/Svelte — keeps TOC highlight smooth (no flicker) */
 
-      function scheduleTocActiveUpdate() {
+      function getDistanceToZone(id) {
+        const el = document.getElementById(id);
+        if (!el) return Infinity;
+        const rect = el.getBoundingClientRect();
+        const mid = rect.top + rect.height / 2;
+        return Math.abs(mid - ACTIVE_ZONE_TOP);
+      }
+
+      function getClosestId() {
+        let bestId = null;
+        let bestDistance = Infinity;
+        tocItems.forEach(function(item) {
+          const d = getDistanceToZone(item.id);
+          if (d < bestDistance) {
+            bestDistance = d;
+            bestId = item.id;
+          }
+        });
+        return bestId;
+      }
+
+      function isInView(id) {
+        const el = document.getElementById(id);
+        if (!el) return false;
+        const rect = el.getBoundingClientRect();
+        return rect.top < window.innerHeight && rect.bottom > 0;
+      }
+
+      function applyActiveSet() {
         if (tocUpdateScheduled) return;
         tocUpdateScheduled = true;
-        requestAnimationFrame(() => {
+        requestAnimationFrame(function() {
           tocUpdateScheduled = false;
           if (isClerk) {
-            tocList.querySelectorAll('.fd-toc-clerk-link').forEach(link => {
+            tocList.querySelectorAll('.fd-toc-clerk-link').forEach(function(link) {
               const id = link.getAttribute('href')?.slice(1);
               if (activeSet.has(id)) {
                 link.setAttribute('data-active', 'true');
@@ -298,7 +330,7 @@ const parentUrl = segments.length >= 2
             });
             if (typeof updateThumb === 'function') updateThumb(activeSet);
           } else {
-            tocList.querySelectorAll('.fd-toc-link').forEach(link => {
+            tocList.querySelectorAll('.fd-toc-link').forEach(function(link) {
               const id = link.getAttribute('href')?.slice(1);
               link.classList.toggle('fd-toc-link-active', activeSet.has(id));
             });
@@ -306,18 +338,50 @@ const parentUrl = segments.length >= 2
         });
       }
 
-      const observer = new IntersectionObserver((entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            activeSet.add(entry.target.id);
-          } else {
-            activeSet.delete(entry.target.id);
-          }
+      function updateTocFromScroll() {
+        scrollRafId = 0;
+        const newId = getClosestId();
+        if (!newId) {
+          activeSet.clear();
+          applyActiveSet();
+          return;
         }
-        scheduleTocActiveUpdate();
-      }, { rootMargin: '-80px 0px -80% 0px' });
+        if (lastStableId === null) {
+          lastStableId = newId;
+          activeSet.clear();
+          activeSet.add(newId);
+          applyActiveSet();
+          return;
+        }
+        if (newId === lastStableId) {
+          activeSet.clear();
+          activeSet.add(newId);
+          applyActiveSet();
+          return;
+        }
+        const newDist = getDistanceToZone(newId);
+        const currentDist = getDistanceToZone(lastStableId);
+        const switchToNew = newDist <= currentDist - HYSTERESIS_PX || !isInView(lastStableId);
+        if (switchToNew) lastStableId = newId;
+        activeSet.clear();
+        activeSet.add(lastStableId);
+        applyActiveSet();
+      }
 
-      headings.forEach(el => observer.observe(el));
+      function scheduleTocFromScroll() {
+        if (scrollRafId !== 0) return;
+        scrollRafId = requestAnimationFrame(updateTocFromScroll);
+      }
+
+      window.addEventListener('scroll', scheduleTocFromScroll, { passive: true, capture: true });
+      document.addEventListener('scroll', scheduleTocFromScroll, { passive: true, capture: true });
+
+      var initialId = getClosestId();
+      if (initialId) {
+        lastStableId = initialId;
+        activeSet.add(initialId);
+      }
+      applyActiveSet();
 
       if (tocAside) tocAside.setAttribute('data-toc-ready', 'true');
     }

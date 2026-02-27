@@ -71,7 +71,9 @@ h3 {
   font-weight: 600;
   line-height: 1.3;
 }
-
+.fd-docs-content {
+  border: none !important;
+}
 .fd-docs-content p {
   font-size: 1rem;
   line-height: 1.7;
@@ -86,9 +88,8 @@ aside#nd-sidebar,
 #nd-docs-layout aside,
 .fd-sidebar {
   border: none;
-  border-right: none;
+  border-right: 1px solid var(--color-fd-border);
   border-left: none;
-  border-color: transparent;
   box-shadow: none;
   background: var(--color-fd-background);
 }
@@ -303,7 +304,7 @@ aside .border-t,
 aside [class*="border-t"],
 .fd-sidebar .fd-sidebar-footer,
 .fd-sidebar .fd-sidebar-footer-custom {
-  border-top-color: transparent;
+  border-top: 1px solid var(--color-fd-border);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -350,7 +351,6 @@ nav[class*="header"] {
   border-spacing: 0;
   background: var(--color-fd-card);
   border-radius: 8px;
-  border: 1px solid var(--color-fd-border);
   overflow: hidden;
   width: 100%;
 }
@@ -542,21 +542,31 @@ details > :not(summary) {
   padding: 0.75rem 1rem;
 }
 
-#nd-toc a[data-active="true"] {
+/* TOC — use .fd-toc (matches layout); transition reduces flash when scroll spy toggles active */
+.fd-toc .fd-toc-link,
+.fd-toc .fd-toc-clerk-link {
+  transition: color 0.2s ease;
+}
+
+.fd-toc .fd-toc-link-active,
+.fd-toc .fd-toc-link[data-active="true"],
+.fd-toc .fd-toc-clerk-link[data-active="true"] {
   color: var(--color-fd-primary);
   font-weight: 500;
 }
 
-#nd-toc a[data-active="false"] {
+.fd-toc .fd-toc-link:not(.fd-toc-link-active):not([data-active="true"]),
+.fd-toc .fd-toc-clerk-link:not([data-active="true"]) {
   color: var(--color-fd-muted-foreground);
 }
 
-#nd-toc a {
+.fd-toc .fd-toc-link,
+.fd-toc .fd-toc-clerk-link {
   font-size: 0.875rem;
   line-height: 1.3;
 }
 
-#nd-toc h3 {
+.fd-toc .fd-toc-title {
   font-size: 0.875rem;
   font-weight: 500;
 }

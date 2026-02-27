@@ -23,26 +23,60 @@ const thumbHeight = ref(0);
 const svgPath = ref("");
 
 const ACTIVE_ZONE_TOP = 120; // px from top of viewport — heading "active" when near this line
+const HYSTERESIS_PX = 65; // only switch section when new is this much closer — keeps TOC highlight smooth (no flicker)
 
 let observer: IntersectionObserver | null = null;
 let scrollRafId = 0;
+let lastStableId: string | null = null;
 
-function getActiveIdFromScroll(): Set<string> {
+function getDistanceToZone(id: string): number {
+  const el = document.getElementById(id);
+  if (!el) return Infinity;
+  const rect = el.getBoundingClientRect();
+  const mid = rect.top + rect.height / 2;
+  return Math.abs(mid - ACTIVE_ZONE_TOP);
+}
+
+function getClosestId(): string | null {
   const ids = items.value.map((item) => item.url.slice(1));
   let bestId: string | null = null;
   let bestDistance = Infinity;
   for (const id of ids) {
-    const el = document.getElementById(id);
-    if (!el) continue;
-    const rect = el.getBoundingClientRect();
-    const mid = rect.top + rect.height / 2;
-    const distance = Math.abs(mid - ACTIVE_ZONE_TOP);
-    if (distance < bestDistance) {
-      bestDistance = distance;
+    const d = getDistanceToZone(id);
+    if (d < bestDistance) {
+      bestDistance = d;
       bestId = id;
     }
   }
-  return bestId ? new Set([bestId]) : new Set();
+  return bestId;
+}
+
+function isInView(id: string): boolean {
+  const el = document.getElementById(id);
+  if (!el) return false;
+  const rect = el.getBoundingClientRect();
+  return rect.top < window.innerHeight && rect.bottom > 0;
+}
+
+function getActiveIdFromScroll(): Set<string> {
+  const newId = getClosestId();
+  if (!newId) return new Set();
+
+  if (lastStableId === null) {
+    lastStableId = newId;
+    return new Set([newId]);
+  }
+
+  if (newId === lastStableId) return new Set([newId]);
+
+  const newDist = getDistanceToZone(newId);
+  const currentDist = getDistanceToZone(lastStableId);
+
+  const switchToNew =
+    newDist <= currentDist - HYSTERESIS_PX || !isInView(lastStableId);
+
+  if (switchToNew) lastStableId = newId;
+  return new Set([lastStableId]);
 }
 
 function updateActiveFromScroll() {
@@ -221,6 +255,7 @@ onMounted(() => {
 watch(
   items,
   () => {
+    lastStableId = null; // reset so new page gets smooth TOC from scroll position
     observeHeadings();
     nextTick(() => {
       activeIds.value = getActiveIdFromScroll();

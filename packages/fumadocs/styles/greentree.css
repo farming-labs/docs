@@ -77,11 +77,11 @@ h3 {
 aside,
 #nd-sidebar,
 aside#nd-sidebar,
-#nd-docs-layout aside {
+#nd-docs-layout aside,
+.fd-sidebar {
   border: none;
-  border-right: none;
+  border-right: 1px solid var(--color-fd-border);
   border-left: none;
-  border-color: transparent;
   box-shadow: none;
   background: var(--color-fd-background);
 }
@@ -169,10 +169,12 @@ aside button[class*="bg-fd-secondary"] {
   font-size: 0.875rem;
 }
 
-/* Sidebar footer border removal */
+/* Sidebar footer border */
 aside .border-t,
-aside [class*="border-t"] {
-  border-top-color: transparent;
+aside [class*="border-t"],
+.fd-sidebar .fd-sidebar-footer,
+.fd-sidebar .fd-sidebar-footer-custom {
+  border-top: 1px solid var(--color-fd-border);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
