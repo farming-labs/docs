@@ -985,6 +985,11 @@
   font-size: 0.875em;
   font-family: var(--fd-font-mono, ui-monospace, monospace);
 }
+.fd-ai-code-block pre {
+  padding-left: -10px !important;
+  padding-right: -10px !important;
+  padding-bottom: 2px !important;
+}
 
 .fd-ai-fm-msg-content .fd-ai-code-block code {
   background: transparent;

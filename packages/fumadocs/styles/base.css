@@ -440,6 +440,12 @@ figure.shiki:has(figcaption) figcaption {
   text-decoration: none;
 }
 
+fd-ai-code-block pre {
+  padding-left: -10px !important;
+  padding-right: -10px !important;
+  padding-bottom: 2px !important;
+}
+
 /* ─── Code block copy button: show on hover ────────────────────────── */
 
 figure.shiki > button,
