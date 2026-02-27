@@ -187,7 +187,9 @@ ai: {
 
 ### `model`
 
-The LLM model to use for chat completions. Must be compatible with the OpenAI Chat Completions API.
+The LLM model configuration. Can be a simple string (single model) or an object with multiple selectable models.
+
+**Simple — single model:**
 
 | Type     | Default         |
 | -------- | --------------- |
@@ -200,11 +202,69 @@ ai: {
 }
 ```
 
-Works with any OpenAI-compatible provider — use `baseUrl` to point to a different API.
+**Advanced — multiple models with UI dropdown:**
+
+| Type     | Default |
+| -------- | ------- |
+| `object` | —       |
+
+```ts
+ai: {
+  enabled: true,
+  model: {
+    models: [
+      { id: "gpt-4o-mini", label: "GPT-4o mini (fast)", provider: "openai" },
+      { id: "gpt-4o", label: "GPT-4o (quality)", provider: "openai" },
+      { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", provider: "groq" },
+    ],
+    defaultModel: "gpt-4o-mini",
+  },
+}
+```
+
+Each model entry has:
+- **`id`** — The model identifier sent to the LLM API (e.g. `"gpt-4o-mini"`)
+- **`label`** — Display name shown in the UI dropdown (e.g. `"GPT-4o mini (fast)"`)
+- **`provider`** — (optional) Key matching a named provider in the `providers` config. If omitted, uses the default `baseUrl` and `apiKey`.
+
+When `model` is an object with a `models` array, a model selector dropdown appears in the AI chat interface so users can pick which model to use.
+
+### `providers`
+
+Named provider configurations. Each provider has its own `baseUrl` and `apiKey`, allowing models from different providers to coexist in a single config.
+
+| Type     | Default |
+| -------- | ------- |
+| `object` | —       |
+
+```ts
+ai: {
+  enabled: true,
+  providers: {
+    openai: {
+      baseUrl: "https://api.openai.com/v1",
+      apiKey: process.env.OPENAI_API_KEY,
+    },
+    groq: {
+      baseUrl: "https://api.groq.com/openai/v1",
+      apiKey: process.env.GROQ_API_KEY,
+    },
+  },
+  model: {
+    models: [
+      { id: "gpt-4o-mini", label: "GPT-4o mini", provider: "openai" },
+      { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", provider: "groq" },
+    ],
+    defaultModel: "gpt-4o-mini",
+  },
+}
+```
+
+When a user selects a model in the dropdown, the backend automatically uses that model's provider to resolve the correct `baseUrl` and `apiKey`. All providers must be OpenAI Chat Completions API compatible (OpenAI, Groq, Together, Fireworks, OpenRouter, Ollama, any vLLM deployment).
 
 ### `baseUrl`
 
-Base URL for an OpenAI-compatible API endpoint. Use this to point to a self-hosted model, Azure OpenAI, or any compatible provider.
+Default base URL for an OpenAI-compatible API endpoint. Used when no per-model `provider` is configured.
 
 | Type     | Default                       |
 | -------- | ----------------------------- |
@@ -220,7 +280,7 @@ ai: {
 
 ### `apiKey`
 
-API key for the LLM provider. Falls back to `process.env.OPENAI_API_KEY` if not set.
+Default API key for the LLM provider. Used when no per-model `provider` is configured. Falls back to `process.env.OPENAI_API_KEY` if not set.
 
 | Type     | Default                      |
 | -------- | ---------------------------- |
@@ -447,7 +507,7 @@ Custom trigger button for the floating chat. Replaces the default sparkles butto
   </Tab>
 </Tabs>
 
-## Full Example
+## Full Example — Single Provider
 
 ```ts title="docs.config.ts"
 export default defineDocs({
@@ -471,9 +531,54 @@ export default defineDocs({
 });
 ```
 
+## Full Example — Multiple Providers
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  ai: {
+    enabled: true,
+    mode: "floating",
+    position: "bottom-right",
+    floatingStyle: "full-modal",
+    providers: {
+      openai: {
+        baseUrl: "https://api.openai.com/v1",
+        apiKey: process.env.OPENAI_API_KEY,
+      },
+      groq: {
+        baseUrl: "https://api.groq.com/openai/v1",
+        apiKey: process.env.GROQ_API_KEY,
+      },
+    },
+    model: {
+      models: [
+        { id: "gpt-4o-mini", label: "GPT-4o mini (fast)", provider: "openai" },
+        { id: "gpt-4o", label: "GPT-4o (quality)", provider: "openai" },
+        { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", provider: "groq" },
+      ],
+      defaultModel: "gpt-4o-mini",
+    },
+    aiLabel: "DocsBot",
+    suggestedQuestions: [
+      "How do I get started?",
+      "What themes are available?",
+    ],
+  },
+});
+```
+
+```bash title=".env"
+OPENAI_API_KEY=sk-...
+GROQ_API_KEY=gsk_...
+```
+
+Users see a model dropdown in the AI chat interface. When they pick a model, the backend automatically routes the request to the correct provider's API with the right credentials.
+
 ## Using a Different LLM Provider
 
-You can use any OpenAI-compatible API by setting `baseUrl` and `model`:
+### Single provider (simple)
+
+Use any OpenAI-compatible API by setting `baseUrl` and `model`:
 
 ```ts title="docs.config.ts"
 ai: {
@@ -484,7 +589,38 @@ ai: {
 ```
 
 ```bash title=".env"
-OPENAI_API_KEY=gsk_...  # Groq uses the same env var name
+OPENAI_API_KEY=gsk_...
 ```
 
-Other compatible providers: OpenRouter, Together AI, Azure OpenAI, Ollama (local), any vLLM deployment.
+### Multiple providers
+
+Use the `providers` map to configure multiple APIs, then reference them from each model entry:
+
+```ts title="docs.config.ts"
+ai: {
+  enabled: true,
+  providers: {
+    openai: {
+      baseUrl: "https://api.openai.com/v1",
+      apiKey: process.env.OPENAI_API_KEY,
+    },
+    together: {
+      baseUrl: "https://api.together.xyz/v1",
+      apiKey: process.env.TOGETHER_API_KEY,
+    },
+    ollama: {
+      baseUrl: "http://localhost:11434/v1",
+    },
+  },
+  model: {
+    models: [
+      { id: "gpt-4o-mini", label: "GPT-4o mini", provider: "openai" },
+      { id: "meta-llama/Llama-3.3-70B-Instruct-Turbo", label: "Llama 3.3 70B", provider: "together" },
+      { id: "llama3.2", label: "Llama 3.2 (local)", provider: "ollama" },
+    ],
+    defaultModel: "gpt-4o-mini",
+  },
+}
+```
+
+Compatible providers: OpenAI, Groq, Together AI, Fireworks, OpenRouter, Azure OpenAI, Ollama (local), any vLLM deployment — anything that speaks the OpenAI Chat Completions API format.

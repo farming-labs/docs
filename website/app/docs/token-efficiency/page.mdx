@@ -100,7 +100,7 @@ See the [llms.txt docs](/docs/customization/llms-txt) for details.
 
 ### AI Chat with RAG
 
-Built-in AI chat with retrieval-augmented generation — two lines in your config:
+Built-in AI chat with retrieval-augmented generation. A simple setup is just two lines:
 
 ```ts
 ai: {
@@ -109,10 +109,38 @@ ai: {
 }
 ```
 
-No separate API routes, no vector databases, no embedding pipelines. Search indexing, context retrieval, and streaming responses are handled internally.
+Need multiple models from different providers? Use the `providers` map and a `model` object with a selectable dropdown:
 
-See the [AI Chat docs](/docs/customization/ai-chat) for details.
+```ts
+ai: {
+  enabled: true,
+  providers: {
+    openai: {
+      baseUrl: "https://api.openai.com/v1",
+      apiKey: process.env.OPENAI_API_KEY,
+    },
+    groq: {
+      baseUrl: "https://api.groq.com/openai/v1",
+      apiKey: process.env.GROQ_API_KEY,
+    },
+  },
+  model: {
+    models: [
+      { id: "gpt-4o-mini", label: "GPT-4o mini (fast)", provider: "openai" },
+      { id: "gpt-4o", label: "GPT-4o (quality)", provider: "openai" },
+      { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", provider: "groq" },
+    ],
+    defaultModel: "gpt-4o-mini",
+  },
+}
+```
+
+Users get a model selector dropdown in the chat interface. The backend automatically routes each request to the correct provider with the right credentials. No separate API routes, no vector databases, no embedding pipelines — search indexing, context retrieval, and streaming responses are all handled internally.
+
+Works with any OpenAI-compatible provider: OpenAI, Groq, Together, Fireworks, OpenRouter, Ollama, or any vLLM deployment.
+
+See the [AI Chat docs](/docs/customization/ai-chat) for the full configuration reference.
 
 ## Summary
 
-`@farming-labs/docs` keeps the framework lean — one config file, minimal routing, CLI-generated scaffolding — so you and your AI tools spend less time on plumbing and more time on content. And it does this without sacrificing flexibility: themes, AI chat, search, custom components, and multi-framework support are all still there, just configured from one place.
+`@farming-labs/docs` keeps the framework lean — one config file, minimal routing, CLI-generated scaffolding — so you and your AI tools spend less time on plumbing and more time on content. And it does this without sacrificing flexibility: themes, multi-provider AI chat, search, custom components, and multi-framework support are all still there, just configured from one place.

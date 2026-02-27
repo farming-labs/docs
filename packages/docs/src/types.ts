@@ -777,11 +777,58 @@ export interface AIConfig {
   triggerComponent?: unknown;
 
   /**
-   * The LLM model to use for chat completions.
-   * Must be compatible with the OpenAI Chat Completions API.
+   * The LLM model configuration.
+   *
+   * **Simple** — pass a plain string for a single model:
+   * ```ts
+   * model: "gpt-4o-mini"
+   * ```
+   *
+   * **Advanced** — pass an object with multiple selectable models and an
+   * optional `provider` key that references a named provider in `providers`:
+   * ```ts
+   * model: {
+   *   models: [
+   *     { id: "gpt-4o-mini", label: "GPT-4o mini (fast)", provider: "openai" },
+   *     { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", provider: "groq" },
+   *   ],
+   *   defaultModel: "gpt-4o-mini",
+   * }
+   * ```
+   *
+   * When an object is provided, a model selector dropdown appears in the
+   * AI chat interface.
+   *
    * @default "gpt-4o-mini"
    */
-  model?: { models: { id: string; label: string }[]; defaultModel: string };
+  model?:
+    | string
+    | {
+        models: { id: string; label: string; provider?: string }[];
+        defaultModel?: string;
+      };
+
+  /**
+   * Named provider configurations for multi-provider setups.
+   *
+   * Each key is a provider name referenced by `model.models[].provider`.
+   * Each value contains a `baseUrl` and optional `apiKey`.
+   *
+   * @example
+   * ```ts
+   * providers: {
+   *   openai: {
+   *     baseUrl: "https://api.openai.com/v1",
+   *     apiKey: process.env.OPENAI_API_KEY,
+   *   },
+   *   groq: {
+   *     baseUrl: "https://api.groq.com/openai/v1",
+   *     apiKey: process.env.GROQ_API_KEY,
+   *   },
+   * }
+   * ```
+   */
+  providers?: Record<string, { baseUrl: string; apiKey?: string }>;
 
   /**
    * Custom system prompt prepended to the AI conversation.
@@ -794,16 +841,16 @@ export interface AIConfig {
   systemPrompt?: string;
 
   /**
-   * Base URL for an OpenAI-compatible API endpoint.
-   * Use this to point to a self-hosted model, Azure OpenAI, or any
-   * compatible provider (e.g. Groq, Together, OpenRouter).
+   * Default base URL for an OpenAI-compatible API endpoint.
+   * Used when no per-model `provider` is configured.
    * @default "https://api.openai.com/v1"
    */
   baseUrl?: string;
 
   /**
-   * API key for the LLM provider.
-   * Pass it via an environment variable to keep it out of source control.
+   * Default API key for the LLM provider.
+   * Used when no per-model `provider` is configured.
+   * Falls back to `process.env.OPENAI_API_KEY` if not set.
    *
    * @default process.env.OPENAI_API_KEY
    *

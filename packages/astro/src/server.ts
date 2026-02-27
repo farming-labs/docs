@@ -41,9 +41,21 @@ interface GithubConfigObj {
   directory?: string;
 }
 
+interface AIProviderConfig {
+  baseUrl: string;
+  apiKey?: string;
+}
+
+interface AIModelEntry {
+  id: string;
+  label: string;
+  provider?: string;
+}
+
 interface AIConfigObj {
   enabled?: boolean;
-  model?: string;
+  model?: string | { models?: AIModelEntry[]; defaultModel?: string };
+  providers?: Record<string, AIProviderConfig>;
   systemPrompt?: string;
   baseUrl?: string;
   apiKey?: string;
@@ -52,6 +64,38 @@ interface AIConfigObj {
   aiLabel?: string;
   packageName?: string;
   docsUrl?: string;
+}
+
+function resolveAIModelAndProvider(
+  aiConfig: AIConfigObj,
+  requestedModelId?: string,
+): { model: string; baseUrl: string; apiKey: string | undefined } {
+  const raw = aiConfig.model;
+  const modelList: AIModelEntry[] =
+    (typeof raw === "object" && raw?.models) || [];
+
+  let modelId = requestedModelId;
+  if (!modelId) {
+    if (typeof raw === "string") modelId = raw;
+    else if (typeof raw === "object") modelId = raw.defaultModel ?? raw.models?.[0]?.id;
+    if (!modelId) modelId = "gpt-4o-mini";
+  }
+
+  const entry = modelList.find((m) => m.id === modelId);
+  const providerKey = entry?.provider;
+  const providerConfig = providerKey && aiConfig.providers?.[providerKey];
+
+  const baseUrl = (
+    (providerConfig && providerConfig.baseUrl) || aiConfig.baseUrl || "https://api.openai.com/v1"
+  ).replace(/\/$/, "");
+
+  const apiKey =
+    (providerConfig && providerConfig.apiKey) ||
+    aiConfig.apiKey ||
+    (typeof import.meta !== "undefined" ? (import.meta as any).env?.OPENAI_API_KEY : undefined) ||
+    (typeof process !== "undefined" ? process.env?.OPENAI_API_KEY : undefined);
+
+  return { model: modelId, baseUrl, apiKey };
 }
 
 export interface DocsServer {
@@ -625,7 +669,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       );
     }
 
-    let body: { messages?: ChatMessage[] };
+    let body: { messages?: ChatMessage[]; model?: string };
     try {
       body = await context.request.json();
     } catch {
@@ -673,16 +717,18 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       ...messages.filter((m) => m.role !== "system"),
     ];
 
-    const baseUrl = (aiConfig.baseUrl ?? "https://api.openai.com/v1").replace(/\/$/, "");
-    const model = aiConfig.model ?? "gpt-4o-mini";
+    const requestedModel =
+      typeof body.model === "string" && body.model.trim().length > 0 ? body.model.trim() : undefined;
+    const resolved = resolveAIModelAndProvider(aiConfig, requestedModel);
+    const finalKey = resolved.apiKey ?? resolvedKey;
 
-    const llmResponse = await fetch(`${baseUrl}/chat/completions`, {
+    const llmResponse = await fetch(`${resolved.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${resolvedKey}`,
+        Authorization: `Bearer ${finalKey}`,
       },
-      body: JSON.stringify({ model, stream: true, messages: llmMessages }),
+      body: JSON.stringify({ model: resolved.model, stream: true, messages: llmMessages }),
     });
 
     if (!llmResponse.ok) {

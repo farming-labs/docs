@@ -32,21 +32,30 @@ interface SearchIndex {
   url: string;
 }
 
+interface AIProviderConfig {
+  baseUrl: string;
+  apiKey?: string;
+}
+
+interface AIModelEntry {
+  id: string;
+  label: string;
+  provider?: string;
+}
+
 interface AIModelConfig {
-  models?: { id: string; label: string }[];
+  models?: AIModelEntry[];
   defaultModel?: string;
 }
 
 interface AIOptions {
   enabled?: boolean;
-  /** Either a plain model id or an object with models + defaultModel. */
   model?: string | AIModelConfig;
-  /** Optional list of selectable models (legacy flat shape). */
-  models?: { id: string; label: string }[];
-  /** Optional default model id for the dropdown (legacy flat shape). */
-  defaultModel?: string;
+  providers?: Record<string, AIProviderConfig>;
   systemPrompt?: string;
+  /** Default baseUrl when no per-model provider is configured. */
   baseUrl?: string;
+  /** Default apiKey when no per-model provider is configured. */
   apiKey?: string;
   maxResults?: number;
 }
@@ -200,23 +209,47 @@ interface ChatMessage {
   content: string;
 }
 
+function resolveModelAndProvider(
+  aiConfig: AIOptions,
+  requestedModelId?: string,
+): { model: string; baseUrl: string; apiKey: string | undefined } {
+  const raw = aiConfig.model as AIModelConfig | string | undefined;
+
+  // Find the model list (from nested or flat config)
+  const modelList: AIModelEntry[] =
+    (typeof raw === "object" && raw?.models) || [];
+
+  // Resolve model id
+  let modelId = requestedModelId;
+  if (!modelId) {
+    if (typeof raw === "string") modelId = raw;
+    else if (typeof raw === "object") modelId = raw.defaultModel ?? raw.models?.[0]?.id;
+    if (!modelId) modelId = "gpt-4o-mini";
+  }
+
+  // Find matching model entry to get its provider key
+  const entry = modelList.find((m) => m.id === modelId);
+  const providerKey = entry?.provider;
+
+  // Resolve provider config
+  const providerConfig = providerKey && aiConfig.providers?.[providerKey];
+
+  const baseUrl = (
+    (providerConfig && providerConfig.baseUrl) || aiConfig.baseUrl || "https://api.openai.com/v1"
+  ).replace(/\/$/, "");
+
+  const apiKey =
+    (providerConfig && providerConfig.apiKey) || aiConfig.apiKey || process.env.OPENAI_API_KEY;
+
+  return { model: modelId, baseUrl, apiKey };
+}
+
 async function handleAskAI(
   request: Request,
   indexes: SearchIndex[],
   searchServer: { search: (query: string) => Promise<unknown[]> },
   aiConfig: AIOptions,
 ): Promise<Response> {
-  // ── Validate config ────────────────────────────────────────────
-  const apiKey = aiConfig.apiKey ?? process.env.OPENAI_API_KEY;
-
-  if (!apiKey) {
-    return Response.json(
-      {
-        error: `AI is enabled but no API key was found. Either set apiKey in your docs.config or add OPENAI_API_KEY to your .env.local file.`,
-      },
-      { status: 500 },
-    );
-  }
 
   // ── Parse request ──────────────────────────────────────────────
   let body: { messages?: ChatMessage[]; model?: string };
@@ -282,36 +315,29 @@ async function handleAskAI(
     ...messages.filter((m) => m.role !== "system"),
   ];
 
-  // ── Stream from LLM ────────────────────────────────────────────
-  const baseUrl = (aiConfig.baseUrl ?? "https://api.openai.com/v1").replace(/\/$/, "");
-
-  // Allow overriding the model per-request (e.g. from a UI dropdown).
+  // ── Resolve model + provider ────────────────────────────────────
   const requestedModel =
     typeof body.model === "string" && body.model.trim().length > 0 ? body.model.trim() : undefined;
 
-  function resolveConfiguredModel(ai: AIOptions): string {
-    // New nested shape: model: { models: [...], defaultModel?: string }
-    const raw = ai.model as AIModelConfig | string | undefined;
-    if (typeof raw === "string") return raw;
-    if (raw && typeof raw === "object") {
-      return raw.defaultModel ?? raw.models?.[0]?.id ?? ai.defaultModel ?? "gpt-4o-mini";
-    }
-    // Legacy flat fields
-    if (ai.defaultModel) return ai.defaultModel;
-    if (Array.isArray(ai.models) && ai.models[0]?.id) return ai.models[0].id;
-    return "gpt-4o-mini";
+  const resolved = resolveModelAndProvider(aiConfig, requestedModel);
+
+  if (!resolved.apiKey) {
+    return Response.json(
+      {
+        error: `AI is enabled but no API key was found. Either set apiKey in your docs.config ai section, configure a provider, or add OPENAI_API_KEY to your .env.local file.`,
+      },
+      { status: 500 },
+    );
   }
 
-  const model = requestedModel ?? resolveConfiguredModel(aiConfig);
-
-  const llmResponse = await fetch(`${baseUrl}/chat/completions`, {
+  const llmResponse = await fetch(`${resolved.baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${resolved.apiKey}`,
     },
     body: JSON.stringify({
-      model,
+      model: resolved.model,
       stream: true,
       messages: llmMessages,
     }),
