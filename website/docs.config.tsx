@@ -64,7 +64,7 @@ export default defineDocs({
         </div>
       </div>
     ),
-    url: "/docs",
+    url: "/",
   },
   icons: {
     book: <BookOpen size={16} />,

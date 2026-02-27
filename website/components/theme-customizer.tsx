@@ -554,7 +554,6 @@ async function fetchPresetCSS(preset: PresetKey): Promise<string> {
   }
 }
 
-// ─── Detect current site config ──────────────────────────────────────────────
 
 function detectCurrentPreset(): PresetKey {
   if (typeof window === "undefined") return "pixel-border";
@@ -584,7 +583,6 @@ function buildInitialState(presetKey?: PresetKey): ThemeState {
   };
 }
 
-// ─── Drawer sub-components ────────────────────────────────────────────────────
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -921,13 +919,10 @@ function CodeOutput({ cssCode, configCode }: { cssCode: string; configCode: stri
   );
 }
 
-// ─── Main Drawer Component ────────────────────────────────────────────────────
-
 export function ThemeCustomizer() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  // Only inject theme CSS when on the docs section — prevents bleeding onto the landing page
   const isDocsPage = pathname.startsWith("/docs");
   const [open, setOpen] = useState(false);
   const [activeView, setActiveView] = useState<"customize" | "code">("customize");
@@ -1237,15 +1232,19 @@ export function ThemeCustomizer() {
             return !v;
           });
         }}
-        className="fixed z-[10010] bottom-20 right-5 size-8 rounded-full border border-white/[8%] bg-black/60 backdrop-blur-md cursor-pointer transition-all duration-200 hover:scale-110 hover:border-white/20 hover:bg-black/80 flex items-center justify-center group"
+        style={{
+          background: "var(--color-fd-secondary, #0a0a0b)",
+          boxShadow: "3px 3px 0 0 var(--color-fd-border, #262626)",
+        }}
+        className="fixed z-[10] bottom-20 right-6 size-10 w-fit px-3 rounded-none border border-white/[10%] shadow-lg bg-black/60 backdrop-blur-md cursor-pointer transition-all duration-200 hover:border-white/20 hover:bg-black/80 flex items-center justify-center group"
         title={open ? "Close customizer" : "Customize theme"}
       >
         {open ? (
           <svg
-            width="12"
-            height="12"
+            width="16"
+            height="16"
             viewBox="0 0 24 24"
-            fill="none"
+            fill="currentColor"
             stroke="rgba(255,255,255,0.5)"
             strokeWidth="2"
             strokeLinecap="round"
@@ -1254,23 +1253,28 @@ export function ThemeCustomizer() {
             <path d="m6 6 12 12" />
           </svg>
         ) : (
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="rgba(255,255,255,0.45)"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="group-hover:stroke-white/80 group-hover:rotate-12 transition-all"
-          >
-            <circle cx="13.5" cy="6.5" r="2.5" />
-            <circle cx="17.5" cy="10.5" r="2.5" />
-            <circle cx="8.5" cy="7.5" r="2.5" />
-            <circle cx="6.5" cy="12.5" r="2.5" />
-            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
-          </svg>
+          <div className="flex gap-2 items-center">
+
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="rgba(255,255,255,0.45)"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="group-hover:stroke-white/80 group-hover:rotate-12 transition-all"
+            >
+              <circle cx="13.5" cy="6.5" r="2.5" />
+              <circle cx="17.5" cy="10.5" r="2.5" />
+              <circle cx="8.5" cy="7.5" r="2.5" />
+              <circle cx="6.5" cy="12.5" r="2.5" />
+              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+
+            </svg>
+            <span className="text-[11px] font-mono uppercase dark:text-white/60 text-black">Customize</span>
+          </div>
         )}
       </button>
 

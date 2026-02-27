@@ -32,7 +32,6 @@ export const metadata: Metadata = {
     template: "%s – @farming-labs/docs",
   },
   description: "A modern, flexible MDX documentation framework. One config, zero boilerplate.",
-  // Static OG image for base URL (/) only. Docs and other routes override with dynamic OG.
   openGraph: {
     title: "a documentation that just works.",
     description: "A modern documentation framework that works. One config file, zero boilerplate.",

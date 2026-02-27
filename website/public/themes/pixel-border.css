@@ -572,7 +572,6 @@ article a[class*="text-fd-muted-foreground"] {
   border-radius: 0 !important;
   box-shadow: 3px 3px 0 0 var(--color-fd-border, hsl(0 0% 15%)) !important;
 }
-
 .fd-ai-floating-btn:hover {
   transform: translate(-1px, -1px) !important;
   box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%)) !important;

@@ -611,7 +611,6 @@ hr {
   font-size: 12px;
   box-shadow: 3px 3px 0 0 var(--color-fd-border, hsl(0 0% 15%));
 }
-
 .fd-ai-fm-trigger-btn:hover {
   transform: translate(-1px, -1px);
   box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%));

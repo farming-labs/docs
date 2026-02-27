@@ -47,3 +47,15 @@
     transparent 6px
   );
 }
+
+/* Hide Ask AI when mobile sidebar drawer is open (fumadocs-ui: width < 768px, id=nd-sidebar-mobile data-state=open) */
+@media (max-width: 767px) {
+  body:has(aside#nd-sidebar-mobile[data-state="open"]) .fd-ai-floating-btn,
+  body:has(aside#nd-sidebar-mobile[data-state="open"]) .fd-ai-floating-trigger,
+  body:has(aside#nd-sidebar-mobile[data-state="open"]) .fd-ai-fm-trigger-btn,
+  body:has(aside#nd-sidebar-mobile[data-state="open"]) .fd-ai-fm-input-bar {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+}
