@@ -1,5 +1,4 @@
 import { defineDocs } from "@farming-labs/docs";
-import { greentree } from "@farming-labs/nuxt-theme/greentree";
 import { colorful } from "@farming-labs/nuxt-theme/colorful";
 export default defineDocs({
   entry: "docs",

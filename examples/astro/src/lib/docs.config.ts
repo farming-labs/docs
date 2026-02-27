@@ -34,7 +34,13 @@ export default defineDocs({
   },
   ai: {
     enabled: true,
-    model: "gpt-4o-mini",
+    model: {
+      models: [
+        { id: "gpt-4o-mini", label: "GPT-4o mini (fast)" },
+        { id: "gpt-4o", label: "GPT-4o (quality)" },
+      ],
+      defaultModel: "gpt-4o-mini",
+    },
     maxResults: 5,
     aiLabel: "DocsBot",
     apiKey: import.meta.env.OPENAI_API_KEY,
