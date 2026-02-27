@@ -2,7 +2,7 @@
 order: 6
 title: Concepts
 description: Core concepts and architecture of Better Auth.
-icon: lightbulb
+icon: terminal 
 ---
 
 # Concepts

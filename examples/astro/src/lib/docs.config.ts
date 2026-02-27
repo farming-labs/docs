@@ -5,7 +5,7 @@ import { greentree } from "@farming-labs/theme/greentree";
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: colorful({
+  theme: greentree({
     ui: {
       components: { Callout: { variant: "outline" } },
       layout: {

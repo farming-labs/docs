@@ -104,8 +104,8 @@ aside a[data-active]:hover {
   background: var(--color-fd-accent);
 }
 
-/* Active sidebar item — green background like Mintlify */
 aside a[data-active="true"] {
+  position: relative;
   color: var(--color-fd-primary);
   font-weight: 600;
   background: rgba(13, 147, 115, 0.08);
@@ -119,8 +119,15 @@ aside a[data-active="true"] {
 }
 
 aside a[data-active="true"]::before {
-  background-color: transparent;
-  width: 0;
+  content: "";
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--color-fd-primary);
 }
 
 /* ── Flat sidebar — category headings ─────────────────────────── */

@@ -103,6 +103,7 @@ aside a[data-active]:hover {
 }
 
 aside a[data-active="true"] {
+  position: relative;
   color: var(--color-fd-primary);
   font-weight: 600;
   background: rgba(13, 147, 115, 0.08);
@@ -116,8 +117,15 @@ aside a[data-active="true"] {
 }
 
 aside a[data-active="true"]::before {
-  background-color: transparent;
-  width: 0;
+  content: "";
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--color-fd-primary);
 }
 
 aside a[data-active].w-full {
@@ -540,9 +548,40 @@ details > :not(summary) {
   filter: brightness(1.1);
 }
 
-.fd-ai-suggestion,
+.fd-ai-suggestion {
+  border-radius: 10px;
+}
+
 .fd-ai-result {
   border-radius: 10px;
+}
+
+.fd-ai-fm-input-container {
+  border-radius: 12px;
+}
+
+.fd-ai-fm-send-btn {
+  border-radius: 9999px;
+}
+
+.fd-ai-fm-suggestion {
+  border-radius: 9999px;
+}
+
+.fd-ai-fm-trigger-btn {
+  border-radius: 16px;
+}
+
+.fd-ai-fm-close-btn {
+  border-radius: 9999px;
+}
+
+.fd-ai-code-block {
+  border-radius: 10px;
+}
+
+.fd-ai-code-copy {
+  border-radius: 6px;
 }
 
 .fd-sidebar-search-ai-row {

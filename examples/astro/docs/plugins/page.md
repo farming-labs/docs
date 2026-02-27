@@ -2,7 +2,7 @@
 order: 7
 title: "Plugins"
 description: "Extend Better Auth with powerful plugins — 2FA, organizations, passkeys, and more."
-icon: "folder"
+icon: rocket
 ---
 
 # Plugins
