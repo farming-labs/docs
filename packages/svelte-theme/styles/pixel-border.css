@@ -707,6 +707,44 @@ code:not(pre code) {
   font-family: var(--fd-font-mono, ui-monospace, monospace);
 }
 
+/* Light mode: AI code blocks — light bg + dark text + visible pixel border */
+:root:not(.dark) .fd-ai-code-block {
+  background: #f4f4f5 !important;
+  box-shadow: 3px 3px 0 0 hsl(0 0% 75%);
+  --sh-class: #b45309;
+  --sh-identifier: #1f2937;
+  --sh-keyword: #7c3aed;
+  --sh-string: #0d9488;
+  --sh-property: #dc2626;
+  --sh-entity: #059669;
+  --sh-sign: #374151;
+  --sh-comment: #6b7280;
+  --sh-jsxliterals: #7c3aed;
+}
+
+:root:not(.dark) .fd-ai-code-header {
+  border-bottom-color: hsl(0 0% 80%);
+  background: color-mix(in srgb, #e4e4e7 90%, transparent);
+}
+
+:root:not(.dark) .fd-ai-code-lang {
+  color: #52525b;
+}
+
+:root:not(.dark) .fd-ai-code-copy {
+  color: #52525b;
+  border-color: hsl(0 0% 75%);
+}
+
+:root:not(.dark) .fd-ai-code-copy:hover {
+  color: #18181b;
+  background: color-mix(in srgb, #d4d4d8 70%, transparent);
+}
+
+:root:not(.dark) .fd-ai-code-block code {
+  color: #1f2937;
+}
+
 /* ─── Omni Command Palette — pixel-border theme ──────────────────── */
 
 .omni-content {

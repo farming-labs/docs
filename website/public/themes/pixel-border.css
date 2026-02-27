@@ -729,6 +729,43 @@ article a[class*="text-fd-muted-foreground"] {
   font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
 }
 
+:root:not(.dark) .fd-ai-code-block {
+  background: #f4f4f5 !important;
+  box-shadow: 3px 3px 0 0 hsl(0 0% 75%) !important;
+  --sh-class: #b45309 !important;
+  --sh-identifier: #1f2937 !important;
+  --sh-keyword: #7c3aed !important;
+  --sh-string: #0d9488 !important;
+  --sh-property: #dc2626 !important;
+  --sh-entity: #059669 !important;
+  --sh-sign: #374151 !important;
+  --sh-comment: #6b7280 !important;
+  --sh-jsxliterals: #7c3aed !important;
+}
+
+:root:not(.dark) .fd-ai-code-header {
+  border-bottom-color: hsl(0 0% 80%) !important;
+  background: color-mix(in srgb, #e4e4e7 90%, transparent) !important;
+}
+
+:root:not(.dark) .fd-ai-code-lang {
+  color: #52525b !important;
+}
+
+:root:not(.dark) .fd-ai-code-copy {
+  color: #52525b !important;
+  border-color: hsl(0 0% 75%) !important;
+}
+
+:root:not(.dark) .fd-ai-code-copy:hover {
+  color: #18181b !important;
+  background: color-mix(in srgb, #d4d4d8 70%, transparent) !important;
+}
+
+:root:not(.dark) .fd-ai-code-block code {
+  color: #1f2937 !important;
+}
+
 /* ─── Omni Command Palette — pixel-border theme ──────────────── */
 
 .omni-content {

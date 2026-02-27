@@ -19,10 +19,45 @@ interface Release {
 
 const releases: Release[] = [
   {
+    version: "v0.0.3",
+    title: "v0.0.3: Current Release",
+    date: "Feb 26, 2026",
+    pinned: true,
+    excerpt:
+      "Latest stable release — improvements across themes, docs, and tooling. Includes all changes from v0.0.3 beta cycle.",
+    changes: [
+      {
+        category: "Highlights",
+        items: [
+          "Stable release following v0.0.3 beta cycle",
+          "Theme and documentation updates",
+          "Changelog and homepage version links updated",
+        ],
+      },
+    ],
+  },
+  {
+    version: "v0.0.2",
+    title: "v0.0.2: Stable Release",
+    date: "Feb 22, 2026",
+    excerpt:
+      "Second stable release — polish, theme docs, mobile fixes, and customizer improvements from the v0.0.2 beta cycle.",
+    changes: [
+      {
+        category: "Highlights",
+        items: [
+          "Interactive /changelog page with version-anchored links",
+          "Documentation for all 7 themes",
+          "CSS specificity and pixel-border bleedthrough fixes",
+          "GreenTree theme, sidebar-icon AI mode, last-updated positioning",
+        ],
+      },
+    ],
+  },
+  {
     version: "v0.0.1",
     title: "v0.0.1: Initial Release",
     date: "Feb 19, 2026",
-    pinned: true,
     excerpt:
       "The first stable release of @farming-labs/docs — a modern, flexible MDX documentation framework with 7 built-in themes, AI search, multi-framework support, a live theme customizer, and an interactive changelog.",
     changes: [
@@ -41,6 +76,74 @@ const releases: Release[] = [
     ],
   },
 
+  {
+    version: "v0.0.3-beta.16-20",
+    title: "beta.16–20: v0.0.3 Pre-release",
+    date: "Feb 24–26, 2026",
+    isBeta: true,
+    excerpt:
+      "Final betas before v0.0.3 stable — refinements and fixes.",
+    changes: [
+      {
+        category: "Changes",
+        items: [
+          "Changelog and version pinning updates",
+          "Documentation and theme polish",
+        ],
+      },
+    ],
+  },
+  {
+    version: "v0.0.3-beta.11-15",
+    title: "beta.11–15: v0.0.3 Pre-release",
+    date: "Feb 22–24, 2026",
+    isBeta: true,
+    excerpt:
+      "v0.0.3 beta cycle — continued improvements.",
+    changes: [
+      {
+        category: "Changes",
+        items: [
+          "Theme and layout tweaks",
+          "Config and customizer updates",
+        ],
+      },
+    ],
+  },
+  {
+    version: "v0.0.3-beta.5-10",
+    title: "beta.5–10: v0.0.3 Pre-release",
+    date: "Feb 20–22, 2026",
+    isBeta: true,
+    excerpt:
+      "v0.0.3 beta cycle — new features and fixes.",
+    changes: [
+      {
+        category: "Changes",
+        items: [
+          "Cross-framework and theme improvements",
+          "Docs and changelog structure",
+        ],
+      },
+    ],
+  },
+  {
+    version: "v0.0.3-beta.1-4",
+    title: "beta.1–4: v0.0.3 Pre-release",
+    date: "Feb 19–20, 2026",
+    isBeta: true,
+    excerpt:
+      "First betas of v0.0.3 — foundation for next release.",
+    changes: [
+      {
+        category: "Changes",
+        items: [
+          "Pre-release cycle for v0.0.3",
+          "Stability and documentation updates",
+        ],
+      },
+    ],
+  },
   {
     version: "v0.0.2-beta.16-20",
     title: "beta.16–20: Polish, Docs & Mobile Fixes",

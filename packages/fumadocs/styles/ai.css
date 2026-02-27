@@ -840,6 +840,43 @@
   min-height: 1.2em;
 }
 
+:root:not(.dark) .fd-ai-code-block {
+  --sh-class: #b45309;
+  --sh-identifier: #1f2937;
+  --sh-keyword: #7c3aed;
+  --sh-string: #0d9488;
+  --sh-property: #dc2626;
+  --sh-entity: #059669;
+  --sh-sign: #374151;
+  --sh-comment: #6b7280;
+  --sh-jsxliterals: #7c3aed;
+  border-color: rgba(0, 0, 0, 0.12);
+  background: #f4f4f5;
+}
+
+:root:not(.dark) .fd-ai-code-header {
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+  background: color-mix(in srgb, #e4e4e7 80%, transparent);
+}
+
+:root:not(.dark) .fd-ai-code-lang {
+  color: #52525b;
+}
+
+:root:not(.dark) .fd-ai-code-copy {
+  color: #52525b;
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+:root:not(.dark) .fd-ai-code-copy:hover {
+  color: #18181b;
+  background: color-mix(in srgb, #d4d4d8 60%, transparent);
+}
+
+:root:not(.dark) .fd-ai-code-block code {
+  color: #1f2937;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
  * Full-Modal (better-auth inspired) — fd-ai-fm-*
  * ═══════════════════════════════════════════════════════════════════ */

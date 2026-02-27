@@ -431,6 +431,23 @@ article a[class*="text-fd-muted-foreground"] {
   border-radius: 2px;
 }
 
+/* Light mode: AI code blocks — light bg + dark syntax */
+:root:not(.dark) .fd-ai-code-block {
+  --sh-class: #b45309;
+  --sh-identifier: #1f2937;
+  --sh-keyword: #7c3aed;
+  --sh-string: #0d9488;
+  --sh-property: #dc2626;
+  --sh-entity: #059669;
+  --sh-sign: #374151;
+  --sh-comment: #6b7280;
+  --sh-jsxliterals: #7c3aed;
+}
+
+:root:not(.dark) .fd-ai-code-block code {
+  color: #1f2937;
+}
+
 /* ─── Omni Command Palette (darksharp theme) ────────────────────── */
 
 .omni-content {
