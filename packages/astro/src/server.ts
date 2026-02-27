@@ -71,8 +71,7 @@ function resolveAIModelAndProvider(
   requestedModelId?: string,
 ): { model: string; baseUrl: string; apiKey: string | undefined } {
   const raw = aiConfig.model;
-  const modelList: AIModelEntry[] =
-    (typeof raw === "object" && raw?.models) || [];
+  const modelList: AIModelEntry[] = (typeof raw === "object" && raw?.models) || [];
 
   let modelId = requestedModelId;
   if (!modelId) {
@@ -86,7 +85,9 @@ function resolveAIModelAndProvider(
   const providerConfig = providerKey && aiConfig.providers?.[providerKey];
 
   const baseUrl = (
-    (providerConfig && providerConfig.baseUrl) || aiConfig.baseUrl || "https://api.openai.com/v1"
+    (providerConfig && providerConfig.baseUrl) ||
+    aiConfig.baseUrl ||
+    "https://api.openai.com/v1"
   ).replace(/\/$/, "");
 
   const apiKey =
@@ -718,7 +719,9 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     ];
 
     const requestedModel =
-      typeof body.model === "string" && body.model.trim().length > 0 ? body.model.trim() : undefined;
+      typeof body.model === "string" && body.model.trim().length > 0
+        ? body.model.trim()
+        : undefined;
     const resolved = resolveAIModelAndProvider(aiConfig, requestedModel);
     const finalKey = resolved.apiKey ?? resolvedKey;
 

@@ -216,8 +216,7 @@ function resolveModelAndProvider(
   const raw = aiConfig.model as AIModelConfig | string | undefined;
 
   // Find the model list (from nested or flat config)
-  const modelList: AIModelEntry[] =
-    (typeof raw === "object" && raw?.models) || [];
+  const modelList: AIModelEntry[] = (typeof raw === "object" && raw?.models) || [];
 
   // Resolve model id
   let modelId = requestedModelId;
@@ -235,7 +234,9 @@ function resolveModelAndProvider(
   const providerConfig = providerKey && aiConfig.providers?.[providerKey];
 
   const baseUrl = (
-    (providerConfig && providerConfig.baseUrl) || aiConfig.baseUrl || "https://api.openai.com/v1"
+    (providerConfig && providerConfig.baseUrl) ||
+    aiConfig.baseUrl ||
+    "https://api.openai.com/v1"
   ).replace(/\/$/, "");
 
   const apiKey =
@@ -250,7 +251,6 @@ async function handleAskAI(
   searchServer: { search: (query: string) => Promise<unknown[]> },
   aiConfig: AIOptions,
 ): Promise<Response> {
-
   // ── Parse request ──────────────────────────────────────────────
   let body: { messages?: ChatMessage[]; model?: string };
   try {
