@@ -781,7 +781,7 @@ export interface AIConfig {
    * Must be compatible with the OpenAI Chat Completions API.
    * @default "gpt-4o-mini"
    */
-  model?: string;
+  model?: { models: { id: string; label: string }[]; defaultModel: string };
 
   /**
    * Custom system prompt prepended to the AI conversation.
