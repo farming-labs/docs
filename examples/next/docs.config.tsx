@@ -1,9 +1,5 @@
 import { defineDocs, extendTheme } from "@farming-labs/docs";
-import { pixelBorder } from "@farming-labs/theme/pixel-border";
 import { MyNote } from "./app/components/my-note";
-import { AskAITrigger } from "./app/components/ask-ai-trigger";
-import { colorful } from "@farming-labs/theme/colorful";
-import { shiny } from "@farming-labs/theme/shiny";
 import {
   BookOpen,
   Rocket,
@@ -26,6 +22,7 @@ import { fumadocs } from "@farming-labs/theme";
 import { darkbold } from "@farming-labs/theme/darkbold";
 import { greentree } from "@farming-labs/theme/greentree";
 import { darksharp } from "@farming-labs/theme/darksharp";
+import { pixelBorder } from "@farming-labs/theme/pixel-border";
 
 export default defineDocs({
   entry: "docs",
