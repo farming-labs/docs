@@ -81,15 +81,11 @@ const releases: Release[] = [
     title: "beta.16–20: v0.0.3 Pre-release",
     date: "Feb 24–26, 2026",
     isBeta: true,
-    excerpt:
-      "Final betas before v0.0.3 stable — refinements and fixes.",
+    excerpt: "Final betas before v0.0.3 stable — refinements and fixes.",
     changes: [
       {
         category: "Changes",
-        items: [
-          "Changelog and version pinning updates",
-          "Documentation and theme polish",
-        ],
+        items: ["Changelog and version pinning updates", "Documentation and theme polish"],
       },
     ],
   },
@@ -98,15 +94,11 @@ const releases: Release[] = [
     title: "beta.11–15: v0.0.3 Pre-release",
     date: "Feb 22–24, 2026",
     isBeta: true,
-    excerpt:
-      "v0.0.3 beta cycle — continued improvements.",
+    excerpt: "v0.0.3 beta cycle — continued improvements.",
     changes: [
       {
         category: "Changes",
-        items: [
-          "Theme and layout tweaks",
-          "Config and customizer updates",
-        ],
+        items: ["Theme and layout tweaks", "Config and customizer updates"],
       },
     ],
   },
@@ -115,15 +107,11 @@ const releases: Release[] = [
     title: "beta.5–10: v0.0.3 Pre-release",
     date: "Feb 20–22, 2026",
     isBeta: true,
-    excerpt:
-      "v0.0.3 beta cycle — new features and fixes.",
+    excerpt: "v0.0.3 beta cycle — new features and fixes.",
     changes: [
       {
         category: "Changes",
-        items: [
-          "Cross-framework and theme improvements",
-          "Docs and changelog structure",
-        ],
+        items: ["Cross-framework and theme improvements", "Docs and changelog structure"],
       },
     ],
   },
@@ -132,15 +120,11 @@ const releases: Release[] = [
     title: "beta.1–4: v0.0.3 Pre-release",
     date: "Feb 19–20, 2026",
     isBeta: true,
-    excerpt:
-      "First betas of v0.0.3 — foundation for next release.",
+    excerpt: "First betas of v0.0.3 — foundation for next release.",
     changes: [
       {
         category: "Changes",
-        items: [
-          "Pre-release cycle for v0.0.3",
-          "Stability and documentation updates",
-        ],
+        items: ["Pre-release cycle for v0.0.3", "Stability and documentation updates"],
       },
     ],
   },
