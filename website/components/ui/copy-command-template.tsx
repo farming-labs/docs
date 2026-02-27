@@ -48,23 +48,23 @@ export default function CopyCommandTemplate({ className = "" }: CopyCommandTempl
     <button
       onClick={copy}
       className={cn(
-        "group flex overflow-hidden font-mono items-center gap-2 border border-white/10 md:border-b-0 px-3 sm:px-4 py-2 text-[11px] sm:text-sm text-white/70 hover:bg-white/4 transition-all cursor-pointer overflow-hidden",
+        "group flex overflow-hidden font-mono items-center gap-2 border border-black/10 dark:border-white/10 md:border-b-0 px-3 sm:px-4 py-2 text-[11px] sm:text-sm text-black/70 dark:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-all cursor-pointer overflow-hidden",
         className,
       )}
       title={copied ? "Copied!" : "Copy to clipboard"}
     >
-      <Terminal className="w-3.5 h-3.5 text-white/40 shrink-0" />
+      <Terminal className="w-3.5 h-3.5 text-black/40 dark:text-white/40 shrink-0" />
       <span className="select-all truncate flex items-center gap-2 min-w-0">
-        <span className="text-white/30">pnpx</span>
-        <span className="text-white/30">@farming-labs/docs</span>
-        <span className="text-white/30">init</span>
-        <span className="text-white/30">--template</span>
+        <span className="text-black dark:text-white/30">pnpx</span>
+        <span className="text-black/30 dark:text-white/30">@farming-labs/docs</span>
+        <span className="text-black/60 dark:text-white/30">init</span>
+        <span className="text-black/30 dark:text-white/30">--template</span>
         <span className="inline-block w-[6ch] min-w-[6ch] overflow-hidden py-0.5 align-baseline text-left">
           <AnimatePresence mode="wait">
             {/*@ts-ignore */}
             <motion.span
               key={currentTemplate}
-              className="inline-block text-white/50"
+              className="inline-block text-black/60 dark:text-white/50"
               {...motionProps}
             >
               {currentTemplate}
