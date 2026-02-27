@@ -169,8 +169,7 @@ export default defineDocs({
         { id: "gpt-4o", label: "GPT-4o (quality)" },
       ],
       defaultModel: "gpt-4o-mini",
-    }  as any,
-    
+    },
     apiKey: process.env.OPENAI_API_KEY,
     aiLabel: "DocsBot",
     suggestedQuestions: [
