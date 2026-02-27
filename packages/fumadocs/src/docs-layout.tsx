@@ -624,9 +624,7 @@ export function createDocsLayout(config: DocsConfig) {
   if (rawModelConfig && typeof rawModelConfig === "object") {
     aiModels = rawModelConfig.models ?? aiModels;
     aiDefaultModelId =
-      rawModelConfig.defaultModel ??
-      rawModelConfig.models?.[0]?.id ??
-      aiDefaultModelId;
+      rawModelConfig.defaultModel ?? rawModelConfig.models?.[0]?.id ?? aiDefaultModelId;
   }
 
   // Build last-modified map by scanning all page.mdx files

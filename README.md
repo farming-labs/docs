@@ -475,6 +475,37 @@ Available for all frameworks:
 - Astro: `import { colorful } from "@farming-labs/astro-theme/colorful"` with `@import "@farming-labs/astro-theme/colorful/css"`
 - Nuxt: `import { colorful } from "@farming-labs/nuxt-theme/colorful"` with `@import "@farming-labs/nuxt-theme/colorful/css"`
 
+## Token Efficiency — Why This Matters for AI
+
+`@farming-labs/docs` keeps the framework footprint small so AI tools spend less time reading boilerplate and more time working with your actual content — while still giving you the full flexibility of a modern docs framework.
+
+### One config, full control
+
+Everything about your docs site — theme, colors, typography, sidebar, AI chat, metadata — lives in a single `docs.config.ts` file (~15 lines). There's a provider wrapper and a docs layout file, but they're minimal one-liners the CLI generates for you. The real configuration surface is that single file.
+
+This matters because:
+
+- **AI agents** (Cursor, Copilot, Claude) read your project files to help you. Fewer framework files = more token budget for your actual content.
+- **One config file** means an AI can understand your entire docs setup by reading a single file, rather than tracing through multiple interconnected files.
+- **Declarative config** is hard to break — an AI can change `theme: darksharp()` or add `ai: { enabled: true }` without worrying about import paths or component hierarchies.
+- **llms.txt** is built in — your docs are automatically served in LLM-optimized format with zero extra config.
+
+### The CLI does the heavy lifting
+
+Starting from scratch? One command creates a fully themed docs site:
+
+```bash
+npx @farming-labs/docs init --template next --name my-docs --theme pixel-border
+```
+
+Already have a project? Run `init` inside it — the CLI auto-detects your framework, generates config and minimal routing files, installs dependencies, and starts the dev server:
+
+```bash
+npx @farming-labs/docs init
+```
+
+Pick from `next`, `nuxt`, `sveltekit`, or `astro`. Choose any of the 7 built-in themes. Your existing code is untouched.
+
 ## Configuration
 
 The `docs.config.ts` file is the single source of truth. Key options:

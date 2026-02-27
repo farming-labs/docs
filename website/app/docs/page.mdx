@@ -10,12 +10,13 @@ A modern documentation framework built on top of [Fumadocs](https://fumadocs.ver
 
 ## Why @farming-labs/docs?
 
-- **Zero boilerplate** — No layout files, no `[[...slug]]` wrappers except for fully fledged functionality like AI , Search and metadata to work. Just write Markdown or MDX.
-- **One config** — Everything in `docs.config.ts`: theme, colors, typography, icons, theme , components, metadata.
-- **Multiple frameworks** — First-class support that just works.
-- **6 themes** — By default it supports 6 themes Or build your own with [`createTheme()`](/docs/themes/create-themes).
+- **Zero boilerplate** — No layout files, no `[[...slug]]` wrappers except for fully fledged functionality like AI, Search and metadata to work. Just write Markdown or MDX.
+- **One config** — Everything in `docs.config.ts`: theme, colors, typography, icons, components, metadata.
+- **Token efficient** — Your entire docs framework surface is a single config file (~15 lines). AI tools like Cursor, Copilot, and Claude spend less time reading framework plumbing and more time working with your actual content. Built-in [llms.txt](/docs/customization/llms-txt) serves your docs in LLM-optimized format automatically. [Learn more →](/docs/token-efficiency)
+- **Multiple frameworks** — First-class support for Next.js, SvelteKit, Astro, and Nuxt that just works.
+- **7 themes** — Default, Darksharp, Pixel Border, Colorful, Shiny, DarkBold, and GreenTree — or build your own with [`createTheme()`](/docs/themes/creating-themes).
 - **Built-in search** — Full-text search powered by Orama. No API keys.
-- **CLI scaffolding** — `npx @farming-labs/docs init` detects your framework, generates config, installs deps, starts dev.
+- **CLI scaffolding** — `npx @farming-labs/docs init` detects your framework, generates config, installs deps, starts dev. Use `--template` to bootstrap a new project with one command.
 
 ## Packages
 
@@ -45,6 +46,7 @@ See the [CLI reference](/docs/cli) for details, or set up manually with the [Ins
 
 ## Next Steps
 
+- [Token Efficiency](/docs/token-efficiency) — Why this is the most AI-friendly docs framework
 - [Configuration](/docs/configuration) — Customize your theme, colors, typography, sidebar, and more
 - [Themes](/docs/themes) — Browse available themes and learn how to create your own
 - [Customization](/docs/customization) — Colors, typography, sidebar, AI chat, page actions

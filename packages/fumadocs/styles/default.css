@@ -5,6 +5,9 @@
 
 .fd-page-action-btn {
   border-radius: 0.375rem;
+  box-shadow: none;
+  text-transform: capitalize; 
+  font-family: var(--fd-font-sans, var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif));
 }
 
 .fd-page-action-menu {

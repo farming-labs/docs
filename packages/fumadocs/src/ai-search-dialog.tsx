@@ -425,7 +425,16 @@ function ModelSelector({
         disabled={disabled}
       >
         <span>{current?.label ?? "Select model"}</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="m6 9 6 6 6-6" />
         </svg>
       </button>
@@ -446,7 +455,16 @@ function ModelSelector({
             >
               <span className="fd-ai-model-dropdown-label">{m.label}</span>
               {m.id === selectedId && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M20 6 9 17l-5-5" />
                 </svg>
               )}
@@ -499,8 +517,7 @@ function AIChat({
   });
 
   const effectiveModelId =
-    selectedModel ||
-    (Array.isArray(models) && models.length > 0 ? models[0]!.id : undefined);
+    selectedModel || (Array.isArray(models) && models.length > 0 ? models[0]!.id : undefined);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -730,8 +747,7 @@ export function DocsSearchDialog({
   });
 
   const effectiveModelId =
-    selectedModel ||
-    (Array.isArray(models) && models.length > 0 ? models[0]!.id : undefined);
+    selectedModel || (Array.isArray(models) && models.length > 0 ? models[0]!.id : undefined);
 
   useEffect(() => {
     if (open) {
@@ -882,21 +898,21 @@ export function DocsSearchDialog({
         )}
 
         {tab === "ai" && (
-              <AIChat
-                api={api}
-                messages={messages}
-                setMessages={setMessages}
-                aiInput={aiInput}
-                setAiInput={setAiInput}
-                isStreaming={isStreaming}
-                setIsStreaming={setIsStreaming}
-                suggestedQuestions={suggestedQuestions}
-                aiLabel={aiLabel}
-                loaderVariant={loaderVariant}
-                loadingComponentHtml={loadingComponentHtml}
-                models={models}
-                defaultModelId={effectiveModelId}
-              />
+          <AIChat
+            api={api}
+            messages={messages}
+            setMessages={setMessages}
+            aiInput={aiInput}
+            setAiInput={setAiInput}
+            isStreaming={isStreaming}
+            setIsStreaming={setIsStreaming}
+            suggestedQuestions={suggestedQuestions}
+            aiLabel={aiLabel}
+            loaderVariant={loaderVariant}
+            loadingComponentHtml={loadingComponentHtml}
+            models={models}
+            defaultModelId={effectiveModelId}
+          />
         )}
       </div>
     </>,
@@ -1151,8 +1167,7 @@ function FullModalAIChat({
   });
 
   const effectiveModelId =
-    selectedModel ||
-    (Array.isArray(models) && models.length > 0 ? models[0]!.id : undefined);
+    selectedModel || (Array.isArray(models) && models.length > 0 ? models[0]!.id : undefined);
 
   useEffect(() => {
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 100);

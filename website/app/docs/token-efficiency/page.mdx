@@ -1,0 +1,118 @@
+---
+title: "Token Efficiency"
+description: "How @farming-labs/docs keeps your project lean for AI-assisted development — without sacrificing flexibility"
+icon: "zap"
+order: 3.5
+---
+
+# Token Efficiency
+
+AI tools like Cursor, Copilot, and Claude read your project files to help you write code. Every file they read costs **tokens** — the units that determine response speed, API cost, and how much of your project fits in a single conversation.
+
+`@farming-labs/docs` is built to keep the framework footprint small so more of your token budget goes to your actual documentation content — while still giving you the full flexibility of a modern docs framework.
+
+## One Config, Full Control
+
+The core idea: everything about your docs site — theme, colors, typography, sidebar, AI chat, metadata — lives in a single `docs.config.ts` file.
+
+```ts
+import { defineDocs } from "@farming-labs/docs";
+import { pixelBorder } from "@farming-labs/theme/pixel-border";
+
+export default defineDocs({
+  entry: "docs",
+  theme: pixelBorder(),
+  nav: { title: "My Docs", url: "/docs" },
+  ai: { enabled: true, model: "gpt-4o-mini" },
+  metadata: {
+    titleTemplate: "%s – Docs",
+    description: "My documentation site",
+  },
+});
+```
+
+An AI agent reads this one file and immediately understands your entire docs setup — what theme you're using, where content lives, how AI chat is configured, how pages are titled. There's a provider wrapper (`RootProvider`) and a docs layout file, but they're minimal one-liners that the CLI generates for you. The real configuration surface is this single file.
+
+This matters because every additional config file, layout wrapper, or routing file is something an AI has to read, reason about, and avoid accidentally breaking. Fewer framework files means more room in the context window for what actually matters: your documentation content.
+
+## The CLI Does the Heavy Lifting
+
+You don't have to set any of this up manually. The CLI scaffolds everything in seconds — for both new and existing projects.
+
+### Starting from scratch
+
+Use `--template` to bootstrap a complete project with your framework and theme of choice:
+
+```bash
+npx @farming-labs/docs init --template next --name my-docs
+```
+
+This creates a new `my-docs/` folder with a fully working docs site — config, routes, CSS, sample pages, dependencies installed, dev server running. Pick from `next`, `nuxt`, `sveltekit`, or `astro`.
+
+Want a specific theme? Add `--theme`:
+
+```bash
+npx @farming-labs/docs init --template next --name my-docs --theme pixel-border
+```
+
+That's it — a beautiful themed docs site in one command.
+
+### Adding to an existing project
+
+Already have a Next.js, SvelteKit, Astro, or Nuxt project? Just run `init` inside it:
+
+```bash
+npx @farming-labs/docs init
+```
+
+The CLI auto-detects your framework from `package.json`, asks you to pick a theme, generates the config and minimal routing files, installs dependencies, and starts the dev server. Your existing code is untouched — it only adds what's needed for docs.
+
+See the [CLI reference](/docs/cli) for all flags and options.
+
+## Why This Matters for AI
+
+### More context for your content
+
+AI models have limited context windows. Framework boilerplate eats into that budget. With `@farming-labs/docs`, the framework surface is roughly **~15 lines of config** instead of hundreds of lines spread across many files. That leaves more room for your actual documentation pages when an AI is answering questions or making changes.
+
+### Fewer files to reason about
+
+When an AI agent needs to modify your docs setup — change a theme, enable AI chat, adjust the sidebar — it reads your `docs.config.ts` and makes the change in one place. No hunting through layout files, provider trees, slug handlers, and CSS imports to figure out how everything connects.
+
+### Less risk of breaking things
+
+A declarative config file is hard to break. An AI can add `ai: { enabled: true }` or change `theme: darksharp()` without worrying about import paths, component hierarchies, or routing logic. The framework handles all of that internally.
+
+## Built-in AI Features
+
+Beyond being token-efficient to work with, `@farming-labs/docs` includes features designed for AI consumption:
+
+### llms.txt
+
+Your docs are automatically served in LLM-optimized format — no extra routes needed:
+
+```
+/api/docs?format=llms       → llms.txt (index of all pages)
+/api/docs?format=llms-full  → llms-full.txt (full content)
+```
+
+See the [llms.txt docs](/docs/customization/llms-txt) for details.
+
+### AI Chat with RAG
+
+Built-in AI chat with retrieval-augmented generation — two lines in your config:
+
+```ts
+ai: {
+  enabled: true,
+  model: "gpt-4o-mini",
+}
+```
+
+No separate API routes, no vector databases, no embedding pipelines. Search indexing, context retrieval, and streaming responses are handled internally.
+
+See the [AI Chat docs](/docs/customization/ai-chat) for details.
+
+## Summary
+
+`@farming-labs/docs` keeps the framework lean — one config file, minimal routing, CLI-generated scaffolding — so you and your AI tools spend less time on plumbing and more time on content. And it does this without sacrificing flexibility: themes, AI chat, search, custom components, and multi-framework support are all still there, just configured from one place.
