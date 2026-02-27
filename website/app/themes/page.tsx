@@ -206,8 +206,8 @@ function ThemeCard({
           href={`/docs?theme=${theme.key}`}
           className="inline-flex items-center gap-2 text-[11px] font-mono px-4 py-2 rounded-none uppercase border transition-all hover:no-underline border-neutral-300 dark:border-transparent shadow-sm dark:shadow-none hover:opacity-90"
           style={{
-            borderColor: isDark ? `${theme.accent}20` : `${theme.accent}40`,
-            color: theme.accent,
+            borderColor: isDark ? `${theme.accent}20` : ['shiny', 'pixel-border' ,  'darksharp'].includes(theme.key) ? `#00000030` : `${theme.accent}20`,
+            color: isDark ? ['shiny', 'pixel-border' ,  'darksharp'].includes(theme.key) ? theme.accent : theme.accent : 'black',
             background: isDark ? `${theme.accent}04` : `${theme.accent}12`,
           }}
         >
