@@ -63,15 +63,6 @@ function HeroSection() {
               </div>
               <div className="inline-block">
                 <a
-                  href="/changelog#v0.0.3-beta.16-20"
-                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
-                >
-                  <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
-                  v0.0.3-beta.20
-                </a>
-              </div>
-              <div className="inline-block">
-                <a
                   href="/changelog#v0.0.3-beta.5-10"
                   className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
                 >
@@ -88,7 +79,6 @@ function HeroSection() {
                   v0.0.3-beta.4
                 </a>
               </div>
-              {/* 0.0.2 stable and betas */}
               <div className="inline-block">
                 <a
                   href="/changelog#v0.0.2"
@@ -96,15 +86,6 @@ function HeroSection() {
                 >
                   <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
                   v0.0.2
-                </a>
-              </div>
-              <div className="inline-block">
-                <a
-                  href="/changelog#v0.0.2-beta.16-20"
-                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
-                >
-                  <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
-                  v0.0.2-beta.20
                 </a>
               </div>
               <div className="inline-block">
