@@ -27,6 +27,8 @@ interface DocsAIFeaturesProps {
   aiLabel?: string;
   loaderVariant?: string;
   loadingComponentHtml?: string;
+  models?: { id: string; label: string }[];
+  defaultModelId?: string;
 }
 
 export function DocsAIFeatures({
@@ -38,6 +40,8 @@ export function DocsAIFeatures({
   aiLabel,
   loaderVariant,
   loadingComponentHtml,
+  models,
+  defaultModelId,
 }: DocsAIFeaturesProps) {
   if (mode === "search") {
     return (
@@ -46,6 +50,8 @@ export function DocsAIFeatures({
         aiLabel={aiLabel}
         loaderVariant={loaderVariant}
         loadingComponentHtml={loadingComponentHtml}
+        models={models}
+        defaultModelId={defaultModelId}
       />
     );
   }
@@ -57,6 +63,8 @@ export function DocsAIFeatures({
         aiLabel={aiLabel}
         loaderVariant={loaderVariant}
         loadingComponentHtml={loadingComponentHtml}
+        models={models}
+        defaultModelId={defaultModelId}
       />
     );
   }
@@ -71,6 +79,8 @@ export function DocsAIFeatures({
       aiLabel={aiLabel}
       loaderVariant={loaderVariant as any}
       loadingComponentHtml={loadingComponentHtml}
+      models={models}
+      defaultModelId={defaultModelId}
     />
   );
 }
@@ -80,11 +90,15 @@ function SearchModeAI({
   aiLabel,
   loaderVariant,
   loadingComponentHtml,
+  models,
+  defaultModelId,
 }: {
   suggestedQuestions?: string[];
   aiLabel?: string;
   loaderVariant?: string;
   loadingComponentHtml?: string;
+  models?: { id: string; label: string }[];
+  defaultModelId?: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -127,6 +141,8 @@ function SearchModeAI({
       aiLabel={aiLabel}
       loaderVariant={loaderVariant as any}
       loadingComponentHtml={loadingComponentHtml}
+      models={models}
+      defaultModelId={defaultModelId}
     />
   );
 }
@@ -136,11 +152,15 @@ function SidebarIconModeAI({
   aiLabel,
   loaderVariant,
   loadingComponentHtml,
+  models,
+  defaultModelId,
 }: {
   suggestedQuestions?: string[];
   aiLabel?: string;
   loaderVariant?: string;
   loadingComponentHtml?: string;
+  models?: { id: string; label: string }[];
+  defaultModelId?: string;
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -183,6 +203,8 @@ function SidebarIconModeAI({
         aiLabel={aiLabel}
         loaderVariant={loaderVariant as any}
         loadingComponentHtml={loadingComponentHtml}
+        models={models}
+        defaultModelId={defaultModelId}
       />
       <AIModalDialog
         open={aiOpen}
@@ -192,6 +214,8 @@ function SidebarIconModeAI({
         aiLabel={aiLabel}
         loaderVariant={loaderVariant as any}
         loadingComponentHtml={loadingComponentHtml}
+        models={models}
+        defaultModelId={defaultModelId}
       />
     </>
   );

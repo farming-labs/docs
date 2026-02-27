@@ -36,6 +36,8 @@ interface ChatMessage {
   content: string;
 }
 
+type AIModelOption = { id: string; label: string };
+
 // ─── Markdown renderer ──────────────────────────────────────────────
 
 function buildCodeBlock(lang: string, code: string): string {
@@ -384,6 +386,78 @@ function InlineLoaderDots() {
   );
 }
 
+// ─── Model Selector Dropdown (matches "Open in" page-action style) ──
+
+function ModelSelector({
+  models,
+  selectedId,
+  onChange,
+  disabled,
+}: {
+  models: AIModelOption[];
+  selectedId: string;
+  onChange: (id: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  const current = models.find((m) => m.id === selectedId) ?? models[0];
+
+  return (
+    <div ref={ref} className="fd-ai-model-dropdown">
+      <button
+        type="button"
+        className="fd-ai-model-dropdown-btn"
+        onClick={() => !disabled && setOpen(!open)}
+        aria-expanded={open}
+        disabled={disabled}
+      >
+        <span>{current?.label ?? "Select model"}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="fd-ai-model-dropdown-menu" role="menu">
+          {models.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              role="menuitem"
+              className="fd-ai-model-dropdown-item"
+              data-active={m.id === selectedId}
+              onClick={() => {
+                onChange(m.id);
+                setOpen(false);
+              }}
+            >
+              <span className="fd-ai-model-dropdown-label">{m.label}</span>
+              {m.id === selectedId && (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Shared AI Chat Component ───────────────────────────────────────
 
 function AIChat({
@@ -398,6 +472,8 @@ function AIChat({
   aiLabel,
   loaderVariant,
   loadingComponentHtml,
+  models,
+  defaultModelId,
 }: {
   api: string;
   messages: ChatMessage[];
@@ -410,10 +486,21 @@ function AIChat({
   aiLabel?: string;
   loaderVariant?: LoaderVariant;
   loadingComponentHtml?: string;
+  models?: AIModelOption[];
+  defaultModelId?: string;
 }) {
   const label = aiLabel || "AI";
   const aiInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const [selectedModel, setSelectedModel] = useState<string | undefined>(() => {
+    const trimmed = (defaultModelId ?? "").trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  });
+
+  const effectiveModelId =
+    selectedModel ||
+    (Array.isArray(models) && models.length > 0 ? models[0]!.id : undefined);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -437,6 +524,7 @@ function AIChat({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+            model: effectiveModelId,
           }),
         });
 
@@ -487,7 +575,7 @@ function AIChat({
       }
       setIsStreaming(false);
     },
-    [messages, api, isStreaming, setMessages, setAiInput, setIsStreaming],
+    [messages, api, isStreaming, setMessages, setAiInput, setIsStreaming, effectiveModelId],
   );
 
   const handleAskAI = useCallback(async () => {
@@ -554,6 +642,16 @@ function AIChat({
       </div>
 
       <div className="fd-ai-chat-footer">
+        {Array.isArray(models) && models.length > 0 && (
+          <div className="fd-ai-model-select-row">
+            <ModelSelector
+              models={models}
+              selectedId={effectiveModelId ?? models[0]!.id}
+              onChange={setSelectedModel}
+              disabled={isStreaming}
+            />
+          </div>
+        )}
         {messages.length > 0 && (
           <div style={{ display: "flex", justifyContent: "flex-end", paddingBottom: 8 }}>
             <button
@@ -603,6 +701,8 @@ export function DocsSearchDialog({
   aiLabel,
   loaderVariant,
   loadingComponentHtml,
+  models,
+  defaultModelId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -611,6 +711,8 @@ export function DocsSearchDialog({
   aiLabel?: string;
   loaderVariant?: LoaderVariant;
   loadingComponentHtml?: string;
+  models?: AIModelOption[];
+  defaultModelId?: string;
 }) {
   const [tab, setTab] = useState<"search" | "ai">("search");
   const [searchQuery, setSearchQuery] = useState("");
@@ -622,6 +724,14 @@ export function DocsSearchDialog({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [aiInput, setAiInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string | undefined>(() => {
+    const trimmed = (defaultModelId ?? "").trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  });
+
+  const effectiveModelId =
+    selectedModel ||
+    (Array.isArray(models) && models.length > 0 ? models[0]!.id : undefined);
 
   useEffect(() => {
     if (open) {
@@ -772,19 +882,21 @@ export function DocsSearchDialog({
         )}
 
         {tab === "ai" && (
-          <AIChat
-            api={api}
-            messages={messages}
-            setMessages={setMessages}
-            aiInput={aiInput}
-            setAiInput={setAiInput}
-            isStreaming={isStreaming}
-            setIsStreaming={setIsStreaming}
-            suggestedQuestions={suggestedQuestions}
-            aiLabel={aiLabel}
-            loaderVariant={loaderVariant}
-            loadingComponentHtml={loadingComponentHtml}
-          />
+              <AIChat
+                api={api}
+                messages={messages}
+                setMessages={setMessages}
+                aiInput={aiInput}
+                setAiInput={setAiInput}
+                isStreaming={isStreaming}
+                setIsStreaming={setIsStreaming}
+                suggestedQuestions={suggestedQuestions}
+                aiLabel={aiLabel}
+                loaderVariant={loaderVariant}
+                loadingComponentHtml={loadingComponentHtml}
+                models={models}
+                defaultModelId={effectiveModelId}
+              />
         )}
       </div>
     </>,
@@ -856,6 +968,8 @@ export function FloatingAIChat({
   aiLabel,
   loaderVariant,
   loadingComponentHtml,
+  models,
+  defaultModelId,
 }: {
   api?: string;
   position?: FloatingPosition;
@@ -865,6 +979,8 @@ export function FloatingAIChat({
   aiLabel?: string;
   loaderVariant?: LoaderVariant;
   loadingComponentHtml?: string;
+  models?: AIModelOption[];
+  defaultModelId?: string;
 }) {
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -915,6 +1031,8 @@ export function FloatingAIChat({
         loadingComponentHtml={loadingComponentHtml}
         triggerComponentHtml={triggerComponentHtml}
         position={position}
+        models={models}
+        defaultModelId={defaultModelId}
       />
     );
   }
@@ -1001,6 +1119,8 @@ function FullModalAIChat({
   loadingComponentHtml,
   triggerComponentHtml,
   position,
+  models,
+  defaultModelId,
 }: {
   api: string;
   isOpen: boolean;
@@ -1017,11 +1137,22 @@ function FullModalAIChat({
   loadingComponentHtml?: string;
   triggerComponentHtml?: string;
   position: FloatingPosition;
+  models?: AIModelOption[];
+  defaultModelId?: string;
 }) {
   const label = aiLabel || "AI";
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const btnPosition = BTN_POSITIONS[position] || BTN_POSITIONS["bottom-right"];
+
+  const [selectedModel, setSelectedModel] = useState<string | undefined>(() => {
+    const trimmed = (defaultModelId ?? "").trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  });
+
+  const effectiveModelId =
+    selectedModel ||
+    (Array.isArray(models) && models.length > 0 ? models[0]!.id : undefined);
 
   useEffect(() => {
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 100);
@@ -1049,6 +1180,7 @@ function FullModalAIChat({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+            model: effectiveModelId,
           }),
         });
 
@@ -1099,7 +1231,7 @@ function FullModalAIChat({
       }
       setIsStreaming(false);
     },
-    [messages, api, isStreaming, setMessages, setAiInput, setIsStreaming],
+    [messages, api, isStreaming, setMessages, setAiInput, setIsStreaming, effectiveModelId],
   );
 
   const canSend = !!(aiInput.trim() && !isStreaming);
@@ -1181,6 +1313,16 @@ function FullModalAIChat({
           )
         ) : (
           <div className="fd-ai-fm-input-container">
+            {Array.isArray(models) && models.length > 0 && (
+              <div className="fd-ai-model-select-row fd-ai-model-select-row--fm">
+                <ModelSelector
+                  models={models}
+                  selectedId={effectiveModelId ?? models[0]!.id}
+                  onChange={setSelectedModel}
+                  disabled={isStreaming}
+                />
+              </div>
+            )}
             <div className="fd-ai-fm-input-wrap">
               <textarea
                 ref={inputRef}
@@ -1283,6 +1425,8 @@ export function AIModalDialog({
   aiLabel,
   loaderVariant,
   loadingComponentHtml,
+  models,
+  defaultModelId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1291,6 +1435,8 @@ export function AIModalDialog({
   aiLabel?: string;
   loaderVariant?: LoaderVariant;
   loadingComponentHtml?: string;
+  models?: AIModelOption[];
+  defaultModelId?: string;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [aiInput, setAiInput] = useState("");
@@ -1355,6 +1501,8 @@ export function AIModalDialog({
           aiLabel={aiLabel}
           loaderVariant={loaderVariant}
           loadingComponentHtml={loadingComponentHtml}
+          models={models}
+          defaultModelId={defaultModelId}
         />
 
         <div className="fd-ai-modal-footer">

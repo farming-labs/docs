@@ -475,6 +475,95 @@ hr {
   font-family: var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace)) !important;
 }
 
+/* model selector  */
+.fd-ai-model-select-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+  overflow: visible;
+  margin-bottom: 6px;
+}
+
+.fd-ai-model-select-row--fm {
+  padding: 8px 12px 0;
+}
+
+.fd-ai-model-dropdown {
+  position: relative;
+  margin-left: auto;
+}
+
+.fd-ai-model-dropdown-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  color: var(--color-fd-muted-foreground, #71717a);
+  background: transparent;
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.12));
+  border-radius: var(--radius, 6px);
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.fd-ai-model-dropdown-btn:hover {
+  color: var(--color-fd-foreground, #e4e4e7);
+  border-color: var(--color-fd-border, rgba(255, 255, 255, 0.25));
+}
+
+.fd-ai-model-dropdown-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fd-ai-model-dropdown-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  z-index: 99999;
+  min-width: 220px;
+  padding: 4px;
+  background: var(--color-fd-popover, var(--color-fd-background, #0c0c0c));
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius, 8px);
+  box-shadow: 2px 2px 0 0 var(--color-fd-border, #262626);  
+  animation: fd-ai-fade-in 100ms ease-out;
+}
+
+
+.fd-ai-model-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  color: var(--color-fd-muted-foreground, #71717a);
+  padding: 6px 10px;
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  font-size: 11px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 100ms;
+}
+
+.fd-ai-model-dropdown-item:hover {
+  background: var(--color-fd-accent, rgba(255, 255, 255, 0.06));
+}
+
+.fd-ai-model-dropdown-item[data-active="true"] {
+  color: var(--color-fd-primary, #6366f1);
+}
+
+.fd-ai-model-dropdown-label {
+  flex: 1;
+  text-align: left;
+}
+
 /* ─── AI Chat (pixel-border — zero radius, pixel-art, monospace) ── */
 
 .fd-ai-dialog {

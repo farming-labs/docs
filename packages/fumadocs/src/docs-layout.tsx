@@ -610,6 +610,25 @@ export function createDocsLayout(config: DocsConfig) {
       ? serializeIcon(aiConfig.loadingComponent({ name: aiLabel || "AI" }))
       : undefined;
 
+  // Support both legacy flat fields and new nested `model: { models, defaultModel }` shape.
+  const rawModelConfig = (aiConfig as any)?.model as
+    | { models?: { id: string; label: string }[]; defaultModel?: string }
+    | string
+    | undefined;
+
+  let aiModels = (aiConfig as any)?.models as { id: string; label: string }[] | undefined;
+  let aiDefaultModelId: string | undefined =
+    (aiConfig as any)?.defaultModel ??
+    (typeof aiConfig?.model === "string" ? aiConfig.model : undefined);
+
+  if (rawModelConfig && typeof rawModelConfig === "object") {
+    aiModels = rawModelConfig.models ?? aiModels;
+    aiDefaultModelId =
+      rawModelConfig.defaultModel ??
+      rawModelConfig.models?.[0]?.id ??
+      aiDefaultModelId;
+  }
+
   // Build last-modified map by scanning all page.mdx files
   const lastModifiedMap = buildLastModifiedMap(config.entry);
 
@@ -655,6 +674,8 @@ export function createDocsLayout(config: DocsConfig) {
             aiLabel={aiLabel}
             loaderVariant={aiLoaderVariant}
             loadingComponentHtml={aiLoadingComponentHtml}
+            models={aiModels}
+            defaultModelId={aiDefaultModelId}
           />
         )}
         <DocsPageClient

@@ -32,9 +32,19 @@ interface SearchIndex {
   url: string;
 }
 
+interface AIModelConfig {
+  models?: { id: string; label: string }[];
+  defaultModel?: string;
+}
+
 interface AIOptions {
   enabled?: boolean;
-  model?: string;
+  /** Either a plain model id or an object with models + defaultModel. */
+  model?: string | AIModelConfig;
+  /** Optional list of selectable models (legacy flat shape). */
+  models?: { id: string; label: string }[];
+  /** Optional default model id for the dropdown (legacy flat shape). */
+  defaultModel?: string;
   systemPrompt?: string;
   baseUrl?: string;
   apiKey?: string;
@@ -209,7 +219,7 @@ async function handleAskAI(
   }
 
   // ── Parse request ──────────────────────────────────────────────
-  let body: { messages?: ChatMessage[] };
+  let body: { messages?: ChatMessage[]; model?: string };
   try {
     body = await request.json();
   } catch {
@@ -274,7 +284,25 @@ async function handleAskAI(
 
   // ── Stream from LLM ────────────────────────────────────────────
   const baseUrl = (aiConfig.baseUrl ?? "https://api.openai.com/v1").replace(/\/$/, "");
-  const model = aiConfig.model ?? "gpt-4o-mini";
+
+  // Allow overriding the model per-request (e.g. from a UI dropdown).
+  const requestedModel =
+    typeof body.model === "string" && body.model.trim().length > 0 ? body.model.trim() : undefined;
+
+  function resolveConfiguredModel(ai: AIOptions): string {
+    // New nested shape: model: { models: [...], defaultModel?: string }
+    const raw = ai.model as AIModelConfig | string | undefined;
+    if (typeof raw === "string") return raw;
+    if (raw && typeof raw === "object") {
+      return raw.defaultModel ?? raw.models?.[0]?.id ?? ai.defaultModel ?? "gpt-4o-mini";
+    }
+    // Legacy flat fields
+    if (ai.defaultModel) return ai.defaultModel;
+    if (Array.isArray(ai.models) && ai.models[0]?.id) return ai.models[0].id;
+    return "gpt-4o-mini";
+  }
+
+  const model = requestedModel ?? resolveConfiguredModel(aiConfig);
 
   const llmResponse = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
