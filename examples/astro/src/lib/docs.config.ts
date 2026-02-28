@@ -5,7 +5,7 @@ import { greentree } from "@farming-labs/theme/greentree";
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: greentree({
+  theme: colorful({
     ui: {
       components: { Callout: { variant: "outline" } },
       layout: {
@@ -45,7 +45,7 @@ export default defineDocs({
     aiLabel: "DocsBot",
     apiKey: import.meta.env.OPENAI_API_KEY,
     mode: "floating",
-    floatingStyle: "modal",
+    floatingStyle: "full-modal",
     packageName: "@farming-labs/docs",
     docsUrl: "https://docs.farming-labs.dev",
     suggestedQuestions: [
@@ -60,7 +60,7 @@ export default defineDocs({
     title: "Example Docs",
     url: "/docs",
   },
-  sidebar: { flat: false },
+  sidebar: { flat: false , collapsible: true },
   pageActions: {
     alignment: "right",
     copyMarkdown: { enabled: true },
@@ -81,7 +81,7 @@ export default defineDocs({
   },
   llmsTxt: { enabled: true, baseUrl: "https://docs.farming-labs.dev" },
   lastUpdated: { enabled: true, position: "below-title" },
-  themeToggle: { enabled: false, default: "dark" },
+  themeToggle: { enabled: true, default: "dark" },
   breadcrumb: { enabled: true },
   metadata: {
     titleTemplate: "%s – Docs",

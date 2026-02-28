@@ -176,21 +176,37 @@
 
 /* ─── Ask AI button (floating + custom trigger) — sync with Next.js ───── */
 
+.fd-ai-floating-btn,
+.fd-ai-floating-trigger {
+  bottom: max(2.5rem, env(safe-area-inset-bottom, 0px) + 0rem) !important;
+  right: max(2.5rem, env(safe-area-inset-right, 0px) + 1.25rem) !important;
+  left: auto !important;
+}
+
+/* No transition when closed so the button doesn’t slide from open position after closing modal */
+.fd-ai-fm-input-bar.fd-ai-fm-input-bar--closed {
+  bottom: max(2.5rem, env(safe-area-inset-bottom, 0px) + 1.25rem) !important;
+  right: max(2.5rem, env(safe-area-inset-right, 0px) + 1.25rem) !important;
+  left: auto !important;
+  transform: none !important;
+  transition: none !important;
+}
+
 .fd-ai-floating-btn {
   border-radius: 26px;
   box-shadow: 0 8px 32px rgba(180, 140, 20, 0.3);
 }
 
 .fd-ai-floating-btn:hover {
-  box-shadow: 0 10px 40px rgba(180, 140, 20, 0.4);
+  /* box-shadow: 0 2px 10px rgba(180, 140, 20, 0.4); */
 }
 
 .fd-ai-floating-trigger .ask-ai-trigger {
   font-family: var(--fd-font-sans, inherit);
   border-radius: 26px !important;
-  box-shadow: 0 8px 32px rgba(180, 140, 20, 0.3) !important;
+  box-shadow: 0 0p 32px rgba(180, 140, 20, 0.3) !important;
 }
 
 .fd-ai-floating-trigger .ask-ai-trigger:hover {
-  box-shadow: 0 10px 40px rgba(180, 140, 20, 0.4);
+  box-shadow: 0 2px 30px rgba(180, 140, 20, 0.4);
 }
