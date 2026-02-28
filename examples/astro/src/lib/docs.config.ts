@@ -60,7 +60,7 @@ export default defineDocs({
     title: "Example Docs",
     url: "/docs",
   },
-  sidebar: { flat: false , collapsible: true },
+  sidebar: { flat: false, collapsible: true },
   pageActions: {
     alignment: "right",
     copyMarkdown: { enabled: true },
