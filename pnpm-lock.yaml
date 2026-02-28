@@ -103,14 +103,14 @@ importers:
   examples/nuxt:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.0.3-beta.8
-        version: 0.0.3-beta.8
+        specifier: 0.0.3-beta.9
+        version: 0.0.3-beta.9
       '@farming-labs/nuxt':
-        specifier: 0.0.3-beta.8
-        version: 0.0.3-beta.8(@farming-labs/docs@0.0.3-beta.8)
+        specifier: 0.0.3-beta.9
+        version: 0.0.3-beta.9(@farming-labs/docs@0.0.3-beta.9)
       '@farming-labs/nuxt-theme':
-        specifier: 0.0.3-beta.8
-        version: 0.0.3-beta.8(nuxt@3.21.1(@parcel/watcher@2.5.6)(@types/node@22.19.11)(@vercel/functions@2.2.13)(@vue/compiler-sfc@3.5.28)(cac@6.7.14)(db0@0.3.4)(ioredis@5.9.3)(lightningcss@1.30.2)(magicast@0.5.2)(oxlint@1.50.0)(rolldown@1.0.0-rc.3)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))(yaml@2.8.2))(vue@3.5.28(typescript@5.9.3))
+        specifier: 0.0.3-beta.9
+        version: 0.0.3-beta.9(nuxt@3.21.1(@parcel/watcher@2.5.6)(@types/node@22.19.11)(@vercel/functions@2.2.13)(@vue/compiler-sfc@3.5.28)(cac@6.7.14)(db0@0.3.4)(ioredis@5.9.3)(lightningcss@1.30.2)(magicast@0.5.2)(oxlint@1.50.0)(rolldown@1.0.0-rc.3)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))(yaml@2.8.2))(vue@3.5.28(typescript@5.9.3))
     devDependencies:
       nuxt:
         specifier: ^3.14.0
@@ -985,6 +985,10 @@ packages:
     resolution: {integrity: sha512-vCyYDhbhOv2suxwRlEi/Kzo/KfX/5onInJU3qp7a0dU1ow8hacIUETXHjdLLil7vZPxYSONeh52Riz6/Je3w2g==}
     hasBin: true
 
+  '@farming-labs/docs@0.0.3-beta.9':
+    resolution: {integrity: sha512-nMbokO+USvvtTbeot0EgkFrMrUzJvqgQAqKOVHTJ83wqj1e5N9NsUuH8gmMFui3i8xyk0Ycsp0hI1yA4jaQyCA==}
+    hasBin: true
+
   '@farming-labs/next@0.0.3-beta.7':
     resolution: {integrity: sha512-Ms2Qer/4uP9Hpr2NuZDUjuaBAsxDmWetLaWVMzEipT/jhPNrrcGMmV5betUphTFzMlGvOcgy+vUGkl7303imGg==}
     peerDependencies:
@@ -992,8 +996,8 @@ packages:
       react: '>=19.2.0'
       react-dom: '>=19.2.0'
 
-  '@farming-labs/nuxt-theme@0.0.3-beta.8':
-    resolution: {integrity: sha512-CWYaCYThsPi084FbtGiAhPXuC3FIUsmuJsWaan9Ev2Z+cJKPDLdXsiuc65JZniGbDXJ6eRjJgiwntmut4idBGQ==}
+  '@farming-labs/nuxt-theme@0.0.3-beta.9':
+    resolution: {integrity: sha512-9QDboQSpOYTThpp7Q5W7dQk136zXpGhsGSUTxpfYrZI7R1un83fEs/xlHmX/8/EkQ3oyQEp6cG46vT/jEjYlzA==}
     peerDependencies:
       nuxt: '>=3.0.0'
       vue: '>=3.0.0'
@@ -1001,8 +1005,8 @@ packages:
       nuxt:
         optional: true
 
-  '@farming-labs/nuxt@0.0.3-beta.8':
-    resolution: {integrity: sha512-4fTpViAoXPyoeI5bOb1Zv7cqRlI1H0Atpk67oH2xXrW80P5qkg57Q+U7qCJURhKN+fjkr3nXte+u47fcc6as+g==}
+  '@farming-labs/nuxt@0.0.3-beta.9':
+    resolution: {integrity: sha512-G0RAXp98UbWMykQmVp86mCUONDW/HJX2OYlSQPGFnfI6k4F3Jpky4DgYoTg/KF3KHuPhQIt5AlmCOCJ+DOaObQ==}
     peerDependencies:
       '@farming-labs/docs': '*'
 
@@ -7257,6 +7261,12 @@ snapshots:
       gray-matter: 4.0.3
       picocolors: 1.1.1
 
+  '@farming-labs/docs@0.0.3-beta.9':
+    dependencies:
+      '@clack/prompts': 0.9.1
+      gray-matter: 4.0.3
+      picocolors: 1.1.1
+
   '@farming-labs/next@0.0.3-beta.7(@mdx-js/mdx@3.1.1)(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@mdx-js/loader': 3.1.1
@@ -7287,17 +7297,17 @@ snapshots:
       - webpack
       - zod
 
-  '@farming-labs/nuxt-theme@0.0.3-beta.8(nuxt@3.21.1(@parcel/watcher@2.5.6)(@types/node@22.19.11)(@vercel/functions@2.2.13)(@vue/compiler-sfc@3.5.28)(cac@6.7.14)(db0@0.3.4)(ioredis@5.9.3)(lightningcss@1.30.2)(magicast@0.5.2)(oxlint@1.50.0)(rolldown@1.0.0-rc.3)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))(yaml@2.8.2))(vue@3.5.28(typescript@5.9.3))':
+  '@farming-labs/nuxt-theme@0.0.3-beta.9(nuxt@3.21.1(@parcel/watcher@2.5.6)(@types/node@22.19.11)(@vercel/functions@2.2.13)(@vue/compiler-sfc@3.5.28)(cac@6.7.14)(db0@0.3.4)(ioredis@5.9.3)(lightningcss@1.30.2)(magicast@0.5.2)(oxlint@1.50.0)(rolldown@1.0.0-rc.3)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))(yaml@2.8.2))(vue@3.5.28(typescript@5.9.3))':
     dependencies:
-      '@farming-labs/docs': 0.0.3-beta.8
+      '@farming-labs/docs': 0.0.3-beta.9
       sugar-high: 0.9.5
       vue: 3.5.28(typescript@5.9.3)
     optionalDependencies:
       nuxt: 3.21.1(@parcel/watcher@2.5.6)(@types/node@22.19.11)(@vercel/functions@2.2.13)(@vue/compiler-sfc@3.5.28)(cac@6.7.14)(db0@0.3.4)(ioredis@5.9.3)(lightningcss@1.30.2)(magicast@0.5.2)(oxlint@1.50.0)(rolldown@1.0.0-rc.3)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))(yaml@2.8.2)
 
-  '@farming-labs/nuxt@0.0.3-beta.8(@farming-labs/docs@0.0.3-beta.8)':
+  '@farming-labs/nuxt@0.0.3-beta.9(@farming-labs/docs@0.0.3-beta.9)':
     dependencies:
-      '@farming-labs/docs': 0.0.3-beta.8
+      '@farming-labs/docs': 0.0.3-beta.9
       gray-matter: 4.0.3
       shiki: 3.22.0
 
