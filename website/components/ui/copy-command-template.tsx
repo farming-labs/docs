@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 const TEMPLATES = ["next", "nuxt", "sveltekit", "astro"] as const;
-const BASE_CMD = "pnpx @farming-labs/docs init --template ";
+const BASE_CMD = "pnpx @farming-labs/docs@latest init --template ";
 const DURATION = 2800;
 
 const motionProps = {
@@ -55,9 +55,9 @@ export default function CopyCommandTemplate({ className = "" }: CopyCommandTempl
     >
       <Terminal className="w-3.5 h-3.5 text-black/40 dark:text-white/40 shrink-0" />
       <span className="select-all truncate flex items-center gap-2 min-w-0">
-        <span className="text-black dark:text-white/30">pnpx</span>
-        <span className="text-black/30 dark:text-white/30">@farming-labs/docs</span>
-        <span className="text-black/60 dark:text-white/30">init</span>
+        <span className="text-black dark:text-white">pnpx</span>
+        <span className="text-black/30 dark:text-white/30">@farming-labs/docs@latest</span>
+        <span className="text-black/60 dark:text-white/60">init</span>
         <span className="text-black/30 dark:text-white/30">--template</span>
         <span className="inline-block w-[6ch] min-w-[6ch] overflow-hidden py-0.5 align-baseline text-left">
           <AnimatePresence mode="wait">

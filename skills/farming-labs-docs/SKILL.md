@@ -17,8 +17,8 @@ description: Get started with @farming-labs/docs — MDX-based documentation for
 
 | Scenario | Command |
 | -------- | ------- |
-| Add docs to existing app | `npx @farming-labs/docs init` |
-| Start from scratch (bootstrap project) | `npx @farming-labs/docs init --template <next \| nuxt \| sveltekit \| astro> --name <project-name>` |
+| Add docs to existing app | `npx @farming-labs/docs@latest init` |
+| Start from scratch (bootstrap project) | `npx @farming-labs/docs@latest init --template <next \| nuxt \| sveltekit \| astro> --name <project-name>` |
 
 ### CLI flags
 

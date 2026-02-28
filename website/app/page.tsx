@@ -49,7 +49,7 @@ function HeroSection() {
       <AnimatedBackground />
       <div className="relative z-[999] w-full pb-12 sm:pb-16 pt-24 px-5 sm:px-0">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 sm:gap-16">
-          <div className="max-w-full sm:max-w-lg">
+          <div className="max-w-full sm:max-w-xl">
             <div className="flex flex-col gap-2">
               {/* 0.0.3 stable and betas */}
               <div className="inline-block">
@@ -106,7 +106,6 @@ function HeroSection() {
                   v0.0.2-beta.4
                 </a>
               </div>
-              {/* 0.0.1 stable at the bottom */}
               <div className="inline-block">
                 <a
                   href="/changelog#v0.0.1"
@@ -140,7 +139,7 @@ function HeroSection() {
               </Link>
               <CopyCommand
                 className="border-b-0 sm:border-b border-l-0 border-black/10 dark:border-white/10"
-                command="pnpx @farming-labs/docs init"
+                command="pnpx @farming-labs/docs@latest init"
               />
             </div>
           </div>

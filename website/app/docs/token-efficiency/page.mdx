@@ -44,7 +44,7 @@ You don't have to set any of this up manually. The CLI scaffolds everything in s
 Use `--template` to bootstrap a complete project with your framework and theme of choice:
 
 ```bash
-npx @farming-labs/docs init --template next --name my-docs
+npx @farming-labs/docs@latest init --template next --name my-docs
 ```
 
 This creates a new `my-docs/` folder with a fully working docs site — config, routes, CSS, sample pages, dependencies installed, dev server running. Pick from `next`, `nuxt`, `sveltekit`, or `astro`.
@@ -52,7 +52,7 @@ This creates a new `my-docs/` folder with a fully working docs site — config, 
 Want a specific theme? Add `--theme`:
 
 ```bash
-npx @farming-labs/docs init --template next --name my-docs --theme pixel-border
+npx @farming-labs/docs@latest init --template next --name my-docs --theme pixel-border
 ```
 
 That's it — a beautiful themed docs site in one command.
@@ -62,7 +62,7 @@ That's it — a beautiful themed docs site in one command.
 Already have a Next.js, SvelteKit, Astro, or Nuxt project? Just run `init` inside it:
 
 ```bash
-npx @farming-labs/docs init
+npx @farming-labs/docs@latest init
 ```
 
 The CLI auto-detects your framework from `package.json`, asks you to pick a theme, generates the config and minimal routing files, installs dependencies, and starts the dev server. Your existing code is untouched — it only adds what's needed for docs.

@@ -75,7 +75,7 @@ export default function InitBlockTabs() {
             <div className="relative z-[999] flex justify-end mt-4">
               <CopyCommand
                 className="backdrop-blur-sm md:backdrop-blur-none border-r-0 border-b-0 sm:border-b"
-                command="pnpx @farming-labs/docs init"
+                command="pnpx @farming-labs/docs@latest init"
               />
             </div>
           </>
