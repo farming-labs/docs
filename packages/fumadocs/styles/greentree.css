@@ -750,3 +750,14 @@ details > :not(summary) {
 .fd-sidebar::-webkit-scrollbar-track {
   background: transparent;
 }
+/* model selector */
+
+.fd-ai-model-dropdown-menu  {
+  box-shadow: none;
+}
+
+.fd-ai-model-dropdown-item {
+  padding: 6px 10px;
+  border: none;
+  border-radius: var(--radius, 8px) !important;
+}

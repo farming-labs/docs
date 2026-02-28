@@ -59,6 +59,13 @@ export default defineDocs({
     position: "bottom-right",
     floatingStyle: "modal",
     apiKey: process.env.OPENAI_API_KEY,
+    model: {
+      models: [
+        { id: "gpt-4o-mini", label: "GPT-4o mini (fast)", provider: "openai" },
+        { id: "gpt-4o", label: "GPT-4o (quality)", provider: "openai" },
+      ],
+      defaultModel: "gpt-4o-mini",
+    },
     aiLabel: "AI",
     suggestedQuestions: [
       "How do I get started?",
