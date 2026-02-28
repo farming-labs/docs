@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from "vue";
+import { useRoute } from "vue-router";
+import { useHead } from "#app";
 import DocsPage from "./DocsPage.vue";
 
 const DEFAULT_OPEN_PROVIDERS = [

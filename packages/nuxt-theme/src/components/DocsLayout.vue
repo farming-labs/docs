@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { useRoute } from "vue-router";
+import { useHead } from "#app";
 import SearchDialog from "./SearchDialog.vue";
 import FloatingAIChat from "./FloatingAIChat.vue";
 import ThemeToggle from "./ThemeToggle.vue";

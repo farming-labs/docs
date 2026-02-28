@@ -4,6 +4,7 @@
  * and Astro SearchDialog: recents when empty, /api/docs search, keyboard nav, click to navigate.
  */
 import { ref, computed, watch, onMounted, nextTick } from "vue";
+import { navigateTo } from "#app";
 
 const STORAGE_KEY = "fd:omni:recents";
 const MAX_RECENTS = 8;
