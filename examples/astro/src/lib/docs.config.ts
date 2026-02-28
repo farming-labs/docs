@@ -1,6 +1,5 @@
 import { colorful } from "@farming-labs/astro-theme/colorful";
 import { defineDocs } from "@farming-labs/docs";
-import { greentree } from "@farming-labs/theme/greentree";
 
 export default defineDocs({
   entry: "docs",
