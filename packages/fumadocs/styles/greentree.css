@@ -86,7 +86,6 @@ aside#nd-sidebar,
   background: var(--color-fd-background);
 }
 
-/* ── Sidebar links — 14px, 500 weight ────────────────────────── */
 aside a[data-active] {
   font-size: 0.875rem;
   line-height: 1.5;
@@ -112,15 +111,41 @@ aside a[data-active="true"] {
   background-color: rgba(13, 147, 115, 0.08);
 }
 
+
+
 .dark aside a[data-active="true"] {
   background: rgba(38, 189, 108, 0.1);
   background-color: rgba(38, 189, 108, 0.1);
   color: var(--color-fd-primary);
 }
 
+/* Reset: no left bar on any sidebar active link by default */
+/* aside a[data-active="true"]::before {
+  content: none !important;
+  display: none !important;
+  width: 0 !important;
+  background: transparent !important;
+} */
+
+/* .dark aside a[data-active="true"]::before {
+  content: none !important;
+  display: none !important;
+  width: 0 !important;
+  background: transparent !important;
+} */
+
+aside a[data-active="true"].w-full::before,
+aside .overscroll-contain > div > a[data-active="true"]::before,
+aside .overscroll-contain > div > div > a[data-active="true"]::before {
+  content: none !important;
+  display: none !important;
+  width: 0 !important;
+  background: transparent !important;
+}
+
 aside a[data-active="true"]::before {
   content: "";
-  display: block;
+  display: block !important;
   position: absolute;
   left: 9;
   top: 20%;
