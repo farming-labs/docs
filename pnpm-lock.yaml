@@ -39,14 +39,14 @@ importers:
         specifier: ^9.0.4
         version: 9.0.4(@sveltejs/kit@2.52.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.51.3)(vite@6.4.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2)))(svelte@5.51.3)(typescript@5.9.3)(vite@6.4.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2)))(astro@5.17.3(@types/node@22.19.11)(@vercel/functions@2.2.13)(db0@0.3.4)(ioredis@5.9.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(yaml@2.8.2))(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(rollup@4.57.1)(svelte@5.51.3)(vue-router@4.6.4(vue@3.5.28(typescript@5.9.3)))(vue@3.5.28(typescript@5.9.3))
       '@farming-labs/astro':
-        specifier: 0.0.3-beta.9
-        version: 0.0.3-beta.9(@farming-labs/docs@0.0.3-beta.9)
+        specifier: 0.0.3
+        version: 0.0.3(@farming-labs/docs@0.0.3)
       '@farming-labs/astro-theme':
-        specifier: 0.0.3-beta.9
-        version: 0.0.3-beta.9(astro@5.17.3(@types/node@22.19.11)(@vercel/functions@2.2.13)(db0@0.3.4)(ioredis@5.9.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(yaml@2.8.2))
+        specifier: 0.0.3
+        version: 0.0.3(astro@5.17.3(@types/node@22.19.11)(@vercel/functions@2.2.13)(db0@0.3.4)(ioredis@5.9.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(yaml@2.8.2))
       '@farming-labs/docs':
-        specifier: 0.0.3-beta.9
-        version: 0.0.3-beta.9
+        specifier: 0.0.3
+        version: 0.0.3
       astro:
         specifier: ^5.7.0
         version: 5.17.3(@types/node@22.19.11)(@vercel/functions@2.2.13)(db0@0.3.4)(ioredis@5.9.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(yaml@2.8.2)
@@ -54,14 +54,14 @@ importers:
   examples/next:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.0.3-beta.7
-        version: 0.0.3-beta.7
+        specifier: 0.0.3
+        version: 0.0.3
       '@farming-labs/next':
-        specifier: 0.0.3-beta.7
-        version: 0.0.3-beta.7(@mdx-js/mdx@3.1.1)(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: 0.0.3
+        version: 0.0.3(@mdx-js/mdx@3.1.1)(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@farming-labs/theme':
-        specifier: 0.0.3-beta.7
-        version: 0.0.3-beta.7(@farming-labs/docs@0.0.3-beta.7)(@mdx-js/mdx@3.1.1)(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.1.18)
+        specifier: 0.0.3
+        version: 0.0.3(@farming-labs/docs@0.0.3)(@mdx-js/mdx@3.1.1)(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.1.18)
       lucide-react:
         specifier: ^0.564.0
         version: 0.564.0(react@19.2.4)
@@ -103,14 +103,14 @@ importers:
   examples/nuxt:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.0.3-beta.9
-        version: 0.0.3-beta.9
+        specifier: 0.0.3
+        version: 0.0.3
       '@farming-labs/nuxt':
-        specifier: 0.0.3-beta.9
-        version: 0.0.3-beta.9(@farming-labs/docs@0.0.3-beta.9)
+        specifier: 0.0.3
+        version: 0.0.3(@farming-labs/docs@0.0.3)
       '@farming-labs/nuxt-theme':
-        specifier: 0.0.3-beta.9
-        version: 0.0.3-beta.9(nuxt@3.21.1(@parcel/watcher@2.5.6)(@types/node@22.19.11)(@vercel/functions@2.2.13)(@vue/compiler-sfc@3.5.28)(cac@6.7.14)(db0@0.3.4)(ioredis@5.9.3)(lightningcss@1.30.2)(magicast@0.5.2)(oxlint@1.50.0)(rolldown@1.0.0-rc.3)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))(yaml@2.8.2))(vue@3.5.28(typescript@5.9.3))
+        specifier: 0.0.3
+        version: 0.0.3(nuxt@3.21.1(@parcel/watcher@2.5.6)(@types/node@22.19.11)(@vercel/functions@2.2.13)(@vue/compiler-sfc@3.5.28)(cac@6.7.14)(db0@0.3.4)(ioredis@5.9.3)(lightningcss@1.30.2)(magicast@0.5.2)(oxlint@1.50.0)(rolldown@1.0.0-rc.3)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))(yaml@2.8.2))(vue@3.5.28(typescript@5.9.3))
     devDependencies:
       nuxt:
         specifier: ^3.14.0
@@ -125,14 +125,14 @@ importers:
   examples/sveltekit:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.0.3-beta.9
-        version: 0.0.3-beta.9
+        specifier: 0.0.3
+        version: 0.0.3
       '@farming-labs/svelte':
-        specifier: 0.0.3-beta.9
-        version: 0.0.3-beta.9(@farming-labs/docs@0.0.3-beta.9)
+        specifier: 0.0.3
+        version: 0.0.3(@farming-labs/docs@0.0.3)
       '@farming-labs/svelte-theme':
-        specifier: 0.0.3-beta.9
-        version: 0.0.3-beta.9(svelte@5.51.3)
+        specifier: 0.0.3
+        version: 0.0.3(svelte@5.51.3)
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^6.0.0
@@ -967,33 +967,29 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@farming-labs/astro-theme@0.0.3-beta.9':
-    resolution: {integrity: sha512-sw+PO3jI9+GgjttA30Mzn94+bMIEuWN65um2ovucXzTbldGyXScZfauBt1k1XTKchDTKARSLsBz9BI2UNWKHaQ==}
+  '@farming-labs/astro-theme@0.0.3':
+    resolution: {integrity: sha512-wA79mJfdKBohOIsfrKhJti95X5m0ZhgeDCtm9SZOUjf94UBqz7H7RCeekfiDIjWf0ZJiTzp1qXheomCGA20Rnw==}
     peerDependencies:
       astro: '>=4.0.0'
 
-  '@farming-labs/astro@0.0.3-beta.9':
-    resolution: {integrity: sha512-jLutT5yGGIDyTX0AG/UEaEuN3e+nD3U9GihmIIVppJ/WmSdUQJOFbph7LPlGTldV5NokUG3pU1QkHyJxevposQ==}
+  '@farming-labs/astro@0.0.3':
+    resolution: {integrity: sha512-7+j6qw209GNzA2gw5K2NFYvZGi+Zev14URcyEp0FWBLkv2IaBf2JjPBj8d3W4Yi/By1qcph7lhZ0ZpEzx3Ot9w==}
     peerDependencies:
       '@farming-labs/docs': '*'
 
-  '@farming-labs/docs@0.0.3-beta.7':
-    resolution: {integrity: sha512-41gOKqYxRrn5YU8CP01+/HMz4Qv+kV9GEwyYMtKLchiEPl+Zx4nlw0GeFG7BoLh+bEv0S29NuiYriFiCfoq6Kw==}
+  '@farming-labs/docs@0.0.3':
+    resolution: {integrity: sha512-rErwG3st3/3gzCtE8s5C40dXS5hldYPKRqa6UiktjDb8DONKi+IgWfq5iuW23gbzpwDLIR2E/kTVAT/IeluSzw==}
     hasBin: true
 
-  '@farming-labs/docs@0.0.3-beta.9':
-    resolution: {integrity: sha512-nMbokO+USvvtTbeot0EgkFrMrUzJvqgQAqKOVHTJ83wqj1e5N9NsUuH8gmMFui3i8xyk0Ycsp0hI1yA4jaQyCA==}
-    hasBin: true
-
-  '@farming-labs/next@0.0.3-beta.7':
-    resolution: {integrity: sha512-Ms2Qer/4uP9Hpr2NuZDUjuaBAsxDmWetLaWVMzEipT/jhPNrrcGMmV5betUphTFzMlGvOcgy+vUGkl7303imGg==}
+  '@farming-labs/next@0.0.3':
+    resolution: {integrity: sha512-UHYuDPCSYR82EeHO12i9GAcqqEmLz5gBqVZdagSRHRWQfJS5Z0yewpsiz4AWVc21cQqQOTib6xiBTvgYLbeK+Q==}
     peerDependencies:
       next: '>=16.0.0'
       react: '>=19.2.0'
       react-dom: '>=19.2.0'
 
-  '@farming-labs/nuxt-theme@0.0.3-beta.9':
-    resolution: {integrity: sha512-9QDboQSpOYTThpp7Q5W7dQk136zXpGhsGSUTxpfYrZI7R1un83fEs/xlHmX/8/EkQ3oyQEp6cG46vT/jEjYlzA==}
+  '@farming-labs/nuxt-theme@0.0.3':
+    resolution: {integrity: sha512-crDPJaDliSHlJr5feDOLaPcmzyM2DDAIHKm7weIx46ljBKYNufM4YbJ8SSF0fntQXHAFBG1mruVxRpnSSUPAYA==}
     peerDependencies:
       nuxt: '>=3.0.0'
       vue: '>=3.0.0'
@@ -1001,23 +997,23 @@ packages:
       nuxt:
         optional: true
 
-  '@farming-labs/nuxt@0.0.3-beta.9':
-    resolution: {integrity: sha512-G0RAXp98UbWMykQmVp86mCUONDW/HJX2OYlSQPGFnfI6k4F3Jpky4DgYoTg/KF3KHuPhQIt5AlmCOCJ+DOaObQ==}
+  '@farming-labs/nuxt@0.0.3':
+    resolution: {integrity: sha512-RXKQiPAArJBiwhlE371uSdrCpFosvKSHyLjOpBWiPUTWVLRVLFqa46Xgo25HPBx+b0iH6uJetCYKXaduHwlxBw==}
     peerDependencies:
       '@farming-labs/docs': '*'
 
-  '@farming-labs/svelte-theme@0.0.3-beta.9':
-    resolution: {integrity: sha512-9KbPjfy2ZTr/qK5olBDmjPCuZpqdtij8YBoBnawdJy1rX9yf/T5WQOVXaDMGSOJYSMivOuzkXPWIffRuIeyhDA==}
+  '@farming-labs/svelte-theme@0.0.3':
+    resolution: {integrity: sha512-13HtjIUNaNxxZdBzc/w8vuYyw9Im3rUtFyrm93ZZgeMQSiKUbhiSCU8ocAlJqUnYMuKVnjjOGG0DAf7gHfNjmQ==}
     peerDependencies:
       svelte: '>=5.0.0'
 
-  '@farming-labs/svelte@0.0.3-beta.9':
-    resolution: {integrity: sha512-TmCXOCL8zj8/EWBz3E7hZuMdzM5HGlaoyIGWBMTYk72G6tX2dR4dp7aHv7H4Yp2pZCHsxtTYNj0EGe+phJPbcQ==}
+  '@farming-labs/svelte@0.0.3':
+    resolution: {integrity: sha512-MqBvfbXn5j9KqegxVrEDBHqwBHCuv129t+VPwULUft4Rz+1KW4riq/RcwjQsREBuQBQl20GuzbNHNuou+vuFOA==}
     peerDependencies:
       '@farming-labs/docs': '*'
 
-  '@farming-labs/theme@0.0.3-beta.7':
-    resolution: {integrity: sha512-jt/528eYEWQP82mJ2LEE+DEnu9wIVbOljSvxzLi52dvB66HwRGa/GpRRVBimr5FrigAK8/1qYU3sJJO0N8xGHQ==}
+  '@farming-labs/theme@0.0.3':
+    resolution: {integrity: sha512-CSSXkDA03EkrXQAXKd8IiRuw2JDhlOrW3W4sFbEE1PRFuzQGKWktOgzlc4xKLNiJj1CkmKLsfr1zpYRbDTnCdg==}
     peerDependencies:
       '@farming-labs/docs': '>=0.0.1'
       next: '>=16.0.0'
@@ -7226,32 +7222,26 @@ snapshots:
   '@esbuild/win32-x64@0.27.3':
     optional: true
 
-  '@farming-labs/astro-theme@0.0.3-beta.9(astro@5.17.3(@types/node@22.19.11)(@vercel/functions@2.2.13)(db0@0.3.4)(ioredis@5.9.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(yaml@2.8.2))':
+  '@farming-labs/astro-theme@0.0.3(astro@5.17.3(@types/node@22.19.11)(@vercel/functions@2.2.13)(db0@0.3.4)(ioredis@5.9.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(yaml@2.8.2))':
     dependencies:
-      '@farming-labs/astro': 0.0.3-beta.9(@farming-labs/docs@0.0.3-beta.9)
-      '@farming-labs/docs': 0.0.3-beta.9
+      '@farming-labs/astro': 0.0.3(@farming-labs/docs@0.0.3)
+      '@farming-labs/docs': 0.0.3
       astro: 5.17.3(@types/node@22.19.11)(@vercel/functions@2.2.13)(db0@0.3.4)(ioredis@5.9.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(yaml@2.8.2)
       sugar-high: 0.9.5
 
-  '@farming-labs/astro@0.0.3-beta.9(@farming-labs/docs@0.0.3-beta.9)':
+  '@farming-labs/astro@0.0.3(@farming-labs/docs@0.0.3)':
     dependencies:
-      '@farming-labs/docs': 0.0.3-beta.9
+      '@farming-labs/docs': 0.0.3
       gray-matter: 4.0.3
       shiki: 3.22.0
 
-  '@farming-labs/docs@0.0.3-beta.7':
+  '@farming-labs/docs@0.0.3':
     dependencies:
       '@clack/prompts': 0.9.1
       gray-matter: 4.0.3
       picocolors: 1.1.1
 
-  '@farming-labs/docs@0.0.3-beta.9':
-    dependencies:
-      '@clack/prompts': 0.9.1
-      gray-matter: 4.0.3
-      picocolors: 1.1.1
-
-  '@farming-labs/next@0.0.3-beta.7(@mdx-js/mdx@3.1.1)(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@farming-labs/next@0.0.3(@mdx-js/mdx@3.1.1)(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@mdx-js/loader': 3.1.1
       '@mdx-js/react': 3.1.1(@types/react@19.2.14)(react@19.2.4)
@@ -7281,37 +7271,37 @@ snapshots:
       - webpack
       - zod
 
-  '@farming-labs/nuxt-theme@0.0.3-beta.9(nuxt@3.21.1(@parcel/watcher@2.5.6)(@types/node@22.19.11)(@vercel/functions@2.2.13)(@vue/compiler-sfc@3.5.28)(cac@6.7.14)(db0@0.3.4)(ioredis@5.9.3)(lightningcss@1.30.2)(magicast@0.5.2)(oxlint@1.50.0)(rolldown@1.0.0-rc.3)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))(yaml@2.8.2))(vue@3.5.28(typescript@5.9.3))':
+  '@farming-labs/nuxt-theme@0.0.3(nuxt@3.21.1(@parcel/watcher@2.5.6)(@types/node@22.19.11)(@vercel/functions@2.2.13)(@vue/compiler-sfc@3.5.28)(cac@6.7.14)(db0@0.3.4)(ioredis@5.9.3)(lightningcss@1.30.2)(magicast@0.5.2)(oxlint@1.50.0)(rolldown@1.0.0-rc.3)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))(yaml@2.8.2))(vue@3.5.28(typescript@5.9.3))':
     dependencies:
-      '@farming-labs/docs': 0.0.3-beta.9
+      '@farming-labs/docs': 0.0.3
       sugar-high: 0.9.5
       vue: 3.5.28(typescript@5.9.3)
     optionalDependencies:
       nuxt: 3.21.1(@parcel/watcher@2.5.6)(@types/node@22.19.11)(@vercel/functions@2.2.13)(@vue/compiler-sfc@3.5.28)(cac@6.7.14)(db0@0.3.4)(ioredis@5.9.3)(lightningcss@1.30.2)(magicast@0.5.2)(oxlint@1.50.0)(rolldown@1.0.0-rc.3)(rollup@4.57.1)(terser@5.46.0)(typescript@5.9.3)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))(yaml@2.8.2)
 
-  '@farming-labs/nuxt@0.0.3-beta.9(@farming-labs/docs@0.0.3-beta.9)':
+  '@farming-labs/nuxt@0.0.3(@farming-labs/docs@0.0.3)':
     dependencies:
-      '@farming-labs/docs': 0.0.3-beta.9
+      '@farming-labs/docs': 0.0.3
       gray-matter: 4.0.3
       shiki: 3.22.0
 
-  '@farming-labs/svelte-theme@0.0.3-beta.9(svelte@5.51.3)':
+  '@farming-labs/svelte-theme@0.0.3(svelte@5.51.3)':
     dependencies:
-      '@farming-labs/docs': 0.0.3-beta.9
-      '@farming-labs/svelte': 0.0.3-beta.9(@farming-labs/docs@0.0.3-beta.9)
+      '@farming-labs/docs': 0.0.3
+      '@farming-labs/svelte': 0.0.3(@farming-labs/docs@0.0.3)
       gray-matter: 4.0.3
       sugar-high: 0.9.5
       svelte: 5.51.3
 
-  '@farming-labs/svelte@0.0.3-beta.9(@farming-labs/docs@0.0.3-beta.9)':
+  '@farming-labs/svelte@0.0.3(@farming-labs/docs@0.0.3)':
     dependencies:
-      '@farming-labs/docs': 0.0.3-beta.9
+      '@farming-labs/docs': 0.0.3
       gray-matter: 4.0.3
       shiki: 3.22.0
 
-  '@farming-labs/theme@0.0.3-beta.7(@farming-labs/docs@0.0.3-beta.7)(@mdx-js/mdx@3.1.1)(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.1.18)':
+  '@farming-labs/theme@0.0.3(@farming-labs/docs@0.0.3)(@mdx-js/mdx@3.1.1)(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.1.18)':
     dependencies:
-      '@farming-labs/docs': 0.0.3-beta.7
+      '@farming-labs/docs': 0.0.3
       fumadocs-core: 16.6.1(@mdx-js/mdx@3.1.1)(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       fumadocs-ui: 16.6.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(fumadocs-core@16.6.1(@mdx-js/mdx@3.1.1)(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.1.18)
       gray-matter: 4.0.3
