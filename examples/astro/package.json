@@ -10,10 +10,9 @@
   },
   "dependencies": {
     "@astrojs/vercel": "^9.0.4",
-    "@farming-labs/astro": "workspace:*",
-    "@farming-labs/astro-theme": "workspace:*",
-    "@farming-labs/docs": "workspace:*",
-    "@farming-labs/theme": "workspace:*",
+    "@farming-labs/astro": "0.0.3-beta.8",
+    "@farming-labs/astro-theme": "0.0.3-beta.8",
+    "@farming-labs/docs": "0.0.3-beta.7",
     "astro": "^5.7.0"
   }
 }
