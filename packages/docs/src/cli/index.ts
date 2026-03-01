@@ -35,7 +35,8 @@ async function main() {
   if (!command || command === "init") {
     await init(initOptions);
   } else if (command === "upgrade") {
-    const framework = flags.framework ?? (args[1] && !args[1].startsWith("--") ? args[1] : undefined);
+    const framework =
+      flags.framework ?? (args[1] && !args[1].startsWith("--") ? args[1] : undefined);
     const tag = args.includes("--beta") ? "beta" : "latest";
     await upgrade({ framework, tag });
   } else if (command === "--help" || command === "-h") {
