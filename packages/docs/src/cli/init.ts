@@ -625,7 +625,14 @@ function scaffoldNextJs(
     write("next.config.ts", nextConfigTemplate());
   }
 
-  write("app/layout.tsx", rootLayoutTemplate(cfg, globalCssRelPath));
+  const rootLayoutPath = path.join(cwd, "app/layout.tsx");
+  const existingRootLayout = readFileSafe(rootLayoutPath);
+  const needsRootProvider = !existingRootLayout || !existingRootLayout.includes("RootProvider");
+  if (needsRootProvider) {
+    write("app/layout.tsx", rootLayoutTemplate(cfg, globalCssRelPath), true);
+  } else {
+    skipped.push("app/layout.tsx (already has RootProvider)");
+  }
 
   const globalCssAbsPath = path.join(cwd, globalCssRelPath);
   const existingGlobalCss = readFileSafe(globalCssAbsPath);
