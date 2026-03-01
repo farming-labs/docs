@@ -580,7 +580,7 @@ export async function init(options: InitOptions = {}) {
           ? "npx astro dev"
           : framework === "nuxt"
             ? "npx nuxt dev"
-            : "npx next dev --webpack";
+            : "pnpm dev";
     p.log.error("Could not start dev server. Try running manually:\n" + `  ${pc.cyan(manualCmd)}`);
     p.outro(pc.yellow("Setup complete. Start the server manually."));
     process.exit(1);
