@@ -17,6 +17,39 @@ npx @farming-labs/docs@latest init
 
 If the CLI cannot auto-detect your framework (no `next`, `@sveltejs/kit`, `astro`, or `nuxt` in `package.json`), it will prompt you to choose one.
 
+## Upgrade
+
+Upgrade all `@farming-labs/*` docs packages to the latest version. Run from your project root; the CLI **auto-detects** your framework from `package.json` and upgrades the right packages.
+
+```bash
+npx @farming-labs/docs@latest upgrade
+```
+
+| Framework | Packages upgraded to `@latest` |
+| --------- | ------------------------------ |
+| Next.js   | `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next` |
+| Nuxt      | `@farming-labs/docs`, `@farming-labs/nuxt`, `@farming-labs/nuxt-theme` |
+| SvelteKit | `@farming-labs/docs`, `@farming-labs/svelte`, `@farming-labs/svelte-theme` |
+| Astro     | `@farming-labs/docs`, `@farming-labs/astro`, `@farming-labs/astro-theme` |
+
+To specify the framework explicitly (e.g. in a monorepo or when auto-detect fails), use `--framework`:
+
+```bash
+npx @farming-labs/docs@latest upgrade --framework astro
+# or
+npx @farming-labs/docs@latest upgrade astro
+```
+
+Valid values: `next`, `nuxt`, `sveltekit`, `astro`.
+
+Use **`--latest`** (default) to install the latest stable release, or **`--beta`** to install beta versions:
+
+```bash
+npx @farming-labs/docs@latest upgrade              # latest stable (default)
+npx @farming-labs/docs@latest upgrade --latest     # same
+npx @farming-labs/docs@latest upgrade --beta       # beta versions
+```
+
 ## Supported Frameworks
 
 | Framework | Detection                       | Status    |
