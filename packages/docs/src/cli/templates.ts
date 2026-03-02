@@ -237,7 +237,8 @@ export function nextConfigMergedTemplate(existingContent: string): string {
     lines.unshift(importLine, "");
   }
 
-  const adjustedExportIdx = exportIdx + (lastImportIdx >= 0 && exportIdx > lastImportIdx ? 1 : 0);
+  const adjustedExportIdx =
+    exportIdx + (lastImportIdx >= 0 ? (exportIdx > lastImportIdx ? 1 : 0) : 2);
   const exportLine = lines[adjustedExportIdx];
 
   const simpleMatch = exportLine.match(/^(\s*export\s+default\s+)(.*?)(;?\s*)$/);
@@ -294,6 +295,44 @@ export default function RootLayout({
 `;
 }
 
+/**
+ * Injects RootProvider (import + wrapper) into an existing root layout without overwriting.
+ * Returns the modified content, or null if RootProvider is already present or injection isn't possible.
+ */
+export function injectRootProviderIntoLayout(content: string): string | null {
+  if (!content || content.includes("RootProvider")) return null;
+
+  let out = content;
+
+  // Add import: after the last line that looks like an import
+  const themeImport = 'import { RootProvider } from "@farming-labs/theme";';
+  if (!out.includes("@farming-labs/theme")) {
+    const lines = out.split("\n");
+    let lastImportIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const trimmed = lines[i].trimStart();
+      if (trimmed.startsWith("import ") || trimmed.startsWith("import type ")) {
+        lastImportIdx = i;
+      }
+    }
+    if (lastImportIdx >= 0) {
+      lines.splice(lastImportIdx + 1, 0, themeImport);
+      out = lines.join("\n");
+    } else {
+      out = themeImport + "\n" + out;
+    }
+  }
+
+  if (!out.includes("<RootProvider>")) {
+    const childrenPattern = /\{children\}/;
+    if (childrenPattern.test(out)) {
+      out = out.replace(childrenPattern, "<RootProvider>{children}</RootProvider>");
+    }
+  }
+
+  return out === content ? null : out;
+}
+
 export function globalCssTemplate(theme: string): string {
   const t = getThemeInfo(theme);
   return `\
@@ -325,9 +364,19 @@ export function docsLayoutTemplate(cfg: TemplateConfig): string {
   const configImport = nextDocsLayoutConfigImport(cfg.useAlias);
   return `\
 import docsConfig from "${configImport}";
-import { createDocsLayout } from "@farming-labs/theme";
+import { createDocsLayout, createDocsMetadata } from "@farming-labs/theme";
 
-export default createDocsLayout(docsConfig);
+export const metadata = createDocsMetadata(docsConfig);
+
+const DocsLayout = createDocsLayout(docsConfig);
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <DocsLayout>{children}</DocsLayout>
+    </>
+  );
+}
 `;
 }
 

@@ -130,7 +130,6 @@ aside#nd-sidebar,
   padding: 8px 12px;
 }
 
-/* All sidebar links — 14px, 400/500 weight, 6px 10px padding */
 aside a[data-active],
 .fd-sidebar .fd-sidebar-link {
   font-size: 0.875rem;

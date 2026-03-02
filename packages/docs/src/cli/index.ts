@@ -7,8 +7,8 @@ import { upgrade } from "./upgrade.js";
 const args = process.argv.slice(2);
 const command = args[0];
 
-/** Parse flags like --template next, --name my-docs, --theme darksharp, --entry docs, --framework astro */
-function parseFlags(argv: string[]): Record<string, string | undefined> {
+/** Parse flags like --template next, --name my-docs, --theme darksharp, --entry docs, --framework astro (exported for tests). */
+export function parseFlags(argv: string[]): Record<string, string | undefined> {
   const flags: Record<string, string | undefined> = {};
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];

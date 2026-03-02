@@ -16,8 +16,8 @@ import {
 } from "./utils.js";
 
 const EXAMPLES_REPO = "farming-labs/docs";
-const VALID_TEMPLATES = ["next", "nuxt", "sveltekit", "astro"] as const;
-type TemplateName = (typeof VALID_TEMPLATES)[number];
+export const VALID_TEMPLATES = ["next", "nuxt", "sveltekit", "astro"] as const;
+export type TemplateName = (typeof VALID_TEMPLATES)[number];
 
 export interface InitOptions {
   template?: string;
@@ -31,6 +31,7 @@ import {
   nextConfigTemplate,
   nextConfigMergedTemplate,
   rootLayoutTemplate,
+  injectRootProviderIntoLayout,
   globalCssTemplate,
   injectCssImport,
   docsLayoutTemplate,
@@ -627,9 +628,16 @@ function scaffoldNextJs(
 
   const rootLayoutPath = path.join(cwd, "app/layout.tsx");
   const existingRootLayout = readFileSafe(rootLayoutPath);
-  const needsRootProvider = !existingRootLayout || !existingRootLayout.includes("RootProvider");
-  if (needsRootProvider) {
+  if (!existingRootLayout) {
     write("app/layout.tsx", rootLayoutTemplate(cfg, globalCssRelPath), true);
+  } else if (!existingRootLayout.includes("RootProvider")) {
+    const injected = injectRootProviderIntoLayout(existingRootLayout);
+    if (injected) {
+      writeFileSafe(rootLayoutPath, injected, true);
+      written.push("app/layout.tsx (injected RootProvider)");
+    } else {
+      skipped.push("app/layout.tsx (could not inject RootProvider)");
+    }
   } else {
     skipped.push("app/layout.tsx (already has RootProvider)");
   }
