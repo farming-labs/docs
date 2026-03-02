@@ -2017,6 +2017,56 @@ html.dark pre.shiki {
   font-size: 12px;
 }
 
+/* ─── Markdown prose inside AI bubbles (panel/modal/popover) ─────── */
+
+.fd-ai-bubble-ai h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 12px 0 6px;
+  line-height: 1.3;
+}
+
+.fd-ai-bubble-ai h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 10px 0 4px;
+  line-height: 1.4;
+}
+
+.fd-ai-bubble-ai h4 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin: 8px 0 4px;
+  line-height: 1.4;
+}
+
+.fd-ai-bubble-ai strong {
+  font-weight: 600;
+  color: var(--color-fd-foreground, #e4e4e7);
+}
+
+.fd-ai-bubble-ai em {
+  font-style: italic;
+}
+
+.fd-ai-bubble-ai p {
+  margin: 0 0 6px;
+}
+
+.fd-ai-bubble-ai br {
+  content: "";
+  display: block;
+  margin-top: 2px;
+}
+
+.fd-ai-bubble-ai pre {
+  margin: 8px 0;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
  * Code blocks in AI chat — fd-ai-code-*
  * ═══════════════════════════════════════════════════════════════════ */
@@ -2389,6 +2439,56 @@ html.dark pre.shiki {
   background: var(--color-fd-muted, #1a1a2e);
   font-weight: 600;
   font-size: 12px;
+}
+
+/* ─── Markdown prose inside full-modal messages ──────────────────── */
+
+.fd-ai-fm-msg-content h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 16px 0 8px;
+  line-height: 1.3;
+}
+
+.fd-ai-fm-msg-content h3 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin: 12px 0 6px;
+  line-height: 1.4;
+}
+
+.fd-ai-fm-msg-content h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 10px 0 4px;
+  line-height: 1.4;
+}
+
+.fd-ai-fm-msg-content strong {
+  font-weight: 600;
+  color: var(--color-fd-foreground, #e4e4e7);
+}
+
+.fd-ai-fm-msg-content em {
+  font-style: italic;
+}
+
+.fd-ai-fm-msg-content p {
+  margin: 0 0 8px;
+}
+
+.fd-ai-fm-msg-content br {
+  content: "";
+  display: block;
+  margin-top: 2px;
+}
+
+.fd-ai-fm-msg-content pre {
+  margin: 8px 0;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
 }
 
 /* Full-modal now uses the shared .fd-ai-loader indicator */
