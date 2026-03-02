@@ -27,6 +27,5 @@
     "puppeteer": "^24.37.5",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"
-  },
-  "packageManager": "pnpm@10.18.3"
+  }
 }
