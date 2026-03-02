@@ -7,6 +7,7 @@ import * as p from "@clack/prompts";
 import pc from "picocolors";
 import {
   type Framework,
+  type PackageManager,
   detectFramework,
   detectPackageManager,
   installCommand,
@@ -14,22 +15,38 @@ import {
   fileExists,
 } from "./utils.js";
 
-const PRESETS = ["next", "nuxt", "sveltekit", "astro"] as const;
-type PresetName = (typeof PRESETS)[number];
+export const PRESETS = ["next", "nuxt", "sveltekit", "astro"] as const;
+export type PresetName = (typeof PRESETS)[number];
 
-const PACKAGES_BY_FRAMEWORK: Record<Framework, string[]> = {
+export const PACKAGES_BY_FRAMEWORK: Record<Framework, string[]> = {
   nextjs: ["@farming-labs/docs", "@farming-labs/theme", "@farming-labs/next"],
   nuxt: ["@farming-labs/docs", "@farming-labs/nuxt", "@farming-labs/nuxt-theme"],
   sveltekit: ["@farming-labs/docs", "@farming-labs/svelte", "@farming-labs/svelte-theme"],
   astro: ["@farming-labs/docs", "@farming-labs/astro", "@farming-labs/astro-theme"],
 };
 
-function presetFromFramework(fw: Framework): PresetName {
+export function presetFromFramework(fw: Framework): PresetName {
   return fw === "nextjs" ? "next" : fw;
 }
 
-function frameworkFromPreset(preset: PresetName): Framework {
+export function frameworkFromPreset(preset: PresetName): Framework {
   return preset === "next" ? "nextjs" : preset;
+}
+
+/** Return package list for a framework (for testing and CLI). */
+export function getPackagesForFramework(framework: Framework): string[] {
+  return PACKAGES_BY_FRAMEWORK[framework];
+}
+
+/** Build the install command for upgrade (for testing). */
+export function buildUpgradeCommand(
+  framework: Framework,
+  tag: UpgradeTag,
+  pm: PackageManager,
+): string {
+  const packages = PACKAGES_BY_FRAMEWORK[framework];
+  const packagesWithTag = packages.map((name) => `${name}@${tag}`);
+  return `${installCommand(pm)} ${packagesWithTag.join(" ")}`;
 }
 
 export type UpgradeTag = "latest" | "beta";
@@ -80,10 +97,9 @@ export async function upgrade(options: UpgradeOptions = {}) {
     preset = presetFromFramework(framework);
   }
 
-  const packages = PACKAGES_BY_FRAMEWORK[framework];
-  const packagesWithTag = packages.map((name) => `${name}@${tag}`);
   const pm = detectPackageManager(cwd);
-  const cmd = `${installCommand(pm)} ${packagesWithTag.join(" ")}`;
+  const cmd = buildUpgradeCommand(framework, tag, pm);
+  const packages = getPackagesForFramework(framework);
 
   p.log.step(`Upgrading ${preset} docs packages to ${tag}...`);
   p.log.message(pc.dim(packages.join(", ")));
