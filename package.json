@@ -6,6 +6,7 @@
   "scripts": {
     "build": "pnpm --filter '@farming-labs/*' run build",
     "dev": "pnpm --filter example-next dev",
+    "test": "pnpm --filter @farming-labs/docs run test",
     "typecheck": "pnpm --filter '@farming-labs/*' run typecheck",
     "release": "bumpp",
     "release:beta": "bumpp --preid beta",

@@ -314,7 +314,30 @@ function buildColorCSS(colors: Colors): string {
   --color-fd-muted-foreground: ${colors.mutedForeground} !important;
   --color-fd-border: ${colors.border} !important;
   --color-fd-card: ${colors.card} !important;
+  --color-fd-popover: ${colors.card} !important;
+  --color-fd-popover-foreground: ${colors.foreground} !important;
 }`);
+
+  /* Omni command palette (Cmd+K) — always use theme colors so it matches the selected preset */
+  parts.push(`
+.omni-content {
+  background: ${colors.card} !important;
+  color: ${colors.foreground} !important;
+  border-color: ${colors.border} !important;
+}
+.omni-header { border-color: ${colors.border} !important; }
+.omni-search-input { color: ${colors.foreground} !important; }
+.omni-search-input::placeholder { color: ${colors.mutedForeground} !important; }
+.omni-search-icon, .omni-close-btn { color: ${colors.mutedForeground} !important; }
+.omni-kbd { background: ${colors.muted} !important; color: ${colors.mutedForeground} !important; }
+.omni-close-btn:hover { background: ${colors.muted} !important; }
+.omni-item:hover, .omni-item-active { background: color-mix(in srgb, ${colors.primary} 15%, transparent) !important; }
+.omni-highlight { background: color-mix(in srgb, ${colors.primary} 25%, transparent) !important; color: ${colors.primaryForeground} !important; }
+.omni-group-label { color: ${colors.mutedForeground} !important; }
+.omni-item-label, .omni-item-subtitle { color: ${colors.foreground} !important; }
+.omni-footer-inner { border-color: ${colors.border} !important; color: ${colors.mutedForeground} !important; }
+.omni-empty { color: ${colors.mutedForeground} !important; }
+`);
 
   // Isolate customizer drawer from theme radius/font overrides
   parts.push(`[data-customizer] [class*="rounded-md"] { border-radius: 0.375rem !important; }
