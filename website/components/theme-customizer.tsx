@@ -296,7 +296,6 @@ function generateConfig(state: ThemeState): string {
   return lines.join("\n");
 }
 
-// ─── CSS Variable Injection (user color overrides on top of preset CSS) ──────
 
 function buildColorCSS(colors: Colors): string {
   const parts: string[] = [];
