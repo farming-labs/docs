@@ -9,6 +9,7 @@
     "test": "pnpm --filter @farming-labs/docs run test",
     "typecheck": "pnpm --filter '@farming-labs/*' run typecheck",
     "release": "bumpp",
+    "release:latest": "bumpp --tag latest && pnpm --filter '@farming-labs/*' publish --access public --tag latest --no-git-checks",
     "release:beta": "bumpp --preid beta",
     "publish:beta": "pnpm --filter '@farming-labs/*' publish --access public --tag beta --no-git-checks",
     "publish:latest": "pnpm --filter '@farming-labs/*' publish --access public --no-git-checks",
