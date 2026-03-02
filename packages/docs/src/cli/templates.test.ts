@@ -94,7 +94,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     expect(result).toContain("<body><RootProvider>{children}</RootProvider></body>");
     // Import should be after the last existing import
     const lines = result!.split("\n");
-    const themeImportIdx = lines.findIndex((l) => l.includes("RootProvider") && l.includes("@farming-labs/theme"));
+    const themeImportIdx = lines.findIndex(
+      (l) => l.includes("RootProvider") && l.includes("@farming-labs/theme"),
+    );
     const globalsIdx = lines.findIndex((l) => l.includes('"./globals.css"'));
     expect(themeImportIdx).toBeGreaterThan(globalsIdx);
   });
@@ -122,7 +124,9 @@ export default function RootLayout({ children }) {
 `;
     const result = injectRootProviderIntoLayout(content);
     expect(result).not.toBeNull();
-    expect(result!.trimStart().startsWith('import { RootProvider } from "@farming-labs/theme"')).toBe(true);
+    expect(
+      result!.trimStart().startsWith('import { RootProvider } from "@farming-labs/theme"'),
+    ).toBe(true);
     expect(result).toContain("<RootProvider>{children}</RootProvider>");
   });
 
@@ -147,7 +151,7 @@ export default function RootLayout({ children }) {
 describe("globalCssTemplate", () => {
   it("includes tailwind and theme css for default theme", () => {
     const out = globalCssTemplate("fumadocs");
-    expect(out).toContain("@import \"tailwindcss\"");
+    expect(out).toContain('@import "tailwindcss"');
     expect(out).toContain("@farming-labs/theme/default/css");
   });
 
@@ -170,7 +174,7 @@ describe("injectCssImport", () => {
 `;
     const result = injectCssImport(content, "fumadocs");
     expect(result).not.toBeNull();
-    expect(result).toContain("@import \"@farming-labs/theme/default/css\"");
+    expect(result).toContain('@import "@farming-labs/theme/default/css"');
   });
 });
 
@@ -210,7 +214,8 @@ describe("nextConfigTemplate", () => {
 
 describe("nextConfigMergedTemplate", () => {
   it("returns unchanged content when withDocs already present", () => {
-    const content = 'import { withDocs } from "@farming-labs/next/config";\nexport default withDocs({});';
+    const content =
+      'import { withDocs } from "@farming-labs/next/config";\nexport default withDocs({});';
     expect(nextConfigMergedTemplate(content)).toBe(content);
   });
 

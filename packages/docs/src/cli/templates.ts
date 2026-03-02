@@ -238,8 +238,7 @@ export function nextConfigMergedTemplate(existingContent: string): string {
   }
 
   const adjustedExportIdx =
-    exportIdx +
-    (lastImportIdx >= 0 ? (exportIdx > lastImportIdx ? 1 : 0) : 2);
+    exportIdx + (lastImportIdx >= 0 ? (exportIdx > lastImportIdx ? 1 : 0) : 2);
   const exportLine = lines[adjustedExportIdx];
 
   const simpleMatch = exportLine.match(/^(\s*export\s+default\s+)(.*?)(;?\s*)$/);
