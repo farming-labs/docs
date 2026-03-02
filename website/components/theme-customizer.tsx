@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { highlight } from "sugar-high";
+import { FloatingAIChat } from "@farming-labs/theme/ai";
 
 type PresetKey = "default" | "colorful" | "darksharp" | "pixel-border" | "shiny" | "darkbold";
 type SidebarStyle = "default" | "bordered" | "floating";
@@ -528,33 +529,32 @@ function buildConfigCSS(state: ThemeState): string {
     `);
   }
 
-  // AI position override — only apply to closed trigger, not the open input bar
   if (state.ai.enabled && state.ai.mode === "floating") {
+    const style = state.ai.floatingStyle;
     const pos = state.ai.position;
-    if (pos === "bottom-right") {
+    const btnPosCSS = pos === "bottom-left"
+      ? "bottom:24px!important;left:24px!important;right:auto!important;transform:none!important;"
+      : pos === "bottom-center"
+        ? "bottom:24px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;"
+        : "bottom:24px!important;right:24px!important;left:auto!important;transform:none!important;";
+
+    if (style === "full-modal") {
       rules.push(`
-        .fd-ai-fm-input-bar--closed, .fd-ai-floating-btn, .fd-ai-floating-trigger {
-          bottom: 24px !important; right: 24px !important; left: auto !important; transform: none !important;
+        .fd-ai-fm-input-bar--closed { ${btnPosCSS} }
+        .fd-ai-fm-input-bar--open {
+          bottom:16px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;
         }
       `);
-    } else if (pos === "bottom-left") {
+    } else {
+      // Hide the server-rendered full-modal entirely — the customizer
+      // renders the real FloatingAIChat React component for this style
       rules.push(`
-        .fd-ai-fm-input-bar--closed, .fd-ai-floating-btn, .fd-ai-floating-trigger {
-          bottom: 24px !important; left: 24px !important; right: auto !important; transform: none !important;
-        }
-      `);
-    } else if (pos === "bottom-center") {
-      rules.push(`
-        .fd-ai-fm-input-bar--closed, .fd-ai-floating-btn, .fd-ai-floating-trigger {
-          bottom: 24px !important; left: 50% !important; right: auto !important; transform: translateX(-50%) !important;
-        }
+        .fd-ai-fm-overlay { display:none!important; }
+        .fd-ai-fm-input-bar { display:none!important; }
+        .fd-ai-fm-topbar { display:none!important; }
+        .fd-ai-fm-trigger-btn { display:none!important; }
       `);
     }
-    rules.push(`
-      .fd-ai-fm-input-bar--open {
-        bottom: 16px !important; left: 50% !important; right: auto !important; transform: translateX(-50%) !important;
-      }
-    `);
   }
 
   return rules.join("\n");
@@ -596,7 +596,7 @@ function buildInitialState(presetKey?: PresetKey): ThemeState {
       enabled: true,
       mode: p.ai?.mode ?? "floating",
       position: "bottom-right",
-      floatingStyle: "panel",
+      floatingStyle: "full-modal",
     },
     breadcrumb: true,
     themeToggle: { enabled: false, default: "dark" },
@@ -1065,6 +1065,13 @@ export function ThemeCustomizer() {
     return () => clearTimeout(timer);
   }, [state.ai.enabled, state.ai.mode, hasCustomized, isDocsPage, presetCSS]);
 
+  const showCzFloatingAI =
+    hasCustomized &&
+    isDocsPage &&
+    state.ai.enabled &&
+    state.ai.mode === "floating" &&
+    state.ai.floatingStyle !== "full-modal";
+
   const cssCode = useMemo(() => generateCSS(state), [state]);
   const configCode = useMemo(() => generateConfig(state), [state]);
   const colorCSS = useMemo(() => buildColorCSS(state.colors), [state.colors]);
@@ -1242,6 +1249,28 @@ export function ThemeCustomizer() {
       )}
       {isDocsPage && (open || hasCustomized) && configCSS && (
         <style dangerouslySetInnerHTML={{ __html: configCSS }} />
+      )}
+
+      {showCzFloatingAI && (
+        <FloatingAIChat
+          key={`cz-ai-${state.ai.floatingStyle}-${state.ai.position}`}
+          api="/api/docs"
+          position={state.ai.position}
+          floatingStyle={state.ai.floatingStyle}
+          suggestedQuestions={[
+            "How do I get started?",
+            "What to create my own theme?",
+            "How do I create a custom component?",
+            "How do I configure the sidebar?",
+          ]}
+
+          aiLabel="DocsBot"
+          models={[
+            { id: "gpt-4o-mini", label: "GPT-4o mini (fast)" },
+            { id: "gpt-4o", label: "GPT-4o (quality)" },
+          ]}
+          defaultModelId="gpt-4o-mini"
+        />
       )}
 
       <button
