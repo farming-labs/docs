@@ -532,11 +532,12 @@ function buildConfigCSS(state: ThemeState): string {
   if (state.ai.enabled && state.ai.mode === "floating") {
     const style = state.ai.floatingStyle;
     const pos = state.ai.position;
-    const btnPosCSS = pos === "bottom-left"
-      ? "bottom:24px!important;left:24px!important;right:auto!important;transform:none!important;"
-      : pos === "bottom-center"
-        ? "bottom:24px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;"
-        : "bottom:24px!important;right:24px!important;left:auto!important;transform:none!important;";
+    const btnPosCSS =
+      pos === "bottom-left"
+        ? "bottom:24px!important;left:24px!important;right:auto!important;transform:none!important;"
+        : pos === "bottom-center"
+          ? "bottom:24px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;"
+          : "bottom:24px!important;right:24px!important;left:auto!important;transform:none!important;";
 
     if (style === "full-modal") {
       rules.push(`
@@ -1263,7 +1264,6 @@ export function ThemeCustomizer() {
             "How do I create a custom component?",
             "How do I configure the sidebar?",
           ]}
-
           aiLabel="DocsBot"
           models={[
             { id: "gpt-4o-mini", label: "GPT-4o mini (fast)" },
