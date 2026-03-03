@@ -235,6 +235,12 @@ export async function renderMarkdown(content: string): Promise<string> {
   result = result.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   result = result.replace(/\*(.+?)\*/g, "<em>$1</em>");
 
+  // Images — before links so ![alt](url) is not captured as a link
+  result = result.replace(
+    /!\[([^\]]*)\]\(([^)]+)\)/g,
+    (_: string, alt: string, src: string) =>
+      `<img src="${src}" alt="${alt.replace(/"/g, "&quot;")}" class="fd-docs-content-img" loading="lazy" decoding="async" />`,
+  );
   // Links
   result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
 

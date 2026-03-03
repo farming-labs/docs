@@ -1030,6 +1030,12 @@ export interface DocsConfig {
   entry: string;
   /** Path to the content directory. Defaults to `entry` value. */
   contentDir?: string;
+  /**
+   * Set to `true` when building for full static export (e.g. Cloudflare Pages).
+   * When using `output: 'export'` in Next.js, the `/api/docs` route is not generated.
+   * Set `ai.enabled: false` and optionally rely on client-side search or leave search disabled.
+   */
+  staticExport?: boolean;
   /** Theme configuration - single source of truth for UI */
   theme?: DocsTheme;
   /**

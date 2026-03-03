@@ -14,6 +14,11 @@
  *   export default withDocs({
  *     images: { remotePatterns: [{ hostname: "example.com" }] },
  *   });
+ *
+ * @example
+ * // Full static export (Cloudflare Pages, etc.) — no server; API route is skipped.
+ * // In docs.config set ai.enabled: false and staticExport: true.
+ *   export default withDocs({ output: "export" });
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -129,10 +134,12 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     writeFileSync(join(layoutDir, "layout.tsx"), DOCS_LAYOUT_TEMPLATE);
   }
 
-  // ── 3. Auto-generate app/api/docs/route.ts if missing ──────────
-  // Unified handler: GET = search, POST = AI chat (when enabled).
+  // ── 3. Auto-generate app/api/docs/route.ts if missing (skip for static export) ──
+  // With output: 'export' (Cloudflare Pages, etc.) there is no server; set ai.enabled: false
+  // and use client-side search or leave search disabled.
+  const isStaticExport = nextConfig.output === "export";
   const docsApiRouteDir = join(root, "app", "api", "docs");
-  if (!hasFile(docsApiRouteDir, "route")) {
+  if (!isStaticExport && !hasFile(docsApiRouteDir, "route")) {
     mkdirSync(docsApiRouteDir, { recursive: true });
     writeFileSync(join(docsApiRouteDir, "route.ts"), DOCS_API_ROUTE_TEMPLATE);
   }

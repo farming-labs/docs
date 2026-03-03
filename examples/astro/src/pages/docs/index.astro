@@ -22,6 +22,6 @@ const data = await load(Astro.url.pathname);
       <AskAITrigger slot="ai-trigger" />
       <DocsContentComponent data={data} config={config} />
     </DocsLayoutComponent>
-    <SearchDialog config={config} />
+    {!config?.staticExport && <SearchDialog config={config} />}
   </body>
 </html>

@@ -591,9 +591,11 @@ export function createDocsLayout(config: DocsConfig) {
   const githubDirectory =
     typeof githubRaw === "object" ? githubRaw.directory?.replace(/^\/|\/$/g, "") : undefined;
 
+  // When staticExport is true (e.g. Cloudflare Pages), no server → disable search and AI
+  const staticExport = !!(config as { staticExport?: boolean }).staticExport;
   // AI features — resolved from config, rendered automatically
   const aiConfig = config.ai as AIConfig | undefined;
-  const aiEnabled = !!aiConfig?.enabled;
+  const aiEnabled = !staticExport && !!aiConfig?.enabled;
   const aiMode = aiConfig?.mode ?? ("search" as "search" | "floating" | "sidebar-icon");
   const aiPosition = aiConfig?.position ?? "bottom-right";
   const aiFloatingStyle = aiConfig?.floatingStyle ?? "panel";
@@ -661,7 +663,7 @@ export function createDocsLayout(config: DocsConfig) {
         <TypographyStyle typography={typography} />
         <LayoutStyle layout={layoutDimensions} />
         {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
-        <DocsCommandSearch />
+        {!staticExport && <DocsCommandSearch />}
         {aiEnabled && (
           <DocsAIFeatures
             mode={aiMode}

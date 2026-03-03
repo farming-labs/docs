@@ -136,8 +136,10 @@ function getIcon(iconKey) {
   return ICON_MAP[iconKey] || null;
 }
 
+const staticExport = !!(config as { staticExport?: boolean }).staticExport;
 const aiConfig = config?.ai;
-const showFloatingAI = aiConfig?.mode === "floating" && aiConfig?.enabled;
+const showFloatingAI = !staticExport && aiConfig?.mode === "floating" && !!aiConfig?.enabled;
+const showSearch = !staticExport;
 ---
 
 <script is:inline set:html={themeInitScript}></script>
@@ -153,12 +155,14 @@ const showFloatingAI = aiConfig?.mode === "floating" && aiConfig?.enabled;
       </svg>
     </button>
     <a href={resolvedTitleUrl} class="fd-header-title">{resolvedTitle}</a>
-    <button class="fd-search-trigger-mobile" id="fd-search-open-mobile" aria-label="Search">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <circle cx="11" cy="11" r="8" />
-        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-      </svg>
-    </button>
+    {showSearch && (
+      <button class="fd-search-trigger-mobile" id="fd-search-open-mobile" aria-label="Search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+      </button>
+    )}
   </header>
 
   <div class="fd-sidebar-overlay" id="fd-sidebar-overlay" style="display:none"></div>
@@ -174,16 +178,18 @@ const showFloatingAI = aiConfig?.mode === "floating" && aiConfig?.enabled;
       </a>
     </div>
 
-    <div class="fd-sidebar-search">
-      <button class="fd-sidebar-search-btn" id="fd-search-open">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <span>Search</span>
-        <kbd>⌘</kbd><kbd>K</kbd>
-      </button>
-    </div>
+    {showSearch && (
+      <div class="fd-sidebar-search">
+        <button class="fd-sidebar-search-btn" id="fd-search-open">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <span>Search</span>
+          <kbd>⌘</kbd><kbd>K</kbd>
+        </button>
+      </div>
+    )}
 
     {Astro.slots.has("sidebar-header") && (
       <div class="fd-sidebar-banner">

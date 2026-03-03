@@ -20,6 +20,9 @@
 
   let resolvedTitle = $derived(title ?? config?.nav?.title ?? "Docs");
   let resolvedTitleUrl = $derived(titleUrl ?? config?.nav?.url ?? "/docs");
+  let staticExport = $derived(!!(config && config.staticExport));
+  let showSearch = $derived(!staticExport);
+  let showFloatingAI = $derived(!staticExport && config?.ai?.mode === "floating" && !!config?.ai?.enabled);
 
   let showThemeToggle = $derived.by(() => {
     const toggle = config?.themeToggle;
@@ -78,7 +81,7 @@
   }
 
   function handleKeydown(e) {
-    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+    if (showSearch && (e.metaKey || e.ctrlKey) && e.key === "k") {
       e.preventDefault();
       searchOpen = !searchOpen;
     }
@@ -224,12 +227,14 @@
       </svg>
     </button>
     <a href={resolvedTitleUrl} class="fd-header-title">{resolvedTitle}</a>
-    <button class="fd-search-trigger-mobile" onclick={openSearch} aria-label="Search">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <circle cx="11" cy="11" r="8" />
-        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-      </svg>
-    </button>
+    {#if showSearch}
+      <button class="fd-search-trigger-mobile" onclick={openSearch} aria-label="Search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+      </button>
+    {/if}
   </header>
 
   {#if sidebarOpen}
@@ -248,16 +253,18 @@
       </a>
     </div>
 
-    <div class="fd-sidebar-search">
-      <button class="fd-sidebar-search-btn" onclick={openSearch}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <span>Search</span>
-        <kbd>&#8984;</kbd><kbd>K</kbd>
-      </button>
-    </div>
+    {#if showSearch}
+      <div class="fd-sidebar-search">
+        <button class="fd-sidebar-search-btn" onclick={openSearch}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <span>Search</span>
+          <kbd>&#8984;</kbd><kbd>K</kbd>
+        </button>
+      </div>
+    {/if}
 
     {#if sidebarHeader}
       <div class="fd-sidebar-banner">
@@ -390,7 +397,7 @@
   </main>
 </div>
 
-{#if config?.ai?.mode === "floating" && config?.ai?.enabled}
+{#if showFloatingAI}
   <FloatingAIChat
     suggestedQuestions={config.ai.suggestedQuestions ?? []}
     aiLabel={config.ai.aiLabel ?? "AI"}
@@ -400,6 +407,6 @@
   />
 {/if}
 
-{#if searchOpen}
+{#if showSearch && searchOpen}
   <SearchDialog onclose={closeSearch} />
 {/if}
