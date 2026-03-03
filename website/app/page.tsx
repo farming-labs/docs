@@ -933,6 +933,7 @@ function ConfigSection() {
         </div>
 
         <CodeBlock
+          maxHeight="700px"
           title="Full Example"
           filename="docs.config.tsx"
           code={`import { defineDocs } from "@farming-labs/docs";
@@ -964,12 +965,46 @@ export default defineDocs({
     book: <BookOpen size={16} />,
     code: <Code size={16} />,
   },
-
+  sidebar: {
+    banner: (
+      <div>
+        <h2>Welcome to the docs</h2>
+        <p>This is a banner</p>
+      </div>
+    ),
+    flat: false,
+    collapsible: true,  
+    footer: (
+      <div>
+        <p>This is a footer</p>
+      </div>
+    ),
+  },
   components: { MyCustomCallout },
 
   breadcrumb: { enabled: true },
   themeToggle: { enabled: false, default: "dark" },
-
+  ai: {
+    enabled: true,
+    mode: "floating",
+    floatingStyle: "full-modal",
+    apiKey: process.env.OPENAI_API_KEY,
+    maxResults: 5,
+    aiLabel: "DocsBot",
+    suggestedQuestions: [
+      "How do I get started?",
+      "What themes are available?",
+      "How do I create a custom component?",
+      "How do I configure the sidebar?",
+    ],
+    model: {
+      models: [
+        { id: "gpt-4o-mini", label: "GPT-4o mini (fast)" },
+        { id: "gpt-4o", label: "GPT-4o (quality)" },
+      ],
+      defaultModel: "gpt-4o-mini",
+    },
+  },
   pageActions: {
     copyMarkdown: { enabled: true },
     openDocs: {
