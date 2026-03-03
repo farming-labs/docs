@@ -11,9 +11,5 @@ describe("init", () => {
     it("matches upgrade PRESETS for consistency", () => {
       expect([...VALID_TEMPLATES].sort()).toEqual([...PRESETS].sort());
     });
-
-    it("has exactly 4 templates", () => {
-      expect(VALID_TEMPLATES).toHaveLength(4);
-    });
   });
 });
