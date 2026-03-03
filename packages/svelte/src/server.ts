@@ -395,10 +395,16 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     ((config as Record<string, unknown>).contentDir as string | undefined) ?? entry,
   );
 
-  const preloaded = config._preloadedContent as ContentFileMap | undefined;
+  const rawPreloaded = config._preloadedContent as ContentFileMap | undefined;
   const contentDirRel =
     ((config as Record<string, unknown>).contentDir as string | undefined) ?? entry;
   const dirPrefix = `/${contentDirRel}/`;
+  // Normalize keys: Vite's import.meta.glob may return paths without leading slash (e.g. "docs/...")
+  const preloaded = rawPreloaded
+    ? (Object.fromEntries(
+        Object.entries(rawPreloaded).map(([k, v]) => [k.startsWith("/") ? k : `/${k}`, v]),
+      ) as ContentFileMap)
+    : undefined;
 
   const ordering = config.ordering as
     | "alphabetical"

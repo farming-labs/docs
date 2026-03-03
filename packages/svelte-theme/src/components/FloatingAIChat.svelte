@@ -207,14 +207,41 @@
 
 {#if mounted}
   {#if isFullModal}
-    <!-- ═══ Full-Modal Mode (better-auth inspired) ═══ -->
+    <!-- ═══ Full-Modal Mode (better-auth inspired) ═══
+         Trigger is always in a fixed-position wrapper when closed (no morphing).
+         When open: overlay + separate fixed input bar for smooth open/close. -->
 
+    <!-- When closed: fixed trigger only — stays in place, no layout jump -->
+    {#if !isOpen}
+      <div class="fd-ai-fm-trigger-fixed" style={btnStyle}>
+        {#if triggerComponent}
+          {@const Trigger = triggerComponent}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div onclick={() => isOpen = true} class="fd-ai-floating-trigger fd-ai-floating-trigger--static">
+            <Trigger aiLabel={label} />
+          </div>
+        {:else}
+          <button
+            onclick={() => isOpen = true}
+            class="fd-ai-fm-trigger-btn"
+            aria-label="Ask {label}"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+              <path d="M20 3v4"/><path d="M22 5h-4"/>
+            </svg>
+            <span>Ask {label}</span>
+          </button>
+        {/if}
+      </div>
+    {/if}
+
+    <!-- When open: overlay + input bar (separate elements, no morphing from trigger) -->
     {#if isOpen}
-      <!-- Full-screen overlay -->
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="fd-ai-fm-overlay" onclick={(e) => { if (e.target === e.currentTarget) isOpen = false; }}>
-        <!-- Close button -->
+      <div class="fd-ai-fm-overlay fd-ai-fm-overlay--animate" onclick={(e) => { if (e.target === e.currentTarget) isOpen = false; }}>
         <div class="fd-ai-fm-topbar">
           <button onclick={() => isOpen = false} class="fd-ai-fm-close-btn" aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -223,7 +250,6 @@
           </button>
         </div>
 
-        <!-- Scrollable message list -->
         <div bind:this={fmListEl} class="fd-ai-fm-messages">
           <div class="fd-ai-fm-messages-inner">
             {#each messages as msg, i}
@@ -252,38 +278,9 @@
           </div>
         </div>
       </div>
-    {/if}
 
-    <!-- Bottom input bar — always visible when open, pinned to bottom -->
-    <div
-      class="fd-ai-fm-input-bar {isOpen ? 'fd-ai-fm-input-bar--open' : 'fd-ai-fm-input-bar--closed'}"
-      style={isOpen ? undefined : btnStyle}
-    >
-      {#if !isOpen}
-        {#if triggerComponent}
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div
-            onclick={() => isOpen = true}
-            class="fd-ai-floating-trigger"
-            style={btnStyle}
-          >
-            <svelte:component this={triggerComponent} aiLabel={label} />
-          </div>
-        {:else}
-          <button
-            onclick={() => isOpen = true}
-            class="fd-ai-fm-trigger-btn"
-            aria-label="Ask {label}"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
-              <path d="M20 3v4"/><path d="M22 5h-4"/>
-            </svg>
-            <span>Ask {label}</span>
-          </button>
-        {/if}
-      {:else}
+      <!-- Input bar when open: fixed at bottom center, never morphs from trigger -->
+      <div class="fd-ai-fm-input-bar fd-ai-fm-input-bar--open">
         <div class="fd-ai-fm-input-container">
           <div class="fd-ai-fm-input-wrap">
             <textarea
@@ -350,9 +347,8 @@
             {/if}
           </div>
         </div>
-      {/if}
-    </div>
-
+      </div>
+    {/if}
   {:else}
     <!-- ═══ Panel / Modal / Popover Mode ═══ -->
 
@@ -479,6 +475,7 @@
 
     {#if !isOpen}
       {#if triggerComponent}
+        {@const Trigger = triggerComponent}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
@@ -486,7 +483,7 @@
           class="fd-ai-floating-trigger"
           style={btnStyle}
         >
-          <svelte:component this={triggerComponent} aiLabel={label} />
+          <Trigger aiLabel={label} />
         </div>
       {:else}
         <button

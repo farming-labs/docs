@@ -198,6 +198,10 @@
     const layout = config?.theme?.ui?.layout;
     return [buildColorsCSS(colorOverrides), buildTypographyCSS(typography), buildLayoutCSS(layout)].filter(Boolean).join("\n");
   });
+
+  // Build style tag from parts so Vite/Svelte preprocessor doesn't treat it as a real <style> block (PostCSS would then fail on "overrideCSS")
+  const styleTagOpen = "<sty" + "le>";
+  const styleTagClose = "</sty" + "le>";
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -205,7 +209,7 @@
 <svelte:head>
   {@html `<script>${themeInitScript}</script>`}
   {#if overrideCSS}
-    {@html `<style>${overrideCSS}</style>`}
+    {@html `${styleTagOpen}${overrideCSS}${styleTagClose}`}
   {/if}
 </svelte:head>
 

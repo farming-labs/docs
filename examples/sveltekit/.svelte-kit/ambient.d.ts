@@ -62,7 +62,6 @@ declare module '$env/static/private' {
 	export const npm_config_verify_deps_before_run: string;
 	export const PATH: string;
 	export const LaunchInstanceID: string;
-	export const npm_package_json: string;
 	export const __CFBundleIdentifier: string;
 	export const NVM_NODEJS_ORG_MIRROR: string;
 	export const USER_ZDOTDIR: string;
@@ -79,7 +78,6 @@ declare module '$env/static/private' {
 	export const npm_config_node_gyp: string;
 	export const XPC_SERVICE_NAME: string;
 	export const npm_package_version: string;
-	export const pnpm_config_verify_deps_before_run: string;
 	export const VSCODE_INJECTION: string;
 	export const HOME: string;
 	export const SHLVL: string;
@@ -165,7 +163,6 @@ declare module '$env/dynamic/private' {
 		npm_config_verify_deps_before_run: string;
 		PATH: string;
 		LaunchInstanceID: string;
-		npm_package_json: string;
 		__CFBundleIdentifier: string;
 		NVM_NODEJS_ORG_MIRROR: string;
 		USER_ZDOTDIR: string;
@@ -182,7 +179,6 @@ declare module '$env/dynamic/private' {
 		npm_config_node_gyp: string;
 		XPC_SERVICE_NAME: string;
 		npm_package_version: string;
-		pnpm_config_verify_deps_before_run: string;
 		VSCODE_INJECTION: string;
 		HOME: string;
 		SHLVL: string;

@@ -2262,6 +2262,20 @@ html.dark pre.shiki {
   transform: scale(0.97);
 }
 
+/* Dark mode: floating button and trigger use dark-friendly colors */
+.dark .fd-ai-floating-btn,
+.dark .fd-ai-fm-trigger-btn {
+  background: color-mix(in srgb, var(--color-fd-secondary, rgba(255, 255, 255, 0.08)) 90%, transparent);
+  color: var(--color-fd-foreground, #e4e4e7);
+  border-color: var(--color-fd-border, rgba(255, 255, 255, 0.12));
+}
+
+.dark .fd-ai-floating-btn:hover,
+.dark .fd-ai-fm-trigger-btn:hover {
+  background: var(--color-fd-accent);
+  color: var(--color-fd-accent-foreground);
+}
+
 .fd-ai-floating-trigger {
   position: fixed;
   z-index: 9997;
@@ -2290,10 +2304,21 @@ html.dark pre.shiki {
   transition: transform 150ms, background 150ms, color 150ms;
 }
 
+.dark .fd-ai-floating-trigger .ask-ai-trigger {
+  background: color-mix(in srgb, var(--color-fd-secondary, rgba(255, 255, 255, 0.08)) 90%, transparent);
+  color: var(--color-fd-foreground, #e4e4e7);
+  border-color: var(--color-fd-border, rgba(255, 255, 255, 0.12));
+}
+
 .fd-ai-floating-trigger .ask-ai-trigger:hover {
   background: var(--color-fd-accent);
   color: var(--color-fd-accent-foreground);
   transform: scale(1.03);
+}
+
+.dark .fd-ai-floating-trigger .ask-ai-trigger:hover {
+  background: var(--color-fd-accent);
+  color: var(--color-fd-accent-foreground);
 }
 
 .fd-ai-floating-trigger .ask-ai-trigger:active {
@@ -2304,6 +2329,17 @@ html.dark pre.shiki {
    Full-Modal (better-auth inspired) — fd-ai-fm-*
    ═══════════════════════════════════════════════════════════════ */
 
+/* Fixed wrapper for trigger when closed — never morphs, so no "stuck" feel */
+.fd-ai-fm-trigger-fixed {
+  position: fixed;
+  z-index: 9997;
+  animation: fd-ai-fade-in 200ms ease-out;
+}
+
+.fd-ai-floating-trigger--static {
+  position: static;
+}
+
 .fd-ai-fm-overlay {
   position: fixed;
   inset: 0;
@@ -2313,8 +2349,11 @@ html.dark pre.shiki {
   background: color-mix(in srgb, var(--color-fd-background, #000) 80%, transparent);
   backdrop-filter: blur(8px);
   z-index: 9998;
-  animation: fd-ai-fade-in 200ms ease-out;
   padding: 0 8px;
+}
+
+.fd-ai-fm-overlay--animate {
+  animation: fd-ai-fade-in 200ms ease-out;
 }
 
 /* ─── Top bar (close button) ─────────────────────────────────── */
@@ -2498,14 +2537,6 @@ html.dark pre.shiki {
 .fd-ai-fm-input-bar {
   position: fixed;
   z-index: 9999;
-  transition:
-    width 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    height 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    transform 200ms ease-out;
-}
-
-.fd-ai-fm-input-bar--closed {
-  /* inherits position from inline btnPosition styles */
 }
 
 .fd-ai-fm-input-bar--open {
@@ -2513,6 +2544,7 @@ html.dark pre.shiki {
   left: 50%;
   transform: translateX(-50%);
   width: min(800px, calc(100vw - 32px));
+  animation: fd-ai-fade-in 200ms ease-out;
 }
 
 .fd-ai-fm-input-container {

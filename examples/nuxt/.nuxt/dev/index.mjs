@@ -5,9 +5,8 @@ import { resolve, dirname, join } from 'node:path';
 import nodeCrypto from 'node:crypto';
 import { parentPort, threadId } from 'node:worker_threads';
 import { escapeHtml } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/@vue+shared@3.5.28/node_modules/@vue/shared/dist/shared.cjs.js';
-import { defineDocsHandler } from 'file:///Users/mac/oss/docs_/packages/nuxt/dist/server.js';
-import { defineDocs } from 'file:///Users/mac/oss/docs_/packages/docs/dist/index.mjs';
-import { colorful } from '@farming-labs/nuxt-theme/colorful';
+import { defineDocsHandler } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/@farming-labs+nuxt@0.0.6_@farming-labs+docs@0.0.6/node_modules/@farming-labs/nuxt/dist/server.js';
+import { createTheme, defineDocs } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/@farming-labs+docs@0.0.6/node_modules/@farming-labs/docs/dist/index.mjs';
 import { createRenderer, getRequestDependencies, getPreloadLinks, getPrefetchLinks } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/vue-bundle-renderer@2.2.0/node_modules/vue-bundle-renderer/dist/runtime.mjs';
 import { parseURL, withoutBase, joinURL, getQuery, withQuery, withTrailingSlash, decodePath, withLeadingSlash, withoutTrailingSlash, joinRelativeURL } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/ufo@1.6.3/node_modules/ufo/dist/index.mjs';
 import { renderToString } from 'file:///Users/mac/oss/docs_/node_modules/.pnpm/vue@3.5.28_typescript@5.9.3/node_modules/vue/server-renderer/index.mjs';
@@ -2933,6 +2932,45 @@ const styles$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   __proto__: null,
   default: styles
 }, Symbol.toStringTag, { value: 'Module' }));
+
+const ColorfulUIDefaults = {
+  colors: {
+    primary: "hsl(40, 96%, 40%)",
+    background: "#ffffff",
+    muted: "#64748b",
+    border: "#e5e7eb",
+  },
+  typography: {
+    font: {
+      style: {
+        sans: "Inter, system-ui, sans-serif",
+        mono: "JetBrains Mono, monospace",
+      },
+      h1: { size: "1.875rem", weight: 700, lineHeight: "1.2", letterSpacing: "-0.02em" },
+      h2: { size: "1.5rem", weight: 600, lineHeight: "1.3" },
+      h3: { size: "1.25rem", weight: 600, lineHeight: "1.4" },
+      h4: { size: "1.125rem", weight: 600, lineHeight: "1.4" },
+      body: { size: "1rem", weight: 400, lineHeight: "1.75" },
+      small: { size: "0.875rem", weight: 400, lineHeight: "1.5" },
+    },
+  },
+  layout: {
+    contentWidth: 768,
+    sidebarWidth: 260,
+    toc: { enabled: true, depth: 3, style: "default" },
+    header: { height: 56, sticky: true },
+  },
+  components: {
+    Callout: { variant: "soft", icon: true },
+    CodeBlock: { showCopyButton: true },
+    Tabs: { style: "default" },
+  },
+};
+
+const colorful = createTheme({
+  name: "fumadocs-colorful",
+  ui: ColorfulUIDefaults,
+});
 
 const config = defineDocs({
   entry: "docs",
