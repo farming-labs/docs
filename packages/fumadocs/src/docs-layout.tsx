@@ -660,47 +660,47 @@ export function createDocsLayout(config: DocsConfig) {
               }
             : {})}
         >
-        <ColorStyle colors={colors} />
-        <TypographyStyle typography={typography} />
-        <LayoutStyle layout={layoutDimensions} />
-        {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
-        {!staticExport && <DocsCommandSearch />}
-        {aiEnabled && (
-          <DocsAIFeatures
-            mode={aiMode}
-            position={aiPosition}
-            floatingStyle={aiFloatingStyle}
-            triggerComponentHtml={aiTriggerComponentHtml}
-            suggestedQuestions={aiSuggestedQuestions}
-            aiLabel={aiLabel}
-            loaderVariant={aiLoaderVariant}
-            loadingComponentHtml={aiLoadingComponentHtml}
-            models={aiModels}
-            defaultModelId={aiDefaultModelId}
-          />
-        )}
-        <DocsPageClient
-          tocEnabled={tocEnabled}
-          tocStyle={tocStyle}
-          breadcrumbEnabled={breadcrumbEnabled}
-          entry={config.entry}
-          copyMarkdown={copyMarkdownEnabled}
-          openDocs={openDocsEnabled}
-          openDocsProviders={openDocsProviders as any}
-          pageActionsPosition={pageActionsPosition}
-          pageActionsAlignment={pageActionsAlignment}
-          githubUrl={githubUrl}
-          githubBranch={githubBranch}
-          githubDirectory={githubDirectory}
-          lastModifiedMap={lastModifiedMap}
-          lastUpdatedEnabled={lastUpdatedEnabled}
-          lastUpdatedPosition={lastUpdatedPosition}
-          llmsTxtEnabled={llmsTxtEnabled}
-          descriptionMap={descriptionMap}
-        >
-          {children}
-        </DocsPageClient>
-      </DocsLayout>
+          <ColorStyle colors={colors} />
+          <TypographyStyle typography={typography} />
+          <LayoutStyle layout={layoutDimensions} />
+          {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
+          {!staticExport && <DocsCommandSearch />}
+          {aiEnabled && (
+            <DocsAIFeatures
+              mode={aiMode}
+              position={aiPosition}
+              floatingStyle={aiFloatingStyle}
+              triggerComponentHtml={aiTriggerComponentHtml}
+              suggestedQuestions={aiSuggestedQuestions}
+              aiLabel={aiLabel}
+              loaderVariant={aiLoaderVariant}
+              loadingComponentHtml={aiLoadingComponentHtml}
+              models={aiModels}
+              defaultModelId={aiDefaultModelId}
+            />
+          )}
+          <DocsPageClient
+            tocEnabled={tocEnabled}
+            tocStyle={tocStyle}
+            breadcrumbEnabled={breadcrumbEnabled}
+            entry={config.entry}
+            copyMarkdown={copyMarkdownEnabled}
+            openDocs={openDocsEnabled}
+            openDocsProviders={openDocsProviders as any}
+            pageActionsPosition={pageActionsPosition}
+            pageActionsAlignment={pageActionsAlignment}
+            githubUrl={githubUrl}
+            githubBranch={githubBranch}
+            githubDirectory={githubDirectory}
+            lastModifiedMap={lastModifiedMap}
+            lastUpdatedEnabled={lastUpdatedEnabled}
+            lastUpdatedPosition={lastUpdatedPosition}
+            llmsTxtEnabled={llmsTxtEnabled}
+            descriptionMap={descriptionMap}
+          >
+            {children}
+          </DocsPageClient>
+        </DocsLayout>
       </div>
     );
   };
