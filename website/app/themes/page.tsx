@@ -135,8 +135,8 @@ function CodeModal({ theme, onClose }: { theme: Theme; onClose: () => void }) {
         onClick={onClose}
       />
 
-      <div className="relative z-10 w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto rounded-none border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 shadow-xl dark:shadow-none">
-        <div className="flex items-center justify-between mb-4 p-4 border-b border-neutral-200 dark:border-white/10">
+      <div className="relative z-10 w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto rounded-none border border-neutral-200 dark:border-none bg-white dark:bg-black/90 shadow-xl dark:shadow-none">
+        <div className="flex items-center justify-between mb-4 p-4 border-b border-neutral-200 dark:border-none">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               {theme.colors.map((c, i) => (
