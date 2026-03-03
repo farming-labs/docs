@@ -102,6 +102,114 @@
   caret-color: var(--color-fd-primary);
 }
 
+/* ─── Sidebar AI trigger (sidebar-icon mode) — search + Ask AI row ───── */
+
+.fd-sidebar-search-ai-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  width: 100%;
+  margin-bottom: 2px;
+}
+
+.fd-sidebar-search-ai-row .fd-sidebar-search-btn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  color: var(--color-fd-muted-foreground);
+  background: transparent;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 150ms, border-color 150ms, color 150ms;
+}
+
+.fd-sidebar-search-ai-row .fd-sidebar-search-btn:hover {
+  background: var(--color-fd-accent);
+  color: var(--color-fd-foreground);
+}
+
+.fd-sidebar-search-ai-row .fd-sidebar-search-btn svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.fd-sidebar-search-ai-row .fd-sidebar-search-kbd {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.fd-sidebar-search-ai-row .fd-sidebar-search-kbd kbd {
+  font-family: inherit;
+  font-size: 0.7rem;
+  padding: 2px 5px;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 4px;
+  background: var(--color-fd-muted);
+}
+
+.fd-sidebar-search-ai-row .fd-sidebar-ai-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  min-width: 38px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 1px solid var(--color-fd-border);
+  background: transparent;
+  color: var(--color-fd-muted-foreground);
+  cursor: pointer;
+  transition: background-color 150ms, color 150ms, border-color 150ms;
+}
+
+.fd-sidebar-search-ai-row .fd-sidebar-ai-btn:hover {
+  background: var(--color-fd-accent);
+  color: var(--color-fd-primary);
+  border-color: var(--color-fd-primary);
+}
+
+.fd-sidebar-search-ai-row .fd-sidebar-ai-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.dark .fd-sidebar .fd-sidebar-search-ai-row .fd-sidebar-search-btn {
+  background: var(--color-fd-secondary);
+  border-color: var(--color-fd-border);
+  color: var(--color-fd-muted-foreground);
+}
+
+.dark .fd-sidebar .fd-sidebar-search-ai-row .fd-sidebar-search-btn:hover {
+  background: var(--color-fd-accent);
+  color: var(--color-fd-foreground);
+}
+
+.dark .fd-sidebar .fd-sidebar-search-ai-row .fd-sidebar-search-kbd kbd {
+  background: var(--color-fd-muted);
+  border-color: var(--color-fd-border);
+}
+
+.dark .fd-sidebar .fd-sidebar-search-ai-row .fd-sidebar-ai-btn {
+  background: var(--color-fd-secondary);
+  border-color: var(--color-fd-border);
+  color: var(--color-fd-muted-foreground);
+}
+
+.dark .fd-sidebar .fd-sidebar-search-ai-row .fd-sidebar-ai-btn:hover {
+  background: var(--color-fd-accent);
+  color: var(--color-fd-primary);
+  border-color: var(--color-fd-primary);
+}
+
 /* ─── Page Actions — colorful theme ────────────────────────────────── */
 
 .fd-page-action-btn {

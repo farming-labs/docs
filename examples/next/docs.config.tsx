@@ -23,6 +23,7 @@ import { darkbold } from "@farming-labs/theme/darkbold";
 import { greentree } from "@farming-labs/theme/greentree";
 import { darksharp } from "@farming-labs/theme/darksharp";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
+import { colorful } from "@farming-labs/theme/colorful";
 
 export default defineDocs({
   entry: "docs",
@@ -31,14 +32,14 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
-  theme: greentree({
+  theme: colorful({
     ui: {
       components: { Callout: { variant: "outline" } },
       layout: {
         toc: { enabled: true, depth: 3, style: "default" },
         sidebarWidth: 300,
       },
-      sidebar: { style: "default" },
+      // sidebar: { style: "default" },
       typography: {
         font: {
           style: {
@@ -55,7 +56,8 @@ export default defineDocs({
   }),
   ai: {
     enabled: true,
-    mode: "sidebar-icon",
+    // mode: "sidebar-icon",
+    mode: "floating",
     position: "bottom-right",
     floatingStyle: "modal",
     apiKey: process.env.OPENAI_API_KEY,

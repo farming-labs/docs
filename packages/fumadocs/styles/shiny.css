@@ -163,6 +163,127 @@
   border-radius: 6px;
 }
 
+/* ─── AI model dropdown (shiny) ──────────────────────────────────────── */
+
+.fd-ai-model-dropdown-menu {
+  box-shadow: none !important;
+}
+
+.fd-ai-model-dropdown-item {
+  padding: 6px 10px !important;
+  border: none !important;
+  border-radius: var(--radius, 8px) !important;
+}
+
+/* ─── Sidebar AI trigger (sidebar-icon mode) — search + Ask AI row ───── */
+
+.fd-sidebar-search-ai-row {
+  display: flex !important;
+  gap: 10px !important;
+  align-items: stretch !important;
+  width: 100% !important;
+  margin-bottom: 2px;
+}
+
+.fd-sidebar-search-ai-row > .fd-sidebar-search-btn {
+  flex: 1 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 12px !important;
+  font-size: 0.875rem !important;
+  color: var(--color-fd-muted-foreground) !important;
+  background: transparent !important;
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 8px !important;
+  cursor: pointer;
+  transition: background-color 150ms, border-color 150ms, color 150ms;
+}
+
+.fd-sidebar-search-ai-row > .fd-sidebar-search-btn:hover {
+  background: var(--color-fd-accent) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+.fd-sidebar-search-ai-row > .fd-sidebar-search-btn svg {
+  flex-shrink: 0 !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.fd-sidebar-search-ai-row .fd-sidebar-search-kbd {
+  display: flex !important;
+  gap: 2px !important;
+  margin-left: auto !important;
+  font-size: 0.75rem !important;
+  opacity: 0.8;
+}
+
+.fd-sidebar-search-ai-row .fd-sidebar-search-kbd kbd {
+  font-family: inherit !important;
+  font-size: 0.7rem !important;
+  padding: 2px 5px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 4px !important;
+  background: var(--color-fd-muted) !important;
+}
+
+.fd-sidebar-search-ai-row > .fd-sidebar-ai-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 38px !important;
+  min-width: 38px !important;
+  flex-shrink: 0 !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  background: transparent !important;
+  color: var(--color-fd-muted-foreground) !important;
+  cursor: pointer;
+  transition: background-color 150ms, color 150ms, border-color 150ms;
+}
+
+.fd-sidebar-search-ai-row > .fd-sidebar-ai-btn:hover {
+  background: var(--color-fd-accent) !important;
+  color: var(--color-fd-primary) !important;
+  border-color: var(--color-fd-primary) !important;
+}
+
+.fd-sidebar-search-ai-row > .fd-sidebar-ai-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.dark .fd-sidebar-search-ai-row > .fd-sidebar-search-btn {
+  background: var(--color-fd-secondary) !important;
+  border-color: var(--color-fd-border) !important;
+  color: var(--color-fd-muted-foreground) !important;
+}
+
+.dark .fd-sidebar-search-ai-row > .fd-sidebar-search-btn:hover {
+  background: var(--color-fd-accent) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+.dark .fd-sidebar-search-ai-row .fd-sidebar-search-kbd kbd {
+  background: var(--color-fd-muted) !important;
+  border-color: var(--color-fd-border) !important;
+  color: var(--color-fd-muted-foreground) !important;
+}
+
+.dark .fd-sidebar-search-ai-row > .fd-sidebar-ai-btn {
+  background: var(--color-fd-secondary) !important;
+  border-color: var(--color-fd-border) !important;
+  color: var(--color-fd-muted-foreground) !important;
+}
+
+.dark .fd-sidebar-search-ai-row > .fd-sidebar-ai-btn:hover {
+  background: var(--color-fd-accent) !important;
+  color: var(--color-fd-primary) !important;
+  border-color: var(--color-fd-primary) !important;
+}
+
 /* ─── Sidebar shiny overrides ────────────────────────────────────────── */
 
 :root .fd-sidebar {
