@@ -648,17 +648,18 @@ export function createDocsLayout(config: DocsConfig) {
     }
 
     return (
-      <DocsLayout
-        tree={tree}
-        nav={{ title: navTitle, url: navUrl }}
-        themeSwitch={themeSwitch}
-        sidebar={finalSidebarProps}
-        {...(aiMode === "sidebar-icon" && aiEnabled
-          ? {
-              searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
-            }
-          : {})}
-      >
+      <div id="nd-docs-layout" style={{ display: "contents" }}>
+        <DocsLayout
+          tree={tree}
+          nav={{ title: navTitle, url: navUrl }}
+          themeSwitch={themeSwitch}
+          sidebar={finalSidebarProps}
+          {...(aiMode === "sidebar-icon" && aiEnabled
+            ? {
+                searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
+              }
+            : {})}
+        >
         <ColorStyle colors={colors} />
         <TypographyStyle typography={typography} />
         <LayoutStyle layout={layoutDimensions} />
@@ -700,6 +701,7 @@ export function createDocsLayout(config: DocsConfig) {
           {children}
         </DocsPageClient>
       </DocsLayout>
+      </div>
     );
   };
 }

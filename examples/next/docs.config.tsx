@@ -32,7 +32,7 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
-  theme: colorful({
+  theme: pixelBorder({
     ui: {
       components: { Callout: { variant: "outline" } },
       layout: {
@@ -76,7 +76,6 @@ export default defineDocs({
       "How do I configure the sidebar?",
     ],
     loader: "shimmer-dots",
-    // triggerComponent: <AskAITrigger />,
   },
   nav: {
     title: (

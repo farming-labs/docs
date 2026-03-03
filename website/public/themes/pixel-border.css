@@ -136,12 +136,14 @@ code:not(pre code) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
- * Docs grid: pin sidebar left, TOC right, content fills middle
+ * Docs grid: sidebar | content | TOC — with gap and constrained TOC
  * ═══════════════════════════════════════════════════════════════════ */
 
 @media (min-width: 768px) {
-  #nd-docs-layout {
-    grid-template-columns: var(--fd-sidebar-col, 0px) 1fr min-content !important;
+  #nd-docs-layout,
+  [style*="fd-sidebar-col"] {
+    grid-template-columns: var(--fd-sidebar-col, 0px) minmax(0, 1fr) min(var(--fd-toc-width, 260px), 260px) !important;
+    gap: 24px !important;
   }
 }
 
