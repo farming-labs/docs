@@ -2262,7 +2262,6 @@ html.dark pre.shiki {
   transform: scale(0.97);
 }
 
-/* Dark mode: floating button and trigger use dark-friendly colors */
 .dark .fd-ai-floating-btn,
 .dark .fd-ai-fm-trigger-btn {
   background: color-mix(in srgb, var(--color-fd-secondary, rgba(255, 255, 255, 0.08)) 90%, transparent);
@@ -2283,8 +2282,6 @@ html.dark pre.shiki {
   animation: fd-ai-fade-in 300ms ease-out;
 }
 
-/* Custom Ask AI trigger (e.g. triggerComponent): same base as .fd-ai-floating-btn
-   so theme overrides for fd-ai-floating-btn can also target .ask-ai-trigger */
 .fd-ai-floating-trigger .ask-ai-trigger {
   display: flex;
   align-items: center;
