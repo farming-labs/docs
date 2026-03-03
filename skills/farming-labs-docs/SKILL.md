@@ -40,7 +40,7 @@ description: Get started with @farming-labs/docs — MDX-based documentation for
 
 ### Themes (all frameworks)
 
-`fumadocs`, `darksharp`, `pixel-border`, `colorful`, `greentree`. Theme name in config must match the theme’s CSS import path (e.g. `greentree` → `@farming-labs/theme/greentree/css` for Next).
+Seven built-in themes: `fumadocs`, `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`. Theme name in config must match the theme’s CSS import path (e.g. `greentree` → `@farming-labs/theme/greentree/css` for Next).
 
 ---
 
@@ -68,6 +68,7 @@ import { fumadocs } from "@farming-labs/theme"; // or svelte-theme, astro-theme,
 export default defineDocs({
   entry: "docs",
   contentDir: "docs", // SvelteKit/Astro/Nuxt
+  // staticExport: true, // optional: for full static builds (Cloudflare Pages); hides search & AI
   theme: fumadocs(),
   metadata: {
     titleTemplate: "%s – Docs",
@@ -121,6 +122,7 @@ If the user chooses “no alias”, generated code uses relative paths to `docs.
 2. **Wrong theme package** — Use the theme package for the same framework (e.g. `@farming-labs/svelte-theme` for SvelteKit, not `@farming-labs/theme`).
 3. **From scratch** — Use `--template` with `--name <project>`; the CLI bootstraps a project with that name and runs install.
 4. **Existing project** — Run `init` in the project root; the CLI detects the framework and scaffolds files.
+5. **Static hosting** — For full static builds (e.g. Cloudflare Pages), set `staticExport: true` in `defineDocs()`; search and AI are then hidden and no server is required.
 
 ---
 

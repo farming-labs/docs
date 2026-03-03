@@ -7,14 +7,14 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 | Package                      | Description                                                                               |
 | ---------------------------- | ----------------------------------------------------------------------------------------- |
 | `@farming-labs/docs`         | Core config, types, CLI, and theme utilities                                              |
-| `@farming-labs/theme`        | Fumadocs-based theme for Next.js with `default`, `darksharp`, and `pixel-border` variants |
+| `@farming-labs/theme`        | Fumadocs-based theme for Next.js — 7 variants (fumadocs, darksharp, pixel-border, colorful, greentree, darkbold, shiny) |
 | `@farming-labs/next`         | Next.js adapter — `withDocs()` config wrapper and auto-generated routes                   |
 | `@farming-labs/svelte`       | SvelteKit adapter — server-side docs loader and markdown processing                       |
-| `@farming-labs/svelte-theme` | Fumadocs-based theme for SvelteKit with `default` and `pixel-border` variants             |
+| `@farming-labs/svelte-theme` | Fumadocs-based theme for SvelteKit — 7 variants (fumadocs, darksharp, pixel-border, colorful, greentree, darkbold, shiny) |
 | `@farming-labs/astro`        | Astro adapter — server-side docs loader and markdown processing                           |
-| `@farming-labs/astro-theme`  | Fumadocs-based theme for Astro with `default`, `darksharp`, and `pixel-border` variants   |
+| `@farming-labs/astro-theme`  | Fumadocs-based theme for Astro — 7 variants (fumadocs, darksharp, pixel-border, colorful, greentree, darkbold, shiny)   |
 | `@farming-labs/nuxt`         | Nuxt 3 adapter — `defineDocsHandler()`, server-side docs loader, markdown processing      |
-| `@farming-labs/nuxt-theme`   | Fumadocs-based theme for Nuxt with `default` variant                                      |
+| `@farming-labs/nuxt-theme`   | Fumadocs-based theme for Nuxt — 7 variants (fumadocs, darksharp, pixel-border, colorful, greentree, darkbold, shiny)     |
 
 ## Quick Start
 
@@ -410,22 +410,21 @@ docs/
 
 ## Themes
 
-Three built-in theme variants, all based on Fumadocs:
+Seven built-in themes (fumadocs, darksharp, pixel-border, colorful, greentree, darkbold, shiny), available on Next.js, SvelteKit, Astro, and Nuxt.
 
 ### Next.js
 
 ```tsx
 import { fumadocs } from "@farming-labs/theme"; // default
-import { darksharp } from "@farming-labs/theme/darksharp"; // sharp edges, all-black
-import { pixelBorder } from "@farming-labs/theme/pixel-border"; // better-auth inspired
+import { darksharp } from "@farming-labs/theme/darksharp";
+import { pixelBorder } from "@farming-labs/theme/pixel-border";
+import { colorful } from "@farming-labs/theme/colorful";
+import { greentree } from "@farming-labs/theme/greentree";
 ```
 
 ```css
 @import "@farming-labs/theme/default/css";
-/* or */
-@import "@farming-labs/theme/darksharp/css";
-/* or */
-@import "@farming-labs/theme/pixel-border/css";
+/* or darksharp, pixel-border, colorful, greentree, etc. */
 ```
 
 ### SvelteKit
@@ -436,8 +435,7 @@ import { fumadocs } from "@farming-labs/svelte-theme";
 
 ```css
 @import "@farming-labs/svelte-theme/fumadocs/css";
-/* or */
-@import "@farming-labs/svelte-theme/pixel-border/css";
+/* or darksharp, pixel-border, colorful, greentree, etc. */
 ```
 
 ### Astro
@@ -448,10 +446,7 @@ import { fumadocs } from "@farming-labs/astro-theme";
 
 ```css
 @import "@farming-labs/astro-theme/css";
-/* or */
-@import "@farming-labs/astro-theme/pixel-border/css";
-/* or */
-@import "@farming-labs/astro-theme/darksharp/css";
+/* or pixel-border, darksharp, colorful, greentree, etc. */
 ```
 
 ### Nuxt
@@ -462,18 +457,8 @@ import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
 
 ```css
 @import "@farming-labs/nuxt-theme/fumadocs/css";
+/* or darksharp, pixel-border, colorful, greentree, etc. */
 ```
-
-### All Frameworks — Colorful Theme
-
-A faithful reproduction of the fumadocs default theme with enhanced description support.
-
-Available for all frameworks:
-
-- Next.js: `import { colorful } from "@farming-labs/theme/colorful"` with `@import "@farming-labs/theme/colorful/css"`
-- SvelteKit: `import { colorful } from "@farming-labs/svelte-theme/colorful"` with `@import "@farming-labs/svelte-theme/colorful/css"`
-- Astro: `import { colorful } from "@farming-labs/astro-theme/colorful"` with `@import "@farming-labs/astro-theme/colorful/css"`
-- Nuxt: `import { colorful } from "@farming-labs/nuxt-theme/colorful"` with `@import "@farming-labs/nuxt-theme/colorful/css"`
 
 ## Token Efficiency — Why This Matters for AI
 
@@ -514,6 +499,7 @@ The `docs.config.ts` file is the single source of truth. Key options:
 export default defineDocs({
   entry: "docs", // docs root folder
   theme: fumadocs(), // theme preset
+  // staticExport: true, // for full static builds (Cloudflare Pages) — hides search & AI
 
   nav: {
     // sidebar header

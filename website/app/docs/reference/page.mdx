@@ -30,11 +30,12 @@ export default defineDocs({
 
 Top-level configuration object passed to `defineDocs()`.
 
-| Property      | Type                                            | Default          | Description                                                                          |
-| ------------- | ----------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------ |
-| `entry`       | `string`                                        | **required**     | URL path prefix for docs (e.g. `"docs"` → `/docs`)                                   |
-| `contentDir`  | `string`                                        | same as `entry`  | Path to content files. SvelteKit, Astro, and Nuxt only — Next.js uses `app/{entry}/` |
-| `theme`       | `DocsTheme`                                     | —                | Theme preset from a factory (`fumadocs()`, `darksharp()`, `pixelBorder()`)           |
+| Property       | Type                                            | Default          | Description                                                                          |
+| -------------- | ----------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------ |
+| `entry`        | `string`                                        | **required**     | URL path prefix for docs (e.g. `"docs"` → `/docs`)                                   |
+| `contentDir`   | `string`                                        | same as `entry`  | Path to content files. SvelteKit, Astro, and Nuxt only — Next.js uses `app/{entry}/` |
+| `staticExport` | `boolean`                                       | `false`          | Set `true` for full static builds; hides search and AI (see [Configuration](/docs/configuration#static-export)) |
+| `theme`        | `DocsTheme`                                     | —                | Theme preset from a factory (`fumadocs()`, `darksharp()`, `pixelBorder()`, etc.)    |
 | `github`      | `string \| GithubConfig`                        | —                | GitHub repo config for "Edit on GitHub" links                                        |
 | `nav`         | `DocsNav`                                       | —                | Sidebar header title and URL                                                         |
 | `themeToggle` | `boolean \| ThemeToggleConfig`                  | `true`           | Light/dark mode toggle                                                               |

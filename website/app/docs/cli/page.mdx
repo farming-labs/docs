@@ -61,21 +61,24 @@ npx @farming-labs/docs@latest upgrade --beta       # beta versions
 
 ## Available Themes
 
-All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
+Seven themes are available for Next.js, SvelteKit, Astro, and Nuxt:
 
-| Theme          | Description                                          |
-| -------------- | ---------------------------------------------------- |
-| `fumadocs`     | Clean, neutral docs theme (default)                  |
-| `darksharp`    | All-black, sharp corners, no rounded edges           |
-| `pixel-border` | Refined dark UI inspired by better-auth.com          |
-| `colorful`     | Faithful clone of the fumadocs default neutral theme |
+| Theme          | Description                                                |
+| -------------- | ---------------------------------------------------------- |
+| `fumadocs`     | Clean, neutral docs theme (default)                        |
+| `darksharp`    | All-black, sharp corners, no rounded edges                 |
+| `pixel-border` | Refined dark UI inspired by better-auth.com                |
+| `colorful`     | Fumadocs-style neutral theme with description support      |
+| `greentree`    | Emerald green accent, Inter font, Mintlify-inspired        |
+| `darkbold`     | Pure monochrome, Geist typography, clean minimalism        |
+| `shiny`        | Glossy, modern look with subtle shimmer effects            |
 
 ## What it does
 
 <Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     1. **Detects Next.js** via `next` in your `package.json`
-    2. **Asks for a theme** — `fumadocs`, `darksharp`, or `pixel-border`
+    2. **Asks for a theme** — one of 7 built-in themes (e.g. `fumadocs`, `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`)
     3. **Asks for the entry path** — Default is `docs` (creates pages under `app/docs/`)
     4. **Asks about path aliases** — Use `@/` alias or relative paths for imports
     5. **Generates files:**
@@ -92,7 +95,7 @@ All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
   </Tab>
   <Tab value="SvelteKit">
     1. **Detects SvelteKit** via `@sveltejs/kit` in your `package.json`
-    2. **Asks for a theme** — `fumadocs`, `darksharp`, or `pixel-border`
+    2. **Asks for a theme** — one of 7 built-in themes (e.g. `fumadocs`, `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`)
     3. **Asks for the entry path** — Default is `docs`
     4. **Asks about path aliases** — Use `$lib/` alias or relative paths for imports
     5. **Generates files (does not touch `svelte.config.js`):**
@@ -113,7 +116,7 @@ All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
   </Tab>
   <Tab value="Astro">
     1. **Detects Astro** via `astro` in your `package.json`
-    2. **Asks for a theme** — `fumadocs`, `darksharp`, or `pixel-border`
+    2. **Asks for a theme** — one of 7 built-in themes (e.g. `fumadocs`, `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`)
     3. **Asks for the entry path** — Default is `docs`
     4. **Generates files:**
        - `src/lib/docs.config.ts` — Full config with your selected theme
@@ -133,7 +136,7 @@ All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
   </Tab>
   <Tab value="Nuxt">
     1. **Detects Nuxt** via `nuxt` in your `package.json`
-    2. **Asks for a theme** — `fumadocs`, `darksharp`, or `pixel-border`
+    2. **Asks for a theme** — one of 7 built-in themes (e.g. `fumadocs`, `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`)
     3. **Asks for the entry path** — Default is `docs`
     4. **Generates files:**
        - `docs.config.ts` — Full config with your selected theme
@@ -160,9 +163,13 @@ All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
       ◆ Detected framework: Next.js
       │
       ◆ Select a theme:
-      │ ● fumadocs (default neutral theme)
-      │ ○ darksharp (sharp, all-black theme)
-      │ ○ pixel-border (pixel-art inspired theme)
+      │ ● fumadocs (default)
+      │ ○ darksharp
+      │ ○ pixel-border
+      │ ○ colorful
+      │ ○ greentree
+      │ ○ darkbold
+      │ ○ shiny
       │
       ◆ Entry path for docs:
       │ docs
@@ -194,9 +201,13 @@ All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
       ◆ Detected framework: SvelteKit
       │
       ◆ Select a theme:
-      │ ● fumadocs (default neutral theme)
-      │ ○ darksharp (sharp, all-black theme)
-      │ ○ pixel-border (pixel-art inspired theme)
+      │ ● fumadocs (default)
+      │ ○ darksharp
+      │ ○ pixel-border
+      │ ○ colorful
+      │ ○ greentree
+      │ ○ darkbold
+      │ ○ shiny
       │
       ◆ Entry path for docs:
       │ docs
@@ -230,9 +241,13 @@ All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
       ◆ Detected framework: Astro
       │
       ◆ Select a theme:
-      │ ● fumadocs (default neutral theme)
-      │ ○ darksharp (sharp, all-black theme)
-      │ ○ pixel-border (pixel-art inspired theme)
+      │ ● fumadocs (default)
+      │ ○ darksharp
+      │ ○ pixel-border
+      │ ○ colorful
+      │ ○ greentree
+      │ ○ darkbold
+      │ ○ shiny
       │
       ◆ Entry path for docs:
       │ docs
@@ -263,9 +278,13 @@ All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
       ◆ Detected framework: Nuxt
       │
       ◆ Select a theme:
-      │ ● fumadocs (default neutral theme)
-      │ ○ darksharp (sharp, all-black theme)
-      │ ○ pixel-border (pixel-art inspired theme)
+      │ ● fumadocs (default)
+      │ ○ darksharp
+      │ ○ pixel-border
+      │ ○ colorful
+      │ ○ greentree
+      │ ○ darkbold
+      │ ○ shiny
       │
       ◆ Entry path for docs:
       │ docs
@@ -293,7 +312,7 @@ All themes are available for Next.js, SvelteKit, Astro, and Nuxt:
 | ----------------------- | --------------------------------------------------------------------------- |
 | `--template <name>`     | Bootstrap a project: `next`, `nuxt`, `sveltekit`, or `astro`. Use with `--name`. |
 | `--name <project>`      | Project folder name when using `--template`; prompt if omitted (e.g. `my-docs`) |
-| `--theme <name>`        | Skip theme prompt (e.g. `--theme darksharp`)                                |
+| `--theme <name>`        | Skip theme prompt (e.g. `--theme darksharp`, `--theme greentree`)          |
 | `--entry <path>`        | Skip entry path prompt (e.g. `--entry docs`)                                |
 
 **Starting from scratch?** Use `--template` with `--name <project>`. The CLI bootstraps a project with the given name, installs dependencies, and then you run `cd <project> && pnpm run dev` to start.

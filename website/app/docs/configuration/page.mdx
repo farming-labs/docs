@@ -87,11 +87,12 @@ All configuration lives in a single `docs.config.ts` file.
 
 ## Config Options
 
-| Option        | Type                           | Default         | Description                                        |
-| ------------- | ------------------------------ | --------------- | -------------------------------------------------- |
-| `entry`       | `string`                       | `"docs"`        | The docs URL path prefix (e.g. `"docs"` → `/docs`) |
-| `contentDir`  | `string`                       | same as `entry` | Path to content files (SvelteKit, Astro, Nuxt)     |
-| `theme`       | `DocsTheme`                    | —               | Theme preset from a theme factory                  |
+| Option         | Type                           | Default         | Description                                        |
+| -------------- | ------------------------------ | --------------- | -------------------------------------------------- |
+| `entry`        | `string`                       | `"docs"`        | The docs URL path prefix (e.g. `"docs"` → `/docs`) |
+| `contentDir`   | `string`                       | same as `entry` | Path to content files (SvelteKit, Astro, Nuxt)     |
+| `staticExport` | `boolean`                      | `false`         | Set `true` for full static builds (see [Static export](#static-export)) |
+| `theme`        | `DocsTheme`                    | —               | Theme preset from a theme factory                  |
 | `nav`         | `{ title, url }`               | —               | Sidebar title and base URL                         |
 | `github`      | `string \| GithubConfig`       | —               | GitHub repo for "Edit on GitHub" links             |
 | `themeToggle` | `boolean \| ThemeToggleConfig` | `true`          | Light/dark mode toggle                             |
@@ -103,6 +104,24 @@ All configuration lives in a single `docs.config.ts` file.
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template                              |
 | `og`          | `OGConfig`                     | —               | Dynamic Open Graph images (see [API Reference](/docs/reference#ogconfig)) |
+
+## Static export
+
+For fully static builds (e.g. **Cloudflare Pages**, static hosting with no server), set `staticExport: true` in your config. This:
+
+- **Next.js:** With `output: "export"` in `next.config`, the `/api/docs` route is not generated. The layout hides Cmd+K search and AI chat.
+- **SvelteKit / Astro / Nuxt:** The layout hides the search trigger and floating AI when `staticExport` is true. Omit or don’t deploy the docs API route so no server is required.
+
+```ts
+export default defineDocs({
+  entry: "docs",
+  staticExport: true,  // Hides search & AI; use with static hosting
+  theme: fumadocs(),
+  // ...
+});
+```
+
+Use this when you deploy to a static host and don’t run a server. Search and AI require a server; with `staticExport: true` they are hidden so the site works without one.
 
 ## Theme Toggle
 
