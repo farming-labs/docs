@@ -35,10 +35,10 @@ export default defineDocs({
   theme: pixelBorder({
     ui: {
       components: { Callout: { variant: "outline" } },
-      layout: {
-        toc: { enabled: true, depth: 3, style: "default" },
-        sidebarWidth: 300,
-      },
+      // layout: {
+      //   toc: { enabled: true, depth: 3, style: "default" },
+      //   sidebarWidth: 300,
+      // },
       // sidebar: { style: "default" },
       typography: {
         font: {
@@ -59,7 +59,7 @@ export default defineDocs({
     // mode: "sidebar-icon",
     mode: "floating",
     position: "bottom-right",
-    floatingStyle: "modal",
+    floatingStyle: "full-modal",
     apiKey: process.env.OPENAI_API_KEY,
     model: {
       models: [
