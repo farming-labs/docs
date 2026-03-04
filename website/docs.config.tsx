@@ -26,7 +26,6 @@ import {
   Book,
 } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
-
 export default defineDocs({
   entry: "docs",
   theme: pixelBorder({
