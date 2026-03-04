@@ -290,7 +290,9 @@ figure.shiki:has(figcaption) figcaption {
     border-color 0.15s;
   user-select: none;
 }
-
+.fd-ai-fm-msg-content .fd-ai-code-block pre {
+  padding:10px !important;
+}
 .fd-page-action-btn:hover {
   color: var(--color-fd-accent-foreground);
   background: var(--color-fd-accent);
