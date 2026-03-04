@@ -36,9 +36,7 @@ export function createPreWithCopyCallback(
         const content = code.textContent ?? "";
         const url = typeof window !== "undefined" ? window.location.href : "";
         const language =
-          code.getAttribute("data-language") ??
-          figure.getAttribute("data-language") ??
-          undefined;
+          code.getAttribute("data-language") ?? figure.getAttribute("data-language") ?? undefined;
         const title =
           figure.querySelector("[data-title]")?.textContent?.trim() ??
           (figure.querySelector(".fd-codeblock-title-text") as HTMLElement)?.textContent?.trim() ??
