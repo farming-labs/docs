@@ -306,7 +306,7 @@ div:has(> [role="tablist"]) {
   border-radius: 0px !important;
 }
 
-.dark [class*="bg-fd-card"] {
+#nd-docs-layout [class*="bg-fd-card"] {
   border-color: var(--color-fd-border) !important;
 }
 
