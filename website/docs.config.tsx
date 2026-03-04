@@ -210,7 +210,7 @@ export default defineDocs({
               textDecorationColor:
                 "color-mix(in srgb, var(--color-fd-foreground) 30%, transparent)",
             }}
-            href="/changelog#v0.0.3"
+            href="/changelog#v0.0.9"
           >
             v0.0.3
           </a>

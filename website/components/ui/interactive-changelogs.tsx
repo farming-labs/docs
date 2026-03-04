@@ -19,19 +19,38 @@ interface Release {
 
 const releases: Release[] = [
   {
-    version: "v0.0.3",
-    title: "v0.0.3: Current Release",
-    date: "Feb 26, 2026",
+    version: "v0.0.9",
+    title: "v0.0.9: Current Release",
+    date: "Mar 2026",
     pinned: true,
     excerpt:
-      "Latest stable release — improvements across themes, docs, and tooling. Includes all changes from v0.0.3 beta cycle.",
+      "Current stable release — theme customizer fixes, onCopyClick, docs updates, omni palette light theme, and hero flash fix.",
+    changes: [
+      {
+        category: "Highlights",
+        items: [
+          "Theme customizer: code blocks and tabs fixed for default, colorful, shiny, darksharp, darkbold; pixel-border reverted to minimal styling",
+          "staticExport: new function to export static HTML pages from MDX files for static hosting",
+          "onCopyClick callback for code block copy (title, content, url, language) — Next.js, SvelteKit, Astro, Nuxt",
+          "Docs: why use this, customize themes and share, built-in UI section; API reference for onCopyClick",
+          "Omni command palette: light theme fixes for colorful preset",
+        ],
+      },
+    ],
+  },
+  {
+    version: "v0.0.3",
+    title: "v0.0.3: Stable Release",
+    date: "Feb 26, 2026",
+    excerpt:
+      "Stable release — improvements across themes, docs, and tooling. Includes all changes from the v0.0.3 beta cycle.",
     changes: [
       {
         category: "Highlights",
         items: [
           "Stable release following v0.0.3 beta cycle",
           "Theme and documentation updates",
-          "Changelog and homepage version links updated",
+          "Changelog and homepage version links",
         ],
       },
     ],

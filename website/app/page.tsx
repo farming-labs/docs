@@ -45,23 +45,22 @@ function Navbar() {
 function HeroSection() {
   return (
     <section className="relative md:mx-0 -mx-[5%] min-h-screen flex items-end overflow-y-hidden">
-      <div className="pointer-events-none select-none">
-        <div className="hidden sm:block absolute top-8 left-0 z-[1001]">
-          <span
-            className="bg-transparent text-black/20 dark:text-white/20 font-mono text-xs border border-l-0 border-b-0 border-black/10 dark:border-white/10 uppercase px-3 py-1 rounded-none shadow-lg tracking-wider"
-            style={{ transform: "translate(-25%, 20%) rotate(-10deg)" }}
-          >
-            PUBLIC BETA
-          </span>
-        </div>
-      </div>
       <div className="absolute bottom-[70px] sm:bottom-16 left-0 right-0 z-[999] h-px bg-black/[8%] dark:bg-white/[8%]" />
       <AnimatedBackground />
       <div className="relative z-[999] w-full pb-12 sm:pb-16 pt-24 px-5 sm:px-0">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 sm:gap-16">
           <div className="max-w-full sm:max-w-xl">
             <div className="flex flex-col gap-2">
-              {/* 0.0.3 stable and betas */}
+              {/* Current and past versions */}
+              <div className="inline-block">
+                <a
+                  href="/changelog#v0.0.9"
+                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
+                >
+                  <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
+                  v0.0.9
+                </a>
+              </div>
               <div className="inline-block">
                 <a
                   href="/changelog#v0.0.3"
