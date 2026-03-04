@@ -843,7 +843,6 @@ function CodeOutput({ cssCode, configCode }: { cssCode: string; configCode: stri
           );
         })}
         <div className="flex-1" />
-        {/* Copy button */}
         <span
           onClick={handleCopy}
           className="flex items-center gap-1.5 px-3 py-1.5 mr-2 text-[10px] font-mono uppercase rounded-none transition-all cursor-pointer border"

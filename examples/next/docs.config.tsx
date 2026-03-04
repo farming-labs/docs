@@ -32,13 +32,13 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
-  theme: pixelBorder({
+  theme: greentree({
     ui: {
       components: { Callout: { variant: "outline" } },
-      // layout: {
-      //   toc: { enabled: true, depth: 3, style: "default" },
-      //   sidebarWidth: 300,
-      // },
+      layout: {
+        toc: { enabled: true, depth: 3, style: "default" },
+        sidebarWidth: 300,
+      },
       // sidebar: { style: "default" },
       typography: {
         font: {
