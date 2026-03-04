@@ -34,6 +34,8 @@ const releases: Release[] = [
           "onCopyClick callback for code block copy (title, content, url, language) — Next.js, SvelteKit, Astro, Nuxt",
           "Docs: why use this, customize themes and share, built-in UI section; API reference for onCopyClick",
           "Omni command palette: light theme fixes for colorful preset",
+          "Multiple models support for AI chat",
+          "CLI scafolding improvements & fixes",
         ],
       },
     ],
