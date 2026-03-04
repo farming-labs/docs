@@ -339,7 +339,6 @@
 
 #nd-docs-layout [role="tabpanel"] {
   border-radius: 0 0 0.5rem 0.5rem !important;
-  border: 1px solid var(--color-fd-border) !important;
   border-top: none !important;
 }
 
@@ -702,20 +701,25 @@ article a[class*="border"] {
   caret-color: var(--color-fd-primary) !important;
 }
 
-/* Light mode — ensure palette uses light theme */
+/* Light mode — omni command palette (colorful theme) */
 :root:not(.dark) .omni-content {
   background: #ffffff !important;
+  border: 1px solid hsl(0 0% 90%) !important;
   border-color: hsl(0 0% 90%) !important;
-  color: hsl(0 0% 9%) !important;
-  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.18),
-              0 0 60px -10px rgba(251, 191, 36, 0.12) !important;
+  color: #171717 !important;
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.12),
+              0 0 60px -10px rgba(251, 191, 36, 0.08) !important;
+}
+:root:not(.dark) .omni-body {
+  background: transparent !important;
 }
 :root:not(.dark) .omni-header {
+  border-bottom: 1px solid hsl(0 0% 90%) !important;
   border-bottom-color: hsl(0 0% 90%) !important;
 }
-:root:not(.dark) .omni-search-input,
-:root:not(.dark) .omni-search-input::placeholder {
-  color: hsl(0 0% 9%) !important;
+:root:not(.dark) .omni-search-input {
+  color: #171717 !important;
+  background: transparent !important;
 }
 :root:not(.dark) .omni-search-input::placeholder {
   color: hsl(0 0% 45%) !important;
@@ -736,29 +740,35 @@ article a[class*="border"] {
 }
 :root:not(.dark) .omni-item,
 :root:not(.dark) .omni-item-label {
-  color: hsl(0 0% 9%) !important;
+  color: #171717 !important;
 }
 :root:not(.dark) .omni-item:hover {
   background: hsl(0 0% 96%) !important;
-  color: hsl(0 0% 9%) !important;
+  color: #171717 !important;
 }
 :root:not(.dark) .omni-item-active {
   background: color-mix(in srgb, hsl(45, 100%, 60%) 18%, transparent) !important;
-  color: hsl(0 0% 9%) !important;
+  color: #171717 !important;
 }
 :root:not(.dark) .omni-item-active .omni-item-icon,
 :root:not(.dark) .omni-item-active .omni-item-subtitle {
-  color: hsl(0 0% 9%) !important;
+  color: #171717 !important;
+}
+:root:not(.dark) .omni-item-subtitle {
+  color: hsl(0 0% 45%) !important;
 }
 :root:not(.dark) .omni-kbd,
 :root:not(.dark) .omni-kbd-sm {
   background: hsl(0 0% 94%) !important;
   color: hsl(0 0% 45%) !important;
+  border-color: hsl(0 0% 88%) !important;
 }
 :root:not(.dark) .omni-close-btn:hover {
   background: hsl(0 0% 94%) !important;
+  color: #171717 !important;
 }
 :root:not(.dark) .omni-footer {
+  border-top: 1px solid hsl(0 0% 90%) !important;
   border-top-color: hsl(0 0% 90%) !important;
 }
 :root:not(.dark) .omni-body::-webkit-scrollbar-thumb {
@@ -766,10 +776,15 @@ article a[class*="border"] {
 }
 :root:not(.dark) .omni-empty-icon {
   background: hsl(0 0% 94%) !important;
+  color: hsl(0 0% 70%) !important;
 }
 :root:not(.dark) .omni-item-ext:hover {
-  color: hsl(0 0% 9%) !important;
+  color: #171717 !important;
   background: hsl(0 0% 94%) !important;
+}
+:root:not(.dark) .omni-highlight {
+  background: color-mix(in srgb, hsl(45, 100%, 60%) 28%, transparent) !important;
+  color: #171717 !important;
 }
 
 /* ─── Grid reset ─────────────────────────────────────────────── */

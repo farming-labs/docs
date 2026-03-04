@@ -847,8 +847,8 @@ function CodeOutput({ cssCode, configCode }: { cssCode: string; configCode: stri
           onClick={handleCopy}
           className="flex items-center gap-1.5 px-3 py-1.5 mr-2 text-[10px] font-mono uppercase rounded-none transition-all cursor-pointer border"
           style={{
-            borderColor: copied ? "rgba(34,197,94,0.35)" : "rgba(255,255,255,0.07)",
-            color: copied ? "#4ade80" : "rgba(255,255,255,0.4)",
+            color: copied ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.4)",
+            borderColor:"rgba(255,255,255,0.07)",
             background: copied ? "transparent/90" : "transparent",
           }}
         >
