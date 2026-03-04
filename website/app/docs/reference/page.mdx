@@ -43,6 +43,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `sidebar`     | `boolean \| SidebarConfig`                      | `true`           | Sidebar visibility and customization                                                 |
 | `icons`       | `Record<string, unknown>`                       | —                | Icon registry for frontmatter `icon` fields                                          |
 | `components`  | `Record<string, unknown>`                       | —                | Custom MDX component overrides                                                       |
+| `onCopyClick` | `(data: CodeBlockCopyData) => void`              | —                | Callback when the user clicks the copy button on a code block (runs in addition to copy) |
 | `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
 | `ai`          | `AIConfig`                                      | —                | RAG-powered AI chat                                                                  |
 | `ordering`    | `"alphabetical" \| "numeric" \| OrderingItem[]` | `"alphabetical"` | Sidebar page ordering strategy                                                       |

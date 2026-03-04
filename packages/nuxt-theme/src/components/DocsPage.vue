@@ -56,7 +56,16 @@ function wireInteractive() {
           .replace(/&gt;/g, ">")
           .replace(/&quot;/g, '"');
         if (!code) return;
+        const block = btn.closest(".fd-codeblock");
+        const title = block?.querySelector(".fd-codeblock-title-text")?.textContent?.trim() ?? undefined;
+        const language = block?.getAttribute("data-language") ?? undefined;
+        const url = typeof window !== "undefined" ? window.location.href : "";
+        const data = { title, content: code, url, language };
         navigator.clipboard.writeText(code).then(() => {
+          try {
+            if (typeof window !== "undefined" && (window as any).__fdOnCopyClick__) (window as any).__fdOnCopyClick__(data);
+            if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("fd:code-block-copy", { detail: data }));
+          } catch (_) {}
           btn.classList.add("fd-copy-btn-copied");
           btn.innerHTML =
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';

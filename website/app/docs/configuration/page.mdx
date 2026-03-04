@@ -100,6 +100,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `sidebar`     | `boolean \| SidebarConfig`     | `true`          | Sidebar visibility and style                       |
 | `icons`       | `Record<string, Component>`    | —               | Icon registry for frontmatter `icon` fields        |
 | `components`  | `Record<string, Component>`    | —               | Custom MDX components                              |
+| `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template                              |
@@ -361,6 +362,32 @@ Register icons in the config and reference them in frontmatter:
 
   </Tab>
 </Tabs>
+
+## Code block copy callback
+
+Run a callback when the user clicks the copy button on a code block (in addition to the default copy-to-clipboard). Useful for analytics or logging.
+
+**Next.js:** Set `onCopyClick` in `defineDocs()`; it is passed through to the MDX components.
+
+```ts
+import type { CodeBlockCopyData } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+  onCopyClick(data: CodeBlockCopyData) {
+    // data: { title?, content, url, language? }
+    console.log("Code copied", data.title, data.language, data.url);
+  },
+});
+```
+
+**SvelteKit, Astro, Nuxt:** Config is serialized at build time so you cannot pass a function. Use one of these:
+
+1. **Global callback** — In a client-side script (e.g. in your layout), set `window.__fdOnCopyClick__` to your function. It will be called with `CodeBlockCopyData` after each copy.
+2. **Custom event** — Listen for the `fd:code-block-copy` event on `document` or `window`; `event.detail` is the same `{ title?, content, url, language? }` object.
+
+The callback receives `title` (if the code block has a title), `content` (raw code), `url` (current page URL), and `language` (syntax hint) when available.
 
 ## Page Actions
 

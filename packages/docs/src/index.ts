@@ -40,4 +40,5 @@ export type {
   OrderingItem,
   LastUpdatedConfig,
   LlmsTxtConfig,
+  CodeBlockCopyData,
 } from "./types.js";

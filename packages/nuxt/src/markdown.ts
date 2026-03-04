@@ -97,17 +97,23 @@ function parseMeta(meta: string): { lang: string; title: string | null } {
   return { lang, title: titleMatch ? titleMatch[1] : null };
 }
 
-function wrapCodeWithCopy(html: string, rawCode: string, title?: string | null): string {
+function wrapCodeWithCopy(
+  html: string,
+  rawCode: string,
+  title?: string | null,
+  language?: string | null,
+): string {
   const escapedRaw = rawCode
     .replace(/&/g, "&amp;")
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+  const dataLang = language ? ` data-language="${String(language).replace(/"/g, "&quot;")}"` : "";
   const copyBtn = `<button class="fd-copy-btn" data-code="${escapedRaw}" title="Copy code"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>`;
   if (title) {
-    return `<div class="fd-codeblock fd-codeblock--titled"><div class="fd-codeblock-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg><span class="fd-codeblock-title-text">${title}</span>${copyBtn}</div><div class="fd-codeblock-content">${html}</div></div>`;
+    return `<div class="fd-codeblock fd-codeblock--titled"${dataLang}><div class="fd-codeblock-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg><span class="fd-codeblock-title-text">${title}</span>${copyBtn}</div><div class="fd-codeblock-content">${html}</div></div>`;
   }
-  return `<div class="fd-codeblock">${copyBtn}<div class="fd-codeblock-content">${html}</div></div>`;
+  return `<div class="fd-codeblock"${dataLang}>${copyBtn}<div class="fd-codeblock-content">${html}</div></div>`;
 }
 
 function dedentCode(raw: string): string {
@@ -152,7 +158,7 @@ export async function renderMarkdown(content: string): Promise<string> {
           const { lang, title } = parseMeta(codeMatch[1]);
           const dedented = dedentCode(codeMatch[2]);
           const { html, raw } = highlightCode(hl, dedented, lang);
-          panels.push({ value: tabValue, html: wrapCodeWithCopy(html, raw, title) });
+          panels.push({ value: tabValue, html: wrapCodeWithCopy(html, raw, title, lang) });
         } else {
           panels.push({ value: tabValue, html: `<p>${tabContent}</p>` });
         }
@@ -183,7 +189,7 @@ export async function renderMarkdown(content: string): Promise<string> {
       const { lang, title } = parseMeta(meta);
       const { html, raw } = highlightCode(hl, code, lang);
       const placeholder = `%%CODEBLOCK_${codeBlocks.length}%%`;
-      codeBlocks.push(wrapCodeWithCopy(html, raw, title));
+      codeBlocks.push(wrapCodeWithCopy(html, raw, title, lang));
       return placeholder;
     },
   );

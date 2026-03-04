@@ -1025,6 +1025,21 @@ export interface OrderingItem {
   children?: OrderingItem[];
 }
 
+/**
+ * Data passed to the `onCopyClick` callback when the user clicks the copy button
+ * on a code block in the docs.
+ */
+export interface CodeBlockCopyData {
+  /** Title of the code block (e.g. from the fenced code block meta string), if present */
+  title?: string;
+  /** Raw code content (the text that was copied to the clipboard) */
+  content: string;
+  /** Current page URL at the time of copy */
+  url: string;
+  /** Language / syntax hint (e.g. "tsx", "bash"), if present */
+  language?: string;
+}
+
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
@@ -1121,6 +1136,24 @@ export interface DocsConfig {
    * ```
    */
   components?: Record<string, unknown>;
+  /**
+   * Callback fired when the user clicks the copy button on a code block.
+   * Called in addition to the default copy-to-clipboard behavior.
+   * Use it for analytics, logging, or custom behavior.
+   *
+   * @example
+   * ```ts
+   * export default defineDocs({
+   *   entry: "docs",
+   *   theme: fumadocs(),
+   *   onCopyClick(data) {
+   *     console.log("Code copied", data.title, data.language, data.url);
+   *     analytics.track("code_block_copy", { title: data.title, url: data.url });
+   *   },
+   * });
+   * ```
+   */
+  onCopyClick?: (data: CodeBlockCopyData) => void;
   /**
    * Icon registry for sidebar items.
    *
