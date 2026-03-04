@@ -21,7 +21,7 @@ const releases: Release[] = [
   {
     version: "v0.0.9",
     title: "v0.0.9: Current Release",
-    date: "Mar 2026",
+    date: "Mar 04, 2026",
     pinned: true,
     excerpt:
       "Current stable release — theme customizer fixes, onCopyClick, docs updates, omni palette light theme, and hero flash fix.",
