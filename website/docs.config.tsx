@@ -179,7 +179,7 @@ export default defineDocs({
     aiLabel: "DocsBot",
     suggestedQuestions: [
       "How do I get started?",
-      "What to create my own theme?",
+      "How do I create my own theme?",
       "How do I create a custom component?",
       "How do I configure the sidebar?",
     ],

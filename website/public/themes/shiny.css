@@ -8,7 +8,27 @@
 
 /* ─── Color Variables ───────────────────────────────────────────── */
 
-:root, .dark {
+:root {
+  --color-fd-primary: hsl(256, 100%, 72%) !important;
+  --color-fd-primary-foreground: #ffffff !important;
+  --color-fd-ring: hsl(256, 85%, 65%) !important;
+  --color-fd-secondary: hsl(240, 6%, 96%) !important;
+  --color-fd-secondary-foreground: hsl(240, 6%, 9%) !important;
+  --color-fd-accent: hsl(240, 6%, 94%) !important;
+  --color-fd-accent-foreground: hsl(240, 6%, 9%) !important;
+  --color-fd-popover: #ffffff !important;
+  --color-fd-popover-foreground: hsl(240, 6%, 9%) !important;
+  --color-fd-card: #ffffff !important;
+  --color-fd-card-foreground: hsl(240, 6%, 9%) !important;
+  --color-fd-background: #ffffff !important;
+  --color-fd-foreground: hsl(240, 6%, 9%) !important;
+  --color-fd-muted: hsl(240, 6%, 96%) !important;
+  --color-fd-muted-foreground: hsl(240, 4%, 45%) !important;
+  --color-fd-border: hsl(240, 6%, 90%) !important;
+  --radius: 0.75rem !important;
+}
+
+.dark {
   --color-fd-primary: hsl(256, 100%, 72%) !important;
   --color-fd-primary-foreground: #ffffff !important;
   --color-fd-ring: hsl(256, 85%, 65%) !important;
@@ -19,10 +39,6 @@
   --color-fd-popover: hsl(240, 8%, 10%) !important;
   --color-fd-popover-foreground: hsl(0, 0%, 95%) !important;
   --color-fd-card-foreground: hsl(0, 0%, 95%) !important;
-  --radius: 0.75rem !important;
-}
-
-.dark {
   --color-fd-background: hsl(240, 10%, 7%) !important;
   --color-fd-foreground: hsl(0, 0%, 95%) !important;
   --color-fd-muted: hsl(240, 5%, 16%) !important;
@@ -320,6 +336,38 @@ figure button {
 
 /* ─── Tabs (Clerk style — underline active) ────────────────── */
 
+[role="tablist"] {
+  border-radius: 0 !important;
+  border-bottom: 1px solid var(--color-fd-border) !important;
+  background: transparent !important;
+}
+
+[role="tablist"] button,
+[role="tab"] {
+  border-radius: 0 !important;
+  font-size: 0.8125rem !important;
+  font-weight: 450 !important;
+  color: var(--color-fd-muted-foreground) !important;
+  border-bottom: 2px solid transparent !important;
+}
+
+[role="tab"][aria-selected="true"],
+[role="tab"][data-state="active"] {
+  color: var(--color-fd-foreground) !important;
+  border-bottom-color: var(--color-fd-primary) !important;
+  font-weight: 500 !important;
+}
+
+[role="tabpanel"] {
+  border-radius: 0 0 0.625rem 0.625rem !important;
+  border: 1px solid var(--color-fd-border) !important;
+  border-top: none !important;
+}
+
+div:has(> [role="tablist"]) {
+  border-radius: 0.625rem !important;
+}
+
 .dark [role="tablist"] {
   border-radius: 0 !important;
   border-bottom: 1px solid var(--color-fd-border) !important;
@@ -427,18 +475,29 @@ article a[class*="border"] {
   font-size: 0.8125rem !important;
   letter-spacing: normal !important;
   box-shadow: none !important;
-  text-transform: capitalize !important; 
+  text-transform: capitalize !important;
   font-family: var(--fd-font-sans, var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif)) !important;
+  background: var(--color-fd-secondary) !important;
+  color: var(--color-fd-secondary-foreground) !important;
+  border: 1px solid var(--color-fd-border) !important;
+}
+
+.fd-page-action-btn:hover {
+  background: var(--color-fd-accent) !important;
+  color: var(--color-fd-accent-foreground) !important;
 }
 
 .fd-page-action-menu {
   border-radius: 0.75rem !important;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04) !important;
+  background: var(--color-fd-popover) !important;
+  border: 1px solid var(--color-fd-border) !important;
 }
 
 .fd-page-action-menu-item {
   border-radius: 0.375rem !important;
   font-size: 0.8125rem !important;
+  color: var(--color-fd-popover-foreground) !important;
 }
 
 /* ─── AI Chat (shiny — no purple shadows, Clerk style) ───────── */

@@ -12,7 +12,27 @@
 
 /* ─── Color Variables ───────────────────────────────────────────── */
 
-:root, .dark {
+:root {
+  --color-fd-primary: hsl(45, 100%, 60%) !important;
+  --color-fd-primary-foreground: hsl(0, 0%, 5%) !important;
+  --color-fd-ring: hsl(45, 90%, 55%) !important;
+  --color-fd-secondary: hsl(0 0% 96%) !important;
+  --color-fd-secondary-foreground: hsl(0 0% 9%) !important;
+  --color-fd-accent: hsl(0 0% 94%) !important;
+  --color-fd-accent-foreground: hsl(0 0% 9%) !important;
+  --color-fd-popover: #ffffff !important;
+  --color-fd-popover-foreground: hsl(0 0% 9%) !important;
+  --color-fd-card: #ffffff !important;
+  --color-fd-card-foreground: hsl(0 0% 9%) !important;
+  --color-fd-background: #ffffff !important;
+  --color-fd-foreground: hsl(0 0% 9%) !important;
+  --color-fd-muted: hsl(0 0% 96%) !important;
+  --color-fd-muted-foreground: hsl(0 0% 45%) !important;
+  --color-fd-border: hsl(0 0% 90%) !important;
+  --radius: 0.75rem !important;
+}
+
+.dark {
   --color-fd-primary: hsl(45, 100%, 60%) !important;
   --color-fd-primary-foreground: hsl(0, 0%, 5%) !important;
   --color-fd-ring: hsl(45, 90%, 55%) !important;
@@ -23,10 +43,6 @@
   --color-fd-popover: hsl(0 0% 5%) !important;
   --color-fd-popover-foreground: hsl(0 0% 98%) !important;
   --color-fd-card-foreground: hsl(0 0% 98%) !important;
-  --radius: 0.75rem !important;
-}
-
-.dark {
   --color-fd-background: hsl(0, 0%, 7.04%) !important;
   --color-fd-foreground: hsl(0, 0%, 92%) !important;
   --color-fd-muted: hsl(0, 0%, 12.9%) !important;
@@ -300,13 +316,41 @@ figure button {
 
 /* ─── Tabs ────────────────────────────────────────────────────── */
 
+[role="tablist"] {
+  border-radius: 0.375rem !important;
+  background: var(--color-fd-muted) !important;
+  border: 1px solid var(--color-fd-border) !important;
+}
+
+[role="tablist"] button,
+[role="tab"] {
+  border-radius: 0 !important;
+  color: var(--color-fd-muted-foreground) !important;
+}
+
+[role="tab"][aria-selected="true"],
+[role="tab"][data-state="active"] {
+  color: var(--color-fd-foreground) !important;
+  background: var(--color-fd-background) !important;
+}
+
+[role="tabpanel"] {
+  border-radius: 0 0 0.5rem 0.5rem !important;
+  border: 1px solid var(--color-fd-border) !important;
+  border-top: none !important;
+}
+
+div:has(> [role="tablist"]) {
+  border-radius: 0.5rem !important;
+}
+
 .dark [role="tablist"] {
   border-radius: 0.375rem !important;
 }
 
 .dark [role="tablist"] button,
 .dark [role="tab"] {
-  border-radius: 0px;
+  border-radius: 0px !important;
 }
 
 .dark [role="tabpanel"] {
@@ -395,18 +439,29 @@ article a[class*="border"] {
   font-size: 0.8125rem !important;
   letter-spacing: normal !important;
   box-shadow: none !important;
-  text-transform: capitalize !important; 
+  text-transform: capitalize !important;
   font-family: var(--fd-font-sans, var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif)) !important;
+  background: var(--color-fd-secondary) !important;
+  color: var(--color-fd-secondary-foreground) !important;
+  border: 1px solid var(--color-fd-border) !important;
+}
+
+.fd-page-action-btn:hover {
+  background: var(--color-fd-accent) !important;
+  color: var(--color-fd-accent-foreground) !important;
 }
 
 .fd-page-action-menu {
   border-radius: 0.5rem !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+  background: var(--color-fd-popover) !important;
+  border: 1px solid var(--color-fd-border) !important;
 }
 
 .fd-page-action-menu-item {
   border-radius: 0.25rem !important;
   font-size: 0.8125rem !important;
+  color: var(--color-fd-popover-foreground) !important;
 }
 
 /* ─── AI Chat (colorful theme — warm yellow/amber shadows) ──── */
