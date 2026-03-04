@@ -18,6 +18,33 @@ A modern documentation framework built on top of [Fumadocs](https://fumadocs.ver
 - **Built-in search** — Full-text search powered by Orama. No API keys.
 - **CLI scaffolding** — `npx @farming-labs/docs@latest init` detects your framework, generates config, installs deps, starts dev. Use `--template` to bootstrap a new project with one command.
 
+## Why use this instead of other doc frameworks?
+
+If you're choosing between documentation tools, here’s when @farming-labs/docs is a good fit:
+
+- **vs. Fumadocs alone** — You get the same UI and MDX experience, but with a single `docs.config` and first-class support for SvelteKit, Astro, and Nuxt — not just Next.js. One config model and CLI so you don’t wire layouts, themes, and search by hand.
+- **vs. Docusaurus / VitePress** — You keep full control inside your existing app (Next, SvelteKit, Astro, Nuxt) instead of a separate docs site. No separate framework or build; your docs live in the same repo and stack, with one config file and optional built-in AI chat and search.
+- **vs. Mintlify / ReadMe / hosted docs** — You own the code and hosting. No vendor lock-in or per-seat pricing; you can deploy to Vercel, Cloudflare Pages, or anywhere. Built-in [llms.txt](/docs/customization/llms-txt) and [AI chat](/docs/customization/ai-chat) give you AI-friendly docs without a third-party docs platform.
+- **vs. hand-rolled MDX** — No need to build layouts, catch-all routes, search, or theming yourself. The CLI scaffolds everything; you spend time on content and optional customization (themes, colors, sidebar, page actions) instead of framework plumbing.
+
+In short: use @farming-labs/docs when you want **one config, multiple frameworks, minimal boilerplate**, and optional AI/search built in — without leaving your current stack or adopting a separate docs-only framework.
+
+## Customize themes and share them
+
+You can [create your own theme](/docs/themes/creating-themes) and distribute it to others — as an npm package, a shared preset, or a CSS file. Themes control layout, colors, typography, and components; once built, anyone can plug them in via config. See [Themes](/docs/themes) for built-in presets and [Creating themes](/docs/themes/creating-themes) for the full API.
+
+## Built-in docs UI — enable and customize from config
+
+Modern docs features are built in; you turn them on in [configuration](/docs/configuration) instead of wiring them yourself. Each element can be customized — layout, behavior, and appearance — via the same config and theme options. See [Customization](/docs/customization) for the full overview.
+
+- **[Ask AI](/docs/customization/ai-chat)** — RAG-powered chat, multiple models and providers, floating or sidebar mode. [Customize](/docs/customization/ai-chat) labels, suggested questions, model list, and UI mode.
+- **Search** — Full-text search (Orama) is included by default; configure via [configuration](/docs/configuration).
+- **[Page actions](/docs/customization/page-actions)** — Copy Markdown, open in ChatGPT/other tools. [Customize](/docs/customization/page-actions) which actions appear and their options.
+- **[Sidebar](/docs/customization/sidebar)** — Collapsible, flat or nested, banner, footer. [Customize](/docs/customization/sidebar) structure, style, and content (banner, footer, nav title).
+- **[llms.txt](/docs/customization/llms-txt)** — LLM-friendly index of your docs; served when the docs API is enabled. Options described in the [llms.txt docs](/docs/customization/llms-txt).
+
+Theme-level customization (colors, typography, components) is covered in [Configuration](/docs/configuration) and [Customization](/docs/customization) (including [Colors](/docs/customization/colors) and [Typography](/docs/customization/typography)). No custom components or routes required — enable and tweak what you need in `docs.config`.
+
 ## Packages
 
 | Package                      | Description                                                                          |

@@ -56,15 +56,8 @@ export const AnimatedBackground = () => {
 
   if (!isClient) {
     return (
-      <div className={cn("absolute inset-0 w-full h-full", isDark ? "bg-black" : "bg-white")}>
-        <div
-          className={cn(
-            "w-full h-full animate-pulse",
-            isDark
-              ? "bg-gradient-to-br from-black via-gray-900 to-black"
-              : "bg-gradient-to-br from-white via-neutral-50 to-white",
-          )}
-        />
+      <div className="absolute inset-0 w-full h-full bg-black">
+        <div className="w-full h-full animate-pulse bg-gradient-to-br from-black via-gray-900 to-black" />
       </div>
     );
   }
@@ -83,7 +76,7 @@ export const AnimatedBackground = () => {
           projectId="erpu4mAlEe8kmhaGKYe9"
           width={width + 100}
           height={height}
-          className="bg-white"
+          className={isDark ? "bg-black" : "bg-white"}
         />
         {!isDark && (
           <div
