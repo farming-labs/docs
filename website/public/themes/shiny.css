@@ -726,6 +726,7 @@ article a[class*="border"] {
   border-radius: 0.875rem !important;
   border: 1px solid var(--color-fd-border) !important;
   background: var(--color-fd-popover) !important;
+  color: var(--color-fd-foreground) !important;
   box-shadow: 0 24px 80px -12px rgba(0, 0, 0, 0.12),
               0 8px 30px rgba(0, 0, 0, 0.08) !important;
 }
@@ -741,6 +742,76 @@ article a[class*="border"] {
 }
 .omni-search-input:focus {
   caret-color: var(--color-fd-primary) !important;
+}
+
+/* Light mode — ensure palette uses light theme */
+:root:not(.dark) .omni-content {
+  background: #ffffff !important;
+  border-color: hsl(240, 6%, 90%) !important;
+  color: hsl(240, 6%, 9%) !important;
+  box-shadow: 0 24px 80px -12px rgba(0, 0, 0, 0.1),
+              0 8px 30px rgba(0, 0, 0, 0.06) !important;
+}
+:root:not(.dark) .omni-header {
+  border-bottom-color: hsl(240, 6%, 90%) !important;
+}
+:root:not(.dark) .omni-search-input,
+:root:not(.dark) .omni-search-input::placeholder {
+  color: hsl(240, 6%, 9%) !important;
+}
+:root:not(.dark) .omni-search-input::placeholder {
+  color: hsl(240, 4%, 45%) !important;
+}
+:root:not(.dark) .omni-search-icon,
+:root:not(.dark) .omni-close-btn,
+:root:not(.dark) .omni-item-icon,
+:root:not(.dark) .omni-item-chevron,
+:root:not(.dark) .omni-item-badge,
+:root:not(.dark) .omni-item-ext,
+:root:not(.dark) .omni-item-shortcuts,
+:root:not(.dark) .omni-group-label,
+:root:not(.dark) .omni-loading,
+:root:not(.dark) .omni-empty,
+:root:not(.dark) .omni-empty-group,
+:root:not(.dark) .omni-footer-inner {
+  color: hsl(240, 4%, 45%) !important;
+}
+:root:not(.dark) .omni-item,
+:root:not(.dark) .omni-item-label {
+  color: hsl(240, 6%, 9%) !important;
+}
+:root:not(.dark) .omni-item:hover {
+  background: hsl(240, 6%, 96%) !important;
+  color: hsl(240, 6%, 9%) !important;
+}
+:root:not(.dark) .omni-item-active {
+  background: color-mix(in srgb, hsl(256, 100%, 72%) 12%, transparent) !important;
+  color: hsl(240, 6%, 9%) !important;
+}
+:root:not(.dark) .omni-item-active .omni-item-icon,
+:root:not(.dark) .omni-item-active .omni-item-subtitle {
+  color: hsl(240, 6%, 9%) !important;
+}
+:root:not(.dark) .omni-kbd,
+:root:not(.dark) .omni-kbd-sm {
+  background: hsl(240, 6%, 94%) !important;
+  color: hsl(240, 4%, 45%) !important;
+}
+:root:not(.dark) .omni-close-btn:hover {
+  background: hsl(240, 6%, 94%) !important;
+}
+:root:not(.dark) .omni-footer {
+  border-top-color: hsl(240, 6%, 90%) !important;
+}
+:root:not(.dark) .omni-body::-webkit-scrollbar-thumb {
+  background: hsl(240, 6%, 85%) !important;
+}
+:root:not(.dark) .omni-empty-icon {
+  background: hsl(240, 6%, 94%) !important;
+}
+:root:not(.dark) .omni-item-ext:hover {
+  color: hsl(240, 6%, 9%) !important;
+  background: hsl(240, 6%, 94%) !important;
 }
 
 /* ─── TOC (shiny — clean left-border indicator like Clerk) ───── */

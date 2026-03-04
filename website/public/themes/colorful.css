@@ -53,6 +53,12 @@
 
 /* ─── Sidebar colorful variables ────────────────────────────────── */
 
+.fd-sidebar {
+  --color-fd-muted: hsl(0 0% 96%) !important;
+  --color-fd-secondary: hsl(0 0% 97%) !important;
+  --color-fd-muted-foreground: hsl(0 0% 45%) !important;
+}
+
 .dark .fd-sidebar {
   --color-fd-muted: hsl(0, 0%, 16%) !important;
   --color-fd-secondary: hsl(0, 0%, 18%) !important;
@@ -86,19 +92,19 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
- * Sidebar — colorful/fumadocs style
+ * Sidebar — colorful/fumadocs style (same layout in light + dark)
  * ═══════════════════════════════════════════════════════════════════ */
 
-.dark aside#nd-sidebar {
+#nd-docs-layout aside#nd-sidebar {
   background: var(--color-fd-background) !important;
   border-color: var(--color-fd-border) !important;
 }
 
-.dark aside .overscroll-contain > div {
+#nd-docs-layout aside .overscroll-contain > div {
   margin-top: 0 !important;
 }
 
-.dark aside .overscroll-contain > div > a[data-active] {
+#nd-docs-layout aside .overscroll-contain > div > a[data-active] {
   border-top: none !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
@@ -107,24 +113,24 @@
   padding-bottom: 0.375rem !important;
 }
 
-.dark aside .overscroll-contain > div > div {
+#nd-docs-layout aside .overscroll-contain > div > div {
   border-top: none !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
   padding: 0 !important;
 }
 
-.dark aside .overscroll-contain > div > a[data-active]:first-child,
-.dark aside .overscroll-contain > div > div:first-child {
+#nd-docs-layout aside .overscroll-contain > div > a[data-active]:first-child,
+#nd-docs-layout aside .overscroll-contain > div > div:first-child {
   border-top: none !important;
 }
 
-.dark aside .overscroll-contain > div > a[data-active]:last-child,
-.dark aside .overscroll-contain > div > div:last-child {
+#nd-docs-layout aside .overscroll-contain > div > a[data-active]:last-child,
+#nd-docs-layout aside .overscroll-contain > div > div:last-child {
   border-bottom: none !important;
 }
 
-.dark aside a[data-active] {
+#nd-docs-layout aside a[data-active] {
   font-size: 0.875rem !important;
   line-height: 1.43 !important;
   border-radius: 8px !important;
@@ -135,26 +141,26 @@
   background-color: transparent !important;
 }
 
-.dark aside a[data-active="true"],
-.dark aside a[data-active="true"]:hover {
+#nd-docs-layout aside a[data-active="true"],
+#nd-docs-layout aside a[data-active="true"]:hover {
   background: color-mix(in srgb, var(--color-fd-primary) 10%, transparent) !important;
   background-color: color-mix(in srgb, var(--color-fd-primary) 10%, transparent) !important;
   color: var(--color-fd-primary) !important;
   font-weight: 500 !important;
 }
 
-.dark aside a[data-active="false"]:hover {
+#nd-docs-layout aside a[data-active="false"]:hover {
   background: var(--color-fd-accent) !important;
   background-color: var(--color-fd-accent) !important;
   color: var(--color-fd-foreground) !important;
 }
 
-.dark aside a[data-active="true"]::before {
+#nd-docs-layout aside a[data-active="true"]::before {
   background-color: transparent !important;
   width: 0 !important;
 }
 
-.dark aside div.overflow-hidden[data-state] a[data-active] {
+#nd-docs-layout aside div.overflow-hidden[data-state] a[data-active] {
   font-size: 0.8125rem !important;
   padding-left: 1.5rem !important;
   padding-top: 0.375rem !important;
@@ -162,24 +168,24 @@
   color: var(--color-fd-muted-foreground) !important;
 }
 
-.dark aside div.overflow-hidden[data-state] a[data-active="true"],
-.dark aside div.overflow-hidden[data-state] a[data-active="true"]:hover {
+#nd-docs-layout aside div.overflow-hidden[data-state] a[data-active="true"],
+#nd-docs-layout aside div.overflow-hidden[data-state] a[data-active="true"]:hover {
   color: var(--color-fd-primary) !important;
   font-weight: 500 !important;
   background: color-mix(in srgb, var(--color-fd-primary) 10%, transparent) !important;
 }
 
-.dark aside div.overflow-hidden[data-state] a[data-active="false"]:hover {
+#nd-docs-layout aside div.overflow-hidden[data-state] a[data-active="false"]:hover {
   color: var(--color-fd-foreground) !important;
 }
 
-.dark aside div.overflow-hidden[data-state]::before {
+#nd-docs-layout aside div.overflow-hidden[data-state]::before {
   margin-left: 0 !important;
   height: auto !important;
   margin-top: 0 !important;
 }
 
-.dark aside button.text-fd-muted-foreground {
+#nd-docs-layout aside button.text-fd-muted-foreground {
   color: var(--color-fd-foreground) !important;
   font-size: 0.875rem !important;
   font-weight: 500 !important;
@@ -187,7 +193,7 @@
   text-transform: none !important;
 }
 
-.dark aside button[class*="bg-fd-secondary"] {
+#nd-docs-layout aside button[class*="bg-fd-secondary"] {
   background: var(--color-fd-secondary) !important;
   border: 1px solid var(--color-fd-border) !important;
   border-radius: 8px !important;
@@ -199,12 +205,12 @@
   padding: 0.375rem 0.5rem !important;
 }
 
-.dark aside button[class*="bg-fd-secondary"]:hover {
+#nd-docs-layout aside button[class*="bg-fd-secondary"]:hover {
   background: var(--color-fd-accent) !important;
   color: var(--color-fd-foreground) !important;
 }
 
-.dark aside button[class*="rounded-full"] {
+#nd-docs-layout aside button[class*="rounded-full"] {
   border-color: var(--color-fd-border) !important;
   border-radius: 9999px !important;
 }
@@ -272,7 +278,7 @@
   border-bottom: none !important;
 }
 
-.dark table {
+#nd-docs-layout table {
   border-radius: 0.75rem !important;
 }
 
@@ -375,11 +381,11 @@ article a[class*="border"] {
   border-radius: 0.75rem !important;
 }
 
-.dark article a[class*="border"] {
+#nd-docs-layout article a[class*="border"] {
   border-color: var(--color-fd-border) !important;
 }
 
-.dark article a[class*="border"]:hover {
+#nd-docs-layout article a[class*="border"]:hover {
   background: var(--color-fd-accent) !important;
 }
 
@@ -686,8 +692,9 @@ article a[class*="border"] {
   border-radius: 0.75rem !important;
   border: 1px solid var(--color-fd-border) !important;
   background: var(--color-fd-popover) !important;
-  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.5),
-              0 0 60px -10px color-mix(in srgb, var(--color-fd-primary) 15%, transparent) !important;
+  color: var(--color-fd-foreground) !important;
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.25),
+              0 0 60px -10px color-mix(in srgb, var(--color-fd-primary) 12%, transparent) !important;
 }
 .omni-item-active {
   background: color-mix(in srgb, var(--color-fd-primary) 15%, transparent) !important;
@@ -698,6 +705,76 @@ article a[class*="border"] {
 }
 .omni-search-input:focus {
   caret-color: var(--color-fd-primary) !important;
+}
+
+/* Light mode — ensure palette uses light theme */
+:root:not(.dark) .omni-content {
+  background: #ffffff !important;
+  border-color: hsl(0 0% 90%) !important;
+  color: hsl(0 0% 9%) !important;
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.18),
+              0 0 60px -10px rgba(251, 191, 36, 0.12) !important;
+}
+:root:not(.dark) .omni-header {
+  border-bottom-color: hsl(0 0% 90%) !important;
+}
+:root:not(.dark) .omni-search-input,
+:root:not(.dark) .omni-search-input::placeholder {
+  color: hsl(0 0% 9%) !important;
+}
+:root:not(.dark) .omni-search-input::placeholder {
+  color: hsl(0 0% 45%) !important;
+}
+:root:not(.dark) .omni-search-icon,
+:root:not(.dark) .omni-close-btn,
+:root:not(.dark) .omni-item-icon,
+:root:not(.dark) .omni-item-chevron,
+:root:not(.dark) .omni-item-badge,
+:root:not(.dark) .omni-item-ext,
+:root:not(.dark) .omni-item-shortcuts,
+:root:not(.dark) .omni-group-label,
+:root:not(.dark) .omni-loading,
+:root:not(.dark) .omni-empty,
+:root:not(.dark) .omni-empty-group,
+:root:not(.dark) .omni-footer-inner {
+  color: hsl(0 0% 45%) !important;
+}
+:root:not(.dark) .omni-item,
+:root:not(.dark) .omni-item-label {
+  color: hsl(0 0% 9%) !important;
+}
+:root:not(.dark) .omni-item:hover {
+  background: hsl(0 0% 96%) !important;
+  color: hsl(0 0% 9%) !important;
+}
+:root:not(.dark) .omni-item-active {
+  background: color-mix(in srgb, hsl(45, 100%, 60%) 18%, transparent) !important;
+  color: hsl(0 0% 9%) !important;
+}
+:root:not(.dark) .omni-item-active .omni-item-icon,
+:root:not(.dark) .omni-item-active .omni-item-subtitle {
+  color: hsl(0 0% 9%) !important;
+}
+:root:not(.dark) .omni-kbd,
+:root:not(.dark) .omni-kbd-sm {
+  background: hsl(0 0% 94%) !important;
+  color: hsl(0 0% 45%) !important;
+}
+:root:not(.dark) .omni-close-btn:hover {
+  background: hsl(0 0% 94%) !important;
+}
+:root:not(.dark) .omni-footer {
+  border-top-color: hsl(0 0% 90%) !important;
+}
+:root:not(.dark) .omni-body::-webkit-scrollbar-thumb {
+  background: hsl(0 0% 85%) !important;
+}
+:root:not(.dark) .omni-empty-icon {
+  background: hsl(0 0% 94%) !important;
+}
+:root:not(.dark) .omni-item-ext:hover {
+  color: hsl(0 0% 9%) !important;
+  background: hsl(0 0% 94%) !important;
 }
 
 /* ─── Grid reset ─────────────────────────────────────────────── */
