@@ -212,7 +212,7 @@ export default defineDocs({
             }}
             href="/changelog#v0.0.9"
           >
-            v0.0.3
+            v0.0.9
           </a>
         </div>
         <span className="uppercase font-mono text-[10px] tracking-tight">
