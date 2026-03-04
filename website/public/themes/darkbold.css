@@ -337,35 +337,35 @@ aside [class*="border-t"],
  * CODE BLOCKS
  * ═══════════════════════════════════════════════════════════════════ */
 
-figure.shiki {
+#nd-docs-layout figure.shiki {
   border: 1px solid var(--color-fd-border) !important;
   border-radius: 8px !important;
   box-shadow: none !important;
   overflow: hidden !important;
 }
 
-.dark figure.shiki {
+.dark #nd-docs-layout figure.shiki {
   border-color: #333 !important;
 }
 
-figure.shiki button {
+#nd-docs-layout figure.shiki button {
   border-radius: 4px !important;
 }
 
-figure.shiki > div:first-child {
+#nd-docs-layout figure.shiki > div:first-child {
   border-radius: 8px 8px 0 0 !important;
 }
 
-figure[data-rehype-pretty-code-figure],
-figure[data-rehype-pretty-code-figure] pre {
+#nd-docs-layout figure[data-rehype-pretty-code-figure],
+#nd-docs-layout figure[data-rehype-pretty-code-figure] pre {
   border-radius: 8px !important;
 }
 
-article figure {
+#nd-docs-layout article figure {
   border-radius: 8px !important;
 }
 
-figure button {
+#nd-docs-layout figure button {
   border-radius: 4px !important;
 }
 
@@ -384,13 +384,13 @@ figure button {
  * TABS — bottom border indicator
  * ═══════════════════════════════════════════════════════════════════ */
 
-.dark [role="tablist"] {
+.dark #nd-docs-layout [role="tablist"] {
   border-radius: 0 !important;
   border-bottom: 1px solid var(--color-fd-border) !important;
 }
 
-.dark [role="tablist"] button,
-.dark [role="tab"] {
+.dark #nd-docs-layout [role="tablist"] button,
+.dark #nd-docs-layout [role="tab"] {
   border-radius: 0 !important;
   font-size: 0.875rem !important;
   font-weight: 400 !important;
@@ -398,18 +398,18 @@ figure button {
   border-bottom: 2px solid transparent !important;
 }
 
-.dark [role="tab"][aria-selected="true"],
-.dark [role="tab"][data-state="active"] {
+.dark #nd-docs-layout [role="tab"][aria-selected="true"],
+.dark #nd-docs-layout [role="tab"][data-state="active"] {
   color: var(--color-fd-foreground) !important;
   border-bottom-color: var(--color-fd-foreground) !important;
   font-weight: 500 !important;
 }
 
-.dark [role="tabpanel"] {
+.dark #nd-docs-layout [role="tabpanel"] {
   border-radius: 0 0 8px 8px !important;
 }
 
-.dark div:has(> [role="tablist"]) {
+.dark #nd-docs-layout div:has(> [role="tablist"]) {
   border-radius: 8px !important;
 }
 

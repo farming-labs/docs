@@ -291,37 +291,37 @@
   border-radius: 0.75rem !important;
 }
 
-/* ─── Code blocks (Clerk style — rounded wrapper) ──────────── */
+/* ─── Code blocks (shiny theme — Clerk style) ──────────────── */
 
-figure.shiki {
+#nd-docs-layout figure.shiki {
   border: 1px solid var(--color-fd-border) !important;
   border-radius: 0.625rem !important;
   box-shadow: none !important;
   overflow: hidden !important;
 }
 
-.dark figure.shiki {
+.dark #nd-docs-layout figure.shiki {
   border-color: hsl(240, 5%, 20%) !important;
 }
 
-figure.shiki button {
+#nd-docs-layout figure.shiki button {
   border-radius: 0.25rem !important;
 }
 
-figure.shiki > div:first-child {
+#nd-docs-layout figure.shiki > div:first-child {
   border-radius: 0.625rem 0.625rem 0 0 !important;
 }
 
-figure[data-rehype-pretty-code-figure],
-figure[data-rehype-pretty-code-figure] pre {
+#nd-docs-layout figure[data-rehype-pretty-code-figure],
+#nd-docs-layout figure[data-rehype-pretty-code-figure] pre {
   border-radius: 0.625rem !important;
 }
 
-article figure {
+#nd-docs-layout article figure {
   border-radius: 0.625rem !important;
 }
 
-figure button {
+#nd-docs-layout figure button {
   border-radius: 0.25rem !important;
 }
 
@@ -334,16 +334,16 @@ figure button {
   font-style: normal !important;
 }
 
-/* ─── Tabs (Clerk style — underline active) ────────────────── */
+/* ─── Tabs (shiny theme — Clerk style underline active) ─────── */
 
-[role="tablist"] {
+#nd-docs-layout [role="tablist"] {
   border-radius: 0 !important;
   border-bottom: 1px solid var(--color-fd-border) !important;
   background: transparent !important;
 }
 
-[role="tablist"] button,
-[role="tab"] {
+#nd-docs-layout [role="tablist"] button,
+#nd-docs-layout [role="tab"] {
   border-radius: 0 !important;
   font-size: 0.8125rem !important;
   font-weight: 450 !important;
@@ -351,30 +351,29 @@ figure button {
   border-bottom: 2px solid transparent !important;
 }
 
-[role="tab"][aria-selected="true"],
-[role="tab"][data-state="active"] {
+#nd-docs-layout [role="tab"][aria-selected="true"],
+#nd-docs-layout [role="tab"][data-state="active"] {
   color: var(--color-fd-foreground) !important;
   border-bottom-color: var(--color-fd-primary) !important;
   font-weight: 500 !important;
 }
 
-[role="tabpanel"] {
+#nd-docs-layout [role="tabpanel"] {
   border-radius: 0 0 0.625rem 0.625rem !important;
-  border: 1px solid var(--color-fd-border) !important;
   border-top: none !important;
 }
 
-div:has(> [role="tablist"]) {
+#nd-docs-layout div:has(> [role="tablist"]) {
   border-radius: 0.625rem !important;
 }
 
-.dark [role="tablist"] {
+.dark #nd-docs-layout [role="tablist"] {
   border-radius: 0 !important;
   border-bottom: 1px solid var(--color-fd-border) !important;
 }
 
-.dark [role="tablist"] button,
-.dark [role="tab"] {
+.dark #nd-docs-layout [role="tablist"] button,
+.dark #nd-docs-layout [role="tab"] {
   border-radius: 0 !important;
   font-size: 0.8125rem !important;
   font-weight: 450 !important;
@@ -382,18 +381,18 @@ div:has(> [role="tablist"]) {
   border-bottom: 2px solid transparent !important;
 }
 
-.dark [role="tab"][aria-selected="true"],
-.dark [role="tab"][data-state="active"] {
+.dark #nd-docs-layout [role="tab"][aria-selected="true"],
+.dark #nd-docs-layout [role="tab"][data-state="active"] {
   color: var(--color-fd-foreground) !important;
   border-bottom-color: var(--color-fd-primary) !important;
   font-weight: 500 !important;
 }
 
-.dark [role="tabpanel"] {
+.dark #nd-docs-layout [role="tabpanel"] {
   border-radius: 0 0 0.625rem 0.625rem !important;
 }
 
-.dark div:has(> [role="tablist"]) {
+.dark #nd-docs-layout div:has(> [role="tablist"]) {
   border-radius: 0.625rem !important;
 }
 

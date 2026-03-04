@@ -175,39 +175,39 @@ th, td {
   border-color: hsl(0 0% 14%) !important;
 }
 
-/* ─── Code blocks ─────────────────────────────────────────────────── */
+/* ─── Code blocks (darksharp theme) ───────────────────────────────── */
 
-figure[data-rehype-pretty-code-figure],
-figure[data-rehype-pretty-code-figure] pre {
+#nd-docs-layout figure[data-rehype-pretty-code-figure],
+#nd-docs-layout figure[data-rehype-pretty-code-figure] pre {
   border-radius: 0.2rem !important;
 }
 
-article figure {
+#nd-docs-layout article figure {
   border-radius: 0.2rem !important;
   overflow: hidden !important;
 }
 
-.dark article figure {
+.dark #nd-docs-layout article figure {
   border-color: hsl(0 0% 14%) !important;
 }
 
-figure button {
+#nd-docs-layout figure button {
   border-radius: 0.1rem !important;
 }
 
-/* Reset pixel-border code block overrides */
-figure.shiki {
+/* Reset pixel-border code block overrides (darksharp theme) */
+#nd-docs-layout figure.shiki {
   border: 1px solid hsl(0 0% 14%) !important;
   border-radius: 0.2rem !important;
   overflow: hidden !important;
   box-shadow: none !important;
 }
 
-figure.shiki button {
+#nd-docs-layout figure.shiki button {
   border-radius: 0.1rem !important;
 }
 
-figure.shiki > div:first-child {
+#nd-docs-layout figure.shiki > div:first-child {
   border-radius: 0.2rem !important;
 }
 
@@ -305,22 +305,22 @@ article a[class*="text-fd-muted-foreground"] {
   border-radius: 0 !important;
 }
 
-/* ─── Tabs (reset pixel-border tab overrides) ─────────────────────── */
+/* ─── Tabs (darksharp theme — reset pixel-border) ─────────────────── */
 
-.dark [role="tablist"] {
+.dark #nd-docs-layout [role="tablist"] {
   border-radius: 0.1rem !important;
 }
 
-.dark [role="tablist"] button,
-.dark [role="tab"] {
+.dark #nd-docs-layout [role="tablist"] button,
+.dark #nd-docs-layout [role="tab"] {
   border-radius: 0.1rem !important;
 }
 
-.dark [role="tabpanel"] {
+.dark #nd-docs-layout [role="tabpanel"] {
   border-radius: 0.1rem !important;
 }
 
-.dark div:has(> [role="tablist"]) {
+.dark #nd-docs-layout div:has(> [role="tablist"]) {
   border-radius: 0.1rem !important;
 }
 
