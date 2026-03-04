@@ -169,6 +169,36 @@ github: {
 
 ---
 
+## `onCopyClick` and `CodeBlockCopyData`
+
+Optional callback on `DocsConfig`. Fired when the user clicks the copy button on a code block — in addition to copying to the clipboard. Use it for analytics, logging, or custom behavior. See [Code block copy callback](/docs/configuration#code-block-copy-callback) for setup (Next.js vs SvelteKit/Astro/Nuxt).
+
+### `CodeBlockCopyData`
+
+Argument passed to `onCopyClick(data: CodeBlockCopyData)`.
+
+| Property   | Type     | Description                                                                 |
+| ---------- | -------- | --------------------------------------------------------------------------- |
+| `title`    | `string \| undefined` | Code block title (e.g. from fenced code meta), if present                 |
+| `content`  | `string` | Raw code content (what was copied)                                          |
+| `url`      | `string` | Current page URL at the time of copy                                         |
+| `language` | `string \| undefined` | Language/syntax hint (e.g. `"tsx"`, `"bash"`), if present              |
+
+```ts
+import type { CodeBlockCopyData } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  onCopyClick(data: CodeBlockCopyData) {
+    // data.title, data.content, data.url, data.language
+    console.log("Copied:", data.language, data.title ?? "(no title)");
+  },
+});
+```
+
+---
+
 ## `ThemeToggleConfig`
 
 Light/dark mode toggle in the sidebar.
