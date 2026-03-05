@@ -47,7 +47,7 @@ function HeroSection() {
     <section className="relative md:mx-0 -mx-[5%] min-h-screen flex items-end overflow-y-hidden">
       <div className="absolute bottom-[70px] sm:bottom-16 left-0 right-0 z-[999] h-px bg-black/[8%] dark:bg-white/[8%]" />
       <div className="absolute top-8 left-0 z-[1001]">
-        <span className="bg-transparent text-black/20 dark:text-white/20 font-mono text-xs border border-l-0 border-b-0 border-black/10 dark:border-white/10 uppercase px-3 py-1 rounded-none shadow-lg tracking-wider">
+        <span className="bg-transparent text-black/20 dark:text-white/20 font-mono text-xs border border-l-0 border-b-0 border-black/10 dark:border-white/10 uppercase px-3 py-1 rounded-none shadow-none tracking-wider">
           PUBLIC BETA
         </span>
       </div>

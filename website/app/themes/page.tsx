@@ -135,8 +135,8 @@ function CodeModal({ theme, onClose }: { theme: Theme; onClose: () => void }) {
         onClick={onClose}
       />
 
-      <div className="relative z-10 w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto rounded-none border border-neutral-200 dark:border-none bg-white dark:bg-black/90 shadow-xl dark:shadow-none">
-        <div className="flex items-center justify-between mb-4 p-4 border-b border-neutral-200 dark:border-none">
+      <div className="relative z-10 w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto rounded-none border border-none bg-transparent dark:bg-black/90 shadow-xl dark:shadow-none">
+        <div className="flex items-center justify-between mb-4 p-4 border-b border-neutral-200/10 dark:border-none">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               {theme.colors.map((c, i) => (
@@ -147,19 +147,17 @@ function CodeModal({ theme, onClose }: { theme: Theme; onClose: () => void }) {
                 />
               ))}
             </div>
-            <span className="text-xs font-mono uppercase tracking-wide text-neutral-500 dark:text-white/60">
+            <span className="text-xs font-mono uppercase tracking-wide text-neutral-500 text-white/60 dark:text-white/60">
               {theme.name}
             </span>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:text-white/40 dark:hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 text-neutral-200 hover:text-neutral-400 dark:text-white/40 dark:hover:text-white transition-colors cursor-pointer"
           >
             <X className="size-4" />
           </button>
         </div>
-
-        {/* Code blocks */}
         <div className="space-y-4 p-4">
           <CodeBlock title="Config" filename="docs.config.ts" code={theme.configSnippet} />
           <CodeBlock title="Styles" filename="global.css" language="css" code={theme.globalCss} />
