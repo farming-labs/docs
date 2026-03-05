@@ -350,9 +350,9 @@ article a[class*="border"] {
   font-family: inherit !important;
 }
 
-/* ─── Page Actions (default theme) ───────────────────────────── */
+/* ─── Page Actions (default theme) — body selector beats base pixel-border ─ */
 
-.fd-page-action-btn {
+body .fd-page-action-btn {
   border-radius: 0.375rem !important;
   font-size: 0.8125rem !important;
   letter-spacing: normal !important;
@@ -364,22 +364,32 @@ article a[class*="border"] {
   border: 1px solid var(--color-fd-border) !important;
 }
 
-.fd-page-action-btn:hover {
+body .fd-page-action-btn:hover {
   background: var(--color-fd-accent) !important;
   color: var(--color-fd-accent-foreground) !important;
 }
 
-.fd-page-action-menu {
+body .fd-page-action-menu {
   border-radius: 0.5rem !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(99, 102, 241, 0.08) !important;
   background: var(--color-fd-popover) !important;
   border: 1px solid var(--color-fd-border) !important;
+  padding: 0.375rem !important;
 }
 
-.fd-page-action-menu-item {
+body .fd-page-action-menu-item {
   border-radius: 0.25rem !important;
   font-size: 0.8125rem !important;
   color: var(--color-fd-popover-foreground) !important;
+  background: transparent !important;
+  border-top: none !important;
+  text-transform: capitalize !important;
+  font-family: inherit !important;
+}
+
+body .fd-page-action-menu-item:hover {
+  background: var(--color-fd-accent) !important;
+  color: var(--color-fd-accent-foreground) !important;
 }
 
 /* ─── AI Chat (default theme — rounded, soft, indigo) ────────── */

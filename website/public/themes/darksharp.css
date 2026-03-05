@@ -472,26 +472,46 @@ article a[class*="text-fd-muted-foreground"] {
   border-color: hsl(0 0% 14%) !important;
 }
 
-/* ─── Page Actions (darksharp overrides) ─────────────────────────── */
+/* ─── Page Actions (darksharp theme) — body beats base pixel-border ─── */
 
-.fd-page-action-btn {
+body .fd-page-action-btn {
   border-radius: 0.2rem !important;
   font-size: 0.8125rem !important;
   letter-spacing: normal !important;
   box-shadow: none !important;
-  text-transform: capitalize !important; 
+  text-transform: capitalize !important;
   font-family: var(--fd-font-sans, var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif)) !important;
-
+  background: hsl(0 0% 12%) !important;
+  color: hsl(0 0% 90%) !important;
+  border: 1px solid hsl(0 0% 18%) !important;
 }
 
-.fd-page-action-menu {
+body .fd-page-action-btn:hover {
+  background: hsl(0 0% 18%) !important;
+  color: hsl(0 0% 98%) !important;
+}
+
+body .fd-page-action-menu {
   border-radius: 0.2rem !important;
-  box-shadow: 0 4px 24px hsl(0 0% 0% / 0.4) !important;
+  box-shadow: 0 4px 24px hsl(0 0% 0% / 0.5), 0 0 0 1px hsl(0 0% 18%) !important;
+  background: hsl(0 0% 6%) !important;
+  border: 1px solid hsl(0 0% 14%) !important;
+  padding: 0.375rem !important;
 }
 
-.fd-page-action-menu-item {
+body .fd-page-action-menu-item {
   border-radius: 0.1rem !important;
   font-size: 0.8125rem !important;
+  color: hsl(0 0% 88%) !important;
+  background: transparent !important;
+  border-top: none !important;
+  text-transform: capitalize !important;
+  font-family: inherit !important;
+}
+
+body .fd-page-action-menu-item:hover {
+  background: hsl(0 0% 14%) !important;
+  color: hsl(0 0% 98%) !important;
 }
 
 /* ─── Breadcrumb (darksharp overrides) ───────────────────────────── */
