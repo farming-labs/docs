@@ -71,7 +71,7 @@ og: {
 
 No other OG config is required; the framework builds the URL for each page and injects it into metadata.
 
-### 2. API route (`app/api/og/route.tsx`)
+### 2. API route (`app/api/og/route.ts`)
 
 The route receives `title` and `description` from the query string and returns a 1200×630 image using Next.js `ImageResponse`:
 
@@ -147,17 +147,17 @@ To use a **static image** for a single page (e.g. a pre-made graphic or screensh
 
 ```md
 ---
-title: "SQLite"
-description: "Connect to a local SQLite database."
+title: "Docs Title"
+description: "The description of the title goes here."
 openGraph:
   images:
-    - url: "/og/databases/sqlite.png"
+    - url: "/og/path-to-image/image.png"
       width: 1200
       height: 630
 twitter:
   card: "summary_large_image"
   images:
-    - "/og/databases/sqlite.png"
+    - "/og/path-to-image/image.png"
 ---
 ```
 
