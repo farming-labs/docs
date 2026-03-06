@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Github } from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
+import { FlickeringGrid } from "@/components/ui/flickering-grid-hero";
 import CodeBlock from "@/components/ui/code-block";
 import PixelCard from "@/components/ui/pixel-card";
 import CopyCommand from "@/components/ui/copy-command";

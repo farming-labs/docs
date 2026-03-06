@@ -27,6 +27,8 @@ import {
   Image,
 } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
+import { Callout } from "@/components/ui/callout";
+
 export default defineDocs({
   entry: "docs",
   theme: pixelBorder({
@@ -266,5 +268,8 @@ export default defineDocs({
   themeToggle: {
     enabled: false,
     default: "light",
+  },
+  components: {
+    Callout,
   },
 });
