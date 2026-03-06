@@ -259,6 +259,8 @@ aside button.text-fd-muted-foreground:hover {
 aside a[data-active="true"]::before {
   background-color: var(--color-fd-primary) !important;
   width: 2px !important;
+  height: 40% !important;
+  margin-top: -1.5px !important;
   margin-left: 0.6rem !important;
   inset-inline-start: 0.5rem !important;
 }
