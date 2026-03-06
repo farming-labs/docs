@@ -42,11 +42,7 @@ function updatePackageJson(dir) {
   }
 
   if (changed) {
-    fs.writeFileSync(
-      pkgPath,
-      JSON.stringify(pkg, null, 2) + "\n",
-      "utf-8",
-    );
+    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n", "utf-8");
     return true;
   }
   return false;
