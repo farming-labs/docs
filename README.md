@@ -2,21 +2,22 @@
 
 A modern, flexible MDX-based documentation framework. Write markdown, get a polished docs site — no boilerplate required.
 
-## Packages
+### Quick Start
+> **This package lets you build beautifull documentation to any Next.js, SvelteKit, Astro, or Nuxt project in minutes.**
 
-| Package                      | Description                                                                               |
-| ---------------------------- | ----------------------------------------------------------------------------------------- |
-| `@farming-labs/docs`         | Core config, types, CLI, and theme utilities                                              |
-| `@farming-labs/theme`        | Fumadocs-based theme for Next.js — 7 variants (fumadocs, darksharp, pixel-border, colorful, greentree, darkbold, shiny) |
-| `@farming-labs/next`         | Next.js adapter — `withDocs()` config wrapper and auto-generated routes                   |
-| `@farming-labs/svelte`       | SvelteKit adapter — server-side docs loader and markdown processing                       |
-| `@farming-labs/svelte-theme` | Fumadocs-based theme for SvelteKit — 7 variants (fumadocs, darksharp, pixel-border, colorful, greentree, darkbold, shiny) |
-| `@farming-labs/astro`        | Astro adapter — server-side docs loader and markdown processing                           |
-| `@farming-labs/astro-theme`  | Fumadocs-based theme for Astro — 7 variants (fumadocs, darksharp, pixel-border, colorful, greentree, darkbold, shiny)   |
-| `@farming-labs/nuxt`         | Nuxt 3 adapter — `defineDocsHandler()`, server-side docs loader, markdown processing      |
-| `@farming-labs/nuxt-theme`   | Fumadocs-based theme for Nuxt — 7 variants (fumadocs, darksharp, pixel-border, colorful, greentree, darkbold, shiny)     |
+- ✨ **Polished themes & search, zero setup**
+- 🌍 **Choose your framework:** Next.js, SvelteKit, Astro, or Nuxt
+- ⚡️ **Fast, fully static or server-rendered**
+- 💡 **Type-safe config in code, not JSON**
+- 📦 **Single install, zero lock-in**
+- 🧬 **Write .mdx or .md — all features work out of the box**
 
-## Quick Start
+**Get started:**
+
+- Use the [CLI](#option-a-cli-recommended) _(recommended — sets up everything for you)_, or see [manual setup](#option-b-manual-setup) for each framework.
+- [Reference docs](https://docs.farming-labs.dev/reference/) and [demos](https://github.com/farming-labs/docs/tree/main/example) cover config, custom themes, OG images, SEO, and more!
+
+
 
 ### Option A: CLI (recommended)
 
