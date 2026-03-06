@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
         <span
           style={{
             fontFamily: '"JetBrains Mono"',
-            fontSize: "20px",
+            fontSize: "22px",
             color: "rgba(255,255,255,0.4)",
             letterSpacing: "-0.03em",
             textTransform: "uppercase" as const,
@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
           <p
             style={{
               fontFamily: '"JetBrains Mono"',
-              fontSize: "22px",
+              fontSize: "24px",
               color: "rgba(255,255,255,0.4)",
               letterSpacing: "0.03em",
               textTransform: "uppercase" as const,
@@ -202,7 +202,7 @@ export async function GET(request: NextRequest) {
           <span
             style={{
               fontFamily: '"JetBrains Mono"',
-              fontSize: "20px",
+              fontSize: "22px",
               color: "rgba(255,255,255,0.4)",
               textTransform: "uppercase" as const,
               letterSpacing: "0.03em",
