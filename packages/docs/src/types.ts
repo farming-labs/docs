@@ -245,13 +245,39 @@ export interface OGConfig {
   defaultImage?: string;
 }
 
+/** Single image entry for Open Graph (frontmatter or Next metadata). */
+export interface OpenGraphImage {
+  url: string;
+  width?: number;
+  height?: number;
+}
+
+/** Open Graph block in page frontmatter. When present, used as-is for metadata (replaces generated OG). */
+export interface PageOpenGraph {
+  images?: OpenGraphImage[];
+  title?: string;
+  description?: string;
+}
+
+/** Twitter card block in page frontmatter. When present, used as-is for metadata (replaces generated twitter). */
+export interface PageTwitter {
+  card?: "summary" | "summary_large_image";
+  images?: string[];
+  title?: string;
+  description?: string;
+}
+
 export interface PageFrontmatter {
   title: string;
   description?: string;
   tags?: string[];
   icon?: string;
-  /** Path to custom OG image for this page */
+  /** Path to custom OG image for this page (shorthand). Ignored if `openGraph` is set. */
   ogImage?: string;
+  /** Full Open Graph object. When set, replaces any generated OG from config (e.g. dynamic endpoint). */
+  openGraph?: PageOpenGraph;
+  /** Full Twitter card object. When set, replaces any generated twitter from config. */
+  twitter?: PageTwitter;
   /** Sort order in the sidebar. Lower numbers appear first. Pages without `order` are sorted alphabetically after ordered pages. */
   order?: number;
 }
