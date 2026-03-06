@@ -9,45 +9,12 @@ import SvelteRouteTabs from "@/components/ui/svelte-route-tabs";
 import AstroRouteTabs from "@/components/ui/astro-route-tabs";
 import InitBlockTabs from "@/components/ui/init-block-tabs";
 
-function Navbar() {
-  return (
-    <nav className="fixed top-0 left-0 right-0 z-[1000] border-b border-black/10 dark:border-white/5 bg-white/80 dark:bg-black/40 backdrop-blur-xl">
-      <div className="mx-auto max-w-6xl flex items-center justify-between px-6 h-14">
-        {/* <div className="h-px w-full bg-white/5" /> */}
-
-        {/* <Link
-          href="/"
-          className="font-mono text-sm tracking-tighter text-black dark:text-white uppercase hover:no-underline"
-        >
-          @farming-labs/docs
-        </Link>
-        <div className="flex items-center gap-6">
-          <Link
-            href="/docs"
-            className="text-sm text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors hover:no-underline"
-          >
-            Docs
-          </Link>
-          <Link
-            href="https://github.com/farming-labs/docs"
-            target="_blank"
-            className="text-sm text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors hover:no-underline"
-          >
-            GitHub
-            <ArrowUpRight className="inline w-3 h-3 ml-0.5 mb-0.5" />
-          </Link> */}
-        {/* </div> */}
-      </div>
-    </nav>
-  );
-}
-
 function HeroSection() {
   return (
     <section className="relative md:mx-0 -mx-[5%] min-h-screen flex items-end overflow-y-hidden">
       <div className="absolute bottom-[70px] sm:bottom-16 left-0 right-0 z-[999] h-px bg-black/[8%] dark:bg-white/[8%]" />
-      <div className="absolute top-8 left-0 z-[1001]">
-        <span className="bg-transparent text-black/20 dark:text-white/20 font-mono text-xs border border-l-0 border-b-0 border-black/10 dark:border-white/10 uppercase px-3 py-1 rounded-none shadow-none tracking-wider">
+      <div className="absolute top-8 left-2 sm:left-0 z-[1001]">
+        <span className="bg-transparent text-black/20 ml-2 sm:ml-0 dark:text-white/20 font-mono text-xs border border-l-0 border-b-0 border-black/10 dark:border-white/10 uppercase px-3 py-1 rounded-none shadow-none tracking-wider">
           PUBLIC BETA
         </span>
       </div>
