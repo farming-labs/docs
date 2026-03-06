@@ -368,6 +368,9 @@ importers:
 
   website:
     dependencies:
+      '@databuddy/sdk':
+        specifier: ^2.3.29
+        version: 2.3.29(react@19.2.4)(vue@3.5.28(typescript@5.9.3))
       '@farming-labs/docs':
         specifier: workspace:*
         version: link:../packages/docs
@@ -642,6 +645,29 @@ packages:
   '@cloudflare/kv-asset-handler@0.4.2':
     resolution: {integrity: sha512-SIOD2DxrRRwQ+jgzlXCqoEFiKOFqaPjhnNTGKXSRLvp1HiOvapLaFG2kEr9dYQTYe8rKrd9uvDUzmAITeNyaHQ==}
     engines: {node: '>=18.0.0'}
+
+  '@databuddy/sdk@2.3.29':
+    resolution: {integrity: sha512-GuqlPsrgxYpmICstsVEpr6FFWHCkcTW5sgdKgPmCXfJyzdOUXRn17HkGEiuZKYzbADSxx1x9dXMCL/40JP3p2g==}
+    peerDependencies:
+      '@ai-sdk/provider': ^2.0.0
+      ai: ^5.0.51
+      msw: ^2.11.5
+      react: '>=18'
+      tokenlens: ^2.0.0-alpha.3
+      vue: '>=3'
+    peerDependenciesMeta:
+      '@ai-sdk/provider':
+        optional: true
+      ai:
+        optional: true
+      msw:
+        optional: true
+      react:
+        optional: true
+      tokenlens:
+        optional: true
+      vue:
+        optional: true
 
   '@dxup/nuxt@0.3.2':
     resolution: {integrity: sha512-2f2usP4oLNsIGjPprvABe3f3GWuIhIDp0169pGLFxTDRI5A4d4sBbGpR+tD9bGZCT+1Btb6Q2GKlyv3LkDCW5g==}
@@ -7164,6 +7190,11 @@ snapshots:
       sisteransi: 1.0.5
 
   '@cloudflare/kv-asset-handler@0.4.2': {}
+
+  '@databuddy/sdk@2.3.29(react@19.2.4)(vue@3.5.28(typescript@5.9.3))':
+    optionalDependencies:
+      react: 19.2.4
+      vue: 3.5.28(typescript@5.9.3)
 
   '@dxup/nuxt@0.3.2(magicast@0.5.2)':
     dependencies:

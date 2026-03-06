@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { RootProvider } from "@farming-labs/theme";
+import { Databuddy } from '@databuddy/sdk/react';
 import "./global.css";
 
 const geistSans = Geist({
@@ -69,6 +70,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       >
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <RootProvider>{children}</RootProvider>
+        <Databuddy
+         trackHashChanges={true}
+         trackAttributes={true}
+         trackOutgoingLinks={true}
+          clientId="e0e31f34-2bef-4e80-8904-ca3cba9bfba3" />
       </body>
     </html>
   );

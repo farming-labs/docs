@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@databuddy/sdk": "^2.3.29",
     "@farming-labs/docs": "workspace:*",
     "@farming-labs/next": "workspace:*",
     "@farming-labs/theme": "workspace:*",
