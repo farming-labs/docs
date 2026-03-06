@@ -1,0 +1,8 @@
+const AskAITrigger_vue_vue_type_style_index_0_scoped_3362ce82_lang = ".ask-ai-trigger[data-v-3362ce82]{align-items:center;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);background:color-mix(in srgb,var(--color-fd-secondary,#f4f4f5) 80%,transparent);border:1px solid var(--color-fd-border,hsla(0,0%,100%,.1));border-radius:16px;box-shadow:0 1px 3px color-mix(in srgb,var(--color-fd-background,#000) 20%,transparent);color:var(--color-fd-muted-foreground,#71717a);cursor:pointer;display:flex;font-family:var(--fd-font-sans,inherit);font-size:14px;gap:8px;height:40px;justify-content:center;padding:8px 12px;transition:transform .15s,background .15s,color .15s}.ask-ai-trigger[data-v-3362ce82]:hover{background:var(--color-fd-accent);color:var(--color-fd-accent-foreground);transform:scale(1.03)}.ask-ai-trigger[data-v-3362ce82]:active{transform:scale(.97)}";
+
+const AskAITriggerStyles_BXHguNTX = [
+  AskAITrigger_vue_vue_type_style_index_0_scoped_3362ce82_lang
+];
+
+export { AskAITriggerStyles_BXHguNTX as default };
+//# sourceMappingURL=AskAITrigger-styles.BXHguNTX.mjs.map

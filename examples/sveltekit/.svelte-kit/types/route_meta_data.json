@@ -1,0 +1,12 @@
+{
+	"/": [],
+	"/api/docs": [
+		"src/routes/api/docs/+server.js"
+	],
+	"/docs": [
+		"src/routes/docs/+layout.server.js"
+	],
+	"/docs/[...slug]": [
+		"src/routes/docs/+layout.server.js"
+	]
+}

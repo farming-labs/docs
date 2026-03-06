@@ -11,10 +11,14 @@ Open Graph (OG) images are the preview images shown when your docs pages are sha
 
 ## Overview: static vs dynamic
 
-| Approach | When to use | How it works |
-| -------- | ----------- | -------------- |
-| **Dynamic** | One design for all pages; title and description change per page. | You implement an API route. The framework calls it with the page’s `title` and `description` (from frontmatter) as query params and uses the returned image URL for `og:image` and `twitter:image`. |
-| **Static** | Custom image per page (e.g. diagrams, screenshots). | Set `openGraph` and/or `twitter` (or the shorthand `ogImage`) in that page’s frontmatter. The framework uses those values instead of calling the dynamic endpoint. |
+<Tabs items={["Dynamic", "Static"]}>
+  <Tab value="Dynamic">
+    One design for all pages; title and description change per page. You implement an API route. The framework calls it with the page’s `title` and `description` (from frontmatter) as query params and uses the returned image URL for `og:image` and `twitter:image`.
+  </Tab>
+  <Tab value="Static">
+    Custom image per page (e.g. diagrams, screenshots). Set `openGraph` and/or `twitter` (or the shorthand `ogImage`) in that page’s frontmatter. The framework uses those values instead of calling the dynamic endpoint.
+  </Tab>
+</Tabs>
 
 You can mix both: use a dynamic endpoint by default and override with static images on specific pages via frontmatter.
 
@@ -172,7 +176,7 @@ Shorthand: you can set only `ogImage: "/og/some-page.png"` and the framework wil
 | `og.enabled`  | `boolean`| Turn OG/twitter images on or off. |
 | `og.type`     | `"static" \| "dynamic"` | Use a fixed image or a dynamic endpoint. |
 | `og.endpoint` | `string`| Path to your OG API route (e.g. `"/api/og"`). Required for dynamic. |
-| `og.defaultImage` | `string` | Fallback image URL when no page-specific OG is set. |
+| `og.defaultImage` | `string` | Fallback OG image URL when no page-specific OG is set. |
 
 Full details: [OGConfig](/docs/reference#ogconfig) in the API reference.
 

@@ -24,6 +24,7 @@ import {
   Bot,
   MousePointerClick,
   Book,
+  Image,
 } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 export default defineDocs({
@@ -85,6 +86,7 @@ export default defineDocs({
     treePine: <TreePine size={16} />,
     bot: <Bot size={16} />,
     mousePointerClick: <MousePointerClick size={16} />,
+    image: <Image size={16} />,
   },
   github: {
     url: "https://github.com/farming-labs/docs",
