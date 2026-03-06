@@ -19,12 +19,33 @@ interface Release {
 
 const releases: Release[] = [
   {
-    version: "v0.0.9",
-    title: "v0.0.9: Current Release",
-    date: "Mar 04, 2026",
+    version: "v0.0.11",
+    title: "v0.0.11: Current Release",
+    date: "Mar 2026",
     pinned: true,
     excerpt:
-      "Current stable release — theme customizer fixes, onCopyClick, docs updates, omni palette light theme, and hero flash fix.",
+      "Static OG images in frontmatter, dedicated OG Images docs, createPageMetadata with openGraph/twitter, and examples version script.",
+    changes: [
+      {
+        category: "Highlights",
+        items: [
+          "Frontmatter OG: full `openGraph` and `twitter` in page frontmatter; static images override dynamic endpoint per page",
+          "Shorthand `ogImage` plus types `PageOpenGraph`, `PageTwitter`; `buildPageOpenGraph` / `buildPageTwitter` in @farming-labs/docs",
+          "createPageMetadata accepts page openGraph/twitter/ogImage and optional baseUrl; remark-og skips injection when frontmatter has openGraph or ogImage",
+          "New docs: OG Images guide (/docs/customization/og-images) — dynamic vs static, context passed to image generator, how the docs website uses dynamic OG",
+          "API reference: Page Frontmatter openGraph/twitter, data types, how frontmatter is passed; OGConfig link to OG Images guide",
+          "Docs intro: callout that we are complementary to Fumadocs, not a replacement",
+          "Theme customizer: page actions distinct per theme (body-prefixed selectors so preset CSS overrides base pixel-border)",
+        ],
+      },
+    ],
+  },
+  {
+    version: "v0.0.9",
+    title: "v0.0.9",
+    date: "Mar 04, 2026",
+    excerpt:
+      "Theme customizer fixes, onCopyClick, docs updates, omni palette light theme, and hero flash fix.",
     changes: [
       {
         category: "Highlights",
@@ -35,7 +56,7 @@ const releases: Release[] = [
           "Docs: why use this, customize themes and share, built-in UI section; API reference for onCopyClick",
           "Omni command palette: light theme fixes for colorful preset",
           "Multiple models support for AI chat",
-          "CLI scafolding improvements & fixes",
+          "CLI scaffolding improvements & fixes",
         ],
       },
     ],
