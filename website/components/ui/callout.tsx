@@ -41,7 +41,7 @@ const variantStyles = {
     titleClass: "text-black/70 dark:text-white/70",
     border:
       "border-black/10 dark:border-white/10 border-l-4 border-l-black/25 dark:border-l-white/25",
-    bg: "bg-black/[0.03] dark:bg-white/[0.03]",
+    bg: "bg-black/[0.03] dark:bg-white/[0.025]",
   },
   warning: {
     icon: AlertTriangle,
@@ -49,7 +49,7 @@ const variantStyles = {
     titleClass: "text-black/75 dark:text-white/75",
     border:
       "border-black/12 dark:border-white/12 border-l-4 border-l-black/35 dark:border-l-white/35",
-    bg: "bg-black/[0.04] dark:bg-white/[0.04]",
+    bg: "bg-black/[0.04] dark:bg-white/[0.035]",
   },
   tip: {
     icon: Lightbulb,
@@ -57,7 +57,7 @@ const variantStyles = {
     titleClass: "text-black/70 dark:text-white/70",
     border:
       "border-black/10 dark:border-white/10 border-l-4 border-l-black/30 dark:border-l-white/30",
-    bg: "bg-black/[0.03] dark:bg-white/[0.03]",
+    bg: "bg-black/[0.03] dark:bg-white/[0.025]",
   },
   important: {
     icon: MessageSquare,
@@ -65,7 +65,7 @@ const variantStyles = {
     titleClass: "text-black/75 dark:text-white/75",
     border:
       "border-black/12 dark:border-white/12 border-l-4 border-l-black/35 dark:border-l-white/35",
-    bg: "bg-black/[0.04] dark:bg-white/[0.04]",
+    bg: "bg-black/[0.04] dark:bg-white/[0.035]",
   },
   caution: {
     icon: AlertCircle,
@@ -73,7 +73,7 @@ const variantStyles = {
     titleClass: "text-black/80 dark:text-white/80",
     border:
       "border-black/15 dark:border-white/15 border-l-4 border-l-black/40 dark:border-l-white/40",
-    bg: "bg-black/[0.05] dark:bg-white/[0.05]",
+    bg: "bg-black/[0.05] dark:bg-white/[0.045]",
   },
 } as const;
 
@@ -90,7 +90,7 @@ export function Callout({ type = "note", title, children, className }: CalloutPr
     <div
       role="note"
       className={cn(
-        "my-4 flex gap-0 overflow-x-hidden rounded-none border p-4 font-mono text-[9px]",
+        "callout-custom my-4 flex gap-0 overflow-x-hidden rounded-none border p-4 font-mono text-[9px]!",
         style.border,
         style.bg,
         className,
