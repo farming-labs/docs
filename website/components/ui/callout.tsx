@@ -81,12 +81,7 @@ const variantStyles = {
  * Custom Callout for the docs website. Matches design system: borders, font-mono, subtle bg.
  * Compatible with MDX usage: <Callout type="info" title="...">...</Callout>
  */
-export function Callout({
-  type = "note",
-  title,
-  children,
-  className,
-}: CalloutProps) {
+export function Callout({ type = "note", title, children, className }: CalloutProps) {
   const variant = typeToVariant(type);
   const style = variantStyles[variant];
   const Icon = style.icon;
@@ -106,14 +101,7 @@ export function Callout({
       </div>
       <div className="min-w-0 -mt-6 ml-2 flex-1 space-y-1">
         {title && (
-          <p
-            className={cn(
-              "font-mono uppercase tracking-tight",
-              style.titleClass,
-            )}
-          >
-            {title}
-          </p>
+          <p className={cn("font-mono uppercase tracking-tight", style.titleClass)}>{title}</p>
         )}
         <div className="h-px w-[calc(100%+10rem)] -mt-2 mx-auto ml-[-5rem] bg-black/10 dark:bg-white/10" />
         <div className="text-black/80 pt-2 font-sans dark:text-white/80 [&>p:last-child]:mb-0 [&>p]:my-0">
