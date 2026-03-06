@@ -1,0 +1,195 @@
+---
+title: "OG Images"
+description: "Dynamic and static Open Graph images for docs — how they work, what context is passed, and how the docs website generates them"
+icon: "image"
+order: 4
+---
+
+# OG Images
+
+Open Graph (OG) images are the preview images shown when your docs pages are shared on social platforms, Slack, or messaging apps. This guide explains how the framework supports **dynamic** (generated per page) and **static** (per-page image file) OG images, what data your image generator receives, and how the docs website implements dynamic OG.
+
+## Overview: static vs dynamic
+
+| Approach | When to use | How it works |
+| -------- | ----------- | -------------- |
+| **Dynamic** | One design for all pages; title and description change per page. | You implement an API route. The framework calls it with the page’s `title` and `description` (from frontmatter) as query params and uses the returned image URL for `og:image` and `twitter:image`. |
+| **Static** | Custom image per page (e.g. diagrams, screenshots). | Set `openGraph` and/or `twitter` (or the shorthand `ogImage`) in that page’s frontmatter. The framework uses those values instead of calling the dynamic endpoint. |
+
+You can mix both: use a dynamic endpoint by default and override with static images on specific pages via frontmatter.
+
+---
+
+## How dynamic OG works
+
+1. **You configure** an OG endpoint in `docs.config.tsx`:
+   - `og: { enabled: true, type: "dynamic", endpoint: "/api/og" }`
+2. **For each docs page**, the framework builds a **single URL** that includes the page’s context:
+   - **Next.js (MDX):** A remark plugin injects that URL into the page’s exported `metadata` (from frontmatter). The URL is your endpoint plus query params.
+   - **Query params** the framework adds:
+     - `title` — the page’s `title` from frontmatter (required).
+     - `description` — the page’s `description` from frontmatter (optional).
+3. **Your API route** receives a GET request with those query params and returns a **1200×630** image (e.g. PNG).
+4. The framework sets that URL as `og:image` and `twitter:image` in the page metadata, so crawlers and social platforms fetch the image when the page is shared.
+
+So your image generator gets **full context**: the same `title` and `description` that appear in the doc and in meta tags. You can render them (and any other logic) inside your image.
+
+---
+
+## What context your image generator receives
+
+When the framework calls your dynamic OG endpoint, it passes:
+
+| Query param   | Source           | Example value        |
+| ------------- | ----------------- | -------------------- |
+| `title`       | Page frontmatter `title` | `Introduction` or `OG Images` |
+| `description` | Page frontmatter `description` | `Dynamic and static Open Graph images for docs.` |
+
+The URL looks like:
+
+```
+https://your-site.com/api/og?title=Introduction&description=Get+started+with+the+framework.
+```
+
+Your route reads `searchParams.get("title")` and `searchParams.get("description")` and uses them when rendering the image (e.g. in `ImageResponse`). That’s the full context the framework provides; you can add more query params in your own links if needed.
+
+---
+
+## Example: how the docs website uses dynamic OG
+
+The @farming-labs/docs website uses a dynamic OG endpoint so every docs page gets a unique preview image with that page’s title and description.
+
+### 1. Config (`docs.config.tsx`)
+
+```ts
+og: {
+  enabled: true,
+  type: "dynamic",
+  endpoint: "/api/og",
+},
+```
+
+No other OG config is required; the framework builds the URL for each page and injects it into metadata.
+
+### 2. API route (`app/api/og/route.tsx`)
+
+The route receives `title` and `description` from the query string and returns a 1200×630 image using Next.js `ImageResponse`:
+
+```tsx
+import { ImageResponse } from "next/og";
+import { NextRequest } from "next/server";
+
+export const runtime = "edge";
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const title = searchParams.get("title") ?? "@farming-labs/docs";
+  const description = searchParams.get("description") ?? "";
+
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          backgroundColor: "#000000",
+          padding: "50px 80px",
+          // ... fonts, branding, borders
+        }}
+      >
+        {/* Branding strip */}
+        <span style={{ fontFamily: "monospace", color: "rgba(255,255,255,0.4)" }}>
+          @farming-labs/docs
+        </span>
+
+        {/* Page context: title and description from frontmatter */}
+        <div>
+          <h1 style={{ fontSize: 68, fontWeight: 700, color: "#fff" }}>
+            {title}
+          </h1>
+          {description && (
+            <p style={{ fontSize: 22, color: "rgba(255,255,255,0.4)" }}>
+              {description}
+            </p>
+          )}
+        </div>
+
+        {/* Footer: site label + CTA */}
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <span>documentation · docs.farming-labs.com</span>
+          <span>get started →</span>
+        </div>
+      </div>
+    ),
+    { width: 1200, height: 630 }
+  );
+}
+```
+
+So the image generator has **full context**: the same `title` and `description` that come from the MDX frontmatter. The live site loads Inter and JetBrains Mono for typography and uses the same layout with diagonal pattern and borders; the only variables are `title` and `description`.
+
+### 3. What each page gets
+
+- **Introduction** (`/docs`) → `/api/og?title=Introduction&description=...`
+- **OG Images** (`/docs/customization/og-images`) → `/api/og?title=OG+Images&description=Dynamic+and+static+...`
+- **API Reference** (`/docs/reference`) → `/api/og?title=API+Reference&description=...`
+
+Each URL is set as that page’s `og:image` and `twitter:image`, so shares show the correct title and description on the card.
+
+---
+
+## Using static OG for specific pages
+
+To use a **static image** for a single page (e.g. a pre-made graphic or screenshot), set `openGraph` and `twitter` in that page’s frontmatter. The framework will use those instead of calling the dynamic endpoint for that page.
+
+```md
+---
+title: "SQLite"
+description: "Connect to a local SQLite database."
+openGraph:
+  images:
+    - url: "/og/databases/sqlite.png"
+      width: 1200
+      height: 630
+twitter:
+  card: "summary_large_image"
+  images:
+    - "/og/databases/sqlite.png"
+---
+```
+
+Shorthand: you can set only `ogImage: "/og/some-page.png"` and the framework will use it for both Open Graph and Twitter unless you override with full `openGraph` / `twitter`. See [Page Frontmatter](/docs/reference#page-frontmatter) for all options.
+
+---
+
+## Configuration reference
+
+| Option        | Type     | Description |
+| ------------- | -------- | ----------- |
+| `og.enabled`  | `boolean`| Turn OG/twitter images on or off. |
+| `og.type`     | `"static" \| "dynamic"` | Use a fixed image or a dynamic endpoint. |
+| `og.endpoint` | `string`| Path to your OG API route (e.g. `"/api/og"`). Required for dynamic. |
+| `og.defaultImage` | `string` | Fallback image URL when no page-specific OG is set. |
+
+Full details: [OGConfig](/docs/reference#ogconfig) in the API reference.
+
+---
+
+## Testing your OG image
+
+1. Start your dev server (e.g. `pnpm dev`).
+2. Open the endpoint with sample params in the browser:
+   - `http://localhost:3000/api/og?title=Test+Page&description=My+description`
+3. Confirm the image shows the right title and description.
+4. After code changes, do a hard refresh (e.g. Cmd+Shift+R) or use a cache-busting query (e.g. `&_=1`) so you see the latest image.
+
+---
+
+## Summary
+
+- **Dynamic OG** gives every docs page a generated preview: the framework calls your endpoint with `title` and `description` from frontmatter, and you return a 1200×630 image. The docs website uses this with a single `/api/og` route.
+- **Static OG** lets you set a specific image per page via frontmatter (`openGraph`, `twitter`, or `ogImage`), which overrides the dynamic endpoint for that page.
+- Your image generator receives the **full context** it needs: the page’s `title` and `description` as query parameters, so you can render them (and anything else you derive from them) in your image.

@@ -12,13 +12,21 @@ import type { DocsConfig } from "./types.js";
 export { defineDocs } from "./define-docs.js";
 export { deepMerge } from "./utils.js";
 export { createTheme, extendTheme } from "./create-theme.js";
-export { resolveTitle, resolveOGImage } from "./metadata.js";
+export {
+  resolveTitle,
+  resolveOGImage,
+  buildPageOpenGraph,
+  buildPageTwitter,
+} from "./metadata.js";
 export type {
   DocsConfig,
   DocsNav,
   DocsTheme,
   DocsMetadata,
   OGConfig,
+  OpenGraphImage,
+  PageOpenGraph,
+  PageTwitter,
   UIConfig,
   FontStyle,
   TypographyConfig,

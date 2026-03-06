@@ -571,7 +571,7 @@ metadata: {
 
 ## `OGConfig`
 
-Open Graph image configuration. When `endpoint` is set, each docs page gets a dynamic OG image: the framework passes the page’s `title` and `description` (from frontmatter) to the endpoint, and the layout injects the resulting image URL into `og:image` and `twitter:image` meta tags.
+Open Graph image configuration. When `endpoint` is set, each docs page gets a dynamic OG image: the framework passes the page’s `title` and `description` (from frontmatter) to the endpoint, and the layout injects the resulting image URL into `og:image` and `twitter:image` meta tags. For a full guide (how dynamic OG works, what context is passed, and how the docs website implements it), see [OG Images](/docs/customization/og-images).
 
 | Property       | Type                    | Default | Description                         |
 | -------------- | ----------------------- | ------- | ----------------------------------- |
@@ -604,14 +604,38 @@ og: {
 
 Each docs page (`.mdx` / `.md`) supports these frontmatter fields:
 
-| Property      | Type       | Description                                                                       |
-| ------------- | ---------- | --------------------------------------------------------------------------------- |
-| `title`       | `string`   | **Required.** Page title, shown in sidebar and page heading                       |
-| `description` | `string`   | Page description, used for meta tags and search                                   |
-| `icon`        | `string`   | Icon key from the `icons` registry. Shows in sidebar.                             |
-| `order`       | `number`   | Sort order in the sidebar (only when `ordering: "numeric"`). Lower numbers first. |
-| `tags`        | `string[]` | Tags for categorization                                                           |
-| `ogImage`     | `string`   | Custom Open Graph image path for this page                                        |
+| Property      | Type        | Description                                                                       |
+| ------------- | ----------- | --------------------------------------------------------------------------------- |
+| `title`       | `string`    | **Required.** Page title, shown in sidebar and page heading                        |
+| `description` | `string`    | Page description, used for meta tags and search                                    |
+| `icon`        | `string`    | Icon key from the `icons` registry. Shows in sidebar.                              |
+| `order`       | `number`    | Sort order in the sidebar (only when `ordering: "numeric"`). Lower numbers first.   |
+| `tags`        | `string[]`  | Tags for categorization                                                            |
+| `ogImage`     | `string`    | Shorthand for a single OG image path. Ignored if `openGraph` is set.                 |
+| `openGraph`   | `PageOpenGraph` | Full Open Graph object (e.g. `images: [{ url, width?, height? }]`). When set, replaces generated OG from the config (e.g. dynamic endpoint). |
+| `twitter`     | `PageTwitter`   | Full Twitter card object (e.g. `card`, `images`). When set, replaces generated twitter metadata. |
+| `hidden`      | `boolean`   | If `true`, hide the page from the sidebar (page remains reachable by URL). Optional; behavior may vary by adapter. |
+
+**Static OG example** — use `openGraph` and `twitter` in frontmatter to serve a static image instead of the dynamic OG endpoint:
+
+```md
+---
+title: "Title of Docs"
+description: "Title of the docs goes here"
+icon: "harddrive"
+openGraph:
+  images:
+    - url: "/og/path-to-image/image.png"
+      width: 1200
+      height: 630
+twitter:
+  card: "summary_large_image"
+  images:
+    - "/og/path-to-image/image.png"
+---
+```
+
+**Minimal example** (shorthand `ogImage` or generated OG):
 
 ```md
 ---
@@ -621,6 +645,26 @@ icon: "rocket"
 order: 1
 ---
 ```
+
+### Data types
+
+Frontmatter is **YAML** between the `---` fences. Supported value types:
+
+| Type      | Example in frontmatter        | Use in framework fields   |
+| --------- | ------------------------------ | -------------------------- |
+| `string`  | `title: "Hello"` or `title: Hello` | `title`, `description`, `icon`, `ogImage` |
+| `number`  | `order: 1`                     | `order`                    |
+| `boolean` | `hidden: true`                 | Optional (e.g. hide from sidebar) |
+| `string[]`| `tags: [a, b]` or `tags: ["a", "b"]` | `tags`                  |
+
+You can use other YAML types (e.g. nested objects) for custom keys; only the fields in the table above are used by the framework for sidebar, SEO, and OG.
+
+### How frontmatter is passed
+
+- **Next.js** — The MDX pipeline uses `remark-frontmatter` and `remark-mdx-frontmatter` with `name: "metadata"`. The parsed frontmatter is exposed as the **`metadata`** export from the page. The layout and `generateMetadata` receive it when resolving the page (e.g. via `getPage(params)`), and it is used for `createPageMetadata`, sidebar tree (title, icon, order), and description maps.
+- **SvelteKit / Astro / Nuxt** — The docs loader (e.g. `import.meta.glob` or content layer) reads each `.md`/`.mdx` file, parses frontmatter, and builds the nav tree and page data. Frontmatter is passed to the layout as **page data** (e.g. `page.data` or the props your content component receives). The same fields (`title`, `description`, `icon`, `order`, `tags`, `ogImage`) are used for sidebar, meta tags, and search.
+
+So in all frameworks, the **same frontmatter fields** drive titles, descriptions, icons, ordering, and OG; only the mechanism (MDX `metadata` vs. content loader `page.data`) differs.
 
 ---
 

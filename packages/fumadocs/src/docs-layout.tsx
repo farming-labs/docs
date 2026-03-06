@@ -4,6 +4,10 @@ import path from "node:path";
 import matter from "gray-matter";
 import type { ReactNode, ReactElement } from "react";
 import { serializeIcon } from "./serialize-icon.js";
+import {
+  buildPageOpenGraph,
+  buildPageTwitter,
+} from "@farming-labs/docs";
 import type {
   DocsConfig,
   ThemeToggleConfig,
@@ -18,6 +22,7 @@ import type {
   AIConfig,
   OrderingItem,
   LastUpdatedConfig,
+  PageFrontmatter,
 } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
@@ -299,42 +304,36 @@ export function createDocsMetadata(config: DocsConfig) {
 }
 
 /**
- * Generate page-level metadata with dynamic OG images.
+ * Generate page-level metadata with dynamic or static OG/twitter.
+ * When the page has `openGraph` or `twitter` in frontmatter, those are used (static OG).
+ * Otherwise uses `ogImage` or the config dynamic endpoint.
  *
  * Usage in a docs page or [[...slug]] route:
  * ```ts
  * export function generateMetadata({ params }) {
  *   const page = getPage(params.slug);
- *   return createPageMetadata(docsConfig, {
- *     title: page.data.title,
- *     description: page.data.description,
- *   });
+ *   return createPageMetadata(docsConfig, page.data);
  * }
  * ```
  */
 export function createPageMetadata(
   config: DocsConfig,
-  page: { title: string; description?: string },
+  page: Pick<
+    PageFrontmatter,
+    "title" | "description" | "ogImage" | "openGraph" | "twitter"
+  >,
+  baseUrl?: string,
 ) {
-  const og = config.og;
   const result: Record<string, unknown> = {
     title: page.title,
     ...(page.description ? { description: page.description } : {}),
   };
 
-  if (og?.enabled !== false && og?.endpoint) {
-    const ogUrl = `${og.endpoint}?title=${encodeURIComponent(page.title)}${page.description ? `&description=${encodeURIComponent(page.description)}` : ""}`;
-    result.openGraph = {
-      title: page.title,
-      description: page.description,
-      images: [{ url: ogUrl, width: 1200, height: 630 }],
-    };
-    result.twitter = {
-      card: "summary_large_image",
-      title: page.title,
-      description: page.description,
-      images: [ogUrl],
-    };
+  if (config.og?.enabled !== false) {
+    const openGraph = buildPageOpenGraph(page, config.og, baseUrl);
+    if (openGraph) result.openGraph = openGraph;
+    const twitter = buildPageTwitter(page, config.og, baseUrl);
+    if (twitter) result.twitter = twitter;
   }
 
   return result;
@@ -569,10 +568,10 @@ export function createDocsLayout(config: DocsConfig) {
   const rawProviders =
     typeof pageActions?.openDocs === "object" && pageActions.openDocs.providers
       ? (pageActions.openDocs.providers as Array<{
-          name: string;
-          icon?: unknown;
-          urlTemplate: string;
-        }>)
+        name: string;
+        icon?: unknown;
+        urlTemplate: string;
+      }>)
       : undefined;
 
   const openDocsProviders = rawProviders?.map((p) => ({
@@ -656,8 +655,8 @@ export function createDocsLayout(config: DocsConfig) {
           sidebar={finalSidebarProps}
           {...(aiMode === "sidebar-icon" && aiEnabled
             ? {
-                searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
-              }
+              searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
+            }
             : {})}
         >
           <ColorStyle colors={colors} />
