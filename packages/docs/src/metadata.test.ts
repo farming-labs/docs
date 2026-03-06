@@ -1,17 +1,10 @@
 import { describe, it, expect } from "vitest";
-import {
-  resolveTitle,
-  resolveOGImage,
-  buildPageOpenGraph,
-  buildPageTwitter,
-} from "./metadata.js";
+import { resolveTitle, resolveOGImage, buildPageOpenGraph, buildPageTwitter } from "./metadata.js";
 import type { OGConfig, PageFrontmatter } from "./types.js";
 
 describe("resolveTitle", () => {
   it("replaces %s with page title", () => {
-    expect(resolveTitle("Hello", { titleTemplate: "%s – Docs" })).toBe(
-      "Hello – Docs",
-    );
+    expect(resolveTitle("Hello", { titleTemplate: "%s – Docs" })).toBe("Hello – Docs");
   });
 
   it("uses %s when no template", () => {
@@ -43,9 +36,7 @@ describe("resolveOGImage", () => {
         images: [{ url: "og/sqlite.png" }],
       },
     };
-    expect(resolveOGImage(page, undefined, baseUrl)).toBe(
-      "https://example.com/og/sqlite.png",
-    );
+    expect(resolveOGImage(page, undefined, baseUrl)).toBe("https://example.com/og/sqlite.png");
   });
 
   it("returns ogImage when no openGraph", () => {
@@ -53,9 +44,7 @@ describe("resolveOGImage", () => {
       title: "X",
       ogImage: "/og/custom.png",
     };
-    expect(resolveOGImage(page, { enabled: true }, baseUrl)).toBe(
-      "/og/custom.png",
-    );
+    expect(resolveOGImage(page, { enabled: true }, baseUrl)).toBe("/og/custom.png");
   });
 
   it("prefers openGraph.images over ogImage", () => {
@@ -66,9 +55,7 @@ describe("resolveOGImage", () => {
         images: [{ url: "/og/new.png" }],
       },
     };
-    expect(resolveOGImage(page, { enabled: true }, baseUrl)).toBe(
-      "/og/new.png",
-    );
+    expect(resolveOGImage(page, { enabled: true }, baseUrl)).toBe("/og/new.png");
   });
 
   it("returns dynamic endpoint URL when no page OG and config has endpoint", () => {
@@ -102,17 +89,17 @@ describe("buildPageOpenGraph", () => {
   it("uses page.openGraph when present", () => {
     const page: PageFrontmatter = {
       title: "Farming-Labs",
-      description: "Farming Labs is a software development company that builds tools for the farming industry.",
+      description:
+        "Farming Labs is a software development company that builds tools for the farming industry.",
       openGraph: {
-        images: [
-          { url: "/og/databases/sqlite.png", width: 1200, height: 630 },
-        ],
+        images: [{ url: "/og/databases/sqlite.png", width: 1200, height: 630 }],
       },
     };
     const og = buildPageOpenGraph(page, undefined, baseUrl);
     expect(og).toEqual({
       title: "Farming-Labs",
-      description: "Farming Labs is a software development company that builds tools for the farming industry.",
+      description:
+        "Farming Labs is a software development company that builds tools for the farming industry.",
       images: [
         {
           url: "/og/databases/sqlite.png",

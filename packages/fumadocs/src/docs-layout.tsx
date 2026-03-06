@@ -4,10 +4,7 @@ import path from "node:path";
 import matter from "gray-matter";
 import type { ReactNode, ReactElement } from "react";
 import { serializeIcon } from "./serialize-icon.js";
-import {
-  buildPageOpenGraph,
-  buildPageTwitter,
-} from "@farming-labs/docs";
+import { buildPageOpenGraph, buildPageTwitter } from "@farming-labs/docs";
 import type {
   DocsConfig,
   ThemeToggleConfig,
@@ -318,10 +315,7 @@ export function createDocsMetadata(config: DocsConfig) {
  */
 export function createPageMetadata(
   config: DocsConfig,
-  page: Pick<
-    PageFrontmatter,
-    "title" | "description" | "ogImage" | "openGraph" | "twitter"
-  >,
+  page: Pick<PageFrontmatter, "title" | "description" | "ogImage" | "openGraph" | "twitter">,
   baseUrl?: string,
 ) {
   const result: Record<string, unknown> = {
@@ -568,10 +562,10 @@ export function createDocsLayout(config: DocsConfig) {
   const rawProviders =
     typeof pageActions?.openDocs === "object" && pageActions.openDocs.providers
       ? (pageActions.openDocs.providers as Array<{
-        name: string;
-        icon?: unknown;
-        urlTemplate: string;
-      }>)
+          name: string;
+          icon?: unknown;
+          urlTemplate: string;
+        }>)
       : undefined;
 
   const openDocsProviders = rawProviders?.map((p) => ({
@@ -655,8 +649,8 @@ export function createDocsLayout(config: DocsConfig) {
           sidebar={finalSidebarProps}
           {...(aiMode === "sidebar-icon" && aiEnabled
             ? {
-              searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
-            }
+                searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
+              }
             : {})}
         >
           <ColorStyle colors={colors} />

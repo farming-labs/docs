@@ -71,11 +71,7 @@ export function buildPageOpenGraph(
       ...(images && { images }),
     };
   }
-  const url = resolveOGImage(
-    page as PageFrontmatter,
-    ogConfig,
-    baseUrl,
-  );
+  const url = resolveOGImage(page as PageFrontmatter, ogConfig, baseUrl);
   if (!url) return undefined;
   return {
     title: page.title,
@@ -105,11 +101,7 @@ export function buildPageTwitter(
       ...(images && { images }),
     };
   }
-  const url = resolveOGImage(
-    page as PageFrontmatter,
-    ogConfig,
-    baseUrl,
-  );
+  const url = resolveOGImage(page as PageFrontmatter, ogConfig, baseUrl);
   if (!url) return undefined;
   return {
     card: "summary_large_image",
