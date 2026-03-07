@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "farming-labs-docs": {
+      "source": "farming-labs/docs",
+      "sourceType": "github",
+      "computedHash": "495e55fb66bfd68a7a6e0db8aa85acccb9fc380338d5a4cd37eab12051a0d9a3"
+    }
+  }
+}
