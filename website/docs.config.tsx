@@ -1,6 +1,5 @@
 import { defineDocs } from "@farming-labs/docs";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
-import { greentree } from "@farming-labs/theme/greentree";
 import {
   BookOpen,
   Rocket,
@@ -231,7 +230,7 @@ export default defineDocs({
           }}
         >
           <LayoutGrid size={12} className="shrink-0" />
-          Add your docs to the Showcase
+          Showcase your docs
         </a>
       </div>
     ),
