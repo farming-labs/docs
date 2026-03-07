@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
-import { LayoutGrid, ExternalLink, Plus, Loader2, ArrowRight } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { LayoutGrid, ExternalLink, Plus, Loader2, ArrowRight, Check } from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 
 type ShowcaseEntry = {
@@ -25,6 +25,7 @@ export default function ShowcasePage() {
   const [formDescription, setFormDescription] = useState("");
   const [formScreenshot, setFormScreenshot] = useState("");
   const [screenshotError, setScreenshotError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchEntries = useCallback(async () => {
     try {
@@ -64,12 +65,14 @@ export default function ShowcasePage() {
         setSubmitError(data.error ?? "Something went wrong");
         return;
       }
-      setSubmitSuccess(true);
       setFormName("");
       setFormUrl("");
       setFormDescription("");
       setFormScreenshot("");
       setScreenshotError(null);
+      fileInputRef.current && (fileInputRef.current.value = "");
+      setSubmitSuccess(true);
+      setTimeout(() => setSubmitSuccess(false), 5000);
       fetchEntries();
     } catch (err) {
       setSubmitError("Failed to submit. Please try again.");
@@ -101,7 +104,7 @@ export default function ShowcasePage() {
     };
     reader.onerror = () => setScreenshotError("Failed to read image.");
     reader.readAsDataURL(f);
-    e.target.value = "";
+    // Don't clear e.target.value so the input keeps showing the selected file name
   }
 
   return (
@@ -223,6 +226,7 @@ export default function ShowcasePage() {
                     Screenshot <span className="normal-case font-normal">(opt.)</span>
                   </label>
                   <input
+                    ref={fileInputRef}
                     id="showcase-screenshot"
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/gif"
@@ -234,32 +238,25 @@ export default function ShowcasePage() {
                       {screenshotError}
                     </p>
                   )}
-                  {formScreenshot && (
-                    <p className="mt-0.5 text-[10px] text-emerald-600 dark:text-emerald-400">
-                      Image added. Shown on list after approval.
-                    </p>
-                  )}
                 </div>
                 {submitError && (
                   <p className="text-[10px] text-red-600 dark:text-red-400">{submitError}</p>
                 )}
-                {submitSuccess && (
-                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400">
-                    Thanks! Your submission will appear on the list after approval.
-                  </p>
-                )}
-                <div className="flex items-end justify-end gap-1.5">
+                <div className="h-px w-full bg-neutral-200 dark:bg-white/8" />
+                <div className="flex -mt-3 items-end justify-end gap-1.5">
                   <button
                     type="submit"
-                    disabled={submitLoading}
+                    disabled={submitLoading || submitSuccess}
                     className="flex gap-1.5 rounded-none border border-neutral-300 dark:border-white/10 bg-neutral-900 dark:bg-white text-white dark:text-black px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider hover:bg-neutral-800 dark:hover:bg-white/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
                   >
                     {submitLoading ? (
                       <Loader2 className="size-3 animate-spin" />
+                    ) : submitSuccess ? (
+                      <Check className="size-3" />
                     ) : (
                       <Plus className="size-3" />
                     )}
-                    Submit
+                    {submitLoading ? "Submit" : submitSuccess ? "Submitted" : "Submit"}
                   </button>
                 </div>
               </form>
@@ -311,7 +308,7 @@ export default function ShowcasePage() {
                           {entry.name}
                         </span>
                         {entry.description && (
-                          <span className="text-[11px] text-neutral-500 dark:text-white/50 line-clamp-2">
+                          <span className="text-[12px] text-neutral-500 dark:text-white/50 line-clamp-2">
                             {entry.description}
                           </span>
                         )}
