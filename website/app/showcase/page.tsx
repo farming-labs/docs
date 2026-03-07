@@ -141,7 +141,7 @@ export default function ShowcasePage() {
         <div className="flex flex-col lg:flex-row lg:gap-10 xl:gap-12">
           <div className="min-w-0 flex-1 relative">
             <div
-              className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block opacity-[0.2] -mr-12"
+              className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block opacity-[0.5] -mr-12"
               aria-hidden
             >
               <AnimatedBackground />
