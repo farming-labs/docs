@@ -870,7 +870,7 @@ function ThemesSection() {
           />
         </div>
 
-        <div className="mt-10 flex items-center gap-4">
+        <div className="mt-10 flex items-center gap-4 flex-wrap">
           <a className="group" href="/themes">
             <span className="inline-flex group items-center gap-2 rounded-none uppercase font-mono text-xs border border-black/10 dark:border-white/10 bg-black/[3%] dark:bg-white/[3%] px-5 py-2.5 cursor-pointer text-black/80 dark:text-white/80 transition-all hover:bg-black/[4%] dark:hover:bg-white/[4%] hover:text-black dark:hover:text-white hover:border-black/10 dark:hover:border-white/10 hover:no-underline">
               <svg
@@ -890,6 +890,12 @@ function ThemesSection() {
                 <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
               </svg>
               expore themes
+              <ArrowRight className="w-3.5 h-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
+            </span>
+          </a>
+          <a className="group" href="/showcase">
+            <span className="inline-flex group items-center gap-2 rounded-none uppercase font-mono text-xs border border-black/10 dark:border-white/10 bg-black/[3%] dark:bg-white/[3%] px-5 py-2.5 cursor-pointer text-black/80 dark:text-white/80 transition-all hover:bg-black/[4%] dark:hover:bg-white/[4%] hover:text-black dark:hover:text-white hover:border-black/10 dark:hover:border-white/10 hover:no-underline">
+              Showcase
               <ArrowRight className="w-3.5 h-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
             </span>
           </a>

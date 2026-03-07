@@ -1,0 +1,27 @@
+// Prisma schema for showcase entries (PostgreSQL)
+// Run: pnpm prisma generate && pnpm prisma migrate dev
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ApprovalStatus {
+  IDLE     // pending review (default)
+  APPROVED // shown on showcase
+  REJECTED
+}
+
+model ShowcaseEntry {
+  id             String         @id @default(cuid())
+  name           String
+  url            String
+  description    String?
+  screenshot     String?        // URL to screenshot image
+  approvalStatus ApprovalStatus @default(IDLE)
+  createdAt      DateTime       @default(now())
+}

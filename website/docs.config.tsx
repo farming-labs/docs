@@ -25,6 +25,7 @@ import {
   MousePointerClick,
   Book,
   Image,
+  LayoutGrid,
 } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 import { Callout } from "@/components/ui/callout";
@@ -219,9 +220,19 @@ export default defineDocs({
             v0.0.11
           </a>
         </div>
-        <span className="uppercase font-mono text-[10px] tracking-tight">
+        <span className="uppercase font-mono text-[10px] tracking-tight block">
           Check out the new features and improvements that were added in this release.
         </span>
+        <a
+          href="/showcase"
+          className="flex items-center gap-1.5 mt-3 font-mono text-[11px] uppercase tracking-wider text-[var(--color-fd-foreground)] hover:underline underline-offset-2 decoration-dotted"
+          style={{
+            textDecorationColor: "color-mix(in srgb, var(--color-fd-foreground) 40%, transparent)",
+          }}
+        >
+          <LayoutGrid size={12} className="shrink-0" />
+          Add your docs to the Showcase
+        </a>
       </div>
     ),
     footer: (
