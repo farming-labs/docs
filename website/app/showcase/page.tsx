@@ -159,7 +159,9 @@ export default function ShowcasePage() {
               </p>
               <p className="text-[13px] text-neutral-500 dark:text-white/40 leading-relaxed">
                 <span className="lg:hidden">Submit yours below.</span>
-                <span className="hidden lg:inline">Submit yours to see your documentation site here.</span>
+                <span className="hidden lg:inline">
+                  Submit yours to see your documentation site here.
+                </span>
               </p>
             </div>
           </div>
