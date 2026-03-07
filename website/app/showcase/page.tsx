@@ -160,7 +160,7 @@ export default function ShowcasePage() {
               </p>
             </div>
           </div>
-          <div className="mt-8 relative pb-2 lg:mt-0 lg:pt-0 lg:w-[340px] lg:shrink-0 lg:border-l border-neutral-200 dark:border-white/10 lg:pl-6">
+          <div className="mt-8 relative pb-0 lg:mt-0 lg:pt-0 lg:w-[340px] lg:shrink-0 lg:border-l border-neutral-200 dark:border-white/10 lg:pl-6">
             <div className="absolute z-[999] left-0 sm:left-6 top-4 sm:top-0 w-px h-[95%] sm:h-full bg-neutral-200 dark:bg-white/10" />
             <div className="absolute z-[999] right-0 top-8 sm:top-0 w-px h-[95%] sm:h-full bg-neutral-200 dark:bg-white/10" />
             <div className="lg:sticky lg:top-24 mt-4">
