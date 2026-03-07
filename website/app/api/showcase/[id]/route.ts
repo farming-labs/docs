@@ -10,10 +10,7 @@ const APPROVAL_STATUSES = ["IDLE", "APPROVED", "REJECTED"] as const;
  * Header: x-showcase-admin-secret: <SHOWCASE_ADMIN_SECRET>
  * Body: { approvalStatus: "IDLE" | "APPROVED" | "REJECTED" }
  */
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const secret = request.headers.get("x-showcase-admin-secret");
   const expected = process.env.SHOWCASE_ADMIN_SECRET;
   if (!expected || secret !== expected) {
@@ -49,9 +46,6 @@ export async function PATCH(
       return NextResponse.json({ error: "Entry not found" }, { status: 404 });
     }
     console.error("[showcase PATCH]", e);
-    return NextResponse.json(
-      { error: "Failed to update entry" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to update entry" }, { status: 500 });
   }
 }

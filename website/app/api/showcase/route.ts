@@ -13,12 +13,10 @@ export async function GET() {
     return NextResponse.json(entries);
   } catch (e) {
     console.error("[showcase GET]", e);
-    const message =
-      process.env.DATABASE_URL ? "Failed to fetch showcase entries" : "Showcase database not configured";
-    return NextResponse.json(
-      { error: message },
-      { status: process.env.DATABASE_URL ? 500 : 503 },
-    );
+    const message = process.env.DATABASE_URL
+      ? "Failed to fetch showcase entries"
+      : "Showcase database not configured";
+    return NextResponse.json({ error: message }, { status: process.env.DATABASE_URL ? 500 : 503 });
   }
 }
 
@@ -35,34 +33,23 @@ export async function POST(request: Request) {
 
     const trimmedName = typeof name === "string" ? name.trim() : "";
     const trimmedUrl = typeof url === "string" ? url.trim() : "";
-    const trimmedDesc =
-      typeof description === "string" ? description.trim() : null;
-    const trimmedScreenshot =
-      typeof screenshot === "string" ? screenshot.trim() : null;
+    const trimmedDesc = typeof description === "string" ? description.trim() : null;
+    const trimmedScreenshot = typeof screenshot === "string" ? screenshot.trim() : null;
 
     if (!trimmedName || !trimmedUrl) {
-      return NextResponse.json(
-        { error: "Name and URL are required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Name and URL are required" }, { status: 400 });
     }
 
     // Basic URL format check
     try {
       new URL(trimmedUrl);
     } catch {
-      return NextResponse.json(
-        { error: "Please provide a valid URL" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Please provide a valid URL" }, { status: 400 });
     }
 
     const MAX_SCREENSHOT_LENGTH = 3_000_000; // ~2MB base64
     if (trimmedScreenshot) {
-      if (
-        !trimmedScreenshot.startsWith("data:image/") ||
-        !trimmedScreenshot.includes(";base64,")
-      ) {
+      if (!trimmedScreenshot.startsWith("data:image/") || !trimmedScreenshot.includes(";base64,")) {
         return NextResponse.json(
           { error: "Screenshot must be a base64 image (data:image/...;base64,...)" },
           { status: 400 },
@@ -89,11 +76,9 @@ export async function POST(request: Request) {
     return NextResponse.json(entry, { status: 201 });
   } catch (e) {
     console.error("[showcase POST]", e);
-    const message =
-      process.env.DATABASE_URL ? "Failed to create showcase entry" : "Showcase database not configured";
-    return NextResponse.json(
-      { error: message },
-      { status: process.env.DATABASE_URL ? 500 : 503 },
-    );
+    const message = process.env.DATABASE_URL
+      ? "Failed to create showcase entry"
+      : "Showcase database not configured";
+    return NextResponse.json({ error: message }, { status: process.env.DATABASE_URL ? 500 : 503 });
   }
 }

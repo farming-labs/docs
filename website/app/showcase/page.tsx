@@ -137,7 +137,10 @@ export default function ShowcasePage() {
       <main className="overflow-x-hidden mx-auto max-w-[90%] w-full px-6 py-5 pb-0">
         <div className="flex flex-col lg:flex-row lg:gap-10 xl:gap-12">
           <div className="min-w-0 flex-1 relative">
-            <div className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block opacity-[0.09] -mr-12" aria-hidden>
+            <div
+              className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block opacity-[0.09] -mr-12"
+              aria-hidden
+            >
               <AnimatedBackground />
             </div>
             <div className="relative z-10 mb-6 sm:pt-14 max-w-2xl">
@@ -145,7 +148,11 @@ export default function ShowcasePage() {
                 Showcase
               </h1>
               <p className="text-[13px] text-neutral-500 dark:text-white/40 leading-relaxed">
-                Documentation sites built with <code className="font-mono text-neutral-900 dark:text-white">@farming-labs/docs</code>.{" "}
+                Documentation sites built with{" "}
+                <code className="font-mono text-neutral-900 dark:text-white">
+                  @farming-labs/docs
+                </code>
+                .{" "}
               </p>
               <p className="text-[13px] text-neutral-500 dark:text-white/40 leading-relaxed">
                 <span className="lg:hidden">Submit yours below.</span>
@@ -223,10 +230,14 @@ export default function ShowcasePage() {
                     className="w-full text-[11px] font-mono text-neutral-700 dark:text-white/60 file:mr-2 file:rounded-none file:border file:border-neutral-200 file:bg-neutral-100 dark:file:border-white/10 dark:file:bg-white/5 file:px-2 file:py-1 file:text-xs file:text-neutral-700 dark:file:text-white/80"
                   />
                   {screenshotError && (
-                    <p className="mt-0.5 text-[10px] text-red-600 dark:text-red-400">{screenshotError}</p>
+                    <p className="mt-0.5 text-[10px] text-red-600 dark:text-red-400">
+                      {screenshotError}
+                    </p>
                   )}
                   {formScreenshot && (
-                    <p className="mt-0.5 text-[10px] text-emerald-600 dark:text-emerald-400">Image added. Shown on list after approval.</p>
+                    <p className="mt-0.5 text-[10px] text-emerald-600 dark:text-emerald-400">
+                      Image added. Shown on list after approval.
+                    </p>
                   )}
                 </div>
                 {submitError && (
@@ -305,8 +316,14 @@ export default function ShowcasePage() {
                           </span>
                         )}
                         <div className="flex items-end justify-end">
-                          <a href={entry.url} target="_blank" rel="noopener noreferrer" className="cursor-pointer group">
-                            <button className="text-[10px] cursor-pointer font-mono rounded-none border border-neutral-300 flex items-center gap-1 dark:border-white/10 bg-neutral-900 dark:bg-white text-white dark:text-black px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider hover:bg-neutral-800 dark:hover:bg-white/90 transition-colors disabled:opacity-50 disabled:pointer-events-none">Check it out
+                          <a
+                            href={entry.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="cursor-pointer group"
+                          >
+                            <button className="text-[10px] cursor-pointer font-mono rounded-none border border-neutral-300 flex items-center gap-1 dark:border-white/10 bg-neutral-900 dark:bg-white text-white dark:text-black px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider hover:bg-neutral-800 dark:hover:bg-white/90 transition-colors disabled:opacity-50 disabled:pointer-events-none">
+                              Check it out
                               <ArrowRight className="size-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
                             </button>
                           </a>
