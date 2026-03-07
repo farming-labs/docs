@@ -529,7 +529,7 @@ This repo includes an **agent skill** so assistants can help with @farming-labs/
 Install the skill with the [Skills CLI](https://skills.sh/) (format: `npx skills add <owner/repo>`):
 
 ```bash
-npx skills add farming-labs/docs/skills
+npx skills add farming-labs/docs
 ```
 
 - **Skill file:** [skills/farming-labs-docs/SKILL.md](./skills/farming-labs-docs/SKILL.md)
