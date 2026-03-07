@@ -134,7 +134,7 @@ export default function ShowcasePage() {
         </div>
       </header>
 
-      <main className="overflow-x-hidden mx-auto max-w-[90%] w-full px-6 py-5 pb-0">
+      <main className="overflow-x-hidden mx-auto max-w-[90%] w-full md:px-6 py-5 pb-0">
         <div className="flex flex-col lg:flex-row lg:gap-10 xl:gap-12">
           <div className="min-w-0 flex-1 relative">
             <div
