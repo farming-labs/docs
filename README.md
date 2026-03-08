@@ -453,7 +453,7 @@ import { fumadocs } from "@farming-labs/astro-theme";
 ### Nuxt
 
 ```ts
-import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
+import { fumadocs } from "@farming-labs/nuxt-theme";
 ```
 
 ```css
