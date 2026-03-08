@@ -13,9 +13,28 @@ order: 1
 
 **Adding docs to an existing app?** Run the init command inside your Next.js, SvelteKit, Astro, or Nuxt project:
 
-```bash
-npx @farming-labs/docs@latest init
-```
+<Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+  <Tab value="npm">
+    ```bash
+    npx @farming-labs/docs@latest init
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm dlx @farming-labs/docs@latest init
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    yarn dlx @farming-labs/docs@latest init
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash
+    bunx @farming-labs/docs@latest init
+    ```
+  </Tab>
+</Tabs>
 
 The CLI will:
 
@@ -30,14 +49,42 @@ To **upgrade** all docs packages to the latest later, run from your project root
 
 **Starting from scratch or want a full example?** Use **`--template`** with **`--name <project>`** to bootstrap a ready-to-run docs app. The CLI creates the project folder, bootstraps it with the chosen framework, and runs install:
 
-```bash
-npx @farming-labs/docs@latest init --template next --name my-docs     # Next.js
-npx @farming-labs/docs@latest init --template nuxt --name my-docs     # Nuxt
-npx @farming-labs/docs@latest init --template sveltekit --name my-docs # SvelteKit
-npx @farming-labs/docs@latest init --template astro --name my-docs    # Astro
-```
+<Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+  <Tab value="npm">
+    ```bash
+    npx @farming-labs/docs@latest init --template next --name my-docs     # Next.js
+    npx @farming-labs/docs@latest init --template nuxt --name my-docs     # Nuxt
+    npx @farming-labs/docs@latest init --template sveltekit --name my-docs # SvelteKit
+    npx @farming-labs/docs@latest init --template astro --name my-docs    # Astro
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm dlx @farming-labs/docs@latest init --template next --name my-docs     # Next.js
+    pnpm dlx @farming-labs/docs@latest init --template nuxt --name my-docs     # Nuxt
+    pnpm dlx @farming-labs/docs@latest init --template sveltekit --name my-docs # SvelteKit
+    pnpm dlx @farming-labs/docs@latest init --template astro --name my-docs    # Astro
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    yarn dlx @farming-labs/docs@latest init --template next --name my-docs     # Next.js
+    yarn dlx @farming-labs/docs@latest init --template nuxt --name my-docs     # Nuxt
+    yarn dlx @farming-labs/docs@latest init --template sveltekit --name my-docs # SvelteKit
+    yarn dlx @farming-labs/docs@latest init --template astro --name my-docs    # Astro
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash
+    bunx @farming-labs/docs@latest init --template next --name my-docs     # Next.js
+    bunx @farming-labs/docs@latest init --template nuxt --name my-docs     # Nuxt
+    bunx @farming-labs/docs@latest init --template sveltekit --name my-docs # SvelteKit
+    bunx @farming-labs/docs@latest init --template astro --name my-docs    # Astro
+    ```
+  </Tab>
+</Tabs>
 
-Replace `my-docs` with your project name. Then run `cd my-docs && pnpm run dev` (or your package manager’s dev command) to start the dev server.
+Replace `my-docs` with your project name. Then run `cd my-docs` and start the dev server (`npm run dev`, `pnpm run dev`, `yarn dev`, or `bun run dev`).
 
 ## Option B: Manual Setup
 
@@ -49,9 +96,28 @@ Replace `my-docs` with your project name. Then run `cd my-docs && pnpm run dev` 
   <Tab value="Next.js">
     ### 1. Install packages
 
-    ```bash
-    pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/next
-    ```
+    <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+      <Tab value="npm">
+        ```bash
+        npm install @farming-labs/docs @farming-labs/theme @farming-labs/next
+        ```
+      </Tab>
+      <Tab value="pnpm">
+        ```bash
+        pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/next
+        ```
+      </Tab>
+      <Tab value="yarn">
+        ```bash
+        yarn add @farming-labs/docs @farming-labs/theme @farming-labs/next
+        ```
+      </Tab>
+      <Tab value="bun">
+        ```bash
+        bun add @farming-labs/docs @farming-labs/theme @farming-labs/next
+        ```
+      </Tab>
+    </Tabs>
 
     ### 2. Create `docs.config.tsx`
 
@@ -143,9 +209,28 @@ Replace `my-docs` with your project name. Then run `cd my-docs && pnpm run dev` 
   <Tab value="SvelteKit">
     ### 1. Install packages
 
-    ```bash
-    pnpm add @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme
-    ```
+    <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+      <Tab value="npm">
+        ```bash
+        npm install @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme
+        ```
+      </Tab>
+      <Tab value="pnpm">
+        ```bash
+        pnpm add @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme
+        ```
+      </Tab>
+      <Tab value="yarn">
+        ```bash
+        yarn add @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme
+        ```
+      </Tab>
+      <Tab value="bun">
+        ```bash
+        bun add @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme
+        ```
+      </Tab>
+    </Tabs>
 
     ### 2. Create `src/lib/docs.config.ts`
 
@@ -267,9 +352,28 @@ Replace `my-docs` with your project name. Then run `cd my-docs && pnpm run dev` 
   <Tab value="Astro">
     ### 1. Install packages
 
-    ```bash
-    pnpm add @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme
-    ```
+    <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+      <Tab value="npm">
+        ```bash
+        npm install @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme
+        ```
+      </Tab>
+      <Tab value="pnpm">
+        ```bash
+        pnpm add @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme
+        ```
+      </Tab>
+      <Tab value="yarn">
+        ```bash
+        yarn add @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme
+        ```
+      </Tab>
+      <Tab value="bun">
+        ```bash
+        bun add @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme
+        ```
+      </Tab>
+    </Tabs>
 
     ### 2. Create `src/lib/docs.config.ts`
 
@@ -381,15 +485,34 @@ Replace `my-docs` with your project name. Then run `cd my-docs && pnpm run dev` 
   <Tab value="Nuxt">
     ### 1. Install packages
 
-    ```bash
-    pnpm add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme
-    ```
+    <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+      <Tab value="npm">
+        ```bash
+        npm install @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme
+        ```
+      </Tab>
+      <Tab value="pnpm">
+        ```bash
+        pnpm add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme
+        ```
+      </Tab>
+      <Tab value="yarn">
+        ```bash
+        yarn add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme
+        ```
+      </Tab>
+      <Tab value="bun">
+        ```bash
+        bun add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme
+        ```
+      </Tab>
+    </Tabs>
 
     ### 2. Create `docs.config.ts`
 
     ```ts title="docs.config.ts"
     import { defineDocs } from "@farming-labs/docs";
-    import { fumadocs } from "@farming-labs/nuxt-themeumadocs";
+    import { fumadocs } from "@farming-labs/nuxt-theme";
 
     export default defineDocs({
       entry: "docs",

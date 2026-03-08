@@ -67,9 +67,28 @@ Theme-level customization (colors, typography, components) is covered in [Config
 
 The fastest way to get started is with the CLI:
 
-```bash
-npx @farming-labs/docs@latest init
-```
+<Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+  <Tab value="npm">
+    ```bash
+    npx @farming-labs/docs@latest init
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm dlx @farming-labs/docs@latest init
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    yarn dlx @farming-labs/docs@latest init
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash
+    bunx @farming-labs/docs@latest init
+    ```
+  </Tab>
+</Tabs>
 
 The CLI auto-detects your framework (Next.js, SvelteKit, Astro, or Nuxt), lets you pick a theme (`fumadocs`, `darksharp`, or `pixel-border`), and scaffolds everything you need — config, routes, CSS, sample pages — then starts the dev server.
 
