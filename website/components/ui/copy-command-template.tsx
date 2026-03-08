@@ -39,9 +39,7 @@ export default function CopyCommandTemplate({ className = "" }: CopyCommandTempl
       await navigator.clipboard.writeText(fullCommand);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // fallback
-    }
+    } catch {}
   };
 
   return (

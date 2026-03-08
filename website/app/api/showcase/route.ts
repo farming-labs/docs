@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/showcase — list approved showcase entries only (newest first) */
 export async function GET() {
   try {
     const entries = await prisma.showcaseEntry.findMany({
@@ -20,7 +19,6 @@ export async function GET() {
   }
 }
 
-/** POST /api/showcase — submit a new showcase entry */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -40,14 +38,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Name and URL are required" }, { status: 400 });
     }
 
-    // Basic URL format check
     try {
       new URL(trimmedUrl);
     } catch {
       return NextResponse.json({ error: "Please provide a valid URL" }, { status: 400 });
     }
 
-    const MAX_SCREENSHOT_LENGTH = 3_000_000; // ~2MB base64
+    const MAX_SCREENSHOT_LENGTH = 3_000_000;
     if (trimmedScreenshot) {
       if (!trimmedScreenshot.startsWith("data:image/") || !trimmedScreenshot.includes(";base64,")) {
         return NextResponse.json(

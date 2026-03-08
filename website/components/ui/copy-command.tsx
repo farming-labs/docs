@@ -17,9 +17,7 @@ export default function CopyCommand({ command, className = "" }: CopyCommandProp
       await navigator.clipboard.writeText(command);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // fallback
-    }
+    } catch {}
   };
 
   return (

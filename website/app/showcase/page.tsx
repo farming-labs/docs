@@ -94,7 +94,7 @@ export default function ShowcasePage() {
     }
   }
 
-  const MAX_SCREENSHOT_BYTES = 2 * 1024 * 1024; // 2MB
+  const MAX_SCREENSHOT_BYTES = 2 * 1024 * 1024;
 
   function handleScreenshotChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -117,7 +117,6 @@ export default function ShowcasePage() {
     };
     reader.onerror = () => setScreenshotError("Failed to read image.");
     reader.readAsDataURL(f);
-    // Don't clear e.target.value so the input keeps showing the selected file name
   }
 
   return (
