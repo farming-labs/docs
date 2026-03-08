@@ -14,6 +14,19 @@ type ShowcaseEntry = {
   createdAt: string;
 };
 
+function withShowcaseUtm(url: string) {
+  try {
+    const u = new URL(url);
+    const params = u.searchParams;
+    if (!params.has("utm_source")) params.set("utm_source", "docs.farming-labs.dev");
+    if (!params.has("utm_medium")) params.set("utm_medium", "referral");
+    if (!params.has("utm_campaign")) params.set("utm_campaign", "showcase");
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 export default function ShowcasePage() {
   const [entries, setEntries] = useState<ShowcaseEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -282,55 +295,58 @@ export default function ShowcasePage() {
               </p>
             ) : (
               <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {entries.map((entry) => (
-                  <li key={entry.id}>
-                    <a
-                      href={entry.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group block rounded-none border border-neutral-200 dark:border-white/8 bg-black/[0.02] dark:bg-white/[0.02] hover:border-neutral-300 dark:hover:border-white/12 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors overflow-hidden"
-                    >
-                      <div className="aspect-[16/10] w-full overflow-hidden border-b border-neutral-200 dark:border-white/8 bg-neutral-100 dark:bg-white/5">
-                        {entry.screenshot ? (
-                          <img
-                            src={entry.screenshot}
-                            alt=""
-                            className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-white/20">
-                            <span className="text-[10px] font-mono uppercase">No preview</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-3 px-4 relative pb-0 flex flex-col gap-1">
-                        <div className="absolute left-4 top-0 w-px h-full bg-neutral-200 dark:bg-white/8" />
-                        <div className="absolute right-4 top-0 w-px h-full bg-neutral-200 dark:bg-white/8" />
-                        <span className="font-mono text-xs font-medium text-neutral-900 dark:text-white group-hover:underline truncate">
-                          {entry.name}
-                        </span>
-                        {entry.description && (
-                          <span className="text-[12px] text-neutral-500 dark:text-white/50 line-clamp-2">
-                            {entry.description}
-                          </span>
-                        )}
-                        <div className="flex items-end justify-end">
-                          <a
-                            href={entry.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="cursor-pointer group"
-                          >
-                            <button className="text-[10px] cursor-pointer font-mono rounded-none border border-neutral-300 flex items-center gap-1 dark:border-white/10 bg-neutral-900 dark:bg-white text-white dark:text-black px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider hover:bg-neutral-800 dark:hover:bg-white/90 transition-colors disabled:opacity-50 disabled:pointer-events-none">
-                              Check it out
-                              <ArrowRight className="size-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
-                            </button>
-                          </a>
+                {entries.map((entry) => {
+                  const trackedUrl = withShowcaseUtm(entry.url);
+                  return (
+                    <li key={entry.id}>
+                      <a
+                        href={trackedUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group block rounded-none border border-neutral-200 dark:border-white/8 bg-black/[0.02] dark:bg-white/[0.02] hover:border-neutral-300 dark:hover:border-white/12 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors overflow-hidden"
+                      >
+                        <div className="aspect-[16/10] w-full overflow-hidden border-b border-neutral-200 dark:border-white/8 bg-neutral-100 dark:bg-white/5">
+                          {entry.screenshot ? (
+                            <img
+                              src={entry.screenshot}
+                              alt=""
+                              className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-white/20">
+                              <span className="text-[10px] font-mono uppercase">No preview</span>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    </a>
-                  </li>
-                ))}
+                        <div className="p-3 px-4 relative pb-0 flex flex-col gap-1">
+                          <div className="absolute left-4 top-0 w-px h-full bg-neutral-200 dark:bg-white/8" />
+                          <div className="absolute right-4 top-0 w-px h-full bg-neutral-200 dark:bg-white/8" />
+                          <span className="font-mono text-xs font-medium text-neutral-900 dark:text-white group-hover:underline truncate">
+                            {entry.name}
+                          </span>
+                          {entry.description && (
+                            <span className="text-[12px] text-neutral-500 dark:text-white/50 line-clamp-2">
+                              {entry.description}
+                            </span>
+                          )}
+                          <div className="flex items-end justify-end">
+                            <a
+                              href={trackedUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="cursor-pointer group"
+                            >
+                              <button className="text-[10px] cursor-pointer font-mono rounded-none border border-neutral-300 flex items-center gap-1 dark:border-white/10 bg-neutral-900 dark:bg-white text-white dark:text-black px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider hover:bg-neutral-800 dark:hover:bg-white/90 transition-colors disabled:opacity-50 disabled:pointer-events-none">
+                                Check it out
+                                <ArrowRight className="size-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
+                              </button>
+                            </a>
+                          </div>
+                        </div>
+                      </a>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

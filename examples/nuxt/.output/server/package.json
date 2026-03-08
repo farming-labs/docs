@@ -5,8 +5,8 @@
   "private": true,
   "dependencies": {
     "@babel/parser": "7.29.0",
-    "@farming-labs/docs": "0.0.11",
-    "@farming-labs/nuxt": "0.0.11",
+    "@farming-labs/docs": "0.0.12",
+    "@farming-labs/nuxt": "0.0.12",
     "@shikijs/core": "3.22.0",
     "@shikijs/engine-javascript": "3.22.0",
     "@shikijs/engine-oniguruma": "3.22.0",

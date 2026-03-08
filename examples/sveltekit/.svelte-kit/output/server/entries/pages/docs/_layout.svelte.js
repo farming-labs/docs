@@ -271,7 +271,7 @@ function DocsLayout($$renderer, $$props) {
       }
       $$renderer3.push(`<!--]-->`);
     }
-    head("v59aby", $$renderer2, ($$renderer3) => {
+    head("mj1oi1", $$renderer2, ($$renderer3) => {
       $$renderer3.push(`${html(`<script>${themeInitScript}<\/script>`)} `);
       if (overrideCSS) {
         $$renderer3.push("<!--[-->");
