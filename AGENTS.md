@@ -2,19 +2,22 @@
 
 This repo is **@farming-labs/docs** — an MDX-based documentation framework for Next.js, SvelteKit, Astro, and Nuxt.
 
-## Skill: getting started
+## Skills (skills.sh / Agent Skills specification)
 
-Use the **farming-labs-docs** skill when helping users set up docs, run the CLI, choose themes, or edit `docs.config`.
+Skills are under **`skills/farming-labs/`** and divided by topic. Use the skill that matches the task.
 
-- **Skill path:** [skills/farming-labs-docs/SKILL.md](./skills/farming-labs-docs/SKILL.md)
-- **Install (Skills CLI):** `npx skills add farming-labs/docs`
+| Task | Skill |
+| ---- | ----- |
+| Setup, init, theme CSS, docs.config | [getting-started](./skills/farming-labs/getting-started/SKILL.md) |
+| CLI: init, upgrade, flags (--template, --name, --theme, etc.) | [cli](./skills/farming-labs/cli/SKILL.md) |
+| Create or share a theme (createTheme, extendTheme, npm) | [creating-themes](./skills/farming-labs/creating-themes/SKILL.md) |
+| Ask AI / AI chat configuration | [ask-ai](./skills/farming-labs/ask-ai/SKILL.md) |
+| Page actions (Copy Markdown, Open in LLM) | [page-actions](./skills/farming-labs/page-actions/SKILL.md) |
+| docs.config options (entry, theme, staticExport, sidebar, etc.) | [configuration](./skills/farming-labs/configuration/SKILL.md) |
 
-The skill covers:
+- **Skills index:** [skills/farming-labs/README.md](./skills/farming-labs/README.md)
+- **Install (Skills CLI):** `npx skills add farming-labs/docs` — then pick a skill when prompted.
 
-- CLI: `npx @farming-labs/docs@latest init` and `--template next|nuxt|sveltekit|astro --name <project>`
-- Flags: `--name` (with --template), `--theme`, `--entry`
-- Theme CSS: must be imported in global CSS for each framework
-- Packages and config per framework (Next, SvelteKit, Astro, Nuxt)
-- Path aliases and common gotchas
+Skills conform to the [Agent Skills specification](https://agentskills.io/specification) (frontmatter `name` matches parent directory, `description` under 1024 chars).
 
 For full installation steps and examples, see the [README](./README.md) and the docs site (e.g. `/docs` routes in the repo).
