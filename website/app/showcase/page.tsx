@@ -196,7 +196,7 @@ export default function ShowcasePage() {
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder="My Project Docs"
                     required
-                    className="w-full rounded-none border border-l-0 border-r-0 border-neutral-200 dark:border-white/10 bg-white dark:bg-black/50 px-2.5 py-1.5 text-xs font-mono text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-white/30"
+                    className="w-full rounded-none border border-l-0 border-r-0 border-neutral-200 dark:border-white/10 bg-white dark:bg-black/50 px-2.5 py-1.5 text-xs font-mono text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-white/40 focus:outline-none focus:ring-0 focus:ring-neutral-400 dark:focus:ring-white/30"
                   />
                 </div>
                 <div>
@@ -213,7 +213,7 @@ export default function ShowcasePage() {
                     onChange={(e) => setFormUrl(e.target.value)}
                     placeholder="https://docs.example.com"
                     required
-                    className="w-full rounded-none border border-l-0 border-r-0 border-neutral-200 dark:border-white/10 bg-white dark:bg-black/50 px-2.5 py-1.5 text-xs font-mono text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-white/30"
+                    className="w-full rounded-none border border-l-0 border-r-0 border-neutral-200 dark:border-white/10 bg-white dark:bg-black/50 px-2.5 py-1.5 text-xs font-mono text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-white/40 focus:outline-none focus:ring-0 focus:ring-neutral-400 dark:focus:ring-white/30"
                   />
                 </div>
                 <div>
@@ -229,7 +229,7 @@ export default function ShowcasePage() {
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
                     placeholder="Short description"
-                    className="w-full rounded-none border border-l-0 border-r-0 border-neutral-200 dark:border-white/10 bg-white dark:bg-black/50 px-2.5 py-1.5 text-xs font-mono text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-white/30"
+                    className="w-full rounded-none border border-l-0 border-r-0 border-neutral-200 dark:border-white/10 bg-white dark:bg-black/50 px-2.5 py-1.5 text-xs font-mono text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-white/40 focus:outline-none focus:ring-0 focus:ring-neutral-400 dark:focus:ring-white/30"
                   />
                 </div>
                 <div>
@@ -245,7 +245,7 @@ export default function ShowcasePage() {
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/gif"
                     onChange={handleScreenshotChange}
-                    className="w-full text-[11px] font-mono text-neutral-700 dark:text-white/60 file:mr-2 file:rounded-none file:border file:border-neutral-200 file:bg-neutral-100 dark:file:border-white/10 dark:file:bg-white/5 file:px-2 file:py-1 file:text-xs file:text-neutral-700 dark:file:text-white/80"
+                    className="w-full text-[11px] font-mono border-l-0 text-neutral-700 dark:text-white/60 file:mr-2 file:rounded-none file:border file:border-neutral-200 file:bg-neutral-100 dark:file:border-white/10 dark:file:bg-white/5 file:px-2 file:py-1 file:text-xs file:text-neutral-700 dark:file:text-white/80"
                   />
                   {screenshotError && (
                     <p className="mt-0.5 text-[10px] text-red-600 dark:text-red-400">
