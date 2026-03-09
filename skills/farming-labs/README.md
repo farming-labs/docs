@@ -21,25 +21,35 @@ Each skill is a separate directory with a `SKILL.md` file. Use the skill that ma
 
 ## Installing with Skills CLI (skills.sh)
 
-From the [Agent Skills Directory](https://skills.sh/), you can add skills from this repo.
+From the [Agent Skills Directory](https://skills.sh/), add skills from this repo and **pick your preferred skill(s)** when prompted.
 
-**Install the whole repo (then pick a skill when prompted):**
+**Install (use your preferred package manager):**
 
 ```bash
+# npm
 npx skills add farming-labs/docs
+
+# pnpm
+pnpx skills add farming-labs/docs
+
+# yarn
+yarn dlx skills add farming-labs/docs
+
+# bun
+bunx skills add farming-labs/docs
 ```
 
-If the CLI lists skills under `skills/farming-labs/`, choose the one you need (e.g. `getting-started`, `cli`, `creating-themes`).
+The CLI will list skills under `skills/farming-labs/`. Choose the one(s) you need (e.g. `getting-started`, `cli`, `creating-themes`, `ask-ai`, `page-actions`, `configuration`). You can install multiple skills or add more later.
 
 **Install a specific skill by path** (if your CLI supports it):
 
 ```bash
-npx skills add farming-labs/docs/skills/farming-labs/getting-started
-npx skills add farming-labs/docs/skills/farming-labs/cli
-npx skills add farming-labs/docs/skills/farming-labs/creating-themes
-npx skills add farming-labs/docs/skills/farming-labs/ask-ai
-npx skills add farming-labs/docs/skills/farming-labs/page-actions
-npx skills add farming-labs/docs/skills/farming-labs/configuration
+pnpx skills add farming-labs/docs/skills/farming-labs/getting-started
+pnpx skills add farming-labs/docs/skills/farming-labs/cli
+pnpx skills add farming-labs/docs/skills/farming-labs/creating-themes
+pnpx skills add farming-labs/docs/skills/farming-labs/ask-ai
+pnpx skills add farming-labs/docs/skills/farming-labs/page-actions
+pnpx skills add farming-labs/docs/skills/farming-labs/configuration
 ```
 
 ---

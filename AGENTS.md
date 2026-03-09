@@ -16,7 +16,7 @@ Skills are under **`skills/farming-labs/`** and divided by topic. Use the skill 
 | docs.config options (entry, theme, staticExport, sidebar, etc.) | [configuration](./skills/farming-labs/configuration/SKILL.md) |
 
 - **Skills index:** [skills/farming-labs/README.md](./skills/farming-labs/README.md)
-- **Install (Skills CLI):** `npx skills add farming-labs/docs` — then pick a skill when prompted.
+- **Install (Skills CLI):** `npx skills add farming-labs/docs` or `pnpx skills add farming-labs/docs` (yarn/bun: `yarn dlx` / `bunx`) — then pick your preferred skill(s) when prompted.
 
 Skills conform to the [Agent Skills specification](https://agentskills.io/specification) (frontmatter `name` matches parent directory, `description` under 1024 chars).
 

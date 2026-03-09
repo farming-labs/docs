@@ -527,13 +527,23 @@ export default defineDocs({
 
 This repo includes an **agent skill** so assistants can help with @farming-labs/docs setup and usage. The skill covers CLI (`init`, `--template`, `--name`), manual setup per framework, themes, and theme CSS.
 
-Install skills with the [Skills CLI](https://skills.sh/) (format: `npx skills add <owner/repo>`):
+Install skills with the [Skills CLI](https://skills.sh/) and pick your preferred skill(s) when prompted:
 
 ```bash
+# npm
 npx skills add farming-labs/docs
+
+# pnpm
+pnpx skills add farming-labs/docs
+
+# yarn
+yarn dlx skills add farming-labs/docs
+
+# bun
+bunx skills add farming-labs/docs
 ```
 
-Then pick a skill when prompted (e.g. `getting-started`, `cli`, `creating-themes`, `ask-ai`, `page-actions`, `configuration`). All skills live under `skills/farming-labs/` and conform to the [Agent Skills specification](https://agentskills.io/specification).
+The CLI lists skills under `skills/farming-labs/` (e.g. `getting-started`, `cli`, `creating-themes`, `ask-ai`, `page-actions`, `configuration`). All skills conform to the [Agent Skills specification](https://agentskills.io/specification).
 
 - **Skills index:** [skills/farming-labs/README.md](./skills/farming-labs/README.md)
 - **Root skills README:** [skills/README.md](./skills/README.md)
