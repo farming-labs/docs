@@ -73,6 +73,8 @@
   border: 1px solid var(--color-fd-border, #262626);
   background: var(--color-fd-popover, #0c0c0c);
   color: var(--color-fd-foreground, #fafafa);
+  font-family: var(--font-sans, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+      ui-sans-serif, sans-serif);
   box-shadow:
     0 24px 60px -12px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(255, 255, 255, 0.04);
@@ -124,7 +126,8 @@
   padding: 0.125rem 0.375rem;
   font-size: 10px;
   color: var(--color-fd-muted-foreground, #a3a3a3);
-  font-family: inherit;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace);
   line-height: 1.4;
 }
 .omni-close-btn {
@@ -281,7 +284,8 @@
   border-radius: 0.25rem;
   background: var(--color-fd-muted, #262626);
   padding: 0.125rem 0.25rem;
-  font-family: inherit;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace);
 }
 .omni-item-chevron {
   width: 0.875rem;
