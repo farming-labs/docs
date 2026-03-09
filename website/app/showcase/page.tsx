@@ -309,7 +309,7 @@ export default function ShowcasePage() {
                             <img
                               src={entry.screenshot}
                               alt=""
-                              className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
+                              className="w-full h-full object-cover object-top transition-transform duration-300"
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-white/20">
