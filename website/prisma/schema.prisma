@@ -1,6 +1,3 @@
-// Prisma schema for showcase entries (PostgreSQL)
-// Run: pnpm prisma generate && pnpm prisma migrate dev
-
 generator client {
   provider = "prisma-client-js"
 }
