@@ -553,7 +553,7 @@ export function DocsCommandSearch() {
               onKeyDown={handleKeyDown}
               className="omni-search-input"
             />
-            <kbd className="omni-kbd">⌘K</kbd>
+            <kbd className="omni-kbd">⌘ K</kbd>
             <button aria-label="Close" className="omni-close-btn" onClick={() => setOpen(false)}>
               <CloseIcon />
             </button>

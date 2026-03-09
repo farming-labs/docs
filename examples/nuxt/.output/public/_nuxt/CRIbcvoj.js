@@ -982,7 +982,7 @@ const Rt = { class: "omni-header" },
                         ),
                         [[Te, o.value]],
                       ),
-                      u[3] || (u[3] = n("kbd", { class: "omni-kbd" }, "⌘K", -1)),
+                      u[3] || (u[3] = n("kbd", { class: "omni-kbd" }, "⌘ K", -1)),
                       n(
                         "button",
                         {
