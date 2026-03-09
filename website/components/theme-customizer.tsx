@@ -1287,7 +1287,7 @@ export function ThemeCustomizer() {
           borderRadius:
             state.preset !== "pixel-border" && state.preset !== "darksharp" ? "16px" : "0",
           boxShadow:
-            state.preset === "pixel-border" 
+            state.preset === "pixel-border"
               ? "3px 3px 0 0 var(--color-fd-border, #262626)"
               : "0 0 0 1px color-mix(in srgb, var(--color-fd-border, #262626) 60%, transparent)",
         }}
@@ -1331,8 +1331,17 @@ export function ThemeCustomizer() {
               <circle cx="6.5" cy="12.5" r="2.5" />
               <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
             </svg>
-            <span className={cn("dark:text-white/60 text-black/70", state.preset !== "pixel-border" && state.preset !== "darksharp" ? "text-[14px] font-sans tracking-normal" : "text-xs font-mono uppercase tracking-wider")}>
-              {state.preset !== "pixel-border" && state.preset !== "darksharp" ? "Customize" : "Customize"}
+            <span
+              className={cn(
+                "dark:text-white/60 text-black/70",
+                state.preset !== "pixel-border" && state.preset !== "darksharp"
+                  ? "text-[14px] font-sans tracking-normal"
+                  : "text-xs font-mono uppercase tracking-wider",
+              )}
+            >
+              {state.preset !== "pixel-border" && state.preset !== "darksharp"
+                ? "Customize"
+                : "Customize"}
             </span>
           </div>
         )}
