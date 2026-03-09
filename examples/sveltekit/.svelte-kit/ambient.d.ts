@@ -27,6 +27,7 @@
  */
 declare module '$env/static/private' {
 	export const COREPACK_ROOT: string;
+	export const VSCODE_GIT_IPC_AUTH_TOKEN: string;
 	export const TERM_PROGRAM: string;
 	export const NODE: string;
 	export const INIT_CWD: string;
@@ -35,14 +36,11 @@ declare module '$env/static/private' {
 	export const npm_package_devDependencies_vite: string;
 	export const HOMEBREW_REPOSITORY: string;
 	export const TMPDIR: string;
-	export const CURSOR_CLI: string;
 	export const TERM_PROGRAM_VERSION: string;
 	export const npm_package_scripts_dev: string;
 	export const ZDOTDIR: string;
 	export const CURSOR_TRACE_ID: string;
-	export const ORIGINAL_XDG_CURRENT_DESKTOP: string;
 	export const MallocNanoZone: string;
-	export const TERM_SESSION_ID: string;
 	export const npm_package_private: string;
 	export const npm_package_devDependencies__sveltejs_kit: string;
 	export const npm_config_registry: string;
@@ -64,7 +62,6 @@ declare module '$env/static/private' {
 	export const LSCOLORS: string;
 	export const npm_config_frozen_lockfile: string;
 	export const PATH: string;
-	export const LaunchInstanceID: string;
 	export const COREPACK_ENABLE_DOWNLOAD_PROMPT: string;
 	export const USER_ZDOTDIR: string;
 	export const __CFBundleIdentifier: string;
@@ -76,7 +73,6 @@ declare module '$env/static/private' {
 	export const LANG: string;
 	export const npm_package_name: string;
 	export const npm_package_devDependencies__sveltejs_vite_plugin_svelte: string;
-	export const CURSOR_CLI_MODE: string;
 	export const NODE_PATH: string;
 	export const npm_package_scripts_build: string;
 	export const VSCODE_GIT_ASKPASS_EXTRA_ARGS: string;
@@ -101,9 +97,8 @@ declare module '$env/static/private' {
 	export const npm_config_user_agent: string;
 	export const VSCODE_GIT_ASKPASS_NODE: string;
 	export const GIT_ASKPASS: string;
-	export const HOMEBREW_CELLAR: string;
 	export const INFOPATH: string;
-	export const SECURITYSESSIONID: string;
+	export const HOMEBREW_CELLAR: string;
 	export const COLORTERM: string;
 	export const npm_node_execpath: string;
 	export const NODE_ENV: string;
@@ -137,6 +132,7 @@ declare module '$env/static/public' {
 declare module '$env/dynamic/private' {
 	export const env: {
 		COREPACK_ROOT: string;
+		VSCODE_GIT_IPC_AUTH_TOKEN: string;
 		TERM_PROGRAM: string;
 		NODE: string;
 		INIT_CWD: string;
@@ -145,14 +141,11 @@ declare module '$env/dynamic/private' {
 		npm_package_devDependencies_vite: string;
 		HOMEBREW_REPOSITORY: string;
 		TMPDIR: string;
-		CURSOR_CLI: string;
 		TERM_PROGRAM_VERSION: string;
 		npm_package_scripts_dev: string;
 		ZDOTDIR: string;
 		CURSOR_TRACE_ID: string;
-		ORIGINAL_XDG_CURRENT_DESKTOP: string;
 		MallocNanoZone: string;
-		TERM_SESSION_ID: string;
 		npm_package_private: string;
 		npm_package_devDependencies__sveltejs_kit: string;
 		npm_config_registry: string;
@@ -174,7 +167,6 @@ declare module '$env/dynamic/private' {
 		LSCOLORS: string;
 		npm_config_frozen_lockfile: string;
 		PATH: string;
-		LaunchInstanceID: string;
 		COREPACK_ENABLE_DOWNLOAD_PROMPT: string;
 		USER_ZDOTDIR: string;
 		__CFBundleIdentifier: string;
@@ -186,7 +178,6 @@ declare module '$env/dynamic/private' {
 		LANG: string;
 		npm_package_name: string;
 		npm_package_devDependencies__sveltejs_vite_plugin_svelte: string;
-		CURSOR_CLI_MODE: string;
 		NODE_PATH: string;
 		npm_package_scripts_build: string;
 		VSCODE_GIT_ASKPASS_EXTRA_ARGS: string;
@@ -211,9 +202,8 @@ declare module '$env/dynamic/private' {
 		npm_config_user_agent: string;
 		VSCODE_GIT_ASKPASS_NODE: string;
 		GIT_ASKPASS: string;
-		HOMEBREW_CELLAR: string;
 		INFOPATH: string;
-		SECURITYSESSIONID: string;
+		HOMEBREW_CELLAR: string;
 		COLORTERM: string;
 		npm_node_execpath: string;
 		NODE_ENV: string;
