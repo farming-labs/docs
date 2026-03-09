@@ -1281,9 +1281,15 @@ export function ThemeCustomizer() {
         }}
         style={{
           background: "var(--color-fd-secondary, #0a0a0b)",
-          boxShadow: "3px 3px 0 0 var(--color-fd-border, #262626)",
+          color: "var(--color-fd-foreground, #fafafa)",
+          borderColor: "var(--color-fd-border, #262626)",
+          borderRadius: state.preset !== "pixel-border" && state.preset !== "darksharp" ? "16px" : "0",
+          boxShadow:
+            state.preset === "pixel-border" || state.preset === "darksharp"
+              ? "3px 3px 0 0 var(--color-fd-border, #262626)"
+              : "0 0 0 1px color-mix(in srgb, var(--color-fd-border, #262626) 60%, transparent)",
         }}
-        className="fixed z-[10]  bottom-20 right-6 size-10 w-fit px-3 rounded-none border border-black/10 dark:border-white/[10%] shadow-lg bg-black/60 backdrop-blur-md cursor-pointer transition-all duration-200 hover:border-white/20 hover:bg-black/80 flex items-center justify-center group"
+        className="fixed z-[10] bottom-20 right-6 size-10 w-fit px-3 border tracking-wider font-mono uppercase backdrop-blur-md cursor-pointer transition-all duration-200 flex items-center justify-center group hover:-translate-y-0.5 hover:brightness-110"
         title={open ? "Close customizer" : "Customize theme"}
       >
         {open ? (
