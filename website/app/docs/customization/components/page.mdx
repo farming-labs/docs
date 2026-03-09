@@ -11,10 +11,10 @@ Pass custom React components that become available in **all MDX files** — no i
 
 ## How It Works
 
-When you register components in `docs.config.tsx`, they're merged into the MDX component map via `getMDXComponents()`. The merge order is:
+When you register components in `docs.config.ts`, they're merged into the MDX component map via `getMDXComponents()`. The merge order is:
 
 1. **Built-in components** — headings, code blocks, callouts, `Tab`, `Tabs`, etc.
-2. **Your components** — from `docs.config.tsx` (overrides built-ins if names match)
+2. **Your components** — from `docs.config.ts` (overrides built-ins if names match)
 
 This means you can both **add new components** and **override existing ones**.
 
@@ -49,7 +49,7 @@ export function InfoCard({ title, children, variant = "default" }: InfoCardProps
 
 ### 2. Register in config
 
-```tsx title="docs.config.tsx"
+```tsx title="docs.config.ts"
 import { defineDocs } from "@farming-labs/docs";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
 import { InfoCard } from "./components/info-card";
@@ -122,7 +122,7 @@ export function CustomLink({
 }
 ```
 
-```tsx title="docs.config.tsx"
+```tsx title="docs.config.ts"
 components: {
   a: CustomLink,
 },
@@ -142,7 +142,7 @@ export function CustomBlockquote({ children }: { children: React.ReactNode }) {
 }
 ```
 
-```tsx title="docs.config.tsx"
+```tsx title="docs.config.ts"
 components: {
   blockquote: CustomBlockquote,
 },
@@ -162,7 +162,7 @@ export function CustomPre({ children, ...props }: React.HTMLAttributes<HTMLPreEl
 }
 ```
 
-```tsx title="docs.config.tsx"
+```tsx title="docs.config.ts"
 components: {
   pre: CustomPre,
 },
@@ -174,7 +174,7 @@ components: {
 
 Register as many components as you need:
 
-```tsx title="docs.config.tsx"
+```tsx title="docs.config.ts"
 import { InfoCard } from "./components/info-card";
 import { CustomLink } from "./components/custom-link";
 import { VideoEmbed } from "./components/video-embed";

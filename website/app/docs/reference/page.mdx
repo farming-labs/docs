@@ -580,7 +580,7 @@ Open Graph image configuration. When `endpoint` is set, each docs page gets a dy
 | `endpoint`     | `string`                | —       | API endpoint for dynamic OG images  |
 | `defaultImage` | `string`                | —       | Fallback OG image URL               |
 
-**Example (Next.js):** In `docs.config.tsx`, set `og.endpoint` to your OG route path. Then implement `app/api/og/route.tsx` (or `route.ts`) that accepts `title` and `description` query params and returns a 1200×630 image (e.g. using `ImageResponse` from `next/og`).
+**Example (Next.js):** In `docs.config.ts`, set `og.endpoint` to your OG route path. Then implement `app/api/og/route.tsx` (or `route.ts`) that accepts `title` and `description` query params and returns a 1200×630 image (e.g. using `ImageResponse` from `next/og`).
 
 ```ts
 og: {

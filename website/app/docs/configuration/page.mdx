@@ -11,9 +11,9 @@ All configuration lives in a single `docs.config.ts` file.
 
 <Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
-    The config file lives at the **project root** as `docs.config.tsx`:
+    The config file lives at the **project root** as `docs.config.ts`:
 
-    ```tsx title="docs.config.tsx"
+    ```tsx title="docs.config.ts"
     import { defineDocs } from "@farming-labs/docs";
     import { fumadocs } from "@farming-labs/theme";
 
@@ -189,7 +189,7 @@ Pass options to your theme preset to customize colors, typography, layout, and m
 
 <Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
-    ```tsx title="docs.config.tsx"
+    ```tsx title="docs.config.ts"
     import { pixelBorder } from "@farming-labs/theme/pixel-border";
 
     theme: pixelBorder({
@@ -309,7 +309,7 @@ Register icons in the config and reference them in frontmatter:
 
 <Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
-    ```tsx title="docs.config.tsx"
+    ```tsx title="docs.config.ts"
     import { Rocket, BookOpen } from "lucide-react";
 
     icons: {
@@ -507,7 +507,7 @@ See the full [Ask AI reference](/docs/customization/ai-chat) for all options inc
 
 <Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
-    ```tsx title="docs.config.tsx"
+    ```tsx title="docs.config.ts"
     import { defineDocs } from "@farming-labs/docs";
     import { fumadocs } from "@farming-labs/theme";
 

@@ -12,7 +12,7 @@ differences and migration steps.
 
 1. **Content Format**: Both use MDX, so your content files can be reused with
    minimal changes.
-2. **Configuration**: Replace `docusaurus.config.js` with `docs.config.tsx`.
+2. **Configuration**: Replace `docusaurus.config.js` with `docs.config.ts`.
 3. **Sidebar**: Sidebars are generated automatically from the file system.
 
 ## From Nextra
@@ -25,7 +25,7 @@ differences and migration steps.
 
 1. **Runtime**: VitePress uses Vite; we use Next.js.
 2. **Markdown**: VitePress uses standard Markdown; we use MDX.
-3. **Configuration**: Replace `.vitepress/config.ts` with `docs.config.tsx`.
+3. **Configuration**: Replace `.vitepress/config.ts` with `docs.config.ts`.
 
 ## Common Migration Steps
 
@@ -34,7 +34,7 @@ differences and migration steps.
 pnpm add @farming-labs/docs @farming-labs/theme
 
 # 2. Create the configuration
-touch docs.config.tsx
+touch docs.config.ts
 
 # 3. Move your content
 cp -r old-docs/content/* app/docs/

@@ -177,7 +177,7 @@ function NextJsSteps() {
         </div>
         <CodeBlock
           title="Config"
-          filename="docs.config.tsx"
+          filename="docs.config.ts"
           code={`import { defineDocs } from "@farming-labs/docs";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
 
@@ -858,7 +858,7 @@ function ThemesSection() {
         <div className="mt-8">
           <CodeBlock
             title="Custom Colors"
-            filename="docs.config.tsx"
+            filename="docs.config.ts"
             code={`theme: pixelBorder({
   ui: {
     colors: {
@@ -921,7 +921,7 @@ function ConfigSection() {
         <CodeBlock
           maxHeight="700px"
           title="Full Example"
-          filename="docs.config.tsx"
+          filename="docs.config.ts"
           code={`import { defineDocs } from "@farming-labs/docs";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
 import { Rocket, BookOpen, Code } from "lucide-react";

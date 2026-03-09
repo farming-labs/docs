@@ -59,7 +59,7 @@ Use the same theme name in `docs.config` and in the CSS import.
 
 ## Core config: `defineDocs`
 
-All frameworks use a single config file (`docs.config.ts` or `docs.config.tsx`):
+All frameworks use a single config file (`docs.config.ts` or `docs.config.ts`):
 
 ```ts
 import { defineDocs } from "@farming-labs/docs";
@@ -77,7 +77,7 @@ export default defineDocs({
 });
 ```
 
-- **Next.js:** `docs.config.tsx` at project root; wrap Next config with `withDocs()` from `@farming-labs/next/config`.
+- **Next.js:** `docs.config.ts` at project root; wrap Next config with `withDocs()` from `@farming-labs/next/config`.
 - **SvelteKit:** `src/lib/docs.config.ts`; routes under `src/routes/docs/`.
 - **Astro:** `src/lib/docs.config.ts`; pages under `src/pages/<entry>/`.
 - **Nuxt:** `docs.config.ts` at project root; `server/api/docs.ts` and `pages/docs/[...slug].vue`.

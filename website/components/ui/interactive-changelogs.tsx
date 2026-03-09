@@ -296,7 +296,7 @@ const releases: Release[] = [
         category: "Theme Customizer & Showcase",
         items: [
           "Live customizer with color pickers, layout controls, sidebar/TOC style toggles",
-          "Export-to-code: generates docs.config.tsx and global.css snippets",
+          "Export-to-code: generates docs.config.ts and global.css snippets",
           "Preset switching with 6 built-in presets",
           'Dedicated /themes showcase page with "Try it live" links',
         ],

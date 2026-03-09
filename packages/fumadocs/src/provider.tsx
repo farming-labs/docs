@@ -5,7 +5,7 @@
  *
  * Defaults the search API to `/api/docs` (unified handler).
  * AI features are handled automatically by `createDocsLayout`
- * based on the `ai` config in `docs.config.tsx` — no props needed here.
+ * based on the `ai` config in `docs.config.ts` — no props needed here.
  */
 
 import { RootProvider as FumadocsRootProvider } from "fumadocs-ui/provider/next";

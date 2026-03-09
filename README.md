@@ -44,7 +44,7 @@ The CLI will:
 pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/next
 ```
 
-**1. Create `docs.config.tsx`**
+**1. Create `docs.config.ts`**
 
 ```tsx
 import { defineDocs } from "@farming-labs/docs";

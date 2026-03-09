@@ -26,7 +26,7 @@ You can mix both: use a dynamic endpoint by default and override with static ima
 
 ## How dynamic OG works
 
-1. **You configure** an OG endpoint in `docs.config.tsx`:
+1. **You configure** an OG endpoint in `docs.config.ts`:
    - `og: { enabled: true, type: "dynamic", endpoint: "/api/og" }`
 2. **For each docs page**, the framework builds a **single URL** that includes the page’s context:
    - **Next.js (MDX):** A remark plugin injects that URL into the page’s exported `metadata` (from frontmatter). The URL is your endpoint plus query params.
@@ -63,7 +63,7 @@ Your route reads `searchParams.get("title")` and `searchParams.get("description"
 
 The `@farming-labs/docs` website which uses **Nextjs** uses a dynamic OG endpoint so every docs page gets a unique preview image with that page’s title and description.
 
-### 1. Config (`docs.config.tsx`)
+### 1. Config (`docs.config.ts`)
 
 ```ts
 og: {

@@ -12,7 +12,7 @@
  *   in the sidebar header area (Mintlify-style).
  *
  * This component is rendered inside the docs layout so the user's root layout
- * never needs to be modified — AI features work purely from `docs.config.tsx`.
+ * never needs to be modified — AI features work purely from `docs.config.ts`.
  */
 
 import { useState, useEffect, type ReactNode, cloneElement, isValidElement } from "react";

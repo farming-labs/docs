@@ -28,8 +28,8 @@ icon: "rocket"
 Content here.
 ```
 
-No other config needed — the framework handles layout, routing, and metadata from `docs.config.tsx`.
+No other config needed — the framework handles layout, routing, and metadata from `docs.config.ts`.
 
 ## Config
 
-See [`docs.config.tsx`](./docs.config.tsx) for theme, metadata, icons, and page action configuration.
+See [`docs.config.ts`](./docs.config.ts) for theme, metadata, icons, and page action configuration.
