@@ -299,7 +299,7 @@ function DocsContent($$renderer, $$props) {
         document.removeEventListener("click", handleClickOutside);
       }
     });
-    head("1fjyzf0", $$renderer2, ($$renderer3) => {
+    head("4uj9gu", $$renderer2, ($$renderer3) => {
       $$renderer3.title(($$renderer4) => {
         $$renderer4.push(`<title>${escape_html(data.title)}${escape_html(titleSuffix)}</title>`);
       });

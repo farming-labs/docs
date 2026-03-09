@@ -1345,6 +1345,14 @@
   );
 }
 
+/* 4+ suggestions: wrap into two rows instead of single scrollable row */
+.fd-ai-fm-suggestions-two-rows {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
 .fd-ai-fm-suggestion {
   flex-shrink: 0;
   white-space: nowrap;

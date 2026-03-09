@@ -1368,7 +1368,13 @@ function FullModalAIChat({
             {showSuggestions && suggestedQuestions && suggestedQuestions.length > 0 && (
               <div className="fd-ai-fm-suggestions-area">
                 <div className="fd-ai-fm-suggestions-label">Try asking:</div>
-                <div className="fd-ai-fm-suggestions">
+                <div
+                  className={
+                    suggestedQuestions.length >= 4
+                      ? "fd-ai-fm-suggestions fd-ai-fm-suggestions-two-rows"
+                      : "fd-ai-fm-suggestions"
+                  }
+                >
                   {suggestedQuestions.map((q, i) => (
                     <button
                       key={i}
