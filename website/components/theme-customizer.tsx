@@ -676,7 +676,7 @@ function ToggleSwitch({
         style={{ background: checked ? "var(--cz-accent, #6366f1)" : "rgba(255,255,255,0.1)" }}
       >
         <span
-          className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-[left] duration-150"
+          className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white dark:bg-black transition-[left] duration-150"
           style={{ left: checked ? 15 : 2 }}
         />
       </button>

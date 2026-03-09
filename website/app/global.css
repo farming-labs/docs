@@ -49,6 +49,7 @@
 .callout-custom p, .callout-custom article p  {
   font-size: 0.795rem !important;
 } 
+
     
 /* Hide Ask AI when mobile sidebar drawer is open (fumadocs-ui: width < 768px, id=nd-sidebar-mobile data-state=open) */
 @media (max-width: 767px) {
