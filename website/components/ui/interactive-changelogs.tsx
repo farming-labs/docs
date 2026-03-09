@@ -19,10 +19,59 @@ interface Release {
 
 const releases: Release[] = [
   {
-    version: "v0.0.11",
-    title: "v0.0.11: Current Release",
+    version: "v0.0.14",
+    title: "v0.0.14: Current Release",
     date: "Mar 2026",
     pinned: true,
+    excerpt:
+      "Package manager tabs in docs (npm, pnpm, yarn, bun), Create your own theme CTAs on themes pages, changelog and copy cleanup.",
+    changes: [
+      {
+        category: "Highlights",
+        items: [
+          "Installation and CLI docs: all install/init/upgrade commands are tabbed by package manager (npm, pnpm, yarn, bun)",
+          "Docs themes page: tip callout linking to Creating your own theme; marketing /themes page: CTA card to the same guide",
+          "Changelog: added entries for v0.0.10, v0.0.12, v0.0.13, v0.0.14; minor comment and JSDoc cleanup in showcase API and copy components",
+        ],
+      },
+    ],
+  },
+  {
+    version: "v0.0.13",
+    title: "v0.0.13",
+    date: "Mar 2026",
+    excerpt: "Docs and dependency updates.",
+    changes: [
+      {
+        category: "Highlights",
+        items: [
+          "Documentation and dependency updates",
+          "Stability and compatibility improvements",
+        ],
+      },
+    ],
+  },
+  {
+    version: "v0.0.12",
+    title: "v0.0.12",
+    date: "Mar 2026",
+    excerpt: "Showcase page with submission form, approval workflow, and Prisma-backed storage.",
+    changes: [
+      {
+        category: "Highlights",
+        items: [
+          "New /showcase page: list of docs sites built with @farming-labs/docs",
+          "Submission form: name, URL, description, optional screenshot (base64, up to 2MB); approval status (IDLE, APPROVED, REJECTED)",
+          "API routes: GET approved entries, POST new submission, PATCH approval (admin header); Prisma + PostgreSQL",
+          "Docs sidebar banner link to Showcase; grid layout for approved entries with screenshots",
+        ],
+      },
+    ],
+  },
+  {
+    version: "v0.0.11",
+    title: "v0.0.11",
+    date: "Mar 2026",
     excerpt:
       "Static OG images in frontmatter, dedicated OG Images docs, createPageMetadata with openGraph/twitter, and examples version script.",
     changes: [
@@ -32,10 +81,25 @@ const releases: Release[] = [
           "Frontmatter OG: full `openGraph` and `twitter` in page frontmatter; static images override dynamic endpoint per page",
           "Shorthand `ogImage` plus types `PageOpenGraph`, `PageTwitter`; `buildPageOpenGraph` / `buildPageTwitter` in @farming-labs/docs",
           "createPageMetadata accepts page openGraph/twitter/ogImage and optional baseUrl; remark-og skips injection when frontmatter has openGraph or ogImage",
-          "New docs: OG Images guide (/docs/customization/og-images) — dynamic vs static, context passed to image generator, how the docs website uses dynamic OG",
-          "API reference: Page Frontmatter openGraph/twitter, data types, how frontmatter is passed; OGConfig link to OG Images guide",
+          "New docs: OG Images guide (/docs/customization/og-images) — dynamic vs static, context passed to image generator",
+          "API reference: Page Frontmatter openGraph/twitter, data types; OGConfig link to OG Images guide",
           "Docs intro: callout that we are complementary to Fumadocs, not a replacement",
           "Theme customizer: page actions distinct per theme (body-prefixed selectors so preset CSS overrides base pixel-border)",
+        ],
+      },
+    ],
+  },
+  {
+    version: "v0.0.10",
+    title: "v0.0.10",
+    date: "Mar 2026",
+    excerpt: "Docs improvements and theme customizer refinements.",
+    changes: [
+      {
+        category: "Highlights",
+        items: [
+          "Documentation updates across installation, CLI, and customization guides",
+          "Theme customizer and preset behavior refinements",
         ],
       },
     ],
