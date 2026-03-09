@@ -1,4 +1,4 @@
-import { defineDocs, extendTheme } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs";
 import { MyNote } from "./app/components/my-note";
 import {
   BookOpen,
