@@ -14,4 +14,3 @@ export const docsSearchConfig: DocsSearchConfig = {
   endpoint: process.env.NEXT_PUBLIC_DOCS_SEARCH_ENDPOINT,
   apiKey: process.env.NEXT_PUBLIC_DOCS_SEARCH_API_KEY,
 };
-
