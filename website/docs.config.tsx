@@ -25,6 +25,7 @@ import {
   Book,
   Image,
   LayoutGrid,
+  GitPullRequest,
 } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 import { Callout } from "@/components/ui/callout";
@@ -89,6 +90,7 @@ export default defineDocs({
     bot: <Bot size={16} />,
     mousePointerClick: <MousePointerClick size={16} />,
     image: <Image size={16} />,
+    gitPullRequest: <GitPullRequest size={16} />,
   },
   github: {
     url: "https://github.com/farming-labs/docs",

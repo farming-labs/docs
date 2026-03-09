@@ -1,0 +1,93 @@
+---
+title: "Contributing"
+description: "How to contribute to @farming-labs/docs"
+icon: "gitPullRequest"
+order: 5.9
+---
+
+# Contributing
+
+Thanks for your interest in contributing to **@farming-labs/docs**. This guide explains how to report issues, propose changes, and submit pull requests.
+
+## Code of conduct
+
+Please be respectful and constructive. We aim to keep the community welcoming and focused on building a great documentation framework.
+
+## How to contribute
+
+### Reporting bugs
+
+- **GitHub Issues** — Open an issue at [github.com/farming-labs/docs/issues](https://github.com/farming-labs/docs/issues).
+- Include:
+  - Clear title and description
+  - Steps to reproduce
+  - Expected vs actual behavior
+  - Your environment (Node version, package manager, framework: Next.js / SvelteKit / Astro / Nuxt)
+  - Relevant config or code snippets
+
+### Suggesting features
+
+- Open a discussion or issue describing the use case and proposed behavior.
+- Check existing issues first to avoid duplicates.
+
+### Pull requests
+
+1. **Fork** the [farming-labs/docs](https://github.com/farming-labs/docs) repo and clone it locally.
+2. **Branch** from `main` (e.g. `fix/typo-install-docs` or `feat/contributing-guide`).
+3. **Install** dependencies from the repo root:
+   <Tabs items={["pnpm", "npm", "yarn", "bun"]}>
+     <Tab value="pnpm">
+       ```bash
+       pnpm install
+       ```
+     </Tab>
+     <Tab value="npm">
+       ```bash
+       npm install
+       ```
+     </Tab>
+     <Tab value="yarn">
+       ```bash
+       yarn install
+       ```
+     </Tab>
+     <Tab value="bun">
+       ```bash
+       bun install
+       ```
+     </Tab>
+   </Tabs>
+4. **Build** the monorepo (optional, for core/theme changes):
+   ```bash
+   pnpm build
+   ```
+5. **Run the docs site** (from repo root):
+   ```bash
+   pnpm --filter website dev
+   ```
+   Then open [http://localhost:3000](http://localhost:3000) to preview.
+6. **Make your changes** — Keep edits focused; doc-only and small fixes are welcome.
+7. **Commit** with a clear message (e.g. `docs: add contributing guide`, `fix: correct CLI flag in installation`).
+8. **Push** your branch and open a **Pull Request** against `main`.
+9. **Describe** what you changed and why; link any related issues.
+
+## Project structure
+
+- **`packages/`** — Core packages: `docs`, `fumadocs` (theme), `next`, `svelte`, `svelte-theme`, `astro`, `astro-theme`, `nuxt`, `nuxt-theme`.
+- **`website/`** — This docs site (Next.js); content under `app/docs/`.
+- **`examples/`** — Example apps (Next.js, etc.) for testing.
+
+Doc content lives in `website/app/docs/` as MDX. Config and sidebar are driven by [docs.config.tsx](/docs/configuration) in `website/`.
+
+## Documentation changes
+
+- Edit or add `.mdx` files under `website/app/docs/`.
+- Use existing frontmatter (`title`, `description`, `icon`, `order`) so the sidebar stays consistent.
+- Use the shared `<Callout>`, `<Tabs>`, and `<Tab>` components where they fit.
+
+## Questions
+
+- **GitHub Discussions** — For questions and ideas: [github.com/farming-labs/docs/discussions](https://github.com/farming-labs/docs/discussions).
+- **Issues** — For bugs and concrete feature requests.
+
+Thank you for contributing.
