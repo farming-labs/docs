@@ -8,8 +8,8 @@ datasource db {
 }
 
 enum ApprovalStatus {
-  IDLE     // pending review (default)
-  APPROVED // shown on showcase
+  IDLE    
+  APPROVED
   REJECTED
 }
 
@@ -18,7 +18,7 @@ model ShowcaseEntry {
   name           String
   url            String
   description    String?
-  screenshot     String?        // URL to screenshot image
+  screenshot     String?
   approvalStatus ApprovalStatus @default(IDLE)
   createdAt      DateTime       @default(now())
 }

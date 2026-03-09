@@ -302,6 +302,25 @@ export default function ThemesPage() {
             />
           ))}
         </div>
+
+        <Link
+          href="/docs/themes/creating-themes"
+          className="mt-10 flex items-center gap-3 rounded-none border border-neutral-200 dark:border-white/10 bg-neutral-50/50 dark:bg-white/[2%] p-5 transition-colors hover:border-neutral-300 hover:bg-neutral-100/80 dark:hover:border-white/15 dark:hover:bg-white/[4%]"
+        >
+          <span className="text-2xl" aria-hidden>
+            ✨
+          </span>
+          <div>
+            <p className="text-sm font-mono uppercase tracking-wide text-neutral-900 dark:text-white">
+              Create your own theme
+            </p>
+            <p className="text-[12px] text-neutral-500 dark:text-white/50 mt-0.5">
+              Build a custom theme or publish it as an npm package — full guide in the docs.
+            </p>
+          </div>
+          <ArrowRight className="size-4 ml-auto text-neutral-400 dark:text-white/40 shrink-0" />
+        </Link>
+
         <div className="h-px w-[calc(100%+200px)] -ml-[100px] mx-auto bg-neutral-200 dark:bg-white/[8%] my-12" />
       </main>
 
