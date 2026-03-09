@@ -44,10 +44,7 @@ const releases: Release[] = [
     changes: [
       {
         category: "Highlights",
-        items: [
-          "Documentation and dependency updates",
-          "Stability and compatibility improvements",
-        ],
+        items: ["Documentation and dependency updates", "Stability and compatibility improvements"],
       },
     ],
   },
