@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { highlight } from "sugar-high";
 import { FloatingAIChat } from "@farming-labs/theme/ai";
+import { cn } from "@/lib/utils";
 
 type PresetKey = "default" | "colorful" | "darksharp" | "pixel-border" | "shiny" | "darkbold";
 type SidebarStyle = "default" | "bordered" | "floating";
@@ -1289,7 +1290,7 @@ export function ThemeCustomizer() {
               ? "3px 3px 0 0 var(--color-fd-border, #262626)"
               : "0 0 0 1px color-mix(in srgb, var(--color-fd-border, #262626) 60%, transparent)",
         }}
-        className="fixed z-[10] bottom-20 right-6 size-10 w-fit px-3 border tracking-wider font-mono uppercase backdrop-blur-md cursor-pointer transition-all duration-200 flex items-center justify-center group hover:-translate-y-0.5 hover:brightness-110"
+        className={cn("fixed z-[10] bottom-20 right-6 size-10 w-fit px-3 border tracking-wider font-mono uppercase backdrop-blur-md cursor-pointer transition-all duration-200 flex items-center justify-center group hover:-translate-y-0.5 hover:brightness-110" , state.preset !== "pixel-border" && state.preset !== "darksharp" ? "font-sans capitalize" : "rounded-none")}
         title={open ? "Close customizer" : "Customize theme"}
       >
         {open ? (
