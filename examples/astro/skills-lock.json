@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "skills": {
+    "ask-ai": {
+      "source": "farming-labs/docs",
+      "sourceType": "github",
+      "computedHash": "ec08eae351f54dbd85bdfcccb4b79fa1ff66244054b5e28aa4eadef8012bf106"
+    },
+    "configuration": {
+      "source": "farming-labs/docs",
+      "sourceType": "github",
+      "computedHash": "4d963dc3b5d007613a5c963788869d9f7982dc161d394279ede7143a78974253"
+    },
+    "creating-themes": {
+      "source": "farming-labs/docs",
+      "sourceType": "github",
+      "computedHash": "81b1e0b281faa9a846b7838245b356b0f8b0602dd58080cbadb145f2069013a6"
+    },
+    "farming-labs-docs": {
+      "source": "farming-labs/docs",
+      "sourceType": "github",
+      "computedHash": "86c83698a6e7239acfd26243aae57d925b493bc10d61e305ae79ae382c0ddf91"
+    },
+    "getting-started": {
+      "source": "farming-labs/docs",
+      "sourceType": "github",
+      "computedHash": "e42ef1c628b61e078f6061cdbc6e7a74e7611d080163f647d0941cf30e9bf668"
+    },
+    "page-actions": {
+      "source": "farming-labs/docs",
+      "sourceType": "github",
+      "computedHash": "273d891e86592294a705b27286dc5ba51b1a9ab7454f6c5ef7641b08dd74c54d"
+    }
+  }
+}
