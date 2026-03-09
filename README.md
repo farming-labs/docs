@@ -16,6 +16,7 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 
 - Use the [CLI](#option-a-cli-recommended) _(recommended — sets up everything for you)_, or see [manual setup](#option-b-manual-setup) for each framework.
 - [Reference docs](https://docs.farming-labs.dev/reference/) and [demos](https://github.com/farming-labs/docs/tree/main/example) cover config, custom themes, OG images, SEO, and more!
+- Want to contribute? See the [Contributing guide](https://docs.farming-labs.dev/docs/contributing).
 
 
 
@@ -542,6 +543,10 @@ pnpm install
 pnpm build
 pnpm dev        # starts the example app
 ```
+
+## Contributing
+
+We welcome contributions. See the **[Contributing guide](https://docs.farming-labs.dev/docs/contributing)** for how to report issues, suggest features, and submit pull requests.
 
 ## License
 
