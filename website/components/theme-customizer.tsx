@@ -4,7 +4,6 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { highlight } from "sugar-high";
 import { FloatingAIChat } from "@farming-labs/theme/ai";
-import { cn } from "@/lib/utils";
 
 type PresetKey = "default" | "colorful" | "darksharp" | "pixel-border" | "shiny" | "darkbold";
 type SidebarStyle = "default" | "bordered" | "floating";
@@ -365,7 +364,6 @@ function buildConfigCSS(state: ThemeState): string {
     rules.push(`#nd-docs-layout { --fd-toc-width: 0px !important; }`);
   }
 
-  // TOC style switching — purely CSS-driven via data-cz-toc-style attribute.
   // BOTH rule sets are always present; only the one matching the current
   // attribute value applies. This guarantees mutual exclusivity.
   rules.push(`
@@ -677,7 +675,7 @@ function ToggleSwitch({
         style={{ background: checked ? "var(--cz-accent, #6366f1)" : "rgba(255,255,255,0.1)" }}
       >
         <span
-          className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white dark:bg-black transition-[left] duration-150"
+          className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-[left] duration-150"
           style={{ left: checked ? 15 : 2 }}
         />
       </button>
@@ -1282,21 +1280,17 @@ export function ThemeCustomizer() {
         }}
         style={{
           background: "var(--color-fd-secondary, #0a0a0b)",
-          color: "var(--color-fd-foreground, #fafafa)",
+          boxShadow: "3px 3px 0 0 var(--color-fd-border, #262626)",
           borderColor: "var(--color-fd-border, #262626)",
-          borderRadius:
-            state.preset !== "pixel-border" && state.preset !== "darksharp" ? "16px" : "0",
-          boxShadow:
-            state.preset === "pixel-border"
-              ? "3px 3px 0 0 var(--color-fd-border, #262626)"
-              : "0 0 0 1px color-mix(in srgb, var(--color-fd-border, #262626) 60%, transparent)",
+          ...(document.documentElement.classList.contains("light")
+            ? {
+                background: "var(--color-fd-secondary, #fafafa)",
+                color: "var(--color-fd-foreground, #0a0a0a)",
+                boxShadow: "3px 3px 0 0 var(--color-fd-border, #e5e5e5)",
+              }
+            : {}),
         }}
-        className={cn(
-          "fixed z-[10] bottom-20 right-6 size-10 w-fit px-3 border tracking-wider  backdrop-blur-md cursor-pointer transition-all duration-200 flex items-center justify-center group hover:-translate-y-0.5 hover:brightness-110",
-          state.preset !== "pixel-border" && state.preset !== "darksharp"
-            ? "font-sans text-lg"
-            : "rounded-none font-mono uppercase",
-        )}
+        className="fixed z-[10]  bottom-20 right-6 size-10 w-fit px-3 rounded-none border border-black/10 dark:border-white/[10%] shadow-lg bg-black/60 backdrop-blur-md cursor-pointer transition-all duration-200 hover:border-white/20 hover:bg-black/80 flex items-center justify-center group"
         title={open ? "Close customizer" : "Customize theme"}
       >
         {open ? (
@@ -1331,17 +1325,8 @@ export function ThemeCustomizer() {
               <circle cx="6.5" cy="12.5" r="2.5" />
               <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
             </svg>
-            <span
-              className={cn(
-                "dark:text-white/60 text-black/70",
-                state.preset !== "pixel-border" && state.preset !== "darksharp"
-                  ? "text-[14px] font-sans tracking-normal"
-                  : "text-xs font-mono uppercase tracking-wider",
-              )}
-            >
-              {state.preset !== "pixel-border" && state.preset !== "darksharp"
-                ? "Customize"
-                : "Customize"}
+            <span className="text-[11px] font-mono uppercase dark:text-white/60 text-black/70">
+              Customize
             </span>
           </div>
         )}
