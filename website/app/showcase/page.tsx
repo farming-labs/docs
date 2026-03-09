@@ -261,7 +261,7 @@ export default function ShowcasePage() {
                   <button
                     type="submit"
                     disabled={submitLoading || submitSuccess}
-                    className="flex gap-1.5 rounded-none border border-neutral-300 dark:border-white/10 bg-neutral-900 dark:bg-white text-white dark:text-black px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider hover:bg-neutral-800 dark:hover:bg-white/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                    className="flex items-center gap-1.5 rounded-none border border-neutral-300 dark:border-white/10 bg-neutral-900 dark:bg-white text-white dark:text-black px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider hover:bg-neutral-800 dark:hover:bg-white/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
                   >
                     {submitLoading ? (
                       <Loader2 className="size-3 animate-spin" />
