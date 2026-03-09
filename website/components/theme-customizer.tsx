@@ -1284,13 +1284,19 @@ export function ThemeCustomizer() {
           background: "var(--color-fd-secondary, #0a0a0b)",
           color: "var(--color-fd-foreground, #fafafa)",
           borderColor: "var(--color-fd-border, #262626)",
-          borderRadius: state.preset !== "pixel-border" && state.preset !== "darksharp" ? "16px" : "0",
+          borderRadius:
+            state.preset !== "pixel-border" && state.preset !== "darksharp" ? "16px" : "0",
           boxShadow:
             state.preset === "pixel-border" || state.preset === "darksharp"
               ? "3px 3px 0 0 var(--color-fd-border, #262626)"
               : "0 0 0 1px color-mix(in srgb, var(--color-fd-border, #262626) 60%, transparent)",
         }}
-        className={cn("fixed z-[10] bottom-20 right-6 size-10 w-fit px-3 border tracking-wider font-mono uppercase backdrop-blur-md cursor-pointer transition-all duration-200 flex items-center justify-center group hover:-translate-y-0.5 hover:brightness-110" , state.preset !== "pixel-border" && state.preset !== "darksharp" ? "font-sans capitalize" : "rounded-none")}
+        className={cn(
+          "fixed z-[10] bottom-20 right-6 size-10 w-fit px-3 border tracking-wider font-mono uppercase backdrop-blur-md cursor-pointer transition-all duration-200 flex items-center justify-center group hover:-translate-y-0.5 hover:brightness-110",
+          state.preset !== "pixel-border" && state.preset !== "darksharp"
+            ? "font-sans capitalize"
+            : "rounded-none",
+        )}
         title={open ? "Close customizer" : "Customize theme"}
       >
         {open ? (
