@@ -6,8 +6,10 @@
 export interface TemplateConfig {
   /** Docs entry folder, e.g. "docs" */
   entry: string;
-  /** Theme name, e.g. "fumadocs" */
+  /** Theme name, e.g. "fumadocs", or "custom" when using a custom theme */
   theme: string;
+  /** When theme is "custom", the name for the theme file (e.g. "my-theme") */
+  customThemeName?: string;
   /** Project name from package.json */
   projectName: string;
   /** Framework being used */
@@ -118,6 +120,54 @@ function getThemeInfo(theme: string): ThemeInfo {
   return THEME_INFO[theme] ?? THEME_INFO.fumadocs;
 }
 
+export function getThemeExportName(themeName: string): string {
+  const base = themeName.replace(/\.ts$/i, "").trim();
+  if (!base) return "customTheme";
+  return base.replace(/-([a-z])/g, (_, c) => c.toUpperCase()).replace(/^./, (c) => c.toLowerCase());
+}
+
+export function getCustomThemeCssImportPath(globalCssRelPath: string, themeName: string): string {
+  if (globalCssRelPath.startsWith("app/")) return `../themes/${themeName}.css`;
+  if (globalCssRelPath.startsWith("src/")) return `../../themes/${themeName}.css`;
+  return `../themes/${themeName}.css`;
+}
+
+/** Content for themes/{name}.ts - createTheme with the given name */
+export function customThemeTsTemplate(themeName: string): string {
+  const exportName = getThemeExportName(themeName);
+  return `\
+import { createTheme } from "@farming-labs/docs";
+
+export const ${exportName} = createTheme({
+  name: "${themeName.replace(/\.ts$/i, "")}",
+  ui: {
+    colors: {
+      primary: "#e11d48",
+      background: "#09090b",
+      foreground: "#fafafa",
+      muted: "#71717a",
+      border: "#27272a",
+    },
+    radius: "0.5rem",
+  },
+});
+`;
+}
+
+export function customThemeCssTemplate(themeName: string): string {
+  return `\
+/* Custom theme: ${themeName} - edit variables and selectors as needed */
+@import "@farming-labs/theme/presets/black";
+
+.dark {
+  --color-fd-primary: #e11d48;
+  --color-fd-background: #09090b;
+  --color-fd-border: #27272a;
+  --radius: 0.5rem;
+}
+`;
+}
+
 // ---------------------------------------------------------------------------
 // Import path helpers
 //
@@ -185,6 +235,28 @@ function astroPageServerImport(useAlias: boolean, depth: number): string {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function docsConfigTemplate(cfg: TemplateConfig): string {
+  if (cfg.theme === "custom" && cfg.customThemeName) {
+    const exportName = getThemeExportName(cfg.customThemeName);
+    const themePath = cfg.useAlias ? "@/themes/" + cfg.customThemeName.replace(/\.ts$/i, "") : "./themes/" + cfg.customThemeName.replace(/\.ts$/i, "");
+    return `\
+import { defineDocs } from "@farming-labs/docs";
+import { ${exportName} } from "${themePath}";
+
+export default defineDocs({
+  entry: "${cfg.entry}",
+  theme: ${exportName}({
+    ui: {
+      colors: { primary: "#6366f1" },
+    },
+  }),
+
+  metadata: {
+    titleTemplate: "%s – ${cfg.projectName}",
+    description: "Documentation for ${cfg.projectName}",
+  },
+});
+`;
+  }
   const t = getThemeInfo(cfg.theme);
   return `\
 import { defineDocs } from "@farming-labs/docs";
@@ -333,7 +405,18 @@ export function injectRootProviderIntoLayout(content: string): string | null {
   return out === content ? null : out;
 }
 
-export function globalCssTemplate(theme: string): string {
+export function globalCssTemplate(
+  theme: string,
+  customThemeName?: string,
+  globalCssRelPath?: string,
+): string {
+  if (theme === "custom" && customThemeName && globalCssRelPath) {
+    const cssPath = getCustomThemeCssImportPath(globalCssRelPath, customThemeName.replace(/\.css$/i, ""));
+    return `\
+@import "tailwindcss";
+@import "${cssPath}";
+`;
+  }
   const t = getThemeInfo(theme);
   return `\
 @import "tailwindcss";
@@ -341,11 +424,24 @@ export function globalCssTemplate(theme: string): string {
 `;
 }
 
-export function injectCssImport(existingContent: string, theme: string): string | null {
-  const t = getThemeInfo(theme);
-  const importLine = `@import "@farming-labs/theme/${t.nextCssImport}/css";`;
+export function injectCssImport(
+  existingContent: string,
+  theme: string,
+  customThemeName?: string,
+  globalCssRelPath?: string,
+): string | null {
+  const importLine =
+    theme === "custom" && customThemeName && globalCssRelPath
+      ? `@import "${getCustomThemeCssImportPath(globalCssRelPath, customThemeName.replace(/\.css$/i, ""))}";`
+      : `@import "@farming-labs/theme/${getThemeInfo(theme).nextCssImport}/css";`;
   if (existingContent.includes(importLine)) return null;
-  if (existingContent.includes("@farming-labs/theme/") && existingContent.includes("/css"))
+  if (
+    theme !== "custom" &&
+    existingContent.includes("@farming-labs/theme/") &&
+    existingContent.includes("/css")
+  )
+    return null;
+  if (theme === "custom" && existingContent.includes("themes/") && existingContent.includes(".css"))
     return null;
   const lines = existingContent.split("\n");
   const lastImportIdx = lines.reduce(

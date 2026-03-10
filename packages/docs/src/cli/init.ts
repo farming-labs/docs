@@ -34,6 +34,8 @@ import {
   injectRootProviderIntoLayout,
   globalCssTemplate,
   injectCssImport,
+  customThemeTsTemplate,
+  customThemeCssTemplate,
   docsLayoutTemplate,
   postcssConfigTemplate,
   tsconfigTemplate,
@@ -256,6 +258,11 @@ export async function init(options: InitOptions = {}) {
       label: "GreenTree",
       hint: "Emerald green accent, Inter font, Mintlify-inspired",
     },
+    {
+      value: "custom",
+      label: "Create your own theme",
+      hint: "Scaffold a new theme file + CSS in themes/ (name asked next)",
+    },
   ];
 
   const theme = await p.select({
@@ -266,6 +273,27 @@ export async function init(options: InitOptions = {}) {
   if (p.isCancel(theme)) {
     p.outro(pc.red("Init cancelled."));
     process.exit(0);
+  }
+
+  let customThemeName: string | undefined;
+  if (theme === "custom") {
+    const nameAnswer = await p.text({
+      message: "Theme name? (we'll create themes/<name>.ts and themes/<name>.css)",
+      placeholder: "my-theme",
+      defaultValue: "my-theme",
+      validate: (value) => {
+        const v = (value ?? "").trim().replace(/\.(ts|css)$/i, "");
+        if (!v) return "Theme name is required";
+        if (v.includes("/") || v.includes("\\")) return "Theme name cannot contain path separators";
+        if (v.includes(" ")) return "Theme name cannot contain spaces";
+        if (!/^[a-z0-9_-]+$/i.test(v)) return "Use only letters, numbers, hyphens, and underscores";
+      },
+    });
+    if (p.isCancel(nameAnswer)) {
+      p.outro(pc.red("Init cancelled."));
+      process.exit(0);
+    }
+    customThemeName = (nameAnswer as string).trim().replace(/\.(ts|css)$/i, "");
   }
 
   // -----------------------------------------------------------------------
@@ -396,6 +424,7 @@ export async function init(options: InitOptions = {}) {
   const cfg: TemplateConfig = {
     entry: entryPath,
     theme: theme as string,
+    customThemeName,
     projectName,
     framework,
     useAlias: useAlias as boolean,
@@ -600,6 +629,11 @@ function scaffoldNextJs(
   skipped: string[],
   written: string[],
 ) {
+  if (cfg.theme === "custom" && cfg.customThemeName) {
+    const baseName = cfg.customThemeName.replace(/\.(ts|css)$/i, "");
+    write(`themes/${baseName}.ts`, customThemeTsTemplate(baseName));
+    write(`themes/${baseName}.css`, customThemeCssTemplate(baseName));
+  }
   write("docs.config.ts", docsConfigTemplate(cfg));
 
   const existingNextConfig =
@@ -645,7 +679,12 @@ function scaffoldNextJs(
   const globalCssAbsPath = path.join(cwd, globalCssRelPath);
   const existingGlobalCss = readFileSafe(globalCssAbsPath);
   if (existingGlobalCss) {
-    const injected = injectCssImport(existingGlobalCss, cfg.theme);
+    const injected = injectCssImport(
+      existingGlobalCss,
+      cfg.theme,
+      cfg.customThemeName,
+      globalCssRelPath,
+    );
     if (injected) {
       writeFileSafe(globalCssAbsPath, injected, true);
       written.push(globalCssRelPath + " (updated)");
@@ -653,7 +692,10 @@ function scaffoldNextJs(
       skipped.push(globalCssRelPath + " (already configured)");
     }
   } else {
-    write(globalCssRelPath, globalCssTemplate(cfg.theme));
+    write(
+      globalCssRelPath,
+      globalCssTemplate(cfg.theme, cfg.customThemeName, globalCssRelPath),
+    );
   }
 
   write(`app/${cfg.entry}/layout.tsx`, docsLayoutTemplate(cfg));
