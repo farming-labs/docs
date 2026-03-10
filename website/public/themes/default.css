@@ -249,14 +249,6 @@
   box-shadow: none !important;
 }
 
-#nd-docs-layout [role="tabpanel"] figure.shiki,
-#nd-docs-layout [role="tabpanel"] figure.shiki pre,
-#nd-docs-layout [role="tabpanel"] figure[data-rehype-pretty-code-figure],
-#nd-docs-layout [role="tabpanel"] figure[data-rehype-pretty-code-figure] pre {
-  /* border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important; */
-}
 
 /* ─── Tabs (default theme) ────────────────────────────────────── */
 
