@@ -1,3 +1,4 @@
+import "clsx";
 import { n as noop } from "./index2.js";
 import "./exports.js";
 import "@sveltejs/kit/internal/server";

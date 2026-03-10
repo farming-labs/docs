@@ -1,60 +1,12 @@
 import { createTheme, defineDocs } from "@farming-labs/docs";
+import "clsx";
 import "@sveltejs/kit/internal";
 import "./exports.js";
 import "./utils.js";
 import "@sveltejs/kit/internal/server";
 import "./root.js";
 import "./state.svelte.js";
-const JSXBrackets = /* @__PURE__ */ new Set(["<", ">", "{", "}", "[", "]"]);
-/* @__PURE__ */ new Set([
-  "+",
-  "-",
-  "*",
-  "/",
-  "%",
-  "=",
-  "!",
-  "&",
-  "|",
-  "^",
-  "~",
-  "!",
-  "?",
-  ":",
-  ".",
-  ",",
-  ";",
-  `'`,
-  '"',
-  ".",
-  "(",
-  ")",
-  "[",
-  "]",
-  "#",
-  "@",
-  "\\",
-  ...JSXBrackets
-]);
-const TokenTypes = (
-  /** @type {const} */
-  [
-    "identifier",
-    "keyword",
-    "string",
-    "class",
-    "property",
-    "entity",
-    "jsxliterals",
-    "sign",
-    "comment",
-    "break",
-    "space"
-  ]
-);
-({
-  TokenMap: new Map(TokenTypes.map((type, i) => [type, i]))
-});
+import "sugar-high";
 const DefaultUIDefaults = {
   colors: {
     primary: "#6366f1",

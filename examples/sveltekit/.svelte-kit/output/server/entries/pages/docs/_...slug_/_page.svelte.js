@@ -1,12 +1,14 @@
+import "clsx";
 import "@sveltejs/kit/internal";
 import "../../../../chunks/exports.js";
 import "../../../../chunks/utils.js";
 import "@sveltejs/kit/internal/server";
 import "../../../../chunks/root.js";
 import "../../../../chunks/state.svelte.js";
-import { c as config } from "../../../../chunks/docs.config.js";
+import "sugar-high";
 import { f as ssr_context, a as attr, e as escape_html, b as attr_class, d as ensure_array_like, i as attr_style, j as stringify, c as store_get, u as unsubscribe_stores, h as head } from "../../../../chunks/index2.js";
 import { p as page, h as html } from "../../../../chunks/stores.js";
+import { c as config } from "../../../../chunks/docs.config.js";
 function onDestroy(fn) {
   /** @type {SSRContext} */
   ssr_context.r.on_destroy(fn);
@@ -299,7 +301,7 @@ function DocsContent($$renderer, $$props) {
         document.removeEventListener("click", handleClickOutside);
       }
     });
-    head("7b3nkt", $$renderer2, ($$renderer3) => {
+    head("xl3g5x", $$renderer2, ($$renderer3) => {
       $$renderer3.title(($$renderer4) => {
         $$renderer4.push(`<title>${escape_html(data.title)}${escape_html(titleSuffix)}</title>`);
       });
