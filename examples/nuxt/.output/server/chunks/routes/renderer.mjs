@@ -320,7 +320,7 @@ async function renderInlineStyles(usedModules) {
 const renderSSRHeadOptions = { omitLineBreaks: false };
 
 const entryIds = [
-  "../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+compiler_lkxhiicydhugfwvbpodx6sokaq/node_modules/nuxt/dist/app/entry.js",
+  "../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/app/entry.js",
 ];
 
 // @ts-expect-error private property consumed by vite-generated url helpers

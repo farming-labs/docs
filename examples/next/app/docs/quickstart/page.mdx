@@ -1,0 +1,77 @@
+---
+title: "Quickstart"
+description: "Get up and running in minutes"
+---
+
+# Quickstart
+
+This guide walks you through creating your first documentation page.
+
+## Creating a Page
+
+Create a new folder under `app/docs/` with a `page.mdx` file:
+
+```bash
+mkdir -p app/docs/my-page
+```
+
+Then create `app/docs/my-page/page.mdx`:
+
+```mdx
+---
+title: "My Page"
+description: "A custom documentation page"
+---
+
+# My Page
+
+Write your content here using **Markdown** and JSX components.
+```
+
+Your page is now available at `/docs/my-page`.
+
+## Using Components
+
+### Callouts
+
+<Callout type="info">
+  This is an informational callout. Use it for tips and notes.
+</Callout>
+
+<Callout type="warn">
+  This is a warning callout. Use it for important caveats.
+</Callout>
+
+### Code Blocks
+
+Code blocks are automatically syntax-highlighted:
+
+```typescript
+function greet(name: string): string {
+  return \`Hello, \${name}!\`;
+}
+
+console.log(greet("World"));
+```
+
+## Customizing the Theme
+
+Edit `docs.config.ts` to change colors, typography, and component defaults:
+
+```ts
+theme: fumadocs({
+  ui: {
+    colors: { primary: "#22c55e" },
+  },
+}),
+```
+
+## Deploying
+
+Build your docs for production:
+
+```bash
+pnpm build
+```
+
+Deploy to Vercel, Netlify, or any Node.js hosting platform.

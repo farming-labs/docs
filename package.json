@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "pnpm --filter '@farming-labs/*' run build",
+    "try:init": "pnpm --filter @farming-labs/docs run build && cd examples/next && node ../../packages/docs/dist/cli/index.mjs init",
     "dev": "pnpm --filter example-next dev",
     "examples:version": "node scripts/set-examples-version.mjs",
     "test": "pnpm --filter @farming-labs/docs run test",

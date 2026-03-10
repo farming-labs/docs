@@ -7,6 +7,12 @@ import {
   injectRootProviderIntoLayout,
   globalCssTemplate,
   injectCssImport,
+  getThemeExportName,
+  getCustomThemeCssImportPath,
+  customThemeTsTemplate,
+  customThemeCssTemplate,
+  svelteDocsConfigTemplate,
+  nuxtDocsConfigTemplate,
   postcssConfigTemplate,
   nextConfigTemplate,
   nextConfigMergedTemplate,
@@ -200,6 +206,124 @@ describe("docsConfigTemplate", () => {
     const out = docsConfigTemplate({ ...baseConfig, theme: "darksharp" });
     expect(out).toContain("darksharp");
     expect(out).toContain("@farming-labs/theme/darksharp");
+  });
+
+  it("uses local theme path for custom theme with customThemeName", () => {
+    const out = docsConfigTemplate({
+      ...baseConfig,
+      theme: "custom",
+      customThemeName: "my-theme",
+    });
+    expect(out).toContain('from "@/themes/my-theme"');
+    expect(out).toContain("theme: myTheme(");
+    expect(out).toContain("defineDocs");
+  });
+});
+
+describe("Create your own theme", () => {
+  describe("getThemeExportName", () => {
+    it("converts kebab-case to camelCase (my-theme -> myTheme)", () => {
+      expect(getThemeExportName("my-theme")).toBe("myTheme");
+    });
+    it("handles single word", () => {
+      expect(getThemeExportName("acme")).toBe("acme");
+    });
+    it("strips .ts suffix", () => {
+      expect(getThemeExportName("my-theme.ts")).toBe("myTheme");
+    });
+    it("returns customTheme for empty after trim", () => {
+      expect(getThemeExportName("")).toBe("customTheme");
+    });
+  });
+
+  describe("getCustomThemeCssImportPath", () => {
+    it("returns ../themes/<name>.css when global CSS is under app/", () => {
+      expect(getCustomThemeCssImportPath("app/globals.css", "my-theme")).toBe(
+        "../themes/my-theme.css",
+      );
+    });
+    it("returns ../../themes/<name>.css when global CSS is under src/", () => {
+      expect(getCustomThemeCssImportPath("src/app.css", "my-theme")).toBe(
+        "../../themes/my-theme.css",
+      );
+    });
+  });
+
+  describe("customThemeTsTemplate", () => {
+    it("exports createTheme with given name and ui options", () => {
+      const out = customThemeTsTemplate("my-theme");
+      expect(out).toContain('import { createTheme } from "@farming-labs/docs"');
+      expect(out).toContain("export const myTheme = createTheme");
+      expect(out).toContain('name: "my-theme"');
+      expect(out).toContain("primary:");
+      expect(out).toContain("background:");
+    });
+  });
+
+  describe("customThemeCssTemplate", () => {
+    it("imports black preset and defines .dark overrides", () => {
+      const out = customThemeCssTemplate("my-theme");
+      expect(out).toContain('@import "@farming-labs/theme/presets/black"');
+      expect(out).toContain(".dark {");
+      expect(out).toContain("--color-fd-primary:");
+      expect(out).toContain("--radius:");
+    });
+  });
+
+  describe("globalCssTemplate (custom theme)", () => {
+    it("uses local themes path when customThemeName and globalCssRelPath provided", () => {
+      const out = globalCssTemplate("custom", "my-theme", "app/globals.css");
+      expect(out).toContain('@import "tailwindcss"');
+      expect(out).toContain("../themes/my-theme.css");
+    });
+  });
+
+  describe("injectCssImport (custom theme)", () => {
+    it("injects local theme CSS path when theme is custom", () => {
+      const content = `@import "tailwindcss";\n`;
+      const result = injectCssImport(content, "custom", "my-theme", "app/globals.css");
+      expect(result).not.toBeNull();
+      expect(result).toContain("../themes/my-theme.css");
+    });
+    it("returns null when custom theme CSS import already present", () => {
+      const content = `@import "tailwindcss";
+@import "../themes/my-theme.css";
+`;
+      expect(injectCssImport(content, "custom", "my-theme", "app/globals.css")).toBeNull();
+    });
+  });
+
+  describe("svelteDocsConfigTemplate (custom theme)", () => {
+    it("imports from ../../themes/<name> and uses camelCase export", () => {
+      const out = svelteDocsConfigTemplate({
+        ...baseConfig,
+        theme: "custom",
+        customThemeName: "my-theme",
+      });
+      expect(out).toContain('from "../../themes/my-theme"');
+      expect(out).toContain("theme: myTheme(");
+    });
+  });
+
+  describe("nuxtDocsConfigTemplate (custom theme)", () => {
+    it("imports from ~/themes/<name> when useAlias and uses camelCase export", () => {
+      const out = nuxtDocsConfigTemplate({
+        ...baseConfig,
+        theme: "custom",
+        customThemeName: "my-theme",
+      });
+      expect(out).toContain('from "~/themes/my-theme"');
+      expect(out).toContain("theme: myTheme(");
+    });
+    it("imports from ./themes/<name> when useAlias is false", () => {
+      const out = nuxtDocsConfigTemplate({
+        ...baseConfig,
+        useAlias: false,
+        theme: "custom",
+        customThemeName: "my-theme",
+      });
+      expect(out).toContain('from "./themes/my-theme"');
+    });
   });
 });
 

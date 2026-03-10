@@ -1,0 +1,14 @@
+import { e as n, f as a, n as o, o as c, c as s } from "./UEFHYZlh.js";
+const l = n({
+  __name: "index",
+  async setup(r) {
+    let e, t;
+    return (
+      ([e, t] = a(() => o("/docs", { replace: !0 }))),
+      await e,
+      t(),
+      (_, i) => (c(), s("div", null, "Redirecting to docs…"))
+    );
+  },
+});
+export { l as default };

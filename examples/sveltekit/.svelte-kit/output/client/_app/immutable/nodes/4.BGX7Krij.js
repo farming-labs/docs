@@ -1,0 +1,1 @@
+import"../chunks/BVoj8vGL.js";import{D as n,c as r}from"../chunks/BX0SMCLQ.js";import"../chunks/BoR4A5RV.js";function i(t,o){n(t,{get data(){return o.data},get config(){return r}})}export{i as component};
