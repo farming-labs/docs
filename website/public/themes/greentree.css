@@ -648,6 +648,9 @@ nav[class*="header"] {
   box-shadow: none !important;
   overflow: hidden !important;
 }
+.figure.shiki {
+  border: 1px solid var(--color-fd-border) !important;
+}
 
 
 #nd-docs-layout figure.shiki button {

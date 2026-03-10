@@ -222,14 +222,6 @@
   background: transparent !important;
 }
 
-/* ─── Code blocks (default theme) ───────────────────────────────── */
-#nd-docs-layout figure.shiki {
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  overflow: hidden !important;
-}
-
 
 #nd-docs-layout figure.shiki button {
   border-radius: 0.25rem !important;
@@ -241,7 +233,7 @@
 
 #nd-docs-layout figure[data-rehype-pretty-code-figure],
 #nd-docs-layout figure[data-rehype-pretty-code-figure] pre {
-  /* border-radius: 0.5rem !important; */
+  border-radius: 0.5rem !important;
 }
 
 #nd-docs-layout article figure {
@@ -250,6 +242,20 @@
 
 #nd-docs-layout figure button {
   border-radius: 0.25rem !important;
+}
+#nd-docs-layout figure.shiki {
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: none !important;
+}
+
+#nd-docs-layout [role="tabpanel"] figure.shiki,
+#nd-docs-layout [role="tabpanel"] figure.shiki pre,
+#nd-docs-layout [role="tabpanel"] figure[data-rehype-pretty-code-figure],
+#nd-docs-layout [role="tabpanel"] figure[data-rehype-pretty-code-figure] pre {
+  /* border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important; */
 }
 
 /* ─── Tabs (default theme) ────────────────────────────────────── */
