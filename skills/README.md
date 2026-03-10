@@ -23,12 +23,22 @@ Full index and per-skill install paths: **[farming-labs/README.md](./farming-lab
 
 ## Installing with Skills CLI (skills.sh)
 
-From the [Agent Skills Directory](https://skills.sh/):
+From the [Agent Skills Directory](https://skills.sh/), install skills from this repo and **pick your preferred skill(s)** when prompted.
 
-**Install from this repo (then pick a skill when prompted):**
+**Install (use your preferred package manager):**
 
 ```bash
+# npm
 npx skills add farming-labs/docs
+
+# pnpm
+pnpx skills add farming-labs/docs
+
+# yarn
+yarn dlx skills add farming-labs/docs
+
+# bun
+bunx skills add farming-labs/docs
 ```
 
 If the CLI lists skills under `skills/farming-labs/`, choose the one you need (e.g. `getting-started`, `cli`, `creating-themes`, `ask-ai`, `page-actions`, `configuration`).
