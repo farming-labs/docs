@@ -722,6 +722,11 @@ function scaffoldSvelteKit(
   skipped: string[],
   written: string[],
 ) {
+  if (cfg.theme === "custom" && cfg.customThemeName) {
+    const baseName = cfg.customThemeName.replace(/\.(ts|css)$/i, "");
+    write(`themes/${baseName}.ts`, customThemeTsTemplate(baseName));
+    write(`themes/${baseName}.css`, customThemeCssTemplate(baseName));
+  }
   write("src/lib/docs.config.ts", svelteDocsConfigTemplate(cfg));
 
   write("src/lib/docs.server.ts", svelteDocsServerTemplate(cfg));
@@ -750,7 +755,15 @@ function scaffoldSvelteKit(
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";
 
   if (existingGlobalCss) {
-    const injected = injectSvelteCssImport(existingGlobalCss, cssTheme);
+    const injected =
+      cfg.theme === "custom" && cfg.customThemeName
+        ? injectSvelteCssImport(
+            existingGlobalCss,
+            "custom",
+            cfg.customThemeName,
+            globalCssRelPath,
+          )
+        : injectSvelteCssImport(existingGlobalCss, cssTheme);
     if (injected) {
       writeFileSafe(globalCssAbsPath, injected, true);
       written.push(globalCssRelPath + " (updated)");
@@ -758,7 +771,12 @@ function scaffoldSvelteKit(
       skipped.push(globalCssRelPath + " (already configured)");
     }
   } else {
-    write(globalCssRelPath, svelteGlobalCssTemplate(cssTheme));
+    write(
+      globalCssRelPath,
+      cfg.theme === "custom" && cfg.customThemeName
+        ? svelteGlobalCssTemplate("custom", cfg.customThemeName, globalCssRelPath)
+        : svelteGlobalCssTemplate(cssTheme),
+    );
   }
 
   write(`${cfg.entry}/page.md`, svelteWelcomePageTemplate(cfg));
@@ -778,6 +796,11 @@ function scaffoldAstro(
   skipped: string[],
   written: string[],
 ) {
+  if (cfg.theme === "custom" && cfg.customThemeName) {
+    const baseName = cfg.customThemeName.replace(/\.(ts|css)$/i, "");
+    write(`themes/${baseName}.ts`, customThemeTsTemplate(baseName));
+    write(`themes/${baseName}.css`, customThemeCssTemplate(baseName));
+  }
   write("src/lib/docs.config.ts", astroDocsConfigTemplate(cfg));
   write("src/lib/docs.server.ts", astroDocsServerTemplate(cfg));
 
@@ -808,7 +831,15 @@ function scaffoldAstro(
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";
 
   if (existingGlobalCss) {
-    const injected = injectAstroCssImport(existingGlobalCss, cssTheme);
+    const injected =
+      cfg.theme === "custom" && cfg.customThemeName
+        ? injectAstroCssImport(
+            existingGlobalCss,
+            "custom",
+            cfg.customThemeName,
+            globalCssRelPath,
+          )
+        : injectAstroCssImport(existingGlobalCss, cssTheme);
     if (injected) {
       writeFileSafe(globalCssAbsPath, injected, true);
       written.push(globalCssRelPath + " (updated)");
@@ -816,7 +847,12 @@ function scaffoldAstro(
       skipped.push(globalCssRelPath + " (already configured)");
     }
   } else {
-    write(globalCssRelPath, astroGlobalCssTemplate(cssTheme));
+    write(
+      globalCssRelPath,
+      cfg.theme === "custom" && cfg.customThemeName
+        ? astroGlobalCssTemplate("custom", cfg.customThemeName, globalCssRelPath)
+        : astroGlobalCssTemplate(cssTheme),
+    );
   }
 
   write(`${cfg.entry}/page.md`, astroWelcomePageTemplate(cfg));
@@ -836,6 +872,11 @@ function scaffoldNuxt(
   skipped: string[],
   written: string[],
 ) {
+  if (cfg.theme === "custom" && cfg.customThemeName) {
+    const baseName = cfg.customThemeName.replace(/\.(ts|css)$/i, "");
+    write(`themes/${baseName}.ts`, customThemeTsTemplate(baseName));
+    write(`themes/${baseName}.css`, customThemeCssTemplate(baseName));
+  }
   write("docs.config.ts", nuxtDocsConfigTemplate(cfg));
   write("server/utils/docs-server.ts", nuxtDocsServerTemplate(cfg));
   write("server/api/docs.get.ts", nuxtServerApiDocsGetTemplate());
@@ -866,7 +907,15 @@ function scaffoldNuxt(
   const globalCssAbsPath = path.join(cwd, globalCssRelPath);
   const existingGlobalCss = readFileSafe(globalCssAbsPath);
   if (existingGlobalCss) {
-    const injected = injectNuxtCssImport(existingGlobalCss, cssTheme);
+    const injected =
+      cfg.theme === "custom" && cfg.customThemeName
+        ? injectNuxtCssImport(
+            existingGlobalCss,
+            "custom",
+            cfg.customThemeName,
+            globalCssRelPath,
+          )
+        : injectNuxtCssImport(existingGlobalCss, cssTheme);
     if (injected) {
       writeFileSafe(globalCssAbsPath, injected, true);
       written.push(globalCssRelPath + " (updated)");
@@ -874,7 +923,12 @@ function scaffoldNuxt(
       skipped.push(globalCssRelPath + " (already configured)");
     }
   } else {
-    write(globalCssRelPath, nuxtGlobalCssTemplate(cssTheme));
+    write(
+      globalCssRelPath,
+      cfg.theme === "custom" && cfg.customThemeName
+        ? nuxtGlobalCssTemplate("custom", cfg.customThemeName, globalCssRelPath)
+        : nuxtGlobalCssTemplate(cssTheme),
+    );
   }
 
   write(`${cfg.entry}/page.md`, nuxtWelcomePageTemplate(cfg));

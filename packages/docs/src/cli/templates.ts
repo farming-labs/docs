@@ -704,6 +704,35 @@ Deploy to Vercel, Netlify, or any Node.js hosting platform.
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function svelteDocsConfigTemplate(cfg: TemplateConfig): string {
+  if (cfg.theme === "custom" && cfg.customThemeName) {
+    const exportName = getThemeExportName(cfg.customThemeName);
+    const themePath = "../../themes/" + cfg.customThemeName.replace(/\.ts$/i, "");
+    return `\
+import { defineDocs } from "@farming-labs/docs";
+import { ${exportName} } from "${themePath}";
+
+export default defineDocs({
+  entry: "${cfg.entry}",
+  theme: ${exportName}({
+    ui: {
+      colors: { primary: "#6366f1" },
+    },
+  }),
+
+  nav: {
+    title: "${cfg.projectName}",
+    url: "/${cfg.entry}",
+  },
+
+  breadcrumb: { enabled: true },
+
+  metadata: {
+    titleTemplate: "%s – ${cfg.projectName}",
+    description: "Documentation for ${cfg.projectName}",
+  },
+});
+`;
+  }
   const t = getThemeInfo(cfg.theme);
   return `\
 import { defineDocs } from "@farming-labs/docs";
@@ -809,19 +838,46 @@ export function svelteRootLayoutTemplate(globalCssRelPath: string): string {
 `;
 }
 
-export function svelteGlobalCssTemplate(theme: string): string {
+export function svelteGlobalCssTemplate(
+  theme: string,
+  customThemeName?: string,
+  globalCssRelPath?: string,
+): string {
+  if (theme === "custom" && customThemeName && globalCssRelPath)
+    return `\
+@import "${getCustomThemeCssImportPath(globalCssRelPath, customThemeName.replace(/\.css$/i, ""))}";
+`;
   return `\
 @import "@farming-labs/svelte-theme/${theme}/css";
 `;
 }
 
-export function svelteCssImportLine(theme: string): string {
+export function svelteCssImportLine(
+  theme: string,
+  customThemeName?: string,
+  globalCssRelPath?: string,
+): string {
+  if (theme === "custom" && customThemeName && globalCssRelPath)
+    return `@import "${getCustomThemeCssImportPath(globalCssRelPath, customThemeName.replace(/\.css$/i, ""))}";`;
   return `@import "@farming-labs/svelte-theme/${theme}/css";`;
 }
 
-export function injectSvelteCssImport(existingContent: string, theme: string): string | null {
-  const importLine = svelteCssImportLine(theme);
+export function injectSvelteCssImport(
+  existingContent: string,
+  theme: string,
+  customThemeName?: string,
+  globalCssRelPath?: string,
+): string | null {
+  const importLine = svelteCssImportLine(theme, customThemeName, globalCssRelPath);
   if (existingContent.includes(importLine)) return null;
+  if (
+    theme !== "custom" &&
+    existingContent.includes("@farming-labs/svelte-theme/") &&
+    existingContent.includes("/css")
+  )
+    return null;
+  if (theme === "custom" && existingContent.includes("themes/") && existingContent.includes(".css"))
+    return null;
   const lines = existingContent.split("\n");
   const lastImportIdx = lines.reduce(
     (acc, l, i) => (l.trimStart().startsWith("@import") ? i : acc),
@@ -1013,6 +1069,36 @@ Deploy to Vercel, Netlify, or any Node.js hosting platform.
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function astroDocsConfigTemplate(cfg: TemplateConfig): string {
+  if (cfg.theme === "custom" && cfg.customThemeName) {
+    const exportName = getThemeExportName(cfg.customThemeName);
+    const themePath = "../../themes/" + cfg.customThemeName.replace(/\.ts$/i, "");
+    return `\
+import { defineDocs } from "@farming-labs/docs";
+import { ${exportName} } from "${themePath}";
+
+export default defineDocs({
+  entry: "${cfg.entry}",
+  contentDir: "${cfg.entry}",
+  theme: ${exportName}({
+    ui: {
+      colors: { primary: "#6366f1" },
+    },
+  }),
+
+  nav: {
+    title: "${cfg.projectName}",
+    url: "/${cfg.entry}",
+  },
+
+  breadcrumb: { enabled: true },
+
+  metadata: {
+    titleTemplate: "%s – ${cfg.projectName}",
+    description: "Documentation for ${cfg.projectName}",
+  },
+});
+`;
+  }
   const t = getThemeInfo(cfg.theme);
   return `\
 import { defineDocs } from "@farming-labs/docs";
@@ -1170,19 +1256,46 @@ export const POST: APIRoute = async ({ request }) => {
 `;
 }
 
-export function astroGlobalCssTemplate(theme: string): string {
+export function astroGlobalCssTemplate(
+  theme: string,
+  customThemeName?: string,
+  globalCssRelPath?: string,
+): string {
+  if (theme === "custom" && customThemeName && globalCssRelPath)
+    return `\
+@import "${getCustomThemeCssImportPath(globalCssRelPath, customThemeName.replace(/\.css$/i, ""))}";
+`;
   return `\
 @import "@farming-labs/astro-theme/${theme}/css";
 `;
 }
 
-export function astroCssImportLine(theme: string): string {
+export function astroCssImportLine(
+  theme: string,
+  customThemeName?: string,
+  globalCssRelPath?: string,
+): string {
+  if (theme === "custom" && customThemeName && globalCssRelPath)
+    return `@import "${getCustomThemeCssImportPath(globalCssRelPath, customThemeName.replace(/\.css$/i, ""))}";`;
   return `@import "@farming-labs/astro-theme/${theme}/css";`;
 }
 
-export function injectAstroCssImport(existingContent: string, theme: string): string | null {
-  const importLine = astroCssImportLine(theme);
+export function injectAstroCssImport(
+  existingContent: string,
+  theme: string,
+  customThemeName?: string,
+  globalCssRelPath?: string,
+): string | null {
+  const importLine = astroCssImportLine(theme, customThemeName, globalCssRelPath);
   if (existingContent.includes(importLine)) return null;
+  if (
+    theme !== "custom" &&
+    existingContent.includes("@farming-labs/astro-theme/") &&
+    existingContent.includes("/css")
+  )
+    return null;
+  if (theme === "custom" && existingContent.includes("themes/") && existingContent.includes(".css"))
+    return null;
   const lines = existingContent.split("\n");
   const lastImportIdx = lines.reduce(
     (acc, l, i) => (l.trimStart().startsWith("@import") ? i : acc),
@@ -1362,6 +1475,36 @@ Deploy to Vercel, Netlify, or any Node.js hosting platform.
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function nuxtDocsConfigTemplate(cfg: TemplateConfig): string {
+  if (cfg.theme === "custom" && cfg.customThemeName) {
+    const exportName = getThemeExportName(cfg.customThemeName);
+    const themePath = cfg.useAlias ? "~/themes/" + cfg.customThemeName.replace(/\.ts$/i, "") : "./themes/" + cfg.customThemeName.replace(/\.ts$/i, "");
+    return `\
+import { defineDocs } from "@farming-labs/docs";
+import { ${exportName} } from "${themePath}";
+
+export default defineDocs({
+  entry: "${cfg.entry}",
+  contentDir: "${cfg.entry}",
+  theme: ${exportName}({
+    ui: {
+      colors: { primary: "#6366f1" },
+    },
+  }),
+
+  nav: {
+    title: "${cfg.projectName}",
+    url: "/${cfg.entry}",
+  },
+
+  breadcrumb: { enabled: true },
+
+  metadata: {
+    titleTemplate: "%s – ${cfg.projectName}",
+    description: "Documentation for ${cfg.projectName}",
+  },
+});
+`;
+  }
   const t = getThemeInfo(cfg.theme);
   return `\
 import { defineDocs } from "@farming-labs/docs";
@@ -1674,19 +1817,46 @@ Deploy to Vercel, Netlify, or any Node.js hosting platform.
 `;
 }
 
-export function nuxtGlobalCssTemplate(theme: string): string {
+export function nuxtGlobalCssTemplate(
+  theme: string,
+  customThemeName?: string,
+  globalCssRelPath?: string,
+): string {
+  if (theme === "custom" && customThemeName && globalCssRelPath)
+    return `\
+@import "${getCustomThemeCssImportPath(globalCssRelPath, customThemeName.replace(/\.css$/i, ""))}";
+`;
   return `\
 @import "@farming-labs/nuxt-theme/${theme}/css";
 `;
 }
 
-export function nuxtCssImportLine(theme: string): string {
+export function nuxtCssImportLine(
+  theme: string,
+  customThemeName?: string,
+  globalCssRelPath?: string,
+): string {
+  if (theme === "custom" && customThemeName && globalCssRelPath)
+    return `@import "${getCustomThemeCssImportPath(globalCssRelPath, customThemeName.replace(/\.css$/i, ""))}";`;
   return `@import "@farming-labs/nuxt-theme/${theme}/css";`;
 }
 
-export function injectNuxtCssImport(existingContent: string, theme: string): string | null {
-  const importLine = nuxtCssImportLine(theme);
+export function injectNuxtCssImport(
+  existingContent: string,
+  theme: string,
+  customThemeName?: string,
+  globalCssRelPath?: string,
+): string | null {
+  const importLine = nuxtCssImportLine(theme, customThemeName, globalCssRelPath);
   if (existingContent.includes(importLine)) return null;
+  if (
+    theme !== "custom" &&
+    existingContent.includes("@farming-labs/nuxt-theme/") &&
+    existingContent.includes("/css")
+  )
+    return null;
+  if (theme === "custom" && existingContent.includes("themes/") && existingContent.includes(".css"))
+    return null;
   const lines = existingContent.split("\n");
   const lastImportIdx = lines.reduce(
     (acc, l, i) => (l.trimStart().startsWith("@import") ? i : acc),

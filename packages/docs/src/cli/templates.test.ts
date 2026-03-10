@@ -201,6 +201,17 @@ describe("docsConfigTemplate", () => {
     expect(out).toContain("darksharp");
     expect(out).toContain("@farming-labs/theme/darksharp");
   });
+
+  it("uses local theme path for custom theme with customThemeName", () => {
+    const out = docsConfigTemplate({
+      ...baseConfig,
+      theme: "custom",
+      customThemeName: "my-theme",
+    });
+    expect(out).toContain('from "@/themes/my-theme"');
+    expect(out).toContain("theme: myTheme(");
+    expect(out).toContain("defineDocs");
+  });
 });
 
 describe("nextConfigTemplate", () => {
