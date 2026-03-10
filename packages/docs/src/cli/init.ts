@@ -335,7 +335,8 @@ export async function init(options: InitOptions = {}) {
         const v = (value ?? "").trim().replace(/\.(ts|css)$/i, "");
         if (v.includes("/") || v.includes("\\")) return "Theme name cannot contain path separators";
         if (v.includes(" ")) return "Theme name cannot contain spaces";
-        if (v && !/^[a-z0-9_-]+$/i.test(v)) return "Use only letters, numbers, hyphens, and underscores";
+        if (v && !/^[a-z0-9_-]+$/i.test(v))
+          return "Use only letters, numbers, hyphens, and underscores";
       },
     });
     if (p.isCancel(nameAnswer)) {
