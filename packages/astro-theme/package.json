@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/astro-theme",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "description": "Astro UI components for @farming-labs/docs — layout, sidebar, TOC, search, and theme toggle",
   "keywords": [
     "astro",
