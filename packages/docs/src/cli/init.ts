@@ -692,10 +692,7 @@ function scaffoldNextJs(
       skipped.push(globalCssRelPath + " (already configured)");
     }
   } else {
-    write(
-      globalCssRelPath,
-      globalCssTemplate(cfg.theme, cfg.customThemeName, globalCssRelPath),
-    );
+    write(globalCssRelPath, globalCssTemplate(cfg.theme, cfg.customThemeName, globalCssRelPath));
   }
 
   write(`app/${cfg.entry}/layout.tsx`, docsLayoutTemplate(cfg));
@@ -757,12 +754,7 @@ function scaffoldSvelteKit(
   if (existingGlobalCss) {
     const injected =
       cfg.theme === "custom" && cfg.customThemeName
-        ? injectSvelteCssImport(
-            existingGlobalCss,
-            "custom",
-            cfg.customThemeName,
-            globalCssRelPath,
-          )
+        ? injectSvelteCssImport(existingGlobalCss, "custom", cfg.customThemeName, globalCssRelPath)
         : injectSvelteCssImport(existingGlobalCss, cssTheme);
     if (injected) {
       writeFileSafe(globalCssAbsPath, injected, true);
@@ -833,12 +825,7 @@ function scaffoldAstro(
   if (existingGlobalCss) {
     const injected =
       cfg.theme === "custom" && cfg.customThemeName
-        ? injectAstroCssImport(
-            existingGlobalCss,
-            "custom",
-            cfg.customThemeName,
-            globalCssRelPath,
-          )
+        ? injectAstroCssImport(existingGlobalCss, "custom", cfg.customThemeName, globalCssRelPath)
         : injectAstroCssImport(existingGlobalCss, cssTheme);
     if (injected) {
       writeFileSafe(globalCssAbsPath, injected, true);
@@ -909,12 +896,7 @@ function scaffoldNuxt(
   if (existingGlobalCss) {
     const injected =
       cfg.theme === "custom" && cfg.customThemeName
-        ? injectNuxtCssImport(
-            existingGlobalCss,
-            "custom",
-            cfg.customThemeName,
-            globalCssRelPath,
-          )
+        ? injectNuxtCssImport(existingGlobalCss, "custom", cfg.customThemeName, globalCssRelPath)
         : injectNuxtCssImport(existingGlobalCss, cssTheme);
     if (injected) {
       writeFileSafe(globalCssAbsPath, injected, true);

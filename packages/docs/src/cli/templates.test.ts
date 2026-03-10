@@ -263,7 +263,7 @@ describe("Create your own theme", () => {
   describe("customThemeCssTemplate", () => {
     it("imports black preset and defines .dark overrides", () => {
       const out = customThemeCssTemplate("my-theme");
-      expect(out).toContain("@import \"@farming-labs/theme/presets/black\"");
+      expect(out).toContain('@import "@farming-labs/theme/presets/black"');
       expect(out).toContain(".dark {");
       expect(out).toContain("--color-fd-primary:");
       expect(out).toContain("--radius:");
@@ -273,7 +273,7 @@ describe("Create your own theme", () => {
   describe("globalCssTemplate (custom theme)", () => {
     it("uses local themes path when customThemeName and globalCssRelPath provided", () => {
       const out = globalCssTemplate("custom", "my-theme", "app/globals.css");
-      expect(out).toContain("@import \"tailwindcss\"");
+      expect(out).toContain('@import "tailwindcss"');
       expect(out).toContain("../themes/my-theme.css");
     });
   });

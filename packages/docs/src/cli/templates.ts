@@ -237,7 +237,9 @@ function astroPageServerImport(useAlias: boolean, depth: number): string {
 export function docsConfigTemplate(cfg: TemplateConfig): string {
   if (cfg.theme === "custom" && cfg.customThemeName) {
     const exportName = getThemeExportName(cfg.customThemeName);
-    const themePath = cfg.useAlias ? "@/themes/" + cfg.customThemeName.replace(/\.ts$/i, "") : "./themes/" + cfg.customThemeName.replace(/\.ts$/i, "");
+    const themePath = cfg.useAlias
+      ? "@/themes/" + cfg.customThemeName.replace(/\.ts$/i, "")
+      : "./themes/" + cfg.customThemeName.replace(/\.ts$/i, "");
     return `\
 import { defineDocs } from "@farming-labs/docs";
 import { ${exportName} } from "${themePath}";
@@ -411,7 +413,10 @@ export function globalCssTemplate(
   globalCssRelPath?: string,
 ): string {
   if (theme === "custom" && customThemeName && globalCssRelPath) {
-    const cssPath = getCustomThemeCssImportPath(globalCssRelPath, customThemeName.replace(/\.css$/i, ""));
+    const cssPath = getCustomThemeCssImportPath(
+      globalCssRelPath,
+      customThemeName.replace(/\.css$/i, ""),
+    );
     return `\
 @import "tailwindcss";
 @import "${cssPath}";
@@ -1477,7 +1482,9 @@ Deploy to Vercel, Netlify, or any Node.js hosting platform.
 export function nuxtDocsConfigTemplate(cfg: TemplateConfig): string {
   if (cfg.theme === "custom" && cfg.customThemeName) {
     const exportName = getThemeExportName(cfg.customThemeName);
-    const themePath = cfg.useAlias ? "~/themes/" + cfg.customThemeName.replace(/\.ts$/i, "") : "./themes/" + cfg.customThemeName.replace(/\.ts$/i, "");
+    const themePath = cfg.useAlias
+      ? "~/themes/" + cfg.customThemeName.replace(/\.ts$/i, "")
+      : "./themes/" + cfg.customThemeName.replace(/\.ts$/i, "");
     return `\
 import { defineDocs } from "@farming-labs/docs";
 import { ${exportName} } from "${themePath}";
