@@ -1,5 +1,4 @@
 import { g as getContext } from "./index2.js";
-import "clsx";
 import "@sveltejs/kit/internal";
 import "./exports.js";
 import "./utils.js";

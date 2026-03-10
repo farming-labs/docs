@@ -1,4 +1,3 @@
-import { clsx as clsx$1 } from "clsx";
 import { i as is_primitive, g as get_type, D as DevalueError, a as is_plain_object, e as enumerable_symbols, s as stringify_key, b as stringify_string, c as escaped, B as BROWSER } from "./utils2.js";
 const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$";
 const unsafe_chars = /[<\b\f\n\r\t\0\u2028\u2029]/g;
@@ -2161,6 +2160,19 @@ function escape_html(value, is_attr) {
   }
   return escaped2 + str.substring(last);
 }
+function r(e) {
+  var t, f, n = "";
+  if ("string" == typeof e || "number" == typeof e) n += e;
+  else if ("object" == typeof e) if (Array.isArray(e)) {
+    var o = e.length;
+    for (t = 0; t < o; t++) e[t] && (f = r(e[t])) && (n && (n += " "), n += f);
+  } else for (f in e) e[f] && (n && (n += " "), n += f);
+  return n;
+}
+function clsx$1() {
+  for (var e, t, f = 0, n = "", o = arguments.length; f < o; f++) (e = arguments[f]) && (t = r(e)) && (n && (n += " "), n += t);
+  return n;
+}
 const replacements = {
   translate: /* @__PURE__ */ new Map([
     [true, "yes"],
@@ -2630,14 +2642,14 @@ class Renderer {
     };
     if (typeof body === "function") {
       this.child((renderer) => {
-        const r = new Renderer(this.global, this);
-        body(r);
+        const r2 = new Renderer(this.global, this);
+        body(r2);
         if (this.global.mode === "async") {
-          return r.#collect_content_async().then((content) => {
+          return r2.#collect_content_async().then((content) => {
             close(renderer, content.body.replaceAll("<!---->", ""), content);
           });
         } else {
-          const content = r.#collect_content();
+          const content = r2.#collect_content();
           close(renderer, content.body.replaceAll("<!---->", ""), content);
         }
       });
@@ -2654,14 +2666,14 @@ class Renderer {
       this.global.set_title(head2, path);
     };
     this.child((renderer) => {
-      const r = new Renderer(renderer.global, renderer);
-      fn(r);
+      const r2 = new Renderer(renderer.global, renderer);
+      fn(r2);
       if (renderer.global.mode === "async") {
-        return r.#collect_content_async().then((content) => {
+        return r2.#collect_content_async().then((content) => {
           close(content.head);
         });
       } else {
-        const content = r.#collect_content();
+        const content = r2.#collect_content();
         close(content.head);
       }
     });

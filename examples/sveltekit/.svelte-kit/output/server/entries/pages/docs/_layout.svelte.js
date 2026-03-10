@@ -1,4 +1,3 @@
-import "clsx";
 import { h as head, a as attr, e as escape_html, b as attr_class, c as store_get, d as ensure_array_like, u as unsubscribe_stores } from "../../../chunks/index2.js";
 import "@sveltejs/kit/internal";
 import "../../../chunks/exports.js";
@@ -6,9 +5,8 @@ import "../../../chunks/utils.js";
 import "@sveltejs/kit/internal/server";
 import "../../../chunks/root.js";
 import "../../../chunks/state.svelte.js";
-import "sugar-high";
-import { h as html, p as page } from "../../../chunks/stores.js";
 import { c as config } from "../../../chunks/docs.config.js";
+import { h as html, p as page } from "../../../chunks/stores.js";
 function ThemeToggle($$renderer, $$props) {
   $$renderer.component(($$renderer2) => {
     $$renderer2.push(`<button class="fd-theme-toggle" aria-label="Toggle theme">`);
@@ -273,7 +271,7 @@ function DocsLayout($$renderer, $$props) {
       }
       $$renderer3.push(`<!--]-->`);
     }
-    head("1dslliw", $$renderer2, ($$renderer3) => {
+    head("57b7eg", $$renderer2, ($$renderer3) => {
       $$renderer3.push(`${html(`<script>${themeInitScript}<\/script>`)} `);
       if (overrideCSS) {
         $$renderer3.push("<!--[-->");
