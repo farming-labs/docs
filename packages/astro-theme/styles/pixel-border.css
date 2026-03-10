@@ -140,6 +140,28 @@ code:not(pre code) {
   border-radius: 0 !important;
 }
 
+/* ─── Docs grid: sidebar (sticky left, full height) — no clipping ─────── */
+@media (min-width: 1024px) {
+  .fd-layout {
+    grid-template-columns: var(--fd-sidebar-width) 1fr;
+  }
+  .fd-sidebar {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    min-height: 0;
+    height: 100vh;
+  }
+}
+
+/* ─── Mobile: ensure sidebar drawer/content isn't clipped ───────────────── */
+@media (max-width: 1023px) {
+  .fd-sidebar {
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
 /* ─── Sidebar (pixel-border style — BOTH light and dark) ─────────── */
 
 /* Full-width border separators between top-level items */
