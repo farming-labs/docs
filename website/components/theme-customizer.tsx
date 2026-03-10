@@ -1283,20 +1283,21 @@ export function ThemeCustomizer() {
         style={{
           ...(state.preset === "shiny" || state.preset === "colorful" || state.preset === "default"
             ? {
-              borderRadius: "14px",
-              background: "var(--color-fd-secondary, #fafafa)",
-              color: "var(--color-fd-foreground, #0a0a0a)",
-              boxShadow: "0 0 0 0 var(--color-fd-border, #e5e5e5)",
-              borderColor: "var(--color-fd-border, #e5e5e5)",
-            }
-
+                borderRadius: "14px",
+                background: "var(--color-fd-secondary, #fafafa)",
+                color: "var(--color-fd-foreground, #0a0a0a)",
+                boxShadow: "0 0 0 0 var(--color-fd-border, #e5e5e5)",
+                borderColor: "var(--color-fd-border, #e5e5e5)",
+              }
             : {
-              background: "var(--color-fd-secondary, #0a0a0b)",
-              boxShadow: "3px 3px 0 0 var(--color-fd-border, #262626)",
-              borderColor: "var(--color-fd-border, #262626)",
-            }),
+                background: "var(--color-fd-secondary, #0a0a0b)",
+                boxShadow: "3px 3px 0 0 var(--color-fd-border, #262626)",
+                borderColor: "var(--color-fd-border, #262626)",
+              }),
         }}
-        className={cn("fixed z-[10]  bottom-20 right-6 size-10 w-fit px-3 rounded-none border border-black/10 dark:border-white/[10%] shadow-lg bg-black/60 backdrop-blur-md cursor-pointer transition-all duration-200 hover:border-white/20 hover:bg-black/80 flex items-center justify-center group")}
+        className={cn(
+          "fixed z-[10]  bottom-20 right-6 size-10 w-fit px-3 rounded-none border border-black/10 dark:border-white/[10%] shadow-lg bg-black/60 backdrop-blur-md cursor-pointer transition-all duration-200 hover:border-white/20 hover:bg-black/80 flex items-center justify-center group",
+        )}
         title={open ? "Close customizer" : "Customize theme"}
       >
         {open ? (
@@ -1331,7 +1332,14 @@ export function ThemeCustomizer() {
               <circle cx="6.5" cy="12.5" r="2.5" />
               <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
             </svg>
-            <span className={cn("dark:text-white/60 text-black/70" , ["darksharp" , "pixel-border"].includes(state.preset) ? "text-[11px] font-mono uppercase" : "text-[14px] tracking-normal font-sans capitalize")}>
+            <span
+              className={cn(
+                "dark:text-white/60 text-black/70",
+                ["darksharp", "pixel-border"].includes(state.preset)
+                  ? "text-[11px] font-mono uppercase"
+                  : "text-[14px] tracking-normal font-sans capitalize",
+              )}
+            >
               Customize
             </span>
           </div>
