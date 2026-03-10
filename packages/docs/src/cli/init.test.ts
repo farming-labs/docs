@@ -15,6 +15,31 @@ vi.mock("@clack/prompts", () => ({
   isCancel: vi.fn((value: unknown) => value === cancelSymbol),
 }));
 
+// Stub exec to avoid running real shell commands during tests.
+vi.mock("./utils.js", async () => {
+  const actual = await vi.importActual<typeof import("./utils.js")>("./utils.js");
+  return {
+    ...actual,
+    exec: vi.fn(),
+  };
+});
+
+// Mock fs so fresh template flow doesn't touch the real filesystem.
+vi.mock("node:fs", () => {
+  const existsSync = vi.fn().mockReturnValue(false);
+  const mkdirSync = vi.fn();
+  const readFileSync = vi.fn().mockReturnValue("{}");
+  const writeFileSync = vi.fn();
+  return {
+    __esModule: true,
+    default: { existsSync, mkdirSync, readFileSync, writeFileSync },
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    writeFileSync,
+  };
+});
+
 describe("init", () => {
   describe("VALID_TEMPLATES", () => {
     it("includes next, nuxt, sveltekit, astro", () => {
@@ -65,6 +90,28 @@ describe("init", () => {
               label: "Fresh project",
               hint: expect.stringContaining("Bootstrap a new app"),
             }),
+          ]),
+        }),
+      );
+    });
+
+    it("asks for package manager when bootstrapping a fresh template project", async () => {
+      const prompts = await import("@clack/prompts");
+      // Fresh project path when --template is provided; we cancel at the package manager prompt
+      // so the rest of init exits early via process.exit.
+      vi.mocked(prompts.select).mockResolvedValueOnce(cancelSymbol as never);
+
+      await expect(init({ template: "next", name: "my-docs" })).rejects.toThrow("process.exit");
+
+      expect(prompts.select).toHaveBeenCalledTimes(1);
+      expect(prompts.select).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("Which package manager"),
+          options: expect.arrayContaining([
+            expect.objectContaining({ value: "pnpm", label: "pnpm" }),
+            expect.objectContaining({ value: "npm", label: "npm" }),
+            expect.objectContaining({ value: "yarn", label: "yarn" }),
+            expect.objectContaining({ value: "bun", label: "bun" }),
           ]),
         }),
       );

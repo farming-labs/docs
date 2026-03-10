@@ -3,6 +3,7 @@ import * as p from "@clack/prompts";
 import pc from "picocolors";
 import {
   type Framework,
+  type PackageManager,
   detectFramework,
   detectPackageManager,
   detectGlobalCssFiles,
@@ -196,19 +197,60 @@ export async function init(options: InitOptions = {}) {
       process.exit(1);
     }
 
+    // -------------------------------------------------------------------
+    // Fresh project: let the user pick their package manager
+    // -------------------------------------------------------------------
+
+    const pmAnswer = await p.select({
+      message: "Which package manager do you want to use in this new project?",
+      options: [
+        { value: "pnpm", label: "pnpm", hint: "Fast, disk-efficient (recommended)" },
+        { value: "npm", label: "npm", hint: "Default Node.js package manager" },
+        { value: "yarn", label: "yarn", hint: "Classic yarn (script: yarn dev)" },
+        { value: "bun", label: "bun", hint: "Bun runtime + bun install/dev" },
+      ] as const,
+    });
+
+    if (p.isCancel(pmAnswer)) {
+      p.outro(pc.red("Init cancelled."));
+      process.exit(0);
+    }
+
+    const pmFresh = pmAnswer as PackageManager;
+
     p.log.success(
-      `Bootstrapped ${pc.cyan(`'${projectName}'`)}. Installing dependencies with pnpm...`,
+      `Bootstrapped ${pc.cyan(`'${projectName}'`)}. Installing dependencies with ${pc.cyan(pmFresh)}...`,
     );
 
+    const installCmd =
+      pmFresh === "yarn"
+        ? "yarn install"
+        : pmFresh === "npm"
+          ? "npm install"
+          : pmFresh === "bun"
+            ? "bun install"
+            : "pnpm install";
+
     try {
-      exec("pnpm install", targetDir);
+      exec(installCmd, targetDir);
     } catch {
-      p.log.warn("pnpm install failed. Run pnpm install manually inside the project.");
+      p.log.warn(
+        `${pmFresh} install failed. Run ${pc.cyan(installCmd)} manually inside the project.`,
+      );
     }
+
+    const devCmd =
+      pmFresh === "yarn"
+        ? "yarn dev"
+        : pmFresh === "npm"
+          ? "npm run dev"
+          : pmFresh === "bun"
+            ? "bun dev"
+            : "pnpm dev";
 
     p.outro(
       pc.green(
-        `Done! Run ${pc.cyan(`cd ${projectName} && pnpm dev`)} to start the dev server and navigate to the /docs.`,
+        `Done! Run ${pc.cyan(`cd ${projectName} && ${devCmd}`)} to start the dev server and navigate to the /docs.`,
       ),
     );
     process.exit(0);
@@ -529,10 +571,29 @@ export async function init(options: InitOptions = {}) {
   }
 
   // -----------------------------------------------------------------------
-  // Step 9: Install dependencies
+  // Step 9: Choose package manager (existing project)
   // -----------------------------------------------------------------------
 
-  const pm = detectPackageManager(cwd);
+  let pm = detectPackageManager(cwd);
+  p.log.info(`Detected ${pc.cyan(pm)} as package manager`);
+
+  const pmAnswerExisting = await p.select({
+    initialValue: pm,
+    message: "Which package manager do you want to use in this project?",
+    options: [
+      { value: "pnpm", label: "pnpm", hint: "Fast, disk-efficient (recommended)" },
+      { value: "npm", label: "npm", hint: "Default Node.js package manager" },
+      { value: "yarn", label: "yarn", hint: "Classic yarn (script: yarn dev)" },
+      { value: "bun", label: "bun", hint: "Bun runtime + bun install/dev" },
+    ] as const,
+  });
+
+  if (p.isCancel(pmAnswerExisting)) {
+    p.outro(pc.red("Init cancelled."));
+    process.exit(0);
+  }
+
+  pm = pmAnswerExisting as PackageManager;
   p.log.info(`Using ${pc.cyan(pm)} as package manager`);
 
   const s2 = p.spinner();
