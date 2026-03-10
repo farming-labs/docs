@@ -642,13 +642,13 @@ nav[class*="header"] {
 /* ═══════════════════════════════════════════════════════════════════
  * CODE BLOCKS
  * ═══════════════════════════════════════════════════════════════════ */
-
-#nd-docs-layout figure.shiki,
-figure.shiki {
-  border-radius: 10px !important;
+ #nd-docs-layout figure.shiki {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   overflow: hidden !important;
-  border: 1px solid var(--color-fd-border) !important;
 }
+
 
 #nd-docs-layout figure.shiki button {
   border-radius: 6px !important;

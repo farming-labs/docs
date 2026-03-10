@@ -223,12 +223,13 @@
 }
 
 /* ─── Code blocks (default theme) ───────────────────────────────── */
-
 #nd-docs-layout figure.shiki {
-  border: 1px solid var(--color-fd-border) !important;
-  border-radius: 0.5rem !important;
+  border: none !important;
+  border-radius: 0 !important;
   box-shadow: none !important;
+  overflow: hidden !important;
 }
+
 
 #nd-docs-layout figure.shiki button {
   border-radius: 0.25rem !important;

@@ -306,14 +306,14 @@
 /* ─── Code blocks (shiny theme — Clerk style) ──────────────── */
 
 #nd-docs-layout figure.shiki {
-  border: 1px solid var(--color-fd-border) !important;
-  border-radius: 0.625rem !important;
+  border: none !important;
+  border-radius: 0 !important;
   box-shadow: none !important;
   overflow: hidden !important;
 }
 
 .dark #nd-docs-layout figure.shiki {
-  border-color: hsl(240, 5%, 20%) !important;
+  /* border-color: hsl(240, 5%, 20%) !important; */
 }
 
 #nd-docs-layout figure.shiki button {
@@ -414,6 +414,7 @@
 [class*="fd-callout"],
 [role="alert"] {
   border-radius: 0.625rem !important;
+  border: none !important;
 }
 
 /* ─── Nav cards (prev/next) ───────────────────────────────────── */
