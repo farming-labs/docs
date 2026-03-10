@@ -571,10 +571,28 @@ export async function init(options: InitOptions = {}) {
   }
 
   // -----------------------------------------------------------------------
-  // Step 9: Install dependencies
+  // Step 9: Choose package manager (existing project)
   // -----------------------------------------------------------------------
 
-  const pm = detectPackageManager(cwd);
+  let pm = detectPackageManager(cwd);
+  p.log.info(`Detected ${pc.cyan(pm)} as package manager`);
+
+  const pmAnswerExisting = await p.select({
+    message: "Which package manager do you want to use in this project?",
+    options: [
+      { value: "pnpm", label: "pnpm", hint: "Fast, disk-efficient (recommended)" },
+      { value: "npm", label: "npm", hint: "Default Node.js package manager" },
+      { value: "yarn", label: "yarn", hint: "Classic yarn (script: yarn dev)" },
+      { value: "bun", label: "bun", hint: "Bun runtime + bun install/dev" },
+    ] as const,
+  });
+
+  if (p.isCancel(pmAnswerExisting)) {
+    p.outro(pc.red("Init cancelled."));
+    process.exit(0);
+  }
+
+  pm = pmAnswerExisting as PackageManager;
   p.log.info(`Using ${pc.cyan(pm)} as package manager`);
 
   const s2 = p.spinner();
