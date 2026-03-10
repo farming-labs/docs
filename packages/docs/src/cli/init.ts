@@ -578,6 +578,7 @@ export async function init(options: InitOptions = {}) {
   p.log.info(`Detected ${pc.cyan(pm)} as package manager`);
 
   const pmAnswerExisting = await p.select({
+    initialValue: pm,
     message: "Which package manager do you want to use in this project?",
     options: [
       { value: "pnpm", label: "pnpm", hint: "Fast, disk-efficient (recommended)" },
