@@ -530,6 +530,11 @@ See the full [Ask AI reference](/docs/customization/ai-chat) for all options inc
         model: "gpt-4o-mini",
         suggestedQuestions: ["How do I get started?"],
       },
+      og: {
+        enabled: true,
+        type: "dynamic",
+        endpoint: "/api/og",
+      }, 
       metadata: {
         titleTemplate: "%s – Docs",
         description: "My documentation site",
