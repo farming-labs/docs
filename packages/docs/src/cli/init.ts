@@ -147,15 +147,15 @@ export async function init(options: InitOptions = {}) {
       template = templateAnswer as TemplateName;
     }
 
+    const defaultProjectName = "my-docs";
     let projectName = options.name?.trim();
     if (!projectName) {
       const nameAnswer = await p.text({
         message: "Project name? (we'll create this folder and bootstrap the app here)",
-        placeholder: "my-docs",
-        defaultValue: "my-docs",
+        placeholder: defaultProjectName,
+        defaultValue: defaultProjectName,
         validate: (value) => {
           const v = (value ?? "").trim();
-          if (!v) return "Project name is required";
           if (v.includes("/") || v.includes("\\"))
             return "Project name cannot contain path separators";
           if (v.includes(" ")) return "Project name cannot contain spaces";
@@ -165,7 +165,7 @@ export async function init(options: InitOptions = {}) {
         p.outro(pc.red("Init cancelled."));
         process.exit(0);
       }
-      projectName = (nameAnswer as string).trim();
+      projectName = (nameAnswer as string).trim() || defaultProjectName;
     }
 
     const templateLabel =
@@ -324,25 +324,26 @@ export async function init(options: InitOptions = {}) {
     process.exit(0);
   }
 
+  const defaultThemeName = "my-theme";
   let customThemeName: string | undefined;
   if (theme === "custom") {
     const nameAnswer = await p.text({
       message: "Theme name? (we'll create themes/<name>.ts and themes/<name>.css)",
-      placeholder: "my-theme",
-      defaultValue: "my-theme",
+      placeholder: defaultThemeName,
+      defaultValue: defaultThemeName,
       validate: (value) => {
         const v = (value ?? "").trim().replace(/\.(ts|css)$/i, "");
-        if (!v) return "Theme name is required";
         if (v.includes("/") || v.includes("\\")) return "Theme name cannot contain path separators";
         if (v.includes(" ")) return "Theme name cannot contain spaces";
-        if (!/^[a-z0-9_-]+$/i.test(v)) return "Use only letters, numbers, hyphens, and underscores";
+        if (v && !/^[a-z0-9_-]+$/i.test(v)) return "Use only letters, numbers, hyphens, and underscores";
       },
     });
     if (p.isCancel(nameAnswer)) {
       p.outro(pc.red("Init cancelled."));
       process.exit(0);
     }
-    customThemeName = (nameAnswer as string).trim().replace(/\.(ts|css)$/i, "");
+    const raw = (nameAnswer as string).trim().replace(/\.(ts|css)$/i, "");
+    customThemeName = raw || defaultThemeName;
   }
 
   // -----------------------------------------------------------------------
