@@ -86,16 +86,65 @@ export async function init(options: InitOptions = {}) {
   p.intro(pc.bgCyan(pc.black(" @farming-labs/docs ")));
 
   // -----------------------------------------------------------------------
-  // Template: bootstrap project with --template and --name
+  // Ask: existing project or fresh project? (skip when --template is passed)
   // -----------------------------------------------------------------------
 
-  if (options.template) {
-    const template = options.template.toLowerCase();
-    if (!VALID_TEMPLATES.includes(template as TemplateName)) {
-      p.log.error(
-        `Invalid ${pc.cyan("--template")}. Use one of: ${VALID_TEMPLATES.map((t) => pc.cyan(t)).join(", ")}`,
-      );
-      process.exit(1);
+  type ProjectType = "existing" | "fresh";
+  let projectType: ProjectType = "existing";
+
+  if (!options.template) {
+    const projectTypeAnswer = await p.select({
+      message: "Are you adding docs to an existing project or starting fresh?",
+      options: [
+        {
+          value: "existing",
+          label: "Existing project",
+          hint: "Add docs to the current app in this directory",
+        },
+        {
+          value: "fresh",
+          label: "Fresh project",
+          hint: "Bootstrap a new app from a template (Next, Nuxt, SvelteKit, Astro)",
+        },
+      ] as const,
+    });
+
+    if (p.isCancel(projectTypeAnswer)) {
+      p.outro(pc.red("Init cancelled."));
+      process.exit(0);
+    }
+    projectType = projectTypeAnswer as ProjectType;
+  }
+
+  // -----------------------------------------------------------------------
+  // Fresh project: pick framework, project name, then clone template
+  // -----------------------------------------------------------------------
+
+  if (projectType === "fresh" || options.template) {
+    let template: TemplateName;
+    if (options.template) {
+      template = options.template.toLowerCase() as TemplateName;
+      if (!VALID_TEMPLATES.includes(template)) {
+        p.log.error(
+          `Invalid ${pc.cyan("--template")}. Use one of: ${VALID_TEMPLATES.map((t) => pc.cyan(t)).join(", ")}`,
+        );
+        process.exit(1);
+      }
+    } else {
+      const templateAnswer = await p.select({
+        message: "Which framework would you like to use?",
+        options: [
+          { value: "next", label: "Next.js", hint: "React with App Router" },
+          { value: "nuxt", label: "Nuxt", hint: "Vue 3 with file-based routing" },
+          { value: "sveltekit", label: "SvelteKit", hint: "Svelte with file-based routing" },
+          { value: "astro", label: "Astro", hint: "Content-focused with islands" },
+        ],
+      });
+      if (p.isCancel(templateAnswer)) {
+        p.outro(pc.red("Init cancelled."));
+        process.exit(0);
+      }
+      template = templateAnswer as TemplateName;
     }
 
     let projectName = options.name?.trim();
@@ -348,14 +397,15 @@ export async function init(options: InitOptions = {}) {
   // Step 5: Docs entry path
   // -----------------------------------------------------------------------
 
+  const defaultEntry = "docs";
   const entry = await p.text({
     message: "Where should your docs live?",
-    placeholder: "docs",
-    defaultValue: "docs",
+    placeholder: defaultEntry,
+    defaultValue: defaultEntry,
     validate: (value) => {
-      if (!value) return "Entry path is required";
-      if (value.startsWith("/")) return "Use a relative path (no leading /)";
-      if (value.includes(" ")) return "Path cannot contain spaces";
+      const v = (value ?? "").trim();
+      if (v.startsWith("/")) return "Use a relative path (no leading /)";
+      if (v.includes(" ")) return "Path cannot contain spaces";
     },
   });
 
@@ -364,7 +414,7 @@ export async function init(options: InitOptions = {}) {
     process.exit(0);
   }
 
-  const entryPath = entry as string;
+  const entryPath = (entry as string).trim() || defaultEntry;
 
   // -----------------------------------------------------------------------
   // Step 6: Global CSS file location
@@ -396,20 +446,20 @@ export async function init(options: InitOptions = {}) {
     }
     globalCssRelPath = picked as string;
   } else {
-    const cssPath = await p.text({
+    const cssPathAnswer = await p.text({
       message: "Where is your global CSS file?",
       placeholder: defaultCssPath,
       defaultValue: defaultCssPath,
       validate: (value) => {
-        if (!value) return "CSS file path is required";
-        if (!value.endsWith(".css")) return "Path must end with .css";
+        const v = (value ?? "").trim();
+        if (v && !v.endsWith(".css")) return "Path must end with .css";
       },
     });
-    if (p.isCancel(cssPath)) {
+    if (p.isCancel(cssPathAnswer)) {
       p.outro(pc.red("Init cancelled."));
       process.exit(0);
     }
-    globalCssRelPath = cssPath as string;
+    globalCssRelPath = (cssPathAnswer as string).trim() || defaultCssPath;
   }
 
   // -----------------------------------------------------------------------
