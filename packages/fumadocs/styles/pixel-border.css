@@ -146,12 +146,27 @@ code:not(pre code) {
   }
 }
 
-/* ─── Docs grid: sidebar | content | TOC — with gap and constrained TOC ── */
+/* ─── Docs grid: sidebar (sticky left, full height) | content | TOC ─────── */
 @media (min-width: 768px) {
   #nd-docs-layout,
   [style*="fd-sidebar-col"] {
-    grid-template-columns: var(--fd-sidebar-col, 0px) minmax(0, 1fr) min(var(--fd-toc-width, 260px), 260px) !important;
-    gap: 24px !important;
+    grid-template-columns: var(--fd-sidebar-col, 0px) 1fr min-content !important;
+  }
+  /* Sidebar stretches to end and sticks on scroll; no max-height so content isn't clipped */
+  #nd-docs-layout aside#nd-sidebar {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    min-height: 0;
+    height: 100vh;
+  }
+}
+
+/* ─── Mobile: ensure sidebar drawer/content isn't clipped ───────────────── */
+@media (max-width: 767px) {
+  #nd-docs-layout aside#nd-sidebar {
+    max-height: none;
+    overflow-y: visible;
   }
 }
 
