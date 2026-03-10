@@ -381,7 +381,7 @@ const createError = (error) => {
   });
   return nuxtError;
 };
-const unhead_I_9qtOAX8a_H7jmrEBLefjoDQfLekmDmJDyjCLLfZIY = /* @__PURE__ */ defineNuxtPlugin({
+const unhead_DxSbc7Nn9B1hR_4vM1ov4brZ4Dn1iZnYVCND0xFnu3k = /* @__PURE__ */ defineNuxtPlugin({
   name: "nuxt:head",
   enforce: "pre",
   setup(nuxtApp) {
@@ -1791,12 +1791,12 @@ const _routes = [
   {
     name: "index",
     path: "/",
-    component: () => import('./index-SNpABXsL.mjs')
+    component: () => import('./index-CJo-rcTK.mjs')
   },
   {
     name: "docs-slug",
     path: "/docs/:slug(.*)*",
-    component: () => import('./_...slug_-BKow0NGY.mjs')
+    component: () => import('./_...slug_-BfWOmwKo.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {
@@ -2127,7 +2127,7 @@ const reducers = [
   ["Ref", (data) => isRef(data) && data.value],
   ["Reactive", (data) => isReactive(data) && toRaw(data)]
 ];
-const revive_payload_server_FmlzobTv2A419pi65KL46tkmH2Ul35NWynaGYf0kbUg = /* @__PURE__ */ defineNuxtPlugin({
+const revive_payload_server_3T4lp6zvvsXA7S0gsv1w2uxmJvjEOFLRUICMZXev_Fg = /* @__PURE__ */ defineNuxtPlugin({
   name: "nuxt:revive-payload:server",
   setup() {
     for (const [reducer, fn] of reducers) {
@@ -2139,9 +2139,9 @@ const components_plugin_z4hgvsiddfKkfXTP6M8M4zG5Cb7sGnDhcryKVM45Di4 = /* @__PURE
   name: "nuxt:global-components"
 });
 const plugins = [
-  unhead_I_9qtOAX8a_H7jmrEBLefjoDQfLekmDmJDyjCLLfZIY,
+  unhead_DxSbc7Nn9B1hR_4vM1ov4brZ4Dn1iZnYVCND0xFnu3k,
   plugin,
-  revive_payload_server_FmlzobTv2A419pi65KL46tkmH2Ul35NWynaGYf0kbUg,
+  revive_payload_server_3T4lp6zvvsXA7S0gsv1w2uxmJvjEOFLRUICMZXev_Fg,
   components_plugin_z4hgvsiddfKkfXTP6M8M4zG5Cb7sGnDhcryKVM45Di4
 ];
 const layouts = {};
@@ -2402,8 +2402,8 @@ const _sfc_main$1 = {
     const statusText = _error.statusMessage ?? (is404 ? "Page Not Found" : "Internal Server Error");
     const description = _error.message || _error.toString();
     const stack = void 0;
-    const _Error404 = defineAsyncComponent(() => import('./error-404-C81rC6fs.mjs'));
-    const _Error = defineAsyncComponent(() => import('./error-500-CwkDwufl.mjs'));
+    const _Error404 = defineAsyncComponent(() => import('./error-404-BQbu1ItF.mjs'));
+    const _Error = defineAsyncComponent(() => import('./error-500-4wE1sJfk.mjs'));
     const ErrorTemplate = is404 ? _Error404 : _Error;
     return (_ctx, _push, _parent, _attrs) => {
       _push(ssrRenderComponent(unref(ErrorTemplate), mergeProps({ status: unref(status), statusText: unref(statusText), statusCode: unref(status), statusMessage: unref(statusText), description: unref(description), stack: unref(stack) }, _attrs), null, _parent));
@@ -2413,7 +2413,7 @@ const _sfc_main$1 = {
 const _sfc_setup$1 = _sfc_main$1.setup;
 _sfc_main$1.setup = (props, ctx) => {
   const ssrContext = useSSRContext();
-  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/app/components/nuxt-error-page.vue");
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+compiler_lkxhiicydhugfwvbpodx6sokaq/node_modules/nuxt/dist/app/components/nuxt-error-page.vue");
   return _sfc_setup$1 ? _sfc_setup$1(props, ctx) : void 0;
 };
 const _sfc_main = {
@@ -2461,7 +2461,7 @@ const _sfc_main = {
 const _sfc_setup = _sfc_main.setup;
 _sfc_main.setup = (props, ctx) => {
   const ssrContext = useSSRContext();
-  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+co_052dacea0700a2b6bf402ef74701a994/node_modules/nuxt/dist/app/components/nuxt-root.vue");
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@vercel+functions@2.2.13_@vue+compiler_lkxhiicydhugfwvbpodx6sokaq/node_modules/nuxt/dist/app/components/nuxt-root.vue");
   return _sfc_setup ? _sfc_setup(props, ctx) : void 0;
 };
 let entry;
