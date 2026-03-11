@@ -16,7 +16,7 @@ A modern documentation framework built on top of [Fumadocs](https://fumadocs.dev
 - **Multiple frameworks** — First-class support for Next.js, SvelteKit, Astro, and Nuxt that just works.
 - **7 themes** — Default, Darksharp, Pixel Border, Colorful, Shiny, DarkBold, and GreenTree — or build your own with [`createTheme()`](/docs/themes/creating-themes).
 - **Built-in search** — Full-text search powered by Orama. No API keys.
-- **CLI scaffolding** — `npx @farming-labs/docs@latest init` detects your framework, generates config, installs deps, starts dev. Use `--template` to bootstrap a new project with one command.
+- **CLI scaffolding** — `npx @farming-labs/docs@latest init` first asks whether you're on an **existing project** or **starting fresh**; then it detects your framework, lets you pick a theme (or create your own), and scaffolds config, routes, and sample pages. Use `--template` with `--name` to bootstrap a new project without prompts.
 
 ## other docs frameworks?
 
@@ -90,9 +90,7 @@ The fastest way to get started is with the CLI:
   </Tab>
 </Tabs>
 
-The CLI auto-detects your framework (Next.js, SvelteKit, Astro, or Nuxt), lets you pick a theme (`fumadocs`, `darksharp`, or `pixel-border`), and scaffolds everything you need — config, routes, CSS, sample pages — then starts the dev server.
-
-See the [CLI reference](/docs/cli) for details, or set up manually with the [Installation guide](/docs/installation).
+The CLI first asks **existing project or fresh?** — then (for existing) auto-detects your framework, lets you pick a theme or **create your own**, and scaffolds config, routes, CSS, and sample pages. Prompts with a default (e.g. entry path `docs`) accept **Enter** to skip typing. See the [CLI reference](/docs/cli) for the full init flow, or set up manually with the [Installation guide](/docs/installation).
 
 ## Next Steps
 

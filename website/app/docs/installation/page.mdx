@@ -36,14 +36,16 @@ order: 1
   </Tab>
 </Tabs>
 
-The CLI will:
+The CLI will first ask: **Are you adding docs to an existing project or starting fresh?** Choose **Existing project** to add docs to the current directory. It will then:
 
-1. Detect your framework (Next.js, SvelteKit, Astro, or Nuxt)
-2. Ask you to pick a theme
-3. Ask for the docs entry path (default: `docs`)
-4. Generate config, layout, CSS, and sample pages
-5. Install all required dependencies
-6. Start the dev server and give you a live URL
+1. Detect your framework (Next.js, SvelteKit, Astro, or Nuxt), or ask you to pick one
+2. Ask you to pick a theme (including **Create your own theme**, which prompts for a theme name and scaffolds `themes/<name>.ts` and `themes/<name>.css`)
+3. Ask for the docs entry path (default: `docs` — press **Enter** to accept)
+4. Ask about path aliases and which global CSS file to use (defaults are offered; press **Enter** to accept)
+5. Generate config, layout, CSS, and sample pages
+6. Install dependencies and optionally start the dev server
+
+Prompts that show a placeholder (e.g. entry path, theme name) use that value as the default — you can press **Enter** to skip typing. See [CLI — Init flow](/docs/cli#init-flow-without-template) for the full sequence.
 
 To **upgrade** all docs packages to the latest later, run from your project root: `npx @farming-labs/docs@latest upgrade` (framework is auto-detected). See [CLI — Upgrade](/docs/cli#upgrade) for options.
 
