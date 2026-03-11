@@ -5,6 +5,8 @@ node_modules/
 dist/
 .next/
 out/
+.output/
+.svelte-kit/
 
 # Package manager
 pnpm-debug.log*
