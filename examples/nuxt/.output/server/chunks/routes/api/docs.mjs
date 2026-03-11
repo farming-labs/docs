@@ -1,14 +1,14 @@
-import { u as useStorage } from '../../nitro/nitro.mjs';
-import { defineDocsHandler } from '@farming-labs/nuxt/server';
-import { createTheme, defineDocs } from '@farming-labs/docs';
-import 'node:http';
-import 'node:https';
-import 'node:events';
-import 'node:buffer';
-import 'node:fs';
-import 'node:path';
-import 'node:crypto';
-import 'node:url';
+import { u as useStorage } from "../../nitro/nitro.mjs";
+import { defineDocsHandler } from "@farming-labs/nuxt/server";
+import { createTheme, defineDocs } from "@farming-labs/docs";
+import "node:http";
+import "node:https";
+import "node:events";
+import "node:buffer";
+import "node:fs";
+import "node:path";
+import "node:crypto";
+import "node:url";
 
 const ColorfulUIDefaults = {
   colors: {
@@ -62,19 +62,19 @@ const config = defineDocs({
         font: {
           style: {
             sans: "system-ui, -apple-system, sans-serif",
-            mono: "ui-monospace, monospace"
+            mono: "ui-monospace, monospace",
           },
           h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.02em" },
           h2: { size: "1.5rem", weight: 600, letterSpacing: "-0.01em" },
           h3: { size: "1.25rem", weight: 600 },
-          body: { size: "1rem", lineHeight: "1.75" }
-        }
-      }
-    }
+          body: { size: "1rem", lineHeight: "1.75" },
+        },
+      },
+    },
   }),
   nav: {
     title: "Example Docs",
-    url: "/docs"
+    url: "/docs",
   },
   ai: {
     enabled: true,
@@ -88,14 +88,14 @@ const config = defineDocs({
       "How do I get started?",
       "What databases are supported?",
       "How do I configure authentication?",
-      "How do I set up social sign-on?"
-    ]
+      "How do I set up social sign-on?",
+    ],
   },
   themeToggle: { enabled: true, default: "dark" },
   breadcrumb: { enabled: true },
   metadata: {
     titleTemplate: "%s \u2013 Docs",
-    description: "Awesome docs powered by @farming-labs/docs (Nuxt)"
+    description: "Awesome docs powered by @farming-labs/docs (Nuxt)",
   },
   pageActions: {
     alignment: "right",
@@ -105,17 +105,18 @@ const config = defineDocs({
       providers: [
         {
           name: "ChatGPT",
-          urlTemplate: "https://chatgpt.com/?hints=search&q=Read+{mdxUrl},+I+want+to+ask+questions+about+it."
+          urlTemplate:
+            "https://chatgpt.com/?hints=search&q=Read+{mdxUrl},+I+want+to+ask+questions+about+it.",
         },
         {
           name: "Claude",
-          urlTemplate: "https://claude.ai/new?q=Read+{mdxUrl},+I+want+to+ask+questions+about+it."
-        }
-      ]
-    }
+          urlTemplate: "https://claude.ai/new?q=Read+{mdxUrl},+I+want+to+ask+questions+about+it.",
+        },
+      ],
+    },
   },
   llmsTxt: { enabled: true, baseUrl: "https://docs.farming-labs.dev" },
-  ordering: "numeric"
+  ordering: "numeric",
 });
 
 const docs = defineDocsHandler(config, useStorage);
