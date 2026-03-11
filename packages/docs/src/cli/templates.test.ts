@@ -45,9 +45,18 @@ describe("docsLayoutTemplate", () => {
     expect(out).toContain('from "@/docs.config"');
   });
 
-  it("uses relative path when useAlias is false", () => {
+  it("uses relative path when useAlias is false (app/)", () => {
     const out = docsLayoutTemplate({ ...baseConfig, useAlias: false });
     expect(out).toContain('from "../../docs.config"');
+  });
+
+  it("uses three-level relative path when useAlias is false and nextAppDir is src/app", () => {
+    const out = docsLayoutTemplate({
+      ...baseConfig,
+      useAlias: false,
+      nextAppDir: "src/app",
+    });
+    expect(out).toContain('from "../../../docs.config"');
   });
 });
 
@@ -69,6 +78,14 @@ describe("rootLayoutTemplate", () => {
   it("resolves CSS import for src/app/ path", () => {
     const out = rootLayoutTemplate(baseConfig, "src/app/globals.css");
     expect(out).toContain('import "./globals.css"');
+  });
+
+  it("uses ../../docs.config when nextAppDir is src/app and useAlias is false", () => {
+    const out = rootLayoutTemplate(
+      { ...baseConfig, useAlias: false, nextAppDir: "src/app" },
+      "src/app/globals.css",
+    );
+    expect(out).toContain('from "../../docs.config"');
   });
 });
 

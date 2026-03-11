@@ -12,6 +12,7 @@ import {
   fileExists,
   readFileSafe,
   detectGlobalCssFiles,
+  detectNextAppDir,
 } from "./utils.js";
 
 describe("utils", () => {
@@ -214,6 +215,28 @@ describe("utils", () => {
       const found = detectGlobalCssFiles(tmpDir);
       expect(found).toContain("app/globals.css");
       expect(found).toContain("src/app.css");
+    });
+  });
+
+  describe("detectNextAppDir", () => {
+    it("returns null when neither app nor src/app exists", () => {
+      expect(detectNextAppDir(tmpDir)).toBeNull();
+    });
+
+    it('returns "app" when only app exists', () => {
+      fs.mkdirSync(path.join(tmpDir, "app"), { recursive: true });
+      expect(detectNextAppDir(tmpDir)).toBe("app");
+    });
+
+    it('returns "src/app" when only src/app exists', () => {
+      fs.mkdirSync(path.join(tmpDir, "src", "app"), { recursive: true });
+      expect(detectNextAppDir(tmpDir)).toBe("src/app");
+    });
+
+    it('prefers "src/app" when both app and src/app exist', () => {
+      fs.mkdirSync(path.join(tmpDir, "app"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "src", "app"), { recursive: true });
+      expect(detectNextAppDir(tmpDir)).toBe("src/app");
     });
   });
 });
