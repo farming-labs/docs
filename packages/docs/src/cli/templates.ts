@@ -183,13 +183,19 @@ export function customThemeCssTemplate(themeName: string): string {
 // ---------------------------------------------------------------------------
 
 /** Config import for Next.js root layout → root docs.config */
-function nextRootLayoutConfigImport(useAlias: boolean, nextAppDir: "app" | "src/app" = "app"): string {
+function nextRootLayoutConfigImport(
+  useAlias: boolean,
+  nextAppDir: "app" | "src/app" = "app",
+): string {
   if (useAlias) return "@/docs.config";
   return nextAppDir === "src/app" ? "../../docs.config" : "../docs.config";
 }
 
 /** Config import for Next.js app/{entry}/layout.tsx → root docs.config */
-function nextDocsLayoutConfigImport(useAlias: boolean, nextAppDir: "app" | "src/app" = "app"): string {
+function nextDocsLayoutConfigImport(
+  useAlias: boolean,
+  nextAppDir: "app" | "src/app" = "app",
+): string {
   if (useAlias) return "@/docs.config";
   return nextAppDir === "src/app" ? "../../../docs.config" : "../../docs.config";
 }
