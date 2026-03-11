@@ -173,10 +173,6 @@ aside.bg-fd-card {
 
 /* ── Full-width border separators between top-level items ─────────── */
 
-aside .overscroll-contain > div {
-  /* margin-top: -22px !important; */
-}
-
 aside .overscroll-contain > div > a[data-active] {
   border-top: 1px solid var(--color-fd-border) !important;
   margin-left: -1rem !important;
@@ -639,15 +635,6 @@ body .fd-page-action-menu-item:hover {
   text-transform: uppercase !important;
   letter-spacing: 0.04em !important;
   font-size: 11px !important;
-}
-
-.fd-ai-loader-typing-dot {
-  border-radius: 0 !important;
-  width: 4px !important;
-  height: 4px !important;
-}
-
-.fd-ai-loader-shimmer-text {
   border-radius: 0 !important;
 }
 

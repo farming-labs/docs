@@ -486,12 +486,6 @@ body .fd-page-action-menu-item:hover {
   font-size: 12px !important;
 }
 
-.fd-ai-loader-typing-dot {
-  border-radius: 50% !important;
-  width: 5px !important;
-  height: 5px !important;
-}
-
 /* ─── AI Full-Modal (default theme) ──────────────────────────── */
 
 .fd-ai-fm-input-container {
@@ -699,6 +693,7 @@ body .fd-page-action-menu-item:hover {
   }
 }
 
+/* ─── AI model dropdown ──────────────────────────────────────── */
 
 .fd-ai-model-dropdown-menu {
   position: absolute;
@@ -711,7 +706,6 @@ body .fd-page-action-menu-item:hover {
   border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
   border-radius: var(--radius, 8px);
   box-shadow: none !important;
-  /* box-shadow: 2px 2px 0 0 var(--color-fd-border, #262626);   */
   animation: fd-ai-fade-in 100ms ease-out;
 }
 .fd-ai-model-dropdown-item {

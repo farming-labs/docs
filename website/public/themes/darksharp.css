@@ -626,13 +626,6 @@ body .fd-page-action-menu-item:hover {
   font-size: 12px !important;
 }
 
-.fd-ai-loader-typing-dot {
-  border-radius: 50% !important;
-  width: 5px !important;
-  height: 5px !important;
-}
-
-
 /* ─── Full-Modal (darksharp) ─────────────────────────────────────── */
 
 .fd-ai-fm-input-container {

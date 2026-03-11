@@ -346,21 +346,6 @@
   border-radius: 0.5rem !important;
 }
 
-
-
-.dark #nd-docs-layout [role="tablist"] button,
-.dark #nd-docs-layout [role="tab"] {
-  border-radius: 0px !important;
-}
-
-.dark #nd-docs-layout [role="tabpanel"] {
-  border-radius: 0 0 0.5rem 0.5rem !important;
-}
-
-.dark #nd-docs-layout div:has(> [role="tablist"]) {
-  border-radius: 0.5rem !important;
-}
-
 /* ─── Cards, callouts ────────────────────────────────────────── */
 
 [class*="bg-fd-card"],
@@ -567,12 +552,6 @@ body .fd-page-action-menu-item:hover {
   text-transform: none !important;
   letter-spacing: normal !important;
   font-size: 12px !important;
-}
-
-.fd-ai-loader-typing-dot {
-  border-radius: 50% !important;
-  width: 5px !important;
-  height: 5px !important;
 }
 
 /* ─── AI Full-Modal (colorful theme) ─────────────────────────── */
@@ -817,7 +796,6 @@ body .fd-page-action-menu-item:hover {
   border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
   border-radius: var(--radius, 8px);
   box-shadow: none !important;
-  /* box-shadow: 2px 2px 0 0 var(--color-fd-border, #262626);   */
   animation: fd-ai-fade-in 100ms ease-out;
 }
 .fd-ai-model-dropdown-item {
