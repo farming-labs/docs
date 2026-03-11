@@ -253,6 +253,7 @@ export async function init(options: InitOptions = {}) {
         `Done! Run ${pc.cyan(`cd ${projectName} && ${devCmd}`)} to start the dev server and navigate to the /docs.`,
       ),
     );
+    p.outro(pc.green("Happy documenting!"));
     process.exit(0);
   }
 
