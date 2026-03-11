@@ -17,8 +17,9 @@ description: Get started with @farming-labs/docs — MDX-based documentation for
 
 | Scenario | Command |
 | -------- | ------- |
-| Add docs to existing app | `npx @farming-labs/docs@latest init` |
-| Start from scratch (bootstrap project) | `npx @farming-labs/docs@latest init --template <next \| nuxt \| sveltekit \| astro> --name <project-name>` |
+| Interactive init (existing or fresh) | `npx @farming-labs/docs@latest init` — first asks **Existing project** or **Fresh project**; then theme (or Create your own theme), entry path, etc. Prompts with a placeholder (e.g. `docs`, `my-docs`) accept **Enter** as default. |
+| Add docs to existing app | Run `init` in project root; choose **Existing project** when prompted. |
+| Start from scratch (bootstrap, no prompts) | `npx @farming-labs/docs@latest init --template <next \| nuxt \| sveltekit \| astro> --name <project-name>` |
 
 ### Packages by framework
 
@@ -31,7 +32,7 @@ description: Get started with @farming-labs/docs — MDX-based documentation for
 
 ### Built-in themes
 
-Seven built-in themes: `fumadocs` (default), `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`. The theme name in config must match the theme's CSS import path (e.g. `greentree` → `@farming-labs/theme/greentree/css` for Next.js).
+Seven built-in themes: `fumadocs` (default), `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`. The init CLI also offers **Create your own theme** — it prompts for a theme name (default `my-theme`) and scaffolds `themes/<name>.ts` and `themes/<name>.css`. The theme name in config must match the theme's CSS import path (e.g. `greentree` → `@farming-labs/theme/greentree/css` for Next.js).
 
 ---
 
@@ -97,15 +98,11 @@ Routing is file-based: `docs/getting-started/page.mdx` → `/docs/getting-starte
 
 ---
 
-## Path aliases (CLI)
+## Path aliases and defaults (CLI)
 
-When running `init`, the CLI may ask about path aliases:
+When running `init` and choosing **Existing project**, the CLI asks about path aliases (Next: `@/`, SvelteKit: `$lib/`, Nuxt: `~/` vs relative paths). If the user chooses "no alias", generated code uses relative paths to `docs.config`, and `tsconfig` may omit the `paths` block.
 
-- **Next.js:** `@/` (e.g. `@/docs.config`) vs relative paths.
-- **SvelteKit:** `$lib/` vs relative.
-- **Nuxt:** `~/` vs relative.
-
-If the user chooses "no alias", generated code uses relative paths to `docs.config`, and `tsconfig` may omit the `paths` block.
+**Optional defaults:** Prompts that show a placeholder (entry path `docs`, theme name `my-theme`, project name `my-docs`, global CSS path) use that value as the default — the user can press **Enter** to accept without typing.
 
 ---
 
