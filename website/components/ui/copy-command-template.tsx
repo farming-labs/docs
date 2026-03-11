@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 const TEMPLATES = ["next", "nuxt", "sveltekit", "astro"] as const;
-const BASE_CMD = "pnpx @farming-labs/docs@latest init --template ";
+const BASE_CMD = "pnpx @farming-labs/docs init --template ";
 const DURATION = 2800;
 
 const motionProps = {
