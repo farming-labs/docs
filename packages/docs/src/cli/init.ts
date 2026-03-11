@@ -7,6 +7,7 @@ import {
   detectFramework,
   detectPackageManager,
   detectGlobalCssFiles,
+  detectNextAppDir,
   installCommand,
   devInstallCommand,
   writeFileSafe,
@@ -311,6 +312,31 @@ export async function init(options: InitOptions = {}) {
   }
 
   // -----------------------------------------------------------------------
+  // Step 1b: Next.js App Router directory (app vs src/app)
+  // -----------------------------------------------------------------------
+
+  let nextAppDir: "app" | "src/app" = "app";
+  if (framework === "nextjs") {
+    const detected = detectNextAppDir(cwd);
+    if (detected) {
+      nextAppDir = detected;
+      p.log.info(
+        `Using App Router at ${pc.cyan(nextAppDir)} (detected ${detected === "src/app" ? "src directory" : "root app"})`,
+      );
+    } else {
+      const useSrcApp = await p.confirm({
+        message: "Do you use the src directory for the App Router? (e.g. src/app instead of app)",
+        initialValue: false,
+      });
+      if (p.isCancel(useSrcApp)) {
+        p.outro(pc.red("Init cancelled."));
+        process.exit(0);
+      }
+      nextAppDir = useSrcApp ? "src/app" : "app";
+    }
+  }
+
+  // -----------------------------------------------------------------------
   // Step 2: Theme selection
   // -----------------------------------------------------------------------
 
@@ -475,7 +501,9 @@ export async function init(options: InitOptions = {}) {
         ? "src/styles/global.css"
         : framework === "nuxt"
           ? "assets/css/main.css"
-          : "app/globals.css";
+          : framework === "nextjs"
+            ? `${nextAppDir}/globals.css`
+            : "app/globals.css";
 
   if (detectedCssFiles.length === 1) {
     globalCssRelPath = detectedCssFiles[0];
@@ -524,6 +552,7 @@ export async function init(options: InitOptions = {}) {
     framework,
     useAlias: useAlias as boolean,
     astroAdapter,
+    ...(framework === "nextjs" && { nextAppDir }),
   };
 
   // -----------------------------------------------------------------------
@@ -743,6 +772,8 @@ function scaffoldNextJs(
   skipped: string[],
   written: string[],
 ) {
+  const appDir = cfg.nextAppDir ?? "app";
+
   if (cfg.theme === "custom" && cfg.customThemeName) {
     const baseName = cfg.customThemeName.replace(/\.(ts|css)$/i, "");
     write(`themes/${baseName}.ts`, customThemeTsTemplate(baseName));
@@ -774,20 +805,20 @@ function scaffoldNextJs(
     write("next.config.ts", nextConfigTemplate());
   }
 
-  const rootLayoutPath = path.join(cwd, "app/layout.tsx");
+  const rootLayoutPath = path.join(cwd, `${appDir}/layout.tsx`);
   const existingRootLayout = readFileSafe(rootLayoutPath);
   if (!existingRootLayout) {
-    write("app/layout.tsx", rootLayoutTemplate(cfg, globalCssRelPath), true);
+    write(`${appDir}/layout.tsx`, rootLayoutTemplate(cfg, globalCssRelPath), true);
   } else if (!existingRootLayout.includes("RootProvider")) {
     const injected = injectRootProviderIntoLayout(existingRootLayout);
     if (injected) {
       writeFileSafe(rootLayoutPath, injected, true);
-      written.push("app/layout.tsx (injected RootProvider)");
+      written.push(`${appDir}/layout.tsx (injected RootProvider)`);
     } else {
-      skipped.push("app/layout.tsx (could not inject RootProvider)");
+      skipped.push(`${appDir}/layout.tsx (could not inject RootProvider)`);
     }
   } else {
-    skipped.push("app/layout.tsx (already has RootProvider)");
+    skipped.push(`${appDir}/layout.tsx (already has RootProvider)`);
   }
 
   const globalCssAbsPath = path.join(cwd, globalCssRelPath);
@@ -809,16 +840,16 @@ function scaffoldNextJs(
     write(globalCssRelPath, globalCssTemplate(cfg.theme, cfg.customThemeName, globalCssRelPath));
   }
 
-  write(`app/${cfg.entry}/layout.tsx`, docsLayoutTemplate(cfg));
+  write(`${appDir}/${cfg.entry}/layout.tsx`, docsLayoutTemplate(cfg));
   write("postcss.config.mjs", postcssConfigTemplate());
 
   if (!fileExists(path.join(cwd, "tsconfig.json"))) {
     write("tsconfig.json", tsconfigTemplate(cfg.useAlias));
   }
 
-  write(`app/${cfg.entry}/page.mdx`, welcomePageTemplate(cfg));
-  write(`app/${cfg.entry}/installation/page.mdx`, installationPageTemplate(cfg));
-  write(`app/${cfg.entry}/quickstart/page.mdx`, quickstartPageTemplate(cfg));
+  write(`${appDir}/${cfg.entry}/page.mdx`, welcomePageTemplate(cfg));
+  write(`${appDir}/${cfg.entry}/installation/page.mdx`, installationPageTemplate(cfg));
+  write(`${appDir}/${cfg.entry}/quickstart/page.mdx`, quickstartPageTemplate(cfg));
 }
 
 // ---------------------------------------------------------------------------

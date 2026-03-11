@@ -115,6 +115,22 @@ export function detectGlobalCssFiles(cwd: string): string[] {
 }
 
 // ---------------------------------------------------------------------------
+// Next.js App Router directory (app vs src/app)
+// ---------------------------------------------------------------------------
+
+/**
+ * Detect whether the Next.js project uses `app` or `src/app` for the App Router.
+ * Returns the directory that exists; if both exist, prefers src/app; if neither, returns null.
+ */
+export function detectNextAppDir(cwd: string): "app" | "src/app" | null {
+  const hasSrcApp = fs.existsSync(path.join(cwd, "src", "app"));
+  const hasApp = fs.existsSync(path.join(cwd, "app"));
+  if (hasSrcApp) return "src/app";
+  if (hasApp) return "app";
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Shell helpers
 // ---------------------------------------------------------------------------
 
