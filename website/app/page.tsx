@@ -119,7 +119,7 @@ function HeroSection() {
               </Link>
               <CopyCommand
                 className="border-b-0 sm:border-b border-l-0 border-black/10 dark:border-white/10"
-                command="pnpx @farming-labs/docs@latest init"
+                command="pnpx @farming-labs/docs init"
               />
             </div>
           </div>
