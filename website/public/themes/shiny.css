@@ -100,6 +100,8 @@
 #nd-docs-layout aside#nd-sidebar {
   background: var(--color-fd-background) !important;
   border-color: var(--color-fd-border) !important;
+  border-right: 1px solid var(--color-fd-border) !important;
+  border-radius: 0px !important;
 }
 
 #nd-docs-layout aside .overscroll-contain>div {
