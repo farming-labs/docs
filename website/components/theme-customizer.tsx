@@ -1280,7 +1280,8 @@ export function ThemeCustomizer() {
             return !v;
           });
         }}
-        style={(state.preset === "shiny" || state.preset === "colorful" || state.preset === "default"
+        style={
+          state.preset === "shiny" || state.preset === "colorful" || state.preset === "default"
             ? {
                 borderRadius: "14px",
                 background: "var(--color-fd-secondary, #fafafa)",
@@ -1292,7 +1293,8 @@ export function ThemeCustomizer() {
                 background: "var(--color-fd-secondary, #0a0a0b)",
                 boxShadow: "3px 3px 0 0 var(--color-fd-border, #262626)",
                 borderColor: "var(--color-fd-border, #262626)",
-              })}
+              }
+        }
         className={cn(
           "fixed z-[10]  bottom-20 right-6 size-10 w-fit px-3 rounded-none border border-black/10 dark:border-white/[10%] shadow-lg bg-black/60 backdrop-blur-md cursor-pointer transition-all duration-200 hover:border-white/20 hover:bg-black/80 flex items-center justify-center group",
         )}
