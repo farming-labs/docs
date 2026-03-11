@@ -301,7 +301,7 @@ function DocsContent($$renderer, $$props) {
         document.removeEventListener("click", handleClickOutside);
       }
     });
-    head("xl3g5x", $$renderer2, ($$renderer3) => {
+    head("wgi3n5", $$renderer2, ($$renderer3) => {
       $$renderer3.title(($$renderer4) => {
         $$renderer4.push(`<title>${escape_html(data.title)}${escape_html(titleSuffix)}</title>`);
       });

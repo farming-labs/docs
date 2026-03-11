@@ -1796,7 +1796,7 @@ const _routes = [
   {
     name: "docs-slug",
     path: "/docs/:slug(.*)*",
-    component: () => import('./_...slug_-C6T3zdeR.mjs')
+    component: () => import('./_...slug_-DkaWrzyu.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {

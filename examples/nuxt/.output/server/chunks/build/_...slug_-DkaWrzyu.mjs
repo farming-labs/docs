@@ -1266,7 +1266,7 @@ const _sfc_main$9 = /* @__PURE__ */ defineComponent({
 const _sfc_setup$9 = _sfc_main$9.setup;
 _sfc_main$9.setup = (props, ctx) => {
   const ssrContext = useSSRContext();
-  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.15_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@verce_4njhfwmkbogtszmdtiq56qw7jy/node_modules/@farming-labs/nuxt-theme/src/components/SearchDialog.vue");
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.19_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@verce_c2kauwg57ebbaat4wvbaomz2li/node_modules/@farming-labs/nuxt-theme/src/components/SearchDialog.vue");
   return _sfc_setup$9 ? _sfc_setup$9(props, ctx) : void 0;
 };
 function escapeHtml(s) {
@@ -1560,7 +1560,7 @@ const _sfc_main$8 = /* @__PURE__ */ defineComponent({
 const _sfc_setup$8 = _sfc_main$8.setup;
 _sfc_main$8.setup = (props, ctx) => {
   const ssrContext = useSSRContext();
-  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.15_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@verce_4njhfwmkbogtszmdtiq56qw7jy/node_modules/@farming-labs/nuxt-theme/src/components/FloatingAIChat.vue");
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.19_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@verce_c2kauwg57ebbaat4wvbaomz2li/node_modules/@farming-labs/nuxt-theme/src/components/FloatingAIChat.vue");
   return _sfc_setup$8 ? _sfc_setup$8(props, ctx) : void 0;
 };
 const _sfc_main$7 = /* @__PURE__ */ defineComponent({
@@ -1586,7 +1586,7 @@ const _sfc_main$7 = /* @__PURE__ */ defineComponent({
 const _sfc_setup$7 = _sfc_main$7.setup;
 _sfc_main$7.setup = (props, ctx) => {
   const ssrContext = useSSRContext();
-  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.15_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@verce_4njhfwmkbogtszmdtiq56qw7jy/node_modules/@farming-labs/nuxt-theme/src/components/ThemeToggle.vue");
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.19_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@verce_c2kauwg57ebbaat4wvbaomz2li/node_modules/@farming-labs/nuxt-theme/src/components/ThemeToggle.vue");
   return _sfc_setup$7 ? _sfc_setup$7(props, ctx) : void 0;
 };
 const _sfc_main$6 = /* @__PURE__ */ defineComponent({
@@ -2028,7 +2028,7 @@ const _sfc_main$6 = /* @__PURE__ */ defineComponent({
 const _sfc_setup$6 = _sfc_main$6.setup;
 _sfc_main$6.setup = (props, ctx) => {
   const ssrContext = useSSRContext();
-  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.15_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@verce_4njhfwmkbogtszmdtiq56qw7jy/node_modules/@farming-labs/nuxt-theme/src/components/DocsLayout.vue");
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.19_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@verce_c2kauwg57ebbaat4wvbaomz2li/node_modules/@farming-labs/nuxt-theme/src/components/DocsLayout.vue");
   return _sfc_setup$6 ? _sfc_setup$6(props, ctx) : void 0;
 };
 const _sfc_main$5 = /* @__PURE__ */ defineComponent({
@@ -2070,7 +2070,7 @@ const _sfc_main$5 = /* @__PURE__ */ defineComponent({
 const _sfc_setup$5 = _sfc_main$5.setup;
 _sfc_main$5.setup = (props, ctx) => {
   const ssrContext = useSSRContext();
-  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.15_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@verce_4njhfwmkbogtszmdtiq56qw7jy/node_modules/@farming-labs/nuxt-theme/src/components/Breadcrumb.vue");
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.19_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@verce_c2kauwg57ebbaat4wvbaomz2li/node_modules/@farming-labs/nuxt-theme/src/components/Breadcrumb.vue");
   return _sfc_setup$5 ? _sfc_setup$5(props, ctx) : void 0;
 };
 const ACTIVE_ZONE_TOP = 120;
@@ -2326,7 +2326,7 @@ const _sfc_main$4 = /* @__PURE__ */ defineComponent({
 const _sfc_setup$4 = _sfc_main$4.setup;
 _sfc_main$4.setup = (props, ctx) => {
   const ssrContext = useSSRContext();
-  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.15_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@verce_4njhfwmkbogtszmdtiq56qw7jy/node_modules/@farming-labs/nuxt-theme/src/components/TableOfContents.vue");
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.19_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@verce_c2kauwg57ebbaat4wvbaomz2li/node_modules/@farming-labs/nuxt-theme/src/components/TableOfContents.vue");
   return _sfc_setup$4 ? _sfc_setup$4(props, ctx) : void 0;
 };
 const _sfc_main$3 = /* @__PURE__ */ defineComponent({
@@ -2536,7 +2536,7 @@ const _sfc_main$3 = /* @__PURE__ */ defineComponent({
 const _sfc_setup$3 = _sfc_main$3.setup;
 _sfc_main$3.setup = (props, ctx) => {
   const ssrContext = useSSRContext();
-  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.15_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@verce_4njhfwmkbogtszmdtiq56qw7jy/node_modules/@farming-labs/nuxt-theme/src/components/DocsPage.vue");
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.19_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@verce_c2kauwg57ebbaat4wvbaomz2li/node_modules/@farming-labs/nuxt-theme/src/components/DocsPage.vue");
   return _sfc_setup$3 ? _sfc_setup$3(props, ctx) : void 0;
 };
 const _sfc_main$2 = /* @__PURE__ */ defineComponent({
@@ -3022,7 +3022,7 @@ const _sfc_main$2 = /* @__PURE__ */ defineComponent({
 const _sfc_setup$2 = _sfc_main$2.setup;
 _sfc_main$2.setup = (props, ctx) => {
   const ssrContext = useSSRContext();
-  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.15_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@verce_4njhfwmkbogtszmdtiq56qw7jy/node_modules/@farming-labs/nuxt-theme/src/components/DocsContent.vue");
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../../node_modules/.pnpm/@farming-labs+nuxt-theme@0.0.19_nuxt@3.21.1_@parcel+watcher@2.5.6_@types+node@22.19.11_@verce_c2kauwg57ebbaat4wvbaomz2li/node_modules/@farming-labs/nuxt-theme/src/components/DocsContent.vue");
   return _sfc_setup$2 ? _sfc_setup$2(props, ctx) : void 0;
 };
 const DefaultUIDefaults = {
@@ -3322,4 +3322,4 @@ _sfc_main.setup = (props, ctx) => {
 };
 
 export { _sfc_main as default };
-//# sourceMappingURL=_...slug_-C6T3zdeR.mjs.map
+//# sourceMappingURL=_...slug_-DkaWrzyu.mjs.map
