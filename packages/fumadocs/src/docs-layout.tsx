@@ -2,6 +2,7 @@ import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
+import { getNextAppDir } from "./get-app-dir.js";
 import type { ReactNode, ReactElement } from "react";
 import { serializeIcon } from "./serialize-icon.js";
 import { buildPageOpenGraph, buildPageTwitter } from "@farming-labs/docs";
@@ -79,7 +80,8 @@ function hasChildPages(dir: string): boolean {
 // ─── buildTree ───────────────────────────────────────────────────────
 
 function buildTree(config: DocsConfig, flat = false) {
-  const docsDir = path.join(process.cwd(), "app", config.entry);
+  const appDir = getNextAppDir(process.cwd());
+  const docsDir = path.join(process.cwd(), appDir, config.entry);
   const icons = config.icons as Record<string, unknown> | undefined;
   const ordering = config.ordering;
   const rootChildren: TreeNode[] = [];
@@ -187,7 +189,8 @@ function buildTree(config: DocsConfig, flat = false) {
  * a map of URL pathname → formatted last-modified date string.
  */
 function buildLastModifiedMap(entry: string): Record<string, string> {
-  const docsDir = path.join(process.cwd(), "app", entry);
+  const appDir = getNextAppDir(process.cwd());
+  const docsDir = path.join(process.cwd(), appDir, entry);
   const map: Record<string, string> = {};
 
   function formatDate(date: Date): string {
@@ -225,7 +228,8 @@ function buildLastModifiedMap(entry: string): Record<string, string> {
  * from the frontmatter `description` field.
  */
 function buildDescriptionMap(entry: string): Record<string, string> {
-  const docsDir = path.join(process.cwd(), "app", entry);
+  const appDir = getNextAppDir(process.cwd());
+  const docsDir = path.join(process.cwd(), appDir, entry);
   const map: Record<string, string> = {};
 
   function scan(dir: string, slugParts: string[]) {

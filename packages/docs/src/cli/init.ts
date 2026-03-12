@@ -1062,3 +1062,6 @@ function scaffoldNuxt(
   write(`${cfg.entry}/installation/page.md`, nuxtInstallationPageTemplate(cfg));
   write(`${cfg.entry}/quickstart/page.md`, nuxtQuickstartPageTemplate(cfg));
 }
+
+/** Exported for testing: ensures Next.js scaffold writes under app or src/app consistently. */
+export { scaffoldNextJs };

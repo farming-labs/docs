@@ -24,6 +24,12 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
+/** Resolve Next.js App Router directory: prefer src/app when present, else app. */
+function getNextAppDir(root: string): string {
+  if (existsSync(join(root, "src", "app"))) return "src/app";
+  return "app";
+}
+
 // @ts-ignore – no types needed at config time
 import createMDX from "@next/mdx";
 
@@ -127,9 +133,10 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     writeFileSync(join(root, "mdx-components.tsx"), MDX_COMPONENTS_TEMPLATE);
   }
 
-  // ── 2. Auto-generate app/{entry}/layout.tsx if missing ──────────
+  // ── 2. Auto-generate app/{entry}/layout.tsx if missing (or src/app when using src dir) ──
   const entry = readDocsEntry(root);
-  const layoutDir = join(root, "app", entry);
+  const appDir = getNextAppDir(root);
+  const layoutDir = join(root, appDir, entry);
   if (existsSync(layoutDir) && !hasFile(layoutDir, "layout")) {
     writeFileSync(join(layoutDir, "layout.tsx"), DOCS_LAYOUT_TEMPLATE);
   } else if (!existsSync(layoutDir)) {
@@ -141,7 +148,7 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
   // With output: 'export' (Cloudflare Pages, etc.) there is no server; set ai.enabled: false
   // and use client-side search or leave search disabled.
   const isStaticExport = nextConfig.output === "export";
-  const docsApiRouteDir = join(root, "app", "api", "docs");
+  const docsApiRouteDir = join(root, appDir, "api", "docs");
   if (!isStaticExport && !hasFile(docsApiRouteDir, "route")) {
     mkdirSync(docsApiRouteDir, { recursive: true });
     writeFileSync(join(docsApiRouteDir, "route.ts"), DOCS_API_ROUTE_TEMPLATE);

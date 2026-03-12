@@ -94,7 +94,9 @@
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "fumadocs-core": "^16.6.1",
@@ -108,7 +110,8 @@
     "@types/react": "^19.0.0",
     "next": ">=14.0.0",
     "tsdown": "^0.20.3",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   },
   "peerDependencies": {
     "@farming-labs/docs": ">=0.0.1",

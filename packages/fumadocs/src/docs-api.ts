@@ -22,6 +22,7 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import { createSearchAPI } from "fumadocs-core/search/server";
+import { getNextAppDir } from "./get-app-dir.js";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -459,7 +460,8 @@ function generateLlmsTxt(
 export function createDocsAPI(options?: DocsAPIOptions) {
   const root = process.cwd();
   const entry = options?.entry ?? readEntry(root);
-  const docsDir = path.join(root, "app", entry);
+  const appDir = getNextAppDir(root);
+  const docsDir = path.join(root, appDir, entry);
   const language = options?.language ?? "english";
 
   // Read AI config from docs.config if not explicitly provided
