@@ -16,22 +16,22 @@ order: 1
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
     ```bash
-    npx @farming-labs/docs@latest init
+    npx @farming-labs/docs init
     ```
   </Tab>
   <Tab value="pnpm">
     ```bash
-    pnpm dlx @farming-labs/docs@latest init
+    pnpm dlx @farming-labs/docs init
     ```
   </Tab>
   <Tab value="yarn">
     ```bash
-    yarn dlx @farming-labs/docs@latest init
+    yarn dlx @farming-labs/docs init
     ```
   </Tab>
   <Tab value="bun">
     ```bash
-    bunx @farming-labs/docs@latest init
+    bunx @farming-labs/docs init
     ```
   </Tab>
 </Tabs>
@@ -47,41 +47,41 @@ The CLI will first ask: **Are you adding docs to an existing project or starting
 
 Prompts that show a placeholder (e.g. entry path, theme name) use that value as the default — you can press **Enter** to skip typing. See [CLI — Init flow](/docs/cli#init-flow-without-template) for the full sequence.
 
-To **upgrade** all docs packages to the latest later, run from your project root: `npx @farming-labs/docs@latest upgrade` (framework is auto-detected). See [CLI — Upgrade](/docs/cli#upgrade) for options.
+To **upgrade** all docs packages to the latest later, run from your project root: `npx @farming-labs/docs upgrade` (framework is auto-detected). See [CLI — Upgrade](/docs/cli#upgrade) for options.
 
 **Starting from scratch or want a full example?** Use **`--template`** with **`--name <project>`** to bootstrap a ready-to-run docs app. The CLI creates the project folder, bootstraps it with the chosen framework, and runs install:
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
     ```bash
-    npx @farming-labs/docs@latest init --template next --name my-docs     # Next.js
-    npx @farming-labs/docs@latest init --template nuxt --name my-docs     # Nuxt
-    npx @farming-labs/docs@latest init --template sveltekit --name my-docs # SvelteKit
-    npx @farming-labs/docs@latest init --template astro --name my-docs    # Astro
+    npx @farming-labs/docs init --template next --name my-docs     # Next.js
+    npx @farming-labs/docs init --template nuxt --name my-docs     # Nuxt
+    npx @farming-labs/docs init --template sveltekit --name my-docs # SvelteKit
+    npx @farming-labs/docs init --template astro --name my-docs    # Astro
     ```
   </Tab>
   <Tab value="pnpm">
     ```bash
-    pnpm dlx @farming-labs/docs@latest init --template next --name my-docs     # Next.js
-    pnpm dlx @farming-labs/docs@latest init --template nuxt --name my-docs     # Nuxt
-    pnpm dlx @farming-labs/docs@latest init --template sveltekit --name my-docs # SvelteKit
-    pnpm dlx @farming-labs/docs@latest init --template astro --name my-docs    # Astro
+    pnpm dlx @farming-labs/docs init --template next --name my-docs     # Next.js
+    pnpm dlx @farming-labs/docs init --template nuxt --name my-docs     # Nuxt
+    pnpm dlx @farming-labs/docs init --template sveltekit --name my-docs # SvelteKit
+    pnpm dlx @farming-labs/docs init --template astro --name my-docs    # Astro
     ```
   </Tab>
   <Tab value="yarn">
     ```bash
-    yarn dlx @farming-labs/docs@latest init --template next --name my-docs     # Next.js
-    yarn dlx @farming-labs/docs@latest init --template nuxt --name my-docs     # Nuxt
-    yarn dlx @farming-labs/docs@latest init --template sveltekit --name my-docs # SvelteKit
-    yarn dlx @farming-labs/docs@latest init --template astro --name my-docs    # Astro
+    yarn dlx @farming-labs/docs init --template next --name my-docs     # Next.js
+    yarn dlx @farming-labs/docs init --template nuxt --name my-docs     # Nuxt
+    yarn dlx @farming-labs/docs init --template sveltekit --name my-docs # SvelteKit
+    yarn dlx @farming-labs/docs init --template astro --name my-docs    # Astro
     ```
   </Tab>
   <Tab value="bun">
     ```bash
-    bunx @farming-labs/docs@latest init --template next --name my-docs     # Next.js
-    bunx @farming-labs/docs@latest init --template nuxt --name my-docs     # Nuxt
-    bunx @farming-labs/docs@latest init --template sveltekit --name my-docs # SvelteKit
-    bunx @farming-labs/docs@latest init --template astro --name my-docs    # Astro
+    bunx @farming-labs/docs init --template next --name my-docs     # Next.js
+    bunx @farming-labs/docs init --template nuxt --name my-docs     # Nuxt
+    bunx @farming-labs/docs init --template sveltekit --name my-docs # SvelteKit
+    bunx @farming-labs/docs init --template astro --name my-docs    # Astro
     ```
   </Tab>
 </Tabs>

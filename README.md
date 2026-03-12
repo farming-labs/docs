@@ -25,7 +25,7 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 Run `init` inside an existing Next.js, SvelteKit, Astro, or Nuxt project:
 
 ```bash
-npx @farming-labs/docs@latest init
+npx @farming-labs/docs init
 ```
 
 The CLI will:
@@ -482,13 +482,13 @@ This matters because:
 Starting from scratch? One command creates a fully themed docs site:
 
 ```bash
-npx @farming-labs/docs@latest init --template next --name my-docs --theme pixel-border
+npx @farming-labs/docs init --template next --name my-docs --theme pixel-border
 ```
 
 Already have a project? Run `init` inside it — the CLI auto-detects your framework, generates config and minimal routing files, installs dependencies, and starts the dev server:
 
 ```bash
-npx @farming-labs/docs@latest init
+npx @farming-labs/docs init
 ```
 
 Pick from `next`, `nuxt`, `sveltekit`, or `astro`. Choose any of the 7 built-in themes. Your existing code is untouched.
