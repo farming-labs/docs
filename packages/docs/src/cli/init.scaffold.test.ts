@@ -62,9 +62,7 @@ describe("scaffoldNextJs (app dir consistency)", () => {
     expect(written).toContain("src/app/layout.tsx");
     expect(written).toContain("src/app/globals.css");
 
-    const appOnlyPaths = written.filter(
-      (p) => p.includes("app/") && !p.startsWith("src/app/"),
-    );
+    const appOnlyPaths = written.filter((p) => p.includes("app/") && !p.startsWith("src/app/"));
     expect(appOnlyPaths).toHaveLength(0);
   });
 
