@@ -399,7 +399,8 @@ function buildColorsCSS(colors?: Record<string, string | undefined>): string {
     vars.push(`${COLOR_MAP[key]}: ${value};`);
   }
   if (vars.length === 0) return "";
-  return `.dark {\n  ${vars.join("\n  ")}\n}`;
+  const block = vars.join("\n  ");
+  return `:root {\n  ${block}\n}\n.dark {\n  ${block}\n}`;
 }
 
 function ColorStyle({ colors }: { colors?: Record<string, string | undefined> }) {
