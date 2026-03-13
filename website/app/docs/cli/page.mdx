@@ -459,6 +459,11 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
   For each framework, add your **theme's CSS** to the global stylesheet (or config) shown below. The import must match the theme you use in `docs.config` (e.g. `default`, `greentree`, `darksharp`). Without it, docs pages will lack the correct styling.
 </Callout>
 
+<Callout type="info" title="Rename to docs.config.tsx when using JSX">
+  If your config includes JSX or React nodes, rename `docs.config.ts` to `docs.config.tsx`.
+  This applies when you add things like a custom `nav.title`, React icons, or React-based components directly in the config file.
+</Callout>
+
 <Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     **`docs.config.ts`**

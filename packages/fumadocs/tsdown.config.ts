@@ -1,7 +1,31 @@
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  entry: ["src/**/*.{ts,tsx}"],
+  // Keep runtime/library entrypoints explicit so test files in src/ do not get bundled.
+  entry: [
+    "src/index.ts",
+    "src/mdx.ts",
+    "src/search.ts",
+    "src/docs-api.ts",
+    "src/ai-search-dialog.tsx",
+    "src/code-block-copy-wrapper.tsx",
+    "src/docs-ai-features.tsx",
+    "src/docs-command-search.tsx",
+    "src/docs-layout.tsx",
+    "src/docs-page-client.tsx",
+    "src/mdx-img.tsx",
+    "src/page-actions.tsx",
+    "src/provider.tsx",
+    "src/sidebar-search-ai.tsx",
+    "src/theme.ts",
+    "src/default/index.ts",
+    "src/darksharp/index.ts",
+    "src/pixel-border/index.ts",
+    "src/colorful/index.ts",
+    "src/shiny/index.ts",
+    "src/darkbold/index.ts",
+    "src/greentree/index.ts",
+  ],
   format: "esm",
   unbundle: true,
   dts: true,
