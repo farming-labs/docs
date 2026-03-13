@@ -1,5 +1,5 @@
 <script setup lang="ts">
-await navigateTo("/docs", { replace: true });
+await navigateTo("/docs?lang=en", { replace: true });
 </script>
 
 <template>

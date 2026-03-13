@@ -3,6 +3,8 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
+import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 
 function cn(...classes: Array<string | undefined | null | false>) {
   return classes.filter(Boolean).join(" ");
@@ -340,7 +342,13 @@ interface ResultItem {
  * fuzzy-search experience. Styled entirely via omni-* CSS classes
  * so each theme provides its own visual variant.
  */
-export function DocsCommandSearch() {
+export function DocsCommandSearch({
+  api = "/api/docs",
+  locale,
+}: {
+  api?: string;
+  locale?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -349,6 +357,9 @@ export function DocsCommandSearch() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [recents, setRecents] = useState<RecentEntry[]>([]);
   const [mounted, setMounted] = useState(false);
+  const searchParams = useSearchParams();
+  const activeLocale = resolveClientLocale(searchParams, locale);
+  const searchApi = useMemo(() => withLangInUrl(api, activeLocale), [activeLocale, api]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -412,7 +423,9 @@ export function DocsCommandSearch() {
 
     (async () => {
       try {
-        const res = await fetch(`/api/docs?query=${encodeURIComponent(debouncedQuery)}`);
+        const requestUrl = new URL(searchApi, window.location.origin);
+        requestUrl.searchParams.set("query", debouncedQuery);
+        const res = await fetch(requestUrl.toString());
         if (!res.ok || cancelled) return;
         const data: SearchResult[] = await res.json();
         const items: ResultItem[] = data.map((r) => {
@@ -422,7 +435,7 @@ export function DocsCommandSearch() {
             id: r.id,
             label,
             subtitle: labelForType(r.type),
-            url: r.url,
+            url: withLangInUrl(r.url, activeLocale),
             icon: iconForType(r.type),
             score,
             indices,
@@ -440,7 +453,7 @@ export function DocsCommandSearch() {
     return () => {
       cancelled = true;
     };
-  }, [debouncedQuery]);
+  }, [activeLocale, debouncedQuery, searchApi]);
 
   useEffect(() => {
     if (open) {

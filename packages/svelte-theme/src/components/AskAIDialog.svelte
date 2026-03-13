@@ -1,6 +1,7 @@
 <script>
   import { onMount, tick } from "svelte";
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import { renderMarkdown } from "../lib/renderMarkdown.js";
 
   let { onclose, api = "/api/docs", suggestedQuestions = [], aiLabel = "AI", hideAITab = false } = $props();
@@ -19,6 +20,19 @@
   let aiInputEl = $state(null);
   let messagesEndEl = $state(null);
   let debounceTimer;
+
+  function withLang(url) {
+    if (!url || url.startsWith("#")) return url;
+    try {
+      const parsed = new URL(url, "https://farming-labs.local");
+      const locale = $page.url.searchParams.get("lang") ?? $page.url.searchParams.get("locale");
+      if (locale) parsed.searchParams.set("lang", locale);
+      else parsed.searchParams.delete("lang");
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+      return url;
+    }
+  }
 
   onMount(() => {
     document.body.style.overflow = "hidden";
@@ -45,7 +59,7 @@
     isSearching = true;
     debounceTimer = setTimeout(async () => {
       try {
-        const res = await fetch(`${api}?query=${encodeURIComponent(searchQuery)}`);
+        const res = await fetch(withLang(`${api}?query=${encodeURIComponent(searchQuery)}`));
         if (res.ok) {
           searchResults = await res.json();
           activeIndex = 0;
@@ -59,7 +73,7 @@
 
   function navigateTo(url) {
     onclose?.();
-    goto(url);
+    goto(withLang(url));
   }
 
   function handleSearchKeydown(e) {
@@ -88,7 +102,7 @@
     messages = [...newMessages, { role: "assistant", content: "" }];
 
     try {
-      const res = await fetch(api, {
+      const res = await fetch(withLang(api), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -14,13 +14,13 @@ export default function Home() {
       <p>Welcome to the Farming Labs docs framework (Next.js example).</p>
       <ul>
         <li>
-          <Link href="/docs">Docs root</Link>
+          <Link href="/docs?lang=en">Docs root</Link>
         </li>
         <li>
-          <Link href="/docs/introduction">Introduction</Link>
+          <Link href="/docs/installation?lang=en">Installation</Link>
         </li>
         <li>
-          <Link href="/docs/get-started">Get Started</Link>
+          <Link href="/docs/getting-started?lang=en">Get Started</Link>
         </li>
       </ul>
     </div>

@@ -23,6 +23,9 @@ import path from "node:path";
 import matter from "gray-matter";
 import { createSearchAPI } from "fumadocs-core/search/server";
 import { getNextAppDir } from "./get-app-dir.js";
+import { resolveDocsI18n, resolveDocsLocale } from "@farming-labs/docs";
+import type { DocsI18nConfig } from "@farming-labs/docs";
+import { withLangInUrl } from "./i18n.js";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -68,6 +71,8 @@ interface DocsAPIOptions {
   language?: string;
   /** AI chat configuration */
   ai?: AIOptions;
+  /** i18n config (optional) */
+  i18n?: DocsI18nConfig;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -88,6 +93,38 @@ function readEntry(root: string): string {
     }
   }
   return "docs";
+}
+
+function readI18nConfig(root: string): DocsI18nConfig | null {
+  for (const ext of FILE_EXTS) {
+    const configPath = path.join(root, `docs.config.${ext}`);
+    if (!fs.existsSync(configPath)) continue;
+    try {
+      const content = fs.readFileSync(configPath, "utf-8");
+      if (!content.includes("i18n")) continue;
+
+      const localesMatch = content.match(/i18n\s*:\s*\{[\s\S]*?locales\s*:\s*\[([^\]]+)\]/);
+      if (!localesMatch) continue;
+
+      const locales = localesMatch[1]
+        .split(",")
+        .map((l) => l.trim().replace(/^['\"`]|['\"`]$/g, ""))
+        .filter(Boolean);
+      if (locales.length === 0) continue;
+
+      const defaultLocaleMatch = content.match(
+        /i18n\s*:\s*\{[\s\S]*?defaultLocale\s*:\s*["']([^"']+)["']/,
+      );
+
+      return {
+        locales,
+        defaultLocale: defaultLocaleMatch?.[1],
+      };
+    } catch {
+      // fall through
+    }
+  }
+  return null;
 }
 
 /**
@@ -153,7 +190,7 @@ function stripMdx(raw: string): string {
     .trim();
 }
 
-function scanDocsDir(docsDir: string, entry: string): SearchIndex[] {
+function scanDocsDir(docsDir: string, entry: string, locale?: string): SearchIndex[] {
   const indexes: SearchIndex[] = [];
 
   function scan(dir: string, slugParts: string[]) {
@@ -170,7 +207,8 @@ function scanDocsDir(docsDir: string, entry: string): SearchIndex[] {
           "Documentation";
         const description = data.description as string | undefined;
         const content = stripMdx(raw);
-        const url = slugParts.length === 0 ? `/${entry}` : `/${entry}/${slugParts.join("/")}`;
+        const baseUrl = slugParts.length === 0 ? `/${entry}` : `/${entry}/${slugParts.join("/")}`;
+        const url = withLangInUrl(baseUrl, locale);
 
         indexes.push({ title, description, content, url });
       } catch {
@@ -461,8 +499,10 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const root = process.cwd();
   const entry = options?.entry ?? readEntry(root);
   const appDir = getNextAppDir(root);
-  const docsDir = path.join(root, appDir, entry);
   const language = options?.language ?? "english";
+
+  const i18nConfig = options?.i18n ?? readI18nConfig(root);
+  const i18n = resolveDocsI18n(i18nConfig);
 
   // Read AI config from docs.config if not explicitly provided
   const aiConfig: AIOptions = options?.ai ?? readAIConfig(root);
@@ -470,41 +510,93 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   // Read llms.txt config
   const llmsConfig = readLlmsTxtConfig(root);
 
-  // Build search indexes (shared between search, AI, and llms.txt)
-  const indexes = scanDocsDir(docsDir, entry);
+  type DocsContext = { entryPath: string; docsDir: string; locale?: string };
 
-  // Pre-generate llms.txt content (cached in memory)
-  let _llmsCache: { llmsTxt: string; llmsFullTxt: string } | null = null;
-  function getLlmsContent() {
-    if (!_llmsCache) {
-      _llmsCache = generateLlmsTxt(indexes, {
-        siteTitle: llmsConfig.siteTitle ?? "Documentation",
-        siteDescription: llmsConfig.siteDescription,
-        baseUrl: llmsConfig.baseUrl ?? "",
-      });
+  function resolveLocaleFromRequest(request: Request): string | undefined {
+    if (!i18n) return undefined;
+    const url = new URL(request.url);
+    const direct = resolveDocsLocale(url.searchParams, i18n);
+    if (direct) return direct;
+
+    const referrer = request.headers.get("referer") ?? request.headers.get("referrer");
+    if (referrer) {
+      try {
+        const refUrl = new URL(referrer);
+        const fromRef = resolveDocsLocale(refUrl.searchParams, i18n);
+        if (fromRef) return fromRef;
+      } catch {
+        // ignore
+      }
     }
-    return _llmsCache;
+
+    return i18n.defaultLocale;
   }
 
-  // Create the fumadocs-core search API (provides GET handler)
-  const searchAPI = createSearchAPI(
-    "simple" as const,
-    {
-      language,
-      indexes,
-    } as any,
-  );
+  function resolveContextFromRequest(request: Request): DocsContext {
+    if (!i18n) {
+      return { entryPath: entry, docsDir: path.join(root, appDir, entry) };
+    }
+
+    const locale = resolveLocaleFromRequest(request) ?? i18n.defaultLocale;
+    return {
+      entryPath: entry,
+      locale,
+      docsDir: path.join(root, appDir, entry, locale),
+    };
+  }
+
+  const indexesByLocale = new Map<string, SearchIndex[]>();
+  const searchApiByLocale = new Map<string, ReturnType<typeof createSearchAPI>>();
+  const llmsCacheByLocale = new Map<string, { llmsTxt: string; llmsFullTxt: string }>();
+
+  function getIndexes(ctx: DocsContext) {
+    const key = ctx.locale ?? "__default__";
+    const cached = indexesByLocale.get(key);
+    if (cached) return cached;
+    const next = scanDocsDir(ctx.docsDir, ctx.entryPath, ctx.locale);
+    indexesByLocale.set(key, next);
+    return next;
+  }
+
+  function getSearchAPI(ctx: DocsContext) {
+    const key = ctx.locale ?? "__default__";
+    const cached = searchApiByLocale.get(key);
+    if (cached) return cached;
+    const api = createSearchAPI(
+      "simple" as const,
+      {
+        language,
+        indexes: getIndexes(ctx),
+      } as any,
+    );
+    searchApiByLocale.set(key, api);
+    return api;
+  }
+
+  function getLlmsContent(ctx: DocsContext) {
+    const key = ctx.locale ?? "__default__";
+    const cached = llmsCacheByLocale.get(key);
+    if (cached) return cached;
+    const next = generateLlmsTxt(getIndexes(ctx), {
+      siteTitle: llmsConfig.siteTitle ?? "Documentation",
+      siteDescription: llmsConfig.siteDescription,
+      baseUrl: llmsConfig.baseUrl ?? "",
+    });
+    llmsCacheByLocale.set(key, next);
+    return next;
+  }
 
   return {
     /**
      * GET handler — search, llms.txt, or llms-full.txt depending on query params.
      */
     GET(request: Request) {
+      const ctx = resolveContextFromRequest(request);
       const url = new URL(request.url);
       const format = url.searchParams.get("format");
 
       if (format === "llms") {
-        return new Response(getLlmsContent().llmsTxt, {
+        return new Response(getLlmsContent(ctx).llmsTxt, {
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
             "Cache-Control": "public, max-age=3600",
@@ -513,7 +605,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       }
 
       if (format === "llms-full") {
-        return new Response(getLlmsContent().llmsFullTxt, {
+        return new Response(getLlmsContent(ctx).llmsFullTxt, {
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
             "Cache-Control": "public, max-age=3600",
@@ -521,7 +613,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         });
       }
 
-      return searchAPI.GET(request);
+      return getSearchAPI(ctx).GET(request);
     },
 
     /**
@@ -540,7 +632,8 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         );
       }
 
-      return handleAskAI(request, indexes, searchAPI, aiConfig);
+      const ctx = resolveContextFromRequest(request);
+      return handleAskAI(request, getIndexes(ctx), getSearchAPI(ctx), aiConfig);
     },
   };
 }

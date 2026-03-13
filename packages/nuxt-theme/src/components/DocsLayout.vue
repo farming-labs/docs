@@ -27,9 +27,37 @@ const props = withDefaults(
 );
 
 const route = useRoute();
+const localeConfig = computed(() => props.config?.i18n as
+  | { locales?: string[]; defaultLocale?: string }
+  | undefined);
+const locales = computed(() =>
+  Array.isArray(localeConfig.value?.locales) ? localeConfig.value.locales.filter(Boolean) : [],
+);
+const defaultLocale = computed(() =>
+  localeConfig.value?.defaultLocale && locales.value.includes(localeConfig.value.defaultLocale)
+    ? localeConfig.value.defaultLocale
+    : locales.value[0],
+);
+
+function withLang(url?: string | null) {
+  if (!url || url.startsWith("#")) return url ?? "";
+  try {
+    const parsed = new URL(url, "https://farming-labs.local");
+    const locale =
+      (route.query.lang as string | undefined) ??
+      (route.query.locale as string | undefined) ??
+      defaultLocale.value;
+    if (locale) parsed.searchParams.set("lang", locale);
+    else parsed.searchParams.delete("lang");
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return url ?? "";
+  }
+}
 
 const resolvedTitle = computed(() => props.title ?? props.config?.nav?.title ?? "Docs");
-const resolvedTitleUrl = computed(() => props.titleUrl ?? props.config?.nav?.url ?? "/docs");
+const resolvedTitleUrl = computed(() => withLang(props.titleUrl ?? props.config?.nav?.url ?? "/docs"));
+const localizedApi = computed(() => withLang("/api/docs"));
 
 const showThemeToggle = computed(() => {
   const toggle = props.config?.themeToggle;
@@ -315,7 +343,7 @@ const showFloatingAI = computed(
               <template v-for="(node, i) in tree.children" :key="node.name + (node.url ?? '')">
                 <NuxtLink
                   v-if="node.type === 'page'"
-                  :to="node.url!"
+                  :to="withLang(node.url!)"
                   class="fd-sidebar-link fd-sidebar-top-link"
                   :class="{
                     'fd-sidebar-link-active': isActive(node.url ?? ''),
@@ -360,7 +388,7 @@ const showFloatingAI = computed(
                   <div class="fd-sidebar-folder-content">
                     <NuxtLink
                       v-if="node.index"
-                      :to="node.index.url"
+                      :to="withLang(node.index.url)"
                       class="fd-sidebar-link fd-sidebar-child-link"
                       :class="{ 'fd-sidebar-link-active': isActive(node.index.url) }"
                       @click="closeSidebar"
@@ -373,7 +401,7 @@ const showFloatingAI = computed(
                     >
                       <NuxtLink
                         v-if="child.type === 'page'"
-                        :to="(child as any).url"
+                        :to="withLang((child as any).url)"
                         class="fd-sidebar-link fd-sidebar-child-link"
                         :class="{ 'fd-sidebar-link-active': isActive((child as any).url) }"
                         @click="closeSidebar"
@@ -402,7 +430,7 @@ const showFloatingAI = computed(
                         <div class="fd-sidebar-folder-content">
                           <NuxtLink
                             v-if="(child as any).index"
-                            :to="(child as any).index.url"
+                            :to="withLang((child as any).index.url)"
                             class="fd-sidebar-link fd-sidebar-child-link"
                             :class="{ 'fd-sidebar-link-active': isActive((child as any).index.url) }"
                             @click="closeSidebar"
@@ -413,7 +441,7 @@ const showFloatingAI = computed(
                             v-for="grandchild in (child as any).children"
                             v-if="grandchild.type === 'page'"
                             :key="grandchild.url"
-                            :to="grandchild.url"
+                            :to="withLang(grandchild.url)"
                             class="fd-sidebar-link fd-sidebar-child-link"
                             :class="{ 'fd-sidebar-link-active': isActive(grandchild.url) }"
                             @click="closeSidebar"
@@ -434,8 +462,44 @@ const showFloatingAI = computed(
           <slot name="sidebar-footer" />
         </div>
 
-        <div v-if="showThemeToggle" class="fd-sidebar-footer">
-          <ThemeToggle />
+        <div v-if="locales.length > 0 || showThemeToggle" class="fd-sidebar-footer">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%">
+            <div
+              v-if="locales.length > 0"
+              style="position:relative;display:inline-flex;align-items:center;flex-shrink:0"
+            >
+              <select
+                :value="(route.query.lang as string | undefined) ?? (route.query.locale as string | undefined) ?? defaultLocale"
+                aria-label="Select language"
+                style="appearance:none;-webkit-appearance:none;-moz-appearance:none;min-width:84px;height:36px;border-radius:9999px;border:1px solid var(--color-fd-border);background:var(--color-fd-card, var(--color-fd-background));color:var(--color-fd-foreground);padding:0 36px 0 14px;font-size:12px;font-weight:600;letter-spacing:.04em;line-height:1;cursor:pointer;box-shadow:0 1px 2px rgba(15,23,42,.08)"
+                @change="
+                  (event) => {
+                    const nextLocale = (event.target as HTMLSelectElement).value;
+                    navigateTo({
+                      path: route.path,
+                      query: {
+                        ...route.query,
+                        lang: nextLocale || undefined,
+                      },
+                    });
+                  }
+                "
+              >
+                <option v-for="item in locales" :key="item" :value="item">
+                  {{ item.toUpperCase() }}
+                </option>
+              </select>
+              <span
+                aria-hidden="true"
+                style="position:absolute;right:12px;display:inline-flex;align-items:center;justify-content:center;color:var(--color-fd-muted-foreground);pointer-events:none"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </span>
+            </div>
+            <ThemeToggle v-if="showThemeToggle" />
+          </div>
         </div>
       </aside>
 
@@ -446,7 +510,7 @@ const showFloatingAI = computed(
 
     <FloatingAIChat
       v-if="showFloatingAI"
-      api="/api/docs"
+      :api="localizedApi"
       :suggested-questions="config?.ai?.suggestedQuestions ?? []"
       :ai-label="config?.ai?.aiLabel ?? 'AI'"
       :position="config?.ai?.position ?? 'bottom-right'"

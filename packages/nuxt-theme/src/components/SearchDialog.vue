@@ -5,12 +5,14 @@
  */
 import { ref, computed, watch, onMounted, nextTick } from "vue";
 import { navigateTo } from "#app";
+import { useRoute } from "vue-router";
 
 const STORAGE_KEY = "fd:omni:recents";
 const MAX_RECENTS = 8;
 const DEBOUNCE_MS = 150;
 
 const emit = defineEmits<{ (e: "close"): void }>();
+const route = useRoute();
 
 const query = ref("");
 const currentResults = ref<{ content: string; url: string; description?: string }[]>([]);
@@ -45,6 +47,19 @@ function saveRecent(entry: RecentEntry) {
 
 const recentsList = ref<RecentEntry[]>([]);
 
+function withLang(url: string): string {
+  if (!url || url.startsWith("#")) return url;
+  try {
+    const parsed = new URL(url, "https://farming-labs.local");
+    const locale = (route.query.lang as string | undefined) ?? (route.query.locale as string | undefined);
+    if (locale) parsed.searchParams.set("lang", locale);
+    else parsed.searchParams.delete("lang");
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return url;
+  }
+}
+
 const allItems = computed(() => {
   const q = query.value.trim();
   if (q && currentResults.value.length) return currentResults.value.map((r) => ({ id: r.url, label: r.content, url: r.url, subtitle: r.description ?? "Page" }));
@@ -72,11 +87,12 @@ function close() {
 
 function executeItem(item: { url: string; label?: string; content?: string }) {
   const label = item.label ?? item.content ?? item.url;
-  saveRecent({ id: item.url, label, url: item.url });
-  if (item.url.startsWith("http")) {
-    window.open(item.url, "_blank", "noopener,noreferrer");
+  const localizedUrl = withLang(item.url);
+  saveRecent({ id: localizedUrl, label, url: localizedUrl });
+  if (localizedUrl.startsWith("http")) {
+    window.open(localizedUrl, "_blank", "noopener,noreferrer");
   } else {
-    navigateTo(item.url);
+    navigateTo(localizedUrl);
   }
   close();
 }
@@ -119,7 +135,7 @@ function onInput() {
   debounceTimer = setTimeout(async () => {
     loading.value = true;
     try {
-      const res = await fetch(`/api/docs?query=${encodeURIComponent(q)}`);
+      const res = await fetch(withLang(`/api/docs?query=${encodeURIComponent(q)}`));
       const data = res.ok ? await res.json() : [];
       currentResults.value = Array.isArray(data) ? data : [];
       activeIndex.value = 0;
@@ -171,9 +187,9 @@ function onExternalClick(e: Event, url: string) {
   e.preventDefault();
   e.stopPropagation();
   try {
-    window.open(url, "_blank", "noopener,noreferrer");
+    window.open(withLang(url), "_blank", "noopener,noreferrer");
   } catch {
-    window.location.href = url;
+    window.location.href = withLang(url);
   }
 }
 

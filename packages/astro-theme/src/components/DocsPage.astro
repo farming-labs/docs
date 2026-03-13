@@ -4,6 +4,7 @@ const {
   tocStyle = "default",
   breadcrumbEnabled = true,
   entry = "docs",
+  locale = null,
   previousPage = null,
   nextPage = null,
   editOnGithub = null,
@@ -13,19 +14,34 @@ const {
 
 const pathname = Astro.url.pathname;
 const segments = pathname.split("/").filter(Boolean);
-const parentLabel = segments.length >= 2 ? segments[segments.length - 2].replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "";
-const currentLabel = segments.length >= 2 ? segments[segments.length - 1].replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "";
-const parentUrl = segments.length >= 2
-  ? "/" + segments.slice(0, segments.length - 1).join("/")
+const entryParts = entry.split("/").filter(Boolean);
+const contentSegments = segments.slice(entryParts.length);
+const parentLabel = contentSegments.length >= 2
+  ? contentSegments[contentSegments.length - 2].replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase())
   : "";
+const currentLabel = contentSegments.length >= 2
+  ? contentSegments[contentSegments.length - 1].replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase())
+  : "";
+const parentUrl = contentSegments.length >= 2
+  ? "/" + [...segments.slice(0, entryParts.length), ...contentSegments.slice(0, contentSegments.length - 1)].join("/")
+  : "";
+const llmsLangParam = locale ? `&lang=${encodeURIComponent(locale)}` : "";
+const withLang = (url: string) => {
+  if (!url || url.startsWith("#")) return url;
+  const parsed = new URL(url, Astro.url);
+  if (locale) parsed.searchParams.set("lang", locale);
+  else parsed.searchParams.delete("lang");
+  return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+};
+const localizedParentUrl = withLang(parentUrl);
 ---
 
 <div class="fd-page">
   <article class="fd-page-article" id="nd-page">
-    {breadcrumbEnabled && segments.length >= 2 && (
+    {breadcrumbEnabled && contentSegments.length >= 2 && (
       <nav class="fd-breadcrumb" aria-label="Breadcrumb">
         <span class="fd-breadcrumb-item">
-          <a href={parentUrl} class="fd-breadcrumb-parent fd-breadcrumb-link">{parentLabel}</a>
+          <a href={localizedParentUrl} class="fd-breadcrumb-parent fd-breadcrumb-link">{parentLabel}</a>
         </span>
         <span class="fd-breadcrumb-item">
           <span class="fd-breadcrumb-sep">/</span>
@@ -54,8 +70,8 @@ const parentUrl = segments.length >= 2
           )}
           {llmsTxtEnabled && (
             <span class="fd-llms-txt-links">
-              <a href="/api/docs?format=llms" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms.txt</a>
-              <a href="/api/docs?format=llms-full" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms-full.txt</a>
+              <a href={`/api/docs?format=llms${llmsLangParam}`} target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms.txt</a>
+              <a href={`/api/docs?format=llms-full${llmsLangParam}`} target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms-full.txt</a>
             </span>
           )}
           {lastModified && (
@@ -67,7 +83,7 @@ const parentUrl = segments.length >= 2
       {(previousPage || nextPage) && (
         <nav class="fd-page-nav" aria-label="Page navigation">
           {previousPage ? (
-            <a href={previousPage.url} class="fd-page-nav-card fd-page-nav-prev">
+            <a href={withLang(previousPage.url)} class="fd-page-nav-card fd-page-nav-prev">
               <span class="fd-page-nav-label">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="15 18 9 12 15 6" />
@@ -78,7 +94,7 @@ const parentUrl = segments.length >= 2
             </a>
           ) : <div />}
           {nextPage ? (
-            <a href={nextPage.url} class="fd-page-nav-card fd-page-nav-next">
+            <a href={withLang(nextPage.url)} class="fd-page-nav-card fd-page-nav-next">
               <span class="fd-page-nav-label">
                 Next
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -127,6 +143,20 @@ const parentUrl = segments.length >= 2
     const tocAside = document.getElementById('fd-toc');
     if (container && tocList) {
       const headings = container.querySelectorAll('h2[id], h3[id], h4[id]');
+      const activeLocale =
+        new URL(window.location.href).searchParams.get('lang') ||
+        new URL(window.location.href).searchParams.get('locale');
+      container.querySelectorAll('a[href]').forEach((link) => {
+        const href = link.getAttribute('href');
+        if (!href || href.startsWith('#') || /^(mailto:|tel:|javascript:)/i.test(href)) return;
+        try {
+          const url = new URL(href, window.location.origin);
+          if (url.origin !== window.location.origin) return;
+          if (activeLocale) url.searchParams.set('lang', activeLocale);
+          else url.searchParams.delete('lang');
+          link.setAttribute('href', `${url.pathname}${url.search}${url.hash}`);
+        } catch {}
+      });
       const isClerk = tocList.closest('[data-toc-style]')?.getAttribute('data-toc-style') === 'directional';
 
       const tocItems = [];

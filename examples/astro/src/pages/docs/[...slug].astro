@@ -7,10 +7,10 @@ import config from "../../lib/docs.config";
 import { load } from "../../lib/docs.server";
 import "@farming-labs/astro-theme/colorful/css";
 
-const data = await load(Astro.url.pathname);
+const data = await load(`${Astro.url.pathname}${Astro.url.search}`);
 ---
 
-<html lang="en">
+<html lang={data.locale ?? "en"}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

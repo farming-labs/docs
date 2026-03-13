@@ -10,6 +10,7 @@ const props = withDefaults(
     tocStyle?: "default" | "directional";
     breadcrumbEnabled?: boolean;
     entry?: string;
+    locale?: string;
     previousPage?: { name: string; url: string } | null;
     nextPage?: { name: string; url: string } | null;
     editOnGithub?: string | null;
@@ -21,6 +22,7 @@ const props = withDefaults(
     tocStyle: "default",
     breadcrumbEnabled: true,
     entry: "docs",
+    locale: undefined,
     previousPage: null,
     nextPage: null,
     editOnGithub: null,
@@ -31,6 +33,29 @@ const props = withDefaults(
 
 const route = useRoute();
 const tocItems = ref<{ title: string; url: string; depth: number }[]>([]);
+const llmsLangParam = computed(() =>
+  props.locale ? `&lang=${encodeURIComponent(props.locale)}` : "",
+);
+const localizedPreviousPage = computed(() => localizePage(props.previousPage));
+const localizedNextPage = computed(() => localizePage(props.nextPage));
+
+function withLang(url?: string) {
+  if (!url || url.startsWith("#")) return url;
+  try {
+    const parsed = new URL(url, "https://farming-labs.local");
+    const locale = props.locale ?? (route.query.lang as string | undefined);
+    if (locale) parsed.searchParams.set("lang", locale);
+    else parsed.searchParams.delete("lang");
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return url;
+  }
+}
+
+function localizePage(page?: { name: string; url: string } | null) {
+  if (!page?.url) return page;
+  return { ...page, url: withLang(page.url)! };
+}
 
 function scanHeadings() {
   requestAnimationFrame(() => {
@@ -91,6 +116,12 @@ function wireInteractive() {
         });
       });
     });
+    document.querySelectorAll(".fd-page-body a[href]").forEach((link) => {
+      const href = link.getAttribute("href");
+      if (!href || href.startsWith("#") || /^(mailto:|tel:|javascript:)/i.test(href)) return;
+      const localized = withLang(href);
+      if (localized) link.setAttribute("href", localized);
+    });
   });
 }
 
@@ -111,7 +142,7 @@ watch(
 <template>
   <div class="fd-page">
     <article class="fd-page-article" id="nd-page">
-      <Breadcrumb v-if="breadcrumbEnabled" :pathname="route.path" :entry="entry" />
+      <Breadcrumb v-if="breadcrumbEnabled" :pathname="route.path" :entry="entry" :locale="props.locale" />
 
       <div class="fd-page-body">
         <div class="fd-docs-content">
@@ -138,16 +169,16 @@ watch(
             Edit on GitHub
           </a>
           <span v-if="llmsTxtEnabled" class="fd-llms-txt-links">
-            <a href="/api/docs?format=llms" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms.txt</a>
-            <a href="/api/docs?format=llms-full" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms-full.txt</a>
+            <a :href="`/api/docs?format=llms${llmsLangParam}`" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms.txt</a>
+            <a :href="`/api/docs?format=llms-full${llmsLangParam}`" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms-full.txt</a>
           </span>
           <span v-if="lastModified" class="fd-last-modified">Last updated: {{ lastModified }}</span>
         </div>
 
         <nav v-if="previousPage || nextPage" class="fd-page-nav" aria-label="Page navigation">
           <NuxtLink
-            v-if="previousPage"
-            :to="previousPage.url"
+            v-if="localizedPreviousPage"
+            :to="localizedPreviousPage.url"
             class="fd-page-nav-card fd-page-nav-prev"
           >
             <span class="fd-page-nav-label">
@@ -165,10 +196,10 @@ watch(
               </svg>
               Previous
             </span>
-            <span class="fd-page-nav-title">{{ previousPage.name }}</span>
+            <span class="fd-page-nav-title">{{ localizedPreviousPage.name }}</span>
           </NuxtLink>
           <div v-else></div>
-          <NuxtLink v-if="nextPage" :to="nextPage.url" class="fd-page-nav-card fd-page-nav-next">
+          <NuxtLink v-if="localizedNextPage" :to="localizedNextPage.url" class="fd-page-nav-card fd-page-nav-next">
             <span class="fd-page-nav-label">
               Next
               <svg
@@ -184,7 +215,7 @@ watch(
                 <polyline points="9 18 15 12 9 6" />
               </svg>
             </span>
-            <span class="fd-page-nav-title">{{ nextPage.name }}</span>
+            <span class="fd-page-nav-title">{{ localizedNextPage.name }}</span>
           </NuxtLink>
           <div v-else></div>
         </nav>

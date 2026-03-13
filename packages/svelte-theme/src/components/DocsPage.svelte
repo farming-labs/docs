@@ -9,6 +9,7 @@
     tocStyle = "default",
     breadcrumbEnabled = true,
     entry = "docs",
+    locale = null,
     previousPage = null,
     nextPage = null,
     editOnGithub = null,
@@ -18,6 +19,26 @@
   } = $props();
 
   let tocItems = $state([]);
+  let llmsLangParam = $derived(locale ? `&lang=${encodeURIComponent(locale)}` : "");
+  let localizedPreviousPage = $derived.by(() => localizePage(previousPage, locale));
+  let localizedNextPage = $derived.by(() => localizePage(nextPage, locale));
+
+  function withLang(url, activeLocale) {
+    if (!url || url.startsWith("#")) return url;
+    try {
+      const parsed = new URL(url, "https://farming-labs.local");
+      if (activeLocale) parsed.searchParams.set("lang", activeLocale);
+      else parsed.searchParams.delete("lang");
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+      return url;
+    }
+  }
+
+  function localizePage(page, activeLocale) {
+    if (!page?.url) return page;
+    return { ...page, url: withLang(page.url, activeLocale) };
+  }
 
   onMount(() => {
     scanHeadings();
@@ -87,6 +108,13 @@
           };
         });
       });
+
+      document.querySelectorAll(".fd-page-body a[href]").forEach((link) => {
+        const href = link.getAttribute("href");
+        if (!href || href.startsWith("#") || /^(mailto:|tel:|javascript:)/i.test(href)) return;
+        const localized = withLang(href, locale);
+        if (localized) link.setAttribute("href", localized);
+      });
     });
   }
 </script>
@@ -94,7 +122,7 @@
 <div class="fd-page">
   <article class="fd-page-article" id="nd-page">
     {#if breadcrumbEnabled}
-      <Breadcrumb pathname={$page.url.pathname} {entry} />
+      <Breadcrumb pathname={$page.url.pathname} {entry} {locale} />
     {/if}
 
     <div class="fd-page-body">
@@ -115,8 +143,8 @@
           {/if}
           {#if llmsTxtEnabled}
             <span class="fd-llms-txt-links">
-              <a href="/api/docs?format=llms" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms.txt</a>
-              <a href="/api/docs?format=llms-full" target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms-full.txt</a>
+              <a href={`/api/docs?format=llms${llmsLangParam}`} target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms.txt</a>
+              <a href={`/api/docs?format=llms-full${llmsLangParam}`} target="_blank" rel="noopener noreferrer" class="fd-llms-txt-link">llms-full.txt</a>
             </span>
           {/if}
           {#if lastModified}
@@ -127,28 +155,28 @@
 
       {#if previousPage || nextPage}
         <nav class="fd-page-nav" aria-label="Page navigation">
-          {#if previousPage}
-            <a href={previousPage.url} class="fd-page-nav-card fd-page-nav-prev">
+          {#if localizedPreviousPage}
+            <a href={localizedPreviousPage.url} class="fd-page-nav-card fd-page-nav-prev">
               <span class="fd-page-nav-label">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="15 18 9 12 15 6" />
                 </svg>
                 Previous
               </span>
-              <span class="fd-page-nav-title">{previousPage.name}</span>
+              <span class="fd-page-nav-title">{localizedPreviousPage.name}</span>
             </a>
           {:else}
             <div></div>
           {/if}
-          {#if nextPage}
-            <a href={nextPage.url} class="fd-page-nav-card fd-page-nav-next">
+          {#if localizedNextPage}
+            <a href={localizedNextPage.url} class="fd-page-nav-card fd-page-nav-next">
               <span class="fd-page-nav-label">
                 Next
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
               </span>
-              <span class="fd-page-nav-title">{nextPage.name}</span>
+              <span class="fd-page-nav-title">{localizedNextPage.name}</span>
             </a>
           {:else}
             <div></div>

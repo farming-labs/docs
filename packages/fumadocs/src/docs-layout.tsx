@@ -3,29 +3,25 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import { getNextAppDir } from "./get-app-dir.js";
-import type { ReactNode, ReactElement } from "react";
+import { Suspense, type ReactNode } from "react";
 import { serializeIcon } from "./serialize-icon.js";
 import { buildPageOpenGraph, buildPageTwitter } from "@farming-labs/docs";
 import type {
   DocsConfig,
   ThemeToggleConfig,
-  BreadcrumbConfig,
   SidebarConfig,
   TypographyConfig,
   FontStyle,
-  PageActionsConfig,
-  CopyMarkdownConfig,
-  OpenDocsConfig,
-  GithubConfig,
   AIConfig,
   OrderingItem,
-  LastUpdatedConfig,
   PageFrontmatter,
 } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
+import { LocaleThemeControl } from "./locale-theme-control.js";
+import { withLangInUrl } from "./i18n.js";
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
 interface PageNode {
   type: "page";
@@ -43,6 +39,11 @@ interface FolderNode {
   defaultOpen?: boolean;
 }
 type TreeNode = PageNode | FolderNode;
+
+interface TreeRoot {
+  name: string;
+  children: TreeNode[];
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -79,9 +80,60 @@ function hasChildPages(dir: string): boolean {
 
 // ─── buildTree ───────────────────────────────────────────────────────
 
-function buildTree(config: DocsConfig, flat = false) {
+interface DocsLocaleContext {
+  entryPath: string;
+  docsDir: string;
+  locale?: string;
+}
+
+interface DocsI18nLike {
+  locales?: string[];
+  defaultLocale?: string;
+}
+
+function getDocsI18n(config: DocsConfig): DocsI18nLike | undefined {
+  return (config as unknown as { i18n?: DocsI18nLike }).i18n;
+}
+
+function resolveDocsI18nConfig(i18n?: DocsI18nLike | null) {
+  if (!i18n || !Array.isArray(i18n.locales)) return null;
+  const locales = Array.from(
+    new Set(i18n.locales.map((item: string) => item.trim()).filter(Boolean)),
+  );
+  if (locales.length === 0) return null;
+
+  const defaultLocale =
+    i18n.defaultLocale && locales.includes(i18n.defaultLocale) ? i18n.defaultLocale : locales[0];
+
+  return {
+    locales,
+    defaultLocale,
+  };
+}
+
+function resolveDocsLocaleContext(config: DocsConfig, locale?: string): DocsLocaleContext {
+  const entryBase = config.entry ?? "docs";
   const appDir = getNextAppDir(process.cwd());
-  const docsDir = path.join(process.cwd(), appDir, config.entry);
+  const i18n = resolveDocsI18nConfig(getDocsI18n(config));
+
+  if (!i18n) {
+    return {
+      entryPath: entryBase,
+      docsDir: path.join(process.cwd(), appDir, entryBase),
+    };
+  }
+
+  const resolvedLocale = locale && i18n.locales.includes(locale) ? locale : i18n.defaultLocale;
+  const entryPath = entryBase;
+  return {
+    entryPath,
+    locale: resolvedLocale,
+    docsDir: path.join(process.cwd(), appDir, entryBase, resolvedLocale),
+  };
+}
+
+function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
+  const docsDir = ctx.docsDir;
   const icons = config.icons as Record<string, unknown> | undefined;
   const ordering = config.ordering;
   const rootChildren: TreeNode[] = [];
@@ -91,7 +143,7 @@ function buildTree(config: DocsConfig, flat = false) {
     rootChildren.push({
       type: "page",
       name: (data.title as string) ?? "Documentation",
-      url: `/${config.entry}`,
+      url: `/${ctx.entryPath}`,
       icon: resolveIcon(data.icon as string | undefined, icons),
     });
   }
@@ -110,7 +162,7 @@ function buildTree(config: DocsConfig, flat = false) {
 
     const data = readFrontmatter(pagePath);
     const slug = [...baseSlug, name];
-    const url = `/${config.entry}/${slug.join("/")}`;
+    const url = `/${ctx.entryPath}/${slug.join("/")}`;
     const icon = resolveIcon(data.icon as string | undefined, icons);
     const displayName = (data.title as string) ?? name.replace(/-/g, " ");
 
@@ -182,15 +234,41 @@ function buildTree(config: DocsConfig, flat = false) {
   return { name: "Docs", children: rootChildren };
 }
 
+function localizeTreeUrls(tree: TreeRoot, locale?: string): TreeRoot {
+  function mapNode(node: TreeNode): TreeNode {
+    if (node.type === "page") {
+      return {
+        ...node,
+        url: withLangInUrl(node.url, locale),
+      };
+    }
+
+    return {
+      ...node,
+      index: node.index
+        ? {
+            ...node.index,
+            url: withLangInUrl(node.index.url, locale),
+          }
+        : undefined,
+      children: node.children.map(mapNode),
+    };
+  }
+
+  return {
+    ...tree,
+    children: tree.children.map(mapNode),
+  };
+}
+
 // ─── Last Modified Map ───────────────────────────────────────────────
 
 /**
  * Scan all page.mdx files under the docs entry directory and build
  * a map of URL pathname → formatted last-modified date string.
  */
-function buildLastModifiedMap(entry: string): Record<string, string> {
-  const appDir = getNextAppDir(process.cwd());
-  const docsDir = path.join(process.cwd(), appDir, entry);
+function buildLastModifiedMap(ctx: DocsLocaleContext): Record<string, string> {
+  const docsDir = ctx.docsDir;
   const map: Record<string, string> = {};
 
   function formatDate(date: Date): string {
@@ -206,7 +284,8 @@ function buildLastModifiedMap(entry: string): Record<string, string> {
 
     const pagePath = path.join(dir, "page.mdx");
     if (fs.existsSync(pagePath)) {
-      const url = slugParts.length === 0 ? `/${entry}` : `/${entry}/${slugParts.join("/")}`;
+      const url =
+        slugParts.length === 0 ? `/${ctx.entryPath}` : `/${ctx.entryPath}/${slugParts.join("/")}`;
       const stat = fs.statSync(pagePath);
       map[url] = formatDate(stat.mtime);
     }
@@ -227,9 +306,8 @@ function buildLastModifiedMap(entry: string): Record<string, string> {
  * Scan all page.mdx files and build a map of URL pathname → description
  * from the frontmatter `description` field.
  */
-function buildDescriptionMap(entry: string): Record<string, string> {
-  const appDir = getNextAppDir(process.cwd());
-  const docsDir = path.join(process.cwd(), appDir, entry);
+function buildDescriptionMap(ctx: DocsLocaleContext): Record<string, string> {
+  const docsDir = ctx.docsDir;
   const map: Record<string, string> = {};
 
   function scan(dir: string, slugParts: string[]) {
@@ -240,7 +318,8 @@ function buildDescriptionMap(entry: string): Record<string, string> {
       const data = readFrontmatter(pagePath);
       const desc = data.description as string | undefined;
       if (desc) {
-        const url = slugParts.length === 0 ? `/${entry}` : `/${entry}/${slugParts.join("/")}`;
+        const url =
+          slugParts.length === 0 ? `/${ctx.entryPath}` : `/${ctx.entryPath}/${slugParts.join("/")}`;
         map[url] = desc;
       }
     }
@@ -501,14 +580,18 @@ function LayoutStyle({ layout }: { layout?: LayoutDimensions }) {
 
 // ─── createDocsLayout ────────────────────────────────────────────────
 
-export function createDocsLayout(config: DocsConfig) {
+export function createDocsLayout(config: DocsConfig, options?: { locale?: string }) {
   const tocConfig = config.theme?.ui?.layout?.toc;
   const tocEnabled = tocConfig?.enabled !== false;
   const tocStyle = (tocConfig as any)?.style as "default" | "directional" | undefined;
 
+  const localeContext = resolveDocsLocaleContext(config, options?.locale);
+  const i18n = resolveDocsI18nConfig(getDocsI18n(config));
+  const activeLocale = localeContext.locale ?? i18n?.defaultLocale;
+  const docsApiUrl = withLangInUrl("/api/docs", activeLocale);
   // Nav title: supports string or ReactNode (component)
   const navTitle = (config.nav?.title as ReactNode) ?? "Docs";
-  const navUrl = config.nav?.url ?? `/${config.entry}`;
+  const navUrl = withLangInUrl(config.nav?.url ?? `/${localeContext.entryPath}`, activeLocale);
 
   // Theme toggle
   const themeSwitch = resolveThemeSwitch(config.themeToggle);
@@ -628,18 +711,38 @@ export function createDocsLayout(config: DocsConfig) {
   }
 
   // Build last-modified map by scanning all page.mdx files
-  const lastModifiedMap = buildLastModifiedMap(config.entry);
+  const lastModifiedMap = buildLastModifiedMap(localeContext);
 
   // Build description map from frontmatter
-  const descriptionMap = buildDescriptionMap(config.entry);
+  const descriptionMap = buildDescriptionMap(localeContext);
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
-    const tree = buildTree(config, !!sidebarFlat);
+    const tree = buildTree(config, localeContext, !!sidebarFlat);
+    const localizedTree = i18n ? localizeTreeUrls(tree, activeLocale) : tree;
 
     const finalSidebarProps = { ...sidebarProps } as Record<string, unknown>;
+    const sidebarFooter = sidebarProps.footer as ReactNode;
+
+    if (i18n) {
+      finalSidebarProps.footer = (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {sidebarFooter}
+          <Suspense fallback={null}>
+            <LocaleThemeControl
+              locales={i18n.locales}
+              defaultLocale={i18n.defaultLocale}
+              locale={activeLocale}
+              showThemeToggle={themeSwitch.enabled !== false}
+              themeMode={themeSwitch.mode}
+            />
+          </Suspense>
+        </div>
+      );
+    }
+
     if (sidebarComponentFn) {
       finalSidebarProps.component = (sidebarComponentFn as Function)({
-        tree,
+        tree: localizedTree,
         collapsible: sidebarProps.collapsible !== false,
         flat: !!sidebarFlat,
       }) as ReactNode;
@@ -648,9 +751,9 @@ export function createDocsLayout(config: DocsConfig) {
     return (
       <div id="nd-docs-layout" style={{ display: "contents" }}>
         <DocsLayout
-          tree={tree}
+          tree={localizedTree}
           nav={{ title: navTitle, url: navUrl }}
-          themeSwitch={themeSwitch}
+          themeSwitch={i18n ? { ...themeSwitch, enabled: false } : themeSwitch}
           sidebar={finalSidebarProps}
           {...(aiMode === "sidebar-icon" && aiEnabled
             ? {
@@ -662,42 +765,53 @@ export function createDocsLayout(config: DocsConfig) {
           <TypographyStyle typography={typography} />
           <LayoutStyle layout={layoutDimensions} />
           {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
-          {!staticExport && <DocsCommandSearch />}
-          {aiEnabled && (
-            <DocsAIFeatures
-              mode={aiMode}
-              position={aiPosition}
-              floatingStyle={aiFloatingStyle}
-              triggerComponentHtml={aiTriggerComponentHtml}
-              suggestedQuestions={aiSuggestedQuestions}
-              aiLabel={aiLabel}
-              loaderVariant={aiLoaderVariant}
-              loadingComponentHtml={aiLoadingComponentHtml}
-              models={aiModels}
-              defaultModelId={aiDefaultModelId}
-            />
+          {!staticExport && (
+            <Suspense fallback={null}>
+              <DocsCommandSearch api={docsApiUrl} locale={activeLocale} />
+            </Suspense>
           )}
-          <DocsPageClient
-            tocEnabled={tocEnabled}
-            tocStyle={tocStyle}
-            breadcrumbEnabled={breadcrumbEnabled}
-            entry={config.entry}
-            copyMarkdown={copyMarkdownEnabled}
-            openDocs={openDocsEnabled}
-            openDocsProviders={openDocsProviders as any}
-            pageActionsPosition={pageActionsPosition}
-            pageActionsAlignment={pageActionsAlignment}
-            githubUrl={githubUrl}
-            githubBranch={githubBranch}
-            githubDirectory={githubDirectory}
-            lastModifiedMap={lastModifiedMap}
-            lastUpdatedEnabled={lastUpdatedEnabled}
-            lastUpdatedPosition={lastUpdatedPosition}
-            llmsTxtEnabled={llmsTxtEnabled}
-            descriptionMap={descriptionMap}
-          >
-            {children}
-          </DocsPageClient>
+          {aiEnabled && (
+            <Suspense fallback={null}>
+              <DocsAIFeatures
+                mode={aiMode}
+                api={docsApiUrl}
+                locale={activeLocale}
+                position={aiPosition}
+                floatingStyle={aiFloatingStyle}
+                triggerComponentHtml={aiTriggerComponentHtml}
+                suggestedQuestions={aiSuggestedQuestions}
+                aiLabel={aiLabel}
+                loaderVariant={aiLoaderVariant}
+                loadingComponentHtml={aiLoadingComponentHtml}
+                models={aiModels}
+                defaultModelId={aiDefaultModelId}
+              />
+            </Suspense>
+          )}
+          <Suspense fallback={children}>
+            <DocsPageClient
+              tocEnabled={tocEnabled}
+              tocStyle={tocStyle}
+              breadcrumbEnabled={breadcrumbEnabled}
+              entry={localeContext.entryPath}
+              locale={activeLocale}
+              copyMarkdown={copyMarkdownEnabled}
+              openDocs={openDocsEnabled}
+              openDocsProviders={openDocsProviders as any}
+              pageActionsPosition={pageActionsPosition}
+              pageActionsAlignment={pageActionsAlignment}
+              githubUrl={githubUrl}
+              githubBranch={githubBranch}
+              githubDirectory={githubDirectory}
+              lastModifiedMap={lastModifiedMap}
+              lastUpdatedEnabled={lastUpdatedEnabled}
+              lastUpdatedPosition={lastUpdatedPosition}
+              llmsTxtEnabled={llmsTxtEnabled}
+              descriptionMap={descriptionMap}
+            >
+              {children}
+            </DocsPageClient>
+          </Suspense>
         </DocsLayout>
       </div>
     );

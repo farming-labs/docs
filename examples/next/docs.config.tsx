@@ -27,6 +27,10 @@ import { colorful } from "@farming-labs/theme/colorful";
 
 export default defineDocs({
   entry: "docs",
+  i18n: {
+    locales: ["en", "fr"],
+    defaultLocale: "en",
+  },
   github: {
     url: "https://github.com/farming-labs/docs",
     branch: "main",
@@ -84,7 +88,7 @@ export default defineDocs({
         <span className="uppercase font-mono tracking-tighter">Example Docs</span>
       </div>
     ),
-    url: "/docs",
+    url: "/docs?lang=en",
   },
   components: {
     MyNote,
@@ -158,37 +162,7 @@ export default defineDocs({
       ],
     },
   },
-  ordering: [
-    {
-      slug: "getting-started",
-      children: [{ slug: "quickstart" }, { slug: "ai-native" }, { slug: "migration-guide" }],
-    },
-    {
-      slug: "organize",
-      children: [
-        { slug: "global-settings" },
-        { slug: "navigation" },
-        { slug: "pages" },
-        { slug: "hidden-pages" },
-        { slug: "exclude-files" },
-      ],
-    },
-    {
-      slug: "customize",
-      children: [
-        { slug: "custom-domain" },
-        { slug: "themes" },
-        { slug: "fonts" },
-        { slug: "custom-scripts" },
-        { slug: "react-components" },
-        { slug: "custom-404" },
-      ],
-    },
-    {
-      slug: "create-content",
-      children: [{ slug: "format-text" }, { slug: "code-blocks" }, { slug: "images-embeds" }],
-    },
-  ],
+  ordering: "numeric",
   metadata: {
     titleTemplate: "%s – Docs",
     description: "Awesome docs powered by Fumadocs preset",

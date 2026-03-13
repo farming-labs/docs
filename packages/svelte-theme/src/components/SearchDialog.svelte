@@ -6,6 +6,7 @@
    */
   import { onMount, onDestroy, tick } from "svelte";
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
 
   const STORAGE_KEY = "fd:omni:recents";
   const MAX_RECENTS = 8;
@@ -22,6 +23,19 @@
   let inputEl = $state(null);
   let listRef = $state(null);
   let debounceTimer = null;
+
+  function withLang(url) {
+    if (!url || url.startsWith("#")) return url;
+    try {
+      const parsed = new URL(url, "https://farming-labs.local");
+      const locale = $page.url.searchParams.get("lang") ?? $page.url.searchParams.get("locale");
+      if (locale) parsed.searchParams.set("lang", locale);
+      else parsed.searchParams.delete("lang");
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+      return url;
+    }
+  }
 
   let flatItems = $derived.by(() => {
     const q = query.trim();
@@ -81,11 +95,12 @@
   }
 
   function executeItem(item) {
-    saveRecent({ id: item.url, label: item.label ?? item.content ?? item.url, url: item.url });
-    if (item.url.startsWith("http")) {
-      if (typeof window !== "undefined") window.open(item.url, "_blank", "noopener,noreferrer");
+    const localizedUrl = withLang(item.url);
+    saveRecent({ id: localizedUrl, label: item.label ?? item.content ?? item.url, url: localizedUrl });
+    if (localizedUrl.startsWith("http")) {
+      if (typeof window !== "undefined") window.open(localizedUrl, "_blank", "noopener,noreferrer");
     } else {
-      goto(item.url);
+      goto(localizedUrl);
     }
     close();
   }
@@ -123,7 +138,7 @@
     debounceTimer = setTimeout(async () => {
       loading = true;
       try {
-        const res = await fetch(`/api/docs?query=${encodeURIComponent(q)}`);
+        const res = await fetch(withLang(`/api/docs?query=${encodeURIComponent(q)}`));
         const data = res.ok ? await res.json() : [];
         currentResults = Array.isArray(data) ? data : [];
         activeId = currentResults[0]?.url ?? null;

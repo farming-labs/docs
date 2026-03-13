@@ -1066,11 +1066,24 @@ export interface CodeBlockCopyData {
   language?: string;
 }
 
+export interface DocsI18nConfig {
+  /** Supported locale identifiers (e.g. ["en", "fr"]). */
+  locales: string[];
+  /** Default locale when `?lang=` is missing or invalid. Defaults to first locale. */
+  defaultLocale?: string;
+}
+
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
   /** Path to the content directory. Defaults to `entry` value. */
   contentDir?: string;
+  /**
+   * Internationalization (i18n) configuration.
+   * When set, docs content is expected under `${contentDir}/{locale}` and
+   * the active locale is selected by `?lang=<locale>` in the URL.
+   */
+  i18n?: DocsI18nConfig;
   /**
    * Set to `true` when building for full static export (e.g. Cloudflare Pages).
    * When using `output: 'export'` in Next.js, the `/api/docs` route is not generated.

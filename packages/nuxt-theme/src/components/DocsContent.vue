@@ -19,6 +19,8 @@ const props = defineProps<{
     nextPage?: { name: string; url: string } | null;
     editOnGithub?: string;
     lastModified?: string;
+    entry?: string;
+    locale?: string;
   };
   config?: Record<string, unknown> | null;
 }>();
@@ -61,7 +63,7 @@ const llmsTxtEnabled = computed(() => {
   return false;
 });
 
-const entry = computed(() => (props.config?.entry as string) ?? "docs");
+const entry = computed(() => (props.data.entry as string) ?? (props.config?.entry as string) ?? "docs");
 
 const copyMarkdownEnabled = computed(() => {
   const pa = props.config?.pageActions as Record<string, unknown> | undefined;
@@ -217,6 +219,7 @@ onUnmounted(() => {
 <template>
   <DocsPage
     :entry="entry"
+    :locale="data.locale"
     :toc-enabled="tocEnabledVal"
     :toc-style="tocStyleVal"
     :breadcrumb-enabled="breadcrumbEnabled"

@@ -107,7 +107,8 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
 </head>
 
 <DocsPage
-  entry={config?.entry ?? "docs"}
+  entry={data.entry ?? config?.entry ?? "docs"}
+  locale={data.locale}
   tocEnabled={tocEnabled}
   tocStyle={tocStyle}
   breadcrumbEnabled={breadcrumbEnabled}
