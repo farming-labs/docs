@@ -5,7 +5,7 @@ import {
   type Framework,
   type PackageManager,
   detectFramework,
-  detectPackageManager,
+  detectPackageManagerFromLockfile,
   detectGlobalCssFiles,
   detectNextAppDir,
   installCommand,
@@ -604,11 +604,13 @@ export async function init(options: InitOptions = {}) {
   // Step 9: Choose package manager (existing project)
   // -----------------------------------------------------------------------
 
-  let pm = detectPackageManager(cwd);
-  p.log.info(`Detected ${pc.cyan(pm)} as package manager`);
+  let pm = detectPackageManagerFromLockfile(cwd);
+  if (pm) {
+    p.log.info(`Detected ${pc.cyan(pm)} from lockfile`);
+  }
 
   const pmAnswerExisting = await p.select({
-    initialValue: pm,
+    ...(pm ? { initialValue: pm } : {}),
     message: "Which package manager do you want to use in this project?",
     options: [
       { value: "pnpm", label: "pnpm", hint: "Fast, disk-efficient (recommended)" },

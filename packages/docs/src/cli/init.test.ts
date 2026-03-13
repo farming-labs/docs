@@ -20,6 +20,8 @@ vi.mock("./utils.js", async () => {
   const actual = await vi.importActual<typeof import("./utils.js")>("./utils.js");
   return {
     ...actual,
+    detectFramework: vi.fn(actual.detectFramework),
+    detectPackageManagerFromLockfile: vi.fn(actual.detectPackageManagerFromLockfile),
     exec: vi.fn(),
   };
 });
@@ -52,21 +54,24 @@ describe("init", () => {
   });
 
   describe("prompts (existing vs fresh project)", () => {
-    let exitMock: { mockRestore: () => void };
+    let exitMock: { mockRestore: () => void } | undefined;
 
     beforeEach(async () => {
       const prompts = await import("@clack/prompts");
+      const utils = await import("./utils.js");
       vi.mocked(prompts.select).mockReset();
       vi.mocked(prompts.text).mockReset();
       vi.mocked(prompts.confirm).mockReset();
       vi.mocked(prompts.isCancel).mockImplementation((value: unknown) => value === cancelSymbol);
+      vi.mocked(utils.detectFramework).mockReset();
+      vi.mocked(utils.detectPackageManagerFromLockfile).mockReset();
       exitMock = vi.spyOn(process, "exit").mockImplementation((() => {
         throw new Error("process.exit");
       }) as () => never);
     });
 
     afterEach(() => {
-      exitMock.mockRestore();
+      exitMock?.mockRestore();
     });
 
     it("asks existing vs fresh when run without --template", async () => {
@@ -115,6 +120,62 @@ describe("init", () => {
           ]),
         }),
       );
+    });
+
+    it("prefills existing-project package manager from lockfile when detected", async () => {
+      const prompts = await import("@clack/prompts");
+      const utils = await import("./utils.js");
+
+      vi.mocked(utils.detectFramework).mockReturnValue("nextjs");
+      vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+
+      vi.mocked(prompts.select)
+        .mockResolvedValueOnce("existing" as never)
+        .mockResolvedValueOnce("fumadocs" as never)
+        .mockResolvedValueOnce(cancelSymbol as never);
+      vi.mocked(prompts.confirm)
+        .mockResolvedValueOnce(false as never)
+        .mockResolvedValueOnce(false as never);
+      vi.mocked(prompts.text)
+        .mockResolvedValueOnce("docs" as never)
+        .mockResolvedValueOnce("app/globals.css" as never);
+
+      await expect(init({})).rejects.toThrow("process.exit");
+
+      expect(prompts.select).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          initialValue: "pnpm",
+          message: expect.stringContaining("Which package manager"),
+        }),
+      );
+    });
+
+    it("asks existing-project package manager without npm prefill when no lockfile is found", async () => {
+      const prompts = await import("@clack/prompts");
+      const utils = await import("./utils.js");
+
+      vi.mocked(utils.detectFramework).mockReturnValue("nextjs");
+      vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue(null);
+
+      vi.mocked(prompts.select)
+        .mockResolvedValueOnce("existing" as never)
+        .mockResolvedValueOnce("fumadocs" as never)
+        .mockResolvedValueOnce(cancelSymbol as never);
+      vi.mocked(prompts.confirm)
+        .mockResolvedValueOnce(false as never)
+        .mockResolvedValueOnce(false as never);
+      vi.mocked(prompts.text)
+        .mockResolvedValueOnce("docs" as never)
+        .mockResolvedValueOnce("app/globals.css" as never);
+
+      await expect(init({})).rejects.toThrow("process.exit");
+
+      expect(prompts.select).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("Which package manager"),
+        }),
+      );
+      expect(vi.mocked(prompts.select).mock.calls.at(-1)?.[0]).not.toHaveProperty("initialValue");
     });
   });
 });
