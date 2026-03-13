@@ -33,9 +33,18 @@ The CLI will:
 1. Detect your framework (Next.js, SvelteKit, Astro, or Nuxt)
 2. Ask you to pick a theme
 3. Ask for the docs entry path (default: `docs`)
-4. Generate config, layout, CSS, and sample pages
-5. Install all required dependencies
-6. Start the dev server and give you a live URL
+4. Optionally scaffold internationalized docs with locale folders like `docs/en`, `docs/fr`, or `docs/zh`
+5. Generate config, layout, CSS, and sample pages
+6. Install all required dependencies
+7. Start the dev server and give you a live URL
+
+If you enable i18n during init, the CLI asks you to:
+
+- Multi-select common languages such as `en`, `fr`, `es`, `de`, `pt`, `ja`, `ko`, `zh`, and more
+- Add extra locale codes manually (for example `pt-BR`)
+- Pick a default locale
+
+It then writes the `i18n` config and creates locale-aware starter content for each framework.
 
 ### Option B: Manual setup
 

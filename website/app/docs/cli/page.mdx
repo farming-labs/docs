@@ -55,10 +55,25 @@ When you run `init` **without** `--template`, the CLI first asks whether you're 
 2. **Theme** — One of the built-in themes or **Create your own theme** (you’ll be asked for a theme name; it creates `themes/<name>.ts` and `themes/<name>.css`).
 3. **Path aliases** — Whether to use `@/`, `$lib/`, or `~/` for imports (framework-dependent).
 4. **Entry path** — Where docs live (e.g. `docs`). Press **Enter** to use the default.
-5. **Global CSS** — Which file to use (auto-detected if there’s only one, otherwise you pick or type the path; Enter uses the default).
-6. The CLI generates config, layout, and sample pages, then detects the package manager from a lockfile when possible. If no lockfile is found, it asks which package manager you want to use before installing dependencies, and can then start the dev server.
+5. **Optional i18n** — Whether to scaffold internationalized docs, which locales to generate, any extra locale codes to add, and which locale should be the default.
+6. **Global CSS** — Which file to use (auto-detected if there’s only one, otherwise you pick or type the path; Enter uses the default).
+7. The CLI generates config, layout, and sample pages, then detects the package manager from a lockfile when possible. If no lockfile is found, it asks which package manager you want to use before installing dependencies, and can then start the dev server.
 
 Prompts that show a **placeholder** (e.g. entry path `docs`, project name `my-docs`, theme name `my-theme`) use that value as the default — you can press **Enter** to accept it instead of typing.
+
+### Optional i18n scaffold
+
+If you enable i18n during `init`, the CLI will:
+
+1. Let you multi-select common locales such as `en`, `fr`, `es`, `de`, `pt`, `ja`, `ko`, `zh`, `ar`, `hi`, and `ru`
+2. Let you add custom locale codes such as `pt-BR`
+3. Ask which locale should be the default
+
+The generated project gets:
+
+- An `i18n` block in `docs.config.ts` / `src/lib/docs.config.ts`
+- Locale content folders like `docs/en`, `docs/fr`, and `docs/zh`
+- Framework-specific starter files so routes like `/docs?lang=en` and `/docs?lang=fr` work out of the box
 
 ## Upgrade
 
@@ -198,35 +213,38 @@ When you choose **Existing project**, the CLI does the following (framework-spec
     2. **Asks for a theme** — built-in themes or **Create your own theme** (then prompts for theme name; press Enter for default `my-theme`)
     3. **Asks for the entry path** — Default is `docs` (press Enter to accept)
     4. **Asks about path aliases** — Use `@/` alias or relative paths for imports
-    5. **Generates files:**
+    5. **Optionally scaffolds i18n** — Generates locale folders like `app/docs/en` and `app/docs/fr`, plus locale-aware wrapper pages
+    6. **Generates files:**
        - `docs.config.ts` — Full config with your selected theme
        - `next.config.ts` — Wraps your existing config with `withDocs()`
        - `app/global.css` — Imports Tailwind and theme CSS
        - `app/layout.tsx` — Root layout with RootProvider
        - `app/docs/layout.tsx` — Docs layout
-       - `app/docs/page.mdx` — Sample documentation page
-       - `app/docs/installation/page.mdx` — Sample installation guide
-       - `app/docs/quickstart/page.mdx` — Sample quickstart guide
-    6. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next`
-    7. **Starts the dev server** — Opens your docs at `http://localhost:3000/docs`
+       - `app/docs/page.mdx` — Sample documentation page when i18n is disabled
+       - `app/docs/installation/page.mdx` — Sample installation guide when i18n is disabled
+       - `app/docs/quickstart/page.mdx` — Sample quickstart guide when i18n is disabled
+    7. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next`
+    8. **Starts the dev server** — Opens your docs at `http://localhost:3000/docs`
   </Tab>
   <Tab value="SvelteKit">
     1. **Detects SvelteKit** via `@sveltejs/kit` in your `package.json` (or asks you to pick a framework)
     2. **Asks for a theme** — built-in themes or **Create your own theme** (then prompts for theme name; press Enter for default)
     3. **Asks for the entry path** — Default is `docs` (press Enter to accept)
     4. **Asks about path aliases** — Use `$lib/` alias or relative paths for imports
-    5. **Generates files (does not touch `svelte.config.js`):**
+    5. **Optionally scaffolds i18n** — Generates locale folders like `docs/en` and `docs/fr` plus a docs root page for `/docs?lang=...`
+    6. **Generates files (does not touch `svelte.config.js`):**
        - `src/lib/docs.config.ts` — Full config with your selected theme
        - `src/lib/docs.server.ts` — Server-side docs loader with `import.meta.glob` for production builds
        - `src/routes/docs/+layout.svelte` — Docs layout component
        - `src/routes/docs/+layout.server.js` — Layout data loader
        - `src/routes/docs/[...slug]/+page.svelte` — Dynamic page component
+       - `src/routes/docs/+page.svelte` — Generated when i18n is enabled
        - `src/app.css` — Theme CSS import
        - `docs/page.md` — Sample documentation page
        - `docs/installation/page.md` — Sample installation guide
        - `docs/quickstart/page.md` — Sample quickstart guide
-    6. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/svelte`, `@farming-labs/svelte-theme`
-    7. **Starts the dev server** — Opens your docs at `http://localhost:5173/docs`
+    7. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/svelte`, `@farming-labs/svelte-theme`
+    8. **Starts the dev server** — Opens your docs at `http://localhost:5173/docs`
 
     > **Production note**: The generated `docs.server.ts` uses `import.meta.glob` to bundle your markdown files at build time. This is required for serverless deployments (Vercel, Netlify, etc.) where the filesystem is not available at runtime.
 
@@ -235,7 +253,8 @@ When you choose **Existing project**, the CLI does the following (framework-spec
     1. **Detects Astro** via `astro` in your `package.json` (or asks you to pick a framework)
     2. **Asks for a theme** — built-in themes or **Create your own theme** (then prompts for theme name; press Enter for default)
     3. **Asks for the entry path** — Default is `docs` (press Enter to accept)
-    4. **Generates files:**
+    4. **Optionally scaffolds i18n** — Generates locale folders like `docs/en` and `docs/fr`
+    5. **Generates files:**
        - `src/lib/docs.config.ts` — Full config with your selected theme
        - `src/lib/docs.server.ts` — Server-side docs loader with `import.meta.glob` for production builds
        - `src/pages/{entry}/index.astro` — Docs index page
@@ -245,8 +264,8 @@ When you choose **Existing project**, the CLI does the following (framework-spec
        - `docs/page.md` — Sample documentation page
        - `docs/installation/page.md` — Sample installation guide
        - `docs/quickstart/page.md` — Sample quickstart guide
-    5. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/astro`, `@farming-labs/astro-theme`
-    6. **Starts the dev server** — Opens your docs at `http://localhost:4321/docs`
+    6. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/astro`, `@farming-labs/astro-theme`
+    7. **Starts the dev server** — Opens your docs at `http://localhost:4321/docs`
 
     > **Production note**: The generated `docs.server.ts` uses `import.meta.glob` to bundle your markdown files at build time. This is required for serverless deployments (Vercel, Netlify, etc.) where the filesystem is not available at runtime.
 
@@ -255,16 +274,18 @@ When you choose **Existing project**, the CLI does the following (framework-spec
     1. **Detects Nuxt** via `nuxt` in your `package.json` (or asks you to pick a framework)
     2. **Asks for a theme** — built-in themes or **Create your own theme** (then prompts for theme name; press Enter for default)
     3. **Asks for the entry path** — Default is `docs` (press Enter to accept)
-    4. **Generates files:**
+    4. **Optionally scaffolds i18n** — Generates locale folders like `docs/en` and `docs/fr`
+    5. **Generates files:**
        - `docs.config.ts` — Full config with your selected theme
        - `nuxt.config.ts` — Nuxt config with theme CSS and server assets
        - `server/api/docs.ts` — API route for docs data, search, and AI
        - `pages/docs/[...slug].vue` — Dynamic page component
+       - `pages/docs/index.vue` — Generated when i18n is enabled
        - `docs/page.md` — Sample documentation page
        - `docs/installation/page.md` — Sample installation guide
        - `docs/quickstart/page.md` — Sample quickstart guide
-    5. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/nuxt`, `@farming-labs/nuxt-theme`
-    6. **Starts the dev server** — Opens your docs at `http://localhost:3000/docs`
+    6. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/nuxt`, `@farming-labs/nuxt-theme`
+    7. **Starts the dev server** — Opens your docs at `http://localhost:3000/docs`
   </Tab>
 </Tabs>
 

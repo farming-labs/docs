@@ -108,6 +108,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
+| `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template                              |
 | `og`          | `OGConfig`                     | —               | Dynamic Open Graph images (see [API Reference](/docs/reference#ogconfig)) |
 
@@ -128,6 +129,42 @@ export default defineDocs({
 ```
 
 Use this when you deploy to a static host and don’t run a server. Search and AI require a server; with `staticExport: true` they are hidden so the site works without one.
+
+## Internationalization
+
+Use `i18n` to enable locale-aware docs with a language selector and query-param routing like `/docs?lang=en` and `/docs?lang=fr`.
+
+```ts
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+  i18n: {
+    locales: ["en", "fr"],
+    defaultLocale: "en",
+  },
+});
+```
+
+When `i18n` is enabled:
+
+- The docs UI renders a locale selector in the sidebar footer
+- Links and search navigation preserve the active `lang` query parameter
+- Each locale can have its own content tree and sidebar structure
+- The CLI can scaffold locale folders like `docs/en` and `docs/fr` for existing projects
+
+For content structure, place localized docs inside locale folders. For example:
+
+```text
+docs/
+  en/
+    page.md
+    installation/page.md
+  fr/
+    page.md
+    installation/page.md
+```
+
+The generated examples and CLI scaffold use this folder structure across Next.js, SvelteKit, Astro, and Nuxt.
 
 ## Theme Toggle
 
