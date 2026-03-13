@@ -9,6 +9,11 @@ order: 3
 
 All configuration lives in a single `docs.config.ts` file.
 
+<Callout type="info" title="Use .tsx when your config contains JSX">
+  If your config includes JSX or React nodes, rename `docs.config.ts` to `docs.config.tsx`.
+  This is common when setting things like `nav.title`, custom `icons`, or React-based components in the config.
+</Callout>
+
 <Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     The config file lives at the **project root** as `docs.config.ts`:
