@@ -9,6 +9,19 @@ import SvelteRouteTabs from "@/components/ui/svelte-route-tabs";
 import AstroRouteTabs from "@/components/ui/astro-route-tabs";
 import InitBlockTabs from "@/components/ui/init-block-tabs";
 
+const heroVersions = [
+  "v0.0.31",
+  "v0.0.26",
+  "v0.0.14",
+  "v0.0.13",
+  "v0.0.11",
+  "v0.0.10",
+  "v0.0.9",
+  "v0.0.3",
+  "v0.0.2",
+  "v0.0.1",
+] as const;
+
 function HeroSection() {
   return (
     <section className="relative md:mx-0 -mx-[5%] min-h-screen flex items-end overflow-y-hidden">
@@ -23,78 +36,17 @@ function HeroSection() {
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 sm:gap-16">
           <div className="max-w-full sm:max-w-xl">
             <div className="flex flex-col gap-2">
-              <div className="inline-block">
-                <a
-                  href="/changelog#v0.0.31"
-                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
-                >
-                  <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
-                  v0.0.31
-                </a>
-              </div>
-              <div className="inline-block">
-                <a
-                  href="/changelog#v0.0.10"
-                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
-                >
-                  <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
-                  v0.0.10
-                </a>
-              </div>
-              <div className="inline-block">
-                <a
-                  href="/changelog#v0.0.9"
-                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
-                >
-                  <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
-                  v0.0.9
-                </a>
-              </div>
-              <div className="inline-block">
-                <a
-                  href="/changelog#v0.0.3-beta.1-4"
-                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
-                >
-                  <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
-                  v0.0.3-beta.4
-                </a>
-              </div>
-              <div className="inline-block">
-                <a
-                  href="/changelog#v0.0.2"
-                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
-                >
-                  <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
-                  v0.0.2
-                </a>
-              </div>
-              <div className="inline-block">
-                <a
-                  href="/changelog#v0.0.2-beta.5-10"
-                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
-                >
-                  <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
-                  v0.0.2-beta.10
-                </a>
-              </div>
-              <div className="inline-block">
-                <a
-                  href="/changelog#v0.0.2-beta.1-4"
-                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
-                >
-                  <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
-                  v0.0.2-beta.4
-                </a>
-              </div>
-              <div className="inline-block">
-                <a
-                  href="/changelog#v0.0.1"
-                  className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
-                >
-                  <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
-                  v0.0.1
-                </a>
-              </div>
+              {heroVersions.map((version) => (
+                <div key={version} className="inline-block">
+                  <a
+                    href={`/changelog#${version}`}
+                    className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
+                  >
+                    <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
+                    {version}
+                  </a>
+                </div>
+              ))}
             </div>
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-semibold tracking-tighter text-black dark:text-white leading-[0.95]">
               a documentation
