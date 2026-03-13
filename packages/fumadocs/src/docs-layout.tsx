@@ -285,9 +285,7 @@ function buildLastModifiedMap(ctx: DocsLocaleContext): Record<string, string> {
     const pagePath = path.join(dir, "page.mdx");
     if (fs.existsSync(pagePath)) {
       const url =
-        slugParts.length === 0
-          ? `/${ctx.entryPath}`
-          : `/${ctx.entryPath}/${slugParts.join("/")}`;
+        slugParts.length === 0 ? `/${ctx.entryPath}` : `/${ctx.entryPath}/${slugParts.join("/")}`;
       const stat = fs.statSync(pagePath);
       map[url] = formatDate(stat.mtime);
     }
@@ -321,9 +319,7 @@ function buildDescriptionMap(ctx: DocsLocaleContext): Record<string, string> {
       const desc = data.description as string | undefined;
       if (desc) {
         const url =
-          slugParts.length === 0
-            ? `/${ctx.entryPath}`
-            : `/${ctx.entryPath}/${slugParts.join("/")}`;
+          slugParts.length === 0 ? `/${ctx.entryPath}` : `/${ctx.entryPath}/${slugParts.join("/")}`;
         map[url] = desc;
       }
     }

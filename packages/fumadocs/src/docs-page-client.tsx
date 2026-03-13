@@ -133,7 +133,10 @@ function buildGithubFileUrl(
 ): string {
   const normalizedEntry = entry.replace(/^\/+|\/+$/g, "") || "docs";
   const entryParts = normalizedEntry.split("/").filter(Boolean);
-  const pathnameParts = pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+  const pathnameParts = pathname
+    .replace(/^\/+|\/+$/g, "")
+    .split("/")
+    .filter(Boolean);
   const slugParts =
     pathnameParts.slice(0, entryParts.length).join("/") === entryParts.join("/")
       ? pathnameParts.slice(entryParts.length)
@@ -146,7 +149,9 @@ function buildGithubFileUrl(
 }
 
 function localizeInternalLinks(root: ParentNode, locale?: string) {
-  const anchors = root.querySelectorAll<HTMLAnchorElement>('a[href]:not([data-fd-lang-localized="true"])');
+  const anchors = root.querySelectorAll<HTMLAnchorElement>(
+    'a[href]:not([data-fd-lang-localized="true"])',
+  );
 
   for (const anchor of anchors) {
     const href = anchor.getAttribute("href");
@@ -333,7 +338,9 @@ export function DocsPageClient({
       tableOfContentPopover={{ enabled: tocEnabled, style: fdTocStyle }}
       breadcrumb={{ enabled: false }}
     >
-      {breadcrumbEnabled && <PathBreadcrumb pathname={pathname} entry={entry} locale={activeLocale} />}
+      {breadcrumbEnabled && (
+        <PathBreadcrumb pathname={pathname} entry={entry} locale={activeLocale} />
+      )}
       {showActions &&
         actionsPortalTarget &&
         createPortal(

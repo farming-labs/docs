@@ -157,18 +157,17 @@ export function LocaleThemeControl({
       borderRadius: 9999,
       border: "none",
       background: active ? "var(--color-fd-accent)" : "transparent",
-      color: active
-        ? "var(--color-fd-accent-foreground)"
-        : "var(--color-fd-muted-foreground)",
+      color: active ? "var(--color-fd-accent-foreground)" : "var(--color-fd-muted-foreground)",
       cursor: "pointer",
     }) as const;
 
   function applyTheme(nextTheme: "light" | "dark" | "system") {
-    const resolved = nextTheme === "system"
-      ? window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light"
-      : nextTheme;
+    const resolved =
+      nextTheme === "system"
+        ? window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light"
+        : nextTheme;
 
     document.documentElement.classList.remove("light", "dark");
     document.documentElement.classList.add(resolved);

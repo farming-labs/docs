@@ -23,9 +23,7 @@ function splitSegments(value: string): string[] {
 
 export function resolveDocsI18n(config?: DocsI18nConfig | null): ResolvedDocsI18n | null {
   if (!config || !Array.isArray(config.locales)) return null;
-  const locales = Array.from(
-    new Set(config.locales.map((l) => l.trim()).filter(Boolean)),
-  );
+  const locales = Array.from(new Set(config.locales.map((l) => l.trim()).filter(Boolean)));
   if (locales.length === 0) return null;
 
   const defaultLocale =
