@@ -64,6 +64,8 @@ Prompts that show a **placeholder** (e.g. entry path `docs`, project name `my-do
 
 Upgrade all `@farming-labs/*` docs packages to the latest version. Run from your project root; the CLI **auto-detects** your framework from `package.json` and upgrades the right packages.
 
+The CLI also detects your package manager from the lockfile in the current directory (`pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, or `package-lock.json`). If no lockfile is found, it asks which package manager you want to use instead of defaulting to npm.
+
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
     ```bash

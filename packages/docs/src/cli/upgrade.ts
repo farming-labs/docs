@@ -9,7 +9,7 @@ import {
   type Framework,
   type PackageManager,
   detectFramework,
-  detectPackageManager,
+  detectPackageManagerFromLockfile,
   installCommand,
   exec,
   fileExists,
@@ -97,7 +97,29 @@ export async function upgrade(options: UpgradeOptions = {}) {
     preset = presetFromFramework(framework);
   }
 
-  const pm = detectPackageManager(cwd);
+  let pm = detectPackageManagerFromLockfile(cwd);
+  if (pm) {
+    p.log.info(`Detected ${pc.cyan(pm)} from lockfile`);
+  } else {
+    const pmAnswer = await p.select({
+      message: "Which package manager do you want to use for this upgrade?",
+      options: [
+        { value: "pnpm", label: "pnpm", hint: "Use pnpm add" },
+        { value: "npm", label: "npm", hint: "Use npm add" },
+        { value: "yarn", label: "yarn", hint: "Use yarn add" },
+        { value: "bun", label: "bun", hint: "Use bun add" },
+      ] as const,
+    });
+
+    if (p.isCancel(pmAnswer)) {
+      p.outro(pc.red("Upgrade cancelled."));
+      process.exit(0);
+    }
+
+    pm = pmAnswer as PackageManager;
+    p.log.info(`Using ${pc.cyan(pm)} as package manager`);
+  }
+
   const cmd = buildUpgradeCommand(framework, tag, pm);
   const packages = getPackagesForFramework(framework);
 
