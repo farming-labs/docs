@@ -23,7 +23,8 @@ const releases: Release[] = [
     title: "v0.0.26: Current Release",
     date: "Mar 2026",
     pinned: true,
-    excerpt: "Latest updates and improvements across the docs experience, CLI, and framework integrations.",
+    excerpt:
+      "Latest updates and improvements across the docs experience, CLI, and framework integrations.",
     changes: [
       {
         category: "Highlights",
