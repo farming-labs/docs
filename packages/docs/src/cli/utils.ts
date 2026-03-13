@@ -32,11 +32,18 @@ export function detectFramework(cwd: string): Framework | null {
 
 export type PackageManager = "pnpm" | "yarn" | "npm" | "bun";
 
-export function detectPackageManager(cwd: string): PackageManager {
+export function detectPackageManagerFromLockfile(cwd: string): PackageManager | null {
   if (fs.existsSync(path.join(cwd, "pnpm-lock.yaml"))) return "pnpm";
   if (fs.existsSync(path.join(cwd, "bun.lockb")) || fs.existsSync(path.join(cwd, "bun.lock")))
     return "bun";
   if (fs.existsSync(path.join(cwd, "yarn.lock"))) return "yarn";
+  if (fs.existsSync(path.join(cwd, "package-lock.json"))) return "npm";
+  return null;
+}
+
+export function detectPackageManager(cwd: string): PackageManager {
+  const detected = detectPackageManagerFromLockfile(cwd);
+  if (detected) return detected;
   return "npm";
 }
 

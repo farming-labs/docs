@@ -66,6 +66,8 @@ npx @farming-labs/docs@latest init --template next --name my-docs --theme pixel-
 
 Upgrade all `@farming-labs/*` docs packages to the latest version. Run from the **project root**. The CLI auto-detects the framework from `package.json` and upgrades the correct packages.
 
+For the package manager, the CLI first checks lockfiles in the current directory (`pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, `package-lock.json`). If no lockfile is found, it prompts the user to choose instead of defaulting to npm.
+
 ```bash
 # npm
 npx @farming-labs/docs@latest upgrade

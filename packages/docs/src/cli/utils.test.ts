@@ -5,6 +5,7 @@ import os from "node:os";
 import {
   detectFramework,
   detectPackageManager,
+  detectPackageManagerFromLockfile,
   installCommand,
   devInstallCommand,
   runCommand,
@@ -85,22 +86,37 @@ describe("utils", () => {
   });
 
   describe("detectPackageManager", () => {
+    it("returns null from lockfile-only detection when no lockfile exists", () => {
+      fs.writeFileSync(path.join(tmpDir, "package.json"), "{}");
+      expect(detectPackageManagerFromLockfile(tmpDir)).toBeNull();
+    });
+
     it("returns pnpm when pnpm-lock.yaml exists", () => {
       fs.writeFileSync(path.join(tmpDir, "package.json"), "{}");
       fs.writeFileSync(path.join(tmpDir, "pnpm-lock.yaml"), "");
+      expect(detectPackageManagerFromLockfile(tmpDir)).toBe("pnpm");
       expect(detectPackageManager(tmpDir)).toBe("pnpm");
     });
 
     it("returns yarn when yarn.lock exists", () => {
       fs.writeFileSync(path.join(tmpDir, "package.json"), "{}");
       fs.writeFileSync(path.join(tmpDir, "yarn.lock"), "");
+      expect(detectPackageManagerFromLockfile(tmpDir)).toBe("yarn");
       expect(detectPackageManager(tmpDir)).toBe("yarn");
     });
 
     it("returns bun when bun.lock or bun.lockb exists", () => {
       fs.writeFileSync(path.join(tmpDir, "package.json"), "{}");
       fs.writeFileSync(path.join(tmpDir, "bun.lockb"), "");
+      expect(detectPackageManagerFromLockfile(tmpDir)).toBe("bun");
       expect(detectPackageManager(tmpDir)).toBe("bun");
+    });
+
+    it("returns npm when package-lock.json exists", () => {
+      fs.writeFileSync(path.join(tmpDir, "package.json"), "{}");
+      fs.writeFileSync(path.join(tmpDir, "package-lock.json"), "");
+      expect(detectPackageManagerFromLockfile(tmpDir)).toBe("npm");
+      expect(detectPackageManager(tmpDir)).toBe("npm");
     });
 
     it("returns npm when no lock file (default)", () => {
