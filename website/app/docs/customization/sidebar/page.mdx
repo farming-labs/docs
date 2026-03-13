@@ -13,7 +13,7 @@ The sidebar is auto-generated from your file structure. Customize its appearance
 
 The sidebar title supports strings or React components:
 
-```tsx title="docs.config.ts"
+```tsx title="docs.config.tsx"
 nav: {
   title: (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -38,7 +38,7 @@ icon: "rocket"
 
 Register icons in your config:
 
-```tsx title="docs.config.ts"
+```tsx title="docs.config.tsx"
 icons: {
   rocket: <Rocket size={16} />,
   book: <BookOpen size={16} />,
@@ -63,7 +63,7 @@ app/docs/
 
 Render all sidebar items without collapsible sections (Mintlify-style):
 
-```tsx title="docs.config.ts"
+```tsx title="docs.config.tsx"
 sidebar: { flat: true },
 ```
 
@@ -71,7 +71,7 @@ sidebar: { flat: true },
 
 Add custom content above and below the navigation items using `banner` and `footer`:
 
-```tsx title="docs.config.ts"
+```tsx title="docs.config.tsx"
 sidebar: {
   banner: (
     <div style={{
@@ -159,7 +159,7 @@ Replace the entire sidebar navigation with your own component. The component rec
   <Tab value="Next.js">
     Pass a render function via `sidebar.component` in your config:
 
-    ```tsx title="docs.config.ts"
+    ```tsx title="docs.config.tsx"
     import type { SidebarComponentProps } from "@farming-labs/docs";
 
     sidebar: {
@@ -353,7 +353,7 @@ theme: pixelBorder({
 
 Enable breadcrumb navigation:
 
-```tsx title="docs.config.ts"
+```tsx title="docs.config.tsx"
 breadcrumb: { enabled: true },
 ```
 
