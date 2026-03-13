@@ -25,11 +25,11 @@ function HeroSection() {
             <div className="flex flex-col gap-2">
               <div className="inline-block">
                 <a
-                  href="/changelog#v0.0.26"
+                  href="/changelog#v0.0.31"
                   className="text-[10px] font-mono tracking-tighter no-underline hover:underline duration-500 transition-all decoration-dotted text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:underline-offset-2 hover:decoration-black/30 dark:hover:decoration-white/30 px-0 py-1.5 flex items-center"
                 >
                   <div className="h-[12px] w-px bg-black/50 dark:bg-white/50 mr-2" />
-                  v0.0.26
+                  v0.0.31
                 </a>
               </div>
               <div className="inline-block">

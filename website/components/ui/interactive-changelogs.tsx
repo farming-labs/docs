@@ -19,10 +19,53 @@ interface Release {
 
 const releases: Release[] = [
   {
-    version: "v0.0.26",
-    title: "v0.0.26: Current Release",
+    version: "v0.0.31",
+    title: "v0.0.31: Current Release",
     date: "Mar 2026",
     pinned: true,
+    excerpt:
+      "Internationalized docs across all frameworks, locale-aware CLI scaffolding, UI polish, build fixes, and expanded documentation.",
+    changes: [
+      {
+        category: "Internationalization",
+        items: [
+          "Query-param i18n across Next.js, SvelteKit, Astro, and Nuxt with locale switching via `/docs?lang=en` and `/docs?lang=fr`",
+          "Locale selector UI refined and aligned with the theme toggle across the supported themes and examples",
+          "Localized examples added across frameworks with locale-aware content loading and isolated sidebars per locale",
+        ],
+      },
+      {
+        category: "CLI & Scaffolding",
+        items: [
+          "Init can now scaffold i18n for existing projects",
+          "CLI prompt flow now supports multi-select locale picking, extra custom locale codes like `pt-BR`, and default locale selection",
+          "Scaffold generation now creates locale folders such as `docs/en` and `docs/fr`, plus framework-specific wrapper/root files where needed",
+          "Added tests covering i18n prompt flow, generated config output, and scaffolded files across Next.js, SvelteKit, Astro, and Nuxt",
+        ],
+      },
+      {
+        category: "Fixes & Stability",
+        items: [
+          "Fixed Astro locale selector rendering when the theme toggle is disabled",
+          "Fixed Astro search keyboard navigation so locale query params are preserved",
+          "Removed hardcoded locale routing in the Astro example nav config",
+          "Fixed build and runtime issues across Next.js, Astro, SvelteKit, and Nuxt examples and adapters while landing i18n support",
+          "Resolved docs/build integration issues including Next.js suspense requirements and adapter/server parsing fixes",
+        ],
+      },
+      {
+        category: "Documentation",
+        items: [
+          "Updated the root README, CLI skill, and docs website pages to document the new i18n scaffold flow and `docs.config` `i18n` option",
+          "Expanded changelog coverage for this release so the cross-framework i18n work and related fixes are captured in one place",
+        ],
+      },
+    ],
+  },
+  {
+    version: "v0.0.26",
+    title: "v0.0.26",
+    date: "Mar 2026",
     excerpt:
       "Latest updates and improvements across the docs experience, CLI, and framework integrations.",
     changes: [
