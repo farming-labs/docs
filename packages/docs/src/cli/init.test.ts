@@ -10,6 +10,7 @@ vi.mock("@clack/prompts", () => ({
   log: { step: vi.fn(), info: vi.fn(), success: vi.fn(), warn: vi.fn(), error: vi.fn() },
   spinner: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
   select: vi.fn(),
+  multiselect: vi.fn(),
   text: vi.fn(),
   confirm: vi.fn(),
   isCancel: vi.fn((value: unknown) => value === cancelSymbol),
@@ -60,6 +61,7 @@ describe("init", () => {
       const prompts = await import("@clack/prompts");
       const utils = await import("./utils.js");
       vi.mocked(prompts.select).mockReset();
+      vi.mocked(prompts.multiselect).mockReset();
       vi.mocked(prompts.text).mockReset();
       vi.mocked(prompts.confirm).mockReset();
       vi.mocked(prompts.isCancel).mockImplementation((value: unknown) => value === cancelSymbol);
@@ -135,6 +137,7 @@ describe("init", () => {
         .mockResolvedValueOnce(cancelSymbol as never);
       vi.mocked(prompts.confirm)
         .mockResolvedValueOnce(false as never)
+        .mockResolvedValueOnce(false as never)
         .mockResolvedValueOnce(false as never);
       vi.mocked(prompts.text)
         .mockResolvedValueOnce("docs" as never)
@@ -163,6 +166,7 @@ describe("init", () => {
         .mockResolvedValueOnce(cancelSymbol as never);
       vi.mocked(prompts.confirm)
         .mockResolvedValueOnce(false as never)
+        .mockResolvedValueOnce(false as never)
         .mockResolvedValueOnce(false as never);
       vi.mocked(prompts.text)
         .mockResolvedValueOnce("docs" as never)
@@ -176,6 +180,46 @@ describe("init", () => {
         }),
       );
       expect(vi.mocked(prompts.select).mock.calls.at(-1)?.[0]).not.toHaveProperty("initialValue");
+    });
+
+    it("asks for locales when i18n scaffold is enabled", async () => {
+      const prompts = await import("@clack/prompts");
+      const utils = await import("./utils.js");
+
+      vi.mocked(utils.detectFramework).mockReturnValue("nextjs");
+      vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+
+      vi.mocked(prompts.select)
+        .mockResolvedValueOnce("existing" as never)
+        .mockResolvedValueOnce("fumadocs" as never)
+        .mockResolvedValueOnce("en" as never)
+        .mockResolvedValueOnce(cancelSymbol as never);
+      vi.mocked(prompts.confirm)
+        .mockResolvedValueOnce(false as never)
+        .mockResolvedValueOnce(false as never)
+        .mockResolvedValueOnce(true as never);
+      vi.mocked(prompts.multiselect).mockResolvedValueOnce(["en", "fr"] as never);
+      vi.mocked(prompts.text)
+        .mockResolvedValueOnce("docs" as never)
+        .mockResolvedValueOnce("" as never)
+        .mockResolvedValueOnce("app/globals.css" as never);
+
+      await expect(init({})).rejects.toThrow("process.exit");
+
+      expect(prompts.multiselect).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("Which languages should we scaffold"),
+        }),
+      );
+      expect(prompts.select).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("default"),
+          options: expect.arrayContaining([
+            expect.objectContaining({ value: "en" }),
+            expect.objectContaining({ value: "fr" }),
+          ]),
+        }),
+      );
     });
   });
 });

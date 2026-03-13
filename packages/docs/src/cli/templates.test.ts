@@ -18,6 +18,7 @@ import {
   nextConfigMergedTemplate,
   svelteDocsLayoutTemplate,
   svelteDocsLayoutServerTemplate,
+  astroDocsConfigTemplate,
 } from "./templates.js";
 
 const baseConfig: TemplateConfig = {
@@ -27,6 +28,11 @@ const baseConfig: TemplateConfig = {
   framework: "nextjs",
   useAlias: true,
 };
+
+const i18nConfig = {
+  locales: ["en", "fr"],
+  defaultLocale: "en",
+} as const;
 
 describe("docsLayoutTemplate", () => {
   it("includes createDocsLayout, createDocsMetadata, and explicit Layout export", () => {
@@ -235,6 +241,13 @@ describe("docsConfigTemplate", () => {
     expect(out).toContain("theme: myTheme(");
     expect(out).toContain("defineDocs");
   });
+
+  it("includes i18n config when locales are provided", () => {
+    const out = docsConfigTemplate({ ...baseConfig, i18n: { ...i18nConfig } });
+    expect(out).toContain("i18n:");
+    expect(out).toContain('locales: ["en", "fr"]');
+    expect(out).toContain('defaultLocale: "en"');
+  });
 });
 
 describe("Create your own theme", () => {
@@ -319,6 +332,41 @@ describe("Create your own theme", () => {
       });
       expect(out).toContain('from "../../themes/my-theme"');
       expect(out).toContain("theme: myTheme(");
+    });
+  });
+
+  describe("framework docs config templates (i18n)", () => {
+    it("adds i18n to Svelte docs config", () => {
+      const out = svelteDocsConfigTemplate({
+        ...baseConfig,
+        framework: "sveltekit",
+        i18n: { ...i18nConfig },
+      });
+      expect(out).toContain("contentDir: \"docs\"");
+      expect(out).toContain("i18n:");
+      expect(out).toContain('defaultLocale: "en"');
+    });
+
+    it("adds i18n to Astro docs config", () => {
+      const out = astroDocsConfigTemplate({
+        ...baseConfig,
+        framework: "astro",
+        i18n: { ...i18nConfig },
+      });
+      expect(out).toContain("contentDir: \"docs\"");
+      expect(out).toContain("i18n:");
+      expect(out).toContain('locales: ["en", "fr"]');
+    });
+
+    it("adds i18n to Nuxt docs config", () => {
+      const out = nuxtDocsConfigTemplate({
+        ...baseConfig,
+        framework: "nuxt",
+        i18n: { ...i18nConfig },
+      });
+      expect(out).toContain("contentDir: \"docs\"");
+      expect(out).toContain("i18n:");
+      expect(out).toContain('defaultLocale: "en"');
     });
   });
 
