@@ -19,10 +19,29 @@ interface Release {
 
 const releases: Release[] = [
   {
-    version: "v0.0.14",
-    title: "v0.0.14: Current Release",
+    version: "v0.0.26",
+    title: "v0.0.26: Current Release",
     date: "Mar 2026",
     pinned: true,
+    excerpt: "Latest updates and improvements across the docs experience, CLI, and framework integrations.",
+    changes: [
+      {
+        category: "Highlights",
+        items: [
+          "General improvements across the docs site and tooling",
+          "More testing and documentation",
+          "Added more showcase sites to the showcase page",
+          "Init command now is GA: `pnpx @farming-labs/docs init`",
+          "Upgrade command now is GA: `pnpx @farming-labs/docs upgrade`",
+          "Package manager options in init and upgrade commands: npm, pnpm, yarn, bun",
+        ],
+      },
+    ],
+  },
+  {
+    version: "v0.0.14",
+    title: "v0.0.14",
+    date: "Mar 2026",
     excerpt:
       "Package manager tabs in docs (npm, pnpm, yarn, bun), Create your own theme CTAs on themes pages, changelog and copy cleanup.",
     changes: [
