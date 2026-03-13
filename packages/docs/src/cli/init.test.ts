@@ -133,7 +133,9 @@ describe("init", () => {
         .mockResolvedValueOnce("existing" as never)
         .mockResolvedValueOnce("fumadocs" as never)
         .mockResolvedValueOnce(cancelSymbol as never);
-      vi.mocked(prompts.confirm).mockResolvedValueOnce(false as never).mockResolvedValueOnce(false as never);
+      vi.mocked(prompts.confirm)
+        .mockResolvedValueOnce(false as never)
+        .mockResolvedValueOnce(false as never);
       vi.mocked(prompts.text)
         .mockResolvedValueOnce("docs" as never)
         .mockResolvedValueOnce("app/globals.css" as never);
@@ -159,7 +161,9 @@ describe("init", () => {
         .mockResolvedValueOnce("existing" as never)
         .mockResolvedValueOnce("fumadocs" as never)
         .mockResolvedValueOnce(cancelSymbol as never);
-      vi.mocked(prompts.confirm).mockResolvedValueOnce(false as never).mockResolvedValueOnce(false as never);
+      vi.mocked(prompts.confirm)
+        .mockResolvedValueOnce(false as never)
+        .mockResolvedValueOnce(false as never);
       vi.mocked(prompts.text)
         .mockResolvedValueOnce("docs" as never)
         .mockResolvedValueOnce("app/globals.css" as never);
