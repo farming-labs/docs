@@ -27,7 +27,7 @@ yarn dlx @farming-labs/docs@latest init
 bunx @farming-labs/docs@latest init
 ```
 
-- **Existing project** — Add docs to the current directory. CLI then detects framework (or prompts), asks for theme (including **Create your own theme**, which prompts for theme name and scaffolds `themes/<name>.ts` and `themes/<name>.css`), entry path (default `docs`), path aliases, and global CSS. **Prompts that show a placeholder use it as the default** — press **Enter** to accept (e.g. entry path `docs`, theme name `my-theme`, project name `my-docs`).
+- **Existing project** — Add docs to the current directory. CLI then detects framework (or prompts), asks for theme (including **Create your own theme**, which prompts for theme name and scaffolds `themes/<name>.ts` and `themes/<name>.css`), entry path (default `docs`), optional i18n scaffolding, path aliases, and global CSS. **Prompts that show a placeholder use it as the default** — press **Enter** to accept (e.g. entry path `docs`, theme name `my-theme`, project name `my-docs`).
 - **Fresh project** — Bootstrap a new app. CLI asks for framework (Next.js, Nuxt, SvelteKit, Astro), then project name (default `my-docs`; press Enter to accept), creates the folder, clones the template with degit, and runs install using the package manager you chose. You then `cd <name>` and run the matching dev command for that package manager.
 
 If you use **`--template`** with **`--name`**, the CLI skips the existing-vs-fresh prompt and goes straight to bootstrap (same as choosing Fresh and then framework + name).
@@ -115,7 +115,7 @@ npx @farming-labs/docs@latest upgrade --beta       # beta versions
 
 ## What init does (Existing project, per framework)
 
-When the user chooses **Existing project**, the CLI detects (or prompts for) framework, then theme (including **Create your own theme** → prompts for theme name, scaffolds `themes/<name>.ts` and `themes/<name>.css`), entry path (default `docs`; Enter to accept), path aliases, and global CSS. Generated files:
+When the user chooses **Existing project**, the CLI detects (or prompts for) framework, then theme (including **Create your own theme** → prompts for theme name, scaffolds `themes/<name>.ts` and `themes/<name>.css`), entry path (default `docs`; Enter to accept), optional i18n scaffolding, path aliases, and global CSS. Generated files:
 
 - **Next.js:** `docs.config.ts`, `next.config.ts`, `app/global.css`, `app/layout.tsx`, `app/docs/layout.tsx`, sample MDX pages; installs `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next`; can start dev server.
 - **SvelteKit:** `src/lib/docs.config.ts`, `src/lib/docs.server.ts`, `src/routes/docs/*`, `src/app.css`, `docs/*.md`; installs svelte + svelte-theme packages.
@@ -123,6 +123,8 @@ When the user chooses **Existing project**, the CLI detects (or prompts for) fra
 - **Nuxt:** `docs.config.ts`, `nuxt.config.ts`, `server/api/docs.ts`, `pages/docs/[...slug].vue`, `docs/*.md`; installs nuxt + nuxt-theme packages.
 
 **Create your own theme:** If the user selects this, the CLI prompts for a theme name (default `my-theme`; Enter to accept), then creates `themes/<name>.ts` and `themes/<name>.css` and wires them in `docs.config` and global CSS. See the `creating-themes` skill for the API.
+
+**Optional i18n scaffold:** On existing projects, the CLI can scaffold query-param locale support. It asks whether to enable i18n, lets the user multi-select common languages like `en`, `fr`, `es`, `de`, `pt`, `ja`, `ko`, `zh`, `ar`, `hi`, and `ru`, accepts extra locale codes like `pt-BR`, and then asks for the default locale. It writes the `i18n` block to `docs.config`, generates locale folders such as `docs/en` and `docs/fr`, and scaffolds the extra wrapper/root files needed by each framework.
 
 ---
 
