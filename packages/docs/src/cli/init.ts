@@ -39,6 +39,8 @@ import {
   customThemeTsTemplate,
   customThemeCssTemplate,
   docsLayoutTemplate,
+  nextLocaleDocPageTemplate,
+  nextLocalizedPageTemplate,
   postcssConfigTemplate,
   tsconfigTemplate,
   welcomePageTemplate,
@@ -81,6 +83,41 @@ import {
   injectNuxtCssImport,
   type TemplateConfig,
 } from "./templates.js";
+
+const COMMON_LOCALE_OPTIONS = [
+  { value: "en", label: "English", hint: "en" },
+  { value: "fr", label: "French", hint: "fr" },
+  { value: "es", label: "Spanish", hint: "es" },
+  { value: "de", label: "German", hint: "de" },
+  { value: "pt", label: "Portuguese", hint: "pt" },
+  { value: "it", label: "Italian", hint: "it" },
+  { value: "ja", label: "Japanese", hint: "ja" },
+  { value: "ko", label: "Korean", hint: "ko" },
+  { value: "zh", label: "Chinese", hint: "zh" },
+  { value: "ar", label: "Arabic", hint: "ar" },
+  { value: "hi", label: "Hindi", hint: "hi" },
+  { value: "ru", label: "Russian", hint: "ru" },
+] as const;
+
+function normalizeLocaleCode(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const [language, ...rest] = trimmed.split("-");
+  const normalizedLanguage = language.toLowerCase();
+  if (rest.length === 0) return normalizedLanguage;
+  return `${normalizedLanguage}-${rest.join("-").toUpperCase()}`;
+}
+
+function parseLocaleInput(input: string): string[] {
+  return Array.from(
+    new Set(
+      input
+        .split(",")
+        .map((value) => normalizeLocaleCode(value))
+        .filter(Boolean),
+    ),
+  );
+}
 
 export async function init(options: InitOptions = {}) {
   const cwd = process.cwd();
@@ -488,6 +525,92 @@ export async function init(options: InitOptions = {}) {
   const entryPath = (entry as string).trim() || defaultEntry;
 
   // -----------------------------------------------------------------------
+  // Step 5b: Optional i18n scaffold
+  // -----------------------------------------------------------------------
+
+  const enableI18n = await p.confirm({
+    message: "Do you want to scaffold internationalized docs with locale folders?",
+    initialValue: false,
+  });
+
+  if (p.isCancel(enableI18n)) {
+    p.outro(pc.red("Init cancelled."));
+    process.exit(0);
+  }
+
+  let docsI18n:
+    | {
+        locales: string[];
+        defaultLocale: string;
+      }
+    | undefined;
+
+  if (enableI18n) {
+    const selectedLocales = await p.multiselect({
+      message: "Which languages should we scaffold?",
+      options: COMMON_LOCALE_OPTIONS.map((option) => ({
+        value: option.value,
+        label: option.label,
+        hint: option.hint,
+      })),
+    });
+
+    if (p.isCancel(selectedLocales)) {
+      p.outro(pc.red("Init cancelled."));
+      process.exit(0);
+    }
+
+    const extraLocalesAnswer = await p.text({
+      message: "Any additional locale codes? (comma-separated, optional)",
+      placeholder: "nl, sv, pt-BR",
+      defaultValue: "",
+      validate: (value) => {
+        const locales = parseLocaleInput(value ?? "");
+        const valid = locales.every((locale) => /^[a-z]{2,3}(?:-[A-Z]{2})?$/.test(locale));
+        return valid ? undefined : "Use locale codes like en, fr, zh, or pt-BR";
+      },
+    });
+
+    if (p.isCancel(extraLocalesAnswer)) {
+      p.outro(pc.red("Init cancelled."));
+      process.exit(0);
+    }
+
+    const locales = Array.from(
+      new Set([
+        ...((selectedLocales as string[]) ?? []).map((locale) => normalizeLocaleCode(locale)),
+        ...parseLocaleInput((extraLocalesAnswer as string) ?? ""),
+      ]),
+    ).filter(Boolean);
+
+    if (locales.length === 0) {
+      p.log.error("Pick at least one locale to scaffold i18n support.");
+      p.outro(pc.red("Init cancelled."));
+      process.exit(1);
+    }
+
+    const defaultLocaleAnswer = await p.select({
+      message: "Which locale should be the default?",
+      options: locales.map((locale) => ({
+        value: locale,
+        label: locale,
+        hint: locale === "en" ? "Recommended default" : undefined,
+      })),
+      initialValue: locales[0],
+    });
+
+    if (p.isCancel(defaultLocaleAnswer)) {
+      p.outro(pc.red("Init cancelled."));
+      process.exit(0);
+    }
+
+    docsI18n = {
+      locales,
+      defaultLocale: defaultLocaleAnswer as string,
+    };
+  }
+
+  // -----------------------------------------------------------------------
   // Step 6: Global CSS file location
   // -----------------------------------------------------------------------
 
@@ -552,6 +675,7 @@ export async function init(options: InitOptions = {}) {
     framework,
     useAlias: useAlias as boolean,
     astroAdapter,
+    i18n: docsI18n,
     ...(framework === "nextjs" && { nextAppDir }),
   };
 
@@ -762,6 +886,12 @@ export async function init(options: InitOptions = {}) {
   }
 }
 
+function getScaffoldContentRoots(cfg: TemplateConfig): string[] {
+  return cfg.i18n?.locales?.length
+    ? cfg.i18n.locales.map((locale) => `${cfg.entry}/${locale}`)
+    : [cfg.entry];
+}
+
 // ---------------------------------------------------------------------------
 // Next.js scaffolding
 // ---------------------------------------------------------------------------
@@ -849,6 +979,60 @@ function scaffoldNextJs(
     write("tsconfig.json", tsconfigTemplate(cfg.useAlias));
   }
 
+  if (cfg.i18n?.locales.length) {
+    write(
+      `${appDir}/components/locale-doc-page.tsx`,
+      nextLocaleDocPageTemplate(cfg.i18n.defaultLocale),
+    );
+    write(
+      `${appDir}/${cfg.entry}/page.tsx`,
+      nextLocalizedPageTemplate({
+        locales: cfg.i18n.locales,
+        defaultLocale: cfg.i18n.defaultLocale,
+        componentName: "DocsIndexPage",
+        helperImport: "../components/locale-doc-page",
+        pageImports: cfg.i18n.locales.map((locale) => ({
+          locale,
+          importPath: `./${locale}/page.mdx`,
+        })),
+      }),
+    );
+    write(
+      `${appDir}/${cfg.entry}/installation/page.tsx`,
+      nextLocalizedPageTemplate({
+        locales: cfg.i18n.locales,
+        defaultLocale: cfg.i18n.defaultLocale,
+        componentName: "InstallationPage",
+        helperImport: "../../components/locale-doc-page",
+        pageImports: cfg.i18n.locales.map((locale) => ({
+          locale,
+          importPath: `../${locale}/installation/page.mdx`,
+        })),
+      }),
+    );
+    write(
+      `${appDir}/${cfg.entry}/quickstart/page.tsx`,
+      nextLocalizedPageTemplate({
+        locales: cfg.i18n.locales,
+        defaultLocale: cfg.i18n.defaultLocale,
+        componentName: "QuickstartPage",
+        helperImport: "../../components/locale-doc-page",
+        pageImports: cfg.i18n.locales.map((locale) => ({
+          locale,
+          importPath: `../${locale}/quickstart/page.mdx`,
+        })),
+      }),
+    );
+
+    for (const locale of cfg.i18n.locales) {
+      const base = `${appDir}/${cfg.entry}/${locale}`;
+      write(`${base}/page.mdx`, welcomePageTemplate(cfg));
+      write(`${base}/installation/page.mdx`, installationPageTemplate(cfg));
+      write(`${base}/quickstart/page.mdx`, quickstartPageTemplate(cfg));
+    }
+    return;
+  }
+
   write(`${appDir}/${cfg.entry}/page.mdx`, welcomePageTemplate(cfg));
   write(`${appDir}/${cfg.entry}/installation/page.mdx`, installationPageTemplate(cfg));
   write(`${appDir}/${cfg.entry}/quickstart/page.mdx`, quickstartPageTemplate(cfg));
@@ -877,6 +1061,9 @@ function scaffoldSvelteKit(
   write(`src/routes/${cfg.entry}/+layout.svelte`, svelteDocsLayoutTemplate(cfg));
   write(`src/routes/${cfg.entry}/+layout.server.js`, svelteDocsLayoutServerTemplate(cfg));
   write(`src/routes/${cfg.entry}/[...slug]/+page.svelte`, svelteDocsPageTemplate(cfg));
+  if (cfg.i18n?.locales.length) {
+    write(`src/routes/${cfg.entry}/+page.svelte`, svelteDocsPageTemplate(cfg));
+  }
 
   const existingRootLayout = readFileSafe(path.join(cwd, "src/routes/+layout.svelte"));
   if (!existingRootLayout) {
@@ -918,9 +1105,11 @@ function scaffoldSvelteKit(
     );
   }
 
-  write(`${cfg.entry}/page.md`, svelteWelcomePageTemplate(cfg));
-  write(`${cfg.entry}/installation/page.md`, svelteInstallationPageTemplate(cfg));
-  write(`${cfg.entry}/quickstart/page.md`, svelteQuickstartPageTemplate(cfg));
+  for (const base of getScaffoldContentRoots(cfg)) {
+    write(`${base}/page.md`, svelteWelcomePageTemplate(cfg));
+    write(`${base}/installation/page.md`, svelteInstallationPageTemplate(cfg));
+    write(`${base}/quickstart/page.md`, svelteQuickstartPageTemplate(cfg));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -989,9 +1178,11 @@ function scaffoldAstro(
     );
   }
 
-  write(`${cfg.entry}/page.md`, astroWelcomePageTemplate(cfg));
-  write(`${cfg.entry}/installation/page.md`, astroInstallationPageTemplate(cfg));
-  write(`${cfg.entry}/quickstart/page.md`, astroQuickstartPageTemplate(cfg));
+  for (const base of getScaffoldContentRoots(cfg)) {
+    write(`${base}/page.md`, astroWelcomePageTemplate(cfg));
+    write(`${base}/installation/page.md`, astroInstallationPageTemplate(cfg));
+    write(`${base}/quickstart/page.md`, astroQuickstartPageTemplate(cfg));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1060,10 +1251,12 @@ function scaffoldNuxt(
     );
   }
 
-  write(`${cfg.entry}/page.md`, nuxtWelcomePageTemplate(cfg));
-  write(`${cfg.entry}/installation/page.md`, nuxtInstallationPageTemplate(cfg));
-  write(`${cfg.entry}/quickstart/page.md`, nuxtQuickstartPageTemplate(cfg));
+  for (const base of getScaffoldContentRoots(cfg)) {
+    write(`${base}/page.md`, nuxtWelcomePageTemplate(cfg));
+    write(`${base}/installation/page.md`, nuxtInstallationPageTemplate(cfg));
+    write(`${base}/quickstart/page.md`, nuxtQuickstartPageTemplate(cfg));
+  }
 }
 
 /** Exported for testing: ensures Next.js scaffold writes under app or src/app consistently. */
-export { scaffoldNextJs };
+export { scaffoldNextJs, scaffoldSvelteKit, scaffoldAstro, scaffoldNuxt };

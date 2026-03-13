@@ -20,6 +20,11 @@ export interface TemplateConfig {
   astroAdapter?: "vercel" | "netlify" | "node" | "cloudflare";
   /** Next.js only: "app" or "src/app" — where the App Router lives. Default "app". */
   nextAppDir?: "app" | "src/app";
+  /** Optional i18n scaffold config for query-param locale support. */
+  i18n?: {
+    locales: string[];
+    defaultLocale: string;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -120,6 +125,18 @@ const THEME_INFO: Record<string, ThemeInfo> = {
 
 function getThemeInfo(theme: string): ThemeInfo {
   return THEME_INFO[theme] ?? THEME_INFO.fumadocs;
+}
+
+function renderI18nConfig(cfg: TemplateConfig, indent = "  "): string {
+  const i18n = cfg.i18n;
+  if (!i18n || i18n.locales.length === 0) return "";
+
+  const localeList = i18n.locales.map((locale) => `"${locale}"`).join(", ");
+  return `${indent}i18n: {\n${indent}  locales: [${localeList}],\n${indent}  defaultLocale: "${i18n.defaultLocale}",\n${indent}},\n`;
+}
+
+function toLocaleImportName(locale: string): string {
+  return `LocalePage_${locale.replace(/[^a-zA-Z0-9_$]/g, "_")}`;
 }
 
 export function getThemeExportName(themeName: string): string {
@@ -256,7 +273,7 @@ import { ${exportName} } from "${themePath}";
 
 export default defineDocs({
   entry: "${cfg.entry}",
-  theme: ${exportName}({
+  ${renderI18nConfig(cfg)}  theme: ${exportName}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -276,7 +293,7 @@ import { ${t.factory} } from "${t.nextImport}";
 
 export default defineDocs({
   entry: "${cfg.entry}",
-  theme: ${t.factory}({
+  ${renderI18nConfig(cfg)}  theme: ${t.factory}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -489,6 +506,61 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <DocsLayout>{children}</DocsLayout>
     </>
   );
+}
+`;
+}
+
+export function nextLocaleDocPageTemplate(defaultLocale: string): string {
+  return `\
+import type { ComponentType } from "react";
+
+type SearchParams = Promise<{ lang?: string | string[] | undefined }> | undefined;
+
+function normalizeLang(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export async function resolveLocaleDocPage<T extends ComponentType>(
+  searchParams: SearchParams,
+  pages: Record<string, T>,
+  fallbackLocale = "${defaultLocale}",
+) {
+  const params = (await searchParams) ?? {};
+  const locale = normalizeLang(params.lang) ?? fallbackLocale;
+
+  return pages[locale] ?? pages[fallbackLocale];
+}
+`;
+}
+
+export function nextLocalizedPageTemplate(options: {
+  locales: string[];
+  defaultLocale: string;
+  componentName: string;
+  helperImport: string;
+  pageImports: Array<{ locale: string; importPath: string }>;
+}): string {
+  const importLines = options.pageImports
+    .map(({ locale, importPath }) => `import ${toLocaleImportName(locale)} from "${importPath}";`)
+    .join("\n");
+  const pageMap = options.pageImports
+    .map(({ locale }) => `    ${JSON.stringify(locale)}: ${toLocaleImportName(locale)},`)
+    .join("\n");
+
+  return `\
+${importLines}
+import { resolveLocaleDocPage } from "${options.helperImport}";
+
+type PageProps = {
+  searchParams?: Promise<{ lang?: string | string[] | undefined }>;
+};
+
+export default async function ${options.componentName}({ searchParams }: PageProps) {
+  const Page = await resolveLocaleDocPage(searchParams, {
+${pageMap}
+  }, "${options.defaultLocale}");
+
+  return <Page />;
 }
 `;
 }
@@ -731,7 +803,8 @@ import { ${exportName} } from "${themePath}";
 
 export default defineDocs({
   entry: "${cfg.entry}",
-  theme: ${exportName}({
+  contentDir: "${cfg.entry}",
+  ${renderI18nConfig(cfg)}  theme: ${exportName}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -758,7 +831,8 @@ import { ${t.factory} } from "${t.svelteImport}";
 
 export default defineDocs({
   entry: "${cfg.entry}",
-  theme: ${t.factory}({
+  contentDir: "${cfg.entry}",
+  ${renderI18nConfig(cfg)}  theme: ${t.factory}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -1097,7 +1171,7 @@ import { ${exportName} } from "${themePath}";
 export default defineDocs({
   entry: "${cfg.entry}",
   contentDir: "${cfg.entry}",
-  theme: ${exportName}({
+  ${renderI18nConfig(cfg)}  theme: ${exportName}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -1125,7 +1199,7 @@ import { ${t.factory} } from "${t.astroImport}";
 export default defineDocs({
   entry: "${cfg.entry}",
   contentDir: "${cfg.entry}",
-  theme: ${t.factory}({
+  ${renderI18nConfig(cfg)}  theme: ${t.factory}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -1505,7 +1579,7 @@ import { ${exportName} } from "${themePath}";
 export default defineDocs({
   entry: "${cfg.entry}",
   contentDir: "${cfg.entry}",
-  theme: ${exportName}({
+  ${renderI18nConfig(cfg)}  theme: ${exportName}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -1533,7 +1607,7 @@ import { ${t.factory} } from "${t.nuxtImport}";
 export default defineDocs({
   entry: "${cfg.entry}",
   contentDir: "${cfg.entry}",
-  theme: ${t.factory}({
+  ${renderI18nConfig(cfg)}  theme: ${t.factory}({
     ui: {
       colors: { primary: "#6366f1" },
     },
