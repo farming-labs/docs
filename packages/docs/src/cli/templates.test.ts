@@ -342,7 +342,7 @@ describe("Create your own theme", () => {
         framework: "sveltekit",
         i18n: { ...i18nConfig },
       });
-      expect(out).toContain("contentDir: \"docs\"");
+      expect(out).toContain('contentDir: "docs"');
       expect(out).toContain("i18n:");
       expect(out).toContain('defaultLocale: "en"');
     });
@@ -353,7 +353,7 @@ describe("Create your own theme", () => {
         framework: "astro",
         i18n: { ...i18nConfig },
       });
-      expect(out).toContain("contentDir: \"docs\"");
+      expect(out).toContain('contentDir: "docs"');
       expect(out).toContain("i18n:");
       expect(out).toContain('locales: ["en", "fr"]');
     });
@@ -364,7 +364,7 @@ describe("Create your own theme", () => {
         framework: "nuxt",
         i18n: { ...i18nConfig },
       });
-      expect(out).toContain("contentDir: \"docs\"");
+      expect(out).toContain('contentDir: "docs"');
       expect(out).toContain("i18n:");
       expect(out).toContain('defaultLocale: "en"');
     });
