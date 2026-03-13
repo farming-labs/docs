@@ -730,7 +730,7 @@ export async function init(options: InitOptions = {}) {
 
   let pm = detectPackageManagerFromLockfile(cwd);
   if (pm) {
-    p.log.info(`Detected ${pc.cyan(pm)} from lockfile`);
+    p.log.info(`Detected ${pc.cyan(pm)}`);
   }
 
   const pmAnswerExisting = await p.select({
