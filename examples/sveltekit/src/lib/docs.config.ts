@@ -60,7 +60,7 @@ export default defineDocs({
   },
   nav: {
     title: "Example Docs",
-    url: "/docs?lang=en",
+    url: "/docs",
   },
   themeToggle: { enabled: true, default: "dark" },
   breadcrumb: { enabled: true },
