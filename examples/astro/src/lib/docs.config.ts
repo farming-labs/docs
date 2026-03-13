@@ -63,7 +63,7 @@ export default defineDocs({
   ordering: "numeric",
   nav: {
     title: "Example Docs",
-    url: "/docs?lang=en",
+    url: "/docs",
   },
   sidebar: { flat: false, collapsible: true },
   pageActions: {

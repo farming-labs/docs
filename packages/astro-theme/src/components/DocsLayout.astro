@@ -334,7 +334,7 @@ const showSearch = !staticExport;
       </div>
     )}
 
-    {showThemeToggle && (
+    {(locales.length > 0 || showThemeToggle) && (
       <div class="fd-sidebar-footer">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%">
           {locales.length > 0 && (
@@ -349,7 +349,7 @@ const showSearch = !staticExport;
               ))}
             </select>
           )}
-          <ThemeToggle />
+          {showThemeToggle && <ThemeToggle />}
         </div>
       </div>
     )}

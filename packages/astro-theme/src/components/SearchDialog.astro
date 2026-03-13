@@ -376,9 +376,8 @@ const { config = null } = Astro.props;
     if (items[activeIndex]) {
       var it = items[activeIndex];
       saveRecent({ id: it.url, label: it.content || it.label, url: it.url });
-      if (it.url.startsWith("http")) window.open(it.url, "_blank", "noopener");
-      else window.location.href = it.url;
       closeDialog();
+      navigateToUrl(it.url, it.url.startsWith("http"));
     }
   }
 
