@@ -29,5 +29,18 @@
     "puppeteer": "^24.37.5",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "basic-ftp": "^5.2.0",
+      "simple-git": "^3.32.3",
+      "serialize-javascript": "^7.0.3",
+      "svgo": "^4.0.1",
+      "rollup": "^4.59.0",
+      "tar": "^7.5.11",
+      "readdir-glob>minimatch": "^5.1.8",
+      "glob@10>minimatch": "^9.0.7",
+      "glob@13>minimatch": "^10.2.3"
+    }
   }
 }
