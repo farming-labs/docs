@@ -69,23 +69,6 @@ const releases: Release[] = [
     ],
   },
   {
-    version: "v0.0.12",
-    title: "v0.0.12",
-    date: "Mar 2026",
-    excerpt: "Showcase page with submission form, approval workflow, and Prisma-backed storage.",
-    changes: [
-      {
-        category: "Highlights",
-        items: [
-          "New /showcase page: list of docs sites built with @farming-labs/docs",
-          "Submission form: name, URL, description, optional screenshot (base64, up to 2MB); approval status (IDLE, APPROVED, REJECTED)",
-          "API routes: GET approved entries, POST new submission, PATCH approval (admin header); Prisma + PostgreSQL",
-          "Docs sidebar banner link to Showcase; grid layout for approved entries with screenshots",
-        ],
-      },
-    ],
-  },
-  {
     version: "v0.0.11",
     title: "v0.0.11",
     date: "Mar 2026",
