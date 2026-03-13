@@ -12,9 +12,11 @@ import type { DocsConfig } from "./types.js";
 export { defineDocs } from "./define-docs.js";
 export { deepMerge } from "./utils.js";
 export { createTheme, extendTheme } from "./create-theme.js";
+export { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "./i18n.js";
 export { resolveTitle, resolveOGImage, buildPageOpenGraph, buildPageTwitter } from "./metadata.js";
 export type {
   DocsConfig,
+  DocsI18nConfig,
   DocsNav,
   DocsTheme,
   DocsMetadata,
@@ -45,3 +47,4 @@ export type {
   LlmsTxtConfig,
   CodeBlockCopyData,
 } from "./types.js";
+export type { ResolvedDocsI18n, DocsPathMatch } from "./i18n.js";

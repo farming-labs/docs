@@ -1,11 +1,13 @@
 "use client";
 
 import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page";
-import { useEffect, useState, useRef, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+// @ts-ignore – resolved by the workspace dependency graph
 import { createPortal } from "react-dom";
 // @ts-ignore – resolved by Next.js at runtime
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PageActions } from "./page-actions.js";
+import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 
 interface TOCItem {
   title: string;
@@ -26,6 +28,8 @@ interface DocsPageClientProps {
   breadcrumbEnabled?: boolean;
   /** The docs entry folder name (e.g. "docs") — used to strip from breadcrumb */
   entry?: string;
+  /** Active locale (used for llms.txt links) */
+  locale?: string;
   copyMarkdown?: boolean;
   openDocs?: boolean;
   openDocsProviders?: SerializedProvider[];
@@ -58,30 +62,42 @@ interface DocsPageClientProps {
  * Path-based breadcrumb that shows only parent / current folder.
  * Skips the entry segment (e.g. "docs"). Parent is clickable.
  */
-function PathBreadcrumb({ pathname, entry }: { pathname: string; entry: string }) {
+function PathBreadcrumb({
+  pathname,
+  entry,
+  locale,
+}: {
+  pathname: string;
+  entry: string;
+  locale?: string;
+}) {
   const router = useRouter();
   const segments = pathname.split("/").filter(Boolean);
+  const entryParts = entry.split("/").filter(Boolean);
+  const contentSegments = segments.slice(entryParts.length);
 
-  if (segments.length < 2) return null;
+  if (contentSegments.length < 2) return null;
 
-  const parentSegment = segments[segments.length - 2];
-  const currentSegment = segments[segments.length - 1];
+  const parentSegment = contentSegments[contentSegments.length - 2];
+  const currentSegment = contentSegments[contentSegments.length - 1];
 
   const parentLabel = parentSegment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   const currentLabel = currentSegment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-  const parentUrl = "/" + segments.slice(0, segments.length - 1).join("/");
+  const parentUrl =
+    "/" + [...segments.slice(0, entryParts.length), ...contentSegments.slice(0, -1)].join("/");
+  const localizedParentUrl = withLangInUrl(parentUrl, locale);
 
   return (
     <nav className="fd-breadcrumb" aria-label="Breadcrumb">
       <span className="fd-breadcrumb-item">
         <a
-          href={parentUrl}
+          href={localizedParentUrl}
           className="fd-breadcrumb-parent fd-breadcrumb-link"
           onClick={(e) => {
             e.preventDefault();
-            router.push(parentUrl);
+            router.push(localizedParentUrl);
           }}
         >
           {parentLabel}
@@ -111,12 +127,42 @@ function buildGithubFileUrl(
   githubUrl: string,
   branch: string,
   pathname: string,
+  entry: string,
+  locale?: string,
   directory?: string,
 ): string {
-  const segments = pathname.replace(/^\//, "").replace(/\/$/, "");
+  const normalizedEntry = entry.replace(/^\/+|\/+$/g, "") || "docs";
+  const entryParts = normalizedEntry.split("/").filter(Boolean);
+  const pathnameParts = pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+  const slugParts =
+    pathnameParts.slice(0, entryParts.length).join("/") === entryParts.join("/")
+      ? pathnameParts.slice(entryParts.length)
+      : pathnameParts;
   const dirPrefix = directory ? `${directory}/` : "";
-  const path = `${dirPrefix}app/${segments}/page.mdx`;
+  const basePath = `app/${normalizedEntry}`;
+  const relativePath = [locale, slugParts.join("/")].filter(Boolean).join("/");
+  const path = `${dirPrefix}${basePath}${relativePath ? `/${relativePath}` : ""}/page.mdx`;
   return `${githubUrl}/edit/${branch}/${path}`;
+}
+
+function localizeInternalLinks(root: ParentNode, locale?: string) {
+  const anchors = root.querySelectorAll<HTMLAnchorElement>('a[href]:not([data-fd-lang-localized="true"])');
+
+  for (const anchor of anchors) {
+    const href = anchor.getAttribute("href");
+    if (!href || href.startsWith("#")) continue;
+    if (/^(mailto:|tel:|javascript:)/i.test(href)) continue;
+
+    try {
+      const url = new URL(href, window.location.origin);
+      if (url.origin !== window.location.origin) continue;
+
+      anchor.href = withLangInUrl(url.pathname + url.search + url.hash, locale);
+      anchor.dataset.fdLangLocalized = "true";
+    } catch {
+      // Ignore malformed links and leave them untouched.
+    }
+  }
 }
 
 export function DocsPageClient({
@@ -124,6 +170,7 @@ export function DocsPageClient({
   tocStyle = "default",
   breadcrumbEnabled = true,
   entry = "docs",
+  locale,
   copyMarkdown = false,
   openDocs = false,
   openDocsProviders,
@@ -143,6 +190,9 @@ export function DocsPageClient({
   const fdTocStyle = tocStyle === "directional" ? "clerk" : undefined;
   const [toc, setToc] = useState<TOCItem[]>([]);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeLocale = resolveClientLocale(searchParams, locale);
+  const llmsLangParam = activeLocale ? `&lang=${encodeURIComponent(activeLocale)}` : "";
   const [actionsPortalTarget, setActionsPortalTarget] = useState<HTMLElement | null>(null);
 
   const pageDescription = description ?? descriptionMap?.[pathname.replace(/\/$/, "") || "/"];
@@ -194,9 +244,19 @@ export function DocsPageClient({
     };
   }, [pageDescription, pathname]);
 
+  useEffect(() => {
+    const timer = requestAnimationFrame(() => {
+      const container = document.getElementById("nd-page");
+      if (!container) return;
+      localizeInternalLinks(container, activeLocale);
+    });
+
+    return () => cancelAnimationFrame(timer);
+  }, [activeLocale, children, pathname]);
+
   const showActions = copyMarkdown || openDocs;
   const githubFileUrl = githubUrl
-    ? buildGithubFileUrl(githubUrl, githubBranch, pathname, githubDirectory)
+    ? buildGithubFileUrl(githubUrl, githubBranch, pathname, entry, activeLocale, githubDirectory)
     : undefined;
 
   const normalizedPath = pathname.replace(/\/$/, "") || "/";
@@ -273,7 +333,7 @@ export function DocsPageClient({
       tableOfContentPopover={{ enabled: tocEnabled, style: fdTocStyle }}
       breadcrumb={{ enabled: false }}
     >
-      {breadcrumbEnabled && <PathBreadcrumb pathname={pathname} entry={entry} />}
+      {breadcrumbEnabled && <PathBreadcrumb pathname={pathname} entry={entry} locale={activeLocale} />}
       {showActions &&
         actionsPortalTarget &&
         createPortal(
@@ -293,7 +353,7 @@ export function DocsPageClient({
             {llmsTxtEnabled && (
               <span className="fd-llms-txt-links">
                 <a
-                  href="/api/docs?format=llms"
+                  href={`/api/docs?format=llms${llmsLangParam}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="fd-llms-txt-link"
@@ -301,7 +361,7 @@ export function DocsPageClient({
                   llms.txt
                 </a>
                 <a
-                  href="/api/docs?format=llms-full"
+                  href={`/api/docs?format=llms-full${llmsLangParam}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="fd-llms-txt-link"

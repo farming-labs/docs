@@ -19,7 +19,33 @@
   } = $props();
 
   let resolvedTitle = $derived(title ?? config?.nav?.title ?? "Docs");
-  let resolvedTitleUrl = $derived(titleUrl ?? config?.nav?.url ?? "/docs");
+  let localeConfig = $derived(config?.i18n ?? null);
+  let locales = $derived(
+    Array.isArray(localeConfig?.locales) ? localeConfig.locales.filter(Boolean) : []
+  );
+  let defaultLocale = $derived(
+    localeConfig?.defaultLocale && locales.includes(localeConfig.defaultLocale)
+      ? localeConfig.defaultLocale
+      : locales[0]
+  );
+  let activeLocale = $derived(
+    $page.url.searchParams.get("lang") ?? $page.url.searchParams.get("locale") ?? defaultLocale
+  );
+
+  function withLang(url) {
+    if (!url || url.startsWith("#")) return url;
+    try {
+      const parsed = new URL(url, "https://farming-labs.local");
+      if (activeLocale) parsed.searchParams.set("lang", activeLocale);
+      else parsed.searchParams.delete("lang");
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+      return url;
+    }
+  }
+
+  let resolvedTitleUrl = $derived(withLang(titleUrl ?? config?.nav?.url ?? "/docs"));
+  let localizedApi = $derived(withLang("/api/docs"));
   let staticExport = $derived(!!(config && config.staticExport));
   let showSearch = $derived(!staticExport);
   let showFloatingAI = $derived(!staticExport && config?.ai?.mode === "floating" && !!config?.ai?.enabled);
@@ -278,7 +304,7 @@
           {#each tree.children as node, i}
             {#if node.type === "page"}
               <a
-                href={node.url}
+                href={withLang(node.url)}
                 class="fd-sidebar-link fd-sidebar-top-link"
                 class:fd-sidebar-link-active={isActive(node.url)}
                 class:fd-sidebar-first-item={i === 0}
@@ -306,7 +332,7 @@
                 <div class="fd-sidebar-folder-content">
                   {#if node.index}
                     <a
-                      href={node.index.url}
+                      href={withLang(node.index.url)}
                       class="fd-sidebar-link fd-sidebar-child-link"
                       class:fd-sidebar-link-active={isActive(node.index.url)}
                       data-active={isActive(node.index.url)}
@@ -318,7 +344,7 @@
                   {#each node.children as child}
                     {#if child.type === "page"}
                       <a
-                        href={child.url}
+                        href={withLang(child.url)}
                         class="fd-sidebar-link fd-sidebar-child-link"
                         class:fd-sidebar-link-active={isActive(child.url)}
                         data-active={isActive(child.url)}
@@ -339,7 +365,7 @@
                         <div class="fd-sidebar-folder-content">
                           {#if child.index}
                             <a
-                              href={child.index.url}
+                              href={withLang(child.index.url)}
                               class="fd-sidebar-link fd-sidebar-child-link"
                               class:fd-sidebar-link-active={isActive(child.index.url)}
                               data-active={isActive(child.index.url)}
@@ -351,7 +377,7 @@
                           {#each child.children as grandchild}
                             {#if grandchild.type === "page"}
                               <a
-                                href={grandchild.url}
+                                href={withLang(grandchild.url)}
                                 class="fd-sidebar-link fd-sidebar-child-link"
                                 class:fd-sidebar-link-active={isActive(grandchild.url)}
                                 data-active={isActive(grandchild.url)}
@@ -387,7 +413,27 @@
 
     {#if showThemeToggle}
       <div class="fd-sidebar-footer">
-        <ThemeToggle />
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%">
+          {#if locales.length > 0}
+            <select
+              aria-label="Select language"
+              value={activeLocale}
+              onchange={(e) => {
+                const url = new URL($page.url.href);
+                const nextLocale = e.currentTarget.value;
+                if (nextLocale) url.searchParams.set("lang", nextLocale);
+                else url.searchParams.delete("lang");
+                goto(`${url.pathname}${url.search}${url.hash}`);
+              }}
+              style="min-width:76px;height:32px;border-radius:9999px;border:1px solid var(--color-fd-border);background:var(--color-fd-background);color:var(--color-fd-foreground);padding:0 12px;font-size:12px;flex-shrink:0"
+            >
+              {#each locales as item}
+                <option value={item}>{item.toUpperCase()}</option>
+              {/each}
+            </select>
+          {/if}
+          <ThemeToggle />
+        </div>
       </div>
     {/if}
   </aside>
@@ -399,6 +445,7 @@
 
 {#if showFloatingAI}
   <FloatingAIChat
+    api={localizedApi}
     suggestedQuestions={config.ai.suggestedQuestions ?? []}
     aiLabel={config.ai.aiLabel ?? "AI"}
     position={config.ai.position ?? "bottom-right"}

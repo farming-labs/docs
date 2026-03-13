@@ -7,8 +7,25 @@ const { tree, config = null, title, titleUrl, flatPages = null } = Astro.props;
 const sidebarFlat = !!(config?.sidebar && typeof config.sidebar === "object" && (config.sidebar as { flat?: boolean }).flat);
 const useFlatSidebar = sidebarFlat && Array.isArray(flatPages) && flatPages.length > 0;
 
+const i18n = config?.i18n as { locales?: string[]; defaultLocale?: string } | undefined;
+const locales = Array.isArray(i18n?.locales) ? i18n.locales.filter(Boolean) : [];
+const defaultLocale = (i18n?.defaultLocale && locales.includes(i18n.defaultLocale))
+  ? i18n.defaultLocale
+  : locales[0];
+const activeLocale =
+  Astro.url.searchParams.get("lang") ??
+  Astro.url.searchParams.get("locale") ??
+  defaultLocale;
+const withLang = (url?: string | null) => {
+  if (!url || url.startsWith("#")) return url ?? "";
+  const parsed = new URL(url, Astro.url);
+  if (activeLocale) parsed.searchParams.set("lang", activeLocale);
+  else parsed.searchParams.delete("lang");
+  return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+};
+
 const resolvedTitle = title ?? config?.nav?.title ?? "Docs";
-const resolvedTitleUrl = titleUrl ?? config?.nav?.url ?? "/docs";
+const resolvedTitleUrl = withLang(titleUrl ?? config?.nav?.url ?? "/docs");
 
 const showThemeToggle = (() => {
   const toggle = config?.themeToggle;
@@ -207,7 +224,7 @@ const showSearch = !staticExport;
           const icon = getIcon(page.icon);
           return (
             <a
-              href={page.url}
+              href={withLang(page.url)}
               class={`fd-sidebar-link fd-sidebar-top-link ${isActive(page.url) ? 'fd-sidebar-link-active' : ''} ${i === 0 ? 'fd-sidebar-first-item' : ''}`}
               data-active={isActive(page.url) || undefined}
             >
@@ -224,7 +241,7 @@ const showSearch = !staticExport;
           const icon = getIcon(node.icon);
           return (
             <a
-              href={node.url}
+              href={withLang(node.url)}
               class={`fd-sidebar-link fd-sidebar-top-link ${isActive(node.url) ? 'fd-sidebar-link-active' : ''} ${i === 0 ? 'fd-sidebar-first-item' : ''}`}
               data-active={isActive(node.url) || undefined}
             >
@@ -248,7 +265,7 @@ const showSearch = !staticExport;
               <div class="fd-sidebar-folder-content">
                 {node.index && (
                   <a
-                    href={node.index.url}
+                    href={withLang(node.index.url)}
                     class={`fd-sidebar-link fd-sidebar-child-link ${isActive(node.index.url) ? 'fd-sidebar-link-active' : ''}`}
                     data-active={isActive(node.index.url) || undefined}
                   >
@@ -259,7 +276,7 @@ const showSearch = !staticExport;
                   if (child.type === "page") {
                     return (
                       <a
-                        href={child.url}
+                        href={withLang(child.url)}
                         class={`fd-sidebar-link fd-sidebar-child-link ${isActive(child.url) ? 'fd-sidebar-link-active' : ''}`}
                         data-active={isActive(child.url) || undefined}
                       >
@@ -278,7 +295,7 @@ const showSearch = !staticExport;
                         <div class="fd-sidebar-folder-content">
                           {child.index && (
                             <a
-                              href={child.index.url}
+                              href={withLang(child.index.url)}
                               class={`fd-sidebar-link fd-sidebar-child-link ${isActive(child.index.url) ? 'fd-sidebar-link-active' : ''}`}
                               data-active={isActive(child.index.url) || undefined}
                             >
@@ -289,7 +306,7 @@ const showSearch = !staticExport;
                             if (grandchild.type === "page") {
                               return (
                                 <a
-                                  href={grandchild.url}
+                                href={withLang(grandchild.url)}
                                   class={`fd-sidebar-link fd-sidebar-child-link ${isActive(grandchild.url) ? 'fd-sidebar-link-active' : ''}`}
                                   data-active={isActive(grandchild.url) || undefined}
                                 >
@@ -319,7 +336,21 @@ const showSearch = !staticExport;
 
     {showThemeToggle && (
       <div class="fd-sidebar-footer">
-        <ThemeToggle />
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%">
+          {locales.length > 0 && (
+            <select
+              id="fd-locale-select"
+              aria-label="Select language"
+              data-default-locale={defaultLocale}
+              style="min-width:76px;height:32px;border-radius:9999px;border:1px solid var(--color-fd-border);background:var(--color-fd-background);color:var(--color-fd-foreground);padding:0 12px;font-size:12px;flex-shrink:0"
+            >
+              {locales.map((item) => (
+                <option value={item} selected={item === activeLocale}>{item.toUpperCase()}</option>
+              ))}
+            </select>
+          )}
+          <ThemeToggle />
+        </div>
       </div>
     )}
   </aside>
@@ -331,7 +362,7 @@ const showSearch = !staticExport;
 
 {showFloatingAI && (
   <FloatingAIChat
-    api="/api/docs"
+    api={withLang("/api/docs")}
     suggestedQuestions={aiConfig?.suggestedQuestions ?? []}
     aiLabel={aiConfig?.aiLabel ?? "AI"}
     position={aiConfig?.position ?? "bottom-right"}
@@ -392,5 +423,13 @@ const showSearch = !staticExport;
       sidebar?.classList.remove('fd-sidebar-open');
       overlay!.style.display = 'none';
     });
+  });
+
+  document.getElementById('fd-locale-select')?.addEventListener('change', (event) => {
+    const target = event.target as HTMLSelectElement;
+    const url = new URL(window.location.href);
+    if (target.value) url.searchParams.set('lang', target.value);
+    else url.searchParams.delete('lang');
+    window.location.assign(`${url.pathname}${url.search}${url.hash}`);
   });
 </script>

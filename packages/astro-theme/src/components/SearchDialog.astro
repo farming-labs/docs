@@ -125,6 +125,29 @@ const { config = null } = Astro.props;
     } catch (e) {}
   }
 
+  function getActiveLocale() {
+    try {
+      var current = new URL(window.location.href);
+      return current.searchParams.get("lang") || current.searchParams.get("locale") || "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function withLang(url) {
+    if (!url || url.charAt(0) === "#") return url;
+    try {
+      var parsed = new URL(url, window.location.origin);
+      if (parsed.origin !== window.location.origin) return url;
+      var locale = getActiveLocale();
+      if (locale) parsed.searchParams.set("lang", locale);
+      else parsed.searchParams.delete("lang");
+      return parsed.pathname + parsed.search + parsed.hash;
+    } catch (e) {
+      return url;
+    }
+  }
+
   function openDialog() {
     var dialog = getDialog();
     if (dialog) {
@@ -241,14 +264,15 @@ const { config = null } = Astro.props;
 
   function navigateToUrl(url, newTab) {
     if (!url) return;
+    var localizedUrl = withLang(url);
     if (newTab || url.startsWith("http")) {
       try {
-        window.open(url, "_blank", "noopener,noreferrer");
+        window.open(localizedUrl, "_blank", "noopener,noreferrer");
       } catch (err) {
-        window.location.assign(url);
+        window.location.assign(localizedUrl);
       }
     } else {
-      window.location.assign(url);
+      window.location.assign(localizedUrl);
     }
   }
 
@@ -375,7 +399,7 @@ const { config = null } = Astro.props;
     if (!q) return;
     debounceTimer = setTimeout(function () {
       if (getLoading()) getLoading().style.display = "flex";
-      fetch("/api/docs?query=" + encodeURIComponent(q))
+      fetch(withLang("/api/docs?query=" + encodeURIComponent(q)))
         .then(function (res) { return res.ok ? res.json() : []; })
         .then(function (data) {
           currentResults = Array.isArray(data) ? data : [];

@@ -197,7 +197,8 @@
 </svelte:head>
 
 <DocsPage
-  entry={config?.entry ?? "docs"}
+  entry={data.entry ?? config?.entry ?? "docs"}
+  locale={data.locale}
   {tocEnabled}
   {tocStyle}
   {breadcrumbEnabled}

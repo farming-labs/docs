@@ -786,7 +786,9 @@ export function DocsSearchDialog({
     setIsSearching(true);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`${api}?query=${encodeURIComponent(searchQuery)}`);
+        const requestUrl = new URL(api, window.location.origin);
+        requestUrl.searchParams.set("query", searchQuery);
+        const res = await fetch(requestUrl.toString());
         if (res.ok) {
           const data = await res.json();
           setSearchResults(data);

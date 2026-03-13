@@ -17,6 +17,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
+import { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "@farming-labs/docs";
 import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
 import { renderMarkdown } from "./markdown.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
@@ -91,6 +92,8 @@ export interface DocsServer {
     title: string;
     description?: string;
     html: string;
+    entry?: string;
+    locale?: string;
     slug?: string;
     previousPage: PageNode | null;
     nextPage: PageNode | null;
@@ -119,6 +122,29 @@ function stripMarkdownText(content: string): string {
     .replace(/^[-*_]{3,}\s*$/gm, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function normalizePathSegment(value: string): string {
+  return value.replace(/^\/+|\/+$/g, "");
+}
+
+function joinPathParts(...parts: string[]): string {
+  return parts
+    .map((part) => normalizePathSegment(part))
+    .filter(Boolean)
+    .join("/");
+}
+
+function toPosixPath(value: string): string {
+  return value.replace(/\\\\/g, "/");
+}
+
+function buildDirPrefix(contentDir: string): string {
+  const rel = path.isAbsolute(contentDir)
+    ? toPosixPath(path.relative(process.cwd(), contentDir))
+    : toPosixPath(contentDir);
+  const normalized = normalizePathSegment(rel);
+  return normalized ? `/${normalized}/` : "/";
 }
 
 function navTreeFromMap(
@@ -357,6 +383,9 @@ function findPageInMap(
  */
 export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   const entry = (config.entry as string) ?? "docs";
+  const contentDirBase =
+    ((config as Record<string, unknown>).contentDir as string | undefined) ?? entry;
+  const i18n = resolveDocsI18n((config as Record<string, unknown>).i18n as any);
 
   const githubRaw = config.github;
   const github: GithubConfigObj | null =
@@ -366,17 +395,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   const githubBranch = github?.branch ?? "main";
   const githubContentPath = github?.directory;
 
-  const contentDirCfg =
-    ((config as Record<string, unknown>).contentDir as string | undefined) ?? entry;
-  // If contentDir is absolute, use it as-is; otherwise resolve from cwd.
-  const contentDir = path.isAbsolute(contentDirCfg)
-    ? contentDirCfg
-    : path.resolve(process.cwd(), contentDirCfg);
-
   const preloaded = config._preloadedContent as ContentFileMap | undefined;
-  const contentDirRel =
-    ((config as Record<string, unknown>).contentDir as string | undefined) ?? entry;
-  const dirPrefix = `/${contentDirRel}/`;
 
   const ordering = config.ordering as
     | "alphabetical"
@@ -390,15 +409,73 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     aiConfig.apiKey = config.apiKey as string;
   }
 
+  function resolveContentDirRel(locale?: string | null): string {
+    if (!locale) return contentDirBase;
+    if (path.isAbsolute(contentDirBase)) return path.join(contentDirBase, locale);
+    return joinPathParts(contentDirBase, locale);
+  }
+
+  function resolveContextFromPath(pathname: string, locale?: string) {
+    const match = resolveDocsPath(pathname, entry);
+    const contentDirRel = resolveContentDirRel(locale);
+    const contentDirAbs = path.isAbsolute(contentDirRel)
+      ? contentDirRel
+      : path.resolve(process.cwd(), contentDirRel);
+    return {
+      ...match,
+      locale,
+      contentDirRel,
+      contentDirAbs,
+      dirPrefix: buildDirPrefix(contentDirRel),
+    };
+  }
+
+  function resolveLocaleFromRequest(request: Request): string | undefined {
+    if (!i18n) return undefined;
+    const url = new URL(request.url);
+    const direct = resolveDocsLocale(url.searchParams, i18n);
+    if (direct) return direct;
+
+    const referrer = request.headers.get("referer") ?? request.headers.get("referrer");
+    if (referrer) {
+      try {
+        const refUrl = new URL(referrer);
+        const fromRef = resolveDocsLocale(refUrl.searchParams, i18n);
+        if (fromRef) return fromRef;
+      } catch {
+        // ignore
+      }
+    }
+
+    return i18n.defaultLocale;
+  }
+
+  function resolveContextFromRequest(request: Request) {
+    const locale = resolveLocaleFromRequest(request);
+    const url = new URL(request.url);
+    const pathnameParam = url.searchParams.get("pathname");
+    const referrer = request.headers.get("referer") ?? request.headers.get("referrer");
+    const refPath = referrer ? new URL(referrer).pathname : undefined;
+    const pathname = pathnameParam ?? refPath ?? `/${entry}`;
+    return resolveContextFromPath(pathname, locale);
+  }
+
   // ─── Unified load (tree + page content in one call) ────────
   async function load(pathname: string) {
+    let url: URL;
+    try {
+      url = new URL(pathname);
+    } catch {
+      url = new URL(pathname, "http://localhost");
+    }
+    const locale = resolveDocsLocale(url.searchParams, i18n) ?? i18n?.defaultLocale;
+    const ctx = resolveContextFromPath(url.pathname, locale);
     const tree = preloaded
-      ? navTreeFromMap(preloaded, dirPrefix, entry, ordering)
-      : loadDocsNavTree(contentDir, entry, ordering);
+      ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
+      : loadDocsNavTree(ctx.contentDirAbs, entry, ordering);
     const flatPages = flattenNavTree(tree);
 
-    const urlPrefix = new RegExp(`^/${entry}/?`);
-    const slug = pathname.replace(urlPrefix, "");
+    const slug = ctx.slug;
     const isIndex = slug === "";
 
     let raw: string;
@@ -406,9 +483,11 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     let lastModified: string;
 
     if (preloaded) {
-      const result = findPageInMap(preloaded, dirPrefix, slug);
+      const result = findPageInMap(preloaded, ctx.dirPrefix, slug);
       if (!result) {
-        const err = new Error(`Page not found: /${entry}/${slug}`) as Error & { status?: number };
+        const err = new Error(`Page not found: /${entry}/${slug}`) as Error & {
+          status?: number;
+        };
         err.status = 404;
         throw err;
       }
@@ -425,7 +504,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
       if (isIndex) {
         for (const name of ["page.md", "page.mdx", "index.md"]) {
-          const candidate = path.join(contentDir, name);
+          const candidate = path.join(ctx.contentDirAbs, name);
           if (fs.existsSync(candidate)) {
             filePath = candidate;
             relPath = name;
@@ -434,24 +513,26 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         }
       } else {
         const candidates = [
-          path.join(contentDir, slug, "page.md"),
-          path.join(contentDir, slug, "page.mdx"),
-          path.join(contentDir, slug, "index.md"),
-          path.join(contentDir, slug, "index.svx"),
-          path.join(contentDir, `${slug}.md`),
-          path.join(contentDir, `${slug}.svx`),
+          path.join(ctx.contentDirAbs, slug, "page.md"),
+          path.join(ctx.contentDirAbs, slug, "page.mdx"),
+          path.join(ctx.contentDirAbs, slug, "index.md"),
+          path.join(ctx.contentDirAbs, slug, "index.svx"),
+          path.join(ctx.contentDirAbs, `${slug}.md`),
+          path.join(ctx.contentDirAbs, `${slug}.svx`),
         ];
         for (const candidate of candidates) {
           if (fs.existsSync(candidate)) {
             filePath = candidate;
-            relPath = path.relative(contentDir, candidate);
+            relPath = path.relative(ctx.contentDirAbs, candidate);
             break;
           }
         }
       }
 
       if (!filePath) {
-        const err = new Error(`Page not found: /${entry}/${slug}`) as Error & { status?: number };
+        const err = new Error(`Page not found: /${entry}/${slug}`) as Error & {
+          status?: number;
+        };
         err.status = 404;
         throw err;
       }
@@ -475,7 +556,9 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     let editOnGithub: string | undefined;
     if (githubRepo && githubContentPath) {
-      editOnGithub = `${githubRepo}/blob/${githubBranch}/${githubContentPath}/${relPath}`;
+      const trimmed = githubContentPath.replace(/\/+$/, "");
+      const localePrefix = ctx.locale ? `${ctx.locale}/` : "";
+      editOnGithub = `${githubRepo}/blob/${githubBranch}/${trimmed}/${localePrefix}${relPath}`;
     }
 
     const fallbackTitle = isIndex
@@ -488,6 +571,8 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       title: (data.title as string) ?? fallbackTitle,
       description: data.description as string | undefined,
       html,
+      entry,
+      locale: ctx.locale,
       ...(isIndex ? {} : { slug }),
       previousPage,
       nextPage,
@@ -497,19 +582,21 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   }
 
   // ─── Search index ──────────────────────────────────────────
-  let searchIndex: ContentPage[] | null = null;
+  const searchIndexByEntry = new Map<string, ContentPage[]>();
 
-  function getSearchIndex() {
-    if (!searchIndex) {
-      searchIndex = preloaded
-        ? searchIndexFromMap(preloaded, dirPrefix, entry)
-        : loadDocsContent(contentDir, entry);
-    }
-    return searchIndex;
+  function getSearchIndex(ctx: ReturnType<typeof resolveContextFromPath>) {
+    const key = ctx.locale ?? "__default__";
+    const cached = searchIndexByEntry.get(key);
+    if (cached) return cached;
+    const index = preloaded
+      ? searchIndexFromMap(preloaded, ctx.dirPrefix, entry)
+      : loadDocsContent(ctx.contentDirAbs, entry);
+    searchIndexByEntry.set(key, index);
+    return index;
   }
 
-  function searchByQuery(query: string) {
-    const index = getSearchIndex();
+  function searchByQuery(query: string, ctx: ReturnType<typeof resolveContextFromPath>) {
+    const index = getSearchIndex(ctx);
     return index
       .map((page) => {
         const titleMatch = page.title.toLowerCase().includes(query) ? 10 : 0;
@@ -540,36 +627,47 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     typeof llmsTxtConfig === "object" ? (llmsTxtConfig.siteTitle ?? llmsSiteTitle) : llmsSiteTitle;
   const llmsDesc = typeof llmsTxtConfig === "object" ? llmsTxtConfig.siteDescription : undefined;
 
-  function buildLlmsTxt(full: boolean): string {
-    const pages = getSearchIndex();
-    let out = `# ${llmsTitle}\n\n`;
-    if (llmsDesc) out += `> ${llmsDesc}\n\n`;
+  const llmsCache = new Map<string, { llmsTxt: string; llmsFullTxt: string }>();
 
-    if (full) {
-      for (const page of pages) {
-        out += `## ${page.title}\n\n`;
-        out += `URL: ${llmsBaseUrl}${page.url}\n\n`;
-        if (page.description) out += `${page.description}\n\n`;
-        out += `${page.content}\n\n---\n\n`;
-      }
-    } else {
-      out += `## Pages\n\n`;
-      for (const page of pages) {
-        out += `- [${page.title}](${llmsBaseUrl}${page.url})`;
-        if (page.description) out += `: ${page.description}`;
-        out += `\n`;
-      }
+  function getLlmsContent(ctx: ReturnType<typeof resolveContextFromPath>) {
+    const key = ctx.locale ?? "__default__";
+    const cached = llmsCache.get(key);
+    if (cached) return cached;
+
+    const pages = getSearchIndex(ctx);
+    let llmsTxt = `# ${llmsTitle}\n\n`;
+    let llmsFullTxt = `# ${llmsTitle}\n\n`;
+    if (llmsDesc) {
+      llmsTxt += `> ${llmsDesc}\n\n`;
+      llmsFullTxt += `> ${llmsDesc}\n\n`;
     }
-    return out;
+
+    llmsTxt += `## Pages\n\n`;
+    for (const page of pages) {
+      llmsTxt += `- [${page.title}](${llmsBaseUrl}${page.url})`;
+      if (page.description) llmsTxt += `: ${page.description}`;
+      llmsTxt += `\n`;
+
+      llmsFullTxt += `## ${page.title}\n\n`;
+      llmsFullTxt += `URL: ${llmsBaseUrl}${page.url}\n\n`;
+      if (page.description) llmsFullTxt += `${page.description}\n\n`;
+      llmsFullTxt += `${page.content}\n\n---\n\n`;
+    }
+
+    const next = { llmsTxt, llmsFullTxt };
+    llmsCache.set(key, next);
+    return next;
   }
 
   // ─── GET /api/docs?query=… | ?format=llms | ?format=llms-full ──
   function GET(context: { request: Request }): Response {
+    const ctx = resolveContextFromRequest(context.request);
     const url = new URL(context.request.url);
     const format = url.searchParams.get("format");
 
     if (format === "llms" || format === "llms-full") {
-      return new Response(buildLlmsTxt(format === "llms-full"), {
+      const llmsContent = getLlmsContent(ctx);
+      return new Response(format === "llms-full" ? llmsContent.llmsFullTxt : llmsContent.llmsTxt, {
         headers: {
           "Content-Type": "text/plain; charset=utf-8",
           "Cache-Control": "public, max-age=3600",
@@ -584,7 +682,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       });
     }
 
-    const results = searchByQuery(query)
+    const results = searchByQuery(query, ctx)
       .slice(0, 10)
       .map(({ title, url, description }) => ({
         content: title,
@@ -654,6 +752,8 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       );
     }
 
+    const ctx = resolveContextFromRequest(context.request);
+
     let body: { messages?: ChatMessage[]; model?: string };
     try {
       body = await context.request.json();
@@ -681,7 +781,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     }
 
     const maxResults = aiConfig.maxResults ?? 5;
-    const scored = searchByQuery(lastUserMessage.content.toLowerCase()).slice(0, maxResults);
+    const scored = searchByQuery(lastUserMessage.content.toLowerCase(), ctx).slice(0, maxResults);
 
     const contextParts = scored.map(
       (doc) =>

@@ -3,6 +3,10 @@ import { colorful } from "@farming-labs/nuxt-theme/colorful";
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
+  i18n: {
+    locales: ["en", "fr"],
+    defaultLocale: "en",
+  },
   theme: colorful({
     ui: {
       // colors: {
@@ -25,16 +29,21 @@ export default defineDocs({
   }),
   nav: {
     title: "Example Docs",
-    url: "/docs",
+    url: "/docs?lang=en",
   },
   ai: {
     enabled: true,
-    model: "gpt-4o-mini",
+    model: {
+      models: [
+        { id: "gpt-4o-mini", label: "GPT-4o mini (fast)" },
+        { id: "gpt-4o", label: "GPT-4o (quality)" },
+      ],
+      defaultModel: "gpt-4o-mini",
+    },
     maxResults: 5,
     aiLabel: "DocsBot",
     floatingStyle: "full-modal",
     mode: "floating",
-
     position: "bottom-right",
     suggestedQuestions: [
       "How do I get started?",

@@ -81,6 +81,7 @@ export { PageActions } from "./page-actions.js";
 
 // ─── Built-in Command Palette Search ────────────────────────────────
 export { DocsCommandSearch } from "./docs-command-search.js";
+export { withLangInUrl } from "./i18n.js";
 
 // ─── Core types (re-exported for convenience) ─────────────────────────
 export type {

@@ -15,11 +15,15 @@
  * never needs to be modified — AI features work purely from `docs.config.ts`.
  */
 
-import { useState, useEffect, type ReactNode, cloneElement, isValidElement } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { DocsSearchDialog, FloatingAIChat, AIModalDialog } from "./ai-search-dialog.js";
+import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 
 interface DocsAIFeaturesProps {
   mode: "search" | "floating" | "sidebar-icon";
+  api?: string;
+  locale?: string;
   position?: "bottom-right" | "bottom-left" | "bottom-center";
   floatingStyle?: "panel" | "modal" | "popover" | "full-modal";
   triggerComponentHtml?: string;
@@ -33,6 +37,8 @@ interface DocsAIFeaturesProps {
 
 export function DocsAIFeatures({
   mode,
+  api = "/api/docs",
+  locale,
   position = "bottom-right",
   floatingStyle = "panel",
   triggerComponentHtml,
@@ -43,9 +49,14 @@ export function DocsAIFeatures({
   models,
   defaultModelId,
 }: DocsAIFeaturesProps) {
+  const searchParams = useSearchParams();
+  const activeLocale = resolveClientLocale(searchParams, locale);
+  const localizedApi = withLangInUrl(api, activeLocale);
+
   if (mode === "search") {
     return (
       <SearchModeAI
+        api={localizedApi}
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
         loaderVariant={loaderVariant}
@@ -59,6 +70,7 @@ export function DocsAIFeatures({
   if (mode === "sidebar-icon") {
     return (
       <SidebarIconModeAI
+        api={localizedApi}
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
         loaderVariant={loaderVariant}
@@ -71,7 +83,7 @@ export function DocsAIFeatures({
 
   return (
     <FloatingAIChat
-      api="/api/docs"
+      api={localizedApi}
       position={position}
       floatingStyle={floatingStyle}
       triggerComponentHtml={triggerComponentHtml}
@@ -86,6 +98,7 @@ export function DocsAIFeatures({
 }
 
 function SearchModeAI({
+  api,
   suggestedQuestions,
   aiLabel,
   loaderVariant,
@@ -93,6 +106,7 @@ function SearchModeAI({
   models,
   defaultModelId,
 }: {
+  api: string;
   suggestedQuestions?: string[];
   aiLabel?: string;
   loaderVariant?: string;
@@ -136,7 +150,7 @@ function SearchModeAI({
     <DocsSearchDialog
       open={open}
       onOpenChange={setOpen}
-      api="/api/docs"
+      api={api}
       suggestedQuestions={suggestedQuestions}
       aiLabel={aiLabel}
       loaderVariant={loaderVariant as any}
@@ -148,6 +162,7 @@ function SearchModeAI({
 }
 
 function SidebarIconModeAI({
+  api,
   suggestedQuestions,
   aiLabel,
   loaderVariant,
@@ -155,6 +170,7 @@ function SidebarIconModeAI({
   models,
   defaultModelId,
 }: {
+  api: string;
   suggestedQuestions?: string[];
   aiLabel?: string;
   loaderVariant?: string;
@@ -198,7 +214,7 @@ function SidebarIconModeAI({
       <DocsSearchDialog
         open={searchOpen}
         onOpenChange={setSearchOpen}
-        api="/api/docs"
+        api={api}
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
         loaderVariant={loaderVariant as any}
@@ -209,7 +225,7 @@ function SidebarIconModeAI({
       <AIModalDialog
         open={aiOpen}
         onOpenChange={setAiOpen}
-        api="/api/docs"
+        api={api}
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
         loaderVariant={loaderVariant as any}

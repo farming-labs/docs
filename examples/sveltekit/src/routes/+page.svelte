@@ -5,9 +5,9 @@
   <h1>Docs Framework Example</h1>
   <p>Welcome to the Farming Labs docs framework (SvelteKit example).</p>
   <ul>
-    <li><a href="/docs">Docs root</a></li>
-    <li><a href="/docs/installation">Installation</a></li>
-    <li><a href="/docs/get-started">Get Started</a></li>
+    <li><a href="/docs?lang=en">Docs root</a></li>
+    <li><a href="/docs/installation?lang=en">Installation</a></li>
+    <li><a href="/docs/get-started?lang=en">Get Started</a></li>
   </ul>
 </div>
 
