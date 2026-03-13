@@ -462,31 +462,43 @@ const showFloatingAI = computed(
           <slot name="sidebar-footer" />
         </div>
 
-        <div v-if="showThemeToggle" class="fd-sidebar-footer">
+        <div v-if="locales.length > 0 || showThemeToggle" class="fd-sidebar-footer">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%">
-            <select
+            <div
               v-if="locales.length > 0"
-              :value="(route.query.lang as string | undefined) ?? (route.query.locale as string | undefined) ?? defaultLocale"
-              aria-label="Select language"
-              style="min-width:76px;height:32px;border-radius:9999px;border:1px solid var(--color-fd-border);background:var(--color-fd-background);color:var(--color-fd-foreground);padding:0 12px;font-size:12px;flex-shrink:0"
-              @change="
-                (event) => {
-                  const nextLocale = (event.target as HTMLSelectElement).value;
-                  navigateTo({
-                    path: route.path,
-                    query: {
-                      ...route.query,
-                      lang: nextLocale || undefined,
-                    },
-                  });
-                }
-              "
+              style="position:relative;display:inline-flex;align-items:center;flex-shrink:0"
             >
-              <option v-for="item in locales" :key="item" :value="item">
-                {{ item.toUpperCase() }}
-              </option>
-            </select>
-            <ThemeToggle />
+              <select
+                :value="(route.query.lang as string | undefined) ?? (route.query.locale as string | undefined) ?? defaultLocale"
+                aria-label="Select language"
+                style="appearance:none;-webkit-appearance:none;-moz-appearance:none;min-width:84px;height:36px;border-radius:9999px;border:1px solid var(--color-fd-border);background:var(--color-fd-card, var(--color-fd-background));color:var(--color-fd-foreground);padding:0 36px 0 14px;font-size:12px;font-weight:600;letter-spacing:.04em;line-height:1;cursor:pointer;box-shadow:0 1px 2px rgba(15,23,42,.08)"
+                @change="
+                  (event) => {
+                    const nextLocale = (event.target as HTMLSelectElement).value;
+                    navigateTo({
+                      path: route.path,
+                      query: {
+                        ...route.query,
+                        lang: nextLocale || undefined,
+                      },
+                    });
+                  }
+                "
+              >
+                <option v-for="item in locales" :key="item" :value="item">
+                  {{ item.toUpperCase() }}
+                </option>
+              </select>
+              <span
+                aria-hidden="true"
+                style="position:absolute;right:12px;display:inline-flex;align-items:center;justify-content:center;color:var(--color-fd-muted-foreground);pointer-events:none"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </span>
+            </div>
+            <ThemeToggle v-if="showThemeToggle" />
           </div>
         </div>
       </aside>

@@ -411,28 +411,40 @@
       </div>
     {/if}
 
-    {#if showThemeToggle}
+    {#if locales.length > 0 || showThemeToggle}
       <div class="fd-sidebar-footer">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%">
           {#if locales.length > 0}
-            <select
-              aria-label="Select language"
-              value={activeLocale}
-              onchange={(e) => {
-                const url = new URL($page.url.href);
-                const nextLocale = e.currentTarget.value;
-                if (nextLocale) url.searchParams.set("lang", nextLocale);
-                else url.searchParams.delete("lang");
-                goto(`${url.pathname}${url.search}${url.hash}`);
-              }}
-              style="min-width:76px;height:32px;border-radius:9999px;border:1px solid var(--color-fd-border);background:var(--color-fd-background);color:var(--color-fd-foreground);padding:0 12px;font-size:12px;flex-shrink:0"
-            >
-              {#each locales as item}
-                <option value={item}>{item.toUpperCase()}</option>
-              {/each}
-            </select>
+            <div style="position:relative;display:inline-flex;align-items:center;flex-shrink:0">
+              <select
+                aria-label="Select language"
+                value={activeLocale}
+                onchange={(e) => {
+                  const url = new URL($page.url.href);
+                  const nextLocale = e.currentTarget.value;
+                  if (nextLocale) url.searchParams.set("lang", nextLocale);
+                  else url.searchParams.delete("lang");
+                  goto(`${url.pathname}${url.search}${url.hash}`);
+                }}
+                style="appearance:none;-webkit-appearance:none;-moz-appearance:none;min-width:84px;height:36px;border-radius:9999px;border:1px solid var(--color-fd-border);background:var(--color-fd-card, var(--color-fd-background));color:var(--color-fd-foreground);padding:0 36px 0 14px;font-size:12px;font-weight:600;letter-spacing:.04em;line-height:1;cursor:pointer;box-shadow:0 1px 2px rgba(15,23,42,.08)"
+              >
+                {#each locales as item}
+                  <option value={item}>{item.toUpperCase()}</option>
+                {/each}
+              </select>
+              <span
+                aria-hidden="true"
+                style="position:absolute;right:12px;display:inline-flex;align-items:center;justify-content:center;color:var(--color-fd-muted-foreground);pointer-events:none"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </span>
+            </div>
           {/if}
-          <ThemeToggle />
+          {#if showThemeToggle}
+            <ThemeToggle />
+          {/if}
         </div>
       </div>
     {/if}

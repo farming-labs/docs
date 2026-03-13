@@ -54,6 +54,23 @@ function MoonIcon() {
   );
 }
 
+function ChevronDownIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
 export function LocaleThemeControl({
   locales,
   defaultLocale,
@@ -178,29 +195,59 @@ export function LocaleThemeControl({
         width: "100%",
       }}
     >
-      <select
-        id="fd-locale-select"
-        value={activeLocale}
-        onChange={(e) => onLocaleChange(e.target.value)}
-        aria-label="Select language"
+      <div
         style={{
-          minWidth: 76,
-          height: 32,
-          borderRadius: 9999,
-          border: "1px solid var(--color-fd-border)",
-          background: "var(--color-fd-background)",
-          color: "var(--color-fd-foreground)",
-          padding: "0 12px",
-          fontSize: 12,
+          position: "relative",
+          display: "inline-flex",
+          alignItems: "center",
           flexShrink: 0,
         }}
       >
-        {locales.map((item) => (
-          <option key={item} value={item}>
-            {item.toUpperCase()}
-          </option>
-        ))}
-      </select>
+        <select
+          id="fd-locale-select"
+          value={activeLocale}
+          onChange={(e) => onLocaleChange(e.target.value)}
+          aria-label="Select language"
+          style={{
+            appearance: "none",
+            WebkitAppearance: "none",
+            MozAppearance: "none",
+            minWidth: 84,
+            height: 36,
+            borderRadius: 9999,
+            border: "1px solid var(--color-fd-border)",
+            background: "var(--color-fd-card, var(--color-fd-background))",
+            color: "var(--color-fd-foreground)",
+            padding: "0 36px 0 14px",
+            fontSize: 12,
+            fontWeight: 600,
+            letterSpacing: "0.04em",
+            lineHeight: 1,
+            cursor: "pointer",
+            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
+          }}
+        >
+          {locales.map((item) => (
+            <option key={item} value={item}>
+              {item.toUpperCase()}
+            </option>
+          ))}
+        </select>
+        <span
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            right: 12,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--color-fd-muted-foreground)",
+            pointerEvents: "none",
+          }}
+        >
+          <ChevronDownIcon />
+        </span>
+      </div>
       {showThemeToggle &&
         (themeMode === "light-dark" ? (
           <button
