@@ -47,7 +47,7 @@ When you run `init` **without** `--template`, the CLI first asks whether you're 
 
 1. **Framework** — Next.js, Nuxt, SvelteKit, or Astro.
 2. **Project name** — Folder name (e.g. `my-docs`). Press **Enter** to accept the placeholder default.
-3. The CLI creates the folder, clones the template with `degit`, and runs `pnpm install`. You then run `cd <name> && pnpm dev` to start.
+3. The CLI creates the folder, clones the template with `degit`, and runs install using the package manager you chose. You then run `cd <name>` and start the dev server with that same package manager.
 
 ### If you choose Existing project
 
@@ -56,7 +56,7 @@ When you run `init` **without** `--template`, the CLI first asks whether you're 
 3. **Path aliases** — Whether to use `@/`, `$lib/`, or `~/` for imports (framework-dependent).
 4. **Entry path** — Where docs live (e.g. `docs`). Press **Enter** to use the default.
 5. **Global CSS** — Which file to use (auto-detected if there’s only one, otherwise you pick or type the path; Enter uses the default).
-6. The CLI generates config, layout, and sample pages, installs dependencies, and can start the dev server.
+6. The CLI generates config, layout, and sample pages, then detects the package manager from a lockfile when possible. If no lockfile is found, it asks which package manager you want to use before installing dependencies, and can then start the dev server.
 
 Prompts that show a **placeholder** (e.g. entry path `docs`, project name `my-docs`, theme name `my-theme`) use that value as the default — you can press **Enter** to accept it instead of typing.
 
