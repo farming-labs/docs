@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  type Framework,
   PRESETS,
   PACKAGES_BY_FRAMEWORK,
   presetFromFramework,
@@ -8,6 +7,7 @@ import {
   getPackagesForFramework,
   buildUpgradeCommand,
 } from "./upgrade.js";
+import type { Framework } from "./utils.js";
 
 describe("upgrade", () => {
   describe("PRESETS", () => {

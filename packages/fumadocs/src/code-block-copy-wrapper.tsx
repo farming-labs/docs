@@ -15,7 +15,10 @@ export function createPreWithCopyCallback(
   onCopyClick?: (data: CodeBlockCopyData) => void,
 ): React.ComponentType<PreProps> {
   if (!onCopyClick) {
-    return typeof DefaultPre === "string" ? DefaultPre : DefaultPre;
+    if (typeof DefaultPre !== "string") return DefaultPre;
+    return function NativePre(props: PreProps) {
+      return <pre {...(props as React.HTMLAttributes<HTMLPreElement>)} />;
+    };
   }
 
   function PreWithCopyCallback(props: PreProps) {
@@ -41,7 +44,7 @@ export function createPreWithCopyCallback(
           figure.querySelector("[data-title]")?.textContent?.trim() ??
           (figure.querySelector(".fd-codeblock-title-text") as HTMLElement)?.textContent?.trim() ??
           undefined;
-        onCopyClick({ title, content, url, language });
+        onCopyClick?.({ title, content, url, language });
       };
 
       figure.addEventListener("click", handleClick, true);

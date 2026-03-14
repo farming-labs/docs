@@ -253,6 +253,9 @@ importers:
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.3(@types/react@19.2.14)
       next:
         specifier: '>=14.0.0'
         version: 16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

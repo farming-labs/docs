@@ -108,6 +108,7 @@
     "@farming-labs/docs": "workspace:*",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "next": ">=14.0.0",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",
