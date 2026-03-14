@@ -29,10 +29,10 @@ const baseConfig: TemplateConfig = {
   useAlias: true,
 };
 
-const i18nConfig = {
+const i18nConfig: NonNullable<TemplateConfig["i18n"]> = {
   locales: ["en", "fr"],
   defaultLocale: "en",
-} as const;
+};
 
 describe("docsLayoutTemplate", () => {
   it("includes createDocsLayout, createDocsMetadata, and explicit Layout export", () => {
