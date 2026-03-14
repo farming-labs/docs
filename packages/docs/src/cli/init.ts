@@ -529,7 +529,7 @@ export async function init(options: InitOptions = {}) {
   // -----------------------------------------------------------------------
 
   const enableI18n = await p.confirm({
-    message: "Do you want to scaffold internationalized docs with locale folders?",
+    message: "Do you want to scaffold internationalized docs ?",
     initialValue: false,
   });
 
