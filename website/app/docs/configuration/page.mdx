@@ -134,7 +134,7 @@ Use this when you deploy to a static host and don’t run a server. Search and A
 
 Use `i18n` to enable locale-aware docs with a language selector and query-param routing like `/docs?lang=en` and `/docs?lang=fr`.
 
-```ts
+```ts title="docs.config.ts"
 export default defineDocs({
   entry: "docs",
   theme: fumadocs(),
