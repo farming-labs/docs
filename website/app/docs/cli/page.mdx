@@ -316,6 +316,23 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       ◆ Where should your docs live?
       │ docs  (press Enter for default)
       │
+      ◆ Scaffold i18n support?
+      │ ● Yes
+      │ ○ No
+      │
+      ◆ Which locales should we scaffold?
+      │ ◻ en
+      │ ◼ fr
+      │ ◼ de
+      │
+      ◆ Any additional locale codes? (comma-separated, optional)
+      │ pt-BR
+      │
+      ◆ Which locale should be the default?
+      │ ● fr
+      │ ○ de
+      │ ○ pt-BR
+      │
       ◆ Use path aliases for imports?
       │ ● Yes (@/ alias)
       │ ○ No (relative paths)
@@ -323,9 +340,19 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       ◇ Generated docs.config.ts
       ◇ Generated next.config.ts
       ◇ Generated app/global.css
+      ◇ Generated app/components/locale-doc-page.tsx
       ◇ Generated app/docs/page.mdx
       ◇ Generated app/docs/installation/page.mdx
       ◇ Generated app/docs/quickstart/page.mdx
+      ◇ Generated app/docs/fr/page.mdx
+      ◇ Generated app/docs/fr/installation/page.mdx
+      ◇ Generated app/docs/fr/quickstart/page.mdx
+      ◇ Generated app/docs/de/page.mdx
+      ◇ Generated app/docs/de/installation/page.mdx
+      ◇ Generated app/docs/de/quickstart/page.mdx
+      ◇ Generated app/docs/pt-BR/page.mdx
+      ◇ Generated app/docs/pt-BR/installation/page.mdx
+      ◇ Generated app/docs/pt-BR/quickstart/page.mdx
       │
       ◇ Installing dependencies...
       ◇ Starting dev server...
@@ -358,6 +385,21 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       ◆ Entry path for docs:
       │ docs
       │
+      ◆ Scaffold i18n support?
+      │ ● Yes
+      │ ○ No
+      │
+      ◆ Which locales should we scaffold?
+      │ ◼ en
+      │ ◼ fr
+      │ ◻ de
+      │
+      ◆ Any additional locale codes? (comma-separated, optional)
+      │
+      ◆ Which locale should be the default?
+      │ ● en
+      │ ○ fr
+      │
       ◆ Use path aliases for imports?
       │ ● Yes ($lib/ alias)
       │ ○ No (relative paths)
@@ -370,6 +412,12 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       ◇ Generated docs/page.md
       ◇ Generated docs/installation/page.md
       ◇ Generated docs/quickstart/page.md
+      ◇ Generated docs/en/page.md
+      ◇ Generated docs/en/installation/page.md
+      ◇ Generated docs/en/quickstart/page.md
+      ◇ Generated docs/fr/page.md
+      ◇ Generated docs/fr/installation/page.md
+      ◇ Generated docs/fr/quickstart/page.md
       │
       ◇ Installing dependencies...
       ◇ Starting dev server...
@@ -402,6 +450,23 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       ◆ Entry path for docs:
       │ docs
       │
+      ◆ Scaffold i18n support?
+      │ ● Yes
+      │ ○ No
+      │
+      ◆ Which locales should we scaffold?
+      │ ◼ en
+      │ ◼ ja
+      │ ◻ fr
+      │
+      ◆ Any additional locale codes? (comma-separated, optional)
+      │ zh-CN
+      │
+      ◆ Which locale should be the default?
+      │ ● en
+      │ ○ ja
+      │ ○ zh-CN
+      │
       ◇ Generated src/lib/docs.config.ts
       ◇ Generated src/lib/docs.server.ts
       ◇ Generated src/pages/docs/index.astro
@@ -411,6 +476,15 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       ◇ Generated docs/page.md
       ◇ Generated docs/installation/page.md
       ◇ Generated docs/quickstart/page.md
+      ◇ Generated docs/en/page.md
+      ◇ Generated docs/en/installation/page.md
+      ◇ Generated docs/en/quickstart/page.md
+      ◇ Generated docs/ja/page.md
+      ◇ Generated docs/ja/installation/page.md
+      ◇ Generated docs/ja/quickstart/page.md
+      ◇ Generated docs/zh-CN/page.md
+      ◇ Generated docs/zh-CN/installation/page.md
+      ◇ Generated docs/zh-CN/quickstart/page.md
       │
       ◇ Installing dependencies...
       ◇ Starting dev server...
@@ -443,6 +517,21 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       ◆ Entry path for docs:
       │ docs
       │
+      ◆ Scaffold i18n support?
+      │ ● Yes
+      │ ○ No
+      │
+      ◆ Which locales should we scaffold?
+      │ ◼ en
+      │ ◼ es
+      │ ◻ fr
+      │
+      ◆ Any additional locale codes? (comma-separated, optional)
+      │
+      ◆ Which locale should be the default?
+      │ ● en
+      │ ○ es
+      │
       ◇ Generated docs.config.ts
       ◇ Generated nuxt.config.ts
       ◇ Generated server/api/docs.ts
@@ -450,6 +539,12 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       ◇ Generated docs/page.md
       ◇ Generated docs/installation/page.md
       ◇ Generated docs/quickstart/page.md
+      ◇ Generated docs/en/page.md
+      ◇ Generated docs/en/installation/page.md
+      ◇ Generated docs/en/quickstart/page.md
+      ◇ Generated docs/es/page.md
+      ◇ Generated docs/es/installation/page.md
+      ◇ Generated docs/es/quickstart/page.md
       │
       ◇ Installing dependencies...
       ◇ Starting dev server...
@@ -479,16 +574,16 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
   For each framework, add your **theme's CSS** to the global stylesheet (or config) shown below. The import must match the theme you use in `docs.config` (e.g. `default`, `greentree`, `darksharp`). Without it, docs pages will lack the correct styling.
 </Callout>
 
-<Callout type="info" title="Rename to docs.config.tsx when using JSX">
-  If your config includes JSX or React nodes, rename `docs.config.ts` to `docs.config.tsx`.
+<Callout type="info" title="Rename to docs.config.ts when using JSX">
+  If your config includes JSX or React nodes, rename `docs.config.ts` to `docs.config.ts`.
   This applies when you add things like a custom `nav.title`, React icons, or React-based components directly in the config file.
 </Callout>
 
 <Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
-    **`docs.config.tsx`**
+    **`docs.config.ts`**
 
-    ```tsx title="docs.config.tsx"
+    ```tsx title="docs.config.ts"
     import { defineDocs } from "@farming-labs/docs";
     import { fumadocs } from "@farming-labs/theme";
 
