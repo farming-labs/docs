@@ -13,7 +13,7 @@ A modern documentation framework built on top of [Fumadocs](https://fumadocs.dev
 - **Zero boilerplate** — No layout files, no `[[...slug]]` wrappers except for fully fledged functionality like AI, Search and metadata to work. Just write Markdown or MDX.
 - **One config** — Everything in `docs.config.ts`: theme, colors, typography, icons, components, metadata.
 - **Token efficient** — Your entire docs framework surface is a single config file (~15 lines). AI tools like Cursor, Copilot, and Claude spend less time reading framework plumbing and more time working with your actual content. Built-in [llms.txt](/docs/customization/llms-txt) serves your docs in LLM-optimized format automatically. [Learn more →](/docs/token-efficiency)
-- **Multiple frameworks** — First-class support for Next.js, SvelteKit, Astro, and Nuxt that just works.
+- **Multiple frameworks** — First-class support for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt that just works.
 - **7 themes** — Default, Darksharp, Pixel Border, Colorful, Shiny, DarkBold, and GreenTree — or build your own with [`createTheme()`](/docs/themes/creating-themes).
 - **Built-in search** — Full-text search powered by Orama. No API keys.
 - **CLI scaffolding** — `npx @farming-labs/docs init` first asks whether you're on an **existing project** or **starting fresh**; then it detects your framework, lets you pick a theme (or create your own), can scaffold locale folders for i18n, and generates config, routes, and sample pages. Use `--template` with `--name` to bootstrap a new project without prompts.
@@ -21,13 +21,13 @@ A modern documentation framework built on top of [Fumadocs](https://fumadocs.dev
 ## other docs frameworks?
 
 <Callout type="info" title="Complementary, not a replacement">
-We are not trying to replace Fumadocs — we aim to be **complementary**. @farming-labs/docs builds on Fumadocs (and other providers) to offer a single config, multi-framework support, and optional themes and tooling, so you can use Fumadocs with less boilerplate and across Next.js, SvelteKit, Astro, and Nuxt.
+We are not trying to replace Fumadocs — we aim to be **complementary**. @farming-labs/docs builds on Fumadocs (and other providers) to offer a single config, multi-framework support, and optional themes and tooling, so you can use Fumadocs with less boilerplate and across Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
 </Callout>
 
 If you're choosing between documentation tools, here’s when @farming-labs/docs is a good fit:
 
-- **vs. Fumadocs alone** — You get the same UI and MDX experience, but with a single `docs.config` and first-class support for SvelteKit, Astro, and Nuxt — not just Next.js. One config model and CLI so you don’t wire layouts, themes, and search by hand.
-- **vs. Docusaurus / VitePress** — You keep full control inside your existing app (Next, SvelteKit, Astro, Nuxt) instead of a separate docs site. No separate framework or build; your docs live in the same repo and stack, with one config file and optional built-in AI chat and search.
+- **vs. Fumadocs alone** — You get the same UI and MDX experience, but with a single `docs.config` and first-class support for TanStack Start, SvelteKit, Astro, and Nuxt — not just Next.js. One config model and CLI so you don’t wire layouts, themes, and search by hand.
+- **vs. Docusaurus / VitePress** — You keep full control inside your existing app (Next, TanStack Start, SvelteKit, Astro, Nuxt) instead of a separate docs site. No separate framework or build; your docs live in the same repo and stack, with one config file and optional built-in AI chat and search.
 - **vs. Mintlify / ReadMe / hosted docs** — You own the code and hosting. No vendor lock-in or per-seat pricing; you can deploy to Vercel, Cloudflare Pages, or anywhere. Built-in [llms.txt](/docs/customization/llms-txt) and [AI chat](/docs/customization/ai-chat) give you AI-friendly docs without a third-party docs platform.
 - **vs. hand-rolled MDX** — No need to build layouts, catch-all routes, search, or theming yourself. The CLI scaffolds everything; you spend time on content and optional customization (themes, colors, sidebar, page actions) instead of framework plumbing.
 
@@ -56,6 +56,7 @@ Theme-level customization (colors, typography, components) is covered in [Config
 | `@farming-labs/docs`         | Core types, `defineDocs()`, `createTheme()`, `extendTheme()`                         |
 | `@farming-labs/theme`        | Next.js theme presets, layout components, CSS presets                                |
 | `@farming-labs/next`         | Next.js adapter — `withDocs()`, MDX processing, search API                           |
+| `@farming-labs/tanstack-start` | TanStack Start adapter — docs page renderer, MDX processing, search API, server loader |
 | `@farming-labs/svelte`       | SvelteKit adapter — server-side docs loader, markdown processing                     |
 | `@farming-labs/svelte-theme` | SvelteKit theme presets, DocsLayout, DocsContent components                          |
 | `@farming-labs/astro`        | Astro adapter — server-side docs loader, markdown processing                         |

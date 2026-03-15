@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "fumadocs-core/framework";
+import { useWindowSearchParams } from "./client-location.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 
 interface LocaleThemeControlProps {
@@ -80,7 +81,7 @@ export function LocaleThemeControl({
 }: LocaleThemeControlProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const searchParams = useWindowSearchParams();
   const [mounted, setMounted] = useState(false);
   const [themeValue, setThemeValue] = useState<"light" | "dark" | "system">("system");
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");

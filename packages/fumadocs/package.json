@@ -73,6 +73,11 @@
       "import": "./dist/docs-api.mjs",
       "default": "./dist/docs-api.mjs"
     },
+    "./tanstack": {
+      "types": "./dist/tanstack.d.mts",
+      "import": "./dist/tanstack.mjs",
+      "default": "./dist/tanstack.mjs"
+    },
     "./ai": {
       "types": "./dist/ai-search-dialog.d.mts",
       "import": "./dist/ai-search-dialog.mjs",

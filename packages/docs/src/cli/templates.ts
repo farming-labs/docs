@@ -13,7 +13,7 @@ export interface TemplateConfig {
   /** Project name from package.json */
   projectName: string;
   /** Framework being used */
-  framework: "nextjs" | "sveltekit" | "astro" | "nuxt";
+  framework: "nextjs" | "sveltekit" | "astro" | "nuxt" | "tanstack-start";
   /** Whether to use path aliases (@/ for Next.js, $lib/ for SvelteKit, ~/ for Nuxt) */
   useAlias: boolean;
   /** Astro deployment adapter (only used when framework is "astro") */

@@ -113,13 +113,23 @@ function resolveDocsI18nConfig(i18n?: DocsI18nLike | null) {
 
 function resolveDocsLocaleContext(config: DocsConfig, locale?: string): DocsLocaleContext {
   const entryBase = config.entry ?? "docs";
-  const appDir = getNextAppDir(process.cwd());
   const i18n = resolveDocsI18nConfig(getDocsI18n(config));
+  const contentDir = (config as DocsConfig & { contentDir?: string }).contentDir;
+
+  function resolveContentDir(localeValue?: string) {
+    if (!contentDir) {
+      const appDir = getNextAppDir(process.cwd());
+      return path.join(process.cwd(), appDir, entryBase, ...(localeValue ? [localeValue] : []));
+    }
+
+    const base = path.isAbsolute(contentDir) ? contentDir : path.join(process.cwd(), contentDir);
+    return localeValue ? path.join(base, localeValue) : base;
+  }
 
   if (!i18n) {
     return {
       entryPath: entryBase,
-      docsDir: path.join(process.cwd(), appDir, entryBase),
+      docsDir: resolveContentDir(),
     };
   }
 
@@ -128,7 +138,7 @@ function resolveDocsLocaleContext(config: DocsConfig, locale?: string): DocsLoca
   return {
     entryPath,
     locale: resolvedLocale,
-    docsDir: path.join(process.cwd(), appDir, entryBase, resolvedLocale),
+    docsDir: resolveContentDir(resolvedLocale),
   };
 }
 
@@ -671,6 +681,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const githubBranch = typeof githubRaw === "object" ? (githubRaw.branch ?? "main") : "main";
   const githubDirectory =
     typeof githubRaw === "object" ? githubRaw.directory?.replace(/^\/|\/$/g, "") : undefined;
+  const contentDir = (config as DocsConfig & { contentDir?: string }).contentDir;
 
   // When staticExport is true (e.g. Cloudflare Pages), no server → disable search and AI
   const staticExport = !!(config as { staticExport?: boolean }).staticExport;
@@ -801,6 +812,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
               pageActionsPosition={pageActionsPosition}
               pageActionsAlignment={pageActionsAlignment}
               githubUrl={githubUrl}
+              contentDir={contentDir}
               githubBranch={githubBranch}
               githubDirectory={githubDirectory}
               lastModifiedMap={lastModifiedMap}

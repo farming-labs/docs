@@ -1,0 +1,46 @@
+---
+title: "Installation"
+description: "Install the docs framework in TanStack Start."
+icon: "book"
+order: 1
+---
+
+# Installation
+
+Add the docs packages to your TanStack Start app:
+
+```bash
+pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/tanstack-start
+```
+
+The TanStack adapter also configures the MDX pipeline through `docsMdx()` in `vite.config.ts`.
+
+The docs page renderer is built into `@farming-labs/tanstack-start/react`, so you do not need separate `doc-modules.ts` or `docs-page.tsx` files.
+
+## Files added by the scaffold
+
+```txt
+docs.config.tsx
+docs/
+src/lib/docs.server.ts
+src/lib/docs.functions.ts
+src/routes/docs.index.tsx
+src/routes/docs.$.tsx
+src/routes/api.docs.ts
+```
+
+## Theme CSS
+
+Import the same theme CSS that you use in `docs.config.tsx`:
+
+```css
+@import "tailwindcss";
+@import "@farming-labs/theme/greentree/css";
+```
+
+If you switch the example to `colorful()`, also switch the CSS import:
+
+```css
+@import "tailwindcss";
+@import "@farming-labs/theme/colorful/css";
+```

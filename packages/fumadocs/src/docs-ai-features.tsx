@@ -16,8 +16,8 @@
  */
 
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import { DocsSearchDialog, FloatingAIChat, AIModalDialog } from "./ai-search-dialog.js";
+import { useWindowSearchParams } from "./client-location.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 
 interface DocsAIFeaturesProps {
@@ -49,7 +49,7 @@ export function DocsAIFeatures({
   models,
   defaultModelId,
 }: DocsAIFeaturesProps) {
-  const searchParams = useSearchParams();
+  const searchParams = useWindowSearchParams();
   const activeLocale = resolveClientLocale(searchParams, locale);
   const localizedApi = withLangInUrl(api, activeLocale);
 

@@ -1,6 +1,6 @@
 /**
  * Upgrade @farming-labs/* packages to latest.
- * Detects framework from package.json by default, or use --framework (next, nuxt, sveltekit, astro).
+ * Detects framework from package.json by default, or use --framework (next, nuxt, sveltekit, astro, tanstack-start).
  */
 import path from "node:path";
 import * as p from "@clack/prompts";
@@ -15,7 +15,7 @@ import {
   fileExists,
 } from "./utils.js";
 
-export const PRESETS = ["next", "nuxt", "sveltekit", "astro"] as const;
+export const PRESETS = ["next", "nuxt", "sveltekit", "astro", "tanstack-start"] as const;
 export type PresetName = (typeof PRESETS)[number];
 
 export const PACKAGES_BY_FRAMEWORK: Record<Framework, string[]> = {
@@ -23,6 +23,7 @@ export const PACKAGES_BY_FRAMEWORK: Record<Framework, string[]> = {
   nuxt: ["@farming-labs/docs", "@farming-labs/nuxt", "@farming-labs/nuxt-theme"],
   sveltekit: ["@farming-labs/docs", "@farming-labs/svelte", "@farming-labs/svelte-theme"],
   astro: ["@farming-labs/docs", "@farming-labs/astro", "@farming-labs/astro-theme"],
+  "tanstack-start": ["@farming-labs/docs", "@farming-labs/theme", "@farming-labs/tanstack-start"],
 };
 
 export function presetFromFramework(fw: Framework): PresetName {
@@ -52,7 +53,7 @@ export function buildUpgradeCommand(
 export type UpgradeTag = "latest" | "beta";
 
 export interface UpgradeOptions {
-  /** Explicit framework: next, nuxt, sveltekit, astro. If not set, framework is auto-detected. */
+  /** Explicit framework: next, nuxt, sveltekit, astro, tanstack-start. If not set, framework is auto-detected. */
   framework?: string;
   /** npm dist-tag to install: "latest" (default) or "beta". */
   tag?: UpgradeTag;
@@ -88,8 +89,8 @@ export async function upgrade(options: UpgradeOptions = {}) {
     framework = detectFramework(cwd);
     if (!framework) {
       p.log.error(
-        "Could not detect a supported framework (Next.js, Nuxt, SvelteKit, Astro). Use " +
-          pc.cyan("--framework <next|nuxt|sveltekit|astro>") +
+        "Could not detect a supported framework (Next.js, TanStack Start, Nuxt, SvelteKit, Astro). Use " +
+          pc.cyan("--framework <next|nuxt|sveltekit|astro|tanstack-start>") +
           " to specify.",
       );
       process.exit(1);

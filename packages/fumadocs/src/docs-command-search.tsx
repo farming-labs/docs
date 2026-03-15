@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
-import { useSearchParams } from "next/navigation";
+import { useWindowSearchParams } from "./client-location.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 
 function cn(...classes: Array<string | undefined | null | false>) {
@@ -357,7 +357,7 @@ export function DocsCommandSearch({
   const [activeIndex, setActiveIndex] = useState(0);
   const [recents, setRecents] = useState<RecentEntry[]>([]);
   const [mounted, setMounted] = useState(false);
-  const searchParams = useSearchParams();
+  const searchParams = useWindowSearchParams();
   const activeLocale = resolveClientLocale(searchParams, locale);
   const searchApi = useMemo(() => withLangInUrl(api, activeLocale), [activeLocale, api]);
 

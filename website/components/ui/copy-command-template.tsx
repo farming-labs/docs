@@ -5,7 +5,7 @@ import { Copy, Check, Terminal } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-const TEMPLATES = ["next", "nuxt", "sveltekit", "astro"] as const;
+const TEMPLATES = ["next", "nuxt", "sveltekit", "astro", "tanstack-start"] as const;
 const BASE_CMD = "pnpx @farming-labs/docs init --template ";
 const DURATION = 2800;
 
@@ -57,7 +57,7 @@ export default function CopyCommandTemplate({ className = "" }: CopyCommandTempl
         <span className="text-black/30 dark:text-white/30">@farming-labs/docs</span>
         <span className="text-black/60 dark:text-white/60">init</span>
         <span className="text-black/30 dark:text-white/30">--template</span>
-        <span className="inline-block w-[6ch] min-w-[6ch] overflow-hidden py-0.5 align-baseline text-left">
+        <span className="inline-block w-[15ch] min-w-[15ch] overflow-hidden py-0.5 align-baseline text-left">
           <AnimatePresence mode="wait">
             {/*@ts-ignore */}
             <motion.span

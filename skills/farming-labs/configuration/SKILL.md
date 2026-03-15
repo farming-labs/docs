@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, metadata, og, onCopyClick, pageActions, or ai. Covers Next.js, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, metadata, og, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration
@@ -16,11 +16,12 @@ All configuration lives in a single **docs.config.ts** (or **docs.config.tsx**) 
 | Framework | Config path |
 | --------- | ----------- |
 | Next.js | Project root: `docs.config.ts` |
+| TanStack Start | Project root: `docs.config.ts` or `docs.config.tsx` |
 | SvelteKit | `src/lib/docs.config.ts` |
 | Astro | `src/lib/docs.config.ts` |
 | Nuxt | Project root: `docs.config.ts` |
 
-SvelteKit, Astro, and Nuxt require `contentDir` (path to markdown files) and `nav` (sidebar title and base URL) in addition to `entry` and `theme`.
+TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdown files) and `nav` (sidebar title and base URL) in addition to `entry` and `theme`.
 
 ---
 
@@ -29,10 +30,10 @@ SvelteKit, Astro, and Nuxt require `contentDir` (path to markdown files) and `na
 | Option | Type | Default | Description |
 | ------ | ---- | ------- | ----------- |
 | `entry` | `string` | `"docs"` | URL path prefix for docs (e.g. `"docs"` → `/docs`) |
-| `contentDir` | `string` | same as `entry` | Path to content files (SvelteKit, Astro, Nuxt) |
+| `contentDir` | `string` | same as `entry` | Path to content files (TanStack Start, SvelteKit, Astro, Nuxt) |
 | `staticExport` | `boolean` | `false` | Set `true` for full static builds; hides search and AI |
 | `theme` | `DocsTheme` | — | Theme from a theme factory (e.g. `fumadocs()`, `pixelBorder()`) |
-| `nav` | `{ title, url }` | — | Sidebar title and base URL (required for SvelteKit, Astro, Nuxt) |
+| `nav` | `{ title, url }` | — | Sidebar title and base URL (required for TanStack Start, SvelteKit, Astro, Nuxt) |
 | `github` | `string \| GithubConfig` | — | GitHub repo for "Edit on GitHub" and `{githubUrl}` in page actions |
 | `themeToggle` | `boolean \| ThemeToggleConfig` | `true` | Light/dark mode toggle |
 | `breadcrumb` | `boolean \| BreadcrumbConfig` | `true` | Breadcrumb navigation |

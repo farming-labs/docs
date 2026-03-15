@@ -1,13 +1,13 @@
 ---
 name: getting-started
-description: Get started with @farming-labs/docs — MDX-based documentation for Next.js, SvelteKit, Astro, and Nuxt. Use when setting up docs, scaffolding with the CLI, choosing themes, or writing docs.config. Covers init, manual setup per framework, theme CSS, defineDocs, entry, contentDir, and common gotchas.
+description: Get started with @farming-labs/docs — MDX-based documentation for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt. Use when setting up docs, scaffolding with the CLI, choosing themes, or writing docs.config. Covers init, manual setup per framework, theme CSS, defineDocs, entry, contentDir, and common gotchas.
 ---
 
 # @farming-labs/docs — Getting Started
 
 **Always consult the project docs (and `/docs` routes when available) for the latest API and examples.**
 
-@farming-labs/docs is a modern, flexible MDX-based documentation framework. Write markdown, get a polished docs site. Supported frameworks: **Next.js**, **SvelteKit**, **Astro**, **Nuxt**.
+@farming-labs/docs is a modern, flexible MDX-based documentation framework. Write markdown, get a polished docs site. Supported frameworks: **Next.js**, **TanStack Start**, **SvelteKit**, **Astro**, **Nuxt**.
 
 ---
 
@@ -19,13 +19,14 @@ description: Get started with @farming-labs/docs — MDX-based documentation for
 | -------- | ------- |
 | Interactive init (existing or fresh) | `npx @farming-labs/docs@latest init` — first asks **Existing project** or **Fresh project**; then theme (or Create your own theme), entry path, etc. Prompts with a placeholder (e.g. `docs`, `my-docs`) accept **Enter** as default. |
 | Add docs to existing app | Run `init` in project root; choose **Existing project** when prompted. |
-| Start from scratch (bootstrap, no prompts) | `npx @farming-labs/docs@latest init --template <next \| nuxt \| sveltekit \| astro> --name <project-name>` |
+| Start from scratch (bootstrap, no prompts) | `npx @farming-labs/docs@latest init --template <next \| tanstack-start \| nuxt \| sveltekit \| astro> --name <project-name>` |
 
 ### Packages by framework
 
 | Framework | Core + adapter | Theme package |
 | --------- | -------------- | -------------- |
 | Next.js | `@farming-labs/docs`, `@farming-labs/next` | `@farming-labs/theme` |
+| TanStack Start | `@farming-labs/docs`, `@farming-labs/tanstack-start` | `@farming-labs/theme` |
 | SvelteKit | `@farming-labs/docs`, `@farming-labs/svelte` | `@farming-labs/svelte-theme` |
 | Astro | `@farming-labs/docs`, `@farming-labs/astro` | `@farming-labs/astro-theme` |
 | Nuxt | `@farming-labs/docs`, `@farming-labs/nuxt` | `@farming-labs/nuxt-theme` |
@@ -41,6 +42,7 @@ Seven built-in themes: `fumadocs` (default), `darksharp`, `pixel-border`, `color
 **Every setup must import the theme's CSS** in the global stylesheet. Without it, docs pages will not be styled.
 
 - **Next.js:** `app/global.css` → `@import "@farming-labs/theme/<theme>/css";` (e.g. `default`, `greentree`, `pixel-border`).
+- **TanStack Start:** `src/styles/app.css` (or your main global CSS file) → `@import "@farming-labs/theme/<theme>/css";`
 - **SvelteKit:** `src/app.css` → `@import "@farming-labs/svelte-theme/<theme>/css";`
 - **Astro:** Import in the docs layout or page file: `import "@farming-labs/astro-theme/<theme>/css";`
 - **Nuxt:** `nuxt.config.ts` → `css: ["@farming-labs/nuxt-theme/<theme>/css"]`
@@ -69,11 +71,12 @@ export default defineDocs({
 ```
 
 - **Next.js:** `docs.config.ts` at project root; wrap Next config with `withDocs()` from `@farming-labs/next/config`. Content lives under `app/docs/` (path derived from `entry`).
+- **TanStack Start:** `docs.config.ts` or `docs.config.tsx` at project root; set `contentDir` and `nav`, create `/api/docs`, and load content from your `docs/` directory via `@farming-labs/tanstack-start/server`.
 - **SvelteKit:** `src/lib/docs.config.ts`; routes under `src/routes/docs/`; set `contentDir` to the folder containing your markdown (e.g. `docs`).
 - **Astro:** `src/lib/docs.config.ts`; pages under `src/pages/<entry>/`; set `contentDir`.
 - **Nuxt:** `docs.config.ts` at project root; `server/api/docs.ts` and `pages/docs/[...slug].vue`; set `contentDir` and `nav`.
 
-SvelteKit, Astro, and Nuxt require `contentDir` (path to markdown files) and `nav` (sidebar title and base URL).
+TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdown files) and `nav` (sidebar title and base URL).
 
 ---
 
@@ -116,7 +119,7 @@ For fully static builds (e.g. Cloudflare Pages, no server), set `staticExport: t
 
 1. **Theme CSS missing** — Docs look unstyled until the theme CSS is imported in the global stylesheet (or Nuxt `css`).
 2. **Wrong theme package** — Use the theme package for the same framework (e.g. `@farming-labs/svelte-theme` for SvelteKit, not `@farming-labs/theme`).
-3. **From scratch** — Use `init --template <next|nuxt|sveltekit|astro> --name <project>`; the CLI bootstraps a project with that name and runs install.
+3. **From scratch** — Use `init --template <next|tanstack-start|nuxt|sveltekit|astro> --name <project>`; the CLI bootstraps a project with that name and runs install.
 4. **Existing project** — Run `init` in the project root; the CLI detects the framework and scaffolds files.
 5. **Static hosting** — Set `staticExport: true`; search and AI are then hidden.
 

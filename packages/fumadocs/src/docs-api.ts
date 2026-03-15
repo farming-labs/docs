@@ -108,7 +108,7 @@ function readI18nConfig(root: string): DocsI18nConfig | null {
 
       const locales = localesMatch[1]
         .split(",")
-        .map((l) => l.trim().replace(/^['\"`]|['\"`]$/g, ""))
+        .map((l) => l.trim().replace(/^['"`]|['"`]$/g, ""))
         .filter(Boolean);
       if (locales.length === 0) continue;
 

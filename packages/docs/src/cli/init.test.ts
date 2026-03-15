@@ -45,8 +45,8 @@ vi.mock("node:fs", () => {
 
 describe("init", () => {
   describe("VALID_TEMPLATES", () => {
-    it("includes next, nuxt, sveltekit, astro", () => {
-      expect(VALID_TEMPLATES).toEqual(["next", "nuxt", "sveltekit", "astro"]);
+    it("includes next, nuxt, sveltekit, astro, tanstack-start", () => {
+      expect(VALID_TEMPLATES).toEqual(["next", "nuxt", "sveltekit", "astro", "tanstack-start"]);
     });
 
     it("matches upgrade PRESETS for consistency", () => {

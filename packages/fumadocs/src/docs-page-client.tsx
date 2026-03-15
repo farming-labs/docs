@@ -1,18 +1,21 @@
 "use client";
 
 import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page";
-import { useEffect, useState, type ReactNode } from "react";
-// @ts-ignore – resolved by the workspace dependency graph
-import { createPortal } from "react-dom";
-// @ts-ignore – resolved by Next.js at runtime
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Children, cloneElement, isValidElement, useEffect, useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "fumadocs-core/framework";
 import { PageActions } from "./page-actions.js";
+import { useWindowSearchParams } from "./client-location.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 
 interface TOCItem {
   title: string;
   url: string;
   depth: number;
+}
+
+interface TitleInsertions {
+  description?: ReactNode;
+  belowTitle?: ReactNode;
 }
 
 /** Serializable provider — icon is an HTML string, not JSX. */
@@ -39,12 +42,18 @@ interface DocsPageClientProps {
   pageActionsAlignment?: "left" | "right";
   /** GitHub repository URL (e.g. "https://github.com/user/repo") */
   githubUrl?: string;
+  /** Path to docs content relative to the repo root (used for Edit on GitHub outside Next.js app/docs) */
+  contentDir?: string;
   /** GitHub branch name @default "main" */
   githubBranch?: string;
   /** Subdirectory in the repo where the docs site lives (for monorepos) */
   githubDirectory?: string;
+  /** Direct GitHub URL override for the current page. */
+  editOnGithubUrl?: string;
   /** Map of pathname → formatted last-modified date string */
   lastModifiedMap?: Record<string, string>;
+  /** Direct last-modified value override for the current page. */
+  lastModified?: string;
   /** Whether to show "Last updated" at all */
   lastUpdatedEnabled?: boolean;
   /** Where to show the "Last updated" date: "footer" (next to Edit on GitHub) or "below-title" */
@@ -130,8 +139,10 @@ function buildGithubFileUrl(
   entry: string,
   locale?: string,
   directory?: string,
+  contentDir?: string,
 ): string {
   const normalizedEntry = entry.replace(/^\/+|\/+$/g, "") || "docs";
+  const normalizedContentDir = contentDir?.replace(/^\/+|\/+$/g, "");
   const entryParts = normalizedEntry.split("/").filter(Boolean);
   const pathnameParts = pathname
     .replace(/^\/+|\/+$/g, "")
@@ -142,7 +153,7 @@ function buildGithubFileUrl(
       ? pathnameParts.slice(entryParts.length)
       : pathnameParts;
   const dirPrefix = directory ? `${directory}/` : "";
-  const basePath = `app/${normalizedEntry}`;
+  const basePath = normalizedContentDir || `app/${normalizedEntry}`;
   const relativePath = [locale, slugParts.join("/")].filter(Boolean).join("/");
   const path = `${dirPrefix}${basePath}${relativePath ? `/${relativePath}` : ""}/page.mdx`;
   return `${githubUrl}/edit/${branch}/${path}`;
@@ -170,6 +181,58 @@ function localizeInternalLinks(root: ParentNode, locale?: string) {
   }
 }
 
+function injectTitleDecorations(
+  node: ReactNode,
+  { description, belowTitle }: TitleInsertions,
+): ReactNode {
+  if (!description && !belowTitle) return node;
+
+  let inserted = false;
+
+  const extras = [description, belowTitle].filter(Boolean);
+  if (extras.length === 0) return node;
+
+  function visit(current: ReactNode): ReactNode {
+    if (current == null || typeof current === "boolean") return current;
+    if (inserted) return current;
+
+    if (Array.isArray(current)) {
+      return current.flatMap((child) => {
+        const next = visit(child);
+        return Array.isArray(next) ? next : [next];
+      });
+    }
+
+    if (!isValidElement(current)) return current;
+
+    if (typeof current.type === "string" && current.type === "h1") {
+      inserted = true;
+      return [current, ...extras];
+    }
+
+    const childProps = (current.props as { children?: ReactNode } | null) ?? null;
+    if (childProps?.children === undefined) return current;
+
+    const nextChildren = Children.toArray(childProps.children).flatMap((child) => {
+      const next = visit(child);
+      return Array.isArray(next) ? next : [next];
+    });
+
+    if (!inserted) return current;
+
+    return cloneElement(current, undefined, nextChildren);
+  }
+
+  if (Array.isArray(node)) {
+    return node.flatMap((child) => {
+      const next = visit(child);
+      return Array.isArray(next) ? next : [next];
+    });
+  }
+
+  return visit(node);
+}
+
 export function DocsPageClient({
   tocEnabled,
   tocStyle = "default",
@@ -182,9 +245,12 @@ export function DocsPageClient({
   pageActionsPosition = "below-title",
   pageActionsAlignment = "left",
   githubUrl,
+  contentDir,
   githubBranch = "main",
   githubDirectory,
+  editOnGithubUrl,
   lastModifiedMap,
+  lastModified: lastModifiedProp,
   lastUpdatedEnabled = true,
   lastUpdatedPosition = "footer",
   llmsTxtEnabled = false,
@@ -195,10 +261,9 @@ export function DocsPageClient({
   const fdTocStyle = tocStyle === "directional" ? "clerk" : undefined;
   const [toc, setToc] = useState<TOCItem[]>([]);
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const searchParams = useWindowSearchParams();
   const activeLocale = resolveClientLocale(searchParams, locale);
   const llmsLangParam = activeLocale ? `&lang=${encodeURIComponent(activeLocale)}` : "";
-  const [actionsPortalTarget, setActionsPortalTarget] = useState<HTMLElement | null>(null);
 
   const pageDescription = description ?? descriptionMap?.[pathname.replace(/\/$/, "") || "/"];
 
@@ -222,34 +287,9 @@ export function DocsPageClient({
     return () => cancelAnimationFrame(timer);
   }, [tocEnabled, pathname]);
 
-  // Inject frontmatter description right below the first h1 on the page
   useEffect(() => {
-    if (!pageDescription) return;
+    if (!activeLocale) return;
 
-    const timer = requestAnimationFrame(() => {
-      const container = document.getElementById("nd-page");
-      if (!container) return;
-
-      const existingDesc = container.querySelector(".fd-page-description");
-      if (existingDesc) existingDesc.remove();
-
-      const h1 = container.querySelector("h1");
-      if (!h1) return;
-
-      const descEl = document.createElement("p");
-      descEl.className = "fd-page-description";
-      descEl.textContent = pageDescription;
-      h1.insertAdjacentElement("afterend", descEl);
-    });
-
-    return () => {
-      cancelAnimationFrame(timer);
-      const desc = document.querySelector("#nd-page .fd-page-description");
-      if (desc) desc.remove();
-    };
-  }, [pageDescription, pathname]);
-
-  useEffect(() => {
     const timer = requestAnimationFrame(() => {
       const container = document.getElementById("nd-page");
       if (!container) return;
@@ -260,76 +300,59 @@ export function DocsPageClient({
   }, [activeLocale, children, pathname]);
 
   const showActions = copyMarkdown || openDocs;
-  const githubFileUrl = githubUrl
-    ? buildGithubFileUrl(githubUrl, githubBranch, pathname, entry, activeLocale, githubDirectory)
-    : undefined;
+  const showActionsBelowTitle = showActions && pageActionsPosition === "below-title";
+  const showActionsAboveTitle = showActions && pageActionsPosition === "above-title";
+  const githubFileUrl =
+    editOnGithubUrl ??
+    (githubUrl
+      ? buildGithubFileUrl(
+          githubUrl,
+          githubBranch,
+          pathname,
+          entry,
+          activeLocale,
+          githubDirectory,
+          contentDir,
+        )
+      : undefined);
 
   const normalizedPath = pathname.replace(/\/$/, "") || "/";
-  const lastModified = lastUpdatedEnabled ? lastModifiedMap?.[normalizedPath] : undefined;
+  const lastModified = lastUpdatedEnabled
+    ? (lastModifiedProp ?? lastModifiedMap?.[normalizedPath])
+    : undefined;
 
   const showLastUpdatedBelowTitle = !!lastModified && lastUpdatedPosition === "below-title";
   const showLastUpdatedInFooter = !!lastModified && lastUpdatedPosition === "footer";
   const showFooter = !!githubFileUrl || showLastUpdatedInFooter || llmsTxtEnabled;
 
-  const needsBelowTitleBlock = showLastUpdatedBelowTitle || showActions;
+  const titleDescription = pageDescription ? (
+    <p className="fd-page-description">{pageDescription}</p>
+  ) : undefined;
 
-  // Inject: last-updated (below-title mode), separator, and page-actions portal target after h1
-  useEffect(() => {
-    if (!needsBelowTitleBlock) return;
+  const belowTitleBlock =
+    showLastUpdatedBelowTitle || showActionsBelowTitle ? (
+      <div className="fd-below-title-block not-prose">
+        {showLastUpdatedBelowTitle && (
+          <p className="fd-last-updated-inline">Last updated {lastModified}</p>
+        )}
+        <hr className="fd-title-separator" />
+        {showActionsBelowTitle && (
+          <div className="fd-actions-portal" data-actions-alignment={pageActionsAlignment}>
+            <PageActions
+              copyMarkdown={copyMarkdown}
+              openDocs={openDocs}
+              providers={openDocsProviders}
+              githubFileUrl={githubFileUrl}
+            />
+          </div>
+        )}
+      </div>
+    ) : undefined;
 
-    const timer = requestAnimationFrame(() => {
-      const container = document.getElementById("nd-page");
-      if (!container) return;
-
-      container.querySelectorAll(".fd-below-title-block").forEach((el) => el.remove());
-
-      const h1 = container.querySelector("h1");
-      if (!h1) return;
-
-      let insertAfter: Element = h1;
-      const desc = container.querySelector(".fd-page-description");
-      if (desc) insertAfter = desc;
-
-      const wrapper = document.createElement("div");
-      wrapper.className = "fd-below-title-block not-prose";
-
-      if (showLastUpdatedBelowTitle) {
-        const lastUpdatedEl = document.createElement("p");
-        lastUpdatedEl.className = "fd-last-updated-inline";
-        lastUpdatedEl.textContent = `Last updated ${lastModified}`;
-        wrapper.appendChild(lastUpdatedEl);
-      }
-
-      if (showLastUpdatedBelowTitle || showActions) {
-        const hr = document.createElement("hr");
-        hr.className = "fd-title-separator";
-        wrapper.appendChild(hr);
-      }
-
-      if (showActions) {
-        const portalEl = document.createElement("div");
-        portalEl.className = "fd-actions-portal";
-        portalEl.setAttribute("data-actions-alignment", pageActionsAlignment);
-        wrapper.appendChild(portalEl);
-        setActionsPortalTarget(portalEl);
-      }
-
-      insertAfter.insertAdjacentElement("afterend", wrapper);
-    });
-
-    return () => {
-      cancelAnimationFrame(timer);
-      setActionsPortalTarget(null);
-      document.querySelectorAll("#nd-page .fd-below-title-block").forEach((el) => el.remove());
-    };
-  }, [
-    lastModified,
-    needsBelowTitleBlock,
-    showLastUpdatedBelowTitle,
-    showActions,
-    pageActionsAlignment,
-    pathname,
-  ]);
+  const decoratedChildren = injectTitleDecorations(children, {
+    description: titleDescription,
+    belowTitle: belowTitleBlock,
+  });
 
   return (
     <DocsPage
@@ -341,19 +364,18 @@ export function DocsPageClient({
       {breadcrumbEnabled && (
         <PathBreadcrumb pathname={pathname} entry={entry} locale={activeLocale} />
       )}
-      {showActions &&
-        actionsPortalTarget &&
-        createPortal(
+      {showActionsAboveTitle && (
+        <div className="fd-below-title-block not-prose">
           <PageActions
             copyMarkdown={copyMarkdown}
             openDocs={openDocs}
             providers={openDocsProviders}
             githubFileUrl={githubFileUrl}
-          />,
-          actionsPortalTarget,
-        )}
+          />
+        </div>
+      )}
       <DocsBody style={{ display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1 }}>{children}</div>
+        <div style={{ flex: 1 }}>{decoratedChildren}</div>
         {showFooter && (
           <div className="not-prose fd-page-footer">
             {githubFileUrl && <EditOnGitHub href={githubFileUrl} />}
