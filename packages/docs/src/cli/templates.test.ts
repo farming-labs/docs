@@ -5,6 +5,10 @@ import {
   docsLayoutTemplate,
   rootLayoutTemplate,
   injectRootProviderIntoLayout,
+  tanstackDocsConfigTemplate,
+  tanstackRootRouteTemplate,
+  injectTanstackRootProviderIntoRoute,
+  injectTanstackVitePlugins,
   globalCssTemplate,
   injectCssImport,
   getThemeExportName,
@@ -247,6 +251,67 @@ describe("docsConfigTemplate", () => {
     expect(out).toContain("i18n:");
     expect(out).toContain('locales: ["en", "fr"]');
     expect(out).toContain('defaultLocale: "en"');
+  });
+});
+
+describe("tanstackDocsConfigTemplate", () => {
+  it("includes contentDir, nav, and theme toggle", () => {
+    const out = tanstackDocsConfigTemplate({
+      ...baseConfig,
+      framework: "tanstack-start",
+    });
+    expect(out).toContain('contentDir: "docs"');
+    expect(out).toContain("nav:");
+    expect(out).toContain('url: "/docs"');
+    expect(out).toContain("themeToggle:");
+  });
+});
+
+describe("tanstackRootRouteTemplate", () => {
+  it("links the selected CSS file and wraps Outlet with RootProvider", () => {
+    const out = tanstackRootRouteTemplate("src/styles/app.css");
+    expect(out).toContain('import appCss from "../styles/app.css?url"');
+    expect(out).toContain('import { RootProvider } from "@farming-labs/theme/tanstack"');
+    expect(out).toContain("<RootProvider>");
+    expect(out).toContain("<Outlet />");
+  });
+});
+
+describe("injectTanstackRootProviderIntoRoute", () => {
+  it("injects RootProvider around Outlet", () => {
+    const result =
+      injectTanstackRootProviderIntoRoute(`import { Outlet } from "@tanstack/react-router";
+
+export function App() {
+  return <Outlet />;
+}
+`);
+    expect(result).not.toBeNull();
+    expect(result).toContain('import { RootProvider } from "@farming-labs/theme/tanstack"');
+    expect(result).toContain("<RootProvider><Outlet /></RootProvider>");
+  });
+});
+
+describe("injectTanstackVitePlugins", () => {
+  it("adds docsMdx and tailwind plugins when missing", () => {
+    const result = injectTanstackVitePlugins(
+      `import { defineConfig } from "vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+
+export default defineConfig({
+  plugins: [tanstackStart()],
+});
+`,
+      true,
+    );
+
+    expect(result).not.toBeNull();
+    expect(result).toContain('import tailwindcss from "@tailwindcss/vite";');
+    expect(result).toContain('import tsconfigPaths from "vite-tsconfig-paths";');
+    expect(result).toContain('import { docsMdx } from "@farming-labs/tanstack-start/vite";');
+    expect(result).toContain("tailwindcss()");
+    expect(result).toContain("docsMdx()");
+    expect(result).toContain("tsconfigPaths({ ignoreConfigErrors: true })");
   });
 });
 

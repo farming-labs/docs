@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import {
   PRESETS,
   PACKAGES_BY_FRAMEWORK,
+  type UpgradeFramework,
   presetFromFramework,
   frameworkFromPreset,
   getPackagesForFramework,
   buildUpgradeCommand,
 } from "./upgrade.js";
-import type { Framework } from "./utils.js";
 
 describe("upgrade", () => {
   describe("PRESETS", () => {
@@ -50,7 +50,7 @@ describe("upgrade", () => {
     });
 
     it("every framework has exactly 3 packages", () => {
-      const frameworks: Framework[] = ["nextjs", "nuxt", "sveltekit", "astro"];
+      const frameworks: UpgradeFramework[] = ["nextjs", "nuxt", "sveltekit", "astro"];
       for (const fw of frameworks) {
         expect(PACKAGES_BY_FRAMEWORK[fw]).toHaveLength(3);
       }
@@ -73,7 +73,7 @@ describe("upgrade", () => {
     });
 
     it("round-trip: framework -> preset -> framework", () => {
-      const frameworks: Framework[] = ["nextjs", "nuxt", "sveltekit", "astro"];
+      const frameworks: UpgradeFramework[] = ["nextjs", "nuxt", "sveltekit", "astro"];
       for (const fw of frameworks) {
         expect(frameworkFromPreset(presetFromFramework(fw))).toBe(fw);
       }
