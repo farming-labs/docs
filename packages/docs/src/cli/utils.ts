@@ -19,6 +19,7 @@ export function detectFramework(cwd: string): Framework | null {
   };
 
   if (allDeps["next"]) return "nextjs";
+  if (allDeps["@tanstack/react-start"] || allDeps["@tanstack/start"]) return "tanstack-start";
   if (allDeps["@sveltejs/kit"]) return "sveltekit";
   if (allDeps["astro"]) return "astro";
   if (allDeps["nuxt"]) return "nuxt";

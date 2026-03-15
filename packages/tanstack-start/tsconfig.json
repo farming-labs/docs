@@ -4,7 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "types": ["vite/client"],
+    "types": ["node", "vite/client"],
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,

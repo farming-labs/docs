@@ -123,8 +123,8 @@ function stripMarkdownText(content: string): string {
     .replace(/<[^>]+\/>/g, "")
     .replace(/<\/?[A-Z][^>]*>/g, "")
     .replace(/<\/?[a-z][^>]*>/g, "")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/^#{1,6}\s+/gm, "")
     .replace(/(\*{1,3}|_{1,3})(.*?)\1/g, "$2")
     .replace(/```[\s\S]*?```/g, "")
@@ -147,7 +147,7 @@ function joinPathParts(...parts: string[]): string {
 }
 
 function toPosixPath(value: string): string {
-  return value.replace(/\\\\/g, "/");
+  return value.replace(/\\/g, "/");
 }
 
 function buildDirPrefix(contentDir: string, rootDir: string): string {
@@ -462,7 +462,14 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     const url = new URL(request.url);
     const pathnameParam = url.searchParams.get("pathname");
     const referrer = request.headers.get("referer") ?? request.headers.get("referrer");
-    const refPath = referrer ? new URL(referrer).pathname : undefined;
+    let refPath: string | undefined;
+    if (referrer) {
+      try {
+        refPath = new URL(referrer).pathname;
+      } catch {
+        refPath = undefined;
+      }
+    }
     const pathname = pathnameParam ?? refPath ?? `/${entry}`;
     return resolveContextFromPath(pathname, locale);
   }

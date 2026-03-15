@@ -57,7 +57,7 @@ export default defineDocs({
     copyMarkdown: { enabled: true },
     openDocs: { enabled: true },
   },
-  llmsTxt: { baseUrl: "http://localhost:3000" },
+  llmsTxt: { baseUrl: "https://docs.farming-labs.dev" },
   metadata: {
     titleTemplate: "%s – Docs",
     description: "TanStack Start example powered by @farming-labs/docs",

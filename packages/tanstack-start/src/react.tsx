@@ -8,15 +8,13 @@ interface MdxModule {
   default: ComponentType<any>;
 }
 
-const rawDocModules = import.meta.glob("/docs/**/*.{md,mdx}", {
+const rawDocModules = import.meta.glob("/**/*.{md,mdx}", {
   eager: true,
 });
 
 function normalizeDocsKey(key: string) {
   const posixKey = key.replace(/\\/g, "/");
-  const docsIndex = posixKey.lastIndexOf("/docs/");
-  if (docsIndex >= 0) return posixKey.slice(docsIndex);
-  return posixKey.startsWith("/docs/") ? posixKey : `/${posixKey.replace(/^\.?\//, "")}`;
+  return posixKey.startsWith("/") ? posixKey : `/${posixKey.replace(/^\.?\//, "")}`;
 }
 
 const docModules = Object.fromEntries(

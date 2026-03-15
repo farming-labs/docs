@@ -3,7 +3,7 @@
 A modern, flexible MDX-based documentation framework. Write markdown, get a polished docs site — no boilerplate required.
 
 ### Quick Start
-> **This package lets you build beautifull documentation to any Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project in minutes.**
+> **This package lets you build beautiful documentation to any Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project in minutes.**
 
 - ✨ **Polished themes & search, zero setup**
 - 🌍 **Choose your framework:** Next.js, TanStack Start, SvelteKit, Astro, or Nuxt

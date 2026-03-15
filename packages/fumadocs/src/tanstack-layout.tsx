@@ -55,10 +55,6 @@ function resolveTreeIcon(
   const fromRegistry = registry?.[icon] as ReactNode | undefined;
   if (fromRegistry) return fromRegistry;
 
-  if (icon.trim().startsWith("<")) {
-    return <span aria-hidden dangerouslySetInnerHTML={{ __html: icon }} />;
-  }
-
   return undefined;
 }
 
@@ -271,10 +267,11 @@ function resolveBool(value: boolean | { enabled?: boolean } | undefined): boolea
 }
 
 function ForcedThemeScript({ theme }: { theme: string }) {
+  const normalizedTheme = theme === "light" || theme === "dark" ? theme : "light";
   return (
     <script
       dangerouslySetInnerHTML={{
-        __html: `document.documentElement.classList.remove('light','dark');document.documentElement.classList.add('${theme}');`,
+        __html: `document.documentElement.classList.remove('light','dark');document.documentElement.classList.add('${normalizedTheme}');`,
       }}
     />
   );

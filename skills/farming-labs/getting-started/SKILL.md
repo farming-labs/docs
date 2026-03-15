@@ -19,7 +19,7 @@ description: Get started with @farming-labs/docs — MDX-based documentation for
 | -------- | ------- |
 | Interactive init (existing or fresh) | `npx @farming-labs/docs@latest init` — first asks **Existing project** or **Fresh project**; then theme (or Create your own theme), entry path, etc. Prompts with a placeholder (e.g. `docs`, `my-docs`) accept **Enter** as default. |
 | Add docs to existing app | Run `init` in project root; choose **Existing project** when prompted. |
-| Start from scratch (bootstrap, no prompts) | `npx @farming-labs/docs@latest init --template <next \| nuxt \| sveltekit \| astro> --name <project-name>` |
+| Start from scratch (bootstrap, no prompts) | `npx @farming-labs/docs@latest init --template <next \| tanstack-start \| nuxt \| sveltekit \| astro> --name <project-name>` |
 
 ### Packages by framework
 
@@ -71,7 +71,7 @@ export default defineDocs({
 ```
 
 - **Next.js:** `docs.config.ts` at project root; wrap Next config with `withDocs()` from `@farming-labs/next/config`. Content lives under `app/docs/` (path derived from `entry`).
-- **TanStack Start:** `docs.config.ts` or `docs.config.tsx` at project root; set `contentDir`, create `/api/docs`, and load content from your `docs/` directory via `@farming-labs/tanstack-start/server`.
+- **TanStack Start:** `docs.config.ts` or `docs.config.tsx` at project root; set `contentDir` and `nav`, create `/api/docs`, and load content from your `docs/` directory via `@farming-labs/tanstack-start/server`.
 - **SvelteKit:** `src/lib/docs.config.ts`; routes under `src/routes/docs/`; set `contentDir` to the folder containing your markdown (e.g. `docs`).
 - **Astro:** `src/lib/docs.config.ts`; pages under `src/pages/<entry>/`; set `contentDir`.
 - **Nuxt:** `docs.config.ts` at project root; `server/api/docs.ts` and `pages/docs/[...slug].vue`; set `contentDir` and `nav`.
@@ -119,7 +119,7 @@ For fully static builds (e.g. Cloudflare Pages, no server), set `staticExport: t
 
 1. **Theme CSS missing** — Docs look unstyled until the theme CSS is imported in the global stylesheet (or Nuxt `css`).
 2. **Wrong theme package** — Use the theme package for the same framework (e.g. `@farming-labs/svelte-theme` for SvelteKit, not `@farming-labs/theme`).
-3. **From scratch** — Use `init --template <next|nuxt|sveltekit|astro> --name <project>`; the CLI bootstraps a project with that name and runs install.
+3. **From scratch** — Use `init --template <next|tanstack-start|nuxt|sveltekit|astro> --name <project>`; the CLI bootstraps a project with that name and runs install.
 4. **Existing project** — Run `init` in the project root; the CLI detects the framework and scaffolds files.
 5. **Static hosting** — Set `staticExport: true`; search and AI are then hidden.
 

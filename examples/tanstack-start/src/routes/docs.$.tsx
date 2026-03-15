@@ -7,8 +7,16 @@ export const Route = createFileRoute("/docs/$")({
   loader: async ({ location }) => {
     try {
       return await loadDocPage({ data: { pathname: location.pathname } });
-    } catch {
-      throw notFound();
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "status" in error &&
+        (error as { status?: unknown }).status === 404
+      ) {
+        throw notFound();
+      }
+      throw error;
     }
   },
   head: ({ loaderData }) => ({

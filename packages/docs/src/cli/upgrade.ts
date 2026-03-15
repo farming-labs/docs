@@ -89,7 +89,7 @@ export async function upgrade(options: UpgradeOptions = {}) {
     framework = detectFramework(cwd);
     if (!framework) {
       p.log.error(
-        "Could not detect a supported framework (Next.js, Nuxt, SvelteKit, Astro). Use " +
+        "Could not detect a supported framework (Next.js, TanStack Start, Nuxt, SvelteKit, Astro). Use " +
           pc.cyan("--framework <next|nuxt|sveltekit|astro|tanstack-start>") +
           " to specify.",
       );

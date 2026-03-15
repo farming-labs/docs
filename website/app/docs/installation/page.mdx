@@ -101,7 +101,7 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
   For each framework below, add your **theme's CSS** to your global stylesheet (e.g. `app/global.css`, `src/app.css`, or `nuxt.config`). The import path must match the theme you use in `docs.config` — e.g. `default`, `greentree`, `darksharp`. Without it, docs pages will lack the correct styling.
 </Callout>
 
-<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
+<Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     ### 1. Install packages
 
@@ -214,6 +214,137 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
 
     > See [CLI](/docs/cli) for all generated files including the full `app/layout.tsx` and `app/docs/layout.tsx`, or check [Configuration](/docs/configuration) for all available options.
 
+  </Tab>
+  <Tab value="TanStack Start">
+    ### 1. Install packages
+
+    <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+      <Tab value="npm">
+        ```bash
+        npm install @farming-labs/docs @farming-labs/theme @farming-labs/tanstack-start
+        ```
+      </Tab>
+      <Tab value="pnpm">
+        ```bash
+        pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/tanstack-start
+        ```
+      </Tab>
+      <Tab value="yarn">
+        ```bash
+        yarn add @farming-labs/docs @farming-labs/theme @farming-labs/tanstack-start
+        ```
+      </Tab>
+      <Tab value="bun">
+        ```bash
+        bun add @farming-labs/docs @farming-labs/theme @farming-labs/tanstack-start
+        ```
+      </Tab>
+    </Tabs>
+
+    ### 2. Create `docs.config.tsx`
+
+    ```tsx title="docs.config.tsx"
+    import { defineDocs } from "@farming-labs/docs";
+    import { fumadocs } from "@farming-labs/theme";
+
+    export default defineDocs({
+      entry: "docs",
+      contentDir: "docs",
+      theme: fumadocs(),
+      nav: {
+        title: "My Docs",
+        url: "/docs",
+      },
+      metadata: {
+        titleTemplate: "%s – Docs",
+        description: "My documentation site",
+      },
+    });
+    ```
+
+    ### 3. Create `src/lib/docs.server.ts`
+
+    ```ts title="src/lib/docs.server.ts"
+    import { createDocsServer } from "@farming-labs/tanstack-start/server";
+    import docsConfig from "../../docs.config";
+
+    export const docsServer = createDocsServer({
+      ...docsConfig,
+      rootDir: process.cwd(),
+    });
+    ```
+
+    ### 4. Create `src/lib/docs.functions.ts`
+
+    ```ts title="src/lib/docs.functions.ts"
+    import { createServerFn } from "@tanstack/react-start";
+    import { docsServer } from "./docs.server";
+
+    export const loadDocPage = createServerFn({ method: "GET" })
+      .inputValidator((data: { pathname: string; locale?: string }) => data)
+      .handler(async ({ data }) => docsServer.load(data));
+    ```
+
+    ### 5. Render docs routes
+
+    ```tsx title="src/routes/docs.index.tsx"
+    import { createFileRoute } from "@tanstack/react-router";
+    import { TanstackDocsPage } from "@farming-labs/tanstack-start/react";
+    import { loadDocPage } from "@/lib/docs.functions";
+    import docsConfig from "../../docs.config";
+
+    export const Route = createFileRoute("/docs/")({
+      loader: () => loadDocPage({ data: { pathname: "/docs" } }),
+      component: () => <TanstackDocsPage config={docsConfig} data={Route.useLoaderData()} />,
+    });
+    ```
+
+    ```tsx title="src/routes/docs.$.tsx"
+    import { createFileRoute, notFound } from "@tanstack/react-router";
+    import { TanstackDocsPage } from "@farming-labs/tanstack-start/react";
+    import { loadDocPage } from "@/lib/docs.functions";
+    import docsConfig from "../../docs.config";
+
+    export const Route = createFileRoute("/docs/$")({
+      loader: async ({ location }) => {
+        try {
+          return await loadDocPage({ data: { pathname: location.pathname } });
+        } catch (error) {
+          if (
+            error &&
+            typeof error === "object" &&
+            "status" in error &&
+            (error as { status?: unknown }).status === 404
+          ) {
+            throw notFound();
+          }
+          throw error;
+        }
+      },
+      component: () => <TanstackDocsPage config={docsConfig} data={Route.useLoaderData()} />,
+    });
+    ```
+
+    ### 6. Import the theme CSS in `src/styles/app.css`
+
+    ```css title="src/styles/app.css"
+    @import "tailwindcss";
+    @import "@farming-labs/theme/default/css";
+    ```
+
+    ### 7. Add the docs API route
+
+    ```ts title="src/routes/api.docs.ts"
+    import { createServerFileRoute } from "@tanstack/react-start/server";
+    import { docsServer } from "@/lib/docs.server";
+
+    export const ServerRoute = createServerFileRoute("/api/docs").methods({
+      GET: ({ request }) => docsServer.GET(request),
+      POST: ({ request }) => docsServer.POST(request),
+    });
+    ```
+
+    That is the full manual setup. The built-in `TanstackDocsPage` renderer handles MDX page modules for you, so there is no extra `docs-page.tsx` or `doc-modules.ts` file to maintain.
   </Tab>
   <Tab value="SvelteKit">
     ### 1. Install packages

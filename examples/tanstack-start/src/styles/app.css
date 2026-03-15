@@ -2,7 +2,7 @@
 @import "@farming-labs/theme/colorful/css";
 
 @source "../../src";
-@source "../../../packages/fumadocs/dist";
-@source "../../../packages/fumadocs/src";
-@source "../../../node_modules/fumadocs-ui/dist";
-@source "../../../node_modules/fumadocs-core/dist";
+@source "../../../../packages/fumadocs/dist";
+@source "../../../../packages/fumadocs/src";
+@source "../../node_modules/fumadocs-ui/dist";
+@source "../../node_modules/fumadocs-core/dist";
