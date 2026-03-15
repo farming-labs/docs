@@ -36,6 +36,7 @@ describe("parseFlags", () => {
   it("parses upgrade option: framework", () => {
     expect(parseFlags(["upgrade", "--framework", "nuxt"]).framework).toBe("nuxt");
     expect(parseFlags(["--framework=sveltekit"]).framework).toBe("sveltekit");
+    expect(parseFlags(["--framework=tanstack-start"]).framework).toBe("tanstack-start");
   });
 
   it("returns empty object for empty argv", () => {

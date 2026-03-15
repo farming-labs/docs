@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-// @ts-ignore – resolved by Next.js at runtime
-import { usePathname } from "next/navigation";
+import { usePathname } from "fumadocs-core/framework";
 
 /** Serializable provider — icon is an HTML string, not JSX. */
 interface SerializedProvider {

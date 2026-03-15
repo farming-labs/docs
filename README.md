@@ -3,10 +3,10 @@
 A modern, flexible MDX-based documentation framework. Write markdown, get a polished docs site — no boilerplate required.
 
 ### Quick Start
-> **This package lets you build beautifull documentation to any Next.js, SvelteKit, Astro, or Nuxt project in minutes.**
+> **This package lets you build beautifull documentation to any Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project in minutes.**
 
 - ✨ **Polished themes & search, zero setup**
-- 🌍 **Choose your framework:** Next.js, SvelteKit, Astro, or Nuxt
+- 🌍 **Choose your framework:** Next.js, TanStack Start, SvelteKit, Astro, or Nuxt
 - ⚡️ **Fast, fully static or server-rendered**
 - 💡 **Type-safe config in code, not JSON**
 - 📦 **Single install, zero lock-in**
@@ -22,7 +22,7 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 
 ### Option A: CLI (recommended)
 
-Run `init` inside an existing Next.js, SvelteKit, Astro, or Nuxt project:
+Run `init` inside an existing Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project:
 
 ```bash
 npx @farming-labs/docs init
@@ -30,7 +30,7 @@ npx @farming-labs/docs init
 
 The CLI will:
 
-1. Detect your framework (Next.js, SvelteKit, Astro, or Nuxt)
+1. Detect your framework (Next.js, TanStack Start, SvelteKit, Astro, or Nuxt)
 2. Ask you to pick a theme
 3. Ask for the docs entry path (default: `docs`)
 4. Optionally scaffold internationalized docs with locale folders like `docs/en`, `docs/fr`, or `docs/zh`
@@ -500,7 +500,7 @@ Already have a project? Run `init` inside it — the CLI auto-detects your frame
 npx @farming-labs/docs init
 ```
 
-Pick from `next`, `nuxt`, `sveltekit`, or `astro`. Choose any of the 7 built-in themes. Your existing code is untouched.
+Pick from `next`, `tanstack-start`, `nuxt`, `sveltekit`, or `astro`. Choose any of the 7 built-in themes. Your existing code is untouched.
 
 ## Configuration
 

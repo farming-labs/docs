@@ -8,5 +8,6 @@ packages:
   - "packages/svelte-theme"
   - "packages/nuxt"
   - "packages/nuxt-theme"
+  - "packages/tanstack-start"
   - "examples/*"
   - "website"

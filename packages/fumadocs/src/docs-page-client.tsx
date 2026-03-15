@@ -4,9 +4,9 @@ import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page"
 import { useEffect, useState, type ReactNode } from "react";
 // @ts-ignore – resolved by the workspace dependency graph
 import { createPortal } from "react-dom";
-// @ts-ignore – resolved by Next.js at runtime
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "fumadocs-core/framework";
 import { PageActions } from "./page-actions.js";
+import { useWindowSearchParams } from "./client-location.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 
 interface TOCItem {
@@ -39,12 +39,18 @@ interface DocsPageClientProps {
   pageActionsAlignment?: "left" | "right";
   /** GitHub repository URL (e.g. "https://github.com/user/repo") */
   githubUrl?: string;
+  /** Path to docs content relative to the repo root (used for Edit on GitHub outside Next.js app/docs) */
+  contentDir?: string;
   /** GitHub branch name @default "main" */
   githubBranch?: string;
   /** Subdirectory in the repo where the docs site lives (for monorepos) */
   githubDirectory?: string;
+  /** Direct GitHub URL override for the current page. */
+  editOnGithubUrl?: string;
   /** Map of pathname → formatted last-modified date string */
   lastModifiedMap?: Record<string, string>;
+  /** Direct last-modified value override for the current page. */
+  lastModified?: string;
   /** Whether to show "Last updated" at all */
   lastUpdatedEnabled?: boolean;
   /** Where to show the "Last updated" date: "footer" (next to Edit on GitHub) or "below-title" */
@@ -130,8 +136,10 @@ function buildGithubFileUrl(
   entry: string,
   locale?: string,
   directory?: string,
+  contentDir?: string,
 ): string {
   const normalizedEntry = entry.replace(/^\/+|\/+$/g, "") || "docs";
+  const normalizedContentDir = contentDir?.replace(/^\/+|\/+$/g, "");
   const entryParts = normalizedEntry.split("/").filter(Boolean);
   const pathnameParts = pathname
     .replace(/^\/+|\/+$/g, "")
@@ -142,7 +150,7 @@ function buildGithubFileUrl(
       ? pathnameParts.slice(entryParts.length)
       : pathnameParts;
   const dirPrefix = directory ? `${directory}/` : "";
-  const basePath = `app/${normalizedEntry}`;
+  const basePath = normalizedContentDir || `app/${normalizedEntry}`;
   const relativePath = [locale, slugParts.join("/")].filter(Boolean).join("/");
   const path = `${dirPrefix}${basePath}${relativePath ? `/${relativePath}` : ""}/page.mdx`;
   return `${githubUrl}/edit/${branch}/${path}`;
@@ -182,9 +190,12 @@ export function DocsPageClient({
   pageActionsPosition = "below-title",
   pageActionsAlignment = "left",
   githubUrl,
+  contentDir,
   githubBranch = "main",
   githubDirectory,
+  editOnGithubUrl,
   lastModifiedMap,
+  lastModified: lastModifiedProp,
   lastUpdatedEnabled = true,
   lastUpdatedPosition = "footer",
   llmsTxtEnabled = false,
@@ -195,7 +206,7 @@ export function DocsPageClient({
   const fdTocStyle = tocStyle === "directional" ? "clerk" : undefined;
   const [toc, setToc] = useState<TOCItem[]>([]);
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const searchParams = useWindowSearchParams();
   const activeLocale = resolveClientLocale(searchParams, locale);
   const llmsLangParam = activeLocale ? `&lang=${encodeURIComponent(activeLocale)}` : "";
   const [actionsPortalTarget, setActionsPortalTarget] = useState<HTMLElement | null>(null);
@@ -260,12 +271,23 @@ export function DocsPageClient({
   }, [activeLocale, children, pathname]);
 
   const showActions = copyMarkdown || openDocs;
-  const githubFileUrl = githubUrl
-    ? buildGithubFileUrl(githubUrl, githubBranch, pathname, entry, activeLocale, githubDirectory)
-    : undefined;
+  const githubFileUrl =
+    editOnGithubUrl ??
+    (githubUrl
+      ? buildGithubFileUrl(
+          githubUrl,
+          githubBranch,
+          pathname,
+          entry,
+          activeLocale,
+          githubDirectory,
+          contentDir,
+        )
+      : undefined);
 
   const normalizedPath = pathname.replace(/\/$/, "") || "/";
-  const lastModified = lastUpdatedEnabled ? lastModifiedMap?.[normalizedPath] : undefined;
+  const lastModified =
+    lastUpdatedEnabled ? lastModifiedProp ?? lastModifiedMap?.[normalizedPath] : undefined;
 
   const showLastUpdatedBelowTitle = !!lastModified && lastUpdatedPosition === "below-title";
   const showLastUpdatedInFooter = !!lastModified && lastUpdatedPosition === "footer";

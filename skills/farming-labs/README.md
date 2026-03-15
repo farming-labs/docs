@@ -1,6 +1,6 @@
 # Farming Labs — Agent Skills for @farming-labs/docs
 
-This folder contains [Agent Skills](https://skills.sh/) (conforming to the [Agent Skills specification](https://agentskills.io/specification)) for **@farming-labs/docs** — an MDX-based documentation framework for Next.js, SvelteKit, Astro, and Nuxt.
+This folder contains [Agent Skills](https://skills.sh/) (conforming to the [Agent Skills specification](https://agentskills.io/specification)) for **@farming-labs/docs** — an MDX-based documentation framework for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
 
 Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task (getting started, CLI, creating themes, Ask AI, page actions, or configuration).
 

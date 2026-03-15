@@ -11,8 +11,8 @@ import type { Framework } from "./utils.js";
 
 describe("upgrade", () => {
   describe("PRESETS", () => {
-    it("includes next, nuxt, sveltekit, astro", () => {
-      expect(PRESETS).toEqual(["next", "nuxt", "sveltekit", "astro"]);
+    it("includes next, nuxt, sveltekit, astro, tanstack-start", () => {
+      expect(PRESETS).toEqual(["next", "nuxt", "sveltekit", "astro", "tanstack-start"]);
     });
   });
 
@@ -49,8 +49,16 @@ describe("upgrade", () => {
       expect(pkgs).toHaveLength(3);
     });
 
+    it("tanstack-start has docs, theme, tanstack-start", () => {
+      const pkgs = getPackagesForFramework("tanstack-start");
+      expect(pkgs).toContain("@farming-labs/docs");
+      expect(pkgs).toContain("@farming-labs/theme");
+      expect(pkgs).toContain("@farming-labs/tanstack-start");
+      expect(pkgs).toHaveLength(3);
+    });
+
     it("every framework has exactly 3 packages", () => {
-      const frameworks: Framework[] = ["nextjs", "nuxt", "sveltekit", "astro"];
+      const frameworks: Framework[] = ["nextjs", "nuxt", "sveltekit", "astro", "tanstack-start"];
       for (const fw of frameworks) {
         expect(PACKAGES_BY_FRAMEWORK[fw]).toHaveLength(3);
       }
@@ -66,6 +74,7 @@ describe("upgrade", () => {
       expect(presetFromFramework("nuxt")).toBe("nuxt");
       expect(presetFromFramework("sveltekit")).toBe("sveltekit");
       expect(presetFromFramework("astro")).toBe("astro");
+      expect(presetFromFramework("tanstack-start")).toBe("tanstack-start");
     });
 
     it("next preset maps to nextjs framework", () => {
@@ -73,7 +82,7 @@ describe("upgrade", () => {
     });
 
     it("round-trip: framework -> preset -> framework", () => {
-      const frameworks: Framework[] = ["nextjs", "nuxt", "sveltekit", "astro"];
+      const frameworks: Framework[] = ["nextjs", "nuxt", "sveltekit", "astro", "tanstack-start"];
       for (const fw of frameworks) {
         expect(frameworkFromPreset(presetFromFramework(fw))).toBe(fw);
       }
@@ -111,6 +120,13 @@ describe("upgrade", () => {
       const cmd = buildUpgradeCommand("nuxt", "latest", "npm");
       expect(cmd).toContain("npm add");
       expect(cmd).toContain("@farming-labs/nuxt@latest");
+    });
+
+    it("builds tanstack-start upgrade command", () => {
+      const cmd = buildUpgradeCommand("tanstack-start", "latest", "pnpm");
+      expect(cmd).toContain("@farming-labs/docs@latest");
+      expect(cmd).toContain("@farming-labs/theme@latest");
+      expect(cmd).toContain("@farming-labs/tanstack-start@latest");
     });
   });
 });

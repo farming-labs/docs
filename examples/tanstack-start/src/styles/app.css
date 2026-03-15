@@ -1,0 +1,8 @@
+@import "tailwindcss";
+@import "@farming-labs/theme/greentree/css";
+
+@source "../../src";
+@source "../../../packages/fumadocs/dist";
+@source "../../../packages/fumadocs/src";
+@source "../../../node_modules/fumadocs-ui/dist";
+@source "../../../node_modules/fumadocs-core/dist";
