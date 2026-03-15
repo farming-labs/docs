@@ -407,7 +407,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
   const githubContentPath =
     typeof githubRaw === "object" ? githubRaw.directory?.replace(/^\/|\/$/g, "") : undefined;
 
-  const aiConfig: AIConfigObj = { enabled: false, ...(config.ai ?? {}) };
+  const aiConfig: AIConfigObj = { enabled: false, ...config.ai };
   if (config.apiKey && !aiConfig.apiKey) {
     aiConfig.apiKey = config.apiKey as string;
   }
