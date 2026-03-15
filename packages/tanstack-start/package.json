@@ -22,6 +22,11 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js",
+      "default": "./dist/react.js"
+    },
     "./content": {
       "types": "./dist/content.d.ts",
       "import": "./dist/content.js",
@@ -53,10 +58,16 @@
   },
   "devDependencies": {
     "@farming-labs/docs": "workspace:*",
+    "@farming-labs/theme": "workspace:*",
+    "@types/react": "^19.2.2",
     "@types/node": "^22.10.0",
+    "react": "^19.2.0",
+    "vite": "^7.0.0",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "@farming-labs/docs": "*"
+    "@farming-labs/docs": "*",
+    "@farming-labs/theme": "*",
+    "react": "^19.0.0"
   }
 }

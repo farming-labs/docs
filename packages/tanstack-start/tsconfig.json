@@ -3,6 +3,8 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,

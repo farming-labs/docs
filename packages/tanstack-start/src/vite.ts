@@ -5,8 +5,9 @@ import remarkMdxFrontmatter from "remark-mdx-frontmatter";
 import { remarkHeading } from "fumadocs-core/mdx-plugins/remark-heading";
 import { rehypeToc } from "fumadocs-core/mdx-plugins/rehype-toc";
 import { rehypeCode } from "fumadocs-core/mdx-plugins/rehype-code";
+import type { PluginOption } from "vite";
 
-export function docsMdx(): ReturnType<typeof mdx> {
+export function docsMdx(): PluginOption {
   return mdx({
     include: /\.(md|mdx)$/,
     remarkPlugins: [

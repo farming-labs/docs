@@ -16,4 +16,5 @@ export {
   type FolderNode,
 } from "./content.js";
 export { createDocsServer, type DocsServer, type DocsServerLoadResult } from "./server.js";
+export { TanstackDocsPage } from "./react.js";
 export { docsMdx } from "./vite.js";
