@@ -1,0 +1,46 @@
+name: pkg.pr.new
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - "**"
+    tags:
+      - "!**"
+
+permissions:
+  contents: read
+
+jobs:
+  publish-preview:
+    name: Publish Package Previews
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Publish PR previews
+        run: pnpm dlx pkg-pr-new publish --comment=update --packageManager=pnpm "./packages/*"
