@@ -41,11 +41,11 @@ When you run `init` **without** `--template`, the CLI first asks whether you're 
 ### First prompt: Existing or Fresh?
 
 - **Existing project** — Add docs to the app in the current directory. The CLI then detects your framework (or asks you to pick one), then walks you through theme, entry path, global CSS, and so on.
-- **Fresh project** — Bootstrap a new app from a template. The CLI asks you to pick a framework (Next.js, Nuxt, SvelteKit, or Astro), then a project name, creates the folder, clones the template, and runs install.
+- **Fresh project** — Bootstrap a new app from a template. The CLI asks you to pick a framework (Next.js, TanStack Start, Nuxt, SvelteKit, or Astro), then a project name, creates the folder, clones the template, and runs install.
 
 ### If you choose Fresh project
 
-1. **Framework** — Next.js, Nuxt, SvelteKit, or Astro.
+1. **Framework** — Next.js, TanStack Start, Nuxt, SvelteKit, or Astro.
 2. **Project name** — Folder name (e.g. `my-docs`). Press **Enter** to accept the placeholder default.
 3. The CLI creates the folder, clones the template with `degit`, and runs install using the package manager you chose. You then run `cd <name>` and start the dev server with that same package manager.
 
@@ -107,6 +107,7 @@ The CLI also detects your package manager from the lockfile in the current direc
 | Framework | Packages upgraded to `@latest` |
 | --------- | ------------------------------ |
 | Next.js   | `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next` |
+| TanStack Start | `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/tanstack-start` |
 | Nuxt      | `@farming-labs/docs`, `@farming-labs/nuxt`, `@farming-labs/nuxt-theme` |
 | SvelteKit | `@farming-labs/docs`, `@farming-labs/svelte`, `@farming-labs/svelte-theme` |
 | Astro     | `@farming-labs/docs`, `@farming-labs/astro`, `@farming-labs/astro-theme` |
@@ -144,7 +145,7 @@ To specify the framework explicitly (e.g. in a monorepo or when auto-detect fail
   </Tab>
 </Tabs>
 
-Valid values: `next`, `nuxt`, `sveltekit`, `astro`.
+Valid values: `next`, `tanstack-start`, `nuxt`, `sveltekit`, `astro`.
 
 Use **`--latest`** (default) to install the latest stable release, or **`--beta`** to install beta versions:
 
@@ -184,6 +185,7 @@ Use **`--latest`** (default) to install the latest stable release, or **`--beta`
 | Framework | Detection                       | Status    |
 | --------- | ------------------------------- | --------- |
 | Next.js   | `next` in dependencies          | Supported |
+| TanStack Start | `@tanstack/react-start` or `@tanstack/start` in dependencies | Supported |
 | SvelteKit | `@sveltejs/kit` in dependencies | Supported |
 | Astro     | `astro` in dependencies         | Supported |
 | Nuxt      | `nuxt` in dependencies          | Supported |
@@ -559,7 +561,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
 
 | Flag                    | Description                                                                 |
 | ----------------------- | --------------------------------------------------------------------------- |
-| `--template <name>`     | Bootstrap a project: `next`, `nuxt`, `sveltekit`, or `astro`. Use with `--name`. |
+| `--template <name>`     | Bootstrap a project: `next`, `tanstack-start`, `nuxt`, `sveltekit`, or `astro`. Use with `--name`. |
 | `--name <project>`      | Project folder name when using `--template`; prompt if omitted (e.g. `my-docs`) |
 | `--theme <name>`        | Skip theme prompt: `fumadocs`, `darksharp`, `pixel-border`, `colorful`, `darkbold`, `shiny`, `greentree` |
 | `--entry <path>`        | Skip entry path prompt (e.g. `--entry docs`)                                |

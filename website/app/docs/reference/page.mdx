@@ -33,7 +33,7 @@ Top-level configuration object passed to `defineDocs()`.
 | Property       | Type                                            | Default          | Description                                                                          |
 | -------------- | ----------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------ |
 | `entry`        | `string`                                        | **required**     | URL path prefix for docs (e.g. `"docs"` → `/docs`)                                   |
-| `contentDir`   | `string`                                        | same as `entry`  | Path to content files. SvelteKit, Astro, and Nuxt only — Next.js uses `app/{entry}/` |
+| `contentDir`   | `string`                                        | same as `entry`  | Path to content files. TanStack Start, SvelteKit, Astro, and Nuxt use it; Next.js uses `app/{entry}/` |
 | `staticExport` | `boolean`                                       | `false`          | Set `true` for full static builds; hides search and AI (see [Configuration](/docs/configuration#static-export)) |
 | `theme`        | `DocsTheme`                                     | —                | Theme preset from a factory (`fumadocs()`, `darksharp()`, `pixelBorder()`, etc.)    |
 | `github`      | `string \| GithubConfig`                        | —                | GitHub repo config for "Edit on GitHub" links                                        |
@@ -131,7 +131,7 @@ Sidebar header configuration.
 
 | Property | Type                  | Default      | Description                                               |
 | -------- | --------------------- | ------------ | --------------------------------------------------------- |
-| `title`  | `string \| ReactNode` | `"Docs"`     | Sidebar header title. React elements supported in Next.js |
+| `title`  | `string \| ReactNode` | `"Docs"`     | Sidebar header title. React elements supported in Next.js and TanStack Start |
 | `url`    | `string`              | `"/{entry}"` | URL the title links to                                    |
 
 ```ts
@@ -171,7 +171,7 @@ github: {
 
 ## `onCopyClick` and `CodeBlockCopyData`
 
-Optional callback on `DocsConfig`. Fired when the user clicks the copy button on a code block — in addition to copying to the clipboard. Use it for analytics, logging, or custom behavior. See [Code block copy callback](/docs/configuration#code-block-copy-callback) for setup (Next.js vs SvelteKit/Astro/Nuxt).
+Optional callback on `DocsConfig`. Fired when the user clicks the copy button on a code block — in addition to copying to the clipboard. Use it for analytics, logging, or custom behavior. See [Code block copy callback](/docs/configuration#code-block-copy-callback) for setup (Next.js / TanStack Start vs SvelteKit / Astro / Nuxt).
 
 ### `CodeBlockCopyData`
 
@@ -249,7 +249,7 @@ Sidebar visibility and customization. See [Sidebar](/docs/customization/sidebar)
 | Property      | Type                                             | Default | Description                                                                                                  |
 | ------------- | ------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------ |
 | `enabled`     | `boolean`                                        | `true`  | Show or hide the sidebar                                                                                     |
-| `component`   | `(props: SidebarComponentProps) => ReactNode`    | —       | Custom sidebar render function. Receives `{ tree, collapsible, flat }`. Next.js only — other frameworks use slots. |
+| `component`   | `(props: SidebarComponentProps) => ReactNode`    | —       | Custom sidebar render function. Receives `{ tree, collapsible, flat }`. Supported in Next.js and TanStack Start — other frameworks use slots. |
 | `footer`      | `ReactNode`                                      | —       | Content rendered below nav items                                                                             |
 | `banner`      | `ReactNode`                                      | —       | Content rendered above nav items                                                                             |
 | `collapsible` | `boolean`                                        | `true`  | Whether sidebar is collapsible on desktop                                                                    |
@@ -320,8 +320,19 @@ Theme configuration returned by theme factories.
 
 Created via theme factories:
 
-<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
+<Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
+    ```ts
+    import { fumadocs } from "@farming-labs/theme";
+    import { darksharp } from "@farming-labs/theme/darksharp";
+    import { pixelBorder } from "@farming-labs/theme/pixel-border";
+    import { colorful } from "@farming-labs/theme/colorful";
+
+    theme: fumadocs({ ui: { /* overrides */ } }),
+    ```
+
+  </Tab>
+  <Tab value="TanStack Start">
     ```ts
     import { fumadocs } from "@farming-labs/theme";
     import { darksharp } from "@farming-labs/theme/darksharp";
@@ -662,7 +673,7 @@ You can use other YAML types (e.g. nested objects) for custom keys; only the fie
 ### How frontmatter is passed
 
 - **Next.js** — The MDX pipeline uses `remark-frontmatter` and `remark-mdx-frontmatter` with `name: "metadata"`. The parsed frontmatter is exposed as the **`metadata`** export from the page. The layout and `generateMetadata` receive it when resolving the page (e.g. via `getPage(params)`), and it is used for `createPageMetadata`, sidebar tree (title, icon, order), and description maps.
-- **SvelteKit / Astro / Nuxt** — The docs loader (e.g. `import.meta.glob` or content layer) reads each `.md`/`.mdx` file, parses frontmatter, and builds the nav tree and page data. Frontmatter is passed to the layout as **page data** (e.g. `page.data` or the props your content component receives). The same fields (`title`, `description`, `icon`, `order`, `tags`, `ogImage`) are used for sidebar, meta tags, and search.
+- **TanStack Start / SvelteKit / Astro / Nuxt** — The docs loader (e.g. `import.meta.glob` or content layer) reads each `.md`/`.mdx` file, parses frontmatter, and builds the nav tree and page data. Frontmatter is passed to the layout as **page data** (e.g. `page.data` or the props your content component receives). The same fields (`title`, `description`, `icon`, `order`, `tags`, `ogImage`) are used for sidebar, meta tags, and search.
 
 So in all frameworks, the **same frontmatter fields** drive titles, descriptions, icons, ordering, and OG; only the mechanism (MDX `metadata` vs. content loader `page.data`) differs.
 
@@ -699,6 +710,83 @@ export const myTheme = extendTheme(fumadocs(), {
   },
 });
 ```
+
+---
+
+## TanStack Start Server API
+
+### `createDocsServer(config)`
+
+Creates the TanStack Start docs server adapter.
+
+```ts
+import { createDocsServer } from "@farming-labs/tanstack-start/server";
+```
+
+**Parameters:**
+
+| Property  | Type         | Description |
+| --------- | ------------ | ----------- |
+| `config`  | `DocsConfig` | The config object from `defineDocs()` |
+| `rootDir` | `string`     | Optional project root used to resolve `contentDir`. Defaults to `process.cwd()` |
+
+**Returns:**
+
+| Property | Type                                                       | Description |
+| -------- | ---------------------------------------------------------- | ----------- |
+| `load`   | `({ pathname, locale? }) => Promise<DocsServerLoadResult>` | Loads docs page data and the sidebar tree for a pathname |
+| `GET`    | `({ request }) => Response`                                | Search / `llms.txt` endpoint handler |
+| `POST`   | `({ request }) => Promise<Response>`                       | AI chat endpoint handler |
+
+```ts title="src/lib/docs.server.ts"
+import { createDocsServer } from "@farming-labs/tanstack-start/server";
+import docsConfig from "../../docs.config";
+
+export const docsServer = createDocsServer({
+  ...docsConfig,
+  rootDir: process.cwd(),
+});
+```
+
+### TanStack Start Components
+
+| Component          | Import                               | Description |
+| ------------------ | ------------------------------------ | ----------- |
+| `TanstackDocsPage` | `@farming-labs/tanstack-start/react` | Built-in page renderer that resolves the compiled MDX module and wraps it in the shared docs layout |
+| `RootProvider`     | `@farming-labs/theme/tanstack`       | Root provider for theme state, search, and AI UI |
+
+```tsx title="src/routes/docs.index.tsx"
+import { createFileRoute } from "@tanstack/react-router";
+import { TanstackDocsPage } from "@farming-labs/tanstack-start/react";
+import { loadDocPage } from "@/lib/docs.functions";
+import docsConfig from "../../docs.config";
+
+export const Route = createFileRoute("/docs/")({
+  loader: () => loadDocPage({ data: { pathname: "/docs" } }),
+  component: DocsIndexPage,
+});
+
+function DocsIndexPage() {
+  const data = Route.useLoaderData();
+  return <TanstackDocsPage config={docsConfig} data={data} />;
+}
+```
+
+```ts title="src/routes/api.docs.ts"
+import { createFileRoute } from "@tanstack/react-router";
+import { docsServer } from "@/lib/docs.server";
+
+export const Route = createFileRoute("/api/docs")({
+  server: {
+    handlers: {
+      GET: async ({ request }) => docsServer.GET({ request }),
+      POST: async ({ request }) => docsServer.POST({ request }),
+    },
+  },
+});
+```
+
+> TanStack Start also uses the `docsMdx()` Vite plugin from `@farming-labs/tanstack-start/vite` so `.mdx` files compile without extra local module-loader glue.
 
 ---
 

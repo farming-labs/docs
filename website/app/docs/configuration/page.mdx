@@ -14,7 +14,7 @@ All configuration lives in a single `docs.config.ts` file.
   This is common when setting things like `nav.title`, custom `icons`, or React-based components in the config.
 </Callout>
 
-<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
+<Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     The config file lives at the **project root** as `docs.config.tsx` when it contains JSX:
 
@@ -27,6 +27,27 @@ All configuration lives in a single `docs.config.ts` file.
       theme: fumadocs(),
     });
     ```
+
+  </Tab>
+  <Tab value="TanStack Start">
+    The config file lives at the **project root** as `docs.config.tsx` when it contains JSX:
+
+    ```tsx title="docs.config.tsx"
+    import { defineDocs } from "@farming-labs/docs";
+    import { fumadocs } from "@farming-labs/theme";
+
+    export default defineDocs({
+      entry: "docs",
+      contentDir: "docs",
+      theme: fumadocs(),
+      nav: {
+        title: "My Docs",
+        url: "/docs",
+      },
+    });
+    ```
+
+    > TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to your markdown files) and `nav` (sidebar title/URL) since routing is handled differently from Next.js.
 
   </Tab>
   <Tab value="SvelteKit">
@@ -47,7 +68,7 @@ All configuration lives in a single `docs.config.ts` file.
     });
     ```
 
-    > SvelteKit, Astro, and Nuxt require `contentDir` (path to your markdown files) and `nav` (sidebar title/URL) since routing is handled differently from Next.js.
+    > TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to your markdown files) and `nav` (sidebar title/URL) since routing is handled differently from Next.js.
 
   </Tab>
   <Tab value="Astro">
@@ -95,7 +116,7 @@ All configuration lives in a single `docs.config.ts` file.
 | Option         | Type                           | Default         | Description                                        |
 | -------------- | ------------------------------ | --------------- | -------------------------------------------------- |
 | `entry`        | `string`                       | `"docs"`        | The docs URL path prefix (e.g. `"docs"` → `/docs`) |
-| `contentDir`   | `string`                       | same as `entry` | Path to content files (SvelteKit, Astro, Nuxt)     |
+| `contentDir`   | `string`                       | same as `entry` | Path to content files (TanStack Start, SvelteKit, Astro, Nuxt) |
 | `staticExport` | `boolean`                      | `false`         | Set `true` for full static builds (see [Static export](#static-export)) |
 | `theme`        | `DocsTheme`                    | —               | Theme preset from a theme factory                  |
 | `nav`         | `{ title, url }`               | —               | Sidebar title and base URL                         |
@@ -117,7 +138,7 @@ All configuration lives in a single `docs.config.ts` file.
 For fully static builds (e.g. **Cloudflare Pages**, static hosting with no server), set `staticExport: true` in your config. This:
 
 - **Next.js:** With `output: "export"` in `next.config`, the `/api/docs` route is not generated. The layout hides Cmd+K search and AI chat.
-- **SvelteKit / Astro / Nuxt:** The layout hides the search trigger and floating AI when `staticExport` is true. Omit or don’t deploy the docs API route so no server is required.
+- **TanStack Start / SvelteKit / Astro / Nuxt:** The layout hides the search trigger and floating AI when `staticExport` is true. Omit or don’t deploy the docs API route so no server is required.
 
 ```ts
 export default defineDocs({
@@ -164,11 +185,11 @@ docs/
     installation/page.md
 ```
 
-The generated examples and CLI scaffold use this folder structure across Next.js, SvelteKit, Astro, and Nuxt.
+The generated examples and CLI scaffold use this folder structure across Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
 
 ## Theme Toggle
 
-Controls the light/dark mode switcher. Works on Next.js, SvelteKit, Astro, and Nuxt.
+Controls the light/dark mode switcher. Works on Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
 
 ```ts
 // Show toggle (default)
@@ -229,8 +250,31 @@ breadcrumb: { enabled: false },
 
 Pass options to your theme preset to customize colors, typography, layout, and more:
 
-<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
+<Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
+    ```tsx title="docs.config.tsx"
+    import { pixelBorder } from "@farming-labs/theme/pixel-border";
+
+    theme: pixelBorder({
+      ui: {
+        colors: { primary: "oklch(0.72 0.19 149)" },
+        radius: "0px",
+        layout: {
+          toc: { enabled: true, depth: 3 },
+        },
+        sidebar: { style: "floating" },
+        typography: {
+          font: {
+            h1: { size: "2.25rem", weight: 700 },
+            body: { size: "0.975rem", lineHeight: "1.8" },
+          },
+        },
+      },
+    }),
+    ```
+
+  </Tab>
+  <Tab value="TanStack Start">
     ```tsx title="docs.config.tsx"
     import { pixelBorder } from "@farming-labs/theme/pixel-border";
 
@@ -331,7 +375,7 @@ nav: {
 },
 ```
 
-In Next.js, `title` can also be a React element:
+In Next.js and TanStack Start, `title` can also be a React element:
 
 ```tsx
 nav: {
@@ -349,7 +393,7 @@ nav: {
 
 Register icons in the config and reference them in frontmatter:
 
-<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
+<Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     ```tsx title="docs.config.tsx"
     import { Rocket, BookOpen } from "lucide-react";
@@ -361,6 +405,23 @@ Register icons in the config and reference them in frontmatter:
     ```
 
     ```mdx title="page.mdx"
+    ---
+    icon: "rocket"
+    ---
+    ```
+
+  </Tab>
+  <Tab value="TanStack Start">
+    ```tsx title="docs.config.tsx"
+    import { Rocket, BookOpen } from "lucide-react";
+
+    icons: {
+      rocket: <Rocket size={16} />,
+      book: <BookOpen size={16} />,
+    },
+    ```
+
+    ```mdx title="docs/page.mdx"
     ---
     icon: "rocket"
     ---
@@ -409,7 +470,7 @@ Register icons in the config and reference them in frontmatter:
 
 Run a callback when the user clicks the copy button on a code block (in addition to the default copy-to-clipboard). Useful for analytics or logging.
 
-**Next.js:** Set `onCopyClick` in `defineDocs()`; it is passed through to the MDX components.
+**Next.js / TanStack Start:** Set `onCopyClick` in `defineDocs()`; it is passed through to the MDX components.
 
 ```ts title="docs.config.ts"
 import type { CodeBlockCopyData } from "@farming-labs/docs";
@@ -457,7 +518,7 @@ See the full [Page Actions reference](/docs/customization/page-actions) for all 
 
 Add a RAG-powered AI chat that lets users ask questions about your docs:
 
-<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
+<Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     ```ts
     ai: {
@@ -470,6 +531,31 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
     ```
 
     The API key is read from `process.env.OPENAI_API_KEY` automatically.
+
+  </Tab>
+  <Tab value="TanStack Start">
+    ```ts
+    ai: {
+      enabled: true,
+      mode: "floating",
+      floatingStyle: "full-modal",
+      model: "gpt-4o-mini",
+      suggestedQuestions: ["How do I get started?"],
+    },
+    ```
+
+    Pass the API key through `src/lib/docs.server.ts`:
+
+    ```ts title="src/lib/docs.server.ts"
+    import { createDocsServer } from "@farming-labs/tanstack-start/server";
+    import docsConfig from "../../docs.config";
+
+    export const docsServer = createDocsServer({
+      ...docsConfig,
+      rootDir: process.cwd(),
+      ai: { apiKey: process.env.OPENAI_API_KEY, ...docsConfig.ai },
+    });
+    ```
 
   </Tab>
   <Tab value="SvelteKit">
@@ -547,7 +633,7 @@ See the full [Ask AI reference](/docs/customization/ai-chat) for all options inc
 
 ## Full Example
 
-<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
+<Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     ```tsx title="docs.config.tsx"
     import { defineDocs } from "@farming-labs/docs";
@@ -577,6 +663,39 @@ See the full [Ask AI reference](/docs/customization/ai-chat) for all options inc
         type: "dynamic",
         endpoint: "/api/og",
       }, 
+      metadata: {
+        titleTemplate: "%s – Docs",
+        description: "My documentation site",
+      },
+    });
+    ```
+
+  </Tab>
+  <Tab value="TanStack Start">
+    ```tsx title="docs.config.tsx"
+    import { defineDocs } from "@farming-labs/docs";
+    import { fumadocs } from "@farming-labs/theme";
+
+    export default defineDocs({
+      entry: "docs",
+      contentDir: "docs",
+      theme: fumadocs({
+        ui: {
+          colors: { primary: "oklch(0.72 0.19 149)" },
+        },
+      }),
+      nav: { title: "My Docs", url: "/docs" },
+      github: {
+        url: "https://github.com/my-org/my-docs",
+        directory: "docs",
+      },
+      themeToggle: { enabled: true },
+      breadcrumb: { enabled: true },
+      ai: {
+        enabled: true,
+        model: "gpt-4o-mini",
+        suggestedQuestions: ["How do I get started?"],
+      },
       metadata: {
         titleTemplate: "%s – Docs",
         description: "My documentation site",
