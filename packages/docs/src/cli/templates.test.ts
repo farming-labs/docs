@@ -6,6 +6,7 @@ import {
   rootLayoutTemplate,
   injectRootProviderIntoLayout,
   tanstackDocsConfigTemplate,
+  tanstackInstallationPageTemplate,
   tanstackRootRouteTemplate,
   injectTanstackRootProviderIntoRoute,
   injectTanstackVitePlugins,
@@ -267,6 +268,23 @@ describe("tanstackDocsConfigTemplate", () => {
   });
 });
 
+describe("tanstackInstallationPageTemplate", () => {
+  it("uses the generated local custom theme in installation docs", () => {
+    const out = tanstackInstallationPageTemplate({
+      ...baseConfig,
+      framework: "tanstack-start",
+      theme: "custom",
+      customThemeName: "my-theme",
+    });
+
+    expect(out).toContain('import { myTheme } from "./themes/my-theme"');
+    expect(out).toContain("theme: myTheme()");
+    expect(out).toContain('@import "../../themes/my-theme.css";');
+    expect(out).toContain("themes/my-theme.ts");
+    expect(out).toContain("themes/my-theme.css");
+  });
+});
+
 describe("tanstackRootRouteTemplate", () => {
   it("links the selected CSS file and wraps Outlet with RootProvider", () => {
     const out = tanstackRootRouteTemplate("src/styles/app.css");
@@ -312,6 +330,24 @@ export default defineConfig({
     expect(result).toContain("tailwindcss()");
     expect(result).toContain("docsMdx()");
     expect(result).toContain("tsconfigPaths({ ignoreConfigErrors: true })");
+  });
+
+  it("does not duplicate equivalent imports with different quote or semicolon style", () => {
+    const result = injectTanstackVitePlugins(
+      `import { defineConfig } from "vite"
+import tailwindcss from '@tailwindcss/vite'
+import { docsMdx } from '@farming-labs/tanstack-start/vite'
+import tsconfigPaths from 'vite-tsconfig-paths'
+import { tanstackStart } from "@tanstack/react-start/plugin/vite"
+
+export default defineConfig({
+  plugins: [tailwindcss(), docsMdx(), tsconfigPaths({ ignoreConfigErrors: true }), tanstackStart()],
+})
+`,
+      true,
+    );
+
+    expect(result).toBeNull();
   });
 });
 

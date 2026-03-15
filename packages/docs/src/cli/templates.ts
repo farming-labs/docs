@@ -151,8 +151,28 @@ function relativeAssetPath(fromFile: string, toFile: string): string {
   return rel.startsWith(".") ? rel : `./${rel}`;
 }
 
+function extractImportSpecifier(importLine: string): string | null {
+  const fromMatch = importLine.match(/\bfrom\s+["']([^"']+)["']/);
+  if (fromMatch) return fromMatch[1];
+
+  const bareImportMatch = importLine.match(/^\s*import\s+["']([^"']+)["']/);
+  if (bareImportMatch) return bareImportMatch[1];
+
+  return null;
+}
+
 function addImportLine(content: string, importLine: string): string {
   if (content.includes(importLine)) return content;
+
+  const specifier = extractImportSpecifier(importLine);
+  if (specifier) {
+    const importPattern = new RegExp(
+      String.raw`\bimport(?:\s+type)?[\s\S]*?\bfrom\s+["']${specifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']|^\s*import\s+["']${specifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`,
+      "m",
+    );
+    if (importPattern.test(content)) return content;
+  }
+
   const lines = content.split("\n");
   const lastImportIdx = lines.reduce((acc, line, index) => {
     const trimmed = line.trimStart();
@@ -1150,6 +1170,62 @@ Read the [Installation](/${cfg.entry}/installation) guide, then continue to [Qui
 }
 
 export function tanstackInstallationPageTemplate(cfg: TemplateConfig): string {
+  if (cfg.theme === "custom" && cfg.customThemeName) {
+    const baseName = cfg.customThemeName.replace(/\.(ts|css)$/i, "");
+    const exportName = getThemeExportName(baseName);
+    const cssImportPath = getCustomThemeCssImportPath("src/styles/app.css", baseName);
+    return `\
+---
+title: "Installation"
+description: "How to install and set up ${cfg.projectName}"
+---
+
+# Installation
+
+Add the docs packages to your TanStack Start app:
+
+\`\`\`bash
+pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/tanstack-start
+\`\`\`
+
+The scaffold also configures MDX through \`docsMdx()\` in \`vite.config.ts\`.
+
+## Theme CSS
+
+Keep your config theme and global CSS import aligned:
+
+\`\`\`ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+import { ${exportName} } from "./themes/${baseName}";
+
+export default defineDocs({
+  entry: "${cfg.entry}",
+  contentDir: "${cfg.entry}",
+  theme: ${exportName}(),
+});
+\`\`\`
+
+\`\`\`css title="src/styles/app.css"
+@import "tailwindcss";
+@import "${cssImportPath}";
+\`\`\`
+
+## Generated Files
+
+\`\`\`
+docs.config.ts
+themes/${baseName}.ts
+themes/${baseName}.css
+${cfg.entry}/
+src/lib/docs.server.ts
+src/lib/docs.functions.ts
+src/routes/${cfg.entry}/index.tsx
+src/routes/${cfg.entry}/$.tsx
+src/routes/api/docs.ts
+\`\`\`
+`;
+  }
+
   const t = getThemeInfo(cfg.theme);
   return `\
 ---
