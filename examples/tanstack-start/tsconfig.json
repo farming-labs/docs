@@ -10,7 +10,12 @@
     "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@farming-labs/theme": ["../../packages/fumadocs/src/index.ts"],
+      "@farming-labs/theme/*": [
+        "../../packages/fumadocs/src/*",
+        "../../packages/fumadocs/src/*/index.ts"
+      ]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "docs.config.tsx", "vite.config.ts"],

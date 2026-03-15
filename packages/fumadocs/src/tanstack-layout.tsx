@@ -45,6 +45,54 @@ interface LayoutDimensions {
   tocWidth?: number;
 }
 
+function resolveTreeIcon(
+  icon: ReactNode,
+  registry: Record<string, unknown> | undefined,
+): ReactNode | undefined {
+  if (!icon) return undefined;
+  if (typeof icon !== "string") return icon;
+
+  const fromRegistry = registry?.[icon] as ReactNode | undefined;
+  if (fromRegistry) return fromRegistry;
+
+  if (icon.trim().startsWith("<")) {
+    return <span aria-hidden dangerouslySetInnerHTML={{ __html: icon }} />;
+  }
+
+  return undefined;
+}
+
+function resolveTreeIcons(
+  tree: TreeRoot,
+  registry: Record<string, unknown> | undefined,
+): TreeRoot {
+  function mapNode(node: TreeNode): TreeNode {
+    if (node.type === "page") {
+      return {
+        ...node,
+        icon: resolveTreeIcon(node.icon, registry),
+      };
+    }
+
+    return {
+      ...node,
+      icon: resolveTreeIcon(node.icon, registry),
+      index: node.index
+        ? {
+            ...node.index,
+            icon: resolveTreeIcon(node.index.icon, registry),
+          }
+        : undefined,
+      children: node.children.map(mapNode),
+    };
+  }
+
+  return {
+    ...tree,
+    children: tree.children.map(mapNode),
+  };
+}
+
 export interface TanstackDocsLayoutProps {
   config: DocsConfig;
   tree: TreeRoot;
@@ -326,7 +374,10 @@ export function TanstackDocsLayout({
   }
 
   const i18n = (config as DocsConfig & { i18n?: { locales?: string[]; defaultLocale?: string } }).i18n;
-  const localizedTree = locale ? localizeTreeUrls(tree, locale) : tree;
+  const resolvedTree = resolveTreeIcons(
+    locale ? localizeTreeUrls(tree, locale) : tree,
+    config.icons as Record<string, unknown> | undefined,
+  );
 
   const finalSidebarProps = { ...sidebarProps } as Record<string, unknown>;
   const sidebarFooter = sidebarProps.footer as ReactNode;
@@ -350,7 +401,7 @@ export function TanstackDocsLayout({
 
   if (sidebarComponentFn) {
     finalSidebarProps.component = (sidebarComponentFn as Function)({
-      tree: localizedTree,
+      tree: resolvedTree,
       collapsible: sidebarProps.collapsible !== false,
       flat: !!sidebarFlat,
     }) as ReactNode;
@@ -359,7 +410,7 @@ export function TanstackDocsLayout({
   return (
     <div id="nd-docs-layout" style={{ display: "contents" }}>
       <DocsLayout
-        tree={localizedTree}
+        tree={resolvedTree}
         nav={{ title: navTitle, url: navUrl }}
         themeSwitch={
           locale && i18n?.locales ? { ...themeSwitch, enabled: false } : themeSwitch
