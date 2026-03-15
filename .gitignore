@@ -4,6 +4,7 @@ node_modules/
 # Build outputs
 dist/
 .next/
+.next-build/
 out/
 .output/
 .svelte-kit/

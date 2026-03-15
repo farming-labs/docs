@@ -77,7 +77,7 @@ The generated project gets:
 
 ## Upgrade
 
-Upgrade all `@farming-labs/*` docs packages to the latest version. Run from your project root; the CLI **auto-detects** your framework from `package.json` and upgrades the right packages.
+Upgrade all `@farming-labs/*` docs packages to the latest version. Run from your project root; the CLI **auto-detects** your framework from `package.json` and upgrades the right packages for Next.js, Nuxt, SvelteKit, and Astro.
 
 The CLI also detects your package manager from the lockfile in the current directory (`pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, or `package-lock.json`). If no lockfile is found, it asks which package manager you want to use instead of defaulting to npm.
 
@@ -107,7 +107,6 @@ The CLI also detects your package manager from the lockfile in the current direc
 | Framework | Packages upgraded to `@latest` |
 | --------- | ------------------------------ |
 | Next.js   | `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next` |
-| TanStack Start | `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/tanstack-start` |
 | Nuxt      | `@farming-labs/docs`, `@farming-labs/nuxt`, `@farming-labs/nuxt-theme` |
 | SvelteKit | `@farming-labs/docs`, `@farming-labs/svelte`, `@farming-labs/svelte-theme` |
 | Astro     | `@farming-labs/docs`, `@farming-labs/astro`, `@farming-labs/astro-theme` |
@@ -145,7 +144,9 @@ To specify the framework explicitly (e.g. in a monorepo or when auto-detect fail
   </Tab>
 </Tabs>
 
-Valid values: `next`, `tanstack-start`, `nuxt`, `sveltekit`, `astro`.
+Valid values: `next`, `nuxt`, `sveltekit`, `astro`.
+
+> TanStack Start is currently supported by `init`, but not by `upgrade`.
 
 Use **`--latest`** (default) to install the latest stable release, or **`--beta`** to install beta versions:
 
@@ -182,13 +183,13 @@ Use **`--latest`** (default) to install the latest stable release, or **`--beta`
 
 ## Supported Frameworks
 
-| Framework | Detection                       | Status    |
-| --------- | ------------------------------- | --------- |
-| Next.js   | `next` in dependencies          | Supported |
-| TanStack Start | `@tanstack/react-start` or `@tanstack/start` in dependencies | Supported |
-| SvelteKit | `@sveltejs/kit` in dependencies | Supported |
-| Astro     | `astro` in dependencies         | Supported |
-| Nuxt      | `nuxt` in dependencies          | Supported |
+| Framework | Detection | `init` | `upgrade` |
+| --------- | --------- | ------ | --------- |
+| Next.js | `next` in dependencies | Supported | Supported |
+| TanStack Start | `@tanstack/react-start` in dependencies | Supported | Not yet |
+| SvelteKit | `@sveltejs/kit` in dependencies | Supported | Supported |
+| Astro | `astro` in dependencies | Supported | Supported |
+| Nuxt | `nuxt` in dependencies | Supported | Supported |
 
 ## Available Themes
 
@@ -209,7 +210,7 @@ The init CLI offers several built-in themes plus an option to create your own:
 
 When you choose **Existing project**, the CLI does the following (framework-specific files vary):
 
-<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
+<Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     1. **Detects Next.js** via `next` in your `package.json` (or asks you to pick a framework)
     2. **Asks for a theme** — built-in themes or **Create your own theme** (then prompts for theme name; press Enter for default `my-theme`)
@@ -227,6 +228,27 @@ When you choose **Existing project**, the CLI does the following (framework-spec
        - `app/docs/quickstart/page.mdx` — Sample quickstart guide when i18n is disabled
     7. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next`
     8. **Starts the dev server** — Opens your docs at `http://localhost:3000/docs`
+  </Tab>
+  <Tab value="TanStack Start">
+    1. **Detects TanStack Start** via `@tanstack/react-start` in your `package.json` (or asks you to pick a framework)
+    2. **Asks for a theme** — built-in themes or **Create your own theme** (then prompts for theme name; press Enter for default `my-theme`)
+    3. **Asks for the entry path** — Default is `docs` (press Enter to accept)
+    4. **Skips the built-in i18n scaffold** so the generated TanStack routes stay minimal and working
+    5. **Asks about path aliases** — Use `@/` alias or relative paths for imports
+    6. **Generates files:**
+       - `docs.config.ts` — Full config with your selected theme
+       - `src/lib/docs.server.ts` — TanStack docs server
+       - `src/lib/docs.functions.ts` — Server function wrapper for page loading
+       - `src/routes/{entry}/index.tsx` — Docs index route
+       - `src/routes/{entry}/$.tsx` — Catch-all docs route
+       - `src/routes/api/docs.ts` — Search and AI API route
+       - `src/styles/app.css` — Imports Tailwind and theme CSS
+       - `docs/page.mdx` — Sample documentation page
+       - `docs/installation/page.mdx` — Sample installation guide
+       - `docs/quickstart/page.mdx` — Sample quickstart guide
+    7. **Updates existing app files when needed** — Injects `RootProvider` into `src/routes/__root.tsx` and adds `docsMdx()` / Tailwind plugins to `vite.config.ts`
+    8. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/tanstack-start`
+    9. **Starts the dev server** — Opens your docs at `http://localhost:5173/docs`
   </Tab>
   <Tab value="SvelteKit">
     1. **Detects SvelteKit** via `@sveltejs/kit` in your `package.json` (or asks you to pick a framework)
@@ -292,7 +314,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
 
 ## Example Output
 
-<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
+<Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     ```
     $ npx @farming-labs/docs init
@@ -360,6 +382,54 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       ◇ Starting dev server...
       │
       └ Done! Open http://localhost:3000/docs
+    ```
+
+  </Tab>
+  <Tab value="TanStack Start">
+    ```
+    $ npx @farming-labs/docs init
+
+      ┌ @farming-labs/docs
+      │
+      ◆ Are you adding docs to an existing project or starting fresh?
+      │ ● Existing project
+      │ ○ Fresh project
+      │
+      ◆ Detected framework: TanStack Start
+      │
+      ◆ Which theme would you like to use?
+      │ ● fumadocs (default)
+      │ ○ darksharp
+      │ ○ pixel-border
+      │ ○ colorful
+      │ ○ greentree
+      │ ○ darkbold
+      │ ○ shiny
+      │ ○ Create your own theme
+      │
+      ◆ Use path aliases for imports?
+      │ ● Yes (@/ alias)
+      │ ○ No (relative paths)
+      │
+      ◆ Where should your docs live?
+      │ docs  (press Enter for default)
+      │
+      ℹ Skipping i18n scaffold for TanStack Start. Configure localized routes manually if needed.
+      │
+      ◇ Generated docs.config.ts
+      ◇ Generated src/lib/docs.server.ts
+      ◇ Generated src/lib/docs.functions.ts
+      ◇ Generated src/routes/docs/index.tsx
+      ◇ Generated src/routes/docs/$.tsx
+      ◇ Generated src/routes/api/docs.ts
+      ◇ Updated src/routes/__root.tsx
+      ◇ Updated vite.config.ts
+      ◇ Updated src/styles/app.css
+      │
+      ◇ Installing dependencies...
+      ◇ Starting dev server...
+      │
+      └ Done! Open http://localhost:5173/docs
     ```
 
   </Tab>
@@ -581,7 +651,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
   This applies when you add things like a custom `nav.title`, React icons, or React-based components directly in the config file.
 </Callout>
 
-<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
+<Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     **`docs.config.ts`**
 
@@ -670,6 +740,110 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     > If you chose `darksharp` or `pixel-border`, the CSS import line will differ:
     > - Darksharp: `@import "@farming-labs/theme/darksharp/css";`
     > - Pixel Border: `@import "@farming-labs/theme/pixel-border/css";`
+
+  </Tab>
+  <Tab value="TanStack Start">
+    **`docs.config.ts`**
+
+    ```tsx title="docs.config.ts"
+    import { defineDocs } from "@farming-labs/docs";
+    import { fumadocs } from "@farming-labs/theme";
+
+    export default defineDocs({
+      entry: "docs",
+      contentDir: "docs",
+      theme: fumadocs(),
+      nav: {
+        title: "My Docs",
+        url: "/docs",
+      },
+      breadcrumb: { enabled: true },
+      metadata: {
+        titleTemplate: "%s – Docs",
+        description: "My documentation site",
+      },
+    });
+    ```
+
+    **`vite.config.ts`**
+
+    ```ts title="vite.config.ts"
+    import { defineConfig } from "vite";
+    import tailwindcss from "@tailwindcss/vite";
+    import tsconfigPaths from "vite-tsconfig-paths";
+    import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+    import { docsMdx } from "@farming-labs/tanstack-start/vite";
+
+    export default defineConfig({
+      plugins: [tailwindcss(), docsMdx(), tsconfigPaths({ ignoreConfigErrors: true }), tanstackStart()],
+    });
+    ```
+
+    **`src/styles/app.css`** — add your theme's CSS here so docs styling applies.
+
+    ```css title="src/styles/app.css"
+    @import "tailwindcss";
+    @import "@farming-labs/theme/default/css";
+    ```
+
+    **`src/routes/__root.tsx`**
+
+    ```tsx title="src/routes/__root.tsx"
+    import appCss from "@/styles/app.css?url";
+    import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+    import { RootProvider } from "@farming-labs/theme/tanstack";
+
+    export const Route = createRootRoute({
+      head: () => ({
+        links: [{ rel: "stylesheet", href: appCss }],
+      }),
+      component: RootComponent,
+    });
+
+    function RootComponent() {
+      return (
+        <html lang="en" suppressHydrationWarning>
+          <head>
+            <HeadContent />
+          </head>
+          <body>
+            <RootProvider>
+              <Outlet />
+            </RootProvider>
+            <Scripts />
+          </body>
+        </html>
+      );
+    }
+    ```
+
+    **`src/lib/docs.server.ts`**
+
+    ```ts title="src/lib/docs.server.ts"
+    import { createDocsServer } from "@farming-labs/tanstack-start/server";
+    import docsConfig from "../../docs.config";
+
+    export const docsServer = createDocsServer({
+      ...docsConfig,
+      rootDir: process.cwd(),
+    });
+    ```
+
+    **`src/routes/docs/index.tsx`**
+
+    ```tsx title="src/routes/docs/index.tsx"
+    import { createFileRoute } from "@tanstack/react-router";
+    import { TanstackDocsPage } from "@farming-labs/tanstack-start/react";
+    import { loadDocPage } from "@/lib/docs.functions";
+    import docsConfig from "../../../docs.config";
+
+    export const Route = createFileRoute("/docs/")({
+      loader: () => loadDocPage({ data: { pathname: "/docs" } }),
+      component: () => <TanstackDocsPage config={docsConfig} data={Route.useLoaderData()} />,
+    });
+    ```
+
+    > TanStack Start uses the same `@farming-labs/theme` theme package as Next.js. Keep the theme name in `docs.config.ts` and `src/styles/app.css` aligned.
 
   </Tab>
   <Tab value="SvelteKit">
@@ -965,7 +1139,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
 
 After running `init`, your project will look like this:
 
-<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
+<Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
 ```
 my-app/
@@ -981,6 +1155,33 @@ my-app/
 │       │   └── page.mdx  # /docs/installation
 │       └── quickstart/
 │           └── page.mdx  # /docs/quickstart
+└── package.json
+```
+  </Tab>
+  <Tab value="TanStack Start">
+```
+my-app/
+├── docs.config.ts             # Docs configuration
+├── docs/                      # Markdown content
+│   ├── page.mdx               # /docs
+│   ├── installation/
+│   │   └── page.mdx           # /docs/installation
+│   └── quickstart/
+│       └── page.mdx           # /docs/quickstart
+├── src/
+│   ├── lib/
+│   │   ├── docs.functions.ts  # Server function wrapper
+│   │   └── docs.server.ts     # Docs server
+│   ├── routes/
+│   │   ├── __root.tsx         # Root layout with RootProvider
+│   │   ├── api/
+│   │   │   └── docs.ts        # Search & AI API route
+│   │   └── docs/
+│   │       ├── $.tsx          # Dynamic page
+│   │       └── index.tsx      # /docs
+│   └── styles/
+│       └── app.css            # Theme CSS import
+├── vite.config.ts             # docsMdx() + TanStack Start plugin
 └── package.json
 ```
   </Tab>
