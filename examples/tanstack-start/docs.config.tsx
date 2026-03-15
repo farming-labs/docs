@@ -1,12 +1,12 @@
 import { defineDocs } from "@farming-labs/docs";
-import { greentree } from "@farming-labs/theme/greentree";
 import { Rocket, BookOpen, Sparkles } from "lucide-react";
 import { MyNote } from "./src/components/my-note";
+import { colorful } from "@farming-labs/theme/colorful";
 
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: greentree({
+  theme: colorful({
     ui: {
       components: { Callout: { variant: "outline" } },
       layout: {
