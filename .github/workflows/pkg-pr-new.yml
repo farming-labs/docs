@@ -4,8 +4,14 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - "**"
+    tags:
+      - "!**"
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   publish-preview:
@@ -27,6 +33,9 @@ jobs:
           node-version: "22"
           cache: "pnpm"
 
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -34,4 +43,4 @@ jobs:
         run: pnpm build
 
       - name: Publish PR previews
-        run: pnpm dlx pkg-pr-new publish --no-compact --packageManager=pnpm "./packages/*"
+        run: pnpm dlx pkg-pr-new publish --comment=update --packageManager=pnpm "./packages/*"
