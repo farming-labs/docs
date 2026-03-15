@@ -196,7 +196,9 @@ function navTreeFromMap(
     const url = slug ? `/${entry}/${slug}` : `/${entry}`;
     const fallbackTitle =
       dirParts.length > 0
-        ? dirParts[dirParts.length - 1].replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
+        ? dirParts[dirParts.length - 1]
+            .replace(/-/g, " ")
+            .replace(/\b\w/g, (char) => char.toUpperCase())
         : "Documentation";
 
     dirs.push({
@@ -319,7 +321,11 @@ function navTreeFromMap(
   return { name: "Docs", children };
 }
 
-function searchIndexFromMap(contentMap: ContentFileMap, dirPrefix: string, entry: string): ContentPage[] {
+function searchIndexFromMap(
+  contentMap: ContentFileMap,
+  dirPrefix: string,
+  entry: string,
+): ContentPage[] {
   const pages: ContentPage[] = [];
 
   for (const key of Object.keys(contentMap)) {
@@ -337,7 +343,9 @@ function searchIndexFromMap(contentMap: ContentFileMap, dirPrefix: string, entry
     const url = slug ? `/${entry}/${slug}` : `/${entry}`;
     const fallbackTitle =
       segments.length > 0
-        ? segments[segments.length - 1].replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
+        ? segments[segments.length - 1]
+            .replace(/-/g, " ")
+            .replace(/\b\w/g, (char) => char.toUpperCase())
         : "Documentation";
 
     pages.push({
@@ -422,7 +430,9 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       ...match,
       locale,
       contentDirRel,
-      contentDirAbs: path.isAbsolute(contentDirRel) ? contentDirRel : path.resolve(rootDir, contentDirRel),
+      contentDirAbs: path.isAbsolute(contentDirRel)
+        ? contentDirRel
+        : path.resolve(rootDir, contentDirRel),
       dirPrefix: buildDirPrefix(contentDirRel, rootDir),
     };
   }
@@ -679,8 +689,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     });
   }
 
-  const projectName =
-    typeof config.nav?.title === "string" ? (config.nav.title as string) : null;
+  const projectName = typeof config.nav?.title === "string" ? (config.nav.title as string) : null;
   const packageName = aiConfig.packageName;
   const docsUrl = aiConfig.docsUrl;
 
@@ -776,7 +785,10 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         : systemPrompt,
     };
 
-    const llmMessages: ChatMessage[] = [systemMessage, ...messages.filter((message) => message.role !== "system")];
+    const llmMessages: ChatMessage[] = [
+      systemMessage,
+      ...messages.filter((message) => message.role !== "system"),
+    ];
 
     const requestedModel =
       typeof body.model === "string" && body.model.trim().length > 0

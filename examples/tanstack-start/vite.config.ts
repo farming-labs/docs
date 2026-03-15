@@ -5,10 +5,5 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { docsMdx } from "@farming-labs/tanstack-start/vite";
 
 export default defineConfig({
-  plugins: [
-    tailwindcss(),
-    docsMdx(),
-    tsconfigPaths({ ignoreConfigErrors: true }),
-    tanstackStart(),
-  ],
+  plugins: [tailwindcss(), docsMdx(), tsconfigPaths({ ignoreConfigErrors: true }), tanstackStart()],
 });

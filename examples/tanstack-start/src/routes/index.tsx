@@ -25,7 +25,8 @@ function HomePage() {
         </h1>
         <p style={{ fontSize: "1.05rem", lineHeight: 1.8, opacity: 0.8, marginBottom: "1.5rem" }}>
           This example renders MDX docs through TanStack Start while keeping the same
-          `docs.config.tsx` model, theme presets, search endpoint, page actions, and llms.txt output.
+          `docs.config.tsx` model, theme presets, search endpoint, page actions, and llms.txt
+          output.
         </p>
         <Link
           to="/docs"

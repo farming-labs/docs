@@ -7,11 +7,7 @@ type FumadocsProviderProps = ComponentPropsWithoutRef<typeof FumadocsRootProvide
 
 export interface DocsTanstackRootProviderProps extends FumadocsProviderProps {}
 
-export function RootProvider({
-  children,
-  search,
-  ...props
-}: DocsTanstackRootProviderProps) {
+export function RootProvider({ children, search, ...props }: DocsTanstackRootProviderProps) {
   return (
     <FumadocsRootProvider
       search={{

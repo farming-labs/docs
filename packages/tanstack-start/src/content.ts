@@ -134,7 +134,8 @@ function buildNavNode(
   const slug = [...slugParts, name];
   const url = `/${entry}/${slug.join("/")}`;
   const displayName =
-    (data.title as string) ?? name.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+    (data.title as string) ??
+    name.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
   const icon = data.icon as string | undefined;
 
   const childDirs = fs.readdirSync(full).filter((childName) => {

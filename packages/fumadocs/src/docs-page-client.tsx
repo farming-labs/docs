@@ -1,14 +1,7 @@
 "use client";
 
 import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page";
-import {
-  Children,
-  cloneElement,
-  isValidElement,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { Children, cloneElement, isValidElement, useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "fumadocs-core/framework";
 import { PageActions } from "./page-actions.js";
 import { useWindowSearchParams } from "./client-location.js";
@@ -324,8 +317,9 @@ export function DocsPageClient({
       : undefined);
 
   const normalizedPath = pathname.replace(/\/$/, "") || "/";
-  const lastModified =
-    lastUpdatedEnabled ? lastModifiedProp ?? lastModifiedMap?.[normalizedPath] : undefined;
+  const lastModified = lastUpdatedEnabled
+    ? (lastModifiedProp ?? lastModifiedMap?.[normalizedPath])
+    : undefined;
 
   const showLastUpdatedBelowTitle = !!lastModified && lastUpdatedPosition === "below-title";
   const showLastUpdatedInFooter = !!lastModified && lastUpdatedPosition === "footer";

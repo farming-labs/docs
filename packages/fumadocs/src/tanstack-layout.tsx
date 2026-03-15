@@ -62,10 +62,7 @@ function resolveTreeIcon(
   return undefined;
 }
 
-function resolveTreeIcons(
-  tree: TreeRoot,
-  registry: Record<string, unknown> | undefined,
-): TreeRoot {
+function resolveTreeIcons(tree: TreeRoot, registry: Record<string, unknown> | undefined): TreeRoot {
   function mapNode(node: TreeNode): TreeNode {
     if (node.type === "page") {
       return {
@@ -373,7 +370,8 @@ export function TanstackDocsLayout({
       rawModelConfig.defaultModel ?? rawModelConfig.models?.[0]?.id ?? aiDefaultModelId;
   }
 
-  const i18n = (config as DocsConfig & { i18n?: { locales?: string[]; defaultLocale?: string } }).i18n;
+  const i18n = (config as DocsConfig & { i18n?: { locales?: string[]; defaultLocale?: string } })
+    .i18n;
   const resolvedTree = resolveTreeIcons(
     locale ? localizeTreeUrls(tree, locale) : tree,
     config.icons as Record<string, unknown> | undefined,
@@ -412,9 +410,7 @@ export function TanstackDocsLayout({
       <DocsLayout
         tree={resolvedTree}
         nav={{ title: navTitle, url: navUrl }}
-        themeSwitch={
-          locale && i18n?.locales ? { ...themeSwitch, enabled: false } : themeSwitch
-        }
+        themeSwitch={locale && i18n?.locales ? { ...themeSwitch, enabled: false } : themeSwitch}
         sidebar={finalSidebarProps}
         {...(aiMode === "sidebar-icon" && aiEnabled
           ? {
