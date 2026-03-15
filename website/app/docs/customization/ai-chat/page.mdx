@@ -19,7 +19,7 @@ ai: {
 
 That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt-4o-mini` by default.
 
-<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
+<Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     Add `OPENAI_API_KEY` to your `.env` file:
 
@@ -28,6 +28,27 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
     ```
 
     The key is automatically read from `process.env.OPENAI_API_KEY`.
+
+  </Tab>
+  <Tab value="TanStack Start">
+    Add `OPENAI_API_KEY` to your `.env` file:
+
+    ```bash title=".env"
+    OPENAI_API_KEY=sk-...
+    ```
+
+    Pass it through `src/lib/docs.server.ts`:
+
+    ```ts title="src/lib/docs.server.ts"
+    import { createDocsServer } from "@farming-labs/tanstack-start/server";
+    import docsConfig from "../../docs.config";
+
+    export const docsServer = createDocsServer({
+      ...docsConfig,
+      rootDir: process.cwd(),
+      ai: { apiKey: process.env.OPENAI_API_KEY, ...docsConfig.ai },
+    });
+    ```
 
   </Tab>
   <Tab value="SvelteKit">

@@ -98,7 +98,7 @@ sidebar: {
 
 The `banner` renders above the navigation items and `footer` renders below them, both inheriting the theme's sidebar styling automatically.
 
-For non-React frameworks, use named slots:
+Next.js and TanStack Start can pass React nodes directly in `docs.config.tsx`. For non-React frameworks, use named slots:
 
 <Tabs items={["SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="SvelteKit">
@@ -155,7 +155,7 @@ For non-React frameworks, use named slots:
 
 Replace the entire sidebar navigation with your own component. The component receives the full page tree with all parent-child relationships.
 
-<Tabs items={["Next.js", "SvelteKit", "Astro", "Nuxt"]}>
+<Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
     Pass a render function via `sidebar.component` in your config:
 
@@ -210,6 +210,58 @@ Replace the entire sidebar navigation with your own component. The component rec
           {tree.children.map((node) => renderNode(node))}
         </nav>
       );
+    }
+    ```
+
+  </Tab>
+  <Tab value="TanStack Start">
+    Pass a render function via `sidebar.component` in your config:
+
+    ```tsx title="docs.config.tsx"
+    import type { SidebarComponentProps } from "@farming-labs/docs";
+
+    sidebar: {
+      component: ({ tree, collapsible, flat }: SidebarComponentProps) => (
+        <MySidebar tree={tree} />
+      ),
+    },
+    ```
+
+    Your component can read the current route with TanStack Router:
+
+    ```tsx title="src/components/MySidebar.tsx"
+    import { useRouterState } from "@tanstack/react-router";
+    import type { SidebarTree, SidebarNode } from "@farming-labs/docs";
+
+    export function MySidebar({ tree }: { tree: SidebarTree }) {
+      const pathname = useRouterState({
+        select: (state) => state.location.pathname,
+      });
+
+      function renderNode(node: SidebarNode) {
+        if (node.type === "page") {
+          return (
+            <a
+              href={node.url}
+              className={pathname === node.url ? "active" : ""}
+            >
+              {node.name}
+            </a>
+          );
+        }
+
+        return (
+          <details open>
+            <summary>{node.name}</summary>
+            <div>
+              {node.index && <a href={node.index.url}>{node.index.name}</a>}
+              {node.children.map((child) => renderNode(child))}
+            </div>
+          </details>
+        );
+      }
+
+      return <nav>{tree.children.map((node) => renderNode(node))}</nav>;
     }
     ```
 

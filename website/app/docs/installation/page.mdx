@@ -262,7 +262,21 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
     });
     ```
 
-    ### 3. Create `src/lib/docs.server.ts`
+    ### 3. Update `vite.config.ts`
+
+    ```ts title="vite.config.ts"
+    import { defineConfig } from "vite";
+    import tailwindcss from "@tailwindcss/vite";
+    import tsconfigPaths from "vite-tsconfig-paths";
+    import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+    import { docsMdx } from "@farming-labs/tanstack-start/vite";
+
+    export default defineConfig({
+      plugins: [tailwindcss(), docsMdx(), tsconfigPaths({ ignoreConfigErrors: true }), tanstackStart()],
+    });
+    ```
+
+    ### 4. Create `src/lib/docs.server.ts`
 
     ```ts title="src/lib/docs.server.ts"
     import { createDocsServer } from "@farming-labs/tanstack-start/server";
@@ -274,7 +288,7 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
     });
     ```
 
-    ### 4. Create `src/lib/docs.functions.ts`
+    ### 5. Create `src/lib/docs.functions.ts`
 
     ```ts title="src/lib/docs.functions.ts"
     import { createServerFn } from "@tanstack/react-start";
@@ -285,7 +299,43 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
       .handler(async ({ data }) => docsServer.load(data));
     ```
 
-    ### 5. Render docs routes
+    ### 6. Wrap the app with `RootProvider`
+
+    ```tsx title="src/routes/__root.tsx"
+    import appCss from "@/styles/app.css?url";
+    import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+    import { RootProvider } from "@farming-labs/theme/tanstack";
+
+    export const Route = createRootRoute({
+      head: () => ({
+        links: [{ rel: "stylesheet", href: appCss }],
+        meta: [
+          { charSet: "utf-8" },
+          { name: "viewport", content: "width=device-width, initial-scale=1" },
+          { title: "TanStack Start Docs" },
+        ],
+      }),
+      component: RootComponent,
+    });
+
+    function RootComponent() {
+      return (
+        <html lang="en" suppressHydrationWarning>
+          <head>
+            <HeadContent />
+          </head>
+          <body>
+            <RootProvider>
+              <Outlet />
+            </RootProvider>
+            <Scripts />
+          </body>
+        </html>
+      );
+    }
+    ```
+
+    ### 7. Render docs routes
 
     ```tsx title="src/routes/docs.index.tsx"
     import { createFileRoute } from "@tanstack/react-router";
@@ -325,22 +375,26 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
     });
     ```
 
-    ### 6. Import the theme CSS in `src/styles/app.css`
+    ### 8. Import the theme CSS in `src/styles/app.css`
 
     ```css title="src/styles/app.css"
     @import "tailwindcss";
     @import "@farming-labs/theme/default/css";
     ```
 
-    ### 7. Add the docs API route
+    ### 9. Add the docs API route
 
     ```ts title="src/routes/api.docs.ts"
-    import { createServerFileRoute } from "@tanstack/react-start/server";
+    import { createFileRoute } from "@tanstack/react-router";
     import { docsServer } from "@/lib/docs.server";
 
-    export const ServerRoute = createServerFileRoute("/api/docs").methods({
-      GET: ({ request }) => docsServer.GET(request),
-      POST: ({ request }) => docsServer.POST(request),
+    export const Route = createFileRoute("/api/docs")({
+      server: {
+        handlers: {
+          GET: async ({ request }) => docsServer.GET({ request }),
+          POST: async ({ request }) => docsServer.POST({ request }),
+        },
+      },
     });
     ```
 
