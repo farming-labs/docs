@@ -170,8 +170,8 @@ importers:
         specifier: 0.0.37
         version: 0.0.37
       '@farming-labs/tanstack-start':
-        specifier: 0.0.33
-        version: 0.0.33(@farming-labs/docs@0.0.37)(@farming-labs/theme@0.0.37(@farming-labs/docs@0.0.37)(@mdx-js/mdx@3.1.1)(@tanstack/react-router@1.167.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.1.18))(@mdx-js/mdx@3.1.1)(@tanstack/react-router@1.167.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(rollup@4.59.0)
+        specifier: workspace:0.0.33
+        version: link:../../packages/tanstack-start
       '@farming-labs/theme':
         specifier: 0.0.37
         version: 0.0.37(@farming-labs/docs@0.0.37)(@mdx-js/mdx@3.1.1)(@tanstack/react-router@1.167.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.1.18)
@@ -1177,13 +1177,6 @@ packages:
     resolution: {integrity: sha512-EG06puiGOnhXH7klBZZyy7jtDnJtqa6fJVBkS9Nl3QB147KLb3LC2QFe0RAVNn8XtFeMUaBxWliZVteKlegU+w==}
     peerDependencies:
       '@farming-labs/docs': '*'
-
-  '@farming-labs/tanstack-start@0.0.33':
-    resolution: {integrity: sha512-vDT3AjZOrKFS2jFiaaNeJN3nF3J1DU1nwDt+G8Yekpvai7TiYmJ04UNWTrCBDzHNnruMkLLNrpke7cekGeE7Tg==}
-    peerDependencies:
-      '@farming-labs/docs': '*'
-      '@farming-labs/theme': '*'
-      react: ^19.0.0
 
   '@farming-labs/theme@0.0.37':
     resolution: {integrity: sha512-DF0ydR3O97tyWZWC8iaYa5kXMxVZCaQ5UwwokIcMDTYBgV11p/n4M1iKfkjE5tFLSIY3U0HwcxHHu2W/Bg4weQ==}
@@ -8117,37 +8110,6 @@ snapshots:
       '@farming-labs/docs': 0.0.37
       gray-matter: 4.0.3
       shiki: 3.22.0
-
-  '@farming-labs/tanstack-start@0.0.33(@farming-labs/docs@0.0.37)(@farming-labs/theme@0.0.37(@farming-labs/docs@0.0.37)(@mdx-js/mdx@3.1.1)(@tanstack/react-router@1.167.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.1.18))(@mdx-js/mdx@3.1.1)(@tanstack/react-router@1.167.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(rollup@4.59.0)':
-    dependencies:
-      '@farming-labs/docs': 0.0.37
-      '@farming-labs/theme': 0.0.37(@farming-labs/docs@0.0.37)(@mdx-js/mdx@3.1.1)(@tanstack/react-router@1.167.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.1.18)
-      '@mdx-js/rollup': 3.1.1(rollup@4.59.0)
-      fumadocs-core: 16.6.1(@mdx-js/mdx@3.1.1)(@tanstack/react-router@1.167.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      gray-matter: 4.0.3
-      react: 19.2.4
-      remark-frontmatter: 5.0.0
-      remark-gfm: 4.0.1
-      remark-mdx-frontmatter: 5.2.0
-    transitivePeerDependencies:
-      - '@mdx-js/mdx'
-      - '@mixedbread/sdk'
-      - '@orama/core'
-      - '@oramacloud/client'
-      - '@tanstack/react-router'
-      - '@types/estree-jsx'
-      - '@types/hast'
-      - '@types/mdast'
-      - '@types/react'
-      - algoliasearch
-      - lucide-react
-      - next
-      - react-dom
-      - react-router
-      - rollup
-      - supports-color
-      - waku
-      - zod
 
   '@farming-labs/theme@0.0.37(@farming-labs/docs@0.0.37)(@mdx-js/mdx@3.1.1)(@tanstack/react-router@1.167.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(lucide-react@0.564.0(react@19.2.4))(next@16.1.6(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.1.18)':
     dependencies:

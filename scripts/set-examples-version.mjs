@@ -49,8 +49,16 @@ function updatePackageJson(dir) {
 
     for (const name of Object.keys(deps)) {
       const expectedVersion = packageVersions.get(name);
-      if (expectedVersion && deps[name] !== expectedVersion) {
-        deps[name] = expectedVersion;
+      const currentVersion = deps[name];
+      if (!expectedVersion) continue;
+
+      const nextVersion =
+        typeof currentVersion === "string" && currentVersion.startsWith("workspace:")
+          ? `workspace:${expectedVersion}`
+          : expectedVersion;
+
+      if (currentVersion !== nextVersion) {
+        deps[name] = nextVersion;
         changed = true;
       }
     }

@@ -36,6 +36,7 @@ function resolveWorkspaceAliases() {
 
   const docsSrc = normalizePath(path.join(workspaceRoot, "packages", "docs", "src"));
   const tanstackSrc = normalizePath(path.join(workspaceRoot, "packages", "tanstack-start", "src"));
+  const themeSrc = normalizePath(path.join(workspaceRoot, "packages", "fumadocs", "src"));
 
   return [
     {
@@ -53,6 +54,58 @@ function resolveWorkspaceAliases() {
     {
       find: /^@farming-labs\/tanstack-start\/(.+)$/,
       replacement: `${tanstackSrc}/$1`,
+    },
+    {
+      find: /^@farming-labs\/theme$/,
+      replacement: `${themeSrc}/index.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/mdx$/,
+      replacement: `${themeSrc}/mdx.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/default$/,
+      replacement: `${themeSrc}/default/index.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/darksharp$/,
+      replacement: `${themeSrc}/darksharp/index.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/pixel-border$/,
+      replacement: `${themeSrc}/pixel-border/index.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/colorful$/,
+      replacement: `${themeSrc}/colorful/index.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/shiny$/,
+      replacement: `${themeSrc}/shiny/index.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/darkbold$/,
+      replacement: `${themeSrc}/darkbold/index.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/greentree$/,
+      replacement: `${themeSrc}/greentree/index.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/search$/,
+      replacement: `${themeSrc}/search.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/api$/,
+      replacement: `${themeSrc}/docs-api.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/tanstack$/,
+      replacement: `${themeSrc}/tanstack.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/ai$/,
+      replacement: `${themeSrc}/ai-search-dialog.tsx`,
     },
   ];
 }
