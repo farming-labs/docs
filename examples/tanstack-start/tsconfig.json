@@ -12,6 +12,15 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "@farming-labs/docs": ["../../packages/docs/src/index.ts"],
+      "@farming-labs/docs/*": ["../../packages/docs/src/*"],
+      "@farming-labs/tanstack-start": [
+        "../../packages/tanstack-start/src/index.ts"
+      ],
+      "@farming-labs/tanstack-start/*": [
+        "../../packages/tanstack-start/src/*",
+        "../../packages/tanstack-start/src/*/index.ts"
+      ],
       "@farming-labs/theme": ["../../packages/fumadocs/src/index.ts"],
       "@farming-labs/theme/*": [
         "../../packages/fumadocs/src/*",
