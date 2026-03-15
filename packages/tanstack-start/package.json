@@ -11,7 +11,8 @@
   "license": "MIT",
   "author": "Farming Labs",
   "files": [
-    "dist"
+    "dist",
+    "src/vite.ts"
   ],
   "type": "module",
   "main": "./dist/index.js",
@@ -38,9 +39,9 @@
       "default": "./dist/server.js"
     },
     "./vite": {
-      "types": "./dist/vite.d.ts",
-      "import": "./dist/vite.js",
-      "default": "./dist/vite.js"
+      "types": "./src/vite.ts",
+      "import": "./src/vite.ts",
+      "default": "./src/vite.ts"
     }
   },
   "scripts": {
