@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "prebuild": "node -e \"require('node:fs').rmSync('.next-build', { recursive: true, force: true })\"",
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start"
