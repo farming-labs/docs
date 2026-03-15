@@ -18,7 +18,7 @@ import {
 } from "./utils.js";
 
 const EXAMPLES_REPO = "farming-labs/docs";
-export const VALID_TEMPLATES = ["next", "nuxt", "sveltekit", "astro"] as const;
+export const VALID_TEMPLATES = ["next", "nuxt", "sveltekit", "astro", "tanstack-start"] as const;
 export type TemplateName = (typeof VALID_TEMPLATES)[number];
 
 export interface InitOptions {
@@ -46,6 +46,19 @@ import {
   welcomePageTemplate,
   installationPageTemplate,
   quickstartPageTemplate,
+  tanstackDocsConfigTemplate,
+  tanstackDocsServerTemplate,
+  tanstackDocsFunctionsTemplate,
+  tanstackDocsIndexRouteTemplate,
+  tanstackDocsCatchAllRouteTemplate,
+  tanstackApiDocsRouteTemplate,
+  tanstackRootRouteTemplate,
+  injectTanstackRootProviderIntoRoute,
+  tanstackViteConfigTemplate,
+  injectTanstackVitePlugins,
+  tanstackWelcomePageTemplate,
+  tanstackInstallationPageTemplate,
+  tanstackQuickstartPageTemplate,
   svelteDocsConfigTemplate,
   svelteDocsServerTemplate,
   svelteDocsLayoutTemplate,
@@ -119,6 +132,14 @@ function parseLocaleInput(input: string): string[] {
   );
 }
 
+function normalizeEntryPath(entry: string): string {
+  return entry.replace(/^\/+|\/+$/g, "");
+}
+
+function getTanstackDocsRouteDir(entry: string): string {
+  return path.posix.join("src/routes", normalizeEntryPath(entry));
+}
+
 export async function init(options: InitOptions = {}) {
   const cwd = process.cwd();
 
@@ -143,7 +164,7 @@ export async function init(options: InitOptions = {}) {
         {
           value: "fresh",
           label: "Fresh project",
-          hint: "Bootstrap a new app from a template (Next, Nuxt, SvelteKit, Astro)",
+          hint: "Bootstrap a new app from a template (Next, Nuxt, SvelteKit, Astro, TanStack Start)",
         },
       ] as const,
     });
@@ -177,6 +198,11 @@ export async function init(options: InitOptions = {}) {
           { value: "nuxt", label: "Nuxt", hint: "Vue 3 with file-based routing" },
           { value: "sveltekit", label: "SvelteKit", hint: "Svelte with file-based routing" },
           { value: "astro", label: "Astro", hint: "Content-focused with islands" },
+          {
+            value: "tanstack-start",
+            label: "TanStack Start",
+            hint: "React with TanStack Router and server functions",
+          },
         ],
       });
       if (p.isCancel(templateAnswer)) {
@@ -214,7 +240,9 @@ export async function init(options: InitOptions = {}) {
           ? "Nuxt"
           : template === "sveltekit"
             ? "SvelteKit"
-            : "Astro";
+            : template === "astro"
+              ? "Astro"
+              : "TanStack Start";
 
     const targetDir = path.join(cwd, projectName);
     const fs = await import("node:fs");
@@ -305,11 +333,13 @@ export async function init(options: InitOptions = {}) {
     const frameworkName =
       framework === "nextjs"
         ? "Next.js"
-        : framework === "sveltekit"
-          ? "SvelteKit"
-          : framework === "astro"
-            ? "Astro"
-            : "Nuxt";
+        : framework === "tanstack-start"
+          ? "TanStack Start"
+          : framework === "sveltekit"
+            ? "SvelteKit"
+            : framework === "astro"
+              ? "Astro"
+              : "Nuxt";
     p.log.success(`Detected framework: ${pc.cyan(frameworkName)}`);
   } else {
     p.log.warn("Could not auto-detect a framework from " + pc.cyan("package.json") + ".");
@@ -321,6 +351,11 @@ export async function init(options: InitOptions = {}) {
           value: "nextjs",
           label: "Next.js",
           hint: "React framework with App Router",
+        },
+        {
+          value: "tanstack-start",
+          label: "TanStack Start",
+          hint: "React with TanStack Router and server functions",
         },
         {
           value: "sveltekit",
@@ -460,11 +495,13 @@ export async function init(options: InitOptions = {}) {
   const aliasHint =
     framework === "nextjs"
       ? `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`
-      : framework === "sveltekit"
-        ? `Uses ${pc.cyan("$lib/")} prefix (SvelteKit built-in)`
-        : framework === "nuxt"
-          ? `Uses ${pc.cyan("~/")} prefix (Nuxt built-in)`
-          : `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`;
+      : framework === "tanstack-start"
+        ? `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`
+        : framework === "sveltekit"
+          ? `Uses ${pc.cyan("$lib/")} prefix (SvelteKit built-in)`
+          : framework === "nuxt"
+            ? `Uses ${pc.cyan("~/")} prefix (Nuxt built-in)`
+            : `Uses ${pc.cyan("@/")} prefix (requires tsconfig paths)`;
 
   const useAlias = await p.confirm({
     message: `Use path aliases for imports? ${pc.dim(aliasHint)}`,
@@ -528,16 +565,6 @@ export async function init(options: InitOptions = {}) {
   // Step 5b: Optional i18n scaffold
   // -----------------------------------------------------------------------
 
-  const enableI18n = await p.confirm({
-    message: "Do you want to scaffold internationalized docs ?",
-    initialValue: false,
-  });
-
-  if (p.isCancel(enableI18n)) {
-    p.outro(pc.red("Init cancelled."));
-    process.exit(0);
-  }
-
   let docsI18n:
     | {
         locales: string[];
@@ -545,69 +572,87 @@ export async function init(options: InitOptions = {}) {
       }
     | undefined;
 
-  if (enableI18n) {
-    const selectedLocales = await p.multiselect({
-      message: "Which languages should we scaffold?",
-      options: COMMON_LOCALE_OPTIONS.map((option) => ({
-        value: option.value,
-        label: option.label,
-        hint: option.hint,
-      })),
+  if (framework === "tanstack-start") {
+    p.log.info(
+      "Skipping i18n scaffold for TanStack Start. Configure localized routes manually if needed.",
+    );
+  } else {
+    const enableI18n = await p.confirm({
+      message: "Do you want to scaffold internationalized docs ?",
+      initialValue: false,
     });
 
-    if (p.isCancel(selectedLocales)) {
+    if (p.isCancel(enableI18n)) {
       p.outro(pc.red("Init cancelled."));
       process.exit(0);
     }
 
-    const extraLocalesAnswer = await p.text({
-      message: "Any additional locale codes? (comma-separated, optional)",
-      placeholder: "nl, sv, pt-BR",
-      defaultValue: "",
-      validate: (value) => {
-        const locales = parseLocaleInput(value ?? "");
-        const valid = locales.every((locale) => /^[a-z]{2,3}(?:-[A-Z]{2})?$/.test(locale));
-        return valid ? undefined : "Use locale codes like en, fr, zh, or pt-BR";
-      },
-    });
+    if (!enableI18n) {
+      docsI18n = undefined;
+    } else {
+      const selectedLocales = await p.multiselect({
+        message: "Which languages should we scaffold?",
+        options: COMMON_LOCALE_OPTIONS.map((option) => ({
+          value: option.value,
+          label: option.label,
+          hint: option.hint,
+        })),
+      });
 
-    if (p.isCancel(extraLocalesAnswer)) {
-      p.outro(pc.red("Init cancelled."));
-      process.exit(0);
+      if (p.isCancel(selectedLocales)) {
+        p.outro(pc.red("Init cancelled."));
+        process.exit(0);
+      }
+
+      const extraLocalesAnswer = await p.text({
+        message: "Any additional locale codes? (comma-separated, optional)",
+        placeholder: "nl, sv, pt-BR",
+        defaultValue: "",
+        validate: (value) => {
+          const locales = parseLocaleInput(value ?? "");
+          const valid = locales.every((locale) => /^[a-z]{2,3}(?:-[A-Z]{2})?$/.test(locale));
+          return valid ? undefined : "Use locale codes like en, fr, zh, or pt-BR";
+        },
+      });
+
+      if (p.isCancel(extraLocalesAnswer)) {
+        p.outro(pc.red("Init cancelled."));
+        process.exit(0);
+      }
+
+      const locales = Array.from(
+        new Set([
+          ...((selectedLocales as string[]) ?? []).map((locale) => normalizeLocaleCode(locale)),
+          ...parseLocaleInput((extraLocalesAnswer as string) ?? ""),
+        ]),
+      ).filter(Boolean);
+
+      if (locales.length === 0) {
+        p.log.error("Pick at least one locale to scaffold i18n support.");
+        p.outro(pc.red("Init cancelled."));
+        process.exit(1);
+      }
+
+      const defaultLocaleAnswer = await p.select({
+        message: "Which locale should be the default?",
+        options: locales.map((locale) => ({
+          value: locale,
+          label: locale,
+          hint: locale === "en" ? "Recommended default" : undefined,
+        })),
+        initialValue: locales[0],
+      });
+
+      if (p.isCancel(defaultLocaleAnswer)) {
+        p.outro(pc.red("Init cancelled."));
+        process.exit(0);
+      }
+
+      docsI18n = {
+        locales,
+        defaultLocale: defaultLocaleAnswer as string,
+      };
     }
-
-    const locales = Array.from(
-      new Set([
-        ...((selectedLocales as string[]) ?? []).map((locale) => normalizeLocaleCode(locale)),
-        ...parseLocaleInput((extraLocalesAnswer as string) ?? ""),
-      ]),
-    ).filter(Boolean);
-
-    if (locales.length === 0) {
-      p.log.error("Pick at least one locale to scaffold i18n support.");
-      p.outro(pc.red("Init cancelled."));
-      process.exit(1);
-    }
-
-    const defaultLocaleAnswer = await p.select({
-      message: "Which locale should be the default?",
-      options: locales.map((locale) => ({
-        value: locale,
-        label: locale,
-        hint: locale === "en" ? "Recommended default" : undefined,
-      })),
-      initialValue: locales[0],
-    });
-
-    if (p.isCancel(defaultLocaleAnswer)) {
-      p.outro(pc.red("Init cancelled."));
-      process.exit(0);
-    }
-
-    docsI18n = {
-      locales,
-      defaultLocale: defaultLocaleAnswer as string,
-    };
   }
 
   // -----------------------------------------------------------------------
@@ -618,15 +663,17 @@ export async function init(options: InitOptions = {}) {
   let globalCssRelPath: string;
 
   const defaultCssPath =
-    framework === "sveltekit"
-      ? "src/app.css"
-      : framework === "astro"
-        ? "src/styles/global.css"
-        : framework === "nuxt"
-          ? "assets/css/main.css"
-          : framework === "nextjs"
-            ? `${nextAppDir}/globals.css`
-            : "app/globals.css";
+    framework === "tanstack-start"
+      ? "src/styles/app.css"
+      : framework === "sveltekit"
+        ? "src/app.css"
+        : framework === "astro"
+          ? "src/styles/global.css"
+          : framework === "nuxt"
+            ? "assets/css/main.css"
+            : framework === "nextjs"
+              ? `${nextAppDir}/globals.css`
+              : "app/globals.css";
 
   if (detectedCssFiles.length === 1) {
     globalCssRelPath = detectedCssFiles[0];
@@ -698,7 +745,9 @@ export async function init(options: InitOptions = {}) {
     }
   }
 
-  if (framework === "sveltekit") {
+  if (framework === "tanstack-start") {
+    scaffoldTanstackStart(cwd, cfg, globalCssRelPath, write, skipped, written);
+  } else if (framework === "sveltekit") {
     scaffoldSvelteKit(cwd, cfg, globalCssRelPath, write, skipped, written);
   } else if (framework === "astro") {
     scaffoldAstro(cwd, cfg, globalCssRelPath, write, skipped, written);
@@ -756,7 +805,24 @@ export async function init(options: InitOptions = {}) {
   s2.start("Installing dependencies");
 
   try {
-    if (framework === "sveltekit") {
+    if (framework === "tanstack-start") {
+      exec(
+        `${installCommand(pm)} @farming-labs/docs @farming-labs/theme @farming-labs/tanstack-start`,
+        cwd,
+      );
+
+      const devDeps = ["@tailwindcss/vite", "tailwindcss"];
+      if (useAlias) {
+        devDeps.push("vite-tsconfig-paths");
+      }
+
+      const allDeps = { ...pkgJson.dependencies, ...pkgJson.devDependencies };
+      const missingDevDeps = devDeps.filter((d) => !allDeps[d]);
+
+      if (missingDevDeps.length > 0) {
+        exec(`${devInstallCommand(pm)} ${missingDevDeps.join(" ")}`, cwd);
+      }
+    } else if (framework === "sveltekit") {
       exec(
         `${installCommand(pm)} @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme`,
         cwd,
@@ -823,22 +889,26 @@ export async function init(options: InitOptions = {}) {
   p.log.step("Starting dev server...");
 
   const devCommand =
-    framework === "sveltekit"
+    framework === "tanstack-start"
       ? { cmd: "npx", args: ["vite", "dev"], waitFor: "ready" }
-      : framework === "astro"
-        ? { cmd: "npx", args: ["astro", "dev"], waitFor: "ready" }
-        : framework === "nuxt"
-          ? { cmd: "npx", args: ["nuxt", "dev"], waitFor: "Local" }
-          : { cmd: "npx", args: ["next", "dev", "--webpack"], waitFor: "Ready" };
+      : framework === "sveltekit"
+        ? { cmd: "npx", args: ["vite", "dev"], waitFor: "ready" }
+        : framework === "astro"
+          ? { cmd: "npx", args: ["astro", "dev"], waitFor: "ready" }
+          : framework === "nuxt"
+            ? { cmd: "npx", args: ["nuxt", "dev"], waitFor: "Local" }
+            : { cmd: "npx", args: ["next", "dev", "--webpack"], waitFor: "Ready" };
 
   const defaultPort =
-    framework === "sveltekit"
+    framework === "tanstack-start"
       ? "5173"
-      : framework === "astro"
-        ? "4321"
-        : framework === "nuxt"
-          ? "3000"
-          : "3000";
+      : framework === "sveltekit"
+        ? "5173"
+        : framework === "astro"
+          ? "4321"
+          : framework === "nuxt"
+            ? "3000"
+            : "3000";
 
   try {
     const child = await spawnAndWaitFor(
@@ -873,13 +943,15 @@ export async function init(options: InitOptions = {}) {
     });
   } catch (err) {
     const manualCmd =
-      framework === "sveltekit"
+      framework === "tanstack-start"
         ? "npx vite dev"
-        : framework === "astro"
-          ? "npx astro dev"
-          : framework === "nuxt"
-            ? "npx nuxt dev"
-            : "pnpm dev";
+        : framework === "sveltekit"
+          ? "npx vite dev"
+          : framework === "astro"
+            ? "npx astro dev"
+            : framework === "nuxt"
+              ? "npx nuxt dev"
+              : "pnpm dev";
     p.log.error("Could not start dev server. Try running manually:\n" + `  ${pc.cyan(manualCmd)}`);
     p.outro(pc.yellow("Setup complete. Start the server manually."));
     process.exit(1);
@@ -1036,6 +1108,116 @@ function scaffoldNextJs(
   write(`${appDir}/${cfg.entry}/page.mdx`, welcomePageTemplate(cfg));
   write(`${appDir}/${cfg.entry}/installation/page.mdx`, installationPageTemplate(cfg));
   write(`${appDir}/${cfg.entry}/quickstart/page.mdx`, quickstartPageTemplate(cfg));
+}
+
+// ---------------------------------------------------------------------------
+// TanStack Start scaffolding
+// ---------------------------------------------------------------------------
+
+function scaffoldTanstackStart(
+  cwd: string,
+  cfg: TemplateConfig,
+  globalCssRelPath: string,
+  write: (rel: string, content: string, overwrite?: boolean) => void,
+  skipped: string[],
+  written: string[],
+) {
+  if (cfg.theme === "custom" && cfg.customThemeName) {
+    const baseName = cfg.customThemeName.replace(/\.(ts|css)$/i, "");
+    write(`themes/${baseName}.ts`, customThemeTsTemplate(baseName));
+    write(`themes/${baseName}.css`, customThemeCssTemplate(baseName));
+  }
+
+  write("docs.config.ts", tanstackDocsConfigTemplate(cfg));
+  write("src/lib/docs.server.ts", tanstackDocsServerTemplate());
+  write("src/lib/docs.functions.ts", tanstackDocsFunctionsTemplate());
+
+  const routeDir = getTanstackDocsRouteDir(cfg.entry);
+  const docsIndexRoute = `${routeDir}/index.tsx`;
+  const docsCatchAllRoute = `${routeDir}/$.tsx`;
+  const apiRoute = "src/routes/api/docs.ts";
+
+  write(
+    docsIndexRoute,
+    tanstackDocsIndexRouteTemplate({
+      entry: cfg.entry,
+      filePath: docsIndexRoute,
+      useAlias: cfg.useAlias,
+      projectName: cfg.projectName,
+    }),
+  );
+  write(
+    docsCatchAllRoute,
+    tanstackDocsCatchAllRouteTemplate({
+      entry: cfg.entry,
+      filePath: docsCatchAllRoute,
+      useAlias: cfg.useAlias,
+      projectName: cfg.projectName,
+    }),
+  );
+  write(apiRoute, tanstackApiDocsRouteTemplate(cfg.useAlias, apiRoute));
+
+  const rootRoutePath = path.join(cwd, "src/routes/__root.tsx");
+  const existingRootRoute = readFileSafe(rootRoutePath);
+  if (!existingRootRoute) {
+    write("src/routes/__root.tsx", tanstackRootRouteTemplate(globalCssRelPath), true);
+  } else if (!existingRootRoute.includes("RootProvider")) {
+    const injected = injectTanstackRootProviderIntoRoute(existingRootRoute);
+    if (injected) {
+      writeFileSafe(rootRoutePath, injected, true);
+      written.push("src/routes/__root.tsx (injected RootProvider)");
+    } else {
+      skipped.push("src/routes/__root.tsx (could not inject RootProvider)");
+    }
+  } else {
+    skipped.push("src/routes/__root.tsx (already has RootProvider)");
+  }
+
+  const viteConfigRel = fileExists(path.join(cwd, "vite.config.ts"))
+    ? "vite.config.ts"
+    : fileExists(path.join(cwd, "vite.config.mts"))
+      ? "vite.config.mts"
+      : fileExists(path.join(cwd, "vite.config.js"))
+        ? "vite.config.js"
+        : "vite.config.ts";
+  const viteConfigPath = path.join(cwd, viteConfigRel);
+  const existingViteConfig = readFileSafe(viteConfigPath);
+  if (!existingViteConfig) {
+    write(viteConfigRel, tanstackViteConfigTemplate(cfg.useAlias), true);
+  } else {
+    const injected = injectTanstackVitePlugins(existingViteConfig, cfg.useAlias);
+    if (injected) {
+      writeFileSafe(viteConfigPath, injected, true);
+      written.push(`${viteConfigRel} (updated)`);
+    } else {
+      skipped.push(`${viteConfigRel} (already configured)`);
+    }
+  }
+
+  const globalCssAbsPath = path.join(cwd, globalCssRelPath);
+  const existingGlobalCss = readFileSafe(globalCssAbsPath);
+  if (existingGlobalCss) {
+    const injected = injectCssImport(
+      existingGlobalCss,
+      cfg.theme,
+      cfg.customThemeName,
+      globalCssRelPath,
+    );
+    if (injected) {
+      writeFileSafe(globalCssAbsPath, injected, true);
+      written.push(globalCssRelPath + " (updated)");
+    } else {
+      skipped.push(globalCssRelPath + " (already configured)");
+    }
+  } else {
+    write(globalCssRelPath, globalCssTemplate(cfg.theme, cfg.customThemeName, globalCssRelPath));
+  }
+
+  for (const base of getScaffoldContentRoots(cfg)) {
+    write(`${base}/page.mdx`, tanstackWelcomePageTemplate(cfg));
+    write(`${base}/installation/page.mdx`, tanstackInstallationPageTemplate(cfg));
+    write(`${base}/quickstart/page.mdx`, tanstackQuickstartPageTemplate(cfg));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1259,4 +1441,4 @@ function scaffoldNuxt(
 }
 
 /** Exported for testing: ensures Next.js scaffold writes under app or src/app consistently. */
-export { scaffoldNextJs, scaffoldSvelteKit, scaffoldAstro, scaffoldNuxt };
+export { scaffoldNextJs, scaffoldTanstackStart, scaffoldSvelteKit, scaffoldAstro, scaffoldNuxt };

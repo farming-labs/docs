@@ -60,6 +60,14 @@ describe("utils", () => {
       expect(detectFramework(tmpDir)).toBe("sveltekit");
     });
 
+    it("returns tanstack-start when @tanstack/react-start is present", () => {
+      fs.writeFileSync(
+        path.join(tmpDir, "package.json"),
+        JSON.stringify({ dependencies: { "@tanstack/react-start": "1.0.0" } }),
+      );
+      expect(detectFramework(tmpDir)).toBe("tanstack-start");
+    });
+
     it("returns astro when astro is present", () => {
       fs.writeFileSync(
         path.join(tmpDir, "package.json"),
@@ -221,6 +229,12 @@ describe("utils", () => {
       fs.mkdirSync(path.join(tmpDir, "app"), { recursive: true });
       fs.writeFileSync(path.join(tmpDir, "app", "globals.css"), "");
       expect(detectGlobalCssFiles(tmpDir)).toContain("app/globals.css");
+    });
+
+    it("returns path when src/styles/app.css exists", () => {
+      fs.mkdirSync(path.join(tmpDir, "src", "styles"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "styles", "app.css"), "");
+      expect(detectGlobalCssFiles(tmpDir)).toContain("src/styles/app.css");
     });
 
     it("returns multiple when multiple candidates exist", () => {

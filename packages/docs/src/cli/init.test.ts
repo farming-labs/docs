@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { VALID_TEMPLATES, init } from "./init.js";
-import { PRESETS } from "./upgrade.js";
 
 const cancelSymbol = Symbol("clack:cancel");
 
@@ -45,12 +44,8 @@ vi.mock("node:fs", () => {
 
 describe("init", () => {
   describe("VALID_TEMPLATES", () => {
-    it("includes next, nuxt, sveltekit, astro", () => {
-      expect(VALID_TEMPLATES).toEqual(["next", "nuxt", "sveltekit", "astro"]);
-    });
-
-    it("matches upgrade PRESETS for consistency", () => {
-      expect([...VALID_TEMPLATES].sort()).toEqual([...PRESETS].sort());
+    it("includes next, nuxt, sveltekit, astro, tanstack-start", () => {
+      expect(VALID_TEMPLATES).toEqual(["next", "nuxt", "sveltekit", "astro", "tanstack-start"]);
     });
   });
 

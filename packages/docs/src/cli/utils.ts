@@ -6,7 +6,7 @@ import { execSync, spawn } from "node:child_process";
 // Framework detection
 // ---------------------------------------------------------------------------
 
-export type Framework = "nextjs" | "sveltekit" | "astro" | "nuxt";
+export type Framework = "nextjs" | "tanstack-start" | "sveltekit" | "astro" | "nuxt";
 
 export function detectFramework(cwd: string): Framework | null {
   const pkgPath = path.join(cwd, "package.json");
@@ -19,6 +19,7 @@ export function detectFramework(cwd: string): Framework | null {
   };
 
   if (allDeps["next"]) return "nextjs";
+  if (allDeps["@tanstack/react-start"]) return "tanstack-start";
   if (allDeps["@sveltejs/kit"]) return "sveltekit";
   if (allDeps["astro"]) return "astro";
   if (allDeps["nuxt"]) return "nuxt";
@@ -105,6 +106,7 @@ const GLOBAL_CSS_CANDIDATES = [
   "src/app/globals.css",
   "src/app/global.css",
   "src/app.css",
+  "src/styles/app.css",
   "styles/globals.css",
   "styles/global.css",
   "src/styles/globals.css",

@@ -2,7 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { scaffoldNextJs, scaffoldSvelteKit, scaffoldAstro, scaffoldNuxt } from "./init.js";
+import {
+  scaffoldNextJs,
+  scaffoldTanstackStart,
+  scaffoldSvelteKit,
+  scaffoldAstro,
+  scaffoldNuxt,
+} from "./init.js";
 import type { TemplateConfig } from "./templates.js";
 
 describe("scaffoldNextJs (app dir consistency)", () => {
@@ -224,5 +230,105 @@ describe("i18n scaffold for non-Next frameworks", () => {
     expect(written).toContain("docs/fr/installation/page.md");
     const config = fs.readFileSync(path.join(tmpDir, "docs.config.ts"), "utf-8");
     expect(config).toContain("i18n:");
+  });
+});
+
+describe("scaffoldTanstackStart", () => {
+  let tmpDir: string;
+  let written: string[];
+  let skipped: string[];
+
+  function makeWrite(cwd: string) {
+    return (rel: string, content: string, overwrite = false) => {
+      const abs = path.join(cwd, rel);
+      if (!fs.existsSync(abs) || overwrite) {
+        fs.mkdirSync(path.dirname(abs), { recursive: true });
+        fs.writeFileSync(abs, content, "utf-8");
+        written.push(rel);
+      } else {
+        skipped.push(rel);
+      }
+    };
+  }
+
+  const baseCfg: TemplateConfig = {
+    entry: "docs",
+    theme: "colorful",
+    projectName: "my-docs",
+    framework: "tanstack-start",
+    useAlias: false,
+  };
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docs-tanstack-scaffold-test-"));
+    written = [];
+    skipped = [];
+  });
+
+  afterEach(() => {
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      // ignore
+    }
+  });
+
+  it("writes the TanStack docs scaffold and injects the required providers/plugins", () => {
+    fs.mkdirSync(path.join(tmpDir, "src", "routes"), { recursive: true });
+    fs.mkdirSync(path.join(tmpDir, "src", "styles"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, "src", "routes", "__root.tsx"),
+      `import { createRootRoute, Outlet } from "@tanstack/react-router";
+
+export const Route = createRootRoute({
+  component: RootComponent,
+});
+
+function RootComponent() {
+  return <Outlet />;
+}
+`,
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, "vite.config.ts"),
+      `import { defineConfig } from "vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+
+export default defineConfig({
+  plugins: [tanstackStart()],
+});
+`,
+    );
+    fs.writeFileSync(path.join(tmpDir, "src", "styles", "app.css"), '@import "tailwindcss";\n');
+
+    scaffoldTanstackStart(
+      tmpDir,
+      baseCfg,
+      "src/styles/app.css",
+      makeWrite(tmpDir),
+      skipped,
+      written,
+    );
+
+    expect(written).toContain("docs.config.ts");
+    expect(written).toContain("src/lib/docs.server.ts");
+    expect(written).toContain("src/lib/docs.functions.ts");
+    expect(written).toContain("src/routes/docs/index.tsx");
+    expect(written).toContain("src/routes/docs/$.tsx");
+    expect(written).toContain("src/routes/api/docs.ts");
+    expect(written).toContain("docs/page.mdx");
+
+    const rootRoute = fs.readFileSync(path.join(tmpDir, "src", "routes", "__root.tsx"), "utf-8");
+    expect(rootRoute).toContain("@farming-labs/theme/tanstack");
+    expect(rootRoute).toContain("<RootProvider><Outlet /></RootProvider>");
+
+    const viteConfig = fs.readFileSync(path.join(tmpDir, "vite.config.ts"), "utf-8");
+    expect(viteConfig).toContain('import tailwindcss from "@tailwindcss/vite";');
+    expect(viteConfig).toContain('import { docsMdx } from "@farming-labs/tanstack-start/vite";');
+    expect(viteConfig).toContain("tailwindcss()");
+    expect(viteConfig).toContain("docsMdx()");
+
+    const appCss = fs.readFileSync(path.join(tmpDir, "src", "styles", "app.css"), "utf-8");
+    expect(appCss).toContain('@import "@farming-labs/theme/colorful/css";');
   });
 });

@@ -1,3 +1,5 @@
+import path from "node:path";
+
 // ---------------------------------------------------------------------------
 // File templates for the init CLI.
 // Each function returns the file content as a string.
@@ -13,7 +15,7 @@ export interface TemplateConfig {
   /** Project name from package.json */
   projectName: string;
   /** Framework being used */
-  framework: "nextjs" | "sveltekit" | "astro" | "nuxt";
+  framework: "nextjs" | "tanstack-start" | "sveltekit" | "astro" | "nuxt";
   /** Whether to use path aliases (@/ for Next.js, $lib/ for SvelteKit, ~/ for Nuxt) */
   useAlias: boolean;
   /** Astro deployment adapter (only used when framework is "astro") */
@@ -125,6 +127,65 @@ const THEME_INFO: Record<string, ThemeInfo> = {
 
 function getThemeInfo(theme: string): ThemeInfo {
   return THEME_INFO[theme] ?? THEME_INFO.fumadocs;
+}
+
+function toPosixPath(value: string): string {
+  return value.replace(/\\/g, "/");
+}
+
+function stripScriptExtension(value: string): string {
+  return value.replace(/\.(?:[cm]?[jt]sx?)$/i, "");
+}
+
+function relativeImport(fromFile: string, toFile: string): string {
+  const fromPosix = toPosixPath(fromFile);
+  const toPosix = stripScriptExtension(toPosixPath(toFile));
+  const rel = path.posix.relative(path.posix.dirname(fromPosix), toPosix);
+  return rel.startsWith(".") ? rel : `./${rel}`;
+}
+
+function relativeAssetPath(fromFile: string, toFile: string): string {
+  const fromPosix = toPosixPath(fromFile);
+  const toPosix = toPosixPath(toFile);
+  const rel = path.posix.relative(path.posix.dirname(fromPosix), toPosix);
+  return rel.startsWith(".") ? rel : `./${rel}`;
+}
+
+function extractImportSpecifier(importLine: string): string | null {
+  const fromMatch = importLine.match(/\bfrom\s+["']([^"']+)["']/);
+  if (fromMatch) return fromMatch[1];
+
+  const bareImportMatch = importLine.match(/^\s*import\s+["']([^"']+)["']/);
+  if (bareImportMatch) return bareImportMatch[1];
+
+  return null;
+}
+
+function addImportLine(content: string, importLine: string): string {
+  if (content.includes(importLine)) return content;
+
+  const specifier = extractImportSpecifier(importLine);
+  if (specifier) {
+    const importPattern = new RegExp(
+      String.raw`\bimport(?:\s+type)?[\s\S]*?\bfrom\s+["']${specifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']|^\s*import\s+["']${specifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`,
+      "m",
+    );
+    if (importPattern.test(content)) return content;
+  }
+
+  const lines = content.split("\n");
+  const lastImportIdx = lines.reduce((acc, line, index) => {
+    const trimmed = line.trimStart();
+    return trimmed.startsWith("import ") || trimmed.startsWith("import type ") ? index : acc;
+  }, -1);
+
+  if (lastImportIdx >= 0) {
+    lines.splice(lastImportIdx + 1, 0, importLine);
+  } else {
+    lines.unshift(importLine, "");
+  }
+
+  return lines.join("\n");
 }
 
 function renderI18nConfig(cfg: TemplateConfig, indent = "  "): string {
@@ -786,6 +847,465 @@ pnpm build
 \`\`\`
 
 Deploy to Vercel, Netlify, or any Node.js hosting platform.
+`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TanStack Start templates
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function tanstackDocsConfigTemplate(cfg: TemplateConfig): string {
+  if (cfg.theme === "custom" && cfg.customThemeName) {
+    const exportName = getThemeExportName(cfg.customThemeName);
+    return `\
+import { defineDocs } from "@farming-labs/docs";
+import { ${exportName} } from "./themes/${cfg.customThemeName.replace(/\.ts$/i, "")}";
+
+export default defineDocs({
+  entry: "${cfg.entry}",
+  contentDir: "${cfg.entry}",
+  theme: ${exportName}({
+    ui: {
+      colors: { primary: "#6366f1" },
+    },
+  }),
+  nav: {
+    title: "${cfg.projectName} Docs",
+    url: "/${cfg.entry}",
+  },
+  themeToggle: {
+    enabled: true,
+    default: "dark",
+  },
+  metadata: {
+    titleTemplate: "%s – ${cfg.projectName}",
+    description: "Documentation for ${cfg.projectName}",
+  },
+});
+`;
+  }
+
+  const t = getThemeInfo(cfg.theme);
+  return `\
+import { defineDocs } from "@farming-labs/docs";
+import { ${t.factory} } from "${t.nextImport}";
+
+export default defineDocs({
+  entry: "${cfg.entry}",
+  contentDir: "${cfg.entry}",
+  theme: ${t.factory}({
+    ui: {
+      colors: { primary: "#6366f1" },
+    },
+  }),
+  nav: {
+    title: "${cfg.projectName} Docs",
+    url: "/${cfg.entry}",
+  },
+  themeToggle: {
+    enabled: true,
+    default: "dark",
+  },
+  metadata: {
+    titleTemplate: "%s – ${cfg.projectName}",
+    description: "Documentation for ${cfg.projectName}",
+  },
+});
+`;
+}
+
+export function tanstackDocsServerTemplate(): string {
+  return `\
+import { createDocsServer } from "@farming-labs/tanstack-start/server";
+import docsConfig from "../../docs.config";
+
+export const docsServer = createDocsServer({
+  ...docsConfig,
+  rootDir: process.cwd(),
+});
+`;
+}
+
+export function tanstackDocsFunctionsTemplate(): string {
+  return `\
+import { createServerFn } from "@tanstack/react-start";
+import { docsServer } from "./docs.server";
+
+export const loadDocPage = createServerFn({ method: "GET" })
+  .inputValidator((data: { pathname: string; locale?: string }) => data)
+  .handler(async ({ data }) => docsServer.load(data));
+`;
+}
+
+interface TanstackRouteTemplateOptions {
+  entry: string;
+  filePath: string;
+  useAlias: boolean;
+  projectName: string;
+}
+
+function tanstackDocsFunctionsImport(opts: TanstackRouteTemplateOptions): string {
+  if (opts.useAlias) return "@/lib/docs.functions";
+  return relativeImport(opts.filePath, "src/lib/docs.functions.ts");
+}
+
+function tanstackDocsConfigImport(filePath: string): string {
+  return relativeImport(filePath, "docs.config.ts");
+}
+
+export function tanstackDocsIndexRouteTemplate(opts: TanstackRouteTemplateOptions): string {
+  const entryUrl = `/${opts.entry.replace(/^\/+|\/+$/g, "")}`;
+  return `\
+import { createFileRoute } from "@tanstack/react-router";
+import { TanstackDocsPage } from "@farming-labs/tanstack-start/react";
+import { loadDocPage } from "${tanstackDocsFunctionsImport(opts)}";
+import docsConfig from "${tanstackDocsConfigImport(opts.filePath)}";
+
+export const Route = createFileRoute("${entryUrl}/")({
+  loader: () => loadDocPage({ data: { pathname: "${entryUrl}" } }),
+  head: ({ loaderData }) => ({
+    meta: [
+      { title: loaderData ? \`\${loaderData.title} – ${opts.projectName}\` : "${opts.projectName}" },
+      ...(loaderData?.description
+        ? [{ name: "description", content: loaderData.description }]
+        : []),
+    ],
+  }),
+  component: DocsIndexPage,
+});
+
+function DocsIndexPage() {
+  const data = Route.useLoaderData();
+  return <TanstackDocsPage config={docsConfig} data={data} />;
+}
+`;
+}
+
+export function tanstackDocsCatchAllRouteTemplate(opts: TanstackRouteTemplateOptions): string {
+  const entryUrl = `/${opts.entry.replace(/^\/+|\/+$/g, "")}`;
+  return `\
+import { createFileRoute, notFound } from "@tanstack/react-router";
+import { TanstackDocsPage } from "@farming-labs/tanstack-start/react";
+import { loadDocPage } from "${tanstackDocsFunctionsImport(opts)}";
+import docsConfig from "${tanstackDocsConfigImport(opts.filePath)}";
+
+export const Route = createFileRoute("${entryUrl}/$")({
+  loader: async ({ location }) => {
+    try {
+      return await loadDocPage({ data: { pathname: location.pathname } });
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "status" in error &&
+        (error as { status?: unknown }).status === 404
+      ) {
+        throw notFound();
+      }
+      throw error;
+    }
+  },
+  head: ({ loaderData }) => ({
+    meta: [
+      { title: loaderData ? \`\${loaderData.title} – ${opts.projectName}\` : "${opts.projectName}" },
+      ...(loaderData?.description
+        ? [{ name: "description", content: loaderData.description }]
+        : []),
+    ],
+  }),
+  component: DocsCatchAllPage,
+});
+
+function DocsCatchAllPage() {
+  const data = Route.useLoaderData();
+  return <TanstackDocsPage config={docsConfig} data={data} />;
+}
+`;
+}
+
+export function tanstackApiDocsRouteTemplate(useAlias: boolean, filePath: string): string {
+  const serverImport = useAlias
+    ? "@/lib/docs.server"
+    : relativeImport(filePath, "src/lib/docs.server.ts");
+
+  return `\
+import { createFileRoute } from "@tanstack/react-router";
+import { docsServer } from "${serverImport}";
+
+export const Route = createFileRoute("/api/docs")({
+  server: {
+    handlers: {
+      GET: async ({ request }) => docsServer.GET({ request }),
+      POST: async ({ request }) => docsServer.POST({ request }),
+    },
+  },
+});
+`;
+}
+
+export function tanstackRootRouteTemplate(globalCssRelPath: string): string {
+  const cssImport = relativeAssetPath("src/routes/__root.tsx", globalCssRelPath);
+  return `\
+import appCss from "${cssImport}?url";
+import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { RootProvider } from "@farming-labs/theme/tanstack";
+
+export const Route = createRootRoute({
+  head: () => ({
+    links: [{ rel: "stylesheet", href: appCss }],
+    meta: [
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { title: "Docs" },
+    ],
+  }),
+  component: RootComponent,
+});
+
+function RootComponent() {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <RootProvider>
+          <Outlet />
+        </RootProvider>
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+`;
+}
+
+export function injectTanstackRootProviderIntoRoute(content: string): string | null {
+  if (!content || content.includes("RootProvider")) return null;
+
+  let out = addImportLine(content, 'import { RootProvider } from "@farming-labs/theme/tanstack";');
+
+  if (out.includes("<Outlet />")) {
+    out = out.replace("<Outlet />", "<RootProvider><Outlet /></RootProvider>");
+  } else if (out.includes("<Outlet></Outlet>")) {
+    out = out.replace("<Outlet></Outlet>", "<RootProvider><Outlet /></RootProvider>");
+  } else {
+    return null;
+  }
+
+  return out === content ? null : out;
+}
+
+export function tanstackViteConfigTemplate(useAlias: boolean): string {
+  return `\
+import { defineConfig } from "vite";
+import tailwindcss from "@tailwindcss/vite";
+${useAlias ? 'import tsconfigPaths from "vite-tsconfig-paths";\n' : ""}import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { docsMdx } from "@farming-labs/tanstack-start/vite";
+
+export default defineConfig({
+  plugins: [tailwindcss(), docsMdx(), ${useAlias ? "tsconfigPaths({ ignoreConfigErrors: true }), " : ""}tanstackStart()],
+});
+`;
+}
+
+export function injectTanstackVitePlugins(content: string, useAlias: boolean): string | null {
+  if (!content) return null;
+
+  let out = content;
+  out = addImportLine(out, 'import tailwindcss from "@tailwindcss/vite";');
+  if (useAlias) {
+    out = addImportLine(out, 'import tsconfigPaths from "vite-tsconfig-paths";');
+  }
+  out = addImportLine(out, 'import { docsMdx } from "@farming-labs/tanstack-start/vite";');
+
+  const additions: string[] = [];
+  if (!out.includes("tailwindcss()")) additions.push("tailwindcss()");
+  if (!out.includes("docsMdx()")) additions.push("docsMdx()");
+  if (useAlias && !out.includes("tsconfigPaths("))
+    additions.push("tsconfigPaths({ ignoreConfigErrors: true })");
+
+  if (additions.length === 0) {
+    return out === content ? null : out;
+  }
+
+  const pluginsMatch = out.match(/plugins\s*:\s*\[([\s\S]*?)\]/m);
+  if (pluginsMatch) {
+    const current = pluginsMatch[1].trim();
+    const existing = current ? `${current}${current.endsWith(",") ? "" : ","}` : "";
+    const replacement = `plugins: [\n    ${existing}${existing ? "\n    " : ""}${additions.join(",\n    ")}\n  ]`;
+    return out.replace(pluginsMatch[0], replacement);
+  }
+
+  const configMatch = out.match(/defineConfig\(\s*\{/);
+  if (configMatch) {
+    const insertion = `defineConfig({\n  plugins: [${additions.join(", ")}],`;
+    return out.replace(configMatch[0], insertion);
+  }
+
+  return out === content ? null : out;
+}
+
+export function tanstackWelcomePageTemplate(cfg: TemplateConfig): string {
+  return `\
+---
+title: "Documentation"
+description: "Welcome to ${cfg.projectName} documentation"
+---
+
+# Welcome to ${cfg.projectName}
+
+This docs site is powered by \`@farming-labs/docs\` and TanStack Start.
+
+## Overview
+
+- Content lives in \`${cfg.entry}/\`
+- Routes live in \`src/routes/${cfg.entry}/\`
+- Search is served from \`/api/docs\`
+
+## Next Steps
+
+Read the [Installation](/${cfg.entry}/installation) guide, then continue to [Quickstart](/${cfg.entry}/quickstart).
+`;
+}
+
+export function tanstackInstallationPageTemplate(cfg: TemplateConfig): string {
+  if (cfg.theme === "custom" && cfg.customThemeName) {
+    const baseName = cfg.customThemeName.replace(/\.(ts|css)$/i, "");
+    const exportName = getThemeExportName(baseName);
+    const cssImportPath = getCustomThemeCssImportPath("src/styles/app.css", baseName);
+    return `\
+---
+title: "Installation"
+description: "How to install and set up ${cfg.projectName}"
+---
+
+# Installation
+
+Add the docs packages to your TanStack Start app:
+
+\`\`\`bash
+pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/tanstack-start
+\`\`\`
+
+The scaffold also configures MDX through \`docsMdx()\` in \`vite.config.ts\`.
+
+## Theme CSS
+
+Keep your config theme and global CSS import aligned:
+
+\`\`\`ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+import { ${exportName} } from "./themes/${baseName}";
+
+export default defineDocs({
+  entry: "${cfg.entry}",
+  contentDir: "${cfg.entry}",
+  theme: ${exportName}(),
+});
+\`\`\`
+
+\`\`\`css title="src/styles/app.css"
+@import "tailwindcss";
+@import "${cssImportPath}";
+\`\`\`
+
+## Generated Files
+
+\`\`\`
+docs.config.ts
+themes/${baseName}.ts
+themes/${baseName}.css
+${cfg.entry}/
+src/lib/docs.server.ts
+src/lib/docs.functions.ts
+src/routes/${cfg.entry}/index.tsx
+src/routes/${cfg.entry}/$.tsx
+src/routes/api/docs.ts
+\`\`\`
+`;
+  }
+
+  const t = getThemeInfo(cfg.theme);
+  return `\
+---
+title: "Installation"
+description: "How to install and set up ${cfg.projectName}"
+---
+
+# Installation
+
+Add the docs packages to your TanStack Start app:
+
+\`\`\`bash
+pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/tanstack-start
+\`\`\`
+
+The scaffold also configures MDX through \`docsMdx()\` in \`vite.config.ts\`.
+
+## Theme CSS
+
+Keep your config theme and global CSS import aligned:
+
+\`\`\`ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+import { ${t.factory} } from "${t.nextImport}";
+
+export default defineDocs({
+  entry: "${cfg.entry}",
+  contentDir: "${cfg.entry}",
+  theme: ${t.factory}(),
+});
+\`\`\`
+
+\`\`\`css title="src/styles/app.css"
+@import "tailwindcss";
+@import "@farming-labs/theme/${t.nextCssImport}/css";
+\`\`\`
+
+## Generated Files
+
+\`\`\`
+docs.config.ts
+${cfg.entry}/
+src/lib/docs.server.ts
+src/lib/docs.functions.ts
+src/routes/${cfg.entry}/index.tsx
+src/routes/${cfg.entry}/$.tsx
+src/routes/api/docs.ts
+\`\`\`
+`;
+}
+
+export function tanstackQuickstartPageTemplate(cfg: TemplateConfig): string {
+  return `\
+---
+title: "Quickstart"
+description: "Get up and running in minutes"
+---
+
+# Quickstart
+
+Create a new page under \`${cfg.entry}/\`:
+
+\`\`\`bash
+mkdir -p ${cfg.entry}/my-page
+\`\`\`
+
+Then add \`${cfg.entry}/my-page/page.mdx\`:
+
+\`\`\`mdx
+---
+title: "My Page"
+description: "A custom documentation page"
+---
+
+# My Page
+
+Write your content here using **MDX**.
+\`\`\`
+
+Visit [/${cfg.entry}/my-page](/${cfg.entry}/my-page) after starting the dev server.
 `;
 }
 

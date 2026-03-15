@@ -17,30 +17,31 @@ import {
 
 export const PRESETS = ["next", "nuxt", "sveltekit", "astro"] as const;
 export type PresetName = (typeof PRESETS)[number];
+export type UpgradeFramework = Exclude<Framework, "tanstack-start">;
 
-export const PACKAGES_BY_FRAMEWORK: Record<Framework, string[]> = {
+export const PACKAGES_BY_FRAMEWORK: Record<UpgradeFramework, string[]> = {
   nextjs: ["@farming-labs/docs", "@farming-labs/theme", "@farming-labs/next"],
   nuxt: ["@farming-labs/docs", "@farming-labs/nuxt", "@farming-labs/nuxt-theme"],
   sveltekit: ["@farming-labs/docs", "@farming-labs/svelte", "@farming-labs/svelte-theme"],
   astro: ["@farming-labs/docs", "@farming-labs/astro", "@farming-labs/astro-theme"],
 };
 
-export function presetFromFramework(fw: Framework): PresetName {
+export function presetFromFramework(fw: UpgradeFramework): PresetName {
   return fw === "nextjs" ? "next" : fw;
 }
 
-export function frameworkFromPreset(preset: PresetName): Framework {
+export function frameworkFromPreset(preset: PresetName): UpgradeFramework {
   return preset === "next" ? "nextjs" : preset;
 }
 
 /** Return package list for a framework (for testing and CLI). */
-export function getPackagesForFramework(framework: Framework): string[] {
+export function getPackagesForFramework(framework: UpgradeFramework): string[] {
   return PACKAGES_BY_FRAMEWORK[framework];
 }
 
 /** Build the install command for upgrade (for testing). */
 export function buildUpgradeCommand(
-  framework: Framework,
+  framework: UpgradeFramework,
   tag: UpgradeTag,
   pm: PackageManager,
 ): string {
@@ -70,7 +71,7 @@ export async function upgrade(options: UpgradeOptions = {}) {
     process.exit(1);
   }
 
-  let framework: Framework | null = null;
+  let framework: UpgradeFramework | null = null;
   let preset: PresetName;
 
   if (options.framework) {
@@ -85,8 +86,8 @@ export async function upgrade(options: UpgradeOptions = {}) {
     preset = normalized as PresetName;
     framework = frameworkFromPreset(preset);
   } else {
-    framework = detectFramework(cwd);
-    if (!framework) {
+    const detected = detectFramework(cwd);
+    if (!detected) {
       p.log.error(
         "Could not detect a supported framework (Next.js, Nuxt, SvelteKit, Astro). Use " +
           pc.cyan("--framework <next|nuxt|sveltekit|astro>") +
@@ -94,6 +95,17 @@ export async function upgrade(options: UpgradeOptions = {}) {
       );
       process.exit(1);
     }
+    if (detected === "tanstack-start") {
+      p.log.error(
+        "TanStack Start is supported by " +
+          pc.cyan("init") +
+          " but not by " +
+          pc.cyan("upgrade") +
+          " yet. Upgrade the docs packages manually for now.",
+      );
+      process.exit(1);
+    }
+    framework = detected;
     preset = presetFromFramework(framework);
   }
 
