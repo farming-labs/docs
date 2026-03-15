@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Set all @farming-labs/* dependencies in example projects to the latest
- * version from packages/docs (instead of workspace:* or an older version).
+ * Set all @farming-labs/* dependencies in example projects to the matching
+ * local package versions (instead of workspace:* or an older version).
  *
  * Usage: node scripts/set-examples-version.mjs
  *    or: pnpm run examples:version
@@ -14,12 +14,26 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
 
-const docsPkgPath = path.join(root, "packages", "docs", "package.json");
+const packagesDir = path.join(root, "packages");
 const examplesDir = path.join(root, "examples");
 
-function getLatestVersion() {
-  const pkg = JSON.parse(fs.readFileSync(docsPkgPath, "utf-8"));
-  return pkg.version;
+function getPackageVersions() {
+  const versions = new Map();
+  const dirs = fs.readdirSync(packagesDir, { withFileTypes: true });
+
+  for (const ent of dirs) {
+    if (!ent.isDirectory()) continue;
+
+    const pkgPath = path.join(packagesDir, ent.name, "package.json");
+    if (!fs.existsSync(pkgPath)) continue;
+
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+    if (typeof pkg.name === "string" && pkg.name.startsWith("@farming-labs/")) {
+      versions.set(pkg.name, pkg.version);
+    }
+  }
+
+  return versions;
 }
 
 function updatePackageJson(dir) {
@@ -34,8 +48,9 @@ function updatePackageJson(dir) {
     if (!deps || typeof deps !== "object") continue;
 
     for (const name of Object.keys(deps)) {
-      if (name.startsWith("@farming-labs/") && deps[name] !== latestVersion) {
-        deps[name] = latestVersion;
+      const expectedVersion = packageVersions.get(name);
+      if (expectedVersion && deps[name] !== expectedVersion) {
+        deps[name] = expectedVersion;
         changed = true;
       }
     }
@@ -48,8 +63,12 @@ function updatePackageJson(dir) {
   return false;
 }
 
-const latestVersion = getLatestVersion();
-console.log(`Using latest version: ${latestVersion}\n`);
+const packageVersions = getPackageVersions();
+console.log("Using local package versions:\n");
+for (const [name, version] of [...packageVersions.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+  console.log(`- ${name}: ${version}`);
+}
+console.log();
 
 const dirs = fs.readdirSync(examplesDir, { withFileTypes: true });
 let updated = 0;
