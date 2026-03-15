@@ -65,7 +65,9 @@ function updatePackageJson(dir) {
 
 const packageVersions = getPackageVersions();
 console.log("Using local package versions:\n");
-for (const [name, version] of [...packageVersions.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+for (const [name, version] of [...packageVersions.entries()].sort(([a], [b]) =>
+  a.localeCompare(b),
+)) {
   console.log(`- ${name}: ${version}`);
 }
 console.log();
