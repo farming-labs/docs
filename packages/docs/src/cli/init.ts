@@ -18,7 +18,7 @@ import {
 } from "./utils.js";
 
 const EXAMPLES_REPO = "farming-labs/docs";
-export const VALID_TEMPLATES = ["next", "nuxt", "sveltekit", "astro", "tanstack-start"] as const;
+export const VALID_TEMPLATES = ["next", "nuxt", "sveltekit", "astro"] as const;
 export type TemplateName = (typeof VALID_TEMPLATES)[number];
 
 export interface InitOptions {
@@ -143,7 +143,7 @@ export async function init(options: InitOptions = {}) {
         {
           value: "fresh",
           label: "Fresh project",
-          hint: "Bootstrap a new app from a template (Next, Nuxt, SvelteKit, Astro, TanStack Start)",
+          hint: "Bootstrap a new app from a template (Next, Nuxt, SvelteKit, Astro)",
         },
       ] as const,
     });
@@ -177,11 +177,6 @@ export async function init(options: InitOptions = {}) {
           { value: "nuxt", label: "Nuxt", hint: "Vue 3 with file-based routing" },
           { value: "sveltekit", label: "SvelteKit", hint: "Svelte with file-based routing" },
           { value: "astro", label: "Astro", hint: "Content-focused with islands" },
-          {
-            value: "tanstack-start",
-            label: "TanStack Start",
-            hint: "React with TanStack Router and server functions",
-          },
         ],
       });
       if (p.isCancel(templateAnswer)) {
@@ -219,9 +214,7 @@ export async function init(options: InitOptions = {}) {
           ? "Nuxt"
           : template === "sveltekit"
             ? "SvelteKit"
-            : template === "astro"
-              ? "Astro"
-              : "TanStack Start";
+            : "Astro";
 
     const targetDir = path.join(cwd, projectName);
     const fs = await import("node:fs");
