@@ -1,76 +1,92 @@
+---
+import "@farming-labs/astro-theme/colorful/css";
+import PixelSnow from "../components/PixelSnow.astro";
+
+const chips = ["MDX", "Themes", "Search", "AI-ready"];
+const installCommand = "npx @farming-labs/docs init";
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Farming Labs Docs — Astro Example</title>
+    <meta
+      name="description"
+      content="Centered landing page for the Farming Labs docs Astro example."
+    />
+  </head>
+  <body>
+    <main class="landing-shell">
+      <PixelSnow />
+      <section class="landing">
+        <div class="landing-badge">
+          <span>@farming-labs/docs</span>
+          <span class="landing-framework">Astro Example</span>
+        </div>
+
+        <div class="landing-copy">
+          <h1>
+            A documentation framework
+            <br />
+            that <span>just works.</span>
+          </h1>
+          <p>
+            Framework-native docs with MDX, themes, search, page actions, and AI-ready
+            utilities. This example shows the same Farming Labs docs model running on Astro.
+          </p>
+        </div>
+
+        <div class="landing-chips">
+          {chips.map((chip) => <span>{chip}</span>)}
+        </div>
+
+        <div class="landing-command">
+          <span class="landing-command-label">Install in one command</span>
+          <div class="landing-command-shell">
+            <span class="landing-command-prompt">&gt;</span>
+            <code class="landing-command-code">{installCommand}</code>
+            <button
+              type="button"
+              class="landing-command-copy"
+              data-copy-command={installCommand}
+            >
+              Copy
+            </button>
+          </div>
+        </div>
+
+        <div class="landing-actions">
+          <a class="landing-primary" href="/docs?lang=en">Open Example Docs</a>
+          <a class="landing-reference" href="https://docs.farming-labs.dev" target="_blank" rel="noreferrer">
+            <span>docs.farming-labs.dev</span>
+            <span class="landing-reference-arrow">↗</span>
+          </a>
+        </div>
+
+        <p class="landing-note">
+          // Start locally at <code>/docs?lang=en</code>, then use the full reference when you need
+          the broader map.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
+
 <script>
-  import PixelSnow from "$lib/PixelSnow.svelte";
-  const chips = ["MDX", "Themes", "Search", "AI-ready"];
-  const installCommand = "npx @farming-labs/docs init";
-  let copied = false;
+  const copyButton = document.querySelector("[data-copy-command]");
 
-  async function copyCommand() {
-    await navigator.clipboard.writeText(installCommand);
-    copied = true;
+  copyButton?.addEventListener("click", async () => {
+    const command = copyButton.getAttribute("data-copy-command");
+    if (!command) return;
+
+    await navigator.clipboard.writeText(command);
+    copyButton.textContent = "Copied";
     window.setTimeout(() => {
-      copied = false;
+      copyButton.textContent = "Copy";
     }, 1500);
-  }
+  });
 </script>
-
-<svelte:head>
-  <title>Farming Labs Docs — SvelteKit Example</title>
-  <meta
-    name="description"
-    content="Centered landing page for the Farming Labs docs SvelteKit example."
-  />
-</svelte:head>
-
-<main class="landing-shell">
-  <PixelSnow />
-  <section class="landing">
-    <div class="landing-badge">
-      <span>@farming-labs/docs</span>
-      <span class="landing-framework">SvelteKit Example</span>
-    </div>
-
-    <div class="landing-copy">
-      <h1>
-        A documentation framework
-        <br />
-        that <span>just works.</span>
-      </h1>
-      <p>
-        Framework-native docs with MDX, themes, search, page actions, and AI-ready utilities.
-        This example shows the same Farming Labs docs model running on SvelteKit.
-      </p>
-    </div>
-
-    <div class="landing-chips">
-      {#each chips as chip}
-        <span>{chip}</span>
-      {/each}
-    </div>
-
-    <div class="landing-command">
-      <span class="landing-command-label">Install in one command</span>
-      <div class="landing-command-shell">
-        <span class="landing-command-prompt">&gt;</span>
-        <code class="landing-command-code">{installCommand}</code>
-        <button type="button" class="landing-command-copy" on:click={copyCommand}>
-          {copied ? "Copied" : "Copy"}
-        </button>
-      </div>
-    </div>
-
-    <div class="landing-actions">
-      <a class="landing-primary" href="/docs?lang=en">Open Example Docs</a>
-      <a class="landing-reference" href="https://docs.farming-labs.dev" target="_blank" rel="noreferrer">
-        <span>docs.farming-labs.dev</span>
-        <span class="landing-reference-arrow">↗</span>
-      </a>
-    </div>
-
-    <p class="landing-note">
-      // Start locally at <code>/docs?lang=en</code>, then use the full reference when you need the broader map.
-    </p>
-  </section>
-</main>
 
 <style>
   .landing-shell {

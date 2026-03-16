@@ -12,7 +12,8 @@
   "dependencies": {
     "@farming-labs/docs": "0.0.37",
     "@farming-labs/nuxt": "0.0.37",
-    "@farming-labs/nuxt-theme": "0.0.37"
+    "@farming-labs/nuxt-theme": "0.0.37",
+    "three": "^0.180.0"
   },
   "devDependencies": {
     "nuxt": "^3.14.0",

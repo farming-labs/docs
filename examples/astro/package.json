@@ -13,6 +13,7 @@
     "@farming-labs/astro": "0.0.37",
     "@farming-labs/astro-theme": "0.0.37",
     "@farming-labs/docs": "0.0.37",
-    "astro": "^5.7.0"
+    "astro": "^5.7.0",
+    "three": "^0.180.0"
   }
 }

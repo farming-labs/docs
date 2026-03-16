@@ -1,7 +1,288 @@
 <script setup lang="ts">
-await navigateTo("/docs?lang=en", { replace: true });
+import { ref } from "vue";
+
+useHead({
+  title: "Farming Labs Docs — Nuxt Example",
+  meta: [
+    {
+      name: "description",
+      content: "Centered landing page for the Farming Labs docs Nuxt example.",
+    },
+  ],
+});
+
+const chips = ["MDX", "Themes", "Search", "AI-ready"];
+const installCommand = "npx @farming-labs/docs init";
+const copied = ref(false);
+
+async function copyCommand() {
+  await navigator.clipboard.writeText(installCommand);
+  copied.value = true;
+  window.setTimeout(() => {
+    copied.value = false;
+  }, 1500);
+}
 </script>
 
 <template>
-  <div>Redirecting to docs…</div>
+  <main class="landing-shell">
+    <PixelSnow />
+    <section class="landing">
+      <div class="landing-badge">
+        <span>@farming-labs/docs</span>
+        <span class="landing-framework">Nuxt Example</span>
+      </div>
+
+      <div class="landing-copy">
+        <h1>
+          A documentation framework
+          <br />
+          that <span>just works.</span>
+        </h1>
+        <p>
+          Framework-native docs with MDX, themes, search, page actions, and AI-ready utilities.
+          This example shows the same Farming Labs docs model running on Nuxt.
+        </p>
+      </div>
+
+      <div class="landing-chips">
+        <span v-for="chip in chips" :key="chip">{{ chip }}</span>
+      </div>
+
+      <div class="landing-command">
+        <span class="landing-command-label">Install in one command</span>
+        <div class="landing-command-shell">
+          <span class="landing-command-prompt">&gt;</span>
+          <code class="landing-command-code">{{ installCommand }}</code>
+          <button type="button" class="landing-command-copy" @click="copyCommand">
+            {{ copied ? "Copied" : "Copy" }}
+          </button>
+        </div>
+      </div>
+
+      <div class="landing-actions">
+        <NuxtLink class="landing-primary" to="/docs?lang=en">Open Example Docs</NuxtLink>
+        <a class="landing-reference" href="https://docs.farming-labs.dev" target="_blank" rel="noreferrer">
+          <span>docs.farming-labs.dev</span>
+          <span class="landing-reference-arrow">↗</span>
+        </a>
+      </div>
+
+      <p class="landing-note">
+        // Start locally at <code>/docs?lang=en</code>, then use the full reference when you need the broader map.
+      </p>
+    </section>
+  </main>
 </template>
+
+<style scoped>
+.landing-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1.25rem;
+  position: relative;
+  overflow: hidden;
+  background: var(--color-fd-background, #0b0b0c);
+}
+
+.landing {
+  width: 100%;
+  max-width: 980px;
+  text-align: center;
+  display: grid;
+  gap: 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.landing-badge {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 0;
+  border: 1px dashed color-mix(in srgb, var(--color-fd-border) 55%, transparent);
+  background-image:
+    repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--color-fd-border) 7%, transparent),
+      color-mix(in srgb, var(--color-fd-foreground) 7%, transparent) 1px,
+      transparent 1px,
+      transparent 6px
+    );
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  font-family: var(--fd-font-mono, var(--font-geist-mono, monospace));
+  text-transform: uppercase;
+}
+
+.landing-framework {
+  opacity: 0.45;
+}
+
+.landing-copy {
+  display: grid;
+  gap: 1rem;
+  justify-items: center;
+}
+
+.landing-copy h1 {
+  margin: 0;
+  max-width: 860px;
+  font-size: clamp(2.8rem, 7vw, 5.6rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+}
+
+.landing-copy h1 span {
+  display: inline-block;
+  padding: 0 0.3em;
+  background: var(--color-fd-foreground, #fff);
+  color: var(--color-fd-background, #0b0b0c);
+}
+
+.landing-copy p {
+  margin: 0;
+  max-width: 720px;
+  font-size: 1.02rem;
+  line-height: 1.8;
+  color: var(--color-fd-muted-foreground, rgba(255, 255, 255, 0.72));
+}
+
+.landing-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.landing-chips span {
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.12));
+  border-radius: 0;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  font-family: var(--fd-font-mono, var(--font-geist-mono, monospace));
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.landing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
+
+.landing-command {
+  width: 100%;
+  max-width: 544px;
+  justify-self: center;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.landing-command-label {
+  justify-self: start;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  font-family: var(--fd-font-mono, var(--font-geist-mono, monospace));
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground, rgba(255, 255, 255, 0.58));
+}
+
+.landing-command-shell {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: stretch;
+  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.12));
+  background: color-mix(in srgb, var(--color-fd-card, #111) 92%, transparent);
+}
+
+.landing-command-prompt {
+  display: grid;
+  place-items: center;
+  padding: 0 1rem;
+  border-right: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.12));
+  font-family: var(--fd-font-mono, var(--font-geist-mono, monospace));
+  font-size: 1rem;
+  color: var(--color-fd-muted-foreground, rgba(255, 255, 255, 0.58));
+}
+
+.landing-command-code {
+  display: grid;
+  align-items: center;
+  padding: 0.95rem 1rem;
+  text-align: left;
+  font-family: var(--fd-font-mono, var(--font-geist-mono, monospace));
+  font-size: clamp(0.82rem, 2vw, 1rem);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.landing-command-copy {
+  border: 0;
+  border-left: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.12));
+  background: transparent;
+  color: inherit;
+  min-width: 88px;
+  padding: 0 1rem;
+  cursor: pointer;
+  font-family: var(--fd-font-mono, var(--font-geist-mono, monospace));
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.landing-primary,
+.landing-reference {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fd-font-mono, var(--font-geist-mono, monospace));
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.landing-primary {
+  min-width: 180px;
+  padding: 0.95rem 1.35rem;
+  border-radius: 0;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.76rem;
+  background: var(--color-fd-foreground, #fff);
+  color: var(--color-fd-background, #0b0b0c);
+}
+
+.landing-reference {
+  border-bottom: 1px dotted color-mix(in srgb, var(--color-fd-border) 55%, transparent);
+  align-items: flex-end;
+  gap: 0.5rem;
+  height: 100%;
+  padding-bottom: 0.2rem;
+  text-decoration: none;
+  font-size: 0.66rem;
+  color: var(--color-fd-muted-foreground, rgba(255, 255, 255, 0.58));
+}
+
+.landing-reference:hover {
+  color: var(--color-fd-foreground, rgba(255, 255, 255, 0.82));
+}
+
+.landing-reference-arrow {
+  opacity: 0.55;
+}
+
+.landing-note {
+  margin: 0;
+  font-size: 0.82rem;
+  font-family: var(--fd-font-mono, var(--font-geist-mono, monospace));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-fd-muted-foreground, rgba(255, 255, 255, 0.58));
+}
+</style>
