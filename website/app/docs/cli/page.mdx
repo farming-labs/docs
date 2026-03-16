@@ -77,7 +77,7 @@ The generated project gets:
 
 ## Upgrade
 
-Upgrade all `@farming-labs/*` docs packages to the latest version. Run from your project root; the CLI **auto-detects** your framework from `package.json` and upgrades the right packages for Next.js, Nuxt, SvelteKit, and Astro.
+Upgrade all `@farming-labs/*` docs packages to the latest version. Run from your project root; the CLI **auto-detects** your framework from `package.json` and upgrades the right packages for Next.js, TanStack Start, Nuxt, SvelteKit, and Astro.
 
 The CLI also detects your package manager from the lockfile in the current directory (`pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, or `package-lock.json`). If no lockfile is found, it asks which package manager you want to use instead of defaulting to npm.
 
@@ -107,6 +107,7 @@ The CLI also detects your package manager from the lockfile in the current direc
 | Framework | Packages upgraded to `@latest` |
 | --------- | ------------------------------ |
 | Next.js   | `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next` |
+| TanStack Start | `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/tanstack-start` |
 | Nuxt      | `@farming-labs/docs`, `@farming-labs/nuxt`, `@farming-labs/nuxt-theme` |
 | SvelteKit | `@farming-labs/docs`, `@farming-labs/svelte`, `@farming-labs/svelte-theme` |
 | Astro     | `@farming-labs/docs`, `@farming-labs/astro`, `@farming-labs/astro-theme` |
@@ -116,37 +117,35 @@ To specify the framework explicitly (e.g. in a monorepo or when auto-detect fail
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
     ```bash
-    npx @farming-labs/docs upgrade --framework astro
+    npx @farming-labs/docs upgrade --framework tanstack-start
     # or
-    npx @farming-labs/docs upgrade astro
+    npx @farming-labs/docs upgrade tanstack-start
     ```
   </Tab>
   <Tab value="pnpm">
     ```bash
-    pnpm dlx @farming-labs/docs upgrade --framework astro
+    pnpm dlx @farming-labs/docs upgrade --framework tanstack-start
     # or
-    pnpm dlx @farming-labs/docs upgrade astro
+    pnpm dlx @farming-labs/docs upgrade tanstack-start
     ```
   </Tab>
   <Tab value="yarn">
     ```bash
-    yarn dlx @farming-labs/docs upgrade --framework astro
+    yarn dlx @farming-labs/docs upgrade --framework tanstack-start
     # or
-    yarn dlx @farming-labs/docs upgrade astro
+    yarn dlx @farming-labs/docs upgrade tanstack-start
     ```
   </Tab>
   <Tab value="bun">
     ```bash
-    bunx @farming-labs/docs upgrade --framework astro
+    bunx @farming-labs/docs upgrade --framework tanstack-start
     # or
-    bunx @farming-labs/docs upgrade astro
+    bunx @farming-labs/docs upgrade tanstack-start
     ```
   </Tab>
 </Tabs>
 
-Valid values: `next`, `nuxt`, `sveltekit`, `astro`.
-
-> TanStack Start is currently supported by `init`, but not by `upgrade`.
+Valid values: `next`, `tanstack-start`, `nuxt`, `sveltekit`, `astro`.
 
 Use **`--latest`** (default) to install the latest stable release, or **`--beta`** to install beta versions:
 
@@ -186,7 +185,7 @@ Use **`--latest`** (default) to install the latest stable release, or **`--beta`
 | Framework | Detection | `init` | `upgrade` |
 | --------- | --------- | ------ | --------- |
 | Next.js | `next` in dependencies | Supported | Supported |
-| TanStack Start | `@tanstack/react-start` in dependencies | Supported | Not yet |
+| TanStack Start | `@tanstack/react-start` in dependencies | Supported | Supported |
 | SvelteKit | `@sveltejs/kit` in dependencies | Supported | Supported |
 | Astro | `astro` in dependencies | Supported | Supported |
 | Nuxt | `nuxt` in dependencies | Supported | Supported |

@@ -86,6 +86,7 @@ bunx @farming-labs/docs@latest upgrade
 | Framework | Packages upgraded |
 | --------- | ----------------- |
 | Next.js | `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next` |
+| TanStack Start | `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/tanstack-start` |
 | Nuxt | `@farming-labs/docs`, `@farming-labs/nuxt`, `@farming-labs/nuxt-theme` |
 | SvelteKit | `@farming-labs/docs`, `@farming-labs/svelte`, `@farming-labs/svelte-theme` |
 | Astro | `@farming-labs/docs`, `@farming-labs/astro`, `@farming-labs/astro-theme` |
@@ -102,7 +103,7 @@ npx @farming-labs/docs@latest upgrade --framework astro
 npx @farming-labs/docs@latest upgrade astro
 ```
 
-Valid values: `next`, `nuxt`, `sveltekit`, `astro`.
+Valid values: `next`, `tanstack-start`, `nuxt`, `sveltekit`, `astro`.
 
 **Version channel:**
 

@@ -97,4 +97,18 @@ describe("upgrade package manager selection", () => {
       process.cwd(),
     );
   });
+
+  it("upgrades TanStack Start when the framework is detected", async () => {
+    const utils = await import("./utils.js");
+
+    vi.mocked(utils.detectFramework).mockReturnValue("tanstack-start");
+    vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+
+    await upgrade({ tag: "latest" });
+
+    expect(utils.exec).toHaveBeenCalledWith(
+      "pnpm add @farming-labs/docs@latest @farming-labs/theme@latest @farming-labs/tanstack-start@latest",
+      process.cwd(),
+    );
+  });
 });

@@ -63,7 +63,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("upgrade")}  Upgrade @farming-labs/* packages to latest (auto-detect or use --framework)
 
 ${pc.dim("Supported frameworks:")}
-  Next.js, SvelteKit, Astro, Nuxt
+  Next.js, TanStack Start, SvelteKit, Astro, Nuxt
 
 ${pc.dim("Options for init:")}
   ${pc.cyan("--template <name>")}  Bootstrap a project (${pc.dim("next")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}, ${pc.dim("tanstack-start")}); use with ${pc.cyan("--name")}
@@ -72,7 +72,7 @@ ${pc.dim("Options for init:")}
   ${pc.cyan("--entry <path>")}     Skip entry path prompt (e.g. ${pc.dim("docs")})
 
 ${pc.dim("Options for upgrade:")}
-  ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
+  ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
   ${pc.cyan("--latest")}            Install latest stable (default)
   ${pc.cyan("--beta")}             Install beta versions
 

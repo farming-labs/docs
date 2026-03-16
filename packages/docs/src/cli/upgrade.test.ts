@@ -11,8 +11,8 @@ import {
 
 describe("upgrade", () => {
   describe("PRESETS", () => {
-    it("includes next, nuxt, sveltekit, astro", () => {
-      expect(PRESETS).toEqual(["next", "nuxt", "sveltekit", "astro"]);
+    it("includes next, tanstack-start, nuxt, sveltekit, astro", () => {
+      expect(PRESETS).toEqual(["next", "tanstack-start", "nuxt", "sveltekit", "astro"]);
     });
   });
 
@@ -22,6 +22,14 @@ describe("upgrade", () => {
       expect(pkgs).toContain("@farming-labs/docs");
       expect(pkgs).toContain("@farming-labs/theme");
       expect(pkgs).toContain("@farming-labs/next");
+      expect(pkgs).toHaveLength(3);
+    });
+
+    it("tanstack-start has docs, theme, tanstack-start", () => {
+      const pkgs = getPackagesForFramework("tanstack-start");
+      expect(pkgs).toContain("@farming-labs/docs");
+      expect(pkgs).toContain("@farming-labs/theme");
+      expect(pkgs).toContain("@farming-labs/tanstack-start");
       expect(pkgs).toHaveLength(3);
     });
 
@@ -50,7 +58,13 @@ describe("upgrade", () => {
     });
 
     it("every framework has exactly 3 packages", () => {
-      const frameworks: UpgradeFramework[] = ["nextjs", "nuxt", "sveltekit", "astro"];
+      const frameworks: UpgradeFramework[] = [
+        "nextjs",
+        "tanstack-start",
+        "nuxt",
+        "sveltekit",
+        "astro",
+      ];
       for (const fw of frameworks) {
         expect(PACKAGES_BY_FRAMEWORK[fw]).toHaveLength(3);
       }
@@ -63,6 +77,7 @@ describe("upgrade", () => {
     });
 
     it("other frameworks map to themselves as preset", () => {
+      expect(presetFromFramework("tanstack-start")).toBe("tanstack-start");
       expect(presetFromFramework("nuxt")).toBe("nuxt");
       expect(presetFromFramework("sveltekit")).toBe("sveltekit");
       expect(presetFromFramework("astro")).toBe("astro");
@@ -73,7 +88,13 @@ describe("upgrade", () => {
     });
 
     it("round-trip: framework -> preset -> framework", () => {
-      const frameworks: UpgradeFramework[] = ["nextjs", "nuxt", "sveltekit", "astro"];
+      const frameworks: UpgradeFramework[] = [
+        "nextjs",
+        "tanstack-start",
+        "nuxt",
+        "sveltekit",
+        "astro",
+      ];
       for (const fw of frameworks) {
         expect(frameworkFromPreset(presetFromFramework(fw))).toBe(fw);
       }
@@ -93,6 +114,13 @@ describe("upgrade", () => {
       expect(cmd).toContain("@farming-labs/docs@latest");
       expect(cmd).toContain("@farming-labs/theme@latest");
       expect(cmd).toContain("@farming-labs/next@latest");
+    });
+
+    it("builds TanStack Start command with latest tag", () => {
+      const cmd = buildUpgradeCommand("tanstack-start", "latest", "pnpm");
+      expect(cmd).toContain("@farming-labs/docs@latest");
+      expect(cmd).toContain("@farming-labs/theme@latest");
+      expect(cmd).toContain("@farming-labs/tanstack-start@latest");
     });
 
     it("builds command with beta tag", () => {
