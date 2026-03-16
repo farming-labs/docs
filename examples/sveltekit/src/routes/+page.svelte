@@ -31,7 +31,7 @@
 
     <div class="landing-copy">
       <h1>
-        A documentation framework
+        a documentation framework
         <br />
         that <span>just works.</span>
       </h1>

@@ -99,7 +99,7 @@ function HomePage() {
               maxWidth: 860,
             }}
           >
-            A documentation framework
+            a documentation framework
             <br />
             that{" "}
             <span

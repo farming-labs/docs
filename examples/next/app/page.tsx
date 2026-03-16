@@ -99,7 +99,7 @@ export default function Home() {
               maxWidth: 860,
             }}
           >
-            A documentation framework
+            a documentation framework
             <br />
             that{" "}
             <span
