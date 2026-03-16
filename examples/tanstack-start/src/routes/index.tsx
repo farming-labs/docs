@@ -242,7 +242,7 @@ function HomePage() {
             Open Example Docs
           </Link>
           <a
-            className="inline-flex items-center gap-2 border-b border-dotted border-black/20 pb-0.5 font-mono uppercase tracking-[0.14em] text-[0.66rem] text-black/45 transition hover:text-black/70 dark:border-white/20 dark:text-white/45 dark:hover:text-white/70"
+            className="inline-flex h-full items-end gap-2 border-b border-dotted border-black/20 pb-0.5 font-mono uppercase tracking-[0.14em] text-[0.66rem] text-black/45 transition hover:text-black/70 dark:border-white/20 dark:text-white/45 dark:hover:text-white/70"
             href={referenceHref}
             target="_blank"
             rel="noreferrer"

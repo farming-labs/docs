@@ -260,7 +260,9 @@ async function copyCommand() {
 
 .landing-reference {
   border-bottom: 1px dotted color-mix(in srgb, var(--color-fd-border) 55%, transparent);
+  align-items: flex-end;
   gap: 0.5rem;
+  height: 100%;
   padding-bottom: 0.2rem;
   text-decoration: none;
   font-size: 0.66rem;
