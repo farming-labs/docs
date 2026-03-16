@@ -506,7 +506,7 @@ Pick from `next`, `tanstack-start`, `nuxt`, `sveltekit`, or `astro`. Choose any 
 
 The `docs.config.ts` file is the single source of truth. Key options:
 
-```tsx
+```tsx title="docs.config.ts"
 export default defineDocs({
   entry: "docs", // docs root folder
   theme: fumadocs(), // theme preset
