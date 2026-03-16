@@ -30,7 +30,7 @@ From the [Agent Skills Directory](https://skills.sh/), add skills from this repo
 npx skills add farming-labs/docs
 
 # pnpm
-pnpx skills add farming-labs/docs
+pnpm dlx skills add farming-labs/docs
 
 # yarn
 yarn dlx skills add farming-labs/docs
@@ -44,12 +44,12 @@ The CLI will list skills under `skills/farming-labs/`. Choose the one(s) you nee
 **Install a specific skill by path** (if your CLI supports it):
 
 ```bash
-pnpx skills add farming-labs/docs/skills/farming-labs/getting-started
-pnpx skills add farming-labs/docs/skills/farming-labs/cli
-pnpx skills add farming-labs/docs/skills/farming-labs/creating-themes
-pnpx skills add farming-labs/docs/skills/farming-labs/ask-ai
-pnpx skills add farming-labs/docs/skills/farming-labs/page-actions
-pnpx skills add farming-labs/docs/skills/farming-labs/configuration
+pnpm dlx skills add farming-labs/docs/skills/farming-labs/getting-started
+pnpm dlx skills add farming-labs/docs/skills/farming-labs/cli
+pnpm dlx skills add farming-labs/docs/skills/farming-labs/creating-themes
+pnpm dlx skills add farming-labs/docs/skills/farming-labs/ask-ai
+pnpm dlx skills add farming-labs/docs/skills/farming-labs/page-actions
+pnpm dlx skills add farming-labs/docs/skills/farming-labs/configuration
 ```
 
 ---

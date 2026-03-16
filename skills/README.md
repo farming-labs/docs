@@ -32,7 +32,7 @@ From the [Agent Skills Directory](https://skills.sh/), install skills from this 
 npx skills add farming-labs/docs
 
 # pnpm
-pnpx skills add farming-labs/docs
+pnpm dlx skills add farming-labs/docs
 
 # yarn
 yarn dlx skills add farming-labs/docs

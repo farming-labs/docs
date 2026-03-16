@@ -98,9 +98,9 @@ bunx @farming-labs/docs@latest upgrade
 **Explicit framework** (e.g. in a monorepo or when auto-detect fails):
 
 ```bash
-npx @farming-labs/docs@latest upgrade --framework astro
+npx @farming-labs/docs@latest upgrade --framework tanstack-start
 # or
-npx @farming-labs/docs@latest upgrade astro
+npx @farming-labs/docs@latest upgrade tanstack-start
 ```
 
 Valid values: `next`, `tanstack-start`, `nuxt`, `sveltekit`, `astro`.

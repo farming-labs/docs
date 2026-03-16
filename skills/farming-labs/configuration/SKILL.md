@@ -115,8 +115,9 @@ Use `ordering: "numeric"` (default) so sidebar order follows frontmatter `order`
 ## Edge cases
 
 1. **Next.js:** Must wrap config with `withDocs()` from `@farming-labs/next/config` in `next.config.ts`.
-2. **SvelteKit/Astro:** Server-side docs loader must receive config and (for AI) env vars; see framework docs.
-3. **Nuxt:** `defineDocsHandler(config, useStorage)` in `server/api/docs.ts`; config is imported from root `docs.config.ts`.
+2. **TanStack Start:** `docs.config.ts` stays at project root; wire it into `createDocsServer()` and keep the theme CSS import in your global stylesheet aligned with the theme name in config.
+3. **SvelteKit/Astro:** Server-side docs loader must receive config and (for AI) env vars; see framework docs.
+4. **Nuxt:** `defineDocsHandler(config, useStorage)` in `server/api/docs.ts`; config is imported from root `docs.config.ts`.
 
 ---
 

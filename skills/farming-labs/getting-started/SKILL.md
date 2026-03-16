@@ -20,6 +20,7 @@ description: Get started with @farming-labs/docs — MDX-based documentation for
 | Interactive init (existing or fresh) | `npx @farming-labs/docs@latest init` — first asks **Existing project** or **Fresh project**; then theme (or Create your own theme), entry path, etc. Prompts with a placeholder (e.g. `docs`, `my-docs`) accept **Enter** as default. |
 | Add docs to existing app | Run `init` in project root; choose **Existing project** when prompted. |
 | Start from scratch (bootstrap, no prompts) | `npx @farming-labs/docs@latest init --template <next \| tanstack-start \| nuxt \| sveltekit \| astro> --name <project-name>` |
+| Upgrade docs packages | `npx @farming-labs/docs@latest upgrade` — auto-detects `next`, `tanstack-start`, `nuxt`, `sveltekit`, or `astro`; use `--framework` if detection is ambiguous. |
 
 ### Packages by framework
 

@@ -1,6 +1,6 @@
 ---
 name: ask-ai
-description: Configure the Ask AI (RAG-powered AI chat) in @farming-labs/docs. Use when enabling AI chat, setting mode (search vs floating), floatingStyle (panel, modal, popover, full-modal), position, providers, models, suggestedQuestions, apiKey, systemPrompt, or maxResults. Covers Next.js, SvelteKit, Astro, Nuxt and env vars.
+description: Configure the Ask AI (RAG-powered AI chat) in @farming-labs/docs. Use when enabling AI chat, setting mode (search vs floating), floatingStyle (panel, modal, popover, full-modal), position, providers, models, suggestedQuestions, apiKey, systemPrompt, or maxResults. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt, and env vars.
 ---
 
 # @farming-labs/docs — Ask AI (AI Chat)
@@ -181,6 +181,7 @@ Label for the AI button (e.g. "DocsBot", "Ask AI").
 ## Framework-specific: API key
 
 - **Next.js:** Set `OPENAI_API_KEY` in `.env`; read via `process.env.OPENAI_API_KEY`.
+- **TanStack Start:** Set in `.env`; pass it through `createDocsServer` in `src/lib/docs.server.ts`: `ai: { apiKey: process.env.OPENAI_API_KEY, ...docsConfig.ai }`.
 - **SvelteKit:** Set in `.env`; pass into `createDocsServer` in `src/lib/docs.server.ts`: `ai: { apiKey: env.OPENAI_API_KEY, ...config.ai }` (use `$env/dynamic/private`).
 - **Astro:** Set in `.env`; pass in docs server: `ai: { apiKey: import.meta.env.OPENAI_API_KEY, ...config.ai }`.
 - **Nuxt:** Set in `.env`; Nitro/runtime config exposes it; `defineDocsHandler` reads `process.env.OPENAI_API_KEY` on the server.
