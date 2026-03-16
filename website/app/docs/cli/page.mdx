@@ -7,9 +7,63 @@ order: 2
 
 # CLI
 
-The `@farming-labs/docs` CLI scaffolds a documentation project in seconds.
+The `@farming-labs/docs` CLI has two main jobs:
 
-## Usage
+- **`init`** — create a new docs app or add docs to an existing app
+- **`upgrade`** — bump the docs packages in an existing project
+
+If you only need the common commands, start here. The framework-specific output and generated file lists are further down this page.
+
+## Quick Start
+
+### From scratch
+
+Use `init --template` when you want a brand new project directory with docs already set up.
+
+<Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+  <Tab value="npm">
+    ```bash
+    npx @farming-labs/docs init --template next --name my-docs
+    npx @farming-labs/docs init --template tanstack-start --name my-docs
+    npx @farming-labs/docs init --template nuxt --name my-docs
+    npx @farming-labs/docs init --template sveltekit --name my-docs
+    npx @farming-labs/docs init --template astro --name my-docs
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm dlx @farming-labs/docs init --template next --name my-docs
+    pnpm dlx @farming-labs/docs init --template tanstack-start --name my-docs
+    pnpm dlx @farming-labs/docs init --template nuxt --name my-docs
+    pnpm dlx @farming-labs/docs init --template sveltekit --name my-docs
+    pnpm dlx @farming-labs/docs init --template astro --name my-docs
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    yarn dlx @farming-labs/docs init --template next --name my-docs
+    yarn dlx @farming-labs/docs init --template tanstack-start --name my-docs
+    yarn dlx @farming-labs/docs init --template nuxt --name my-docs
+    yarn dlx @farming-labs/docs init --template sveltekit --name my-docs
+    yarn dlx @farming-labs/docs init --template astro --name my-docs
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash
+    bunx @farming-labs/docs init --template next --name my-docs
+    bunx @farming-labs/docs init --template tanstack-start --name my-docs
+    bunx @farming-labs/docs init --template nuxt --name my-docs
+    bunx @farming-labs/docs init --template sveltekit --name my-docs
+    bunx @farming-labs/docs init --template astro --name my-docs
+    ```
+  </Tab>
+</Tabs>
+
+This creates a new folder, clones the example template, installs dependencies, and leaves you with a ready-to-run docs app.
+
+### Existing project
+
+Use plain `init` inside an app you already have.
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
@@ -34,22 +88,92 @@ The `@farming-labs/docs` CLI scaffolds a documentation project in seconds.
   </Tab>
 </Tabs>
 
-When you run `init` **without** `--template`, the CLI first asks whether you're on an **existing project** or **starting fresh**. Your choice determines the next steps. Use **`--template`** with **`--name`** to skip this and bootstrap a new project directly.
+Run that from your app root. The CLI will:
 
-## Init flow (without --template)
+1. detect your framework from `package.json` or ask you to choose
+2. ask for a theme
+3. ask where docs should live, usually `docs`
+4. ask about aliases, global CSS, and optional i18n when supported
+5. generate the docs files and install the correct `@farming-labs/*` packages
 
-### First prompt: Existing or Fresh?
+### Upgrade an existing docs project
 
-- **Existing project** — Add docs to the app in the current directory. The CLI then detects your framework (or asks you to pick one), then walks you through theme, entry path, global CSS, and so on.
-- **Fresh project** — Bootstrap a new app from a template. The CLI asks you to pick a framework (Next.js, TanStack Start, Nuxt, SvelteKit, or Astro), then a project name, creates the folder, clones the template, and runs install.
+Use `upgrade` when docs are already installed and you just want newer package versions.
 
-### If you choose Fresh project
+<Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+  <Tab value="npm">
+    ```bash
+    npx @farming-labs/docs upgrade
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm dlx @farming-labs/docs upgrade
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    yarn dlx @farming-labs/docs upgrade
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash
+    bunx @farming-labs/docs upgrade
+    ```
+  </Tab>
+</Tabs>
 
-1. **Framework** — Next.js, TanStack Start, Nuxt, SvelteKit, or Astro.
-2. **Project name** — Folder name (e.g. `my-docs`). Press **Enter** to accept the placeholder default.
-3. The CLI creates the folder, clones the template with `degit`, and runs install using the package manager you chose. You then run `cd <name>` and start the dev server with that same package manager.
+By default, the CLI detects your framework and package manager from the current project. If detection is ambiguous, pass `--framework`.
 
-### If you choose Existing project
+## Init
+
+### `init` without `--template`
+
+When you run `init` **without** `--template`, the CLI asks whether you're working with an **existing project** or starting **from scratch**.
+
+| Choice | Best for | What happens |
+| ------ | -------- | ------------ |
+| `Existing project` | You already have a Next.js, TanStack Start, Nuxt, SvelteKit, or Astro app | The CLI adds docs to the current app |
+| `Fresh project` | You want a new docs starter | The CLI creates a new folder from the selected example template |
+
+### From scratch
+
+If you select **Fresh project**, the CLI asks for:
+
+1. **Framework** — Next.js, TanStack Start, Nuxt, SvelteKit, or Astro
+2. **Project name** — default is `my-docs`
+3. **Package manager** — used for install and the suggested dev command
+
+You can skip those prompts entirely with `--template` and `--name`.
+
+<Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+  <Tab value="npm">
+    ```bash
+    npx @farming-labs/docs init --template next --name my-docs
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm dlx @farming-labs/docs init --template next --name my-docs
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    yarn dlx @farming-labs/docs init --template next --name my-docs
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash
+    bunx @farming-labs/docs init --template next --name my-docs
+    ```
+  </Tab>
+</Tabs>
+
+Replace `next` with `tanstack-start`, `nuxt`, `sveltekit`, or `astro`.
+
+### Existing project
+
+If you select **Existing project**, the CLI stays in the current folder and wires docs into the app you already have.
 
 1. **Framework** — Auto-detected from `package.json`, or you pick one if detection fails.
 2. **Theme** — One of the built-in themes or **Create your own theme** (you’ll be asked for a theme name; it creates `themes/<name>.ts` and `themes/<name>.css`).
@@ -58,6 +182,35 @@ When you run `init` **without** `--template`, the CLI first asks whether you're 
 5. **Optional i18n** — Whether to scaffold internationalized docs, which locales to generate, any extra locale codes to add, and which locale should be the default.
 6. **Global CSS** — Which file to use (auto-detected if there’s only one, otherwise you pick or type the path; Enter uses the default).
 7. The CLI generates config, layout, and sample pages, then detects the package manager from a lockfile when possible. If no lockfile is found, it asks which package manager you want to use before installing dependencies, and can then start the dev server.
+
+Typical flow:
+
+<Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+  <Tab value="npm">
+    ```bash
+    cd my-app
+    npx @farming-labs/docs init
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    cd my-app
+    pnpm dlx @farming-labs/docs init
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    cd my-app
+    yarn dlx @farming-labs/docs init
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash
+    cd my-app
+    bunx @farming-labs/docs init
+    ```
+  </Tab>
+</Tabs>
 
 Prompts that show a **placeholder** (e.g. entry path `docs`, project name `my-docs`, theme name `my-theme`) use that value as the default — you can press **Enter** to accept it instead of typing.
 
