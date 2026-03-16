@@ -40,6 +40,9 @@ importers:
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
+      three:
+        specifier: ^0.180.0
+        version: 0.180.0
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -61,6 +64,9 @@ importers:
       astro:
         specifier: ^5.7.0
         version: 5.17.3(@types/node@22.19.11)(@vercel/functions@2.2.13)(db0@0.3.4)(ioredis@5.9.3)(jiti@2.6.1)(lightningcss@1.31.1)(rollup@4.59.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      three:
+        specifier: ^0.180.0
+        version: 0.180.0
 
   examples/next:
     dependencies:
@@ -85,6 +91,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
+      three:
+        specifier: ^0.180.0
+        version: 0.180.0
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.18
@@ -122,6 +131,9 @@ importers:
       '@farming-labs/nuxt-theme':
         specifier: 0.0.37
         version: 0.0.37(nuxt@3.21.1(@parcel/watcher@2.5.6)(@types/node@22.19.11)(@vercel/functions@2.2.13)(@vue/compiler-sfc@3.5.28)(cac@6.7.14)(db0@0.3.4)(ioredis@5.9.3)(lightningcss@1.31.1)(magicast@0.5.2)(oxlint@1.50.0)(rolldown@1.0.0-rc.3)(rollup@4.59.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(yaml@2.8.2))(vue@3.5.28(typescript@5.9.3))
+      three:
+        specifier: ^0.180.0
+        version: 0.180.0
     devDependencies:
       nuxt:
         specifier: ^3.14.0
@@ -144,6 +156,9 @@ importers:
       '@farming-labs/svelte-theme':
         specifier: 0.0.37
         version: 0.0.37(svelte@5.51.3)
+      three:
+        specifier: ^0.180.0
+        version: 0.180.0
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^6.0.0
@@ -190,6 +205,9 @@ importers:
       react-dom:
         specifier: ^19.2.0
         version: 19.2.4(react@19.2.4)
+      three:
+        specifier: ^0.180.0
+        version: 0.180.0
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.18
@@ -6760,6 +6778,9 @@ packages:
 
   text-decoder@1.2.7:
     resolution: {integrity: sha512-vlLytXkeP4xvEq2otHeJfSQIRyWxo/oZGEbXrtEEF9Hnmrdly59sUbzZ/QgyWuLYHctCHxFF4tRQZNQ9k60ExQ==}
+
+  three@0.180.0:
+    resolution: {integrity: sha512-o+qycAMZrh+TsE01GqWUxUIKR1AL0S8pq7zDkYOQw8GqfX8b8VoCKYUoHbhiX5j+7hr8XsuHDVU6+gkQJQKg9w==}
 
   tiny-inflate@1.0.3:
     resolution: {integrity: sha512-pkY1fj1cKHb2seWDy0B16HeWyczlJA9/WW3u3c4z/NiWDsO3DOU5D7nhTLE9CF0yXv/QZFY7sEJmj24dK+Rrqw==}
@@ -14688,6 +14709,8 @@ snapshots:
       b4a: 1.8.0
     transitivePeerDependencies:
       - react-native-b4a
+
+  three@0.180.0: {}
 
   tiny-inflate@1.0.3: {}
 

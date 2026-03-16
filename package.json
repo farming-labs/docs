@@ -28,6 +28,7 @@
     "playwright": "^1.58.2",
     "puppeteer": "^24.37.5",
     "tailwindcss": "^4.1.18",
+    "three": "^0.180.0",
     "typescript": "^5.9.3"
   },
   "pnpm": {
