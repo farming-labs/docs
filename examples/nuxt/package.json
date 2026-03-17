@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node scripts/prepare-workspace.mjs",
     "dev": "nuxt dev",
+    "prebuild": "node scripts/prepare-workspace.mjs",
     "build": "nuxt build",
     "generate": "nuxt generate",
     "preview": "nuxt preview"

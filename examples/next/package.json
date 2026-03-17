@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "prebuild": "node -e \"const fs = require('node:fs'); fs.rmSync('.next-build', { recursive: true, force: true }); fs.rmSync('.next/dev/types', { recursive: true, force: true });\"",
+    "predev": "node scripts/prepare-workspace.mjs",
+    "prebuild": "node scripts/prepare-workspace.mjs && node -e \"const fs = require('node:fs'); fs.rmSync('.next-build', { recursive: true, force: true }); fs.rmSync('.next/dev/types', { recursive: true, force: true });\"",
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start"
