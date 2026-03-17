@@ -11,7 +11,7 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 - 💡 **Type-safe config in code, not JSON**
 - 📦 **Single install, zero lock-in**
 - 🧬 **Write .mdx or .md — all features work out of the box**
-- 🧾 **Generated API reference for Next.js route handlers**
+- 🧾 **Generated API reference for framework route handlers**
 
 **Get started:**
 
@@ -118,7 +118,7 @@ Your content here.
 
 That's it — no layout files, no `[[...slug]]` wrappers. The framework handles routing, layout, and metadata from your config.
 
-> `apiReference` is currently supported in **Next.js**. It scans App Router route handlers like `app/api/hello/route.ts` or `src/app/api/users/[id]/route.ts`, and supports `routeRoot` and `exclude` in `docs.config.ts`.
+> `apiReference` is supported in **Next.js**, **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt**. It scans each framework’s route convention, supports `routeRoot` and `exclude`, and generates the reference at the configured `path`.
 
 #### SvelteKit
 

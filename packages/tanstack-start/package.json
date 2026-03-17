@@ -38,6 +38,11 @@
       "import": "./dist/server.js",
       "default": "./dist/server.js"
     },
+    "./api-reference": {
+      "types": "./dist/tanstack-start/src/api-reference.d.ts",
+      "import": "./dist/tanstack-start/src/api-reference.js",
+      "default": "./dist/tanstack-start/src/api-reference.js"
+    },
     "./vite": {
       "types": "./src/vite.ts",
       "import": "./src/vite.ts",
@@ -50,6 +55,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@scalar/core": "^0.4.3",
     "@mdx-js/rollup": "^3.1.1",
     "fumadocs-core": "^16.6.1",
     "gray-matter": "^4.0.3",

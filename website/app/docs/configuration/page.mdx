@@ -129,7 +129,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
-| `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions; currently supported in Next.js |
+| `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions |
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template                              |
 | `og`          | `OGConfig`                     | —               | Dynamic Open Graph images (see [API Reference](/docs/reference#ogconfig)) |
@@ -157,8 +157,8 @@ Use this when you deploy to a static host and don’t run a server. Search and A
 Use `apiReference` to generate an API reference from your framework route handlers.
 
 <Callout type="info" title="Current support">
-  `apiReference` is currently supported in **Next.js**. It scans App Router route handlers like
-  `app/api/hello/route.ts` or `src/app/api/users/[id]/route.ts`.
+  `apiReference` is supported in **Next.js**, **TanStack Start**, **SvelteKit**, **Astro**, and
+  **Nuxt**.
 </Callout>
 
 ```ts title="docs.config.ts"
@@ -182,6 +182,14 @@ export default defineDocs({
 | `exclude`   | `string[]` | `[]`              | Routes to omit from the generated reference. Accepts URL-style paths like `"/api/hello"` or route-root-relative entries like `"hello"` / `"hello/route.ts"` |
 
 If you use `output: "export"` in Next.js, the generated API reference route is skipped automatically because it needs a server route handler.
+
+Route conventions by framework:
+
+- **Next.js:** `app/api/**/route.ts` or `src/app/api/**/route.ts`
+- **TanStack Start:** `src/routes/api.*.ts` and nested route files under the configured route root
+- **SvelteKit:** `src/routes/api/**/+server.ts` or `+server.js`
+- **Astro:** `src/pages/api/**/*.ts` or `.js`
+- **Nuxt:** `server/api/**/*.ts` or `.js`
 
 ## Internationalization
 

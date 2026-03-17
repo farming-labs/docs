@@ -4,12 +4,15 @@ import { defineDocs } from "@farming-labs/docs";
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    exclude: ["/api/docs"],
+  },
   i18n: {
     locales: ["en", "fr"],
     defaultLocale: "en",
   },
-  // Set to true for full static build (e.g. Cloudflare Pages): search and AI are hidden
-  staticExport: true,
   theme: colorful({
     ui: {
       components: { Callout: { variant: "outline" } },

@@ -35,6 +35,11 @@
       "types": "./dist/server.d.ts",
       "import": "./dist/server.js",
       "default": "./dist/server.js"
+    },
+    "./api-reference": {
+      "types": "./dist/nuxt/src/api-reference.d.ts",
+      "import": "./dist/nuxt/src/api-reference.js",
+      "default": "./dist/nuxt/src/api-reference.js"
     }
   },
   "scripts": {
@@ -43,6 +48,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@scalar/core": "^0.4.3",
     "gray-matter": "^4.0.3",
     "shiki": "^3.2.1"
   },

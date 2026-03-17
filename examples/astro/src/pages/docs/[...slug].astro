@@ -2,12 +2,29 @@
 import DocsLayoutComponent from "@farming-labs/astro-theme/src/components/DocsLayout.astro";
 import DocsContentComponent from "@farming-labs/astro-theme/src/components/DocsContent.astro";
 import SearchDialog from "@farming-labs/astro-theme/src/components/SearchDialog.astro";
+import ApiReferenceSwitcher from "../../components/ApiReferenceSwitcher.astro";
 import AskAITrigger from "../../components/AskAITrigger.astro";
 import config from "../../lib/docs.config";
 import { load } from "../../lib/docs.server";
 import "@farming-labs/astro-theme/colorful/css";
 
 const data = await load(`${Astro.url.pathname}${Astro.url.search}`);
+const locale =
+  data.locale ?? Astro.url.searchParams.get("lang") ?? Astro.url.searchParams.get("locale");
+const withLocale = (url: string) => {
+  const nextUrl = new URL(url, Astro.url);
+  if (locale) nextUrl.searchParams.set("lang", locale);
+  return `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+};
+const showApiReference = !!(
+  config.apiReference &&
+  (config.apiReference === true ||
+    (typeof config.apiReference === "object" && config.apiReference.enabled !== false))
+);
+const apiReferencePath =
+  typeof config.apiReference === "object" && config.apiReference.path
+    ? config.apiReference.path
+    : "api-reference";
 ---
 
 <html lang={data.locale ?? "en"}>
@@ -19,6 +36,14 @@ const data = await load(`${Astro.url.pathname}${Astro.url.search}`);
   </head>
   <body>
     <DocsLayoutComponent tree={data.tree} flatPages={data.flatPages} config={config}>
+      {showApiReference && (
+        <ApiReferenceSwitcher
+          slot="sidebar-header"
+          docsUrl={withLocale("/docs")}
+          apiUrl={withLocale(`/${apiReferencePath}`)}
+          current="docs"
+        />
+      )}
       <AskAITrigger slot="ai-trigger" />
       <DocsContentComponent data={data} config={config} />
     </DocsLayoutComponent>

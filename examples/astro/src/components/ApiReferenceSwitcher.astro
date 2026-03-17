@@ -1,0 +1,213 @@
+---
+const { docsUrl, apiUrl, current = "docs" } = Astro.props;
+
+const currentLabel = current === "api" ? "API Reference" : "Documentation";
+---
+
+<details class="fd-api-switcher">
+  <summary class="fd-api-switcher-trigger">
+    <span class="fd-api-switcher-trigger-main">
+      <span class="fd-api-switcher-icon" aria-hidden="true">
+        {current === "api" ? "</>" : "▣"}
+      </span>
+      <span class="fd-api-switcher-label">{currentLabel}</span>
+    </span>
+    <svg
+      class="fd-api-switcher-chevron"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  </summary>
+
+  <div class="fd-api-switcher-panel">
+    <a
+      href={docsUrl}
+      class:list={[
+        "fd-api-switcher-option",
+        current === "docs" && "fd-api-switcher-option-active",
+      ]}
+    >
+      <span class="fd-api-switcher-option-icon" aria-hidden="true">▣</span>
+      <span class="fd-api-switcher-option-copy">
+        <span class="fd-api-switcher-option-title">Documentation</span>
+        <span class="fd-api-switcher-option-description">
+          Markdown pages, guides, and concepts
+        </span>
+      </span>
+      <span class="fd-api-switcher-check" aria-hidden="true">✓</span>
+    </a>
+
+    <a
+      href={apiUrl}
+      class:list={[
+        "fd-api-switcher-option",
+        current === "api" && "fd-api-switcher-option-active",
+      ]}
+    >
+      <span class="fd-api-switcher-option-icon" aria-hidden="true">&lt;/&gt;</span>
+      <span class="fd-api-switcher-option-copy">
+        <span class="fd-api-switcher-option-title">API Reference</span>
+        <span class="fd-api-switcher-option-description">
+          Scalar-powered route handler reference
+        </span>
+      </span>
+      <span class="fd-api-switcher-check" aria-hidden="true">✓</span>
+    </a>
+  </div>
+</details>
+
+<style>
+  .fd-api-switcher {
+    position: relative;
+    border: 1px solid color-mix(in srgb, var(--color-fd-border) 100%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--color-fd-card, var(--color-fd-background)) 96%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-fd-border) 18%, transparent),
+      inset 0 1px 0 color-mix(in srgb, var(--color-fd-background) 6%, transparent);
+    overflow: hidden;
+  }
+
+  .fd-api-switcher[open] {
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+  }
+
+  .fd-api-switcher-trigger {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    background: color-mix(in srgb, var(--color-fd-card, var(--color-fd-background)) 98%, transparent);
+  }
+
+  .fd-api-switcher-trigger::-webkit-details-marker {
+    display: none;
+  }
+
+  .fd-api-switcher-trigger-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+  }
+
+  .fd-api-switcher-icon {
+    display: inline-flex;
+    width: 16px;
+    height: 16px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    border: 1px solid color-mix(in srgb, var(--color-fd-border) 100%, transparent);
+    background: color-mix(in srgb, var(--color-fd-background) 28%, transparent);
+    color: var(--color-fd-primary);
+    font-size: 7px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .fd-api-switcher-label {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--color-fd-foreground);
+  }
+
+  .fd-api-switcher-chevron {
+    color: var(--color-fd-muted-foreground);
+    flex-shrink: 0;
+    transition: transform 160ms ease;
+  }
+
+  .fd-api-switcher[open] .fd-api-switcher-chevron {
+    transform: rotate(180deg);
+  }
+
+  .fd-api-switcher-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px;
+    border-top: 1px solid color-mix(in srgb, var(--color-fd-border) 100%, transparent);
+    background: color-mix(in srgb, var(--color-fd-card, var(--color-fd-background)) 92%, transparent);
+  }
+
+  .fd-api-switcher-option {
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr) 11px;
+    gap: 8px;
+    align-items: start;
+    padding: 8px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: inherit;
+    background: transparent;
+  }
+
+  .fd-api-switcher-option:hover {
+    background: color-mix(in srgb, var(--color-fd-accent, var(--color-fd-card)) 45%, transparent);
+  }
+
+  .fd-api-switcher-option-active {
+    background: color-mix(in srgb, var(--color-fd-primary) 9%, transparent);
+  }
+
+  .fd-api-switcher-option-icon {
+    display: inline-flex;
+    width: 16px;
+    height: 16px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    border: 1px solid color-mix(in srgb, var(--color-fd-border) 100%, transparent);
+    background: color-mix(in srgb, var(--color-fd-background) 26%, transparent);
+    color: color-mix(in srgb, var(--color-fd-primary) 82%, var(--color-fd-foreground) 18%);
+    font-size: 7px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .fd-api-switcher-option-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .fd-api-switcher-option-title {
+    font-size: 0.81rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--color-fd-foreground);
+  }
+
+  .fd-api-switcher-option-description {
+    font-size: 0.73rem;
+    line-height: 1.35;
+    color: var(--color-fd-muted-foreground);
+  }
+
+  .fd-api-switcher-check {
+    padding-top: 1px;
+    color: var(--color-fd-primary);
+    opacity: 0;
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+
+  .fd-api-switcher-option-active .fd-api-switcher-check {
+    opacity: 1;
+  }
+</style>
