@@ -39,9 +39,9 @@
       "default": "./dist/server.js"
     },
     "./api-reference": {
-      "types": "./dist/tanstack-start/src/api-reference.d.ts",
-      "import": "./dist/tanstack-start/src/api-reference.js",
-      "default": "./dist/tanstack-start/src/api-reference.js"
+      "types": "./dist/api-reference.d.ts",
+      "import": "./dist/api-reference.js",
+      "default": "./dist/api-reference.js"
     },
     "./vite": {
       "types": "./src/vite.ts",

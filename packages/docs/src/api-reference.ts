@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
+import { getHtmlDocument } from "@scalar/core/libs/html-rendering";
 import type { ApiReferenceConfig, DocsConfig, DocsTheme } from "./types.js";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
@@ -20,6 +21,10 @@ export interface ApiReferenceRoute {
 interface BuildApiReferenceOptions {
   framework: ApiReferenceFramework;
   rootDir?: string;
+}
+
+interface BuildApiReferenceHtmlOptions extends BuildApiReferenceOptions {
+  title?: string;
 }
 
 const NEXT_ROUTE_FILE_RE = /^route\.(ts|tsx|js|jsx)$/;
@@ -240,6 +245,41 @@ export function buildApiReferenceOpenApiDocument(
     tags,
     paths: buildOpenApiPaths(routes),
   };
+}
+
+export function buildApiReferenceHtmlDocument(
+  config: DocsConfig,
+  options: BuildApiReferenceHtmlOptions,
+): string {
+  const apiReference = resolveApiReferenceConfig(config.apiReference);
+  const rootDir = options.rootDir ?? process.cwd();
+  const title = options.title ?? "API Reference";
+
+  return getHtmlDocument({
+    pageTitle: buildApiReferencePageTitle(config, title),
+    title,
+    content: () =>
+      buildApiReferenceOpenApiDocument(config, {
+        framework: options.framework,
+        rootDir,
+      }),
+    theme: "deepSpace",
+    layout: "modern",
+    customCss: buildApiReferenceScalarCss(config),
+    pathRouting: {
+      basePath: `/${apiReference.path}`,
+    },
+    showSidebar: true,
+    defaultOpenFirstTag: true,
+    tagsSorter: "alpha",
+    operationsSorter: "alpha",
+    operationTitleSource: "summary",
+    defaultHttpClient: {
+      targetKey: "shell",
+      clientKey: "curl",
+    },
+    documentDownloadType: "json",
+  });
 }
 
 function buildApiReferenceRoutes(

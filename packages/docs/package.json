@@ -39,6 +39,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@scalar/core": "^0.4.3",
     "@clack/prompts": "^0.9.1",
     "gray-matter": "^4.0.3",
     "picocolors": "^1.1.1"

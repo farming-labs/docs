@@ -276,6 +276,9 @@ importers:
       '@clack/prompts':
         specifier: ^0.9.1
         version: 0.9.1
+      '@scalar/core':
+        specifier: ^0.4.3
+        version: 0.4.3
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3

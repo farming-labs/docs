@@ -37,9 +37,9 @@
       "default": "./dist/server.js"
     },
     "./api-reference": {
-      "types": "./dist/nuxt/src/api-reference.d.ts",
-      "import": "./dist/nuxt/src/api-reference.js",
-      "default": "./dist/nuxt/src/api-reference.js"
+      "types": "./dist/api-reference.d.ts",
+      "import": "./dist/api-reference.js",
+      "default": "./dist/api-reference.js"
     }
   },
   "scripts": {

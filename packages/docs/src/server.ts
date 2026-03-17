@@ -1,6 +1,7 @@
 export {
   resolveApiReferenceConfig,
   buildApiReferenceOpenApiDocument,
+  buildApiReferenceHtmlDocument,
   buildApiReferencePageTitle,
   buildApiReferenceScalarCss,
 } from "./api-reference.js";
