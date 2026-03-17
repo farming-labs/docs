@@ -129,6 +129,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
+| `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions; currently supported in Next.js |
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template                              |
 | `og`          | `OGConfig`                     | —               | Dynamic Open Graph images (see [API Reference](/docs/reference#ogconfig)) |
@@ -150,6 +151,37 @@ export default defineDocs({
 ```
 
 Use this when you deploy to a static host and don’t run a server. Search and AI require a server; with `staticExport: true` they are hidden so the site works without one.
+
+## API Reference
+
+Use `apiReference` to generate an API reference from your framework route handlers.
+
+<Callout type="info" title="Current support">
+  `apiReference` is currently supported in **Next.js**. It scans App Router route handlers like
+  `app/api/hello/route.ts` or `src/app/api/users/[id]/route.ts`.
+</Callout>
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    routeRoot: "api",
+    exclude: ["/api/internal/health", "internal/debug"],
+  },
+  theme: fumadocs(),
+});
+```
+
+| Property    | Type       | Default           | Description |
+| ----------- | ---------- | ----------------- | ----------- |
+| `enabled`   | `boolean`  | `true` inside the object | Enables generated API reference pages |
+| `path`      | `string`   | `"api-reference"` | URL path where the generated reference lives |
+| `routeRoot` | `string`   | `"api"`           | Filesystem route root to scan. Bare values like `"api"` resolve inside `app/` or `src/app/`; full values like `"app/internal-api"` are supported too |
+| `exclude`   | `string[]` | `[]`              | Routes to omit from the generated reference. Accepts URL-style paths like `"/api/hello"` or route-root-relative entries like `"hello"` / `"hello/route.ts"` |
+
+If you use `output: "export"` in Next.js, the generated API reference route is skipped automatically because it needs a server route handler.
 
 ## Internationalization
 
