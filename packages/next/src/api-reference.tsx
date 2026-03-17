@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import type { ReactNode } from "react";
 import { ApiReference } from "@scalar/nextjs-api-reference";
-import type { ApiReferenceConfig, DocsConfig } from "@farming-labs/docs";
+import type { ApiReferenceConfig, DocsConfig, DocsTheme } from "@farming-labs/docs";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
 
@@ -22,32 +22,79 @@ const ROUTE_FILE_RE = /^route\.(ts|tsx|js|jsx)$/;
 const METHOD_RE =
   /export\s+(?:async\s+function|function|const)\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b/g;
 
-const SCALAR_CUSTOM_CSS = `
+function resolveTheme(config: DocsConfig): DocsTheme | undefined {
+  return config.theme;
+}
+
+function buildScalarCustomCss(config: DocsConfig): string {
+  const theme = resolveTheme(config);
+  const colors = theme?.ui?.colors;
+  const typography = theme?.ui?.typography?.font?.style;
+  const layout = theme?.ui?.layout;
+  const primary = colors?.primary ?? "#6366f1";
+  const border = colors?.border ?? "#2a2a2a";
+  const muted = colors?.muted ?? "#64748b";
+  const background = colors?.background ?? "#ffffff";
+  const card = colors?.card ?? background;
+  const foreground = colors?.foreground ?? "#1b1b1b";
+  const sidebarWidth = layout?.sidebarWidth ?? 280;
+  const sans = typography?.sans ?? '"Geist", "Inter", "Segoe UI", sans-serif';
+  const mono = typography?.mono ?? '"Geist Mono", "SFMono-Regular", "Menlo", monospace';
+
+  return `
 :root {
-  --scalar-font: "Geist", "Inter", "Segoe UI", sans-serif;
-  --scalar-font-code: "Geist Mono", "SFMono-Regular", "Menlo", monospace;
+  --scalar-font: ${sans};
+  --scalar-font-code: ${mono};
+  --scalar-theme-primary: ${primary};
+  --scalar-theme-border: ${border};
+  --scalar-theme-muted: ${muted};
+  --scalar-theme-background: ${background};
+  --scalar-theme-card: ${card};
+  --scalar-theme-foreground: ${foreground};
 }
 
 .dark-mode {
-  --scalar-background-1: #111111;
-  --scalar-background-2: #161616;
-  --scalar-background-3: #1d1d1d;
+  --scalar-background-1: color-mix(in srgb, #0b0c0b 98%, var(--scalar-theme-primary) 2%);
+  --scalar-background-2: color-mix(in srgb, #111311 96%, var(--scalar-theme-primary) 4%);
+  --scalar-background-3: color-mix(in srgb, #171917 95%, var(--scalar-theme-primary) 5%);
   --scalar-color-1: rgba(255, 255, 255, 0.96);
   --scalar-color-2: rgba(255, 255, 255, 0.72);
   --scalar-color-3: rgba(255, 255, 255, 0.5);
-  --scalar-color-accent: #efb866;
-  --scalar-sidebar-color-active: #efb866;
-  --scalar-sidebar-item-active-background: rgba(239, 184, 102, 0.12);
-  --scalar-border-color: rgba(255, 255, 255, 0.08);
-  --scalar-button-1: #efb866;
-  --scalar-button-1-color: #1b1308;
-  --scalar-button-1-hover: #f4c57b;
+  --scalar-color-accent: var(--scalar-theme-primary);
+  --scalar-sidebar-color-active: var(--scalar-theme-primary);
+  --scalar-sidebar-item-active-background: color-mix(
+    in srgb,
+    var(--scalar-theme-primary) 7%,
+    transparent
+  );
+  --scalar-border-color: color-mix(
+    in srgb,
+    var(--scalar-theme-border) 22%,
+    rgba(255, 255, 255, 0.032)
+  );
+  --scalar-button-1: var(--scalar-theme-primary);
+  --scalar-button-1-color: #ffffff;
+  --scalar-button-1-hover: color-mix(in srgb, var(--scalar-theme-primary) 88%, white 12%);
 }
 
 .light-mode {
-  --scalar-color-accent: #9a6116;
-  --scalar-sidebar-color-active: #9a6116;
-  --scalar-sidebar-item-active-background: rgba(154, 97, 22, 0.08);
+  --scalar-background-1: var(--scalar-theme-background);
+  --scalar-background-2: color-mix(in srgb, var(--scalar-theme-card) 92%, white 8%);
+  --scalar-background-3: color-mix(in srgb, var(--scalar-theme-card) 84%, black 4%);
+  --scalar-color-1: var(--scalar-theme-foreground);
+  --scalar-color-2: var(--scalar-theme-muted);
+  --scalar-color-3: color-mix(in srgb, var(--scalar-theme-muted) 78%, white 22%);
+  --scalar-color-accent: var(--scalar-theme-primary);
+  --scalar-sidebar-color-active: var(--scalar-theme-primary);
+  --scalar-sidebar-item-active-background: color-mix(
+    in srgb,
+    var(--scalar-theme-primary) 5%,
+    transparent
+  );
+  --scalar-border-color: color-mix(in srgb, var(--scalar-theme-border) 42%, white 58%);
+  --scalar-button-1: var(--scalar-theme-primary);
+  --scalar-button-1-color: #ffffff;
+  --scalar-button-1-hover: color-mix(in srgb, var(--scalar-theme-primary) 88%, black 12%);
 }
 
 body {
@@ -55,8 +102,19 @@ body {
 }
 
 .t-doc__sidebar {
-  width: min(23rem, 100vw);
+  width: min(${sidebarWidth}px, 100vw);
   border-right: 1px solid var(--scalar-border-color);
+}
+
+.scalar-card,
+.t-doc__sidebar,
+.references-layout .reference-layout__content .request-card,
+.references-layout .reference-layout__content .response-card,
+.references-layout .reference-layout__content .scalar-card-header,
+.references-layout .reference-layout__content .scalar-card-footer,
+.references-layout .reference-layout__content .section,
+.references-layout .reference-layout__content .section-container {
+  border-color: var(--scalar-border-color) !important;
 }
 
 .t-doc__sidebar,
@@ -114,6 +172,7 @@ body {
   font-family: var(--scalar-font-code);
 }
 `;
+}
 
 function getNextAppDir(root: string): string {
   if (existsSync(join(root, "src", "app"))) return "src/app";
@@ -127,6 +186,7 @@ export function resolveApiReferenceConfig(
     return {
       enabled: true,
       path: "api-reference",
+      routeRoot: "api",
     };
   }
 
@@ -134,18 +194,40 @@ export function resolveApiReferenceConfig(
     return {
       enabled: false,
       path: "api-reference",
+      routeRoot: "api",
     };
   }
 
   return {
     enabled: value.enabled !== false,
     path: normalizePathSegment(value.path ?? "api-reference"),
+    routeRoot: normalizeRouteRoot(value.routeRoot ?? "api"),
   };
 }
 
 function normalizePathSegment(value: string): string {
   const normalized = value.replace(/^\/+|\/+$/g, "");
   return normalized || "api-reference";
+}
+
+function normalizeRouteRoot(value: string): string {
+  const normalized = value.replace(/^\/+|\/+$/g, "");
+  return normalized || "api";
+}
+
+function resolveNextApiRouteRoot(root: string, config: Required<ApiReferenceConfig>): string {
+  const routeRoot = normalizeRouteRoot(config.routeRoot);
+
+  if (
+    routeRoot === "app" ||
+    routeRoot.startsWith("app/") ||
+    routeRoot === "src/app" ||
+    routeRoot.startsWith("src/app/")
+  ) {
+    return join(root, ...routeRoot.split("/"));
+  }
+
+  return join(root, getNextAppDir(root), ...routeRoot.split("/"));
 }
 
 function humanizeSegment(value: string): string {
@@ -283,7 +365,7 @@ function buildApiReferenceRoutes(config: DocsConfig): ApiReferenceRoute[] {
   if (!apiReference.enabled) return [];
 
   const root = process.cwd();
-  const apiDir = join(root, getNextAppDir(root), "api");
+  const apiDir = resolveNextApiRouteRoot(root, apiReference);
   const files = scanRouteFiles(apiDir);
 
   return files
@@ -410,24 +492,27 @@ export function buildNextOpenApiDocument(config: DocsConfig): Record<string, unk
 }
 
 function DropdownIcon({ current }: { current: "docs" | "api" }) {
+  const label = current === "api" ? "</>" : "▣";
+
   return (
     <span
       aria-hidden="true"
       style={{
         display: "inline-flex",
-        width: 18,
-        height: 18,
+        width: 20,
+        height: 20,
         alignItems: "center",
         justifyContent: "center",
         borderRadius: 6,
-        border: "1px solid var(--color-fd-border, rgba(255,255,255,0.08))",
-        background: current === "api" ? "rgba(239, 184, 102, 0.12)" : "transparent",
-        color: current === "api" ? "#efb866" : "inherit",
-        fontSize: 10,
+        border: "1px solid color-mix(in srgb, var(--color-fd-border, #2a2a2a) 100%, transparent)",
+        background: "color-mix(in srgb, var(--color-fd-card, #161616) 92%, transparent)",
+        color: "var(--color-fd-primary, currentColor)",
+        boxShadow: "0 0 0 1px color-mix(in srgb, var(--color-fd-border, #2a2a2a) 32%, transparent)",
+        fontSize: 9,
         fontWeight: 700,
       }}
     >
-      {current === "api" ? "</>" : "[]"}
+      {label}
     </span>
   );
 }
@@ -448,15 +533,15 @@ function SwitcherOption({
       href={href}
       style={{
         display: "grid",
-        gridTemplateColumns: "18px 1fr 14px",
-        gap: 10,
+        gridTemplateColumns: "20px 1fr 14px",
+        gap: 12,
         alignItems: "start",
-        padding: "12px 14px",
-        borderRadius: 14,
+        padding: "11px 12px",
+        borderRadius: 12,
         textDecoration: "none",
         color: "inherit",
         background: current
-          ? "color-mix(in srgb, var(--color-fd-primary, #efb866) 14%, transparent)"
+          ? "color-mix(in srgb, var(--color-fd-primary, #3a7) 10%, transparent)"
           : "transparent",
       }}
     >
@@ -464,31 +549,35 @@ function SwitcherOption({
         aria-hidden="true"
         style={{
           display: "inline-flex",
-          width: 18,
-          height: 18,
+          width: 20,
+          height: 20,
           alignItems: "center",
           justifyContent: "center",
           borderRadius: 6,
-          border: "1px solid var(--color-fd-border, rgba(255,255,255,0.08))",
+          border: "1px solid color-mix(in srgb, var(--color-fd-border, #2a2a2a) 100%, transparent)",
           color: current
-            ? "var(--color-fd-primary, #efb866)"
-            : "var(--color-fd-muted-foreground, rgba(255,255,255,0.54))",
-          fontSize: 10,
+            ? "var(--color-fd-primary, currentColor)"
+            : "var(--color-fd-muted-foreground, rgba(255,255,255,0.62))",
+          background: "color-mix(in srgb, var(--color-fd-card, #161616) 92%, transparent)",
+          boxShadow:
+            "0 0 0 1px color-mix(in srgb, var(--color-fd-border, #2a2a2a) 32%, transparent)",
+          fontSize: 9,
           fontWeight: 700,
         }}
       >
-        {title === "API Reference" ? "</>" : "[]"}
+        {title === "API Reference" ? "</>" : "▣"}
       </span>
       <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <span style={{ fontSize: 14, fontWeight: 600 }}>{title}</span>
-        <span style={{ fontSize: 12, opacity: 0.68 }}>{description}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.25 }}>{title}</span>
+        <span style={{ fontSize: 12, opacity: 0.62, lineHeight: 1.4 }}>{description}</span>
       </span>
       <span
         aria-hidden="true"
         style={{
           fontSize: 12,
           opacity: current ? 1 : 0,
-          color: "var(--color-fd-primary, #efb866)",
+          color: "var(--color-fd-primary, currentColor)",
+          paddingTop: 2,
         }}
       >
         ✓
@@ -513,9 +602,11 @@ function ApiReferenceSwitcher({
       style={{
         position: "relative",
         marginBottom: 16,
-        borderRadius: 16,
-        border: "1px solid var(--color-fd-border, rgba(255,255,255,0.08))",
-        background: "color-mix(in srgb, var(--color-fd-card, #111111) 92%, transparent)",
+        borderRadius: 14,
+        border: "1px solid color-mix(in srgb, var(--color-fd-border, #2a2a2a) 100%, transparent)",
+        background: "color-mix(in srgb, var(--color-fd-card, #141414) 94%, transparent)",
+        boxShadow: "0 0 0 1px color-mix(in srgb, var(--color-fd-border, #2a2a2a) 32%, transparent)",
+        overflow: "hidden",
       }}
     >
       <summary
@@ -524,17 +615,27 @@ function ApiReferenceSwitcher({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: 12,
+          gap: 10,
           cursor: "pointer",
-          padding: "12px 14px",
+          padding: "11px 13px",
+          background: "color-mix(in srgb, var(--color-fd-card, #202020) 96%, transparent)",
+          borderBottom:
+            "1px solid color-mix(in srgb, var(--color-fd-border, #2a2a2a) 100%, transparent)",
         }}
       >
         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <DropdownIcon current={current} />
           <span style={{ fontSize: 14, fontWeight: 600 }}>{currentLabel}</span>
         </span>
-        <span aria-hidden="true" style={{ fontSize: 11, opacity: 0.56 }}>
-          ▾
+        <span
+          aria-hidden="true"
+          style={{
+            fontSize: 11,
+            opacity: 0.56,
+            transform: "translateY(1px)",
+          }}
+        >
+          ▿
         </span>
       </summary>
 
@@ -542,9 +643,9 @@ function ApiReferenceSwitcher({
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: 6,
-          padding: "0 8px 8px",
-          borderTop: "1px solid var(--color-fd-border, rgba(255,255,255,0.08))",
+          gap: 2,
+          padding: 8,
+          background: "color-mix(in srgb, var(--color-fd-card, #151515) 96%, transparent)",
         }}
       >
         <SwitcherOption
@@ -615,7 +716,7 @@ export function createNextApiReference(config: DocsConfig) {
     darkMode: getForcedMode(config) === "dark" ? true : undefined,
     forceDarkModeState: getForcedMode(config),
     hideDarkModeToggle: isThemeToggleHidden(config),
-    customCss: SCALAR_CUSTOM_CSS,
+    customCss: buildScalarCustomCss(config),
     pathRouting: {
       basePath: `/${apiReference.path}`,
     },

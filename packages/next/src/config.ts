@@ -140,7 +140,11 @@ function readOgEndpoint(root: string): string | undefined {
   return undefined;
 }
 
-function readApiReferenceConfig(root: string): { enabled: boolean; path: string } {
+function readApiReferenceConfig(root: string): {
+  enabled: boolean;
+  path: string;
+  routeRoot: string;
+} {
   for (const ext of FILE_EXTS) {
     const configPath = join(root, `docs.config.${ext}`);
     if (!existsSync(configPath)) continue;
@@ -149,27 +153,29 @@ function readApiReferenceConfig(root: string): { enabled: boolean; path: string 
       const content = readFileSync(configPath, "utf-8");
 
       const directFalse = content.match(/apiReference\s*:\s*false/);
-      if (directFalse) return { enabled: false, path: "api-reference" };
+      if (directFalse) return { enabled: false, path: "api-reference", routeRoot: "api" };
 
       const directTrue = content.match(/apiReference\s*:\s*true/);
-      if (directTrue) return { enabled: true, path: "api-reference" };
+      if (directTrue) return { enabled: true, path: "api-reference", routeRoot: "api" };
 
       const block = content.match(/apiReference\s*:\s*\{([\s\S]*?)\}/m);
       if (!block) continue;
 
       const enabledMatch = block[1].match(/enabled\s*:\s*(true|false)/);
       const pathMatch = block[1].match(/path\s*:\s*["']([^"']+)["']/);
+      const routeRootMatch = block[1].match(/routeRoot\s*:\s*["']([^"']+)["']/);
 
       return {
         enabled: enabledMatch ? enabledMatch[1] !== "false" : true,
         path: pathMatch?.[1]?.replace(/^\/+|\/+$/g, "") || "api-reference",
+        routeRoot: routeRootMatch?.[1]?.replace(/^\/+|\/+$/g, "") || "api",
       };
     } catch {
-      return { enabled: false, path: "api-reference" };
+      return { enabled: false, path: "api-reference", routeRoot: "api" };
     }
   }
 
-  return { enabled: false, path: "api-reference" };
+  return { enabled: false, path: "api-reference", routeRoot: "api" };
 }
 
 // ─── withDocs ───────────────────────────────────────────────────────

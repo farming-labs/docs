@@ -1086,6 +1086,17 @@ export interface ApiReferenceConfig {
    * @default "api-reference"
    */
   path?: string;
+  /**
+   * Filesystem route root to scan for API handlers.
+   *
+   * For Next.js this defaults to the App Router convention:
+   * `app/api` or `src/app/api`.
+   *
+   * You can override it with a project-relative path like `"app/v1"` or
+   * `"src/app/internal-api"`. If you pass a bare segment like `"api"` or
+   * `"v1"`, it will be resolved inside the detected app directory.
+   */
+  routeRoot?: string;
 }
 
 export interface DocsConfig {
@@ -1367,6 +1378,7 @@ export interface DocsConfig {
    * apiReference: {
    *   enabled: true,
    *   path: "api-reference",
+   *   routeRoot: "api",
    * }
    * ```
    */
