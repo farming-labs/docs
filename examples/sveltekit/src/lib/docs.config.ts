@@ -6,11 +6,6 @@ import { greentree } from "@farming-labs/svelte-theme/greentree";
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  apiReference: {
-    enabled: true,
-    path: "api-reference",
-    exclude: ["/api/docs"],
-  },
   i18n: {
     locales: ["en", "fr"],
     defaultLocale: "en",

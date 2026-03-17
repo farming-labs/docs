@@ -2,7 +2,6 @@
 
 import docsConfig from "@/docs.config";
 import { createDocsLayout, createDocsMetadata } from "@farming-labs/theme";
-import { withNextApiReferenceBanner } from "@farming-labs/next/api-reference";
 
 export const metadata = createDocsMetadata(docsConfig);
-export default createDocsLayout(withNextApiReferenceBanner(docsConfig));
+export default createDocsLayout(docsConfig);

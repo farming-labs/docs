@@ -6,11 +6,6 @@ import { colorful } from "@farming-labs/theme/colorful";
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  apiReference: {
-    enabled: true,
-    path: "api-reference",
-    exclude: ["/api/docs"],
-  },
   theme: colorful({
     ui: {
       components: { Callout: { variant: "outline" } },

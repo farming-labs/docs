@@ -11,11 +11,9 @@
 import { Route as rootRouteImport } from "./routes/__root";
 import { Route as IndexRouteImport } from "./routes/index";
 import { Route as DocsIndexRouteImport } from "./routes/docs.index";
-import { Route as ApiReferenceIndexRouteImport } from "./routes/api-reference.index";
 import { Route as DocsSplatRouteImport } from "./routes/docs.$";
 import { Route as ApiHelloRouteImport } from "./routes/api.hello";
 import { Route as ApiDocsRouteImport } from "./routes/api.docs";
-import { Route as ApiReferenceSplatRouteImport } from "./routes/api-reference.$";
 
 const IndexRoute = IndexRouteImport.update({
   id: "/",
@@ -25,11 +23,6 @@ const IndexRoute = IndexRouteImport.update({
 const DocsIndexRoute = DocsIndexRouteImport.update({
   id: "/docs/",
   path: "/docs/",
-  getParentRoute: () => rootRouteImport,
-} as any);
-const ApiReferenceIndexRoute = ApiReferenceIndexRouteImport.update({
-  id: "/api-reference/",
-  path: "/api-reference/",
   getParentRoute: () => rootRouteImport,
 } as any);
 const DocsSplatRoute = DocsSplatRouteImport.update({
@@ -47,77 +40,42 @@ const ApiDocsRoute = ApiDocsRouteImport.update({
   path: "/api/docs",
   getParentRoute: () => rootRouteImport,
 } as any);
-const ApiReferenceSplatRoute = ApiReferenceSplatRouteImport.update({
-  id: "/api-reference/$",
-  path: "/api-reference/$",
-  getParentRoute: () => rootRouteImport,
-} as any);
 
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
-  "/api-reference/$": typeof ApiReferenceSplatRoute;
   "/api/docs": typeof ApiDocsRoute;
   "/api/hello": typeof ApiHelloRoute;
   "/docs/$": typeof DocsSplatRoute;
-  "/api-reference/": typeof ApiReferenceIndexRoute;
   "/docs/": typeof DocsIndexRoute;
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute;
-  "/api-reference/$": typeof ApiReferenceSplatRoute;
   "/api/docs": typeof ApiDocsRoute;
   "/api/hello": typeof ApiHelloRoute;
   "/docs/$": typeof DocsSplatRoute;
-  "/api-reference": typeof ApiReferenceIndexRoute;
   "/docs": typeof DocsIndexRoute;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   "/": typeof IndexRoute;
-  "/api-reference/$": typeof ApiReferenceSplatRoute;
   "/api/docs": typeof ApiDocsRoute;
   "/api/hello": typeof ApiHelloRoute;
   "/docs/$": typeof DocsSplatRoute;
-  "/api-reference/": typeof ApiReferenceIndexRoute;
   "/docs/": typeof DocsIndexRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths:
-    | "/"
-    | "/api-reference/$"
-    | "/api/docs"
-    | "/api/hello"
-    | "/docs/$"
-    | "/api-reference/"
-    | "/docs/";
+  fullPaths: "/" | "/api/docs" | "/api/hello" | "/docs/$" | "/docs/";
   fileRoutesByTo: FileRoutesByTo;
-  to:
-    | "/"
-    | "/api-reference/$"
-    | "/api/docs"
-    | "/api/hello"
-    | "/docs/$"
-    | "/api-reference"
-    | "/docs";
-  id:
-    | "__root__"
-    | "/"
-    | "/api-reference/$"
-    | "/api/docs"
-    | "/api/hello"
-    | "/docs/$"
-    | "/api-reference/"
-    | "/docs/";
+  to: "/" | "/api/docs" | "/api/hello" | "/docs/$" | "/docs";
+  id: "__root__" | "/" | "/api/docs" | "/api/hello" | "/docs/$" | "/docs/";
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
-  ApiReferenceSplatRoute: typeof ApiReferenceSplatRoute;
   ApiDocsRoute: typeof ApiDocsRoute;
   ApiHelloRoute: typeof ApiHelloRoute;
   DocsSplatRoute: typeof DocsSplatRoute;
-  ApiReferenceIndexRoute: typeof ApiReferenceIndexRoute;
   DocsIndexRoute: typeof DocsIndexRoute;
 }
 
@@ -135,13 +93,6 @@ declare module "@tanstack/react-router" {
       path: "/docs";
       fullPath: "/docs/";
       preLoaderRoute: typeof DocsIndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api-reference/": {
-      id: "/api-reference/";
-      path: "/api-reference";
-      fullPath: "/api-reference/";
-      preLoaderRoute: typeof ApiReferenceIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/docs/$": {
@@ -165,23 +116,14 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof ApiDocsRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    "/api-reference/$": {
-      id: "/api-reference/$";
-      path: "/api-reference/$";
-      fullPath: "/api-reference/$";
-      preLoaderRoute: typeof ApiReferenceSplatRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ApiReferenceSplatRoute: ApiReferenceSplatRoute,
   ApiDocsRoute: ApiDocsRoute,
   ApiHelloRoute: ApiHelloRoute,
   DocsSplatRoute: DocsSplatRoute,
-  ApiReferenceIndexRoute: ApiReferenceIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
 };
 export const routeTree = rootRouteImport
