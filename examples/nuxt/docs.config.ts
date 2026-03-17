@@ -3,11 +3,6 @@ import { colorful } from "@farming-labs/nuxt-theme/colorful";
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  apiReference: {
-    enabled: true,
-    path: "api-reference",
-    exclude: ["/api/docs"],
-  },
   i18n: {
     locales: ["en", "fr"],
     defaultLocale: "en",
