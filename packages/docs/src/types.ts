@@ -1073,6 +1073,39 @@ export interface DocsI18nConfig {
   defaultLocale?: string;
 }
 
+export interface ApiReferenceConfig {
+  /**
+   * Whether to enable generated API reference pages.
+   * The initial implementation is wired for Next.js route handlers.
+   * @default false
+   */
+  enabled?: boolean;
+  /**
+   * URL path where the generated API reference lives.
+   * Example: `"api-reference"` → `/api-reference`
+   * @default "api-reference"
+   */
+  path?: string;
+  /**
+   * Filesystem route root to scan for API handlers.
+   *
+   * For Next.js this defaults to the App Router convention:
+   * `app/api` or `src/app/api`.
+   *
+   * You can override it with a project-relative path like `"app/v1"` or
+   * `"src/app/internal-api"`. If you pass a bare segment like `"api"` or
+   * `"v1"`, it will be resolved inside the detected app directory.
+   */
+  routeRoot?: string;
+  /**
+   * Route entries to exclude from the generated API reference.
+   *
+   * Accepts either URL-style paths like `"/api/hello"` or route-root-relative
+   * entries like `"hello"` / `"hello/route.ts"`.
+   */
+  exclude?: string[];
+}
+
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
@@ -1342,6 +1375,21 @@ export interface DocsConfig {
    * @see https://llmstxt.org
    */
   llmsTxt?: boolean | LlmsTxtConfig;
+  /**
+   * Generated API reference pages from framework route conventions.
+   *
+   * The first implementation targets Next.js route handlers under `app/api/<segments>/route.ts`.
+   *
+   * @example
+   * ```ts
+   * apiReference: {
+   *   enabled: true,
+   *   path: "api-reference",
+   *   routeRoot: "api",
+   * }
+   * ```
+   */
+  apiReference?: boolean | ApiReferenceConfig;
   /** SEO metadata - separate from theme */
   metadata?: DocsMetadata;
   /** Open Graph image handling */

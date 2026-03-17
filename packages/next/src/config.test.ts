@@ -7,6 +7,15 @@ import { withDocs } from "./config.js";
 const DOCS_CONFIG = `export default { entry: "docs" };
 `;
 
+const DOCS_CONFIG_WITH_API_REFERENCE = `export default {
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+  },
+};
+`;
+
 describe("withDocs (app dir: src/app vs app)", () => {
   let tmpDir: string;
   let originalCwd: string;
@@ -60,5 +69,47 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "src/app/docs/layout.tsx"))).toBe(true);
     expect(existsSync(join(tmpDir, "src/app/api/docs/route.ts"))).toBe(true);
     expect(existsSync(join(tmpDir, "app/docs/layout.tsx"))).toBe(false);
+  });
+
+  it("generates API reference routes when enabled in docs.config", () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_API_REFERENCE, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({});
+
+    expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/route.ts"))).toBe(true);
+  });
+
+  it("skips API reference route generation for static export", () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_API_REFERENCE, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({ output: "export" });
+
+    expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/route.ts"))).toBe(false);
+  });
+
+  it("parses apiReference blocks that contain nested objects", () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    extra: { foo: true },
+    path: "custom-api-reference",
+  },
+};
+`,
+      "utf-8",
+    );
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({});
+
+    expect(existsSync(join(tmpDir, "app/custom-api-reference/[[...slug]]/route.ts"))).toBe(true);
   });
 });

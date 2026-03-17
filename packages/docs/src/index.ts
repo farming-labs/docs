@@ -16,6 +16,7 @@ export { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "./i18n.js";
 export { resolveTitle, resolveOGImage, buildPageOpenGraph, buildPageTwitter } from "./metadata.js";
 export type {
   DocsConfig,
+  ApiReferenceConfig,
   DocsI18nConfig,
   DocsNav,
   DocsTheme,

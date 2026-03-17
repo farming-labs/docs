@@ -20,13 +20,16 @@ import {
 } from "lucide-react";
 import { fumadocs } from "@farming-labs/theme";
 import { darkbold } from "@farming-labs/theme/darkbold";
-import { greentree } from "@farming-labs/theme/greentree";
 import { darksharp } from "@farming-labs/theme/darksharp";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
 import { colorful } from "@farming-labs/theme/colorful";
 
 export default defineDocs({
   entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+  },
   i18n: {
     locales: ["en", "fr"],
     defaultLocale: "en",
@@ -36,7 +39,7 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
-  theme: greentree({
+  theme: colorful({
     ui: {
       components: { Callout: { variant: "outline" } },
       layout: {

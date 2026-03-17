@@ -60,10 +60,11 @@ const DOCS_LAYOUT_TEMPLATE = `\
 ${GENERATED_BANNER}
 import docsConfig from "@/docs.config";
 import { createDocsLayout, createDocsMetadata } from "@farming-labs/theme";
+import { withNextApiReferenceBanner } from "@farming-labs/next/api-reference";
 
 export const metadata = createDocsMetadata(docsConfig);
 
-const DocsLayout = createDocsLayout(docsConfig);
+const DocsLayout = createDocsLayout(withNextApiReferenceBanner(docsConfig));
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -83,6 +84,16 @@ export const { GET, POST } = createDocsAPI({
   entry: docsConfig.entry,
   i18n: docsConfig.i18n,
 });
+
+export const revalidate = false;
+`;
+
+const API_REFERENCE_ROUTE_TEMPLATE = `\
+${GENERATED_BANNER}
+import docsConfig from "@/docs.config";
+import { createNextApiReference } from "@farming-labs/next/api-reference";
+
+export const GET = createNextApiReference(docsConfig);
 
 export const revalidate = false;
 `;
@@ -129,6 +140,72 @@ function readOgEndpoint(root: string): string | undefined {
   return undefined;
 }
 
+function readApiReferenceConfig(root: string): {
+  enabled: boolean;
+  path: string;
+  routeRoot: string;
+} {
+  for (const ext of FILE_EXTS) {
+    const configPath = join(root, `docs.config.${ext}`);
+    if (!existsSync(configPath)) continue;
+
+    try {
+      const content = readFileSync(configPath, "utf-8");
+
+      const directFalse = content.match(/apiReference\s*:\s*false/);
+      if (directFalse) return { enabled: false, path: "api-reference", routeRoot: "api" };
+
+      const directTrue = content.match(/apiReference\s*:\s*true/);
+      if (directTrue) return { enabled: true, path: "api-reference", routeRoot: "api" };
+
+      const block = extractObjectLiteral(content, "apiReference");
+      if (!block) continue;
+
+      const enabledMatch = block.match(/enabled\s*:\s*(true|false)/);
+      const pathMatch = block.match(/path\s*:\s*["']([^"']+)["']/);
+      const routeRootMatch = block.match(/routeRoot\s*:\s*["']([^"']+)["']/);
+
+      return {
+        enabled: enabledMatch ? enabledMatch[1] !== "false" : true,
+        path: pathMatch?.[1]?.replace(/^\/+|\/+$/g, "") || "api-reference",
+        routeRoot: routeRootMatch?.[1]?.replace(/^\/+|\/+$/g, "") || "api",
+      };
+    } catch {
+      return { enabled: false, path: "api-reference", routeRoot: "api" };
+    }
+  }
+
+  return { enabled: false, path: "api-reference", routeRoot: "api" };
+}
+
+function extractObjectLiteral(content: string, key: string): string | undefined {
+  const keyIndex = content.search(new RegExp(`${key}\\s*:\\s*\\{`));
+  if (keyIndex === -1) return undefined;
+
+  const braceStart = content.indexOf("{", keyIndex);
+  if (braceStart === -1) return undefined;
+
+  let depth = 0;
+
+  for (let index = braceStart; index < content.length; index += 1) {
+    const char = content[index];
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char !== "}") continue;
+
+    depth -= 1;
+    if (depth === 0) {
+      return content.slice(braceStart + 1, index);
+    }
+  }
+
+  return undefined;
+}
+
 // ─── withDocs ───────────────────────────────────────────────────────
 
 export function withDocs(nextConfig: Record<string, unknown> = {}) {
@@ -158,6 +235,16 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
   if (!isStaticExport && !hasFile(docsApiRouteDir, "route")) {
     mkdirSync(docsApiRouteDir, { recursive: true });
     writeFileSync(join(docsApiRouteDir, "route.ts"), DOCS_API_ROUTE_TEMPLATE);
+  }
+
+  // ── 3.1. Auto-generate app/{apiReference.path}/[[...slug]]/route.ts ──
+  const apiReference = readApiReferenceConfig(root);
+  if (apiReference.enabled && !isStaticExport) {
+    const apiReferenceRouteDir = join(root, appDir, ...apiReference.path.split("/"), "[[...slug]]");
+    if (!hasFile(apiReferenceRouteDir, "route")) {
+      mkdirSync(apiReferenceRouteDir, { recursive: true });
+      writeFileSync(join(apiReferenceRouteDir, "route.ts"), API_REFERENCE_ROUTE_TEMPLATE);
+    }
   }
 
   // ── 4. Configure MDX compilation ────────────────────────────────

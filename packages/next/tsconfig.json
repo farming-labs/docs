@@ -1,14 +1,19 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "jsx": "react-jsx",
     "declaration": true,
     "outDir": "./dist",
-    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "types": ["node", "react"],
+    "paths": {
+      "@farming-labs/docs": ["../docs/src/index.ts"]
+    },
     "noEmit": true
   },
   "include": ["src/**/*"],

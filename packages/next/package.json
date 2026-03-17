@@ -22,6 +22,11 @@
       "import": "./dist/index.mjs",
       "default": "./dist/index.mjs"
     },
+    "./api-reference": {
+      "types": "./dist/api-reference.d.mts",
+      "import": "./dist/api-reference.mjs",
+      "default": "./dist/api-reference.mjs"
+    },
     "./config": {
       "types": "./dist/config.d.mts",
       "import": "./dist/config.mjs",
@@ -59,18 +64,24 @@
     "@mdx-js/loader": "^3.1.0",
     "@mdx-js/react": "^3.1.0",
     "@next/mdx": "^16.1.6",
+    "@scalar/nextjs-api-reference": "0.10.3",
     "fumadocs-core": "^16.6.1",
     "remark-frontmatter": "^5.0.0",
     "remark-gfm": "^4.0.1",
     "remark-mdx-frontmatter": "^5.0.0"
   },
   "devDependencies": {
+    "@farming-labs/docs": "workspace:*",
+    "@farming-labs/theme": "workspace:*",
     "@types/node": "^22.10.0",
+    "@types/react": "^19.2.2",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   },
   "peerDependencies": {
+    "@farming-labs/docs": ">=0.0.1",
+    "@farming-labs/theme": ">=0.0.1",
     "next": ">=16.0.0",
     "react": ">=19.2.0",
     "react-dom": ">=19.2.0"
