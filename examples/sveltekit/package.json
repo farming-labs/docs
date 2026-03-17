@@ -4,9 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "node scripts/prepare-workspace.mjs",
     "dev": "vite dev",
-    "prebuild": "node scripts/prepare-workspace.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },

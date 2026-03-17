@@ -3,9 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "node scripts/prepare-workspace.mjs",
     "dev": "vite dev",
-    "prebuild": "node scripts/prepare-workspace.mjs",
     "build": "vite build",
     "start": "node --input-type=module -e \"import { createServer } from 'node:http'; import { Readable } from 'node:stream'; import server from './dist/server/server.js'; const port = Number(process.env.PORT ?? 3000); const host = process.env.HOST ?? '127.0.0.1'; function toWebRequest(req) { const protocol = req.headers['x-forwarded-proto'] ?? 'http'; const origin = protocol + '://' + (req.headers.host ?? (host + ':' + port)); const url = new URL(req.url ?? '/', origin); const headers = new Headers(); for (const [key, value] of Object.entries(req.headers)) { if (Array.isArray(value)) { for (const item of value) headers.append(key, item); } else if (value != null) { headers.set(key, value); } } return new Request(url, { method: req.method, headers, body: req.method === 'GET' || req.method === 'HEAD' ? undefined : Readable.toWeb(req), duplex: 'half' }); } async function sendNodeResponse(res, response) { res.statusCode = response.status; for (const [key, value] of response.headers) res.setHeader(key, value); if (!response.body) return void res.end(); const body = Readable.fromWeb(response.body); body.on('error', (error) => { console.error(error); if (!res.headersSent) res.statusCode = 500; res.end(); }); body.pipe(res); } createServer(async (req, res) => { try { const request = toWebRequest(req); const response = await server.fetch(request); await sendNodeResponse(res, response); } catch (error) { console.error(error); res.statusCode = 500; res.end('Internal Server Error'); } }).listen(port, host, () => { console.log('TanStack Start docs server listening on http://' + host + ':' + port); });\"",
     "typecheck": "tsc --noEmit"

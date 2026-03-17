@@ -4,9 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "node scripts/prepare-workspace.mjs",
     "dev": "astro dev",
-    "prebuild": "node scripts/prepare-workspace.mjs",
     "build": "astro build",
     "preview": "astro preview"
   },
