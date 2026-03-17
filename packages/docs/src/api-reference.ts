@@ -118,8 +118,8 @@ export function buildApiReferenceScalarCss(config: DocsConfig): string {
   );
   --scalar-border-color: color-mix(
     in srgb,
-    var(--scalar-theme-border) 22%,
-    rgba(255, 255, 255, 0.032)
+    var(--scalar-theme-border) 14%,
+    rgba(255, 255, 255, 0.02)
   );
   --scalar-button-1: var(--scalar-theme-primary);
   --scalar-button-1-color: #ffffff;
@@ -140,7 +140,7 @@ export function buildApiReferenceScalarCss(config: DocsConfig): string {
     var(--scalar-theme-primary) 5%,
     transparent
   );
-  --scalar-border-color: color-mix(in srgb, var(--scalar-theme-border) 42%, white 58%);
+  --scalar-border-color: color-mix(in srgb, var(--scalar-theme-border) 30%, white 70%);
   --scalar-button-1: var(--scalar-theme-primary);
   --scalar-button-1-color: #ffffff;
   --scalar-button-1-hover: color-mix(in srgb, var(--scalar-theme-primary) 88%, black 12%);
