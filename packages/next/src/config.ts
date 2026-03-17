@@ -158,12 +158,12 @@ function readApiReferenceConfig(root: string): {
       const directTrue = content.match(/apiReference\s*:\s*true/);
       if (directTrue) return { enabled: true, path: "api-reference", routeRoot: "api" };
 
-      const block = content.match(/apiReference\s*:\s*\{([\s\S]*?)\}/m);
+      const block = extractObjectLiteral(content, "apiReference");
       if (!block) continue;
 
-      const enabledMatch = block[1].match(/enabled\s*:\s*(true|false)/);
-      const pathMatch = block[1].match(/path\s*:\s*["']([^"']+)["']/);
-      const routeRootMatch = block[1].match(/routeRoot\s*:\s*["']([^"']+)["']/);
+      const enabledMatch = block.match(/enabled\s*:\s*(true|false)/);
+      const pathMatch = block.match(/path\s*:\s*["']([^"']+)["']/);
+      const routeRootMatch = block.match(/routeRoot\s*:\s*["']([^"']+)["']/);
 
       return {
         enabled: enabledMatch ? enabledMatch[1] !== "false" : true,
@@ -176,6 +176,34 @@ function readApiReferenceConfig(root: string): {
   }
 
   return { enabled: false, path: "api-reference", routeRoot: "api" };
+}
+
+function extractObjectLiteral(content: string, key: string): string | undefined {
+  const keyIndex = content.search(new RegExp(`${key}\\s*:\\s*\\{`));
+  if (keyIndex === -1) return undefined;
+
+  const braceStart = content.indexOf("{", keyIndex);
+  if (braceStart === -1) return undefined;
+
+  let depth = 0;
+
+  for (let index = braceStart; index < content.length; index += 1) {
+    const char = content[index];
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char !== "}") continue;
+
+    depth -= 1;
+    if (depth === 0) {
+      return content.slice(braceStart + 1, index);
+    }
+  }
+
+  return undefined;
 }
 
 // ─── withDocs ───────────────────────────────────────────────────────
@@ -211,7 +239,7 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
 
   // ── 3.1. Auto-generate app/{apiReference.path}/[[...slug]]/route.ts ──
   const apiReference = readApiReferenceConfig(root);
-  if (apiReference.enabled) {
+  if (apiReference.enabled && !isStaticExport) {
     const apiReferenceRouteDir = join(root, appDir, ...apiReference.path.split("/"), "[[...slug]]");
     if (!hasFile(apiReferenceRouteDir, "route")) {
       mkdirSync(apiReferenceRouteDir, { recursive: true });

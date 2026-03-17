@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { buildNextOpenApiDocument } from "./api-reference.js";
+import { buildNextOpenApiDocument, withNextApiReferenceBanner } from "./api-reference.js";
 
 describe("buildNextOpenApiDocument", () => {
   let tmpDir: string;
@@ -42,7 +42,7 @@ export async function GET() {
     });
 
     expect(document.paths).toMatchObject({
-      "/api/hello": {
+      "/internal-api/hello": {
         get: {
           summary: "Hello endpoint",
         },
@@ -92,5 +92,50 @@ export async function GET() {
       },
     });
     expect(document.paths).not.toHaveProperty("/api/secret");
+  });
+
+  it("uses a nested routeRoot path as the OpenAPI path prefix", () => {
+    mkdirSync(join(tmpDir, "app", "v2", "api", "users", "[id]"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "v2", "api", "users", "[id]", "route.ts"),
+      `/** User endpoint */
+export async function GET() {
+  return Response.json({ ok: true });
+}
+`,
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+
+    const document = buildNextOpenApiDocument({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+        routeRoot: "v2/api",
+      },
+    });
+
+    expect(document.paths).toMatchObject({
+      "/v2/api/users/{id}": {
+        get: {
+          summary: "User endpoint",
+        },
+      },
+    });
+  });
+});
+
+describe("withNextApiReferenceBanner", () => {
+  it("does not inject the docs/api switcher when apiReference is disabled", () => {
+    const config = {
+      entry: "docs",
+      sidebar: {
+        flat: true,
+      },
+      apiReference: false,
+    };
+
+    expect(withNextApiReferenceBanner(config)).toBe(config);
   });
 });

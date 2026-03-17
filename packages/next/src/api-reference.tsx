@@ -230,6 +230,16 @@ function normalizeApiReferenceExcludes(values?: string[]): string[] {
   return (values ?? []).map(normalizeExcludeMatcher).filter(Boolean);
 }
 
+function getRoutePathBase(config: Required<ApiReferenceConfig>): string {
+  const routeRoot = normalizeRouteRoot(config.routeRoot);
+
+  if (routeRoot === "app" || routeRoot === "src/app") return "";
+  if (routeRoot.startsWith("app/")) return `/${routeRoot.slice(4)}`;
+  if (routeRoot.startsWith("src/app/")) return `/${routeRoot.slice(8)}`;
+
+  return `/${routeRoot}`;
+}
+
 function resolveNextApiRouteRoot(root: string, config: Required<ApiReferenceConfig>): string {
   const routeRoot = normalizeRouteRoot(config.routeRoot);
 
@@ -309,11 +319,8 @@ function extractDocBlock(source: string): { summary?: string; description?: stri
 
 function extractMethods(source: string): HttpMethod[] {
   const methods = new Set<HttpMethod>();
-  let match: RegExpExecArray | null = METHOD_RE.exec(source);
-
-  while (match) {
+  for (const match of source.matchAll(METHOD_RE)) {
     methods.add(match[1] as HttpMethod);
-    match = METHOD_RE.exec(source);
   }
 
   return Array.from(methods);
@@ -400,6 +407,7 @@ function buildApiReferenceRoutes(config: DocsConfig): ApiReferenceRoute[] {
 
   const root = process.cwd();
   const apiDir = resolveNextApiRouteRoot(root, apiReference);
+  const routePathBase = getRoutePathBase(apiReference);
   const files = scanRouteFiles(apiDir);
   const excludes = apiReference.exclude;
 
@@ -413,7 +421,8 @@ function buildApiReferenceRoutes(config: DocsConfig): ApiReferenceRoute[] {
       const fsSegments = relativeFile.split("/").slice(0, -1).filter(Boolean);
       const relativeDir = fsSegments.join("/");
       const routeSegments = fsSegments.map(endpointSegmentFromFsSegment);
-      const routePath = `/api${routeSegments.length > 0 ? `/${routeSegments.join("/")}` : ""}`;
+      const routePath =
+        `${routePathBase}${routeSegments.length > 0 ? `/${routeSegments.join("/")}` : ""}` || "/";
       if (shouldExcludeRoute(excludes, routePath, relativeFile, relativeDir)) return undefined;
 
       const docBlock = extractDocBlock(source);
