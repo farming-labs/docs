@@ -35,6 +35,7 @@ describe("buildApiReferenceOpenApiDocument", () => {
     );
 
     const config = defineDocs({
+      entry: "docs",
       apiReference: {
         enabled: true,
         routeRoot: "src/pages/api",
