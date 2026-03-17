@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DocsLayout, DocsContent } from "@farming-labs/nuxt-theme";
+import { ApiReferenceSwitcher, DocsLayout, DocsContent } from "@farming-labs/nuxt-theme";
 import config from "~/docs.config";
 
 const route = useRoute();
@@ -28,6 +28,9 @@ if (error.value) {
 <template>
   <div v-if="data" class="fd-docs-wrapper">
     <DocsLayout :tree="data.tree" :config="config" :trigger-component="AskAITrigger">
+      <template #sidebar-header>
+        <ApiReferenceSwitcher :config="config" current="docs" />
+      </template>
       <DocsContent :data="data" :config="config" />
     </DocsLayout>
   </div>

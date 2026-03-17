@@ -8,6 +8,7 @@ export const TableOfContents: Component;
 export const Breadcrumb: Component;
 export const SearchDialog: Component;
 export const FloatingAIChat: Component;
+export const ApiReferenceSwitcher: Component;
 
 export declare const fumadocs: (overrides?: Partial<DocsTheme>) => DocsTheme;
 export declare const DefaultUIDefaults: Record<string, any>;

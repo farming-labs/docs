@@ -11,6 +11,7 @@ export { default as TableOfContents } from "./components/TableOfContents.vue";
 export { default as Breadcrumb } from "./components/Breadcrumb.vue";
 export { default as SearchDialog } from "./components/SearchDialog.vue";
 export { default as FloatingAIChat } from "./components/FloatingAIChat.vue";
+export { default as ApiReferenceSwitcher } from "./components/ApiReferenceSwitcher.vue";
 export { default as ThemeToggle } from "./components/ThemeToggle.vue";
 
 export { fumadocs, DefaultUIDefaults } from "./themes/default.js";

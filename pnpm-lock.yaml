@@ -411,6 +411,9 @@ importers:
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
+      h3:
+        specifier: ^1.15.4
+        version: 1.15.5
       shiki:
         specifier: ^3.2.1
         version: 3.22.0

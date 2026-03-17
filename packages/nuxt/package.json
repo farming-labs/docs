@@ -50,6 +50,7 @@
   "dependencies": {
     "@scalar/core": "^0.4.3",
     "gray-matter": "^4.0.3",
+    "h3": "^1.15.4",
     "shiki": "^3.2.1"
   },
   "devDependencies": {

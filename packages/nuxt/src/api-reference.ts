@@ -3,9 +3,10 @@ import {
   resolveApiReferenceConfig,
 } from "@farming-labs/docs/server";
 import type { DocsConfig } from "@farming-labs/docs";
+import { eventHandler } from "h3";
 
 export function defineApiReferenceHandler(config: DocsConfig & Record<string, any>) {
-  return async () => {
+  return eventHandler(async () => {
     const apiReference = resolveApiReferenceConfig(config.apiReference);
     if (!apiReference.enabled) {
       return new Response("Not Found", { status: 404 });
@@ -22,5 +23,5 @@ export function defineApiReferenceHandler(config: DocsConfig & Record<string, an
         "Content-Type": "text/html; charset=utf-8",
       },
     });
-  };
+  });
 }
