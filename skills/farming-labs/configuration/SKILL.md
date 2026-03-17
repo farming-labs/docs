@@ -101,6 +101,8 @@ apiReference: {
 ```
 
 Notes:
+- **Next.js:** `withDocs()` auto-generates the `/{path}` route when `apiReference` is enabled
+- **TanStack Start / SvelteKit / Astro / Nuxt:** `docs.config` controls scanning and styling, but the app must still add the framework route handler for `/{path}`
 - `path` controls the public URL for the generated reference
 - `routeRoot` controls the filesystem route root to scan
 - `exclude` accepts either URL-style paths (`"/api/hello"`) or route-root-relative entries (`"hello"` / `"hello/route.ts"`)

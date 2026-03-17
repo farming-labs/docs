@@ -119,6 +119,10 @@ Your content here.
 That's it — no layout files, no `[[...slug]]` wrappers. The framework handles routing, layout, and metadata from your config.
 
 > `apiReference` is supported in **Next.js**, **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt**. It scans each framework’s route convention, supports `routeRoot` and `exclude`, and generates the reference at the configured `path`.
+>
+> In **Next.js**, `withDocs()` auto-generates the API reference route when `apiReference` is enabled.
+>
+> In **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt**, `docs.config` enables scanning and theme behavior, but you still opt in by adding the route handler for `/{path}`.
 
 #### SvelteKit
 

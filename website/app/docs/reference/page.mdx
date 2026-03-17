@@ -153,6 +153,15 @@ Generates API reference pages from framework route conventions.
   **Nuxt**.
 </Callout>
 
+<Callout type="info" title="Important">
+  `apiReference` in `docs.config` controls scanning, theming, `routeRoot`, and `exclude`.
+
+  In **Next.js**, `withDocs()` also generates the route automatically.
+
+  In **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt**, you must additionally add the
+  framework route handler for `/{path}`.
+</Callout>
+
 | Property    | Type       | Default           | Description |
 | ----------- | ---------- | ----------------- | ----------- |
 | `enabled`   | `boolean`  | `true` inside the object | Enable generated API reference pages |
@@ -178,6 +187,54 @@ Scanned route conventions:
 - **SvelteKit:** `src/routes/api/**/+server.ts` or `+server.js`
 - **Astro:** `src/pages/api/**/*.ts` or `.js`
 - **Nuxt:** `server/api/**/*.ts` or `.js`
+
+Minimal route handlers for non-Next frameworks:
+
+```ts title="TanStack Start — src/routes/api-reference.index.ts"
+import { createFileRoute } from "@tanstack/react-router";
+import { createTanstackApiReference } from "@farming-labs/tanstack-start/api-reference";
+import docsConfig from "../../docs.config";
+
+const handler = createTanstackApiReference(docsConfig);
+
+export const Route = createFileRoute("/api-reference/")({
+  server: {
+    handlers: {
+      GET: handler,
+    },
+  },
+});
+```
+
+Create a second `src/routes/api-reference.$.ts` file with the same handler and
+`createFileRoute("/api-reference/$")`.
+
+```ts title="SvelteKit — src/routes/api-reference/+server.ts"
+import { createSvelteApiReference } from "@farming-labs/svelte/api-reference";
+import config from "$lib/docs.config";
+
+export const GET = createSvelteApiReference(config);
+```
+
+Create `src/routes/api-reference/[...slug]/+server.ts` with the same `GET` export.
+
+```ts title="Astro — src/pages/api-reference/index.ts"
+import { createAstroApiReference } from "@farming-labs/astro/api-reference";
+import config from "../../lib/docs.config";
+
+export const GET = createAstroApiReference(config);
+```
+
+Create `src/pages/api-reference/[...slug].ts` with the same `GET` export.
+
+```ts title="Nuxt — server/routes/api-reference/index.ts"
+import { defineApiReferenceHandler } from "@farming-labs/nuxt/api-reference";
+import config from "~/docs.config";
+
+export default defineApiReferenceHandler(config);
+```
+
+Create `server/routes/api-reference/[...slug].ts` with the same default export.
 
 ---
 
