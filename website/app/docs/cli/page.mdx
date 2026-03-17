@@ -179,9 +179,10 @@ If you select **Existing project**, the CLI stays in the current folder and wire
 2. **Theme** — One of the built-in themes or **Create your own theme** (you’ll be asked for a theme name; it creates `themes/<name>.ts` and `themes/<name>.css`).
 3. **Path aliases** — Whether to use `@/`, `$lib/`, or `~/` for imports (framework-dependent).
 4. **Entry path** — Where docs live (e.g. `docs`). Press **Enter** to use the default.
-5. **Optional i18n** — Whether to scaffold internationalized docs, which locales to generate, any extra locale codes to add, and which locale should be the default.
-6. **Global CSS** — Which file to use (auto-detected if there’s only one, otherwise you pick or type the path; Enter uses the default).
-7. The CLI generates config, layout, and sample pages, then detects the package manager from a lockfile when possible. If no lockfile is found, it asks which package manager you want to use before installing dependencies, and can then start the dev server.
+5. **Optional API reference** — Whether to scaffold API reference support. If you enable it, the CLI pre-fills the detected API route root (usually `api`) and lets you edit it before writing `apiReference.routeRoot`.
+6. **Optional i18n** — Whether to scaffold internationalized docs, which locales to generate, any extra locale codes to add, and which locale should be the default.
+7. **Global CSS** — Which file to use (auto-detected if there’s only one, otherwise you pick or type the path; Enter uses the default).
+8. The CLI generates config, layout, and sample pages, then detects the package manager from a lockfile when possible. If no lockfile is found, it asks which package manager you want to use before installing dependencies, and can then start the dev server.
 
 Typical flow:
 
@@ -213,6 +214,31 @@ Typical flow:
 </Tabs>
 
 Prompts that show a **placeholder** (e.g. entry path `docs`, project name `my-docs`, theme name `my-theme`) use that value as the default — you can press **Enter** to accept it instead of typing.
+
+### Existing-project flags
+
+Use these to skip the matching prompts during `init`:
+
+| Flag | Description |
+| ---- | ----------- |
+| `--theme <name>` | Skip the theme prompt |
+| `--entry <path>` | Skip the docs entry prompt |
+| `--api-reference` | Enable API reference scaffold during `init` |
+| `--no-api-reference` | Explicitly skip API reference scaffold |
+| `--api-route-root <path>` | Set the detected API route root written to `apiReference.routeRoot` |
+
+Example:
+
+```bash
+npx @farming-labs/docs init --theme greentree --entry docs --api-reference --api-route-root internal-api
+```
+
+`--api-route-root` is optional. If you omit it, the CLI tries to detect a sensible default from the framework’s route conventions and shows that value as the default in the prompt.
+
+When API reference is enabled through `init`:
+
+- **Next.js** writes the `apiReference` block to `docs.config.ts`; `withDocs()` handles route generation automatically.
+- **TanStack Start, SvelteKit, Astro, and Nuxt** write the `apiReference` block and also scaffold the minimal `/{path}` handler files so the reference works immediately.
 
 ### Optional i18n scaffold
 

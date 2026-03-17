@@ -1,6 +1,6 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold and upgrade docs. Use when running init, upgrade, or using flags like --template, --name, --theme, --entry, --framework, --latest, --beta. Covers init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), npm/pnpm/yarn/bun, and framework detection.
+description: @farming-labs/docs CLI — scaffold and upgrade docs. Use when running init, upgrade, or using flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta. Covers init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), npm/pnpm/yarn/bun, and framework detection.
 ---
 
 # @farming-labs/docs — CLI
@@ -54,11 +54,20 @@ Replace `my-docs` with the desired folder name. Same pattern with `pnpm dlx`, `y
 | `--name <project>` | Project folder name when using `--template` (e.g. `my-docs`). If omitted with `--template`, CLI prompts (default `my-docs`). |
 | `--theme <name>` | Skip theme prompt. Values: e.g. `fumadocs`, `greentree`, `pixel-border`, `darksharp`, `colorful`, `darkbold`, `shiny`. |
 | `--entry <path>` | Skip entry path prompt. Default is `docs`. |
+| `--api-reference` | Enable API reference scaffold during `init`. |
+| `--no-api-reference` | Explicitly skip the API reference scaffold. |
+| `--api-route-root <path>` | Override the detected API route root written to `apiReference.routeRoot` (e.g. `api`, `internal-api`). |
 
 Example (non-interactive bootstrap with theme):
 
 ```bash
 npx @farming-labs/docs@latest init --template next --name my-docs --theme pixel-border
+```
+
+Example (existing project with API reference):
+
+```bash
+npx @farming-labs/docs@latest init --theme greentree --entry docs --api-reference --api-route-root internal-api
 ```
 
 ---
@@ -117,13 +126,13 @@ npx @farming-labs/docs@latest upgrade --beta       # beta versions
 
 ## What init does (Existing project, per framework)
 
-When the user chooses **Existing project**, the CLI detects (or prompts for) framework, then theme (including **Create your own theme** → prompts for theme name, scaffolds `themes/<name>.ts` and `themes/<name>.css`), entry path (default `docs`; Enter to accept), optional i18n scaffolding, path aliases, and global CSS. Generated files:
+When the user chooses **Existing project**, the CLI detects (or prompts for) framework, then theme (including **Create your own theme** → prompts for theme name, scaffolds `themes/<name>.ts` and `themes/<name>.css`), path aliases, entry path (default `docs`; Enter to accept), optional API reference scaffold, optional i18n scaffolding, and global CSS. If API reference is enabled and the user does not pass `--api-route-root`, the CLI detects a sensible default route root (usually `api`) and shows it as the default in the prompt. Generated files:
 
-- **Next.js:** `docs.config.ts`, `next.config.ts`, `app/global.css`, `app/layout.tsx`, `app/docs/layout.tsx`, sample MDX pages; installs `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next`; can start dev server.
-- **TanStack Start:** `docs.config.ts`, `src/lib/docs.server.ts`, `src/lib/docs.functions.ts`, `src/routes/<entry>/index.tsx`, `src/routes/<entry>/$.tsx`, `src/routes/api/docs.ts`, updates `src/routes/__root.tsx`, updates `vite.config.ts`, and wires theme CSS into the selected global stylesheet; installs `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/tanstack-start`.
-- **SvelteKit:** `src/lib/docs.config.ts`, `src/lib/docs.server.ts`, `src/routes/docs/*`, `src/app.css`, `docs/*.md`; installs svelte + svelte-theme packages.
-- **Astro:** `src/lib/docs.config.ts`, `src/lib/docs.server.ts`, `src/pages/**`, API route, `docs/*.md`; installs astro + astro-theme packages.
-- **Nuxt:** `docs.config.ts`, `nuxt.config.ts`, `server/api/docs.ts`, `pages/docs/[...slug].vue`, `docs/*.md`; installs nuxt + nuxt-theme packages.
+- **Next.js:** `docs.config.ts`, `next.config.ts`, `app/global.css`, `app/layout.tsx`, `app/docs/layout.tsx`, sample MDX pages; installs `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next`; can start dev server. If API reference is enabled, the CLI writes the `apiReference` block and `withDocs()` generates the route automatically.
+- **TanStack Start:** `docs.config.ts`, `src/lib/docs.server.ts`, `src/lib/docs.functions.ts`, `src/routes/<entry>/index.tsx`, `src/routes/<entry>/$.tsx`, `src/routes/api/docs.ts`, optional `src/routes/api-reference.index.ts` + `src/routes/api-reference.$.ts`, updates `src/routes/__root.tsx`, updates `vite.config.ts`, and wires theme CSS into the selected global stylesheet; installs `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/tanstack-start`.
+- **SvelteKit:** `src/lib/docs.config.ts`, `src/lib/docs.server.ts`, `src/routes/docs/*`, optional `src/routes/api-reference/+server.ts` + `src/routes/api-reference/[...slug]/+server.ts`, `src/app.css`, `docs/*.md`; installs svelte + svelte-theme packages.
+- **Astro:** `src/lib/docs.config.ts`, `src/lib/docs.server.ts`, `src/pages/**`, API route, optional `src/pages/api-reference/index.ts` + `src/pages/api-reference/[...slug].ts`, `docs/*.md`; installs astro + astro-theme packages.
+- **Nuxt:** `docs.config.ts`, `nuxt.config.ts`, `server/api/docs.ts`, optional `server/routes/api-reference/index.ts` + `server/routes/api-reference/[...slug].ts`, `pages/docs/[...slug].vue`, `docs/*.md`; installs nuxt + nuxt-theme packages.
 
 **Create your own theme:** If the user selects this, the CLI prompts for a theme name (default `my-theme`; Enter to accept), then creates `themes/<name>.ts` and `themes/<name>.css` and wires them in `docs.config` and global CSS. See the `creating-themes` skill for the API.
 

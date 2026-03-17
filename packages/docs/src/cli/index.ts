@@ -8,16 +8,29 @@ const args = process.argv.slice(2);
 const command = args[0];
 
 /** Parse flags like --template next, --name my-docs, --theme darksharp, --entry docs, --framework astro (exported for tests). */
-export function parseFlags(argv: string[]): Record<string, string | undefined> {
-  const flags: Record<string, string | undefined> = {};
+export function parseFlags(argv: string[]): Record<string, string | boolean | undefined> {
+  const flags: Record<string, string | boolean | undefined> = {};
+  const booleanFlags = new Set(["api-reference"]);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg.startsWith("--") && arg.includes("=")) {
       const [key, value] = arg.slice(2).split("=");
-      flags[key] = value;
+      if (key.startsWith("no-")) {
+        flags[key.slice(3)] = false;
+      } else if (value === "true") {
+        flags[key] = true;
+      } else if (value === "false") {
+        flags[key] = false;
+      } else {
+        flags[key] = value;
+      }
     } else if (arg.startsWith("--") && argv[i + 1] && !argv[i + 1].startsWith("--")) {
       flags[arg.slice(2)] = argv[i + 1];
       i++;
+    } else if (arg.startsWith("--no-")) {
+      flags[arg.slice(5)] = false;
+    } else if (arg.startsWith("--") && booleanFlags.has(arg.slice(2))) {
+      flags[arg.slice(2)] = true;
     }
   }
   return flags;
@@ -26,17 +39,20 @@ export function parseFlags(argv: string[]): Record<string, string | undefined> {
 async function main() {
   const flags = parseFlags(args);
   const initOptions = {
-    template: flags.template,
-    name: flags.name,
-    theme: flags.theme,
-    entry: flags.entry,
+    template: typeof flags.template === "string" ? flags.template : undefined,
+    name: typeof flags.name === "string" ? flags.name : undefined,
+    theme: typeof flags.theme === "string" ? flags.theme : undefined,
+    entry: typeof flags.entry === "string" ? flags.entry : undefined,
+    apiReference: typeof flags["api-reference"] === "boolean" ? flags["api-reference"] : undefined,
+    apiRouteRoot: typeof flags["api-route-root"] === "string" ? flags["api-route-root"] : undefined,
   };
 
   if (!command || command === "init") {
     await init(initOptions);
   } else if (command === "upgrade") {
     const framework =
-      flags.framework ?? (args[1] && !args[1].startsWith("--") ? args[1] : undefined);
+      (typeof flags.framework === "string" ? flags.framework : undefined) ??
+      (args[1] && !args[1].startsWith("--") ? args[1] : undefined);
     const tag = args.includes("--beta") ? "beta" : "latest";
     await upgrade({ framework, tag });
   } else if (command === "--help" || command === "-h") {
@@ -70,6 +86,9 @@ ${pc.dim("Options for init:")}
   ${pc.cyan("--name <project>")}  Project folder name when using ${pc.cyan("--template")}; prompt if omitted (e.g. ${pc.dim("my-docs")})
   ${pc.cyan("--theme <name>")}     Skip theme prompt (e.g. ${pc.dim("darksharp")}, ${pc.dim("greentree")})
   ${pc.cyan("--entry <path>")}     Skip entry path prompt (e.g. ${pc.dim("docs")})
+  ${pc.cyan("--api-reference")}    Scaffold API reference support during ${pc.cyan("init")}
+  ${pc.cyan("--no-api-reference")} Skip API reference scaffold during ${pc.cyan("init")}
+  ${pc.cyan("--api-route-root <path>")}  Override the API route root scanned by ${pc.cyan("apiReference.routeRoot")} (e.g. ${pc.dim("api")}, ${pc.dim("internal-api")})
 
 ${pc.dim("Options for upgrade:")}
   ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
