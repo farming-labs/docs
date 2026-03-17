@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, metadata, og, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, metadata, og, apiReference, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration
@@ -43,6 +43,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | — | Callback when user copies a code block (title, content, url, language) |
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
+| `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages; currently supported in Next.js |
 | `metadata` | `DocsMetadata` | — | SEO: titleTemplate, description, etc. |
 | `og` | `OGConfig` | — | Dynamic Open Graph images |
 
@@ -76,6 +77,31 @@ github: {
 ```
 
 Enables "Edit on GitHub" links and allows `{githubUrl}` in `pageActions.openDocs.providers`.
+
+---
+
+## API Reference
+
+`apiReference` generates an API reference from framework route conventions.
+
+Current support:
+- **Next.js only** right now
+- scans App Router handlers like `app/api/hello/route.ts` and `src/app/api/users/[id]/route.ts`
+
+```ts
+apiReference: {
+  enabled: true,
+  path: "api-reference",
+  routeRoot: "api",
+  exclude: ["/api/internal/health", "internal/debug"],
+}
+```
+
+Notes:
+- `path` controls the public URL for the generated reference
+- `routeRoot` controls the filesystem route root to scan
+- `exclude` accepts either URL-style paths (`"/api/hello"`) or route-root-relative entries (`"hello"` / `"hello/route.ts"`)
+- on Next.js static export (`output: "export"`), the generated API reference route is skipped automatically
 
 ---
 
