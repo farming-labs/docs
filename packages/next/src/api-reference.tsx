@@ -187,6 +187,7 @@ export function resolveApiReferenceConfig(
       enabled: true,
       path: "api-reference",
       routeRoot: "api",
+      exclude: [],
     };
   }
 
@@ -195,6 +196,7 @@ export function resolveApiReferenceConfig(
       enabled: false,
       path: "api-reference",
       routeRoot: "api",
+      exclude: [],
     };
   }
 
@@ -202,6 +204,7 @@ export function resolveApiReferenceConfig(
     enabled: value.enabled !== false,
     path: normalizePathSegment(value.path ?? "api-reference"),
     routeRoot: normalizeRouteRoot(value.routeRoot ?? "api"),
+    exclude: normalizeApiReferenceExcludes(value.exclude),
   };
 }
 
@@ -213,6 +216,18 @@ function normalizePathSegment(value: string): string {
 function normalizeRouteRoot(value: string): string {
   const normalized = value.replace(/^\/+|\/+$/g, "");
   return normalized || "api";
+}
+
+function normalizeExcludeMatcher(value: string): string {
+  return value
+    .replace(/\\/g, "/")
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\.(ts|tsx|js|jsx)$/i, "")
+    .replace(/\/route$/i, "");
+}
+
+function normalizeApiReferenceExcludes(values?: string[]): string[] {
+  return (values ?? []).map(normalizeExcludeMatcher).filter(Boolean);
 }
 
 function resolveNextApiRouteRoot(root: string, config: Required<ApiReferenceConfig>): string {
@@ -228,6 +243,25 @@ function resolveNextApiRouteRoot(root: string, config: Required<ApiReferenceConf
   }
 
   return join(root, getNextAppDir(root), ...routeRoot.split("/"));
+}
+
+function shouldExcludeRoute(
+  excludes: string[],
+  routePath: string,
+  relativeFile: string,
+  relativeDir: string,
+): boolean {
+  if (excludes.length === 0) return false;
+
+  const normalizedRoutePath = normalizeExcludeMatcher(routePath);
+  const candidates = new Set([
+    normalizedRoutePath,
+    normalizeExcludeMatcher(routePath.replace(/^\/+/, "")),
+    normalizeExcludeMatcher(relativeFile),
+    normalizeExcludeMatcher(relativeDir),
+  ]);
+
+  return excludes.some((entry) => candidates.has(entry));
 }
 
 function humanizeSegment(value: string): string {
@@ -367,6 +401,7 @@ function buildApiReferenceRoutes(config: DocsConfig): ApiReferenceRoute[] {
   const root = process.cwd();
   const apiDir = resolveNextApiRouteRoot(root, apiReference);
   const files = scanRouteFiles(apiDir);
+  const excludes = apiReference.exclude;
 
   return files
     .map((file) => {
@@ -374,10 +409,13 @@ function buildApiReferenceRoutes(config: DocsConfig): ApiReferenceRoute[] {
       const methods = extractMethods(source);
       if (methods.length === 0) return undefined;
 
-      const relativeDir = relative(apiDir, file).replace(/\\/g, "/");
-      const fsSegments = relativeDir.split("/").slice(0, -1).filter(Boolean);
+      const relativeFile = relative(apiDir, file).replace(/\\/g, "/");
+      const fsSegments = relativeFile.split("/").slice(0, -1).filter(Boolean);
+      const relativeDir = fsSegments.join("/");
       const routeSegments = fsSegments.map(endpointSegmentFromFsSegment);
       const routePath = `/api${routeSegments.length > 0 ? `/${routeSegments.join("/")}` : ""}`;
+      if (shouldExcludeRoute(excludes, routePath, relativeFile, relativeDir)) return undefined;
+
       const docBlock = extractDocBlock(source);
       const title =
         fsSegments.length > 0 ? humanizeSegment(fsSegments[fsSegments.length - 1]) : "Overview";

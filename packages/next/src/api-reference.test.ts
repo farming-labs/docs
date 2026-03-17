@@ -49,4 +49,48 @@ export async function GET() {
       },
     });
   });
+
+  it("excludes configured routes from the generated reference", () => {
+    mkdirSync(join(tmpDir, "app", "api", "hello"), { recursive: true });
+    mkdirSync(join(tmpDir, "app", "api", "secret"), { recursive: true });
+
+    writeFileSync(
+      join(tmpDir, "app", "api", "hello", "route.ts"),
+      `/** Public endpoint */
+export async function GET() {
+  return Response.json({ ok: true });
+}
+`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      join(tmpDir, "app", "api", "secret", "route.ts"),
+      `/** Secret endpoint */
+export async function GET() {
+  return Response.json({ ok: true });
+}
+`,
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+
+    const document = buildNextOpenApiDocument({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+        exclude: ["/api/secret"],
+      },
+    });
+
+    expect(document.paths).toMatchObject({
+      "/api/hello": {
+        get: {
+          summary: "Public endpoint",
+        },
+      },
+    });
+    expect(document.paths).not.toHaveProperty("/api/secret");
+  });
 });

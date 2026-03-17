@@ -1097,6 +1097,13 @@ export interface ApiReferenceConfig {
    * `"v1"`, it will be resolved inside the detected app directory.
    */
   routeRoot?: string;
+  /**
+   * Route entries to exclude from the generated API reference.
+   *
+   * Accepts either URL-style paths like `"/api/hello"` or route-root-relative
+   * entries like `"hello"` / `"hello/route.ts"`.
+   */
+  exclude?: string[];
 }
 
 export interface DocsConfig {
