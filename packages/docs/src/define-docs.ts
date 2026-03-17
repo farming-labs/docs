@@ -23,5 +23,6 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     ordering: config.ordering,
     metadata: config.metadata,
     og: config.og,
+    apiReference: config.apiReference,
   };
 }

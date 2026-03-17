@@ -27,6 +27,10 @@ import { colorful } from "@farming-labs/theme/colorful";
 
 export default defineDocs({
   entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+  },
   i18n: {
     locales: ["en", "fr"],
     defaultLocale: "en",

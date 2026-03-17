@@ -60,10 +60,11 @@ const DOCS_LAYOUT_TEMPLATE = `\
 ${GENERATED_BANNER}
 import docsConfig from "@/docs.config";
 import { createDocsLayout, createDocsMetadata } from "@farming-labs/theme";
+import { withNextApiReferenceBanner } from "@farming-labs/next/api-reference";
 
 export const metadata = createDocsMetadata(docsConfig);
 
-const DocsLayout = createDocsLayout(docsConfig);
+const DocsLayout = createDocsLayout(withNextApiReferenceBanner(docsConfig));
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -83,6 +84,16 @@ export const { GET, POST } = createDocsAPI({
   entry: docsConfig.entry,
   i18n: docsConfig.i18n,
 });
+
+export const revalidate = false;
+`;
+
+const API_REFERENCE_ROUTE_TEMPLATE = `\
+${GENERATED_BANNER}
+import docsConfig from "@/docs.config";
+import { createNextApiReference } from "@farming-labs/next/api-reference";
+
+export const GET = createNextApiReference(docsConfig);
 
 export const revalidate = false;
 `;
@@ -129,6 +140,38 @@ function readOgEndpoint(root: string): string | undefined {
   return undefined;
 }
 
+function readApiReferenceConfig(root: string): { enabled: boolean; path: string } {
+  for (const ext of FILE_EXTS) {
+    const configPath = join(root, `docs.config.${ext}`);
+    if (!existsSync(configPath)) continue;
+
+    try {
+      const content = readFileSync(configPath, "utf-8");
+
+      const directFalse = content.match(/apiReference\s*:\s*false/);
+      if (directFalse) return { enabled: false, path: "api-reference" };
+
+      const directTrue = content.match(/apiReference\s*:\s*true/);
+      if (directTrue) return { enabled: true, path: "api-reference" };
+
+      const block = content.match(/apiReference\s*:\s*\{([\s\S]*?)\}/m);
+      if (!block) continue;
+
+      const enabledMatch = block[1].match(/enabled\s*:\s*(true|false)/);
+      const pathMatch = block[1].match(/path\s*:\s*["']([^"']+)["']/);
+
+      return {
+        enabled: enabledMatch ? enabledMatch[1] !== "false" : true,
+        path: pathMatch?.[1]?.replace(/^\/+|\/+$/g, "") || "api-reference",
+      };
+    } catch {
+      return { enabled: false, path: "api-reference" };
+    }
+  }
+
+  return { enabled: false, path: "api-reference" };
+}
+
 // ─── withDocs ───────────────────────────────────────────────────────
 
 export function withDocs(nextConfig: Record<string, unknown> = {}) {
@@ -158,6 +201,16 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
   if (!isStaticExport && !hasFile(docsApiRouteDir, "route")) {
     mkdirSync(docsApiRouteDir, { recursive: true });
     writeFileSync(join(docsApiRouteDir, "route.ts"), DOCS_API_ROUTE_TEMPLATE);
+  }
+
+  // ── 3.1. Auto-generate app/{apiReference.path}/[[...slug]]/route.ts ──
+  const apiReference = readApiReferenceConfig(root);
+  if (apiReference.enabled) {
+    const apiReferenceRouteDir = join(root, appDir, ...apiReference.path.split("/"), "[[...slug]]");
+    if (!hasFile(apiReferenceRouteDir, "route")) {
+      mkdirSync(apiReferenceRouteDir, { recursive: true });
+      writeFileSync(join(apiReferenceRouteDir, "route.ts"), API_REFERENCE_ROUTE_TEMPLATE);
+    }
   }
 
   // ── 4. Configure MDX compilation ────────────────────────────────

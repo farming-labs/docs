@@ -3,6 +3,7 @@ import { defineConfig } from "tsdown";
 export default defineConfig({
   entry: [
     "src/index.ts",
+    "src/api-reference.tsx",
     "src/config.ts",
     "src/mdx-plugins/remark-heading.ts",
     "src/mdx-plugins/rehype-toc.ts",
