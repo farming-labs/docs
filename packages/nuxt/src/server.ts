@@ -17,6 +17,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
+import { eventHandler } from "h3";
 import { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "@farming-labs/docs";
 import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
 import { renderMarkdown } from "./markdown.js";
@@ -901,7 +902,7 @@ export function defineDocsHandler(
     return _initPromise;
   }
 
-  return async (event: any) => {
+  return eventHandler(async (event: any) => {
     const server = await getServer();
 
     const method = event.method ?? event.node?.req?.method ?? "GET";
@@ -934,5 +935,5 @@ export function defineDocsHandler(
     return server.GET({
       request: new Request(reqUrl.href, { method: "GET", headers }),
     });
-  };
+  });
 }

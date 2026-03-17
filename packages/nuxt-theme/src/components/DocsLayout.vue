@@ -178,8 +178,7 @@ function buildLayoutCSS(layout: Record<string, any> | undefined): string {
 }
 
 const overrideCSS = computed(() => {
-  const colorOverrides =
-    (props.config?.theme as any)?._userColorOverrides ?? (props.config?.theme as any)?.ui?.colors;
+  const colorOverrides = (props.config?.theme as any)?._userColorOverrides;
   const typography = (props.config?.theme as any)?.ui?.typography;
   const layout = (props.config?.theme as any)?.ui?.layout;
   return [buildColorsCSS(colorOverrides), buildTypographyCSS(typography), buildLayoutCSS(layout)]
