@@ -191,7 +191,7 @@ export function resolveApiReferenceConfig(
     };
   }
 
-  if (!value || value === false) {
+  if (!value) {
     return {
       enabled: false,
       path: "api-reference",
@@ -361,8 +361,7 @@ function applyTitleTemplate(config: DocsConfig, title: string): string {
 
 function getForcedMode(config: DocsConfig): "light" | "dark" | undefined {
   const toggle = config.themeToggle;
-  if (!toggle || toggle === true || toggle === false || typeof toggle !== "object")
-    return undefined;
+  if (!toggle || typeof toggle !== "object") return undefined;
 
   if (toggle.default === "dark") return "dark";
   if (toggle.default === "light") return "light";
@@ -379,26 +378,27 @@ function isThemeToggleHidden(config: DocsConfig): boolean {
 }
 
 function buildPathParameters(fsSegments: string[]): Array<Record<string, unknown>> {
-  return fsSegments
-    .map((segment) => {
-      const name = getPathParamName(segment);
-      if (!name) return undefined;
+  const parameters: Array<Record<string, unknown>> = [];
 
-      const optional = segment.startsWith("[[...");
+  for (const segment of fsSegments) {
+    const name = getPathParamName(segment);
+    if (!name) continue;
 
-      return {
-        name,
-        in: "path",
-        required: !optional,
-        description: optional
-          ? `${humanizeSegment(name)} catch-all parameter.`
-          : `${humanizeSegment(name)} path parameter.`,
-        schema: {
-          type: "string",
-        },
-      } satisfies Record<string, unknown>;
-    })
-    .filter((value): value is Record<string, unknown> => Boolean(value));
+    const optional = segment.startsWith("[[...");
+    parameters.push({
+      name,
+      in: "path",
+      required: !optional,
+      description: optional
+        ? `${humanizeSegment(name)} catch-all parameter.`
+        : `${humanizeSegment(name)} path parameter.`,
+      schema: {
+        type: "string",
+      },
+    });
+  }
+
+  return parameters;
 }
 
 function buildApiReferenceRoutes(config: DocsConfig): ApiReferenceRoute[] {
@@ -411,38 +411,39 @@ function buildApiReferenceRoutes(config: DocsConfig): ApiReferenceRoute[] {
   const files = scanRouteFiles(apiDir);
   const excludes = apiReference.exclude;
 
-  return files
-    .map((file) => {
-      const source = readFileSync(file, "utf-8");
-      const methods = extractMethods(source);
-      if (methods.length === 0) return undefined;
+  const routes: ApiReferenceRoute[] = [];
 
-      const relativeFile = relative(apiDir, file).replace(/\\/g, "/");
-      const fsSegments = relativeFile.split("/").slice(0, -1).filter(Boolean);
-      const relativeDir = fsSegments.join("/");
-      const routeSegments = fsSegments.map(endpointSegmentFromFsSegment);
-      const routePath =
-        `${routePathBase}${routeSegments.length > 0 ? `/${routeSegments.join("/")}` : ""}` || "/";
-      if (shouldExcludeRoute(excludes, routePath, relativeFile, relativeDir)) return undefined;
+  for (const file of files) {
+    const source = readFileSync(file, "utf-8");
+    const methods = extractMethods(source);
+    if (methods.length === 0) continue;
 
-      const docBlock = extractDocBlock(source);
-      const title =
-        fsSegments.length > 0 ? humanizeSegment(fsSegments[fsSegments.length - 1]) : "Overview";
+    const relativeFile = relative(apiDir, file).replace(/\\/g, "/");
+    const fsSegments = relativeFile.split("/").slice(0, -1).filter(Boolean);
+    const relativeDir = fsSegments.join("/");
+    const routeSegments = fsSegments.map(endpointSegmentFromFsSegment);
+    const routePath =
+      `${routePathBase}${routeSegments.length > 0 ? `/${routeSegments.join("/")}` : ""}` || "/";
+    if (shouldExcludeRoute(excludes, routePath, relativeFile, relativeDir)) continue;
 
-      return {
-        title,
-        summary: docBlock.summary ?? `${title} endpoint`,
-        description: docBlock.description,
-        routePath,
-        sourceFile: relative(root, file).replace(/\\/g, "/"),
-        methods,
-        segments: fsSegments,
-        tag: fsSegments.length > 0 ? humanizeSegment(fsSegments[0]) : "General",
-        parameters: buildPathParameters(fsSegments),
-      } satisfies ApiReferenceRoute;
-    })
-    .filter((value): value is ApiReferenceRoute => Boolean(value))
-    .sort((a, b) => a.routePath.localeCompare(b.routePath));
+    const docBlock = extractDocBlock(source);
+    const title =
+      fsSegments.length > 0 ? humanizeSegment(fsSegments[fsSegments.length - 1]) : "Overview";
+
+    routes.push({
+      title,
+      summary: docBlock.summary ?? `${title} endpoint`,
+      description: docBlock.description,
+      routePath,
+      sourceFile: relative(root, file).replace(/\\/g, "/"),
+      methods,
+      segments: fsSegments,
+      tag: fsSegments.length > 0 ? humanizeSegment(fsSegments[0]) : "General",
+      parameters: buildPathParameters(fsSegments),
+    });
+  }
+
+  return routes.sort((a, b) => a.routePath.localeCompare(b.routePath));
 }
 
 function createOperationId(route: ApiReferenceRoute, method: HttpMethod): string {
@@ -726,6 +727,7 @@ function mergeBanner(existing: unknown, next: ReactNode) {
 export function withNextApiReferenceBanner(config: DocsConfig): DocsConfig {
   const apiReference = resolveApiReferenceConfig(config.apiReference);
   if (!apiReference.enabled) return config;
+  if (config.sidebar === false) return config;
 
   const docsUrl = getDocsUrl(config);
   const apiUrl = `/${apiReference.path}`;
@@ -739,8 +741,6 @@ export function withNextApiReferenceBanner(config: DocsConfig): DocsConfig {
       },
     };
   }
-
-  if (config.sidebar === false) return config;
 
   return {
     ...config,

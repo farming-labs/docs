@@ -74,6 +74,7 @@
     "@farming-labs/docs": "workspace:*",
     "@farming-labs/theme": "workspace:*",
     "@types/node": "^22.10.0",
+    "@types/react": "^19.2.2",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
