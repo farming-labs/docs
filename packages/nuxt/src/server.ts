@@ -21,6 +21,7 @@ import { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "@farming-la
 import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
 import { renderMarkdown } from "./markdown.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
+export { defineApiReferenceHandler } from "./api-reference.js";
 
 interface GithubConfigObj {
   url: string;

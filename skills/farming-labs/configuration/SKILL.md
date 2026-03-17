@@ -43,7 +43,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | — | Callback when user copies a code block (title, content, url, language) |
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
-| `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages; currently supported in Next.js |
+| `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages from supported framework route conventions |
 | `metadata` | `DocsMetadata` | — | SEO: titleTemplate, description, etc. |
 | `og` | `OGConfig` | — | Dynamic Open Graph images |
 
@@ -85,8 +85,11 @@ Enables "Edit on GitHub" links and allows `{githubUrl}` in `pageActions.openDocs
 `apiReference` generates an API reference from framework route conventions.
 
 Current support:
-- **Next.js only** right now
-- scans App Router handlers like `app/api/hello/route.ts` and `src/app/api/users/[id]/route.ts`
+- **Next.js:** `app/api/**/route.ts` and `src/app/api/**/route.ts`
+- **TanStack Start:** `src/routes/api.*.ts` and nested route files inside the configured route root
+- **SvelteKit:** `src/routes/api/**/+server.ts` or `+server.js`
+- **Astro:** `src/pages/api/**/*.ts` or `.js`
+- **Nuxt:** `server/api/**/*.ts` or `.js`
 
 ```ts
 apiReference: {

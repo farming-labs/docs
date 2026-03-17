@@ -24,6 +24,11 @@
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs",
       "default": "./dist/index.mjs"
+    },
+    "./server": {
+      "types": "./dist/server.d.mts",
+      "import": "./dist/server.mjs",
+      "default": "./dist/server.mjs"
     }
   },
   "scripts": {
@@ -34,6 +39,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@scalar/core": "^0.4.3",
     "@clack/prompts": "^0.9.1",
     "gray-matter": "^4.0.3",
     "picocolors": "^1.1.1"

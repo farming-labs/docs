@@ -4,6 +4,7 @@ import matter from "gray-matter";
 import { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "@farming-labs/docs";
 import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
+export { createTanstackApiReference } from "./api-reference.js";
 
 interface GithubConfigObj {
   url: string;
