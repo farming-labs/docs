@@ -218,9 +218,9 @@ export default defineDocs({
               textDecorationColor:
                 "color-mix(in srgb, var(--color-fd-foreground) 30%, transparent)",
             }}
-            href="/changelog#v0.0.31"
+            href="/changelog#v0.0.44"
           >
-            v0.0.31
+            v0.0.44
           </a>
         </div>
         <span className="uppercase font-mono text-[10px] tracking-tight block">
