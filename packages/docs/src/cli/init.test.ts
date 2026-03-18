@@ -192,6 +192,7 @@ describe("init", () => {
       vi.mocked(prompts.confirm)
         .mockResolvedValueOnce(false as never)
         .mockResolvedValueOnce(false as never)
+        .mockResolvedValueOnce(false as never)
         .mockResolvedValueOnce(true as never);
       vi.mocked(prompts.multiselect).mockResolvedValueOnce(["en", "fr"] as never);
       vi.mocked(prompts.text)
@@ -213,6 +214,36 @@ describe("init", () => {
             expect.objectContaining({ value: "en" }),
             expect.objectContaining({ value: "fr" }),
           ]),
+        }),
+      );
+    });
+
+    it("prompts for API route root when API reference scaffold is enabled", async () => {
+      const prompts = await import("@clack/prompts");
+      const utils = await import("./utils.js");
+
+      vi.mocked(utils.detectFramework).mockReturnValue("nextjs");
+      vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+
+      vi.mocked(prompts.select)
+        .mockResolvedValueOnce("existing" as never)
+        .mockResolvedValueOnce(cancelSymbol as never);
+      vi.mocked(prompts.confirm)
+        .mockResolvedValueOnce(false as never)
+        .mockResolvedValueOnce(false as never)
+        .mockResolvedValueOnce(true as never)
+        .mockResolvedValueOnce(false as never);
+      vi.mocked(prompts.text)
+        .mockResolvedValueOnce("internal-api" as never)
+        .mockResolvedValueOnce("app/globals.css" as never);
+
+      await expect(init({ theme: "fumadocs", entry: "docs" })).rejects.toThrow("process.exit");
+
+      expect(prompts.text).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("API route root"),
+          placeholder: "api",
+          defaultValue: "api",
         }),
       );
     });

@@ -27,6 +27,11 @@ export interface TemplateConfig {
     locales: string[];
     defaultLocale: string;
   };
+  /** Optional API reference scaffold config. */
+  apiReference?: {
+    path: string;
+    routeRoot: string;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -196,6 +201,13 @@ function renderI18nConfig(cfg: TemplateConfig, indent = "  "): string {
   return `${indent}i18n: {\n${indent}  locales: [${localeList}],\n${indent}  defaultLocale: "${i18n.defaultLocale}",\n${indent}},\n`;
 }
 
+function renderApiReferenceConfig(cfg: TemplateConfig, indent = "  "): string {
+  const apiReference = cfg.apiReference;
+  if (!apiReference) return "";
+
+  return `${indent}apiReference: {\n${indent}  enabled: true,\n${indent}  path: "${apiReference.path}",\n${indent}  routeRoot: "${apiReference.routeRoot}",\n${indent}},\n`;
+}
+
 function toLocaleImportName(locale: string): string {
   return `LocalePage_${locale.replace(/[^a-zA-Z0-9_$]/g, "_")}`;
 }
@@ -278,6 +290,15 @@ function nextDocsLayoutConfigImport(
   return nextAppDir === "src/app" ? "../../../docs.config" : "../../docs.config";
 }
 
+function nextApiReferenceConfigImport(
+  useAlias: boolean,
+  nextAppDir: "app" | "src/app" = "app",
+  filePath: string,
+): string {
+  if (useAlias) return "@/docs.config";
+  return relativeImport(filePath, "docs.config.ts");
+}
+
 /** Config import for SvelteKit src/lib/docs.server.ts → src/lib/docs.config */
 function svelteServerConfigImport(useAlias: boolean): string {
   return useAlias ? "$lib/docs.config" : "./docs.config";
@@ -334,7 +355,7 @@ import { ${exportName} } from "${themePath}";
 
 export default defineDocs({
   entry: "${cfg.entry}",
-  ${renderI18nConfig(cfg)}  theme: ${exportName}({
+  ${renderI18nConfig(cfg)}${renderApiReferenceConfig(cfg)}  theme: ${exportName}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -354,7 +375,7 @@ import { ${t.factory} } from "${t.nextImport}";
 
 export default defineDocs({
   entry: "${cfg.entry}",
-  ${renderI18nConfig(cfg)}  theme: ${t.factory}({
+  ${renderI18nConfig(cfg)}${renderApiReferenceConfig(cfg)}  theme: ${t.factory}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -568,6 +589,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     </>
   );
 }
+`;
+}
+
+export function nextApiReferenceRouteTemplate(cfg: TemplateConfig, filePath: string): string {
+  const appDir = cfg.nextAppDir ?? "app";
+  const configImport = nextApiReferenceConfigImport(cfg.useAlias, appDir, filePath);
+
+  return `
+import docsConfig from "${configImport}";
+import { createNextApiReference } from "@farming-labs/next/api-reference";
+
+export const GET = createNextApiReference(docsConfig);
+
+export const revalidate = false;
 `;
 }
 
@@ -864,7 +899,7 @@ import { ${exportName} } from "./themes/${cfg.customThemeName.replace(/\.ts$/i, 
 export default defineDocs({
   entry: "${cfg.entry}",
   contentDir: "${cfg.entry}",
-  theme: ${exportName}({
+  ${renderApiReferenceConfig(cfg)}  theme: ${exportName}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -893,7 +928,7 @@ import { ${t.factory} } from "${t.nextImport}";
 export default defineDocs({
   entry: "${cfg.entry}",
   contentDir: "${cfg.entry}",
-  theme: ${t.factory}({
+  ${renderApiReferenceConfig(cfg)}  theme: ${t.factory}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -942,6 +977,13 @@ interface TanstackRouteTemplateOptions {
   filePath: string;
   useAlias: boolean;
   projectName: string;
+}
+
+interface TanstackApiReferenceRouteTemplateOptions {
+  filePath: string;
+  useAlias: boolean;
+  apiReferencePath: string;
+  catchAll: boolean;
 }
 
 function tanstackDocsFunctionsImport(opts: TanstackRouteTemplateOptions): string {
@@ -1037,6 +1079,28 @@ export const Route = createFileRoute("/api/docs")({
     handlers: {
       GET: async ({ request }) => docsServer.GET({ request }),
       POST: async ({ request }) => docsServer.POST({ request }),
+    },
+  },
+});
+`;
+}
+
+export function tanstackApiReferenceRouteTemplate(
+  opts: TanstackApiReferenceRouteTemplateOptions,
+): string {
+  const routePath = `/${opts.apiReferencePath}${opts.catchAll ? "/$" : "/"}`;
+
+  return `\
+import { createFileRoute } from "@tanstack/react-router";
+import { createTanstackApiReference } from "@farming-labs/tanstack-start/api-reference";
+import docsConfig from "${tanstackDocsConfigImport(opts.filePath)}";
+
+const handler = createTanstackApiReference(docsConfig);
+
+export const Route = createFileRoute("${routePath}")({
+  server: {
+    handlers: {
+      GET: handler,
     },
   },
 });
@@ -1324,7 +1388,7 @@ import { ${exportName} } from "${themePath}";
 export default defineDocs({
   entry: "${cfg.entry}",
   contentDir: "${cfg.entry}",
-  ${renderI18nConfig(cfg)}  theme: ${exportName}({
+  ${renderI18nConfig(cfg)}${renderApiReferenceConfig(cfg)}  theme: ${exportName}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -1352,7 +1416,7 @@ import { ${t.factory} } from "${t.svelteImport}";
 export default defineDocs({
   entry: "${cfg.entry}",
   contentDir: "${cfg.entry}",
-  ${renderI18nConfig(cfg)}  theme: ${t.factory}({
+  ${renderI18nConfig(cfg)}${renderApiReferenceConfig(cfg)}  theme: ${t.factory}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -1428,6 +1492,19 @@ export function svelteDocsPageTemplate(cfg: TemplateConfig): string {
 </script>
 
 <DocsContent {data} {config} />
+`;
+}
+
+export function svelteApiReferenceRouteTemplate(filePath: string, useAlias: boolean): string {
+  const configImport = useAlias
+    ? "$lib/docs.config"
+    : relativeImport(filePath, "src/lib/docs.config.ts");
+
+  return `\
+import { createSvelteApiReference } from "@farming-labs/svelte/api-reference";
+import config from "${configImport}";
+
+export const GET = createSvelteApiReference(config);
 `;
 }
 
@@ -1691,7 +1768,7 @@ import { ${exportName} } from "${themePath}";
 export default defineDocs({
   entry: "${cfg.entry}",
   contentDir: "${cfg.entry}",
-  ${renderI18nConfig(cfg)}  theme: ${exportName}({
+  ${renderI18nConfig(cfg)}${renderApiReferenceConfig(cfg)}  theme: ${exportName}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -1719,7 +1796,7 @@ import { ${t.factory} } from "${t.astroImport}";
 export default defineDocs({
   entry: "${cfg.entry}",
   contentDir: "${cfg.entry}",
-  ${renderI18nConfig(cfg)}  theme: ${t.factory}({
+  ${renderI18nConfig(cfg)}${renderApiReferenceConfig(cfg)}  theme: ${t.factory}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -1865,6 +1942,17 @@ export const GET: APIRoute = async ({ request }) => {
 export const POST: APIRoute = async ({ request }) => {
   return docsPOST({ request });
 };
+`;
+}
+
+export function astroApiReferenceRouteTemplate(filePath: string): string {
+  const configImport = relativeImport(filePath, "src/lib/docs.config.ts");
+
+  return `\
+import { createAstroApiReference } from "@farming-labs/astro/api-reference";
+import config from "${configImport}";
+
+export const GET = createAstroApiReference(config);
 `;
 }
 
@@ -2099,7 +2187,7 @@ import { ${exportName} } from "${themePath}";
 export default defineDocs({
   entry: "${cfg.entry}",
   contentDir: "${cfg.entry}",
-  ${renderI18nConfig(cfg)}  theme: ${exportName}({
+  ${renderI18nConfig(cfg)}${renderApiReferenceConfig(cfg)}  theme: ${exportName}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -2127,7 +2215,7 @@ import { ${t.factory} } from "${t.nuxtImport}";
 export default defineDocs({
   entry: "${cfg.entry}",
   contentDir: "${cfg.entry}",
-  ${renderI18nConfig(cfg)}  theme: ${t.factory}({
+  ${renderI18nConfig(cfg)}${renderApiReferenceConfig(cfg)}  theme: ${t.factory}({
     ui: {
       colors: { primary: "#6366f1" },
     },
@@ -2212,6 +2300,17 @@ export default defineEventHandler(async (event) => {
   const pathname = (query.pathname as string) ?? "/docs";
   return docsServer.load(pathname);
 });
+`;
+}
+
+export function nuxtServerApiReferenceRouteTemplate(filePath: string, useAlias: boolean): string {
+  const configImport = useAlias ? "~/docs.config" : relativeImport(filePath, "docs.config.ts");
+
+  return `\
+import { defineApiReferenceHandler } from "@farming-labs/nuxt/api-reference";
+import config from "${configImport}";
+
+export default defineApiReferenceHandler(config);
 `;
 }
 

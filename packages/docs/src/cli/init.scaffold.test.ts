@@ -139,6 +139,32 @@ describe("scaffoldNextJs (app dir consistency)", () => {
     expect(config).toContain("i18n:");
     expect(config).toContain('locales: ["en", "fr"]');
   });
+
+  it("writes the Next.js API reference route when enabled", () => {
+    scaffoldNextJs(
+      tmpDir,
+      {
+        ...baseCfg,
+        nextAppDir: "app",
+        apiReference: { path: "api-reference", routeRoot: "api" },
+      },
+      "app/globals.css",
+      makeWrite(tmpDir),
+      skipped,
+      written,
+    );
+
+    expect(written).toContain("app/api-reference/[[...slug]]/route.ts");
+
+    const config = fs.readFileSync(path.join(tmpDir, "docs.config.ts"), "utf-8");
+    expect(config).toContain("apiReference:");
+
+    const route = fs.readFileSync(
+      path.join(tmpDir, "app/api-reference/[[...slug]]/route.ts"),
+      "utf-8",
+    );
+    expect(route).toContain("createNextApiReference");
+  });
 });
 
 describe("i18n scaffold for non-Next frameworks", () => {
@@ -188,7 +214,11 @@ describe("i18n scaffold for non-Next frameworks", () => {
   it("writes locale folders for SvelteKit and adds a docs root page", () => {
     scaffoldSvelteKit(
       tmpDir,
-      { ...baseI18nCfg, framework: "sveltekit" },
+      {
+        ...baseI18nCfg,
+        framework: "sveltekit",
+        apiReference: { path: "api-reference", routeRoot: "api" },
+      },
       "src/app.css",
       makeWrite(tmpDir),
       skipped,
@@ -196,6 +226,8 @@ describe("i18n scaffold for non-Next frameworks", () => {
     );
 
     expect(written).toContain("src/routes/docs/+page.svelte");
+    expect(written).toContain("src/routes/api-reference/+server.ts");
+    expect(written).toContain("src/routes/api-reference/[...slug]/+server.ts");
     expect(written).toContain("docs/en/page.md");
     expect(written).toContain("docs/fr/quickstart/page.md");
   });
@@ -203,33 +235,49 @@ describe("i18n scaffold for non-Next frameworks", () => {
   it("writes locale folders for Astro", () => {
     scaffoldAstro(
       tmpDir,
-      { ...baseI18nCfg, framework: "astro", astroAdapter: "vercel" },
+      {
+        ...baseI18nCfg,
+        framework: "astro",
+        astroAdapter: "vercel",
+        apiReference: { path: "api-reference", routeRoot: "api" },
+      },
       "src/styles/global.css",
       makeWrite(tmpDir),
       skipped,
       written,
     );
 
+    expect(written).toContain("src/pages/api-reference/index.ts");
+    expect(written).toContain("src/pages/api-reference/[...slug].ts");
     expect(written).toContain("docs/en/page.md");
     expect(written).toContain("docs/fr/installation/page.md");
     const config = fs.readFileSync(path.join(tmpDir, "src/lib/docs.config.ts"), "utf-8");
     expect(config).toContain("i18n:");
+    expect(config).toContain("apiReference:");
   });
 
   it("writes locale folders for Nuxt", () => {
     scaffoldNuxt(
       tmpDir,
-      { ...baseI18nCfg, framework: "nuxt", useAlias: true },
+      {
+        ...baseI18nCfg,
+        framework: "nuxt",
+        useAlias: true,
+        apiReference: { path: "api-reference", routeRoot: "api" },
+      },
       "assets/css/main.css",
       makeWrite(tmpDir),
       skipped,
       written,
     );
 
+    expect(written).toContain("server/routes/api-reference/index.ts");
+    expect(written).toContain("server/routes/api-reference/[...slug].ts");
     expect(written).toContain("docs/en/page.md");
     expect(written).toContain("docs/fr/installation/page.md");
     const config = fs.readFileSync(path.join(tmpDir, "docs.config.ts"), "utf-8");
     expect(config).toContain("i18n:");
+    expect(config).toContain("apiReference:");
   });
 });
 
@@ -257,6 +305,10 @@ describe("scaffoldTanstackStart", () => {
     projectName: "my-docs",
     framework: "tanstack-start",
     useAlias: false,
+    apiReference: {
+      path: "api-reference",
+      routeRoot: "api",
+    },
   };
 
   beforeEach(() => {
@@ -316,6 +368,8 @@ export default defineConfig({
     expect(written).toContain("src/routes/docs/index.tsx");
     expect(written).toContain("src/routes/docs/$.tsx");
     expect(written).toContain("src/routes/api/docs.ts");
+    expect(written).toContain("src/routes/api-reference.index.ts");
+    expect(written).toContain("src/routes/api-reference.$.ts");
     expect(written).toContain("docs/page.mdx");
 
     const rootRoute = fs.readFileSync(path.join(tmpDir, "src", "routes", "__root.tsx"), "utf-8");
@@ -330,5 +384,9 @@ export default defineConfig({
 
     const appCss = fs.readFileSync(path.join(tmpDir, "src", "styles", "app.css"), "utf-8");
     expect(appCss).toContain('@import "@farming-labs/theme/colorful/css";');
+
+    const docsConfig = fs.readFileSync(path.join(tmpDir, "docs.config.ts"), "utf-8");
+    expect(docsConfig).toContain("apiReference:");
+    expect(docsConfig).toContain('routeRoot: "api"');
   });
 });

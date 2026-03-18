@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import * as p from "@clack/prompts";
 import pc from "picocolors";
@@ -26,6 +27,8 @@ export interface InitOptions {
   name?: string;
   theme?: string;
   entry?: string;
+  apiReference?: boolean;
+  apiRouteRoot?: string;
 }
 
 import {
@@ -39,6 +42,7 @@ import {
   customThemeTsTemplate,
   customThemeCssTemplate,
   docsLayoutTemplate,
+  nextApiReferenceRouteTemplate,
   nextLocaleDocPageTemplate,
   nextLocalizedPageTemplate,
   postcssConfigTemplate,
@@ -52,6 +56,7 @@ import {
   tanstackDocsIndexRouteTemplate,
   tanstackDocsCatchAllRouteTemplate,
   tanstackApiDocsRouteTemplate,
+  tanstackApiReferenceRouteTemplate,
   tanstackRootRouteTemplate,
   injectTanstackRootProviderIntoRoute,
   tanstackViteConfigTemplate,
@@ -64,6 +69,7 @@ import {
   svelteDocsLayoutTemplate,
   svelteDocsLayoutServerTemplate,
   svelteDocsPageTemplate,
+  svelteApiReferenceRouteTemplate,
   svelteRootLayoutTemplate,
   svelteGlobalCssTemplate,
   injectSvelteCssImport,
@@ -76,6 +82,7 @@ import {
   astroDocsPageTemplate,
   astroDocsIndexTemplate,
   astroApiRouteTemplate,
+  astroApiReferenceRouteTemplate,
   astroGlobalCssTemplate,
   injectAstroCssImport,
   astroWelcomePageTemplate,
@@ -87,6 +94,7 @@ import {
   nuxtServerApiDocsGetTemplate,
   nuxtServerApiDocsPostTemplate,
   nuxtServerApiDocsLoadTemplate,
+  nuxtServerApiReferenceRouteTemplate,
   nuxtDocsPageTemplate,
   nuxtConfigTemplate,
   nuxtWelcomePageTemplate,
@@ -138,6 +146,103 @@ function normalizeEntryPath(entry: string): string {
 
 function getTanstackDocsRouteDir(entry: string): string {
   return path.posix.join("src/routes", normalizeEntryPath(entry));
+}
+
+function normalizeApiRouteRoot(routeRoot: string): string {
+  return routeRoot.replace(/^\/+|\/+$/g, "");
+}
+
+function detectApiRouteRoot(
+  cwd: string,
+  framework: Framework,
+  nextAppDir: "app" | "src/app" = "app",
+): string {
+  const defaultRoot = "api";
+
+  const detectFromRecursiveRouteFiles = (
+    baseDir: string,
+    matcher: (entry: fs.Dirent, relativePath: string) => boolean,
+  ): string | null => {
+    if (!fs.existsSync(baseDir)) return null;
+
+    const candidates = new Map<string, number>();
+    const walk = (dir: string, prefix = "") => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+        const fullPath = path.join(dir, entry.name);
+
+        if (entry.isDirectory()) {
+          walk(fullPath, relativePath);
+          continue;
+        }
+
+        if (!matcher(entry, relativePath)) continue;
+        const [topLevel] = relativePath.split("/");
+        if (!topLevel) continue;
+        candidates.set(topLevel, (candidates.get(topLevel) ?? 0) + 1);
+      }
+    };
+
+    walk(baseDir);
+
+    return Array.from(candidates.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  };
+
+  if (framework === "nextjs") {
+    const appRoot = path.join(cwd, nextAppDir);
+    if (fs.existsSync(path.join(appRoot, defaultRoot))) return defaultRoot;
+    return (
+      detectFromRecursiveRouteFiles(appRoot, (_entry, relativePath) =>
+        /\/?route\.(?:[cm]?[jt]sx?)$/i.test(relativePath),
+      ) ?? defaultRoot
+    );
+  }
+
+  if (framework === "tanstack-start") {
+    const routesRoot = path.join(cwd, "src/routes");
+    if (fs.existsSync(path.join(routesRoot, defaultRoot))) return defaultRoot;
+
+    const topLevel = detectFromRecursiveRouteFiles(routesRoot, (_entry, relativePath) =>
+      /(?:^|\/)[^/]+\.(?:[cm]?[jt]sx?)$/i.test(relativePath),
+    );
+    return topLevel ?? defaultRoot;
+  }
+
+  if (framework === "sveltekit") {
+    const routesRoot = path.join(cwd, "src/routes");
+    if (fs.existsSync(path.join(routesRoot, defaultRoot))) return defaultRoot;
+    return (
+      detectFromRecursiveRouteFiles(routesRoot, (_entry, relativePath) =>
+        /\/?\+server\.(?:[cm]?[jt]s)$/i.test(relativePath),
+      ) ?? defaultRoot
+    );
+  }
+
+  if (framework === "astro") {
+    const pagesRoot = path.join(cwd, "src/pages");
+    if (fs.existsSync(path.join(pagesRoot, defaultRoot))) return defaultRoot;
+    return (
+      detectFromRecursiveRouteFiles(
+        pagesRoot,
+        (entry, relativePath) =>
+          /\.(?:[cm]?[jt]s)$/i.test(relativePath) &&
+          !relativePath.endsWith(".d.ts") &&
+          entry.isFile(),
+      ) ?? defaultRoot
+    );
+  }
+
+  const serverRoot = path.join(cwd, "server");
+  if (fs.existsSync(path.join(serverRoot, defaultRoot))) return defaultRoot;
+  return (
+    detectFromRecursiveRouteFiles(
+      serverRoot,
+      (entry, relativePath) =>
+        /\.(?:[cm]?[jt]s)$/i.test(relativePath) &&
+        !relativePath.endsWith(".d.ts") &&
+        entry.isFile(),
+    ) ?? defaultRoot
+  );
 }
 
 export async function init(options: InitOptions = {}) {
@@ -454,15 +559,28 @@ export async function init(options: InitOptions = {}) {
       hint: "Scaffold a new theme file + CSS in themes/ (name asked next)",
     },
   ];
+  const themeValues = new Set(themeOptions.map((option) => option.value));
+  let theme: string;
+  if (options.theme) {
+    if (!themeValues.has(options.theme)) {
+      p.log.error(
+        `Invalid ${pc.cyan("--theme")}. Use one of: ${themeOptions.map((option) => pc.cyan(option.value)).join(", ")}`,
+      );
+      process.exit(1);
+    }
+    theme = options.theme;
+  } else {
+    const themeAnswer = await p.select({
+      message: "Which theme would you like to use?",
+      options: themeOptions,
+    });
 
-  const theme = await p.select({
-    message: "Which theme would you like to use?",
-    options: themeOptions,
-  });
+    if (p.isCancel(themeAnswer)) {
+      p.outro(pc.red("Init cancelled."));
+      process.exit(0);
+    }
 
-  if (p.isCancel(theme)) {
-    p.outro(pc.red("Init cancelled."));
-    process.exit(0);
+    theme = themeAnswer as string;
   }
 
   const defaultThemeName = "my-theme";
@@ -543,23 +661,109 @@ export async function init(options: InitOptions = {}) {
   // -----------------------------------------------------------------------
 
   const defaultEntry = "docs";
-  const entry = await p.text({
-    message: "Where should your docs live?",
-    placeholder: defaultEntry,
-    defaultValue: defaultEntry,
-    validate: (value) => {
-      const v = (value ?? "").trim();
-      if (v.startsWith("/")) return "Use a relative path (no leading /)";
-      if (v.includes(" ")) return "Path cannot contain spaces";
-    },
-  });
+  let entryPath: string;
+  if (options.entry) {
+    const normalizedEntry = options.entry.trim();
+    if (normalizedEntry.startsWith("/")) {
+      p.log.error("Use a relative path for --entry (no leading /)");
+      process.exit(1);
+    }
+    if (normalizedEntry.includes(" ")) {
+      p.log.error("Path passed to --entry cannot contain spaces");
+      process.exit(1);
+    }
+    entryPath = normalizedEntry || defaultEntry;
+  } else {
+    const entry = await p.text({
+      message: "Where should your docs live?",
+      placeholder: defaultEntry,
+      defaultValue: defaultEntry,
+      validate: (value) => {
+        const v = (value ?? "").trim();
+        if (v.startsWith("/")) return "Use a relative path (no leading /)";
+        if (v.includes(" ")) return "Path cannot contain spaces";
+      },
+    });
 
-  if (p.isCancel(entry)) {
-    p.outro(pc.red("Init cancelled."));
-    process.exit(0);
+    if (p.isCancel(entry)) {
+      p.outro(pc.red("Init cancelled."));
+      process.exit(0);
+    }
+
+    entryPath = (entry as string).trim() || defaultEntry;
   }
 
-  const entryPath = (entry as string).trim() || defaultEntry;
+  // -----------------------------------------------------------------------
+  // Step 5a: Optional API reference scaffold
+  // -----------------------------------------------------------------------
+
+  const defaultApiRouteRoot = normalizeApiRouteRoot(
+    options.apiRouteRoot?.trim() || detectApiRouteRoot(cwd, framework, nextAppDir),
+  );
+
+  let apiReferenceConfig:
+    | {
+        path: string;
+        routeRoot: string;
+      }
+    | undefined;
+
+  let enableApiReference: boolean;
+  if (typeof options.apiReference === "boolean") {
+    enableApiReference = options.apiReference;
+  } else if (typeof options.apiRouteRoot === "string" && options.apiRouteRoot.trim()) {
+    enableApiReference = true;
+  } else {
+    const apiReferenceAnswer = await p.confirm({
+      message: "Do you want to scaffold API reference support?",
+      initialValue: false,
+    });
+
+    if (p.isCancel(apiReferenceAnswer)) {
+      p.outro(pc.red("Init cancelled."));
+      process.exit(0);
+    }
+
+    enableApiReference = apiReferenceAnswer;
+  }
+
+  if (enableApiReference) {
+    let routeRoot = options.apiRouteRoot?.trim();
+    if (!routeRoot) {
+      const routeRootAnswer = await p.text({
+        message: "API route root to scan?",
+        placeholder: defaultApiRouteRoot,
+        defaultValue: defaultApiRouteRoot,
+        validate: (value) => {
+          const normalizedValue = normalizeApiRouteRoot((value ?? "").trim());
+          if (!normalizedValue) return "Route root cannot be empty";
+          if (normalizedValue.includes(" ")) return "Route root cannot contain spaces";
+        },
+      });
+
+      if (p.isCancel(routeRootAnswer)) {
+        p.outro(pc.red("Init cancelled."));
+        process.exit(0);
+      }
+
+      routeRoot = (routeRootAnswer as string).trim() || defaultApiRouteRoot;
+    }
+
+    const normalizedRouteRoot = normalizeApiRouteRoot(routeRoot);
+    if (!normalizedRouteRoot) {
+      p.log.error("Route root cannot be empty");
+      process.exit(1);
+    }
+    if (normalizedRouteRoot.includes(" ")) {
+      p.log.error("Route root cannot contain spaces");
+      process.exit(1);
+    }
+
+    apiReferenceConfig = {
+      path: "api-reference",
+      routeRoot: normalizedRouteRoot,
+    };
+  }
 
   // -----------------------------------------------------------------------
   // Step 5b: Optional i18n scaffold
@@ -716,13 +920,14 @@ export async function init(options: InitOptions = {}) {
 
   const cfg: TemplateConfig = {
     entry: entryPath,
-    theme: theme as string,
+    theme,
     customThemeName,
     projectName,
     framework,
     useAlias: useAlias as boolean,
     astroAdapter,
     i18n: docsI18n,
+    apiReference: apiReferenceConfig,
     ...(framework === "nextjs" && { nextAppDir }),
   };
 
@@ -1045,6 +1250,10 @@ function scaffoldNextJs(
   }
 
   write(`${appDir}/${cfg.entry}/layout.tsx`, docsLayoutTemplate(cfg));
+  if (cfg.apiReference) {
+    const apiReferenceRoute = `${appDir}/${cfg.apiReference.path}/[[...slug]]/route.ts`;
+    write(apiReferenceRoute, nextApiReferenceRouteTemplate(cfg, apiReferenceRoute));
+  }
   write("postcss.config.mjs", postcssConfigTemplate());
 
   if (!fileExists(path.join(cwd, "tsconfig.json"))) {
@@ -1156,6 +1365,28 @@ function scaffoldTanstackStart(
     }),
   );
   write(apiRoute, tanstackApiDocsRouteTemplate(cfg.useAlias, apiRoute));
+  if (cfg.apiReference) {
+    const apiReferenceIndexRoute = `src/routes/${cfg.apiReference.path}.index.ts`;
+    const apiReferenceCatchAllRoute = `src/routes/${cfg.apiReference.path}.$.ts`;
+    write(
+      apiReferenceIndexRoute,
+      tanstackApiReferenceRouteTemplate({
+        filePath: apiReferenceIndexRoute,
+        useAlias: cfg.useAlias,
+        apiReferencePath: cfg.apiReference.path,
+        catchAll: false,
+      }),
+    );
+    write(
+      apiReferenceCatchAllRoute,
+      tanstackApiReferenceRouteTemplate({
+        filePath: apiReferenceCatchAllRoute,
+        useAlias: cfg.useAlias,
+        apiReferencePath: cfg.apiReference.path,
+        catchAll: true,
+      }),
+    );
+  }
 
   const rootRoutePath = path.join(cwd, "src/routes/__root.tsx");
   const existingRootRoute = readFileSafe(rootRoutePath);
@@ -1246,6 +1477,18 @@ function scaffoldSvelteKit(
   if (cfg.i18n?.locales.length) {
     write(`src/routes/${cfg.entry}/+page.svelte`, svelteDocsPageTemplate(cfg));
   }
+  if (cfg.apiReference) {
+    const apiReferenceIndexRoute = `src/routes/${cfg.apiReference.path}/+server.ts`;
+    const apiReferenceCatchAllRoute = `src/routes/${cfg.apiReference.path}/[...slug]/+server.ts`;
+    write(
+      apiReferenceIndexRoute,
+      svelteApiReferenceRouteTemplate(apiReferenceIndexRoute, cfg.useAlias),
+    );
+    write(
+      apiReferenceCatchAllRoute,
+      svelteApiReferenceRouteTemplate(apiReferenceCatchAllRoute, cfg.useAlias),
+    );
+  }
 
   const existingRootLayout = readFileSafe(path.join(cwd, "src/routes/+layout.svelte"));
   if (!existingRootLayout) {
@@ -1324,6 +1567,12 @@ function scaffoldAstro(
   write(`src/pages/${cfg.entry}/index.astro`, astroDocsIndexTemplate(cfg));
   write(`src/pages/${cfg.entry}/[...slug].astro`, astroDocsPageTemplate(cfg));
   write(`src/pages/api/${cfg.entry}.ts`, astroApiRouteTemplate(cfg));
+  if (cfg.apiReference) {
+    const apiReferenceIndexRoute = `src/pages/${cfg.apiReference.path}/index.ts`;
+    const apiReferenceCatchAllRoute = `src/pages/${cfg.apiReference.path}/[...slug].ts`;
+    write(apiReferenceIndexRoute, astroApiReferenceRouteTemplate(apiReferenceIndexRoute));
+    write(apiReferenceCatchAllRoute, astroApiReferenceRouteTemplate(apiReferenceCatchAllRoute));
+  }
 
   const globalCssAbsPath = path.join(cwd, globalCssRelPath);
   const existingGlobalCss = readFileSafe(globalCssAbsPath);
@@ -1390,6 +1639,18 @@ function scaffoldNuxt(
   write("server/api/docs.post.ts", nuxtServerApiDocsPostTemplate());
   write("server/api/docs/load.get.ts", nuxtServerApiDocsLoadTemplate());
   write(`pages/${cfg.entry}/[[...slug]].vue`, nuxtDocsPageTemplate(cfg));
+  if (cfg.apiReference) {
+    const apiReferenceIndexRoute = `server/routes/${cfg.apiReference.path}/index.ts`;
+    const apiReferenceCatchAllRoute = `server/routes/${cfg.apiReference.path}/[...slug].ts`;
+    write(
+      apiReferenceIndexRoute,
+      nuxtServerApiReferenceRouteTemplate(apiReferenceIndexRoute, cfg.useAlias),
+    );
+    write(
+      apiReferenceCatchAllRoute,
+      nuxtServerApiReferenceRouteTemplate(apiReferenceCatchAllRoute, cfg.useAlias),
+    );
+  }
 
   const nuxtConfigPath = path.join(cwd, "nuxt.config.ts");
   if (

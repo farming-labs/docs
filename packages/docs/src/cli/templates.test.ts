@@ -3,10 +3,12 @@ import {
   type TemplateConfig,
   docsConfigTemplate,
   docsLayoutTemplate,
+  nextApiReferenceRouteTemplate,
   rootLayoutTemplate,
   injectRootProviderIntoLayout,
   tanstackDocsConfigTemplate,
   tanstackInstallationPageTemplate,
+  tanstackApiReferenceRouteTemplate,
   tanstackRootRouteTemplate,
   injectTanstackRootProviderIntoRoute,
   injectTanstackVitePlugins,
@@ -23,7 +25,10 @@ import {
   nextConfigMergedTemplate,
   svelteDocsLayoutTemplate,
   svelteDocsLayoutServerTemplate,
+  svelteApiReferenceRouteTemplate,
   astroDocsConfigTemplate,
+  astroApiReferenceRouteTemplate,
+  nuxtServerApiReferenceRouteTemplate,
 } from "./templates.js";
 
 const baseConfig: TemplateConfig = {
@@ -68,6 +73,16 @@ describe("docsLayoutTemplate", () => {
       nextAppDir: "src/app",
     });
     expect(out).toContain('from "../../../docs.config"');
+  });
+
+  it("creates a Next.js API reference route handler", () => {
+    const out = nextApiReferenceRouteTemplate(
+      { ...baseConfig, useAlias: false, nextAppDir: "app" },
+      "app/api-reference/[[...slug]]/route.ts",
+    );
+    expect(out).toContain('from "@farming-labs/next/api-reference"');
+    expect(out).toContain("createNextApiReference");
+    expect(out).toContain('import docsConfig from "../../../docs.config"');
   });
 });
 
@@ -253,6 +268,16 @@ describe("docsConfigTemplate", () => {
     expect(out).toContain('locales: ["en", "fr"]');
     expect(out).toContain('defaultLocale: "en"');
   });
+
+  it("includes apiReference when configured", () => {
+    const out = docsConfigTemplate({
+      ...baseConfig,
+      apiReference: { path: "api-reference", routeRoot: "internal-api" },
+    });
+    expect(out).toContain("apiReference:");
+    expect(out).toContain('path: "api-reference"');
+    expect(out).toContain('routeRoot: "internal-api"');
+  });
 });
 
 describe("tanstackDocsConfigTemplate", () => {
@@ -265,6 +290,39 @@ describe("tanstackDocsConfigTemplate", () => {
     expect(out).toContain("nav:");
     expect(out).toContain('url: "/docs"');
     expect(out).toContain("themeToggle:");
+  });
+});
+
+describe("api reference route templates", () => {
+  it("creates a TanStack API reference route handler", () => {
+    const out = tanstackApiReferenceRouteTemplate({
+      filePath: "src/routes/api-reference.index.ts",
+      useAlias: false,
+      apiReferencePath: "api-reference",
+      catchAll: false,
+    });
+
+    expect(out).toContain('from "@farming-labs/tanstack-start/api-reference"');
+    expect(out).toContain('createFileRoute("/api-reference/")');
+    expect(out).toContain("GET: handler");
+  });
+
+  it("creates a SvelteKit API reference route handler", () => {
+    const out = svelteApiReferenceRouteTemplate("src/routes/api-reference/+server.ts", true);
+    expect(out).toContain('from "@farming-labs/svelte/api-reference"');
+    expect(out).toContain('import config from "$lib/docs.config"');
+  });
+
+  it("creates an Astro API reference route handler", () => {
+    const out = astroApiReferenceRouteTemplate("src/pages/api-reference/index.ts");
+    expect(out).toContain('from "@farming-labs/astro/api-reference"');
+    expect(out).toContain('import config from "../../lib/docs.config"');
+  });
+
+  it("creates a Nuxt API reference route handler", () => {
+    const out = nuxtServerApiReferenceRouteTemplate("server/routes/api-reference/index.ts", true);
+    expect(out).toContain('from "@farming-labs/nuxt/api-reference"');
+    expect(out).toContain('import config from "~/docs.config"');
   });
 });
 

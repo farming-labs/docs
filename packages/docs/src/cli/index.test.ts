@@ -33,6 +33,25 @@ describe("parseFlags", () => {
     expect(flags.entry).toBe("docs");
   });
 
+  it("parses api reference flags", () => {
+    const flags = parseFlags(["--api-reference", "--api-route-root", "internal-api", "--no-other"]);
+    expect(flags["api-reference"]).toBe(true);
+    expect(flags["api-route-root"]).toBe("internal-api");
+    expect(flags.other).toBe(false);
+  });
+
+  it("parses boolean values in --key=value form", () => {
+    const flags = parseFlags(["--api-reference=false", "--theme=colorful"]);
+    expect(flags["api-reference"]).toBe(false);
+    expect(flags.theme).toBe("colorful");
+  });
+
+  it("keeps string-valued flags as strings even when they look boolean", () => {
+    const flags = parseFlags(["--name=true", "--entry=false"]);
+    expect(flags.name).toBe("true");
+    expect(flags.entry).toBe("false");
+  });
+
   it("parses upgrade option: framework", () => {
     expect(parseFlags(["upgrade", "--framework", "nuxt"]).framework).toBe("nuxt");
     expect(parseFlags(["--framework=sveltekit"]).framework).toBe("sveltekit");

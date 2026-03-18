@@ -179,9 +179,10 @@ If you select **Existing project**, the CLI stays in the current folder and wire
 2. **Theme** — One of the built-in themes or **Create your own theme** (you’ll be asked for a theme name; it creates `themes/<name>.ts` and `themes/<name>.css`).
 3. **Path aliases** — Whether to use `@/`, `$lib/`, or `~/` for imports (framework-dependent).
 4. **Entry path** — Where docs live (e.g. `docs`). Press **Enter** to use the default.
-5. **Optional i18n** — Whether to scaffold internationalized docs, which locales to generate, any extra locale codes to add, and which locale should be the default.
-6. **Global CSS** — Which file to use (auto-detected if there’s only one, otherwise you pick or type the path; Enter uses the default).
-7. The CLI generates config, layout, and sample pages, then detects the package manager from a lockfile when possible. If no lockfile is found, it asks which package manager you want to use before installing dependencies, and can then start the dev server.
+5. **Optional API reference** — Whether to scaffold API reference support. If you enable it, the CLI pre-fills the detected API route root (usually `api`) and lets you edit it before writing `apiReference.routeRoot`.
+6. **Optional i18n** — Whether to scaffold internationalized docs, which locales to generate, any extra locale codes to add, and which locale should be the default.
+7. **Global CSS** — Which file to use (auto-detected if there’s only one, otherwise you pick or type the path; Enter uses the default).
+8. The CLI generates config, layout, and sample pages, then detects the package manager from a lockfile when possible. If no lockfile is found, it asks which package manager you want to use before installing dependencies, and can then start the dev server.
 
 Typical flow:
 
@@ -213,6 +214,31 @@ Typical flow:
 </Tabs>
 
 Prompts that show a **placeholder** (e.g. entry path `docs`, project name `my-docs`, theme name `my-theme`) use that value as the default — you can press **Enter** to accept it instead of typing.
+
+### Existing-project flags
+
+Use these to skip the matching prompts during `init`:
+
+| Flag | Description |
+| ---- | ----------- |
+| `--theme <name>` | Skip the theme prompt |
+| `--entry <path>` | Skip the docs entry prompt |
+| `--api-reference` | Enable API reference scaffold during `init` |
+| `--no-api-reference` | Explicitly skip API reference scaffold |
+| `--api-route-root <path>` | Set the detected API route root written to `apiReference.routeRoot` |
+
+Example:
+
+```bash
+npx @farming-labs/docs init --theme greentree --entry docs --api-reference --api-route-root internal-api
+```
+
+`--api-route-root` is optional. If you omit it, the CLI tries to detect a sensible default from the framework’s route conventions and shows that value as the default in the prompt.
+
+When API reference is enabled through `init`:
+
+- **Next.js** writes the `apiReference` block and `app/api-reference/[[...slug]]/route.ts` (or `src/app/...`).
+- **TanStack Start, SvelteKit, Astro, and Nuxt** write the `apiReference` block and also scaffold the minimal `/{path}` handler files so the reference works immediately.
 
 ### Optional i18n scaffold
 
@@ -454,7 +480,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
     5. **Generates files:**
        - `docs.config.ts` — Full config with your selected theme
        - `nuxt.config.ts` — Nuxt config with theme CSS and server assets
-       - `server/api/docs.ts` — API route for docs data, search, and AI
+       - `server/api/docs.get.ts`, `server/api/docs.post.ts`, `server/api/docs/load.get.ts` — docs data, search, AI, and page loading
        - `pages/docs/[[...slug]].vue` — Catch-all page component that handles the docs index and nested docs routes
        - `docs/page.md` — Sample documentation page
        - `docs/installation/page.md` — Sample installation guide
@@ -758,7 +784,9 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       │
       ◇ Generated docs.config.ts
       ◇ Generated nuxt.config.ts
-      ◇ Generated server/api/docs.ts
+      ◇ Generated server/api/docs.get.ts
+      ◇ Generated server/api/docs.post.ts
+      ◇ Generated server/api/docs/load.get.ts
       ◇ Generated pages/docs/[...slug].vue
       ◇ Generated docs/page.md
       ◇ Generated docs/installation/page.md
@@ -1239,13 +1267,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     });
     ```
 
-    **`server/api/docs.ts`** (search & AI)
-
-    ```ts title="server/api/docs.ts"
-    import { defineDocsHandler } from "@farming-labs/nuxt/server";
-    import config from "../../docs.config";
-    export default defineDocsHandler(config, useStorage);
-    ```
+    **`server/api/docs.get.ts`**, **`server/api/docs.post.ts`**, and **`server/api/docs/load.get.ts`** (search, AI, and page loading)
 
     **`pages/docs/[...slug].vue`**
 
