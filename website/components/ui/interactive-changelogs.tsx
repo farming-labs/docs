@@ -19,10 +19,43 @@ interface Release {
 
 const releases: Release[] = [
   {
+    version: "v0.0.44",
+    title: "v0.0.44: Current Release",
+    date: "Mar 2026",
+    pinned: true,
+    excerpt:
+      "TanStack Start support lands across the runtime, example, and docs, with refreshed landing pages and a Nuxt security fix.",
+    changes: [
+      {
+        category: "TanStack Start",
+        items: [
+          "Added TanStack Start support across the adapter, example app, and docs flow",
+          "Shipped a working TanStack Start example with docs routes, search, theme support, and docs.config-driven behavior",
+          "Added TanStack Start support to the init experience and updated CLI/docs coverage where framework support is listed",
+        ],
+      },
+      {
+        category: "Examples & UX",
+        items: [
+          "Refreshed framework example landing pages with a centered hero, shared visual treatment, and install-first callouts",
+          "Unified example landing backgrounds and typography across Next.js, TanStack Start, Nuxt, SvelteKit, and Astro",
+          "Improved the example home experience so the latest release and local docs entry points are easier to discover",
+        ],
+      },
+      {
+        category: "Fixes & Stability",
+        items: [
+          "Fixed TanStack Start runtime, theme, routing, and build issues discovered during integration",
+          "Cleaned up package/example version sync and related CI formatting/build issues",
+          "Updated the Nuxt dependency chain to pull a patched h3 release and clear the high-severity audit finding",
+        ],
+      },
+    ],
+  },
+  {
     version: "v0.0.31",
     title: "v0.0.31: Current Release",
     date: "Mar 2026",
-    pinned: true,
     excerpt:
       "Internationalized docs across all frameworks, locale-aware CLI scaffolding, UI polish, build fixes, and expanded documentation.",
     changes: [
