@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@farming-labs/docs": "workspace:0.0.44",
-    "@farming-labs/theme": "workspace:0.0.44",
+    "@farming-labs/docs": "workspace:0.0.46",
+    "@farming-labs/theme": "workspace:0.0.46",
     "@farming-labs/tanstack-start": "workspace:0.0.33",
     "@tanstack/react-router": "^1.0.0",
     "@tanstack/react-start": "^1.0.0",
