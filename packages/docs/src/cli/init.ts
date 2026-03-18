@@ -42,6 +42,7 @@ import {
   customThemeTsTemplate,
   customThemeCssTemplate,
   docsLayoutTemplate,
+  nextApiReferenceRouteTemplate,
   nextLocaleDocPageTemplate,
   nextLocalizedPageTemplate,
   postcssConfigTemplate,
@@ -1249,6 +1250,10 @@ function scaffoldNextJs(
   }
 
   write(`${appDir}/${cfg.entry}/layout.tsx`, docsLayoutTemplate(cfg));
+  if (cfg.apiReference) {
+    const apiReferenceRoute = `${appDir}/${cfg.apiReference.path}/[[...slug]]/route.ts`;
+    write(apiReferenceRoute, nextApiReferenceRouteTemplate(cfg, apiReferenceRoute));
+  }
   write("postcss.config.mjs", postcssConfigTemplate());
 
   if (!fileExists(path.join(cwd, "tsconfig.json"))) {

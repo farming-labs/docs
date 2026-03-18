@@ -139,6 +139,32 @@ describe("scaffoldNextJs (app dir consistency)", () => {
     expect(config).toContain("i18n:");
     expect(config).toContain('locales: ["en", "fr"]');
   });
+
+  it("writes the Next.js API reference route when enabled", () => {
+    scaffoldNextJs(
+      tmpDir,
+      {
+        ...baseCfg,
+        nextAppDir: "app",
+        apiReference: { path: "api-reference", routeRoot: "api" },
+      },
+      "app/globals.css",
+      makeWrite(tmpDir),
+      skipped,
+      written,
+    );
+
+    expect(written).toContain("app/api-reference/[[...slug]]/route.ts");
+
+    const config = fs.readFileSync(path.join(tmpDir, "docs.config.ts"), "utf-8");
+    expect(config).toContain("apiReference:");
+
+    const route = fs.readFileSync(
+      path.join(tmpDir, "app/api-reference/[[...slug]]/route.ts"),
+      "utf-8",
+    );
+    expect(route).toContain("createNextApiReference");
+  });
 });
 
 describe("i18n scaffold for non-Next frameworks", () => {

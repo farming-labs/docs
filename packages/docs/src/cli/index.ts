@@ -17,9 +17,9 @@ export function parseFlags(argv: string[]): Record<string, string | boolean | un
       const [key, value] = arg.slice(2).split("=");
       if (key.startsWith("no-")) {
         flags[key.slice(3)] = false;
-      } else if (value === "true") {
+      } else if (booleanFlags.has(key) && value === "true") {
         flags[key] = true;
-      } else if (value === "false") {
+      } else if (booleanFlags.has(key) && value === "false") {
         flags[key] = false;
       } else {
         flags[key] = value;

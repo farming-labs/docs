@@ -237,7 +237,7 @@ npx @farming-labs/docs init --theme greentree --entry docs --api-reference --api
 
 When API reference is enabled through `init`:
 
-- **Next.js** writes the `apiReference` block to `docs.config.ts`; `withDocs()` handles route generation automatically.
+- **Next.js** writes the `apiReference` block and `app/api-reference/[[...slug]]/route.ts` (or `src/app/...`).
 - **TanStack Start, SvelteKit, Astro, and Nuxt** write the `apiReference` block and also scaffold the minimal `/{path}` handler files so the reference works immediately.
 
 ### Optional i18n scaffold
@@ -480,7 +480,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
     5. **Generates files:**
        - `docs.config.ts` — Full config with your selected theme
        - `nuxt.config.ts` — Nuxt config with theme CSS and server assets
-       - `server/api/docs.ts` — API route for docs data, search, and AI
+       - `server/api/docs.get.ts`, `server/api/docs.post.ts`, `server/api/docs/load.get.ts` — docs data, search, AI, and page loading
        - `pages/docs/[[...slug]].vue` — Catch-all page component that handles the docs index and nested docs routes
        - `docs/page.md` — Sample documentation page
        - `docs/installation/page.md` — Sample installation guide
@@ -784,7 +784,9 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       │
       ◇ Generated docs.config.ts
       ◇ Generated nuxt.config.ts
-      ◇ Generated server/api/docs.ts
+      ◇ Generated server/api/docs.get.ts
+      ◇ Generated server/api/docs.post.ts
+      ◇ Generated server/api/docs/load.get.ts
       ◇ Generated pages/docs/[...slug].vue
       ◇ Generated docs/page.md
       ◇ Generated docs/installation/page.md
@@ -1265,13 +1267,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     });
     ```
 
-    **`server/api/docs.ts`** (search & AI)
-
-    ```ts title="server/api/docs.ts"
-    import { defineDocsHandler } from "@farming-labs/nuxt/server";
-    import config from "../../docs.config";
-    export default defineDocsHandler(config, useStorage);
-    ```
+    **`server/api/docs.get.ts`**, **`server/api/docs.post.ts`**, and **`server/api/docs/load.get.ts`** (search, AI, and page loading)
 
     **`pages/docs/[...slug].vue`**
 

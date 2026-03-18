@@ -46,6 +46,12 @@ describe("parseFlags", () => {
     expect(flags.theme).toBe("colorful");
   });
 
+  it("keeps string-valued flags as strings even when they look boolean", () => {
+    const flags = parseFlags(["--name=true", "--entry=false"]);
+    expect(flags.name).toBe("true");
+    expect(flags.entry).toBe("false");
+  });
+
   it("parses upgrade option: framework", () => {
     expect(parseFlags(["upgrade", "--framework", "nuxt"]).framework).toBe("nuxt");
     expect(parseFlags(["--framework=sveltekit"]).framework).toBe("sveltekit");

@@ -290,6 +290,15 @@ function nextDocsLayoutConfigImport(
   return nextAppDir === "src/app" ? "../../../docs.config" : "../../docs.config";
 }
 
+function nextApiReferenceConfigImport(
+  useAlias: boolean,
+  nextAppDir: "app" | "src/app" = "app",
+  filePath: string,
+): string {
+  if (useAlias) return "@/docs.config";
+  return relativeImport(filePath, "docs.config.ts");
+}
+
 /** Config import for SvelteKit src/lib/docs.server.ts → src/lib/docs.config */
 function svelteServerConfigImport(useAlias: boolean): string {
   return useAlias ? "$lib/docs.config" : "./docs.config";
@@ -580,6 +589,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     </>
   );
 }
+`;
+}
+
+export function nextApiReferenceRouteTemplate(cfg: TemplateConfig, filePath: string): string {
+  const appDir = cfg.nextAppDir ?? "app";
+  const configImport = nextApiReferenceConfigImport(cfg.useAlias, appDir, filePath);
+
+  return `
+import docsConfig from "${configImport}";
+import { createNextApiReference } from "@farming-labs/next/api-reference";
+
+export const GET = createNextApiReference(docsConfig);
+
+export const revalidate = false;
 `;
 }
 

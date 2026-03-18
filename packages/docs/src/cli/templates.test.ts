@@ -3,6 +3,7 @@ import {
   type TemplateConfig,
   docsConfigTemplate,
   docsLayoutTemplate,
+  nextApiReferenceRouteTemplate,
   rootLayoutTemplate,
   injectRootProviderIntoLayout,
   tanstackDocsConfigTemplate,
@@ -72,6 +73,16 @@ describe("docsLayoutTemplate", () => {
       nextAppDir: "src/app",
     });
     expect(out).toContain('from "../../../docs.config"');
+  });
+
+  it("creates a Next.js API reference route handler", () => {
+    const out = nextApiReferenceRouteTemplate(
+      { ...baseConfig, useAlias: false, nextAppDir: "app" },
+      "app/api-reference/[[...slug]]/route.ts",
+    );
+    expect(out).toContain('from "@farming-labs/next/api-reference"');
+    expect(out).toContain("createNextApiReference");
+    expect(out).toContain('import docsConfig from "../../../docs.config"');
   });
 });
 
