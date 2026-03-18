@@ -39,7 +39,6 @@ const releases: Release[] = [
         items: [
           "Refreshed framework example landing pages with a centered hero, shared visual treatment, and install-first callouts",
           "Unified example landing backgrounds and typography across Next.js, TanStack Start, Nuxt, SvelteKit, and Astro",
-          "Improved the example home experience so the latest release and local docs entry points are easier to discover",
         ],
       },
       {
