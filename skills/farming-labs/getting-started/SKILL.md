@@ -1,6 +1,6 @@
 ---
 name: getting-started
-description: Get started with @farming-labs/docs — MDX-based documentation for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt. Use when setting up docs, scaffolding with the CLI, choosing themes, or writing docs.config. Covers init, manual setup per framework, theme CSS, defineDocs, entry, contentDir, and common gotchas.
+description: Get started with @farming-labs/docs — MDX-based documentation for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt. Use when setting up docs, scaffolding with the CLI, choosing themes, API reference, or writing docs.config. Covers init, manual setup per framework, theme CSS, defineDocs, apiReference, entry, contentDir, and common gotchas.
 ---
 
 # @farming-labs/docs — Getting Started
@@ -20,6 +20,7 @@ description: Get started with @farming-labs/docs — MDX-based documentation for
 | Interactive init (existing or fresh) | `npx @farming-labs/docs@latest init` — first asks **Existing project** or **Fresh project**; then theme (or Create your own theme), entry path, etc. Prompts with a placeholder (e.g. `docs`, `my-docs`) accept **Enter** as default. |
 | Add docs to existing app | Run `init` in project root; choose **Existing project** when prompted. |
 | Start from scratch (bootstrap, no prompts) | `npx @farming-labs/docs@latest init --template <next \| tanstack-start \| nuxt \| sveltekit \| astro> --name <project-name>` |
+| Add generated API reference during init | `npx @farming-labs/docs@latest init --api-reference` (optional `--api-route-root <path>`) |
 | Upgrade docs packages | `npx @farming-labs/docs@latest upgrade` — auto-detects `next`, `tanstack-start`, `nuxt`, `sveltekit`, or `astro`; use `--framework` if detection is ambiguous. |
 
 ### Packages by framework
@@ -81,6 +82,47 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 
 ---
 
+## API reference quick setup
+
+`apiReference` generates an API reference from your framework's route handlers.
+
+```ts
+export default defineDocs({
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    routeRoot: "api",
+  },
+  theme: fumadocs(),
+});
+```
+
+Important framework behavior:
+
+- **Next.js**: `withDocs()` auto-generates the `/{path}` route when `apiReference` is enabled.
+- **TanStack Start, SvelteKit, Astro, Nuxt**: `docs.config` controls scanning and theming, but the app still needs the `/{path}` route handler.
+- **CLI**: `init --api-reference` writes the config and scaffolds those handler files for you.
+
+Minimal handler files for non-Next frameworks:
+
+- **TanStack Start**: `src/routes/api-reference.index.ts` and `src/routes/api-reference.$.ts` using `createTanstackApiReference(config)`
+- **SvelteKit**: `src/routes/api-reference/+server.ts` and `src/routes/api-reference/[...slug]/+server.ts` using `createSvelteApiReference(config)`
+- **Astro**: `src/pages/api-reference/index.ts` and `src/pages/api-reference/[...slug].ts` using `createAstroApiReference(config)`
+- **Nuxt**: `server/routes/api-reference/index.ts` and `server/routes/api-reference/[...slug].ts` using `defineApiReferenceHandler(config)`
+
+Route scan conventions:
+
+- **Next.js**: `app/api/**/route.ts` or `src/app/api/**/route.ts`
+- **TanStack Start**: `src/routes/api.*.ts` and nested route files under the configured route root
+- **SvelteKit**: `src/routes/api/**/+server.ts` or `+server.js`
+- **Astro**: `src/pages/api/**/*.ts` or `.js`
+- **Nuxt**: `server/api/**/*.ts` or `.js`
+
+For the full option surface (`path`, `routeRoot`, `exclude`), use the `configuration` skill.
+
+---
+
 ## Doc content and frontmatter
 
 Docs live under the `entry` directory (e.g. `docs/` or `app/docs/`). Each page is MDX or Markdown with frontmatter:
@@ -123,6 +165,7 @@ For fully static builds (e.g. Cloudflare Pages, no server), set `staticExport: t
 3. **From scratch** — Use `init --template <next|tanstack-start|nuxt|sveltekit|astro> --name <project>`; the CLI bootstraps a project with that name and runs install.
 4. **Existing project** — Run `init` in the project root; the CLI detects the framework and scaffolds files.
 5. **Static hosting** — Set `staticExport: true`; search and AI are then hidden.
+6. **API reference on non-Next frameworks** — `apiReference` in `docs.config` is not enough by itself on TanStack Start, SvelteKit, Astro, or Nuxt; add the `/{path}` handler manually or let `init --api-reference` scaffold it.
 
 ---
 

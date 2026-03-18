@@ -103,10 +103,18 @@ apiReference: {
 Notes:
 - **Next.js:** `withDocs()` auto-generates the `/{path}` route when `apiReference` is enabled
 - **TanStack Start / SvelteKit / Astro / Nuxt:** `docs.config` controls scanning and styling, but the app must still add the framework route handler for `/{path}`
+- **CLI:** `init --api-reference` writes the `apiReference` block and scaffolds the non-Next route handler files automatically
 - `path` controls the public URL for the generated reference
 - `routeRoot` controls the filesystem route root to scan
 - `exclude` accepts either URL-style paths (`"/api/hello"`) or route-root-relative entries (`"hello"` / `"hello/route.ts"`)
 - on Next.js static export (`output: "export"`), the generated API reference route is skipped automatically
+
+Minimal handler files for non-Next frameworks:
+
+- **TanStack Start:** `src/routes/api-reference.index.ts` and `src/routes/api-reference.$.ts` using `createTanstackApiReference(config)`
+- **SvelteKit:** `src/routes/api-reference/+server.ts` and `src/routes/api-reference/[...slug]/+server.ts` using `createSvelteApiReference(config)`
+- **Astro:** `src/pages/api-reference/index.ts` and `src/pages/api-reference/[...slug].ts` using `createAstroApiReference(config)`
+- **Nuxt:** `server/routes/api-reference/index.ts` and `server/routes/api-reference/[...slug].ts` using `defineApiReferenceHandler(config)`
 
 ---
 

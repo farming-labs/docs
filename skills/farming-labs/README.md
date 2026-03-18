@@ -10,12 +10,12 @@ Each skill is a separate directory with a `SKILL.md` file. Use the skill that ma
 
 | Skill | Path | When to use |
 | ----- | ---- | ----------- |
-| **Getting started** | [getting-started](./getting-started/SKILL.md) | Setting up docs, init, manual install, theme CSS, docs.config, packages by framework. |
-| **CLI** | [cli](./cli/SKILL.md) | Scaffolding: init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), `init`/`upgrade`, `--template`, `--name`, `--theme`, `--entry`, `--framework`, package manager commands. |
+| **Getting started** | [getting-started](./getting-started/SKILL.md) | Setting up docs, init, manual install, theme CSS, docs.config, packages by framework, and generated API reference wiring. |
+| **CLI** | [cli](./cli/SKILL.md) | Scaffolding: init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), `init`/`upgrade`, `--template`, `--name`, `--theme`, `--entry`, `--api-reference`, `--framework`, package manager commands. |
 | **Creating themes** | [creating-themes](./creating-themes/SKILL.md) | Building a custom theme with `createTheme()`, `extendTheme()`, publishing as npm, CSS overrides. |
 | **Ask AI** | [ask-ai](./ask-ai/SKILL.md) | Enabling and configuring the RAG-powered AI chat: mode, floatingStyle, providers, models, suggestedQuestions, apiKey. |
 | **Page actions** | [page-actions](./page-actions/SKILL.md) | Copy Markdown and Open in LLM buttons: copyMarkdown, openDocs, providers, urlTemplate, position. |
-| **Configuration** | [configuration](./configuration/SKILL.md) | docs.config.ts options: entry, theme, staticExport, sidebar, breadcrumb, github, metadata, og. |
+| **Configuration** | [configuration](./configuration/SKILL.md) | docs.config.ts options: entry, theme, staticExport, sidebar, breadcrumb, github, metadata, og, and `apiReference`. |
 
 ---
 

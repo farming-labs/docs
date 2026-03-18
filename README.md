@@ -11,12 +11,12 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 - 💡 **Type-safe config in code, not JSON**
 - 📦 **Single install, zero lock-in**
 - 🧬 **Write .mdx or .md — all features work out of the box**
-- 🧾 **Generated API reference for framework route handlers**
+- 🧾 **Generated API reference from your framework route handlers**
 
 **Get started:**
 
 - Use the [CLI](#option-a-cli-recommended) _(recommended — sets up everything for you)_, or see [manual setup](#option-b-manual-setup) for each framework.
-- [Reference docs](https://docs.farming-labs.dev/reference/) and [demos](https://github.com/farming-labs/docs/tree/main/example) cover config, custom themes, OG images, SEO, and more!
+- [Reference docs](https://docs.farming-labs.dev/docs/reference) and [examples](https://github.com/farming-labs/docs/tree/main/examples) cover config, custom themes, OG images, API reference, SEO, and more.
 - Want to contribute? See the [Contributing guide](https://docs.farming-labs.dev/docs/contributing).
 
 
@@ -46,6 +46,11 @@ If you enable i18n during init, the CLI asks you to:
 - Pick a default locale
 
 It then writes the `i18n` config and creates locale-aware starter content for each framework.
+
+If you enable **API reference** during init, the CLI writes the `apiReference` block into
+`docs.config` and scaffolds the route handler files for **TanStack Start**, **SvelteKit**,
+**Astro**, and **Nuxt** so the generated reference works immediately. In **Next.js**,
+`withDocs()` generates the API reference route automatically when `apiReference` is enabled.
 
 ### Option B: Manual setup
 
@@ -117,12 +122,6 @@ Your content here.
 ```
 
 That's it — no layout files, no `[[...slug]]` wrappers. The framework handles routing, layout, and metadata from your config.
-
-> `apiReference` is supported in **Next.js**, **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt**. It scans each framework’s route convention, supports `routeRoot` and `exclude`, and generates the reference at the configured `path`.
->
-> In **Next.js**, `withDocs()` auto-generates the API reference route when `apiReference` is enabled.
->
-> In **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt**, `docs.config` enables scanning and theme behavior, but you still opt in by adding the route handler for `/{path}`.
 
 #### SvelteKit
 
@@ -224,6 +223,107 @@ docs/
   getting-started/
     page.md             # /docs/getting-started
 ```
+
+## API Reference
+
+`apiReference` generates an API reference from each framework's route conventions.
+
+Current support:
+
+- **Next.js:** `app/api/**/route.ts` and `src/app/api/**/route.ts`
+- **TanStack Start:** `src/routes/api.*.ts` and nested route files under the configured route root
+- **SvelteKit:** `src/routes/api/**/+server.ts` or `+server.js`
+- **Astro:** `src/pages/api/**/*.ts` or `.js`
+- **Nuxt:** `server/api/**/*.ts` or `.js`
+
+```ts
+export default defineDocs({
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    routeRoot: "api",
+    exclude: ["/api/internal/health", "internal/debug"],
+  },
+  theme: fumadocs(),
+});
+```
+
+- `path` controls the public URL for the generated reference
+- `routeRoot` controls the filesystem route root to scan
+- `exclude` accepts either URL-style paths (`"/api/hello"`) or route-root-relative entries (`"hello"` / `"hello/route.ts"`)
+
+### Next.js
+
+Nothing else is required beyond `apiReference` in `docs.config.ts` and `withDocs()` in
+`next.config.ts`. The route at `/{path}` is generated automatically.
+
+### TanStack Start
+
+Create `src/routes/api-reference.index.ts`:
+
+```ts
+import { createFileRoute } from "@tanstack/react-router";
+import { createTanstackApiReference } from "@farming-labs/tanstack-start/api-reference";
+import docsConfig from "../../docs.config";
+
+const handler = createTanstackApiReference(docsConfig);
+
+export const Route = createFileRoute("/api-reference/")({
+  server: {
+    handlers: {
+      GET: handler,
+    },
+  },
+});
+```
+
+Create `src/routes/api-reference.$.ts` with the same handler and
+`createFileRoute("/api-reference/$")`.
+
+### SvelteKit
+
+Create `src/routes/api-reference/+server.ts`:
+
+```ts
+import { createSvelteApiReference } from "@farming-labs/svelte/api-reference";
+import config from "$lib/docs.config";
+
+export const GET = createSvelteApiReference(config);
+```
+
+Create `src/routes/api-reference/[...slug]/+server.ts` with the same `GET` export.
+
+### Astro
+
+Create `src/pages/api-reference/index.ts`:
+
+```ts
+import { createAstroApiReference } from "@farming-labs/astro/api-reference";
+import config from "../../lib/docs.config";
+
+export const GET = createAstroApiReference(config);
+```
+
+Create `src/pages/api-reference/[...slug].ts` with the same `GET` export.
+
+### Nuxt
+
+Create `server/routes/api-reference/index.ts`:
+
+```ts
+import { defineApiReferenceHandler } from "@farming-labs/nuxt/api-reference";
+import config from "~/docs.config";
+
+export default defineApiReferenceHandler(config);
+```
+
+Create `server/routes/api-reference/[...slug].ts` with the same default export.
+
+See the full docs for more detail:
+
+- [Configuration](https://docs.farming-labs.dev/docs/configuration#api-reference)
+- [API Reference config](https://docs.farming-labs.dev/docs/reference#apireferenceconfig)
 
 Each page uses frontmatter for metadata:
 
@@ -521,6 +621,10 @@ The `docs.config.ts` file is the single source of truth. Key options:
 export default defineDocs({
   entry: "docs", // docs root folder
   theme: fumadocs(), // theme preset
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+  },
   // staticExport: true, // for full static builds (Cloudflare Pages) — hides search & AI
 
   nav: {
@@ -545,7 +649,7 @@ export default defineDocs({
 
 ## For AI agents
 
-This repo includes an **agent skill** so assistants can help with @farming-labs/docs setup and usage. The skill covers CLI (`init`, `--template`, `--name`), manual setup per framework, themes, and theme CSS.
+This repo includes **agent skills** so assistants can help with @farming-labs/docs setup and usage. The skills cover CLI (`init`, `--template`, `--name`, `--api-reference`), manual setup per framework, generated API reference wiring, themes, and theme CSS.
 
 Install skills with the [Skills CLI](https://skills.sh/) and pick your preferred skill(s) when prompted:
 
