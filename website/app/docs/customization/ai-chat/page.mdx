@@ -145,7 +145,7 @@ Whether to enable AI chat functionality.
 | --------- | ------- |
 | `boolean` | `false` |
 
-```ts title="enabled.ts"
+```ts
 ai: {
   enabled: true,
 }
@@ -162,7 +162,7 @@ How the AI chat UI is presented.
 - **`"search"`** — AI tab integrated into the `Cmd+K` search dialog. Users switch between "Search" and "AI" tabs.
 - **`"floating"`** — A floating chat widget with a button on screen. Opens as a panel, modal, or full-screen overlay.
 
-```ts title="mode.ts"
+```ts
 ai: {
   enabled: true,
   mode: "floating",
@@ -177,7 +177,7 @@ Position of the floating chat button on screen. Only used when `mode` is `"float
 | ---------------------------------------------------- | ---------------- |
 | `"bottom-right" \| "bottom-left" \| "bottom-center"` | `"bottom-right"` |
 
-```ts title="position.ts"
+```ts
 ai: {
   enabled: true,
   mode: "floating",
@@ -198,7 +198,7 @@ Visual style of the floating chat when opened. Only used when `mode` is `"floati
 - **`"popover"`** — A compact popover near the button. Suitable for quick questions.
 - **`"full-modal"`** — A full-screen immersive overlay. Messages scroll in the center, input is pinned at the bottom, suggested questions appear as horizontal pills.
 
-```ts title="floatingstyle.ts"
+```ts
 ai: {
   enabled: true,
   mode: "floating",
@@ -216,7 +216,7 @@ The LLM model configuration. Can be a simple string (single model) or an object 
 | -------- | --------------- |
 | `string` | `"gpt-4o-mini"` |
 
-```ts title="model.ts"
+```ts
 ai: {
   enabled: true,
   model: "gpt-4o",
@@ -229,7 +229,7 @@ ai: {
 | -------- | ------- |
 | `object` | —       |
 
-```ts title="ask-ai.ts"
+```ts
 ai: {
   enabled: true,
   model: {
@@ -258,7 +258,7 @@ Named provider configurations. Each provider has its own `baseUrl` and `apiKey`,
 | -------- | ------- |
 | `object` | —       |
 
-```ts title="providers.ts"
+```ts
 ai: {
   enabled: true,
   providers: {
@@ -291,7 +291,7 @@ Default base URL for an OpenAI-compatible API endpoint. Used when no per-model `
 | -------- | ----------------------------- |
 | `string` | `"https://api.openai.com/v1"` |
 
-```ts title="baseurl.ts"
+```ts
 ai: {
   enabled: true,
   model: "llama-3.1-70b-versatile",
@@ -307,7 +307,7 @@ Default API key for the LLM provider. Used when no per-model `provider` is confi
 | -------- | ---------------------------- |
 | `string` | `process.env.OPENAI_API_KEY` |
 
-```ts title="apikey.ts"
+```ts
 ai: {
   enabled: true,
   apiKey: process.env.GROQ_API_KEY,
@@ -324,7 +324,7 @@ Custom system prompt prepended to the AI conversation. Documentation context is 
 | -------- | ------------------------------------------------ |
 | `string` | `"You are a helpful documentation assistant..."` |
 
-```ts title="systemprompt.ts"
+```ts
 ai: {
   enabled: true,
   systemPrompt: "You are a friendly assistant for Acme Corp. Always mention our support email for complex issues.",
@@ -339,7 +339,7 @@ Maximum number of search results to include as context for the AI. More results 
 | -------- | ------- |
 | `number` | `5`     |
 
-```ts title="maxresults.ts"
+```ts
 ai: {
   enabled: true,
   maxResults: 10,
@@ -354,7 +354,7 @@ Pre-filled suggested questions shown in the AI chat when the conversation is emp
 | ---------- | ------- |
 | `string[]` | `[]`    |
 
-```ts title="suggestedquestions.ts"
+```ts
 ai: {
   enabled: true,
   suggestedQuestions: [
@@ -373,7 +373,7 @@ Display name for the AI assistant in the chat UI. Shown as the message label and
 | -------- | ------- |
 | `string` | `"AI"`  |
 
-```ts title="ailabel.ts"
+```ts
 ai: {
   enabled: true,
   aiLabel: "DocsBot",
@@ -388,7 +388,7 @@ The npm package name used in code examples. The AI will use this in import snipp
 | -------- | ------- |
 | `string` | —       |
 
-```ts title="packagename.ts"
+```ts
 ai: {
   enabled: true,
   packageName: "@farming-labs/docs",
@@ -403,7 +403,7 @@ The public URL of your documentation site. The AI will use this for absolute lin
 | -------- | ------- |
 | `string` | —       |
 
-```ts title="docsurl.ts"
+```ts
 ai: {
   enabled: true,
   docsUrl: "https://docs.farming-labs.dev",
@@ -420,7 +420,7 @@ Loading indicator variant shown while the AI generates a response.
 
 Available variants: `"shimmer-dots"`, `"circular"`, `"dots"`, `"typing"`, `"wave"`, `"bars"`, `"pulse"`, `"pulse-dot"`, `"terminal"`, `"text-blink"`, `"text-shimmer"`, `"loading-dots"`.
 
-```ts title="loader.ts"
+```ts
 ai: {
   enabled: true,
   loader: "wave",
@@ -435,7 +435,7 @@ Custom React component that completely overrides the built-in `loader` variant. 
 | ------------------------------------------ | ------- |
 | `(props: { name: string }) => ReactNode`   | —       |
 
-```tsx title="loadingcomponent.tsx"
+```tsx
 ai: {
   enabled: true,
   aiLabel: "Sage",

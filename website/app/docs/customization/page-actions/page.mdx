@@ -42,7 +42,7 @@ Where to render the page action buttons relative to the page title.
 | -------------------------------- | --------------- |
 | `"above-title" \| "below-title"` | `"below-title"` |
 
-```ts title="pageactions-position.ts"
+```ts
 pageActions: {
   position: "above-title",
 }
@@ -60,7 +60,7 @@ Whether to show the "Copy Markdown" button. Copies the current page's content as
 | --------------------------------- | ------- |
 | `boolean \| { enabled: boolean }` | `false` |
 
-```ts title="pageactions-copymarkdown.ts"
+```ts
 pageActions: {
   copyMarkdown: true,
   // or
@@ -82,7 +82,7 @@ Enable the "Open in..." dropdown. Can be a boolean or an object with additional 
 | --------------------------- | ------- |
 | `boolean \| OpenDocsConfig` | `false` |
 
-```ts title="pageactions-opendocs.ts"
+```ts
 pageActions: {
   openDocs: true,
 }
@@ -108,7 +108,7 @@ Custom list of LLM / tool providers to show in the dropdown. Overrides the defau
 
 Each provider has the following shape:
 
-```ts title="pageactions-opendocs-providers.ts"
+```ts
 interface OpenDocsProvider {
   name: string; // Display name (e.g. "ChatGPT", "Claude")
   icon?: ReactNode; // Icon element rendered next to the name

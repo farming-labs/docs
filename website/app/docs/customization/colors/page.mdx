@@ -43,7 +43,7 @@ theme: pixelBorder({
 
 Only colors you explicitly set are emitted as inline CSS variables. Theme preset defaults stay in the CSS file — your overrides don't break light/dark mode handling.
 
-```tsx title="example-url.tsx"
+```tsx
 // Only primary gets overridden — everything else stays as the theme defines
 colors: {
   primary: "oklch(0.72 0.19 149)";
@@ -54,7 +54,7 @@ colors: {
 
 Any valid CSS color value works:
 
-```tsx title="color-formats.tsx"
+```tsx
 colors: {
   primary: "#22c55e",                    // hex
   primary: "rgb(34, 197, 94)",           // rgb

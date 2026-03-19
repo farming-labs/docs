@@ -51,7 +51,7 @@ When the framework calls your dynamic OG endpoint, it passes:
 
 The URL looks like:
 
-```text title="example-url.txt"
+```text
 https://your-site.com/api/og?title=Introduction&description=Get+started+with+the+framework.
 ```
 
@@ -65,7 +65,7 @@ The `@farming-labs/docs` website which uses **Nextjs** uses a dynamic OG endpoin
 
 ### 1. Config (`docs.config.ts`)
 
-```ts title="1-config-docs-config-ts.ts"
+```ts
 og: {
   enabled: true,
   type: "dynamic",
@@ -149,7 +149,7 @@ Each URL is set as that page’s `og:image` and `twitter:image`, so shares show 
 
 To use a **static image** for a single page (e.g. a pre-made graphic or screenshot), set `openGraph` and `twitter` in that page’s frontmatter. The framework will use those instead of calling the dynamic endpoint for that page.
 
-```md title="docs-title.md"
+```md
 --- 
 title: "Docs Title"
 description: "The description of the title goes here."

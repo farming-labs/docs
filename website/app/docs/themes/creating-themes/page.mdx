@@ -11,7 +11,7 @@ Everything starts with `createTheme()`. No CSS required — just a config object
 
 ## Quick Start
 
-```ts title="my-theme.ts"
+```ts
 import { createTheme } from "@farming-labs/docs";
 
 export const myTheme = createTheme({
@@ -39,7 +39,7 @@ export default defineDocs({
 
 That's it. Users can override any of your defaults:
 
-```tsx title="quick-start.tsx"
+```tsx
 theme: myTheme({
   ui: { colors: { primary: "#3b82f6" } },
 });
@@ -55,7 +55,7 @@ Here's everything you can configure in `createTheme()`.
 
 Unique identifier for your theme. Used for debugging and CSS scoping.
 
-```ts title="name.ts"
+```ts
 name: "my-theme";
 ```
 
@@ -63,7 +63,7 @@ name: "my-theme";
 
 Color tokens mapped to `--color-fd-*` CSS variables at runtime. Any valid CSS color value works (hex, rgb, hsl, oklch).
 
-```ts title="ui-colors.ts"
+```ts
 colors: {
   primary: "#e11d48",               // brand color — links, buttons, active states
   primaryForeground: "#ffffff",      // text on primary backgrounds
@@ -90,7 +90,7 @@ You only need to set the ones you want to change — the rest are inherited from
 
 Font families, heading sizes, weights, line heights, and letter spacing.
 
-```ts title="ui-typography.ts"
+```ts
 typography: {
   font: {
     // Font families
@@ -121,7 +121,7 @@ Each heading/text style accepts these properties:
 
 **Tip:** Use CSS variables for fonts so users can load them with `next/font`:
 
-```ts title="example.ts"
+```ts
 style: {
   sans: "var(--font-geist-sans, system-ui, sans-serif)",
   mono: "var(--font-geist-mono, ui-monospace, monospace)",
@@ -132,7 +132,7 @@ style: {
 
 Global border radius. Maps to CSS `--radius`.
 
-```ts title="ui-radius.ts"
+```ts
 radius: "0.5rem"; // rounded
 radius: "0px"; // sharp corners
 radius: "0.75rem"; // more rounded
@@ -142,7 +142,7 @@ radius: "0.75rem"; // more rounded
 
 Content area dimensions and structural options.
 
-```ts title="ui-layout.ts"
+```ts
 layout: {
   contentWidth: 768,       // max width of docs content (px)
   sidebarWidth: 280,       // sidebar width (px)
@@ -162,7 +162,7 @@ layout: {
 
 Code block rendering options.
 
-```ts title="ui-codeblock.ts"
+```ts
 codeBlock: {
   showLineNumbers: false,  // show line numbers
   showCopyButton: true,    // show copy button
@@ -175,7 +175,7 @@ codeBlock: {
 
 Sidebar visual style.
 
-```ts title="ui-sidebar.ts"
+```ts
 sidebar: {
   style: "default",        // "default" | "bordered" | "floating"
   background: undefined,   // override sidebar background
@@ -193,7 +193,7 @@ sidebar: {
 
 Card styling.
 
-```ts title="ui-card.ts"
+```ts
 card: {
   bordered: true,          // show card borders
   background: undefined,   // override card background
@@ -204,7 +204,7 @@ card: {
 
 Default props for built-in MDX components.
 
-```ts title="ui-components.ts"
+```ts
 components: {
   Callout: { variant: "outline" },   // or "soft"
   CodeBlock: { showCopyButton: true },
@@ -218,7 +218,7 @@ components: {
 
 Here's a complete theme with every option:
 
-```ts title="my-theme.ts"
+```ts
 import { createTheme } from "@farming-labs/docs";
 
 export const MyThemeDefaults = {
@@ -274,7 +274,7 @@ export { MyThemeDefaults };
 
 Don't want to start from scratch? Use `extendTheme()` to build on top of a built-in preset:
 
-```ts title="my-theme.ts"
+```ts
 import { extendTheme } from "@farming-labs/docs";
 import { fumadocs } from "@farming-labs/theme";
 
@@ -289,7 +289,7 @@ export const myTheme = extendTheme(fumadocs(), {
 
 Works with any built-in theme:
 
-```ts title="extending-an-existing-theme.ts"
+```ts
 import { darksharp } from "@farming-labs/theme/darksharp";
 
 export const myDark = extendTheme(darksharp(), {
@@ -309,7 +309,7 @@ export const myDark = extendTheme(darksharp(), {
 
 Each built-in theme exports its defaults object:
 
-```ts title="cherry-picking-from-built-in-themes.ts"
+```ts
 import { DefaultUIDefaults } from "@farming-labs/theme/default";
 import { DarksharpUIDefaults } from "@farming-labs/theme/darksharp";
 import { PixelBorderUIDefaults } from "@farming-labs/theme/pixel-border";
@@ -330,7 +330,7 @@ export const myTheme = createTheme({
 
 ## Publishing as an npm Package
 
-```text title="publishing-as-an-npm-package.txt"
+```text
 my-fumadocs-theme/
   src/
     index.ts       ← createTheme() + exported defaults
@@ -355,7 +355,7 @@ my-fumadocs-theme/
 
 Users install and use:
 
-```bash title="install.sh"
+```bash
 npm install my-fumadocs-theme
 ```
 
@@ -412,7 +412,7 @@ Here are all the selectors you can target to style individual components:
 
 #### Sidebar
 
-```css title="radius.css"
+```css
 /* Container */
 .dark aside#nd-sidebar {
   background: hsl(0 0% 2%);
@@ -466,7 +466,7 @@ Here are all the selectors you can target to style individual components:
 
 #### Code Blocks
 
-```css title="example.css"
+```css
 /* Container */
 figure.shiki {
   border: 1px solid var(--color-fd-border);
@@ -486,7 +486,7 @@ figure.shiki button {
 
 #### Inline Code
 
-```css title="inline-code.css"
+```css
 code:not(pre code) {
   border-radius: 0.25rem;
 }
@@ -500,7 +500,7 @@ code:not(pre code) {
 
 #### Tables
 
-```css title="tables.css"
+```css
 .dark table {
   border: 1px solid hsl(0 0% 15%);
 }
@@ -517,7 +517,7 @@ code:not(pre code) {
 
 #### Callouts
 
-```css title="callouts.css"
+```css
 [class*="bg-fd-card"],
 [role="alert"] {
   border-radius: 0.5rem;
@@ -530,7 +530,7 @@ code:not(pre code) {
 
 #### Tabs
 
-```css title="tabs.css"
+```css
 .dark [role="tablist"] {
   border-radius: 0.5rem;
 }
@@ -542,7 +542,7 @@ code:not(pre code) {
 
 #### Prev/Next Navigation Cards
 
-```css title="prev-next-navigation-cards.css"
+```css
 .dark article a[class*="border"] {
   border-color: hsl(0 0% 15%);
   border-radius: 0.5rem;
@@ -555,7 +555,7 @@ code:not(pre code) {
 
 #### Search Dialog
 
-```css title="search-dialog.css"
+```css
 [role="dialog"] {
   border-radius: 0.5rem;
 }
@@ -563,7 +563,7 @@ code:not(pre code) {
 
 #### Breadcrumb
 
-```css title="breadcrumb.css"
+```css
 .fd-breadcrumb {
   font-size: 0.75rem;
 }
@@ -577,7 +577,7 @@ code:not(pre code) {
 
 #### Page Action Buttons
 
-```css title="page-action-buttons.css"
+```css
 .fd-page-action-btn {
   border-radius: 0.375rem;
   background: var(--color-fd-secondary);
@@ -592,7 +592,7 @@ code:not(pre code) {
 
 #### Scrollbar
 
-```css title="scrollbar.css"
+```css
 .dark {
   --scrollbar-thumb: var(--color-fd-border);
   --scrollbar-thumb-hover: var(--color-fd-ring);
@@ -602,7 +602,7 @@ code:not(pre code) {
 
 #### Selection & Misc
 
-```css title="selection-misc.css"
+```css
 ::selection {
   background: var(--color-fd-foreground);
   color: var(--color-fd-background);

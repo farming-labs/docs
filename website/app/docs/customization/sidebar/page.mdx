@@ -49,7 +49,7 @@ icons: {
 
 Nested directories automatically become collapsible groups. A directory with its own `page.mdx` becomes a folder with an index page:
 
-```text title="collapsible-groups.txt"
+```text
 app/docs/
   plugins/
     page.mdx            # Folder index (clickable)
@@ -363,7 +363,7 @@ Replace the entire sidebar navigation with your own component. The component rec
 
 The `tree` prop has this shape:
 
-```ts title="tree-structure.ts"
+```ts
 interface SidebarTree {
   name: string;
   children: SidebarNode[];
@@ -393,7 +393,7 @@ All types are exported from `@farming-labs/docs` for full type safety.
 
 ## Sidebar Style
 
-```tsx title="sidebar-style.tsx"
+```tsx
 theme: pixelBorder({
   ui: {
     sidebar: { style: "floating" },
