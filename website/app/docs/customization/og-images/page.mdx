@@ -51,7 +51,7 @@ When the framework calls your dynamic OG endpoint, it passes:
 
 The URL looks like:
 
-```
+```text title="example-url.txt"
 https://your-site.com/api/og?title=Introduction&description=Get+started+with+the+framework.
 ```
 
@@ -65,7 +65,7 @@ The `@farming-labs/docs` website which uses **Nextjs** uses a dynamic OG endpoin
 
 ### 1. Config (`docs.config.ts`)
 
-```ts
+```ts title="1-config-docs-config-ts.ts"
 og: {
   enabled: true,
   type: "dynamic",

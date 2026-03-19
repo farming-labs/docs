@@ -45,22 +45,22 @@ Use `--template` to bootstrap a complete project with your framework and theme o
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
-    ```bash
+    ```bash title="npm-init-template.sh"
     npx @farming-labs/docs init --template next --name my-docs
     ```
   </Tab>
   <Tab value="pnpm">
-    ```bash
+    ```bash title="pnpm-init-template.sh"
     pnpm dlx @farming-labs/docs init --template next --name my-docs
     ```
   </Tab>
   <Tab value="yarn">
-    ```bash
+    ```bash title="yarn-init-template.sh"
     yarn dlx @farming-labs/docs init --template next --name my-docs
     ```
   </Tab>
   <Tab value="bun">
-    ```bash
+    ```bash title="bun-init-template.sh"
     bunx @farming-labs/docs init --template next --name my-docs
     ```
   </Tab>
@@ -72,22 +72,22 @@ Want a specific theme? Add `--theme`:
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
-    ```bash
+    ```bash title="npm-init-template-2.sh"
     npx @farming-labs/docs init --template next --name my-docs --theme pixel-border
     ```
   </Tab>
   <Tab value="pnpm">
-    ```bash
+    ```bash title="pnpm-init-template-2.sh"
     pnpm dlx @farming-labs/docs init --template next --name my-docs --theme pixel-border
     ```
   </Tab>
   <Tab value="yarn">
-    ```bash
+    ```bash title="yarn-init-template-2.sh"
     yarn dlx @farming-labs/docs init --template next --name my-docs --theme pixel-border
     ```
   </Tab>
   <Tab value="bun">
-    ```bash
+    ```bash title="bun-init-template-2.sh"
     bunx @farming-labs/docs init --template next --name my-docs --theme pixel-border
     ```
   </Tab>
@@ -101,22 +101,22 @@ Already have a Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project? Just 
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
-    ```bash
+    ```bash title="npm-init.sh"
     npx @farming-labs/docs init
     ```
   </Tab>
   <Tab value="pnpm">
-    ```bash
+    ```bash title="pnpm-init.sh"
     pnpm dlx @farming-labs/docs init
     ```
   </Tab>
   <Tab value="yarn">
-    ```bash
+    ```bash title="yarn-init.sh"
     yarn dlx @farming-labs/docs init
     ```
   </Tab>
   <Tab value="bun">
-    ```bash
+    ```bash title="bun-init.sh"
     bunx @farming-labs/docs init
     ```
   </Tab>
@@ -148,7 +148,7 @@ Beyond being token-efficient to work with, `@farming-labs/docs` includes feature
 
 Your docs are automatically served in LLM-optimized format — no extra routes needed:
 
-```
+```text title="example-url.txt"
 /api/docs?format=llms       → llms.txt (index of all pages)
 /api/docs?format=llms-full  → llms-full.txt (full content)
 ```
@@ -159,7 +159,7 @@ See the [llms.txt docs](/docs/customization/llms-txt) for details.
 
 Built-in AI chat with retrieval-augmented generation. A simple setup is just two lines:
 
-```ts
+```ts title="ai-chat-with-rag.ts"
 ai: {
   enabled: true,
   model: "gpt-4o-mini",
@@ -168,7 +168,7 @@ ai: {
 
 Need multiple models from different providers? Use the `providers` map and a `model` object with a selectable dropdown:
 
-```ts
+```ts title="ask-ai.ts"
 ai: {
   enabled: true,
   providers: {

@@ -39,7 +39,7 @@ export default defineDocs({
 
 That's it. Users can override any of your defaults:
 
-```tsx
+```tsx title="quick-start.tsx"
 theme: myTheme({
   ui: { colors: { primary: "#3b82f6" } },
 });
@@ -55,7 +55,7 @@ Here's everything you can configure in `createTheme()`.
 
 Unique identifier for your theme. Used for debugging and CSS scoping.
 
-```ts
+```ts title="name.ts"
 name: "my-theme";
 ```
 
@@ -63,7 +63,7 @@ name: "my-theme";
 
 Color tokens mapped to `--color-fd-*` CSS variables at runtime. Any valid CSS color value works (hex, rgb, hsl, oklch).
 
-```ts
+```ts title="ui-colors.ts"
 colors: {
   primary: "#e11d48",               // brand color — links, buttons, active states
   primaryForeground: "#ffffff",      // text on primary backgrounds
@@ -90,7 +90,7 @@ You only need to set the ones you want to change — the rest are inherited from
 
 Font families, heading sizes, weights, line heights, and letter spacing.
 
-```ts
+```ts title="ui-typography.ts"
 typography: {
   font: {
     // Font families
@@ -121,7 +121,7 @@ Each heading/text style accepts these properties:
 
 **Tip:** Use CSS variables for fonts so users can load them with `next/font`:
 
-```ts
+```ts title="example.ts"
 style: {
   sans: "var(--font-geist-sans, system-ui, sans-serif)",
   mono: "var(--font-geist-mono, ui-monospace, monospace)",
@@ -132,7 +132,7 @@ style: {
 
 Global border radius. Maps to CSS `--radius`.
 
-```ts
+```ts title="ui-radius.ts"
 radius: "0.5rem"; // rounded
 radius: "0px"; // sharp corners
 radius: "0.75rem"; // more rounded
@@ -142,7 +142,7 @@ radius: "0.75rem"; // more rounded
 
 Content area dimensions and structural options.
 
-```ts
+```ts title="ui-layout.ts"
 layout: {
   contentWidth: 768,       // max width of docs content (px)
   sidebarWidth: 280,       // sidebar width (px)
@@ -162,7 +162,7 @@ layout: {
 
 Code block rendering options.
 
-```ts
+```ts title="ui-codeblock.ts"
 codeBlock: {
   showLineNumbers: false,  // show line numbers
   showCopyButton: true,    // show copy button
@@ -175,7 +175,7 @@ codeBlock: {
 
 Sidebar visual style.
 
-```ts
+```ts title="ui-sidebar.ts"
 sidebar: {
   style: "default",        // "default" | "bordered" | "floating"
   background: undefined,   // override sidebar background
@@ -193,7 +193,7 @@ sidebar: {
 
 Card styling.
 
-```ts
+```ts title="ui-card.ts"
 card: {
   bordered: true,          // show card borders
   background: undefined,   // override card background
@@ -204,7 +204,7 @@ card: {
 
 Default props for built-in MDX components.
 
-```ts
+```ts title="ui-components.ts"
 components: {
   Callout: { variant: "outline" },   // or "soft"
   CodeBlock: { showCopyButton: true },
@@ -289,7 +289,7 @@ export const myTheme = extendTheme(fumadocs(), {
 
 Works with any built-in theme:
 
-```ts
+```ts title="extending-an-existing-theme.ts"
 import { darksharp } from "@farming-labs/theme/darksharp";
 
 export const myDark = extendTheme(darksharp(), {
@@ -309,7 +309,7 @@ export const myDark = extendTheme(darksharp(), {
 
 Each built-in theme exports its defaults object:
 
-```ts
+```ts title="cherry-picking-from-built-in-themes.ts"
 import { DefaultUIDefaults } from "@farming-labs/theme/default";
 import { DarksharpUIDefaults } from "@farming-labs/theme/darksharp";
 import { PixelBorderUIDefaults } from "@farming-labs/theme/pixel-border";
@@ -330,7 +330,7 @@ export const myTheme = createTheme({
 
 ## Publishing as an npm Package
 
-```
+```text title="publishing-as-an-npm-package.txt"
 my-fumadocs-theme/
   src/
     index.ts       ← createTheme() + exported defaults
@@ -355,7 +355,7 @@ my-fumadocs-theme/
 
 Users install and use:
 
-```bash
+```bash title="install.sh"
 npm install my-fumadocs-theme
 ```
 
@@ -412,7 +412,7 @@ Here are all the selectors you can target to style individual components:
 
 #### Sidebar
 
-```css
+```css title="radius.css"
 /* Container */
 .dark aside#nd-sidebar {
   background: hsl(0 0% 2%);
@@ -466,7 +466,7 @@ Here are all the selectors you can target to style individual components:
 
 #### Code Blocks
 
-```css
+```css title="example.css"
 /* Container */
 figure.shiki {
   border: 1px solid var(--color-fd-border);
@@ -486,7 +486,7 @@ figure.shiki button {
 
 #### Inline Code
 
-```css
+```css title="inline-code.css"
 code:not(pre code) {
   border-radius: 0.25rem;
 }
@@ -500,7 +500,7 @@ code:not(pre code) {
 
 #### Tables
 
-```css
+```css title="tables.css"
 .dark table {
   border: 1px solid hsl(0 0% 15%);
 }
@@ -517,7 +517,7 @@ code:not(pre code) {
 
 #### Callouts
 
-```css
+```css title="callouts.css"
 [class*="bg-fd-card"],
 [role="alert"] {
   border-radius: 0.5rem;
@@ -530,7 +530,7 @@ code:not(pre code) {
 
 #### Tabs
 
-```css
+```css title="tabs.css"
 .dark [role="tablist"] {
   border-radius: 0.5rem;
 }
@@ -542,7 +542,7 @@ code:not(pre code) {
 
 #### Prev/Next Navigation Cards
 
-```css
+```css title="prev-next-navigation-cards.css"
 .dark article a[class*="border"] {
   border-color: hsl(0 0% 15%);
   border-radius: 0.5rem;
@@ -555,7 +555,7 @@ code:not(pre code) {
 
 #### Search Dialog
 
-```css
+```css title="search-dialog.css"
 [role="dialog"] {
   border-radius: 0.5rem;
 }
@@ -563,7 +563,7 @@ code:not(pre code) {
 
 #### Breadcrumb
 
-```css
+```css title="breadcrumb.css"
 .fd-breadcrumb {
   font-size: 0.75rem;
 }
@@ -577,7 +577,7 @@ code:not(pre code) {
 
 #### Page Action Buttons
 
-```css
+```css title="page-action-buttons.css"
 .fd-page-action-btn {
   border-radius: 0.375rem;
   background: var(--color-fd-secondary);
@@ -592,7 +592,7 @@ code:not(pre code) {
 
 #### Scrollbar
 
-```css
+```css title="scrollbar.css"
 .dark {
   --scrollbar-thumb: var(--color-fd-border);
   --scrollbar-thumb-hover: var(--color-fd-ring);
@@ -602,7 +602,7 @@ code:not(pre code) {
 
 #### Selection & Misc
 
-```css
+```css title="selection-misc.css"
 ::selection {
   background: var(--color-fd-foreground);
   color: var(--color-fd-background);

@@ -61,7 +61,7 @@ Controls how pages are sorted in the sidebar. Three strategies are available:
 
 Pages are sorted alphabetically by folder name. No extra configuration needed.
 
-```ts
+```ts title="alphabetical-default.ts"
 ordering: "alphabetical",
 ```
 
@@ -69,13 +69,13 @@ ordering: "alphabetical",
 
 Pages are sorted by the `order` field in frontmatter. Lower numbers appear first. Pages without `order` are sorted alphabetically after ordered pages.
 
-```ts
+```ts title="numeric.ts"
 ordering: "numeric",
 ```
 
 Then in your page frontmatter:
 
-```md
+```md title="numeric.md"
 ---
 title: "Installation"
 order: 1
@@ -86,7 +86,7 @@ order: 1
 
 Pass an array of `{ slug, children? }` objects for explicit control over page order, including nested pages.
 
-```ts
+```ts title="slug-based-orderingitem.ts"
 ordering: [
   { slug: "installation" },
   { slug: "cli" },
@@ -135,7 +135,7 @@ Sidebar header configuration.
 | `title`  | `string \| ReactNode` | `"Docs"`     | Sidebar header title. React elements supported in Next.js and TanStack Start |
 | `url`    | `string`              | `"/{entry}"` | URL the title links to                                    |
 
-```ts
+```ts title="docsnav.ts"
 nav: {
   title: "My Docs",
   url: "/docs",
@@ -248,7 +248,7 @@ GitHub repository configuration. Enables "Edit on GitHub" links in page footers.
 | `branch`    | `string` | `"main"`     | Branch name                                              |
 | `directory` | `string` | —            | Content subdirectory for monorepos                       |
 
-```ts
+```ts title="github.ts"
 // Simple
 github: "https://github.com/my-org/my-docs",
 
@@ -279,7 +279,7 @@ Argument passed to `onCopyClick(data: CodeBlockCopyData)`.
 | `url`      | `string` | Current page URL at the time of copy                                         |
 | `language` | `string \| undefined` | Language/syntax hint (e.g. `"tsx"`, `"bash"`), if present              |
 
-```ts
+```ts title="docs.config.ts"
 import type { CodeBlockCopyData } from "@farming-labs/docs";
 import { defineDocs } from "@farming-labs/docs";
 
@@ -304,7 +304,7 @@ Light/dark mode toggle in the sidebar.
 | `default` | `"light" \| "dark" \| "system"`       | `"system"`     | Forced theme when `enabled: false` |
 | `mode`    | `"light-dark" \| "light-dark-system"` | `"light-dark"` | Toggle behavior                    |
 
-```ts
+```ts title="theme-toggle.ts"
 // Show toggle (default)
 themeToggle: true,
 
@@ -329,7 +329,7 @@ Breadcrumb navigation above page content.
 | `enabled`   | `boolean`   | `true`  | Show or hide breadcrumbs                   |
 | `component` | `Component` | —       | Custom breadcrumb component (Next.js only) |
 
-```ts
+```ts title="breadcrumbconfig.ts"
 breadcrumb: true,              // show (default)
 breadcrumb: false,             // hide
 breadcrumb: { enabled: false },  // hide
@@ -392,7 +392,7 @@ A union of `SidebarPageNode | SidebarFolderNode`.
 | `collapsible` | `boolean`          | Whether this folder collapses |
 | `defaultOpen` | `boolean`          | Whether it starts open        |
 
-```ts
+```ts title="sidebarnode.ts"
 sidebar: true,                     // show (default)
 sidebar: false,                    // hide
 sidebar: { collapsible: false },   // non-collapsible
@@ -417,7 +417,7 @@ Created via theme factories:
 
 <Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
-    ```ts
+    ```ts title="next-theme.ts"
     import { fumadocs } from "@farming-labs/theme";
     import { darksharp } from "@farming-labs/theme/darksharp";
     import { pixelBorder } from "@farming-labs/theme/pixel-border";
@@ -428,7 +428,7 @@ Created via theme factories:
 
   </Tab>
   <Tab value="TanStack Start">
-    ```ts
+    ```ts title="tanstack-start-theme.ts"
     import { fumadocs } from "@farming-labs/theme";
     import { darksharp } from "@farming-labs/theme/darksharp";
     import { pixelBorder } from "@farming-labs/theme/pixel-border";
@@ -439,7 +439,7 @@ Created via theme factories:
 
   </Tab>
   <Tab value="SvelteKit">
-    ```ts
+    ```ts title="sveltekit-theme.ts"
     import { fumadocs, darksharp, pixelBorder } from "@farming-labs/svelte-theme";
     import { colorful } from "@farming-labs/svelte-theme/colorful";
 
@@ -448,7 +448,7 @@ Created via theme factories:
 
   </Tab>
   <Tab value="Astro">
-    ```ts
+    ```ts title="astro-theme.ts"
     import { fumadocs } from "@farming-labs/astro-theme";
     import { pixelBorder } from "@farming-labs/astro-theme/pixel-border";
     import { darksharp } from "@farming-labs/astro-theme/darksharp";
@@ -459,7 +459,7 @@ Created via theme factories:
 
   </Tab>
   <Tab value="Nuxt">
-    ```ts
+    ```ts title="nuxt-theme.ts"
     import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
     import { colorful } from "@farming-labs/nuxt-theme/colorful";
 
@@ -508,7 +508,7 @@ All color tokens. Accepts any CSS color value (hex, rgb, oklch, hsl).
 | `popoverForeground`   | Popover text color                  |
 | `ring`                | Focus ring color                    |
 
-```ts
+```ts title="colorsconfig.ts"
 colors: {
   primary: "oklch(0.72 0.19 149)",
   background: "hsl(0 0% 2%)",
@@ -547,7 +547,7 @@ colors: {
 
 ### `TypographyConfig`
 
-```ts
+```ts title="typographyconfig.ts"
 typography: {
   font: {
     style: {
@@ -641,7 +641,7 @@ Action buttons shown on each docs page. See [Page Actions](/docs/customization/p
 | `icon`        | `ReactNode` | Icon rendered next to the name                                                    |
 | `urlTemplate` | `string`    | URL template. `{url}` is replaced with the page URL, `{mdxUrl}` with the MDX URL. |
 
-```ts
+```ts title="opendocsprovider.ts"
 pageActions: {
   copyMarkdown: { enabled: true },
   openDocs: {
@@ -666,7 +666,7 @@ SEO metadata configuration.
 | `description`   | `string`                             | —       | Default meta description                                   |
 | `twitterCard`   | `"summary" \| "summary_large_image"` | —       | Twitter card type                                          |
 
-```ts
+```ts title="docsmetadata.ts"
 metadata: {
   titleTemplate: "%s – My Docs",
   description: "Documentation for my project",
@@ -688,7 +688,7 @@ Open Graph image configuration. When `endpoint` is set, each docs page gets a dy
 
 **Example (Next.js):** In `docs.config.ts`, set `og.endpoint` to your OG route path. Then implement `app/api/og/route.tsx` (or `route.ts`) that accepts `title` and `description` query params and returns a 1200×630 image (e.g. using `ImageResponse` from `next/og`).
 
-```ts
+```ts title="ogconfig.ts"
 og: {
   enabled: true,
   type: "dynamic",
@@ -724,7 +724,7 @@ Each docs page (`.mdx` / `.md`) supports these frontmatter fields:
 
 **Static OG example** — use `openGraph` and `twitter` in frontmatter to serve a static image instead of the dynamic OG endpoint:
 
-```md
+```md title="page-frontmatter.md"
 ---
 title: "Title of Docs"
 description: "Title of the docs goes here"
@@ -743,7 +743,7 @@ twitter:
 
 **Minimal example** (shorthand `ogImage` or generated OG):
 
-```md
+```md title="page.md"
 ---
 title: "Getting Started"
 description: "Set up your docs in 5 minutes"
@@ -778,7 +778,7 @@ So in all frameworks, the **same frontmatter fields** drive titles, descriptions
 
 Create a custom theme from scratch. See [Creating Themes](/docs/themes/creating-themes).
 
-```ts
+```ts title="createtheme-options.ts"
 import { createTheme } from "@farming-labs/docs";
 
 export const myTheme = createTheme({
@@ -795,7 +795,7 @@ export const myTheme = createTheme({
 
 Extend an existing theme with overrides.
 
-```ts
+```ts title="extendtheme-base-overrides.ts"
 import { extendTheme } from "@farming-labs/docs";
 import { fumadocs } from "@farming-labs/theme";
 
@@ -814,7 +814,7 @@ export const myTheme = extendTheme(fumadocs(), {
 
 Creates the TanStack Start docs server adapter.
 
-```ts
+```ts title="createdocsserver-config.ts"
 import { createDocsServer } from "@farming-labs/tanstack-start/server";
 ```
 
@@ -891,7 +891,7 @@ export const Route = createFileRoute("/api/docs")({
 
 Creates all server-side functions for a SvelteKit docs site.
 
-```ts
+```ts title="example.ts"
 import { createDocsServer } from "@farming-labs/svelte/server";
 ```
 
@@ -944,7 +944,7 @@ Imported from `@farming-labs/svelte-theme`:
 
 Same as SvelteKit — returns `{ load, GET, POST }`.
 
-```ts
+```ts title="src/lib/docs.server.ts"
 import { createDocsServer } from "@farming-labs/astro/server";
 ```
 
@@ -1015,7 +1015,7 @@ Same pattern as SvelteKit:
 
 Creates a single Nitro event handler that serves docs loading, search, and AI chat for Nuxt.
 
-```ts
+```ts title="definedocshandler-config-usestorage.ts"
 import { defineDocsHandler } from "@farming-labs/nuxt/server";
 ```
 

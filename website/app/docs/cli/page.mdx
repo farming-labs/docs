@@ -22,7 +22,7 @@ Use `init --template` when you want a brand new project directory with docs alre
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
-    ```bash
+    ```bash title="npm-init-template.sh"
     npx @farming-labs/docs init --template next --name my-docs
     npx @farming-labs/docs init --template tanstack-start --name my-docs
     npx @farming-labs/docs init --template nuxt --name my-docs
@@ -31,7 +31,7 @@ Use `init --template` when you want a brand new project directory with docs alre
     ```
   </Tab>
   <Tab value="pnpm">
-    ```bash
+    ```bash title="pnpm-init-template.sh"
     pnpm dlx @farming-labs/docs init --template next --name my-docs
     pnpm dlx @farming-labs/docs init --template tanstack-start --name my-docs
     pnpm dlx @farming-labs/docs init --template nuxt --name my-docs
@@ -40,7 +40,7 @@ Use `init --template` when you want a brand new project directory with docs alre
     ```
   </Tab>
   <Tab value="yarn">
-    ```bash
+    ```bash title="yarn-init-template.sh"
     yarn dlx @farming-labs/docs init --template next --name my-docs
     yarn dlx @farming-labs/docs init --template tanstack-start --name my-docs
     yarn dlx @farming-labs/docs init --template nuxt --name my-docs
@@ -49,7 +49,7 @@ Use `init --template` when you want a brand new project directory with docs alre
     ```
   </Tab>
   <Tab value="bun">
-    ```bash
+    ```bash title="bun-init-template.sh"
     bunx @farming-labs/docs init --template next --name my-docs
     bunx @farming-labs/docs init --template tanstack-start --name my-docs
     bunx @farming-labs/docs init --template nuxt --name my-docs
@@ -67,22 +67,22 @@ Use plain `init` inside an app you already have.
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
-    ```bash
+    ```bash title="npm-init.sh"
     npx @farming-labs/docs init
     ```
   </Tab>
   <Tab value="pnpm">
-    ```bash
+    ```bash title="pnpm-init.sh"
     pnpm dlx @farming-labs/docs init
     ```
   </Tab>
   <Tab value="yarn">
-    ```bash
+    ```bash title="yarn-init.sh"
     yarn dlx @farming-labs/docs init
     ```
   </Tab>
   <Tab value="bun">
-    ```bash
+    ```bash title="bun-init.sh"
     bunx @farming-labs/docs init
     ```
   </Tab>
@@ -102,22 +102,22 @@ Use `upgrade` when docs are already installed and you just want newer package ve
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
-    ```bash
+    ```bash title="npm-upgrade.sh"
     npx @farming-labs/docs upgrade
     ```
   </Tab>
   <Tab value="pnpm">
-    ```bash
+    ```bash title="pnpm-upgrade.sh"
     pnpm dlx @farming-labs/docs upgrade
     ```
   </Tab>
   <Tab value="yarn">
-    ```bash
+    ```bash title="yarn-upgrade.sh"
     yarn dlx @farming-labs/docs upgrade
     ```
   </Tab>
   <Tab value="bun">
-    ```bash
+    ```bash title="bun-upgrade.sh"
     bunx @farming-labs/docs upgrade
     ```
   </Tab>
@@ -148,22 +148,22 @@ You can skip those prompts entirely with `--template` and `--name`.
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
-    ```bash
+    ```bash title="npm-init-template-2.sh"
     npx @farming-labs/docs init --template next --name my-docs
     ```
   </Tab>
   <Tab value="pnpm">
-    ```bash
+    ```bash title="pnpm-init-template-2.sh"
     pnpm dlx @farming-labs/docs init --template next --name my-docs
     ```
   </Tab>
   <Tab value="yarn">
-    ```bash
+    ```bash title="yarn-init-template-2.sh"
     yarn dlx @farming-labs/docs init --template next --name my-docs
     ```
   </Tab>
   <Tab value="bun">
-    ```bash
+    ```bash title="bun-init-template-2.sh"
     bunx @farming-labs/docs init --template next --name my-docs
     ```
   </Tab>
@@ -188,25 +188,25 @@ Typical flow:
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
-    ```bash
+    ```bash title="npm-init-existing.sh"
     cd my-app
     npx @farming-labs/docs init
     ```
   </Tab>
   <Tab value="pnpm">
-    ```bash
+    ```bash title="pnpm-init-existing.sh"
     cd my-app
     pnpm dlx @farming-labs/docs init
     ```
   </Tab>
   <Tab value="yarn">
-    ```bash
+    ```bash title="yarn-init-existing.sh"
     cd my-app
     yarn dlx @farming-labs/docs init
     ```
   </Tab>
   <Tab value="bun">
-    ```bash
+    ```bash title="bun-init-existing.sh"
     cd my-app
     bunx @farming-labs/docs init
     ```
@@ -229,7 +229,7 @@ Use these to skip the matching prompts during `init`:
 
 Example:
 
-```bash
+```bash title="init.sh"
 npx @farming-labs/docs init --theme greentree --entry docs --api-reference --api-route-root internal-api
 ```
 
@@ -262,22 +262,22 @@ The CLI also detects your package manager from the lockfile in the current direc
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
-    ```bash
+    ```bash title="npm-upgrade-2.sh"
     npx @farming-labs/docs upgrade
     ```
   </Tab>
   <Tab value="pnpm">
-    ```bash
+    ```bash title="pnpm-upgrade-2.sh"
     pnpm dlx @farming-labs/docs upgrade
     ```
   </Tab>
   <Tab value="yarn">
-    ```bash
+    ```bash title="yarn-upgrade-2.sh"
     yarn dlx @farming-labs/docs upgrade
     ```
   </Tab>
   <Tab value="bun">
-    ```bash
+    ```bash title="bun-upgrade-2.sh"
     bunx @farming-labs/docs upgrade
     ```
   </Tab>
@@ -295,28 +295,28 @@ To specify the framework explicitly (e.g. in a monorepo or when auto-detect fail
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
-    ```bash
+    ```bash title="npm-upgrade-3.sh"
     npx @farming-labs/docs upgrade --framework tanstack-start
     # or
     npx @farming-labs/docs upgrade tanstack-start
     ```
   </Tab>
   <Tab value="pnpm">
-    ```bash
+    ```bash title="pnpm-upgrade-3.sh"
     pnpm dlx @farming-labs/docs upgrade --framework tanstack-start
     # or
     pnpm dlx @farming-labs/docs upgrade tanstack-start
     ```
   </Tab>
   <Tab value="yarn">
-    ```bash
+    ```bash title="yarn-upgrade-3.sh"
     yarn dlx @farming-labs/docs upgrade --framework tanstack-start
     # or
     yarn dlx @farming-labs/docs upgrade tanstack-start
     ```
   </Tab>
   <Tab value="bun">
-    ```bash
+    ```bash title="bun-upgrade-3.sh"
     bunx @farming-labs/docs upgrade --framework tanstack-start
     # or
     bunx @farming-labs/docs upgrade tanstack-start
@@ -330,28 +330,28 @@ Use **`--latest`** (default) to install the latest stable release, or **`--beta`
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
-    ```bash
+    ```bash title="npm-upgrade-4.sh"
     npx @farming-labs/docs upgrade              # latest stable (default)
     npx @farming-labs/docs upgrade --latest     # same
     npx @farming-labs/docs upgrade --beta       # beta versions
     ```
   </Tab>
   <Tab value="pnpm">
-    ```bash
+    ```bash title="pnpm-upgrade-4.sh"
     pnpm dlx @farming-labs/docs upgrade              # latest stable (default)
     pnpm dlx @farming-labs/docs upgrade --latest     # same
     pnpm dlx @farming-labs/docs upgrade --beta       # beta versions
     ```
   </Tab>
   <Tab value="yarn">
-    ```bash
+    ```bash title="yarn-upgrade-4.sh"
     yarn dlx @farming-labs/docs upgrade              # latest stable (default)
     yarn dlx @farming-labs/docs upgrade --latest     # same
     yarn dlx @farming-labs/docs upgrade --beta       # beta versions
     ```
   </Tab>
   <Tab value="bun">
-    ```bash
+    ```bash title="bun-upgrade-4.sh"
     bunx @farming-labs/docs upgrade              # latest stable (default)
     bunx @farming-labs/docs upgrade --latest     # same
     bunx @farming-labs/docs upgrade --beta       # beta versions
@@ -494,7 +494,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
 
 <Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
-    ```
+    ```text title="next-js-project-structure.txt"
     $ npx @farming-labs/docs init
 
       ┌ @farming-labs/docs
@@ -564,7 +564,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
 
   </Tab>
   <Tab value="TanStack Start">
-    ```
+    ```text title="tanstack-start-project-structure.txt"
     $ npx @farming-labs/docs init
 
       ┌ @farming-labs/docs
@@ -612,7 +612,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
 
   </Tab>
   <Tab value="SvelteKit">
-    ```
+    ```text title="sveltekit-project-structure.txt"
     $ npx @farming-labs/docs init
 
       ┌ @farming-labs/docs
@@ -677,7 +677,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
 
   </Tab>
   <Tab value="Astro">
-    ```
+    ```text title="astro-project-structure.txt"
     $ npx @farming-labs/docs init
 
       ┌ @farming-labs/docs
@@ -744,7 +744,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
 
   </Tab>
   <Tab value="Nuxt">
-    ```
+    ```text title="nuxt-project-structure.txt"
     $ npx @farming-labs/docs init
 
       ┌ @farming-labs/docs
@@ -1315,7 +1315,7 @@ After running `init`, your project will look like this:
 
 <Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
-```
+```text title="next.config.txt"
 my-app/
 ├── docs.config.ts        # Docs configuration
 ├── next.config.ts        # Next.js config with withDocs()
@@ -1333,7 +1333,7 @@ my-app/
 ```
   </Tab>
   <Tab value="TanStack Start">
-```
+```text title="tanstack-start-project-structure.txt"
 my-app/
 ├── docs.config.ts             # Docs configuration
 ├── docs/                      # Markdown content
@@ -1360,7 +1360,7 @@ my-app/
 ```
   </Tab>
   <Tab value="SvelteKit">
-```
+```text title="sveltekit-project-structure.txt"
 my-app/
 ├── docs/                     # Markdown content
 │   ├── page.md               # /docs
@@ -1383,7 +1383,7 @@ my-app/
 ```
   </Tab>
   <Tab value="Astro">
-```
+```text title="astro-project-structure.txt"
 my-app/
 ├── astro.config.mjs          # Astro config with SSR
 ├── docs/                     # Markdown content
@@ -1406,7 +1406,7 @@ my-app/
 ```
   </Tab>
   <Tab value="Nuxt">
-```
+```text title="nuxt-project-structure.txt"
 my-app/
 ├── docs.config.ts            # Docs configuration
 ├── nuxt.config.ts            # Nuxt config with theme CSS
