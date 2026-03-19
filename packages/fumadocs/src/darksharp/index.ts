@@ -16,7 +16,6 @@
  */
 
 import { createTheme } from "@farming-labs/docs";
-import type { DocsTheme } from "@farming-labs/docs";
 
 /**
  * Darksharp UI defaults — all-black, sharp edges, zero-radius aesthetic.

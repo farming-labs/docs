@@ -64,7 +64,10 @@ export default function CodeBlock({
             className="px-3 sm:px-4 py-3.5 text-[12px] sm:text-[13px] leading-relaxed overflow-x-auto font-mono text-neutral-800 dark:text-inherit"
             style={maxHeight ? { maxHeight, overflowY: "auto" } : undefined}
           >
-            <code className="sh-code" dangerouslySetInnerHTML={{ __html: highlighted }} />
+            <code
+              className={`sh-code${language ? ` language-${language}` : ""}`}
+              dangerouslySetInnerHTML={{ __html: highlighted }}
+            />
           </pre>
           {showCopy && (
             <button

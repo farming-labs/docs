@@ -15,7 +15,6 @@
  */
 
 import { createTheme } from "@farming-labs/docs";
-import type { DocsTheme } from "@farming-labs/docs";
 
 /**
  * Default UI configuration — neutral palette, standard border-radius.

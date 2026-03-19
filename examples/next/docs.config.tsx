@@ -16,12 +16,7 @@ import {
   Key,
   Users,
   Mail,
-  SparklesIcon,
 } from "lucide-react";
-import { fumadocs } from "@farming-labs/theme";
-import { darkbold } from "@farming-labs/theme/darkbold";
-import { darksharp } from "@farming-labs/theme/darksharp";
-import { pixelBorder } from "@farming-labs/theme/pixel-border";
 import { colorful } from "@farming-labs/theme/colorful";
 
 export default defineDocs({

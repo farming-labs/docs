@@ -1,6 +1,4 @@
 import { defineDocs } from "@farming-labs/docs";
-import { pixelBorder } from "@farming-labs/svelte-theme";
-import { colorful } from "@farming-labs/svelte-theme/colorful";
 import { greentree } from "@farming-labs/svelte-theme/greentree";
 
 export default defineDocs({

@@ -363,7 +363,7 @@ export async function init(options: InitOptions = {}) {
 
     try {
       exec(`npx degit ${EXAMPLES_REPO}/examples/${template} . --force`, targetDir);
-    } catch (err) {
+    } catch {
       p.log.error("Failed to bootstrap. Check your connection and that the repo exists.");
       process.exit(1);
     }
@@ -1146,7 +1146,7 @@ export async function init(options: InitOptions = {}) {
         resolve();
       });
     });
-  } catch (err) {
+  } catch {
     const manualCmd =
       framework === "tanstack-start"
         ? "npx vite dev"
@@ -1652,7 +1652,6 @@ function scaffoldNuxt(
     );
   }
 
-  const nuxtConfigPath = path.join(cwd, "nuxt.config.ts");
   if (
     !fileExists(path.join(cwd, "nuxt.config.ts")) &&
     !fileExists(path.join(cwd, "nuxt.config.js"))

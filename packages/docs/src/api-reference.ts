@@ -299,7 +299,6 @@ function buildApiReferenceRoutes(
         routePathBase: toRouteBase(apiReference.routeRoot, getNextAppDir(rootDir)),
         isRouteFile: (name) => NEXT_ROUTE_FILE_RE.test(name),
         toRouteSegments: (relativeFile) => relativeFile.split("/").slice(0, -1).filter(Boolean),
-        config,
         exclude: apiReference.exclude,
       });
     case "sveltekit":
@@ -309,7 +308,6 @@ function buildApiReferenceRoutes(
         routePathBase: toRouteBase(apiReference.routeRoot, "src/routes"),
         isRouteFile: (name) => SVELTE_ROUTE_FILE_RE.test(name),
         toRouteSegments: (relativeFile) => relativeFile.split("/").slice(0, -1).filter(Boolean),
-        config,
         exclude: apiReference.exclude,
       });
     case "astro":
@@ -319,7 +317,6 @@ function buildApiReferenceRoutes(
         routePathBase: toRouteBase(apiReference.routeRoot, "src/pages"),
         isRouteFile: (name) => ASTRO_ROUTE_FILE_RE.test(name),
         toRouteSegments: (relativeFile) => routeSegmentsFromEndpointFile(relativeFile),
-        config,
         exclude: apiReference.exclude,
       });
     case "nuxt":
@@ -330,12 +327,11 @@ function buildApiReferenceRoutes(
         isRouteFile: (name) => NUXT_ROUTE_FILE_RE.test(name),
         toRouteSegments: (relativeFile) =>
           routeSegmentsFromEndpointFile(stripNuxtMethodSuffix(relativeFile)),
-        config,
         exclude: apiReference.exclude,
         getMethods: (source, file) => extractNuxtMethods(source, file),
       });
     case "tanstack-start":
-      return buildTanstackRoutes(config, rootDir, apiReference);
+      return buildTanstackRoutes(rootDir, apiReference);
   }
 }
 
@@ -345,7 +341,6 @@ function buildFileConventionRoutes({
   routePathBase,
   isRouteFile,
   toRouteSegments,
-  config,
   exclude,
   getMethods = extractMethods,
 }: {
@@ -354,7 +349,6 @@ function buildFileConventionRoutes({
   routePathBase: string;
   isRouteFile: (name: string) => boolean;
   toRouteSegments: (relativeFile: string) => string[];
-  config: DocsConfig;
   exclude: string[];
   getMethods?: (source: string, file: string) => HttpMethod[];
 }): ApiReferenceRoute[] {
@@ -386,7 +380,6 @@ function buildFileConventionRoutes({
 }
 
 function buildTanstackRoutes(
-  config: DocsConfig,
   rootDir: string,
   apiReference: Required<ApiReferenceConfig>,
 ): ApiReferenceRoute[] {

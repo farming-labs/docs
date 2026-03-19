@@ -5,7 +5,6 @@
  * pixel-perfect spacing, and a refined sidebar.
  */
 import { createTheme } from "@farming-labs/docs";
-import type { DocsTheme } from "@farming-labs/docs";
 
 /**
  * Pixel-border UI defaults — better-auth inspired, clean dark UI.
