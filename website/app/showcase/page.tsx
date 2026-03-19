@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { LayoutGrid, ExternalLink, Plus, Loader2, ArrowRight, Check } from "lucide-react";
+import { LayoutGrid, Plus, Loader2, ArrowRight, Check } from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 
 type ShowcaseEntry = {
@@ -83,11 +83,13 @@ export default function ShowcasePage() {
       setFormDescription("");
       setFormScreenshot("");
       setScreenshotError(null);
-      fileInputRef.current && (fileInputRef.current.value = "");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       setSubmitSuccess(true);
       setTimeout(() => setSubmitSuccess(false), 5000);
       fetchEntries();
-    } catch (err) {
+    } catch {
       setSubmitError("Failed to submit. Please try again.");
     } finally {
       setSubmitLoading(false);

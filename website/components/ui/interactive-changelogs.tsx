@@ -1,10 +1,7 @@
 "use client";
 
-import { ArrowLeft, Copy, GitPullRequest, Hash, Check, Tag, Pin } from "lucide-react";
+import { GitPullRequest, Hash, Tag, Pin } from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useState } from "react";
 import Link from "next/link";
 
 interface Release {
@@ -450,15 +447,6 @@ const unpinnedReleases = releases.filter((r) => !r.pinned);
 const orderedReleases = [...pinnedReleases, ...unpinnedReleases];
 
 export function Component() {
-  const [copiedVersion, setCopiedVersion] = useState<string | null>(null);
-
-  function copyLink(version: string) {
-    const url = `${window.location.origin}/changelog#${version}`;
-    navigator.clipboard.writeText(url);
-    setCopiedVersion(version);
-    setTimeout(() => setCopiedVersion(null), 2000);
-  }
-
   return (
     <section className="relative w-full overflow-hidden bg-white dark:bg-black text-black dark:text-white min-h-dvh">
       <div className="absolute max-w-[90%] mx-auto top-6 left-6 md:left-24 2xl:left-32 flex text-xs font-medium z-[999] gap-2">

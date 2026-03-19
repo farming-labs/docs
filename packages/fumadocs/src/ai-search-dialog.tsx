@@ -741,10 +741,10 @@ export function DocsSearchDialog({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [aiInput, setAiInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<string | undefined>(() => {
+  const selectedModel = (() => {
     const trimmed = (defaultModelId ?? "").trim();
     return trimmed.length > 0 ? trimmed : undefined;
-  });
+  })();
 
   const effectiveModelId =
     selectedModel || (Array.isArray(models) && models.length > 0 ? models[0]!.id : undefined);
