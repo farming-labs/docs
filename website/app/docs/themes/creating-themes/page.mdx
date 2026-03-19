@@ -11,7 +11,7 @@ Everything starts with `createTheme()`. No CSS required — just a config object
 
 ## Quick Start
 
-```ts title="my-theme.ts"
+```ts
 import { createTheme } from "@farming-labs/docs";
 
 export const myTheme = createTheme({
@@ -218,7 +218,7 @@ components: {
 
 Here's a complete theme with every option:
 
-```ts title="my-theme.ts"
+```ts
 import { createTheme } from "@farming-labs/docs";
 
 export const MyThemeDefaults = {
@@ -274,7 +274,7 @@ export { MyThemeDefaults };
 
 Don't want to start from scratch? Use `extendTheme()` to build on top of a built-in preset:
 
-```ts title="my-theme.ts"
+```ts
 import { extendTheme } from "@farming-labs/docs";
 import { fumadocs } from "@farming-labs/theme";
 
@@ -330,7 +330,7 @@ export const myTheme = createTheme({
 
 ## Publishing as an npm Package
 
-```
+```text
 my-fumadocs-theme/
   src/
     index.ts       ← createTheme() + exported defaults

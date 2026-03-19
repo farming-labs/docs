@@ -279,7 +279,7 @@ Argument passed to `onCopyClick(data: CodeBlockCopyData)`.
 | `url`      | `string` | Current page URL at the time of copy                                         |
 | `language` | `string \| undefined` | Language/syntax hint (e.g. `"tsx"`, `"bash"`), if present              |
 
-```ts
+```ts title="docs.config.ts"
 import type { CodeBlockCopyData } from "@farming-labs/docs";
 import { defineDocs } from "@farming-labs/docs";
 
@@ -743,7 +743,7 @@ twitter:
 
 **Minimal example** (shorthand `ogImage` or generated OG):
 
-```md
+```md title="page.md"
 ---
 title: "Getting Started"
 description: "Set up your docs in 5 minutes"
@@ -944,7 +944,7 @@ Imported from `@farming-labs/svelte-theme`:
 
 Same as SvelteKit — returns `{ load, GET, POST }`.
 
-```ts
+```ts title="src/lib/docs.server.ts"
 import { createDocsServer } from "@farming-labs/astro/server";
 ```
 

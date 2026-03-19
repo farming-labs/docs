@@ -141,7 +141,7 @@ For fully static builds (e.g. **Cloudflare Pages**, static hosting with no serve
 - **Next.js:** With `output: "export"` in `next.config`, the `/api/docs` route is not generated. The layout hides Cmd+K search and AI chat.
 - **TanStack Start / SvelteKit / Astro / Nuxt:** The layout hides the search trigger and floating AI when `staticExport` is true. Omit or don’t deploy the docs API route so no server is required.
 
-```ts
+```ts title="docs.config.ts"
 export default defineDocs({
   entry: "docs",
   staticExport: true,  // Hides search & AI; use with static hosting
