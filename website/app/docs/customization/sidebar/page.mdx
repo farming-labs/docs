@@ -363,7 +363,7 @@ Replace the entire sidebar navigation with your own component. The component rec
 
 The `tree` prop has this shape:
 
-```ts
+```ts title="tree-structure.ts"
 interface SidebarTree {
   name: string;
   children: SidebarNode[];
@@ -393,7 +393,7 @@ All types are exported from `@farming-labs/docs` for full type safety.
 
 ## Sidebar Style
 
-```tsx
+```tsx title="sidebar-style.tsx"
 theme: pixelBorder({
   ui: {
     sidebar: { style: "floating" },

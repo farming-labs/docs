@@ -293,7 +293,7 @@ When `i18n` is enabled:
 
 For content structure, place localized docs inside locale folders. For example:
 
-```text
+```text title="internationalization.txt"
 docs/
   en/
     page.md
@@ -309,7 +309,7 @@ The generated examples and CLI scaffold use this folder structure across Next.js
 
 Controls the light/dark mode switcher. Works on Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
 
-```ts
+```ts title="theme-toggle.ts"
 // Show toggle (default)
 themeToggle: true,
 
@@ -333,7 +333,7 @@ themeToggle: { mode: "light-dark-system" },
 
 Enables "Edit on GitHub" links on each docs page footer. The link appears automatically when both `url` and `directory` are set.
 
-```ts
+```ts title="github.ts"
 // Simple — just the repo URL
 github: "https://github.com/my-org/my-docs",
 
@@ -355,7 +355,7 @@ github: {
 
 Controls the breadcrumb navigation above page content.
 
-```ts
+```ts title="breadcrumb.ts"
 // Show breadcrumb (default)
 breadcrumb: true,
 
@@ -486,7 +486,7 @@ See [Colors](/docs/customization/colors), [Typography](/docs/customization/typog
 
 The `nav` option controls the sidebar header:
 
-```ts
+```ts title="navigation.ts"
 nav: {
   title: "My Docs",
   url: "/docs",
@@ -495,7 +495,7 @@ nav: {
 
 In Next.js and TanStack Start, `title` can also be a React element:
 
-```tsx
+```tsx title="navigation.tsx"
 nav: {
   title: (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -614,7 +614,7 @@ The callback receives `title` (if the code block has a title), `content` (raw co
 
 Enable "Copy as Markdown" and "Open in LLM" buttons:
 
-```ts
+```ts title="page-actions.ts"
 pageActions: {
   position: "below-title",
   copyMarkdown: { enabled: true },
@@ -638,7 +638,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
 
 <Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
-    ```ts
+    ```ts title="ask-ai.ts"
     ai: {
       enabled: true,
       mode: "floating",
@@ -652,7 +652,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
 
   </Tab>
   <Tab value="TanStack Start">
-    ```ts
+    ```ts title="tanstack-start-ask-ai.ts"
     ai: {
       enabled: true,
       mode: "floating",
@@ -677,7 +677,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
 
   </Tab>
   <Tab value="SvelteKit">
-    ```ts
+    ```ts title="sveltekit-ask-ai.ts"
     ai: {
       enabled: true,
       mode: "floating",
@@ -701,7 +701,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
 
   </Tab>
   <Tab value="Astro">
-    ```ts
+    ```ts title="astro-ask-ai.ts"
     ai: {
       enabled: true,
       mode: "floating",
@@ -723,7 +723,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
 
   </Tab>
   <Tab value="Nuxt">
-    ```ts
+    ```ts title="nuxt-ask-ai.ts"
     ai: {
       enabled: true,
       mode: "floating",

@@ -48,7 +48,7 @@ Don't forget the matching CSS import:
 
 Every theme accepts an overrides object:
 
-```tsx
+```tsx title="overriding-theme-defaults.tsx"
 theme: pixelBorder({
   ui: {
     colors: { primary: "oklch(0.72 0.19 149)" },
@@ -98,7 +98,7 @@ export const myTheme = createTheme({
 
 Use `extendTheme()` to modify an existing preset:
 
-```ts
+```ts title="extending-a-theme.ts"
 import { extendTheme } from "@farming-labs/docs";
 import { fumadocs } from "@farming-labs/theme";
 
