@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 /**
  * Set all @farming-labs/* dependencies in example projects to the matching
- * local package versions (instead of workspace:* or an older version).
+ * published package versions.
+ *
+ * Examples should stay installable outside this monorepo, so this script
+ * always writes raw semver strings instead of `workspace:` protocol specs.
  *
  * Usage: node scripts/set-examples-version.mjs
  *    or: pnpm run examples:version
@@ -52,10 +55,7 @@ function updatePackageJson(dir) {
       const currentVersion = deps[name];
       if (!expectedVersion) continue;
 
-      const nextVersion =
-        typeof currentVersion === "string" && currentVersion.startsWith("workspace:")
-          ? `workspace:${expectedVersion}`
-          : expectedVersion;
+      const nextVersion = expectedVersion;
 
       if (currentVersion !== nextVersion) {
         deps[name] = nextVersion;
