@@ -22,11 +22,13 @@ import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { MDXImg } from "./mdx-img.js";
 import { createPreWithCopyCallback } from "./code-block-copy-wrapper.js";
+import { HoverLink } from "./hover-link.js";
 import type { CodeBlockCopyData } from "@farming-labs/docs";
 
 const extendedMdxComponents = {
   ...defaultMdxComponents,
   img: MDXImg,
+  HoverLink,
   Tab,
   Tabs,
 };
@@ -56,4 +58,4 @@ export function getMDXComponents<T extends Record<string, unknown> = Record<stri
   return base;
 }
 
-export { defaultMdxComponents, extendedMdxComponents, Tab, Tabs };
+export { defaultMdxComponents, extendedMdxComponents, HoverLink, Tab, Tabs };

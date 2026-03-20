@@ -91,8 +91,35 @@ The following components are available by default (from `fumadocs-ui`):
 - `img` — images
 - `blockquote` — blockquotes
 - `hr` — horizontal rules
+- `HoverLink` — hover-triggered popover link card with title, description, and CTA
 - `Tab`, `Tabs` — tabbed content
 - `Callout` — callout/admonition boxes
+
+### Example: Use `HoverLink`
+
+`HoverLink` gives you an inline trigger that opens a richer popover card on hover or focus. It is useful when you want to reference another page without breaking the reader's flow immediately.
+
+```mdx title="page.mdx"
+<HoverLink
+  href="/docs/installation"
+  title="Installation"
+  description="Set up @farming-labs/docs in a new or existing app with the CLI or the manual steps."
+  linkLabel="Read the guide"
+>
+  installation guide
+</HoverLink>
+```
+
+Live example:
+
+<HoverLink
+  href="/docs/installation"
+  title="Installation"
+  description="Set up @farming-labs/docs in a new or existing app with the CLI or the manual steps."
+  linkLabel="Read the guide"
+>
+  installation guide
+</HoverLink>
 
 ### Example: Override the `a` tag
 
