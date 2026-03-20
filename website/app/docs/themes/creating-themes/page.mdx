@@ -210,7 +210,6 @@ components: {
   CodeBlock: { showCopyButton: true },
   Tabs: { style: "default" },
   HoverLink: {
-    previewLabel: "Related guide",
     linkLabel: "Open page",
     showIndicator: true,
     align: "start",
@@ -219,8 +218,8 @@ components: {
 ```
 
 `ui.components` changes the default props for built-in MDX components. For example, `HoverLink`
-can keep the built-in popover UI while changing its preview label, CTA label, or alignment across
-your docs. If you want to replace the component completely, use `components.HoverLink` in
+can keep the built-in popover UI while changing its CTA label, indicator, or alignment across your
+docs. If you want to replace the component completely, use `components.HoverLink` in
 `docs.config.tsx` instead.
 
 ---
@@ -267,7 +266,7 @@ export const MyThemeDefaults = {
   codeBlock: { showCopyButton: true, theme: "github-dark" },
   components: {
     Callout: { variant: "outline" },
-    HoverLink: { previewLabel: "Related guide", linkLabel: "Open page" },
+    HoverLink: { linkLabel: "Open page", showIndicator: true },
   },
 };
 

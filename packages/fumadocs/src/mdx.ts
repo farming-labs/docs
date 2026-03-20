@@ -43,7 +43,6 @@ export interface GetMDXComponentsOptions {
 const mdxComponentDefaults = {
   HoverLink: {
     linkLabel: "Open page",
-    previewLabel: "Link Preview",
     showIndicator: true,
     align: "center",
     side: "bottom",

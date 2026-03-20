@@ -42,7 +42,7 @@ const PixelBorderUIDefaults = {
     header: { height: 56, sticky: true },
   },
   components: {
-    HoverLink: { previewLabel: "Link Preview", linkLabel: "Open page", showIndicator: true },
+    HoverLink: { linkLabel: "Open page", showIndicator: true },
   },
 };
 

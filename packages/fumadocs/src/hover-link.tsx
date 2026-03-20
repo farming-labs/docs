@@ -26,7 +26,7 @@ export function HoverLink({
   description,
   children,
   linkLabel = "Open page",
-  previewLabel = "Link Preview",
+  previewLabel,
   external,
   prefetch,
   showIndicator = true,
@@ -120,18 +120,21 @@ export function HoverLink({
       >
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-            <span
-              style={{
-                fontSize: "0.68rem",
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-                fontFamily: "var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace))",
-                color:
-                  "color-mix(in srgb, var(--color-fd-popover-foreground, currentColor) 55%, transparent)",
-              }}
-            >
-              {previewLabel}
-            </span>
+            {previewLabel ? (
+              <span
+                style={{
+                  fontSize: "0.68rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                  fontFamily:
+                    "var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace))",
+                  color:
+                    "color-mix(in srgb, var(--color-fd-popover-foreground, currentColor) 55%, transparent)",
+                }}
+              >
+                {previewLabel}
+              </span>
+            ) : null}
             <Link
               href={href}
               external={external}
