@@ -102,7 +102,7 @@ Use `upgrade` when docs are already installed and you just want newer package ve
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
-    ```bash title="npm-upgrade.sh"
+    ```bash title="terminal.sh"
     npx @farming-labs/docs upgrade
     ```
   </Tab>
@@ -262,7 +262,7 @@ The CLI also detects your package manager from the lockfile in the current direc
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
-    ```bash title="npm-upgrade-2.sh"
+    ```bash title="terminal-2.sh"
     npx @farming-labs/docs upgrade
     ```
   </Tab>
@@ -295,7 +295,7 @@ To specify the framework explicitly (e.g. in a monorepo or when auto-detect fail
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
-    ```bash title="npm-upgrade-3.sh"
+    ```bash title="terminal-3.sh"
     npx @farming-labs/docs upgrade --framework tanstack-start
     # or
     npx @farming-labs/docs upgrade tanstack-start
@@ -330,7 +330,7 @@ Use **`--latest`** (default) to install the latest stable release, or **`--beta`
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
-    ```bash title="npm-upgrade-4.sh"
+    ```bash title="terminal-4.sh"
     npx @farming-labs/docs upgrade              # latest stable (default)
     npx @farming-labs/docs upgrade --latest     # same
     npx @farming-labs/docs upgrade --beta       # beta versions
