@@ -114,6 +114,7 @@ export {
   CodeBlockTabsTrigger,
   Pre,
 } from "fumadocs-ui/components/codeblock";
+export { HoverLink } from "./hover-link.js";
 
 // ─── Core helpers (re-exported for convenience) ───────────────────────
 export { createTheme, extendTheme, deepMerge, defineDocs } from "@farming-labs/docs";

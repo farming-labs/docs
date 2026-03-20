@@ -91,8 +91,77 @@ The following components are available by default (from `fumadocs-ui`):
 - `img` — images
 - `blockquote` — blockquotes
 - `hr` — horizontal rules
+- `HoverLink` — hover-triggered popover link card with title, description, and CTA
 - `Tab`, `Tabs` — tabbed content
 - `Callout` — callout/admonition boxes
+
+### Example: Use `HoverLink`
+
+`HoverLink` gives you an inline trigger that opens a richer popover card on hover or focus. It is useful when you want to reference another page without breaking the reader's flow immediately.
+
+```mdx title="page.mdx"
+<HoverLink
+  href="/docs/installation"
+  title="Installation"
+  description="Set up @farming-labs/docs in a new or existing app with the CLI or the manual steps."
+  linkLabel="Read the guide"
+>
+  installation guide
+</HoverLink>
+```
+
+Live example:
+
+<HoverLink
+  href="/docs/installation"
+  title="Installation"
+  description="Set up @farming-labs/docs in a new or existing app with the CLI or the manual steps."
+  linkLabel="Read the guide"
+>
+  installation guide
+</HoverLink>
+
+### Try it out
+
+<Callout type="tip" title="This section is interactive">
+Hover or focus the links below to test `HoverLink` directly on the docs site.
+</Callout>
+
+<div className="my-6 rounded-xl border border-black/10 bg-black/[0.02] p-5 dark:border-white/10 dark:bg-white/[0.02]">
+  <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45">
+    Interactive demo
+  </div>
+  <p className="mb-0 mt-3 text-sm leading-7 text-black/65 dark:text-white/65">
+    Explore the{" "}
+    <HoverLink
+      href="/docs/installation"
+      title="Installation"
+      description="Set up @farming-labs/docs in a new or existing app with the CLI or the manual steps."
+      linkLabel="Open installation"
+    >
+      installation guide
+    </HoverLink>
+    , skim the{" "}
+    <HoverLink
+      href="/docs/configuration"
+      title="Configuration"
+      description="See every top-level docs.config option for themes, nav, metadata, components, and search."
+      linkLabel="Open configuration"
+    >
+      configuration reference
+    </HoverLink>
+    , or jump to{" "}
+    <HoverLink
+      href="/docs/themes/creating-themes"
+      title="Creating Themes"
+      description="Build and share a custom theme with your own colors, typography, and UI tokens."
+      linkLabel="Open theme guide"
+    >
+      theme creation
+    </HoverLink>
+    .
+  </p>
+</div>
 
 ### Example: Override the `a` tag
 

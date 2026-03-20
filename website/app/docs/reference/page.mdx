@@ -42,7 +42,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `breadcrumb`  | `boolean \| BreadcrumbConfig`                   | `true`           | Breadcrumb navigation                                                                |
 | `sidebar`     | `boolean \| SidebarConfig`                      | `true`           | Sidebar visibility and customization                                                 |
 | `icons`       | `Record<string, unknown>`                       | —                | Icon registry for frontmatter `icon` fields                                          |
-| `components`  | `Record<string, unknown>`                       | —                | Custom MDX component overrides                                                       |
+| `components`  | `Record<string, unknown>`                       | —                | Custom MDX component overrides, including built-ins like `HoverLink`                |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void`              | —                | Callback when the user clicks the copy button on a code block (runs in addition to copy) |
 | `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
 | `ai`          | `AIConfig`                                      | —                | RAG-powered AI chat                                                                  |
@@ -50,6 +50,10 @@ Top-level configuration object passed to `defineDocs()`.
 | `ordering`    | `"alphabetical" \| "numeric" \| OrderingItem[]` | `"alphabetical"` | Sidebar page ordering strategy                                                       |
 | `metadata`    | `DocsMetadata`                                  | —                | SEO metadata                                                                         |
 | `og`          | `OGConfig`                                      | —                | Open Graph image config                                                              |
+
+---
+
+`components` is merged into the default MDX component map, so you can both add your own components and replace built-ins such as `Callout`, `Tabs`, or `HoverLink`. For usage examples and a live demo, see [Components](/docs/customization/components).
 
 ---
 
