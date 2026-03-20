@@ -27,7 +27,9 @@ const PixelBorderUIDefaults = {
     toc: { enabled: true, depth: 3 },
     header: { height: 56, sticky: true },
   },
-  components: {},
+  components: {
+    HoverLink: { linkLabel: "Open page", showIndicator: false },
+  },
 };
 
 export const pixelBorder = createTheme({

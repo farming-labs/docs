@@ -70,6 +70,16 @@ function scanHeadings() {
   });
 }
 
+function setHoverLinkOpen(root: HTMLElement, open: boolean) {
+  const trigger = root.querySelector(".fd-hover-link-trigger");
+  const popover = root.querySelector(".fd-hover-link-popover");
+  if (!(trigger instanceof HTMLElement) || !(popover instanceof HTMLElement)) return;
+
+  root.classList.toggle("fd-hover-link-open", open);
+  trigger.setAttribute("aria-expanded", String(open));
+  popover.setAttribute("aria-hidden", String(!open));
+}
+
 function wireInteractive() {
   requestAnimationFrame(() => {
     document.querySelectorAll(".fd-copy-btn").forEach((btn) => {
@@ -122,6 +132,95 @@ function wireInteractive() {
       const localized = withLang(href);
       if (localized) link.setAttribute("href", localized);
     });
+
+    document.querySelectorAll("[data-hover-link]").forEach((root) => {
+      if (!(root instanceof HTMLElement)) return;
+      if (root.dataset.fdHoverLinkBound === "true") return;
+      root.dataset.fdHoverLinkBound = "true";
+
+      const trigger = root.querySelector(".fd-hover-link-trigger");
+      const popover = root.querySelector(".fd-hover-link-popover");
+      if (!(trigger instanceof HTMLElement) || !(popover instanceof HTMLElement)) return;
+
+      let closeTimer = 0;
+      const containsTarget = (target: EventTarget | null) => target instanceof Node && root.contains(target);
+      const clearCloseTimer = () => {
+        if (closeTimer !== 0) {
+          window.clearTimeout(closeTimer);
+          closeTimer = 0;
+        }
+      };
+
+      const openPopover = () => {
+        clearCloseTimer();
+        setHoverLinkOpen(root, true);
+      };
+      const closePopover = () => {
+        clearCloseTimer();
+        setHoverLinkOpen(root, false);
+      };
+      const closePopoverSoon = () => {
+        clearCloseTimer();
+        closeTimer = window.setTimeout(closePopover, 90);
+      };
+
+      trigger.addEventListener("pointerenter", openPopover);
+      trigger.addEventListener("pointerleave", (event) => {
+        if (containsTarget(event.relatedTarget)) return;
+        closePopoverSoon();
+      });
+      trigger.addEventListener("focus", (event) => {
+        if (!(event.currentTarget instanceof HTMLElement)) return;
+        if (typeof event.currentTarget.matches === "function" && !event.currentTarget.matches(":focus-visible")) {
+          return;
+        }
+        openPopover();
+      });
+      trigger.addEventListener("blur", (event) => {
+        if (containsTarget(event.relatedTarget)) return;
+        closePopoverSoon();
+      });
+      trigger.addEventListener("click", (event) => {
+        event.preventDefault();
+        openPopover();
+      });
+
+      popover.addEventListener("pointerenter", openPopover);
+      popover.addEventListener("pointerleave", (event) => {
+        if (containsTarget(event.relatedTarget)) return;
+        closePopoverSoon();
+      });
+      popover.addEventListener("focusin", openPopover);
+      popover.addEventListener("focusout", (event) => {
+        if (containsTarget(event.relatedTarget)) return;
+        closePopoverSoon();
+      });
+
+      root.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        closePopover();
+      });
+    });
+
+    if (document.documentElement.dataset.fdHoverLinkGlobalBound !== "true") {
+      document.documentElement.dataset.fdHoverLinkGlobalBound = "true";
+
+      document.addEventListener("pointerdown", (event) => {
+        document.querySelectorAll("[data-hover-link].fd-hover-link-open").forEach((root) => {
+          if (!(root instanceof HTMLElement)) return;
+          if (event.target instanceof Node && root.contains(event.target)) return;
+          setHoverLinkOpen(root, false);
+        });
+      });
+
+      document.addEventListener("focusin", (event) => {
+        document.querySelectorAll("[data-hover-link].fd-hover-link-open").forEach((root) => {
+          if (!(root instanceof HTMLElement)) return;
+          if (event.target instanceof Node && root.contains(event.target)) return;
+          setHoverLinkOpen(root, false);
+        });
+      });
+    }
   });
 }
 

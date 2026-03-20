@@ -9,6 +9,7 @@
  *   - Tables, lists, inline formatting, headings with anchor IDs
  */
 
+import type { DocsTheme } from "@farming-labs/docs";
 import { createHighlighter, type Highlighter } from "shiki";
 
 let highlighterPromise: Promise<Highlighter> | null = null;
@@ -46,6 +47,153 @@ function slugify(text: string): string {
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .trim();
+}
+
+const hoverLinkDefaults = {
+  linkLabel: "Open page",
+  showIndicator: false,
+  align: "center",
+  side: "bottom",
+  sideOffset: 12,
+} as const;
+
+interface RenderMarkdownOptions {
+  theme?: DocsTheme;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function parseJsxAttributes(source: string): Record<string, string | boolean> {
+  const attrs: Record<string, string | boolean> = {};
+  const pattern = /([A-Za-z_:][-.\w:]*)(?:=(?:"([^"]*)"|'([^']*)'|\{([^}]*)\}))?/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(source)) !== null) {
+    const [, name, doubleQuoted, singleQuoted, braced] = match;
+    const rawValue = doubleQuoted ?? singleQuoted ?? braced;
+    attrs[name] = rawValue === undefined ? true : rawValue.trim();
+  }
+
+  return attrs;
+}
+
+function toBoolean(value: string | boolean | undefined, fallback: boolean): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    if (value === "true") return true;
+    if (value === "false") return false;
+    return true;
+  }
+  return fallback;
+}
+
+function toStringValue(value: string | boolean | undefined): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function toNumberValue(value: string | boolean | undefined): number | undefined {
+  if (typeof value !== "string") return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function normalizeHoverAlign(value?: string): "start" | "center" | "end" {
+  if (value === "start" || value === "end") return value;
+  return "center";
+}
+
+function normalizeHoverSide(value?: string): "top" | "right" | "bottom" | "left" {
+  if (value === "top" || value === "right" || value === "left") return value;
+  return "bottom";
+}
+
+function resolveHoverLinkOptions(theme?: DocsTheme): Record<string, unknown> {
+  const configured = theme?.ui?.components?.HoverLink;
+  const base = { ...hoverLinkDefaults } as Record<string, unknown>;
+
+  if (typeof configured === "function") {
+    const resolved = configured(base);
+    if (resolved && typeof resolved === "object") {
+      return { ...base, ...(resolved as Record<string, unknown>) };
+    }
+    return base;
+  }
+
+  if (configured && typeof configured === "object") {
+    return { ...base, ...(configured as Record<string, unknown>) };
+  }
+
+  return base;
+}
+
+function renderHoverLink(attrSource: string, children: string, theme?: DocsTheme): string {
+  const attrs = parseJsxAttributes(attrSource);
+  const defaults = resolveHoverLinkOptions(theme);
+  const href = toStringValue(attrs.href);
+  const title = toStringValue(attrs.title);
+  const description = toStringValue(attrs.description);
+
+  if (!href || !title || !description) return children;
+
+  const linkLabel =
+    toStringValue(attrs.linkLabel) ??
+    toStringValue(defaults.linkLabel) ??
+    hoverLinkDefaults.linkLabel;
+  const previewLabel = toStringValue(attrs.previewLabel) ?? toStringValue(defaults.previewLabel);
+  const showIndicator =
+    attrs.showIndicator !== undefined
+      ? toBoolean(attrs.showIndicator, hoverLinkDefaults.showIndicator)
+      : toBoolean(
+          defaults.showIndicator as string | boolean | undefined,
+          hoverLinkDefaults.showIndicator,
+        );
+  const external =
+    attrs.external !== undefined
+      ? toBoolean(attrs.external, false)
+      : toBoolean(defaults.external as string | boolean | undefined, false);
+  const align = normalizeHoverAlign(
+    toStringValue(attrs.align) ?? toStringValue(defaults.align as string | boolean | undefined),
+  );
+  const side = normalizeHoverSide(
+    toStringValue(attrs.side) ?? toStringValue(defaults.side as string | boolean | undefined),
+  );
+  const sideOffset =
+    toNumberValue(attrs.sideOffset) ??
+    toNumberValue(defaults.sideOffset as string | boolean | undefined) ??
+    hoverLinkDefaults.sideOffset;
+
+  const targetAttrs = external ? ' target="_blank" rel="noopener noreferrer"' : "";
+  const triggerHtml = children.trim() || escapeHtml(title);
+  const indicatorHtml = showIndicator
+    ? '<span class="fd-hover-link-indicator" aria-hidden="true">+</span>'
+    : "";
+  const previewHtml = previewLabel
+    ? `<span class="fd-hover-link-preview-label">${escapeHtml(previewLabel)}</span>`
+    : "";
+
+  return (
+    `<span class="fd-hover-link" data-hover-link data-align="${align}" data-side="${side}" style="--fd-hover-link-side-offset:${sideOffset}px">` +
+    `<button type="button" class="fd-hover-link-trigger" aria-haspopup="dialog" aria-expanded="false">${triggerHtml}${indicatorHtml}</button>` +
+    `<span class="fd-hover-link-popover" role="dialog" aria-hidden="true">` +
+    `<span class="fd-hover-link-card">` +
+    `<span class="fd-hover-link-body">` +
+    previewHtml +
+    `<a href="${escapeHtml(href)}" class="fd-hover-link-title"${targetAttrs}>${escapeHtml(title)}</a>` +
+    `<span class="fd-hover-link-description">${escapeHtml(description)}</span>` +
+    `</span>` +
+    `<span class="fd-hover-link-footer">` +
+    `<a href="${escapeHtml(href)}" class="fd-hover-link-cta"${targetAttrs}>${escapeHtml(linkLabel)}<span aria-hidden="true">→</span></a>` +
+    `</span>` +
+    `</span>` +
+    `</span>` +
+    `</span>`
+  );
 }
 
 const calloutIcons: Record<string, string> = {
@@ -135,7 +283,10 @@ function dedentCode(raw: string): string {
  *
  * Designed for server-side use in Astro page loaders.
  */
-export async function renderMarkdown(content: string): Promise<string> {
+export async function renderMarkdown(
+  content: string,
+  options: RenderMarkdownOptions = {},
+): Promise<string> {
   if (!content) return "";
 
   const hl = await getHighlighter();
@@ -190,6 +341,16 @@ export async function renderMarkdown(content: string): Promise<string> {
       const { html, raw } = highlightCode(hl, code, lang);
       const placeholder = `%%CODEBLOCK_${codeBlocks.length}%%`;
       codeBlocks.push(wrapCodeWithCopy(html, raw, title, lang));
+      return placeholder;
+    },
+  );
+
+  const hoverLinkBlocks: string[] = [];
+  result = result.replace(
+    /<HoverLink\s+([^>]*?)>([\s\S]*?)<\/HoverLink>/g,
+    (_: string, attrSource: string, children: string) => {
+      const placeholder = `%%HOVERLINK_${hoverLinkBlocks.length}%%`;
+      hoverLinkBlocks.push(renderHoverLink(attrSource, children, options.theme));
       return placeholder;
     },
   );
@@ -319,6 +480,9 @@ export async function renderMarkdown(content: string): Promise<string> {
   }
   for (let i = 0; i < tabsBlocks.length; i++) {
     result = result.replace(`%%TABS_${i}%%`, tabsBlocks[i]);
+  }
+  for (let i = 0; i < hoverLinkBlocks.length; i++) {
+    result = result.replace(`%%HOVERLINK_${i}%%`, hoverLinkBlocks[i]);
   }
 
   return result;
