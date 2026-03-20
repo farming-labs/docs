@@ -10,8 +10,14 @@ export interface HoverLinkProps {
   description: string;
   children: ReactNode;
   linkLabel?: string;
+  previewLabel?: string;
   external?: boolean;
   prefetch?: boolean;
+  showIndicator?: boolean;
+  align?: "start" | "center" | "end";
+  side?: "top" | "right" | "bottom" | "left";
+  sideOffset?: number;
+  closeDelay?: number;
 }
 
 export function HoverLink({
@@ -20,8 +26,14 @@ export function HoverLink({
   description,
   children,
   linkLabel = "Open page",
+  previewLabel = "Link Preview",
   external,
   prefetch,
+  showIndicator = true,
+  align = "center",
+  side = "bottom",
+  sideOffset = 12,
+  closeDelay = 120,
 }: HoverLinkProps) {
   const [open, setOpen] = useState(false);
   const closeTimerRef = useRef<number | null>(null);
@@ -40,7 +52,7 @@ export function HoverLink({
 
   function closePopover() {
     clearCloseTimer();
-    closeTimerRef.current = window.setTimeout(() => setOpen(false), 120);
+    closeTimerRef.current = window.setTimeout(() => setOpen(false), closeDelay);
   }
 
   useEffect(() => {
@@ -79,14 +91,17 @@ export function HoverLink({
           }}
         >
           <span>{children}</span>
-          <span aria-hidden="true" style={{ fontSize: "0.75em", opacity: 0.8 }}>
-            +
-          </span>
+          {showIndicator ? (
+            <span aria-hidden="true" style={{ fontSize: "0.75em", opacity: 0.8 }}>
+              +
+            </span>
+          ) : null}
         </button>
       </PopoverTrigger>
       <PopoverContent
-        align="center"
-        sideOffset={12}
+        align={align}
+        side={side}
+        sideOffset={sideOffset}
         onMouseEnter={openPopover}
         onMouseLeave={closePopover}
         onFocusCapture={openPopover}
@@ -115,7 +130,7 @@ export function HoverLink({
                   "color-mix(in srgb, var(--color-fd-popover-foreground, currentColor) 55%, transparent)",
               }}
             >
-              Link Preview
+              {previewLabel}
             </span>
             <Link
               href={href}

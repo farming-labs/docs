@@ -36,6 +36,7 @@ const DarkBoldUIDefaults = {
   components: {
     Callout: { variant: "soft", icon: true },
     CodeBlock: { showCopyButton: true },
+    HoverLink: { previewLabel: "Link Preview", linkLabel: "Open page", showIndicator: true },
     Tabs: { style: "default" },
   },
 };

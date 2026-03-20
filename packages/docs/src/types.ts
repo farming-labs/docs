@@ -192,7 +192,7 @@ export interface UIConfig {
     /** Card background color override */
     background?: string;
   };
-  /** Default props/variants for MDX components (Callout, CodeBlock, Tabs, etc.) */
+  /** Default props/variants for built-in MDX components (Callout, CodeBlock, Tabs, HoverLink, etc.) */
   components?: {
     [key: string]: Record<string, unknown> | ((defaults: unknown) => unknown);
   };

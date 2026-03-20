@@ -54,6 +54,7 @@ export function TanstackDocsPage({
       <Content
         components={getMDXComponents(config.components as Record<string, unknown>, {
           onCopyClick: config.onCopyClick,
+          theme: config.theme,
         })}
       />
     </TanstackDocsLayout>

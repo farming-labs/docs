@@ -51,7 +51,10 @@ export function useMDXComponents(components?: MDXComponents): MDXComponents {
       ...(docsConfig.components as MDXComponents),
       ...components,
     },
-    { onCopyClick: docsConfig.onCopyClick },
+    {
+      onCopyClick: docsConfig.onCopyClick,
+      theme: docsConfig.theme,
+    },
   );
 }
 `;

@@ -13,8 +13,9 @@ Pass custom React components that become available in **all MDX files** — no i
 
 When you register components in `docs.config.ts`, they're merged into the MDX component map via `getMDXComponents()`. The merge order is:
 
-1. **Built-in components** — headings, code blocks, callouts, `Tab`, `Tabs`, etc.
-2. **Your components** — from `docs.config.ts` (overrides built-ins if names match)
+1. **Built-in components** — headings, code blocks, callouts, `Tab`, `Tabs`, `HoverLink`, etc.
+2. **Theme defaults** — from `theme.ui.components` for built-ins like `HoverLink`
+3. **Your components** — from `docs.config.ts` (overrides built-ins if names match)
 
 This means you can both **add new components** and **override existing ones**.
 
@@ -120,6 +121,41 @@ Live example:
 >
   installation guide
 </HoverLink>
+
+### Theme defaults vs config overrides
+
+Use `theme.ui.components` when you want to keep the built-in `HoverLink` but change its default props across the site. Use `components.HoverLink` when you want to replace the component entirely.
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { pixelBorder } from "@farming-labs/theme/pixel-border";
+
+export default defineDocs({
+  theme: pixelBorder({
+    ui: {
+      components: {
+        HoverLink: {
+          previewLabel: "Related page",
+          linkLabel: "Open guide",
+          showIndicator: false,
+          align: "start",
+        },
+      },
+    },
+  }),
+});
+```
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { MyHoverLink } from "./components/my-hover-link";
+
+export default defineDocs({
+  components: {
+    HoverLink: MyHoverLink,
+  },
+});
+```
 
 ### Try it out
 

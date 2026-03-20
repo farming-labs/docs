@@ -41,7 +41,9 @@ const PixelBorderUIDefaults = {
     toc: { enabled: true, depth: 3 },
     header: { height: 56, sticky: true },
   },
-  components: {},
+  components: {
+    HoverLink: { previewLabel: "Link Preview", linkLabel: "Open page", showIndicator: true },
+  },
 };
 
 /**
