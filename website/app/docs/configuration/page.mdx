@@ -125,7 +125,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `breadcrumb`  | `boolean \| BreadcrumbConfig`  | `true`          | Breadcrumb navigation                              |
 | `sidebar`     | `boolean \| SidebarConfig`     | `true`          | Sidebar visibility and style                       |
 | `icons`       | `Record<string, Component>`    | —               | Icon registry for frontmatter `icon` fields        |
-| `components`  | `Record<string, Component>`    | —               | Custom MDX components                              |
+| `components`  | `Record<string, Component>`    | —               | Custom MDX components and built-in overrides like `HoverLink` |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
@@ -133,6 +133,8 @@ All configuration lives in a single `docs.config.ts` file.
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template                              |
 | `og`          | `OGConfig`                     | —               | Dynamic Open Graph images (see [API Reference](/docs/reference#ogconfig)) |
+
+The default MDX map already includes built-ins like `Callout`, `Tabs`, and `HoverLink`. Use `components` when you want to add your own components or override any of those defaults. See [Components](/docs/customization/components) for examples and a live `HoverLink` demo.
 
 ## Static export
 
