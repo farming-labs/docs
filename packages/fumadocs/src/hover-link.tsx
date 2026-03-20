@@ -39,6 +39,9 @@ export function HoverLink({
   const closeTimerRef = useRef<number | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const underlineColor = open
+    ? "color-mix(in srgb, var(--color-fd-foreground, currentColor) 68%, transparent)"
+    : "color-mix(in srgb, var(--color-fd-foreground, currentColor) 46%, transparent)";
 
   function clearCloseTimer() {
     if (closeTimerRef.current !== null) {
@@ -107,13 +110,14 @@ export function HoverLink({
             cursor: "pointer",
             textDecoration: "underline",
             textDecorationStyle: "dashed",
+            textDecorationThickness: "0.08em",
             textUnderlineOffset: "0.22em",
-            textDecorationColor:
-              "color-mix(in srgb, var(--color-fd-border, currentColor) 85%, transparent)",
+            textDecorationColor: underlineColor,
             font: "inherit",
             lineHeight: "inherit",
             verticalAlign: "baseline",
             appearance: "none",
+            transition: "text-decoration-color 180ms ease",
           }}
         >
           <span>{children}</span>
