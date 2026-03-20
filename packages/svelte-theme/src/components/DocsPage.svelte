@@ -40,6 +40,25 @@
     return { ...page, url: withLang(page.url, activeLocale) };
   }
 
+  function setHoverLinkOpen(root, open) {
+    if (!(root instanceof HTMLElement)) return;
+    const trigger = root.querySelector(".fd-hover-link-trigger");
+    const popover = root.querySelector(".fd-hover-link-popover");
+    if (!(trigger instanceof HTMLElement) || !(popover instanceof HTMLElement)) return;
+
+    root.classList.toggle("fd-hover-link-open", open);
+    trigger.setAttribute("aria-expanded", String(open));
+    popover.setAttribute("aria-hidden", String(!open));
+  }
+
+  function closeOpenHoverLinks(event) {
+    document.querySelectorAll("[data-hover-link].fd-hover-link-open").forEach((root) => {
+      if (!(root instanceof HTMLElement)) return;
+      if (event.target instanceof Node && root.contains(event.target)) return;
+      setHoverLinkOpen(root, false);
+    });
+  }
+
   onMount(() => {
     scanHeadings();
     wireInteractive();
@@ -115,6 +134,75 @@
         const localized = withLang(href, locale);
         if (localized) link.setAttribute("href", localized);
       });
+
+      document.querySelectorAll("[data-hover-link]").forEach((root) => {
+        if (!(root instanceof HTMLElement)) return;
+        if (root.dataset.fdHoverLinkBound === "true") return;
+        root.dataset.fdHoverLinkBound = "true";
+
+        const trigger = root.querySelector(".fd-hover-link-trigger");
+        const popover = root.querySelector(".fd-hover-link-popover");
+        if (!(trigger instanceof HTMLElement) || !(popover instanceof HTMLElement)) return;
+
+        let closeTimer = 0;
+        const setOpen = (open) => {
+          if (closeTimer !== 0) {
+            window.clearTimeout(closeTimer);
+            closeTimer = 0;
+          }
+          setHoverLinkOpen(root, open);
+        };
+
+        const containsTarget = (target) => target instanceof Node && root.contains(target);
+        const closeSoon = () => {
+          if (closeTimer !== 0) window.clearTimeout(closeTimer);
+          closeTimer = window.setTimeout(() => setOpen(false), 90);
+        };
+
+        trigger.addEventListener("pointerenter", () => setOpen(true));
+        trigger.addEventListener("pointerleave", (event) => {
+          if (containsTarget(event.relatedTarget)) return;
+          closeSoon();
+        });
+        trigger.addEventListener("focus", (event) => {
+          if (!(event.currentTarget instanceof HTMLElement)) return;
+          if (typeof event.currentTarget.matches === "function" && !event.currentTarget.matches(":focus-visible")) {
+            return;
+          }
+          setOpen(true);
+        });
+        trigger.addEventListener("blur", (event) => {
+          if (containsTarget(event.relatedTarget)) return;
+          closeSoon();
+        });
+        trigger.addEventListener("click", (event) => {
+          event.preventDefault();
+          setOpen(true);
+        });
+
+        popover.addEventListener("pointerenter", () => setOpen(true));
+        popover.addEventListener("pointerleave", (event) => {
+          if (containsTarget(event.relatedTarget)) return;
+          closeSoon();
+        });
+        popover.addEventListener("focusin", () => setOpen(true));
+        popover.addEventListener("focusout", (event) => {
+          if (containsTarget(event.relatedTarget)) return;
+          closeSoon();
+        });
+
+        root.addEventListener("keydown", (event) => {
+          if (event.key !== "Escape") return;
+          setOpen(false);
+        });
+      });
+
+      if (document.documentElement.dataset.fdHoverLinkGlobalBound !== "true") {
+        document.documentElement.dataset.fdHoverLinkGlobalBound = "true";
+
+        document.addEventListener("pointerdown", closeOpenHoverLinks);
+        document.addEventListener("focusin", closeOpenHoverLinks);
+      }
     });
   }
 </script>
