@@ -80,6 +80,14 @@ function setHoverLinkOpen(root: HTMLElement, open: boolean) {
   popover.setAttribute("aria-hidden", String(!open));
 }
 
+function closeOpenHoverLinks(event: Event) {
+  document.querySelectorAll("[data-hover-link].fd-hover-link-open").forEach((root) => {
+    if (!(root instanceof HTMLElement)) return;
+    if (event.target instanceof Node && root.contains(event.target)) return;
+    setHoverLinkOpen(root, false);
+  });
+}
+
 function wireInteractive() {
   requestAnimationFrame(() => {
     document.querySelectorAll(".fd-copy-btn").forEach((btn) => {
@@ -205,21 +213,8 @@ function wireInteractive() {
     if (document.documentElement.dataset.fdHoverLinkGlobalBound !== "true") {
       document.documentElement.dataset.fdHoverLinkGlobalBound = "true";
 
-      document.addEventListener("pointerdown", (event) => {
-        document.querySelectorAll("[data-hover-link].fd-hover-link-open").forEach((root) => {
-          if (!(root instanceof HTMLElement)) return;
-          if (event.target instanceof Node && root.contains(event.target)) return;
-          setHoverLinkOpen(root, false);
-        });
-      });
-
-      document.addEventListener("focusin", (event) => {
-        document.querySelectorAll("[data-hover-link].fd-hover-link-open").forEach((root) => {
-          if (!(root instanceof HTMLElement)) return;
-          if (event.target instanceof Node && root.contains(event.target)) return;
-          setHoverLinkOpen(root, false);
-        });
-      });
+      document.addEventListener("pointerdown", closeOpenHoverLinks);
+      document.addEventListener("focusin", closeOpenHoverLinks);
     }
   });
 }

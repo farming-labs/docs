@@ -83,21 +83,22 @@ function parseJsxAttributes(source: string): Record<string, string | boolean> {
   return attrs;
 }
 
-function toBoolean(value: string | boolean | undefined, fallback: boolean): boolean {
+function toBoolean(value: unknown, fallback: boolean): boolean {
   if (typeof value === "boolean") return value;
   if (typeof value === "string") {
     if (value === "true") return true;
     if (value === "false") return false;
-    return true;
+    return fallback;
   }
   return fallback;
 }
 
-function toStringValue(value: string | boolean | undefined): string | undefined {
+function toStringValue(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
-function toNumberValue(value: string | boolean | undefined): number | undefined {
+function toNumberValue(value: unknown): number | undefined {
+  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
   if (typeof value !== "string") return undefined;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
@@ -143,35 +144,26 @@ function renderHoverLink(attrSource: string, children: string, theme?: DocsTheme
 
   const linkLabel =
     toStringValue(attrs.linkLabel) ??
-    toStringValue(defaults.linkLabel as string | boolean | undefined) ??
+    toStringValue(defaults.linkLabel) ??
     hoverLinkDefaults.linkLabel;
-  const previewLabel =
-    toStringValue(attrs.previewLabel) ??
-    toStringValue(defaults.previewLabel as string | boolean | undefined);
+  const previewLabel = toStringValue(attrs.previewLabel) ?? toStringValue(defaults.previewLabel);
   const showIndicator =
     attrs.showIndicator !== undefined
       ? toBoolean(attrs.showIndicator, hoverLinkDefaults.showIndicator)
-      : toBoolean(
-          defaults.showIndicator as string | boolean | undefined,
-          hoverLinkDefaults.showIndicator,
-        );
+      : toBoolean(defaults.showIndicator, hoverLinkDefaults.showIndicator);
   const external =
     attrs.external !== undefined
       ? toBoolean(attrs.external, false)
-      : toBoolean(defaults.external as string | boolean | undefined, false);
-  const align = normalizeHoverAlign(
-    toStringValue(attrs.align) ?? toStringValue(defaults.align as string | boolean | undefined),
-  );
-  const side = normalizeHoverSide(
-    toStringValue(attrs.side) ?? toStringValue(defaults.side as string | boolean | undefined),
-  );
+      : toBoolean(defaults.external, false);
+  const align = normalizeHoverAlign(toStringValue(attrs.align) ?? toStringValue(defaults.align));
+  const side = normalizeHoverSide(toStringValue(attrs.side) ?? toStringValue(defaults.side));
   const sideOffset =
     toNumberValue(attrs.sideOffset) ??
-    toNumberValue(defaults.sideOffset as string | boolean | undefined) ??
+    toNumberValue(defaults.sideOffset) ??
     hoverLinkDefaults.sideOffset;
 
   const targetAttrs = external ? ' target="_blank" rel="noopener noreferrer"' : "";
-  const triggerHtml = children.trim() || escapeHtml(title);
+  const triggerHtml = escapeHtml(children.trim()) || escapeHtml(title);
   const indicatorHtml = showIndicator
     ? '<span class="fd-hover-link-indicator" aria-hidden="true">+</span>'
     : "";

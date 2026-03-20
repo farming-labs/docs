@@ -40,6 +40,25 @@
     return { ...page, url: withLang(page.url, activeLocale) };
   }
 
+  function setHoverLinkOpen(root, open) {
+    if (!(root instanceof HTMLElement)) return;
+    const trigger = root.querySelector(".fd-hover-link-trigger");
+    const popover = root.querySelector(".fd-hover-link-popover");
+    if (!(trigger instanceof HTMLElement) || !(popover instanceof HTMLElement)) return;
+
+    root.classList.toggle("fd-hover-link-open", open);
+    trigger.setAttribute("aria-expanded", String(open));
+    popover.setAttribute("aria-hidden", String(!open));
+  }
+
+  function closeOpenHoverLinks(event) {
+    document.querySelectorAll("[data-hover-link].fd-hover-link-open").forEach((root) => {
+      if (!(root instanceof HTMLElement)) return;
+      if (event.target instanceof Node && root.contains(event.target)) return;
+      setHoverLinkOpen(root, false);
+    });
+  }
+
   onMount(() => {
     scanHeadings();
     wireInteractive();
@@ -131,9 +150,7 @@
             window.clearTimeout(closeTimer);
             closeTimer = 0;
           }
-          root.classList.toggle("fd-hover-link-open", open);
-          trigger.setAttribute("aria-expanded", String(open));
-          popover.setAttribute("aria-hidden", String(!open));
+          setHoverLinkOpen(root, open);
         };
 
         const containsTarget = (target) => target instanceof Node && root.contains(target);
@@ -183,31 +200,8 @@
       if (document.documentElement.dataset.fdHoverLinkGlobalBound !== "true") {
         document.documentElement.dataset.fdHoverLinkGlobalBound = "true";
 
-        document.addEventListener("pointerdown", (event) => {
-          document.querySelectorAll("[data-hover-link].fd-hover-link-open").forEach((root) => {
-            if (!(root instanceof HTMLElement)) return;
-            if (event.target instanceof Node && root.contains(event.target)) return;
-            const trigger = root.querySelector(".fd-hover-link-trigger");
-            const popover = root.querySelector(".fd-hover-link-popover");
-            if (!(trigger instanceof HTMLElement) || !(popover instanceof HTMLElement)) return;
-            root.classList.remove("fd-hover-link-open");
-            trigger.setAttribute("aria-expanded", "false");
-            popover.setAttribute("aria-hidden", "true");
-          });
-        });
-
-        document.addEventListener("focusin", (event) => {
-          document.querySelectorAll("[data-hover-link].fd-hover-link-open").forEach((root) => {
-            if (!(root instanceof HTMLElement)) return;
-            if (event.target instanceof Node && root.contains(event.target)) return;
-            const trigger = root.querySelector(".fd-hover-link-trigger");
-            const popover = root.querySelector(".fd-hover-link-popover");
-            if (!(trigger instanceof HTMLElement) || !(popover instanceof HTMLElement)) return;
-            root.classList.remove("fd-hover-link-open");
-            trigger.setAttribute("aria-expanded", "false");
-            popover.setAttribute("aria-hidden", "true");
-          });
-        });
+        document.addEventListener("pointerdown", closeOpenHoverLinks);
+        document.addEventListener("focusin", closeOpenHoverLinks);
       }
     });
   }
