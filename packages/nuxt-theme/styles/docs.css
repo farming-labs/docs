@@ -921,14 +921,13 @@ samp {
 
 .fd-hover-link {
   position: relative;
-  display: inline-flex;
-  align-items: baseline;
+  display: inline-block;
   vertical-align: baseline;
   max-width: 100%;
 }
 
 .fd-hover-link-trigger {
-  display: inline;
+  display: inline !important;
   border: none;
   background: transparent;
   padding: 0;
@@ -1084,7 +1083,7 @@ samp {
 .fd-hover-link-title {
   color: var(--color-fd-popover-foreground, var(--color-fd-foreground));
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 600 !important;
   line-height: 1.3;
 }
 
@@ -1109,12 +1108,12 @@ samp {
 }
 
 .fd-hover-link-cta {
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   gap: 0.4rem;
   color: var(--color-fd-primary);
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 600 !important;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-family: var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace));

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm --filter './packages/*' run build",
+    "build": "pnpm --filter @farming-labs/docs run build && pnpm --filter @farming-labs/theme run build && pnpm --filter './packages/*' --filter '!@farming-labs/docs' --filter '!@farming-labs/theme' run build",
     "try:init": "pnpm --filter @farming-labs/docs run build && cd examples/next && node ../../packages/docs/dist/cli/index.mjs init",
     "dev": "pnpm --filter example-next dev",
     "examples:version": "node scripts/set-examples-version.mjs",

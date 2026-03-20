@@ -143,9 +143,11 @@ function renderHoverLink(attrSource: string, children: string, theme?: DocsTheme
 
   const linkLabel =
     toStringValue(attrs.linkLabel) ??
-    toStringValue(defaults.linkLabel) ??
+    toStringValue(defaults.linkLabel as string | boolean | undefined) ??
     hoverLinkDefaults.linkLabel;
-  const previewLabel = toStringValue(attrs.previewLabel) ?? toStringValue(defaults.previewLabel);
+  const previewLabel =
+    toStringValue(attrs.previewLabel) ??
+    toStringValue(defaults.previewLabel as string | boolean | undefined);
   const showIndicator =
     attrs.showIndicator !== undefined
       ? toBoolean(attrs.showIndicator, hoverLinkDefaults.showIndicator)
