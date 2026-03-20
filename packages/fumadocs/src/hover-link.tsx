@@ -69,6 +69,10 @@ export function HoverLink({
     );
   }
 
+  function shouldOpenFromFocus(element: HTMLButtonElement) {
+    return typeof element.matches === "function" && element.matches(":focus-visible");
+  }
+
   useEffect(() => {
     return () => {
       if (closeTimerRef.current !== null) {
@@ -94,7 +98,10 @@ export function HoverLink({
             if (isWithinHoverArea(event.relatedTarget)) return;
             closePopover();
           }}
-          onFocus={openPopover}
+          onFocus={(event) => {
+            if (!shouldOpenFromFocus(event.currentTarget)) return;
+            openPopover();
+          }}
           onBlur={(event) => {
             if (isWithinHoverArea(event.relatedTarget)) return;
             closePopover();
@@ -149,6 +156,9 @@ export function HoverLink({
         onInteractOutside={() => {
           clearCloseTimer();
           setOpen(false);
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
         }}
         style={{
           width: "min(22rem, calc(100vw - 2rem))",
