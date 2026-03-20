@@ -43,11 +43,11 @@ export interface GetMDXComponentsOptions {
 const mdxComponentDefaults = {
   HoverLink: {
     linkLabel: "Open page",
-    showIndicator: true,
+    showIndicator: false,
     align: "center",
     side: "bottom",
     sideOffset: 12,
-    closeDelay: 120,
+    closeDelay: 90,
   } satisfies Partial<HoverLinkProps>,
 } as const;
 

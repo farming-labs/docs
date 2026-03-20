@@ -29,14 +29,16 @@ export function HoverLink({
   previewLabel,
   external,
   prefetch,
-  showIndicator = true,
+  showIndicator = false,
   align = "center",
   side = "bottom",
   sideOffset = 12,
-  closeDelay = 120,
+  closeDelay = 90,
 }: HoverLinkProps) {
   const [open, setOpen] = useState(false);
   const closeTimerRef = useRef<number | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
 
   function clearCloseTimer() {
     if (closeTimerRef.current !== null) {
@@ -55,6 +57,15 @@ export function HoverLink({
     closeTimerRef.current = window.setTimeout(() => setOpen(false), closeDelay);
   }
 
+  function isWithinHoverArea(target: EventTarget | null) {
+    if (!(target instanceof Node)) return false;
+
+    return (
+      (triggerRef.current !== null && triggerRef.current.contains(target)) ||
+      (contentRef.current !== null && contentRef.current.contains(target))
+    );
+  }
+
   useEffect(() => {
     return () => {
       if (closeTimerRef.current !== null) {
@@ -64,22 +75,34 @@ export function HoverLink({
   }, []);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        clearCloseTimer();
+        setOpen(nextOpen);
+      }}
+    >
       <PopoverTrigger asChild>
         <button
+          ref={triggerRef}
           type="button"
-          onMouseEnter={openPopover}
-          onMouseLeave={closePopover}
+          onPointerEnter={openPopover}
+          onPointerLeave={(event) => {
+            if (isWithinHoverArea(event.relatedTarget)) return;
+            closePopover();
+          }}
           onFocus={openPopover}
-          onBlur={closePopover}
-          onClick={() => setOpen((value) => !value)}
+          onBlur={(event) => {
+            if (isWithinHoverArea(event.relatedTarget)) return;
+            closePopover();
+          }}
+          onClick={openPopover}
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "0.35rem",
+            display: "inline",
             border: "none",
             background: "transparent",
             padding: 0,
+            margin: 0,
             color: "var(--color-fd-foreground, currentColor)",
             cursor: "pointer",
             textDecoration: "underline",
@@ -88,24 +111,41 @@ export function HoverLink({
             textDecorationColor:
               "color-mix(in srgb, var(--color-fd-border, currentColor) 85%, transparent)",
             font: "inherit",
+            lineHeight: "inherit",
+            verticalAlign: "baseline",
+            appearance: "none",
           }}
         >
           <span>{children}</span>
           {showIndicator ? (
-            <span aria-hidden="true" style={{ fontSize: "0.75em", opacity: 0.8 }}>
+            <span
+              aria-hidden="true"
+              style={{ marginInlineStart: "0.3em", fontSize: "0.75em", opacity: 0.8 }}
+            >
               +
             </span>
           ) : null}
         </button>
       </PopoverTrigger>
       <PopoverContent
+        ref={contentRef}
         align={align}
         side={side}
         sideOffset={sideOffset}
-        onMouseEnter={openPopover}
-        onMouseLeave={closePopover}
+        onPointerEnter={openPopover}
+        onPointerLeave={(event) => {
+          if (isWithinHoverArea(event.relatedTarget)) return;
+          closePopover();
+        }}
         onFocusCapture={openPopover}
-        onBlurCapture={closePopover}
+        onBlurCapture={(event) => {
+          if (isWithinHoverArea(event.relatedTarget)) return;
+          closePopover();
+        }}
+        onInteractOutside={() => {
+          clearCloseTimer();
+          setOpen(false);
+        }}
         style={{
           width: "min(22rem, calc(100vw - 2rem))",
           borderRadius: "calc(var(--radius, 0.75rem) + 2px)",
