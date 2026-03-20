@@ -3,8 +3,10 @@
 import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page";
 import { Children, cloneElement, isValidElement, useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "fumadocs-core/framework";
+import type { DocsFeedbackData } from "@farming-labs/docs";
 import { PageActions } from "./page-actions.js";
 import { useWindowSearchParams } from "./client-location.js";
+import { DocsFeedback } from "./docs-feedback.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 
 interface TOCItem {
@@ -64,6 +66,12 @@ interface DocsPageClientProps {
   descriptionMap?: Record<string, string>;
   /** Frontmatter description to display below the page title (overrides descriptionMap) */
   description?: string;
+  /** Built-in page feedback prompt configuration */
+  feedbackEnabled?: boolean;
+  feedbackQuestion?: string;
+  feedbackPositiveLabel?: string;
+  feedbackNegativeLabel?: string;
+  feedbackOnFeedback?: (data: DocsFeedbackData) => void;
   children: ReactNode;
 }
 
@@ -256,6 +264,11 @@ export function DocsPageClient({
   llmsTxtEnabled = false,
   descriptionMap,
   description,
+  feedbackEnabled = false,
+  feedbackQuestion,
+  feedbackPositiveLabel,
+  feedbackNegativeLabel,
+  feedbackOnFeedback,
   children,
 }: DocsPageClientProps) {
   const fdTocStyle = tocStyle === "directional" ? "clerk" : undefined;
@@ -376,6 +389,17 @@ export function DocsPageClient({
       )}
       <DocsBody style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ flex: 1 }}>{decoratedChildren}</div>
+        {feedbackEnabled && (
+          <DocsFeedback
+            pathname={normalizedPath}
+            entry={entry}
+            locale={activeLocale}
+            question={feedbackQuestion}
+            positiveLabel={feedbackPositiveLabel}
+            negativeLabel={feedbackNegativeLabel}
+            onFeedback={feedbackOnFeedback}
+          />
+        )}
         {showFooter && (
           <div className="not-prose fd-page-footer">
             {githubFileUrl && <EditOnGitHub href={githubFileUrl} />}

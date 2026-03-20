@@ -97,6 +97,24 @@ const lastUpdatedConfig = (() => {
 
 const showLastUpdatedInFooter = !!data.lastModified && lastUpdatedConfig.enabled && lastUpdatedConfig.position === "footer";
 const showLastUpdatedBelowTitle = !!data.lastModified && lastUpdatedConfig.enabled && lastUpdatedConfig.position === "below-title";
+const feedbackConfig = (() => {
+  const defaults = {
+    enabled: false,
+    question: "How is this guide?",
+    positiveLabel: "Good",
+    negativeLabel: "Bad",
+  };
+  const feedback = config?.feedback;
+  if (feedback === undefined || feedback === false) return defaults;
+  if (feedback === true) return { ...defaults, enabled: true };
+  return {
+    enabled: feedback.enabled !== false,
+    question: feedback.question ?? defaults.question,
+    positiveLabel: feedback.positiveLabel ?? defaults.positiveLabel,
+    negativeLabel: feedback.negativeLabel ?? defaults.negativeLabel,
+  };
+})();
+const feedbackEntry = data.entry ?? config?.entry ?? "docs";
 
 const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*/i, "");
 ---
@@ -221,14 +239,75 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
     </>
   )}
   <Fragment set:html={htmlWithoutFirstH1} />
+  {feedbackConfig.enabled && (
+    <section class="fd-feedback" aria-label="Page feedback">
+      <div class="fd-feedback-content">
+        <p class="fd-feedback-question">{feedbackConfig.question}</p>
+        <div class="fd-feedback-actions" role="group" aria-label={feedbackConfig.question}>
+          <button
+            type="button"
+            class="fd-page-action-btn"
+            aria-pressed="false"
+            data-feedback-button
+            data-feedback-value="positive"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M7 21H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h2m0 11V10m0 11h9.28a2 2 0 0 0 1.97-1.66l1.2-7A2 2 0 0 0 17.48 10H13V6.5a2.5 2.5 0 0 0-2.5-2.5L7 10"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span>{feedbackConfig.positiveLabel}</span>
+          </button>
+          <button
+            type="button"
+            class="fd-page-action-btn"
+            aria-pressed="false"
+            data-feedback-button
+            data-feedback-value="negative"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M17 3h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-2M17 3v11m0-11H7.72a2 2 0 0 0-1.97 1.66l-1.2 7A2 2 0 0 0 6.52 14H11v3.5a2.5 2.5 0 0 0 2.5 2.5L17 14"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span>{feedbackConfig.negativeLabel}</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  )}
 </DocsPage>
 
-{(copyMarkdownEnabled || openDocsEnabled) && (
-  <script define:vars={{ pathname, openDocsProviders, githubFileUrl }}>
+{(copyMarkdownEnabled || openDocsEnabled || feedbackConfig.enabled) && (
+  <script
+    define:vars={{
+      pathname,
+      openDocsProviders,
+      githubFileUrl,
+      feedbackEntry,
+      feedbackLocale: data.locale ?? null,
+      feedbackSlug: data.slug ?? "",
+      feedbackTitle: data.title,
+      feedbackDescription: data.description ?? null,
+    }}
+  >
     (function () {
       var pathnameVal = typeof pathname === "string" ? pathname : "";
       var providers = Array.isArray(openDocsProviders) ? openDocsProviders : [];
       var githubFileUrlVal = githubFileUrl || "";
+      var feedbackEntryVal = typeof feedbackEntry === "string" ? feedbackEntry : "docs";
+      var feedbackLocaleVal = typeof feedbackLocale === "string" ? feedbackLocale : undefined;
+      var feedbackSlugVal = typeof feedbackSlug === "string" ? feedbackSlug : "";
+      var feedbackTitleVal = typeof feedbackTitle === "string" ? feedbackTitle : undefined;
+      var feedbackDescriptionVal = typeof feedbackDescription === "string" ? feedbackDescription : undefined;
 
       function init() {
         document.querySelectorAll("[data-copy-page]").forEach(function (btn) {
@@ -297,6 +376,44 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
             var triggerEl = document.querySelector("[data-dropdown-trigger]");
             if (menu) menu.hidden = true;
             if (triggerEl) triggerEl.setAttribute("aria-expanded", "false");
+          });
+        });
+
+        document.querySelectorAll("[data-feedback-button]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var value = btn.getAttribute("data-feedback-value");
+            if (value !== "positive" && value !== "negative") return;
+
+            document.querySelectorAll("[data-feedback-button]").forEach(function (item) {
+              if (!(item instanceof HTMLElement)) return;
+              var selected = item.getAttribute("data-feedback-value") === value;
+              if (selected) item.setAttribute("data-selected", "true");
+              else item.removeAttribute("data-selected");
+              item.setAttribute("aria-pressed", String(selected));
+            });
+
+            var pathnameCurrent = window.location.pathname.replace(/\/$/, "") || "/";
+            var data = {
+              value: value,
+              title: feedbackTitleVal,
+              description: feedbackDescriptionVal,
+              url: window.location.href,
+              pathname: pathnameCurrent,
+              path: pathnameCurrent,
+              entry: feedbackEntryVal,
+              slug: feedbackSlugVal,
+              locale: feedbackLocaleVal,
+            };
+
+            try {
+              if (typeof window !== "undefined" && window.__fdOnFeedback__) {
+                window.__fdOnFeedback__(data);
+              }
+            } catch (_) {}
+
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("fd:feedback", { detail: data }));
+            }
           });
         });
       }

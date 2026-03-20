@@ -307,9 +307,18 @@ figure.shiki:has(figcaption) figcaption {
   color: var(--color-fd-foreground);
 }
 
+.fd-page-action-btn[data-selected="true"] {
+  color: var(--color-fd-accent-foreground);
+  background: var(--color-fd-accent);
+}
+
 .fd-page-action-btn svg {
   flex-shrink: 0;
   color: var(--color-fd-muted-foreground);
+}
+
+.fd-page-action-btn[data-selected="true"] svg {
+  color: currentColor;
 }
 
 /* ─── Open dropdown ─────────────────────────────────────────────────── */
@@ -388,6 +397,37 @@ figure.shiki:has(figcaption) figcaption {
   flex: 1;
 }
 
+/* ─── Docs Feedback ────────────────────────────────────────────────── */
+
+.fd-feedback {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-fd-border, hsl(0 0% 80% / 50%));
+}
+
+.fd-feedback-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.fd-feedback-question {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--color-fd-foreground);
+}
+
+.fd-feedback-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 /* ─── Page Footer (Edit on GitHub + Last Updated) ──────────────────── */
 
 .fd-page-footer {
@@ -413,6 +453,11 @@ figure.shiki:has(figcaption) figcaption {
 }
 
 @media (max-width: 640px) {
+  .fd-feedback-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .fd-last-updated-footer {
     margin-left: 0;
     width: 100%;

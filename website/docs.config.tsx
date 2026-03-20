@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 import { Callout } from "@/components/ui/callout";
+import { submitDocsFeedback } from "@/lib/submit-docs-feedback";
 
 export default defineDocs({
   entry: "docs",
@@ -143,6 +144,12 @@ export default defineDocs({
           urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}",
         },
       ],
+    },
+  },
+  feedback: {
+    enabled: true,
+    onFeedback(data) {
+      void submitDocsFeedback(data);
     },
   },
 

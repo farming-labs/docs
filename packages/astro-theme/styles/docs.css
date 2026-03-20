@@ -701,8 +701,17 @@ samp {
   color: var(--color-fd-foreground);
 }
 
+.fd-page-action-btn[data-selected="true"] {
+  color: var(--color-fd-accent-foreground);
+  background: var(--color-fd-accent);
+}
+
 .fd-page-action-btn svg {
   flex-shrink: 0;
+}
+
+.fd-page-action-btn[data-selected="true"] svg {
+  color: currentColor;
 }
 
 .fd-page-action-dropdown {
@@ -1609,6 +1618,35 @@ html.dark pre.shiki {
 .fd-last-modified-below-title {
   margin-top: 0.25rem;
   margin-bottom: 1rem;
+}
+
+.fd-feedback {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-fd-border);
+}
+
+.fd-feedback-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.fd-feedback-question {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--color-fd-foreground);
+}
+
+.fd-feedback-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 640px) {

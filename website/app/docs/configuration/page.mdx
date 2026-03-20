@@ -127,6 +127,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `icons`       | `Record<string, Component>`    | —               | Icon registry for frontmatter `icon` fields        |
 | `components`  | `Record<string, Component>`    | —               | Custom MDX components and built-in overrides like `HoverLink` |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
+| `feedback`    | `boolean \| FeedbackConfig`    | `false`         | End-of-page feedback prompt and callback                     |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions |
@@ -611,6 +612,78 @@ export default defineDocs({
 2. **Custom event** — Listen for the `fd:code-block-copy` event on `document` or `window`; `event.detail` is the same `{ title?, content, url, language? }` object.
 
 The callback receives `title` (if the code block has a title), `content` (raw code), `url` (current page URL), and `language` (syntax hint) when available.
+
+## Page Feedback
+
+Show a built-in feedback prompt at the end of each docs page. The callback receives whether the user clicked the positive or negative button, plus the current page path, slug, title, URL, and locale when available.
+
+```ts title="docs.config.ts"
+import type { DocsFeedbackData } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+  feedback: {
+    enabled: true,
+    onFeedback(data: DocsFeedbackData) {
+      console.log("Feedback", data.value, data.slug, data.url);
+    },
+  },
+});
+```
+
+If you just want the UI without a callback, use `feedback: true`.
+
+**Next.js / TanStack Start / SvelteKit / Nuxt:** `feedback.onFeedback` is called from the built-in page footer UI.
+
+**Astro:** the built-in UI still comes from `docs.config`, and the same payload is emitted through `window.__fdOnFeedback__` and the `fd:feedback` custom event for client-side analytics hooks.
+
+<Callout type="info" title="How this docs site uses it">
+  This website enables `feedback` in `website/docs.config.tsx` and posts the callback payload to
+  `website/app/api/feedback/route.ts`, where it is inserted into Prisma with the model defined in
+  `website/prisma/schema.prisma`.
+</Callout>
+
+```ts title="website/docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/theme";
+import { submitDocsFeedback } from "@/lib/submit-docs-feedback";
+
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+  feedback: {
+    enabled: true,
+    onFeedback(data) {
+      void submitDocsFeedback(data);
+    },
+  },
+});
+```
+
+```ts title="website/app/api/feedback/route.ts"
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export async function POST(request: Request) {
+  const body = await request.json();
+
+  await prisma.docsFeedback.create({
+    data: {
+      value: body.value === "positive" ? "POSITIVE" : "NEGATIVE",
+      url: body.url,
+      pathname: body.pathname ?? body.path,
+      entry: body.entry,
+      slug: body.slug || null,
+      title: body.title || null,
+      description: body.description || null,
+      locale: body.locale || null,
+    },
+  });
+
+  return NextResponse.json({ ok: true }, { status: 201 });
+}
+```
 
 ## Page Actions
 

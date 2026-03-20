@@ -62,6 +62,7 @@ export function useMDXComponents(components?: MDXComponents): MDXComponents {
 const DOCS_LAYOUT_TEMPLATE = `\
 ${GENERATED_BANNER}
 import docsConfig from "@/docs.config";
+import DocsClientCallbacks from "@farming-labs/next/client-callbacks";
 import { createDocsLayout, createDocsMetadata } from "@farming-labs/theme";
 import { withNextApiReferenceBanner } from "@farming-labs/next/api-reference";
 
@@ -72,6 +73,7 @@ const DocsLayout = createDocsLayout(withNextApiReferenceBanner(docsConfig));
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <DocsClientCallbacks />
       <DocsLayout>{children}</DocsLayout>
     </>
   );

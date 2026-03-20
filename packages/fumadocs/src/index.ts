@@ -75,6 +75,8 @@ export { DocsLayout } from "fumadocs-ui/layouts/docs";
 // ─── Client-side TOC component ────────────────────────────────────────
 // Scans DOM headings and feeds them to DocsPage's TOC panel
 export { DocsPageClient } from "./docs-page-client.js";
+export { DocsClientHooks } from "./docs-client-hooks.js";
+export { DocsFeedback } from "./docs-feedback.js";
 
 // ─── Page action buttons (Copy Markdown, Open in LLM) ─────────────────
 export { PageActions } from "./page-actions.js";
@@ -102,6 +104,9 @@ export type {
   OpenDocsConfig,
   OpenDocsProvider,
   AIConfig,
+  FeedbackConfig,
+  DocsFeedbackData,
+  DocsFeedbackValue,
 } from "@farming-labs/docs";
 
 // ─── MDX components (for use in custom layouts or overrides) ──────────
@@ -116,6 +121,7 @@ export {
 } from "fumadocs-ui/components/codeblock";
 export { HoverLink } from "./hover-link.js";
 export type { HoverLinkProps } from "./hover-link.js";
+export type { DocsFeedbackProps } from "./docs-feedback.js";
 
 // ─── Core helpers (re-exported for convenience) ───────────────────────
 export { createTheme, extendTheme, deepMerge, defineDocs } from "@farming-labs/docs";

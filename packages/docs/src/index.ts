@@ -47,5 +47,8 @@ export type {
   LastUpdatedConfig,
   LlmsTxtConfig,
   CodeBlockCopyData,
+  DocsFeedbackValue,
+  DocsFeedbackData,
+  FeedbackConfig,
 } from "./types.js";
 export type { ResolvedDocsI18n, DocsPathMatch } from "./i18n.js";

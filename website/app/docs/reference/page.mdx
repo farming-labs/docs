@@ -44,6 +44,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `icons`       | `Record<string, unknown>`                       | —                | Icon registry for frontmatter `icon` fields                                          |
 | `components`  | `Record<string, unknown>`                       | —                | Custom MDX component overrides, including built-ins like `HoverLink`                |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void`              | —                | Callback when the user clicks the copy button on a code block (runs in addition to copy) |
+| `feedback`    | `boolean \| FeedbackConfig`                     | `false`          | End-of-page feedback prompt and feedback callback                                    |
 | `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
 | `ai`          | `AIConfig`                                      | —                | RAG-powered AI chat                                                                  |
 | `apiReference` | `boolean \| ApiReferenceConfig`               | `false`          | Generated API reference pages from supported framework route conventions |
@@ -295,6 +296,57 @@ export default defineDocs({
   },
 });
 ```
+
+---
+
+## `feedback`, `FeedbackConfig`, and `DocsFeedbackData`
+
+Optional docs page feedback UI. When enabled, a built-in "Good / Bad" prompt is rendered at the end of the page and emits a feedback payload when the user clicks one of the buttons.
+
+### `FeedbackConfig`
+
+| Property        | Type                                     | Default           | Description                                  |
+| --------------- | ---------------------------------------- | ----------------- | -------------------------------------------- |
+| `enabled`       | `boolean`                                | `true`            | Show or hide the feedback UI                 |
+| `question`      | `string`                                 | `"How is this guide?"` | Prompt shown above the buttons          |
+| `positiveLabel` | `string`                                 | `"Good"`          | Label for the positive button                |
+| `negativeLabel` | `string`                                 | `"Bad"`           | Label for the negative button                |
+| `onFeedback`    | `(data: DocsFeedbackData) => void`       | —                 | Callback fired when the user clicks a button |
+
+### `DocsFeedbackData`
+
+| Property      | Type                                   | Description                                           |
+| ------------- | -------------------------------------- | ----------------------------------------------------- |
+| `value`       | `"positive" \| "negative"`             | Which feedback button the user clicked                |
+| `title`       | `string \| undefined`                  | Current page title, when available                    |
+| `description` | `string \| undefined`                  | Current page description, when available              |
+| `url`         | `string`                               | Full current page URL                                 |
+| `pathname`    | `string`                               | Current pathname without origin                       |
+| `path`        | `string`                               | Alias of `pathname`                                   |
+| `entry`       | `string`                               | Docs entry root, e.g. `"docs"`                        |
+| `slug`        | `string`                               | Page slug relative to the docs entry                  |
+| `locale`      | `string \| undefined`                  | Active locale when docs i18n is enabled               |
+
+```ts title="docs.config.ts"
+import type { DocsFeedbackData } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  feedback: {
+    enabled: true,
+    onFeedback(data: DocsFeedbackData) {
+      console.log("Feedback:", data.value, data.slug, data.url);
+    },
+  },
+});
+```
+
+This docs site persists feedback through a local Next.js route at
+`website/app/api/feedback/route.ts`, backed by the `DocsFeedback` Prisma model in
+`website/prisma/schema.prisma`.
+
+See [Page feedback](/docs/configuration#page-feedback) for framework-specific notes.
 
 ---
 
