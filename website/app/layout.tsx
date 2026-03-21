@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { RootProvider } from "@farming-labs/theme";
 import { Databuddy } from "@databuddy/sdk/react";
+import { Suspense } from "react";
+import { ThemeCustomizer } from "@/components/theme-customizer";
 import "./global.css";
 
 const geistSans = Geist({
@@ -69,7 +71,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${geistSans.variable} ${geistSansDocs.variable} ${geistMono.variable} ${geistMonoDocs.variable} antialiased bg-fd-background`}
       >
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        <RootProvider>{children}</RootProvider>
+        <RootProvider>
+          {children}
+          <Suspense>
+            <ThemeCustomizer />
+          </Suspense>
+        </RootProvider>
         <Databuddy
           trackHashChanges={true}
           trackAttributes={true}

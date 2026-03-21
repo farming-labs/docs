@@ -148,9 +148,7 @@ export default defineDocs({
   },
   feedback: {
     enabled: true,
-    onFeedback(data) {
-      void submitDocsFeedback(data);
-    },
+    onFeedback: submitDocsFeedback,
   },
 
   llmsTxt: {

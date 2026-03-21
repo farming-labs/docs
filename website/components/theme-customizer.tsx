@@ -1273,80 +1273,82 @@ export function ThemeCustomizer() {
         />
       )}
 
-      <button
-        onClick={() => {
-          setOpen((v) => {
-            if (!v) setHasCustomized(true);
-            return !v;
-          });
-        }}
-        style={
-          state.preset === "shiny" || state.preset === "colorful" || state.preset === "default"
-            ? {
-                borderRadius: "14px",
-                background: "var(--color-fd-secondary, #fafafa)",
-                color: "var(--color-fd-foreground, #0a0a0a)",
-                boxShadow: "0 0 0 0 var(--color-fd-border, #e5e5e5)",
-                borderColor: "var(--color-fd-border, #e5e5e5)",
-              }
-            : {
-                background: "var(--color-fd-secondary, #0a0a0b)",
-                boxShadow: "3px 3px 0 0 var(--color-fd-border, #262626)",
-                borderColor: "var(--color-fd-border, #262626)",
-              }
-        }
-        className={cn(
-          "fixed z-[10]  bottom-20 right-6 size-10 w-fit px-3 rounded-none border border-black/10 dark:border-white/[10%] shadow-lg bg-black/60 backdrop-blur-md cursor-pointer transition-all duration-200 hover:border-white/20 hover:bg-black/80 flex items-center justify-center group",
-        )}
-        title={open ? "Close customizer" : "Customize theme"}
-      >
-        {open ? (
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            stroke="rgba(255,255,255,0.5)"
-            strokeWidth="2"
-            strokeLinecap="round"
-          >
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-          </svg>
-        ) : (
-          <div className="flex gap-2 items-center">
+      {isDocsPage && (
+        <button
+          onClick={() => {
+            setOpen((v) => {
+              if (!v) setHasCustomized(true);
+              return !v;
+            });
+          }}
+          style={
+            state.preset === "shiny" || state.preset === "colorful" || state.preset === "default"
+              ? {
+                  borderRadius: "14px",
+                  background: "var(--color-fd-secondary, #fafafa)",
+                  color: "var(--color-fd-foreground, #0a0a0a)",
+                  boxShadow: "0 0 0 0 var(--color-fd-border, #e5e5e5)",
+                  borderColor: "var(--color-fd-border, #e5e5e5)",
+                }
+              : {
+                  background: "var(--color-fd-secondary, #0a0a0b)",
+                  boxShadow: "3px 3px 0 0 var(--color-fd-border, #262626)",
+                  borderColor: "var(--color-fd-border, #262626)",
+                }
+          }
+          className={cn(
+            "fixed z-[10]  bottom-20 right-6 size-10 w-fit px-3 rounded-none border border-black/10 dark:border-white/[10%] shadow-lg bg-black/60 backdrop-blur-md cursor-pointer transition-all duration-200 hover:border-white/20 hover:bg-black/80 flex items-center justify-center group",
+          )}
+          title={open ? "Close customizer" : "Customize theme"}
+        >
+          {open ? (
             <svg
-              width="14"
-              height="14"
+              width="16"
+              height="16"
               viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
+              fill="currentColor"
+              stroke="rgba(255,255,255,0.5)"
+              strokeWidth="2"
               strokeLinecap="round"
-              strokeLinejoin="round"
-              className="group-hover:stroke-black/80 group-hover:dark:stroke-white/80 group-hover:rotate-12 transition-all text-black/60 dark:text-white/60"
             >
-              <circle cx="13.5" cy="6.5" r="2.5" />
-              <circle cx="17.5" cy="10.5" r="2.5" />
-              <circle cx="8.5" cy="7.5" r="2.5" />
-              <circle cx="6.5" cy="12.5" r="2.5" />
-              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
             </svg>
-            <span
-              className={cn(
-                "dark:text-white/60 text-black/70",
-                ["darksharp", "pixel-border"].includes(state.preset)
-                  ? "text-[11px] font-mono uppercase"
-                  : "text-[14px] tracking-normal font-sans capitalize",
-              )}
-            >
-              Customize
-            </span>
-          </div>
-        )}
-      </button>
+          ) : (
+            <div className="flex gap-2 items-center">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="group-hover:stroke-black/80 group-hover:dark:stroke-white/80 group-hover:rotate-12 transition-all text-black/60 dark:text-white/60"
+              >
+                <circle cx="13.5" cy="6.5" r="2.5" />
+                <circle cx="17.5" cy="10.5" r="2.5" />
+                <circle cx="8.5" cy="7.5" r="2.5" />
+                <circle cx="6.5" cy="12.5" r="2.5" />
+                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+              </svg>
+              <span
+                className={cn(
+                  "dark:text-white/60 text-black/70",
+                  ["darksharp", "pixel-border"].includes(state.preset)
+                    ? "text-[11px] font-mono uppercase"
+                    : "text-[14px] tracking-normal font-sans capitalize",
+                )}
+              >
+                Customize
+              </span>
+            </div>
+          )}
+        </button>
+      )}
 
-      {open && (
+      {isDocsPage && open && (
         <div
           className="fixed inset-0 z-[10009] bg-black/30 backdrop-blur-[2px] transition-opacity"
           onClick={() => setOpen(false)}
@@ -1359,8 +1361,9 @@ export function ThemeCustomizer() {
         className="fixed top-0 right-0 z-[10010] h-dvh flex flex-col transition-transform duration-300 ease-out"
         style={{
           width: 400,
-          transform: open ? "translateX(0)" : "translateX(100%)",
+          transform: isDocsPage && open ? "translateX(0)" : "translateX(100%)",
           ["--cz-accent" as string]: state.colors.primary,
+          pointerEvents: isDocsPage ? undefined : "none",
         }}
       >
         <div className="flex flex-col h-full bg-[#0a0a0b] border-l border-white/[6%] shadow-2xl">

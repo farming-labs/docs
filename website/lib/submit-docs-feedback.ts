@@ -3,23 +3,26 @@ import type { DocsFeedbackData } from "@farming-labs/docs";
 export const DOCS_FEEDBACK_ENDPOINT = "/api/feedback";
 
 export async function submitDocsFeedback(data: DocsFeedbackData) {
-  try {
-    const response = await fetch(DOCS_FEEDBACK_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(data),
-      cache: "no-store",
-      keepalive: true,
-    });
+  const response = await fetch(DOCS_FEEDBACK_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(data),
+    cache: "no-store",
+    keepalive: true,
+  });
 
-    if (!response.ok && process.env.NODE_ENV !== "production") {
-      console.error("[docs feedback]", "Failed to submit feedback", response.status);
+  if (!response.ok) {
+    let details = "";
+
+    try {
+      const body = (await response.json()) as { error?: string };
+      details = body.error ? `: ${body.error}` : "";
+    } catch {
+      // ignore body parsing issues
     }
-  } catch (error) {
-    if (process.env.NODE_ENV !== "production") {
-      console.error("[docs feedback]", error);
-    }
+
+    throw new Error(`Failed to submit docs feedback (${response.status})${details}`);
   }
 }

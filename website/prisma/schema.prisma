@@ -31,6 +31,7 @@ model ShowcaseEntry {
 model DocsFeedback {
   id          String            @id @default(cuid())
   value       FeedbackSentiment
+  comment     String?
   url         String
   pathname    String
   entry       String
