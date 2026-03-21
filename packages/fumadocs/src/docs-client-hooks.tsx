@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import type { CodeBlockCopyData, DocsFeedbackData } from "@farming-labs/docs";
 
 type CopyHandler = (data: CodeBlockCopyData) => void;
-type FeedbackHandler = (data: DocsFeedbackData) => void;
+type FeedbackHandler = (data: DocsFeedbackData) => void | Promise<void>;
 
 interface DocsWindowHooks extends Window {
   __fdOnCopyClick__?: CopyHandler;

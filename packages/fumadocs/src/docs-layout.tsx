@@ -823,8 +823,10 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
               descriptionMap={descriptionMap}
               feedbackEnabled={feedbackConfig.enabled}
               feedbackQuestion={feedbackConfig.question}
+              feedbackPlaceholder={feedbackConfig.placeholder}
               feedbackPositiveLabel={feedbackConfig.positiveLabel}
               feedbackNegativeLabel={feedbackConfig.negativeLabel}
+              feedbackSubmitLabel={feedbackConfig.submitLabel}
             >
               {children}
             </DocsPageClient>
@@ -846,8 +848,10 @@ function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
   const defaults = {
     enabled: false,
     question: "How is this guide?",
+    placeholder: "Leave your feedback...",
     positiveLabel: "Good",
     negativeLabel: "Bad",
+    submitLabel: "Submit",
   };
 
   if (feedback === undefined || feedback === false) return defaults;
@@ -856,8 +860,10 @@ function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
   return {
     enabled: feedback.enabled !== false,
     question: feedback.question ?? defaults.question,
+    placeholder: feedback.placeholder ?? defaults.placeholder,
     positiveLabel: feedback.positiveLabel ?? defaults.positiveLabel,
     negativeLabel: feedback.negativeLabel ?? defaults.negativeLabel,
+    submitLabel: feedback.submitLabel ?? defaults.submitLabel,
   };
 }
 

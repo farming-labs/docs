@@ -69,9 +69,11 @@ interface DocsPageClientProps {
   /** Built-in page feedback prompt configuration */
   feedbackEnabled?: boolean;
   feedbackQuestion?: string;
+  feedbackPlaceholder?: string;
   feedbackPositiveLabel?: string;
   feedbackNegativeLabel?: string;
-  feedbackOnFeedback?: (data: DocsFeedbackData) => void;
+  feedbackSubmitLabel?: string;
+  feedbackOnFeedback?: (data: DocsFeedbackData) => void | Promise<void>;
   children: ReactNode;
 }
 
@@ -266,8 +268,10 @@ export function DocsPageClient({
   description,
   feedbackEnabled = false,
   feedbackQuestion,
+  feedbackPlaceholder,
   feedbackPositiveLabel,
   feedbackNegativeLabel,
+  feedbackSubmitLabel,
   feedbackOnFeedback,
   children,
 }: DocsPageClientProps) {
@@ -395,8 +399,10 @@ export function DocsPageClient({
             entry={entry}
             locale={activeLocale}
             question={feedbackQuestion}
+            placeholder={feedbackPlaceholder}
             positiveLabel={feedbackPositiveLabel}
             negativeLabel={feedbackNegativeLabel}
+            submitLabel={feedbackSubmitLabel}
             onFeedback={feedbackOnFeedback}
           />
         )}

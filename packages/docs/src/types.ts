@@ -1076,6 +1076,8 @@ export type DocsFeedbackValue = "positive" | "negative";
 export interface DocsFeedbackData {
   /** Whether the user gave positive or negative feedback. */
   value: DocsFeedbackValue;
+  /** Optional free-form feedback left by the reader. */
+  comment?: string;
   /** Current page title, when available. */
   title?: string;
   /** Current page description, when available. */
@@ -1106,19 +1108,23 @@ export interface FeedbackConfig {
   enabled?: boolean;
   /** Prompt shown above the feedback buttons. @default "How is this guide?" */
   question?: string;
+  /** Placeholder shown in the optional free-form feedback field. @default "Leave your feedback..." */
+  placeholder?: string;
   /** Label for the positive button. @default "Good" */
   positiveLabel?: string;
   /** Label for the negative button. @default "Bad" */
   negativeLabel?: string;
+  /** Label for the submit button. @default "Submit" */
+  submitLabel?: string;
   /**
-   * Callback fired when the user clicks one of the feedback buttons.
+   * Callback fired when the user submits the feedback form.
    *
    * For client-only frameworks this runs directly in the browser. In
    * environments where the config cannot be serialized to the client, the same
    * payload is also emitted through `window.__fdOnFeedback__` and the
    * `fd:feedback` custom event.
    */
-  onFeedback?: (data: DocsFeedbackData) => void;
+  onFeedback?: (data: DocsFeedbackData) => void | Promise<void>;
 }
 
 export interface DocsI18nConfig {

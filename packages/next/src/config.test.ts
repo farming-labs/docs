@@ -113,7 +113,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "app/custom-api-reference/[[...slug]]/route.ts"))).toBe(true);
   });
 
-  it("generates a layout that uses the package-owned client callbacks bridge", () => {
+  it("generates a layout that re-exports the package-owned docs layout", () => {
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);
 
@@ -121,8 +121,6 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     const layout = readFileSync(join(tmpDir, "app/docs/layout.tsx"), "utf-8");
 
-    expect(layout).toContain(
-      'import DocsClientCallbacks from "@farming-labs/next/client-callbacks";',
-    );
+    expect(layout).toContain('export { metadata, default } from "@farming-labs/next/layout";');
   });
 });

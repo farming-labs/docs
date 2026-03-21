@@ -32,6 +32,11 @@
       "import": "./dist/client-callbacks.mjs",
       "default": "./dist/client-callbacks.mjs"
     },
+    "./layout": {
+      "types": "./dist/layout.d.mts",
+      "import": "./dist/layout.mjs",
+      "default": "./dist/layout.mjs"
+    },
     "./config": {
       "types": "./dist/config.d.mts",
       "import": "./dist/config.mjs",

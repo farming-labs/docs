@@ -6,6 +6,7 @@ export default defineConfig({
     "src/api-reference.tsx",
     "src/client-callbacks.tsx",
     "src/config.ts",
+    "src/layout.tsx",
     "src/mdx-plugins/remark-heading.ts",
     "src/mdx-plugins/rehype-toc.ts",
     "src/mdx-plugins/rehype-code.ts",

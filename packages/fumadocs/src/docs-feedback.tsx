@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { DocsFeedbackData, DocsFeedbackValue } from "@farming-labs/docs";
 
 interface DocsWindowHooks extends Window {
-  __fdOnFeedback__?: (data: DocsFeedbackData) => void;
+  __fdOnFeedback__?: (data: DocsFeedbackData) => void | Promise<void>;
 }
 
 export interface DocsFeedbackProps {
@@ -12,9 +12,11 @@ export interface DocsFeedbackProps {
   entry: string;
   locale?: string;
   question?: string;
+  placeholder?: string;
   positiveLabel?: string;
   negativeLabel?: string;
-  onFeedback?: (data: DocsFeedbackData) => void;
+  submitLabel?: string;
+  onFeedback?: (data: DocsFeedbackData) => void | Promise<void>;
 }
 
 function normalizePathname(pathname: string) {
@@ -35,33 +37,45 @@ function readTextContent(selector: string) {
   return text && text.length > 0 ? text : undefined;
 }
 
-function emitFeedback(data: DocsFeedbackData, onFeedback?: (data: DocsFeedbackData) => void) {
+async function emitFeedback(
+  data: DocsFeedbackData,
+  onFeedback?: (data: DocsFeedbackData) => void | Promise<void>,
+) {
+  let firstError: unknown;
+
   try {
-    onFeedback?.(data);
-  } catch {
-    // Keep the built-in UI resilient if user analytics code throws.
+    await onFeedback?.(data);
+  } catch (error) {
+    firstError ??= error;
   }
 
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") {
+    if (firstError) throw firstError;
+    return;
+  }
 
   try {
-    (window as DocsWindowHooks).__fdOnFeedback__?.(data);
-  } catch {
-    // Ignore user callback failures from the global hook too.
+    await (window as DocsWindowHooks).__fdOnFeedback__?.(data);
+  } catch (error) {
+    firstError ??= error;
   }
 
   window.dispatchEvent(new CustomEvent("fd:feedback", { detail: data }));
+
+  if (firstError) throw firstError;
 }
 
 function buildFeedbackPayload(
   value: DocsFeedbackValue,
   pathname: string,
   entry: string,
+  comment?: string,
   locale?: string,
 ): DocsFeedbackData {
   const normalizedPathname = normalizePathname(pathname);
   return {
     value,
+    comment: comment?.trim() ? comment.trim() : undefined,
     title: readTextContent(".fd-page-title, h1"),
     description: readTextContent(".fd-page-description"),
     url: typeof window !== "undefined" ? window.location.href : normalizedPathname,
@@ -101,21 +115,56 @@ function ThumbDownIcon() {
   );
 }
 
+function CheckIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M20 6 9 17l-5-5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function DocsFeedback({
   pathname,
   entry,
   locale,
   question = "How is this guide?",
+  placeholder = "Leave your feedback...",
   positiveLabel = "Good",
   negativeLabel = "Bad",
+  submitLabel = "Submit",
   onFeedback,
 }: DocsFeedbackProps) {
   const [selected, setSelected] = useState<DocsFeedbackValue | null>(null);
+  const [comment, setComment] = useState("");
+  const [status, setStatus] = useState<"idle" | "submitting" | "submitted" | "error">("idle");
   const normalizedPathname = useMemo(() => normalizePathname(pathname), [pathname]);
+  const showForm = selected !== null;
 
-  function handleFeedback(value: DocsFeedbackValue) {
+  function handleSelect(value: DocsFeedbackValue) {
     setSelected(value);
-    emitFeedback(buildFeedbackPayload(value, normalizedPathname, entry, locale), onFeedback);
+    if (status !== "idle") setStatus("idle");
+  }
+
+  async function handleSubmit() {
+    if (!selected || status === "submitting") return;
+
+    setStatus("submitting");
+
+    try {
+      await emitFeedback(
+        buildFeedbackPayload(selected, normalizedPathname, entry, comment, locale),
+        onFeedback,
+      );
+      setStatus("submitted");
+    } catch {
+      setStatus("error");
+    }
   }
 
   return (
@@ -125,28 +174,75 @@ export function DocsFeedback({
         <div className="fd-feedback-actions" role="group" aria-label={question}>
           <button
             type="button"
-            className="fd-page-action-btn"
+            className="fd-page-action-btn fd-feedback-choice"
             aria-pressed={selected === "positive"}
             data-selected={selected === "positive" ? "true" : undefined}
             data-feedback-value="positive"
-            onClick={() => handleFeedback("positive")}
+            disabled={status === "submitting"}
+            onClick={() => handleSelect("positive")}
           >
             <ThumbUpIcon />
             <span>{positiveLabel}</span>
           </button>
           <button
             type="button"
-            className="fd-page-action-btn"
+            className="fd-page-action-btn fd-feedback-choice"
             aria-pressed={selected === "negative"}
             data-selected={selected === "negative" ? "true" : undefined}
             data-feedback-value="negative"
-            onClick={() => handleFeedback("negative")}
+            disabled={status === "submitting"}
+            onClick={() => handleSelect("negative")}
           >
             <ThumbDownIcon />
             <span>{negativeLabel}</span>
           </button>
         </div>
       </div>
+      {showForm && (
+        <div className="fd-feedback-form">
+          <textarea
+            id="fd-feedback-comment"
+            className="fd-feedback-input"
+            aria-label="Additional feedback"
+            placeholder={placeholder}
+            value={comment}
+            disabled={status === "submitting"}
+            onChange={(event) => {
+              setComment(event.target.value);
+              if (status !== "idle") setStatus("idle");
+            }}
+          />
+          <div className="fd-feedback-submit-row">
+            <button
+              type="button"
+              className="fd-page-action-btn fd-feedback-submit"
+              disabled={status === "submitting" || status === "submitted"}
+              onClick={() => void handleSubmit()}
+            >
+              {status === "submitting" && (
+                <span className="fd-feedback-spinner" aria-hidden="true" />
+              )}
+              {status === "submitted" && <CheckIcon />}
+              <span>{status === "submitted" ? "Submitted" : submitLabel}</span>
+            </button>
+            {status === "submitted" && (
+              <p
+                className="fd-feedback-status"
+                data-status="success"
+                role="status"
+                aria-live="polite"
+              >
+                Thanks for the feedback.
+              </p>
+            )}
+          </div>
+          {status === "error" && (
+            <p className="fd-feedback-status" data-status="error" role="status" aria-live="polite">
+              Could not send feedback. Please try again.
+            </p>
+          )}
+        </div>
+      )}
     </section>
   );
 }
