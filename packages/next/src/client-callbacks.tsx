@@ -8,7 +8,9 @@ export default function DocsClientCallbacks() {
     <DocsClientHooks
       onCopyClick={docsConfig.onCopyClick}
       onFeedback={
-        typeof docsConfig.feedback === "object" ? docsConfig.feedback.onFeedback : undefined
+        docsConfig.feedback && typeof docsConfig.feedback === "object"
+          ? docsConfig.feedback.onFeedback
+          : undefined
       }
     />
   );
