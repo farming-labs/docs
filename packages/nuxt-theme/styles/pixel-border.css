@@ -780,6 +780,6 @@ code:not(pre code) {
 }
 
 .fd-feedback-status[data-status="success"] {
-  font-family: var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace));
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
   text-transform: uppercase;
 }
