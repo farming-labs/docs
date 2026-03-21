@@ -5,7 +5,7 @@ import { useState } from "react";
 import PixelSnow from "./components/pixel-snow";
 
 const framework = "Next.js";
-const docsHref = "/docs?lang=en";
+const docsHref = "/docs";
 const referenceHref = "https://docs.farming-labs.dev";
 const installCommand = "npx @farming-labs/docs init";
 

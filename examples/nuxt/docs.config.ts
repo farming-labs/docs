@@ -3,10 +3,6 @@ import { colorful } from "@farming-labs/nuxt-theme/colorful";
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  i18n: {
-    locales: ["en", "fr"],
-    defaultLocale: "en",
-  },
   theme: colorful({
     ui: {
       // colors: {
@@ -29,7 +25,7 @@ export default defineDocs({
   }),
   nav: {
     title: "Example Docs",
-    url: "/docs?lang=en",
+    url: "/docs",
   },
   ai: {
     enabled: true,

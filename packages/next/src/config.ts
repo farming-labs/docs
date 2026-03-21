@@ -61,25 +61,15 @@ export function useMDXComponents(components?: MDXComponents): MDXComponents {
 
 const DOCS_LAYOUT_TEMPLATE = `\
 ${GENERATED_BANNER}
-export { metadata, default } from "@farming-labs/next/layout";
-`;
-
-const DOCS_CLIENT_CALLBACKS_TEMPLATE = `\
-${GENERATED_BANNER}
-"use client";
-
 import docsConfig from "@/docs.config";
-import { DocsClientHooks } from "@farming-labs/theme/client-hooks";
+import { createNextDocsLayout, createNextDocsMetadata } from "@farming-labs/next/layout";
 
-export default function DocsClientCallbacks() {
-  return (
-    <DocsClientHooks
-      onCopyClick={docsConfig.onCopyClick}
-      onFeedback={
-        typeof docsConfig.feedback === "object" ? docsConfig.feedback.onFeedback : undefined
-      }
-    />
-  );
+export const metadata = createNextDocsMetadata(docsConfig);
+
+const DocsLayout = createNextDocsLayout(docsConfig);
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return <DocsLayout>{children}</DocsLayout>;
 }
 `;
 
@@ -222,11 +212,6 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
   // ── 1. Auto-generate mdx-components.tsx if missing ──────────────
   if (!hasFile(root, "mdx-components")) {
     writeFileSync(join(root, "mdx-components.tsx"), MDX_COMPONENTS_TEMPLATE);
-  }
-
-  // ── 1.1 Auto-generate docs-client-callbacks.tsx if missing ─────
-  if (!hasFile(root, "docs-client-callbacks")) {
-    writeFileSync(join(root, "docs-client-callbacks.tsx"), DOCS_CLIENT_CALLBACKS_TEMPLATE);
   }
 
   // ── 2. Auto-generate app/{entry}/layout.tsx if missing (or src/app when using src dir) ──

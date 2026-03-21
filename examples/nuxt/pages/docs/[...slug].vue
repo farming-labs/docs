@@ -4,17 +4,12 @@ import config from "~/docs.config";
 
 const route = useRoute();
 const pathname = computed(() => route.path);
-const locale = computed(() => {
-  const value = route.query.lang;
-  return Array.isArray(value) ? value[0] : value;
-});
 
 const { data, error } = await useFetch("/api/docs", {
   query: computed(() => ({
     pathname: pathname.value,
-    lang: locale.value,
   })),
-  watch: [pathname, locale],
+  watch: [pathname],
 });
 
 if (error.value) {

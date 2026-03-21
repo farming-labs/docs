@@ -53,7 +53,7 @@ export const auth = betterAuth({
 
 ## Social Sign-on
 
-See [Social Sign-on](/docs/authentication/social-sign-on?lang=en) for detailed provider setup.
+See [Social Sign-on](/docs/authentication/social-sign-on) for detailed provider setup.
 
 ## Choosing a Method
 
@@ -66,5 +66,5 @@ See [Social Sign-on](/docs/authentication/social-sign-on?lang=en) for detailed p
 
 ## Deep Dives
 
-- [Social Sign-on](/docs/authentication/social-sign-on?lang=en) — Google, GitHub, Discord, and 20+ providers
-- [Email Verification](/docs/authentication/email-verification?lang=en) — Verify user emails with tokens
+- [Social Sign-on](/docs/authentication/social-sign-on) — Google, GitHub, Discord, and 20+ providers
+- [Email Verification](/docs/authentication/email-verification) — Verify user emails with tokens

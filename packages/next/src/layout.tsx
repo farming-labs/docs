@@ -1,17 +1,21 @@
-import docsConfig from "@/docs.config";
-import DocsClientCallbacks from "@/docs-client-callbacks";
 import { createDocsLayout, createDocsMetadata } from "@farming-labs/theme";
+import type { DocsConfig } from "@farming-labs/docs";
 import { withNextApiReferenceBanner } from "./api-reference.js";
+import DocsClientCallbacks from "./client-callbacks.js";
 
-export const metadata = createDocsMetadata(docsConfig);
+export function createNextDocsMetadata(config: DocsConfig) {
+  return createDocsMetadata(config);
+}
 
-const DocsLayout = createDocsLayout(withNextApiReferenceBanner(docsConfig));
+export function createNextDocsLayout(config: DocsConfig) {
+  const DocsLayout = createDocsLayout(withNextApiReferenceBanner(config));
 
-export default function Layout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <DocsClientCallbacks />
-      <DocsLayout>{children}</DocsLayout>
-    </>
-  );
+  return function NextDocsLayout({ children }: { children: React.ReactNode }) {
+    return (
+      <>
+        <DocsClientCallbacks />
+        <DocsLayout>{children}</DocsLayout>
+      </>
+    );
+  };
 }

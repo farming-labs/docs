@@ -43,7 +43,7 @@ Each plugin can:
 
 | Plugin                                 | Description                                  |
 | -------------------------------------- | -------------------------------------------- |
-| [Two Factor](/docs/plugins/two-factor?lang=en) | TOTP, SMS, and backup codes                  |
+| [Two Factor](/docs/plugins/two-factor) | TOTP, SMS, and backup codes                  |
 | Passkey                                | WebAuthn / FIDO2 passwordless authentication |
 | Magic Link                             | Passwordless email authentication            |
 | Phone Number                           | SMS-based authentication                     |
@@ -53,7 +53,7 @@ Each plugin can:
 
 | Plugin                                       | Description                          |
 | -------------------------------------------- | ------------------------------------ |
-| [Organizations](/docs/plugins/organizations?lang=en) | Multi-tenant organization management |
+| [Organizations](/docs/plugins/organizations) | Multi-tenant organization management |
 | Admin                                        | Admin dashboard and user management  |
 | RBAC                                         | Role-based access control            |
 
@@ -128,5 +128,5 @@ export const myPlugin = createAuthPlugin({
 
 ## Deep Dives
 
-- [Two Factor Authentication](/docs/plugins/two-factor?lang=en) — TOTP setup and verification
-- [Organizations](/docs/plugins/organizations?lang=en) — Multi-tenant team management
+- [Two Factor Authentication](/docs/plugins/two-factor) — TOTP setup and verification
+- [Organizations](/docs/plugins/organizations) — Multi-tenant team management

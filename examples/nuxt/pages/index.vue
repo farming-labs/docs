@@ -61,7 +61,7 @@ async function copyCommand() {
       </div>
 
       <div class="landing-actions">
-        <NuxtLink class="landing-primary" to="/docs?lang=en">Open Example Docs</NuxtLink>
+        <NuxtLink class="landing-primary" to="/docs">Open Example Docs</NuxtLink>
         <a class="landing-reference" href="https://docs.farming-labs.dev" target="_blank" rel="noreferrer">
           <span>docs.farming-labs.dev</span>
           <span class="landing-reference-arrow">↗</span>
@@ -69,7 +69,7 @@ async function copyCommand() {
       </div>
 
       <p class="landing-note">
-        // Start locally at <code>/docs?lang=en</code>, then use the full reference when you need the broader map.
+        // Start locally at <code>/docs</code>, then use the full reference when you need the broader map.
       </p>
     </section>
   </main>
