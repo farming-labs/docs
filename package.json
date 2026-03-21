@@ -37,6 +37,7 @@
   "pnpm": {
     "overrides": {
       "h3": "^1.15.6",
+      "effect": "^3.20.0",
       "basic-ftp": "^5.2.0",
       "simple-git": "^3.32.3",
       "serialize-javascript": "^7.0.3",
