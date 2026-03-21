@@ -47,6 +47,6 @@ export const auth = betterAuth({
 
 ## Next Steps
 
-- Read the [Installation](/docs/installation?lang=en) guide
-- Follow the [Get Started](/docs/get-started?lang=en) guide
-- Explore [Concepts](/docs/concepts?lang=en)
+- Read the [Installation](/docs/installation) guide
+- Follow the [Get Started](/docs/get-started) guide
+- Explore [Concepts](/docs/concepts)

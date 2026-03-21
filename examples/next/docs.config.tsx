@@ -21,10 +21,6 @@ import { colorful } from "@farming-labs/theme/colorful";
 
 export default defineDocs({
   entry: "docs",
-  i18n: {
-    locales: ["en", "fr"],
-    defaultLocale: "en",
-  },
   github: {
     url: "https://github.com/farming-labs/docs",
     branch: "main",
@@ -82,7 +78,7 @@ export default defineDocs({
         <span className="uppercase font-mono tracking-tighter">Example Docs</span>
       </div>
     ),
-    url: "/docs?lang=en",
+    url: "/docs",
   },
   components: {
     MyNote,

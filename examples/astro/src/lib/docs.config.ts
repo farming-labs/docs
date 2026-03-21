@@ -4,10 +4,6 @@ import { defineDocs } from "@farming-labs/docs";
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  i18n: {
-    locales: ["en", "fr"],
-    defaultLocale: "en",
-  },
   theme: colorful({
     ui: {
       components: { Callout: { variant: "outline" } },

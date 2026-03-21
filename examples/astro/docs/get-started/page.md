@@ -78,5 +78,5 @@ await authClient.signOut();
 
 ## Next Steps
 
-- Learn about [Session Management](/docs/concepts/session-management?lang=en)
-- Set up a [Database](/docs/concepts/database?lang=en)
+- Learn about [Session Management](/docs/concepts/session-management)
+- Set up a [Database](/docs/concepts/database)

@@ -4,10 +4,6 @@ import { greentree } from "@farming-labs/svelte-theme/greentree";
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  i18n: {
-    locales: ["en", "fr"],
-    defaultLocale: "en",
-  },
   theme: greentree({
     ui: {
       colors: {

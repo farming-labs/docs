@@ -5,9 +5,3 @@ declare module "@/docs.config" {
 
   export default docsConfig;
 }
-
-declare module "@/docs-client-callbacks" {
-  import type { JSX } from "react";
-
-  export default function DocsClientCallbacks(): JSX.Element;
-}

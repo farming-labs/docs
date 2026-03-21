@@ -8,13 +8,11 @@ export function serializeIcon(icon: unknown): string | undefined {
   if (!icon) return undefined;
   if (typeof icon === "string") return icon;
 
-  // Dynamic import to avoid static analysis detecting react-dom/server
-  // in the same module graph as client components.
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { renderToStaticMarkup } = require("react-dom/server") as {
+    const runtimeRequire = eval("require") as (id: string) => {
       renderToStaticMarkup: (el: ReactElement) => string;
     };
+    const { renderToStaticMarkup } = runtimeRequire("react-dom/server");
     return renderToStaticMarkup(icon as ReactElement);
   } catch {
     return undefined;

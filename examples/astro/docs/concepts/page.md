@@ -30,5 +30,5 @@ Better Auth follows a modular architecture with these key components:
 
 ## Deep Dives
 
-- [Session Management](/docs/concepts/session-management?lang=en) — How sessions work
-- [Database](/docs/concepts/database?lang=en) — Database adapters and schema
+- [Session Management](/docs/concepts/session-management) — How sessions work
+- [Database](/docs/concepts/database) — Database adapters and schema

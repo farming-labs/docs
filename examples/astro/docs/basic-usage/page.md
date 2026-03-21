@@ -192,6 +192,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
 ## Next Steps
 
-- Learn about [Session Management](/docs/concepts/session-management?lang=en) in depth
-- Set up [Social Sign-on](/docs/authentication/social-sign-on?lang=en) providers
-- Add [Two Factor Authentication](/docs/plugins/two-factor?lang=en) for extra security
+- Learn about [Session Management](/docs/concepts/session-management) in depth
+- Set up [Social Sign-on](/docs/authentication/social-sign-on) providers
+- Add [Two Factor Authentication](/docs/plugins/two-factor) for extra security
