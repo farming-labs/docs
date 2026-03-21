@@ -1,0 +1,34 @@
+---
+const endpoint = "/api/feedback";
+---
+
+<script define:vars={{ endpoint }}>
+  (function () {
+    if (typeof window === "undefined") return;
+
+    window.__fdOnFeedback__ = async function (data) {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(data),
+        cache: "no-store",
+        keepalive: true,
+      });
+
+      if (!response.ok) {
+        var details = "";
+
+        try {
+          var body = await response.json();
+          details = body && typeof body.error === "string" ? ": " + body.error : "";
+        } catch {
+          details = "";
+        }
+
+        throw new Error("Failed to submit docs feedback (" + response.status + ")" + details);
+      }
+    };
+  })();
+</script>

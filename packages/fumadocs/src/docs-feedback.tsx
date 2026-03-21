@@ -145,6 +145,7 @@ export function DocsFeedback({
   const [status, setStatus] = useState<"idle" | "submitting" | "submitted" | "error">("idle");
   const normalizedPathname = useMemo(() => normalizePathname(pathname), [pathname]);
   const showForm = selected !== null;
+  const submitButtonLabel = status === "submitted" ? "Submitted" : submitLabel;
 
   useEffect(() => {
     setSelected(null);
@@ -229,7 +230,7 @@ export function DocsFeedback({
                 <span className="fd-feedback-spinner" aria-hidden="true" />
               )}
               {status === "submitted" && <CheckIcon />}
-              <span>{status === "submitted" ? "Submitted" : submitLabel}</span>
+              <span>{submitButtonLabel}</span>
             </button>
             {status === "submitted" && (
               <p

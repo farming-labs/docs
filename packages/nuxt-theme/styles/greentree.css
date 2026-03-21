@@ -810,3 +810,18 @@ details > :not(summary) {
 .fd-sidebar::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ─── Feedback (greentree theme) ─────────────────────────────────── */
+
+.fd-feedback-input,
+.fd-feedback-submit {
+  border-radius: 0.75rem;
+}
+
+.fd-feedback-choice[data-selected="true"] {
+  background: color-mix(in srgb, var(--color-fd-primary) 12%, var(--color-fd-secondary));
+}
+
+.fd-feedback-status[data-status="success"] {
+  color: var(--color-fd-primary);
+}

@@ -101,8 +101,10 @@ const feedbackConfig = (() => {
   const defaults = {
     enabled: false,
     question: "How is this guide?",
+    placeholder: "Leave your feedback...",
     positiveLabel: "Good",
     negativeLabel: "Bad",
+    submitLabel: "Submit",
   };
   const feedback = config?.feedback;
   if (feedback === undefined || feedback === false) return defaults;
@@ -111,8 +113,10 @@ const feedbackConfig = (() => {
   return {
     enabled: feedback.enabled !== false,
     question: feedback.question ?? defaults.question,
+    placeholder: feedback.placeholder ?? defaults.placeholder,
     positiveLabel: feedback.positiveLabel ?? defaults.positiveLabel,
     negativeLabel: feedback.negativeLabel ?? defaults.negativeLabel,
+    submitLabel: feedback.submitLabel ?? defaults.submitLabel,
   };
 })();
 const feedbackEntry = data.entry ?? config?.entry ?? "docs";
@@ -247,7 +251,7 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
         <div class="fd-feedback-actions" role="group" aria-label={feedbackConfig.question}>
           <button
             type="button"
-            class="fd-page-action-btn"
+            class="fd-page-action-btn fd-feedback-choice"
             aria-pressed="false"
             data-feedback-button
             data-feedback-value="positive"
@@ -265,7 +269,7 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
           </button>
           <button
             type="button"
-            class="fd-page-action-btn"
+            class="fd-page-action-btn fd-feedback-choice"
             aria-pressed="false"
             data-feedback-button
             data-feedback-value="negative"
@@ -282,6 +286,62 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
             <span>{feedbackConfig.negativeLabel}</span>
           </button>
         </div>
+      </div>
+      <div class="fd-feedback-form" hidden data-feedback-form>
+        <textarea
+          class="fd-feedback-input"
+          aria-label="Additional feedback"
+          placeholder={feedbackConfig.placeholder}
+          data-feedback-input
+        ></textarea>
+        <div class="fd-feedback-submit-row">
+          <button
+            type="button"
+            class="fd-page-action-btn fd-feedback-submit"
+            data-feedback-submit
+            disabled
+          >
+            <span class="fd-feedback-spinner" aria-hidden="true" hidden data-feedback-spinner></span>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+              hidden
+              data-feedback-check
+            >
+              <path
+                d="M20 6 9 17l-5-5"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span data-feedback-submit-label>{feedbackConfig.submitLabel}</span>
+          </button>
+          <p
+            class="fd-feedback-status"
+            data-status="success"
+            role="status"
+            aria-live="polite"
+            hidden
+            data-feedback-success
+          >
+            Thanks for the feedback.
+          </p>
+        </div>
+        <p
+          class="fd-feedback-status"
+          data-status="error"
+          role="status"
+          aria-live="polite"
+          hidden
+          data-feedback-error
+        >
+          Could not send feedback. Please try again.
+        </p>
       </div>
     </section>
   )}
@@ -309,6 +369,26 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
       var feedbackSlugVal = typeof feedbackSlug === "string" ? feedbackSlug : "";
       var feedbackTitleVal = typeof feedbackTitle === "string" ? feedbackTitle : undefined;
       var feedbackDescriptionVal = typeof feedbackDescription === "string" ? feedbackDescription : undefined;
+
+      function emitFeedback(data) {
+        var firstError = null;
+
+        return Promise.resolve()
+          .then(function () {
+            if (typeof window !== "undefined" && typeof window.__fdOnFeedback__ === "function") {
+              return window.__fdOnFeedback__(data);
+            }
+          })
+          .catch(function (error) {
+            firstError = firstError || error;
+          })
+          .then(function () {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("fd:feedback", { detail: data }));
+            }
+            if (firstError) throw firstError;
+          });
+      }
 
       function init() {
         document.querySelectorAll("[data-copy-page]").forEach(function (btn) {
@@ -380,42 +460,130 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
           });
         });
 
-        document.querySelectorAll("[data-feedback-button]").forEach(function (btn) {
-          btn.addEventListener("click", function () {
-            var value = btn.getAttribute("data-feedback-value");
-            if (value !== "positive" && value !== "negative") return;
+        document.querySelectorAll(".fd-feedback").forEach(function (section) {
+          if (!(section instanceof HTMLElement)) return;
+          if (section.dataset.feedbackInitialized === "true") return;
+          section.dataset.feedbackInitialized = "true";
 
-            document.querySelectorAll("[data-feedback-button]").forEach(function (item) {
-              if (!(item instanceof HTMLElement)) return;
-              var selected = item.getAttribute("data-feedback-value") === value;
-              if (selected) item.setAttribute("data-selected", "true");
-              else item.removeAttribute("data-selected");
-              item.setAttribute("aria-pressed", String(selected));
+          var selectedValue = null;
+          var status = "idle";
+          var buttons = Array.prototype.slice.call(
+            section.querySelectorAll("[data-feedback-button]")
+          );
+          var form = section.querySelector("[data-feedback-form]");
+          var input = section.querySelector("[data-feedback-input]");
+          var submitButton = section.querySelector("[data-feedback-submit]");
+          var submitLabel = section.querySelector("[data-feedback-submit-label]");
+          var spinner = section.querySelector("[data-feedback-spinner]");
+          var check = section.querySelector("[data-feedback-check]");
+          var success = section.querySelector("[data-feedback-success]");
+          var error = section.querySelector("[data-feedback-error]");
+
+          function setStatus(nextStatus) {
+            status = nextStatus;
+
+            if (spinner) spinner.hidden = status !== "submitting";
+            if (check) check.hidden = status !== "submitted";
+            if (success) success.hidden = status !== "submitted";
+            if (error) error.hidden = status !== "error";
+            if (submitLabel) {
+              submitLabel.textContent =
+                status === "submitted"
+                    ? "Submitted"
+                    : submitLabel.getAttribute("data-default-label") || "Submit";
+            }
+
+            if (submitButton instanceof HTMLButtonElement) {
+              submitButton.disabled =
+                !selectedValue || status === "submitting" || status === "submitted";
+            }
+
+            buttons.forEach(function (button) {
+              if (button instanceof HTMLButtonElement) {
+                button.disabled = status === "submitting";
+              }
             });
 
-            var pathnameCurrent = window.location.pathname.replace(/\/$/, "") || "/";
-            var data = {
-              value: value,
-              title: feedbackTitleVal,
-              description: feedbackDescriptionVal,
-              url: window.location.href,
-              pathname: pathnameCurrent,
-              path: pathnameCurrent,
-              entry: feedbackEntryVal,
-              slug: feedbackSlugVal,
-              locale: feedbackLocaleVal,
-            };
-
-            try {
-              if (typeof window !== "undefined" && window.__fdOnFeedback__) {
-                window.__fdOnFeedback__(data);
-              }
-            } catch (_) {}
-
-            if (typeof window !== "undefined") {
-              window.dispatchEvent(new CustomEvent("fd:feedback", { detail: data }));
+            if (input instanceof HTMLTextAreaElement) {
+              input.disabled = status === "submitting";
             }
+          }
+
+          if (submitLabel instanceof HTMLElement) {
+            submitLabel.setAttribute("data-default-label", submitLabel.textContent || "Submit");
+          }
+
+          if (form instanceof HTMLElement) {
+            form.hidden = true;
+          }
+          setStatus("idle");
+
+          function selectValue(value) {
+            selectedValue = value;
+            buttons.forEach(function (button) {
+              if (!(button instanceof HTMLElement)) return;
+              var selected = button.getAttribute("data-feedback-value") === value;
+              if (selected) button.setAttribute("data-selected", "true");
+              else button.removeAttribute("data-selected");
+              button.setAttribute("aria-pressed", String(selected));
+            });
+            if (form instanceof HTMLElement) {
+              form.hidden = false;
+            }
+            if (status !== "idle") {
+              setStatus("idle");
+            } else if (submitButton instanceof HTMLButtonElement) {
+              submitButton.disabled = false;
+            }
+          }
+
+          buttons.forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              var value = btn.getAttribute("data-feedback-value");
+              if (value !== "positive" && value !== "negative") return;
+              selectValue(value);
+            });
           });
+
+          if (input instanceof HTMLTextAreaElement) {
+            input.addEventListener("input", function () {
+              if (status !== "idle") setStatus("idle");
+            });
+          }
+
+          if (submitButton instanceof HTMLButtonElement) {
+            submitButton.addEventListener("click", function () {
+              if (!selectedValue || status === "submitting" || status === "submitted") return;
+
+              setStatus("submitting");
+
+              var pathnameCurrent = window.location.pathname.replace(/\/$/, "") || "/";
+              var data = {
+                value: selectedValue,
+                comment:
+                  input instanceof HTMLTextAreaElement && input.value.trim().length > 0
+                    ? input.value.trim()
+                    : undefined,
+                title: feedbackTitleVal,
+                description: feedbackDescriptionVal,
+                url: window.location.href,
+                pathname: pathnameCurrent,
+                path: pathnameCurrent,
+                entry: feedbackEntryVal,
+                slug: feedbackSlugVal,
+                locale: feedbackLocaleVal,
+              };
+
+              emitFeedback(data).then(
+                function () {
+                  setStatus("submitted");
+                },
+                function () {
+                  setStatus("error");
+                }
+              );
+            });
+          }
         });
       }
 

@@ -447,7 +447,8 @@ figure.shiki:has(figcaption) figcaption {
   min-height: 4.75rem;
   resize: vertical;
   padding: 0.875rem 1rem;
-  border: 1px solid var(--color-fd-border, hsl(0 0% 80% / 50%));
+  border: 1px solid
+    color-mix(in srgb, var(--color-fd-border, hsl(0 0% 80% / 50%)) 78%, var(--color-fd-foreground) 22%);
   background: var(--color-fd-card, transparent);
   color: var(--color-fd-foreground);
   font: inherit;
@@ -472,11 +473,13 @@ figure.shiki:has(figcaption) figcaption {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-height: 2rem;
 }
 
 .fd-feedback-submit {
   min-width: 7rem;
+  padding-inline: 0.875rem;
   justify-content: center;
 }
 
@@ -495,15 +498,18 @@ figure.shiki:has(figcaption) figcaption {
 }
 
 .fd-feedback-status {
-  margin: 0;
+  margin: 0 !important;
   font-size: 0.8125rem;
+  line-height: 1.35;
   color: var(--color-fd-muted-foreground, hsl(0 0% 45%));
 }
 
 .fd-feedback-status[data-status="success"] {
   display: inline-flex;
+  align-self: center;
   align-items: center;
   gap: 0.4rem;
+  min-height: 2rem;
 }
 
 .fd-feedback-status[data-status="error"] {
@@ -544,6 +550,10 @@ figure.shiki:has(figcaption) figcaption {
   .fd-feedback-content {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .fd-feedback-submit-row {
+    flex-wrap: wrap;
   }
 
   .fd-last-updated-footer {

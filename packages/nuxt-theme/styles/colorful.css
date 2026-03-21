@@ -301,3 +301,18 @@
 .fd-ai-floating-trigger .ask-ai-trigger:hover {
   box-shadow: 0 2px 30px rgba(180, 140, 20, 0.4);
 }
+
+/* ─── Feedback (colorful theme) ──────────────────────────────────── */
+
+.fd-feedback-input,
+.fd-feedback-submit {
+  border-radius: 0.5rem;
+}
+
+.fd-feedback-choice[data-selected="true"] {
+  background: color-mix(in srgb, var(--color-fd-primary) 12%, var(--color-fd-secondary));
+}
+
+.fd-feedback-status[data-status="success"] {
+  color: var(--color-fd-primary);
+}
