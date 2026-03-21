@@ -1,5 +1,5 @@
 import docsConfig from "@/docs.config";
-import DocsClientCallbacks from "./client-callbacks.js";
+import DocsClientCallbacks from "@/docs-client-callbacks";
 import { createDocsLayout, createDocsMetadata } from "@farming-labs/theme";
 import { withNextApiReferenceBanner } from "./api-reference.js";
 

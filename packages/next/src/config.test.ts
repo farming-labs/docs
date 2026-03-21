@@ -120,7 +120,10 @@ describe("withDocs (app dir: src/app vs app)", () => {
     withDocs({});
 
     const layout = readFileSync(join(tmpDir, "app/docs/layout.tsx"), "utf-8");
+    const docsClientCallbacks = readFileSync(join(tmpDir, "docs-client-callbacks.tsx"), "utf-8");
 
     expect(layout).toContain('export { metadata, default } from "@farming-labs/next/layout";');
+    expect(docsClientCallbacks).toContain('import docsConfig from "@/docs.config";');
+    expect(docsClientCallbacks).toContain("DocsClientHooks");
   });
 });
