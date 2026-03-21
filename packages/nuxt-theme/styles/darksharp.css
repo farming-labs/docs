@@ -222,3 +222,22 @@ code:not(pre code) {
 .fd-ai-fm-input-bar .fd-ai-floating-trigger .ask-ai-trigger:hover {
   transform: none;
 }
+
+/* ─── Feedback (darksharp theme) ─────────────────────────────────── */
+
+.fd-feedback-input,
+.fd-feedback-submit {
+  border-radius: 0.2rem;
+}
+
+.fd-feedback-input {
+  background: hsl(0 0% 4%);
+}
+
+.fd-feedback-choice[data-selected="true"] {
+  background: hsl(0 0% 8%);
+}
+
+.fd-feedback-status[data-status="success"] {
+  color: hsl(0 0% 90%);
+}

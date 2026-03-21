@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from "vue";
+import { computed, ref, onMounted, onUnmounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useHead } from "#app";
 import DocsPage from "./DocsPage.vue";
@@ -26,11 +26,32 @@ const props = defineProps<{
   config?: Record<string, unknown> | null;
 }>();
 
+type FeedbackValue = "positive" | "negative";
+type FeedbackStatus = "idle" | "submitting" | "submitted" | "error";
+type FeedbackPayload = {
+  value: FeedbackValue;
+  comment?: string;
+  title?: string;
+  description?: string;
+  url: string;
+  pathname: string;
+  path: string;
+  entry: string;
+  slug: string;
+  locale?: string;
+};
+
+interface DocsWindowHooks extends Window {
+  __fdOnFeedback__?: (payload: FeedbackPayload) => void | Promise<void>;
+}
+
 const route = useRoute();
 const openDropdownMenu = ref(false);
 const copyLabel = ref("Copy page");
 const copied = ref(false);
-const selectedFeedback = ref<"positive" | "negative" | null>(null);
+const selectedFeedback = ref<FeedbackValue | null>(null);
+const feedbackComment = ref("");
+const feedbackStatus = ref<FeedbackStatus>("idle");
 
 const titleSuffix = computed(() =>
   props.config?.metadata?.titleTemplate
@@ -151,9 +172,11 @@ const feedbackConfig = computed(() => {
   const defaults = {
     enabled: false,
     question: "How is this guide?",
+    placeholder: "Leave your feedback...",
     positiveLabel: "Good",
     negativeLabel: "Bad",
-    onFeedback: undefined as ((payload: Record<string, unknown>) => void) | undefined,
+    submitLabel: "Submit",
+    onFeedback: undefined as ((payload: FeedbackPayload) => void | Promise<void>) | undefined,
   };
 
   const feedback = props.config?.feedback as Record<string, unknown> | boolean | null | undefined;
@@ -164,15 +187,17 @@ const feedbackConfig = computed(() => {
   return {
     enabled: feedback.enabled !== false,
     question: String((feedback as { question?: string }).question ?? defaults.question),
+    placeholder: String(feedback.placeholder ?? defaults.placeholder),
     positiveLabel: String(
       feedback.positiveLabel ?? defaults.positiveLabel,
     ),
     negativeLabel: String(
       feedback.negativeLabel ?? defaults.negativeLabel,
     ),
+    submitLabel: String(feedback.submitLabel ?? defaults.submitLabel),
     onFeedback:
       typeof feedback.onFeedback === "function"
-        ? (feedback.onFeedback as (payload: Record<string, unknown>) => void)
+        ? (feedback.onFeedback as (payload: FeedbackPayload) => void | Promise<void>)
         : undefined,
   };
 });
@@ -232,9 +257,15 @@ function openInProvider(provider: { name: string; urlTemplate: string }) {
   closeDropdown();
 }
 
-function handleFeedback(value: "positive" | "negative") {
-  selectedFeedback.value = value;
+function resetFeedback() {
+  selectedFeedback.value = null;
+  feedbackComment.value = "";
+  feedbackStatus.value = "idle";
+}
 
+watch(() => route.path, resetFeedback, { immediate: true });
+
+function buildFeedbackPayload(): FeedbackPayload {
   const pathname =
     typeof window !== "undefined"
       ? window.location.pathname.replace(/\/$/, "") || "/"
@@ -242,8 +273,9 @@ function handleFeedback(value: "positive" | "negative") {
         ? `/${entry.value}/${props.data.slug}`
         : `/${entry.value}`;
 
-  const payload = {
-    value,
+  return {
+    value: selectedFeedback.value as FeedbackValue,
+    comment: feedbackComment.value.trim() ? feedbackComment.value.trim() : undefined,
     title: props.data.title,
     description: props.data.description,
     url: typeof window !== "undefined" ? window.location.href : pathname,
@@ -253,19 +285,48 @@ function handleFeedback(value: "positive" | "negative") {
     slug: props.data.slug ?? "",
     locale: props.data.locale,
   };
+}
+
+async function emitFeedback(payload: FeedbackPayload) {
+  let firstError: unknown;
 
   try {
-    feedbackConfig.value.onFeedback?.(payload);
-  } catch {}
+    await feedbackConfig.value.onFeedback?.(payload);
+  } catch (error) {
+    firstError ??= error;
+  }
 
   try {
-    if (typeof window !== "undefined" && (window as any).__fdOnFeedback__) {
-      (window as any).__fdOnFeedback__(payload);
+    if (typeof window !== "undefined") {
+      await (window as DocsWindowHooks).__fdOnFeedback__?.(payload);
     }
-  } catch {}
+  } catch (error) {
+    firstError ??= error;
+  }
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("fd:feedback", { detail: payload }));
+  }
+
+  if (firstError) throw firstError;
+}
+
+function handleFeedback(value: FeedbackValue) {
+  selectedFeedback.value = value;
+  if (feedbackStatus.value !== "idle") feedbackStatus.value = "idle";
+}
+
+async function submitFeedback() {
+  if (!selectedFeedback.value || feedbackStatus.value === "submitting" || feedbackStatus.value === "submitted") {
+    return;
+  }
+
+  try {
+    feedbackStatus.value = "submitting";
+    await emitFeedback(buildFeedbackPayload());
+    feedbackStatus.value = "submitted";
+  } catch {
+    feedbackStatus.value = "error";
   }
 }
 
@@ -429,9 +490,10 @@ onUnmounted(() => {
         <div class="fd-feedback-actions" role="group" :aria-label="feedbackConfig.question">
           <button
             type="button"
-            class="fd-page-action-btn"
+            class="fd-page-action-btn fd-feedback-choice"
             :aria-pressed="selectedFeedback === 'positive'"
             :data-selected="selectedFeedback === 'positive' ? 'true' : undefined"
+            :disabled="feedbackStatus === 'submitting'"
             @click="handleFeedback('positive')"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -447,9 +509,10 @@ onUnmounted(() => {
           </button>
           <button
             type="button"
-            class="fd-page-action-btn"
+            class="fd-page-action-btn fd-feedback-choice"
             :aria-pressed="selectedFeedback === 'negative'"
             :data-selected="selectedFeedback === 'negative' ? 'true' : undefined"
+            :disabled="feedbackStatus === 'submitting'"
             @click="handleFeedback('negative')"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -464,6 +527,67 @@ onUnmounted(() => {
             <span>{{ feedbackConfig.negativeLabel }}</span>
           </button>
         </div>
+      </div>
+      <div v-if="selectedFeedback" class="fd-feedback-form">
+        <textarea
+          v-model="feedbackComment"
+          class="fd-feedback-input"
+          aria-label="Additional feedback"
+          :placeholder="feedbackConfig.placeholder"
+          :disabled="feedbackStatus === 'submitting'"
+          @input="feedbackStatus !== 'idle' && (feedbackStatus = 'idle')"
+        />
+        <div class="fd-feedback-submit-row">
+          <button
+            type="button"
+            class="fd-page-action-btn fd-feedback-submit"
+            :disabled="feedbackStatus === 'submitting' || feedbackStatus === 'submitted'"
+            @click="submitFeedback"
+          >
+            <span v-if="feedbackStatus === 'submitting'" class="fd-feedback-spinner" aria-hidden="true" />
+            <svg
+              v-else-if="feedbackStatus === 'submitted'"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M20 6 9 17l-5-5"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span>
+              {{
+                feedbackStatus === "submitted"
+                    ? "Submitted"
+                    : feedbackConfig.submitLabel
+              }}
+            </span>
+          </button>
+          <p
+            v-if="feedbackStatus === 'submitted'"
+            class="fd-feedback-status"
+            data-status="success"
+            role="status"
+            aria-live="polite"
+          >
+            Thanks for the feedback.
+          </p>
+        </div>
+        <p
+          v-if="feedbackStatus === 'error'"
+          class="fd-feedback-status"
+          data-status="error"
+          role="status"
+          aria-live="polite"
+        >
+          Could not send feedback. Please try again.
+        </p>
       </div>
     </section>
   </DocsPage>

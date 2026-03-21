@@ -766,3 +766,20 @@ code:not(pre code) {
 :root:not(.dark) .fd-ai-code-block code {
   color: #1f2937;
 }
+
+/* ─── Feedback (pixel-border theme) ──────────────────────────────── */
+
+.fd-feedback-input,
+.fd-feedback-submit {
+  border-radius: 0 !important;
+  box-shadow: 3px 3px 0 0 var(--color-fd-border);
+}
+
+.fd-feedback-choice[data-selected="true"] {
+  background: var(--color-fd-secondary);
+}
+
+.fd-feedback-status[data-status="success"] {
+  font-family: var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace));
+  text-transform: uppercase;
+}

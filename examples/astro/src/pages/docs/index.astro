@@ -3,6 +3,7 @@ import DocsLayoutComponent from "@farming-labs/astro-theme/src/components/DocsLa
 import DocsContentComponent from "@farming-labs/astro-theme/src/components/DocsContent.astro";
 import SearchDialog from "@farming-labs/astro-theme/src/components/SearchDialog.astro";
 import AskAITrigger from "../../components/AskAITrigger.astro";
+import FeedbackBridge from "../../components/FeedbackBridge.astro";
 import config from "../../lib/docs.config";
 import { load } from "../../lib/docs.server";
 import "@farming-labs/astro-theme/colorful/css";
@@ -22,6 +23,7 @@ const data = await load(`${Astro.url.pathname}${Astro.url.search}`);
       <AskAITrigger slot="ai-trigger" />
       <DocsContentComponent data={data} config={config} />
     </DocsLayoutComponent>
+    <FeedbackBridge />
     {!config?.staticExport && <SearchDialog config={config} />}
   </body>
 </html>

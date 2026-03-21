@@ -13,6 +13,8 @@
   let copyLabel = $state("Copy page");
   let copied = $state(false);
   let selectedFeedback = $state(null);
+  let feedbackComment = $state("");
+  let feedbackStatus = $state("idle");
 
   let titleSuffix = $derived(
     config?.metadata?.titleTemplate
@@ -122,12 +124,17 @@
   );
   let showActionsAbove = $derived(pageActionsPosition === "above-title" && showPageActions);
   let showActionsBelow = $derived(pageActionsPosition === "below-title" && showPageActions);
+  let feedbackPathKey = $derived(
+    `${data.locale ?? ""}:${data.entry ?? config?.entry ?? "docs"}:${data.slug ?? ""}`
+  );
   let feedbackConfig = $derived.by(() => {
     const defaults = {
       enabled: false,
       question: "How is this guide?",
+      placeholder: "Leave your feedback...",
       positiveLabel: "Good",
       negativeLabel: "Bad",
+      submitLabel: "Submit",
       onFeedback: undefined,
     };
 
@@ -137,10 +144,19 @@
     return {
       enabled: feedback.enabled !== false,
       question: feedback.question ?? defaults.question,
+      placeholder: feedback.placeholder ?? defaults.placeholder,
       positiveLabel: feedback.positiveLabel ?? defaults.positiveLabel,
       negativeLabel: feedback.negativeLabel ?? defaults.negativeLabel,
+      submitLabel: feedback.submitLabel ?? defaults.submitLabel,
       onFeedback: typeof feedback.onFeedback === "function" ? feedback.onFeedback : undefined,
     };
+  });
+
+  $effect(() => {
+    feedbackPathKey;
+    selectedFeedback = null;
+    feedbackComment = "";
+    feedbackStatus = "idle";
   });
 
   function handleCopyPage() {
@@ -191,9 +207,7 @@
     closeDropdown();
   }
 
-  function handleFeedback(value) {
-    selectedFeedback = value;
-
+  function buildFeedbackPayload() {
     const pathname =
       typeof window !== "undefined"
         ? window.location.pathname.replace(/\/$/, "") || "/"
@@ -201,8 +215,9 @@
           ? `/${data.entry ?? config?.entry ?? "docs"}/${data.slug}`
           : `/${data.entry ?? config?.entry ?? "docs"}`;
 
-    const payload = {
-      value,
+    return {
+      value: selectedFeedback,
+      comment: feedbackComment.trim() ? feedbackComment.trim() : undefined,
       title: data.title,
       description: data.description,
       url: typeof window !== "undefined" ? window.location.href : pathname,
@@ -212,20 +227,49 @@
       slug: data.slug ?? "",
       locale: data.locale,
     };
+  }
+
+  async function emitFeedback(payload) {
+    let firstError = null;
 
     try {
-      feedbackConfig.onFeedback?.(payload);
-    } catch {}
+      await feedbackConfig.onFeedback?.(payload);
+    } catch (error) {
+      firstError ??= error;
+    }
 
     try {
       const docsWindow = typeof window !== "undefined" ? window : undefined;
       if (docsWindow && typeof docsWindow.__fdOnFeedback__ === "function") {
-        docsWindow.__fdOnFeedback__(payload);
+        await docsWindow.__fdOnFeedback__(payload);
       }
-    } catch {}
+    } catch (error) {
+      firstError ??= error;
+    }
 
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("fd:feedback", { detail: payload }));
+    }
+
+    if (firstError) throw firstError;
+  }
+
+  function handleFeedback(value) {
+    selectedFeedback = value;
+    if (feedbackStatus !== "idle") feedbackStatus = "idle";
+  }
+
+  async function submitFeedback() {
+    if (!selectedFeedback || feedbackStatus === "submitting" || feedbackStatus === "submitted") {
+      return;
+    }
+
+    try {
+      feedbackStatus = "submitting";
+      await emitFeedback(buildFeedbackPayload());
+      feedbackStatus = "submitted";
+    } catch {
+      feedbackStatus = "error";
     }
   }
 
@@ -411,9 +455,10 @@
             <div class="fd-feedback-actions" role="group" aria-label={feedbackConfig.question}>
               <button
                 type="button"
-                class="fd-page-action-btn"
+                class="fd-page-action-btn fd-feedback-choice"
                 aria-pressed={selectedFeedback === "positive"}
                 data-selected={selectedFeedback === "positive" ? "true" : undefined}
+                disabled={feedbackStatus === "submitting"}
                 onclick={() => handleFeedback("positive")}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -429,9 +474,10 @@
               </button>
               <button
                 type="button"
-                class="fd-page-action-btn"
+                class="fd-page-action-btn fd-feedback-choice"
                 aria-pressed={selectedFeedback === "negative"}
                 data-selected={selectedFeedback === "negative" ? "true" : undefined}
+                disabled={feedbackStatus === "submitting"}
                 onclick={() => handleFeedback("negative")}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -447,6 +493,57 @@
               </button>
             </div>
           </div>
+          {#if selectedFeedback}
+            <div class="fd-feedback-form">
+              <textarea
+                class="fd-feedback-input"
+                aria-label="Additional feedback"
+                placeholder={feedbackConfig.placeholder}
+                bind:value={feedbackComment}
+                disabled={feedbackStatus === "submitting"}
+                oninput={() => {
+                  if (feedbackStatus !== "idle") feedbackStatus = "idle";
+                }}
+              ></textarea>
+              <div class="fd-feedback-submit-row">
+                <button
+                  type="button"
+                  class="fd-page-action-btn fd-feedback-submit"
+                  disabled={feedbackStatus === "submitting" || feedbackStatus === "submitted"}
+                  onclick={() => void submitFeedback()}
+                >
+                  {#if feedbackStatus === "submitting"}
+                    <span class="fd-feedback-spinner" aria-hidden="true"></span>
+                  {:else if feedbackStatus === "submitted"}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path
+                        d="M20 6 9 17l-5-5"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  {/if}
+                  <span>
+                    {feedbackStatus === "submitted"
+                        ? "Submitted"
+                        : feedbackConfig.submitLabel}
+                  </span>
+                </button>
+                {#if feedbackStatus === "submitted"}
+                  <p class="fd-feedback-status" data-status="success" role="status" aria-live="polite">
+                    Thanks for the feedback.
+                  </p>
+                {/if}
+              </div>
+              {#if feedbackStatus === "error"}
+                <p class="fd-feedback-status" data-status="error" role="status" aria-live="polite">
+                  Could not send feedback. Please try again.
+                </p>
+              {/if}
+            </div>
+          {/if}
         </section>
       {/if}
     </div>
