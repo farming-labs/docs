@@ -14,17 +14,19 @@ interface DocsWindowHooks extends Window {
 function useWindowHook<K extends keyof DocsWindowHooks>(key: K, handler: DocsWindowHooks[K]) {
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (typeof handler !== "function") return;
 
     const target = window as DocsWindowHooks;
-    if (typeof handler === "function") {
-      target[key] = handler;
-    } else {
-      delete target[key];
-    }
+    const previous = target[key];
+    target[key] = handler;
 
     return () => {
       if (target[key] === handler) {
-        delete target[key];
+        if (typeof previous === "function") {
+          target[key] = previous;
+        } else {
+          delete target[key];
+        }
       }
     };
   }, [handler, key]);

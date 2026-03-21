@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { DocsFeedbackData, DocsFeedbackValue } from "@farming-labs/docs";
 
 interface DocsWindowHooks extends Window {
@@ -145,6 +145,12 @@ export function DocsFeedback({
   const [status, setStatus] = useState<"idle" | "submitting" | "submitted" | "error">("idle");
   const normalizedPathname = useMemo(() => normalizePathname(pathname), [pathname]);
   const showForm = selected !== null;
+
+  useEffect(() => {
+    setSelected(null);
+    setComment("");
+    setStatus("idle");
+  }, [normalizedPathname]);
 
   function handleSelect(value: DocsFeedbackValue) {
     setSelected(value);

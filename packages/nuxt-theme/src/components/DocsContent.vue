@@ -20,6 +20,7 @@ const props = defineProps<{
     editOnGithub?: string;
     lastModified?: string;
     entry?: string;
+    slug?: string;
     locale?: string;
   };
   config?: Record<string, unknown> | null;
@@ -155,22 +156,23 @@ const feedbackConfig = computed(() => {
     onFeedback: undefined as ((payload: Record<string, unknown>) => void) | undefined,
   };
 
-  const feedback = props.config?.feedback as Record<string, unknown> | boolean | undefined;
+  const feedback = props.config?.feedback as Record<string, unknown> | boolean | null | undefined;
   if (feedback === undefined || feedback === false) return defaults;
   if (feedback === true) return { ...defaults, enabled: true };
+  if (typeof feedback !== "object" || feedback === null) return defaults;
 
   return {
-    enabled: (feedback as { enabled?: boolean }).enabled !== false,
+    enabled: feedback.enabled !== false,
     question: String((feedback as { question?: string }).question ?? defaults.question),
     positiveLabel: String(
-      (feedback as { positiveLabel?: string }).positiveLabel ?? defaults.positiveLabel,
+      feedback.positiveLabel ?? defaults.positiveLabel,
     ),
     negativeLabel: String(
-      (feedback as { negativeLabel?: string }).negativeLabel ?? defaults.negativeLabel,
+      feedback.negativeLabel ?? defaults.negativeLabel,
     ),
     onFeedback:
-      typeof (feedback as { onFeedback?: unknown }).onFeedback === "function"
-        ? ((feedback as { onFeedback: (payload: Record<string, unknown>) => void }).onFeedback)
+      typeof feedback.onFeedback === "function"
+        ? (feedback.onFeedback as (payload: Record<string, unknown>) => void)
         : undefined,
   };
 });

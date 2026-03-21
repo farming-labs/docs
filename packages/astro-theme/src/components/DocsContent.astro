@@ -107,6 +107,7 @@ const feedbackConfig = (() => {
   const feedback = config?.feedback;
   if (feedback === undefined || feedback === false) return defaults;
   if (feedback === true) return { ...defaults, enabled: true };
+  if (typeof feedback !== "object" || feedback === null) return defaults;
   return {
     enabled: feedback.enabled !== false,
     question: feedback.question ?? defaults.question,

@@ -36,7 +36,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = (await request.json()) as FeedbackBody;
+    let body: FeedbackBody;
+
+    try {
+      body = (await request.json()) as FeedbackBody;
+    } catch {
+      return NextResponse.json({ error: "Feedback body must be valid JSON" }, { status: 400 });
+    }
+
     const value = body.value;
     const url = readString(body.url, { max: 2048, required: true });
     const pathname = readString(body.pathname ?? body.path, { max: 512, required: true });
