@@ -64,13 +64,13 @@ importers:
         specifier: ^9.0.4
         version: 9.0.4(@sveltejs/kit@2.52.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.51.3)(vite@6.4.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)))(svelte@5.51.3)(typescript@5.9.3)(vite@6.4.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)))(astro@5.17.3(@types/node@22.19.11)(@vercel/functions@2.2.13)(db0@0.3.4)(ioredis@5.9.3)(jiti@2.6.1)(lightningcss@1.31.1)(rollup@4.59.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(next@16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(rollup@4.59.0)(svelte@5.51.3)(vue-router@4.6.4(vue@3.5.28(typescript@5.9.3)))(vue@3.5.28(typescript@5.9.3))
       '@farming-labs/astro':
-        specifier: 0.0.56
+        specifier: 0.0.57
         version: link:../../packages/astro
       '@farming-labs/astro-theme':
-        specifier: 0.0.56
+        specifier: 0.0.57
         version: link:../../packages/astro-theme
       '@farming-labs/docs':
-        specifier: 0.0.56
+        specifier: 0.0.57
         version: link:../../packages/docs
       astro:
         specifier: ^5.7.0
@@ -82,13 +82,13 @@ importers:
   examples/next:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.0.56
+        specifier: 0.0.57
         version: link:../../packages/docs
       '@farming-labs/next':
-        specifier: 0.0.56
+        specifier: 0.0.57
         version: link:../../packages/next
       '@farming-labs/theme':
-        specifier: 0.0.56
+        specifier: 0.0.57
         version: link:../../packages/fumadocs
       lucide-react:
         specifier: ^0.564.0
@@ -134,13 +134,13 @@ importers:
   examples/nuxt:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.0.56
+        specifier: 0.0.57
         version: link:../../packages/docs
       '@farming-labs/nuxt':
-        specifier: 0.0.56
+        specifier: 0.0.57
         version: link:../../packages/nuxt
       '@farming-labs/nuxt-theme':
-        specifier: 0.0.56
+        specifier: 0.0.57
         version: link:../../packages/nuxt-theme
       three:
         specifier: ^0.180.0
@@ -159,13 +159,13 @@ importers:
   examples/sveltekit:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.0.56
+        specifier: 0.0.57
         version: link:../../packages/docs
       '@farming-labs/svelte':
-        specifier: 0.0.56
+        specifier: 0.0.57
         version: link:../../packages/svelte
       '@farming-labs/svelte-theme':
-        specifier: 0.0.56
+        specifier: 0.0.57
         version: link:../../packages/svelte-theme
       three:
         specifier: ^0.180.0
@@ -193,13 +193,13 @@ importers:
   examples/tanstack-start:
     dependencies:
       '@farming-labs/docs':
-        specifier: 0.0.56
+        specifier: 0.0.57
         version: link:../../packages/docs
       '@farming-labs/tanstack-start':
         specifier: 0.0.33
         version: link:../../packages/tanstack-start
       '@farming-labs/theme':
-        specifier: 0.0.56
+        specifier: 0.0.57
         version: link:../../packages/fumadocs
       '@tanstack/react-router':
         specifier: ^1.0.0
