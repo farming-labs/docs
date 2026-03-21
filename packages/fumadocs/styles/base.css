@@ -307,9 +307,18 @@ figure.shiki:has(figcaption) figcaption {
   color: var(--color-fd-foreground);
 }
 
+.fd-page-action-btn[data-selected="true"] {
+  color: var(--color-fd-accent-foreground);
+  background: var(--color-fd-accent);
+}
+
 .fd-page-action-btn svg {
   flex-shrink: 0;
   color: var(--color-fd-muted-foreground);
+}
+
+.fd-page-action-btn[data-selected="true"] svg {
+  color: currentColor;
 }
 
 /* ─── Open dropdown ─────────────────────────────────────────────────── */
@@ -388,6 +397,125 @@ figure.shiki:has(figcaption) figcaption {
   flex: 1;
 }
 
+/* ─── Docs Feedback ────────────────────────────────────────────────── */
+
+.fd-feedback {
+  margin-top: 2rem;
+  margin-bottom: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-fd-border, hsl(0 0% 80% / 50%));
+}
+
+.fd-feedback-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.fd-feedback-question {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--color-fd-foreground);
+}
+
+.fd-feedback-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.fd-feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.875rem;
+}
+
+.fd-feedback-choice[data-selected="true"] {
+  background: var(--color-fd-accent, hsl(0 0% 96%));
+  color: var(--color-fd-foreground);
+  border-color: var(--color-fd-primary, currentColor);
+}
+
+.fd-feedback-input {
+  width: 100%;
+  min-height: 4.75rem;
+  resize: vertical;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--color-fd-border, hsl(0 0% 80% / 50%));
+  background: var(--color-fd-card, transparent);
+  color: var(--color-fd-foreground);
+  font: inherit;
+  line-height: 1.55;
+  outline: none;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+.fd-feedback-input::placeholder {
+  color: var(--color-fd-muted-foreground, hsl(0 0% 45%));
+}
+
+.fd-feedback-input:focus {
+  border-color: var(--color-fd-ring, var(--color-fd-primary, currentColor));
+  box-shadow: 0 0 0 1px var(--color-fd-ring, var(--color-fd-primary, currentColor));
+}
+
+.fd-feedback-submit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.fd-feedback-submit {
+  min-width: 7rem;
+  justify-content: center;
+}
+
+.fd-feedback-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.fd-feedback-spinner {
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: fd-feedback-spin 0.8s linear infinite;
+}
+
+.fd-feedback-status {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-fd-muted-foreground, hsl(0 0% 45%));
+}
+
+.fd-feedback-status[data-status="success"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.fd-feedback-status[data-status="error"] {
+  color: var(--color-fd-foreground);
+}
+
+@keyframes fd-feedback-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ─── Page Footer (Edit on GitHub + Last Updated) ──────────────────── */
 
 .fd-page-footer {
@@ -413,6 +541,11 @@ figure.shiki:has(figcaption) figcaption {
 }
 
 @media (max-width: 640px) {
+  .fd-feedback-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .fd-last-updated-footer {
     margin-left: 0;
     width: 100%;

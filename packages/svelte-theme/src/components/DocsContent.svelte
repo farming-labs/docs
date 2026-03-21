@@ -12,6 +12,7 @@
   let openDropdownMenu = $state(false);
   let copyLabel = $state("Copy page");
   let copied = $state(false);
+  let selectedFeedback = $state(null);
 
   let titleSuffix = $derived(
     config?.metadata?.titleTemplate
@@ -121,6 +122,26 @@
   );
   let showActionsAbove = $derived(pageActionsPosition === "above-title" && showPageActions);
   let showActionsBelow = $derived(pageActionsPosition === "below-title" && showPageActions);
+  let feedbackConfig = $derived.by(() => {
+    const defaults = {
+      enabled: false,
+      question: "How is this guide?",
+      positiveLabel: "Good",
+      negativeLabel: "Bad",
+      onFeedback: undefined,
+    };
+
+    const feedback = config?.feedback;
+    if (feedback === undefined || feedback === false) return defaults;
+    if (feedback === true) return { ...defaults, enabled: true };
+    return {
+      enabled: feedback.enabled !== false,
+      question: feedback.question ?? defaults.question,
+      positiveLabel: feedback.positiveLabel ?? defaults.positiveLabel,
+      negativeLabel: feedback.negativeLabel ?? defaults.negativeLabel,
+      onFeedback: typeof feedback.onFeedback === "function" ? feedback.onFeedback : undefined,
+    };
+  });
 
   function handleCopyPage() {
     let text = "";
@@ -168,6 +189,44 @@
       .replace(/\{githubUrl\}/g, githubUrl);
     if (typeof window !== "undefined") window.open(url, "_blank", "noopener,noreferrer");
     closeDropdown();
+  }
+
+  function handleFeedback(value) {
+    selectedFeedback = value;
+
+    const pathname =
+      typeof window !== "undefined"
+        ? window.location.pathname.replace(/\/$/, "") || "/"
+        : data.slug
+          ? `/${data.entry ?? config?.entry ?? "docs"}/${data.slug}`
+          : `/${data.entry ?? config?.entry ?? "docs"}`;
+
+    const payload = {
+      value,
+      title: data.title,
+      description: data.description,
+      url: typeof window !== "undefined" ? window.location.href : pathname,
+      pathname,
+      path: pathname,
+      entry: data.entry ?? config?.entry ?? "docs",
+      slug: data.slug ?? "",
+      locale: data.locale,
+    };
+
+    try {
+      feedbackConfig.onFeedback?.(payload);
+    } catch {}
+
+    try {
+      const docsWindow = typeof window !== "undefined" ? window : undefined;
+      if (docsWindow && typeof docsWindow.__fdOnFeedback__ === "function") {
+        docsWindow.__fdOnFeedback__(payload);
+      }
+    } catch {}
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("fd:feedback", { detail: payload }));
+    }
   }
 
   function handleClickOutside(e) {
@@ -344,6 +403,52 @@
       {/if}
 
       {@html htmlWithoutFirstH1}
+
+      {#if feedbackConfig.enabled}
+        <section class="fd-feedback" aria-label="Page feedback">
+          <div class="fd-feedback-content">
+            <p class="fd-feedback-question">{feedbackConfig.question}</p>
+            <div class="fd-feedback-actions" role="group" aria-label={feedbackConfig.question}>
+              <button
+                type="button"
+                class="fd-page-action-btn"
+                aria-pressed={selectedFeedback === "positive"}
+                data-selected={selectedFeedback === "positive" ? "true" : undefined}
+                onclick={() => handleFeedback("positive")}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M7 21H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h2m0 11V10m0 11h9.28a2 2 0 0 0 1.97-1.66l1.2-7A2 2 0 0 0 17.48 10H13V6.5a2.5 2.5 0 0 0-2.5-2.5L7 10"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                <span>{feedbackConfig.positiveLabel}</span>
+              </button>
+              <button
+                type="button"
+                class="fd-page-action-btn"
+                aria-pressed={selectedFeedback === "negative"}
+                data-selected={selectedFeedback === "negative" ? "true" : undefined}
+                onclick={() => handleFeedback("negative")}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M17 3h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-2M17 3v11m0-11H7.72a2 2 0 0 0-1.97 1.66l-1.2 7A2 2 0 0 0 6.52 14H11v3.5a2.5 2.5 0 0 0 2.5 2.5L17 14"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                <span>{feedbackConfig.negativeLabel}</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      {/if}
     </div>
   {/snippet}
 </DocsPage>

@@ -15,6 +15,8 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     breadcrumb: config.breadcrumb,
     sidebar: config.sidebar,
     components: config.components,
+    onCopyClick: config.onCopyClick,
+    feedback: config.feedback,
     icons: config.icons,
     pageActions: config.pageActions,
     lastUpdated: config.lastUpdated,

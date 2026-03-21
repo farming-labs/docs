@@ -20,6 +20,15 @@ importers:
 
   .:
     devDependencies:
+      '@farming-labs/docs':
+        specifier: workspace:*
+        version: link:packages/docs
+      '@farming-labs/next':
+        specifier: workspace:*
+        version: link:packages/next
+      '@farming-labs/theme':
+        specifier: workspace:*
+        version: link:packages/fumadocs
       '@tailwindcss/postcss':
         specifier: ^4.1.18
         version: 4.1.18

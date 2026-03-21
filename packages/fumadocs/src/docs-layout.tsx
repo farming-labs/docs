@@ -654,6 +654,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
 
   // llms.txt config
   const llmsTxtEnabled = resolveBool(config.llmsTxt);
+  const feedbackConfig = resolveFeedbackConfig(config.feedback);
 
   // Serialize provider icons to HTML strings so they survive the
   // server → client component boundary.
@@ -820,6 +821,12 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
               lastUpdatedPosition={lastUpdatedPosition}
               llmsTxtEnabled={llmsTxtEnabled}
               descriptionMap={descriptionMap}
+              feedbackEnabled={feedbackConfig.enabled}
+              feedbackQuestion={feedbackConfig.question}
+              feedbackPlaceholder={feedbackConfig.placeholder}
+              feedbackPositiveLabel={feedbackConfig.positiveLabel}
+              feedbackNegativeLabel={feedbackConfig.negativeLabel}
+              feedbackSubmitLabel={feedbackConfig.submitLabel}
             >
               {children}
             </DocsPageClient>
@@ -835,6 +842,29 @@ function resolveBool(v: boolean | { enabled?: boolean } | undefined): boolean {
   if (v === undefined) return false;
   if (typeof v === "boolean") return v;
   return v.enabled !== false;
+}
+
+function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
+  const defaults = {
+    enabled: false,
+    question: "How is this guide?",
+    placeholder: "Leave your feedback...",
+    positiveLabel: "Good",
+    negativeLabel: "Bad",
+    submitLabel: "Submit",
+  };
+
+  if (feedback === undefined || feedback === false) return defaults;
+  if (feedback === true) return { ...defaults, enabled: true };
+
+  return {
+    enabled: feedback.enabled !== false,
+    question: feedback.question ?? defaults.question,
+    placeholder: feedback.placeholder ?? defaults.placeholder,
+    positiveLabel: feedback.positiveLabel ?? defaults.positiveLabel,
+    negativeLabel: feedback.negativeLabel ?? defaults.negativeLabel,
+    submitLabel: feedback.submitLabel ?? defaults.submitLabel,
+  };
 }
 
 /**

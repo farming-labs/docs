@@ -13,6 +13,11 @@ enum ApprovalStatus {
   REJECTED
 }
 
+enum FeedbackSentiment {
+  POSITIVE
+  NEGATIVE
+}
+
 model ShowcaseEntry {
   id             String         @id @default(cuid())
   name           String
@@ -21,4 +26,24 @@ model ShowcaseEntry {
   screenshot     String?
   approvalStatus ApprovalStatus @default(IDLE)
   createdAt      DateTime       @default(now())
+}
+
+model DocsFeedback {
+  id          String            @id @default(cuid())
+  value       FeedbackSentiment
+  comment     String?
+  url         String
+  pathname    String
+  entry       String
+  slug        String?
+  title       String?
+  description String?
+  locale      String?
+  userAgent   String?
+  referer     String?
+  createdAt   DateTime          @default(now())
+
+  @@index([createdAt])
+  @@index([pathname])
+  @@index([slug])
 }

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "pnpm prisma generate && pnpm -C .. build && pnpm --dir ../examples/next build && pnpm --dir ../examples/tanstack-start build && pnpm --dir ../examples/nuxt build && pnpm --dir ../examples/astro build && pnpm --dir ../examples/sveltekit build && next build",
     "start": "next start",
     "postinstall": "prisma generate"

@@ -4,7 +4,9 @@ export default defineConfig({
   entry: [
     "src/index.ts",
     "src/api-reference.tsx",
+    "src/client-callbacks.tsx",
     "src/config.ts",
+    "src/layout.tsx",
     "src/mdx-plugins/remark-heading.ts",
     "src/mdx-plugins/rehype-toc.ts",
     "src/mdx-plugins/rehype-code.ts",
@@ -18,6 +20,8 @@ export default defineConfig({
     "next",
     "react",
     "react-dom",
+    "@/docs.config",
+    "@farming-labs/theme/client-hooks",
     "@next/mdx",
     "@mdx-js/loader",
     "@mdx-js/react",

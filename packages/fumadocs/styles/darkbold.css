@@ -573,3 +573,21 @@ details > :not(summary) {
 .fd-sidebar::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ─── Feedback (darkbold theme) ──────────────────────────────────── */
+
+.fd-feedback-input,
+.fd-feedback-submit {
+  border-radius: 6px;
+}
+
+.fd-feedback-submit,
+.fd-feedback-choice {
+  text-transform: uppercase;
+  font-family: var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace));
+}
+
+.fd-feedback-status[data-status="success"] {
+  color: var(--color-fd-foreground);
+  font-weight: 600;
+}

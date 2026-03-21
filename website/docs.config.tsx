@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 import { Callout } from "@/components/ui/callout";
+import { submitDocsFeedback } from "@/lib/submit-docs-feedback";
 
 export default defineDocs({
   entry: "docs",
@@ -144,6 +145,10 @@ export default defineDocs({
         },
       ],
     },
+  },
+  feedback: {
+    enabled: true,
+    onFeedback: submitDocsFeedback,
   },
 
   llmsTxt: {

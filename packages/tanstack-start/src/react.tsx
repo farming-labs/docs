@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
-import type { DocsConfig } from "@farming-labs/docs";
+import type { DocsConfig, FeedbackConfig } from "@farming-labs/docs";
+import { DocsClientHooks } from "@farming-labs/theme/client-hooks";
 import { TanstackDocsLayout } from "@farming-labs/theme/tanstack";
 import { getMDXComponents } from "@farming-labs/theme/mdx";
 import type { DocsServerLoadResult } from "./server.js";
@@ -43,20 +44,30 @@ export function TanstackDocsPage({
   }
 
   return (
-    <TanstackDocsLayout
-      config={config}
-      tree={data.tree}
-      locale={data.locale}
-      description={data.description}
-      lastModified={data.lastModified}
-      editOnGithubUrl={data.editOnGithub}
-    >
-      <Content
-        components={getMDXComponents(config.components as Record<string, unknown>, {
-          onCopyClick: config.onCopyClick,
-          theme: config.theme,
-        })}
+    <>
+      <DocsClientHooks
+        onCopyClick={config.onCopyClick}
+        onFeedback={
+          typeof config.feedback === "object"
+            ? (config.feedback as FeedbackConfig).onFeedback
+            : undefined
+        }
       />
-    </TanstackDocsLayout>
+      <TanstackDocsLayout
+        config={config}
+        tree={data.tree}
+        locale={data.locale}
+        description={data.description}
+        lastModified={data.lastModified}
+        editOnGithubUrl={data.editOnGithub}
+      >
+        <Content
+          components={getMDXComponents(config.components as Record<string, unknown>, {
+            onCopyClick: config.onCopyClick,
+            theme: config.theme,
+          })}
+        />
+      </TanstackDocsLayout>
+    </>
   );
 }

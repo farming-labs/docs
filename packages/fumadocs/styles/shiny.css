@@ -624,3 +624,27 @@ details > :not(summary) {
 .fd-sidebar::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ─── Feedback (shiny theme) ─────────────────────────────────────── */
+
+.fd-feedback-input,
+.fd-feedback-submit {
+  border-radius: 0.75rem;
+}
+
+.fd-feedback-input {
+  background: color-mix(in srgb, var(--color-fd-card) 92%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.dark .fd-feedback-input {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+.fd-feedback-status[data-status="success"] {
+  color: var(--color-fd-primary);
+}

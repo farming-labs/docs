@@ -28,6 +28,11 @@
       "import": "./dist/mdx.mjs",
       "default": "./dist/mdx.mjs"
     },
+    "./client-hooks": {
+      "types": "./dist/docs-client-hooks.d.mts",
+      "import": "./dist/docs-client-hooks.mjs",
+      "default": "./dist/docs-client-hooks.mjs"
+    },
     "./default": {
       "types": "./dist/default/index.d.mts",
       "import": "./dist/default/index.mjs",

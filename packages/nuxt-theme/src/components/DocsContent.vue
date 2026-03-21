@@ -20,6 +20,7 @@ const props = defineProps<{
     editOnGithub?: string;
     lastModified?: string;
     entry?: string;
+    slug?: string;
     locale?: string;
   };
   config?: Record<string, unknown> | null;
@@ -29,6 +30,7 @@ const route = useRoute();
 const openDropdownMenu = ref(false);
 const copyLabel = ref("Copy page");
 const copied = ref(false);
+const selectedFeedback = ref<"positive" | "negative" | null>(null);
 
 const titleSuffix = computed(() =>
   props.config?.metadata?.titleTemplate
@@ -145,6 +147,35 @@ const showPageActions = computed(
 );
 const showActionsAbove = computed(() => pageActionsPosition.value === "above-title" && showPageActions.value);
 const showActionsBelow = computed(() => pageActionsPosition.value === "below-title" && showPageActions.value);
+const feedbackConfig = computed(() => {
+  const defaults = {
+    enabled: false,
+    question: "How is this guide?",
+    positiveLabel: "Good",
+    negativeLabel: "Bad",
+    onFeedback: undefined as ((payload: Record<string, unknown>) => void) | undefined,
+  };
+
+  const feedback = props.config?.feedback as Record<string, unknown> | boolean | null | undefined;
+  if (feedback === undefined || feedback === false) return defaults;
+  if (feedback === true) return { ...defaults, enabled: true };
+  if (typeof feedback !== "object" || feedback === null) return defaults;
+
+  return {
+    enabled: feedback.enabled !== false,
+    question: String((feedback as { question?: string }).question ?? defaults.question),
+    positiveLabel: String(
+      feedback.positiveLabel ?? defaults.positiveLabel,
+    ),
+    negativeLabel: String(
+      feedback.negativeLabel ?? defaults.negativeLabel,
+    ),
+    onFeedback:
+      typeof feedback.onFeedback === "function"
+        ? (feedback.onFeedback as (payload: Record<string, unknown>) => void)
+        : undefined,
+  };
+});
 
 useHead({
   title: () => `${props.data.title}${titleSuffix.value}`,
@@ -199,6 +230,43 @@ function openInProvider(provider: { name: string; urlTemplate: string }) {
     .replace(/\{githubUrl\}/g, githubUrl);
   if (typeof window !== "undefined") window.open(url, "_blank", "noopener,noreferrer");
   closeDropdown();
+}
+
+function handleFeedback(value: "positive" | "negative") {
+  selectedFeedback.value = value;
+
+  const pathname =
+    typeof window !== "undefined"
+      ? window.location.pathname.replace(/\/$/, "") || "/"
+      : props.data.slug
+        ? `/${entry.value}/${props.data.slug}`
+        : `/${entry.value}`;
+
+  const payload = {
+    value,
+    title: props.data.title,
+    description: props.data.description,
+    url: typeof window !== "undefined" ? window.location.href : pathname,
+    pathname,
+    path: pathname,
+    entry: entry.value,
+    slug: props.data.slug ?? "",
+    locale: props.data.locale,
+  };
+
+  try {
+    feedbackConfig.value.onFeedback?.(payload);
+  } catch {}
+
+  try {
+    if (typeof window !== "undefined" && (window as any).__fdOnFeedback__) {
+      (window as any).__fdOnFeedback__(payload);
+    }
+  } catch {}
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("fd:feedback", { detail: payload }));
+  }
 }
 
 function handleClickOutside(e: MouseEvent) {
@@ -354,5 +422,49 @@ onUnmounted(() => {
     </template>
 
     <div v-html="htmlWithoutFirstH1" />
+
+    <section v-if="feedbackConfig.enabled" class="fd-feedback" aria-label="Page feedback">
+      <div class="fd-feedback-content">
+        <p class="fd-feedback-question">{{ feedbackConfig.question }}</p>
+        <div class="fd-feedback-actions" role="group" :aria-label="feedbackConfig.question">
+          <button
+            type="button"
+            class="fd-page-action-btn"
+            :aria-pressed="selectedFeedback === 'positive'"
+            :data-selected="selectedFeedback === 'positive' ? 'true' : undefined"
+            @click="handleFeedback('positive')"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M7 21H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h2m0 11V10m0 11h9.28a2 2 0 0 0 1.97-1.66l1.2-7A2 2 0 0 0 17.48 10H13V6.5a2.5 2.5 0 0 0-2.5-2.5L7 10"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span>{{ feedbackConfig.positiveLabel }}</span>
+          </button>
+          <button
+            type="button"
+            class="fd-page-action-btn"
+            :aria-pressed="selectedFeedback === 'negative'"
+            :data-selected="selectedFeedback === 'negative' ? 'true' : undefined"
+            @click="handleFeedback('negative')"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M17 3h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-2M17 3v11m0-11H7.72a2 2 0 0 0-1.97 1.66l-1.2 7A2 2 0 0 0 6.52 14H11v3.5a2.5 2.5 0 0 0 2.5 2.5L17 14"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span>{{ feedbackConfig.negativeLabel }}</span>
+          </button>
+        </div>
+      </div>
+    </section>
   </DocsPage>
 </template>

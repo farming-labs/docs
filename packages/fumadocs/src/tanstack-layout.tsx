@@ -266,6 +266,29 @@ function resolveBool(value: boolean | { enabled?: boolean } | undefined): boolea
   return value.enabled !== false;
 }
 
+function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
+  const defaults = {
+    enabled: false,
+    question: "How is this guide?",
+    placeholder: "Leave your feedback...",
+    positiveLabel: "Good",
+    negativeLabel: "Bad",
+    submitLabel: "Submit",
+  };
+
+  if (feedback === undefined || feedback === false) return defaults;
+  if (feedback === true) return { ...defaults, enabled: true };
+
+  return {
+    enabled: feedback.enabled !== false,
+    question: feedback.question ?? defaults.question,
+    placeholder: feedback.placeholder ?? defaults.placeholder,
+    positiveLabel: feedback.positiveLabel ?? defaults.positiveLabel,
+    negativeLabel: feedback.negativeLabel ?? defaults.negativeLabel,
+    submitLabel: feedback.submitLabel ?? defaults.submitLabel,
+  };
+}
+
 function ForcedThemeScript({ theme }: { theme: string }) {
   const normalizedTheme = theme === "light" || theme === "dark" ? theme : "light";
   return (
@@ -331,6 +354,7 @@ export function TanstackDocsLayout({
     typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
 
   const llmsTxtEnabled = resolveBool(config.llmsTxt);
+  const feedbackConfig = resolveFeedbackConfig(config.feedback);
   const staticExport = !!(config as { staticExport?: boolean }).staticExport;
 
   const rawProviders =
@@ -458,6 +482,12 @@ export function TanstackDocsLayout({
             lastModified={lastModified}
             llmsTxtEnabled={llmsTxtEnabled}
             description={description}
+            feedbackEnabled={feedbackConfig.enabled}
+            feedbackQuestion={feedbackConfig.question}
+            feedbackPlaceholder={feedbackConfig.placeholder}
+            feedbackPositiveLabel={feedbackConfig.positiveLabel}
+            feedbackNegativeLabel={feedbackConfig.negativeLabel}
+            feedbackSubmitLabel={feedbackConfig.submitLabel}
           >
             {children}
           </DocsPageClient>

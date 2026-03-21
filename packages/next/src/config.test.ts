@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { existsSync, mkdirSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, rmSync, mkdtempSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { withDocs } from "./config.js";
@@ -111,5 +111,16 @@ describe("withDocs (app dir: src/app vs app)", () => {
     withDocs({});
 
     expect(existsSync(join(tmpDir, "app/custom-api-reference/[[...slug]]/route.ts"))).toBe(true);
+  });
+
+  it("generates a layout that re-exports the package-owned docs layout", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({});
+
+    const layout = readFileSync(join(tmpDir, "app/docs/layout.tsx"), "utf-8");
+
+    expect(layout).toContain('export { metadata, default } from "@farming-labs/next/layout";');
   });
 });

@@ -231,3 +231,14 @@
 .omni-highlight {
   background: color-mix(in srgb, var(--color-fd-primary, #6366f1) 25%, transparent);
 }
+
+/* ─── Feedback (default theme) ───────────────────────────────────── */
+
+.fd-feedback-input,
+.fd-feedback-submit {
+  border-radius: 0.5rem;
+}
+
+.fd-feedback-status[data-status="success"] {
+  color: color-mix(in srgb, var(--color-fd-primary) 85%, var(--color-fd-foreground));
+}

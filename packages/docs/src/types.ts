@@ -1066,6 +1066,67 @@ export interface CodeBlockCopyData {
   language?: string;
 }
 
+/** Feedback value emitted by the built-in docs page feedback buttons. */
+export type DocsFeedbackValue = "positive" | "negative";
+
+/**
+ * Data passed to the `feedback.onFeedback` callback when the user submits
+ * page feedback from the built-in docs feedback UI.
+ */
+export interface DocsFeedbackData {
+  /** Whether the user gave positive or negative feedback. */
+  value: DocsFeedbackValue;
+  /** Optional free-form feedback left by the reader. */
+  comment?: string;
+  /** Current page title, when available. */
+  title?: string;
+  /** Current page description, when available. */
+  description?: string;
+  /** Full current page URL at the time of feedback. */
+  url: string;
+  /** Current URL pathname (without origin). */
+  pathname: string;
+  /** Alias of `pathname` for analytics tools that prefer `path`. */
+  path: string;
+  /** Docs entry root, e.g. `"docs"`. */
+  entry: string;
+  /** Page slug relative to the docs entry, e.g. `"installation"` or `"guides/setup"`. */
+  slug: string;
+  /** Active locale, when docs i18n is enabled. */
+  locale?: string;
+}
+
+/**
+ * Built-in page feedback configuration.
+ *
+ * When enabled, docs pages render a small feedback prompt at the end of the
+ * content. Clicking a button emits a callback/event with the current page
+ * metadata and the selected sentiment.
+ */
+export interface FeedbackConfig {
+  /** Show the feedback UI. Defaults to `true` when this object is provided. */
+  enabled?: boolean;
+  /** Prompt shown above the feedback buttons. @default "How is this guide?" */
+  question?: string;
+  /** Placeholder shown in the optional free-form feedback field. @default "Leave your feedback..." */
+  placeholder?: string;
+  /** Label for the positive button. @default "Good" */
+  positiveLabel?: string;
+  /** Label for the negative button. @default "Bad" */
+  negativeLabel?: string;
+  /** Label for the submit button. @default "Submit" */
+  submitLabel?: string;
+  /**
+   * Callback fired when the user submits the feedback form.
+   *
+   * For client-only frameworks this runs directly in the browser. In
+   * environments where the config cannot be serialized to the client, the same
+   * payload is also emitted through `window.__fdOnFeedback__` and the
+   * `fd:feedback` custom event.
+   */
+  onFeedback?: (data: DocsFeedbackData) => void | Promise<void>;
+}
+
 export interface DocsI18nConfig {
   /** Supported locale identifiers (e.g. ["en", "fr"]). */
   locales: string[];
@@ -1226,6 +1287,29 @@ export interface DocsConfig {
    * ```
    */
   onCopyClick?: (data: CodeBlockCopyData) => void;
+  /**
+   * Built-in page feedback prompt shown at the end of a docs page.
+   *
+   * - `false` or `undefined` → hidden (default)
+   * - `true` → shown with default labels
+   * - `{ enabled: true, onFeedback(data) { ... } }` → shown with callback
+   *
+   * @example
+   * ```ts
+   * import type { DocsFeedbackData } from "@farming-labs/docs";
+   *
+   * export default defineDocs({
+   *   entry: "docs",
+   *   feedback: {
+   *     enabled: true,
+   *     onFeedback(data: DocsFeedbackData) {
+   *       console.log("Docs feedback", data.value, data.slug, data.url);
+   *     },
+   *   },
+   * });
+   * ```
+   */
+  feedback?: boolean | FeedbackConfig;
   /**
    * Icon registry for sidebar items.
    *
