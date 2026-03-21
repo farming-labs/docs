@@ -825,3 +825,22 @@ body .fd-page-action-menu-item:hover {
   background: color-mix(in srgb, var(--color-fd-primary, #6366f1) 25%, transparent) !important;
   border-radius: 0 !important;
 }
+
+/* ─── Feedback (pixel-border theme) ────────────────────────────── */
+
+.dark .fd-feedback-input,
+:root.dark .fd-feedback-input {
+  background: #0d0d0d !important;
+  border-color: #262626 !important;
+}
+
+.dark .fd-feedback-input::placeholder,
+:root.dark .fd-feedback-input::placeholder {
+  color: #8c8c8c !important;
+}
+
+.dark .fd-feedback-input:focus,
+:root.dark .fd-feedback-input:focus {
+  border-color: #fbfbfa !important;
+  box-shadow: 0 0 0 1px #fbfbfa !important;
+}

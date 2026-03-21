@@ -725,3 +725,22 @@ body .fd-page-action-menu-item:hover {
   box-shadow: none !important;
   transition: background 100ms;
 }
+
+/* ─── Feedback (default theme) ─────────────────────────────────── */
+
+.dark .fd-feedback-input,
+:root.dark .fd-feedback-input {
+  background: #141414 !important;
+  border-color: #262626 !important;
+}
+
+.dark .fd-feedback-input::placeholder,
+:root.dark .fd-feedback-input::placeholder {
+  color: #a3a3a3 !important;
+}
+
+.dark .fd-feedback-input:focus,
+:root.dark .fd-feedback-input:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 1px #6366f1 !important;
+}

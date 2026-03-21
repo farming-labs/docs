@@ -884,3 +884,22 @@ a[data-active="true"]:not(aside a) {
   box-shadow: none !important;
   transition: background 100ms;
 }
+
+/* ─── Feedback (shiny theme) ───────────────────────────────────── */
+
+.dark .fd-feedback-input,
+:root.dark .fd-feedback-input {
+  background: hsl(240 8% 10%) !important;
+  border-color: hsl(240 5% 18%) !important;
+}
+
+.dark .fd-feedback-input::placeholder,
+:root.dark .fd-feedback-input::placeholder {
+  color: hsl(240 4% 58%) !important;
+}
+
+.dark .fd-feedback-input:focus,
+:root.dark .fd-feedback-input:focus {
+  border-color: hsl(256 85% 65%) !important;
+  box-shadow: 0 0 0 1px hsl(256 85% 65%) !important;
+}

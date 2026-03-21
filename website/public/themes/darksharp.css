@@ -803,3 +803,22 @@ body .fd-page-action-menu-item:hover {
     grid-template-columns: var(--fd-sidebar-col, 0px) 1fr min-content !important;
   }
 }
+
+/* ─── Feedback (darksharp theme) ───────────────────────────────── */
+
+.dark .fd-feedback-input,
+:root.dark .fd-feedback-input {
+  background: hsl(0 0% 4%) !important;
+  border-color: #292524 !important;
+}
+
+.dark .fd-feedback-input::placeholder,
+:root.dark .fd-feedback-input::placeholder {
+  color: #a8a29e !important;
+}
+
+.dark .fd-feedback-input:focus,
+:root.dark .fd-feedback-input:focus {
+  border-color: #fafaf9 !important;
+  box-shadow: 0 0 0 1px #fafaf9 !important;
+}

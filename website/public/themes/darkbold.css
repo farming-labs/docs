@@ -634,3 +634,22 @@ body .fd-page-action-menu-item:hover {
 h1 { letter-spacing: -0.06em !important; }
 h2 { letter-spacing: -0.04em !important; }
 h3 { letter-spacing: -0.02em !important; }
+
+/* ─── Feedback (darkbold theme) ────────────────────────────────── */
+
+.dark .fd-feedback-input,
+:root.dark .fd-feedback-input {
+  background: #111111 !important;
+  border-color: #333333 !important;
+}
+
+.dark .fd-feedback-input::placeholder,
+:root.dark .fd-feedback-input::placeholder {
+  color: #888888 !important;
+}
+
+.dark .fd-feedback-input:focus,
+:root.dark .fd-feedback-input:focus {
+  border-color: #ffffff !important;
+  box-shadow: 0 0 0 1px #ffffff !important;
+}

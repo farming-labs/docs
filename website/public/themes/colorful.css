@@ -815,3 +815,22 @@ body .fd-page-action-menu-item:hover {
   box-shadow: none !important;
   transition: background 100ms;
 }
+
+/* ─── Feedback (colorful theme) ────────────────────────────────── */
+
+.dark .fd-feedback-input,
+:root.dark .fd-feedback-input {
+  background: hsl(0 0% 9.8%) !important;
+  border-color: hsla(0, 0%, 40%, 0.2) !important;
+}
+
+.dark .fd-feedback-input::placeholder,
+:root.dark .fd-feedback-input::placeholder {
+  color: hsla(0, 0%, 70%, 0.8) !important;
+}
+
+.dark .fd-feedback-input:focus,
+:root.dark .fd-feedback-input:focus {
+  border-color: hsl(45, 90%, 55%) !important;
+  box-shadow: 0 0 0 1px hsl(45, 90%, 55%) !important;
+}

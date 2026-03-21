@@ -19,8 +19,8 @@ export async function submitDocsFeedback(data: DocsFeedbackData) {
     try {
       const body = (await response.json()) as { error?: string };
       details = body.error ? `: ${body.error}` : "";
-    } catch {
-      // ignore body parsing issues
+    } catch (e) {
+      console.log({ e });
     }
 
     throw new Error(`Failed to submit docs feedback (${response.status})${details}`);
