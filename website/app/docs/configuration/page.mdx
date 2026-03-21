@@ -634,9 +634,9 @@ export default defineDocs({
 
 If you just want the UI without a callback, use `feedback: true`.
 
-**Next.js / TanStack Start / SvelteKit / Nuxt:** `feedback.onFeedback` is called from the built-in page footer UI.
+**Next.js / TanStack Start / SvelteKit / Nuxt:** `feedback.onFeedback` is called from the built-in page footer UI with no extra client bridge file.
 
-**Astro:** the built-in UI still comes from `docs.config`, and the same payload is emitted through `window.__fdOnFeedback__` and the `fd:feedback` custom event for client-side analytics hooks.
+**Astro:** `feedback: true` still enables the built-in UI with no extra setup. For optional client-side analytics hooks, the same payload is also emitted through `window.__fdOnFeedback__` and the `fd:feedback` custom event.
 
 <Callout type="info" title="How this docs site uses it">
   This website enables `feedback` in `website/docs.config.tsx` and posts the callback payload to

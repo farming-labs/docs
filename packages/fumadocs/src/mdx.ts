@@ -70,7 +70,7 @@ function applyBuiltInComponentDefaults<T extends Record<string, unknown>>(
     const componentDefaults =
       typeof value === "function"
         ? value(builtInDefaults)
-        : { ...(builtInDefaults as Record<string, unknown>), ...(value ?? {}) };
+        : { ...(builtInDefaults as Record<string, unknown>), ...value };
 
     if (!componentDefaults || typeof componentDefaults !== "object") continue;
 
