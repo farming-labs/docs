@@ -439,7 +439,7 @@ figure.shiki:has(figcaption) figcaption {
 .fd-feedback-choice[data-selected="true"] {
   background: var(--color-fd-accent, hsl(0 0% 96%));
   color: var(--color-fd-foreground);
-  border-color: var(--color-fd-primary, currentColor);
+  border-color: color-mix(in srgb, var(--color-fd-primary, currentColor) 65%, transparent);
 }
 
 .fd-feedback-input {
