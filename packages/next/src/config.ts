@@ -99,6 +99,7 @@ export const revalidate = false;
 // ─── Helpers ────────────────────────────────────────────────────────
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
+const INTERNAL_DOCS_CONFIG_ALIAS = "@farming-labs/next-internal-docs-config";
 
 function hasFile(root: string, baseName: string): boolean {
   return FILE_EXTS.some((ext) => existsSync(join(root, `${baseName}.${ext}`)));
@@ -129,6 +130,15 @@ function readDocsEntry(root: string): string {
     }
   }
   return "docs";
+}
+
+function readDocsConfigPath(root: string): string {
+  for (const ext of FILE_EXTS) {
+    const relativePath = `docs.config.${ext}`;
+    if (existsSync(join(root, relativePath))) return relativePath;
+  }
+
+  return "docs.config.ts";
 }
 
 /** Read the OG endpoint from docs.config.ts[x] (returns undefined if not set). */
@@ -218,6 +228,12 @@ function extractObjectLiteral(content: string, key: string): string | undefined 
 
 export function withDocs(nextConfig: Record<string, unknown> = {}) {
   const root = process.cwd();
+  const docsConfigPath = readDocsConfigPath(root);
+  const docsConfigAbsolutePath = join(root, docsConfigPath);
+  const docsConfigRelativeAlias =
+    docsConfigPath.startsWith("./") || docsConfigPath.startsWith("../")
+      ? docsConfigPath
+      : `./${docsConfigPath}`;
 
   // ── 1. Auto-generate mdx-components.tsx if missing ──────────────
   if (!hasFile(root, "mdx-components")) {
@@ -296,6 +312,30 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
   } else {
     nextConfig.pageExtensions = defaultExts;
   }
+
+  const existingTurbopack = (nextConfig.turbopack as Record<string, unknown> | undefined) ?? {};
+  const existingResolveAlias =
+    (existingTurbopack.resolveAlias as Record<string, string> | undefined) ?? {};
+
+  nextConfig.turbopack = {
+    ...existingTurbopack,
+    resolveAlias: {
+      ...existingResolveAlias,
+      [INTERNAL_DOCS_CONFIG_ALIAS]: docsConfigRelativeAlias,
+    },
+  };
+
+  const userWebpack = nextConfig.webpack as
+    | ((config: Record<string, any>, options: Record<string, any>) => Record<string, any>)
+    | undefined;
+
+  nextConfig.webpack = (config: Record<string, any>, options: Record<string, any>) => {
+    const resolvedConfig = userWebpack ? userWebpack(config, options) : config;
+    resolvedConfig.resolve ??= {};
+    resolvedConfig.resolve.alias ??= {};
+    resolvedConfig.resolve.alias[INTERNAL_DOCS_CONFIG_ALIAS] = docsConfigAbsolutePath;
+    return resolvedConfig;
+  };
 
   return withMDX(nextConfig);
 }

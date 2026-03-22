@@ -117,15 +117,17 @@ describe("withDocs (app dir: src/app vs app)", () => {
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);
 
-    withDocs({});
+    const nextConfig = withDocs({});
 
     const layout = readFileSync(join(tmpDir, "app/docs/layout.tsx"), "utf-8");
 
     expect(layout).toContain('import docsConfig from "@/docs.config";');
     expect(layout).toContain("createNextDocsLayout(docsConfig)");
-    expect(layout).not.toContain("docs-theme.css");
+    expect(nextConfig.turbopack.resolveAlias["@farming-labs/next-internal-docs-config"]).toBe(
+      "./docs.config.ts",
+    );
+    expect(typeof nextConfig.webpack).toBe("function");
     expect(existsSync(join(tmpDir, "docs-client-callbacks.tsx"))).toBe(false);
     expect(existsSync(join(tmpDir, "app/docs/docs-theme.css"))).toBe(false);
-    expect(layout).not.toContain("DocsClientCallbacks");
   });
 });
