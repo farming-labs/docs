@@ -2,7 +2,6 @@
 
 import docsConfig from "@/docs.config";
 import { createNextDocsLayout, createNextDocsMetadata } from "@farming-labs/next/layout";
-import "./docs-theme.css";
 
 export const metadata = createNextDocsMetadata(docsConfig);
 
