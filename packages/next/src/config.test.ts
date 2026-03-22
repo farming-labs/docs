@@ -123,7 +123,9 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(layout).toContain('import docsConfig from "@/docs.config";');
     expect(layout).toContain("createNextDocsLayout(docsConfig)");
+    expect(layout).not.toContain("docs-theme.css");
     expect(existsSync(join(tmpDir, "docs-client-callbacks.tsx"))).toBe(false);
+    expect(existsSync(join(tmpDir, "app/docs/docs-theme.css"))).toBe(false);
     expect(layout).not.toContain("DocsClientCallbacks");
   });
 });
