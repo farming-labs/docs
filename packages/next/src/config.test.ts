@@ -7,22 +7,6 @@ import { withDocs } from "./config.js";
 const DOCS_CONFIG = `export default { entry: "docs" };
 `;
 
-const DOCS_CONFIG_WITH_THEME = `import { pixelBorder } from "@farming-labs/theme/pixel-border";
-
-export default {
-  entry: "docs",
-  theme: pixelBorder(),
-};
-`;
-
-const DOCS_CONFIG_WITH_CUSTOM_THEME = `import { myTheme } from "./themes/my-theme";
-
-export default {
-  entry: "docs",
-  theme: myTheme(),
-};
-`;
-
 const DOCS_CONFIG_WITH_API_REFERENCE = `export default {
   entry: "docs",
   apiReference: {
@@ -139,32 +123,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(layout).toContain('import docsConfig from "@/docs.config";');
     expect(layout).toContain("createNextDocsLayout(docsConfig)");
-    expect(layout).toContain('import "./docs-theme.css";');
     expect(existsSync(join(tmpDir, "docs-client-callbacks.tsx"))).toBe(false);
     expect(layout).not.toContain("DocsClientCallbacks");
-  });
-
-  it("generates docs-theme.css from the selected built-in theme", () => {
-    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_THEME, "utf-8");
-    mkdirSync(join(tmpDir, "app"), { recursive: true });
-    process.chdir(tmpDir);
-
-    withDocs({});
-
-    const css = readFileSync(join(tmpDir, "app/docs/docs-theme.css"), "utf-8");
-    expect(css).toContain('@import "@farming-labs/theme/pixel-border/css";');
-  });
-
-  it("generates docs-theme.css from a custom theme file relative to docs.config", () => {
-    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_CUSTOM_THEME, "utf-8");
-    mkdirSync(join(tmpDir, "app"), { recursive: true });
-    mkdirSync(join(tmpDir, "themes"), { recursive: true });
-    writeFileSync(join(tmpDir, "themes", "my-theme.css"), "/* custom theme */", "utf-8");
-    process.chdir(tmpDir);
-
-    withDocs({});
-
-    const css = readFileSync(join(tmpDir, "app/docs/docs-theme.css"), "utf-8");
-    expect(css).toContain('@import "../../themes/my-theme.css";');
   });
 });
