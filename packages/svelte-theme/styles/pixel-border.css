@@ -143,7 +143,7 @@ code:not(pre code) {
 /* ─── Docs grid: sidebar (sticky left, full height) — no clipping ─────── */
 @media (min-width: 1024px) {
   .fd-layout {
-    grid-template-columns: var(--fd-sidebar-width) 1fr;
+    grid-template-columns: var(--fd-sidebar-width) minmax(0, 1fr);
   }
   .fd-sidebar {
     position: sticky;
@@ -151,6 +151,20 @@ code:not(pre code) {
     align-self: start;
     min-height: 0;
     height: 100%;
+  }
+
+  .fd-main {
+    min-width: 0;
+  }
+
+  .fd-page {
+    grid-template-columns: minmax(0, 1fr) var(--fd-toc-width);
+  }
+
+  .fd-page-article,
+  .fd-page-body {
+    max-width: none;
+    margin-inline: 0;
   }
 }
 
