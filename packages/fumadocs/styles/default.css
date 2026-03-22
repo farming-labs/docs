@@ -239,6 +239,33 @@
   border-radius: 0.5rem;
 }
 
+/* ─── Desktop docs layout (default theme) ────────────────────────── */
+
+@media (min-width: 1024px) {
+  #nd-docs-layout.grid {
+    grid-template:
+      "sidebar header toc"
+      "sidebar toc-popover toc"
+      "sidebar main toc" 1fr /
+      var(--fd-sidebar-col)
+      minmax(0, 1fr)
+      var(--fd-toc-width) !important;
+  }
+
+  #nd-docs-layout [data-sidebar-placeholder] {
+    justify-self: stretch;
+  }
+
+  #nd-docs-layout article#nd-page {
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  #nd-docs-layout article#nd-page > .prose {
+    max-width: none;
+  }
+}
+
 .fd-feedback-status[data-status="success"] {
   color: color-mix(in srgb, var(--color-fd-primary) 85%, var(--color-fd-foreground));
 }

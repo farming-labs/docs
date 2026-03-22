@@ -161,6 +161,27 @@ samp {
   }
 }
 
+@media (min-width: 1024px) {
+  .fd-layout {
+    grid-template-columns: var(--fd-sidebar-width) minmax(0, 1fr);
+  }
+
+  .fd-main {
+    min-width: 0;
+  }
+
+  .fd-page {
+    grid-template-columns: minmax(0, 1fr) var(--fd-toc-width);
+  }
+
+  .fd-page-article,
+  .fd-page-body,
+  .fd-docs-content {
+    max-width: none;
+    margin-inline: 0;
+  }
+}
+
 /* ─── Sidebar ────────────────────────────────────────────────────────── */
 
 .fd-sidebar {
