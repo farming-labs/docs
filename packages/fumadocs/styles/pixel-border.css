@@ -162,6 +162,29 @@ code:not(pre code) {
   }
 }
 
+@media (min-width: 1024px) {
+  #nd-docs-layout.grid {
+    grid-template:
+      "sidebar header toc"
+      "sidebar toc-popover toc"
+      "sidebar main toc" 1fr /
+      var(--fd-sidebar-col) minmax(0, 1fr) var(--fd-toc-width) !important;
+  }
+
+  #nd-docs-layout [data-sidebar-placeholder] {
+    justify-self: stretch;
+  }
+
+  #nd-docs-layout article#nd-page {
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  #nd-docs-layout article#nd-page > .prose {
+    max-width: none;
+  }
+}
+
 /* ─── Mobile: ensure sidebar drawer/content isn't clipped ───────────────── */
 @media (max-width: 767px) {
   #nd-docs-layout aside#nd-sidebar {
