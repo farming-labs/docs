@@ -118,12 +118,13 @@ describe("withDocs (app dir: src/app vs app)", () => {
     process.chdir(tmpDir);
 
     const nextConfig = withDocs({});
+    const turbopack = nextConfig.turbopack as { resolveAlias?: Record<string, string> } | undefined;
 
     const layout = readFileSync(join(tmpDir, "app/docs/layout.tsx"), "utf-8");
 
     expect(layout).toContain('import docsConfig from "@/docs.config";');
     expect(layout).toContain("createNextDocsLayout(docsConfig)");
-    expect(nextConfig.turbopack.resolveAlias["@farming-labs/next-internal-docs-config"]).toBe(
+    expect(turbopack?.resolveAlias?.["@farming-labs/next-internal-docs-config"]).toBe(
       "./docs.config.ts",
     );
     expect(typeof nextConfig.webpack).toBe("function");
