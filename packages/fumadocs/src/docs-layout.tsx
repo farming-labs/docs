@@ -1,8 +1,4 @@
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
-import fs from "node:fs";
-import path from "node:path";
-import matter from "gray-matter";
-import { getNextAppDir } from "./get-app-dir.js";
 import { Suspense, type ReactNode } from "react";
 import { serializeIcon } from "./serialize-icon.js";
 import { buildPageOpenGraph, buildPageTwitter } from "@farming-labs/docs";
@@ -47,6 +43,36 @@ interface TreeRoot {
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
+type NodeFsModule = typeof import("node:fs");
+type NodePathModule = typeof import("node:path");
+type GrayMatterModule = typeof import("gray-matter");
+
+function runtimeRequire<T>(id: string): T {
+  const requireFn = eval("require") as (moduleId: string) => T;
+  return requireFn(id);
+}
+
+function getNodeFs(): NodeFsModule {
+  return runtimeRequire<NodeFsModule>("node:fs");
+}
+
+function getNodePath(): NodePathModule {
+  return runtimeRequire<NodePathModule>("node:path");
+}
+
+function getMatter() {
+  const module = runtimeRequire<GrayMatterModule>("gray-matter");
+  return (module as GrayMatterModule & { default?: GrayMatterModule }).default ?? module;
+}
+
+function getNextAppDir(root: string): string {
+  const fs = getNodeFs();
+  const path = getNodePath();
+
+  if (fs.existsSync(path.join(root, "src", "app"))) return "src/app";
+  return "app";
+}
+
 /** Resolve a frontmatter `icon` string to a ReactNode via the icon registry. */
 function resolveIcon(
   iconKey: string | undefined,
@@ -58,6 +84,9 @@ function resolveIcon(
 
 /** Read frontmatter from a page.mdx file. */
 function readFrontmatter(filePath: string): Record<string, unknown> {
+  const fs = getNodeFs();
+  const matter = getMatter();
+
   try {
     const { data } = matter(fs.readFileSync(filePath, "utf-8"));
     return data;
@@ -68,6 +97,9 @@ function readFrontmatter(filePath: string): Record<string, unknown> {
 
 /** Check if a directory has any subdirectories that contain page.mdx. */
 function hasChildPages(dir: string): boolean {
+  const fs = getNodeFs();
+  const path = getNodePath();
+
   if (!fs.existsSync(dir)) return false;
   for (const name of fs.readdirSync(dir)) {
     const full = path.join(dir, name);
@@ -115,6 +147,7 @@ function resolveDocsLocaleContext(config: DocsConfig, locale?: string): DocsLoca
   const entryBase = config.entry ?? "docs";
   const i18n = resolveDocsI18nConfig(getDocsI18n(config));
   const contentDir = (config as DocsConfig & { contentDir?: string }).contentDir;
+  const path = getNodePath();
 
   function resolveContentDir(localeValue?: string) {
     if (!contentDir) {
@@ -147,6 +180,8 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
   const icons = config.icons as Record<string, unknown> | undefined;
   const ordering = config.ordering;
   const rootChildren: TreeNode[] = [];
+  const fs = getNodeFs();
+  const path = getNodePath();
 
   if (fs.existsSync(path.join(docsDir, "page.mdx"))) {
     const data = readFrontmatter(path.join(docsDir, "page.mdx"));
@@ -280,6 +315,8 @@ function localizeTreeUrls(tree: TreeRoot, locale?: string): TreeRoot {
 function buildLastModifiedMap(ctx: DocsLocaleContext): Record<string, string> {
   const docsDir = ctx.docsDir;
   const map: Record<string, string> = {};
+  const fs = getNodeFs();
+  const path = getNodePath();
 
   function formatDate(date: Date): string {
     return date.toLocaleDateString("en-US", {
@@ -319,6 +356,8 @@ function buildLastModifiedMap(ctx: DocsLocaleContext): Record<string, string> {
 function buildDescriptionMap(ctx: DocsLocaleContext): Record<string, string> {
   const docsDir = ctx.docsDir;
   const map: Record<string, string> = {};
+  const fs = getNodeFs();
+  const path = getNodePath();
 
   function scan(dir: string, slugParts: string[]) {
     if (!fs.existsSync(dir)) return;

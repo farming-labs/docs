@@ -1,6 +1,6 @@
 "use client";
 
-import docsConfig from "@/docs.config";
+import docsConfig from "@farming-labs/next-internal-docs-config";
 import { DocsClientHooks } from "@farming-labs/theme/client-hooks";
 
 export default function DocsClientCallbacks() {

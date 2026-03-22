@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 const cancelSymbol = Symbol("clack:cancel");
 
@@ -32,8 +35,11 @@ import { upgrade } from "./upgrade.js";
 
 describe("upgrade package manager selection", () => {
   let exitMock: { mockRestore: () => void };
+  let originalCwd: string;
 
   beforeEach(async () => {
+    originalCwd = process.cwd();
+
     const prompts = await import("@clack/prompts");
     const utils = await import("./utils.js");
 
@@ -54,6 +60,7 @@ describe("upgrade package manager selection", () => {
   });
 
   afterEach(() => {
+    process.chdir(originalCwd);
     exitMock.mockRestore();
   });
 
@@ -110,5 +117,47 @@ describe("upgrade package manager selection", () => {
       "pnpm add @farming-labs/docs@latest @farming-labs/theme@latest @farming-labs/tanstack-start@latest",
       process.cwd(),
     );
+  });
+
+  it("does not scaffold or rewrite docs files during upgrade", async () => {
+    const utils = await import("./utils.js");
+
+    const tempProject = mkdtempSync(join(tmpdir(), "docs-upgrade-no-scaffold-"));
+
+    try {
+      writeFileSync(
+        join(tempProject, "package.json"),
+        JSON.stringify(
+          {
+            name: "fixture",
+            dependencies: {
+              next: "16.1.6",
+            },
+          },
+          null,
+          2,
+        ),
+        "utf-8",
+      );
+
+      process.chdir(tempProject);
+
+      vi.mocked(utils.fileExists).mockImplementation((filePath: string) => existsSync(filePath));
+      vi.mocked(utils.detectFramework).mockReturnValue("nextjs");
+      vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+
+      await upgrade({ tag: "latest" });
+
+      expect(existsSync(join(tempProject, "mdx-components.tsx"))).toBe(false);
+      expect(existsSync(join(tempProject, "docs-client-callbacks.tsx"))).toBe(false);
+      expect(existsSync(join(tempProject, "app/docs/layout.tsx"))).toBe(false);
+      expect(existsSync(join(tempProject, "app/api/docs/route.ts"))).toBe(false);
+      expect(utils.exec).toHaveBeenCalledWith(
+        "pnpm add @farming-labs/docs@latest @farming-labs/theme@latest @farming-labs/next@latest",
+        process.cwd(),
+      );
+    } finally {
+      rmSync(tempProject, { recursive: true, force: true });
+    }
   });
 });
