@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  buildApiReferenceScalarCss,
   buildApiReferenceOpenApiDocument,
   buildApiReferenceOpenApiDocumentAsync,
 } from "./api-reference.js";
@@ -156,5 +157,28 @@ describe("buildApiReferenceOpenApiDocument", () => {
     expect(document.info).toMatchObject({
       description: expect.stringContaining("did not return valid JSON"),
     });
+  });
+
+  it("uses a readable foreground color for pixel-border themed API references", () => {
+    const css = buildApiReferenceScalarCss(
+      defineDocs({
+        entry: "docs",
+        theme: {
+          name: "fumadocs-pixel-border",
+          ui: {
+            colors: {
+              primary: "oklch(0.985 0.001 106.423)",
+              background: "hsl(0 0% 2%)",
+              muted: "hsl(0 0% 55%)",
+              border: "hsl(0 0% 15%)",
+            },
+          },
+        },
+      }),
+    );
+
+    expect(css).toContain("--scalar-theme-foreground: #f5f5f4;");
+    expect(css).toContain("--scalar-radius: var(--radius, 0.75rem);");
+    expect(css).toContain("--scalar-button-1-color: #0b0b0b;");
   });
 });

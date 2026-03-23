@@ -370,7 +370,7 @@ export function buildNextOpenApiDocument(config: DocsConfig): Record<string, unk
   };
 }
 
-function DropdownIcon({ current }: { current: "docs" | "api" }) {
+function DropdownIcon({ current, radius }: { current: "docs" | "api"; radius: string }) {
   const label = current === "api" ? "</>" : "▣";
 
   return (
@@ -382,7 +382,7 @@ function DropdownIcon({ current }: { current: "docs" | "api" }) {
         height: 20,
         alignItems: "center",
         justifyContent: "center",
-        borderRadius: 6,
+        borderRadius: radius,
         border: "1px solid color-mix(in srgb, var(--color-fd-border, #2a2a2a) 100%, transparent)",
         background: "color-mix(in srgb, var(--color-fd-card, #161616) 92%, transparent)",
         color: "var(--color-fd-primary, currentColor)",
@@ -396,17 +396,60 @@ function DropdownIcon({ current }: { current: "docs" | "api" }) {
   );
 }
 
+function getApiReferenceSwitcherTheme(config: DocsConfig) {
+  const themeName = config.theme?.name?.toLowerCase() ?? "";
+  const isPixelBorder = themeName.includes("pixel-border");
+  const isDarksharp = themeName.includes("darksharp");
+  const isShiny = themeName.includes("shiny");
+  const radius = config.theme?.ui?.radius ?? "var(--radius, 0.75rem)";
+
+  return {
+    cardRadius: radius,
+    iconRadius: radius,
+    backgroundImage: isPixelBorder
+      ? "repeating-linear-gradient(-45deg, color-mix(in srgb, var(--color-fd-border) 10%, transparent), color-mix(in srgb, var(--color-fd-border) 10%, transparent) 1px, transparent 1px, transparent 6px)"
+      : undefined,
+    boxShadow:
+      isPixelBorder || isDarksharp
+        ? "none"
+        : isShiny
+          ? "0 14px 40px color-mix(in srgb, var(--color-fd-border, #2a2a2a) 18%, transparent)"
+          : "0 0 0 1px color-mix(in srgb, var(--color-fd-border, #2a2a2a) 32%, transparent)",
+    titleStyle: {
+      fontFamily: isPixelBorder
+        ? "var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace))"
+        : undefined,
+      textTransform: isPixelBorder ? ("uppercase" as const) : undefined,
+      letterSpacing: isPixelBorder ? "0.08em" : undefined,
+      fontSize: isPixelBorder ? 12 : 14,
+    },
+    descriptionStyle: {
+      fontFamily: isPixelBorder
+        ? "var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace))"
+        : undefined,
+      textTransform: isPixelBorder ? ("uppercase" as const) : undefined,
+      letterSpacing: isPixelBorder ? "0.04em" : undefined,
+      fontSize: isPixelBorder ? 11 : 12,
+      opacity: isPixelBorder ? 0.74 : 0.62,
+    },
+  };
+}
+
 function SwitcherOption({
   href,
   title,
   description,
   current,
+  config,
 }: {
   href: string;
   title: string;
   description: string;
   current: boolean;
+  config: DocsConfig;
 }) {
+  const theme = getApiReferenceSwitcherTheme(config);
+
   return (
     <a
       href={href}
@@ -416,12 +459,13 @@ function SwitcherOption({
         gap: 12,
         alignItems: "start",
         padding: "11px 12px",
-        borderRadius: 12,
+        borderRadius: theme.cardRadius,
         textDecoration: "none",
         color: "inherit",
         background: current
           ? "color-mix(in srgb, var(--color-fd-primary, #3a7) 10%, transparent)"
           : "transparent",
+        backgroundImage: !current ? theme.backgroundImage : undefined,
       }}
     >
       <span
@@ -432,7 +476,7 @@ function SwitcherOption({
           height: 20,
           alignItems: "center",
           justifyContent: "center",
-          borderRadius: 6,
+          borderRadius: theme.iconRadius,
           border: "1px solid color-mix(in srgb, var(--color-fd-border, #2a2a2a) 100%, transparent)",
           color: current
             ? "var(--color-fd-primary, currentColor)"
@@ -447,8 +491,8 @@ function SwitcherOption({
         {title === "API Reference" ? "</>" : "▣"}
       </span>
       <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.25 }}>{title}</span>
-        <span style={{ fontSize: 12, opacity: 0.62, lineHeight: 1.4 }}>{description}</span>
+        <span style={{ fontWeight: 600, lineHeight: 1.25, ...theme.titleStyle }}>{title}</span>
+        <span style={{ lineHeight: 1.4, ...theme.descriptionStyle }}>{description}</span>
       </span>
       <span
         aria-hidden="true"
@@ -469,23 +513,27 @@ function ApiReferenceSwitcher({
   docsUrl,
   apiUrl,
   current,
+  config,
 }: {
   docsUrl: string;
   apiUrl: string;
   current: "docs" | "api";
+  config: DocsConfig;
 }) {
   const currentLabel = current === "api" ? "API Reference" : "Documentation";
+  const theme = getApiReferenceSwitcherTheme(config);
 
   return (
     <details
       style={{
         position: "relative",
         marginBottom: 16,
-        borderRadius: 14,
+        borderRadius: theme.cardRadius,
         border: "1px solid color-mix(in srgb, var(--color-fd-border, #2a2a2a) 100%, transparent)",
         background: "color-mix(in srgb, var(--color-fd-card, #141414) 94%, transparent)",
-        boxShadow: "0 0 0 1px color-mix(in srgb, var(--color-fd-border, #2a2a2a) 32%, transparent)",
+        boxShadow: theme.boxShadow,
         overflow: "hidden",
+        backgroundImage: theme.backgroundImage,
       }}
     >
       <summary
@@ -503,8 +551,8 @@ function ApiReferenceSwitcher({
         }}
       >
         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <DropdownIcon current={current} />
-          <span style={{ fontSize: 14, fontWeight: 600 }}>{currentLabel}</span>
+          <DropdownIcon current={current} radius={theme.iconRadius} />
+          <span style={{ fontWeight: 600, ...theme.titleStyle }}>{currentLabel}</span>
         </span>
         <span
           aria-hidden="true"
@@ -532,12 +580,14 @@ function ApiReferenceSwitcher({
           title="Documentation"
           description="Markdown pages, guides, and concepts"
           current={current === "docs"}
+          config={config}
         />
         <SwitcherOption
           href={apiUrl}
           title="API Reference"
           description="Scalar-powered route handler reference"
           current={current === "api"}
+          config={config}
         />
       </div>
     </details>
@@ -562,7 +612,9 @@ export function withNextApiReferenceBanner(config: DocsConfig): DocsConfig {
 
   const docsUrl = getDocsUrl(config);
   const apiUrl = `/${apiReference.path}`;
-  const switcher = <ApiReferenceSwitcher docsUrl={docsUrl} apiUrl={apiUrl} current="docs" />;
+  const switcher = (
+    <ApiReferenceSwitcher docsUrl={docsUrl} apiUrl={apiUrl} current="docs" config={config} />
+  );
 
   if (!config.sidebar || config.sidebar === true) {
     return {
