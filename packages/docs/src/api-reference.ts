@@ -793,7 +793,7 @@ function buildFileConventionRoutes({
 
 function buildTanstackRoutes(
   rootDir: string,
-  apiReference: Required<ApiReferenceConfig>,
+  apiReference: ResolvedApiReferenceConfig,
 ): ApiReferenceRoute[] {
   const routesDir = join(rootDir, "src", "routes");
   const files = scanRouteFiles(routesDir, (name) => TANSTACK_ROUTE_FILE_RE.test(name));
