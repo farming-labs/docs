@@ -2,7 +2,15 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import type { ReactNode } from "react";
 import { ApiReference } from "@scalar/nextjs-api-reference";
-import type { ApiReferenceConfig, DocsConfig, DocsTheme } from "@farming-labs/docs";
+import type { DocsConfig } from "@farming-labs/docs";
+import {
+  buildApiReferenceOpenApiDocumentAsync,
+  buildApiReferencePageTitle,
+  buildApiReferenceScalarCss,
+  resolveApiReferenceConfig,
+} from "@farming-labs/docs/server";
+
+export { resolveApiReferenceConfig };
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
 
@@ -22,195 +30,9 @@ const ROUTE_FILE_RE = /^route\.(ts|tsx|js|jsx)$/;
 const METHOD_RE =
   /export\s+(?:async\s+function|function|const)\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b/g;
 
-function resolveTheme(config: DocsConfig): DocsTheme | undefined {
-  return config.theme;
-}
-
-function buildScalarCustomCss(config: DocsConfig): string {
-  const theme = resolveTheme(config);
-  const colors = theme?.ui?.colors;
-  const typography = theme?.ui?.typography?.font?.style;
-  const layout = theme?.ui?.layout;
-  const primary = colors?.primary ?? "#6366f1";
-  const border = colors?.border ?? "#2a2a2a";
-  const muted = colors?.muted ?? "#64748b";
-  const background = colors?.background ?? "#ffffff";
-  const card = colors?.card ?? background;
-  const foreground = colors?.foreground ?? "#1b1b1b";
-  const sidebarWidth = layout?.sidebarWidth ?? 280;
-  const sans = typography?.sans ?? '"Geist", "Inter", "Segoe UI", sans-serif';
-  const mono = typography?.mono ?? '"Geist Mono", "SFMono-Regular", "Menlo", monospace';
-
-  return `
-:root {
-  --scalar-font: ${sans};
-  --scalar-font-code: ${mono};
-  --scalar-theme-primary: ${primary};
-  --scalar-theme-border: ${border};
-  --scalar-theme-muted: ${muted};
-  --scalar-theme-background: ${background};
-  --scalar-theme-card: ${card};
-  --scalar-theme-foreground: ${foreground};
-}
-
-.dark-mode {
-  --scalar-background-1: color-mix(in srgb, #0b0c0b 98%, var(--scalar-theme-primary) 2%);
-  --scalar-background-2: color-mix(in srgb, #111311 96%, var(--scalar-theme-primary) 4%);
-  --scalar-background-3: color-mix(in srgb, #171917 95%, var(--scalar-theme-primary) 5%);
-  --scalar-color-1: rgba(255, 255, 255, 0.96);
-  --scalar-color-2: rgba(255, 255, 255, 0.72);
-  --scalar-color-3: rgba(255, 255, 255, 0.5);
-  --scalar-color-accent: var(--scalar-theme-primary);
-  --scalar-sidebar-color-active: var(--scalar-theme-primary);
-  --scalar-sidebar-item-active-background: color-mix(
-    in srgb,
-    var(--scalar-theme-primary) 7%,
-    transparent
-  );
-  --scalar-border-color: color-mix(
-    in srgb,
-    var(--scalar-theme-border) 22%,
-    rgba(255, 255, 255, 0.032)
-  );
-  --scalar-button-1: var(--scalar-theme-primary);
-  --scalar-button-1-color: #ffffff;
-  --scalar-button-1-hover: color-mix(in srgb, var(--scalar-theme-primary) 88%, white 12%);
-}
-
-.light-mode {
-  --scalar-background-1: var(--scalar-theme-background);
-  --scalar-background-2: color-mix(in srgb, var(--scalar-theme-card) 92%, white 8%);
-  --scalar-background-3: color-mix(in srgb, var(--scalar-theme-card) 84%, black 4%);
-  --scalar-color-1: var(--scalar-theme-foreground);
-  --scalar-color-2: var(--scalar-theme-muted);
-  --scalar-color-3: color-mix(in srgb, var(--scalar-theme-muted) 78%, white 22%);
-  --scalar-color-accent: var(--scalar-theme-primary);
-  --scalar-sidebar-color-active: var(--scalar-theme-primary);
-  --scalar-sidebar-item-active-background: color-mix(
-    in srgb,
-    var(--scalar-theme-primary) 5%,
-    transparent
-  );
-  --scalar-border-color: color-mix(in srgb, var(--scalar-theme-border) 42%, white 58%);
-  --scalar-button-1: var(--scalar-theme-primary);
-  --scalar-button-1-color: #ffffff;
-  --scalar-button-1-hover: color-mix(in srgb, var(--scalar-theme-primary) 88%, black 12%);
-}
-
-body {
-  background: var(--scalar-background-1);
-}
-
-.t-doc__sidebar {
-  width: min(${sidebarWidth}px, 100vw);
-  border-right: 1px solid var(--scalar-border-color);
-}
-
-.scalar-card,
-.t-doc__sidebar,
-.references-layout .reference-layout__content .request-card,
-.references-layout .reference-layout__content .response-card,
-.references-layout .reference-layout__content .scalar-card-header,
-.references-layout .reference-layout__content .scalar-card-footer,
-.references-layout .reference-layout__content .section,
-.references-layout .reference-layout__content .section-container {
-  border-color: var(--scalar-border-color) !important;
-}
-
-.t-doc__sidebar,
-.t-doc__sidebar * {
-  font-family: var(--scalar-font);
-}
-
-.t-doc__sidebar .sidebar-search {
-  margin: 0.5rem 0 1rem;
-}
-
-.t-doc__sidebar .sidebar-search input {
-  border-radius: 14px;
-}
-
-.t-doc__sidebar .sidebar-item,
-.t-doc__sidebar .sidebar-heading {
-  border-radius: 14px;
-}
-
-.t-doc__sidebar .sidebar-group-label {
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--scalar-color-3);
-}
-
-.t-doc__sidebar .sidebar-item--active {
-  font-weight: 600;
-}
-
-.scalar-card,
-.references-layout .reference-layout__content .request-card,
-.references-layout .reference-layout__content .response-card {
-  border-radius: 18px;
-}
-
-.references-layout .reference-layout__content {
-  padding-top: 1.5rem;
-}
-
-.references-layout .section-content,
-.references-layout .section-flare {
-  background: transparent;
-}
-
-.references-layout .reference-layout__content,
-.references-layout .reference-layout__content * {
-  font-family: var(--scalar-font);
-}
-
-.references-layout code,
-.references-layout pre,
-.references-layout .scalar-codeblock {
-  font-family: var(--scalar-font-code);
-}
-`;
-}
-
 function getNextAppDir(root: string): string {
   if (existsSync(join(root, "src", "app"))) return "src/app";
   return "app";
-}
-
-export function resolveApiReferenceConfig(
-  value: DocsConfig["apiReference"],
-): Required<ApiReferenceConfig> {
-  if (value === true) {
-    return {
-      enabled: true,
-      path: "api-reference",
-      routeRoot: "api",
-      exclude: [],
-    };
-  }
-
-  if (!value) {
-    return {
-      enabled: false,
-      path: "api-reference",
-      routeRoot: "api",
-      exclude: [],
-    };
-  }
-
-  return {
-    enabled: value.enabled !== false,
-    path: normalizePathSegment(value.path ?? "api-reference"),
-    routeRoot: normalizeRouteRoot(value.routeRoot ?? "api"),
-    exclude: normalizeApiReferenceExcludes(value.exclude),
-  };
-}
-
-function normalizePathSegment(value: string): string {
-  const normalized = value.replace(/^\/+|\/+$/g, "");
-  return normalized || "api-reference";
 }
 
 function normalizeRouteRoot(value: string): string {
@@ -226,11 +48,7 @@ function normalizeExcludeMatcher(value: string): string {
     .replace(/\/route$/i, "");
 }
 
-function normalizeApiReferenceExcludes(values?: string[]): string[] {
-  return (values ?? []).map(normalizeExcludeMatcher).filter(Boolean);
-}
-
-function getRoutePathBase(config: Required<ApiReferenceConfig>): string {
+function getRoutePathBase(config: ReturnType<typeof resolveApiReferenceConfig>): string {
   const routeRoot = normalizeRouteRoot(config.routeRoot);
 
   if (routeRoot === "app" || routeRoot === "src/app") return "";
@@ -240,7 +58,10 @@ function getRoutePathBase(config: Required<ApiReferenceConfig>): string {
   return `/${routeRoot}`;
 }
 
-function resolveNextApiRouteRoot(root: string, config: Required<ApiReferenceConfig>): string {
+function resolveNextApiRouteRoot(
+  root: string,
+  config: ReturnType<typeof resolveApiReferenceConfig>,
+) {
   const routeRoot = normalizeRouteRoot(config.routeRoot);
 
   if (
@@ -351,12 +172,6 @@ function scanRouteFiles(dir: string): string[] {
 function getDocsUrl(config: DocsConfig): string {
   if (typeof config.nav?.url === "string") return config.nav.url;
   return `/${config.entry ?? "docs"}`;
-}
-
-function applyTitleTemplate(config: DocsConfig, title: string): string {
-  const template = config.metadata?.titleTemplate;
-  if (!template) return title;
-  return template.replace("%s", title);
 }
 
 function getForcedMode(config: DocsConfig): "light" | "dark" | undefined {
@@ -515,6 +330,22 @@ function buildOpenApiPaths(routes: ApiReferenceRoute[]): Record<string, Record<s
 }
 
 export function buildNextOpenApiDocument(config: DocsConfig): Record<string, unknown> {
+  const apiReference = resolveApiReferenceConfig(config.apiReference);
+  if (apiReference.specUrl) {
+    return {
+      openapi: "3.1.0",
+      info: {
+        title: "API Reference",
+        description:
+          "Remote OpenAPI specs are resolved at request time through createNextApiReference().",
+        version: "0.0.0",
+      },
+      servers: [{ url: "/" }],
+      tags: [],
+      paths: {},
+    };
+  }
+
   const routes = buildApiReferenceRoutes(config);
   const tags = Array.from(new Set(routes.map((route) => route.tag))).map((name) => ({
     name,
@@ -539,7 +370,7 @@ export function buildNextOpenApiDocument(config: DocsConfig): Record<string, unk
   };
 }
 
-function DropdownIcon({ current }: { current: "docs" | "api" }) {
+function DropdownIcon({ current, radius }: { current: "docs" | "api"; radius: string }) {
   const label = current === "api" ? "</>" : "▣";
 
   return (
@@ -551,7 +382,7 @@ function DropdownIcon({ current }: { current: "docs" | "api" }) {
         height: 20,
         alignItems: "center",
         justifyContent: "center",
-        borderRadius: 6,
+        borderRadius: radius,
         border: "1px solid color-mix(in srgb, var(--color-fd-border, #2a2a2a) 100%, transparent)",
         background: "color-mix(in srgb, var(--color-fd-card, #161616) 92%, transparent)",
         color: "var(--color-fd-primary, currentColor)",
@@ -565,17 +396,61 @@ function DropdownIcon({ current }: { current: "docs" | "api" }) {
   );
 }
 
+function getApiReferenceSwitcherTheme(config: DocsConfig) {
+  const themeName = config.theme?.name?.toLowerCase() ?? "";
+  const isPixelBorder = themeName.includes("pixel-border");
+  const isDarksharp = themeName.includes("darksharp");
+  const isShiny = themeName.includes("shiny");
+  const radius =
+    config.theme?.ui?.radius ?? (isPixelBorder || isDarksharp ? "0px" : "var(--radius, 0.75rem)");
+
+  return {
+    cardRadius: radius,
+    iconRadius: radius,
+    backgroundImage: isPixelBorder
+      ? "repeating-linear-gradient(-45deg, color-mix(in srgb, var(--color-fd-border) 10%, transparent), color-mix(in srgb, var(--color-fd-border) 10%, transparent) 1px, transparent 1px, transparent 6px)"
+      : undefined,
+    boxShadow:
+      isPixelBorder || isDarksharp
+        ? "none"
+        : isShiny
+          ? "0 14px 40px color-mix(in srgb, var(--color-fd-border, #2a2a2a) 18%, transparent)"
+          : "0 0 0 1px color-mix(in srgb, var(--color-fd-border, #2a2a2a) 32%, transparent)",
+    titleStyle: {
+      fontFamily: isPixelBorder
+        ? "var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace))"
+        : undefined,
+      textTransform: isPixelBorder ? ("uppercase" as const) : undefined,
+      letterSpacing: isPixelBorder ? "0.08em" : undefined,
+      fontSize: isPixelBorder ? 12 : 14,
+    },
+    descriptionStyle: {
+      fontFamily: isPixelBorder
+        ? "var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace))"
+        : undefined,
+      textTransform: isPixelBorder ? ("uppercase" as const) : undefined,
+      letterSpacing: isPixelBorder ? "0.04em" : undefined,
+      fontSize: isPixelBorder ? 11 : 12,
+      opacity: isPixelBorder ? 0.74 : 0.62,
+    },
+  };
+}
+
 function SwitcherOption({
   href,
   title,
   description,
   current,
+  config,
 }: {
   href: string;
   title: string;
   description: string;
   current: boolean;
+  config: DocsConfig;
 }) {
+  const theme = getApiReferenceSwitcherTheme(config);
+
   return (
     <a
       href={href}
@@ -585,12 +460,13 @@ function SwitcherOption({
         gap: 12,
         alignItems: "start",
         padding: "11px 12px",
-        borderRadius: 12,
+        borderRadius: theme.cardRadius,
         textDecoration: "none",
         color: "inherit",
         background: current
           ? "color-mix(in srgb, var(--color-fd-primary, #3a7) 10%, transparent)"
           : "transparent",
+        backgroundImage: !current ? theme.backgroundImage : undefined,
       }}
     >
       <span
@@ -601,7 +477,7 @@ function SwitcherOption({
           height: 20,
           alignItems: "center",
           justifyContent: "center",
-          borderRadius: 6,
+          borderRadius: theme.iconRadius,
           border: "1px solid color-mix(in srgb, var(--color-fd-border, #2a2a2a) 100%, transparent)",
           color: current
             ? "var(--color-fd-primary, currentColor)"
@@ -616,8 +492,8 @@ function SwitcherOption({
         {title === "API Reference" ? "</>" : "▣"}
       </span>
       <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.25 }}>{title}</span>
-        <span style={{ fontSize: 12, opacity: 0.62, lineHeight: 1.4 }}>{description}</span>
+        <span style={{ fontWeight: 600, lineHeight: 1.25, ...theme.titleStyle }}>{title}</span>
+        <span style={{ lineHeight: 1.4, ...theme.descriptionStyle }}>{description}</span>
       </span>
       <span
         aria-hidden="true"
@@ -638,23 +514,27 @@ function ApiReferenceSwitcher({
   docsUrl,
   apiUrl,
   current,
+  config,
 }: {
   docsUrl: string;
   apiUrl: string;
   current: "docs" | "api";
+  config: DocsConfig;
 }) {
   const currentLabel = current === "api" ? "API Reference" : "Documentation";
+  const theme = getApiReferenceSwitcherTheme(config);
 
   return (
     <details
       style={{
         position: "relative",
         marginBottom: 16,
-        borderRadius: 14,
+        borderRadius: theme.cardRadius,
         border: "1px solid color-mix(in srgb, var(--color-fd-border, #2a2a2a) 100%, transparent)",
         background: "color-mix(in srgb, var(--color-fd-card, #141414) 94%, transparent)",
-        boxShadow: "0 0 0 1px color-mix(in srgb, var(--color-fd-border, #2a2a2a) 32%, transparent)",
+        boxShadow: theme.boxShadow,
         overflow: "hidden",
+        backgroundImage: theme.backgroundImage,
       }}
     >
       <summary
@@ -672,8 +552,8 @@ function ApiReferenceSwitcher({
         }}
       >
         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <DropdownIcon current={current} />
-          <span style={{ fontSize: 14, fontWeight: 600 }}>{currentLabel}</span>
+          <DropdownIcon current={current} radius={theme.iconRadius} />
+          <span style={{ fontWeight: 600, ...theme.titleStyle }}>{currentLabel}</span>
         </span>
         <span
           aria-hidden="true"
@@ -701,12 +581,14 @@ function ApiReferenceSwitcher({
           title="Documentation"
           description="Markdown pages, guides, and concepts"
           current={current === "docs"}
+          config={config}
         />
         <SwitcherOption
           href={apiUrl}
           title="API Reference"
           description="Scalar-powered route handler reference"
           current={current === "api"}
+          config={config}
         />
       </div>
     </details>
@@ -731,7 +613,9 @@ export function withNextApiReferenceBanner(config: DocsConfig): DocsConfig {
 
   const docsUrl = getDocsUrl(config);
   const apiUrl = `/${apiReference.path}`;
-  const switcher = <ApiReferenceSwitcher docsUrl={docsUrl} apiUrl={apiUrl} current="docs" />;
+  const switcher = (
+    <ApiReferenceSwitcher docsUrl={docsUrl} apiUrl={apiUrl} current="docs" config={config} />
+  );
 
   if (!config.sidebar || config.sidebar === true) {
     return {
@@ -754,28 +638,41 @@ export function withNextApiReferenceBanner(config: DocsConfig): DocsConfig {
 export function createNextApiReference(config: DocsConfig) {
   const apiReference = resolveApiReferenceConfig(config.apiReference);
 
-  return ApiReference({
-    pageTitle: applyTitleTemplate(config, "API Reference"),
-    title: "API Reference",
-    content: () => buildNextOpenApiDocument(config),
-    theme: "deepSpace",
-    layout: "modern",
-    darkMode: getForcedMode(config) === "dark" ? true : undefined,
-    forceDarkModeState: getForcedMode(config),
-    hideDarkModeToggle: isThemeToggleHidden(config),
-    customCss: buildScalarCustomCss(config),
-    pathRouting: {
-      basePath: `/${apiReference.path}`,
-    },
-    showSidebar: true,
-    defaultOpenFirstTag: true,
-    tagsSorter: "alpha",
-    operationsSorter: "alpha",
-    operationTitleSource: "summary",
-    defaultHttpClient: {
-      targetKey: "shell",
-      clientKey: "curl",
-    },
-    documentDownloadType: "json",
-  });
+  return async () => {
+    if (!apiReference.enabled) {
+      return new Response("Not Found", {
+        status: 404,
+      });
+    }
+
+    const document = await buildApiReferenceOpenApiDocumentAsync(config, {
+      framework: "next",
+      rootDir: process.cwd(),
+    });
+
+    return ApiReference({
+      pageTitle: buildApiReferencePageTitle(config, "API Reference"),
+      title: "API Reference",
+      content: document,
+      theme: "deepSpace",
+      layout: "modern",
+      darkMode: getForcedMode(config) === "dark" ? true : undefined,
+      forceDarkModeState: getForcedMode(config),
+      hideDarkModeToggle: isThemeToggleHidden(config),
+      customCss: buildApiReferenceScalarCss(config),
+      pathRouting: {
+        basePath: `/${apiReference.path}`,
+      },
+      showSidebar: true,
+      defaultOpenFirstTag: true,
+      tagsSorter: "alpha",
+      operationsSorter: "alpha",
+      operationTitleSource: "summary",
+      defaultHttpClient: {
+        targetKey: "shell",
+        clientKey: "curl",
+      },
+      documentDownloadType: "json",
+    })();
+  };
 }

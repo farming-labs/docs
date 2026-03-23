@@ -21,6 +21,8 @@
   --color-fd-accent-foreground: oklch(0.216 0.006 56.043);
   --color-fd-border: oklch(0.923 0.003 48.717);
   --color-fd-ring: oklch(0.709 0.01 56.259);
+  --fd-pixel-modal-border: color-mix(in srgb, var(--color-fd-foreground) 12%, transparent);
+  --fd-pixel-modal-shadow: color-mix(in srgb, var(--color-fd-foreground) 10%, transparent);
   --scrollbar-thumb: var(--color-fd-border);
   --scrollbar-thumb-hover: var(--color-fd-ring);
   --scrollbar-track: transparent;
@@ -48,6 +50,8 @@
   --color-fd-accent-foreground: oklch(0.985 0.001 106.423);
   --color-fd-border: hsl(0 0% 15%);
   --color-fd-ring: hsl(0 0% 30%);
+  --fd-pixel-modal-border: color-mix(in srgb, var(--color-fd-foreground) 10%, transparent);
+  --fd-pixel-modal-shadow: color-mix(in srgb, var(--color-fd-foreground) 8%, transparent);
   --scrollbar-thumb: var(--color-fd-border);
   --scrollbar-thumb-hover: var(--color-fd-ring);
   --scrollbar-track: transparent;
@@ -437,6 +441,7 @@ article a[class*="border"]:hover {
 
 [role="dialog"] {
   border-radius: 0 !important;
+  border-color: var(--fd-pixel-modal-border) !important;
 }
 
 /* ─── TOC right panel (light + dark) ───────────────────────────────── */
@@ -506,9 +511,9 @@ hr {
 
 .fd-page-action-menu {
   border-radius: 0 !important;
-  box-shadow: 0 4px 24px hsl(0 0% 0% / 0.5);
   padding: 0px !important;
-  box-shadow: 2px 2px 0 0 var(--color-fd-border, #262626);
+  border: 1px solid var(--fd-pixel-modal-border);
+  box-shadow: 2px 2px 0 0 var(--fd-pixel-modal-shadow);
 }
 
 .fd-page-action-menu-item {
@@ -573,9 +578,9 @@ hr {
   min-width: 220px;
   padding: 4px;
   background: var(--color-fd-popover, var(--color-fd-background, #0c0c0c));
-  border: 1px solid var(--color-fd-border, rgba(255, 255, 255, 0.1));
+  border: 1px solid var(--fd-pixel-modal-border);
   border-radius: var(--radius, 8px);
-  box-shadow: 2px 2px 0 0 var(--color-fd-border, #262626);  
+  box-shadow: 2px 2px 0 0 var(--fd-pixel-modal-shadow);
   animation: fd-ai-fade-in 100ms ease-out;
 }
 
@@ -614,7 +619,8 @@ hr {
 .fd-ai-dialog {
   border-radius: 0 !important;
   border-width: 1px;
-  box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%));
+  border-color: var(--fd-pixel-modal-border) !important;
+  box-shadow: 3px 3px 0 0 var(--fd-pixel-modal-shadow);
 }
 
 .fd-ai-tab-bar {
@@ -714,7 +720,8 @@ hr {
 
 .fd-ai-fm-input-container {
   border-radius: 0 !important;
-  box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%));
+  border-color: var(--fd-pixel-modal-border) !important;
+  box-shadow: 3px 3px 0 0 var(--fd-pixel-modal-shadow);
 }
 
 .fd-ai-fm-send-btn {
@@ -867,10 +874,10 @@ hr {
 
 .omni-content {
   border-radius: 0 !important;
-  border: 2px solid var(--color-fd-border, hsl(0 0% 15%));
+  border: 1px solid var(--fd-pixel-modal-border);
   box-shadow:
-    3px 3px 0 0 var(--color-fd-border, hsl(0 0% 15%)),
-    0 0 0 1px rgba(255, 255, 255, 0.02);
+    2px 2px 0 0 var(--fd-pixel-modal-shadow),
+    0 0 0 1px color-mix(in srgb, var(--color-fd-foreground) 3%, transparent);
 }
 
 .omni-item {

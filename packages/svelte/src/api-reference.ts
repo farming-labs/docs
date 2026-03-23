@@ -1,5 +1,5 @@
 import {
-  buildApiReferenceHtmlDocument,
+  buildApiReferenceHtmlDocumentAsync,
   resolveApiReferenceConfig,
 } from "@farming-labs/docs/server";
 import type { DocsConfig } from "@farming-labs/docs";
@@ -12,7 +12,7 @@ export function createSvelteApiReference(config: DocsConfig & Record<string, any
     }
 
     const rootDir = typeof config.rootDir === "string" ? config.rootDir : process.cwd();
-    const html = buildApiReferenceHtmlDocument(config, {
+    const html = await buildApiReferenceHtmlDocumentAsync(config, {
       framework: "sveltekit",
       rootDir,
     });

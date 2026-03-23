@@ -18,6 +18,14 @@ export interface ApiReferenceRoute {
   parameters: Array<Record<string, unknown>>;
 }
 
+export interface ResolvedApiReferenceConfig {
+  enabled: boolean;
+  path: string;
+  specUrl?: string;
+  routeRoot: string;
+  exclude: string[];
+}
+
 interface BuildApiReferenceOptions {
   framework: ApiReferenceFramework;
   rootDir?: string;
@@ -42,11 +50,12 @@ function normalizePathSegment(value: string): string {
 
 export function resolveApiReferenceConfig(
   value: DocsConfig["apiReference"],
-): Required<ApiReferenceConfig> {
+): ResolvedApiReferenceConfig {
   if (value === true) {
     return {
       enabled: true,
       path: "api-reference",
+      specUrl: undefined,
       routeRoot: "api",
       exclude: [],
     };
@@ -56,6 +65,7 @@ export function resolveApiReferenceConfig(
     return {
       enabled: false,
       path: "api-reference",
+      specUrl: undefined,
       routeRoot: "api",
       exclude: [],
     };
@@ -64,9 +74,16 @@ export function resolveApiReferenceConfig(
   return {
     enabled: value.enabled !== false,
     path: normalizePathSegment(value.path ?? "api-reference"),
+    specUrl: normalizeRemoteSpecUrl(value.specUrl),
     routeRoot: normalizePathSegment(value.routeRoot ?? "api") || "api",
     exclude: normalizeApiReferenceExcludes(value.exclude),
   };
+}
+
+function normalizeRemoteSpecUrl(value?: string): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  return trimmed;
 }
 
 export function buildApiReferencePageTitle(config: DocsConfig, title = "API Reference"): string {
@@ -80,20 +97,32 @@ export function buildApiReferenceScalarCss(config: DocsConfig): string {
   const colors = theme?.ui?.colors;
   const typography = theme?.ui?.typography?.font?.style;
   const layout = theme?.ui?.layout;
+  const radius = resolveApiReferenceRadius(theme);
   const primary = colors?.primary ?? "#6366f1";
   const border = colors?.border ?? "#2a2a2a";
   const muted = colors?.muted ?? "#64748b";
   const background = colors?.background ?? "#ffffff";
   const card = colors?.card ?? background;
-  const foreground = colors?.foreground ?? "#1b1b1b";
+  const foreground = colors?.foreground ?? inferApiReferenceForeground(theme, background);
+  const primaryForeground =
+    colors?.primaryForeground ?? inferContrastingForeground(primary, theme, background);
   const sidebarWidth = layout?.sidebarWidth ?? 280;
   const sans = typography?.sans ?? '"Geist", "Inter", "Segoe UI", sans-serif';
   const mono = typography?.mono ?? '"Geist Mono", "SFMono-Regular", "Menlo", monospace';
+  const isPixelBorder = theme?.name?.includes("pixel-border");
+  const darkBorderColor = isPixelBorder
+    ? "color-mix(in srgb, var(--scalar-theme-foreground) 10%, transparent)"
+    : "color-mix(in srgb, var(--scalar-theme-border) 14%, rgba(255, 255, 255, 0.02))";
+  const lightBorderColor = isPixelBorder
+    ? "color-mix(in srgb, var(--scalar-theme-foreground) 14%, transparent)"
+    : "color-mix(in srgb, var(--scalar-theme-border) 30%, white 70%)";
 
   return `
 :root {
   --scalar-font: ${sans};
   --scalar-font-code: ${mono};
+  --scalar-radius: ${radius};
+  --scalar-radius-sm: calc(${radius} + 2px);
   --scalar-theme-primary: ${primary};
   --scalar-theme-border: ${border};
   --scalar-theme-muted: ${muted};
@@ -103,26 +132,37 @@ export function buildApiReferenceScalarCss(config: DocsConfig): string {
 }
 
 .dark-mode {
-  --scalar-background-1: color-mix(in srgb, #0b0c0b 98%, var(--scalar-theme-primary) 2%);
-  --scalar-background-2: color-mix(in srgb, #111311 96%, var(--scalar-theme-primary) 4%);
-  --scalar-background-3: color-mix(in srgb, #171917 95%, var(--scalar-theme-primary) 5%);
-  --scalar-color-1: rgba(255, 255, 255, 0.96);
-  --scalar-color-2: rgba(255, 255, 255, 0.72);
-  --scalar-color-3: rgba(255, 255, 255, 0.5);
+  --scalar-background-1: color-mix(
+    in srgb,
+    var(--scalar-theme-background) 96%,
+    var(--scalar-theme-primary) 4%
+  );
+  --scalar-background-2: color-mix(in srgb, var(--scalar-theme-card) 94%, var(--scalar-theme-primary) 6%);
+  --scalar-background-3: color-mix(
+    in srgb,
+    var(--scalar-theme-card) 90%,
+    var(--scalar-theme-foreground) 10%
+  );
+  --scalar-color-1: var(--scalar-theme-foreground);
+  --scalar-color-2: color-mix(in srgb, var(--scalar-theme-foreground) 72%, transparent);
+  --scalar-color-3: color-mix(in srgb, var(--scalar-theme-foreground) 52%, transparent);
   --scalar-color-accent: var(--scalar-theme-primary);
+  --scalar-sidebar-background-1: var(--scalar-background-1);
+  --scalar-sidebar-background-2: var(--scalar-background-2);
+  --scalar-sidebar-color-1: var(--scalar-color-1);
+  --scalar-sidebar-color-2: var(--scalar-color-2);
+  --scalar-sidebar-search-background: var(--scalar-background-2);
+  --scalar-sidebar-search-border-color: var(--scalar-border-color);
+  --scalar-sidebar-search-color: var(--scalar-color-2);
   --scalar-sidebar-color-active: var(--scalar-theme-primary);
   --scalar-sidebar-item-active-background: color-mix(
     in srgb,
     var(--scalar-theme-primary) 7%,
     transparent
   );
-  --scalar-border-color: color-mix(
-    in srgb,
-    var(--scalar-theme-border) 14%,
-    rgba(255, 255, 255, 0.02)
-  );
+  --scalar-border-color: ${darkBorderColor};
   --scalar-button-1: var(--scalar-theme-primary);
-  --scalar-button-1-color: #ffffff;
+  --scalar-button-1-color: ${primaryForeground};
   --scalar-button-1-hover: color-mix(in srgb, var(--scalar-theme-primary) 88%, white 12%);
 }
 
@@ -134,20 +174,28 @@ export function buildApiReferenceScalarCss(config: DocsConfig): string {
   --scalar-color-2: var(--scalar-theme-muted);
   --scalar-color-3: color-mix(in srgb, var(--scalar-theme-muted) 78%, white 22%);
   --scalar-color-accent: var(--scalar-theme-primary);
+  --scalar-sidebar-background-1: var(--scalar-background-1);
+  --scalar-sidebar-background-2: var(--scalar-background-2);
+  --scalar-sidebar-color-1: var(--scalar-color-1);
+  --scalar-sidebar-color-2: var(--scalar-color-2);
+  --scalar-sidebar-search-background: var(--scalar-background-2);
+  --scalar-sidebar-search-border-color: var(--scalar-border-color);
+  --scalar-sidebar-search-color: var(--scalar-color-2);
   --scalar-sidebar-color-active: var(--scalar-theme-primary);
   --scalar-sidebar-item-active-background: color-mix(
     in srgb,
     var(--scalar-theme-primary) 5%,
     transparent
   );
-  --scalar-border-color: color-mix(in srgb, var(--scalar-theme-border) 30%, white 70%);
+  --scalar-border-color: ${lightBorderColor};
   --scalar-button-1: var(--scalar-theme-primary);
-  --scalar-button-1-color: #ffffff;
+  --scalar-button-1-color: ${primaryForeground};
   --scalar-button-1-hover: color-mix(in srgb, var(--scalar-theme-primary) 88%, black 12%);
 }
 
 body {
   background: var(--scalar-background-1);
+  color: var(--scalar-color-1);
 }
 
 .t-doc__sidebar {
@@ -176,12 +224,12 @@ body {
 }
 
 .t-doc__sidebar .sidebar-search input {
-  border-radius: 14px;
+  border-radius: var(--scalar-radius-sm);
 }
 
 .t-doc__sidebar .sidebar-item,
 .t-doc__sidebar .sidebar-heading {
-  border-radius: 14px;
+  border-radius: var(--scalar-radius-sm);
 }
 
 .t-doc__sidebar .sidebar-group-label {
@@ -198,7 +246,7 @@ body {
 .scalar-card,
 .references-layout .reference-layout__content .request-card,
 .references-layout .reference-layout__content .response-card {
-  border-radius: 18px;
+  border-radius: var(--scalar-radius);
 }
 
 .references-layout .reference-layout__content {
@@ -220,14 +268,278 @@ body {
 .references-layout .scalar-codeblock {
   font-family: var(--scalar-font-code);
 }
+
+.references-layout,
+.references-layout * {
+  color: inherit;
+}
+
+.references-layout .reference-layout__content .introduction,
+.references-layout .reference-layout__content .section,
+.references-layout .reference-layout__content .section-container,
+.references-layout .reference-layout__content .operation-details,
+.references-layout .reference-layout__content .markdown,
+.references-layout .reference-layout__content .markdown *,
+.references-layout .reference-layout__content .property,
+.references-layout .reference-layout__content .property *,
+.references-layout .reference-layout__content .parameter-item,
+.references-layout .reference-layout__content .parameter-item *,
+.references-layout .reference-layout__content .response-card,
+.references-layout .reference-layout__content .response-card *,
+.references-layout .reference-layout__content .request-card,
+.references-layout .reference-layout__content .request-card * {
+  color: var(--scalar-color-1);
+}
+
+.references-layout a,
+.references-layout button {
+  color: var(--scalar-color-1);
+}
+
+${isPixelBorder ? buildPixelBorderScalarCss() : ""}
 `;
+}
+
+function buildPixelBorderScalarCss(): string {
+  return `
+.t-doc__sidebar,
+.references-layout .reference-layout__content {
+  background-image:
+    repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--scalar-theme-border) 12%, transparent),
+      color-mix(in srgb, var(--scalar-theme-border) 12%, transparent) 1px,
+      transparent 1px,
+      transparent 8px
+    );
+}
+
+.t-doc__sidebar .sidebar-group-label,
+.t-doc__sidebar .sidebar-item,
+.references-layout .reference-layout__content .section-header {
+  font-family: var(--scalar-font-code);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+`;
+}
+
+function inferApiReferenceForeground(theme: DocsTheme | undefined, background: string): string {
+  if (looksDarkTheme(theme, background)) return "#f5f5f4";
+  return "#1b1b1b";
+}
+
+function resolveApiReferenceRadius(theme: DocsTheme | undefined): string {
+  if (theme?.ui?.radius) return theme.ui.radius;
+
+  const name = theme?.name?.toLowerCase() ?? "";
+  if (name.includes("pixel-border") || name.includes("darksharp")) {
+    return "0px";
+  }
+
+  return "var(--radius, 0.75rem)";
+}
+
+function inferContrastingForeground(
+  value: string,
+  theme: DocsTheme | undefined,
+  background: string,
+): string {
+  const rgb = parseCssColor(value);
+  if (rgb) {
+    return relativeLuminance(rgb) > 0.58 ? "#0b0b0b" : "#ffffff";
+  }
+
+  if (theme?.name?.includes("pixel-border")) {
+    return "#0b0b0b";
+  }
+
+  if (looksDarkTheme(theme, background)) {
+    return "#0b0b0b";
+  }
+
+  return "#ffffff";
+}
+
+function looksDarkTheme(theme: DocsTheme | undefined, background: string): boolean {
+  const name = theme?.name?.toLowerCase() ?? "";
+  if (name.includes("pixel-border") || name.includes("darksharp")) return true;
+
+  const rgb = parseCssColor(background);
+  if (!rgb) return false;
+  return relativeLuminance(rgb) < 0.45;
+}
+
+function parseCssColor(value: string): [number, number, number] | undefined {
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized.startsWith("#")) {
+    return parseHexColor(normalized);
+  }
+
+  const rgbMatch = normalized.match(/^rgba?\((.+)\)$/);
+  if (rgbMatch) {
+    const [r, g, b] = rgbMatch[1]
+      .split(",")
+      .slice(0, 3)
+      .map((part) => Number.parseFloat(part.trim()));
+    if ([r, g, b].every((channel) => Number.isFinite(channel))) {
+      return [r, g, b] as [number, number, number];
+    }
+  }
+
+  const hslMatch = normalized.match(/^hsla?\((.+)\)$/);
+  if (hslMatch) {
+    const [h, s, l] = hslMatch[1]
+      .split(/[\s,\/]+/)
+      .filter(Boolean)
+      .slice(0, 3);
+    const hue = Number.parseFloat(h);
+    const saturation = Number.parseFloat(s.replace("%", ""));
+    const lightness = Number.parseFloat(l.replace("%", ""));
+    if ([hue, saturation, lightness].every((channel) => Number.isFinite(channel))) {
+      return hslToRgb(hue, saturation / 100, lightness / 100);
+    }
+  }
+
+  const oklchMatch = normalized.match(/^oklch\((.+)\)$/);
+  if (oklchMatch) {
+    const [l, c, h] = oklchMatch[1].split(/[\s/]+/).filter(Boolean);
+    const lightness = Number.parseFloat(l);
+    const chroma = Number.parseFloat(c);
+    const hue = Number.parseFloat(h);
+    if ([lightness, chroma, hue].every((channel) => Number.isFinite(channel))) {
+      return oklchToRgb(lightness, chroma, hue);
+    }
+  }
+
+  return undefined;
+}
+
+function oklchToRgb(l: number, c: number, h: number): [number, number, number] {
+  const hue = (h * Math.PI) / 180;
+  const a = Math.cos(hue) * c;
+  const b = Math.sin(hue) * c;
+
+  const l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = l - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = l - 0.0894841775 * a - 1.291485548 * b;
+
+  const l3 = l_ ** 3;
+  const m3 = m_ ** 3;
+  const s3 = s_ ** 3;
+
+  const linearR = 4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3;
+  const linearG = -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3;
+  const linearB = -0.0041960863 * l3 - 0.7034186147 * m3 + 1.707614701 * s3;
+
+  return [srgbFromLinear(linearR), srgbFromLinear(linearG), srgbFromLinear(linearB)];
+}
+
+function srgbFromLinear(value: number): number {
+  const normalized = value <= 0.0031308 ? value * 12.92 : 1.055 * value ** (1 / 2.4) - 0.055;
+  return Math.max(0, Math.min(255, Math.round(normalized * 255)));
+}
+
+function parseHexColor(value: string): [number, number, number] | undefined {
+  const raw = value.slice(1);
+  if (raw.length === 3) {
+    return [
+      Number.parseInt(raw[0] + raw[0], 16),
+      Number.parseInt(raw[1] + raw[1], 16),
+      Number.parseInt(raw[2] + raw[2], 16),
+    ];
+  }
+
+  if (raw.length === 6 || raw.length === 8) {
+    return [
+      Number.parseInt(raw.slice(0, 2), 16),
+      Number.parseInt(raw.slice(2, 4), 16),
+      Number.parseInt(raw.slice(4, 6), 16),
+    ];
+  }
+
+  return undefined;
+}
+
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+  const hue = (((h % 360) + 360) % 360) / 360;
+
+  if (s === 0) {
+    const gray = Math.round(l * 255);
+    return [gray, gray, gray];
+  }
+
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const convert = (channel: number) => {
+    let t = channel;
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+
+  return [
+    Math.round(convert(hue + 1 / 3) * 255),
+    Math.round(convert(hue) * 255),
+    Math.round(convert(hue - 1 / 3) * 255),
+  ];
+}
+
+function relativeLuminance([r, g, b]: [number, number, number]): number {
+  const normalize = (channel: number) => {
+    const value = channel / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+
+  return 0.2126 * normalize(r) + 0.7152 * normalize(g) + 0.0722 * normalize(b);
 }
 
 export function buildApiReferenceOpenApiDocument(
   config: DocsConfig,
   options: BuildApiReferenceOptions,
 ): Record<string, unknown> {
+  const apiReference = resolveApiReferenceConfig(config.apiReference);
+  if (apiReference.specUrl) {
+    return buildUnavailableOpenApiDocument(
+      config,
+      `Remote OpenAPI specs require the async API reference builder. Use the framework route helper or buildApiReferenceOpenApiDocumentAsync().`,
+    );
+  }
+
   const routes = buildApiReferenceRoutes(config, options);
+  return buildOpenApiDocumentFromRoutes(config, options.framework, routes);
+}
+
+export async function buildApiReferenceOpenApiDocumentAsync(
+  config: DocsConfig,
+  options: BuildApiReferenceOptions,
+): Promise<Record<string, unknown>> {
+  const apiReference = resolveApiReferenceConfig(config.apiReference);
+  if (!apiReference.specUrl) {
+    return buildApiReferenceOpenApiDocument(config, options);
+  }
+
+  try {
+    const document = await fetchRemoteOpenApiDocument(apiReference.specUrl);
+    return normalizeRemoteOpenApiDocument(document, config);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return buildUnavailableOpenApiDocument(
+      config,
+      `Unable to load the remote OpenAPI JSON. ${message}`,
+    );
+  }
+}
+
+function buildOpenApiDocumentFromRoutes(
+  config: DocsConfig,
+  framework: ApiReferenceFramework,
+  routes: ApiReferenceRoute[],
+): Record<string, unknown> {
   const tags = Array.from(new Set(routes.map((route) => route.tag))).map((name) => ({
     name,
     description: `${name} endpoints`,
@@ -237,8 +549,7 @@ export function buildApiReferenceOpenApiDocument(
     openapi: "3.1.0",
     info: {
       title: "API Reference",
-      description:
-        config.metadata?.description ?? `Generated API reference for ${options.framework}.`,
+      description: config.metadata?.description ?? `Generated API reference for ${framework}.`,
       version: "0.0.0",
     },
     servers: [{ url: "/" }],
@@ -251,18 +562,33 @@ export function buildApiReferenceHtmlDocument(
   config: DocsConfig,
   options: BuildApiReferenceHtmlOptions,
 ): string {
+  return buildApiReferenceHtmlDocumentFromDocument(
+    config,
+    options,
+    buildApiReferenceOpenApiDocument(config, options),
+  );
+}
+
+export async function buildApiReferenceHtmlDocumentAsync(
+  config: DocsConfig,
+  options: BuildApiReferenceHtmlOptions,
+): Promise<string> {
+  const document = await buildApiReferenceOpenApiDocumentAsync(config, options);
+  return buildApiReferenceHtmlDocumentFromDocument(config, options, document);
+}
+
+function buildApiReferenceHtmlDocumentFromDocument(
+  config: DocsConfig,
+  options: BuildApiReferenceHtmlOptions,
+  document: Record<string, unknown>,
+): string {
   const apiReference = resolveApiReferenceConfig(config.apiReference);
-  const rootDir = options.rootDir ?? process.cwd();
   const title = options.title ?? "API Reference";
 
   return getHtmlDocument({
     pageTitle: buildApiReferencePageTitle(config, title),
     title,
-    content: () =>
-      buildApiReferenceOpenApiDocument(config, {
-        framework: options.framework,
-        rootDir,
-      }),
+    content: () => document,
     theme: "deepSpace",
     layout: "modern",
     customCss: buildApiReferenceScalarCss(config),
@@ -280,6 +606,92 @@ export function buildApiReferenceHtmlDocument(
     },
     documentDownloadType: "json",
   });
+}
+
+async function fetchRemoteOpenApiDocument(specUrl: string): Promise<Record<string, unknown>> {
+  let url: URL;
+  try {
+    url = new URL(specUrl);
+  } catch {
+    throw new Error("`apiReference.specUrl` must be an absolute URL.");
+  }
+
+  const response = await fetch(url, {
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Received ${response.status} ${response.statusText}`.trim());
+  }
+
+  const body = await response.text();
+  if (!body.trim()) {
+    throw new Error("The remote endpoint returned an empty response.");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    throw new Error("The remote endpoint did not return valid JSON.");
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("The remote endpoint returned a JSON value instead of an OpenAPI object.");
+  }
+
+  if (!("openapi" in parsed) && !("swagger" in parsed)) {
+    throw new Error("The remote JSON does not look like an OpenAPI document.");
+  }
+
+  return parsed as Record<string, unknown>;
+}
+
+function normalizeRemoteOpenApiDocument(
+  document: Record<string, unknown>,
+  config: DocsConfig,
+): Record<string, unknown> {
+  const info =
+    document.info && typeof document.info === "object" && !Array.isArray(document.info)
+      ? (document.info as Record<string, unknown>)
+      : {};
+
+  return {
+    ...document,
+    info: {
+      title: "API Reference",
+      version: "0.0.0",
+      ...info,
+      description:
+        typeof info.description === "string" && info.description.trim()
+          ? info.description
+          : config.metadata?.description,
+    },
+  };
+}
+
+function buildUnavailableOpenApiDocument(
+  config: DocsConfig,
+  description: string,
+): Record<string, unknown> {
+  return {
+    openapi: "3.1.0",
+    info: {
+      title: "API Reference",
+      description,
+      version: "0.0.0",
+    },
+    servers: [{ url: "/" }],
+    tags: [
+      {
+        name: "Unavailable",
+        description: config.metadata?.description ?? "OpenAPI spec could not be loaded.",
+      },
+    ],
+    paths: {},
+  };
 }
 
 function buildApiReferenceRoutes(
@@ -381,7 +793,7 @@ function buildFileConventionRoutes({
 
 function buildTanstackRoutes(
   rootDir: string,
-  apiReference: Required<ApiReferenceConfig>,
+  apiReference: ResolvedApiReferenceConfig,
 ): ApiReferenceRoute[] {
   const routesDir = join(rootDir, "src", "routes");
   const files = scanRouteFiles(routesDir, (name) => TANSTACK_ROUTE_FILE_RE.test(name));
