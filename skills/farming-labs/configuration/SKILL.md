@@ -43,7 +43,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | — | Callback when user copies a code block (title, content, url, language) |
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
-| `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages from supported framework route conventions |
+| `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON document |
 | `metadata` | `DocsMetadata` | — | SEO: titleTemplate, description, etc. |
 | `og` | `OGConfig` | — | Dynamic Open Graph images |
 
@@ -82,7 +82,8 @@ Enables "Edit on GitHub" links and allows `{githubUrl}` in `pageActions.openDocs
 
 ## API Reference
 
-`apiReference` generates an API reference from framework route conventions.
+`apiReference` generates an API reference from framework route conventions or a hosted OpenAPI
+JSON document.
 
 Current support:
 - **Next.js:** `app/api/**/route.ts` and `src/app/api/**/route.ts`
@@ -100,11 +101,22 @@ apiReference: {
 }
 ```
 
+Remote spec example:
+
+```ts
+apiReference: {
+  enabled: true,
+  path: "api-reference",
+  specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
+}
+```
+
 Notes:
 - **Next.js:** `withDocs()` auto-generates the `/{path}` route when `apiReference` is enabled
 - **TanStack Start / SvelteKit / Astro / Nuxt:** `docs.config` controls scanning and styling, but the app must still add the framework route handler for `/{path}`
 - **CLI:** `init --api-reference` writes the `apiReference` block and scaffolds the non-Next route handler files automatically
 - `path` controls the public URL for the generated reference
+- `specUrl` points to a hosted OpenAPI JSON document; when set, local route scanning is skipped
 - `routeRoot` controls the filesystem route root to scan
 - `exclude` accepts either URL-style paths (`"/api/hello"`) or route-root-relative entries (`"hello"` / `"hello/route.ts"`)
 - on Next.js static export (`output: "export"`), the generated API reference route is skipped automatically

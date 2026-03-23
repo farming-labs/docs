@@ -151,7 +151,7 @@ nav: {
 
 ## `ApiReferenceConfig`
 
-Generates API reference pages from framework route conventions.
+Generates API reference pages from framework route conventions or a hosted OpenAPI JSON document.
 
 <Callout type="info" title="Current support">
   `apiReference` is supported in **Next.js**, **TanStack Start**, **SvelteKit**, **Astro**, and
@@ -171,6 +171,7 @@ Generates API reference pages from framework route conventions.
 | ----------- | ---------- | ----------------- | ----------- |
 | `enabled`   | `boolean`  | `true` inside the object | Enable generated API reference pages |
 | `path`      | `string`   | `"api-reference"` | URL path where the generated API reference lives |
+| `specUrl`   | `string`   | —                 | Absolute URL to a hosted OpenAPI JSON document. When set, local route scanning is skipped |
 | `routeRoot` | `string`   | `"api"`           | Filesystem route root to scan. Bare values like `"api"` resolve inside `app/` or `src/app/`; full values like `"app/internal-api"` and `"src/app/v2/api"` are supported |
 | `exclude`   | `string[]` | `[]`              | Route entries to omit from the generated reference. Accepts URL-style paths like `"/api/hello"` or route-root-relative values like `"hello"` / `"hello/route.ts"` |
 
@@ -182,6 +183,17 @@ apiReference: {
   exclude: ["/api/internal/health", "internal/debug"],
 },
 ```
+
+```ts title="docs.config.ts"
+apiReference: {
+  enabled: true,
+  path: "api-reference",
+  specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
+},
+```
+
+When `specUrl` is set, `routeRoot` and `exclude` are ignored and the API reference is rendered
+from the hosted spec instead.
 
 When `output: "export"` is used in Next.js, the generated API reference route is skipped automatically because it requires a server route handler.
 

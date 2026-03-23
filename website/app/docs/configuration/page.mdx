@@ -157,7 +157,8 @@ Use this when you deploy to a static host and don’t run a server. Search and A
 
 ## API Reference
 
-Use `apiReference` to generate an API reference from your framework route handlers.
+Use `apiReference` to generate an API reference from either your framework route handlers or a
+hosted OpenAPI JSON document.
 
 <Callout type="info" title="Current support">
   `apiReference` is supported in **Next.js**, **TanStack Start**, **SvelteKit**, **Astro**, and
@@ -186,12 +187,31 @@ export default defineDocs({
 });
 ```
 
+If your backend lives somewhere else, point the API reference at a hosted `openapi.json` instead of
+scanning local route files:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
+  },
+  theme: fumadocs(),
+});
+```
+
 | Property    | Type       | Default           | Description |
 | ----------- | ---------- | ----------------- | ----------- |
 | `enabled`   | `boolean`  | `true` inside the object | Enables generated API reference pages |
 | `path`      | `string`   | `"api-reference"` | URL path where the generated reference lives |
+| `specUrl`   | `string`   | —                 | Absolute URL to a hosted OpenAPI JSON document. When set, local route scanning is skipped |
 | `routeRoot` | `string`   | `"api"`           | Filesystem route root to scan. Bare values like `"api"` resolve inside `app/` or `src/app/`; full values like `"app/internal-api"` are supported too |
 | `exclude`   | `string[]` | `[]`              | Routes to omit from the generated reference. Accepts URL-style paths like `"/api/hello"` or route-root-relative entries like `"hello"` / `"hello/route.ts"` |
+
+When `specUrl` is set, `routeRoot` and `exclude` are ignored because the reference is rendered
+from the remote spec.
 
 If you use `output: "export"` in Next.js, the generated API reference route is skipped automatically because it needs a server route handler.
 

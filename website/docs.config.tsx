@@ -97,6 +97,11 @@ export default defineDocs({
     url: "https://github.com/farming-labs/docs",
     directory: "website",
   },
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
+  },
 
   breadcrumb: { enabled: true },
 

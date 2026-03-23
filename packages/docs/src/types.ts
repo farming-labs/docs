@@ -1148,6 +1148,21 @@ export interface ApiReferenceConfig {
    */
   path?: string;
   /**
+   * Absolute URL to a remote OpenAPI JSON document.
+   *
+   * When provided, the API reference is generated from this hosted spec instead
+   * of scanning local framework route files.
+   *
+   * @example
+   * ```ts
+   * apiReference: {
+   *   enabled: true,
+   *   specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
+   * }
+   * ```
+   */
+  specUrl?: string;
+  /**
    * Filesystem route root to scan for API handlers.
    *
    * For Next.js this defaults to the App Router convention:
@@ -1460,9 +1475,8 @@ export interface DocsConfig {
    */
   llmsTxt?: boolean | LlmsTxtConfig;
   /**
-   * Generated API reference pages from framework route conventions.
-   *
-   * The first implementation targets Next.js route handlers under `app/api/<segments>/route.ts`.
+   * Generated API reference pages from framework route conventions or a hosted
+   * OpenAPI JSON document.
    *
    * @example
    * ```ts
@@ -1470,6 +1484,14 @@ export interface DocsConfig {
    *   enabled: true,
    *   path: "api-reference",
    *   routeRoot: "api",
+   * }
+   * ```
+   *
+   * @example
+   * ```ts
+   * apiReference: {
+   *   enabled: true,
+   *   specUrl: "https://example.com/openapi.json",
    * }
    * ```
    */

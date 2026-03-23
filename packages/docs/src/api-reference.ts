@@ -18,6 +18,14 @@ export interface ApiReferenceRoute {
   parameters: Array<Record<string, unknown>>;
 }
 
+export interface ResolvedApiReferenceConfig {
+  enabled: boolean;
+  path: string;
+  specUrl?: string;
+  routeRoot: string;
+  exclude: string[];
+}
+
 interface BuildApiReferenceOptions {
   framework: ApiReferenceFramework;
   rootDir?: string;
@@ -42,11 +50,12 @@ function normalizePathSegment(value: string): string {
 
 export function resolveApiReferenceConfig(
   value: DocsConfig["apiReference"],
-): Required<ApiReferenceConfig> {
+): ResolvedApiReferenceConfig {
   if (value === true) {
     return {
       enabled: true,
       path: "api-reference",
+      specUrl: undefined,
       routeRoot: "api",
       exclude: [],
     };
@@ -56,6 +65,7 @@ export function resolveApiReferenceConfig(
     return {
       enabled: false,
       path: "api-reference",
+      specUrl: undefined,
       routeRoot: "api",
       exclude: [],
     };
@@ -64,9 +74,16 @@ export function resolveApiReferenceConfig(
   return {
     enabled: value.enabled !== false,
     path: normalizePathSegment(value.path ?? "api-reference"),
+    specUrl: normalizeRemoteSpecUrl(value.specUrl),
     routeRoot: normalizePathSegment(value.routeRoot ?? "api") || "api",
     exclude: normalizeApiReferenceExcludes(value.exclude),
   };
+}
+
+function normalizeRemoteSpecUrl(value?: string): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  return trimmed;
 }
 
 export function buildApiReferencePageTitle(config: DocsConfig, title = "API Reference"): string {
@@ -227,7 +244,44 @@ export function buildApiReferenceOpenApiDocument(
   config: DocsConfig,
   options: BuildApiReferenceOptions,
 ): Record<string, unknown> {
+  const apiReference = resolveApiReferenceConfig(config.apiReference);
+  if (apiReference.specUrl) {
+    return buildUnavailableOpenApiDocument(
+      config,
+      `Remote OpenAPI specs require the async API reference builder. Use the framework route helper or buildApiReferenceOpenApiDocumentAsync().`,
+    );
+  }
+
   const routes = buildApiReferenceRoutes(config, options);
+  return buildOpenApiDocumentFromRoutes(config, options.framework, routes);
+}
+
+export async function buildApiReferenceOpenApiDocumentAsync(
+  config: DocsConfig,
+  options: BuildApiReferenceOptions,
+): Promise<Record<string, unknown>> {
+  const apiReference = resolveApiReferenceConfig(config.apiReference);
+  if (!apiReference.specUrl) {
+    return buildApiReferenceOpenApiDocument(config, options);
+  }
+
+  try {
+    const document = await fetchRemoteOpenApiDocument(apiReference.specUrl);
+    return normalizeRemoteOpenApiDocument(document, config);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return buildUnavailableOpenApiDocument(
+      config,
+      `Unable to load the remote OpenAPI JSON from ${apiReference.specUrl}. ${message}`,
+    );
+  }
+}
+
+function buildOpenApiDocumentFromRoutes(
+  config: DocsConfig,
+  framework: ApiReferenceFramework,
+  routes: ApiReferenceRoute[],
+): Record<string, unknown> {
   const tags = Array.from(new Set(routes.map((route) => route.tag))).map((name) => ({
     name,
     description: `${name} endpoints`,
@@ -237,8 +291,7 @@ export function buildApiReferenceOpenApiDocument(
     openapi: "3.1.0",
     info: {
       title: "API Reference",
-      description:
-        config.metadata?.description ?? `Generated API reference for ${options.framework}.`,
+      description: config.metadata?.description ?? `Generated API reference for ${framework}.`,
       version: "0.0.0",
     },
     servers: [{ url: "/" }],
@@ -251,18 +304,33 @@ export function buildApiReferenceHtmlDocument(
   config: DocsConfig,
   options: BuildApiReferenceHtmlOptions,
 ): string {
+  return buildApiReferenceHtmlDocumentFromDocument(
+    config,
+    options,
+    buildApiReferenceOpenApiDocument(config, options),
+  );
+}
+
+export async function buildApiReferenceHtmlDocumentAsync(
+  config: DocsConfig,
+  options: BuildApiReferenceHtmlOptions,
+): Promise<string> {
+  const document = await buildApiReferenceOpenApiDocumentAsync(config, options);
+  return buildApiReferenceHtmlDocumentFromDocument(config, options, document);
+}
+
+function buildApiReferenceHtmlDocumentFromDocument(
+  config: DocsConfig,
+  options: BuildApiReferenceHtmlOptions,
+  document: Record<string, unknown>,
+): string {
   const apiReference = resolveApiReferenceConfig(config.apiReference);
-  const rootDir = options.rootDir ?? process.cwd();
   const title = options.title ?? "API Reference";
 
   return getHtmlDocument({
     pageTitle: buildApiReferencePageTitle(config, title),
     title,
-    content: () =>
-      buildApiReferenceOpenApiDocument(config, {
-        framework: options.framework,
-        rootDir,
-      }),
+    content: () => document,
     theme: "deepSpace",
     layout: "modern",
     customCss: buildApiReferenceScalarCss(config),
@@ -280,6 +348,92 @@ export function buildApiReferenceHtmlDocument(
     },
     documentDownloadType: "json",
   });
+}
+
+async function fetchRemoteOpenApiDocument(specUrl: string): Promise<Record<string, unknown>> {
+  let url: URL;
+  try {
+    url = new URL(specUrl);
+  } catch {
+    throw new Error("`apiReference.specUrl` must be an absolute URL.");
+  }
+
+  const response = await fetch(url, {
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Received ${response.status} ${response.statusText}`.trim());
+  }
+
+  const body = await response.text();
+  if (!body.trim()) {
+    throw new Error("The remote endpoint returned an empty response.");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    throw new Error("The remote endpoint did not return valid JSON.");
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("The remote endpoint returned a JSON value instead of an OpenAPI object.");
+  }
+
+  if (!("openapi" in parsed) && !("swagger" in parsed)) {
+    throw new Error("The remote JSON does not look like an OpenAPI document.");
+  }
+
+  return parsed as Record<string, unknown>;
+}
+
+function normalizeRemoteOpenApiDocument(
+  document: Record<string, unknown>,
+  config: DocsConfig,
+): Record<string, unknown> {
+  const info =
+    document.info && typeof document.info === "object" && !Array.isArray(document.info)
+      ? (document.info as Record<string, unknown>)
+      : {};
+
+  return {
+    ...document,
+    info: {
+      title: "API Reference",
+      version: "0.0.0",
+      ...info,
+      description:
+        typeof info.description === "string" && info.description.trim()
+          ? info.description
+          : config.metadata?.description,
+    },
+  };
+}
+
+function buildUnavailableOpenApiDocument(
+  config: DocsConfig,
+  description: string,
+): Record<string, unknown> {
+  return {
+    openapi: "3.1.0",
+    info: {
+      title: "API Reference",
+      description,
+      version: "0.0.0",
+    },
+    servers: [{ url: "/" }],
+    tags: [
+      {
+        name: "Unavailable",
+        description: config.metadata?.description ?? "OpenAPI spec could not be loaded.",
+      },
+    ],
+    paths: {},
+  };
 }
 
 function buildApiReferenceRoutes(
