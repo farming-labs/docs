@@ -97,7 +97,7 @@ export function buildApiReferenceScalarCss(config: DocsConfig): string {
   const colors = theme?.ui?.colors;
   const typography = theme?.ui?.typography?.font?.style;
   const layout = theme?.ui?.layout;
-  const radius = theme?.ui?.radius ?? "var(--radius, 0.75rem)";
+  const radius = resolveApiReferenceRadius(theme);
   const primary = colors?.primary ?? "#6366f1";
   const border = colors?.border ?? "#2a2a2a";
   const muted = colors?.muted ?? "#64748b";
@@ -110,6 +110,12 @@ export function buildApiReferenceScalarCss(config: DocsConfig): string {
   const sans = typography?.sans ?? '"Geist", "Inter", "Segoe UI", sans-serif';
   const mono = typography?.mono ?? '"Geist Mono", "SFMono-Regular", "Menlo", monospace';
   const isPixelBorder = theme?.name?.includes("pixel-border");
+  const darkBorderColor = isPixelBorder
+    ? "color-mix(in srgb, var(--scalar-theme-foreground) 10%, transparent)"
+    : "color-mix(in srgb, var(--scalar-theme-border) 14%, rgba(255, 255, 255, 0.02))";
+  const lightBorderColor = isPixelBorder
+    ? "color-mix(in srgb, var(--scalar-theme-foreground) 14%, transparent)"
+    : "color-mix(in srgb, var(--scalar-theme-border) 30%, white 70%)";
 
   return `
 :root {
@@ -154,11 +160,7 @@ export function buildApiReferenceScalarCss(config: DocsConfig): string {
     var(--scalar-theme-primary) 7%,
     transparent
   );
-  --scalar-border-color: color-mix(
-    in srgb,
-    var(--scalar-theme-border) 14%,
-    rgba(255, 255, 255, 0.02)
-  );
+  --scalar-border-color: ${darkBorderColor};
   --scalar-button-1: var(--scalar-theme-primary);
   --scalar-button-1-color: ${primaryForeground};
   --scalar-button-1-hover: color-mix(in srgb, var(--scalar-theme-primary) 88%, white 12%);
@@ -185,7 +187,7 @@ export function buildApiReferenceScalarCss(config: DocsConfig): string {
     var(--scalar-theme-primary) 5%,
     transparent
   );
-  --scalar-border-color: color-mix(in srgb, var(--scalar-theme-border) 30%, white 70%);
+  --scalar-border-color: ${lightBorderColor};
   --scalar-button-1: var(--scalar-theme-primary);
   --scalar-button-1-color: ${primaryForeground};
   --scalar-button-1-hover: color-mix(in srgb, var(--scalar-theme-primary) 88%, black 12%);
@@ -325,6 +327,17 @@ function buildPixelBorderScalarCss(): string {
 function inferApiReferenceForeground(theme: DocsTheme | undefined, background: string): string {
   if (looksDarkTheme(theme, background)) return "#f5f5f4";
   return "#1b1b1b";
+}
+
+function resolveApiReferenceRadius(theme: DocsTheme | undefined): string {
+  if (theme?.ui?.radius) return theme.ui.radius;
+
+  const name = theme?.name?.toLowerCase() ?? "";
+  if (name.includes("pixel-border") || name.includes("darksharp")) {
+    return "0px";
+  }
+
+  return "var(--radius, 0.75rem)";
 }
 
 function inferContrastingForeground(

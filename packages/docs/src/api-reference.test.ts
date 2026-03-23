@@ -178,7 +178,8 @@ describe("buildApiReferenceOpenApiDocument", () => {
     );
 
     expect(css).toContain("--scalar-theme-foreground: #f5f5f4;");
-    expect(css).toContain("--scalar-radius: var(--radius, 0.75rem);");
+    expect(css).toContain("--scalar-radius: 0px;");
     expect(css).toContain("--scalar-button-1-color: #0b0b0b;");
+    expect(css).toContain("var(--scalar-theme-foreground) 10%");
   });
 });

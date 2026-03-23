@@ -401,7 +401,8 @@ function getApiReferenceSwitcherTheme(config: DocsConfig) {
   const isPixelBorder = themeName.includes("pixel-border");
   const isDarksharp = themeName.includes("darksharp");
   const isShiny = themeName.includes("shiny");
-  const radius = config.theme?.ui?.radius ?? "var(--radius, 0.75rem)";
+  const radius =
+    config.theme?.ui?.radius ?? (isPixelBorder || isDarksharp ? "0px" : "var(--radius, 0.75rem)");
 
   return {
     cardRadius: radius,
