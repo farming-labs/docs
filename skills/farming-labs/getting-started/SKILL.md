@@ -84,7 +84,8 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 
 ## API reference quick setup
 
-`apiReference` generates an API reference from your framework's route handlers.
+`apiReference` generates an API reference from your framework's route handlers or from a hosted
+OpenAPI JSON document.
 
 ```ts
 export default defineDocs({
@@ -104,6 +105,24 @@ Important framework behavior:
 - **TanStack Start, SvelteKit, Astro, Nuxt**: `docs.config` controls scanning and theming, but the app still needs the `/{path}` route handler.
 - **CLI**: `init --api-reference` writes the config and scaffolds those handler files for you.
 
+Remote OpenAPI JSON example:
+
+```ts
+export default defineDocs({
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
+  },
+  theme: fumadocs(),
+});
+```
+
+When `specUrl` is set, local route scanning is skipped. On TanStack Start, SvelteKit, Astro, and
+Nuxt you still need the `/{path}` route handler because that route serves the generated API
+reference page.
+
 Minimal handler files for non-Next frameworks:
 
 - **TanStack Start**: `src/routes/api-reference.index.ts` and `src/routes/api-reference.$.ts` using `createTanstackApiReference(config)`
@@ -119,7 +138,8 @@ Route scan conventions:
 - **Astro**: `src/pages/api/**/*.ts` or `.js`
 - **Nuxt**: `server/api/**/*.ts` or `.js`
 
-For the full option surface (`path`, `routeRoot`, `exclude`), use the `configuration` skill.
+For the full option surface (`path`, `specUrl`, `routeRoot`, `exclude`), use the
+`configuration` skill.
 
 ---
 
@@ -165,7 +185,7 @@ For fully static builds (e.g. Cloudflare Pages, no server), set `staticExport: t
 3. **From scratch** — Use `init --template <next|tanstack-start|nuxt|sveltekit|astro> --name <project>`; the CLI bootstraps a project with that name and runs install.
 4. **Existing project** — Run `init` in the project root; the CLI detects the framework and scaffolds files.
 5. **Static hosting** — Set `staticExport: true`; search and AI are then hidden.
-6. **API reference on non-Next frameworks** — `apiReference` in `docs.config` is not enough by itself on TanStack Start, SvelteKit, Astro, or Nuxt; add the `/{path}` handler manually or let `init --api-reference` scaffold it.
+6. **API reference on non-Next frameworks** — `apiReference` in `docs.config` is not enough by itself on TanStack Start, SvelteKit, Astro, or Nuxt; add the `/{path}` handler manually or let `init --api-reference` scaffold it, even when you use a remote `specUrl`.
 
 ---
 

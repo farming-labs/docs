@@ -47,7 +47,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `feedback`    | `boolean \| FeedbackConfig`                     | `false`          | End-of-page feedback prompt and feedback callback                                    |
 | `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
 | `ai`          | `AIConfig`                                      | —                | RAG-powered AI chat                                                                  |
-| `apiReference` | `boolean \| ApiReferenceConfig`               | `false`          | Generated API reference pages from supported framework route conventions |
+| `apiReference` | `boolean \| ApiReferenceConfig`               | `false`          | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON |
 | `ordering`    | `"alphabetical" \| "numeric" \| OrderingItem[]` | `"alphabetical"` | Sidebar page ordering strategy                                                       |
 | `metadata`    | `DocsMetadata`                                  | —                | SEO metadata                                                                         |
 | `og`          | `OGConfig`                                      | —                | Open Graph image config                                                              |
@@ -153,6 +153,9 @@ nav: {
 
 Generates API reference pages from framework route conventions or a hosted OpenAPI JSON document.
 
+Use route scanning when the API lives in the same project. Use `specUrl` when the backend is
+deployed elsewhere and already exposes an `openapi.json`.
+
 <Callout type="info" title="Current support">
   `apiReference` is supported in **Next.js**, **TanStack Start**, **SvelteKit**, **Astro**, and
   **Nuxt**.
@@ -165,6 +168,11 @@ Generates API reference pages from framework route conventions or a hosted OpenA
 
   In **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt**, you must additionally add the
   framework route handler for `/{path}`.
+</Callout>
+
+<Callout type="tip" title="Remote spec mode">
+  `specUrl` is the easiest option when your docs app does not contain the backend route files.
+  Point it at a hosted `openapi.json` and keep the same themed API reference UI.
 </Callout>
 
 | Property    | Type       | Default           | Description |
@@ -194,6 +202,10 @@ apiReference: {
 
 When `specUrl` is set, `routeRoot` and `exclude` are ignored and the API reference is rendered
 from the hosted spec instead.
+
+This does not remove the framework route requirement on non-Next adapters. TanStack Start,
+SvelteKit, Astro, and Nuxt still need their `/{path}` handler files so the docs app has a route
+that serves the generated API reference page.
 
 When `output: "export"` is used in Next.js, the generated API reference route is skipped automatically because it requires a server route handler.
 

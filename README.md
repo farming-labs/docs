@@ -11,7 +11,7 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 - 💡 **Type-safe config in code, not JSON**
 - 📦 **Single install, zero lock-in**
 - 🧬 **Write .mdx or .md — all features work out of the box**
-- 🧾 **Generated API reference from your framework route handlers**
+- 🧾 **Generated API reference from framework route handlers or a hosted OpenAPI JSON**
 
 **Get started:**
 
@@ -51,6 +51,9 @@ If you enable **API reference** during init, the CLI writes the `apiReference` b
 `docs.config` and scaffolds the route handler files for **TanStack Start**, **SvelteKit**,
 **Astro**, and **Nuxt** so the generated reference works immediately. In **Next.js**,
 `withDocs()` generates the API reference route automatically when `apiReference` is enabled.
+
+If your backend is hosted somewhere else, you can switch the generated `apiReference` block to
+remote mode later by setting `specUrl` to a hosted `openapi.json`.
 
 ### Option B: Manual setup
 
@@ -226,7 +229,11 @@ docs/
 
 ## API Reference
 
-`apiReference` generates an API reference from each framework's route conventions.
+`apiReference` generates an API reference from each framework's route conventions or from a hosted
+OpenAPI JSON document.
+
+Use local route scanning when your API lives in the same app. Use `specUrl` when your backend is
+hosted elsewhere and already exposes an `openapi.json`.
 
 Current support:
 
@@ -249,9 +256,25 @@ export default defineDocs({
 });
 ```
 
+Remote OpenAPI JSON:
+
+```ts
+export default defineDocs({
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
+  },
+  theme: fumadocs(),
+});
+```
+
 - `path` controls the public URL for the generated reference
+- `specUrl` points to a hosted OpenAPI JSON document; when set, local route scanning is skipped
 - `routeRoot` controls the filesystem route root to scan
 - `exclude` accepts either URL-style paths (`"/api/hello"`) or route-root-relative entries (`"hello"` / `"hello/route.ts"`)
+- when `specUrl` is set, `routeRoot` and `exclude` are ignored
 
 ### Next.js
 
@@ -317,6 +340,9 @@ import config from "~/docs.config";
 
 export default defineApiReferenceHandler(config);
 ```
+
+The same route files are used whether you scan local route handlers or use a remote `specUrl`. The
+only difference is where the API reference data comes from.
 
 Create `server/routes/api-reference/[...slug].ts` with the same default export.
 
@@ -624,6 +650,7 @@ export default defineDocs({
   apiReference: {
     enabled: true,
     path: "api-reference",
+    // specUrl: "https://example.com/openapi.json", // optional: use a hosted OpenAPI JSON instead of local route scanning
   },
   // staticExport: true, // for full static builds (Cloudflare Pages) — hides search & AI
 

@@ -85,6 +85,9 @@ Enables "Edit on GitHub" links and allows `{githubUrl}` in `pageActions.openDocs
 `apiReference` generates an API reference from framework route conventions or a hosted OpenAPI
 JSON document.
 
+Use local route scanning when your API routes live in the same project. Use `specUrl` when your
+backend is hosted elsewhere and already exposes an `openapi.json`.
+
 Current support:
 - **Next.js:** `app/api/**/route.ts` and `src/app/api/**/route.ts`
 - **TanStack Start:** `src/routes/api.*.ts` and nested route files inside the configured route root
@@ -113,13 +116,19 @@ apiReference: {
 
 Notes:
 - **Next.js:** `withDocs()` auto-generates the `/{path}` route when `apiReference` is enabled
-- **TanStack Start / SvelteKit / Astro / Nuxt:** `docs.config` controls scanning and styling, but the app must still add the framework route handler for `/{path}`
+- **TanStack Start / SvelteKit / Astro / Nuxt:** `docs.config` controls scanning, remote spec rendering, and styling, but the app must still add the framework route handler for `/{path}`
 - **CLI:** `init --api-reference` writes the `apiReference` block and scaffolds the non-Next route handler files automatically
 - `path` controls the public URL for the generated reference
 - `specUrl` points to a hosted OpenAPI JSON document; when set, local route scanning is skipped
 - `routeRoot` controls the filesystem route root to scan
 - `exclude` accepts either URL-style paths (`"/api/hello"`) or route-root-relative entries (`"hello"` / `"hello/route.ts"`)
 - on Next.js static export (`output: "export"`), the generated API reference route is skipped automatically
+
+When `specUrl` is set:
+
+- `routeRoot` and `exclude` are ignored
+- the API reference is rendered from the hosted OpenAPI JSON
+- non-Next frameworks still need the `/{path}` handler files because they are what serve the generated API reference page
 
 Minimal handler files for non-Next frameworks:
 
