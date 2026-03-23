@@ -639,6 +639,12 @@ export function createNextApiReference(config: DocsConfig) {
   const apiReference = resolveApiReferenceConfig(config.apiReference);
 
   return async () => {
+    if (!apiReference.enabled) {
+      return new Response("Not Found", {
+        status: 404,
+      });
+    }
+
     const document = await buildApiReferenceOpenApiDocumentAsync(config, {
       framework: "next",
       rootDir: process.cwd(),

@@ -35,7 +35,7 @@ export default defineDocs({
   entry: "docs",
   theme: pixelBorder({
     ui: {
-      layout: { toc: { enabled: true, depth: 3, style: "directional" } },
+      layout: { toc: { enabled: true, depth: 3, style: "directional" } , sidebarWidth: 300 },
       sidebar: { style: "floating" },
       typography: {
         font: {
@@ -96,11 +96,6 @@ export default defineDocs({
   github: {
     url: "https://github.com/farming-labs/docs",
     directory: "website",
-  },
-  apiReference: {
-    enabled: true,
-    path: "api-reference",
-    specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
   },
 
   breadcrumb: { enabled: true },

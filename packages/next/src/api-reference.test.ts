@@ -2,7 +2,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { buildNextOpenApiDocument, withNextApiReferenceBanner } from "./api-reference.js";
+import {
+  buildNextOpenApiDocument,
+  createNextApiReference,
+  withNextApiReferenceBanner,
+} from "./api-reference.js";
 
 describe("buildNextOpenApiDocument", () => {
   let tmpDir: string;
@@ -137,5 +141,18 @@ describe("withNextApiReferenceBanner", () => {
     };
 
     expect(withNextApiReferenceBanner(config)).toBe(config);
+  });
+});
+
+describe("createNextApiReference", () => {
+  it("returns 404 when apiReference is disabled", async () => {
+    const handler = createNextApiReference({
+      entry: "docs",
+      apiReference: false,
+    });
+
+    const response = await handler();
+
+    expect(response.status).toBe(404);
   });
 });
