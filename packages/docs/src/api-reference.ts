@@ -530,7 +530,7 @@ export async function buildApiReferenceOpenApiDocumentAsync(
     const message = error instanceof Error ? error.message : "Unknown error";
     return buildUnavailableOpenApiDocument(
       config,
-      `Unable to load the remote OpenAPI JSON from ${apiReference.specUrl}. ${message}`,
+      `Unable to load the remote OpenAPI JSON. ${message}`,
     );
   }
 }
