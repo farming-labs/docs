@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import { getHtmlDocument } from "@scalar/core/libs/html-rendering";
-import type { ApiReferenceConfig, DocsConfig, DocsTheme } from "./types.js";
+import type { DocsConfig, DocsTheme } from "./types.js";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
 
@@ -391,7 +391,7 @@ function parseCssColor(value: string): [number, number, number] | undefined {
   const hslMatch = normalized.match(/^hsla?\((.+)\)$/);
   if (hslMatch) {
     const [h, s, l] = hslMatch[1]
-      .split(/[\s,\/]+/)
+      .split(/[\s,/]+/)
       .filter(Boolean)
       .slice(0, 3);
     const hue = Number.parseFloat(h);
