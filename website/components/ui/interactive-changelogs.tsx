@@ -16,10 +16,43 @@ interface Release {
 
 const releases: Release[] = [
   {
-    version: "v0.0.44",
-    title: "v0.0.44: Current Release",
+    version: "v0.0.63",
+    title: "v0.0.63: Current Release",
     date: "Mar 2026",
     pinned: true,
+    excerpt:
+      "Remote API reference, built-in feedback and hover-link components, Turbopack compatibility work, and cross-framework stability updates.",
+    changes: [
+      {
+        category: "Reference & Docs UX",
+        items: [
+          "Added remote API reference support and the matching docs coverage",
+          "Added the built-in HoverLink MDX component and synced it across Next.js, TanStack Start, Astro, SvelteKit, and Nuxt",
+          "Cleaned up docs-site release/docs coverage, code block titles, and API reference guidance",
+        ],
+      },
+      {
+        category: "Feedback & Framework Support",
+        items: [
+          "Added built-in page feedback with route-aware callback data and theme-aware UI",
+          "Wired feedback support into the website with a local API route and Prisma-backed storage",
+          "Expanded supported-framework coverage, examples, and framework test coverage around the new MDX components",
+        ],
+      },
+      {
+        category: "Fixes & Stability",
+        items: [
+          "Fixed Turbopack compatibility issues for Next.js docs apps and generated client fallback handling",
+          "Fixed theme preset override syncing and docs theme dev-start regressions",
+          "Improved standalone example/version syncing and related CI/build stability",
+        ],
+      },
+    ],
+  },
+  {
+    version: "v0.0.44",
+    title: "v0.0.44",
+    date: "Mar 2026",
     excerpt:
       "TanStack Start support lands across the runtime, example, and docs, with refreshed landing pages and a Nuxt security fix.",
     changes: [
@@ -50,7 +83,7 @@ const releases: Release[] = [
   },
   {
     version: "v0.0.31",
-    title: "v0.0.31: Current Release",
+    title: "v0.0.31",
     date: "Mar 2026",
     excerpt:
       "Internationalized docs across all frameworks, locale-aware CLI scaffolding, UI polish, build fixes, and expanded documentation.",
