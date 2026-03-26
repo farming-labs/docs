@@ -227,6 +227,19 @@ export default defineDocs({
           >
             v0.0.63
           </a>
+          <span className="mr-1 text-[12px]" style={{ opacity: 0.4 }}>
+            /
+          </span>
+          <a
+            className="lowercase cursor-pointer text-[12px] underline underline-offset-2 decoration-dotted transition-colors"
+            style={{
+              textDecorationColor:
+                "color-mix(in srgb, var(--color-fd-foreground) 30%, transparent)",
+            }}
+            href="/changelog#v0.0.44"
+          >
+            v0.0.44
+          </a>
         </div>
         <span className="uppercase font-mono text-[10px] tracking-tight block">
           Check out the new features and improvements that were added in this release.

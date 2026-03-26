@@ -51,8 +51,9 @@ const releases: Release[] = [
   },
   {
     version: "v0.0.44",
-    title: "v0.0.44",
+    title: "v0.0.44: Current Release",
     date: "Mar 2026",
+    pinned: true,
     excerpt:
       "TanStack Start support lands across the runtime, example, and docs, with refreshed landing pages and a Nuxt security fix.",
     changes: [
@@ -83,7 +84,7 @@ const releases: Release[] = [
   },
   {
     version: "v0.0.31",
-    title: "v0.0.31",
+    title: "v0.0.31: Current Release",
     date: "Mar 2026",
     excerpt:
       "Internationalized docs across all frameworks, locale-aware CLI scaffolding, UI polish, build fixes, and expanded documentation.",
