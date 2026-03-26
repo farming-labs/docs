@@ -183,6 +183,11 @@ elsewhere and already exposes an `openapi.json`.
   for the actual backend.
 </Callout>
 
+<Callout type="info" title="Renderer choice">
+  The default renderer is **Scalar**. In **Next.js** you can also set
+  `apiReference.renderer: "fumadocs"` to use the Fumadocs OpenAPI experience instead.
+</Callout>
+
 ```ts title="docs.config.ts"
 export default defineDocs({
   entry: "docs",
@@ -211,10 +216,26 @@ export default defineDocs({
 });
 ```
 
+Next.js can switch the API reference UI to the Fumadocs renderer:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    renderer: "fumadocs",
+    specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
+  },
+  theme: fumadocs(),
+});
+```
+
 | Property    | Type       | Default           | Description |
 | ----------- | ---------- | ----------------- | ----------- |
 | `enabled`   | `boolean`  | `true` inside the object | Enables generated API reference pages |
 | `path`      | `string`   | `"api-reference"` | URL path where the generated reference lives |
+| `renderer`  | `"scalar" \| "fumadocs"` | `"scalar"` | UI renderer to use. `fumadocs` is currently supported in Next.js only |
 | `specUrl`   | `string`   | —                 | Absolute URL to a hosted OpenAPI JSON document. When set, local route scanning is skipped |
 | `routeRoot` | `string`   | `"api"`           | Filesystem route root to scan. Bare values like `"api"` resolve inside `app/` or `src/app/`; full values like `"app/internal-api"` are supported too |
 | `exclude`   | `string[]` | `[]`              | Routes to omit from the generated reference. Accepts URL-style paths like `"/api/hello"` or route-root-relative entries like `"hello"` / `"hello/route.ts"` |

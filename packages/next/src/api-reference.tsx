@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { ApiReference } from "@scalar/nextjs-api-reference";
 import type { DocsConfig } from "@farming-labs/docs";
 import {
@@ -523,6 +525,11 @@ function ApiReferenceSwitcher({
 }) {
   const currentLabel = current === "api" ? "API Reference" : "Documentation";
   const theme = getApiReferenceSwitcherTheme(config);
+  const renderer = resolveApiReferenceConfig(config.apiReference).renderer;
+  const apiDescription =
+    renderer === "fumadocs"
+      ? "Fumadocs OpenAPI explorer"
+      : "Scalar-powered route handler reference";
 
   return (
     <details
@@ -586,7 +593,7 @@ function ApiReferenceSwitcher({
         <SwitcherOption
           href={apiUrl}
           title="API Reference"
-          description="Scalar-powered route handler reference"
+          description={apiDescription}
           current={current === "api"}
           config={config}
         />
@@ -639,7 +646,7 @@ export function createNextApiReference(config: DocsConfig) {
   const apiReference = resolveApiReferenceConfig(config.apiReference);
 
   return async () => {
-    if (!apiReference.enabled) {
+    if (!apiReference.enabled || apiReference.renderer !== "scalar") {
       return new Response("Not Found", {
         status: 404,
       });
@@ -674,5 +681,40 @@ export function createNextApiReference(config: DocsConfig) {
       },
       documentDownloadType: "json",
     })();
+  };
+}
+
+export function createNextApiReferenceMetadata(config: DocsConfig): Metadata {
+  return {
+    title: buildApiReferencePageTitle(config, "API Reference"),
+    description: config.metadata?.description ?? "Interactive API reference.",
+  };
+}
+
+export function createNextApiReferencePage(config: DocsConfig) {
+  const apiReference = resolveApiReferenceConfig(config.apiReference);
+
+  return async function NextApiReferencePage() {
+    if (!apiReference.enabled || apiReference.renderer !== "fumadocs") {
+      notFound();
+    }
+
+    const [{ createOpenAPI }, { createAPIPage }] = await Promise.all([
+      import("fumadocs-openapi/server"),
+      import("fumadocs-openapi/ui"),
+    ]);
+
+    const server = createOpenAPI({
+      disableCache: true,
+      input: async () => ({
+        "openapi.json": await buildApiReferenceOpenApiDocumentAsync(config, {
+          framework: "next",
+          rootDir: process.cwd(),
+        }),
+      }),
+    });
+    const ApiPage = createAPIPage(server);
+
+    return <ApiPage document="openapi.json" />;
   };
 }

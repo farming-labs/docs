@@ -16,6 +16,16 @@ const DOCS_CONFIG_WITH_API_REFERENCE = `export default {
 };
 `;
 
+const DOCS_CONFIG_WITH_FUMADOCS_API_REFERENCE = `export default {
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    renderer: "fumadocs",
+  },
+};
+`;
+
 describe("withDocs (app dir: src/app vs app)", () => {
   let tmpDir: string;
   let originalCwd: string;
@@ -89,6 +99,20 @@ describe("withDocs (app dir: src/app vs app)", () => {
     withDocs({ output: "export" });
 
     expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/route.ts"))).toBe(false);
+  });
+
+  it("generates an API reference page when the fumadocs renderer is enabled", () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_FUMADOCS_API_REFERENCE, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({});
+
+    expect(existsSync(join(tmpDir, "app/api-reference/page.tsx"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/route.ts"))).toBe(false);
+    expect(readFileSync(join(tmpDir, "app/api-reference/page.tsx"), "utf-8")).toContain(
+      'import "@farming-labs/next/fumadocs-openapi.css";',
+    );
   });
 
   it("parses apiReference blocks that contain nested objects", () => {

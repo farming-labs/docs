@@ -55,6 +55,10 @@ If you enable **API reference** during init, the CLI writes the `apiReference` b
 If your backend is hosted somewhere else, you can switch the generated `apiReference` block to
 remote mode later by setting `specUrl` to a hosted `openapi.json`.
 
+If you want the API reference to use the Fumadocs OpenAPI UI instead of Scalar, set
+`apiReference.renderer` to `"fumadocs"`. That renderer is currently supported in **Next.js**
+only.
+
 ### Option B: Manual setup
 
 #### Next.js
@@ -270,7 +274,23 @@ export default defineDocs({
 });
 ```
 
+Next.js can also switch the renderer:
+
+```ts
+export default defineDocs({
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    renderer: "fumadocs",
+    specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
+  },
+  theme: fumadocs(),
+});
+```
+
 - `path` controls the public URL for the generated reference
+- `renderer` chooses the UI renderer: `"scalar"` (default) or `"fumadocs"` (Next.js only)
 - `specUrl` points to a hosted OpenAPI JSON document; when set, local route scanning is skipped
 - `routeRoot` controls the filesystem route root to scan
 - `exclude` accepts either URL-style paths (`"/api/hello"`) or route-root-relative entries (`"hello"` / `"hello/route.ts"`)

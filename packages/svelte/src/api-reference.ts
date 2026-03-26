@@ -1,6 +1,8 @@
 import {
   buildApiReferenceHtmlDocumentAsync,
+  getUnsupportedApiReferenceRendererMessage,
   resolveApiReferenceConfig,
+  supportsApiReferenceRenderer,
 } from "@farming-labs/docs/server";
 import type { DocsConfig } from "@farming-labs/docs";
 
@@ -9,6 +11,13 @@ export function createSvelteApiReference(config: DocsConfig & Record<string, any
     const apiReference = resolveApiReferenceConfig(config.apiReference);
     if (!apiReference.enabled) {
       return new Response("Not Found", { status: 404 });
+    }
+
+    if (!supportsApiReferenceRenderer("sveltekit", apiReference.renderer)) {
+      return new Response(
+        getUnsupportedApiReferenceRendererMessage("sveltekit", apiReference.renderer),
+        { status: 501 },
+      );
     }
 
     const rootDir = typeof config.rootDir === "string" ? config.rootDir : process.cwd();

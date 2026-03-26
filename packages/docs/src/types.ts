@@ -1134,6 +1134,8 @@ export interface DocsI18nConfig {
   defaultLocale?: string;
 }
 
+export type ApiReferenceRenderer = "scalar" | "fumadocs";
+
 export interface ApiReferenceConfig {
   /**
    * Whether to enable generated API reference pages.
@@ -1147,6 +1149,18 @@ export interface ApiReferenceConfig {
    * @default "api-reference"
    */
   path?: string;
+  /**
+   * API reference renderer to use.
+   *
+   * - `"scalar"` (default) renders the existing standalone Scalar experience.
+   * - `"fumadocs"` renders the Fumadocs OpenAPI page experience.
+   *
+   * `fumadocs` is currently supported in the Next.js adapter only. Other
+   * frameworks should keep using `scalar`.
+   *
+   * @default "scalar"
+   */
+  renderer?: ApiReferenceRenderer;
   /**
    * Absolute URL to a remote OpenAPI JSON document.
    *
@@ -1483,6 +1497,7 @@ export interface DocsConfig {
    * apiReference: {
    *   enabled: true,
    *   path: "api-reference",
+   *   renderer: "scalar",
    *   routeRoot: "api",
    * }
    * ```
@@ -1491,6 +1506,7 @@ export interface DocsConfig {
    * ```ts
    * apiReference: {
    *   enabled: true,
+   *   renderer: "fumadocs",
    *   specUrl: "https://example.com/openapi.json",
    * }
    * ```

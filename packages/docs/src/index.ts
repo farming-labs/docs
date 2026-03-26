@@ -17,6 +17,7 @@ export { resolveTitle, resolveOGImage, buildPageOpenGraph, buildPageTwitter } fr
 export type {
   DocsConfig,
   ApiReferenceConfig,
+  ApiReferenceRenderer,
   DocsI18nConfig,
   DocsNav,
   DocsTheme,

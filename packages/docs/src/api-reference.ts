@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import { getHtmlDocument } from "@scalar/core/libs/html-rendering";
-import type { DocsConfig, DocsTheme } from "./types.js";
+import type { ApiReferenceRenderer, DocsConfig, DocsTheme } from "./types.js";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
 
@@ -21,6 +21,7 @@ export interface ApiReferenceRoute {
 export interface ResolvedApiReferenceConfig {
   enabled: boolean;
   path: string;
+  renderer: ApiReferenceRenderer;
   specUrl?: string;
   routeRoot: string;
   exclude: string[];
@@ -55,6 +56,7 @@ export function resolveApiReferenceConfig(
     return {
       enabled: true,
       path: "api-reference",
+      renderer: "scalar",
       specUrl: undefined,
       routeRoot: "api",
       exclude: [],
@@ -65,6 +67,7 @@ export function resolveApiReferenceConfig(
     return {
       enabled: false,
       path: "api-reference",
+      renderer: "scalar",
       specUrl: undefined,
       routeRoot: "api",
       exclude: [],
@@ -74,10 +77,29 @@ export function resolveApiReferenceConfig(
   return {
     enabled: value.enabled !== false,
     path: normalizePathSegment(value.path ?? "api-reference"),
+    renderer: resolveApiReferenceRenderer(value.renderer),
     specUrl: normalizeRemoteSpecUrl(value.specUrl),
     routeRoot: normalizePathSegment(value.routeRoot ?? "api") || "api",
     exclude: normalizeApiReferenceExcludes(value.exclude),
   };
+}
+
+function resolveApiReferenceRenderer(value?: ApiReferenceRenderer): ApiReferenceRenderer {
+  return value === "fumadocs" ? "fumadocs" : "scalar";
+}
+
+export function supportsApiReferenceRenderer(
+  framework: ApiReferenceFramework,
+  renderer: ApiReferenceRenderer,
+): boolean {
+  return renderer === "scalar" || framework === "next";
+}
+
+export function getUnsupportedApiReferenceRendererMessage(
+  framework: ApiReferenceFramework,
+  renderer: ApiReferenceRenderer,
+): string {
+  return `The "${renderer}" API reference renderer is currently only supported in Next.js. Use renderer: "scalar" for ${framework}.`;
 }
 
 function normalizeRemoteSpecUrl(value?: string): string | undefined {

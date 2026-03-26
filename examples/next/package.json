@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "start": "next start"
+    "start": "next start",
+    "test:api-reference": "node --test ./tests/fumadocs-api-reference.test.mjs"
   },
   "dependencies": {
     "@farming-labs/docs": "0.0.63",

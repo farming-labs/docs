@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -5,8 +6,35 @@ import { tmpdir } from "node:os";
 import {
   buildNextOpenApiDocument,
   createNextApiReference,
+  createNextApiReferenceMetadata,
   withNextApiReferenceBanner,
 } from "./api-reference.js";
+
+function collectText(node: unknown): string {
+  if (node == null || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(collectText).join("");
+
+  if (
+    typeof node === "object" &&
+    node !== null &&
+    "type" in node &&
+    typeof (node as { type?: unknown }).type === "function" &&
+    "props" in node
+  ) {
+    return collectText(
+      (node as { type: (props: unknown) => unknown; props: unknown }).type(
+        (node as { props: unknown }).props,
+      ),
+    );
+  }
+
+  if (typeof node === "object" && "props" in node) {
+    return collectText((node as { props?: { children?: unknown } }).props?.children);
+  }
+
+  return "";
+}
 
 describe("buildNextOpenApiDocument", () => {
   let tmpDir: string;
@@ -142,6 +170,21 @@ describe("withNextApiReferenceBanner", () => {
 
     expect(withNextApiReferenceBanner(config)).toBe(config);
   });
+
+  it("describes the fumadocs renderer in the switcher banner", () => {
+    const config = withNextApiReferenceBanner({
+      entry: "docs",
+      sidebar: true,
+      apiReference: {
+        enabled: true,
+        renderer: "fumadocs",
+      },
+    });
+
+    expect(collectText((config.sidebar as { banner: ReactElement }).banner)).toContain(
+      "Fumadocs OpenAPI explorer",
+    );
+  });
 });
 
 describe("createNextApiReference", () => {
@@ -154,5 +197,36 @@ describe("createNextApiReference", () => {
     const response = await handler();
 
     expect(response.status).toBe(404);
+  });
+
+  it("returns 404 when the fumadocs renderer is selected", async () => {
+    const handler = createNextApiReference({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+        renderer: "fumadocs",
+      },
+    });
+
+    const response = await handler();
+
+    expect(response.status).toBe(404);
+  });
+});
+
+describe("createNextApiReferenceMetadata", () => {
+  it("builds a page title from docs metadata", () => {
+    expect(
+      createNextApiReferenceMetadata({
+        entry: "docs",
+        metadata: {
+          titleTemplate: "%s – Example",
+          description: "API docs",
+        },
+      }),
+    ).toMatchObject({
+      title: "API Reference – Example",
+      description: "API docs",
+    });
   });
 });

@@ -119,6 +119,21 @@ export default defineDocs({
 });
 ```
 
+Next.js can also switch the API reference UI:
+
+```ts
+export default defineDocs({
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    renderer: "fumadocs",
+    specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
+  },
+  theme: fumadocs(),
+});
+```
+
 When `specUrl` is set, local route scanning is skipped. On TanStack Start, SvelteKit, Astro, and
 Nuxt you still need the `/{path}` route handler because that route serves the generated API
 reference page.

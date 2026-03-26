@@ -96,6 +96,25 @@ export const GET = createNextApiReference(docsConfig);
 export const revalidate = false;
 `;
 
+const API_REFERENCE_PAGE_TEMPLATE = `\
+${GENERATED_BANNER}
+import "@farming-labs/next/fumadocs-openapi.css";
+import docsConfig from "@/docs.config";
+import {
+  createNextApiReferenceMetadata,
+  createNextApiReferencePage,
+} from "@farming-labs/next/api-reference";
+
+export const metadata = createNextApiReferenceMetadata(docsConfig);
+export const dynamic = "force-dynamic";
+
+const ApiReferencePage = createNextApiReferencePage(docsConfig);
+
+export default function Page() {
+  return <ApiReferencePage />;
+}
+`;
+
 // ─── Helpers ────────────────────────────────────────────────────────
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
@@ -162,6 +181,7 @@ function readApiReferenceConfig(root: string): {
   enabled: boolean;
   path: string;
   routeRoot: string;
+  renderer: "scalar" | "fumadocs";
 } {
   for (const ext of FILE_EXTS) {
     const configPath = join(root, `docs.config.${ext}`);
@@ -171,10 +191,14 @@ function readApiReferenceConfig(root: string): {
       const content = readFileSync(configPath, "utf-8");
 
       const directFalse = content.match(/apiReference\s*:\s*false/);
-      if (directFalse) return { enabled: false, path: "api-reference", routeRoot: "api" };
+      if (directFalse) {
+        return { enabled: false, path: "api-reference", routeRoot: "api", renderer: "scalar" };
+      }
 
       const directTrue = content.match(/apiReference\s*:\s*true/);
-      if (directTrue) return { enabled: true, path: "api-reference", routeRoot: "api" };
+      if (directTrue) {
+        return { enabled: true, path: "api-reference", routeRoot: "api", renderer: "scalar" };
+      }
 
       const block = extractObjectLiteral(content, "apiReference");
       if (!block) continue;
@@ -182,18 +206,20 @@ function readApiReferenceConfig(root: string): {
       const enabledMatch = block.match(/enabled\s*:\s*(true|false)/);
       const pathMatch = block.match(/path\s*:\s*["']([^"']+)["']/);
       const routeRootMatch = block.match(/routeRoot\s*:\s*["']([^"']+)["']/);
+      const rendererMatch = block.match(/renderer\s*:\s*["'](scalar|fumadocs)["']/);
 
       return {
         enabled: enabledMatch ? enabledMatch[1] !== "false" : true,
         path: pathMatch?.[1]?.replace(/^\/+|\/+$/g, "") || "api-reference",
         routeRoot: routeRootMatch?.[1]?.replace(/^\/+|\/+$/g, "") || "api",
+        renderer: rendererMatch?.[1] === "fumadocs" ? "fumadocs" : "scalar",
       };
     } catch {
-      return { enabled: false, path: "api-reference", routeRoot: "api" };
+      return { enabled: false, path: "api-reference", routeRoot: "api", renderer: "scalar" };
     }
   }
 
-  return { enabled: false, path: "api-reference", routeRoot: "api" };
+  return { enabled: false, path: "api-reference", routeRoot: "api", renderer: "scalar" };
 }
 
 function extractObjectLiteral(content: string, key: string): string | undefined {
@@ -266,10 +292,28 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
   // ── 3.1. Auto-generate app/{apiReference.path}/[[...slug]]/route.ts ──
   const apiReference = readApiReferenceConfig(root);
   if (apiReference.enabled && !isStaticExport) {
-    const apiReferenceRouteDir = join(root, appDir, ...apiReference.path.split("/"), "[[...slug]]");
-    if (!hasFile(apiReferenceRouteDir, "route")) {
-      mkdirSync(apiReferenceRouteDir, { recursive: true });
-      writeFileSync(join(apiReferenceRouteDir, "route.ts"), API_REFERENCE_ROUTE_TEMPLATE);
+    if (apiReference.renderer === "fumadocs") {
+      const apiReferencePageDir = join(root, appDir, ...apiReference.path.split("/"));
+      const apiReferencePagePath = join(apiReferencePageDir, "page.tsx");
+      if (!hasFile(apiReferencePageDir, "page") || isManagedGeneratedFile(apiReferencePagePath)) {
+        mkdirSync(apiReferencePageDir, { recursive: true });
+        writeFileSync(apiReferencePagePath, API_REFERENCE_PAGE_TEMPLATE);
+      }
+    } else {
+      const apiReferenceRouteDir = join(
+        root,
+        appDir,
+        ...apiReference.path.split("/"),
+        "[[...slug]]",
+      );
+      const apiReferenceRoutePath = join(apiReferenceRouteDir, "route.ts");
+      if (
+        !hasFile(apiReferenceRouteDir, "route") ||
+        isManagedGeneratedFile(apiReferenceRoutePath)
+      ) {
+        mkdirSync(apiReferenceRouteDir, { recursive: true });
+        writeFileSync(apiReferenceRoutePath, API_REFERENCE_ROUTE_TEMPLATE);
+      }
     }
   }
 

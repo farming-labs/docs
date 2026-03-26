@@ -7,6 +7,9 @@ import {
   buildApiReferenceScalarCss,
   buildApiReferenceOpenApiDocument,
   buildApiReferenceOpenApiDocumentAsync,
+  getUnsupportedApiReferenceRendererMessage,
+  resolveApiReferenceConfig,
+  supportsApiReferenceRenderer,
 } from "./api-reference.js";
 import { defineDocs } from "./define-docs.js";
 
@@ -210,5 +213,30 @@ describe("buildApiReferenceOpenApiDocument", () => {
     expect(css).toContain("--scalar-radius: 0px;");
     expect(css).toContain("--scalar-button-1-color: #0b0b0b;");
     expect(css).toContain("var(--scalar-theme-foreground) 10%");
+  });
+
+  it("defaults the API reference renderer to scalar", () => {
+    expect(resolveApiReferenceConfig(true)).toMatchObject({
+      enabled: true,
+      renderer: "scalar",
+    });
+
+    expect(
+      resolveApiReferenceConfig({
+        enabled: true,
+        renderer: "fumadocs",
+      }),
+    ).toMatchObject({
+      enabled: true,
+      renderer: "fumadocs",
+    });
+  });
+
+  it("marks the fumadocs renderer as Next.js-only for now", () => {
+    expect(supportsApiReferenceRenderer("next", "fumadocs")).toBe(true);
+    expect(supportsApiReferenceRenderer("astro", "fumadocs")).toBe(false);
+    expect(getUnsupportedApiReferenceRendererMessage("astro", "fumadocs")).toContain(
+      "currently only supported in Next.js",
+    );
   });
 });

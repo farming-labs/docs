@@ -175,10 +175,16 @@ deployed elsewhere and already exposes an `openapi.json`.
   Point it at a hosted `openapi.json` and keep the same themed API reference UI.
 </Callout>
 
+<Callout type="info" title="Renderer support">
+  `renderer` defaults to `"scalar"`. Set `renderer: "fumadocs"` in **Next.js** if you want the
+  Fumadocs OpenAPI UI instead.
+</Callout>
+
 | Property    | Type       | Default           | Description |
 | ----------- | ---------- | ----------------- | ----------- |
 | `enabled`   | `boolean`  | `true` inside the object | Enable generated API reference pages |
 | `path`      | `string`   | `"api-reference"` | URL path where the generated API reference lives |
+| `renderer`  | `"scalar" \| "fumadocs"` | `"scalar"` | API reference UI renderer. `fumadocs` is currently supported in Next.js only |
 | `specUrl`   | `string`   | —                 | Absolute URL to a hosted OpenAPI JSON document. When set, local route scanning is skipped |
 | `routeRoot` | `string`   | `"api"`           | Filesystem route root to scan. Bare values like `"api"` resolve inside `app/` or `src/app/`; full values like `"app/internal-api"` and `"src/app/v2/api"` are supported |
 | `exclude`   | `string[]` | `[]`              | Route entries to omit from the generated reference. Accepts URL-style paths like `"/api/hello"` or route-root-relative values like `"hello"` / `"hello/route.ts"` |
@@ -196,6 +202,15 @@ apiReference: {
 apiReference: {
   enabled: true,
   path: "api-reference",
+  specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
+},
+```
+
+```ts title="docs.config.ts"
+apiReference: {
+  enabled: true,
+  path: "api-reference",
+  renderer: "fumadocs",
   specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
 },
 ```

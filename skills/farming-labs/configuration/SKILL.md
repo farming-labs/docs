@@ -114,11 +114,23 @@ apiReference: {
 }
 ```
 
+Next.js Fumadocs renderer example:
+
+```ts
+apiReference: {
+  enabled: true,
+  path: "api-reference",
+  renderer: "fumadocs",
+  specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
+}
+```
+
 Notes:
 - **Next.js:** `withDocs()` auto-generates the `/{path}` route when `apiReference` is enabled
 - **TanStack Start / SvelteKit / Astro / Nuxt:** `docs.config` controls scanning, remote spec rendering, and styling, but the app must still add the framework route handler for `/{path}`
 - **CLI:** `init --api-reference` writes the `apiReference` block and scaffolds the non-Next route handler files automatically
 - `path` controls the public URL for the generated reference
+- `renderer` chooses the UI renderer: `"scalar"` (default) or `"fumadocs"` (Next.js only)
 - `specUrl` points to a hosted OpenAPI JSON document; when set, local route scanning is skipped
 - `routeRoot` controls the filesystem route root to scan
 - `exclude` accepts either URL-style paths (`"/api/hello"`) or route-root-relative entries (`"hello"` / `"hello/route.ts"`)

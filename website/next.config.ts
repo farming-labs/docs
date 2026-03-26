@@ -9,7 +9,9 @@ export default withDocs({
     resolveAlias: {
       "@farming-labs/docs": "./packages/docs/src/index.ts",
       "@farming-labs/next": "./packages/next/src/index.ts",
+      "@farming-labs/next/api-reference": "./packages/next/src/api-reference.tsx",
       "@farming-labs/next/client-callbacks": "./packages/next/src/client-callbacks.tsx",
+      "@farming-labs/next/fumadocs-openapi.css": "./packages/next/fumadocs-openapi.css",
       "@farming-labs/next/layout": "./packages/next/src/layout.tsx",
       "@farming-labs/next/mdx-plugins/rehype-code":
         "./packages/next/src/mdx-plugins/rehype-code.ts",
