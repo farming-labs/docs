@@ -38,6 +38,9 @@
     "overrides": {
       "h3": "^1.15.6",
       "effect": "^3.20.0",
+      "node-forge": "^1.4.0",
+      "picomatch@<2.3.2": "2.3.2",
+      "picomatch@>=4.0.0 <4.0.4": "4.0.4",
       "basic-ftp": "^5.2.0",
       "simple-git": "^3.32.3",
       "serialize-javascript": "^7.0.3",
