@@ -2,6 +2,7 @@
 
 import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page";
 import { Children, cloneElement, isValidElement, useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "fumadocs-core/framework";
 import type { DocsFeedbackData } from "@farming-labs/docs";
 import { PageActions } from "./page-actions.js";
@@ -194,13 +195,13 @@ function localizeInternalLinks(root: ParentNode, locale?: string) {
 function injectTitleDecorations(
   node: ReactNode,
   { description, belowTitle }: TitleInsertions,
-): ReactNode {
-  if (!description && !belowTitle) return node;
+): { node: ReactNode; inserted: boolean } {
+  if (!description && !belowTitle) return { node, inserted: false };
 
   let inserted = false;
 
   const extras = [description, belowTitle].filter(Boolean);
-  if (extras.length === 0) return node;
+  if (extras.length === 0) return { node, inserted: false };
 
   function visit(current: ReactNode): ReactNode {
     if (current == null || typeof current === "boolean") return current;
@@ -234,13 +235,36 @@ function injectTitleDecorations(
   }
 
   if (Array.isArray(node)) {
-    return node.flatMap((child) => {
-      const next = visit(child);
-      return Array.isArray(next) ? next : [next];
-    });
+    return {
+      node: node.flatMap((child) => {
+        const next = visit(child);
+        return Array.isArray(next) ? next : [next];
+      }),
+      inserted,
+    };
   }
 
-  return visit(node);
+  return {
+    node: visit(node),
+    inserted,
+  };
+}
+
+function TitleDecorations({
+  description,
+  belowTitle,
+}: {
+  description?: ReactNode;
+  belowTitle?: ReactNode;
+}) {
+  if (!description && !belowTitle) return null;
+
+  return (
+    <>
+      {description}
+      {belowTitle}
+    </>
+  );
 }
 
 export function DocsPageClient({
@@ -277,6 +301,7 @@ export function DocsPageClient({
 }: DocsPageClientProps) {
   const fdTocStyle = tocStyle === "directional" ? "clerk" : undefined;
   const [toc, setToc] = useState<TOCItem[]>([]);
+  const [titlePortalHost, setTitlePortalHost] = useState<HTMLElement | null>(null);
   const pathname = usePathname();
   const searchParams = useWindowSearchParams();
   const activeLocale = resolveClientLocale(searchParams, locale);
@@ -359,6 +384,7 @@ export function DocsPageClient({
               copyMarkdown={copyMarkdown}
               openDocs={openDocs}
               providers={openDocsProviders}
+              alignment={pageActionsAlignment}
               githubFileUrl={githubFileUrl}
             />
           </div>
@@ -366,10 +392,47 @@ export function DocsPageClient({
       </div>
     ) : undefined;
 
-  const decoratedChildren = injectTitleDecorations(children, {
-    description: titleDescription,
-    belowTitle: belowTitleBlock,
-  });
+  const { node: decoratedChildren, inserted: titleDecorationsInserted } = injectTitleDecorations(
+    children,
+    {
+      description: titleDescription,
+      belowTitle: belowTitleBlock,
+    },
+  );
+  const needsTitleDecorationsPortal =
+    !titleDecorationsInserted && (!!titleDescription || !!belowTitleBlock);
+
+  useEffect(() => {
+    if (!needsTitleDecorationsPortal) {
+      setTitlePortalHost(null);
+      return;
+    }
+
+    const container = document.getElementById("nd-page");
+    const title = container?.querySelector("h1");
+    if (!title) {
+      setTitlePortalHost(null);
+      return;
+    }
+
+    const host = document.createElement("div");
+    host.className = "fd-title-decorations-host";
+    title.insertAdjacentElement("afterend", host);
+    setTitlePortalHost(host);
+
+    return () => {
+      host.remove();
+      setTitlePortalHost(null);
+    };
+  }, [needsTitleDecorationsPortal, pathname]);
+
+  const titleDecorationsPortal =
+    needsTitleDecorationsPortal && titlePortalHost
+      ? createPortal(
+          <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />,
+          titlePortalHost,
+        )
+      : null;
 
   return (
     <DocsPage
@@ -383,16 +446,20 @@ export function DocsPageClient({
       )}
       {showActionsAboveTitle && (
         <div className="fd-below-title-block not-prose">
-          <PageActions
-            copyMarkdown={copyMarkdown}
-            openDocs={openDocs}
-            providers={openDocsProviders}
-            githubFileUrl={githubFileUrl}
-          />
+          <div className="fd-actions-portal" data-actions-alignment={pageActionsAlignment}>
+            <PageActions
+              copyMarkdown={copyMarkdown}
+              openDocs={openDocs}
+              providers={openDocsProviders}
+              alignment={pageActionsAlignment}
+              githubFileUrl={githubFileUrl}
+            />
+          </div>
         </div>
       )}
       <DocsBody style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ flex: 1 }}>{decoratedChildren}</div>
+        {titleDecorationsPortal}
         {feedbackEnabled && (
           <DocsFeedback
             pathname={normalizedPath}

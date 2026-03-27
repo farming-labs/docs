@@ -14,6 +14,7 @@ interface PageActionsProps {
   copyMarkdown?: boolean;
   openDocs?: boolean;
   providers?: SerializedProvider[];
+  alignment?: "left" | "right";
   /** GitHub file URL (edit view) for the current page. Used when urlTemplate contains {githubUrl}. */
   githubFileUrl?: string | null;
 }
@@ -97,6 +98,7 @@ export function PageActions({
   copyMarkdown,
   openDocs,
   providers,
+  alignment = "left",
   githubFileUrl,
 }: PageActionsProps) {
   const [copied, setCopied] = useState(false);
@@ -158,7 +160,7 @@ export function PageActions({
   if (!copyMarkdown && !openDocs) return null;
 
   return (
-    <div className="fd-page-actions" data-page-actions>
+    <div className="fd-page-actions" data-page-actions data-actions-alignment={alignment}>
       {copyMarkdown && (
         <button
           type="button"
