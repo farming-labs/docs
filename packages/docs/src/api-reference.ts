@@ -1,7 +1,9 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import { getHtmlDocument } from "@scalar/core/libs/html-rendering";
-import type { DocsConfig, DocsTheme } from "./types.js";
+import type { ApiReferenceRenderer, DocsConfig, DocsTheme } from "./types.js";
+
+export type { ApiReferenceRenderer };
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
 
@@ -22,6 +24,7 @@ export interface ResolvedApiReferenceConfig {
   enabled: boolean;
   path: string;
   specUrl?: string;
+  renderer?: ApiReferenceRenderer;
   routeRoot: string;
   exclude: string[];
 }
@@ -29,6 +32,7 @@ export interface ResolvedApiReferenceConfig {
 interface BuildApiReferenceOptions {
   framework: ApiReferenceFramework;
   rootDir?: string;
+  baseUrl?: string;
 }
 
 interface BuildApiReferenceHtmlOptions extends BuildApiReferenceOptions {
@@ -56,6 +60,7 @@ export function resolveApiReferenceConfig(
       enabled: true,
       path: "api-reference",
       specUrl: undefined,
+      renderer: undefined,
       routeRoot: "api",
       exclude: [],
     };
@@ -66,6 +71,7 @@ export function resolveApiReferenceConfig(
       enabled: false,
       path: "api-reference",
       specUrl: undefined,
+      renderer: undefined,
       routeRoot: "api",
       exclude: [],
     };
@@ -75,9 +81,24 @@ export function resolveApiReferenceConfig(
     enabled: value.enabled !== false,
     path: normalizePathSegment(value.path ?? "api-reference"),
     specUrl: normalizeRemoteSpecUrl(value.specUrl),
+    renderer: normalizeApiReferenceRenderer(value.renderer),
     routeRoot: normalizePathSegment(value.routeRoot ?? "api") || "api",
     exclude: normalizeApiReferenceExcludes(value.exclude),
   };
+}
+
+function normalizeApiReferenceRenderer(value?: string): ApiReferenceRenderer | undefined {
+  if (value === "fumadocs" || value === "scalar") return value;
+  return undefined;
+}
+
+export function resolveApiReferenceRenderer(
+  value: DocsConfig["apiReference"],
+  framework: ApiReferenceFramework,
+): ApiReferenceRenderer {
+  const config = resolveApiReferenceConfig(value);
+  if (config.renderer) return config.renderer;
+  return framework === "next" ? "fumadocs" : "scalar";
 }
 
 function normalizeRemoteSpecUrl(value?: string): string | undefined {
@@ -524,7 +545,7 @@ export async function buildApiReferenceOpenApiDocumentAsync(
   }
 
   try {
-    const document = await fetchRemoteOpenApiDocument(apiReference.specUrl);
+    const document = await fetchRemoteOpenApiDocument(apiReference.specUrl, options.baseUrl);
     return normalizeRemoteOpenApiDocument(document, config);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -608,12 +629,19 @@ function buildApiReferenceHtmlDocumentFromDocument(
   });
 }
 
-async function fetchRemoteOpenApiDocument(specUrl: string): Promise<Record<string, unknown>> {
+async function fetchRemoteOpenApiDocument(
+  specUrl: string,
+  baseUrl?: string,
+): Promise<Record<string, unknown>> {
   let url: URL;
   try {
-    url = new URL(specUrl);
+    url = baseUrl ? new URL(specUrl, baseUrl) : new URL(specUrl);
   } catch {
-    throw new Error("`apiReference.specUrl` must be an absolute URL.");
+    throw new Error(
+      baseUrl
+        ? "`apiReference.specUrl` must be an absolute URL or a request-relative path."
+        : "`apiReference.specUrl` must be an absolute URL.",
+    );
   }
 
   const response = await fetch(url, {

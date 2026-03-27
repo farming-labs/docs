@@ -249,6 +249,7 @@ export default defineDocs({
   apiReference: {
     enabled: true,
     path: "api-reference",
+    renderer: "fumadocs",
     routeRoot: "api",
     exclude: ["/api/internal/health", "internal/debug"],
   },
@@ -264,14 +265,17 @@ export default defineDocs({
   apiReference: {
     enabled: true,
     path: "api-reference",
+    renderer: "fumadocs",
     specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
   },
   theme: fumadocs(),
 });
 ```
 
+- `renderer` chooses the UI: `"fumadocs"` or `"scalar"`
+- defaults are framework-aware: **Next.js** uses `"fumadocs"` by default, while **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt** default to `"scalar"`
 - `path` controls the public URL for the generated reference
-- `specUrl` points to a hosted OpenAPI JSON document; when set, local route scanning is skipped
+- `specUrl` points to a hosted OpenAPI JSON document; in Next.js it can be absolute or request-relative like `/api/openapi.json`
 - `routeRoot` controls the filesystem route root to scan
 - `exclude` accepts either URL-style paths (`"/api/hello"`) or route-root-relative entries (`"hello"` / `"hello/route.ts"`)
 - when `specUrl` is set, `routeRoot` and `exclude` are ignored

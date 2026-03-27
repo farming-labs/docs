@@ -1,4 +1,4 @@
-import { DocsLayout } from "fumadocs-ui/layouts/docs";
+import { DocsLayout as FumadocsDocsLayout } from "fumadocs-ui/layouts/docs";
 import { Suspense, type ReactNode } from "react";
 import { serializeIcon } from "./serialize-icon.js";
 import { buildPageOpenGraph, buildPageTwitter } from "@farming-labs/docs";
@@ -21,13 +21,13 @@ import { withLangInUrl } from "./i18n.js";
 // ─── Tree node types (mirrors fumadocs-core/page-tree) ───────────────
 interface PageNode {
   type: "page";
-  name: string;
+  name: ReactNode;
   url: string;
   icon?: ReactNode;
 }
 interface FolderNode {
   type: "folder";
-  name: string;
+  name: ReactNode;
   icon?: ReactNode;
   index?: PageNode;
   children: (PageNode | FolderNode)[];
@@ -37,7 +37,7 @@ interface FolderNode {
 type TreeNode = PageNode | FolderNode;
 
 interface TreeRoot {
-  name: string;
+  name: ReactNode;
   children: TreeNode[];
 }
 
@@ -629,7 +629,11 @@ function LayoutStyle({ layout }: { layout?: LayoutDimensions }) {
 
 // ─── createDocsLayout ────────────────────────────────────────────────
 
-export function createDocsLayout(config: DocsConfig, options?: { locale?: string }) {
+function createConfiguredLayout(
+  config: DocsConfig,
+  LayoutComponent: typeof FumadocsDocsLayout,
+  options?: { locale?: string; tree?: TreeRoot; pageClient?: boolean },
+) {
   const tocConfig = config.theme?.ui?.layout?.toc;
   const tocEnabled = tocConfig?.enabled !== false;
   const tocStyle = (tocConfig as any)?.style as "default" | "directional" | undefined;
@@ -768,7 +772,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const descriptionMap = buildDescriptionMap(localeContext);
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
-    const tree = buildTree(config, localeContext, !!sidebarFlat);
+    const tree = options?.tree ?? buildTree(config, localeContext, !!sidebarFlat);
     const localizedTree = i18n ? localizeTreeUrls(tree, activeLocale) : tree;
 
     const finalSidebarProps = { ...sidebarProps } as Record<string, unknown>;
@@ -801,7 +805,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
 
     return (
       <div id="nd-docs-layout" style={{ display: "contents" }}>
-        <DocsLayout
+        <LayoutComponent
           tree={localizedTree}
           nav={{ title: navTitle, url: navUrl }}
           themeSwitch={i18n ? { ...themeSwitch, enabled: false } : themeSwitch}
@@ -839,41 +843,55 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
               />
             </Suspense>
           )}
-          <Suspense fallback={children}>
-            <DocsPageClient
-              tocEnabled={tocEnabled}
-              tocStyle={tocStyle}
-              breadcrumbEnabled={breadcrumbEnabled}
-              entry={localeContext.entryPath}
-              locale={activeLocale}
-              copyMarkdown={copyMarkdownEnabled}
-              openDocs={openDocsEnabled}
-              openDocsProviders={openDocsProviders as any}
-              pageActionsPosition={pageActionsPosition}
-              pageActionsAlignment={pageActionsAlignment}
-              githubUrl={githubUrl}
-              contentDir={contentDir}
-              githubBranch={githubBranch}
-              githubDirectory={githubDirectory}
-              lastModifiedMap={lastModifiedMap}
-              lastUpdatedEnabled={lastUpdatedEnabled}
-              lastUpdatedPosition={lastUpdatedPosition}
-              llmsTxtEnabled={llmsTxtEnabled}
-              descriptionMap={descriptionMap}
-              feedbackEnabled={feedbackConfig.enabled}
-              feedbackQuestion={feedbackConfig.question}
-              feedbackPlaceholder={feedbackConfig.placeholder}
-              feedbackPositiveLabel={feedbackConfig.positiveLabel}
-              feedbackNegativeLabel={feedbackConfig.negativeLabel}
-              feedbackSubmitLabel={feedbackConfig.submitLabel}
-            >
-              {children}
-            </DocsPageClient>
-          </Suspense>
-        </DocsLayout>
+          {options?.pageClient === false ? (
+            children
+          ) : (
+            <Suspense fallback={children}>
+              <DocsPageClient
+                tocEnabled={tocEnabled}
+                tocStyle={tocStyle}
+                breadcrumbEnabled={breadcrumbEnabled}
+                entry={localeContext.entryPath}
+                locale={activeLocale}
+                copyMarkdown={copyMarkdownEnabled}
+                openDocs={openDocsEnabled}
+                openDocsProviders={openDocsProviders as any}
+                pageActionsPosition={pageActionsPosition}
+                pageActionsAlignment={pageActionsAlignment}
+                githubUrl={githubUrl}
+                contentDir={contentDir}
+                githubBranch={githubBranch}
+                githubDirectory={githubDirectory}
+                lastModifiedMap={lastModifiedMap}
+                lastUpdatedEnabled={lastUpdatedEnabled}
+                lastUpdatedPosition={lastUpdatedPosition}
+                llmsTxtEnabled={llmsTxtEnabled}
+                descriptionMap={descriptionMap}
+                feedbackEnabled={feedbackConfig.enabled}
+                feedbackQuestion={feedbackConfig.question}
+                feedbackPlaceholder={feedbackConfig.placeholder}
+                feedbackPositiveLabel={feedbackConfig.positiveLabel}
+                feedbackNegativeLabel={feedbackConfig.negativeLabel}
+                feedbackSubmitLabel={feedbackConfig.submitLabel}
+              >
+                {children}
+              </DocsPageClient>
+            </Suspense>
+          )}
+        </LayoutComponent>
       </div>
     );
   };
+}
+
+export function createDocsLayout(
+  config: DocsConfig,
+  options?: { locale?: string; tree?: TreeRoot; pageClient?: boolean },
+) {
+  return createConfiguredLayout(config, FumadocsDocsLayout, {
+    ...options,
+    pageClient: options?.pageClient ?? true,
+  });
 }
 
 /** Resolve `boolean | { enabled?: boolean }` to a simple boolean. */

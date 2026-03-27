@@ -21,6 +21,12 @@ import { colorful } from "@farming-labs/theme/colorful";
 
 export default defineDocs({
   entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    renderer: "fumadocs",
+    specUrl: "/api/openapi-spec",
+  },
   github: {
     url: "https://github.com/farming-labs/docs",
     branch: "main",

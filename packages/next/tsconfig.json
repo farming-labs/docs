@@ -12,7 +12,9 @@
     "skipLibCheck": true,
     "types": ["node", "react"],
     "paths": {
-      "@farming-labs/docs": ["../docs/src/index.ts"]
+      "@farming-labs/docs": ["../docs/src/index.ts"],
+      "@farming-labs/docs/server": ["../docs/src/server.ts"],
+      "@farming-labs/theme/client-hooks": ["../fumadocs/src/docs-client-hooks.tsx"]
     },
     "noEmit": true
   },
