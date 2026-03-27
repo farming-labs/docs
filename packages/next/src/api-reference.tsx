@@ -522,14 +522,12 @@ function SwitcherOption({
   title,
   description,
   current,
-  isFirst = false,
   config,
 }: {
   href: string;
   title: string;
   description: string;
   current: boolean;
-  isFirst?: boolean;
   config: DocsConfig;
 }) {
   const theme = getApiReferenceSwitcherTheme(config);
@@ -546,9 +544,6 @@ function SwitcherOption({
         borderRadius: "0.625rem",
         textDecoration: "none",
         color: "inherit",
-        borderTop: isFirst
-          ? "1px solid color-mix(in srgb, var(--color-fd-border, #2a2a2a) 100%, transparent)"
-          : "none",
         background: current
           ? "linear-gradient(90deg, color-mix(in srgb, var(--color-fd-primary, #facc15) 20%, transparent), color-mix(in srgb, var(--color-fd-primary, #facc15) 14%, transparent))"
           : "transparent",
@@ -645,7 +640,6 @@ function ApiReferenceSwitcher({
           title="Documentation"
           description="Guides, concepts, and MDX pages"
           current={current === "docs"}
-          isFirst
           config={config}
         />
         <SwitcherOption
