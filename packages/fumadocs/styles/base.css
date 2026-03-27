@@ -252,6 +252,7 @@ figure.shiki:has(figcaption) figcaption {
 
 /* ─── Page Actions (Copy Markdown / Open in …) ────────────────────── */
 
+.fd-page-actions,
 [data-page-actions] {
   display: flex;
   flex-direction: row;
@@ -259,12 +260,17 @@ figure.shiki:has(figcaption) figcaption {
   gap: 0.5rem;
   margin-bottom: 0.75rem;
   margin-top: 0.25rem;
+  width: 100%;
 }
 
+[data-page-actions][data-actions-alignment="right"],
+.fd-page-actions[data-actions-alignment="right"],
 [data-actions-alignment="right"] > [data-page-actions] {
   justify-content: flex-end;
 }
 
+[data-page-actions][data-actions-alignment="left"],
+.fd-page-actions[data-actions-alignment="left"],
 [data-actions-alignment="left"] > [data-page-actions] {
   justify-content: flex-start;
 }

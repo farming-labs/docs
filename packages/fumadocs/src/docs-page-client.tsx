@@ -359,6 +359,7 @@ export function DocsPageClient({
               copyMarkdown={copyMarkdown}
               openDocs={openDocs}
               providers={openDocsProviders}
+              alignment={pageActionsAlignment}
               githubFileUrl={githubFileUrl}
             />
           </div>
@@ -383,12 +384,15 @@ export function DocsPageClient({
       )}
       {showActionsAboveTitle && (
         <div className="fd-below-title-block not-prose">
-          <PageActions
-            copyMarkdown={copyMarkdown}
-            openDocs={openDocs}
-            providers={openDocsProviders}
-            githubFileUrl={githubFileUrl}
-          />
+          <div className="fd-actions-portal" data-actions-alignment={pageActionsAlignment}>
+            <PageActions
+              copyMarkdown={copyMarkdown}
+              openDocs={openDocs}
+              providers={openDocsProviders}
+              alignment={pageActionsAlignment}
+              githubFileUrl={githubFileUrl}
+            />
+          </div>
         </div>
       )}
       <DocsBody style={{ display: "flex", flexDirection: "column" }}>
