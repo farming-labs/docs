@@ -42,29 +42,33 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("fumadocs-ui/layouts/notebook", () => ({
-  DocsLayout: notebookLayoutMock.mockImplementation(
-    function MockDocsLayout(props: Record<string, unknown>) {
-      return jsx("div", {
-        "data-notebook-layout": true,
-        "data-nav-title":
-          typeof (props.nav as Record<string, unknown> | undefined)?.title === "string"
-            ? (props.nav as Record<string, unknown>).title
-            : "Docs",
-        children: props.children,
-      });
-    },
-  ),
+  DocsLayout: notebookLayoutMock.mockImplementation(function MockDocsLayout(
+    props: Record<string, unknown>,
+  ) {
+    return jsx("div", {
+      "data-notebook-layout": true,
+      "data-nav-title":
+        typeof (props.nav as Record<string, unknown> | undefined)?.title === "string"
+          ? (props.nav as Record<string, unknown>).title
+          : "Docs",
+      children: props.children,
+    });
+  }),
 }));
 
 vi.mock("fumadocs-ui/layouts/notebook/page", () => ({
-  DocsPage: notebookPageMock.mockImplementation(function MockDocsPage(props: Record<string, unknown>) {
+  DocsPage: notebookPageMock.mockImplementation(function MockDocsPage(
+    props: Record<string, unknown>,
+  ) {
     return jsx("div", {
       "data-notebook-page": true,
       "data-toc": Array.isArray(props.toc) ? String(props.toc.length) : "0",
       children: props.children,
     });
   }),
-  DocsTitle: notebookTitleMock.mockImplementation(function MockDocsTitle(props: Record<string, unknown>) {
+  DocsTitle: notebookTitleMock.mockImplementation(function MockDocsTitle(
+    props: Record<string, unknown>,
+  ) {
     return jsx("h1", { "data-notebook-title": true, children: props.children });
   }),
   DocsDescription: notebookDescriptionMock.mockImplementation(function MockDocsDescription(
@@ -72,7 +76,9 @@ vi.mock("fumadocs-ui/layouts/notebook/page", () => ({
   ) {
     return jsx("p", { "data-notebook-description": true, children: props.children });
   }),
-  DocsBody: notebookBodyMock.mockImplementation(function MockDocsBody(props: Record<string, unknown>) {
+  DocsBody: notebookBodyMock.mockImplementation(function MockDocsBody(
+    props: Record<string, unknown>,
+  ) {
     return jsx("div", { "data-notebook-body": true, children: props.children });
   }),
 }));
@@ -277,8 +283,7 @@ describe("createNextApiReference", () => {
 
       return {
         getPages: () => [page],
-        getPage: (slugs: string[]) =>
-          slugs.join("/") === "pets/get" ? page : undefined,
+        getPage: (slugs: string[]) => (slugs.join("/") === "pets/get" ? page : undefined),
         getPageTree: () => ({
           name: "Docs",
           children: [

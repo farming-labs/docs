@@ -522,12 +522,14 @@ function SwitcherOption({
   title,
   description,
   current,
+  isFirst = false,
   config,
 }: {
   href: string;
   title: string;
   description: string;
   current: boolean;
+  isFirst?: boolean;
   config: DocsConfig;
 }) {
   const theme = getApiReferenceSwitcherTheme(config);
@@ -544,6 +546,9 @@ function SwitcherOption({
         borderRadius: "0.625rem",
         textDecoration: "none",
         color: "inherit",
+        borderTop: isFirst
+          ? "1px solid color-mix(in srgb, var(--color-fd-border, #2a2a2a) 100%, transparent)"
+          : "none",
         background: current
           ? "linear-gradient(90deg, color-mix(in srgb, var(--color-fd-primary, #facc15) 20%, transparent), color-mix(in srgb, var(--color-fd-primary, #facc15) 14%, transparent))"
           : "transparent",
@@ -615,10 +620,8 @@ function ApiReferenceSwitcher({
           justifyContent: "space-between",
           gap: 10,
           cursor: "pointer",
-          padding: "12px 13px",
+          padding: "10px 13px",
           background: "color-mix(in srgb, var(--color-fd-card, #202020) 96%, transparent)",
-          borderBottom:
-            "1px solid color-mix(in srgb, var(--color-fd-border, #2a2a2a) 100%, transparent)",
         }}
       >
         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -642,6 +645,7 @@ function ApiReferenceSwitcher({
           title="Documentation"
           description="Guides, concepts, and MDX pages"
           current={current === "docs"}
+          isFirst
           config={config}
         />
         <SwitcherOption
@@ -657,7 +661,7 @@ function ApiReferenceSwitcher({
 }
 
 function getExistingSidebarBanner(config: DocsConfig): unknown {
-  if (!config.sidebar || config.sidebar === true || config.sidebar === false) return undefined;
+  if (!config.sidebar || config.sidebar === true) return undefined;
   return config.sidebar.banner;
 }
 
@@ -824,10 +828,7 @@ export function createNextApiReferencePage(config: DocsConfig) {
           <APIPage {...page.data.getAPIPageProps()} />
         </DocsBody>
         {previousPage || nextPage ? (
-          <nav
-            className="fd-api-reference-pagination"
-            aria-label="API reference pagination"
-          >
+          <nav className="fd-api-reference-pagination" aria-label="API reference pagination">
             {previousPage ? (
               <a
                 href={previousPage.url}

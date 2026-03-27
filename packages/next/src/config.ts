@@ -137,7 +137,8 @@ function resolvePackageAlias(packageName: string, fallbacks: string[] = []): str
 }
 
 function resolvePackageSubpath(packageDir: string, relativePath: string): string {
-  if (!packageDir.startsWith("/")) return `${packageDir}/${relativePath.replace(/^dist\//, "").replace(/\/index\.js$/, "")}`;
+  if (!packageDir.startsWith("/"))
+    return `${packageDir}/${relativePath.replace(/^dist\//, "").replace(/\/index\.js$/, "")}`;
   return join(packageDir, relativePath);
 }
 
@@ -373,14 +374,14 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     if (apiReference.renderer === "fumadocs") {
       removeManagedFile(apiReferenceRoutePath);
       removeManagedFile(legacyApiReferencePagePath);
-      if (!hasFile(apiReferenceBaseDir, "layout") || isManagedGeneratedFile(apiReferenceLayoutPath)) {
+      if (
+        !hasFile(apiReferenceBaseDir, "layout") ||
+        isManagedGeneratedFile(apiReferenceLayoutPath)
+      ) {
         mkdirSync(apiReferenceBaseDir, { recursive: true });
         writeFileSync(apiReferenceLayoutPath, API_REFERENCE_LAYOUT_TEMPLATE);
       }
-      if (
-        !hasFile(apiReferencePageDir, "page") ||
-        isManagedGeneratedFile(apiReferencePagePath)
-      ) {
+      if (!hasFile(apiReferencePageDir, "page") || isManagedGeneratedFile(apiReferencePagePath)) {
         mkdirSync(apiReferencePageDir, { recursive: true });
         writeFileSync(apiReferencePagePath, API_REFERENCE_PAGE_TEMPLATE);
       }

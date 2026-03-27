@@ -4,7 +4,7 @@
 @import "fumadocs-openapi/css/preset.css";
 
 .fd-api-reference-route {
-  --fd-layout-width: 1600px;
+  --fd-layout-width: 97rem;
   --color-fd-background: hsl(0 0% 7.04%);
   --color-fd-foreground: hsl(0 0% 92%);
   --color-fd-muted: hsl(0 0% 12.9%);
@@ -33,6 +33,20 @@
 .fd-api-reference-route #nd-notebook-layout {
   --fd-header-height: 0px !important;
   background: var(--color-fd-background);
+}
+
+@media (min-width: 768px) {
+  .fd-api-reference-route #nd-notebook-layout {
+    grid-template:
+      "sidebar header toc"
+      "sidebar main toc" 1fr /
+      minmax(var(--fd-sidebar-col), 1fr)
+      minmax(
+        0,
+        calc(var(--fd-layout-width, 97rem) - var(--fd-sidebar-width) - var(--fd-toc-width))
+      )
+      minmax(min-content, 1fr) !important;
+  }
 }
 
 .fd-api-reference-route #nd-notebook-layout,
