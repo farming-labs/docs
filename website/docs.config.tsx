@@ -57,12 +57,9 @@ export default defineDocs({
         style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "space-between" }}
       >
         <div className="flex items-center gap-2 text-xs font-medium text-white/80 dark:text-white/80">
-          <a
-            href={"/"}
-            className="hover:text-black dark:hover:text-white transition-colors hover:no-underline font-mono uppercase text-black/50 dark:text-white/50"
-          >
+          <span className="hover:text-black dark:hover:text-white transition-colors font-mono uppercase text-black/50 dark:text-white/50">
             Home <span className="ml-2 text-black/50 dark:text-white/50">/</span>
-          </a>
+          </span>
           <Book className="text-black dark:text-white/50" size={14} />
           <p className="font-mono uppercase text-black dark:text-white/50">docs</p>
         </div>

@@ -77,6 +77,68 @@ describe("createDocsLayout pageActions", () => {
     expect(props?.pageActionsPosition).toBe("below-title");
   });
 
+  it("supports boolean shorthand, custom providers, and above-title placement", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      github: "https://github.com/farming-labs/docs",
+      pageActions: {
+        alignment: "left",
+        position: "above-title",
+        copyMarkdown: true,
+        openDocs: {
+          enabled: true,
+          providers: [
+            {
+              name: "GitHub",
+              icon: React.createElement("span", null, "GH"),
+              urlTemplate: "{githubUrl}",
+            },
+          ],
+        },
+      },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.copyMarkdown).toBe(true);
+    expect(props?.openDocs).toBe(true);
+    expect(props?.pageActionsAlignment).toBe("left");
+    expect(props?.pageActionsPosition).toBe("above-title");
+    expect(props?.openDocsProviders).toEqual([
+      expect.objectContaining({
+        name: "GitHub",
+        urlTemplate: "{githubUrl}",
+        iconHtml: expect.stringContaining("GH"),
+      }),
+    ]);
+  });
+
+  it("supports openDocs boolean shorthand with default providers", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      pageActions: {
+        alignment: "right",
+        openDocs: true,
+      },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.copyMarkdown).toBe(false);
+    expect(props?.openDocs).toBe(true);
+    expect(props?.pageActionsAlignment).toBe("right");
+    expect(props?.pageActionsPosition).toBe("below-title");
+    expect(props?.openDocsProviders).toBeUndefined();
+  });
+
   it("defaults page actions to disabled", () => {
     const Layout = createDocsLayout({
       entry: "docs",
