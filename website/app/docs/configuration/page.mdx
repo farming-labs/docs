@@ -346,7 +346,7 @@ The generated examples and CLI scaffold use this folder structure across Next.js
 
 Controls the light/dark mode switcher. Works on Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
 
-```ts title="theme-toggle.ts"
+```ts
 // Show toggle (default)
 themeToggle: true,
 
@@ -370,7 +370,7 @@ themeToggle: { mode: "light-dark-system" },
 
 Enables "Edit on GitHub" links on each docs page footer. The link appears automatically when both `url` and `directory` are set.
 
-```ts title="github.ts"
+```ts
 // Simple — just the repo URL
 github: "https://github.com/my-org/my-docs",
 
@@ -392,7 +392,7 @@ github: {
 
 Controls the breadcrumb navigation above page content.
 
-```ts title="breadcrumb.ts"
+```ts
 // Show breadcrumb (default)
 breadcrumb: true,
 
@@ -523,7 +523,7 @@ See [Colors](/docs/customization/colors), [Typography](/docs/customization/typog
 
 The `nav` option controls the sidebar header:
 
-```ts title="navigation.ts"
+```ts
 nav: {
   title: "My Docs",
   url: "/docs",
@@ -532,7 +532,7 @@ nav: {
 
 In Next.js and TanStack Start, `title` can also be a React element:
 
-```tsx title="navigation.tsx"
+```tsx
 nav: {
   title: (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -723,7 +723,7 @@ export async function POST(request: Request) {
 
 Enable "Copy as Markdown" and "Open in LLM" buttons:
 
-```ts title="page-actions.ts"
+```ts
 pageActions: {
   position: "below-title",
   copyMarkdown: { enabled: true },
@@ -747,7 +747,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
 
 <Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
   <Tab value="Next.js">
-    ```ts title="ask-ai.ts"
+    ```ts
     ai: {
       enabled: true,
       mode: "floating",
@@ -761,7 +761,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
 
   </Tab>
   <Tab value="TanStack Start">
-    ```ts title="tanstack-start-ask-ai.ts"
+    ```ts
     ai: {
       enabled: true,
       mode: "floating",
@@ -786,7 +786,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
 
   </Tab>
   <Tab value="SvelteKit">
-    ```ts title="sveltekit-ask-ai.ts"
+    ```ts
     ai: {
       enabled: true,
       mode: "floating",
@@ -810,7 +810,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
 
   </Tab>
   <Tab value="Astro">
-    ```ts title="astro-ask-ai.ts"
+    ```ts
     ai: {
       enabled: true,
       mode: "floating",
@@ -832,7 +832,7 @@ Add a RAG-powered AI chat that lets users ask questions about your docs:
 
   </Tab>
   <Tab value="Nuxt">
-    ```ts title="nuxt-ask-ai.ts"
+    ```ts
     ai: {
       enabled: true,
       mode: "floating",
