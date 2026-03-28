@@ -41,6 +41,7 @@
       "node-forge": "^1.4.0",
       "picomatch@<2.3.2": "2.3.2",
       "picomatch@>=4.0.0 <4.0.4": "4.0.4",
+      "path-to-regexp@>=8.0.0 <8.4.0": "8.4.0",
       "basic-ftp": "^5.2.0",
       "simple-git": "^3.32.3",
       "serialize-javascript": "^7.0.3",
