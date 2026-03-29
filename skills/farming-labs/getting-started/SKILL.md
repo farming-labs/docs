@@ -37,6 +37,12 @@ description: Get started with @farming-labs/docs — MDX-based documentation for
 
 Seven built-in themes: `fumadocs` (default), `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`. The init CLI also offers **Create your own theme** — it prompts for a theme name (default `my-theme`) and scaffolds `themes/<name>.ts` and `themes/<name>.css`. The theme name in config must match the theme's CSS import path (e.g. `greentree` → `@farming-labs/theme/greentree/css` for Next.js).
 
+### Built-in UI features
+
+- **MDX components** — built-ins like `Callout`, `Tabs`, and `HoverLink` are available without imports.
+- **Page feedback** — enable with `feedback: true` or `feedback: { enabled: true, onFeedback() {} }`.
+- **Page actions** — enable with `pageActions.copyMarkdown` and `pageActions.openDocs`.
+
 ---
 
 ## Critical: theme CSS

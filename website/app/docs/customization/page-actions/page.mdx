@@ -50,6 +50,22 @@ pageActions: {
 
 ---
 
+## `pageActions.alignment`
+
+Control whether the action row is left- or right-aligned.
+
+| Type                  | Default  |
+| --------------------- | -------- |
+| `"left" \| "right"` | `"left"` |
+
+```ts title="docs.config.ts"
+pageActions: {
+  alignment: "right",
+}
+```
+
+---
+
 ## Copy Markdown
 
 ### `pageActions.copyMarkdown`
@@ -88,7 +104,7 @@ pageActions: {
 }
 ```
 
-When set to `true`, a sensible default list of providers is used.
+When set to `true`, the built-in provider list is used: **ChatGPT** and **Claude**.
 
 ### `pageActions.openDocs.enabled`
 
@@ -115,6 +131,8 @@ interface OpenDocsProvider {
   urlTemplate: string; // URL template — {url} and {mdxUrl} are replaced
 }
 ```
+
+`{githubUrl}` only resolves when the top-level `github` config is set in `defineDocs()`.
 
 ### Provider URL Templates
 

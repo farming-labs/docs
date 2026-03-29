@@ -698,6 +698,7 @@ Action buttons shown on each docs page. See [Page Actions](/docs/customization/p
 | Property       | Type                             | Default         | Description                 |
 | -------------- | -------------------------------- | --------------- | --------------------------- |
 | `position`     | `"above-title" \| "below-title"` | `"below-title"` | Where to render the buttons |
+| `alignment`    | `"left" \| "right"`               | `"left"`        | Horizontal alignment of the action row |
 | `copyMarkdown` | `boolean \| CopyMarkdownConfig`  | `false`         | "Copy Markdown" button      |
 | `openDocs`     | `boolean \| OpenDocsConfig`      | `false`         | "Open in LLM" dropdown      |
 
@@ -712,7 +713,7 @@ Action buttons shown on each docs page. See [Page Actions](/docs/customization/p
 | Property    | Type                 | Default           | Description        |
 | ----------- | -------------------- | ----------------- | ------------------ |
 | `enabled`   | `boolean`            | `false`           | Show the dropdown  |
-| `providers` | `OpenDocsProvider[]` | sensible defaults | LLM/tool providers |
+| `providers` | `OpenDocsProvider[]` | ChatGPT, Claude   | LLM/tool providers |
 
 ### `OpenDocsProvider`
 
@@ -720,7 +721,7 @@ Action buttons shown on each docs page. See [Page Actions](/docs/customization/p
 | ------------- | ----------- | --------------------------------------------------------------------------------- |
 | `name`        | `string`    | Display name (e.g. `"ChatGPT"`, `"Claude"`)                                       |
 | `icon`        | `ReactNode` | Icon rendered next to the name                                                    |
-| `urlTemplate` | `string`    | URL template. `{url}` is replaced with the page URL, `{mdxUrl}` with the MDX URL. |
+| `urlTemplate` | `string`    | URL template. `{url}` is replaced with the page URL, `{mdxUrl}` with the MDX URL, and `{githubUrl}` with the GitHub edit URL when `github` is configured. |
 
 ```ts
 pageActions: {

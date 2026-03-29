@@ -725,6 +725,7 @@ Enable "Copy as Markdown" and "Open in LLM" buttons:
 
 ```ts
 pageActions: {
+  alignment: "right",
   position: "below-title",
   copyMarkdown: { enabled: true },
   openDocs: {
@@ -738,6 +739,8 @@ pageActions: {
   },
 },
 ```
+
+Use `openDocs: true` for the built-in ChatGPT + Claude provider list, or pass `providers` to fully customize it.
 
 See the full [Page Actions reference](/docs/customization/page-actions) for all options.
 

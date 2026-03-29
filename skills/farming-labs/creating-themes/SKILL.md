@@ -1,6 +1,6 @@
 ---
 name: creating-themes
-description: Create and share a custom theme for @farming-labs/docs. Use when building a theme with createTheme(), extendTheme(), cherry-picking built-in defaults, publishing as npm package, or adding CSS overrides. Covers ui.colors, typography, layout, sidebar, radius, and package layout for publishing.
+description: Create and share a custom theme for @farming-labs/docs. Use when building a theme with createTheme(), extendTheme(), cherry-picking built-in defaults, publishing as npm package, or adding CSS overrides. Covers ui.colors, typography, layout, sidebar, radius, ui.components like HoverLink, and package layout for publishing.
 ---
 
 # @farming-labs/docs — Creating and Sharing Themes
@@ -82,7 +82,7 @@ For other frameworks use the same framework's theme package (e.g. `@farming-labs
 | **ui.codeBlock** | `showLineNumbers`, `showCopyButton`, `theme`, `darkTheme`. |
 | **ui.sidebar** | `style: "default" \| "bordered" \| "floating"`, `background`, `borderColor`. |
 | **ui.card** | `bordered`, `background`. |
-| **components** | e.g. `Callout: { variant: "outline" }`. |
+| **ui.components** | Built-in component defaults such as `Callout`, `Tabs`, or `HoverLink` (for example `HoverLink: { linkLabel: "Open page", showIndicator: false }`). |
 
 Only set what you want to change; the rest is inherited.
 
@@ -105,6 +105,9 @@ export const myTheme = createTheme({
     typography: DefaultUIDefaults.typography,
     layout: DarksharpUIDefaults.layout,
     sidebar: { style: "floating" },
+    components: {
+      HoverLink: { linkLabel: "Open page", showIndicator: false },
+    },
   },
 });
 ```
