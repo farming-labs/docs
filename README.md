@@ -12,12 +12,21 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 - 📦 **Single install, zero lock-in**
 - 🧬 **Write .mdx or .md — all features work out of the box**
 - 🧾 **Generated API reference from framework route handlers or a hosted OpenAPI JSON**
+- 🧩 **Built-in MDX UI** — `Callout`, `Tabs`, `HoverLink`, and overridable built-ins via `components` and `theme.ui.components`
+- 💬 **Built-in docs actions** — page feedback, copy/open page actions, and code-block copy callbacks
 
 **Get started:**
 
 - Use the [CLI](#option-a-cli-recommended) _(recommended — sets up everything for you)_, or see [manual setup](#option-b-manual-setup) for each framework.
 - [Reference docs](https://docs.farming-labs.dev/docs/reference) and [examples](https://github.com/farming-labs/docs/tree/main/examples) cover config, custom themes, OG images, API reference, SEO, and more.
 - Want to contribute? See the [Contributing guide](https://docs.farming-labs.dev/docs/contributing).
+
+Built-ins you can enable from `docs.config` today include:
+
+- `feedback` — end-of-page "Good / Bad" feedback UI with callback payloads
+- `pageActions` — "Copy page" and "Open in..." buttons with alignment and provider config
+- `components.HoverLink` — override the built-in inline hover-preview link card
+- `theme.ui.components.HoverLink` — keep the built-in `HoverLink` and just change its default props
 
 
 
@@ -74,6 +83,13 @@ export default defineDocs({
   apiReference: {
     enabled: true,
     path: "api-reference",
+  },
+  feedback: {
+    enabled: true,
+  },
+  pageActions: {
+    copyMarkdown: true,
+    openDocs: true,
   },
   theme: fumadocs(),
   metadata: {

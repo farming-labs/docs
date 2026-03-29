@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, metadata, og, apiReference, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, feedback, metadata, og, apiReference, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration
@@ -39,8 +39,9 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `breadcrumb` | `boolean \| BreadcrumbConfig` | `true` | Breadcrumb navigation |
 | `sidebar` | `boolean \| SidebarConfig` | `true` | Sidebar visibility and style |
 | `icons` | `Record<string, Component>` | — | Icon registry for frontmatter `icon` fields |
-| `components` | `Record<string, Component>` | — | Custom MDX components (e.g. `Callout`) |
+| `components` | `Record<string, Component>` | — | Custom MDX components and built-in overrides like `HoverLink` |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | — | Callback when user copies a code block (title, content, url, language) |
+| `feedback` | `boolean \| FeedbackConfig` | `false` | End-of-page feedback prompt and callback |
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON document |
@@ -77,6 +78,33 @@ github: {
 ```
 
 Enables "Edit on GitHub" links and allows `{githubUrl}` in `pageActions.openDocs.providers`.
+
+---
+
+## Components and built-ins
+
+`components` is merged into the default MDX component map, so you can both add your own
+components and override built-ins such as `Callout`, `Tabs`, or `HoverLink`.
+
+Use `theme.ui.components` when you want to keep a built-in like `HoverLink` but change its default
+props globally (for example `linkLabel`, `showIndicator`, or `align`).
+
+---
+
+## Page feedback
+
+```ts
+feedback: {
+  enabled: true,
+  onFeedback(data) {
+    console.log(data.value, data.slug, data.url);
+  },
+}
+```
+
+- Use `feedback: true` to show the UI with no callback.
+- **Next.js / TanStack Start / SvelteKit / Nuxt:** `feedback.onFeedback` runs from the built-in UI with no extra client bridge file.
+- **Astro:** the built-in UI still works with `feedback: true`; optional analytics hooks can listen to `window.__fdOnFeedback__` or the `fd:feedback` event.
 
 ---
 
@@ -178,6 +206,7 @@ Use `ordering: "numeric"` (default) so sidebar order follows frontmatter `order`
 2. **TanStack Start:** `docs.config.ts` stays at project root; wire it into `createDocsServer()` and keep the theme CSS import in your global stylesheet aligned with the theme name in config.
 3. **SvelteKit/Astro:** Server-side docs loader must receive config and (for AI) env vars; see framework docs.
 4. **Nuxt:** `defineDocsHandler(config, useStorage)` in `server/api/docs.ts`; config is imported from root `docs.config.ts`.
+5. **Feedback callbacks:** Astro cannot serialize config functions into client scripts; use the built-in custom event hooks if you need analytics there.
 
 ---
 

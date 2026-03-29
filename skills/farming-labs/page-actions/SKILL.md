@@ -1,6 +1,6 @@
 ---
 name: page-actions
-description: Configure page actions in @farming-labs/docs — Copy Markdown and Open in LLM buttons. Use when enabling copyMarkdown, openDocs, custom providers, urlTemplate placeholders ({url}, {mdxUrl}, {githubUrl}), or position (above-title, below-title).
+description: Configure page actions in @farming-labs/docs — Copy Markdown and Open in LLM buttons. Use when enabling copyMarkdown, openDocs, custom providers, urlTemplate placeholders ({url}, {mdxUrl}, {githubUrl}), alignment, or position (above-title, below-title).
 ---
 
 # @farming-labs/docs — Page Actions
@@ -46,6 +46,24 @@ pageActions: {
 
 ---
 
+### pageActions.alignment
+
+Control whether the action row is left- or right-aligned.
+
+| Type | Default |
+| ---- | ------- |
+| `"left" \| "right"` | `"left"` |
+
+```ts
+pageActions: {
+  alignment: "right",
+  copyMarkdown: true,
+  openDocs: true,
+}
+```
+
+---
+
 ## Copy Markdown
 
 ### pageActions.copyMarkdown
@@ -84,7 +102,7 @@ pageActions: {
 }
 ```
 
-When `true`, a default list of providers (e.g. GitHub, ChatGPT, Claude, Cursor) is used.
+When `true`, the built-in provider list is **ChatGPT** and **Claude**.
 
 ### pageActions.openDocs.providers
 
@@ -136,13 +154,15 @@ pageActions: {
 
 For `{githubUrl}` to work, the top-level `github` config must be set (e.g. `github: { url: "https://github.com/owner/repo", directory: "website" }`).
 
+**Cursor deeplink:** The web example uses `https://cursor.com/link/prompt?text=...`. To open the Cursor app directly instead, use `cursor://anysphere.cursor-deeplink/prompt?text=...`.
+
 ---
 
 ## Edge cases
 
 1. **No github config** — `{githubUrl}` will be empty or fallback; "Open in GitHub" may not work unless `github` is set in `defineDocs()`.
 2. **Custom icon** — Pass a React node (or SVG component) as `icon` for each provider if you want a custom icon.
-3. **Alignment** — Page actions alignment (left/right) is controlled by `pageActions.alignment` in config (e.g. `"left"` or `"right"`); see API reference if available.
+3. **Alignment** — `pageActions.alignment` controls whether the row is left- or right-aligned.
 
 ---
 
