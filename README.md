@@ -574,8 +574,7 @@ docs/
 
 ## Themes
 
-Seven cross-framework built-in themes (fumadocs, darksharp, pixel-border, colorful, greentree, darkbold, shiny) are available on Next.js, SvelteKit, Astro, and Nuxt.  
-`@farming-labs/theme` also includes `hardline` for Next.js and TanStack Start projects.
+Eight built-in themes (`fumadocs`, `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`, `hardline`) are available across Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
 
 ### Next.js
 
@@ -597,33 +596,36 @@ import { hardline } from "@farming-labs/theme/hardline";
 
 ```ts
 import { fumadocs } from "@farming-labs/svelte-theme";
+import { hardline } from "@farming-labs/svelte-theme/hardline";
 ```
 
 ```css
 @import "@farming-labs/svelte-theme/fumadocs/css";
-/* or darksharp, pixel-border, colorful, greentree, etc. */
+/* or darksharp, pixel-border, colorful, greentree, hardline, etc. */
 ```
 
 ### Astro
 
 ```ts
 import { fumadocs } from "@farming-labs/astro-theme";
+import { hardline } from "@farming-labs/astro-theme/hardline";
 ```
 
 ```css
 @import "@farming-labs/astro-theme/css";
-/* or pixel-border, darksharp, colorful, greentree, etc. */
+/* or pixel-border, darksharp, colorful, greentree, hardline, etc. */
 ```
 
 ### Nuxt
 
 ```ts
 import { fumadocs } from "@farming-labs/nuxt-theme";
+import { hardline } from "@farming-labs/nuxt-theme/hardline";
 ```
 
 ```css
 @import "@farming-labs/nuxt-theme/fumadocs/css";
-/* or darksharp, pixel-border, colorful, greentree, etc. */
+/* or darksharp, pixel-border, colorful, greentree, hardline, etc. */
 ```
 
 ## Token Efficiency — Why This Matters for AI
@@ -655,7 +657,7 @@ Already have a project? Run `init` inside it — the CLI auto-detects your frame
 npx @farming-labs/docs init
 ```
 
-Pick from `next`, `tanstack-start`, `nuxt`, `sveltekit`, or `astro`. Choose any of the 7 built-in themes. Your existing code is untouched.
+Pick from `next`, `tanstack-start`, `nuxt`, `sveltekit`, or `astro`. Choose any of the 8 built-in themes. Your existing code is untouched.
 
 ## Configuration
 

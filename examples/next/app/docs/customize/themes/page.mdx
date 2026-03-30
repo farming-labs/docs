@@ -18,6 +18,38 @@ export default defineDocs({
 });
 ```
 
+## Cross-Framework Theme Parity
+
+All built-in themes, including `hardline`, are available across Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
+
+```ts
+// Next.js / TanStack Start
+import { hardline } from "@farming-labs/theme/hardline";
+
+// SvelteKit
+import { hardline as svelteHardline } from "@farming-labs/svelte-theme/hardline";
+
+// Astro
+import { hardline as astroHardline } from "@farming-labs/astro-theme/hardline";
+
+// Nuxt
+import { hardline as nuxtHardline } from "@farming-labs/nuxt-theme/hardline";
+```
+
+```css
+/* Next.js / TanStack Start */
+@import "@farming-labs/theme/hardline/css";
+
+/* SvelteKit */
+@import "@farming-labs/svelte-theme/hardline/css";
+
+/* Astro */
+@import "@farming-labs/astro-theme/hardline/css";
+
+/* Nuxt */
+@import "@farming-labs/nuxt-theme/hardline/css";
+```
+
 ## Theme Options
 
 Each theme accepts an options object:

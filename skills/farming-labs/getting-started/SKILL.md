@@ -35,7 +35,7 @@ description: Get started with @farming-labs/docs — MDX-based documentation for
 
 ### Built-in themes
 
-Seven built-in themes: `fumadocs` (default), `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`. The init CLI also offers **Create your own theme** — it prompts for a theme name (default `my-theme`) and scaffolds `themes/<name>.ts` and `themes/<name>.css`. The theme name in config must match the theme's CSS import path (e.g. `greentree` → `@farming-labs/theme/greentree/css` for Next.js).
+Eight built-in themes: `fumadocs` (default), `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`, `hardline`. The init CLI also offers **Create your own theme** — it prompts for a theme name (default `my-theme`) and scaffolds `themes/<name>.ts` and `themes/<name>.css`. The theme name in config must match the theme's CSS import path (e.g. `greentree` → `@farming-labs/theme/greentree/css` for Next.js).
 
 ### Built-in UI features
 
