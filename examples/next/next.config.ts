@@ -23,6 +23,7 @@ export default withDocs({
         "./packages/next/src/mdx-plugins/remark-heading.ts",
       "@farming-labs/next/mdx-plugins/remark-og": "./packages/next/src/mdx-plugins/remark-og.ts",
       "@farming-labs/theme": "./packages/fumadocs/src/index.ts",
+      "@farming-labs/theme/brutalist": "./packages/fumadocs/src/brutalist/index.ts",
       "@farming-labs/theme/api": "./packages/fumadocs/src/docs-api.ts",
       "@farming-labs/theme/client-hooks": "./packages/fumadocs/src/docs-client-hooks.tsx",
       "@farming-labs/theme/mdx": "./packages/fumadocs/src/mdx.ts",

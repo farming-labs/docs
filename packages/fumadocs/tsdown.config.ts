@@ -28,6 +28,7 @@ export default defineConfig({
     "src/shiny/index.ts",
     "src/darkbold/index.ts",
     "src/greentree/index.ts",
+    "src/brutalist/index.ts",
   ],
   format: "esm",
   unbundle: true,
