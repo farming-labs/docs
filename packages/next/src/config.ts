@@ -22,7 +22,7 @@
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
-import { join, relative } from "node:path";
+import { isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /** Resolve Next.js App Router directory: prefer src/app when present, else app. */
@@ -137,13 +137,13 @@ function resolvePackageAlias(packageName: string, fallbacks: string[] = []): str
 }
 
 function resolvePackageSubpath(packageDir: string, relativePath: string): string {
-  if (!packageDir.startsWith("/"))
+  if (!isAbsolute(packageDir))
     return `${packageDir}/${relativePath.replace(/^dist\//, "").replace(/\/index\.js$/, "")}`;
   return join(packageDir, relativePath);
 }
 
 function toTurbopackAliasPath(root: string, value: string): string {
-  if (!value.startsWith("/")) return value;
+  if (!isAbsolute(value)) return value;
   const relativePath = relative(root, value);
   return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
 }

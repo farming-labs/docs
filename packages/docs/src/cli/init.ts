@@ -1251,7 +1251,7 @@ function scaffoldNextJs(
 
   write(`${appDir}/${cfg.entry}/layout.tsx`, docsLayoutTemplate(cfg));
   if (cfg.apiReference) {
-    const apiReferencePage = `${appDir}/${cfg.apiReference.path}/page.tsx`;
+    const apiReferencePage = `${appDir}/${cfg.apiReference.path}/[[...slug]]/page.tsx`;
     write(apiReferencePage, nextApiReferencePageTemplate(cfg, apiReferencePage));
   }
   write("postcss.config.mjs", postcssConfigTemplate());
