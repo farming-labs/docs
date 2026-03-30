@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "@farming-labs/theme/colorful/css";
+@import "@farming-labs/theme/hardline/css";
 
 @source "../../src";
 @source "../../../../packages/fumadocs/dist";

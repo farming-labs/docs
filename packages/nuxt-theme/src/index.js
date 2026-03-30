@@ -17,3 +17,4 @@ export { default as ThemeToggle } from "./components/ThemeToggle.vue";
 export { fumadocs, DefaultUIDefaults } from "./themes/default.js";
 export { pixelBorder, PixelBorderUIDefaults } from "./themes/pixel-border.js";
 export { darksharp, DarksharpUIDefaults } from "./themes/darksharp.js";
+export { hardline, HardlineUIDefaults } from "./themes/hardline.js";

@@ -1,12 +1,12 @@
 import { defineDocs } from "@farming-labs/docs";
 import { Rocket, BookOpen, Sparkles } from "lucide-react";
 import { MyNote } from "./src/components/my-note";
-import { colorful } from "@farming-labs/theme/colorful";
+import { hardline } from "@farming-labs/theme/hardline";
 
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: colorful({
+  theme: hardline({
     ui: {
       components: { Callout: { variant: "outline" } },
       layout: {

@@ -31,6 +31,9 @@
       ],
       "greentree": [
         "./src/themes/greentree.d.ts"
+      ],
+      "hardline": [
+        "./src/themes/hardline.d.ts"
       ]
     }
   },
@@ -61,6 +64,11 @@
       "import": "./src/themes/colorful.js",
       "default": "./src/themes/colorful.js"
     },
+    "./hardline": {
+      "types": "./src/themes/hardline.d.ts",
+      "import": "./src/themes/hardline.js",
+      "default": "./src/themes/hardline.js"
+    },
     "./css": "./styles/docs.css",
     "./fumadocs/css": "./styles/docs.css",
     "./styles/pixel-border.css": "./styles/pixel-border.css",
@@ -75,7 +83,9 @@
       "default": "./src/themes/greentree.js"
     },
     "./styles/greentree.css": "./styles/greentree.css",
-    "./greentree/css": "./styles/greentree-bundle.css"
+    "./greentree/css": "./styles/greentree-bundle.css",
+    "./styles/hardline.css": "./styles/hardline.css",
+    "./hardline/css": "./styles/hardline-bundle.css"
   },
   "scripts": {
     "build": "echo 'Astro components are shipped as source'",

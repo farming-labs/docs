@@ -8,3 +8,8 @@ export declare const PixelBorderUIDefaults: Record<string, any>;
 
 export declare const darksharp: (overrides?: Partial<DocsTheme>) => DocsTheme;
 export declare const DarksharpUIDefaults: Record<string, any>;
+
+export declare const hardline: (overrides?: {
+  ui?: Record<string, unknown>;
+}) => DocsTheme;
+export declare const HardlineUIDefaults: Record<string, unknown>;

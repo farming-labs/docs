@@ -1,10 +1,10 @@
-import { colorful } from "@farming-labs/astro-theme/colorful";
+import { hardline } from "@farming-labs/astro-theme/hardline";
 import { defineDocs } from "@farming-labs/docs";
 
 export default defineDocs({
   entry: "docs",
   contentDir: "docs",
-  theme: colorful({
+  theme: hardline({
     ui: {
       components: { Callout: { variant: "outline" } },
       layout: {
