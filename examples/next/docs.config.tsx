@@ -17,7 +17,7 @@ import {
   Users,
   Mail,
 } from "lucide-react";
-import { colorful } from "@farming-labs/theme/colorful";
+import { hardline } from "@farming-labs/theme/hardline";
 
 export default defineDocs({
   entry: "docs",
@@ -26,26 +26,13 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
-  theme: colorful({
+  theme: hardline({
     ui: {
-      components: { Callout: { variant: "outline" } },
       layout: {
         toc: { enabled: true, depth: 3, style: "default" },
-        sidebarWidth: 300,
+        sidebarWidth: 308,
       },
-      // sidebar: { style: "default" },
-      typography: {
-        font: {
-          style: {
-            sans: "var(--font-geist-sans, system-ui, -apple-system, sans-serif)",
-            mono: "var(--font-geist-mono, ui-monospace, monospace)",
-          },
-          h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.025em" },
-          h2: { size: "1.5rem", weight: 600, letterSpacing: "-0.015em" },
-          h3: { size: "1.25rem", weight: 600 },
-          body: { size: "0.975rem", lineHeight: "1.8" },
-        },
-      },
+      components: { Callout: { variant: "outline" } },
     },
   }),
   ai: {

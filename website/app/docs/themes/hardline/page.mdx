@@ -1,0 +1,48 @@
+---
+title: "Hardline"
+description: "Hard-edge high-contrast theme with square, sharp styling"
+icon: "square"
+order: 4.8
+---
+
+# Hardline Theme
+
+A hard-edge, high-contrast preset with square corners, bold borders, and a sharp visual system.
+
+## Usage
+
+```tsx title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+import { hardline } from "@farming-labs/theme/hardline";
+
+export default defineDocs({
+  entry: "docs",
+  theme: hardline(),
+});
+```
+
+```css title="app/global.css"
+@import "tailwindcss";
+@import "@farming-labs/theme/hardline/css";
+```
+
+## Defaults
+
+| Property      | Value                                |
+| ------------- | ------------------------------------ |
+| Primary       | `#ffd335`                            |
+| Background    | `#f2efe8` (light), `#0f0f10` (dark)  |
+| Border radius | `0px`                                |
+| Content width | 860px                                |
+| Sidebar width | 300px                                |
+
+## Customizing
+
+```tsx title="customizing.tsx"
+theme: hardline({
+  ui: {
+    colors: { primary: "#ffb703" },
+    layout: { sidebarWidth: 320 },
+  },
+}),
+```
