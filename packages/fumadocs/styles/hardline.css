@@ -1,4 +1,4 @@
-/* @farming-labs/theme - brutalist theme CSS */
+/* @farming-labs/theme - hardline theme CSS */
 @import "./presets/neutral.css";
 
 :root {
@@ -301,7 +301,7 @@ aside button[class*="bg-fd-secondary"] {
   box-shadow: 4px 4px 0 color-mix(in srgb, var(--color-fd-primary) 40%, transparent);
 }
 
-/* Page actions: brutalist hard edges */
+/* Page actions: hardline hard edges */
 .fd-page-action-btn,
 .fd-page-action-menu,
 .fd-page-action-menu-item,
@@ -421,7 +421,7 @@ aside button[class*="bg-fd-secondary"] {
   box-shadow: 4px 4px 0 color-mix(in srgb, var(--color-fd-primary) 35%, transparent);
 }
 
-/* Ask AI and feedback - brutalist treatment */
+/* Ask AI and feedback - hardline treatment */
 .fd-ai-dialog,
 .fd-ai-tab,
 .fd-ai-input-wrap,

@@ -1,12 +1,12 @@
 /**
- * Brutalist theme preset.
+ * Hardline theme preset.
  * Hard edges, strong borders, and high-contrast typography.
  *
- * CSS: `@import "@farming-labs/theme/brutalist/css";`
+ * CSS: `@import "@farming-labs/theme/hardline/css";`
  */
 import { createTheme } from "@farming-labs/docs";
 
-const BrutalistUIDefaults = {
+const HardlineUIDefaults = {
   colors: {
     primary: "#ffd335",
     background: "#f2efe8",
@@ -45,9 +45,9 @@ const BrutalistUIDefaults = {
   },
 };
 
-export const brutalist = createTheme({
-  name: "brutalist",
-  ui: BrutalistUIDefaults,
+export const hardline = createTheme({
+  name: "hardline",
+  ui: HardlineUIDefaults,
 });
 
-export { BrutalistUIDefaults };
+export { HardlineUIDefaults };
