@@ -574,7 +574,8 @@ docs/
 
 ## Themes
 
-Seven built-in themes (fumadocs, darksharp, pixel-border, colorful, greentree, darkbold, shiny), available on Next.js, SvelteKit, Astro, and Nuxt.
+Seven cross-framework built-in themes (fumadocs, darksharp, pixel-border, colorful, greentree, darkbold, shiny) are available on Next.js, SvelteKit, Astro, and Nuxt.  
+`@farming-labs/theme` also includes `hardline` for Next.js and TanStack Start projects.
 
 ### Next.js
 
@@ -584,11 +585,12 @@ import { darksharp } from "@farming-labs/theme/darksharp";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
 import { colorful } from "@farming-labs/theme/colorful";
 import { greentree } from "@farming-labs/theme/greentree";
+import { hardline } from "@farming-labs/theme/hardline";
 ```
 
 ```css
 @import "@farming-labs/theme/default/css";
-/* or darksharp, pixel-border, colorful, greentree, etc. */
+/* or darksharp, pixel-border, colorful, greentree, hardline, etc. */
 ```
 
 ### SvelteKit
