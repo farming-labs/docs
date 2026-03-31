@@ -28,6 +28,8 @@ export default defineConfig({
     "src/shiny/index.ts",
     "src/darkbold/index.ts",
     "src/greentree/index.ts",
+    "src/concrete/index.ts",
+    "src/monolith/index.ts",
     "src/hardline/index.ts",
   ],
   format: "esm",

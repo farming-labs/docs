@@ -5,6 +5,8 @@
  *   - `@farming-labs/theme/default`      → default neutral theme
  *   - `@farming-labs/theme/darksharp`    → sharp all-black theme
  *   - `@farming-labs/theme/pixel-border` → better-auth inspired rounded borders
+ *   - `@farming-labs/theme/concrete`     → concrete hard-edge theme
+ *   - `@farming-labs/theme/monolith`     → brutalist poster-style hard-edge theme
  *   - `@farming-labs/theme/hardline`     → high-contrast hard-edge theme
  *
  * This root export provides layout helpers, the RootProvider, and re-exports
@@ -67,6 +69,8 @@ export { RootProvider } from "./provider.js";
 
 // ─── Default theme preset (backward compat) ───────────────────────────
 export { fumadocs, DefaultUIDefaults as FumadocsUIDefaults } from "./default/index.js";
+export { concrete, ConcreteUIDefaults } from "./concrete/index.js";
+export { monolith, MonolithUIDefaults } from "./monolith/index.js";
 export { hardline, HardlineUIDefaults } from "./hardline/index.js";
 
 // ─── UI primitives for custom theme layouts ───────────────────────────

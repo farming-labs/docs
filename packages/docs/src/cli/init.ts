@@ -554,21 +554,35 @@ export async function init(options: InitOptions = {}) {
       hint: "Emerald green accent, Inter font, Mintlify-inspired",
     },
     {
+      value: "concrete",
+      label: "Concrete",
+      hint: "Hard-edge theme with square corners and bold borders",
+    },
+    {
+      value: "monolith",
+      label: "Monolith",
+      hint: "Brutalist poster-style theme with offset shadows and loud contrast",
+    },
+    {
       value: "custom",
       label: "Create your own theme",
       hint: "Scaffold a new theme file + CSS in themes/ (name asked next)",
     },
   ];
   const themeValues = new Set(themeOptions.map((option) => option.value));
+  const themeAliases: Record<string, string> = {
+    hardline: "concrete",
+  };
   let theme: string;
   if (options.theme) {
-    if (!themeValues.has(options.theme)) {
+    const normalizedTheme = themeAliases[options.theme] ?? options.theme;
+    if (!themeValues.has(normalizedTheme)) {
       p.log.error(
-        `Invalid ${pc.cyan("--theme")}. Use one of: ${themeOptions.map((option) => pc.cyan(option.value)).join(", ")}`,
+        `Invalid ${pc.cyan("--theme")}. Use one of: ${themeOptions.map((option) => pc.cyan(option.value)).join(", ")}, ${pc.cyan("hardline")}`,
       );
       process.exit(1);
     }
-    theme = options.theme;
+    theme = normalizedTheme;
   } else {
     const themeAnswer = await p.select({
       message: "Which theme would you like to use?",
@@ -1506,6 +1520,9 @@ function scaffoldSvelteKit(
     darkbold: "darkbold",
     shiny: "shiny",
     greentree: "greentree",
+    concrete: "concrete",
+    monolith: "monolith",
+    hardline: "hardline",
     default: "fumadocs",
   };
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";
@@ -1585,6 +1602,9 @@ function scaffoldAstro(
     darkbold: "darkbold",
     shiny: "shiny",
     greentree: "greentree",
+    concrete: "concrete",
+    monolith: "monolith",
+    hardline: "hardline",
     default: "fumadocs",
   };
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";
@@ -1667,6 +1687,9 @@ function scaffoldNuxt(
     darkbold: "darkbold",
     shiny: "shiny",
     greentree: "greentree",
+    concrete: "concrete",
+    monolith: "monolith",
+    hardline: "hardline",
     default: "fumadocs",
   };
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";

@@ -208,6 +208,16 @@ describe("globalCssTemplate", () => {
     const out = globalCssTemplate("darksharp");
     expect(out).toContain("@farming-labs/theme/darksharp/css");
   });
+
+  it("uses correct theme path for concrete", () => {
+    const out = globalCssTemplate("concrete");
+    expect(out).toContain("@farming-labs/theme/concrete/css");
+  });
+
+  it("uses correct theme path for monolith", () => {
+    const out = globalCssTemplate("monolith");
+    expect(out).toContain("@farming-labs/theme/monolith/css");
+  });
 });
 
 describe("injectCssImport", () => {
@@ -249,6 +259,18 @@ describe("docsConfigTemplate", () => {
     const out = docsConfigTemplate({ ...baseConfig, theme: "darksharp" });
     expect(out).toContain("darksharp");
     expect(out).toContain("@farming-labs/theme/darksharp");
+  });
+
+  it("uses correct theme factory for concrete", () => {
+    const out = docsConfigTemplate({ ...baseConfig, theme: "concrete" });
+    expect(out).toContain("concrete");
+    expect(out).toContain("@farming-labs/theme/concrete");
+  });
+
+  it("uses correct theme factory for monolith", () => {
+    const out = docsConfigTemplate({ ...baseConfig, theme: "monolith" });
+    expect(out).toContain("monolith");
+    expect(out).toContain("@farming-labs/theme/monolith");
   });
 
   it("uses local theme path for custom theme with customThemeName", () => {

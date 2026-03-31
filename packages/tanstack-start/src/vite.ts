@@ -92,6 +92,14 @@ function resolveWorkspaceAliases() {
       replacement: `${themeSrc}/greentree/index.ts`,
     },
     {
+      find: /^@farming-labs\/theme\/concrete$/,
+      replacement: `${themeSrc}/concrete/index.ts`,
+    },
+    {
+      find: /^@farming-labs\/theme\/monolith$/,
+      replacement: `${themeSrc}/monolith/index.ts`,
+    },
+    {
       find: /^@farming-labs\/theme\/hardline$/,
       replacement: `${themeSrc}/hardline/index.ts`,
     },

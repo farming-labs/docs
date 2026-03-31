@@ -1,0 +1,50 @@
+---
+title: "Concrete"
+description: "Hard-edge theme with square corners and strong borders"
+icon: "square"
+order: 4.75
+---
+
+# Concrete Theme
+
+A hard-edge preset with square corners, bold borders, high-contrast surfaces, and assertive typography.
+
+> `hardline()` is still available as a backward-compatible alias, but `concrete()` is the preferred name for new projects.
+
+## Usage
+
+```tsx title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+import { concrete } from "@farming-labs/theme/concrete";
+
+export default defineDocs({
+  entry: "docs",
+  theme: concrete(),
+});
+```
+
+```css title="app/global.css"
+@import "tailwindcss";
+@import "@farming-labs/theme/concrete/css";
+```
+
+## Defaults
+
+| Property      | Value                               |
+| ------------- | ----------------------------------- |
+| Primary       | `#ffd335`                           |
+| Background    | `#f2efe8` (light), `#0f0f10` (dark) |
+| Border radius | `0px`                               |
+| Content width | 860px                               |
+| Sidebar width | 300px                               |
+
+## Customizing
+
+```tsx title="customizing.tsx"
+theme: concrete({
+  ui: {
+    colors: { primary: "#ffb703" },
+    layout: { sidebarWidth: 320 },
+  },
+}),
+```
