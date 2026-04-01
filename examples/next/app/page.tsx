@@ -7,7 +7,7 @@ import PixelSnow from "./components/pixel-snow";
 const framework = "Next.js";
 const docsHref = "/docs";
 const referenceHref = "https://docs.farming-labs.dev";
-const installCommand = "npx @farming-labs/docs init";
+const installCommand = "pnpx @farming-labs/docs init";
 
 const chipStyle: React.CSSProperties = {
   border: "1px solid var(--color-fd-border, rgba(255,255,255,0.12))",
