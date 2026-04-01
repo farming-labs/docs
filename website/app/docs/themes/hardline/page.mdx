@@ -1,13 +1,15 @@
 ---
 title: "Hardline"
-description: "Hard-edge high-contrast theme with square, sharp styling"
+description: "Hard-edge theme with square corners and strong borders"
 icon: "square"
 order: 4.8
 ---
 
 # Hardline Theme
 
-A hard-edge, high-contrast preset with square corners, bold borders, and a sharp visual system.
+`hardline()` is the original hard-edge preset: square corners, bold borders, and sharp high-contrast surfaces.
+
+If you want something more brutalist and poster-like, use **[Concrete](/docs/themes/concrete)** instead.
 
 ## Usage
 
@@ -28,21 +30,10 @@ export default defineDocs({
 
 ## Defaults
 
-| Property      | Value                                |
-| ------------- | ------------------------------------ |
-| Primary       | `#ffd335`                            |
-| Background    | `#f2efe8` (light), `#0f0f10` (dark)  |
-| Border radius | `0px`                                |
-| Content width | 860px                                |
-| Sidebar width | 300px                                |
-
-## Customizing
-
-```tsx title="customizing.tsx"
-theme: hardline({
-  ui: {
-    colors: { primary: "#ffb703" },
-    layout: { sidebarWidth: 320 },
-  },
-}),
-```
+| Property      | Value                               |
+| ------------- | ----------------------------------- |
+| Primary       | `#ffd335`                           |
+| Background    | `#f2efe8` (light), `#0f0f10` (dark) |
+| Border radius | `0px`                               |
+| Content width | 860px                               |
+| Sidebar width | 300px                               |

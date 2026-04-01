@@ -208,6 +208,16 @@ describe("globalCssTemplate", () => {
     const out = globalCssTemplate("darksharp");
     expect(out).toContain("@farming-labs/theme/darksharp/css");
   });
+
+  it("uses correct theme path for concrete", () => {
+    const out = globalCssTemplate("concrete");
+    expect(out).toContain("@farming-labs/theme/concrete/css");
+  });
+
+  it("uses correct theme path for hardline", () => {
+    const out = globalCssTemplate("hardline");
+    expect(out).toContain("@farming-labs/theme/hardline/css");
+  });
 });
 
 describe("injectCssImport", () => {
@@ -249,6 +259,18 @@ describe("docsConfigTemplate", () => {
     const out = docsConfigTemplate({ ...baseConfig, theme: "darksharp" });
     expect(out).toContain("darksharp");
     expect(out).toContain("@farming-labs/theme/darksharp");
+  });
+
+  it("uses correct theme factory for concrete", () => {
+    const out = docsConfigTemplate({ ...baseConfig, theme: "concrete" });
+    expect(out).toContain("concrete");
+    expect(out).toContain("@farming-labs/theme/concrete");
+  });
+
+  it("uses correct theme factory for hardline", () => {
+    const out = docsConfigTemplate({ ...baseConfig, theme: "hardline" });
+    expect(out).toContain("hardline");
+    expect(out).toContain("@farming-labs/theme/hardline");
   });
 
   it("uses local theme path for custom theme with customThemeName", () => {

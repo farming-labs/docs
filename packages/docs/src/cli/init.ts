@@ -554,6 +554,16 @@ export async function init(options: InitOptions = {}) {
       hint: "Emerald green accent, Inter font, Mintlify-inspired",
     },
     {
+      value: "concrete",
+      label: "Concrete",
+      hint: "Brutalist poster-style theme with offset shadows and loud contrast",
+    },
+    {
+      value: "hardline",
+      label: "Hardline",
+      hint: "Hard-edge theme with square corners and bold borders",
+    },
+    {
       value: "custom",
       label: "Create your own theme",
       hint: "Scaffold a new theme file + CSS in themes/ (name asked next)",
@@ -1506,6 +1516,8 @@ function scaffoldSvelteKit(
     darkbold: "darkbold",
     shiny: "shiny",
     greentree: "greentree",
+    concrete: "concrete",
+    hardline: "hardline",
     default: "fumadocs",
   };
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";
@@ -1585,6 +1597,8 @@ function scaffoldAstro(
     darkbold: "darkbold",
     shiny: "shiny",
     greentree: "greentree",
+    concrete: "concrete",
+    hardline: "hardline",
     default: "fumadocs",
   };
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";
@@ -1667,6 +1681,8 @@ function scaffoldNuxt(
     darkbold: "darkbold",
     shiny: "shiny",
     greentree: "greentree",
+    concrete: "concrete",
+    hardline: "hardline",
     default: "fumadocs",
   };
   const cssTheme = themeMapping[cfg.theme] || "fumadocs";

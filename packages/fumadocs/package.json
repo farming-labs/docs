@@ -73,6 +73,11 @@
       "import": "./dist/hardline/index.mjs",
       "default": "./dist/hardline/index.mjs"
     },
+    "./concrete": {
+      "types": "./dist/concrete/index.d.mts",
+      "import": "./dist/concrete/index.mjs",
+      "default": "./dist/concrete/index.mjs"
+    },
     "./search": {
       "types": "./dist/search.d.mts",
       "import": "./dist/search.mjs",
@@ -103,6 +108,7 @@
     "./darkbold/css": "./styles/darkbold.css",
     "./greentree/css": "./styles/greentree.css",
     "./hardline/css": "./styles/hardline.css",
+    "./concrete/css": "./styles/concrete.css",
     "./presets/neutral": "./styles/presets/neutral.css",
     "./presets/black": "./styles/presets/black.css",
     "./presets/base": "./styles/presets/base.css"

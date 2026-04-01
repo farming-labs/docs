@@ -17,7 +17,7 @@ import {
   Users,
   Mail,
 } from "lucide-react";
-import { hardline } from "@farming-labs/theme/hardline";
+import { concrete } from "@farming-labs/theme/concrete";
 
 export default defineDocs({
   entry: "docs",
@@ -26,7 +26,7 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
-  theme: hardline({
+  theme: concrete({
     ui: {
       layout: {
         toc: { enabled: true, depth: 3, style: "default" },

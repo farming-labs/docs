@@ -47,6 +47,11 @@
       "import": "./src/themes/hardline.js",
       "default": "./src/themes/hardline.js"
     },
+    "./concrete": {
+      "types": "./src/themes/concrete.d.ts",
+      "import": "./src/themes/concrete.js",
+      "default": "./src/themes/concrete.js"
+    },
     "./css": "./styles/docs.css",
     "./fumadocs/css": "./styles/docs.css",
     "./styles/pixel-border.css": "./styles/pixel-border.css",
@@ -63,7 +68,9 @@
     "./styles/greentree.css": "./styles/greentree.css",
     "./greentree/css": "./styles/greentree-bundle.css",
     "./styles/hardline.css": "./styles/hardline.css",
-    "./hardline/css": "./styles/hardline-bundle.css"
+    "./hardline/css": "./styles/hardline-bundle.css",
+    "./styles/concrete.css": "./styles/concrete.css",
+    "./concrete/css": "./styles/concrete-bundle.css"
   },
   "scripts": {
     "build": "echo 'Nuxt theme components are shipped as source'",

@@ -574,7 +574,7 @@ docs/
 
 ## Themes
 
-Eight built-in themes (`fumadocs`, `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`, `hardline`) are available across Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
+Nine built-in theme entrypoints (`fumadocs`, `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`, `concrete`, `hardline`) are available across Next.js, TanStack Start, SvelteKit, Astro, and Nuxt. `hardline` is the original hard-edge preset, and `concrete` is the louder brutalist poster-style variant.
 
 ### Next.js
 
@@ -584,48 +584,48 @@ import { darksharp } from "@farming-labs/theme/darksharp";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
 import { colorful } from "@farming-labs/theme/colorful";
 import { greentree } from "@farming-labs/theme/greentree";
-import { hardline } from "@farming-labs/theme/hardline";
+import { concrete } from "@farming-labs/theme/concrete";
 ```
 
 ```css
 @import "@farming-labs/theme/default/css";
-/* or darksharp, pixel-border, colorful, greentree, hardline, etc. */
+/* or darksharp, pixel-border, colorful, greentree, concrete, hardline, etc. */
 ```
 
 ### SvelteKit
 
 ```ts
 import { fumadocs } from "@farming-labs/svelte-theme";
-import { hardline } from "@farming-labs/svelte-theme/hardline";
+import { concrete } from "@farming-labs/svelte-theme/concrete";
 ```
 
 ```css
 @import "@farming-labs/svelte-theme/fumadocs/css";
-/* or darksharp, pixel-border, colorful, greentree, hardline, etc. */
+/* or darksharp, pixel-border, colorful, greentree, concrete, hardline, etc. */
 ```
 
 ### Astro
 
 ```ts
 import { fumadocs } from "@farming-labs/astro-theme";
-import { hardline } from "@farming-labs/astro-theme/hardline";
+import { concrete } from "@farming-labs/astro-theme/concrete";
 ```
 
 ```css
 @import "@farming-labs/astro-theme/css";
-/* or pixel-border, darksharp, colorful, greentree, hardline, etc. */
+/* or pixel-border, darksharp, colorful, greentree, concrete, hardline, etc. */
 ```
 
 ### Nuxt
 
 ```ts
 import { fumadocs } from "@farming-labs/nuxt-theme";
-import { hardline } from "@farming-labs/nuxt-theme/hardline";
+import { concrete } from "@farming-labs/nuxt-theme/concrete";
 ```
 
 ```css
 @import "@farming-labs/nuxt-theme/fumadocs/css";
-/* or darksharp, pixel-border, colorful, greentree, hardline, etc. */
+/* or darksharp, pixel-border, colorful, greentree, concrete, hardline, etc. */
 ```
 
 ## Token Efficiency — Why This Matters for AI

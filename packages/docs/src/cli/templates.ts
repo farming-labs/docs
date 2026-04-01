@@ -128,6 +128,28 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroCssTheme: "greentree",
     nuxtCssTheme: "greentree",
   },
+  concrete: {
+    factory: "concrete",
+    nextImport: "@farming-labs/theme/concrete",
+    svelteImport: "@farming-labs/svelte-theme/concrete",
+    astroImport: "@farming-labs/astro-theme/concrete",
+    nuxtImport: "@farming-labs/nuxt-theme/concrete",
+    nextCssImport: "concrete",
+    svelteCssTheme: "concrete",
+    astroCssTheme: "concrete",
+    nuxtCssTheme: "concrete",
+  },
+  hardline: {
+    factory: "hardline",
+    nextImport: "@farming-labs/theme/hardline",
+    svelteImport: "@farming-labs/svelte-theme/hardline",
+    astroImport: "@farming-labs/astro-theme/hardline",
+    nuxtImport: "@farming-labs/nuxt-theme/hardline",
+    nextCssImport: "hardline",
+    svelteCssTheme: "hardline",
+    astroCssTheme: "hardline",
+    nuxtCssTheme: "hardline",
+  },
 };
 
 function getThemeInfo(theme: string): ThemeInfo {
