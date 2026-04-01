@@ -18,7 +18,7 @@ import {
   Mail,
 } from "lucide-react";
 import { concrete } from "@farming-labs/theme/concrete";
-
+import { pixelBorder } from "@farming-labs/theme/pixel-border";
 export default defineDocs({
   entry: "docs",
   github: {
@@ -26,7 +26,7 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
-  theme: concrete({
+  theme: pixelBorder({
     ui: {
       layout: {
         toc: { enabled: true, depth: 3, style: "default" },
