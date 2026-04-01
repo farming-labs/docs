@@ -139,17 +139,6 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroCssTheme: "concrete",
     nuxtCssTheme: "concrete",
   },
-  monolith: {
-    factory: "monolith",
-    nextImport: "@farming-labs/theme/monolith",
-    svelteImport: "@farming-labs/svelte-theme/monolith",
-    astroImport: "@farming-labs/astro-theme/monolith",
-    nuxtImport: "@farming-labs/nuxt-theme/monolith",
-    nextCssImport: "monolith",
-    svelteCssTheme: "monolith",
-    astroCssTheme: "monolith",
-    nuxtCssTheme: "monolith",
-  },
   hardline: {
     factory: "hardline",
     nextImport: "@farming-labs/theme/hardline",

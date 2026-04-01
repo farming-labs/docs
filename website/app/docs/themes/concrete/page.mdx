@@ -1,15 +1,13 @@
 ---
 title: "Concrete"
-description: "Hard-edge theme with square corners and strong borders"
+description: "Brutalist poster-style theme with offset shadows and square corners"
 icon: "square"
 order: 4.75
 ---
 
 # Concrete Theme
 
-A hard-edge preset with square corners, bold borders, high-contrast surfaces, and assertive typography.
-
-> `hardline()` is still available as a backward-compatible alias, but `concrete()` is the preferred name for new projects.
+A louder brutalist-style preset with poster typography, offset shadows, square corners, and bold contrast.
 
 ## Usage
 
@@ -32,19 +30,19 @@ export default defineDocs({
 
 | Property      | Value                               |
 | ------------- | ----------------------------------- |
-| Primary       | `#ffd335`                           |
-| Background    | `#f2efe8` (light), `#0f0f10` (dark) |
+| Primary       | `#ff5b31`                           |
+| Background    | `#f6ead9` (light), `#12100f` (dark) |
 | Border radius | `0px`                               |
-| Content width | 860px                               |
-| Sidebar width | 300px                               |
+| Content width | 896px                               |
+| Sidebar width | 316px                               |
 
 ## Customizing
 
 ```tsx title="customizing.tsx"
 theme: concrete({
   ui: {
-    colors: { primary: "#ffb703" },
-    layout: { sidebarWidth: 320 },
+    colors: { primary: "#ff7848" },
+    layout: { sidebarWidth: 332 },
   },
 }),
 ```

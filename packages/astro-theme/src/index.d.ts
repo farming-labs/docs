@@ -12,8 +12,5 @@ export declare const DarksharpUIDefaults: Record<string, any>;
 export declare const concrete: (overrides?: { ui?: Record<string, unknown> }) => DocsTheme;
 export declare const ConcreteUIDefaults: Record<string, unknown>;
 
-export declare const monolith: (overrides?: { ui?: Record<string, unknown> }) => DocsTheme;
-export declare const MonolithUIDefaults: Record<string, unknown>;
-
 export declare const hardline: (overrides?: { ui?: Record<string, unknown> }) => DocsTheme;
 export declare const HardlineUIDefaults: Record<string, unknown>;

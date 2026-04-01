@@ -64,7 +64,7 @@ export const myTheme = extendTheme(fumadocs(), {
 });
 ```
 
-For other frameworks use the same framework's theme package (e.g. `@farming-labs/svelte-theme`, `@farming-labs/astro-theme`, `@farming-labs/nuxt-theme`). You can extend any built-in: `fumadocs`, `darksharp`, `pixelBorder`, `colorful`, `greentree`, `darkbold`, `shiny`, `concrete`, `monolith` (`hardline` also remains available as an alias).
+For other frameworks use the same framework's theme package (e.g. `@farming-labs/svelte-theme`, `@farming-labs/astro-theme`, `@farming-labs/nuxt-theme`). You can extend any built-in: `fumadocs`, `darksharp`, `pixelBorder`, `colorful`, `greentree`, `darkbold`, `shiny`, `hardline`, and `concrete`.
 
 **Important:** `extendTheme()` returns a theme **instance** (not a factory). Use `createTheme()` when you want a reusable preset that others call as `myTheme()`.
 

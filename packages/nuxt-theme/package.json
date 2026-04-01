@@ -52,11 +52,6 @@
       "import": "./src/themes/concrete.js",
       "default": "./src/themes/concrete.js"
     },
-    "./monolith": {
-      "types": "./src/themes/monolith.d.ts",
-      "import": "./src/themes/monolith.js",
-      "default": "./src/themes/monolith.js"
-    },
     "./css": "./styles/docs.css",
     "./fumadocs/css": "./styles/docs.css",
     "./styles/pixel-border.css": "./styles/pixel-border.css",
@@ -75,9 +70,7 @@
     "./styles/hardline.css": "./styles/hardline.css",
     "./hardline/css": "./styles/hardline-bundle.css",
     "./styles/concrete.css": "./styles/concrete.css",
-    "./concrete/css": "./styles/concrete-bundle.css",
-    "./styles/monolith.css": "./styles/monolith.css",
-    "./monolith/css": "./styles/monolith-bundle.css"
+    "./concrete/css": "./styles/concrete-bundle.css"
   },
   "scripts": {
     "build": "echo 'Nuxt theme components are shipped as source'",

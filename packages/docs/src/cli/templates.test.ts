@@ -214,9 +214,9 @@ describe("globalCssTemplate", () => {
     expect(out).toContain("@farming-labs/theme/concrete/css");
   });
 
-  it("uses correct theme path for monolith", () => {
-    const out = globalCssTemplate("monolith");
-    expect(out).toContain("@farming-labs/theme/monolith/css");
+  it("uses correct theme path for hardline", () => {
+    const out = globalCssTemplate("hardline");
+    expect(out).toContain("@farming-labs/theme/hardline/css");
   });
 });
 
@@ -267,10 +267,10 @@ describe("docsConfigTemplate", () => {
     expect(out).toContain("@farming-labs/theme/concrete");
   });
 
-  it("uses correct theme factory for monolith", () => {
-    const out = docsConfigTemplate({ ...baseConfig, theme: "monolith" });
-    expect(out).toContain("monolith");
-    expect(out).toContain("@farming-labs/theme/monolith");
+  it("uses correct theme factory for hardline", () => {
+    const out = docsConfigTemplate({ ...baseConfig, theme: "hardline" });
+    expect(out).toContain("hardline");
+    expect(out).toContain("@farming-labs/theme/hardline");
   });
 
   it("uses local theme path for custom theme with customThemeName", () => {

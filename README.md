@@ -574,7 +574,7 @@ docs/
 
 ## Themes
 
-Ten built-in theme entrypoints (`fumadocs`, `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`, `concrete`, `monolith`, `hardline`) are available across Next.js, TanStack Start, SvelteKit, Astro, and Nuxt. `hardline` remains as a backward-compatible alias of `concrete`.
+Nine built-in theme entrypoints (`fumadocs`, `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`, `concrete`, `hardline`) are available across Next.js, TanStack Start, SvelteKit, Astro, and Nuxt. `hardline` is the original hard-edge preset, and `concrete` is the louder brutalist poster-style variant.
 
 ### Next.js
 
@@ -589,7 +589,7 @@ import { concrete } from "@farming-labs/theme/concrete";
 
 ```css
 @import "@farming-labs/theme/default/css";
-/* or darksharp, pixel-border, colorful, greentree, concrete, monolith, etc. */
+/* or darksharp, pixel-border, colorful, greentree, concrete, hardline, etc. */
 ```
 
 ### SvelteKit
@@ -601,7 +601,7 @@ import { concrete } from "@farming-labs/svelte-theme/concrete";
 
 ```css
 @import "@farming-labs/svelte-theme/fumadocs/css";
-/* or darksharp, pixel-border, colorful, greentree, concrete, monolith, etc. */
+/* or darksharp, pixel-border, colorful, greentree, concrete, hardline, etc. */
 ```
 
 ### Astro
@@ -613,7 +613,7 @@ import { concrete } from "@farming-labs/astro-theme/concrete";
 
 ```css
 @import "@farming-labs/astro-theme/css";
-/* or pixel-border, darksharp, colorful, greentree, concrete, monolith, etc. */
+/* or pixel-border, darksharp, colorful, greentree, concrete, hardline, etc. */
 ```
 
 ### Nuxt
@@ -625,7 +625,7 @@ import { concrete } from "@farming-labs/nuxt-theme/concrete";
 
 ```css
 @import "@farming-labs/nuxt-theme/fumadocs/css";
-/* or darksharp, pixel-border, colorful, greentree, concrete, monolith, etc. */
+/* or darksharp, pixel-border, colorful, greentree, concrete, hardline, etc. */
 ```
 
 ## Token Efficiency — Why This Matters for AI

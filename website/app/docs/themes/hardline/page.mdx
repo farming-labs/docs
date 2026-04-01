@@ -1,15 +1,15 @@
 ---
 title: "Hardline"
-description: "Compatibility alias for the Concrete theme"
+description: "Hard-edge theme with square corners and strong borders"
 icon: "square"
 order: 4.8
 ---
 
 # Hardline Theme
 
-`hardline()` is a backward-compatible alias of the **[Concrete theme](/docs/themes/concrete)**.
+`hardline()` is the original hard-edge preset: square corners, bold borders, and sharp high-contrast surfaces.
 
-Use `concrete()` for new projects, or keep `hardline()` if you already have it in an existing codebase.
+If you want something more brutalist and poster-like, use **[Concrete](/docs/themes/concrete)** instead.
 
 ## Usage
 
@@ -27,3 +27,13 @@ export default defineDocs({
 @import "tailwindcss";
 @import "@farming-labs/theme/hardline/css";
 ```
+
+## Defaults
+
+| Property      | Value                               |
+| ------------- | ----------------------------------- |
+| Primary       | `#ffd335`                           |
+| Background    | `#f2efe8` (light), `#0f0f10` (dark) |
+| Border radius | `0px`                               |
+| Content width | 860px                               |
+| Sidebar width | 300px                               |

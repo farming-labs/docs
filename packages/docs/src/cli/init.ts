@@ -556,12 +556,12 @@ export async function init(options: InitOptions = {}) {
     {
       value: "concrete",
       label: "Concrete",
-      hint: "Hard-edge theme with square corners and bold borders",
+      hint: "Brutalist poster-style theme with offset shadows and loud contrast",
     },
     {
-      value: "monolith",
-      label: "Monolith",
-      hint: "Brutalist poster-style theme with offset shadows and loud contrast",
+      value: "hardline",
+      label: "Hardline",
+      hint: "Hard-edge theme with square corners and bold borders",
     },
     {
       value: "custom",
@@ -570,19 +570,15 @@ export async function init(options: InitOptions = {}) {
     },
   ];
   const themeValues = new Set(themeOptions.map((option) => option.value));
-  const themeAliases: Record<string, string> = {
-    hardline: "concrete",
-  };
   let theme: string;
   if (options.theme) {
-    const normalizedTheme = themeAliases[options.theme] ?? options.theme;
-    if (!themeValues.has(normalizedTheme)) {
+    if (!themeValues.has(options.theme)) {
       p.log.error(
-        `Invalid ${pc.cyan("--theme")}. Use one of: ${themeOptions.map((option) => pc.cyan(option.value)).join(", ")}, ${pc.cyan("hardline")}`,
+        `Invalid ${pc.cyan("--theme")}. Use one of: ${themeOptions.map((option) => pc.cyan(option.value)).join(", ")}`,
       );
       process.exit(1);
     }
-    theme = normalizedTheme;
+    theme = options.theme;
   } else {
     const themeAnswer = await p.select({
       message: "Which theme would you like to use?",
@@ -1521,7 +1517,6 @@ function scaffoldSvelteKit(
     shiny: "shiny",
     greentree: "greentree",
     concrete: "concrete",
-    monolith: "monolith",
     hardline: "hardline",
     default: "fumadocs",
   };
@@ -1603,7 +1598,6 @@ function scaffoldAstro(
     shiny: "shiny",
     greentree: "greentree",
     concrete: "concrete",
-    monolith: "monolith",
     hardline: "hardline",
     default: "fumadocs",
   };
@@ -1688,7 +1682,6 @@ function scaffoldNuxt(
     shiny: "shiny",
     greentree: "greentree",
     concrete: "concrete",
-    monolith: "monolith",
     hardline: "hardline",
     default: "fumadocs",
   };

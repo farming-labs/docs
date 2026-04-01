@@ -78,11 +78,6 @@
       "import": "./dist/concrete/index.mjs",
       "default": "./dist/concrete/index.mjs"
     },
-    "./monolith": {
-      "types": "./dist/monolith/index.d.mts",
-      "import": "./dist/monolith/index.mjs",
-      "default": "./dist/monolith/index.mjs"
-    },
     "./search": {
       "types": "./dist/search.d.mts",
       "import": "./dist/search.mjs",
@@ -114,7 +109,6 @@
     "./greentree/css": "./styles/greentree.css",
     "./hardline/css": "./styles/hardline.css",
     "./concrete/css": "./styles/concrete.css",
-    "./monolith/css": "./styles/monolith.css",
     "./presets/neutral": "./styles/presets/neutral.css",
     "./presets/black": "./styles/presets/black.css",
     "./presets/base": "./styles/presets/base.css"

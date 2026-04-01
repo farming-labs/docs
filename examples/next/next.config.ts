@@ -24,7 +24,6 @@ export default withDocs({
       "@farming-labs/next/mdx-plugins/remark-og": "./packages/next/src/mdx-plugins/remark-og.ts",
       "@farming-labs/theme": "./packages/fumadocs/src/index.ts",
       "@farming-labs/theme/concrete": "./packages/fumadocs/src/concrete/index.ts",
-      "@farming-labs/theme/monolith": "./packages/fumadocs/src/monolith/index.ts",
       "@farming-labs/theme/hardline": "./packages/fumadocs/src/hardline/index.ts",
       "@farming-labs/theme/api": "./packages/fumadocs/src/docs-api.ts",
       "@farming-labs/theme/client-hooks": "./packages/fumadocs/src/docs-client-hooks.tsx",
