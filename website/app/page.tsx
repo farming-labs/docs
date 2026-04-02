@@ -756,6 +756,18 @@ function ThemesSection() {
       import: '@import "@farming-labs/theme/greentree/css";',
       colors: ["#0D9373", "#26BD6C", "#171A18", "#DFE1E0"],
     },
+    {
+      name: "Hardline",
+      description: "Original hard-edge preset with square corners and strong borders",
+      import: '@import "@farming-labs/theme/hardline/css";',
+      colors: ["#ffd335", "#f2efe8", "#47423a", "#111111"],
+    },
+    {
+      name: "Concrete",
+      description: "Louder brutalist variant with offset shadows and poster-style contrast",
+      import: '@import "@farming-labs/theme/concrete/css";',
+      colors: ["#ff5b31", "#f6ead9", "#5b4e42", "#141210"],
+    },
   ];
 
   return (

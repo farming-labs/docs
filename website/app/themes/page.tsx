@@ -15,6 +15,7 @@ const themes = [
     cssImport: '@import "@farming-labs/theme/default/css";',
     colors: ["#6366f1", "#0a0a0a", "#fafafa", "#262626"],
     accent: "#6366f1",
+    previewEnabled: true,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { fumadocs } from "@farming-labs/theme";
 
@@ -33,6 +34,7 @@ export default defineDocs({
     cssImport: '@import "@farming-labs/theme/colorful/css";',
     colors: ["#eab308", "#0a0a0a", "#fafafa", "#262626"],
     accent: "#eab308",
+    previewEnabled: true,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { colorful } from "@farming-labs/theme/colorful";
 
@@ -50,6 +52,7 @@ export default defineDocs({
     cssImport: '@import "@farming-labs/theme/darksharp/css";',
     colors: ["#fafaf9", "#000000", "#a8a29e", "#292524"],
     accent: "#fafaf9",
+    previewEnabled: true,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { darksharp } from "@farming-labs/theme/darksharp";
 
@@ -67,6 +70,7 @@ export default defineDocs({
     cssImport: '@import "@farming-labs/theme/pixel-border/css";',
     colors: ["#fbfbfa", "#050505", "#8c8c8c", "#262626"],
     accent: "#fbfbfa",
+    previewEnabled: true,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
 
@@ -84,6 +88,7 @@ export default defineDocs({
     cssImport: '@import "@farming-labs/theme/shiny/css";',
     colors: ["#f0f0f0", "#000000", "#a8a29e", "#292524"],
     accent: "#f0f0f0",
+    previewEnabled: true,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { shiny } from "@farming-labs/theme/shiny";
 
@@ -95,12 +100,31 @@ export default defineDocs({
 @import "@farming-labs/theme/shiny/css";`,
   },
   {
+    key: "darkbold",
+    name: "DarkBold",
+    description: "Pure monochrome with tight Geist typography and bold, minimal surfaces.",
+    cssImport: '@import "@farming-labs/theme/darkbold/css";',
+    colors: ["#000000", "#ffffff", "#888888", "#eaeaea"],
+    accent: "#ffffff",
+    previewEnabled: true,
+    configSnippet: `import { defineDocs } from "@farming-labs/docs";
+import { darkbold } from "@farming-labs/theme/darkbold";
+
+export default defineDocs({
+  entry: "docs",
+  theme: darkbold(),
+});`,
+    globalCss: `@import "tailwindcss";
+@import "@farming-labs/theme/darkbold/css";`,
+  },
+  {
     key: "greentree",
     name: "GreenTree",
     description: "Bold, GreenTree inspired, emerald green",
     cssImport: '@import "@farming-labs/theme/greentree/css";',
     colors: ["#0D9373", "#26BD6C", "#171A18", "#DFE1E0"],
     accent: "#0D9373",
+    previewEnabled: false,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { greentree } from "@farming-labs/theme/greentree";
 
@@ -110,6 +134,43 @@ export default defineDocs({
 });`,
     globalCss: `@import "tailwindcss";
 @import "@farming-labs/theme/greentree/css";`,
+  },
+  {
+    key: "hardline",
+    name: "Hardline",
+    description: "Original hard-edge preset with square corners, bold borders, and sharp contrast.",
+    cssImport: '@import "@farming-labs/theme/hardline/css";',
+    colors: ["#ffd335", "#f2efe8", "#47423a", "#111111"],
+    accent: "#ffd335",
+    previewEnabled: false,
+    configSnippet: `import { defineDocs } from "@farming-labs/docs";
+import { hardline } from "@farming-labs/theme/hardline";
+
+export default defineDocs({
+  entry: "docs",
+  theme: hardline(),
+});`,
+    globalCss: `@import "tailwindcss";
+@import "@farming-labs/theme/hardline/css";`,
+  },
+  {
+    key: "concrete",
+    name: "Concrete",
+    description:
+      "Poster-style brutalist variant with offset shadows, square corners, and louder contrast.",
+    cssImport: '@import "@farming-labs/theme/concrete/css";',
+    colors: ["#ff5b31", "#f6ead9", "#5b4e42", "#141210"],
+    accent: "#ff5b31",
+    previewEnabled: false,
+    configSnippet: `import { defineDocs } from "@farming-labs/docs";
+import { concrete } from "@farming-labs/theme/concrete";
+
+export default defineDocs({
+  entry: "docs",
+  theme: concrete(),
+});`,
+    globalCss: `@import "tailwindcss";
+@import "@farming-labs/theme/concrete/css";`,
   },
 ];
 
@@ -199,27 +260,33 @@ function ThemeCard({
         {theme.cssImport}
       </code>
 
-      <div className="flex items-center gap-2">
-        <Link
-          href={`/docs?theme=${theme.key}`}
-          className="inline-flex items-center gap-2 text-[11px] font-mono px-4 py-2 rounded-none uppercase border transition-all hover:no-underline border-neutral-300 dark:border-transparent shadow-sm dark:shadow-none hover:opacity-90"
-          style={{
-            borderColor: isDark
-              ? `${theme.accent}20`
-              : ["shiny", "pixel-border", "darksharp"].includes(theme.key)
-                ? `#00000030`
-                : `${theme.accent}20`,
-            color: isDark
-              ? ["shiny", "pixel-border", "darksharp"].includes(theme.key)
-                ? theme.accent
-                : theme.accent
-              : "black",
-            background: isDark ? `${theme.accent}04` : `${theme.accent}12`,
-          }}
-        >
-          Try it live
-          <ArrowRight className="size-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
-        </Link>
+      <div className="flex flex-wrap items-center gap-2">
+        {theme.previewEnabled ? (
+          <Link
+            href={`/docs?theme=${theme.key}`}
+            className="inline-flex items-center gap-2 text-[11px] font-mono px-4 py-2 rounded-none uppercase border transition-all hover:no-underline border-neutral-300 dark:border-transparent shadow-sm dark:shadow-none hover:opacity-90"
+            style={{
+              borderColor: isDark
+                ? `${theme.accent}20`
+                : ["shiny", "pixel-border", "darksharp"].includes(theme.key)
+                  ? `#00000030`
+                  : `${theme.accent}20`,
+              color: isDark ? theme.accent : "black",
+              background: isDark ? `${theme.accent}04` : `${theme.accent}12`,
+            }}
+          >
+            Try it live
+            <ArrowRight className="size-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
+          </Link>
+        ) : (
+          <span
+            aria-disabled="true"
+            className="inline-flex items-center gap-2 text-[11px] font-mono px-4 py-2 rounded-none uppercase border border-neutral-200 dark:border-white/8 text-neutral-400 dark:text-white/20 bg-neutral-100/70 dark:bg-white/[2%] cursor-not-allowed select-none"
+          >
+            Try it live
+            <ArrowRight className="size-3.5 -rotate-45 opacity-40" />
+          </span>
+        )}
 
         <button
           onClick={onShowCode}
@@ -227,6 +294,14 @@ function ThemeCard({
         >
           <span className="ml-0.5">Show code</span>
         </button>
+
+        <Link
+          href={`/docs/themes/${theme.key}`}
+          className="group inline-flex items-center gap-2 text-[11px] font-mono px-4 py-2 rounded-none uppercase border border-neutral-300 dark:border-white/6 text-neutral-500 dark:text-white/40 hover:border-neutral-400 hover:text-neutral-700 dark:hover:border-white/12 dark:hover:text-white/60 transition-all hover:no-underline"
+        >
+          Docs
+          <ArrowRight className="size-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
+        </Link>
       </div>
     </div>
   );
@@ -285,8 +360,8 @@ export default function ThemesPage() {
         <div className="mb-10 max-w-2xl">
           <p className="text-[13px] text-neutral-500 dark:text-white/40 leading-relaxed">
             Each theme ships as a single CSS import and a factory function. Click{" "}
-            <strong className="text-neutral-800 dark:text-white/80">Try it live</strong> to open the
-            docs with that theme applied and the customizer drawer open, or click{" "}
+            <strong className="text-neutral-800 dark:text-white/80">Try it live</strong> on the
+            supported presets, or click{" "}
             <strong className="text-neutral-800 dark:text-white/80">Show code</strong> to see the
             config files you need.
           </p>
