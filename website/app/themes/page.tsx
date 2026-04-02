@@ -15,6 +15,7 @@ const themes = [
     cssImport: '@import "@farming-labs/theme/default/css";',
     colors: ["#6366f1", "#0a0a0a", "#fafafa", "#262626"],
     accent: "#6366f1",
+    previewEnabled: true,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { fumadocs } from "@farming-labs/theme";
 
@@ -33,6 +34,7 @@ export default defineDocs({
     cssImport: '@import "@farming-labs/theme/colorful/css";',
     colors: ["#eab308", "#0a0a0a", "#fafafa", "#262626"],
     accent: "#eab308",
+    previewEnabled: true,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { colorful } from "@farming-labs/theme/colorful";
 
@@ -50,6 +52,7 @@ export default defineDocs({
     cssImport: '@import "@farming-labs/theme/darksharp/css";',
     colors: ["#fafaf9", "#000000", "#a8a29e", "#292524"],
     accent: "#fafaf9",
+    previewEnabled: true,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { darksharp } from "@farming-labs/theme/darksharp";
 
@@ -67,6 +70,7 @@ export default defineDocs({
     cssImport: '@import "@farming-labs/theme/pixel-border/css";',
     colors: ["#fbfbfa", "#050505", "#8c8c8c", "#262626"],
     accent: "#fbfbfa",
+    previewEnabled: true,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
 
@@ -84,6 +88,7 @@ export default defineDocs({
     cssImport: '@import "@farming-labs/theme/shiny/css";',
     colors: ["#f0f0f0", "#000000", "#a8a29e", "#292524"],
     accent: "#f0f0f0",
+    previewEnabled: true,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { shiny } from "@farming-labs/theme/shiny";
 
@@ -101,6 +106,7 @@ export default defineDocs({
     cssImport: '@import "@farming-labs/theme/darkbold/css";',
     colors: ["#000000", "#ffffff", "#888888", "#eaeaea"],
     accent: "#000000",
+    previewEnabled: true,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { darkbold } from "@farming-labs/theme/darkbold";
 
@@ -118,6 +124,7 @@ export default defineDocs({
     cssImport: '@import "@farming-labs/theme/greentree/css";',
     colors: ["#0D9373", "#26BD6C", "#171A18", "#DFE1E0"],
     accent: "#0D9373",
+    previewEnabled: false,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { greentree } from "@farming-labs/theme/greentree";
 
@@ -135,6 +142,7 @@ export default defineDocs({
     cssImport: '@import "@farming-labs/theme/hardline/css";',
     colors: ["#ffd335", "#f2efe8", "#47423a", "#111111"],
     accent: "#ffd335",
+    previewEnabled: false,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { hardline } from "@farming-labs/theme/hardline";
 
@@ -153,6 +161,7 @@ export default defineDocs({
     cssImport: '@import "@farming-labs/theme/concrete/css";',
     colors: ["#ff5b31", "#f6ead9", "#5b4e42", "#141210"],
     accent: "#ff5b31",
+    previewEnabled: false,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { concrete } from "@farming-labs/theme/concrete";
 
@@ -252,26 +261,32 @@ function ThemeCard({
       </code>
 
       <div className="flex items-center gap-2">
-        <Link
-          href={`/docs/themes/${theme.key}`}
-          className="inline-flex items-center gap-2 text-[11px] font-mono px-4 py-2 rounded-none uppercase border transition-all hover:no-underline border-neutral-300 dark:border-transparent shadow-sm dark:shadow-none hover:opacity-90"
-          style={{
-            borderColor: isDark
-              ? `${theme.accent}20`
-              : ["shiny", "pixel-border", "darksharp"].includes(theme.key)
-                ? `#00000030`
-                : `${theme.accent}20`,
-            color: isDark
-              ? ["shiny", "pixel-border", "darksharp"].includes(theme.key)
-                ? theme.accent
-                : theme.accent
-              : "black",
-            background: isDark ? `${theme.accent}04` : `${theme.accent}12`,
-          }}
-        >
-          Theme docs
-          <ArrowRight className="size-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
-        </Link>
+        {theme.previewEnabled ? (
+          <Link
+            href={`/docs?theme=${theme.key}`}
+            className="inline-flex items-center gap-2 text-[11px] font-mono px-4 py-2 rounded-none uppercase border transition-all hover:no-underline border-neutral-300 dark:border-transparent shadow-sm dark:shadow-none hover:opacity-90"
+            style={{
+              borderColor: isDark
+                ? `${theme.accent}20`
+                : ["shiny", "pixel-border", "darksharp"].includes(theme.key)
+                  ? `#00000030`
+                  : `${theme.accent}20`,
+              color: isDark ? theme.accent : "black",
+              background: isDark ? `${theme.accent}04` : `${theme.accent}12`,
+            }}
+          >
+            Try it live
+            <ArrowRight className="size-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
+          </Link>
+        ) : (
+          <span
+            aria-disabled="true"
+            className="inline-flex items-center gap-2 text-[11px] font-mono px-4 py-2 rounded-none uppercase border border-neutral-200 dark:border-white/8 text-neutral-400 dark:text-white/20 bg-neutral-100/70 dark:bg-white/[2%] cursor-not-allowed select-none"
+          >
+            Try it live
+            <ArrowRight className="size-3.5 -rotate-45 opacity-40" />
+          </span>
+        )}
 
         <button
           onClick={onShowCode}
@@ -336,8 +351,9 @@ export default function ThemesPage() {
       <main className="overflow-x-hidden mx-auto md:max-w-[90%] max-w-full px-6 py-12">
         <div className="mb-10 max-w-2xl">
           <p className="text-[13px] text-neutral-500 dark:text-white/40 leading-relaxed">
-            Each theme ships as a single CSS import and a factory function. Open the dedicated docs
-            page for the theme, or click{" "}
+            Each theme ships as a single CSS import and a factory function. Click{" "}
+            <strong className="text-neutral-800 dark:text-white/80">Try it live</strong> on the
+            supported presets, or click{" "}
             <strong className="text-neutral-800 dark:text-white/80">Show code</strong> to see the
             config files you need.
           </p>
