@@ -105,7 +105,7 @@ export default defineDocs({
     description: "Pure monochrome with tight Geist typography and bold, minimal surfaces.",
     cssImport: '@import "@farming-labs/theme/darkbold/css";',
     colors: ["#000000", "#ffffff", "#888888", "#eaeaea"],
-    accent: "#000000",
+    accent: "#ffffff",
     previewEnabled: true,
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { darkbold } from "@farming-labs/theme/darkbold";
