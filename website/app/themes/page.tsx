@@ -299,7 +299,7 @@ function ThemeCard({
           href={`/docs/themes/${theme.key}`}
           className="group inline-flex items-center gap-2 text-[11px] font-mono px-4 py-2 rounded-none uppercase border border-neutral-300 dark:border-white/6 text-neutral-500 dark:text-white/40 hover:border-neutral-400 hover:text-neutral-700 dark:hover:border-white/12 dark:hover:text-white/60 transition-all hover:no-underline"
         >
-          Theme docs
+          Docs
           <ArrowRight className="size-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
         </Link>
       </div>
