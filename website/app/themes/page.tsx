@@ -95,6 +95,23 @@ export default defineDocs({
 @import "@farming-labs/theme/shiny/css";`,
   },
   {
+    key: "darkbold",
+    name: "DarkBold",
+    description: "Pure monochrome with tight Geist typography and bold, minimal surfaces.",
+    cssImport: '@import "@farming-labs/theme/darkbold/css";',
+    colors: ["#000000", "#ffffff", "#888888", "#eaeaea"],
+    accent: "#000000",
+    configSnippet: `import { defineDocs } from "@farming-labs/docs";
+import { darkbold } from "@farming-labs/theme/darkbold";
+
+export default defineDocs({
+  entry: "docs",
+  theme: darkbold(),
+});`,
+    globalCss: `@import "tailwindcss";
+@import "@farming-labs/theme/darkbold/css";`,
+  },
+  {
     key: "greentree",
     name: "GreenTree",
     description: "Bold, GreenTree inspired, emerald green",
@@ -110,6 +127,41 @@ export default defineDocs({
 });`,
     globalCss: `@import "tailwindcss";
 @import "@farming-labs/theme/greentree/css";`,
+  },
+  {
+    key: "hardline",
+    name: "Hardline",
+    description: "Original hard-edge preset with square corners, bold borders, and sharp contrast.",
+    cssImport: '@import "@farming-labs/theme/hardline/css";',
+    colors: ["#ffd335", "#f2efe8", "#47423a", "#111111"],
+    accent: "#ffd335",
+    configSnippet: `import { defineDocs } from "@farming-labs/docs";
+import { hardline } from "@farming-labs/theme/hardline";
+
+export default defineDocs({
+  entry: "docs",
+  theme: hardline(),
+});`,
+    globalCss: `@import "tailwindcss";
+@import "@farming-labs/theme/hardline/css";`,
+  },
+  {
+    key: "concrete",
+    name: "Concrete",
+    description:
+      "Poster-style brutalist variant with offset shadows, square corners, and louder contrast.",
+    cssImport: '@import "@farming-labs/theme/concrete/css";',
+    colors: ["#ff5b31", "#f6ead9", "#5b4e42", "#141210"],
+    accent: "#ff5b31",
+    configSnippet: `import { defineDocs } from "@farming-labs/docs";
+import { concrete } from "@farming-labs/theme/concrete";
+
+export default defineDocs({
+  entry: "docs",
+  theme: concrete(),
+});`,
+    globalCss: `@import "tailwindcss";
+@import "@farming-labs/theme/concrete/css";`,
   },
 ];
 
@@ -201,7 +253,7 @@ function ThemeCard({
 
       <div className="flex items-center gap-2">
         <Link
-          href={`/docs?theme=${theme.key}`}
+          href={`/docs/themes/${theme.key}`}
           className="inline-flex items-center gap-2 text-[11px] font-mono px-4 py-2 rounded-none uppercase border transition-all hover:no-underline border-neutral-300 dark:border-transparent shadow-sm dark:shadow-none hover:opacity-90"
           style={{
             borderColor: isDark
@@ -217,7 +269,7 @@ function ThemeCard({
             background: isDark ? `${theme.accent}04` : `${theme.accent}12`,
           }}
         >
-          Try it live
+          Theme docs
           <ArrowRight className="size-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
         </Link>
 
@@ -284,9 +336,8 @@ export default function ThemesPage() {
       <main className="overflow-x-hidden mx-auto md:max-w-[90%] max-w-full px-6 py-12">
         <div className="mb-10 max-w-2xl">
           <p className="text-[13px] text-neutral-500 dark:text-white/40 leading-relaxed">
-            Each theme ships as a single CSS import and a factory function. Click{" "}
-            <strong className="text-neutral-800 dark:text-white/80">Try it live</strong> to open the
-            docs with that theme applied and the customizer drawer open, or click{" "}
+            Each theme ships as a single CSS import and a factory function. Open the dedicated docs
+            page for the theme, or click{" "}
             <strong className="text-neutral-800 dark:text-white/80">Show code</strong> to see the
             config files you need.
           </p>
