@@ -154,16 +154,16 @@ describe("scaffoldNextJs (app dir consistency)", () => {
       written,
     );
 
-    expect(written).toContain("app/api-reference/[[...slug]]/route.ts");
+    expect(written).toContain("app/api-reference/[[...slug]]/page.tsx");
 
     const config = fs.readFileSync(path.join(tmpDir, "docs.config.ts"), "utf-8");
     expect(config).toContain("apiReference:");
 
     const route = fs.readFileSync(
-      path.join(tmpDir, "app/api-reference/[[...slug]]/route.ts"),
+      path.join(tmpDir, "app/api-reference/[[...slug]]/page.tsx"),
       "utf-8",
     );
-    expect(route).toContain("createNextApiReference");
+    expect(route).toContain("createNextApiReferencePage");
   });
 });
 

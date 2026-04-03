@@ -15,6 +15,7 @@ export { createTheme, extendTheme } from "./create-theme.js";
 export { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "./i18n.js";
 export { resolveTitle, resolveOGImage, buildPageOpenGraph, buildPageTwitter } from "./metadata.js";
 export type {
+  ApiReferenceRenderer,
   DocsConfig,
   ApiReferenceConfig,
   DocsI18nConfig,

@@ -7,6 +7,7 @@ import {
   buildApiReferenceScalarCss,
   buildApiReferenceOpenApiDocument,
   buildApiReferenceOpenApiDocumentAsync,
+  resolveApiReferenceRenderer,
 } from "./api-reference.js";
 import { defineDocs } from "./define-docs.js";
 
@@ -127,6 +128,35 @@ describe("buildApiReferenceOpenApiDocument", () => {
     }
   });
 
+  it("resolves a request-relative OpenAPI JSON when a base URL is provided", async () => {
+    const fetchSpy = vi.fn().mockImplementation(async () => createRemoteOpenApiResponse());
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const config = defineDocs({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+        specUrl: "/api/openapi.json",
+      },
+    });
+
+    const document = await buildApiReferenceOpenApiDocumentAsync(config, {
+      framework: "next",
+      baseUrl: "https://docs.example.com",
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect((fetchSpy.mock.calls[0]?.[0] as URL).href).toBe(
+      "https://docs.example.com/api/openapi.json",
+    );
+    expect(document).toMatchObject({
+      openapi: "3.0.4",
+      info: {
+        title: "Remote Pets",
+      },
+    });
+  });
+
   it("renders hosted OpenAPI HTML for every framework", async () => {
     vi.stubGlobal(
       "fetch",
@@ -210,5 +240,42 @@ describe("buildApiReferenceOpenApiDocument", () => {
     expect(css).toContain("--scalar-radius: 0px;");
     expect(css).toContain("--scalar-button-1-color: #0b0b0b;");
     expect(css).toContain("var(--scalar-theme-foreground) 10%");
+  });
+
+  it("defaults the API reference renderer to fumadocs for Next.js", () => {
+    const config = defineDocs({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+      },
+    });
+
+    expect(resolveApiReferenceRenderer(config.apiReference, "next")).toBe("fumadocs");
+  });
+
+  it("defaults the API reference renderer to scalar outside Next.js", () => {
+    const config = defineDocs({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+      },
+    });
+
+    expect(resolveApiReferenceRenderer(config.apiReference, "tanstack-start")).toBe("scalar");
+    expect(resolveApiReferenceRenderer(config.apiReference, "sveltekit")).toBe("scalar");
+    expect(resolveApiReferenceRenderer(config.apiReference, "astro")).toBe("scalar");
+    expect(resolveApiReferenceRenderer(config.apiReference, "nuxt")).toBe("scalar");
+  });
+
+  it("respects an explicit API reference renderer selection", () => {
+    const config = defineDocs({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+        renderer: "scalar",
+      },
+    });
+
+    expect(resolveApiReferenceRenderer(config.apiReference, "next")).toBe("scalar");
   });
 });

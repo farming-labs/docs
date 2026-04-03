@@ -1,0 +1,45 @@
+---
+title: Hosted OpenAPI Spec
+description: Render a hosted OpenAPI JSON document in Next.js with the Fumadocs API reference UI.
+icon: code
+---
+
+# Hosted OpenAPI Spec
+
+This example app enables the built-in API reference route with a hosted OpenAPI JSON document and the Fumadocs renderer.
+
+## docs.config.tsx
+
+```tsx
+import { defineDocs } from "@farming-labs/docs";
+import { colorful } from "@farming-labs/theme/colorful";
+
+export default defineDocs({
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    renderer: "fumadocs",
+    specUrl: "/api/openapi-spec",
+  },
+  theme: colorful(),
+});
+```
+
+## Route behavior
+
+In Next.js, `withDocs()` generates the `/api-reference` page automatically, so you do not need to add a manual route file for this setup.
+
+This example serves the JSON from `/api/openapi-spec`, then points `specUrl` at that same-origin route.
+
+Open the live example route here:
+
+- [API Reference](/api-reference)
+
+## When to use this
+
+Use `specUrl` when your backend is deployed separately and already exposes an `openapi.json` file.
+
+In Next.js you can also use a request-relative path like `/api/openapi-spec` when the same app already serves the OpenAPI JSON.
+
+Use local route scanning instead when your API handlers live inside the same Next.js app.

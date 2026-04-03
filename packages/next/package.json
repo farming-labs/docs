@@ -11,7 +11,8 @@
   "license": "MIT",
   "author": "Farming Labs",
   "files": [
-    "dist"
+    "dist",
+    "styles"
   ],
   "type": "module",
   "main": "./dist/index.mjs",
@@ -27,6 +28,7 @@
       "import": "./dist/api-reference.mjs",
       "default": "./dist/api-reference.mjs"
     },
+    "./api-reference.css": "./styles/api-reference.css",
     "./client-callbacks": {
       "types": "./dist/client-callbacks.d.mts",
       "import": "./dist/client-callbacks.mjs",
@@ -75,7 +77,9 @@
     "@mdx-js/react": "^3.1.0",
     "@next/mdx": "^16.1.6",
     "@scalar/nextjs-api-reference": "0.10.3",
+    "fumadocs-openapi": "10.3.6",
     "fumadocs-core": "^16.6.1",
+    "fumadocs-ui": "^16.6.1",
     "remark-frontmatter": "^5.0.0",
     "remark-gfm": "^4.0.1",
     "remark-mdx-frontmatter": "^5.0.0"
@@ -85,6 +89,7 @@
     "@farming-labs/theme": "workspace:*",
     "@types/node": "^22.10.0",
     "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"

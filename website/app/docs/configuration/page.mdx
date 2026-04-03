@@ -189,6 +189,7 @@ export default defineDocs({
   apiReference: {
     enabled: true,
     path: "api-reference",
+    renderer: "fumadocs",
     routeRoot: "api",
     exclude: ["/api/internal/health", "internal/debug"],
   },
@@ -205,6 +206,7 @@ export default defineDocs({
   apiReference: {
     enabled: true,
     path: "api-reference",
+    renderer: "fumadocs",
     specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
   },
   theme: fumadocs(),
@@ -215,12 +217,19 @@ export default defineDocs({
 | ----------- | ---------- | ----------------- | ----------- |
 | `enabled`   | `boolean`  | `true` inside the object | Enables generated API reference pages |
 | `path`      | `string`   | `"api-reference"` | URL path where the generated reference lives |
-| `specUrl`   | `string`   | —                 | Absolute URL to a hosted OpenAPI JSON document. When set, local route scanning is skipped |
+| `renderer`  | `"fumadocs" \| "scalar"` | framework-specific | UI renderer. Defaults to `fumadocs` in Next.js and `scalar` in TanStack Start, SvelteKit, Astro, and Nuxt |
+| `specUrl`   | `string`   | —                 | URL to a hosted OpenAPI JSON document. Supports absolute URLs and request-relative paths in Next.js. When set, local route scanning is skipped |
 | `routeRoot` | `string`   | `"api"`           | Filesystem route root to scan. Bare values like `"api"` resolve inside `app/` or `src/app/`; full values like `"app/internal-api"` are supported too |
 | `exclude`   | `string[]` | `[]`              | Routes to omit from the generated reference. Accepts URL-style paths like `"/api/hello"` or route-root-relative entries like `"hello"` / `"hello/route.ts"` |
 
 When `specUrl` is set, `routeRoot` and `exclude` are ignored because the reference is rendered
 from the remote spec.
+
+Renderer notes:
+
+- **Next.js** defaults to the Fumadocs OpenAPI UI and auto-generates the page route with `withDocs()`
+- **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt** default to Scalar because they currently serve the API reference through HTML handlers
+- Set `renderer: "scalar"` in Next.js if you want to keep the old Scalar UI
 
 That does not change the framework routing requirements:
 
