@@ -27,6 +27,27 @@ function InlineLinkTag({ href, children }: { href: string; children: ReactNode }
   );
 }
 
+function InlineExternalLink({
+  href,
+  children,
+  className = "",
+}: {
+  href: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className={`ml-[0.08em] mr-[0.24em] inline whitespace-nowrap align-baseline font-mono text-[0.95em] tracking-[0.01em] [word-spacing:0.12em] text-black/75 underline decoration-dotted decoration-black/30 underline-offset-4 transition-colors hover:text-black hover:decoration-black/50 hover:no-underline dark:text-white/75 dark:decoration-white/30 dark:hover:text-white dark:hover:decoration-white/50 ${className}`}
+    >
+      {children}
+    </a>
+  );
+}
+
 const releases: Release[] = [
   {
     version: "v0.1.0",
@@ -41,7 +62,6 @@ const releases: Release[] = [
       { label: "Page actions", href: "/docs/customization/page-actions" },
       { label: "Themes", href: "/docs/themes" },
       { label: "Reference", href: "/docs/reference" },
-      { label: "Showcase", href: "/showcase" },
     ],
     changes: [
       {
@@ -99,6 +119,32 @@ const releases: Release[] = [
             Dedicated <InlineLinkTag href="/themes">/themes</InlineLinkTag>
             and <InlineLinkTag href="/showcase">showcase</InlineLinkTag> website surfaces for
             browsing presets, examples, and visual references
+          </>,
+          <>
+            Approved showcase sites include
+            <InlineExternalLink href="https://orm.farming-labs.dev" className="ml-[0.22em]">
+              orm.farming-labs.dev
+            </InlineExternalLink>
+            , <InlineExternalLink href="https://www.blyp.dev">blyp.dev</InlineExternalLink>,{" "}
+            <InlineExternalLink href="https://navilo-docs.vercel.app/docs">
+              navilo-docs.vercel.app
+            </InlineExternalLink>
+            ,{" "}
+            <InlineExternalLink href="https://cligram.kumneger.dev/">
+              cligram.kumneger.dev
+            </InlineExternalLink>
+            ,{" "}
+            <InlineExternalLink href="https://sql-studio-docs.frectonz.et/docs">
+              sql-studio-docs.frectonz.et
+            </InlineExternalLink>
+            ,{" "}
+            <InlineExternalLink href="https://flutter-android-widgets-docs.vercel.app/docs">
+              flutter-android-widgets-docs.vercel.app
+            </InlineExternalLink>
+            , and{" "}
+            <InlineExternalLink href="https://docs.farming-labs.dev/docs">
+              docs.farming-labs.dev
+            </InlineExternalLink>
           </>,
         ],
       },
