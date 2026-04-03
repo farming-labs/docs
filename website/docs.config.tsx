@@ -224,6 +224,19 @@ export default defineDocs({
               textDecorationColor:
                 "color-mix(in srgb, var(--color-fd-foreground) 30%, transparent)",
             }}
+            href="/changelog#v0.1.0"
+          >
+            v0.1.0
+          </a>
+          <span className="mr-1 text-[12px]" style={{ opacity: 0.4 }}>
+            /
+          </span>
+          <a
+            className="lowercase cursor-pointer text-[12px] underline underline-offset-2 decoration-dotted transition-colors mr-1"
+            style={{
+              textDecorationColor:
+                "color-mix(in srgb, var(--color-fd-foreground) 30%, transparent)",
+            }}
             href="/changelog#v0.0.63"
           >
             v0.0.63

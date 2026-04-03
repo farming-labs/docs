@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { GitPullRequest, Hash, Tag, Pin } from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import Link from "next/link";
@@ -11,10 +12,111 @@ interface Release {
   excerpt: string;
   isBeta?: boolean;
   pinned?: boolean;
-  changes: { category: string; items: string[] }[];
+  links?: { label: string; href: string }[];
+  changes: { category: string; items: ReactNode[] }[];
+}
+
+function InlineLinkTag({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="ml-[0.08em] mr-[0.24em] inline whitespace-nowrap align-baseline font-mono text-[0.95em] tracking-[0.01em] [word-spacing:0.12em] text-black/75 underline decoration-dotted decoration-black/30 underline-offset-4 transition-colors hover:text-black hover:decoration-black/50 hover:no-underline dark:text-white/75 dark:decoration-white/30 dark:hover:text-white dark:hover:decoration-white/50"
+    >
+      {children}
+    </Link>
+  );
 }
 
 const releases: Release[] = [
+  {
+    version: "v0.1.0",
+    title: "v0.1.0: Stable Release",
+    date: "Apr 2026",
+    pinned: true,
+    excerpt:
+      "The first 0.1 stable release for @farming-labs/docs — rolling up the latest framework support, richer docs APIs, built-in feedback and page actions, expanded themes, and showcase-ready website surfaces.",
+    links: [
+      { label: "Components", href: "/docs/customization/components" },
+      { label: "Feedback", href: "/docs/configuration#page-feedback" },
+      { label: "Page actions", href: "/docs/customization/page-actions" },
+      { label: "Themes", href: "/docs/themes" },
+      { label: "Reference", href: "/docs/reference" },
+      { label: "Showcase", href: "/showcase" },
+    ],
+    changes: [
+      {
+        category: "Core Platform",
+        items: [
+          <>
+            Single <code>docs.config</code> model for metadata, navigation, sidebar, theming,
+            search, AI,{" "}
+            <InlineLinkTag href="/docs/configuration#page-feedback">feedback</InlineLinkTag>
+            and <InlineLinkTag href="/docs/customization/page-actions">page actions</InlineLinkTag>
+          </>,
+          "Framework support across Next.js, TanStack Start, SvelteKit, Astro, and Nuxt",
+          <>
+            CLI-guided setup, generated docs routing,{" "}
+            <InlineLinkTag href="/docs/reference">API reference</InlineLinkTag> support, and
+            multi-framework examples for faster adoption
+          </>,
+        ],
+      },
+      {
+        category: "Components & Docs UX",
+        items: [
+          <>
+            Built-in MDX components including{" "}
+            <InlineLinkTag href="/docs/customization/components">Callout</InlineLinkTag>{" "}
+            <InlineLinkTag href="/docs/customization/components">Tabs</InlineLinkTag>
+            and <InlineLinkTag href="/docs/customization/components">HoverLink</InlineLinkTag> with
+            config and theme-level overrides
+          </>,
+          <>
+            <InlineLinkTag href="/docs/configuration#page-feedback">Docs feedback</InlineLinkTag>{" "}
+            API with page-aware callback payloads plus built-in Good / Bad page prompts
+          </>,
+          <>
+            <InlineLinkTag href="/docs/customization/page-actions">Page actions</InlineLinkTag> for
+            copy/open flows, code-block copy hooks, AI search, and polished docs navigation
+            primitives
+          </>,
+        ],
+      },
+      {
+        category: "Themes & Showcase",
+        items: [
+          <>
+            <InlineLinkTag href="/docs/themes">Nine built-in themes</InlineLinkTag> Default,
+            Colorful, Darksharp, Pixel Border, Shiny, DarkBold, GreenTree, Hardline, and Concrete
+          </>,
+          <>
+            Live theme customizer, reusable theme APIs, and docs for{" "}
+            <InlineLinkTag href="/docs/themes/creating-themes">
+              creating and sharing custom themes
+            </InlineLinkTag>
+          </>,
+          <>
+            Dedicated <InlineLinkTag href="/themes">/themes</InlineLinkTag>
+            and <InlineLinkTag href="/showcase">showcase</InlineLinkTag> website surfaces for
+            browsing presets, examples, and visual references
+          </>,
+        ],
+      },
+      {
+        category: "Docs Site & Stability",
+        items: [
+          <>
+            Expanded <InlineLinkTag href="/docs/reference">reference</InlineLinkTag>{" "}
+            <InlineLinkTag href="/docs/configuration">configuration</InlineLinkTag>
+            and <InlineLinkTag href="/docs/customization">customization</InlineLinkTag> docs
+            covering feedback, page actions, API reference, themes, and framework setup
+          </>,
+          "Interactive changelog with version-anchored links and release callouts across the website",
+          "Cross-framework build, CI, security, and Turbopack stability work across the docs site and example apps",
+        ],
+      },
+    ],
+  },
   {
     version: "v0.0.63",
     title: "v0.0.63: Current Release",
@@ -588,6 +690,19 @@ export function Component() {
                   <p className="text-black/50 dark:text-white/50 text-sm font-medium leading-relaxed mt-2">
                     {item.excerpt}
                   </p>
+                  {item.links?.length ? (
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {item.links.map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className="border border-dashed border-black/[12%] px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider text-black/55 transition-colors hover:text-black hover:border-black/22 hover:no-underline dark:border-white/[14%] dark:text-white/55 dark:hover:text-white dark:hover:border-white/28"
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -599,12 +714,11 @@ export function Component() {
                     </h4>
                     <ul className="space-y-1.5">
                       {group.items.map((line, lIdx) => (
-                        <li
-                          key={lIdx}
-                          className="flex items-start gap-2 text-sm text-black/60 dark:text-white/60 leading-relaxed"
-                        >
+                        <li key={lIdx} className="flex items-start gap-2 leading-relaxed">
                           <span className="mt-2 size-1 rounded-full bg-black/30 dark:bg-white/30 shrink-0" />
-                          {line}
+                          <div className="min-w-0 flex-1 text-sm text-black/60 dark:text-white/60">
+                            {line}
+                          </div>
                         </li>
                       ))}
                     </ul>

@@ -10,6 +10,7 @@ import AstroRouteTabs from "@/components/ui/astro-route-tabs";
 import InitBlockTabs from "@/components/ui/init-block-tabs";
 
 const heroVersions = [
+  "v0.1.0",
   "v0.0.63",
   "v0.0.44",
   "v0.0.31",
