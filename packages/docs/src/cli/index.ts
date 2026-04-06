@@ -77,7 +77,7 @@ async function main() {
       ? "beta"
       : args.includes("--latest")
         ? "latest"
-        : parsedCommand.tag ?? "latest";
+        : (parsedCommand.tag ?? "latest");
     await upgrade({ framework, tag });
   } else if (parsedCommand.command === "--help" || parsedCommand.command === "-h") {
     printHelp();
