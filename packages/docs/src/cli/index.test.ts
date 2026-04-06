@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseFlags } from "./index.js";
+import { parseCommandAlias, parseFlags } from "./index.js";
 
 describe("parseFlags", () => {
   it("parses --key=value form", () => {
@@ -71,5 +71,30 @@ describe("parseFlags", () => {
     const flags = parseFlags(["--template", "--name", "foo"]);
     expect(flags.template).toBeUndefined();
     expect(flags.name).toBe("foo");
+  });
+});
+
+describe("parseCommandAlias", () => {
+  it("normalizes upgrade@beta to upgrade with beta tag", () => {
+    expect(parseCommandAlias("upgrade@beta")).toEqual({
+      command: "upgrade",
+      tag: "beta",
+    });
+  });
+
+  it("normalizes upgrade@latest to upgrade with latest tag", () => {
+    expect(parseCommandAlias("upgrade@latest")).toEqual({
+      command: "upgrade",
+      tag: "latest",
+    });
+  });
+
+  it("leaves plain commands alone", () => {
+    expect(parseCommandAlias("upgrade")).toEqual({ command: "upgrade" });
+    expect(parseCommandAlias("init")).toEqual({ command: "init" });
+  });
+
+  it("ignores unknown upgrade dist-tags", () => {
+    expect(parseCommandAlias("upgrade@nightly")).toEqual({ command: "upgrade@nightly" });
   });
 });
