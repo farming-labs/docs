@@ -8,6 +8,7 @@ export default defineConfig({
     "packages/docs/package.json",
     "packages/fumadocs/package.json",
     "packages/next/package.json",
+    "packages/tanstack-start/package.json",
     "packages/svelte/package.json",
     "packages/svelte-theme/package.json",
     "packages/astro/package.json",

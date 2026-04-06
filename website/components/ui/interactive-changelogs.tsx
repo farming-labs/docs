@@ -79,6 +79,7 @@ const releases: Release[] = [
             <InlineLinkTag href="/docs/reference">API reference</InlineLinkTag> support, and
             multi-framework examples for faster adoption
           </>,
+          "TanStack Start integration across the adapter, example app, docs flow, and init scaffolding",
         ],
       },
       {
