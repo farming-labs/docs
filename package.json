@@ -1,5 +1,5 @@
 {
-  "name": "docs-framework-root",
+  "name": "@farming-labs/docs-root",
   "version": "0.1.0",
   "private": true,
   "type": "module",
