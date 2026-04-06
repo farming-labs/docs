@@ -27,9 +27,12 @@ function HeroSection() {
     <section className="relative md:mx-0 -mx-[5%] min-h-screen flex items-end overflow-y-hidden">
       <div className="absolute bottom-[70px] sm:bottom-16 left-0 right-0 z-[999] h-px bg-black/[8%] dark:bg-white/[8%]" />
       <div className="absolute top-8 left-2 sm:left-0 z-[1001]">
-        <span className="bg-transparent text-black/20 ml-2 sm:ml-0 dark:text-white/20 font-mono text-xs border border-l-0 border-b-0 border-black/10 dark:border-white/10 uppercase px-3 py-1 rounded-none shadow-none tracking-wider">
-          PUBLIC BETA
-        </span>
+        <Link
+          href="/changelog#v0.1.0"
+          className="bg-transparent text-black/20 ml-2 sm:ml-0 dark:text-white/20 font-mono text-xs border border-l-0 border-b-0 border-black/10 dark:border-white/10 uppercase px-3 py-1 rounded-none shadow-none tracking-wider inline-flex hover:text-black/45 dark:hover:text-white/45 transition-colors hover:no-underline"
+        >
+          v0.1.0
+        </Link>
       </div>
       <AnimatedBackground />
       <div className="relative z-[999] w-full pb-12 sm:pb-16 pt-24 px-5 sm:px-0">
