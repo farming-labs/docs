@@ -6,6 +6,25 @@ import { upgrade } from "./upgrade.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
+const UPGRADE_TAGS = ["latest", "beta"] as const;
+type UpgradeTag = (typeof UPGRADE_TAGS)[number];
+
+/** Normalize command aliases like `upgrade@beta` into the base command + dist-tag. */
+export function parseCommandAlias(rawCommand?: string): {
+  command?: string;
+  tag?: UpgradeTag;
+} {
+  if (!rawCommand) return {};
+  const [baseCommand, rawTag] = rawCommand.split("@");
+  if (baseCommand === "upgrade" && rawTag && UPGRADE_TAGS.includes(rawTag as UpgradeTag)) {
+    return {
+      command: "upgrade",
+      tag: rawTag as UpgradeTag,
+    };
+  }
+
+  return { command: rawCommand };
+}
 
 /** Parse flags like --template next, --name my-docs, --theme concrete, --entry docs, --framework astro (exported for tests). */
 export function parseFlags(argv: string[]): Record<string, string | boolean | undefined> {
@@ -38,6 +57,7 @@ export function parseFlags(argv: string[]): Record<string, string | boolean | un
 
 async function main() {
   const flags = parseFlags(args);
+  const parsedCommand = parseCommandAlias(command);
   const initOptions = {
     template: typeof flags.template === "string" ? flags.template : undefined,
     name: typeof flags.name === "string" ? flags.name : undefined,
@@ -47,17 +67,21 @@ async function main() {
     apiRouteRoot: typeof flags["api-route-root"] === "string" ? flags["api-route-root"] : undefined,
   };
 
-  if (!command || command === "init") {
+  if (!parsedCommand.command || parsedCommand.command === "init") {
     await init(initOptions);
-  } else if (command === "upgrade") {
+  } else if (parsedCommand.command === "upgrade") {
     const framework =
       (typeof flags.framework === "string" ? flags.framework : undefined) ??
       (args[1] && !args[1].startsWith("--") ? args[1] : undefined);
-    const tag = args.includes("--beta") ? "beta" : "latest";
+    const tag = args.includes("--beta")
+      ? "beta"
+      : args.includes("--latest")
+        ? "latest"
+        : (parsedCommand.tag ?? "latest");
     await upgrade({ framework, tag });
-  } else if (command === "--help" || command === "-h") {
+  } else if (parsedCommand.command === "--help" || parsedCommand.command === "-h") {
     printHelp();
-  } else if (command === "--version" || command === "-v") {
+  } else if (parsedCommand.command === "--version" || parsedCommand.command === "-v") {
     printVersion();
   } else {
     console.error(pc.red(`Unknown command: ${command}`));
@@ -94,6 +118,8 @@ ${pc.dim("Options for upgrade:")}
   ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
   ${pc.cyan("--latest")}            Install latest stable (default)
   ${pc.cyan("--beta")}             Install beta versions
+  ${pc.cyan("upgrade@beta")}       Shortcut for ${pc.cyan("upgrade --beta")}
+  ${pc.cyan("upgrade@latest")}     Shortcut for ${pc.cyan("upgrade --latest")}
 
   ${pc.cyan("-h, --help")}         Show this help message
   ${pc.cyan("-v, --version")}     Show version

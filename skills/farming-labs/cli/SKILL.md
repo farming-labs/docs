@@ -120,7 +120,11 @@ Valid values: `next`, `tanstack-start`, `nuxt`, `sveltekit`, `astro`.
 npx @farming-labs/docs@latest upgrade              # latest stable (default)
 npx @farming-labs/docs@latest upgrade --latest     # same
 npx @farming-labs/docs@latest upgrade --beta       # beta versions
+npx @farming-labs/docs@latest upgrade@beta         # shorthand for --beta
+npx @farming-labs/docs@latest upgrade@latest       # shorthand for --latest
 ```
+
+If someone uses `pnpx @farming-labs/docs upgrade@beta`, treat it as the supported shorthand for upgrading to the latest beta dist-tag.
 
 ---
 
