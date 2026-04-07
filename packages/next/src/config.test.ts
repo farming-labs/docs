@@ -16,6 +16,16 @@ const DOCS_CONFIG_WITH_API_REFERENCE = `export default {
 };
 `;
 
+const DOCS_CONFIG_WITH_SCALAR_API_REFERENCE = `export default {
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    renderer: "scalar",
+  },
+};
+`;
+
 describe("withDocs (app dir: src/app vs app)", () => {
   let tmpDir: string;
   let originalCwd: string;
@@ -71,14 +81,28 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "app/docs/layout.tsx"))).toBe(false);
   });
 
-  it("generates API reference routes when enabled in docs.config", () => {
+  it("generates a fumadocs API reference page when enabled in docs.config", () => {
     writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_API_REFERENCE, "utf-8");
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);
 
     withDocs({});
 
+    expect(existsSync(join(tmpDir, "app/api-reference/layout.tsx"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/page.tsx"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/route.ts"))).toBe(false);
+  });
+
+  it("generates a scalar API reference route when renderer is set explicitly", () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_SCALAR_API_REFERENCE, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({});
+
+    expect(existsSync(join(tmpDir, "app/api-reference/layout.tsx"))).toBe(false);
     expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/route.ts"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/page.tsx"))).toBe(false);
   });
 
   it("skips API reference route generation for static export", () => {
@@ -88,6 +112,8 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     withDocs({ output: "export" });
 
+    expect(existsSync(join(tmpDir, "app/api-reference/layout.tsx"))).toBe(false);
+    expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/page.tsx"))).toBe(false);
     expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/route.ts"))).toBe(false);
   });
 
@@ -110,7 +136,8 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     withDocs({});
 
-    expect(existsSync(join(tmpDir, "app/custom-api-reference/[[...slug]]/route.ts"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/custom-api-reference/layout.tsx"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/custom-api-reference/[[...slug]]/page.tsx"))).toBe(true);
   });
 
   it("generates a layout that re-exports the package-owned docs layout", () => {

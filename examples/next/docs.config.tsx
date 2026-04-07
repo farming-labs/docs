@@ -21,6 +21,12 @@ import { concrete } from "@farming-labs/theme/concrete";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
 export default defineDocs({
   entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    renderer: "fumadocs",
+    specUrl: "/api/openapi-spec",
+  },
   github: {
     url: "https://github.com/farming-labs/docs",
     branch: "main",

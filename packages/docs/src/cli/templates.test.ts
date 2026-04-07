@@ -4,6 +4,7 @@ import {
   docsConfigTemplate,
   docsLayoutTemplate,
   nextApiReferenceRouteTemplate,
+  nextApiReferencePageTemplate,
   rootLayoutTemplate,
   injectRootProviderIntoLayout,
   tanstackDocsConfigTemplate,
@@ -83,6 +84,17 @@ describe("docsLayoutTemplate", () => {
     expect(out).toContain('from "@farming-labs/next/api-reference"');
     expect(out).toContain("createNextApiReference");
     expect(out).toContain('import docsConfig from "../../../docs.config"');
+  });
+
+  it("creates a Next.js API reference page for the fumadocs renderer", () => {
+    const out = nextApiReferencePageTemplate(
+      { ...baseConfig, useAlias: false, nextAppDir: "app" },
+      "app/api-reference/[[...slug]]/page.tsx",
+    );
+    expect(out).toContain('import "@farming-labs/next/api-reference.css"');
+    expect(out).toContain("createNextApiReferencePage");
+    expect(out).toContain('import docsConfig from "../../../docs.config"');
+    expect(out).toContain('export const dynamic = "force-dynamic"');
   });
 });
 

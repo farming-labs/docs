@@ -1,14 +1,17 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import type { ReactNode } from "react";
 import { ApiReference } from "@scalar/nextjs-api-reference";
 import type { DocsConfig } from "@farming-labs/docs";
+import { notFound, redirect } from "next/navigation";
+import type { ReactNode } from "react";
 import {
   buildApiReferenceOpenApiDocumentAsync,
   buildApiReferencePageTitle,
   buildApiReferenceScalarCss,
   resolveApiReferenceConfig,
+  resolveApiReferenceRenderer,
 } from "@farming-labs/docs/server";
+import DocsClientCallbacks from "./client-callbacks.js";
 
 export { resolveApiReferenceConfig };
 
@@ -24,6 +27,22 @@ interface ApiReferenceRoute {
   segments: string[];
   tag: string;
   parameters: Array<Record<string, unknown>>;
+}
+
+export interface NextApiReferenceSourceState {
+  apiReference: ReturnType<typeof resolveApiReferenceConfig>;
+  document: Record<string, unknown>;
+  info: {
+    title: string;
+    description?: string;
+  };
+  pages: Array<{ url: string } & Record<string, any>>;
+  server: any;
+  source: {
+    getPage: (slug?: string[]) => any;
+    getPages: () => Array<any>;
+    getPageTree: () => any;
+  };
 }
 
 const ROUTE_FILE_RE = /^route\.(ts|tsx|js|jsx)$/;
@@ -104,6 +123,15 @@ function humanizeSegment(value: string): string {
     .replace(/-/g, " ");
 
   return normalized.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function slugifyApiReferencePageName(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
 }
 
 function endpointSegmentFromFsSegment(value: string): string {
@@ -190,6 +218,38 @@ function isThemeToggleHidden(config: DocsConfig): boolean {
   }
 
   return false;
+}
+
+function getOriginFromRequest(request?: Request): string | undefined {
+  if (!request) return undefined;
+
+  try {
+    return new URL(request.url).origin;
+  } catch {
+    return undefined;
+  }
+}
+
+function getForwardedHeaderValue(value: string | null): string | undefined {
+  if (!value) return undefined;
+  const first = value
+    .split(",")
+    .map((entry) => entry.trim())
+    .find(Boolean);
+  return first || undefined;
+}
+
+async function getOriginFromNextHeaders(): Promise<string | undefined> {
+  const { headers } = await import("next/headers");
+  const headerList = await headers();
+  const host =
+    getForwardedHeaderValue(headerList.get("x-forwarded-host")) ??
+    getForwardedHeaderValue(headerList.get("host"));
+
+  if (!host) return undefined;
+
+  const protocol = getForwardedHeaderValue(headerList.get("x-forwarded-proto")) ?? "https";
+  return `${protocol}://${host}`;
 }
 
 function buildPathParameters(fsSegments: string[]): Array<Record<string, unknown>> {
@@ -337,7 +397,7 @@ export function buildNextOpenApiDocument(config: DocsConfig): Record<string, unk
       info: {
         title: "API Reference",
         description:
-          "Remote OpenAPI specs are resolved at request time through createNextApiReference().",
+          "Remote OpenAPI specs are resolved at request time through the Next.js API reference renderer.",
         version: "0.0.0",
       },
       servers: [{ url: "/" }],
@@ -371,7 +431,7 @@ export function buildNextOpenApiDocument(config: DocsConfig): Record<string, unk
 }
 
 function DropdownIcon({ current, radius }: { current: "docs" | "api"; radius: string }) {
-  const label = current === "api" ? "</>" : "▣";
+  const isApi = current === "api";
 
   return (
     <span
@@ -387,11 +447,32 @@ function DropdownIcon({ current, radius }: { current: "docs" | "api"; radius: st
         background: "color-mix(in srgb, var(--color-fd-card, #161616) 92%, transparent)",
         color: "var(--color-fd-primary, currentColor)",
         boxShadow: "0 0 0 1px color-mix(in srgb, var(--color-fd-border, #2a2a2a) 32%, transparent)",
-        fontSize: 9,
-        fontWeight: 700,
+        fontSize: 11,
+        fontWeight: 600,
       }}
     >
-      {label}
+      {isApi ? "</>" : "▣"}
+    </span>
+  );
+}
+
+function ChevronStack() {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        display: "inline-flex",
+        flexDirection: "column",
+        gap: 2,
+        color: "var(--color-fd-muted-foreground, rgba(255,255,255,0.65))",
+      }}
+    >
+      <svg width="11" height="7" viewBox="0 0 10 6" fill="none">
+        <path d="M1 5L5 1L9 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+      <svg width="11" height="7" viewBox="0 0 10 6" fill="none">
+        <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
     </span>
   );
 }
@@ -419,19 +500,19 @@ function getApiReferenceSwitcherTheme(config: DocsConfig) {
     titleStyle: {
       fontFamily: isPixelBorder
         ? "var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace))"
-        : undefined,
+        : "var(--fd-font-sans, var(--font-geist-sans, system-ui, sans-serif))",
       textTransform: isPixelBorder ? ("uppercase" as const) : undefined,
       letterSpacing: isPixelBorder ? "0.08em" : undefined,
-      fontSize: isPixelBorder ? 12 : 14,
+      fontSize: isPixelBorder ? 12 : 13,
     },
     descriptionStyle: {
       fontFamily: isPixelBorder
         ? "var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace))"
-        : undefined,
+        : "var(--fd-font-sans, var(--font-geist-sans, system-ui, sans-serif))",
       textTransform: isPixelBorder ? ("uppercase" as const) : undefined,
       letterSpacing: isPixelBorder ? "0.04em" : undefined,
-      fontSize: isPixelBorder ? 11 : 12,
-      opacity: isPixelBorder ? 0.74 : 0.62,
+      fontSize: isPixelBorder ? 11 : 11,
+      opacity: isPixelBorder ? 0.74 : 0.72,
     },
   };
 }
@@ -456,17 +537,17 @@ function SwitcherOption({
       href={href}
       style={{
         display: "grid",
-        gridTemplateColumns: "20px 1fr 14px",
-        gap: 12,
-        alignItems: "start",
+        gridTemplateColumns: "20px minmax(0, 1fr)",
+        gap: 11,
+        alignItems: "center",
         padding: "11px 12px",
-        borderRadius: theme.cardRadius,
+        borderRadius: "0.625rem",
         textDecoration: "none",
         color: "inherit",
         background: current
-          ? "color-mix(in srgb, var(--color-fd-primary, #3a7) 10%, transparent)"
+          ? "linear-gradient(90deg, color-mix(in srgb, var(--color-fd-primary, #facc15) 20%, transparent), color-mix(in srgb, var(--color-fd-primary, #facc15) 14%, transparent))"
           : "transparent",
-        backgroundImage: !current ? theme.backgroundImage : undefined,
+        backgroundImage: current ? theme.backgroundImage : undefined,
       }}
     >
       <span
@@ -491,20 +572,9 @@ function SwitcherOption({
       >
         {title === "API Reference" ? "</>" : "▣"}
       </span>
-      <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <span style={{ fontWeight: 600, lineHeight: 1.25, ...theme.titleStyle }}>{title}</span>
+      <span style={{ display: "flex", minWidth: 0, flexDirection: "column", gap: 2.5 }}>
+        <span style={{ fontWeight: 600, lineHeight: 1.2, ...theme.titleStyle }}>{title}</span>
         <span style={{ lineHeight: 1.4, ...theme.descriptionStyle }}>{description}</span>
-      </span>
-      <span
-        aria-hidden="true"
-        style={{
-          fontSize: 12,
-          opacity: current ? 1 : 0,
-          color: "var(--color-fd-primary, currentColor)",
-          paddingTop: 2,
-        }}
-      >
-        ✓
       </span>
     </a>
   );
@@ -545,26 +615,15 @@ function ApiReferenceSwitcher({
           justifyContent: "space-between",
           gap: 10,
           cursor: "pointer",
-          padding: "11px 13px",
+          padding: "10px 13px",
           background: "color-mix(in srgb, var(--color-fd-card, #202020) 96%, transparent)",
-          borderBottom:
-            "1px solid color-mix(in srgb, var(--color-fd-border, #2a2a2a) 100%, transparent)",
         }}
       >
         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <DropdownIcon current={current} radius={theme.iconRadius} />
           <span style={{ fontWeight: 600, ...theme.titleStyle }}>{currentLabel}</span>
         </span>
-        <span
-          aria-hidden="true"
-          style={{
-            fontSize: 11,
-            opacity: 0.56,
-            transform: "translateY(1px)",
-          }}
-        >
-          ▿
-        </span>
+        <ChevronStack />
       </summary>
 
       <div
@@ -572,27 +631,32 @@ function ApiReferenceSwitcher({
           display: "flex",
           flexDirection: "column",
           gap: 2,
-          padding: 8,
+          padding: "8px 8px 9px",
           background: "color-mix(in srgb, var(--color-fd-card, #151515) 96%, transparent)",
         }}
       >
         <SwitcherOption
           href={docsUrl}
           title="Documentation"
-          description="Markdown pages, guides, and concepts"
+          description="Guides, concepts, and MDX pages"
           current={current === "docs"}
           config={config}
         />
         <SwitcherOption
           href={apiUrl}
           title="API Reference"
-          description="Scalar-powered route handler reference"
+          description="Endpoints, schemas, and examples"
           current={current === "api"}
           config={config}
         />
       </div>
     </details>
   );
+}
+
+function getExistingSidebarBanner(config: DocsConfig): unknown {
+  if (!config.sidebar || config.sidebar === true) return undefined;
+  return config.sidebar.banner;
 }
 
 function mergeBanner(existing: unknown, next: ReactNode) {
@@ -616,12 +680,14 @@ export function withNextApiReferenceBanner(config: DocsConfig): DocsConfig {
   const switcher = (
     <ApiReferenceSwitcher docsUrl={docsUrl} apiUrl={apiUrl} current="docs" config={config} />
   );
+  const existingBanner = getExistingSidebarBanner(config);
+  const banner = mergeBanner(existingBanner, switcher);
 
   if (!config.sidebar || config.sidebar === true) {
     return {
       ...config,
       sidebar: {
-        banner: switcher,
+        banner,
       },
     };
   }
@@ -630,7 +696,7 @@ export function withNextApiReferenceBanner(config: DocsConfig): DocsConfig {
     ...config,
     sidebar: {
       ...config.sidebar,
-      banner: mergeBanner(config.sidebar.banner, switcher),
+      banner,
     },
   };
 }
@@ -638,7 +704,7 @@ export function withNextApiReferenceBanner(config: DocsConfig): DocsConfig {
 export function createNextApiReference(config: DocsConfig) {
   const apiReference = resolveApiReferenceConfig(config.apiReference);
 
-  return async () => {
+  return async (request?: Request) => {
     if (!apiReference.enabled) {
       return new Response("Not Found", {
         status: 404,
@@ -648,6 +714,7 @@ export function createNextApiReference(config: DocsConfig) {
     const document = await buildApiReferenceOpenApiDocumentAsync(config, {
       framework: "next",
       rootDir: process.cwd(),
+      baseUrl: getOriginFromRequest(request),
     });
 
     return ApiReference({
@@ -675,4 +742,215 @@ export function createNextApiReference(config: DocsConfig) {
       documentDownloadType: "json",
     })();
   };
+}
+
+function getOpenApiInfo(document: Record<string, unknown>): {
+  title: string;
+  description?: string;
+} {
+  const info =
+    document.info && typeof document.info === "object" && !Array.isArray(document.info)
+      ? (document.info as Record<string, unknown>)
+      : {};
+
+  return {
+    title: typeof info.title === "string" && info.title.trim() ? info.title : "API Reference",
+    description:
+      typeof info.description === "string" && info.description.trim()
+        ? info.description
+        : undefined,
+  };
+}
+
+export function createNextApiReferencePage(config: DocsConfig) {
+  return async function NextApiReferencePage(props?: {
+    params?: Promise<{ slug?: string[] }> | { slug?: string[] };
+  }) {
+    const [{ createAPIPage }, { DocsBody, DocsDescription, DocsPage, DocsTitle }] =
+      await Promise.all([
+        import("fumadocs-openapi/ui"),
+        import("fumadocs-ui/layouts/notebook/page"),
+      ]);
+    const { info, pages, server, source } = await getNextApiReferenceSourceState(config);
+    const resolvedParams = props?.params ? await props.params : undefined;
+    const slug = resolvedParams?.slug ?? [];
+
+    if (pages.length === 0) {
+      return (
+        <DocsPage full>
+          <DocsTitle>{info.title}</DocsTitle>
+          <DocsDescription>{info.description}</DocsDescription>
+          <DocsBody>
+            <div className="rounded-xl border border-fd-border bg-fd-card p-6 text-sm text-fd-muted-foreground">
+              No operations were found in the OpenAPI document.
+            </div>
+          </DocsBody>
+        </DocsPage>
+      );
+    }
+
+    if (slug.length === 0) {
+      redirect(pages[0].url);
+    }
+
+    const page = source.getPage(slug);
+    if (!page || typeof page.data.getAPIPageProps !== "function") {
+      notFound();
+    }
+    const APIPage = createAPIPage(server);
+    const currentPageIndex = pages.findIndex((entry) => entry.url === page.url);
+    const previousPage = currentPageIndex > 0 ? pages[currentPageIndex - 1] : undefined;
+    const nextPage =
+      currentPageIndex >= 0 && currentPageIndex < pages.length - 1
+        ? pages[currentPageIndex + 1]
+        : undefined;
+
+    return (
+      <DocsPage
+        toc={page.data.toc}
+        full
+        footer={{ enabled: false }}
+        className="fd-api-reference-page"
+      >
+        <DocsTitle>{page.data.title ?? info.title}</DocsTitle>
+        <DocsDescription>
+          {typeof page.data.description === "string" && page.data.description.trim()
+            ? page.data.description
+            : info.description}
+        </DocsDescription>
+        <DocsBody>
+          <APIPage {...page.data.getAPIPageProps()} />
+        </DocsBody>
+        {previousPage || nextPage ? (
+          <nav className="fd-api-reference-pagination" aria-label="API reference pagination">
+            {previousPage ? (
+              <a
+                href={previousPage.url}
+                className="fd-api-reference-pagination-item"
+                data-direction="previous"
+              >
+                <span className="fd-api-reference-pagination-label">Previous</span>
+                <span className="fd-api-reference-pagination-title">
+                  {previousPage.data?.title ?? previousPage.url}
+                </span>
+                <span className="fd-api-reference-pagination-description">
+                  {previousPage.data?.description ?? "Previous API operation"}
+                </span>
+              </a>
+            ) : (
+              <div className="fd-api-reference-pagination-spacer" aria-hidden="true" />
+            )}
+            {nextPage ? (
+              <a
+                href={nextPage.url}
+                className="fd-api-reference-pagination-item"
+                data-direction="next"
+              >
+                <span className="fd-api-reference-pagination-label">Next</span>
+                <span className="fd-api-reference-pagination-title">
+                  {nextPage.data?.title ?? nextPage.url}
+                </span>
+                <span className="fd-api-reference-pagination-description">
+                  {nextPage.data?.description ?? "Next API operation"}
+                </span>
+              </a>
+            ) : (
+              <div className="fd-api-reference-pagination-spacer" aria-hidden="true" />
+            )}
+          </nav>
+        ) : null}
+      </DocsPage>
+    );
+  };
+}
+
+export function createNextApiReferenceLayout(config: DocsConfig) {
+  return async function NextApiReferenceLayout(props: { children: React.ReactNode }) {
+    const { DocsLayout } = await import("fumadocs-ui/layouts/notebook");
+    const { apiReference, source } = await getNextApiReferenceSourceState(config);
+    const docsUrl = getDocsUrl(config);
+    const apiUrl = `/${apiReference.path}`;
+    const banner = mergeBanner(
+      getExistingSidebarBanner(config),
+      <ApiReferenceSwitcher docsUrl={docsUrl} apiUrl={apiUrl} current="api" config={config} />,
+    );
+
+    return (
+      <div className="fd-api-reference-route">
+        <DocsClientCallbacks />
+        <DocsLayout
+          tree={source.getPageTree()}
+          sidebar={{ banner }}
+          nav={{
+            title: (config.nav?.title as ReactNode | undefined) ?? "Docs",
+            url: getDocsUrl(config),
+          }}
+        >
+          {props.children}
+        </DocsLayout>
+      </div>
+    );
+  };
+}
+
+export async function getNextApiReferenceSourceState(
+  config: DocsConfig,
+): Promise<NextApiReferenceSourceState> {
+  const apiReference = resolveApiReferenceConfig(config.apiReference);
+  const [{ createOpenAPI, openapiPlugin, openapiSource }, { loader }] = await Promise.all([
+    import("fumadocs-openapi/server"),
+    import("fumadocs-core/source"),
+  ]);
+  const baseUrl = await getOriginFromNextHeaders();
+  const document = await buildApiReferenceOpenApiDocumentAsync(config, {
+    framework: "next",
+    rootDir: process.cwd(),
+    baseUrl,
+  });
+
+  const server = createOpenAPI({
+    input: async () => ({
+      main: document as any,
+    }),
+  });
+  const info = getOpenApiInfo(document);
+  const source = loader(
+    await openapiSource(server, {
+      per: "operation",
+      groupBy: "tag",
+      name(output, dereferenced) {
+        if (output.type !== "operation") {
+          return slugifyApiReferencePageName(output.item.name);
+        }
+
+        const pathItem = dereferenced.paths?.[output.item.path];
+        const operation = pathItem?.[output.item.method];
+        const summary =
+          typeof operation?.summary === "string" && operation.summary.trim()
+            ? operation.summary
+            : typeof operation?.operationId === "string" && operation.operationId.trim()
+              ? operation.operationId
+              : `${output.item.method} ${output.item.path}`;
+
+        return slugifyApiReferencePageName(summary);
+      },
+    }),
+    {
+      baseUrl: `/${apiReference.path}`,
+      plugins: [openapiPlugin()],
+    },
+  );
+
+  return {
+    apiReference,
+    document,
+    info,
+    pages: source.getPages(),
+    server,
+    source,
+  };
+}
+
+export function getNextApiReferenceMode(config: DocsConfig): "fumadocs" | "scalar" {
+  return resolveApiReferenceRenderer(config.apiReference, "next");
 }

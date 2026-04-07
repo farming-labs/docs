@@ -628,6 +628,24 @@ export const revalidate = false;
 `;
 }
 
+export function nextApiReferencePageTemplate(cfg: TemplateConfig, filePath: string): string {
+  const appDir = cfg.nextAppDir ?? "app";
+  const configImport = nextApiReferenceConfigImport(cfg.useAlias, appDir, filePath);
+
+  return `
+import "@farming-labs/next/api-reference.css";
+import docsConfig from "${configImport}";
+import { createNextApiReferencePage } from "@farming-labs/next/api-reference";
+
+const ApiReferencePage = createNextApiReferencePage(docsConfig);
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default ApiReferencePage;
+`;
+}
+
 export function nextLocaleDocPageTemplate(defaultLocale: string): string {
   return `\
 import type { ComponentType } from "react";
