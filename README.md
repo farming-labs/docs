@@ -21,15 +21,6 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 - [Reference docs](https://docs.farming-labs.dev/docs/reference) and [examples](https://github.com/farming-labs/docs/tree/main/examples) cover config, custom themes, OG images, API reference, SEO, and more.
 - Want to contribute? See the [Contributing guide](https://docs.farming-labs.dev/docs/contributing).
 
-Built-ins you can enable from `docs.config` today include:
-
-- `feedback` — end-of-page "Good / Bad" feedback UI with callback payloads
-- `pageActions` — "Copy page" and "Open in..." buttons with alignment and provider config
-- `components.HoverLink` — override the built-in inline hover-preview link card
-- `theme.ui.components.HoverLink` — keep the built-in `HoverLink` and just change its default props
-
-
-
 ### Option A: CLI (recommended)
 
 Run `init` inside an existing Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project:
