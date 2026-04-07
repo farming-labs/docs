@@ -9,9 +9,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@farming-labs/docs": "0.1.1-beta.2",
-    "@farming-labs/theme": "0.1.1-beta.2",
-    "@farming-labs/tanstack-start": "0.1.1-beta.2",
+    "@farming-labs/docs": "0.1.1-beta.3",
+    "@farming-labs/theme": "0.1.1-beta.3",
+    "@farming-labs/tanstack-start": "0.1.1-beta.3",
     "@tanstack/react-router": "^1.0.0",
     "@tanstack/react-start": "^1.0.0",
     "lucide-react": "^0.564.0",
