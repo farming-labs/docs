@@ -1,9 +1,6 @@
 #!/usr/bin/env node
 
 import pc from "picocolors";
-import { init } from "./init.js";
-import { runMcp } from "./mcp.js";
-import { upgrade } from "./upgrade.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -72,10 +69,13 @@ async function main() {
   };
 
   if (!parsedCommand.command || parsedCommand.command === "init") {
+    const { init } = await import("./init.js");
     await init(initOptions);
   } else if (parsedCommand.command === "mcp") {
+    const { runMcp } = await import("./mcp.js");
     await runMcp(mcpOptions);
   } else if (parsedCommand.command === "upgrade") {
+    const { upgrade } = await import("./upgrade.js");
     const framework =
       (typeof flags.framework === "string" ? flags.framework : undefined) ??
       (args[1] && !args[1].startsWith("--") ? args[1] : undefined);

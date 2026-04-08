@@ -2,10 +2,10 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio";
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp";
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import * as z from "zod/v4";
 import type { DocsMcpConfig, OrderingItem } from "./types.js";
 
