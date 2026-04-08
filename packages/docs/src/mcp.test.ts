@@ -140,6 +140,36 @@ Build your first app.
     });
   });
 
+  it("uses the current file name for non-index fallback titles", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-mcp-fallback-title-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "docs", "guides"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "docs", "guides", "quickstart.mdx"),
+      `# Quickstart
+
+No frontmatter title here.
+`,
+    );
+
+    const source = createFilesystemDocsMcpSource({
+      rootDir,
+      entry: "docs",
+      contentDir: "docs",
+    });
+
+    const pages = await source.getPages();
+    expect(pages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slug: "guides/quickstart",
+          title: "Quickstart",
+        }),
+      ]),
+    );
+  });
+
   it("serves a working MCP transport with the built-in tools", async () => {
     const rootDir = createTempDocsProject();
     const source = createFilesystemDocsMcpSource({
@@ -389,5 +419,73 @@ Build your first app.
     expect(toolsList.result?.tools?.map((tool) => tool.name)).not.toEqual(
       expect.arrayContaining(["search_docs", "read_page"]),
     );
+  });
+
+  it("rejects whitespace-only search queries", async () => {
+    const rootDir = createTempDocsProject();
+    const source = createFilesystemDocsMcpSource({
+      rootDir,
+      entry: "docs",
+      contentDir: "docs",
+      siteTitle: "Example Docs",
+    });
+
+    const handlers = createDocsMcpHttpHandler({
+      source,
+      mcp: { enabled: true },
+    });
+
+    const initializeResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: LATEST_PROTOCOL_VERSION,
+            capabilities: {},
+            clientInfo: {
+              name: "vitest",
+              version: "1.0.0",
+            },
+          },
+        }),
+      }),
+    });
+
+    const sessionId = initializeResponse.headers.get("mcp-session-id");
+    expect(sessionId).toBeTruthy();
+
+    const searchResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": sessionId!,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: {
+            name: "search_docs",
+            arguments: {
+              query: "   ",
+            },
+          },
+        }),
+      }),
+    });
+
+    const body = await searchResponse.text();
+    expect(body).toContain("Input validation error");
   });
 });

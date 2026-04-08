@@ -901,39 +901,7 @@ export function defineDocsHandler(
     getItem(key: string): Promise<unknown>;
   },
 ) {
-  let _server: DocsServer | null = null;
-  let _initPromise: Promise<DocsServer> | null = null;
-
-  async function getServer(): Promise<DocsServer> {
-    if (_server) return _server;
-    if (_initPromise) return _initPromise;
-
-    _initPromise = (async () => {
-      const entry = (config.entry as string) ?? (config.contentDir as string) ?? "docs";
-      const contentDirRel = (config.contentDir as string) ?? entry;
-
-      const store = storage(`assets:${contentDirRel}`);
-      const keys: string[] = await store.getKeys();
-      const contentFiles: Record<string, string> = {};
-
-      for (const key of keys) {
-        if (!key.endsWith(".md") && !key.endsWith(".mdx")) continue;
-        const raw = await store.getItem(key);
-        if (typeof raw === "string") {
-          const filePath = `/${entry}/${key.replace(/:/g, "/")}`;
-          contentFiles[filePath] = raw;
-        }
-      }
-
-      _server = createDocsServer({
-        ...config,
-        ...(Object.keys(contentFiles).length > 0 ? { _preloadedContent: contentFiles } : {}),
-      });
-      return _server;
-    })();
-
-    return _initPromise;
-  }
+  const getServer = createStorageBackedDocsServerGetter(config, storage);
 
   return eventHandler(async (event: any) => {
     const server = await getServer();
@@ -989,39 +957,7 @@ export function defineDocsMcpHandler(
     getItem(key: string): Promise<unknown>;
   },
 ) {
-  let _server: DocsServer | null = null;
-  let _initPromise: Promise<DocsServer> | null = null;
-
-  async function getServer(): Promise<DocsServer> {
-    if (_server) return _server;
-    if (_initPromise) return _initPromise;
-
-    _initPromise = (async () => {
-      const entry = (config.entry as string) ?? (config.contentDir as string) ?? "docs";
-      const contentDirRel = (config.contentDir as string) ?? entry;
-
-      const store = storage(`assets:${contentDirRel}`);
-      const keys: string[] = await store.getKeys();
-      const contentFiles: Record<string, string> = {};
-
-      for (const key of keys) {
-        if (!key.endsWith(".md") && !key.endsWith(".mdx")) continue;
-        const raw = await store.getItem(key);
-        if (typeof raw === "string") {
-          const filePath = `/${entry}/${key.replace(/:/g, "/")}`;
-          contentFiles[filePath] = raw;
-        }
-      }
-
-      _server = createDocsServer({
-        ...config,
-        ...(Object.keys(contentFiles).length > 0 ? { _preloadedContent: contentFiles } : {}),
-      });
-      return _server;
-    })();
-
-    return _initPromise;
-  }
+  const getServer = createStorageBackedDocsServerGetter(config, storage);
 
   return eventHandler(async (event: any) => {
     const server = await getServer();
@@ -1057,4 +993,48 @@ export function defineDocsMcpHandler(
       request: new Request(url.href, { method: "GET", headers }),
     });
   });
+}
+
+function createStorageBackedDocsServerGetter(
+  config: Record<string, any>,
+  storage: (base: string) => {
+    getKeys(): Promise<string[]>;
+    getItem(key: string): Promise<unknown>;
+  },
+) {
+  let _server: DocsServer | null = null;
+  let _initPromise: Promise<DocsServer> | null = null;
+
+  async function getServer(): Promise<DocsServer> {
+    if (_server) return _server;
+    if (_initPromise) return _initPromise;
+
+    _initPromise = (async () => {
+      const entry = (config.entry as string) ?? (config.contentDir as string) ?? "docs";
+      const contentDirRel = (config.contentDir as string) ?? entry;
+
+      const store = storage(`assets:${contentDirRel}`);
+      const keys: string[] = await store.getKeys();
+      const contentFiles: Record<string, string> = {};
+
+      for (const key of keys) {
+        if (!key.endsWith(".md") && !key.endsWith(".mdx")) continue;
+        const raw = await store.getItem(key);
+        if (typeof raw === "string") {
+          const filePath = `/${entry}/${key.replace(/:/g, "/")}`;
+          contentFiles[filePath] = raw;
+        }
+      }
+
+      _server = createDocsServer({
+        ...config,
+        ...(Object.keys(contentFiles).length > 0 ? { _preloadedContent: contentFiles } : {}),
+      });
+      return _server;
+    })();
+
+    return _initPromise;
+  }
+
+  return getServer;
 }

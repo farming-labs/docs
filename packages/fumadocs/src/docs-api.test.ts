@@ -114,4 +114,65 @@ Welcome to the docs.
 
     expect(payload.result?.content?.[0]?.text).toContain("/docs");
   });
+
+  it("ignores commented or quoted mcp flags when real config enables MCP", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-config-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+`,
+    );
+
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  note: "mcp: false",
+  // mcp: false
+  mcp: {
+    enabled: true,
+  },
+};
+`,
+    );
+
+    const { POST } = createDocsMCPAPI({
+      rootDir,
+      entry: "docs",
+      nav: { title: "Example Docs" },
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": "2025-11-25",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-11-25",
+            capabilities: {},
+            clientInfo: {
+              name: "vitest",
+              version: "1.0.0",
+            },
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("mcp-session-id")).toBeTruthy();
+  });
 });

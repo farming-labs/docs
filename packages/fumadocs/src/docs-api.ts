@@ -189,11 +189,11 @@ function readMcpConfig(root: string): boolean | DocsMcpConfig | undefined {
 
     try {
       const content = fs.readFileSync(configPath, "utf-8");
+      const sanitized = stripCommentsAndStrings(content);
+      const booleanValue = readTopLevelBoolean(sanitized, "mcp");
+      if (booleanValue !== undefined) return booleanValue;
 
-      if (content.match(/mcp\s*:\s*false/)) return false;
-      if (content.match(/mcp\s*:\s*true/)) return true;
-
-      const block = extractObjectLiteral(content, "mcp");
+      const block = extractObjectLiteral(content, sanitized, "mcp");
       if (!block) continue;
 
       return {
@@ -226,17 +226,17 @@ function readBooleanFromBlock(block: string, key: string): boolean | undefined {
   return match ? match[1] === "true" : undefined;
 }
 
-function extractObjectLiteral(content: string, key: string): string | undefined {
-  const keyIndex = content.search(new RegExp(`${key}\\s*:\\s*\\{`));
+function extractObjectLiteral(content: string, sanitized: string, key: string): string | undefined {
+  const keyIndex = sanitized.search(new RegExp(`\\b${key}\\b\\s*:\\s*\\{`));
   if (keyIndex === -1) return undefined;
 
-  const braceStart = content.indexOf("{", keyIndex);
+  const braceStart = sanitized.indexOf("{", keyIndex);
   if (braceStart === -1) return undefined;
 
   let depth = 0;
 
-  for (let index = braceStart; index < content.length; index += 1) {
-    const char = content[index];
+  for (let index = braceStart; index < sanitized.length; index += 1) {
+    const char = sanitized[index];
 
     if (char === "{") {
       depth += 1;
@@ -252,6 +252,112 @@ function extractObjectLiteral(content: string, key: string): string | undefined 
   }
 
   return undefined;
+}
+
+function readTopLevelBoolean(content: string, key: string): boolean | undefined {
+  const match = content.match(new RegExp(`\\b${key}\\b\\s*:\\s*(true|false)\\b`));
+  if (!match) return undefined;
+  return match[1] === "true";
+}
+
+function stripCommentsAndStrings(content: string): string {
+  let result = "";
+  let index = 0;
+  let state:
+    | "normal"
+    | "singleQuote"
+    | "doubleQuote"
+    | "template"
+    | "lineComment"
+    | "blockComment" = "normal";
+
+  while (index < content.length) {
+    const char = content[index];
+    const next = content[index + 1];
+
+    if (state === "lineComment") {
+      if (char === "\n") {
+        state = "normal";
+        result += "\n";
+      } else {
+        result += " ";
+      }
+      index += 1;
+      continue;
+    }
+
+    if (state === "blockComment") {
+      if (char === "*" && next === "/") {
+        result += "  ";
+        index += 2;
+        state = "normal";
+      } else {
+        result += char === "\n" ? "\n" : " ";
+        index += 1;
+      }
+      continue;
+    }
+
+    if (state === "singleQuote" || state === "doubleQuote" || state === "template") {
+      const quote = state === "singleQuote" ? "'" : state === "doubleQuote" ? '"' : "`";
+
+      if (char === "\\") {
+        result += " ";
+        if (next) result += next === "\n" ? "\n" : " ";
+        index += 2;
+        continue;
+      }
+
+      result += char === "\n" ? "\n" : " ";
+
+      if (char === quote) {
+        state = "normal";
+      }
+
+      index += 1;
+      continue;
+    }
+
+    if (char === "/" && next === "/") {
+      result += "  ";
+      index += 2;
+      state = "lineComment";
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      result += "  ";
+      index += 2;
+      state = "blockComment";
+      continue;
+    }
+
+    if (char === "'") {
+      result += " ";
+      index += 1;
+      state = "singleQuote";
+      continue;
+    }
+
+    if (char === '"') {
+      result += " ";
+      index += 1;
+      state = "doubleQuote";
+      continue;
+    }
+
+    if (char === "`") {
+      result += " ";
+      index += 1;
+      state = "template";
+      continue;
+    }
+
+    result += char;
+    index += 1;
+  }
+
+  return result;
 }
 
 function stripMdx(raw: string): string {

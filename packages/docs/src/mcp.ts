@@ -92,7 +92,7 @@ const DEFAULT_MCP_VERSION = "0.0.0";
 const DEFAULT_MCP_NAME = "@farming-labs/docs";
 
 const searchDocsInputSchema = z.object({
-  query: z.string().min(1),
+  query: z.string().trim().min(1),
   limit: z.number().int().min(1).max(25).optional(),
   locale: z.string().min(1).optional(),
 });
@@ -531,7 +531,11 @@ function scanFilesystemDocsPages(contentDirAbs: string, entry: string): ScannedD
       const url = slug ? `/${entry}/${slug}` : `/${entry}`;
       const title =
         (data.title as string | undefined) ??
-        (slugParts.length > 0 ? titleize(slugParts[slugParts.length - 1]) : "Documentation");
+        (isIndex
+          ? slugParts.length > 0
+            ? titleize(slugParts[slugParts.length - 1])
+            : "Documentation"
+          : titleize(baseName));
 
       pages.push({
         slug,
@@ -564,8 +568,8 @@ function buildNavigationTreeFromPages(
 
     let items: OrderingItem[] | undefined = ordering;
     for (const segment of parentSlug.split("/")) {
-      const match = items?.find((item) => item.slug === segment);
-      items = match?.children;
+      const matchedItem: OrderingItem | undefined = items?.find((item) => item.slug === segment);
+      items = matchedItem?.children;
       if (!items) return undefined;
     }
 
@@ -620,44 +624,47 @@ function buildNavigationTreeFromPages(
 
     const childSlugs = sortChildSlugs([...childSet], parentSlug);
 
-    return childSlugs
-      .map((childSlug) => {
-        const page = bySlug.get(childSlug);
-        const hasChildren = pages.some((candidate) => candidate.slug.startsWith(`${childSlug}/`));
-        const segment = childSlug.split("/").pop() ?? childSlug;
-        const name = page?.title ?? titleize(segment);
-        const icon = page?.icon;
-        const description = page?.description;
+    const nodes: DocsMcpNavigationNode[] = [];
 
-        if (hasChildren) {
-          return {
-            type: "folder" as const,
-            name,
-            icon,
-            index: page
-              ? {
-                  type: "page" as const,
-                  name: page.title,
-                  url: page.url,
-                  icon: page.icon,
-                  description: page.description,
-                }
-              : undefined,
-            children: buildLevel(childSlug),
-          };
-        }
+    for (const childSlug of childSlugs) {
+      const page = bySlug.get(childSlug);
+      const hasChildren = pages.some((candidate) => candidate.slug.startsWith(`${childSlug}/`));
+      const segment = childSlug.split("/").pop() ?? childSlug;
+      const name = page?.title ?? titleize(segment);
+      const icon = page?.icon;
+      const description = page?.description;
 
-        if (!page) return null;
-
-        return {
-          type: "page" as const,
+      if (hasChildren) {
+        nodes.push({
+          type: "folder",
           name,
-          url: page.url,
           icon,
-          description,
-        };
-      })
-      .filter((node): node is DocsMcpNavigationNode => node !== null);
+          index: page
+            ? {
+                type: "page",
+                name: page.title,
+                url: page.url,
+                icon: page.icon,
+                description: page.description,
+              }
+            : undefined,
+          children: buildLevel(childSlug),
+        });
+        continue;
+      }
+
+      if (!page) continue;
+
+      nodes.push({
+        type: "page",
+        name,
+        url: page.url,
+        icon,
+        description,
+      });
+    }
+
+    return nodes;
   }
 
   const children: DocsMcpNavigationNode[] = [];
@@ -746,6 +753,7 @@ function normalizeUrlPath(value: string): string {
 
 function searchDocsPages(pages: DocsMcpPage[], query: string, limit: number) {
   const normalizedQuery = query.toLowerCase().trim();
+  if (!normalizedQuery) return [];
   const words = normalizedQuery.split(/\s+/).filter(Boolean);
 
   return pages
