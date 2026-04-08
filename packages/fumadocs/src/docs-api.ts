@@ -25,6 +25,8 @@ import { createSearchAPI } from "fumadocs-core/search/server";
 import { getNextAppDir } from "./get-app-dir.js";
 import { resolveDocsI18n, resolveDocsLocale } from "@farming-labs/docs";
 import type { DocsI18nConfig } from "@farming-labs/docs";
+import { createDocsMcpHttpHandler, createFilesystemDocsMcpSource } from "@farming-labs/docs/server";
+import type { DocsMcpConfig, OrderingItem } from "@farming-labs/docs";
 import { withLangInUrl } from "./i18n.js";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -73,6 +75,15 @@ interface DocsAPIOptions {
   ai?: AIOptions;
   /** i18n config (optional) */
   i18n?: DocsI18nConfig;
+}
+
+interface DocsMCPAPIOptions {
+  rootDir?: string;
+  entry?: string;
+  contentDir?: string;
+  nav?: { title?: unknown };
+  ordering?: "alphabetical" | "numeric" | OrderingItem[];
+  mcp?: boolean | DocsMcpConfig;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -169,6 +180,78 @@ function readAIConfig(root: string): AIOptions {
     }
   }
   return {};
+}
+
+function readMcpConfig(root: string): boolean | DocsMcpConfig | undefined {
+  for (const ext of FILE_EXTS) {
+    const configPath = path.join(root, `docs.config.${ext}`);
+    if (!fs.existsSync(configPath)) continue;
+
+    try {
+      const content = fs.readFileSync(configPath, "utf-8");
+
+      if (content.match(/mcp\s*:\s*false/)) return false;
+      if (content.match(/mcp\s*:\s*true/)) return true;
+
+      const block = extractObjectLiteral(content, "mcp");
+      if (!block) continue;
+
+      return {
+        enabled: readBooleanFromBlock(block, "enabled"),
+        route: readStringFromBlock(block, "route"),
+        name: readStringFromBlock(block, "name"),
+        version: readStringFromBlock(block, "version"),
+        tools: {
+          listPages: readBooleanFromBlock(block, "listPages"),
+          readPage: readBooleanFromBlock(block, "readPage"),
+          searchDocs: readBooleanFromBlock(block, "searchDocs"),
+          getNavigation: readBooleanFromBlock(block, "getNavigation"),
+        },
+      };
+    } catch {
+      // fall through
+    }
+  }
+
+  return undefined;
+}
+
+function readStringFromBlock(block: string, key: string): string | undefined {
+  const match = block.match(new RegExp(`${key}\\s*:\\s*["']([^"']+)["']`));
+  return match?.[1];
+}
+
+function readBooleanFromBlock(block: string, key: string): boolean | undefined {
+  const match = block.match(new RegExp(`${key}\\s*:\\s*(true|false)`));
+  return match ? match[1] === "true" : undefined;
+}
+
+function extractObjectLiteral(content: string, key: string): string | undefined {
+  const keyIndex = content.search(new RegExp(`${key}\\s*:\\s*\\{`));
+  if (keyIndex === -1) return undefined;
+
+  const braceStart = content.indexOf("{", keyIndex);
+  if (braceStart === -1) return undefined;
+
+  let depth = 0;
+
+  for (let index = braceStart; index < content.length; index += 1) {
+    const char = content[index];
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char !== "}") continue;
+
+    depth -= 1;
+    if (depth === 0) {
+      return content.slice(braceStart + 1, index);
+    }
+  }
+
+  return undefined;
 }
 
 function stripMdx(raw: string): string {
@@ -634,6 +717,48 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
       const ctx = resolveContextFromRequest(request);
       return handleAskAI(request, getIndexes(ctx), getSearchAPI(ctx), aiConfig);
+    },
+  };
+}
+
+/**
+ * Create MCP route handlers for `/api/docs/mcp`.
+ *
+ * Returns `{ GET, POST, DELETE }` for use in a Next.js route handler.
+ */
+export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
+  const rootDir = options.rootDir ?? process.cwd();
+  const entry = options.entry ?? readEntry(rootDir);
+  const appDir = getNextAppDir(rootDir);
+  const contentDir = options.contentDir ?? path.join(appDir, entry);
+  const navTitle =
+    typeof options.nav?.title === "string" && options.nav.title.trim().length > 0
+      ? options.nav.title
+      : "Documentation";
+
+  const source = createFilesystemDocsMcpSource({
+    rootDir,
+    entry,
+    contentDir,
+    siteTitle: navTitle,
+    ordering: options.ordering,
+  });
+
+  const handlers = createDocsMcpHttpHandler({
+    source,
+    mcp: options.mcp ?? readMcpConfig(rootDir),
+    defaultName: navTitle,
+  });
+
+  return {
+    GET(request: Request) {
+      return handlers.GET({ request });
+    },
+    POST(request: Request) {
+      return handlers.POST({ request });
+    },
+    DELETE(request: Request) {
+      return handlers.DELETE({ request });
     },
   };
 }

@@ -2,6 +2,7 @@
 
 import pc from "picocolors";
 import { init } from "./init.js";
+import { runMcp } from "./mcp.js";
 import { upgrade } from "./upgrade.js";
 
 const args = process.argv.slice(2);
@@ -66,9 +67,14 @@ async function main() {
     apiReference: typeof flags["api-reference"] === "boolean" ? flags["api-reference"] : undefined,
     apiRouteRoot: typeof flags["api-route-root"] === "string" ? flags["api-route-root"] : undefined,
   };
+  const mcpOptions = {
+    configPath: typeof flags.config === "string" ? flags.config : undefined,
+  };
 
   if (!parsedCommand.command || parsedCommand.command === "init") {
     await init(initOptions);
+  } else if (parsedCommand.command === "mcp") {
+    await runMcp(mcpOptions);
   } else if (parsedCommand.command === "upgrade") {
     const framework =
       (typeof flags.framework === "string" ? flags.framework : undefined) ??
@@ -100,6 +106,7 @@ ${pc.dim("Usage:")}
 
 ${pc.dim("Commands:")}
   ${pc.cyan("init")}     Scaffold docs in your project (default)
+  ${pc.cyan("mcp")}      Run the built-in docs MCP server over stdio
   ${pc.cyan("upgrade")}  Upgrade @farming-labs/* packages to latest (auto-detect or use --framework)
 
 ${pc.dim("Supported frameworks:")}
@@ -113,6 +120,9 @@ ${pc.dim("Options for init:")}
   ${pc.cyan("--api-reference")}    Scaffold API reference support during ${pc.cyan("init")}
   ${pc.cyan("--no-api-reference")} Skip API reference scaffold during ${pc.cyan("init")}
   ${pc.cyan("--api-route-root <path>")}  Override the API route root scanned by ${pc.cyan("apiReference.routeRoot")} (e.g. ${pc.dim("api")}, ${pc.dim("internal-api")})
+
+${pc.dim("Options for mcp:")}
+  ${pc.cyan("--config <path>")}     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
 
 ${pc.dim("Options for upgrade:")}
   ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect

@@ -32,6 +32,8 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "@farming-labs/docs";
+import { createDocsMcpHttpHandler } from "@farming-labs/docs/server";
+import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
 import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
 import { renderMarkdown } from "./markdown.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
@@ -119,6 +121,7 @@ export interface DocsServer {
   }>;
   GET: (context: { request: Request }) => Response;
   POST: (context: { request: Request }) => Promise<Response>;
+  MCP: DocsMcpHttpHandlers;
 }
 
 type ContentFileMap = Record<string, string>;
@@ -674,6 +677,12 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     return next;
   }
 
+  function resolveLocaleForMcp(locale?: string): string | undefined {
+    if (!i18n) return undefined;
+    if (locale && i18n.locales.includes(locale)) return locale;
+    return i18n.defaultLocale;
+  }
+
   // ─── GET /api/docs?query=… | ?format=llms | ?format=llms-full ──
   function GET(context: { request: Request }): Response {
     const ctx = resolveContextFromRequest(context.request);
@@ -852,5 +861,29 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     });
   }
 
-  return { load, GET, POST };
+  const mcpSiteTitle =
+    typeof (config.nav as Record<string, unknown>)?.title === "string"
+      ? ((config.nav as Record<string, unknown>).title as string)
+      : "Documentation";
+
+  const MCP = createDocsMcpHttpHandler({
+    source: {
+      entry,
+      siteTitle: mcpSiteTitle,
+      getPages(locale) {
+        const ctx = resolveContextFromPath(`/${entry}`, resolveLocaleForMcp(locale));
+        return getSearchIndex(ctx);
+      },
+      getNavigation(locale) {
+        const ctx = resolveContextFromPath(`/${entry}`, resolveLocaleForMcp(locale));
+        return preloaded
+          ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
+          : loadDocsNavTree(ctx.contentDirAbs, entry, ordering);
+      },
+    },
+    mcp: (config as Record<string, unknown>).mcp as Record<string, unknown> | boolean | undefined,
+    defaultName: mcpSiteTitle,
+  });
+
+  return { load, GET, POST, MCP };
 }

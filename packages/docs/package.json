@@ -29,6 +29,11 @@
       "types": "./dist/server.d.mts",
       "import": "./dist/server.mjs",
       "default": "./dist/server.mjs"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.mts",
+      "import": "./dist/mcp.mjs",
+      "default": "./dist/mcp.mjs"
     }
   },
   "scripts": {
@@ -39,10 +44,12 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@scalar/core": "^0.4.3",
     "@clack/prompts": "^0.9.1",
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "@scalar/core": "^0.4.3",
     "gray-matter": "^4.0.3",
-    "picocolors": "^1.1.1"
+    "picocolors": "^1.1.1",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

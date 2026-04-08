@@ -19,6 +19,8 @@ import path from "node:path";
 import matter from "gray-matter";
 import { eventHandler } from "h3";
 import { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "@farming-labs/docs";
+import { createDocsMcpHttpHandler } from "@farming-labs/docs/server";
+import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
 import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
 import { renderMarkdown } from "./markdown.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
@@ -104,6 +106,7 @@ export interface DocsServer {
   }>;
   GET: (context: { request: Request }) => Response;
   POST: (context: { request: Request }) => Promise<Response>;
+  MCP: DocsMcpHttpHandlers;
 }
 
 type ContentFileMap = Record<string, string>;
@@ -661,6 +664,12 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     return next;
   }
 
+  function resolveLocaleForMcp(locale?: string): string | undefined {
+    if (!i18n) return undefined;
+    if (locale && i18n.locales.includes(locale)) return locale;
+    return i18n.defaultLocale;
+  }
+
   // ─── GET /api/docs?query=… | ?format=llms | ?format=llms-full ──
   function GET(context: { request: Request }): Response {
     const ctx = resolveContextFromRequest(context.request);
@@ -837,7 +846,31 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     });
   }
 
-  return { load, GET, POST };
+  const mcpSiteTitle =
+    typeof (config.nav as Record<string, unknown>)?.title === "string"
+      ? ((config.nav as Record<string, unknown>).title as string)
+      : "Documentation";
+
+  const MCP = createDocsMcpHttpHandler({
+    source: {
+      entry,
+      siteTitle: mcpSiteTitle,
+      getPages(locale) {
+        const ctx = resolveContextFromPath(`/${entry}`, resolveLocaleForMcp(locale));
+        return getSearchIndex(ctx);
+      },
+      getNavigation(locale) {
+        const ctx = resolveContextFromPath(`/${entry}`, resolveLocaleForMcp(locale));
+        return preloaded
+          ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
+          : loadDocsNavTree(ctx.contentDirAbs, entry, ordering);
+      },
+    },
+    mcp: (config as Record<string, unknown>).mcp as Record<string, unknown> | boolean | undefined,
+    defaultName: mcpSiteTitle,
+  });
+
+  return { load, GET, POST, MCP };
 }
 
 // ─── Nuxt event handler helper ───────────────────────────────
@@ -934,6 +967,94 @@ export function defineDocsHandler(
 
     return server.GET({
       request: new Request(reqUrl.href, { method: "GET", headers }),
+    });
+  });
+}
+
+/**
+ * Create a Nuxt event handler for the built-in docs MCP endpoint.
+ *
+ * @example
+ * ```ts
+ * // server/api/docs/mcp.ts
+ * import { defineDocsMcpHandler } from "@farming-labs/nuxt/server";
+ * import config from "../../docs.config";
+ * export default defineDocsMcpHandler(config, useStorage);
+ * ```
+ */
+export function defineDocsMcpHandler(
+  config: Record<string, any>,
+  storage: (base: string) => {
+    getKeys(): Promise<string[]>;
+    getItem(key: string): Promise<unknown>;
+  },
+) {
+  let _server: DocsServer | null = null;
+  let _initPromise: Promise<DocsServer> | null = null;
+
+  async function getServer(): Promise<DocsServer> {
+    if (_server) return _server;
+    if (_initPromise) return _initPromise;
+
+    _initPromise = (async () => {
+      const entry = (config.entry as string) ?? (config.contentDir as string) ?? "docs";
+      const contentDirRel = (config.contentDir as string) ?? entry;
+
+      const store = storage(`assets:${contentDirRel}`);
+      const keys: string[] = await store.getKeys();
+      const contentFiles: Record<string, string> = {};
+
+      for (const key of keys) {
+        if (!key.endsWith(".md") && !key.endsWith(".mdx")) continue;
+        const raw = await store.getItem(key);
+        if (typeof raw === "string") {
+          const filePath = `/${entry}/${key.replace(/:/g, "/")}`;
+          contentFiles[filePath] = raw;
+        }
+      }
+
+      _server = createDocsServer({
+        ...config,
+        ...(Object.keys(contentFiles).length > 0 ? { _preloadedContent: contentFiles } : {}),
+      });
+      return _server;
+    })();
+
+    return _initPromise;
+  }
+
+  return eventHandler(async (event: any) => {
+    const server = await getServer();
+    const method = (event.method ?? event.node?.req?.method ?? "GET").toUpperCase();
+    const headers = event.headers ?? event.node?.req?.headers ?? {};
+    const url = new URL(event.node.req.url ?? "/", "http://localhost");
+
+    if (method === "POST") {
+      let body: string | undefined;
+      try {
+        body = await new Promise<string>((resolve, reject) => {
+          let data = "";
+          event.node.req.on("data", (chunk: any) => (data += chunk));
+          event.node.req.on("end", () => resolve(data));
+          event.node.req.on("error", reject);
+        });
+      } catch {
+        body = undefined;
+      }
+
+      return server.MCP.POST({
+        request: new Request(url.href, { method, headers, body }),
+      });
+    }
+
+    if (method === "DELETE") {
+      return server.MCP.DELETE({
+        request: new Request(url.href, { method, headers }),
+      });
+    }
+
+    return server.MCP.GET({
+      request: new Request(url.href, { method: "GET", headers }),
     });
   });
 }

@@ -612,6 +612,51 @@ export interface LlmsTxtConfig {
   siteDescription?: string;
 }
 
+/**
+ * Tool-level toggles for the built-in MCP server.
+ *
+ * All tools default to `true` when omitted.
+ */
+export interface DocsMcpToolsConfig {
+  /** Expose a `list_pages` tool that returns the known docs pages. */
+  listPages?: boolean;
+  /** Expose a `read_page` tool that returns a page by slug or URL path. */
+  readPage?: boolean;
+  /** Expose a `search_docs` tool for keyword search over page content. */
+  searchDocs?: boolean;
+  /** Expose a `get_navigation` tool for the docs tree. */
+  getNavigation?: boolean;
+}
+
+/**
+ * Built-in MCP server configuration.
+ *
+ * When enabled, adapters can expose a Streamable HTTP endpoint for your docs
+ * at `/api/docs/mcp` by default. The same config is also reused by the local
+ * `docs mcp` stdio command.
+ */
+export interface DocsMcpConfig {
+  /** Whether to enable the built-in MCP server. Defaults to `true` when this object is provided. */
+  enabled?: boolean;
+  /**
+   * Streamable HTTP route for the MCP endpoint.
+   * Defaults to `/api/docs/mcp`.
+   */
+  route?: string;
+  /**
+   * Human-readable MCP server name shown to clients.
+   * Defaults to the string `nav.title` when available, otherwise `@farming-labs/docs`.
+   */
+  name?: string;
+  /**
+   * Version string reported by the MCP server.
+   * Defaults to `"0.0.0"` when not set.
+   */
+  version?: string;
+  /** Fine-grained tool toggles. Omitted tools stay enabled. */
+  tools?: DocsMcpToolsConfig;
+}
+
 export interface LastUpdatedConfig {
   /**
    * Whether to show the "Last updated" date.
@@ -1325,6 +1370,14 @@ export interface DocsConfig {
    * ```
    */
   feedback?: boolean | FeedbackConfig;
+  /**
+   * Built-in MCP server for agent/assistant access to your docs content.
+   *
+   * - `true` → enable the default MCP surface at `/api/docs/mcp`
+   * - `{ route: "/api/docs/mcp" }` → enable with explicit route/config
+   * - `false` or omitted → MCP stays disabled
+   */
+  mcp?: boolean | DocsMcpConfig;
   /**
    * Icon registry for sidebar items.
    *

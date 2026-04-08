@@ -130,6 +130,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `feedback`    | `boolean \| FeedbackConfig`    | `false`         | End-of-page feedback prompt and callback                     |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
+| `mcp`         | `boolean \| DocsMcpConfig`     | `false`         | Built-in MCP server over stdio and `/api/docs/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions or a hosted OpenAPI JSON |
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template                              |
@@ -154,6 +155,34 @@ export default defineDocs({
 ```
 
 Use this when you deploy to a static host and don’t run a server. Search and AI require a server; with `staticExport: true` they are hidden so the site works without one.
+
+## MCP Server
+
+Use `mcp` to expose your docs as a built-in MCP server for AI tools and IDE agents.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  mcp: {
+    enabled: true,
+  },
+  theme: fumadocs(),
+});
+```
+
+Default behavior:
+
+- **HTTP route:** `/api/docs/mcp`
+- **stdio command:** `pnpx @farming-labs/docs mcp`
+- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`
+
+Framework notes:
+
+- **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route
+- **TanStack Start / SvelteKit / Astro / Nuxt:** add the framework route file and reuse the built-in handler from the docs server helper
+- **Custom routes:** set `mcp.route` in `docs.config` and add the matching route file manually so the configured path and the actual endpoint stay aligned
+
+See the full [MCP Server guide](/docs/customization/mcp) for the route snippets and stdio usage.
 
 ## API Reference
 

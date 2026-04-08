@@ -40,6 +40,11 @@ describe("parseFlags", () => {
     expect(flags.other).toBe(false);
   });
 
+  it("parses mcp flags", () => {
+    const flags = parseFlags(["mcp", "--config", "src/lib/docs.config.ts"]);
+    expect(flags.config).toBe("src/lib/docs.config.ts");
+  });
+
   it("parses boolean values in --key=value form", () => {
     const flags = parseFlags(["--api-reference=false", "--theme=colorful"]);
     expect(flags["api-reference"]).toBe(false);

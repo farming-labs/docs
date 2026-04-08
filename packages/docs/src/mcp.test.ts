@@ -1,0 +1,393 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types";
+import {
+  createDocsMcpHttpHandler,
+  createFilesystemDocsMcpSource,
+  normalizeDocsMcpRoute,
+  resolveDocsMcpConfig,
+} from "./mcp.js";
+
+async function parseMcpPayload<T>(response: Response): Promise<T> {
+  const body = await response.text();
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    return JSON.parse(body) as T;
+  }
+
+  const dataLines = body
+    .split("\n")
+    .filter((line) => line.startsWith("data: "))
+    .map((line) => line.slice("data: ".length).trim())
+    .filter(Boolean);
+
+  const payload = dataLines.at(-1);
+  if (!payload) {
+    throw new Error(`Expected MCP response payload, got: ${body}`);
+  }
+
+  return JSON.parse(payload) as T;
+}
+
+describe("resolveDocsMcpConfig", () => {
+  it("normalizes defaults for enabled object configs", () => {
+    expect(
+      resolveDocsMcpConfig({
+        enabled: true,
+      }),
+    ).toEqual({
+      enabled: true,
+      route: "/api/docs/mcp",
+      name: "@farming-labs/docs",
+      version: "0.0.0",
+      tools: {
+        listPages: true,
+        readPage: true,
+        searchDocs: true,
+        getNavigation: true,
+      },
+    });
+  });
+
+  it("normalizes custom routes", () => {
+    expect(normalizeDocsMcpRoute("api/internal/docs/mcp/")).toBe("/api/internal/docs/mcp");
+  });
+});
+
+describe("createFilesystemDocsMcpSource", () => {
+  const tempDirs: string[] = [];
+
+  afterEach(() => {
+    while (tempDirs.length > 0) {
+      const dir = tempDirs.pop();
+      if (dir) rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  function createTempDocsProject() {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-mcp-test-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "docs", "installation"), { recursive: true });
+    mkdirSync(join(rootDir, "docs", "guides"), { recursive: true });
+
+    writeFileSync(
+      join(rootDir, "docs", "page.mdx"),
+      `---
+title: "Introduction"
+description: "Start here"
+---
+
+# Introduction
+
+Welcome to the docs.
+`,
+    );
+
+    writeFileSync(
+      join(rootDir, "docs", "installation", "page.mdx"),
+      `---
+title: "Installation"
+description: "Install everything"
+---
+
+# Installation
+
+Run pnpm install.
+`,
+    );
+
+    writeFileSync(
+      join(rootDir, "docs", "guides", "quickstart.mdx"),
+      `---
+title: "Quickstart"
+---
+
+# Quickstart
+
+Build your first app.
+`,
+    );
+
+    return rootDir;
+  }
+
+  it("builds pages and navigation from a filesystem docs tree", async () => {
+    const rootDir = createTempDocsProject();
+    const source = createFilesystemDocsMcpSource({
+      rootDir,
+      entry: "docs",
+      contentDir: "docs",
+      siteTitle: "Example Docs",
+    });
+
+    const pages = await source.getPages();
+    const tree = await source.getNavigation();
+
+    expect(pages.map((page) => page.url).sort()).toEqual([
+      "/docs",
+      "/docs/guides/quickstart",
+      "/docs/installation",
+    ]);
+    expect(tree.name).toBe("Example Docs");
+    expect(tree.children[0]).toMatchObject({
+      type: "page",
+      name: "Introduction",
+      url: "/docs",
+    });
+  });
+
+  it("serves a working MCP transport with the built-in tools", async () => {
+    const rootDir = createTempDocsProject();
+    const source = createFilesystemDocsMcpSource({
+      rootDir,
+      entry: "docs",
+      contentDir: "docs",
+      siteTitle: "Example Docs",
+    });
+
+    const handlers = createDocsMcpHttpHandler({
+      source,
+      mcp: { enabled: true, name: "Example Docs" },
+    });
+
+    const initializeResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: LATEST_PROTOCOL_VERSION,
+            capabilities: {},
+            clientInfo: {
+              name: "vitest",
+              version: "1.0.0",
+            },
+          },
+        }),
+      }),
+    });
+
+    expect(initializeResponse.status).toBe(200);
+    const sessionId = initializeResponse.headers.get("mcp-session-id");
+    expect(sessionId).toBeTruthy();
+
+    const toolsListResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": sessionId!,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/list",
+          params: {},
+        }),
+      }),
+    });
+
+    const toolsList = await parseMcpPayload<{
+      result?: { tools?: Array<{ name: string }> };
+    }>(toolsListResponse);
+
+    expect(toolsList.result?.tools?.map((tool) => tool.name)).toEqual(
+      expect.arrayContaining(["list_pages", "get_navigation", "search_docs", "read_page"]),
+    );
+
+    const searchResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": sessionId!,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 3,
+          method: "tools/call",
+          params: {
+            name: "search_docs",
+            arguments: {
+              query: "install",
+            },
+          },
+        }),
+      }),
+    });
+
+    const searchPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(searchResponse);
+
+    expect(searchPayload.result?.content?.[0]?.text).toContain("/docs/installation");
+
+    const readPageResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": sessionId!,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 4,
+          method: "tools/call",
+          params: {
+            name: "read_page",
+            arguments: {
+              path: "installation",
+            },
+          },
+        }),
+      }),
+    });
+
+    const readPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(readPageResponse);
+
+    expect(readPayload.result?.content?.[0]?.text).toContain("# Installation");
+
+    const deleteResponse = await handlers.DELETE({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "DELETE",
+        headers: {
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": sessionId!,
+        },
+      }),
+    });
+
+    expect(deleteResponse.status).toBe(200);
+  });
+
+  it("returns 404 responses when MCP is disabled", async () => {
+    const rootDir = createTempDocsProject();
+    const source = createFilesystemDocsMcpSource({
+      rootDir,
+      entry: "docs",
+      contentDir: "docs",
+      siteTitle: "Example Docs",
+    });
+
+    const handlers = createDocsMcpHttpHandler({
+      source,
+      mcp: false,
+    });
+
+    const response = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {},
+        }),
+      }),
+    });
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toMatchObject({
+      error: expect.stringContaining("MCP is not enabled"),
+    });
+  });
+
+  it("respects tool toggles in the MCP config", async () => {
+    const rootDir = createTempDocsProject();
+    const source = createFilesystemDocsMcpSource({
+      rootDir,
+      entry: "docs",
+      contentDir: "docs",
+      siteTitle: "Example Docs",
+    });
+
+    const handlers = createDocsMcpHttpHandler({
+      source,
+      mcp: {
+        enabled: true,
+        tools: {
+          searchDocs: false,
+          readPage: false,
+        },
+      },
+    });
+
+    const initializeResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: LATEST_PROTOCOL_VERSION,
+            capabilities: {},
+            clientInfo: {
+              name: "vitest",
+              version: "1.0.0",
+            },
+          },
+        }),
+      }),
+    });
+
+    const sessionId = initializeResponse.headers.get("mcp-session-id");
+    expect(sessionId).toBeTruthy();
+
+    const toolsListResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": sessionId!,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/list",
+          params: {},
+        }),
+      }),
+    });
+
+    const toolsList = await parseMcpPayload<{
+      result?: { tools?: Array<{ name: string }> };
+    }>(toolsListResponse);
+
+    expect(toolsList.result?.tools?.map((tool) => tool.name)).toEqual(
+      expect.arrayContaining(["list_pages", "get_navigation"]),
+    );
+    expect(toolsList.result?.tools?.map((tool) => tool.name)).not.toEqual(
+      expect.arrayContaining(["search_docs", "read_page"]),
+    );
+  });
+});

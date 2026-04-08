@@ -16,6 +16,23 @@ const DOCS_CONFIG_WITH_API_REFERENCE = `export default {
 };
 `;
 
+const DOCS_CONFIG_WITH_MCP = `export default {
+  entry: "docs",
+  mcp: {
+    enabled: true,
+  },
+};
+`;
+
+const DOCS_CONFIG_WITH_CUSTOM_MCP_ROUTE = `export default {
+  entry: "docs",
+  mcp: {
+    enabled: true,
+    route: "/api/internal/docs/mcp",
+  },
+};
+`;
+
 describe("withDocs (app dir: src/app vs app)", () => {
   let tmpDir: string;
   let originalCwd: string;
@@ -81,6 +98,26 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/route.ts"))).toBe(true);
   });
 
+  it("generates the default MCP route when enabled in docs.config", () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_MCP, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({});
+
+    expect(existsSync(join(tmpDir, "app/api/docs/mcp/route.ts"))).toBe(true);
+  });
+
+  it("skips default MCP route generation when a custom route is configured", () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_CUSTOM_MCP_ROUTE, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({});
+
+    expect(existsSync(join(tmpDir, "app/api/docs/mcp/route.ts"))).toBe(false);
+  });
+
   it("skips API reference route generation for static export", () => {
     writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_API_REFERENCE, "utf-8");
     mkdirSync(join(tmpDir, "app"), { recursive: true });
@@ -89,6 +126,16 @@ describe("withDocs (app dir: src/app vs app)", () => {
     withDocs({ output: "export" });
 
     expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/route.ts"))).toBe(false);
+  });
+
+  it("skips MCP route generation for static export", () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_MCP, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({ output: "export" });
+
+    expect(existsSync(join(tmpDir, "app/api/docs/mcp/route.ts"))).toBe(false);
   });
 
   it("parses apiReference blocks that contain nested objects", () => {

@@ -14,6 +14,7 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 - 🧾 **Generated API reference from framework route handlers or a hosted OpenAPI JSON**
 - 🧩 **Built-in MDX UI** — `Callout`, `Tabs`, `HoverLink`, and overridable built-ins via `components` and `theme.ui.components`
 - 💬 **Built-in docs actions** — page feedback, copy/open page actions, and code-block copy callbacks
+- 🤖 **Built-in MCP server** — expose docs over stdio or `/api/docs/mcp` for MCP clients and IDE agents
 
 **Get started:**
 
@@ -54,6 +55,12 @@ If you enable **API reference** during init, the CLI writes the `apiReference` b
 
 If your backend is hosted somewhere else, you can switch the generated `apiReference` block to
 remote mode later by setting `specUrl` to a hosted `openapi.json`.
+
+You can also run the built-in MCP server locally:
+
+```bash
+npx @farming-labs/docs mcp
+```
 
 ### Option B: Manual setup
 
@@ -357,6 +364,38 @@ See the full docs for more detail:
 
 - [Configuration](https://docs.farming-labs.dev/docs/configuration#api-reference)
 - [API Reference config](https://docs.farming-labs.dev/docs/reference#apireferenceconfig)
+
+## Built-in MCP Server
+
+`mcp` exposes your docs as a built-in MCP server for local agents and remote HTTP clients.
+
+```ts
+export default defineDocs({
+  entry: "docs",
+  mcp: {
+    enabled: true,
+  },
+  theme: fumadocs(),
+});
+```
+
+Default behavior:
+
+- **HTTP route:** `/api/docs/mcp`
+- **stdio command:** `npx @farming-labs/docs mcp`
+- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`
+
+Framework notes:
+
+- **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route
+- **TanStack Start / SvelteKit / Astro / Nuxt:** add the framework route file and reuse the built-in MCP handler from the docs server helper
+- **Custom routes:** set `mcp.route` in `docs.config` and add the matching route file manually so the configured path and the actual endpoint stay aligned
+
+See:
+
+- [MCP Server guide](https://docs.farming-labs.dev/docs/customization/mcp)
+- [Configuration](https://docs.farming-labs.dev/docs/configuration#mcp-server)
+- [API Reference](https://docs.farming-labs.dev/docs/reference#docsmcpconfig)
 
 Each page uses frontmatter for metadata:
 

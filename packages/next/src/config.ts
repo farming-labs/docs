@@ -86,6 +86,22 @@ export const { GET, POST } = createDocsAPI({
 export const revalidate = false;
 `;
 
+const DOCS_MCP_ROUTE_TEMPLATE = `\
+${GENERATED_BANNER}
+import docsConfig from "@/docs.config";
+import { createDocsMCPAPI } from "@farming-labs/theme/api";
+
+export const { GET, POST, DELETE } = createDocsMCPAPI({
+  entry: docsConfig.entry,
+  contentDir: docsConfig.contentDir,
+  nav: docsConfig.nav,
+  ordering: docsConfig.ordering,
+  mcp: docsConfig.mcp,
+});
+
+export const revalidate = false;
+`;
+
 const API_REFERENCE_ROUTE_TEMPLATE = `\
 ${GENERATED_BANNER}
 import docsConfig from "@/docs.config";
@@ -224,6 +240,48 @@ function extractObjectLiteral(content: string, key: string): string | undefined 
   return undefined;
 }
 
+function readMcpConfig(root: string): {
+  enabled: boolean;
+  route: string;
+} {
+  for (const ext of FILE_EXTS) {
+    const configPath = join(root, `docs.config.${ext}`);
+    if (!existsSync(configPath)) continue;
+
+    try {
+      const content = readFileSync(configPath, "utf-8");
+
+      if (content.match(/mcp\s*:\s*false/)) {
+        return { enabled: false, route: "/api/docs/mcp" };
+      }
+
+      if (content.match(/mcp\s*:\s*true/)) {
+        return { enabled: true, route: "/api/docs/mcp" };
+      }
+
+      const block = extractObjectLiteral(content, "mcp");
+      if (!block) continue;
+
+      const enabledMatch = block.match(/enabled\s*:\s*(true|false)/);
+      const routeMatch = block.match(/route\s*:\s*["']([^"']+)["']/);
+
+      return {
+        enabled: enabledMatch ? enabledMatch[1] !== "false" : true,
+        route: normalizeRoutePath(routeMatch?.[1] ?? "/api/docs/mcp"),
+      };
+    } catch {
+      return { enabled: false, route: "/api/docs/mcp" };
+    }
+  }
+
+  return { enabled: false, route: "/api/docs/mcp" };
+}
+
+function normalizeRoutePath(route: string): string {
+  const normalized = `/${route}`.replace(/\/+/g, "/");
+  return normalized !== "/" ? normalized.replace(/\/+$/, "") : "/api/docs/mcp";
+}
+
 // ─── withDocs ───────────────────────────────────────────────────────
 
 export function withDocs(nextConfig: Record<string, unknown> = {}) {
@@ -261,6 +319,18 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
   if (!isStaticExport && !hasFile(docsApiRouteDir, "route")) {
     mkdirSync(docsApiRouteDir, { recursive: true });
     writeFileSync(join(docsApiRouteDir, "route.ts"), DOCS_API_ROUTE_TEMPLATE);
+  }
+
+  const mcp = readMcpConfig(root);
+  const docsMcpRouteDir = join(root, appDir, "api", "docs", "mcp");
+  if (
+    mcp.enabled &&
+    mcp.route === "/api/docs/mcp" &&
+    !isStaticExport &&
+    !hasFile(docsMcpRouteDir, "route")
+  ) {
+    mkdirSync(docsMcpRouteDir, { recursive: true });
+    writeFileSync(join(docsMcpRouteDir, "route.ts"), DOCS_MCP_ROUTE_TEMPLATE);
   }
 
   // ── 3.1. Auto-generate app/{apiReference.path}/[[...slug]]/route.ts ──

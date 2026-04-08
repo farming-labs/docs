@@ -1,11 +1,11 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold and upgrade docs. Use when running init, upgrade, or using flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta. Covers init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), npm/pnpm/yarn/bun, and framework detection.
+description: @farming-labs/docs CLI — scaffold, upgrade, and run MCP for docs. Use when running init, upgrade, mcp, or using flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, or --config. Covers init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), npm/pnpm/yarn/bun, and framework detection.
 ---
 
 # @farming-labs/docs — CLI
 
-The `@farming-labs/docs` CLI scaffolds and upgrades documentation projects. Use this skill when the user asks about CLI commands, init, upgrade, or scaffolding.
+The `@farming-labs/docs` CLI scaffolds, upgrades, and can run the built-in MCP server for documentation projects. Use this skill when the user asks about CLI commands, init, upgrade, mcp, or scaffolding.
 
 ---
 
@@ -125,6 +125,38 @@ npx @farming-labs/docs@latest upgrade@latest       # shorthand for --latest
 ```
 
 If someone uses `pnpx @farming-labs/docs upgrade@beta`, treat it as the supported shorthand for upgrading to the latest beta dist-tag.
+
+---
+
+## MCP
+
+Run the built-in docs MCP server over stdio from the current project:
+
+```bash
+# npm / pnpx
+pnpx @farming-labs/docs mcp
+
+# pnpm
+pnpm exec docs mcp
+```
+
+By default the command reads `docs.config.ts[x]` from the project root and reuses the configured
+`entry` and `contentDir`.
+
+Use a custom config path when the file lives elsewhere:
+
+```bash
+pnpm exec docs mcp --config src/lib/docs.config.ts
+```
+
+The built-in MCP surface currently includes:
+
+- `list_pages`
+- `get_navigation`
+- `search_docs`
+- `read_page`
+
+Use the docs config `mcp` block when you also want the HTTP route version at `/api/docs/mcp`.
 
 ---
 

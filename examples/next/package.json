@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "start": "next start"
+    "start": "next start",
+    "test:mcp": "node ./scripts/test-mcp.mjs"
   },
   "dependencies": {
     "@farming-labs/docs": "0.1.1-beta.4",

@@ -13,12 +13,20 @@ describe("defineDocs", () => {
         enabled: true,
         onFeedback,
       },
+      mcp: {
+        enabled: true,
+        route: "/api/docs/mcp",
+      },
     });
 
     expect(config.onCopyClick).toBe(onCopyClick);
     expect(config.feedback).toEqual({
       enabled: true,
       onFeedback,
+    });
+    expect(config.mcp).toEqual({
+      enabled: true,
+      route: "/api/docs/mcp",
     });
   });
 });
