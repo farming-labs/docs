@@ -131,6 +131,16 @@ Framework notes:
 - **TanStack Start / SvelteKit / Astro / Nuxt:** add the framework route file and reuse the built-in `MCP` handler from the docs server helper
 - **Custom routes:** set `mcp.route` in `docs.config` and add the matching route file manually so the configured path and the actual endpoint stay aligned
 
+Testing tip:
+
+```bash
+pnpm --dir examples/next dev
+pnpm --dir examples/next test:mcp
+```
+
+The Next example in this repo includes a smoke test for the default `/api/docs/mcp` route. It
+checks `list_pages`, `get_navigation`, `search_docs`, and `read_page`.
+
 See the full guide: [docs.farming-labs.dev/docs/customization/mcp](https://docs.farming-labs.dev/docs/customization/mcp)
 
 ---

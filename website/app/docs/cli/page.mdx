@@ -140,6 +140,17 @@ If your config lives outside the project root default:
 pnpm exec docs mcp --config src/lib/docs.config.ts
 ```
 
+To test the HTTP MCP route in this repo instead of stdio, start the Next example and run its smoke
+test helper:
+
+```bash title="terminal"
+pnpm --dir examples/next dev
+```
+
+```bash title="terminal"
+pnpm --dir examples/next test:mcp
+```
+
 ## Init
 
 ### `init` without `--template`

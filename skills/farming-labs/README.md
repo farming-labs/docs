@@ -4,6 +4,15 @@ This folder contains [Agent Skills](https://skills.sh/) (conforming to the [Agen
 
 Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task (getting started, CLI, creating themes, Ask AI, page actions, or configuration, including API reference and MCP).
 
+For MCP specifically, the repo also includes a runnable Next example smoke test:
+
+```bash
+pnpm --dir examples/next dev
+pnpm --dir examples/next test:mcp
+```
+
+That helper verifies the default `/api/docs/mcp` endpoint and all four built-in MCP tools.
+
 ---
 
 ## Available skills
