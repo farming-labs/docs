@@ -42,6 +42,17 @@ Nine built-in theme entrypoints: `fumadocs` (default), `darksharp`, `pixel-borde
 - **MDX components** — built-ins like `Callout`, `Tabs`, and `HoverLink` are available without imports.
 - **Page feedback** — enable with `feedback: true` or `feedback: { enabled: true, onFeedback() {} }`.
 - **Page actions** — enable with `pageActions.copyMarkdown` and `pageActions.openDocs`.
+- **Built-in MCP server** — enable `mcp: { enabled: true }` to expose `/api/docs/mcp` and local stdio tools.
+
+### MCP quick test
+
+To verify the HTTP MCP route in this repo, use the Next example:
+
+```bash
+pnpm --dir examples/next dev
+```
+
+Then point your MCP client or inspector at `http://127.0.0.1:3000/api/docs/mcp`.
 
 ---
 

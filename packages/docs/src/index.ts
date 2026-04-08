@@ -18,6 +18,8 @@ export type {
   DocsConfig,
   ApiReferenceConfig,
   DocsI18nConfig,
+  DocsMcpConfig,
+  DocsMcpToolsConfig,
   DocsNav,
   DocsTheme,
   DocsMetadata,

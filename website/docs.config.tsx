@@ -151,6 +151,9 @@ export default defineDocs({
     enabled: true,
     onFeedback: submitDocsFeedback,
   },
+  mcp: {
+    enabled: true,
+  },
 
   llmsTxt: {
     enabled: true,

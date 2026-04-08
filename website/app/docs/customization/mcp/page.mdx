@@ -1,0 +1,224 @@
+---
+title: "MCP Server"
+description: "Expose your docs as MCP tools and resources over stdio or /api/docs/mcp"
+icon: "bot"
+order: 8
+---
+
+# MCP Server
+
+`@farming-labs/docs` can expose your docs as a built-in MCP server, so AI clients can search the docs, read pages, and inspect the nav tree without scraping HTML.
+
+The current built-in surface includes:
+
+- `list_pages`
+- `get_navigation`
+- `search_docs`
+- `read_page`
+
+It also exposes resources for:
+
+- `docs://navigation`
+- one `docs://…` resource per page
+
+## Enable it
+
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+import { pixelBorder } from "@farming-labs/theme/pixel-border";
+
+export default defineDocs({
+  entry: "docs",
+  theme: pixelBorder(),
+  mcp: {
+    enabled: true,
+  },
+});
+```
+
+That enables the built-in MCP surface with the default Streamable HTTP route:
+
+```txt title="/api/docs/mcp"
+/api/docs/mcp
+```
+
+## Default HTTP route
+
+`/api/docs/mcp` is the default MCP endpoint across the framework adapters.
+
+<Callout type="info" title="Minimal route behavior">
+  **Next.js** auto-generates the default `/api/docs/mcp` route when `mcp` is enabled and you use
+  `withDocs()`.
+
+  **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt** still need the framework route file,
+  but they all reuse the built-in MCP handler from the docs server helper.
+</Callout>
+
+### Next.js
+
+With `withDocs()`, no extra route file is needed for the default path.
+
+```ts title="next.config.ts"
+import { withDocs } from "@farming-labs/next/config";
+
+export default withDocs();
+```
+
+### TanStack Start
+
+```ts title="src/routes/api.docs.mcp.ts"
+import { createFileRoute } from "@tanstack/react-router";
+import { docsServer } from "@/lib/docs.server";
+
+export const Route = createFileRoute("/api/docs/mcp")({
+  server: {
+    handlers: {
+      GET: async ({ request }) => docsServer.MCP.GET({ request }),
+      POST: async ({ request }) => docsServer.MCP.POST({ request }),
+      DELETE: async ({ request }) => docsServer.MCP.DELETE({ request }),
+    },
+  },
+});
+```
+
+### SvelteKit
+
+```ts title="src/routes/api/docs/mcp/+server.ts"
+import { MCP } from "$lib/docs.server.js";
+
+export const GET = ({ request }) => MCP.GET({ request });
+export const POST = ({ request }) => MCP.POST({ request });
+export const DELETE = ({ request }) => MCP.DELETE({ request });
+```
+
+Your `src/lib/docs.server.ts` can keep using the normal helper:
+
+```ts title="src/lib/docs.server.ts"
+import { createDocsServer } from "@farming-labs/svelte/server";
+import config from "./docs.config";
+
+export const { load, GET, POST, MCP } = createDocsServer({
+  ...config,
+});
+```
+
+### Astro
+
+```ts title="src/pages/api/docs/mcp.ts"
+import type { APIRoute } from "astro";
+import { MCP } from "../../lib/docs.server";
+
+export const GET: APIRoute = async ({ request }) => MCP.GET({ request });
+export const POST: APIRoute = async ({ request }) => MCP.POST({ request });
+export const DELETE: APIRoute = async ({ request }) => MCP.DELETE({ request });
+```
+
+### Nuxt
+
+```ts title="server/api/docs/mcp.ts"
+import { defineDocsMcpHandler } from "@farming-labs/nuxt/server";
+import config from "../../docs.config";
+
+export default defineDocsMcpHandler(config, useStorage);
+```
+
+## Custom route
+
+If you want a custom MCP route, set it in `docs.config` and add the route file yourself.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  mcp: {
+    enabled: true,
+    route: "/api/internal/docs/mcp",
+  },
+});
+```
+
+<Callout type="warning" title="Custom routes are explicit">
+  The package only auto-generates the **default** Next.js route at `/api/docs/mcp`. If you choose a
+  custom route, keep that path in `docs.config` and add the matching route file manually so the app
+  and the MCP client point at the same endpoint.
+</Callout>
+
+Example custom Next.js route:
+
+```ts title="app/api/internal/docs/mcp/route.ts"
+import docsConfig from "@/docs.config";
+import { createDocsMCPAPI } from "@farming-labs/theme/api";
+
+export const { GET, POST, DELETE } = createDocsMCPAPI({
+  entry: docsConfig.entry,
+  contentDir: docsConfig.contentDir,
+  nav: docsConfig.nav,
+  ordering: docsConfig.ordering,
+  mcp: docsConfig.mcp,
+});
+
+export const revalidate = false;
+```
+
+## Stdio transport
+
+The same docs graph is available locally over stdio:
+
+```bash title="terminal"
+pnpx @farming-labs/docs mcp
+```
+
+Or with pnpm in an installed project:
+
+```bash title="terminal"
+pnpm exec docs mcp
+```
+
+By default the CLI reads `docs.config.ts[x]` from the project root. If your config lives somewhere else:
+
+```bash title="terminal"
+pnpm exec docs mcp --config src/lib/docs.config.ts
+```
+
+## Test the Next example
+
+This repo's Next example exposes the default MCP endpoint directly.
+
+Start the example:
+
+```bash title="terminal"
+pnpm --dir examples/next dev
+```
+
+Then connect your MCP client or inspector to:
+
+```txt title="http://127.0.0.1:3000/api/docs/mcp"
+http://127.0.0.1:3000/api/docs/mcp
+```
+
+The built-in HTTP route exposes the full MCP surface:
+
+- `list_pages`
+- `get_navigation`
+- `search_docs`
+- `read_page`
+
+## What the tools return
+
+- `list_pages` returns page titles, slugs, and URLs
+- `get_navigation` returns the docs tree in a readable text outline
+- `search_docs` ranks pages by title, description, and content matches
+- `read_page` accepts either a slug like `installation` or a full docs path like `/docs/installation`
+
+The built-in resources mirror that same data:
+
+- `docs://navigation`
+- `docs://docs`
+- `docs://docs/installation`
+- `docs://docs/guides/quickstart`
+
+## When to use this vs `llms.txt`
+
+- Use **`llms.txt`** when you want a static, crawler-friendly docs summary
+- Use **MCP** when you want a structured, queryable docs interface for agents and IDE tools
+
+They complement each other well. `llms.txt` is lightweight and public; MCP is interactive and tool-based.

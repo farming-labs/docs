@@ -47,6 +47,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `feedback`    | `boolean \| FeedbackConfig`                     | `false`          | End-of-page feedback prompt and feedback callback                                    |
 | `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
 | `ai`          | `AIConfig`                                      | —                | RAG-powered AI chat                                                                  |
+| `mcp`         | `boolean \| DocsMcpConfig`                      | `false`          | Built-in MCP server over stdio and `/api/docs/mcp`                                   |
 | `apiReference` | `boolean \| ApiReferenceConfig`               | `false`          | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON |
 | `ordering`    | `"alphabetical" \| "numeric" \| OrderingItem[]` | `"alphabetical"` | Sidebar page ordering strategy                                                       |
 | `metadata`    | `DocsMetadata`                                  | —                | SEO metadata                                                                         |
@@ -146,6 +147,60 @@ nav: {
   url: "/docs",
 },
 ```
+
+---
+
+## `DocsMcpConfig`
+
+Built-in MCP server configuration for AI clients, IDE agents, and local MCP tooling.
+
+| Property   | Type                  | Default           | Description |
+| ---------- | --------------------- | ----------------- | ----------- |
+| `enabled`  | `boolean`             | `true` in object config | Enable the MCP server when the object is present |
+| `route`    | `string`              | `"/api/docs/mcp"` | Streamable HTTP route used by the MCP endpoint |
+| `name`     | `string`              | `nav.title` or `@farming-labs/docs` | MCP server name reported to clients |
+| `version`  | `string`              | `"0.0.0"`         | Version string reported to clients |
+| `tools`    | `DocsMcpToolsConfig`  | all enabled       | Fine-grained tool toggles |
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  mcp: {
+    enabled: true,
+    route: "/api/docs/mcp",
+    name: "My Docs MCP",
+    tools: {
+      listPages: true,
+      getNavigation: true,
+      searchDocs: true,
+      readPage: true,
+    },
+  },
+});
+```
+
+### `DocsMcpToolsConfig`
+
+| Property        | Type      | Description |
+| --------------- | --------- | ----------- |
+| `listPages`     | `boolean` | Expose the `list_pages` tool |
+| `getNavigation` | `boolean` | Expose the `get_navigation` tool |
+| `searchDocs`    | `boolean` | Expose the `search_docs` tool |
+| `readPage`      | `boolean` | Expose the `read_page` tool |
+
+Default MCP surface:
+
+- **HTTP route:** `/api/docs/mcp`
+- **stdio command:** `pnpx @farming-labs/docs mcp`
+- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`
+
+Framework notes:
+
+- **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route
+- **TanStack Start / SvelteKit / Astro / Nuxt:** add the matching framework route file and forward to the built-in `MCP` handler from the docs server helper
+- **Custom routes:** set `mcp.route` in `docs.config` and add the matching route file manually so the configured path and the actual endpoint stay aligned
+
+See [MCP Server](/docs/customization/mcp) for the route snippets and examples.
 
 ---
 

@@ -11,6 +11,7 @@ The `@farming-labs/docs` CLI has two main jobs:
 
 - **`init`** — create a new docs app or add docs to an existing app
 - **`upgrade`** — bump the docs packages in an existing project
+- **`mcp`** — run the built-in docs MCP server over stdio for local clients and IDE agents
 
 If you only need the common commands, start here. The framework-specific output and generated file lists are further down this page.
 
@@ -124,6 +125,32 @@ Use `upgrade` when docs are already installed and you just want newer package ve
 </Tabs>
 
 By default, the CLI detects your framework and package manager from the current project. If detection is ambiguous, pass `--framework`.
+
+### Run the built-in MCP server locally
+
+Use `mcp` when you want to expose the current docs project to a local MCP client over stdio.
+
+```bash title="terminal"
+pnpx @farming-labs/docs mcp
+```
+
+If your config lives outside the project root default:
+
+```bash title="terminal"
+pnpm exec docs mcp --config src/lib/docs.config.ts
+```
+
+To test the HTTP MCP route in this repo instead of stdio, start the Next example:
+
+```bash title="terminal"
+pnpm --dir examples/next dev
+```
+
+Then point your MCP client or inspector at:
+
+```txt title="http://127.0.0.1:3000/api/docs/mcp"
+http://127.0.0.1:3000/api/docs/mcp
+```
 
 ## Init
 
@@ -360,6 +387,31 @@ Use **`--latest`** (default) to install the latest stable release, or **`--beta`
 </Tabs>
 
 If you prefer the shorter command form, the CLI also accepts `upgrade@beta` and `upgrade@latest`. For example, `pnpx @farming-labs/docs upgrade@beta` behaves like `pnpx @farming-labs/docs upgrade --beta`.
+
+## MCP
+
+Run the built-in docs MCP server over stdio from the current project.
+
+```bash title="terminal"
+npx @farming-labs/docs mcp
+```
+
+The command reads `docs.config.ts[x]` from the current project root by default and reuses the docs graph from your configured `entry` and `contentDir`.
+
+Use `--config` when the config lives somewhere else:
+
+```bash title="terminal"
+pnpm exec docs mcp --config src/lib/docs.config.ts
+```
+
+The current built-in MCP surface includes:
+
+- `list_pages`
+- `get_navigation`
+- `search_docs`
+- `read_page`
+
+For the HTTP endpoint version, see [MCP Server](/docs/customization/mcp).
 
 ## Supported Frameworks
 

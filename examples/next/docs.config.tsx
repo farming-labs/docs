@@ -17,7 +17,6 @@ import {
   Users,
   Mail,
 } from "lucide-react";
-import { concrete } from "@farming-labs/theme/concrete";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
 export default defineDocs({
   entry: "docs",
@@ -138,6 +137,9 @@ export default defineDocs({
         },
       ],
     },
+  },
+  mcp: {
+    enabled: true,
   },
   ordering: "numeric",
   metadata: {

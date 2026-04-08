@@ -25,6 +25,8 @@ import { createSearchAPI } from "fumadocs-core/search/server";
 import { getNextAppDir } from "./get-app-dir.js";
 import { resolveDocsI18n, resolveDocsLocale } from "@farming-labs/docs";
 import type { DocsI18nConfig } from "@farming-labs/docs";
+import { createDocsMcpHttpHandler, createFilesystemDocsMcpSource } from "@farming-labs/docs/server";
+import type { DocsMcpConfig, OrderingItem } from "@farming-labs/docs";
 import { withLangInUrl } from "./i18n.js";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -73,6 +75,15 @@ interface DocsAPIOptions {
   ai?: AIOptions;
   /** i18n config (optional) */
   i18n?: DocsI18nConfig;
+}
+
+interface DocsMCPAPIOptions {
+  rootDir?: string;
+  entry?: string;
+  contentDir?: string;
+  nav?: { title?: unknown };
+  ordering?: "alphabetical" | "numeric" | OrderingItem[];
+  mcp?: boolean | DocsMcpConfig;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -169,6 +180,274 @@ function readAIConfig(root: string): AIOptions {
     }
   }
   return {};
+}
+
+function readMcpConfig(root: string): boolean | DocsMcpConfig | undefined {
+  for (const ext of FILE_EXTS) {
+    const configPath = path.join(root, `docs.config.${ext}`);
+    if (!fs.existsSync(configPath)) continue;
+
+    try {
+      const content = fs.readFileSync(configPath, "utf-8");
+      const sanitized = stripCommentsAndStrings(content);
+      const configObject = extractRootConfigObject(content, sanitized);
+      const scopedContent = configObject?.content ?? content;
+      const scopedSanitized = configObject?.sanitized ?? sanitized;
+
+      const booleanValue = readTopLevelBoolean(scopedSanitized, "mcp");
+      if (booleanValue !== undefined) return booleanValue;
+
+      const block = extractObjectLiteral(scopedContent, scopedSanitized, "mcp");
+      if (!block) continue;
+
+      return {
+        enabled: readBooleanFromBlock(block, "enabled"),
+        route: readStringFromBlock(block, "route"),
+        name: readStringFromBlock(block, "name"),
+        version: readStringFromBlock(block, "version"),
+        tools: {
+          listPages: readBooleanFromBlock(block, "listPages"),
+          readPage: readBooleanFromBlock(block, "readPage"),
+          searchDocs: readBooleanFromBlock(block, "searchDocs"),
+          getNavigation: readBooleanFromBlock(block, "getNavigation"),
+        },
+      };
+    } catch {
+      // fall through
+    }
+  }
+
+  return undefined;
+}
+
+function readStringFromBlock(block: string, key: string): string | undefined {
+  const match = block.match(new RegExp(`${key}\\s*:\\s*["']([^"']+)["']`));
+  return match?.[1];
+}
+
+function readBooleanFromBlock(block: string, key: string): boolean | undefined {
+  const match = block.match(new RegExp(`${key}\\s*:\\s*(true|false)`));
+  return match ? match[1] === "true" : undefined;
+}
+
+function extractObjectLiteral(content: string, sanitized: string, key: string): string | undefined {
+  const keyIndex = findTopLevelPropertyIndex(sanitized, key);
+  if (keyIndex === -1) return undefined;
+
+  const colonIndex = sanitized.indexOf(":", keyIndex + key.length);
+  if (colonIndex === -1) return undefined;
+
+  const braceStart = sanitized.indexOf("{", colonIndex);
+  if (braceStart === -1) return undefined;
+
+  let depth = 0;
+
+  for (let index = braceStart; index < sanitized.length; index += 1) {
+    const char = sanitized[index];
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char !== "}") continue;
+
+    depth -= 1;
+    if (depth === 0) {
+      return content.slice(braceStart + 1, index);
+    }
+  }
+
+  return undefined;
+}
+
+function readTopLevelBoolean(content: string, key: string): boolean | undefined {
+  const keyIndex = findTopLevelPropertyIndex(content, key);
+  if (keyIndex === -1) return undefined;
+
+  const match = content.slice(keyIndex + key.length).match(/^\s*:\s*(true|false)\b/);
+  if (!match) return undefined;
+  return match[1] === "true";
+}
+
+function findTopLevelPropertyIndex(content: string, key: string): number {
+  let depth = 0;
+
+  for (let index = 0; index < content.length; index += 1) {
+    const char = content[index];
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char === "}") {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+
+    if (depth !== 0) continue;
+    if (!content.startsWith(key, index)) continue;
+
+    const previous = index === 0 ? "" : content[index - 1];
+    if (previous && /[\w$]/.test(previous)) continue;
+
+    const next = content[index + key.length] ?? "";
+    if (next && /[\w$]/.test(next)) continue;
+
+    const afterKey = content.slice(index + key.length);
+    if (!afterKey.match(/^\s*:/)) continue;
+
+    return index;
+  }
+
+  return -1;
+}
+
+function extractRootConfigObject(
+  content: string,
+  sanitized: string,
+): { content: string; sanitized: string } | undefined {
+  const defineDocsIndex = sanitized.indexOf("defineDocs");
+  const exportDefaultIndex = sanitized.indexOf("export default");
+
+  let braceStart = -1;
+
+  if (defineDocsIndex !== -1) {
+    const parenIndex = sanitized.indexOf("(", defineDocsIndex);
+    if (parenIndex !== -1) {
+      braceStart = sanitized.indexOf("{", parenIndex);
+    }
+  }
+
+  if (braceStart === -1 && exportDefaultIndex !== -1) {
+    braceStart = sanitized.indexOf("{", exportDefaultIndex);
+  }
+
+  if (braceStart === -1) return undefined;
+
+  let depth = 0;
+
+  for (let index = braceStart; index < sanitized.length; index += 1) {
+    const char = sanitized[index];
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char !== "}") continue;
+
+    depth -= 1;
+    if (depth === 0) {
+      return {
+        content: content.slice(braceStart + 1, index),
+        sanitized: sanitized.slice(braceStart + 1, index),
+      };
+    }
+  }
+
+  return undefined;
+}
+
+function stripCommentsAndStrings(content: string): string {
+  let result = "";
+  let index = 0;
+  let state:
+    | "normal"
+    | "singleQuote"
+    | "doubleQuote"
+    | "template"
+    | "lineComment"
+    | "blockComment" = "normal";
+
+  while (index < content.length) {
+    const char = content[index];
+    const next = content[index + 1];
+
+    if (state === "lineComment") {
+      if (char === "\n") {
+        state = "normal";
+        result += "\n";
+      } else {
+        result += " ";
+      }
+      index += 1;
+      continue;
+    }
+
+    if (state === "blockComment") {
+      if (char === "*" && next === "/") {
+        result += "  ";
+        index += 2;
+        state = "normal";
+      } else {
+        result += char === "\n" ? "\n" : " ";
+        index += 1;
+      }
+      continue;
+    }
+
+    if (state === "singleQuote" || state === "doubleQuote" || state === "template") {
+      const quote = state === "singleQuote" ? "'" : state === "doubleQuote" ? '"' : "`";
+
+      if (char === "\\") {
+        result += " ";
+        if (next) result += next === "\n" ? "\n" : " ";
+        index += 2;
+        continue;
+      }
+
+      result += char === "\n" ? "\n" : " ";
+
+      if (char === quote) {
+        state = "normal";
+      }
+
+      index += 1;
+      continue;
+    }
+
+    if (char === "/" && next === "/") {
+      result += "  ";
+      index += 2;
+      state = "lineComment";
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      result += "  ";
+      index += 2;
+      state = "blockComment";
+      continue;
+    }
+
+    if (char === "'") {
+      result += " ";
+      index += 1;
+      state = "singleQuote";
+      continue;
+    }
+
+    if (char === '"') {
+      result += " ";
+      index += 1;
+      state = "doubleQuote";
+      continue;
+    }
+
+    if (char === "`") {
+      result += " ";
+      index += 1;
+      state = "template";
+      continue;
+    }
+
+    result += char;
+    index += 1;
+  }
+
+  return result;
 }
 
 function stripMdx(raw: string): string {
@@ -634,6 +913,48 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
       const ctx = resolveContextFromRequest(request);
       return handleAskAI(request, getIndexes(ctx), getSearchAPI(ctx), aiConfig);
+    },
+  };
+}
+
+/**
+ * Create MCP route handlers for `/api/docs/mcp`.
+ *
+ * Returns `{ GET, POST, DELETE }` for use in a Next.js route handler.
+ */
+export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
+  const rootDir = options.rootDir ?? process.cwd();
+  const entry = options.entry ?? readEntry(rootDir);
+  const appDir = getNextAppDir(rootDir);
+  const contentDir = options.contentDir ?? path.join(appDir, entry);
+  const navTitle =
+    typeof options.nav?.title === "string" && options.nav.title.trim().length > 0
+      ? options.nav.title
+      : "Documentation";
+
+  const source = createFilesystemDocsMcpSource({
+    rootDir,
+    entry,
+    contentDir,
+    siteTitle: navTitle,
+    ordering: options.ordering,
+  });
+
+  const handlers = createDocsMcpHttpHandler({
+    source,
+    mcp: options.mcp ?? readMcpConfig(rootDir),
+    defaultName: navTitle,
+  });
+
+  return {
+    GET(request: Request) {
+      return handlers.GET({ request });
+    },
+    POST(request: Request) {
+      return handlers.POST({ request });
+    },
+    DELETE(request: Request) {
+      return handlers.DELETE({ request });
     },
   };
 }

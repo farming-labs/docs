@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, feedback, metadata, og, apiReference, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, feedback, metadata, og, apiReference, MCP, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration
@@ -44,6 +44,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `feedback` | `boolean \| FeedbackConfig` | `false` | End-of-page feedback prompt and callback |
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
+| `mcp` | `boolean \| DocsMcpConfig` | `false` | Built-in MCP server over stdio and `/api/docs/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON document |
 | `metadata` | `DocsMetadata` | — | SEO: titleTemplate, description, etc. |
 | `og` | `OGConfig` | — | Dynamic Open Graph images |
@@ -105,6 +106,41 @@ feedback: {
 - Use `feedback: true` to show the UI with no callback.
 - **Next.js / TanStack Start / SvelteKit / Nuxt:** `feedback.onFeedback` runs from the built-in UI with no extra client bridge file.
 - **Astro:** the built-in UI still works with `feedback: true`; optional analytics hooks can listen to `window.__fdOnFeedback__` or the `fd:feedback` event.
+
+---
+
+## MCP Server
+
+Use `mcp` to expose your docs as a built-in MCP server for local agents and remote HTTP clients.
+
+```ts
+mcp: {
+  enabled: true,
+  route: "/api/docs/mcp",
+}
+```
+
+Default behavior:
+
+- **HTTP route:** `/api/docs/mcp`
+- **stdio command:** `pnpx @farming-labs/docs mcp`
+- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`
+
+Framework notes:
+- **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route
+- **TanStack Start / SvelteKit / Astro / Nuxt:** add the framework route file and reuse the built-in `MCP` handler from the docs server helper
+- **Custom routes:** set `mcp.route` in `docs.config` and add the matching route file manually so the configured path and the actual endpoint stay aligned
+
+Testing tip:
+
+```bash
+pnpm --dir examples/next dev
+```
+
+Then point an MCP client or inspector at `http://127.0.0.1:3000/api/docs/mcp` to verify the
+default route.
+
+See the full guide: [docs.farming-labs.dev/docs/customization/mcp](https://docs.farming-labs.dev/docs/customization/mcp)
 
 ---
 
@@ -207,6 +243,7 @@ Use `ordering: "numeric"` (default) so sidebar order follows frontmatter `order`
 3. **SvelteKit/Astro:** Server-side docs loader must receive config and (for AI) env vars; see framework docs.
 4. **Nuxt:** `defineDocsHandler(config, useStorage)` in `server/api/docs.ts`; config is imported from root `docs.config.ts`.
 5. **Feedback callbacks:** Astro cannot serialize config functions into client scripts; use the built-in custom event hooks if you need analytics there.
+6. **MCP custom routes:** Only the default Next.js `/api/docs/mcp` route is auto-generated. If the user sets `mcp.route`, keep that path in config and add the matching route file manually.
 
 ---
 
@@ -214,4 +251,5 @@ Use `ordering: "numeric"` (default) so sidebar order follows frontmatter `order`
 
 - **Configuration docs:** [docs.farming-labs.dev/docs/configuration](https://docs.farming-labs.dev/docs/configuration)
 - **API Reference:** [docs.farming-labs.dev/docs/reference](https://docs.farming-labs.dev/docs/reference)
+- **MCP Server:** [docs.farming-labs.dev/docs/customization/mcp](https://docs.farming-labs.dev/docs/customization/mcp)
 - **Related skills:** `ask-ai`, `page-actions`, `getting-started`, `creating-themes`.
