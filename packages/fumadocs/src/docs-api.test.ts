@@ -175,4 +175,66 @@ title: "Introduction"
     expect(response.status).toBe(200);
     expect(response.headers.get("mcp-session-id")).toBeTruthy();
   });
+
+  it("ignores nested mcp booleans outside the root config property", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-nested-config-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+`,
+    );
+
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  theme: someTheme({
+    mcp: false,
+  }),
+  mcp: true,
+});
+`,
+    );
+
+    const { POST } = createDocsMCPAPI({
+      rootDir,
+      entry: "docs",
+      nav: { title: "Example Docs" },
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": "2025-11-25",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-11-25",
+            capabilities: {},
+            clientInfo: {
+              name: "vitest",
+              version: "1.0.0",
+            },
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("mcp-session-id")).toBeTruthy();
+  });
 });

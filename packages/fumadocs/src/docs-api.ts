@@ -190,10 +190,14 @@ function readMcpConfig(root: string): boolean | DocsMcpConfig | undefined {
     try {
       const content = fs.readFileSync(configPath, "utf-8");
       const sanitized = stripCommentsAndStrings(content);
-      const booleanValue = readTopLevelBoolean(sanitized, "mcp");
+      const configObject = extractRootConfigObject(content, sanitized);
+      const scopedContent = configObject?.content ?? content;
+      const scopedSanitized = configObject?.sanitized ?? sanitized;
+
+      const booleanValue = readTopLevelBoolean(scopedSanitized, "mcp");
       if (booleanValue !== undefined) return booleanValue;
 
-      const block = extractObjectLiteral(content, sanitized, "mcp");
+      const block = extractObjectLiteral(scopedContent, scopedSanitized, "mcp");
       if (!block) continue;
 
       return {
@@ -227,10 +231,13 @@ function readBooleanFromBlock(block: string, key: string): boolean | undefined {
 }
 
 function extractObjectLiteral(content: string, sanitized: string, key: string): string | undefined {
-  const keyIndex = sanitized.search(new RegExp(`\\b${key}\\b\\s*:\\s*\\{`));
+  const keyIndex = findTopLevelPropertyIndex(sanitized, key);
   if (keyIndex === -1) return undefined;
 
-  const braceStart = sanitized.indexOf("{", keyIndex);
+  const colonIndex = sanitized.indexOf(":", keyIndex + key.length);
+  if (colonIndex === -1) return undefined;
+
+  const braceStart = sanitized.indexOf("{", colonIndex);
   if (braceStart === -1) return undefined;
 
   let depth = 0;
@@ -255,9 +262,92 @@ function extractObjectLiteral(content: string, sanitized: string, key: string): 
 }
 
 function readTopLevelBoolean(content: string, key: string): boolean | undefined {
-  const match = content.match(new RegExp(`\\b${key}\\b\\s*:\\s*(true|false)\\b`));
+  const keyIndex = findTopLevelPropertyIndex(content, key);
+  if (keyIndex === -1) return undefined;
+
+  const match = content.slice(keyIndex + key.length).match(/^\s*:\s*(true|false)\b/);
   if (!match) return undefined;
   return match[1] === "true";
+}
+
+function findTopLevelPropertyIndex(content: string, key: string): number {
+  let depth = 0;
+
+  for (let index = 0; index < content.length; index += 1) {
+    const char = content[index];
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char === "}") {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+
+    if (depth !== 0) continue;
+    if (!content.startsWith(key, index)) continue;
+
+    const previous = index === 0 ? "" : content[index - 1];
+    if (previous && /[\w$]/.test(previous)) continue;
+
+    const next = content[index + key.length] ?? "";
+    if (next && /[\w$]/.test(next)) continue;
+
+    const afterKey = content.slice(index + key.length);
+    if (!afterKey.match(/^\s*:/)) continue;
+
+    return index;
+  }
+
+  return -1;
+}
+
+function extractRootConfigObject(
+  content: string,
+  sanitized: string,
+): { content: string; sanitized: string } | undefined {
+  const defineDocsIndex = sanitized.indexOf("defineDocs");
+  const exportDefaultIndex = sanitized.indexOf("export default");
+
+  let braceStart = -1;
+
+  if (defineDocsIndex !== -1) {
+    const parenIndex = sanitized.indexOf("(", defineDocsIndex);
+    if (parenIndex !== -1) {
+      braceStart = sanitized.indexOf("{", parenIndex);
+    }
+  }
+
+  if (braceStart === -1 && exportDefaultIndex !== -1) {
+    braceStart = sanitized.indexOf("{", exportDefaultIndex);
+  }
+
+  if (braceStart === -1) return undefined;
+
+  let depth = 0;
+
+  for (let index = braceStart; index < sanitized.length; index += 1) {
+    const char = sanitized[index];
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char !== "}") continue;
+
+    depth -= 1;
+    if (depth === 0) {
+      return {
+        content: content.slice(braceStart + 1, index),
+        sanitized: sanitized.slice(braceStart + 1, index),
+      };
+    }
+  }
+
+  return undefined;
 }
 
 function stripCommentsAndStrings(content: string): string {
