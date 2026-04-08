@@ -391,20 +391,17 @@ Framework notes:
 - **TanStack Start / SvelteKit / Astro / Nuxt:** add the framework route file and reuse the built-in MCP handler from the docs server helper
 - **Custom routes:** set `mcp.route` in `docs.config` and add the matching route file manually so the configured path and the actual endpoint stay aligned
 
-You can smoke test the built-in HTTP route with the Next example in this repo:
+You can test the built-in HTTP route with the Next example in this repo:
 
 ```bash
 pnpm --dir examples/next dev
 ```
 
-Then in a second terminal:
+Then point your MCP client or inspector at:
 
-```bash
-pnpm --dir examples/next test:mcp
+```txt
+http://127.0.0.1:3000/api/docs/mcp
 ```
-
-That helper verifies `list_pages`, `get_navigation`, `search_docs`, and `read_page` against
-`/api/docs/mcp`.
 
 See:
 

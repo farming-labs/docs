@@ -135,11 +135,10 @@ Testing tip:
 
 ```bash
 pnpm --dir examples/next dev
-pnpm --dir examples/next test:mcp
 ```
 
-The Next example in this repo includes a smoke test for the default `/api/docs/mcp` route. It
-checks `list_pages`, `get_navigation`, `search_docs`, and `read_page`.
+Then point an MCP client or inspector at `http://127.0.0.1:3000/api/docs/mcp` to verify the
+default route.
 
 See the full guide: [docs.farming-labs.dev/docs/customization/mcp](https://docs.farming-labs.dev/docs/customization/mcp)
 

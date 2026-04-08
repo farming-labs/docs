@@ -50,11 +50,9 @@ To verify the HTTP MCP route in this repo, use the Next example:
 
 ```bash
 pnpm --dir examples/next dev
-pnpm --dir examples/next test:mcp
 ```
 
-That smoke test checks the built-in MCP tools: `list_pages`, `get_navigation`, `search_docs`, and
-`read_page`.
+Then point your MCP client or inspector at `http://127.0.0.1:3000/api/docs/mcp`.
 
 ---
 

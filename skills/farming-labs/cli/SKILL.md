@@ -158,15 +158,13 @@ The built-in MCP surface currently includes:
 
 Use the docs config `mcp` block when you also want the HTTP route version at `/api/docs/mcp`.
 
-For a working repo example, start the Next example and run its smoke test helper:
+For a working repo example, start the Next example:
 
 ```bash
 pnpm --dir examples/next dev
-pnpm --dir examples/next test:mcp
 ```
 
-That helper verifies the default `/api/docs/mcp` HTTP endpoint and exercises all four built-in
-tools.
+Then point your MCP client or inspector at `http://127.0.0.1:3000/api/docs/mcp`.
 
 ---
 

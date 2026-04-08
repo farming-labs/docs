@@ -8,10 +8,9 @@ For MCP specifically, the repo also includes a runnable Next example smoke test:
 
 ```bash
 pnpm --dir examples/next dev
-pnpm --dir examples/next test:mcp
 ```
 
-That helper verifies the default `/api/docs/mcp` endpoint and all four built-in MCP tools.
+Then point your MCP client or inspector at `http://127.0.0.1:3000/api/docs/mcp`.
 
 ---
 

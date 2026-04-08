@@ -181,7 +181,7 @@ pnpm exec docs mcp --config src/lib/docs.config.ts
 
 ## Test the Next example
 
-This repo includes a one-command MCP smoke test in the Next example.
+This repo's Next example exposes the default MCP endpoint directly.
 
 Start the example:
 
@@ -189,26 +189,18 @@ Start the example:
 pnpm --dir examples/next dev
 ```
 
-Then in another terminal:
+Then connect your MCP client or inspector to:
 
-```bash title="terminal"
-pnpm --dir examples/next test:mcp
+```txt title="http://127.0.0.1:3000/api/docs/mcp"
+http://127.0.0.1:3000/api/docs/mcp
 ```
 
-That helper exercises the full built-in MCP surface:
+The built-in HTTP route exposes the full MCP surface:
 
 - `list_pages`
 - `get_navigation`
 - `search_docs`
 - `read_page`
-
-It also performs the required MCP `initialize` handshake and closes the session when the test ends.
-
-If you need to point at a different running server:
-
-```bash title="terminal"
-DOCS_MCP_URL=http://127.0.0.1:4023/api/docs/mcp pnpm --dir examples/next test:mcp
-```
 
 ## What the tools return
 
