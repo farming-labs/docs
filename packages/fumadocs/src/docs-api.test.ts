@@ -422,6 +422,44 @@ Search from traced server files.
     expect(payload.some((result) => result.content.includes("Overview"))).toBe(true);
   });
 
+  it("falls back to process.cwd docs files when a compiled rootDir is provided in dev", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-dev-root-search-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    mkdirSync(join(rootDir, ".next"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Overview"
+description: "Process cwd docs"
+---
+
+# Overview
+
+Search from process cwd docs files.
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir: join(rootDir, ".next"),
+      entry: "docs",
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs?query=process"));
+    const payload = (await response.json()) as Array<{
+      url: string;
+      content: string;
+      description?: string;
+      type: string;
+    }>;
+
+    expect(payload.length).toBeGreaterThan(0);
+    expect(payload.some((result) => result.content.includes("Overview"))).toBe(true);
+  });
+
   it("routes GET search through an MCP search provider with a relative endpoint", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-search-route-"));
     tempDirs.push(rootDir);

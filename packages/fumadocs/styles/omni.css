@@ -80,6 +80,7 @@
     0 0 0 1px rgba(255, 255, 255, 0.04);
   outline: none;
   overflow: hidden;
+  overscroll-behavior: contain;
   animation: omni-scale-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -148,6 +149,7 @@
 .omni-body {
   max-height: 60vh;
   overflow: auto;
+  overscroll-behavior: contain;
   padding: 0.25rem;
 }
 .omni-body::-webkit-scrollbar {

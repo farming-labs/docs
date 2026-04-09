@@ -20,6 +20,20 @@ describe("resolveNextProjectRoot", () => {
     expect(resolveNextProjectRoot(pathToFileURL(routePath).href)).toBe("/repo");
   });
 
+  it("resolves the project root from a built .next dev server route path", () => {
+    const routePath = path.join(
+      "/repo",
+      ".next",
+      "dev",
+      "server",
+      "app",
+      "api",
+      "docs",
+      "route.js",
+    );
+    expect(resolveNextProjectRoot(pathToFileURL(routePath).href)).toBe("/repo");
+  });
+
   it("resolves the project root from a built nested project route path", () => {
     const routePath = path.join(
       "/repo",

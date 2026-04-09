@@ -27,7 +27,12 @@ export function resolveNextProjectRoot(metaUrl: string): string {
       }
 
       if (path.basename(parent) === "server") {
-        return path.dirname(path.dirname(parent));
+        const serverParent = path.dirname(parent);
+        if (path.basename(serverParent) === "dev") {
+          return path.dirname(path.dirname(serverParent));
+        }
+
+        return path.dirname(serverParent);
       }
 
       return parent;
