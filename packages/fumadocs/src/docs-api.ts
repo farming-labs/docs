@@ -65,8 +65,11 @@ interface AIOptions {
 }
 
 interface DocsAPIOptions {
+  rootDir?: string;
   /** Docs entry folder (default: read from docs.config) */
   entry?: string;
+  /** Override the docs content directory when it does not live in app/<entry>. */
+  contentDir?: string;
   /** Search language (default: "english") */
   language?: string;
   /** AI chat configuration */
@@ -775,10 +778,15 @@ function generateLlmsTxt(
  *
  * @param options - Optional overrides (entry, language, ai config)
  */
+/**
+ * @deprecated Prefer `createDocsAPI` from `@farming-labs/next/api` in Next.js apps.
+ * The `@farming-labs/theme/api` path is kept for compatibility and will be phased out.
+ */
 export function createDocsAPI(options?: DocsAPIOptions) {
-  const root = process.cwd();
+  const root = options?.rootDir ?? process.cwd();
   const entry = options?.entry ?? readEntry(root);
   const appDir = getNextAppDir(root);
+  const contentDir = options?.contentDir ?? path.join(appDir, entry);
 
   const i18nConfig = options?.i18n ?? readI18nConfig(root);
   const i18n = resolveDocsI18n(i18nConfig);
@@ -790,7 +798,37 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   // Read llms.txt config
   const llmsConfig = readLlmsTxtConfig(root);
 
-  type DocsContext = { entryPath: string; docsDir: string; locale?: string };
+  type DocsContext = { entryPath: string; docsDirs: string[]; locale?: string };
+
+  function resolveDocsDirCandidates(locale?: string): string[] {
+    const relativeCandidates = new Set<string>();
+
+    if (path.isAbsolute(contentDir)) {
+      return [locale ? path.join(contentDir, locale) : contentDir];
+    }
+
+    relativeCandidates.add(contentDir);
+    relativeCandidates.add(path.join("app", entry));
+    relativeCandidates.add(path.join("src", "app", entry));
+
+    const rootCandidates = new Set<string>([root]);
+    if (path.basename(root) === "server") {
+      rootCandidates.add(path.resolve(root, "..", ".."));
+    } else {
+      rootCandidates.add(path.join(root, ".next", "server"));
+      rootCandidates.add(path.join(root, ".next-build", "server"));
+    }
+
+    const resolved = new Set<string>();
+    for (const base of rootCandidates) {
+      for (const relative of relativeCandidates) {
+        const candidate = path.join(base, relative);
+        resolved.add(locale ? path.join(candidate, locale) : candidate);
+      }
+    }
+
+    return [...resolved];
+  }
 
   function resolveLocaleFromRequest(request: Request): string | undefined {
     if (!i18n) return undefined;
@@ -814,14 +852,17 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
   function resolveContextFromRequest(request: Request): DocsContext {
     if (!i18n) {
-      return { entryPath: entry, docsDir: path.join(root, appDir, entry) };
+      return {
+        entryPath: entry,
+        docsDirs: resolveDocsDirCandidates(),
+      };
     }
 
     const locale = resolveLocaleFromRequest(request) ?? i18n.defaultLocale;
     return {
       entryPath: entry,
       locale,
-      docsDir: path.join(root, appDir, entry, locale),
+      docsDirs: resolveDocsDirCandidates(locale),
     };
   }
 
@@ -832,7 +873,13 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     const key = ctx.locale ?? "__default__";
     const cached = indexesByLocale.get(key);
     if (cached) return cached;
-    const next = scanDocsDir(ctx.docsDir, ctx.entryPath, ctx.locale);
+
+    let next: DocsSearchSourcePage[] = [];
+    for (const docsDir of ctx.docsDirs) {
+      next = scanDocsDir(docsDir, ctx.entryPath, ctx.locale);
+      if (next.length > 0) break;
+    }
+
     indexesByLocale.set(key, next);
     return next;
   }
@@ -924,6 +971,10 @@ export function createDocsAPI(options?: DocsAPIOptions) {
  * Create MCP route handlers for `/api/docs/mcp`.
  *
  * Returns `{ GET, POST, DELETE }` for use in a Next.js route handler.
+ */
+/**
+ * @deprecated Prefer `createDocsMCPAPI` from `@farming-labs/next/api` in Next.js apps.
+ * The `@farming-labs/theme/api` path is kept for compatibility and will be phased out.
  */
 export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
   const rootDir = options.rootDir ?? process.cwd();

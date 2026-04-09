@@ -26,5 +26,8 @@ import { createDocsAPI } from "./docs-api.js";
  * This function is kept for backward compatibility.
  */
 export function createDocsSearchAPI(options?: { entry?: string; language?: string }) {
-  return createDocsAPI({ entry: options?.entry, language: options?.language });
+  return createDocsAPI({
+    entry: options?.entry,
+    language: options?.language,
+  });
 }

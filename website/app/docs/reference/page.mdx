@@ -408,6 +408,11 @@ Notes:
 - If MCP-backed search points at the same relative MCP route, the built-in `search_docs` tool falls back to simple search internally to avoid recursive loops
 - On custom/manual Next routes, import `createDocsAPI` from `@farming-labs/next/api` and pass `search: docsConfig.search`
 
+<Callout type="warning" title="@farming-labs/theme/api still works for now">
+  `@farming-labs/theme/api` remains supported as a compatibility import path today, but prefer
+  `@farming-labs/next/api` in Next.js apps. The theme-level path will be deprecated.
+</Callout>
+
 ---
 
 ## `ApiReferenceConfig`

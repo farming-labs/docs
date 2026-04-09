@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { existsSync, mkdirSync, writeFileSync, rmSync, mkdtempSync, readFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { withDocs } from "./config.js";
@@ -108,6 +116,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "app/api/docs/mcp/route.ts"))).toBe(true);
     const route = readFileSync(join(tmpDir, "app/api/docs/mcp/route.ts"), "utf-8");
     expect(route).toContain('import { createDocsMCPAPI } from "@farming-labs/next/api";');
+    expect(route).not.toContain("resolveNextProjectRoot");
     expect(route).toContain("search: docsConfig.search");
   });
 
@@ -191,7 +200,49 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const route = readFileSync(join(tmpDir, "app/api/docs/route.ts"), "utf-8");
 
     expect(route).toContain('import { createDocsAPI } from "@farming-labs/next/api";');
+    expect(route).not.toContain("resolveNextProjectRoot");
+    expect(route).not.toContain("rootDir,");
     expect(route).toContain("search: docsConfig.search");
     expect(route).toContain("ai: docsConfig.ai");
+  });
+
+  it("adds docs content to output file tracing for docs api routes", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+
+    expect(nextConfig.outputFileTracingIncludes).toMatchObject({
+      "/api/docs": ["app/docs/**/*"],
+      "/api/docs/mcp": ["app/docs/**/*"],
+    });
+  });
+
+  it("auto-configures workspace turbopack aliases when running inside the docs monorepo", () => {
+    const workspaceRoot = join(tmpDir, "repo");
+    const appRoot = join(workspaceRoot, "examples", "next");
+
+    mkdirSync(join(workspaceRoot, "packages", "docs", "src"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "fumadocs", "src"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "next", "src"), { recursive: true });
+    mkdirSync(join(appRoot, "app"), { recursive: true });
+
+    writeFileSync(join(workspaceRoot, "packages", "docs", "src", "index.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "fumadocs", "src", "index.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "next", "src", "config.ts"), "export {};\n");
+    writeFileSync(join(appRoot, "docs.config.ts"), DOCS_CONFIG, "utf-8");
+    process.chdir(appRoot);
+
+    const nextConfig = withDocs({});
+    const turbopack = nextConfig.turbopack as
+      | { root?: string; resolveAlias?: Record<string, string> }
+      | undefined;
+
+    expect(turbopack?.root).toBe(realpathSync(workspaceRoot));
+    expect(turbopack?.resolveAlias?.["@farming-labs/docs"]).toBe("./packages/docs/src/index.ts");
+    expect(turbopack?.resolveAlias?.["@farming-labs/next/api"]).toBe("./packages/next/src/api.ts");
+    expect(turbopack?.resolveAlias?.["@farming-labs/theme/search"]).toBe(
+      "./packages/fumadocs/src/search.ts",
+    );
   });
 });

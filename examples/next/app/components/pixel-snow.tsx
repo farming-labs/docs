@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { mountPixelSnow, type PixelSnowOptions } from "../../../shared/pixel-snow";
+import { mountPixelSnow, type PixelSnowOptions } from "@/lib/pixel-snow";
 
 export default function PixelSnow(props: PixelSnowOptions) {
   const ref = useRef<HTMLDivElement>(null);

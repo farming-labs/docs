@@ -22,7 +22,7 @@
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 /** Resolve Next.js App Router directory: prefer src/app when present, else app. */
 function getNextAppDir(root: string): string {
@@ -80,6 +80,7 @@ import { createDocsAPI } from "@farming-labs/next/api";
 
 export const { GET, POST } = createDocsAPI({
   entry: docsConfig.entry,
+  contentDir: docsConfig.contentDir,
   i18n: docsConfig.i18n,
   search: docsConfig.search,
   ai: docsConfig.ai,
@@ -120,6 +121,51 @@ export const revalidate = false;
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const INTERNAL_DOCS_CONFIG_ALIAS = "@farming-labs/next-internal-docs-config";
 
+function isDocsWorkspaceRoot(root: string): boolean {
+  return (
+    existsSync(join(root, "packages", "docs", "src", "index.ts")) &&
+    existsSync(join(root, "packages", "fumadocs", "src", "index.ts")) &&
+    existsSync(join(root, "packages", "next", "src", "config.ts"))
+  );
+}
+
+function findDocsWorkspaceRoot(start: string): string | undefined {
+  let current = start;
+
+  while (true) {
+    if (isDocsWorkspaceRoot(current)) {
+      return current;
+    }
+
+    const parent = dirname(current);
+    if (parent === current) return undefined;
+    current = parent;
+  }
+}
+
+function createDocsWorkspaceAliases(): Record<string, string> {
+  return {
+    "@farming-labs/docs": "./packages/docs/src/index.ts",
+    "@farming-labs/docs/server": "./packages/docs/src/server.ts",
+    "@farming-labs/next": "./packages/next/src/index.ts",
+    "@farming-labs/next/api": "./packages/next/src/api.ts",
+    "@farming-labs/next/client-callbacks": "./packages/next/src/client-callbacks.tsx",
+    "@farming-labs/next/layout": "./packages/next/src/layout.tsx",
+    "@farming-labs/next/mdx-plugins/rehype-code": "./packages/next/src/mdx-plugins/rehype-code.ts",
+    "@farming-labs/next/mdx-plugins/rehype-toc": "./packages/next/src/mdx-plugins/rehype-toc.ts",
+    "@farming-labs/next/mdx-plugins/remark-heading":
+      "./packages/next/src/mdx-plugins/remark-heading.ts",
+    "@farming-labs/next/mdx-plugins/remark-og": "./packages/next/src/mdx-plugins/remark-og.ts",
+    "@farming-labs/theme": "./packages/fumadocs/src/index.ts",
+    "@farming-labs/theme/api": "./packages/fumadocs/src/docs-api.ts",
+    "@farming-labs/theme/client-hooks": "./packages/fumadocs/src/docs-client-hooks.tsx",
+    "@farming-labs/theme/concrete": "./packages/fumadocs/src/concrete/index.ts",
+    "@farming-labs/theme/hardline": "./packages/fumadocs/src/hardline/index.ts",
+    "@farming-labs/theme/mdx": "./packages/fumadocs/src/mdx.ts",
+    "@farming-labs/theme/search": "./packages/fumadocs/src/search.ts",
+  };
+}
+
 function hasFile(root: string, baseName: string): boolean {
   return FILE_EXTS.some((ext) => existsSync(join(root, `${baseName}.${ext}`)));
 }
@@ -149,6 +195,23 @@ function readDocsEntry(root: string): string {
     }
   }
   return "docs";
+}
+
+function readDocsContentDir(root: string): string | undefined {
+  for (const ext of FILE_EXTS) {
+    const configPath = join(root, `docs.config.${ext}`);
+    if (!existsSync(configPath)) continue;
+
+    try {
+      const content = readFileSync(configPath, "utf-8");
+      const match = content.match(/contentDir\s*:\s*["']([^"']+)["']/);
+      if (match?.[1]) return match[1];
+    } catch {
+      // fall through
+    }
+  }
+
+  return undefined;
 }
 
 function readDocsConfigPath(root: string): string {
@@ -289,6 +352,7 @@ function normalizeRoutePath(route: string): string {
 
 export function withDocs(nextConfig: Record<string, unknown> = {}) {
   const root = process.cwd();
+  const workspaceRoot = findDocsWorkspaceRoot(root);
   const docsConfigPath = readDocsConfigPath(root);
   const docsConfigAbsolutePath = join(root, docsConfigPath);
   const docsConfigRelativeAlias =
@@ -303,7 +367,9 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
 
   // ── 2. Auto-generate app/{entry}/layout.tsx if missing (or src/app when using src dir) ──
   const entry = readDocsEntry(root);
+  const configuredContentDir = readDocsContentDir(root);
   const appDir = getNextAppDir(root);
+  const docsContentDir = configuredContentDir ?? join(appDir, entry);
   const layoutDir = join(root, appDir, entry);
   if (!existsSync(layoutDir)) {
     mkdirSync(layoutDir, { recursive: true });
@@ -392,7 +458,9 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
 
   nextConfig.turbopack = {
     ...existingTurbopack,
+    ...(workspaceRoot && !existingTurbopack.root ? { root: workspaceRoot } : {}),
     resolveAlias: {
+      ...(workspaceRoot ? createDocsWorkspaceAliases() : {}),
       ...existingResolveAlias,
       [INTERNAL_DOCS_CONFIG_ALIAS]: docsConfigRelativeAlias,
     },
@@ -408,6 +476,19 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     resolvedConfig.resolve.alias ??= {};
     resolvedConfig.resolve.alias[INTERNAL_DOCS_CONFIG_ALIAS] = docsConfigAbsolutePath;
     return resolvedConfig;
+  };
+
+  const existingTracingIncludes =
+    (nextConfig.outputFileTracingIncludes as Record<string, string[] | undefined> | undefined) ??
+    {};
+  const docsTraceGlob = docsContentDir.replace(/\\/g, "/").replace(/^\.?\//, "") + "/**/*";
+
+  nextConfig.outputFileTracingIncludes = {
+    ...existingTracingIncludes,
+    "/api/docs": [...new Set([...(existingTracingIncludes["/api/docs"] ?? []), docsTraceGlob])],
+    "/api/docs/mcp": [
+      ...new Set([...(existingTracingIncludes["/api/docs/mcp"] ?? []), docsTraceGlob]),
+    ],
   };
 
   return withMDX(nextConfig);

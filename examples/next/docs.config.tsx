@@ -1,4 +1,4 @@
-import { defineDocs } from "@farming-labs/docs";
+import { defineDocs, type DocsSearchConfig } from "@farming-labs/docs";
 import { MyNote } from "./app/components/my-note";
 import {
   BookOpen,
@@ -29,16 +29,13 @@ const algoliaAppId = process.env.ALGOLIA_APP_ID;
 const algoliaIndexName = process.env.ALGOLIA_INDEX_NAME ?? "docs";
 const algoliaSearchApiKey = process.env.ALGOLIA_SEARCH_API_KEY;
 const algoliaAdminApiKey = process.env.ALGOLIA_ADMIN_API_KEY;
-const docsSearchProvider =
-  process.env.DOCS_SEARCH_PROVIDER ??
-  (typesenseBaseUrl && typesenseSearchApiKey
-    ? "typesense"
-    : algoliaAppId && algoliaSearchApiKey
-      ? "algolia"
-      : "mcp");
+const docsSearchProvider = process.env.DOCS_SEARCH_PROVIDER;
 
-const searchConfig =
-  docsSearchProvider === "typesense" && typesenseBaseUrl && typesenseSearchApiKey
+const searchConfig: DocsSearchConfig | undefined =
+  (docsSearchProvider === "typesense" ||
+    (!docsSearchProvider && typesenseBaseUrl && typesenseSearchApiKey)) &&
+  typesenseBaseUrl &&
+  typesenseSearchApiKey
     ? {
         provider: "typesense" as const,
         baseUrl: typesenseBaseUrl,
@@ -58,7 +55,10 @@ const searchConfig =
             }
           : {}),
       }
-    : docsSearchProvider === "algolia" && algoliaAppId && algoliaSearchApiKey
+    : (docsSearchProvider === "algolia" ||
+          (!docsSearchProvider && algoliaAppId && algoliaSearchApiKey)) &&
+        algoliaAppId &&
+        algoliaSearchApiKey
       ? {
           provider: "algolia" as const,
           appId: algoliaAppId,
@@ -66,14 +66,16 @@ const searchConfig =
           searchApiKey: algoliaSearchApiKey,
           adminApiKey: algoliaAdminApiKey,
         }
-      : {
-          provider: "mcp" as const,
-          endpoint: "/api/docs/mcp",
-        };
+      : docsSearchProvider === "mcp"
+        ? {
+            provider: "mcp" as const,
+            endpoint: "/api/docs/mcp",
+          }
+        : undefined;
 
 export default defineDocs({
   entry: "docs",
-  search: searchConfig,
+  // ...(searchConfig ? { search: searchConfig } : {}),
   github: {
     url: "https://github.com/farming-labs/docs",
     branch: "main",
@@ -192,9 +194,7 @@ export default defineDocs({
       ],
     },
   },
-  mcp: {
-    enabled: true,
-  },
+  // ...(docsSearchProvider === "mcp" ? { mcp: { enabled: true } } : {}),
   ordering: "numeric",
   metadata: {
     titleTemplate: "%s – Docs",

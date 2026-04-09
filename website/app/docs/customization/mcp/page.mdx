@@ -160,6 +160,12 @@ export const { GET, POST, DELETE } = createDocsMCPAPI({
 export const revalidate = false;
 ```
 
+<Callout type="warning" title="@farming-labs/theme/api compatibility">
+  `@farming-labs/theme/api` still works if you already rely on it, but prefer
+  `@farming-labs/next/api` for Next.js routes going forward. The theme-level path will be
+  deprecated.
+</Callout>
+
 When `search` is configured, the MCP `search_docs` tool uses that same adapter pipeline too. That
 means your docs UI search and MCP search can share the same provider, chunking strategy, and custom
 ranking logic instead of drifting apart.
