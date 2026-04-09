@@ -42,6 +42,11 @@ That enables the built-in MCP surface with the default Streamable HTTP route:
 /api/docs/mcp
 ```
 
+<Callout type="info" title="This docs site already exposes it live">
+  The hosted docs site has MCP enabled at
+  `https://docs.farming-labs.dev/api/docs/mcp`.
+</Callout>
+
 ## Default HTTP route
 
 `/api/docs/mcp` is the default MCP endpoint across the framework adapters.
@@ -209,6 +214,87 @@ By default the CLI reads `docs.config.ts[x]` from the project root. If your conf
 pnpm exec docs mcp --config src/lib/docs.config.ts
 ```
 
+## Use the hosted MCP endpoint
+
+If you just want to try the live docs server, you can point your MCP client at:
+
+```txt title="Live MCP endpoint"
+https://docs.farming-labs.dev/api/docs/mcp
+```
+
+### Quick install
+
+<div className="flex flex-wrap gap-3">
+  <a
+    href="cursor://anysphere.cursor-deeplink/mcp/install?name=farming-labs-docs&config=eyJ1cmwiOiJodHRwczovL2RvY3MuZmFybWluZy1sYWJzLmRldi9hcGkvZG9jcy9tY3AifQ=="
+    className="border border-dashed border-black/[12%] px-3 py-2 text-[11px] font-mono uppercase tracking-wider text-black/60 transition-colors hover:text-black hover:border-black/22 hover:no-underline dark:border-white/[14%] dark:text-white/60 dark:hover:text-white dark:hover:border-white/28"
+  >
+    Add to Cursor
+  </a>
+  <a
+    href="vscode:mcp/install?%7B%22name%22%3A%22farming-labs-docs%22%2C%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fdocs.farming-labs.dev%2Fapi%2Fdocs%2Fmcp%22%7D"
+    className="border border-dashed border-black/[12%] px-3 py-2 text-[11px] font-mono uppercase tracking-wider text-black/60 transition-colors hover:text-black hover:border-black/22 hover:no-underline dark:border-white/[14%] dark:text-white/60 dark:hover:text-white dark:hover:border-white/28"
+  >
+    Add to VS Code
+  </a>
+  <a
+    href="https://docs.cursor.com/advanced/model-context-protocol"
+    className="border border-dashed border-black/[12%] px-3 py-2 text-[11px] font-mono uppercase tracking-wider text-black/60 transition-colors hover:text-black hover:border-black/22 hover:no-underline dark:border-white/[14%] dark:text-white/60 dark:hover:text-white dark:hover:border-white/28"
+  >
+    Cursor docs
+  </a>
+  <a
+    href="https://code.visualstudio.com/docs/copilot/chat/mcp-servers"
+    className="border border-dashed border-black/[12%] px-3 py-2 text-[11px] font-mono uppercase tracking-wider text-black/60 transition-colors hover:text-black hover:border-black/22 hover:no-underline dark:border-white/[14%] dark:text-white/60 dark:hover:text-white dark:hover:border-white/28"
+  >
+    VS Code docs
+  </a>
+  <a
+    href="https://docs.anthropic.com/en/docs/claude-code/mcp"
+    className="border border-dashed border-black/[12%] px-3 py-2 text-[11px] font-mono uppercase tracking-wider text-black/60 transition-colors hover:text-black hover:border-black/22 hover:no-underline dark:border-white/[14%] dark:text-white/60 dark:hover:text-white dark:hover:border-white/28"
+  >
+    Claude Code docs
+  </a>
+</div>
+
+### Manual setup
+
+Cursor project or global config:
+
+```json title=".cursor/mcp.json"
+{
+  "mcpServers": {
+    "farming-labs-docs": {
+      "url": "https://docs.farming-labs.dev/api/docs/mcp"
+    }
+  }
+}
+```
+
+VS Code workspace config:
+
+```json title=".vscode/mcp.json"
+{
+  "servers": {
+    "farming-labs-docs": {
+      "type": "http",
+      "url": "https://docs.farming-labs.dev/api/docs/mcp"
+    }
+  }
+}
+```
+
+Claude Code:
+
+```bash title="terminal"
+claude mcp add-json farming-labs-docs '{"type":"http","url":"https://docs.farming-labs.dev/api/docs/mcp"}'
+```
+
+<Callout type="tip" title="Local development uses http, not https">
+  If you are connecting to a local Next dev server, use `http://127.0.0.1:3000/api/docs/mcp`.
+  Using `https://localhost:3000/...` against a non-TLS dev server will fail with SSL errors.
+</Callout>
+
 ## Test the Next example
 
 This repo's Next example exposes the default MCP endpoint directly.
@@ -231,6 +317,21 @@ The built-in HTTP route exposes the full MCP surface:
 - `get_navigation`
 - `search_docs`
 - `read_page`
+
+## What to ask it
+
+Once your MCP client is connected, these are good first checks:
+
+- `search_docs` for `feedback`, `page actions`, or `mcp`
+- `read_page` for `/docs/configuration` or `installation`
+- `get_navigation` to inspect the docs tree
+- `list_pages` to confirm the server is loading the expected docs set
+
+In Cursor or VS Code, natural prompts like these work well too:
+
+- `Search the Farming Labs docs for page feedback setup`
+- `Read the configuration page and summarize MCP config`
+- `Find the page actions docs and tell me how openDocs works`
 
 ## What the tools return
 

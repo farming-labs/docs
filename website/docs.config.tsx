@@ -175,6 +175,7 @@ export default defineDocs({
   },
   mcp: {
     enabled: true,
+    name: "@farming-labs/docs",
   },
 
   llmsTxt: {
