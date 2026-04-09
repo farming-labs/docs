@@ -20,10 +20,7 @@ export function resolveNextProjectRoot(metaUrl: string): string {
         return path.dirname(parent);
       }
 
-      if (
-        path.basename(parent) === "server" &&
-        path.basename(path.dirname(parent)) === ".next"
-      ) {
+      if (path.basename(parent) === "server" && path.basename(path.dirname(parent)) === ".next") {
         return path.dirname(path.dirname(parent));
       }
 
