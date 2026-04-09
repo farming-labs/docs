@@ -107,7 +107,10 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(existsSync(join(tmpDir, "app/api/docs/mcp/route.ts"))).toBe(true);
     const route = readFileSync(join(tmpDir, "app/api/docs/mcp/route.ts"), "utf-8");
-    expect(route).toContain('import { createDocsMCPAPI } from "@farming-labs/next/api";');
+    expect(route).toContain(
+      'import { createDocsMCPAPI, resolveNextProjectRoot } from "@farming-labs/next/api";',
+    );
+    expect(route).toContain("const rootDir = resolveNextProjectRoot(import.meta.url);");
     expect(route).toContain("search: docsConfig.search");
   });
 
@@ -190,7 +193,11 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     const route = readFileSync(join(tmpDir, "app/api/docs/route.ts"), "utf-8");
 
-    expect(route).toContain('import { createDocsAPI } from "@farming-labs/next/api";');
+    expect(route).toContain(
+      'import { createDocsAPI, resolveNextProjectRoot } from "@farming-labs/next/api";',
+    );
+    expect(route).toContain("const rootDir = resolveNextProjectRoot(import.meta.url);");
+    expect(route).toContain("rootDir,");
     expect(route).toContain("search: docsConfig.search");
     expect(route).toContain("ai: docsConfig.ai");
   });

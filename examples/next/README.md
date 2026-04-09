@@ -10,7 +10,9 @@ pnpm dev
 
 ## Search Providers
 
-The example can run with `mcp`, `typesense`, or `algolia` search.
+If you do nothing, the example uses the framework default: built-in simple search.
+
+Set `DOCS_SEARCH_PROVIDER` only when you want to switch to `mcp`, `typesense`, or `algolia`.
 
 ```bash
 cp .env.local.example .env.local
@@ -51,7 +53,7 @@ Manual sync:
 pnpm exec docs search sync --algolia --config docs.config.tsx
 ```
 
-If you want to switch back to the built-in MCP search example:
+If you want to switch to the MCP search example:
 
 ```bash
 DOCS_SEARCH_PROVIDER=mcp pnpm dev

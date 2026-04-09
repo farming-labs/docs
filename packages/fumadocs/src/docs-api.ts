@@ -65,8 +65,11 @@ interface AIOptions {
 }
 
 interface DocsAPIOptions {
+  rootDir?: string;
   /** Docs entry folder (default: read from docs.config) */
   entry?: string;
+  /** Override the docs content directory when it does not live in app/<entry>. */
+  contentDir?: string;
   /** Search language (default: "english") */
   language?: string;
   /** AI chat configuration */
@@ -776,9 +779,10 @@ function generateLlmsTxt(
  * @param options - Optional overrides (entry, language, ai config)
  */
 export function createDocsAPI(options?: DocsAPIOptions) {
-  const root = process.cwd();
+  const root = options?.rootDir ?? process.cwd();
   const entry = options?.entry ?? readEntry(root);
   const appDir = getNextAppDir(root);
+  const contentDir = options?.contentDir ?? path.join(appDir, entry);
 
   const i18nConfig = options?.i18n ?? readI18nConfig(root);
   const i18n = resolveDocsI18n(i18nConfig);
@@ -814,14 +818,18 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
   function resolveContextFromRequest(request: Request): DocsContext {
     if (!i18n) {
-      return { entryPath: entry, docsDir: path.join(root, appDir, entry) };
+      return {
+        entryPath: entry,
+        docsDir: path.isAbsolute(contentDir) ? contentDir : path.join(root, contentDir),
+      };
     }
 
     const locale = resolveLocaleFromRequest(request) ?? i18n.defaultLocale;
+    const docsBaseDir = path.isAbsolute(contentDir) ? contentDir : path.join(root, contentDir);
     return {
       entryPath: entry,
       locale,
-      docsDir: path.join(root, appDir, entry, locale),
+      docsDir: path.join(docsBaseDir, locale),
     };
   }
 

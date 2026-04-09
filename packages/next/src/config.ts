@@ -76,10 +76,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 const DOCS_API_ROUTE_TEMPLATE = `\
 ${GENERATED_BANNER}
 import docsConfig from "@/docs.config";
-import { createDocsAPI } from "@farming-labs/next/api";
+import { createDocsAPI, resolveNextProjectRoot } from "@farming-labs/next/api";
+
+const rootDir = resolveNextProjectRoot(import.meta.url);
 
 export const { GET, POST } = createDocsAPI({
+  rootDir,
   entry: docsConfig.entry,
+  contentDir: docsConfig.contentDir,
   i18n: docsConfig.i18n,
   search: docsConfig.search,
   ai: docsConfig.ai,
@@ -91,9 +95,12 @@ export const revalidate = false;
 const DOCS_MCP_ROUTE_TEMPLATE = `\
 ${GENERATED_BANNER}
 import docsConfig from "@/docs.config";
-import { createDocsMCPAPI } from "@farming-labs/next/api";
+import { createDocsMCPAPI, resolveNextProjectRoot } from "@farming-labs/next/api";
+
+const rootDir = resolveNextProjectRoot(import.meta.url);
 
 export const { GET, POST, DELETE } = createDocsMCPAPI({
+  rootDir,
   entry: docsConfig.entry,
   contentDir: docsConfig.contentDir,
   nav: docsConfig.nav,
