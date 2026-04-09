@@ -487,6 +487,29 @@ export function DocsCommandSearch({
 
   useEffect(() => {
     if (!open) return;
+
+    const { body, documentElement } = document;
+    const previousBodyOverflow = body.style.overflow;
+    const previousBodyPaddingRight = body.style.paddingRight;
+    const previousHtmlOverflow = documentElement.style.overflow;
+    const scrollbarWidth = window.innerWidth - documentElement.clientWidth;
+
+    body.style.overflow = "hidden";
+    documentElement.style.overflow = "hidden";
+
+    if (scrollbarWidth > 0) {
+      body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    return () => {
+      body.style.overflow = previousBodyOverflow;
+      body.style.paddingRight = previousBodyPaddingRight;
+      documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     function handler(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setOpen(false);
@@ -569,7 +592,12 @@ export function DocsCommandSearch({
   return createPortal(
     <>
       <div className="omni-overlay" onClick={() => setOpen(false)} />
-      <div className="omni-content" role="dialog" aria-label="Search documentation">
+      <div
+        className="omni-content"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search documentation"
+      >
         <div className="omni-header">
           <div className="omni-search-row">
             <span className="omni-search-icon">

@@ -812,6 +812,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     relativeCandidates.add(path.join("src", "app", entry));
 
     const rootCandidates = new Set<string>([root]);
+    rootCandidates.add(process.cwd());
     if (path.basename(root) === "server") {
       rootCandidates.add(path.resolve(root, "..", ".."));
     } else {
