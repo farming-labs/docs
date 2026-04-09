@@ -385,6 +385,43 @@ Schema-first storage layer.
     expect(payload.some((result) => result.content.includes("Overview"))).toBe(true);
   });
 
+  it("falls back to traced server docs files when project-root content is unavailable", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-traced-server-search-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, ".next", "server", "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, ".next", "server", "app", "docs", "page.mdx"),
+      `---
+title: "Overview"
+description: "Bundled docs"
+---
+
+# Overview
+
+Search from traced server files.
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs?query=traced"));
+    const payload = (await response.json()) as Array<{
+      url: string;
+      content: string;
+      description?: string;
+      type: string;
+    }>;
+
+    expect(payload.length).toBeGreaterThan(0);
+    expect(payload.some((result) => result.content.includes("Overview"))).toBe(true);
+  });
+
   it("routes GET search through an MCP search provider with a relative endpoint", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-mcp-search-route-"));
     tempDirs.push(rootDir);

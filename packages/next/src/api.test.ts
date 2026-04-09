@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { resolveNextProjectRoot } from "./api.js";
+import { createDocsAPI, resolveNextProjectRoot } from "./api.js";
+import { createDocsAPI as createThemeDocsAPI } from "@farming-labs/theme/api";
 
 describe("resolveNextProjectRoot", () => {
   it("resolves the root from a source app route path", () => {
@@ -34,5 +35,31 @@ describe("resolveNextProjectRoot", () => {
     expect(resolveNextProjectRoot(pathToFileURL(routePath).href)).toBe(
       path.join("/repo", "apps", "orm"),
     );
+  });
+
+  it("resolves the project root from a built custom distDir route path", () => {
+    const routePath = path.join(
+      "/repo",
+      "examples",
+      "next",
+      ".next-build",
+      "server",
+      "app",
+      "api",
+      "docs",
+      "route.js",
+    );
+    expect(resolveNextProjectRoot(pathToFileURL(routePath).href)).toBe(
+      path.join("/repo", "examples", "next"),
+    );
+  });
+});
+
+describe("createDocsAPI", () => {
+  it("forwards to the theme api handler when called without options", () => {
+    const nextHandlers = createDocsAPI();
+    const themeHandlers = createThemeDocsAPI();
+
+    expect(Object.keys(nextHandlers).sort()).toEqual(Object.keys(themeHandlers).sort());
   });
 });

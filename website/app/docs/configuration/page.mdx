@@ -300,6 +300,12 @@ Notes:
 - If you use a custom Next.js docs API route, import `createDocsAPI` from `@farming-labs/next/api` and pass `search: docsConfig.search` so your adapter config reaches the route handler
 - Search requires the docs API route; with `staticExport: true` the UI is hidden because there is no server route
 
+<Callout type="warning" title="@farming-labs/theme/api compatibility">
+  The older `@farming-labs/theme/api` import path still works, but new Next.js apps should use
+  `@farming-labs/next/api`. The theme-level path is being kept for compatibility and will be
+  deprecated.
+</Callout>
+
 ## MCP Server
 
 Use `mcp` to expose your docs as a built-in MCP server for AI tools and IDE agents.
