@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
-import { resolveDocsContentDir } from "./config.js";
+import { readBooleanProperty, readStringProperty, resolveDocsContentDir } from "./config.js";
 
 const tempDirs: string[] = [];
 
@@ -32,5 +32,29 @@ describe("resolveDocsContentDir", () => {
         "docs",
       ),
     ).toBe("content/docs");
+  });
+});
+
+describe("property readers", () => {
+  it("matches exact string property names", () => {
+    const content = `
+      export default defineDocs({
+        subtitle: "Wrong title",
+        title: "Correct title",
+      });
+    `;
+
+    expect(readStringProperty(content, "title")).toBe("Correct title");
+  });
+
+  it("matches exact boolean property names", () => {
+    const content = `
+      export default defineDocs({
+        featureEnabled: false,
+        enabled: true,
+      });
+    `;
+
+    expect(readBooleanProperty(content, "enabled")).toBe(true);
   });
 });

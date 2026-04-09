@@ -739,6 +739,7 @@ function resolveMcpToolSearchConfig(
     provider: "simple",
     enabled: config.enabled,
     maxResults: config.maxResults,
+    chunking: config.chunking,
   };
 }
 

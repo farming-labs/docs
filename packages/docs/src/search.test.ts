@@ -62,6 +62,27 @@ Second section.
       "/docs/database#session-1",
     ]);
   });
+
+  it("strips image markdown without leaving a leading bang", () => {
+    const documents = buildDocsSearchDocuments([
+      {
+        title: "Images",
+        url: "/docs/images",
+        content: "Overview",
+        rawContent: `# Images
+
+![Architecture diagram](https://example.com/diagram.png)
+
+## Flow
+
+![Flow chart](https://example.com/flow.png)
+`,
+      },
+    ]);
+
+    expect(documents.find((item) => item.type === "page")?.content).not.toContain("!");
+    expect(documents.find((item) => item.section === "Flow")?.content).toContain("Flow chart");
+  });
 });
 
 describe("performDocsSearch", () => {
@@ -340,7 +361,8 @@ describe("remote search adapters", () => {
       adminApiKey: "admin-key",
     });
 
-    await adapter.index({
+    expect(adapter.index).toBeDefined();
+    await adapter.index!({
       pages: [],
       documents: [
         {
@@ -437,7 +459,8 @@ describe("remote search adapters", () => {
       adminApiKey: "admin-key",
     });
 
-    await adapter.index({
+    expect(adapter.index).toBeDefined();
+    await adapter.index!({
       pages,
       documents: buildDocsSearchDocuments(pages),
     } as DocsSearchAdapterContext);

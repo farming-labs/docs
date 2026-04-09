@@ -127,7 +127,7 @@ Built-in search options:
 Custom adapters receive normalized docs pages and chunked search documents, so you can keep the
 framework scanning/indexing flow and swap only the retrieval layer.
 
-The Next example in [`examples/next`](/Users/mac/oss/docs_/examples/next) is set up to switch
+The Next example in [`examples/next`](./examples/next) is set up to switch
 between `mcp`, `typesense`, and `algolia` with env vars, so it is the easiest place to test
 external search providers end to end.
 

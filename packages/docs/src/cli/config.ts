@@ -3,6 +3,14 @@ import { join, resolve } from "node:path";
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function createPropertyPattern(key: string, valuePattern: string): RegExp {
+  return new RegExp(`\\b${escapeRegExp(key)}\\b\\s*:\\s*${valuePattern}`);
+}
+
 export function resolveDocsConfigPath(rootDir: string, explicitPath?: string): string {
   if (explicitPath) {
     const resolvedPath = resolve(rootDir, explicitPath);
@@ -23,12 +31,12 @@ export function resolveDocsConfigPath(rootDir: string, explicitPath?: string): s
 }
 
 export function readStringProperty(content: string, key: string): string | undefined {
-  const match = content.match(new RegExp(`${key}\\s*:\\s*["']([^"']+)["']`));
+  const match = content.match(createPropertyPattern(key, `["']([^"']+)["']`));
   return match?.[1];
 }
 
 export function readBooleanProperty(content: string, key: string): boolean | undefined {
-  const match = content.match(new RegExp(`${key}\\s*:\\s*(true|false)`));
+  const match = content.match(createPropertyPattern(key, "(true|false)"));
   return match ? match[1] === "true" : undefined;
 }
 

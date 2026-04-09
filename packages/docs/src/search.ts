@@ -11,7 +11,6 @@ import type {
   DocsSearchSourcePage,
   DocsSearchChunkingConfig,
   McpDocsSearchConfig,
-  SimpleDocsSearchConfig,
   TypesenseDocsSearchConfig,
 } from "./types.js";
 
@@ -36,8 +35,8 @@ function stripMarkdownText(content: string): string {
     .replace(/<[^>]+\/>/g, "")
     .replace(/<\/?[A-Z][^>]*>/g, "")
     .replace(/<\/?[a-z][^>]*>/g, "")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/^#{1,6}\s+/gm, "")
     .replace(/^\|?[\s:-]+(\|[\s:-]+)+\|?\s*$/gm, "")
     .replace(/\|/g, " ")
@@ -707,7 +706,7 @@ export function resolveSearchRequestConfig(
 export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchAdapter {
   return {
     name: "mcp",
-    async search(query, context) {
+    async search(query) {
       const endpoint = resolveMcpEndpoint(config.endpoint);
       const protocolVersion = config.protocolVersion ?? DEFAULT_MCP_PROTOCOL_VERSION;
       const toolName = config.toolName ?? "search_docs";

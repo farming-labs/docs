@@ -413,6 +413,9 @@ No frontmatter title here.
       search: {
         provider: "mcp",
         endpoint: "/api/docs/mcp",
+        chunking: {
+          strategy: "page",
+        },
       },
     });
 
@@ -471,6 +474,7 @@ No frontmatter title here.
     }>(searchResponse);
 
     expect(searchPayload.result?.content?.[0]?.text).toContain("/docs/installation");
+    expect(searchPayload.result?.content?.[0]?.text).not.toContain("#quickstart");
   });
 
   it("returns 404 responses when MCP is disabled", async () => {
