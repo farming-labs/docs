@@ -18,6 +18,7 @@ import type {
 const DEFAULT_SEARCH_LIMIT = 10;
 const DEFAULT_MCP_PROTOCOL_VERSION = "2025-11-25";
 const syncedIndexes = new Set<string>();
+const ALGOLIA_MAX_RECORD_BYTES = 9_500;
 
 interface ResolvedDocsSearchConfig {
   enabled: boolean;
@@ -272,6 +273,57 @@ function cleanSearchResultText(value?: string): string | undefined {
 
   const cleaned = normalizeWhitespace(stripHtml(stripMarkdownText(value)));
   return cleaned || undefined;
+}
+
+function trimTextToBytes(value: string, maxBytes: number): string {
+  if (maxBytes <= 0) return "";
+
+  const encoder = new TextEncoder();
+  if (encoder.encode(value).length <= maxBytes) return value;
+
+  let low = 0;
+  let high = value.length;
+  let best = "";
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const next = `${value.slice(0, mid).trimEnd()}...`;
+    if (encoder.encode(next).length <= maxBytes) {
+      best = next;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  return best;
+}
+
+function buildAlgoliaRecord(document: DocsSearchDocument) {
+  const record: Record<string, unknown> = {
+    objectID: document.id,
+    id: document.id,
+    url: document.url,
+    title: document.title,
+    section: document.section,
+    content: document.content,
+    description: document.description,
+    type: document.type,
+  };
+
+  const encoder = new TextEncoder();
+  const sizeOf = (value: Record<string, unknown>) => encoder.encode(JSON.stringify(value)).length;
+  if (sizeOf(record) <= ALGOLIA_MAX_RECORD_BYTES) return record;
+
+  delete record.description;
+  if (sizeOf(record) <= ALGOLIA_MAX_RECORD_BYTES) return record;
+
+  const baseRecord = { ...record, content: "" };
+  const fixedBytes = sizeOf(baseRecord);
+  const remainingBytes = Math.max(ALGOLIA_MAX_RECORD_BYTES - fixedBytes - 32, 0);
+  record.content = trimTextToBytes(document.content, remainingBytes);
+
+  return record;
 }
 
 export function createSimpleSearchAdapter(): DocsSearchAdapter {
@@ -787,20 +839,7 @@ export function createAlgoliaSearchAdapter(config: AlgoliaDocsSearchConfig): Doc
           body: JSON.stringify({
             requests: context.documents.map((document) => ({
               action: "addObject",
-              body: {
-                objectID: document.id,
-                id: document.id,
-                url: document.url,
-                title: document.title,
-                section: document.section,
-                content: document.content,
-                description: document.description,
-                type: document.type,
-                locale: document.locale,
-                framework: document.framework,
-                version: document.version,
-                tags: document.tags,
-              },
+              body: buildAlgoliaRecord(document),
             })),
           }),
         },

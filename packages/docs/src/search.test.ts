@@ -329,6 +329,44 @@ describe("remote search adapters", () => {
     ]);
   });
 
+  it("trims oversized Algolia records before syncing", async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(new Response("{}", { status: 200 }));
+
+    const adapter = createAlgoliaSearchAdapter({
+      provider: "algolia",
+      appId: "app-id",
+      indexName: "docs",
+      searchApiKey: "search-key",
+      adminApiKey: "admin-key",
+    });
+
+    await adapter.index({
+      pages: [],
+      documents: [
+        {
+          id: "/docs/cli#page",
+          url: "/docs/cli",
+          title: "CLI",
+          content: "A".repeat(20_000),
+          description: "B".repeat(2_000),
+          type: "page",
+        },
+      ],
+    } as DocsSearchAdapterContext);
+
+    const call = vi.mocked(globalThis.fetch).mock.calls[0];
+    expect(call).toBeDefined();
+    const init = call?.[1];
+    expect(typeof init?.body).toBe("string");
+    const payload = JSON.parse(String(init?.body));
+    const record = payload.requests[0].body as Record<string, unknown>;
+    const bytes = new TextEncoder().encode(JSON.stringify(record)).length;
+
+    expect(bytes).toBeLessThanOrEqual(9_500);
+    expect(record.objectID).toBe("/docs/cli#page");
+    expect(record.content).toBeTypeOf("string");
+  });
+
   it("maps Typesense hits into docs search results", async () => {
     vi.mocked(globalThis.fetch).mockResolvedValue(
       new Response(
