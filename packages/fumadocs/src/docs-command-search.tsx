@@ -15,6 +15,7 @@ interface SearchResult {
   url: string;
   type: "page" | "heading" | "text";
   content: string;
+  description?: string;
 }
 
 type RecentEntry = { id: string; label: string; url: string };
@@ -26,6 +27,23 @@ function stripHtml(html: string): string {
     return el.textContent || el.innerText || "";
   }
   return html.replace(/<[^>]+>/g, "");
+}
+
+function stripSearchPreview(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/~~~[\s\S]*?~~~/g, "")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\|?[\s:-]+(\|[\s:-]+)+\|?\s*$/gm, "")
+    .replace(/\|/g, " ")
+    .replace(/^[-*+]\s+/gm, "")
+    .replace(/(\*{1,3}|_{1,3})(.*?)\1/g, "$2")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/`+/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 function fuzzyScore(query: string, text: string) {
@@ -429,12 +447,14 @@ export function DocsCommandSearch({
         if (!res.ok || cancelled) return;
         const data: SearchResult[] = await res.json();
         const items: ResultItem[] = data.map((r) => {
-          const label = stripHtml(r.content);
+          const label = stripSearchPreview(stripHtml(r.content));
           const { score, indices } = fuzzyScore(debouncedQuery, label);
           return {
             id: r.id,
             label,
-            subtitle: labelForType(r.type),
+            subtitle: r.description
+              ? stripSearchPreview(stripHtml(r.description))
+              : labelForType(r.type),
             url: withLangInUrl(r.url, activeLocale),
             icon: iconForType(r.type),
             score,

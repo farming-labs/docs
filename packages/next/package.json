@@ -27,6 +27,11 @@
       "import": "./dist/api-reference.mjs",
       "default": "./dist/api-reference.mjs"
     },
+    "./api": {
+      "types": "./dist/api.d.mts",
+      "import": "./dist/api.mjs",
+      "default": "./dist/api.mjs"
+    },
     "./client-callbacks": {
       "types": "./dist/client-callbacks.d.mts",
       "import": "./dist/client-callbacks.mjs",

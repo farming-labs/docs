@@ -1,11 +1,11 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold, upgrade, and run MCP for docs. Use when running init, upgrade, mcp, or using flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, or --config. Covers init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), npm/pnpm/yarn/bun, and framework detection.
+description: @farming-labs/docs CLI — scaffold, upgrade, sync external search indexes, and run MCP for docs. Use when running init, upgrade, search sync, mcp, or using flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, or --config. Covers init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), npm/pnpm/yarn/bun, and framework detection.
 ---
 
 # @farming-labs/docs — CLI
 
-The `@farming-labs/docs` CLI scaffolds, upgrades, and can run the built-in MCP server for documentation projects. Use this skill when the user asks about CLI commands, init, upgrade, mcp, or scaffolding.
+The `@farming-labs/docs` CLI scaffolds, upgrades, syncs external search indexes, and can run the built-in MCP server for documentation projects. Use this skill when the user asks about CLI commands, init, upgrade, search sync, mcp, or scaffolding.
 
 ---
 
@@ -158,13 +158,68 @@ The built-in MCP surface currently includes:
 
 Use the docs config `mcp` block when you also want the HTTP route version at `/api/docs/mcp`.
 
-For a working repo example, start the Next example:
+## Search Sync
+
+Use `search sync` when you want to push docs content into Typesense or Algolia from the CLI instead
+of waiting for the first search request to trigger indexing.
+
+```bash
+pnpm dlx @farming-labs/docs search sync --typesense
+```
+
+```bash
+pnpm dlx @farming-labs/docs search sync --algolia
+```
+
+The command:
+
+- reads `.env` / `.env.local` from the current project
+- scans docs content using `entry` / `contentDir` from `docs.config`
+- uploads normalized search documents to the selected backend
+- also supports the generic form `pnpm dlx @farming-labs/docs search sync --provider typesense`
+  or `--provider algolia`
+
+Typesense env:
+
+```bash
+TYPESENSE_URL=https://your-cluster.a1.typesense.net
+TYPESENSE_API_KEY=your-admin-capable-key
+```
+
+Optional:
+
+```bash
+TYPESENSE_COLLECTION=docs
+TYPESENSE_MODE=hybrid
+TYPESENSE_OLLAMA_MODEL=embeddinggemma
+TYPESENSE_OLLAMA_BASE_URL=http://127.0.0.1:11434
+```
+
+Algolia env:
+
+```bash
+ALGOLIA_APP_ID=your-app-id
+ALGOLIA_ADMIN_API_KEY=your-admin-key
+ALGOLIA_SEARCH_API_KEY=your-search-key
+```
+
+For a working repo example, the Next example can switch between MCP, Typesense, and Algolia:
 
 ```bash
 pnpm --dir examples/next dev
 ```
 
-Then point your MCP client or inspector at `http://127.0.0.1:3000/api/docs/mcp`.
+Useful checks:
+
+```bash
+pnpm --dir examples/next exec docs search sync --typesense --config docs.config.tsx
+pnpm --dir examples/next exec docs search sync --algolia --config docs.config.tsx
+```
+
+Then verify:
+
+- MCP: `http://127.0.0.1:3000/api/docs/mcp`
+- Search: `http://127.0.0.1:3000/api/docs?query=session`
 
 ---
 

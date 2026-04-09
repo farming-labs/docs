@@ -5,7 +5,7 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 ### Quick Start
 > **This package lets you build beautiful documentation to any Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project in minutes.**
 
-- ✨ **Polished themes & search, zero setup**
+- ✨ **Polished themes & flexible search, zero setup**
 - 🌍 **Choose your framework:** Next.js, TanStack Start, SvelteKit, Astro, or Nuxt
 - ⚡️ **Fast, fully static or server-rendered**
 - 💡 **Type-safe config in code, not JSON**
@@ -14,6 +14,7 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 - 🧾 **Generated API reference from framework route handlers or a hosted OpenAPI JSON**
 - 🧩 **Built-in MDX UI** — `Callout`, `Tabs`, `HoverLink`, and overridable built-ins via `components` and `theme.ui.components`
 - 💬 **Built-in docs actions** — page feedback, copy/open page actions, and code-block copy callbacks
+- 🔎 **Search adapters** — zero-config built-in search, plus Typesense, Algolia, and custom adapters
 - 🤖 **Built-in MCP server** — expose docs over stdio or `/api/docs/mcp` for MCP clients and IDE agents
 
 **Get started:**
@@ -61,6 +62,74 @@ You can also run the built-in MCP server locally:
 ```bash
 npx @farming-labs/docs mcp
 ```
+
+## Search
+
+Search works out of the box with the built-in simple adapter. If you need a stronger setup, switch to
+Typesense, Algolia, or a custom adapter in `docs.config`.
+
+```ts
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+  search: {
+    provider: "typesense",
+    baseUrl: process.env.TYPESENSE_URL!,
+    collection: "docs",
+    apiKey: process.env.TYPESENSE_SEARCH_API_KEY!,
+    adminApiKey: process.env.TYPESENSE_ADMIN_API_KEY,
+    mode: "hybrid",
+    embeddings: {
+      provider: "ollama",
+      model: "embeddinggemma",
+    },
+  },
+});
+```
+
+Algolia works the same way:
+
+```ts
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+  search: {
+    provider: "algolia",
+    appId: process.env.ALGOLIA_APP_ID!,
+    indexName: "docs",
+    searchApiKey: process.env.ALGOLIA_SEARCH_API_KEY!,
+    adminApiKey: process.env.ALGOLIA_ADMIN_API_KEY,
+  },
+});
+```
+
+To sync an external index ahead of time instead of waiting for the first search request:
+
+```bash
+pnpm dlx @farming-labs/docs search sync --typesense
+```
+
+```bash
+pnpm dlx @farming-labs/docs search sync --algolia
+```
+
+The CLI reads `.env` / `.env.local` from the current project and uses your docs config only for
+content discovery (`entry` / `contentDir`).
+
+Built-in search options:
+
+- **`simple`** — zero-config search with section-based chunking
+- **`typesense`** — hosted or self-hosted search with optional hybrid mode and Ollama embeddings
+- **`algolia`** — hosted search with optional on-demand indexing when an admin key is present
+- **`mcp`** — proxy search through an MCP `search_docs` tool over Streamable HTTP
+- **`custom`** — plug in your own adapter when you need a different backend or ranking logic
+
+Custom adapters receive normalized docs pages and chunked search documents, so you can keep the
+framework scanning/indexing flow and swap only the retrieval layer.
+
+The Next example in [`examples/next`](/Users/mac/oss/docs_/examples/next) is set up to switch
+between `mcp`, `typesense`, and `algolia` with env vars, so it is the easiest place to test
+external search providers end to end.
 
 ### Option B: Manual setup
 

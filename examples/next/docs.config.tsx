@@ -18,8 +18,62 @@ import {
   Mail,
 } from "lucide-react";
 import { pixelBorder } from "@farming-labs/theme/pixel-border";
+
+const typesenseBaseUrl = process.env.TYPESENSE_URL ?? process.env.TYPESENSE_BASE_URL;
+const typesenseCollection = process.env.TYPESENSE_COLLECTION ?? "docs";
+const typesenseSearchApiKey = process.env.TYPESENSE_SEARCH_API_KEY ?? process.env.TYPESENSE_API_KEY;
+const typesenseAdminApiKey = process.env.TYPESENSE_ADMIN_API_KEY ?? process.env.TYPESENSE_API_KEY;
+const typesenseMode: "keyword" | "hybrid" =
+  process.env.TYPESENSE_MODE === "hybrid" ? "hybrid" : "keyword";
+const algoliaAppId = process.env.ALGOLIA_APP_ID;
+const algoliaIndexName = process.env.ALGOLIA_INDEX_NAME ?? "docs";
+const algoliaSearchApiKey = process.env.ALGOLIA_SEARCH_API_KEY;
+const algoliaAdminApiKey = process.env.ALGOLIA_ADMIN_API_KEY;
+const docsSearchProvider =
+  process.env.DOCS_SEARCH_PROVIDER ??
+  (typesenseBaseUrl && typesenseSearchApiKey
+    ? "typesense"
+    : algoliaAppId && algoliaSearchApiKey
+      ? "algolia"
+      : "mcp");
+
+const searchConfig =
+  docsSearchProvider === "typesense" && typesenseBaseUrl && typesenseSearchApiKey
+    ? {
+        provider: "typesense" as const,
+        baseUrl: typesenseBaseUrl,
+        collection: typesenseCollection,
+        apiKey: typesenseSearchApiKey,
+        adminApiKey: typesenseAdminApiKey,
+        mode: typesenseMode,
+        ...(typesenseMode === "hybrid" &&
+        process.env.TYPESENSE_OLLAMA_MODEL &&
+        (process.env.TYPESENSE_OLLAMA_BASE_URL || "http://127.0.0.1:11434")
+          ? {
+              embeddings: {
+                provider: "ollama" as const,
+                model: process.env.TYPESENSE_OLLAMA_MODEL,
+                baseUrl: process.env.TYPESENSE_OLLAMA_BASE_URL,
+              },
+            }
+          : {}),
+      }
+    : docsSearchProvider === "algolia" && algoliaAppId && algoliaSearchApiKey
+      ? {
+          provider: "algolia" as const,
+          appId: algoliaAppId,
+          indexName: algoliaIndexName,
+          searchApiKey: algoliaSearchApiKey,
+          adminApiKey: algoliaAdminApiKey,
+        }
+      : {
+          provider: "mcp" as const,
+          endpoint: "/api/docs/mcp",
+        };
+
 export default defineDocs({
   entry: "docs",
+  search: searchConfig,
   github: {
     url: "https://github.com/farming-labs/docs",
     branch: "main",

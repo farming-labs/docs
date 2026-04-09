@@ -1,7 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
-import { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "@farming-labs/docs";
+import {
+  performDocsSearch,
+  resolveSearchRequestConfig,
+  resolveDocsI18n,
+  resolveDocsLocale,
+  resolveDocsPath,
+} from "@farming-labs/docs";
 import { createDocsMcpHttpHandler } from "@farming-labs/docs/server";
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
 import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
@@ -87,7 +93,7 @@ export interface DocsServerLoadResult {
 
 export interface DocsServer {
   load: (input: { pathname: string; locale?: string }) => Promise<DocsServerLoadResult>;
-  GET: (context: { request: Request }) => Response;
+  GET: (context: { request: Request }) => Promise<Response>;
   POST: (context: { request: Request }) => Promise<Response>;
   MCP: DocsMcpHttpHandlers;
 }
@@ -671,7 +677,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     return i18n.defaultLocale;
   }
 
-  function GET(event: { request: Request }): Response {
+  async function GET(event: { request: Request }): Promise<Response> {
     const ctx = resolveContextFromRequest(event.request);
     const url = new URL(event.request.url);
     const format = url.searchParams.get("format");
@@ -693,13 +699,14 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       });
     }
 
-    const results = searchByQuery(query, ctx)
-      .slice(0, 10)
-      .map(({ title, url: pageUrl, description }) => ({
-        content: title,
-        url: pageUrl,
-        description,
-      }));
+    const results = await performDocsSearch({
+      pages: getSearchIndex(ctx),
+      query,
+      search: resolveSearchRequestConfig(config.search, event.request.url),
+      locale: ctx.locale,
+      pathname: url.searchParams.get("pathname") ?? undefined,
+      siteTitle: llmsTitle,
+    });
 
     return new Response(JSON.stringify(results), {
       headers: { "Content-Type": "application/json" },

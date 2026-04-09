@@ -2,15 +2,18 @@
 
 This folder contains [Agent Skills](https://skills.sh/) (conforming to the [Agent Skills specification](https://agentskills.io/specification)) for **@farming-labs/docs** — an MDX-based documentation framework for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
 
-Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task (getting started, CLI, creating themes, Ask AI, page actions, or configuration, including API reference and MCP).
+Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task (getting started, CLI, creating themes, Ask AI, page actions, or configuration, including search adapters, API reference, and MCP).
 
-For MCP specifically, the repo also includes a runnable Next example smoke test:
+The repo also includes a runnable Next example for testing MCP plus external search providers:
 
 ```bash
 pnpm --dir examples/next dev
 ```
 
-Then point your MCP client or inspector at `http://127.0.0.1:3000/api/docs/mcp`.
+Useful routes:
+
+- MCP: `http://127.0.0.1:3000/api/docs/mcp`
+- Search API: `http://127.0.0.1:3000/api/docs?query=session`
 
 ---
 
@@ -23,7 +26,7 @@ Then point your MCP client or inspector at `http://127.0.0.1:3000/api/docs/mcp`.
 | **Creating themes** | [creating-themes](./creating-themes/SKILL.md) | Building a custom theme with `createTheme()`, `extendTheme()`, `ui.components` defaults like `HoverLink`, publishing as npm, CSS overrides. |
 | **Ask AI** | [ask-ai](./ask-ai/SKILL.md) | Enabling and configuring the RAG-powered AI chat: mode, floatingStyle, providers, models, suggestedQuestions, apiKey. |
 | **Page actions** | [page-actions](./page-actions/SKILL.md) | Copy Markdown and Open in LLM buttons: copyMarkdown, openDocs, providers, urlTemplate, position, alignment, and provider defaults. |
-| **Configuration** | [configuration](./configuration/SKILL.md) | docs.config.ts options: entry, theme, staticExport, sidebar, breadcrumb, github, components, feedback, metadata, og, `mcp`, and `apiReference` including remote `specUrl` support. |
+| **Configuration** | [configuration](./configuration/SKILL.md) | docs.config.ts options: entry, theme, staticExport, sidebar, breadcrumb, github, components, `search`, feedback, metadata, og, `mcp`, and `apiReference` including remote `specUrl` support. |
 
 ---
 

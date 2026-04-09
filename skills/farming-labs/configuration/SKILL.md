@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, feedback, metadata, og, apiReference, MCP, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, feedback, metadata, og, apiReference, MCP, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration
@@ -44,6 +44,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `feedback` | `boolean \| FeedbackConfig` | `false` | End-of-page feedback prompt and callback |
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
+| `search` | `boolean \| DocsSearchConfig` | `true` | Built-in simple search, Typesense, Algolia, or a custom adapter |
 | `mcp` | `boolean \| DocsMcpConfig` | `false` | Built-in MCP server over stdio and `/api/docs/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON document |
 | `metadata` | `DocsMetadata` | — | SEO: titleTemplate, description, etc. |
@@ -89,6 +90,102 @@ components and override built-ins such as `Callout`, `Tabs`, or `HoverLink`.
 
 Use `theme.ui.components` when you want to keep a built-in like `HoverLink` but change its default
 props globally (for example `linkLabel`, `showIndicator`, or `align`).
+
+---
+
+## Search
+
+Search is enabled by default. If the user does nothing, the framework uses the built-in simple
+adapter with section-based chunking.
+
+```ts
+search: true,
+```
+
+Built-in provider options:
+
+- `simple` — zero-config docs search
+- `typesense` — external Typesense backend with optional hybrid mode
+- `algolia` — external Algolia backend
+- `mcp` — use an MCP `search_docs` tool over Streamable HTTP
+- `custom` — user-supplied adapter
+
+Typesense example:
+
+```ts
+search: {
+  provider: "typesense",
+  baseUrl: process.env.TYPESENSE_URL!,
+  collection: "docs",
+  apiKey: process.env.TYPESENSE_SEARCH_API_KEY!,
+  adminApiKey: process.env.TYPESENSE_ADMIN_API_KEY,
+  mode: "hybrid",
+  embeddings: {
+    provider: "ollama",
+    model: "embeddinggemma",
+  },
+},
+```
+
+Algolia example:
+
+```ts
+search: {
+  provider: "algolia",
+  appId: process.env.ALGOLIA_APP_ID!,
+  indexName: "docs",
+  searchApiKey: process.env.ALGOLIA_SEARCH_API_KEY!,
+  adminApiKey: process.env.ALGOLIA_ADMIN_API_KEY,
+},
+```
+
+MCP example:
+
+```ts
+search: {
+  provider: "mcp",
+  endpoint: "/api/docs/mcp",
+},
+mcp: {
+  enabled: true,
+},
+```
+
+Custom adapter example:
+
+```ts
+import { createCustomSearchAdapter, defineDocs } from "@farming-labs/docs";
+
+search: createCustomSearchAdapter({
+  name: "my-search",
+  async search(query, context) {
+    return context.documents.slice(0, query.limit ?? 10).map((doc) => ({
+      id: doc.id,
+      url: doc.url,
+      content: doc.section ? `${doc.title} — ${doc.section}` : doc.title,
+      description: doc.description,
+      type: doc.type,
+      section: doc.section,
+    }));
+  },
+}),
+```
+
+Important notes:
+
+- `chunking.strategy` defaults to `"section"` and can be changed to `"page"`
+- Typesense and Algolia can sync the index on first request when `adminApiKey` is present
+- `provider: "mcp"` supports relative endpoints like `/api/docs/mcp` and absolute remote endpoints
+- if `provider: "mcp"` points at the same relative MCP route, the built-in `search_docs` tool falls back to simple search internally so the route does not recurse forever
+- On custom/manual Next routes, forward `search: docsConfig.search` into `createDocsAPI(...)`
+- Use `pnpm dlx @farming-labs/docs search sync --typesense` or `--algolia` when you want to push external indexes from the CLI instead of waiting for the first request
+- Search is hidden when `staticExport: true` because there is no docs API route
+
+Testing tip:
+
+- The Next example under `examples/next` is the easiest place to verify provider-backed search.
+- Set `DOCS_SEARCH_PROVIDER=typesense`, `algolia`, or `mcp`, restart the app, and query
+  `/api/docs?query=...` to confirm the active backend.
 
 ---
 

@@ -106,6 +106,9 @@ describe("withDocs (app dir: src/app vs app)", () => {
     withDocs({});
 
     expect(existsSync(join(tmpDir, "app/api/docs/mcp/route.ts"))).toBe(true);
+    const route = readFileSync(join(tmpDir, "app/api/docs/mcp/route.ts"), "utf-8");
+    expect(route).toContain('import { createDocsMCPAPI } from "@farming-labs/next/api";');
+    expect(route).toContain("search: docsConfig.search");
   });
 
   it("skips default MCP route generation when a custom route is configured", () => {
@@ -177,5 +180,18 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(typeof nextConfig.webpack).toBe("function");
     expect(existsSync(join(tmpDir, "docs-client-callbacks.tsx"))).toBe(false);
     expect(existsSync(join(tmpDir, "app/docs/docs-theme.css"))).toBe(false);
+  });
+
+  it("generates a docs API route that forwards search and ai config", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({});
+
+    const route = readFileSync(join(tmpDir, "app/api/docs/route.ts"), "utf-8");
+
+    expect(route).toContain('import { createDocsAPI } from "@farming-labs/next/api";');
+    expect(route).toContain("search: docsConfig.search");
+    expect(route).toContain("ai: docsConfig.ai");
   });
 });

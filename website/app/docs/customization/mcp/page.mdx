@@ -146,18 +146,42 @@ Example custom Next.js route:
 
 ```ts title="app/api/internal/docs/mcp/route.ts"
 import docsConfig from "@/docs.config";
-import { createDocsMCPAPI } from "@farming-labs/theme/api";
+import { createDocsMCPAPI } from "@farming-labs/next/api";
 
 export const { GET, POST, DELETE } = createDocsMCPAPI({
   entry: docsConfig.entry,
   contentDir: docsConfig.contentDir,
   nav: docsConfig.nav,
   ordering: docsConfig.ordering,
+  search: docsConfig.search,
   mcp: docsConfig.mcp,
 });
 
 export const revalidate = false;
 ```
+
+When `search` is configured, the MCP `search_docs` tool uses that same adapter pipeline too. That
+means your docs UI search and MCP search can share the same provider, chunking strategy, and custom
+ranking logic instead of drifting apart.
+
+That also means you can flip docs search itself over to MCP:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  search: {
+    provider: "mcp",
+    endpoint: "/api/docs/mcp",
+  },
+  mcp: {
+    enabled: true,
+  },
+});
+```
+
+For local self-hosted setups, relative MCP endpoints like `/api/docs/mcp` are supported. The
+built-in `search_docs` tool automatically falls back to simple search internally when it detects
+that same-route loop, so the route stays usable for testing and local examples.
 
 ## Stdio transport
 

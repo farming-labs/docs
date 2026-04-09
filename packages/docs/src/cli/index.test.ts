@@ -45,6 +45,12 @@ describe("parseFlags", () => {
     expect(flags.config).toBe("src/lib/docs.config.ts");
   });
 
+  it("parses search sync provider flags", () => {
+    const flags = parseFlags(["search", "sync", "--typesense", "--collection", "docs"]);
+    expect(flags.typesense).toBe(true);
+    expect(flags.collection).toBe("docs");
+  });
+
   it("parses boolean values in --key=value form", () => {
     const flags = parseFlags(["--api-reference=false", "--theme=colorful"]);
     expect(flags["api-reference"]).toBe(false);

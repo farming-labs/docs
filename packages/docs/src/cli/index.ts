@@ -4,6 +4,7 @@ import pc from "picocolors";
 
 const args = process.argv.slice(2);
 const command = args[0];
+const subcommand = args[1];
 const UPGRADE_TAGS = ["latest", "beta"] as const;
 type UpgradeTag = (typeof UPGRADE_TAGS)[number];
 
@@ -27,7 +28,7 @@ export function parseCommandAlias(rawCommand?: string): {
 /** Parse flags like --template next, --name my-docs, --theme concrete, --entry docs, --framework astro (exported for tests). */
 export function parseFlags(argv: string[]): Record<string, string | boolean | undefined> {
   const flags: Record<string, string | boolean | undefined> = {};
-  const booleanFlags = new Set(["api-reference"]);
+  const booleanFlags = new Set(["api-reference", "typesense", "algolia"]);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg.startsWith("--") && arg.includes("=")) {
@@ -67,6 +68,23 @@ async function main() {
   const mcpOptions = {
     configPath: typeof flags.config === "string" ? flags.config : undefined,
   };
+  const searchSyncOptions = {
+    configPath: typeof flags.config === "string" ? flags.config : undefined,
+    provider: typeof flags.provider === "string" ? flags.provider : undefined,
+    typesense: typeof flags.typesense === "boolean" ? flags.typesense : undefined,
+    algolia: typeof flags.algolia === "boolean" ? flags.algolia : undefined,
+    baseUrl: typeof flags["base-url"] === "string" ? flags["base-url"] : undefined,
+    collection: typeof flags.collection === "string" ? flags.collection : undefined,
+    apiKey: typeof flags["api-key"] === "string" ? flags["api-key"] : undefined,
+    adminApiKey: typeof flags["admin-api-key"] === "string" ? flags["admin-api-key"] : undefined,
+    mode: typeof flags.mode === "string" ? flags.mode : undefined,
+    ollamaModel: typeof flags["ollama-model"] === "string" ? flags["ollama-model"] : undefined,
+    ollamaBaseUrl:
+      typeof flags["ollama-base-url"] === "string" ? flags["ollama-base-url"] : undefined,
+    appId: typeof flags["app-id"] === "string" ? flags["app-id"] : undefined,
+    indexName: typeof flags["index-name"] === "string" ? flags["index-name"] : undefined,
+    searchApiKey: typeof flags["search-api-key"] === "string" ? flags["search-api-key"] : undefined,
+  };
 
   if (!parsedCommand.command || parsedCommand.command === "init") {
     const { init } = await import("./init.js");
@@ -74,6 +92,14 @@ async function main() {
   } else if (parsedCommand.command === "mcp") {
     const { runMcp } = await import("./mcp.js");
     await runMcp(mcpOptions);
+  } else if (parsedCommand.command === "search" && subcommand === "sync") {
+    const { syncSearch } = await import("./search.js");
+    await syncSearch(searchSyncOptions);
+  } else if (parsedCommand.command === "search") {
+    console.error(pc.red(`Unknown search subcommand: ${subcommand ?? "(missing)"}`));
+    console.error();
+    printHelp();
+    process.exit(1);
   } else if (parsedCommand.command === "upgrade") {
     const { upgrade } = await import("./upgrade.js");
     const framework =
@@ -107,6 +133,7 @@ ${pc.dim("Usage:")}
 ${pc.dim("Commands:")}
   ${pc.cyan("init")}     Scaffold docs in your project (default)
   ${pc.cyan("mcp")}      Run the built-in docs MCP server over stdio
+  ${pc.cyan("search")}   Search utilities (${pc.dim("sync")} for external indexes)
   ${pc.cyan("upgrade")}  Upgrade @farming-labs/* packages to latest (auto-detect or use --framework)
 
 ${pc.dim("Supported frameworks:")}
@@ -123,6 +150,24 @@ ${pc.dim("Options for init:")}
 
 ${pc.dim("Options for mcp:")}
   ${pc.cyan("--config <path>")}     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
+
+${pc.dim("Options for search sync:")}
+  ${pc.cyan("search sync --typesense")}             Sync docs content to Typesense using env/flags
+  ${pc.cyan("search sync --algolia")}              Sync docs content to Algolia using env/flags
+  ${pc.cyan("--config <path>")}                    Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
+  ${pc.cyan("--provider <name>")}                  Explicit provider (${pc.dim("typesense")}, ${pc.dim("algolia")})
+  ${pc.cyan("--typesense")}                        Shortcut for ${pc.cyan("--provider typesense")}
+  ${pc.cyan("--algolia")}                          Shortcut for ${pc.cyan("--provider algolia")}
+  ${pc.cyan("--base-url <url>")}                   Typesense base URL (or use ${pc.dim("TYPESENSE_URL")})
+  ${pc.cyan("--collection <name>")}                Typesense collection name (default ${pc.dim("docs")})
+  ${pc.cyan("--api-key <key>")}                    Typesense search/api key (or use ${pc.dim("TYPESENSE_API_KEY")})
+  ${pc.cyan("--admin-api-key <key>")}              Admin-capable sync key for Typesense/Algolia
+  ${pc.cyan("--mode <keyword|hybrid>")}            Typesense mode (default ${pc.dim("keyword")})
+  ${pc.cyan("--ollama-model <name>")}              Embeddings model for Typesense hybrid sync
+  ${pc.cyan("--ollama-base-url <url>")}            Ollama base URL for hybrid embeddings
+  ${pc.cyan("--app-id <id>")}                      Algolia app id (or use ${pc.dim("ALGOLIA_APP_ID")})
+  ${pc.cyan("--index-name <name>")}                Algolia index name (default ${pc.dim("docs")})
+  ${pc.cyan("--search-api-key <key>")}             Algolia search key (or use ${pc.dim("ALGOLIA_SEARCH_API_KEY")})
 
 ${pc.dim("Options for upgrade:")}
   ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect

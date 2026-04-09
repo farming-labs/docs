@@ -9,7 +9,7 @@
     "dev": "pnpm --filter example-next dev",
     "examples:version": "node scripts/set-examples-version.mjs",
     "test": "pnpm --filter @farming-labs/docs run test",
-    "typecheck": "pnpm --filter './packages/*' run typecheck",
+    "typecheck": "pnpm --filter @farming-labs/docs run build && pnpm --filter './packages/*' run typecheck",
     "release": "bumpp",
     "release:latest": "bumpp --tag latest && pnpm --filter './packages/*' publish --access public --tag latest --no-git-checks",
     "release:beta": "bumpp --preid beta",
