@@ -3,6 +3,7 @@ import { defineConfig } from "tsdown";
 export default defineConfig({
   entry: [
     "src/index.ts",
+    "src/api.ts",
     "src/api-reference.tsx",
     "src/client-callbacks.tsx",
     "src/config.ts",
@@ -21,6 +22,7 @@ export default defineConfig({
     "react",
     "react-dom",
     "@/docs.config",
+    "@farming-labs/theme/api",
     "@farming-labs/theme/client-hooks",
     "@next/mdx",
     "@mdx-js/loader",

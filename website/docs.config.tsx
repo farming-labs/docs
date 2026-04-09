@@ -33,8 +33,30 @@ import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 import { Callout } from "@/components/ui/callout";
 import { submitDocsFeedback } from "@/lib/submit-docs-feedback";
 
+const algoliaAppId = process.env.ALGOLIA_APP_ID;
+const algoliaIndexName = process.env.ALGOLIA_INDEX_NAME ?? "farming-labs-docs";
+const algoliaSearchApiKey = process.env.ALGOLIA_SEARCH_API_KEY;
+const algoliaAdminApiKey = process.env.ALGOLIA_ADMIN_API_KEY;
+const docsSearchProvider =
+  process.env.DOCS_SEARCH_PROVIDER ?? (algoliaAppId && algoliaSearchApiKey ? "algolia" : "mcp");
+
+const searchConfig =
+  docsSearchProvider === "algolia" && algoliaAppId && algoliaSearchApiKey
+    ? {
+        provider: "algolia" as const,
+        appId: algoliaAppId,
+        indexName: algoliaIndexName,
+        searchApiKey: algoliaSearchApiKey,
+        adminApiKey: algoliaAdminApiKey,
+      }
+    : {
+        provider: "mcp" as const,
+        endpoint: "/api/docs/mcp",
+      };
+
 export default defineDocs({
   entry: "docs",
+  search: searchConfig,
   theme: pixelBorder({
     ui: {
       layout: { toc: { enabled: true, depth: 3, style: "directional" }, sidebarWidth: 300 },

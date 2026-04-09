@@ -14,6 +14,16 @@ export { deepMerge } from "./utils.js";
 export { createTheme, extendTheme } from "./create-theme.js";
 export { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "./i18n.js";
 export { resolveTitle, resolveOGImage, buildPageOpenGraph, buildPageTwitter } from "./metadata.js";
+export {
+  buildDocsSearchDocuments,
+  createAlgoliaSearchAdapter,
+  createCustomSearchAdapter,
+  createMcpSearchAdapter,
+  createSimpleSearchAdapter,
+  createTypesenseSearchAdapter,
+  performDocsSearch,
+  resolveSearchRequestConfig,
+} from "./search.js";
 export type {
   DocsConfig,
   ApiReferenceConfig,
@@ -52,5 +62,21 @@ export type {
   DocsFeedbackValue,
   DocsFeedbackData,
   FeedbackConfig,
+  DocsSearchAdapter,
+  DocsSearchAdapterContext,
+  DocsSearchAdapterFactory,
+  DocsSearchChunkingConfig,
+  DocsSearchConfig,
+  DocsSearchDocument,
+  DocsSearchQuery,
+  DocsSearchResult,
+  DocsSearchResultType,
+  DocsSearchSourcePage,
+  SimpleDocsSearchConfig,
+  AlgoliaDocsSearchConfig,
+  TypesenseDocsSearchConfig,
+  CustomDocsSearchConfig,
+  DocsSearchEmbeddingsConfig,
+  McpDocsSearchConfig,
 } from "./types.js";
 export type { ResolvedDocsI18n, DocsPathMatch } from "./i18n.js";

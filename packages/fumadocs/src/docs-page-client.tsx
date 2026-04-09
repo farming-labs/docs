@@ -192,6 +192,38 @@ function localizeInternalLinks(root: ParentNode, locale?: string) {
   }
 }
 
+function decodeHashTarget(hash: string): string {
+  const value = hash.startsWith("#") ? hash.slice(1) : hash;
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function escapeIdSelector(value: string): string {
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+    return CSS.escape(value);
+  }
+
+  return value.replace(/["\\.#:[\]>+~(){}^$|*?=!'`\s]/g, "\\$&");
+}
+
+function scrollToHashTarget(hash: string): boolean {
+  if (!hash || hash === "#") return false;
+
+  const targetId = decodeHashTarget(hash);
+  if (!targetId) return false;
+
+  const target =
+    document.getElementById(targetId) ??
+    document.querySelector<HTMLElement>(`#${escapeIdSelector(targetId)}`);
+  if (!target) return false;
+
+  target.scrollIntoView({ block: "start" });
+  return true;
+}
+
 function injectTitleDecorations(
   node: ReactNode,
   { description, belowTitle }: TitleInsertions,
@@ -340,6 +372,41 @@ export function DocsPageClient({
 
     return () => cancelAnimationFrame(timer);
   }, [activeLocale, children, pathname]);
+
+  useEffect(() => {
+    let frame = 0;
+    let timeout = 0;
+    let cancelled = false;
+
+    const scheduleScroll = (attempt = 0) => {
+      if (cancelled) return;
+      const hash = window.location.hash;
+      if (!hash) return;
+
+      if (scrollToHashTarget(hash) || attempt >= 20) return;
+
+      timeout = window.setTimeout(() => {
+        frame = requestAnimationFrame(() => scheduleScroll(attempt + 1));
+      }, 100);
+    };
+
+    frame = requestAnimationFrame(() => scheduleScroll());
+
+    const onHashChange = () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timeout);
+      frame = requestAnimationFrame(() => scheduleScroll());
+    };
+
+    window.addEventListener("hashchange", onHashChange);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("hashchange", onHashChange);
+      cancelAnimationFrame(frame);
+      clearTimeout(timeout);
+    };
+  }, [pathname, children]);
 
   const showActions = copyMarkdown || openDocs;
   const showActionsBelowTitle = showActions && pageActionsPosition === "below-title";

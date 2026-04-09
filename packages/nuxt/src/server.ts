@@ -18,7 +18,13 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import { eventHandler } from "h3";
-import { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "@farming-labs/docs";
+import {
+  performDocsSearch,
+  resolveSearchRequestConfig,
+  resolveDocsI18n,
+  resolveDocsLocale,
+  resolveDocsPath,
+} from "@farming-labs/docs";
 import { createDocsMcpHttpHandler } from "@farming-labs/docs/server";
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
 import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
@@ -104,7 +110,7 @@ export interface DocsServer {
     editOnGithub?: string;
     lastModified: string;
   }>;
-  GET: (context: { request: Request }) => Response;
+  GET: (context: { request: Request }) => Promise<Response>;
   POST: (context: { request: Request }) => Promise<Response>;
   MCP: DocsMcpHttpHandlers;
 }
@@ -671,7 +677,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   }
 
   // ─── GET /api/docs?query=… | ?format=llms | ?format=llms-full ──
-  function GET(context: { request: Request }): Response {
+  async function GET(context: { request: Request }): Promise<Response> {
     const ctx = resolveContextFromRequest(context.request);
     const url = new URL(context.request.url);
     const format = url.searchParams.get("format");
@@ -686,20 +692,21 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       });
     }
 
-    const query = url.searchParams.get("query")?.toLowerCase().trim();
+    const query = url.searchParams.get("query")?.trim();
     if (!query) {
       return new Response(JSON.stringify([]), {
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    const results = searchByQuery(query, ctx)
-      .slice(0, 10)
-      .map(({ title, url, description }) => ({
-        content: title,
-        url,
-        description,
-      }));
+    const results = await performDocsSearch({
+      pages: getSearchIndex(ctx),
+      query,
+      search: resolveSearchRequestConfig(config.search, context.request.url),
+      locale: ctx.locale,
+      pathname: url.searchParams.get("pathname") ?? undefined,
+      siteTitle: llmsTitle,
+    });
 
     return new Response(JSON.stringify(results), {
       headers: { "Content-Type": "application/json" },

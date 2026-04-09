@@ -12,6 +12,7 @@ The `@farming-labs/docs` CLI has two main jobs:
 - **`init`** — create a new docs app or add docs to an existing app
 - **`upgrade`** — bump the docs packages in an existing project
 - **`mcp`** — run the built-in docs MCP server over stdio for local clients and IDE agents
+- **`search sync`** — push docs content into an external search index like Typesense or Algolia
 
 If you only need the common commands, start here. The framework-specific output and generated file lists are further down this page.
 
@@ -150,6 +151,54 @@ Then point your MCP client or inspector at:
 
 ```txt title="~"
 http://127.0.0.1:3000/api/docs/mcp
+```
+
+### Sync an external search index
+
+Use `search sync` when you want to pre-index docs into a hosted search backend instead of waiting
+for the first request to trigger sync.
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs search sync --typesense
+```
+
+The command reads `.env` and `.env.local` from the current project, scans the docs content based on
+`entry` / `contentDir`, and uploads search documents to the selected provider.
+
+Typesense example:
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs search sync --typesense
+```
+
+Required env:
+
+```bash title="terminal"
+TYPESENSE_URL=https://your-cluster.a1.typesense.net
+TYPESENSE_API_KEY=your-admin-capable-key
+```
+
+Optional:
+
+```bash title="terminal"
+TYPESENSE_COLLECTION=docs
+TYPESENSE_MODE=hybrid
+TYPESENSE_OLLAMA_MODEL=embeddinggemma
+TYPESENSE_OLLAMA_BASE_URL=http://127.0.0.1:11434
+```
+
+Algolia example:
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs search sync --algolia
+```
+
+Required env:
+
+```bash title="terminal"
+ALGOLIA_APP_ID=your-app-id
+ALGOLIA_ADMIN_API_KEY=your-admin-key
+ALGOLIA_SEARCH_API_KEY=your-search-key
 ```
 
 ## Init

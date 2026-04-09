@@ -657,6 +657,167 @@ export interface DocsMcpConfig {
   tools?: DocsMcpToolsConfig;
 }
 
+export type DocsSearchResultType = "page" | "heading" | "text";
+
+export interface DocsSearchSourcePage {
+  title: string;
+  url: string;
+  content: string;
+  description?: string;
+  rawContent?: string;
+  type?: "page" | "api" | "code" | "changelog";
+  locale?: string;
+  framework?: string;
+  version?: string;
+  tags?: string[];
+}
+
+export interface DocsSearchDocument {
+  id: string;
+  url: string;
+  title: string;
+  content: string;
+  description?: string;
+  section?: string;
+  type: DocsSearchResultType;
+  locale?: string;
+  framework?: string;
+  version?: string;
+  tags?: string[];
+}
+
+export interface DocsSearchResult {
+  id: string;
+  url: string;
+  content: string;
+  description?: string;
+  type: DocsSearchResultType;
+  score?: number;
+  section?: string;
+}
+
+export interface DocsSearchQuery {
+  query: string;
+  limit?: number;
+  locale?: string;
+  pathname?: string;
+}
+
+export interface DocsSearchAdapterContext {
+  pages: DocsSearchSourcePage[];
+  documents: DocsSearchDocument[];
+  locale?: string;
+  pathname?: string;
+  siteTitle?: string;
+}
+
+export interface DocsSearchAdapter {
+  name: string;
+  index?(context: DocsSearchAdapterContext): Promise<void>;
+  search(query: DocsSearchQuery, context: DocsSearchAdapterContext): Promise<DocsSearchResult[]>;
+}
+
+export type DocsSearchAdapterFactory = (
+  context: DocsSearchAdapterContext,
+) => DocsSearchAdapter | Promise<DocsSearchAdapter>;
+
+export interface DocsSearchChunkingConfig {
+  /**
+   * How docs content should be chunked before searching.
+   *
+   * - `"page"` keeps one search document per page
+   * - `"section"` splits pages by headings and improves precision
+   *
+   * @default "section"
+   */
+  strategy?: "page" | "section";
+}
+
+export interface DocsSearchEmbeddingsConfig {
+  /**
+   * Embeddings provider used for hybrid / semantic search.
+   * The initial built-in provider is Ollama for local or self-hosted setups.
+   */
+  provider: "ollama";
+  /** Embedding model id, e.g. `embeddinggemma`. */
+  model: string;
+  /** Base URL of the embedding API. @default "http://127.0.0.1:11434" */
+  baseUrl?: string;
+}
+
+export interface SimpleDocsSearchConfig {
+  provider?: "simple";
+  enabled?: boolean;
+  maxResults?: number;
+  chunking?: DocsSearchChunkingConfig;
+}
+
+export interface AlgoliaDocsSearchConfig {
+  provider: "algolia";
+  enabled?: boolean;
+  appId: string;
+  indexName: string;
+  searchApiKey: string;
+  adminApiKey?: string;
+  maxResults?: number;
+  syncOnSearch?: boolean;
+  chunking?: DocsSearchChunkingConfig;
+}
+
+export interface TypesenseDocsSearchConfig {
+  provider: "typesense";
+  enabled?: boolean;
+  baseUrl: string;
+  collection: string;
+  apiKey: string;
+  adminApiKey?: string;
+  maxResults?: number;
+  syncOnSearch?: boolean;
+  queryBy?: string[];
+  mode?: "keyword" | "hybrid";
+  embeddings?: DocsSearchEmbeddingsConfig;
+  chunking?: DocsSearchChunkingConfig;
+}
+
+export interface McpDocsSearchConfig {
+  provider: "mcp";
+  enabled?: boolean;
+  /**
+   * Streamable HTTP MCP endpoint. Relative paths like `/api/docs/mcp` are resolved
+   * against the current docs API request URL.
+   */
+  endpoint: string;
+  /**
+   * Optional extra headers passed to the MCP endpoint on initialize/tool calls.
+   */
+  headers?: Record<string, string>;
+  /**
+   * MCP tool name used for search. Defaults to `search_docs`.
+   */
+  toolName?: string;
+  /**
+   * Override the MCP protocol version header when needed.
+   */
+  protocolVersion?: string;
+  maxResults?: number;
+  chunking?: DocsSearchChunkingConfig;
+}
+
+export interface CustomDocsSearchConfig {
+  provider: "custom";
+  enabled?: boolean;
+  adapter: DocsSearchAdapter | DocsSearchAdapterFactory;
+  maxResults?: number;
+  chunking?: DocsSearchChunkingConfig;
+}
+
+export type DocsSearchConfig =
+  | SimpleDocsSearchConfig
+  | AlgoliaDocsSearchConfig
+  | McpDocsSearchConfig
+  | TypesenseDocsSearchConfig
+  | CustomDocsSearchConfig;
+
 export interface LastUpdatedConfig {
   /**
    * Whether to show the "Last updated" date.
@@ -1427,6 +1588,16 @@ export interface DocsConfig {
    * ```
    */
   pageActions?: PageActionsConfig;
+  /**
+   * Built-in docs search configuration.
+   *
+   * - `true` or omitted → use the built-in simple search
+   * - `{ provider: "typesense", ... }` → use Typesense
+   * - `{ provider: "algolia", ... }` → use Algolia
+   * - `{ provider: "custom", adapter }` → use a custom adapter
+   * - `false` → disable docs search
+   */
+  search?: boolean | DocsSearchConfig;
   /**
    * Configuration for the "Last updated" date display.
    *

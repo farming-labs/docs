@@ -47,6 +47,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `feedback`    | `boolean \| FeedbackConfig`                     | `false`          | End-of-page feedback prompt and feedback callback                                    |
 | `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
 | `ai`          | `AIConfig`                                      | —                | RAG-powered AI chat                                                                  |
+| `search`      | `boolean \| DocsSearchConfig`                   | `true`           | Built-in simple search, Typesense, Algolia, or a custom adapter                     |
 | `mcp`         | `boolean \| DocsMcpConfig`                      | `false`          | Built-in MCP server over stdio and `/api/docs/mcp`                                   |
 | `apiReference` | `boolean \| ApiReferenceConfig`               | `false`          | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON |
 | `ordering`    | `"alphabetical" \| "numeric" \| OrderingItem[]` | `"alphabetical"` | Sidebar page ordering strategy                                                       |
@@ -201,6 +202,211 @@ Framework notes:
 - **Custom routes:** set `mcp.route` in `docs.config` and add the matching route file manually so the configured path and the actual endpoint stay aligned
 
 See [MCP Server](/docs/customization/mcp) for the route snippets and examples.
+
+---
+
+## `DocsSearchConfig`
+
+Search is enabled by default. If you do not configure anything, the docs API uses the built-in
+simple adapter with section-based chunking.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  search: true,
+});
+```
+
+Built-in providers:
+
+- `simple` — zero-config docs search with section chunking
+- `typesense` — external Typesense collection with optional hybrid mode
+- `algolia` — external Algolia index
+- `mcp` — Streamable HTTP MCP endpoint that exposes a `search_docs` tool
+- `custom` — your own adapter implementation
+
+### `SimpleDocsSearchConfig`
+
+| Property   | Type                    | Default     | Description |
+| ---------- | ----------------------- | ----------- | ----------- |
+| `provider` | `"simple"`              | implied     | Use the built-in search adapter |
+| `enabled`  | `boolean`               | `true`      | Toggle search on or off |
+| `maxResults` | `number`              | `10`        | Maximum results to return |
+| `chunking` | `DocsSearchChunkingConfig` | `{ strategy: "section" }` | Controls whether indexing happens per page or per section |
+
+```ts title="docs.config.ts"
+search: {
+  provider: "simple",
+  maxResults: 8,
+  chunking: {
+    strategy: "section",
+  },
+},
+```
+
+### `TypesenseDocsSearchConfig`
+
+| Property      | Type                       | Default     | Description |
+| ------------- | -------------------------- | ----------- | ----------- |
+| `provider`    | `"typesense"`              | —           | Use Typesense as the search backend |
+| `baseUrl`     | `string`                   | —           | Typesense API base URL |
+| `collection`  | `string`                   | —           | Collection name used for docs documents |
+| `apiKey`      | `string`                   | —           | Search API key |
+| `adminApiKey` | `string`                   | —           | Optional admin key used for on-demand indexing |
+| `maxResults`  | `number`                   | `10`        | Maximum results to return |
+| `syncOnSearch` | `boolean`                 | `true` when `adminApiKey` is present | Re-index docs on the first search request |
+| `queryBy`     | `string[]`                 | built-in fields | Custom Typesense `query_by` fields |
+| `mode`        | `"keyword" \| "hybrid"`    | `"keyword"` | Keyword search only, or keyword + embeddings |
+| `embeddings`  | `DocsSearchEmbeddingsConfig` | —         | Semantic embeddings config for hybrid search |
+| `chunking`    | `DocsSearchChunkingConfig` | `{ strategy: "section" }` | Chunking strategy used before indexing/search |
+
+```ts title="docs.config.ts"
+search: {
+  provider: "typesense",
+  baseUrl: process.env.TYPESENSE_URL!,
+  collection: "docs",
+  apiKey: process.env.TYPESENSE_SEARCH_API_KEY!,
+  adminApiKey: process.env.TYPESENSE_ADMIN_API_KEY,
+  mode: "hybrid",
+  embeddings: {
+    provider: "ollama",
+    model: "embeddinggemma",
+  },
+},
+```
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs search sync --typesense
+```
+
+### `AlgoliaDocsSearchConfig`
+
+| Property       | Type                    | Default     | Description |
+| -------------- | ----------------------- | ----------- | ----------- |
+| `provider`     | `"algolia"`             | —           | Use Algolia as the search backend |
+| `appId`        | `string`                | —           | Algolia application id |
+| `indexName`    | `string`                | —           | Algolia index name |
+| `searchApiKey` | `string`                | —           | Search API key |
+| `adminApiKey`  | `string`                | —           | Optional admin key used for on-demand indexing |
+| `maxResults`   | `number`                | `10`        | Maximum results to return |
+| `syncOnSearch` | `boolean`               | `true` when `adminApiKey` is present | Re-index docs on the first search request |
+| `chunking`     | `DocsSearchChunkingConfig` | `{ strategy: "section" }` | Chunking strategy used before indexing/search |
+
+```ts title="docs.config.ts"
+search: {
+  provider: "algolia",
+  appId: process.env.ALGOLIA_APP_ID!,
+  indexName: "docs",
+  searchApiKey: process.env.ALGOLIA_SEARCH_API_KEY!,
+  adminApiKey: process.env.ALGOLIA_ADMIN_API_KEY,
+},
+```
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs search sync --algolia
+```
+
+### `McpDocsSearchConfig`
+
+| Property   | Type                    | Default        | Description |
+| ---------- | ----------------------- | -------------- | ----------- |
+| `provider` | `"mcp"`                 | —              | Use an MCP endpoint as the search backend |
+| `endpoint` | `string`                | —              | Streamable HTTP MCP endpoint |
+| `headers`  | `Record<string, string>` | —             | Extra headers sent to initialize and tool calls |
+| `toolName` | `string`                | `"search_docs"` | MCP tool name used for search |
+| `protocolVersion` | `string`         | `"2025-11-25"` | MCP protocol version header |
+| `maxResults` | `number`              | `10`           | Maximum results to request |
+
+```ts title="docs.config.ts"
+search: {
+  provider: "mcp",
+  endpoint: "/api/docs/mcp",
+},
+```
+
+Relative endpoints are resolved against the current docs API request URL. That makes local setups
+like the Next example easy to test without hardcoding a host.
+
+### `CustomDocsSearchConfig`
+
+| Property   | Type                           | Description |
+| ---------- | ------------------------------ | ----------- |
+| `provider` | `"custom"`                     | Use your own adapter |
+| `adapter`  | `DocsSearchAdapter \| DocsSearchAdapterFactory` | Search runtime implementation |
+| `maxResults` | `number`                     | Maximum results to return |
+| `chunking` | `DocsSearchChunkingConfig`     | Chunking strategy used before your adapter runs |
+
+```ts title="docs.config.ts"
+import { createCustomSearchAdapter, defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  search: createCustomSearchAdapter({
+    name: "my-search",
+    async search(query, context) {
+      return context.documents
+        .filter((doc) =>
+          `${doc.title} ${doc.section ?? ""} ${doc.content}`.toLowerCase().includes(query.query.toLowerCase()),
+        )
+        .slice(0, query.limit ?? 10)
+        .map((doc) => ({
+          id: doc.id,
+          url: doc.url,
+          content: doc.section ? `${doc.title} — ${doc.section}` : doc.title,
+          description: doc.description,
+          type: doc.type,
+          section: doc.section,
+        }));
+    },
+  }),
+});
+```
+
+### `DocsSearchAdapter`
+
+Custom adapters receive normalized source pages and chunked search documents so you can focus on
+retrieval and ranking instead of rebuilding the docs scan pipeline.
+
+```ts title="search-adapter.ts"
+import type { DocsSearchAdapter } from "@farming-labs/docs";
+
+export const adapter: DocsSearchAdapter = {
+  name: "my-search",
+  async search(query, context) {
+    return context.documents.map((doc) => ({
+      id: doc.id,
+      url: doc.url,
+      content: doc.section ? `${doc.title} — ${doc.section}` : doc.title,
+      description: doc.description,
+      type: doc.type,
+      section: doc.section,
+    }));
+  },
+};
+```
+
+### `DocsSearchChunkingConfig`
+
+| Property   | Type                    | Default     | Description |
+| ---------- | ----------------------- | ----------- | ----------- |
+| `strategy` | `"page" \| "section"`   | `"section"` | Chunk by whole page or split by headings |
+
+### `DocsSearchEmbeddingsConfig`
+
+| Property   | Type        | Default                   | Description |
+| ---------- | ----------- | ------------------------- | ----------- |
+| `provider` | `"ollama"`  | —                         | Embeddings provider for hybrid Typesense mode |
+| `model`    | `string`    | —                         | Embedding model id |
+| `baseUrl`  | `string`    | `"http://127.0.0.1:11434"` | Ollama base URL |
+
+Notes:
+
+- `search: false` disables search entirely
+- Search requires the docs API route; static export hides the UI because there is no server route
+- On Next.js, generated routes from `withDocs()` already forward `docsConfig.search`
+- MCP-backed search works with relative endpoints like `/api/docs/mcp` and absolute remote endpoints like `https://docs.example.com/api/docs/mcp`
+- If MCP-backed search points at the same relative MCP route, the built-in `search_docs` tool falls back to simple search internally to avoid recursive loops
+- On custom/manual Next routes, import `createDocsAPI` from `@farming-labs/next/api` and pass `search: docsConfig.search`
 
 ---
 

@@ -14,8 +14,8 @@ A modern documentation framework built on top of <HoverLink href="https://fumado
 - **One config** — Everything in `docs.config.ts`: theme, colors, typography, icons, components, metadata.
 - **Token efficient** — Your entire docs framework surface is a single config file (~15 lines). AI tools like Cursor, Copilot, and Claude spend less time reading framework plumbing and more time working with your actual content. Built-in [llms.txt](/docs/customization/llms-txt) serves your docs in LLM-optimized format automatically. [Learn more →](/docs/token-efficiency)
 - **Multiple frameworks** — First-class support for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt that just works.
-- **7 themes** — Default, Darksharp, Pixel Border, Colorful, Shiny, DarkBold, and GreenTree — or build your own with [`createTheme()`](/docs/themes/creating-themes).
-- **Built-in search** — Full-text search powered by Orama. No API keys.
+- **9 themes** — Default, Darksharp, Pixel Border, Colorful, Shiny, DarkBold, GreenTree, Hardline, and Concrete — or build your own with [`createTheme()`](/docs/themes/creating-themes).
+- **Built-in search** — Zero-config simple search by default, or upgrade to Typesense, Algolia, or a custom adapter.
 - **CLI scaffolding** — `npx @farming-labs/docs init` first asks whether you're on an **existing project** or **starting fresh**; then it detects your framework, lets you pick a theme (or create your own), can scaffold locale folders for i18n, and generates config, routes, and sample pages. Use `--template` with `--name` to bootstrap a new project without prompts.
 
 ## other docs frameworks?
@@ -42,7 +42,7 @@ You can [create your own theme](/docs/themes/creating-themes) and distribute it 
 Modern docs features are built in; you turn them on in [configuration](/docs/configuration) instead of wiring them yourself. Each element can be customized — layout, behavior, and appearance — via the same config and theme options. See [Customization](/docs/customization) for the full overview.
 
 - **[Ask AI](/docs/customization/ai-chat)** — RAG-powered chat, multiple models and providers, floating or sidebar mode. [Customize](/docs/customization/ai-chat) labels, suggested questions, model list, and UI mode.
-- **Search** — Full-text search (Orama) is included by default; configure via [configuration](/docs/configuration).
+- **Search** — Built-in simple search works out of the box, and you can switch to Typesense, Algolia, or a custom adapter from [configuration](/docs/configuration).
 - **[Page actions](/docs/customization/page-actions)** — Copy Markdown, open in ChatGPT/other tools. [Customize](/docs/customization/page-actions) which actions appear and their options.
 - **[Sidebar](/docs/customization/sidebar)** — Collapsible, flat or nested, banner, footer. [Customize](/docs/customization/sidebar) structure, style, and content (banner, footer, nav title).
 - **[Components](/docs/customization/components)** — Built-in MDX components like `Callout`, `Tabs`, and `HoverLink`, plus your own custom React components.

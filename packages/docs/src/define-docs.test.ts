@@ -13,6 +13,12 @@ describe("defineDocs", () => {
         enabled: true,
         onFeedback,
       },
+      search: {
+        provider: "typesense",
+        baseUrl: "https://typesense.example.com",
+        collection: "docs",
+        apiKey: "search-key",
+      },
       mcp: {
         enabled: true,
         route: "/api/docs/mcp",
@@ -23,6 +29,12 @@ describe("defineDocs", () => {
     expect(config.feedback).toEqual({
       enabled: true,
       onFeedback,
+    });
+    expect(config.search).toEqual({
+      provider: "typesense",
+      baseUrl: "https://typesense.example.com",
+      collection: "docs",
+      apiKey: "search-key",
     });
     expect(config.mcp).toEqual({
       enabled: true,

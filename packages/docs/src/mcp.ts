@@ -7,7 +7,14 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import * as z from "zod/v4";
-import type { DocsMcpConfig, OrderingItem } from "./types.js";
+import { performDocsSearch } from "./search.js";
+import type {
+  DocsMcpConfig,
+  DocsSearchConfig,
+  DocsSearchSourcePage,
+  McpDocsSearchConfig,
+  OrderingItem,
+} from "./types.js";
 
 export interface DocsMcpPage {
   slug: string;
@@ -71,6 +78,7 @@ export interface DocsMcpHttpHandlers {
 interface CreateDocsMcpServerOptions {
   source: DocsMcpSource;
   mcp?: boolean | DocsMcpConfig;
+  search?: boolean | DocsSearchConfig;
   defaultName?: string;
   defaultVersion?: string;
 }
@@ -201,6 +209,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
     defaultName: options.defaultName ?? options.source.siteTitle ?? DEFAULT_MCP_NAME,
     defaultVersion: options.defaultVersion,
   });
+  const toolSearchConfig = resolveMcpToolSearchConfig(options.search, resolved.route);
 
   const server = new McpServer({
     name: resolved.name,
@@ -308,7 +317,14 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
       },
       async ({ query, limit, locale }) => {
         const pages = dedupePages(await options.source.getPages(locale));
-        const results = searchDocsPages(pages, query, limit ?? 10);
+        const results = await performDocsSearch({
+          pages: toSearchSourcePages(pages),
+          query,
+          search: toolSearchConfig ?? true,
+          locale,
+          siteTitle: options.source.siteTitle,
+          limit: limit ?? 10,
+        });
         return {
           content: [
             {
@@ -691,6 +707,42 @@ function dedupePages(pages: DocsMcpPage[]): DocsMcpPage[] {
   return [...seen.values()];
 }
 
+function toSearchSourcePages(pages: DocsMcpPage[]): DocsSearchSourcePage[] {
+  return pages.map((page) => ({
+    title: page.title,
+    url: page.url,
+    content: page.content,
+    rawContent: page.rawContent,
+    description: page.description,
+  }));
+}
+
+function isSelfMcpSearchEndpoint(search?: boolean | DocsSearchConfig, route?: string): boolean {
+  if (!search || search === true || typeof search !== "object" || search.provider !== "mcp") {
+    return false;
+  }
+
+  const endpoint = (search as McpDocsSearchConfig).endpoint.trim();
+  if (!endpoint.startsWith("/")) return false;
+
+  return normalizeDocsMcpRoute(endpoint) === normalizeDocsMcpRoute(route);
+}
+
+function resolveMcpToolSearchConfig(
+  search: boolean | DocsSearchConfig | undefined,
+  route: string,
+): boolean | DocsSearchConfig | undefined {
+  if (!isSelfMcpSearchEndpoint(search, route)) return search;
+
+  const config = search as McpDocsSearchConfig;
+  return {
+    provider: "simple",
+    enabled: config.enabled,
+    maxResults: config.maxResults,
+    chunking: config.chunking,
+  };
+}
+
 function toPageSummaries(pages: DocsMcpPage[]) {
   return pages.map((page) => ({
     slug: page.slug,
@@ -749,49 +801,6 @@ function normalizeUrlPath(value: string): string {
   const normalized = value.replace(/\/+/g, "/");
   if (normalized === "/") return normalized;
   return normalized.replace(/\/+$/, "");
-}
-
-function searchDocsPages(pages: DocsMcpPage[], query: string, limit: number) {
-  const normalizedQuery = query.toLowerCase().trim();
-  if (!normalizedQuery) return [];
-  const words = normalizedQuery.split(/\s+/).filter(Boolean);
-
-  return pages
-    .map((page) => {
-      const titleScore = page.title.toLowerCase().includes(normalizedQuery) ? 10 : 0;
-      const descriptionScore = page.description?.toLowerCase().includes(normalizedQuery) ? 4 : 0;
-      const contentScore = words.reduce((score, word) => {
-        return score + (page.content.toLowerCase().includes(word) ? 1 : 0);
-      }, 0);
-
-      return {
-        slug: page.slug,
-        url: page.url,
-        title: page.title,
-        description: page.description,
-        icon: page.icon,
-        excerpt: buildExcerpt(page, words),
-        score: titleScore + descriptionScore + contentScore,
-      };
-    })
-    .filter((page) => page.score > 0)
-    .sort((left, right) => right.score - left.score)
-    .slice(0, limit)
-    .map(({ score: _score, ...page }) => page);
-}
-
-function buildExcerpt(page: DocsMcpPage, words: string[]): string | undefined {
-  const haystack = page.rawContent ?? page.content;
-  const lower = haystack.toLowerCase();
-  const firstHit = words.find((word) => lower.includes(word.toLowerCase()));
-
-  if (!firstHit) return page.description;
-
-  const index = lower.indexOf(firstHit.toLowerCase());
-  const start = Math.max(0, index - 80);
-  const end = Math.min(haystack.length, index + 140);
-  const excerpt = haystack.slice(start, end).replace(/\s+/g, " ").trim();
-  return excerpt.length > 0 ? excerpt : page.description;
 }
 
 function renderPageDocument(page: DocsMcpPage): string {

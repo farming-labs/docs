@@ -11,7 +11,7 @@ Override any color token directly from your config. Colors are mapped to `--colo
 
 ## Setting Colors
 
-```tsx title="docs.config.tsx"
+```tsx 
 theme: pixelBorder({
   ui: {
     colors: {
@@ -43,7 +43,7 @@ theme: pixelBorder({
 
 Only colors you explicitly set are emitted as inline CSS variables. Theme preset defaults stay in the CSS file — your overrides don't break light/dark mode handling.
 
-```tsx title="example-url.tsx"
+```tsx
 // Only primary gets overridden — everything else stays as the theme defines
 colors: {
   primary: "oklch(0.72 0.19 149)";

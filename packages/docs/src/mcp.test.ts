@@ -309,6 +309,174 @@ No frontmatter title here.
     expect(deleteResponse.status).toBe(200);
   });
 
+  it("uses the shared search adapter pipeline for search_docs", async () => {
+    const rootDir = createTempDocsProject();
+    const source = createFilesystemDocsMcpSource({
+      rootDir,
+      entry: "docs",
+      contentDir: "docs",
+      siteTitle: "Example Docs",
+    });
+
+    const handlers = createDocsMcpHttpHandler({
+      source,
+      mcp: { enabled: true, name: "Example Docs" },
+      search: {
+        provider: "custom",
+        adapter: {
+          name: "custom-search",
+          async search() {
+            return [
+              {
+                id: "custom-hit",
+                url: "/docs/custom-hit",
+                content: "Custom search result",
+                description: "Resolved through the shared adapter pipeline.",
+                type: "page",
+              },
+            ];
+          },
+        },
+      },
+    });
+
+    const initializeResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: LATEST_PROTOCOL_VERSION,
+            capabilities: {},
+            clientInfo: {
+              name: "vitest",
+              version: "1.0.0",
+            },
+          },
+        }),
+      }),
+    });
+
+    const sessionId = initializeResponse.headers.get("mcp-session-id");
+    expect(sessionId).toBeTruthy();
+
+    const searchResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": sessionId!,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: {
+            name: "search_docs",
+            arguments: {
+              query: "install",
+            },
+          },
+        }),
+      }),
+    });
+
+    const searchPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(searchResponse);
+
+    expect(searchPayload.result?.content?.[0]?.text).toContain("/docs/custom-hit");
+    expect(searchPayload.result?.content?.[0]?.text).toContain("Custom search result");
+  });
+
+  it("falls back to simple search for self-referential MCP search configs", async () => {
+    const rootDir = createTempDocsProject();
+    const source = createFilesystemDocsMcpSource({
+      rootDir,
+      entry: "docs",
+      contentDir: "docs",
+      siteTitle: "Example Docs",
+    });
+
+    const handlers = createDocsMcpHttpHandler({
+      source,
+      mcp: { enabled: true, name: "Example Docs", route: "/api/docs/mcp" },
+      search: {
+        provider: "mcp",
+        endpoint: "/api/docs/mcp",
+        chunking: {
+          strategy: "page",
+        },
+      },
+    });
+
+    const initializeResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: LATEST_PROTOCOL_VERSION,
+            capabilities: {},
+            clientInfo: {
+              name: "vitest",
+              version: "1.0.0",
+            },
+          },
+        }),
+      }),
+    });
+
+    const sessionId = initializeResponse.headers.get("mcp-session-id");
+    expect(sessionId).toBeTruthy();
+
+    const searchResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": sessionId!,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: {
+            name: "search_docs",
+            arguments: {
+              query: "install",
+            },
+          },
+        }),
+      }),
+    });
+
+    const searchPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(searchResponse);
+
+    expect(searchPayload.result?.content?.[0]?.text).toContain("/docs/installation");
+    expect(searchPayload.result?.content?.[0]?.text).not.toContain("#quickstart");
+  });
+
   it("returns 404 responses when MCP is disabled", async () => {
     const rootDir = createTempDocsProject();
     const source = createFilesystemDocsMcpSource({

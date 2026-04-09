@@ -130,6 +130,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `feedback`    | `boolean \| FeedbackConfig`    | `false`         | End-of-page feedback prompt and callback                     |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
+| `search`      | `boolean \| DocsSearchConfig`  | `true`          | Built-in simple search, Typesense, Algolia, or a custom adapter |
 | `mcp`         | `boolean \| DocsMcpConfig`     | `false`         | Built-in MCP server over stdio and `/api/docs/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions or a hosted OpenAPI JSON |
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
@@ -155,6 +156,149 @@ export default defineDocs({
 ```
 
 Use this when you deploy to a static host and don’t run a server. Search and AI require a server; with `staticExport: true` they are hidden so the site works without one.
+
+## Search
+
+Search is enabled by default. If you do nothing, the docs API uses the built-in simple adapter with
+section-based chunking so heading matches feel more precise than page-level search.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+  search: true,
+});
+```
+
+Use an object when you want to switch providers or tune indexing behavior:
+
+### Simple search
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+  search: {
+    provider: "simple",
+    maxResults: 8,
+    chunking: {
+      strategy: "section",
+    },
+  },
+});
+```
+
+### Typesense
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+  search: {
+    provider: "typesense",
+    baseUrl: process.env.TYPESENSE_URL!,
+    collection: "docs",
+    apiKey: process.env.TYPESENSE_SEARCH_API_KEY!,
+    adminApiKey: process.env.TYPESENSE_ADMIN_API_KEY,
+    mode: "hybrid",
+    embeddings: {
+      provider: "ollama",
+      model: "embeddinggemma",
+    },
+  },
+});
+```
+
+Use `mode: "hybrid"` together with `embeddings` when you want keyword + semantic retrieval. The
+initial built-in embeddings provider is Ollama, so you can keep that stack local or self-hosted.
+
+If you want to pre-sync the index instead of letting the first request do it lazily:
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs search sync --typesense
+```
+
+### Algolia
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+  search: {
+    provider: "algolia",
+    appId: process.env.ALGOLIA_APP_ID!,
+    indexName: "docs",
+    searchApiKey: process.env.ALGOLIA_SEARCH_API_KEY!,
+    adminApiKey: process.env.ALGOLIA_ADMIN_API_KEY,
+  },
+});
+```
+
+You can also pre-sync Algolia outside request handling:
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs search sync --algolia
+```
+
+### MCP-backed search
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+  search: {
+    provider: "mcp",
+    endpoint: "/api/docs/mcp",
+  },
+  mcp: {
+    enabled: true,
+  },
+});
+```
+
+Use MCP search when you want the docs search UI to query an MCP `search_docs` tool instead of a
+native search backend. This is useful when another docs service or agent-facing MCP layer already
+owns retrieval and ranking.
+
+### Custom adapters
+
+```ts title="docs.config.ts"
+import { createCustomSearchAdapter, defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+  search: createCustomSearchAdapter({
+    name: "my-search",
+    async search(query, context) {
+      return context.documents
+        .filter((doc) =>
+          `${doc.title} ${doc.section ?? ""} ${doc.content}`.toLowerCase().includes(query.query.toLowerCase()),
+        )
+        .slice(0, query.limit ?? 10)
+        .map((doc) => ({
+          id: doc.id,
+          url: doc.url,
+          content: doc.section ? `${doc.title} — ${doc.section}` : doc.title,
+          description: doc.description,
+          type: doc.type,
+          section: doc.section,
+        }));
+    },
+  }),
+});
+```
+
+Notes:
+
+- `search: false` disables search entirely
+- `chunking.strategy` defaults to `"section"` and can be changed to `"page"` for one-document-per-page indexing
+- Typesense and Algolia can sync documents automatically on the first search request when `adminApiKey` is present
+- Use `pnpm dlx @farming-labs/docs search sync --typesense` or `--algolia` when you want manual indexing as a CLI step
+- `provider: "mcp"` can target a relative route like `/api/docs/mcp` or an absolute remote MCP endpoint
+- when MCP search points at the same site's relative MCP route, the MCP `search_docs` tool falls back to built-in simple search to avoid recursive loops
+- If you use a custom Next.js docs API route, import `createDocsAPI` from `@farming-labs/next/api` and pass `search: docsConfig.search` so your adapter config reaches the route handler
+- Search requires the docs API route; with `staticExport: true` the UI is hidden because there is no server route
 
 ## MCP Server
 
@@ -359,7 +503,7 @@ When `i18n` is enabled:
 
 For content structure, place localized docs inside locale folders. For example:
 
-```text title="internationalization.txt"
+```text title="~"
 docs/
   en/
     page.md

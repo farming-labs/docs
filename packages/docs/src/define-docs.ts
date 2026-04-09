@@ -17,6 +17,7 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     components: config.components,
     onCopyClick: config.onCopyClick,
     feedback: config.feedback,
+    search: config.search,
     mcp: config.mcp,
     icons: config.icons,
     pageActions: config.pageActions,

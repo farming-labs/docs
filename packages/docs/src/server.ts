@@ -20,6 +20,16 @@ export {
   resolveDocsMcpConfig,
   runDocsMcpStdio,
 } from "./mcp.js";
+export {
+  buildDocsSearchDocuments,
+  createAlgoliaSearchAdapter,
+  createCustomSearchAdapter,
+  createMcpSearchAdapter,
+  createSimpleSearchAdapter,
+  createTypesenseSearchAdapter,
+  performDocsSearch,
+  resolveSearchRequestConfig,
+} from "./search.js";
 export type {
   DocsMcpHttpHandlers,
   DocsMcpNavigationNode,
@@ -28,3 +38,14 @@ export type {
   DocsMcpResolvedConfig,
   DocsMcpSource,
 } from "./mcp.js";
+export type {
+  DocsSearchAdapter,
+  DocsSearchAdapterContext,
+  DocsSearchAdapterFactory,
+  DocsSearchConfig,
+  DocsSearchDocument,
+  DocsSearchQuery,
+  DocsSearchResult,
+  DocsSearchSourcePage,
+  McpDocsSearchConfig,
+} from "./types.js";

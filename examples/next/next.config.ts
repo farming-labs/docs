@@ -13,7 +13,9 @@ export default withDocs({
     root: repoRoot,
     resolveAlias: {
       "@farming-labs/docs": "./packages/docs/src/index.ts",
+      "@farming-labs/docs/server": "./packages/docs/src/server.ts",
       "@farming-labs/next": "./packages/next/src/index.ts",
+      "@farming-labs/next/api": "./packages/next/src/api.ts",
       "@farming-labs/next/client-callbacks": "./packages/next/src/client-callbacks.tsx",
       "@farming-labs/next/layout": "./packages/next/src/layout.tsx",
       "@farming-labs/next/mdx-plugins/rehype-code":
