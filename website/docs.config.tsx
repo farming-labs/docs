@@ -175,6 +175,13 @@ export default defineDocs({
   },
   mcp: {
     enabled: true,
+    name: "@farming-labs/docs",
+    tools: {
+      listPages: true,
+      readPage: true,
+      searchDocs: true,
+      getNavigation: true,
+    },
   },
 
   llmsTxt: {

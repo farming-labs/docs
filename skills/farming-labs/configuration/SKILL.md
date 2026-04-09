@@ -237,6 +237,12 @@ pnpm --dir examples/next dev
 Then point an MCP client or inspector at `http://127.0.0.1:3000/api/docs/mcp` to verify the
 default route.
 
+Hosted example:
+
+- The docs site itself exposes MCP at `https://docs.farming-labs.dev/api/docs/mcp`
+- Cursor can install it from a deeplink:
+  `cursor://anysphere.cursor-deeplink/mcp/install?name=farming-labs-docs&config=eyJ1cmwiOiJodHRwczovL2RvY3MuZmFybWluZy1sYWJzLmRldi9hcGkvZG9jcy9tY3AifQ==`
+
 See the full guide: [docs.farming-labs.dev/docs/customization/mcp](https://docs.farming-labs.dev/docs/customization/mcp)
 
 ---
