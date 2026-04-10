@@ -102,7 +102,7 @@ function CopyableBlock({
           type="button"
           aria-label={copied ? `Copied ${label}` : `Copy ${label}`}
           onClick={handleCopy}
-          className="absolute top-2.5 right-2.5 z-10 inline-flex size-7 items-center justify-center border border-black/10 bg-white/80 text-black/55 transition-colors hover:bg-white hover:text-black/80 dark:border-white/10 dark:bg-black/45 dark:text-white/58 dark:hover:bg-white/[0.06] dark:hover:text-white/80"
+          className="absolute top-2.5 right-12 z-10 inline-flex size-7 items-center justify-center border border-black/10 bg-white/80 text-black/55 transition-colors hover:bg-white hover:text-black/80 dark:border-white/10 dark:bg-black/45 dark:text-white/58 dark:hover:bg-white/[0.06] dark:hover:text-white/80"
         >
           <CopyIcon copied={copied} className="size-4" />
         </button>
