@@ -53,7 +53,7 @@ function renderTable(rows) {
     })
     .join("");
 
-  return `<table>${thead}<tbody>${bodyRows}</tbody></table>`;
+  return `<div class="fd-table-wrapper relative overflow-auto prose-no-margin my-6"><table>${thead}<tbody>${bodyRows}</tbody></table></div>`;
 }
 
 export function renderMarkdown(text) {

@@ -25,9 +25,20 @@ import { createPreWithCopyCallback } from "./code-block-copy-wrapper.js";
 import { HoverLink, type HoverLinkProps } from "./hover-link.js";
 import type { CodeBlockCopyData, DocsTheme } from "@farming-labs/docs";
 
+function Table(props: React.ComponentPropsWithoutRef<"table">) {
+  return React.createElement(
+    "div",
+    {
+      className: "fd-table-wrapper relative overflow-auto prose-no-margin my-6",
+    },
+    React.createElement("table", props),
+  );
+}
+
 const extendedMdxComponents = {
   ...defaultMdxComponents,
   img: MDXImg,
+  table: Table,
   HoverLink,
   Tab,
   Tabs,

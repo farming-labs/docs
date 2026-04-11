@@ -429,7 +429,7 @@ export async function renderMarkdown(
       const rowsHtml = rows
         .map((row: string[]) => `<tr>${row.map((c: string) => `<td>${c}</td>`).join("")}</tr>`)
         .join("");
-      return `<div class="fd-table-wrapper"><table><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+      return `<div class="fd-table-wrapper relative overflow-auto prose-no-margin my-6"><table><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
     },
   );
 

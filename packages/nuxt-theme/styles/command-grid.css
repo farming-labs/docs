@@ -475,19 +475,108 @@ figure.shiki:has(figcaption) > div:first-child,
   color: var(--color-fd-foreground) !important;
 }
 
-.fd-docs-content table,
-.fd-page-body .fd-table-wrapper {
+.fd-table-wrapper,
+.fd-table-wrapper table,
+.prose table {
   border: 2px solid var(--color-fd-border) !important;
   background: var(--color-fd-card) !important;
+  border-radius: 0 !important;
 }
 
-.fd-docs-content th,
-.fd-page-body th {
+.fd-page-nav,
+.fd-page-nav-card,
+[class*="page-nav"] a {
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease !important;
+}
+
+.fd-page-nav-card:hover,
+[class*="page-nav"] a:hover {
+  background: var(--color-fd-foreground) !important;
+  color: var(--color-fd-background) !important;
+  border-color: var(--color-fd-border) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.fd-page-nav-card:hover *,
+[class*="page-nav"] a:hover * {
+  color: inherit !important;
+}
+
+.fd-table-wrapper {
+  overflow: hidden;
+}
+
+.fd-table-wrapper table,
+.prose .fd-table-wrapper table {
+  border: 0 !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+
+.prose table,
+.prose thead,
+.prose tbody,
+.prose tr,
+.prose th,
+.prose td,
+.prose table *,
+.fd-table-wrapper,
+.fd-table-wrapper *,
+.fd-table-wrapper table,
+.fd-table-wrapper thead,
+.fd-table-wrapper tbody,
+.fd-table-wrapper tr,
+.fd-table-wrapper th,
+.fd-table-wrapper td {
+  border-radius: 0 !important;
+}
+
+.prose thead tr:first-child th:first-child,
+.prose thead tr:first-child th:last-child,
+.prose tbody tr:last-child td:first-child,
+.prose tbody tr:last-child td:last-child,
+.fd-table-wrapper thead tr:first-child th:first-child,
+.fd-table-wrapper thead tr:first-child th:last-child,
+.fd-table-wrapper tbody tr:last-child td:first-child,
+.fd-table-wrapper tbody tr:last-child td:last-child {
+  border-radius: 0 !important;
+}
+
+.prose th,
+.fd-table-wrapper th {
   background: var(--color-fd-foreground) !important;
   color: var(--color-fd-background) !important;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-family: var(--fd-font-mono, ui-monospace, monospace);
+}
+
+.fd-callout,
+[class*="fd-callout"] {
+  border: 2px solid var(--color-fd-border) !important;
+  background: color-mix(
+    in srgb,
+    var(--color-fd-card) 88%,
+    var(--color-fd-secondary) 12%
+  ) !important;
+  border-radius: 0 !important;
+}
+
+.fd-callout-indicator {
+  width: 8px;
+  background: var(--color-fd-accent) !important;
+}
+
+.fd-callout-title {
+  font-family: var(--fd-font-mono, ui-monospace, monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
 }
 
 .fd-docs-content :not(pre) > code {
@@ -557,6 +646,7 @@ figure.shiki:has(figcaption) > div:first-child,
 .fd-ai-tab-bar,
 .fd-ai-search-wrap,
 .fd-ai-chat-footer,
+.fd-ai-fm-topbar,
 .fd-ai-input-wrap,
 .fd-ai-results,
 .fd-ai-messages {
@@ -568,6 +658,7 @@ figure.shiki:has(figcaption) > div:first-child,
 .fd-ai-tab-bar,
 .fd-ai-search-wrap,
 .fd-ai-chat-footer,
+.fd-ai-fm-topbar,
 .fd-ai-fm-input-container {
   background: var(--color-fd-secondary) !important;
 }
@@ -579,6 +670,7 @@ figure.shiki:has(figcaption) > div:first-child,
 .fd-ai-result-empty,
 .fd-ai-esc,
 .fd-ai-close-btn,
+.fd-ai-fm-close-btn,
 .fd-ai-model-dropdown-btn,
 .fd-ai-model-dropdown-item,
 .fd-ai-model-dropdown-label,
@@ -596,6 +688,7 @@ figure.shiki:has(figcaption) > div:first-child,
 
 .fd-ai-esc,
 .fd-ai-close-btn,
+.fd-ai-fm-close-btn,
 .fd-ai-tab,
 .fd-ai-model-dropdown-btn,
 .fd-ai-model-dropdown-item,
@@ -607,8 +700,14 @@ figure.shiki:has(figcaption) > div:first-child,
   box-shadow: none !important;
 }
 
+.fd-ai-fm-close-btn {
+  margin-block-start: 0.5rem;
+  margin-inline-end: 0.5rem;
+}
+
 .fd-ai-tab[data-active="true"],
 .fd-ai-close-btn:hover,
+.fd-ai-fm-close-btn:hover,
 .fd-ai-model-dropdown-item[data-active="true"],
 .fd-ai-floating-btn:hover,
 .fd-ai-model-dropdown-btn:hover,

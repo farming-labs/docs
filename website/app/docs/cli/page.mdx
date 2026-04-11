@@ -483,8 +483,9 @@ The init CLI offers several built-in themes plus an option to create your own:
 | `pixel-border` | Refined dark UI inspired by better-auth.com                |
 | `colorful`     | Fumadocs-style neutral theme with description support      |
 | `greentree`    | Emerald green accent, Inter font, Mintlify-inspired        |
-| `hardline`     | Hard-edge theme with square corners and bold borders        |
+| `command-grid` | Mono-first paper-grid preset inspired by the better-cmdk landing page |
 | `concrete`     | Brutalist poster-style theme with offset shadows            |
+| `hardline`     | Hard-edge theme with square corners and bold borders        |
 | `darkbold`     | Pure monochrome, Geist typography, clean minimalism        |
 | `shiny`        | Glossy, modern look with subtle shimmer effects            |
 | **Create your own theme** | Scaffolds `themes/<name>.ts` and `themes/<name>.css`; you’re prompted for the theme name (default `my-theme`). See [Creating your own theme](/docs/themes/creating-themes). |
@@ -616,8 +617,9 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       │ ○ pixel-border
       │ ○ colorful
       │ ○ greentree
-      │ ○ hardline
       │ ○ concrete
+      │ ○ command-grid
+      │ ○ hardline
       │ ○ darkbold
       │ ○ shiny
       │ ○ Create your own theme
@@ -688,8 +690,9 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       │ ○ pixel-border
       │ ○ colorful
       │ ○ greentree
-      │ ○ hardline
       │ ○ concrete
+      │ ○ command-grid
+      │ ○ hardline
       │ ○ darkbold
       │ ○ shiny
       │ ○ Create your own theme
@@ -737,11 +740,12 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       │ ○ darksharp
       │ ○ pixel-border
       │ ○ colorful
-      │ ○ greentree
-      │ ○ hardline
-      │ ○ concrete
       │ ○ darkbold
       │ ○ shiny
+      │ ○ greentree
+      │ ○ concrete
+      │ ○ command-grid
+      │ ○ hardline
       │
       ◆ Entry path for docs:
       │ docs
@@ -804,11 +808,12 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       │ ○ darksharp
       │ ○ pixel-border
       │ ○ colorful
-      │ ○ greentree
-      │ ○ hardline
-      │ ○ concrete
       │ ○ darkbold
       │ ○ shiny
+      │ ○ greentree
+      │ ○ concrete
+      │ ○ command-grid
+      │ ○ hardline
       │
       ◆ Entry path for docs:
       │ docs
@@ -873,11 +878,12 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       │ ○ darksharp
       │ ○ pixel-border
       │ ○ colorful
-      │ ○ greentree
-      │ ○ hardline
-      │ ○ concrete
       │ ○ darkbold
       │ ○ shiny
+      │ ○ greentree
+      │ ○ concrete
+      │ ○ command-grid
+      │ ○ hardline
       │
       ◆ Entry path for docs:
       │ docs
@@ -928,7 +934,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
 | ----------------------- | --------------------------------------------------------------------------- |
 | `--template <name>`     | Bootstrap a project: `next`, `tanstack-start`, `nuxt`, `sveltekit`, or `astro`. Use with `--name`. |
 | `--name <project>`      | Project folder name when using `--template`; prompt if omitted (e.g. `my-docs`) |
-| `--theme <name>`        | Skip theme prompt: `fumadocs`, `darksharp`, `pixel-border`, `colorful`, `darkbold`, `shiny`, `greentree`, `hardline`, `concrete` |
+| `--theme <name>`        | Skip theme prompt: `fumadocs`, `darksharp`, `pixel-border`, `colorful`, `darkbold`, `shiny`, `greentree`, `concrete`, `command-grid`, `hardline` |
 | `--entry <path>`        | Skip entry path prompt (e.g. `--entry docs`)                                |
 
 **Starting from scratch?** Use `--template` with `--name <project>`. The CLI bootstraps a project with the given name, installs dependencies, and then you run `cd <project> && pnpm run dev` to start.
