@@ -604,9 +604,11 @@ figure.shiki:has(figcaption) > div:first-child,
   border: 2px solid var(--color-fd-border) !important;
   border-radius: 0 !important;
   background: var(--color-fd-card) !important;
+  box-shadow: none !important;
 }
 
 .fd-ai-tab[data-active="true"],
+.fd-ai-close-btn:hover,
 .fd-ai-model-dropdown-item[data-active="true"],
 .fd-ai-floating-btn:hover,
 .fd-ai-model-dropdown-btn:hover,
@@ -616,6 +618,7 @@ figure.shiki:has(figcaption) > div:first-child,
   background: var(--color-fd-foreground) !important;
   color: var(--color-fd-background) !important;
   border-color: var(--color-fd-border) !important;
+  box-shadow: none !important;
 }
 
 .fd-ai-input,
