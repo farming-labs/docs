@@ -139,6 +139,17 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroCssTheme: "concrete",
     nuxtCssTheme: "concrete",
   },
+  "command-grid": {
+    factory: "commandGrid",
+    nextImport: "@farming-labs/theme/command-grid",
+    svelteImport: "@farming-labs/svelte-theme/command-grid",
+    astroImport: "@farming-labs/astro-theme/command-grid",
+    nuxtImport: "@farming-labs/nuxt-theme/command-grid",
+    nextCssImport: "command-grid",
+    svelteCssTheme: "command-grid",
+    astroCssTheme: "command-grid",
+    nuxtCssTheme: "command-grid",
+  },
   hardline: {
     factory: "hardline",
     nextImport: "@farming-labs/theme/hardline",

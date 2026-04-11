@@ -559,6 +559,11 @@ export async function init(options: InitOptions = {}) {
       hint: "Brutalist poster-style theme with offset shadows and loud contrast",
     },
     {
+      value: "command-grid",
+      label: "Command Grid",
+      hint: "Paper-grid docs shell inspired by better-cmdk",
+    },
+    {
       value: "hardline",
       label: "Hardline",
       hint: "Hard-edge theme with square corners and bold borders",
@@ -1517,6 +1522,7 @@ function scaffoldSvelteKit(
     shiny: "shiny",
     greentree: "greentree",
     concrete: "concrete",
+    "command-grid": "command-grid",
     hardline: "hardline",
     default: "fumadocs",
   };
@@ -1598,6 +1604,7 @@ function scaffoldAstro(
     shiny: "shiny",
     greentree: "greentree",
     concrete: "concrete",
+    "command-grid": "command-grid",
     hardline: "hardline",
     default: "fumadocs",
   };
@@ -1682,6 +1689,7 @@ function scaffoldNuxt(
     shiny: "shiny",
     greentree: "greentree",
     concrete: "concrete",
+    "command-grid": "command-grid",
     hardline: "hardline",
     default: "fumadocs",
   };

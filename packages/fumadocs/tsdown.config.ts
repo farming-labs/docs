@@ -29,6 +29,7 @@ export default defineConfig({
     "src/darkbold/index.ts",
     "src/greentree/index.ts",
     "src/concrete/index.ts",
+    "src/command-grid/index.ts",
     "src/hardline/index.ts",
   ],
   format: "esm",
