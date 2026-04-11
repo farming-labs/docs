@@ -17,7 +17,7 @@ import {
   Users,
   Mail,
 } from "lucide-react";
-import { pixelBorder } from "@farming-labs/theme/pixel-border";
+import { commandGrid } from "@farming-labs/theme/command-grid";
 
 const typesenseBaseUrl = process.env.TYPESENSE_URL ?? process.env.TYPESENSE_BASE_URL;
 const typesenseCollection = process.env.TYPESENSE_COLLECTION ?? "docs";
@@ -81,15 +81,7 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
-  theme: pixelBorder({
-    ui: {
-      layout: {
-        toc: { enabled: true, depth: 3, style: "default" },
-        sidebarWidth: 308,
-      },
-      components: { Callout: { variant: "outline" } },
-    },
-  }),
+  theme: commandGrid(),
   ai: {
     enabled: true,
     // mode: "sidebar-icon",

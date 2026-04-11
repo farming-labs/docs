@@ -1,0 +1,55 @@
+---
+title: "Command Grid"
+description: "Mono-first paper-grid theme inspired by the better-cmdk landing page"
+icon: "grid2x2"
+order: 4.8
+---
+
+# Command Grid Theme
+
+A mono-first preset with a paper-grid light mode, lead-toned dark mode, sharper borders, and calmer surfaces inspired by the better-cmdk landing page.
+
+## Usage
+
+```tsx title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+import { commandGrid } from "@farming-labs/theme/command-grid";
+
+export default defineDocs({
+  entry: "docs",
+  theme: commandGrid(),
+});
+```
+
+```css title="app/global.css"
+@import "tailwindcss";
+@import "@farming-labs/theme/command-grid/css";
+```
+
+## Defaults
+
+| Property      | Value                               |
+| ------------- | ----------------------------------- |
+| Primary       | `#141414`                           |
+| Background    | `#f8f6ed` (light), `#121212` (dark) |
+| Border radius | `0px`                               |
+| Content width | 900px                               |
+| Sidebar width | 304px                               |
+
+## Style Notes
+
+- Mono-first typography across the sidebar, TOC, and command surfaces
+- Paper-grid background in light mode with a quieter dark-mode grid
+- Sharper tables, callouts, search UI, and Ask AI surfaces
+- Better-cmdk-inspired light/dark palette without the heavier concrete shadow treatment
+
+## Customizing
+
+```tsx title="customizing.tsx"
+theme: commandGrid({
+  ui: {
+    colors: { accent: "#d9c9b4" },
+    layout: { sidebarWidth: 320 },
+  },
+}),
+```

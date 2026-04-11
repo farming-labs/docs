@@ -78,6 +78,11 @@
       "import": "./dist/concrete/index.mjs",
       "default": "./dist/concrete/index.mjs"
     },
+    "./command-grid": {
+      "types": "./dist/command-grid/index.d.mts",
+      "import": "./dist/command-grid/index.mjs",
+      "default": "./dist/command-grid/index.mjs"
+    },
     "./search": {
       "types": "./dist/search.d.mts",
       "import": "./dist/search.mjs",
@@ -109,6 +114,7 @@
     "./greentree/css": "./styles/greentree.css",
     "./hardline/css": "./styles/hardline.css",
     "./concrete/css": "./styles/concrete.css",
+    "./command-grid/css": "./styles/command-grid.css",
     "./presets/neutral": "./styles/presets/neutral.css",
     "./presets/black": "./styles/presets/black.css",
     "./presets/base": "./styles/presets/base.css"

@@ -772,6 +772,12 @@ function ThemesSection() {
       import: '@import "@farming-labs/theme/concrete/css";',
       colors: ["#ff5b31", "#f6ead9", "#5b4e42", "#141210"],
     },
+    {
+      name: "Command Grid",
+      description: "Mono-first paper-grid preset inspired by the better-cmdk landing page",
+      import: '@import "@farming-labs/theme/command-grid/css";',
+      colors: ["#141414", "#f8f6ed", "#d1c0a9", "#3d3d3d"],
+    },
   ];
 
   return (

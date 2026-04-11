@@ -214,6 +214,11 @@ describe("globalCssTemplate", () => {
     expect(out).toContain("@farming-labs/theme/concrete/css");
   });
 
+  it("uses correct theme path for command-grid", () => {
+    const out = globalCssTemplate("command-grid");
+    expect(out).toContain("@farming-labs/theme/command-grid/css");
+  });
+
   it("uses correct theme path for hardline", () => {
     const out = globalCssTemplate("hardline");
     expect(out).toContain("@farming-labs/theme/hardline/css");
@@ -265,6 +270,12 @@ describe("docsConfigTemplate", () => {
     const out = docsConfigTemplate({ ...baseConfig, theme: "concrete" });
     expect(out).toContain("concrete");
     expect(out).toContain("@farming-labs/theme/concrete");
+  });
+
+  it("uses correct theme factory for command-grid", () => {
+    const out = docsConfigTemplate({ ...baseConfig, theme: "command-grid" });
+    expect(out).toContain("commandGrid");
+    expect(out).toContain("@farming-labs/theme/command-grid");
   });
 
   it("uses correct theme factory for hardline", () => {

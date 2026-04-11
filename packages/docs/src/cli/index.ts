@@ -142,7 +142,7 @@ ${pc.dim("Supported frameworks:")}
 ${pc.dim("Options for init:")}
   ${pc.cyan("--template <name>")}  Bootstrap a project (${pc.dim("next")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}, ${pc.dim("tanstack-start")}); use with ${pc.cyan("--name")}
   ${pc.cyan("--name <project>")}  Project folder name when using ${pc.cyan("--template")}; prompt if omitted (e.g. ${pc.dim("my-docs")})
-  ${pc.cyan("--theme <name>")}     Skip theme prompt (e.g. ${pc.dim("darksharp")}, ${pc.dim("concrete")})
+  ${pc.cyan("--theme <name>")}     Skip theme prompt (e.g. ${pc.dim("darksharp")}, ${pc.dim("command-grid")})
   ${pc.cyan("--entry <path>")}     Skip entry path prompt (e.g. ${pc.dim("docs")})
   ${pc.cyan("--api-reference")}    Scaffold API reference support during ${pc.cyan("init")}
   ${pc.cyan("--no-api-reference")} Skip API reference scaffold during ${pc.cyan("init")}

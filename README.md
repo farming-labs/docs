@@ -685,7 +685,7 @@ docs/
 
 ## Themes
 
-Nine built-in theme entrypoints (`fumadocs`, `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`, `concrete`, `hardline`) are available across Next.js, TanStack Start, SvelteKit, Astro, and Nuxt. `hardline` is the original hard-edge preset, and `concrete` is the louder brutalist poster-style variant.
+Ten built-in theme entrypoints (`fumadocs`, `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`, `concrete`, `command-grid`, `hardline`) are available across Next.js, TanStack Start, SvelteKit, Astro, and Nuxt. `hardline` is the original hard-edge preset, `concrete` is the louder brutalist poster-style variant, and `command-grid` is the mono-first paper-grid preset inspired by the better-cmdk landing page.
 
 ### Next.js
 
@@ -696,11 +696,12 @@ import { pixelBorder } from "@farming-labs/theme/pixel-border";
 import { colorful } from "@farming-labs/theme/colorful";
 import { greentree } from "@farming-labs/theme/greentree";
 import { concrete } from "@farming-labs/theme/concrete";
+import { commandGrid } from "@farming-labs/theme/command-grid";
 ```
 
 ```css
 @import "@farming-labs/theme/default/css";
-/* or darksharp, pixel-border, colorful, greentree, concrete, hardline, etc. */
+/* or darksharp, pixel-border, colorful, greentree, concrete, command-grid, hardline, etc. */
 ```
 
 ### SvelteKit
@@ -708,11 +709,12 @@ import { concrete } from "@farming-labs/theme/concrete";
 ```ts
 import { fumadocs } from "@farming-labs/svelte-theme";
 import { concrete } from "@farming-labs/svelte-theme/concrete";
+import { commandGrid } from "@farming-labs/svelte-theme/command-grid";
 ```
 
 ```css
 @import "@farming-labs/svelte-theme/fumadocs/css";
-/* or darksharp, pixel-border, colorful, greentree, concrete, hardline, etc. */
+/* or darksharp, pixel-border, colorful, greentree, concrete, command-grid, hardline, etc. */
 ```
 
 ### Astro
@@ -720,11 +722,12 @@ import { concrete } from "@farming-labs/svelte-theme/concrete";
 ```ts
 import { fumadocs } from "@farming-labs/astro-theme";
 import { concrete } from "@farming-labs/astro-theme/concrete";
+import { commandGrid } from "@farming-labs/astro-theme/command-grid";
 ```
 
 ```css
 @import "@farming-labs/astro-theme/css";
-/* or pixel-border, darksharp, colorful, greentree, concrete, hardline, etc. */
+/* or pixel-border, darksharp, colorful, greentree, concrete, command-grid, hardline, etc. */
 ```
 
 ### Nuxt
@@ -732,11 +735,12 @@ import { concrete } from "@farming-labs/astro-theme/concrete";
 ```ts
 import { fumadocs } from "@farming-labs/nuxt-theme";
 import { concrete } from "@farming-labs/nuxt-theme/concrete";
+import { commandGrid } from "@farming-labs/nuxt-theme/command-grid";
 ```
 
 ```css
 @import "@farming-labs/nuxt-theme/fumadocs/css";
-/* or darksharp, pixel-border, colorful, greentree, concrete, hardline, etc. */
+/* or darksharp, pixel-border, colorful, greentree, concrete, command-grid, hardline, etc. */
 ```
 
 ## Token Efficiency — Why This Matters for AI
@@ -768,7 +772,7 @@ Already have a project? Run `init` inside it — the CLI auto-detects your frame
 npx @farming-labs/docs init
 ```
 
-Pick from `next`, `tanstack-start`, `nuxt`, `sveltekit`, or `astro`. Choose any of the 8 built-in themes. Your existing code is untouched.
+Pick from `next`, `tanstack-start`, `nuxt`, `sveltekit`, or `astro`. Choose any of the 10 built-in themes. Your existing code is untouched.
 
 ## Configuration
 

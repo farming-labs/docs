@@ -36,6 +36,9 @@
       "concrete": [
         "./src/themes/concrete.d.ts"
       ],
+      "command-grid": [
+        "./src/themes/command-grid.d.ts"
+      ],
       "hardline": [
         "./src/themes/hardline.d.ts"
       ]
@@ -79,6 +82,11 @@
       "import": "./src/themes/concrete.js",
       "default": "./src/themes/concrete.js"
     },
+    "./command-grid": {
+      "types": "./src/themes/command-grid.d.ts",
+      "import": "./src/themes/command-grid.js",
+      "default": "./src/themes/command-grid.js"
+    },
     "./css": "./styles/docs.css",
     "./fumadocs/css": "./styles/docs.css",
     "./styles/pixel-border.css": "./styles/pixel-border.css",
@@ -97,7 +105,9 @@
     "./styles/hardline.css": "./styles/hardline.css",
     "./hardline/css": "./styles/hardline-bundle.css",
     "./styles/concrete.css": "./styles/concrete.css",
-    "./concrete/css": "./styles/concrete-bundle.css"
+    "./concrete/css": "./styles/concrete-bundle.css",
+    "./styles/command-grid.css": "./styles/command-grid.css",
+    "./command-grid/css": "./styles/command-grid-bundle.css"
   },
   "scripts": {
     "build": "echo 'Svelte components are shipped as source'",

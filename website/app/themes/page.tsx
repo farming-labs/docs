@@ -172,6 +172,25 @@ export default defineDocs({
     globalCss: `@import "tailwindcss";
 @import "@farming-labs/theme/concrete/css";`,
   },
+  {
+    key: "command-grid",
+    name: "Command Grid",
+    description:
+      "Mono-first paper-grid preset inspired by the better-cmdk landing page, with sharper docs chrome and calmer surfaces.",
+    cssImport: '@import "@farming-labs/theme/command-grid/css";',
+    colors: ["#141414", "#f8f6ed", "#d1c0a9", "#3d3d3d"],
+    accent: "#141414",
+    previewEnabled: false,
+    configSnippet: `import { defineDocs } from "@farming-labs/docs";
+import { commandGrid } from "@farming-labs/theme/command-grid";
+
+export default defineDocs({
+  entry: "docs",
+  theme: commandGrid(),
+});`,
+    globalCss: `@import "tailwindcss";
+@import "@farming-labs/theme/command-grid/css";`,
+  },
 ];
 
 type Theme = (typeof themes)[number];

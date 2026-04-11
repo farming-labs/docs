@@ -52,7 +52,7 @@ Replace `my-docs` with the desired folder name. Same pattern with `pnpm dlx`, `y
 | ---- | ----------- |
 | `--template <name>` | Bootstrap a project: `next`, `tanstack-start`, `nuxt`, `sveltekit`, `astro`. Use with `--name`. Skips the existing-vs-fresh prompt. |
 | `--name <project>` | Project folder name when using `--template` (e.g. `my-docs`). If omitted with `--template`, CLI prompts (default `my-docs`). |
-| `--theme <name>` | Skip theme prompt. Values: e.g. `fumadocs`, `greentree`, `pixel-border`, `darksharp`, `colorful`, `darkbold`, `shiny`, `hardline`, `concrete`. |
+| `--theme <name>` | Skip theme prompt. Values: e.g. `fumadocs`, `greentree`, `pixel-border`, `darksharp`, `colorful`, `darkbold`, `shiny`, `concrete`, `command-grid`, `hardline`. |
 | `--entry <path>` | Skip entry path prompt. Default is `docs`. |
 | `--api-reference` | Enable API reference scaffold during `init`. |
 | `--no-api-reference` | Explicitly skip the API reference scaffold. |
