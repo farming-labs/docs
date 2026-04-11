@@ -557,6 +557,7 @@ figure.shiki:has(figcaption) > div:first-child,
 .fd-ai-tab-bar,
 .fd-ai-search-wrap,
 .fd-ai-chat-footer,
+.fd-ai-fm-topbar,
 .fd-ai-input-wrap,
 .fd-ai-results,
 .fd-ai-messages {
@@ -568,6 +569,7 @@ figure.shiki:has(figcaption) > div:first-child,
 .fd-ai-tab-bar,
 .fd-ai-search-wrap,
 .fd-ai-chat-footer,
+.fd-ai-fm-topbar,
 .fd-ai-fm-input-container {
   background: var(--color-fd-secondary) !important;
 }
