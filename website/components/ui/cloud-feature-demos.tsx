@@ -303,7 +303,9 @@ export function CloudSearchDemo() {
                 </div>
 
                 <div className="min-w-0">
-                  <p className="truncate text-[13px] font-medium leading-5 sm:text-base">{row.title}</p>
+                  <p className="truncate text-[13px] font-medium leading-5 sm:text-base">
+                    {row.title}
+                  </p>
                   <p
                     className={cn(
                       "mt-1 truncate font-mono text-[9px] uppercase tracking-[0.14em] sm:text-[10px] sm:tracking-[0.18em]",
@@ -346,11 +348,7 @@ export function CloudSearchDemo() {
           <div className="flex flex-wrap items-center gap-2">
             <DemoPill icon={Search} label="Section hits" />
             <DemoPill icon={Bot} label="Cited answers" className="hidden sm:inline-flex" />
-            <DemoPill
-              icon={ShieldCheck}
-              label="Healthy index"
-              className="hidden sm:inline-flex"
-            />
+            <DemoPill icon={ShieldCheck} label="Healthy index" className="hidden sm:inline-flex" />
           </div>
           <div className="hidden flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.16em] text-black/40 sm:flex dark:text-white/35">
             <span className="inline-flex items-center gap-1">

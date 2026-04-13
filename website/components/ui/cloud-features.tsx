@@ -1,5 +1,13 @@
 import { ReactNode } from "react";
-import { CloudSyncIcon, FilePenLine, GitBranch, Globe, LucideIcon, Search, ShieldCheck } from "lucide-react";
+import {
+  CloudSyncIcon,
+  FilePenLine,
+  GitBranch,
+  Globe,
+  LucideIcon,
+  Search,
+  ShieldCheck,
+} from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CloudEditorDemo, CloudSearchDemo } from "@/components/ui/cloud-feature-demos";
 import {
@@ -304,7 +312,10 @@ function IllustrationHalo({ className }: { className?: string }) {
   return (
     <div
       aria-hidden
-      className={cn("pointer-events-none absolute inset-0 flex items-center justify-center", className)}
+      className={cn(
+        "pointer-events-none absolute inset-0 flex items-center justify-center",
+        className,
+      )}
     >
       <div className="relative h-44 w-80 sm:h-52 sm:w-[26rem]">
         <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.7)_0%,rgba(255,255,255,0.2)_34%,rgba(255,255,255,0.05)_55%,transparent_82%)] opacity-28 blur-3xl dark:bg-[radial-gradient(circle,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0.08)_34%,rgba(255,255,255,0.03)_55%,transparent_82%)] dark:opacity-45" />

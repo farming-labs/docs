@@ -87,7 +87,16 @@ const accessCards = [
     description:
       "Run the full docs runtime yourself. Themes, AI hooks, MCP delivery, API pages, and search integrations stay available without forcing the managed layer.",
     label: "Everything core stays open",
-    chips: ["Themes", "AI hooks", "MCP", "Search", "API docs", "llm.txt" , "Customization" , "Page Actions" ],
+    chips: [
+      "Themes",
+      "AI hooks",
+      "MCP",
+      "Search",
+      "API docs",
+      "llm.txt",
+      "Customization",
+      "Page Actions",
+    ],
   },
   {
     title: "Affordable cloud",
@@ -197,9 +206,11 @@ export default function CloudPage() {
                 {heroSignals.map((signal, index) => (
                   <span
                     key={signal}
-                    className={index >= mobileHeroSignals.length
-                      ? "hidden items-center border border-black/10 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-black/45 dark:border-white/10 dark:text-white/45 sm:inline-flex sm:px-2.5 sm:text-[10px] sm:tracking-[0.2em]"
-                      : "inline-flex items-center border border-black/10 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-black/45 dark:border-white/10 dark:text-white/45 sm:px-2.5 sm:text-[10px] sm:tracking-[0.2em]"}
+                    className={
+                      index >= mobileHeroSignals.length
+                        ? "hidden items-center border border-black/10 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-black/45 dark:border-white/10 dark:text-white/45 sm:inline-flex sm:px-2.5 sm:text-[10px] sm:tracking-[0.2em]"
+                        : "inline-flex items-center border border-black/10 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-black/45 dark:border-white/10 dark:text-white/45 sm:px-2.5 sm:text-[10px] sm:tracking-[0.2em]"
+                    }
                   >
                     {signal}
                   </span>
@@ -215,7 +226,6 @@ export default function CloudPage() {
                   <ArrowRight className="size-3.5 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
                 </a>
               </div>
-
             </div>
           </div>
 
@@ -391,8 +401,8 @@ export default function CloudPage() {
               Self-host first. Add cloud when it saves time.
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-black/55 dark:text-white/45 sm:text-base">
-              The point is not lock-in. Self-host stays powerful. Cloud adds deploys, retrieval
-              ops, branding, and knowledge workflows at a price smaller teams can actually use.
+              The point is not lock-in. Self-host stays powerful. Cloud adds deploys, retrieval ops,
+              branding, and knowledge workflows at a price smaller teams can actually use.
             </p>
           </div>
 
@@ -408,9 +418,7 @@ export default function CloudPage() {
               custom branding available across cloud and enterprise
             </span>
             <span className="hidden h-3 w-px bg-black/10 md:block dark:bg-white/10" />
-            <span className="hidden sm:inline-flex items-center gap-2">
-              no forced upgrade path
-            </span>
+            <span className="hidden sm:inline-flex items-center gap-2">no forced upgrade path</span>
           </div>
         </section>
 
@@ -514,12 +522,10 @@ function CloudAccessCard({
           <h3 className="text-xl font-semibold tracking-tight text-black dark:text-white">
             {title}
           </h3>
-          <p className="text-sm leading-relaxed text-black/55 dark:text-white/45">
-            {description}
-          </p>
+          <p className="text-sm leading-relaxed text-black/55 dark:text-white/45">{description}</p>
         </div>
       </div>
-      <hr className="bg-black/10 dark:bg-white/10 mt-4 -mx-5"/>
+      <hr className="bg-black/10 dark:bg-white/10 mt-4 -mx-5" />
       <div className="relative z-10 flex flex-wrap gap-2 ">
         {chips.map((chip) => (
           <span
@@ -558,7 +564,7 @@ function CloudFooterSection() {
                 target="_blank"
                 className="font-mono uppercase text-black/30 underline decoration-black/30 decoration-dotted underline-offset-2 transition-colors hover:text-black/50 hover:no-underline dark:text-white/30 dark:decoration-white/30 dark:hover:text-white/50"
               >
-               Farming-Labs 
+                Farming-Labs
               </Link>
             </p>
           </div>
