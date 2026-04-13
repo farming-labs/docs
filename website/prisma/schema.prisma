@@ -47,3 +47,16 @@ model DocsFeedback {
   @@index([pathname])
   @@index([slug])
 }
+
+model CloudWaitlistEntry {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  name       String?
+  company    String?
+  projectUrl String?
+  interest   String?
+  message    String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}

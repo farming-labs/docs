@@ -23,11 +23,14 @@ export default function CopyCommand({ command, className = "" }: CopyCommandProp
   return (
     <button
       onClick={copy}
-      className={`group flex font-mono items-center gap-2 border border-black/10 dark:border-white/10 md:border-b-0 px-3 sm:px-4 py-2.5 text-[11px] sm:text-sm text-black/70 dark:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-all cursor-pointer overflow-hidden ${className}`}
+      className={cn(
+        "group flex font-mono items-center gap-2 overflow-hidden border border-black/10 px-3 py-2.5 text-[11px] text-black/70 transition-all cursor-pointer hover:bg-black/[0.04] sm:px-4 sm:text-sm dark:border-white/10 dark:text-white/70 dark:hover:bg-white/[0.04] md:border-b-0",
+        className,
+      )}
       title={copied ? "Copied!" : "Copy to clipboard"}
     >
-      <Terminal className="w-3.5 h-3.5 text-black/40 dark:text-white/40" />
-      <span className="select-all truncate flex items-center gap-2">
+      <Terminal className="h-3.5 w-3.5 shrink-0 text-black/40 dark:text-white/40" />
+      <span className="min-w-0 flex-1 select-all truncate flex items-center gap-2">
         {parts.map((item, index) => (
           <span
             className={cn(
@@ -45,9 +48,9 @@ export default function CopyCommand({ command, className = "" }: CopyCommandProp
         ))}
       </span>
       {copied ? (
-        <Check className="w-3.5 h-3.5 text-green-400 ml-1" />
+        <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-green-400" />
       ) : (
-        <Copy className="w-3.5 h-3.5 text-black/20 dark:text-white/20 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+        <Copy className="ml-auto h-3.5 w-3.5 shrink-0 text-black/20 opacity-0 transition-opacity group-hover:opacity-100 dark:text-white/20" />
       )}
     </button>
   );
