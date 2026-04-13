@@ -23,6 +23,13 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 - [Reference docs](https://docs.farming-labs.dev/docs/reference) and [examples](https://github.com/farming-labs/docs/tree/main/examples) cover config, custom themes, OG images, API reference, SEO, and more.
 - Want to contribute? See the [Contributing guide](https://docs.farming-labs.dev/docs/contributing).
 
+### Cloud Waitlist
+
+We’re also building a managed cloud layer for teams that want hosted deploys, GitHub-backed editing, managed search and AI, branded docs, analytics, and docs operations without giving up the self-hosted runtime.
+
+- Join the waitlist: [docs.farming-labs.dev/cloud#waitlist](https://docs.farming-labs.dev/cloud#waitlist)
+- Learn more: [docs.farming-labs.dev/cloud](https://docs.farming-labs.dev/cloud)
+
 ### Option A: CLI (recommended)
 
 Run `init` inside an existing Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project:
