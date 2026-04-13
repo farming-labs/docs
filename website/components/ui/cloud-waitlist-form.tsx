@@ -130,7 +130,7 @@ export default function CloudWaitlistForm() {
   }
 
   return (
-    <PixelCard className="w-full shrink-0 border-b sm:border-b-0 border-t sm:border-t-0 border-black/10 bg-white/95 p-0 lg:-mt-[34px] dark:border-white/10 dark:bg-black/40">
+    <PixelCard className="w-full shrink-0 border-b sm:border-b-0 border-t sm:border-t-0 border-black/10 bg-white/95 p-0 lg:-mt-[39px] dark:border-white/10 dark:bg-black/40">
       <div className="border-b border-black/10 px-5 py-3 dark:border-white/10">
         <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
           Join the waitlist
@@ -221,25 +221,10 @@ export default function CloudWaitlistForm() {
             className="w-full resize-none rounded-none border border-black/10 bg-transparent px-3 py-2 text-sm leading-relaxed text-black outline-none transition-colors focus:border-black/30 dark:border-white/10 dark:text-white dark:focus:border-white/25"
           />
         </div>
-
-        {submitState.message && (
-          <p
-            className={
-              submitState.status === "error"
-                ? "text-[11px] text-red-600 dark:text-red-400"
-                : submitState.status === "warning"
-                  ? "text-[11px] text-amber-700 dark:text-amber-300"
-                  : "text-[11px] text-emerald-700 dark:text-emerald-300"
-            }
-          >
-            {submitState.message}
-          </p>
-        )}
-
         <button
           type="submit"
           disabled={loading || buttonMode === "success"}
-          className="group inline-flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3 text-[11px] font-mono uppercase tracking-[0.24em] text-white transition-all hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
+          className="group inline-flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3 text-[11px] font-mono uppercase tracking-wide text-white transition-all hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
         >
           <span className="relative h-4 overflow-hidden">
             <span

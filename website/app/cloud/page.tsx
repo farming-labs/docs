@@ -87,7 +87,7 @@ const accessCards = [
     description:
       "Run the full docs runtime yourself. Themes, AI hooks, MCP delivery, API pages, and search integrations stay available without forcing the managed layer.",
     label: "Everything core stays open",
-    chips: ["Themes", "AI hooks", "MCP", "Search", "API docs"],
+    chips: ["Themes", "AI hooks", "MCP", "Search", "API docs", "llm.txt" , "Customization" , "Page Actions" ],
   },
   {
     title: "Affordable cloud",
@@ -227,7 +227,7 @@ export default function CloudPage() {
             >
               <div className="-mx-px w-[calc(100%+2px)]">
                 <hr className="h-px w-full border-black/5 dark:border-white/5" />
-                <div className="relative border-l-0 z-20 h-10 w-full bg-[repeating-linear-gradient(-45deg,rgba(0,0,0,0.45),rgba(0,0,0,0.45)_1px,transparent_1px,transparent_6px)] opacity-[0.08] dark:bg-[repeating-linear-gradient(-45deg,rgba(255,255,255,0.7),rgba(255,255,255,0.7)_1px,transparent_1px,transparent_6px)] dark:opacity-[0.1]" />
+                <div className="relative border border-l z-20 h-10 w-full bg-[repeating-linear-gradient(-45deg,rgba(0,0,0,0.45),rgba(0,0,0,0.45)_1px,transparent_1px,transparent_6px)] opacity-[0.08] dark:bg-[repeating-linear-gradient(-45deg,rgba(255,255,255,0.7),rgba(255,255,255,0.7)_1px,transparent_1px,transparent_6px)] dark:opacity-[0.1]" />
                 <hr className="h-px w-full border-black/5 dark:border-white/5" />
               </div>
             </div>
@@ -519,8 +519,8 @@ function CloudAccessCard({
           </p>
         </div>
       </div>
-
-      <div className="relative z-10 flex flex-wrap gap-2 border-t border-black/10 pt-4 dark:border-white/10">
+      <hr className="bg-black/10 dark:bg-white/10 mt-4 -mx-5"/>
+      <div className="relative z-10 flex flex-wrap gap-2 ">
         {chips.map((chip) => (
           <span
             key={chip}
