@@ -8,7 +8,7 @@ import {
   Search,
   ShieldCheck,
 } from "lucide-react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardHeader } from "@/components/ui/card";
 import { CloudEditorDemo, CloudSearchDemo } from "@/components/ui/cloud-feature-demos";
 import {
   CloudDeployIllustration,

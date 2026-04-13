@@ -9,7 +9,7 @@ type WaitlistBody = {
   name?: string;
   company?: string;
   projectUrl?: string;
-  interest?: string;
+  interest?: string | string[];
   message?: string;
 };
 
@@ -27,6 +27,24 @@ function readString(
   }
 
   return trimmed.slice(0, max);
+}
+
+function readInterest(value: unknown, { max }: { max: number }) {
+  if (Array.isArray(value)) {
+    const cleaned = value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 3);
+
+    if (!cleaned.length) {
+      return undefined;
+    }
+
+    return cleaned.join(", ").slice(0, max);
+  }
+
+  return readString(value, { max });
 }
 
 function isValidEmail(value: string) {
@@ -58,7 +76,7 @@ export async function POST(request: Request) {
     const name = readString(body.name, { max: 120 });
     const company = readString(body.company, { max: 160 });
     const projectUrl = readString(body.projectUrl, { max: 2048 });
-    const interest = readString(body.interest, { max: 160 });
+    const interest = readInterest(body.interest, { max: 320 });
     const message = readString(body.message, { max: 4000 });
 
     if (!email) {
