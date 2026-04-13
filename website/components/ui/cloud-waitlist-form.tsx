@@ -364,8 +364,8 @@ function InterestOptionList({
                       <Check className="size-3.5" />
                     </span>
                   </button>
-              );
-            })}
+                );
+              })}
             </div>
           </div>
         ) : null}
