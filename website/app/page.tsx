@@ -1005,11 +1005,11 @@ function FooterSection() {
             <p className="text-[10px] uppercase font-mono text-black/30 dark:text-white/30 mt-1">
               Built by{" "}
               <Link
-                href="https://x.com/kinfishT"
+                href="https://github.com/farming-labs"
                 target="_blank"
                 className="text-black/30 dark:text-white/30 underline underline-offset-2 decoration-black/30 dark:decoration-white/30 decoration-dotted hover:text-black/50 dark:hover:text-white/50 transition-colors hover:no-underline uppercase font-mono"
               >
-                @kinfish
+                farming-labs
               </Link>
             </p>
           </div>
