@@ -6,6 +6,8 @@ import PixelCard from "@/components/ui/pixel-card";
 
 const interestOptions = [
   { value: "git-backed-cms", label: "Git-backed CMS" },
+  { value: "custom-branding" , label: "Custom Docs Theme"},
+  { value: "outsource-knowldege-graph" , label: "Outsouring knowledge base graph"},
   { value: "answer-first-search", label: "Answer-first AI search" },
   { value: "feedback-analytics", label: "Feedback + analytics" },
   { value: "mcp-agents", label: "MCP + agent delivery" },
@@ -226,9 +228,9 @@ export default function CloudWaitlistForm() {
           )}
         </button>
 
-        {/* <p className="text-[11px] leading-relaxed text-black/45 dark:text-white/40">
+        <p className="text-[11px] leading-relaxed text-black/45 dark:text-white/40">
           GitHub stays the source of truth. This is the layer around it.
-        </p> */}
+        </p>
       </form>
     </PixelCard>
   );

@@ -1,17 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { LucideIcon } from "lucide-react";
-import {
-  ArrowRight,
-  ArrowUpRight,
-  Bot,
-  FilePenLine,
-  Search,
-  ShieldCheck,
-  Sparkles,
-  Workflow,
-} from "lucide-react";
+import { ArrowRight, ArrowUpRight, Sparkles, Workflow } from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
+import { CloudDocsManageIllustration } from "@/components/ui/cloud-feature-illustrations";
+import { CloudFeatures } from "@/components/ui/cloud-features";
 import CloudWaitlistForm from "@/components/ui/cloud-waitlist-form";
 import PixelCard from "@/components/ui/pixel-card";
 import Shuffle from "@/components/ui/shuffle";
@@ -24,67 +16,16 @@ export const metadata: Metadata = {
 
 const heroSignals = [
   "GitHub-backed CMS",
+  "Custom docs theming",
+  "Outsouring knowledge base graph",
   "Draft + PR workflows",
+  "One-shot deploy",
   "Managed search sync",
   "Answer-first AI",
   "Feedback analytics",
   "MCP-ready delivery",
   "Private docs controls",
   "Release workflows",
-] as const;
-
-const platformPillars = [
-  {
-    eyebrow: "Git-backed editing",
-    title: "Edit MDX in a dashboard without giving up Git as the source of truth.",
-    description:
-      "Edit in the browser, keep review workflows, and publish back to GitHub when you're ready.",
-    icon: FilePenLine,
-    items: [
-      "Browser-based MDX editor with frontmatter and nav controls",
-      "Draft branches, PR creation, and direct commit flows",
-      "Preview-safe publishing instead of one-off custom scripts",
-      "Content snapshots for conflict-aware editing and review",
-    ],
-  },
-  {
-    eyebrow: "Search and AI",
-    title: "Give teams a stronger search layer than plain lexical matching.",
-    description:
-      "Managed indexing and answer-first retrieval make docs better for both people and AI tools.",
-    icon: Search,
-    items: [
-      "Managed Typesense or Algolia sync from your docs project",
-      "Answer-first search with citations and section-level retrieval",
-      "Query analytics, zero-result tracking, and docs gap detection",
-      "Quality controls for snippets, result ranking, and section anchors",
-    ],
-  },
-  {
-    eyebrow: "Agents and APIs",
-    title: "Treat your docs as a structured knowledge surface for tools, not just pages.",
-    description: "Run the agent-facing layer so assistants and internal tools get clean context.",
-    icon: Bot,
-    items: [
-      "Managed MCP endpoints and project-scoped tool access",
-      "Agent-ready docs delivery for llms.txt, llms-full, and API reference",
-      "Search providers and AI providers configured from a control plane",
-      "Action-aware responses that can open pages, copy snippets, and route workflows",
-    ],
-  },
-  {
-    eyebrow: "Ops and governance",
-    title: "Run docs like product infrastructure, not a side folder everyone hopes is current.",
-    description:
-      "Handle the operational layer around docs health, collaboration, and release confidence.",
-    icon: ShieldCheck,
-    items: [
-      "Feedback inboxes, page health, and release-level docs signals",
-      "Private docs controls, team roles, and publish approvals",
-      "Versioned releases, migrations, and rollout-aware content workflows",
-      "Change tracking across search, content, AI usage, and publishing",
-    ],
-  },
 ] as const;
 
 const workflowSteps = [
@@ -236,38 +177,39 @@ export default function CloudPage() {
           </div>
         </section>
 
-        <section className="space-y-6">
-          <SectionHeading
-            eyebrow="Feature surface"
-            title="Everything we want cloud to carry for teams using the open runtime."
-            body="Take the operational burden out of the parts teams keep wiring themselves."
-          />
+        <CloudFeatures />
 
-          <div className="grid gap-5 lg:grid-cols-2">
-            {platformPillars.map((pillar) => (
-              <FeatureCard key={pillar.title} {...pillar} />
-            ))}
-          </div>
-        </section>
+        <section className="grid gap-6 lg:grid-cols-[minmax(0,0.94fr)_minmax(0,1.06fr)] lg:items-stretch xl:gap-8">
+          <PixelCard className="h-full border-black/10 bg-white/95 dark:border-white/10 dark:bg-black/35">
+            <div className="border-b border-black/10 pb-5 dark:border-white/10">
+              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
+                How it works
+              </p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-black dark:text-white sm:text-4xl">
+                A cloud layer around the runtime, not a rewrite of how your docs ship.
+              </h2>
 
-        <section className="grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)] lg:gap-10">
-          <div className="space-y-6">
-            <SectionHeading
-              eyebrow="How it works"
-              title="A cloud layer around the runtime, not a rewrite of how your docs ship."
-              body="Keep the repo and deploy model you already trust. Add the layer around it."
-            />
+              <div className="mt-4 flex min-h-[120px] items-center justify-center overflow-hidden border-y border-black/10 bg-black/[0.02] px-4 py-2 dark:border-white/10 dark:bg-white/[0.02]">
+                <div className="flex w-full items-center justify-center">
+                  <CloudDocsManageIllustration className="w-[360px] ml-10 max-w-full opacity-85 dark:opacity-70" />
+                </div>
+              </div>
 
-            <div className="space-y-4">
+              <p className="mt-4 text-sm leading-relaxed text-black/55 dark:text-white/45 sm:text-base">
+                Keep the repo and deploy model you already trust. Add the layer around it.
+              </p>
+            </div>
+
+            <div className="mt-5 grid gap-3">
               {workflowSteps.map((item) => (
                 <div
                   key={item.step}
-                  className="grid gap-4 border-t border-black/10 pt-4 dark:border-white/10 sm:grid-cols-[52px_minmax(0,1fr)]"
+                  className="grid gap-4 border border-black/10 bg-black/[0.02] px-4 py-4 dark:border-white/10 dark:bg-white/[0.02] sm:grid-cols-[56px_minmax(0,1fr)] sm:items-start"
                 >
-                  <div className="font-mono text-xs uppercase tracking-[0.26em] text-black/35 dark:text-white/35">
+                  <div className="flex h-11 w-11 items-center justify-center border border-black/10 font-mono text-[11px] uppercase tracking-[0.22em] text-black/45 dark:border-white/10 dark:text-white/45">
                     {item.step}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="text-lg font-medium tracking-tight text-black dark:text-white">
                       {item.title}
                     </h3>
@@ -278,9 +220,9 @@ export default function CloudPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </PixelCard>
 
-          <PixelCard className="border-black/10 bg-white/95 dark:border-white/10 dark:bg-black/35">
+          <PixelCard className="h-full border-black/10 bg-white/95 dark:border-white/10 dark:bg-black/35">
             <div className="flex items-center justify-between border-b border-black/10 pb-4 dark:border-white/10">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
@@ -417,73 +359,6 @@ export default function CloudPage() {
         </section>
       </main>
     </div>
-  );
-}
-
-function SectionHeading({
-  eyebrow,
-  title,
-  body,
-}: {
-  eyebrow: string;
-  title: string;
-  body: string;
-}) {
-  return (
-    <div className="max-w-3xl">
-      <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
-        {eyebrow}
-      </p>
-      <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-black dark:text-white sm:text-4xl">
-        {title}
-      </h2>
-      <p className="mt-4 text-sm leading-relaxed text-black/55 dark:text-white/45 sm:text-base">
-        {body}
-      </p>
-    </div>
-  );
-}
-
-function FeatureCard({
-  eyebrow,
-  title,
-  description,
-  items,
-  icon: Icon,
-}: {
-  eyebrow: string;
-  title: string;
-  description: string;
-  items: readonly string[];
-  icon: LucideIcon;
-}) {
-  return (
-    <PixelCard className="border-black/10 bg-white/95 dark:border-white/10 dark:bg-black/35">
-      <div className="flex items-start justify-between gap-4 border-b border-black/10 pb-4 dark:border-white/10">
-        <div className="max-w-xl">
-          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
-            {eyebrow}
-          </p>
-          <h3 className="mt-2 text-xl font-semibold tracking-tight text-black dark:text-white">
-            {title}
-          </h3>
-        </div>
-        <Icon className="mt-1 size-5 shrink-0 text-black/35 dark:text-white/35" strokeWidth={1.8} />
-      </div>
-
-      <p className="mt-5 text-sm leading-relaxed text-black/55 dark:text-white/45">{description}</p>
-
-      <ul className="mt-5 space-y-3">
-        {items.map((item) => (
-          <li
-            key={item}
-            className="border-t border-black/10 pt-3 text-sm leading-relaxed text-black/65 dark:border-white/10 dark:text-white/55"
-          >
-            {item}
-          </li>
-        ))}
-      </ul>
-    </PixelCard>
   );
 }
 
