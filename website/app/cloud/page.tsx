@@ -408,7 +408,7 @@ export default function CloudPage() {
               custom branding available across cloud and enterprise
             </span>
             <span className="hidden h-3 w-px bg-black/10 md:block dark:bg-white/10" />
-            <span className="inline-flex items-center gap-2">
+            <span className="hidden sm:inline-flex items-center gap-2">
               no forced upgrade path
             </span>
           </div>
