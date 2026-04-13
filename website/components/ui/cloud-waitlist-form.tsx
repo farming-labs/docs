@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
 import PixelCard from "@/components/ui/pixel-card";
 
@@ -22,6 +22,8 @@ type SubmitState =
   | { status: "warning"; message: string }
   | { status: "error"; message: string };
 
+type ButtonMode = "idle" | "loading" | "success";
+
 export default function CloudWaitlistForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -30,14 +32,34 @@ export default function CloudWaitlistForm() {
   const [interest, setInterest] = useState<string>(interestOptions[0].value);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [buttonMode, setButtonMode] = useState<ButtonMode>("idle");
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [submitState, setSubmitState] = useState<SubmitState>({
     status: "idle",
     message: null,
   });
 
+  useEffect(() => {
+    return () => {
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
+      }
+    };
+  }, []);
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (buttonMode === "success") {
+      return;
+    }
+
+    if (successTimeoutRef.current) {
+      clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = null;
+    }
+
     setLoading(true);
+    setButtonMode("loading");
     setSubmitState({ status: "idle", message: null });
 
     try {
@@ -63,6 +85,7 @@ export default function CloudWaitlistForm() {
       };
 
       if (!response.ok) {
+        setButtonMode("idle");
         setSubmitState({
           status: "error",
           message: payload.error || "Failed to join the waitlist. Please try again.",
@@ -78,6 +101,7 @@ export default function CloudWaitlistForm() {
       setMessage("");
 
       if (payload.stored === false && payload.warning) {
+        setButtonMode("idle");
         setSubmitState({
           status: "warning",
           message: payload.warning,
@@ -85,11 +109,17 @@ export default function CloudWaitlistForm() {
         return;
       }
 
+      setButtonMode("success");
       setSubmitState({
         status: "success",
         message: "You’re on the list. We’ll reach out as the cloud preview opens.",
       });
+
+      successTimeoutRef.current = setTimeout(() => {
+        setButtonMode("idle");
+      }, 5000);
     } catch {
+      setButtonMode("idle");
       setSubmitState({
         status: "error",
         message: "Request failed before it reached the waitlist API. Please try again.",
@@ -208,25 +238,35 @@ export default function CloudWaitlistForm() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || buttonMode === "success"}
           className="group inline-flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3 text-[11px] font-mono uppercase tracking-[0.24em] text-white transition-all hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
         >
-          {loading ? (
-            <>
-              <Loader2 className="size-3.5 animate-spin" />
-              Joining
-            </>
-          ) : submitState.status === "success" ? (
-            <>
-              <Check className="size-3.5" />
-              Joined
-            </>
-          ) : (
-            <>
-              Join waitlist
-              <ArrowRight className="size-3.5 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
-            </>
-          )}
+          <span className="relative h-4 overflow-hidden">
+            <span
+              className="flex flex-col transition-transform duration-500 ease-out"
+              style={{
+                transform:
+                  buttonMode === "idle"
+                    ? "translateY(0)"
+                    : buttonMode === "loading"
+                      ? "translateY(-1rem)"
+                      : "translateY(-2rem)",
+              }}
+            >
+              <span className="flex h-4 items-center justify-center gap-2">
+                Join waitlist
+                <ArrowRight className="size-3.5 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
+              </span>
+              <span className="flex h-4 items-center justify-center gap-2">
+                <Loader2 className="size-3.5 animate-spin" />
+                Joining
+              </span>
+              <span className="flex h-4 items-center justify-center gap-2">
+                <Check className="size-3.5" />
+                Joined
+              </span>
+            </span>
+          </span>
         </button>
 
         <p className="text-[11px] leading-relaxed text-black/45 dark:text-white/40">

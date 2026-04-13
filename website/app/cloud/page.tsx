@@ -1,6 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Cloud, Workflow } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Building2,
+  Cloud,
+  Github,
+  type LucideIcon,
+  Palette,
+  Sparkles,
+  Workflow,
+} from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import { CloudDocsManageIllustration } from "@/components/ui/cloud-feature-illustrations";
 import { CloudFeatures } from "@/components/ui/cloud-features";
@@ -68,6 +78,42 @@ const capabilityColumns = [
 ] as const;
 
 const mobileHeroSignals = heroSignals.slice(0, 6);
+
+const accessCards = [
+  {
+    title: "Self-hostable",
+    icon: Github,
+    backgroundIcon: Github,
+    description:
+      "Run the full docs runtime yourself. Themes, AI hooks, MCP delivery, API pages, and search integrations stay available without forcing the managed layer.",
+    label: "Everything core stays open",
+    chips: ["Themes", "AI hooks", "MCP", "Search", "API docs"],
+  },
+  {
+    title: "Affordable cloud",
+    icon: Sparkles,
+    backgroundIcon: Cloud,
+    description:
+      "Add managed deploys, RAG pipelines, knowledge workers, branded docs, and search operations at a price that still makes sense for solos and small teams.",
+    label: "Built for small teams too",
+    chips: ["*.docs.app", "RAG ops", "Knowledge workers", "Custom branding", "Analytics"],
+  },
+  {
+    title: "Enterprise layer",
+    icon: Building2,
+    backgroundIcon: Building2,
+    description:
+      "Get the whole managed stack, migration support, deeper branding, private workflows, exclusive maintenance, and long-term support as the docs platform evolves with your team.",
+    label: "For teams that need a partner",
+    chips: [
+      "Migration support",
+      "Private docs",
+      "Custom theme",
+      "Dedicated support",
+      "Exclusive maintenance",
+    ],
+  },
+] as const;
 
 export default function CloudPage() {
   return (
@@ -142,18 +188,18 @@ export default function CloudPage() {
                 className="hidden max-w-4xl font-semibold tracking-[-0.06em] text-black dark:text-white sm:block sm:text-5xl lg:text-6xl"
               />
 
-              <p className="mt-5 max-w-[34rem] text-[15px] leading-7 text-black/55 dark:text-white/45 sm:mt-6 sm:text-lg sm:leading-relaxed">
+              <p className="mt-3 max-w-[34rem] text-[15px] leading-6 text-black/55 dark:text-white/45 sm:mt-6 sm:text-lg sm:leading-relaxed">
                 Keep the open runtime. Add the layer for editing, search, analytics, AI, and docs
                 operations.
               </p>
 
-              <div className="mt-6 flex flex-wrap gap-2 sm:mt-7">
+              <div className="mt-5 flex flex-wrap gap-1.5 sm:mt-7 sm:gap-2">
                 {heroSignals.map((signal, index) => (
                   <span
                     key={signal}
                     className={index >= mobileHeroSignals.length
-                      ? "hidden items-center border border-black/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-black/45 dark:border-white/10 dark:text-white/45 sm:inline-flex"
-                      : "inline-flex items-center border border-black/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-black/45 dark:border-white/10 dark:text-white/45"}
+                      ? "hidden items-center border border-black/10 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-black/45 dark:border-white/10 dark:text-white/45 sm:inline-flex sm:px-2.5 sm:text-[10px] sm:tracking-[0.2em]"
+                      : "inline-flex items-center border border-black/10 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-black/45 dark:border-white/10 dark:text-white/45 sm:px-2.5 sm:text-[10px] sm:tracking-[0.2em]"}
                   >
                     {signal}
                   </span>
@@ -336,6 +382,38 @@ export default function CloudPage() {
           </PixelCard>
         </section>
 
+        <section className="space-y-8">
+          <div className="max-w-3xl">
+            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
+              Works at every size
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-black dark:text-white sm:text-4xl">
+              Self-host first. Add cloud when it saves time.
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-black/55 dark:text-white/45 sm:text-base">
+              The point is not lock-in. Self-host stays powerful. Cloud adds deploys, retrieval
+              ops, branding, and knowledge workflows at a price smaller teams can actually use.
+            </p>
+          </div>
+
+          <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
+            {accessCards.map((card) => (
+              <CloudAccessCard key={card.title} {...card} />
+            ))}
+          </div>
+
+          <div className="flex mx-0 -mt-[16px] flex-wrap items-center gap-3 border border-black/10 bg-black/[0.02] px-4 py-4 font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:border-white/10 dark:bg-white/[0.02] dark:text-white/45">
+            <span className="inline-flex items-center gap-2">
+              <Palette className="size-3.5" />
+              custom branding available across cloud and enterprise
+            </span>
+            <span className="hidden h-3 w-px bg-black/10 md:block dark:bg-white/10" />
+            <span className="inline-flex items-center gap-2">
+              no forced upgrade path
+            </span>
+          </div>
+        </section>
+
         <section>
           <PixelCard className="border-black/10 bg-black px-5 py-7 text-white hover:bg-black dark:border-white/10 dark:bg-black dark:text-white dark:hover:bg-black sm:px-8 sm:py-8">
             <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -372,6 +450,8 @@ export default function CloudPage() {
           </PixelCard>
         </section>
       </main>
+
+      <CloudFooterSection />
     </div>
   );
 }
@@ -386,5 +466,127 @@ function DashboardStat({ label, value }: { label: string; value: string }) {
         {value}
       </p>
     </div>
+  );
+}
+
+function CloudAccessCard({
+  title,
+  icon: Icon,
+  backgroundIcon: BackgroundIcon,
+  description,
+  label,
+  chips,
+}: {
+  title: string;
+  icon: LucideIcon;
+  backgroundIcon?: LucideIcon;
+  description: string;
+  label: string;
+  chips: readonly string[];
+}) {
+  return (
+    <div className="relative flex h-full flex-col justify-between gap-6 bg-white px-5 pb-5 pt-6 shadow-xs dark:bg-black">
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute right-2 top-1 h-28 w-28 rounded-full bg-black/[0.012] blur-3xl dark:bg-white/[0.018] sm:h-32 sm:w-32" />
+        <div className="absolute inset-0 bg-[radial-gradient(44%_46%_at_84%_18%,rgba(0,0,0,0.02),transparent_72%)] dark:bg-[radial-gradient(44%_46%_at_84%_18%,rgba(255,255,255,0.03),transparent_72%)]" />
+        {BackgroundIcon ? (
+          <div className="absolute -right-2 -top-2 z-0 flex items-start justify-end sm:-right-12 sm:-top-12">
+            <BackgroundIcon className="size-36 stroke-1 text-black/[0.03] dark:text-white/[0.025] sm:size-52" />
+          </div>
+        ) : null}
+        <div className="absolute inset-0 hidden bg-[radial-gradient(50%_80%_at_25%_0%,rgba(255,255,255,0.08),transparent)] dark:block" />
+      </div>
+      <div className="absolute -inset-y-4 -left-px z-20 w-px bg-black/10 dark:bg-white/10" />
+      <div className="absolute -inset-y-4 -right-px z-20 w-px bg-black/10 dark:bg-white/10" />
+      <div className="absolute -inset-x-4 -top-px z-20 h-px bg-black/10 dark:bg-white/10" />
+      <div className="absolute -bottom-px -left-4 -right-4 z-20 h-px bg-black/10 dark:bg-white/10" />
+      <span className="absolute -left-px -top-px z-20 block size-2 border-l-2 border-t-2 border-black dark:border-white" />
+
+      <div className="relative z-10 space-y-5">
+        <div className="flex w-fit items-center justify-center rounded-none border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.04]">
+          <Icon className="size-5 stroke-[1.5] text-black dark:text-white" />
+        </div>
+
+        <div className="space-y-2">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-black/45 dark:text-white/45">
+            # {label}
+          </p>
+          <h3 className="text-xl font-semibold tracking-tight text-black dark:text-white">
+            {title}
+          </h3>
+          <p className="text-sm leading-relaxed text-black/55 dark:text-white/45">
+            {description}
+          </p>
+        </div>
+      </div>
+
+      <div className="relative z-10 flex flex-wrap gap-2 border-t border-black/10 pt-4 dark:border-white/10">
+        {chips.map((chip) => (
+          <span
+            key={chip}
+            className="inline-flex border border-black/10 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-black/50 dark:border-white/10 dark:text-white/45"
+          >
+            {chip}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CloudFooterSection() {
+  return (
+    <footer className="relative z-10">
+      <div className="absolute bottom-10 left-0 h-px w-full bg-black/[8%] dark:bg-white/[8%]" />
+      <div className="absolute bottom-24 left-0 h-px w-full bg-black/[8%] dark:bg-white/[8%]" />
+      <div className="mx-auto max-w-[92%] py-12 sm:max-w-[90%]">
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="w-full">
+            <span className="font-mono text-xs uppercase tracking-tighter text-black/40 dark:text-white/40">
+              <Link
+                href="https://github.com/farming-labs/docs"
+                target="_blank"
+                className="font-mono lowercase text-black/30 transition-colors hover:text-black/50 hover:underline hover:underline-offset-2 hover:decoration-dotted hover:decoration-black/30 hover:no-underline dark:text-white/30 dark:hover:text-white/50 dark:hover:decoration-white/30"
+              >
+                @farming-labs/docs
+              </Link>
+            </span>
+            <p className="mt-1 font-mono text-[10px] uppercase text-black/30 dark:text-white/30">
+              Built by{" "}
+              <Link
+                href="https://farming-labs.dev"
+                target="_blank"
+                className="font-mono uppercase text-black/30 underline decoration-black/30 decoration-dotted underline-offset-2 transition-colors hover:text-black/50 hover:no-underline dark:text-white/30 dark:decoration-white/30 dark:hover:text-white/50"
+              >
+               Farming-Labs 
+              </Link>
+            </p>
+          </div>
+
+          <div className="flex w-full max-w-full items-center justify-end gap-6">
+            <Link
+              href="/docs"
+              className="font-mono text-xs uppercase text-black/30 transition-colors hover:text-black/60 hover:no-underline dark:text-white/30 dark:hover:text-white/60"
+            >
+              Documentation
+            </Link>
+            <Link
+              href="https://github.com/farming-labs/docs"
+              target="_blank"
+              className="font-mono text-xs uppercase text-black/30 transition-colors hover:text-black/60 hover:no-underline dark:text-white/30 dark:hover:text-white/60"
+            >
+              GitHub
+            </Link>
+            <Link
+              href="https://www.npmjs.com/package/@farming-labs/docs"
+              target="_blank"
+              className="font-mono text-xs uppercase text-black/30 transition-colors hover:text-black/60 hover:no-underline dark:text-white/30 dark:hover:text-white/60"
+            >
+              npm
+            </Link>
+          </div>
+        </div>
+      </div>
+    </footer>
   );
 }

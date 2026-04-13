@@ -75,7 +75,7 @@ const searchConfig: DocsSearchConfig | undefined =
 
 export default defineDocs({
   entry: "docs",
-  // ...(searchConfig ? { search: searchConfig } : {}),
+  ...(searchConfig ? { search: searchConfig } : {}),
   github: {
     url: "https://github.com/farming-labs/docs",
     branch: "main",
@@ -186,7 +186,7 @@ export default defineDocs({
       ],
     },
   },
-  // ...(docsSearchProvider === "mcp" ? { mcp: { enabled: true } } : {}),
+  ...(docsSearchProvider === "mcp" ? { mcp: { enabled: true } } : {}),
   ordering: "numeric",
   metadata: {
     titleTemplate: "%s – Docs",

@@ -45,7 +45,7 @@ export function CloudFeatures() {
 
       <div className="mx-auto grid gap-4 lg:grid-cols-2">
         <FeatureCard>
-          <CardHeader className="px-4 pb-3 pt-4 sm:p-6 sm:pb-2">
+          <CardHeader className="relative z-10 px-4 pb-3 pt-4 sm:p-6 sm:pb-2">
             <CardHeading
               icon={FilePenLine}
               title="Git-backed editing"
@@ -62,7 +62,7 @@ export function CloudFeatures() {
         </FeatureCard>
 
         <FeatureCard>
-          <CardHeader className="px-4 pb-3 pt-4 sm:p-6 sm:pb-2">
+          <CardHeader className="relative z-10 px-4 pb-3 pt-4 sm:p-6 sm:pb-2">
             <CardHeading
               icon={Search}
               title="Managed search + AI"
@@ -70,9 +70,9 @@ export function CloudFeatures() {
             />
           </CardHeader>
 
-          <CardContent className="px-4 pb-4 pt-0 sm:px-6 sm:pb-6">
-            <div className="relative mb-6 sm:mb-0">
-              <div className="absolute -inset-6 bg-[radial-gradient(50%_50%_at_75%_50%,transparent,rgba(255,255,255,1)_100%)] dark:bg-[radial-gradient(50%_50%_at_75%_50%,transparent,rgba(0,0,0,1)_100%)]" />
+          <CardContent className="relative z-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-6 sm:pt-0">
+            <div className="relative z-0 mb-4 mt-1 sm:mb-0 sm:mt-0">
+              <div className="pointer-events-none absolute -inset-x-4 -inset-y-3 -z-10 bg-[radial-gradient(50%_50%_at_75%_50%,transparent,rgba(255,255,255,1)_100%)] sm:-inset-6 dark:bg-[radial-gradient(50%_50%_at_75%_50%,transparent,rgba(0,0,0,1)_100%)]" />
               <div className="relative min-h-[21.5rem] overflow-hidden border border-black/10 bg-white p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] sm:aspect-[76/59] sm:min-h-0 sm:p-4 dark:border-white/10 dark:bg-black/70 dark:shadow-none">
                 <CloudSearchDemo />
               </div>
