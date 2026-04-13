@@ -123,7 +123,7 @@ export function CloudFeatures() {
                     </div>
                   </div>
                   <CopyCommand
-                    className="w-[calc(100%+32px)] md:border-b-1 md:border-black/10 border border-x-0 -mx-4 px-2 sm:px-0 hover:bg-transparent"
+                    className="w-[calc(100%+32px)] md:border-b-1 md:border-black/10 border border-x-0 -mx-4 px-2 hover:bg-transparent"
                     command="pnpm dlx @farming-labs/docs deploy"
                   />
                   <p className="mt-3 py-2 text-sm leading-relaxed text-black/60 dark:text-white/50">
@@ -160,7 +160,7 @@ export function CloudFeatures() {
                     </div>
                   </div>
                   <CopyCommand
-                    className="w-[calc(100%+32px)] md:border-b-1 md:border-black/10 border border-x-0 -mx-4 px-2 sm:px-0 hover:bg-transparent"
+                    className="w-[calc(100%+32px)] md:border-b-1 md:border-black/10 border border-x-0 -mx-4 px-2 hover:bg-transparent"
                     command="pnpm dlx @farming-labs/docs sync --search"
                   />
                   <p className="mt-3 py-2 text-sm leading-relaxed text-black/60 dark:text-white/50">
