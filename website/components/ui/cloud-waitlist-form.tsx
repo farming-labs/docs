@@ -6,8 +6,9 @@ import PixelCard from "@/components/ui/pixel-card";
 
 const interestOptions = [
   { value: "git-backed-cms", label: "Git-backed CMS" },
-  { value: "custom-branding" , label: "Custom Docs Theme"},
-  { value: "outsource-knowldege-graph" , label: "Outsouring knowledge base graph"},
+  { value: "ai-drafting", label: "AI drafting + review" },
+  { value: "custom-branding", label: "Custom docs theme" },
+  { value: "outsource-knowldege-graph", label: "Synced knowledge graph" },
   { value: "answer-first-search", label: "Answer-first AI search" },
   { value: "feedback-analytics", label: "Feedback + analytics" },
   { value: "mcp-agents", label: "MCP + agent delivery" },

@@ -12,7 +12,7 @@ const surfaces = [
   {
     icon: FilePenLine,
     title: "Git-backed editing",
-    description: "Draft in the dashboard. Publish through GitHub.",
+    description: "Draft with AI in the dashboard. Publish through GitHub.",
   },
   {
     icon: Search,
@@ -31,14 +31,14 @@ export function CloudFeatures() {
     <section className="space-y-5">
       <div className="max-w-3xl">
         <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
-          Feature surface
+          What cloud adds
         </p>
         <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-black dark:text-white sm:text-4xl">
-          The dashboard should feel like part of the runtime, not an extra tool beside it.
+          Cloud should feel built into the docs runtime.
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-black/55 dark:text-white/45 sm:text-base">
-          These are the first cloud surfaces we want teams to actually use: edit, retrieve, review,
-          and ship.
+          These are the first cloud surfaces teams should actually use: edit, retrieve, review, and
+          ship.
         </p>
       </div>
 
@@ -48,7 +48,7 @@ export function CloudFeatures() {
             <CardHeading
               icon={FilePenLine}
               title="Git-backed editing"
-              description="Draft docs, keep frontmatter clean, and open pull requests from the same place."
+              description="Draft docs with AI help, keep frontmatter clean, and open pull requests from the same place."
             />
           </CardHeader>
 
@@ -65,7 +65,7 @@ export function CloudFeatures() {
             <CardHeading
               icon={Search}
               title="Managed search + AI"
-              description="Run search, snippets, and cited retrieval from the same docs graph."
+              description="Run search, retrieval, and cited answers from the same docs graph."
             />
           </CardHeader>
 
@@ -80,10 +80,14 @@ export function CloudFeatures() {
         </FeatureCard>
 
         <FeatureCard className="p-6 lg:col-span-2">
-          <p className="mx-auto my-4 max-w-2xl text-balance text-center text-2xl font-semibold text-black dark:text-white">
-            One loop for syncing content, improving retrieval, reviewing edits, and shipping docs
-            changes with confidence.
-          </p>
+          <div className="mx-auto my-4 max-w-2xl mb-10 text-center">
+            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
+              Sync • search • review • ship
+            </p>
+            <p className="mt-3 text-balance text-center text-2xl font-semibold text-black dark:text-white">
+              One loop to sync, search, review, and ship docs.
+            </p>
+          </div>
 
           <div className="grid gap-5">
             <div className="grid gap-5 lg:grid-cols-2">
@@ -91,7 +95,7 @@ export function CloudFeatures() {
                 <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
                   <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45">
                     <Globe className="size-3.5" />
-                    one-shot deploy
+                    instant deploy
                   </div>
                   <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45">
                     *.docs.app
@@ -117,7 +121,7 @@ export function CloudFeatures() {
                 <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
                   <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45">
                     <Search className="size-3.5" />
-                    knowledge sync
+                    repo sync
                   </div>
                   <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45">
                     repo ingest

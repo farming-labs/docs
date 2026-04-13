@@ -16,12 +16,12 @@ export const metadata: Metadata = {
 
 const heroSignals = [
   "GitHub-backed CMS",
-  "Custom docs theming",
-  "Outsouring knowledge base graph",
+  "AI-assisted drafts",
+  "Synced knowledge graph",
   "Draft + PR workflows",
   "One-shot deploy",
-  "Managed search sync",
-  "Answer-first AI",
+  "Managed search",
+  "Cited AI answers",
   "Feedback analytics",
   "MCP-ready delivery",
   "Private docs controls",
@@ -37,7 +37,7 @@ const workflowSteps = [
   {
     step: "02",
     title: "Operate it from one control plane",
-    body: "Edit, search, analyze, and manage providers from one place.",
+    body: "Draft with AI help, search, analyze, and manage providers from one place.",
   },
   {
     step: "03",
@@ -49,7 +49,7 @@ const workflowSteps = [
 const capabilityColumns = [
   {
     label: "Content",
-    items: ["MDX editing", "Frontmatter forms", "Sidebar ordering", "Review queues"],
+    items: ["MDX editing", "AI drafting", "Frontmatter forms", "Review queues"],
   },
   {
     label: "Search",
@@ -186,12 +186,12 @@ export default function CloudPage() {
                 How it works
               </p>
               <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-black dark:text-white sm:text-4xl">
-                A cloud layer around the runtime, not a rewrite of how your docs ship.
+                Keep your docs runtime. Add the cloud layer around it.
               </h2>
 
               <div className="mt-4 flex min-h-[120px] items-center justify-center overflow-hidden border-y border-black/10 bg-black/[0.02] px-4 py-2 dark:border-white/10 dark:bg-white/[0.02]">
                 <div className="flex w-full items-center justify-center">
-                  <CloudDocsManageIllustration className="w-[360px] ml-10 max-w-full opacity-85 dark:opacity-70" />
+                  <CloudDocsManageIllustration className="w-[360px] max-w-full opacity-85 dark:opacity-70" />
                 </div>
               </div>
 
@@ -226,10 +226,10 @@ export default function CloudPage() {
             <div className="flex items-center justify-between border-b border-black/10 pb-4 dark:border-white/10">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
-                  Dashboard surface
+                  Cloud dashboard
                 </p>
                 <h3 className="mt-2 text-xl font-semibold tracking-tight text-black dark:text-white">
-                  One place to operate docs.
+                  Operate docs from one place.
                 </h3>
               </div>
               <Workflow className="size-5 text-black/40 dark:text-white/40" strokeWidth={1.8} />
@@ -281,11 +281,11 @@ export default function CloudPage() {
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
-                    First release surface
+                    First release scope
                   </p>
                   <p className="mt-2 max-w-xl text-sm leading-relaxed text-black/55 dark:text-white/45">
-                    The dashboard should feel operational, not abstract. These are the four product
-                    surfaces we expect teams to touch first.
+                    The first release should feel operational, not abstract. These are the product
+                    areas teams should touch first.
                   </p>
                 </div>
               </div>
