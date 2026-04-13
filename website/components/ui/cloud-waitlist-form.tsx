@@ -180,11 +180,7 @@ export default function CloudWaitlistForm() {
           placeholder="https://docs.example.com"
         />
 
-        <InterestOptionList
-          value={interest}
-          onChange={setInterest}
-          options={interestOptions}
-        />
+        <InterestOptionList value={interest} onChange={setInterest} options={interestOptions} />
 
         <div>
           <label
