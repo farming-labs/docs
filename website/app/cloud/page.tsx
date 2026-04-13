@@ -6,6 +6,7 @@ import {
   Building2,
   Cloud,
   Github,
+  GithubIcon,
   type LucideIcon,
   Palette,
   Sparkles,
@@ -153,8 +154,9 @@ export default function CloudPage() {
 
           <Link
             href="https://github.com/farming-labs/docs"
-            className="group hidden font-mono text-[11px] uppercase tracking-[0.2em] text-black/35 transition-colors hover:text-black hover:no-underline dark:text-white/35 dark:hover:text-white md:inline-flex md:items-end mt-6 md:gap-1.5"
+            className="group hidden font-mono text-[11px] uppercase tracking-[0.2em] text-black/35 transition-colors hover:text-black hover:no-underline dark:text-white/35 dark:hover:text-white md:inline-flex md:items-center mt-6 md:gap-1.5"
           >
+            <GithubIcon className="size-3" />
             GitHub
             <ArrowUpRight className="size-3.5 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </Link>
