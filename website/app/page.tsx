@@ -66,7 +66,7 @@ function HeroSection() {
 
             <div className="-mb-5 sm:mb-0 mt-6 sm:mt-8 flex flex-col md:flex-wrap md:flex-row-reverse items-start md:items-center gap-0">
               <Link
-                href="/docs"
+                href="/cloud"
                 className="group inline-flex items-center gap-2 bg-black text-white dark:bg-white dark:text-black px-5 py-[11px] mb-[0.5px] text-xs font-mono uppercase tracking-wider hover:bg-black/90 dark:hover:bg-white/90 transition-all hover:no-underline"
               >
                 Get Started
