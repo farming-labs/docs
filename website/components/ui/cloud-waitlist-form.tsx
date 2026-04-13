@@ -180,30 +180,11 @@ export default function CloudWaitlistForm() {
           placeholder="https://docs.example.com"
         />
 
-        <div>
-          <label
-            htmlFor="cloud-waitlist-interest"
-            className="mb-1 block text-[10px] font-mono uppercase tracking-[0.24em] text-black/45 dark:text-white/45"
-          >
-            What should ship first?
-          </label>
-          <select
-            id="cloud-waitlist-interest"
-            value={interest}
-            onChange={(event) => setInterest(event.target.value)}
-            className="w-full rounded-none border border-black/10 bg-transparent px-3 py-2 text-sm text-black outline-none transition-colors focus:border-black/30 dark:border-white/10 dark:text-white dark:focus:border-white/25"
-          >
-            {interestOptions.map((option) => (
-              <option
-                key={option.value}
-                value={option.value}
-                className="bg-white text-black dark:bg-black"
-              >
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <InterestOptionList
+          value={interest}
+          onChange={setInterest}
+          options={interestOptions}
+        />
 
         <div>
           <label
@@ -254,11 +235,90 @@ export default function CloudWaitlistForm() {
           </span>
         </button>
 
+        {submitState.message ? (
+          <p
+            className={[
+              "border px-3 py-2 text-[11px] leading-relaxed",
+              submitState.status === "success"
+                ? "border-black/15 bg-black/[0.03] text-black/60 dark:border-white/15 dark:bg-white/[0.04] dark:text-white/60"
+                : submitState.status === "warning"
+                  ? "border-black/12 bg-black/[0.02] text-black/55 dark:border-white/12 dark:bg-white/[0.03] dark:text-white/55"
+                  : "border-black/12 bg-black/[0.015] text-black/55 dark:border-white/12 dark:bg-white/[0.02] dark:text-white/55",
+            ].join(" ")}
+          >
+            {submitState.message}
+          </p>
+        ) : null}
+
         <p className="text-[11px] leading-relaxed text-black/45 dark:text-white/40">
           GitHub stays the source of truth. This is the layer around it.
         </p>
       </form>
     </PixelCard>
+  );
+}
+
+function InterestOptionList({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: readonly { value: string; label: string }[];
+}) {
+  return (
+    <fieldset className="space-y-2">
+      <legend className="mb-1 block text-[10px] font-mono uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
+        What should ship first?
+      </legend>
+
+      <div
+        role="radiogroup"
+        aria-label="What should ship first?"
+        className="grid gap-2 sm:grid-cols-2"
+      >
+        {options.map((option, index) => {
+          const selected = option.value === value;
+
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(option.value)}
+              className={[
+                "group flex w-full items-start justify-between gap-3 border px-3 py-3 text-left transition-colors",
+                selected
+                  ? "border-black/25 bg-black/[0.04] dark:border-white/20 dark:bg-white/[0.06]"
+                  : "border-black/10 bg-black/[0.015] hover:border-black/20 dark:border-white/10 dark:bg-white/[0.015] dark:hover:border-white/20",
+              ].join(" ")}
+            >
+              <div className="min-w-0">
+                <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-black/35 dark:text-white/35">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="mt-1 block text-sm leading-snug text-black dark:text-white">
+                  {option.label}
+                </span>
+              </div>
+
+              <span
+                className={[
+                  "mt-0.5 flex size-5 shrink-0 items-center justify-center border transition-colors",
+                  selected
+                    ? "border-black/20 bg-black text-white dark:border-white/20 dark:bg-white dark:text-black"
+                    : "border-black/10 text-transparent dark:border-white/10",
+                ].join(" ")}
+              >
+                <Check className="size-3.5" />
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }
 
