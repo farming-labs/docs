@@ -1,11 +1,12 @@
 import { ReactNode } from "react";
-import { FilePenLine, Globe, LucideIcon, Search, ShieldCheck } from "lucide-react";
+import { CloudSyncIcon, FilePenLine, GitBranch, Globe, LucideIcon, Search, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CloudEditorDemo, CloudSearchDemo } from "@/components/ui/cloud-feature-demos";
 import {
   CloudDeployIllustration,
   CloudSyncIllustration,
 } from "@/components/ui/cloud-feature-illustrations";
+import CopyCommand from "@/components/ui/copy-command";
 import { cn } from "@/lib/utils";
 
 const surfaces = [
@@ -44,7 +45,7 @@ export function CloudFeatures() {
 
       <div className="mx-auto grid gap-4 lg:grid-cols-2">
         <FeatureCard>
-          <CardHeader className="pb-2">
+          <CardHeader className="px-4 pb-3 pt-4 sm:p-6 sm:pb-2">
             <CardHeading
               icon={FilePenLine}
               title="Git-backed editing"
@@ -54,14 +55,14 @@ export function CloudFeatures() {
 
           <div className="relative mb-6 border-t border-dashed border-black/10 sm:mb-0 dark:border-white/10">
             <div className="absolute inset-0 bg-[radial-gradient(125%_125%_at_50%_0%,transparent_40%,rgba(0,0,0,0.03),white_125%)] dark:bg-[radial-gradient(125%_125%_at_50%_0%,transparent_40%,rgba(255,255,255,0.03),rgba(0,0,0,0.92)_125%)]" />
-            <div className="aspect-[76/59] p-4 sm:px-6">
+            <div className="min-h-[21.5rem] p-3 sm:aspect-[76/59] sm:min-h-0 sm:p-4 sm:px-6">
               <CloudEditorDemo />
             </div>
           </div>
         </FeatureCard>
 
         <FeatureCard>
-          <CardHeader className="pb-2">
+          <CardHeader className="px-4 pb-3 pt-4 sm:p-6 sm:pb-2">
             <CardHeading
               icon={Search}
               title="Managed search + AI"
@@ -69,10 +70,10 @@ export function CloudFeatures() {
             />
           </CardHeader>
 
-          <CardContent>
+          <CardContent className="px-4 pb-4 pt-0 sm:px-6 sm:pb-6">
             <div className="relative mb-6 sm:mb-0">
               <div className="absolute -inset-6 bg-[radial-gradient(50%_50%_at_75%_50%,transparent,rgba(255,255,255,1)_100%)] dark:bg-[radial-gradient(50%_50%_at_75%_50%,transparent,rgba(0,0,0,1)_100%)]" />
-              <div className="relative aspect-[76/59] overflow-hidden border border-black/10 bg-white p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:border-white/10 dark:bg-black/70 dark:shadow-none">
+              <div className="relative min-h-[21.5rem] overflow-hidden border border-black/10 bg-white p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] sm:aspect-[76/59] sm:min-h-0 sm:p-4 dark:border-white/10 dark:bg-black/70 dark:shadow-none">
                 <CloudSearchDemo />
               </div>
             </div>
@@ -97,20 +98,30 @@ export function CloudFeatures() {
                     <Globe className="size-3.5" />
                     instant deploy
                   </div>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-black/45 dark:text-white/45">
                     *.docs.app
                   </span>
                 </div>
 
-                <div className="relative flex min-h-[220px] items-center overflow-visible px-4 py-4">
+                <div className="relative flex min-h-[180px] items-center overflow-visible px-4 py-4 sm:min-h-[220px]">
+                  <IllustrationHalo className="scale-110" />
                   <CloudDeployIllustration className="relative z-10 mx-auto max-w-[430px] opacity-90 dark:opacity-75" />
                 </div>
 
-                <div className="border-t border-black/10 px-4 py-4 dark:border-white/10">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-black/55 dark:text-white/50">
-                    pnpm dlx @farming-labs/docs deploy
-                  </p>
-                  <p className="mt-3 text-sm leading-relaxed text-black/60 dark:text-white/50">
+                <div className="border-t overflow-x-hidden border-black/10 px-4 py-4 dark:border-white/10">
+                  <div
+                    aria-hidden
+                    className="hidden border-x-0 -mt-2 border-black/5 dark:border-white/5 lg:flex lg:min-h-0 lg:flex-1 lg:items-center"
+                  >
+                    <div className="-mx-4 -mt-2 w-[calc(100%+32px)]">
+                      <div className="relative border-l-0 z-20 h-4 w-full bg-[repeating-linear-gradient(-45deg,rgba(0,0,0,0.45),rgba(0,0,0,0.45)_1px,transparent_1px,transparent_6px)] opacity-[0.08] dark:bg-[repeating-linear-gradient(-45deg,rgba(255,255,255,0.7),rgba(255,255,255,0.7)_1px,transparent_1px,transparent_6px)] dark:opacity-[0.1]" />
+                    </div>
+                  </div>
+                  <CopyCommand
+                    className="w-[calc(100%+32px)] md:border-b-1 md:border-black/10 border border-x-0 -mx-4 px-2 sm:px-0 hover:bg-transparent"
+                    command="pnpm dlx @farming-labs/docs deploy"
+                  />
+                  <p className="mt-3 py-2 text-sm leading-relaxed text-black/60 dark:text-white/50">
                     Provision a live docs URL, ingest the repo knowledge graph, and keep pushes
                     flowing back through GitHub.
                   </p>
@@ -120,23 +131,34 @@ export function CloudFeatures() {
               <div className="border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.02]">
                 <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
                   <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45">
-                    <Search className="size-3.5" />
+                    <CloudSyncIcon className="size-3.5" />
                     repo sync
                   </div>
                   <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45">
+                    <GitBranch className="size-3.5 inline-flex mr-2 justify-center items-center" />
                     repo ingest
                   </span>
                 </div>
 
-                <div className="flex min-h-[220px] items-center px-4 py-4">
-                  <CloudSyncIllustration className="mx-auto max-w-[360px] opacity-85 dark:opacity-70" />
+                <div className="relative flex min-h-[180px] items-center overflow-visible px-4 py-4 sm:min-h-[220px]">
+                  <IllustrationHalo />
+                  <CloudSyncIllustration className="relative z-10 mx-auto max-w-[360px] opacity-85 dark:opacity-70" />
                 </div>
 
-                <div className="border-t border-black/10 px-4 py-4 dark:border-white/10">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-black/55 dark:text-white/50">
-                    continuous docs sync
-                  </p>
-                  <p className="mt-3 text-sm leading-relaxed text-black/60 dark:text-white/50">
+                <div className="border-t overflow-x-hidden border-black/10 px-4 py-4 dark:border-white/10">
+                  <div
+                    aria-hidden
+                    className="hidden border-x-0 -mt-2 border-black/5 dark:border-white/5 lg:flex lg:min-h-0 lg:flex-1 lg:items-center"
+                  >
+                    <div className="-mx-4 -mt-2 w-[calc(100%+32px)]">
+                      <div className="relative border-l-0 z-20 h-4 w-full bg-[repeating-linear-gradient(-45deg,rgba(0,0,0,0.45),rgba(0,0,0,0.45)_1px,transparent_1px,transparent_6px)] opacity-[0.08] dark:bg-[repeating-linear-gradient(-45deg,rgba(255,255,255,0.7),rgba(255,255,255,0.7)_1px,transparent_1px,transparent_6px)] dark:opacity-[0.1]" />
+                    </div>
+                  </div>
+                  <CopyCommand
+                    className="w-[calc(100%+32px)] md:border-b-1 md:border-black/10 border border-x-0 -mx-4 px-2 sm:px-0 hover:bg-transparent"
+                    command="pnpm dlx @farming-labs/docs sync --search"
+                  />
+                  <p className="mt-3 py-2 text-sm leading-relaxed text-black/60 dark:text-white/50">
                     Pull content, structure, and metadata from GitHub so search, AI, and release
                     workflows stay current.
                   </p>
@@ -226,12 +248,14 @@ function CardHeading({
   description: string;
 }) {
   return (
-    <div className="p-6">
+    <div className="p-0">
       <span className="text-muted-foreground flex items-center gap-2 text-black/55 dark:text-white/50">
         <Icon className="size-4" />
         <span className="font-mono text-[11px] uppercase tracking-[0.18em]">{title}</span>
       </span>
-      <p className="mt-6 text-2xl font-semibold text-black dark:text-white">{description}</p>
+      <p className="mt-4 text-xl font-semibold text-black sm:mt-6 sm:text-2xl dark:text-white">
+        {description}
+      </p>
     </div>
   );
 }
@@ -272,6 +296,20 @@ function SurfaceNode({
       <span className="mt-1.5 block text-center font-mono text-sm uppercase tracking-[0.16em] text-black/45 dark:text-white/40">
         {label}
       </span>
+    </div>
+  );
+}
+
+function IllustrationHalo({ className }: { className?: string }) {
+  return (
+    <div
+      aria-hidden
+      className={cn("pointer-events-none absolute inset-0 flex items-center justify-center", className)}
+    >
+      <div className="relative h-44 w-80 sm:h-52 sm:w-[26rem]">
+        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.7)_0%,rgba(255,255,255,0.2)_34%,rgba(255,255,255,0.05)_55%,transparent_82%)] opacity-28 blur-3xl dark:bg-[radial-gradient(circle,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0.08)_34%,rgba(255,255,255,0.03)_55%,transparent_82%)] dark:opacity-45" />
+        <div className="absolute inset-x-[10%] inset-y-[16%] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.35)_0%,rgba(255,255,255,0.08)_40%,transparent_74%)] opacity-32 blur-2xl dark:bg-[radial-gradient(circle,rgba(255,255,255,0.12)_0%,rgba(255,255,255,0.04)_40%,transparent_74%)] dark:opacity-40" />
+      </div>
     </div>
   );
 }

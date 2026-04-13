@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Sparkles, Workflow } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Cloud, Workflow } from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import { CloudDocsManageIllustration } from "@/components/ui/cloud-feature-illustrations";
 import { CloudFeatures } from "@/components/ui/cloud-features";
@@ -13,6 +13,8 @@ export const metadata: Metadata = {
   description:
     "Managed docs infrastructure for teams shipping with @farming-labs/docs. Git-backed CMS, AI search, MCP, analytics, and workflows.",
 };
+
+const heroTitle = "infrastructure for teams shipping docs like product.";
 
 const heroSignals = [
   "GitHub-backed CMS",
@@ -65,6 +67,8 @@ const capabilityColumns = [
   },
 ] as const;
 
+const mobileHeroSignals = heroSignals.slice(0, 6);
+
 export default function CloudPage() {
   return (
     <div className="min-h-dvh bg-white text-black dark:bg-black dark:text-white">
@@ -79,7 +83,7 @@ export default function CloudPage() {
 
       <div className="absolute left-0 right-0 top-14 z-[1] h-px bg-black/10 dark:bg-white/8" />
 
-      <header className="relative z-10 px-6 py-0">
+      <header className="relative z-10 px-0 md:px-6 py-0">
         <div className="mx-auto flex max-w-[90%] items-center justify-between">
           <div className="flex items-center gap-2 pb-8 pt-5 text-xs uppercase font-medium text-black/65 dark:text-white/80 md:pb-0">
             <Link
@@ -88,7 +92,7 @@ export default function CloudPage() {
             >
               Home <span className="ml-2 text-black/25 dark:text-white/25">/</span>
             </Link>
-            <Sparkles className="size-3.5" strokeWidth={1.8} />
+            <Cloud className="size-3.5" strokeWidth={1.8} />
             <p className="font-mono uppercase tracking-[0.22em]">Cloud</p>
           </div>
 
@@ -102,11 +106,11 @@ export default function CloudPage() {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto max-w-[90%] space-y-20 pb-24 pt-6 md:space-y-24 md:px-0 md:pt-14">
+      <main className="relative z-10 mx-auto max-w-[92%] space-y-16 pb-20 pt-4 sm:max-w-[90%] sm:space-y-20 sm:pt-6 md:space-y-24 md:px-0 md:pt-14">
         <section className="relative grid gap-10 pb-10 lg:grid-cols-[minmax(0,5.5fr)_minmax(360px,3fr)] lg:items-stretch lg:gap-0 lg:pb-0">
           <div className="pointer-events-none absolute bottom-0 left-[calc(50%-50vw)] right-[calc(50%-50vw)] h-px bg-black/10 dark:bg-white/10" />
           <div className="relative min-w-0 overflow-hidden lg:flex">
-            <div className="pointer-events-none absolute -top-6 bottom-0 left-0 z-20 w-px bg-black/10 dark:bg-white/5 md:-top-24" />
+            <div className="pointer-events-none absolute -top-6 bottom-0 left-0 z-20 hidden w-px bg-black/10 dark:bg-white/5 sm:block md:-top-24" />
             <div
               className="absolute inset-0 hidden overflow-hidden opacity-45 sm:block"
               aria-hidden
@@ -114,9 +118,13 @@ export default function CloudPage() {
               <AnimatedBackground />
             </div>
 
-            <div className="relative z-10 flex max-w-3xl flex-col lg:min-h-full lg:justify-end">
+            <div className="relative z-10 flex max-w-3xl flex-col pt-1 sm:pt-0 lg:min-h-full lg:justify-end">
+              <h1 className="max-w-[11ch] text-balance text-[2.6rem] font-semibold leading-[0.92] tracking-[-0.08em] text-black dark:text-white sm:hidden">
+                {heroTitle}
+              </h1>
+
               <Shuffle
-                text="infrastructure for teams shipping docs like product."
+                text={heroTitle}
                 shuffleDirection="right"
                 duration={0.35}
                 animationMode="evenodd"
@@ -131,34 +139,37 @@ export default function CloudPage() {
                 loopDelay={0}
                 tag="h1"
                 textAlign="left"
-                className="block max-w-4xl font-semibold tracking-[-0.06em] text-black dark:text-white sm:text-5xl lg:text-6xl"
+                className="hidden max-w-4xl font-semibold tracking-[-0.06em] text-black dark:text-white sm:block sm:text-5xl lg:text-6xl"
               />
 
-              <p className="mt-6 max-w-2xl text-base leading-relaxed text-black/55 dark:text-white/45 sm:text-lg">
+              <p className="mt-5 max-w-[34rem] text-[15px] leading-7 text-black/55 dark:text-white/45 sm:mt-6 sm:text-lg sm:leading-relaxed">
                 Keep the open runtime. Add the layer for editing, search, analytics, AI, and docs
                 operations.
               </p>
 
-              <div className="mt-7 flex flex-wrap gap-2">
-                {heroSignals.map((signal) => (
+              <div className="mt-6 flex flex-wrap gap-2 sm:mt-7">
+                {heroSignals.map((signal, index) => (
                   <span
                     key={signal}
-                    className="inline-flex items-center border border-black/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-black/45 dark:border-white/10 dark:text-white/45"
+                    className={index >= mobileHeroSignals.length
+                      ? "hidden items-center border border-black/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-black/45 dark:border-white/10 dark:text-white/45 sm:inline-flex"
+                      : "inline-flex items-center border border-black/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-black/45 dark:border-white/10 dark:text-white/45"}
                   >
                     {signal}
                   </span>
                 ))}
               </div>
 
-              <div className="-mb-px mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+              <div className="-mb-px mt-7 flex flex-col items-stretch gap-3 sm:mt-8 sm:items-start sm:flex-row sm:items-center">
                 <a
                   href="/docs"
-                  className="group inline-flex items-center gap-2 border border-black bg-black px-5 py-3 font-mono text-[11px] uppercase tracking-[0.24em] text-white transition-all hover:bg-black/90 hover:no-underline dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
+                  className="group inline-flex w-full items-center justify-center gap-2 border border-black bg-black px-5 py-3 font-mono text-[11px] uppercase tracking-[0.24em] text-white transition-all hover:bg-black/90 hover:no-underline sm:w-auto sm:justify-start dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
                 >
                   Read Docs
                   <ArrowRight className="size-3.5 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
                 </a>
               </div>
+
             </div>
           </div>
 
@@ -189,9 +200,9 @@ export default function CloudPage() {
                 Keep your docs runtime. Add the cloud layer around it.
               </h2>
 
-              <div className="mt-4 flex min-h-[120px] items-center justify-center overflow-hidden border-y border-black/10 bg-black/[0.02] px-4 py-2 dark:border-white/10 dark:bg-white/[0.02]">
+              <div className="mt-4 flex min-h-[120px] items-center justify-center overflow-hidden border-y border-black/10 bg-black/[0.02] px-3 py-2 sm:px-4 dark:border-white/10 dark:bg-white/[0.02]">
                 <div className="flex w-full items-center justify-center">
-                  <CloudDocsManageIllustration className="w-[360px] max-w-full opacity-85 dark:opacity-70" />
+                  <CloudDocsManageIllustration className="w-[280px] max-w-full opacity-85 sm:w-[360px] sm:translate-x-8 sm:-mb-10 dark:opacity-70" />
                 </div>
               </div>
 
@@ -204,7 +215,7 @@ export default function CloudPage() {
               {workflowSteps.map((item) => (
                 <div
                   key={item.step}
-                  className="grid gap-4 border border-black/10 bg-black/[0.02] px-4 py-4 dark:border-white/10 dark:bg-white/[0.02] sm:grid-cols-[56px_minmax(0,1fr)] sm:items-start"
+                  className="grid min-w-0 gap-4 border border-black/10 bg-black/[0.02] px-4 py-4 dark:border-white/10 dark:bg-white/[0.02] sm:grid-cols-[56px_minmax(0,1fr)] sm:items-start"
                 >
                   <div className="flex h-11 w-11 items-center justify-center border border-black/10 font-mono text-[11px] uppercase tracking-[0.22em] text-black/45 dark:border-white/10 dark:text-white/45">
                     {item.step}
@@ -223,8 +234,8 @@ export default function CloudPage() {
           </PixelCard>
 
           <PixelCard className="h-full border-black/10 bg-white/95 dark:border-white/10 dark:bg-black/35">
-            <div className="flex items-center justify-between border-b border-black/10 pb-4 dark:border-white/10">
-              <div>
+            <div className="flex min-w-0 items-center justify-between gap-4 border-b border-black/10 pb-4 dark:border-white/10">
+              <div className="min-w-0">
                 <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
                   Cloud dashboard
                 </p>
@@ -232,7 +243,10 @@ export default function CloudPage() {
                   Operate docs from one place.
                 </h3>
               </div>
-              <Workflow className="size-5 text-black/40 dark:text-white/40" strokeWidth={1.8} />
+              <Workflow
+                className="size-5 shrink-0 text-black/40 dark:text-white/40"
+                strokeWidth={1.8}
+              />
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -262,7 +276,7 @@ export default function CloudPage() {
               ].map((row) => (
                 <div
                   key={row.title}
-                  className="flex items-center justify-between border border-black/10 px-3 py-3 dark:border-white/10"
+                  className="flex flex-col items-start gap-2 border border-black/10 px-3 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-white/10"
                 >
                   <div>
                     <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45">
@@ -298,7 +312,7 @@ export default function CloudPage() {
                   >
                     <div className="flex items-center justify-between gap-3 border-b border-black/10 pb-3 dark:border-white/10">
                       <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-black/60 dark:text-white/55">
-                        {column.label}
+                        # {column.label}
                       </p>
                       <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-black/35 dark:text-white/35">
                         {String(column.items.length).padStart(2, "0")}
@@ -323,7 +337,7 @@ export default function CloudPage() {
         </section>
 
         <section>
-          <PixelCard className="border-black/10 bg-black px-6 py-8 text-white hover:bg-black dark:border-white/10 dark:bg-black dark:text-white dark:hover:bg-black sm:px-8">
+          <PixelCard className="border-black/10 bg-black px-5 py-7 text-white hover:bg-black dark:border-white/10 dark:bg-black dark:text-white dark:hover:bg-black sm:px-8 sm:py-8">
             <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-white/55 dark:text-white/55">
@@ -338,7 +352,7 @@ export default function CloudPage() {
                 </p>
               </div>
 
-              <div className="flex flex-col items-start gap-8 sm:flex-row sm:items-center">
+              <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-8">
                 <a
                   href="#waitlist"
                   className="group inline-flex items-center gap-2 border border-white/20 px-5 py-3 font-mono text-[10px] uppercase tracking-normal text-white transition-all hover:bg-white hover:text-black hover:no-underline"
@@ -348,7 +362,7 @@ export default function CloudPage() {
                 </a>
                 <Link
                   href="/docs"
-                  className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.24em] text-white/65 transition-colors hover:text-white hover:no-underline"
+                  className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-normal text-white/65 transition-colors hover:text-white hover:no-underline"
                 >
                   Docs
                   <ArrowUpRight className="size-3.5" />

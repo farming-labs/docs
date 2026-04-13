@@ -100,7 +100,7 @@ export default function CloudWaitlistForm() {
   }
 
   return (
-    <PixelCard className="-mt-[34px] w-full shrink-0 border-b-0 border-t-0 border-black/10 bg-white/95 p-0 dark:border-white/10 dark:bg-black/40">
+    <PixelCard className="w-full shrink-0 border-b sm:border-b-0 border-t sm:border-t-0 border-black/10 bg-white/95 p-0 lg:-mt-[34px] dark:border-white/10 dark:bg-black/40">
       <div className="border-b border-black/10 px-5 py-3 dark:border-white/10">
         <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
           Join the waitlist
