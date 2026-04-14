@@ -127,7 +127,7 @@ const cloudTerminalTabs: TabContent[] = [
 const tabIcons = [CloudSyncIcon, GitBranch, UploadCloud] as const;
 const projectPrompt = {
   arrow: "➜",
-  name: "acme-docs",
+  name: "acme",
   branch: "git:(main)",
   dirty: "✗",
 } as const;
