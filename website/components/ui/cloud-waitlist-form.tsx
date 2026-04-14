@@ -173,11 +173,11 @@ export default function CloudWaitlistForm() {
 
         <Field
           id="cloud-waitlist-project"
-          label="Current docs URL"
+          label="Website URL"
           type="url"
           value={projectUrl}
           onChange={setProjectUrl}
-          placeholder="https://docs.example.com"
+          placeholder="https://example.com"
         />
 
         <InterestOptionList value={interest} onChange={setInterest} options={interestOptions} />
