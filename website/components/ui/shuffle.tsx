@@ -30,6 +30,7 @@ export interface ShuffleProps {
   scrambleCharset?: string;
   colorFrom?: string;
   colorTo?: string;
+  playOnMount?: boolean;
   triggerOnce?: boolean;
   respectReducedMotion?: boolean;
   triggerOnHover?: boolean;
@@ -57,6 +58,7 @@ const Shuffle: React.FC<ShuffleProps> = ({
   scrambleCharset = "",
   colorFrom,
   colorTo,
+  playOnMount = false,
   triggerOnce = true,
   respectReducedMotion = true,
   triggerOnHover = true,
@@ -481,6 +483,15 @@ const Shuffle: React.FC<ShuffleProps> = ({
         setReady(true);
       };
 
+      if (playOnMount) {
+        create();
+        return () => {
+          removeHover();
+          teardown();
+          setReady(false);
+        };
+      }
+
       const trigger = ScrollTrigger.create({
         trigger: element,
         start,
@@ -508,6 +519,7 @@ const Shuffle: React.FC<ShuffleProps> = ({
         maxDelay,
         onShuffleStart,
         onShuffleComplete,
+        playOnMount,
         respectReducedMotion,
         scrambleCharset,
         scrollTriggerStart,

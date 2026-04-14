@@ -15,10 +15,10 @@ import {
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import { CloudDocsManageIllustration } from "@/components/ui/cloud-feature-illustrations";
 import { CloudFeatures } from "@/components/ui/cloud-features";
-import { CloudHeroHeadline } from "@/components/ui/cloud-hero-headline";
 import { CloudTerminalDemo } from "@/components/ui/cloud-terminal-demo";
 import CloudWaitlistForm from "@/components/ui/cloud-waitlist-form";
 import PixelCard from "@/components/ui/pixel-card";
+import Shuffle from "@/components/ui/shuffle";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 
 export const metadata: Metadata = {
@@ -28,7 +28,6 @@ export const metadata: Metadata = {
 };
 
 const heroTitle = "you ship the code and we write the docs for you.";
-const heroTitleShuffled = "infrastructure for teams shipping docs like product.";
 
 const heroSignals = [
   "GitHub-backed CMS",
@@ -177,7 +176,28 @@ export default function CloudPage() {
             </div>
 
             <div className="relative z-10 flex max-w-3xl flex-col pt-1 sm:pt-0 lg:min-h-full lg:justify-end">
-              <CloudHeroHeadline initialText={heroTitle} shuffledText={heroTitleShuffled} />
+              <h1 className="max-w-[13ch] text-balance text-[2.45rem] font-semibold leading-[0.94] tracking-[-0.08em] text-black dark:text-white sm:hidden">
+                {heroTitle}
+              </h1>
+
+              <Shuffle
+                text={heroTitle}
+                shuffleDirection="right"
+                duration={0.35}
+                animationMode="evenodd"
+                shuffleTimes={1}
+                ease="power3.out"
+                stagger={0.03}
+                threshold={0.1}
+                triggerOnce={true}
+                triggerOnHover
+                respectReducedMotion={true}
+                loop={false}
+                loopDelay={0}
+                tag="h1"
+                textAlign="left"
+                className="hidden max-w-5xl font-semibold tracking-[-0.06em] text-black dark:text-white sm:block sm:text-5xl lg:text-6xl"
+              />
 
               <p className="mt-3 max-w-[34rem] text-[15px] leading-6 text-black/55 dark:text-white/45 sm:mt-6 sm:text-lg sm:leading-relaxed">
                 Keep the open runtime. Add the layer for editing, search, analytics, AI, knowledge
