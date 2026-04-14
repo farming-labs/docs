@@ -36,14 +36,14 @@ export function SidebarThemeToggle() {
       document.documentElement.style.colorScheme = "light";
       try {
         localStorage.setItem("theme", "light");
-      } catch {}
+      } catch { }
     } else {
       document.documentElement.classList.remove("light");
       document.documentElement.classList.add("dark");
       document.documentElement.style.colorScheme = "dark";
       try {
         localStorage.setItem("theme", "dark");
-      } catch {}
+      } catch { }
     }
     setIsDark(nextIsDark);
   };
@@ -74,14 +74,19 @@ export function SidebarThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="inline-flex items-center gap-1 rounded-3xl border p-1.5 transition-colors hover:opacity-90"
+      className="inline-flex text-[11px] text-black/30 dark:text-white/30 items-center gap-1 pr-1"
       style={{
         borderColor: "var(--color-fd-border)",
-        color: "var(--color-fd-muted-foreground)",
+        // color: "var(--color-fd-muted-foreground)",
       }}
     >
-      <Sun size={14} className={!isDark ? "opacity-100" : "opacity-40"} aria-hidden />
-      <Moon size={14} className={isDark ? "opacity-100" : "opacity-40"} aria-hidden />
+      {isDark ? (
+        <Moon size={12}  aria-hidden />
+      ) : (
+        <Sun size={12} aria-hidden />
+      )}
+      / {" "}
+      {isDark ? (<span className="ml-1 font-mono text-[11px]">LIGHT</span>) : (<span className="ml-1 font-mono text-[11px]">DARK</span>)}
     </button>
   );
 }
