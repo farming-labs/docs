@@ -13,6 +13,266 @@ const docsManageSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" heigh
 
 const deploySvg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="160" fill="none"><path fill="url(#illustration-custom-docker_svg__a)" fill-rule="evenodd" d="M300 27H0v-1h300z" clip-rule="evenodd" opacity="0.5"></path><path fill="#F5C0C0" fill-opacity="0.2" d="M124 66.667c0-2.025 1.791-3.667 4-3.667h43c2.209 0 4 1.642 4 3.667V74h-51z"></path><path fill="#F5C0C0" fill-opacity="0.3" fill-rule="evenodd" d="M171 64h-43a3 3 0 0 0-3 3v7h49v-7a3 3 0 0 0-3-3m-43-1a4 4 0 0 0-4 4v8h51v-8a4 4 0 0 0-4-4z" clip-rule="evenodd"></path><path fill="#F5C0C0" fill-rule="evenodd" d="M142 27v36h-1V27zM157 27v36h-1V27z" clip-rule="evenodd" opacity="0.4"></path><path fill="#F5C0C0" fill-opacity="0.8" fill-rule="evenodd" d="M200 75H100v-1h100zm0 31H100v1h100z" clip-rule="evenodd" opacity="0.6"></path><path fill="#F5C0C0" fill-opacity="0.1" d="M128 106h-28V75h28z"></path><path fill="url(#illustration-custom-docker_svg__b)" fill-rule="evenodd" d="M108 75h-4v31h4zm8 0h-4v31h4zm4 0h4v31h-4zm12 0h-4v31h4zm4 0h4v31h-4zm12 0h-4v31h4zm4 0h4v31h-4zm12 0h-4v31h4zm4 0h4v31h-4zm12 0h-4v31h4zm4 0h4v31h-4zm12 0h-4v31h4z" clip-rule="evenodd" opacity="0.5"></path><path fill="url(#illustration-custom-docker_svg__c)" d="M89.238 123h121.524L260 153H40z" opacity="0.1"></path><path fill="#F5C0C0" fill-opacity="0.08" d="M111 133h78l26 20H85z"></path><path fill="#F5C0C0" fill-opacity="0.2" fill-rule="evenodd" d="m111.34 134-23.4 18h124.12l-23.4-18zm77.66-1h-78l-26 20h130z" clip-rule="evenodd"></path><defs><linearGradient id="illustration-custom-docker_svg__a" x1="294.231" x2="5.769" y1="27.002" y2="27.002" gradientUnits="userSpaceOnUse"><stop stop-color="#F1C0C0" stop-opacity="0"></stop><stop offset="0.468" stop-color="#F1C0C0"></stop><stop offset="1" stop-color="#F1C0C0" stop-opacity="0"></stop></linearGradient><linearGradient id="illustration-custom-docker_svg__b" x1="194" x2="194" y1="75" y2="106" gradientUnits="userSpaceOnUse"><stop stop-color="#F5C0C0" stop-opacity="0.42"></stop><stop offset="1" stop-color="#F5C0C0" stop-opacity="0.06"></stop></linearGradient><linearGradient id="illustration-custom-docker_svg__c" x1="150" x2="150" y1="133" y2="153" gradientUnits="userSpaceOnUse"><stop stop-color="#F5C0C0" stop-opacity="0"></stop><stop offset="1" stop-color="#F5C0C0"></stop></linearGradient></defs></svg>`;
 
+function injectSvgMarkup(svg: string, markup: string) {
+  return svg.replace("</svg>", `${markup}</svg>`);
+}
+
+const syncTracePath =
+  syncSvg.match(/fill="url\(#illustration-infinite-data-scale_svg__d\)" d="([^"]+)"/)?.[1] ?? "";
+
+const syncSvgAnimated = injectSvgMarkup(
+  syncSvg,
+  `
+    <style>
+      .fl-sync-trace-base {
+        opacity: 0.18;
+      }
+
+      .fl-sync-trace-dash-a,
+      .fl-sync-trace-dash-b {
+        stroke-dasharray: 14 20;
+        animation: fl-sync-trace 4.8s linear infinite;
+      }
+
+      .fl-sync-trace-dash-b {
+        stroke-dasharray: 10 24;
+        animation-duration: 5.6s;
+        animation-direction: reverse;
+        opacity: 0.58;
+      }
+
+      .fl-sync-core-pulse {
+        animation: fl-sync-pulse 3.1s ease-in-out infinite;
+        transform-box: fill-box;
+        transform-origin: center;
+      }
+
+      @keyframes fl-sync-trace {
+        to {
+          stroke-dashoffset: -104;
+        }
+      }
+
+      @keyframes fl-sync-pulse {
+        0%,
+        100% {
+          opacity: 0.2;
+          transform: scale(0.96);
+        }
+
+        50% {
+          opacity: 0.75;
+          transform: scale(1.08);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .fl-sync-trace-dash-a,
+        .fl-sync-trace-dash-b,
+        .fl-sync-core-pulse {
+          animation: none;
+        }
+      }
+    </style>
+    <path d="${syncTracePath}" fill="none" stroke="#F5C0C0" stroke-opacity="0.16" stroke-width="1.2" class="fl-sync-trace-base"></path>
+    <path d="${syncTracePath}" fill="none" stroke="#F5C0C0" stroke-opacity="0.88" stroke-width="1.7" stroke-linecap="round" class="fl-sync-trace-dash-a"></path>
+    <path d="${syncTracePath}" fill="none" stroke="#F5C0C0" stroke-opacity="0.5" stroke-width="1.1" stroke-linecap="round" class="fl-sync-trace-dash-b"></path>
+    <circle cx="150" cy="90" r="7.5" fill="#F5C0C0" fill-opacity="0.14" class="fl-sync-core-pulse"></circle>
+  `,
+);
+
+const deployColumnsPath =
+  deploySvg.match(
+    /fill="url\(#illustration-custom-docker_svg__b\)" fill-rule="evenodd" d="([^"]+)"/,
+  )?.[1] ?? "";
+
+const deploySvgAnimated = injectSvgMarkup(
+  deploySvg,
+  `
+    <style>
+      .fl-deploy-flow,
+      .fl-deploy-rollout {
+        stroke-dasharray: 10 16;
+        animation: fl-deploy-flow 3.6s linear infinite;
+      }
+
+      .fl-deploy-rollout-right {
+        animation-delay: 0.3s;
+      }
+
+      .fl-deploy-core-pulse {
+        animation: fl-deploy-pulse 3.6s ease-in-out infinite;
+        transform-box: fill-box;
+        transform-origin: center;
+      }
+
+      @keyframes fl-deploy-flow {
+        to {
+          stroke-dashoffset: -78;
+        }
+      }
+
+      @keyframes fl-deploy-pulse {
+        0%,
+        100% {
+          opacity: 0.2;
+          transform: scale(0.96);
+        }
+
+        50% {
+          opacity: 0.75;
+          transform: scale(1.06);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .fl-deploy-flow,
+        .fl-deploy-rollout,
+        .fl-deploy-core-pulse {
+          animation: none;
+        }
+      }
+    </style>
+    <defs>
+      <linearGradient id="fl-deploy-column-scan" x1="96" y1="90" x2="214" y2="90" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#F5C0C0" stop-opacity="0"></stop>
+        <stop offset="0.5" stop-color="#F5C0C0" stop-opacity="1"></stop>
+        <stop offset="1" stop-color="#F5C0C0" stop-opacity="0"></stop>
+      </linearGradient>
+      <mask id="fl-deploy-columns-mask">
+        <rect x="96" y="73" width="22" height="36" fill="url(#fl-deploy-column-scan)">
+          <animate attributeName="x" values="96;184;96" dur="3.6s" repeatCount="indefinite"></animate>
+          <animate attributeName="width" values="16;40;16" dur="3.6s" repeatCount="indefinite"></animate>
+        </rect>
+      </mask>
+    </defs>
+    <path d="M149.5 27V75" fill="none" stroke="#F5C0C0" stroke-opacity="0.9" stroke-width="1.8" stroke-linecap="round" class="fl-deploy-flow"></path>
+    <path d="M100 74.5H200" fill="none" stroke="#F5C0C0" stroke-opacity="0.75" stroke-width="1.8" stroke-linecap="round" class="fl-deploy-flow"></path>
+    <path d="M100 106.5H200" fill="none" stroke="#F5C0C0" stroke-opacity="0.68" stroke-width="1.8" stroke-linecap="round" class="fl-deploy-flow"></path>
+    <path d="${deployColumnsPath}" fill="#F5C0C0" fill-opacity="0.88" mask="url(#fl-deploy-columns-mask)"></path>
+    <path d="M150 106L112 133" fill="none" stroke="#F5C0C0" stroke-opacity="0.72" stroke-width="1.6" stroke-linecap="round" class="fl-deploy-rollout"></path>
+    <path d="M150 106L188 133" fill="none" stroke="#F5C0C0" stroke-opacity="0.72" stroke-width="1.6" stroke-linecap="round" class="fl-deploy-rollout fl-deploy-rollout-right"></path>
+    <circle cx="150" cy="90" r="6.5" fill="#F5C0C0" fill-opacity="0.14" class="fl-deploy-core-pulse"></circle>
+  `,
+);
+
+const docsManageLayerA = "M150.33 142.019 74 117.221l74.946-26.037 76.33 24.797z";
+const docsManageLayerB = "M150.33 120.291 74 95.493l74.946-26.037 76.33 24.798z";
+const docsManageLayerC = "M150.33 98.563 74 73.766l74.946-26.038 76.33 24.798z";
+const docsManageTopLayer = "M150.33 76.835 74 52.038 148.946 26l76.33 24.798z";
+
+const docsManageSvgAnimated = injectSvgMarkup(
+  docsManageSvg
+    .replace(
+      `d="${docsManageLayerA}" shape-rendering="crispEdges"`,
+      `d="${docsManageLayerA}" shape-rendering="crispEdges" class="fl-docs-layer fl-docs-layer-a"`,
+    )
+    .replace(
+      `d="${docsManageLayerB}" shape-rendering="crispEdges"`,
+      `d="${docsManageLayerB}" shape-rendering="crispEdges" class="fl-docs-layer fl-docs-layer-b"`,
+    )
+    .replace(
+      `d="${docsManageLayerC}" shape-rendering="crispEdges"`,
+      `d="${docsManageLayerC}" shape-rendering="crispEdges" class="fl-docs-layer fl-docs-layer-c"`,
+    )
+    .replace(
+      `opacity="0.4"><path fill="#634F69" fill-opacity="0.45" d="${docsManageTopLayer}"`,
+      `opacity="0.4" class="fl-docs-layer-top"><path fill="#634F69" fill-opacity="0.45" d="${docsManageTopLayer}"`,
+    ),
+  `
+    <style>
+      .fl-docs-layer,
+      .fl-docs-layer-top {
+        transform-box: fill-box;
+        transform-origin: center;
+      }
+
+      .fl-docs-layer {
+        opacity: 0;
+        transform: translateY(14px) scale(0.97);
+        animation: fl-docs-layer-rise 3.6s cubic-bezier(0.2, 0.75, 0.2, 1) infinite;
+      }
+
+      .fl-docs-layer-a {
+        animation-delay: 0s;
+      }
+
+      .fl-docs-layer-b {
+        animation-delay: 0.22s;
+      }
+
+      .fl-docs-layer-c {
+        animation-delay: 0.44s;
+      }
+
+      .fl-docs-layer-top {
+        opacity: 0;
+        transform: translateY(10px) scale(0.985);
+        animation: fl-docs-layer-top-rise 3.6s cubic-bezier(0.2, 0.75, 0.2, 1) 0.66s infinite;
+      }
+
+      @keyframes fl-docs-layer-rise {
+        0% {
+          opacity: 0;
+          transform: translateY(14px) scale(0.97);
+        }
+
+        12% {
+          opacity: 1;
+          transform: translateY(-2px) scale(1.01);
+        }
+
+        24%,
+        72% {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+
+        100% {
+          opacity: 0;
+          transform: translateY(-10px) scale(1.01);
+        }
+      }
+
+      @keyframes fl-docs-layer-top-rise {
+        0% {
+          opacity: 0;
+          transform: translateY(10px) scale(0.985);
+        }
+
+        10% {
+          opacity: 0.4;
+          transform: translateY(-1px) scale(1.005);
+        }
+
+        22%,
+        68% {
+          opacity: 0.4;
+          transform: translateY(0) scale(1);
+        }
+
+        100% {
+          opacity: 0;
+          transform: translateY(-8px) scale(1.01);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .fl-docs-layer,
+        .fl-docs-layer-top {
+          animation: none;
+          opacity: 1;
+          transform: none;
+        }
+
+        .fl-docs-layer-top {
+          opacity: 0.4;
+        }
+      }
+    </style>
+  `,
+);
+
 function IllustrationBlock({
   className,
   svg,
@@ -29,13 +289,13 @@ function IllustrationBlock({
 }
 
 export function CloudSyncIllustration({ className }: IllustrationProps) {
-  return <IllustrationBlock className={className} svg={syncSvg} />;
+  return <IllustrationBlock className={className} svg={syncSvgAnimated} />;
 }
 
 export function CloudDocsManageIllustration({ className }: IllustrationProps) {
-  return <IllustrationBlock className={className} svg={docsManageSvg} />;
+  return <IllustrationBlock className={className} svg={docsManageSvgAnimated} />;
 }
 
 export function CloudDeployIllustration({ className }: IllustrationProps) {
-  return <IllustrationBlock className={className} svg={deploySvg} />;
+  return <IllustrationBlock className={className} svg={deploySvgAnimated} />;
 }
