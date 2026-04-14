@@ -1367,327 +1367,329 @@ export function ThemeCustomizer() {
           }}
         >
           <div className="flex flex-col h-full bg-[#0a0a0b] border-l border-white/[6%] shadow-2xl">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[6%]">
-            <div>
-              <div className="text-[13px] font-mono uppercase text-white">Customize</div>
-              <div className="text-[10px] text-white/30 mt-0.5">Live preview on these docs</div>
-            </div>
-            <div className="flex items-center gap-1">
-              <span
-                onClick={handleReset}
-                className="text-[10px] uppercase font-mono px-3 py-1 rounded-none border border-white/[8%] text-white/40 hover:text-white/70 hover:border-white/15 transition-colors cursor-pointer"
-              >
-                Reset
-              </span>
-              <button
-                onClick={() => setOpen(false)}
-                className="size-7 rounded-none flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[5%] transition-colors cursor-pointer"
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                >
-                  <path d="M18 6 6 18" />
-                  <path d="m6 6 12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-[1fr_auto_1fr] border-b border-white/[6%]">
-            <span
-              onClick={() => setActiveView("customize")}
-              className="text-[12px] font-mono uppercase py-2.5 transition-colors cursor-pointer text-center"
-              style={{
-                background: activeView === "customize" ? "rgba(255,255,255,0.06)" : "transparent",
-                color:
-                  activeView === "customize" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)",
-                fontWeight: activeView === "customize" ? 500 : 400,
-              }}
-            >
-              Customize
-            </span>
-            <div className="w-px bg-white/[6%]" />
-            <span
-              onClick={() => setActiveView("code")}
-              className="text-[12px] uppercase font-mono py-2.5 transition-colors cursor-pointer text-center"
-              style={{
-                background: activeView === "code" ? "rgba(255,255,255,0.06)" : "transparent",
-                color: activeView === "code" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)",
-                fontWeight: activeView === "code" ? 500 : 400,
-              }}
-            >
-              Export Code
-            </span>
-          </div>
-          {/* Content */}
-          <div
-            className={`flex-1 min-h-0 ${activeView === "code" ? "flex flex-col overflow-hidden" : "overflow-y-auto overflow-x-hidden"}`}
-          >
-            {activeView === "customize" ? (
-              <div className="px-4 py-3">
-                {/* Presets */}
-                <Section title="Preset">
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {(Object.keys(PRESETS) as PresetKey[]).map((key) => {
-                      const p = PRESETS[key];
-                      const active = state.preset === key;
-                      return (
-                        <button
-                          key={key}
-                          onClick={() => setPreset(key)}
-                          className="text-left rounded-sm px-3 py-2.5 border border-white/[6%] transition-all cursor-pointer"
-                          style={{
-                            borderColor: active
-                              ? `${p.colors.primary}60`
-                              : "rgba(255,255,255,0.06)",
-                            background: active ? `${p.colors.primary}08` : "transparent",
-                          }}
-                        >
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <div
-                              className="size-2.5 rounded-[3px]"
-                              style={{ background: p.colors.primary }}
-                            />
-                            <span
-                              className="text-[11px] font-medium"
-                              style={{ color: active ? p.colors.primary : "rgba(255,255,255,0.7)" }}
-                            >
-                              {p.label}
-                            </span>
-                          </div>
-                          <div className="text-[9px] text-white/25 leading-tight">{p.desc}</div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <a
-                    href="/themes"
-                    className="mt-2 flex items-center justify-center gap-1.5 rounded-sm px-3 py-2 border border-white/[6%] text-[11px] text-white/50 hover:text-white/80 hover:border-white/15 transition-all cursor-pointer"
-                  >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-                      <path d="M2 12h20" />
-                    </svg>
-                    Explore more themes
-                  </a>
-                </Section>
-
-                {/* Primary Color Quick Swatches */}
-                <Section title="Primary Color">
-                  <div className="flex flex-wrap mt-2 gap-1 mb-2">
-                    {PRIMARY_SWATCHES.map((s) => (
-                      <button
-                        key={s.color}
-                        title={s.name}
-                        onClick={() => setColor("primary", s.color)}
-                        className="size-5 rounded-[4px] cursor-pointer transition-transform hover:scale-110"
-                        style={{
-                          background: s.color,
-                          border:
-                            state.colors.primary === s.color
-                              ? "2px solid white"
-                              : "1px solid rgba(255,255,255,0.1)",
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <ColorSwatch
-                    label="Primary"
-                    value={state.colors.primary}
-                    onChange={(v) => setColor("primary", v)}
-                  />
-                </Section>
-
-                {/* Colors */}
-                <Section title="Colors">
-                  <ColorSwatch
-                    label="Background"
-                    value={state.colors.background}
-                    onChange={(v) => setColor("background", v)}
-                  />
-                  <ColorSwatch
-                    label="Foreground"
-                    value={state.colors.foreground}
-                    onChange={(v) => setColor("foreground", v)}
-                  />
-                  <ColorSwatch
-                    label="Muted Text"
-                    value={state.colors.mutedForeground}
-                    onChange={(v) => setColor("mutedForeground", v)}
-                  />
-                  <ColorSwatch
-                    label="Border"
-                    value={state.colors.border}
-                    onChange={(v) => setColor("border", v)}
-                  />
-                  <ColorSwatch
-                    label="Card"
-                    value={state.colors.card}
-                    onChange={(v) => setColor("card", v)}
-                  />
-                  <ColorSwatch
-                    label="Muted BG"
-                    value={state.colors.muted}
-                    onChange={(v) => setColor("muted", v)}
-                  />
-                  <ColorSwatch
-                    label="Ring"
-                    value={state.colors.ring}
-                    onChange={(v) => setColor("ring", v)}
-                  />
-                </Section>
-
-                {/* Layout */}
-                <Section title="Layout">
-                  <SelectField
-                    label="Sidebar"
-                    value={state.sidebar}
-                    options={[
-                      { value: "default", label: "Default" },
-                      { value: "bordered", label: "Bordered" },
-                      { value: "floating", label: "Floating" },
-                    ]}
-                    onChange={(v) => {
-                      setHasCustomized(true);
-                      setState((s) => ({ ...s, sidebar: v as SidebarStyle }));
-                    }}
-                  />
-                  <SelectField
-                    label="TOC Style"
-                    value={state.toc.style}
-                    options={[
-                      { value: "default", label: "Default" },
-                      { value: "directional", label: "Directional (tree)" },
-                    ]}
-                    onChange={(v) => {
-                      setHasCustomized(true);
-                      setState((s) => ({ ...s, toc: { ...s.toc, style: v as TocStyle } }));
-                    }}
-                  />
-                  <SelectField
-                    label="TOC Depth"
-                    value={String(state.toc.depth)}
-                    options={[
-                      { value: "2", label: "H2 only" },
-                      { value: "3", label: "H2 + H3" },
-                      { value: "4", label: "H2 – H4" },
-                    ]}
-                    onChange={(v) => {
-                      setHasCustomized(true);
-                      setState((s) => ({ ...s, toc: { ...s.toc, depth: Number(v) } }));
-                    }}
-                  />
-                  <ToggleSwitch
-                    label="TOC Visible"
-                    checked={state.toc.enabled}
-                    onChange={(v) => {
-                      setHasCustomized(true);
-                      setState((s) => ({ ...s, toc: { ...s.toc, enabled: v } }));
-                    }}
-                  />
-                </Section>
-
-                {/* AI */}
-                <Section title="Ask AI">
-                  <ToggleSwitch
-                    label="Enabled"
-                    checked={state.ai.enabled}
-                    onChange={(v) => {
-                      setHasCustomized(true);
-                      setState((s) => ({ ...s, ai: { ...s.ai, enabled: v } }));
-                    }}
-                  />
-                  {state.ai.enabled && (
-                    <>
-                      <SelectField
-                        label="Mode"
-                        value={state.ai.mode}
-                        options={[
-                          { value: "floating", label: "Floating" },
-                          { value: "search", label: "Search" },
-                          { value: "sidebar-icon", label: "Sidebar Icon" },
-                        ]}
-                        onChange={(v) => {
-                          setHasCustomized(true);
-                          setState((s) => ({
-                            ...s,
-                            ai: { ...s.ai, mode: v as AIMode },
-                          }));
-                        }}
-                      />
-                      {state.ai.mode === "floating" && (
-                        <>
-                          <SelectField
-                            label="Floating Style"
-                            value={state.ai.floatingStyle}
-                            options={[
-                              { value: "panel", label: "Panel" },
-                              { value: "modal", label: "Modal" },
-                              { value: "popover", label: "Popover" },
-                              { value: "full-modal", label: "Full Modal" },
-                            ]}
-                            onChange={(v) => {
-                              setHasCustomized(true);
-                              setState((s) => ({
-                                ...s,
-                                ai: { ...s.ai, floatingStyle: v as AIFloatingStyle },
-                              }));
-                            }}
-                          />
-                          <SelectField
-                            label="Position"
-                            value={state.ai.position}
-                            options={[
-                              { value: "bottom-right", label: "Bottom Right" },
-                              { value: "bottom-left", label: "Bottom Left" },
-                              { value: "bottom-center", label: "Bottom Center" },
-                            ]}
-                            onChange={(v) => {
-                              setHasCustomized(true);
-                              setState((s) => ({
-                                ...s,
-                                ai: { ...s.ai, position: v as AIPosition },
-                              }));
-                            }}
-                          />
-                        </>
-                      )}
-                    </>
-                  )}
-                </Section>
-
-                {/* Features */}
-                <Section title="Features">
-                  <ToggleSwitch
-                    label="Breadcrumb"
-                    checked={state.breadcrumb}
-                    onChange={(v) => {
-                      setHasCustomized(true);
-                      setState((s) => ({ ...s, breadcrumb: v }));
-                    }}
-                  />
-                </Section>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[6%]">
+              <div>
+                <div className="text-[13px] font-mono uppercase text-white">Customize</div>
+                <div className="text-[10px] text-white/30 mt-0.5">Live preview on these docs</div>
               </div>
-            ) : (
-              <CodeOutput cssCode={cssCode} configCode={configCode} />
-            )}
-          </div>
+              <div className="flex items-center gap-1">
+                <span
+                  onClick={handleReset}
+                  className="text-[10px] uppercase font-mono px-3 py-1 rounded-none border border-white/[8%] text-white/40 hover:text-white/70 hover:border-white/15 transition-colors cursor-pointer"
+                >
+                  Reset
+                </span>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="size-7 rounded-none flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[5%] transition-colors cursor-pointer"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  >
+                    <path d="M18 6 6 18" />
+                    <path d="m6 6 12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-[1fr_auto_1fr] border-b border-white/[6%]">
+              <span
+                onClick={() => setActiveView("customize")}
+                className="text-[12px] font-mono uppercase py-2.5 transition-colors cursor-pointer text-center"
+                style={{
+                  background: activeView === "customize" ? "rgba(255,255,255,0.06)" : "transparent",
+                  color:
+                    activeView === "customize" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)",
+                  fontWeight: activeView === "customize" ? 500 : 400,
+                }}
+              >
+                Customize
+              </span>
+              <div className="w-px bg-white/[6%]" />
+              <span
+                onClick={() => setActiveView("code")}
+                className="text-[12px] uppercase font-mono py-2.5 transition-colors cursor-pointer text-center"
+                style={{
+                  background: activeView === "code" ? "rgba(255,255,255,0.06)" : "transparent",
+                  color: activeView === "code" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)",
+                  fontWeight: activeView === "code" ? 500 : 400,
+                }}
+              >
+                Export Code
+              </span>
+            </div>
+            {/* Content */}
+            <div
+              className={`flex-1 min-h-0 ${activeView === "code" ? "flex flex-col overflow-hidden" : "overflow-y-auto overflow-x-hidden"}`}
+            >
+              {activeView === "customize" ? (
+                <div className="px-4 py-3">
+                  {/* Presets */}
+                  <Section title="Preset">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {(Object.keys(PRESETS) as PresetKey[]).map((key) => {
+                        const p = PRESETS[key];
+                        const active = state.preset === key;
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setPreset(key)}
+                            className="text-left rounded-sm px-3 py-2.5 border border-white/[6%] transition-all cursor-pointer"
+                            style={{
+                              borderColor: active
+                                ? `${p.colors.primary}60`
+                                : "rgba(255,255,255,0.06)",
+                              background: active ? `${p.colors.primary}08` : "transparent",
+                            }}
+                          >
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <div
+                                className="size-2.5 rounded-[3px]"
+                                style={{ background: p.colors.primary }}
+                              />
+                              <span
+                                className="text-[11px] font-medium"
+                                style={{
+                                  color: active ? p.colors.primary : "rgba(255,255,255,0.7)",
+                                }}
+                              >
+                                {p.label}
+                              </span>
+                            </div>
+                            <div className="text-[9px] text-white/25 leading-tight">{p.desc}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <a
+                      href="/themes"
+                      className="mt-2 flex items-center justify-center gap-1.5 rounded-sm px-3 py-2 border border-white/[6%] text-[11px] text-white/50 hover:text-white/80 hover:border-white/15 transition-all cursor-pointer"
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+                        <path d="M2 12h20" />
+                      </svg>
+                      Explore more themes
+                    </a>
+                  </Section>
+
+                  {/* Primary Color Quick Swatches */}
+                  <Section title="Primary Color">
+                    <div className="flex flex-wrap mt-2 gap-1 mb-2">
+                      {PRIMARY_SWATCHES.map((s) => (
+                        <button
+                          key={s.color}
+                          title={s.name}
+                          onClick={() => setColor("primary", s.color)}
+                          className="size-5 rounded-[4px] cursor-pointer transition-transform hover:scale-110"
+                          style={{
+                            background: s.color,
+                            border:
+                              state.colors.primary === s.color
+                                ? "2px solid white"
+                                : "1px solid rgba(255,255,255,0.1)",
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <ColorSwatch
+                      label="Primary"
+                      value={state.colors.primary}
+                      onChange={(v) => setColor("primary", v)}
+                    />
+                  </Section>
+
+                  {/* Colors */}
+                  <Section title="Colors">
+                    <ColorSwatch
+                      label="Background"
+                      value={state.colors.background}
+                      onChange={(v) => setColor("background", v)}
+                    />
+                    <ColorSwatch
+                      label="Foreground"
+                      value={state.colors.foreground}
+                      onChange={(v) => setColor("foreground", v)}
+                    />
+                    <ColorSwatch
+                      label="Muted Text"
+                      value={state.colors.mutedForeground}
+                      onChange={(v) => setColor("mutedForeground", v)}
+                    />
+                    <ColorSwatch
+                      label="Border"
+                      value={state.colors.border}
+                      onChange={(v) => setColor("border", v)}
+                    />
+                    <ColorSwatch
+                      label="Card"
+                      value={state.colors.card}
+                      onChange={(v) => setColor("card", v)}
+                    />
+                    <ColorSwatch
+                      label="Muted BG"
+                      value={state.colors.muted}
+                      onChange={(v) => setColor("muted", v)}
+                    />
+                    <ColorSwatch
+                      label="Ring"
+                      value={state.colors.ring}
+                      onChange={(v) => setColor("ring", v)}
+                    />
+                  </Section>
+
+                  {/* Layout */}
+                  <Section title="Layout">
+                    <SelectField
+                      label="Sidebar"
+                      value={state.sidebar}
+                      options={[
+                        { value: "default", label: "Default" },
+                        { value: "bordered", label: "Bordered" },
+                        { value: "floating", label: "Floating" },
+                      ]}
+                      onChange={(v) => {
+                        setHasCustomized(true);
+                        setState((s) => ({ ...s, sidebar: v as SidebarStyle }));
+                      }}
+                    />
+                    <SelectField
+                      label="TOC Style"
+                      value={state.toc.style}
+                      options={[
+                        { value: "default", label: "Default" },
+                        { value: "directional", label: "Directional (tree)" },
+                      ]}
+                      onChange={(v) => {
+                        setHasCustomized(true);
+                        setState((s) => ({ ...s, toc: { ...s.toc, style: v as TocStyle } }));
+                      }}
+                    />
+                    <SelectField
+                      label="TOC Depth"
+                      value={String(state.toc.depth)}
+                      options={[
+                        { value: "2", label: "H2 only" },
+                        { value: "3", label: "H2 + H3" },
+                        { value: "4", label: "H2 – H4" },
+                      ]}
+                      onChange={(v) => {
+                        setHasCustomized(true);
+                        setState((s) => ({ ...s, toc: { ...s.toc, depth: Number(v) } }));
+                      }}
+                    />
+                    <ToggleSwitch
+                      label="TOC Visible"
+                      checked={state.toc.enabled}
+                      onChange={(v) => {
+                        setHasCustomized(true);
+                        setState((s) => ({ ...s, toc: { ...s.toc, enabled: v } }));
+                      }}
+                    />
+                  </Section>
+
+                  {/* AI */}
+                  <Section title="Ask AI">
+                    <ToggleSwitch
+                      label="Enabled"
+                      checked={state.ai.enabled}
+                      onChange={(v) => {
+                        setHasCustomized(true);
+                        setState((s) => ({ ...s, ai: { ...s.ai, enabled: v } }));
+                      }}
+                    />
+                    {state.ai.enabled && (
+                      <>
+                        <SelectField
+                          label="Mode"
+                          value={state.ai.mode}
+                          options={[
+                            { value: "floating", label: "Floating" },
+                            { value: "search", label: "Search" },
+                            { value: "sidebar-icon", label: "Sidebar Icon" },
+                          ]}
+                          onChange={(v) => {
+                            setHasCustomized(true);
+                            setState((s) => ({
+                              ...s,
+                              ai: { ...s.ai, mode: v as AIMode },
+                            }));
+                          }}
+                        />
+                        {state.ai.mode === "floating" && (
+                          <>
+                            <SelectField
+                              label="Floating Style"
+                              value={state.ai.floatingStyle}
+                              options={[
+                                { value: "panel", label: "Panel" },
+                                { value: "modal", label: "Modal" },
+                                { value: "popover", label: "Popover" },
+                                { value: "full-modal", label: "Full Modal" },
+                              ]}
+                              onChange={(v) => {
+                                setHasCustomized(true);
+                                setState((s) => ({
+                                  ...s,
+                                  ai: { ...s.ai, floatingStyle: v as AIFloatingStyle },
+                                }));
+                              }}
+                            />
+                            <SelectField
+                              label="Position"
+                              value={state.ai.position}
+                              options={[
+                                { value: "bottom-right", label: "Bottom Right" },
+                                { value: "bottom-left", label: "Bottom Left" },
+                                { value: "bottom-center", label: "Bottom Center" },
+                              ]}
+                              onChange={(v) => {
+                                setHasCustomized(true);
+                                setState((s) => ({
+                                  ...s,
+                                  ai: { ...s.ai, position: v as AIPosition },
+                                }));
+                              }}
+                            />
+                          </>
+                        )}
+                      </>
+                    )}
+                  </Section>
+
+                  {/* Features */}
+                  <Section title="Features">
+                    <ToggleSwitch
+                      label="Breadcrumb"
+                      checked={state.breadcrumb}
+                      onChange={(v) => {
+                        setHasCustomized(true);
+                        setState((s) => ({ ...s, breadcrumb: v }));
+                      }}
+                    />
+                  </Section>
+                </div>
+              ) : (
+                <CodeOutput cssCode={cssCode} configCode={configCode} />
+              )}
+            </div>
           </div>
         </div>
       )}
