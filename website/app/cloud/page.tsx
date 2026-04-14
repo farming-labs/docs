@@ -176,10 +176,6 @@ export default function CloudPage() {
             </div>
 
             <div className="relative z-10 flex max-w-3xl flex-col pt-1 sm:pt-0 lg:min-h-full lg:justify-end">
-              <h1 className="max-w-[13ch] text-balance text-[2.45rem] font-semibold leading-[0.94] tracking-[-0.08em] text-black dark:text-white sm:hidden">
-                {heroTitle}
-              </h1>
-
               <Shuffle
                 text={heroTitle}
                 shuffleDirection="right"
@@ -189,6 +185,7 @@ export default function CloudPage() {
                 ease="power3.out"
                 stagger={0.03}
                 threshold={0.1}
+                playOnMount={true}
                 triggerOnce={true}
                 triggerOnHover
                 respectReducedMotion={true}
@@ -196,7 +193,7 @@ export default function CloudPage() {
                 loopDelay={0}
                 tag="h1"
                 textAlign="left"
-                className="hidden max-w-5xl font-semibold tracking-[-0.06em] text-black dark:text-white sm:block sm:text-5xl lg:text-6xl"
+                className="max-w-[12ch] font-semibold leading-[0.96] tracking-[-0.08em] text-black dark:text-white text-[2.15rem] sm:max-w-5xl sm:leading-none sm:tracking-[-0.06em] sm:text-5xl lg:text-6xl"
               />
 
               <p className="mt-3 max-w-[34rem] text-[15px] leading-6 text-black/55 dark:text-white/45 sm:mt-6 sm:text-lg sm:leading-relaxed">
