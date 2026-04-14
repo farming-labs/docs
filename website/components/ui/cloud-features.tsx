@@ -127,9 +127,8 @@ export function CloudFeatures() {
                     command="pnpm dlx @farming-labs/docs deploy"
                   />
                   <p className="mt-3 py-2 text-sm leading-relaxed text-black/60 dark:text-white/50">
-                    Ingest the repo graph, write the markdown updates you need, sync the
-                    dashboard, and end with a live docs URL, a draft PR, or a commit back to
-                    main.
+                    Ingest the repo graph, write the markdown updates you need, sync the dashboard,
+                    and end with a live docs URL, a draft PR, or a commit back to main.
                   </p>
                 </div>
               </div>
