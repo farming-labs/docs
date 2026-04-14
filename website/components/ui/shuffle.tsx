@@ -20,6 +20,7 @@ export interface ShuffleProps {
   rootMargin?: string;
   tag?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "span";
   textAlign?: React.CSSProperties["textAlign"];
+  onShuffleStart?: () => void;
   onShuffleComplete?: () => void;
   shuffleTimes?: number;
   animationMode?: "random" | "evenodd";
@@ -29,6 +30,7 @@ export interface ShuffleProps {
   scrambleCharset?: string;
   colorFrom?: string;
   colorTo?: string;
+  playOnMount?: boolean;
   triggerOnce?: boolean;
   respectReducedMotion?: boolean;
   triggerOnHover?: boolean;
@@ -46,6 +48,7 @@ const Shuffle: React.FC<ShuffleProps> = ({
   rootMargin = "-100px",
   tag = "p",
   textAlign = "center",
+  onShuffleStart,
   onShuffleComplete,
   shuffleTimes = 1,
   animationMode = "evenodd",
@@ -55,6 +58,7 @@ const Shuffle: React.FC<ShuffleProps> = ({
   scrambleCharset = "",
   colorFrom,
   colorTo,
+  playOnMount = false,
   triggerOnce = true,
   respectReducedMotion = true,
   triggerOnHover = true,
@@ -473,10 +477,20 @@ const Shuffle: React.FC<ShuffleProps> = ({
         if (scrambleCharset) {
           randomizeScrambles();
         }
+        onShuffleStart?.();
         play();
         armHover();
         setReady(true);
       };
+
+      if (playOnMount) {
+        create();
+        return () => {
+          removeHover();
+          teardown();
+          setReady(false);
+        };
+      }
 
       const trigger = ScrollTrigger.create({
         trigger: element,
@@ -503,7 +517,9 @@ const Shuffle: React.FC<ShuffleProps> = ({
         loop,
         loopDelay,
         maxDelay,
+        onShuffleStart,
         onShuffleComplete,
+        playOnMount,
         respectReducedMotion,
         scrambleCharset,
         scrollTriggerStart,

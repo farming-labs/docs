@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     "Managed docs infrastructure for teams shipping with @farming-labs/docs. Git-backed CMS, AI search, MCP, analytics, and workflows.",
 };
 
-const heroTitle = "infrastructure for teams shipping docs like product.";
+const heroTitle = "you ship the code and we write the docs for you.";
 
 const heroSignals = [
   "GitHub-backed CMS",
@@ -129,7 +129,7 @@ const accessCards = [
 
 export default function CloudPage() {
   return (
-    <div className="min-h-dvh bg-white text-black dark:bg-black dark:text-white">
+    <div className="min-h-dvh overflow-x-hidden bg-white text-black dark:bg-black dark:text-white">
       <div className="fixed inset-0 hidden pointer-events-none lg:block">
         <div className="mx-auto h-full max-w-[90%]">
           <div className="relative h-full">
@@ -176,10 +176,6 @@ export default function CloudPage() {
             </div>
 
             <div className="relative z-10 flex max-w-3xl flex-col pt-1 sm:pt-0 lg:min-h-full lg:justify-end">
-              <h1 className="max-w-[11ch] text-balance text-[2.6rem] font-semibold leading-[0.92] tracking-[-0.08em] text-black dark:text-white sm:hidden">
-                {heroTitle}
-              </h1>
-
               <Shuffle
                 text={heroTitle}
                 shuffleDirection="right"
@@ -189,6 +185,7 @@ export default function CloudPage() {
                 ease="power3.out"
                 stagger={0.03}
                 threshold={0.1}
+                playOnMount={true}
                 triggerOnce={true}
                 triggerOnHover
                 respectReducedMotion={true}
@@ -196,7 +193,7 @@ export default function CloudPage() {
                 loopDelay={0}
                 tag="h1"
                 textAlign="left"
-                className="hidden max-w-4xl font-semibold tracking-[-0.06em] text-black dark:text-white sm:block sm:text-5xl lg:text-6xl"
+                className="max-w-[12ch] font-semibold leading-[0.96] tracking-[-0.08em] text-black dark:text-white text-[2.15rem] sm:max-w-5xl sm:leading-none sm:tracking-[-0.06em] sm:text-5xl lg:text-6xl"
               />
 
               <p className="mt-3 max-w-[34rem] text-[15px] leading-6 text-black/55 dark:text-white/45 sm:mt-6 sm:text-lg sm:leading-relaxed">
@@ -440,15 +437,16 @@ export default function CloudPage() {
                       Sync the graph, write docs, open a draft PR, and ship a live URL.
                     </h3>
                     <p className="mt-4 max-w-sm text-sm leading-relaxed text-black/55 dark:text-white/45">
-                      The cloud layer handles repo ingest, markdown generation, dashboard sync, and
-                      deployment without replacing the GitHub flow you already trust.
+                      You ship the code. Cloud writes the docs for you, then opens a draft PR or
+                      commits the generated updates to main without replacing the GitHub flow you
+                      already trust.
                     </p>
                   </div>
 
                   <div className="mt-2 sm:-mt-2 grid gap-2">
                     {[
                       "Repo knowledge graph stays current",
-                      "Generated MDX can commit or open a draft PR",
+                      "Generated MDX can open a draft PR or commit to main",
                       "Dashboard state follows the deployment",
                     ].map((item, index) => (
                       <div
