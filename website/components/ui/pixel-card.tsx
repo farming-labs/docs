@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface PixelCardProps {
   children: ReactNode;
@@ -23,7 +24,7 @@ export default function PixelCard({
   };
 
   return (
-    <div className={`${baseClasses} ${variantClasses[variant]} ${className}`}>
+    <div className={cn(baseClasses, variantClasses[variant], className)}>
       <div
         className="absolute inset-0 pointer-events-none opacity-60 dark:opacity-80 mix-blend-overlay"
         style={{

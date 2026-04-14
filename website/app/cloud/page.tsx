@@ -422,7 +422,7 @@ export default function CloudPage() {
             <span className="hidden sm:inline-flex items-center gap-2">no forced upgrade path</span>
           </div>
 
-          <PixelCard className="border-black/10 bg-white/95 p-0 sm:p-0 dark:border-white/10 dark:bg-black/35">
+          <PixelCard className="border-black/10 bg-white/95 p-4 sm:p-0 dark:border-white/10 dark:bg-black/35">
             <div className="relative">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(125%_125%_at_50%_0%,transparent_40%,rgba(0,0,0,0.03),white_125%)] dark:bg-[radial-gradient(125%_125%_at_50%_0%,transparent_40%,rgba(255,255,255,0.03),rgba(0,0,0,0.92)_125%)]" />
               <div className="grid gap-0 lg:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)]">
@@ -470,16 +470,16 @@ export default function CloudPage() {
         </section>
 
         <section>
-          <PixelCard className="border-black/10 bg-black px-5 py-7 text-white hover:bg-black dark:border-white/10 dark:bg-black dark:text-white dark:hover:bg-black sm:px-8 sm:py-8">
+          <PixelCard className="border-black/10 bg-white px-5 py-7 text-black hover:bg-white dark:border-white/10 dark:bg-black dark:text-white dark:hover:bg-black sm:px-8 sm:py-8">
             <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-white/55 dark:text-white/55">
+                <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/55">
                   Early access
                 </p>
-                <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-[-0.05em] sm:text-4xl">
+                <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-[-0.05em] text-black dark:text-white sm:text-4xl">
                   Help shape the first release around the parts your team actually needs.
                 </h2>
-                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/70 dark:text-white/70">
+                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-black/60 dark:text-white/70">
                   Tell us which part of your docs stack is hardest today. We’re using that to shape
                   the first release.
                 </p>
@@ -488,14 +488,14 @@ export default function CloudPage() {
               <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-8">
                 <a
                   href="#waitlist"
-                  className="group inline-flex items-center gap-2 border border-white/20 px-5 py-3 font-mono text-[10px] uppercase tracking-normal text-white transition-all hover:bg-white hover:text-black hover:no-underline"
+                  className="group inline-flex items-center gap-2 border border-black bg-black px-5 py-3 font-mono text-[10px] uppercase tracking-normal text-white transition-all hover:bg-black/90 hover:no-underline dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
                 >
                   Join waitlist
                   <ArrowRight className="size-3.5 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
                 </a>
                 <Link
                   href="/docs"
-                  className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-normal text-white/65 transition-colors hover:text-white hover:no-underline"
+                  className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-normal text-black/55 transition-colors hover:text-black hover:no-underline dark:text-white/65 dark:hover:text-white"
                 >
                   Docs
                   <ArrowUpRight className="size-3.5" />

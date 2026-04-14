@@ -315,8 +315,8 @@ function IllustrationHalo({ className }: { className?: string }) {
       )}
     >
       <div className="relative h-44 w-80 sm:h-52 sm:w-[26rem]">
-        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.7)_0%,rgba(255,255,255,0.2)_34%,rgba(255,255,255,0.05)_55%,transparent_82%)] opacity-28 blur-3xl dark:bg-[radial-gradient(circle,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0.08)_34%,rgba(255,255,255,0.03)_55%,transparent_82%)] dark:opacity-45" />
-        <div className="absolute inset-x-[10%] inset-y-[16%] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.35)_0%,rgba(255,255,255,0.08)_40%,transparent_74%)] opacity-32 blur-2xl dark:bg-[radial-gradient(circle,rgba(255,255,255,0.12)_0%,rgba(255,255,255,0.04)_40%,transparent_74%)] dark:opacity-40" />
+        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(0,0,0,0.1)_0%,rgba(0,0,0,0.04)_34%,rgba(0,0,0,0.015)_55%,transparent_82%)] opacity-45 blur-3xl dark:bg-[radial-gradient(circle,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0.08)_34%,rgba(255,255,255,0.03)_55%,transparent_82%)] dark:opacity-45" />
+        <div className="absolute inset-x-[10%] inset-y-[16%] rounded-full bg-[radial-gradient(circle,rgba(0,0,0,0.06)_0%,rgba(0,0,0,0.02)_40%,transparent_74%)] opacity-40 blur-2xl dark:bg-[radial-gradient(circle,rgba(255,255,255,0.12)_0%,rgba(255,255,255,0.04)_40%,transparent_74%)] dark:opacity-40" />
       </div>
     </div>
   );

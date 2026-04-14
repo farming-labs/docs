@@ -130,12 +130,12 @@ export default function CloudWaitlistForm() {
   }
 
   return (
-    <PixelCard className="w-full shrink-0 border-b sm:border-b-0 border-t sm:border-t-0 border-black/10 bg-white/95 p-0 lg:-mt-[39px] dark:border-white/10 dark:bg-black/40">
+    <PixelCard className="w-full shrink-0 border-b sm:border-b-0 border-t sm:border-t-0 border-black/10 bg-white/95 p-0 pt-0 sm:pt-14 lg:-mt-[39px] dark:border-white/10 dark:bg-black/40">
       <div className="border-b border-black/10 px-5 py-3 dark:border-white/10">
-        <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
+        <p className="text-[10px] font-mono uppercase tracking-wide text-black/45 dark:text-white/45">
           Join the waitlist
         </p>
-        <h2 className="mt-2 text-xl font-semibold tracking-tight text-black dark:text-white">
+        <h2 className="mt-2 text-xl font-normal font-pixel tracking-normal text-black dark:text-white">
           Get first access.
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-black/55 dark:text-white/45">
@@ -231,7 +231,7 @@ export default function CloudWaitlistForm() {
           </span>
         </button>
 
-        {submitState.message ? (
+        {/* {submitState.message ? (
           <p
             className={[
               "border px-3 py-2 text-[11px] leading-relaxed",
@@ -244,7 +244,7 @@ export default function CloudWaitlistForm() {
           >
             {submitState.message}
           </p>
-        ) : null}
+        ) : null} */}
 
         <p className="text-[11px] leading-relaxed text-black/45 dark:text-white/40">
           GitHub stays the source of truth. This is the layer around it.
