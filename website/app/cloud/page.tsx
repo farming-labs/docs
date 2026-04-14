@@ -471,16 +471,10 @@ export default function CloudPage() {
         </section>
 
         <section>
-          <PixelCard className="border-black/10 bg-white px-5 py-7 text-black hover:bg-white dark:border-white/10 dark:bg-black dark:text-white dark:hover:bg-black sm:px-8 sm:py-8">
-            <div
-              aria-hidden
-              className="absolute inset-0 pointer-events-none opacity-60 mix-blend-multiply dark:opacity-0"
-              style={{
-                backgroundImage: "url(/shades.png)",
-                backgroundRepeat: "repeat",
-                backgroundSize: "auto",
-              }}
-            />
+          <PixelCard
+            showTexture={false}
+            className="border-black/10 bg-white px-5 py-7 text-black hover:bg-white dark:border-white/10 dark:bg-black dark:text-white dark:hover:bg-black sm:px-8 sm:py-8"
+          >
             <div className="relative z-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/55">

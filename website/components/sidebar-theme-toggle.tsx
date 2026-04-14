@@ -29,8 +29,8 @@ export function SidebarThemeToggle() {
     return () => observer.disconnect();
   }, [mounted]);
 
-  const toggle = () => {
-    if (isDark) {
+  const applyTheme = (nextIsDark: boolean) => {
+    if (!nextIsDark) {
       document.documentElement.classList.remove("dark");
       document.documentElement.classList.add("light");
       document.documentElement.style.colorScheme = "light";
@@ -45,7 +45,26 @@ export function SidebarThemeToggle() {
         localStorage.setItem("theme", "dark");
       } catch {}
     }
-    setIsDark(!isDark);
+    setIsDark(nextIsDark);
+  };
+
+  const toggle = () => {
+    const nextIsDark = !isDark;
+
+    const documentWithTransition = document as Document & {
+      startViewTransition?: (callback: () => void) => {
+        finished: Promise<void>;
+      };
+    };
+
+    if (!documentWithTransition.startViewTransition) {
+      applyTheme(nextIsDark);
+      return;
+    }
+
+    documentWithTransition.startViewTransition(() => {
+      applyTheme(nextIsDark);
+    });
   };
 
   if (!mounted) return null;
@@ -55,7 +74,7 @@ export function SidebarThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="inline-flex items-center gap-1 rounded-full border p-1.5 transition-colors hover:opacity-90"
+      className="inline-flex items-center gap-1 rounded-3xl border p-1.5 transition-colors hover:opacity-90"
       style={{
         borderColor: "var(--color-fd-border)",
         color: "var(--color-fd-muted-foreground)",
