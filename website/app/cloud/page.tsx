@@ -187,10 +187,10 @@ export default function CloudPage() {
                 threshold={0.1}
                 playOnMount={true}
                 triggerOnce={true}
-                triggerOnHover
+                triggerOnHover={false}
                 respectReducedMotion={true}
-                loop={false}
-                loopDelay={0}
+                loop={true}
+                loopDelay={5}
                 tag="h1"
                 textAlign="left"
                 className="max-w-[12ch] font-semibold leading-[0.96] tracking-[-0.08em] text-black dark:text-white text-[2.15rem] sm:max-w-5xl sm:leading-none sm:tracking-[-0.06em] sm:text-5xl lg:text-6xl"
