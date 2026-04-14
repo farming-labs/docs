@@ -57,7 +57,7 @@ export function CloudFeatures() {
             <CardHeading
               icon={FilePenLine}
               title="Git-backed editing"
-              description="Draft docs with AI help, keep frontmatter clean, and open pull requests from the same place."
+              description="You ship the code. Cloud drafts the docs, keeps frontmatter clean, and opens pull requests."
             />
           </CardHeader>
 
@@ -127,8 +127,9 @@ export function CloudFeatures() {
                     command="pnpm dlx @farming-labs/docs deploy"
                   />
                   <p className="mt-3 py-2 text-sm leading-relaxed text-black/60 dark:text-white/50">
-                    Ingest the repo graph, draft the markdown updates you need, sync the dashboard,
-                    and end with a live docs URL or a draft PR back to GitHub.
+                    Ingest the repo graph, write the markdown updates you need, sync the
+                    dashboard, and end with a live docs URL, a draft PR, or a commit back to
+                    main.
                   </p>
                 </div>
               </div>

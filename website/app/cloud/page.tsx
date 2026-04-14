@@ -440,15 +440,16 @@ export default function CloudPage() {
                       Sync the graph, write docs, open a draft PR, and ship a live URL.
                     </h3>
                     <p className="mt-4 max-w-sm text-sm leading-relaxed text-black/55 dark:text-white/45">
-                      The cloud layer handles repo ingest, markdown generation, dashboard sync, and
-                      deployment without replacing the GitHub flow you already trust.
+                      You ship the code. Cloud writes the docs for you, then opens a draft PR or
+                      commits the generated updates to main without replacing the GitHub flow you
+                      already trust.
                     </p>
                   </div>
 
                   <div className="mt-2 sm:-mt-2 grid gap-2">
                     {[
                       "Repo knowledge graph stays current",
-                      "Generated MDX can commit or open a draft PR",
+                      "Generated MDX can open a draft PR or commit to main",
                       "Dashboard state follows the deployment",
                     ].map((item, index) => (
                       <div
