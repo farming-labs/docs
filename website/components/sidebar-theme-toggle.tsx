@@ -36,14 +36,14 @@ export function SidebarThemeToggle() {
       document.documentElement.style.colorScheme = "light";
       try {
         localStorage.setItem("theme", "light");
-      } catch { }
+      } catch {}
     } else {
       document.documentElement.classList.remove("light");
       document.documentElement.classList.add("dark");
       document.documentElement.style.colorScheme = "dark";
       try {
         localStorage.setItem("theme", "dark");
-      } catch { }
+      } catch {}
     }
     setIsDark(nextIsDark);
   };
@@ -80,13 +80,12 @@ export function SidebarThemeToggle() {
         // color: "var(--color-fd-muted-foreground)",
       }}
     >
+      {isDark ? <Moon size={12} aria-hidden /> : <Sun size={12} aria-hidden />}/{" "}
       {isDark ? (
-        <Moon size={12}  aria-hidden />
+        <span className="ml-1 font-mono text-[11px]">LIGHT</span>
       ) : (
-        <Sun size={12} aria-hidden />
+        <span className="ml-1 font-mono text-[11px]">DARK</span>
       )}
-      / {" "}
-      {isDark ? (<span className="ml-1 font-mono text-[11px]">LIGHT</span>) : (<span className="ml-1 font-mono text-[11px]">DARK</span>)}
     </button>
   );
 }
