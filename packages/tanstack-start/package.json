@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/tanstack-start",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "TanStack Start adapter for @farming-labs/docs — content loading, search, and AI utilities",
   "keywords": [
     "docs",
