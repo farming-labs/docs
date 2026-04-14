@@ -4,6 +4,14 @@
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "Cascadia Code",
     "Source Code Pro", Menlo, Consolas, monospace;
+  --font-pixel: var(--font-geist-pixel-square), ui-monospace, monospace;
+}
+
+.font-pixel {
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: auto;
+  font-smooth: never;
+  text-rendering: optimizeSpeed;
 }
 
 ::selection {

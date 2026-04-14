@@ -15,6 +15,7 @@ import {
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import { CloudDocsManageIllustration } from "@/components/ui/cloud-feature-illustrations";
 import { CloudFeatures } from "@/components/ui/cloud-features";
+import { CloudTerminalDemo } from "@/components/ui/cloud-terminal-demo";
 import CloudWaitlistForm from "@/components/ui/cloud-waitlist-form";
 import PixelCard from "@/components/ui/pixel-card";
 import Shuffle from "@/components/ui/shuffle";
@@ -420,6 +421,52 @@ export default function CloudPage() {
             <span className="hidden h-3 w-px bg-black/10 md:block dark:bg-white/10" />
             <span className="hidden sm:inline-flex items-center gap-2">no forced upgrade path</span>
           </div>
+
+          <PixelCard className="border-black/10 bg-white/95 sm:p-0 dark:border-white/10 dark:bg-black/35">
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(125%_125%_at_50%_0%,transparent_40%,rgba(0,0,0,0.03),white_125%)] dark:bg-[radial-gradient(125%_125%_at_50%_0%,transparent_40%,rgba(255,255,255,0.03),rgba(0,0,0,0.92)_125%)]" />
+              <div className="grid gap-0 lg:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)]">
+              <div className="border-b border-black/10 p-4 dark:border-white/10 sm:p-0 lg:border-b-0 lg:border-r">
+                <CloudTerminalDemo />
+              </div>
+
+              <div className="flex flex-col justify-between p-5">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
+                    Managed flow
+                  </p>
+                  <h3
+                    className="mt-3 max-w-sm font-pixel text-lg font-medium uppercase leading-relaxed tracking-normal text-black dark:text-white sm:text-xl"
+                  >
+                    Sync the graph, write docs, open a draft PR, and ship a live URL.
+                  </h3>
+                  <p className="mt-4 max-w-sm text-sm leading-relaxed text-black/55 dark:text-white/45">
+                    The cloud layer handles repo ingest, markdown generation, dashboard sync, and
+                    deployment without replacing the GitHub flow you already trust.
+                  </p>
+                </div>
+
+                <div className="-mt-2 grid gap-2">
+                  {[
+                    "Repo knowledge graph stays current",
+                    "Generated MDX can commit or open a draft PR",
+                    "Dashboard state follows the deployment",
+                  ].map((item, index) => (
+                    <div
+                      key={item}
+                      className="flex items-center gap-3 border border-black/10 px-3 py-2 dark:border-white/10"
+                    >
+                      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-black/35 dark:text-white/35">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="text-sm text-black/65 dark:text-white/55 font-pixel">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              </div>
+            </div>
+          </PixelCard>
         </section>
 
         <section>
@@ -519,7 +566,9 @@ function CloudAccessCard({
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-black/45 dark:text-white/45">
             # {label}
           </p>
-          <h3 className="text-xl font-semibold tracking-tight text-black dark:text-white">
+          <h3
+            className="font-pixel text-xl font-medium tracking-normal text-black dark:text-white"
+          >
             {title}
           </h3>
           <p className="text-sm leading-relaxed text-black/55 dark:text-white/45">{description}</p>

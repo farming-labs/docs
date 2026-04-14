@@ -127,8 +127,8 @@ export function CloudFeatures() {
                     command="pnpm dlx @farming-labs/docs deploy"
                   />
                   <p className="mt-3 py-2 text-sm leading-relaxed text-black/60 dark:text-white/50">
-                    Provision a live docs URL, ingest the repo knowledge graph, and keep pushes
-                    flowing back through GitHub.
+                    Ingest the repo graph, draft the markdown updates you need, sync the dashboard,
+                    and end with a live docs URL or a draft PR back to GitHub.
                   </p>
                 </div>
               </div>
@@ -256,7 +256,9 @@ function CardHeading({
     <div className="p-0">
       <span className="text-muted-foreground flex items-center gap-2 text-black/55 dark:text-white/50">
         <Icon className="size-4" />
-        <span className="font-mono text-[11px] uppercase tracking-[0.18em]">{title}</span>
+        <span className="font-pixel text-[11px] uppercase tracking-[0.14em]">
+          {title}
+        </span>
       </span>
       <p className="mt-4 text-xl font-semibold text-black sm:mt-6 sm:text-2xl dark:text-white">
         {description}

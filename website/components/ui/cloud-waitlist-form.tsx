@@ -230,6 +230,22 @@ export default function CloudWaitlistForm() {
             </span>
           </span>
         </button>
+
+        {submitState.message ? (
+          <p
+            className={[
+              "border px-3 py-2 text-[11px] leading-relaxed",
+              submitState.status === "success"
+                ? "border-black/15 bg-black/[0.03] text-black/60 dark:border-white/15 dark:bg-white/[0.04] dark:text-white/60"
+                : submitState.status === "warning"
+                  ? "border-black/12 bg-black/[0.02] text-black/55 dark:border-white/12 dark:bg-white/[0.03] dark:text-white/55"
+                  : "border-black/12 bg-black/[0.015] text-black/55 dark:border-white/12 dark:bg-white/[0.02] dark:text-white/55",
+            ].join(" ")}
+          >
+            {submitState.message}
+          </p>
+        ) : null}
+
         <p className="text-[11px] leading-relaxed text-black/45 dark:text-white/40">
           GitHub stays the source of truth. This is the layer around it.
         </p>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { GeistPixelSquare } from "geist/font/pixel";
 import { RootProvider } from "@farming-labs/theme";
 import { Databuddy } from "@databuddy/sdk/react";
 import { Suspense } from "react";
@@ -66,10 +67,12 @@ const themeScript = `
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistSansDocs.variable} ${geistMono.variable} ${geistMonoDocs.variable} antialiased bg-fd-background`}
-      >
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistSansDocs.variable} ${geistMono.variable} ${geistMonoDocs.variable} ${GeistPixelSquare.variable}`}
+    >
+      <body className="antialiased bg-fd-background">
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <RootProvider>
           {children}
