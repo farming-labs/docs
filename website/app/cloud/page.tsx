@@ -198,7 +198,7 @@ export default function CloudPage() {
               />
 
               <p className="mt-3 max-w-[34rem] text-[15px] leading-6 text-black/55 dark:text-white/45 sm:mt-6 sm:text-lg sm:leading-relaxed">
-                Keep the open runtime. Add the layer for editing, search, analytics, AI, and docs
+                Keep the open runtime. Add the layer for editing, search, analytics, AI, knowledge graphs and docs
                 operations.
               </p>
 
