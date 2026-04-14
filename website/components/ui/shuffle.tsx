@@ -20,6 +20,7 @@ export interface ShuffleProps {
   rootMargin?: string;
   tag?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "span";
   textAlign?: React.CSSProperties["textAlign"];
+  onShuffleStart?: () => void;
   onShuffleComplete?: () => void;
   shuffleTimes?: number;
   animationMode?: "random" | "evenodd";
@@ -46,6 +47,7 @@ const Shuffle: React.FC<ShuffleProps> = ({
   rootMargin = "-100px",
   tag = "p",
   textAlign = "center",
+  onShuffleStart,
   onShuffleComplete,
   shuffleTimes = 1,
   animationMode = "evenodd",
@@ -473,6 +475,7 @@ const Shuffle: React.FC<ShuffleProps> = ({
         if (scrambleCharset) {
           randomizeScrambles();
         }
+        onShuffleStart?.();
         play();
         armHover();
         setReady(true);
@@ -503,6 +506,7 @@ const Shuffle: React.FC<ShuffleProps> = ({
         loop,
         loopDelay,
         maxDelay,
+        onShuffleStart,
         onShuffleComplete,
         respectReducedMotion,
         scrambleCharset,

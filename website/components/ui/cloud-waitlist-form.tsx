@@ -266,7 +266,6 @@ function InterestOptionList({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const selectedOptions = options.filter((option) => value.includes(option.value));
-  const selectedLabels = selectedOptions.map((option) => option.label).join(", ");
   const selectionLimitReached = value.length >= 3;
 
   useEffect(() => {
@@ -294,7 +293,7 @@ function InterestOptionList({
   }, [open]);
 
   return (
-    <div ref={rootRef} className="space-y-2">
+    <div ref={rootRef} className="min-w-0 space-y-2">
       <label className="mb-1 block text-[10px] font-mono uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
         What should ship first?
       </label>
@@ -305,12 +304,28 @@ function InterestOptionList({
           aria-haspopup="listbox"
           aria-expanded={open}
           onClick={() => setOpen((current) => !current)}
-          className="flex w-full items-center justify-between gap-3 border border-black/10 bg-black/[0.015] px-3 py-2.5 text-left text-sm text-black transition-colors hover:border-black/20 dark:border-white/10 dark:bg-white/[0.015] dark:text-white dark:hover:border-white/20"
+          className="flex min-w-0 w-full items-start justify-between gap-3 border border-black/10 bg-black/[0.015] px-3 py-2.5 text-left text-sm text-black transition-colors hover:border-black/20 dark:border-white/10 dark:bg-white/[0.015] dark:text-white dark:hover:border-white/20"
         >
-          <div className="min-w-0">
-            <span className="block truncate leading-snug">
-              {selectedLabels || "Pick up to 3 priorities"}
-            </span>
+          <div className="min-w-0 flex-1">
+            {selectedOptions.length ? (
+              <div className="space-y-1.5 sm:flex sm:flex-wrap sm:gap-1.5 sm:space-y-0">
+                {selectedOptions.map((option, index) => (
+                  <span
+                    key={option.value}
+                    className="flex min-w-0 max-w-full items-start gap-1.5 border border-black/10 bg-black/[0.025] px-2 py-1 text-[11px] leading-tight dark:border-white/10 dark:bg-white/[0.05] sm:inline-flex sm:max-w-[calc(100%-0.375rem)]"
+                  >
+                    <span className="shrink-0 font-mono uppercase tracking-[0.16em] text-black/40 dark:text-white/40">
+                      {String(index + 1).padStart(2, "0")}.
+                    </span>
+                    <span className="min-w-0 break-words">{option.label}</span>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="block leading-snug text-black/65 dark:text-white/65">
+                Pick up to 3 priorities
+              </span>
+            )}
             <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.16em] text-black/35 dark:text-white/35">
               {value.length}/3 selected
             </span>
@@ -318,14 +333,14 @@ function InterestOptionList({
 
           <ChevronDown
             className={[
-              "size-4 shrink-0 text-black/45 transition-transform dark:text-white/45",
+              "mt-0.5 size-4 shrink-0 text-black/45 transition-transform dark:text-white/45",
               open ? "rotate-180" : "",
             ].join(" ")}
           />
         </button>
 
         {open ? (
-          <div className="absolute left-0 right-0 top-[calc(100%+0.4rem)] z-30 border border-black/10 bg-white shadow-[0_16px_40px_rgba(0,0,0,0.08)] dark:border-white/10 dark:bg-black">
+          <div className="relative z-30 mt-2 border border-black/10 bg-white shadow-[0_16px_40px_rgba(0,0,0,0.08)] sm:absolute sm:left-0 sm:right-0 sm:top-[calc(100%+0.4rem)] sm:mt-0 dark:border-white/10 dark:bg-black">
             <div
               role="listbox"
               aria-label="What should ship first?"

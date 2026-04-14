@@ -15,10 +15,10 @@ import {
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import { CloudDocsManageIllustration } from "@/components/ui/cloud-feature-illustrations";
 import { CloudFeatures } from "@/components/ui/cloud-features";
+import { CloudHeroHeadline } from "@/components/ui/cloud-hero-headline";
 import { CloudTerminalDemo } from "@/components/ui/cloud-terminal-demo";
 import CloudWaitlistForm from "@/components/ui/cloud-waitlist-form";
 import PixelCard from "@/components/ui/pixel-card";
-import Shuffle from "@/components/ui/shuffle";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 
 export const metadata: Metadata = {
@@ -27,7 +27,8 @@ export const metadata: Metadata = {
     "Managed docs infrastructure for teams shipping with @farming-labs/docs. Git-backed CMS, AI search, MCP, analytics, and workflows.",
 };
 
-const heroTitle = "infrastructure for teams shipping docs like product.";
+const heroTitle = "you ship the code and we write the docs for you.";
+const heroTitleShuffled = "infrastructure for teams shipping docs like product.";
 
 const heroSignals = [
   "GitHub-backed CMS",
@@ -129,7 +130,7 @@ const accessCards = [
 
 export default function CloudPage() {
   return (
-    <div className="min-h-dvh bg-white text-black dark:bg-black dark:text-white">
+    <div className="min-h-dvh overflow-x-hidden bg-white text-black dark:bg-black dark:text-white">
       <div className="fixed inset-0 hidden pointer-events-none lg:block">
         <div className="mx-auto h-full max-w-[90%]">
           <div className="relative h-full">
@@ -176,28 +177,7 @@ export default function CloudPage() {
             </div>
 
             <div className="relative z-10 flex max-w-3xl flex-col pt-1 sm:pt-0 lg:min-h-full lg:justify-end">
-              <h1 className="max-w-[11ch] text-balance text-[2.6rem] font-semibold leading-[0.92] tracking-[-0.08em] text-black dark:text-white sm:hidden">
-                {heroTitle}
-              </h1>
-
-              <Shuffle
-                text={heroTitle}
-                shuffleDirection="right"
-                duration={0.35}
-                animationMode="evenodd"
-                shuffleTimes={1}
-                ease="power3.out"
-                stagger={0.03}
-                threshold={0.1}
-                triggerOnce={true}
-                triggerOnHover
-                respectReducedMotion={true}
-                loop={false}
-                loopDelay={0}
-                tag="h1"
-                textAlign="left"
-                className="hidden max-w-4xl font-semibold tracking-[-0.06em] text-black dark:text-white sm:block sm:text-5xl lg:text-6xl"
-              />
+              <CloudHeroHeadline initialText={heroTitle} shuffledText={heroTitleShuffled} />
 
               <p className="mt-3 max-w-[34rem] text-[15px] leading-6 text-black/55 dark:text-white/45 sm:mt-6 sm:text-lg sm:leading-relaxed">
                 Keep the open runtime. Add the layer for editing, search, analytics, AI, knowledge

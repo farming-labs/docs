@@ -1356,17 +1356,17 @@ export function ThemeCustomizer() {
       )}
 
       {/* Drawer */}
-      <div
-        data-customizer
-        className="fixed top-0 right-0 z-[10010] h-dvh flex flex-col transition-transform duration-300 ease-out"
-        style={{
-          width: 400,
-          transform: isDocsPage && open ? "translateX(0)" : "translateX(100%)",
-          ["--cz-accent" as string]: state.colors.primary,
-          pointerEvents: isDocsPage ? undefined : "none",
-        }}
-      >
-        <div className="flex flex-col h-full bg-[#0a0a0b] border-l border-white/[6%] shadow-2xl">
+      {isDocsPage && (
+        <div
+          data-customizer
+          className="fixed top-0 right-0 z-[10010] h-dvh flex flex-col transition-transform duration-300 ease-out"
+          style={{
+            width: 400,
+            transform: open ? "translateX(0)" : "translateX(100%)",
+            ["--cz-accent" as string]: state.colors.primary,
+          }}
+        >
+          <div className="flex flex-col h-full bg-[#0a0a0b] border-l border-white/[6%] shadow-2xl">
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/[6%]">
             <div>
               <div className="text-[13px] font-mono uppercase text-white">Customize</div>
@@ -1688,8 +1688,9 @@ export function ThemeCustomizer() {
               <CodeOutput cssCode={cssCode} configCode={configCode} />
             )}
           </div>
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 }
