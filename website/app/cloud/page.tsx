@@ -103,7 +103,7 @@ const accessCards = [
   },
   {
     title: "Affordable cloud",
-    icon: Sparkles,
+    icon: Cloud,
     backgroundIcon: Cloud,
     description:
       "Add managed deploys, RAG pipelines, knowledge workers, branded docs, and search operations at a price that still makes sense for solos and small teams.",
