@@ -19,6 +19,7 @@ import { CloudTerminalDemo } from "@/components/ui/cloud-terminal-demo";
 import CloudWaitlistForm from "@/components/ui/cloud-waitlist-form";
 import PixelCard from "@/components/ui/pixel-card";
 import Shuffle from "@/components/ui/shuffle";
+import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 
 export const metadata: Metadata = {
   title: "Cloud",
@@ -471,7 +472,16 @@ export default function CloudPage() {
 
         <section>
           <PixelCard className="border-black/10 bg-white px-5 py-7 text-black hover:bg-white dark:border-white/10 dark:bg-black dark:text-white dark:hover:bg-black sm:px-8 sm:py-8">
-            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+            <div
+              aria-hidden
+              className="absolute inset-0 pointer-events-none opacity-60 mix-blend-multiply dark:opacity-0"
+              style={{
+                backgroundImage: "url(/shades.png)",
+                backgroundRepeat: "repeat",
+                backgroundSize: "auto",
+              }}
+            />
+            <div className="relative z-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/55">
                   Early access
@@ -593,7 +603,7 @@ function CloudFooterSection() {
       <div className="absolute bottom-10 left-0 h-px w-full bg-black/[8%] dark:bg-white/[8%]" />
       <div className="absolute bottom-24 left-0 h-px w-full bg-black/[8%] dark:bg-white/[8%]" />
       <div className="mx-auto max-w-[92%] py-12 sm:max-w-[90%]">
-        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-stretch">
           <div className="w-full">
             <span className="font-mono text-xs uppercase tracking-tighter text-black/40 dark:text-white/40">
               <Link
@@ -616,27 +626,36 @@ function CloudFooterSection() {
             </p>
           </div>
 
-          <div className="flex w-full max-w-full items-center justify-end gap-6">
-            <Link
-              href="/docs"
-              className="font-mono text-xs uppercase text-black/30 transition-colors hover:text-black/60 hover:no-underline dark:text-white/30 dark:hover:text-white/60"
-            >
-              Documentation
-            </Link>
-            <Link
-              href="https://github.com/farming-labs/docs"
-              target="_blank"
-              className="font-mono text-xs uppercase text-black/30 transition-colors hover:text-black/60 hover:no-underline dark:text-white/30 dark:hover:text-white/60"
-            >
-              GitHub
-            </Link>
-            <Link
-              href="https://www.npmjs.com/package/@farming-labs/docs"
-              target="_blank"
-              className="font-mono text-xs uppercase text-black/30 transition-colors hover:text-black/60 hover:no-underline dark:text-white/30 dark:hover:text-white/60"
-            >
-              npm
-            </Link>
+          <div className="flex w-full max-w-full flex-col items-start gap-3 sm:items-end sm:justify-center">
+            <div className="flex w-full max-w-full items-center justify-start gap-6 sm:justify-end">
+              <Link
+                href="/docs"
+                className="font-mono text-xs uppercase text-black/30 transition-colors hover:text-black/60 hover:no-underline dark:text-white/30 dark:hover:text-white/60"
+              >
+                Documentation
+              </Link>
+              <Link
+                href="https://github.com/farming-labs/docs"
+                target="_blank"
+                className="font-mono text-xs uppercase text-black/30 transition-colors hover:text-black/60 hover:no-underline dark:text-white/30 dark:hover:text-white/60"
+              >
+                GitHub
+              </Link>
+              <Link
+                href="https://www.npmjs.com/package/@farming-labs/docs"
+                target="_blank"
+                className="font-mono text-xs uppercase text-black/30 transition-colors hover:text-black/60 hover:no-underline dark:text-white/30 dark:hover:text-white/60"
+              >
+                npm
+              </Link>
+            </div>
+          </div>
+          <div className="relative hidden sm:flex sm:items-center sm:pl-4 sm:pr-3">
+            <span
+              aria-hidden
+              className="absolute -inset-y-2 left-0 w-px bg-black/10 dark:bg-white/10"
+            />
+            <SidebarThemeToggle />
           </div>
         </div>
       </div>

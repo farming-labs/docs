@@ -26,7 +26,7 @@ export default function PixelCard({
   return (
     <div className={cn(baseClasses, variantClasses[variant], className)}>
       <div
-        className="absolute inset-0 pointer-events-none opacity-60 dark:opacity-80 mix-blend-overlay"
+        className="absolute inset-0 pointer-events-none opacity-45 mix-blend-multiply contrast-125 dark:opacity-80 dark:mix-blend-overlay dark:contrast-100"
         style={{
           backgroundImage: "url(/shades.png)",
           backgroundRepeat: "repeat",
