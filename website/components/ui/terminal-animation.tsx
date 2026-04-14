@@ -49,9 +49,9 @@ type TerminalAnimationContextValue = {
   tabs: TabContent[];
 };
 
-const TerminalAnimationContext = createContext<
-  TerminalAnimationContextValue | undefined
->(undefined);
+const TerminalAnimationContext = createContext<TerminalAnimationContextValue | undefined>(
+  undefined,
+);
 
 function useTerminalAnimationContext() {
   const context = useContext(TerminalAnimationContext);
@@ -240,10 +240,7 @@ export function TerminalAnimationContainer({
   );
 }
 
-export function TerminalAnimationWindow({
-  className,
-  ...props
-}: HTMLAttributes<HTMLDivElement>) {
+export function TerminalAnimationWindow({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
@@ -256,10 +253,7 @@ export function TerminalAnimationWindow({
   );
 }
 
-export function TerminalAnimationContent({
-  className,
-  ...props
-}: HTMLAttributes<HTMLDivElement>) {
+export function TerminalAnimationContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn("flex-1 px-4 py-4 sm:px-5 sm:py-5", className)}
@@ -293,7 +287,7 @@ export function TerminalAnimationCommandBar({
   return (
     <div className={className} data-slot="terminal-animation-command" {...props}>
       {commandTyped}
-      {isTypingCommand && showCursor ? cursor ?? <TerminalAnimationBlinkingCursor /> : null}
+      {isTypingCommand && showCursor ? (cursor ?? <TerminalAnimationBlinkingCursor />) : null}
     </div>
   );
 }
@@ -349,20 +343,13 @@ export function TerminalAnimationTrailingPrompt({
   if (!show) return null;
 
   return (
-    <div
-      className={className}
-      data-slot="terminal-animation-trailing-prompt"
-      {...props}
-    >
+    <div className={className} data-slot="terminal-animation-trailing-prompt" {...props}>
       {children}
     </div>
   );
 }
 
-export function TerminalAnimationTabList({
-  className,
-  ...props
-}: HTMLAttributes<HTMLDivElement>) {
+export function TerminalAnimationTabList({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       role="tablist"

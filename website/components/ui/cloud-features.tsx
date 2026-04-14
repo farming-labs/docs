@@ -90,7 +90,7 @@ export function CloudFeatures() {
             <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
               Sync • search • review • ship
             </p>
-            <p className="mt-3 text-balance text-center text-2xl font-semibold text-black dark:text-white">
+            <p className="mt-3 text-balance font-pixel text-center text-2xl font-normal text-black dark:text-white">
               One loop to sync, search, review, and ship docs.
             </p>
           </div>
@@ -256,11 +256,9 @@ function CardHeading({
     <div className="p-0">
       <span className="text-muted-foreground flex items-center gap-2 text-black/55 dark:text-white/50">
         <Icon className="size-4" />
-        <span className="font-pixel text-[11px] uppercase tracking-[0.14em]">
-          {title}
-        </span>
+        <span className="text-[11px] font-mono uppercase tracking-[0.14em]">{title}</span>
       </span>
-      <p className="mt-4 text-xl font-semibold text-black sm:mt-6 sm:text-2xl dark:text-white">
+      <p className="mt-4 text-xl font-normal font-pixel text-black sm:mt-6 sm:text-2xl dark:text-white/90">
         {description}
       </p>
     </div>
