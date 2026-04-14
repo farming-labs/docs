@@ -226,7 +226,9 @@ export function CloudTerminalDemo() {
 function TerminalPrompt() {
   return (
     <span className="inline-flex max-w-full shrink-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 font-mono text-[9px] sm:text-[11px]">
-      <span className="select-none text-emerald-600 dark:text-[#7ce38b]">{projectPrompt.arrow}</span>
+      <span className="select-none text-emerald-600 dark:text-[#7ce38b]">
+        {projectPrompt.arrow}
+      </span>
       <span className="text-sky-700 dark:text-[#8bb8ff]">{projectPrompt.name}</span>
       <span className="text-violet-700 dark:text-[#d8a7ff]">{projectPrompt.branch}</span>
       <span className="select-none text-rose-500 dark:text-[#ff8f8f]">{projectPrompt.dirty}</span>
