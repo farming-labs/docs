@@ -99,9 +99,9 @@ export function SidebarThemeToggle({ variant = "text" }: SidebarThemeToggleProps
         <>
           {isDark ? <Moon size={12} aria-hidden /> : <Sun size={12} aria-hidden />}/{" "}
           {isDark ? (
-            <span className="ml-1 font-mono text-[11px]">LIGHT</span>
-          ) : (
             <span className="ml-1 font-mono text-[11px]">DARK</span>
+          ) : (
+            <span className="ml-1 font-mono text-[11px]">LIGHT</span>
           )}
         </>
       )}
