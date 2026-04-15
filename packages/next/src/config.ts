@@ -21,8 +21,9 @@
  *   export default withDocs({ output: "export" });
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { dirname, isAbsolute, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /** Resolve Next.js App Router directory: prefer src/app when present, else app. */
 function getNextAppDir(root: string): string {
@@ -116,10 +117,93 @@ export const GET = createNextApiReference(docsConfig);
 export const revalidate = false;
 `;
 
+const API_REFERENCE_PAGE_TEMPLATE = `\
+${GENERATED_BANNER}
+import "@farming-labs/next/api-reference.css";
+import docsConfig from "@/docs.config";
+import { createNextApiReferencePage } from "@farming-labs/next/api-reference";
+
+const ApiReferencePage = createNextApiReferencePage(docsConfig);
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default ApiReferencePage;
+`;
+
+const API_REFERENCE_LAYOUT_TEMPLATE = `\
+${GENERATED_BANNER}
+import docsConfig from "@/docs.config";
+import { createNextApiReferenceLayout } from "@farming-labs/next/api-reference";
+
+const ApiReferenceLayout = createNextApiReferenceLayout(docsConfig);
+
+export default ApiReferenceLayout;
+`;
+
 // ─── Helpers ────────────────────────────────────────────────────────
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const INTERNAL_DOCS_CONFIG_ALIAS = "@farming-labs/next-internal-docs-config";
+const NEXT_PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
+
+function resolvePackageAlias(packageName: string, fallbacks: string[] = []): string | undefined {
+  const candidates = [
+    join(NEXT_PACKAGE_ROOT, "node_modules", packageName),
+    ...fallbacks.map((value) => join(NEXT_PACKAGE_ROOT, value)),
+  ];
+
+  return candidates.find((value) => existsSync(value));
+}
+
+function resolvePackageSubpath(packageDir: string, relativePath: string): string {
+  if (!isAbsolute(packageDir))
+    return `${packageDir}/${relativePath.replace(/^dist\//, "").replace(/\/index\.js$/, "")}`;
+  return join(packageDir, relativePath);
+}
+
+function toTurbopackAliasPath(root: string, value: string): string {
+  if (!isAbsolute(value)) return value;
+  const relativePath = relative(root, value);
+  return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
+}
+
+const FUMADOCS_OPENAPI_PACKAGE_ALIAS =
+  resolvePackageAlias("fumadocs-openapi") ?? "fumadocs-openapi";
+const FUMADOCS_CORE_PACKAGE_ALIAS = resolvePackageAlias("fumadocs-core") ?? "fumadocs-core";
+const FUMADOCS_UI_PACKAGE_ALIAS =
+  resolvePackageAlias("fumadocs-ui", [
+    "node_modules/fumadocs-openapi/node_modules/fumadocs-ui",
+    "../node_modules/fumadocs-ui",
+  ]) ?? "fumadocs-ui";
+const FUMADOCS_OPENAPI_UI_ALIAS = resolvePackageSubpath(
+  FUMADOCS_OPENAPI_PACKAGE_ALIAS,
+  "dist/ui/index.js",
+);
+const FUMADOCS_OPENAPI_SERVER_ALIAS = resolvePackageSubpath(
+  FUMADOCS_OPENAPI_PACKAGE_ALIAS,
+  "dist/server/index.js",
+);
+const FUMADOCS_CORE_FRAMEWORK_ALIAS = resolvePackageSubpath(
+  FUMADOCS_CORE_PACKAGE_ALIAS,
+  "dist/framework/index.js",
+);
+const FUMADOCS_CORE_FRAMEWORK_NEXT_ALIAS = resolvePackageSubpath(
+  FUMADOCS_CORE_PACKAGE_ALIAS,
+  "dist/framework/next.js",
+);
+const FUMADOCS_UI_NOTEBOOK_ALIAS = resolvePackageSubpath(
+  FUMADOCS_UI_PACKAGE_ALIAS,
+  "dist/layouts/notebook/index.js",
+);
+const FUMADOCS_UI_NOTEBOOK_PAGE_ALIAS = resolvePackageSubpath(
+  FUMADOCS_UI_PACKAGE_ALIAS,
+  "dist/layouts/notebook/page/index.js",
+);
+const FUMADOCS_UI_PROVIDER_NEXT_ALIAS = resolvePackageSubpath(
+  FUMADOCS_UI_PACKAGE_ALIAS,
+  "dist/provider/next.js",
+);
 
 function isDocsWorkspaceRoot(root: string): boolean {
   return (
@@ -243,6 +327,7 @@ function readOgEndpoint(root: string): string | undefined {
 function readApiReferenceConfig(root: string): {
   enabled: boolean;
   path: string;
+  renderer: "fumadocs" | "scalar";
   routeRoot: string;
 } {
   for (const ext of FILE_EXTS) {
@@ -253,29 +338,35 @@ function readApiReferenceConfig(root: string): {
       const content = readFileSync(configPath, "utf-8");
 
       const directFalse = content.match(/apiReference\s*:\s*false/);
-      if (directFalse) return { enabled: false, path: "api-reference", routeRoot: "api" };
+      if (directFalse) {
+        return { enabled: false, path: "api-reference", renderer: "fumadocs", routeRoot: "api" };
+      }
 
       const directTrue = content.match(/apiReference\s*:\s*true/);
-      if (directTrue) return { enabled: true, path: "api-reference", routeRoot: "api" };
+      if (directTrue) {
+        return { enabled: true, path: "api-reference", renderer: "fumadocs", routeRoot: "api" };
+      }
 
       const block = extractObjectLiteral(content, "apiReference");
       if (!block) continue;
 
       const enabledMatch = block.match(/enabled\s*:\s*(true|false)/);
       const pathMatch = block.match(/path\s*:\s*["']([^"']+)["']/);
+      const rendererMatch = block.match(/renderer\s*:\s*["'](fumadocs|scalar)["']/);
       const routeRootMatch = block.match(/routeRoot\s*:\s*["']([^"']+)["']/);
 
       return {
         enabled: enabledMatch ? enabledMatch[1] !== "false" : true,
         path: pathMatch?.[1]?.replace(/^\/+|\/+$/g, "") || "api-reference",
+        renderer: (rendererMatch?.[1] as "fumadocs" | "scalar" | undefined) ?? "fumadocs",
         routeRoot: routeRootMatch?.[1]?.replace(/^\/+|\/+$/g, "") || "api",
       };
     } catch {
-      return { enabled: false, path: "api-reference", routeRoot: "api" };
+      return { enabled: false, path: "api-reference", renderer: "fumadocs", routeRoot: "api" };
     }
   }
 
-  return { enabled: false, path: "api-reference", routeRoot: "api" };
+  return { enabled: false, path: "api-reference", renderer: "fumadocs", routeRoot: "api" };
 }
 
 function extractObjectLiteral(content: string, key: string): string | undefined {
@@ -304,6 +395,12 @@ function extractObjectLiteral(content: string, key: string): string | undefined 
   }
 
   return undefined;
+}
+
+function removeManagedFile(filePath: string) {
+  if (isManagedGeneratedFile(filePath)) {
+    rmSync(filePath, { force: true });
+  }
 }
 
 function readMcpConfig(root: string): {
@@ -402,13 +499,41 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     writeFileSync(join(docsMcpRouteDir, "route.ts"), DOCS_MCP_ROUTE_TEMPLATE);
   }
 
-  // ── 3.1. Auto-generate app/{apiReference.path}/[[...slug]]/route.ts ──
+  // ── 3.1. Auto-generate API reference route/page ───────────────────
   const apiReference = readApiReferenceConfig(root);
   if (apiReference.enabled && !isStaticExport) {
-    const apiReferenceRouteDir = join(root, appDir, ...apiReference.path.split("/"), "[[...slug]]");
-    if (!hasFile(apiReferenceRouteDir, "route")) {
-      mkdirSync(apiReferenceRouteDir, { recursive: true });
-      writeFileSync(join(apiReferenceRouteDir, "route.ts"), API_REFERENCE_ROUTE_TEMPLATE);
+    const apiReferenceBaseDir = join(root, appDir, ...apiReference.path.split("/"));
+    const apiReferencePageDir = join(apiReferenceBaseDir, "[[...slug]]");
+    const apiReferencePagePath = join(apiReferencePageDir, "page.tsx");
+    const apiReferenceLayoutPath = join(apiReferenceBaseDir, "layout.tsx");
+    const apiReferenceRouteDir = join(apiReferenceBaseDir, "[[...slug]]");
+    const apiReferenceRoutePath = join(apiReferenceRouteDir, "route.ts");
+    const legacyApiReferencePagePath = join(apiReferenceBaseDir, "page.tsx");
+
+    if (apiReference.renderer === "fumadocs") {
+      removeManagedFile(apiReferenceRoutePath);
+      removeManagedFile(legacyApiReferencePagePath);
+      if (
+        !hasFile(apiReferenceBaseDir, "layout") ||
+        isManagedGeneratedFile(apiReferenceLayoutPath)
+      ) {
+        mkdirSync(apiReferenceBaseDir, { recursive: true });
+        writeFileSync(apiReferenceLayoutPath, API_REFERENCE_LAYOUT_TEMPLATE);
+      }
+      if (!hasFile(apiReferencePageDir, "page") || isManagedGeneratedFile(apiReferencePagePath)) {
+        mkdirSync(apiReferencePageDir, { recursive: true });
+        writeFileSync(apiReferencePagePath, API_REFERENCE_PAGE_TEMPLATE);
+      }
+    } else {
+      removeManagedFile(apiReferenceLayoutPath);
+      removeManagedFile(apiReferencePagePath);
+      if (
+        !hasFile(apiReferenceRouteDir, "route") ||
+        isManagedGeneratedFile(apiReferenceRoutePath)
+      ) {
+        mkdirSync(apiReferenceRouteDir, { recursive: true });
+        writeFileSync(apiReferenceRoutePath, API_REFERENCE_ROUTE_TEMPLATE);
+      }
     }
   }
 
@@ -463,6 +588,22 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
       ...(workspaceRoot ? createDocsWorkspaceAliases() : {}),
       ...existingResolveAlias,
       [INTERNAL_DOCS_CONFIG_ALIAS]: docsConfigRelativeAlias,
+      "fumadocs-openapi": toTurbopackAliasPath(root, FUMADOCS_OPENAPI_PACKAGE_ALIAS),
+      "fumadocs-openapi/ui": toTurbopackAliasPath(root, FUMADOCS_OPENAPI_UI_ALIAS),
+      "fumadocs-openapi/server": toTurbopackAliasPath(root, FUMADOCS_OPENAPI_SERVER_ALIAS),
+      "fumadocs-core": toTurbopackAliasPath(root, FUMADOCS_CORE_PACKAGE_ALIAS),
+      "fumadocs-core/framework": toTurbopackAliasPath(root, FUMADOCS_CORE_FRAMEWORK_ALIAS),
+      "fumadocs-core/framework/next": toTurbopackAliasPath(
+        root,
+        FUMADOCS_CORE_FRAMEWORK_NEXT_ALIAS,
+      ),
+      "fumadocs-ui": toTurbopackAliasPath(root, FUMADOCS_UI_PACKAGE_ALIAS),
+      "fumadocs-ui/layouts/notebook": toTurbopackAliasPath(root, FUMADOCS_UI_NOTEBOOK_ALIAS),
+      "fumadocs-ui/layouts/notebook/page": toTurbopackAliasPath(
+        root,
+        FUMADOCS_UI_NOTEBOOK_PAGE_ALIAS,
+      ),
+      "fumadocs-ui/provider/next": toTurbopackAliasPath(root, FUMADOCS_UI_PROVIDER_NEXT_ALIAS),
     },
   };
 
@@ -475,6 +616,18 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     resolvedConfig.resolve ??= {};
     resolvedConfig.resolve.alias ??= {};
     resolvedConfig.resolve.alias[INTERNAL_DOCS_CONFIG_ALIAS] = docsConfigAbsolutePath;
+    resolvedConfig.resolve.alias["fumadocs-openapi"] = FUMADOCS_OPENAPI_PACKAGE_ALIAS;
+    resolvedConfig.resolve.alias["fumadocs-openapi/ui"] = FUMADOCS_OPENAPI_UI_ALIAS;
+    resolvedConfig.resolve.alias["fumadocs-openapi/server"] = FUMADOCS_OPENAPI_SERVER_ALIAS;
+    resolvedConfig.resolve.alias["fumadocs-core"] = FUMADOCS_CORE_PACKAGE_ALIAS;
+    resolvedConfig.resolve.alias["fumadocs-core/framework"] = FUMADOCS_CORE_FRAMEWORK_ALIAS;
+    resolvedConfig.resolve.alias["fumadocs-core/framework/next"] =
+      FUMADOCS_CORE_FRAMEWORK_NEXT_ALIAS;
+    resolvedConfig.resolve.alias["fumadocs-ui"] = FUMADOCS_UI_PACKAGE_ALIAS;
+    resolvedConfig.resolve.alias["fumadocs-ui/layouts/notebook"] = FUMADOCS_UI_NOTEBOOK_ALIAS;
+    resolvedConfig.resolve.alias["fumadocs-ui/layouts/notebook/page"] =
+      FUMADOCS_UI_NOTEBOOK_PAGE_ALIAS;
+    resolvedConfig.resolve.alias["fumadocs-ui/provider/next"] = FUMADOCS_UI_PROVIDER_NEXT_ALIAS;
     return resolvedConfig;
   };
 

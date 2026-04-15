@@ -1340,6 +1340,8 @@ export interface DocsI18nConfig {
   defaultLocale?: string;
 }
 
+export type ApiReferenceRenderer = "fumadocs" | "scalar";
+
 export interface ApiReferenceConfig {
   /**
    * Whether to enable generated API reference pages.
@@ -1354,10 +1356,14 @@ export interface ApiReferenceConfig {
    */
   path?: string;
   /**
-   * Absolute URL to a remote OpenAPI JSON document.
+   * URL to a remote OpenAPI JSON document.
    *
    * When provided, the API reference is generated from this hosted spec instead
    * of scanning local framework route files.
+   *
+   * Supports:
+   * - absolute URLs like `https://example.com/openapi.json`
+   * - request-relative URLs like `/api/openapi.json` in Next.js
    *
    * @example
    * ```ts
@@ -1368,6 +1374,17 @@ export interface ApiReferenceConfig {
    * ```
    */
   specUrl?: string;
+  /**
+   * Which renderer to use for the API reference UI.
+   *
+   * - `"fumadocs"` uses `fumadocs-openapi`
+   * - `"scalar"` uses the existing Scalar renderer
+   *
+   * Defaults are framework-aware:
+   * - Next.js: `"fumadocs"`
+   * - TanStack Start / SvelteKit / Astro / Nuxt: `"scalar"`
+   */
+  renderer?: ApiReferenceRenderer;
   /**
    * Filesystem route root to scan for API handlers.
    *

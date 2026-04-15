@@ -238,7 +238,10 @@ function renderApiReferenceConfig(cfg: TemplateConfig, indent = "  "): string {
   const apiReference = cfg.apiReference;
   if (!apiReference) return "";
 
-  return `${indent}apiReference: {\n${indent}  enabled: true,\n${indent}  path: "${apiReference.path}",\n${indent}  routeRoot: "${apiReference.routeRoot}",\n${indent}},\n`;
+  const rendererLine =
+    cfg.framework === "nextjs" ? `${indent}  renderer: "fumadocs",\n` : "";
+
+  return `${indent}apiReference: {\n${indent}  enabled: true,\n${indent}  path: "${apiReference.path}",\n${rendererLine}${indent}  routeRoot: "${apiReference.routeRoot}",\n${indent}},\n`;
 }
 
 function toLocaleImportName(locale: string): string {
@@ -636,6 +639,24 @@ import { createNextApiReference } from "@farming-labs/next/api-reference";
 export const GET = createNextApiReference(docsConfig);
 
 export const revalidate = false;
+`;
+}
+
+export function nextApiReferencePageTemplate(cfg: TemplateConfig, filePath: string): string {
+  const appDir = cfg.nextAppDir ?? "app";
+  const configImport = nextApiReferenceConfigImport(cfg.useAlias, appDir, filePath);
+
+  return `
+import "@farming-labs/next/api-reference.css";
+import docsConfig from "${configImport}";
+import { createNextApiReferencePage } from "@farming-labs/next/api-reference";
+
+const ApiReferencePage = createNextApiReferencePage(docsConfig);
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default ApiReferencePage;
 `;
 }
 

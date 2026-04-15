@@ -650,3 +650,29 @@ figure.shiki:hover > div:first-child button {
   width: 16px;
   height: 16px;
 }
+
+/* ─── Logical inset compatibility ─────────────────────────────────── */
+
+/* Tailwind 4 currently emits `start-*` utilities for some imported Fumadocs
+ * logical inset classes, while the rendered docs layout still uses `inset-s-*`.
+ * Add the small alias set the layout relies on so sidebar connectors, active
+ * markers, and sticky sidebar placement keep working across themes. */
+.inset-s-0 {
+  inset-inline-start: 0;
+}
+
+.inset-s-4 {
+  inset-inline-start: calc(var(--spacing) * 4);
+}
+
+.inset-e-0 {
+  inset-inline-end: 0;
+}
+
+.before\:inset-s-2\.5::before {
+  inset-inline-start: calc(var(--spacing) * 2.5);
+}
+
+.data-\[active\=true\]\:before\:inset-s-2\.5[data-active="true"]::before {
+  inset-inline-start: calc(var(--spacing) * 2.5);
+}

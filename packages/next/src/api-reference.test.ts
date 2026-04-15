@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import {
   buildNextOpenApiDocument,
   createNextApiReference,
+  getNextApiReferenceMode,
   withNextApiReferenceBanner,
 } from "./api-reference.js";
 
@@ -141,6 +142,29 @@ describe("withNextApiReferenceBanner", () => {
     };
 
     expect(withNextApiReferenceBanner(config)).toBe(config);
+  });
+});
+
+describe("getNextApiReferenceMode", () => {
+  it("defaults to fumadocs for Next.js", () => {
+    expect(
+      getNextApiReferenceMode({
+        entry: "docs",
+        apiReference: true,
+      }),
+    ).toBe("fumadocs");
+  });
+
+  it("respects an explicit scalar renderer override", () => {
+    expect(
+      getNextApiReferenceMode({
+        entry: "docs",
+        apiReference: {
+          enabled: true,
+          renderer: "scalar",
+        },
+      }),
+    ).toBe("scalar");
   });
 });
 
