@@ -203,6 +203,7 @@ For fully static builds (e.g. Cloudflare Pages, no server), set `staticExport: t
 4. **Existing project** — Run `init` in the project root; the CLI detects the framework and scaffolds files.
 5. **Static hosting** — Set `staticExport: true`; search and AI are then hidden.
 6. **API reference on non-Next frameworks** — `apiReference` in `docs.config` is not enough by itself on TanStack Start, SvelteKit, Astro, or Nuxt; add the `/{path}` handler manually or let `init --api-reference` scaffold it, even when you use a remote `specUrl`.
+7. **TanStack Start in a monorepo** — If the app and docs packages live in the same workspace, keep `@farming-labs/docs`, `@farming-labs/theme`, and `@farming-labs/tanstack-start` linked locally (for example `workspace:*`). This avoids Node 22 / Vercel loading raw adapter TypeScript from `node_modules`.
 
 ---
 
