@@ -231,7 +231,7 @@ export default function CloudWaitlistForm() {
           </span>
         </button>
 
-        {/* {submitState.message ? (
+        {submitState.message ? (
           <p
             className={[
               "border px-3 py-2 text-[11px] leading-relaxed",
@@ -244,7 +244,7 @@ export default function CloudWaitlistForm() {
           >
             {submitState.message}
           </p>
-        ) : null} */}
+        ) : null}
 
         <p className="text-[11px] leading-relaxed text-black/45 dark:text-white/40">
           GitHub stays the source of truth. This is the layer around it.

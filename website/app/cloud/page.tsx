@@ -9,7 +9,6 @@ import {
   GithubIcon,
   type LucideIcon,
   Palette,
-  Sparkles,
   Workflow,
 } from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";

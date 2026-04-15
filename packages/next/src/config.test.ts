@@ -24,6 +24,16 @@ const DOCS_CONFIG_WITH_API_REFERENCE = `export default {
 };
 `;
 
+const DOCS_CONFIG_WITH_SCALAR_API_REFERENCE = `export default {
+  entry: "docs",
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    renderer: "scalar",
+  },
+};
+`;
+
 const DOCS_CONFIG_WITH_MCP = `export default {
   entry: "docs",
   mcp: {
@@ -96,14 +106,31 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "app/docs/layout.tsx"))).toBe(false);
   });
 
-  it("generates API reference routes when enabled in docs.config", () => {
+  it("generates Fumadocs API reference files when enabled in docs.config", () => {
     writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_API_REFERENCE, "utf-8");
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);
 
     withDocs({});
 
+    expect(existsSync(join(tmpDir, "app/api-reference/layout.tsx"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/page.tsx"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/route.ts"))).toBe(false);
+    const page = readFileSync(join(tmpDir, "app/api-reference/[[...slug]]/page.tsx"), "utf-8");
+    expect(page).toContain('import "@farming-labs/next/api-reference.css";');
+    expect(page).toContain("createNextApiReferencePage");
+  });
+
+  it("generates the Scalar route when renderer is explicitly set to scalar", () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_SCALAR_API_REFERENCE, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({});
+
     expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/route.ts"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/api-reference/layout.tsx"))).toBe(false);
+    expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/page.tsx"))).toBe(false);
   });
 
   it("generates the default MCP route when enabled in docs.config", () => {
@@ -130,7 +157,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "app/api/docs/mcp/route.ts"))).toBe(false);
   });
 
-  it("skips API reference route generation for static export", () => {
+  it("skips API reference generation for static export", () => {
     writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_API_REFERENCE, "utf-8");
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);
@@ -138,6 +165,8 @@ describe("withDocs (app dir: src/app vs app)", () => {
     withDocs({ output: "export" });
 
     expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/route.ts"))).toBe(false);
+    expect(existsSync(join(tmpDir, "app/api-reference/layout.tsx"))).toBe(false);
+    expect(existsSync(join(tmpDir, "app/api-reference/[[...slug]]/page.tsx"))).toBe(false);
   });
 
   it("skips MCP route generation for static export", () => {
@@ -169,7 +198,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     withDocs({});
 
-    expect(existsSync(join(tmpDir, "app/custom-api-reference/[[...slug]]/route.ts"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/custom-api-reference/[[...slug]]/page.tsx"))).toBe(true);
   });
 
   it("generates a layout that re-exports the package-owned docs layout", () => {

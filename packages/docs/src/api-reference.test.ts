@@ -7,6 +7,7 @@ import {
   buildApiReferenceScalarCss,
   buildApiReferenceOpenApiDocument,
   buildApiReferenceOpenApiDocumentAsync,
+  resolveApiReferenceRenderer,
 } from "./api-reference.js";
 import { defineDocs } from "./define-docs.js";
 
@@ -127,6 +128,39 @@ describe("buildApiReferenceOpenApiDocument", () => {
     }
   });
 
+  it("resolves request-relative spec URLs against the request origin", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (input: URL | string) => {
+      expect(String(input)).toBe("https://example.com/api/openapi.json");
+      return createRemoteOpenApiResponse();
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const config = defineDocs({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+        specUrl: "/api/openapi.json",
+      },
+    });
+
+    const document = await buildApiReferenceOpenApiDocumentAsync(config, {
+      framework: "next",
+      baseUrl: "https://example.com",
+    });
+
+    expect(document).toMatchObject({
+      info: {
+        title: "Remote Pets",
+      },
+      paths: {
+        "/pets": {
+          get: expect.any(Object),
+        },
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("renders hosted OpenAPI HTML for every framework", async () => {
     vi.stubGlobal(
       "fetch",
@@ -210,5 +244,24 @@ describe("buildApiReferenceOpenApiDocument", () => {
     expect(css).toContain("--scalar-radius: 0px;");
     expect(css).toContain("--scalar-button-1-color: #0b0b0b;");
     expect(css).toContain("var(--scalar-theme-foreground) 10%");
+  });
+});
+
+describe("resolveApiReferenceRenderer", () => {
+  it("defaults to fumadocs for Next.js and scalar elsewhere", () => {
+    expect(resolveApiReferenceRenderer(true, "next")).toBe("fumadocs");
+    expect(resolveApiReferenceRenderer(true, "astro")).toBe("scalar");
+  });
+
+  it("respects an explicit renderer override", () => {
+    expect(
+      resolveApiReferenceRenderer(
+        {
+          enabled: true,
+          renderer: "scalar",
+        },
+        "next",
+      ),
+    ).toBe("scalar");
   });
 });

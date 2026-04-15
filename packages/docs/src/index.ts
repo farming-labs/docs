@@ -27,6 +27,7 @@ export {
 export type {
   DocsConfig,
   ApiReferenceConfig,
+  ApiReferenceRenderer,
   DocsI18nConfig,
   DocsMcpConfig,
   DocsMcpToolsConfig,

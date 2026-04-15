@@ -1,0 +1,128 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/preset.css";
+@import "fumadocs-openapi/css/preset.css";
+
+@theme inline {
+  --color-fd-background: var(--color-fd-background);
+  --color-fd-foreground: var(--color-fd-foreground);
+  --color-fd-muted: var(--color-fd-muted);
+  --color-fd-muted-foreground: var(--color-fd-muted-foreground);
+  --color-fd-popover: var(--color-fd-popover);
+  --color-fd-popover-foreground: var(--color-fd-popover-foreground);
+  --color-fd-card: var(--color-fd-card);
+  --color-fd-card-foreground: var(--color-fd-card-foreground);
+  --color-fd-border: var(--color-fd-border);
+  --color-fd-primary: var(--color-fd-primary);
+  --color-fd-primary-foreground: var(--color-fd-primary-foreground);
+  --color-fd-secondary: var(--color-fd-secondary);
+  --color-fd-secondary-foreground: var(--color-fd-secondary-foreground);
+  --color-fd-accent: var(--color-fd-accent);
+  --color-fd-accent-foreground: var(--color-fd-accent-foreground);
+  --color-fd-ring: var(--color-fd-ring);
+  --color-fd-overlay: var(--color-fd-overlay);
+}
+
+@theme static {
+  --color-fd-info: oklch(62.3% 0.214 259.815);
+  --color-fd-warning: oklch(76.9% 0.188 70.08);
+  --color-fd-error: oklch(63.7% 0.237 25.331);
+  --color-fd-success: oklch(72.3% 0.219 149.579);
+  --color-fd-idea: oklch(70.5% 0.209 60.849);
+  --color-fd-diff-remove: rgba(200, 10, 100, 0.12);
+  --color-fd-diff-remove-symbol: rgb(230, 10, 100);
+  --color-fd-diff-add: rgba(14, 180, 100, 0.1);
+  --color-fd-diff-add-symbol: rgb(10, 200, 100);
+}
+
+:root,
+.dark {
+  --color-fd-overlay: hsla(0, 0%, 0%, 0.2);
+}
+
+.fd-api-reference-route #nd-subnav {
+  display: none;
+}
+
+.fd-api-reference-route #nd-page.fd-api-reference-page > * {
+  width: 100%;
+  max-width: 1180px;
+}
+
+.fd-api-reference-route #nd-page.fd-api-reference-page > .prose {
+  max-width: 1180px;
+}
+
+.fd-api-reference-pagination {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.fd-api-reference-pagination-item {
+  display: flex;
+  min-height: 8.5rem;
+  flex-direction: column;
+  gap: 0.45rem;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 1rem;
+  background: var(--color-fd-card);
+  padding: 1.1rem 1.25rem;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    transform 150ms ease;
+}
+
+.fd-api-reference-pagination-item:hover {
+  border-color: color-mix(in srgb, var(--color-fd-primary) 30%, var(--color-fd-border));
+  background: color-mix(in srgb, var(--color-fd-accent) 45%, var(--color-fd-card));
+  transform: translateY(-1px);
+}
+
+.fd-api-reference-pagination-item[data-direction="next"] {
+  text-align: right;
+}
+
+.fd-api-reference-pagination-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-api-reference-pagination-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-fd-foreground);
+}
+
+.fd-api-reference-pagination-description {
+  color: var(--color-fd-muted-foreground);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.fd-api-reference-pagination-spacer {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .fd-api-reference-route #nd-notebook-layout #nd-page {
+    padding-inline: 1.5rem;
+    padding-top: 2rem;
+  }
+
+  .fd-api-reference-route #nd-notebook-layout #nd-page::before {
+    display: none;
+  }
+}
+
+@media (max-width: 1023px) {
+  .fd-api-reference-pagination {
+    grid-template-columns: 1fr;
+  }
+}

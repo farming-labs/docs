@@ -17,7 +17,7 @@ import {
   Users,
   Mail,
 } from "lucide-react";
-import { commandGrid } from "@farming-labs/theme/command-grid";
+import { colorful } from "@farming-labs/theme/colorful";
 
 const typesenseBaseUrl = process.env.TYPESENSE_URL ?? process.env.TYPESENSE_BASE_URL;
 const typesenseCollection = process.env.TYPESENSE_COLLECTION ?? "docs";
@@ -81,7 +81,7 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
-  theme: commandGrid(),
+  theme: colorful(),
   ai: {
     enabled: true,
     // mode: "sidebar-icon",
@@ -104,6 +104,12 @@ export default defineDocs({
       "How do I configure the sidebar?",
     ],
     loader: "shimmer-dots",
+  },
+  apiReference: {
+    enabled: true,
+    path: "api-reference",
+    renderer: "fumadocs",
+    exclude: ["/api/docs", "/api/docs/mcp", "/api/search", "/api/og"],
   },
   nav: {
     title: (

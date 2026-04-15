@@ -17,6 +17,12 @@
   --color-fd-ring: hsl(45, 90%, 55%);
 }
 
+.fd-sidebar {
+  --color-fd-muted: hsl(0 0% 96%);
+  --color-fd-secondary: hsl(0 0% 97%);
+  --color-fd-muted-foreground: hsl(0 0% 45%);
+}
+
 /* ─── Description under title ──────────────────────────────────────── */
 
 .fd-page-description {
@@ -396,4 +402,31 @@
 
 .fd-feedback-status[data-status="success"] {
   color: var(--color-fd-primary);
+}
+
+/* ─── Desktop docs layout (colorful theme) ──────────────────────── */
+
+@media (min-width: 1024px) {
+  #nd-docs-layout.grid {
+    grid-template:
+      "sidebar header toc"
+      "sidebar toc-popover toc"
+      "sidebar main toc" 1fr /
+      var(--fd-sidebar-col)
+      minmax(0, 1fr)
+      var(--fd-toc-width) !important;
+  }
+
+  #nd-docs-layout [data-sidebar-placeholder] {
+    justify-self: stretch;
+  }
+
+  #nd-docs-layout article#nd-page {
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  #nd-docs-layout article#nd-page > .prose {
+    max-width: none;
+  }
 }
