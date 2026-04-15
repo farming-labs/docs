@@ -3,11 +3,15 @@
 import { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 
+type SidebarThemeToggleProps = {
+  variant?: "text" | "pill";
+};
+
 /**
  * Light/dark theme toggle for the docs sidebar footer.
  * Toggles the `dark` class on document.documentElement and persists to localStorage.
  */
-export function SidebarThemeToggle() {
+export function SidebarThemeToggle({ variant = "text" }: SidebarThemeToggleProps) {
   const [mounted, setMounted] = useState(false);
   const [isDark, setIsDark] = useState(false);
 
@@ -69,22 +73,37 @@ export function SidebarThemeToggle() {
 
   if (!mounted) return null;
 
+  const isPill = variant === "pill";
+
   return (
     <button
       type="button"
       onClick={toggle}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="inline-flex text-[11px] text-black/30 dark:text-white/30 items-center gap-1 pr-1"
+      className={
+        isPill
+          ? "inline-flex items-center gap-1 rounded-3xl border p-1.5 transition-colors hover:opacity-90"
+          : "inline-flex text-[11px] text-black/30 dark:text-white/30 items-center gap-1 pr-1"
+      }
       style={{
         borderColor: "var(--color-fd-border)",
-        // color: "var(--color-fd-muted-foreground)",
+        ...(isPill ? { color: "var(--color-fd-muted-foreground)" } : {}),
       }}
     >
-      {isDark ? <Moon size={12} aria-hidden /> : <Sun size={12} aria-hidden />}/{" "}
-      {isDark ? (
-        <span className="ml-1 font-mono text-[11px]">LIGHT</span>
+      {isPill ? (
+        <>
+          <Sun size={14} className={!isDark ? "opacity-100" : "opacity-40"} aria-hidden />
+          <Moon size={14} className={isDark ? "opacity-100" : "opacity-40"} aria-hidden />
+        </>
       ) : (
-        <span className="ml-1 font-mono text-[11px]">DARK</span>
+        <>
+          {isDark ? <Moon size={12} aria-hidden /> : <Sun size={12} aria-hidden />}/{" "}
+          {isDark ? (
+            <span className="ml-1 font-mono text-[11px]">LIGHT</span>
+          ) : (
+            <span className="ml-1 font-mono text-[11px]">DARK</span>
+          )}
+        </>
       )}
     </button>
   );

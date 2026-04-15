@@ -319,7 +319,7 @@ export default defineDocs({
         >
           <span className="text-[10px] tracking-wide">Theme</span>
 
-          <SidebarThemeToggle />
+          <SidebarThemeToggle variant="pill" />
         </div>
         <div
           className="flex gap-2 items-center justify-center"
