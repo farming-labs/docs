@@ -238,8 +238,7 @@ function renderApiReferenceConfig(cfg: TemplateConfig, indent = "  "): string {
   const apiReference = cfg.apiReference;
   if (!apiReference) return "";
 
-  const rendererLine =
-    cfg.framework === "nextjs" ? `${indent}  renderer: "fumadocs",\n` : "";
+  const rendererLine = cfg.framework === "nextjs" ? `${indent}  renderer: "fumadocs",\n` : "";
 
   return `${indent}apiReference: {\n${indent}  enabled: true,\n${indent}  path: "${apiReference.path}",\n${rendererLine}${indent}  routeRoot: "${apiReference.routeRoot}",\n${indent}},\n`;
 }

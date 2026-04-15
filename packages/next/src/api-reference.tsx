@@ -578,11 +578,7 @@ function buildApiReferenceColorsCSS(colors?: Record<string, string | undefined>)
   return `:root {\n  ${block}\n}\n.dark {\n  ${block}\n}`;
 }
 
-function ApiReferenceColorStyle({
-  colors,
-}: {
-  colors?: Record<string, string | undefined>;
-}) {
+function ApiReferenceColorStyle({ colors }: { colors?: Record<string, string | undefined> }) {
   const css = buildApiReferenceColorsCSS(colors);
   if (!css) return null;
   return <style dangerouslySetInnerHTML={{ __html: css }} />;
@@ -699,7 +695,9 @@ function ApiReferenceForcedThemeScript({ theme }: { theme: string }) {
 }
 
 function ApiReferenceThemeBridge({ config }: { config: DocsConfig }) {
-  const colors = config.theme?._userColorOverrides as Record<string, string | undefined> | undefined;
+  const colors = config.theme?._userColorOverrides as
+    | Record<string, string | undefined>
+    | undefined;
   const typography = config.theme?.ui?.typography;
   const layout = config.theme?.ui?.layout;
   const themeSwitch = resolveApiReferenceThemeSwitch(config.themeToggle);
