@@ -129,6 +129,8 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
       </Tab>
     </Tabs>
 
+    > **Monorepo note**: If you are developing `@farming-labs/docs` and a TanStack Start app in the same workspace, keep `@farming-labs/docs`, `@farming-labs/theme`, and `@farming-labs/tanstack-start` linked locally (for example `workspace:*`). This avoids Node 22 / Vercel trying to load raw adapter TypeScript from `node_modules`.
+
     ### 2. Create `docs.config.tsx`
 
     ```tsx title="docs.config.tsx"
@@ -241,6 +243,8 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
         ```
       </Tab>
     </Tabs>
+
+    > **Monorepo note**: If you are developing `@farming-labs/docs` and a TanStack Start app in the same workspace, keep `@farming-labs/docs`, `@farming-labs/theme`, and `@farming-labs/tanstack-start` linked locally (for example `workspace:*`). This avoids Node 22 / Vercel trying to load raw adapter TypeScript from `node_modules`.
 
     ### 2. Create `docs.config.tsx`
 

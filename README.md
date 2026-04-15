@@ -64,6 +64,11 @@ If you enable **API reference** during init, the CLI writes the `apiReference` b
 If your backend is hosted somewhere else, you can switch the generated `apiReference` block to
 remote mode later by setting `specUrl` to a hosted `openapi.json`.
 
+If you are testing unpublished changes inside this monorepo or another local workspace, keep
+`@farming-labs/*` app dependencies linked locally (for example `workspace:*`). This matters most
+for TanStack Start on Node 22 / Vercel, where the app should resolve the built
+`@farming-labs/tanstack-start/vite` entry instead of raw TypeScript from `node_modules`.
+
 You can also run the built-in MCP server locally:
 
 ```bash

@@ -244,6 +244,7 @@ When the user chooses **Existing project**, the CLI detects (or prompts for) fra
 1. **Monorepo** — Run `init` from the app package root (where `package.json` with the framework dependency lives). For `upgrade`, use `--framework` if auto-detect picks the wrong one.
 2. **No package.json / wrong directory** — Init and upgrade must run in a directory that has (or will have) a `package.json` with the framework dependency.
 3. **Beta** — Use `upgrade --beta` to get beta versions of the docs packages.
+4. **TanStack Start local package development** — In this repo's examples and other monorepos, prefer local links such as `workspace:*` for `@farming-labs/docs`, `@farming-labs/theme`, and `@farming-labs/tanstack-start` while testing unpublished changes. On Node 22 / Vercel, this prevents the adapter Vite entry from resolving to raw TypeScript inside `node_modules`.
 
 ---
 

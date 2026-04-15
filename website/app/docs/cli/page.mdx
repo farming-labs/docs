@@ -533,6 +533,8 @@ When you choose **Existing project**, the CLI does the following (framework-spec
     7. **Updates existing app files when needed** — Injects `RootProvider` into `src/routes/__root.tsx` and adds `docsMdx()` / Tailwind plugins to `vite.config.ts`
     8. **Installs dependencies** — `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/tanstack-start`
     9. **Starts the dev server** — Opens your docs at `http://localhost:5173/docs`
+
+    > In this repo's examples and in other monorepos, keep those `@farming-labs/*` dependencies linked locally while testing unpublished changes. CI and Vercel on Node 22 should consume the built adapter entrypoints, not raw `src/*.ts` files from `node_modules`.
   </Tab>
   <Tab value="SvelteKit">
     1. **Detects SvelteKit** via `@sveltejs/kit` in your `package.json` (or asks you to pick a framework)

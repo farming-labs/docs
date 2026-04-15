@@ -76,6 +76,7 @@ Please be respectful and constructive. We aim to keep the community welcoming an
 - **`packages/`** — Core packages: `docs`, `fumadocs` (theme), `next`, `svelte`, `svelte-theme`, `astro`, `astro-theme`, `nuxt`, `nuxt-theme`.
 - **`website/`** — This docs site (Next.js); content under `app/docs/`.
 - **`examples/`** — Example apps (Next.js, TanStack Start, and others) for testing.
+  When you work on this monorepo, keep local `@farming-labs/*` example dependencies linked with `workspace:*` so CI and Vercel on Node 22 resolve the built workspace adapters instead of an older published package from `node_modules`.
 
 Doc content lives in `website/app/docs/` as MDX. Config and sidebar are driven by [docs.config.tsx](/docs/configuration) in `website/`.
 
