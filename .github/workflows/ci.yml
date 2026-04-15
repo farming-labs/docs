@@ -108,23 +108,156 @@ jobs:
             popd >/dev/null
           fi
       - name: Run security audit
-        run: pnpm audit --audit-level high
-
-      - name: Check for known vulnerabilities
+        shell: bash
         run: |
-          echo "🔍 Checking for security vulnerabilities..."
-          pnpm audit --json > audit-results.json || true
+          set -euo pipefail
 
-          # Check if there are any high or critical vulnerabilities
-          if [ -f "audit-results.json" ]; then
-            HIGH_VULNS=$(cat audit-results.json | jq '.metadata.vulnerabilities.high // 0')
-            CRITICAL_VULNS=$(cat audit-results.json | jq '.metadata.vulnerabilities.critical // 0')
-            
-            if [ "$HIGH_VULNS" -gt 0 ] || [ "$CRITICAL_VULNS" -gt 0 ]; then
-              echo "❌ Found $HIGH_VULNS high and $CRITICAL_VULNS critical vulnerabilities"
-              echo "Please review and fix these security issues"
-              exit 1
-            else
-              echo "✅ No high or critical vulnerabilities found"
-            fi
-          fi
+          AUDIT_TREE_FILE="$(mktemp)"
+          trap 'rm -f "$AUDIT_TREE_FILE"' EXIT
+
+          pnpm list -r --json --depth Infinity > "$AUDIT_TREE_FILE"
+
+          AUDIT_TREE_FILE="$AUDIT_TREE_FILE" node --input-type=module <<'EOF'
+          import fs from "node:fs/promises";
+
+          const ADVISORY_URL =
+            "https://registry.npmjs.org/-/npm/v1/security/advisories/bulk";
+          const SEVERITY_ORDER = {
+            info: 0,
+            low: 1,
+            moderate: 2,
+            high: 3,
+            critical: 4,
+          };
+          const threshold = SEVERITY_ORDER.high;
+
+          const tree = JSON.parse(
+            await fs.readFile(process.env.AUDIT_TREE_FILE, "utf8"),
+          );
+          const versionsByName = new Map();
+          const seen = new Set();
+
+          function add(name, version) {
+            if (!name || !version) return;
+
+            const text = String(version);
+            if (
+              text.startsWith("link:") ||
+              text.startsWith("file:") ||
+              text.startsWith("workspace:")
+            ) {
+              return;
+            }
+
+            let versions = versionsByName.get(name);
+            if (!versions) {
+              versions = new Set();
+              versionsByName.set(name, versions);
+            }
+
+            versions.add(text);
+          }
+
+          function visit(record) {
+            if (!record || typeof record !== "object") return;
+
+            for (const [name, dep] of Object.entries(record)) {
+              if (!dep || typeof dep !== "object") continue;
+
+              add(name, dep.version);
+
+              const key = dep.path ?? `${name}@${dep.version}`;
+              if (seen.has(key)) continue;
+              seen.add(key);
+
+              visit(dep.dependencies);
+              visit(dep.devDependencies);
+              visit(dep.optionalDependencies);
+              visit(dep.peerDependencies);
+            }
+          }
+
+          for (const workspace of tree) {
+            add(workspace.name, workspace.version);
+            visit(workspace.dependencies);
+            visit(workspace.devDependencies);
+            visit(workspace.optionalDependencies);
+            visit(workspace.peerDependencies);
+          }
+
+          const entries = [...versionsByName.entries()].sort(([left], [right]) =>
+            left.localeCompare(right),
+          );
+          const findings = [];
+
+          for (let index = 0; index < entries.length; index += 250) {
+            const payload = Object.fromEntries(
+              entries
+                .slice(index, index + 250)
+                .map(([name, versions]) => [name, [...versions].sort()]),
+            );
+
+            const response = await fetch(ADVISORY_URL, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+              throw new Error(
+                `npm bulk advisory request failed with ${response.status}: ${await response.text()}`,
+              );
+            }
+
+            const advisoriesByName = await response.json();
+
+            for (const [name, advisories] of Object.entries(advisoriesByName)) {
+              if (!Array.isArray(advisories)) continue;
+
+              for (const advisory of advisories) {
+                const severity = advisory.severity ?? "info";
+                if ((SEVERITY_ORDER[severity] ?? -1) < threshold) continue;
+
+                findings.push({
+                  name,
+                  severity,
+                  title: advisory.title,
+                  vulnerableVersions: advisory.vulnerable_versions,
+                  url: advisory.url,
+                });
+              }
+            }
+          }
+
+          console.log(
+            `Scanned ${entries.length} package names using npm bulk advisories.`,
+          );
+
+          if (findings.length === 0) {
+            console.log("✅ No high or critical vulnerabilities found");
+            process.exit(0);
+          }
+
+          findings.sort((left, right) => {
+            const severityDelta =
+              (SEVERITY_ORDER[right.severity] ?? -1) -
+              (SEVERITY_ORDER[left.severity] ?? -1);
+
+            if (severityDelta !== 0) return severityDelta;
+
+            return left.name.localeCompare(right.name);
+          });
+
+          console.error(
+            `❌ Found ${findings.length} high/critical vulnerabilit${findings.length === 1 ? "y" : "ies"}`,
+          );
+
+          for (const finding of findings) {
+            console.error(
+              `- [${finding.severity}] ${finding.name}: ${finding.title} (${finding.vulnerableVersions})`,
+            );
+            console.error(`  ${finding.url}`);
+          }
+
+          process.exit(1);
+          EOF
