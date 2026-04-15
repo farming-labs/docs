@@ -59,6 +59,11 @@ function renderTable(rows) {
 export function renderMarkdown(text) {
   if (!text) return "";
 
+  const codeBlockTokenBoundary = String.fromCharCode(0);
+  const codeBlockTokenPattern = new RegExp(
+    `${codeBlockTokenBoundary}CB(\\d+)${codeBlockTokenBoundary}`,
+    "g",
+  );
   const codeBlocks = [];
 
   // Complete fences: ```lang\n...\n```
@@ -114,7 +119,7 @@ export function renderMarkdown(text) {
     .replace(/\n\n/g, '<div style="height:8px"></div>')
     .replace(/\n/g, "<br>");
 
-  result = result.replace(/\x00CB(\d+)\x00/g, (_m, idx) => codeBlocks[Number(idx)]);
+  result = result.replace(codeBlockTokenPattern, (_m, idx) => codeBlocks[Number(idx)]);
 
   return result;
 }
