@@ -811,7 +811,7 @@ function ApiReferenceSwitcher({
           background: "color-mix(in srgb, var(--color-fd-card, #202020) 96%, transparent)",
         }}
       >
-        <span style={{ display: "flex", minWidth: 0, alignItems: "start", gap: 10 }}>
+        <span style={{ display: "flex", minWidth: 0, alignItems: "center", gap: 10 }}>
           <SwitcherGlyph kind={current} radius={theme.iconRadius} active />
           <span style={{ fontWeight: 600, lineHeight: 1.2, ...theme.titleStyle }}>
             {currentLabel}
@@ -833,7 +833,7 @@ function ApiReferenceSwitcher({
           href={docsUrl}
           kind="docs"
           title="Documentation"
-          description="Guides, concepts, and MDX pages"
+          description="Guides & concepts"
           current={current === "docs"}
           config={config}
         />
@@ -841,7 +841,7 @@ function ApiReferenceSwitcher({
           href={apiUrl}
           kind="api"
           title="API Reference"
-          description="Endpoints, schemas, and examples"
+          description="Endpoints & examples"
           current={current === "api"}
           config={config}
         />
