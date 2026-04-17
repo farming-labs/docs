@@ -548,11 +548,26 @@ function scanChangelogDir(
   if (!fs.existsSync(changelogDir)) return [];
 
   const indexes: DocsSearchSourcePage[] = [];
+  let entries: string[];
 
-  for (const name of fs.readdirSync(changelogDir).sort().reverse()) {
+  try {
+    entries = fs.readdirSync(changelogDir).sort().reverse();
+  } catch {
+    return indexes;
+  }
+
+  for (const name of entries) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(name)) continue;
     const entryDir = path.join(changelogDir, name);
-    if (!fs.existsSync(entryDir) || !fs.statSync(entryDir).isDirectory()) continue;
+    let isDirectory = false;
+
+    try {
+      isDirectory = fs.existsSync(entryDir) && fs.statSync(entryDir).isDirectory();
+    } catch {
+      continue;
+    }
+
+    if (!isDirectory) continue;
 
     const pagePath = path.join(entryDir, "page.mdx");
     if (!fs.existsSync(pagePath)) continue;

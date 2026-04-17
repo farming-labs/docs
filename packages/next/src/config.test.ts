@@ -52,6 +52,18 @@ const DOCS_CONFIG_WITH_CHANGELOG = `export default {
 };
 `;
 
+const DOCS_CONFIG_WITH_TOP_LEVEL_CONTENT_DIR = `import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+    contentDir: "website/app/docs",
+    changelog: {
+      enabled: true,
+      path: "changelogs",
+      contentDir: "changelog",
+    },
+});
+`;
+
 const DOCS_CONFIG_WITH_CUSTOM_MCP_ROUTE = `export default {
   entry: "docs",
   mcp: {
@@ -283,6 +295,23 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
       "/api/docs": ["app/docs/**/*"],
       "/api/docs/mcp": ["app/docs/**/*"],
+    });
+  });
+
+  it("reads a top-level contentDir even when nested config uses deeper indentation", () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      DOCS_CONFIG_WITH_TOP_LEVEL_CONTENT_DIR,
+      "utf-8",
+    );
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+
+    expect(nextConfig.outputFileTracingIncludes).toMatchObject({
+      "/api/docs": ["website/app/docs/**/*"],
+      "/api/docs/mcp": ["website/app/docs/**/*"],
     });
   });
 

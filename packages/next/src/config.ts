@@ -344,8 +344,8 @@ function readDocsContentDir(root: string): string | undefined {
 
     try {
       const content = readFileSync(configPath, "utf-8");
-      const match = content.match(/^[ \t]{0,2}contentDir\s*:\s*["']([^"']+)["']/m);
-      if (match?.[1]) return match[1];
+      const contentDir = readTopLevelStringProperty(content, "contentDir");
+      if (contentDir) return contentDir;
     } catch {
       // fall through
     }
@@ -525,6 +525,198 @@ function findChangelogSourceEntries(changelogDir: string): ChangelogSourceEntry[
   }
 
   return entries.sort((left, right) => right.date.localeCompare(left.date));
+}
+
+function extractRootObjectLiteral(content: string): string | undefined {
+  const candidateIndexes = [
+    content.search(/\bdefineDocs\s*\(/),
+    content.search(/\bexport\s+default\b/),
+  ].filter((value) => value !== -1);
+
+  for (const startIndex of candidateIndexes) {
+    const braceStart = content.indexOf("{", startIndex);
+    if (braceStart === -1) continue;
+
+    let depth = 0;
+    let inString: '"' | "'" | "`" | null = null;
+    let escaped = false;
+
+    for (let index = braceStart; index < content.length; index += 1) {
+      const char = content[index];
+
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+          continue;
+        }
+
+        if (char === "\\") {
+          escaped = true;
+          continue;
+        }
+
+        if (char === inString) {
+          inString = null;
+        }
+
+        continue;
+      }
+
+      if (char === '"' || char === "'" || char === "`") {
+        inString = char;
+        continue;
+      }
+
+      if (char === "{") {
+        depth += 1;
+        continue;
+      }
+
+      if (char !== "}") continue;
+
+      depth -= 1;
+      if (depth === 0) {
+        return content.slice(braceStart + 1, index);
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function readTopLevelStringProperty(content: string, key: string): string | undefined {
+  const block = extractRootObjectLiteral(content);
+  if (!block) return undefined;
+
+  let objectDepth = 0;
+  let arrayDepth = 0;
+  let parenDepth = 0;
+  let inString: '"' | "'" | "`" | null = null;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let escaped = false;
+
+  for (let index = 0; index < block.length; index += 1) {
+    const char = block[index];
+    const next = block[index + 1];
+
+    if (inLineComment) {
+      if (char === "\n") inLineComment = false;
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (char === "*" && next === "/") {
+        inBlockComment = false;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+
+      if (char === inString) {
+        inString = null;
+      }
+
+      continue;
+    }
+
+    if (char === "/" && next === "/") {
+      inLineComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      inBlockComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === "`") {
+      inString = char;
+      continue;
+    }
+
+    if (char === "{") {
+      objectDepth += 1;
+      continue;
+    }
+
+    if (char === "}") {
+      objectDepth = Math.max(0, objectDepth - 1);
+      continue;
+    }
+
+    if (char === "[") {
+      arrayDepth += 1;
+      continue;
+    }
+
+    if (char === "]") {
+      arrayDepth = Math.max(0, arrayDepth - 1);
+      continue;
+    }
+
+    if (char === "(") {
+      parenDepth += 1;
+      continue;
+    }
+
+    if (char === ")") {
+      parenDepth = Math.max(0, parenDepth - 1);
+      continue;
+    }
+
+    if (objectDepth !== 0 || arrayDepth !== 0 || parenDepth !== 0) continue;
+    if (!block.startsWith(key, index)) continue;
+
+    const before = block[index - 1] ?? "";
+    const after = block[index + key.length] ?? "";
+    if (/[A-Za-z0-9_$]/.test(before) || /[A-Za-z0-9_$]/.test(after)) continue;
+
+    let cursor = index + key.length;
+    while (/\s/.test(block[cursor] ?? "")) cursor += 1;
+    if (block[cursor] !== ":") continue;
+
+    cursor += 1;
+    while (/\s/.test(block[cursor] ?? "")) cursor += 1;
+
+    const quote = block[cursor];
+    if (quote !== '"' && quote !== "'") continue;
+
+    cursor += 1;
+    let value = "";
+
+    for (; cursor < block.length; cursor += 1) {
+      const valueChar = block[cursor];
+      if (valueChar === "\\") {
+        const escapedChar = block[cursor + 1];
+        if (escapedChar) {
+          value += escapedChar;
+          cursor += 1;
+        }
+        continue;
+      }
+
+      if (valueChar === quote) return value;
+      value += valueChar;
+    }
+
+    return undefined;
+  }
+
+  return undefined;
 }
 
 function extractObjectLiteral(content: string, key: string): string | undefined {

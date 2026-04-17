@@ -67,6 +67,7 @@ function formatTimelineDate(value: string) {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "UTC",
   })
     .format(parsed)
     .toUpperCase();
@@ -117,9 +118,17 @@ function EmptyResults({ query }: { query: string }) {
   );
 }
 
+function decodeHashValue(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 function getHashTargetElement(href: string) {
   if (!href.startsWith("#")) return null;
-  const targetId = decodeURIComponent(href.slice(1));
+  const targetId = decodeHashValue(href.slice(1));
   if (!targetId) return null;
   const candidates = Array.from(document.querySelectorAll<HTMLElement>("[id]")).filter(
     (candidate) => candidate.id === targetId,
@@ -138,111 +147,6 @@ function getHashTargetElement(href: string) {
     element.closest<HTMLElement>("h1, h2, h3, h4, h5, h6, section, article") ??
     element.parentElement
   );
-}
-
-function createChangelogTocScript(tocId: string) {
-  return `
-(() => {
-  const toc = document.getElementById(${JSON.stringify(tocId)});
-  if (!toc || toc.dataset.fdChangelogTocBound === "true") return;
-  toc.dataset.fdChangelogTocBound = "true";
-
-  const links = Array.from(
-    toc.querySelectorAll('[data-fd-changelog-toc-link="true"]')
-  );
-
-  if (links.length === 0) return;
-
-  const decodeHref = (href) => {
-    if (!href || !href.startsWith("#")) return null;
-    try {
-      return decodeURIComponent(href.slice(1));
-    } catch {
-      return href.slice(1);
-    }
-  };
-
-  const getTarget = (href) => {
-    const targetId = decodeHref(href);
-    if (!targetId) return null;
-
-    const candidates = Array.from(document.querySelectorAll("[id]")).filter(
-      (candidate) => candidate.id === targetId
-    );
-    const element = candidates.find((candidate) => {
-      const rect = candidate.getBoundingClientRect();
-      return rect.width > 0 || rect.height > 0;
-    }) || candidates[0];
-    if (!element) return null;
-
-    const rect = element.getBoundingClientRect();
-    if (rect.width > 0 || rect.height > 0) return element;
-
-    return element.closest("h1, h2, h3, h4, h5, h6, section, article") || element.parentElement;
-  };
-
-  const setActive = (href) => {
-    links.forEach((link) => {
-      const active = link.getAttribute("href") === href;
-      link.setAttribute("data-active", active ? "true" : "false");
-      if (active) {
-        link.setAttribute("aria-current", "location");
-      } else {
-        link.removeAttribute("aria-current");
-      }
-    });
-  };
-
-  const update = () => {
-    const threshold = Math.max(140, window.innerHeight * 0.18);
-    let nextActiveHref = links[0].getAttribute("href") || "";
-
-    links.forEach((link) => {
-      const href = link.getAttribute("href") || "";
-      const target = getTarget(href);
-      if (!target) return;
-      const top = target.getBoundingClientRect().top;
-      if (top <= threshold) {
-        nextActiveHref = href;
-      }
-    });
-
-    if (window.location.hash) {
-      const currentHash = "#" + (decodeHref(window.location.hash) || "");
-      if (links.some((link) => link.getAttribute("href") === currentHash)) {
-        nextActiveHref = currentHash;
-      }
-    }
-
-    setActive(nextActiveHref);
-  };
-
-  let frameId = 0;
-  const schedule = () => {
-    if (frameId !== 0) return;
-    frameId = window.requestAnimationFrame(() => {
-      frameId = 0;
-      update();
-    });
-  };
-
-  links.forEach((link) => {
-    link.addEventListener("click", () => {
-      const href = link.getAttribute("href") || "";
-      setActive(href);
-      window.setTimeout(update, 0);
-    });
-  });
-
-  window.addEventListener("scroll", schedule, { passive: true });
-  window.addEventListener("resize", schedule);
-  window.addEventListener("hashchange", schedule);
-
-  update();
-  window.setTimeout(update, 0);
-  window.setTimeout(update, 250);
-})();
-`;
 }
 
 export function ChangelogTOC({
@@ -282,7 +186,7 @@ export function ChangelogTOC({
       }
 
       if (window.location.hash) {
-        const hashHref = `#${decodeURIComponent(window.location.hash.slice(1))}`;
+        const hashHref = `#${decodeHashValue(window.location.hash.slice(1))}`;
         if (items.some((item) => item.href === hashHref)) {
           nextActiveHref = hashHref;
         }
@@ -319,40 +223,37 @@ export function ChangelogTOC({
   if (items.length === 0) return null;
 
   return (
-    <>
-      <aside
-        id={tocId}
-        className="fd-changelog-toc"
-        aria-label={title}
-        data-fd-changelog-toc="true"
-        data-variant={variant}
-      >
-        <div className="fd-changelog-toc-card">
-          <p className="fd-changelog-toc-heading">{title}</p>
-          <nav className="fd-changelog-toc-list">
-            {items.map((item) => {
-              const isActive = item.href === activeHref;
+    <aside
+      id={tocId}
+      className="fd-changelog-toc"
+      aria-label={title}
+      data-fd-changelog-toc="true"
+      data-variant={variant}
+    >
+      <div className="fd-changelog-toc-card">
+        <p className="fd-changelog-toc-heading">{title}</p>
+        <nav className="fd-changelog-toc-list">
+          {items.map((item) => {
+            const isActive = item.href === activeHref;
 
-              return (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  className="fd-changelog-toc-link"
-                  data-fd-changelog-toc-link="true"
-                  data-active={isActive ? "true" : "false"}
-                  aria-current={isActive ? "location" : undefined}
-                  onClick={() => setActiveHref(item.href)}
-                >
-                  {item.meta ? <span className="fd-changelog-toc-meta">{item.meta}</span> : null}
-                  <span className="fd-changelog-toc-title">{item.title}</span>
-                </a>
-              );
-            })}
-          </nav>
-        </div>
-      </aside>
-      <script dangerouslySetInnerHTML={{ __html: createChangelogTocScript(tocId) }} />
-    </>
+            return (
+              <a
+                key={item.href}
+                href={item.href}
+                className="fd-changelog-toc-link"
+                data-fd-changelog-toc-link="true"
+                data-active={isActive ? "true" : "false"}
+                aria-current={isActive ? "location" : undefined}
+                onClick={() => setActiveHref(item.href)}
+              >
+                {item.meta ? <span className="fd-changelog-toc-meta">{item.meta}</span> : null}
+                <span className="fd-changelog-toc-title">{item.title}</span>
+              </a>
+            );
+          })}
+        </nav>
+      </div>
+    </aside>
   );
 }
 

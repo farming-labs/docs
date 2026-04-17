@@ -51,6 +51,7 @@ function formatDisplayDate(value: string) {
     month: "long",
     day: "numeric",
     year: "numeric",
+    timeZone: "UTC",
   })
     .format(parsed)
     .toUpperCase();
@@ -97,6 +98,16 @@ function slugifyHeading(text: string) {
     .replace(/^-|-$/g, "");
 }
 
+function extractHeadingId(value: string): { title: string; id?: string } {
+  const match = value.match(/\s+(?:\[#([A-Za-z0-9._:-]+)\]|\{#([A-Za-z0-9._:-]+)\})\s*$/);
+  if (!match) return { title: value };
+
+  return {
+    title: value.slice(0, match.index).trimEnd(),
+    id: match[1] ?? match[2],
+  };
+}
+
 function extractChangelogToc(sourcePath: string): TOCItem[] {
   try {
     const content = readFileSync(join(process.cwd(), sourcePath), "utf-8");
@@ -129,13 +140,14 @@ function extractChangelogToc(sourcePath: string): TOCItem[] {
       if (!headingMatch) continue;
 
       const depth = headingMatch[1].length;
-      const title = stripInlineMarkdown(headingMatch[2]);
+      const resolvedHeading = extractHeadingId(headingMatch[2]);
+      const title = stripInlineMarkdown(resolvedHeading.title);
       if (!title) continue;
 
-      const baseSlug = slugifyHeading(title) || `section-${items.length + 1}`;
+      const baseSlug = resolvedHeading.id || slugifyHeading(title) || `section-${items.length + 1}`;
       const seen = seenSlugs.get(baseSlug) ?? 0;
       seenSlugs.set(baseSlug, seen + 1);
-      const slug = seen === 0 ? baseSlug : `${baseSlug}-${seen}`;
+      const slug = resolvedHeading.id ? baseSlug : seen === 0 ? baseSlug : `${baseSlug}-${seen}`;
 
       items.push({
         title,
