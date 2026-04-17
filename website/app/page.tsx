@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Github } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Bot, FileText, Github, Search } from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import CodeBlock from "@/components/ui/code-block";
+import { FeatureGridCard } from "@/components/ui/feature-grid-card";
 import PixelCard from "@/components/ui/pixel-card";
 import CopyCommand from "@/components/ui/copy-command";
 import FrameworkTabs from "@/components/ui/framework-tabs";
@@ -20,6 +21,43 @@ const heroVersions = [
   "v0.0.9",
   "v0.0.2-beta.5-10",
   "v0.0.1",
+] as const;
+
+const landingFeatureCards = [
+  {
+    title: "AI-native content",
+    icon: FileText,
+    backgroundIcon: FileText,
+    description:
+      "Write Markdown and MDX that stays clean for humans while remaining structured enough for AI tools and agents to read, cite, and update confidently.",
+    label: "Human + agent ready",
+    chips: ["Markdown", "MDX", "Frontmatter", "Page actions", "Readable source", "Agent-friendly"],
+  },
+  {
+    title: "Ask AI + indexed search",
+    icon: Search,
+    backgroundIcon: Search,
+    description:
+      "Mix built-in Ask AI with search adapters for simple, Typesense, Algolia, MCP, or custom retrieval so you can keep the indexing flow that fits your stack.",
+    label: "Retrieval layer",
+    chips: [
+      "Ask AI",
+      "Simple search",
+      "Typesense",
+      "Algolia",
+      "MCP search",
+      "Custom adapters",
+    ],
+  },
+  {
+    title: "Agent-optimized delivery",
+    icon: Bot,
+    backgroundIcon: Bot,
+    description:
+      "Ship docs to IDEs, agents, and humans from the same source with MCP, llms.txt, API reference, changelogs, and a docs runtime that stays open and portable.",
+    label: "Agent optimized",
+    chips: ["MCP", "llms.txt", "API reference", "Changelog", "Docs API", "Open runtime"],
+  },
 ] as const;
 
 function HeroSection() {
@@ -57,14 +95,16 @@ function HeroSection() {
               <div className="mt-2" />
               that just{" "}
               <span className="bg-black text-white dark:bg-white dark:text-black p-0 mt-2">
-                works.
+                work with AI.
               </span>
             </h1>
             <p className="mt-4 text-xs sm:text-base font-mono uppercase text-black/45 dark:text-white/45 max-w-md leading-relaxed">
-              A modern documentation framework that works. One config file, zero boilerplate.
+              AI-native, <span className="bg-black text-white dark:bg-white dark:text-black p-0 mt-2">
+                agent-optimized docs
+              </span> with Ask AI, MCP, llms.txt, search adapters, and zero boilerplate.
             </p>
 
-            <div className="-mb-5 sm:mb-0 mt-6 sm:mt-8 flex flex-col md:flex-wrap md:flex-row-reverse items-start md:items-center gap-0">
+            <div className="-mb-5 sm:mb-0 mt-6 sm:mt-8 flex w-fit max-w-full flex-col md:flex-wrap md:flex-row-reverse items-start md:items-center gap-0">
               <Link
                 href="/cloud"
                 className="group inline-flex items-center gap-2 bg-black text-white dark:bg-white dark:text-black px-5 py-[11px] mb-[0.5px] text-xs font-mono uppercase tracking-wider hover:bg-black/90 dark:hover:bg-white/90 transition-all hover:no-underline"
@@ -91,6 +131,33 @@ function HeroSection() {
               </Link>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AgentFeaturesSection() {
+  return (
+    <section className="relative z-10 border-t border-black/[8%] bg-white dark:border-white/[8%] dark:bg-black">
+      <div className="mx-auto max-w-7xl px-5 py-16 sm:px-6 sm:py-20">
+        <div className="max-w-3xl">
+          <span className="mb-4 block font-mono text-[10px] uppercase tracking-[0.2em] text-black/30 dark:text-white/30">
+            AI-native runtime
+          </span>
+          <h2 className="text-2xl font-semibold tracking-tighter text-black dark:text-white sm:text-4xl">
+            Built for humans first, but ready for AI and agents out of the box.
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-black/45 dark:text-white/40 sm:text-base">
+            Keep your docs source simple, then layer in Ask AI, MCP delivery, llms.txt, and
+            index-backed search without leaving the same runtime.
+          </p>
+        </div>
+
+        <div className="mt-10 grid gap-8 md:grid-cols-2 xl:grid-cols-3">
+          {landingFeatureCards.map((card) => (
+            <FeatureGridCard key={card.title} {...card} />
+          ))}
         </div>
       </div>
     </section>
@@ -1053,6 +1120,7 @@ export default function Home() {
       </div>
       <div className="max-w-[90%] mx-auto">
         <HeroSection />
+        <AgentFeaturesSection />
         <InstallSection />
         <ThemesSection />
         <ConfigSection />
