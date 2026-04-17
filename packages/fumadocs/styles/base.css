@@ -542,6 +542,160 @@ html[data-fd-route-kind="changelog"] .fd-ai-fm-input-bar {
   margin-top: 1.25rem;
 }
 
+.fd-changelog-frame {
+  width: 100%;
+  padding-inline: 1.5rem;
+}
+
+.fd-changelog-header-strip {
+  margin-inline: -1.5rem;
+}
+
+.fd-changelog-search-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.fd-changelog-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: min(100%, 22rem);
+}
+
+.fd-changelog-search-icon {
+  pointer-events: none;
+  position: absolute;
+  left: 0.5rem;
+  top: 50%;
+  z-index: 1;
+  display: inline-flex;
+  width: 1.9rem;
+  height: 1.9rem;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-50%);
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 78%, transparent);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--color-fd-muted) 58%, transparent);
+  color: var(--color-fd-muted-foreground);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28);
+}
+
+.fd-changelog-search-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.fd-changelog-search-input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0 0.9rem 0 3rem;
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 82%, transparent);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--color-fd-card) 86%, transparent);
+  color: var(--color-fd-foreground);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  outline: none;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.fd-changelog-search-input::placeholder {
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-changelog-search-input:focus-visible {
+  border-color: color-mix(in srgb, var(--color-fd-primary) 34%, var(--color-fd-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-fd-primary) 14%, transparent);
+}
+
+.dark .fd-changelog-search-icon {
+  background: rgb(255 255 255 / 0.06);
+  box-shadow: none;
+}
+
+.dark .fd-changelog-search-input {
+  background: rgb(255 255 255 / 0.04);
+}
+
+.fd-changelog-shell {
+  display: block;
+  width: 100%;
+}
+
+.fd-changelog-main {
+  min-width: 0;
+  width: 100%;
+}
+
+.fd-changelog-toc {
+  margin-top: 2.5rem;
+}
+
+.fd-changelog-toc-card {
+  position: relative;
+  border-left: 1px solid color-mix(in srgb, var(--color-fd-border) 70%, transparent);
+  padding-left: 1rem;
+}
+
+.fd-changelog-toc-heading {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-geist-mono);
+  font-size: 0.7rem !important;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-changelog-toc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.fd-changelog-toc-link {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  margin-left: -1rem;
+  border-left: 2px solid transparent;
+  border-radius: 0 0.85rem 0.85rem 0;
+  padding: 0.45rem 0.65rem 0.45rem calc(1rem - 1px);
+  color: var(--color-fd-muted-foreground);
+  text-decoration: none;
+  transition:
+    color 0.16s ease,
+    border-color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.fd-changelog-toc-link:hover {
+  color: var(--color-fd-foreground);
+  text-decoration: none;
+}
+
+.fd-changelog-toc-meta {
+  font-family: var(--fd-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-changelog-toc-title {
+  font-size: 0.84rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: inherit;
+}
+
 .fd-changelog-directory-line {
   display: none;
 }
@@ -620,7 +774,7 @@ html[data-fd-route-kind="changelog"] .fd-ai-fm-input-bar {
 .fd-changelog-date {
   display: block;
   font-family: var(--fd-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 400;
   line-height: 1.2;
   letter-spacing: 0.14em;
@@ -654,6 +808,60 @@ html[data-fd-route-kind="changelog"] .fd-ai-fm-input-bar {
   background-color: color-mix(in srgb, var(--color-fd-muted) 40%, transparent);
 }
 
+.fd-changelog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+.fd-changelog-actions :is(a, button),
+.fd-changelog-action-link {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 75%, transparent);
+  border-radius: 0.875rem !important;
+  background: color-mix(in srgb, var(--color-fd-card) 82%, transparent);
+  color: var(--color-fd-foreground);
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none !important;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.24);
+}
+
+.fd-changelog-actions :is(a, button):hover,
+.fd-changelog-action-link:hover {
+  background: var(--color-fd-accent);
+  color: var(--color-fd-accent-foreground);
+  text-decoration: none !important;
+}
+
+.fd-changelog-actions :is(a, button) svg,
+.fd-changelog-action-link svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.dark .fd-changelog-actions :is(a, button),
+.dark .fd-changelog-action-link {
+  background: rgb(255 255 255 / 0.06);
+  box-shadow: none;
+}
+
+.dark .fd-changelog-actions :is(a, button):hover,
+.dark .fd-changelog-action-link:hover {
+  background: rgb(255 255 255 / 0.1);
+}
+
 .fd-changelog-entry + .fd-changelog-entry {
   border-top: none;
   padding-top: 0;
@@ -668,7 +876,7 @@ html[data-fd-route-kind="changelog"] .fd-ai-fm-input-bar {
 
   .fd-changelog-directory-line {
     position: absolute;
-    top: 5rem;
+    top: calc(0.35rem + 0.25rem + 0.375rem);
     bottom: 1rem;
     left: calc(5.75rem + 1rem + 1rem);
     display: block;
@@ -683,6 +891,42 @@ html[data-fd-route-kind="changelog"] .fd-ai-fm-input-bar {
     display: grid;
     grid-template-columns: 5.75rem 2rem minmax(0, 1fr);
     column-gap: 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .fd-changelog-frame {
+    padding-left: 0;
+    padding-right: 2.5rem;
+  }
+
+  .fd-changelog-header-strip {
+    margin-left: 0;
+    margin-right: -2.5rem;
+  }
+
+  .fd-changelog-shell-shifted {
+    margin-left: -2rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .fd-changelog-shell {
+    display: block;
+  }
+
+  .fd-changelog-main {
+    width: min(64rem, 100%);
+    max-width: 64rem;
+  }
+
+  .fd-changelog-toc {
+    position: fixed;
+    z-index: 10;
+    top: calc(var(--fd-nav-height, 56px) + 3rem);
+    right: 0;
+    width: var(--fd-toc-width, 14rem);
+    margin-top: 0;
   }
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 export interface ChangelogDirectoryEntry {
   slug: string;
@@ -22,6 +22,12 @@ interface ChangelogDirectoryProps {
   entries: ChangelogDirectoryEntry[];
   searchEnabled: boolean;
   actions?: ReactNode;
+}
+
+interface ChangelogTOCItem {
+  href: string;
+  title: string;
+  meta?: string;
 }
 
 const MAGIC_PROSE =
@@ -82,15 +88,271 @@ function buildSearchHaystack(entry: ChangelogDirectoryEntry) {
 
 function EmptyResults({ query }: { query: string }) {
   return (
-    <div className="rounded-lg border border-fd-border/70 bg-fd-muted/30 px-6 py-10 sm:px-8">
-      <p className="text-xs font-medium text-fd-muted-foreground">No matches</p>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-fd-foreground sm:text-3xl">
+    <div
+      className="rounded-lg border border-fd-border/70 bg-fd-muted/30 px-6 py-12 sm:px-8"
+      style={{
+        width: "min(100%, 48rem)",
+        maxWidth: "48rem",
+        minHeight: "10rem",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        justifyContent: "center",
+        textAlign: "left",
+        alignSelf: "flex-start",
+        marginLeft: 0,
+        marginRight: "auto",
+      }}
+    >
+      <p className="text-xs font-medium uppercase tracking-[0.12em] text-fd-muted-foreground">
+        No matches
+      </p>
+      <h2 className="mt-3 max-w-2xl text-2xl font-semibold tracking-tight text-fd-foreground sm:text-3xl">
         Nothing matched “{query}”
       </h2>
-      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-fd-muted-foreground">
+      <p className="mt-3 max-w-xl text-sm leading-relaxed text-fd-muted-foreground">
         Try a release title, version, tag, or author name.
       </p>
     </div>
+  );
+}
+
+function getHashTargetElement(href: string) {
+  if (!href.startsWith("#")) return null;
+  const targetId = decodeURIComponent(href.slice(1));
+  if (!targetId) return null;
+  const candidates = Array.from(document.querySelectorAll<HTMLElement>("[id]")).filter(
+    (candidate) => candidate.id === targetId,
+  );
+  const element =
+    candidates.find((candidate) => {
+      const rect = candidate.getBoundingClientRect();
+      return rect.width > 0 || rect.height > 0;
+    }) ?? candidates[0];
+  if (!element) return null;
+
+  const rect = element.getBoundingClientRect();
+  if (rect.width > 0 || rect.height > 0) return element;
+
+  return (
+    element.closest<HTMLElement>("h1, h2, h3, h4, h5, h6, section, article") ??
+    element.parentElement
+  );
+}
+
+function createChangelogTocScript(tocId: string) {
+  return `
+(() => {
+  const toc = document.getElementById(${JSON.stringify(tocId)});
+  if (!toc || toc.dataset.fdChangelogTocBound === "true") return;
+  toc.dataset.fdChangelogTocBound = "true";
+
+  const links = Array.from(
+    toc.querySelectorAll('[data-fd-changelog-toc-link="true"]')
+  );
+
+  if (links.length === 0) return;
+
+  const decodeHref = (href) => {
+    if (!href || !href.startsWith("#")) return null;
+    try {
+      return decodeURIComponent(href.slice(1));
+    } catch {
+      return href.slice(1);
+    }
+  };
+
+  const getTarget = (href) => {
+    const targetId = decodeHref(href);
+    if (!targetId) return null;
+
+    const candidates = Array.from(document.querySelectorAll("[id]")).filter(
+      (candidate) => candidate.id === targetId
+    );
+    const element = candidates.find((candidate) => {
+      const rect = candidate.getBoundingClientRect();
+      return rect.width > 0 || rect.height > 0;
+    }) || candidates[0];
+    if (!element) return null;
+
+    const rect = element.getBoundingClientRect();
+    if (rect.width > 0 || rect.height > 0) return element;
+
+    return element.closest("h1, h2, h3, h4, h5, h6, section, article") || element.parentElement;
+  };
+
+  const setActive = (href) => {
+    links.forEach((link) => {
+      const active = link.getAttribute("href") === href;
+      link.setAttribute("data-active", active ? "true" : "false");
+      if (active) {
+        link.setAttribute("aria-current", "location");
+      } else {
+        link.removeAttribute("aria-current");
+      }
+    });
+  };
+
+  const update = () => {
+    const threshold = Math.max(140, window.innerHeight * 0.18);
+    let nextActiveHref = links[0].getAttribute("href") || "";
+
+    links.forEach((link) => {
+      const href = link.getAttribute("href") || "";
+      const target = getTarget(href);
+      if (!target) return;
+      const top = target.getBoundingClientRect().top;
+      if (top <= threshold) {
+        nextActiveHref = href;
+      }
+    });
+
+    if (window.location.hash) {
+      const currentHash = "#" + (decodeHref(window.location.hash) || "");
+      if (links.some((link) => link.getAttribute("href") === currentHash)) {
+        nextActiveHref = currentHash;
+      }
+    }
+
+    setActive(nextActiveHref);
+  };
+
+  let frameId = 0;
+  const schedule = () => {
+    if (frameId !== 0) return;
+    frameId = window.requestAnimationFrame(() => {
+      frameId = 0;
+      update();
+    });
+  };
+
+  links.forEach((link) => {
+    link.addEventListener("click", () => {
+      const href = link.getAttribute("href") || "";
+      setActive(href);
+      window.setTimeout(update, 0);
+    });
+  });
+
+  window.addEventListener("scroll", schedule, { passive: true });
+  window.addEventListener("resize", schedule);
+  window.addEventListener("hashchange", schedule);
+
+  update();
+  window.setTimeout(update, 0);
+  window.setTimeout(update, 250);
+})();
+`;
+}
+
+export function ChangelogTOC({
+  title,
+  items,
+  variant = "releases",
+}: {
+  title: string;
+  items: ChangelogTOCItem[];
+  variant?: "releases" | "content";
+}) {
+  const tocId = `fd-changelog-toc-${variant}-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  const [activeHref, setActiveHref] = useState(items[0]?.href ?? "");
+
+  useEffect(() => {
+    if (items.length === 0) {
+      setActiveHref("");
+      return;
+    }
+
+    let frameId = 0;
+
+    const updateActiveHref = () => {
+      const threshold = Math.max(140, window.innerHeight * 0.18);
+      let nextActiveHref = items[0]?.href ?? "";
+
+      for (const item of items) {
+        const element = getHashTargetElement(item.href);
+        if (!element) continue;
+
+        const { top } = element.getBoundingClientRect();
+        if (top <= threshold) {
+          nextActiveHref = item.href;
+        } else {
+          break;
+        }
+      }
+
+      if (window.location.hash) {
+        const hashHref = `#${decodeURIComponent(window.location.hash.slice(1))}`;
+        if (items.some((item) => item.href === hashHref)) {
+          nextActiveHref = hashHref;
+        }
+      }
+
+      setActiveHref(nextActiveHref);
+    };
+
+    const scheduleUpdate = () => {
+      if (frameId !== 0) return;
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0;
+        updateActiveHref();
+      });
+    };
+
+    updateActiveHref();
+    window.setTimeout(updateActiveHref, 0);
+    window.setTimeout(updateActiveHref, 250);
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    window.addEventListener("hashchange", scheduleUpdate);
+
+    return () => {
+      if (frameId !== 0) {
+        window.cancelAnimationFrame(frameId);
+      }
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      window.removeEventListener("hashchange", scheduleUpdate);
+    };
+  }, [items]);
+
+  if (items.length === 0) return null;
+
+  return (
+    <>
+      <aside
+        id={tocId}
+        className="fd-changelog-toc"
+        aria-label={title}
+        data-fd-changelog-toc="true"
+        data-variant={variant}
+      >
+      <div className="fd-changelog-toc-card">
+        <p className="fd-changelog-toc-heading">{title}</p>
+        <nav className="fd-changelog-toc-list">
+          {items.map((item) => {
+            const isActive = item.href === activeHref;
+
+            return (
+              <a
+                key={item.href}
+                href={item.href}
+                className="fd-changelog-toc-link"
+                data-fd-changelog-toc-link="true"
+                data-active={isActive ? "true" : "false"}
+                aria-current={isActive ? "location" : undefined}
+                onClick={() => setActiveHref(item.href)}
+              >
+              {item.meta ? <span className="fd-changelog-toc-meta">{item.meta}</span> : null}
+              <span className="fd-changelog-toc-title">{item.title}</span>
+              </a>
+            );
+          })}
+        </nav>
+      </div>
+      </aside>
+      <script dangerouslySetInnerHTML={{ __html: createChangelogTocScript(tocId) }} />
+    </>
   );
 }
 
@@ -262,10 +524,34 @@ export function ChangelogDirectory({
   }, [entries, normalizedQuery]);
 
   const releaseCount = entries.length;
+  const hasResults = filteredEntries.length > 0;
+  const tocItems = filteredEntries.map((entry) => ({
+    href: `#${entry.slug}`,
+    title: entry.title,
+    meta: entry.version ?? formatTimelineDate(entry.date),
+  }));
+  const searchControl = searchEnabled ? (
+    <div className="fd-changelog-search-row">
+      <label className="fd-changelog-search" aria-label="Search changelog entries">
+        <span className="fd-changelog-search-icon" aria-hidden="true">
+          <SearchIcon />
+        </span>
+        <input
+          type="text"
+          inputMode="search"
+          autoComplete="off"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search changelog entries"
+          className="fd-changelog-search-input"
+        />
+      </label>
+    </div>
+  ) : null;
 
   return (
-    <div className="not-prose relative mx-auto w-full max-w-5xl px-6 pb-16 lg:px-10">
-      <div className="-mx-6 border-b-0 border-fd-border/50 lg:-mx-10">
+    <div className="fd-changelog-frame not-prose relative w-full pb-16">
+      <div className="fd-changelog-header-strip border-b-0 border-fd-border/50">
         <div
           className="flex flex-wrap items-center justify-between gap-4"
           style={{ paddingTop: "1.25rem", paddingBottom: "1.25rem" }}
@@ -278,34 +564,23 @@ export function ChangelogDirectory({
               {releaseCount} {releaseCount === 1 ? "release" : "releases"}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
-            {searchEnabled ? (
-              <label className="relative flex min-w-48 max-w-xs flex-1 items-center">
-                <span className="pointer-events-none absolute left-2.5 text-fd-muted-foreground">
-                  <SearchIcon />
-                </span>
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search…"
-                  className="h-9 w-full rounded-md border border-fd-border bg-fd-background pl-9 pr-3 text-sm text-fd-foreground shadow-sm outline-none placeholder:text-fd-muted-foreground focus-visible:ring-2 focus-visible:ring-fd-primary/25"
-                />
-              </label>
-            ) : null}
-          </div>
+          {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
         </div>
       </div>
 
-      {description ? (
+      {description || searchControl ? (
         <>
-          <p
-            className="max-w-2xl text-base leading-relaxed text-fd-muted-foreground"
-            style={{ marginTop: "1rem" }}
-          >
-            {description}
-          </p>
+          {description ? (
+            <p
+              className="max-w-2xl text-base leading-relaxed text-fd-muted-foreground"
+              style={{ marginTop: "1rem" }}
+            >
+              {description}
+            </p>
+          ) : null}
+          {searchControl ? (
+            <div style={{ marginTop: description ? "1rem" : "1.25rem" }}>{searchControl}</div>
+          ) : null}
           <hr
             className="border-0 border-t border-fd-border/40"
             style={{ marginTop: "1rem" }}
@@ -313,21 +588,29 @@ export function ChangelogDirectory({
         </>
       ) : null}
 
-      <div className="fd-changelog-directory-feed relative" style={{ paddingTop: "4rem" }}>
-        {filteredEntries.length > 0 ? (
-          <>
-            <div className="fd-changelog-directory-line" aria-hidden />
-            {filteredEntries.map((entry, index) => (
-              <ChangelogTimelineItem
-                key={entry.slug}
-                entry={entry}
-                isLast={index === filteredEntries.length - 1}
-              />
-            ))}
-          </>
-        ) : (
-          <EmptyResults query={query} />
-        )}
+      <div
+        className={hasResults ? "fd-changelog-shell fd-changelog-shell-shifted" : "fd-changelog-shell"}
+        style={{ paddingTop: "4rem" }}
+      >
+        <div className="fd-changelog-main fd-changelog-directory-feed relative">
+          {hasResults ? (
+            <>
+              <div className="fd-changelog-directory-line" aria-hidden />
+              {filteredEntries.map((entry, index) => (
+                <ChangelogTimelineItem
+                  key={entry.slug}
+                  entry={entry}
+                  isLast={index === filteredEntries.length - 1}
+                />
+              ))}
+            </>
+          ) : (
+            <EmptyResults query={query} />
+          )}
+        </div>
+        {hasResults ? (
+          <ChangelogTOC title="Releases" items={tocItems} />
+        ) : null}
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ export const changelogEntries: GeneratedChangelogEntry[] = [
     url: "/docs/changelogs/2026-04-15",
     sourcePath: "app/docs/changelog/2026-04-15/page.mdx",
     Component: ChangelogEntry1,
-    metadata: {"title":"Fumadocs OpenAPI mode is now the default","description":"The Next example now ships with the faster Fumadocs OpenAPI experience, plus a tighter docs/API switcher.","image":"/images/changelog/fumadocs-openapi-mode.png","authors":["Farming Labs"],"version":"v0.1.13","tags":["api-reference","next"],"pinned":true},
+    metadata: {"title":"API Reference: OpenAPI mode is now the default","description":"The Next example now ships with the faster OpenAPI experience, plus a tighter docs/API switcher.","image":"/images/changelog/fumadocs-openapi-mode.png","authors":["Farming Labs"],"version":"v0.1.13","tags":["api-reference","next"],"pinned":true},
   },
   {
     slug: "2026-04-03",

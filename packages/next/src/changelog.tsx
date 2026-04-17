@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createPageMetadata, type DocsConfig } from "@farming-labs/theme";
 import type { ChangelogFrontmatter } from "@farming-labs/docs";
 import { resolveChangelogConfig } from "@farming-labs/docs";
@@ -12,6 +14,7 @@ import {
 } from "react";
 import {
   ChangelogDirectory,
+  ChangelogTOC,
   type ChangelogDirectoryEntry,
 } from "./changelog-rail-search.js";
 
@@ -22,6 +25,12 @@ export interface GeneratedChangelogEntry {
   sourcePath: string;
   Component: ComponentType;
   metadata?: ChangelogFrontmatter;
+}
+
+interface TOCItem {
+  title: string;
+  url: string;
+  depth: number;
 }
 
 interface ResolvedChangelogEntry {
@@ -61,6 +70,89 @@ function normalizeAuthors(value: ChangelogFrontmatter["authors"]): string[] {
   }
 
   return value.trim() ? [value] : [];
+}
+
+function normalizeWhitespace(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function stripInlineMarkdown(value: string) {
+  return normalizeWhitespace(
+    value
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "$1")
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/\*([^*]+)\*/g, "$1")
+      .replace(/__([^_]+)__/g, "$1")
+      .replace(/_([^_]+)_/g, "$1")
+      .replace(/<[^>]+>/g, ""),
+  );
+}
+
+function slugifyHeading(text: string) {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[`'"‘’“”]/g, "")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function extractChangelogToc(sourcePath: string): TOCItem[] {
+  try {
+    const content = readFileSync(join(process.cwd(), sourcePath), "utf-8");
+    const lines = content.split(/\r?\n/);
+    const items: TOCItem[] = [];
+    const seenSlugs = new Map<string, number>();
+    let inFrontmatter = false;
+    let frontmatterDone = false;
+    let inFence = false;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+
+      if (!frontmatterDone && trimmed === "---") {
+        inFrontmatter = !inFrontmatter;
+        if (!inFrontmatter) frontmatterDone = true;
+        continue;
+      }
+
+      if (inFrontmatter) continue;
+
+      if (/^(```|~~~)/.test(trimmed)) {
+        inFence = !inFence;
+        continue;
+      }
+
+      if (inFence) continue;
+
+      const headingMatch = line.match(/^(#{2,4})\s+(.+?)\s*#*\s*$/);
+      if (!headingMatch) continue;
+
+      const depth = headingMatch[1].length;
+      const title = stripInlineMarkdown(headingMatch[2]);
+      if (!title) continue;
+
+      const baseSlug = slugifyHeading(title) || `section-${items.length + 1}`;
+      const seen = seenSlugs.get(baseSlug) ?? 0;
+      seenSlugs.set(baseSlug, seen + 1);
+      const slug = seen === 0 ? baseSlug : `${baseSlug}-${seen}`;
+
+      items.push({
+        title,
+        url: `#${slug}`,
+        depth,
+      });
+    }
+
+    return items;
+  } catch {
+    return [];
+  }
 }
 
 function resolveEntries(entries: GeneratedChangelogEntry[]): ResolvedChangelogEntry[] {
@@ -138,11 +230,7 @@ function formatChangelogTagLabel(tag: string) {
 function ChangelogActions({ children }: { children?: ReactNode }) {
   if (!children) return null;
 
-  return (
-    <div className="flex flex-wrap gap-2.5 [&_a]:inline-flex [&_a]:min-h-9 [&_a]:items-center [&_a]:justify-center [&_a]:gap-1.5 [&_a]:rounded-full [&_a]:border [&_a]:border-fd-border/70 [&_a]:bg-fd-card/70 [&_a]:px-3.5 [&_a]:py-2 [&_a]:text-[0.8rem] [&_a]:font-medium [&_a]:text-fd-foreground [&_a]:!no-underline [&_a]:shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] [&_a]:transition-colors [&_a:hover]:bg-fd-accent [&_a:hover]:text-fd-accent-foreground [&_a:hover]:!no-underline dark:[&_a]:bg-white/[0.06] dark:[&_a]:shadow-none dark:[&_a:hover]:bg-white/[0.1]">
-      {children}
-    </div>
-  );
+  return <div className="fd-changelog-actions">{children}</div>;
 }
 
 function MetaRow({
@@ -241,6 +329,7 @@ function ChangelogEntryPagination(props: {
 
 function ChangelogEntryView(props: {
   entry: ResolvedChangelogEntry;
+  toc: TOCItem[];
   previous?: ResolvedChangelogEntry;
   next?: ResolvedChangelogEntry;
   listingUrl: string;
@@ -248,124 +337,125 @@ function ChangelogEntryView(props: {
   const Content = props.entry.Component;
   const contentClassName =
     "fd-changelog-prose prose dark:prose-invert max-w-none min-w-0 prose-headings:scroll-mt-8 prose-headings:font-semibold prose-a:no-underline prose-headings:tracking-tight prose-headings:text-balance prose-p:tracking-tight prose-p:text-balance";
+  const tocItems = props.toc.map((item) => ({ href: item.url, title: item.title }));
 
   return (
-    <div className="not-prose relative mx-auto w-full max-w-5xl px-6 pb-16 lg:px-10">
-      <div className="border-b border-fd-border/50 pb-5">
-        <Link
-          href={props.listingUrl}
-          prefetch
-          className="inline-flex items-center gap-2 text-sm font-medium text-fd-muted-foreground no-underline transition-colors hover:text-fd-foreground"
-        >
-          <span aria-hidden>←</span>
-          Back to changelog
-        </Link>
-      </div>
-
-      <div style={{ paddingTop: "4.5rem" }}>
-        <div className="fd-changelog-mobile-summary">
-          {props.entry.version ? (
-            <div className="fd-changelog-version-box">{props.entry.version}</div>
-          ) : (
-            <div />
-          )}
-          <time
-            className="fd-changelog-date"
-            dateTime={props.entry.date}
-          >
-            {formatDisplayDate(props.entry.date)}
-          </time>
-        </div>
-
-        <div className="fd-changelog-mobile-content">
-          <header className="flex flex-col gap-2">
-            <h1 className="m-0 text-balance text-2xl font-semibold leading-snug tracking-tight text-fd-foreground md:text-3xl">
-              {props.entry.title}
-            </h1>
-            <MetaRow entry={props.entry} includeVersion={false} />
-            {props.entry.description ? (
-              <p className="m-0 max-w-2xl text-sm leading-relaxed text-fd-muted-foreground">
-                {props.entry.description}
-              </p>
-            ) : null}
-          </header>
-
-          <article className={`${contentClassName} mt-6`}>
-            {props.entry.image ? (
-              <p>
-                <img
-                  src={props.entry.image}
-                  alt={`${props.entry.title} preview`}
-                  loading="lazy"
-                  decoding="async"
-                />
-              </p>
-            ) : null}
-            <Content />
-          </article>
-        </div>
-
-        <div className="fd-changelog-desktop-grid">
-          <div className="flex items-start justify-end pt-0.5">
-            {props.entry.version ? (
-              <div className="fd-changelog-version-box">{props.entry.version}</div>
-            ) : (
-              <div className="h-9" aria-hidden="true" />
-            )}
-          </div>
-
-          <div className="fd-changelog-rail" data-testid="changelog-rail">
-            <div
-              className="fd-changelog-timeline-line"
-              data-testid="changelog-timeline-line"
-              aria-hidden
-              style={{ top: "1rem", bottom: "0" }}
-            />
-            <div
-              className="fd-changelog-timeline-dot mt-1"
-              data-testid="changelog-timeline-dot"
-              aria-hidden
-            />
-          </div>
-
-          <div className="min-w-0 space-y-6">
-            <time
-              className="fd-changelog-date block pt-0.5"
-              dateTime={props.entry.date}
+    <div className="fd-changelog-frame not-prose relative w-full pb-16">
+      <div className="fd-changelog-shell">
+        <div className="fd-changelog-main">
+          <div className="border-b border-fd-border/50 pb-5">
+            <Link
+              href={props.listingUrl}
+              prefetch
+              style={{marginBottom: "30px" }}
+              className="inline-flex items-center gap-2 text-sm font-medium text-fd-muted-foreground no-underline transition-colors hover:text-fd-foreground"
             >
-              {formatDisplayDate(props.entry.date)}
-            </time>
-
-            <header className="flex flex-col gap-2">
-              <h1 className="m-0 text-balance text-2xl font-semibold leading-snug tracking-tight text-fd-foreground md:text-3xl">
-                {props.entry.title}
-              </h1>
-              <MetaRow entry={props.entry} includeVersion={false} />
-              {props.entry.description ? (
-                <p className="m-0 max-w-2xl text-sm leading-relaxed text-fd-muted-foreground">
-                  {props.entry.description}
-                </p>
-              ) : null}
-            </header>
-
-            <article className={contentClassName}>
-              {props.entry.image ? (
-                <p>
-                  <img
-                    src={props.entry.image}
-                    alt={`${props.entry.title} preview`}
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </p>
-              ) : null}
-              <Content />
-            </article>
+              <span aria-hidden>←</span>
+              Back to changelog
+            </Link>
           </div>
-        </div>
-      </div>
 
-      <ChangelogEntryPagination previous={props.previous} next={props.next} />
+          <div style={{ paddingTop: "4.5rem" }}>
+            <div className="fd-changelog-mobile-summary">
+              {props.entry.version ? (
+                <div className="fd-changelog-version-box">{props.entry.version}</div>
+              ) : (
+                <div />
+              )}
+              <time className="fd-changelog-date" dateTime={props.entry.date}>
+                {formatDisplayDate(props.entry.date)}
+              </time>
+            </div>
+
+            <div className="fd-changelog-mobile-content">
+              <header className="flex flex-col gap-2">
+                <h1 className="m-0 text-balance text-2xl font-semibold leading-snug tracking-tight text-fd-foreground md:text-3xl">
+                  {props.entry.title}
+                </h1>
+                <MetaRow entry={props.entry} includeVersion={false} />
+                {props.entry.description ? (
+                  <p className="m-0 max-w-2xl text-sm leading-relaxed text-fd-muted-foreground">
+                    {props.entry.description}
+                  </p>
+                ) : null}
+              </header>
+
+              <article className={`${contentClassName} mt-6`}>
+                {props.entry.image ? (
+                  <p>
+                    <img
+                      src={props.entry.image}
+                      alt={`${props.entry.title} preview`}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </p>
+                ) : null}
+                <Content />
+              </article>
+            </div>
+
+            <div className="fd-changelog-desktop-grid">
+              <div className="flex items-start justify-end pt-0.5">
+                {props.entry.version ? (
+                  <div className="fd-changelog-version-box">{props.entry.version}</div>
+                ) : (
+                  <div className="h-9" aria-hidden="true" />
+                )}
+              </div>
+
+              <div className="fd-changelog-rail" data-testid="changelog-rail">
+                <div
+                  className="fd-changelog-timeline-line"
+                  data-testid="changelog-timeline-line"
+                  aria-hidden
+                  style={{ top: "1rem", bottom: "0" }}
+                />
+                <div
+                  className="fd-changelog-timeline-dot mt-1"
+                  data-testid="changelog-timeline-dot"
+                  aria-hidden
+                />
+              </div>
+
+              <div className="min-w-0 space-y-6">
+                <time className="fd-changelog-date block pt-0.5" dateTime={props.entry.date}>
+                  {formatDisplayDate(props.entry.date)}
+                </time>
+
+                <header className="flex flex-col gap-2">
+                  <h1 className="m-0 text-balance text-2xl font-semibold leading-snug tracking-tight text-fd-foreground md:text-3xl">
+                    {props.entry.title}
+                  </h1>
+                  <MetaRow entry={props.entry} includeVersion={false} />
+                  {props.entry.description ? (
+                    <p className="m-0 max-w-2xl text-sm leading-relaxed text-fd-muted-foreground">
+                      {props.entry.description}
+                    </p>
+                  ) : null}
+                </header>
+
+                <article className={contentClassName}>
+                  {props.entry.image ? (
+                    <p>
+                      <img
+                        src={props.entry.image}
+                        alt={`${props.entry.title} preview`}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </p>
+                  ) : null}
+                  <Content />
+                </article>
+              </div>
+            </div>
+          </div>
+
+          <ChangelogEntryPagination previous={props.previous} next={props.next} />
+        </div>
+        <ChangelogTOC title="On this page" items={tocItems} variant="content" />
+      </div>
     </div>
   );
 }
@@ -422,6 +512,7 @@ export function createNextChangelogEntryPage(
     return (
       <ChangelogEntryView
         entry={entry}
+        toc={extractChangelogToc(entry.sourcePath)}
         previous={previous}
         next={next}
         listingUrl={getListingUrl(config)}

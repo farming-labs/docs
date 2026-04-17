@@ -82,7 +82,13 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
-  theme: colorful(),
+  theme: colorful({
+    ui: {
+      layout: {
+        sidebarWidth: 300
+      }
+    } 
+  }),
   ai: {
     enabled: true,
     // mode: "sidebar-icon",
@@ -119,7 +125,7 @@ export default defineDocs({
     title: "Changelog",
     description:
       "Track the latest updates, bug fixes, and shipped improvements across @farming-labs/docs.",
-    search: false,
+    search: true,
     actionsComponent: ChangelogActions,
   },
   nav: {
