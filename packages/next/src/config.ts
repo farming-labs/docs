@@ -151,42 +151,6 @@ const ApiReferenceLayout = createNextApiReferenceLayout(docsConfig);
 export default ApiReferenceLayout;
 `;
 
-const CHANGELOG_MANIFEST_FILENAME = "__changelog.generated.tsx";
-
-const CHANGELOG_INDEX_PAGE_TEMPLATE = `\
-${GENERATED_BANNER}
-import docsConfig from "@/docs.config";
-import { changelogEntries } from "./${CHANGELOG_MANIFEST_FILENAME.replace(/\.tsx$/, "")}";
-import {
-  createNextChangelogIndexMetadata,
-  createNextChangelogIndexPage,
-} from "@farming-labs/next/changelog";
-
-export const metadata = createNextChangelogIndexMetadata(docsConfig);
-
-const ChangelogPage = createNextChangelogIndexPage(docsConfig, changelogEntries);
-
-export default ChangelogPage;
-`;
-
-const CHANGELOG_ENTRY_PAGE_TEMPLATE = `\
-${GENERATED_BANNER}
-import docsConfig from "@/docs.config";
-import { changelogEntries } from "../${CHANGELOG_MANIFEST_FILENAME.replace(/\.tsx$/, "")}";
-import {
-  createNextChangelogEntryMetadata,
-  createNextChangelogEntryPage,
-  createNextChangelogStaticParams,
-} from "@farming-labs/next/changelog";
-
-export const generateStaticParams = createNextChangelogStaticParams(changelogEntries);
-export const generateMetadata = createNextChangelogEntryMetadata(docsConfig, changelogEntries);
-
-const ChangelogEntryPage = createNextChangelogEntryPage(docsConfig, changelogEntries);
-
-export default ChangelogEntryPage;
-`;
-
 const CHANGELOG_SOURCE_LAYOUT_TEMPLATE = `\
 ${GENERATED_BANNER}
 import { notFound } from "next/navigation";
@@ -752,20 +716,20 @@ function toImportPath(fromFile: string, toFile: string): string {
   return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
 }
 
-function buildChangelogManifestSource(
+function buildInlineChangelogEntriesSource(
   root: string,
-  manifestPath: string,
+  pagePath: string,
   entryPath: string,
   routePath: string,
   entries: ChangelogSourceEntry[],
-): string {
+): { importsSource: string; entriesSource: string } {
   const imports: string[] = [];
   const records: string[] = [];
 
   entries.forEach((entry, index) => {
     const importName = `ChangelogEntry${index + 1}`;
 
-    imports.push(`import ${importName} from "${toImportPath(manifestPath, entry.sourceFile)}";`);
+    imports.push(`import ${importName} from "${toImportPath(pagePath, entry.sourceFile)}";`);
 
     records.push(`  {
     slug: ${JSON.stringify(entry.slug)},
@@ -777,14 +741,83 @@ function buildChangelogManifestSource(
   }`);
   });
 
-  return `\
-${GENERATED_BANNER}
-import type { GeneratedChangelogEntry } from "@farming-labs/next/changelog";
-${imports.join("\n")}
-
-export const changelogEntries: GeneratedChangelogEntry[] = [
+  return {
+    importsSource: `import type { GeneratedChangelogEntry } from "@farming-labs/next/changelog";
+${imports.join("\n")}`.trimEnd(),
+    entriesSource: `export const changelogEntries: GeneratedChangelogEntry[] = [
 ${records.join(",\n")}
 ];
+`,
+  };
+}
+
+function buildChangelogIndexPageSource(
+  root: string,
+  pagePath: string,
+  entryPath: string,
+  routePath: string,
+  entries: ChangelogSourceEntry[],
+): string {
+  const { importsSource, entriesSource } = buildInlineChangelogEntriesSource(
+    root,
+    pagePath,
+    entryPath,
+    routePath,
+    entries,
+  );
+
+  return `\
+${GENERATED_BANNER}
+import docsConfig from "@/docs.config";
+${importsSource}
+import {
+  createNextChangelogIndexMetadata,
+  createNextChangelogIndexPage,
+} from "@farming-labs/next/changelog";
+
+${entriesSource}
+
+export const metadata = createNextChangelogIndexMetadata(docsConfig);
+
+const ChangelogPage = createNextChangelogIndexPage(docsConfig, changelogEntries);
+
+export default ChangelogPage;
+`;
+}
+
+function buildChangelogEntryPageSource(
+  root: string,
+  pagePath: string,
+  entryPath: string,
+  routePath: string,
+  entries: ChangelogSourceEntry[],
+): string {
+  const { importsSource, entriesSource } = buildInlineChangelogEntriesSource(
+    root,
+    pagePath,
+    entryPath,
+    routePath,
+    entries,
+  );
+
+  return `\
+${GENERATED_BANNER}
+import docsConfig from "@/docs.config";
+${importsSource}
+import {
+  createNextChangelogEntryMetadata,
+  createNextChangelogEntryPage,
+  createNextChangelogStaticParams,
+} from "@farming-labs/next/changelog";
+
+${entriesSource}
+
+export const generateStaticParams = createNextChangelogStaticParams(changelogEntries);
+export const generateMetadata = createNextChangelogEntryMetadata(docsConfig, changelogEntries);
+
+const ChangelogEntryPage = createNextChangelogEntryPage(docsConfig, changelogEntries);
+
+export default ChangelogEntryPage;
 `;
 }
 
@@ -950,7 +983,6 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     const changelogEntryDir = join(changelogBaseDir, "[slug]");
     const changelogIndexPath = join(changelogBaseDir, "page.tsx");
     const changelogEntryPath = join(changelogEntryDir, "page.tsx");
-    const changelogManifestPath = join(changelogBaseDir, CHANGELOG_MANIFEST_FILENAME);
     const changelogSourceDir = resolveChangelogContentDir(
       root,
       appDir,
@@ -978,23 +1010,23 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
 
       removeManagedFile(join(legacyChangelogBaseDir, "[slug]", "page.tsx"));
       removeManagedFile(join(legacyChangelogBaseDir, "page.tsx"));
-      removeManagedFile(join(legacyChangelogBaseDir, CHANGELOG_MANIFEST_FILENAME));
+      removeManagedFile(join(legacyChangelogBaseDir, "__changelog.generated.tsx"));
     }
 
     mkdirSync(changelogBaseDir, { recursive: true });
-    writeFileSync(
-      changelogManifestPath,
-      buildChangelogManifestSource(
-        root,
-        changelogManifestPath,
-        entry,
-        changelog.path,
-        changelogEntries,
-      ),
-    );
+    removeManagedFile(join(changelogBaseDir, "__changelog.generated.tsx"));
 
     if (!hasFile(changelogBaseDir, "page") || isManagedGeneratedFile(changelogIndexPath)) {
-      writeFileSync(changelogIndexPath, CHANGELOG_INDEX_PAGE_TEMPLATE);
+      writeFileSync(
+        changelogIndexPath,
+        buildChangelogIndexPageSource(
+          root,
+          changelogIndexPath,
+          entry,
+          changelog.path,
+          changelogEntries,
+        ),
+      );
     }
 
     if (changelogUsesSourcePagesAsDetails) {
@@ -1005,7 +1037,16 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     } else {
       if (!hasFile(changelogEntryDir, "page") || isManagedGeneratedFile(changelogEntryPath)) {
         mkdirSync(changelogEntryDir, { recursive: true });
-        writeFileSync(changelogEntryPath, CHANGELOG_ENTRY_PAGE_TEMPLATE);
+        writeFileSync(
+          changelogEntryPath,
+          buildChangelogEntryPageSource(
+            root,
+            changelogEntryPath,
+            entry,
+            changelog.path,
+            changelogEntries,
+          ),
+        );
       }
 
       if (changelogSourceLayoutPath) {

@@ -184,16 +184,18 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(existsSync(join(tmpDir, "app/docs/changelogs/page.tsx"))).toBe(true);
     expect(existsSync(join(tmpDir, "app/docs/changelogs/[slug]/page.tsx"))).toBe(true);
-    expect(existsSync(join(tmpDir, "app/docs/changelogs/__changelog.generated.tsx"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/docs/changelogs/__changelog.generated.tsx"))).toBe(false);
     expect(existsSync(join(tmpDir, "app/docs/changelog/layout.tsx"))).toBe(true);
 
-    const manifest = readFileSync(
-      join(tmpDir, "app/docs/changelogs/__changelog.generated.tsx"),
-      "utf-8",
-    );
-    expect(manifest).toContain('"2026-03-04"');
-    expect(manifest).toContain('"/docs/changelogs/2026-03-04"');
-    expect(manifest).toContain("app/docs/changelog/2026-03-04/page.mdx");
+    const indexPage = readFileSync(join(tmpDir, "app/docs/changelogs/page.tsx"), "utf-8");
+    expect(indexPage).toContain('"2026-03-04"');
+    expect(indexPage).toContain('"/docs/changelogs/2026-03-04"');
+    expect(indexPage).toContain("../changelog/2026-03-04/page.mdx");
+
+    const entryPage = readFileSync(join(tmpDir, "app/docs/changelogs/[slug]/page.tsx"), "utf-8");
+    expect(entryPage).toContain('"2026-03-04"');
+    expect(entryPage).toContain('"/docs/changelogs/2026-03-04"');
+    expect(entryPage).toContain("../../changelog/2026-03-04/page.mdx");
     expect(existsSync(join(tmpDir, "app/changelogs/page.tsx"))).toBe(false);
   });
 
