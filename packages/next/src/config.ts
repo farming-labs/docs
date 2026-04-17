@@ -759,7 +759,12 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     const changelogIndexPath = join(changelogBaseDir, "page.tsx");
     const changelogEntryPath = join(changelogEntryDir, "page.tsx");
     const changelogManifestPath = join(changelogBaseDir, CHANGELOG_MANIFEST_FILENAME);
-    const changelogSourceDir = resolveChangelogContentDir(root, appDir, entry, changelog.contentDir);
+    const changelogSourceDir = resolveChangelogContentDir(
+      root,
+      appDir,
+      entry,
+      changelog.contentDir,
+    );
     const changelogUsesSourcePagesAsDetails =
       !isAbsolute(changelog.contentDir) && changelog.contentDir === changelog.path;
     const changelogEntries = findChangelogSourceEntries(changelogSourceDir);
@@ -771,7 +776,9 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     );
     const legacyChangelogBaseDirs = new Set<string>([
       join(root, appDir, ...changelog.path.split("/")),
-      ...(isAbsolute(changelog.contentDir) ? [] : [join(root, appDir, ...changelog.contentDir.split("/"))]),
+      ...(isAbsolute(changelog.contentDir)
+        ? []
+        : [join(root, appDir, ...changelog.contentDir.split("/"))]),
     ]);
 
     for (const legacyChangelogBaseDir of legacyChangelogBaseDirs) {
@@ -903,13 +910,7 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     if (workspaceRoot) {
       Object.assign(resolvedConfig.resolve.alias, {
         "@farming-labs/docs$": join(workspaceRoot, "packages", "docs", "dist", "index.mjs"),
-        "@farming-labs/docs/server": join(
-          workspaceRoot,
-          "packages",
-          "docs",
-          "dist",
-          "server.mjs",
-        ),
+        "@farming-labs/docs/server": join(workspaceRoot, "packages", "docs", "dist", "server.mjs"),
         "@farming-labs/next$": join(workspaceRoot, "packages", "next", "dist", "index.mjs"),
         "@farming-labs/next/api": join(workspaceRoot, "packages", "next", "dist", "api.mjs"),
         "@farming-labs/next/changelog": join(
@@ -926,20 +927,8 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
           "dist",
           "client-callbacks.mjs",
         ),
-        "@farming-labs/next/layout": join(
-          workspaceRoot,
-          "packages",
-          "next",
-          "dist",
-          "layout.mjs",
-        ),
-        "@farming-labs/theme$": join(
-          workspaceRoot,
-          "packages",
-          "fumadocs",
-          "dist",
-          "index.mjs",
-        ),
+        "@farming-labs/next/layout": join(workspaceRoot, "packages", "next", "dist", "layout.mjs"),
+        "@farming-labs/theme$": join(workspaceRoot, "packages", "fumadocs", "dist", "index.mjs"),
         "@farming-labs/theme/api": join(
           workspaceRoot,
           "packages",

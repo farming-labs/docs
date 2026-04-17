@@ -327,29 +327,29 @@ export function ChangelogTOC({
         data-fd-changelog-toc="true"
         data-variant={variant}
       >
-      <div className="fd-changelog-toc-card">
-        <p className="fd-changelog-toc-heading">{title}</p>
-        <nav className="fd-changelog-toc-list">
-          {items.map((item) => {
-            const isActive = item.href === activeHref;
+        <div className="fd-changelog-toc-card">
+          <p className="fd-changelog-toc-heading">{title}</p>
+          <nav className="fd-changelog-toc-list">
+            {items.map((item) => {
+              const isActive = item.href === activeHref;
 
-            return (
-              <a
-                key={item.href}
-                href={item.href}
-                className="fd-changelog-toc-link"
-                data-fd-changelog-toc-link="true"
-                data-active={isActive ? "true" : "false"}
-                aria-current={isActive ? "location" : undefined}
-                onClick={() => setActiveHref(item.href)}
-              >
-              {item.meta ? <span className="fd-changelog-toc-meta">{item.meta}</span> : null}
-              <span className="fd-changelog-toc-title">{item.title}</span>
-              </a>
-            );
-          })}
-        </nav>
-      </div>
+              return (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="fd-changelog-toc-link"
+                  data-fd-changelog-toc-link="true"
+                  data-active={isActive ? "true" : "false"}
+                  aria-current={isActive ? "location" : undefined}
+                  onClick={() => setActiveHref(item.href)}
+                >
+                  {item.meta ? <span className="fd-changelog-toc-meta">{item.meta}</span> : null}
+                  <span className="fd-changelog-toc-title">{item.title}</span>
+                </a>
+              );
+            })}
+          </nav>
+        </div>
       </aside>
       <script dangerouslySetInnerHTML={{ __html: createChangelogTocScript(tocId) }} />
     </>
@@ -364,17 +364,10 @@ function ChangelogTimelineItem({
   isLast: boolean;
 }) {
   return (
-    <div
-      id={entry.slug}
-      className="fd-changelog-entry relative scroll-mt-24 not-prose isolate"
-    >
+    <div id={entry.slug} className="fd-changelog-entry relative scroll-mt-24 not-prose isolate">
       <div className="fd-changelog-mobile-summary">
         {entry.version ? <div className="fd-changelog-version-box">{entry.version}</div> : <div />}
-        <time
-          className="fd-changelog-date"
-          style={{ marginBottom: "10px" }} 
-          dateTime={entry.date}
-        >
+        <time className="fd-changelog-date" style={{ marginBottom: "10px" }} dateTime={entry.date}>
           {formatTimelineDate(entry.date)}
         </time>
       </div>
@@ -450,10 +443,7 @@ function ChangelogTimelineItem({
         </div>
 
         <div className="min-w-0 space-y-5">
-          <time
-            className="fd-changelog-date block pt-0.5"
-            dateTime={entry.date}
-          >
+          <time className="fd-changelog-date block pt-0.5" dateTime={entry.date}>
             {formatTimelineDate(entry.date)}
           </time>
 
@@ -581,15 +571,14 @@ export function ChangelogDirectory({
           {searchControl ? (
             <div style={{ marginTop: description ? "1rem" : "1.25rem" }}>{searchControl}</div>
           ) : null}
-          <hr
-            className="border-0 border-t border-fd-border/40"
-            style={{ marginTop: "1rem" }}
-          />
+          <hr className="border-0 border-t border-fd-border/40" style={{ marginTop: "1rem" }} />
         </>
       ) : null}
 
       <div
-        className={hasResults ? "fd-changelog-shell fd-changelog-shell-shifted" : "fd-changelog-shell"}
+        className={
+          hasResults ? "fd-changelog-shell fd-changelog-shell-shifted" : "fd-changelog-shell"
+        }
         style={{ paddingTop: "4rem" }}
       >
         <div className="fd-changelog-main fd-changelog-directory-feed relative">
@@ -608,9 +597,7 @@ export function ChangelogDirectory({
             <EmptyResults query={query} />
           )}
         </div>
-        {hasResults ? (
-          <ChangelogTOC title="Releases" items={tocItems} />
-        ) : null}
+        {hasResults ? <ChangelogTOC title="Releases" items={tocItems} /> : null}
       </div>
     </div>
   );

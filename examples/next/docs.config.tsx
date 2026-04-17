@@ -85,9 +85,9 @@ export default defineDocs({
   theme: colorful({
     ui: {
       layout: {
-        sidebarWidth: 300
-      }
-    } 
+        sidebarWidth: 300,
+      },
+    },
   }),
   ai: {
     enabled: true,

@@ -27,9 +27,7 @@ function normalizeContentDir(value: string | undefined): string {
   return trimmed.replace(/\/+$/, "") || "changelog";
 }
 
-export function resolveChangelogConfig(
-  value: DocsConfig["changelog"],
-): ResolvedChangelogConfig {
+export function resolveChangelogConfig(value: DocsConfig["changelog"]): ResolvedChangelogConfig {
   if (value === false || value === undefined) {
     return {
       enabled: false,

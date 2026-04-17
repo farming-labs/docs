@@ -180,7 +180,10 @@ function getExcludedDocsDirs(config: DocsConfig, ctx: DocsLocaleContext): string
   return [path.resolve(dir)];
 }
 
-function readChangelogTreeEntries(config: DocsConfig, ctx: DocsLocaleContext): ChangelogTreeEntry[] {
+function readChangelogTreeEntries(
+  config: DocsConfig,
+  ctx: DocsLocaleContext,
+): ChangelogTreeEntry[] {
   const changelog = resolveChangelogConfig(config.changelog);
   if (!changelog.enabled) return [];
 
@@ -218,7 +221,11 @@ function readChangelogTreeEntries(config: DocsConfig, ctx: DocsLocaleContext): C
   });
 }
 
-function buildChangelogTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false): FolderNode | null {
+function buildChangelogTree(
+  config: DocsConfig,
+  ctx: DocsLocaleContext,
+  flat = false,
+): FolderNode | null {
   const changelog = resolveChangelogConfig(config.changelog);
   if (!changelog.enabled) return null;
 

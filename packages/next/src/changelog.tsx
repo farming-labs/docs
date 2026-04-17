@@ -6,12 +6,7 @@ import { join } from "node:path";
 import { createPageMetadata, type DocsConfig } from "@farming-labs/theme";
 import type { ChangelogFrontmatter } from "@farming-labs/docs";
 import { resolveChangelogConfig } from "@farming-labs/docs";
-import {
-  createElement,
-  isValidElement,
-  type ComponentType,
-  type ReactNode,
-} from "react";
+import { createElement, isValidElement, type ComponentType, type ReactNode } from "react";
 import {
   ChangelogDirectory,
   ChangelogTOC,
@@ -166,12 +161,10 @@ function resolveEntries(entries: GeneratedChangelogEntry[]): ResolvedChangelogEn
       title: entry.metadata?.title?.trim() || entry.slug.replace(/-/g, " "),
       description: entry.metadata?.description?.trim() || undefined,
       authors: normalizeAuthors(entry.metadata?.authors),
-      version:
-        typeof entry.metadata?.version === "string" ? entry.metadata.version : undefined,
+      version: typeof entry.metadata?.version === "string" ? entry.metadata.version : undefined,
       tags: Array.isArray(entry.metadata?.tags)
         ? entry.metadata.tags.filter(
-            (item): item is string =>
-              typeof item === "string" && item.trim().length > 0,
+            (item): item is string => typeof item === "string" && item.trim().length > 0,
           )
         : [],
       pinned: entry.metadata?.pinned === true,
@@ -347,7 +340,7 @@ function ChangelogEntryView(props: {
             <Link
               href={props.listingUrl}
               prefetch
-              style={{marginBottom: "30px" }}
+              style={{ marginBottom: "30px" }}
               className="inline-flex items-center gap-2 text-sm font-medium text-fd-muted-foreground no-underline transition-colors hover:text-fd-foreground"
             >
               <span aria-hidden>←</span>
@@ -499,15 +492,10 @@ export function createNextChangelogEntryPage(
     const entry = findEntry(resolvedEntries, slug);
     if (!entry) notFound();
 
-    const currentIndex = resolvedEntries.findIndex(
-      (candidate) => candidate.slug === slug,
-    );
+    const currentIndex = resolvedEntries.findIndex((candidate) => candidate.slug === slug);
     const previous =
-      currentIndex < resolvedEntries.length - 1
-        ? resolvedEntries[currentIndex + 1]
-        : undefined;
-    const next =
-      currentIndex > 0 ? resolvedEntries[currentIndex - 1] : undefined;
+      currentIndex < resolvedEntries.length - 1 ? resolvedEntries[currentIndex + 1] : undefined;
+    const next = currentIndex > 0 ? resolvedEntries[currentIndex - 1] : undefined;
 
     return (
       <ChangelogEntryView

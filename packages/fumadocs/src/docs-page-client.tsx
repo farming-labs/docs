@@ -346,8 +346,7 @@ export function DocsPageClient({
   const normalizedPath = (browserPath ?? pathname).replace(/\/$/, "") || "/";
   const isChangelogRoute = !!(
     changelogBasePath &&
-    (normalizedPath === changelogBasePath ||
-      normalizedPath.startsWith(`${changelogBasePath}/`))
+    (normalizedPath === changelogBasePath || normalizedPath.startsWith(`${changelogBasePath}/`))
   );
   const effectiveTocEnabled = isChangelogRoute ? false : tocEnabled;
   const effectiveBreadcrumbEnabled = isChangelogRoute ? false : breadcrumbEnabled;
@@ -457,9 +456,10 @@ export function DocsPageClient({
         )
       : undefined);
 
-  const lastModified = !isChangelogRoute && lastUpdatedEnabled
-    ? (lastModifiedProp ?? lastModifiedMap?.[normalizedPath])
-    : undefined;
+  const lastModified =
+    !isChangelogRoute && lastUpdatedEnabled
+      ? (lastModifiedProp ?? lastModifiedMap?.[normalizedPath])
+      : undefined;
 
   const showLastUpdatedBelowTitle = !!lastModified && lastUpdatedPosition === "below-title";
   const showLastUpdatedInFooter = !!lastModified && lastUpdatedPosition === "footer";
