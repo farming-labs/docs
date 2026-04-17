@@ -24,6 +24,8 @@ export interface DocsMcpPage {
   icon?: string;
   content: string;
   rawContent?: string;
+  agentContent?: string;
+  agentRawContent?: string;
 }
 
 export interface DocsMcpPageNode {
@@ -536,6 +538,7 @@ function scanFilesystemDocsPages(contentDirAbs: string, entry: string): ScannedD
         continue;
       }
 
+      if (name === "agent.md") continue;
       if (!name.endsWith(".md") && !name.endsWith(".mdx") && !name.endsWith(".svx")) continue;
 
       const raw = fs.readFileSync(full, "utf-8");
@@ -545,6 +548,7 @@ function scanFilesystemDocsPages(contentDirAbs: string, entry: string): ScannedD
       const isIndex = baseName === "index" || baseName === "page" || baseName === "+page";
       const slug = isIndex ? slugParts.join("/") : [...slugParts, baseName].join("/");
       const url = slug ? `/${entry}/${slug}` : `/${entry}`;
+      const agentDoc = isIndex ? readFilesystemAgentDoc(dir) : undefined;
       const title =
         (data.title as string | undefined) ??
         (isIndex
@@ -561,6 +565,7 @@ function scanFilesystemDocsPages(contentDirAbs: string, entry: string): ScannedD
         icon: data.icon as string | undefined,
         content: stripMarkdownForMcp(content),
         rawContent: content,
+        ...agentDoc,
         order: typeof data.order === "number" ? data.order : Number.POSITIVE_INFINITY,
       });
     }
@@ -568,6 +573,18 @@ function scanFilesystemDocsPages(contentDirAbs: string, entry: string): ScannedD
 
   scan(contentDirAbs, []);
   return pages;
+}
+
+function readFilesystemAgentDoc(dir: string) {
+  const agentPath = path.join(dir, "agent.md");
+  if (!fs.existsSync(agentPath)) return undefined;
+
+  const raw = fs.readFileSync(agentPath, "utf-8");
+  const { content } = matter(raw);
+  return {
+    agentContent: stripMarkdownForMcp(content),
+    agentRawContent: content,
+  };
 }
 
 function buildNavigationTreeFromPages(
@@ -804,6 +821,8 @@ function normalizeUrlPath(value: string): string {
 }
 
 function renderPageDocument(page: DocsMcpPage): string {
+  if (page.agentRawContent !== undefined) return page.agentRawContent;
+
   const lines = [`# ${page.title}`, `URL: ${page.url}`];
   if (page.description) lines.push(`Description: ${page.description}`);
   lines.push("", page.rawContent ?? page.content);

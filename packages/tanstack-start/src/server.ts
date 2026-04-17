@@ -344,6 +344,7 @@ function searchIndexFromMap(
     const rel = key.slice(dirPrefix.length);
     const segments = rel.split("/");
     const fileName = segments.pop()!;
+    if (fileName === "agent.md") continue;
     const base = fileName.replace(/\.(md|mdx)$/, "");
     if (base !== "page" && base !== "index") continue;
 
@@ -351,6 +352,7 @@ function searchIndexFromMap(
     const { data, content } = matter(raw);
     const slug = segments.join("/");
     const url = slug ? `/${entry}/${slug}` : `/${entry}`;
+    const agentDoc = readAgentDocFromMap(contentMap, dirPrefix, slug);
     const fallbackTitle =
       segments.length > 0
         ? segments[segments.length - 1]
@@ -366,10 +368,23 @@ function searchIndexFromMap(
       icon: data.icon as string | undefined,
       content: stripMarkdownText(content),
       rawContent: content,
+      ...agentDoc,
     });
   }
 
   return pages;
+}
+
+function readAgentDocFromMap(contentMap: ContentFileMap, dirPrefix: string, slug: string) {
+  const key = slug ? `${dirPrefix}${slug}/agent.md` : `${dirPrefix}agent.md`;
+  const raw = contentMap[key];
+  if (!raw) return undefined;
+
+  const { content } = matter(raw);
+  return {
+    agentContent: stripMarkdownText(content),
+    agentRawContent: content,
+  };
 }
 
 function findPageInMap(contentMap: ContentFileMap, dirPrefix: string, slug: string) {

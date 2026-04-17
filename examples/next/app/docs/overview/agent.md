@@ -1,0 +1,1526 @@
+# API Reference
+
+You are an implementation agent working on `@farming-labs/docs`. Treat this file as the
+machine-oriented reference for the product, prefer exact config details over narrative explanation,
+and use it as the authoritative agent context for this page.
+
+Complete reference for every option in `docs.config.ts`. All types are exported from `@farming-labs/docs`.
+
+---
+
+## `defineDocs(config)`
+
+The entry point for configuring your docs. Returns a typed config object.
+
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  // ...all options below
+});
+```
+
+---
+
+## `DocsConfig`
+
+Top-level configuration object passed to `defineDocs()`.
+
+| Property       | Type                                            | Default          | Description                                                                          |
+| -------------- | ----------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------ |
+| `entry`        | `string`                                        | **required**     | URL path prefix for docs (e.g. `"docs"` → `/docs`)                                   |
+| `contentDir`   | `string`                                        | same as `entry`  | Path to content files. TanStack Start, SvelteKit, Astro, and Nuxt use it; Next.js uses `app/{entry}/` |
+| `staticExport` | `boolean`                                       | `false`          | Set `true` for full static builds; hides search and AI (see [Configuration](/docs/configuration#static-export)) |
+| `theme`        | `DocsTheme`                                     | —                | Theme preset from a factory (`fumadocs()`, `darksharp()`, `pixelBorder()`, etc.)    |
+| `github`      | `string \| GithubConfig`                        | —                | GitHub repo config for "Edit on GitHub" links                                        |
+| `nav`         | `DocsNav`                                       | —                | Sidebar header title and URL                                                         |
+| `themeToggle` | `boolean \| ThemeToggleConfig`                  | `true`           | Light/dark mode toggle                                                               |
+| `breadcrumb`  | `boolean \| BreadcrumbConfig`                   | `true`           | Breadcrumb navigation                                                                |
+| `sidebar`     | `boolean \| SidebarConfig`                      | `true`           | Sidebar visibility and customization                                                 |
+| `icons`       | `Record<string, unknown>`                       | —                | Icon registry for frontmatter `icon` fields                                          |
+| `components`  | `Record<string, unknown>`                       | —                | Custom MDX component overrides, including built-ins like `HoverLink`                |
+| `onCopyClick` | `(data: CodeBlockCopyData) => void`              | —                | Callback when the user clicks the copy button on a code block (runs in addition to copy) |
+| `feedback`    | `boolean \| FeedbackConfig`                     | `false`          | End-of-page feedback prompt and feedback callback                                    |
+| `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
+| `ai`          | `AIConfig`                                      | —                | RAG-powered AI chat                                                                  |
+| `search`      | `boolean \| DocsSearchConfig`                   | `true`           | Built-in simple search, Typesense, Algolia, or a custom adapter                     |
+| `mcp`         | `boolean \| DocsMcpConfig`                      | `false`          | Built-in MCP server over stdio and `/api/docs/mcp`                                   |
+| `apiReference` | `boolean \| ApiReferenceConfig`               | `false`          | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON |
+| `changelog`   | `boolean \| ChangelogConfig`                    | `false`          | Generated changelog feed and entry pages from dated MDX entries                      |
+| `ordering`    | `"alphabetical" \| "numeric" \| OrderingItem[]` | `"alphabetical"` | Sidebar page ordering strategy                                                       |
+| `metadata`    | `DocsMetadata`                                  | —                | SEO metadata                                                                         |
+| `og`          | `OGConfig`                                      | —                | Open Graph image config                                                              |
+
+---
+
+`components` is merged into the default MDX component map, so you can both add your own components and replace built-ins such as `Callout`, `Tabs`, or `HoverLink`. For built-in defaults like `theme.ui.components.HoverLink`, see [Creating themes](/docs/themes/creating-themes). For usage examples and a live demo, see [Components](/docs/customization/components).
+
+---
+
+## Ordering
+
+Controls how pages are sorted in the sidebar. Three strategies are available:
+
+### `"alphabetical"` (default)
+
+Pages are sorted alphabetically by folder name. No extra configuration needed.
+
+```ts
+ordering: "alphabetical",
+```
+
+### `"numeric"`
+
+Pages are sorted by the `order` field in frontmatter. Lower numbers appear first. Pages without `order` are sorted alphabetically after ordered pages.
+
+```ts
+ordering: "numeric",
+```
+
+Then in your page frontmatter:
+
+```md
+---
+title: "Installation"
+order: 1
+---
+```
+
+### Slug-based (`OrderingItem[]`)
+
+Pass an array of `{ slug, children? }` objects for explicit control over page order, including nested pages.
+
+```ts
+ordering: [
+  { slug: "installation" },
+  { slug: "cli" },
+  { slug: "configuration" },
+  {
+    slug: "themes",
+    children: [
+      { slug: "default" },
+      { slug: "darksharp" },
+      { slug: "pixel-border" },
+      { slug: "creating-themes" },
+    ],
+  },
+  {
+    slug: "customization",
+    children: [
+      { slug: "colors" },
+      { slug: "typography" },
+      { slug: "sidebar" },
+      { slug: "components" },
+      { slug: "ai-chat" },
+      { slug: "page-actions" },
+    ],
+  },
+  { slug: "reference" },
+],
+```
+
+### `OrderingItem`
+
+| Property   | Type             | Description                                   |
+| ---------- | ---------------- | --------------------------------------------- |
+| `slug`     | `string`         | Folder name at this level (not the full path) |
+| `children` | `OrderingItem[]` | Ordering for child pages within this folder   |
+
+> Pages not listed in the array appear alphabetically after the listed ones.
+
+---
+
+## `DocsNav`
+
+Sidebar header configuration.
+
+| Property | Type                  | Default      | Description                                               |
+| -------- | --------------------- | ------------ | --------------------------------------------------------- |
+| `title`  | `string \| ReactNode` | `"Docs"`     | Sidebar header title. React elements supported in Next.js and TanStack Start |
+| `url`    | `string`              | `"/{entry}"` | URL the title links to                                    |
+
+```ts
+nav: {
+  title: "My Docs",
+  url: "/docs",
+},
+```
+
+---
+
+## `DocsMcpConfig`
+
+Built-in MCP server configuration for AI clients, IDE agents, and local MCP tooling.
+
+| Property   | Type                  | Default           | Description |
+| ---------- | --------------------- | ----------------- | ----------- |
+| `enabled`  | `boolean`             | `true` in object config | Enable the MCP server when the object is present |
+| `route`    | `string`              | `"/api/docs/mcp"` | Streamable HTTP route used by the MCP endpoint |
+| `name`     | `string`              | `nav.title` or `@farming-labs/docs` | MCP server name reported to clients |
+| `version`  | `string`              | `"0.0.0"`         | Version string reported to clients |
+| `tools`    | `DocsMcpToolsConfig`  | all enabled       | Fine-grained tool toggles |
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  mcp: {
+    enabled: true,
+    route: "/api/docs/mcp",
+    name: "My Docs MCP",
+    tools: {
+      listPages: true,
+      getNavigation: true,
+      searchDocs: true,
+      readPage: true,
+    },
+  },
+});
+```
+
+### `DocsMcpToolsConfig`
+
+| Property        | Type      | Description |
+| --------------- | --------- | ----------- |
+| `listPages`     | `boolean` | Expose the `list_pages` tool |
+| `getNavigation` | `boolean` | Expose the `get_navigation` tool |
+| `searchDocs`    | `boolean` | Expose the `search_docs` tool |
+| `readPage`      | `boolean` | Expose the `read_page` tool |
+
+Default MCP surface:
+
+- **HTTP route:** `/api/docs/mcp`
+- **stdio command:** `pnpx @farming-labs/docs mcp`
+- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`
+
+Framework notes:
+
+- **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route
+- **TanStack Start / SvelteKit / Astro / Nuxt:** add the matching framework route file and forward to the built-in `MCP` handler from the docs server helper
+- **Custom routes:** set `mcp.route` in `docs.config` and add the matching route file manually so the configured path and the actual endpoint stay aligned
+
+See [MCP Server](/docs/customization/mcp) for the route snippets and examples.
+
+---
+
+## `DocsSearchConfig`
+
+Search is enabled by default. If you do not configure anything, the docs API uses the built-in
+simple adapter with section-based chunking.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  search: true,
+});
+```
+
+Built-in providers:
+
+- `simple` — zero-config docs search with section chunking
+- `typesense` — external Typesense collection with optional hybrid mode
+- `algolia` — external Algolia index
+- `mcp` — Streamable HTTP MCP endpoint that exposes a `search_docs` tool
+- `custom` — your own adapter implementation
+
+### `SimpleDocsSearchConfig`
+
+| Property   | Type                    | Default     | Description |
+| ---------- | ----------------------- | ----------- | ----------- |
+| `provider` | `"simple"`              | implied     | Use the built-in search adapter |
+| `enabled`  | `boolean`               | `true`      | Toggle search on or off |
+| `maxResults` | `number`              | `10`        | Maximum results to return |
+| `chunking` | `DocsSearchChunkingConfig` | `{ strategy: "section" }` | Controls whether indexing happens per page or per section |
+
+```ts title="docs.config.ts"
+search: {
+  provider: "simple",
+  maxResults: 8,
+  chunking: {
+    strategy: "section",
+  },
+},
+```
+
+### `TypesenseDocsSearchConfig`
+
+| Property      | Type                       | Default     | Description |
+| ------------- | -------------------------- | ----------- | ----------- |
+| `provider`    | `"typesense"`              | —           | Use Typesense as the search backend |
+| `baseUrl`     | `string`                   | —           | Typesense API base URL |
+| `collection`  | `string`                   | —           | Collection name used for docs documents |
+| `apiKey`      | `string`                   | —           | Search API key |
+| `adminApiKey` | `string`                   | —           | Optional admin key used for on-demand indexing |
+| `maxResults`  | `number`                   | `10`        | Maximum results to return |
+| `syncOnSearch` | `boolean`                 | `true` when `adminApiKey` is present | Re-index docs on the first search request |
+| `queryBy`     | `string[]`                 | built-in fields | Custom Typesense `query_by` fields |
+| `mode`        | `"keyword" \| "hybrid"`    | `"keyword"` | Keyword search only, or keyword + embeddings |
+| `embeddings`  | `DocsSearchEmbeddingsConfig` | —         | Semantic embeddings config for hybrid search |
+| `chunking`    | `DocsSearchChunkingConfig` | `{ strategy: "section" }` | Chunking strategy used before indexing/search |
+
+```ts title="docs.config.ts"
+search: {
+  provider: "typesense",
+  baseUrl: process.env.TYPESENSE_URL!,
+  collection: "docs",
+  apiKey: process.env.TYPESENSE_SEARCH_API_KEY!,
+  adminApiKey: process.env.TYPESENSE_ADMIN_API_KEY,
+  mode: "hybrid",
+  embeddings: {
+    provider: "ollama",
+    model: "embeddinggemma",
+  },
+},
+```
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs search sync --typesense
+```
+
+### `AlgoliaDocsSearchConfig`
+
+| Property       | Type                    | Default     | Description |
+| -------------- | ----------------------- | ----------- | ----------- |
+| `provider`     | `"algolia"`             | —           | Use Algolia as the search backend |
+| `appId`        | `string`                | —           | Algolia application id |
+| `indexName`    | `string`                | —           | Algolia index name |
+| `searchApiKey` | `string`                | —           | Search API key |
+| `adminApiKey`  | `string`                | —           | Optional admin key used for on-demand indexing |
+| `maxResults`   | `number`                | `10`        | Maximum results to return |
+| `syncOnSearch` | `boolean`               | `true` when `adminApiKey` is present | Re-index docs on the first search request |
+| `chunking`     | `DocsSearchChunkingConfig` | `{ strategy: "section" }` | Chunking strategy used before indexing/search |
+
+```ts title="docs.config.ts"
+search: {
+  provider: "algolia",
+  appId: process.env.ALGOLIA_APP_ID!,
+  indexName: "docs",
+  searchApiKey: process.env.ALGOLIA_SEARCH_API_KEY!,
+  adminApiKey: process.env.ALGOLIA_ADMIN_API_KEY,
+},
+```
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs search sync --algolia
+```
+
+### `McpDocsSearchConfig`
+
+| Property   | Type                    | Default        | Description |
+| ---------- | ----------------------- | -------------- | ----------- |
+| `provider` | `"mcp"`                 | —              | Use an MCP endpoint as the search backend |
+| `endpoint` | `string`                | —              | Streamable HTTP MCP endpoint |
+| `headers`  | `Record<string, string>` | —             | Extra headers sent to initialize and tool calls |
+| `toolName` | `string`                | `"search_docs"` | MCP tool name used for search |
+| `protocolVersion` | `string`         | `"2025-11-25"` | MCP protocol version header |
+| `maxResults` | `number`              | `10`           | Maximum results to request |
+
+```ts title="docs.config.ts"
+search: {
+  provider: "mcp",
+  endpoint: "/api/docs/mcp",
+},
+```
+
+Relative endpoints are resolved against the current docs API request URL. That makes local setups
+like the Next example easy to test without hardcoding a host.
+
+### `CustomDocsSearchConfig`
+
+| Property   | Type                           | Description |
+| ---------- | ------------------------------ | ----------- |
+| `provider` | `"custom"`                     | Use your own adapter |
+| `adapter`  | `DocsSearchAdapter \| DocsSearchAdapterFactory` | Search runtime implementation |
+| `maxResults` | `number`                     | Maximum results to return |
+| `chunking` | `DocsSearchChunkingConfig`     | Chunking strategy used before your adapter runs |
+
+```ts title="docs.config.ts"
+import { createCustomSearchAdapter, defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  search: createCustomSearchAdapter({
+    name: "my-search",
+    async search(query, context) {
+      return context.documents
+        .filter((doc) =>
+          `${doc.title} ${doc.section ?? ""} ${doc.content}`.toLowerCase().includes(query.query.toLowerCase()),
+        )
+        .slice(0, query.limit ?? 10)
+        .map((doc) => ({
+          id: doc.id,
+          url: doc.url,
+          content: doc.section ? `${doc.title} — ${doc.section}` : doc.title,
+          description: doc.description,
+          type: doc.type,
+          section: doc.section,
+        }));
+    },
+  }),
+});
+```
+
+### `DocsSearchAdapter`
+
+Custom adapters receive normalized source pages and chunked search documents so you can focus on
+retrieval and ranking instead of rebuilding the docs scan pipeline.
+
+```ts title="search-adapter.ts"
+import type { DocsSearchAdapter } from "@farming-labs/docs";
+
+export const adapter: DocsSearchAdapter = {
+  name: "my-search",
+  async search(query, context) {
+    return context.documents.map((doc) => ({
+      id: doc.id,
+      url: doc.url,
+      content: doc.section ? `${doc.title} — ${doc.section}` : doc.title,
+      description: doc.description,
+      type: doc.type,
+      section: doc.section,
+    }));
+  },
+};
+```
+
+### `DocsSearchChunkingConfig`
+
+| Property   | Type                    | Default     | Description |
+| ---------- | ----------------------- | ----------- | ----------- |
+| `strategy` | `"page" \| "section"`   | `"section"` | Chunk by whole page or split by headings |
+
+### `DocsSearchEmbeddingsConfig`
+
+| Property   | Type        | Default                   | Description |
+| ---------- | ----------- | ------------------------- | ----------- |
+| `provider` | `"ollama"`  | —                         | Embeddings provider for hybrid Typesense mode |
+| `model`    | `string`    | —                         | Embedding model id |
+| `baseUrl`  | `string`    | `"http://127.0.0.1:11434"` | Ollama base URL |
+
+Notes:
+
+- `search: false` disables search entirely
+- Search requires the docs API route; static export hides the UI because there is no server route
+- On Next.js, generated routes from `withDocs()` already forward `docsConfig.search`
+- MCP-backed search works with relative endpoints like `/api/docs/mcp` and absolute remote endpoints like `https://docs.example.com/api/docs/mcp`
+- If MCP-backed search points at the same relative MCP route, the built-in `search_docs` tool falls back to simple search internally to avoid recursive loops
+- On custom/manual Next routes, import `createDocsAPI` from `@farming-labs/next/api` and pass `search: docsConfig.search`
+
+<Callout type="warning" title="@farming-labs/theme/api still works for now">
+  `@farming-labs/theme/api` remains supported as a compatibility import path today, but prefer
+  `@farming-labs/next/api` in Next.js apps. The theme-level path will be deprecated.
+</Callout>
+
+---
+
+## `ApiReferenceConfig`
+
+Generates API reference pages from framework route conventions or a hosted OpenAPI JSON document.
+
+Use route scanning when the API lives in the same project. Use `specUrl` when the backend is
+deployed elsewhere and already exposes an `openapi.json`.
+
+<Callout type="info" title="Current support">
+  `apiReference` is supported in **Next.js**, **TanStack Start**, **SvelteKit**, **Astro**, and
+  **Nuxt**.
+</Callout>
+
+<Callout type="info" title="Important">
+  `apiReference` in `docs.config` controls scanning, theming, `routeRoot`, and `exclude`.
+
+  In **Next.js**, `withDocs()` also generates the route automatically.
+
+  In **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt**, you must additionally add the
+  framework route handler for `/{path}`.
+</Callout>
+
+<Callout type="tip" title="Remote spec mode">
+  `specUrl` is the easiest option when your docs app does not contain the backend route files.
+  Point it at a hosted `openapi.json` and keep the same themed API reference UI.
+</Callout>
+
+| Property    | Type       | Default           | Description |
+| ----------- | ---------- | ----------------- | ----------- |
+| `enabled`   | `boolean`  | `true` inside the object | Enable generated API reference pages |
+| `path`      | `string`   | `"api-reference"` | URL path where the generated API reference lives |
+| `specUrl`   | `string`   | —                 | Absolute URL to a hosted OpenAPI JSON document. When set, local route scanning is skipped |
+| `routeRoot` | `string`   | `"api"`           | Filesystem route root to scan. Bare values like `"api"` resolve inside `app/` or `src/app/`; full values like `"app/internal-api"` and `"src/app/v2/api"` are supported |
+| `exclude`   | `string[]` | `[]`              | Route entries to omit from the generated reference. Accepts URL-style paths like `"/api/hello"` or route-root-relative values like `"hello"` / `"hello/route.ts"` |
+
+```ts title="docs.config.ts"
+apiReference: {
+  enabled: true,
+  path: "api-reference",
+  routeRoot: "api",
+  exclude: ["/api/internal/health", "internal/debug"],
+},
+```
+
+```ts title="docs.config.ts"
+apiReference: {
+  enabled: true,
+  path: "api-reference",
+  specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
+},
+```
+
+When `specUrl` is set, `routeRoot` and `exclude` are ignored and the API reference is rendered
+from the hosted spec instead.
+
+This does not remove the framework route requirement on non-Next adapters. TanStack Start,
+SvelteKit, Astro, and Nuxt still need their `/{path}` handler files so the docs app has a route
+that serves the generated API reference page.
+
+When `output: "export"` is used in Next.js, the generated API reference route is skipped automatically because it requires a server route handler.
+
+Scanned route conventions:
+
+- **Next.js:** `app/api/**/route.ts` and `src/app/api/**/route.ts`
+- **TanStack Start:** `src/routes/api.*.ts` and nested route files inside the configured route root
+- **SvelteKit:** `src/routes/api/**/+server.ts` or `+server.js`
+- **Astro:** `src/pages/api/**/*.ts` or `.js`
+- **Nuxt:** `server/api/**/*.ts` or `.js`
+
+Minimal route handlers for non-Next frameworks:
+
+```ts title="TanStack Start — src/routes/api-reference.index.ts"
+import { createFileRoute } from "@tanstack/react-router";
+import { createTanstackApiReference } from "@farming-labs/tanstack-start/api-reference";
+import docsConfig from "../../docs.config";
+
+const handler = createTanstackApiReference(docsConfig);
+
+export const Route = createFileRoute("/api-reference/")({
+  server: {
+    handlers: {
+      GET: handler,
+    },
+  },
+});
+```
+
+Create a second `src/routes/api-reference.$.ts` file with the same handler and
+`createFileRoute("/api-reference/$")`.
+
+```ts title="SvelteKit — src/routes/api-reference/+server.ts"
+import { createSvelteApiReference } from "@farming-labs/svelte/api-reference";
+import config from "$lib/docs.config";
+
+export const GET = createSvelteApiReference(config);
+```
+
+Create `src/routes/api-reference/[...slug]/+server.ts` with the same `GET` export.
+
+```ts title="Astro — src/pages/api-reference/index.ts"
+import { createAstroApiReference } from "@farming-labs/astro/api-reference";
+import config from "../../lib/docs.config";
+
+export const GET = createAstroApiReference(config);
+```
+
+Create `src/pages/api-reference/[...slug].ts` with the same `GET` export.
+
+```ts title="Nuxt — server/routes/api-reference/index.ts"
+import { defineApiReferenceHandler } from "@farming-labs/nuxt/api-reference";
+import config from "~/docs.config";
+
+export default defineApiReferenceHandler(config);
+```
+
+Create `server/routes/api-reference/[...slug].ts` with the same default export.
+
+---
+
+## `ChangelogConfig`
+
+Generates changelog listing and entry pages from dated MDX folders inside the docs content tree.
+
+<Callout type="info" title="Current support">
+  The turn-key generated changelog pages are currently wired in **Next.js** when you use
+  `withDocs()`.
+</Callout>
+
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `enabled` | `boolean` | `true` inside the object | Enable generated changelog pages |
+| `path` | `string` | `"changelog"` | URL path where the changelog listing lives inside the docs layout |
+| `contentDir` | `string` | `"changelog"` | Source directory under the docs content root. Example: `app/docs/changelog/2026-03-04/page.mdx` |
+| `title` | `string` | `"Changelog"` | Listing page title |
+| `description` | `string` | — | Listing page description shown in the header and metadata |
+| `search` | `boolean` | `true` | Show the built-in changelog search field |
+| `actionsComponent` | `ReactNode \| Component` | — | Custom action content rendered in the changelog rail |
+
+```ts title="docs.config.ts"
+changelog: {
+  enabled: true,
+  path: "changelogs",
+  contentDir: "changelog",
+  title: "Changelog",
+  description: "Latest product updates and release notes.",
+  search: true,
+},
+```
+
+With `entry: "docs"` and the config above, the public pages render at:
+
+- `/docs/changelogs`
+- `/docs/changelogs/2026-03-04`
+
+When you use `withDocs()`, the route files are generated automatically. There is no separate
+`__changelog.generated.tsx` file to maintain.
+
+### `ChangelogFrontmatter`
+
+Optional frontmatter fields for each changelog entry:
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `title` | `string` | Entry title shown in the feed and entry page |
+| `description` | `string` | Short summary shown in the feed and metadata |
+| `image` | `string` | Cover image path or URL |
+| `authors` | `string \| string[]` | Author name(s) shown in entry meta |
+| `version` | `string` | Compact version badge like `v0.1.0` |
+| `tags` | `string[]` | Badge list shown in the feed and entry page |
+| `pinned` | `boolean` | Keep important entries pinned to the top of the listing |
+| `draft` | `boolean` | Hide the entry from generated routes and search indexes |
+
+```mdx
+---
+title: "OpenAPI mode is now the default"
+description: "The docs example now ships with the faster API reference experience."
+version: "v0.1.13"
+tags: ["api-reference", "next"]
+---
+```
+
+---
+
+## `GithubConfig`
+
+GitHub repository configuration. Enables "Edit on GitHub" links in page footers.
+
+| Property    | Type     | Default      | Description                                              |
+| ----------- | -------- | ------------ | -------------------------------------------------------- |
+| `url`       | `string` | **required** | Repository URL (e.g. `"https://github.com/my-org/repo"`) |
+| `branch`    | `string` | `"main"`     | Branch name                                              |
+| `directory` | `string` | —            | Content subdirectory for monorepos                       |
+
+```ts
+// Simple
+github: "https://github.com/my-org/my-docs",
+
+// Monorepo
+github: {
+  url: "https://github.com/my-org/monorepo",
+  branch: "main",
+  directory: "apps/docs/docs",
+},
+```
+
+> The "Edit on GitHub" link only appears when both `url` and `directory` are provided.
+
+---
+
+## `onCopyClick` and `CodeBlockCopyData`
+
+Optional callback on `DocsConfig`. Fired when the user clicks the copy button on a code block — in addition to copying to the clipboard. Use it for analytics, logging, or custom behavior. See [Code block copy callback](/docs/configuration#code-block-copy-callback) for setup (Next.js / TanStack Start vs SvelteKit / Astro / Nuxt).
+
+### `CodeBlockCopyData`
+
+Argument passed to `onCopyClick(data: CodeBlockCopyData)`.
+
+| Property   | Type     | Description                                                                 |
+| ---------- | -------- | --------------------------------------------------------------------------- |
+| `title`    | `string \| undefined` | Code block title (e.g. from fenced code meta), if present                 |
+| `content`  | `string` | Raw code content (what was copied)                                          |
+| `url`      | `string` | Current page URL at the time of copy                                         |
+| `language` | `string \| undefined` | Language/syntax hint (e.g. `"tsx"`, `"bash"`), if present              |
+
+```ts title="docs.config.ts"
+import type { CodeBlockCopyData } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  onCopyClick(data: CodeBlockCopyData) {
+    // data.title, data.content, data.url, data.language
+    console.log("Copied:", data.language, data.title ?? "(no title)");
+  },
+});
+```
+
+---
+
+## `feedback`, `FeedbackConfig`, and `DocsFeedbackData`
+
+Optional docs page feedback UI. When enabled, a built-in "Good / Bad" prompt is rendered at the end of the page and emits a feedback payload when the user clicks one of the buttons.
+
+### `FeedbackConfig`
+
+| Property        | Type                                     | Default           | Description                                  |
+| --------------- | ---------------------------------------- | ----------------- | -------------------------------------------- |
+| `enabled`       | `boolean`                                | `true`            | Show or hide the feedback UI                 |
+| `question`      | `string`                                 | `"How is this guide?"` | Prompt shown above the buttons          |
+| `positiveLabel` | `string`                                 | `"Good"`          | Label for the positive button                |
+| `negativeLabel` | `string`                                 | `"Bad"`           | Label for the negative button                |
+| `onFeedback`    | `(data: DocsFeedbackData) => void`       | —                 | Callback fired when the user clicks a button |
+
+### `DocsFeedbackData`
+
+| Property      | Type                                   | Description                                           |
+| ------------- | -------------------------------------- | ----------------------------------------------------- |
+| `value`       | `"positive" \| "negative"`             | Which feedback button the user clicked                |
+| `title`       | `string \| undefined`                  | Current page title, when available                    |
+| `description` | `string \| undefined`                  | Current page description, when available              |
+| `url`         | `string`                               | Full current page URL                                 |
+| `pathname`    | `string`                               | Current pathname without origin                       |
+| `path`        | `string`                               | Alias of `pathname`                                   |
+| `entry`       | `string`                               | Docs entry root, e.g. `"docs"`                        |
+| `slug`        | `string`                               | Page slug relative to the docs entry                  |
+| `locale`      | `string \| undefined`                  | Active locale when docs i18n is enabled               |
+
+```ts title="docs.config.ts"
+import type { DocsFeedbackData } from "@farming-labs/docs";
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  feedback: {
+    enabled: true,
+    onFeedback(data: DocsFeedbackData) {
+      console.log("Feedback:", data.value, data.slug, data.url);
+    },
+  },
+});
+```
+
+This docs site persists feedback through a local Next.js route at
+`website/app/api/feedback/route.ts`, backed by the `DocsFeedback` Prisma model in
+`website/prisma/schema.prisma`.
+
+See [Page feedback](/docs/configuration#page-feedback) for framework-specific notes. The built-in
+UI does not require a separate client bridge file.
+
+---
+
+## `ThemeToggleConfig`
+
+Light/dark mode toggle in the sidebar.
+
+| Property  | Type                                  | Default        | Description                        |
+| --------- | ------------------------------------- | -------------- | ---------------------------------- |
+| `enabled` | `boolean`                             | `true`         | Show or hide the toggle            |
+| `default` | `"light" \| "dark" \| "system"`       | `"system"`     | Forced theme when `enabled: false` |
+| `mode`    | `"light-dark" \| "light-dark-system"` | `"light-dark"` | Toggle behavior                    |
+
+```ts
+// Show toggle (default)
+themeToggle: true,
+
+// Hide toggle, follow system preference
+themeToggle: false,
+
+// Hide toggle, force dark mode
+themeToggle: { enabled: false, default: "dark" },
+
+// Show toggle with system option
+themeToggle: { mode: "light-dark-system" },
+```
+
+---
+
+## `BreadcrumbConfig`
+
+Breadcrumb navigation above page content.
+
+| Property    | Type        | Default | Description                                |
+| ----------- | ----------- | ------- | ------------------------------------------ |
+| `enabled`   | `boolean`   | `true`  | Show or hide breadcrumbs                   |
+| `component` | `Component` | —       | Custom breadcrumb component (Next.js only) |
+
+```ts
+breadcrumb: true,              // show (default)
+breadcrumb: false,             // hide
+breadcrumb: { enabled: false },  // hide
+```
+
+---
+
+## `SidebarConfig`
+
+Sidebar visibility and customization. See [Sidebar](/docs/customization/sidebar) for the full guide including custom sidebar components.
+
+| Property      | Type                                             | Default | Description                                                                                                  |
+| ------------- | ------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------ |
+| `enabled`     | `boolean`                                        | `true`  | Show or hide the sidebar                                                                                     |
+| `component`   | `(props: SidebarComponentProps) => ReactNode`    | —       | Custom sidebar render function. Receives `{ tree, collapsible, flat }`. Supported in Next.js and TanStack Start — other frameworks use slots. |
+| `footer`      | `ReactNode`                                      | —       | Content rendered below nav items                                                                             |
+| `banner`      | `ReactNode`                                      | —       | Content rendered above nav items                                                                             |
+| `collapsible` | `boolean`                                        | `true`  | Whether sidebar is collapsible on desktop                                                                    |
+| `flat`        | `boolean`                                        | `false` | Render all items flat (Mintlify-style, no collapsible groups)                                                |
+
+### `SidebarComponentProps`
+
+Props passed to a custom sidebar component:
+
+| Property      | Type          | Description                                      |
+| ------------- | ------------- | ------------------------------------------------ |
+| `tree`        | `SidebarTree` | Full page tree with all parent-child relationships |
+| `collapsible` | `boolean`     | Whether folders are collapsible                  |
+| `flat`        | `boolean`     | Whether folders are rendered flat                |
+
+### `SidebarTree`
+
+| Property   | Type             | Description              |
+| ---------- | ---------------- | ------------------------ |
+| `name`     | `string`         | Root name (e.g. "Docs")  |
+| `children` | `SidebarNode[]`  | Top-level sidebar items  |
+
+### `SidebarNode`
+
+A union of `SidebarPageNode | SidebarFolderNode`.
+
+**`SidebarPageNode`**
+
+| Property | Type      | Description         |
+| -------- | --------- | ------------------- |
+| `type`   | `"page"`  | Node type           |
+| `name`   | `string`  | Display name        |
+| `url`    | `string`  | Page URL            |
+| `icon`   | `unknown` | Icon from registry  |
+
+**`SidebarFolderNode`**
+
+| Property      | Type               | Description                   |
+| ------------- | ------------------ | ----------------------------- |
+| `type`        | `"folder"`         | Node type                     |
+| `name`        | `string`           | Display name                  |
+| `icon`        | `unknown`          | Icon from registry            |
+| `index`       | `SidebarPageNode`  | Folder's landing page         |
+| `children`    | `SidebarNode[]`    | Child pages and sub-folders   |
+| `collapsible` | `boolean`          | Whether this folder collapses |
+| `defaultOpen` | `boolean`          | Whether it starts open        |
+
+```ts
+sidebar: true,                     // show (default)
+sidebar: false,                    // hide
+sidebar: { collapsible: false },   // non-collapsible
+sidebar: { flat: true },           // Mintlify-style flat
+sidebar: {                         // custom component
+  component: ({ tree }) => <MySidebar tree={tree} />,
+},
+```
+
+---
+
+## `DocsTheme`
+
+Theme configuration returned by theme factories.
+
+| Property | Type       | Description                                         |
+| -------- | ---------- | --------------------------------------------------- |
+| `name`   | `string`   | Theme identifier (e.g. `"fumadocs"`, `"darksharp"`) |
+| `ui`     | `UIConfig` | Visual configuration — colors, typography, layout   |
+
+Created via theme factories:
+
+<Tabs items={["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"]}>
+  <Tab value="Next.js">
+    ```ts
+    import { fumadocs } from "@farming-labs/theme";
+    import { darksharp } from "@farming-labs/theme/darksharp";
+    import { pixelBorder } from "@farming-labs/theme/pixel-border";
+    import { colorful } from "@farming-labs/theme/colorful";
+
+    theme: fumadocs({ ui: { /* overrides */ } }),
+    ```
+
+  </Tab>
+  <Tab value="TanStack Start">
+    ```ts
+    import { fumadocs } from "@farming-labs/theme";
+    import { darksharp } from "@farming-labs/theme/darksharp";
+    import { pixelBorder } from "@farming-labs/theme/pixel-border";
+    import { colorful } from "@farming-labs/theme/colorful";
+
+    theme: fumadocs({ ui: { /* overrides */ } }),
+    ```
+
+  </Tab>
+  <Tab value="SvelteKit">
+    ```ts
+    import { fumadocs, darksharp, pixelBorder } from "@farming-labs/svelte-theme";
+    import { colorful } from "@farming-labs/svelte-theme/colorful";
+
+    theme: fumadocs({ ui: { /* overrides */ } }),
+    ```
+
+  </Tab>
+  <Tab value="Astro">
+    ```ts
+    import { fumadocs } from "@farming-labs/astro-theme";
+    import { pixelBorder } from "@farming-labs/astro-theme/pixel-border";
+    import { darksharp } from "@farming-labs/astro-theme/darksharp";
+    import { colorful } from "@farming-labs/astro-theme/colorful";
+
+    theme: fumadocs({ ui: { /* overrides */ } }),
+    ```
+
+  </Tab>
+  <Tab value="Nuxt">
+    ```ts
+    import { fumadocs } from "@farming-labs/nuxt-theme/fumadocs";
+    import { colorful } from "@farming-labs/nuxt-theme/colorful";
+
+    theme: fumadocs({ ui: { /* overrides */ } }),
+    ```
+
+  </Tab>
+</Tabs>
+
+---
+
+## `UIConfig`
+
+Fine-grained visual configuration passed to theme factories.
+
+| Property     | Type                 | Description                                     |
+| ------------ | -------------------- | ----------------------------------------------- |
+| `colors`     | `ColorsConfig`       | Theme color tokens                              |
+| `typography` | `TypographyConfig`   | Font families, heading styles                   |
+| `radius`     | `string`             | Global border-radius (e.g. `"0px"`, `"0.5rem"`) |
+| `layout`     | `LayoutConfig`       | Content width, sidebar width, TOC settings      |
+| `codeBlock`  | `CodeBlockConfig`    | Syntax highlighting and line numbers            |
+| `sidebar`    | `SidebarStyleConfig` | Sidebar visual style                            |
+| `card`       | `CardConfig`         | Card component styling                          |
+
+### `ColorsConfig`
+
+All color tokens. Accepts any CSS color value (hex, rgb, oklch, hsl).
+
+| Token                 | Description                         |
+| --------------------- | ----------------------------------- |
+| `primary`             | Primary brand color                 |
+| `primaryForeground`   | Text color on primary backgrounds   |
+| `background`          | Page background                     |
+| `foreground`          | Default text color                  |
+| `muted`               | Muted background (e.g. code blocks) |
+| `mutedForeground`     | Text on muted backgrounds           |
+| `border`              | Default border color                |
+| `card`                | Card background                     |
+| `cardForeground`      | Card text color                     |
+| `accent`              | Accent color                        |
+| `accentForeground`    | Text on accent backgrounds          |
+| `secondary`           | Secondary color                     |
+| `secondaryForeground` | Text on secondary backgrounds       |
+| `popover`             | Popover/dropdown background         |
+| `popoverForeground`   | Popover text color                  |
+| `ring`                | Focus ring color                    |
+
+```ts
+colors: {
+  primary: "oklch(0.72 0.19 149)",
+  background: "hsl(0 0% 2%)",
+  border: "#262626",
+},
+```
+
+### `LayoutConfig`
+
+| Property        | Type      | Default | Description                     |
+| --------------- | --------- | ------- | ------------------------------- |
+| `contentWidth`  | `number`  | —       | Max width of content area in px |
+| `sidebarWidth`  | `number`  | —       | Sidebar width in px             |
+| `tocWidth`      | `number`  | —       | Table of contents width in px   |
+| `toc.enabled`   | `boolean` | `true`  | Show table of contents          |
+| `toc.depth`     | `number`  | `3`     | Max heading depth for TOC       |
+| `header.height` | `number`  | —       | Header height in px             |
+| `header.sticky` | `boolean` | `true`  | Sticky header                   |
+
+### `CodeBlockConfig`
+
+| Property          | Type      | Default | Description                |
+| ----------------- | --------- | ------- | -------------------------- |
+| `showLineNumbers` | `boolean` | `false` | Show line numbers          |
+| `showCopyButton`  | `boolean` | `true`  | Show copy button           |
+| `theme`           | `string`  | —       | Shiki theme for light mode |
+| `darkTheme`       | `string`  | —       | Shiki theme for dark mode  |
+
+### `SidebarStyleConfig`
+
+| Property      | Type                                    | Default     | Description               |
+| ------------- | --------------------------------------- | ----------- | ------------------------- |
+| `style`       | `"default" \| "bordered" \| "floating"` | `"default"` | Sidebar visual style      |
+| `background`  | `string`                                | —           | Background color override |
+| `borderColor` | `string`                                | —           | Border color override     |
+
+### `TypographyConfig`
+
+```ts
+typography: {
+  font: {
+    style: {
+      sans: "Inter, sans-serif",
+      mono: "JetBrains Mono, monospace",
+    },
+    h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.02em" },
+    h2: { size: "1.75rem", weight: 600 },
+    h3: { size: "1.25rem", weight: 600 },
+    body: { size: "1rem", lineHeight: "1.75" },
+    small: { size: "0.875rem" },
+  },
+},
+```
+
+### `FontStyle`
+
+Used for each heading level and body text.
+
+| Property        | Type               | Description                                                        |
+| --------------- | ------------------ | ------------------------------------------------------------------ |
+| `size`          | `string`           | CSS `font-size` (e.g. `"2.25rem"`, `"clamp(1.8rem, 3vw, 2.5rem)"`) |
+| `weight`        | `string \| number` | CSS `font-weight` (e.g. `700`, `"bold"`)                           |
+| `lineHeight`    | `string`           | CSS `line-height` (e.g. `"1.2"`, `"28px"`)                         |
+| `letterSpacing` | `string`           | CSS `letter-spacing` (e.g. `"-0.02em"`)                            |
+
+---
+
+## `AIConfig`
+
+RAG-powered AI chat. See [Ask AI](/docs/customization/ai-chat) for usage guide.
+
+| Property             | Type                                                 | Default                       | Description                                             |
+| -------------------- | ---------------------------------------------------- | ----------------------------- | ------------------------------------------------------- |
+| `enabled`            | `boolean`                                            | `false`                       | Enable AI chat                                          |
+| `mode`               | `"search" \| "floating"`                             | `"search"`                    | UI mode: integrated in search or floating widget        |
+| `position`           | `"bottom-right" \| "bottom-left" \| "bottom-center"` | `"bottom-right"`              | Floating button position (only when `mode: "floating"`) |
+| `floatingStyle`      | `"panel" \| "modal" \| "popover" \| "full-modal"`    | `"panel"`                     | Floating chat visual style                              |
+| `triggerComponent`   | `Component`                                          | —                             | Custom floating button component                        |
+| `model`              | `string`                                             | `"gpt-4o-mini"`               | LLM model name (OpenAI-compatible)                      |
+| `systemPrompt`       | `string`                                             | auto-generated                | Custom system prompt                                    |
+| `baseUrl`            | `string`                                             | `"https://api.openai.com/v1"` | OpenAI-compatible API base URL                          |
+| `apiKey`             | `string`                                             | `process.env.OPENAI_API_KEY`  | API key for the LLM provider                            |
+| `maxResults`         | `number`                                             | `5`                           | Number of doc pages to include as RAG context           |
+| `suggestedQuestions` | `string[]`                                           | —                             | Pre-filled questions shown when chat is empty           |
+| `aiLabel`            | `string`                                             | `"AI"`                        | Display name for the AI assistant                       |
+| `packageName`        | `string`                                             | —                             | Package name the AI uses in import examples             |
+| `docsUrl`            | `string`                                             | —                             | Base URL the AI uses for links                          |
+| `loader`             | `string`                                             | `"shimmer-dots"`              | Loading indicator variant (`"shimmer-dots"`, `"circular"`, `"dots"`, `"typing"`, `"wave"`, `"bars"`, `"pulse"`, `"pulse-dot"`, `"terminal"`, `"text-blink"`, `"text-shimmer"`, `"loading-dots"`) |
+| `loadingComponent`   | `(props: { name: string }) => ReactNode`             | —                             | Custom loading component (overrides `loader`, Next.js only) |
+
+### Floating styles
+
+| Style          | Description                                                       |
+| -------------- | ----------------------------------------------------------------- |
+| `"panel"`      | Tall panel sliding up from the button. No backdrop.               |
+| `"modal"`      | Centered modal with backdrop overlay, like Cmd+K search.          |
+| `"popover"`    | Compact popover near the button.                                  |
+| `"full-modal"` | Full-screen immersive overlay with pills for suggested questions. |
+
+---
+
+## `PageActionsConfig`
+
+Action buttons shown on each docs page. See [Page Actions](/docs/customization/page-actions) for usage guide.
+
+| Property       | Type                             | Default         | Description                 |
+| -------------- | -------------------------------- | --------------- | --------------------------- |
+| `position`     | `"above-title" \| "below-title"` | `"below-title"` | Where to render the buttons |
+| `alignment`    | `"left" \| "right"`               | `"left"`        | Horizontal alignment of the action row |
+| `copyMarkdown` | `boolean \| CopyMarkdownConfig`  | `false`         | "Copy Markdown" button      |
+| `openDocs`     | `boolean \| OpenDocsConfig`      | `false`         | "Open in LLM" dropdown      |
+
+### `CopyMarkdownConfig`
+
+| Property  | Type      | Default | Description     |
+| --------- | --------- | ------- | --------------- |
+| `enabled` | `boolean` | `false` | Show the button |
+
+### `OpenDocsConfig`
+
+| Property    | Type                 | Default           | Description        |
+| ----------- | -------------------- | ----------------- | ------------------ |
+| `enabled`   | `boolean`            | `false`           | Show the dropdown  |
+| `providers` | `OpenDocsProvider[]` | ChatGPT, Claude   | LLM/tool providers |
+
+### `OpenDocsProvider`
+
+| Property      | Type        | Description                                                                       |
+| ------------- | ----------- | --------------------------------------------------------------------------------- |
+| `name`        | `string`    | Display name (e.g. `"ChatGPT"`, `"Claude"`)                                       |
+| `icon`        | `ReactNode` | Icon rendered next to the name                                                    |
+| `urlTemplate` | `string`    | URL template. `{url}` is replaced with the page URL, `{mdxUrl}` with the MDX URL, and `{githubUrl}` with the GitHub edit URL when `github` is configured. |
+
+```ts
+pageActions: {
+  copyMarkdown: { enabled: true },
+  openDocs: {
+    enabled: true,
+    providers: [
+      { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}" },
+      { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+this:+{url}" },
+    ],
+  },
+},
+```
+
+---
+
+## `DocsMetadata`
+
+SEO metadata configuration.
+
+| Property        | Type                                 | Default | Description                                                |
+| --------------- | ------------------------------------ | ------- | ---------------------------------------------------------- |
+| `titleTemplate` | `string`                             | —       | Page title template. `%s` is replaced with the page title. |
+| `description`   | `string`                             | —       | Default meta description                                   |
+| `twitterCard`   | `"summary" \| "summary_large_image"` | —       | Twitter card type                                          |
+
+```ts
+metadata: {
+  titleTemplate: "%s – My Docs",
+  description: "Documentation for my project",
+},
+```
+
+---
+
+## `OGConfig`
+
+Open Graph image configuration. When `endpoint` is set, each docs page gets a dynamic OG image: the framework passes the page’s `title` and `description` (from frontmatter) to the endpoint, and the layout injects the resulting image URL into `og:image` and `twitter:image` meta tags. For a full guide (how dynamic OG works, what context is passed, and how the docs website implements it), see [OG Images](/docs/customization/og-images).
+
+| Property       | Type                    | Default | Description                         |
+| -------------- | ----------------------- | ------- | ----------------------------------- |
+| `enabled`      | `boolean`               | `false` | Enable OG image generation          |
+| `type`         | `"static" \| "dynamic"` | —       | Static images or dynamic generation |
+| `endpoint`     | `string`                | —       | API endpoint for dynamic OG images  |
+| `defaultImage` | `string`                | —       | Fallback OG image URL               |
+
+**Example (Next.js):** In `docs.config.ts`, set `og.endpoint` to your OG route path. Then implement `app/api/og/route.tsx` (or `route.ts`) that accepts `title` and `description` query params and returns a 1200×630 image (e.g. using `ImageResponse` from `next/og`).
+
+```ts
+og: {
+  enabled: true,
+  type: "dynamic",
+  endpoint: "/api/og",
+},
+```
+
+**Testing your OG image**
+
+1. Start the dev server for the app that serves the OG route (e.g. `cd website && pnpm dev` or `cd examples/next && pnpm dev`).
+2. Open the OG URL in the browser, e.g.  
+   `http://localhost:3000/api/og?title=Test&description=My+description`  
+   (use your app’s port if different).
+3. After changing the OG route code, refresh the page. If the image doesn’t update, do a **hard refresh** (e.g. **Cmd+Shift+R** on macOS, **Ctrl+Shift+R** on Windows) or open the URL in a private/incognito window. You can also add a cache-busting query param (e.g. `&_=1`, `&_=2`) to force a new request.
+
+---
+
+## Page Frontmatter
+
+Each docs page (`.mdx` / `.md`) supports these frontmatter fields:
+
+| Property      | Type        | Description                                                                       |
+| ------------- | ----------- | --------------------------------------------------------------------------------- |
+| `title`       | `string`    | **Required.** Page title, shown in sidebar and page heading                        |
+| `description` | `string`    | Page description, used for meta tags and search                                    |
+| `icon`        | `string`    | Icon key from the `icons` registry. Shows in sidebar.                              |
+| `order`       | `number`    | Sort order in the sidebar (only when `ordering: "numeric"`). Lower numbers first.   |
+| `tags`        | `string[]`  | Tags for categorization                                                            |
+| `ogImage`     | `string`    | Shorthand for a single OG image path. Ignored if `openGraph` is set.                 |
+| `openGraph`   | `PageOpenGraph` | Full Open Graph object (e.g. `images: [{ url, width?, height? }]`). When set, replaces generated OG from the config (e.g. dynamic endpoint). |
+| `twitter`     | `PageTwitter`   | Full Twitter card object (e.g. `card`, `images`). When set, replaces generated twitter metadata. |
+| `hidden`      | `boolean`   | If `true`, hide the page from the sidebar (page remains reachable by URL). Optional; behavior may vary by adapter. |
+
+**Static OG example** — use `openGraph` and `twitter` in frontmatter to serve a static image instead of the dynamic OG endpoint:
+
+```md title="page-frontmatter.md"
+---
+title: "Title of Docs"
+description: "Title of the docs goes here"
+icon: "harddrive"
+openGraph:
+  images:
+    - url: "/og/path-to-image/image.png"
+      width: 1200
+      height: 630
+twitter:
+  card: "summary_large_image"
+  images:
+    - "/og/path-to-image/image.png"
+---
+```
+
+**Minimal example** (shorthand `ogImage` or generated OG):
+
+```md title="page.md"
+---
+title: "Getting Started"
+description: "Set up your docs in 5 minutes"
+icon: "rocket"
+order: 1
+---
+```
+
+### Data types
+
+Frontmatter is **YAML** between the `---` fences. Supported value types:
+
+| Type      | Example in frontmatter        | Use in framework fields   |
+| --------- | ------------------------------ | -------------------------- |
+| `string`  | `title: "Hello"` or `title: Hello` | `title`, `description`, `icon`, `ogImage` |
+| `number`  | `order: 1`                     | `order`                    |
+| `boolean` | `hidden: true`                 | Optional (e.g. hide from sidebar) |
+| `string[]`| `tags: [a, b]` or `tags: ["a", "b"]` | `tags`                  |
+
+You can use other YAML types (e.g. nested objects) for custom keys; only the fields in the table above are used by the framework for sidebar, SEO, and OG.
+
+### How frontmatter is passed
+
+- **Next.js** — The MDX pipeline uses `remark-frontmatter` and `remark-mdx-frontmatter` with `name: "metadata"`. The parsed frontmatter is exposed as the **`metadata`** export from the page. The layout and `generateMetadata` receive it when resolving the page (e.g. via `getPage(params)`), and it is used for `createPageMetadata`, sidebar tree (title, icon, order), and description maps.
+- **TanStack Start / SvelteKit / Astro / Nuxt** — The docs loader (e.g. `import.meta.glob` or content layer) reads each `.md`/`.mdx` file, parses frontmatter, and builds the nav tree and page data. Frontmatter is passed to the layout as **page data** (e.g. `page.data` or the props your content component receives). The same fields (`title`, `description`, `icon`, `order`, `tags`, `ogImage`) are used for sidebar, meta tags, and search.
+
+So in all frameworks, the **same frontmatter fields** drive titles, descriptions, icons, ordering, and OG; only the mechanism (MDX `metadata` vs. content loader `page.data`) differs.
+
+---
+
+## `createTheme(options)`
+
+Create a custom theme from scratch. See [Creating Themes](/docs/themes/creating-themes).
+
+```ts
+import { createTheme } from "@farming-labs/docs";
+
+export const myTheme = createTheme({
+  name: "my-theme",
+  ui: {
+    colors: { primary: "#ff4d8d", background: "#0a0a0a" },
+    radius: "0px",
+    sidebar: { style: "bordered" },
+  },
+});
+```
+
+## `extendTheme(base, overrides)`
+
+Extend an existing theme with overrides.
+
+```ts
+import { extendTheme } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/theme";
+
+export const myTheme = extendTheme(fumadocs(), {
+  ui: {
+    colors: { primary: "oklch(0.72 0.19 149)" },
+  },
+});
+```
+
+---
+
+## TanStack Start Server API
+
+### `createDocsServer(config)`
+
+Creates the TanStack Start docs server adapter.
+
+```ts
+import { createDocsServer } from "@farming-labs/tanstack-start/server";
+```
+
+**Parameters:**
+
+| Property  | Type         | Description |
+| --------- | ------------ | ----------- |
+| `config`  | `DocsConfig` | The config object from `defineDocs()` |
+| `rootDir` | `string`     | Optional project root used to resolve `contentDir`. Defaults to `process.cwd()` |
+
+**Returns:**
+
+| Property | Type                                                       | Description |
+| -------- | ---------------------------------------------------------- | ----------- |
+| `load`   | `({ pathname, locale? }) => Promise<DocsServerLoadResult>` | Loads docs page data and the sidebar tree for a pathname |
+| `GET`    | `({ request }) => Response`                                | Search / `llms.txt` endpoint handler |
+| `POST`   | `({ request }) => Promise<Response>`                       | AI chat endpoint handler |
+
+```ts title="src/lib/docs.server.ts"
+import { createDocsServer } from "@farming-labs/tanstack-start/server";
+import docsConfig from "../../docs.config";
+
+export const docsServer = createDocsServer({
+  ...docsConfig,
+  rootDir: process.cwd(),
+});
+```
+
+### TanStack Start Components
+
+| Component          | Import                               | Description |
+| ------------------ | ------------------------------------ | ----------- |
+| `TanstackDocsPage` | `@farming-labs/tanstack-start/react` | Built-in page renderer that resolves the compiled MDX module and wraps it in the shared docs layout |
+| `RootProvider`     | `@farming-labs/theme/tanstack`       | Root provider for theme state, search, and AI UI |
+
+```tsx title="src/routes/docs.index.tsx"
+import { createFileRoute } from "@tanstack/react-router";
+import { TanstackDocsPage } from "@farming-labs/tanstack-start/react";
+import { loadDocPage } from "@/lib/docs.functions";
+import docsConfig from "../../docs.config";
+
+export const Route = createFileRoute("/docs/")({
+  loader: () => loadDocPage({ data: { pathname: "/docs" } }),
+  component: DocsIndexPage,
+});
+
+function DocsIndexPage() {
+  const data = Route.useLoaderData();
+  return <TanstackDocsPage config={docsConfig} data={data} />;
+}
+```
+
+```ts title="src/routes/api.docs.ts"
+import { createFileRoute } from "@tanstack/react-router";
+import { docsServer } from "@/lib/docs.server";
+
+export const Route = createFileRoute("/api/docs")({
+  server: {
+    handlers: {
+      GET: async ({ request }) => docsServer.GET({ request }),
+      POST: async ({ request }) => docsServer.POST({ request }),
+    },
+  },
+});
+```
+
+> TanStack Start also uses the `docsMdx()` Vite plugin from `@farming-labs/tanstack-start/vite` so `.mdx` files compile without extra local module-loader glue.
+
+---
+
+## SvelteKit Server API
+
+### `createDocsServer(config)`
+
+Creates all server-side functions for a SvelteKit docs site.
+
+```ts
+import { createDocsServer } from "@farming-labs/svelte/server";
+```
+
+**Parameters:**
+
+| Property            | Type                     | Description                                                                 |
+| ------------------- | ------------------------ | --------------------------------------------------------------------------- |
+| `config`            | `DocsConfig`             | The config object from `defineDocs()`                                       |
+| `_preloadedContent` | `Record<string, string>` | Pre-loaded markdown files from `import.meta.glob`. Required for serverless. |
+
+**Returns:**
+
+| Property | Type                           | Description                                       |
+| -------- | ------------------------------ | ------------------------------------------------- |
+| `load`   | `(event) => Promise<PageData>` | Layout load function (use in `+layout.server.js`) |
+| `GET`    | `(event) => Response`          | Search endpoint handler                           |
+| `POST`   | `(event) => Promise<Response>` | AI chat endpoint handler                          |
+
+```ts title="src/lib/docs.server.ts"
+import { createDocsServer } from "@farming-labs/svelte/server";
+import config from "./docs.config";
+
+const contentFiles = import.meta.glob("/docs/**/*.{md,mdx,svx}", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
+
+export const { load, GET, POST } = createDocsServer({
+  ...config,
+  _preloadedContent: contentFiles,
+});
+```
+
+### SvelteKit Components
+
+Imported from `@farming-labs/svelte-theme`:
+
+| Component     | Props                                                                                                  | Description                                    |
+| ------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| `DocsLayout`  | `tree`, `config`, `title?`, `titleUrl?`                                                                | Main layout with sidebar, nav, search, AI      |
+| `DocsContent` | `data`, `config`                                                                                       | Page content with TOC, breadcrumb, footer nav  |
+| `DocsPage`    | `entry`, `tocEnabled`, `breadcrumbEnabled`, `previousPage`, `nextPage`, `editOnGithub`, `lastModified` | Low-level page wrapper (used by `DocsContent`) |
+
+---
+
+## Astro Server API
+
+### `createDocsServer(config)`
+
+Same as SvelteKit — returns `{ load, GET, POST }`.
+
+```ts title="src/lib/docs.server.ts"
+import { createDocsServer } from "@farming-labs/astro/server";
+```
+
+**Parameters:**
+
+| Property            | Type                     | Description                                                                 |
+| ------------------- | ------------------------ | --------------------------------------------------------------------------- |
+| `config`            | `DocsConfig`             | The config object from `defineDocs()`                                       |
+| `_preloadedContent` | `Record<string, string>` | Pre-loaded markdown files from `import.meta.glob`. Required for serverless. |
+
+**Returns:**
+
+| Property | Type                                      | Description                                           |
+| -------- | ----------------------------------------- | ----------------------------------------------------- |
+| `load`   | `(pathname: string) => Promise<PageData>` | Takes a URL pathname string, returns page data        |
+| `GET`    | `({ request }) => Response`               | Search endpoint handler for `GET /api/docs?query=...` |
+| `POST`   | `({ request }) => Promise<Response>`      | AI chat endpoint handler with SSE streaming           |
+
+```ts title="src/lib/docs.server.ts"
+import { createDocsServer } from "@farming-labs/astro/server";
+import config from "./docs.config";
+
+const contentFiles = import.meta.glob("/docs/**/*.{md,mdx}", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
+
+export const { load, GET, POST } = createDocsServer({
+  ...config,
+  _preloadedContent: contentFiles,
+});
+```
+
+### Astro Components
+
+| Component      | Import                                                        | Description                                        |
+| -------------- | ------------------------------------------------------------- | -------------------------------------------------- |
+| `DocsLayout`   | `@farming-labs/astro-theme/src/components/DocsLayout.astro`   | Main layout with sidebar, search, and theme toggle |
+| `DocsContent`  | `@farming-labs/astro-theme/src/components/DocsContent.astro`  | Page content with metadata                         |
+| `DocsPage`     | `@farming-labs/astro-theme/src/components/DocsPage.astro`     | Page structure (TOC, breadcrumb, nav)              |
+| `ThemeToggle`  | `@farming-labs/astro-theme/src/components/ThemeToggle.astro`  | Light/dark toggle                                  |
+| `SearchDialog` | `@farming-labs/astro-theme/src/components/SearchDialog.astro` | Search + AI dialog                                 |
+
+### CSS Imports
+
+Same pattern as SvelteKit:
+
+| Import                                       | Description              |
+| -------------------------------------------- | ------------------------ |
+| `@farming-labs/astro-theme/css`              | Default (fumadocs) theme |
+| `@farming-labs/astro-theme/pixel-border/css` | Pixel border theme       |
+| `@farming-labs/astro-theme/darksharp/css`    | Darksharp theme          |
+
+### Theme Factories
+
+| Factory         | Import                                   |
+| --------------- | ---------------------------------------- |
+| `fumadocs()`    | `@farming-labs/astro-theme`              |
+| `pixelBorder()` | `@farming-labs/astro-theme/pixel-border` |
+| `darksharp()`   | `@farming-labs/astro-theme/darksharp`    |
+
+---
+
+## Nuxt Server API
+
+### `defineDocsHandler(config, useStorage)`
+
+Creates a single Nitro event handler that serves docs loading, search, and AI chat for Nuxt.
+
+```ts
+import { defineDocsHandler } from "@farming-labs/nuxt/server";
+```
+
+**Parameters:**
+
+| Property     | Type         | Description                                              |
+| ------------ | ------------ | -------------------------------------------------------- |
+| `config`     | `DocsConfig` | The config object from `defineDocs()`                    |
+| `useStorage` | `Function`   | Nitro's `useStorage` utility for accessing server assets |
+
+**Returns:**
+
+A Nitro event handler that responds to `GET` (page loading + search) and `POST` (AI chat) requests.
+
+```ts title="server/api/docs.ts"
+import { defineDocsHandler } from "@farming-labs/nuxt/server";
+import config from "../../docs.config";
+
+export default defineDocsHandler(config, useStorage);
+```
+
+> Nuxt uses Nitro's `serverAssets` to load markdown files. Configure `nitro.serverAssets` in `nuxt.config.ts` to point to your docs directory.
+
+### Nuxt Components
+
+Imported from `@farming-labs/nuxt-theme`:
+
+| Component     | Props                                 | Description                                   |
+| ------------- | ------------------------------------- | --------------------------------------------- |
+| `DocsLayout`  | `tree`, `config`, `triggerComponent?` | Main layout with sidebar, nav, search, AI     |
+| `DocsContent` | `data`, `config`                      | Page content with TOC, breadcrumb, footer nav |
+
+### CSS Imports
+
+| Import                                  | Description              |
+| --------------------------------------- | ------------------------ |
+| `@farming-labs/nuxt-theme/fumadocs/css` | Default (fumadocs) theme |
+
+### Theme Factories
+
+| Factory      | Import                              |
+| ------------ | ----------------------------------- |
+| `fumadocs()` | `@farming-labs/nuxt-theme/fumadocs` |
+
+---
+
+## Next.js API
+
+### `RootProvider`
+
+Client-side provider that wraps your entire app. Enables search, theme switching (light/dark), and AI chat. Must be placed in your root `app/layout.tsx`.
+
+```tsx title="app/layout.tsx"
+import { RootProvider } from "@farming-labs/theme";
+import "./global.css";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <RootProvider>{children}</RootProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+| Prop       | Type                  | Default                             | Description                                                     |
+| ---------- | --------------------- | ----------------------------------- | --------------------------------------------------------------- |
+| `search`   | `SearchProviderProps` | `{ options: { api: "/api/docs" } }` | Search configuration. API defaults to the unified docs handler. |
+| `theme`    | `ThemeProviderProps`  | —                                   | Theme provider options (passed to `next-themes`)                |
+| `children` | `ReactNode`           | **required**                        | Your app content                                                |
+
+> `suppressHydrationWarning` on `<html>` prevents React warnings caused by the theme class being injected before hydration.
+
+### `withDocs(nextConfig)`
+
+Wraps your Next.js config with docs framework support. Handles MDX, routing, search index generation, and auto-generates `mdx-components.tsx` and `app/docs/layout.tsx` if missing.
+
+```ts title="next.config.ts"
+import { withDocs } from "@farming-labs/next/config";
+export default withDocs({});
+```
+
+### `createDocsLayout(config)`
+
+Creates the docs layout component from your config. Auto-generated by `withDocs()` — you typically don't need to create this manually.
+
+```tsx title="app/docs/layout.tsx"
+import { createDocsLayout } from "@farming-labs/theme";
+import config from "@/docs.config";
+
+const { DocsLayout } = createDocsLayout(config);
+
+export default function Layout({ children }) {
+  return <DocsLayout>{children}</DocsLayout>;
+}
+```

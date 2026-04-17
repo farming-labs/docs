@@ -169,6 +169,39 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(route).toContain("search: docsConfig.search");
   });
 
+  it("generates the markdown bridge route and rewrites", async () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+
+    expect(existsSync(join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts"))).toBe(true);
+    const route = readFileSync(
+      join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts"),
+      "utf-8",
+    );
+    expect(route).toContain('import { createDocsAPI } from "@farming-labs/next/api";');
+    expect(route).toContain('url.searchParams.set("format", "markdown");');
+    expect(route).toContain("return handlers.GET");
+
+    const rewrites = await (
+      nextConfig.rewrites as () => Promise<Array<{ source: string; destination: string }>>
+    )();
+
+    expect(rewrites).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/docs.md",
+          destination: "/api/docs/markdown",
+        }),
+        expect.objectContaining({
+          source: "/docs/:slug*.md",
+          destination: "/api/docs/markdown/:slug*",
+        }),
+      ]),
+    );
+  });
+
   it("generates changelog pages inside the docs route tree and hides the source subtree when needed", () => {
     writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_CHANGELOG, "utf-8");
     mkdirSync(join(tmpDir, "app", "docs", "changelog", "2026-03-04"), { recursive: true });
@@ -229,6 +262,16 @@ describe("withDocs (app dir: src/app vs app)", () => {
     withDocs({ output: "export" });
 
     expect(existsSync(join(tmpDir, "app/api/docs/mcp/route.ts"))).toBe(false);
+  });
+
+  it("skips markdown bridge generation and rewrites for static export", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({ output: "export" });
+
+    expect(existsSync(join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts"))).toBe(false);
+    expect(nextConfig.rewrites).toBeUndefined();
   });
 
   it("parses apiReference blocks that contain nested objects", () => {
@@ -296,6 +339,8 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
       "/api/docs": ["app/docs/**/*"],
+      "/api/docs/markdown": ["app/docs/**/*"],
+      "/api/docs/markdown/[[...slug]]": ["app/docs/**/*"],
       "/api/docs/mcp": ["app/docs/**/*"],
     });
   });
@@ -309,8 +354,45 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
       "/api/docs": ["website/app/docs/**/*"],
+      "/api/docs/markdown": ["website/app/docs/**/*"],
+      "/api/docs/markdown/[[...slug]]": ["website/app/docs/**/*"],
       "/api/docs/mcp": ["website/app/docs/**/*"],
     });
+  });
+
+  it("merges automatic markdown rewrites with user rewrites", async () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({
+      rewrites: async () => [
+        {
+          source: "/legacy",
+          destination: "/docs/getting-started/quickstart",
+        },
+      ],
+    });
+
+    const rewrites = await (
+      nextConfig.rewrites as () => Promise<Array<{ source: string; destination: string }>>
+    )();
+
+    expect(rewrites).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/docs.md",
+          destination: "/api/docs/markdown",
+        }),
+        expect.objectContaining({
+          source: "/docs/:slug*.md",
+          destination: "/api/docs/markdown/:slug*",
+        }),
+        expect.objectContaining({
+          source: "/legacy",
+          destination: "/docs/getting-started/quickstart",
+        }),
+      ]),
+    );
   });
 
   it("auto-configures workspace turbopack aliases when running inside the docs monorepo", () => {

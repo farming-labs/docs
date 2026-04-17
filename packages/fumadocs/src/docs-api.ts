@@ -24,7 +24,11 @@ import matter from "gray-matter";
 import { getNextAppDir } from "./get-app-dir.js";
 import { resolveChangelogConfig, resolveDocsI18n, resolveDocsLocale } from "@farming-labs/docs";
 import type { ChangelogConfig, DocsI18nConfig } from "@farming-labs/docs";
-import { createDocsMcpHttpHandler, createFilesystemDocsMcpSource } from "@farming-labs/docs/server";
+import {
+  createDocsMcpHttpHandler,
+  createFilesystemDocsMcpSource,
+  type DocsMcpPage,
+} from "@farming-labs/docs/server";
 import { performDocsSearch, resolveSearchRequestConfig } from "@farming-labs/docs";
 import type {
   DocsMcpConfig,
@@ -604,6 +608,54 @@ function scanChangelogDir(
   return indexes;
 }
 
+function normalizePathSegment(value: string): string {
+  return value.replace(/^\/+|\/+$/g, "");
+}
+
+function normalizeUrlPath(value: string): string {
+  const normalized = value.replace(/\/+/g, "/");
+  if (normalized === "/") return normalized;
+  return normalized.replace(/\/+$/, "");
+}
+
+function normalizeRequestedMarkdownPath(entry: string, requestedPath: string): string {
+  const trimmed = requestedPath.trim().replace(/\.md$/i, "");
+  if (!trimmed) return `/${entry}`;
+
+  const normalized = normalizeUrlPath(trimmed.startsWith("/") ? trimmed : `/${trimmed}`);
+  const normalizedEntry = `/${normalizePathSegment(entry)}`;
+  if (normalized === normalizedEntry || normalized.startsWith(`${normalizedEntry}/`)) {
+    return normalized;
+  }
+
+  const slug = normalizePathSegment(trimmed);
+  return slug ? normalizeUrlPath(`${normalizedEntry}/${slug}`) : normalizedEntry;
+}
+
+function findDocsMcpPage(entry: string, pages: DocsMcpPage[], requestedPath: string): DocsMcpPage | null {
+  const normalizedRequest = normalizeRequestedMarkdownPath(entry, requestedPath);
+
+  for (const page of pages) {
+    if (normalizeUrlPath(page.url) === normalizedRequest) return page;
+  }
+
+  const normalizedSlug = normalizePathSegment(requestedPath.replace(/^\//, "").replace(/\.md$/i, ""));
+  for (const page of pages) {
+    if (normalizePathSegment(page.slug) === normalizedSlug) return page;
+  }
+
+  return null;
+}
+
+function renderMarkdownDocument(page: DocsMcpPage | DocsSearchSourcePage): string {
+  if ("agentRawContent" in page && page.agentRawContent !== undefined) return page.agentRawContent;
+
+  const lines = [`# ${page.title}`, `URL: ${page.url}`];
+  if (page.description) lines.push(`Description: ${page.description}`);
+  lines.push("", page.rawContent ?? page.content);
+  return lines.join("\n");
+}
+
 // ─── AI Chat (RAG) ─────────────────────────────────────────────────
 
 const DEFAULT_SYSTEM_PROMPT = `You are a helpful documentation assistant. Answer questions based on the provided documentation context. Be concise and accurate. If the answer is not in the context, say so honestly. Use markdown formatting for code examples and links.`;
@@ -975,6 +1027,10 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
   const indexesByLocale = new Map<string, DocsSearchSourcePage[]>();
   const llmsCacheByLocale = new Map<string, { llmsTxt: string; llmsFullTxt: string }>();
+  const markdownSourcesByLocale = new Map<
+    string,
+    ReturnType<typeof createFilesystemDocsMcpSource>[]
+  >();
 
   function getIndexes(ctx: DocsContext) {
     const key = ctx.locale ?? "__default__";
@@ -1002,6 +1058,43 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     return next;
   }
 
+  function getMarkdownSources(ctx: DocsContext) {
+    const key = ctx.locale ?? "__default__";
+    const cached = markdownSourcesByLocale.get(key);
+    if (cached) return cached;
+
+    const sources = ctx.docsDirs.map((docsDir) =>
+      createFilesystemDocsMcpSource({
+        rootDir: root,
+        entry: ctx.entryPath,
+        contentDir: docsDir,
+      }),
+    );
+    markdownSourcesByLocale.set(key, sources);
+    return sources;
+  }
+
+  async function getMarkdownDocument(ctx: DocsContext, requestedPath: string) {
+    for (const source of getMarkdownSources(ctx)) {
+      const page = findDocsMcpPage(ctx.entryPath, await source.getPages(), requestedPath);
+      if (page) return renderMarkdownDocument(page);
+    }
+
+    const normalizedRequest = normalizeRequestedMarkdownPath(ctx.entryPath, requestedPath);
+    const fallbackPage = getIndexes(ctx).find(
+      (page) => normalizeUrlPath(page.url) === normalizedRequest,
+    );
+    if (fallbackPage) return renderMarkdownDocument(fallbackPage);
+
+    for (const page of getIndexes(ctx)) {
+      const slug = normalizePathSegment(page.url.replace(/^\/+/, "").replace(`${ctx.entryPath}/`, ""));
+      const requestedSlug = normalizePathSegment(requestedPath.replace(/^\/+/, "").replace(/\.md$/i, ""));
+      if (slug === requestedSlug) return renderMarkdownDocument(page);
+    }
+
+    return null;
+  }
+
   function getLlmsContent(ctx: DocsContext) {
     const key = ctx.locale ?? "__default__";
     const cached = llmsCacheByLocale.get(key);
@@ -1023,6 +1116,29 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       const ctx = resolveContextFromRequest(request);
       const url = new URL(request.url);
       const format = url.searchParams.get("format");
+
+      if (format === "markdown") {
+        const requestedPath = url.searchParams.get("path")?.trim() ?? "";
+        const document = await getMarkdownDocument(ctx, requestedPath);
+
+        if (!document) {
+          return new Response("Not Found", {
+            status: 404,
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
+
+        return new Response(document, {
+          headers: {
+            "Content-Type": "text/markdown; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            "X-Robots-Tag": "noindex",
+          },
+        });
+      }
 
       if (format === "llms") {
         return new Response(getLlmsContent(ctx).llmsTxt, {

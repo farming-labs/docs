@@ -209,7 +209,7 @@ export default defineDocs({
       ],
     },
   },
-  ...(docsSearchProvider === "mcp" ? { mcp: { enabled: true } } : {}),
+  mcp: { enabled: true },
   ordering: "numeric",
   metadata: {
     titleTemplate: "%s – Docs",

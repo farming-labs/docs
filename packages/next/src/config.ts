@@ -117,6 +117,35 @@ export const { GET, POST, DELETE } = createDocsMCPAPI({
 export const revalidate = false;
 `;
 
+const DOCS_MARKDOWN_ROUTE_TEMPLATE = `\
+${GENERATED_BANNER}
+import docsConfig from "@/docs.config";
+import { createDocsAPI } from "@farming-labs/next/api";
+
+const handlers = createDocsAPI({
+  entry: docsConfig.entry,
+  contentDir: docsConfig.contentDir,
+  i18n: docsConfig.i18n,
+  changelog: docsConfig.changelog,
+  search: docsConfig.search,
+  ai: docsConfig.ai,
+});
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ slug?: string[] }> },
+) {
+  const { slug = [] } = await params;
+  const url = new URL(request.url);
+  url.searchParams.set("format", "markdown");
+  if (slug.length > 0) url.searchParams.set("path", slug.join("/"));
+  else url.searchParams.delete("path");
+  return handlers.GET(new Request(url, { headers: request.headers }));
+}
+
+export const revalidate = false;
+`;
+
 const API_REFERENCE_ROUTE_TEMPLATE = `\
 ${GENERATED_BANNER}
 import docsConfig from "@/docs.config";
@@ -885,6 +914,64 @@ function normalizeRoutePath(route: string): string {
   return normalized !== "/" ? normalized.replace(/\/+$/, "") : "/api/docs/mcp";
 }
 
+type NextRewrite = {
+  source: string;
+  destination: string;
+  [key: string]: unknown;
+};
+
+type NextRewriteResult =
+  | NextRewrite[]
+  | {
+      beforeFiles?: NextRewrite[];
+      afterFiles?: NextRewrite[];
+      fallback?: NextRewrite[];
+    };
+
+function buildDocsMarkdownRewrites(entry: string): NextRewrite[] {
+  const normalizedEntry = entry.replace(/^\/+|\/+$/g, "") || "docs";
+
+  return [
+    {
+      source: `/${normalizedEntry}.md`,
+      destination: "/api/docs/markdown",
+    },
+    {
+      source: `/${normalizedEntry}/:slug*.md`,
+      destination: "/api/docs/markdown/:slug*",
+    },
+  ];
+}
+
+function dedupeRewrites(rewrites: NextRewrite[]): NextRewrite[] {
+  const seen = new Set<string>();
+  const result: NextRewrite[] = [];
+
+  for (const rewrite of rewrites) {
+    const key = `${rewrite.source}=>${rewrite.destination}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(rewrite);
+  }
+
+  return result;
+}
+
+function mergeDocsMarkdownRewrites(entry: string, result?: NextRewriteResult): NextRewriteResult {
+  const docsMarkdownRewrites = buildDocsMarkdownRewrites(entry);
+  if (!result) return [...docsMarkdownRewrites];
+
+  if (Array.isArray(result)) {
+    return dedupeRewrites([...docsMarkdownRewrites, ...result]);
+  }
+
+  return {
+    beforeFiles: dedupeRewrites([...docsMarkdownRewrites, ...(result.beforeFiles ?? [])]),
+    afterFiles: result.afterFiles ?? [],
+    fallback: result.fallback ?? [],
+  };
+}
+
 // ─── withDocs ───────────────────────────────────────────────────────
 
 export function withDocs(nextConfig: Record<string, unknown> = {}) {
@@ -925,6 +1012,16 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
   if (!isStaticExport && !hasFile(docsApiRouteDir, "route")) {
     mkdirSync(docsApiRouteDir, { recursive: true });
     writeFileSync(join(docsApiRouteDir, "route.ts"), DOCS_API_ROUTE_TEMPLATE);
+  }
+
+  const docsMarkdownRouteDir = join(root, appDir, "api", "docs", "markdown", "[[...slug]]");
+  if (
+    !isStaticExport &&
+    (!hasFile(docsMarkdownRouteDir, "route") ||
+      isManagedGeneratedFile(join(docsMarkdownRouteDir, "route.ts")))
+  ) {
+    mkdirSync(docsMarkdownRouteDir, { recursive: true });
+    writeFileSync(join(docsMarkdownRouteDir, "route.ts"), DOCS_MARKDOWN_ROUTE_TEMPLATE);
   }
 
   const mcp = readMcpConfig(root);
@@ -1192,9 +1289,30 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     {};
   const docsTraceGlob = docsContentDir.replace(/\\/g, "/").replace(/^\.?\//, "") + "/**/*";
 
+  if (!isStaticExport) {
+    const existingRewrites = nextConfig.rewrites as
+      | NextRewriteResult
+      | (() => NextRewriteResult | Promise<NextRewriteResult>)
+      | undefined;
+    nextConfig.rewrites = async () => {
+      const rewrites =
+        typeof existingRewrites === "function" ? await existingRewrites() : existingRewrites;
+      return mergeDocsMarkdownRewrites(entry, rewrites);
+    };
+  }
+
   nextConfig.outputFileTracingIncludes = {
     ...existingTracingIncludes,
     "/api/docs": [...new Set([...(existingTracingIncludes["/api/docs"] ?? []), docsTraceGlob])],
+    "/api/docs/markdown": [
+      ...new Set([...(existingTracingIncludes["/api/docs/markdown"] ?? []), docsTraceGlob]),
+    ],
+    "/api/docs/markdown/[[...slug]]": [
+      ...new Set([
+        ...(existingTracingIncludes["/api/docs/markdown/[[...slug]]"] ?? []),
+        docsTraceGlob,
+      ]),
+    ],
     "/api/docs/mcp": [
       ...new Set([...(existingTracingIncludes["/api/docs/mcp"] ?? []), docsTraceGlob]),
     ],

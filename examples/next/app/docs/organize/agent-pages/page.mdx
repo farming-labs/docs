@@ -1,0 +1,35 @@
+---
+title: Agent Pages
+description: Keep a human page and an optional agent-only companion sidecar in the same folder.
+---
+
+# Agent Pages
+
+Use a normal `page.mdx` for readers and add a sibling `agent.md` only when a page needs
+agent-specific instructions.
+
+## Folder Structure
+
+```txt
+app/docs/organize/agent-pages/
+  page.mdx
+  agent.md
+```
+
+## Human Behavior
+
+Readers still visit the regular page route and only see the human documentation content.
+
+## Agent Behavior
+
+Agents can open `/docs/organize/agent-pages.md` or keep using MCP `read_page("/docs/organize/agent-pages")`.
+
+When `agent.md` exists, the markdown route and MCP response return that page-local markdown instead
+of the normal page content. If `agent.md` is missing, both fall back to the normal page content.
+
+## When To Use It
+
+- Implementation checklists
+- Exact commands
+- Edge cases that matter more to agents than readers
+- Repo-specific constraints you do not want in the public prose

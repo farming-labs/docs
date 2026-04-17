@@ -346,6 +346,91 @@ Install and configure the docs framework.
     expect(payload[0]?.content).toContain("Quickstart");
   });
 
+  it("serves markdown through the default docs api route and prefers agent.md when present", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-markdown-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "getting-started", "quickstart"), { recursive: true });
+    mkdirSync(join(rootDir, "app", "docs", "overview"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "getting-started", "quickstart", "page.mdx"),
+      `---
+title: "Quickstart"
+description: "Start fast"
+---
+
+# Quickstart
+
+Run \`pnpm dev\`.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "overview", "page.mdx"),
+      `---
+title: "Overview"
+description: "Human overview"
+---
+
+# Overview
+
+Human content.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "overview", "agent.md"),
+      "Use this page as the implementation map.\n",
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+    });
+
+    const fallbackResponse = await GET(
+      new Request("http://localhost/api/docs?format=markdown&path=getting-started/quickstart"),
+    );
+    expect(fallbackResponse.status).toBe(200);
+    expect(fallbackResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(await fallbackResponse.text()).toContain(
+      "# Quickstart\nURL: /docs/getting-started/quickstart",
+    );
+
+    const agentResponse = await GET(
+      new Request("http://localhost/api/docs?format=markdown&path=overview"),
+    );
+    expect(agentResponse.status).toBe(200);
+    expect(await agentResponse.text()).toBe("Use this page as the implementation map.\n");
+  });
+
+  it("returns 404 for markdown mode when the requested page does not exist", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-markdown-missing-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Home"
+---
+
+# Home
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs?format=markdown&path=missing"));
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("Not Found");
+  });
+
   it("indexes changelog entries under the docs changelog route instead of the raw source route", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-changelog-search-route-"));
     tempDirs.push(rootDir);
