@@ -1,6 +1,6 @@
 ---
 name: getting-started
-description: Get started with @farming-labs/docs — MDX-based documentation for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt. Use when setting up docs, scaffolding with the CLI, choosing themes, API reference, or writing docs.config. Covers init, manual setup per framework, theme CSS, defineDocs, apiReference, entry, contentDir, and common gotchas.
+description: Get started with @farming-labs/docs — MDX-based documentation for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt. Use when setting up docs, scaffolding with the CLI, choosing themes, changelog, API reference, or writing docs.config. Covers init, manual setup per framework, theme CSS, defineDocs, changelog, apiReference, entry, contentDir, and common gotchas.
 ---
 
 # @farming-labs/docs — Getting Started
@@ -42,6 +42,7 @@ Ten built-in theme entrypoints: `fumadocs` (default), `darksharp`, `pixel-border
 - **MDX components** — built-ins like `Callout`, `Tabs`, and `HoverLink` are available without imports.
 - **Page feedback** — enable with `feedback: true` or `feedback: { enabled: true, onFeedback() {} }`.
 - **Page actions** — enable with `pageActions.copyMarkdown` and `pageActions.openDocs`.
+- **Built-in changelog pages (Next.js)** — enable `changelog` to publish a release feed from dated MDX entries.
 - **Built-in MCP server** — enable `mcp: { enabled: true }` to expose `/api/docs/mcp` and local stdio tools.
 
 ### MCP quick test
@@ -160,6 +161,55 @@ For the full option surface (`path`, `specUrl`, `routeRoot`, `exclude`), use the
 
 ---
 
+## Changelog quick setup
+
+Today, the turn-key generated changelog route flow is available in **Next.js** with
+`@farming-labs/next/config`.
+
+```ts
+export default defineDocs({
+  entry: "docs",
+  changelog: {
+    enabled: true,
+    path: "changelogs",
+    contentDir: "changelog",
+    title: "Changelog",
+    description: "Latest product updates and release notes.",
+    search: true,
+  },
+  theme: fumadocs(),
+});
+```
+
+Default content structure:
+
+```text
+app/docs/changelog/
+  2026-04-15/page.mdx
+  2026-04-03/page.mdx
+```
+
+That publishes:
+
+- `/docs/changelogs`
+- `/docs/changelogs/2026-04-15`
+
+Use entry frontmatter like:
+
+```mdx
+---
+title: "OpenAPI mode is now the default"
+description: "The docs example now ships with the faster API reference experience."
+version: "v0.1.13"
+tags: ["api-reference", "next"]
+---
+```
+
+When you use `withDocs()`, the route files are generated automatically. There is no separate
+`__changelog.generated.tsx` file to maintain.
+
+---
+
 ## Doc content and frontmatter
 
 Docs live under the `entry` directory (e.g. `docs/` or `app/docs/`). Each page is MDX or Markdown with frontmatter:
@@ -203,7 +253,8 @@ For fully static builds (e.g. Cloudflare Pages, no server), set `staticExport: t
 4. **Existing project** — Run `init` in the project root; the CLI detects the framework and scaffolds files.
 5. **Static hosting** — Set `staticExport: true`; search and AI are then hidden.
 6. **API reference on non-Next frameworks** — `apiReference` in `docs.config` is not enough by itself on TanStack Start, SvelteKit, Astro, or Nuxt; add the `/{path}` handler manually or let `init --api-reference` scaffold it, even when you use a remote `specUrl`.
-7. **TanStack Start in a monorepo** — If the app and docs packages live in the same workspace, keep `@farming-labs/docs`, `@farming-labs/theme`, and `@farming-labs/tanstack-start` linked locally (for example `workspace:*`). This avoids Node 22 / Vercel loading raw adapter TypeScript from `node_modules`.
+7. **Changelog generation today** — The built-in generated changelog pages are currently wired in Next.js. Use the Next adapter if you want the turn-key `/docs/changelogs` flow.
+8. **TanStack Start in a monorepo** — If the app and docs packages live in the same workspace, keep `@farming-labs/docs`, `@farming-labs/theme`, and `@farming-labs/tanstack-start` linked locally (for example `workspace:*`). This avoids Node 22 / Vercel loading raw adapter TypeScript from `node_modules`.
 
 ---
 
