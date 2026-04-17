@@ -299,11 +299,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
   });
 
   it("reads a top-level contentDir even when nested config uses deeper indentation", () => {
-    writeFileSync(
-      join(tmpDir, "docs.config.ts"),
-      DOCS_CONFIG_WITH_TOP_LEVEL_CONTENT_DIR,
-      "utf-8",
-    );
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_TOP_LEVEL_CONTENT_DIR, "utf-8");
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);
 
