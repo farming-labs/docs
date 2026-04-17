@@ -12,6 +12,7 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 - 📦 **Single install, zero lock-in**
 - 🧬 **Write .mdx or .md — all features work out of the box**
 - 🧾 **Generated API reference from framework route handlers or a hosted OpenAPI JSON**
+- 📣 **Built-in changelog pages for Next.js** — release feed + detail pages from dated MDX entries
 - 🧩 **Built-in MDX UI** — `Callout`, `Tabs`, `HoverLink`, and overridable built-ins via `components` and `theme.ui.components`
 - 💬 **Built-in docs actions** — page feedback, copy/open page actions, and code-block copy callbacks
 - 🔎 **Search adapters** — zero-config built-in search, plus Typesense, Algolia, and custom adapters
@@ -20,7 +21,7 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 **Get started:**
 
 - Use the [CLI](#option-a-cli-recommended) _(recommended — sets up everything for you)_, or see [manual setup](#option-b-manual-setup) for each framework.
-- [Reference docs](https://docs.farming-labs.dev/docs/reference) and [examples](https://github.com/farming-labs/docs/tree/main/examples) cover config, custom themes, OG images, API reference, SEO, and more.
+- [Reference docs](https://docs.farming-labs.dev/docs/reference) and [examples](https://github.com/farming-labs/docs/tree/main/examples) cover config, changelog setup, custom themes, OG images, API reference, SEO, and more.
 - Want to contribute? See the [Contributing guide](https://docs.farming-labs.dev/docs/contributing).
 
 ### Cloud Waitlist
@@ -142,6 +143,48 @@ framework scanning/indexing flow and swap only the retrieval layer.
 The Next example in [`examples/next`](./examples/next) is set up to switch
 between `mcp`, `typesense`, and `algolia` with env vars, so it is the easiest place to test
 external search providers end to end.
+
+## Changelog (Next.js)
+
+Use `changelog` when you want a docs-native release feed backed by dated MDX entries.
+
+```ts
+import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/theme";
+
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+  changelog: {
+    enabled: true,
+    path: "changelogs",
+    contentDir: "changelog",
+    title: "Changelog",
+    description: "Latest product updates and release notes.",
+    search: true,
+  },
+});
+```
+
+With the default Next.js content tree, entries live under `app/docs/changelog/YYYY-MM-DD/page.mdx`
+and publish at `/docs/changelogs` plus `/docs/changelogs/YYYY-MM-DD`.
+
+```mdx
+---
+title: "OpenAPI mode is now the default"
+description: "The docs example now ships with the faster API reference experience."
+version: "v0.1.13"
+tags: ["api-reference", "next"]
+---
+
+## What shipped
+
+Release notes here.
+```
+
+When you use `withDocs()` in `next.config.ts`, the changelog index and entry routes are generated
+automatically. There is no separate `__changelog.generated.tsx` file to maintain; the generated
+route files inline the dated entry imports for you.
 
 ### Option B: Manual setup
 

@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, feedback, metadata, og, apiReference, MCP, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, metadata, og, apiReference, MCP, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration
@@ -45,6 +45,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
 | `search` | `boolean \| DocsSearchConfig` | `true` | Built-in simple search, Typesense, Algolia, or a custom adapter |
+| `changelog` | `boolean \| ChangelogConfig` | `false` | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
 | `mcp` | `boolean \| DocsMcpConfig` | `false` | Built-in MCP server over stdio and `/api/docs/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON document |
 | `metadata` | `DocsMetadata` | — | SEO: titleTemplate, description, etc. |
@@ -186,6 +187,42 @@ Testing tip:
 - The Next example under `examples/next` is the easiest place to verify provider-backed search.
 - Set `DOCS_SEARCH_PROVIDER=typesense`, `algolia`, or `mcp`, restart the app, and query
   `/api/docs?query=...` to confirm the active backend.
+
+---
+
+## Changelog
+
+Use `changelog` to render a docs-native release feed from dated MDX entries.
+
+```ts
+changelog: {
+  enabled: true,
+  path: "changelogs",
+  contentDir: "changelog",
+  title: "Changelog",
+  description: "Latest product updates and release notes.",
+  search: true,
+},
+```
+
+Important notes:
+
+- Today, the turn-key generated changelog pages are wired in **Next.js** when you use `withDocs()`
+- Source entries default to `app/docs/changelog/YYYY-MM-DD/page.mdx`
+- Public pages render at `/docs/changelogs` and `/docs/changelogs/YYYY-MM-DD`
+- No separate `__changelog.generated.tsx` file is required; the generated route files inline the dated entry imports
+- Use `docs.config.tsx` if you pass a JSX `actionsComponent`
+
+Useful entry frontmatter:
+
+- `title`
+- `description`
+- `image`
+- `authors`
+- `version`
+- `tags`
+- `pinned`
+- `draft`
 
 ---
 

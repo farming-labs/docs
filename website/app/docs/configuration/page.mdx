@@ -131,6 +131,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
 | `search`      | `boolean \| DocsSearchConfig`  | `true`          | Built-in simple search, Typesense, Algolia, or a custom adapter |
+| `changelog`   | `boolean \| ChangelogConfig`   | `false`         | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
 | `mcp`         | `boolean \| DocsMcpConfig`     | `false`         | Built-in MCP server over stdio and `/api/docs/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions or a hosted OpenAPI JSON |
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
@@ -484,6 +485,65 @@ export default defineApiReferenceHandler(config);
 ```
 
 Create `server/routes/api-reference/[...slug].ts` with the same default export.
+
+## Changelog
+
+Use `changelog` to render a release feed and entry pages from dated MDX files inside your docs
+content tree.
+
+<Callout type="info" title="Current support">
+  The turn-key generated changelog pages are currently wired in **Next.js** when you use
+  `withDocs()`.
+</Callout>
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+  changelog: {
+    enabled: true,
+    path: "changelogs",
+    contentDir: "changelog",
+    title: "Changelog",
+    description: "Latest product updates and release notes.",
+    search: true,
+  },
+});
+```
+
+With the default Next.js docs tree, source entries live under
+`app/docs/changelog/YYYY-MM-DD/page.mdx`.
+
+That publishes:
+
+- `/docs/changelogs`
+- `/docs/changelogs/YYYY-MM-DD`
+
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `enabled` | `boolean` | `true` inside the object | Enables generated changelog pages |
+| `path` | `string` | `"changelog"` | URL path where the changelog listing lives inside the docs layout |
+| `contentDir` | `string` | `"changelog"` | Source directory for dated entry folders like `app/docs/changelog/2026-03-04/page.mdx` |
+| `title` | `string` | `"Changelog"` | Listing page title |
+| `description` | `string` | — | Listing page description and metadata |
+| `search` | `boolean` | `true` | Show the built-in changelog search field |
+| `actionsComponent` | `ReactNode \| Component` | — | Custom action content rendered in the changelog rail |
+
+Useful entry frontmatter:
+
+- `title`
+- `description`
+- `image`
+- `authors`
+- `version`
+- `tags`
+- `pinned`
+- `draft`
+
+If you pass `actionsComponent`, use `docs.config.tsx` so JSX is valid.
+
+When you use `withDocs()`, the changelog route files are generated automatically. There is no
+separate `__changelog.generated.tsx` file to maintain.
 
 ## Internationalization
 
