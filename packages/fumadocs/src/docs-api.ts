@@ -632,14 +632,20 @@ function normalizeRequestedMarkdownPath(entry: string, requestedPath: string): s
   return slug ? normalizeUrlPath(`${normalizedEntry}/${slug}`) : normalizedEntry;
 }
 
-function findDocsMcpPage(entry: string, pages: DocsMcpPage[], requestedPath: string): DocsMcpPage | null {
+function findDocsMcpPage(
+  entry: string,
+  pages: DocsMcpPage[],
+  requestedPath: string,
+): DocsMcpPage | null {
   const normalizedRequest = normalizeRequestedMarkdownPath(entry, requestedPath);
 
   for (const page of pages) {
     if (normalizeUrlPath(page.url) === normalizedRequest) return page;
   }
 
-  const normalizedSlug = normalizePathSegment(requestedPath.replace(/^\//, "").replace(/\.md$/i, ""));
+  const normalizedSlug = normalizePathSegment(
+    requestedPath.replace(/^\//, "").replace(/\.md$/i, ""),
+  );
   for (const page of pages) {
     if (normalizePathSegment(page.slug) === normalizedSlug) return page;
   }
@@ -1087,8 +1093,12 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     if (fallbackPage) return renderMarkdownDocument(fallbackPage);
 
     for (const page of getIndexes(ctx)) {
-      const slug = normalizePathSegment(page.url.replace(/^\/+/, "").replace(`${ctx.entryPath}/`, ""));
-      const requestedSlug = normalizePathSegment(requestedPath.replace(/^\/+/, "").replace(/\.md$/i, ""));
+      const slug = normalizePathSegment(
+        page.url.replace(/^\/+/, "").replace(`${ctx.entryPath}/`, ""),
+      );
+      const requestedSlug = normalizePathSegment(
+        requestedPath.replace(/^\/+/, "").replace(/\.md$/i, ""),
+      );
       if (slug === requestedSlug) return renderMarkdownDocument(page);
     }
 

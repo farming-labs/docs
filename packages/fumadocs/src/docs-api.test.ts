@@ -426,7 +426,9 @@ title: "Home"
       entry: "docs",
     });
 
-    const response = await GET(new Request("http://localhost/api/docs?format=markdown&path=missing"));
+    const response = await GET(
+      new Request("http://localhost/api/docs?format=markdown&path=missing"),
+    );
     expect(response.status).toBe(404);
     expect(await response.text()).toBe("Not Found");
   });

@@ -176,10 +176,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const nextConfig = withDocs({});
 
     expect(existsSync(join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts"))).toBe(true);
-    const route = readFileSync(
-      join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts"),
-      "utf-8",
-    );
+    const route = readFileSync(join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts"), "utf-8");
     expect(route).toContain('import { createDocsAPI } from "@farming-labs/next/api";');
     expect(route).toContain('url.searchParams.set("format", "markdown");');
     expect(route).toContain("return handlers.GET");

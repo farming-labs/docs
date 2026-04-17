@@ -308,7 +308,9 @@ No frontmatter title here.
       result?: { content?: Array<{ text?: string }> };
     }>(readPageResponse);
 
-    expect(readPayload.result?.content?.[0]?.text).toContain("Use `pnpm install --frozen-lockfile`.");
+    expect(readPayload.result?.content?.[0]?.text).toContain(
+      "Use `pnpm install --frozen-lockfile`.",
+    );
     expect(readPayload.result?.content?.[0]?.text).not.toContain("# Installation");
     expect(readPayload.result?.content?.[0]?.text).not.toContain("URL: /docs/installation");
 
