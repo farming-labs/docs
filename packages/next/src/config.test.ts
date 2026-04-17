@@ -42,6 +42,16 @@ const DOCS_CONFIG_WITH_MCP = `export default {
 };
 `;
 
+const DOCS_CONFIG_WITH_CHANGELOG = `export default {
+  entry: "docs",
+  changelog: {
+    enabled: true,
+    path: "changelogs",
+    contentDir: "changelog",
+  },
+};
+`;
+
 const DOCS_CONFIG_WITH_CUSTOM_MCP_ROUTE = `export default {
   entry: "docs",
   mcp: {
@@ -147,6 +157,34 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(route).toContain("search: docsConfig.search");
   });
 
+  it("generates changelog pages inside the docs route tree and hides the source subtree when needed", () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_CHANGELOG, "utf-8");
+    mkdirSync(join(tmpDir, "app", "docs", "changelog", "2026-03-04"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "changelog", "2026-03-04", "page.mdx"),
+      "---\ntitle: Release\ndescription: Added changelog support.\n---\n\n# Release\n",
+      "utf-8",
+    );
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({});
+
+    expect(existsSync(join(tmpDir, "app/docs/changelogs/page.tsx"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/docs/changelogs/[slug]/page.tsx"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/docs/changelogs/__changelog.generated.tsx"))).toBe(true);
+    expect(existsSync(join(tmpDir, "app/docs/changelog/layout.tsx"))).toBe(true);
+
+    const manifest = readFileSync(
+      join(tmpDir, "app/docs/changelogs/__changelog.generated.tsx"),
+      "utf-8",
+    );
+    expect(manifest).toContain('"2026-03-04"');
+    expect(manifest).toContain('"/docs/changelogs/2026-03-04"');
+    expect(manifest).toContain("app/docs/changelog/2026-03-04/page.mdx");
+    expect(existsSync(join(tmpDir, "app/changelogs/page.tsx"))).toBe(false);
+  });
+
   it("skips default MCP route generation when a custom route is configured", () => {
     writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_CUSTOM_MCP_ROUTE, "utf-8");
     mkdirSync(join(tmpDir, "app"), { recursive: true });
@@ -231,6 +269,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(route).toContain('import { createDocsAPI } from "@farming-labs/next/api";');
     expect(route).not.toContain("resolveNextProjectRoot");
     expect(route).not.toContain("rootDir,");
+    expect(route).toContain("changelog: docsConfig.changelog");
     expect(route).toContain("search: docsConfig.search");
     expect(route).toContain("ai: docsConfig.ai");
   });

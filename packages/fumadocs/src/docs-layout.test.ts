@@ -34,6 +34,29 @@ function findDocsPageClientProps(node: unknown): Record<string, unknown> | null 
   return children ? findDocsPageClientProps(children) : null;
 }
 
+function findDocsLayoutTree(node: unknown): Record<string, unknown> | null {
+  if (!node || typeof node !== "object") return null;
+
+  const candidate = node as {
+    props?: Record<string, unknown> & { children?: unknown };
+  };
+
+  if (candidate.props && "tree" in candidate.props) {
+    return candidate.props.tree as Record<string, unknown>;
+  }
+
+  const children = candidate.props?.children;
+  if (Array.isArray(children)) {
+    for (const child of children) {
+      const found = findDocsLayoutTree(child);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  return children ? findDocsLayoutTree(children) : null;
+}
+
 describe("createDocsLayout pageActions", () => {
   let tmpDir: string;
   let originalCwd: string;
@@ -152,5 +175,60 @@ describe("createDocsLayout pageActions", () => {
     expect(props).toBeTruthy();
     expect(props?.copyMarkdown).toBe(false);
     expect(props?.openDocs).toBe(false);
+  });
+
+  it("adds changelog entries as a dedicated sidebar section under the docs route with a separator above it", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "changelog", "2026-04-15"), { recursive: true });
+    mkdirSync(join(tmpDir, "app", "docs", "changelog", "2026-04-03"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "changelog", "2026-04-15", "page.mdx"),
+      "---\ntitle: OpenAPI mode is now the default\ndescription: First entry\npinned: true\n---\n\n# Release\n",
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "changelog", "2026-04-03", "page.mdx"),
+      "---\ntitle: Colorful theme cleanup\ndescription: Second entry\n---\n\n# Release\n",
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({
+      entry: "docs",
+      changelog: {
+        enabled: true,
+        path: "changelogs",
+        contentDir: "changelog",
+        title: "Changelogs",
+      },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const sidebarTree = findDocsLayoutTree(tree);
+    const children = sidebarTree?.children as Array<Record<string, unknown>>;
+    const separatorIndex = children?.findIndex(
+      (entry) => entry.type === "separator" && entry.name === "Updates",
+    );
+    const changelogIndex = children?.findIndex((entry) => entry.name === "Changelogs") ?? -1;
+    const changelogNode = changelogIndex >= 0 ? children[changelogIndex] : undefined;
+
+    expect(separatorIndex).toBeGreaterThan(-1);
+    expect(changelogIndex).toBeGreaterThan(separatorIndex ?? -1);
+    expect(changelogNode).toBeTruthy();
+    expect(changelogNode?.type).toBe("folder");
+    expect(changelogNode?.index).toMatchObject({
+      name: "Changelogs",
+      url: "/docs/changelogs",
+    });
+    expect(changelogNode?.children).toEqual([
+      expect.objectContaining({
+        name: "OpenAPI mode is now the default",
+        url: "/docs/changelogs/2026-04-15",
+      }),
+      expect.objectContaining({
+        name: "Colorful theme cleanup",
+        url: "/docs/changelogs/2026-04-03",
+      }),
+    ]);
   });
 });

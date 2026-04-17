@@ -10,3 +10,11 @@ export {
   resolveApiReferenceConfig,
   withNextApiReferenceBanner,
 } from "./api-reference.js";
+export {
+  createNextChangelogEntryMetadata,
+  createNextChangelogEntryPage,
+  createNextChangelogIndexMetadata,
+  createNextChangelogIndexPage,
+  createNextChangelogStaticParams,
+} from "./changelog.js";
+export type { GeneratedChangelogEntry } from "./changelog.js";

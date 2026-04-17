@@ -22,8 +22,8 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import { getNextAppDir } from "./get-app-dir.js";
-import { resolveDocsI18n, resolveDocsLocale } from "@farming-labs/docs";
-import type { DocsI18nConfig } from "@farming-labs/docs";
+import { resolveChangelogConfig, resolveDocsI18n, resolveDocsLocale } from "@farming-labs/docs";
+import type { ChangelogConfig, DocsI18nConfig } from "@farming-labs/docs";
 import { createDocsMcpHttpHandler, createFilesystemDocsMcpSource } from "@farming-labs/docs/server";
 import { performDocsSearch, resolveSearchRequestConfig } from "@farming-labs/docs";
 import type {
@@ -70,6 +70,8 @@ interface DocsAPIOptions {
   entry?: string;
   /** Override the docs content directory when it does not live in app/<entry>. */
   contentDir?: string;
+  /** Changelog configuration. */
+  changelog?: boolean | ChangelogConfig;
   /** Search language (default: "english") */
   language?: string;
   /** AI chat configuration */
@@ -473,11 +475,25 @@ function stripMdx(raw: string): string {
     .trim();
 }
 
-function scanDocsDir(docsDir: string, entry: string, locale?: string): DocsSearchSourcePage[] {
+function scanDocsDir(
+  docsDir: string,
+  entry: string,
+  locale?: string,
+  excludedDirs: string[] = [],
+): DocsSearchSourcePage[] {
   const indexes: DocsSearchSourcePage[] = [];
+
+  function isExcluded(dir: string) {
+    const resolved = path.resolve(dir);
+    return excludedDirs.some((excluded) => {
+      const relative = path.relative(excluded, resolved);
+      return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+    });
+  }
 
   function scan(dir: string, slugParts: string[]) {
     if (!fs.existsSync(dir)) return;
+    if (isExcluded(dir)) return;
 
     const pagePath = path.join(dir, "page.mdx");
     if (fs.existsSync(pagePath)) {
@@ -520,6 +536,56 @@ function scanDocsDir(docsDir: string, entry: string, locale?: string): DocsSearc
   }
 
   scan(docsDir, []);
+  return indexes;
+}
+
+function scanChangelogDir(
+  changelogDir: string,
+  entryPath: string,
+  changelogPath: string,
+  locale?: string,
+): DocsSearchSourcePage[] {
+  if (!fs.existsSync(changelogDir)) return [];
+
+  const indexes: DocsSearchSourcePage[] = [];
+
+  for (const name of fs.readdirSync(changelogDir).sort().reverse()) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(name)) continue;
+    const entryDir = path.join(changelogDir, name);
+    if (!fs.existsSync(entryDir) || !fs.statSync(entryDir).isDirectory()) continue;
+
+    const pagePath = path.join(entryDir, "page.mdx");
+    if (!fs.existsSync(pagePath)) continue;
+
+    try {
+      const raw = fs.readFileSync(pagePath, "utf-8");
+      const { data, content: rawContent } = matter(raw);
+      if (data.draft === true) continue;
+
+      const title = (data.title as string) || name.replace(/-/g, " ");
+      const description = data.description as string | undefined;
+      const content = stripMdx(raw);
+      const url = withLangInUrl(`/${entryPath}/${changelogPath}/${name}`, locale);
+      const tags = Array.isArray(data.tags)
+        ? data.tags.filter((value): value is string => typeof value === "string")
+        : undefined;
+
+      indexes.push({
+        title,
+        description,
+        content,
+        rawContent,
+        url,
+        locale,
+        type: "changelog",
+        version: typeof data.version === "string" ? data.version : undefined,
+        tags,
+      });
+    } catch {
+      // skip unreadable files
+    }
+  }
+
   return indexes;
 }
 
@@ -787,6 +853,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const entry = options?.entry ?? readEntry(root);
   const appDir = getNextAppDir(root);
   const contentDir = options?.contentDir ?? path.join(appDir, entry);
+  const changelogConfig = resolveChangelogConfig(options?.changelog);
 
   const i18nConfig = options?.i18n ?? readI18nConfig(root);
   const i18n = resolveDocsI18n(i18nConfig);
@@ -798,7 +865,12 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   // Read llms.txt config
   const llmsConfig = readLlmsTxtConfig(root);
 
-  type DocsContext = { entryPath: string; docsDirs: string[]; locale?: string };
+  type DocsContext = {
+    entryPath: string;
+    docsDirs: string[];
+    changelogDirs: string[];
+    locale?: string;
+  };
 
   function resolveDocsDirCandidates(locale?: string): string[] {
     const relativeCandidates = new Set<string>();
@@ -851,19 +923,38 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     return i18n.defaultLocale;
   }
 
+  function resolveChangelogDirCandidates(docsDirs: string[]): string[] {
+    if (!changelogConfig.enabled) return [];
+
+    if (path.isAbsolute(changelogConfig.contentDir)) {
+      return [changelogConfig.contentDir];
+    }
+
+    return docsDirs.map((docsDir) => path.join(docsDir, changelogConfig.contentDir));
+  }
+
+  function isWithinDir(candidate: string, target: string) {
+    const relative = path.relative(target, candidate);
+    return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+  }
+
   function resolveContextFromRequest(request: Request): DocsContext {
     if (!i18n) {
+      const docsDirs = resolveDocsDirCandidates();
       return {
         entryPath: entry,
-        docsDirs: resolveDocsDirCandidates(),
+        docsDirs,
+        changelogDirs: resolveChangelogDirCandidates(docsDirs),
       };
     }
 
     const locale = resolveLocaleFromRequest(request) ?? i18n.defaultLocale;
+    const docsDirs = resolveDocsDirCandidates(locale);
     return {
       entryPath: entry,
       locale,
-      docsDirs: resolveDocsDirCandidates(locale),
+      docsDirs,
+      changelogDirs: resolveChangelogDirCandidates(docsDirs),
     };
   }
 
@@ -877,8 +968,19 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
     let next: DocsSearchSourcePage[] = [];
     for (const docsDir of ctx.docsDirs) {
-      next = scanDocsDir(docsDir, ctx.entryPath, ctx.locale);
-      if (next.length > 0) break;
+      const excludedDirs = ctx.changelogDirs.filter((dir) => isWithinDir(dir, docsDir));
+      const docsPages = scanDocsDir(docsDir, ctx.entryPath, ctx.locale, excludedDirs);
+      if (docsPages.length === 0) continue;
+
+      next = docsPages;
+      break;
+    }
+
+    if (changelogConfig.enabled) {
+      const changelogPages = ctx.changelogDirs.flatMap((dir) =>
+        scanChangelogDir(dir, ctx.entryPath, changelogConfig.path, ctx.locale),
+      );
+      next = [...next, ...changelogPages];
     }
 
     indexesByLocale.set(key, next);

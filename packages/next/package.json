@@ -34,6 +34,11 @@
       "import": "./dist/api.mjs",
       "default": "./dist/api.mjs"
     },
+    "./changelog": {
+      "types": "./dist/changelog.d.mts",
+      "import": "./dist/changelog.mjs",
+      "default": "./dist/changelog.mjs"
+    },
     "./client-callbacks": {
       "types": "./dist/client-callbacks.d.mts",
       "import": "./dist/client-callbacks.mjs",
@@ -85,6 +90,7 @@
     "fumadocs-openapi": "^10.7.0",
     "fumadocs-core": "^16.6.1",
     "fumadocs-ui": "^16.6.1",
+    "gray-matter": "^4.0.3",
     "remark-frontmatter": "^5.0.0",
     "remark-gfm": "^4.0.1",
     "remark-mdx-frontmatter": "^5.0.0"

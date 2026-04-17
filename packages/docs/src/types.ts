@@ -1340,6 +1340,72 @@ export interface DocsI18nConfig {
   defaultLocale?: string;
 }
 
+export interface ChangelogFrontmatter {
+  /** Entry title shown in the changelog feed and detail page. */
+  title?: string;
+  /** Short summary shown in the feed and page metadata. */
+  description?: string;
+  /** Optional cover image path or URL for future custom changelog layouts. */
+  image?: string;
+  /** Optional author name(s) displayed in entry meta. */
+  authors?: string | string[];
+  /** Optional version badge (for example `v0.1.0`). */
+  version?: string;
+  /** Optional tags shown as compact badges. */
+  tags?: string[];
+  /** Keep important entries pinned to the top of the listing. */
+  pinned?: boolean;
+  /** Hide the entry from generated routes and search indexes. */
+  draft?: boolean;
+}
+
+export interface ChangelogConfig {
+  /**
+   * Whether to enable generated changelog pages.
+   * @default false
+   */
+  enabled?: boolean;
+  /**
+   * URL path where the changelog listing lives inside the docs layout.
+   * Example: `"changelogs"` → `/docs/changelogs` when `entry` is `"docs"`
+   * @default "changelog"
+   */
+  path?: string;
+  /**
+   * Changelog source directory inside the docs content root.
+   *
+   * With the default docs content tree, this becomes:
+   * `app/docs/changelog/2026-03-04/page.mdx`
+   *
+   * Relative values are resolved from the docs content root. Absolute values
+   * are used as-is.
+   *
+   * @default "changelog"
+   */
+  contentDir?: string;
+  /**
+   * Listing page title.
+   * @default "Changelog"
+   */
+  title?: string;
+  /**
+   * Listing page description shown in the changelog header and metadata.
+   */
+  description?: string;
+  /**
+   * Show the built-in changelog search field.
+   * @default true
+   */
+  search?: boolean;
+  /**
+   * Custom React element rendered in the changelog rail.
+   *
+   * This stays `unknown` in the framework-agnostic core so adapters can accept
+   * JSX without adding a React dependency here.
+   */
+  actionsComponent?: unknown;
+}
+
 export type ApiReferenceRenderer = "fumadocs" | "scalar";
 
 export interface ApiReferenceConfig {
@@ -1715,6 +1781,32 @@ export interface DocsConfig {
    * @see https://llmstxt.org
    */
   llmsTxt?: boolean | LlmsTxtConfig;
+  /**
+   * Generated changelog pages backed by date-folder MDX entries inside the docs
+   * content tree.
+   *
+   * Entry structure:
+   * `docs/changelog/2026-03-04/page.mdx`
+   *
+   * With `entry: "docs"` and `path: "changelogs"`, the public pages render
+   * under the docs layout at `/docs/changelogs`.
+   *
+   * Required frontmatter:
+   * - `title`
+   * - `description`
+   *
+   * @example
+   * ```ts
+   * changelog: {
+   *   enabled: true,
+   *   path: "changelogs",
+   *   contentDir: "changelog",
+   *   title: "Changelogs",
+   *   description: "Latest product updates and release notes.",
+   * }
+   * ```
+   */
+  changelog?: boolean | ChangelogConfig;
   /**
    * Generated API reference pages from framework route conventions or a hosted
    * OpenAPI JSON document.

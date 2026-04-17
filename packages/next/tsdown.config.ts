@@ -5,6 +5,8 @@ export default defineConfig({
     "src/index.ts",
     "src/api.ts",
     "src/api-reference.tsx",
+    "src/changelog.tsx",
+    "src/changelog-rail-search.tsx",
     "src/client-callbacks.tsx",
     "src/config.ts",
     "src/layout.tsx",

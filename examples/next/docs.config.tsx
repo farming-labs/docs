@@ -1,5 +1,6 @@
 import { defineDocs, type DocsSearchConfig } from "@farming-labs/docs";
 import { MyNote } from "./app/components/my-note";
+import { ChangelogActions } from "./app/components/changelog-actions";
 import {
   BookOpen,
   Rocket,
@@ -110,6 +111,16 @@ export default defineDocs({
     path: "api-reference",
     renderer: "fumadocs",
     exclude: ["/api/docs", "/api/docs/mcp", "/api/search", "/api/og"],
+  },
+  changelog: {
+    enabled: true,
+    path: "changelogs",
+    contentDir: "changelog",
+    title: "Changelog",
+    description:
+      "Track the latest updates, bug fixes, and shipped improvements across @farming-labs/docs.",
+    search: false,
+    actionsComponent: ChangelogActions,
   },
   nav: {
     title: (

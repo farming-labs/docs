@@ -94,6 +94,8 @@ export { withLangInUrl } from "./i18n.js";
 // ─── Core types (re-exported for convenience) ─────────────────────────
 export type {
   DocsConfig,
+  ChangelogConfig,
+  ChangelogFrontmatter,
   DocsTheme,
   UIConfig,
   FontStyle,

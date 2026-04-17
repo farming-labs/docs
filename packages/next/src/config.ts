@@ -21,9 +21,18 @@
  *   export default withDocs({ output: "export" });
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import matter from "gray-matter";
 
 /** Resolve Next.js App Router directory: prefer src/app when present, else app. */
 function getNextAppDir(root: string): string {
@@ -83,6 +92,7 @@ export const { GET, POST } = createDocsAPI({
   entry: docsConfig.entry,
   contentDir: docsConfig.contentDir,
   i18n: docsConfig.i18n,
+  changelog: docsConfig.changelog,
   search: docsConfig.search,
   ai: docsConfig.ai,
 });
@@ -139,6 +149,51 @@ import { createNextApiReferenceLayout } from "@farming-labs/next/api-reference";
 const ApiReferenceLayout = createNextApiReferenceLayout(docsConfig);
 
 export default ApiReferenceLayout;
+`;
+
+const CHANGELOG_MANIFEST_FILENAME = "__changelog.generated.tsx";
+
+const CHANGELOG_INDEX_PAGE_TEMPLATE = `\
+${GENERATED_BANNER}
+import docsConfig from "@/docs.config";
+import { changelogEntries } from "./${CHANGELOG_MANIFEST_FILENAME.replace(/\.tsx$/, "")}";
+import {
+  createNextChangelogIndexMetadata,
+  createNextChangelogIndexPage,
+} from "@farming-labs/next/changelog";
+
+export const metadata = createNextChangelogIndexMetadata(docsConfig);
+
+const ChangelogPage = createNextChangelogIndexPage(docsConfig, changelogEntries);
+
+export default ChangelogPage;
+`;
+
+const CHANGELOG_ENTRY_PAGE_TEMPLATE = `\
+${GENERATED_BANNER}
+import docsConfig from "@/docs.config";
+import { changelogEntries } from "../${CHANGELOG_MANIFEST_FILENAME.replace(/\.tsx$/, "")}";
+import {
+  createNextChangelogEntryMetadata,
+  createNextChangelogEntryPage,
+  createNextChangelogStaticParams,
+} from "@farming-labs/next/changelog";
+
+export const generateStaticParams = createNextChangelogStaticParams(changelogEntries);
+export const generateMetadata = createNextChangelogEntryMetadata(docsConfig, changelogEntries);
+
+const ChangelogEntryPage = createNextChangelogEntryPage(docsConfig, changelogEntries);
+
+export default ChangelogEntryPage;
+`;
+
+const CHANGELOG_SOURCE_LAYOUT_TEMPLATE = `\
+${GENERATED_BANNER}
+import { notFound } from "next/navigation";
+
+export default function HiddenChangelogSourceLayout() {
+  notFound();
+}
 `;
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -233,6 +288,7 @@ function createDocsWorkspaceAliases(): Record<string, string> {
     "@farming-labs/docs/server": "./packages/docs/src/server.ts",
     "@farming-labs/next": "./packages/next/src/index.ts",
     "@farming-labs/next/api": "./packages/next/src/api.ts",
+    "@farming-labs/next/changelog": "./packages/next/src/changelog.tsx",
     "@farming-labs/next/client-callbacks": "./packages/next/src/client-callbacks.tsx",
     "@farming-labs/next/layout": "./packages/next/src/layout.tsx",
     "@farming-labs/next/mdx-plugins/rehype-code": "./packages/next/src/mdx-plugins/rehype-code.ts",
@@ -288,7 +344,7 @@ function readDocsContentDir(root: string): string | undefined {
 
     try {
       const content = readFileSync(configPath, "utf-8");
-      const match = content.match(/contentDir\s*:\s*["']([^"']+)["']/);
+      const match = content.match(/^[ \t]{0,2}contentDir\s*:\s*["']([^"']+)["']/m);
       if (match?.[1]) return match[1];
     } catch {
       // fall through
@@ -369,6 +425,108 @@ function readApiReferenceConfig(root: string): {
   return { enabled: false, path: "api-reference", renderer: "fumadocs", routeRoot: "api" };
 }
 
+function readChangelogConfig(root: string): {
+  enabled: boolean;
+  path: string;
+  contentDir: string;
+} {
+  for (const ext of FILE_EXTS) {
+    const configPath = join(root, `docs.config.${ext}`);
+    if (!existsSync(configPath)) continue;
+
+    try {
+      const content = readFileSync(configPath, "utf-8");
+
+      const directFalse = content.match(/changelog\s*:\s*false/);
+      if (directFalse) {
+        return { enabled: false, path: "changelog", contentDir: "changelog" };
+      }
+
+      const directTrue = content.match(/changelog\s*:\s*true/);
+      if (directTrue) {
+        return { enabled: true, path: "changelog", contentDir: "changelog" };
+      }
+
+      const block = extractObjectLiteral(content, "changelog");
+      if (!block) continue;
+
+      const enabledMatch = block.match(/enabled\s*:\s*(true|false)/);
+      const pathMatch = block.match(/path\s*:\s*["']([^"']+)["']/);
+      const contentDirMatch = block.match(/contentDir\s*:\s*["']([^"']+)["']/);
+
+      return {
+        enabled: enabledMatch ? enabledMatch[1] !== "false" : true,
+        path: pathMatch?.[1]?.replace(/^\/+|\/+$/g, "") || "changelog",
+        contentDir: contentDirMatch?.[1]?.replace(/\/+$/, "") || "changelog",
+      };
+    } catch {
+      return { enabled: false, path: "changelog", contentDir: "changelog" };
+    }
+  }
+
+  return { enabled: false, path: "changelog", contentDir: "changelog" };
+}
+
+interface ChangelogSourceEntry {
+  slug: string;
+  date: string;
+  sourceFile: string;
+  metadata: Record<string, unknown>;
+}
+
+function resolveDocsContentDir(root: string, appDir: string, entry: string): string {
+  const configuredContentDir = readDocsContentDir(root);
+  if (!configuredContentDir) return join(root, appDir, entry);
+  return isAbsolute(configuredContentDir) ? configuredContentDir : join(root, configuredContentDir);
+}
+
+function resolveChangelogContentDir(
+  root: string,
+  appDir: string,
+  entry: string,
+  changelogContentDir: string,
+): string {
+  if (isAbsolute(changelogContentDir)) return changelogContentDir;
+  return join(resolveDocsContentDir(root, appDir, entry), changelogContentDir);
+}
+
+function findChangelogSourceEntries(changelogDir: string): ChangelogSourceEntry[] {
+  if (!existsSync(changelogDir)) return [];
+
+  const entries: ChangelogSourceEntry[] = [];
+  for (const name of readdirSync(changelogDir).sort()) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(name)) continue;
+    const entryDir = join(changelogDir, name);
+    try {
+      if (!statSync(entryDir).isDirectory()) continue;
+    } catch {
+      continue;
+    }
+
+    const sourceFile = ["page.mdx", "page.md"]
+      .map((fileName) => join(entryDir, fileName))
+      .find((value) => existsSync(value));
+
+    if (!sourceFile) continue;
+
+    let metadata: Record<string, unknown> = {};
+    try {
+      metadata = matter(readFileSync(sourceFile, "utf-8")).data;
+    } catch {
+      metadata = {};
+    }
+
+    entries.push({
+      slug: name,
+      date: name,
+      sourceFile,
+      metadata,
+    });
+  }
+
+  return entries.sort((left, right) => right.date.localeCompare(left.date));
+}
+
 function extractObjectLiteral(content: string, key: string): string | undefined {
   const keyIndex = content.search(new RegExp(`${key}\\s*:\\s*\\{`));
   if (keyIndex === -1) return undefined;
@@ -395,6 +553,63 @@ function extractObjectLiteral(content: string, key: string): string | undefined 
   }
 
   return undefined;
+}
+
+function toImportPath(fromFile: string, toFile: string): string {
+  const relativePath = relative(dirname(fromFile), toFile).replaceAll("\\", "/");
+  return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
+}
+
+function buildChangelogManifestSource(
+  root: string,
+  manifestPath: string,
+  entryPath: string,
+  routePath: string,
+  entries: ChangelogSourceEntry[],
+): string {
+  const imports: string[] = [];
+  const records: string[] = [];
+
+  entries.forEach((entry, index) => {
+    const importName = `ChangelogEntry${index + 1}`;
+
+    imports.push(`import ${importName} from "${toImportPath(manifestPath, entry.sourceFile)}";`);
+
+    records.push(`  {
+    slug: ${JSON.stringify(entry.slug)},
+    date: ${JSON.stringify(entry.date)},
+    url: ${JSON.stringify(`/${entryPath}/${routePath}/${entry.slug}`)},
+    sourcePath: ${JSON.stringify(relative(root, entry.sourceFile).replaceAll("\\", "/"))},
+    Component: ${importName},
+    metadata: ${JSON.stringify(entry.metadata)},
+  }`);
+  });
+
+  return `\
+${GENERATED_BANNER}
+import type { GeneratedChangelogEntry } from "@farming-labs/next/changelog";
+${imports.join("\n")}
+
+export const changelogEntries: GeneratedChangelogEntry[] = [
+${records.join(",\n")}
+];
+`;
+}
+
+function resolveManagedChangelogSourceLayoutPath(
+  root: string,
+  appDir: string,
+  entry: string,
+  changelogContentDir: string,
+): string | undefined {
+  if (isAbsolute(changelogContentDir)) return undefined;
+
+  const appRoot = join(root, appDir);
+  const contentRoot = resolveChangelogContentDir(root, appDir, entry, changelogContentDir);
+  const relativePath = relative(appRoot, contentRoot);
+
+  if (relativePath.startsWith("..") || isAbsolute(relativePath)) return undefined;
+  return join(contentRoot, "layout.tsx");
 }
 
 function removeManagedFile(filePath: string) {
@@ -537,6 +752,76 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     }
   }
 
+  const changelog = readChangelogConfig(root);
+  if (changelog.enabled) {
+    const changelogBaseDir = join(root, appDir, entry, ...changelog.path.split("/"));
+    const changelogEntryDir = join(changelogBaseDir, "[slug]");
+    const changelogIndexPath = join(changelogBaseDir, "page.tsx");
+    const changelogEntryPath = join(changelogEntryDir, "page.tsx");
+    const changelogManifestPath = join(changelogBaseDir, CHANGELOG_MANIFEST_FILENAME);
+    const changelogSourceDir = resolveChangelogContentDir(root, appDir, entry, changelog.contentDir);
+    const changelogUsesSourcePagesAsDetails =
+      !isAbsolute(changelog.contentDir) && changelog.contentDir === changelog.path;
+    const changelogEntries = findChangelogSourceEntries(changelogSourceDir);
+    const changelogSourceLayoutPath = resolveManagedChangelogSourceLayoutPath(
+      root,
+      appDir,
+      entry,
+      changelog.contentDir,
+    );
+    const legacyChangelogBaseDirs = new Set<string>([
+      join(root, appDir, ...changelog.path.split("/")),
+      ...(isAbsolute(changelog.contentDir) ? [] : [join(root, appDir, ...changelog.contentDir.split("/"))]),
+    ]);
+
+    for (const legacyChangelogBaseDir of legacyChangelogBaseDirs) {
+      if (legacyChangelogBaseDir === changelogBaseDir) continue;
+
+      removeManagedFile(join(legacyChangelogBaseDir, "[slug]", "page.tsx"));
+      removeManagedFile(join(legacyChangelogBaseDir, "page.tsx"));
+      removeManagedFile(join(legacyChangelogBaseDir, CHANGELOG_MANIFEST_FILENAME));
+    }
+
+    mkdirSync(changelogBaseDir, { recursive: true });
+    writeFileSync(
+      changelogManifestPath,
+      buildChangelogManifestSource(
+        root,
+        changelogManifestPath,
+        entry,
+        changelog.path,
+        changelogEntries,
+      ),
+    );
+
+    if (!hasFile(changelogBaseDir, "page") || isManagedGeneratedFile(changelogIndexPath)) {
+      writeFileSync(changelogIndexPath, CHANGELOG_INDEX_PAGE_TEMPLATE);
+    }
+
+    if (changelogUsesSourcePagesAsDetails) {
+      removeManagedFile(changelogEntryPath);
+      if (changelogSourceLayoutPath) {
+        removeManagedFile(changelogSourceLayoutPath);
+      }
+    } else {
+      if (!hasFile(changelogEntryDir, "page") || isManagedGeneratedFile(changelogEntryPath)) {
+        mkdirSync(changelogEntryDir, { recursive: true });
+        writeFileSync(changelogEntryPath, CHANGELOG_ENTRY_PAGE_TEMPLATE);
+      }
+
+      if (changelogSourceLayoutPath) {
+        const changelogSourceLayoutDir = dirname(changelogSourceLayoutPath);
+        if (
+          !hasFile(changelogSourceLayoutDir, "layout") ||
+          isManagedGeneratedFile(changelogSourceLayoutPath)
+        ) {
+          mkdirSync(changelogSourceLayoutDir, { recursive: true });
+          writeFileSync(changelogSourceLayoutPath, CHANGELOG_SOURCE_LAYOUT_TEMPLATE);
+        }
+      }
+    }
+  }
+
   // ── 4. Configure MDX compilation ────────────────────────────────
   const ogEndpoint = readOgEndpoint(root);
   const remarkPlugins: MdxPluginEntry[] = ["remark-gfm", "remark-frontmatter"];
@@ -615,6 +900,55 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     const resolvedConfig = userWebpack ? userWebpack(config, options) : config;
     resolvedConfig.resolve ??= {};
     resolvedConfig.resolve.alias ??= {};
+    if (workspaceRoot) {
+      Object.assign(resolvedConfig.resolve.alias, {
+        "@farming-labs/docs$": join(workspaceRoot, "packages", "docs", "dist", "index.mjs"),
+        "@farming-labs/docs/server": join(
+          workspaceRoot,
+          "packages",
+          "docs",
+          "dist",
+          "server.mjs",
+        ),
+        "@farming-labs/next$": join(workspaceRoot, "packages", "next", "dist", "index.mjs"),
+        "@farming-labs/next/api": join(workspaceRoot, "packages", "next", "dist", "api.mjs"),
+        "@farming-labs/next/changelog": join(
+          workspaceRoot,
+          "packages",
+          "next",
+          "dist",
+          "changelog.mjs",
+        ),
+        "@farming-labs/next/client-callbacks": join(
+          workspaceRoot,
+          "packages",
+          "next",
+          "dist",
+          "client-callbacks.mjs",
+        ),
+        "@farming-labs/next/layout": join(
+          workspaceRoot,
+          "packages",
+          "next",
+          "dist",
+          "layout.mjs",
+        ),
+        "@farming-labs/theme$": join(
+          workspaceRoot,
+          "packages",
+          "fumadocs",
+          "dist",
+          "index.mjs",
+        ),
+        "@farming-labs/theme/api": join(
+          workspaceRoot,
+          "packages",
+          "fumadocs",
+          "dist",
+          "docs-api.mjs",
+        ),
+      });
+    }
     resolvedConfig.resolve.alias[INTERNAL_DOCS_CONFIG_ALIAS] = docsConfigAbsolutePath;
     resolvedConfig.resolve.alias["fumadocs-openapi"] = FUMADOCS_OPENAPI_PACKAGE_ALIAS;
     resolvedConfig.resolve.alias["fumadocs-openapi/ui"] = FUMADOCS_OPENAPI_UI_ALIAS;
