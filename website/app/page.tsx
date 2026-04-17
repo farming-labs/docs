@@ -40,14 +40,7 @@ const landingFeatureCards = [
     description:
       "Mix built-in Ask AI with search adapters for simple, Typesense, Algolia, MCP, or custom retrieval so you can keep the indexing flow that fits your stack.",
     label: "Retrieval layer",
-    chips: [
-      "Ask AI",
-      "Simple search",
-      "Typesense",
-      "Algolia",
-      "MCP search",
-      "Custom adapters",
-    ],
+    chips: ["Ask AI", "Simple search", "Typesense", "Algolia", "MCP search", "Custom adapters"],
   },
   {
     title: "Agent-optimized delivery",
@@ -99,9 +92,11 @@ function HeroSection() {
               </span>
             </h1>
             <p className="mt-4 text-xs sm:text-base font-mono uppercase text-black/45 dark:text-white/45 max-w-md leading-relaxed">
-              AI-native, <span className="bg-black text-white dark:bg-white dark:text-black p-0 mt-2">
+              AI-native,{" "}
+              <span className="bg-black text-white dark:bg-white dark:text-black p-0 mt-2">
                 agent-optimized docs
-              </span> with Ask AI, MCP, llms.txt, search adapters, and zero boilerplate.
+              </span>{" "}
+              with Ask AI, MCP, llms.txt, search adapters, and zero boilerplate.
             </p>
 
             <div className="-mb-5 sm:mb-0 mt-6 sm:mt-8 flex w-fit max-w-full flex-col md:flex-wrap md:flex-row-reverse items-start md:items-center gap-0">
