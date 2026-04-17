@@ -4,7 +4,7 @@ import matter from "gray-matter";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { Suspense, type ReactNode } from "react";
 import { serializeIcon } from "./serialize-icon.js";
-import { buildPageOpenGraph, buildPageTwitter } from "@farming-labs/docs";
+import { buildPageOpenGraph, buildPageTwitter, resolveChangelogConfig } from "@farming-labs/docs";
 import type {
   DocsConfig,
   ThemeToggleConfig,
@@ -33,15 +33,27 @@ interface FolderNode {
   name: string;
   icon?: ReactNode;
   index?: PageNode;
-  children: (PageNode | FolderNode)[];
+  children: TreeNode[];
   collapsible?: boolean;
   defaultOpen?: boolean;
 }
-type TreeNode = PageNode | FolderNode;
+interface SeparatorNode {
+  type: "separator";
+  name: string;
+  icon?: ReactNode;
+}
+type TreeNode = PageNode | FolderNode | SeparatorNode;
 
 interface TreeRoot {
   name: string;
   children: TreeNode[];
+}
+
+interface ChangelogTreeEntry {
+  slug: string;
+  date: string;
+  title: string;
+  pinned: boolean;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -71,10 +83,21 @@ function readFrontmatter(filePath: string): Record<string, unknown> {
 }
 
 /** Check if a directory has any subdirectories that contain page.mdx. */
-function hasChildPages(dir: string): boolean {
+function isWithinDir(candidate: string, target: string): boolean {
+  const relative = path.relative(target, candidate);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+function isExcludedDir(dir: string, excludedDirs: string[]): boolean {
+  const resolved = path.resolve(dir);
+  return excludedDirs.some((excluded) => isWithinDir(resolved, excluded));
+}
+
+function hasChildPages(dir: string, excludedDirs: string[]): boolean {
   if (!fs.existsSync(dir)) return false;
   for (const name of fs.readdirSync(dir)) {
     const full = path.join(dir, name);
+    if (isExcludedDir(full, excludedDirs)) continue;
     if (fs.statSync(full).isDirectory() && fs.existsSync(path.join(full, "page.mdx"))) {
       return true;
     }
@@ -146,11 +169,95 @@ function resolveDocsLocaleContext(config: DocsConfig, locale?: string): DocsLoca
   };
 }
 
+function getExcludedDocsDirs(config: DocsConfig, ctx: DocsLocaleContext): string[] {
+  const changelog = resolveChangelogConfig(config.changelog);
+  if (!changelog.enabled) return [];
+
+  const dir = path.isAbsolute(changelog.contentDir)
+    ? changelog.contentDir
+    : path.join(ctx.docsDir, changelog.contentDir);
+
+  return [path.resolve(dir)];
+}
+
+function readChangelogTreeEntries(
+  config: DocsConfig,
+  ctx: DocsLocaleContext,
+): ChangelogTreeEntry[] {
+  const changelog = resolveChangelogConfig(config.changelog);
+  if (!changelog.enabled) return [];
+
+  const changelogDir = path.isAbsolute(changelog.contentDir)
+    ? changelog.contentDir
+    : path.join(ctx.docsDir, changelog.contentDir);
+
+  if (!fs.existsSync(changelogDir)) return [];
+
+  const entries: ChangelogTreeEntry[] = [];
+
+  for (const name of fs.readdirSync(changelogDir)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(name)) continue;
+
+    const entryDir = path.join(changelogDir, name);
+    if (!fs.existsSync(entryDir) || !fs.statSync(entryDir).isDirectory()) continue;
+
+    const pagePath = path.join(entryDir, "page.mdx");
+    if (!fs.existsSync(pagePath)) continue;
+
+    const data = readFrontmatter(pagePath);
+    if (data.draft === true) continue;
+
+    entries.push({
+      slug: name,
+      date: name,
+      title: (data.title as string) ?? name.replace(/-/g, " "),
+      pinned: data.pinned === true,
+    });
+  }
+
+  return entries.sort((left, right) => {
+    if (left.pinned !== right.pinned) return left.pinned ? -1 : 1;
+    return right.date.localeCompare(left.date);
+  });
+}
+
+function buildChangelogTree(
+  config: DocsConfig,
+  ctx: DocsLocaleContext,
+  flat = false,
+): FolderNode | null {
+  const changelog = resolveChangelogConfig(config.changelog);
+  if (!changelog.enabled) return null;
+
+  const entries = readChangelogTreeEntries(config, ctx);
+  if (entries.length === 0) return null;
+
+  const url = `/${ctx.entryPath}/${changelog.path}`;
+  const children: PageNode[] = entries.map((entry) => ({
+    type: "page",
+    name: entry.title,
+    url: `${url}/${entry.slug}`,
+  }));
+
+  return {
+    type: "folder",
+    name: changelog.title,
+    index: {
+      type: "page",
+      name: changelog.title,
+      url,
+    },
+    children,
+    ...(flat ? { collapsible: false, defaultOpen: true } : {}),
+  };
+}
+
 function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
   const docsDir = ctx.docsDir;
   const icons = config.icons as Record<string, unknown> | undefined;
   const ordering = config.ordering;
   const rootChildren: TreeNode[] = [];
+  const excludedDirs = getExcludedDocsDirs(config, ctx);
 
   if (fs.existsSync(path.join(docsDir, "page.mdx"))) {
     const data = readFrontmatter(path.join(docsDir, "page.mdx"));
@@ -169,6 +276,7 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
     slugOrder?: OrderingItem[],
   ): TreeNode | null {
     const full = path.join(dir, name);
+    if (isExcludedDir(full, excludedDirs)) return null;
     if (!fs.statSync(full).isDirectory()) return null;
 
     const pagePath = path.join(full, "page.mdx");
@@ -180,7 +288,7 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
     const icon = resolveIcon(data.icon as string | undefined, icons);
     const displayName = (data.title as string) ?? name.replace(/-/g, " ");
 
-    if (hasChildPages(full)) {
+    if (hasChildPages(full, excludedDirs)) {
       const folderChildren = scanDir(full, slug, slugOrder);
       return {
         type: "folder",
@@ -205,10 +313,12 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
 
       for (const item of slugOrder) {
         if (!entries.includes(item.slug)) continue;
+        if (isExcludedDir(path.join(dir, item.slug), excludedDirs)) continue;
         const node = buildNode(dir, item.slug, baseSlug, item.children);
         if (node) nodes.push(node);
       }
       for (const name of entries) {
+        if (isExcludedDir(path.join(dir, name), excludedDirs)) continue;
         if (slugMap.has(name)) continue;
         const node = buildNode(dir, name, baseSlug);
         if (node) nodes.push(node);
@@ -220,6 +330,7 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
       const nodes: { order: number; node: TreeNode }[] = [];
       for (const name of entries) {
         const full = path.join(dir, name);
+        if (isExcludedDir(full, excludedDirs)) continue;
         if (!fs.statSync(full).isDirectory()) continue;
         const pagePath = path.join(full, "page.mdx");
         if (!fs.existsSync(pagePath)) continue;
@@ -237,6 +348,7 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
 
     const nodes: TreeNode[] = [];
     for (const name of entries) {
+      if (isExcludedDir(path.join(dir, name), excludedDirs)) continue;
       const node = buildNode(dir, name, baseSlug);
       if (node) nodes.push(node);
     }
@@ -245,6 +357,16 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
 
   const rootSlugOrder = Array.isArray(ordering) ? ordering : undefined;
   rootChildren.push(...scanDir(docsDir, [], rootSlugOrder));
+  const changelogTree = buildChangelogTree(config, ctx, flat);
+  if (changelogTree) {
+    if (rootChildren.length > 0) {
+      rootChildren.push({
+        type: "separator",
+        name: "Updates",
+      });
+    }
+    rootChildren.push(changelogTree);
+  }
   return { name: "Docs", children: rootChildren };
 }
 
@@ -255,6 +377,10 @@ function localizeTreeUrls(tree: TreeRoot, locale?: string): TreeRoot {
         ...node,
         url: withLangInUrl(node.url, locale),
       };
+    }
+
+    if (node.type === "separator") {
+      return node;
     }
 
     return {
@@ -281,9 +407,10 @@ function localizeTreeUrls(tree: TreeRoot, locale?: string): TreeRoot {
  * Scan all page.mdx files under the docs entry directory and build
  * a map of URL pathname → formatted last-modified date string.
  */
-function buildLastModifiedMap(ctx: DocsLocaleContext): Record<string, string> {
+function buildLastModifiedMap(config: DocsConfig, ctx: DocsLocaleContext): Record<string, string> {
   const docsDir = ctx.docsDir;
   const map: Record<string, string> = {};
+  const excludedDirs = getExcludedDocsDirs(config, ctx);
 
   function formatDate(date: Date): string {
     return date.toLocaleDateString("en-US", {
@@ -295,6 +422,7 @@ function buildLastModifiedMap(ctx: DocsLocaleContext): Record<string, string> {
 
   function scan(dir: string, slugParts: string[]) {
     if (!fs.existsSync(dir)) return;
+    if (isExcludedDir(dir, excludedDirs)) return;
 
     const pagePath = path.join(dir, "page.mdx");
     if (fs.existsSync(pagePath)) {
@@ -320,12 +448,14 @@ function buildLastModifiedMap(ctx: DocsLocaleContext): Record<string, string> {
  * Scan all page.mdx files and build a map of URL pathname → description
  * from the frontmatter `description` field.
  */
-function buildDescriptionMap(ctx: DocsLocaleContext): Record<string, string> {
+function buildDescriptionMap(config: DocsConfig, ctx: DocsLocaleContext): Record<string, string> {
   const docsDir = ctx.docsDir;
   const map: Record<string, string> = {};
+  const excludedDirs = getExcludedDocsDirs(config, ctx);
 
   function scan(dir: string, slugParts: string[]) {
     if (!fs.existsSync(dir)) return;
+    if (isExcludedDir(dir, excludedDirs)) return;
 
     const pagePath = path.join(dir, "page.mdx");
     if (fs.existsSync(pagePath)) {
@@ -603,6 +733,10 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const i18n = resolveDocsI18nConfig(getDocsI18n(config));
   const activeLocale = localeContext.locale ?? i18n?.defaultLocale;
   const docsApiUrl = withLangInUrl("/api/docs", activeLocale);
+  const changelogConfig = resolveChangelogConfig(config.changelog);
+  const changelogBasePath = changelogConfig.enabled
+    ? `/${localeContext.entryPath}/${changelogConfig.path}`
+    : undefined;
   // Nav title: supports string or ReactNode (component)
   const navTitle = (config.nav?.title as ReactNode) ?? "Docs";
   const navUrl = withLangInUrl(config.nav?.url ?? `/${localeContext.entryPath}`, activeLocale);
@@ -727,10 +861,10 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   }
 
   // Build last-modified map by scanning all page.mdx files
-  const lastModifiedMap = buildLastModifiedMap(localeContext);
+  const lastModifiedMap = buildLastModifiedMap(config, localeContext);
 
   // Build description map from frontmatter
-  const descriptionMap = buildDescriptionMap(localeContext);
+  const descriptionMap = buildDescriptionMap(config, localeContext);
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     const tree = buildTree(config, localeContext, !!sidebarFlat);
@@ -809,6 +943,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
               tocEnabled={tocEnabled}
               tocStyle={tocStyle}
               breadcrumbEnabled={breadcrumbEnabled}
+              changelogBasePath={changelogBasePath}
               entry={localeContext.entryPath}
               locale={activeLocale}
               copyMarkdown={copyMarkdownEnabled}

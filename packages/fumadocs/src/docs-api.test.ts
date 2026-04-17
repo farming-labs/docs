@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createDocsAPI, createDocsMCPAPI } from "./docs-api.js";
@@ -344,6 +344,110 @@ Install and configure the docs framework.
       type: "heading",
     });
     expect(payload[0]?.content).toContain("Quickstart");
+  });
+
+  it("indexes changelog entries under the docs changelog route instead of the raw source route", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-changelog-search-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "changelog", "2026-04-15"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+description: "Start here"
+---
+
+# Introduction
+
+Welcome to the docs.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "changelog", "2026-04-15", "page.mdx"),
+      `---
+title: "OpenAPI mode is now default"
+description: "A changelog entry"
+---
+
+# OpenAPI mode is now default
+
+The changelog now has its own dedicated route.
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      entry: "docs",
+      changelog: {
+        enabled: true,
+        path: "changelogs",
+        contentDir: "changelog",
+      },
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs?query=OpenAPI"));
+    const payload = (await response.json()) as Array<{
+      url: string;
+      content: string;
+      description?: string;
+      type: string;
+    }>;
+
+    expect(payload.some((result) => result.url === "/docs/changelogs/2026-04-15")).toBe(true);
+    expect(payload.some((result) => result.url.startsWith("/docs/changelog/"))).toBe(false);
+  });
+
+  it("skips changelog indexing when reading the changelog directory fails", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-changelog-search-read-failure-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "changelog", "2026-04-15"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+
+Welcome to the docs.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "changelog", "2026-04-15", "page.mdx"),
+      `---
+title: "OpenAPI mode is now default"
+---
+
+# OpenAPI mode is now default
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      entry: "docs",
+      changelog: {
+        enabled: true,
+        path: "changelogs",
+        contentDir: "changelog",
+      },
+    });
+
+    const changelogDir = join(rootDir, "app", "docs", "changelog");
+    chmodSync(changelogDir, 0o000);
+
+    try {
+      const response = await GET(new Request("http://localhost/api/docs?query=Welcome"));
+      const payload = (await response.json()) as Array<{ url: string; content: string }>;
+
+      expect(response.status).toBe(200);
+      expect(payload.some((result) => result.url === "/docs")).toBe(true);
+    } finally {
+      chmodSync(changelogDir, 0o755);
+    }
   });
 
   it("uses contentDir when provided for GET search requests", async () => {

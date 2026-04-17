@@ -10,6 +10,7 @@
 import type { DocsConfig } from "./types.js";
 
 export { defineDocs } from "./define-docs.js";
+export { resolveChangelogConfig } from "./changelog.js";
 export { deepMerge } from "./utils.js";
 export { createTheme, extendTheme } from "./create-theme.js";
 export { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "./i18n.js";
@@ -26,6 +27,8 @@ export {
 } from "./search.js";
 export type {
   DocsConfig,
+  ChangelogConfig,
+  ChangelogFrontmatter,
   ApiReferenceConfig,
   ApiReferenceRenderer,
   DocsI18nConfig,
@@ -80,4 +83,5 @@ export type {
   DocsSearchEmbeddingsConfig,
   McpDocsSearchConfig,
 } from "./types.js";
+export type { ChangelogEntrySummary, ResolvedChangelogConfig } from "./changelog.js";
 export type { ResolvedDocsI18n, DocsPathMatch } from "./i18n.js";

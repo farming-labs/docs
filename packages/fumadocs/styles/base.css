@@ -522,6 +522,610 @@ figure.shiki:has(figcaption) figcaption {
   color: var(--color-fd-foreground);
 }
 
+html[data-fd-route-kind="changelog"] .fd-ai-fm-input-bar {
+  display: none !important;
+}
+
+/* ─── Changelog index / detail (Magic UI–style timeline) ─────────────
+   Tailwind utilities like bg-fd-border may not resolve in all builds;
+   these use theme CSS variables directly. */
+
+/* Timeline rail: line + dot sit in a dedicated column (reliable layout vs. absolute in padded box) */
+.fd-changelog-mobile-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.fd-changelog-mobile-content {
+  margin-top: 1.25rem;
+}
+
+.fd-changelog-frame {
+  width: 100%;
+  padding-inline: 1.5rem;
+}
+
+.fd-changelog-header-strip {
+  margin-inline: -1.5rem;
+}
+
+.fd-changelog-search-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.fd-changelog-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: min(100%, 22rem);
+}
+
+.fd-changelog-search-icon {
+  pointer-events: none;
+  position: absolute;
+  left: 0.5rem;
+  top: 50%;
+  z-index: 1;
+  display: inline-flex;
+  width: 1.9rem;
+  height: 1.9rem;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-50%);
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 78%, transparent);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--color-fd-muted) 58%, transparent);
+  color: var(--color-fd-muted-foreground);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28);
+}
+
+.fd-changelog-search-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.fd-changelog-search-input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0 0.9rem 0 3rem;
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 82%, transparent);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--color-fd-card) 86%, transparent);
+  color: var(--color-fd-foreground);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  outline: none;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.fd-changelog-search-input::placeholder {
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-changelog-search-input:focus-visible {
+  border-color: color-mix(in srgb, var(--color-fd-primary) 34%, var(--color-fd-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-fd-primary) 14%, transparent);
+}
+
+.dark .fd-changelog-search-icon {
+  background: rgb(255 255 255 / 0.06);
+  box-shadow: none;
+}
+
+.dark .fd-changelog-search-input {
+  background: rgb(255 255 255 / 0.04);
+}
+
+.fd-changelog-shell {
+  display: block;
+  width: 100%;
+}
+
+.fd-changelog-main {
+  min-width: 0;
+  width: 100%;
+}
+
+.fd-changelog-toc {
+  margin-top: 2.5rem;
+}
+
+.fd-changelog-toc-card {
+  position: relative;
+  border-left: 1px solid color-mix(in srgb, var(--color-fd-border) 70%, transparent);
+  padding-left: 1rem;
+}
+
+.fd-changelog-toc-heading {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-geist-mono);
+  font-size: 0.7rem !important;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-changelog-toc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.fd-changelog-toc-link {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  margin-left: -1rem;
+  border-left: 2px solid transparent;
+  border-radius: 0 0.85rem 0.85rem 0;
+  padding: 0.45rem 0.65rem 0.45rem calc(1rem - 1px);
+  color: var(--color-fd-muted-foreground);
+  text-decoration: none;
+  transition:
+    color 0.16s ease,
+    border-color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.fd-changelog-toc-link:hover {
+  color: var(--color-fd-foreground);
+  text-decoration: none;
+}
+
+.fd-changelog-toc-meta {
+  font-family: var(--fd-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-changelog-toc-title {
+  font-size: 0.84rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: inherit;
+}
+
+.fd-changelog-directory-line {
+  display: none;
+}
+
+.fd-changelog-desktop-grid {
+  display: none;
+}
+
+.fd-changelog-rail {
+  position: relative;
+  display: flex;
+  width: 2rem;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  align-self: stretch;
+  padding-top: 0.35rem;
+}
+
+.fd-changelog-timeline-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--color-fd-foreground) 24%, var(--color-fd-border));
+  pointer-events: none;
+}
+
+.fd-changelog-timeline-dot {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  background-color: var(--color-fd-primary);
+  box-shadow:
+    0 0 0 2px var(--color-fd-background, var(--color-fd-card, #0a0a0a)),
+    0 0 0 1px color-mix(in srgb, var(--color-fd-foreground) 12%, transparent);
+  pointer-events: none;
+}
+
+.fd-changelog-rail-end-mask {
+  position: absolute;
+  top: 1rem;
+  bottom: 0;
+  left: 50%;
+  z-index: 1;
+  width: 0.5rem;
+  transform: translateX(-50%);
+  background: var(--color-fd-background, var(--color-fd-card, #fff));
+  pointer-events: none;
+}
+
+.fd-changelog-tag {
+  display: inline-flex;
+  height: 1.5rem;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--color-fd-muted-foreground);
+  background-color: color-mix(in srgb, var(--color-fd-muted) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 65%, transparent);
+  border-radius: 20px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.fd-changelog-date {
+  display: block;
+  font-family: var(--fd-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  padding-bottom: 0.8rem;
+  margin-top: 5px;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-changelog-version-box {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-self: flex-start;
+  min-height: 2.25rem;
+  min-width: 2.25rem;
+  max-width: max-content;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 70%, transparent);
+  font-family: var(--fd-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  text-transform: none;
+  color: var(--color-fd-foreground);
+  background-color: color-mix(in srgb, var(--color-fd-muted) 40%, transparent);
+}
+
+.fd-changelog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+.fd-changelog-actions :is(a, button),
+.fd-changelog-action-link {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-fd-border) 75%, transparent);
+  border-radius: 0.875rem !important;
+  background: color-mix(in srgb, var(--color-fd-card) 82%, transparent);
+  color: var(--color-fd-foreground);
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none !important;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.24);
+}
+
+.fd-changelog-actions :is(a, button):hover,
+.fd-changelog-action-link:hover {
+  background: var(--color-fd-accent);
+  color: var(--color-fd-accent-foreground);
+  text-decoration: none !important;
+}
+
+.fd-changelog-actions :is(a, button) svg,
+.fd-changelog-action-link svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.dark .fd-changelog-actions :is(a, button),
+.dark .fd-changelog-action-link {
+  background: rgb(255 255 255 / 0.06);
+  box-shadow: none;
+}
+
+.dark .fd-changelog-actions :is(a, button):hover,
+.dark .fd-changelog-action-link:hover {
+  background: rgb(255 255 255 / 0.1);
+}
+
+.fd-changelog-entry + .fd-changelog-entry {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+@media (min-width: 768px) {
+  .fd-changelog-mobile-summary,
+  .fd-changelog-mobile-content {
+    display: none;
+  }
+
+  .fd-changelog-directory-line {
+    position: absolute;
+    top: calc(0.35rem + 0.25rem + 0.375rem);
+    bottom: 1rem;
+    left: calc(5.75rem + 1rem + 1rem);
+    display: block;
+    width: 2px;
+    transform: translateX(-50%);
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--color-fd-foreground) 24%, var(--color-fd-border));
+    pointer-events: none;
+  }
+
+  .fd-changelog-desktop-grid {
+    display: grid;
+    grid-template-columns: 5.75rem 2rem minmax(0, 1fr);
+    column-gap: 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .fd-changelog-frame {
+    padding-left: 0;
+    padding-right: 2.5rem;
+  }
+
+  .fd-changelog-header-strip {
+    margin-left: 0;
+    margin-right: -2.5rem;
+  }
+
+  .fd-changelog-shell-shifted {
+    margin-left: -2rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .fd-changelog-shell {
+    display: block;
+  }
+
+  .fd-changelog-main {
+    width: min(64rem, 100%);
+    max-width: 64rem;
+  }
+
+  .fd-changelog-toc {
+    position: fixed;
+    z-index: 10;
+    top: calc(var(--fd-nav-height, 56px) + 3rem);
+    right: 0;
+    width: var(--fd-toc-width, 14rem);
+    margin-top: 0;
+  }
+}
+
+.fd-changelog-prose {
+  color: var(--color-fd-muted-foreground);
+  font-family: var(--fd-font-sans, inherit);
+  font-size: var(--fd-body-size, 1rem);
+  font-weight: var(--fd-body-weight, 400);
+  line-height: var(--fd-body-line-height, 1.75);
+  --tw-prose-body: var(--color-fd-muted-foreground);
+  --tw-prose-headings: var(--color-fd-foreground);
+  --tw-prose-links: var(--color-fd-primary);
+  --tw-prose-bold: var(--color-fd-foreground);
+  --tw-prose-counters: var(--color-fd-muted-foreground);
+  --tw-prose-bullets: color-mix(in srgb, var(--color-fd-primary) 35%, transparent);
+  --tw-prose-hr: color-mix(in srgb, var(--color-fd-primary) 14%, transparent);
+  --tw-prose-quotes: var(--color-fd-foreground);
+  --tw-prose-quote-borders: color-mix(in srgb, var(--color-fd-primary) 22%, transparent);
+  --tw-prose-code: var(--color-fd-foreground);
+  --tw-prose-pre-code: var(--color-fd-foreground);
+  --tw-prose-pre-bg: color-mix(in srgb, var(--color-fd-muted) 70%, transparent);
+}
+
+.fd-changelog-prose > :first-child {
+  margin-top: 0;
+}
+
+.fd-changelog-prose > :last-child {
+  margin-bottom: 0;
+}
+
+.fd-changelog-prose h1,
+.fd-changelog-prose h2,
+.fd-changelog-prose h3,
+.fd-changelog-prose h4 {
+  color: var(--color-fd-foreground) !important;
+  margin-bottom: 0.75rem;
+  scroll-margin-top: 2rem;
+  text-wrap: balance;
+}
+
+.fd-changelog-prose h1 {
+  margin-top: 2.5rem;
+  font-size: var(--fd-h1-size, 2rem);
+  font-weight: var(--fd-h1-weight, 600);
+  line-height: var(--fd-h1-line-height, 1.2);
+  letter-spacing: var(--fd-h1-letter-spacing, -0.02em);
+}
+
+.fd-changelog-prose h2 {
+  /* MDX section titles — smaller than the release title */
+  margin-top: 1.75rem;
+  font-size: 1.0625rem !important;
+  font-weight: 600 !important;
+  line-height: 1.35 !important;
+  letter-spacing: -0.01em;
+  color: var(--color-fd-foreground) !important;
+}
+
+#nd-docs-layout article#nd-page .fd-changelog-prose:is(.prose) h1,
+#nd-docs-layout article#nd-page .fd-changelog-prose:is(.prose) h2,
+#nd-docs-layout article#nd-page .fd-changelog-prose:is(.prose) h3 {
+  color: var(--color-fd-foreground) !important;
+}
+
+.fd-changelog-prose h3 {
+  margin-top: 1.55rem;
+  font-size: var(--fd-h3-size, 1.25rem);
+  font-weight: var(--fd-h3-weight, 600);
+  line-height: var(--fd-h3-line-height, 1.4);
+  letter-spacing: var(--fd-h3-letter-spacing, normal);
+}
+
+.fd-changelog-prose h4 {
+  margin-top: 1.25rem;
+  font-size: var(--fd-h4-size, 1.125rem);
+  font-weight: var(--fd-h4-weight, 600);
+  line-height: var(--fd-h4-line-height, 1.4);
+  letter-spacing: var(--fd-h4-letter-spacing, normal);
+}
+
+.fd-changelog-prose p,
+.fd-changelog-prose ul,
+.fd-changelog-prose ol,
+.fd-changelog-prose blockquote,
+.fd-changelog-prose pre,
+.fd-changelog-prose table {
+  margin-top: 1rem;
+  margin-bottom: 0;
+}
+
+.fd-changelog-prose p {
+  color: var(--color-fd-muted-foreground) !important;
+  letter-spacing: normal;
+  text-wrap: pretty;
+}
+
+.fd-changelog-prose a {
+  color: var(--color-fd-primary);
+  text-underline-offset: 0.2em;
+  transition: color 180ms ease;
+}
+
+.fd-changelog-prose a:hover {
+  color: color-mix(in srgb, var(--color-fd-primary) 82%, white 18%);
+}
+
+.fd-changelog-prose strong {
+  color: var(--color-fd-foreground) !important;
+}
+
+.fd-changelog-prose ul,
+.fd-changelog-prose ol {
+  padding-left: 1.35rem;
+}
+
+.fd-changelog-prose ul {
+  list-style: disc;
+}
+
+.fd-changelog-prose ol {
+  list-style: decimal;
+}
+
+.fd-changelog-prose li {
+  margin-top: 0.45rem;
+  color: var(--color-fd-muted-foreground) !important;
+}
+
+.fd-changelog-prose li::marker {
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-changelog-prose blockquote {
+  border-left: none;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--color-fd-muted) 55%, transparent);
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-changelog-prose code {
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--color-fd-muted) 72%, transparent);
+  padding: 0.15rem 0.4rem;
+  font-size: 0.92em;
+}
+
+.fd-changelog-prose pre {
+  overflow-x: auto;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--color-fd-muted) 68%, transparent);
+  padding: 1rem;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4);
+}
+
+.fd-changelog-prose pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.fd-changelog-prose img {
+  display: block;
+  width: 100%;
+  border-radius: 1rem;
+  margin-top: 10px;
+  box-shadow: 0 24px 60px -32px rgb(15 23 42 / 0.35);
+}
+
+.fd-changelog-prose video {
+  display: block;
+  width: 100%;
+  border-radius: 1rem;
+  box-shadow: 0 24px 60px -32px rgb(15 23 42 / 0.35);
+}
+
+.fd-changelog-prose table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.fd-changelog-prose th,
+.fd-changelog-prose td {
+  border: none;
+  padding: 0.65rem 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fd-border) 55%, transparent);
+}
+
+.fd-changelog-prose tr:last-child td {
+  border-bottom: none;
+}
+
+.fd-changelog-prose th {
+  background: transparent;
+  color: var(--color-fd-foreground);
+  font-weight: 600;
+}
+
 @keyframes fd-feedback-spin {
   to {
     transform: rotate(360deg);
@@ -552,6 +1156,59 @@ figure.shiki:has(figcaption) figcaption {
   margin-left: auto;
 }
 
+.fd-page-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-fd-border, hsl(0 0% 80% / 50%));
+}
+
+.fd-page-nav-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem;
+  border: 1px solid var(--color-fd-border, hsl(0 0% 80% / 50%));
+  border-radius: 0.5rem;
+  color: var(--color-fd-foreground);
+  text-decoration: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.fd-page-nav-card:hover {
+  background: var(--color-fd-accent, hsl(0 0% 96%));
+  border-color: var(--color-fd-border, hsl(0 0% 80% / 50%));
+}
+
+.fd-page-nav-next {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.fd-page-nav-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground, hsl(0 0% 45%));
+}
+
+.fd-page-nav-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-fd-foreground);
+}
+
 @media (max-width: 640px) {
   .fd-feedback-content {
     flex-direction: column;
@@ -565,6 +1222,15 @@ figure.shiki:has(figcaption) figcaption {
   .fd-last-updated-footer {
     margin-left: 0;
     width: 100%;
+  }
+
+  .fd-page-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .fd-page-nav-next {
+    align-items: flex-start;
+    text-align: left;
   }
 }
 

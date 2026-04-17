@@ -32,6 +32,7 @@ interface DocsPageClientProps {
   tocEnabled: boolean;
   tocStyle?: "default" | "directional";
   breadcrumbEnabled?: boolean;
+  changelogBasePath?: string;
   /** The docs entry folder name (e.g. "docs") — used to strip from breadcrumb */
   entry?: string;
   /** Active locale (used for llms.txt links) */
@@ -303,6 +304,7 @@ export function DocsPageClient({
   tocEnabled,
   tocStyle = "default",
   breadcrumbEnabled = true,
+  changelogBasePath,
   entry = "docs",
   locale,
   copyMarkdown = false,
@@ -334,15 +336,23 @@ export function DocsPageClient({
   const fdTocStyle = tocStyle === "directional" ? "clerk" : undefined;
   const [toc, setToc] = useState<TOCItem[]>([]);
   const [titlePortalHost, setTitlePortalHost] = useState<HTMLElement | null>(null);
+  const [browserPath, setBrowserPath] = useState<string | null>(null);
   const pathname = usePathname();
   const searchParams = useWindowSearchParams();
   const activeLocale = resolveClientLocale(searchParams, locale);
   const llmsLangParam = activeLocale ? `&lang=${encodeURIComponent(activeLocale)}` : "";
 
   const pageDescription = description ?? descriptionMap?.[pathname.replace(/\/$/, "") || "/"];
+  const normalizedPath = (browserPath ?? pathname).replace(/\/$/, "") || "/";
+  const isChangelogRoute = !!(
+    changelogBasePath &&
+    (normalizedPath === changelogBasePath || normalizedPath.startsWith(`${changelogBasePath}/`))
+  );
+  const effectiveTocEnabled = isChangelogRoute ? false : tocEnabled;
+  const effectiveBreadcrumbEnabled = isChangelogRoute ? false : breadcrumbEnabled;
 
   useEffect(() => {
-    if (!tocEnabled) return;
+    if (!effectiveTocEnabled) return;
 
     const timer = requestAnimationFrame(() => {
       const container = document.getElementById("nd-page");
@@ -359,7 +369,7 @@ export function DocsPageClient({
     });
 
     return () => cancelAnimationFrame(timer);
-  }, [tocEnabled, pathname]);
+  }, [effectiveTocEnabled, pathname]);
 
   useEffect(() => {
     if (!activeLocale) return;
@@ -372,6 +382,27 @@ export function DocsPageClient({
 
     return () => cancelAnimationFrame(timer);
   }, [activeLocale, children, pathname]);
+
+  useEffect(() => {
+    setBrowserPath(window.location.pathname);
+  }, [pathname]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+
+    if (isChangelogRoute) {
+      root.dataset.fdRouteKind = "changelog";
+      return () => {
+        if (root.dataset.fdRouteKind === "changelog") {
+          delete root.dataset.fdRouteKind;
+        }
+      };
+    }
+
+    if (root.dataset.fdRouteKind === "changelog") {
+      delete root.dataset.fdRouteKind;
+    }
+  }, [isChangelogRoute]);
 
   useEffect(() => {
     let frame = 0;
@@ -408,7 +439,7 @@ export function DocsPageClient({
     };
   }, [pathname, children]);
 
-  const showActions = copyMarkdown || openDocs;
+  const showActions = !isChangelogRoute && (copyMarkdown || openDocs);
   const showActionsBelowTitle = showActions && pageActionsPosition === "below-title";
   const showActionsAboveTitle = showActions && pageActionsPosition === "above-title";
   const githubFileUrl =
@@ -425,14 +456,15 @@ export function DocsPageClient({
         )
       : undefined);
 
-  const normalizedPath = pathname.replace(/\/$/, "") || "/";
-  const lastModified = lastUpdatedEnabled
-    ? (lastModifiedProp ?? lastModifiedMap?.[normalizedPath])
-    : undefined;
+  const lastModified =
+    !isChangelogRoute && lastUpdatedEnabled
+      ? (lastModifiedProp ?? lastModifiedMap?.[normalizedPath])
+      : undefined;
 
   const showLastUpdatedBelowTitle = !!lastModified && lastUpdatedPosition === "below-title";
   const showLastUpdatedInFooter = !!lastModified && lastUpdatedPosition === "footer";
-  const showFooter = !!githubFileUrl || showLastUpdatedInFooter || llmsTxtEnabled;
+  const showFooter =
+    !isChangelogRoute && (!!githubFileUrl || showLastUpdatedInFooter || llmsTxtEnabled);
 
   const titleDescription = pageDescription ? (
     <p className="fd-page-description">{pageDescription}</p>
@@ -503,12 +535,14 @@ export function DocsPageClient({
 
   return (
     <DocsPage
+      full={false}
       toc={toc}
-      tableOfContent={{ enabled: tocEnabled, style: fdTocStyle }}
-      tableOfContentPopover={{ enabled: tocEnabled, style: fdTocStyle }}
+      tableOfContent={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
+      tableOfContentPopover={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
       breadcrumb={{ enabled: false }}
+      footer={{ enabled: !isChangelogRoute }}
     >
-      {breadcrumbEnabled && (
+      {effectiveBreadcrumbEnabled && (
         <PathBreadcrumb pathname={pathname} entry={entry} locale={activeLocale} />
       )}
       {showActionsAboveTitle && (
@@ -527,7 +561,7 @@ export function DocsPageClient({
       <DocsBody style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ flex: 1 }}>{decoratedChildren}</div>
         {titleDecorationsPortal}
-        {feedbackEnabled && (
+        {!isChangelogRoute && feedbackEnabled && (
           <DocsFeedback
             pathname={normalizedPath}
             entry={entry}
