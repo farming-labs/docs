@@ -1,6 +1,6 @@
 ---
 name: page-actions
-description: Configure page actions in @farming-labs/docs — Copy Markdown and Open in LLM buttons. Use when enabling copyMarkdown, openDocs, custom providers, urlTemplate placeholders ({url}, {mdxUrl}, {githubUrl}), alignment, or position (above-title, below-title).
+description: Configure page actions in @farming-labs/docs — Copy Markdown and Open in LLM buttons. Use when enabling copyMarkdown, openDocs, custom providers, urlTemplate placeholders ({url}, {mdxUrl}, {githubUrl}), `{url}.md` markdown route patterns, alignment, or position (above-title, below-title).
 ---
 
 # @farming-labs/docs — Page Actions
@@ -121,8 +121,12 @@ interface OpenDocsProvider {
 | Placeholder | Replaced with |
 | ----------- | -------------- |
 | `{url}` | Current page URL (e.g. `https://docs.example.com/docs/installation`) |
-| `{mdxUrl}` | `.mdx` variant of the page URL (for raw source) |
+| `{mdxUrl}` | Raw `.mdx` source URL for the page |
 | `{githubUrl}` | GitHub **edit** URL for the current page. Requires `github` in config. Use `urlTemplate: "{githubUrl}"` for "Open in GitHub". |
+
+If the project exposes machine-readable markdown routes, use `{url}.md` when you want the public
+page markdown instead of the raw source file. In Next.js, that route can return a sibling
+`agent.md` when the page has one.
 
 ### Custom providers example
 
@@ -155,6 +159,22 @@ pageActions: {
 For `{githubUrl}` to work, the top-level `github` config must be set (e.g. `github: { url: "https://github.com/owner/repo", directory: "website" }`).
 
 **Cursor deeplink:** The web example uses `https://cursor.com/link/prompt?text=...`. To open the Cursor app directly instead, use `cursor://anysphere.cursor-deeplink/prompt?text=...`.
+
+Example using the public markdown route:
+
+```ts
+pageActions: {
+  openDocs: {
+    enabled: true,
+    providers: [
+      {
+        name: "ChatGPT",
+        urlTemplate: "https://chatgpt.com/?q=Read+this+page:+{url}.md",
+      },
+    ],
+  },
+}
+```
 
 ---
 

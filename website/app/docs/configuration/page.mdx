@@ -140,6 +140,17 @@ All configuration lives in a single `docs.config.ts` file.
 
 The default MDX map already includes built-ins like `Callout`, `Tabs`, and `HoverLink`. Use `components` when you want to add your own components or override any of those defaults. If you only want to change the default props of a built-in like `HoverLink`, use `theme.ui.components` instead. See [Components](/docs/customization/components) for examples and a live `HoverLink` demo.
 
+## Machine-readable markdown routes
+
+No separate config flag is required for machine-readable page markdown.
+
+- The shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
+- In Next.js, `withDocs()` also serves `/docs/<slug>.md`
+- When a page folder has `agent.md`, that file is returned instead of the normal page markdown
+
+See [Markdown Routes](/docs/customization/markdown-routes) for the routing behavior and folder
+convention.
+
 ## Static export
 
 For fully static builds (e.g. **Cloudflare Pages**, static hosting with no server), set `staticExport: true` in your config. This:

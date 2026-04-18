@@ -141,8 +141,14 @@ The `urlTemplate` string supports these placeholders:
 | Placeholder   | Replaced with                                                                 |
 | ------------- | ----------------------------------------------------------------------------- |
 | `{url}`       | The current page URL (e.g. `https://docs.example.com/docs/installation`)      |
-| `{mdxUrl}`    | The `.mdx` variant of the page URL (useful for raw source)                    |
+| `{mdxUrl}`    | The raw `.mdx` source URL for the page (useful when you want the source file) |
 | `{githubUrl}` | GitHub **edit** URL for the current page (same as "Edit on GitHub"). Requires `github` in config. Use `urlTemplate: "{githubUrl}"` so "Open in GitHub" opens the file on GitHub. |
+
+<Callout type="info" title="Use `{url}.md` for agent-ready page markdown">
+  `{mdxUrl}` points at the raw source file. If you want the built-in machine-readable docs page
+  instead, use `{url}.md`. In Next.js, that route can return a sibling `agent.md` when the page
+  has one. See [Markdown Routes](/docs/customization/markdown-routes).
+</Callout>
 
 ### Custom Providers Example
 
@@ -162,6 +168,22 @@ pageActions: {
       {
         name: "Cursor",
         urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}",
+      },
+    ],
+  },
+}
+```
+
+Example using the public markdown route instead of raw source:
+
+```ts title="docs.config.ts"
+pageActions: {
+  openDocs: {
+    enabled: true,
+    providers: [
+      {
+        name: "ChatGPT",
+        urlTemplate: "https://chatgpt.com/?q=Read+this+page:+{url}.md",
       },
     ],
   },

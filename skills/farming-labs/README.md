@@ -2,7 +2,7 @@
 
 This folder contains [Agent Skills](https://skills.sh/) (conforming to the [Agent Skills specification](https://agentskills.io/specification)) for **@farming-labs/docs** — an MDX-based documentation framework for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
 
-Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task (getting started, CLI, creating themes, Ask AI, page actions, or configuration, including search adapters, changelog setup, API reference, and MCP).
+Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task (getting started, CLI, creating themes, Ask AI, page actions, or configuration, including search adapters, changelog setup, API reference, MCP, and machine-readable markdown routes).
 
 The repo also includes a runnable Next example for testing MCP plus external search providers:
 
@@ -14,6 +14,9 @@ Useful routes:
 
 - MCP: `http://127.0.0.1:3000/api/docs/mcp`
 - Search API: `http://127.0.0.1:3000/api/docs?query=session`
+- Docs API markdown: `http://127.0.0.1:3000/api/docs?format=markdown&path=getting-started/quickstart`
+- Public markdown page (Next.js): `http://127.0.0.1:3000/docs/getting-started/quickstart.md`
+- Agent override example (Next.js): `http://127.0.0.1:3000/docs/getting-started/agent-ready-docs.md`
 
 ---
 
@@ -21,12 +24,12 @@ Useful routes:
 
 | Skill | Path | When to use |
 | ----- | ---- | ----------- |
-| **Getting started** | [getting-started](./getting-started/SKILL.md) | Setting up docs, init, manual install, theme CSS, docs.config, packages by framework, generated changelog pages in Next.js, and API reference wiring from local routes or a hosted OpenAPI JSON. |
+| **Getting started** | [getting-started](./getting-started/SKILL.md) | Setting up docs, init, manual install, theme CSS, docs.config, packages by framework, generated changelog pages in Next.js, machine-readable markdown routes, and API reference wiring from local routes or a hosted OpenAPI JSON. |
 | **CLI** | [cli](./cli/SKILL.md) | Scaffolding and commands: init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), `init` / `upgrade` / `mcp`, `--template`, `--name`, `--theme`, `--entry`, `--api-reference`, `--framework`, `--config`, package manager commands. |
 | **Creating themes** | [creating-themes](./creating-themes/SKILL.md) | Building a custom theme with `createTheme()`, `extendTheme()`, `ui.components` defaults like `HoverLink`, publishing as npm, CSS overrides. |
 | **Ask AI** | [ask-ai](./ask-ai/SKILL.md) | Enabling and configuring the RAG-powered AI chat: mode, floatingStyle, providers, models, suggestedQuestions, apiKey. |
-| **Page actions** | [page-actions](./page-actions/SKILL.md) | Copy Markdown and Open in LLM buttons: copyMarkdown, openDocs, providers, urlTemplate, position, alignment, and provider defaults. |
-| **Configuration** | [configuration](./configuration/SKILL.md) | docs.config.ts options: entry, theme, staticExport, sidebar, breadcrumb, github, components, `search`, `changelog`, feedback, metadata, og, `mcp`, and `apiReference` including remote `specUrl` support. |
+| **Page actions** | [page-actions](./page-actions/SKILL.md) | Copy Markdown and Open in LLM buttons: copyMarkdown, openDocs, providers, urlTemplate, `{url}.md` markdown route patterns, position, alignment, and provider defaults. |
+| **Configuration** | [configuration](./configuration/SKILL.md) | docs.config.ts options: entry, theme, staticExport, sidebar, breadcrumb, github, components, `search`, `changelog`, feedback, metadata, og, `mcp`, built-in markdown routes, and `apiReference` including remote `specUrl` support. |
 
 ---
 

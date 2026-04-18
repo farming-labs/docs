@@ -320,9 +320,11 @@ The built-in resources mirror that same data:
 - `docs://docs/installation`
 - `docs://docs/guides/quickstart`
 
-## When to use this vs `llms.txt`
+## When to use this vs markdown routes and `llms.txt`
 
+- Use **markdown routes** when you want a plain HTTP URL for one page
 - Use **`llms.txt`** when you want a static, crawler-friendly docs summary
 - Use **MCP** when you want a structured, queryable docs interface for agents and IDE tools
 
-They complement each other well. `llms.txt` is lightweight and public; MCP is interactive and tool-based.
+They complement each other well. Markdown routes are the simplest page-level HTTP surface,
+`llms.txt` is lightweight and public, and MCP is interactive and tool-based.
