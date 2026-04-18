@@ -35,10 +35,15 @@ function Table(props: React.ComponentPropsWithoutRef<"table">) {
   );
 }
 
+function Agent(_props: { children?: React.ReactNode }) {
+  return null;
+}
+
 const extendedMdxComponents = {
   ...defaultMdxComponents,
   img: MDXImg,
   table: Table,
+  Agent,
   HoverLink,
   Tab,
   Tabs,
@@ -117,4 +122,4 @@ export function getMDXComponents<T extends Record<string, unknown> = Record<stri
   return base;
 }
 
-export { defaultMdxComponents, extendedMdxComponents, HoverLink, Tab, Tabs };
+export { Agent, defaultMdxComponents, extendedMdxComponents, HoverLink, Tab, Tabs };

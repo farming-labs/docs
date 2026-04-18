@@ -345,7 +345,45 @@ Install and configure the docs framework.
     expect(payload[0]?.content).toContain("Quickstart");
   });
 
-  it("serves markdown through the default docs api route and prefers agent.md when present", async () => {
+  it("keeps Agent blocks out of the normal search index", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-search-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+
+Visible content.
+
+<Agent>
+Search should not return this hidden agent-only zebra token.
+</Agent>
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      entry: "docs",
+    });
+
+    const response = await GET(
+      new Request("http://localhost/api/docs?query=agent-only-zebra-token"),
+    );
+    const payload = (await response.json()) as Array<{ content: string; description?: string }>;
+    const renderedSearchText = payload
+      .map((result) => `${result.content}\n${result.description ?? ""}`)
+      .join("\n");
+
+    expect(renderedSearchText).not.toContain("agent-only zebra token");
+  });
+
+  it("serves markdown through the default docs api route, including Agent blocks and preferring agent.md when present", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-markdown-route-"));
     tempDirs.push(rootDir);
 
@@ -361,6 +399,10 @@ description: "Start fast"
 # Quickstart
 
 Run \`pnpm dev\`.
+
+<Agent>
+Verify the onboarding command examples before changing this page.
+</Agent>
 `,
     );
     writeFileSync(
@@ -373,6 +415,10 @@ description: "Human overview"
 # Overview
 
 Human content.
+
+<Agent>
+This embedded agent block should be ignored because agent.md overrides the page.
+</Agent>
 `,
     );
     writeFileSync(
@@ -392,9 +438,12 @@ Human content.
     );
     expect(fallbackResponse.status).toBe(200);
     expect(fallbackResponse.headers.get("content-type")).toContain("text/markdown");
-    expect(await fallbackResponse.text()).toContain(
-      "# Quickstart\nURL: /docs/getting-started/quickstart",
+    const fallbackDocument = await fallbackResponse.text();
+    expect(fallbackDocument).toContain("# Quickstart\nURL: /docs/getting-started/quickstart");
+    expect(fallbackDocument).toContain(
+      "Verify the onboarding command examples before changing this page.",
     );
+    expect(fallbackDocument).not.toContain("<Agent>");
 
     const agentResponse = await GET(
       new Request("http://localhost/api/docs?format=markdown&path=overview"),

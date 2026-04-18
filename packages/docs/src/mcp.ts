@@ -26,6 +26,8 @@ export interface DocsMcpPage {
   rawContent?: string;
   agentContent?: string;
   agentRawContent?: string;
+  agentFallbackContent?: string;
+  agentFallbackRawContent?: string;
 }
 
 export interface DocsMcpPageNode {
@@ -504,6 +506,85 @@ function titleize(value: string): string {
   return value.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function resolveAgentMdxContent(content: string, audience: "human" | "agent"): string {
+  const lines = content.split("\n");
+  const output: string[] = [];
+  let fenceMarker: string | null = null;
+  let agentDepth = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const fenceMatch = trimmed.match(/^(`{3,}|~{3,})/);
+
+    if (fenceMatch) {
+      if (!fenceMarker) {
+        fenceMarker = fenceMatch[1];
+      } else if (trimmed.startsWith(fenceMarker)) {
+        fenceMarker = null;
+      }
+
+      if (audience === "agent" || agentDepth === 0) {
+        output.push(line);
+      }
+      continue;
+    }
+
+    if (!fenceMarker) {
+      if (/^<Agent(?:\s[^>]*)?\/>$/.test(trimmed)) {
+        continue;
+      }
+
+      const singleLineMatch = line.match(/^(\s*)<Agent(?:\s[^>]*)?>([\s\S]*?)<\/Agent>\s*$/);
+      if (singleLineMatch) {
+        if (audience === "agent" && singleLineMatch[2]) {
+          output.push(`${singleLineMatch[1]}${singleLineMatch[2]}`);
+        }
+        continue;
+      }
+
+      const openMatch = line.match(/^(\s*)<Agent(?:\s[^>]*)?>\s*$/);
+      if (openMatch) {
+        agentDepth += 1;
+        continue;
+      }
+
+      const openWithContentMatch = line.match(/^(\s*)<Agent(?:\s[^>]*)?>(.*)$/);
+      if (openWithContentMatch) {
+        agentDepth += 1;
+        if (audience === "agent" && openWithContentMatch[2]) {
+          output.push(`${openWithContentMatch[1]}${openWithContentMatch[2]}`);
+        }
+        continue;
+      }
+
+      const closeWithContentMatch = line.match(/^(.*)<\/Agent>\s*$/);
+      if (closeWithContentMatch && agentDepth > 0) {
+        if (audience === "agent" && closeWithContentMatch[1]) {
+          output.push(closeWithContentMatch[1]);
+        }
+        agentDepth = Math.max(0, agentDepth - 1);
+        continue;
+      }
+
+      if (/^<\/Agent>\s*$/.test(trimmed) && agentDepth > 0) {
+        agentDepth = Math.max(0, agentDepth - 1);
+        continue;
+      }
+    }
+
+    if (agentDepth > 0 && audience === "human") {
+      continue;
+    }
+
+    output.push(line);
+  }
+
+  return output
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function stripMarkdownForMcp(content: string): string {
   return content
     .replace(/^(import|export)\s.*$/gm, "")
@@ -543,6 +624,12 @@ function scanFilesystemDocsPages(contentDirAbs: string, entry: string): ScannedD
 
       const raw = fs.readFileSync(full, "utf-8");
       const { data, content } = matter(raw);
+      const humanRawContent = resolveAgentMdxContent(content, "human");
+      const pageAgentRawContent = resolveAgentMdxContent(content, "agent");
+      const pageAgentContent =
+        pageAgentRawContent !== humanRawContent
+          ? stripMarkdownForMcp(pageAgentRawContent)
+          : undefined;
 
       const baseName = name.replace(/\.(md|mdx|svx)$/, "");
       const isIndex = baseName === "index" || baseName === "page" || baseName === "+page";
@@ -563,10 +650,13 @@ function scanFilesystemDocsPages(contentDirAbs: string, entry: string): ScannedD
         title,
         description: data.description as string | undefined,
         icon: data.icon as string | undefined,
-        content: stripMarkdownForMcp(content),
-        rawContent: content,
-        ...agentDoc,
+        content: stripMarkdownForMcp(humanRawContent),
+        rawContent: humanRawContent,
+        agentFallbackContent: pageAgentContent,
+        agentFallbackRawContent:
+          pageAgentRawContent !== humanRawContent ? pageAgentRawContent : undefined,
         order: typeof data.order === "number" ? data.order : Number.POSITIVE_INFINITY,
+        ...agentDoc,
       });
     }
   }
@@ -728,8 +818,12 @@ function toSearchSourcePages(pages: DocsMcpPage[]): DocsSearchSourcePage[] {
   return pages.map((page) => ({
     title: page.title,
     url: page.url,
-    content: page.content,
-    rawContent: page.rawContent,
+    content: page.agentContent ?? page.agentFallbackContent ?? page.content,
+    rawContent: page.agentRawContent ?? page.agentFallbackRawContent ?? page.rawContent,
+    agentContent: page.agentContent,
+    agentRawContent: page.agentRawContent,
+    agentFallbackContent: page.agentFallbackContent,
+    agentFallbackRawContent: page.agentFallbackRawContent,
     description: page.description,
   }));
 }
@@ -825,7 +919,7 @@ function renderPageDocument(page: DocsMcpPage): string {
 
   const lines = [`# ${page.title}`, `URL: ${page.url}`];
   if (page.description) lines.push(`Description: ${page.description}`);
-  lines.push("", page.rawContent ?? page.content);
+  lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);
   return lines.join("\n");
 }
 

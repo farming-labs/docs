@@ -30,6 +30,35 @@ Write your content here using **Markdown** and JSX components.
 
 Your page is now available at `/docs/my-page`.
 
+<Agent>
+You are an implementation agent working from the public Quickstart page.
+
+Use this page as the lightweight implementation brief when no sibling `agent.md` exists.
+
+Priorities:
+- preserve the scaffolded file paths under `app/docs/`
+- keep the shell commands runnable as written
+- keep the example `page.mdx` snippet aligned with the actual docs folder convention
+- verify `/docs/quickstart.md` still includes this agent-only block
+- verify the normal browser page at `/docs/quickstart` does not show this block
+
+Files and paths this page refers to:
+- `app/docs/my-page/page.mdx`
+- `docs.config.ts`
+- `/docs/my-page`
+- `/docs/quickstart.md`
+
+If you update this page:
+- do not replace the human quickstart with agent jargon
+- keep the human explanation concise and beginner-friendly
+- put implementation-only guidance inside `<Agent>...</Agent>` blocks like this one
+
+Expected agent takeaway:
+- humans should read the normal page
+- agents should read the `.md` route
+- a page without `agent.md` can still expose richer machine context through embedded `<Agent>` blocks
+</Agent>
+
 ## Using Components
 
 ### Callouts

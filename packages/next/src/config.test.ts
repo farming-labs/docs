@@ -179,17 +179,13 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "app/api/docs/mcp/route.ts"))).toBe(true);
   });
 
-  it("generates the markdown bridge route and rewrites", async () => {
+  it("routes markdown rewrites through the shared docs api handler", async () => {
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);
 
     const nextConfig = withDocs({});
 
-    expect(existsSync(join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts"))).toBe(true);
-    const route = readFileSync(join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts"), "utf-8");
-    expect(route).toContain('import { createDocsAPI } from "@farming-labs/next/api";');
-    expect(route).toContain('url.searchParams.set("format", "markdown");');
-    expect(route).toContain("return handlers.GET");
+    expect(existsSync(join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts"))).toBe(false);
 
     const rewrites = await (
       nextConfig.rewrites as () => Promise<Array<{ source: string; destination: string }>>
@@ -199,11 +195,11 @@ describe("withDocs (app dir: src/app vs app)", () => {
       expect.arrayContaining([
         expect.objectContaining({
           source: "/docs.md",
-          destination: "/api/docs/markdown",
+          destination: "/api/docs?format=markdown",
         }),
         expect.objectContaining({
           source: "/docs/:slug*.md",
-          destination: "/api/docs/markdown/:slug*",
+          destination: "/api/docs?format=markdown&path=:slug*",
         }),
       ]),
     );
@@ -271,13 +267,12 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "app/api/docs/mcp/route.ts"))).toBe(false);
   });
 
-  it("skips markdown bridge generation and rewrites for static export", () => {
+  it("skips markdown rewrites for static export", () => {
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);
 
     const nextConfig = withDocs({ output: "export" });
 
-    expect(existsSync(join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts"))).toBe(false);
     expect(nextConfig.rewrites).toBeUndefined();
   });
 
@@ -346,8 +341,6 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
       "/api/docs": ["app/docs/**/*"],
-      "/api/docs/markdown": ["app/docs/**/*"],
-      "/api/docs/markdown/[[...slug]]": ["app/docs/**/*"],
       "/api/docs/mcp": ["app/docs/**/*"],
     });
   });
@@ -361,8 +354,6 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
       "/api/docs": ["website/app/docs/**/*"],
-      "/api/docs/markdown": ["website/app/docs/**/*"],
-      "/api/docs/markdown/[[...slug]]": ["website/app/docs/**/*"],
       "/api/docs/mcp": ["website/app/docs/**/*"],
     });
   });
@@ -388,11 +379,11 @@ describe("withDocs (app dir: src/app vs app)", () => {
       expect.arrayContaining([
         expect.objectContaining({
           source: "/docs.md",
-          destination: "/api/docs/markdown",
+          destination: "/api/docs?format=markdown",
         }),
         expect.objectContaining({
           source: "/docs/:slug*.md",
-          destination: "/api/docs/markdown/:slug*",
+          destination: "/api/docs?format=markdown&path=:slug*",
         }),
         expect.objectContaining({
           source: "/legacy",
