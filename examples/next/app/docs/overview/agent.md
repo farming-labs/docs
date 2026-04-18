@@ -996,7 +996,7 @@ RAG-powered AI chat. See [Ask AI](/docs/customization/ai-chat) for usage guide.
 | `position`           | `"bottom-right" \| "bottom-left" \| "bottom-center"` | `"bottom-right"`              | Floating button position (only when `mode: "floating"`) |
 | `floatingStyle`      | `"panel" \| "modal" \| "popover" \| "full-modal"`    | `"panel"`                     | Floating chat visual style                              |
 | `triggerComponent`   | `Component`                                          | —                             | Custom floating button component                        |
-| `model`              | `string`                                             | `"gpt-4o-mini"`               | LLM model name (OpenAI-compatible)                      |
+| `model`              | `string \| { models: { id: string; label: string; provider?: string }[]; defaultModel?: string }` | `"gpt-4o-mini"` | LLM model id or selectable model config (OpenAI-compatible) |
 | `systemPrompt`       | `string`                                             | auto-generated                | Custom system prompt                                    |
 | `baseUrl`            | `string`                                             | `"https://api.openai.com/v1"` | OpenAI-compatible API base URL                          |
 | `apiKey`             | `string`                                             | `process.env.OPENAI_API_KEY`  | API key for the LLM provider                            |

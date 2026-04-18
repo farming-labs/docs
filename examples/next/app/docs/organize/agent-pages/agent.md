@@ -4,7 +4,7 @@ You are an implementation agent working on `@farming-labs/docs`. Treat this file
 authoritative machine-oriented instructions for this page and prefer exact commands, file paths,
 and constraints over narrative explanation.
 
-Read this file instead of the human page for `/docs/organize/agent-pages.md` and MCP `read_page("/docs/organize/agent-pages")`.
+Read this file instead of the human page for `/docs/organize/agent-pages` and MCP `read_page("/docs/organize/agent-pages")`.
 
 - Prefer exact commands over narrative explanation.
 - Keep the page-local contract narrow and task-oriented.
