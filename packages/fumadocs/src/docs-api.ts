@@ -744,6 +744,31 @@ function findDocsMcpPage(
   return null;
 }
 
+function resolveMarkdownRequest(entry: string, url: URL): { requestedPath: string } | null {
+  const format = url.searchParams.get("format")?.trim();
+  if (format === "markdown") {
+    return {
+      requestedPath: url.searchParams.get("path")?.trim() ?? "",
+    };
+  }
+
+  const pathname = normalizeUrlPath(url.pathname);
+  const normalizedEntry = `/${normalizePathSegment(entry)}`;
+
+  if (pathname === `${normalizedEntry}.md`) {
+    return { requestedPath: "" };
+  }
+
+  const slugPrefix = `${normalizedEntry}/`;
+  if (pathname.startsWith(slugPrefix) && pathname.endsWith(".md")) {
+    return {
+      requestedPath: pathname.slice(slugPrefix.length, -3),
+    };
+  }
+
+  return null;
+}
+
 function renderMarkdownDocument(page: DocsMcpPage | DocsSearchSourcePage): string {
   if ("agentRawContent" in page && page.agentRawContent !== undefined) return page.agentRawContent;
 
@@ -1216,11 +1241,10 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     async GET(request: Request) {
       const ctx = resolveContextFromRequest(request);
       const url = new URL(request.url);
-      const format = url.searchParams.get("format");
+      const markdownRequest = resolveMarkdownRequest(entry, url);
 
-      if (format === "markdown") {
-        const requestedPath = url.searchParams.get("path")?.trim() ?? "";
-        const document = await getMarkdownDocument(ctx, requestedPath);
+      if (markdownRequest) {
+        const document = await getMarkdownDocument(ctx, markdownRequest.requestedPath);
 
         if (!document) {
           return new Response("Not Found", {
@@ -1241,6 +1265,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         });
       }
 
+      const format = url.searchParams.get("format");
       if (format === "llms") {
         return new Response(getLlmsContent(ctx).llmsTxt, {
           headers: {

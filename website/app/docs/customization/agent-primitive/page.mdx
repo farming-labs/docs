@@ -77,3 +77,32 @@ This is the stronger option. Use it when agents need:
 - Use `Agent` when the normal page should stay the source of truth and you only need extra machine context
 - Use `agent.md` when the machine-readable page should become its own focused document
 - Use both patterns page-by-page; you do not need a global config flag to turn them on
+
+## Page Primitives Vs Skills
+
+`Agent` and `agent.md` are page-scoped primitives. They are the right fit when the machine context
+belongs to a single docs route.
+
+Use an installable skill when the guidance should be reusable across many pages or workflows, such
+as setup, CLI usage, theme creation, page actions, or deeper configuration tasks.
+
+In practice, the two features work well together:
+
+- use `Agent` or `agent.md` to make one page more useful to agents
+- use skills when the knowledge should be bundled as a reusable workflow outside a single page
+
+This repo already publishes skills under `skills/farming-labs/`. Install them with:
+
+```bash title="terminal"
+npx skills add farming-labs/docs
+```
+
+Common choices include:
+
+- `getting-started` for setup and installation
+- `cli` for `init`, `upgrade`, and CLI flags
+- `configuration` for `docs.config` options
+- `page-actions` for Copy Markdown and Open in LLM behavior
+
+Use page primitives for route-level context. Use skills for repeatable product knowledge that should
+travel across tasks.

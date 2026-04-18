@@ -450,6 +450,19 @@ This embedded agent block should be ignored because agent.md overrides the page.
     );
     expect(agentResponse.status).toBe(200);
     expect(await agentResponse.text()).toBe("Use this page as the implementation map.\n");
+
+    const rewrittenFallbackResponse = await GET(
+      new Request("http://localhost/docs/getting-started/quickstart.md"),
+    );
+    expect(rewrittenFallbackResponse.status).toBe(200);
+    expect(rewrittenFallbackResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(await rewrittenFallbackResponse.text()).toContain(
+      "Verify the onboarding command examples before changing this page.",
+    );
+
+    const rewrittenAgentResponse = await GET(new Request("http://localhost/docs/overview.md"));
+    expect(rewrittenAgentResponse.status).toBe(200);
+    expect(await rewrittenAgentResponse.text()).toBe("Use this page as the implementation map.\n");
   });
 
   it("returns 404 for markdown mode when the requested page does not exist", async () => {
