@@ -50,7 +50,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - Use [/docs/customization](/docs/customization) when the question moves from config into layout, sidebar, colors, or page-level polish.
 - Use [/docs/themes](/docs/themes) when they are choosing a preset theme or building their own.
 - Use [/docs/customization/components](/docs/customization/components) when the question is really about `components` or `theme.ui.components`.
-- Use [/docs/customization/markdown-routes](/docs/customization/markdown-routes) when the user wants `.md` routes, hidden `<Agent>` content, or sibling `agent.md` overrides.
+- Use [/docs/customization/agent-primitive](/docs/customization/agent-primitive) when the user wants `.md` routes, hidden `<Agent>` content, or sibling `agent.md` overrides.
 - Use [/docs/customization/mcp](/docs/customization/mcp) when they want machine-readable access through the built-in MCP server.
 - Use [/docs/customization/llms-txt](/docs/customization/llms-txt) when they need crawler-friendly summaries for AI systems.
 - Use [/docs/customization/ai-chat](/docs/customization/ai-chat) when they are configuring Ask AI or retrieval-backed chat.

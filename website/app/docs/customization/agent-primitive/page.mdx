@@ -1,0 +1,79 @@
+---
+title: "Agent Primitive"
+description: "Author page-level agent context with the built-in Agent block or a sibling agent.md override."
+icon: "bot"
+order: 5.65
+---
+
+# Agent Primitive
+
+`@farming-labs/docs` gives you two page-level primitives for agent-facing documentation:
+
+- `<Agent>...</Agent>` inside `page.mdx` for additive machine-only context
+- `agent.md` beside `page.mdx` for a full machine-readable override
+
+The same page model also powers the built-in machine-readable routes:
+
+- the shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
+- in Next.js, `withDocs()` also serves `/docs/<slug>.md`
+
+Use `Agent` when the human page is already mostly correct and just needs a little extra implementation
+context. Use `agent.md` when the entire machine-readable page should be more operational, more
+structured, or fully different from the visible UI page.
+
+<Callout type="info" title="Built in by default">
+  `Agent` is already part of the default MDX component map. You do not need to register it in
+  `docs.config.ts`.
+</Callout>
+
+## Use `Agent` For Additive Context
+
+`Agent` is the lightweight option. It keeps the normal page clean while adding agent-only guidance
+to the `.md` route and MCP fallback for that page.
+
+```mdx title="app/docs/installation/page.mdx"
+# Installation
+
+Human-facing setup instructions.
+
+<Agent>
+You are an implementation agent.
+Prefer the CLI path first unless the user explicitly wants manual setup.
+Keep framework-specific package names exact.
+</Agent>
+```
+
+That gives you:
+
+- `/docs/installation` for the normal UI page
+- `/docs/installation.md` for machine-readable markdown that includes the `Agent` block
+- MCP `read_page("/docs/installation")` with the same page-level machine context
+
+## Use `agent.md` For A Full Override
+
+When the machine-readable page should be completely different, add a sibling `agent.md`.
+
+```txt title="page folder"
+app/docs/customization/agent-primitive/
+  page.mdx
+  agent.md
+```
+
+In that setup:
+
+- `/docs/customization/agent-primitive` renders `page.mdx`
+- `/docs/customization/agent-primitive.md` returns `agent.md`
+- MCP `read_page("/docs/customization/agent-primitive")` also prefers `agent.md`
+
+This is the stronger option. Use it when agents need:
+
+- exact file paths and command ordering
+- implementation-only constraints
+- testing or validation steps
+- a shorter, more targeted page than the human docs should show
+
+## Choosing Between Them
+
+- Use `Agent` when the normal page should stay the source of truth and you only need extra machine context
+- Use `agent.md` when the machine-readable page should become its own focused document
+- Use both patterns page-by-page; you do not need a global config flag to turn them on

@@ -1,0 +1,35 @@
+# Agent Primitive
+
+You are reading the machine-oriented override for `/docs/customization/agent-primitive`.
+
+Use this page when you need the page-level authoring contract for agent-facing docs in
+`@farming-labs/docs`.
+
+## The Two Primitives
+
+1. `Agent`
+   - Embed `<Agent>...</Agent>` inside `page.mdx`
+   - Hidden in the normal docs UI
+   - Included in `.md` output and MCP fallback when there is no sibling `agent.md`
+
+2. `agent.md`
+   - Place a sibling `agent.md` beside `page.mdx`
+   - Becomes the full machine-readable output for that page
+   - Preferred by MCP `read_page("/docs/customization/agent-primitive")`
+
+## When To Choose Which
+
+- Choose `Agent` when the human page should stay canonical and only needs extra machine context
+- Choose `agent.md` when agents need a shorter, stricter, or more operational document
+
+## Validation
+
+- Human page: `/docs/customization/agent-primitive`
+- Markdown route: `/docs/customization/agent-primitive.md`
+- API route: `/api/docs?format=markdown&path=customization/agent-primitive`
+- MCP read target: `/docs/customization/agent-primitive`
+
+## Authoring Reminder
+
+Do not duplicate whole pages into `<Agent>` blocks. Keep `Agent` additive and concise.
+Use `agent.md` when the machine-readable page needs to diverge substantially.

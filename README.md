@@ -604,7 +604,7 @@ This does **not** require a separate `docs.config` flag.
 
 See:
 
-- [Markdown Routes](https://docs.farming-labs.dev/docs/customization/markdown-routes)
+- [Agent Primitive](https://docs.farming-labs.dev/docs/customization/agent-primitive)
 - [MCP Server](https://docs.farming-labs.dev/docs/customization/mcp)
 - [llms.txt](https://docs.farming-labs.dev/docs/customization/llms-txt)
 
