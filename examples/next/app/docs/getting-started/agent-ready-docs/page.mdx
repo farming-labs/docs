@@ -160,9 +160,9 @@ That is the whole pattern.
 ## Request Flow
 
 When a request comes in for `/docs/getting-started/agent-ready-docs.md`, `withDocs()` handles the
-rewrite automatically. The generated bridge route turns that into a markdown-mode `/api/docs`
-request, then the existing docs API resolves the requested slug and checks whether the page has
-`agentRawContent`.
+rewrite automatically into the existing `/api/docs` handler. The shared docs API accepts either the
+explicit `format=markdown&path=...` query or the preserved rewritten `.md` pathname, then resolves
+the requested slug and checks whether the page has `agentRawContent`.
 
 Because this page has a sibling `agent.md`, the response becomes the raw contents of that file. If
 another page does not have `agent.md`, the same route falls back to the normal page markdown.
