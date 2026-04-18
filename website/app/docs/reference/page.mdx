@@ -1052,7 +1052,7 @@ Action buttons shown on each docs page. See [Page Actions](/docs/customization/p
 | ------------- | ----------- | --------------------------------------------------------------------------------- |
 | `name`        | `string`    | Display name (e.g. `"ChatGPT"`, `"Claude"`)                                       |
 | `icon`        | `ReactNode` | Icon rendered next to the name                                                    |
-| `urlTemplate` | `string`    | URL template. `{url}` is replaced with the page URL, `{mdxUrl}` with the MDX URL, and `{githubUrl}` with the GitHub edit URL when `github` is configured. |
+| `urlTemplate` | `string`    | URL template. `{url}` is replaced with the page URL, `{mdxUrl}` with the raw MDX source URL, and `{githubUrl}` with the GitHub edit URL when `github` is configured. Use `{url}.md` when you want the public machine-readable page route. |
 
 ```ts
 pageActions: {
@@ -1243,7 +1243,7 @@ import { createDocsServer } from "@farming-labs/tanstack-start/server";
 | Property | Type                                                       | Description |
 | -------- | ---------------------------------------------------------- | ----------- |
 | `load`   | `({ pathname, locale? }) => Promise<DocsServerLoadResult>` | Loads docs page data and the sidebar tree for a pathname |
-| `GET`    | `({ request }) => Response`                                | Search / `llms.txt` endpoint handler |
+| `GET`    | `({ request }) => Response`                                | Search / markdown / `llms.txt` endpoint handler |
 | `POST`   | `({ request }) => Promise<Response>`                       | AI chat endpoint handler |
 
 ```ts title="src/lib/docs.server.ts"

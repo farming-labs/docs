@@ -17,6 +17,7 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 - 💬 **Built-in docs actions** — page feedback, copy/open page actions, and code-block copy callbacks
 - 🔎 **Search adapters** — zero-config built-in search, plus Typesense, Algolia, and custom adapters
 - 🤖 **Built-in MCP server** — expose docs over stdio or `/api/docs/mcp` for MCP clients and IDE agents
+- 📝 **Machine-readable markdown routes** — serve docs as markdown with optional page-local `agent.md` overrides
 
 **Get started:**
 
@@ -533,6 +534,46 @@ See:
 - [Configuration](https://docs.farming-labs.dev/docs/configuration#mcp-server)
 - [API Reference](https://docs.farming-labs.dev/docs/reference#docsmcpconfig)
 
+## Machine-readable Markdown Routes
+
+The shared docs API can return page markdown through the existing docs handler:
+
+```txt
+/api/docs?format=markdown&path=getting-started/quickstart
+```
+
+In **Next.js**, `withDocs()` also exposes public page-level markdown routes automatically:
+
+```txt
+/docs/getting-started/quickstart.md
+```
+
+Add a sibling `agent.md` only when a page needs a machine-specific override:
+
+```txt
+app/docs/getting-started/quickstart/
+  page.mdx
+
+app/docs/getting-started/agent-ready-docs/
+  page.mdx
+  agent.md
+```
+
+Behavior:
+
+- `/docs/<slug>` stays the normal HTML page
+- if `agent.md` exists, `/docs/<slug>.md` returns that file
+- if `agent.md` does not exist, the markdown route falls back to the normal page markdown
+- MCP `read_page("/docs/<slug>")` uses the same page source and sees the same override
+
+This does **not** require a separate `docs.config` flag.
+
+See:
+
+- [Markdown Routes](https://docs.farming-labs.dev/docs/customization/markdown-routes)
+- [MCP Server](https://docs.farming-labs.dev/docs/customization/mcp)
+- [llms.txt](https://docs.farming-labs.dev/docs/customization/llms-txt)
+
 Each page uses frontmatter for metadata:
 
 ```md
@@ -812,6 +853,7 @@ This matters because:
 - **One config file** means an AI can understand your entire docs setup by reading a single file, rather than tracing through multiple interconnected files.
 - **Declarative config** is hard to break — an AI can change `theme: darksharp()` or add `ai: { enabled: true }` without worrying about import paths or component hierarchies.
 - **llms.txt** is built in — your docs are automatically served in LLM-optimized format with zero extra config.
+- **Page-level markdown routes** let agents fetch a single docs page over plain HTTP instead of parsing HTML, and `agent.md` gives you a focused page-local override when needed.
 
 ### The CLI does the heavy lifting
 

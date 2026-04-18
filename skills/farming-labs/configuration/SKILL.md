@@ -71,6 +71,39 @@ export default defineDocs({
 
 ---
 
+## Machine-readable markdown routes
+
+No separate `docs.config` flag is required for page-level markdown delivery.
+
+Default behavior:
+
+- the shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
+- **Next.js:** `withDocs()` also serves `/docs/<slug>.md`
+- if a page folder has `agent.md`, that file becomes the markdown response for that page
+- if `agent.md` is missing, the markdown response falls back to the normal page markdown
+- MCP `read_page("/docs/<slug>")` uses the same page source and sees the same override
+
+Folder example:
+
+```txt
+app/docs/getting-started/quickstart/
+  page.mdx
+
+app/docs/getting-started/agent-ready-docs/
+  page.mdx
+  agent.md
+```
+
+Useful checks:
+
+```bash
+curl "http://127.0.0.1:3000/api/docs?format=markdown&path=getting-started/quickstart"
+curl "http://127.0.0.1:3000/docs/getting-started/quickstart.md"
+curl "http://127.0.0.1:3000/docs/getting-started/agent-ready-docs.md"
+```
+
+---
+
 ## GitHub (Edit on GitHub and openDocs)
 
 ```ts
