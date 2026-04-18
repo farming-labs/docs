@@ -30,8 +30,8 @@ packages/fumadocs/src/docs-api.ts
 ## Route Rules
 
 ```ts
-"/docs.md" -> "/api/docs/markdown"
-"/docs/:slug*.md" -> "/api/docs/markdown/:slug*"
+"/docs.md" -> "/api/docs?format=markdown"
+"/docs/:slug*.md" -> "/api/docs?format=markdown&path=:slug*"
 ```
 
 For this page:
