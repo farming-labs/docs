@@ -460,8 +460,83 @@ function stripCommentsAndStrings(content: string): string {
   return result;
 }
 
-function stripMdx(raw: string): string {
-  const { content } = matter(raw);
+function resolveAgentMdxContent(content: string, audience: "human" | "agent"): string {
+  const lines = content.split("\n");
+  const output: string[] = [];
+  let fenceMarker: string | null = null;
+  let agentDepth = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const fenceMatch = trimmed.match(/^(`{3,}|~{3,})/);
+
+    if (fenceMatch) {
+      if (!fenceMarker) {
+        fenceMarker = fenceMatch[1];
+      } else if (trimmed.startsWith(fenceMarker)) {
+        fenceMarker = null;
+      }
+
+      if (audience === "agent" || agentDepth === 0) {
+        output.push(line);
+      }
+      continue;
+    }
+
+    if (!fenceMarker) {
+      if (/^<Agent(?:\s[^>]*)?\/>$/.test(trimmed)) {
+        continue;
+      }
+
+      const singleLineMatch = line.match(/^(\s*)<Agent(?:\s[^>]*)?>([\s\S]*?)<\/Agent>\s*$/);
+      if (singleLineMatch) {
+        if (audience === "agent" && singleLineMatch[2]) {
+          output.push(`${singleLineMatch[1]}${singleLineMatch[2]}`);
+        }
+        continue;
+      }
+
+      const openMatch = line.match(/^(\s*)<Agent(?:\s[^>]*)?>\s*$/);
+      if (openMatch) {
+        agentDepth += 1;
+        continue;
+      }
+
+      const openWithContentMatch = line.match(/^(\s*)<Agent(?:\s[^>]*)?>(.*)$/);
+      if (openWithContentMatch) {
+        agentDepth += 1;
+        if (audience === "agent" && openWithContentMatch[2]) {
+          output.push(`${openWithContentMatch[1]}${openWithContentMatch[2]}`);
+        }
+        continue;
+      }
+
+      const closeWithContentMatch = line.match(/^(.*)<\/Agent>\s*$/);
+      if (closeWithContentMatch && agentDepth > 0) {
+        if (audience === "agent" && closeWithContentMatch[1]) {
+          output.push(closeWithContentMatch[1]);
+        }
+        agentDepth = Math.max(0, agentDepth - 1);
+        continue;
+      }
+
+      if (/^<\/Agent>\s*$/.test(trimmed) && agentDepth > 0) {
+        agentDepth = Math.max(0, agentDepth - 1);
+        continue;
+      }
+    }
+
+    if (agentDepth > 0 && audience === "human") {
+      continue;
+    }
+
+    output.push(line);
+  }
+
+  return output.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function stripMdx(content: string): string {
   return content
     .replace(/^(import|export)\s.*$/gm, "")
     .replace(/<[^>]+\/>/g, "")
@@ -509,12 +584,22 @@ function scanDocsDir(
           slugParts[slugParts.length - 1]?.replace(/-/g, " ") ||
           "Documentation";
         const description = data.description as string | undefined;
-        const { content: rawContent } = matter(raw);
-        const content = stripMdx(raw);
+        const { content: fileContent } = matter(raw);
+        const rawContent = resolveAgentMdxContent(fileContent, "human");
+        const agentRawContent = resolveAgentMdxContent(fileContent, "agent");
+        const content = stripMdx(rawContent);
         const baseUrl = slugParts.length === 0 ? `/${entry}` : `/${entry}/${slugParts.join("/")}`;
         const url = withLangInUrl(baseUrl, locale);
 
-        indexes.push({ title, description, content, rawContent, url, locale });
+        indexes.push({
+          title,
+          description,
+          content,
+          rawContent,
+          agentFallbackRawContent: agentRawContent !== rawContent ? agentRawContent : undefined,
+          url,
+          locale,
+        });
       } catch {
         // skip unreadable files
       }
@@ -578,12 +663,14 @@ function scanChangelogDir(
 
     try {
       const raw = fs.readFileSync(pagePath, "utf-8");
-      const { data, content: rawContent } = matter(raw);
+      const { data, content: fileContent } = matter(raw);
       if (data.draft === true) continue;
 
       const title = (data.title as string) || name.replace(/-/g, " ");
       const description = data.description as string | undefined;
-      const content = stripMdx(raw);
+      const rawContent = resolveAgentMdxContent(fileContent, "human");
+      const agentRawContent = resolveAgentMdxContent(fileContent, "agent");
+      const content = stripMdx(rawContent);
       const url = withLangInUrl(`/${entryPath}/${changelogPath}/${name}`, locale);
       const tags = Array.isArray(data.tags)
         ? data.tags.filter((value): value is string => typeof value === "string")
@@ -594,6 +681,7 @@ function scanChangelogDir(
         description,
         content,
         rawContent,
+        agentFallbackRawContent: agentRawContent !== rawContent ? agentRawContent : undefined,
         url,
         locale,
         type: "changelog",
@@ -658,7 +746,7 @@ function renderMarkdownDocument(page: DocsMcpPage | DocsSearchSourcePage): strin
 
   const lines = [`# ${page.title}`, `URL: ${page.url}`];
   if (page.description) lines.push(`Description: ${page.description}`);
-  lines.push("", page.rawContent ?? page.content);
+  lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);
   return lines.join("\n");
 }
 

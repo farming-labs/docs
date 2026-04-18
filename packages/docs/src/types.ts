@@ -665,6 +665,10 @@ export interface DocsSearchSourcePage {
   content: string;
   description?: string;
   rawContent?: string;
+  agentContent?: string;
+  agentRawContent?: string;
+  agentFallbackContent?: string;
+  agentFallbackRawContent?: string;
   type?: "page" | "api" | "code" | "changelog";
   locale?: string;
   framework?: string;

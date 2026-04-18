@@ -145,6 +145,10 @@ title: "Quickstart"
 # Quickstart
 
 Build your first app.
+
+<Agent>
+Validate the generated example paths before editing this guide.
+</Agent>
 `,
     );
 
@@ -173,6 +177,12 @@ Build your first app.
         expect.objectContaining({
           url: "/docs/installation",
           agentRawContent: "Use `pnpm install --frozen-lockfile`.\n",
+        }),
+        expect.objectContaining({
+          url: "/docs/guides/quickstart",
+          agentFallbackRawContent: expect.stringContaining(
+            "Validate the generated example paths before editing this guide.",
+          ),
         }),
       ]),
     );
@@ -298,7 +308,7 @@ No frontmatter title here.
           params: {
             name: "search_docs",
             arguments: {
-              query: "install",
+              query: "generated example paths",
             },
           },
         }),
@@ -309,7 +319,7 @@ No frontmatter title here.
       result?: { content?: Array<{ text?: string }> };
     }>(searchResponse);
 
-    expect(searchPayload.result?.content?.[0]?.text).toContain("/docs/installation");
+    expect(searchPayload.result?.content?.[0]?.text).toContain("/docs/guides/quickstart");
 
     const readPageResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -343,6 +353,38 @@ No frontmatter title here.
     );
     expect(readPayload.result?.content?.[0]?.text).not.toContain("# Installation");
     expect(readPayload.result?.content?.[0]?.text).not.toContain("URL: /docs/installation");
+
+    const quickstartReadResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": sessionId!,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 5,
+          method: "tools/call",
+          params: {
+            name: "read_page",
+            arguments: {
+              path: "guides/quickstart",
+            },
+          },
+        }),
+      }),
+    });
+
+    const quickstartPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(quickstartReadResponse);
+
+    expect(quickstartPayload.result?.content?.[0]?.text).toContain(
+      "Validate the generated example paths before editing this guide.",
+    );
+    expect(quickstartPayload.result?.content?.[0]?.text).not.toContain("<Agent>");
 
     const deleteResponse = await handlers.DELETE({
       request: new Request("http://localhost/api/docs/mcp", {
