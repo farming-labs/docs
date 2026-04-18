@@ -42,6 +42,29 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - TanStack Start, SvelteKit, Astro, and Nuxt use the shared docs API markdown mode through their framework-specific docs route setup.
 - Do not switch frameworks unless the user explicitly asks to migrate.
 
+## Follow-up pages
+
+- Use [/docs/installation](/docs/installation) when the user is still wiring the framework into an app or has not created the docs route yet.
+- Use [/docs/cli](/docs/cli) when they want scaffolding, upgrades, search sync, or MCP commands instead of manual setup.
+- Use [/docs/reference](/docs/reference) when they need the full typed `defineDocs()` surface or nested option details.
+- Use [/docs/customization](/docs/customization) when the question moves from config into layout, sidebar, colors, or page-level polish.
+- Use [/docs/themes](/docs/themes) when they are choosing a preset theme or building their own.
+- Use [/docs/customization/components](/docs/customization/components) when the question is really about `components` or `theme.ui.components`.
+- Use [/docs/customization/markdown-routes](/docs/customization/markdown-routes) when the user wants `.md` routes, hidden `<Agent>` content, or sibling `agent.md` overrides.
+- Use [/docs/customization/mcp](/docs/customization/mcp) when they want machine-readable access through the built-in MCP server.
+- Use [/docs/customization/llms-txt](/docs/customization/llms-txt) when they need crawler-friendly summaries for AI systems.
+- Use [/docs/customization/ai-chat](/docs/customization/ai-chat) when they are configuring Ask AI or retrieval-backed chat.
+- Use [/docs/customization/page-actions](/docs/customization/page-actions) when they want Copy Markdown or Open in LLM actions.
+- Use [/docs/token-efficiency](/docs/token-efficiency) when they care about retrieval quality, context size, or agent cost.
+
+## Suggested exploration order
+
+1. Confirm the runtime and config file path first.
+2. Verify `entry`, `contentDir`, `nav`, and `theme` before discussing advanced features.
+3. Move to `search`, `ai`, `mcp`, `pageActions`, or `llmsTxt` only after the base project shape is correct.
+4. Use customization and theme pages once routing and content structure are stable.
+5. Use markdown routes, MCP, and token-efficiency docs when the user is optimizing for agents or machine-readable access.
+
 ## Output style
 
 - Prefer short, exact config examples.
