@@ -9,6 +9,7 @@ import FrameworkTabs from "@/components/ui/framework-tabs";
 import SvelteRouteTabs from "@/components/ui/svelte-route-tabs";
 import AstroRouteTabs from "@/components/ui/astro-route-tabs";
 import InitBlockTabs from "@/components/ui/init-block-tabs";
+import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 
 const heroVersions = [
   "v0.1.0",
@@ -1050,8 +1051,8 @@ export default defineDocs({
 function FooterSection() {
   return (
     <footer className="relative z-10 bg-white dark:bg-black">
-      <div className="absolute bottom-10 left-0 w-full h-px bg-black/[8%] dark:bg-white/[8%]" />
-      <div className="absolute bottom-24 left-0 w-full h-px bg-black/[8%] dark:bg-white/[8%]" />
+      <div className="absolute bottom-11 left-0 w-full h-px bg-black/[8%] dark:bg-white/[8%]" />
+      <div className="absolute bottom-23 left-0 w-full h-px bg-black/[8%] dark:bg-white/[8%]" />
       <div className="w-full px-4 py-12 sm:px-0">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="w-full">
@@ -1096,6 +1097,13 @@ function FooterSection() {
             >
               npm
             </Link>
+            <div className="relative hidden sm:flex sm:items-center sm:pl-4 sm:pr-3">
+              <span
+                aria-hidden
+                className="absolute -inset-y-4 left-0 w-px bg-black/10 dark:bg-white/10"
+              />
+              <SidebarThemeToggle />
+            </div>
           </div>
         </div>
       </div>

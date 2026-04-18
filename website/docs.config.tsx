@@ -306,7 +306,7 @@ export default defineDocs({
     ),
     footer: (
       <div
-        className="-mx-4 -my-2 -mb-4 flex flex-col gap-3 font-mono uppercase"
+        className="-mx-4 -my-2 -mb-4 border-t flex flex-col gap-3 font-mono uppercase"
         style={{
           padding: "9px 16px",
           fontSize: "12px",
@@ -319,7 +319,6 @@ export default defineDocs({
           style={{ color: "var(--color-fd-muted-foreground)" }}
         >
           <span className="text-[10px] tracking-wide">Theme</span>
-
           <SidebarThemeToggle variant="pill" />
         </div>
         <div
