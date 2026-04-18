@@ -135,7 +135,7 @@ function HeroSection() {
 function AgentFeaturesSection() {
   return (
     <section className="relative z-10 border-t border-black/[8%] bg-white dark:border-white/[8%] dark:bg-black">
-      <div className="mx-auto max-w-7xl px-5 py-16 sm:px-6 sm:py-20">
+      <div className="w-full px-4 py-16 sm:px-0 sm:py-20">
         <div className="max-w-3xl">
           <span className="mb-4 block font-mono text-[10px] uppercase tracking-[0.2em] text-black/30 dark:text-white/30">
             AI-native runtime
@@ -730,7 +730,7 @@ const { data } = await useFetch("/api/docs", {
 function InstallSection() {
   return (
     <section className="relative z-10 bg-white dark:bg-black border-t border-black/[8%] dark:border-white/[8%]">
-      <div className="mx-auto max-w-7xl px-5 sm:px-6 py-16 sm:py-24">
+      <div className="w-full px-4 py-16 sm:px-0 sm:py-24">
         <div className="mb-10 sm:mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-black/30 dark:text-white/30 mb-4 block">
             Quick Start
@@ -844,7 +844,7 @@ function ThemesSection() {
 
   return (
     <section className="relative z-10 bg-white dark:bg-black border-t border-black/[8%] dark:border-white/[8%]">
-      <div className="mx-auto max-w-7xl px-5 sm:px-6 py-16 sm:py-24">
+      <div className="w-full px-4 py-16 sm:px-0 sm:py-24">
         <div className="mb-10 sm:mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-black/30 dark:text-white/30 mb-4 block">
             Themes
@@ -943,7 +943,7 @@ function ThemesSection() {
 function ConfigSection() {
   return (
     <section className="relative z-10 bg-white dark:bg-black border-t border-black/[8%] dark:border-white/[8%]">
-      <div className="mx-auto max-w-7xl px-5 sm:px-6 py-16 sm:py-24">
+      <div className="w-full px-4 py-16 sm:px-0 sm:py-24">
         <div className="mb-10 sm:mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-black/30 dark:text-white/30 mb-4 block">
             Configuration
@@ -1052,7 +1052,7 @@ function FooterSection() {
     <footer className="relative z-10 bg-white dark:bg-black">
       <div className="absolute bottom-10 left-0 w-full h-px bg-black/[8%] dark:bg-white/[8%]" />
       <div className="absolute bottom-24 left-0 w-full h-px bg-black/[8%] dark:bg-white/[8%]" />
-      <div className="mx-auto max-w-7xl px-6 py-12">
+      <div className="w-full px-4 py-12 sm:px-0">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="w-full">
             <span className="font-mono text-xs tracking-tighter text-black/40 dark:text-white/40 uppercase">
