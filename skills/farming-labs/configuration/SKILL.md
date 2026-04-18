@@ -79,6 +79,7 @@ Default behavior:
 
 - the shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
 - **Next.js:** `withDocs()` also serves `/docs/<slug>.md`
+- embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI and are included in the markdown fallback
 - if a page folder has `agent.md`, that file becomes the markdown response for that page
 - if `agent.md` is missing, the markdown response falls back to the normal page markdown
 - MCP `read_page("/docs/<slug>")` uses the same page source and sees the same override
@@ -86,6 +87,9 @@ Default behavior:
 Folder example:
 
 ```txt
+app/docs/quickstart/
+  page.mdx
+
 app/docs/getting-started/quickstart/
   page.mdx
 
@@ -94,11 +98,24 @@ app/docs/getting-started/agent-ready-docs/
   agent.md
 ```
 
+Embedded agent-context example:
+
+```mdx
+# Quickstart
+
+Human-facing instructions.
+
+<Agent>
+You are an implementation agent.
+Keep the scaffolded paths and commands aligned with the actual project structure.
+</Agent>
+```
+
 Useful checks:
 
 ```bash
-curl "http://127.0.0.1:3000/api/docs?format=markdown&path=getting-started/quickstart"
-curl "http://127.0.0.1:3000/docs/getting-started/quickstart.md"
+curl "http://127.0.0.1:3000/api/docs?format=markdown&path=quickstart"
+curl "http://127.0.0.1:3000/docs/quickstart.md"
 curl "http://127.0.0.1:3000/docs/getting-started/agent-ready-docs.md"
 ```
 

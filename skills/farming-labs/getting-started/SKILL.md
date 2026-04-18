@@ -44,7 +44,7 @@ Ten built-in theme entrypoints: `fumadocs` (default), `darksharp`, `pixel-border
 - **Page actions** — enable with `pageActions.copyMarkdown` and `pageActions.openDocs`.
 - **Built-in changelog pages (Next.js)** — enable `changelog` to publish a release feed from dated MDX entries.
 - **Built-in MCP server** — enabled by default at `/api/docs/mcp` and for local stdio tools. Opt out with `mcp: false` or `mcp: { enabled: false }`.
-- **Machine-readable markdown routes** — Next.js serves `/docs/<slug>.md` automatically with `withDocs()`. Add a sibling `agent.md` to override agent-facing markdown; otherwise the route falls back to the normal page markdown. The shared docs API also supports `GET /api/docs?format=markdown&path=<slug>`.
+- **Machine-readable markdown routes** — Next.js serves `/docs/<slug>.md` automatically with `withDocs()`. Use embedded `<Agent>...</Agent>` blocks inside `page.mdx` when the normal page only needs extra machine context; add a sibling `agent.md` when the whole machine-readable page should be overridden. The shared docs API also supports `GET /api/docs?format=markdown&path=<slug>`.
 
 ### MCP quick test
 

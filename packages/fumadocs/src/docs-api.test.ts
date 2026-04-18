@@ -373,7 +373,7 @@ Search should not return this hidden agent-only zebra token.
     });
 
     const response = await GET(
-      new Request("http://localhost/api/docs?query=agent-only-zebra-token"),
+      new Request("http://localhost/api/docs?query=agent-only%20zebra%20token"),
     );
     const payload = (await response.json()) as Array<{ content: string; description?: string }>;
     const renderedSearchText = payload

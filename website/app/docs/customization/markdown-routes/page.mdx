@@ -1,6 +1,6 @@
 ---
 title: "Markdown Routes"
-description: "Serve machine-readable markdown for docs pages, with optional agent.md overrides."
+description: "Serve machine-readable markdown for docs pages, with embedded Agent blocks and optional agent.md overrides."
 icon: "fileText"
 order: 5.7
 ---
@@ -13,13 +13,13 @@ agents.
 The shared docs API supports markdown reads through:
 
 ```txt title="/api/docs?format=markdown&path=<slug>"
-/api/docs?format=markdown&path=getting-started/quickstart
+/api/docs?format=markdown&path=quickstart
 ```
 
 In **Next.js**, `withDocs()` also generates public page-level markdown routes automatically:
 
 ```txt title="/docs/<slug>.md"
-/docs/getting-started/quickstart.md
+/docs/quickstart.md
 ```
 
 ## Why use this
@@ -28,14 +28,45 @@ In **Next.js**, `withDocs()` also generates public page-level markdown routes au
 - keep the human page at `/docs/<slug>` and the machine page at `/docs/<slug>.md`
 - add page-local agent instructions without rewriting the human docs page
 
+## Authoring Model
+
+You have three layers, from lightest to strongest:
+
+1. Normal `page.mdx`
+2. Embedded `<Agent>...</Agent>` blocks inside `page.mdx`
+3. A sibling `agent.md` override when the whole machine-readable page should be different
+
+Use `<Agent>` when the human page is mostly correct and you only need extra implementation context
+for `.md` and MCP reads.
+
+```mdx title="app/docs/quickstart/page.mdx"
+# Quickstart
+
+Human-facing setup instructions.
+
+<Agent>
+You are an implementation agent.
+Preserve the scaffolded file paths and verify `/docs/quickstart.md` still exposes this block.
+</Agent>
+```
+
+That gives you:
+
+- `/docs/quickstart` — normal page, with the `Agent` block hidden
+- `/docs/quickstart.md` — normal page markdown, plus the `Agent` block content
+- MCP `read_page("/docs/quickstart")` — same machine-oriented content as the markdown route
+
 ## Folder Convention
 
-Use a normal `page.mdx` for people and add a sibling `agent.md` only when the page needs a focused
-agent override.
+Use a normal `page.mdx` for people. Add embedded `Agent` blocks when the page only needs extra
+machine context. Add a sibling `agent.md` only when the page needs a focused full override.
 
 ```txt
 app/docs/getting-started/quickstart/
   page.mdx
+
+app/docs/quickstart/
+  page.mdx         # may include <Agent>...</Agent>
 
 app/docs/getting-started/agent-ready-docs/
   page.mdx
@@ -45,9 +76,11 @@ app/docs/getting-started/agent-ready-docs/
 ## Behavior
 
 - `page.mdx` stays the human page at `/docs/<slug>`
+- `<Agent>...</Agent>` is hidden in the normal UI page
 - if `agent.md` exists, the markdown endpoint returns that file
 - if `agent.md` does not exist, the markdown endpoint falls back to the normal page markdown
-- MCP `read_page("/docs/<slug>")` uses the same page source and sees the same `agent.md` override
+- on that fallback path, embedded `Agent` blocks are unwrapped into the machine-readable output
+- MCP `read_page("/docs/<slug>")` uses the same page source and sees the same `agent.md` override or `Agent` fallback
 
 <Callout type="info" title="No extra config flag">
   There is no separate `docs.config` option to turn this on. The shared docs API already supports
@@ -70,12 +103,15 @@ That gives you:
 - `/docs/<slug>` for the normal HTML page
 - `/docs/<slug>.md` for the machine-readable page markdown
 
+The public `.md` route rewrites into the existing `/api/docs` handler with `format=markdown`, so the
+shared docs API remains the source of truth for both direct API reads and page-level markdown URLs.
+
 ## Other Frameworks and Custom Routes
 
 The existing docs API handler can already return page markdown through `format=markdown`.
 
 ```txt
-/api/docs?format=markdown&path=getting-started/quickstart
+/api/docs?format=markdown&path=quickstart
 ```
 
 That means TanStack Start, SvelteKit, Astro, and Nuxt can use the same shared markdown mode through
@@ -85,10 +121,16 @@ framework-specific route that forwards into the same docs API handler.
 ## Testing
 
 ```bash title="terminal"
+curl http://localhost:3000/docs/quickstart.md
 curl http://localhost:3000/docs/getting-started/agent-ready-docs.md
-curl http://localhost:3000/docs/getting-started/quickstart.md
-curl "http://localhost:3000/api/docs?format=markdown&path=getting-started/quickstart"
+curl "http://localhost:3000/api/docs?format=markdown&path=quickstart"
+curl "http://localhost:3000/api/docs?format=markdown&path=getting-started/agent-ready-docs"
 ```
+
+For the built-in Next example in this repo:
+
+- `/docs/quickstart.md` demonstrates the embedded `<Agent>` fallback
+- `/docs/getting-started/agent-ready-docs.md` demonstrates a full `agent.md` override
 
 ## When To Use This vs MCP and `llms.txt`
 

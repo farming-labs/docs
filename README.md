@@ -17,7 +17,7 @@ A modern, flexible MDX-based documentation framework. Write markdown, get a poli
 - 💬 **Built-in docs actions** — page feedback, copy/open page actions, and code-block copy callbacks
 - 🔎 **Search adapters** — zero-config built-in search, plus Typesense, Algolia, and custom adapters
 - 🤖 **Built-in MCP server** — expose docs over stdio or `/api/docs/mcp` for MCP clients and IDE agents
-- 📝 **Machine-readable markdown routes** — serve docs as markdown with optional page-local `agent.md` overrides
+- 📝 **Machine-readable markdown routes** — serve docs as markdown with embedded `Agent` blocks and optional page-local `agent.md` overrides
 
 **Get started:**
 
@@ -549,16 +549,35 @@ See:
 The shared docs API can return page markdown through the existing docs handler:
 
 ```txt
-/api/docs?format=markdown&path=getting-started/quickstart
+/api/docs?format=markdown&path=quickstart
 ```
 
 In **Next.js**, `withDocs()` also exposes public page-level markdown routes automatically:
 
 ```txt
-/docs/getting-started/quickstart.md
+/docs/quickstart.md
 ```
 
-Add a sibling `agent.md` only when a page needs a machine-specific override:
+Use embedded `Agent` blocks when the normal page only needs extra machine context, and add a
+sibling `agent.md` only when a page needs a machine-specific override:
+
+```mdx
+# Quickstart
+
+Human-facing setup instructions.
+
+<Agent>
+You are an implementation agent.
+Verify `/docs/quickstart.md` still exposes this block when no sibling `agent.md` exists.
+</Agent>
+```
+
+```txt
+app/docs/quickstart/
+  page.mdx
+```
+
+Full override example:
 
 ```txt
 app/docs/getting-started/quickstart/
@@ -572,9 +591,14 @@ app/docs/getting-started/agent-ready-docs/
 Behavior:
 
 - `/docs/<slug>` stays the normal HTML page
+- embedded `<Agent>...</Agent>` blocks are hidden in the normal UI
 - if `agent.md` exists, `/docs/<slug>.md` returns that file
 - if `agent.md` does not exist, the markdown route falls back to the normal page markdown
-- MCP `read_page("/docs/<slug>")` uses the same page source and sees the same override
+- on that fallback path, embedded `Agent` blocks are included in the machine-readable output
+- MCP `read_page("/docs/<slug>")` uses the same page source and sees the same override or `Agent` fallback
+
+In Next.js, the public `.md` route rewrites into the existing `/api/docs` handler with
+`format=markdown`, so the shared docs API remains the source of truth.
 
 This does **not** require a separate `docs.config` flag.
 
