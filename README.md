@@ -492,13 +492,23 @@ See the full docs for more detail:
 
 ## Built-in MCP Server
 
-`mcp` exposes your docs as a built-in MCP server for local agents and remote HTTP clients.
+MCP is enabled by default, so your docs can be exposed as a built-in MCP server for local agents
+and remote HTTP clients without extra config.
+
+```ts
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+});
+```
+
+Opt out explicitly when you do not want the MCP surface:
 
 ```ts
 export default defineDocs({
   entry: "docs",
   mcp: {
-    enabled: true,
+    enabled: false,
   },
   theme: fumadocs(),
 });

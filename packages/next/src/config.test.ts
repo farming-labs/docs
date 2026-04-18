@@ -169,6 +169,16 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(route).toContain("search: docsConfig.search");
   });
 
+  it("generates the default MCP route when mcp config is omitted", () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    withDocs({});
+
+    expect(existsSync(join(tmpDir, "app/api/docs/mcp/route.ts"))).toBe(true);
+  });
+
   it("generates the markdown bridge route and rewrites", async () => {
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);

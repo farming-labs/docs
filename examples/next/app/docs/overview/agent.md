@@ -45,7 +45,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
 | `ai`          | `AIConfig`                                      | —                | RAG-powered AI chat                                                                  |
 | `search`      | `boolean \| DocsSearchConfig`                   | `true`           | Built-in simple search, Typesense, Algolia, or a custom adapter                     |
-| `mcp`         | `boolean \| DocsMcpConfig`                      | `false`          | Built-in MCP server over stdio and `/api/docs/mcp`                                   |
+| `mcp`         | `boolean \| DocsMcpConfig`                      | enabled          | Built-in MCP server over stdio and `/api/docs/mcp`                                   |
 | `apiReference` | `boolean \| ApiReferenceConfig`               | `false`          | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON |
 | `changelog`   | `boolean \| ChangelogConfig`                    | `false`          | Generated changelog feed and entry pages from dated MDX entries                      |
 | `ordering`    | `"alphabetical" \| "numeric" \| OrderingItem[]` | `"alphabetical"` | Sidebar page ordering strategy                                                       |
@@ -155,7 +155,7 @@ Built-in MCP server configuration for AI clients, IDE agents, and local MCP tool
 
 | Property   | Type                  | Default           | Description |
 | ---------- | --------------------- | ----------------- | ----------- |
-| `enabled`  | `boolean`             | `true` in object config | Enable the MCP server when the object is present |
+| `enabled`  | `boolean`             | `true`                | Enable the MCP server. MCP is on by default; set `false` to opt out. |
 | `route`    | `string`              | `"/api/docs/mcp"` | Streamable HTTP route used by the MCP endpoint |
 | `name`     | `string`              | `nav.title` or `@farming-labs/docs` | MCP server name reported to clients |
 | `version`  | `string`              | `"0.0.0"`         | Version string reported to clients |
@@ -165,7 +165,6 @@ Built-in MCP server configuration for AI clients, IDE agents, and local MCP tool
 export default defineDocs({
   entry: "docs",
   mcp: {
-    enabled: true,
     route: "/api/docs/mcp",
     name: "My Docs MCP",
     tools: {

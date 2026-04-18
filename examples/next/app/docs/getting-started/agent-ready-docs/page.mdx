@@ -132,12 +132,12 @@ access and parity checks, but the HTTP `.md` route is the simple public contract
 
 ## Docs Config
 
-The example app keeps MCP enabled so the markdown route and MCP can both be exercised:
+The example app does not need any MCP flag. `withDocs()` picks up the default MCP surface
+automatically, so the markdown route and MCP can both be exercised without extra config:
 
 ```tsx title="examples/next/docs.config.tsx"
 export default defineDocs({
   entry: "docs",
-  mcp: { enabled: true },
   ordering: "numeric",
   pageActions: {
     copyMarkdown: { enabled: true },

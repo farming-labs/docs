@@ -132,7 +132,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
 | `search`      | `boolean \| DocsSearchConfig`  | `true`          | Built-in simple search, Typesense, Algolia, or a custom adapter |
 | `changelog`   | `boolean \| ChangelogConfig`   | `false`         | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
-| `mcp`         | `boolean \| DocsMcpConfig`     | `false`         | Built-in MCP server over stdio and `/api/docs/mcp` |
+| `mcp`         | `boolean \| DocsMcpConfig`     | enabled         | Built-in MCP server over stdio and `/api/docs/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions or a hosted OpenAPI JSON |
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template                              |
@@ -320,13 +320,26 @@ Notes:
 
 ## MCP Server
 
-Use `mcp` to expose your docs as a built-in MCP server for AI tools and IDE agents.
+MCP is enabled by default. Use `mcp` to customize the built-in MCP server for AI tools and IDE
+agents, or set `enabled: false` to opt out.
 
 ```ts title="docs.config.ts"
 export default defineDocs({
   entry: "docs",
   mcp: {
-    enabled: true,
+    route: "/api/docs/mcp",
+  },
+  theme: fumadocs(),
+});
+```
+
+Opt out explicitly:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  mcp: {
+    enabled: false,
   },
   theme: fumadocs(),
 });
