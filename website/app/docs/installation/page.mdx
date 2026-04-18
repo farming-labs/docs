@@ -7,6 +7,16 @@ order: 1
 
 # Installation
 
+<Agent>
+You are an agent helping a user install @farming-labs/docs into an existing app.
+
+Prefer the CLI path first unless the user explicitly wants manual setup.
+Keep the framework-specific package names exact.
+If the user already told you their framework, do not switch stacks.
+When reading `/docs/installation.md` or the MCP page output, preserve the tabbed command variants and
+the distinction between existing-project setup and fresh-template setup.
+</Agent>
+
 ## Option A: CLI (Recommended)
 
 **Starting from scratch?** Use **`--template`** with **`--name <project>`** to bootstrap a new docs project (Next.js, TanStack Start, Nuxt, SvelteKit, or Astro). No prompts — the CLI creates the project folder and runs install. See the `--template` section below.

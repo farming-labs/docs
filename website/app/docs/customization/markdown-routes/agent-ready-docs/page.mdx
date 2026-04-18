@@ -1,0 +1,29 @@
+---
+title: "Agent-ready docs"
+description: "A live demo page for agent.md overrides."
+icon: "bot"
+order: 5.71
+---
+
+# Agent-ready docs
+
+This page exists to demonstrate a full `agent.md` override on the docs site itself.
+
+In the normal UI, you are reading `page.mdx`.
+On the machine-readable route:
+
+```txt title="/docs/customization/markdown-routes/agent-ready-docs.md"
+/docs/customization/markdown-routes/agent-ready-docs.md
+```
+
+the framework will return the sibling `agent.md` instead.
+
+Use this pattern when the human page should stay short and explanatory, but the agent-facing content
+needs:
+
+- implementation-only instructions
+- stricter step ordering
+- file-path or command guarantees
+- machine-oriented context that would clutter the normal page
+
+See [Markdown Routes](/docs/customization/markdown-routes) for the full behavior.
