@@ -1,0 +1,25 @@
+---
+title: Overview
+description: Human-facing overview page for the docs example.
+order: 4
+---
+
+# Overview
+
+This page is the normal human-facing documentation page.
+
+Readers should see this content at `/docs/overview`.
+
+## What It Shows
+
+- A standard `page.mdx` page for humans
+- A sibling `agent.md` file for agent-specific markdown reads
+- A clean split between reader content and agent-specific instructions
+
+## Testing The Split
+
+- Open `/docs/overview` in the browser to see the human page
+- Open `/docs/overview.md` to get the page-local agent markdown
+- Use MCP `read_page("/docs/overview")` to read the same agent override through MCP
+
+The two should be different when `agent.md` exists.

@@ -1,0 +1,196 @@
+---
+title: Agent-Ready Docs
+description: A single docs page that gives humans the full story and agents a focused sibling markdown guide.
+order: 30
+icon: code
+---
+
+# Agent-Ready Docs
+
+This page is intentionally written for human readers. It explains how the Next example app serves a
+single docs topic in two different forms:
+
+- `/docs/getting-started/agent-ready-docs` for human HTML
+- `/docs/getting-started/agent-ready-docs.md` for the page's direct `agent.md`
+
+Because this folder includes a sibling `agent.md`, the `.md` route returns that file. For pages
+without `agent.md`, the same `.md` route falls back to the normal page markdown.
+
+## What To Open
+
+1. Open `/docs/getting-started/agent-ready-docs` in the browser to see the full narrative.
+2. Open `/docs/getting-started/agent-ready-docs.md` to see the focused agent payload.
+3. Use your own prompt cases to compare the human page output and the `.md` agent payload.
+4. Compare how much broader explanation humans get versus how much narrower implementation detail an agent gets.
+
+## Why It Matters
+
+This is the simplest version of the pattern you wanted:
+
+- one folder
+- one `page.mdx`
+- one `agent.md`
+- two audience-specific experiences from the same slug
+
+## Feature Goal
+
+The example app exposes two ways to read the same docs topic:
+
+- `/docs/<slug>` for human HTML pages
+- `/docs/<slug>.md` for machine-readable markdown
+
+When a page folder has an `agent.md`, the `.md` route should return that file. When it does not,
+the same route should fall back to the normal page markdown.
+
+That fallback comes from the same docs source lookup used by the shared page reader, so pages
+without `agent.md` do not need any extra configuration.
+
+## Files Involved
+
+The key files for this flow are:
+
+```txt
+examples/next/next.config.ts
+examples/next/app/api/docs/mcp/route.ts
+examples/next/app/docs/getting-started/agent-ready-docs/page.mdx
+examples/next/app/docs/getting-started/agent-ready-docs/agent.md
+examples/next/docs.config.tsx
+packages/next/src/config.ts
+packages/next/src/api.ts
+```
+
+## Zero-Config Layer
+
+The public `.md` URL now comes from `withDocs()` itself. Apps do not need to add their own
+rewrites or a custom markdown catch-all route.
+
+```ts title="examples/next/next.config.ts"
+export default withDocs({
+  distDir: process.env.NODE_ENV === "production" && !process.env.VERCEL ? ".next-build" : ".next",
+  turbopack: {
+    root: repoRoot,
+  },
+});
+```
+
+## Built-In Markdown Route
+
+`withDocs()` wires the public `.md` URLs into a tiny generated bridge route. That bridge forwards
+into the existing `/api/docs` handler, where the markdown behavior now lives alongside search,
+llms output, and AI chat:
+
+```ts title="packages/next/src/config.ts"
+const DOCS_MARKDOWN_ROUTE_TEMPLATE = `\
+import docsConfig from "@/docs.config";
+import { createDocsAPI } from "@farming-labs/next/api";
+
+const handlers = createDocsAPI({ ... });
+
+export async function GET(request, { params }) {
+  const { slug = [] } = await params;
+  const url = new URL(request.url);
+  url.searchParams.set("format", "markdown");
+  if (slug.length > 0) url.searchParams.set("path", slug.join("/"));
+  return handlers.GET(new Request(url, { headers: request.headers }));
+}
+`;
+```
+
+```ts title="packages/fumadocs/src/docs-api.ts"
+if (format === "markdown") {
+  const requestedPath = url.searchParams.get("path")?.trim() ?? "";
+  const document = await getMarkdownDocument(ctx, requestedPath);
+
+  if (!document) return new Response("Not Found", { status: 404 });
+
+  return new Response(document, {
+    headers: { "Content-Type": "text/markdown; charset=utf-8" },
+  });
+}
+```
+
+## MCP Route
+
+The example app also exposes the standard MCP surface:
+
+```ts title="examples/next/app/api/docs/mcp/route.ts"
+import docsConfig from "@/docs.config";
+import { createDocsMCPAPI } from "@farming-labs/next/api";
+
+export const { GET, POST, DELETE } = createDocsMCPAPI({
+  entry: docsConfig.entry,
+  contentDir: docsConfig.contentDir,
+  nav: docsConfig.nav,
+  ordering: docsConfig.ordering,
+  search: docsConfig.search,
+  mcp: docsConfig.mcp,
+});
+```
+
+When `agent.md` exists, the `.md` route returns that file. MCP remains available for tool-based
+access and parity checks, but the HTTP `.md` route is the simple public contract.
+
+## Docs Config
+
+The example app keeps MCP enabled so the markdown route and MCP can both be exercised:
+
+```tsx title="examples/next/docs.config.tsx"
+export default defineDocs({
+  entry: "docs",
+  mcp: { enabled: true },
+  ordering: "numeric",
+  pageActions: {
+    copyMarkdown: { enabled: true },
+  },
+});
+```
+
+## Folder Convention
+
+For this exact showcase, the folder is intentionally minimal:
+
+```txt
+app/docs/getting-started/agent-ready-docs/
+  page.mdx
+  agent.md
+```
+
+That is the whole pattern.
+
+## Request Flow
+
+When a request comes in for `/docs/getting-started/agent-ready-docs.md`, `withDocs()` handles the
+rewrite automatically. The generated bridge route turns that into a markdown-mode `/api/docs`
+request, then the existing docs API resolves the requested slug and checks whether the page has
+`agentRawContent`.
+
+Because this page has a sibling `agent.md`, the response becomes the raw contents of that file. If
+another page does not have `agent.md`, the same route falls back to the normal page markdown.
+
+## Useful Commands
+
+```bash title="terminal"
+curl http://localhost:3000/docs/getting-started/agent-ready-docs
+curl http://localhost:3000/docs/getting-started/agent-ready-docs.md
+curl http://localhost:3000/docs/getting-started/quickstart.md
+```
+
+For MCP parity checks:
+
+```bash title="terminal"
+curl http://localhost:3000/api/docs?format=markdown\&path=getting-started/quickstart
+```
+
+## Gotchas
+
+- In the Next example, `contentDir` should default to `app/${entry}` when the config does not set
+  it explicitly.
+- The `.md` route is automatic in Next when you use `withDocs()`.
+- `agent.md` should stay hidden from normal docs discovery and sidebar generation.
+- When `agent.md` exists, it overrides the normal markdown for that slug.
+
+## Why This Page Exists
+
+This page is intentionally richer and more explanatory than the agent override. It is meant to show
+that you can keep all the human context you want in `page.mdx` while still serving a tight
+implementation-oriented document to agents from the exact same folder.

@@ -42,6 +42,8 @@ export interface ContentPage {
   icon?: string;
   content: string;
   rawContent: string;
+  agentContent?: string;
+  agentRawContent?: string;
 }
 
 /**
@@ -68,6 +70,7 @@ export function loadDocsContent(contentDir: string, entry: string = "docs"): Con
         continue;
       }
 
+      if (name === "agent.md") continue;
       if (!name.endsWith(".md") && !name.endsWith(".mdx") && !name.endsWith(".svx")) continue;
 
       const raw = fs.readFileSync(full, "utf-8");
@@ -79,6 +82,7 @@ export function loadDocsContent(contentDir: string, entry: string = "docs"): Con
       const slug = isIndex ? slugParts.join("/") : [...slugParts, baseName].join("/");
 
       const url = slug ? `/${entry}/${slug}` : `/${entry}`;
+      const agentDoc = isIndex ? readAgentDoc(dir) : undefined;
 
       const title =
         (data.title as string) ??
@@ -92,12 +96,25 @@ export function loadDocsContent(contentDir: string, entry: string = "docs"): Con
         icon: data.icon as string | undefined,
         content: stripMarkdown(content),
         rawContent: content,
+        ...agentDoc,
       });
     }
   }
 
   scan(absDir, []);
   return pages;
+}
+
+function readAgentDoc(dir: string) {
+  const agentPath = path.join(dir, "agent.md");
+  if (!fs.existsSync(agentPath)) return undefined;
+
+  const raw = fs.readFileSync(agentPath, "utf-8");
+  const { content } = matter(raw);
+  return {
+    agentContent: stripMarkdown(content),
+    agentRawContent: content,
+  };
 }
 
 /**
