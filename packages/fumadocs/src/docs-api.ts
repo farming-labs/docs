@@ -533,7 +533,10 @@ function resolveAgentMdxContent(content: string, audience: "human" | "agent"): s
     output.push(line);
   }
 
-  return output.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return output
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function stripMdx(content: string): string {

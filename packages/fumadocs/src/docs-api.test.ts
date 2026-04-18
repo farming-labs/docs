@@ -439,9 +439,7 @@ This embedded agent block should be ignored because agent.md overrides the page.
     expect(fallbackResponse.status).toBe(200);
     expect(fallbackResponse.headers.get("content-type")).toContain("text/markdown");
     const fallbackDocument = await fallbackResponse.text();
-    expect(fallbackDocument).toContain(
-      "# Quickstart\nURL: /docs/getting-started/quickstart",
-    );
+    expect(fallbackDocument).toContain("# Quickstart\nURL: /docs/getting-started/quickstart");
     expect(fallbackDocument).toContain(
       "Verify the onboarding command examples before changing this page.",
     );
