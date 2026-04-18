@@ -1,9 +1,9 @@
 # @farming-labs/docs
 
-A modern, flexible MDX-based documentation framework. Write markdown, get a polished docs site — no boilerplate required.
+An AI-native documentation framework for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt. Write markdown, ship polished docs for humans, IDEs, and agents — no boilerplate required.
 
 ### Quick Start
-> **This package lets you build beautiful documentation to any Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project in minutes.**
+> **This package lets you build AI-native documentation for any Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project in minutes.**
 
 - ✨ **Polished themes & flexible search, zero setup**
 - 🌍 **Choose your framework:** Next.js, TanStack Start, SvelteKit, Astro, or Nuxt

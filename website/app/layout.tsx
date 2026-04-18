@@ -35,16 +35,19 @@ export const metadata: Metadata = {
     default: "@farming-labs/docs",
     template: "%s – @farming-labs/docs",
   },
-  description: "A modern, flexible MDX documentation framework. One config, zero boilerplate.",
+  description:
+    "An AI-native documentation framework for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt. One config, zero boilerplate.",
   openGraph: {
     title: "a documentation that just works.",
-    description: "A modern documentation framework that works. One config file, zero boilerplate.",
+    description:
+      "AI-native, agent-optimized docs for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.",
     images: [{ url: "/og.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "a documentation that just works.",
-    description: "A modern documentation framework that works. One config file, zero boilerplate.",
+    description:
+      "AI-native, agent-optimized docs for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.",
   },
 };
 

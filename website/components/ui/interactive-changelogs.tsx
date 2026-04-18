@@ -420,7 +420,7 @@ const releases: Release[] = [
     title: "v0.0.1: Initial Release",
     date: "Feb 19, 2026",
     excerpt:
-      "The first stable release of @farming-labs/docs — a modern, flexible MDX documentation framework with 7 built-in themes, AI search, multi-framework support, a live theme customizer, and an interactive changelog.",
+      "The first stable release of @farming-labs/docs — an AI-native documentation framework with 7 built-in themes, AI search, multi-framework support, a live theme customizer, and an interactive changelog.",
     changes: [
       {
         category: "Highlights",

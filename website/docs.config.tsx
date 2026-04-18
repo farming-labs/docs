@@ -189,7 +189,7 @@ export default defineDocs({
     enabled: true,
     baseUrl: "https://docs.farming-labs.dev",
     siteDescription:
-      "A modern, flexible MDX documentation framework for Next.js, SvelteKit, Astro, and Nuxt.",
+      "An AI-native documentation framework for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.",
   },
   og: {
     enabled: true,
@@ -198,7 +198,8 @@ export default defineDocs({
   },
   metadata: {
     titleTemplate: "%s – @farming-labs/docs",
-    description: "A modern, flexible MDX documentation framework.",
+    description:
+      "An AI-native documentation framework for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.",
     twitterCard: "summary_large_image",
   },
   ordering: "numeric",
