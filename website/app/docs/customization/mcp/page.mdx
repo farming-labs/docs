@@ -21,7 +21,9 @@ It also exposes resources for:
 - `docs://navigation`
 - one `docs://…` resource per page
 
-## Enable it
+## Default behavior
+
+MCP is enabled by default.
 
 ```ts title="docs.config.ts"
 import { defineDocs } from "@farming-labs/docs";
@@ -30,13 +32,10 @@ import { pixelBorder } from "@farming-labs/theme/pixel-border";
 export default defineDocs({
   entry: "docs",
   theme: pixelBorder(),
-  mcp: {
-    enabled: true,
-  },
 });
 ```
 
-That enables the built-in MCP surface with the default Streamable HTTP route:
+That gives you the built-in MCP surface with the default Streamable HTTP route:
 
 ```txt title="/api/docs/mcp"
 /api/docs/mcp
@@ -47,13 +46,24 @@ That enables the built-in MCP surface with the default Streamable HTTP route:
   `https://docs.farming-labs.dev/api/docs/mcp`.
 </Callout>
 
+Opt out explicitly:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  mcp: {
+    enabled: false,
+  },
+});
+```
+
 ## Default HTTP route
 
 `/api/docs/mcp` is the default MCP endpoint across the framework adapters.
 
 <Callout type="info" title="Minimal route behavior">
-  **Next.js** auto-generates the default `/api/docs/mcp` route when `mcp` is enabled and you use
-  `withDocs()`.
+  **Next.js** auto-generates the default `/api/docs/mcp` route when you use `withDocs()`, unless
+  you explicitly disable MCP.
 
   **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt** still need the framework route file,
   but they all reuse the built-in MCP handler from the docs server helper.

@@ -62,7 +62,6 @@ Welcome to the docs.
       rootDir,
       entry: "docs",
       nav: { title: "Example Docs" },
-      mcp: { enabled: true },
     });
 
     const response = await POST(

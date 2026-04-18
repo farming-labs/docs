@@ -209,7 +209,6 @@ export default defineDocs({
       ],
     },
   },
-  mcp: { enabled: true },
   ordering: "numeric",
   metadata: {
     titleTemplate: "%s – Docs",

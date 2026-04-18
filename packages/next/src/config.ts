@@ -902,11 +902,11 @@ function readMcpConfig(root: string): {
         route: normalizeRoutePath(routeMatch?.[1] ?? "/api/docs/mcp"),
       };
     } catch {
-      return { enabled: false, route: "/api/docs/mcp" };
+      return { enabled: true, route: "/api/docs/mcp" };
     }
   }
 
-  return { enabled: false, route: "/api/docs/mcp" };
+  return { enabled: true, route: "/api/docs/mcp" };
 }
 
 function normalizeRoutePath(route: string): string {

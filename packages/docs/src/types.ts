@@ -1617,9 +1617,10 @@ export interface DocsConfig {
   /**
    * Built-in MCP server for agent/assistant access to your docs content.
    *
+   * - omitted → enable the default MCP surface at `/api/docs/mcp`
    * - `true` → enable the default MCP surface at `/api/docs/mcp`
    * - `{ route: "/api/docs/mcp" }` → enable with explicit route/config
-   * - `false` or omitted → MCP stays disabled
+   * - `false` or `{ enabled: false }` → disable MCP explicitly
    */
   mcp?: boolean | DocsMcpConfig;
   /**

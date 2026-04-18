@@ -33,6 +33,36 @@ async function parseMcpPayload<T>(response: Response): Promise<T> {
 }
 
 describe("resolveDocsMcpConfig", () => {
+  it("enables MCP by default when config is omitted", () => {
+    expect(resolveDocsMcpConfig()).toEqual({
+      enabled: true,
+      route: "/api/docs/mcp",
+      name: "@farming-labs/docs",
+      version: "0.0.0",
+      tools: {
+        listPages: true,
+        readPage: true,
+        searchDocs: true,
+        getNavigation: true,
+      },
+    });
+  });
+
+  it("treats null config like an omitted config", () => {
+    expect(resolveDocsMcpConfig(null as never)).toEqual({
+      enabled: true,
+      route: "/api/docs/mcp",
+      name: "@farming-labs/docs",
+      version: "0.0.0",
+      tools: {
+        listPages: true,
+        readPage: true,
+        searchDocs: true,
+        getNavigation: true,
+      },
+    });
+  });
+
   it("normalizes defaults for enabled object configs", () => {
     expect(
       resolveDocsMcpConfig({
@@ -526,7 +556,7 @@ No frontmatter title here.
 
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toMatchObject({
-      error: expect.stringContaining("MCP is not enabled"),
+      error: expect.stringContaining("MCP is disabled"),
     });
   });
 

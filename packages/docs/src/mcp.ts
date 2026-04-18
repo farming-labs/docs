@@ -135,7 +135,7 @@ export function resolveDocsMcpConfig(
     defaultRoute?: string;
   } = {},
 ): DocsMcpResolvedConfig {
-  if (!mcp) {
+  if (mcp === false) {
     return {
       enabled: false,
       route: normalizeDocsMcpRoute(defaults.defaultRoute),
@@ -150,7 +150,7 @@ export function resolveDocsMcpConfig(
     };
   }
 
-  const config = typeof mcp === "object" ? mcp : {};
+  const config = mcp && typeof mcp === "object" ? mcp : {};
 
   return {
     enabled: typeof mcp === "boolean" ? mcp : (config.enabled ?? true),
@@ -396,17 +396,17 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
       GET: async () =>
         createJsonErrorResponse(
           404,
-          "MCP is not enabled. Set `mcp: { enabled: true }` in docs.config to enable it.",
+          "MCP is disabled. Remove `mcp: false` or set `mcp: { enabled: true }` in docs.config to enable it again.",
         ),
       POST: async () =>
         createJsonErrorResponse(
           404,
-          "MCP is not enabled. Set `mcp: { enabled: true }` in docs.config to enable it.",
+          "MCP is disabled. Remove `mcp: false` or set `mcp: { enabled: true }` in docs.config to enable it again.",
         ),
       DELETE: async () =>
         createJsonErrorResponse(
           404,
-          "MCP is not enabled. Set `mcp: { enabled: true }` in docs.config to enable it.",
+          "MCP is disabled. Remove `mcp: false` or set `mcp: { enabled: true }` in docs.config to enable it again.",
         ),
     };
   }

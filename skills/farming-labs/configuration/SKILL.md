@@ -46,7 +46,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
 | `search` | `boolean \| DocsSearchConfig` | `true` | Built-in simple search, Typesense, Algolia, or a custom adapter |
 | `changelog` | `boolean \| ChangelogConfig` | `false` | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
-| `mcp` | `boolean \| DocsMcpConfig` | `false` | Built-in MCP server over stdio and `/api/docs/mcp` |
+| `mcp` | `boolean \| DocsMcpConfig` | enabled | Built-in MCP server over stdio and `/api/docs/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON document |
 | `metadata` | `DocsMetadata` | — | SEO: titleTemplate, description, etc. |
 | `og` | `OGConfig` | — | Dynamic Open Graph images |
@@ -278,12 +278,20 @@ feedback: {
 
 ## MCP Server
 
-Use `mcp` to expose your docs as a built-in MCP server for local agents and remote HTTP clients.
+MCP is enabled by default. Use `mcp` when you want to customize the built-in MCP server for local
+agents and remote HTTP clients, or set `enabled: false` to opt out.
 
 ```ts
 mcp: {
-  enabled: true,
   route: "/api/docs/mcp",
+}
+```
+
+Opt out explicitly:
+
+```ts
+mcp: {
+  enabled: false,
 }
 ```
 
