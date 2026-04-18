@@ -150,7 +150,7 @@ export function resolveDocsMcpConfig(
     };
   }
 
-  const config = typeof mcp === "object" ? mcp : {};
+  const config = mcp && typeof mcp === "object" ? mcp : {};
 
   return {
     enabled: typeof mcp === "boolean" ? mcp : (config.enabled ?? true),

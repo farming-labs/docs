@@ -48,6 +48,21 @@ describe("resolveDocsMcpConfig", () => {
     });
   });
 
+  it("treats null config like an omitted config", () => {
+    expect(resolveDocsMcpConfig(null as never)).toEqual({
+      enabled: true,
+      route: "/api/docs/mcp",
+      name: "@farming-labs/docs",
+      version: "0.0.0",
+      tools: {
+        listPages: true,
+        readPage: true,
+        searchDocs: true,
+        getNavigation: true,
+      },
+    });
+  });
+
   it("normalizes defaults for enabled object configs", () => {
     expect(
       resolveDocsMcpConfig({
