@@ -211,7 +211,7 @@ function resolveAgentFeedbackConfig(
   if (!feedback || typeof feedback !== "object") return disabled;
 
   const agent = feedback.agent;
-  if (!agent || agent === false) return disabled;
+  if (!agent) return disabled;
 
   if (agent === true) {
     return {
