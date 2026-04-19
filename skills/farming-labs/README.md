@@ -2,7 +2,7 @@
 
 This folder contains [Agent Skills](https://skills.sh/) (conforming to the [Agent Skills specification](https://agentskills.io/specification)) for **@farming-labs/docs** — an MDX-based documentation framework for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
 
-Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task (getting started, CLI, creating themes, Ask AI, page actions, or configuration, including search adapters, changelog setup, API reference, MCP, and machine-readable markdown routes with embedded `Agent` blocks or `agent.md` overrides).
+Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task (getting started, CLI, creating themes, Ask AI, page actions, or configuration, including search adapters, changelog setup, human page feedback, agent feedback endpoints, API reference, MCP, and machine-readable markdown routes with embedded `Agent` blocks or `agent.md` overrides).
 
 The repo also includes a runnable Next example for testing MCP plus external search providers:
 
@@ -15,6 +15,7 @@ Useful routes:
 - MCP: `http://127.0.0.1:3000/api/docs/mcp`
 - Search API: `http://127.0.0.1:3000/api/docs?query=session`
 - Docs API markdown: `http://127.0.0.1:3000/api/docs?format=markdown&path=quickstart`
+- Agent feedback schema: `http://127.0.0.1:3000/api/docs/agent/feedback/schema`
 - Public markdown page with embedded `Agent` block (Next.js): `http://127.0.0.1:3000/docs/quickstart.md`
 - Agent override example (Next.js): `http://127.0.0.1:3000/docs/getting-started/agent-ready-docs.md`
 
@@ -29,7 +30,7 @@ Useful routes:
 | **Creating themes** | [creating-themes](./creating-themes/SKILL.md) | Building a custom theme with `createTheme()`, `extendTheme()`, `ui.components` defaults like `HoverLink`, publishing as npm, CSS overrides. |
 | **Ask AI** | [ask-ai](./ask-ai/SKILL.md) | Enabling and configuring the RAG-powered AI chat: mode, floatingStyle, providers, models, suggestedQuestions, apiKey. |
 | **Page actions** | [page-actions](./page-actions/SKILL.md) | Copy Markdown and Open in LLM buttons: copyMarkdown, openDocs, providers, urlTemplate, `{url}.md` markdown route patterns, position, alignment, and provider defaults. |
-| **Configuration** | [configuration](./configuration/SKILL.md) | docs.config.ts options: entry, theme, staticExport, sidebar, breadcrumb, github, components, `search`, `changelog`, feedback, metadata, og, `mcp`, built-in markdown routes with `Agent` blocks or `agent.md`, and `apiReference` including remote `specUrl` support. |
+| **Configuration** | [configuration](./configuration/SKILL.md) | docs.config.ts options: entry, theme, staticExport, sidebar, breadcrumb, github, components, `search`, `changelog`, human page feedback, agent feedback endpoints, metadata, og, `mcp`, built-in markdown routes with `Agent` blocks or `agent.md`, and `apiReference` including remote `specUrl` support. |
 
 ---
 

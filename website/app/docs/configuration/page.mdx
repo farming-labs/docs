@@ -127,7 +127,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `icons`       | `Record<string, Component>`    | —               | Icon registry for frontmatter `icon` fields        |
 | `components`  | `Record<string, Component>`    | —               | Custom MDX components and built-in overrides like `HoverLink` |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
-| `feedback`    | `boolean \| FeedbackConfig`    | `false`         | End-of-page feedback prompt and callback                     |
+| `feedback`    | `boolean \| FeedbackConfig`    | `false`         | Human page feedback UI plus optional agent feedback endpoints |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
 | `search`      | `boolean \| DocsSearchConfig`  | `true`          | Built-in simple search, Typesense, Algolia, or a custom adapter |
@@ -976,6 +976,91 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }
+```
+
+## Agent Feedback Endpoints
+
+Use `feedback.agent` when you want machine-readable feedback routes for coding agents or docs-aware
+automation. This is separate from the built-in page footer UI.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  feedback: {
+    agent: {
+      enabled: true,
+      async onFeedback(data) {
+        console.log(data.context?.source, data.payload);
+      },
+    },
+  },
+});
+```
+
+Default behavior:
+
+- `GET /api/docs/agent/feedback/schema` returns the feedback schema
+- `POST /api/docs/agent/feedback` accepts `{ context?, payload }`
+- the shared `/api/docs` handler is still the source of truth
+- in Next.js, `withDocs()` adds the public rewrites automatically
+- `feedback.agent` alone does not enable the human footer UI
+
+Default request shape:
+
+```json title="POST body"
+{
+  "context": {
+    "page": "/docs/installation",
+    "url": "https://docs.example.com/docs/installation.md",
+    "slug": "installation",
+    "locale": "en",
+    "source": "md-route"
+  },
+  "payload": {
+    "task": "install docs in an existing Next.js app",
+    "understanding": "partial",
+    "outcome": "implemented",
+    "confidence": 0.78,
+    "neededCodeReading": true,
+    "missingContext": ["how the markdown route is resolved"],
+    "docIssues": ["command example was unclear"],
+    "suggestedImprovement": "Add one sentence about the rewrite behavior."
+  }
+}
+```
+
+Customize the public route or the payload schema when needed:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  feedback: {
+    agent: {
+      route: "/internal/docs/agent-feedback",
+      schemaRoute: "/internal/docs/agent-feedback/schema",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          task: { type: "string" },
+          outcome: { type: "string" },
+          confidence: { type: "number", minimum: 0, maximum: 1 }
+        },
+        required: ["task", "outcome"]
+      }
+    }
+  }
+});
+```
+
+Quick test:
+
+```bash title="terminal"
+curl "http://127.0.0.1:3000/api/docs/agent/feedback/schema"
+
+curl -X POST "http://127.0.0.1:3000/api/docs/agent/feedback" \
+  -H "content-type: application/json" \
+  -d '{"payload":{"task":"demo","outcome":"implemented"}}'
 ```
 
 ## Page Actions

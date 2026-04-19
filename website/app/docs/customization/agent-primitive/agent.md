@@ -29,6 +29,40 @@ Use this page when you need the page-level authoring contract for agent-facing d
 - API route: `/api/docs?format=markdown&path=customization/agent-primitive`
 - MCP read target: `/docs/customization/agent-primitive`
 
+## Feedback Contract
+
+If agent feedback is enabled for the site, use these default endpoints:
+
+- schema: `/api/docs/agent/feedback/schema`
+- submit: `/api/docs/agent/feedback`
+
+The shared docs API also accepts the same feature through query parameters:
+
+- schema: `/api/docs?feedback=agent&schema=1`
+- submit: `/api/docs?feedback=agent`
+
+Fetch the schema endpoint first and use the returned schema as the source of truth for the body you
+submit. Do not assume the payload fields are fixed, because the site can customize
+`feedback.agent.schema`.
+
+For the default schema, the body looks like:
+
+```json
+{
+  "context": {
+    "page": "/docs/customization/agent-primitive",
+    "source": "md-route"
+  },
+  "payload": {
+    "task": "understand page-level agent docs",
+    "outcome": "implemented"
+  }
+}
+```
+
+If the project customizes `feedback.agent.route` or `feedback.agent.schemaRoute`, use those
+configured paths instead of the defaults.
+
 ## Skills
 
 This repo also ships reusable Agent Skills for broader workflows that are larger than one page.

@@ -14,7 +14,7 @@ An AI-native documentation framework for Next.js, TanStack Start, SvelteKit, Ast
 - 🧾 **Generated API reference from framework route handlers or a hosted OpenAPI JSON**
 - 📣 **Built-in changelog pages for Next.js** — release feed + detail pages from dated MDX entries
 - 🧩 **Built-in MDX UI** — `Callout`, `Tabs`, `HoverLink`, and overridable built-ins via `components` and `theme.ui.components`
-- 💬 **Built-in docs actions** — page feedback, copy/open page actions, and code-block copy callbacks
+- 💬 **Built-in docs actions** — human page feedback, agent feedback endpoints, copy/open page actions, and code-block copy callbacks
 - 🔎 **Search adapters** — zero-config built-in search, plus Typesense, Algolia, and custom adapters
 - 🤖 **Built-in MCP server** — expose docs over stdio or `/api/docs/mcp` for MCP clients and IDE agents
 - 📝 **Machine-readable markdown routes** — serve docs as markdown with embedded `Agent` blocks and optional page-local `agent.md` overrides
@@ -607,6 +607,50 @@ See:
 - [Agent Primitive](https://docs.farming-labs.dev/docs/customization/agent-primitive)
 - [MCP Server](https://docs.farming-labs.dev/docs/customization/mcp)
 - [llms.txt](https://docs.farming-labs.dev/docs/customization/llms-txt)
+
+## Agent Feedback Endpoints
+
+The shared docs API can also expose machine-readable feedback endpoints for agents:
+
+```ts
+feedback: {
+  agent: {
+    enabled: true,
+    async onFeedback(data) {
+      console.log(data.context?.source, data.payload);
+    },
+  },
+},
+```
+
+Default routes:
+
+```txt
+GET  /api/docs/agent/feedback/schema
+POST /api/docs/agent/feedback
+```
+
+The request body always uses a stable envelope:
+
+```json
+{
+  "context": {
+    "page": "/docs/installation",
+    "source": "md-route"
+  },
+  "payload": {
+    "task": "install docs in an existing Next.js app",
+    "outcome": "implemented"
+  }
+}
+```
+
+Notes:
+
+- `feedback.agent` does not turn on the human footer UI by itself
+- the shared `/api/docs` handler remains the source of truth
+- in Next.js, `withDocs()` wires the public `/api/docs/agent/feedback` routes automatically
+- customize `route`, `schemaRoute`, or `schema` in `docs.config` when needed
 
 Each page uses frontmatter for metadata:
 

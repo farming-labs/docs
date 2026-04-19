@@ -44,7 +44,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `icons`       | `Record<string, unknown>`                       | —                | Icon registry for frontmatter `icon` fields                                          |
 | `components`  | `Record<string, unknown>`                       | —                | Custom MDX component overrides, including built-ins like `HoverLink`                |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void`              | —                | Callback when the user clicks the copy button on a code block (runs in addition to copy) |
-| `feedback`    | `boolean \| FeedbackConfig`                     | `false`          | End-of-page feedback prompt and feedback callback                                    |
+| `feedback`    | `boolean \| FeedbackConfig`                     | `false`          | Human page feedback UI plus optional agent feedback endpoints                        |
 | `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
 | `ai`          | `AIConfig`                                      | —                | RAG-powered AI chat                                                                  |
 | `search`      | `boolean \| DocsSearchConfig`                   | `true`           | Built-in simple search, Typesense, Algolia, or a custom adapter                     |
@@ -653,7 +653,7 @@ export default defineDocs({
 
 ---
 
-## `feedback`, `FeedbackConfig`, and `DocsFeedbackData`
+## `feedback`, `FeedbackConfig`, `AgentFeedbackConfig`, and feedback payloads`
 
 Optional docs page feedback UI. When enabled, a built-in "Good / Bad" prompt is rendered at the end of the page and emits a feedback payload when the user clicks one of the buttons.
 
@@ -666,6 +666,7 @@ Optional docs page feedback UI. When enabled, a built-in "Good / Bad" prompt is 
 | `positiveLabel` | `string`                                 | `"Good"`          | Label for the positive button                |
 | `negativeLabel` | `string`                                 | `"Bad"`           | Label for the negative button                |
 | `onFeedback`    | `(data: DocsFeedbackData) => void`       | —                 | Callback fired when the user clicks a button |
+| `agent`         | `boolean \| AgentFeedbackConfig`         | —                 | Agent feedback routes served through `/api/docs` |
 
 ### `DocsFeedbackData`
 
@@ -702,6 +703,84 @@ This docs site persists feedback through a local Next.js route at
 
 See [Page feedback](/docs/configuration#page-feedback) for framework-specific notes. The built-in
 UI does not require a separate client bridge file.
+
+### `AgentFeedbackConfig`
+
+Optional machine-facing feedback routes for agents, scripts, or evaluation flows.
+
+| Property      | Type                                                | Default                            | Description |
+| ------------- | --------------------------------------------------- | ---------------------------------- | ----------- |
+| `enabled`     | `boolean`                                           | `true` when `agent` is provided    | Enable or disable the agent feedback endpoints |
+| `route`       | `string`                                            | `"/api/docs/agent/feedback"`       | Public HTTP route for feedback submission |
+| `schemaRoute` | `string`                                            | `${route}/schema`                  | Public HTTP route for the machine-readable schema |
+| `schema`      | `Record<string, unknown>`                           | built-in payload schema            | Schema used to validate the `payload` object |
+| `onFeedback`  | `(data: DocsAgentFeedbackData) => Promise<void> \| void` | —                              | Async callback fired after a valid submission |
+
+Notes:
+
+- `feedback.agent` does not enable the human footer UI by itself
+- the request body always uses `{ context?, payload }`
+- in Next.js, `withDocs()` adds the public route rewrites automatically
+- the shared `/api/docs` handler is still the source of truth, so `?feedback=agent` also works
+
+### `DocsAgentFeedbackContext`
+
+| Property | Type                    | Description |
+| -------- | ----------------------- | ----------- |
+| `page`   | `string \| undefined`   | Docs page path such as `"/docs/installation"` |
+| `url`    | `string \| undefined`   | Full docs URL when available |
+| `slug`   | `string \| undefined`   | Docs slug relative to the entry root |
+| `locale` | `string \| undefined`   | Active locale when docs i18n is enabled |
+| `source` | `string \| undefined`   | Arbitrary source label such as `"md-route"`, `"mcp"`, or `"api"` |
+
+### `DocsAgentFeedbackData`
+
+| Property  | Type                                  | Description |
+| --------- | ------------------------------------- | ----------- |
+| `context` | `DocsAgentFeedbackContext \| undefined` | Optional docs/page transport context |
+| `payload` | `Record<string, unknown>`             | Agent feedback payload validated by `feedback.agent.schema` |
+
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  feedback: {
+    agent: {
+      enabled: true,
+      route: "/api/docs/agent/feedback",
+      async onFeedback(data) {
+        console.log(data.context?.page, data.payload);
+      },
+    },
+  },
+});
+```
+
+```json title="default request body"
+{
+  "context": {
+    "page": "/docs/installation",
+    "source": "md-route"
+  },
+  "payload": {
+    "task": "install docs in an existing Next.js app",
+    "understanding": "partial",
+    "outcome": "implemented",
+    "confidence": 0.78
+  }
+}
+```
+
+Quick checks:
+
+```bash
+curl "http://127.0.0.1:3000/api/docs/agent/feedback/schema"
+
+curl -X POST "http://127.0.0.1:3000/api/docs/agent/feedback" \
+  -H "content-type: application/json" \
+  -d '{"payload":{"task":"demo","outcome":"implemented"}}'
+```
 
 ---
 

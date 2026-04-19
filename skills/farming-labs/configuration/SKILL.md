@@ -41,7 +41,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `icons` | `Record<string, Component>` | — | Icon registry for frontmatter `icon` fields |
 | `components` | `Record<string, Component>` | — | Custom MDX components and built-in overrides like `HoverLink` |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | — | Callback when user copies a code block (title, content, url, language) |
-| `feedback` | `boolean \| FeedbackConfig` | `false` | End-of-page feedback prompt and callback |
+| `feedback` | `boolean \| FeedbackConfig` | `false` | Human page feedback UI plus optional agent feedback endpoints |
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
 | `search` | `boolean \| DocsSearchConfig` | `true` | Built-in simple search, Typesense, Algolia, or a custom adapter |
@@ -290,6 +290,71 @@ feedback: {
 - Use `feedback: true` to show the UI with no callback.
 - **Next.js / TanStack Start / SvelteKit / Nuxt:** `feedback.onFeedback` runs from the built-in UI with no extra client bridge file.
 - **Astro:** the built-in UI still works with `feedback: true`; optional analytics hooks can listen to `window.__fdOnFeedback__` or the `fd:feedback` event.
+
+## Agent feedback endpoints
+
+Use `feedback.agent` when agents or automation should be able to report docs understanding or
+implementation outcomes back through the shared docs API.
+
+```ts
+feedback: {
+  agent: {
+    enabled: true,
+    async onFeedback(data) {
+      console.log(data.context?.page, data.payload);
+    },
+  },
+}
+```
+
+Default behavior:
+
+- `GET /api/docs/agent/feedback/schema` returns the machine-readable schema
+- `POST /api/docs/agent/feedback` accepts `{ context?, payload }`
+- the shared `/api/docs` handler remains the source of truth
+- **Next.js:** `withDocs()` adds the public rewrites automatically
+- `feedback.agent` alone does not enable the human footer UI
+
+Default payload shape:
+
+```json
+{
+  "context": {
+    "page": "/docs/installation",
+    "source": "md-route"
+  },
+  "payload": {
+    "task": "install docs in an existing Next.js app",
+    "understanding": "partial",
+    "outcome": "implemented",
+    "confidence": 0.78,
+    "neededCodeReading": true,
+    "missingContext": ["how the markdown route is resolved"],
+    "docIssues": ["command example was unclear"],
+    "suggestedImprovement": "Add one sentence about rewrite behavior."
+  }
+}
+```
+
+Customize the route or payload schema when needed:
+
+```ts
+feedback: {
+  agent: {
+    route: "/internal/docs/agent-feedback",
+    schemaRoute: "/internal/docs/agent-feedback/schema",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        task: { type: "string" },
+        outcome: { type: "string" },
+      },
+      required: ["task", "outcome"],
+    },
+  },
+}
+```
 
 ---
 
