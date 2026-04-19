@@ -4,6 +4,17 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createDocsAPI, createDocsMCPAPI } from "./docs-api.js";
 
+function createDeferredPromise<T = void>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, resolve, reject };
+}
+
 async function parseMcpPayload<T>(response: Response): Promise<T> {
   const body = await response.text();
 
@@ -492,6 +503,332 @@ title: "Home"
     );
     expect(response.status).toBe(404);
     expect(await response.text()).toBe("Not Found");
+  });
+
+  it("serves the default agent feedback schema through the shared docs api handler", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-feedback-schema-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      feedback: {
+        agent: {
+          enabled: true,
+        },
+      },
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs/agent/feedback/schema"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/schema+json");
+
+    const schema = (await response.json()) as {
+      properties?: {
+        context?: { properties?: Record<string, unknown> };
+        payload?: { properties?: Record<string, unknown>; required?: string[] };
+      };
+      required?: string[];
+    };
+
+    expect(schema.required).toEqual(["payload"]);
+    expect(schema.properties?.context?.properties).toMatchObject({
+      page: { type: "string" },
+      url: { type: "string" },
+      slug: { type: "string" },
+      locale: { type: "string" },
+      source: { type: "string" },
+    });
+    expect(schema.properties?.payload?.properties).toMatchObject({
+      task: expect.objectContaining({ type: "string" }),
+      outcome: expect.objectContaining({ type: "string" }),
+      missingContext: expect.objectContaining({ type: "array" }),
+    });
+    expect(schema.properties?.payload?.required).toEqual(["task", "outcome"]);
+  });
+
+  it("accepts agent feedback posts and awaits the async callback", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-feedback-post-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+
+    process.chdir(rootDir);
+
+    const deferred = createDeferredPromise<void>();
+    const onFeedback = vi.fn(() => deferred.promise);
+    const { POST } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      feedback: {
+        agent: {
+          enabled: true,
+          onFeedback,
+        },
+      },
+    });
+
+    const responsePromise = POST(
+      new Request("http://localhost/api/docs/agent/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          context: {
+            page: "/docs/installation",
+            url: "https://docs.example.com/docs/installation.md",
+            slug: "installation",
+            locale: "en",
+            source: "md-route",
+            ignored: "value",
+          },
+          payload: {
+            task: "install docs in an existing Next.js app",
+            outcome: "implemented",
+            confidence: 0.78,
+          },
+        }),
+      }),
+    );
+
+    expect(onFeedback).toHaveBeenCalledTimes(0);
+    await vi.waitFor(() => {
+      expect(onFeedback).toHaveBeenCalledTimes(1);
+    });
+
+    let settled = false;
+    responsePromise.then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    deferred.resolve();
+    const response = await responsePromise;
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ ok: true, handled: true });
+    expect(onFeedback).toHaveBeenCalledWith({
+      context: {
+        page: "/docs/installation",
+        url: "https://docs.example.com/docs/installation.md",
+        slug: "installation",
+        locale: "en",
+        source: "md-route",
+      },
+      payload: {
+        task: "install docs in an existing Next.js app",
+        outcome: "implemented",
+        confidence: 0.78,
+      },
+    });
+  });
+
+  it("returns a non-handled response when agent feedback has no callback", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-feedback-noop-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+
+    process.chdir(rootDir);
+
+    const { POST } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      feedback: {
+        agent: {
+          enabled: true,
+        },
+      },
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/docs?feedback=agent", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          payload: {
+            task: "check docs",
+            outcome: "partial",
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(202);
+    expect(await response.json()).toEqual({ ok: true, handled: false });
+  });
+
+  it("rejects malformed agent feedback payloads", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-feedback-invalid-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+
+    process.chdir(rootDir);
+
+    const { POST } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      feedback: {
+        agent: {
+          enabled: true,
+        },
+      },
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/docs/agent/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          context: {
+            page: "/docs/installation",
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "Agent feedback body must include a payload object",
+    });
+  });
+
+  it("rejects agent feedback payloads that do not satisfy the configured schema", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-feedback-schema-invalid-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+
+    process.chdir(rootDir);
+
+    const { POST } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      feedback: {
+        agent: {
+          enabled: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              task: { type: "string" },
+              outcome: { type: "string" },
+            },
+            required: ["task", "outcome"],
+          },
+        },
+      },
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/docs/agent/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          payload: {
+            task: "demo",
+            extra: true,
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "payload.outcome is required",
+    });
+  });
+
+  it("accepts agent feedback schema and submission through the rewritten query form", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-feedback-query-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+
+    process.chdir(rootDir);
+
+    const onFeedback = vi.fn(async () => undefined);
+    const { GET, POST } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      feedback: {
+        agent: {
+          enabled: true,
+          onFeedback,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              task: { type: "string" },
+              outcome: { type: "string" },
+              customTag: { type: "string" },
+            },
+            required: ["task", "outcome"],
+          },
+        },
+      },
+    });
+
+    const schemaResponse = await GET(
+      new Request("http://localhost/api/docs?feedback=agent&schema=1"),
+    );
+    expect(schemaResponse.status).toBe(200);
+    const schema = (await schemaResponse.json()) as {
+      properties?: { payload?: { properties?: Record<string, unknown> } };
+    };
+    expect(schema.properties?.payload?.properties).toMatchObject({
+      customTag: { type: "string" },
+    });
+
+    const submitResponse = await POST(
+      new Request("http://localhost/api/docs?feedback=agent", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          context: {
+            source: "api",
+          },
+          payload: {
+            task: "validate rewrite path",
+            outcome: "implemented",
+            customTag: "query-mode",
+          },
+        }),
+      }),
+    );
+
+    expect(submitResponse.status).toBe(201);
+    expect(onFeedback).toHaveBeenCalledWith({
+      context: {
+        source: "api",
+      },
+      payload: {
+        task: "validate rewrite path",
+        outcome: "implemented",
+        customTag: "query-mode",
+      },
+    });
   });
 
   it("indexes changelog entries under the docs changelog route instead of the raw source route", async () => {

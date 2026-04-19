@@ -23,7 +23,14 @@ import path from "node:path";
 import matter from "gray-matter";
 import { getNextAppDir } from "./get-app-dir.js";
 import { resolveChangelogConfig, resolveDocsI18n, resolveDocsLocale } from "@farming-labs/docs";
-import type { ChangelogConfig, DocsI18nConfig } from "@farming-labs/docs";
+import type {
+  AgentFeedbackConfig,
+  ChangelogConfig,
+  DocsAgentFeedbackContext,
+  DocsAgentFeedbackData,
+  DocsI18nConfig,
+  FeedbackConfig,
+} from "@farming-labs/docs";
 import {
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
@@ -84,6 +91,8 @@ interface DocsAPIOptions {
   i18n?: DocsI18nConfig;
   /** Search configuration */
   search?: boolean | DocsSearchConfig;
+  /** Feedback configuration */
+  feedback?: boolean | FeedbackConfig;
 }
 
 interface DocsMCPAPIOptions {
@@ -99,6 +108,307 @@ interface DocsMCPAPIOptions {
 // ─── Helpers ────────────────────────────────────────────────────────
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
+const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
+const DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    task: {
+      type: "string",
+      description: "Short description of what the agent was trying to do.",
+    },
+    understanding: {
+      type: "string",
+      description: 'How well the docs supported the task, e.g. "partial" or "clear".',
+    },
+    outcome: {
+      type: "string",
+      description: 'What happened after reading the docs, e.g. "implemented" or "blocked".',
+    },
+    confidence: {
+      type: "number",
+      minimum: 0,
+      maximum: 1,
+      description: "Confidence score from 0 to 1.",
+    },
+    neededCodeReading: {
+      type: "boolean",
+      description: "Whether the agent still needed to inspect repository code.",
+    },
+    missingContext: {
+      type: "array",
+      items: { type: "string" },
+      description: "Important details the docs did not provide clearly enough.",
+    },
+    docIssues: {
+      type: "array",
+      items: { type: "string" },
+      description: "Specific documentation problems encountered during the task.",
+    },
+    suggestedImprovement: {
+      type: "string",
+      description: "Concrete suggestion for improving the docs page or examples.",
+    },
+  },
+  required: ["task", "outcome"],
+};
+
+interface ResolvedAgentFeedbackConfig {
+  enabled: boolean;
+  route: string;
+  schemaRoute: string;
+  payloadSchema: Record<string, unknown>;
+  schema: Record<string, unknown>;
+  onFeedback?: (data: DocsAgentFeedbackData) => void | Promise<void>;
+}
+
+interface AgentFeedbackRequest {
+  kind: "schema" | "submit";
+}
+
+function normalizeAgentFeedbackRoute(
+  route?: string,
+  fallback = DEFAULT_AGENT_FEEDBACK_ROUTE,
+): string {
+  if (!route || route.trim().length === 0) return fallback;
+
+  const normalized = `/${route}`.replace(/\/+/g, "/");
+  return normalized !== "/" ? normalized.replace(/\/+$/, "") : fallback;
+}
+
+function buildAgentFeedbackSchema(payloadSchema: Record<string, unknown>): Record<string, unknown> {
+  return {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      context: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          page: { type: "string" },
+          url: { type: "string" },
+          slug: { type: "string" },
+          locale: { type: "string" },
+          source: { type: "string" },
+        },
+      },
+      payload: payloadSchema,
+    },
+    required: ["payload"],
+  };
+}
+
+function resolveAgentFeedbackConfig(
+  feedback?: boolean | FeedbackConfig,
+): ResolvedAgentFeedbackConfig {
+  const route = normalizeAgentFeedbackRoute();
+  const disabled = {
+    enabled: false,
+    route,
+    schemaRoute: `${route}/schema`,
+    payloadSchema: DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA,
+    schema: buildAgentFeedbackSchema(DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA),
+  } satisfies ResolvedAgentFeedbackConfig;
+
+  if (!feedback || typeof feedback !== "object") return disabled;
+
+  const agent = feedback.agent;
+  if (!agent) return disabled;
+
+  if (agent === true) {
+    return {
+      enabled: true,
+      route,
+      schemaRoute: `${route}/schema`,
+      payloadSchema: DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA,
+      schema: buildAgentFeedbackSchema(DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA),
+    };
+  }
+
+  const resolvedRoute = normalizeAgentFeedbackRoute(agent.route, route);
+  const resolvedSchemaRoute = normalizeAgentFeedbackRoute(
+    agent.schemaRoute,
+    `${resolvedRoute}/schema`,
+  );
+
+  const payloadSchema = agent.schema ?? DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA;
+
+  return {
+    enabled: agent.enabled !== false,
+    route: resolvedRoute,
+    schemaRoute: resolvedSchemaRoute,
+    payloadSchema,
+    schema: buildAgentFeedbackSchema(payloadSchema),
+    onFeedback: agent.onFeedback,
+  };
+}
+
+function resolveAgentFeedbackRequest(
+  url: URL,
+  feedback: ResolvedAgentFeedbackConfig,
+): AgentFeedbackRequest | null {
+  if (!feedback.enabled) return null;
+
+  const feedbackMode = url.searchParams.get("feedback")?.trim();
+  const schemaMode = url.searchParams.get("schema")?.trim();
+  if (feedbackMode === "agent") {
+    return {
+      kind: schemaMode === "1" || schemaMode === "true" ? "schema" : "submit",
+    };
+  }
+
+  const pathname = normalizeUrlPath(url.pathname);
+  if (pathname === feedback.schemaRoute) return { kind: "schema" };
+  if (pathname === feedback.route) return { kind: "submit" };
+
+  return null;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizeAgentFeedbackContext(value: unknown): DocsAgentFeedbackContext | undefined {
+  if (!isPlainObject(value)) return undefined;
+
+  const context: DocsAgentFeedbackContext = {};
+  if (typeof value.page === "string") context.page = value.page;
+  if (typeof value.url === "string") context.url = value.url;
+  if (typeof value.slug === "string") context.slug = value.slug;
+  if (typeof value.locale === "string") context.locale = value.locale;
+  if (typeof value.source === "string") context.source = value.source;
+
+  return Object.keys(context).length > 0 ? context : undefined;
+}
+
+async function parseAgentFeedbackData(
+  request: Request,
+): Promise<{ ok: true; data: DocsAgentFeedbackData } | { ok: false; response: Response }> {
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return {
+      ok: false,
+      response: Response.json({ error: "Agent feedback body must be valid JSON" }, { status: 400 }),
+    };
+  }
+
+  if (!isPlainObject(body)) {
+    return {
+      ok: false,
+      response: Response.json({ error: "Agent feedback body must be an object" }, { status: 400 }),
+    };
+  }
+
+  if (!isPlainObject(body.payload)) {
+    return {
+      ok: false,
+      response: Response.json(
+        { error: "Agent feedback body must include a payload object" },
+        { status: 400 },
+      ),
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      context: normalizeAgentFeedbackContext(body.context),
+      payload: body.payload,
+    },
+  };
+}
+
+function validateAgentFeedbackPayload(
+  value: unknown,
+  schema: Record<string, unknown>,
+  valuePath = "payload",
+): string | undefined {
+  const schemaType = typeof schema.type === "string" ? schema.type : undefined;
+
+  if (Array.isArray(schema.enum) && !schema.enum.some((entry) => Object.is(entry, value))) {
+    return `${valuePath} must be one of the configured enum values`;
+  }
+
+  if (schemaType === "object" || (!schemaType && (schema.properties || schema.required))) {
+    if (!isPlainObject(value)) return `${valuePath} must be an object`;
+
+    const properties = isPlainObject(schema.properties) ? schema.properties : {};
+    const required = Array.isArray(schema.required)
+      ? schema.required.filter((entry): entry is string => typeof entry === "string")
+      : [];
+
+    for (const key of required) {
+      if (!(key in value)) return `${valuePath}.${key} is required`;
+    }
+
+    if (schema.additionalProperties === false) {
+      for (const key of Object.keys(value)) {
+        if (!(key in properties)) return `${valuePath}.${key} is not allowed`;
+      }
+    }
+
+    for (const [key, propertySchema] of Object.entries(properties)) {
+      if (!(key in value)) continue;
+      if (!isPlainObject(propertySchema)) continue;
+
+      const error = validateAgentFeedbackPayload(value[key], propertySchema, `${valuePath}.${key}`);
+      if (error) return error;
+    }
+
+    return undefined;
+  }
+
+  if (schemaType === "array") {
+    if (!Array.isArray(value)) return `${valuePath} must be an array`;
+    if (!isPlainObject(schema.items)) return undefined;
+
+    for (const [index, item] of value.entries()) {
+      const error = validateAgentFeedbackPayload(item, schema.items, `${valuePath}[${index}]`);
+      if (error) return error;
+    }
+
+    return undefined;
+  }
+
+  if (schemaType === "string") {
+    if (typeof value !== "string") return `${valuePath} must be a string`;
+
+    if (typeof schema.minLength === "number" && value.length < schema.minLength) {
+      return `${valuePath} must be at least ${schema.minLength} characters`;
+    }
+
+    if (typeof schema.maxLength === "number" && value.length > schema.maxLength) {
+      return `${valuePath} must be at most ${schema.maxLength} characters`;
+    }
+
+    return undefined;
+  }
+
+  if (schemaType === "number") {
+    if (typeof value !== "number" || !Number.isFinite(value))
+      return `${valuePath} must be a number`;
+
+    if (typeof schema.minimum === "number" && value < schema.minimum) {
+      return `${valuePath} must be >= ${schema.minimum}`;
+    }
+
+    if (typeof schema.maximum === "number" && value > schema.maximum) {
+      return `${valuePath} must be <= ${schema.maximum}`;
+    }
+
+    return undefined;
+  }
+
+  if (schemaType === "boolean") {
+    if (typeof value !== "boolean") return `${valuePath} must be a boolean`;
+    return undefined;
+  }
+
+  return undefined;
+}
 
 function readEntry(root: string): string {
   for (const ext of FILE_EXTS) {
@@ -1043,6 +1353,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const appDir = getNextAppDir(root);
   const contentDir = options?.contentDir ?? path.join(appDir, entry);
   const changelogConfig = resolveChangelogConfig(options?.changelog);
+  const agentFeedbackConfig = resolveAgentFeedbackConfig(options?.feedback);
 
   const i18nConfig = options?.i18n ?? readI18nConfig(root);
   const i18n = resolveDocsI18n(i18nConfig);
@@ -1241,6 +1552,30 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     async GET(request: Request) {
       const ctx = resolveContextFromRequest(request);
       const url = new URL(request.url);
+      const agentFeedbackRequest = resolveAgentFeedbackRequest(url, agentFeedbackConfig);
+
+      if (agentFeedbackRequest) {
+        if (agentFeedbackRequest.kind === "submit") {
+          return Response.json(
+            { error: "Method Not Allowed" },
+            {
+              status: 405,
+              headers: {
+                Allow: "POST",
+              },
+            },
+          );
+        }
+
+        return new Response(JSON.stringify(agentFeedbackConfig.schema, null, 2), {
+          headers: {
+            "Content-Type": "application/schema+json; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            "X-Robots-Tag": "noindex",
+          },
+        });
+      }
+
       const markdownRequest = resolveMarkdownRequest(entry, url);
 
       if (markdownRequest) {
@@ -1311,6 +1646,43 @@ export function createDocsAPI(options?: DocsAPIOptions) {
      * Response: SSE stream of chat completion chunks.
      */
     async POST(request: Request): Promise<Response> {
+      const agentFeedbackRequest = resolveAgentFeedbackRequest(
+        new URL(request.url),
+        agentFeedbackConfig,
+      );
+
+      if (agentFeedbackRequest) {
+        if (agentFeedbackRequest.kind === "schema") {
+          return Response.json(
+            { error: "Method Not Allowed" },
+            {
+              status: 405,
+              headers: {
+                Allow: "GET",
+              },
+            },
+          );
+        }
+
+        const parsed = await parseAgentFeedbackData(request);
+        if (!parsed.ok) return parsed.response;
+
+        const payloadError = validateAgentFeedbackPayload(
+          parsed.data.payload,
+          agentFeedbackConfig.payloadSchema,
+        );
+        if (payloadError) {
+          return Response.json({ error: payloadError }, { status: 400 });
+        }
+
+        if (!agentFeedbackConfig.onFeedback) {
+          return Response.json({ ok: true, handled: false }, { status: 202 });
+        }
+
+        await agentFeedbackConfig.onFeedback(parsed.data);
+        return Response.json({ ok: true, handled: true }, { status: 201 });
+      }
+
       if (!aiConfig.enabled) {
         return Response.json(
           {

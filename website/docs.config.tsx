@@ -173,6 +173,12 @@ export default defineDocs({
   feedback: {
     enabled: true,
     onFeedback: submitDocsFeedback,
+    agent: {
+      enabled: true,
+      onFeedback: (data) => {
+        console.log({ data });
+      },
+    },
   },
   mcp: {
     enabled: true,

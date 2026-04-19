@@ -996,8 +996,17 @@ function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
   if (feedback === undefined || feedback === false) return defaults;
   if (feedback === true) return { ...defaults, enabled: true };
 
+  const hasHumanFeedbackConfig =
+    feedback.enabled !== undefined ||
+    feedback.question !== undefined ||
+    feedback.placeholder !== undefined ||
+    feedback.positiveLabel !== undefined ||
+    feedback.negativeLabel !== undefined ||
+    feedback.submitLabel !== undefined ||
+    feedback.onFeedback !== undefined;
+
   return {
-    enabled: feedback.enabled !== false,
+    enabled: feedback.enabled === true || (feedback.enabled !== false && hasHumanFeedbackConfig),
     question: feedback.question ?? defaults.question,
     placeholder: feedback.placeholder ?? defaults.placeholder,
     positiveLabel: feedback.positiveLabel ?? defaults.positiveLabel,

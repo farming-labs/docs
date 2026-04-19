@@ -1307,6 +1307,72 @@ export interface DocsFeedbackData {
 }
 
 /**
+ * Page and transport context supplied alongside agent feedback payloads.
+ *
+ * The `payload` itself is customizable through `feedback.agent.schema`; this
+ * context object keeps a small stable envelope for route-aware metadata.
+ */
+export interface DocsAgentFeedbackContext {
+  /** Docs page path, e.g. `"/docs/installation"`. */
+  page?: string;
+  /** Full docs URL, when the caller has one available. */
+  url?: string;
+  /** Docs slug relative to the entry root, e.g. `"installation"`. */
+  slug?: string;
+  /** Active locale when docs i18n is enabled. */
+  locale?: string;
+  /** Arbitrary source label such as `"md-route"`, `"mcp"`, or `"api"`. */
+  source?: string;
+}
+
+/**
+ * Data passed to `feedback.agent.onFeedback`.
+ *
+ * The request body always follows the stable `{ context?, payload }` envelope
+ * while `payload` stays schema-driven so projects can add or remove agent
+ * fields without changing the callback contract.
+ */
+export interface DocsAgentFeedbackData {
+  /** Optional docs/page context associated with the agent feedback. */
+  context?: DocsAgentFeedbackContext;
+  /** Arbitrary payload validated by the configured agent feedback schema. */
+  payload: Record<string, unknown>;
+}
+
+/**
+ * Agent feedback endpoint configuration served through the shared `/api/docs`
+ * route wrapper.
+ */
+export interface AgentFeedbackConfig {
+  /** Enable the agent feedback endpoints. Defaults to `true` when provided. */
+  enabled?: boolean;
+  /**
+   * Public HTTP route for posting agent feedback.
+   * @default "/api/docs/agent/feedback"
+   */
+  route?: string;
+  /**
+   * Public HTTP route for the machine-readable schema describing the agent
+   * feedback payload.
+   *
+   * Defaults to `${route}/schema`.
+   */
+  schemaRoute?: string;
+  /**
+   * JSON Schema object describing the `payload` field of the request body.
+   *
+   * The shared docs API wraps this under a stable top-level envelope:
+   * `{ context?: DocsAgentFeedbackContext, payload: <schema> }`.
+   */
+  schema?: Record<string, unknown>;
+  /**
+   * Async callback fired when the agent feedback endpoint receives a valid
+   * `{ context?, payload }` body.
+   */
+  onFeedback?: (data: DocsAgentFeedbackData) => void | Promise<void>;
+}
+
+/**
  * Built-in page feedback configuration.
  *
  * When enabled, docs pages render a small feedback prompt at the end of the
@@ -1335,6 +1401,14 @@ export interface FeedbackConfig {
    * `fd:feedback` custom event.
    */
   onFeedback?: (data: DocsFeedbackData) => void | Promise<void>;
+  /**
+   * Machine-oriented feedback endpoints exposed through the shared `/api/docs`
+   * route when configured.
+   *
+   * This does not enable the human page feedback UI by itself. To show the
+   * built-in footer prompt, keep using `feedback: true` or `feedback.enabled`.
+   */
+  agent?: boolean | AgentFeedbackConfig;
 }
 
 export interface DocsI18nConfig {
