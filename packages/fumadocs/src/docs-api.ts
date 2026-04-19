@@ -157,6 +157,7 @@ interface ResolvedAgentFeedbackConfig {
   enabled: boolean;
   route: string;
   schemaRoute: string;
+  payloadSchema: Record<string, unknown>;
   schema: Record<string, unknown>;
   onFeedback?: (data: DocsAgentFeedbackData) => void | Promise<void>;
 }
@@ -205,6 +206,7 @@ function resolveAgentFeedbackConfig(
     enabled: false,
     route,
     schemaRoute: `${route}/schema`,
+    payloadSchema: DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA,
     schema: buildAgentFeedbackSchema(DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA),
   } satisfies ResolvedAgentFeedbackConfig;
 
@@ -218,6 +220,7 @@ function resolveAgentFeedbackConfig(
       enabled: true,
       route,
       schemaRoute: `${route}/schema`,
+      payloadSchema: DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA,
       schema: buildAgentFeedbackSchema(DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA),
     };
   }
@@ -228,11 +231,14 @@ function resolveAgentFeedbackConfig(
     `${resolvedRoute}/schema`,
   );
 
+  const payloadSchema = agent.schema ?? DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA;
+
   return {
     enabled: agent.enabled !== false,
     route: resolvedRoute,
     schemaRoute: resolvedSchemaRoute,
-    schema: buildAgentFeedbackSchema(agent.schema ?? DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA),
+    payloadSchema,
+    schema: buildAgentFeedbackSchema(payloadSchema),
     onFeedback: agent.onFeedback,
   };
 }
@@ -313,6 +319,95 @@ async function parseAgentFeedbackData(
       payload: body.payload,
     },
   };
+}
+
+function validateAgentFeedbackPayload(
+  value: unknown,
+  schema: Record<string, unknown>,
+  valuePath = "payload",
+): string | undefined {
+  const schemaType = typeof schema.type === "string" ? schema.type : undefined;
+
+  if (Array.isArray(schema.enum) && !schema.enum.some((entry) => Object.is(entry, value))) {
+    return `${valuePath} must be one of the configured enum values`;
+  }
+
+  if (schemaType === "object" || (!schemaType && (schema.properties || schema.required))) {
+    if (!isPlainObject(value)) return `${valuePath} must be an object`;
+
+    const properties = isPlainObject(schema.properties) ? schema.properties : {};
+    const required = Array.isArray(schema.required)
+      ? schema.required.filter((entry): entry is string => typeof entry === "string")
+      : [];
+
+    for (const key of required) {
+      if (!(key in value)) return `${valuePath}.${key} is required`;
+    }
+
+    if (schema.additionalProperties === false) {
+      for (const key of Object.keys(value)) {
+        if (!(key in properties)) return `${valuePath}.${key} is not allowed`;
+      }
+    }
+
+    for (const [key, propertySchema] of Object.entries(properties)) {
+      if (!(key in value)) continue;
+      if (!isPlainObject(propertySchema)) continue;
+
+      const error = validateAgentFeedbackPayload(value[key], propertySchema, `${valuePath}.${key}`);
+      if (error) return error;
+    }
+
+    return undefined;
+  }
+
+  if (schemaType === "array") {
+    if (!Array.isArray(value)) return `${valuePath} must be an array`;
+    if (!isPlainObject(schema.items)) return undefined;
+
+    for (const [index, item] of value.entries()) {
+      const error = validateAgentFeedbackPayload(item, schema.items, `${valuePath}[${index}]`);
+      if (error) return error;
+    }
+
+    return undefined;
+  }
+
+  if (schemaType === "string") {
+    if (typeof value !== "string") return `${valuePath} must be a string`;
+
+    if (typeof schema.minLength === "number" && value.length < schema.minLength) {
+      return `${valuePath} must be at least ${schema.minLength} characters`;
+    }
+
+    if (typeof schema.maxLength === "number" && value.length > schema.maxLength) {
+      return `${valuePath} must be at most ${schema.maxLength} characters`;
+    }
+
+    return undefined;
+  }
+
+  if (schemaType === "number") {
+    if (typeof value !== "number" || !Number.isFinite(value))
+      return `${valuePath} must be a number`;
+
+    if (typeof schema.minimum === "number" && value < schema.minimum) {
+      return `${valuePath} must be >= ${schema.minimum}`;
+    }
+
+    if (typeof schema.maximum === "number" && value > schema.maximum) {
+      return `${valuePath} must be <= ${schema.maximum}`;
+    }
+
+    return undefined;
+  }
+
+  if (schemaType === "boolean") {
+    if (typeof value !== "boolean") return `${valuePath} must be a boolean`;
+    return undefined;
+  }
+
+  return undefined;
 }
 
 function readEntry(root: string): string {
@@ -1571,6 +1666,14 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
         const parsed = await parseAgentFeedbackData(request);
         if (!parsed.ok) return parsed.response;
+
+        const payloadError = validateAgentFeedbackPayload(
+          parsed.data.payload,
+          agentFeedbackConfig.payloadSchema,
+        );
+        if (payloadError) {
+          return Response.json({ error: payloadError }, { status: 400 });
+        }
 
         if (!agentFeedbackConfig.onFeedback) {
           return Response.json({ ok: true, handled: false }, { status: 202 });

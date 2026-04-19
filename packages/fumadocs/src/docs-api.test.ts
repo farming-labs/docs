@@ -4,6 +4,17 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createDocsAPI, createDocsMCPAPI } from "./docs-api.js";
 
+function createDeferredPromise<T = void>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, resolve, reject };
+}
+
 async function parseMcpPayload<T>(response: Response): Promise<T> {
   const body = await response.text();
 
@@ -550,7 +561,8 @@ title: "Home"
 
     process.chdir(rootDir);
 
-    const onFeedback = vi.fn(async () => undefined);
+    const deferred = createDeferredPromise<void>();
+    const onFeedback = vi.fn(() => deferred.promise);
     const { POST } = createDocsAPI({
       rootDir,
       entry: "docs",
@@ -562,7 +574,7 @@ title: "Home"
       },
     });
 
-    const response = await POST(
+    const responsePromise = POST(
       new Request("http://localhost/api/docs/agent/feedback", {
         method: "POST",
         headers: {
@@ -585,6 +597,21 @@ title: "Home"
         }),
       }),
     );
+
+    expect(onFeedback).toHaveBeenCalledTimes(0);
+    await vi.waitFor(() => {
+      expect(onFeedback).toHaveBeenCalledTimes(1);
+    });
+
+    let settled = false;
+    responsePromise.then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    deferred.resolve();
+    const response = await responsePromise;
 
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual({ ok: true, handled: true });
@@ -678,6 +705,55 @@ title: "Home"
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: "Agent feedback body must include a payload object",
+    });
+  });
+
+  it("rejects agent feedback payloads that do not satisfy the configured schema", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-feedback-schema-invalid-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+
+    process.chdir(rootDir);
+
+    const { POST } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      feedback: {
+        agent: {
+          enabled: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              task: { type: "string" },
+              outcome: { type: "string" },
+            },
+            required: ["task", "outcome"],
+          },
+        },
+      },
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/docs/agent/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          payload: {
+            task: "demo",
+            extra: true,
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "payload.outcome is required",
     });
   });
 
