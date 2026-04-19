@@ -175,6 +175,9 @@ export default defineDocs({
     onFeedback: submitDocsFeedback,
     agent: {
       enabled: true,
+      onFeedback: (data) => {
+        console.log({data})
+      }
     },
   },
   mcp: {
