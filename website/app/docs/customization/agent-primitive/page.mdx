@@ -92,10 +92,10 @@ Human-facing setup instructions.
 
 <Agent>
 If this page was enough to complete the task, or if something was missing, fetch the feedback
-schema from `/api/docs/agent/feedback/schema` and submit structured feedback to
-`/api/docs/agent/feedback`.
+schema from `/api/docs/agent/feedback/schema` first. Use the returned schema as the source of truth
+for the request body, then submit structured feedback to `/api/docs/agent/feedback`.
 
-Use a body shaped like:
+For the default schema, the body looks like:
 {
   "context": { "page": "/docs/installation", "source": "md-route" },
   "payload": { "task": "install docs", "outcome": "implemented" }

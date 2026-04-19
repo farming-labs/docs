@@ -41,7 +41,11 @@ The shared docs API also accepts the same feature through query parameters:
 - schema: `/api/docs?feedback=agent&schema=1`
 - submit: `/api/docs?feedback=agent`
 
-Read the schema first, then submit a body shaped like:
+Fetch the schema endpoint first and use the returned schema as the source of truth for the body you
+submit. Do not assume the payload fields are fixed, because the site can customize
+`feedback.agent.schema`.
+
+For the default schema, the body looks like:
 
 ```json
 {
