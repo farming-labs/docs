@@ -93,6 +93,7 @@ export const { GET, POST } = createDocsAPI({
   contentDir: docsConfig.contentDir,
   i18n: docsConfig.i18n,
   changelog: docsConfig.changelog,
+  feedback: docsConfig.feedback,
   search: docsConfig.search,
   ai: docsConfig.ai,
 });
@@ -165,6 +166,7 @@ export default function HiddenChangelogSourceLayout() {
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const INTERNAL_DOCS_CONFIG_ALIAS = "@farming-labs/next-internal-docs-config";
 const NEXT_PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
+const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
 
 function resolvePackageAlias(packageName: string, fallbacks: string[] = []): string | undefined {
   const candidates = [
@@ -885,6 +887,67 @@ function normalizeRoutePath(route: string): string {
   return normalized !== "/" ? normalized.replace(/\/+$/, "") : "/api/docs/mcp";
 }
 
+function normalizeAgentFeedbackRoute(
+  route?: string,
+  fallback = DEFAULT_AGENT_FEEDBACK_ROUTE,
+): string {
+  if (!route || route.trim().length === 0) return fallback;
+
+  const normalized = `/${route}`.replace(/\/+/g, "/");
+  return normalized !== "/" ? normalized.replace(/\/+$/, "") : fallback;
+}
+
+function readAgentFeedbackConfig(root: string): {
+  enabled: boolean;
+  route: string;
+  schemaRoute: string;
+} {
+  const defaultRoute = normalizeAgentFeedbackRoute();
+  const disabled = {
+    enabled: false,
+    route: defaultRoute,
+    schemaRoute: `${defaultRoute}/schema`,
+  };
+
+  for (const ext of FILE_EXTS) {
+    const configPath = join(root, `docs.config.${ext}`);
+    if (!existsSync(configPath)) continue;
+
+    try {
+      const content = readFileSync(configPath, "utf-8");
+      const feedbackBlock = extractObjectLiteral(content, "feedback");
+      if (!feedbackBlock) continue;
+
+      if (feedbackBlock.match(/agent\s*:\s*false/)) return disabled;
+      if (feedbackBlock.match(/agent\s*:\s*true/)) {
+        return {
+          enabled: true,
+          route: defaultRoute,
+          schemaRoute: `${defaultRoute}/schema`,
+        };
+      }
+
+      const agentBlock = extractObjectLiteral(feedbackBlock, "agent");
+      if (!agentBlock) continue;
+
+      const enabledMatch = agentBlock.match(/enabled\s*:\s*(true|false)/);
+      const routeMatch = agentBlock.match(/route\s*:\s*["']([^"']+)["']/);
+      const schemaRouteMatch = agentBlock.match(/schemaRoute\s*:\s*["']([^"']+)["']/);
+      const route = normalizeAgentFeedbackRoute(routeMatch?.[1], defaultRoute);
+
+      return {
+        enabled: enabledMatch ? enabledMatch[1] !== "false" : true,
+        route,
+        schemaRoute: normalizeAgentFeedbackRoute(schemaRouteMatch?.[1], `${route}/schema`),
+      };
+    } catch {
+      return disabled;
+    }
+  }
+
+  return disabled;
+}
+
 type NextRewrite = {
   source: string;
   destination: string;
@@ -914,6 +977,25 @@ function buildDocsMarkdownRewrites(entry: string): NextRewrite[] {
   ];
 }
 
+function buildAgentFeedbackRewrites(config: {
+  enabled: boolean;
+  route: string;
+  schemaRoute: string;
+}): NextRewrite[] {
+  if (!config.enabled) return [];
+
+  return [
+    {
+      source: config.route,
+      destination: "/api/docs?feedback=agent",
+    },
+    {
+      source: config.schemaRoute,
+      destination: "/api/docs?feedback=agent&schema=1",
+    },
+  ];
+}
+
 function dedupeRewrites(rewrites: NextRewrite[]): NextRewrite[] {
   const seen = new Set<string>();
   const result: NextRewrite[] = [];
@@ -928,16 +1010,27 @@ function dedupeRewrites(rewrites: NextRewrite[]): NextRewrite[] {
   return result;
 }
 
-function mergeDocsMarkdownRewrites(entry: string, result?: NextRewriteResult): NextRewriteResult {
-  const docsMarkdownRewrites = buildDocsMarkdownRewrites(entry);
-  if (!result) return [...docsMarkdownRewrites];
+function mergeDocsMarkdownRewrites(
+  entry: string,
+  agentFeedback: {
+    enabled: boolean;
+    route: string;
+    schemaRoute: string;
+  },
+  result?: NextRewriteResult,
+): NextRewriteResult {
+  const autoRewrites = [
+    ...buildDocsMarkdownRewrites(entry),
+    ...buildAgentFeedbackRewrites(agentFeedback),
+  ];
+  if (!result) return [...autoRewrites];
 
   if (Array.isArray(result)) {
-    return dedupeRewrites([...docsMarkdownRewrites, ...result]);
+    return dedupeRewrites([...autoRewrites, ...result]);
   }
 
   return {
-    beforeFiles: dedupeRewrites([...docsMarkdownRewrites, ...(result.beforeFiles ?? [])]),
+    beforeFiles: dedupeRewrites([...autoRewrites, ...(result.beforeFiles ?? [])]),
     afterFiles: result.afterFiles ?? [],
     fallback: result.fallback ?? [],
   };
@@ -950,6 +1043,7 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
   const workspaceRoot = findDocsWorkspaceRoot(root);
   const docsConfigPath = readDocsConfigPath(root);
   const docsConfigAbsolutePath = join(root, docsConfigPath);
+  const agentFeedback = readAgentFeedbackConfig(root);
   const docsConfigRelativeAlias =
     docsConfigPath.startsWith("./") || docsConfigPath.startsWith("../")
       ? docsConfigPath
@@ -1258,7 +1352,7 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     nextConfig.rewrites = async () => {
       const rewrites =
         typeof existingRewrites === "function" ? await existingRewrites() : existingRewrites;
-      return mergeDocsMarkdownRewrites(entry, rewrites);
+      return mergeDocsMarkdownRewrites(entry, agentFeedback, rewrites);
     };
   }
 

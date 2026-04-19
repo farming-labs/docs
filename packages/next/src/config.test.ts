@@ -73,6 +73,30 @@ const DOCS_CONFIG_WITH_CUSTOM_MCP_ROUTE = `export default {
 };
 `;
 
+const DOCS_CONFIG_WITH_AGENT_FEEDBACK = `export default {
+  entry: "docs",
+  feedback: {
+    agent: {
+      enabled: true,
+      route: "/api/docs/agent/feedback",
+      schemaRoute: "/api/docs/agent/feedback/schema",
+    },
+  },
+};
+`;
+
+const DOCS_CONFIG_WITH_CUSTOM_AGENT_FEEDBACK = `export default {
+  entry: "docs",
+  feedback: {
+    agent: {
+      enabled: true,
+      route: "/internal/docs/agent-feedback",
+      schemaRoute: "/internal/docs/agent-feedback/schema",
+    },
+  },
+};
+`;
+
 describe("withDocs (app dir: src/app vs app)", () => {
   let tmpDir: string;
   let originalCwd: string;
@@ -100,6 +124,9 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(existsSync(join(tmpDir, "src/app/docs/layout.tsx"))).toBe(true);
     expect(existsSync(join(tmpDir, "src/app/api/docs/route.ts"))).toBe(true);
+    expect(readFileSync(join(tmpDir, "src/app/api/docs/route.ts"), "utf-8")).toContain(
+      "feedback: docsConfig.feedback",
+    );
     expect(existsSync(join(tmpDir, "app/docs/layout.tsx"))).toBe(false);
     expect(existsSync(join(tmpDir, "app/api/docs/route.ts"))).toBe(false);
   });
@@ -200,6 +227,54 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/docs/:slug*.md",
           destination: "/api/docs?format=markdown&path=:slug*",
+        }),
+      ]),
+    );
+  });
+
+  it("adds agent feedback rewrites through the shared docs api handler when configured", async () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_AGENT_FEEDBACK, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+    const rewrites = await (
+      nextConfig.rewrites as () => Promise<Array<{ source: string; destination: string }>>
+    )();
+
+    expect(rewrites).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/api/docs/agent/feedback",
+          destination: "/api/docs?feedback=agent",
+        }),
+        expect.objectContaining({
+          source: "/api/docs/agent/feedback/schema",
+          destination: "/api/docs?feedback=agent&schema=1",
+        }),
+      ]),
+    );
+  });
+
+  it("uses custom agent feedback routes when configured", async () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_CUSTOM_AGENT_FEEDBACK, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+    const rewrites = await (
+      nextConfig.rewrites as () => Promise<Array<{ source: string; destination: string }>>
+    )();
+
+    expect(rewrites).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/internal/docs/agent-feedback",
+          destination: "/api/docs?feedback=agent",
+        }),
+        expect.objectContaining({
+          source: "/internal/docs/agent-feedback/schema",
+          destination: "/api/docs?feedback=agent&schema=1",
         }),
       ]),
     );
