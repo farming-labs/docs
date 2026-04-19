@@ -41,6 +41,7 @@ Ten built-in theme entrypoints: `fumadocs` (default), `darksharp`, `pixel-border
 
 - **MDX components** — built-ins like `Callout`, `Tabs`, and `HoverLink` are available without imports.
 - **Page feedback** — enable with `feedback: true` or `feedback: { enabled: true, onFeedback() {} }`.
+- **Agent feedback endpoints** — add `feedback.agent` when agents should report structured `{ context?, payload }` feedback through `/api/docs/agent/feedback` and `/api/docs/agent/feedback/schema`.
 - **Page actions** — enable with `pageActions.copyMarkdown` and `pageActions.openDocs`.
 - **Built-in changelog pages (Next.js)** — enable `changelog` to publish a release feed from dated MDX entries.
 - **Built-in MCP server** — enabled by default at `/api/docs/mcp` and for local stdio tools. Opt out with `mcp: false` or `mcp: { enabled: false }`.

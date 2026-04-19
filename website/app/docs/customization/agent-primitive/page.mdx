@@ -72,6 +72,43 @@ This is the stronger option. Use it when agents need:
 - testing or validation steps
 - a shorter, more targeted page than the human docs should show
 
+## Point Agents At Feedback Endpoints
+
+Page primitives are also a good place to tell agents how to report whether the docs were enough to
+complete a task.
+
+If `feedback.agent` is enabled in `docs.config`, agents can read the schema first and then post
+structured feedback back into the shared docs API:
+
+- schema: `/api/docs/agent/feedback/schema`
+- submit: `/api/docs/agent/feedback`
+
+Example additive block:
+
+```mdx title="app/docs/installation/page.mdx"
+# Installation
+
+Human-facing setup instructions.
+
+<Agent>
+If this page was enough to complete the task, or if something was missing, fetch the feedback
+schema from `/api/docs/agent/feedback/schema` and submit structured feedback to
+`/api/docs/agent/feedback`.
+
+Use a body shaped like:
+{
+  "context": { "page": "/docs/installation", "source": "md-route" },
+  "payload": { "task": "install docs", "outcome": "implemented" }
+}
+</Agent>
+```
+
+That works especially well when:
+
+- the feedback instruction belongs to one page or workflow
+- you want the agent-facing `.md` route to carry the reporting contract
+- the human page should stay uncluttered
+
 ## Choosing Between Them
 
 - Use `Agent` when the normal page should stay the source of truth and you only need extra machine context
