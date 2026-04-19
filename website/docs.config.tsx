@@ -176,8 +176,8 @@ export default defineDocs({
     agent: {
       enabled: true,
       onFeedback: (data) => {
-        console.log({data})
-      }
+        console.log({ data });
+      },
     },
   },
   mcp: {
