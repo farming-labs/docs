@@ -984,8 +984,8 @@ Use `feedback.agent` when you want machine-readable feedback routes for coding a
 automation. This is separate from the built-in page footer UI.
 
 Agents can discover the configured routes first with `GET /api/docs/agent/spec`. The spec includes
-the markdown route pattern, MCP endpoint and enabled tools, and the active agent feedback schema and
-submit endpoints.
+the markdown route pattern, `llms.txt` routes, MCP endpoint and enabled tools, and the active agent
+feedback schema and submit endpoints.
 
 ```ts title="docs.config.ts"
 export default defineDocs({
