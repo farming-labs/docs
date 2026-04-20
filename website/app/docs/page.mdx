@@ -8,6 +8,25 @@ icon: "book"
 
 An AI-native documentation framework built on top of <HoverLink href="https://fumadocs.dev" title="Fumadocs" description="The MDX docs toolkit and UI foundation that powers the core reading experience behind @farming-labs/docs." linkLabel="Visit Fumadocs" external>Fumadocs</HoverLink> and other preset providers. One config file, zero boilerplate, with docs that are ready for humans, IDEs, and agents out of the box.
 
+<Agent>
+You are reading the machine-readable entry page for `@farming-labs/docs`.
+
+Before implementing from this docs site, fetch `/api/docs/agent/spec` from the same origin. Treat
+that JSON as the source of truth for the docs entry path, markdown route pattern, search endpoint,
+MCP endpoint, `llms.txt` routes, skills install command, locale handling, and feedback endpoints.
+
+Recommended bootstrap flow:
+
+1. Fetch `/api/docs/agent/spec`.
+2. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read the exact docs pages you need as markdown.
+3. Use `spec.search.endpoint` when you need to find the right page before reading it.
+4. Use `spec.mcp.endpoint` and tools when MCP is enabled and the environment supports MCP.
+5. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
+
+Do not scrape the HTML page when markdown, search, MCP, or `llms.txt` routes are available in the
+spec.
+</Agent>
+
 ## Why @farming-labs/docs?
 
 - **Zero boilerplate** — No layout files, no `[[...slug]]` wrappers except for fully fledged functionality like AI, Search and metadata to work. Just write Markdown or MDX.

@@ -9,6 +9,18 @@ icon: book
 
 Better Auth is a framework-agnostic, universal authentication and authorization framework for TypeScript. It provides a comprehensive set of features out of the box and includes a plugin ecosystem that simplifies adding advanced functionalities.
 
+<Agent>
+You are reading the example docs entry page as an implementation agent.
+
+Before implementing from this docs site, fetch `/api/docs/agent/spec` from the same origin. Use the
+returned markdown route pattern, search endpoint, MCP endpoint, `llms.txt` routes, skills metadata,
+locale config, and feedback endpoints instead of hard-coding defaults.
+
+Prefer markdown reads over HTML scraping. For Next.js, `/docs.md`, `/docs/<slug>.md`, and
+`Accept: text/markdown` on `/docs/<slug>` are the page-level machine-readable entry points when
+reported by the spec.
+</Agent>
+
 ## Features
 
 - **Framework Agnostic** — Support for most popular frameworks

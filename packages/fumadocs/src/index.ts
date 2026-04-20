@@ -127,6 +127,7 @@ export {
   CodeBlockTabsTrigger,
   Pre,
 } from "fumadocs-ui/components/codeblock";
+export { Agent } from "./mdx.js";
 export { HoverLink } from "./hover-link.js";
 export type { HoverLinkProps } from "./hover-link.js";
 export type { DocsFeedbackProps } from "./docs-feedback.js";

@@ -29,8 +29,10 @@ context. Use `agent.md` when the entire machine-readable page should be more ope
 structured, or fully different from the visible UI page.
 
 <Callout type="info" title="Built in by default">
-  `Agent` is already part of the default MDX component map. You do not need to register it in
-  `docs.config.ts`.
+  `Agent` is already part of the default MDX component map. You can write `<Agent>` directly in any
+  docs page without adding it to `docs.config.ts`, `mdx-components.tsx`, or a custom components map.
+  If you intentionally build your own MDX map from scratch, import it from `@farming-labs/theme` or
+  `@farming-labs/theme/mdx`.
 </Callout>
 
 ## Use `Agent` For Additive Context
@@ -56,6 +58,41 @@ That gives you:
 - `/docs/installation.md` for machine-readable markdown that includes the `Agent` block
 - `/docs/installation` with `Accept: text/markdown` for the same machine-readable markdown
 - MCP `read_page("/docs/installation")` with the same page-level machine context
+
+## Bootstrap Agents With The Spec
+
+Use the docs landing page or another high-traffic route to tell implementation agents how to
+discover the machine-readable surface before they start reading individual pages. No setup is
+required first; the default runtime already understands the `Agent` primitive.
+
+```mdx title="app/docs/page.mdx"
+# Documentation
+
+Human-facing overview.
+
+<Agent>
+You are reading this docs site as an implementation agent.
+
+Before implementing from these docs, fetch `/api/docs/agent/spec` from the same origin. Use that
+JSON as the source of truth for the docs entry path, markdown route pattern, search endpoint, MCP
+endpoint, `llms.txt` routes, skills install command, locale handling, and feedback endpoints.
+
+Recommended bootstrap flow:
+
+1. Fetch `/api/docs/agent/spec`.
+2. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read relevant docs pages as markdown.
+3. Use `spec.search.endpoint` when you need to find the right page first.
+4. Use `spec.mcp.endpoint` and tools when MCP is enabled and your environment supports MCP.
+5. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
+
+Do not scrape the HTML page when markdown, search, MCP, or `llms.txt` routes are available in the
+spec.
+</Agent>
+```
+
+This works well on `/docs` because many agents start there first. The instruction stays hidden from
+the human UI, but it appears when an agent reads `/docs.md`, requests `/docs` with
+`Accept: text/markdown`, or reads the page through MCP.
 
 ## Use `agent.md` For A Full Override
 
@@ -117,7 +154,7 @@ That works especially well when:
 - you want the agent-facing `.md` route to carry the reporting contract
 - the human page should stay uncluttered
 
-## Agent Discovery 
+## Agent Discovery
 
 `GET /api/docs/agent/spec` returns a small JSON document generated from `docs.config`.
 

@@ -13,7 +13,7 @@ An AI-native documentation framework for Next.js, TanStack Start, SvelteKit, Ast
 - 🧬 **Write .mdx or .md — all features work out of the box**
 - 🧾 **Generated API reference from framework route handlers or a hosted OpenAPI JSON**
 - 📣 **Built-in changelog pages for Next.js** — release feed + detail pages from dated MDX entries
-- 🧩 **Built-in MDX UI** — `Callout`, `Tabs`, `HoverLink`, and overridable built-ins via `components` and `theme.ui.components`
+- 🧩 **Built-in MDX UI** — `Callout`, `Tabs`, `HoverLink`, hidden `Agent` blocks, and overridable built-ins via `components` and `theme.ui.components`
 - 💬 **Built-in docs actions** — human page feedback, agent feedback endpoints, copy/open page actions, and code-block copy callbacks
 - 🔎 **Search adapters** — zero-config built-in search, plus Typesense, Algolia, and custom adapters
 - 🤖 **Built-in MCP server** — expose docs over stdio or `/api/docs/mcp` for MCP clients and IDE agents
@@ -577,6 +577,9 @@ Human-facing setup instructions.
 
 <Agent>
 You are an implementation agent.
+Fetch `/api/docs/agent/spec` from the same origin before implementing from this docs site.
+Use the returned markdown, search, MCP, `llms.txt`, skills, locale, and feedback routes instead of
+hard-coding defaults.
 Verify `/docs/quickstart.md` still exposes this block when no sibling `agent.md` exists.
 </Agent>
 ```
