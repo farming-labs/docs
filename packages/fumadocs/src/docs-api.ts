@@ -24,7 +24,6 @@ import matter from "gray-matter";
 import { getNextAppDir } from "./get-app-dir.js";
 import { resolveChangelogConfig, resolveDocsI18n, resolveDocsLocale } from "@farming-labs/docs";
 import type {
-  AgentFeedbackConfig,
   ChangelogConfig,
   DocsAgentFeedbackContext,
   DocsAgentFeedbackData,
@@ -34,6 +33,7 @@ import type {
 import {
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
+  resolveDocsMcpConfig,
   type DocsMcpPage,
 } from "@farming-labs/docs/server";
 import { performDocsSearch, resolveSearchRequestConfig } from "@farming-labs/docs";
@@ -93,6 +93,8 @@ interface DocsAPIOptions {
   search?: boolean | DocsSearchConfig;
   /** Feedback configuration */
   feedback?: boolean | FeedbackConfig;
+  /** MCP configuration used for the agent discovery spec. */
+  mcp?: boolean | DocsMcpConfig;
 }
 
 interface DocsMCPAPIOptions {
@@ -108,6 +110,8 @@ interface DocsMCPAPIOptions {
 // ─── Helpers ────────────────────────────────────────────────────────
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
+const DEFAULT_DOCS_API_ROUTE = "/api/docs";
+const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
 const DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA: Record<string, unknown> = {
   type: "object",
@@ -164,6 +168,13 @@ interface ResolvedAgentFeedbackConfig {
 
 interface AgentFeedbackRequest {
   kind: "schema" | "submit";
+}
+
+interface AgentSpecOptions {
+  origin: string;
+  entry: string;
+  mcp: ReturnType<typeof resolveDocsMcpConfig>;
+  feedback: ResolvedAgentFeedbackConfig;
 }
 
 function normalizeAgentFeedbackRoute(
@@ -262,6 +273,53 @@ function resolveAgentFeedbackRequest(
   if (pathname === feedback.route) return { kind: "submit" };
 
   return null;
+}
+
+function resolveAgentSpecRequest(url: URL): boolean {
+  if (url.searchParams.get("agent")?.trim() === "spec") return true;
+  return normalizeUrlPath(url.pathname) === DEFAULT_AGENT_SPEC_ROUTE;
+}
+
+function buildAgentSpec({ origin, entry, mcp, feedback }: AgentSpecOptions) {
+  const normalizedEntry = normalizePathSegment(entry) || "docs";
+
+  return {
+    version: "1",
+    name: "@farming-labs/docs",
+    baseUrl: origin,
+    api: {
+      docs: DEFAULT_DOCS_API_ROUTE,
+      agentSpec: DEFAULT_AGENT_SPEC_ROUTE,
+      agentSpecQuery: `${DEFAULT_DOCS_API_ROUTE}?agent=spec`,
+    },
+    markdown: {
+      enabled: true,
+      pagePattern: `/${normalizedEntry}/{slug}.md`,
+      rootPage: `/${normalizedEntry}.md`,
+      apiPattern: `${DEFAULT_DOCS_API_ROUTE}?format=markdown&path={slug}`,
+      resolutionOrder: ["agent.md", "Agent blocks", "page markdown"],
+    },
+    mcp: {
+      enabled: mcp.enabled,
+      endpoint: mcp.route,
+      name: mcp.name,
+      version: mcp.version,
+      tools: mcp.tools,
+    },
+    feedback: {
+      enabled: feedback.enabled,
+      schema: feedback.schemaRoute,
+      submit: feedback.route,
+      schemaQuery: `${DEFAULT_DOCS_API_ROUTE}?feedback=agent&schema=1`,
+      submitQuery: `${DEFAULT_DOCS_API_ROUTE}?feedback=agent`,
+    },
+    instructions: {
+      preferMarkdownRoutes: true,
+      useMcpWhenAvailable: true,
+      readFeedbackSchemaBeforeSubmitting: true,
+      doNotAssumeFeedbackPayloadShape: true,
+    },
+  };
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -1364,6 +1422,9 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
   // Read llms.txt config
   const llmsConfig = readLlmsTxtConfig(root);
+  const mcpConfig = resolveDocsMcpConfig(options?.mcp ?? readMcpConfig(root), {
+    defaultName: llmsConfig.siteTitle ?? "Documentation",
+  });
 
   type DocsContext = {
     entryPath: string;
@@ -1552,6 +1613,23 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     async GET(request: Request) {
       const ctx = resolveContextFromRequest(request);
       const url = new URL(request.url);
+      if (resolveAgentSpecRequest(url)) {
+        return Response.json(
+          buildAgentSpec({
+            origin: url.origin,
+            entry,
+            mcp: mcpConfig,
+            feedback: agentFeedbackConfig,
+          }),
+          {
+            headers: {
+              "Cache-Control": "public, max-age=0, s-maxage=3600",
+              "X-Robots-Tag": "noindex",
+            },
+          },
+        );
+      }
+
       const agentFeedbackRequest = resolveAgentFeedbackRequest(url, agentFeedbackConfig);
 
       if (agentFeedbackRequest) {

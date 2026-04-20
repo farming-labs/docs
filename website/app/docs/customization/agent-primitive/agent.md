@@ -29,6 +29,19 @@ Use this page when you need the page-level authoring contract for agent-facing d
 - API route: `/api/docs?format=markdown&path=customization/agent-primitive`
 - MCP read target: `/docs/customization/agent-primitive`
 
+## Agent Discovery 
+
+Fetch `GET /api/docs/agent/spec` before choosing how to read or report on the docs.
+
+The spec is generated from `docs.config` and includes:
+
+- shared docs API route
+- markdown route patterns
+- MCP enabled state, endpoint, server name, version, and tool toggles
+- agent feedback enabled state, schema route, and submit route
+
+Use the returned routes instead of hard-coding defaults when the project customizes MCP or feedback.
+
 ## Feedback Contract
 
 If agent feedback is enabled for the site, use these default endpoints:

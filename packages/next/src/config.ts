@@ -94,6 +94,7 @@ export const { GET, POST } = createDocsAPI({
   i18n: docsConfig.i18n,
   changelog: docsConfig.changelog,
   feedback: docsConfig.feedback,
+  mcp: docsConfig.mcp,
   search: docsConfig.search,
   ai: docsConfig.ai,
 });
@@ -166,6 +167,7 @@ export default function HiddenChangelogSourceLayout() {
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const INTERNAL_DOCS_CONFIG_ALIAS = "@farming-labs/next-internal-docs-config";
 const NEXT_PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
+const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
 
 function resolvePackageAlias(packageName: string, fallbacks: string[] = []): string | undefined {
@@ -977,6 +979,15 @@ function buildDocsMarkdownRewrites(entry: string): NextRewrite[] {
   ];
 }
 
+function buildAgentSpecRewrites(): NextRewrite[] {
+  return [
+    {
+      source: DEFAULT_AGENT_SPEC_ROUTE,
+      destination: "/api/docs?agent=spec",
+    },
+  ];
+}
+
 function buildAgentFeedbackRewrites(config: {
   enabled: boolean;
   route: string;
@@ -1020,6 +1031,7 @@ function mergeDocsMarkdownRewrites(
   result?: NextRewriteResult,
 ): NextRewriteResult {
   const autoRewrites = [
+    ...buildAgentSpecRewrites(),
     ...buildDocsMarkdownRewrites(entry),
     ...buildAgentFeedbackRewrites(agentFeedback),
   ];

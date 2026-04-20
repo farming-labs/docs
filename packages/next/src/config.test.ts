@@ -127,6 +127,9 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(readFileSync(join(tmpDir, "src/app/api/docs/route.ts"), "utf-8")).toContain(
       "feedback: docsConfig.feedback",
     );
+    expect(readFileSync(join(tmpDir, "src/app/api/docs/route.ts"), "utf-8")).toContain(
+      "mcp: docsConfig.mcp",
+    );
     expect(existsSync(join(tmpDir, "app/docs/layout.tsx"))).toBe(false);
     expect(existsSync(join(tmpDir, "app/api/docs/route.ts"))).toBe(false);
   });
@@ -220,6 +223,10 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(rewrites).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          source: "/api/docs/agent/spec",
+          destination: "/api/docs?agent=spec",
+        }),
         expect.objectContaining({
           source: "/docs.md",
           destination: "/api/docs?format=markdown",
@@ -452,6 +459,10 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(rewrites).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          source: "/api/docs/agent/spec",
+          destination: "/api/docs?agent=spec",
+        }),
         expect.objectContaining({
           source: "/docs.md",
           destination: "/api/docs?format=markdown",

@@ -983,6 +983,10 @@ export async function POST(request: Request) {
 Use `feedback.agent` when you want machine-readable feedback routes for coding agents or docs-aware
 automation. This is separate from the built-in page footer UI.
 
+Agents can discover the configured routes first with `GET /api/docs/agent/spec`. The spec includes
+the markdown route pattern, MCP endpoint and enabled tools, and the active agent feedback schema and
+submit endpoints.
+
 ```ts title="docs.config.ts"
 export default defineDocs({
   entry: "docs",
@@ -999,6 +1003,7 @@ export default defineDocs({
 
 Default behavior:
 
+- `GET /api/docs/agent/spec` returns the machine-readable route/config discovery document
 - `GET /api/docs/agent/feedback/schema` returns the feedback schema
 - `POST /api/docs/agent/feedback` accepts `{ context?, payload }`
 - the shared `/api/docs` handler is still the source of truth

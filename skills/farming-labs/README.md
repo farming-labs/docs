@@ -2,7 +2,7 @@
 
 This folder contains [Agent Skills](https://skills.sh/) (conforming to the [Agent Skills specification](https://agentskills.io/specification)) for **@farming-labs/docs** — an MDX-based documentation framework for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
 
-Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task (getting started, CLI, creating themes, Ask AI, page actions, or configuration, including search adapters, changelog setup, human page feedback, agent feedback endpoints, API reference, MCP, and machine-readable markdown routes with embedded `Agent` blocks or `agent.md` overrides).
+Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task (getting started, CLI, creating themes, Ask AI, page actions, or configuration, including search adapters, changelog setup, human page feedback, agent discovery/spec routes, agent feedback endpoints, API reference, MCP, and machine-readable markdown routes with embedded `Agent` blocks or `agent.md` overrides).
 
 The repo also includes a runnable Next example for testing MCP plus external search providers:
 
@@ -12,6 +12,7 @@ pnpm --dir examples/next dev
 
 Useful routes:
 
+- Agent discovery spec: `http://127.0.0.1:3000/api/docs/agent/spec`
 - MCP: `http://127.0.0.1:3000/api/docs/mcp`
 - Search API: `http://127.0.0.1:3000/api/docs?query=session`
 - Docs API markdown: `http://127.0.0.1:3000/api/docs?format=markdown&path=quickstart`
