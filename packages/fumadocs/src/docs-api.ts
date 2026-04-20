@@ -173,6 +173,7 @@ interface AgentFeedbackRequest {
 interface AgentSpecOptions {
   origin: string;
   entry: string;
+  i18n: ReturnType<typeof resolveDocsI18n>;
   mcp: ReturnType<typeof resolveDocsMcpConfig>;
   feedback: ResolvedAgentFeedbackConfig;
   llms: LlmsTxtOptions & { enabled: boolean };
@@ -281,7 +282,7 @@ function resolveAgentSpecRequest(url: URL): boolean {
   return normalizeUrlPath(url.pathname) === DEFAULT_AGENT_SPEC_ROUTE;
 }
 
-function buildAgentSpec({ origin, entry, mcp, feedback, llms }: AgentSpecOptions) {
+function buildAgentSpec({ origin, entry, i18n, mcp, feedback, llms }: AgentSpecOptions) {
   const normalizedEntry = normalizePathSegment(entry) || "docs";
 
   return {
@@ -293,6 +294,13 @@ function buildAgentSpec({ origin, entry, mcp, feedback, llms }: AgentSpecOptions
       description: llms.siteDescription,
       entry: normalizedEntry,
       baseUrl: llms.baseUrl ?? origin,
+    },
+    locales: {
+      enabled: i18n !== null,
+      available: i18n?.locales ?? [],
+      default: i18n?.defaultLocale ?? null,
+      queryParam: "lang",
+      fallbackQueryParam: "locale",
     },
     api: {
       docs: DEFAULT_DOCS_API_ROUTE,
@@ -1642,6 +1650,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           buildAgentSpec({
             origin: url.origin,
             entry,
+            i18n,
             mcp: mcpConfig,
             feedback: agentFeedbackConfig,
             llms: llmsConfig,
