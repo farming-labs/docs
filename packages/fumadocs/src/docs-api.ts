@@ -291,6 +291,8 @@ function isSearchEnabled(search?: boolean | DocsSearchConfig): boolean {
 
 function buildAgentSpec({ origin, entry, i18n, search, mcp, feedback, llms }: AgentSpecOptions) {
   const normalizedEntry = normalizePathSegment(entry) || "docs";
+  const localesEnabled = i18n !== null;
+  const searchEnabled = isSearchEnabled(search);
 
   return {
     version: "1",
@@ -303,11 +305,22 @@ function buildAgentSpec({ origin, entry, i18n, search, mcp, feedback, llms }: Ag
       baseUrl: llms.baseUrl ?? origin,
     },
     locales: {
-      enabled: i18n !== null,
+      enabled: localesEnabled,
       available: i18n?.locales ?? [],
       default: i18n?.defaultLocale ?? null,
       queryParam: "lang",
       fallbackQueryParam: "locale",
+    },
+    capabilities: {
+      markdownRoutes: true,
+      agentMdOverrides: true,
+      agentBlocks: true,
+      llms: llms.enabled,
+      skills: true,
+      mcp: mcp.enabled,
+      search: searchEnabled,
+      agentFeedback: feedback.enabled,
+      locales: localesEnabled,
     },
     api: {
       docs: DEFAULT_DOCS_API_ROUTE,
@@ -327,7 +340,7 @@ function buildAgentSpec({ origin, entry, i18n, search, mcp, feedback, llms }: Ag
       full: `${DEFAULT_DOCS_API_ROUTE}?format=llms-full`,
     },
     search: {
-      enabled: isSearchEnabled(search),
+      enabled: searchEnabled,
       endpoint: `${DEFAULT_DOCS_API_ROUTE}?query={query}`,
       method: "GET",
       queryParam: "query",

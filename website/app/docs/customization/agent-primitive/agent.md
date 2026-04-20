@@ -37,6 +37,7 @@ The spec is generated from `docs.config` and includes:
 
 - site title, description, docs entry, and base URL
 - configured locales and the `lang`/`locale` query parameters
+- capability flags for markdown, MCP, search, feedback, skills, and `llms.txt`
 - shared docs API route
 - search endpoint and query parameter
 - markdown route patterns

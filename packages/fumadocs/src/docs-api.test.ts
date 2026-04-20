@@ -565,6 +565,7 @@ title: "Home"
         queryParam: string;
         fallbackQueryParam: string;
       };
+      capabilities: Record<string, boolean>;
       api: Record<string, string>;
       markdown: Record<string, unknown>;
       llms: { enabled: boolean; txt: string; full: string };
@@ -605,6 +606,17 @@ title: "Home"
       default: "fr",
       queryParam: "lang",
       fallbackQueryParam: "locale",
+    });
+    expect(spec.capabilities).toEqual({
+      markdownRoutes: true,
+      agentMdOverrides: true,
+      agentBlocks: true,
+      llms: true,
+      skills: true,
+      mcp: true,
+      search: true,
+      agentFeedback: true,
+      locales: true,
     });
     expect(spec.api).toMatchObject({
       docs: "/api/docs",
@@ -696,6 +708,7 @@ title: "Home"
         queryParam: string;
         fallbackQueryParam: string;
       };
+      capabilities: Record<string, boolean>;
       markdown: { pagePattern: string; rootPage: string };
       llms: { enabled: boolean; txt: string; full: string };
       search: { enabled: boolean; endpoint: string; method: string };
@@ -715,6 +728,17 @@ title: "Home"
       default: null,
       queryParam: "lang",
       fallbackQueryParam: "locale",
+    });
+    expect(spec.capabilities).toEqual({
+      markdownRoutes: true,
+      agentMdOverrides: true,
+      agentBlocks: true,
+      llms: false,
+      skills: true,
+      mcp: false,
+      search: false,
+      agentFeedback: false,
+      locales: false,
     });
     expect(spec.markdown).toMatchObject({
       pagePattern: "/guides/{slug}.md",
