@@ -174,6 +174,7 @@ interface AgentSpecOptions {
   origin: string;
   entry: string;
   i18n: ReturnType<typeof resolveDocsI18n>;
+  search?: boolean | DocsSearchConfig;
   mcp: ReturnType<typeof resolveDocsMcpConfig>;
   feedback: ResolvedAgentFeedbackConfig;
   llms: LlmsTxtOptions & { enabled: boolean };
@@ -282,7 +283,13 @@ function resolveAgentSpecRequest(url: URL): boolean {
   return normalizeUrlPath(url.pathname) === DEFAULT_AGENT_SPEC_ROUTE;
 }
 
-function buildAgentSpec({ origin, entry, i18n, mcp, feedback, llms }: AgentSpecOptions) {
+function isSearchEnabled(search?: boolean | DocsSearchConfig): boolean {
+  if (search === false) return false;
+  if (search && typeof search === "object" && search.enabled === false) return false;
+  return true;
+}
+
+function buildAgentSpec({ origin, entry, i18n, search, mcp, feedback, llms }: AgentSpecOptions) {
   const normalizedEntry = normalizePathSegment(entry) || "docs";
 
   return {
@@ -318,6 +325,13 @@ function buildAgentSpec({ origin, entry, i18n, mcp, feedback, llms }: AgentSpecO
       enabled: llms.enabled,
       txt: `${DEFAULT_DOCS_API_ROUTE}?format=llms`,
       full: `${DEFAULT_DOCS_API_ROUTE}?format=llms-full`,
+    },
+    search: {
+      enabled: isSearchEnabled(search),
+      endpoint: `${DEFAULT_DOCS_API_ROUTE}?query={query}`,
+      method: "GET",
+      queryParam: "query",
+      localeParam: "lang",
     },
     skills: {
       enabled: true,
@@ -1651,6 +1665,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             origin: url.origin,
             entry,
             i18n,
+            search: searchConfig,
             mcp: mcpConfig,
             feedback: agentFeedbackConfig,
             llms: llmsConfig,
