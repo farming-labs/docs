@@ -305,6 +305,18 @@ function buildAgentSpec({ origin, entry, mcp, feedback, llms }: AgentSpecOptions
       txt: `${DEFAULT_DOCS_API_ROUTE}?format=llms`,
       full: `${DEFAULT_DOCS_API_ROUTE}?format=llms-full`,
     },
+    skills: {
+      enabled: true,
+      registry: "skills.sh",
+      install: "npx skills add farming-labs/docs",
+      recommended: [
+        {
+          name: "getting-started",
+          description:
+            "Use for installation, init, framework setup, theme CSS, and first docs.config wiring.",
+        },
+      ],
+    },
     mcp: {
       enabled: mcp.enabled,
       endpoint: mcp.route,

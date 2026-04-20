@@ -20,6 +20,9 @@ Useful routes:
 - Public markdown page with embedded `Agent` block (Next.js): `http://127.0.0.1:3000/docs/quickstart.md`
 - Agent override example (Next.js): `http://127.0.0.1:3000/docs/getting-started/agent-ready-docs.md`
 
+The agent discovery spec also advertises this Skills pack through
+`npx skills add farming-labs/docs` and recommends the `getting-started` skill for first-run setup.
+
 ---
 
 ## Available skills

@@ -549,6 +549,12 @@ title: "Home"
       api: Record<string, string>;
       markdown: Record<string, unknown>;
       llms: { enabled: boolean; txt: string; full: string };
+      skills: {
+        enabled: boolean;
+        registry: string;
+        install: string;
+        recommended: Array<{ name: string; description: string }>;
+      };
       mcp: {
         enabled: boolean;
         endpoint: string;
@@ -576,6 +582,18 @@ title: "Home"
       enabled: true,
       txt: "/api/docs?format=llms",
       full: "/api/docs?format=llms-full",
+    });
+    expect(spec.skills).toEqual({
+      enabled: true,
+      registry: "skills.sh",
+      install: "npx skills add farming-labs/docs",
+      recommended: [
+        {
+          name: "getting-started",
+          description:
+            "Use for installation, init, framework setup, theme CSS, and first docs.config wiring.",
+        },
+      ],
     });
     expect(spec.mcp).toEqual({
       enabled: true,
@@ -625,6 +643,7 @@ title: "Home"
     const spec = (await response.json()) as {
       markdown: { pagePattern: string; rootPage: string };
       llms: { enabled: boolean; txt: string; full: string };
+      skills: { enabled: boolean; registry: string; install: string };
       mcp: { enabled: boolean; endpoint: string };
       feedback: { enabled: boolean; schema: string; submit: string };
     };
@@ -637,6 +656,11 @@ title: "Home"
       enabled: false,
       txt: "/api/docs?format=llms",
       full: "/api/docs?format=llms-full",
+    });
+    expect(spec.skills).toMatchObject({
+      enabled: true,
+      registry: "skills.sh",
+      install: "npx skills add farming-labs/docs",
     });
     expect(spec.mcp).toMatchObject({
       enabled: false,
