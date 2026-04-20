@@ -332,6 +332,7 @@ function buildAgentSpec({ origin, entry, i18n, search, mcp, feedback, llms }: Ag
     // continuing to report literal true values.
     markdown: {
       enabled: true,
+      acceptHeader: "text/markdown",
       pagePattern: `/${normalizedEntry}/{slug}.md`,
       rootPage: `/${normalizedEntry}.md`,
       apiPattern: `${DEFAULT_DOCS_API_ROUTE}?format=markdown&path={slug}`,
@@ -1176,7 +1177,30 @@ function findDocsMcpPage(
   return null;
 }
 
-function resolveMarkdownRequest(entry: string, url: URL): { requestedPath: string } | null {
+function acceptsMarkdown(request: Request): boolean {
+  const accept = request.headers.get("accept");
+  if (!accept) return false;
+  return accept
+    .split(",")
+    .map((value) => value.trim())
+    .some((value) => {
+      const [mediaType, ...params] = value.split(";").map((part) => part.trim().toLowerCase());
+      if (mediaType !== "text/markdown") return false;
+
+      const qualityParam = params.find((param) => param.split("=", 1)[0]?.trim() === "q");
+      if (!qualityParam) return true;
+
+      const qualityValue = qualityParam.slice(qualityParam.indexOf("=") + 1).trim();
+      const quality = Number.parseFloat(qualityValue);
+      return Number.isFinite(quality) ? quality > 0 : true;
+    });
+}
+
+function resolveMarkdownRequest(
+  entry: string,
+  url: URL,
+  request: Request,
+): { requestedPath: string } | null {
   const format = url.searchParams.get("format")?.trim();
   if (format === "markdown") {
     return {
@@ -1196,6 +1220,18 @@ function resolveMarkdownRequest(entry: string, url: URL): { requestedPath: strin
     return {
       requestedPath: pathname.slice(slugPrefix.length, -3),
     };
+  }
+
+  if (acceptsMarkdown(request)) {
+    if (pathname === normalizedEntry) {
+      return { requestedPath: "" };
+    }
+
+    if (pathname.startsWith(slugPrefix)) {
+      return {
+        requestedPath: pathname.slice(slugPrefix.length),
+      };
+    }
   }
 
   return null;
@@ -1721,7 +1757,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         });
       }
 
-      const markdownRequest = resolveMarkdownRequest(entry, url);
+      const markdownRequest = resolveMarkdownRequest(entry, url, request);
 
       if (markdownRequest) {
         const document = await getMarkdownDocument(ctx, markdownRequest.requestedPath);

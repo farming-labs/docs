@@ -79,6 +79,7 @@ Default behavior:
 
 - the shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
 - **Next.js:** `withDocs()` also serves `/docs/<slug>.md`
+- **Next.js:** `Accept: text/markdown` on `/docs/<slug>` returns the same markdown response
 - embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI and are included in the markdown fallback
 - if a page folder has `agent.md`, that file becomes the markdown response for that page
 - if `agent.md` is missing, the markdown response falls back to the normal page markdown
@@ -116,8 +117,13 @@ Useful checks:
 ```bash
 curl "http://127.0.0.1:3000/api/docs?format=markdown&path=quickstart"
 curl "http://127.0.0.1:3000/docs/quickstart.md"
+curl "http://127.0.0.1:3000/docs/quickstart" -H "Accept: text/markdown"
 curl "http://127.0.0.1:3000/docs/getting-started/agent-ready-docs.md"
 ```
+
+Call out content negotiation when relevant: `/docs/<slug>` remains the normal HTML page for browsers,
+but agents/scripts can send `Accept: text/markdown` to the same URL and receive the machine-readable
+markdown representation without appending `.md`.
 
 ---
 
@@ -309,7 +315,7 @@ feedback: {
 
 Default behavior:
 
-- `GET /api/docs/agent/spec` returns the configured agent discovery document with site identity, locale config, capability flags, search, markdown, `llms.txt`, Skills CLI install metadata, MCP, and feedback routes
+- `GET /api/docs/agent/spec` returns the configured agent discovery document with site identity, locale config, capability flags, search, markdown route/header access, `llms.txt`, Skills CLI install metadata, MCP, and feedback routes
 - `GET /api/docs/agent/feedback/schema` returns the machine-readable schema
 - `POST /api/docs/agent/feedback` accepts `{ context?, payload }`
 - the shared `/api/docs` handler remains the source of truth

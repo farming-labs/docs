@@ -12,8 +12,47 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { withDocs } from "./config.js";
 
+type TestRewrite = {
+  source: string;
+  destination: string;
+  has?: Array<Record<string, string>>;
+};
+
+type TestRewriteResult =
+  | TestRewrite[]
+  | {
+      beforeFiles?: TestRewrite[];
+      afterFiles?: TestRewrite[];
+      fallback?: TestRewrite[];
+    };
+
+async function readRewrites(nextConfig: ReturnType<typeof withDocs>) {
+  return (nextConfig.rewrites as () => Promise<TestRewriteResult>)();
+}
+
+function getBeforeFilesRewrites(result: TestRewriteResult): TestRewrite[] {
+  return Array.isArray(result) ? result : (result.beforeFiles ?? []);
+}
+
+function getAfterFilesRewrites(result: TestRewriteResult): TestRewrite[] {
+  return Array.isArray(result) ? [] : (result.afterFiles ?? []);
+}
+
 const DOCS_CONFIG = `export default { entry: "docs" };
 `;
+
+const MARKDOWN_ACCEPT_HEADER = {
+  type: "header",
+  key: "accept",
+  value: [
+    "(?:^|.*,\\s*)",
+    "text/markdown",
+    "(?:\\s*;",
+    "(?!\\s*(?:[^,;]*;\\s*)*q\\s*=\\s*(?:0+(?:\\.0*)?|\\.0+)\\s*(?:;|,|$))",
+    "[^,]*)?",
+    "(?:\\s*,.*|$)",
+  ].join(""),
+};
 
 const DOCS_CONFIG_WITH_API_REFERENCE = `export default {
   entry: "docs",
@@ -217,9 +256,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(existsSync(join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts"))).toBe(false);
 
-    const rewrites = await (
-      nextConfig.rewrites as () => Promise<Array<{ source: string; destination: string }>>
-    )();
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
 
     expect(rewrites).toEqual(
       expect.arrayContaining([
@@ -235,8 +272,26 @@ describe("withDocs (app dir: src/app vs app)", () => {
           source: "/docs/:slug*.md",
           destination: "/api/docs?format=markdown&path=:slug*",
         }),
+        expect.objectContaining({
+          source: "/docs",
+          has: [MARKDOWN_ACCEPT_HEADER],
+          destination: "/api/docs?format=markdown",
+        }),
+        expect.objectContaining({
+          source: "/docs/:slug*",
+          has: [MARKDOWN_ACCEPT_HEADER],
+          destination: "/api/docs?format=markdown&path=:slug*",
+        }),
       ]),
     );
+
+    const acceptPattern = new RegExp(MARKDOWN_ACCEPT_HEADER.value);
+    expect(acceptPattern.test("text/markdown")).toBe(true);
+    expect(acceptPattern.test("application/json, text/markdown;q=0.5")).toBe(true);
+    expect(acceptPattern.test("application/json, text/markdown;q=0")).toBe(false);
+    expect(acceptPattern.test("application/json, text/markdown;profile=agent;q=0")).toBe(false);
+    expect(acceptPattern.test("text/markdown-v2")).toBe(false);
+    expect(acceptPattern.test("application/not-text/markdownish")).toBe(false);
   });
 
   it("adds agent feedback rewrites through the shared docs api handler when configured", async () => {
@@ -245,9 +300,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     process.chdir(tmpDir);
 
     const nextConfig = withDocs({});
-    const rewrites = await (
-      nextConfig.rewrites as () => Promise<Array<{ source: string; destination: string }>>
-    )();
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
 
     expect(rewrites).toEqual(
       expect.arrayContaining([
@@ -269,9 +322,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     process.chdir(tmpDir);
 
     const nextConfig = withDocs({});
-    const rewrites = await (
-      nextConfig.rewrites as () => Promise<Array<{ source: string; destination: string }>>
-    )();
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
 
     expect(rewrites).toEqual(
       expect.arrayContaining([
@@ -453,11 +504,11 @@ describe("withDocs (app dir: src/app vs app)", () => {
       ],
     });
 
-    const rewrites = await (
-      nextConfig.rewrites as () => Promise<Array<{ source: string; destination: string }>>
-    )();
+    const rewritesResult = await readRewrites(nextConfig);
+    const beforeFiles = getBeforeFilesRewrites(rewritesResult);
+    const afterFiles = getAfterFilesRewrites(rewritesResult);
 
-    expect(rewrites).toEqual(
+    expect(beforeFiles).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           source: "/api/docs/agent/spec",
@@ -471,6 +522,15 @@ describe("withDocs (app dir: src/app vs app)", () => {
           source: "/docs/:slug*.md",
           destination: "/api/docs?format=markdown&path=:slug*",
         }),
+        expect.objectContaining({
+          source: "/docs/:slug*",
+          has: [MARKDOWN_ACCEPT_HEADER],
+          destination: "/api/docs?format=markdown&path=:slug*",
+        }),
+      ]),
+    );
+    expect(afterFiles).toEqual(
+      expect.arrayContaining([
         expect.objectContaining({
           source: "/legacy",
           destination: "/docs/getting-started/quickstart",

@@ -2,7 +2,7 @@
 
 This folder contains [Agent Skills](https://skills.sh/) (conforming to the [Agent Skills specification](https://agentskills.io/specification)) for **@farming-labs/docs** — an MDX-based documentation framework for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
 
-Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task (getting started, CLI, creating themes, Ask AI, page actions, or configuration, including search adapters, changelog setup, human page feedback, agent discovery/spec routes, agent feedback endpoints, API reference, MCP, `llms.txt`, and machine-readable markdown routes with embedded `Agent` blocks or `agent.md` overrides).
+Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task (getting started, CLI, creating themes, Ask AI, page actions, or configuration, including search adapters, changelog setup, human page feedback, agent discovery/spec routes, agent feedback endpoints, API reference, MCP, `llms.txt`, and machine-readable markdown routes with embedded `Agent` blocks, `agent.md` overrides, or `Accept: text/markdown` negotiation).
 
 The repo also includes a runnable Next example for testing MCP plus external search providers:
 
@@ -18,6 +18,7 @@ Useful routes:
 - Docs API markdown: `http://127.0.0.1:3000/api/docs?format=markdown&path=quickstart`
 - Agent feedback schema: `http://127.0.0.1:3000/api/docs/agent/feedback/schema`
 - Public markdown page with embedded `Agent` block (Next.js): `http://127.0.0.1:3000/docs/quickstart.md`
+- Header-negotiated markdown page (Next.js): `curl http://127.0.0.1:3000/docs/quickstart -H "Accept: text/markdown"`
 - Agent override example (Next.js): `http://127.0.0.1:3000/docs/getting-started/agent-ready-docs.md`
 
 The agent discovery spec also advertises this Skills pack through

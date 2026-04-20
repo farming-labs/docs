@@ -722,7 +722,7 @@ Notes:
 - the request body always uses `{ context?, payload }`
 - in Next.js, `withDocs()` adds the public route rewrites automatically
 - the shared `/api/docs` handler is still the source of truth, so `?feedback=agent` also works
-- agents can discover site identity, locale config, capability flags, search, active markdown, `llms.txt`, skills, MCP, and feedback routes with `GET /api/docs/agent/spec`
+- agents can discover site identity, locale config, capability flags, search, active markdown routes and `Accept: text/markdown` support, `llms.txt`, skills, MCP, and feedback routes with `GET /api/docs/agent/spec`
 
 ### `DocsAgentFeedbackContext`
 

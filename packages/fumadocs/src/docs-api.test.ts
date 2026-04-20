@@ -474,6 +474,52 @@ This embedded agent block should be ignored because agent.md overrides the page.
     const rewrittenAgentResponse = await GET(new Request("http://localhost/docs/overview.md"));
     expect(rewrittenAgentResponse.status).toBe(200);
     expect(await rewrittenAgentResponse.text()).toBe("Use this page as the implementation map.\n");
+
+    const acceptFallbackResponse = await GET(
+      new Request("http://localhost/docs/getting-started/quickstart", {
+        headers: { accept: "text/markdown" },
+      }),
+    );
+    expect(acceptFallbackResponse.status).toBe(200);
+    expect(acceptFallbackResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(await acceptFallbackResponse.text()).toContain(
+      "Verify the onboarding command examples before changing this page.",
+    );
+
+    const acceptAgentResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: { accept: "text/markdown, */*" },
+      }),
+    );
+    expect(acceptAgentResponse.status).toBe(200);
+    expect(await acceptAgentResponse.text()).toBe("Use this page as the implementation map.\n");
+
+    const weightedAcceptAgentResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: { accept: "application/json, text/markdown;q=0.5" },
+      }),
+    );
+    expect(weightedAcceptAgentResponse.status).toBe(200);
+    expect(weightedAcceptAgentResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(await weightedAcceptAgentResponse.text()).toBe(
+      "Use this page as the implementation map.\n",
+    );
+
+    const zeroQualityAcceptResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: { accept: "application/json, text/markdown;profile=agent;q=0" },
+      }),
+    );
+    expect(zeroQualityAcceptResponse.headers.get("content-type")).not.toContain("text/markdown");
+    expect(await zeroQualityAcceptResponse.text()).toBe("[]");
+
+    const substringAcceptResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: { accept: "application/not-text/markdownish" },
+      }),
+    );
+    expect(substringAcceptResponse.headers.get("content-type")).not.toContain("text/markdown");
+    expect(await substringAcceptResponse.text()).toBe("[]");
   });
 
   it("returns 404 for markdown mode when the requested page does not exist", async () => {
@@ -625,6 +671,7 @@ title: "Home"
     });
     expect(spec.markdown).toMatchObject({
       enabled: true,
+      acceptHeader: "text/markdown",
       pagePattern: "/docs/{slug}.md",
       rootPage: "/docs.md",
       apiPattern: "/api/docs?format=markdown&path={slug}",
@@ -709,7 +756,7 @@ title: "Home"
         fallbackQueryParam: string;
       };
       capabilities: Record<string, boolean>;
-      markdown: { pagePattern: string; rootPage: string };
+      markdown: { acceptHeader: string; pagePattern: string; rootPage: string };
       llms: { enabled: boolean; txt: string; full: string };
       search: { enabled: boolean; endpoint: string; method: string };
       skills: { enabled: boolean; registry: string; install: string };
@@ -741,6 +788,7 @@ title: "Home"
       locales: false,
     });
     expect(spec.markdown).toMatchObject({
+      acceptHeader: "text/markdown",
       pagePattern: "/guides/{slug}.md",
       rootPage: "/guides.md",
     });

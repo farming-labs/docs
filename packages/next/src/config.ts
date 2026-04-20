@@ -169,6 +169,14 @@ const INTERNAL_DOCS_CONFIG_ALIAS = "@farming-labs/next-internal-docs-config";
 const NEXT_PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
+const MARKDOWN_ACCEPT_HEADER_VALUE = [
+  "(?:^|.*,\\s*)",
+  "text/markdown",
+  "(?:\\s*;",
+  "(?!\\s*(?:[^,;]*;\\s*)*q\\s*=\\s*(?:0+(?:\\.0*)?|\\.0+)\\s*(?:;|,|$))",
+  "[^,]*)?",
+  "(?:\\s*,.*|$)",
+].join("");
 
 function resolvePackageAlias(packageName: string, fallbacks: string[] = []): string | undefined {
   const candidates = [
@@ -966,6 +974,12 @@ type NextRewriteResult =
 
 function buildDocsMarkdownRewrites(entry: string): NextRewrite[] {
   const normalizedEntry = entry.replace(/^\/+|\/+$/g, "") || "docs";
+  const markdownAcceptHeader = {
+    type: "header",
+    key: "accept",
+    // Keep this aligned with acceptsMarkdown(); the rewrite forces format=markdown.
+    value: MARKDOWN_ACCEPT_HEADER_VALUE,
+  };
 
   return [
     {
@@ -974,6 +988,16 @@ function buildDocsMarkdownRewrites(entry: string): NextRewrite[] {
     },
     {
       source: `/${normalizedEntry}/:slug*.md`,
+      destination: "/api/docs?format=markdown&path=:slug*",
+    },
+    {
+      source: `/${normalizedEntry}`,
+      has: [markdownAcceptHeader],
+      destination: "/api/docs?format=markdown",
+    },
+    {
+      source: `/${normalizedEntry}/:slug*`,
+      has: [markdownAcceptHeader],
       destination: "/api/docs?format=markdown&path=:slug*",
     },
   ];
@@ -1035,10 +1059,17 @@ function mergeDocsMarkdownRewrites(
     ...buildDocsMarkdownRewrites(entry),
     ...buildAgentFeedbackRewrites(agentFeedback),
   ];
-  if (!result) return [...autoRewrites];
+  if (!result) {
+    return {
+      beforeFiles: dedupeRewrites(autoRewrites),
+    };
+  }
 
   if (Array.isArray(result)) {
-    return dedupeRewrites([...autoRewrites, ...result]);
+    return {
+      beforeFiles: dedupeRewrites(autoRewrites),
+      afterFiles: result,
+    };
   }
 
   return {

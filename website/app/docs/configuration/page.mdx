@@ -144,8 +144,20 @@ No separate config flag is required for machine-readable page markdown.
 
 - The shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
 - In Next.js, `withDocs()` also serves `/docs/<slug>.md`
+- In Next.js, sending `Accept: text/markdown` to `/docs/<slug>` returns the same markdown response
 - Embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI but are included in the `.md` fallback and MCP `read_page`
 - When a page folder has `agent.md`, that file is returned instead of the normal page markdown
+
+<Callout type="info" title="Markdown via content negotiation">
+  You can keep the canonical docs URL and ask for markdown with an HTTP header:
+
+  ```bash
+  curl "https://docs.example.com/docs/installation" -H "Accept: text/markdown"
+  ```
+
+  Browsers still receive HTML from `/docs/installation`; agents, scripts, and crawlers that send
+  `Accept: text/markdown` receive the same machine-readable output as `/docs/installation.md`.
+</Callout>
 
 See [Agent Primitive](/docs/customization/agent-primitive) for the page-level authoring model.
 
@@ -984,9 +996,9 @@ Use `feedback.agent` when you want machine-readable feedback routes for coding a
 automation. This is separate from the built-in page footer UI.
 
 Agents can discover the configured routes first with `GET /api/docs/agent/spec`. The spec includes
-site identity, locale config, capability flags, the search endpoint, markdown route pattern,
-`llms.txt` routes, Skills CLI install metadata, MCP endpoint and enabled tools, and the active agent
-feedback schema and submit endpoints.
+site identity, locale config, capability flags, the search endpoint, markdown route pattern and
+`Accept: text/markdown` contract, `llms.txt` routes, Skills CLI install metadata, MCP endpoint and
+enabled tools, and the active agent feedback schema and submit endpoints.
 
 ```ts title="docs.config.ts"
 export default defineDocs({
