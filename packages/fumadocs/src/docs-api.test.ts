@@ -520,6 +520,10 @@ title: "Home"
     siteDescription: "Machine-readable documentation",
     baseUrl: "https://docs.example.com",
   },
+  i18n: {
+    locales: ["en", "fr"],
+    defaultLocale: "fr",
+  },
 };`,
     );
 
@@ -554,6 +558,13 @@ title: "Home"
     const spec = (await response.json()) as {
       version: string;
       site: { title: string; description?: string; entry: string; baseUrl: string };
+      locales: {
+        enabled: boolean;
+        available: string[];
+        default: string | null;
+        queryParam: string;
+        fallbackQueryParam: string;
+      };
       api: Record<string, string>;
       markdown: Record<string, unknown>;
       llms: { enabled: boolean; txt: string; full: string };
@@ -580,6 +591,13 @@ title: "Home"
       description: "Machine-readable documentation",
       entry: "docs",
       baseUrl: "https://docs.example.com",
+    });
+    expect(spec.locales).toEqual({
+      enabled: true,
+      available: ["en", "fr"],
+      default: "fr",
+      queryParam: "lang",
+      fallbackQueryParam: "locale",
     });
     expect(spec.api).toMatchObject({
       docs: "/api/docs",
@@ -656,6 +674,13 @@ title: "Home"
     expect(response.status).toBe(200);
     const spec = (await response.json()) as {
       site: { title: string; entry: string; baseUrl: string };
+      locales: {
+        enabled: boolean;
+        available: string[];
+        default: string | null;
+        queryParam: string;
+        fallbackQueryParam: string;
+      };
       markdown: { pagePattern: string; rootPage: string };
       llms: { enabled: boolean; txt: string; full: string };
       skills: { enabled: boolean; registry: string; install: string };
@@ -667,6 +692,13 @@ title: "Home"
       title: "Documentation",
       entry: "guides",
       baseUrl: "http://localhost",
+    });
+    expect(spec.locales).toEqual({
+      enabled: false,
+      available: [],
+      default: null,
+      queryParam: "lang",
+      fallbackQueryParam: "locale",
     });
     expect(spec.markdown).toMatchObject({
       pagePattern: "/guides/{slug}.md",

@@ -309,7 +309,7 @@ feedback: {
 
 Default behavior:
 
-- `GET /api/docs/agent/spec` returns the configured agent discovery document with site identity, markdown, `llms.txt`, Skills CLI install metadata, MCP, and feedback routes
+- `GET /api/docs/agent/spec` returns the configured agent discovery document with site identity, locale config, markdown, `llms.txt`, Skills CLI install metadata, MCP, and feedback routes
 - `GET /api/docs/agent/feedback/schema` returns the machine-readable schema
 - `POST /api/docs/agent/feedback` accepts `{ context?, payload }`
 - the shared `/api/docs` handler remains the source of truth
