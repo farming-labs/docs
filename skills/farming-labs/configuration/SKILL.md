@@ -121,6 +121,10 @@ curl "http://127.0.0.1:3000/docs/quickstart" -H "Accept: text/markdown"
 curl "http://127.0.0.1:3000/docs/getting-started/agent-ready-docs.md"
 ```
 
+Call out content negotiation when relevant: `/docs/<slug>` remains the normal HTML page for browsers,
+but agents/scripts can send `Accept: text/markdown` to the same URL and receive the machine-readable
+markdown representation without appending `.md`.
+
 ---
 
 ## GitHub (Edit on GitHub and openDocs)

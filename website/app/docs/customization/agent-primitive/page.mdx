@@ -19,6 +19,11 @@ The same page model also powers the built-in machine-readable routes:
 - in Next.js, `Accept: text/markdown` on `/docs/<slug>` returns the same markdown
 - agents can discover the configured contract with `GET /api/docs/agent/spec`
 
+<Callout type="info" title="Same URL, different representation">
+  `/docs/installation` stays the human HTML page by default. Send `Accept: text/markdown` to that
+  same URL when an agent or script wants the machine-readable version without appending `.md`.
+</Callout>
+
 Use `Agent` when the human page is already mostly correct and just needs a little extra implementation
 context. Use `agent.md` when the entire machine-readable page should be more operational, more
 structured, or fully different from the visible UI page.
