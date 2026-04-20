@@ -175,6 +175,7 @@ interface AgentSpecOptions {
   entry: string;
   mcp: ReturnType<typeof resolveDocsMcpConfig>;
   feedback: ResolvedAgentFeedbackConfig;
+  llms: LlmsTxtOptions & { enabled: boolean };
 }
 
 function normalizeAgentFeedbackRoute(
@@ -280,7 +281,7 @@ function resolveAgentSpecRequest(url: URL): boolean {
   return normalizeUrlPath(url.pathname) === DEFAULT_AGENT_SPEC_ROUTE;
 }
 
-function buildAgentSpec({ origin, entry, mcp, feedback }: AgentSpecOptions) {
+function buildAgentSpec({ origin, entry, mcp, feedback, llms }: AgentSpecOptions) {
   const normalizedEntry = normalizePathSegment(entry) || "docs";
 
   return {
@@ -298,6 +299,11 @@ function buildAgentSpec({ origin, entry, mcp, feedback }: AgentSpecOptions) {
       rootPage: `/${normalizedEntry}.md`,
       apiPattern: `${DEFAULT_DOCS_API_ROUTE}?format=markdown&path={slug}`,
       resolutionOrder: ["agent.md", "Agent blocks", "page markdown"],
+    },
+    llms: {
+      enabled: llms.enabled,
+      txt: `${DEFAULT_DOCS_API_ROUTE}?format=llms`,
+      full: `${DEFAULT_DOCS_API_ROUTE}?format=llms-full`,
     },
     mcp: {
       enabled: mcp.enabled,
@@ -1620,6 +1626,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             entry,
             mcp: mcpConfig,
             feedback: agentFeedbackConfig,
+            llms: llmsConfig,
           }),
           {
             headers: {

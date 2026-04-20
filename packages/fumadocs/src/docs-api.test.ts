@@ -511,6 +511,10 @@ title: "Home"
 
     mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
     writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default { llmsTxt: { enabled: true, siteTitle: "Agent Docs" } };`,
+    );
 
     process.chdir(rootDir);
 
@@ -544,6 +548,7 @@ title: "Home"
       version: string;
       api: Record<string, string>;
       markdown: Record<string, unknown>;
+      llms: { enabled: boolean; txt: string; full: string };
       mcp: {
         enabled: boolean;
         endpoint: string;
@@ -567,10 +572,15 @@ title: "Home"
       rootPage: "/docs.md",
       apiPattern: "/api/docs?format=markdown&path={slug}",
     });
+    expect(spec.llms).toEqual({
+      enabled: true,
+      txt: "/api/docs?format=llms",
+      full: "/api/docs?format=llms-full",
+    });
     expect(spec.mcp).toEqual({
       enabled: true,
       endpoint: "/internal/docs/mcp",
-      name: "Documentation",
+      name: "Agent Docs",
       version: "0.0.0",
       tools: {
         listPages: true,
@@ -614,6 +624,7 @@ title: "Home"
     expect(response.status).toBe(200);
     const spec = (await response.json()) as {
       markdown: { pagePattern: string; rootPage: string };
+      llms: { enabled: boolean; txt: string; full: string };
       mcp: { enabled: boolean; endpoint: string };
       feedback: { enabled: boolean; schema: string; submit: string };
     };
@@ -621,6 +632,11 @@ title: "Home"
     expect(spec.markdown).toMatchObject({
       pagePattern: "/guides/{slug}.md",
       rootPage: "/guides.md",
+    });
+    expect(spec.llms).toEqual({
+      enabled: false,
+      txt: "/api/docs?format=llms",
+      full: "/api/docs?format=llms-full",
     });
     expect(spec.mcp).toMatchObject({
       enabled: false,
