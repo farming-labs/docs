@@ -568,6 +568,13 @@ title: "Home"
       api: Record<string, string>;
       markdown: Record<string, unknown>;
       llms: { enabled: boolean; txt: string; full: string };
+      search: {
+        enabled: boolean;
+        endpoint: string;
+        method: string;
+        queryParam: string;
+        localeParam: string;
+      };
       skills: {
         enabled: boolean;
         registry: string;
@@ -614,6 +621,13 @@ title: "Home"
       enabled: true,
       txt: "/api/docs?format=llms",
       full: "/api/docs?format=llms-full",
+    });
+    expect(spec.search).toEqual({
+      enabled: true,
+      endpoint: "/api/docs?query={query}",
+      method: "GET",
+      queryParam: "query",
+      localeParam: "lang",
     });
     expect(spec.skills).toEqual({
       enabled: true,
@@ -667,6 +681,7 @@ title: "Home"
       feedback: {
         agent: false,
       },
+      search: false,
       mcp: false,
     });
 
@@ -683,6 +698,7 @@ title: "Home"
       };
       markdown: { pagePattern: string; rootPage: string };
       llms: { enabled: boolean; txt: string; full: string };
+      search: { enabled: boolean; endpoint: string; method: string };
       skills: { enabled: boolean; registry: string; install: string };
       mcp: { enabled: boolean; endpoint: string };
       feedback: { enabled: boolean; schema: string; submit: string };
@@ -708,6 +724,11 @@ title: "Home"
       enabled: false,
       txt: "/api/docs?format=llms",
       full: "/api/docs?format=llms-full",
+    });
+    expect(spec.search).toMatchObject({
+      enabled: false,
+      endpoint: "/api/docs?query={query}",
+      method: "GET",
     });
     expect(spec.skills).toMatchObject({
       enabled: true,
