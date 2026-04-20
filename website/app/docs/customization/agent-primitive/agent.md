@@ -38,6 +38,7 @@ The spec is generated from `docs.config` and includes:
 - shared docs API route
 - markdown route patterns
 - `llms.txt` and `llms-full.txt` routes
+- Skills CLI install command and recommended skill metadata
 - MCP enabled state, endpoint, server name, version, and tool toggles
 - agent feedback enabled state, schema route, and submit route
 
