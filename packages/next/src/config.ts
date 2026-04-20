@@ -966,6 +966,11 @@ type NextRewriteResult =
 
 function buildDocsMarkdownRewrites(entry: string): NextRewrite[] {
   const normalizedEntry = entry.replace(/^\/+|\/+$/g, "") || "docs";
+  const markdownAcceptHeader = {
+    type: "header",
+    key: "accept",
+    value: ".*text/markdown.*",
+  };
 
   return [
     {
@@ -974,6 +979,16 @@ function buildDocsMarkdownRewrites(entry: string): NextRewrite[] {
     },
     {
       source: `/${normalizedEntry}/:slug*.md`,
+      destination: "/api/docs?format=markdown&path=:slug*",
+    },
+    {
+      source: `/${normalizedEntry}`,
+      has: [markdownAcceptHeader],
+      destination: "/api/docs?format=markdown",
+    },
+    {
+      source: `/${normalizedEntry}/:slug*`,
+      has: [markdownAcceptHeader],
       destination: "/api/docs?format=markdown&path=:slug*",
     },
   ];
@@ -1035,10 +1050,17 @@ function mergeDocsMarkdownRewrites(
     ...buildDocsMarkdownRewrites(entry),
     ...buildAgentFeedbackRewrites(agentFeedback),
   ];
-  if (!result) return [...autoRewrites];
+  if (!result) {
+    return {
+      beforeFiles: dedupeRewrites(autoRewrites),
+    };
+  }
 
   if (Array.isArray(result)) {
-    return dedupeRewrites([...autoRewrites, ...result]);
+    return {
+      beforeFiles: dedupeRewrites(autoRewrites),
+      afterFiles: result,
+    };
   }
 
   return {

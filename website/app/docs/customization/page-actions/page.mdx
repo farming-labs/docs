@@ -147,7 +147,8 @@ The `urlTemplate` string supports these placeholders:
 <Callout type="info" title="Use `{url}.md` for agent-ready page markdown">
   `{mdxUrl}` points at the raw source file. If you want the built-in machine-readable docs page
   instead, use `{url}.md`. In Next.js, that route can return a sibling `agent.md` when the page
-  has one. See [Agent Primitive](/docs/customization/agent-primitive).
+  has one. HTTP clients can also request the normal page URL with `Accept: text/markdown` for the
+  same response. See [Agent Primitive](/docs/customization/agent-primitive).
 </Callout>
 
 ### Custom Providers Example

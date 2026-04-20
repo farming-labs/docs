@@ -558,6 +558,15 @@ In **Next.js**, `withDocs()` also exposes public page-level markdown routes auto
 /docs/quickstart.md
 ```
 
+It also supports HTTP content negotiation on the normal docs URL:
+
+```bash
+curl https://docs.example.com/docs/quickstart -H "Accept: text/markdown"
+```
+
+That returns the same machine-readable markdown as `/docs/quickstart.md`, while a normal browser
+request to `/docs/quickstart` still renders the HTML docs page.
+
 Use embedded `Agent` blocks when the normal page only needs extra machine context, and add a
 sibling `agent.md` only when a page needs a machine-specific override:
 
@@ -593,12 +602,14 @@ Behavior:
 - `/docs/<slug>` stays the normal HTML page
 - embedded `<Agent>...</Agent>` blocks are hidden in the normal UI
 - if `agent.md` exists, `/docs/<slug>.md` returns that file
+- if a request to `/docs/<slug>` sends `Accept: text/markdown`, it returns the same markdown output
 - if `agent.md` does not exist, the markdown route falls back to the normal page markdown
 - on that fallback path, embedded `Agent` blocks are included in the machine-readable output
 - MCP `read_page("/docs/<slug>")` uses the same page source and sees the same override or `Agent` fallback
 
-In Next.js, the public `.md` route rewrites into the existing `/api/docs` handler with
-`format=markdown`, so the shared docs API remains the source of truth.
+In Next.js, the public `.md` route and `Accept: text/markdown` requests both rewrite into the
+existing `/api/docs` handler with `format=markdown`, so the shared docs API remains the source of
+truth.
 
 Agents can discover the configured machine-readable surface first:
 
@@ -607,8 +618,8 @@ GET /api/docs/agent/spec
 ```
 
 The spec returns site identity, locale config, capability flags, the docs API route, search endpoint,
-markdown URL patterns, `llms.txt` routes, skills install metadata, MCP endpoint and tool toggles,
-and agent feedback schema/submit routes based on `docs.config`.
+markdown URL patterns and `Accept` header contract, `llms.txt` routes, skills install metadata, MCP
+endpoint and tool toggles, and agent feedback schema/submit routes based on `docs.config`.
 
 This does **not** require a separate `docs.config` flag.
 

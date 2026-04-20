@@ -12,6 +12,32 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { withDocs } from "./config.js";
 
+type TestRewrite = {
+  source: string;
+  destination: string;
+  has?: Array<Record<string, string>>;
+};
+
+type TestRewriteResult =
+  | TestRewrite[]
+  | {
+      beforeFiles?: TestRewrite[];
+      afterFiles?: TestRewrite[];
+      fallback?: TestRewrite[];
+    };
+
+async function readRewrites(nextConfig: ReturnType<typeof withDocs>) {
+  return (nextConfig.rewrites as () => Promise<TestRewriteResult>)();
+}
+
+function getBeforeFilesRewrites(result: TestRewriteResult): TestRewrite[] {
+  return Array.isArray(result) ? result : (result.beforeFiles ?? []);
+}
+
+function getAfterFilesRewrites(result: TestRewriteResult): TestRewrite[] {
+  return Array.isArray(result) ? [] : (result.afterFiles ?? []);
+}
+
 const DOCS_CONFIG = `export default { entry: "docs" };
 `;
 
@@ -217,9 +243,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(existsSync(join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts"))).toBe(false);
 
-    const rewrites = await (
-      nextConfig.rewrites as () => Promise<Array<{ source: string; destination: string }>>
-    )();
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
 
     expect(rewrites).toEqual(
       expect.arrayContaining([
@@ -235,6 +259,28 @@ describe("withDocs (app dir: src/app vs app)", () => {
           source: "/docs/:slug*.md",
           destination: "/api/docs?format=markdown&path=:slug*",
         }),
+        expect.objectContaining({
+          source: "/docs",
+          has: [
+            {
+              type: "header",
+              key: "accept",
+              value: ".*text/markdown.*",
+            },
+          ],
+          destination: "/api/docs?format=markdown",
+        }),
+        expect.objectContaining({
+          source: "/docs/:slug*",
+          has: [
+            {
+              type: "header",
+              key: "accept",
+              value: ".*text/markdown.*",
+            },
+          ],
+          destination: "/api/docs?format=markdown&path=:slug*",
+        }),
       ]),
     );
   });
@@ -245,9 +291,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     process.chdir(tmpDir);
 
     const nextConfig = withDocs({});
-    const rewrites = await (
-      nextConfig.rewrites as () => Promise<Array<{ source: string; destination: string }>>
-    )();
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
 
     expect(rewrites).toEqual(
       expect.arrayContaining([
@@ -269,9 +313,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     process.chdir(tmpDir);
 
     const nextConfig = withDocs({});
-    const rewrites = await (
-      nextConfig.rewrites as () => Promise<Array<{ source: string; destination: string }>>
-    )();
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
 
     expect(rewrites).toEqual(
       expect.arrayContaining([
@@ -453,11 +495,11 @@ describe("withDocs (app dir: src/app vs app)", () => {
       ],
     });
 
-    const rewrites = await (
-      nextConfig.rewrites as () => Promise<Array<{ source: string; destination: string }>>
-    )();
+    const rewritesResult = await readRewrites(nextConfig);
+    const beforeFiles = getBeforeFilesRewrites(rewritesResult);
+    const afterFiles = getAfterFilesRewrites(rewritesResult);
 
-    expect(rewrites).toEqual(
+    expect(beforeFiles).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           source: "/api/docs/agent/spec",
@@ -471,6 +513,21 @@ describe("withDocs (app dir: src/app vs app)", () => {
           source: "/docs/:slug*.md",
           destination: "/api/docs?format=markdown&path=:slug*",
         }),
+        expect.objectContaining({
+          source: "/docs/:slug*",
+          has: [
+            {
+              type: "header",
+              key: "accept",
+              value: ".*text/markdown.*",
+            },
+          ],
+          destination: "/api/docs?format=markdown&path=:slug*",
+        }),
+      ]),
+    );
+    expect(afterFiles).toEqual(
+      expect.arrayContaining([
         expect.objectContaining({
           source: "/legacy",
           destination: "/docs/getting-started/quickstart",

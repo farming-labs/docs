@@ -124,9 +124,10 @@ interface OpenDocsProvider {
 | `{mdxUrl}` | Raw `.mdx` source URL for the page |
 | `{githubUrl}` | GitHub **edit** URL for the current page. Requires `github` in config. Use `urlTemplate: "{githubUrl}"` for "Open in GitHub". |
 
-If the project exposes machine-readable markdown routes, use `{url}.md` when you want the public
-page markdown instead of the raw source file. In Next.js, that route can return a sibling
-`agent.md` when the page has one.
+If the project exposes machine-readable markdown routes, use `{url}.md` when you want a link to the
+public page markdown instead of the raw source file. In Next.js, that route can return a sibling
+`agent.md` when the page has one. HTTP clients that can send custom headers can also request the
+normal page URL with `Accept: text/markdown` for the same markdown response.
 
 ### Custom providers example
 
