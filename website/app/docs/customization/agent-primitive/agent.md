@@ -35,6 +35,7 @@ Fetch `GET /api/docs/agent/spec` before choosing how to read or report on the do
 
 The spec is generated from `docs.config` and includes:
 
+- site title, description, docs entry, and base URL
 - shared docs API route
 - markdown route patterns
 - `llms.txt` and `llms-full.txt` routes

@@ -288,6 +288,12 @@ function buildAgentSpec({ origin, entry, mcp, feedback, llms }: AgentSpecOptions
     version: "1",
     name: "@farming-labs/docs",
     baseUrl: origin,
+    site: {
+      title: llms.siteTitle ?? "Documentation",
+      description: llms.siteDescription,
+      entry: normalizedEntry,
+      baseUrl: llms.baseUrl ?? origin,
+    },
     api: {
       docs: DEFAULT_DOCS_API_ROUTE,
       agentSpec: DEFAULT_AGENT_SPEC_ROUTE,

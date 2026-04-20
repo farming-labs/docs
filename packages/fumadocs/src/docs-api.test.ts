@@ -513,7 +513,14 @@ title: "Home"
     writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
     writeFileSync(
       join(rootDir, "docs.config.ts"),
-      `export default { llmsTxt: { enabled: true, siteTitle: "Agent Docs" } };`,
+      `export default {
+  llmsTxt: {
+    enabled: true,
+    siteTitle: "Agent Docs",
+    siteDescription: "Machine-readable documentation",
+    baseUrl: "https://docs.example.com",
+  },
+};`,
     );
 
     process.chdir(rootDir);
@@ -546,6 +553,7 @@ title: "Home"
 
     const spec = (await response.json()) as {
       version: string;
+      site: { title: string; description?: string; entry: string; baseUrl: string };
       api: Record<string, string>;
       markdown: Record<string, unknown>;
       llms: { enabled: boolean; txt: string; full: string };
@@ -567,6 +575,12 @@ title: "Home"
     };
 
     expect(spec.version).toBe("1");
+    expect(spec.site).toEqual({
+      title: "Agent Docs",
+      description: "Machine-readable documentation",
+      entry: "docs",
+      baseUrl: "https://docs.example.com",
+    });
     expect(spec.api).toMatchObject({
       docs: "/api/docs",
       agentSpec: "/api/docs/agent/spec",
@@ -641,6 +655,7 @@ title: "Home"
     const response = await GET(new Request("http://localhost/api/docs?agent=spec"));
     expect(response.status).toBe(200);
     const spec = (await response.json()) as {
+      site: { title: string; entry: string; baseUrl: string };
       markdown: { pagePattern: string; rootPage: string };
       llms: { enabled: boolean; txt: string; full: string };
       skills: { enabled: boolean; registry: string; install: string };
@@ -648,6 +663,11 @@ title: "Home"
       feedback: { enabled: boolean; schema: string; submit: string };
     };
 
+    expect(spec.site).toEqual({
+      title: "Documentation",
+      entry: "guides",
+      baseUrl: "http://localhost",
+    });
     expect(spec.markdown).toMatchObject({
       pagePattern: "/guides/{slug}.md",
       rootPage: "/guides.md",
