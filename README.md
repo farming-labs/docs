@@ -600,6 +600,15 @@ Behavior:
 In Next.js, the public `.md` route rewrites into the existing `/api/docs` handler with
 `format=markdown`, so the shared docs API remains the source of truth.
 
+Agents can discover the configured machine-readable surface first:
+
+```txt
+GET /api/docs/agent/spec
+```
+
+The spec returns the docs API route, markdown URL patterns, MCP endpoint and tool toggles, and agent
+feedback schema/submit routes based on `docs.config`.
+
 This does **not** require a separate `docs.config` flag.
 
 See:

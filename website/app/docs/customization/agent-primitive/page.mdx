@@ -16,6 +16,7 @@ The same page model also powers the built-in machine-readable routes:
 
 - the shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
 - in Next.js, `withDocs()` also serves `/docs/<slug>.md`
+- agents can discover the configured contract with `GET /api/docs/agent/spec`
 
 Use `Agent` when the human page is already mostly correct and just needs a little extra implementation
 context. Use `agent.md` when the entire machine-readable page should be more operational, more
@@ -108,6 +109,20 @@ That works especially well when:
 - the feedback instruction belongs to one page or workflow
 - you want the agent-facing `.md` route to carry the reporting contract
 - the human page should stay uncluttered
+
+## Let Agents Discover The Contract
+
+`GET /api/docs/agent/spec` returns a small JSON document generated from `docs.config`.
+
+Agents should fetch it before choosing a transport. It tells them:
+
+- where the shared docs API lives
+- which markdown URL pattern to use for page reads
+- whether MCP is enabled, which endpoint to call, and which tools are available
+- whether agent feedback is enabled, plus the schema and submit endpoints to use
+
+For Next.js apps, `withDocs()` wires `/api/docs/agent/spec` into the same shared `/api/docs`
+handler automatically.
 
 ## Choosing Between Them
 

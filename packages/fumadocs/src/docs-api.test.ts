@@ -505,6 +505,134 @@ title: "Home"
     expect(await response.text()).toBe("Not Found");
   });
 
+  it("serves the agent discovery spec through the shared docs api handler", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-spec-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      feedback: {
+        agent: {
+          enabled: true,
+          route: "/internal/agent-feedback",
+          schemaRoute: "/internal/agent-feedback/schema",
+        },
+      },
+      mcp: {
+        enabled: true,
+        route: "/internal/docs/mcp",
+        tools: {
+          listPages: true,
+          readPage: true,
+          searchDocs: false,
+          getNavigation: true,
+        },
+      },
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs/agent/spec"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/json");
+
+    const spec = (await response.json()) as {
+      version: string;
+      api: Record<string, string>;
+      markdown: Record<string, unknown>;
+      mcp: {
+        enabled: boolean;
+        endpoint: string;
+        name: string;
+        version: string;
+        tools: Record<string, boolean>;
+      };
+      feedback: { enabled: boolean; schema: string; submit: string };
+      instructions: Record<string, boolean>;
+    };
+
+    expect(spec.version).toBe("1");
+    expect(spec.api).toMatchObject({
+      docs: "/api/docs",
+      agentSpec: "/api/docs/agent/spec",
+      agentSpecQuery: "/api/docs?agent=spec",
+    });
+    expect(spec.markdown).toMatchObject({
+      enabled: true,
+      pagePattern: "/docs/{slug}.md",
+      rootPage: "/docs.md",
+      apiPattern: "/api/docs?format=markdown&path={slug}",
+    });
+    expect(spec.mcp).toEqual({
+      enabled: true,
+      endpoint: "/internal/docs/mcp",
+      name: "Documentation",
+      version: "0.0.0",
+      tools: {
+        listPages: true,
+        readPage: true,
+        searchDocs: false,
+        getNavigation: true,
+      },
+    });
+    expect(spec.feedback).toMatchObject({
+      enabled: true,
+      schema: "/internal/agent-feedback/schema",
+      submit: "/internal/agent-feedback",
+    });
+    expect(spec.instructions).toMatchObject({
+      preferMarkdownRoutes: true,
+      useMcpWhenAvailable: true,
+      readFeedbackSchemaBeforeSubmitting: true,
+      doNotAssumeFeedbackPayloadShape: true,
+    });
+  });
+
+  it("serves the agent discovery spec through the rewritten query form", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-spec-query-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "guides"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "guides", "page.mdx"), "# Home\n");
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "guides",
+      feedback: {
+        agent: false,
+      },
+      mcp: false,
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs?agent=spec"));
+    expect(response.status).toBe(200);
+    const spec = (await response.json()) as {
+      markdown: { pagePattern: string; rootPage: string };
+      mcp: { enabled: boolean; endpoint: string };
+      feedback: { enabled: boolean; schema: string; submit: string };
+    };
+
+    expect(spec.markdown).toMatchObject({
+      pagePattern: "/guides/{slug}.md",
+      rootPage: "/guides.md",
+    });
+    expect(spec.mcp).toMatchObject({
+      enabled: false,
+      endpoint: "/api/docs/mcp",
+    });
+    expect(spec.feedback).toMatchObject({
+      enabled: false,
+      schema: "/api/docs/agent/feedback/schema",
+      submit: "/api/docs/agent/feedback",
+    });
+  });
+
   it("serves the default agent feedback schema through the shared docs api handler", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-feedback-schema-"));
     tempDirs.push(rootDir);
