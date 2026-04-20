@@ -1182,8 +1182,18 @@ function acceptsMarkdown(request: Request): boolean {
   if (!accept) return false;
   return accept
     .split(",")
-    .map((value) => value.trim().toLowerCase())
-    .some((value) => value === "text/markdown" || value.startsWith("text/markdown;"));
+    .map((value) => value.trim())
+    .some((value) => {
+      const [mediaType, ...params] = value.split(";").map((part) => part.trim().toLowerCase());
+      if (mediaType !== "text/markdown") return false;
+
+      const qualityParam = params.find((param) => param.split("=", 1)[0]?.trim() === "q");
+      if (!qualityParam) return true;
+
+      const qualityValue = qualityParam.slice(qualityParam.indexOf("=") + 1).trim();
+      const quality = Number.parseFloat(qualityValue);
+      return Number.isFinite(quality) ? quality > 0 : true;
+    });
 }
 
 function resolveMarkdownRequest(

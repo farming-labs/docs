@@ -41,6 +41,19 @@ function getAfterFilesRewrites(result: TestRewriteResult): TestRewrite[] {
 const DOCS_CONFIG = `export default { entry: "docs" };
 `;
 
+const MARKDOWN_ACCEPT_HEADER = {
+  type: "header",
+  key: "accept",
+  value: [
+    "(?:^|.*,\\s*)",
+    "text/markdown",
+    "(?:\\s*;",
+    "(?!\\s*(?:[^,;]*;\\s*)*q\\s*=\\s*(?:0+(?:\\.0*)?|\\.0+)\\s*(?:;|,|$))",
+    "[^,]*)?",
+    "(?:\\s*,.*|$)",
+  ].join(""),
+};
+
 const DOCS_CONFIG_WITH_API_REFERENCE = `export default {
   entry: "docs",
   apiReference: {
@@ -261,28 +274,24 @@ describe("withDocs (app dir: src/app vs app)", () => {
         }),
         expect.objectContaining({
           source: "/docs",
-          has: [
-            {
-              type: "header",
-              key: "accept",
-              value: ".*text/markdown.*",
-            },
-          ],
+          has: [MARKDOWN_ACCEPT_HEADER],
           destination: "/api/docs?format=markdown",
         }),
         expect.objectContaining({
           source: "/docs/:slug*",
-          has: [
-            {
-              type: "header",
-              key: "accept",
-              value: ".*text/markdown.*",
-            },
-          ],
+          has: [MARKDOWN_ACCEPT_HEADER],
           destination: "/api/docs?format=markdown&path=:slug*",
         }),
       ]),
     );
+
+    const acceptPattern = new RegExp(MARKDOWN_ACCEPT_HEADER.value);
+    expect(acceptPattern.test("text/markdown")).toBe(true);
+    expect(acceptPattern.test("application/json, text/markdown;q=0.5")).toBe(true);
+    expect(acceptPattern.test("application/json, text/markdown;q=0")).toBe(false);
+    expect(acceptPattern.test("application/json, text/markdown;profile=agent;q=0")).toBe(false);
+    expect(acceptPattern.test("text/markdown-v2")).toBe(false);
+    expect(acceptPattern.test("application/not-text/markdownish")).toBe(false);
   });
 
   it("adds agent feedback rewrites through the shared docs api handler when configured", async () => {
@@ -515,13 +524,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
         }),
         expect.objectContaining({
           source: "/docs/:slug*",
-          has: [
-            {
-              type: "header",
-              key: "accept",
-              value: ".*text/markdown.*",
-            },
-          ],
+          has: [MARKDOWN_ACCEPT_HEADER],
           destination: "/api/docs?format=markdown&path=:slug*",
         }),
       ]),

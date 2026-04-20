@@ -493,6 +493,33 @@ This embedded agent block should be ignored because agent.md overrides the page.
     );
     expect(acceptAgentResponse.status).toBe(200);
     expect(await acceptAgentResponse.text()).toBe("Use this page as the implementation map.\n");
+
+    const weightedAcceptAgentResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: { accept: "application/json, text/markdown;q=0.5" },
+      }),
+    );
+    expect(weightedAcceptAgentResponse.status).toBe(200);
+    expect(weightedAcceptAgentResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(await weightedAcceptAgentResponse.text()).toBe(
+      "Use this page as the implementation map.\n",
+    );
+
+    const zeroQualityAcceptResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: { accept: "application/json, text/markdown;profile=agent;q=0" },
+      }),
+    );
+    expect(zeroQualityAcceptResponse.headers.get("content-type")).not.toContain("text/markdown");
+    expect(await zeroQualityAcceptResponse.text()).toBe("[]");
+
+    const substringAcceptResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: { accept: "application/not-text/markdownish" },
+      }),
+    );
+    expect(substringAcceptResponse.headers.get("content-type")).not.toContain("text/markdown");
+    expect(await substringAcceptResponse.text()).toBe("[]");
   });
 
   it("returns 404 for markdown mode when the requested page does not exist", async () => {
