@@ -606,8 +606,8 @@ Agents can discover the configured machine-readable surface first:
 GET /api/docs/agent/spec
 ```
 
-The spec returns the docs API route, markdown URL patterns, `llms.txt` routes, skills install
-metadata, MCP endpoint and tool toggles, and agent feedback schema/submit routes based on
+The spec returns site identity, the docs API route, markdown URL patterns, `llms.txt` routes, skills
+install metadata, MCP endpoint and tool toggles, and agent feedback schema/submit routes based on
 `docs.config`.
 
 This does **not** require a separate `docs.config` flag.
