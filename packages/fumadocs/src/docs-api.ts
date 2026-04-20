@@ -327,6 +327,9 @@ function buildAgentSpec({ origin, entry, i18n, search, mcp, feedback, llms }: Ag
       agentSpec: DEFAULT_AGENT_SPEC_ROUTE,
       agentSpecQuery: `${DEFAULT_DOCS_API_ROUTE}?agent=spec`,
     },
+    // Always-on agent content surfaces. If these ever become configurable,
+    // this spec must be wired to the same docs.config toggles instead of
+    // continuing to report literal true values.
     markdown: {
       enabled: true,
       pagePattern: `/${normalizedEntry}/{slug}.md`,
@@ -346,6 +349,8 @@ function buildAgentSpec({ origin, entry, i18n, search, mcp, feedback, llms }: Ag
       queryParam: "query",
       localeParam: "lang",
     },
+    // Skills metadata is bundled with this package today; there is no runtime
+    // config switch for disabling it from the discovery spec.
     skills: {
       enabled: true,
       registry: "skills.sh",
