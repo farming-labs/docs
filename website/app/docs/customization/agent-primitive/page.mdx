@@ -17,7 +17,8 @@ The same page model also powers the built-in machine-readable routes:
 - the shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
 - in Next.js, `withDocs()` also serves `/docs/<slug>.md`
 - in Next.js, `Accept: text/markdown` on `/docs/<slug>` returns the same markdown
-- agents can discover the configured contract with `GET /api/docs/agent/spec`
+- agents can discover the configured contract with `GET /api/docs/agent/spec`,
+  `GET /.well-known/agent`, or `GET /.well-known/agent.json`
 
 <Callout type="info" title="Same URL, different representation">
   `/docs/installation` stays the human HTML page by default. Send `Accept: text/markdown` to that
@@ -156,7 +157,9 @@ That works especially well when:
 
 ## Agent Discovery
 
-`GET /api/docs/agent/spec` returns a small JSON document generated from `docs.config`.
+`GET /api/docs/agent/spec` returns a small JSON document generated from `docs.config`. In Next.js,
+`GET /.well-known/agent` and `GET /.well-known/agent.json` are public discovery aliases for the
+same JSON.
 
 Agents should fetch it before choosing a transport. It tells them:
 
@@ -166,13 +169,14 @@ Agents should fetch it before choosing a transport. It tells them:
 - where the shared docs API lives
 - where to search the docs with a query
 - which markdown URL pattern to use for page reads
-- where to fetch `llms.txt` and `llms-full.txt` content
+- where to fetch `llms.txt` and `llms-full.txt` content, including the public `/.well-known`
+  aliases when available
 - how to install the published Skills pack and which skill is recommended first
 - whether MCP is enabled, which endpoint to call, and which tools are available
 - whether agent feedback is enabled, plus the schema and submit endpoints to use
 
-For Next.js apps, `withDocs()` wires `/api/docs/agent/spec` into the same shared `/api/docs`
-handler automatically.
+For Next.js apps, `withDocs()` wires `/api/docs/agent/spec`, `/.well-known/agent`, and
+`/.well-known/agent.json` into the same shared `/api/docs` handler automatically.
 
 ## Choosing Between Them
 

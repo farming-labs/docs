@@ -103,6 +103,7 @@ In Next.js, `withDocs()` also adds the crawler-friendly public aliases automatic
 - `GET /llms-full.txt`
 - `GET /.well-known/llms.txt`
 - `GET /.well-known/llms-full.txt`
+- `GET /.well-known/agent` and `GET /.well-known/agent.json` for the agent discovery spec that references those `llms.txt` routes
 
 Those aliases rewrite to the same shared API output, so there is still only one content pipeline.
 TanStack Start, SvelteKit, Astro, and Nuxt can use the shared API query routes directly.

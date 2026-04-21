@@ -112,6 +112,8 @@ interface DocsMCPAPIOptions {
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const DEFAULT_DOCS_API_ROUTE = "/api/docs";
 const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
+const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
+const DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE = "/.well-known/agent.json";
 const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
 const DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA: Record<string, unknown> = {
   type: "object",
@@ -280,7 +282,12 @@ function resolveAgentFeedbackRequest(
 
 function resolveAgentSpecRequest(url: URL): boolean {
   if (url.searchParams.get("agent")?.trim() === "spec") return true;
-  return normalizeUrlPath(url.pathname) === DEFAULT_AGENT_SPEC_ROUTE;
+  const pathname = normalizeUrlPath(url.pathname);
+  return (
+    pathname === DEFAULT_AGENT_SPEC_ROUTE ||
+    pathname === DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE ||
+    pathname === DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE
+  );
 }
 
 function isSearchEnabled(search?: boolean | DocsSearchConfig): boolean {
@@ -325,6 +332,8 @@ function buildAgentSpec({ origin, entry, i18n, search, mcp, feedback, llms }: Ag
     api: {
       docs: DEFAULT_DOCS_API_ROUTE,
       agentSpec: DEFAULT_AGENT_SPEC_ROUTE,
+      agentSpecWellKnown: DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
+      agentSpecWellKnownJson: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
       agentSpecQuery: `${DEFAULT_DOCS_API_ROUTE}?agent=spec`,
     },
     // Always-on agent content surfaces. If these ever become configurable,
@@ -342,6 +351,10 @@ function buildAgentSpec({ origin, entry, i18n, search, mcp, feedback, llms }: Ag
       enabled: llms.enabled,
       txt: `${DEFAULT_DOCS_API_ROUTE}?format=llms`,
       full: `${DEFAULT_DOCS_API_ROUTE}?format=llms-full`,
+      publicTxt: "/llms.txt",
+      publicFull: "/llms-full.txt",
+      wellKnownTxt: "/.well-known/llms.txt",
+      wellKnownFull: "/.well-known/llms-full.txt",
     },
     search: {
       enabled: searchEnabled,

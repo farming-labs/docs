@@ -674,7 +674,7 @@ title: "Home"
       capabilities: Record<string, boolean>;
       api: Record<string, string>;
       markdown: Record<string, unknown>;
-      llms: { enabled: boolean; txt: string; full: string };
+      llms: Record<string, string | boolean>;
       search: {
         enabled: boolean;
         endpoint: string;
@@ -727,6 +727,8 @@ title: "Home"
     expect(spec.api).toMatchObject({
       docs: "/api/docs",
       agentSpec: "/api/docs/agent/spec",
+      agentSpecWellKnown: "/.well-known/agent",
+      agentSpecWellKnownJson: "/.well-known/agent.json",
       agentSpecQuery: "/api/docs?agent=spec",
     });
     expect(spec.markdown).toMatchObject({
@@ -740,6 +742,10 @@ title: "Home"
       enabled: true,
       txt: "/api/docs?format=llms",
       full: "/api/docs?format=llms-full",
+      publicTxt: "/llms.txt",
+      publicFull: "/llms-full.txt",
+      wellKnownTxt: "/.well-known/llms.txt",
+      wellKnownFull: "/.well-known/llms-full.txt",
     });
     expect(spec.search).toEqual({
       enabled: true,
@@ -783,6 +789,13 @@ title: "Home"
       readFeedbackSchemaBeforeSubmitting: true,
       doNotAssumeFeedbackPayloadShape: true,
     });
+
+    for (const path of ["/.well-known/agent", "/.well-known/agent.json"]) {
+      const wellKnownResponse = await GET(new Request(`http://localhost${path}`));
+      expect(wellKnownResponse.status).toBe(200);
+      expect(wellKnownResponse.headers.get("content-type")).toContain("application/json");
+      expect(await wellKnownResponse.json()).toEqual(spec);
+    }
   });
 
   it("serves the agent discovery spec through the rewritten query form", async () => {
@@ -817,7 +830,7 @@ title: "Home"
       };
       capabilities: Record<string, boolean>;
       markdown: { acceptHeader: string; pagePattern: string; rootPage: string };
-      llms: { enabled: boolean; txt: string; full: string };
+      llms: Record<string, string | boolean>;
       search: { enabled: boolean; endpoint: string; method: string };
       skills: { enabled: boolean; registry: string; install: string };
       mcp: { enabled: boolean; endpoint: string };
@@ -856,6 +869,10 @@ title: "Home"
       enabled: false,
       txt: "/api/docs?format=llms",
       full: "/api/docs?format=llms-full",
+      publicTxt: "/llms.txt",
+      publicFull: "/llms-full.txt",
+      wellKnownTxt: "/.well-known/llms.txt",
+      wellKnownFull: "/.well-known/llms-full.txt",
     });
     expect(spec.search).toMatchObject({
       enabled: false,

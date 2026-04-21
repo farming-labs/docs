@@ -1009,6 +1009,14 @@ function buildAgentSpecRewrites(): NextRewrite[] {
       source: DEFAULT_AGENT_SPEC_ROUTE,
       destination: "/api/docs?agent=spec",
     },
+    {
+      source: "/.well-known/agent",
+      destination: "/api/docs?agent=spec",
+    },
+    {
+      source: "/.well-known/agent.json",
+      destination: "/api/docs?agent=spec",
+    },
   ];
 }
 
