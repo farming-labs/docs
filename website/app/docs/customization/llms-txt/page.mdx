@@ -14,8 +14,8 @@ Serve <HoverLink href="https://llmstxt.org" title="llms.txt" description="An ope
 `llms.txt` is a standard for making website content accessible to LLMs. In Next.js, `withDocs()`
 serves conventional public aliases that rewrite to your existing `/api/docs` endpoint:
 
-- **`/llms.txt`** — A concise markdown listing of all pages with titles, URLs, and descriptions
-- **`/llms-full.txt`** — The full stripped content of every page, ready for LLM consumption
+- **`/llms.txt`** — The default concise markdown listing of all pages with titles, URLs, and descriptions
+- **`/llms-full.txt`** — The default full stripped content of every page, ready for LLM consumption
 - **`/.well-known/llms.txt`** — Alias for `/llms.txt`
 - **`/.well-known/llms-full.txt`** — Alias for `/llms-full.txt`
 
@@ -99,14 +99,18 @@ No extra route files are needed. The existing API handler (`/api/docs` on Next.j
 
 In Next.js, `withDocs()` also adds the crawler-friendly public aliases automatically:
 
-- `GET /llms.txt`
-- `GET /llms-full.txt`
+- `GET /llms.txt` — default concise route
+- `GET /llms-full.txt` — default full-content route
 - `GET /.well-known/llms.txt`
 - `GET /.well-known/llms-full.txt`
-- `GET /.well-known/agent` and `GET /.well-known/agent.json` for the agent discovery spec that references those `llms.txt` routes
+- `GET /.well-known/agent.json` for the preferred agent discovery spec that references those `llms.txt` routes
+- `GET /.well-known/agent` as the fallback agent discovery alias
 
 Those aliases rewrite to the same shared API output, so there is still only one content pipeline.
-TanStack Start, SvelteKit, Astro, and Nuxt can use the shared API query routes directly.
+The agent discovery spec also advertises `defaultTxt: "/llms.txt"` and
+`defaultFull: "/llms-full.txt"` so integrations can use the intended defaults without adding their
+own framework-specific routes. TanStack Start, SvelteKit, Astro, and Nuxt can use the shared API
+query routes directly.
 
 ---
 

@@ -727,6 +727,8 @@ title: "Home"
     expect(spec.api).toMatchObject({
       docs: "/api/docs",
       agentSpec: "/api/docs/agent/spec",
+      agentSpecDefault: "/.well-known/agent.json",
+      agentSpecFallback: "/.well-known/agent",
       agentSpecWellKnown: "/.well-known/agent",
       agentSpecWellKnownJson: "/.well-known/agent.json",
       agentSpecQuery: "/api/docs?agent=spec",
@@ -740,6 +742,8 @@ title: "Home"
     });
     expect(spec.llms).toEqual({
       enabled: true,
+      defaultTxt: "/llms.txt",
+      defaultFull: "/llms-full.txt",
       txt: "/api/docs?format=llms",
       full: "/api/docs?format=llms-full",
       publicTxt: "/llms.txt",
@@ -867,6 +871,8 @@ title: "Home"
     });
     expect(spec.llms).toEqual({
       enabled: false,
+      defaultTxt: "/llms.txt",
+      defaultFull: "/llms-full.txt",
       txt: "/api/docs?format=llms",
       full: "/api/docs?format=llms-full",
       publicTxt: "/llms.txt",

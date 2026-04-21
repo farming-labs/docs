@@ -995,9 +995,9 @@ export async function POST(request: Request) {
 Use `feedback.agent` when you want machine-readable feedback routes for coding agents or docs-aware
 automation. This is separate from the built-in page footer UI.
 
-Agents can discover the configured routes first with `GET /api/docs/agent/spec`. In Next.js,
-`GET /.well-known/agent` and `GET /.well-known/agent.json` return the same JSON through public
-discovery aliases. The spec includes
+Agents should discover the configured routes first with `GET /.well-known/agent.json`. In Next.js,
+`GET /.well-known/agent` is the fallback public alias, and `GET /api/docs/agent/spec` is the
+canonical framework route. All three return the same JSON. The spec includes
 site identity, locale config, capability flags, the search endpoint, markdown route pattern and
 `Accept: text/markdown` contract, API and public `llms.txt` routes, Skills CLI install metadata,
 MCP endpoint and enabled tools, and the active agent feedback schema and submit endpoints.
@@ -1018,8 +1018,10 @@ export default defineDocs({
 
 Default behavior:
 
-- `GET /api/docs/agent/spec` returns the machine-readable route/config discovery document
-- `GET /.well-known/agent` and `GET /.well-known/agent.json` return the same discovery document in Next.js
+- `GET /.well-known/agent.json` is the preferred public agent discovery URL in Next.js
+- `GET /.well-known/agent` is the public fallback discovery URL in Next.js
+- `GET /api/docs/agent/spec` returns the canonical framework discovery document
+- the discovery JSON advertises `agentSpecDefault`, `agentSpecFallback`, and the `llms.txt` defaults
 - `GET /api/docs/agent/feedback/schema` returns the feedback schema
 - `POST /api/docs/agent/feedback` accepts `{ context?, payload }`
 - the shared `/api/docs` handler is still the source of truth

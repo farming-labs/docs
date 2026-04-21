@@ -168,7 +168,13 @@ const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const INTERNAL_DOCS_CONFIG_ALIAS = "@farming-labs/next-internal-docs-config";
 const NEXT_PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
+const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
+const DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE = "/.well-known/agent.json";
 const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
+const DEFAULT_LLMS_TXT_ROUTE = "/llms.txt";
+const DEFAULT_LLMS_FULL_TXT_ROUTE = "/llms-full.txt";
+const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
+const DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms-full.txt";
 const MARKDOWN_ACCEPT_HEADER_VALUE = [
   "(?:^|.*,\\s*)",
   "text/markdown",
@@ -1010,11 +1016,11 @@ function buildAgentSpecRewrites(): NextRewrite[] {
       destination: "/api/docs?agent=spec",
     },
     {
-      source: "/.well-known/agent",
+      source: DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
       destination: "/api/docs?agent=spec",
     },
     {
-      source: "/.well-known/agent.json",
+      source: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
       destination: "/api/docs?agent=spec",
     },
   ];
@@ -1023,19 +1029,19 @@ function buildAgentSpecRewrites(): NextRewrite[] {
 function buildLlmsTxtRewrites(): NextRewrite[] {
   return [
     {
-      source: "/llms.txt",
+      source: DEFAULT_LLMS_TXT_ROUTE,
       destination: "/api/docs?format=llms",
     },
     {
-      source: "/llms-full.txt",
+      source: DEFAULT_LLMS_FULL_TXT_ROUTE,
       destination: "/api/docs?format=llms-full",
     },
     {
-      source: "/.well-known/llms.txt",
+      source: DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE,
       destination: "/api/docs?format=llms",
     },
     {
-      source: "/.well-known/llms-full.txt",
+      source: DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
       destination: "/api/docs?format=llms-full",
     },
   ];
