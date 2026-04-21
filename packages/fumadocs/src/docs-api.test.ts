@@ -356,6 +356,66 @@ Install and configure the docs framework.
     expect(payload[0]?.content).toContain("Quickstart");
   });
 
+  it("serves llms.txt aliases through the shared docs api handler", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-llms-alias-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+description: "Start here"
+---
+
+# Introduction
+
+Welcome to the docs.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  llmsTxt: {
+    enabled: true,
+    siteTitle: "Alias Docs",
+  },
+};`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+    });
+
+    const llmsApi = await GET(new Request("http://localhost/api/docs?format=llms"));
+    const llmsApiText = await llmsApi.text();
+    expect(llmsApi.status).toBe(200);
+    expect(llmsApi.headers.get("content-type")).toContain("text/plain");
+    expect(llmsApiText).toContain("# Alias Docs");
+
+    for (const path of ["/llms.txt", "/.well-known/llms.txt"]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("text/plain");
+      expect(await response.text()).toBe(llmsApiText);
+    }
+
+    const llmsFullApi = await GET(new Request("http://localhost/api/docs?format=llms-full"));
+    const llmsFullApiText = await llmsFullApi.text();
+    expect(llmsFullApi.status).toBe(200);
+    expect(llmsFullApiText).toContain("Welcome to the docs.");
+
+    for (const path of ["/llms-full.txt", "/.well-known/llms-full.txt"]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("text/plain");
+      expect(await response.text()).toBe(llmsFullApiText);
+    }
+  });
+
   it("keeps Agent blocks out of the normal search index", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-search-route-"));
     tempDirs.push(rootDir);
