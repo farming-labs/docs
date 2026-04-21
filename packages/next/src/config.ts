@@ -1012,6 +1012,27 @@ function buildAgentSpecRewrites(): NextRewrite[] {
   ];
 }
 
+function buildLlmsTxtRewrites(): NextRewrite[] {
+  return [
+    {
+      source: "/llms.txt",
+      destination: "/api/docs?format=llms",
+    },
+    {
+      source: "/llms-full.txt",
+      destination: "/api/docs?format=llms-full",
+    },
+    {
+      source: "/.well-known/llms.txt",
+      destination: "/api/docs?format=llms",
+    },
+    {
+      source: "/.well-known/llms-full.txt",
+      destination: "/api/docs?format=llms-full",
+    },
+  ];
+}
+
 function buildAgentFeedbackRewrites(config: {
   enabled: boolean;
   route: string;
@@ -1056,6 +1077,7 @@ function mergeDocsMarkdownRewrites(
 ): NextRewriteResult {
   const autoRewrites = [
     ...buildAgentSpecRewrites(),
+    ...buildLlmsTxtRewrites(),
     ...buildDocsMarkdownRewrites(entry),
     ...buildAgentFeedbackRewrites(agentFeedback),
   ];

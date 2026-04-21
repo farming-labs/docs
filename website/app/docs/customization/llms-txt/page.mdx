@@ -11,7 +11,15 @@ Serve <HoverLink href="https://llmstxt.org" title="llms.txt" description="An ope
 
 ## What is llms.txt?
 
-`llms.txt` is a standard for making website content accessible to LLMs. It's served via query params on your existing `/api/docs` endpoint:
+`llms.txt` is a standard for making website content accessible to LLMs. In Next.js, `withDocs()`
+serves conventional public aliases that rewrite to your existing `/api/docs` endpoint:
+
+- **`/llms.txt`** — A concise markdown listing of all pages with titles, URLs, and descriptions
+- **`/llms-full.txt`** — The full stripped content of every page, ready for LLM consumption
+- **`/.well-known/llms.txt`** — Alias for `/llms.txt`
+- **`/.well-known/llms-full.txt`** — Alias for `/llms-full.txt`
+
+The shared API handler remains the source of truth:
 
 - **`/api/docs?format=llms`** — A concise markdown listing of all pages with titles, URLs, and descriptions
 - **`/api/docs?format=llms-full`** — The full stripped content of every page, ready for LLM consumption
@@ -89,7 +97,15 @@ No extra route files are needed. The existing API handler (`/api/docs` on Next.j
 - `GET /api/docs?format=llms` — concise page listing
 - `GET /api/docs?format=llms-full` — full page content
 
-This works identically across Next.js, TanStack Start, SvelteKit, Astro, and Nuxt — just enable `llmsTxt` in your config and the existing `createDocsAPI()` / `createDocsServer()` handler takes care of the rest.
+In Next.js, `withDocs()` also adds the crawler-friendly public aliases automatically:
+
+- `GET /llms.txt`
+- `GET /llms-full.txt`
+- `GET /.well-known/llms.txt`
+- `GET /.well-known/llms-full.txt`
+
+Those aliases rewrite to the same shared API output, so there is still only one content pipeline.
+TanStack Start, SvelteKit, Astro, and Nuxt can use the shared API query routes directly.
 
 ---
 
@@ -139,7 +155,7 @@ Full page content here...
 
 ## Footer Links
 
-When enabled, `llms.txt` and `llms-full.txt` links automatically appear in the page footer next to "Edit on GitHub", pointing to `/api/docs?format=llms` and `/api/docs?format=llms-full` respectively.
+When enabled, `llms.txt` and `llms-full.txt` links automatically appear in the page footer next to "Edit on GitHub", pointing to the shared `/api/docs?format=llms` and `/api/docs?format=llms-full` routes.
 
 ## Full Example
 

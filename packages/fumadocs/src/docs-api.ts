@@ -1237,6 +1237,21 @@ function resolveMarkdownRequest(
   return null;
 }
 
+function resolveLlmsTxtFormat(url: URL): "llms" | "llms-full" | null {
+  const pathname = normalizeUrlPath(url.pathname);
+
+  if (pathname === "/llms.txt" || pathname === "/.well-known/llms.txt") {
+    return "llms";
+  }
+
+  if (pathname === "/llms-full.txt" || pathname === "/.well-known/llms-full.txt") {
+    return "llms-full";
+  }
+
+  const format = url.searchParams.get("format");
+  return format === "llms" || format === "llms-full" ? format : null;
+}
+
 function renderMarkdownDocument(page: DocsMcpPage | DocsSearchSourcePage): string {
   if ("agentRawContent" in page && page.agentRawContent !== undefined) return page.agentRawContent;
 
@@ -1781,8 +1796,8 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         });
       }
 
-      const format = url.searchParams.get("format");
-      if (format === "llms") {
+      const llmsFormat = resolveLlmsTxtFormat(url);
+      if (llmsFormat === "llms") {
         return new Response(getLlmsContent(ctx).llmsTxt, {
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
@@ -1791,7 +1806,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         });
       }
 
-      if (format === "llms-full") {
+      if (llmsFormat === "llms-full") {
         return new Response(getLlmsContent(ctx).llmsFullTxt, {
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
