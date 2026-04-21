@@ -23,7 +23,7 @@ projects:
 
 ## Speed And Retrieval
 
-| Provider | Median Full Time | Median First Relevant | Mean Docs Fetches | Mean Docs Bytes | Mean Input Tokens | Mean Output Tokens |
+| Provider | Median Full Time | Median First Relevant | Mean Raw Docs Fetches | Mean Docs Bytes | Mean Input Tokens | Mean Output Tokens |
 | -------- | ---------------- | --------------------- | ---------------- | --------------- | ----------------- | ------------------ |
 | farming-labs | 89.279s | 17.897s | 1 | 3,274 | 227,209 | 3,466.667 |
 | mintlify | 104.187s | 33.479s | 3 | 5,214 | 289,896.333 | 4,279 |
@@ -44,14 +44,14 @@ projects:
 | Mean command errors | lower | 0 | 0 | tie |
 | Mean noisy docs fetches | lower | 0 | 0 | tie |
 | Mean off-target before relevant | lower | 0 | 0 | tie |
-| Mean docs fetches | lower | 1 | 3 | farming-labs |
+| Mean raw docs fetches | lower | 1 | 3 | farming-labs |
 | Mean docs bytes | lower | 3,274 | 5,214 | farming-labs |
 | Mean input tokens | lower | 227,209 | 289,896.333 | farming-labs |
 | Mean output tokens | lower | 3,466.667 | 4,279 | farming-labs |
 
 ## Attempt Details
 
-| Provider | Attempt | Success | Error-Free | Full Time | First Relevant | Docs Fetches | Input Tokens | Output Tokens |
+| Provider | Attempt | Success | Error-Free | Full Time | First Relevant | Raw Docs Fetches | Input Tokens | Output Tokens |
 | -------- | ------- | ------- | ---------- | --------- | -------------- | ------------ | ------------ | ------------- |
 | farming-labs | 1 | true | true | 102.015s | 17.897s | 1 | 298,492 | 4,086 |
 | farming-labs | 2 | true | true | 89.279s | 17.622s | 1 | 206,044 | 3,144 |
@@ -65,7 +65,7 @@ projects:
 The run did not show an error-rate win because both providers reached 100% success and 0% task,
 acceptance, session, docs, command, noisy-page, and off-target-before-relevant errors.
 
-The Farming Labs/docs advantage showed up in efficiency metrics: the agent needed one docs fetch
+The Farming Labs/docs advantage showed up in efficiency metrics: the agent needed one raw docs fetch
 instead of three, reached the first relevant page faster, used fewer docs bytes, and used fewer
 input/output tokens on average.
 

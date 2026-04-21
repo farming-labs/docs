@@ -33,6 +33,26 @@ Farming Labs/docs should use features Mintlify does not optimize for in the same
 The human docs should still contain the same facts. The win comes from reducing agent ambiguity, not
 from withholding information.
 
+## Benchmark Correction
+
+Do not give the Mintlify fixture a fake agent primitive. It should get the normal tools a
+Mintlify-shaped docs site can reasonably expose in this benchmark:
+
+- root `/docs.md`,
+- `llms.txt`,
+- markdown page URLs,
+- the same human-readable facts on the implementation pages.
+
+Farming Labs/docs should use the real differentiator aggressively:
+
+- root `<Agent>` runbooks,
+- page-level `<Agent>` guidance,
+- `/api/docs/agent/spec` with canonical and deprecated page metadata,
+- exact file/export/constants/policy runbooks for implementation agents.
+
+That keeps the benchmark fair but no longer hides the product advantage by adding
+`<Visibility for="agents">`-style pseudo-primitives to the Mintlify fixture.
+
 ## Next Scenario To Build
 
 Run `versioned-agent-endpoint`:
@@ -53,4 +73,24 @@ Expected measurable win:
 - Lower `session_error_rate` if agents need fewer correction loops.
 
 If error rates still tie, the benchmark should honestly report that and keep Farming Labs/docs wins
-on retrieval speed, docs fetches, bytes, and token cost.
+on retrieval speed, raw docs fetches, bytes, and token cost.
+
+## Next Error-Rate Plays
+
+If `versioned-agent-endpoint` still ties after repeated runs, add new scenarios that are naturally
+error-prone for implementation agents while keeping Mintlify's factual docs complete:
+
+- Current-vs-deprecated defaults where both pages are valid, but only the current page is correct
+  for new work.
+- Security-negative constraints where the agent must avoid a tempting implementation path, such as
+  direct billing mutation or account deletion without handoff.
+- Cross-page contracts where the final code needs facts from exactly two pages, and fetching the
+  wrong nearby reference page usually causes an acceptance failure.
+- Similar API names where `create_ticket`, `handoff_to_human`, and billing/refund APIs are all
+  documented, but only one combination is valid.
+- Framework routing traps where the docs include legacy Pages Router examples and current App
+  Router examples, and acceptance fails if the wrong one is used.
+
+The honest target is an acceptance-measured error-rate gap over at least three attempts, preferably
+five to ten. Until then, claim the proven win: faster right-page retrieval and lower context/cost
+with equal correctness.

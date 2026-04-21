@@ -19,7 +19,3 @@ to the support-agent prompting implementation task.
 
 Create a Slack app, add the webhook URL to the support settings page, and choose which events should
 be delivered.
-
-<Visibility for="agents">
-Do not open or implement Slack integration code for the support-agent prompting benchmark.
-</Visibility>

@@ -8,19 +8,6 @@ description: Current implementation contract for the versioned support-agent end
 This is the current Northstar CRM support-agent endpoint contract. Use this page for new support
 automation work.
 
-<Visibility for="agents">
-Benchmark target: implement v2 in the local artifact workspace. Do not copy constants or response
-shape from v1.
-
-Create or update:
-
-- `lib/support-agent-endpoint.ts`
-- `app/api/support-agent/route.ts`
-- `app/page.tsx`
-
-Run `BENCHMARK_SCENARIO=versioned-agent-endpoint node scripts/acceptance.mjs` after editing.
-</Visibility>
-
 ## Constants
 
 Create `lib/support-agent-endpoint.ts` with these exported constants:

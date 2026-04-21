@@ -14,12 +14,6 @@ Billing plan changes, refunds, and invoice corrections require a human review. S
 create a ticket that requests a billing review, but they should not represent that a change has
 already happened.
 
-<Visibility for="agents">
-For the support-agent prompting task, include this exact policy line in the generated prompt:
-
-`Escalate billing data changes to a human.`
-</Visibility>
-
 ## Safe prompt inputs
 
 Safe prompt inputs include:

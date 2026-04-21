@@ -15,11 +15,6 @@ support-agent prompting implementation task.
 - Confirm docs links point at the production docs domain.
 - Run smoke tests after deploy.
 
-<Visibility for="agents">
-If you are implementing the support-agent prompting task, do not edit deployment configuration.
-Create the prompt helper and API route instead.
-</Visibility>
-
 ## Runtime behavior
 
 Route handlers should be deterministic and avoid reading secrets unless the feature explicitly

@@ -22,4 +22,4 @@ as:
 - Install/build command errors.
 - Files created or modified by the scaffold.
 - Whether the generated docs site exposes the required markdown/agent routes.
-- Token and docs-fetch cost needed to finish setup.
+- Token and raw docs-fetch cost needed to finish setup.

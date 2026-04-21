@@ -22,7 +22,7 @@ omits v2-only fields such as `schema`, `safety`, or `handoff_to_human`.
 
 ## Speed And Retrieval
 
-| Provider | Median Full Time | Median First Relevant | Mean Docs Fetches | Mean Docs Bytes | Mean Input Tokens | Mean Output Tokens |
+| Provider | Median Full Time | Median First Relevant | Mean Raw Docs Fetches | Mean Docs Bytes | Mean Input Tokens | Mean Output Tokens |
 | -------- | ---------------- | --------------------- | ---------------- | --------------- | ----------------- | ------------------ |
 | farming-labs | 108.295s | 14.128s | 1 | 5,683 | 278,735.333 | 3,998.333 |
 | mintlify | 140.883s | 30.163s | 3 | 6,630 | 338,962 | 4,467.667 |
@@ -43,14 +43,14 @@ omits v2-only fields such as `schema`, `safety`, or `handoff_to_human`.
 | Mean command errors | lower | 0 | 0 | tie |
 | Mean noisy docs fetches | lower | 0 | 0 | tie |
 | Mean off-target before relevant | lower | 0 | 0 | tie |
-| Mean docs fetches | lower | 1 | 3 | farming-labs |
+| Mean raw docs fetches | lower | 1 | 3 | farming-labs |
 | Mean docs bytes | lower | 5,683 | 6,630 | farming-labs |
 | Mean input tokens | lower | 278,735.333 | 338,962 | farming-labs |
 | Mean output tokens | lower | 3,998.333 | 4,467.667 | farming-labs |
 
 ## Attempt Details
 
-| Provider | Attempt | Success | Error-Free | Full Time | First Relevant | Docs Fetches | Input Tokens | Output Tokens |
+| Provider | Attempt | Success | Error-Free | Full Time | First Relevant | Raw Docs Fetches | Input Tokens | Output Tokens |
 | -------- | ------- | ------- | ---------- | --------- | -------------- | ------------ | ------------ | ------------- |
 | farming-labs | 1 | true | true | 103.959s | 13.452s | 1 | 277,448 | 3,883 |
 | farming-labs | 2 | true | true | 108.295s | 14.128s | 1 | 282,352 | 4,333 |
@@ -65,8 +65,8 @@ The fair v1/v2 stress test did not produce an error-rate win: both providers com
 attempts without task, acceptance, session, docs, command, noisy-page, or off-target errors.
 
 Farming Labs/docs still won the efficiency metrics on the harder scenario. Codex reached the first
-relevant page faster, needed one docs fetch instead of three, consumed fewer docs bytes, and used
-fewer input/output tokens on average.
+relevant page faster, needed one raw docs fetch instead of three, consumed fewer docs bytes, and
+used fewer input/output tokens on average.
 
 The important takeaway is that this benchmark is now stricter and honest: it can catch a v1
 implementation, but this 3-run sample says the current task is still not hard enough to claim an

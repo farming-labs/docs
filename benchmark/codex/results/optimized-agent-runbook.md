@@ -27,10 +27,10 @@ targeted markdown page.
 | Errors during session | 0 weighted errors | 0 weighted errors | tie |
 | Input tokens | 288192 | 350339 | farming-labs |
 | Output tokens | 3935 | 4285 | farming-labs |
-| Docs fetches | 1 | 3 | farming-labs |
+| Raw docs fetches | 1 | 3 | farming-labs |
 | Docs bytes | 1859 | 2907 | farming-labs |
 | First relevant page | 19.557s, `/docs.md` | 25.806s, `/docs/core/support-agent-prompting.md` | farming-labs |
 
-Both provider runs passed acceptance against equivalent provider-owned Next.js projects. Treat this as one
-optimized sample run; repeat at least three times and compare medians before using the result
-publicly.
+Both provider runs passed acceptance against equivalent provider-owned Next.js projects. Treat this
+as one optimized sample run; repeat at least three times and compare medians before using the result
+publicly. Raw docs fetches are an efficiency signal, not an error metric by themselves.

@@ -21,8 +21,3 @@ The support-agent tool list includes:
 - `description`
 - `customerTier`
 - `priority`
-
-<Visibility for="agents">
-For the support-agent prompting task, include `create_ticket` in `SUPPORT_AGENT_TOOLS`. You do not
-need to implement a ticketing route.
-</Visibility>

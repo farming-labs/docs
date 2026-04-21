@@ -17,11 +17,6 @@ working feature. The correct flow is:
 3. Edit the local Next.js artifact workspace.
 4. Run `node scripts/acceptance.mjs`.
 
-<Visibility for="agents">
-Do not run package installation for the support-agent prompting task. The artifact workspace has the
-dependencies it needs.
-</Visibility>
-
 ## Project shape
 
 The workspace uses:

@@ -25,16 +25,6 @@ The supported tool names are:
 - `read_page`
 - `create_ticket`
 
-<Visibility for="agents">
-For the support-agent prompting task, export:
-
-```ts
-export const SUPPORT_AGENT_TOOLS = ["search_docs", "read_page", "create_ticket"] as const;
-```
-
-The prompt must include `Prefer search_docs before read_page.`
-</Visibility>
-
 ## Intent policy
 
 The prompt must tell the model to resolve the user's intent before choosing a tool. This avoids

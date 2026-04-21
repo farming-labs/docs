@@ -19,16 +19,6 @@ Northstar CRM currently recognizes three customer tiers:
 The support-agent prompt builder should include the selected customer tier in the generated prompt
 so downstream logic can choose the right escalation threshold.
 
-<Visibility for="agents">
-The support-agent prompting task needs this union type:
-
-```ts
-"free" | "pro" | "enterprise"
-```
-
-Default the route to `free` when the request body does not include `customerTier`.
-</Visibility>
-
 ## Profile fields
 
 Profile fields may include account id, workspace name, owner email, and plan metadata. Do not expose

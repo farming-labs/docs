@@ -17,12 +17,6 @@ Escalate when the user asks for:
 - Security access changes.
 - Contract exceptions.
 
-<Visibility for="agents">
-The support-agent prompt must include the exact line:
-
-`Escalate billing data changes to a human.`
-</Visibility>
-
 ## Continue with docs lookup
 
 Continue with docs lookup when the user asks for product usage, SDK examples, API fields, or

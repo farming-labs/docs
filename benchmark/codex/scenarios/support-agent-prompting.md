@@ -20,5 +20,5 @@ Metrics:
 
 - Time to full implementation.
 - Session errors.
-- Cost proxies: tokens, docs bytes, docs fetches.
+- Cost proxies: tokens, docs bytes, raw docs fetches, and unique docs resources.
 - Right page at right time: first relevant fetch and wrong/noisy fetches before it.

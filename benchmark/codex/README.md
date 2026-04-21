@@ -54,8 +54,10 @@ Every scenario should define:
 - The relevant docs route(s) and noisy/wrong route(s) for scoring.
 
 Farming Labs/docs should use its agentic primitive advantage: embed `<Agent>...</Agent>` guidance in
-the right pages or root `/docs.md` so implementation agents get the exact runbook without showing
-that content in the human UI.
+the right pages or root `/docs.md` and expose `/api/docs/agent/spec` so implementation agents get
+the exact runbook without showing that content in the human UI. Do not give the Mintlify fixture a
+fake agent-only primitive; it should use `llms.txt`, markdown routes, and equivalent human-readable
+docs pages.
 
 ## Run
 
@@ -74,6 +76,7 @@ Optional environment variables:
 ```bash
 BENCHMARK_PROVIDERS=farming-labs,mintlify
 BENCHMARK_REPEATS=3
+BENCHMARK_INVALID_RETRIES=2
 BENCHMARK_SCENARIO=support-agent-prompting
 CODEX_BIN=/Applications/Codex.app/Contents/Resources/codex
 CODEX_INPUT_USD_PER_1M=0

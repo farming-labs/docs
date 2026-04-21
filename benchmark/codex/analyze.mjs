@@ -31,8 +31,11 @@ const comparisonMetrics = [
   { key: "mean_docs_fetches", label: "Mean raw docs fetches", better: "lower" },
   { key: "mean_unique_docs_resources", label: "Mean unique docs resources", better: "lower" },
   { key: "mean_discovery_fetches", label: "Mean discovery fetches", better: "lower" },
-  { key: "mean_agent_instruction_fetches", label: "Mean agent instruction fetches", better: "higher" },
-  { key: "mean_target_fetches", label: "Mean target/fact fetches", better: "higher" },
+  {
+    key: "mean_agent_instruction_fetches",
+    label: "Mean agent instruction fetches",
+    better: "higher",
+  },
   {
     key: "mean_normalized_retrieval_steps",
     label: "Mean normalized retrieval steps",
@@ -48,6 +51,43 @@ function formatMetricValue(value) {
   return value.toLocaleString("en-US", {
     maximumFractionDigits: 3,
   });
+}
+
+function average(values) {
+  const numericValues = values.filter((value) => typeof value === "number");
+  if (numericValues.length === 0) return null;
+  return Number((numericValues.reduce((sum, value) => sum + value, 0) / numericValues.length).toFixed(3));
+}
+
+function median(values) {
+  const sorted = values.filter((value) => typeof value === "number").sort((a, b) => a - b);
+  if (sorted.length === 0) return null;
+
+  const middle = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) return sorted[middle];
+  return Number(((sorted[middle - 1] + sorted[middle]) / 2).toFixed(3));
+}
+
+function rate(count, total) {
+  if (total === 0) return 0;
+  return Number((count / total).toFixed(3));
+}
+
+function isValidAttempt(result) {
+  if (typeof result.valid_attempt === "boolean") return result.valid_attempt;
+  const usage = result.usage ?? {};
+  const totalTokens =
+    (usage.input_tokens ?? 0) + (usage.cached_input_tokens ?? 0) + (usage.output_tokens ?? 0);
+
+  return !(result.codex_exit_code !== 0 && totalTokens === 0);
+}
+
+function isInfrastructureFailure(result) {
+  if (typeof result.infrastructure_failure === "boolean") {
+    return result.infrastructure_failure;
+  }
+
+  return !isValidAttempt(result);
 }
 
 function compareAggregate(aggregate) {
@@ -95,6 +135,85 @@ function comparisonTable(comparison) {
   ];
 }
 
+function aggregateProviderResults(provider, providerResults) {
+  const attemptsStarted = providerResults.length;
+  const validResults = providerResults.filter(isValidAttempt);
+  const attempts = validResults.length;
+  const invalidAttempts = attemptsStarted - attempts;
+  const successes = validResults.filter((result) => result.success).length;
+  const errorFreeRuns = validResults.filter((result) => result.error_free).length;
+  const acceptanceFailures = validResults.filter((result) => !result.acceptance_passed).length;
+  const sessionErrorRuns = validResults.filter(
+    (result) =>
+      !result.acceptance_passed ||
+      result.command_error_count > 0 ||
+      result.missing_artifact_checks > 0,
+  ).length;
+  const docsErrorRuns = validResults.filter(
+    (result) => !result.docs?.firstRelevantUrl || (result.docs?.offTargetBeforeRelevant ?? 0) > 0,
+  ).length;
+
+  return {
+    provider,
+    attempts_started: attemptsStarted,
+    attempts,
+    valid_attempts: attempts,
+    invalid_attempts: invalidAttempts,
+    invalid_attempt_rate: rate(invalidAttempts, attemptsStarted),
+    success_rate: rate(successes, attempts),
+    task_error_rate: rate(attempts - successes, attempts),
+    error_free_rate: rate(errorFreeRuns, attempts),
+    acceptance_error_rate: rate(acceptanceFailures, attempts),
+    session_error_rate: rate(sessionErrorRuns, attempts),
+    docs_error_rate: rate(docsErrorRuns, attempts),
+    median_full_time_seconds: median(
+      validResults.map((result) => result.time?.time_to_full_implementation_seconds),
+    ),
+    median_first_relevant_seconds: median(
+      validResults.map((result) => result.time?.time_to_first_relevant_page_seconds),
+    ),
+    mean_weighted_errors: average(validResults.map((result) => result.weighted_errors)),
+    mean_command_errors: average(validResults.map((result) => result.command_error_count)),
+    mean_wrong_or_noisy_fetches: average(
+      validResults.map((result) => result.docs?.wrongOrNoisyFetches),
+    ),
+    mean_docs_fetches: average(validResults.map((result) => result.docs?.docsFetches)),
+    mean_unique_docs_resources: average(
+      validResults.map((result) => result.docs?.uniqueDocsResources),
+    ),
+    mean_discovery_fetches: average(validResults.map((result) => result.docs?.discoveryFetches)),
+    mean_agent_instruction_fetches: average(
+      validResults.map((result) => result.docs?.agentInstructionFetches),
+    ),
+    mean_target_fetches: average(validResults.map((result) => result.docs?.targetFetches)),
+    mean_normalized_retrieval_steps: average(
+      validResults.map((result) => result.docs?.normalizedRetrievalSteps),
+    ),
+    mean_docs_bytes: average(validResults.map((result) => result.docs?.totalDocsBytes)),
+    mean_supporting_fetches: average(validResults.map((result) => result.docs?.supportingFetches)),
+    mean_neutral_fetches: average(validResults.map((result) => result.docs?.neutralFetches)),
+    mean_off_target_before_relevant: average(
+      validResults.map((result) => result.docs?.offTargetBeforeRelevant),
+    ),
+    mean_input_tokens: average(validResults.map((result) => result.usage?.input_tokens)),
+    mean_output_tokens: average(validResults.map((result) => result.usage?.output_tokens)),
+  };
+}
+
+function aggregateResults(summary) {
+  if (!Array.isArray(summary.results) || summary.results.length === 0) {
+    return summary.aggregate;
+  }
+
+  const providers = [...new Set(summary.results.map((result) => result.provider))];
+  return providers.map((provider) =>
+    aggregateProviderResults(
+      provider,
+      summary.results.filter((result) => result.provider === provider),
+    ),
+  );
+}
+
 function summaryMarkdown(summary, analysisDir, comparison) {
   return [
     `# Codex Benchmark Summary ${summary.run_id}`,
@@ -103,16 +222,17 @@ function summaryMarkdown(summary, analysisDir, comparison) {
     "",
     `- Scenario: \`${summary.scenario ?? "support-agent-prompting"}\``,
     `- Provider layout: \`${summary.project_layout ?? "benchmark/codex/<provider>"}\``,
-    `- Attempts per provider: \`${summary.repeats}\``,
+    `- Target valid attempts per provider: \`${summary.repeats}\``,
+    `- Invalid attempt retry budget: \`${summary.invalid_retries ?? 0}\``,
     `- Analysis output: \`${path.relative(repoRoot, analysisDir)}\``,
     "",
     "## Outcome",
     "",
-    "| Provider | Attempts | Success | Error-Free | Task Error | Acceptance Error | Session Error | Docs Error |",
-    "| -------- | -------- | ------- | ---------- | ---------- | ---------------- | ------------- | ---------- |",
+    "| Provider | Started | Valid | Invalid | Success | Error-Free | Task Error | Acceptance Error | Session Error | Docs Error |",
+    "| -------- | ------- | ----- | ------- | ------- | ---------- | ---------- | ---------------- | ------------- | ---------- |",
     ...summary.aggregate.map(
       (result) =>
-        `| ${result.provider} | ${result.attempts} | ${formatMetricValue(result.success_rate)} | ${formatMetricValue(result.error_free_rate)} | ${formatMetricValue(result.task_error_rate)} | ${formatMetricValue(result.acceptance_error_rate)} | ${formatMetricValue(result.session_error_rate)} | ${formatMetricValue(result.docs_error_rate)} |`,
+        `| ${result.provider} | ${result.attempts_started ?? result.attempts} | ${result.valid_attempts ?? result.attempts} | ${result.invalid_attempts ?? 0} | ${formatMetricValue(result.success_rate)} | ${formatMetricValue(result.error_free_rate)} | ${formatMetricValue(result.task_error_rate)} | ${formatMetricValue(result.acceptance_error_rate)} | ${formatMetricValue(result.session_error_rate)} | ${formatMetricValue(result.docs_error_rate)} |`,
     ),
     "",
     "## Speed And Retrieval",
@@ -130,11 +250,11 @@ function summaryMarkdown(summary, analysisDir, comparison) {
     "",
     "## Attempts",
     "",
-    "| Provider | Attempt | Success | Error-Free | Full Time | First Relevant | Raw Fetches | Unique Resources | Target Source | Input Tokens | Output Tokens | Weighted Errors |",
-    "| -------- | ------- | ------- | ---------- | --------- | -------------- | ----------- | ---------------- | ------------- | ------------ | ------------- | --------------- |",
+    "| Provider | Attempt | Valid | Infra Failure | Success | Error-Free | Full Time | First Relevant | Raw Fetches | Unique Resources | Target Source | Input Tokens | Output Tokens | Weighted Errors |",
+    "| -------- | ------- | ----- | ------------- | ------- | ---------- | --------- | -------------- | ----------- | ---------------- | ------------- | ------------ | ------------- | --------------- |",
     ...summary.results.map(
       (result) =>
-        `| ${result.provider} | ${result.attempt} | ${result.success} | ${result.error_free} | ${formatMetricValue(result.time?.time_to_full_implementation_seconds)}s | ${formatMetricValue(result.time?.time_to_first_relevant_page_seconds)}s | ${formatMetricValue(result.docs?.rawDocsFetches ?? result.docs?.docsFetches)} | ${formatMetricValue(result.docs?.uniqueDocsResources)} | ${result.docs?.firstRelevantSource ?? "none"} | ${formatMetricValue(result.usage?.input_tokens)} | ${formatMetricValue(result.usage?.output_tokens)} | ${formatMetricValue(result.weighted_errors)} |`,
+        `| ${result.provider} | ${result.attempt} | ${isValidAttempt(result)} | ${isInfrastructureFailure(result)} | ${result.success} | ${result.error_free} | ${formatMetricValue(result.time?.time_to_full_implementation_seconds)}s | ${formatMetricValue(result.time?.time_to_first_relevant_page_seconds)}s | ${formatMetricValue(result.docs?.rawDocsFetches ?? result.docs?.docsFetches)} | ${formatMetricValue(result.docs?.uniqueDocsResources)} | ${result.docs?.firstRelevantSource ?? "none"} | ${formatMetricValue(result.usage?.input_tokens)} | ${formatMetricValue(result.usage?.output_tokens)} | ${formatMetricValue(result.weighted_errors)} |`,
     ),
     "",
     "Use `BENCHMARK_REPEATS=3` or higher before claiming an error-rate win.",
@@ -160,6 +280,8 @@ function metricLogEntry(result) {
     scenario: result.scenario,
     provider: result.provider,
     attempt: result.attempt,
+    valid_attempt: isValidAttempt(result),
+    infrastructure_failure: isInfrastructureFailure(result),
     success: result.success,
     error_free: result.error_free,
     acceptance_passed: result.acceptance_passed,
@@ -203,11 +325,12 @@ const summaryFile = process.argv[2] ? path.resolve(process.argv[2]) : await late
 if (!existsSync(summaryFile)) throw new Error(`Summary file not found: ${summaryFile}`);
 
 const summary = JSON.parse(await readFile(summaryFile, "utf8"));
+summary.aggregate = aggregateResults(summary);
 const analysisDir = path.join(benchmarkRoot, "analysis", summary.run_id);
 await mkdir(analysisDir, { recursive: true });
 
 const metricRows = summary.results.map(metricLogEntry);
-const comparison = summary.comparison ?? compareAggregate(summary.aggregate);
+const comparison = compareAggregate(summary.aggregate);
 await writeFile(
   path.join(analysisDir, "metric-log.jsonl"),
   `${metricRows.map((entry) => JSON.stringify(entry)).join("\n")}\n`,
@@ -223,11 +346,11 @@ await writeFile(
   [
     `# Benchmark Analysis ${summary.run_id}`,
     "",
-    "| Provider | Attempts | Task Error Rate | Acceptance Error Rate | Session Error Rate | Docs Error Rate | Error-Free Rate | Median Full Time (s) | Mean Weighted Errors |",
-    "| -------- | -------- | --------------- | --------------------- | ------------------ | --------------- | --------------- | -------------------- | -------------------- |",
+    "| Provider | Started | Valid | Invalid | Task Error Rate | Acceptance Error Rate | Session Error Rate | Docs Error Rate | Error-Free Rate | Median Full Time (s) | Mean Weighted Errors |",
+    "| -------- | ------- | ----- | ------- | --------------- | --------------------- | ------------------ | --------------- | --------------- | -------------------- | -------------------- |",
     ...summary.aggregate.map(
       (result) =>
-        `| ${result.provider} | ${result.attempts} | ${result.task_error_rate} | ${result.acceptance_error_rate} | ${result.session_error_rate} | ${result.docs_error_rate} | ${result.error_free_rate} | ${result.median_full_time_seconds ?? "n/a"} | ${result.mean_weighted_errors ?? "n/a"} |`,
+        `| ${result.provider} | ${result.attempts_started} | ${result.valid_attempts} | ${result.invalid_attempts} | ${result.task_error_rate} | ${result.acceptance_error_rate} | ${result.session_error_rate} | ${result.docs_error_rate} | ${result.error_free_rate} | ${result.median_full_time_seconds ?? "n/a"} | ${result.mean_weighted_errors ?? "n/a"} |`,
     ),
     "",
     "## Metric Comparison",

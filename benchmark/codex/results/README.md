@@ -16,6 +16,7 @@ logs, and generated summaries. They are useful for local audit, but too noisy to
 | ------ | -------- | -------- | ------------ | ----------------- |
 | [real-codex-2026-04-21.md](./real-codex-2026-04-21.md) | `support-agent-prompting` | 3 per provider | tie | Farming Labs/docs won speed, fetches, bytes, and tokens |
 | [versioned-agent-endpoint-2026-04-21.md](./versioned-agent-endpoint-2026-04-21.md) | `versioned-agent-endpoint` | 3 per provider | tie | Farming Labs/docs won speed, fetches, bytes, and tokens |
+| [agent-primitive-error-retrieval-2026-04-21.md](./agent-primitive-error-retrieval-2026-04-21.md) | `versioned-agent-endpoint` | 2 valid Farming Labs/docs, 3 valid Mintlify | Farming Labs/docs won docs error rate and error-free rate; final correctness tied | Farming Labs/docs won first relevant page, raw fetches, unique resources, and tokens |
 
 ## Accurate Claim
 
@@ -24,12 +25,23 @@ Current data supports:
 > Farming Labs/docs gave Codex a faster and lower-context implementation path while matching
 > Mintlify-shaped docs on final correctness and error rate.
 
+The latest agent-primitive run also supports this narrower retrieval-error claim:
+
+> Farming Labs/docs reduced docs retrieval mistakes in the versioned endpoint scenario after the
+> Mintlify fixture stopped using pseudo-agent primitives.
+
 Current data does not support:
 
 > Farming Labs/docs has lower error rate than Mintlify.
 
-Both tracked real runs ended with equal error metrics. The stronger result today is efficiency, not
-error-rate superiority.
+The stronger unsupported claim means lower final task, acceptance, or session error rate. The latest
+run improves docs retrieval error rate, but final implementation correctness still tied on valid
+attempts.
+
+The `1` vs `3` docs-fetch result in the tracked reports is raw HTTP retrieval count. It means
+Farming Labs/docs served the matching `<Agent>` runbook from `/docs.md`, while Mintlify-shaped docs
+used discovery plus the target markdown page. It is reported as efficiency, not counted as an error
+unless the agent misses the target facts or reads off-target pages first.
 
 ## Reproduce Latest Stress Run
 

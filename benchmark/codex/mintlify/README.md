@@ -11,7 +11,7 @@ The docs shape favors:
 - `/docs.md`
 - `/llms.txt`
 - `.md` page URLs
-- `Visibility for="agents"` guidance in the source docs
+- equivalent human-readable implementation pages
 
 This directory is the concrete project. Keep it equivalent to the Farming Labs/docs project while
 preserving Mintlify package metadata, so error-rate differences come from documentation shape

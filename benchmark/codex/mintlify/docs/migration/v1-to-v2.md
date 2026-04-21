@@ -8,11 +8,6 @@ description: Differences between the deprecated v1 and current v2 support-agent 
 The v2 support-agent endpoint replaces the deprecated v1 response shape. Existing v1 customers can
 continue using the old endpoint, but all new implementation work should use v2.
 
-<Visibility for="agents">
-For the `versioned-agent-endpoint` benchmark, implement v2 only. If you see
-`support-agent.response.v1` or `2025-11-01.v1`, you are looking at the deprecated contract.
-</Visibility>
-
 ## What changed
 
 | Area | v1 | v2 |

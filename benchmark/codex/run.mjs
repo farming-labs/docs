@@ -15,6 +15,10 @@ const providers = (process.env.BENCHMARK_PROVIDERS ?? "farming-labs,mintlify")
   .map((provider) => provider.trim())
   .filter(Boolean);
 const repeats = Math.max(1, Number.parseInt(process.env.BENCHMARK_REPEATS ?? "1", 10) || 1);
+const invalidRetries = Math.max(
+  0,
+  Number.parseInt(process.env.BENCHMARK_INVALID_RETRIES ?? "2", 10) || 0,
+);
 const inputUsdPerMillion = Number.parseFloat(process.env.CODEX_INPUT_USD_PER_1M ?? "0");
 const outputUsdPerMillion = Number.parseFloat(process.env.CODEX_OUTPUT_USD_PER_1M ?? "0");
 const scenarioId = process.env.BENCHMARK_SCENARIO ?? "support-agent-prompting";
@@ -644,7 +648,10 @@ function scoreDocs(provider, requests) {
   function classifyRequest(event) {
     const url = new URL(event.url, "http://benchmark.local");
     const isAgentSpec = provider === "farming-labs" && url.pathname === "/api/docs/agent/spec";
-    const isSearch = provider === "farming-labs" && url.pathname === "/api/docs" && url.searchParams.has("query");
+    const isSearch =
+      provider === "farming-labs" &&
+      url.pathname === "/api/docs" &&
+      url.searchParams.has("query");
     const isLlms = url.pathname === "/llms.txt";
     const isSkill = url.pathname === "/skill.md";
     const slug =
@@ -812,6 +819,13 @@ function commandErrors(events) {
   });
 }
 
+function isInfrastructureFailure({ codex, usage, finalMessage }) {
+  const totalTokens =
+    (usage.input_tokens ?? 0) + (usage.cached_input_tokens ?? 0) + (usage.output_tokens ?? 0);
+
+  return codex.code !== 0 && totalTokens === 0 && !existsSync(finalMessage);
+}
+
 function readSupportPromptingWorkspaceSummary(workspaceDir) {
   const prompt = existsSync(path.join(workspaceDir, "lib", "agent-prompt.ts"))
     ? readFileSync(path.join(workspaceDir, "lib", "agent-prompt.ts"), "utf8")
@@ -914,6 +928,8 @@ async function writeResultMarkdown(artifactDir, result, requests) {
     `- Implementation framework: ${result.implementation_framework}`,
     `- Project: ${result.project_dir}`,
     `- Docs base URL given to Codex: ${result.docs_base_url}`,
+    `- Valid attempt: ${result.valid_attempt}`,
+    `- Infrastructure failure: ${result.infrastructure_failure}`,
     `- Success: ${result.success}`,
     `- Error-free run: ${result.error_free}`,
     `- Acceptance passed: ${result.acceptance_passed}`,
@@ -936,6 +952,7 @@ async function writeResultMarkdown(artifactDir, result, requests) {
     "",
     "## Error Metrics",
     "",
+    `- Infrastructure failure: ${result.errors.infrastructureFailure}`,
     `- Acceptance failure: ${result.errors.acceptanceFailure}`,
     `- Command errors: ${result.errors.commandErrors}`,
     `- Missing artifact checks: ${result.errors.missingArtifactChecks}`,
@@ -1041,21 +1058,24 @@ async function runProvider(provider, attempt) {
     const workspacePackage = readWorkspacePackage(workspaceDir);
     const cmdErrors = commandErrors(events);
     const acceptancePassed = acceptance.code === 0;
-    const success = acceptancePassed && docs.relevantFetches > 0 && docs.discoveryUsed;
+    const infrastructureFailure = isInfrastructureFailure({ codex, usage, finalMessage });
+    const validAttempt = !infrastructureFailure;
+    const success =
+      validAttempt && acceptancePassed && docs.relevantFetches > 0 && docs.discoveryUsed;
     const missingArtifactChecks = Object.values(workspace).filter((value) => value !== true).length;
     const weightedErrors =
-      (acceptancePassed ? 0 : 10) +
+      (validAttempt && !acceptancePassed ? 10 : 0) +
       (docs.relevantFetches > 0 ? 0 : 8) +
       (docs.discoveryUsed ? 0 : 3) +
       docs.noisyBeforeRelevant +
       docs.neutralBeforeRelevant * 0.5 +
       cmdErrors.length * 2 +
-      missingArtifactChecks * 2;
-    const implementationEaseScore = Math.max(
-      0,
-      Math.min(100, docs.pageTimingScore - weightedErrors * 6 + (success ? 5 : 0)),
-    );
+      (validAttempt ? missingArtifactChecks * 2 : 0);
+    const implementationEaseScore = validAttempt
+      ? Math.max(0, Math.min(100, docs.pageTimingScore - weightedErrors * 6 + (success ? 5 : 0)))
+      : 0;
     const errorFree =
+      validAttempt &&
       success &&
       cmdErrors.length === 0 &&
       docs.offTargetBeforeRelevant === 0 &&
@@ -1078,6 +1098,8 @@ async function runProvider(provider, attempt) {
       workspace_dir: path.relative(repoRoot, workspaceDir),
       started_at: startedAt,
       completed_at: completedAt,
+      valid_attempt: validAttempt,
+      infrastructure_failure: infrastructureFailure,
       codex_exit_code: codex.code,
       acceptance_exit_code: acceptance.code,
       acceptance_passed: acceptancePassed,
@@ -1097,6 +1119,7 @@ async function runProvider(provider, attempt) {
       },
       docs,
       errors: {
+        infrastructureFailure,
         acceptanceFailure: !acceptancePassed,
         commandErrors: cmdErrors.length,
         missingArtifactChecks,
@@ -1133,8 +1156,17 @@ for (const provider of providers) {
 
 const results = [];
 for (const provider of providers) {
-  for (let attempt = 1; attempt <= repeats; attempt += 1) {
-    results.push(await runProvider(provider, attempt));
+  let validAttempts = 0;
+  let startedAttempts = 0;
+
+  while (validAttempts < repeats && startedAttempts < repeats + invalidRetries) {
+    startedAttempts += 1;
+    const result = await runProvider(provider, startedAttempts);
+    results.push(result);
+
+    if (result.valid_attempt) {
+      validAttempts += 1;
+    }
   }
 }
 
@@ -1177,8 +1209,11 @@ const comparisonMetrics = [
   { key: "mean_docs_fetches", label: "Mean raw docs fetches", better: "lower" },
   { key: "mean_unique_docs_resources", label: "Mean unique docs resources", better: "lower" },
   { key: "mean_discovery_fetches", label: "Mean discovery fetches", better: "lower" },
-  { key: "mean_agent_instruction_fetches", label: "Mean agent instruction fetches", better: "higher" },
-  { key: "mean_target_fetches", label: "Mean target/fact fetches", better: "higher" },
+  {
+    key: "mean_agent_instruction_fetches",
+    label: "Mean agent instruction fetches",
+    better: "higher",
+  },
   {
     key: "mean_normalized_retrieval_steps",
     label: "Mean normalized retrieval steps",
@@ -1249,16 +1284,17 @@ function summaryMarkdown(runId, repeats, analysisDir, aggregate, comparison, res
     "",
     `- Scenario: \`${activeScenario.id}\``,
     `- Provider layout: \`benchmark/codex/<provider>\``,
-    `- Attempts per provider: \`${repeats}\``,
+    `- Target valid attempts per provider: \`${repeats}\``,
+    `- Invalid attempt retry budget: \`${invalidRetries}\``,
     `- Analysis output: \`${path.relative(repoRoot, analysisDir)}\``,
     "",
     "## Outcome",
     "",
-    "| Provider | Attempts | Success | Error-Free | Task Error | Acceptance Error | Session Error | Docs Error |",
-    "| -------- | -------- | ------- | ---------- | ---------- | ---------------- | ------------- | ---------- |",
+    "| Provider | Started | Valid | Invalid | Success | Error-Free | Task Error | Acceptance Error | Session Error | Docs Error |",
+    "| -------- | ------- | ----- | ------- | ------- | ---------- | ---------- | ---------------- | ------------- | ---------- |",
     ...aggregate.map(
       (result) =>
-        `| ${result.provider} | ${result.attempts} | ${formatMetricValue(result.success_rate)} | ${formatMetricValue(result.error_free_rate)} | ${formatMetricValue(result.task_error_rate)} | ${formatMetricValue(result.acceptance_error_rate)} | ${formatMetricValue(result.session_error_rate)} | ${formatMetricValue(result.docs_error_rate)} |`,
+        `| ${result.provider} | ${result.attempts_started} | ${result.valid_attempts} | ${result.invalid_attempts} | ${formatMetricValue(result.success_rate)} | ${formatMetricValue(result.error_free_rate)} | ${formatMetricValue(result.task_error_rate)} | ${formatMetricValue(result.acceptance_error_rate)} | ${formatMetricValue(result.session_error_rate)} | ${formatMetricValue(result.docs_error_rate)} |`,
     ),
     "",
     "## Speed And Retrieval",
@@ -1276,11 +1312,11 @@ function summaryMarkdown(runId, repeats, analysisDir, aggregate, comparison, res
     "",
     "## Attempts",
     "",
-    "| Provider | Attempt | Success | Error-Free | Full Time | First Relevant | Raw Fetches | Unique Resources | Target Source | Input Tokens | Output Tokens | Weighted Errors |",
-    "| -------- | ------- | ------- | ---------- | --------- | -------------- | ----------- | ---------------- | ------------- | ------------ | ------------- | --------------- |",
+    "| Provider | Attempt | Valid | Infra Failure | Success | Error-Free | Full Time | First Relevant | Raw Fetches | Unique Resources | Target Source | Input Tokens | Output Tokens | Weighted Errors |",
+    "| -------- | ------- | ----- | ------------- | ------- | ---------- | --------- | -------------- | ----------- | ---------------- | ------------- | ------------ | ------------- | --------------- |",
     ...results.map(
       (result) =>
-        `| ${result.provider} | ${result.attempt} | ${result.success} | ${result.error_free} | ${formatMetricValue(result.time.time_to_full_implementation_seconds)}s | ${formatMetricValue(result.time.time_to_first_relevant_page_seconds)}s | ${formatMetricValue(result.docs.rawDocsFetches)} | ${formatMetricValue(result.docs.uniqueDocsResources)} | ${result.docs.firstRelevantSource ?? "none"} | ${formatMetricValue(result.usage.input_tokens)} | ${formatMetricValue(result.usage.output_tokens)} | ${formatMetricValue(result.weighted_errors)} |`,
+        `| ${result.provider} | ${result.attempt} | ${result.valid_attempt} | ${result.infrastructure_failure} | ${result.success} | ${result.error_free} | ${formatMetricValue(result.time.time_to_full_implementation_seconds)}s | ${formatMetricValue(result.time.time_to_first_relevant_page_seconds)}s | ${formatMetricValue(result.docs.rawDocsFetches)} | ${formatMetricValue(result.docs.uniqueDocsResources)} | ${result.docs.firstRelevantSource ?? "none"} | ${formatMetricValue(result.usage.input_tokens)} | ${formatMetricValue(result.usage.output_tokens)} | ${formatMetricValue(result.weighted_errors)} |`,
     ),
     "",
     "Use `BENCHMARK_REPEATS=3` or higher before claiming an error-rate win.",
@@ -1289,23 +1325,30 @@ function summaryMarkdown(runId, repeats, analysisDir, aggregate, comparison, res
 }
 
 function aggregateProviderResults(provider, providerResults) {
-  const attempts = providerResults.length;
-  const successes = providerResults.filter((result) => result.success).length;
-  const errorFreeRuns = providerResults.filter((result) => result.error_free).length;
-  const acceptanceFailures = providerResults.filter((result) => !result.acceptance_passed).length;
-  const sessionErrorRuns = providerResults.filter(
+  const attemptsStarted = providerResults.length;
+  const validResults = providerResults.filter((result) => result.valid_attempt !== false);
+  const attempts = validResults.length;
+  const invalidAttempts = attemptsStarted - attempts;
+  const successes = validResults.filter((result) => result.success).length;
+  const errorFreeRuns = validResults.filter((result) => result.error_free).length;
+  const acceptanceFailures = validResults.filter((result) => !result.acceptance_passed).length;
+  const sessionErrorRuns = validResults.filter(
     (result) =>
       !result.acceptance_passed ||
       result.command_error_count > 0 ||
       result.missing_artifact_checks > 0,
   ).length;
-  const docsErrorRuns = providerResults.filter(
+  const docsErrorRuns = validResults.filter(
     (result) => !result.docs.firstRelevantUrl || result.docs.offTargetBeforeRelevant > 0,
   ).length;
 
   return {
     provider,
+    attempts_started: attemptsStarted,
     attempts,
+    valid_attempts: attempts,
+    invalid_attempts: invalidAttempts,
+    invalid_attempt_rate: rate(invalidAttempts, attemptsStarted),
     success_rate: rate(successes, attempts),
     task_error_rate: rate(attempts - successes, attempts),
     error_free_rate: rate(errorFreeRuns, attempts),
@@ -1313,38 +1356,38 @@ function aggregateProviderResults(provider, providerResults) {
     session_error_rate: rate(sessionErrorRuns, attempts),
     docs_error_rate: rate(docsErrorRuns, attempts),
     median_full_time_seconds: median(
-      providerResults.map((result) => result.time.time_to_full_implementation_seconds),
+      validResults.map((result) => result.time.time_to_full_implementation_seconds),
     ),
     median_first_relevant_seconds: median(
-      providerResults.map((result) => result.time.time_to_first_relevant_page_seconds),
+      validResults.map((result) => result.time.time_to_first_relevant_page_seconds),
     ),
-    mean_weighted_errors: average(providerResults.map((result) => result.weighted_errors)),
-    mean_command_errors: average(providerResults.map((result) => result.command_error_count)),
+    mean_weighted_errors: average(validResults.map((result) => result.weighted_errors)),
+    mean_command_errors: average(validResults.map((result) => result.command_error_count)),
     mean_wrong_or_noisy_fetches: average(
-      providerResults.map((result) => result.docs.wrongOrNoisyFetches),
+      validResults.map((result) => result.docs.wrongOrNoisyFetches),
     ),
-    mean_docs_fetches: average(providerResults.map((result) => result.docs.docsFetches)),
+    mean_docs_fetches: average(validResults.map((result) => result.docs.docsFetches)),
     mean_unique_docs_resources: average(
-      providerResults.map((result) => result.docs.uniqueDocsResources),
+      validResults.map((result) => result.docs.uniqueDocsResources),
     ),
-    mean_discovery_fetches: average(providerResults.map((result) => result.docs.discoveryFetches)),
+    mean_discovery_fetches: average(validResults.map((result) => result.docs.discoveryFetches)),
     mean_agent_instruction_fetches: average(
-      providerResults.map((result) => result.docs.agentInstructionFetches),
+      validResults.map((result) => result.docs.agentInstructionFetches),
     ),
-    mean_target_fetches: average(providerResults.map((result) => result.docs.targetFetches)),
+    mean_target_fetches: average(validResults.map((result) => result.docs.targetFetches)),
     mean_normalized_retrieval_steps: average(
-      providerResults
+      validResults
         .map((result) => result.docs.normalizedRetrievalSteps)
         .filter((value) => typeof value === "number"),
     ),
-    mean_docs_bytes: average(providerResults.map((result) => result.docs.totalDocsBytes)),
-    mean_supporting_fetches: average(providerResults.map((result) => result.docs.supportingFetches)),
-    mean_neutral_fetches: average(providerResults.map((result) => result.docs.neutralFetches)),
+    mean_docs_bytes: average(validResults.map((result) => result.docs.totalDocsBytes)),
+    mean_supporting_fetches: average(validResults.map((result) => result.docs.supportingFetches)),
+    mean_neutral_fetches: average(validResults.map((result) => result.docs.neutralFetches)),
     mean_off_target_before_relevant: average(
-      providerResults.map((result) => result.docs.offTargetBeforeRelevant),
+      validResults.map((result) => result.docs.offTargetBeforeRelevant),
     ),
-    mean_input_tokens: average(providerResults.map((result) => result.usage.input_tokens)),
-    mean_output_tokens: average(providerResults.map((result) => result.usage.output_tokens)),
+    mean_input_tokens: average(validResults.map((result) => result.usage.input_tokens)),
+    mean_output_tokens: average(validResults.map((result) => result.usage.output_tokens)),
   };
 }
 
@@ -1355,6 +1398,8 @@ function metricLogEntry(result) {
     scenario: result.scenario,
     provider: result.provider,
     attempt: result.attempt,
+    valid_attempt: result.valid_attempt,
+    infrastructure_failure: result.infrastructure_failure,
     success: result.success,
     error_free: result.error_free,
     acceptance_passed: result.acceptance_passed,
@@ -1411,11 +1456,11 @@ async function writeAnalysisOutputs(runId, aggregate, results) {
     [
       `# Benchmark Analysis ${runId}`,
       "",
-      "| Provider | Attempts | Task Error Rate | Acceptance Error Rate | Session Error Rate | Docs Error Rate | Error-Free Rate | Median Full Time (s) | Mean Weighted Errors |",
-      "| -------- | -------- | --------------- | --------------------- | ------------------ | --------------- | --------------- | -------------------- | -------------------- |",
+      "| Provider | Started | Valid | Invalid | Task Error Rate | Acceptance Error Rate | Session Error Rate | Docs Error Rate | Error-Free Rate | Median Full Time (s) | Mean Weighted Errors |",
+      "| -------- | ------- | ----- | ------- | --------------- | --------------------- | ------------------ | --------------- | --------------- | -------------------- | -------------------- |",
       ...aggregate.map(
         (result) =>
-          `| ${result.provider} | ${result.attempts} | ${result.task_error_rate} | ${result.acceptance_error_rate} | ${result.session_error_rate} | ${result.docs_error_rate} | ${result.error_free_rate} | ${result.median_full_time_seconds ?? "n/a"} | ${result.mean_weighted_errors ?? "n/a"} |`,
+          `| ${result.provider} | ${result.attempts_started} | ${result.valid_attempts} | ${result.invalid_attempts} | ${result.task_error_rate} | ${result.acceptance_error_rate} | ${result.session_error_rate} | ${result.docs_error_rate} | ${result.error_free_rate} | ${result.median_full_time_seconds ?? "n/a"} | ${result.mean_weighted_errors ?? "n/a"} |`,
       ),
       "",
       "## Metric Comparison",
@@ -1449,6 +1494,7 @@ await writeFile(
     scenario: activeScenario.id,
     project_layout: "benchmark/codex/<provider>",
     repeats,
+    invalid_retries: invalidRetries,
     analysis_dir: path.relative(repoRoot, analysisDir),
     aggregate,
     comparison,

@@ -19,8 +19,3 @@ place.
 
 Prompt output should include enough context to explain why the agent selected a tool. It should not
 include private billing data.
-
-<Visibility for="agents">
-Observability is not required for the acceptance test. Only implement it if a scenario explicitly
-asks for logging.
-</Visibility>

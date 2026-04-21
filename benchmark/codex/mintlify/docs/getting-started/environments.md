@@ -20,11 +20,6 @@ Docs integrations should use `https://docs.northstar.example.com` as the default
 when no override is supplied. Feature-specific code can accept a different docs base URL from user
 input, request body data, or environment configuration.
 
-<Visibility for="agents">
-For the support-agent prompting task, use `https://docs.northstar.example.com` as the default
-`docsBaseUrl` in the API route when the request body omits it.
-</Visibility>
-
 ## What not to change
 
 The benchmark does not require `.env` files, deployment adapters, secrets, or package installation.

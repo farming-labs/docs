@@ -8,11 +8,6 @@ description: Legacy support-agent endpoint retained for older Northstar CRM inte
 The v1 support-agent endpoint is retained for older customer integrations. New implementation work
 must not use this contract unless the task explicitly asks for legacy behavior.
 
-<Visibility for="agents">
-Deprecated page. Do not implement v1 for the `versioned-agent-endpoint` benchmark. Open
-`/docs/core/support-agent-v2.md` for the current contract.
-</Visibility>
-
 ## Legacy constants
 
 ```ts

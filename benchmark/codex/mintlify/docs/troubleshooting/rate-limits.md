@@ -17,7 +17,3 @@ corpus realistic and should not be required for the support-agent prompting task
 ## Headers
 
 API responses can include `x-ratelimit-limit`, `x-ratelimit-remaining`, and `x-ratelimit-reset`.
-
-<Visibility for="agents">
-Do not implement rate-limit behavior for the support-agent prompting benchmark.
-</Visibility>

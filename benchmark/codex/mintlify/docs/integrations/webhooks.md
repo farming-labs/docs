@@ -22,7 +22,3 @@ but they are not needed for the support-agent prompting contract.
 ## Retry policy
 
 Northstar retries failed webhook deliveries three times with exponential backoff.
-
-<Visibility for="agents">
-Do not implement webhook delivery for the support-agent prompting benchmark.
-</Visibility>

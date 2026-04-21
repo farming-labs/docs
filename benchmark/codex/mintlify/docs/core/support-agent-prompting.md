@@ -7,16 +7,6 @@ description: Exact implementation contract for the support-agent prompt endpoint
 
 This page is the source of truth for Northstar CRM's support-agent prompting feature.
 
-<Visibility for="agents">
-Benchmark target: update the local artifact workspace, not this docs site. Create or update:
-
-- `lib/agent-prompt.ts`
-- `app/api/agent/route.ts`
-- `app/page.tsx`
-
-After editing, run `node scripts/acceptance.mjs`.
-</Visibility>
-
 ## Prompt constants
 
 Create `lib/agent-prompt.ts` with these exported constants:
