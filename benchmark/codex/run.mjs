@@ -541,9 +541,7 @@ Run ${activeScenario.acceptanceCommand} after editing.
 async function createProviderWorkspace(provider, workspaceDir) {
   const projectDir = providerProjectRoot(provider);
   if (!existsSync(projectDir)) {
-    throw new Error(
-      `Missing project for provider "${provider}": ${projectDir}`,
-    );
+    throw new Error(`Missing project for provider "${provider}": ${projectDir}`);
   }
 
   const ignoredWorkspaceDirs = new Set([
@@ -563,9 +561,7 @@ async function createProviderWorkspace(provider, workspaceDir) {
       const relativePath = path.relative(projectDir, source);
       if (!relativePath) return true;
 
-      return !relativePath
-        .split(path.sep)
-        .some((segment) => ignoredWorkspaceDirs.has(segment));
+      return !relativePath.split(path.sep).some((segment) => ignoredWorkspaceDirs.has(segment));
     },
   });
 }
@@ -649,9 +645,7 @@ function scoreDocs(provider, requests) {
     const url = new URL(event.url, "http://benchmark.local");
     const isAgentSpec = provider === "farming-labs" && url.pathname === "/api/docs/agent/spec";
     const isSearch =
-      provider === "farming-labs" &&
-      url.pathname === "/api/docs" &&
-      url.searchParams.has("query");
+      provider === "farming-labs" && url.pathname === "/api/docs" && url.searchParams.has("query");
     const isLlms = url.pathname === "/llms.txt";
     const isSkill = url.pathname === "/skill.md";
     const slug =
@@ -720,11 +714,15 @@ function scoreDocs(provider, requests) {
   const classified = docsRequests.map((event) => {
     return classifyRequest(event);
   });
-  const relevant = classified.filter((entry) => entry.kind === "target").map((entry) => entry.event);
+  const relevant = classified
+    .filter((entry) => entry.kind === "target")
+    .map((entry) => entry.event);
   const supporting = classified
     .filter((entry) => entry.kind === "supporting")
     .map((entry) => entry.event);
-  const neutral = classified.filter((entry) => entry.kind === "neutral").map((entry) => entry.event);
+  const neutral = classified
+    .filter((entry) => entry.kind === "neutral")
+    .map((entry) => entry.event);
   const noisy = classified.filter((entry) => entry.kind === "noisy").map((entry) => entry.event);
   const discovery = classified
     .filter((entry) => entry.kind === "discovery")
@@ -757,9 +755,8 @@ function scoreDocs(provider, requests) {
       : neutral.length;
   const supportingBeforeRelevant =
     firstRelevantIndex >= 0
-      ? docsRequests
-          .slice(0, firstRelevantIndex)
-          .filter((event) => supporting.includes(event)).length
+      ? docsRequests.slice(0, firstRelevantIndex).filter((event) => supporting.includes(event))
+          .length
       : supporting.length;
   const offTargetBeforeRelevant = noisyBeforeRelevant + neutralBeforeRelevant;
 
@@ -1091,8 +1088,7 @@ async function runProvider(provider, attempt) {
       agent: "codex",
       attempt,
       docs_base_url: baseUrl,
-      implementation_framework:
-        workspacePackage?.implementationFramework ?? "nextjs-app-router",
+      implementation_framework: workspacePackage?.implementationFramework ?? "nextjs-app-router",
       project_dir: path.relative(repoRoot, projectDir),
       artifact_dir: path.relative(repoRoot, artifactDir),
       workspace_dir: path.relative(repoRoot, workspaceDir),
@@ -1247,7 +1243,9 @@ function compareAggregate(aggregate) {
       metric.better === "higher"
         ? Math.max(...numericValues.map((entry) => entry.value))
         : Math.min(...numericValues.map((entry) => entry.value));
-    const tiedProviders = numericValues.filter((entry) => Math.abs(entry.value - bestValue) < 0.001);
+    const tiedProviders = numericValues.filter(
+      (entry) => Math.abs(entry.value - bestValue) < 0.001,
+    );
 
     return {
       ...metric,

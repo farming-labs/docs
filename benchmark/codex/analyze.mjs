@@ -56,7 +56,9 @@ function formatMetricValue(value) {
 function average(values) {
   const numericValues = values.filter((value) => typeof value === "number");
   if (numericValues.length === 0) return null;
-  return Number((numericValues.reduce((sum, value) => sum + value, 0) / numericValues.length).toFixed(3));
+  return Number(
+    (numericValues.reduce((sum, value) => sum + value, 0) / numericValues.length).toFixed(3),
+  );
 }
 
 function median(values) {
@@ -106,7 +108,9 @@ function compareAggregate(aggregate) {
       metric.better === "higher"
         ? Math.max(...numericValues.map((entry) => entry.value))
         : Math.min(...numericValues.map((entry) => entry.value));
-    const tiedProviders = numericValues.filter((entry) => Math.abs(entry.value - bestValue) < 0.001);
+    const tiedProviders = numericValues.filter(
+      (entry) => Math.abs(entry.value - bestValue) < 0.001,
+    );
 
     return {
       ...metric,

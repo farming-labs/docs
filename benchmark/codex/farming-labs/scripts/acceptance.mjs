@@ -18,7 +18,10 @@ function checkSupportAgentPrompting() {
 
   check("prompt file exists", Boolean(prompt));
   check("version constant", prompt.includes('AGENT_PROMPT_VERSION = "agent-prompt-v1"'));
-  check("context header constant", prompt.includes('AGENT_CONTEXT_HEADER = "x-startup-agent-context"'));
+  check(
+    "context header constant",
+    prompt.includes('AGENT_CONTEXT_HEADER = "x-startup-agent-context"'),
+  );
   check("tools include search_docs", prompt.includes("search_docs"));
   check("tools include read_page", prompt.includes("read_page"));
   check("tools include create_ticket", prompt.includes("create_ticket"));
@@ -26,7 +29,10 @@ function checkSupportAgentPrompting() {
   check("docsBaseUrl option", prompt.includes("docsBaseUrl"));
   check("customerTier option", prompt.includes("customerTier"));
   check("intent policy", prompt.includes("Resolve the user's intent before choosing a tool."));
-  check("docs.md policy", prompt.includes("Fetch /docs.md before answering implementation questions."));
+  check(
+    "docs.md policy",
+    prompt.includes("Fetch /docs.md before answering implementation questions."),
+  );
   check("tool ordering policy", prompt.includes("Prefer search_docs before read_page."));
   check("billing escalation policy", prompt.includes("Escalate billing data changes to a human."));
   check("route exists", Boolean(route));
@@ -34,7 +40,8 @@ function checkSupportAgentPrompting() {
   check("route exports POST", /export\s+async\s+function\s+POST\s*\(/.test(route));
   check(
     "route returns prompt json",
-    route.includes("prompt") && (route.includes("Response.json") || route.includes("NextResponse.json")),
+    route.includes("prompt") &&
+      (route.includes("Response.json") || route.includes("NextResponse.json")),
   );
   check(
     "default docs url",
@@ -53,13 +60,22 @@ function checkVersionedAgentEndpoint() {
 
   check("v2 helper file exists", Boolean(helper));
   check("v2 api version", helper.includes('SUPPORT_AGENT_API_VERSION = "2026-04-21.v2"'));
-  check("v2 response schema", helper.includes('SUPPORT_AGENT_RESPONSE_SCHEMA = "support-agent.response.v2"'));
-  check("v2 context header", helper.includes('SUPPORT_AGENT_CONTEXT_HEADER = "x-northstar-agent-context"'));
+  check(
+    "v2 response schema",
+    helper.includes('SUPPORT_AGENT_RESPONSE_SCHEMA = "support-agent.response.v2"'),
+  );
+  check(
+    "v2 context header",
+    helper.includes('SUPPORT_AGENT_CONTEXT_HEADER = "x-northstar-agent-context"'),
+  );
   check("tools include search_docs", helper.includes("search_docs"));
   check("tools include read_page", helper.includes("read_page"));
   check("tools include create_ticket", helper.includes("create_ticket"));
   check("tools include handoff_to_human", helper.includes("handoff_to_human"));
-  check("v2 response builder exported", /export\s+function\s+buildSupportAgentV2Response/.test(helper));
+  check(
+    "v2 response builder exported",
+    /export\s+function\s+buildSupportAgentV2Response/.test(helper),
+  );
   check("docsBaseUrl option", helper.includes("docsBaseUrl"));
   check("customerTier option", helper.includes("customerTier"));
   check("userIntent option", helper.includes("userIntent"));
@@ -78,7 +94,10 @@ function checkVersionedAgentEndpoint() {
   check("route exists", Boolean(route));
   check("route imports v2 builder", route.includes("buildSupportAgentV2Response"));
   check("route exports POST", /export\s+async\s+function\s+POST\s*\(/.test(route));
-  check("route returns json", route.includes("Response.json") || route.includes("NextResponse.json"));
+  check(
+    "route returns json",
+    route.includes("Response.json") || route.includes("NextResponse.json"),
+  );
   check(
     "default docs url",
     route.includes("https://docs.northstar.example.com") ||
