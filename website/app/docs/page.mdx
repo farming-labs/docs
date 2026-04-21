@@ -11,13 +11,14 @@ An AI-native documentation framework built on top of <HoverLink href="https://fu
 <Agent>
 You are reading the machine-readable entry page for `@farming-labs/docs`.
 
-Before implementing from this docs site, fetch `/api/docs/agent/spec` from the same origin. Treat
-that JSON as the source of truth for the docs entry path, markdown route pattern, search endpoint,
-MCP endpoint, `llms.txt` routes, skills install command, locale handling, and feedback endpoints.
+Before implementing from this docs site, fetch `/.well-known/agent.json` from the same origin. If
+that is unavailable, fall back to `/.well-known/agent`. Treat that JSON as the source of truth for
+the docs entry path, markdown route pattern, search endpoint, MCP endpoint, `llms.txt` routes,
+skills install command, locale handling, and feedback endpoints.
 
 Recommended bootstrap flow:
 
-1. Fetch `/api/docs/agent/spec`.
+1. Fetch `/.well-known/agent.json`, then fall back to `/.well-known/agent`.
 2. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read the exact docs pages you need as markdown.
 3. Use `spec.search.endpoint` when you need to find the right page before reading it.
 4. Use `spec.mcp.endpoint` and tools when MCP is enabled and the environment supports MCP.
