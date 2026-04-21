@@ -25,16 +25,13 @@ import { DocsPageClient } from "./docs-page-client.js";
 describe("DocsPageClient llms.txt footer links", () => {
   it("uses the public llms.txt defaults instead of docs api query routes", () => {
     const html = renderToStaticMarkup(
-      React.createElement(
-        DocsPageClient,
-        {
-          tocEnabled: false,
-          breadcrumbEnabled: false,
-          llmsTxtEnabled: true,
-          locale: "en",
-          children: React.createElement("article", null, "Docs"),
-        },
-      ),
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        llmsTxtEnabled: true,
+        locale: "en",
+        children: React.createElement("article", null, "Docs"),
+      }),
     );
 
     expect(html).toContain('href="/llms.txt?lang=en"');
