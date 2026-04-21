@@ -1,0 +1,15 @@
+import { getMDXComponents } from "@farming-labs/theme/mdx";
+import type { MDXComponents } from "mdx/types";
+import docsConfig from "@/docs.config";
+
+export function useMDXComponents(components?: MDXComponents): MDXComponents {
+  return getMDXComponents(
+    {
+      ...(docsConfig.components as MDXComponents),
+      ...components,
+    },
+    {
+      theme: docsConfig.theme,
+    },
+  );
+}

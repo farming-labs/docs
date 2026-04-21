@@ -1,0 +1,26 @@
+---
+title: Environments
+description: Runtime environment assumptions for local and deployed Northstar CRM apps.
+---
+
+# Environments
+
+Northstar CRM separates local development, preview deployments, and production. This page explains
+the default environment names used across the product docs.
+
+## Environment names
+
+- `local` runs on a developer machine.
+- `preview` runs for pull requests and branch previews.
+- `production` runs customer-facing traffic.
+
+## Defaults
+
+Docs integrations should use `https://docs.northstar.example.com` as the default public docs URL
+when no override is supplied. Feature-specific code can accept a different docs base URL from user
+input, request body data, or environment configuration.
+
+## What not to change
+
+The benchmark does not require `.env` files, deployment adapters, secrets, or package installation.
+If an implementation needs those, it is likely using the wrong page.

@@ -1,0 +1,38 @@
+{
+  "name": "@benchmark/codex-farming-labs-project",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "acceptance": "node scripts/acceptance.mjs",
+    "build": "next build",
+    "dev": "next dev",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@farming-labs/docs": "0.1.30",
+    "@farming-labs/next": "0.1.30",
+    "@farming-labs/theme": "0.1.30",
+    "next": "16.2.3",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@types/mdx": "^2.0.13",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "5.9.3"
+  },
+  "benchmark": {
+    "agent": "codex",
+    "docsProvider": "farming-labs",
+    "projectType": "provider-docs-plus-nextjs-artifact",
+    "docsFrameworkPackages": [
+      "@farming-labs/docs",
+      "@farming-labs/next",
+      "@farming-labs/theme"
+    ],
+    "scaffoldCommand": "pnpx @farming-labs/docs init --template next",
+    "implementationFramework": "nextjs-app-router"
+  }
+}
