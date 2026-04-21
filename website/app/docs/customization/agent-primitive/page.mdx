@@ -17,7 +17,8 @@ The same page model also powers the built-in machine-readable routes:
 - the shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
 - in Next.js, `withDocs()` also serves `/docs/<slug>.md`
 - in Next.js, `Accept: text/markdown` on `/docs/<slug>` returns the same markdown
-- agents can discover the configured contract with `GET /api/docs/agent/spec`
+- agents can discover the configured contract with `GET /.well-known/agent.json`, fall back to
+  `GET /.well-known/agent`, or use the canonical framework route at `GET /api/docs/agent/spec`
 
 <Callout type="info" title="Same URL, different representation">
   `/docs/installation` stays the human HTML page by default. Send `Accept: text/markdown` to that
@@ -73,13 +74,14 @@ Human-facing overview.
 <Agent>
 You are reading this docs site as an implementation agent.
 
-Before implementing from these docs, fetch `/api/docs/agent/spec` from the same origin. Use that
-JSON as the source of truth for the docs entry path, markdown route pattern, search endpoint, MCP
-endpoint, `llms.txt` routes, skills install command, locale handling, and feedback endpoints.
+Before implementing from these docs, fetch `/.well-known/agent.json` from the same origin. If that
+is unavailable, fall back to `/.well-known/agent` or `/api/docs/agent/spec`. Use that JSON as the
+source of truth for the docs entry path, markdown route pattern, search endpoint, MCP endpoint,
+`llms.txt` routes, skills install command, locale handling, and feedback endpoints.
 
 Recommended bootstrap flow:
 
-1. Fetch `/api/docs/agent/spec`.
+1. Fetch `/.well-known/agent.json`, then fall back to `/.well-known/agent` or `/api/docs/agent/spec`.
 2. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read relevant docs pages as markdown.
 3. Use `spec.search.endpoint` when you need to find the right page first.
 4. Use `spec.mcp.endpoint` and tools when MCP is enabled and your environment supports MCP.
@@ -156,7 +158,9 @@ That works especially well when:
 
 ## Agent Discovery
 
-`GET /api/docs/agent/spec` returns a small JSON document generated from `docs.config`.
+`GET /.well-known/agent.json` is the preferred public discovery URL. `GET /.well-known/agent` is the
+public fallback, and `GET /api/docs/agent/spec` is the canonical framework route. In Next.js, all
+three return the same small JSON document generated from `docs.config`.
 
 Agents should fetch it before choosing a transport. It tells them:
 
@@ -164,15 +168,20 @@ Agents should fetch it before choosing a transport. It tells them:
 - which locales are configured and which query parameter selects one
 - which agent-facing capabilities are enabled
 - where the shared docs API lives
+- which agent discovery URL is the default and which public route to use as fallback
 - where to search the docs with a query
 - which markdown URL pattern to use for page reads
-- where to fetch `llms.txt` and `llms-full.txt` content
+- where to fetch `llms.txt` and `llms-full.txt` content, including the default public URLs and the
+  public `/.well-known` aliases when available
 - how to install the published Skills pack and which skill is recommended first
 - whether MCP is enabled, which endpoint to call, and which tools are available
 - whether agent feedback is enabled, plus the schema and submit endpoints to use
 
-For Next.js apps, `withDocs()` wires `/api/docs/agent/spec` into the same shared `/api/docs`
-handler automatically.
+For Next.js apps, `withDocs()` wires `/.well-known/agent.json`, `/.well-known/agent`, and
+`/api/docs/agent/spec` into the same shared `/api/docs` handler automatically. The generated spec
+also includes `agentSpecDefault: "/.well-known/agent.json"` and
+`agentSpecFallback: "/.well-known/agent"` so downstream integrations do not need to hard-code the
+preference themselves.
 
 ## Choosing Between Them
 

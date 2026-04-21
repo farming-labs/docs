@@ -265,6 +265,14 @@ describe("withDocs (app dir: src/app vs app)", () => {
           destination: "/api/docs?agent=spec",
         }),
         expect.objectContaining({
+          source: "/.well-known/agent",
+          destination: "/api/docs?agent=spec",
+        }),
+        expect.objectContaining({
+          source: "/.well-known/agent.json",
+          destination: "/api/docs?agent=spec",
+        }),
+        expect.objectContaining({
           source: "/llms.txt",
           destination: "/api/docs?format=llms",
         }),
@@ -531,12 +539,28 @@ describe("withDocs (app dir: src/app vs app)", () => {
           destination: "/api/docs?agent=spec",
         }),
         expect.objectContaining({
+          source: "/.well-known/agent",
+          destination: "/api/docs?agent=spec",
+        }),
+        expect.objectContaining({
+          source: "/.well-known/agent.json",
+          destination: "/api/docs?agent=spec",
+        }),
+        expect.objectContaining({
           source: "/llms.txt",
           destination: "/api/docs?format=llms",
         }),
         expect.objectContaining({
+          source: "/llms-full.txt",
+          destination: "/api/docs?format=llms-full",
+        }),
+        expect.objectContaining({
           source: "/.well-known/llms.txt",
           destination: "/api/docs?format=llms",
+        }),
+        expect.objectContaining({
+          source: "/.well-known/llms-full.txt",
+          destination: "/api/docs?format=llms-full",
         }),
         expect.objectContaining({
           source: "/docs.md",

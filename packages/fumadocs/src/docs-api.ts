@@ -112,6 +112,12 @@ interface DocsMCPAPIOptions {
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const DEFAULT_DOCS_API_ROUTE = "/api/docs";
 const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
+const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
+const DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE = "/.well-known/agent.json";
+const DEFAULT_LLMS_TXT_ROUTE = "/llms.txt";
+const DEFAULT_LLMS_FULL_TXT_ROUTE = "/llms-full.txt";
+const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
+const DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms-full.txt";
 const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
 const DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA: Record<string, unknown> = {
   type: "object",
@@ -280,7 +286,12 @@ function resolveAgentFeedbackRequest(
 
 function resolveAgentSpecRequest(url: URL): boolean {
   if (url.searchParams.get("agent")?.trim() === "spec") return true;
-  return normalizeUrlPath(url.pathname) === DEFAULT_AGENT_SPEC_ROUTE;
+  const pathname = normalizeUrlPath(url.pathname);
+  return (
+    pathname === DEFAULT_AGENT_SPEC_ROUTE ||
+    pathname === DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE ||
+    pathname === DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE
+  );
 }
 
 function isSearchEnabled(search?: boolean | DocsSearchConfig): boolean {
@@ -325,6 +336,10 @@ function buildAgentSpec({ origin, entry, i18n, search, mcp, feedback, llms }: Ag
     api: {
       docs: DEFAULT_DOCS_API_ROUTE,
       agentSpec: DEFAULT_AGENT_SPEC_ROUTE,
+      agentSpecDefault: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
+      agentSpecFallback: DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
+      agentSpecWellKnown: DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
+      agentSpecWellKnownJson: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
       agentSpecQuery: `${DEFAULT_DOCS_API_ROUTE}?agent=spec`,
     },
     // Always-on agent content surfaces. If these ever become configurable,
@@ -340,8 +355,14 @@ function buildAgentSpec({ origin, entry, i18n, search, mcp, feedback, llms }: Ag
     },
     llms: {
       enabled: llms.enabled,
+      defaultTxt: DEFAULT_LLMS_TXT_ROUTE,
+      defaultFull: DEFAULT_LLMS_FULL_TXT_ROUTE,
       txt: `${DEFAULT_DOCS_API_ROUTE}?format=llms`,
       full: `${DEFAULT_DOCS_API_ROUTE}?format=llms-full`,
+      publicTxt: DEFAULT_LLMS_TXT_ROUTE,
+      publicFull: DEFAULT_LLMS_FULL_TXT_ROUTE,
+      wellKnownTxt: DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE,
+      wellKnownFull: DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
     },
     search: {
       enabled: searchEnabled,
@@ -1240,11 +1261,14 @@ function resolveMarkdownRequest(
 function resolveLlmsTxtFormat(url: URL): "llms" | "llms-full" | null {
   const pathname = normalizeUrlPath(url.pathname);
 
-  if (pathname === "/llms.txt" || pathname === "/.well-known/llms.txt") {
+  if (pathname === DEFAULT_LLMS_TXT_ROUTE || pathname === DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE) {
     return "llms";
   }
 
-  if (pathname === "/llms-full.txt" || pathname === "/.well-known/llms-full.txt") {
+  if (
+    pathname === DEFAULT_LLMS_FULL_TXT_ROUTE ||
+    pathname === DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE
+  ) {
     return "llms-full";
   }
 
