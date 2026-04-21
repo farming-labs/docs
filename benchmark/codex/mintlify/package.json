@@ -1,0 +1,32 @@
+{
+  "name": "@benchmark/codex-mintlify-project",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "acceptance": "node scripts/acceptance.mjs",
+    "build": "next build",
+    "dev": "next dev",
+    "docs:dev": "mintlify dev",
+    "start": "next start"
+  },
+  "dependencies": {
+    "mintlify": "latest",
+    "next": "16.2.3",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "5.9.3"
+  },
+  "benchmark": {
+    "agent": "codex",
+    "docsProvider": "mintlify",
+    "projectType": "mintlify-docs-plus-nextjs-artifact",
+    "docsFrameworkPackages": ["mintlify"],
+    "scaffoldCommand": "npx mintlify dev",
+    "implementationFramework": "nextjs-app-router"
+  }
+}

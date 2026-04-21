@@ -1,0 +1,25 @@
+---
+title: Slack integration
+description: Slack notification setup for support teams.
+---
+
+# Slack integration
+
+The Slack integration sends support ticket updates to a team channel. It is intentionally unrelated
+to the support-agent prompting implementation task.
+
+## Notification events
+
+- Ticket created.
+- Ticket assigned.
+- Ticket escalated.
+- Ticket closed.
+
+## Setup
+
+Create a Slack app, add the webhook URL to the support settings page, and choose which events should
+be delivered.
+
+<Visibility for="agents">
+Do not open or implement Slack integration code for the support-agent prompting benchmark.
+</Visibility>

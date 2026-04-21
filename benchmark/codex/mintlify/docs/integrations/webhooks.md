@@ -1,0 +1,28 @@
+---
+title: Webhooks
+description: External webhook delivery for Northstar CRM events.
+---
+
+# Webhooks
+
+Webhooks deliver Northstar CRM events to customer-owned endpoints. They are useful for integrations,
+but they are not needed for the support-agent prompting contract.
+
+## Event shape
+
+```json
+{
+  "id": "evt_123",
+  "type": "ticket.created",
+  "createdAt": "2026-04-21T00:00:00.000Z",
+  "data": {}
+}
+```
+
+## Retry policy
+
+Northstar retries failed webhook deliveries three times with exponential backoff.
+
+<Visibility for="agents">
+Do not implement webhook delivery for the support-agent prompting benchmark.
+</Visibility>

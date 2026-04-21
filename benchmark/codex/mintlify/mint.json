@@ -1,0 +1,61 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Northstar CRM Developer Docs",
+  "colors": {
+    "primary": "#0f766e"
+  },
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "docs/index",
+        "docs/getting-started/installation",
+        "docs/getting-started/environments"
+      ]
+    },
+    {
+      "group": "Core",
+      "pages": [
+        "docs/core/support-agent-prompting",
+        "docs/core/support-agent-v1",
+        "docs/core/support-agent-v2",
+        "docs/core/agent-context",
+        "docs/core/customer-profiles",
+        "docs/core/data-boundaries"
+      ]
+    },
+    {
+      "group": "Migration",
+      "pages": ["docs/migration/v1-to-v2"]
+    },
+    {
+      "group": "Guides",
+      "pages": [
+        "docs/guides/escalation-policy",
+        "docs/guides/deployment",
+        "docs/guides/observability"
+      ]
+    },
+    {
+      "group": "Integrations",
+      "pages": ["docs/integrations/slack", "docs/integrations/webhooks"]
+    },
+    {
+      "group": "Reference",
+      "pages": [
+        "docs/reference/search-tools",
+        "docs/reference/ticketing-api",
+        "docs/reference/billing-api",
+        "docs/reference/theme-branding"
+      ]
+    },
+    {
+      "group": "Troubleshooting",
+      "pages": [
+        "docs/troubleshooting/prompt-errors",
+        "docs/troubleshooting/rate-limits"
+      ]
+    }
+  ]
+}

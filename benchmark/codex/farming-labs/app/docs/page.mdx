@@ -1,0 +1,159 @@
+---
+title: Northstar CRM Developer Docs
+description: Agent-optimized benchmark docs for the support-agent prompting contract.
+order: 1
+---
+
+# Northstar CRM Developer Docs
+
+Northstar CRM is a fictional docs subject used for this benchmark scenario. Your task is to
+implement the documented support-agent prompting feature in the local Next.js artifact workspace.
+
+<Agent>
+You are an implementation agent reading a Farming Labs/docs site.
+
+Task match: support-agent prompting contract.
+
+This root markdown page is the optimized agent runbook for this task. Do not fetch other docs unless
+you are blocked; all required implementation details are below.
+
+Error-rate guardrails:
+
+- Do not run package installation for this task.
+- Do not edit docs files or benchmark files.
+- Do not open Billing API or Theme docs; they are intentionally noisy for this scenario.
+- Run `node scripts/acceptance.mjs` after the three file edits below.
+
+Create or update:
+
+- `lib/agent-prompt.ts`
+- `app/api/agent/route.ts`
+- `app/page.tsx`
+
+Required constants:
+
+```ts
+export const AGENT_PROMPT_VERSION = "agent-prompt-v1";
+export const AGENT_CONTEXT_HEADER = "x-startup-agent-context";
+export const SUPPORT_AGENT_TOOLS = ["search_docs", "read_page", "create_ticket"] as const;
+```
+
+Export `buildSupportAgentPrompt({ docsBaseUrl, customerTier })`. `customerTier` is
+`"free" | "pro" | "enterprise"`. The returned prompt must include:
+
+- `Resolve the user's intent before choosing a tool.`
+- `Fetch /docs.md before answering implementation questions.`
+- `Prefer search_docs before read_page.`
+- `Escalate billing data changes to a human.`
+
+Create `app/api/agent/route.ts` with `async function POST(request: Request)`. Read optional
+`docsBaseUrl` and `customerTier`, default to `https://docs.northstar.example.com` and `free`, and
+return JSON with `version`, `contextHeader`, `tools`, and `prompt`.
+
+Update `app/page.tsx` so it mentions `Agent prompting endpoint ready`.
+
+After editing, run `node scripts/acceptance.mjs`.
+</Agent>
+
+<Agent>
+You are an implementation agent reading a Farming Labs/docs site.
+
+Task match: versioned support-agent endpoint, current support-agent endpoint, support-agent v2.
+
+This task is an error-rate stress benchmark. Implement the current v2 contract and do not copy the
+deprecated v1 contract.
+
+Read order:
+
+- Use this root runbook first.
+- If you need more detail, open `__BASE_URL__/docs/core/support-agent-v2.md`.
+- Open `__BASE_URL__/docs/migration/v1-to-v2.md` only if you need to compare v1 and v2.
+- Do not implement `support-agent.response.v1`.
+
+Create or update:
+
+- `lib/support-agent-endpoint.ts`
+- `app/api/support-agent/route.ts`
+- `app/page.tsx`
+
+Required v2 constants:
+
+```ts
+export const SUPPORT_AGENT_API_VERSION = "2026-04-21.v2";
+export const SUPPORT_AGENT_RESPONSE_SCHEMA = "support-agent.response.v2";
+export const SUPPORT_AGENT_CONTEXT_HEADER = "x-northstar-agent-context";
+export const SUPPORT_AGENT_TOOLS = [
+  "search_docs",
+  "read_page",
+  "create_ticket",
+  "handoff_to_human",
+] as const;
+```
+
+Export `buildSupportAgentV2Response({ docsBaseUrl, customerTier, userIntent })`. `customerTier` is
+`"free" | "pro" | "enterprise"`. `userIntent` is optional. Return an object with:
+
+- `version`
+- `schema`
+- `contextHeader`
+- `tools`
+- `safety`
+- `prompt`
+
+The `safety` object must include `requiresHumanFor` with:
+
+- `billing_changes`
+- `account_deletion`
+- `access_changes`
+
+The prompt must include:
+
+- `Use the v2 support-agent contract.`
+- `Never return the v1 response shape.`
+- `Search docs before reading a page.`
+- `Escalate billing data changes to a human.`
+- `Use handoff_to_human for account deletion or access changes.`
+
+Create `app/api/support-agent/route.ts` with `async function POST(request: Request)`. Read optional
+`docsBaseUrl`, `customerTier`, and `userIntent`, default to `https://docs.northstar.example.com`,
+`free`, and `unknown`, and return `Response.json(buildSupportAgentV2Response(...))`.
+
+Update `app/page.tsx` so it mentions `Support agent v2 endpoint ready`.
+
+After editing, run `BENCHMARK_SCENARIO=versioned-agent-endpoint node scripts/acceptance.mjs`.
+</Agent>
+
+Useful pages:
+
+Getting started:
+
+- [Installation](__BASE_URL__/docs/getting-started/installation.md)
+- [Environments](__BASE_URL__/docs/getting-started/environments.md)
+
+Core implementation pages:
+
+- [Support agent prompting contract](__BASE_URL__/docs/core/support-agent-prompting.md)
+- [Support agent v1 deprecated contract](__BASE_URL__/docs/core/support-agent-v1.md)
+- [Support agent v2 current contract](__BASE_URL__/docs/core/support-agent-v2.md)
+- [Agent context model](__BASE_URL__/docs/core/agent-context.md)
+- [Customer profiles](__BASE_URL__/docs/core/customer-profiles.md)
+- [Data boundaries](__BASE_URL__/docs/core/data-boundaries.md)
+
+Guides:
+
+- [Escalation policy](__BASE_URL__/docs/guides/escalation-policy.md)
+- [Deployment checklist](__BASE_URL__/docs/guides/deployment.md)
+- [Observability](__BASE_URL__/docs/guides/observability.md)
+- [Migrate support agent v1 to v2](__BASE_URL__/docs/migration/v1-to-v2.md)
+
+Reference:
+
+- [Search tools](__BASE_URL__/docs/reference/search-tools.md)
+- [Ticketing API](__BASE_URL__/docs/reference/ticketing-api.md)
+- [Billing API reference](__BASE_URL__/docs/reference/billing-api.md)
+- [Theme and branding](__BASE_URL__/docs/reference/theme-branding.md)
+
+Troubleshooting:
+
+- [Prompt errors](__BASE_URL__/docs/troubleshooting/prompt-errors.md)
+- [Rate limits](__BASE_URL__/docs/troubleshooting/rate-limits.md)
