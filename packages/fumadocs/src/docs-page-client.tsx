@@ -340,7 +340,7 @@ export function DocsPageClient({
   const pathname = usePathname();
   const searchParams = useWindowSearchParams();
   const activeLocale = resolveClientLocale(searchParams, locale);
-  const llmsLangParam = activeLocale ? `&lang=${encodeURIComponent(activeLocale)}` : "";
+  const llmsLangQuery = activeLocale ? `?lang=${encodeURIComponent(activeLocale)}` : "";
 
   const pageDescription = description ?? descriptionMap?.[pathname.replace(/\/$/, "") || "/"];
   const normalizedPath = (browserPath ?? pathname).replace(/\/$/, "") || "/";
@@ -580,7 +580,7 @@ export function DocsPageClient({
             {llmsTxtEnabled && (
               <span className="fd-llms-txt-links">
                 <a
-                  href={`/api/docs?format=llms${llmsLangParam}`}
+                  href={`/llms.txt${llmsLangQuery}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="fd-llms-txt-link"
@@ -588,7 +588,7 @@ export function DocsPageClient({
                   llms.txt
                 </a>
                 <a
-                  href={`/api/docs?format=llms-full${llmsLangParam}`}
+                  href={`/llms-full.txt${llmsLangQuery}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="fd-llms-txt-link"
