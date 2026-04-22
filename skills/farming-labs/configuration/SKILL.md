@@ -46,7 +46,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
 | `search` | `boolean \| DocsSearchConfig` | `true` | Built-in simple search, Typesense, Algolia, or a custom adapter |
 | `changelog` | `boolean \| ChangelogConfig` | `false` | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
-| `mcp` | `boolean \| DocsMcpConfig` | enabled | Built-in MCP server over stdio and `/api/docs/mcp` |
+| `mcp` | `boolean \| DocsMcpConfig` | enabled | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON document |
 | `metadata` | `DocsMetadata` | — | SEO: titleTemplate, description, etc. |
 | `og` | `OGConfig` | — | Dynamic Open Graph images |
@@ -201,7 +201,7 @@ MCP example:
 ```ts
 search: {
   provider: "mcp",
-  endpoint: "/api/docs/mcp",
+  endpoint: "/mcp",
 },
 mcp: {
   enabled: true,
@@ -232,7 +232,7 @@ Important notes:
 
 - `chunking.strategy` defaults to `"section"` and can be changed to `"page"`
 - Typesense and Algolia can sync the index on first request when `adminApiKey` is present
-- `provider: "mcp"` supports relative endpoints like `/api/docs/mcp` and absolute remote endpoints
+- `provider: "mcp"` supports relative endpoints like `/mcp` or `/.well-known/mcp` and absolute remote endpoints
 - if `provider: "mcp"` points at the same relative MCP route, the built-in `search_docs` tool falls back to simple search internally so the route does not recurse forever
 - On custom/manual Next routes, forward `search: docsConfig.search` into `createDocsAPI(...)`
 - Use `pnpm dlx @farming-labs/docs search sync --typesense` or `--algolia` when you want to push external indexes from the CLI instead of waiting for the first request
@@ -386,12 +386,14 @@ mcp: {
 
 Default behavior:
 
-- **HTTP route:** `/api/docs/mcp`
+- **Public HTTP route:** `/mcp`
+- **Well-known HTTP route:** `/.well-known/mcp`
+- **Canonical HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
 - **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`
 
 Framework notes:
-- **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route
+- **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route and public `/mcp` plus `/.well-known/mcp` rewrites
 - **TanStack Start / SvelteKit / Astro / Nuxt:** add the framework route file and reuse the built-in `MCP` handler from the docs server helper
 - **Custom routes:** set `mcp.route` in `docs.config` and add the matching route file manually so the configured path and the actual endpoint stay aligned
 
@@ -401,14 +403,15 @@ Testing tip:
 pnpm --dir examples/next dev
 ```
 
-Then point an MCP client or inspector at `http://127.0.0.1:3000/api/docs/mcp` to verify the
-default route.
+Then point an MCP client or inspector at `http://127.0.0.1:3000/mcp` or
+`http://127.0.0.1:3000/.well-known/mcp` to verify the default route.
 
 Hosted example:
 
-- The docs site itself exposes MCP at `https://docs.farming-labs.dev/api/docs/mcp`
+- The docs site itself exposes MCP at `https://docs.farming-labs.dev/mcp` and
+  `https://docs.farming-labs.dev/.well-known/mcp`
 - Cursor can install it from a deeplink:
-  `cursor://anysphere.cursor-deeplink/mcp/install?name=farming-labs-docs&config=eyJ1cmwiOiJodHRwczovL2RvY3MuZmFybWluZy1sYWJzLmRldi9hcGkvZG9jcy9tY3AifQ==`
+  `cursor://anysphere.cursor-deeplink/mcp/install?name=farming-labs-docs&config=eyJ1cmwiOiJodHRwczovL2RvY3MuZmFybWluZy1sYWJzLmRldi8ud2VsbC1rbm93bi9tY3AifQ==`
 
 See the full guide: [docs.farming-labs.dev/docs/customization/mcp](https://docs.farming-labs.dev/docs/customization/mcp)
 
@@ -513,7 +516,7 @@ Use `ordering: "numeric"` (default) so sidebar order follows frontmatter `order`
 3. **SvelteKit/Astro:** Server-side docs loader must receive config and (for AI) env vars; see framework docs.
 4. **Nuxt:** `defineDocsHandler(config, useStorage)` in `server/api/docs.ts`; config is imported from root `docs.config.ts`.
 5. **Feedback callbacks:** Astro cannot serialize config functions into client scripts; use the built-in custom event hooks if you need analytics there.
-6. **MCP custom routes:** Only the default Next.js `/api/docs/mcp` route is auto-generated. If the user sets `mcp.route`, keep that path in config and add the matching route file manually.
+6. **MCP custom routes:** Only the default Next.js `/api/docs/mcp` route is auto-generated. If the user sets `mcp.route`, keep that path in config and add the matching route file manually; `/mcp` and `/.well-known/mcp` will rewrite to that route when MCP is enabled.
 
 ---
 

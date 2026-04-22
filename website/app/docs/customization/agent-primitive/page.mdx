@@ -76,7 +76,7 @@ You are reading this docs site as an implementation agent.
 
 Before implementing from these docs, fetch `/.well-known/agent.json` from the same origin. If that
 is unavailable, fall back to `/.well-known/agent`. Use that JSON as the source of truth for the docs
-entry path, markdown route pattern, search endpoint, MCP endpoint, `llms.txt` routes, skills install
+entry path, markdown route pattern, search endpoint, MCP endpoints, `llms.txt` routes, skills install
 command, locale handling, and feedback endpoints.
 
 Recommended bootstrap flow:
@@ -84,7 +84,7 @@ Recommended bootstrap flow:
 1. Fetch `/.well-known/agent.json`, then fall back to `/.well-known/agent`.
 2. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read relevant docs pages as markdown.
 3. Use `spec.search.endpoint` when you need to find the right page first.
-4. Use `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and your environment supports MCP.
+4. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and your environment supports MCP.
 5. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
 
 Do not scrape the HTML page when markdown, search, MCP, or `llms.txt` routes are available in the
@@ -174,7 +174,7 @@ Agents should fetch it before choosing a transport. It tells them:
 - where to fetch `llms.txt` and `llms-full.txt` content, including the default public URLs and the
   public `/.well-known` aliases when available
 - how to install the published Skills pack and which skill is recommended first
-- whether MCP is enabled, which endpoint to call, and which tools are available
+- whether MCP is enabled, which public/well-known endpoint to call, and which tools are available
 - whether agent feedback is enabled, plus the schema and submit endpoints to use
 
 For Next.js apps, `withDocs()` wires `/.well-known/agent.json`, `/.well-known/agent`, and

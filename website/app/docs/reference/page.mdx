@@ -48,7 +48,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
 | `ai`          | `AIConfig`                                      | —                | RAG-powered AI chat                                                                  |
 | `search`      | `boolean \| DocsSearchConfig`                   | `true`           | Built-in simple search, Typesense, Algolia, or a custom adapter                     |
-| `mcp`         | `boolean \| DocsMcpConfig`                      | enabled          | Built-in MCP server over stdio and `/mcp`                                            |
+| `mcp`         | `boolean \| DocsMcpConfig`                      | enabled          | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp`                       |
 | `apiReference` | `boolean \| ApiReferenceConfig`               | `false`          | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON |
 | `changelog`   | `boolean \| ChangelogConfig`                    | `false`          | Generated changelog feed and entry pages from dated MDX entries                      |
 | `ordering`    | `"alphabetical" \| "numeric" \| OrderingItem[]` | `"alphabetical"` | Sidebar page ordering strategy                                                       |
@@ -192,13 +192,14 @@ export default defineDocs({
 Default MCP surface:
 
 - **Public HTTP route:** `/mcp`
+- **Well-known HTTP route:** `/.well-known/mcp`
 - **Canonical HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
 - **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`
 
 Framework notes:
 
-- **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route and public `/mcp` rewrite
+- **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route and public `/mcp` plus `/.well-known/mcp` rewrites
 - **TanStack Start / SvelteKit / Astro / Nuxt:** add the matching framework route file and forward to the built-in `MCP` handler from the docs server helper
 - **Custom routes:** set `mcp.route` in `docs.config` and add the matching route file manually so the configured path and the actual endpoint stay aligned
 
@@ -405,7 +406,7 @@ Notes:
 - `search: false` disables search entirely
 - Search requires the docs API route; static export hides the UI because there is no server route
 - On Next.js, generated routes from `withDocs()` already forward `docsConfig.search`
-- MCP-backed search works with relative endpoints like `/mcp` and absolute remote endpoints like `https://docs.example.com/mcp`
+- MCP-backed search works with relative endpoints like `/mcp` or `/.well-known/mcp` and absolute remote endpoints like `https://docs.example.com/mcp`
 - If MCP-backed search points at the same relative MCP route, the built-in `search_docs` tool falls back to simple search internally to avoid recursive loops
 - On custom/manual Next routes, import `createDocsAPI` from `@farming-labs/next/api` and pass `search: docsConfig.search`
 

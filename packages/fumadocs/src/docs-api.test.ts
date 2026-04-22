@@ -693,6 +693,8 @@ title: "Home"
         endpoint: string;
         defaultEndpoint: string;
         publicEndpoint: string;
+        wellKnownEndpoint: string;
+        publicEndpoints: string[];
         canonicalEndpoint: string;
         name: string;
         version: string;
@@ -778,6 +780,8 @@ title: "Home"
       endpoint: "/internal/docs/mcp",
       defaultEndpoint: "/mcp",
       publicEndpoint: "/mcp",
+      wellKnownEndpoint: "/.well-known/mcp",
+      publicEndpoints: ["/mcp", "/.well-known/mcp"],
       canonicalEndpoint: "/api/docs/mcp",
       name: "Agent Docs",
       version: "0.0.0",
@@ -848,6 +852,8 @@ title: "Home"
         endpoint: string;
         defaultEndpoint: string;
         publicEndpoint: string;
+        wellKnownEndpoint: string;
+        publicEndpoints: string[];
         canonicalEndpoint: string;
       };
       feedback: { enabled: boolean; schema: string; submit: string };
@@ -907,6 +913,8 @@ title: "Home"
       endpoint: "/api/docs/mcp",
       defaultEndpoint: "/mcp",
       publicEndpoint: "/mcp",
+      wellKnownEndpoint: "/.well-known/mcp",
+      publicEndpoints: ["/mcp", "/.well-known/mcp"],
       canonicalEndpoint: "/api/docs/mcp",
     });
     expect(spec.feedback).toMatchObject({

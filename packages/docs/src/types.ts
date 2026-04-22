@@ -632,15 +632,15 @@ export interface DocsMcpToolsConfig {
  * Built-in MCP server configuration.
  *
  * When enabled, adapters can expose a Streamable HTTP endpoint for your docs
- * at `/mcp` in Next.js, backed by the canonical `/api/docs/mcp` route. The same config is also reused by the local
- * `docs mcp` stdio command.
+ * at `/mcp` and `/.well-known/mcp` in Next.js, backed by the canonical `/api/docs/mcp` route.
+ * The same config is also reused by the local `docs mcp` stdio command.
  */
 export interface DocsMcpConfig {
   /** Whether to enable the built-in MCP server. Defaults to `true` when this object is provided. */
   enabled?: boolean;
   /**
    * Streamable HTTP route for the MCP endpoint.
-   * Defaults to `/api/docs/mcp`; Next.js also exposes it publicly at `/mcp`.
+   * Defaults to `/api/docs/mcp`; Next.js also exposes it publicly at `/mcp` and `/.well-known/mcp`.
    */
   route?: string;
   /**
@@ -787,8 +787,8 @@ export interface McpDocsSearchConfig {
   provider: "mcp";
   enabled?: boolean;
   /**
-   * Streamable HTTP MCP endpoint. Relative paths like `/mcp` are resolved
-   * against the current docs API request URL.
+   * Streamable HTTP MCP endpoint. Relative paths like `/mcp` or `/.well-known/mcp`
+   * are resolved against the current docs API request URL.
    */
   endpoint: string;
   /**
@@ -1695,8 +1695,8 @@ export interface DocsConfig {
   /**
    * Built-in MCP server for agent/assistant access to your docs content.
    *
-   * - omitted → enable the default MCP surface at `/mcp` in Next.js, backed by `/api/docs/mcp`
-   * - `true` → enable the default MCP surface at `/mcp` in Next.js, backed by `/api/docs/mcp`
+   * - omitted → enable the default MCP surface at `/mcp` and `/.well-known/mcp` in Next.js, backed by `/api/docs/mcp`
+   * - `true` → enable the default MCP surface at `/mcp` and `/.well-known/mcp` in Next.js, backed by `/api/docs/mcp`
    * - `{ route: "/api/docs/mcp" }` → enable with explicit route/config
    * - `false` or `{ enabled: false }` → disable MCP explicitly
    */

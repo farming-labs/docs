@@ -173,6 +173,7 @@ const DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE = "/.well-known/agent.json";
 const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
 const DEFAULT_MCP_ROUTE = "/api/docs/mcp";
 const DEFAULT_MCP_PUBLIC_ROUTE = "/mcp";
+const DEFAULT_MCP_WELL_KNOWN_ROUTE = "/.well-known/mcp";
 const DEFAULT_LLMS_TXT_ROUTE = "/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_ROUTE = "/llms-full.txt";
 const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
@@ -1050,14 +1051,14 @@ function buildLlmsTxtRewrites(): NextRewrite[] {
 }
 
 function buildMcpRewrites(config: { enabled: boolean; route: string }): NextRewrite[] {
-  if (!config.enabled || config.route === DEFAULT_MCP_PUBLIC_ROUTE) return [];
+  if (!config.enabled) return [];
 
-  return [
-    {
-      source: DEFAULT_MCP_PUBLIC_ROUTE,
+  return [DEFAULT_MCP_PUBLIC_ROUTE, DEFAULT_MCP_WELL_KNOWN_ROUTE]
+    .filter((source) => source !== config.route)
+    .map((source) => ({
+      source,
       destination: config.route,
-    },
-  ];
+    }));
 }
 
 function buildAgentFeedbackRewrites(config: {
