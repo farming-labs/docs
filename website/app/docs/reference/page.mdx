@@ -1210,6 +1210,7 @@ Each docs page (`.mdx` / `.md`) supports these frontmatter fields:
 | ------------- | ----------- | --------------------------------------------------------------------------------- |
 | `title`       | `string`    | **Required.** Page title, shown in sidebar and page heading                        |
 | `description` | `string`    | Page description, used for meta tags and search                                    |
+| `related`     | `string[]`  | Related doc URLs rendered as a comma-separated metadata line in `.md` routes and MCP page output |
 | `icon`        | `string`    | Icon key from the `icons` registry. Shows in sidebar.                              |
 | `order`       | `number`    | Sort order in the sidebar (only when `ordering: "numeric"`). Lower numbers first.   |
 | `tags`        | `string[]`  | Tags for categorization                                                            |
@@ -1243,6 +1244,9 @@ twitter:
 ---
 title: "Getting Started"
 description: "Set up your docs in 5 minutes"
+related:
+  - /docs/installation
+  - /docs/customization/agent-primitive
 icon: "rocket"
 order: 1
 ---
@@ -1259,14 +1263,14 @@ Frontmatter is **YAML** between the `---` fences. Supported value types:
 | `boolean` | `hidden: true`                 | Optional (e.g. hide from sidebar) |
 | `string[]`| `tags: [a, b]` or `tags: ["a", "b"]` | `tags`                  |
 
-You can use other YAML types (e.g. nested objects) for custom keys; only the fields in the table above are used by the framework for sidebar, SEO, and OG.
+You can use other YAML types (e.g. nested objects) for custom keys; only the fields in the table above are used by the framework for sidebar, SEO, OG, search, and machine-readable markdown.
 
 ### How frontmatter is passed
 
 - **Next.js** — The MDX pipeline uses `remark-frontmatter` and `remark-mdx-frontmatter` with `name: "metadata"`. The parsed frontmatter is exposed as the **`metadata`** export from the page. The layout and `generateMetadata` receive it when resolving the page (e.g. via `getPage(params)`), and it is used for `createPageMetadata`, sidebar tree (title, icon, order), and description maps.
 - **TanStack Start / SvelteKit / Astro / Nuxt** — The docs loader (e.g. `import.meta.glob` or content layer) reads each `.md`/`.mdx` file, parses frontmatter, and builds the nav tree and page data. Frontmatter is passed to the layout as **page data** (e.g. `page.data` or the props your content component receives). The same fields (`title`, `description`, `icon`, `order`, `tags`, `ogImage`) are used for sidebar, meta tags, and search.
 
-So in all frameworks, the **same frontmatter fields** drive titles, descriptions, icons, ordering, and OG; only the mechanism (MDX `metadata` vs. content loader `page.data`) differs.
+So in all frameworks, the **same frontmatter fields** drive titles, descriptions, icons, ordering, and OG; only the mechanism (MDX `metadata` vs. content loader `page.data`) differs. The `related` field is intentionally machine-readable first: add URL strings, and `.md` routes plus MCP page output render them next to `Description` as `Related: /docs/a, /docs/b` without adding a visible related-links block to the human page UI. A sibling `agent.md` remains a full override, so add a `Related:` line there manually if the override should include it.
 
 ---
 

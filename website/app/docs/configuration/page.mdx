@@ -147,6 +147,7 @@ No separate config flag is required for machine-readable page markdown.
 - In Next.js, sending `Accept: text/markdown` to `/docs/<slug>` returns the same markdown response
 - Embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI but are included in the `.md` fallback and MCP `read_page`
 - When a page folder has `agent.md`, that file is returned instead of the normal page markdown
+- Page frontmatter `related` is rendered as a comma-separated markdown metadata line beside `Description` when the page uses normal markdown or embedded `<Agent>` fallback, so agents can discover adjacent pages without scraping the UI. A sibling `agent.md` remains a full override; include any `Related:` line manually inside `agent.md` when needed.
 
 <Callout type="info" title="Markdown via content negotiation">
   You can keep the canonical docs URL and ask for markdown with an HTTP header:
@@ -158,6 +159,16 @@ No separate config flag is required for machine-readable page markdown.
   Browsers still receive HTML from `/docs/installation`; agents, scripts, and crawlers that send
   `Accept: text/markdown` receive the same machine-readable output as `/docs/installation.md`.
 </Callout>
+
+```mdx title="page.mdx"
+---
+title: "Installation"
+description: "Install the framework"
+related:
+  - /docs/configuration
+  - /docs/customization/agent-primitive
+---
+```
 
 See [Agent Primitive](/docs/customization/agent-primitive) for the page-level authoring model.
 

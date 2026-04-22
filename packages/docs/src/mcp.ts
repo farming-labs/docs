@@ -7,6 +7,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import * as z from "zod/v4";
+import { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 import { performDocsSearch } from "./search.js";
 import type {
   DocsMcpConfig,
@@ -21,6 +22,7 @@ export interface DocsMcpPage {
   url: string;
   title: string;
   description?: string;
+  related?: DocsSearchSourcePage["related"];
   icon?: string;
   content: string;
   rawContent?: string;
@@ -604,7 +606,7 @@ function stripMarkdownForMcp(content: string): string {
 }
 
 function scanFilesystemDocsPages(contentDirAbs: string, entry: string): ScannedDocsMcpPage[] {
-  const pages: ScannedDocsMcpPage[] = [];
+  const pages: Array<ScannedDocsMcpPage & { relatedInput?: unknown }> = [];
 
   function scan(dir: string, slugParts: string[]) {
     if (!fs.existsSync(dir)) return;
@@ -649,6 +651,7 @@ function scanFilesystemDocsPages(contentDirAbs: string, entry: string): ScannedD
         url,
         title,
         description: data.description as string | undefined,
+        relatedInput: data.related,
         icon: data.icon as string | undefined,
         content: stripMarkdownForMcp(humanRawContent),
         rawContent: humanRawContent,
@@ -662,7 +665,7 @@ function scanFilesystemDocsPages(contentDirAbs: string, entry: string): ScannedD
   }
 
   scan(contentDirAbs, []);
-  return pages;
+  return resolveRelatedForMcpPages(pages);
 }
 
 function readFilesystemAgentDoc(dir: string) {
@@ -675,6 +678,15 @@ function readFilesystemAgentDoc(dir: string) {
     agentContent: stripMarkdownForMcp(content),
     agentRawContent: content,
   };
+}
+
+function resolveRelatedForMcpPages(
+  pages: Array<ScannedDocsMcpPage & { relatedInput?: unknown }>,
+): ScannedDocsMcpPage[] {
+  return pages.map(({ relatedInput, ...page }) => {
+    const related = normalizeDocsRelated(relatedInput);
+    return related.length > 0 ? { ...page, related } : page;
+  });
 }
 
 function buildNavigationTreeFromPages(
@@ -825,6 +837,7 @@ function toSearchSourcePages(pages: DocsMcpPage[]): DocsSearchSourcePage[] {
     agentFallbackContent: page.agentFallbackContent,
     agentFallbackRawContent: page.agentFallbackRawContent,
     description: page.description,
+    related: page.related,
   }));
 }
 
@@ -917,8 +930,11 @@ function normalizeUrlPath(value: string): string {
 function renderPageDocument(page: DocsMcpPage): string {
   if (page.agentRawContent !== undefined) return page.agentRawContent;
 
+  const relatedLines = renderDocsRelatedMarkdownLines(page.related);
+
   const lines = [`# ${page.title}`, `URL: ${page.url}`];
   if (page.description) lines.push(`Description: ${page.description}`);
+  lines.push(...relatedLines);
   lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);
   return lines.join("\n");
 }

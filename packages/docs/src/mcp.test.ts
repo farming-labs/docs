@@ -122,6 +122,8 @@ Welcome to the docs.
       `---
 title: "Installation"
 description: "Install everything"
+related:
+  - /docs/guides/quickstart
 ---
 
 # Installation
@@ -140,6 +142,9 @@ Run pnpm install.
       join(rootDir, "docs", "guides", "quickstart.mdx"),
       `---
 title: "Quickstart"
+related:
+  - /docs/installation
+  - /docs
 ---
 
 # Quickstart
@@ -383,6 +388,9 @@ No frontmatter title here.
 
     expect(quickstartPayload.result?.content?.[0]?.text).toContain(
       "Validate the generated example paths before editing this guide.",
+    );
+    expect(quickstartPayload.result?.content?.[0]?.text).toContain(
+      "Related: /docs/installation, /docs",
     );
     expect(quickstartPayload.result?.content?.[0]?.text).not.toContain("<Agent>");
 

@@ -267,9 +267,17 @@ export interface PageTwitter {
   description?: string;
 }
 
+export type DocsRelatedItem = string;
+
+export interface ResolvedDocsRelatedLink {
+  href: string;
+}
+
 export interface PageFrontmatter {
   title: string;
   description?: string;
+  /** Related doc URLs rendered into machine-readable markdown routes and MCP page output. */
+  related?: DocsRelatedItem[];
   tags?: string[];
   icon?: string;
   /** Path to custom OG image for this page (shorthand). Ignored if `openGraph` is set. */
@@ -664,6 +672,7 @@ export interface DocsSearchSourcePage {
   url: string;
   content: string;
   description?: string;
+  related?: ResolvedDocsRelatedLink[];
   rawContent?: string;
   agentContent?: string;
   agentRawContent?: string;
