@@ -1,153 +1,40 @@
 # @farming-labs/docs
 
-An AI-native documentation framework for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt. Write markdown, ship polished docs for humans, IDEs, and agents — no boilerplate required.
+AI-native documentation for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
 
-### Quick Start
-> **This package lets you build AI-native documentation for any Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project in minutes.**
+Write MDX or Markdown, configure the docs site in TypeScript, and ship a polished documentation
+experience for humans, IDEs, and agents without maintaining a pile of routing boilerplate.
 
-- ✨ **Polished themes & flexible search, zero setup**
-- 🌍 **Choose your framework:** Next.js, TanStack Start, SvelteKit, Astro, or Nuxt
-- ⚡️ **Fast, fully static or server-rendered**
-- 💡 **Type-safe config in code, not JSON**
-- 📦 **Single install, zero lock-in**
-- 🧬 **Write .mdx or .md — all features work out of the box**
-- 🧾 **Generated API reference from framework route handlers or a hosted OpenAPI JSON**
-- 📣 **Built-in changelog pages for Next.js** — release feed + detail pages from dated MDX entries
-- 🧩 **Built-in MDX UI** — `Callout`, `Tabs`, `HoverLink`, hidden `Agent` blocks, and overridable built-ins via `components` and `theme.ui.components`
-- 💬 **Built-in docs actions** — human page feedback, agent feedback endpoints, copy/open page actions, and code-block copy callbacks
-- 🔎 **Search adapters** — zero-config built-in search, plus Typesense, Algolia, and custom adapters
-- 🤖 **Built-in MCP server** — expose docs over stdio or `/api/docs/mcp` for MCP clients and IDE agents
-- 📝 **Machine-readable markdown routes** — serve docs as markdown with embedded `Agent` blocks and optional page-local `agent.md` overrides
+## Core Features
 
-**Get started:**
+- Framework adapters for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt
+- One `docs.config.ts` file for routing, theme, search, metadata, feedback, and AI surfaces
+- Built-in themes with shared MDX components such as `Callout`, `Tabs`, and `HoverLink`
+- Built-in search with simple, Typesense, Algolia, MCP, and custom provider options
+- Generated API reference from framework route handlers or a hosted OpenAPI JSON document
+- Next.js changelog pages from dated MDX entries
+- Machine-readable docs through `.md` routes, `llms.txt`, agent discovery, and MCP
 
-- Use the [CLI](#option-a-cli-recommended) _(recommended — sets up everything for you)_, or see [manual setup](#option-b-manual-setup) for each framework.
-- [Reference docs](https://docs.farming-labs.dev/docs/reference) and [examples](https://github.com/farming-labs/docs/tree/main/examples) cover config, changelog setup, custom themes, OG images, API reference, SEO, and more.
-- Want to contribute? See the [Contributing guide](https://docs.farming-labs.dev/docs/contributing).
+## Quick Start
 
-### Cloud Waitlist
-
-We’re also building a managed cloud layer for teams that want hosted deploys, GitHub-backed editing, managed search and AI, branded docs, analytics, and docs operations without giving up the self-hosted runtime.
-
-- Join the waitlist: [docs.farming-labs.dev/cloud#waitlist](https://docs.farming-labs.dev/cloud#waitlist)
-- Learn more: [docs.farming-labs.dev/cloud](https://docs.farming-labs.dev/cloud)
-
-### Option A: CLI (recommended)
-
-Run `init` inside an existing Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project:
+Run the CLI inside an existing app:
 
 ```bash
 npx @farming-labs/docs init
 ```
 
-The CLI will:
-
-1. Detect your framework (Next.js, TanStack Start, SvelteKit, Astro, or Nuxt)
-2. Ask you to pick a theme
-3. Ask for the docs entry path (default: `docs`)
-4. Optionally scaffold internationalized docs with locale folders like `docs/en`, `docs/fr`, or `docs/zh`
-5. Generate config, layout, CSS, and sample pages
-6. Install all required dependencies
-7. Start the dev server and give you a live URL
-
-If you enable i18n during init, the CLI asks you to:
-
-- Multi-select common languages such as `en`, `fr`, `es`, `de`, `pt`, `ja`, `ko`, `zh`, and more
-- Add extra locale codes manually (for example `pt-BR`)
-- Pick a default locale
-
-It then writes the `i18n` config and creates locale-aware starter content for each framework.
-
-If you enable **API reference** during init, the CLI writes the `apiReference` block into
-`docs.config` and scaffolds the route handler files for **TanStack Start**, **SvelteKit**,
-**Astro**, and **Nuxt** so the generated reference works immediately. In **Next.js**,
-`withDocs()` generates the API reference route automatically when `apiReference` is enabled.
-
-If your backend is hosted somewhere else, you can switch the generated `apiReference` block to
-remote mode later by setting `specUrl` to a hosted `openapi.json`.
-
-If you are testing unpublished changes inside this monorepo or another local workspace, keep
-`@farming-labs/*` app dependencies linked locally (for example `workspace:*`). This matters most
-for TanStack Start on Node 22 / Vercel, where the app should resolve the built
-`@farming-labs/tanstack-start/vite` entry instead of raw TypeScript from `node_modules`.
-
-You can also run the built-in MCP server locally:
+Or start a new project:
 
 ```bash
-npx @farming-labs/docs mcp
+npx @farming-labs/docs init --template next --name my-docs
 ```
 
-## Search
+The CLI detects your framework, installs the right packages, creates `docs.config.ts`, adds the
+theme CSS, scaffolds starter pages, and starts the dev server.
 
-Search works out of the box with the built-in simple adapter. If you need a stronger setup, switch to
-Typesense, Algolia, or a custom adapter in `docs.config`.
+## Basic Config
 
-```ts
-export default defineDocs({
-  entry: "docs",
-  theme: fumadocs(),
-  search: {
-    provider: "typesense",
-    baseUrl: process.env.TYPESENSE_URL!,
-    collection: "docs",
-    apiKey: process.env.TYPESENSE_SEARCH_API_KEY!,
-    adminApiKey: process.env.TYPESENSE_ADMIN_API_KEY,
-    mode: "hybrid",
-    embeddings: {
-      provider: "ollama",
-      model: "embeddinggemma",
-    },
-  },
-});
-```
-
-Algolia works the same way:
-
-```ts
-export default defineDocs({
-  entry: "docs",
-  theme: fumadocs(),
-  search: {
-    provider: "algolia",
-    appId: process.env.ALGOLIA_APP_ID!,
-    indexName: "docs",
-    searchApiKey: process.env.ALGOLIA_SEARCH_API_KEY!,
-    adminApiKey: process.env.ALGOLIA_ADMIN_API_KEY,
-  },
-});
-```
-
-To sync an external index ahead of time instead of waiting for the first search request:
-
-```bash
-pnpm dlx @farming-labs/docs search sync --typesense
-```
-
-```bash
-pnpm dlx @farming-labs/docs search sync --algolia
-```
-
-The CLI reads `.env` / `.env.local` from the current project and uses your docs config only for
-content discovery (`entry` / `contentDir`).
-
-Built-in search options:
-
-- **`simple`** — zero-config search with section-based chunking
-- **`typesense`** — hosted or self-hosted search with optional hybrid mode and Ollama embeddings
-- **`algolia`** — hosted search with optional on-demand indexing when an admin key is present
-- **`mcp`** — proxy search through an MCP `search_docs` tool over Streamable HTTP
-- **`custom`** — plug in your own adapter when you need a different backend or ranking logic
-
-Custom adapters receive normalized docs pages and chunked search documents, so you can keep the
-framework scanning/indexing flow and swap only the retrieval layer.
-
-The Next example in [`examples/next`](./examples/next) is set up to switch
-between `mcp`, `typesense`, and `algolia` with env vars, so it is the easiest place to test
-external search providers end to end.
-
-## Changelog (Next.js)
-
-Use `changelog` when you want a docs-native release feed backed by dated MDX entries.
+All frameworks use `defineDocs()`:
 
 ```ts
 import { defineDocs } from "@farming-labs/docs";
@@ -155,895 +42,116 @@ import { fumadocs } from "@farming-labs/theme";
 
 export default defineDocs({
   entry: "docs",
-  theme: fumadocs(),
-  changelog: {
-    enabled: true,
-    path: "changelogs",
-    contentDir: "changelog",
-    title: "Changelog",
-    description: "Latest product updates and release notes.",
-    search: true,
-  },
-});
-```
-
-With the default Next.js content tree, entries live under `app/docs/changelog/YYYY-MM-DD/page.mdx`
-and publish at `/docs/changelogs` plus `/docs/changelogs/YYYY-MM-DD`.
-
-```mdx
----
-title: "OpenAPI mode is now the default"
-description: "The docs example now ships with the faster API reference experience."
-version: "v0.1.13"
-tags: ["api-reference", "next"]
----
-
-## What shipped
-
-Release notes here.
-```
-
-When you use `withDocs()` in `next.config.ts`, the changelog index and entry routes are generated
-automatically. There is no separate `__changelog.generated.tsx` file to maintain; the generated
-route files inline the dated entry imports for you.
-
-### Option B: Manual setup
-
-#### Next.js
-
-```bash
-pnpm add @farming-labs/docs @farming-labs/theme @farming-labs/next
-```
-
-**1. Create `docs.config.ts`**
-
-```tsx
-import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/theme";
-
-export default defineDocs({
-  entry: "docs",
-  apiReference: {
-    enabled: true,
-    path: "api-reference",
-  },
-  feedback: {
-    enabled: true,
-  },
-  pageActions: {
-    copyMarkdown: true,
-    openDocs: true,
-  },
   theme: fumadocs(),
   metadata: {
-    titleTemplate: "%s – Docs",
+    titleTemplate: "%s - Docs",
     description: "My documentation site",
   },
 });
 ```
 
-**2. Create `next.config.ts`**
+Next.js projects also wrap `next.config.ts`:
 
 ```ts
 import { withDocs } from "@farming-labs/next/config";
-export default withDocs({});
+
+export default withDocs();
 ```
 
-**3. Import the theme CSS in `app/global.css`**
+And import the theme CSS:
 
 ```css
 @import "tailwindcss";
 @import "@farming-labs/theme/default/css";
 ```
 
-**4. Write docs**
+Other framework adapters follow the same shape: configure docs once, add the adapter route/helper,
+and import the matching theme CSS.
 
-Create MDX pages under `app/docs/`:
+## Content
 
-```
+Docs are plain Markdown or MDX files.
+
+```txt
 app/docs/
-  page.mdx              # /docs
+  page.mdx
   installation/
-    page.mdx            # /docs/installation
-  getting-started/
-    page.mdx            # /docs/getting-started
+    page.mdx
+  guides/
+    deployment/
+      page.mdx
 ```
 
-Each page uses frontmatter for metadata:
+Pages use frontmatter for metadata:
 
 ```mdx
 ---
 title: "Installation"
-description: "Get up and running in minutes"
-icon: "rocket"
+description: "Get up and running"
 ---
 
 # Installation
 
-Your content here.
+Your docs content here.
 ```
 
-That's it — no layout files, no `[[...slug]]` wrappers. The framework handles routing, layout, and metadata from your config.
+## Agent And LLM Surface
 
-#### SvelteKit
+The framework exposes machine-readable docs by default in Next.js:
 
-```bash
-pnpm add @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme
-```
+- `/llms.txt`
+- `/llms-full.txt`
+- `/.well-known/agent.json`
+- `/.well-known/agent`
+- `/mcp`
+- `/.well-known/mcp`
+- `/docs/<slug>.md`
+- `/docs/<slug>` with `Accept: text/markdown`
 
-**1. Create `docs.config.ts`**
+The canonical API routes remain available under `/api/docs`, including `/api/docs/mcp` and
+`/api/docs/agent/spec`.
 
-```ts
-import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/svelte-theme";
+## Common Tasks
 
-export default defineDocs({
-  entry: "docs",
-  contentDir: "docs",
-  theme: fumadocs(),
-  nav: {
-    title: "My Docs",
-    url: "/docs",
-  },
-  metadata: {
-    titleTemplate: "%s – Docs",
-    description: "My documentation site",
-  },
-});
-```
+Use the full docs for feature-specific setup:
 
-**2. Create `src/lib/docs.server.ts`**
-
-```ts
-import { createDocsServer } from "@farming-labs/svelte/server";
-import config from "./docs.config";
-
-// Bundle content at build time (required for serverless deployments)
-const contentFiles = import.meta.glob("/docs/**/*.{md,mdx,svx}", {
-  query: "?raw",
-  import: "default",
-  eager: true,
-}) as Record<string, string>;
-
-export const { load, GET, POST } = createDocsServer({
-  ...config,
-  _preloadedContent: contentFiles,
-});
-```
-
-**3. Create route files**
-
-`src/routes/docs/+layout.svelte`:
-
-```svelte
-<script>
-  import { DocsLayout } from "@farming-labs/svelte-theme";
-  import config from "../../lib/docs.config";
-
-  let { data, children } = $props();
-</script>
-
-<DocsLayout tree={data.tree} {config}>
-  {@render children()}
-</DocsLayout>
-```
-
-`src/routes/docs/+layout.server.js`:
-
-```js
-export { load } from "../../lib/docs.server";
-```
-
-`src/routes/docs/[...slug]/+page.svelte`:
-
-```svelte
-<script>
-  import { DocsContent } from "@farming-labs/svelte-theme";
-  import config from "../../../lib/docs.config";
-
-  let { data } = $props();
-</script>
-
-<DocsContent {data} {config} />
-```
-
-**4. Import the theme CSS in `src/app.css`**
-
-```css
-@import "@farming-labs/svelte-theme/fumadocs/css";
-```
-
-**5. Write docs**
-
-Create markdown files under `docs/`:
-
-```
-docs/
-  page.md               # /docs
-  installation/
-    page.md             # /docs/installation
-  getting-started/
-    page.md             # /docs/getting-started
-```
-
-## API Reference
-
-`apiReference` generates an API reference from each framework's route conventions or from a hosted
-OpenAPI JSON document.
-
-Use local route scanning when your API lives in the same app. Use `specUrl` when your backend is
-hosted elsewhere and already exposes an `openapi.json`.
-
-Current support:
-
-- **Next.js:** `app/api/**/route.ts` and `src/app/api/**/route.ts`
-- **TanStack Start:** `src/routes/api.*.ts` and nested route files under the configured route root
-- **SvelteKit:** `src/routes/api/**/+server.ts` or `+server.js`
-- **Astro:** `src/pages/api/**/*.ts` or `.js`
-- **Nuxt:** `server/api/**/*.ts` or `.js`
-
-```ts
-export default defineDocs({
-  entry: "docs",
-  apiReference: {
-    enabled: true,
-    path: "api-reference",
-    routeRoot: "api",
-    exclude: ["/api/internal/health", "internal/debug"],
-  },
-  theme: fumadocs(),
-});
-```
-
-Remote OpenAPI JSON:
-
-```ts
-export default defineDocs({
-  entry: "docs",
-  apiReference: {
-    enabled: true,
-    path: "api-reference",
-    specUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
-  },
-  theme: fumadocs(),
-});
-```
-
-- `path` controls the public URL for the generated reference
-- `specUrl` points to a hosted OpenAPI JSON document; when set, local route scanning is skipped
-- `routeRoot` controls the filesystem route root to scan
-- `exclude` accepts either URL-style paths (`"/api/hello"`) or route-root-relative entries (`"hello"` / `"hello/route.ts"`)
-- when `specUrl` is set, `routeRoot` and `exclude` are ignored
-
-### Next.js
-
-Nothing else is required beyond `apiReference` in `docs.config.ts` and `withDocs()` in
-`next.config.ts`. The route at `/{path}` is generated automatically.
-
-### TanStack Start
-
-Create `src/routes/api-reference.index.ts`:
-
-```ts
-import { createFileRoute } from "@tanstack/react-router";
-import { createTanstackApiReference } from "@farming-labs/tanstack-start/api-reference";
-import docsConfig from "../../docs.config";
-
-const handler = createTanstackApiReference(docsConfig);
-
-export const Route = createFileRoute("/api-reference/")({
-  server: {
-    handlers: {
-      GET: handler,
-    },
-  },
-});
-```
-
-Create `src/routes/api-reference.$.ts` with the same handler and
-`createFileRoute("/api-reference/$")`.
-
-### SvelteKit
-
-Create `src/routes/api-reference/+server.ts`:
-
-```ts
-import { createSvelteApiReference } from "@farming-labs/svelte/api-reference";
-import config from "$lib/docs.config";
-
-export const GET = createSvelteApiReference(config);
-```
-
-Create `src/routes/api-reference/[...slug]/+server.ts` with the same `GET` export.
-
-### Astro
-
-Create `src/pages/api-reference/index.ts`:
-
-```ts
-import { createAstroApiReference } from "@farming-labs/astro/api-reference";
-import config from "../../lib/docs.config";
-
-export const GET = createAstroApiReference(config);
-```
-
-Create `src/pages/api-reference/[...slug].ts` with the same `GET` export.
-
-### Nuxt
-
-Create `server/routes/api-reference/index.ts`:
-
-```ts
-import { defineApiReferenceHandler } from "@farming-labs/nuxt/api-reference";
-import config from "~/docs.config";
-
-export default defineApiReferenceHandler(config);
-```
-
-The same route files are used whether you scan local route handlers or use a remote `specUrl`. The
-only difference is where the API reference data comes from.
-
-Create `server/routes/api-reference/[...slug].ts` with the same default export.
-
-See the full docs for more detail:
-
-- [Configuration](https://docs.farming-labs.dev/docs/configuration#api-reference)
-- [API Reference config](https://docs.farming-labs.dev/docs/reference#apireferenceconfig)
-
-## Built-in MCP Server
-
-MCP is enabled by default, so your docs can be exposed as a built-in MCP server for local agents
-and remote HTTP clients without extra config.
-
-```ts
-export default defineDocs({
-  entry: "docs",
-  theme: fumadocs(),
-});
-```
-
-Opt out explicitly when you do not want the MCP surface:
-
-```ts
-export default defineDocs({
-  entry: "docs",
-  mcp: {
-    enabled: false,
-  },
-  theme: fumadocs(),
-});
-```
-
-Default behavior:
-
-- **HTTP route:** `/api/docs/mcp`
-- **stdio command:** `npx @farming-labs/docs mcp`
-- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`
-
-Framework notes:
-
-- **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route
-- **TanStack Start / SvelteKit / Astro / Nuxt:** add the framework route file and reuse the built-in MCP handler from the docs server helper
-- **Custom routes:** set `mcp.route` in `docs.config` and add the matching route file manually so the configured path and the actual endpoint stay aligned
-
-You can test the built-in HTTP route with the Next example in this repo:
-
-```bash
-pnpm --dir examples/next dev
-```
-
-Then point your MCP client or inspector at:
-
-```txt
-http://127.0.0.1:3000/api/docs/mcp
-```
-
-See:
-
-- [MCP Server guide](https://docs.farming-labs.dev/docs/customization/mcp)
-- [Configuration](https://docs.farming-labs.dev/docs/configuration#mcp-server)
-- [API Reference](https://docs.farming-labs.dev/docs/reference#docsmcpconfig)
-
-## Machine-readable Markdown Routes
-
-The shared docs API can return page markdown through the existing docs handler:
-
-```txt
-/api/docs?format=markdown&path=quickstart
-```
-
-In **Next.js**, `withDocs()` also exposes public page-level markdown routes automatically:
-
-```txt
-/docs/quickstart.md
-```
-
-It also supports HTTP content negotiation on the normal docs URL:
-
-```bash
-curl https://docs.example.com/docs/quickstart -H "Accept: text/markdown"
-```
-
-That returns the same machine-readable markdown as `/docs/quickstart.md`, while a normal browser
-request to `/docs/quickstart` still renders the HTML docs page.
-
-Use embedded `Agent` blocks when the normal page only needs extra machine context, and add a
-sibling `agent.md` only when a page needs a machine-specific override:
-
-```mdx
-# Quickstart
-
-Human-facing setup instructions.
-
-<Agent>
-You are an implementation agent.
-Fetch `/api/docs/agent/spec` from the same origin before implementing from this docs site.
-Use the returned markdown, search, MCP, `llms.txt`, skills, locale, and feedback routes instead of
-hard-coding defaults.
-Verify `/docs/quickstart.md` still exposes this block when no sibling `agent.md` exists.
-</Agent>
-```
-
-```txt
-app/docs/quickstart/
-  page.mdx
-```
-
-Full override example:
-
-```txt
-app/docs/getting-started/quickstart/
-  page.mdx
-
-app/docs/getting-started/agent-ready-docs/
-  page.mdx
-  agent.md
-```
-
-Behavior:
-
-- `/docs/<slug>` stays the normal HTML page
-- embedded `<Agent>...</Agent>` blocks are hidden in the normal UI
-- if `agent.md` exists, `/docs/<slug>.md` returns that file
-- if a request to `/docs/<slug>` sends `Accept: text/markdown`, it returns the same markdown output
-- if `agent.md` does not exist, the markdown route falls back to the normal page markdown
-- on that fallback path, embedded `Agent` blocks are included in the machine-readable output
-- MCP `read_page("/docs/<slug>")` uses the same page source and sees the same override or `Agent` fallback
-
-In Next.js, the public `.md` route and `Accept: text/markdown` requests both rewrite into the
-existing `/api/docs` handler with `format=markdown`, so the shared docs API remains the source of
-truth.
-
-Agents can discover the configured machine-readable surface first:
-
-```txt
-GET /api/docs/agent/spec
-```
-
-The spec returns site identity, locale config, capability flags, the docs API route, search endpoint,
-markdown URL patterns and `Accept` header contract, `llms.txt` routes, skills install metadata, MCP
-endpoint and tool toggles, and agent feedback schema/submit routes based on `docs.config`.
-
-This does **not** require a separate `docs.config` flag.
-
-See:
-
-- [Agent Primitive](https://docs.farming-labs.dev/docs/customization/agent-primitive)
-- [MCP Server](https://docs.farming-labs.dev/docs/customization/mcp)
+- [Configuration](https://docs.farming-labs.dev/docs/configuration)
+- [API reference](https://docs.farming-labs.dev/docs/reference)
+- [Themes](https://docs.farming-labs.dev/docs/customization)
+- [MCP server](https://docs.farming-labs.dev/docs/customization/mcp)
 - [llms.txt](https://docs.farming-labs.dev/docs/customization/llms-txt)
+- [Agent primitive](https://docs.farming-labs.dev/docs/customization/agent-primitive)
+- [Examples](https://github.com/farming-labs/docs/tree/main/examples)
 
-## Agent Feedback Endpoints
+## Agent Skills
 
-The shared docs API can also expose machine-readable feedback endpoints for agents:
-
-```ts
-feedback: {
-  agent: {
-    enabled: true,
-    async onFeedback(data) {
-      console.log(data.context?.source, data.payload);
-    },
-  },
-},
-```
-
-Default routes:
-
-```txt
-GET  /api/docs/agent/feedback/schema
-POST /api/docs/agent/feedback
-```
-
-The request body always uses a stable envelope:
-
-```json
-{
-  "context": {
-    "page": "/docs/installation",
-    "source": "md-route"
-  },
-  "payload": {
-    "task": "install docs in an existing Next.js app",
-    "outcome": "implemented"
-  }
-}
-```
-
-Notes:
-
-- `feedback.agent` does not turn on the human footer UI by itself
-- the shared `/api/docs` handler remains the source of truth
-- in Next.js, `withDocs()` wires the public `/api/docs/agent/feedback` routes automatically
-- customize `route`, `schemaRoute`, or `schema` in `docs.config` when needed
-
-Each page uses frontmatter for metadata:
-
-```md
----
-title: "Installation"
-description: "Get up and running in minutes"
-icon: "rocket"
----
-
-# Installation
-
-Your content here.
-```
-
-#### Astro
+This repo includes installable Agent Skills for assistants working with `@farming-labs/docs`.
 
 ```bash
-pnpm add @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme
-```
-
-**1. Create `src/lib/docs.config.ts`**
-
-```ts
-import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/astro-theme";
-
-export default defineDocs({
-  entry: "docs",
-  contentDir: "docs",
-  theme: fumadocs(),
-  nav: {
-    title: "My Docs",
-    url: "/docs",
-  },
-  metadata: {
-    titleTemplate: "%s – Docs",
-    description: "My documentation site",
-  },
-});
-```
-
-**2. Create `src/lib/docs.server.ts`**
-
-```ts
-import { createDocsServer } from "@farming-labs/astro/server";
-import config from "./docs.config";
-
-const contentFiles = import.meta.glob("/docs/**/*.{md,mdx}", {
-  query: "?raw",
-  import: "default",
-  eager: true,
-}) as Record<string, string>;
-
-export const { load, GET, POST } = createDocsServer({
-  ...config,
-  _preloadedContent: contentFiles,
-});
-```
-
-**3. Create page routes**
-
-`src/pages/docs/[...slug].astro`:
-
-```astro
----
-import DocsLayout from "@farming-labs/astro-theme/src/components/DocsLayout.astro";
-import DocsContent from "@farming-labs/astro-theme/src/components/DocsContent.astro";
-import config from "../../lib/docs.config";
-import { load } from "../../lib/docs.server";
-import "@farming-labs/astro-theme/css";
-
-const data = await load(Astro.url.pathname);
----
-
-<html lang="en">
-  <head><title>{data.title} – Docs</title></head>
-  <body>
-    <DocsLayout tree={data.tree} config={config}>
-      <DocsContent data={data} config={config} />
-    </DocsLayout>
-  </body>
-</html>
-```
-
-**4. Create API route**
-
-`src/pages/api/docs.ts`:
-
-```ts
-import type { APIRoute } from "astro";
-import { GET as docsGET, POST as docsPOST } from "../../lib/docs.server";
-
-export const GET: APIRoute = async ({ request }) => docsGET({ request });
-export const POST: APIRoute = async ({ request }) => docsPOST({ request });
-```
-
-**5. Enable SSR in `astro.config.mjs`**
-
-```js
-import { defineConfig } from "astro/config";
-export default defineConfig({ output: "server" });
-```
-
-**6. Write docs**
-
-Create markdown files under `docs/`:
-
-```
-docs/
-  page.md               # /docs
-  installation/
-    page.md             # /docs/installation
-  getting-started/
-    page.md             # /docs/getting-started
-```
-
-#### Nuxt
-
-```bash
-pnpm add @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme
-```
-
-**1. Create `docs.config.ts`**
-
-```ts
-import { defineDocs } from "@farming-labs/docs";
-import { fumadocs } from "@farming-labs/nuxt-theme";
-
-export default defineDocs({
-  entry: "docs",
-  contentDir: "docs",
-  theme: fumadocs(),
-  nav: {
-    title: "My Docs",
-    url: "/docs",
-  },
-  metadata: {
-    titleTemplate: "%s – Docs",
-    description: "My documentation site",
-  },
-});
-```
-
-**2. Configure `nuxt.config.ts`**
-
-```ts
-export default defineNuxtConfig({
-  css: ["@farming-labs/nuxt-theme/fumadocs/css"],
-  nitro: {
-    serverAssets: [{ baseName: "docs", dir: "../docs" }],
-  },
-});
-```
-
-**3. Create `server/api/docs.ts`**
-
-```ts
-import { defineDocsHandler } from "@farming-labs/nuxt/server";
-import config from "../../docs.config";
-
-export default defineDocsHandler(config, useStorage);
-```
-
-**4. Create `pages/docs/[...slug].vue`**
-
-```vue
-<script setup lang="ts">
-import { DocsLayout, DocsContent } from "@farming-labs/nuxt-theme";
-import config from "~/docs.config";
-
-const route = useRoute();
-const pathname = computed(() => route.path);
-
-const { data, error } = await useFetch("/api/docs", {
-  query: { pathname },
-  watch: [pathname],
-});
-
-if (error.value) {
-  throw createError({ statusCode: 404, statusMessage: "Page not found" });
-}
-</script>
-
-<template>
-  <div v-if="data" class="fd-docs-wrapper">
-    <DocsLayout :tree="data.tree" :config="config">
-      <DocsContent :data="data" :config="config" />
-    </DocsLayout>
-  </div>
-</template>
-```
-
-**5. Write docs**
-
-Create markdown files under `docs/`:
-
-```
-docs/
-  page.md               # /docs
-  installation/
-    page.md             # /docs/installation
-  getting-started/
-    page.md             # /docs/getting-started
-```
-
-## Themes
-
-Ten built-in theme entrypoints (`fumadocs`, `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`, `concrete`, `command-grid`, `hardline`) are available across Next.js, TanStack Start, SvelteKit, Astro, and Nuxt. `hardline` is the original hard-edge preset, `concrete` is the louder brutalist poster-style variant, and `command-grid` is the mono-first paper-grid preset inspired by the better-cmdk landing page.
-
-### Next.js
-
-```tsx
-import { fumadocs } from "@farming-labs/theme"; // default
-import { darksharp } from "@farming-labs/theme/darksharp";
-import { pixelBorder } from "@farming-labs/theme/pixel-border";
-import { colorful } from "@farming-labs/theme/colorful";
-import { greentree } from "@farming-labs/theme/greentree";
-import { concrete } from "@farming-labs/theme/concrete";
-import { commandGrid } from "@farming-labs/theme/command-grid";
-```
-
-```css
-@import "@farming-labs/theme/default/css";
-/* or darksharp, pixel-border, colorful, greentree, concrete, command-grid, hardline, etc. */
-```
-
-### SvelteKit
-
-```ts
-import { fumadocs } from "@farming-labs/svelte-theme";
-import { concrete } from "@farming-labs/svelte-theme/concrete";
-import { commandGrid } from "@farming-labs/svelte-theme/command-grid";
-```
-
-```css
-@import "@farming-labs/svelte-theme/fumadocs/css";
-/* or darksharp, pixel-border, colorful, greentree, concrete, command-grid, hardline, etc. */
-```
-
-### Astro
-
-```ts
-import { fumadocs } from "@farming-labs/astro-theme";
-import { concrete } from "@farming-labs/astro-theme/concrete";
-import { commandGrid } from "@farming-labs/astro-theme/command-grid";
-```
-
-```css
-@import "@farming-labs/astro-theme/css";
-/* or pixel-border, darksharp, colorful, greentree, concrete, command-grid, hardline, etc. */
-```
-
-### Nuxt
-
-```ts
-import { fumadocs } from "@farming-labs/nuxt-theme";
-import { concrete } from "@farming-labs/nuxt-theme/concrete";
-import { commandGrid } from "@farming-labs/nuxt-theme/command-grid";
-```
-
-```css
-@import "@farming-labs/nuxt-theme/fumadocs/css";
-/* or darksharp, pixel-border, colorful, greentree, concrete, command-grid, hardline, etc. */
-```
-
-## Token Efficiency — Why This Matters for AI
-
-`@farming-labs/docs` keeps the framework footprint small so AI tools spend less time reading boilerplate and more time working with your actual content — while still giving you the full flexibility of a modern docs framework.
-
-### One config, full control
-
-Everything about your docs site — theme, colors, typography, sidebar, AI chat, metadata — lives in a single `docs.config.ts` file (~15 lines). There's a provider wrapper and a docs layout file, but they're minimal one-liners the CLI generates for you. The real configuration surface is that single file.
-
-This matters because:
-
-- **AI agents** (Cursor, Copilot, Claude) read your project files to help you. Fewer framework files = more token budget for your actual content.
-- **One config file** means an AI can understand your entire docs setup by reading a single file, rather than tracing through multiple interconnected files.
-- **Declarative config** is hard to break — an AI can change `theme: darksharp()` or add `ai: { enabled: true }` without worrying about import paths or component hierarchies.
-- **llms.txt** is built in — your docs are automatically served in LLM-optimized format with zero extra config.
-- **Page-level markdown routes** let agents fetch a single docs page over plain HTTP instead of parsing HTML, and `agent.md` gives you a focused page-local override when needed.
-
-### The CLI does the heavy lifting
-
-Starting from scratch? One command creates a fully themed docs site:
-
-```bash
-npx @farming-labs/docs init --template next --name my-docs --theme pixel-border
-```
-
-Already have a project? Run `init` inside it — the CLI auto-detects your framework, generates config and minimal routing files, installs dependencies, and starts the dev server:
-
-```bash
-npx @farming-labs/docs init
-```
-
-Pick from `next`, `tanstack-start`, `nuxt`, `sveltekit`, or `astro`. Choose any of the 10 built-in themes. Your existing code is untouched.
-
-## Configuration
-
-The `docs.config.ts` file is the single source of truth. Key options:
-
-```tsx title="docs.config.ts"
-export default defineDocs({
-  entry: "docs", // docs root folder
-  theme: fumadocs(), // theme preset
-  apiReference: {
-    enabled: true,
-    path: "api-reference",
-    // specUrl: "https://example.com/openapi.json", // optional: use a hosted OpenAPI JSON instead of local route scanning
-  },
-  // staticExport: true, // for full static builds (Cloudflare Pages) — hides search & AI
-
-  nav: {
-    // sidebar header
-    title: "My Docs",
-    url: "/docs",
-  },
-
-  breadcrumb: { enabled: true },
-
-  themeToggle: {
-    enabled: true,
-    default: "dark",
-  },
-
-  metadata: {
-    titleTemplate: "%s – Docs",
-    description: "My docs site",
-  },
-});
-```
-
-## For AI agents
-
-This repo includes **agent skills** so assistants can help with @farming-labs/docs setup and usage. The skills cover CLI (`init`, `--template`, `--name`, `--api-reference`), manual setup per framework, generated API reference wiring, themes, and theme CSS.
-
-Install skills with the [Skills CLI](https://skills.sh/) and pick your preferred skill(s) when prompted:
-
-```bash
-# npm
 npx skills add farming-labs/docs
-
-# pnpm
-pnpx skills add farming-labs/docs
-
-# yarn
-yarn dlx skills add farming-labs/docs
-
-# bun
-bunx skills add farming-labs/docs
 ```
 
-The CLI lists skills under `skills/farming-labs/` (e.g. `getting-started`, `cli`, `creating-themes`, `ask-ai`, `page-actions`, `configuration`). All skills conform to the [Agent Skills specification](https://agentskills.io/specification).
-
-- **Skills index:** [skills/farming-labs/README.md](./skills/farming-labs/README.md)
-- **Root skills README:** [skills/README.md](./skills/README.md)
+Skills live in [`skills/farming-labs`](./skills/farming-labs) and cover setup, CLI usage,
+configuration, themes, Ask AI, and page actions.
 
 ## Development
 
 ```bash
 pnpm install
 pnpm build
-pnpm dev        # starts the example app
+pnpm dev
+```
+
+Useful checks:
+
+```bash
+pnpm test
+pnpm typecheck
 ```
 
 ## Contributing
 
-We welcome contributions. See the **[Contributing guide](https://docs.farming-labs.dev/docs/contributing)** for how to report issues, suggest features, and submit pull requests.
+See the [Contributing guide](https://docs.farming-labs.dev/docs/contributing).
 
 ## License
 
