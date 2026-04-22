@@ -122,6 +122,8 @@ Welcome to the docs.
       `---
 title: "Installation"
 description: "Install everything"
+related:
+  - /docs/guides/quickstart
 ---
 
 # Installation

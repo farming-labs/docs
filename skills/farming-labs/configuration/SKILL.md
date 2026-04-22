@@ -83,8 +83,9 @@ Default behavior:
 - embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI and are included in the markdown fallback
 - if a page folder has `agent.md`, that file becomes the markdown response for that page
 - if `agent.md` is missing, the markdown response falls back to the normal page markdown
-- page frontmatter `related` is rendered into a comma-separated machine-readable markdown metadata line beside `Description`
+- page frontmatter `related` is rendered into a comma-separated machine-readable markdown metadata line beside `Description` for normal page markdown and embedded `<Agent>` fallback
 - MCP `read_page("/docs/<slug>")` uses the same page source and sees the same override
+- a sibling `agent.md` remains a full override; include any `Related:` line manually inside `agent.md` when needed
 
 Folder example:
 

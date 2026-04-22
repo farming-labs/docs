@@ -485,6 +485,8 @@ Verify the onboarding command examples before changing this page.
       `---
 title: "Overview"
 description: "Human overview"
+related:
+  - /docs/configuration
 ---
 
 # Overview

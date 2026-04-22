@@ -1,19 +1,10 @@
 import type { ResolvedDocsRelatedLink } from "./types.js";
 
-export interface DocsRelatedPageMeta {
-  url: string;
-  title: string;
-  description?: string;
-}
-
 interface ParsedRelatedInput {
   href: string;
 }
 
-export function normalizeDocsRelated(
-  value: unknown,
-  _pages: DocsRelatedPageMeta[] = [],
-): ResolvedDocsRelatedLink[] {
+export function normalizeDocsRelated(value: unknown): ResolvedDocsRelatedLink[] {
   if (!Array.isArray(value)) return [];
 
   const seen = new Set<string>();

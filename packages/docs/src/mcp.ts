@@ -928,16 +928,14 @@ function normalizeUrlPath(value: string): string {
 }
 
 function renderPageDocument(page: DocsMcpPage): string {
+  if (page.agentRawContent !== undefined) return page.agentRawContent;
+
   const relatedLines = renderDocsRelatedMarkdownLines(page.related);
-  if (page.agentRawContent !== undefined && relatedLines.length === 0) return page.agentRawContent;
 
   const lines = [`# ${page.title}`, `URL: ${page.url}`];
   if (page.description) lines.push(`Description: ${page.description}`);
   lines.push(...relatedLines);
-  lines.push(
-    "",
-    page.agentRawContent ?? page.agentFallbackRawContent ?? page.rawContent ?? page.content,
-  );
+  lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);
   return lines.join("\n");
 }
 
