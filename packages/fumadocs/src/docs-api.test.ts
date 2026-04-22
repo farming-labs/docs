@@ -528,10 +528,7 @@ Config content.
     const fallbackDocument = await fallbackResponse.text();
     expect(fallbackDocument).toContain("# Quickstart\nURL: /docs/getting-started/quickstart");
     expect(fallbackDocument).toContain(
-      [
-        "Description: Start fast",
-        "Related: /docs/overview, /docs/configuration",
-      ].join("\n"),
+      ["Description: Start fast", "Related: /docs/overview, /docs/configuration"].join("\n"),
     );
     expect(fallbackDocument).toContain(
       "Verify the onboarding command examples before changing this page.",
