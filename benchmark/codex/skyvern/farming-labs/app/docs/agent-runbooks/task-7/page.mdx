@@ -1,0 +1,54 @@
+---
+title: Task 7 Agent Runbook
+description: Compact agent implementation path for QuickBooks code-cache training.
+---
+
+# Task 7 Agent Runbook
+
+<Agent>
+Task match: skyvern task 7; quickbooks-code-cache; QuickBooks code-cache training.
+
+This task runbook is sufficient for the first implementation attempt. Read source pages only after
+an acceptance failure or if a concrete API detail is missing.
+
+Create:
+- solutions/task-7.py
+- solutions/task-7.md
+
+Implementation contract:
+- First QuickBooks invoice-downloader run_task uses engine="skyvern-2.0" and run_with="agent".
+- Subsequent scheduled 2am runs use run_with="code".
+- Include fallback behavior from code mode back to agent mode.
+- Read get_run_artifacts and explain how to confirm the execution mode actually used.
+
+SDK/code shape:
+- Read SKYVERN_API_KEY and QUICKBOOKS_CREDENTIAL_ID from environment variables.
+- Implement train_code_cache_once() that calls run_task with engine="skyvern-2.0" and
+  run_with="agent".
+- Implement nightly_code_run() for the 2am schedule using run_with="code".
+- If the code-mode run fails or returns an unsupported code-cache error, retry the same task with
+  run_with="agent" as fallback.
+- Call get_run_artifacts and inspect artifact metadata or run details for the actual execution mode.
+- Include a cron line for the subsequent 2am run.
+- Persist run ID, requested mode, actual execution mode, and fallback status.
+
+Required strings/signals:
+- QuickBooks
+- engine="skyvern-2.0"
+- run_with="agent"
+- run_with="code"
+- 2am
+- fallback
+- get_run_artifacts
+- execution mode
+
+Canonical source pages if needed:
+- __BASE_URL__/docs/optimization/cost-control.md
+- __BASE_URL__/docs/debugging/using-artifacts.md
+- __BASE_URL__/docs/sdk-reference/tasks.md
+- __BASE_URL__/docs/sdk-reference/complete-reference.md
+- __BASE_URL__/docs/cookbooks/bulk-invoice-downloader.md
+
+Run after editing:
+- SKYVERN_TASK_ID=7 node scripts/acceptance.mjs
+</Agent>

@@ -1,0 +1,53 @@
+---
+title: Task 4 Agent Runbook
+description: Compact agent implementation path for Shopify CDP order extraction.
+---
+
+# Task 4 Agent Runbook
+
+<Agent>
+Task match: skyvern task 4; shopify-cdp-orders; Shopify CDP order extraction.
+
+This task runbook is sufficient for the first implementation attempt. Read source pages only after
+an acceptance failure or if a concrete API detail is missing.
+
+Create:
+- solutions/task-4.py
+- solutions/task-4.md
+
+Implementation contract:
+- Connect to the already running Chrome instance over CDP at localhost:9222.
+- Do not launch a new cloud browser.
+- Do not re-login.
+- Navigate to Shopify Orders.
+- Extract yesterday's unfulfilled orders into a Pydantic model.
+
+SDK/code shape:
+- Read CDP_URL from the environment and default it to http://localhost:9222.
+- Create a Skyvern client and call connect_to_browser_over_cdp against localhost:9222.
+- Reuse the attached page/session; never call launch_cloud_browser and never call page.agent.login.
+- Navigate to the Shopify admin Orders page in the existing logged-in browser.
+- Define a Pydantic model for unfulfilled orders with order_id, customer_name, total, currency,
+  created_at, fulfillment_status, and admin_url.
+- Compute yesterday's date range locally and include it in the extraction instruction.
+- Call page.extract with the Pydantic schema and persist the result to JSON.
+
+Required strings/signals:
+- connect_to_browser_over_cdp
+- localhost:9222
+- Shopify
+- Orders
+- yesterday
+- unfulfilled
+- Pydantic
+
+Canonical source pages if needed:
+- __BASE_URL__/docs/self-hosted/browser.md
+- __BASE_URL__/docs/optimization/browser-tunneling.md
+- __BASE_URL__/docs/running-automations/extract-structured-data.md
+- __BASE_URL__/docs/sdk-reference/complete-reference.md
+- __BASE_URL__/docs/getting-started/core-concepts.md
+
+Run after editing:
+- SKYVERN_TASK_ID=4 node scripts/acceptance.mjs
+</Agent>

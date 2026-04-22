@@ -1,0 +1,355 @@
+{
+  "source": {
+    "repository": "https://github.com/maniculehq/skyvern",
+    "commit": "87d270dbc010277d80653a977e7dd575a168c6d2"
+  },
+  "tasks": [
+    {
+      "id": 1,
+      "slug": "gusto-paystub-webhook",
+      "title": "Gusto pay stub download with webhook verification",
+      "prompt": "Write a Python script that runs nightly via cron: log into Gusto (TOTP 2FA credential stored in Skyvern) using page.agent.login, call page.agent.download_files for the latest pay stub PDF for employee ID 4471, then POST it to https://api.ourco.com/payroll/ingest. Verify the Skyvern webhook HMAC on your receiver.",
+      "expectedPagesFromPrompt": [
+        "credentials/store-credentials",
+        "credentials/handle-2fa",
+        "features/authentication-and-2fa",
+        "going-to-production/webhooks",
+        "sdk-reference/browser-automation/agent-login",
+        "sdk-reference/browser-automation/agent-download-files",
+        "sdk-reference/credentials/create_credential",
+        "browser-automations/work-with-files"
+      ],
+      "canonicalPages": [
+        "credentials/store-credentials",
+        "credentials/handle-2fa",
+        "credentials/troubleshooting-login",
+        "going-to-production/webhooks",
+        "sdk-reference/complete-reference",
+        "sdk-reference/credentials",
+        "sdk-reference/helpers",
+        "multi-step-automations/file-operations"
+      ],
+      "requiredTokens": [
+        "page.agent.login",
+        "page.agent.download_files",
+        "employee_id = \"4471\"",
+        "https://api.ourco.com/payroll/ingest",
+        "hmac",
+        "cron",
+        "gusto"
+      ]
+    },
+    {
+      "id": 2,
+      "slug": "amazon-germany-extraction",
+      "title": "Amazon Germany stock extraction",
+      "prompt": "Scrape title, price, and stock from 200 Amazon URLs using the Python SDK. Launch one cloud browser session pinned to Germany, iterate URLs on the same page, define a JSON schema for page.extract, cap each URL at 15 steps, and use engine='skyvern-2.0' with run_with='code' after the first run.",
+      "expectedPagesFromPrompt": [
+        "features/browser-sessions",
+        "features/proxy-and-geo-targeting",
+        "features/code-caching",
+        "optimization/cost-control",
+        "browser-automations/extract-structured-data",
+        "sdk-reference/browser-automation/launch_cloud_browser",
+        "sdk-reference/browser-sessions/create_browser_session",
+        "sdk-reference/browser-automation/extract",
+        "sdk-reference/tasks/run_task",
+        "optimization/browser-sessions"
+      ],
+      "canonicalPages": [
+        "optimization/browser-sessions",
+        "going-to-production/proxy-geolocation",
+        "optimization/cost-control",
+        "running-automations/extract-structured-data",
+        "sdk-reference/browser-sessions",
+        "sdk-reference/tasks",
+        "sdk-reference/complete-reference"
+      ],
+      "requiredTokens": [
+        "Germany",
+        "200",
+        "page.extract",
+        "max_steps=15",
+        "engine=\"skyvern-2.0\"",
+        "run_with=\"code\"",
+        "title",
+        "price",
+        "stock"
+      ]
+    },
+    {
+      "id": 3,
+      "slug": "greenhouse-bulk-applications",
+      "title": "Greenhouse bulk job applications",
+      "prompt": "I have a CSV of 40 candidates (name, email, resume path). Write a Python script that iterates the CSV, opens boards.greenhouse.io/acmeco/jobs/123456, and uses page.fill_multipage_form plus page.upload_file to submit each application. Extract the confirmation number with page.extract after submit.",
+      "expectedPagesFromPrompt": [
+        "browser-automations/work-with-files",
+        "browser-automations/overview",
+        "sdk-reference/browser-automation/fill_multipage_form",
+        "sdk-reference/browser-automation/extract_form_fields",
+        "sdk-reference/browser-automation/upload_file",
+        "sdk-reference/browser-automation/extract",
+        "sdk-reference/helpers/upload_file",
+        "cookbooks/job-application-filler"
+      ],
+      "canonicalPages": [
+        "multi-step-automations/file-operations",
+        "running-automations/extract-structured-data",
+        "sdk-reference/complete-reference",
+        "sdk-reference/helpers",
+        "cookbooks/job-application-filler"
+      ],
+      "requiredTokens": [
+        "csv",
+        "40",
+        "boards.greenhouse.io/acmeco/jobs/123456",
+        "page.fill_multipage_form",
+        "page.upload_file",
+        "page.extract",
+        "confirmation"
+      ]
+    },
+    {
+      "id": 4,
+      "slug": "shopify-cdp-orders",
+      "title": "Shopify CDP order extraction",
+      "prompt": "I already have Chrome running on localhost:9222 logged into my Shopify admin. Connect the Skyvern SDK to it over CDP, navigate to Orders, and extract yesterday's unfulfilled orders into a Pydantic model - no new browser, no re-login.",
+      "expectedPagesFromPrompt": [
+        "browser-automations/handle-browsers",
+        "optimization/browser-tunneling",
+        "browser-automations/extract-structured-data",
+        "sdk-reference/browser-automation/connect_to_browser_over_cdp",
+        "sdk-reference/browser-automation/launch_local_browser",
+        "sdk-reference/browser-automation/extract",
+        "getting-started/core-concepts"
+      ],
+      "canonicalPages": [
+        "self-hosted/browser",
+        "optimization/browser-tunneling",
+        "running-automations/extract-structured-data",
+        "sdk-reference/complete-reference",
+        "getting-started/core-concepts"
+      ],
+      "requiredTokens": [
+        "connect_to_browser_over_cdp",
+        "localhost:9222",
+        "Shopify",
+        "Orders",
+        "yesterday",
+        "unfulfilled",
+        "Pydantic"
+      ]
+    },
+    {
+      "id": 5,
+      "slug": "stripe-checkout-otp-turnstile",
+      "title": "Stripe checkout with OTP and Turnstile",
+      "prompt": "Automate a Stripe checkout at buy.stripe.com/test_abc123 using only the SDK: fill with a stored credit_card credential, handle the 6-digit OTP from no-reply@stripe.com via send_totp_code, pass through Cloudflare Turnstile, and retry the full flow up to 3 times with error_code_mapping for card_declined vs captcha_failed.",
+      "expectedPagesFromPrompt": [
+        "features/captcha-and-bot-bypass",
+        "credentials/handle-2fa",
+        "credentials/store-credentials",
+        "going-to-production/error-handling",
+        "going-to-production/reliability-tips",
+        "sdk-reference/browser-automation/fill",
+        "sdk-reference/credentials/create_credential",
+        "sdk-reference/credentials/send_totp_code",
+        "sdk-reference/tasks/run_task"
+      ],
+      "canonicalPages": [
+        "going-to-production/captcha-bot-detection",
+        "credentials/handle-2fa",
+        "credentials/store-credentials",
+        "going-to-production/error-handling",
+        "going-to-production/reliability-tips",
+        "sdk-reference/credentials",
+        "sdk-reference/tasks",
+        "sdk-reference/complete-reference"
+      ],
+      "requiredTokens": [
+        "buy.stripe.com/test_abc123",
+        "credit_card",
+        "send_totp_code",
+        "no-reply@stripe.com",
+        "Turnstile",
+        "3",
+        "error_code_mapping",
+        "card_declined",
+        "captcha_failed"
+      ]
+    },
+    {
+      "id": 6,
+      "slug": "workflow-fanout-cancel",
+      "title": "Workflow fanout with cancel on portal_down",
+      "prompt": "Create a workflow via skyvern.workflows.create with a JSON definition that takes patient_id as a parameter and runs my lab-extraction task. Then fan out 50 patient IDs with asyncio.gather, each calling run_workflow. Cancel any run whose webhook payload contains error_code: portal_down.",
+      "expectedPagesFromPrompt": [
+        "going-to-production/error-handling",
+        "going-to-production/webhooks",
+        "sdk-reference/workflows/create_workflow",
+        "sdk-reference/workflows/run_workflow",
+        "sdk-reference/tasks/cancel_run",
+        "sdk-reference/tasks/get_runs_v2",
+        "cookbooks/healthcare-portal-data"
+      ],
+      "canonicalPages": [
+        "going-to-production/error-handling",
+        "going-to-production/webhooks",
+        "sdk-reference/workflows",
+        "sdk-reference/tasks",
+        "cookbooks/healthcare-portal-data"
+      ],
+      "requiredTokens": [
+        "skyvern.workflows.create",
+        "patient_id",
+        "asyncio.gather",
+        "50",
+        "run_workflow",
+        "cancel_run",
+        "portal_down"
+      ]
+    },
+    {
+      "id": 7,
+      "slug": "quickbooks-code-cache",
+      "title": "QuickBooks code-cache training",
+      "prompt": "Train the code cache on my QuickBooks invoice-downloader: first run_task call uses engine='skyvern-2.0', run_with='agent'. Every subsequent 2am run uses run_with='code' with auto-fallback to agent. Show me how to read get_run_artifacts to confirm which execution mode each run actually used.",
+      "expectedPagesFromPrompt": [
+        "features/code-caching",
+        "optimization/cost-control",
+        "debugging/using-artifacts",
+        "sdk-reference/tasks/run_task",
+        "sdk-reference/tasks/get_run_artifacts",
+        "sdk-reference/tasks/get_run",
+        "sdk-reference/tasks/get_run_timeline",
+        "cookbooks/bulk-invoice-downloader"
+      ],
+      "canonicalPages": [
+        "optimization/cost-control",
+        "debugging/using-artifacts",
+        "sdk-reference/tasks",
+        "sdk-reference/complete-reference",
+        "cookbooks/bulk-invoice-downloader"
+      ],
+      "requiredTokens": [
+        "QuickBooks",
+        "engine=\"skyvern-2.0\"",
+        "run_with=\"agent\"",
+        "run_with=\"code\"",
+        "2am",
+        "fallback",
+        "get_run_artifacts",
+        "execution mode"
+      ]
+    },
+    {
+      "id": 8,
+      "slug": "self-hosted-ollama-brightdata",
+      "title": "Self-hosted Skyvern with Ollama and proxy",
+      "prompt": "Self-host Skyvern on one Docker host: Ollama serving qwen2.5:32b as the LLM, DATABASE_STRING pointed at our managed Postgres, all browser traffic through a US residential Bright Data proxy. Expose it so my Python SDK can point at https://skyvern.internal.ourco.com with an API key.",
+      "expectedPagesFromPrompt": [
+        "self-hosted/overview",
+        "self-hosted/docker",
+        "self-hosted/llm-configuration",
+        "self-hosted/proxy",
+        "features/authentication-and-2fa",
+        "sdk-reference/credentials/create_credential",
+        "self-hosted/storage"
+      ],
+      "canonicalPages": [
+        "self-hosted/overview",
+        "self-hosted/docker",
+        "self-hosted/llm-configuration",
+        "self-hosted/proxy",
+        "self-hosted/storage",
+        "integrations/local-llms",
+        "credentials/store-credentials"
+      ],
+      "requiredTokens": [
+        "Docker",
+        "Ollama",
+        "qwen2.5:32b",
+        "DATABASE_STRING",
+        "Postgres",
+        "Bright Data",
+        "https://skyvern.internal.ourco.com",
+        "API key"
+      ]
+    },
+    {
+      "id": 9,
+      "slug": "mychart-labs-browser-profile",
+      "title": "MyChart labs with email OTP and profile reuse",
+      "prompt": "Log into MyChart at mychart.kp.org via page.agent.login (email OTP to patient@ourco.com - use polling). Extract the last 12 months of lab results with page.extract matching schema {test_name, value, unit, reference_range, collected_at}. Save state via create_browser_profile so tomorrow's run skips the OTP email.",
+      "expectedPagesFromPrompt": [
+        "credentials/handle-2fa",
+        "optimization/browser-profiles",
+        "browser-automations/extract-structured-data",
+        "features/browser-sessions",
+        "sdk-reference/browser-automation/agent-login",
+        "sdk-reference/browser-automation/extract",
+        "sdk-reference/browser-profiles/create_browser_profile",
+        "sdk-reference/browser-profiles/get_browser_profile",
+        "cookbooks/healthcare-portal-data"
+      ],
+      "canonicalPages": [
+        "credentials/handle-2fa",
+        "optimization/browser-profiles",
+        "running-automations/extract-structured-data",
+        "optimization/browser-sessions",
+        "sdk-reference/complete-reference",
+        "sdk-reference/browser-profiles",
+        "cookbooks/healthcare-portal-data"
+      ],
+      "requiredTokens": [
+        "mychart.kp.org",
+        "page.agent.login",
+        "patient@ourco.com",
+        "poll",
+        "page.extract",
+        "test_name",
+        "reference_range",
+        "collected_at",
+        "create_browser_profile"
+      ]
+    },
+    {
+      "id": 10,
+      "slug": "dmv-real-id-artifacts",
+      "title": "DMV REAL ID renewal with artifacts",
+      "prompt": "Automate the 4-page DMV REAL ID renewal at dmv.ca.gov/renew end-to-end with the SDK: page.fill_autocomplete for the address on page 1, page.upload_file for the proof-of-residency JPG on page 2, stored credit_card credential on page 3, and page.act on the final agree + submit. If final submit fails, pull the HAR, recording, and parsed LLM reasoning from get_run_artifacts.",
+      "expectedPagesFromPrompt": [
+        "browser-automations/overview",
+        "browser-automations/work-with-files",
+        "credentials/store-credentials",
+        "debugging/using-artifacts",
+        "going-to-production/reliability-tips",
+        "sdk-reference/browser-automation/fill_multipage_form",
+        "sdk-reference/browser-automation/fill_autocomplete",
+        "sdk-reference/browser-automation/upload_file",
+        "sdk-reference/browser-automation/act",
+        "sdk-reference/tasks/get_run_artifacts",
+        "sdk-reference/helpers/upload_file"
+      ],
+      "canonicalPages": [
+        "multi-step-automations/file-operations",
+        "credentials/store-credentials",
+        "debugging/using-artifacts",
+        "going-to-production/reliability-tips",
+        "sdk-reference/complete-reference",
+        "sdk-reference/helpers"
+      ],
+      "requiredTokens": [
+        "dmv.ca.gov/renew",
+        "page.fill_autocomplete",
+        "page.upload_file",
+        "credit_card",
+        "page.act",
+        "HAR",
+        "recording",
+        "LLM reasoning",
+        "get_run_artifacts"
+      ]
+    }
+  ]
+}

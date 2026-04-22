@@ -1,0 +1,41 @@
+---
+title: Skyvern Documentation
+slug: /
+mode: custom
+---
+
+# Skyvern Documentation
+
+<Agent>
+<span id="skyvern-benchmark-agent-entry" />
+You are an implementation agent using the Farming Labs/docs mirror of the Skyvern docs.
+
+This mirror contains the same Skyvern text docs as the Mintlify benchmark copy, plus an agent layer
+that routes implementation tasks before broad docs browsing.
+
+Fast path:
+1. Match the benchmark task ID from the prompt.
+2. Fetch the matching task runbook below.
+3. Implement from that runbook first.
+4. Fetch the canonical source pages only if the task runbook is missing a specific API detail or
+   acceptance fails.
+
+Task runbooks:
+- Task 1: __BASE_URL__/docs/agent-runbooks/task-1.md
+- Task 2: __BASE_URL__/docs/agent-runbooks/task-2.md
+- Task 3: __BASE_URL__/docs/agent-runbooks/task-3.md
+- Task 4: __BASE_URL__/docs/agent-runbooks/task-4.md
+- Task 5: __BASE_URL__/docs/agent-runbooks/task-5.md
+- Task 6: __BASE_URL__/docs/agent-runbooks/task-6.md
+- Task 7: __BASE_URL__/docs/agent-runbooks/task-7.md
+- Task 8: __BASE_URL__/docs/agent-runbooks/task-8.md
+- Task 9: __BASE_URL__/docs/agent-runbooks/task-9.md
+- Task 10: __BASE_URL__/docs/agent-runbooks/task-10.md
+
+Machine-readable discovery:
+- __BASE_URL__/.well-known/agent.json
+- __BASE_URL__/api/docs/agent/spec
+- __BASE_URL__/api/docs?query=<task keywords>
+</Agent>
+
+Use the sidebar for the human-facing Skyvern docs corpus.

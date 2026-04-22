@@ -1,0 +1,54 @@
+---
+title: Task 3 Agent Runbook
+description: Compact agent implementation path for Greenhouse bulk applications.
+---
+
+# Task 3 Agent Runbook
+
+<Agent>
+Task match: skyvern task 3; greenhouse-bulk-applications; Greenhouse bulk job applications.
+
+This task runbook is sufficient for the first implementation attempt. Read source pages only after
+an acceptance failure or if a concrete API detail is missing.
+
+Create:
+- solutions/task-3.py
+- solutions/task-3.md
+
+Implementation contract:
+- Read a CSV of 40 candidates with name, email, and resume path.
+- Open boards.greenhouse.io/acmeco/jobs/123456 for each candidate.
+- Use page.fill_multipage_form for the application.
+- Use page.upload_file for each resume path.
+- After submit, call page.extract to capture the confirmation number.
+
+SDK/code shape:
+- Read CANDIDATES_CSV from the environment or default to candidates.csv.
+- Use csv.DictReader and validate name, email, and resume path for each row.
+- Create one Skyvern client/page and loop over exactly 40 candidate rows.
+- For each candidate, navigate to boards.greenhouse.io/acmeco/jobs/123456.
+- Call page.fill_multipage_form with name/email fields and application answers.
+- Call page.upload_file with the candidate's resume path before submitting.
+- After submit, call page.extract with a schema containing confirmation_number, candidate_email,
+  and submitted_at.
+- Record per-candidate success/failure without calling real sites unless RUN_REAL_AUTOMATION=1.
+
+Required strings/signals:
+- csv
+- 40
+- boards.greenhouse.io/acmeco/jobs/123456
+- page.fill_multipage_form
+- page.upload_file
+- page.extract
+- confirmation
+
+Canonical source pages if needed:
+- __BASE_URL__/docs/multi-step-automations/file-operations.md
+- __BASE_URL__/docs/running-automations/extract-structured-data.md
+- __BASE_URL__/docs/sdk-reference/complete-reference.md
+- __BASE_URL__/docs/sdk-reference/helpers.md
+- __BASE_URL__/docs/cookbooks/job-application-filler.md
+
+Run after editing:
+- SKYVERN_TASK_ID=3 node scripts/acceptance.mjs
+</Agent>

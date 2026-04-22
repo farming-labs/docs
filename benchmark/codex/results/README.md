@@ -14,28 +14,34 @@ logs, and generated summaries. They are useful for local audit, but too noisy to
 
 | Report | Scenario | Attempts | Error Result | Efficiency Result |
 | ------ | -------- | -------- | ------------ | ----------------- |
+| [combined-summary-2026-04-22.md](./combined-summary-2026-04-22.md) | portfolio summary | 21 valid attempts across tracked real reports | final correctness tied; retrieval pressure favors Farming Labs/docs | Farming Labs/docs won first-relevant, raw-fetch, and input-token metrics across all tracked real reports |
 | [real-codex-2026-04-21.md](./real-codex-2026-04-21.md) | `support-agent-prompting` | 3 per provider | tie | Farming Labs/docs won speed, fetches, bytes, and tokens |
 | [versioned-agent-endpoint-2026-04-21.md](./versioned-agent-endpoint-2026-04-21.md) | `versioned-agent-endpoint` | 3 per provider | tie | Farming Labs/docs won speed, fetches, bytes, and tokens |
 | [agent-primitive-error-retrieval-2026-04-21.md](./agent-primitive-error-retrieval-2026-04-21.md) | `versioned-agent-endpoint` | 2 valid Farming Labs/docs, 3 valid Mintlify | Farming Labs/docs won docs error rate and error-free rate; final correctness tied | Farming Labs/docs won first relevant page, raw fetches, unique resources, and tokens |
+
+Skyvern-specific tracked reports live under
+[../skyvern/results/](../skyvern/results/), and the latest Skyvern sample is included in the
+combined summary above.
 
 ## Accurate Claim
 
 Current data supports:
 
 > Farming Labs/docs gave Codex a faster and lower-context implementation path while matching
-> Mintlify-shaped docs on final correctness and error rate.
+> Mintlify-shaped docs on final correctness across the tracked real valid attempts.
 
-The latest agent-primitive run also supports this narrower retrieval-error claim:
+The agent-primitive and Skyvern runs also support this narrower retrieval-pressure claim:
 
-> Farming Labs/docs reduced docs retrieval mistakes in the versioned endpoint scenario after the
-> Mintlify fixture stopped using pseudo-agent primitives.
+> Farming Labs/docs reduced docs retrieval pressure in agent-focused stress tests: lower docs-error
+> rate in the versioned endpoint retrieval-stress run and `0.0 / 100` observed Agent Error Pressure
+> on the two-task Skyvern sample.
 
 Current data does not support:
 
-> Farming Labs/docs has lower error rate than Mintlify.
+> Farming Labs/docs has lower final implementation failure rate than Mintlify.
 
-The stronger unsupported claim means lower final task, acceptance, or session error rate. The latest
-run improves docs retrieval error rate, but final implementation correctness still tied on valid
+The stronger unsupported claim means lower final task, acceptance, or session error rate. Current
+runs improve docs retrieval pressure, but final implementation correctness is still tied on valid
 attempts.
 
 The `1` vs `3` docs-fetch result in the tracked reports is raw HTTP retrieval count. It means

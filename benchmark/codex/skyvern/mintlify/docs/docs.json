@@ -1,0 +1,576 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "palm",
+  "name": "Skyvern",
+  "colors": {
+    "primary": "#4A6CF7",
+    "light": "#7B93FA",
+    "dark": "#1B2559"
+  },
+  "appearance": {
+    "default": "light"
+  },
+  "background": {
+    "color": {
+      "light": "#F8F5EF",
+      "dark": "#1C1917"
+    }
+  },
+  "fonts": {
+    "heading": {
+      "family": "Inter",
+      "weight": 600
+    },
+    "body": {
+      "family": "Inter",
+      "weight": 400
+    }
+  },
+  "logo": {
+    "light": "/images/skyvern_logo_blackbg.png",
+    "dark": "/logo/dark.png",
+    "href": "https://skyvern.com"
+  },
+  "favicon": "/favicon.png",
+  "search": {
+    "prompt": "Search Skyvern docs..."
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Home",
+        "pages": [
+          "index",
+          "nav/getting-started",
+          "nav/cloud-ui",
+          "nav/developers",
+          "nav/cookbooks",
+          "nav/changelog",
+          "nav/api-reference",
+          "nav/sdk-reference"
+        ]
+      },
+      {
+        "tab": "Getting Started",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "getting-started/introduction",
+              "getting-started/core-concepts",
+              "getting-started/quickstart",
+              "getting-started/ai-agents-quickstart"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Cloud UI",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "cloud/getting-started/overview",
+              "cloud/getting-started/run-your-first-task",
+              "cloud/getting-started/run-a-task",
+              "cloud/getting-started/monitor-a-run"
+            ]
+          },
+          {
+            "group": "Building Workflows",
+            "pages": [
+              "cloud/building-workflows/build-a-workflow",
+              "cloud/building-workflows/manage-workflows",
+              "cloud/building-workflows/add-parameters",
+              "cloud/building-workflows/configure-blocks",
+              "cloud/building-workflows/run-a-workflow",
+              "cloud/building-workflows/scheduling"
+            ]
+          },
+          {
+            "group": "Re-using Browsers",
+            "pages": [
+              "cloud/browser-management/browser-sessions",
+              "cloud/browser-management/browser-profiles"
+            ]
+          },
+          {
+            "group": "Viewing Results",
+            "pages": [
+              "cloud/viewing-results/run-history",
+              "cloud/viewing-results/run-details",
+              "cloud/viewing-results/downloading-artifacts"
+            ]
+          },
+          {
+            "group": "Managing Credentials",
+            "pages": [
+              "cloud/managing-credentials/credentials-overview",
+              "cloud/managing-credentials/password-credentials",
+              "cloud/managing-credentials/credit-card-credentials",
+              "cloud/managing-credentials/totp-setup",
+              "cloud/managing-credentials/external-providers"
+            ]
+          },
+          {
+            "group": "Account & Settings",
+            "pages": [
+              "cloud/account-settings/api-keys",
+              "cloud/account-settings/billing-usage",
+              "cloud/account-settings/organization-settings",
+              "cloud/account-settings/profile-settings"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "integrations/zapier",
+              "integrations/make",
+              "integrations/n8n",
+              "integrations/workato"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Developers",
+        "groups": [
+          {
+            "group": "Running Automations",
+            "pages": [
+              "running-automations/run-a-task",
+              "running-automations/task-parameters",
+              "running-automations/extract-structured-data"
+            ]
+          },
+          {
+            "group": "Handling Authentication",
+            "pages": [
+              "credentials/store-credentials",
+              "credentials/handle-2fa",
+              "credentials/troubleshooting-login"
+            ]
+          },
+          {
+            "group": "Multi-Step Automations",
+            "pages": [
+              "multi-step-automations/build-a-workflow",
+              "multi-step-automations/workflow-blocks-reference",
+              "multi-step-automations/file-operations",
+              "multi-step-automations/workflow-parameters",
+              "multi-step-automations/scheduling-workflows"
+            ]
+          },
+          {
+            "group": "Optimization",
+            "pages": [
+              "optimization/browser-sessions",
+              "optimization/browser-profiles",
+              "optimization/cost-control"
+            ]
+          },
+          {
+            "group": "Going to Production",
+            "pages": [
+              "going-to-production/webhooks",
+              "going-to-production/proxy-geolocation",
+              "going-to-production/error-handling",
+              "going-to-production/reliability-tips",
+              "going-to-production/captcha-bot-detection",
+              "integrations/mcp",
+              "integrations/cli"
+            ]
+          },
+          {
+            "group": "Debugging",
+            "pages": [
+              "debugging/using-artifacts",
+              "debugging/troubleshooting-guide",
+              "debugging/observability-with-laminar",
+              "debugging/faq"
+            ]
+          },
+          {
+            "group": "Self-Hosted Deployment",
+            "pages": [
+              "self-hosted/overview",
+              "self-hosted/docker",
+              "self-hosted/llm-configuration",
+              "self-hosted/browser",
+              "self-hosted/proxy",
+              "self-hosted/kubernetes",
+              "self-hosted/storage",
+              "integrations/local-llms"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Cookbooks",
+        "pages": [
+          "cookbooks/overview",
+          "cookbooks/bulk-invoice-downloader",
+          "cookbooks/job-application-filler",
+          "cookbooks/healthcare-portal-data"
+        ]
+      },
+      {
+        "tab": "Changelog",
+        "pages": ["changelog"]
+      },
+      {
+        "tab": "API Reference",
+        "openapi": "api-reference/openapi.json"
+      },
+      {
+        "tab": "SDK Reference",
+        "versions": [
+          {
+            "version": "Python",
+            "groups": [
+              {
+                "group": "Python SDK",
+                "pages": [
+                  "sdk-reference/overview",
+                  "sdk-reference/tasks",
+                  "sdk-reference/workflows",
+                  "sdk-reference/browser-sessions",
+                  "sdk-reference/browser-profiles",
+                  "sdk-reference/credentials",
+                  "sdk-reference/helpers",
+                  "sdk-reference/error-handling",
+                  "sdk-reference/complete-reference"
+                ]
+              }
+            ]
+          },
+          {
+            "version": "TypeScript",
+            "groups": [
+              {
+                "group": "TypeScript SDK",
+                "pages": [
+                  "ts-sdk-reference/overview",
+                  "ts-sdk-reference/tasks",
+                  "ts-sdk-reference/workflows",
+                  "ts-sdk-reference/browser-sessions",
+                  "ts-sdk-reference/browser-profiles",
+                  "ts-sdk-reference/credentials",
+                  "ts-sdk-reference/helpers",
+                  "ts-sdk-reference/browser-automation",
+                  "ts-sdk-reference/error-handling",
+                  "ts-sdk-reference/complete-reference"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Dashboard",
+        "href": "https://app.skyvern.com"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get API Key",
+      "href": "https://app.skyvern.com/settings/"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/Skyvern-AI/skyvern",
+      "discord": "https://discord.gg/skyvern",
+      "twitter": "https://twitter.com/skyvernai"
+    }
+  },
+  "css": "/style.css",
+  "api": {
+    "baseUrl": "https://api.skyvern.com",
+    "auth": {
+      "method": "key",
+      "name": "x-api-key"
+    },
+    "playground": {
+      "display": "interactive"
+    }
+  },
+  "redirects": [
+    {
+      "source": "/introduction",
+      "destination": "/getting-started/quickstart"
+    },
+    {
+      "source": "/getting-started/skyvern-in-action",
+      "destination": "/getting-started/core-concepts"
+    },
+    {
+      "source": "/getting-started/prompting-guide",
+      "destination": "/debugging/troubleshooting-guide"
+    },
+    {
+      "source": "/running-tasks/run-tasks",
+      "destination": "/running-automations/run-a-task"
+    },
+    {
+      "source": "/running-tasks/visualizing-results",
+      "destination": "/debugging/using-artifacts"
+    },
+    {
+      "source": "/running-tasks/cancel-runs",
+      "destination": "/running-automations/run-a-task"
+    },
+    {
+      "source": "/running-tasks/webhooks-faq",
+      "destination": "/going-to-production/webhooks"
+    },
+    {
+      "source": "/running-tasks/connect-local-browser",
+      "destination": "/self-hosted/browser"
+    },
+    {
+      "source": "/running-tasks/proxy-location",
+      "destination": "/going-to-production/proxy-geolocation"
+    },
+    {
+      "source": "/running-tasks/advanced-features",
+      "destination": "/running-automations/task-parameters"
+    },
+    {
+      "source": "/running-tasks/api-spec",
+      "destination": "/running-automations/run-a-task"
+    },
+    {
+      "source": "/workflows/manage-workflows",
+      "destination": "/cloud/building-workflows/manage-workflows"
+    },
+    {
+      "source": "/workflows/workflow-blocks-details",
+      "destination": "/multi-step-automations/workflow-blocks-reference"
+    },
+    {
+      "source": "/workflows/workflow-parameters",
+      "destination": "/multi-step-automations/workflow-parameters"
+    },
+    {
+      "source": "/workflows/run-workflows",
+      "destination": "/cloud/building-workflows/run-a-workflow"
+    },
+    {
+      "source": "/workflows/consistent-workflows",
+      "destination": "/going-to-production/reliability-tips"
+    },
+    {
+      "source": "/workflows/running-workflows",
+      "destination": "/cloud/building-workflows/run-a-workflow"
+    },
+    {
+      "source": "/workflows/introduction",
+      "destination": "/multi-step-automations/build-a-workflow"
+    },
+    {
+      "source": "/workflows/workflow-blocks",
+      "destination": "/multi-step-automations/workflow-blocks-reference"
+    },
+    {
+      "source": "/workflows/creating-workflows",
+      "destination": "/multi-step-automations/build-a-workflow"
+    },
+    {
+      "source": "/workflows/getting-workflows",
+      "destination": "/multi-step-automations/build-a-workflow#step-7:-get-results"
+    },
+    {
+      "source": "/workflows/what-is-a-parameter",
+      "destination": "/multi-step-automations/workflow-parameters"
+    },
+    {
+      "source": "/credentials/introduction",
+      "destination": "/cloud/managing-credentials/credentials-overview"
+    },
+    {
+      "source": "/credentials/passwords",
+      "destination": "/cloud/managing-credentials/password-credentials"
+    },
+    {
+      "source": "/credentials/credit-cards",
+      "destination": "/cloud/managing-credentials/credit-card-credentials"
+    },
+    {
+      "source": "/credentials/totp",
+      "destination": "/cloud/managing-credentials/totp-setup"
+    },
+    {
+      "source": "/credentials/bitwarden",
+      "destination": "/cloud/managing-credentials/external-providers"
+    },
+    {
+      "source": "/credentials/custom-credential-service",
+      "destination": "/cloud/managing-credentials/external-providers"
+    },
+    {
+      "source": "/browser-sessions/introduction",
+      "destination": "/optimization/browser-sessions"
+    },
+    {
+      "source": "/browser-sessions/browser-profiles",
+      "destination": "/optimization/browser-profiles"
+    },
+    {
+      "source": "/observability/overview",
+      "destination": "/debugging/using-artifacts"
+    },
+    {
+      "source": "/integrations/make.com",
+      "destination": "/integrations/make"
+    },
+    {
+      "source": "/integrations/ollama-litellm",
+      "destination": "/integrations/local-llms"
+    },
+    {
+      "source": "/api-reference/api-reference/agent/run-task",
+      "destination": "/api-reference/agent/run-a-task"
+    },
+    {
+      "source": "/api-reference/api-reference/agent/get-run",
+      "destination": "/api-reference/agent/get-a-run-by-id"
+    },
+    {
+      "source": "/api-reference/api-reference/agent/cancel-run",
+      "destination": "/api-reference/agent/cancel-a-run-by-id"
+    },
+    {
+      "source": "/api-reference/api-reference/agent/retry-run-webhook",
+      "destination": "/api-reference/agent/retry-run-webhook"
+    },
+    {
+      "source": "/api-reference/api-reference/agent/login",
+      "destination": "/api-reference/agent/login-task"
+    },
+    {
+      "source": "/api-reference/api-reference/agent/get-run-timeline",
+      "destination": "/api-reference/agent/get-run-timeline"
+    },
+    {
+      "source": "/api-reference/api-reference/workflows/get-workflows",
+      "destination": "/api-reference/workflows/get-workflows"
+    },
+    {
+      "source": "/api-reference/api-reference/workflows/create-workflow",
+      "destination": "/api-reference/workflows/create-a-new-workflow"
+    },
+    {
+      "source": "/api-reference/api-reference/workflows/get-workflow",
+      "destination": "/api-reference/workflows/get-workflows"
+    },
+    {
+      "source": "/api-reference/api-reference/workflows/get-workflow-versions",
+      "destination": "/api-reference/workflows/get-workflows"
+    },
+    {
+      "source": "/api-reference/api-reference/workflows/update-workflow",
+      "destination": "/api-reference/workflows/update-a-workflow"
+    },
+    {
+      "source": "/api-reference/api-reference/workflows/delete-workflow",
+      "destination": "/api-reference/workflows/delete-a-workflow"
+    },
+    {
+      "source": "/api-reference/api-reference/workflow-runs/run-workflow",
+      "destination": "/api-reference/workflows/run-a-workflow"
+    },
+    {
+      "source": "/api-reference/api-reference/workflow-runs/get-workflow-runs",
+      "destination": "/api-reference/workflows/get-workflows"
+    },
+    {
+      "source": "/api-reference/api-reference/workflow-runs/get-run",
+      "destination": "/api-reference/agent/get-a-run-by-id"
+    },
+    {
+      "source": "/api-reference/api-reference/workflow-runs/cancel-run",
+      "destination": "/api-reference/agent/cancel-a-run-by-id"
+    },
+    {
+      "source": "/api-reference/api-reference/workflow-runs/retry-run-webhook",
+      "destination": "/api-reference/agent/retry-run-webhook"
+    },
+    {
+      "source": "/api-reference/api-reference/workflow-runs/get-run-timeline",
+      "destination": "/api-reference/agent/get-run-timeline"
+    },
+    {
+      "source": "/api-reference/api-reference/browser-sessions/create-browser-session",
+      "destination": "/api-reference/browser-sessions/create-a-session"
+    },
+    {
+      "source": "/api-reference/api-reference/browser-sessions/get-browser-session",
+      "destination": "/api-reference/browser-sessions/get-a-session"
+    },
+    {
+      "source": "/api-reference/api-reference/browser-sessions/close-browser-session",
+      "destination": "/api-reference/browser-sessions/close-a-session"
+    },
+    {
+      "source": "/api-reference/api-reference/browser-sessions/get-browser-sessions",
+      "destination": "/api-reference/browser-sessions/get-active-browser-sessions"
+    },
+    {
+      "source": "/api-reference/api-reference/browser-profiles/create-browser-profile",
+      "destination": "/api-reference/browser-profiles/create-a-browser-profile"
+    },
+    {
+      "source": "/api-reference/api-reference/browser-profiles/list-browser-profiles",
+      "destination": "/api-reference/browser-profiles/list-browser-profiles"
+    },
+    {
+      "source": "/api-reference/api-reference/browser-profiles/get-browser-profile",
+      "destination": "/api-reference/browser-profiles/get-browser-profile"
+    },
+    {
+      "source": "/api-reference/api-reference/browser-profiles/delete-browser-profile",
+      "destination": "/api-reference/browser-profiles/delete-browser-profile"
+    },
+    {
+      "source": "/api-reference/api-reference/credentials/create-credential",
+      "destination": "/api-reference/credentials/create-credential"
+    },
+    {
+      "source": "/api-reference/api-reference/credentials/get-credential",
+      "destination": "/api-reference/credentials/get-credential-by-id"
+    },
+    {
+      "source": "/api-reference/api-reference/credentials/update-credential",
+      "destination": "/api-reference/credentials/create-credential"
+    },
+    {
+      "source": "/api-reference/api-reference/credentials/delete-credential",
+      "destination": "/api-reference/credentials/delete-credential"
+    },
+    {
+      "source": "/api-reference/api-reference/credentials/get-credentials",
+      "destination": "/api-reference/credentials/get-all-credentials"
+    },
+    {
+      "source": "/api-reference/api-reference/credentials/send-totp-code",
+      "destination": "/api-reference/credentials/send-totp-code"
+    },
+    {
+      "source": "/api-reference/api-reference/artifacts/get-run-artifacts",
+      "destination": "/api-reference/artifacts/get-artifacts-for-a-run"
+    },
+    {
+      "source": "/api-reference/api-reference/artifacts/get-artifact-content-v-1-artifacts-artifact-id-content-get",
+      "destination": "/api-reference/artifacts/get-an-artifact"
+    },
+    {
+      "source": "/api-reference/api-reference/files/upload-file",
+      "destination": "/api-reference/files/upload-file"
+    }
+  ]
+}

@@ -1,0 +1,324 @@
+{
+  "version": "1",
+  "name": "Skyvern Docs Agent Spec",
+  "subject": "skyvern",
+  "capabilities": {
+    "markdownRoutes": true,
+    "acceptTextMarkdown": true,
+    "agentBlocks": true,
+    "agentMdOverrides": true,
+    "llms": true,
+    "mcp": true,
+    "agentFeedback": true,
+    "wellKnownAgentJson": true
+  },
+  "recommendedEntry": "/docs.md",
+  "recommendedTaskRunbookPattern": "/docs/agent-runbooks/task-{id}.md",
+  "navigationPolicy": {
+    "mode": "agent-first",
+    "firstFetch": "/docs.md",
+    "secondFetch": "/docs/agent-runbooks/task-{id}.md",
+    "sourcePages": "Fetch canonical source pages only if the task runbook is missing an API detail or acceptance fails."
+  },
+  "api": {
+    "docs": "/api/docs",
+    "agentSpec": "/api/docs/agent/spec",
+    "wellKnown": "/.well-known/agent.json",
+    "activeTaskPattern": "/api/docs/agent/task/{id}"
+  },
+  "tasks": [
+    {
+      "id": 1,
+      "slug": "gusto-paystub-webhook",
+      "title": "Gusto pay stub download with webhook verification",
+      "prompt": "Write a Python script that runs nightly via cron: log into Gusto (TOTP 2FA credential stored in Skyvern) using page.agent.login, call page.agent.download_files for the latest pay stub PDF for employee ID 4471, then POST it to https://api.ourco.com/payroll/ingest. Verify the Skyvern webhook HMAC on your receiver.",
+      "canonicalPages": [
+        "/docs/credentials/store-credentials.md",
+        "/docs/credentials/handle-2fa.md",
+        "/docs/credentials/troubleshooting-login.md",
+        "/docs/going-to-production/webhooks.md",
+        "/docs/sdk-reference/complete-reference.md",
+        "/docs/sdk-reference/credentials.md",
+        "/docs/sdk-reference/helpers.md",
+        "/docs/multi-step-automations/file-operations.md"
+      ],
+      "requiredTokens": [
+        "page.agent.login",
+        "page.agent.download_files",
+        "employee_id = \"4471\"",
+        "https://api.ourco.com/payroll/ingest",
+        "hmac",
+        "cron",
+        "gusto"
+      ],
+      "acceptanceCommand": "SKYVERN_TASK_ID=1 node scripts/acceptance.mjs",
+      "outputFiles": [
+        "solutions/task-1.py",
+        "solutions/task-1.md"
+      ]
+    },
+    {
+      "id": 2,
+      "slug": "amazon-germany-extraction",
+      "title": "Amazon Germany stock extraction",
+      "prompt": "Scrape title, price, and stock from 200 Amazon URLs using the Python SDK. Launch one cloud browser session pinned to Germany, iterate URLs on the same page, define a JSON schema for page.extract, cap each URL at 15 steps, and use engine='skyvern-2.0' with run_with='code' after the first run.",
+      "canonicalPages": [
+        "/docs/optimization/browser-sessions.md",
+        "/docs/going-to-production/proxy-geolocation.md",
+        "/docs/optimization/cost-control.md",
+        "/docs/running-automations/extract-structured-data.md",
+        "/docs/sdk-reference/browser-sessions.md",
+        "/docs/sdk-reference/tasks.md",
+        "/docs/sdk-reference/complete-reference.md"
+      ],
+      "requiredTokens": [
+        "Germany",
+        "200",
+        "page.extract",
+        "max_steps=15",
+        "engine=\"skyvern-2.0\"",
+        "run_with=\"code\"",
+        "title",
+        "price",
+        "stock"
+      ],
+      "acceptanceCommand": "SKYVERN_TASK_ID=2 node scripts/acceptance.mjs",
+      "outputFiles": [
+        "solutions/task-2.py",
+        "solutions/task-2.md"
+      ]
+    },
+    {
+      "id": 3,
+      "slug": "greenhouse-bulk-applications",
+      "title": "Greenhouse bulk job applications",
+      "prompt": "I have a CSV of 40 candidates (name, email, resume path). Write a Python script that iterates the CSV, opens boards.greenhouse.io/acmeco/jobs/123456, and uses page.fill_multipage_form plus page.upload_file to submit each application. Extract the confirmation number with page.extract after submit.",
+      "canonicalPages": [
+        "/docs/multi-step-automations/file-operations.md",
+        "/docs/running-automations/extract-structured-data.md",
+        "/docs/sdk-reference/complete-reference.md",
+        "/docs/sdk-reference/helpers.md",
+        "/docs/cookbooks/job-application-filler.md"
+      ],
+      "requiredTokens": [
+        "csv",
+        "40",
+        "boards.greenhouse.io/acmeco/jobs/123456",
+        "page.fill_multipage_form",
+        "page.upload_file",
+        "page.extract",
+        "confirmation"
+      ],
+      "acceptanceCommand": "SKYVERN_TASK_ID=3 node scripts/acceptance.mjs",
+      "outputFiles": [
+        "solutions/task-3.py",
+        "solutions/task-3.md"
+      ]
+    },
+    {
+      "id": 4,
+      "slug": "shopify-cdp-orders",
+      "title": "Shopify CDP order extraction",
+      "prompt": "I already have Chrome running on localhost:9222 logged into my Shopify admin. Connect the Skyvern SDK to it over CDP, navigate to Orders, and extract yesterday's unfulfilled orders into a Pydantic model - no new browser, no re-login.",
+      "canonicalPages": [
+        "/docs/self-hosted/browser.md",
+        "/docs/optimization/browser-tunneling.md",
+        "/docs/running-automations/extract-structured-data.md",
+        "/docs/sdk-reference/complete-reference.md",
+        "/docs/getting-started/core-concepts.md"
+      ],
+      "requiredTokens": [
+        "connect_to_browser_over_cdp",
+        "localhost:9222",
+        "Shopify",
+        "Orders",
+        "yesterday",
+        "unfulfilled",
+        "Pydantic"
+      ],
+      "acceptanceCommand": "SKYVERN_TASK_ID=4 node scripts/acceptance.mjs",
+      "outputFiles": [
+        "solutions/task-4.py",
+        "solutions/task-4.md"
+      ]
+    },
+    {
+      "id": 5,
+      "slug": "stripe-checkout-otp-turnstile",
+      "title": "Stripe checkout with OTP and Turnstile",
+      "prompt": "Automate a Stripe checkout at buy.stripe.com/test_abc123 using only the SDK: fill with a stored credit_card credential, handle the 6-digit OTP from no-reply@stripe.com via send_totp_code, pass through Cloudflare Turnstile, and retry the full flow up to 3 times with error_code_mapping for card_declined vs captcha_failed.",
+      "canonicalPages": [
+        "/docs/going-to-production/captcha-bot-detection.md",
+        "/docs/credentials/handle-2fa.md",
+        "/docs/credentials/store-credentials.md",
+        "/docs/going-to-production/error-handling.md",
+        "/docs/going-to-production/reliability-tips.md",
+        "/docs/sdk-reference/credentials.md",
+        "/docs/sdk-reference/tasks.md",
+        "/docs/sdk-reference/complete-reference.md"
+      ],
+      "requiredTokens": [
+        "buy.stripe.com/test_abc123",
+        "credit_card",
+        "send_totp_code",
+        "no-reply@stripe.com",
+        "Turnstile",
+        "3",
+        "error_code_mapping",
+        "card_declined",
+        "captcha_failed"
+      ],
+      "acceptanceCommand": "SKYVERN_TASK_ID=5 node scripts/acceptance.mjs",
+      "outputFiles": [
+        "solutions/task-5.py",
+        "solutions/task-5.md"
+      ]
+    },
+    {
+      "id": 6,
+      "slug": "workflow-fanout-cancel",
+      "title": "Workflow fanout with cancel on portal_down",
+      "prompt": "Create a workflow via skyvern.workflows.create with a JSON definition that takes patient_id as a parameter and runs my lab-extraction task. Then fan out 50 patient IDs with asyncio.gather, each calling run_workflow. Cancel any run whose webhook payload contains error_code: portal_down.",
+      "canonicalPages": [
+        "/docs/going-to-production/error-handling.md",
+        "/docs/going-to-production/webhooks.md",
+        "/docs/sdk-reference/workflows.md",
+        "/docs/sdk-reference/tasks.md",
+        "/docs/cookbooks/healthcare-portal-data.md"
+      ],
+      "requiredTokens": [
+        "skyvern.workflows.create",
+        "patient_id",
+        "asyncio.gather",
+        "50",
+        "run_workflow",
+        "cancel_run",
+        "portal_down"
+      ],
+      "acceptanceCommand": "SKYVERN_TASK_ID=6 node scripts/acceptance.mjs",
+      "outputFiles": [
+        "solutions/task-6.py",
+        "solutions/task-6.md"
+      ]
+    },
+    {
+      "id": 7,
+      "slug": "quickbooks-code-cache",
+      "title": "QuickBooks code-cache training",
+      "prompt": "Train the code cache on my QuickBooks invoice-downloader: first run_task call uses engine='skyvern-2.0', run_with='agent'. Every subsequent 2am run uses run_with='code' with auto-fallback to agent. Show me how to read get_run_artifacts to confirm which execution mode each run actually used.",
+      "canonicalPages": [
+        "/docs/optimization/cost-control.md",
+        "/docs/debugging/using-artifacts.md",
+        "/docs/sdk-reference/tasks.md",
+        "/docs/sdk-reference/complete-reference.md",
+        "/docs/cookbooks/bulk-invoice-downloader.md"
+      ],
+      "requiredTokens": [
+        "QuickBooks",
+        "engine=\"skyvern-2.0\"",
+        "run_with=\"agent\"",
+        "run_with=\"code\"",
+        "2am",
+        "fallback",
+        "get_run_artifacts",
+        "execution mode"
+      ],
+      "acceptanceCommand": "SKYVERN_TASK_ID=7 node scripts/acceptance.mjs",
+      "outputFiles": [
+        "solutions/task-7.py",
+        "solutions/task-7.md"
+      ]
+    },
+    {
+      "id": 8,
+      "slug": "self-hosted-ollama-brightdata",
+      "title": "Self-hosted Skyvern with Ollama and proxy",
+      "prompt": "Self-host Skyvern on one Docker host: Ollama serving qwen2.5:32b as the LLM, DATABASE_STRING pointed at our managed Postgres, all browser traffic through a US residential Bright Data proxy. Expose it so my Python SDK can point at https://skyvern.internal.ourco.com with an API key.",
+      "canonicalPages": [
+        "/docs/self-hosted/overview.md",
+        "/docs/self-hosted/docker.md",
+        "/docs/self-hosted/llm-configuration.md",
+        "/docs/self-hosted/proxy.md",
+        "/docs/self-hosted/storage.md",
+        "/docs/integrations/local-llms.md",
+        "/docs/credentials/store-credentials.md"
+      ],
+      "requiredTokens": [
+        "Docker",
+        "Ollama",
+        "qwen2.5:32b",
+        "DATABASE_STRING",
+        "Postgres",
+        "Bright Data",
+        "https://skyvern.internal.ourco.com",
+        "API key"
+      ],
+      "acceptanceCommand": "SKYVERN_TASK_ID=8 node scripts/acceptance.mjs",
+      "outputFiles": [
+        "solutions/task-8.py",
+        "solutions/task-8.md"
+      ]
+    },
+    {
+      "id": 9,
+      "slug": "mychart-labs-browser-profile",
+      "title": "MyChart labs with email OTP and profile reuse",
+      "prompt": "Log into MyChart at mychart.kp.org via page.agent.login (email OTP to patient@ourco.com - use polling). Extract the last 12 months of lab results with page.extract matching schema {test_name, value, unit, reference_range, collected_at}. Save state via create_browser_profile so tomorrow's run skips the OTP email.",
+      "canonicalPages": [
+        "/docs/credentials/handle-2fa.md",
+        "/docs/optimization/browser-profiles.md",
+        "/docs/running-automations/extract-structured-data.md",
+        "/docs/optimization/browser-sessions.md",
+        "/docs/sdk-reference/complete-reference.md",
+        "/docs/sdk-reference/browser-profiles.md",
+        "/docs/cookbooks/healthcare-portal-data.md"
+      ],
+      "requiredTokens": [
+        "mychart.kp.org",
+        "page.agent.login",
+        "patient@ourco.com",
+        "poll",
+        "page.extract",
+        "test_name",
+        "reference_range",
+        "collected_at",
+        "create_browser_profile"
+      ],
+      "acceptanceCommand": "SKYVERN_TASK_ID=9 node scripts/acceptance.mjs",
+      "outputFiles": [
+        "solutions/task-9.py",
+        "solutions/task-9.md"
+      ]
+    },
+    {
+      "id": 10,
+      "slug": "dmv-real-id-artifacts",
+      "title": "DMV REAL ID renewal with artifacts",
+      "prompt": "Automate the 4-page DMV REAL ID renewal at dmv.ca.gov/renew end-to-end with the SDK: page.fill_autocomplete for the address on page 1, page.upload_file for the proof-of-residency JPG on page 2, stored credit_card credential on page 3, and page.act on the final agree + submit. If final submit fails, pull the HAR, recording, and parsed LLM reasoning from get_run_artifacts.",
+      "canonicalPages": [
+        "/docs/multi-step-automations/file-operations.md",
+        "/docs/credentials/store-credentials.md",
+        "/docs/debugging/using-artifacts.md",
+        "/docs/going-to-production/reliability-tips.md",
+        "/docs/sdk-reference/complete-reference.md",
+        "/docs/sdk-reference/helpers.md"
+      ],
+      "requiredTokens": [
+        "dmv.ca.gov/renew",
+        "page.fill_autocomplete",
+        "page.upload_file",
+        "credit_card",
+        "page.act",
+        "HAR",
+        "recording",
+        "LLM reasoning",
+        "get_run_artifacts"
+      ],
+      "acceptanceCommand": "SKYVERN_TASK_ID=10 node scripts/acceptance.mjs",
+      "outputFiles": [
+        "solutions/task-10.py",
+        "solutions/task-10.md"
+      ]
+    }
+  ]
+}

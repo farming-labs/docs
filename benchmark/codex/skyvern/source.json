@@ -1,0 +1,13 @@
+{
+  "repository": "https://github.com/maniculehq/skyvern",
+  "commit": "87d270dbc010277d80653a977e7dd575a168c6d2",
+  "copiedAt": "2026-04-21",
+  "copiedTextExtensions": [
+    ".css",
+    ".json",
+    ".md",
+    ".mdx"
+  ],
+  "mediaAssetsExcluded": true,
+  "mediaExclusionReason": "Agent benchmark serves markdown and does not render large images/videos."
+}

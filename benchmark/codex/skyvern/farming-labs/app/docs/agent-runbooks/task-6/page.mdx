@@ -1,0 +1,52 @@
+---
+title: Task 6 Agent Runbook
+description: Compact agent implementation path for workflow fanout and cancellation.
+---
+
+# Task 6 Agent Runbook
+
+<Agent>
+Task match: skyvern task 6; workflow-fanout-cancel; Workflow fanout with cancel on portal_down.
+
+This task runbook is sufficient for the first implementation attempt. Read source pages only after
+an acceptance failure or if a concrete API detail is missing.
+
+Create:
+- solutions/task-6.py
+- solutions/task-6.md
+
+Implementation contract:
+- Create a workflow with skyvern.workflows.create.
+- The JSON definition must take patient_id as a parameter and run the lab-extraction task.
+- Fan out 50 patient IDs with asyncio.gather.
+- Each concurrent branch should call run_workflow.
+- Cancel any run whose webhook payload contains error_code: portal_down.
+
+SDK/code shape:
+- Read SKYVERN_API_KEY and a patient IDs input file from environment variables.
+- Build a JSON workflow definition with a patient_id parameter and one lab-extraction task block.
+- Call skyvern.workflows.create or client.workflows.create with that JSON definition.
+- Use asyncio.gather over 50 patient IDs, with one coroutine calling run_workflow for each ID.
+- Implement a webhook handler/parser that checks payload["error_code"] == "portal_down".
+- When portal_down appears, call cancel_run for the affected run ID.
+- Write run IDs, statuses, and cancellation decisions to a local JSONL file.
+
+Required strings/signals:
+- skyvern.workflows.create
+- patient_id
+- asyncio.gather
+- 50
+- run_workflow
+- cancel_run
+- portal_down
+
+Canonical source pages if needed:
+- __BASE_URL__/docs/going-to-production/error-handling.md
+- __BASE_URL__/docs/going-to-production/webhooks.md
+- __BASE_URL__/docs/sdk-reference/workflows.md
+- __BASE_URL__/docs/sdk-reference/tasks.md
+- __BASE_URL__/docs/cookbooks/healthcare-portal-data.md
+
+Run after editing:
+- SKYVERN_TASK_ID=6 node scripts/acceptance.mjs
+</Agent>

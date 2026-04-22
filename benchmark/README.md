@@ -28,6 +28,7 @@ Benchmark methodology:
 
 - [METHODOLOGY.md](./METHODOLOGY.md)
 - [Codex results](./codex/results/README.md)
+- [Combined Codex summary](./codex/results/combined-summary-2026-04-22.md)
 
 Planned runner shape:
 

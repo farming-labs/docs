@@ -1,0 +1,60 @@
+---
+title: Task 5 Agent Runbook
+description: Compact agent implementation path for Stripe checkout with OTP and Turnstile.
+---
+
+# Task 5 Agent Runbook
+
+<Agent>
+Task match: skyvern task 5; stripe-checkout-otp-turnstile; Stripe checkout with OTP and Turnstile.
+
+This task runbook is sufficient for the first implementation attempt. Read source pages only after
+an acceptance failure or if a concrete API detail is missing.
+
+Create:
+- solutions/task-5.py
+- solutions/task-5.md
+
+Implementation contract:
+- Automate buy.stripe.com/test_abc123 using only the SDK.
+- Fill payment details with a stored credit_card credential.
+- Poll or retrieve the 6-digit OTP from no-reply@stripe.com and send it with send_totp_code.
+- Pass Cloudflare Turnstile handling through the Skyvern flow.
+- Retry the full flow up to 3 times.
+- Map failures with error_code_mapping for card_declined and captcha_failed.
+
+SDK/code shape:
+- Read SKYVERN_API_KEY and STRIPE_CARD_CREDENTIAL_ID from environment variables.
+- Create a Skyvern client and page, then navigate to buy.stripe.com/test_abc123.
+- Use a stored credit_card credential for card entry rather than hardcoded card data.
+- Poll email for no-reply@stripe.com and extract the 6-digit OTP, then call send_totp_code.
+- Let the Skyvern browser flow handle Cloudflare Turnstile; classify Turnstile failures as
+  captcha_failed.
+- Wrap the full checkout flow in a for attempt in range(1, 4) retry loop.
+- Configure error_code_mapping so card_declined and captcha_failed become explicit failure codes.
+- Keep external checkout disabled unless RUN_REAL_AUTOMATION=1.
+
+Required strings/signals:
+- buy.stripe.com/test_abc123
+- credit_card
+- send_totp_code
+- no-reply@stripe.com
+- Turnstile
+- 3
+- error_code_mapping
+- card_declined
+- captcha_failed
+
+Canonical source pages if needed:
+- __BASE_URL__/docs/going-to-production/captcha-bot-detection.md
+- __BASE_URL__/docs/credentials/handle-2fa.md
+- __BASE_URL__/docs/credentials/store-credentials.md
+- __BASE_URL__/docs/going-to-production/error-handling.md
+- __BASE_URL__/docs/going-to-production/reliability-tips.md
+- __BASE_URL__/docs/sdk-reference/credentials.md
+- __BASE_URL__/docs/sdk-reference/tasks.md
+- __BASE_URL__/docs/sdk-reference/complete-reference.md
+
+Run after editing:
+- SKYVERN_TASK_ID=5 node scripts/acceptance.mjs
+</Agent>

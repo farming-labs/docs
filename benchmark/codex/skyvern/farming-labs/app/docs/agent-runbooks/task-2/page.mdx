@@ -1,0 +1,68 @@
+---
+title: Task 2 Agent Runbook
+description: Compact agent implementation path for Amazon Germany extraction.
+---
+
+# Task 2 Agent Runbook
+
+<Agent>
+Task match: skyvern task 2; amazon-germany-extraction; Amazon Germany stock extraction.
+
+This task runbook is sufficient for the first implementation attempt. Read source pages only after
+an acceptance failure or if a concrete API detail is missing.
+
+Create:
+- solutions/task-2.py
+- solutions/task-2.md
+
+Implementation contract:
+- Read or define a list of 200 Amazon URLs.
+- Launch one cloud browser session pinned to Germany.
+- Reuse the same page/session while iterating URLs.
+- Extract title, price, and stock with page.extract and a JSON schema.
+- Cap each URL at max_steps=15.
+- First run may train with engine="skyvern-2.0"; subsequent runs should use run_with="code".
+
+SDK/code shape:
+- Read SKYVERN_API_KEY and an input file such as AMAZON_URLS_CSV from environment variables.
+- Create one Skyvern client and one cloud browser session/page before the loop.
+- Use Germany/DE geo targeting on the launched cloud browser session.
+- Build a Pydantic or JSON schema with title, price, stock, url, and extracted_at.
+- For each URL, navigate the existing page, then call page.extract with the schema and max_steps=15.
+- Use engine="skyvern-2.0" and run_with="agent" for the optional warm-up run, then run_with="code"
+  for the remaining URLs.
+- Write results to JSONL/CSV; keep real browsing behind a RUN_REAL_AUTOMATION guard.
+
+Avoid wasted docs fetches:
+- The current Skyvern corpus collapses split browser automation references into
+  sdk-reference/complete-reference.md.
+- Do not fetch sdk-reference/browser-automation/extract.md or
+  sdk-reference/browser-automation/launch_cloud_browser.md.
+- You already have the needed details here: one Germany-pinned cloud browser session, one reused page,
+  page.extract with a title/price/stock schema, max_steps=15, engine="skyvern-2.0", and
+  run_with="code" after the first run.
+- For local validation use python3, not python.
+
+Required strings/signals:
+- Germany
+- 200
+- page.extract
+- max_steps=15
+- engine="skyvern-2.0"
+- run_with="code"
+- title
+- price
+- stock
+
+Canonical source pages if needed:
+- __BASE_URL__/docs/optimization/browser-sessions.md
+- __BASE_URL__/docs/going-to-production/proxy-geolocation.md
+- __BASE_URL__/docs/optimization/cost-control.md
+- __BASE_URL__/docs/running-automations/extract-structured-data.md
+- __BASE_URL__/docs/sdk-reference/browser-sessions.md
+- __BASE_URL__/docs/sdk-reference/tasks.md
+- __BASE_URL__/docs/sdk-reference/complete-reference.md
+
+Run after editing:
+- SKYVERN_TASK_ID=2 node scripts/acceptance.mjs
+</Agent>

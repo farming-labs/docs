@@ -1,0 +1,60 @@
+---
+title: Task 1 Agent Runbook
+description: Compact agent implementation path for the Gusto pay stub webhook task.
+---
+
+# Task 1 Agent Runbook
+
+<Agent>
+Task match: skyvern task 1; gusto-paystub-webhook; Gusto pay stub download with webhook verification.
+
+This task runbook is sufficient for the first implementation attempt. Read source pages only after
+an acceptance failure or if a concrete API detail is missing.
+
+Create:
+- solutions/task-1.py
+- solutions/task-1.md
+
+Implementation contract:
+- Schedule the script nightly via cron and document the crontab line.
+- Use a stored Skyvern TOTP credential for Gusto.
+- Log in with page.agent.login.
+- Download the latest pay stub PDF with page.agent.download_files.
+- Target employee_id = "4471".
+- POST the PDF to https://api.ourco.com/payroll/ingest.
+- Include webhook receiver code that verifies the Skyvern webhook HMAC before trusting payloads.
+
+SDK/code shape:
+- Read SKYVERN_API_KEY and GUSTO_SKYVERN_CREDENTIAL_ID from environment variables.
+- Create a Skyvern client, create or open a page, navigate to Gusto, then call page.agent.login with
+  the stored credential ID.
+- Call page.agent.download_files with an instruction that includes "latest pay stub PDF" and
+  "employee_id = \"4471\"".
+- POST the downloaded PDF as multipart form data with employee_id.
+- For webhook verification, compute hmac.new(secret, raw_body, hashlib.sha256).hexdigest() and
+  compare it against the x-skyvern-signature header with hmac.compare_digest.
+- Keep network calls behind environment flags or dry-run guards so acceptance does not call real
+  Gusto or OurCo endpoints.
+
+Required strings/signals:
+- page.agent.login
+- page.agent.download_files
+- employee_id = "4471"
+- https://api.ourco.com/payroll/ingest
+- hmac
+- cron
+- gusto
+
+Canonical source pages if needed:
+- __BASE_URL__/docs/credentials/store-credentials.md
+- __BASE_URL__/docs/credentials/handle-2fa.md
+- __BASE_URL__/docs/credentials/troubleshooting-login.md
+- __BASE_URL__/docs/going-to-production/webhooks.md
+- __BASE_URL__/docs/sdk-reference/complete-reference.md
+- __BASE_URL__/docs/sdk-reference/credentials.md
+- __BASE_URL__/docs/sdk-reference/helpers.md
+- __BASE_URL__/docs/multi-step-automations/file-operations.md
+
+Run after editing:
+- SKYVERN_TASK_ID=1 node scripts/acceptance.mjs
+</Agent>

@@ -1,0 +1,59 @@
+---
+title: Task 10 Agent Runbook
+description: Compact agent implementation path for DMV REAL ID renewal with artifacts.
+---
+
+# Task 10 Agent Runbook
+
+<Agent>
+Task match: skyvern task 10; dmv-real-id-artifacts; DMV REAL ID renewal with artifacts.
+
+This task runbook is sufficient for the first implementation attempt. Read source pages only after
+an acceptance failure or if a concrete API detail is missing.
+
+Create:
+- solutions/task-10.py
+- solutions/task-10.md
+
+Implementation contract:
+- Automate dmv.ca.gov/renew end-to-end with the SDK.
+- Use page.fill_autocomplete for the address on page 1.
+- Use page.upload_file for the proof-of-residency JPG on page 2.
+- Use a stored credit_card credential on page 3.
+- Use page.act on the final agree and submit.
+- If final submit fails, retrieve HAR, recording, and parsed LLM reasoning from get_run_artifacts.
+
+SDK/code shape:
+- Read SKYVERN_API_KEY, DMV_CARD_CREDENTIAL_ID, and PROOF_OF_RESIDENCY_JPG from environment
+  variables.
+- Navigate to dmv.ca.gov/renew and complete the four-page flow in order.
+- Page 1: use page.fill_autocomplete for the address.
+- Page 2: use page.upload_file for the proof-of-residency JPG.
+- Page 3: use the stored credit_card credential.
+- Page 4: use page.act for the final agree and submit action.
+- Wrap final submit in error handling; on failure call get_run_artifacts.
+- Save HAR, recording, screenshots, and parsed LLM reasoning artifact references in the notes.
+- Keep real DMV submission disabled unless RUN_REAL_AUTOMATION=1.
+
+Required strings/signals:
+- dmv.ca.gov/renew
+- page.fill_autocomplete
+- page.upload_file
+- credit_card
+- page.act
+- HAR
+- recording
+- LLM reasoning
+- get_run_artifacts
+
+Canonical source pages if needed:
+- __BASE_URL__/docs/multi-step-automations/file-operations.md
+- __BASE_URL__/docs/credentials/store-credentials.md
+- __BASE_URL__/docs/debugging/using-artifacts.md
+- __BASE_URL__/docs/going-to-production/reliability-tips.md
+- __BASE_URL__/docs/sdk-reference/complete-reference.md
+- __BASE_URL__/docs/sdk-reference/helpers.md
+
+Run after editing:
+- SKYVERN_TASK_ID=10 node scripts/acceptance.mjs
+</Agent>

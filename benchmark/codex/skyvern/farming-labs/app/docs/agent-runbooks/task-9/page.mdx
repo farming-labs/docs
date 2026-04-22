@@ -1,0 +1,57 @@
+---
+title: Task 9 Agent Runbook
+description: Compact agent implementation path for MyChart lab extraction with browser profiles.
+---
+
+# Task 9 Agent Runbook
+
+<Agent>
+Task match: skyvern task 9; mychart-labs-browser-profile; MyChart labs with email OTP and profile reuse.
+
+This task runbook is sufficient for the first implementation attempt. Read source pages only after
+an acceptance failure or if a concrete API detail is missing.
+
+Create:
+- solutions/task-9.py
+- solutions/task-9.md
+
+Implementation contract:
+- Log into mychart.kp.org with page.agent.login.
+- Handle email OTP sent to patient@ourco.com by polling.
+- Extract the last 12 months of lab results with page.extract.
+- Use a schema with test_name, value, unit, reference_range, and collected_at.
+- Save reusable state with create_browser_profile so tomorrow's run skips OTP email.
+
+SDK/code shape:
+- Read SKYVERN_API_KEY, MYCHART_CREDENTIAL_ID, and OTP_MAILBOX from environment variables.
+- Create or load a browser profile with create_browser_profile/get_browser_profile.
+- Use the browser profile when opening mychart.kp.org so future runs can reuse state.
+- Call page.agent.login with the MyChart credential and email OTP instructions.
+- Poll patient@ourco.com for the OTP, then submit/send the OTP through the login flow.
+- Define a Pydantic schema with test_name, value, unit, reference_range, and collected_at.
+- Use page.extract for the last 12 months of labs and write normalized JSON output.
+- Document that tomorrow's run should reuse the saved browser profile and skip email OTP when valid.
+
+Required strings/signals:
+- mychart.kp.org
+- page.agent.login
+- patient@ourco.com
+- poll
+- page.extract
+- test_name
+- reference_range
+- collected_at
+- create_browser_profile
+
+Canonical source pages if needed:
+- __BASE_URL__/docs/credentials/handle-2fa.md
+- __BASE_URL__/docs/optimization/browser-profiles.md
+- __BASE_URL__/docs/running-automations/extract-structured-data.md
+- __BASE_URL__/docs/optimization/browser-sessions.md
+- __BASE_URL__/docs/sdk-reference/complete-reference.md
+- __BASE_URL__/docs/sdk-reference/browser-profiles.md
+- __BASE_URL__/docs/cookbooks/healthcare-portal-data.md
+
+Run after editing:
+- SKYVERN_TASK_ID=9 node scripts/acceptance.mjs
+</Agent>

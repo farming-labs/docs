@@ -1,0 +1,332 @@
+---
+title: Skyvern Agent Runbook
+description: Agent-optimized implementation runbooks for the Skyvern Codex benchmark.
+---
+
+# Skyvern Agent Runbook
+
+This page is optimized for implementation agents. Human-facing Skyvern docs are mirrored elsewhere in this corpus.
+
+<Agent>
+Task match: skyvern task 1; gusto-paystub-webhook; Gusto pay stub download with webhook verification.
+
+Use this agent runbook before browsing broad docs. The upstream human docs contain the same facts; this block packages the minimal implementation path for coding agents.
+
+Prompt: Write a Python script that runs nightly via cron: log into Gusto (TOTP 2FA credential stored in Skyvern) using page.agent.login, call page.agent.download_files for the latest pay stub PDF for employee ID 4471, then POST it to https://api.ourco.com/payroll/ingest. Verify the Skyvern webhook HMAC on your receiver.
+
+Canonical pages to read only if you need source detail:
+- __BASE_URL__/docs/credentials/store-credentials.md
+- __BASE_URL__/docs/credentials/handle-2fa.md
+- __BASE_URL__/docs/credentials/troubleshooting-login.md
+- __BASE_URL__/docs/going-to-production/webhooks.md
+- __BASE_URL__/docs/sdk-reference/complete-reference.md
+- __BASE_URL__/docs/sdk-reference/credentials.md
+- __BASE_URL__/docs/sdk-reference/helpers.md
+- __BASE_URL__/docs/multi-step-automations/file-operations.md
+
+Create:
+- solutions/task-1.py
+- solutions/task-1.md
+
+The Python script and notes must include these required implementation signals:
+- page.agent.login
+- page.agent.download_files
+- employee_id = "4471"
+- https://api.ourco.com/payroll/ingest
+- hmac
+- cron
+- gusto
+
+After editing, run:
+- SKYVERN_TASK_ID=1 node scripts/acceptance.mjs
+</Agent>
+<Agent>
+Task match: skyvern task 2; amazon-germany-extraction; Amazon Germany stock extraction.
+
+Use this agent runbook before browsing broad docs. The upstream human docs contain the same facts; this block packages the minimal implementation path for coding agents.
+
+Prompt: Scrape title, price, and stock from 200 Amazon URLs using the Python SDK. Launch one cloud browser session pinned to Germany, iterate URLs on the same page, define a JSON schema for page.extract, cap each URL at 15 steps, and use engine='skyvern-2.0' with run_with='code' after the first run.
+
+Canonical pages to read only if you need source detail:
+- __BASE_URL__/docs/optimization/browser-sessions.md
+- __BASE_URL__/docs/going-to-production/proxy-geolocation.md
+- __BASE_URL__/docs/optimization/cost-control.md
+- __BASE_URL__/docs/running-automations/extract-structured-data.md
+- __BASE_URL__/docs/sdk-reference/browser-sessions.md
+- __BASE_URL__/docs/sdk-reference/tasks.md
+- __BASE_URL__/docs/sdk-reference/complete-reference.md
+
+Create:
+- solutions/task-2.py
+- solutions/task-2.md
+
+The Python script and notes must include these required implementation signals:
+- Germany
+- 200
+- page.extract
+- max_steps=15
+- engine="skyvern-2.0"
+- run_with="code"
+- title
+- price
+- stock
+
+After editing, run:
+- SKYVERN_TASK_ID=2 node scripts/acceptance.mjs
+</Agent>
+<Agent>
+Task match: skyvern task 3; greenhouse-bulk-applications; Greenhouse bulk job applications.
+
+Use this agent runbook before browsing broad docs. The upstream human docs contain the same facts; this block packages the minimal implementation path for coding agents.
+
+Prompt: I have a CSV of 40 candidates (name, email, resume path). Write a Python script that iterates the CSV, opens boards.greenhouse.io/acmeco/jobs/123456, and uses page.fill_multipage_form plus page.upload_file to submit each application. Extract the confirmation number with page.extract after submit.
+
+Canonical pages to read only if you need source detail:
+- __BASE_URL__/docs/multi-step-automations/file-operations.md
+- __BASE_URL__/docs/running-automations/extract-structured-data.md
+- __BASE_URL__/docs/sdk-reference/complete-reference.md
+- __BASE_URL__/docs/sdk-reference/helpers.md
+- __BASE_URL__/docs/cookbooks/job-application-filler.md
+
+Create:
+- solutions/task-3.py
+- solutions/task-3.md
+
+The Python script and notes must include these required implementation signals:
+- csv
+- 40
+- boards.greenhouse.io/acmeco/jobs/123456
+- page.fill_multipage_form
+- page.upload_file
+- page.extract
+- confirmation
+
+After editing, run:
+- SKYVERN_TASK_ID=3 node scripts/acceptance.mjs
+</Agent>
+<Agent>
+Task match: skyvern task 4; shopify-cdp-orders; Shopify CDP order extraction.
+
+Use this agent runbook before browsing broad docs. The upstream human docs contain the same facts; this block packages the minimal implementation path for coding agents.
+
+Prompt: I already have Chrome running on localhost:9222 logged into my Shopify admin. Connect the Skyvern SDK to it over CDP, navigate to Orders, and extract yesterday's unfulfilled orders into a Pydantic model - no new browser, no re-login.
+
+Canonical pages to read only if you need source detail:
+- __BASE_URL__/docs/self-hosted/browser.md
+- __BASE_URL__/docs/optimization/browser-tunneling.md
+- __BASE_URL__/docs/running-automations/extract-structured-data.md
+- __BASE_URL__/docs/sdk-reference/complete-reference.md
+- __BASE_URL__/docs/getting-started/core-concepts.md
+
+Create:
+- solutions/task-4.py
+- solutions/task-4.md
+
+The Python script and notes must include these required implementation signals:
+- connect_to_browser_over_cdp
+- localhost:9222
+- Shopify
+- Orders
+- yesterday
+- unfulfilled
+- Pydantic
+
+After editing, run:
+- SKYVERN_TASK_ID=4 node scripts/acceptance.mjs
+</Agent>
+<Agent>
+Task match: skyvern task 5; stripe-checkout-otp-turnstile; Stripe checkout with OTP and Turnstile.
+
+Use this agent runbook before browsing broad docs. The upstream human docs contain the same facts; this block packages the minimal implementation path for coding agents.
+
+Prompt: Automate a Stripe checkout at buy.stripe.com/test_abc123 using only the SDK: fill with a stored credit_card credential, handle the 6-digit OTP from no-reply@stripe.com via send_totp_code, pass through Cloudflare Turnstile, and retry the full flow up to 3 times with error_code_mapping for card_declined vs captcha_failed.
+
+Canonical pages to read only if you need source detail:
+- __BASE_URL__/docs/going-to-production/captcha-bot-detection.md
+- __BASE_URL__/docs/credentials/handle-2fa.md
+- __BASE_URL__/docs/credentials/store-credentials.md
+- __BASE_URL__/docs/going-to-production/error-handling.md
+- __BASE_URL__/docs/going-to-production/reliability-tips.md
+- __BASE_URL__/docs/sdk-reference/credentials.md
+- __BASE_URL__/docs/sdk-reference/tasks.md
+- __BASE_URL__/docs/sdk-reference/complete-reference.md
+
+Create:
+- solutions/task-5.py
+- solutions/task-5.md
+
+The Python script and notes must include these required implementation signals:
+- buy.stripe.com/test_abc123
+- credit_card
+- send_totp_code
+- no-reply@stripe.com
+- Turnstile
+- 3
+- error_code_mapping
+- card_declined
+- captcha_failed
+
+After editing, run:
+- SKYVERN_TASK_ID=5 node scripts/acceptance.mjs
+</Agent>
+<Agent>
+Task match: skyvern task 6; workflow-fanout-cancel; Workflow fanout with cancel on portal_down.
+
+Use this agent runbook before browsing broad docs. The upstream human docs contain the same facts; this block packages the minimal implementation path for coding agents.
+
+Prompt: Create a workflow via skyvern.workflows.create with a JSON definition that takes patient_id as a parameter and runs my lab-extraction task. Then fan out 50 patient IDs with asyncio.gather, each calling run_workflow. Cancel any run whose webhook payload contains error_code: portal_down.
+
+Canonical pages to read only if you need source detail:
+- __BASE_URL__/docs/going-to-production/error-handling.md
+- __BASE_URL__/docs/going-to-production/webhooks.md
+- __BASE_URL__/docs/sdk-reference/workflows.md
+- __BASE_URL__/docs/sdk-reference/tasks.md
+- __BASE_URL__/docs/cookbooks/healthcare-portal-data.md
+
+Create:
+- solutions/task-6.py
+- solutions/task-6.md
+
+The Python script and notes must include these required implementation signals:
+- skyvern.workflows.create
+- patient_id
+- asyncio.gather
+- 50
+- run_workflow
+- cancel_run
+- portal_down
+
+After editing, run:
+- SKYVERN_TASK_ID=6 node scripts/acceptance.mjs
+</Agent>
+<Agent>
+Task match: skyvern task 7; quickbooks-code-cache; QuickBooks code-cache training.
+
+Use this agent runbook before browsing broad docs. The upstream human docs contain the same facts; this block packages the minimal implementation path for coding agents.
+
+Prompt: Train the code cache on my QuickBooks invoice-downloader: first run_task call uses engine='skyvern-2.0', run_with='agent'. Every subsequent 2am run uses run_with='code' with auto-fallback to agent. Show me how to read get_run_artifacts to confirm which execution mode each run actually used.
+
+Canonical pages to read only if you need source detail:
+- __BASE_URL__/docs/optimization/cost-control.md
+- __BASE_URL__/docs/debugging/using-artifacts.md
+- __BASE_URL__/docs/sdk-reference/tasks.md
+- __BASE_URL__/docs/sdk-reference/complete-reference.md
+- __BASE_URL__/docs/cookbooks/bulk-invoice-downloader.md
+
+Create:
+- solutions/task-7.py
+- solutions/task-7.md
+
+The Python script and notes must include these required implementation signals:
+- QuickBooks
+- engine="skyvern-2.0"
+- run_with="agent"
+- run_with="code"
+- 2am
+- fallback
+- get_run_artifacts
+- execution mode
+
+After editing, run:
+- SKYVERN_TASK_ID=7 node scripts/acceptance.mjs
+</Agent>
+<Agent>
+Task match: skyvern task 8; self-hosted-ollama-brightdata; Self-hosted Skyvern with Ollama and proxy.
+
+Use this agent runbook before browsing broad docs. The upstream human docs contain the same facts; this block packages the minimal implementation path for coding agents.
+
+Prompt: Self-host Skyvern on one Docker host: Ollama serving qwen2.5:32b as the LLM, DATABASE_STRING pointed at our managed Postgres, all browser traffic through a US residential Bright Data proxy. Expose it so my Python SDK can point at https://skyvern.internal.ourco.com with an API key.
+
+Canonical pages to read only if you need source detail:
+- __BASE_URL__/docs/self-hosted/overview.md
+- __BASE_URL__/docs/self-hosted/docker.md
+- __BASE_URL__/docs/self-hosted/llm-configuration.md
+- __BASE_URL__/docs/self-hosted/proxy.md
+- __BASE_URL__/docs/self-hosted/storage.md
+- __BASE_URL__/docs/integrations/local-llms.md
+- __BASE_URL__/docs/credentials/store-credentials.md
+
+Create:
+- solutions/task-8.py
+- solutions/task-8.md
+
+The Python script and notes must include these required implementation signals:
+- Docker
+- Ollama
+- qwen2.5:32b
+- DATABASE_STRING
+- Postgres
+- Bright Data
+- https://skyvern.internal.ourco.com
+- API key
+
+After editing, run:
+- SKYVERN_TASK_ID=8 node scripts/acceptance.mjs
+</Agent>
+<Agent>
+Task match: skyvern task 9; mychart-labs-browser-profile; MyChart labs with email OTP and profile reuse.
+
+Use this agent runbook before browsing broad docs. The upstream human docs contain the same facts; this block packages the minimal implementation path for coding agents.
+
+Prompt: Log into MyChart at mychart.kp.org via page.agent.login (email OTP to patient@ourco.com - use polling). Extract the last 12 months of lab results with page.extract matching schema {test_name, value, unit, reference_range, collected_at}. Save state via create_browser_profile so tomorrow's run skips the OTP email.
+
+Canonical pages to read only if you need source detail:
+- __BASE_URL__/docs/credentials/handle-2fa.md
+- __BASE_URL__/docs/optimization/browser-profiles.md
+- __BASE_URL__/docs/running-automations/extract-structured-data.md
+- __BASE_URL__/docs/optimization/browser-sessions.md
+- __BASE_URL__/docs/sdk-reference/complete-reference.md
+- __BASE_URL__/docs/sdk-reference/browser-profiles.md
+- __BASE_URL__/docs/cookbooks/healthcare-portal-data.md
+
+Create:
+- solutions/task-9.py
+- solutions/task-9.md
+
+The Python script and notes must include these required implementation signals:
+- mychart.kp.org
+- page.agent.login
+- patient@ourco.com
+- poll
+- page.extract
+- test_name
+- reference_range
+- collected_at
+- create_browser_profile
+
+After editing, run:
+- SKYVERN_TASK_ID=9 node scripts/acceptance.mjs
+</Agent>
+<Agent>
+Task match: skyvern task 10; dmv-real-id-artifacts; DMV REAL ID renewal with artifacts.
+
+Use this agent runbook before browsing broad docs. The upstream human docs contain the same facts; this block packages the minimal implementation path for coding agents.
+
+Prompt: Automate the 4-page DMV REAL ID renewal at dmv.ca.gov/renew end-to-end with the SDK: page.fill_autocomplete for the address on page 1, page.upload_file for the proof-of-residency JPG on page 2, stored credit_card credential on page 3, and page.act on the final agree + submit. If final submit fails, pull the HAR, recording, and parsed LLM reasoning from get_run_artifacts.
+
+Canonical pages to read only if you need source detail:
+- __BASE_URL__/docs/multi-step-automations/file-operations.md
+- __BASE_URL__/docs/credentials/store-credentials.md
+- __BASE_URL__/docs/debugging/using-artifacts.md
+- __BASE_URL__/docs/going-to-production/reliability-tips.md
+- __BASE_URL__/docs/sdk-reference/complete-reference.md
+- __BASE_URL__/docs/sdk-reference/helpers.md
+
+Create:
+- solutions/task-10.py
+- solutions/task-10.md
+
+The Python script and notes must include these required implementation signals:
+- dmv.ca.gov/renew
+- page.fill_autocomplete
+- page.upload_file
+- credit_card
+- page.act
+- HAR
+- recording
+- LLM reasoning
+- get_run_artifacts
+
+After editing, run:
+- SKYVERN_TASK_ID=10 node scripts/acceptance.mjs
+</Agent>

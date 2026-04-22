@@ -1,0 +1,58 @@
+---
+title: Task 8 Agent Runbook
+description: Compact agent implementation path for self-hosted Skyvern with Ollama and proxy.
+---
+
+# Task 8 Agent Runbook
+
+<Agent>
+Task match: skyvern task 8; self-hosted-ollama-brightdata; Self-hosted Skyvern with Ollama and proxy.
+
+This task runbook is sufficient for the first implementation attempt. Read source pages only after
+an acceptance failure or if a concrete API detail is missing.
+
+Create:
+- solutions/task-8.py
+- solutions/task-8.md
+
+Implementation contract:
+- Describe one Docker host running self-hosted Skyvern.
+- Configure Ollama with qwen2.5:32b as the LLM.
+- Set DATABASE_STRING to managed Postgres.
+- Route browser traffic through a US residential Bright Data proxy.
+- Expose https://skyvern.internal.ourco.com.
+- Show the Python SDK configured with an API key and base URL.
+
+Implementation shape:
+- Provide docker-compose.yml or shell commands for one Docker host.
+- Include environment variables for DATABASE_STRING, managed Postgres, Ollama endpoint/model, and
+  proxy settings.
+- Set the Ollama model to qwen2.5:32b and document that Ollama serves the LLM locally.
+- Configure all browser traffic through a US residential Bright Data proxy.
+- Show reverse proxy/TLS notes for https://skyvern.internal.ourco.com.
+- Include a Python SDK snippet with Skyvern(api_key=os.environ["SKYVERN_API_KEY"],
+  base_url="https://skyvern.internal.ourco.com").
+- Keep secrets as environment variables; do not hardcode API keys or proxy passwords.
+
+Required strings/signals:
+- Docker
+- Ollama
+- qwen2.5:32b
+- DATABASE_STRING
+- Postgres
+- Bright Data
+- https://skyvern.internal.ourco.com
+- API key
+
+Canonical source pages if needed:
+- __BASE_URL__/docs/self-hosted/overview.md
+- __BASE_URL__/docs/self-hosted/docker.md
+- __BASE_URL__/docs/self-hosted/llm-configuration.md
+- __BASE_URL__/docs/self-hosted/proxy.md
+- __BASE_URL__/docs/self-hosted/storage.md
+- __BASE_URL__/docs/integrations/local-llms.md
+- __BASE_URL__/docs/credentials/store-credentials.md
+
+Run after editing:
+- SKYVERN_TASK_ID=8 node scripts/acceptance.mjs
+</Agent>
