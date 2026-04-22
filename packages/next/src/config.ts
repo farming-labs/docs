@@ -171,6 +171,8 @@ const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
 const DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE = "/.well-known/agent.json";
 const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
+const DEFAULT_MCP_ROUTE = "/api/docs/mcp";
+const DEFAULT_MCP_PUBLIC_ROUTE = "/mcp";
 const DEFAULT_LLMS_TXT_ROUTE = "/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_ROUTE = "/llms-full.txt";
 const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
@@ -873,11 +875,11 @@ function readMcpConfig(root: string): {
       const content = readFileSync(configPath, "utf-8");
 
       if (content.match(/mcp\s*:\s*false/)) {
-        return { enabled: false, route: "/api/docs/mcp" };
+        return { enabled: false, route: DEFAULT_MCP_ROUTE };
       }
 
       if (content.match(/mcp\s*:\s*true/)) {
-        return { enabled: true, route: "/api/docs/mcp" };
+        return { enabled: true, route: DEFAULT_MCP_ROUTE };
       }
 
       const block = extractObjectLiteral(content, "mcp");
@@ -888,19 +890,19 @@ function readMcpConfig(root: string): {
 
       return {
         enabled: enabledMatch ? enabledMatch[1] !== "false" : true,
-        route: normalizeRoutePath(routeMatch?.[1] ?? "/api/docs/mcp"),
+        route: normalizeRoutePath(routeMatch?.[1] ?? DEFAULT_MCP_ROUTE),
       };
     } catch {
-      return { enabled: true, route: "/api/docs/mcp" };
+      return { enabled: true, route: DEFAULT_MCP_ROUTE };
     }
   }
 
-  return { enabled: true, route: "/api/docs/mcp" };
+  return { enabled: true, route: DEFAULT_MCP_ROUTE };
 }
 
 function normalizeRoutePath(route: string): string {
   const normalized = `/${route}`.replace(/\/+/g, "/");
-  return normalized !== "/" ? normalized.replace(/\/+$/, "") : "/api/docs/mcp";
+  return normalized !== "/" ? normalized.replace(/\/+$/, "") : DEFAULT_MCP_ROUTE;
 }
 
 function normalizeAgentFeedbackRoute(
@@ -1047,6 +1049,17 @@ function buildLlmsTxtRewrites(): NextRewrite[] {
   ];
 }
 
+function buildMcpRewrites(config: { enabled: boolean; route: string }): NextRewrite[] {
+  if (!config.enabled || config.route === DEFAULT_MCP_PUBLIC_ROUTE) return [];
+
+  return [
+    {
+      source: DEFAULT_MCP_PUBLIC_ROUTE,
+      destination: config.route,
+    },
+  ];
+}
+
 function buildAgentFeedbackRewrites(config: {
   enabled: boolean;
   route: string;
@@ -1082,6 +1095,10 @@ function dedupeRewrites(rewrites: NextRewrite[]): NextRewrite[] {
 
 function mergeDocsMarkdownRewrites(
   entry: string,
+  mcp: {
+    enabled: boolean;
+    route: string;
+  },
   agentFeedback: {
     enabled: boolean;
     route: string;
@@ -1091,6 +1108,7 @@ function mergeDocsMarkdownRewrites(
 ): NextRewriteResult {
   const autoRewrites = [
     ...buildAgentSpecRewrites(),
+    ...buildMcpRewrites(mcp),
     ...buildLlmsTxtRewrites(),
     ...buildDocsMarkdownRewrites(entry),
     ...buildAgentFeedbackRewrites(agentFeedback),
@@ -1162,7 +1180,7 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
   const docsMcpRouteDir = join(root, appDir, "api", "docs", "mcp");
   if (
     mcp.enabled &&
-    mcp.route === "/api/docs/mcp" &&
+    mcp.route === DEFAULT_MCP_ROUTE &&
     !isStaticExport &&
     !hasFile(docsMcpRouteDir, "route")
   ) {
@@ -1431,15 +1449,15 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     nextConfig.rewrites = async () => {
       const rewrites =
         typeof existingRewrites === "function" ? await existingRewrites() : existingRewrites;
-      return mergeDocsMarkdownRewrites(entry, agentFeedback, rewrites);
+      return mergeDocsMarkdownRewrites(entry, mcp, agentFeedback, rewrites);
     };
   }
 
   nextConfig.outputFileTracingIncludes = {
     ...existingTracingIncludes,
     "/api/docs": [...new Set([...(existingTracingIncludes["/api/docs"] ?? []), docsTraceGlob])],
-    "/api/docs/mcp": [
-      ...new Set([...(existingTracingIncludes["/api/docs/mcp"] ?? []), docsTraceGlob]),
+    [DEFAULT_MCP_ROUTE]: [
+      ...new Set([...(existingTracingIncludes[DEFAULT_MCP_ROUTE] ?? []), docsTraceGlob]),
     ],
   };
 

@@ -132,7 +132,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
 | `search`      | `boolean \| DocsSearchConfig`  | `true`          | Built-in simple search, Typesense, Algolia, or a custom adapter |
 | `changelog`   | `boolean \| ChangelogConfig`   | `false`         | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
-| `mcp`         | `boolean \| DocsMcpConfig`     | enabled         | Built-in MCP server over stdio and `/api/docs/mcp` |
+| `mcp`         | `boolean \| DocsMcpConfig`     | enabled         | Built-in MCP server over stdio and `/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions or a hosted OpenAPI JSON |
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template                              |
@@ -270,7 +270,7 @@ export default defineDocs({
   theme: fumadocs(),
   search: {
     provider: "mcp",
-    endpoint: "/api/docs/mcp",
+    endpoint: "/mcp",
   },
   mcp: {
     enabled: true,
@@ -317,7 +317,7 @@ Notes:
 - `chunking.strategy` defaults to `"section"` and can be changed to `"page"` for one-document-per-page indexing
 - Typesense and Algolia can sync documents automatically on the first search request when `adminApiKey` is present
 - Use `pnpm dlx @farming-labs/docs search sync --typesense` or `--algolia` when you want manual indexing as a CLI step
-- `provider: "mcp"` can target a relative route like `/api/docs/mcp` or an absolute remote MCP endpoint
+- `provider: "mcp"` can target a relative route like `/mcp` or an absolute remote MCP endpoint
 - when MCP search points at the same site's relative MCP route, the MCP `search_docs` tool falls back to built-in simple search to avoid recursive loops
 - If you use a custom Next.js docs API route, import `createDocsAPI` from `@farming-labs/next/api` and pass `search: docsConfig.search` so your adapter config reaches the route handler
 - Search requires the docs API route; with `staticExport: true` the UI is hidden because there is no server route
@@ -357,13 +357,14 @@ export default defineDocs({
 
 Default behavior:
 
-- **HTTP route:** `/api/docs/mcp`
+- **Public HTTP route:** `/mcp`
+- **Canonical HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
 - **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`
 
 Framework notes:
 
-- **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route
+- **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route and public `/mcp` rewrite
 - **TanStack Start / SvelteKit / Astro / Nuxt:** add the framework route file and reuse the built-in handler from the docs server helper
 - **Custom routes:** set `mcp.route` in `docs.config` and add the matching route file manually so the configured path and the actual endpoint stay aligned
 

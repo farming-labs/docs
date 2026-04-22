@@ -273,6 +273,10 @@ describe("withDocs (app dir: src/app vs app)", () => {
           destination: "/api/docs?agent=spec",
         }),
         expect.objectContaining({
+          source: "/mcp",
+          destination: "/api/docs/mcp",
+        }),
+        expect.objectContaining({
           source: "/llms.txt",
           destination: "/api/docs?format=llms",
         }),
@@ -392,14 +396,23 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "app/changelogs/page.tsx"))).toBe(false);
   });
 
-  it("skips default MCP route generation when a custom route is configured", () => {
+  it("skips default MCP route generation and aliases /mcp when a custom route is configured", async () => {
     writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_CUSTOM_MCP_ROUTE, "utf-8");
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);
 
-    withDocs({});
+    const nextConfig = withDocs({});
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
 
     expect(existsSync(join(tmpDir, "app/api/docs/mcp/route.ts"))).toBe(false);
+    expect(rewrites).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/mcp",
+          destination: "/api/internal/docs/mcp",
+        }),
+      ]),
+    );
   });
 
   it("skips API reference generation for static export", () => {
@@ -545,6 +558,10 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/.well-known/agent.json",
           destination: "/api/docs?agent=spec",
+        }),
+        expect.objectContaining({
+          source: "/mcp",
+          destination: "/api/docs/mcp",
         }),
         expect.objectContaining({
           source: "/llms.txt",

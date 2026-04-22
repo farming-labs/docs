@@ -114,6 +114,8 @@ const DEFAULT_DOCS_API_ROUTE = "/api/docs";
 const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
 const DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE = "/.well-known/agent.json";
+const DEFAULT_MCP_ROUTE = "/api/docs/mcp";
+const DEFAULT_MCP_PUBLIC_ROUTE = "/mcp";
 const DEFAULT_LLMS_TXT_ROUTE = "/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_ROUTE = "/llms-full.txt";
 const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
@@ -388,6 +390,9 @@ function buildAgentSpec({ origin, entry, i18n, search, mcp, feedback, llms }: Ag
     mcp: {
       enabled: mcp.enabled,
       endpoint: mcp.route,
+      defaultEndpoint: DEFAULT_MCP_PUBLIC_ROUTE,
+      publicEndpoint: DEFAULT_MCP_PUBLIC_ROUTE,
+      canonicalEndpoint: DEFAULT_MCP_ROUTE,
       name: mcp.name,
       version: mcp.version,
       tools: mcp.tools,

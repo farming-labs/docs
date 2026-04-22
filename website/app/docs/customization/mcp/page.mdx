@@ -1,6 +1,6 @@
 ---
 title: "MCP Server"
-description: "Expose your docs as MCP tools and resources over stdio or /api/docs/mcp"
+description: "Expose your docs as MCP tools and resources over stdio or /mcp"
 icon: "bot"
 order: 8
 ---
@@ -35,15 +35,15 @@ export default defineDocs({
 });
 ```
 
-That gives you the built-in MCP surface with the default Streamable HTTP route:
+That gives you the built-in MCP surface with the default public Streamable HTTP route:
 
-```txt title="/api/docs/mcp"
-/api/docs/mcp
+```txt title="/mcp"
+/mcp
 ```
 
 <Callout type="info" title="This docs site already exposes it live">
   The hosted docs site has MCP enabled at
-  `https://docs.farming-labs.dev/api/docs/mcp`.
+  `https://docs.farming-labs.dev/mcp`.
 </Callout>
 
 Opt out explicitly:
@@ -57,13 +57,14 @@ export default defineDocs({
 });
 ```
 
-## Default HTTP route
+## Default HTTP Routes
 
-`/api/docs/mcp` is the default MCP endpoint across the framework adapters.
+`/mcp` is the preferred public MCP endpoint in Next.js. It rewrites to the canonical framework route
+at `/api/docs/mcp`, so the MCP handler still lives in one place.
 
 <Callout type="info" title="Minimal route behavior">
-  **Next.js** auto-generates the default `/api/docs/mcp` route when you use `withDocs()`, unless
-  you explicitly disable MCP.
+  **Next.js** auto-generates the default `/api/docs/mcp` route when you use `withDocs()`, and also
+  adds the public `/mcp` rewrite unless you explicitly disable MCP.
 
   **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt** still need the framework route file,
   but they all reuse the built-in MCP handler from the docs server helper.
@@ -192,7 +193,7 @@ export default defineDocs({
   entry: "docs",
   search: {
     provider: "mcp",
-    endpoint: "/api/docs/mcp",
+    endpoint: "/mcp",
   },
   mcp: {
     enabled: true,
@@ -200,9 +201,10 @@ export default defineDocs({
 });
 ```
 
-For local self-hosted setups, relative MCP endpoints like `/api/docs/mcp` are supported. The
-built-in `search_docs` tool automatically falls back to simple search internally when it detects
-that same-route loop, so the route stays usable for testing and local examples.
+For local self-hosted setups, relative MCP endpoints like `/mcp` are supported. The canonical
+`/api/docs/mcp` route remains available too. The built-in `search_docs` tool automatically falls
+back to simple search internally when it detects that same-route loop, so the route stays usable for
+testing and local examples.
 
 ## Stdio transport
 
@@ -229,7 +231,7 @@ pnpm exec docs mcp --config src/lib/docs.config.ts
 If you just want to try the live docs server, you can point your MCP client at:
 
 ```txt title="Live MCP endpoint"
-https://docs.farming-labs.dev/api/docs/mcp
+https://docs.farming-labs.dev/mcp
 ```
 
 <DocsMcpAccess />
@@ -248,7 +250,7 @@ Cursor project or global config:
 {
   "mcpServers": {
     "farming-labs-docs": {
-      "url": "https://docs.farming-labs.dev/api/docs/mcp"
+      "url": "https://docs.farming-labs.dev/mcp"
     }
   }
 }
@@ -261,7 +263,7 @@ VS Code workspace config:
   "servers": {
     "farming-labs-docs": {
       "type": "http",
-      "url": "https://docs.farming-labs.dev/api/docs/mcp"
+      "url": "https://docs.farming-labs.dev/mcp"
     }
   }
 }
@@ -270,11 +272,11 @@ VS Code workspace config:
 Claude Code:
 
 ```bash title="terminal"
-claude mcp add-json farming-labs-docs '{"type":"http","url":"https://docs.farming-labs.dev/api/docs/mcp"}'
+claude mcp add-json farming-labs-docs '{"type":"http","url":"https://docs.farming-labs.dev/mcp"}'
 ```
 
 <Callout type="tip" title="Local development uses http, not https">
-  If you are connecting to a local Next dev server, use `http://127.0.0.1:3000/api/docs/mcp`.
+  If you are connecting to a local Next dev server, use `http://127.0.0.1:3000/mcp`.
   Using `https://localhost:3000/...` against a non-TLS dev server will fail with SSL errors.
 </Callout>
 
@@ -291,7 +293,7 @@ pnpm --dir examples/next dev
 Then connect your MCP client or inspector to:
 
 ```txt title="~"
-http://127.0.0.1:3000/api/docs/mcp
+http://127.0.0.1:3000/mcp
 ```
 
 The built-in HTTP route exposes the full MCP surface:
