@@ -691,6 +691,9 @@ title: "Home"
       mcp: {
         enabled: boolean;
         endpoint: string;
+        defaultEndpoint: string;
+        publicEndpoint: string;
+        canonicalEndpoint: string;
         name: string;
         version: string;
         tools: Record<string, boolean>;
@@ -773,6 +776,9 @@ title: "Home"
     expect(spec.mcp).toEqual({
       enabled: true,
       endpoint: "/internal/docs/mcp",
+      defaultEndpoint: "/mcp",
+      publicEndpoint: "/mcp",
+      canonicalEndpoint: "/api/docs/mcp",
       name: "Agent Docs",
       version: "0.0.0",
       tools: {
@@ -837,7 +843,13 @@ title: "Home"
       llms: Record<string, string | boolean>;
       search: { enabled: boolean; endpoint: string; method: string };
       skills: { enabled: boolean; registry: string; install: string };
-      mcp: { enabled: boolean; endpoint: string };
+      mcp: {
+        enabled: boolean;
+        endpoint: string;
+        defaultEndpoint: string;
+        publicEndpoint: string;
+        canonicalEndpoint: string;
+      };
       feedback: { enabled: boolean; schema: string; submit: string };
     };
 
@@ -893,6 +905,9 @@ title: "Home"
     expect(spec.mcp).toMatchObject({
       enabled: false,
       endpoint: "/api/docs/mcp",
+      defaultEndpoint: "/mcp",
+      publicEndpoint: "/mcp",
+      canonicalEndpoint: "/api/docs/mcp",
     });
     expect(spec.feedback).toMatchObject({
       enabled: false,
