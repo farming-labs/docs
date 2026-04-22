@@ -1,6 +1,6 @@
 ---
 title: "MCP Server"
-description: "Expose your docs as MCP tools and resources over stdio or /mcp"
+description: "Expose your docs as MCP tools and resources over stdio, /mcp, or /.well-known/mcp"
 icon: "bot"
 order: 8
 ---
@@ -35,15 +35,16 @@ export default defineDocs({
 });
 ```
 
-That gives you the built-in MCP surface with the default public Streamable HTTP route:
+That gives you the built-in MCP surface with the default public Streamable HTTP routes:
 
-```txt title="/mcp"
+```txt title="Public MCP routes"
 /mcp
+/.well-known/mcp
 ```
 
 <Callout type="info" title="This docs site already exposes it live">
-  The hosted docs site has MCP enabled at
-  `https://docs.farming-labs.dev/mcp`.
+  The hosted docs site has MCP enabled at `https://docs.farming-labs.dev/mcp` and
+  `https://docs.farming-labs.dev/.well-known/mcp`.
 </Callout>
 
 Opt out explicitly:
@@ -59,12 +60,13 @@ export default defineDocs({
 
 ## Default HTTP Routes
 
-`/mcp` is the preferred public MCP endpoint in Next.js. It rewrites to the canonical framework route
-at `/api/docs/mcp`, so the MCP handler still lives in one place.
+`/mcp` is the short public MCP endpoint in Next.js, and `/.well-known/mcp` is the discovery-friendly
+public MCP endpoint. Both rewrite to the canonical framework route at `/api/docs/mcp`, so the MCP
+handler still lives in one place.
 
 <Callout type="info" title="Minimal route behavior">
   **Next.js** auto-generates the default `/api/docs/mcp` route when you use `withDocs()`, and also
-  adds the public `/mcp` rewrite unless you explicitly disable MCP.
+  adds public `/mcp` and `/.well-known/mcp` rewrites unless you explicitly disable MCP.
 
   **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt** still need the framework route file,
   but they all reuse the built-in MCP handler from the docs server helper.
@@ -201,10 +203,10 @@ export default defineDocs({
 });
 ```
 
-For local self-hosted setups, relative MCP endpoints like `/mcp` are supported. The canonical
-`/api/docs/mcp` route remains available too. The built-in `search_docs` tool automatically falls
-back to simple search internally when it detects that same-route loop, so the route stays usable for
-testing and local examples.
+For local self-hosted setups, relative MCP endpoints like `/mcp` and `/.well-known/mcp` are
+supported. The canonical `/api/docs/mcp` route remains available too. The built-in `search_docs`
+tool automatically falls back to simple search internally when it detects that same-route loop, so
+the route stays usable for testing and local examples.
 
 ## Stdio transport
 
@@ -232,6 +234,7 @@ If you just want to try the live docs server, you can point your MCP client at:
 
 ```txt title="Live MCP endpoint"
 https://docs.farming-labs.dev/mcp
+https://docs.farming-labs.dev/.well-known/mcp
 ```
 
 <DocsMcpAccess />
@@ -276,7 +279,8 @@ claude mcp add-json farming-labs-docs '{"type":"http","url":"https://docs.farmin
 ```
 
 <Callout type="tip" title="Local development uses http, not https">
-  If you are connecting to a local Next dev server, use `http://127.0.0.1:3000/mcp`.
+  If you are connecting to a local Next dev server, use `http://127.0.0.1:3000/mcp` or
+  `http://127.0.0.1:3000/.well-known/mcp`.
   Using `https://localhost:3000/...` against a non-TLS dev server will fail with SSL errors.
 </Callout>
 
@@ -294,6 +298,7 @@ Then connect your MCP client or inspector to:
 
 ```txt title="~"
 http://127.0.0.1:3000/mcp
+http://127.0.0.1:3000/.well-known/mcp
 ```
 
 The built-in HTTP route exposes the full MCP surface:

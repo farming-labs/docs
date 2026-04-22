@@ -156,7 +156,7 @@ The built-in MCP surface currently includes:
 - `search_docs`
 - `read_page`
 
-Use the docs config `mcp` block when you also want the HTTP route version at `/api/docs/mcp`.
+Use the docs config `mcp` block when you also want the HTTP route version at `/mcp` or `/.well-known/mcp`.
 
 ## Search Sync
 
@@ -218,7 +218,7 @@ pnpm --dir examples/next exec docs search sync --algolia --config docs.config.ts
 
 Then verify:
 
-- MCP: `http://127.0.0.1:3000/api/docs/mcp`
+- MCP: `http://127.0.0.1:3000/mcp` or `http://127.0.0.1:3000/.well-known/mcp`
 - Search: `http://127.0.0.1:3000/api/docs?query=session`
 
 ---

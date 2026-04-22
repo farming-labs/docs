@@ -45,7 +45,7 @@ Ten built-in theme entrypoints: `fumadocs` (default), `darksharp`, `pixel-border
 - **Agent feedback endpoints** — add `feedback.agent` when agents should report structured `{ context?, payload }` feedback through `/api/docs/agent/feedback` and `/api/docs/agent/feedback/schema`.
 - **Page actions** — enable with `pageActions.copyMarkdown` and `pageActions.openDocs`.
 - **Built-in changelog pages (Next.js)** — enable `changelog` to publish a release feed from dated MDX entries.
-- **Built-in MCP server** — enabled by default at `/api/docs/mcp` and for local stdio tools. Opt out with `mcp: false` or `mcp: { enabled: false }`.
+- **Built-in MCP server** — enabled by default at `/mcp` and `/.well-known/mcp` in Next.js, backed by `/api/docs/mcp`, and for local stdio tools. Opt out with `mcp: false` or `mcp: { enabled: false }`.
 - **Machine-readable markdown routes** — Next.js serves `/docs/<slug>.md` automatically with `withDocs()` and also returns the same markdown from `/docs/<slug>` when the request sends `Accept: text/markdown`. Use embedded `<Agent>...</Agent>` blocks inside `page.mdx` when the normal page only needs extra machine context; add a sibling `agent.md` when the whole machine-readable page should be overridden. The shared docs API also supports `GET /api/docs?format=markdown&path=<slug>`.
 
 ### MCP quick test
@@ -56,7 +56,7 @@ To verify the HTTP MCP route in this repo, use the Next example:
 pnpm --dir examples/next dev
 ```
 
-Then point your MCP client or inspector at `http://127.0.0.1:3000/api/docs/mcp`.
+Then point your MCP client or inspector at `http://127.0.0.1:3000/mcp` or `http://127.0.0.1:3000/.well-known/mcp`.
 
 ---
 

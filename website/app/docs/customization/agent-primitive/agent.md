@@ -65,7 +65,7 @@ Recommended bootstrap flow:
 1. Fetch `/api/docs/agent/spec`.
 2. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read relevant docs pages as markdown.
 3. Use `spec.search.endpoint` when you need to find the right page first.
-4. Use `spec.mcp.endpoint` and tools when MCP is enabled and your environment supports MCP.
+4. Use `spec.mcp.wellKnownEndpoint`, `spec.mcp.publicEndpoint`, or `spec.mcp.endpoint` when MCP is enabled and your environment supports MCP.
 5. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
 
 Do not scrape the HTML page when markdown, search, MCP, or `llms.txt` routes are available in the

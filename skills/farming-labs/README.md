@@ -13,7 +13,7 @@ pnpm --dir examples/next dev
 Useful routes:
 
 - Agent discovery spec: `http://127.0.0.1:3000/api/docs/agent/spec`
-- MCP: `http://127.0.0.1:3000/api/docs/mcp`
+- MCP: `http://127.0.0.1:3000/mcp` or `http://127.0.0.1:3000/.well-known/mcp`
 - Search API: `http://127.0.0.1:3000/api/docs?query=session`
 - Docs API markdown: `http://127.0.0.1:3000/api/docs?format=markdown&path=quickstart`
 - Agent feedback schema: `http://127.0.0.1:3000/api/docs/agent/feedback/schema`

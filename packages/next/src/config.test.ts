@@ -277,6 +277,10 @@ describe("withDocs (app dir: src/app vs app)", () => {
           destination: "/api/docs/mcp",
         }),
         expect.objectContaining({
+          source: "/.well-known/mcp",
+          destination: "/api/docs/mcp",
+        }),
+        expect.objectContaining({
           source: "/llms.txt",
           destination: "/api/docs?format=llms",
         }),
@@ -396,7 +400,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "app/changelogs/page.tsx"))).toBe(false);
   });
 
-  it("skips default MCP route generation and aliases /mcp when a custom route is configured", async () => {
+  it("skips default MCP route generation and aliases public MCP routes when a custom route is configured", async () => {
     writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_CUSTOM_MCP_ROUTE, "utf-8");
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);
@@ -409,6 +413,10 @@ describe("withDocs (app dir: src/app vs app)", () => {
       expect.arrayContaining([
         expect.objectContaining({
           source: "/mcp",
+          destination: "/api/internal/docs/mcp",
+        }),
+        expect.objectContaining({
+          source: "/.well-known/mcp",
           destination: "/api/internal/docs/mcp",
         }),
       ]),
@@ -561,6 +569,10 @@ describe("withDocs (app dir: src/app vs app)", () => {
         }),
         expect.objectContaining({
           source: "/mcp",
+          destination: "/api/docs/mcp",
+        }),
+        expect.objectContaining({
+          source: "/.well-known/mcp",
           destination: "/api/docs/mcp",
         }),
         expect.objectContaining({
