@@ -83,6 +83,7 @@ Default behavior:
 - embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI and are included in the markdown fallback
 - if a page folder has `agent.md`, that file becomes the markdown response for that page
 - if `agent.md` is missing, the markdown response falls back to the normal page markdown
+- page frontmatter `related` is rendered into a comma-separated machine-readable markdown metadata line beside `Description`
 - MCP `read_page("/docs/<slug>")` uses the same page source and sees the same override
 
 Folder example:
@@ -110,6 +111,18 @@ Human-facing instructions.
 You are an implementation agent.
 Keep the scaffolded paths and commands aligned with the actual project structure.
 </Agent>
+```
+
+Related-page frontmatter example:
+
+```mdx
+---
+title: "Installation"
+description: "Install the framework"
+related:
+  - /docs/configuration
+  - /docs/customization/agent-primitive
+---
 ```
 
 Useful checks:

@@ -22,7 +22,13 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import { getNextAppDir } from "./get-app-dir.js";
-import { resolveChangelogConfig, resolveDocsI18n, resolveDocsLocale } from "@farming-labs/docs";
+import {
+  normalizeDocsRelated,
+  renderDocsRelatedMarkdownLines,
+  resolveChangelogConfig,
+  resolveDocsI18n,
+  resolveDocsLocale,
+} from "@farming-labs/docs";
 import type {
   ChangelogConfig,
   DocsAgentFeedbackContext,
@@ -1025,7 +1031,7 @@ function scanDocsDir(
   locale?: string,
   excludedDirs: string[] = [],
 ): DocsSearchSourcePage[] {
-  const indexes: DocsSearchSourcePage[] = [];
+  const indexes: Array<DocsSearchSourcePage & { relatedInput?: unknown }> = [];
 
   function isExcluded(dir: string) {
     const resolved = path.resolve(dir);
@@ -1059,6 +1065,7 @@ function scanDocsDir(
         indexes.push({
           title,
           description,
+          relatedInput: data.related,
           content,
           rawContent,
           agentFallbackRawContent: agentRawContent !== rawContent ? agentRawContent : undefined,
@@ -1090,7 +1097,7 @@ function scanDocsDir(
   }
 
   scan(docsDir, []);
-  return indexes;
+  return resolveRelatedForSearchPages(indexes);
 }
 
 function scanChangelogDir(
@@ -1101,7 +1108,7 @@ function scanChangelogDir(
 ): DocsSearchSourcePage[] {
   if (!fs.existsSync(changelogDir)) return [];
 
-  const indexes: DocsSearchSourcePage[] = [];
+  const indexes: Array<DocsSearchSourcePage & { relatedInput?: unknown }> = [];
   let entries: string[];
 
   try {
@@ -1144,6 +1151,7 @@ function scanChangelogDir(
       indexes.push({
         title,
         description,
+        relatedInput: data.related,
         content,
         rawContent,
         agentFallbackRawContent: agentRawContent !== rawContent ? agentRawContent : undefined,
@@ -1158,7 +1166,16 @@ function scanChangelogDir(
     }
   }
 
-  return indexes;
+  return resolveRelatedForSearchPages(indexes);
+}
+
+function resolveRelatedForSearchPages(
+  pages: Array<DocsSearchSourcePage & { relatedInput?: unknown }>,
+): DocsSearchSourcePage[] {
+  return pages.map(({ relatedInput, ...page }) => {
+    const related = normalizeDocsRelated(relatedInput);
+    return related.length > 0 ? { ...page, related } : page;
+  });
 }
 
 function normalizePathSegment(value: string): string {
@@ -1285,11 +1302,22 @@ function resolveLlmsTxtFormat(url: URL): "llms" | "llms-full" | null {
 }
 
 function renderMarkdownDocument(page: DocsMcpPage | DocsSearchSourcePage): string {
-  if ("agentRawContent" in page && page.agentRawContent !== undefined) return page.agentRawContent;
+  const relatedLines = renderDocsRelatedMarkdownLines(page.related);
+  if (
+    "agentRawContent" in page &&
+    page.agentRawContent !== undefined &&
+    relatedLines.length === 0
+  ) {
+    return page.agentRawContent;
+  }
 
   const lines = [`# ${page.title}`, `URL: ${page.url}`];
   if (page.description) lines.push(`Description: ${page.description}`);
-  lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);
+  lines.push(...relatedLines);
+  lines.push(
+    "",
+    page.agentRawContent ?? page.agentFallbackRawContent ?? page.rawContent ?? page.content,
+  );
   return lines.join("\n");
 }
 

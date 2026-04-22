@@ -46,7 +46,7 @@ Ten built-in theme entrypoints: `fumadocs` (default), `darksharp`, `pixel-border
 - **Page actions** — enable with `pageActions.copyMarkdown` and `pageActions.openDocs`.
 - **Built-in changelog pages (Next.js)** — enable `changelog` to publish a release feed from dated MDX entries.
 - **Built-in MCP server** — enabled by default at `/mcp` and `/.well-known/mcp` in Next.js, backed by `/api/docs/mcp`, and for local stdio tools. Opt out with `mcp: false` or `mcp: { enabled: false }`.
-- **Machine-readable markdown routes** — Next.js serves `/docs/<slug>.md` automatically with `withDocs()` and also returns the same markdown from `/docs/<slug>` when the request sends `Accept: text/markdown`. Use embedded `<Agent>...</Agent>` blocks inside `page.mdx` when the normal page only needs extra machine context; add a sibling `agent.md` when the whole machine-readable page should be overridden. The shared docs API also supports `GET /api/docs?format=markdown&path=<slug>`.
+- **Machine-readable markdown routes** — Next.js serves `/docs/<slug>.md` automatically with `withDocs()` and also returns the same markdown from `/docs/<slug>` when the request sends `Accept: text/markdown`. Use embedded `<Agent>...</Agent>` blocks inside `page.mdx` when the normal page only needs extra machine context; add a sibling `agent.md` when the whole machine-readable page should be overridden. The shared docs API also supports `GET /api/docs?format=markdown&path=<slug>`. Page frontmatter `related` appears as a comma-separated machine-readable markdown metadata line beside `Description`.
 
 ### MCP quick test
 
@@ -221,6 +221,9 @@ Docs live under the `entry` directory (e.g. `docs/` or `app/docs/`). Each page i
 ---
 title: "Installation"
 description: "Get up and running"
+related:
+  - /docs/configuration
+  - /docs/customization/agent-primitive
 icon: "rocket"
 order: 1
 ---
