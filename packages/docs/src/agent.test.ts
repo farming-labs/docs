@@ -10,6 +10,7 @@ import {
   renderDocsSkillDocument,
   resolveDocsAgentMdxContent,
   resolveDocsLlmsTxtFormat,
+  resolveDocsSkillFormat,
   resolveDocsMarkdownRequest,
 } from "./agent.js";
 
@@ -36,6 +37,13 @@ describe("agent route helpers", () => {
     expect(isDocsSkillRequest(new URL("https://example.com/.well-known/skill.md"))).toBe(true);
     expect(isDocsSkillRequest(new URL("https://example.com/api/docs?format=skill"))).toBe(true);
     expect(isDocsSkillRequest(new URL("https://example.com/blog?format=skill"))).toBe(false);
+    expect(resolveDocsSkillFormat(new URL("https://example.com/api/docs?format=skill"))).toBe(
+      "skill",
+    );
+    expect(resolveDocsSkillFormat(new URL("https://example.com/internal/docs?format=skill"))).toBe(
+      "skill",
+    );
+    expect(resolveDocsSkillFormat(new URL("https://example.com/internal/docs?format=llms"))).toBeNull();
   });
 
   it("detects public docs forwarder requests without taking over api/docs", () => {

@@ -17,6 +17,7 @@ import {
   resolveDocsLocale,
   resolveDocsMarkdownRequest,
   resolveDocsPath,
+  resolveDocsSkillFormat,
 } from "@farming-labs/docs";
 import { createDocsMcpHttpHandler, resolveDocsMcpConfig } from "@farming-labs/docs/server";
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
@@ -787,7 +788,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       );
     }
 
-    if (isDocsSkillRequest(url)) {
+    if (isDocsSkillRequest(url) || resolveDocsSkillFormat(url) === "skill") {
       return new Response(
         readRootSkillDocument(preloaded, rootDir) ??
           renderDocsSkillDocument({

@@ -43,6 +43,7 @@ export {
   renderDocsSkillDocument,
   resolveDocsAgentMdxContent,
   resolveDocsLlmsTxtFormat,
+  resolveDocsSkillFormat,
   resolveDocsMarkdownRequest,
 } from "./agent.js";
 export {

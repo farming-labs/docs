@@ -108,7 +108,11 @@ export function isDocsSkillRequest(url: URL): boolean {
     return true;
   }
 
-  return pathname === DEFAULT_DOCS_API_ROUTE && url.searchParams.get("format")?.trim() === "skill";
+  return pathname === DEFAULT_DOCS_API_ROUTE && resolveDocsSkillFormat(url) === "skill";
+}
+
+export function resolveDocsSkillFormat(url: URL): "skill" | null {
+  return url.searchParams.get("format")?.trim() === "skill" ? "skill" : null;
 }
 
 export function isDocsPublicGetRequest(entry: string, url: URL, request: Request): boolean {
