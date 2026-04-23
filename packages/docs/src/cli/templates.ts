@@ -1197,7 +1197,11 @@ async function handlePublicDocsRequest(request: Request) {
   if (isDocsMcpRequest(url)) {
     if (method === "POST") return docsServer.MCP.POST({ request });
     if (method === "DELETE") return docsServer.MCP.DELETE({ request });
-    return docsServer.MCP.GET({ request });
+    if (method === "GET" || method === "HEAD") return docsServer.MCP.GET({ request });
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD, POST, DELETE" },
+    });
   }
 
   if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, url, request)) {
@@ -1669,7 +1673,11 @@ export const handle: Handle = async ({ event, resolve }) => {
   if (isDocsMcpRequest(event.url)) {
     if (method === "POST") return MCP.POST({ request: event.request });
     if (method === "DELETE") return MCP.DELETE({ request: event.request });
-    return MCP.GET({ request: event.request });
+    if (method === "GET" || method === "HEAD") return MCP.GET({ request: event.request });
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD, POST, DELETE" },
+    });
   }
 
   if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request)) {
@@ -1679,6 +1687,76 @@ export const handle: Handle = async ({ event, resolve }) => {
   return resolve(event);
 };
 `;
+}
+
+export function injectSvelteDocsPublicHook(
+  content: string,
+  filePath: string,
+  useAlias: boolean,
+): string | null {
+  if (content.includes("isDocsPublicGetRequest") || content.includes("docsPublicHandle")) {
+    return null;
+  }
+  if (/export\s*{\s*handle\b/.test(content)) return null;
+
+  const serverImport = svelteRouteServerImport(filePath, useAlias);
+  const configImport = svelteRouteConfigImport(filePath, useAlias);
+  let next = content.trimEnd();
+  let hasExistingHandle = false;
+
+  const replacements: Array<[RegExp, string]> = [
+    [/\bexport\s+const\s+handle(\s*:\s*[^=]+)?\s*=/, "const existingHandle$1 ="],
+    [/\bexport\s+async\s+function\s+handle\b/, "async function existingHandle"],
+    [/\bexport\s+function\s+handle\b/, "function existingHandle"],
+  ];
+
+  for (const [pattern, replacement] of replacements) {
+    if (pattern.test(next)) {
+      next = next.replace(pattern, replacement);
+      next = next.replace(/const existingHandle(:[^=\n]*?)\s+=/, "const existingHandle$1 =");
+      hasExistingHandle = true;
+      break;
+    }
+  }
+
+  const imports = [
+    'import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";',
+    ...(next.includes("Handle") ? [] : ['import type { Handle } from "@sveltejs/kit";']),
+    ...(hasExistingHandle && !next.includes("sequence")
+      ? ['import { sequence } from "@sveltejs/kit/hooks";']
+      : []),
+    `import docsConfig from "${configImport}";`,
+    `import { GET as docsGET, MCP as docsMCP } from "${serverImport}";`,
+  ];
+
+  const docsHandle = `\
+const docsEntry = docsConfig.entry ?? "docs";
+
+const docsPublicHandle: Handle = async ({ event, resolve }) => {
+  const method = event.request.method.toUpperCase();
+
+  if (isDocsMcpRequest(event.url)) {
+    if (method === "POST") return docsMCP.POST({ request: event.request });
+    if (method === "DELETE") return docsMCP.DELETE({ request: event.request });
+    if (method === "GET" || method === "HEAD") return docsMCP.GET({ request: event.request });
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD, POST, DELETE" },
+    });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request)) {
+    return docsGET({ url: event.url, request: event.request });
+  }
+
+  return resolve(event);
+};`;
+
+  const exportLine = hasExistingHandle
+    ? "export const handle = sequence(docsPublicHandle, existingHandle);"
+    : "export const handle = docsPublicHandle;";
+
+  return `${imports.join("\n")}\n${next}\n\n${docsHandle}\n\n${exportLine}\n`;
 }
 
 export function svelteRootLayoutTemplate(globalCssRelPath: string): string {
@@ -2138,7 +2216,11 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
   if (isDocsMcpRequest(context.url)) {
     if (method === "POST") return MCP.POST({ request: context.request });
     if (method === "DELETE") return MCP.DELETE({ request: context.request });
-    return MCP.GET({ request: context.request });
+    if (method === "GET" || method === "HEAD") return MCP.GET({ request: context.request });
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD, POST, DELETE" },
+    });
   }
 
   if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request)) {
@@ -2148,6 +2230,79 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
   return next();
 };
 `;
+}
+
+export function injectAstroDocsMiddleware(
+  content: string,
+  filePath: string,
+  useAlias: boolean,
+): string | null {
+  if (content.includes("isDocsPublicGetRequest") || content.includes("docsPublicMiddleware")) {
+    return null;
+  }
+  if (/export\s*{\s*onRequest\b/.test(content)) return null;
+
+  const serverImport = astroRouteServerImport(filePath, useAlias);
+  const configImport = astroRouteConfigImport(filePath, useAlias);
+  let next = content.trimEnd();
+  let hasExistingMiddleware = false;
+
+  const replacements: Array<[RegExp, string]> = [
+    [/\bexport\s+const\s+onRequest(\s*:\s*[^=]+)?\s*=/, "const existingOnRequest$1 ="],
+    [/\bexport\s+async\s+function\s+onRequest\b/, "async function existingOnRequest"],
+    [/\bexport\s+function\s+onRequest\b/, "function existingOnRequest"],
+  ];
+
+  for (const [pattern, replacement] of replacements) {
+    if (pattern.test(next)) {
+      next = next.replace(pattern, replacement);
+      next = next.replace(
+        /const existingOnRequest(:[^=\n]*?)\s+=/,
+        "const existingOnRequest$1 =",
+      );
+      hasExistingMiddleware = true;
+      break;
+    }
+  }
+
+  const imports = [
+    'import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";',
+    ...(next.includes("MiddlewareHandler") ? [] : ['import type { MiddlewareHandler } from "astro";']),
+    ...(hasExistingMiddleware && !next.includes("sequence")
+      ? ['import { sequence } from "astro:middleware";']
+      : []),
+    `import docsConfig from "${configImport}";`,
+    `import { GET as docsGET, MCP as docsMCP } from "${serverImport}";`,
+  ];
+
+  const docsMiddleware = `\
+const docsEntry = docsConfig.entry ?? "docs";
+
+const docsPublicMiddleware: MiddlewareHandler = async (context, next) => {
+  const method = context.request.method.toUpperCase();
+
+  if (isDocsMcpRequest(context.url)) {
+    if (method === "POST") return docsMCP.POST({ request: context.request });
+    if (method === "DELETE") return docsMCP.DELETE({ request: context.request });
+    if (method === "GET" || method === "HEAD") return docsMCP.GET({ request: context.request });
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD, POST, DELETE" },
+    });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request)) {
+    return docsGET({ request: context.request });
+  }
+
+  return next();
+};`;
+
+  const exportLine = hasExistingMiddleware
+    ? "export const onRequest = sequence(docsPublicMiddleware, existingOnRequest);"
+    : "export const onRequest = docsPublicMiddleware;";
+
+  return `${imports.join("\n")}\n${next}\n\n${docsMiddleware}\n\n${exportLine}\n`;
 }
 
 export function astroApiReferenceRouteTemplate(filePath: string): string {

@@ -235,6 +235,35 @@ describe("i18n scaffold for non-Next frameworks", () => {
     expect(written).toContain("docs/fr/quickstart/page.md");
   });
 
+  it("composes SvelteKit public docs handling into an existing hook", () => {
+    fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, "src", "hooks.server.ts"),
+      `import type { Handle } from "@sveltejs/kit";
+
+export const handle: Handle = async ({ event, resolve }) => {
+  event.locals.user = "demo";
+  return resolve(event);
+};
+`,
+    );
+
+    scaffoldSvelteKit(
+      tmpDir,
+      { ...baseI18nCfg, framework: "sveltekit" },
+      "src/app.css",
+      makeWrite(tmpDir),
+      skipped,
+      written,
+    );
+
+    expect(written).toContain("src/hooks.server.ts (composed docs public hook)");
+    const hook = fs.readFileSync(path.join(tmpDir, "src", "hooks.server.ts"), "utf-8");
+    expect(hook).toContain("const existingHandle: Handle =");
+    expect(hook).toContain("const docsPublicHandle: Handle =");
+    expect(hook).toContain("sequence(docsPublicHandle, existingHandle)");
+  });
+
   it("writes locale folders for Astro", () => {
     scaffoldAstro(
       tmpDir,
@@ -259,6 +288,35 @@ describe("i18n scaffold for non-Next frameworks", () => {
     const config = fs.readFileSync(path.join(tmpDir, "src/lib/docs.config.ts"), "utf-8");
     expect(config).toContain("i18n:");
     expect(config).toContain("apiReference:");
+  });
+
+  it("composes Astro public docs handling into existing middleware", () => {
+    fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, "src", "middleware.ts"),
+      `import type { MiddlewareHandler } from "astro";
+
+export const onRequest: MiddlewareHandler = async (context, next) => {
+  context.locals.user = "demo";
+  return next();
+};
+`,
+    );
+
+    scaffoldAstro(
+      tmpDir,
+      { ...baseI18nCfg, framework: "astro", astroAdapter: "vercel" },
+      "src/styles/global.css",
+      makeWrite(tmpDir),
+      skipped,
+      written,
+    );
+
+    expect(written).toContain("src/middleware.ts (composed docs public middleware)");
+    const middleware = fs.readFileSync(path.join(tmpDir, "src", "middleware.ts"), "utf-8");
+    expect(middleware).toContain("const existingOnRequest: MiddlewareHandler =");
+    expect(middleware).toContain("const docsPublicMiddleware: MiddlewareHandler =");
+    expect(middleware).toContain("sequence(docsPublicMiddleware, existingOnRequest)");
   });
 
   it("writes locale folders for Nuxt", () => {

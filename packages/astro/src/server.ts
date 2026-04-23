@@ -801,6 +801,16 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     const llmsFormat = resolveDocsLlmsTxtFormat(url);
     if (llmsFormat === "llms" || llmsFormat === "llms-full") {
+      if (!llmsEnabled) {
+        return new Response("Not Found", {
+          status: 404,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "X-Robots-Tag": "noindex",
+          },
+        });
+      }
+
       const llmsContent = getLlmsContent(ctx);
       return new Response(
         llmsFormat === "llms-full" ? llmsContent.llmsFullTxt : llmsContent.llmsTxt,

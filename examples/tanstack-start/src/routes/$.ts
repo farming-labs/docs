@@ -11,7 +11,11 @@ async function handlePublicDocsRequest(request: Request) {
   if (isDocsMcpRequest(url)) {
     if (method === "POST") return docsServer.MCP.POST({ request });
     if (method === "DELETE") return docsServer.MCP.DELETE({ request });
-    return docsServer.MCP.GET({ request });
+    if (method === "GET" || method === "HEAD") return docsServer.MCP.GET({ request });
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD, POST, DELETE" },
+    });
   }
 
   if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, url, request)) {

@@ -19,8 +19,15 @@ describe("agent route helpers", () => {
     expect(isDocsAgentDiscoveryRequest(new URL("https://example.com/api/docs?agent=spec"))).toBe(
       true,
     );
+    expect(isDocsAgentDiscoveryRequest(new URL("https://example.com/blog?agent=spec"))).toBe(
+      false,
+    );
 
     expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/llms.txt"))).toBe("llms");
+    expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/api/docs?format=llms"))).toBe(
+      "llms",
+    );
+    expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/blog?format=llms"))).toBeNull();
     expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/.well-known/llms-full.txt"))).toBe(
       "llms-full",
     );
@@ -62,6 +69,20 @@ describe("agent route helpers", () => {
       }),
     );
     expect(acceptRoute).toEqual({ requestedPath: "install" });
+
+    const apiFormatRoute = resolveDocsMarkdownRequest(
+      "docs",
+      new URL("https://example.com/api/docs?format=markdown&path=install"),
+      new Request("https://example.com/api/docs?format=markdown&path=install"),
+    );
+    expect(apiFormatRoute).toEqual({ requestedPath: "install" });
+
+    const hijackRoute = resolveDocsMarkdownRequest(
+      "docs",
+      new URL("https://example.com/blog?format=markdown&path=install"),
+      new Request("https://example.com/blog?format=markdown&path=install"),
+    );
+    expect(hijackRoute).toBeNull();
   });
 
   it("renders agent-specific markdown documents", () => {
@@ -69,6 +90,9 @@ describe("agent route helpers", () => {
     const agent = resolveDocsAgentMdxContent("Visible\n\n<Agent>\nHidden\n</Agent>", "agent");
     expect(human).toBe("Visible");
     expect(agent).toBe("Visible\n\nHidden");
+    expect(resolveDocsAgentMdxContent("Visible\n\n<Agent>\nHidden\n  </Agent>", "agent")).toBe(
+      "Visible\n\nHidden",
+    );
 
     const page = findDocsMarkdownPage(
       "docs",

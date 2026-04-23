@@ -22,6 +22,8 @@ import {
   buildDocsAgentDiscoverySpec,
   findDocsMarkdownPage,
   isDocsAgentDiscoveryRequest,
+  isDocsMcpRequest,
+  isDocsPublicGetRequest,
   normalizeDocsRelated,
   performDocsSearch,
   renderDocsMarkdownDocument,
@@ -788,6 +790,16 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     const llmsFormat = resolveDocsLlmsTxtFormat(url);
     if (llmsFormat === "llms" || llmsFormat === "llms-full") {
+      if (!llmsEnabled) {
+        return new Response("Not Found", {
+          status: 404,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "X-Robots-Tag": "noindex",
+          },
+        });
+      }
+
       const llmsContent = getLlmsContent(ctx);
       return new Response(
         llmsFormat === "llms-full" ? llmsContent.llmsFullTxt : llmsContent.llmsTxt,
@@ -1097,9 +1109,13 @@ export function defineDocsMcpHandler(config: Record<string, any>, storage: DocsS
       });
     }
 
-    return server.MCP.GET({
-      request: new Request(url.href, { method: "GET", headers }),
-    });
+    if (method === "GET" || method === "HEAD") {
+      return server.MCP.GET({
+        request: new Request(url.href, { method, headers }),
+      });
+    }
+
+    return methodNotAllowedResponse();
   });
 }
 
@@ -1112,25 +1128,14 @@ export function defineDocsMcpHandler(config: Record<string, any>, storage: DocsS
 export function defineDocsPublicHandler(config: Record<string, any>, storage: DocsStorageAccessor) {
   const getServer = createStorageBackedDocsServerGetter(config, storage);
   const entry = normalizePathSegment((config.entry as string | undefined) ?? "docs") || "docs";
-  const docsEntry = `/${entry}`;
-  const publicGetPaths = new Set([
-    "/llms.txt",
-    "/llms-full.txt",
-    "/.well-known/llms.txt",
-    "/.well-known/llms-full.txt",
-    "/.well-known/agent",
-    "/.well-known/agent.json",
-  ]);
-  const mcpPaths = new Set(["/api/docs/mcp", "/mcp", "/.well-known/mcp"]);
 
   return eventHandler(async (event: any) => {
     const method = (event.method ?? event.node?.req?.method ?? "GET").toUpperCase();
     const url = resolveEventUrl(event);
-    const pathname = normalizePublicPathname(url.pathname);
+    const headers = event.headers ?? event.node?.req?.headers ?? {};
 
-    if (mcpPaths.has(pathname)) {
+    if (isDocsMcpRequest(url)) {
       const server = await getServer();
-      const headers = event.headers ?? event.node?.req?.headers ?? {};
 
       if (method === "POST") {
         return server.MCP.POST({
@@ -1148,21 +1153,34 @@ export function defineDocsPublicHandler(config: Record<string, any>, storage: Do
         });
       }
 
-      return server.MCP.GET({
-        request: new Request(url.href, { method: "GET", headers }),
-      });
+      if (method === "GET" || method === "HEAD") {
+        return server.MCP.GET({
+          request: new Request(url.href, { method, headers }),
+        });
+      }
+
+      return methodNotAllowedResponse();
     }
 
-    if (
-      (method === "GET" || method === "HEAD") &&
-      (publicGetPaths.has(pathname) || isDocsMarkdownPublicPath(pathname, docsEntry))
-    ) {
+    if (method === "GET" || method === "HEAD") {
+      const request = new Request(url.href, { method, headers });
+      if (!isDocsPublicGetRequest(entry, url, request)) return undefined;
+
       const server = await getServer();
-      const headers = event.headers ?? event.node?.req?.headers ?? {};
       return server.GET({
-        request: new Request(url.href, { method: "GET", headers }),
+        request,
       });
     }
+  });
+}
+
+function methodNotAllowedResponse() {
+  return new Response("Method Not Allowed", {
+    status: 405,
+    headers: {
+      Allow: "GET, HEAD, POST, DELETE",
+      "Content-Type": "text/plain; charset=utf-8",
+    },
   });
 }
 
@@ -1189,18 +1207,6 @@ async function readEventRawBody(event: any): Promise<string | undefined> {
       return undefined;
     }
   }
-}
-
-function normalizePublicPathname(pathname: string) {
-  const normalized = pathname.replace(/\/+/g, "/");
-  return normalized === "/" ? normalized : normalized.replace(/\/+$/, "");
-}
-
-function isDocsMarkdownPublicPath(pathname: string, docsEntry: string) {
-  return (
-    pathname === `${docsEntry}.md` ||
-    (pathname.startsWith(`${docsEntry}/`) && pathname.endsWith(".md"))
-  );
 }
 
 function createStorageBackedDocsServerGetter(

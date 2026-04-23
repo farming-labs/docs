@@ -72,6 +72,7 @@ import {
   svelteDocsPageTemplate,
   svelteDocsApiRouteTemplate,
   svelteDocsPublicHookTemplate,
+  injectSvelteDocsPublicHook,
   svelteApiReferenceRouteTemplate,
   svelteRootLayoutTemplate,
   svelteGlobalCssTemplate,
@@ -86,6 +87,7 @@ import {
   astroDocsIndexTemplate,
   astroApiRouteTemplate,
   astroDocsMiddlewareTemplate,
+  injectAstroDocsMiddleware,
   astroApiReferenceRouteTemplate,
   astroGlobalCssTemplate,
   injectAstroCssImport,
@@ -1499,7 +1501,19 @@ function scaffoldSvelteKit(
   const apiDocsRoute = "src/routes/api/docs/+server.ts";
   const publicHook = "src/hooks.server.ts";
   write(apiDocsRoute, svelteDocsApiRouteTemplate(apiDocsRoute, cfg.useAlias));
-  write(publicHook, svelteDocsPublicHookTemplate(publicHook, cfg.useAlias));
+  const publicHookPath = path.join(cwd, publicHook);
+  const existingPublicHook = readFileSafe(publicHookPath);
+  if (existingPublicHook) {
+    const injected = injectSvelteDocsPublicHook(existingPublicHook, publicHook, cfg.useAlias);
+    if (injected) {
+      writeFileSafe(publicHookPath, injected, true);
+      written.push(`${publicHook} (composed docs public hook)`);
+    } else {
+      skipped.push(`${publicHook} (already configured or could not compose docs public hook)`);
+    }
+  } else {
+    write(publicHook, svelteDocsPublicHookTemplate(publicHook, cfg.useAlias));
+  }
   if (cfg.apiReference) {
     const apiReferenceIndexRoute = `src/routes/${cfg.apiReference.path}/+server.ts`;
     const apiReferenceCatchAllRoute = `src/routes/${cfg.apiReference.path}/[...slug]/+server.ts`;
@@ -1593,7 +1607,20 @@ function scaffoldAstro(
   write(`src/pages/${cfg.entry}/index.astro`, astroDocsIndexTemplate(cfg));
   write(`src/pages/${cfg.entry}/[...slug].astro`, astroDocsPageTemplate(cfg));
   write(`src/pages/api/${cfg.entry}.ts`, astroApiRouteTemplate(cfg));
-  write("src/middleware.ts", astroDocsMiddlewareTemplate("src/middleware.ts", cfg.useAlias));
+  const middleware = "src/middleware.ts";
+  const middlewarePath = path.join(cwd, middleware);
+  const existingMiddleware = readFileSafe(middlewarePath);
+  if (existingMiddleware) {
+    const injected = injectAstroDocsMiddleware(existingMiddleware, middleware, cfg.useAlias);
+    if (injected) {
+      writeFileSafe(middlewarePath, injected, true);
+      written.push(`${middleware} (composed docs public middleware)`);
+    } else {
+      skipped.push(`${middleware} (already configured or could not compose docs public middleware)`);
+    }
+  } else {
+    write(middleware, astroDocsMiddlewareTemplate(middleware, cfg.useAlias));
+  }
   if (cfg.apiReference) {
     const apiReferenceIndexRoute = `src/pages/${cfg.apiReference.path}/index.ts`;
     const apiReferenceCatchAllRoute = `src/pages/${cfg.apiReference.path}/[...slug].ts`;

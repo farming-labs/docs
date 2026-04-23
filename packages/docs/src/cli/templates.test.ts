@@ -28,9 +28,11 @@ import {
   svelteDocsLayoutTemplate,
   svelteDocsLayoutServerTemplate,
   svelteDocsPublicHookTemplate,
+  injectSvelteDocsPublicHook,
   svelteApiReferenceRouteTemplate,
   astroDocsConfigTemplate,
   astroDocsMiddlewareTemplate,
+  injectAstroDocsMiddleware,
   astroApiReferenceRouteTemplate,
   nuxtServerApiReferenceRouteTemplate,
   nuxtServerDocsPublicMiddlewareTemplate,
@@ -375,6 +377,26 @@ describe("api reference route templates", () => {
     expect(out).toContain("export const handle");
     expect(out).toContain("isDocsPublicGetRequest");
     expect(out).toContain('from "./lib/docs.server"');
+    expect(out).toContain('Allow: "GET, HEAD, POST, DELETE"');
+  });
+
+  it("composes a SvelteKit public docs hook with an existing handle", () => {
+    const out = injectSvelteDocsPublicHook(
+      `import type { Handle } from "@sveltejs/kit";
+
+export const handle: Handle = async ({ event, resolve }) => {
+  event.locals.user = "demo";
+  return resolve(event);
+};
+`,
+      "src/hooks.server.ts",
+      false,
+    );
+
+    expect(out).not.toBeNull();
+    expect(out).toContain("const existingHandle: Handle =");
+    expect(out).toContain("const docsPublicHandle: Handle =");
+    expect(out).toContain("export const handle = sequence(docsPublicHandle, existingHandle);");
   });
 
   it("creates an Astro API reference route handler", () => {
@@ -388,6 +410,26 @@ describe("api reference route templates", () => {
     expect(out).toContain("export const onRequest");
     expect(out).toContain("isDocsPublicGetRequest");
     expect(out).toContain('from "./lib/docs.server"');
+    expect(out).toContain('Allow: "GET, HEAD, POST, DELETE"');
+  });
+
+  it("composes Astro docs middleware with an existing onRequest", () => {
+    const out = injectAstroDocsMiddleware(
+      `import type { MiddlewareHandler } from "astro";
+
+export const onRequest: MiddlewareHandler = async (context, next) => {
+  context.locals.user = "demo";
+  return next();
+};
+`,
+      "src/middleware.ts",
+      false,
+    );
+
+    expect(out).not.toBeNull();
+    expect(out).toContain("const existingOnRequest: MiddlewareHandler =");
+    expect(out).toContain("const docsPublicMiddleware: MiddlewareHandler =");
+    expect(out).toContain("export const onRequest = sequence(docsPublicMiddleware, existingOnRequest);");
   });
 
   it("creates a Nuxt API reference route handler", () => {

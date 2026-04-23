@@ -67,9 +67,11 @@ export function normalizeDocsUrlPath(value: string): string {
 }
 
 export function isDocsAgentDiscoveryRequest(url: URL): boolean {
-  if (url.searchParams.get("agent")?.trim() === "spec") return true;
-
   const pathname = normalizeDocsUrlPath(url.pathname);
+  if (pathname === DEFAULT_DOCS_API_ROUTE && url.searchParams.get("agent")?.trim() === "spec") {
+    return true;
+  }
+
   return (
     pathname === DEFAULT_AGENT_SPEC_ROUTE ||
     pathname === DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE ||
@@ -112,7 +114,9 @@ export function resolveDocsLlmsTxtFormat(url: URL): "llms" | "llms-full" | null 
   }
 
   const format = url.searchParams.get("format");
-  return format === "llms" || format === "llms-full" ? format : null;
+  return pathname === DEFAULT_DOCS_API_ROUTE && (format === "llms" || format === "llms-full")
+    ? format
+    : null;
 }
 
 export function resolveDocsMarkdownRequest(
@@ -120,14 +124,14 @@ export function resolveDocsMarkdownRequest(
   url: URL,
   request: Request,
 ): { requestedPath: string } | null {
+  const pathname = normalizeDocsUrlPath(url.pathname);
   const format = url.searchParams.get("format")?.trim();
-  if (format === "markdown") {
+  if (pathname === DEFAULT_DOCS_API_ROUTE && format === "markdown") {
     return {
       requestedPath: url.searchParams.get("path")?.trim() ?? "",
     };
   }
 
-  const pathname = normalizeDocsUrlPath(url.pathname);
   const normalizedEntry = `/${normalizeDocsPathSegment(entry) || "docs"}`;
 
   if (pathname === `${normalizedEntry}.md`) {
@@ -245,7 +249,7 @@ export function resolveDocsAgentMdxContent(content: string, audience: "human" | 
 
       const closeWithContentMatch = line.match(/^(.*)<\/Agent>\s*$/);
       if (closeWithContentMatch && agentDepth > 0) {
-        if (audience === "agent" && closeWithContentMatch[1]) {
+        if (audience === "agent" && closeWithContentMatch[1].trim()) {
           output.push(closeWithContentMatch[1]);
         }
         agentDepth = Math.max(0, agentDepth - 1);

@@ -409,6 +409,8 @@ function readAgentDocFromMap(contentMap: ContentFileMap, dirPrefix: string, slug
 function findPageInMap(contentMap: ContentFileMap, dirPrefix: string, slug: string) {
   const candidates = slug
     ? [
+        `${dirPrefix}${slug}.md`,
+        `${dirPrefix}${slug}.mdx`,
         `${dirPrefix}${slug}/page.md`,
         `${dirPrefix}${slug}/page.mdx`,
         `${dirPrefix}${slug}/index.md`,
@@ -564,6 +566,8 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         }
       } else {
         const candidates = [
+          path.join(ctx.contentDirAbs, `${slug}.md`),
+          path.join(ctx.contentDirAbs, `${slug}.mdx`),
           path.join(ctx.contentDirAbs, slug, "page.md"),
           path.join(ctx.contentDirAbs, slug, "page.mdx"),
           path.join(ctx.contentDirAbs, slug, "index.md"),
@@ -786,6 +790,16 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
 
     const llmsFormat = resolveDocsLlmsTxtFormat(url);
     if (llmsFormat === "llms" || llmsFormat === "llms-full") {
+      if (!llmsEnabled) {
+        return new Response("Not Found", {
+          status: 404,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "X-Robots-Tag": "noindex",
+          },
+        });
+      }
+
       const llmsContent = getLlmsContent(ctx);
       return new Response(
         llmsFormat === "llms-full" ? llmsContent.llmsFullTxt : llmsContent.llmsTxt,
