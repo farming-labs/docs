@@ -229,6 +229,8 @@ describe("i18n scaffold for non-Next frameworks", () => {
     expect(written).toContain("src/routes/docs/+page.svelte");
     expect(written).toContain("src/routes/api-reference/+server.ts");
     expect(written).toContain("src/routes/api-reference/[...slug]/+server.ts");
+    expect(written).toContain("src/routes/api/docs/+server.ts");
+    expect(written).toContain("src/hooks.server.ts");
     expect(written).toContain("docs/en/page.md");
     expect(written).toContain("docs/fr/quickstart/page.md");
   });
@@ -250,6 +252,8 @@ describe("i18n scaffold for non-Next frameworks", () => {
 
     expect(written).toContain("src/pages/api-reference/index.ts");
     expect(written).toContain("src/pages/api-reference/[...slug].ts");
+    expect(written).toContain("src/pages/api/docs.ts");
+    expect(written).toContain("src/middleware.ts");
     expect(written).toContain("docs/en/page.md");
     expect(written).toContain("docs/fr/installation/page.md");
     const config = fs.readFileSync(path.join(tmpDir, "src/lib/docs.config.ts"), "utf-8");
@@ -274,11 +278,19 @@ describe("i18n scaffold for non-Next frameworks", () => {
 
     expect(written).toContain("server/routes/api-reference/index.ts");
     expect(written).toContain("server/routes/api-reference/[...slug].ts");
+    expect(written).toContain("server/api/docs.ts");
+    expect(written).toContain("server/middleware/docs-public.ts");
     expect(written).toContain("docs/en/page.md");
     expect(written).toContain("docs/fr/installation/page.md");
     const config = fs.readFileSync(path.join(tmpDir, "docs.config.ts"), "utf-8");
     expect(config).toContain("i18n:");
     expect(config).toContain("apiReference:");
+
+    const middleware = fs.readFileSync(
+      path.join(tmpDir, "server", "middleware", "docs-public.ts"),
+      "utf-8",
+    );
+    expect(middleware).toContain('defineDocsPublicHandler(config, useStorage)');
   });
 });
 
@@ -369,9 +381,20 @@ export default defineConfig({
     expect(written).toContain("src/routes/docs/index.tsx");
     expect(written).toContain("src/routes/docs/$.tsx");
     expect(written).toContain("src/routes/api/docs.ts");
+    expect(written).toContain("src/routes/$.ts");
     expect(written).toContain("src/routes/api-reference.index.ts");
     expect(written).toContain("src/routes/api-reference.$.ts");
     expect(written).toContain("docs/page.mdx");
+
+    const publicRoute = fs.readFileSync(path.join(tmpDir, "src", "routes", "$.ts"), "utf-8");
+    expect(publicRoute).toContain('createFileRoute("/$")');
+    expect(publicRoute).toContain("isDocsPublicGetRequest");
+
+    const docsCatchAllRoute = fs.readFileSync(
+      path.join(tmpDir, "src", "routes", "docs", "$.tsx"),
+      "utf-8",
+    );
+    expect(docsCatchAllRoute).toContain("isDocsPublicGetRequest");
 
     const rootRoute = fs.readFileSync(path.join(tmpDir, "src", "routes", "__root.tsx"), "utf-8");
     expect(rootRoute).toContain("@farming-labs/theme/tanstack");

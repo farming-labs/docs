@@ -78,8 +78,12 @@ No separate `docs.config` flag is required for page-level markdown delivery.
 Default behavior:
 
 - the shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
-- **Next.js:** `withDocs()` also serves `/docs/<slug>.md`
-- **Next.js:** `Accept: text/markdown` on `/docs/<slug>` returns the same markdown response
+- **Next.js:** `withDocs()` also serves `/docs.md` and `/docs/<slug>.md`
+- **TanStack Start:** current `init` scaffolds one `src/routes/$.ts` public forwarder for `/docs.md` and `/docs/<slug>.md`
+- **SvelteKit:** current `init` scaffolds one `src/hooks.server.ts` public forwarder for `/docs.md` and `/docs/<slug>.md`
+- **Astro:** current `init` scaffolds one `src/middleware.ts` public forwarder for `/docs.md` and `/docs/<slug>.md`
+- **Nuxt:** current `init` scaffolds one `server/middleware/docs-public.ts` public forwarder for `/docs.md` and `/docs/<slug>.md`
+- **Next.js:** `Accept: text/markdown` on `/docs/<slug>` returns the same markdown response; other adapters should use the `.md` URL or API format route
 - embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI and are included in the markdown fallback
 - if a page folder has `agent.md`, that file becomes the markdown response for that page
 - if `agent.md` is missing, the markdown response falls back to the normal page markdown
@@ -131,13 +135,14 @@ Useful checks:
 ```bash
 curl "http://127.0.0.1:3000/api/docs?format=markdown&path=quickstart"
 curl "http://127.0.0.1:3000/docs/quickstart.md"
-curl "http://127.0.0.1:3000/docs/quickstart" -H "Accept: text/markdown"
+curl "http://127.0.0.1:3000/docs/quickstart" -H "Accept: text/markdown" # Next.js
 curl "http://127.0.0.1:3000/docs/getting-started/agent-ready-docs.md"
 ```
 
-Call out content negotiation when relevant: `/docs/<slug>` remains the normal HTML page for browsers,
-but agents/scripts can send `Accept: text/markdown` to the same URL and receive the machine-readable
-markdown representation without appending `.md`.
+Call out content negotiation when relevant: in Next.js, `/docs/<slug>` remains the normal HTML page
+for browsers, but agents/scripts can send `Accept: text/markdown` to the same URL and receive the
+machine-readable markdown representation without appending `.md`. In other adapters, use
+`/docs/<slug>.md` or the API format route.
 
 ---
 
@@ -329,11 +334,16 @@ feedback: {
 
 Default behavior:
 
-- `GET /api/docs/agent/spec` returns the configured agent discovery document with site identity, locale config, capability flags, search, markdown route/header access, `llms.txt`, Skills CLI install metadata, MCP, and feedback routes
+- `GET /.well-known/agent.json` is the preferred public agent discovery document, with `/.well-known/agent` as fallback and `/api/docs/agent/spec` as the canonical framework route
+- the discovery document includes site identity, locale config, capability flags, search, markdown routes, `llms.txt`, Skills CLI install metadata, MCP, and feedback routes
 - `GET /api/docs/agent/feedback/schema` returns the machine-readable schema
 - `POST /api/docs/agent/feedback` accepts `{ context?, payload }`
 - the shared `/api/docs` handler remains the source of truth
 - **Next.js:** `withDocs()` adds the public rewrites automatically
+- **TanStack Start:** current `init` scaffolds one `src/routes/$.ts` public forwarder for well-known routes
+- **SvelteKit:** current `init` scaffolds one `src/hooks.server.ts` public forwarder for well-known routes
+- **Astro:** current `init` scaffolds one `src/middleware.ts` public forwarder for well-known routes
+- **Nuxt:** current `init` scaffolds one `server/middleware/docs-public.ts` public forwarder for well-known routes
 - `feedback.agent` alone does not enable the human footer UI
 
 Default payload shape:
@@ -408,8 +418,11 @@ Default behavior:
 
 Framework notes:
 - **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route and public `/mcp` plus `/.well-known/mcp` rewrites
-- **TanStack Start / SvelteKit / Astro / Nuxt:** add the framework route file and reuse the built-in `MCP` handler from the docs server helper
-- **Custom routes:** set `mcp.route` in `docs.config` and add the matching route file manually so the configured path and the actual endpoint stay aligned
+- **TanStack Start:** current `init` scaffolds one `src/routes/$.ts` public forwarder for `/api/docs/mcp`, `/mcp`, and `/.well-known/mcp`
+- **SvelteKit:** current `init` scaffolds one `src/hooks.server.ts` public forwarder for `/api/docs/mcp`, `/mcp`, and `/.well-known/mcp`
+- **Astro:** current `init` scaffolds one `src/middleware.ts` public forwarder for `/api/docs/mcp`, `/mcp`, and `/.well-known/mcp`
+- **Nuxt:** current `init` scaffolds one `server/middleware/docs-public.ts` public forwarder for `/api/docs/mcp`, `/mcp`, and `/.well-known/mcp`
+- **Custom routes:** set `mcp.route` in `docs.config` and update the framework public forwarder so the configured path and the actual endpoint stay aligned
 
 Testing tip:
 
@@ -530,7 +543,7 @@ Use `ordering: "numeric"` (default) so sidebar order follows frontmatter `order`
 3. **SvelteKit/Astro:** Server-side docs loader must receive config and (for AI) env vars; see framework docs.
 4. **Nuxt:** `defineDocsHandler(config, useStorage)` in `server/api/docs.ts`; config is imported from root `docs.config.ts`.
 5. **Feedback callbacks:** Astro cannot serialize config functions into client scripts; use the built-in custom event hooks if you need analytics there.
-6. **MCP custom routes:** Only the default Next.js `/api/docs/mcp` route is auto-generated. If the user sets `mcp.route`, keep that path in config and add the matching route file manually; `/mcp` and `/.well-known/mcp` will rewrite to that route when MCP is enabled.
+6. **MCP custom routes:** The defaults are `/api/docs/mcp`, `/mcp`, and `/.well-known/mcp`. If the user sets `mcp.route`, keep that path in config and update the framework public forwarder so aliases still reach the same handler when MCP is enabled.
 
 ---
 

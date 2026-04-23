@@ -354,6 +354,16 @@ function svelteLayoutServerImport(useAlias: boolean): string {
   return useAlias ? "$lib/docs.server" : "../../lib/docs.server";
 }
 
+function svelteRouteServerImport(filePath: string, useAlias: boolean): string {
+  if (useAlias) return "$lib/docs.server";
+  return relativeImport(filePath, "src/lib/docs.server.ts");
+}
+
+function svelteRouteConfigImport(filePath: string, useAlias: boolean): string {
+  if (useAlias) return "$lib/docs.config";
+  return relativeImport(filePath, "src/lib/docs.config.ts");
+}
+
 // ---------------------------------------------------------------------------
 // Astro import path helpers
 // ---------------------------------------------------------------------------
@@ -372,6 +382,16 @@ function astroPageServerImport(useAlias: boolean, depth: number): string {
   if (useAlias) return "@/lib/docs.server";
   const prefix = "../".repeat(depth);
   return `${prefix}lib/docs.server`;
+}
+
+function astroRouteServerImport(filePath: string, useAlias: boolean): string {
+  if (useAlias) return "@/lib/docs.server";
+  return relativeImport(filePath, "src/lib/docs.server.ts");
+}
+
+function astroRouteConfigImport(filePath: string, useAlias: boolean): string {
+  if (useAlias) return "@/lib/docs.config";
+  return relativeImport(filePath, "src/lib/docs.config.ts");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1078,13 +1098,29 @@ function DocsIndexPage() {
 
 export function tanstackDocsCatchAllRouteTemplate(opts: TanstackRouteTemplateOptions): string {
   const entryUrl = `/${opts.entry.replace(/^\/+|\/+$/g, "")}`;
+  const serverImport = opts.useAlias
+    ? "@/lib/docs.server"
+    : relativeImport(opts.filePath, "src/lib/docs.server.ts");
   return `\
 import { createFileRoute, notFound } from "@tanstack/react-router";
+import { isDocsPublicGetRequest } from "@farming-labs/docs";
 import { TanstackDocsPage } from "@farming-labs/tanstack-start/react";
 import { loadDocPage } from "${tanstackDocsFunctionsImport(opts)}";
+import { docsServer } from "${serverImport}";
 import docsConfig from "${tanstackDocsConfigImport(opts.filePath)}";
 
 export const Route = createFileRoute("${entryUrl}/$")({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        const url = new URL(request.url);
+        if (isDocsPublicGetRequest(${JSON.stringify(opts.entry)}, url, request)) {
+          return docsServer.GET({ request });
+        }
+        return undefined;
+      },
+    },
+  },
   loader: async ({ location }) => {
     try {
       return await loadDocPage({ data: { pathname: location.pathname } });
@@ -1132,6 +1168,51 @@ export const Route = createFileRoute("/api/docs")({
     handlers: {
       GET: async ({ request }) => docsServer.GET({ request }),
       POST: async ({ request }) => docsServer.POST({ request }),
+    },
+  },
+});
+`;
+}
+
+export function tanstackDocsPublicRouteTemplate(
+  useAlias: boolean,
+  filePath: string,
+  entry: string,
+): string {
+  const serverImport = useAlias
+    ? "@/lib/docs.server"
+    : relativeImport(filePath, "src/lib/docs.server.ts");
+
+  return `\
+import { createFileRoute } from "@tanstack/react-router";
+import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import { docsServer } from "${serverImport}";
+
+const docsEntry = ${JSON.stringify(entry)};
+
+async function handlePublicDocsRequest(request: Request) {
+  const url = new URL(request.url);
+  const method = request.method.toUpperCase();
+
+  if (isDocsMcpRequest(url)) {
+    if (method === "POST") return docsServer.MCP.POST({ request });
+    if (method === "DELETE") return docsServer.MCP.DELETE({ request });
+    return docsServer.MCP.GET({ request });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, url, request)) {
+    return docsServer.GET({ request });
+  }
+
+  return new Response("Not Found", { status: 404 });
+}
+
+export const Route = createFileRoute("/$")({
+  server: {
+    handlers: {
+      GET: async ({ request }) => handlePublicDocsRequest(request),
+      POST: async ({ request }) => handlePublicDocsRequest(request),
+      DELETE: async ({ request }) => handlePublicDocsRequest(request),
     },
   },
 });
@@ -1339,6 +1420,7 @@ src/lib/docs.functions.ts
 src/routes/${cfg.entry}/index.tsx
 src/routes/${cfg.entry}/$.tsx
 src/routes/api/docs.ts
+src/routes/$.ts
 \`\`\`
 `;
   }
@@ -1504,7 +1586,7 @@ const contentFiles = import.meta.glob("/${contentDirName}/**/*.{md,mdx,svx}", {
   eager: true,
 }) as Record<string, string>;
 
-export const { load, GET, POST } = createDocsServer({
+export const { load, GET, POST, MCP } = createDocsServer({
   ...config,
   _preloadedContent: contentFiles,
 });
@@ -1558,6 +1640,44 @@ import { createSvelteApiReference } from "@farming-labs/svelte/api-reference";
 import config from "${configImport}";
 
 export const GET = createSvelteApiReference(config);
+`;
+}
+
+export function svelteDocsApiRouteTemplate(filePath: string, useAlias: boolean): string {
+  const serverImport = svelteRouteServerImport(filePath, useAlias);
+
+  return `\
+export { GET, POST } from "${serverImport}";
+`;
+}
+
+export function svelteDocsPublicHookTemplate(filePath: string, useAlias: boolean): string {
+  const serverImport = svelteRouteServerImport(filePath, useAlias);
+  const configImport = svelteRouteConfigImport(filePath, useAlias);
+
+  return `\
+import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import type { Handle } from "@sveltejs/kit";
+import config from "${configImport}";
+import { GET, MCP } from "${serverImport}";
+
+const docsEntry = config.entry ?? "docs";
+
+export const handle: Handle = async ({ event, resolve }) => {
+  const method = event.request.method.toUpperCase();
+
+  if (isDocsMcpRequest(event.url)) {
+    if (method === "POST") return MCP.POST({ request: event.request });
+    if (method === "DELETE") return MCP.DELETE({ request: event.request });
+    return MCP.GET({ request: event.request });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request)) {
+    return GET({ url: event.url, request: event.request });
+  }
+
+  return resolve(event);
+};
 `;
 }
 
@@ -1718,10 +1838,12 @@ ${cfg.entry}/                   # Markdown content
   quickstart/
     page.md                    # /${cfg.entry}/quickstart
 src/
+  hooks.server.ts             # Public docs aliases
   lib/
     docs.config.ts             # Docs configuration
     docs.server.ts             # Server-side docs loader
   routes/
+    api/docs/+server.ts        # Search/AI API route
     ${cfg.entry}/
       +layout.svelte           # Docs layout
       +layout.server.js        # Layout data loader
@@ -1883,7 +2005,7 @@ const contentFiles = import.meta.glob("/${contentDirName}/**/*.{md,mdx}", {
   eager: true,
 }) as Record<string, string>;
 
-export const { load, GET, POST } = createDocsServer({
+export const { load, GET, POST, MCP } = createDocsServer({
   ...config,
   _preloadedContent: contentFiles,
 });
@@ -1994,6 +2116,36 @@ export const GET: APIRoute = async ({ request }) => {
 
 export const POST: APIRoute = async ({ request }) => {
   return docsPOST({ request });
+};
+`;
+}
+
+export function astroDocsMiddlewareTemplate(filePath: string, useAlias: boolean): string {
+  const serverImport = astroRouteServerImport(filePath, useAlias);
+  const configImport = astroRouteConfigImport(filePath, useAlias);
+
+  return `\
+import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import type { MiddlewareHandler } from "astro";
+import config from "${configImport}";
+import { GET, MCP } from "${serverImport}";
+
+const docsEntry = config.entry ?? "docs";
+
+export const onRequest: MiddlewareHandler = async (context, next) => {
+  const method = context.request.method.toUpperCase();
+
+  if (isDocsMcpRequest(context.url)) {
+    if (method === "POST") return MCP.POST({ request: context.request });
+    if (method === "DELETE") return MCP.DELETE({ request: context.request });
+    return MCP.GET({ request: context.request });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request)) {
+    return GET({ request: context.request });
+  }
+
+  return next();
 };
 `;
 }
@@ -2147,6 +2299,7 @@ ${cfg.entry}/                   # Markdown content
   quickstart/
     page.md                    # /${cfg.entry}/quickstart
 src/
+  middleware.ts                # Public docs aliases
   lib/
     docs.config.ts             # Docs configuration
     docs.server.ts             # Server-side docs loader
@@ -2289,70 +2442,24 @@ export default defineDocs({
 `;
 }
 
-export function nuxtDocsServerTemplate(cfg: TemplateConfig): string {
-  const contentDirName = cfg.entry ?? "docs";
+export function nuxtServerApiDocsRouteTemplate(cfg: TemplateConfig): string {
   const configImport = cfg.useAlias ? "~/docs.config" : "../../docs.config";
   return `\
-import { createDocsServer } from "@farming-labs/nuxt/server";
+import { defineDocsHandler } from "@farming-labs/nuxt/server";
 import config from "${configImport}";
 
-const contentFiles = import.meta.glob("/${contentDirName}/**/*.{md,mdx}", {
-  query: "?raw",
-  import: "default",
-  eager: true,
-}) as Record<string, string>;
-
-export const docsServer = createDocsServer({
-  ...config,
-  _preloadedContent: contentFiles,
-});
+export default defineDocsHandler(config, useStorage);
 `;
 }
 
-export function nuxtServerApiDocsGetTemplate(): string {
+export function nuxtServerDocsPublicMiddlewareTemplate(cfg: TemplateConfig): string {
+  const configImport = cfg.useAlias ? "~/docs.config" : "../../docs.config";
+
   return `\
-import { getRequestURL } from "h3";
-import { docsServer } from "../utils/docs-server";
+import { defineDocsPublicHandler } from "@farming-labs/nuxt/server";
+import config from "${configImport}";
 
-export default defineEventHandler((event) => {
-  const url = getRequestURL(event);
-  const request = new Request(url.href, {
-    method: event.method,
-    headers: event.headers,
-  });
-  return docsServer.GET({ request });
-});
-`;
-}
-
-export function nuxtServerApiDocsPostTemplate(): string {
-  return `\
-import { getRequestURL, readRawBody } from "h3";
-import { docsServer } from "../utils/docs-server";
-
-export default defineEventHandler(async (event) => {
-  const url = getRequestURL(event);
-  const body = await readRawBody(event);
-  const request = new Request(url.href, {
-    method: "POST",
-    headers: event.headers,
-    body: body ?? undefined,
-  });
-  return docsServer.POST({ request });
-});
-`;
-}
-
-export function nuxtServerApiDocsLoadTemplate(): string {
-  return `\
-import { getQuery } from "h3";
-import { docsServer } from "../../utils/docs-server";
-
-export default defineEventHandler(async (event) => {
-  const query = getQuery(event);
-  const pathname = (query.pathname as string) ?? "/docs";
-  return docsServer.load(pathname);
-});
+export default defineDocsPublicHandler(config, useStorage);
 `;
 }
 
@@ -2378,7 +2485,7 @@ const route = useRoute();
 const pathname = computed(() => route.path);
 
 const { data, error } = await useAsyncData(\`docs-\${pathname.value}\`, () =>
-  $fetch("/api/docs/load", {
+  $fetch("/api/docs", {
     query: { pathname: pathname.value },
   })
 );
@@ -2417,6 +2524,7 @@ export default defineNuxtConfig({
 
   nitro: {
     moduleSideEffects: ["@farming-labs/nuxt/server"],
+    serverAssets: [{ baseName: "${cfg.entry}", dir: "${cfg.entry}" }],
   },
 });
 `;
@@ -2505,11 +2613,8 @@ ${cfg.entry}/                   # Markdown content
   installation/page.md
   quickstart/page.md
 server/
-  utils/docs-server.ts          # createDocsServer + preloaded content
-  api/docs/
-    load.get.ts                 # Page data API
-    docs.get.ts                 # Search API
-    docs.post.ts                # AI chat API
+  api/docs.ts                   # Page data, search, and AI chat API
+  middleware/docs-public.ts     # llms.txt, .well-known, .md, and MCP aliases
 pages/
   ${cfg.entry}/[[...slug]].vue   # Docs catch-all page
 docs.config.ts

@@ -1,9 +1,20 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
+import { isDocsPublicGetRequest } from "@farming-labs/docs";
 import { TanstackDocsPage } from "@farming-labs/tanstack-start/react";
 import { loadDocPage } from "@/lib/docs.functions";
+import { docsServer } from "@/lib/docs.server";
 import docsConfig from "../../docs.config";
 
 export const Route = createFileRoute("/docs/$")({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        const url = new URL(request.url);
+        if (isDocsPublicGetRequest("docs", url, request)) return docsServer.GET({ request });
+        return undefined;
+      },
+    },
+  },
   loader: async ({ location }) => {
     try {
       return await loadDocPage({ data: { pathname: location.pathname } });

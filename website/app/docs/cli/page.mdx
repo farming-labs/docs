@@ -527,6 +527,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
        - `src/routes/{entry}/index.tsx` — Docs index route
        - `src/routes/{entry}/$.tsx` — Catch-all docs route
        - `src/routes/api/docs.ts` — Search and AI API route
+       - `src/routes/$.ts` — Public `llms.txt`, `.well-known`, `.md`, and MCP aliases
        - `src/styles/app.css` — Imports Tailwind and theme CSS
        - `docs/page.mdx` — Sample documentation page
        - `docs/installation/page.mdx` — Sample installation guide
@@ -550,6 +551,8 @@ When you choose **Existing project**, the CLI does the following (framework-spec
        - `src/routes/docs/+layout.server.js` — Layout data loader
        - `src/routes/docs/[...slug]/+page.svelte` — Dynamic page component
        - `src/routes/docs/+page.svelte` — Generated when i18n is enabled
+       - `src/routes/api/docs/+server.ts` — Search and AI API route
+       - `src/hooks.server.ts` — Public `llms.txt`, `.well-known`, `.md`, and MCP aliases
        - `src/app.css` — Theme CSS import
        - `docs/page.md` — Sample documentation page
        - `docs/installation/page.md` — Sample installation guide
@@ -571,6 +574,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
        - `src/pages/{entry}/index.astro` — Docs index page
        - `src/pages/{entry}/[...slug].astro` — Dynamic page component
        - `src/pages/api/{entry}.ts` — API route for search and AI
+       - `src/middleware.ts` — Public `llms.txt`, `.well-known`, `.md`, and MCP aliases
        - `astro.config.mjs` — Astro config with SSR enabled
        - `docs/page.md` — Sample documentation page
        - `docs/installation/page.md` — Sample installation guide
@@ -589,7 +593,8 @@ When you choose **Existing project**, the CLI does the following (framework-spec
     5. **Generates files:**
        - `docs.config.ts` — Full config with your selected theme
        - `nuxt.config.ts` — Nuxt config with theme CSS and server assets
-       - `server/api/docs.get.ts`, `server/api/docs.post.ts`, `server/api/docs/load.get.ts` — docs data, search, AI, and page loading
+       - `server/api/docs.ts` — docs data, search, AI, and page loading
+       - `server/middleware/docs-public.ts` — public `llms.txt`, `.well-known`, `.md`, and MCP aliases
        - `pages/docs/[[...slug]].vue` — Catch-all page component that handles the docs index and nested docs routes
        - `docs/page.md` — Sample documentation page
        - `docs/installation/page.md` — Sample installation guide
@@ -777,6 +782,8 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       ◇ Generated src/routes/docs/+layout.svelte
       ◇ Generated src/routes/docs/+layout.server.js
       ◇ Generated src/routes/docs/[...slug]/+page.svelte
+      ◇ Generated src/routes/api/docs/+server.ts
+      ◇ Generated src/hooks.server.ts
       ◇ Generated docs/page.md
       ◇ Generated docs/installation/page.md
       ◇ Generated docs/quickstart/page.md
@@ -843,6 +850,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       ◇ Generated src/pages/docs/index.astro
       ◇ Generated src/pages/docs/[...slug].astro
       ◇ Generated src/pages/api/docs.ts
+      ◇ Generated src/middleware.ts
       ◇ Generated astro.config.mjs
       ◇ Generated docs/page.md
       ◇ Generated docs/installation/page.md
@@ -908,9 +916,8 @@ When you choose **Existing project**, the CLI does the following (framework-spec
       │
       ◇ Generated docs.config.ts
       ◇ Generated nuxt.config.ts
-      ◇ Generated server/api/docs.get.ts
-      ◇ Generated server/api/docs.post.ts
-      ◇ Generated server/api/docs/load.get.ts
+      ◇ Generated server/api/docs.ts
+      ◇ Generated server/middleware/docs-public.ts
       ◇ Generated pages/docs/[...slug].vue
       ◇ Generated docs/page.md
       ◇ Generated docs/installation/page.md
@@ -1391,7 +1398,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     });
     ```
 
-    **`server/api/docs.get.ts`**, **`server/api/docs.post.ts`**, and **`server/api/docs/load.get.ts`** (search, AI, and page loading)
+    **`server/api/docs.ts`** (search, AI, and page loading) and **`server/middleware/docs-public.ts`** (public agent/GEO aliases)
 
     **`pages/docs/[...slug].vue`**
 
@@ -1472,6 +1479,7 @@ my-app/
 │   │   └── docs.server.ts     # Docs server
 │   ├── routes/
 │   │   ├── __root.tsx         # Root layout with RootProvider
+│   │   ├── $.ts               # Public docs aliases
 │   │   ├── api/
 │   │   │   └── docs.ts        # Search & AI API route
 │   │   └── docs/
@@ -1494,10 +1502,14 @@ my-app/
 │       └── page.md           # /docs/quickstart
 ├── src/
 │   ├── app.css               # Theme CSS import
+│   ├── hooks.server.ts       # Public docs aliases
 │   ├── lib/
 │   │   ├── docs.config.ts    # Docs configuration
 │   │   └── docs.server.ts    # Server loader + content bundling
 │   └── routes/
+│       ├── api/
+│       │   └── docs/
+│       │       └── +server.ts      # Search & AI API route
 │       └── docs/
 │           ├── +layout.svelte      # Docs layout
 │           ├── +layout.server.js   # Layout data loader
@@ -1520,6 +1532,7 @@ my-app/
 │   ├── lib/
 │   │   ├── docs.config.ts    # Docs configuration
 │   │   └── docs.server.ts    # Server loader + content bundling
+│   ├── middleware.ts         # Public docs aliases
 │   └── pages/
 │       ├── api/
 │       │   └── docs.ts       # Search & AI API route
@@ -1541,8 +1554,10 @@ my-app/
 │   └── quickstart/
 │       └── page.md           # /docs/quickstart
 ├── server/
-│   └── api/
-│       └── docs.ts           # Search & AI API route
+│   ├── api/
+│   │   └── docs.ts           # Search & AI API route
+│   └── middleware/
+│       └── docs-public.ts    # Public docs aliases
 ├── pages/
 │   └── docs/
 │       └── [...slug].vue     # Dynamic page

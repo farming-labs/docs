@@ -9,7 +9,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
-import type { OrderingItem } from "@farming-labs/docs";
+import {
+  normalizeDocsRelated,
+  resolveDocsAgentMdxContent,
+  type OrderingItem,
+  type ResolvedDocsRelatedLink,
+} from "@farming-labs/docs";
 
 export interface PageNode {
   type: "page";
@@ -39,11 +44,14 @@ export interface ContentPage {
   url: string;
   title: string;
   description?: string;
+  related?: ResolvedDocsRelatedLink[];
   icon?: string;
   content: string;
   rawContent: string;
   agentContent?: string;
   agentRawContent?: string;
+  agentFallbackContent?: string;
+  agentFallbackRawContent?: string;
 }
 
 /**
@@ -75,6 +83,9 @@ export function loadDocsContent(contentDir: string, entry: string = "docs"): Con
 
       const raw = fs.readFileSync(full, "utf-8");
       const { data, content } = matter(raw);
+      const humanRawContent = resolveDocsAgentMdxContent(content, "human");
+      const pageAgentRawContent = resolveDocsAgentMdxContent(content, "agent");
+      const related = normalizeDocsRelated(data.related);
 
       const baseName = name.replace(/\.(md|mdx|svx)$/, "");
       const isIndex = baseName === "index" || baseName === "page" || baseName === "+page";
@@ -93,9 +104,16 @@ export function loadDocsContent(contentDir: string, entry: string = "docs"): Con
         url,
         title,
         description: data.description as string | undefined,
+        ...(related.length > 0 ? { related } : {}),
         icon: data.icon as string | undefined,
-        content: stripMarkdown(content),
-        rawContent: content,
+        content: stripMarkdown(humanRawContent),
+        rawContent: humanRawContent,
+        ...(pageAgentRawContent !== humanRawContent
+          ? {
+              agentFallbackContent: stripMarkdown(pageAgentRawContent),
+              agentFallbackRawContent: pageAgentRawContent,
+            }
+          : {}),
         ...agentDoc,
       });
     }

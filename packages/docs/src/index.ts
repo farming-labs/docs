@@ -17,6 +17,31 @@ export { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "./i18n.js";
 export { resolveTitle, resolveOGImage, buildPageOpenGraph, buildPageTwitter } from "./metadata.js";
 export { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 export {
+  DEFAULT_AGENT_FEEDBACK_ROUTE,
+  DEFAULT_AGENT_SPEC_ROUTE,
+  DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
+  DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
+  DEFAULT_DOCS_API_ROUTE,
+  DEFAULT_LLMS_FULL_TXT_ROUTE,
+  DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
+  DEFAULT_LLMS_TXT_ROUTE,
+  DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE,
+  DEFAULT_MCP_PUBLIC_ROUTE,
+  DEFAULT_MCP_ROUTE,
+  DEFAULT_MCP_WELL_KNOWN_ROUTE,
+  buildDocsAgentDiscoverySpec,
+  findDocsMarkdownPage,
+  isDocsAgentDiscoveryRequest,
+  isDocsMcpRequest,
+  isDocsPublicGetRequest,
+  normalizeDocsPathSegment,
+  normalizeDocsUrlPath,
+  renderDocsMarkdownDocument,
+  resolveDocsAgentMdxContent,
+  resolveDocsLlmsTxtFormat,
+  resolveDocsMarkdownRequest,
+} from "./agent.js";
+export {
   buildDocsSearchDocuments,
   createAlgoliaSearchAdapter,
   createCustomSearchAdapter,
@@ -91,3 +116,9 @@ export type {
 } from "./types.js";
 export type { ChangelogEntrySummary, ResolvedChangelogConfig } from "./changelog.js";
 export type { ResolvedDocsI18n, DocsPathMatch } from "./i18n.js";
+export type {
+  DocsAgentDiscoverySpecOptions,
+  DocsAgentFeedbackDiscoveryConfig,
+  DocsLlmsDiscoveryConfig,
+  DocsMarkdownPage,
+} from "./agent.js";

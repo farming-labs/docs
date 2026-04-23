@@ -15,14 +15,16 @@ order: 5.65
 The same page model also powers the built-in machine-readable routes:
 
 - the shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
-- in Next.js, `withDocs()` also serves `/docs/<slug>.md`
+- Next.js `withDocs()` and the generated TanStack Start, SvelteKit, Astro, and Nuxt forwarding layer serve `/docs.md` and `/docs/<slug>.md`
 - in Next.js, `Accept: text/markdown` on `/docs/<slug>` returns the same markdown
 - agents can discover the configured contract with `GET /.well-known/agent.json`, fall back to
   `GET /.well-known/agent`, or use the canonical framework route at `GET /api/docs/agent/spec`
 
 <Callout type="info" title="Same URL, different representation">
-  `/docs/installation` stays the human HTML page by default. Send `Accept: text/markdown` to that
-  same URL when an agent or script wants the machine-readable version without appending `.md`.
+  `/docs/installation` stays the human HTML page by default. In Next.js, send
+  `Accept: text/markdown` to that same URL when an agent or script wants the machine-readable
+  version without appending `.md`. In the other adapters, use `/docs/installation.md` or the
+  `format=markdown` API route.
 </Callout>
 
 Use `Agent` when the human page is already mostly correct and just needs a little extra implementation
@@ -159,8 +161,9 @@ That works especially well when:
 ## Agent Discovery
 
 `GET /.well-known/agent.json` is the preferred public discovery URL. `GET /.well-known/agent` is the
-public fallback, and `GET /api/docs/agent/spec` is the canonical framework route. In Next.js, all
-three return the same small JSON document generated from `docs.config`.
+public fallback, and `GET /api/docs/agent/spec` is the canonical framework route. Next.js wires
+these with `withDocs()`. TanStack Start, SvelteKit, Astro, and Nuxt scaffold one public forwarder
+each, so the well-known aliases share the same docs server handler.
 
 Agents should fetch it before choosing a transport. It tells them:
 
@@ -177,9 +180,7 @@ Agents should fetch it before choosing a transport. It tells them:
 - whether MCP is enabled, which public/well-known endpoint to call, and which tools are available
 - whether agent feedback is enabled, plus the schema and submit endpoints to use
 
-For Next.js apps, `withDocs()` wires `/.well-known/agent.json`, `/.well-known/agent`, and
-`/api/docs/agent/spec` into the same shared `/api/docs` handler automatically. The generated spec
-also includes `agentSpecDefault: "/.well-known/agent.json"` and
+The generated spec includes `agentSpecDefault: "/.well-known/agent.json"` and
 `agentSpecFallback: "/.well-known/agent"` so downstream integrations do not need to hard-code the
 preference themselves.
 

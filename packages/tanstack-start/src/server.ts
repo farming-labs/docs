@@ -2,13 +2,21 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import {
+  buildDocsAgentDiscoverySpec,
+  findDocsMarkdownPage,
+  isDocsAgentDiscoveryRequest,
+  normalizeDocsRelated,
   performDocsSearch,
+  renderDocsMarkdownDocument,
+  resolveDocsAgentMdxContent,
   resolveSearchRequestConfig,
   resolveDocsI18n,
+  resolveDocsLlmsTxtFormat,
   resolveDocsLocale,
+  resolveDocsMarkdownRequest,
   resolveDocsPath,
 } from "@farming-labs/docs";
-import { createDocsMcpHttpHandler } from "@farming-labs/docs/server";
+import { createDocsMcpHttpHandler, resolveDocsMcpConfig } from "@farming-labs/docs/server";
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
 import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
@@ -346,28 +354,40 @@ function searchIndexFromMap(
     const fileName = segments.pop()!;
     if (fileName === "agent.md") continue;
     const base = fileName.replace(/\.(md|mdx)$/, "");
-    if (base !== "page" && base !== "index") continue;
+    const isIdx = base === "page" || base === "index";
 
     const raw = contentMap[key];
     const { data, content } = matter(raw);
-    const slug = segments.join("/");
+    const humanRawContent = resolveDocsAgentMdxContent(content, "human");
+    const pageAgentRawContent = resolveDocsAgentMdxContent(content, "agent");
+    const related = normalizeDocsRelated(data.related);
+    const slug = isIdx ? segments.join("/") : [...segments, base].join("/");
     const url = slug ? `/${entry}/${slug}` : `/${entry}`;
-    const agentDoc = readAgentDocFromMap(contentMap, dirPrefix, slug);
+    const agentDoc = isIdx ? readAgentDocFromMap(contentMap, dirPrefix, slug) : undefined;
     const fallbackTitle =
-      segments.length > 0
-        ? segments[segments.length - 1]
-            .replace(/-/g, " ")
-            .replace(/\b\w/g, (char) => char.toUpperCase())
-        : "Documentation";
+      isIdx
+        ? segments.length > 0
+          ? segments[segments.length - 1]
+              .replace(/-/g, " ")
+              .replace(/\b\w/g, (char) => char.toUpperCase())
+          : "Documentation"
+        : base.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 
     pages.push({
       slug,
       url,
       title: (data.title as string) ?? fallbackTitle,
       description: data.description as string | undefined,
+      ...(related.length > 0 ? { related } : {}),
       icon: data.icon as string | undefined,
-      content: stripMarkdownText(content),
-      rawContent: content,
+      content: stripMarkdownText(humanRawContent),
+      rawContent: humanRawContent,
+      ...(pageAgentRawContent !== humanRawContent
+        ? {
+            agentFallbackContent: stripMarkdownText(pageAgentRawContent),
+            agentFallbackRawContent: pageAgentRawContent,
+          }
+        : {}),
       ...agentDoc,
     });
   }
@@ -645,13 +665,19 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
 
   const llmsTxtConfig = config.llmsTxt as
     | boolean
-    | { baseUrl?: string; siteTitle?: string; siteDescription?: string }
+    | { enabled?: boolean; baseUrl?: string; siteTitle?: string; siteDescription?: string }
     | undefined;
 
   const llmsBaseUrl = typeof llmsTxtConfig === "object" ? (llmsTxtConfig.baseUrl ?? "") : "";
   const llmsTitle =
     typeof llmsTxtConfig === "object" ? (llmsTxtConfig.siteTitle ?? llmsSiteTitle) : llmsSiteTitle;
   const llmsDesc = typeof llmsTxtConfig === "object" ? llmsTxtConfig.siteDescription : undefined;
+  const llmsEnabled =
+    llmsTxtConfig !== false &&
+    !(llmsTxtConfig && typeof llmsTxtConfig === "object" && llmsTxtConfig.enabled === false);
+  const mcpConfig = resolveDocsMcpConfig(config.mcp, {
+    defaultName: llmsTitle,
+  });
 
   const llmsCache = new Map<string, { llmsTxt: string; llmsFullTxt: string }>();
 
@@ -692,14 +718,74 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     return i18n.defaultLocale;
   }
 
+  function getMarkdownDocument(ctx: ReturnType<typeof resolveContextFromPath>, requestedPath: string) {
+    const page = findDocsMarkdownPage(entry, getSearchIndex(ctx), requestedPath);
+    return page ? renderDocsMarkdownDocument(page) : null;
+  }
+
   async function GET(event: { request: Request }): Promise<Response> {
     const ctx = resolveContextFromRequest(event.request);
     const url = new URL(event.request.url);
-    const format = url.searchParams.get("format");
 
-    if (format === "llms" || format === "llms-full") {
+    if (isDocsAgentDiscoveryRequest(url)) {
+      return new Response(
+        JSON.stringify(
+          buildDocsAgentDiscoverySpec({
+            origin: url.origin,
+            entry,
+            i18n,
+            search: config.search,
+            mcp: mcpConfig,
+            llms: {
+              enabled: llmsEnabled,
+              baseUrl: llmsBaseUrl || undefined,
+              siteTitle: llmsTitle,
+              siteDescription: llmsDesc,
+            },
+            markdown: {
+              acceptHeader: false,
+            },
+          }),
+          null,
+          2,
+        ),
+        {
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            "X-Robots-Tag": "noindex",
+          },
+        },
+      );
+    }
+
+    const markdownRequest = resolveDocsMarkdownRequest(entry, url, event.request);
+    if (markdownRequest) {
+      const document = getMarkdownDocument(ctx, markdownRequest.requestedPath);
+
+      if (!document) {
+        return new Response("Not Found", {
+          status: 404,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "X-Robots-Tag": "noindex",
+          },
+        });
+      }
+
+      return new Response(document, {
+        headers: {
+          "Content-Type": "text/markdown; charset=utf-8",
+          "Cache-Control": "public, max-age=0, s-maxage=3600",
+          "X-Robots-Tag": "noindex",
+        },
+      });
+    }
+
+    const llmsFormat = resolveDocsLlmsTxtFormat(url);
+    if (llmsFormat === "llms" || llmsFormat === "llms-full") {
       const llmsContent = getLlmsContent(ctx);
-      return new Response(format === "llms-full" ? llmsContent.llmsFullTxt : llmsContent.llmsTxt, {
+      return new Response(llmsFormat === "llms-full" ? llmsContent.llmsFullTxt : llmsContent.llmsTxt, {
         headers: {
           "Content-Type": "text/plain; charset=utf-8",
           "Cache-Control": "public, max-age=3600",

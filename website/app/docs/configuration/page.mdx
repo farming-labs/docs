@@ -143,7 +143,7 @@ All configuration lives in a single `docs.config.ts` file.
 No separate config flag is required for machine-readable page markdown.
 
 - The shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
-- In Next.js, `withDocs()` also serves `/docs/<slug>.md`
+- Next.js `withDocs()` and the generated TanStack Start, SvelteKit, Astro, and Nuxt forwarding layer serve `/docs.md` and `/docs/<slug>.md`
 - In Next.js, sending `Accept: text/markdown` to `/docs/<slug>` returns the same markdown response
 - Embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI but are included in the `.md` fallback and MCP `read_page`
 - When a page folder has `agent.md`, that file is returned instead of the normal page markdown
@@ -156,8 +156,9 @@ No separate config flag is required for machine-readable page markdown.
   curl "https://docs.example.com/docs/installation" -H "Accept: text/markdown"
   ```
 
-  Browsers still receive HTML from `/docs/installation`; agents, scripts, and crawlers that send
-  `Accept: text/markdown` receive the same machine-readable output as `/docs/installation.md`.
+  In Next.js, browsers still receive HTML from `/docs/installation`; agents, scripts, and crawlers
+  that send `Accept: text/markdown` receive the same machine-readable output as
+  `/docs/installation.md`. Other adapters should use the `.md` URL or the API format route.
 </Callout>
 
 ```mdx title="page.mdx"
@@ -377,8 +378,11 @@ Default behavior:
 Framework notes:
 
 - **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route and public `/mcp` plus `/.well-known/mcp` rewrites
-- **TanStack Start / SvelteKit / Astro / Nuxt:** add the framework route file and reuse the built-in handler from the docs server helper
-- **Custom routes:** set `mcp.route` in `docs.config` and add the matching route file manually so the configured path and the actual endpoint stay aligned
+- **TanStack Start:** the current `init` scaffold adds one `src/routes/$.ts` public forwarder for `/api/docs/mcp`, `/mcp`, `/.well-known/mcp`, `llms.txt`, agent discovery, and `.md` routes
+- **SvelteKit:** the current `init` scaffold adds one `src/hooks.server.ts` public forwarder for `/api/docs/mcp`, `/mcp`, `/.well-known/mcp`, `llms.txt`, agent discovery, and `.md` routes
+- **Astro:** the current `init` scaffold adds one `src/middleware.ts` public forwarder for `/api/docs/mcp`, `/mcp`, `/.well-known/mcp`, `llms.txt`, agent discovery, and `.md` routes
+- **Nuxt:** the current `init` scaffold adds one `server/middleware/docs-public.ts` public forwarder for `/api/docs/mcp`, `/mcp`, `/.well-known/mcp`, `llms.txt`, agent discovery, and `.md` routes
+- **Custom routes:** set `mcp.route` in `docs.config` and update the framework public forwarder so the configured path and the actual endpoint stay aligned
 
 See the full [MCP Server guide](/docs/customization/mcp) for the route snippets and stdio usage.
 
@@ -1008,9 +1012,9 @@ export async function POST(request: Request) {
 Use `feedback.agent` when you want machine-readable feedback routes for coding agents or docs-aware
 automation. This is separate from the built-in page footer UI.
 
-Agents should discover the configured routes first with `GET /.well-known/agent.json`. In Next.js,
+Agents should discover the configured routes first with `GET /.well-known/agent.json`.
 `GET /.well-known/agent` is the fallback public alias, and `GET /api/docs/agent/spec` is the
-canonical framework route. All three return the same JSON. The spec includes
+canonical framework route. Generated projects wire all three to the same JSON. The spec includes
 site identity, locale config, capability flags, the search endpoint, markdown route pattern and
 `Accept: text/markdown` contract, API and public `llms.txt` routes, Skills CLI install metadata,
 MCP public/well-known endpoints and enabled tools, and the active agent feedback schema and submit
@@ -1032,8 +1036,8 @@ export default defineDocs({
 
 Default behavior:
 
-- `GET /.well-known/agent.json` is the preferred public agent discovery URL in Next.js
-- `GET /.well-known/agent` is the public fallback discovery URL in Next.js
+- `GET /.well-known/agent.json` is the preferred public agent discovery URL
+- `GET /.well-known/agent` is the public fallback discovery URL
 - `GET /api/docs/agent/spec` returns the canonical framework discovery document
 - the discovery JSON advertises `agentSpecDefault`, `agentSpecFallback`, and the `llms.txt` defaults
 - `GET /api/docs/agent/feedback/schema` returns the feedback schema
