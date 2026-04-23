@@ -3,7 +3,7 @@ import { env } from "$env/dynamic/private";
 import config from "./docs.config";
 
 // preload for production
-const contentFiles = import.meta.glob("/docs/**/*.{md,mdx,svx}", {
+const contentFiles = import.meta.glob(["/docs/**/*.{md,mdx,svx}", "/skill.md"], {
   query: "?raw",
   import: "default",
   eager: true,

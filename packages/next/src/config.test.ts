@@ -297,6 +297,14 @@ describe("withDocs (app dir: src/app vs app)", () => {
           destination: "/api/docs?format=llms-full",
         }),
         expect.objectContaining({
+          source: "/skill.md",
+          destination: "/api/docs?format=skill",
+        }),
+        expect.objectContaining({
+          source: "/.well-known/skill.md",
+          destination: "/api/docs?format=skill",
+        }),
+        expect.objectContaining({
           source: "/docs.md",
           destination: "/api/docs?format=markdown",
         }),
@@ -518,7 +526,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const nextConfig = withDocs({});
 
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
-      "/api/docs": ["app/docs/**/*"],
+      "/api/docs": ["app/docs/**/*", "skill.md"],
       "/api/docs/mcp": ["app/docs/**/*"],
     });
   });
@@ -531,7 +539,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const nextConfig = withDocs({});
 
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
-      "/api/docs": ["website/app/docs/**/*"],
+      "/api/docs": ["website/app/docs/**/*", "skill.md"],
       "/api/docs/mcp": ["website/app/docs/**/*"],
     });
   });
@@ -590,6 +598,14 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/.well-known/llms-full.txt",
           destination: "/api/docs?format=llms-full",
+        }),
+        expect.objectContaining({
+          source: "/skill.md",
+          destination: "/api/docs?format=skill",
+        }),
+        expect.objectContaining({
+          source: "/.well-known/skill.md",
+          destination: "/api/docs?format=skill",
         }),
         expect.objectContaining({
           source: "/docs.md",

@@ -5,7 +5,9 @@ import {
   isDocsAgentDiscoveryRequest,
   isDocsMcpRequest,
   isDocsPublicGetRequest,
+  isDocsSkillRequest,
   renderDocsMarkdownDocument,
+  renderDocsSkillDocument,
   resolveDocsAgentMdxContent,
   resolveDocsLlmsTxtFormat,
   resolveDocsMarkdownRequest,
@@ -29,6 +31,11 @@ describe("agent route helpers", () => {
     expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/.well-known/llms-full.txt"))).toBe(
       "llms-full",
     );
+
+    expect(isDocsSkillRequest(new URL("https://example.com/skill.md"))).toBe(true);
+    expect(isDocsSkillRequest(new URL("https://example.com/.well-known/skill.md"))).toBe(true);
+    expect(isDocsSkillRequest(new URL("https://example.com/api/docs?format=skill"))).toBe(true);
+    expect(isDocsSkillRequest(new URL("https://example.com/blog?format=skill"))).toBe(false);
   });
 
   it("detects public docs forwarder requests without taking over api/docs", () => {
@@ -40,6 +47,13 @@ describe("agent route helpers", () => {
         "docs",
         new URL("https://example.com/docs/install.md"),
         new Request("https://example.com/docs/install.md"),
+      ),
+    ).toBe(true);
+    expect(
+      isDocsPublicGetRequest(
+        "docs",
+        new URL("https://example.com/.well-known/skill.md"),
+        new Request("https://example.com/.well-known/skill.md"),
       ),
     ).toBe(true);
     expect(
@@ -114,6 +128,39 @@ describe("agent route helpers", () => {
     expect(renderDocsMarkdownDocument(page!)).toContain("Hidden");
   });
 
+  it("renders the generated skill.md document", () => {
+    const document = renderDocsSkillDocument({
+      origin: "https://docs.example.com",
+      entry: "guides",
+      search: true,
+      mcp: {
+        enabled: true,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: {
+          listPages: true,
+          readPage: true,
+          searchDocs: true,
+          getNavigation: true,
+        },
+      },
+      llms: {
+        enabled: true,
+        siteTitle: "Guides",
+        siteDescription: "Machine-readable guides",
+      },
+    });
+
+    expect(document).toContain("name: docs");
+    expect(document).toContain("# Guides Skill");
+    expect(document).toContain("Base URL: https://docs.example.com");
+    expect(document).toContain("/guides.md");
+    expect(document).toContain("/.well-known/agent.json");
+    expect(document).toContain("/api/docs?format=skill");
+    expect(document).toContain("npx skills add farming-labs/docs");
+  });
+
   it("builds the shared discovery spec with public endpoints", () => {
     const spec = buildDocsAgentDiscoverySpec({
       origin: "https://docs.example.com",
@@ -136,6 +183,11 @@ describe("agent route helpers", () => {
     expect(spec.api.agentSpecDefault).toBe("/.well-known/agent.json");
     expect(spec.markdown.rootPage).toBe("/docs.md");
     expect(spec.llms.publicTxt).toBe("/llms.txt");
+    expect(spec.skills.file).toBe("skill.md");
+    expect(spec.skills.route).toBe("/skill.md");
+    expect(spec.skills.wellKnown).toBe("/.well-known/skill.md");
+    expect(spec.skills.api).toBe("/api/docs?format=skill");
+    expect(spec.skills.generatedFallback).toBe(true);
     expect(spec.mcp.publicEndpoints).toEqual(["/mcp", "/.well-known/mcp"]);
   });
 });

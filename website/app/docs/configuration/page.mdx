@@ -1016,9 +1016,9 @@ Agents should discover the configured routes first with `GET /.well-known/agent.
 `GET /.well-known/agent` is the fallback public alias, and `GET /api/docs/agent/spec` is the
 canonical framework route. Generated projects wire all three to the same JSON. The spec includes
 site identity, locale config, capability flags, the search endpoint, markdown route pattern and
-`Accept: text/markdown` contract, API and public `llms.txt` routes, Skills CLI install metadata,
-MCP public/well-known endpoints and enabled tools, and the active agent feedback schema and submit
-endpoints.
+`Accept: text/markdown` contract, API and public `llms.txt` routes, root `skill.md` metadata,
+Skills CLI install metadata, MCP public/well-known endpoints and enabled tools, and the active agent
+feedback schema and submit endpoints.
 
 ```ts title="docs.config.ts"
 export default defineDocs({
@@ -1039,7 +1039,9 @@ Default behavior:
 - `GET /.well-known/agent.json` is the preferred public agent discovery URL
 - `GET /.well-known/agent` is the public fallback discovery URL
 - `GET /api/docs/agent/spec` returns the canonical framework discovery document
-- the discovery JSON advertises `agentSpecDefault`, `agentSpecFallback`, and the `llms.txt` defaults
+- `GET /skill.md` serves a root `skill.md` file when present, and otherwise returns a generated fallback
+- `GET /.well-known/skill.md` and `GET /api/docs?format=skill` return the same skill document
+- the discovery JSON advertises `agentSpecDefault`, `agentSpecFallback`, `skills.file`, `skills.route`, and the `llms.txt` defaults
 - `GET /api/docs/agent/feedback/schema` returns the feedback schema
 - `POST /api/docs/agent/feedback` accepts `{ context?, payload }`
 - the shared `/api/docs` handler is still the source of truth

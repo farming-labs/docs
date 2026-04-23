@@ -1,7 +1,7 @@
 import { createDocsServer } from "@farming-labs/astro/server";
 import config from "./docs.config";
 
-const contentFiles = import.meta.glob("/docs/**/*.{md,mdx}", {
+const contentFiles = import.meta.glob(["/docs/**/*.{md,mdx}", "/skill.md"], {
   query: "?raw",
   import: "default",
   eager: true,

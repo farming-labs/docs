@@ -12,7 +12,7 @@
  * import config from "./docs.config";
  *
  * // Bundle content at build time for serverless deployments
- * const contentFiles = import.meta.glob("/docs/**\/*.{md,mdx,svx}", {
+ * const contentFiles = import.meta.glob(["/docs/**\/*.{md,mdx,svx}", "/skill.md"], {
  *   query: "?raw", import: "default", eager: true,
  * }) as Record<string, string>;
  *
@@ -35,9 +35,11 @@ import {
   buildDocsAgentDiscoverySpec,
   findDocsMarkdownPage,
   isDocsAgentDiscoveryRequest,
+  isDocsSkillRequest,
   normalizeDocsRelated,
   performDocsSearch,
   renderDocsMarkdownDocument,
+  renderDocsSkillDocument,
   resolveDocsAgentMdxContent,
   resolveSearchRequestConfig,
   resolveDocsI18n,
@@ -187,6 +189,29 @@ function buildDirPrefix(contentDir: string): string {
     : toPosixPath(contentDir);
   const normalized = normalizePathSegment(rel);
   return normalized ? `/${normalized}/` : "/";
+}
+
+function readRootSkillDocument(
+  contentMap: ContentFileMap | undefined,
+  rootDir: string,
+): string | null {
+  if (contentMap) {
+    for (const key of ["/skill.md", "skill.md", "./skill.md"]) {
+      const raw = contentMap[key];
+      if (typeof raw === "string") return raw;
+    }
+  }
+
+  const candidate = path.join(rootDir, "skill.md");
+  try {
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+      return fs.readFileSync(candidate, "utf-8");
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 function navTreeFromMap(
@@ -453,6 +478,9 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   const entry = (config.entry as string) ?? "docs";
   const contentDirBase =
     ((config as Record<string, unknown>).contentDir as string | undefined) ?? entry;
+  const rootDir = path.resolve(
+    ((config as Record<string, unknown>).rootDir as string | undefined) ?? process.cwd(),
+  );
   const i18n = resolveDocsI18n((config as Record<string, unknown>).i18n as any);
 
   const githubRaw = config.github;
@@ -778,6 +806,34 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         {
           headers: {
             "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            "X-Robots-Tag": "noindex",
+          },
+        },
+      );
+    }
+
+    if (isDocsSkillRequest(event.url)) {
+      return new Response(
+        readRootSkillDocument(preloaded, rootDir) ??
+          renderDocsSkillDocument({
+            origin: event.url.origin,
+            entry,
+            search: config.search,
+            mcp: mcpConfig,
+            llms: {
+              enabled: llmsEnabled,
+              baseUrl: llmsBaseUrl || undefined,
+              siteTitle: llmsTitle,
+              siteDescription: llmsDesc,
+            },
+            markdown: {
+              acceptHeader: false,
+            },
+          }),
+        {
+          headers: {
+            "Content-Type": "text/markdown; charset=utf-8",
             "Cache-Control": "public, max-age=0, s-maxage=3600",
             "X-Robots-Tag": "noindex",
           },

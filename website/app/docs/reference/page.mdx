@@ -724,7 +724,7 @@ Notes:
 - the request body always uses `{ context?, payload }`
 - in Next.js, `withDocs()` adds the public route rewrites automatically
 - the shared `/api/docs` handler is still the source of truth, so `?feedback=agent` also works
-- agents should discover site identity, locale config, capability flags, search, active markdown routes and `Accept: text/markdown` support, `llms.txt`, skills, MCP, and feedback routes with `GET /.well-known/agent.json`; `GET /.well-known/agent` is the public fallback and `GET /api/docs/agent/spec` is the canonical framework route
+- agents should discover site identity, locale config, capability flags, search, active markdown routes and `Accept: text/markdown` support, `llms.txt`, `skill.md`, skills, MCP, and feedback routes with `GET /.well-known/agent.json`; `GET /.well-known/agent` is the public fallback and `GET /api/docs/agent/spec` is the canonical framework route
 
 ### `DocsAgentFeedbackContext`
 
@@ -779,6 +779,8 @@ Quick checks:
 
 ```bash
 curl "http://127.0.0.1:3000/.well-known/agent.json"
+
+curl "http://127.0.0.1:3000/skill.md"
 
 curl "http://127.0.0.1:3000/api/docs/agent/feedback/schema"
 
@@ -1330,7 +1332,7 @@ import { createDocsServer } from "@farming-labs/tanstack-start/server";
 | Property | Type                                                       | Description |
 | -------- | ---------------------------------------------------------- | ----------- |
 | `load`   | `({ pathname, locale? }) => Promise<DocsServerLoadResult>` | Loads docs page data and the sidebar tree for a pathname |
-| `GET`    | `({ request }) => Response`                                | Search / markdown / `llms.txt` endpoint handler |
+| `GET`    | `({ request }) => Response`                                | Search / markdown / `llms.txt` / `skill.md` endpoint handler |
 | `POST`   | `({ request }) => Promise<Response>`                       | AI chat endpoint handler |
 
 ```ts title="src/lib/docs.server.ts"

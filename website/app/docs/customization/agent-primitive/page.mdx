@@ -17,6 +17,8 @@ The same page model also powers the built-in machine-readable routes:
 - the shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
 - Next.js `withDocs()` and the generated TanStack Start, SvelteKit, Astro, and Nuxt forwarding layer serve `/docs.md` and `/docs/<slug>.md`
 - in Next.js, `Accept: text/markdown` on `/docs/<slug>` returns the same markdown
+- agents can fetch the site skill with `GET /skill.md`, fall back to
+  `GET /.well-known/skill.md`, or use `GET /api/docs?format=skill`
 - agents can discover the configured contract with `GET /.well-known/agent.json`, fall back to
   `GET /.well-known/agent`, or use the canonical framework route at `GET /api/docs/agent/spec`
 
@@ -79,15 +81,16 @@ You are reading this docs site as an implementation agent.
 Before implementing from these docs, fetch `/.well-known/agent.json` from the same origin. If that
 is unavailable, fall back to `/.well-known/agent`. Use that JSON as the source of truth for the docs
 entry path, markdown route pattern, search endpoint, MCP endpoints, `llms.txt` routes, skills install
-command, locale handling, and feedback endpoints.
+command, `skill.md` route, locale handling, and feedback endpoints.
 
 Recommended bootstrap flow:
 
 1. Fetch `/.well-known/agent.json`, then fall back to `/.well-known/agent`.
-2. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read relevant docs pages as markdown.
-3. Use `spec.search.endpoint` when you need to find the right page first.
-4. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and your environment supports MCP.
-5. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
+2. Read `spec.skills.route` or `spec.skills.wellKnown` when you want the concise site skill.
+3. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read relevant docs pages as markdown.
+4. Use `spec.search.endpoint` when you need to find the right page first.
+5. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and your environment supports MCP.
+6. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
 
 Do not scrape the HTML page when markdown, search, MCP, or `llms.txt` routes are available in the
 spec.
@@ -176,6 +179,7 @@ Agents should fetch it before choosing a transport. It tells them:
 - which markdown URL pattern to use for page reads
 - where to fetch `llms.txt` and `llms-full.txt` content, including the default public URLs and the
   public `/.well-known` aliases when available
+- where to fetch the `skill.md` document for this site
 - how to install the published Skills pack and which skill is recommended first
 - whether MCP is enabled, which public/well-known endpoint to call, and which tools are available
 - whether agent feedback is enabled, plus the schema and submit endpoints to use
@@ -183,6 +187,12 @@ Agents should fetch it before choosing a transport. It tells them:
 The generated spec includes `agentSpecDefault: "/.well-known/agent.json"` and
 `agentSpecFallback: "/.well-known/agent"` so downstream integrations do not need to hard-code the
 preference themselves.
+
+The skill document is available at `GET /skill.md`, with `GET /.well-known/skill.md` as the
+well-known alias and `GET /api/docs?format=skill` as the shared API format. Put a `skill.md` file at
+the project root, beside `docs.config.ts`, when you want custom site-specific instructions. If that
+file is missing, the framework generates a short fallback from config that points agents to
+markdown, search, MCP, `llms.txt`, feedback, and the reusable Skills CLI install command.
 
 ## Choosing Between Them
 
@@ -195,8 +205,9 @@ preference themselves.
 `Agent` and `agent.md` are page-scoped primitives. They are the right fit when the machine context
 belongs to a single docs route.
 
-Use an installable skill when the guidance should be reusable across many pages or workflows, such
-as setup, CLI usage, theme creation, page actions, or deeper configuration tasks.
+Use `/skill.md` when an agent needs a concise operating guide for this hosted docs site. Use an
+installable skill when the guidance should be reusable across many pages or workflows, such as
+setup, CLI usage, theme creation, page actions, or deeper configuration tasks.
 
 In practice, the two features work well together:
 

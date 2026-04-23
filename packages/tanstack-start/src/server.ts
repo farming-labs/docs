@@ -5,9 +5,11 @@ import {
   buildDocsAgentDiscoverySpec,
   findDocsMarkdownPage,
   isDocsAgentDiscoveryRequest,
+  isDocsSkillRequest,
   normalizeDocsRelated,
   performDocsSearch,
   renderDocsMarkdownDocument,
+  renderDocsSkillDocument,
   resolveDocsAgentMdxContent,
   resolveSearchRequestConfig,
   resolveDocsI18n,
@@ -436,6 +438,26 @@ function findPageInMap(contentMap: ContentFileMap, dirPrefix: string, slug: stri
   return null;
 }
 
+function readRootSkillDocument(contentMap: ContentFileMap | null, rootDir: string): string | null {
+  if (contentMap) {
+    for (const key of ["/skill.md", "skill.md", "./skill.md"]) {
+      const raw = contentMap[key];
+      if (typeof raw === "string") return raw;
+    }
+  }
+
+  const candidate = path.join(rootDir, "skill.md");
+  try {
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+      return fs.readFileSync(candidate, "utf-8");
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 export function createDocsServer(config: Record<string, any>): DocsServer {
   const entry = config.entry ?? "docs";
   const ordering = config.ordering;
@@ -758,6 +780,34 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         {
           headers: {
             "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            "X-Robots-Tag": "noindex",
+          },
+        },
+      );
+    }
+
+    if (isDocsSkillRequest(url)) {
+      return new Response(
+        readRootSkillDocument(preloaded, rootDir) ??
+          renderDocsSkillDocument({
+            origin: url.origin,
+            entry,
+            search: config.search,
+            mcp: mcpConfig,
+            llms: {
+              enabled: llmsEnabled,
+              baseUrl: llmsBaseUrl || undefined,
+              siteTitle: llmsTitle,
+              siteDescription: llmsDesc,
+            },
+            markdown: {
+              acceptHeader: false,
+            },
+          }),
+        {
+          headers: {
+            "Content-Type": "text/markdown; charset=utf-8",
             "Cache-Control": "public, max-age=0, s-maxage=3600",
             "X-Robots-Tag": "noindex",
           },
