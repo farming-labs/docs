@@ -1474,11 +1474,7 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
   nextConfig.outputFileTracingIncludes = {
     ...existingTracingIncludes,
     "/api/docs": [
-      ...new Set([
-        ...(existingTracingIncludes["/api/docs"] ?? []),
-        docsTraceGlob,
-        skillTraceFile,
-      ]),
+      ...new Set([...(existingTracingIncludes["/api/docs"] ?? []), docsTraceGlob, skillTraceFile]),
     ],
     [DEFAULT_MCP_ROUTE]: [
       ...new Set([...(existingTracingIncludes[DEFAULT_MCP_ROUTE] ?? []), docsTraceGlob]),

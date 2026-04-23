@@ -108,9 +108,7 @@ export function isDocsSkillRequest(url: URL): boolean {
     return true;
   }
 
-  return (
-    pathname === DEFAULT_DOCS_API_ROUTE && url.searchParams.get("format")?.trim() === "skill"
-  );
+  return pathname === DEFAULT_DOCS_API_ROUTE && url.searchParams.get("format")?.trim() === "skill";
 }
 
 export function isDocsPublicGetRequest(entry: string, url: URL, request: Request): boolean {
@@ -276,7 +274,9 @@ export function renderDocsSkillDocument({
   }
 
   if (searchEnabled) {
-    lines.push(`- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when you do not know the page.`);
+    lines.push(
+      `- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when you do not know the page.`,
+    );
   }
 
   if (llmsEnabled) {
@@ -293,9 +293,7 @@ export function renderDocsSkillDocument({
   }
 
   if (feedbackEnabled) {
-    lines.push(
-      `- Read ${feedbackSchemaRoute} before posting agent feedback to ${feedbackRoute}.`,
-    );
+    lines.push(`- Read ${feedbackSchemaRoute} before posting agent feedback to ${feedbackRoute}.`);
   }
 
   lines.push(

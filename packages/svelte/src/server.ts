@@ -191,7 +191,10 @@ function buildDirPrefix(contentDir: string): string {
   return normalized ? `/${normalized}/` : "/";
 }
 
-function readRootSkillDocument(contentMap: ContentFileMap | undefined, rootDir: string): string | null {
+function readRootSkillDocument(
+  contentMap: ContentFileMap | undefined,
+  rootDir: string,
+): string | null {
   if (contentMap) {
     for (const key of ["/skill.md", "skill.md", "./skill.md"]) {
       const raw = contentMap[key];

@@ -314,9 +314,7 @@ function resolveSkillRequest(url: URL): boolean {
     return true;
   }
 
-  return (
-    pathname === DEFAULT_DOCS_API_ROUTE && url.searchParams.get("format")?.trim() === "skill"
-  );
+  return pathname === DEFAULT_DOCS_API_ROUTE && url.searchParams.get("format")?.trim() === "skill";
 }
 
 function isSearchEnabled(search?: boolean | DocsSearchConfig): boolean {
@@ -1378,7 +1376,9 @@ function renderSkillDocument({
   );
 
   if (searchEnabled) {
-    lines.push(`- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when you do not know the page.`);
+    lines.push(
+      `- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when you do not know the page.`,
+    );
   }
 
   if (llms.enabled) {
