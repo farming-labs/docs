@@ -472,6 +472,93 @@ export default defineDocs({
       readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
     ).toBe("TSX compacted output\n");
   });
+
+  it("loads TOKEN_COMPANY_API_KEY from project .env files", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default defineDocs({
+        entry: "docs",
+        agent: {
+          compact: {
+            apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+            baseUrl: "http://127.0.0.1:0",
+            model: "bear-1.2",
+          },
+        },
+      });`,
+      "utf-8",
+    );
+
+    writeFileSync(path.join(tmpDir, ".env"), `TOKEN_COMPANY_API_KEY=dotenv-key\n`, "utf-8");
+
+    mkdirSync(path.join(tmpDir, "app", "docs", "installation"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "installation", "page.mdx"),
+      `---
+title: "Installation"
+description: "Install it"
+---
+
+# Installation
+
+Body.
+`,
+      "utf-8",
+    );
+
+    let seenAuthHeader = "";
+    const server = createServer(async (req, res) => {
+      for await (const _chunk of req) {
+        // drain request body
+      }
+
+      seenAuthHeader = String(req.headers.authorization ?? "");
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          output: "Dotenv compacted output",
+          original_input_tokens: 10,
+          output_tokens: 5,
+        }),
+      );
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default defineDocs({
+        entry: "docs",
+        agent: {
+          compact: {
+            apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+            baseUrl: "http://127.0.0.1:${port}",
+            model: "bear-1.2",
+          },
+        },
+      });`,
+      "utf-8",
+    );
+
+    try {
+      process.chdir(tmpDir);
+      delete process.env.TOKEN_COMPANY_API_KEY;
+      await compactAgentDocs({
+        pages: ["installation"],
+      });
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+
+    expect(seenAuthHeader).toBe("Bearer dotenv-key");
+    expect(
+      readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
+    ).toBe("Dotenv compacted output\n");
+  });
 });
 
 function existsAtPath(value: string): boolean {

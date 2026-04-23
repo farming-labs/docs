@@ -6,6 +6,7 @@ import { createFilesystemDocsMcpSource } from "../server.js";
 import type { DocsMcpPage } from "../server.js";
 import {
   extractNestedObjectLiteral,
+  loadProjectEnv,
   loadDocsConfigModule,
   readEnvReferenceProperty,
   readNavTitle,
@@ -444,6 +445,14 @@ function resolveSelectedPages(
 
 export async function compactAgentDocs(options: AgentCompactOptions = {}): Promise<void> {
   const rootDir = process.cwd();
+  const loadedEnv = loadProjectEnv(rootDir);
+
+  for (const [key, value] of Object.entries(loadedEnv)) {
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+
   const loadedConfigModule = await loadDocsConfigModule(rootDir, options.configPath);
   const configPath = loadedConfigModule?.path ?? resolveDocsConfigPath(rootDir, options.configPath);
   const configContent = readFileSync(configPath, "utf-8");
