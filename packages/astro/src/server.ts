@@ -603,7 +603,8 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     }
 
     const { data, content } = matter(raw);
-    const html = await renderMarkdown(content, { theme: config.theme });
+    const humanRawContent = resolveDocsAgentMdxContent(content, "human");
+    const html = await renderMarkdown(humanRawContent, { theme: config.theme });
 
     const currentUrl = isIndex ? `/${entry}` : `/${entry}/${slug}`;
     const currentIndex = flatPages.findIndex((p) => p.url === currentUrl);
@@ -627,7 +628,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       title: (data.title as string) ?? fallbackTitle,
       description: data.description as string | undefined,
       html,
-      rawMarkdown: content,
+      rawMarkdown: humanRawContent,
       entry,
       locale: ctx.locale,
       ...(isIndex ? {} : { slug }),

@@ -9,7 +9,7 @@
  *   - Tables, lists, inline formatting, headings with anchor IDs
  */
 
-import type { DocsTheme } from "@farming-labs/docs";
+import { resolveDocsAgentMdxContent, type DocsTheme } from "@farming-labs/docs";
 import { createHighlighter, type Highlighter } from "shiki";
 
 let highlighterPromise: Promise<Highlighter> | undefined;
@@ -284,7 +284,7 @@ export async function renderMarkdown(
   if (!content) return "";
 
   const hl = await getHighlighter();
-  let result = content;
+  let result = resolveDocsAgentMdxContent(content, "human");
 
   // ── Tabs blocks: <Tabs items={[...]}> ... </Tabs> ──
   const tabsBlocks: string[] = [];
