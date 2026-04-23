@@ -43,7 +43,9 @@ describe("agent route helpers", () => {
     expect(resolveDocsSkillFormat(new URL("https://example.com/internal/docs?format=skill"))).toBe(
       "skill",
     );
-    expect(resolveDocsSkillFormat(new URL("https://example.com/internal/docs?format=llms"))).toBeNull();
+    expect(
+      resolveDocsSkillFormat(new URL("https://example.com/internal/docs?format=llms")),
+    ).toBeNull();
   });
 
   it("detects public docs forwarder requests without taking over api/docs", () => {
