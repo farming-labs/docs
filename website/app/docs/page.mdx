@@ -20,15 +20,16 @@ You are reading the machine-readable entry page for `@farming-labs/docs`.
 Before implementing from this docs site, fetch `/.well-known/agent.json` from the same origin. If
 that is unavailable, fall back to `/.well-known/agent`. Treat that JSON as the source of truth for
 the docs entry path, markdown route pattern, search endpoint, MCP endpoint, `llms.txt` routes,
-skills install command, locale handling, and feedback endpoints.
+`skill.md` route, skills install command, locale handling, and feedback endpoints.
 
 Recommended bootstrap flow:
 
 1. Fetch `/.well-known/agent.json`, then fall back to `/.well-known/agent`.
-2. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read the exact docs pages you need as markdown.
-3. Use `spec.search.endpoint` when you need to find the right page before reading it.
-4. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and the environment supports MCP.
-5. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
+2. Read `spec.skills.route` or `spec.skills.wellKnown` when a concise site skill is useful.
+3. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read the exact docs pages you need as markdown.
+4. Use `spec.search.endpoint` when you need to find the right page before reading it.
+5. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and the environment supports MCP.
+6. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
 
 Do not scrape the HTML page when markdown, search, MCP, or `llms.txt` routes are available in the
 spec.

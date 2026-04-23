@@ -14,6 +14,8 @@ export const DEFAULT_LLMS_TXT_ROUTE = "/llms.txt";
 export const DEFAULT_LLMS_FULL_TXT_ROUTE = "/llms-full.txt";
 export const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
 export const DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms-full.txt";
+export const DEFAULT_SKILL_MD_ROUTE = "/skill.md";
+export const DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE = "/.well-known/skill.md";
 export const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
 
 export interface DocsAgentFeedbackDiscoveryConfig {
@@ -33,6 +35,18 @@ export interface DocsAgentDiscoverySpecOptions {
   origin: string;
   entry?: string;
   i18n?: ResolvedDocsI18n | null;
+  search?: boolean | DocsSearchConfig;
+  mcp: DocsMcpResolvedConfig;
+  feedback?: DocsAgentFeedbackDiscoveryConfig;
+  llms?: DocsLlmsDiscoveryConfig;
+  markdown?: {
+    acceptHeader?: boolean;
+  };
+}
+
+export interface DocsSkillDocumentOptions {
+  origin: string;
+  entry?: string;
   search?: boolean | DocsSearchConfig;
   mcp: DocsMcpResolvedConfig;
   feedback?: DocsAgentFeedbackDiscoveryConfig;
@@ -88,12 +102,24 @@ export function isDocsMcpRequest(url: URL): boolean {
   );
 }
 
+export function isDocsSkillRequest(url: URL): boolean {
+  const pathname = normalizeDocsUrlPath(url.pathname);
+  if (pathname === DEFAULT_SKILL_MD_ROUTE || pathname === DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE) {
+    return true;
+  }
+
+  return (
+    pathname === DEFAULT_DOCS_API_ROUTE && url.searchParams.get("format")?.trim() === "skill"
+  );
+}
+
 export function isDocsPublicGetRequest(entry: string, url: URL, request: Request): boolean {
   const pathname = normalizeDocsUrlPath(url.pathname);
   if (pathname === DEFAULT_DOCS_API_ROUTE || pathname === DEFAULT_MCP_ROUTE) return false;
 
   return (
     isDocsAgentDiscoveryRequest(url) ||
+    isDocsSkillRequest(url) ||
     resolveDocsLlmsTxtFormat(url) !== null ||
     resolveDocsMarkdownRequest(entry, url, request) !== null
   );
@@ -193,6 +219,119 @@ export function renderDocsMarkdownDocument(page: DocsMarkdownPage): string {
   if (page.description) lines.push(`Description: ${page.description}`);
   lines.push(...relatedLines);
   lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);
+  return lines.join("\n");
+}
+
+export function renderDocsSkillDocument({
+  origin,
+  entry = "docs",
+  search,
+  mcp,
+  feedback,
+  llms,
+  markdown,
+}: DocsSkillDocumentOptions): string {
+  const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
+  const siteTitle = compactSkillText(llms?.siteTitle ?? "Documentation");
+  const siteDescription = llms?.siteDescription
+    ? compactSkillText(llms.siteDescription)
+    : undefined;
+  const llmsEnabled = llms?.enabled ?? true;
+  const searchEnabled = isSearchEnabled(search);
+  const feedbackEnabled = feedback?.enabled ?? false;
+  const feedbackRoute = feedback?.route ?? DEFAULT_AGENT_FEEDBACK_ROUTE;
+  const feedbackSchemaRoute = feedback?.schemaRoute ?? `${feedbackRoute}/schema`;
+  const description = truncateSkillDescription(
+    `Use ${siteTitle} through markdown routes, llms.txt, agent discovery, search, and MCP when available.`,
+  );
+  const markdownAcceptHeader = markdown?.acceptHeader === false ? null : "text/markdown";
+  const lines = [
+    "---",
+    "name: docs",
+    `description: ${toYamlString(description)}`,
+    "---",
+    "",
+    `# ${siteTitle} Skill`,
+    "",
+    `Base URL: ${origin}`,
+  ];
+
+  if (siteDescription) {
+    lines.push(`Description: ${siteDescription}`);
+  }
+
+  lines.push(
+    "",
+    "## When To Use",
+    "Use this skill when you need to read or implement against this documentation site.",
+    "",
+    "## Start Here",
+    `- Fetch ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${DEFAULT_AGENT_SPEC_ROUTE}.`,
+    `- Fetch /${normalizedEntry}.md for the root docs page.`,
+    `- Fetch /${normalizedEntry}/{slug}.md for page-specific context.`,
+  );
+
+  if (markdownAcceptHeader) {
+    lines.push(`- You can also request ${markdownAcceptHeader} from normal page URLs.`);
+  }
+
+  if (searchEnabled) {
+    lines.push(`- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when you do not know the page.`);
+  }
+
+  if (llmsEnabled) {
+    lines.push(
+      `- Use ${DEFAULT_LLMS_TXT_ROUTE} for a compact docs index.`,
+      `- Use ${DEFAULT_LLMS_FULL_TXT_ROUTE} for full markdown context.`,
+    );
+  }
+
+  if (mcp.enabled) {
+    lines.push(
+      `- Use ${DEFAULT_MCP_WELL_KNOWN_ROUTE} or ${DEFAULT_MCP_PUBLIC_ROUTE} for MCP tools when your environment supports MCP.`,
+    );
+  }
+
+  if (feedbackEnabled) {
+    lines.push(
+      `- Read ${feedbackSchemaRoute} before posting agent feedback to ${feedbackRoute}.`,
+    );
+  }
+
+  lines.push(
+    "",
+    "## Routes",
+    `- Skill document: ${DEFAULT_SKILL_MD_ROUTE}`,
+    `- Skill well-known alias: ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}`,
+    `- Skill API format: ${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+    `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
+    `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
+    `- Markdown root: /${normalizedEntry}.md`,
+    `- Markdown pages: /${normalizedEntry}/{slug}.md`,
+  );
+
+  if (llmsEnabled) {
+    lines.push(
+      `- llms.txt: ${DEFAULT_LLMS_TXT_ROUTE}`,
+      `- llms-full.txt: ${DEFAULT_LLMS_FULL_TXT_ROUTE}`,
+      `- llms well-known aliases: ${DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE}, ${DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE}`,
+    );
+  }
+
+  if (mcp.enabled) {
+    lines.push(`- MCP: ${DEFAULT_MCP_PUBLIC_ROUTE}, ${DEFAULT_MCP_WELL_KNOWN_ROUTE}`);
+  }
+
+  lines.push(
+    "",
+    "## Reusable Framework Skills",
+    "For framework setup, CLI, page actions, Ask AI, or configuration work, install the reusable Farming Labs skills:",
+    "",
+    "```sh",
+    "npx skills add farming-labs/docs",
+    "```",
+  );
+
   return lines.join("\n");
 }
 
@@ -357,6 +496,11 @@ export function buildDocsAgentDiscoverySpec({
     },
     skills: {
       enabled: true,
+      file: "skill.md",
+      route: DEFAULT_SKILL_MD_ROUTE,
+      wellKnown: DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
+      api: `${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+      generatedFallback: true,
       registry: "skills.sh",
       install: "npx skills add farming-labs/docs",
       recommended: [
@@ -432,4 +576,18 @@ function isSearchEnabled(search?: boolean | DocsSearchConfig): boolean {
   if (search === false) return false;
   if (search && typeof search === "object" && search.enabled === false) return false;
   return true;
+}
+
+function compactSkillText(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function truncateSkillDescription(value: string): string {
+  const normalized = compactSkillText(value);
+  if (normalized.length <= 1024) return normalized;
+  return `${normalized.slice(0, 1021).trimEnd()}...`;
+}
+
+function toYamlString(value: string): string {
+  return JSON.stringify(value);
 }

@@ -414,6 +414,72 @@ Welcome to the docs.
       expect(response.headers.get("content-type")).toContain("text/plain");
       expect(await response.text()).toBe(llmsFullApiText);
     }
+
+    const skillApi = await GET(new Request("http://localhost/api/docs?format=skill"));
+    const skillApiText = await skillApi.text();
+    expect(skillApi.status).toBe(200);
+    expect(skillApi.headers.get("content-type")).toContain("text/markdown");
+    expect(skillApiText).toContain("name: docs");
+    expect(skillApiText).toContain("# Alias Docs Skill");
+    expect(skillApiText).toContain("/docs.md");
+    expect(skillApiText).toContain("/.well-known/agent.json");
+
+    for (const path of ["/skill.md", "/.well-known/skill.md"]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("text/markdown");
+      expect(await response.text()).toBe(skillApiText);
+    }
+  });
+
+  it("serves a root skill.md file before falling back to generated skill content", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-root-skill-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+`,
+    );
+    writeFileSync(
+      join(rootDir, "skill.md"),
+      `---
+name: docs
+description: Custom docs skill.
+---
+
+# Custom Docs Skill
+
+Use the product-specific workflow first.
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+    });
+
+    const skillApi = await GET(new Request("http://localhost/api/docs?format=skill"));
+    const skillApiText = await skillApi.text();
+    expect(skillApi.status).toBe(200);
+    expect(skillApi.headers.get("content-type")).toContain("text/markdown");
+    expect(skillApiText).toContain("# Custom Docs Skill");
+    expect(skillApiText).toContain("Use the product-specific workflow first.");
+    expect(skillApiText).not.toContain("# Documentation Skill");
+
+    for (const path of ["/skill.md", "/.well-known/skill.md"]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("text/markdown");
+      expect(await response.text()).toBe(skillApiText);
+    }
   });
 
   it("keeps Agent blocks out of the normal search index", async () => {
@@ -705,6 +771,11 @@ title: "Home"
       };
       skills: {
         enabled: boolean;
+        file: string;
+        route: string;
+        wellKnown: string;
+        api: string;
+        generatedFallback: boolean;
         registry: string;
         install: string;
         recommended: Array<{ name: string; description: string }>;
@@ -786,6 +857,11 @@ title: "Home"
     });
     expect(spec.skills).toEqual({
       enabled: true,
+      file: "skill.md",
+      route: "/skill.md",
+      wellKnown: "/.well-known/skill.md",
+      api: "/api/docs?format=skill",
+      generatedFallback: true,
       registry: "skills.sh",
       install: "npx skills add farming-labs/docs",
       recommended: [
@@ -867,7 +943,16 @@ title: "Home"
       markdown: { acceptHeader: string; pagePattern: string; rootPage: string };
       llms: Record<string, string | boolean>;
       search: { enabled: boolean; endpoint: string; method: string };
-      skills: { enabled: boolean; registry: string; install: string };
+      skills: {
+        enabled: boolean;
+        file: string;
+        route: string;
+        wellKnown: string;
+        api: string;
+        generatedFallback: boolean;
+        registry: string;
+        install: string;
+      };
       mcp: {
         enabled: boolean;
         endpoint: string;
@@ -926,6 +1011,11 @@ title: "Home"
     });
     expect(spec.skills).toMatchObject({
       enabled: true,
+      file: "skill.md",
+      route: "/skill.md",
+      wellKnown: "/.well-known/skill.md",
+      api: "/api/docs?format=skill",
+      generatedFallback: true,
       registry: "skills.sh",
       install: "npx skills add farming-labs/docs",
     });

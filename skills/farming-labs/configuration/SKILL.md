@@ -335,15 +335,16 @@ feedback: {
 Default behavior:
 
 - `GET /.well-known/agent.json` is the preferred public agent discovery document, with `/.well-known/agent` as fallback and `/api/docs/agent/spec` as the canonical framework route
-- the discovery document includes site identity, locale config, capability flags, search, markdown routes, `llms.txt`, Skills CLI install metadata, MCP, and feedback routes
+- the discovery document includes site identity, locale config, capability flags, search, markdown routes, `llms.txt`, root `skill.md` metadata, Skills CLI install metadata, MCP, and feedback routes
+- `GET /skill.md` serves the root `skill.md` file when present, `GET /.well-known/skill.md` is the fallback alias, and `GET /api/docs?format=skill` is the shared API format
 - `GET /api/docs/agent/feedback/schema` returns the machine-readable schema
 - `POST /api/docs/agent/feedback` accepts `{ context?, payload }`
 - the shared `/api/docs` handler remains the source of truth
 - **Next.js:** `withDocs()` adds the public rewrites automatically
-- **TanStack Start:** current `init` scaffolds one `src/routes/$.ts` public forwarder for well-known routes
-- **SvelteKit:** current `init` scaffolds one `src/hooks.server.ts` public forwarder for well-known routes
-- **Astro:** current `init` scaffolds one `src/middleware.ts` public forwarder for well-known routes
-- **Nuxt:** current `init` scaffolds one `server/middleware/docs-public.ts` public forwarder for well-known routes
+- **TanStack Start:** current `init` scaffolds one `src/routes/$.ts` public forwarder for well-known routes and `/skill.md`
+- **SvelteKit:** current `init` scaffolds one `src/hooks.server.ts` public forwarder for well-known routes and `/skill.md`
+- **Astro:** current `init` scaffolds one `src/middleware.ts` public forwarder for well-known routes and `/skill.md`
+- **Nuxt:** current `init` scaffolds one `server/middleware/docs-public.ts` public forwarder for well-known routes and `/skill.md`
 - `feedback.agent` alone does not enable the human footer UI
 
 Default payload shape:

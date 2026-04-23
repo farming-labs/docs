@@ -13,7 +13,7 @@ experience for humans, IDEs, and agents without maintaining a pile of routing bo
 - Built-in search with simple, Typesense, Algolia, MCP, and custom provider options
 - Generated API reference from framework route handlers or a hosted OpenAPI JSON document
 - Next.js changelog pages from dated MDX entries
-- Machine-readable docs through `.md` routes, `llms.txt`, agent discovery, and MCP
+- Machine-readable docs through `.md` routes, `llms.txt`, `skill.md`, agent discovery, and MCP
 
 ## Quick Start
 
@@ -101,6 +101,8 @@ The framework exposes machine-readable docs by default in Next.js:
 
 - `/llms.txt`
 - `/llms-full.txt`
+- `/skill.md`
+- `/.well-known/skill.md`
 - `/.well-known/agent.json`
 - `/.well-known/agent`
 - `/mcp`
@@ -108,8 +110,11 @@ The framework exposes machine-readable docs by default in Next.js:
 - `/docs/<slug>.md`
 - `/docs/<slug>` with `Accept: text/markdown`
 
-The canonical API routes remain available under `/api/docs`, including `/api/docs/mcp` and
-`/api/docs/agent/spec`.
+The canonical API routes remain available under `/api/docs`, including `/api/docs?format=skill`,
+`/api/docs/mcp`, and `/api/docs/agent/spec`.
+
+For a custom site-specific skill, place `skill.md` at the project root beside `docs.config.ts`.
+When it is missing, the framework serves a generated fallback based on the docs config.
 
 ## Common Tasks
 

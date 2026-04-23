@@ -4,6 +4,7 @@
  * A single route handler that serves **both** search and AI chat:
  *
  * - `GET  /api/docs?query=…` → full-text search over indexed MDX pages
+ * - `GET  /api/docs?format=skill` → skill.md for agent discovery
  * - `POST /api/docs` → RAG-powered "Ask AI" (searches relevant docs,
  *   then streams an LLM response using the docs as context)
  *
@@ -127,6 +128,8 @@ const DEFAULT_LLMS_TXT_ROUTE = "/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_ROUTE = "/llms-full.txt";
 const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms-full.txt";
+const DEFAULT_SKILL_MD_ROUTE = "/skill.md";
+const DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE = "/.well-known/skill.md";
 const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
 const DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA: Record<string, unknown> = {
   type: "object",
@@ -194,6 +197,8 @@ interface AgentSpecOptions {
   feedback: ResolvedAgentFeedbackConfig;
   llms: LlmsTxtOptions & { enabled: boolean };
 }
+
+interface SkillDocumentOptions extends AgentSpecOptions {}
 
 function normalizeAgentFeedbackRoute(
   route?: string,
@@ -303,6 +308,17 @@ function resolveAgentSpecRequest(url: URL): boolean {
   );
 }
 
+function resolveSkillRequest(url: URL): boolean {
+  const pathname = normalizeUrlPath(url.pathname);
+  if (pathname === DEFAULT_SKILL_MD_ROUTE || pathname === DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE) {
+    return true;
+  }
+
+  return (
+    pathname === DEFAULT_DOCS_API_ROUTE && url.searchParams.get("format")?.trim() === "skill"
+  );
+}
+
 function isSearchEnabled(search?: boolean | DocsSearchConfig): boolean {
   if (search === false) return false;
   if (search && typeof search === "object" && search.enabled === false) return false;
@@ -384,6 +400,11 @@ function buildAgentSpec({ origin, entry, i18n, search, mcp, feedback, llms }: Ag
     // config switch for disabling it from the discovery spec.
     skills: {
       enabled: true,
+      file: "skill.md",
+      route: DEFAULT_SKILL_MD_ROUTE,
+      wellKnown: DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
+      api: `${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+      generatedFallback: true,
       registry: "skills.sh",
       install: "npx skills add farming-labs/docs",
       recommended: [
@@ -1314,6 +1335,135 @@ function renderMarkdownDocument(page: DocsMcpPage | DocsSearchSourcePage): strin
   return lines.join("\n");
 }
 
+function renderSkillDocument({
+  origin,
+  entry,
+  search,
+  mcp,
+  feedback,
+  llms,
+}: SkillDocumentOptions): string {
+  const normalizedEntry = normalizePathSegment(entry) || "docs";
+  const siteTitle = compactSkillText(llms.siteTitle ?? "Documentation");
+  const siteDescription = llms.siteDescription ? compactSkillText(llms.siteDescription) : undefined;
+  const searchEnabled = isSearchEnabled(search);
+  const description = truncateSkillDescription(
+    `Use ${siteTitle} through markdown routes, llms.txt, agent discovery, search, and MCP when available.`,
+  );
+  const lines = [
+    "---",
+    "name: docs",
+    `description: ${toYamlString(description)}`,
+    "---",
+    "",
+    `# ${siteTitle} Skill`,
+    "",
+    `Base URL: ${origin}`,
+  ];
+
+  if (siteDescription) {
+    lines.push(`Description: ${siteDescription}`);
+  }
+
+  lines.push(
+    "",
+    "## When To Use",
+    "Use this skill when you need to read or implement against this documentation site.",
+    "",
+    "## Start Here",
+    `- Fetch ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${DEFAULT_AGENT_SPEC_ROUTE}.`,
+    `- Fetch /${normalizedEntry}.md for the root docs page.`,
+    `- Fetch /${normalizedEntry}/{slug}.md for page-specific context.`,
+    "- You can also request text/markdown from normal page URLs.",
+  );
+
+  if (searchEnabled) {
+    lines.push(`- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when you do not know the page.`);
+  }
+
+  if (llms.enabled) {
+    lines.push(
+      `- Use ${DEFAULT_LLMS_TXT_ROUTE} for a compact docs index.`,
+      `- Use ${DEFAULT_LLMS_FULL_TXT_ROUTE} for full markdown context.`,
+    );
+  }
+
+  if (mcp.enabled) {
+    lines.push(
+      `- Use ${DEFAULT_MCP_WELL_KNOWN_ROUTE} or ${DEFAULT_MCP_PUBLIC_ROUTE} for MCP tools when your environment supports MCP.`,
+    );
+  }
+
+  if (feedback.enabled) {
+    lines.push(
+      `- Read ${feedback.schemaRoute} before posting agent feedback to ${feedback.route}.`,
+    );
+  }
+
+  lines.push(
+    "",
+    "## Routes",
+    `- Skill document: ${DEFAULT_SKILL_MD_ROUTE}`,
+    `- Skill well-known alias: ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}`,
+    `- Skill API format: ${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+    `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
+    `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
+    `- Markdown root: /${normalizedEntry}.md`,
+    `- Markdown pages: /${normalizedEntry}/{slug}.md`,
+  );
+
+  if (llms.enabled) {
+    lines.push(
+      `- llms.txt: ${DEFAULT_LLMS_TXT_ROUTE}`,
+      `- llms-full.txt: ${DEFAULT_LLMS_FULL_TXT_ROUTE}`,
+      `- llms well-known aliases: ${DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE}, ${DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE}`,
+    );
+  }
+
+  if (mcp.enabled) {
+    lines.push(`- MCP: ${DEFAULT_MCP_PUBLIC_ROUTE}, ${DEFAULT_MCP_WELL_KNOWN_ROUTE}`);
+  }
+
+  lines.push(
+    "",
+    "## Reusable Framework Skills",
+    "For framework setup, CLI, page actions, Ask AI, or configuration work, install the reusable Farming Labs skills:",
+    "",
+    "```sh",
+    "npx skills add farming-labs/docs",
+    "```",
+  );
+
+  return lines.join("\n");
+}
+
+function readRootSkillDocument(rootDir: string): string | null {
+  const candidate = path.join(rootDir, "skill.md");
+  try {
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+      return fs.readFileSync(candidate, "utf-8");
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function compactSkillText(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function truncateSkillDescription(value: string): string {
+  const normalized = compactSkillText(value);
+  if (normalized.length <= 1024) return normalized;
+  return `${normalized.slice(0, 1021).trimEnd()}...`;
+}
+
+function toYamlString(value: string): string {
+  return JSON.stringify(value);
+}
+
 // ─── AI Chat (RAG) ─────────────────────────────────────────────────
 
 const DEFAULT_SYSTEM_PROMPT = `You are a helpful documentation assistant. Answer questions based on the provided documentation context. Be concise and accurate. If the answer is not in the context, say so honestly. Use markdown formatting for code examples and links.`;
@@ -1557,6 +1707,7 @@ function generateLlmsTxt(
  * - **GET  ?query=…**        → full-text search
  * - **GET  ?format=llms**     → llms.txt (concise page listing)
  * - **GET  ?format=llms-full** → llms-full.txt (full page content)
+ * - **GET  ?format=skill**    → skill.md
  * - **POST**                  → AI-powered chat with RAG
  *
  * @example
@@ -1776,7 +1927,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
   return {
     /**
-     * GET handler — search, llms.txt, or llms-full.txt depending on query params.
+     * GET handler — search, markdown, llms.txt, llms-full.txt, or skill.md.
      */
     async GET(request: Request) {
       const ctx = resolveContextFromRequest(request);
@@ -1823,6 +1974,28 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             "X-Robots-Tag": "noindex",
           },
         });
+      }
+
+      if (resolveSkillRequest(url)) {
+        return new Response(
+          readRootSkillDocument(root) ??
+            renderSkillDocument({
+              origin: url.origin,
+              entry,
+              i18n,
+              search: searchConfig,
+              mcp: mcpConfig,
+              feedback: agentFeedbackConfig,
+              llms: llmsConfig,
+            }),
+          {
+            headers: {
+              "Content-Type": "text/markdown; charset=utf-8",
+              "Cache-Control": "public, max-age=0, s-maxage=3600",
+              "X-Robots-Tag": "noindex",
+            },
+          },
+        );
       }
 
       const markdownRequest = resolveMarkdownRequest(entry, url, request);

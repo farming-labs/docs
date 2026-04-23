@@ -43,6 +43,7 @@ The spec is generated from `docs.config` and includes:
 - search endpoint and query parameter
 - markdown route patterns
 - `llms.txt` and `llms-full.txt` routes
+- `skill.md` route, well-known alias, API format, and root file convention
 - Skills CLI install command and recommended skill metadata
 - MCP enabled state, endpoint, server name, version, and tool toggles
 - agent feedback enabled state, schema route, and submit route
@@ -60,15 +61,16 @@ You are reading this docs site as an implementation agent.
 Before implementing from these docs, fetch `/.well-known/agent.json` from the same origin. If that
 is unavailable, fall back to `/.well-known/agent`, then `/api/docs/agent/spec`. Use that JSON as the
 source of truth for the docs entry path, markdown route pattern, search endpoint, MCP endpoint,
-`llms.txt` routes, skills install command, locale handling, and feedback endpoints.
+`llms.txt` routes, `skill.md`, skills install command, locale handling, and feedback endpoints.
 
 Recommended bootstrap flow:
 
 1. Fetch `/.well-known/agent.json`, then fall back to `/.well-known/agent` and `/api/docs/agent/spec`.
-2. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read relevant docs pages as markdown.
-3. Use `spec.search.endpoint` when you need to find the right page first.
-4. Use `spec.mcp.wellKnownEndpoint`, `spec.mcp.publicEndpoint`, or `spec.mcp.endpoint` when MCP is enabled and your environment supports MCP.
-5. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
+2. Read `spec.skills.route` or `spec.skills.wellKnown` when a concise site skill is useful.
+3. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read relevant docs pages as markdown.
+4. Use `spec.search.endpoint` when you need to find the right page first.
+5. Use `spec.mcp.wellKnownEndpoint`, `spec.mcp.publicEndpoint`, or `spec.mcp.endpoint` when MCP is enabled and your environment supports MCP.
+6. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
 
 Do not scrape the HTML page when markdown, search, MCP, or `llms.txt` routes are available in the
 spec.
@@ -112,6 +114,9 @@ configured paths instead of the defaults.
 ## Skills
 
 This repo also ships reusable Agent Skills for broader workflows that are larger than one page.
+The hosted site serves `/skill.md`, `/.well-known/skill.md`, and `/api/docs?format=skill` as a
+concise route discovery skill. If a root `skill.md` exists beside `docs.config.ts`, that file is
+served. Otherwise the framework generates a fallback from config.
 
 Install them with:
 

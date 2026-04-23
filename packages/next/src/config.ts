@@ -178,6 +178,8 @@ const DEFAULT_LLMS_TXT_ROUTE = "/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_ROUTE = "/llms-full.txt";
 const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms-full.txt";
+const DEFAULT_SKILL_MD_ROUTE = "/skill.md";
+const DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE = "/.well-known/skill.md";
 const MARKDOWN_ACCEPT_HEADER_VALUE = [
   "(?:^|.*,\\s*)",
   "text/markdown",
@@ -1050,6 +1052,19 @@ function buildLlmsTxtRewrites(): NextRewrite[] {
   ];
 }
 
+function buildSkillMdRewrites(): NextRewrite[] {
+  return [
+    {
+      source: DEFAULT_SKILL_MD_ROUTE,
+      destination: "/api/docs?format=skill",
+    },
+    {
+      source: DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
+      destination: "/api/docs?format=skill",
+    },
+  ];
+}
+
 function buildMcpRewrites(config: { enabled: boolean; route: string }): NextRewrite[] {
   if (!config.enabled) return [];
 
@@ -1111,6 +1126,7 @@ function mergeDocsMarkdownRewrites(
     ...buildAgentSpecRewrites(),
     ...buildMcpRewrites(mcp),
     ...buildLlmsTxtRewrites(),
+    ...buildSkillMdRewrites(),
     ...buildDocsMarkdownRewrites(entry),
     ...buildAgentFeedbackRewrites(agentFeedback),
   ];
@@ -1441,6 +1457,7 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
     (nextConfig.outputFileTracingIncludes as Record<string, string[] | undefined> | undefined) ??
     {};
   const docsTraceGlob = docsContentDir.replace(/\\/g, "/").replace(/^\.?\//, "") + "/**/*";
+  const skillTraceFile = "skill.md";
 
   if (!isStaticExport) {
     const existingRewrites = nextConfig.rewrites as
@@ -1456,7 +1473,13 @@ export function withDocs(nextConfig: Record<string, unknown> = {}) {
 
   nextConfig.outputFileTracingIncludes = {
     ...existingTracingIncludes,
-    "/api/docs": [...new Set([...(existingTracingIncludes["/api/docs"] ?? []), docsTraceGlob])],
+    "/api/docs": [
+      ...new Set([
+        ...(existingTracingIncludes["/api/docs"] ?? []),
+        docsTraceGlob,
+        skillTraceFile,
+      ]),
+    ],
     [DEFAULT_MCP_ROUTE]: [
       ...new Set([...(existingTracingIncludes[DEFAULT_MCP_ROUTE] ?? []), docsTraceGlob]),
     ],
