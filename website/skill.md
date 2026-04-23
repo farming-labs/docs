@@ -16,6 +16,3 @@ Use this skill when reading or implementing from the hosted Farming Labs docs we
 - Use `/llms.txt` for a compact index and `/llms-full.txt` for full markdown context.
 - Use `/mcp` or `/.well-known/mcp` when MCP is available.
 
-## Custom Marker
-
-This file is loaded from `website/skill.md`.
