@@ -7,6 +7,13 @@ import type { AddressInfo } from "node:net";
 import { compactAgentDocs, parseAgentCompactArgs } from "./agent.js";
 
 describe("parseAgentCompactArgs", () => {
+  it("treats -h as help instead of a positional page", () => {
+    expect(parseAgentCompactArgs(["-h"])).toEqual({
+      help: true,
+      pages: [],
+    });
+  });
+
   it("parses positional pages and repeated page flags", () => {
     expect(
       parseAgentCompactArgs([
@@ -51,6 +58,13 @@ describe("parseAgentCompactArgs", () => {
       minOutputTokens: 120,
       protectJson: false,
       dryRun: true,
+      pages: [],
+    });
+  });
+
+  it("parses separated boolean values for --protect-json", () => {
+    expect(parseAgentCompactArgs(["--protect-json", "false"])).toEqual({
+      protectJson: false,
       pages: [],
     });
   });
@@ -431,9 +445,7 @@ Body.
 
     writeFileSync(
       path.join(tmpDir, "docs.config.tsx"),
-      `import { defineDocs } from "/Users/mac/oss/docs_/packages/docs/src/define-docs.ts";
-
-export default defineDocs({
+      `export default {
   entry: "docs",
   nav: {
     title: <span>Example Docs</span>,
@@ -446,7 +458,7 @@ export default defineDocs({
       aggressiveness: 0.2,
     },
   },
-});`,
+};`,
       "utf-8",
     );
 
@@ -558,6 +570,60 @@ Body.
     expect(
       readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
     ).toBe("Dotenv compacted output\n");
+  });
+
+  it("strips ttc_safe tags from compressed output before writing agent.md", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs" };`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "app", "docs", "installation"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "installation", "page.mdx"),
+      `---
+title: "Installation"
+description: "Install it"
+---
+
+# Installation
+
+Body.
+`,
+      "utf-8",
+    );
+
+    const server = createServer(async (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          output: "<ttc_safe>Clean output</ttc_safe>",
+          original_input_tokens: 10,
+          output_tokens: 5,
+        }),
+      );
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      process.chdir(tmpDir);
+      await compactAgentDocs({
+        apiKey: "test-key",
+        baseUrl: `http://127.0.0.1:${port}`,
+        pages: ["installation"],
+      });
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+
+    expect(
+      readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
+    ).toBe("Clean output\n");
   });
 });
 

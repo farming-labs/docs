@@ -12,6 +12,78 @@ function createPropertyPattern(key: string, valuePattern: string): RegExp {
   return new RegExp(`\\b${escapeRegExp(key)}\\b\\s*:\\s*${valuePattern}`);
 }
 
+function findBalancedBraceEnd(content: string, braceStart: number): number {
+  let depth = 0;
+  let stringQuote: '"' | "'" | "`" | null = null;
+  let escaped = false;
+  let lineComment = false;
+  let blockComment = false;
+
+  for (let index = braceStart; index < content.length; index += 1) {
+    const char = content[index];
+    const next = content[index + 1];
+
+    if (lineComment) {
+      if (char === "\n") lineComment = false;
+      continue;
+    }
+
+    if (blockComment) {
+      if (char === "*" && next === "/") {
+        blockComment = false;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (stringQuote) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+
+      if (char === stringQuote) {
+        stringQuote = null;
+      }
+      continue;
+    }
+
+    if (char === "/" && next === "/") {
+      lineComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      blockComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === "`") {
+      stringQuote = char;
+      continue;
+    }
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char !== "}") continue;
+
+    depth -= 1;
+    if (depth === 0) return index;
+  }
+
+  return -1;
+}
+
 export function resolveDocsConfigPath(rootDir: string, explicitPath?: string): string {
   if (explicitPath) {
     const resolvedPath = resolve(rootDir, explicitPath);
@@ -72,25 +144,8 @@ export function extractObjectLiteral(content: string, key: string): string | und
   const braceStart = content.indexOf("{", keyIndex);
   if (braceStart === -1) return undefined;
 
-  let depth = 0;
-
-  for (let index = braceStart; index < content.length; index += 1) {
-    const char = content[index];
-
-    if (char === "{") {
-      depth += 1;
-      continue;
-    }
-
-    if (char !== "}") continue;
-
-    depth -= 1;
-    if (depth === 0) {
-      return content.slice(braceStart + 1, index);
-    }
-  }
-
-  return undefined;
+  const braceEnd = findBalancedBraceEnd(content, braceStart);
+  return braceEnd === -1 ? undefined : content.slice(braceStart + 1, braceEnd);
 }
 
 export function extractTopLevelConfigObject(content: string): string | undefined {
@@ -101,22 +156,9 @@ export function extractTopLevelConfigObject(content: string): string | undefined
     const braceStart = content.indexOf("{", markerIndex);
     if (braceStart === -1) continue;
 
-    let depth = 0;
-
-    for (let index = braceStart; index < content.length; index += 1) {
-      const char = content[index];
-
-      if (char === "{") {
-        depth += 1;
-        continue;
-      }
-
-      if (char !== "}") continue;
-
-      depth -= 1;
-      if (depth === 0) {
-        return content.slice(braceStart + 1, index);
-      }
+    const braceEnd = findBalancedBraceEnd(content, braceStart);
+    if (braceEnd !== -1) {
+      return content.slice(braceStart + 1, braceEnd);
     }
   }
 
@@ -302,7 +344,13 @@ export async function loadDocsConfigModule(
     if (!config || typeof config !== "object") return null;
 
     return { path: configPath, config };
-  } catch {
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(
+        `[docs] Could not evaluate ${configPath} as a module; falling back to static parsing. ${message}`,
+      );
+    }
     return null;
   }
 }

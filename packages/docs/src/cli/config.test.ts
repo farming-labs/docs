@@ -3,8 +3,10 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  extractNestedObjectLiteral,
   readBooleanProperty,
   readEnvReferenceProperty,
+  readNavTitle,
   readStringProperty,
   readTopLevelStringProperty,
   resolveDocsContentDir,
@@ -126,5 +128,28 @@ describe("property readers", () => {
     `;
 
     expect(readEnvReferenceProperty(content, "apiKey")).toBe("PUBLIC_TTC_KEY");
+  });
+
+  it("ignores braces inside strings when extracting config blocks", () => {
+    const content = `
+      export default defineDocs({
+        metadata: {
+          description: "Docs } release {notes}",
+        },
+        nav: {
+          title: "Docs } Beta",
+        },
+        agent: {
+          compact: {
+            apiKeyEnv: "TOKEN_{COMPANY}_API_KEY",
+          },
+        },
+      });
+    `;
+
+    expect(readNavTitle(content)).toBe("Docs } Beta");
+    expect(extractNestedObjectLiteral(content, ["agent", "compact"])).toContain(
+      'apiKeyEnv: "TOKEN_{COMPANY}_API_KEY"',
+    );
   });
 });

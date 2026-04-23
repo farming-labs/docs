@@ -88,11 +88,6 @@ export function parseAgentCompactArgs(argv: string[]): ParsedAgentCompactArgs {
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
 
-    if (!arg.startsWith("--")) {
-      parsed.pages!.push(arg);
-      continue;
-    }
-
     if (arg === "--help" || arg === "-h") {
       parsed.help = true;
       continue;
@@ -109,7 +104,18 @@ export function parseAgentCompactArgs(argv: string[]): ParsedAgentCompactArgs {
     }
 
     if (arg === "--protect-json") {
-      parsed.protectJson = true;
+      const nextValue = argv[index + 1];
+      if (nextValue && !nextValue.startsWith("--")) {
+        parsed.protectJson = parseBooleanFlag(nextValue);
+        index += 1;
+      } else {
+        parsed.protectJson = true;
+      }
+      continue;
+    }
+
+    if (!arg.startsWith("--")) {
+      parsed.pages!.push(arg);
       continue;
     }
 
@@ -348,6 +354,10 @@ function protectForCompression(input: string): string {
   return result;
 }
 
+function sanitizeCompressedOutput(output: string): string {
+  return output.replace(/<\/?ttc_safe>/g, "");
+}
+
 async function compressDocument(
   input: string,
   options: AgentCompactOptions,
@@ -392,11 +402,17 @@ async function compressDocument(
   }
 
   const result = (await response.json()) as CompressResponse;
-  if (typeof result.output !== "string" || result.output.trim().length === 0) {
+  const sanitizedOutput =
+    typeof result.output === "string" ? sanitizeCompressedOutput(result.output) : result.output;
+
+  if (typeof sanitizedOutput !== "string" || sanitizedOutput.trim().length === 0) {
     throw new Error("Token Company response did not include a compressed output.");
   }
 
-  return result;
+  return {
+    ...result,
+    output: sanitizedOutput,
+  };
 }
 
 function resolveSelectedPages(
