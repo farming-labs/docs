@@ -92,6 +92,22 @@ async function main() {
   } else if (parsedCommand.command === "mcp") {
     const { runMcp } = await import("./mcp.js");
     await runMcp(mcpOptions);
+  } else if (parsedCommand.command === "agent" && subcommand === "compact") {
+    const { compactAgentDocs, parseAgentCompactArgs, printAgentCompactHelp } = await import(
+      "./agent.js"
+    );
+    const agentCompactOptions = parseAgentCompactArgs(args.slice(2));
+    if (agentCompactOptions.help) {
+      printAgentCompactHelp();
+      return;
+    }
+    await compactAgentDocs(agentCompactOptions);
+  } else if (parsedCommand.command === "agent") {
+    console.error(pc.red(`Unknown agent subcommand: ${subcommand ?? "(missing)"}`));
+    console.error();
+    const { printAgentCompactHelp } = await import("./agent.js");
+    printAgentCompactHelp();
+    process.exit(1);
   } else if (parsedCommand.command === "search" && subcommand === "sync") {
     const { syncSearch } = await import("./search.js");
     await syncSearch(searchSyncOptions);
@@ -132,6 +148,7 @@ ${pc.dim("Usage:")}
 
 ${pc.dim("Commands:")}
   ${pc.cyan("init")}     Scaffold docs in your project (default)
+  ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} to generate sibling agent.md files)
   ${pc.cyan("mcp")}      Run the built-in docs MCP server over stdio
   ${pc.cyan("search")}   Search utilities (${pc.dim("sync")} for external indexes)
   ${pc.cyan("upgrade")}  Upgrade @farming-labs/* packages to latest (auto-detect or use --framework)
@@ -150,6 +167,16 @@ ${pc.dim("Options for init:")}
 
 ${pc.dim("Options for mcp:")}
   ${pc.cyan("--config <path>")}     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
+
+${pc.dim("Options for agent compact:")}
+  ${pc.cyan("agent compact <page...>")}             Compact pages and write sibling ${pc.dim("agent.md")} files
+  ${pc.cyan("agent compact --all")}                 Compact every folder-based docs page
+  ${pc.cyan("--page <slug|path>")}                  Repeatable explicit page flag; positional page args work too
+  ${pc.cyan("--api-key <key>")}                     Token Company API key (or use ${pc.dim("TOKEN_COMPANY_API_KEY")})
+  ${pc.cyan("--api-key-env <name>")}                Custom env var name for the Token Company API key
+  ${pc.cyan("--base-url <url>")}                    Override the Token Company API base URL
+  ${pc.cyan("--aggressiveness <0-1>")}              Compression intensity for compacted output
+  ${pc.cyan("--dry-run")}                           Resolve and compress pages without writing files
 
 ${pc.dim("Options for search sync:")}
   ${pc.cyan("search sync --typesense")}             Sync docs content to Typesense using env/flags

@@ -2,7 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
-import { readBooleanProperty, readStringProperty, resolveDocsContentDir } from "./config.js";
+import {
+  readBooleanProperty,
+  readEnvReferenceProperty,
+  readStringProperty,
+  readTopLevelStringProperty,
+  resolveDocsContentDir,
+} from "./config.js";
 
 const tempDirs: string[] = [];
 
@@ -33,6 +39,28 @@ describe("resolveDocsContentDir", () => {
       ),
     ).toBe("content/docs");
   });
+
+  it("ignores nested contentDir values when top-level contentDir is absent", () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-search-sync-"));
+    tempDirs.push(rootDir);
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+
+    expect(
+      resolveDocsContentDir(
+        rootDir,
+        `
+          export default defineDocs({
+            entry: "docs",
+            changelog: {
+              enabled: true,
+              contentDir: "changelog",
+            },
+          });
+        `,
+        "docs",
+      ),
+    ).toBe("app/docs");
+  });
 });
 
 describe("property readers", () => {
@@ -47,6 +75,20 @@ describe("property readers", () => {
     expect(readStringProperty(content, "title")).toBe("Correct title");
   });
 
+  it("reads top-level string properties without picking nested matches", () => {
+    const content = `
+      export default defineDocs({
+        entry: "docs",
+        changelog: {
+          contentDir: "changelog",
+        },
+      });
+    `;
+
+    expect(readTopLevelStringProperty(content, "entry")).toBe("docs");
+    expect(readTopLevelStringProperty(content, "contentDir")).toBeUndefined();
+  });
+
   it("matches exact boolean property names", () => {
     const content = `
       export default defineDocs({
@@ -56,5 +98,33 @@ describe("property readers", () => {
     `;
 
     expect(readBooleanProperty(content, "enabled")).toBe(true);
+  });
+
+  it("reads process.env property references", () => {
+    const content = `
+      export default defineDocs({
+        agent: {
+          compact: {
+            apiKey: process.env.TOKEN_COMPANY_API_KEY,
+          },
+        },
+      });
+    `;
+
+    expect(readEnvReferenceProperty(content, "apiKey")).toBe("TOKEN_COMPANY_API_KEY");
+  });
+
+  it("reads bracketed import.meta.env property references", () => {
+    const content = `
+      export default defineDocs({
+        agent: {
+          compact: {
+            apiKey: import.meta.env["PUBLIC_TTC_KEY"],
+          },
+        },
+      });
+    `;
+
+    expect(readEnvReferenceProperty(content, "apiKey")).toBe("PUBLIC_TTC_KEY");
   });
 });

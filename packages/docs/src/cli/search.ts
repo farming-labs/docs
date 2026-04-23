@@ -13,7 +13,7 @@ import type {
 } from "../types.js";
 import {
   loadProjectEnv,
-  readStringProperty,
+  readTopLevelStringProperty,
   resolveDocsConfigPath,
   resolveDocsContentDir,
 } from "./config.js";
@@ -171,7 +171,7 @@ export async function syncSearch(options: SearchSyncOptions = {}): Promise<void>
   const loadedEnv = loadProjectEnv(rootDir);
 
   const provider = resolveSearchSyncProvider(options, loadedEnv);
-  const entry = readStringProperty(configContent, "entry") ?? "docs";
+  const entry = readTopLevelStringProperty(configContent, "entry") ?? "docs";
   const contentDir = resolveDocsContentDir(rootDir, configContent, entry);
 
   const source = createFilesystemDocsMcpSource({

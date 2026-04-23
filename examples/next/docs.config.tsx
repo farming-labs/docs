@@ -112,6 +112,13 @@ export default defineDocs({
     ],
     loader: "shimmer-dots",
   },
+  agent: {
+    compact: {
+      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+      model: "bear-1.2",
+      aggressiveness: 0.3,
+    },
+  },
   apiReference: {
     enabled: true,
     path: "api-reference",
