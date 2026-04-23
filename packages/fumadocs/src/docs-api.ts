@@ -314,7 +314,7 @@ function resolveSkillRequest(url: URL): boolean {
     return true;
   }
 
-  return pathname === DEFAULT_DOCS_API_ROUTE && url.searchParams.get("format")?.trim() === "skill";
+  return url.searchParams.get("format")?.trim() === "skill";
 }
 
 function isSearchEnabled(search?: boolean | DocsSearchConfig): boolean {

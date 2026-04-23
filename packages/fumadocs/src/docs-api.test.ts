@@ -424,7 +424,7 @@ Welcome to the docs.
     expect(skillApiText).toContain("/docs.md");
     expect(skillApiText).toContain("/.well-known/agent.json");
 
-    for (const path of ["/skill.md", "/.well-known/skill.md"]) {
+    for (const path of ["/skill.md", "/.well-known/skill.md", "/api/internal/docs?format=skill"]) {
       const response = await GET(new Request(`http://localhost${path}`));
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("text/markdown");
@@ -474,7 +474,7 @@ Use the product-specific workflow first.
     expect(skillApiText).toContain("Use the product-specific workflow first.");
     expect(skillApiText).not.toContain("# Documentation Skill");
 
-    for (const path of ["/skill.md", "/.well-known/skill.md"]) {
+    for (const path of ["/skill.md", "/.well-known/skill.md", "/api/internal/docs?format=skill"]) {
       const response = await GET(new Request(`http://localhost${path}`));
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("text/markdown");
