@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocsIndexRouteImport } from './routes/docs.index'
 import { Route as DocsSplatRouteImport } from './routes/docs.$'
 import { Route as ApiHelloRouteImport } from './routes/api.hello'
 import { Route as ApiDocsRouteImport } from './routes/api.docs'
 
+const SplatRoute = SplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -43,6 +49,7 @@ const ApiDocsRoute = ApiDocsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/api/docs': typeof ApiDocsRoute
   '/api/hello': typeof ApiHelloRoute
   '/docs/$': typeof DocsSplatRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/api/docs': typeof ApiDocsRoute
   '/api/hello': typeof ApiHelloRoute
   '/docs/$': typeof DocsSplatRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/api/docs': typeof ApiDocsRoute
   '/api/hello': typeof ApiHelloRoute
   '/docs/$': typeof DocsSplatRoute
@@ -65,14 +74,22 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/docs' | '/api/hello' | '/docs/$' | '/docs/'
+  fullPaths: '/' | '/$' | '/api/docs' | '/api/hello' | '/docs/$' | '/docs/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/docs' | '/api/hello' | '/docs/$' | '/docs'
-  id: '__root__' | '/' | '/api/docs' | '/api/hello' | '/docs/$' | '/docs/'
+  to: '/' | '/$' | '/api/docs' | '/api/hello' | '/docs/$' | '/docs'
+  id:
+    | '__root__'
+    | '/'
+    | '/$'
+    | '/api/docs'
+    | '/api/hello'
+    | '/docs/$'
+    | '/docs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SplatRoute: typeof SplatRoute
   ApiDocsRoute: typeof ApiDocsRoute
   ApiHelloRoute: typeof ApiHelloRoute
   DocsSplatRoute: typeof DocsSplatRoute
@@ -81,6 +98,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/$': {
+      id: '/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -121,6 +145,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SplatRoute: SplatRoute,
   ApiDocsRoute: ApiDocsRoute,
   ApiHelloRoute: ApiHelloRoute,
   DocsSplatRoute: DocsSplatRoute,

@@ -16,4 +16,10 @@ export {
   type FolderNode,
 } from "./content.js";
 export { renderMarkdown } from "./markdown.js";
-export { createDocsServer, defineDocsHandler, type DocsServer } from "./server.js";
+export {
+  createDocsServer,
+  defineDocsHandler,
+  defineDocsMcpHandler,
+  defineDocsPublicHandler,
+  type DocsServer,
+} from "./server.js";

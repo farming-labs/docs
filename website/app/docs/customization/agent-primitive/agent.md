@@ -31,7 +31,8 @@ Use this page when you need the page-level authoring contract for agent-facing d
 
 ## Let Agents Discover The Spec
 
-Fetch `GET /api/docs/agent/spec` before choosing how to read or report on the docs.
+Fetch `GET /.well-known/agent.json` before choosing how to read or report on the docs. If that is
+unavailable, fall back to `GET /.well-known/agent` and then `GET /api/docs/agent/spec`.
 
 The spec is generated from `docs.config` and includes:
 
@@ -56,13 +57,14 @@ Add this block to the docs landing page or another route that agents are likely 
 <Agent>
 You are reading this docs site as an implementation agent.
 
-Before implementing from these docs, fetch `/api/docs/agent/spec` from the same origin. Use that
-JSON as the source of truth for the docs entry path, markdown route pattern, search endpoint, MCP
-endpoint, `llms.txt` routes, skills install command, locale handling, and feedback endpoints.
+Before implementing from these docs, fetch `/.well-known/agent.json` from the same origin. If that
+is unavailable, fall back to `/.well-known/agent`, then `/api/docs/agent/spec`. Use that JSON as the
+source of truth for the docs entry path, markdown route pattern, search endpoint, MCP endpoint,
+`llms.txt` routes, skills install command, locale handling, and feedback endpoints.
 
 Recommended bootstrap flow:
 
-1. Fetch `/api/docs/agent/spec`.
+1. Fetch `/.well-known/agent.json`, then fall back to `/.well-known/agent` and `/api/docs/agent/spec`.
 2. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read relevant docs pages as markdown.
 3. Use `spec.search.endpoint` when you need to find the right page first.
 4. Use `spec.mcp.wellKnownEndpoint`, `spec.mcp.publicEndpoint`, or `spec.mcp.endpoint` when MCP is enabled and your environment supports MCP.

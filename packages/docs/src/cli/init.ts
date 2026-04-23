@@ -56,6 +56,7 @@ import {
   tanstackDocsIndexRouteTemplate,
   tanstackDocsCatchAllRouteTemplate,
   tanstackApiDocsRouteTemplate,
+  tanstackDocsPublicRouteTemplate,
   tanstackApiReferenceRouteTemplate,
   tanstackRootRouteTemplate,
   injectTanstackRootProviderIntoRoute,
@@ -69,6 +70,9 @@ import {
   svelteDocsLayoutTemplate,
   svelteDocsLayoutServerTemplate,
   svelteDocsPageTemplate,
+  svelteDocsApiRouteTemplate,
+  svelteDocsPublicHookTemplate,
+  injectSvelteDocsPublicHook,
   svelteApiReferenceRouteTemplate,
   svelteRootLayoutTemplate,
   svelteGlobalCssTemplate,
@@ -82,6 +86,8 @@ import {
   astroDocsPageTemplate,
   astroDocsIndexTemplate,
   astroApiRouteTemplate,
+  astroDocsMiddlewareTemplate,
+  injectAstroDocsMiddleware,
   astroApiReferenceRouteTemplate,
   astroGlobalCssTemplate,
   injectAstroCssImport,
@@ -90,10 +96,8 @@ import {
   astroQuickstartPageTemplate,
   getAstroAdapterPkg,
   nuxtDocsConfigTemplate,
-  nuxtDocsServerTemplate,
-  nuxtServerApiDocsGetTemplate,
-  nuxtServerApiDocsPostTemplate,
-  nuxtServerApiDocsLoadTemplate,
+  nuxtServerApiDocsRouteTemplate,
+  nuxtServerDocsPublicMiddlewareTemplate,
   nuxtServerApiReferenceRouteTemplate,
   nuxtDocsPageTemplate,
   nuxtConfigTemplate,
@@ -1360,6 +1364,7 @@ function scaffoldTanstackStart(
   const docsIndexRoute = `${routeDir}/index.tsx`;
   const docsCatchAllRoute = `${routeDir}/$.tsx`;
   const apiRoute = "src/routes/api/docs.ts";
+  const publicRoute = "src/routes/$.ts";
 
   write(
     docsIndexRoute,
@@ -1380,6 +1385,7 @@ function scaffoldTanstackStart(
     }),
   );
   write(apiRoute, tanstackApiDocsRouteTemplate(cfg.useAlias, apiRoute));
+  write(publicRoute, tanstackDocsPublicRouteTemplate(cfg.useAlias, publicRoute, cfg.entry));
   if (cfg.apiReference) {
     const apiReferenceIndexRoute = `src/routes/${cfg.apiReference.path}.index.ts`;
     const apiReferenceCatchAllRoute = `src/routes/${cfg.apiReference.path}.$.ts`;
@@ -1492,6 +1498,22 @@ function scaffoldSvelteKit(
   if (cfg.i18n?.locales.length) {
     write(`src/routes/${cfg.entry}/+page.svelte`, svelteDocsPageTemplate(cfg));
   }
+  const apiDocsRoute = "src/routes/api/docs/+server.ts";
+  const publicHook = "src/hooks.server.ts";
+  write(apiDocsRoute, svelteDocsApiRouteTemplate(apiDocsRoute, cfg.useAlias));
+  const publicHookPath = path.join(cwd, publicHook);
+  const existingPublicHook = readFileSafe(publicHookPath);
+  if (existingPublicHook) {
+    const injected = injectSvelteDocsPublicHook(existingPublicHook, publicHook, cfg.useAlias);
+    if (injected) {
+      writeFileSafe(publicHookPath, injected, true);
+      written.push(`${publicHook} (composed docs public hook)`);
+    } else {
+      skipped.push(`${publicHook} (already configured or could not compose docs public hook)`);
+    }
+  } else {
+    write(publicHook, svelteDocsPublicHookTemplate(publicHook, cfg.useAlias));
+  }
   if (cfg.apiReference) {
     const apiReferenceIndexRoute = `src/routes/${cfg.apiReference.path}/+server.ts`;
     const apiReferenceCatchAllRoute = `src/routes/${cfg.apiReference.path}/[...slug]/+server.ts`;
@@ -1585,6 +1607,22 @@ function scaffoldAstro(
   write(`src/pages/${cfg.entry}/index.astro`, astroDocsIndexTemplate(cfg));
   write(`src/pages/${cfg.entry}/[...slug].astro`, astroDocsPageTemplate(cfg));
   write(`src/pages/api/${cfg.entry}.ts`, astroApiRouteTemplate(cfg));
+  const middleware = "src/middleware.ts";
+  const middlewarePath = path.join(cwd, middleware);
+  const existingMiddleware = readFileSafe(middlewarePath);
+  if (existingMiddleware) {
+    const injected = injectAstroDocsMiddleware(existingMiddleware, middleware, cfg.useAlias);
+    if (injected) {
+      writeFileSafe(middlewarePath, injected, true);
+      written.push(`${middleware} (composed docs public middleware)`);
+    } else {
+      skipped.push(
+        `${middleware} (already configured or could not compose docs public middleware)`,
+      );
+    }
+  } else {
+    write(middleware, astroDocsMiddlewareTemplate(middleware, cfg.useAlias));
+  }
   if (cfg.apiReference) {
     const apiReferenceIndexRoute = `src/pages/${cfg.apiReference.path}/index.ts`;
     const apiReferenceCatchAllRoute = `src/pages/${cfg.apiReference.path}/[...slug].ts`;
@@ -1655,10 +1693,8 @@ function scaffoldNuxt(
     write(`themes/${baseName}.css`, customThemeCssTemplate(baseName));
   }
   write("docs.config.ts", nuxtDocsConfigTemplate(cfg));
-  write("server/utils/docs-server.ts", nuxtDocsServerTemplate(cfg));
-  write("server/api/docs.get.ts", nuxtServerApiDocsGetTemplate());
-  write("server/api/docs.post.ts", nuxtServerApiDocsPostTemplate());
-  write("server/api/docs/load.get.ts", nuxtServerApiDocsLoadTemplate());
+  write("server/api/docs.ts", nuxtServerApiDocsRouteTemplate(cfg));
+  write("server/middleware/docs-public.ts", nuxtServerDocsPublicMiddlewareTemplate(cfg));
   write(`pages/${cfg.entry}/[[...slug]].vue`, nuxtDocsPageTemplate(cfg));
   if (cfg.apiReference) {
     const apiReferenceIndexRoute = `server/routes/${cfg.apiReference.path}/index.ts`;

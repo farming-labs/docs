@@ -10,6 +10,7 @@ import {
   tanstackDocsConfigTemplate,
   tanstackInstallationPageTemplate,
   tanstackApiReferenceRouteTemplate,
+  tanstackDocsPublicRouteTemplate,
   tanstackRootRouteTemplate,
   injectTanstackRootProviderIntoRoute,
   injectTanstackVitePlugins,
@@ -26,10 +27,15 @@ import {
   nextConfigMergedTemplate,
   svelteDocsLayoutTemplate,
   svelteDocsLayoutServerTemplate,
+  svelteDocsPublicHookTemplate,
+  injectSvelteDocsPublicHook,
   svelteApiReferenceRouteTemplate,
   astroDocsConfigTemplate,
+  astroDocsMiddlewareTemplate,
+  injectAstroDocsMiddleware,
   astroApiReferenceRouteTemplate,
   nuxtServerApiReferenceRouteTemplate,
+  nuxtServerDocsPublicMiddlewareTemplate,
 } from "./templates.js";
 
 const baseConfig: TemplateConfig = {
@@ -352,10 +358,45 @@ describe("api reference route templates", () => {
     expect(out).toContain("GET: handler");
   });
 
+  it("creates a single TanStack public docs forwarder", () => {
+    const out = tanstackDocsPublicRouteTemplate(false, "src/routes/$.ts", "docs");
+    expect(out).toContain('createFileRoute("/$")');
+    expect(out).toContain("isDocsPublicGetRequest");
+    expect(out).toContain("isDocsMcpRequest");
+    expect(out).toContain('from "../lib/docs.server"');
+  });
+
   it("creates a SvelteKit API reference route handler", () => {
     const out = svelteApiReferenceRouteTemplate("src/routes/api-reference/+server.ts", true);
     expect(out).toContain('from "@farming-labs/svelte/api-reference"');
     expect(out).toContain('import config from "$lib/docs.config"');
+  });
+
+  it("creates a SvelteKit public docs hook", () => {
+    const out = svelteDocsPublicHookTemplate("src/hooks.server.ts", false);
+    expect(out).toContain("export const handle");
+    expect(out).toContain("isDocsPublicGetRequest");
+    expect(out).toContain('from "./lib/docs.server"');
+    expect(out).toContain('Allow: "GET, HEAD, POST, DELETE"');
+  });
+
+  it("composes a SvelteKit public docs hook with an existing handle", () => {
+    const out = injectSvelteDocsPublicHook(
+      `import type { Handle } from "@sveltejs/kit";
+
+export const handle: Handle = async ({ event, resolve }) => {
+  event.locals.user = "demo";
+  return resolve(event);
+};
+`,
+      "src/hooks.server.ts",
+      false,
+    );
+
+    expect(out).not.toBeNull();
+    expect(out).toContain("const existingHandle: Handle =");
+    expect(out).toContain("const docsPublicHandle: Handle =");
+    expect(out).toContain("export const handle = sequence(docsPublicHandle, existingHandle);");
   });
 
   it("creates an Astro API reference route handler", () => {
@@ -364,10 +405,51 @@ describe("api reference route templates", () => {
     expect(out).toContain('import config from "../../lib/docs.config"');
   });
 
+  it("creates an Astro public docs middleware", () => {
+    const out = astroDocsMiddlewareTemplate("src/middleware.ts", false);
+    expect(out).toContain("export const onRequest");
+    expect(out).toContain("isDocsPublicGetRequest");
+    expect(out).toContain('from "./lib/docs.server"');
+    expect(out).toContain('Allow: "GET, HEAD, POST, DELETE"');
+  });
+
+  it("composes Astro docs middleware with an existing onRequest", () => {
+    const out = injectAstroDocsMiddleware(
+      `import type { MiddlewareHandler } from "astro";
+
+export const onRequest: MiddlewareHandler = async (context, next) => {
+  context.locals.user = "demo";
+  return next();
+};
+`,
+      "src/middleware.ts",
+      false,
+    );
+
+    expect(out).not.toBeNull();
+    expect(out).toContain("const existingOnRequest: MiddlewareHandler =");
+    expect(out).toContain("const docsPublicMiddleware: MiddlewareHandler =");
+    expect(out).toContain(
+      "export const onRequest = sequence(docsPublicMiddleware, existingOnRequest);",
+    );
+  });
+
   it("creates a Nuxt API reference route handler", () => {
     const out = nuxtServerApiReferenceRouteTemplate("server/routes/api-reference/index.ts", true);
     expect(out).toContain('from "@farming-labs/nuxt/api-reference"');
     expect(out).toContain('import config from "~/docs.config"');
+  });
+
+  it("creates a Nuxt public docs middleware for agent/GEO routes", () => {
+    const out = nuxtServerDocsPublicMiddlewareTemplate({
+      ...baseConfig,
+      framework: "nuxt",
+      useAlias: false,
+    });
+
+    expect(out).toContain('import { defineDocsPublicHandler } from "@farming-labs/nuxt/server"');
+    expect(out).toContain('import config from "../../docs.config"');
+    expect(out).toContain("defineDocsPublicHandler(config, useStorage)");
   });
 });
 

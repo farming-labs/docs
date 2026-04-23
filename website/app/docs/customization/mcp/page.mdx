@@ -68,8 +68,9 @@ handler still lives in one place.
   **Next.js** auto-generates the default `/api/docs/mcp` route when you use `withDocs()`, and also
   adds public `/mcp` and `/.well-known/mcp` rewrites unless you explicitly disable MCP.
 
-  **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt** still need the framework route file,
-  but they all reuse the built-in MCP handler from the docs server helper.
+  **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt** use one public forwarder each so
+  `/api/docs/mcp`, `/mcp`, and `/.well-known/mcp` share the same built-in handler without creating
+  one route file per alias.
 </Callout>
 
 ### Next.js
@@ -84,16 +85,28 @@ export default withDocs();
 
 ### TanStack Start
 
-```ts title="src/routes/api.docs.mcp.ts"
+```ts title="src/routes/$.ts"
 import { createFileRoute } from "@tanstack/react-router";
+import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
 import { docsServer } from "@/lib/docs.server";
 
-export const Route = createFileRoute("/api/docs/mcp")({
+export const Route = createFileRoute("/$")({
   server: {
     handlers: {
-      GET: async ({ request }) => docsServer.MCP.GET({ request }),
-      POST: async ({ request }) => docsServer.MCP.POST({ request }),
-      DELETE: async ({ request }) => docsServer.MCP.DELETE({ request }),
+      GET: async ({ request }) => {
+        const url = new URL(request.url);
+        if (isDocsMcpRequest(url)) return docsServer.MCP.GET({ request });
+        if (isDocsPublicGetRequest("docs", url, request)) return docsServer.GET({ request });
+        return new Response("Not Found", { status: 404 });
+      },
+      POST: async ({ request }) =>
+        isDocsMcpRequest(new URL(request.url))
+          ? docsServer.MCP.POST({ request })
+          : new Response("Not Found", { status: 404 }),
+      DELETE: async ({ request }) =>
+        isDocsMcpRequest(new URL(request.url))
+          ? docsServer.MCP.DELETE({ request })
+          : new Response("Not Found", { status: 404 }),
     },
   },
 });
@@ -101,12 +114,25 @@ export const Route = createFileRoute("/api/docs/mcp")({
 
 ### SvelteKit
 
-```ts title="src/routes/api/docs/mcp/+server.ts"
-import { MCP } from "$lib/docs.server.js";
+```ts title="src/hooks.server.ts"
+import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import { GET, MCP } from "$lib/docs.server";
 
-export const GET = ({ request }) => MCP.GET({ request });
-export const POST = ({ request }) => MCP.POST({ request });
-export const DELETE = ({ request }) => MCP.DELETE({ request });
+export async function handle({ event, resolve }) {
+  const method = event.request.method.toUpperCase();
+
+  if (isDocsMcpRequest(event.url)) {
+    if (method === "POST") return MCP.POST({ request: event.request });
+    if (method === "DELETE") return MCP.DELETE({ request: event.request });
+    return MCP.GET({ request: event.request });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest("docs", event.url, event.request)) {
+    return GET({ url: event.url, request: event.request });
+  }
+
+  return resolve(event);
+}
 ```
 
 Your `src/lib/docs.server.ts` can keep using the normal helper:
@@ -122,22 +148,34 @@ export const { load, GET, POST, MCP } = createDocsServer({
 
 ### Astro
 
-```ts title="src/pages/api/docs/mcp.ts"
-import type { APIRoute } from "astro";
-import { MCP } from "../../lib/docs.server";
+```ts title="src/middleware.ts"
+import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import { GET, MCP } from "./lib/docs.server";
 
-export const GET: APIRoute = async ({ request }) => MCP.GET({ request });
-export const POST: APIRoute = async ({ request }) => MCP.POST({ request });
-export const DELETE: APIRoute = async ({ request }) => MCP.DELETE({ request });
+export async function onRequest(context, next) {
+  const method = context.request.method.toUpperCase();
+
+  if (isDocsMcpRequest(context.url)) {
+    if (method === "POST") return MCP.POST({ request: context.request });
+    if (method === "DELETE") return MCP.DELETE({ request: context.request });
+    return MCP.GET({ request: context.request });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest("docs", context.url, context.request)) {
+    return GET({ request: context.request });
+  }
+
+  return next();
+}
 ```
 
 ### Nuxt
 
-```ts title="server/api/docs/mcp.ts"
-import { defineDocsMcpHandler } from "@farming-labs/nuxt/server";
+```ts title="server/middleware/docs-public.ts"
+import { defineDocsPublicHandler } from "@farming-labs/nuxt/server";
 import config from "../../docs.config";
 
-export default defineDocsMcpHandler(config, useStorage);
+export default defineDocsPublicHandler(config, useStorage);
 ```
 
 ## Custom route
@@ -156,7 +194,7 @@ export default defineDocs({
 
 <Callout type="warning" title="Custom routes are explicit">
   The package only auto-generates the **default** Next.js route at `/api/docs/mcp`. If you choose a
-  custom route, keep that path in `docs.config` and add the matching route file manually so the app
+  custom route, keep that path in `docs.config` and update the framework public forwarder so the app
   and the MCP client point at the same endpoint.
 </Callout>
 

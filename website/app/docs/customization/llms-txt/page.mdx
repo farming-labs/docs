@@ -7,12 +7,13 @@ order: 5.8
 
 # llms.txt
 
-Serve <HoverLink href="https://llmstxt.org" title="llms.txt" description="An open convention for exposing website content to language models in a predictable, crawlable text format." linkLabel="Read the llms.txt spec" external><code>llms.txt</code></HoverLink> content through your existing docs API — no extra route files needed. Just enable it in your config.
+Serve <HoverLink href="https://llmstxt.org" title="llms.txt" description="An open convention for exposing website content to language models in a predictable, crawlable text format." linkLabel="Read the llms.txt spec" external><code>llms.txt</code></HoverLink> content through your existing docs API and the default public aliases. Just enable it in your config.
 
 ## What is llms.txt?
 
-`llms.txt` is a standard for making website content accessible to LLMs. In Next.js, `withDocs()`
-serves conventional public aliases that rewrite to your existing `/api/docs` endpoint:
+`llms.txt` is a standard for making website content accessible to LLMs. Next.js `withDocs()` and
+the generated TanStack Start, SvelteKit, Astro, and Nuxt forwarding layer serve conventional public
+aliases that forward to the same docs handler:
 
 - **`/llms.txt`** — The default concise markdown listing of all pages with titles, URLs, and descriptions
 - **`/llms-full.txt`** — The default full stripped content of every page, ready for LLM consumption
@@ -33,7 +34,9 @@ llmsTxt: {
 }
 ```
 
-That's it. The existing API handler serves the content automatically — no extra route files needed.
+That's it. The existing API handler serves the content automatically. Next.js adds rewrites with
+`withDocs()`; TanStack Start, SvelteKit, Astro, and Nuxt add one public forwarder each so the public
+aliases do not need one route file per URL.
 
 ---
 
@@ -92,12 +95,13 @@ Description shown below the title.
 
 ## How It Works
 
-No extra route files are needed. The existing API handler (`/api/docs` on Next.js, or your framework's equivalent) serves the llms.txt content when you pass the `format` query parameter:
+The existing API handler serves the llms.txt content when you pass the `format` query parameter:
 
 - `GET /api/docs?format=llms` — concise page listing
 - `GET /api/docs?format=llms-full` — full page content
 
-In Next.js, `withDocs()` also adds the crawler-friendly public aliases automatically:
+Next.js `withDocs()` and the generated TanStack Start, SvelteKit, Astro, and Nuxt forwarding layer
+also expose the crawler-friendly public aliases:
 
 - `GET /llms.txt` — default concise route
 - `GET /llms-full.txt` — default full-content route
@@ -110,7 +114,7 @@ Those aliases rewrite to the same shared API output, so there is still only one 
 The agent discovery spec also advertises `defaultTxt: "/llms.txt"` and
 `defaultFull: "/llms-full.txt"` so integrations can use the intended defaults without adding their
 own framework-specific routes. TanStack Start, SvelteKit, Astro, and Nuxt can use the shared API
-query routes directly.
+query routes directly when they do not want to add the public aliases.
 
 ---
 

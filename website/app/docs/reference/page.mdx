@@ -200,8 +200,8 @@ Default MCP surface:
 Framework notes:
 
 - **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route and public `/mcp` plus `/.well-known/mcp` rewrites
-- **TanStack Start / SvelteKit / Astro / Nuxt:** add the matching framework route file and forward to the built-in `MCP` handler from the docs server helper
-- **Custom routes:** set `mcp.route` in `docs.config` and add the matching route file manually so the configured path and the actual endpoint stay aligned
+- **TanStack Start / SvelteKit / Astro / Nuxt:** use the generated public forwarder for MCP aliases, or add an equivalent framework hook/middleware that forwards to the built-in `MCP` handler
+- **Custom routes:** set `mcp.route` in `docs.config` and update the framework public forwarder so the configured path and the actual endpoint stay aligned
 
 See [MCP Server](/docs/customization/mcp) for the route snippets and examples.
 
