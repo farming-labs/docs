@@ -1558,6 +1558,53 @@ export interface ApiReferenceConfig {
   exclude?: string[];
 }
 
+export interface DocsAgentCompactConfig {
+  /**
+   * Direct API key for the Token Company compression API.
+   *
+   * Prefer `apiKeyEnv` for checked-in config files so secrets stay in the environment.
+   */
+  apiKey?: string;
+  /**
+   * Environment variable name that stores the Token Company API key.
+   */
+  apiKeyEnv?: string;
+  /**
+   * Base URL for the Token Company API.
+   */
+  baseUrl?: string;
+  /**
+   * Compression model name.
+   * @default "bear-1.2"
+   */
+  model?: string;
+  /**
+   * Compression aggressiveness passed to the API.
+   * Must be between `0` and `1`.
+   * @default 0.3
+   */
+  aggressiveness?: number;
+  /**
+   * Upper token target for compressed output.
+   */
+  maxOutputTokens?: number;
+  /**
+   * Lower token target for compressed output.
+   */
+  minOutputTokens?: number;
+  /**
+   * Preserve JSON objects during compression when supported by the provider.
+   */
+  protectJson?: boolean;
+}
+
+export interface DocsAgentConfig {
+  /**
+   * Defaults for `docs agent compact`.
+   */
+  compact?: DocsAgentCompactConfig;
+}
+
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
@@ -1917,6 +1964,10 @@ export interface DocsConfig {
    * ```
    */
   apiReference?: boolean | ApiReferenceConfig;
+  /**
+   * Agent-oriented configuration, including defaults for `docs agent compact`.
+   */
+  agent?: DocsAgentConfig;
   /** SEO metadata - separate from theme */
   metadata?: DocsMetadata;
   /** Open Graph image handling */

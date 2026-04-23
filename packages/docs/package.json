@@ -48,6 +48,7 @@
     "@modelcontextprotocol/sdk": "1.29.0",
     "@scalar/core": "^0.4.3",
     "gray-matter": "^4.0.3",
+    "jiti": "^2.6.1",
     "picocolors": "^1.1.1",
     "zod": "^3.25.76"
   },
