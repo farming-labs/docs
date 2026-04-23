@@ -2256,10 +2256,7 @@ export function injectAstroDocsMiddleware(
   for (const [pattern, replacement] of replacements) {
     if (pattern.test(next)) {
       next = next.replace(pattern, replacement);
-      next = next.replace(
-        /const existingOnRequest(:[^=\n]*?)\s+=/,
-        "const existingOnRequest$1 =",
-      );
+      next = next.replace(/const existingOnRequest(:[^=\n]*?)\s+=/, "const existingOnRequest$1 =");
       hasExistingMiddleware = true;
       break;
     }
@@ -2267,7 +2264,9 @@ export function injectAstroDocsMiddleware(
 
   const imports = [
     'import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";',
-    ...(next.includes("MiddlewareHandler") ? [] : ['import type { MiddlewareHandler } from "astro";']),
+    ...(next.includes("MiddlewareHandler")
+      ? []
+      : ['import type { MiddlewareHandler } from "astro";']),
     ...(hasExistingMiddleware && !next.includes("sequence")
       ? ['import { sequence } from "astro:middleware";']
       : []),

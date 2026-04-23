@@ -429,7 +429,9 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
     expect(out).not.toBeNull();
     expect(out).toContain("const existingOnRequest: MiddlewareHandler =");
     expect(out).toContain("const docsPublicMiddleware: MiddlewareHandler =");
-    expect(out).toContain("export const onRequest = sequence(docsPublicMiddleware, existingOnRequest);");
+    expect(out).toContain(
+      "export const onRequest = sequence(docsPublicMiddleware, existingOnRequest);",
+    );
   });
 
   it("creates a Nuxt API reference route handler", () => {

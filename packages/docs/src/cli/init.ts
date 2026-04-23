@@ -1616,7 +1616,9 @@ function scaffoldAstro(
       writeFileSafe(middlewarePath, injected, true);
       written.push(`${middleware} (composed docs public middleware)`);
     } else {
-      skipped.push(`${middleware} (already configured or could not compose docs public middleware)`);
+      skipped.push(
+        `${middleware} (already configured or could not compose docs public middleware)`,
+      );
     }
   } else {
     write(middleware, astroDocsMiddlewareTemplate(middleware, cfg.useAlias));
