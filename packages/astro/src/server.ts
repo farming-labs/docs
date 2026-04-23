@@ -731,7 +731,10 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     return i18n.defaultLocale;
   }
 
-  function getMarkdownDocument(ctx: ReturnType<typeof resolveContextFromPath>, requestedPath: string) {
+  function getMarkdownDocument(
+    ctx: ReturnType<typeof resolveContextFromPath>,
+    requestedPath: string,
+  ) {
     const page = findDocsMarkdownPage(entry, getSearchIndex(ctx), requestedPath);
     return page ? renderDocsMarkdownDocument(page) : null;
   }
@@ -799,12 +802,15 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     const llmsFormat = resolveDocsLlmsTxtFormat(url);
     if (llmsFormat === "llms" || llmsFormat === "llms-full") {
       const llmsContent = getLlmsContent(ctx);
-      return new Response(llmsFormat === "llms-full" ? llmsContent.llmsFullTxt : llmsContent.llmsTxt, {
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "Cache-Control": "public, max-age=3600",
+      return new Response(
+        llmsFormat === "llms-full" ? llmsContent.llmsFullTxt : llmsContent.llmsTxt,
+        {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "public, max-age=3600",
+          },
         },
-      });
+      );
     }
 
     const query = url.searchParams.get("query")?.trim();

@@ -718,7 +718,10 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     return i18n.defaultLocale;
   }
 
-  function getMarkdownDocument(ctx: ReturnType<typeof resolveContextFromPath>, requestedPath: string) {
+  function getMarkdownDocument(
+    ctx: ReturnType<typeof resolveContextFromPath>,
+    requestedPath: string,
+  ) {
     const page = findDocsMarkdownPage(entry, getSearchIndex(ctx), requestedPath);
     return page ? renderDocsMarkdownDocument(page) : null;
   }
@@ -786,12 +789,15 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     const llmsFormat = resolveDocsLlmsTxtFormat(url);
     if (llmsFormat === "llms" || llmsFormat === "llms-full") {
       const llmsContent = getLlmsContent(ctx);
-      return new Response(llmsFormat === "llms-full" ? llmsContent.llmsFullTxt : llmsContent.llmsTxt, {
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "Cache-Control": "public, max-age=3600",
+      return new Response(
+        llmsFormat === "llms-full" ? llmsContent.llmsFullTxt : llmsContent.llmsTxt,
+        {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "public, max-age=3600",
+          },
         },
-      });
+      );
     }
 
     const query = url.searchParams.get("query")?.trim();
@@ -1147,7 +1153,10 @@ export function defineDocsPublicHandler(config: Record<string, any>, storage: Do
       });
     }
 
-    if ((method === "GET" || method === "HEAD") && (publicGetPaths.has(pathname) || isDocsMarkdownPublicPath(pathname, docsEntry))) {
+    if (
+      (method === "GET" || method === "HEAD") &&
+      (publicGetPaths.has(pathname) || isDocsMarkdownPublicPath(pathname, docsEntry))
+    ) {
       const server = await getServer();
       const headers = event.headers ?? event.node?.req?.headers ?? {};
       return server.GET({
@@ -1188,7 +1197,10 @@ function normalizePublicPathname(pathname: string) {
 }
 
 function isDocsMarkdownPublicPath(pathname: string, docsEntry: string) {
-  return pathname === `${docsEntry}.md` || (pathname.startsWith(`${docsEntry}/`) && pathname.endsWith(".md"));
+  return (
+    pathname === `${docsEntry}.md` ||
+    (pathname.startsWith(`${docsEntry}/`) && pathname.endsWith(".md"))
+  );
 }
 
 function createStorageBackedDocsServerGetter(

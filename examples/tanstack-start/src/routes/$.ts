@@ -14,10 +14,7 @@ async function handlePublicDocsRequest(request: Request) {
     return docsServer.MCP.GET({ request });
   }
 
-  if (
-    (method === "GET" || method === "HEAD") &&
-    isDocsPublicGetRequest(docsEntry, url, request)
-  ) {
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, url, request)) {
     return docsServer.GET({ request });
   }
 

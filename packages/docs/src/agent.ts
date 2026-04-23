@@ -1,8 +1,4 @@
-import type {
-  DocsSearchConfig,
-  DocsSearchSourcePage,
-  ResolvedDocsRelatedLink,
-} from "./types.js";
+import type { DocsSearchConfig, DocsSearchSourcePage, ResolvedDocsRelatedLink } from "./types.js";
 import type { ResolvedDocsI18n } from "./i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
 import { renderDocsRelatedMarkdownLines } from "./related.js";

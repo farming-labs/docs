@@ -405,7 +405,7 @@ describe("api reference route templates", () => {
 
     expect(out).toContain('import { defineDocsPublicHandler } from "@farming-labs/nuxt/server"');
     expect(out).toContain('import config from "../../docs.config"');
-    expect(out).toContain('defineDocsPublicHandler(config, useStorage)');
+    expect(out).toContain("defineDocsPublicHandler(config, useStorage)");
   });
 });
 

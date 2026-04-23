@@ -290,7 +290,7 @@ describe("i18n scaffold for non-Next frameworks", () => {
       path.join(tmpDir, "server", "middleware", "docs-public.ts"),
       "utf-8",
     );
-    expect(middleware).toContain('defineDocsPublicHandler(config, useStorage)');
+    expect(middleware).toContain("defineDocsPublicHandler(config, useStorage)");
   });
 });
 
