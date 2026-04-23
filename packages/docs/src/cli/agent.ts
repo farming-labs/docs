@@ -225,7 +225,9 @@ function scanDocsPageTargets(rootDir: string, contentDir: string, entry: string)
       if (!INDEX_PAGE_BASENAMES.has(baseName)) continue;
 
       const slug = slugParts.join("/");
-      const url = slug ? `/${normalizePathSegment(entry)}/${slug}` : `/${normalizePathSegment(entry)}`;
+      const url = slug
+        ? `/${normalizePathSegment(entry)}/${slug}`
+        : `/${normalizePathSegment(entry)}`;
       const agentPath = path.join(dir, "agent.md");
 
       targets.push({
@@ -319,9 +321,7 @@ function mergeAgentCompactOptions(
 ): AgentCompactOptions {
   return {
     ...defaults,
-    ...Object.fromEntries(
-      Object.entries(overrides).filter(([, value]) => value !== undefined),
-    ),
+    ...Object.fromEntries(Object.entries(overrides).filter(([, value]) => value !== undefined)),
   };
 }
 
@@ -341,10 +341,7 @@ function protectForCompression(input: string): string {
   result = result.replace(/https?:\/\/[^\s)]+/g, stash);
 
   for (let index = 0; index < segments.length; index += 1) {
-    result = result.replace(
-      `__TTC_SAFE_${index}__`,
-      `<ttc_safe>${segments[index]}</ttc_safe>`,
-    );
+    result = result.replace(`__TTC_SAFE_${index}__`, `<ttc_safe>${segments[index]}</ttc_safe>`);
   }
 
   return result;
@@ -388,7 +385,9 @@ async function compressDocument(
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`Token Company request failed (${response.status}): ${body || response.statusText}`);
+    throw new Error(
+      `Token Company request failed (${response.status}): ${body || response.statusText}`,
+    );
   }
 
   const result = (await response.json()) as CompressResponse;
@@ -446,8 +445,7 @@ function resolveSelectedPages(
 export async function compactAgentDocs(options: AgentCompactOptions = {}): Promise<void> {
   const rootDir = process.cwd();
   const loadedConfigModule = await loadDocsConfigModule(rootDir, options.configPath);
-  const configPath =
-    loadedConfigModule?.path ?? resolveDocsConfigPath(rootDir, options.configPath);
+  const configPath = loadedConfigModule?.path ?? resolveDocsConfigPath(rootDir, options.configPath);
   const configContent = readFileSync(configPath, "utf-8");
   const configDefaults = mergeAgentCompactOptions(
     readAgentCompactConfig(configContent),
@@ -455,8 +453,11 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
   );
   const resolvedOptions = mergeAgentCompactOptions(configDefaults, options);
   const entry =
-    normalizePathSegment(loadedConfigModule?.config.entry ?? readTopLevelStringProperty(configContent, "entry") ?? "docs") ||
-    "docs";
+    normalizePathSegment(
+      loadedConfigModule?.config.entry ??
+        readTopLevelStringProperty(configContent, "entry") ??
+        "docs",
+    ) || "docs";
   const contentDir =
     typeof loadedConfigModule?.config.contentDir === "string"
       ? loadedConfigModule.config.contentDir
@@ -464,7 +465,7 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
   const siteTitle =
     typeof loadedConfigModule?.config.nav?.title === "string"
       ? loadedConfigModule.config.nav.title
-      : readNavTitle(configContent) ?? "Documentation";
+      : (readNavTitle(configContent) ?? "Documentation");
 
   if (resolvedOptions.all && resolvedOptions.pages && resolvedOptions.pages.length > 0) {
     throw new Error("Use either --all or specific page arguments, not both.");

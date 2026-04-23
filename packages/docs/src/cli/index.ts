@@ -93,9 +93,8 @@ async function main() {
     const { runMcp } = await import("./mcp.js");
     await runMcp(mcpOptions);
   } else if (parsedCommand.command === "agent" && subcommand === "compact") {
-    const { compactAgentDocs, parseAgentCompactArgs, printAgentCompactHelp } = await import(
-      "./agent.js"
-    );
+    const { compactAgentDocs, parseAgentCompactArgs, printAgentCompactHelp } =
+      await import("./agent.js");
     const agentCompactOptions = parseAgentCompactArgs(args.slice(2));
     if (agentCompactOptions.help) {
       printAgentCompactHelp();

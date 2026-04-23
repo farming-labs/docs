@@ -192,15 +192,17 @@ Keep this focused.
         pages: ["installation", "/docs/configuration", "existing"],
       });
     } finally {
-      await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
     }
 
-    expect(readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8")).toBe(
-      "Installation compacted\n",
-    );
-    expect(readFileSync(path.join(tmpDir, "app", "docs", "configuration", "agent.md"), "utf-8")).toBe(
-      "Configuration compacted\n",
-    );
+    expect(
+      readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
+    ).toBe("Installation compacted\n");
+    expect(
+      readFileSync(path.join(tmpDir, "app", "docs", "configuration", "agent.md"), "utf-8"),
+    ).toBe("Configuration compacted\n");
     expect(readFileSync(path.join(tmpDir, "app", "docs", "existing", "agent.md"), "utf-8")).toBe(
       "Existing agent compacted\n",
     );
@@ -217,11 +219,19 @@ Keep this focused.
     expect(seenInputs[2]).toContain("Existing agent-only instructions.");
     expect(seenInputs[2]).not.toContain("URL: /docs/existing");
 
-    expect(logs.some((line) => line.includes("Compaction complete: 3 pages processed (2 created, 1 overwritten)."))).toBe(true);
+    expect(
+      logs.some((line) =>
+        line.includes("Compaction complete: 3 pages processed (2 created, 1 overwritten)."),
+      ),
+    ).toBe(true);
   });
 
   it("supports --all with dry-run without writing files", async () => {
-    writeFileSync(path.join(tmpDir, "docs.config.ts"), `export default { entry: "docs" };`, "utf-8");
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs" };`,
+      "utf-8",
+    );
     mkdirSync(path.join(tmpDir, "app", "docs", "quickstart"), { recursive: true });
     writeFileSync(
       path.join(tmpDir, "app", "docs", "quickstart", "page.mdx"),
@@ -267,7 +277,9 @@ Body.
         dryRun: true,
       });
     } finally {
-      await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
     }
 
     expect(requestCount).toBe(1);
@@ -370,9 +382,9 @@ Body.
         protect_json: false,
       },
     });
-    expect(readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8")).toBe(
-      "Configured compacted output\n",
-    );
+    expect(
+      readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
+    ).toBe("Configured compacted output\n");
   });
 
   it("loads docs.config.tsx and resolves apiKey from process.env expressions", async () => {
@@ -456,9 +468,9 @@ export default defineDocs({
         aggressiveness: 0.2,
       },
     });
-    expect(readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8")).toBe(
-      "TSX compacted output\n",
-    );
+    expect(
+      readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
+    ).toBe("TSX compacted output\n");
   });
 });
 
