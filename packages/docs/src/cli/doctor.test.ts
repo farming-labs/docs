@@ -223,11 +223,7 @@ Use this docs site through markdown routes and MCP.
       "utf-8",
     );
 
-    writeFileSync(
-      path.join(tmpDir, ".env"),
-      "DOCTOR_TEST_KEY=from-dotenv\n",
-      "utf-8",
-    );
+    writeFileSync(path.join(tmpDir, ".env"), "DOCTOR_TEST_KEY=from-dotenv\n", "utf-8");
 
     writeFileSync(
       path.join(tmpDir, "docs.config.ts"),
