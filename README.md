@@ -14,6 +14,7 @@ experience for humans, IDEs, and agents without maintaining a pile of routing bo
 - Generated API reference from framework route handlers or a hosted OpenAPI JSON document
 - Next.js changelog pages from dated MDX entries
 - Machine-readable docs through `.md` routes, `llms.txt`, `skill.md`, agent discovery, and MCP
+- Page-level agent compaction with `docs agent compact` and `agent.compact` defaults
 
 ## Quick Start
 
@@ -115,6 +116,28 @@ The canonical API routes remain available under `/api/docs`, including `/api/doc
 
 For a custom site-specific skill, place `skill.md` at the project root beside `docs.config.ts`.
 When it is missing, the framework serves a generated fallback based on the docs config.
+
+## Agent Compaction
+
+Use `docs agent compact` when you want to generate or refresh sibling `agent.md` files from
+resolved docs pages.
+
+```bash
+pnpm exec docs agent compact installation
+```
+
+Optional defaults live in `docs.config.ts`:
+
+```ts
+agent: {
+  compact: {
+    apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+  },
+},
+```
+
+The generated `agent.md` becomes the machine-readable source for `.md` routes,
+`GET /api/docs?format=markdown&path=...`, and MCP `read_page()`.
 
 ## Common Tasks
 
