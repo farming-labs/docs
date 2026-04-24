@@ -109,6 +109,78 @@
   font-size: 0.795rem !important;
 }
 
+@media (min-width: 768px) {
+  #nd-docs-layout aside#nd-sidebar {
+    --fd-sidebar-rail-width: 12px;
+    --fd-sidebar-item-inset: 16px;
+    --fd-sidebar-nested-marker-offset: calc(var(--fd-sidebar-item-inset) + 1.125rem);
+    border-left: 1px solid var(--color-fd-border) !important;
+    border-right: 1px solid var(--color-fd-border) !important;
+    isolation: isolate !important;
+  }
+
+  #nd-docs-layout aside#nd-sidebar::before,
+  #nd-docs-layout aside#nd-sidebar::after {
+    content: "" !important;
+    position: absolute !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: var(--fd-sidebar-rail-width) !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+    background-color:
+      color-mix(in srgb, var(--color-fd-background) 94%, transparent) !important;
+    background-image: repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--color-fd-border) 2%, transparent),
+      color-mix(in srgb, var(--color-fd-foreground) 7%, transparent) 1px,
+      transparent 1px,
+      transparent 6px
+    ) !important;
+  }
+
+  #nd-docs-layout aside#nd-sidebar::before {
+    left: 0 !important;
+    border-right: 1px solid var(--color-fd-border) !important;
+  }
+
+  #nd-docs-layout aside#nd-sidebar::after {
+    right: 0 !important;
+    border-left: 1px solid var(--color-fd-border) !important;
+  }
+
+  #nd-docs-layout aside#nd-sidebar > * {
+    position: relative !important;
+    z-index: 1 !important;
+  }
+
+  #nd-docs-layout aside .overscroll-contain > div > a[data-active] {
+    padding-right: calc(1rem + var(--fd-sidebar-item-inset)) !important;
+  }
+
+  #nd-docs-layout aside a[data-active] {
+    padding-left: calc(0.625rem + var(--fd-sidebar-item-inset)) !important;
+    padding-right: calc(0.625rem + var(--fd-sidebar-item-inset)) !important;
+  }
+
+  #nd-docs-layout aside div.overflow-hidden[data-state] a[data-active] {
+    padding-left: calc(2rem + var(--fd-sidebar-item-inset)) !important;
+  }
+  
+  #nd-docs-layout aside a[data-active="true"]::before {
+    margin-left: 0 !important;
+    inset-inline-start: calc(var(--fd-sidebar-item-inset) + 0.5rem) !important;
+  }
+
+  #nd-docs-layout aside div.overflow-hidden[data-state] a[data-active="true"]::before {
+    inset-inline-start: var(--fd-sidebar-nested-marker-offset) !important;
+  }
+
+  #nd-docs-layout aside div.overflow-hidden[data-state]::before {
+    margin-left: calc(var(--fd-sidebar-item-inset) + 0.5rem) !important;
+  }
+}
+
 /* Hide Ask AI when mobile sidebar drawer is open (fumadocs-ui: width < 768px, id=nd-sidebar-mobile data-state=open) */
 @media (max-width: 767px) {
   body:has(aside#nd-sidebar-mobile[data-state="open"]) .fd-ai-floating-btn,

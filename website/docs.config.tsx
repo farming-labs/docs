@@ -60,13 +60,13 @@ export default defineDocs({
   search: searchConfig,
   theme: pixelBorder({
     ui: {
-      layout: { toc: { enabled: true, depth: 3, style: "directional" }, sidebarWidth: 300 },
+      layout: { toc: { enabled: true, depth: 3, style: "directional" }, sidebarWidth: 320 },
       sidebar: { style: "floating" },
       typography: {
         font: {
           style: {
-            sans: "var(--font-geist-sans, system-ui, -apple-system, sans-serif)",
-            mono: "var(--font-geist-mono, ui-monospace, monospace)",
+            sans: "var(--font-sans, system-ui, -apple-system, sans-serif)",
+            mono: "var(--font-mono, ui-monospace, monospace)",
           },
           h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.025em" },
           h2: { size: "1.5rem", weight: 600, letterSpacing: "-0.015em" },
@@ -312,7 +312,7 @@ export default defineDocs({
     ),
     footer: (
       <div
-        className="-mx-4 -my-2 -mb-4 border-t flex flex-col gap-3 font-mono uppercase"
+        className="-mx-4 md:px-6! -my-2 -mb-4 border-t flex flex-col gap-3 font-mono uppercase"
         style={{
           padding: "9px 16px",
           fontSize: "12px",
