@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, metadata, og, apiReference, MCP, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, agent.compact, metadata, og, apiReference, MCP, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration
@@ -42,6 +42,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `components` | `Record<string, Component>` | — | Custom MDX components and built-in overrides like `HoverLink` |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | — | Callback when user copies a code block (title, content, url, language) |
 | `feedback` | `boolean \| FeedbackConfig` | `false` | Human page feedback UI plus optional agent feedback endpoints |
+| `agent` | `DocsAgentConfig` | — | Defaults for `docs agent compact` |
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
 | `search` | `boolean \| DocsSearchConfig` | `true` | Built-in simple search, Typesense, Algolia, or a custom adapter |
@@ -90,6 +91,7 @@ Default behavior:
 - page frontmatter `related` is rendered into a comma-separated machine-readable markdown metadata line beside `Description` for normal page markdown and embedded `<Agent>` fallback
 - MCP `read_page("/docs/<slug>")` uses the same page source and sees the same override
 - a sibling `agent.md` remains a full override; include any `Related:` line manually inside `agent.md` when needed
+- `docs agent compact` can generate those sibling `agent.md` files from the resolved page output
 
 Folder example:
 
@@ -143,6 +145,55 @@ Call out content negotiation when relevant: in Next.js, `/docs/<slug>` remains t
 for browsers, but agents/scripts can send `Accept: text/markdown` to the same URL and receive the
 machine-readable markdown representation without appending `.md`. In other adapters, use
 `/docs/<slug>.md` or the API format route.
+
+---
+
+## Agent compaction
+
+Use `agent.compact` to configure defaults for `docs agent compact`, which writes sibling `agent.md`
+files from resolved docs pages.
+
+```ts
+agent: {
+  compact: {
+    apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+    model: "bear-1.2",
+    aggressiveness: 0.3,
+    protectJson: true,
+  },
+},
+```
+
+Supported fields:
+
+- `apiKey`
+- `apiKeyEnv`
+- `baseUrl`
+- `model`
+- `aggressiveness`
+- `maxOutputTokens`
+- `minOutputTokens`
+- `protectJson`
+
+Notes:
+
+- `.env` and `.env.local` are loaded before the CLI resolves the key
+- `apiKey: process.env.TOKEN_COMPANY_API_KEY` is supported in `docs.config.tsx`
+- the command creates missing `agent.md` files and overwrites existing ones
+- generated `agent.md` becomes the machine-readable source for `.md` routes,
+  `GET /api/docs?format=markdown&path=...`, and MCP `read_page()`
+- the human docs UI still renders the normal page
+
+Common commands:
+
+```bash
+pnpm exec docs agent compact installation configuration
+pnpm exec docs agent compact installation --dry-run
+pnpm exec docs agent compact --all
+```
+
+Use the `cli` skill or `/docs/cli` when the user needs the full command syntax instead of the
+config shape.
 
 ---
 

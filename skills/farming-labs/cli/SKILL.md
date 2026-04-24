@@ -1,11 +1,14 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold, upgrade, sync external search indexes, and run MCP for docs. Use when running init, upgrade, search sync, mcp, or using flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, or --config. Covers init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), npm/pnpm/yarn/bun, and framework detection.
+description: @farming-labs/docs CLI — scaffold, upgrade, compact agent docs, sync external search indexes, and run MCP for docs. Use when running init, upgrade, agent compact, search sync, mcp, or using flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --config, --page, --all, --api-key, or --dry-run. Covers init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), npm/pnpm/yarn/bun, and framework detection.
 ---
 
 # @farming-labs/docs — CLI
 
-The `@farming-labs/docs` CLI scaffolds, upgrades, syncs external search indexes, and can run the built-in MCP server for documentation projects. Use this skill when the user asks about CLI commands, init, upgrade, search sync, mcp, or scaffolding.
+The `@farming-labs/docs` CLI scaffolds, upgrades, compacts page-level agent docs, syncs external
+search indexes, and can run the built-in MCP server for documentation projects. Use this skill when
+the user asks about CLI commands, init, upgrade, `agent compact`, search sync, mcp, or
+scaffolding.
 
 ---
 
@@ -223,6 +226,66 @@ Then verify:
 
 ---
 
+## Agent compact
+
+Use `agent compact` when the user wants generated `agent.md` files, shorter page-level machine
+docs, or a tighter machine-readable version of existing docs pages.
+
+```bash
+pnpm exec docs agent compact installation configuration
+pnpm exec docs agent compact /docs/installation
+pnpm exec docs agent compact /docs/installation.md
+pnpm exec docs agent compact https://docs.example.com/docs/installation
+pnpm exec docs agent compact . --dry-run
+pnpm exec docs agent compact --page installation --page configuration
+pnpm exec docs agent compact --all
+```
+
+Behavior:
+
+- positional page args are the preferred UX; `--page` is an optional repeatable alias
+- page identifiers can be a slug, docs path, `.md` path, full docs URL, or `.` for the root docs
+  page
+- the command loads `.env` and `.env.local`
+- defaults can come from `agent.compact` in `docs.config.ts` or `docs.config.tsx`
+- it creates missing sibling `agent.md` files and overwrites existing ones
+- the written `agent.md` becomes the machine-readable source for `.md` routes,
+  `GET /api/docs?format=markdown&path=...`, and MCP `read_page()`
+- only folder-based pages can be written automatically
+
+Recommended config:
+
+```ts
+agent: {
+  compact: {
+    apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+    model: "bear-1.2",
+    aggressiveness: 0.3,
+    protectJson: true,
+  },
+}
+```
+
+Alternative `docs.config.tsx` form:
+
+```tsx
+agent: {
+  compact: {
+    apiKey: process.env.TOKEN_COMPANY_API_KEY,
+  },
+}
+```
+
+Useful checks:
+
+```bash
+pnpm exec docs agent compact installation --dry-run
+pnpm exec docs agent compact installation
+curl "http://127.0.0.1:3000/docs/installation.md"
+```
+
+---
+
 ## What init does (Existing project, per framework)
 
 When the user chooses **Existing project**, the CLI detects (or prompts for) framework, then theme (including **Create your own theme** → prompts for theme name, scaffolds `themes/<name>.ts` and `themes/<name>.css`), path aliases, entry path (default `docs`; Enter to accept), optional API reference scaffold, optional i18n scaffolding, and global CSS. If API reference is enabled and the user does not pass `--api-route-root`, the CLI detects a sensible default route root (usually `api`) and shows it as the default in the prompt. Generated files:
@@ -251,4 +314,5 @@ When the user chooses **Existing project**, the CLI detects (or prompts for) fra
 ## Resources
 
 - **Full CLI docs:** [docs.farming-labs.dev/docs/cli](https://docs.farming-labs.dev/docs/cli)
+- **Token efficiency:** [docs.farming-labs.dev/docs/token-efficiency](https://docs.farming-labs.dev/docs/token-efficiency)
 - **Getting started:** use the `getting-started` skill in this repo for install and theme CSS.

@@ -1,16 +1,17 @@
 ---
 title: "CLI"
-description: "Scaffold a docs project with one command"
+description: "Scaffold, upgrade, compact agent docs, sync search, and run MCP"
 icon: "terminal"
 order: 2
 ---
 
 # CLI
 
-The `@farming-labs/docs` CLI has two main jobs:
+The `@farming-labs/docs` CLI has a few main jobs:
 
 - **`init`** — create a new docs app or add docs to an existing app
 - **`upgrade`** — bump the docs packages in an existing project
+- **`agent compact`** — generate sibling `agent.md` files from resolved docs pages
 - **`mcp`** — run the built-in docs MCP server over stdio for local clients and IDE agents
 - **`search sync`** — push docs content into an external search index like Typesense or Algolia
 
@@ -201,6 +202,98 @@ ALGOLIA_APP_ID=your-app-id
 ALGOLIA_ADMIN_API_KEY=your-admin-key
 ALGOLIA_SEARCH_API_KEY=your-search-key
 ```
+
+### Compact page-level agent docs
+
+Use `agent compact` when you want to generate or refresh sibling `agent.md` files from your
+resolved docs pages.
+
+```bash title="terminal"
+pnpm exec docs agent compact installation configuration
+pnpm exec docs agent compact --all
+```
+
+The command writes compact machine-readable page docs without changing the visible HTML page. Those
+generated `agent.md` files then power `.md` routes, `GET /api/docs?format=markdown&path=<slug>`,
+and MCP `read_page()`.
+
+## Agent compact
+
+Use `agent compact` when you want shorter page-level machine docs without hand-writing every
+`agent.md`.
+
+What it does:
+
+- resolves the same machine-readable page the runtime already uses: `agent.md`, then `Agent`
+  blocks, then normal page markdown
+- compresses that document with the Token Company API
+- creates missing sibling `agent.md` files and overwrites existing ones
+- makes the written `agent.md` the new source for `.md` routes, docs API markdown output, and MCP
+  `read_page()`
+
+Common forms:
+
+```bash title="terminal"
+pnpm exec docs agent compact installation configuration
+pnpm exec docs agent compact /docs/installation
+pnpm exec docs agent compact /docs/installation.md
+pnpm exec docs agent compact https://docs.example.com/docs/installation
+pnpm exec docs agent compact . --dry-run
+pnpm exec docs agent compact --page installation --page configuration
+pnpm exec docs agent compact --all
+```
+
+Selection notes:
+
+- positional page arguments are the preferred UX; `--page` is an optional repeatable alias
+- page identifiers can be a slug, docs path, `.md` path, full docs URL, or `.` for the root docs
+  page
+- `--all` compacts every folder-based docs page under the configured `contentDir`
+- only folder-based pages can be written automatically, because the command needs a sibling
+  `agent.md` target
+
+Recommended config defaults:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  agent: {
+    compact: {
+      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+      model: "bear-1.2",
+      aggressiveness: 0.3,
+      protectJson: true,
+    },
+  },
+});
+```
+
+If you prefer to reference the env var directly in `docs.config.tsx`, that works too:
+
+```tsx title="docs.config.tsx"
+export default defineDocs({
+  entry: "docs",
+  agent: {
+    compact: {
+      apiKey: process.env.TOKEN_COMPANY_API_KEY,
+    },
+  },
+});
+```
+
+The command loads `.env` and `.env.local` from the current project before it resolves the key, so
+the default `TOKEN_COMPANY_API_KEY` env var works without exporting it manually.
+
+Useful checks:
+
+```bash title="terminal"
+pnpm exec docs agent compact installation --dry-run
+pnpm exec docs agent compact installation
+curl "http://127.0.0.1:3000/docs/installation.md"
+```
+
+See [Configuration](/docs/configuration) for `agent.compact`, and [Token Efficiency](/docs/token-efficiency)
+for when you should use compaction instead of writing `agent.md` by hand.
 
 ## Init
 

@@ -33,6 +33,7 @@ import {
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import matter from "gray-matter";
+import type { NextConfig } from "next";
 
 /** Resolve Next.js App Router directory: prefer src/app when present, else app. */
 function getNextAppDir(root: string): string {
@@ -1152,7 +1153,7 @@ function mergeDocsMarkdownRewrites(
 
 // ─── withDocs ───────────────────────────────────────────────────────
 
-export function withDocs(nextConfig: Record<string, unknown> = {}) {
+export function withDocs(nextConfig: NextConfig = {}): NextConfig {
   const root = process.cwd();
   const workspaceRoot = findDocsWorkspaceRoot(root);
   const docsConfigPath = readDocsConfigPath(root);

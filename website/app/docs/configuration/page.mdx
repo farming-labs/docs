@@ -1007,6 +1007,68 @@ export async function POST(request: Request) {
 }
 ```
 
+## Agent Compaction
+
+Use `agent.compact` to set defaults for `docs agent compact`, which generates sibling `agent.md`
+files from resolved docs pages.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  agent: {
+    compact: {
+      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+      model: "bear-1.2",
+      aggressiveness: 0.3,
+      protectJson: true,
+    },
+  },
+});
+```
+
+If you want to reference the key directly from `docs.config.tsx`, this is supported too:
+
+```tsx title="docs.config.tsx"
+export default defineDocs({
+  entry: "docs",
+  agent: {
+    compact: {
+      apiKey: process.env.TOKEN_COMPANY_API_KEY,
+    },
+  },
+});
+```
+
+Supported fields:
+
+- `apiKey`
+- `apiKeyEnv`
+- `baseUrl`
+- `model`
+- `aggressiveness`
+- `maxOutputTokens`
+- `minOutputTokens`
+- `protectJson`
+
+<Callout type="info" title="What changes after compaction">
+  `docs agent compact` creates missing `agent.md` files and overwrites existing ones. The written
+  `agent.md` becomes the machine-readable source for `.md` routes,
+  `GET /api/docs?format=markdown&path=<slug>`, and MCP `read_page()`. The human docs UI still
+  renders the normal page.
+</Callout>
+
+The CLI loads `.env` and `.env.local` before resolving the key, so `TOKEN_COMPANY_API_KEY` works
+out of the box. Use positional page args by default:
+
+```bash title="terminal"
+pnpm exec docs agent compact installation configuration
+pnpm exec docs agent compact installation --dry-run
+pnpm exec docs agent compact --all
+```
+
+See [CLI](/docs/cli) for the command surface and [Token Efficiency](/docs/token-efficiency) for
+when to use compaction instead of writing `agent.md` by hand.
+
 ## Agent Feedback Endpoints
 
 Use `feedback.agent` when you want machine-readable feedback routes for coding agents or docs-aware

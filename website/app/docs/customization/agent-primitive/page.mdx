@@ -124,6 +124,33 @@ This is the stronger option. Use it when agents need:
 - testing or validation steps
 - a shorter, more targeted page than the human docs should show
 
+## Generate `agent.md` From The CLI
+
+You do not have to hand-write every override. `docs agent compact` can take the resolved
+machine-readable page for one or more routes and write a sibling `agent.md` automatically.
+
+It uses the same resolution order as the runtime:
+
+- existing `agent.md`
+- hidden `Agent` blocks
+- normal page markdown
+
+That makes it a good fit when you want to start with additive `<Agent>` context and later freeze a
+shorter, more operational machine page.
+
+```bash title="terminal"
+pnpm exec docs agent compact customization/agent-primitive
+pnpm exec docs agent compact --all
+```
+
+Once the file is written:
+
+- `/docs/customization/agent-primitive.md` returns the generated `agent.md`
+- `GET /api/docs?format=markdown&path=customization/agent-primitive` returns the same file
+- MCP `read_page("/docs/customization/agent-primitive")` prefers that `agent.md`
+
+The visible UI page still renders `page.mdx`. Only the machine-readable surface changes.
+
 ## Point Agents At Feedback Endpoints
 
 Page primitives are also a good place to tell agents how to report whether the docs were enough to

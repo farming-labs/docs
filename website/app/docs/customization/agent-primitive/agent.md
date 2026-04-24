@@ -22,6 +22,24 @@ Use this page when you need the page-level authoring contract for agent-facing d
 - Choose `Agent` when the human page should stay canonical and only needs extra machine context
 - Choose `agent.md` when agents need a shorter, stricter, or more operational document
 
+## Automation
+
+If the team wants to generate or refresh page-level `agent.md` files automatically, use
+`docs agent compact`.
+
+- it resolves the same page-level machine document with this order: `agent.md`, embedded `Agent`
+  blocks, then page markdown
+- it writes sibling `agent.md` files that become the new `.md`, docs API, and MCP source
+- it is useful when authors start with `<Agent>` blocks and later want a shorter, fully
+  machine-focused document
+
+Example:
+
+```bash
+pnpm exec docs agent compact customization/agent-primitive
+pnpm exec docs agent compact --all
+```
+
 ## Validation
 
 - Human page: `/docs/customization/agent-primitive`
