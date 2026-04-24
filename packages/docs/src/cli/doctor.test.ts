@@ -486,9 +486,7 @@ export async function handle({ event, resolve }) {
       "Found SvelteKit docs API route at src/routes/api/docs/+server.js.",
     );
     expect(publicRoutes?.status).toBe("pass");
-    expect(publicRoutes?.detail).toBe(
-      "Found SvelteKit public docs hook at src/hooks.server.js.",
-    );
+    expect(publicRoutes?.detail).toBe("Found SvelteKit public docs hook at src/hooks.server.js.");
   });
 
   it("detects Astro route wiring", async () => {
