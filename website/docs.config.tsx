@@ -60,7 +60,7 @@ export default defineDocs({
   search: searchConfig,
   theme: pixelBorder({
     ui: {
-      layout: { toc: { enabled: true, depth: 3, style: "directional" }, sidebarWidth: 300 },
+      layout: { toc: { enabled: true, depth: 3, style: "directional" }, sidebarWidth: 320 },
       sidebar: { style: "floating" },
       typography: {
         font: {
@@ -312,7 +312,7 @@ export default defineDocs({
     ),
     footer: (
       <div
-        className="-mx-4 -my-2 -mb-4 border-t flex flex-col gap-3 font-mono uppercase"
+        className="-mx-4 md:px-6! -my-2 -mb-4 border-t flex flex-col gap-3 font-mono uppercase"
         style={{
           padding: "9px 16px",
           fontSize: "12px",
