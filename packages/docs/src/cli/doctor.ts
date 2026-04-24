@@ -334,11 +334,10 @@ function formatPathList(paths: string[]): string {
   return `${paths[0]} (+${paths.length - 1} more)`;
 }
 
-function findCodeFiles(
-  files: string[],
-  predicate: (relativePath: string) => boolean,
-): string[] {
-  return files.filter((relativePath) => CODE_FILE_PATTERN.test(relativePath) && predicate(relativePath));
+function findCodeFiles(files: string[], predicate: (relativePath: string) => boolean): string[] {
+  return files.filter(
+    (relativePath) => CODE_FILE_PATTERN.test(relativePath) && predicate(relativePath),
+  );
 }
 
 function detectFrameworkFromFiles(files: string[]): Framework | null {
@@ -384,7 +383,8 @@ function detectRouteSurface(
         apiMounted: false,
         apiDetail: "Next static export disables /api/docs and the shared agent endpoints.",
         publicMounted: false,
-        publicDetail: "Public .md, llms.txt, skill.md, and agent discovery routes depend on /api/docs.",
+        publicDetail:
+          "Public .md, llms.txt, skill.md, and agent discovery routes depend on /api/docs.",
       };
     }
 
@@ -644,7 +644,7 @@ export async function inspectAgentReadiness(
   const siteTitle =
     typeof config?.nav?.title === "string"
       ? config.nav.title
-      : readNavTitle(configContent) ?? "Documentation";
+      : (readNavTitle(configContent) ?? "Documentation");
   const staticExport = resolveStaticExport(config, configContent);
   const llmsEnabled = resolveFeatureEnabled(config, configContent, "llmsTxt");
   const searchEnabled = resolveFeatureEnabled(config, configContent, "search");
@@ -663,9 +663,12 @@ export async function inspectAgentReadiness(
   const pages = await Promise.resolve(source.getPages());
   const coverage = buildCoverage(pages);
   const routeSurface = detectRouteSurface(rootDir, framework, staticExport, files);
-  const mcpConfig = resolveDocsMcpConfig((config?.mcp as boolean | DocsMcpConfig | undefined) ?? undefined, {
-    defaultName: siteTitle,
-  });
+  const mcpConfig = resolveDocsMcpConfig(
+    (config?.mcp as boolean | DocsMcpConfig | undefined) ?? undefined,
+    {
+      defaultName: siteTitle,
+    },
+  );
   const feedbackRoute = DEFAULT_AGENT_FEEDBACK_ROUTE;
   const feedbackSchemaRoute = `${feedbackRoute}/schema`;
 
