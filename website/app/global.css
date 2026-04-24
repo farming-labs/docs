@@ -113,6 +113,7 @@
   #nd-docs-layout aside#nd-sidebar {
     --fd-sidebar-rail-width: 12px;
     --fd-sidebar-item-inset: 16px;
+    --fd-sidebar-nested-marker-offset: calc(var(--fd-sidebar-item-inset) + 1.125rem);
     border-left: 1px solid var(--color-fd-border) !important;
     border-right: 1px solid var(--color-fd-border) !important;
     isolation: isolate !important;
@@ -180,6 +181,10 @@
   #nd-docs-layout aside a[data-active="true"]::before {
     margin-left: 0 !important;
     inset-inline-start: calc(var(--fd-sidebar-item-inset) + 0.5rem) !important;
+  }
+
+  #nd-docs-layout aside div.overflow-hidden[data-state] a[data-active="true"]::before {
+    inset-inline-start: var(--fd-sidebar-nested-marker-offset) !important;
   }
 
   #nd-docs-layout aside div.overflow-hidden[data-state]::before {
