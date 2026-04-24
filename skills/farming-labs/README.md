@@ -2,9 +2,15 @@
 
 This folder contains [Agent Skills](https://skills.sh/) (conforming to the [Agent Skills specification](https://agentskills.io/specification)) for **@farming-labs/docs** — an MDX-based documentation framework for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.
 
-Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task (getting started, CLI, creating themes, Ask AI, page actions, or configuration, including search adapters, changelog setup, human page feedback, agent discovery/spec routes, `skill.md`, agent feedback endpoints, API reference, MCP, `llms.txt`, and machine-readable markdown routes with embedded `Agent` blocks, `agent.md` overrides, or `Accept: text/markdown` negotiation).
+Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task
+(getting started, CLI, creating themes, Ask AI, page actions, or configuration, including search
+adapters, changelog setup, human page feedback, `agent.compact`, agent discovery/spec routes,
+`skill.md`, agent feedback endpoints, API reference, MCP, `llms.txt`, and machine-readable markdown
+routes with embedded `Agent` blocks, generated or hand-written `agent.md` overrides, or
+`Accept: text/markdown` negotiation).
 
-The repo also includes a runnable Next example for testing MCP plus external search providers:
+The repo also includes a runnable Next example for testing MCP, external search providers, and
+page-level agent compaction:
 
 ```bash
 pnpm --dir examples/next dev
@@ -22,6 +28,12 @@ Useful routes:
 - Header-negotiated markdown page (Next.js): `curl http://127.0.0.1:3000/docs/quickstart -H "Accept: text/markdown"`
 - Agent override example (Next.js): `http://127.0.0.1:3000/docs/getting-started/agent-ready-docs.md`
 
+Useful command:
+
+```bash
+pnpm --dir examples/next exec docs agent compact installation --config docs.config.tsx
+```
+
 The agent discovery spec also advertises the root `skill.md` route, this Skills pack through
 `npx skills add farming-labs/docs`, and recommends the `getting-started` skill for first-run setup.
 
@@ -32,11 +44,11 @@ The agent discovery spec also advertises the root `skill.md` route, this Skills 
 | Skill | Path | When to use |
 | ----- | ---- | ----------- |
 | **Getting started** | [getting-started](./getting-started/SKILL.md) | Setting up docs, init, manual install, theme CSS, docs.config, packages by framework, generated changelog pages in Next.js, machine-readable markdown routes with `Agent` blocks or `agent.md` overrides, and API reference wiring from local routes or a hosted OpenAPI JSON. |
-| **CLI** | [cli](./cli/SKILL.md) | Scaffolding and commands: init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), `init` / `upgrade` / `mcp`, `--template`, `--name`, `--theme`, `--entry`, `--api-reference`, `--framework`, `--config`, package manager commands. |
+| **CLI** | [cli](./cli/SKILL.md) | Scaffolding and commands: init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), `init` / `upgrade` / `agent compact` / `mcp`, `--template`, `--name`, `--theme`, `--entry`, `--api-reference`, `--framework`, `--config`, package manager commands. |
 | **Creating themes** | [creating-themes](./creating-themes/SKILL.md) | Building a custom theme with `createTheme()`, `extendTheme()`, `ui.components` defaults like `HoverLink`, publishing as npm, CSS overrides. |
 | **Ask AI** | [ask-ai](./ask-ai/SKILL.md) | Enabling and configuring the RAG-powered AI chat: mode, floatingStyle, providers, models, suggestedQuestions, apiKey. |
 | **Page actions** | [page-actions](./page-actions/SKILL.md) | Copy Markdown and Open in LLM buttons: copyMarkdown, openDocs, providers, urlTemplate, `{url}.md` markdown route patterns, position, alignment, and provider defaults. |
-| **Configuration** | [configuration](./configuration/SKILL.md) | docs.config.ts options: entry, theme, staticExport, sidebar, breadcrumb, github, components, `search`, `changelog`, human page feedback, agent feedback endpoints, metadata, og, `mcp`, built-in markdown routes with `Agent` blocks or `agent.md`, and `apiReference` including remote `specUrl` support. |
+| **Configuration** | [configuration](./configuration/SKILL.md) | docs.config.ts options: entry, theme, staticExport, sidebar, breadcrumb, github, components, `search`, `changelog`, `agent.compact`, human page feedback, agent feedback endpoints, metadata, og, `mcp`, built-in markdown routes with `Agent` blocks or `agent.md`, and `apiReference` including remote `specUrl` support. |
 
 ---
 

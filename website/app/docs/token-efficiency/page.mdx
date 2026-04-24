@@ -140,6 +140,51 @@ When an AI agent needs to modify your docs setup — change a theme, enable AI c
 
 A declarative config file is hard to break. An AI can add `ai: { enabled: true }` or change `theme: darksharp()` without worrying about import paths, component hierarchies, or routing logic. The framework handles all of that internally.
 
+## Compact Page-Level Agent Docs
+
+The framework already gives agents clean page-level markdown through `.md` routes, hidden
+`<Agent>...</Agent>` blocks, and sibling `agent.md` files. When you want that machine-readable layer
+to be even tighter, use `docs agent compact`.
+
+The command resolves the same page contract the runtime already uses:
+
+- existing `agent.md`
+- embedded `Agent` blocks
+- normal page markdown
+
+Then it sends that resolved document to the Token Company compression API and writes a sibling
+`agent.md` file for the page.
+
+<Callout type="info" title="Compaction only changes the machine-readable layer">
+  The visible docs UI still renders `page.mdx` or `page.md`. The generated `agent.md` becomes the
+  page-level source for `.md` routes, `GET /api/docs?format=markdown&path=<slug>`, and MCP
+  `read_page()`.
+</Callout>
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  agent: {
+    compact: {
+      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+      model: "bear-1.2",
+      aggressiveness: 0.3,
+      protectJson: true,
+    },
+  },
+});
+```
+
+```bash title="terminal"
+pnpm exec docs agent compact installation configuration
+pnpm exec docs agent compact --all
+```
+
+The CLI also loads `.env` and `.env.local`, so `TOKEN_COMPANY_API_KEY` can stay out of checked-in
+config. Use `--dry-run` when you want to preview the compression call without writing files. For the
+full command surface, see the [CLI page](/docs/cli). For the `agent.compact` config shape, see
+[Configuration](/docs/configuration).
+
 ## Built-in AI Features
 
 Beyond being token-efficient to work with, `@farming-labs/docs` includes features designed for AI consumption:

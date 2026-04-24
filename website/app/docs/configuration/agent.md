@@ -12,6 +12,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
    - `theme`
    - `components`
    - `pageActions`
+   - `agent`
    - `search`
    - `ai`
    - `mcp`
@@ -30,6 +31,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - When they want to change default props for a built-in component like `HoverLink`, point them to `theme.ui.components`.
 - When they want AI-facing behavior, distinguish between:
   - `ai` for Ask AI / chat
+  - `agent.compact` for defaults used by `docs agent compact`
   - `mcp` for the built-in MCP server
   - `llmsTxt` for crawler-friendly site summaries
   - markdown routes for page-level machine-readable content
@@ -63,7 +65,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
 2. Verify `entry`, `contentDir`, `nav`, and `theme` before discussing advanced features.
 3. Move to `search`, `ai`, `mcp`, `pageActions`, or `llmsTxt` only after the base project shape is correct.
 4. Use customization and theme pages once routing and content structure are stable.
-5. Use markdown routes, MCP, and token-efficiency docs when the user is optimizing for agents or machine-readable access.
+5. Use markdown routes, `agent.compact`, MCP, and token-efficiency docs when the user is optimizing for agents or machine-readable access.
 
 ## Output style
 
