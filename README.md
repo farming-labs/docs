@@ -15,6 +15,7 @@ experience for humans, IDEs, and agents without maintaining a pile of routing bo
 - Next.js changelog pages from dated MDX entries
 - Machine-readable docs through `.md` routes, `llms.txt`, `skill.md`, agent discovery, and MCP
 - Page-level agent compaction with `docs agent compact` and `agent.compact` defaults
+- Agent-readiness scoring with `docs doctor --agent`
 
 ## Quick Start
 
@@ -138,6 +139,43 @@ agent: {
 
 The generated `agent.md` becomes the machine-readable source for `.md` routes,
 `GET /api/docs?format=markdown&path=...`, and MCP `read_page()`.
+
+## Agent Health Check
+
+Use `docs doctor --agent` when you want to inspect the machine-facing quality of the docs site.
+
+```bash
+pnpm exec docs doctor --agent
+```
+
+Expected output looks like:
+
+```txt
+@farming-labs/docs doctor — agent
+
+Score: 87/100 (Agent-ready)
+Framework: nextjs • Entry: docs • Content: app/docs
+Explicit agent-friendly pages: 10/41 pages (24%)
+```
+
+The command checks the agent surface end to end:
+
+- docs config resolution
+- docs content discovery
+- docs API route wiring
+- public agent routes
+- agent discovery spec
+- `llms.txt`
+- `skill.md`
+- MCP
+- search
+- agent feedback
+- page metadata
+- explicit agent-friendly pages
+- `agent.compact` defaults
+
+It is not required to run the framework, but it is very useful before claiming a docs site is
+agent-ready or agent-optimized, and it works well as a CI check for the machine-facing docs layer.
 
 ## Common Tasks
 

@@ -151,6 +151,16 @@ Once the file is written:
 
 The visible UI page still renders `page.mdx`. Only the machine-readable surface changes.
 
+## Audit The Agent Surface
+
+After you add `<Agent>` blocks, `agent.md`, `skill.md`, or discovery endpoints, use the
+[Doctor section of the CLI docs](/docs/cli#doctor) to audit whether the machine-facing layer is
+actually wired and visible the way you expect.
+
+That is the quickest follow-up after authoring page-level primitives. If you add an `Agent` block
+or sibling `agent.md`, the doctor output should reflect stronger explicit agent-friendly page
+coverage instead of only looking correct in the UI.
+
 ## Point Agents At Feedback Endpoints
 
 Page primitives are also a good place to tell agents how to report whether the docs were enough to
