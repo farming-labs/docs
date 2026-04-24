@@ -160,6 +160,8 @@ Explicit agent-friendly pages: 10/41 pages (24%)
 
 The command checks the agent surface end to end:
 
+- docs config resolution
+- docs content discovery
 - docs API route wiring
 - public agent routes
 - agent discovery spec
