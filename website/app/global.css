@@ -155,7 +155,6 @@
   }
 
   #nd-docs-layout aside .overscroll-contain > div > a[data-active] {
-    /* padding-left: calc(1rem + var(--fd-sidebar-item-inset)) !important; */
     padding-right: calc(1rem + var(--fd-sidebar-item-inset)) !important;
   }
 
@@ -168,11 +167,6 @@
     padding-left: calc(2rem + var(--fd-sidebar-item-inset)) !important;
   }
   
-  #nd-docs-layout aside button[class*="bg-fd-secondary"] {
-    padding-left: calc(1rem + var(--fd-sidebar-item-inset)) !important;
-    padding-right: calc(1rem + var(--fd-sidebar-item-inset)) !important;
-  }
-
   #nd-docs-layout aside a[data-active="true"]::before {
     margin-left: 0 !important;
     inset-inline-start: calc(var(--fd-sidebar-item-inset) + 0.5rem) !important;
