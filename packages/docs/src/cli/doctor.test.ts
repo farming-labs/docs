@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { inspectAgentReadiness, parseDoctorArgs } from "./doctor.js";
@@ -23,10 +23,15 @@ describe("parseDoctorArgs", () => {
   it("treats -h as help", () => {
     expect(parseDoctorArgs(["-h"])).toEqual({ help: true });
   });
+
+  it("rejects an empty inline config value", () => {
+    expect(() => parseDoctorArgs(["--config="])).toThrow("Missing value for --config.");
+  });
 });
 
 describe("inspectAgentReadiness", () => {
   const originalCwd = process.cwd();
+  const originalEnv = { ...process.env };
   let tmpDir: string;
 
   beforeEach(() => {
@@ -35,6 +40,7 @@ describe("inspectAgentReadiness", () => {
 
   afterEach(() => {
     process.chdir(originalCwd);
+    process.env = { ...originalEnv };
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
@@ -115,6 +121,8 @@ Human docs home.
       `---
 title: "Installation"
 description: "Install the framework"
+related:
+  - /docs/configuration
 ---
 
 # Installation
@@ -171,8 +179,10 @@ Use this docs site through markdown routes and MCP.
     expect(report.coverage.explicitCoverage).toBe(67);
     expect(report.checks.find((check) => check.id === "api-route")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "public-routes")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "agent-discovery")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "skill")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "metadata")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "compact")?.status).toBe("pass");
   });
 
@@ -198,5 +208,153 @@ Use this docs site through markdown routes and MCP.
     expect(report.checks).toHaveLength(1);
     expect(report.checks[0]?.status).toBe("fail");
     expect(report.checks[0]?.title).toBe("Docs config");
+  });
+
+  it("restores environment variables loaded from project files after inspection", async () => {
+    writeFileSync(
+      path.join(tmpDir, "package.json"),
+      JSON.stringify({
+        name: "doctor-env",
+        private: true,
+        dependencies: {
+          next: "16.0.0",
+        },
+      }),
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, ".env"),
+      "DOCTOR_TEST_KEY=from-dotenv\n",
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: {
+    compact: {
+      apiKey: process.env.DOCTOR_TEST_KEY,
+    },
+  },
+};`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: "Overview"
+description: "Docs home"
+---
+
+# Overview
+`,
+      "utf-8",
+    );
+
+    delete process.env.DOCTOR_TEST_KEY;
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.checks.find((check) => check.id === "compact")?.status).toBe("pass");
+    expect(process.env.DOCTOR_TEST_KEY).toBeUndefined();
+  });
+
+  it("does not guess Astro from a generic src/middleware.ts file alone", async () => {
+    writeFileSync(
+      path.join(tmpDir, "package.json"),
+      JSON.stringify({
+        name: "doctor-unknown-framework",
+        private: true,
+      }),
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+};`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "src", "middleware.ts"),
+      `export default function middleware() {
+  return null;
+}
+`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "docs", "page.mdx"),
+      `---
+title: "Overview"
+description: "Docs home"
+---
+
+# Overview
+`,
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.framework).toBe("unknown");
+  });
+
+  it("skips symlinked directories while scanning project files", async () => {
+    writeFileSync(
+      path.join(tmpDir, "package.json"),
+      JSON.stringify({
+        name: "doctor-symlink-scan",
+        private: true,
+        dependencies: {
+          next: "16.0.0",
+        },
+      }),
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+};`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: "Overview"
+description: "Docs home"
+---
+
+# Overview
+`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "external"), { recursive: true });
+    writeFileSync(path.join(tmpDir, "external", "ignored.txt"), "ignore me\n", "utf-8");
+    symlinkSync(path.join(tmpDir, "external"), path.join(tmpDir, "linked-external"), "dir");
+
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.framework).toBe("nextjs");
+    expect(report.checks.find((check) => check.id === "content")?.status).toBe("pass");
   });
 });

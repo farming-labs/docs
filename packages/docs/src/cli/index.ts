@@ -153,7 +153,7 @@ ${pc.bold("@farming-labs/docs")} — Documentation framework CLI
 ${pc.dim("Usage:")}
   npx @farming-labs/docs@latest ${pc.cyan("<command>")}
 
-  ${pc.dim("Commands:")}
+${pc.dim("Commands:")}
   ${pc.cyan("init")}     Scaffold docs in your project (default)
   ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} to generate sibling agent.md files)
   ${pc.cyan("doctor")}   Inspect and score agent-readiness for the current docs app

@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import pc from "picocolors";
 import {
@@ -13,7 +13,7 @@ import {
   DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
 } from "../agent.js";
 import { createFilesystemDocsMcpSource, resolveDocsMcpConfig } from "../server.js";
-import type { DocsConfig, DocsMcpConfig, DocsSearchConfig, FeedbackConfig } from "../types.js";
+import type { DocsConfig, DocsMcpConfig } from "../types.js";
 import {
   extractNestedObjectLiteral,
   extractTopLevelConfigObject,
@@ -72,6 +72,7 @@ export interface AgentDoctorReport {
 }
 
 const NEXT_CONFIG_PATTERN = /^next\.config\.(?:[cm]?js|[cm]?ts)$/;
+const ASTRO_CONFIG_PATTERN = /^astro\.config\.(?:[cm]?js|[cm]?ts)$/;
 const CODE_FILE_PATTERN = /\.(?:[cm]?js|[cm]?ts|jsx|tsx)$/;
 const IGNORED_DIRS = new Set([
   ".git",
@@ -109,7 +110,11 @@ export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
     }
 
     if (arg.startsWith("--config=")) {
-      parsed.configPath = parseInlineFlag(arg).value;
+      const value = parseInlineFlag(arg).value;
+      if (!value) {
+        throw new Error("Missing value for --config.");
+      }
+      parsed.configPath = value;
       continue;
     }
 
@@ -299,7 +304,9 @@ function listProjectFiles(rootDir: string): string[] {
 
     for (const entry of readdirSync(dir).sort()) {
       const fullPath = path.join(dir, entry);
-      const stat = statSync(fullPath);
+      const stat = lstatSync(fullPath);
+
+      if (stat.isSymbolicLink()) continue;
 
       if (stat.isDirectory()) {
         if (IGNORED_DIRS.has(entry)) continue;
@@ -348,7 +355,7 @@ function detectFrameworkFromFiles(files: string[]): Framework | null {
   if (files.some((file) => file === "src/hooks.server.js" || file === "src/hooks.server.ts")) {
     return "sveltekit";
   }
-  if (files.some((file) => file === "src/middleware.ts" || file === "src/middleware.js")) {
+  if (files.some((file) => ASTRO_CONFIG_PATTERN.test(path.basename(file)))) {
     return "astro";
   }
   if (files.some((file) => file.startsWith("server/middleware/"))) return "nuxt";
@@ -531,6 +538,17 @@ function coverageScore(explicitCoverage: number): { status: DoctorStatus; score:
   return { status: "warn", score: 0 };
 }
 
+function metadataScore(
+  descriptionCoverage: number,
+  relatedCoverage: number,
+): { status: DoctorStatus; score: number } {
+  if (descriptionCoverage >= 90 && relatedCoverage >= 20) return { status: "pass", score: 5 };
+  if (descriptionCoverage >= 75) return { status: "pass", score: 4 };
+  if (descriptionCoverage >= 50) return { status: "warn", score: 2 };
+  if (descriptionCoverage > 0) return { status: "warn", score: 1 };
+  return { status: "warn", score: 0 };
+}
+
 function gradeForScore(score: number): DoctorGrade {
   if (score >= 90) return "Agent-optimized";
   if (score >= 75) return "Agent-ready";
@@ -546,6 +564,8 @@ function formatStatus(status: DoctorStatus): string {
 
 function buildCoverage(
   pages: Array<{
+    description?: string;
+    related?: unknown[];
     agentRawContent?: string;
     agentFallbackRawContent?: string;
   }>,
@@ -570,6 +590,54 @@ function buildCoverage(
   };
 }
 
+function buildMetadataCoverage(
+  pages: Array<{
+    description?: string;
+    related?: unknown[];
+  }>,
+): {
+  describedPages: number;
+  relatedPages: number;
+  descriptionCoverage: number;
+  relatedCoverage: number;
+} {
+  const totalPages = pages.length;
+  const describedPages = pages.filter(
+    (page) => typeof page.description === "string" && page.description.trim().length > 0,
+  ).length;
+  const relatedPages = pages.filter(
+    (page) => Array.isArray(page.related) && page.related.length > 0,
+  ).length;
+
+  return {
+    describedPages,
+    relatedPages,
+    descriptionCoverage: totalPages === 0 ? 0 : Math.round((describedPages / totalPages) * 100),
+    relatedCoverage: totalPages === 0 ? 0 : Math.round((relatedPages / totalPages) * 100),
+  };
+}
+
+async function loadDocsConfigModuleWithProjectEnv(
+  rootDir: string,
+  explicitPath?: string,
+): Promise<{ path: string; config: DocsConfig } | null> {
+  const env = loadProjectEnv(rootDir);
+  const injectedKeys = Object.entries(env)
+    .filter(([key]) => process.env[key] === undefined)
+    .map(([key, value]) => {
+      process.env[key] = value;
+      return key;
+    });
+
+  try {
+    return await loadDocsConfigModule(rootDir, explicitPath);
+  } finally {
+    for (const key of injectedKeys) {
+      delete process.env[key];
+    }
+  }
+}
+
 function makeCheck(
   id: string,
   title: string,
@@ -586,11 +654,6 @@ export async function inspectAgentReadiness(
   options: DoctorOptions = {},
 ): Promise<AgentDoctorReport> {
   const rootDir = process.cwd();
-  const env = loadProjectEnv(rootDir);
-  for (const [key, value] of Object.entries(env)) {
-    if (process.env[key] === undefined) process.env[key] = value;
-  }
-
   const files = listProjectFiles(rootDir);
   const framework = detectFramework(rootDir) ?? detectFrameworkFromFiles(files) ?? "unknown";
   const configCheckMax = 10;
@@ -631,7 +694,7 @@ export async function inspectAgentReadiness(
   }
 
   const configContent = readFileSync(configPath, "utf-8");
-  const loadedConfig = await loadDocsConfigModule(rootDir, options.configPath);
+  const loadedConfig = await loadDocsConfigModuleWithProjectEnv(rootDir, options.configPath);
   const config = loadedConfig?.config;
   const entry = config?.entry ?? readTopLevelStringProperty(configContent, "entry") ?? "docs";
   const contentDir = config?.contentDir ?? resolveDocsContentDir(rootDir, configContent, entry);
@@ -662,6 +725,11 @@ export async function inspectAgentReadiness(
   });
   const pages = await Promise.resolve(source.getPages());
   const coverage = buildCoverage(pages);
+  const metadataCoverage = buildMetadataCoverage(pages);
+  const metadataResult = metadataScore(
+    metadataCoverage.descriptionCoverage,
+    metadataCoverage.relatedCoverage,
+  );
   const routeSurface = detectRouteSurface(rootDir, framework, staticExport, files);
   const mcpConfig = resolveDocsMcpConfig(
     (config?.mcp as boolean | DocsMcpConfig | undefined) ?? undefined,
@@ -714,8 +782,8 @@ export async function inspectAgentReadiness(
       "api-route",
       "Docs API route",
       routeSurface.apiMounted ? "pass" : "fail",
-      routeSurface.apiMounted ? 15 : 0,
-      15,
+      routeSurface.apiMounted ? 10 : 0,
+      10,
       routeSurface.apiDetail,
       routeSurface.apiMounted
         ? undefined
@@ -728,12 +796,28 @@ export async function inspectAgentReadiness(
       "public-routes",
       "Public agent routes",
       routeSurface.publicMounted ? "pass" : "fail",
-      routeSurface.publicMounted ? 15 : 0,
-      15,
+      routeSurface.publicMounted ? 10 : 0,
+      10,
       routeSurface.publicDetail,
       routeSurface.publicMounted
         ? undefined
         : "Add the framework public forwarder so /.well-known/*, /llms.txt, /skill.md, /mcp, and .md routes resolve from the shared docs API.",
+    ),
+  );
+
+  checks.push(
+    makeCheck(
+      "agent-discovery",
+      "Agent discovery spec",
+      routeSurface.apiMounted && routeSurface.publicMounted ? "pass" : "fail",
+      routeSurface.apiMounted && routeSurface.publicMounted ? 5 : 0,
+      5,
+      routeSurface.apiMounted && routeSurface.publicMounted
+        ? `Expected discovery endpoints are available through ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}, ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}, and /api/docs?agent=spec.`
+        : "Could not verify the shared agent discovery spec endpoints because docs API/public route wiring is incomplete.",
+      routeSurface.apiMounted && routeSurface.publicMounted
+        ? undefined
+        : "Make sure both the docs API handler and the public docs forwarder are mounted so agents can discover the site through the well-known agent spec.",
     ),
   );
 
@@ -842,6 +926,22 @@ export async function inspectAgentReadiness(
         ),
   );
 
+  checks.push(
+    makeCheck(
+      "metadata",
+      "Page metadata",
+      metadataResult.status,
+      metadataResult.score,
+      5,
+      coverage.totalPages > 0
+        ? `${metadataCoverage.describedPages}/${coverage.totalPages} pages include descriptions and ${metadataCoverage.relatedPages}/${coverage.totalPages} pages include related links (${metadataCoverage.descriptionCoverage}% described, ${metadataCoverage.relatedCoverage}% related).`
+        : "No docs pages were available to score page metadata.",
+      metadataCoverage.descriptionCoverage >= 75
+        ? undefined
+        : "Add page descriptions and related links to more docs pages so agent markdown output carries better context and navigation hints.",
+    ),
+  );
+
   const coverageResult = coverageScore(coverage.explicitCoverage);
   checks.push(
     makeCheck(
@@ -881,6 +981,7 @@ export async function inspectAgentReadiness(
   );
 
   const score = checks.reduce((total, check) => total + check.score, 0);
+  const maxScore = checks.reduce((total, check) => total + check.maxScore, 0);
 
   return {
     mode: "agent",
@@ -889,7 +990,7 @@ export async function inspectAgentReadiness(
     entry,
     contentDir,
     score,
-    maxScore: 100,
+    maxScore,
     grade: gradeForScore(score),
     checks,
     coverage,
