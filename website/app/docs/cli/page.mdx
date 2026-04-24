@@ -205,17 +205,8 @@ ALGOLIA_SEARCH_API_KEY=your-search-key
 
 ### Compact page-level agent docs
 
-Use `agent compact` when you want to generate or refresh sibling `agent.md` files from your
-resolved docs pages.
-
-```bash title="terminal"
-pnpm exec docs agent compact installation configuration
-pnpm exec docs agent compact --all
-```
-
-The command writes compact machine-readable page docs without changing the visible HTML page. Those
-generated `agent.md` files then power `.md` routes, `GET /api/docs?format=markdown&path=<slug>`,
-and MCP `read_page()`.
+For commands, config, and how generated `agent.md` files affect `.md` routes, docs API markdown
+output, and MCP, see [Agent compact](#agent-compact) below.
 
 ## Agent compact
 
