@@ -107,6 +107,14 @@ async function main() {
     const { printAgentCompactHelp } = await import("./agent.js");
     printAgentCompactHelp();
     process.exit(1);
+  } else if (parsedCommand.command === "doctor") {
+    const { parseDoctorArgs, printDoctorHelp, runDoctor } = await import("./doctor.js");
+    const doctorOptions = parseDoctorArgs(args.slice(1));
+    if (doctorOptions.help) {
+      printDoctorHelp();
+      return;
+    }
+    await runDoctor(doctorOptions);
   } else if (parsedCommand.command === "search" && subcommand === "sync") {
     const { syncSearch } = await import("./search.js");
     await syncSearch(searchSyncOptions);
@@ -148,6 +156,7 @@ ${pc.dim("Usage:")}
 ${pc.dim("Commands:")}
   ${pc.cyan("init")}     Scaffold docs in your project (default)
   ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} to generate sibling agent.md files)
+  ${pc.cyan("doctor")}   Inspect and score agent-readiness for the current docs app
   ${pc.cyan("mcp")}      Run the built-in docs MCP server over stdio
   ${pc.cyan("search")}   Search utilities (${pc.dim("sync")} for external indexes)
   ${pc.cyan("upgrade")}  Upgrade @farming-labs/* packages to latest (auto-detect or use --framework)
@@ -176,6 +185,12 @@ ${pc.dim("Options for agent compact:")}
   ${pc.cyan("--base-url <url>")}                    Override the Token Company API base URL
   ${pc.cyan("--aggressiveness <0-1>")}              Compression intensity for compacted output
   ${pc.cyan("--dry-run")}                           Resolve and compress pages without writing files
+
+${pc.dim("Options for doctor:")}
+  ${pc.cyan("doctor")}                              Score the current docs app for agent-readiness
+  ${pc.cyan("doctor --agent")}                      Same as ${pc.cyan("doctor")}; explicit agent scoring mode
+  ${pc.cyan("doctor agent")}                        Subcommand alias for agent scoring
+  ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
 
 ${pc.dim("Options for search sync:")}
   ${pc.cyan("search sync --typesense")}             Sync docs content to Typesense using env/flags
