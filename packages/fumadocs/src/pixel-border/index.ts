@@ -24,8 +24,8 @@ const PixelBorderUIDefaults = {
   typography: {
     font: {
       style: {
-        sans: "var(--font-geist-sans, system-ui, -apple-system, sans-serif)",
-        mono: "var(--font-geist-mono, ui-monospace, monospace)",
+        sans: "var(--font-sans, system-ui, -apple-system, sans-serif)",
+        mono: "var(--font-mono, ui-monospace, monospace)",
       },
       h1: { size: "2.25rem", weight: 700, lineHeight: "1.2", letterSpacing: "-0.02em" },
       h2: { size: "1.5rem", weight: 600, lineHeight: "1.3", letterSpacing: "-0.01em" },

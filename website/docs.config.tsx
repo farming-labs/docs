@@ -65,8 +65,8 @@ export default defineDocs({
       typography: {
         font: {
           style: {
-            sans: "var(--font-geist-sans, system-ui, -apple-system, sans-serif)",
-            mono: "var(--font-geist-mono, ui-monospace, monospace)",
+            sans: "var(--font-sans, system-ui, -apple-system, sans-serif)",
+            mono: "var(--font-mono, ui-monospace, monospace)",
           },
           h1: { size: "2.25rem", weight: 700, letterSpacing: "-0.025em" },
           h2: { size: "1.5rem", weight: 600, letterSpacing: "-0.015em" },
