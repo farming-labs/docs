@@ -286,6 +286,79 @@ curl "http://127.0.0.1:3000/docs/installation.md"
 See [Configuration](/docs/configuration) for `agent.compact`, and [Token Efficiency](/docs/token-efficiency)
 for when you should use compaction instead of writing `agent.md` by hand.
 
+## Doctor
+
+Use `docs doctor --agent` when you want a quick health check for the machine-facing side of the
+docs site.
+
+This command does not generate files. It inspects the current project and scores how ready the docs
+are for agents, IDEs, and GEO-style crawlers.
+
+What it checks:
+
+- docs config resolution
+- docs content discovery
+- framework docs API route wiring
+- public agent route wiring
+- agent discovery spec
+- `llms.txt`
+- `skill.md`
+- MCP
+- search
+- agent feedback
+- page metadata
+- explicit agent-friendly pages
+- `agent.compact` defaults
+
+Common forms:
+
+```bash title="terminal"
+pnpm exec docs doctor
+pnpm exec docs doctor --agent
+pnpm exec docs doctor agent
+pnpm exec docs doctor --agent --config docs.config.tsx
+```
+
+Expected output:
+
+```txt
+@farming-labs/docs doctor — agent
+
+Score: 87/100 (Agent-ready)
+Framework: nextjs • Entry: docs • Content: app/docs
+Explicit agent-friendly pages: 10/41 pages (24%)
+
+PASS Docs API route (10/10)
+  Found docs API route at app/api/docs/route.ts.
+PASS Agent discovery spec (5/5)
+  Expected discovery endpoints are available through /.well-known/agent.json, /.well-known/agent, and /api/docs?agent=spec.
+WARN Skill document (3/5)
+  No root skill.md found; the framework will serve the generated fallback at /skill.md.
+WARN Explicit page optimization (5/10)
+  10/41 pages define explicit machine-only context (6 agent.md, 5 Agent blocks, 24% of pages).
+```
+
+How to read it:
+
+- the **score** is a quick summary, not the only thing that matters
+- **PASS / WARN / FAIL** lines tell you where the machine-facing surface is strong or thin
+- **Explicit agent-friendly pages** means pages that define extra machine-only context through
+  `agent.md` or `Agent` blocks
+- the **Next steps** section points at the most useful improvements to make next
+
+When to use it:
+
+- before saying a docs site is agent-ready or agent-optimized
+- after changing `docs.config`, route wiring, `.well-known` endpoints, or MCP
+- before opening a PR for docs infrastructure work
+- in CI if you want a quick quality gate for the agent surface
+
+How essential it is:
+
+- not required to run the framework
+- very useful when you care about agent discovery, LLM consumption, MCP, or GEO
+- best thought of as a readiness audit for the machine-facing docs layer
+
 ## Init
 
 ### `init` without `--template`

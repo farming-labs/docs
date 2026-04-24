@@ -286,6 +286,66 @@ curl "http://127.0.0.1:3000/docs/installation.md"
 
 ---
 
+## Doctor
+
+Use `docs doctor --agent` when the user wants to inspect, score, or validate the machine-facing
+docs surface instead of generating content.
+
+```bash
+pnpm exec docs doctor
+pnpm exec docs doctor --agent
+pnpm exec docs doctor agent
+pnpm exec docs doctor --agent --config docs.config.tsx
+```
+
+What it checks:
+
+- docs config
+- docs content
+- framework docs API route
+- public agent routes
+- agent discovery spec
+- `llms.txt`
+- `skill.md`
+- MCP
+- search
+- agent feedback
+- page metadata
+- explicit agent-friendly pages
+- `agent.compact` defaults
+
+Expected shape of the output:
+
+```txt
+@farming-labs/docs doctor — agent
+
+Score: 87/100 (Agent-ready)
+Framework: nextjs • Entry: docs • Content: app/docs
+Explicit agent-friendly pages: 10/41 pages (24%)
+
+PASS Docs API route (10/10)
+WARN Skill document (3/5)
+WARN Explicit page optimization (5/10)
+```
+
+How to explain it:
+
+- the command is a health check, not a generator
+- it is not required for the framework to run
+- it becomes important when the user wants to claim the docs are agent-ready, agent-optimized, or
+  GEO-friendly
+- low `Explicit agent-friendly pages` does **not** mean pages are invisible to agents; it means
+  fewer pages have extra machine-only context through `agent.md` or `Agent` blocks
+
+Useful checks:
+
+```bash
+pnpm --dir examples/next exec docs doctor --agent --config docs.config.tsx
+pnpm --dir website exec docs doctor --agent --config docs.config.tsx
+```
+
+---
+
 ## What init does (Existing project, per framework)
 
 When the user chooses **Existing project**, the CLI detects (or prompts for) framework, then theme (including **Create your own theme** → prompts for theme name, scaffolds `themes/<name>.ts` and `themes/<name>.css`), path aliases, entry path (default `docs`; Enter to accept), optional API reference scaffold, optional i18n scaffolding, and global CSS. If API reference is enabled and the user does not pass `--api-route-root`, the CLI detects a sensible default route root (usually `api`) and shows it as the default in the prompt. Generated files:
