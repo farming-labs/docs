@@ -167,12 +167,7 @@
   #nd-docs-layout aside div.overflow-hidden[data-state] a[data-active] {
     padding-left: calc(2rem + var(--fd-sidebar-item-inset)) !important;
   }
-
-  /* #nd-docs-layout aside button.text-fd-muted-foreground {
-    padding-left: calc(0.625rem + var(--fd-sidebar-item-inset)) !important;
-    padding-right: calc(0.625rem + var(--fd-sidebar-item-inset)) !important;
-  } */
-
+  
   #nd-docs-layout aside button[class*="bg-fd-secondary"] {
     padding-left: calc(1rem + var(--fd-sidebar-item-inset)) !important;
     padding-right: calc(1rem + var(--fd-sidebar-item-inset)) !important;
