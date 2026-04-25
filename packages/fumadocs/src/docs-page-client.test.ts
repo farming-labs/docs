@@ -7,6 +7,10 @@ vi.mock("fumadocs-core/framework", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
+vi.mock("./page-actions.js", () => ({
+  PageActions: () => React.createElement("div", null, "Mock Actions"),
+}));
+
 vi.mock("fumadocs-ui/layouts/docs/page", async () => {
   const ReactModule = await import("react");
 
@@ -37,5 +41,69 @@ describe("DocsPageClient llms.txt footer links", () => {
     expect(html).toContain('href="/llms.txt?lang=en"');
     expect(html).toContain('href="/llms-full.txt?lang=en"');
     expect(html).not.toContain("/api/docs?format=llms");
+  });
+});
+
+describe("DocsPageClient reading time", () => {
+  it("renders the reading-time row when enabled", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        readingTimeEnabled: true,
+        readingTime: 5,
+        children: React.createElement(
+          "article",
+          null,
+          React.createElement("h1", null, "Installation"),
+          React.createElement("p", null, "Docs"),
+        ),
+      }),
+    );
+
+    expect(html).toContain("5 min read");
+  });
+
+  it("renders reading time below below-title page actions", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        copyMarkdown: true,
+        pageActionsPosition: "below-title",
+        readingTimeEnabled: true,
+        readingTime: 5,
+        children: React.createElement(
+          "article",
+          null,
+          React.createElement("h1", null, "Installation"),
+          React.createElement("p", null, "Docs"),
+        ),
+      }),
+    );
+
+    expect(html.indexOf("Mock Actions")).toBeLessThan(html.indexOf("5 min read"));
+  });
+
+  it("renders reading time below above-title page actions and above the page title", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        copyMarkdown: true,
+        pageActionsPosition: "above-title",
+        readingTimeEnabled: true,
+        readingTime: 5,
+        children: React.createElement(
+          "article",
+          null,
+          React.createElement("h1", null, "Installation"),
+          React.createElement("p", null, "Docs"),
+        ),
+      }),
+    );
+
+    expect(html.indexOf("Mock Actions")).toBeLessThan(html.indexOf("5 min read"));
+    expect(html.indexOf("5 min read")).toBeLessThan(html.indexOf("Installation"));
   });
 });

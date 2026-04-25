@@ -94,6 +94,7 @@ export type {
   AIConfig,
   OrderingItem,
   LastUpdatedConfig,
+  ReadingTimeConfig,
   LlmsTxtConfig,
   CodeBlockCopyData,
   DocsFeedbackValue,

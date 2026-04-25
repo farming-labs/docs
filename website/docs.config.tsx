@@ -124,6 +124,10 @@ export default defineDocs({
   },
 
   breadcrumb: { enabled: true },
+  readingTime: {
+    enabled: true,
+    wordsPerMinute: 220,
+  },
 
   pageActions: {
     copyMarkdown: { enabled: true },

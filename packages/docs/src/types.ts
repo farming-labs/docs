@@ -278,6 +278,8 @@ export interface PageFrontmatter {
   description?: string;
   /** Related doc URLs rendered into machine-readable markdown routes and MCP page output. */
   related?: DocsRelatedItem[];
+  /** Override or disable the estimated reading time for this page. */
+  readingTime?: boolean | number;
   tags?: string[];
   icon?: string;
   /** Path to custom OG image for this page (shorthand). Ignored if `openGraph` is set. */
@@ -846,6 +848,27 @@ export interface LastUpdatedConfig {
    * @default "footer"
    */
   position?: "footer" | "below-title";
+}
+
+/**
+ * Configuration for estimated page reading time.
+ *
+ * @example
+ * ```ts
+ * readingTime: { enabled: true, wordsPerMinute: 220 }
+ * ```
+ */
+export interface ReadingTimeConfig {
+  /**
+   * Whether to show the estimated reading time.
+   * @default true
+   */
+  enabled?: boolean;
+  /**
+   * Words-per-minute rate used for the estimate.
+   * @default 220
+   */
+  wordsPerMinute?: number;
 }
 
 /**
@@ -1832,8 +1855,20 @@ export interface DocsConfig {
    * // Hide entirely
    * lastUpdated: false
    * ```
-   */
+  */
   lastUpdated?: boolean | LastUpdatedConfig;
+  /**
+   * Estimated reading time shown at the top of docs pages.
+   *
+   * - `true` or `{ enabled: true }` → show a computed "{n} min read" label
+   * - `false` → hide it entirely
+   *
+   * @example
+   * ```ts
+   * readingTime: { enabled: true, wordsPerMinute: 220 }
+   * ```
+   */
+  readingTime?: boolean | ReadingTimeConfig;
   /**
    * AI-powered "Ask AI" chat for documentation.
    *

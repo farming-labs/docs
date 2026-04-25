@@ -58,6 +58,12 @@ interface DocsPageClientProps {
   lastModifiedMap?: Record<string, string>;
   /** Direct last-modified value override for the current page. */
   lastModified?: string;
+  /** Map of pathname → reading time in minutes */
+  readingTimeMap?: Record<string, number>;
+  /** Direct reading-time override for the current page. */
+  readingTime?: number;
+  /** Whether to show estimated reading time at the top of the page. */
+  readingTimeEnabled?: boolean;
   /** Whether to show "Last updated" at all */
   lastUpdatedEnabled?: boolean;
   /** Where to show the "Last updated" date: "footer" (next to Edit on GitHub) or "below-title" */
@@ -202,6 +208,11 @@ function decodeHashTarget(hash: string): string {
   }
 }
 
+function formatReadingTimeLabel(minutes: number): string {
+  const normalized = Math.max(1, Math.ceil(minutes));
+  return `${normalized} min read`;
+}
+
 function escapeIdSelector(value: string): string {
   if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
     return CSS.escape(value);
@@ -319,6 +330,9 @@ export function DocsPageClient({
   editOnGithubUrl,
   lastModifiedMap,
   lastModified: lastModifiedProp,
+  readingTimeMap,
+  readingTime: readingTimeProp,
+  readingTimeEnabled = false,
   lastUpdatedEnabled = true,
   lastUpdatedPosition = "footer",
   llmsTxtEnabled = false,
@@ -348,6 +362,10 @@ export function DocsPageClient({
     changelogBasePath &&
     (normalizedPath === changelogBasePath || normalizedPath.startsWith(`${changelogBasePath}/`))
   );
+  const resolvedReadingTime =
+    !isChangelogRoute && readingTimeEnabled
+      ? (readingTimeProp ?? readingTimeMap?.[normalizedPath])
+      : undefined;
   const effectiveTocEnabled = isChangelogRoute ? false : tocEnabled;
   const effectiveBreadcrumbEnabled = isChangelogRoute ? false : breadcrumbEnabled;
 
@@ -465,6 +483,12 @@ export function DocsPageClient({
   const showLastUpdatedInFooter = !!lastModified && lastUpdatedPosition === "footer";
   const showFooter =
     !isChangelogRoute && (!!githubFileUrl || showLastUpdatedInFooter || llmsTxtEnabled);
+  const readingTimeBlock =
+    typeof resolvedReadingTime === "number" ? (
+      <div className="fd-page-meta not-prose">
+        <span className="fd-page-meta-item">{formatReadingTimeLabel(resolvedReadingTime)}</span>
+      </div>
+    ) : undefined;
 
   const titleDescription = pageDescription ? (
     <p className="fd-page-description">{pageDescription}</p>
@@ -488,6 +512,7 @@ export function DocsPageClient({
             />
           </div>
         )}
+        {showActionsBelowTitle && readingTimeBlock}
       </div>
     ) : undefined;
 
@@ -556,8 +581,10 @@ export function DocsPageClient({
               githubFileUrl={githubFileUrl}
             />
           </div>
+          {readingTimeBlock}
         </div>
       )}
+      {showActions ? null : readingTimeBlock}
       <DocsBody style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ flex: 1 }}>{decoratedChildren}</div>
         {titleDecorationsPortal}
