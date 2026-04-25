@@ -486,6 +486,9 @@ export function DocsPageClient({
   const readingTimeBlock =
     typeof resolvedReadingTime === "number" ? (
       <div className="fd-page-meta not-prose">
+        <span className="fd-page-meta-dot" aria-hidden="true">
+          ·
+        </span>
         <span className="fd-page-meta-item">{formatReadingTimeLabel(resolvedReadingTime)}</span>
       </div>
     ) : undefined;
