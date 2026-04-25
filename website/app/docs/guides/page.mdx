@@ -1,0 +1,90 @@
+---
+title: "Guides"
+description: "Long-form playbooks for building docs that work well for humans, IDEs, and agents"
+related:
+  - /docs/guides/agent-friendly-docs
+  - /docs/customization/agent-primitive
+  - /docs/customization/llms-txt
+  - /docs/customization/mcp
+  - /docs/cli
+icon: "lightbulb"
+order: 3.75
+---
+
+# Guides
+
+These are the longer, more opinionated walkthroughs in the docs. They sit on top of the reference pages and show how to use `@farming-labs/docs` in a way that feels coherent end to end, not just technically correct.
+
+<div className="not-prose my-8 grid gap-5 border-y border-black/10 py-6 dark:border-white/10 lg:grid-cols-[1.15fr_0.85fr]">
+  <div className="space-y-4">
+    <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-black/45 dark:text-white/45">
+      Editorial Track
+    </p>
+    <h2 className="max-w-3xl text-balance text-3xl font-medium tracking-tight text-black dark:text-white sm:text-[2.4rem]">
+      Write docs once, then make them usable by humans, IDEs, and agents from the same source.
+    </h2>
+    <p className="max-w-3xl text-pretty text-base leading-8 text-black/65 dark:text-white/58">
+      Every guide here is still just MDX inside your docs tree. That means the same pages get the
+      normal docs UI, markdown routes, search indexing, and the machine-readable surfaces you
+      already ship with the framework.
+    </p>
+  </div>
+
+  <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+    <div className="border border-black/10 px-4 py-4 dark:border-white/10">
+      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-black/45 dark:text-white/45">
+        Format
+      </p>
+      <p className="mt-2 text-sm leading-7 text-black/65 dark:text-white/58">
+        Plain `page.mdx`, so every guide remains part of the real docs surface.
+      </p>
+    </div>
+    <div className="border border-black/10 px-4 py-4 dark:border-white/10">
+      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-black/45 dark:text-white/45">
+        Focus
+      </p>
+      <p className="mt-2 text-sm leading-7 text-black/65 dark:text-white/58">
+        Stronger authoring patterns, verification steps, and machine-readable page contracts.
+      </p>
+    </div>
+    <div className="border border-black/10 px-4 py-4 dark:border-white/10">
+      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-black/45 dark:text-white/45">
+        Output
+      </p>
+      <p className="mt-2 text-sm leading-7 text-black/65 dark:text-white/58">
+        Better docs for readers, cleaner markdown for `.md` routes, MCP, and agent workflows.
+      </p>
+    </div>
+  </div>
+</div>
+
+## Featured Guide
+
+<GuideCard
+  href="/docs/guides/agent-friendly-docs"
+  label="Guide 01"
+  metaItems={["Apr 2026", "12 min read"]}
+  featured
+  title="How to Write Agent-Friendly Docs"
+  description="A practical playbook for turning ordinary product docs into pages that agents can discover, read, verify, and recover from without making the human page feel robotic."
+  tags={["agent.md", "<Agent>", "llms.txt", "MCP", "Doctor"]}
+/>
+
+## What These Guides Optimize For
+
+- **One source of truth** - the human page stays canonical unless a route truly needs a dedicated `agent.md`
+- **Better page contracts** - clear descriptions, related pages, verification steps, and failure states
+- **Useful machine context** - additive `Agent` blocks and machine-readable routes instead of HTML scraping
+- **Operational docs** - pages that help an agent complete a task, not just describe a feature
+
+<Callout type="info" title="Guides are just docs pages">
+  Put them under `app/docs/guides/.../page.mdx` and they automatically inherit the docs layout,
+  `.md` routes, search, MCP readability, and page actions. You do not need a separate blog engine
+  or a parallel content system for long-form writing.
+</Callout>
+
+## Coming Next
+
+- An implementation checklist for launching an agent-optimized docs site
+- A page-level playbook for when to use `Agent` blocks versus sibling `agent.md`
+- A docs operations guide for `docs doctor --agent`, compaction, and ongoing audits

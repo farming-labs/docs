@@ -32,6 +32,7 @@ import {
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 import { Callout } from "@/components/ui/callout";
 import { DocsMcpAccess } from "@/components/ui/docs-mcp-access";
+import { GuideCard } from "@/components/ui/guide-card";
 import { submitDocsFeedback } from "@/lib/submit-docs-feedback";
 
 const algoliaAppId = process.env.ALGOLIA_APP_ID;
@@ -357,5 +358,6 @@ export default defineDocs({
   components: {
     Callout,
     DocsMcpAccess,
+    GuideCard,
   },
 });

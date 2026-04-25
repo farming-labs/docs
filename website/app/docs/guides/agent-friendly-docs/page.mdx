@@ -1,0 +1,295 @@
+---
+title: "How to Write Agent-Friendly Docs"
+description: "A practical playbook for writing documentation that reads well for humans while still giving agents enough structure to implement, verify, and recover"
+related:
+  - /docs/guides
+  - /docs/customization/agent-primitive
+  - /docs/customization/llms-txt
+  - /docs/customization/mcp
+  - /docs/configuration
+  - /docs/cli
+order: 1
+---
+
+# How to Write Agent-Friendly Docs
+
+<div className="not-prose mb-8 border-y border-black/10 py-6 dark:border-white/10">
+  <div className="flex flex-wrap items-center gap-y-2 font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
+    <span>{"Guide 01"}</span>
+    <span aria-hidden="true" className="mx-2 text-black/30 dark:text-white/28">
+      {"·"}
+    </span>
+    <span>{"Apr 2026"}</span>
+    <span aria-hidden="true" className="mx-2 text-black/30 dark:text-white/28">
+      {"·"}
+    </span>
+    <span>{"12 min read"}</span>
+    <span aria-hidden="true" className="mx-2 text-black/30 dark:text-white/28">
+      {"·"}
+    </span>
+    <span>{"@farming-labs/docs"}</span>
+  </div>
+  <p className="mt-4 max-w-3xl text-pretty text-[1.04rem] leading-8 text-black/68 dark:text-white/58">
+    {
+      "A good agent-friendly docs site is not one that stuffs in extra keywords or repeats every fact twice. It is one that lets a model discover the right page, understand what matters, verify the result, and recover when something breaks, without turning the human page into machine sludge."
+    }
+  </p>
+</div>
+
+<Agent>
+When authoring agent-friendly docs with `@farming-labs/docs`, prioritize these in order:
+
+1. clear page frontmatter with `title`, `description`, and `related`
+2. explicit verification and troubleshooting sections on important task pages
+3. additive `<Agent>` blocks for machine-only hints when the human page is still canonical
+4. sibling `agent.md` only when the machine-readable page needs a full rewrite
+5. machine surfaces like `.md`, `llms.txt`, MCP, and the agent discovery spec
+6. validation with `docs doctor --agent`, then compaction with `docs agent compact` where helpful
+</Agent>
+
+## Start With The Human Page
+
+The first mistake teams make is trying to write for crawlers before they write for users. That
+usually produces flat, repetitive pages that feel unnatural in the UI and still leave agents with
+too much ambiguity.
+
+Start with a page a human can actually follow:
+
+- what this page is for
+- when to use it
+- the exact steps
+- what success looks like
+- what usually goes wrong
+
+Once that page is solid, add the machine layer on top. `@farming-labs/docs` is built for that flow.
+The page UI stays human-first, while the machine-readable routes can include extra structure without
+polluting the visible article.
+
+## Give Every Important Page A Contract
+
+Before you worry about `agent.md`, make sure the page already tells an agent what kind of page it
+is. For task pages, that means good frontmatter and a shape the runtime can expose consistently
+through `.md` routes and MCP.
+
+```md title="page.mdx frontmatter"
+---
+title: "Installation"
+description: "Install @farming-labs/docs in an existing app"
+related:
+  - /docs/configuration
+  - /docs/customization/agent-primitive
+  - /docs/customization/mcp
+---
+```
+
+That alone gives the machine-readable route a stronger entry point:
+
+- `Description:` tells the model what problem the page solves
+- `Related:` gives it nearby pages without scraping the sidebar
+- the normal body remains the human source of truth
+
+If a page is important enough to unblock implementation, it should also contain:
+
+1. a short purpose statement
+2. exact commands or file edits
+3. a verification section
+4. a troubleshooting section keyed to symptoms
+
+## Use `Agent` Blocks For Machine-Only Hints
+
+When the human page is still correct but agents need extra steering, add an `Agent` block. It stays
+hidden in the normal docs UI and appears in the machine-readable layer.
+
+```mdx title="page.mdx"
+<Agent>
+Use this page when the task is "enable docs in an existing project".
+
+Verification:
+- run `pnpm dev`
+- open `/docs.md`
+- confirm the page renders and the markdown route responds
+
+If `/docs.md` returns 404, check the docs route wiring before editing content.
+</Agent>
+```
+
+This is the sweet spot for most pages:
+
+- humans keep the full narrative page
+- agents get sharper instructions
+- you avoid maintaining two completely separate documents
+
+<Callout type="tip" title="Keep Agent blocks additive">
+  Treat `<Agent>` as the place for implementation hints, verification steps, and route-specific
+  behavior that would feel noisy in the visible article. Do not duplicate the whole page there.
+</Callout>
+
+## Use `agent.md` When The Machine Page Needs A Real Split
+
+Some pages eventually need a different machine-readable contract than the human page can provide. A
+long conceptual article, for example, may still need a short operational document for agents.
+
+That is when a sibling `agent.md` becomes the right tool.
+
+```md title="agent.md"
+# Installation
+
+Description: Install `@farming-labs/docs` in an existing project
+Related: /docs/configuration, /docs/customization/mcp
+
+## Steps
+
+1. Run `pnpm dlx @farming-labs/docs init`
+2. Choose the detected framework
+3. Pick a theme
+4. Confirm the generated docs route exists
+
+## Verification
+
+- `GET /docs.md` returns `200`
+- `GET /.well-known/agent.json` returns `200`
+```
+
+Once `agent.md` exists, it becomes the source for:
+
+- `{page}.md`
+- `GET /api/docs?format=markdown&path=<slug>`
+- MCP `read_page`
+
+So use it when that stronger machine contract is genuinely worth owning.
+
+## Ship The Discovery Layer Too
+
+Great page writing helps, but agents still need the routes that tell them how to use your site.
+With `@farming-labs/docs`, the goal is to expose a compact discovery layer around the docs tree.
+
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  llmsTxt: {
+    enabled: true,
+    baseUrl: "https://docs.example.com",
+  },
+  mcp: {
+    enabled: true,
+  },
+  feedback: {
+    agent: {
+      enabled: true,
+    },
+  },
+});
+```
+
+That gives agents a much better workflow:
+
+- `/.well-known/agent.json` tells them which routes exist
+- `/llms.txt` and `/llms-full.txt` expose site-level machine summaries
+- `{page}.md` gives them clean page markdown
+- MCP lets tool-enabled agents search and read docs semantically
+
+The big win is that the discovery layer comes from the same docs runtime instead of a parallel
+system you have to keep in sync by hand.
+
+## Write Verification Like You Expect Automation
+
+If you want agents to succeed, write setup pages like someone will actually run them without
+guessing. The strongest pattern is:
+
+1. do the thing
+2. check the exact route or file that proves it worked
+3. name the most likely failure mode
+
+Example:
+
+```md title="verification block"
+## Verification
+
+- Run `pnpm dev`
+- Open `http://localhost:3000/docs`
+- Fetch `http://localhost:3000/docs.md`
+- Fetch `http://localhost:3000/.well-known/agent.json`
+
+## Troubleshooting
+
+- If `/docs.md` returns `404`, check the docs route wiring.
+- If `/.well-known/agent.json` is missing, confirm the docs API route is mounted.
+- If the page renders but search is empty, verify the search provider config.
+```
+
+This is the difference between a page that is merely informative and a page that is actually
+operational.
+
+## Use Page Actions As A Human-To-Agent Bridge
+
+Agent-friendly docs should also help humans move between the normal page and the machine layer.
+That is where page actions matter.
+
+On this framework, the best pair is usually:
+
+- **Copy Markdown** for a clean page snapshot
+- **Open in LLM** for a direct handoff into ChatGPT, Claude, Cursor, or another tool
+
+Those features do not replace `.md` routes or MCP, but they make the same page contract visible to
+humans too. When the docs team uses the same flows agents use, bad page contracts become obvious
+much faster.
+
+## Audit The Site, Not Just The Page
+
+After writing a few strong pages, run the doctor command and treat it as an ongoing quality loop.
+
+```bash title="terminal"
+pnpm exec docs doctor --agent
+```
+
+What you want to see improve over time:
+
+- discovery routes passing
+- machine surfaces enabled
+- metadata quality rising
+- **Explicit agent-friendly pages** increasing on the pages that matter most
+
+If a team wants to say their docs are agent-optimized, this kind of audit should be part of the
+definition, not an afterthought.
+
+## Compact Only After The Contract Is Good
+
+`docs agent compact` is useful, but it should come after the page is already worth compressing.
+Compaction is a token optimization step, not a substitute for clear structure.
+
+```bash title="terminal"
+pnpm exec docs agent compact guides/agent-friendly-docs
+pnpm exec docs agent compact --all
+```
+
+Use it when:
+
+- pages are already accurate
+- the machine layer is too verbose
+- you want tighter `agent.md` files for `.md`, MCP, and API consumers
+
+Do not use compaction to paper over vague docs. Shorter confusion is still confusion.
+
+## A Practical Checklist
+
+Before calling a page agent-friendly, ask:
+
+- does the page clearly state what it is for?
+- does frontmatter include `description` and `related`?
+- does it include verification and troubleshooting?
+- should this page get an `Agent` block?
+- does it need a dedicated `agent.md`, or is the human page still canonical?
+- can an agent find it through `.md`, `llms.txt`, MCP, and the discovery spec?
+
+If the answer is yes across the important task pages, you are not just publishing docs that agents
+can technically crawl. You are publishing docs they can actually work with.
+
+## Read Next
+
+- [Agent Primitive](/docs/customization/agent-primitive) for `Agent` blocks and sibling `agent.md`
+- [llms.txt](/docs/customization/llms-txt) for the discovery layer
+- [MCP Server](/docs/customization/mcp) for tool-enabled retrieval
+- [CLI](/docs/cli#doctor) for `docs doctor --agent`
+- [Configuration](/docs/configuration) for the full config surface

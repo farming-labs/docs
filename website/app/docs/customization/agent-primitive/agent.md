@@ -47,10 +47,10 @@ pnpm exec docs agent compact --all
 - API route: `/api/docs?format=markdown&path=customization/agent-primitive`
 - MCP read target: `/docs/customization/agent-primitive`
 
-After adding or changing page-level primitives, see the [CLI docs](/docs/cli.md) and the `Doctor`
-section for the audit workflow. Use it to confirm the machine-facing layer is actually
-discoverable and to watch the `Explicit agent-friendly pages` metric improve as more routes gain
-`<Agent>` blocks or sibling `agent.md` files.
+see `/docs/cli.md` anAfter adding or changing page-level primitives, see `/docs/cli.md` and the `Doctor` section for
+the audit workflow. Use it to confirm the machine-facing layer is actually discoverable and to
+watch the `Explicit agent-friendly pages` metric improve as more routes gain `<Agent>` blocks or
+sibling `agent.md` files.
 
 ## Let Agents Discover The Spec
 
