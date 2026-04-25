@@ -1855,7 +1855,7 @@ export interface DocsConfig {
    * // Hide entirely
    * lastUpdated: false
    * ```
-  */
+   */
   lastUpdated?: boolean | LastUpdatedConfig;
   /**
    * Estimated reading time shown at the top of docs pages.
