@@ -186,14 +186,14 @@ ${pc.bold("@farming-labs/docs doctor")}
 ${pc.dim("Usage:")}
   pnpm exec docs doctor
   pnpm exec docs doctor --agent
-  pnpm exec docs doctor --human
+  pnpm exec docs doctor --site
   pnpm exec docs doctor agent
-  pnpm exec docs doctor human
+  pnpm exec docs doctor site
 
 ${pc.dim("Options:")}
   ${pc.cyan("--agent")}            Score agent-readiness for the current docs app (default)
-  ${pc.cyan("--human")}            Score reader-facing docs quality for the current docs app
-  ${pc.cyan("--site")}             Alias for ${pc.cyan("--human")}
+  ${pc.cyan("--site")}             Score reader-facing docs quality for the current docs app
+  ${pc.cyan("--human")}            Alias for ${pc.cyan("--site")}
   ${pc.cyan("--config <path>")}    Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
   ${pc.cyan("-h, --help")}         Show this help message
 `);
@@ -1516,7 +1516,7 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
 }
 
 export function printHumanDoctorReport(report: HumanDoctorReport) {
-  console.log(`${pc.bold("@farming-labs/docs doctor")} ${pc.dim("—")} ${pc.bold("human")}`);
+  console.log(`${pc.bold("@farming-labs/docs doctor")} ${pc.dim("—")} ${pc.bold("site")}`);
   console.log();
   console.log(
     `${pc.bold("Score:")} ${pc.cyan(`${report.score}/${report.maxScore}`)} ${pc.dim(`(${report.grade})`)}`,

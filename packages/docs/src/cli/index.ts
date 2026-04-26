@@ -189,10 +189,11 @@ ${pc.dim("Options for agent compact:")}
 ${pc.dim("Options for doctor:")}
   ${pc.cyan("doctor")}                              Score the current docs app for agent-readiness
   ${pc.cyan("doctor --agent")}                      Same as ${pc.cyan("doctor")}; explicit agent scoring mode
-  ${pc.cyan("doctor --human")}                      Score the current docs app for reader-facing docs quality
-  ${pc.cyan("doctor --site")}                       Alias for ${pc.cyan("doctor --human")}
+  ${pc.cyan("doctor --site")}                       Score the current docs app for reader-facing docs quality
+  ${pc.cyan("doctor --human")}                      Alias for ${pc.cyan("doctor --site")}
   ${pc.cyan("doctor agent")}                        Subcommand alias for agent scoring
-  ${pc.cyan("doctor human")}                        Subcommand alias for reader-facing scoring
+  ${pc.cyan("doctor site")}                         Subcommand alias for reader-facing scoring
+  ${pc.cyan("doctor human")}                        Legacy alias for reader-facing scoring
   ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
 
 ${pc.dim("Options for search sync:")}

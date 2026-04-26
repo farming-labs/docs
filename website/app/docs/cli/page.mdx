@@ -291,7 +291,7 @@ for when you should use compaction instead of writing `agent.md` by hand.
 Use `docs doctor --agent` when you want a quick health check for the machine-facing side of the
 docs site.
 
-Use `docs doctor --human` when you want a reader-facing audit of navigation, descriptions,
+Use `docs doctor --site` when you want a reader-facing audit of navigation, descriptions,
 structure, trust signals, feedback, and reading-time cues.
 
 This command does not generate files. It inspects the current project and scores how ready the docs
@@ -318,10 +318,9 @@ Common forms:
 ```bash title="terminal"
 pnpm exec docs doctor
 pnpm exec docs doctor --agent
-pnpm exec docs doctor --human
 pnpm exec docs doctor --site
 pnpm exec docs doctor agent
-pnpm exec docs doctor human
+pnpm exec docs doctor site
 pnpm exec docs doctor --agent --config docs.config.tsx
 ```
 
@@ -347,7 +346,7 @@ WARN Explicit page optimization (5/10)
 _Sample abbreviated for brevity. Full runs can also include a `Next steps` section with the most
 useful follow-up improvements._
 
-Reader-facing runs use the same overall shape, but print `doctor — human` and score:
+Reader-facing runs use the same overall shape, but print `doctor — site` and score:
 
 - docs config resolution
 - docs content discovery
