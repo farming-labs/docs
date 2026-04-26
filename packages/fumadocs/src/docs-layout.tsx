@@ -23,7 +23,10 @@ import type {
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
-import { resolveReadingTimeFromContent, resolveReadingTimeOptions } from "./reading-time.js";
+import {
+  resolvePageReadingTime,
+  resolveReadingTimeOptions,
+} from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
@@ -489,7 +492,10 @@ function buildDescriptionMap(config: DocsConfig, ctx: DocsLocaleContext): Record
 function buildReadingTimeMap(
   config: DocsConfig,
   ctx: DocsLocaleContext,
-  wordsPerMinute: number,
+  options: {
+    enabledByDefault: boolean;
+    wordsPerMinute: number;
+  },
 ): Record<string, number> {
   const docsDir = ctx.docsDir;
   const map: Record<string, number> = {};
@@ -504,13 +510,13 @@ function buildReadingTimeMap(
       const source = fs.readFileSync(pagePath, "utf-8");
       const { data, content } = matter(source);
       const humanContent = resolveDocsAgentMdxContent(content, "human");
-      const minutes = resolveReadingTimeFromContent(
+      const minutes = resolvePageReadingTime(
         data as PageFrontmatter,
         humanContent,
-        wordsPerMinute,
+        options,
       );
 
-      if (minutes !== null) {
+      if (typeof minutes === "number") {
         const url =
           slugParts.length === 0 ? `/${ctx.entryPath}` : `/${ctx.entryPath}/${slugParts.join("/")}`;
         map[url] = minutes;
@@ -917,9 +923,10 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
 
   // Build description map from frontmatter
   const descriptionMap = buildDescriptionMap(config, localeContext);
-  const readingTimeMap = readingTimeEnabled
-    ? buildReadingTimeMap(config, localeContext, readingTimeWordsPerMinute)
-    : {};
+  const readingTimeMap = buildReadingTimeMap(config, localeContext, {
+    enabledByDefault: readingTimeEnabled,
+    wordsPerMinute: readingTimeWordsPerMinute,
+  });
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     const tree = buildTree(config, localeContext, !!sidebarFlat);

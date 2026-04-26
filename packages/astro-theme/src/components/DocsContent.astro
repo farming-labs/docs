@@ -1,5 +1,4 @@
 ---
-import { resolveReadingTimeOptions } from "@farming-labs/docs";
 import DocsPage from "./DocsPage.astro";
 
 const { data, config = null } = Astro.props;
@@ -101,9 +100,8 @@ const lastUpdatedConfig = (() => {
 
 const showLastUpdatedInFooter = !!data.lastModified && lastUpdatedConfig.enabled && lastUpdatedConfig.position === "footer";
 const showLastUpdatedBelowTitle = !!data.lastModified && lastUpdatedConfig.enabled && lastUpdatedConfig.position === "below-title";
-const readingTimeConfig = resolveReadingTimeOptions(config?.readingTime as never);
 const readingTimeValue =
-  readingTimeConfig.enabled && typeof data.readingTime === "number"
+  typeof data.readingTime === "number"
     ? Math.max(1, Math.ceil(data.readingTime))
     : null;
 const readingTimeLabel = readingTimeValue ? `${readingTimeValue} min read` : null;

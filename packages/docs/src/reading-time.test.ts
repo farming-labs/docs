@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   estimateReadingTimeMinutes,
   resolveReadingTimeFromContent,
+  resolvePageReadingTime,
   resolveReadingTimeFromSource,
   resolveReadingTimeOptions,
 } from "./reading-time.js";
@@ -67,5 +68,24 @@ describe("reading time helpers", () => {
     );
 
     expect(minutes).toBe(3);
+  });
+
+  it("allows per-page overrides to opt into reading time even when disabled globally", () => {
+    expect(
+      resolvePageReadingTime(
+        { readingTime: 8, title: "Guide" },
+        "Short page.",
+        { enabledByDefault: false, wordsPerMinute: 220 },
+      ),
+    ).toBe(8);
+  });
+
+  it("keeps pages without overrides hidden when reading time is disabled globally", () => {
+    expect(
+      resolvePageReadingTime({ title: "Guide" }, "Short page.", {
+        enabledByDefault: false,
+        wordsPerMinute: 220,
+      }),
+    ).toBeUndefined();
   });
 });

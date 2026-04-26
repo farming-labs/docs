@@ -17,6 +17,7 @@ export { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "./i18n.js";
 export { resolveTitle, resolveOGImage, buildPageOpenGraph, buildPageTwitter } from "./metadata.js";
 export {
   estimateReadingTimeMinutes,
+  resolvePageReadingTime,
   resolveReadingTimeFromContent,
   resolveReadingTimeFromSource,
   resolveReadingTimeOptions,
