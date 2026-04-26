@@ -128,6 +128,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `components`  | `Record<string, Component>`    | —               | Custom MDX components and built-in overrides like `HoverLink` |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
 | `feedback`    | `boolean \| FeedbackConfig`    | `false`         | Human page feedback UI plus optional agent feedback endpoints |
+| `readingTime` | `boolean \| ReadingTimeConfig` | `false`         | Opt-in estimated read-time label with optional per-page overrides |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
 | `search`      | `boolean \| DocsSearchConfig`  | `true`          | Built-in simple search, Typesense, Algolia, or a custom adapter |
@@ -1167,6 +1168,53 @@ curl -X POST "http://127.0.0.1:3000/api/docs/agent/feedback" \
   -H "content-type: application/json" \
   -d '{"payload":{"task":"demo","outcome":"implemented"}}'
 ```
+
+## Reading Time
+
+Use `readingTime` when you want an estimated label like `5 min read` on docs pages.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  readingTime: {
+    enabled: true,
+    wordsPerMinute: 220,
+  },
+});
+```
+
+Default behavior:
+
+- the feature is **opt-in**
+- the estimate uses `220` words per minute unless you override it
+- fenced code blocks, inline code, links, images, and raw HTML are stripped before counting words
+- changelog pages do not render the reading-time label
+
+Per-page overrides live in frontmatter:
+
+```md title="page.mdx"
+---
+title: "Installation"
+description: "Get up and running"
+readingTime: false
+---
+```
+
+You can also pin an exact number:
+
+```md title="page.mdx"
+---
+title: "Long Guide"
+readingTime: 12
+---
+```
+
+<Callout type="info" title="Placement with page actions">
+  Reading time follows the same title-area slot as page actions. With
+  `pageActions.position: "above-title"`, it renders directly under the action row. With
+  `pageActions.position: "below-title"`, it stays grouped in the below-title metadata area,
+  including when page actions are disabled but the slot is still configured.
+</Callout>
 
 ## Page Actions
 
