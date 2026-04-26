@@ -356,10 +356,11 @@ export function DocsPageClient({
     changelogBasePath &&
     (normalizedPath === changelogBasePath || normalizedPath.startsWith(`${changelogBasePath}/`))
   );
-  const resolvedReadingTime =
-    !isChangelogRoute
-      ? (readingTimeProp !== undefined ? readingTimeProp : readingTimeMap?.[normalizedPath])
-      : undefined;
+  const resolvedReadingTime = !isChangelogRoute
+    ? readingTimeProp !== undefined
+      ? readingTimeProp
+      : readingTimeMap?.[normalizedPath]
+    : undefined;
   const effectiveTocEnabled = isChangelogRoute ? false : tocEnabled;
   const effectiveBreadcrumbEnabled = isChangelogRoute ? false : breadcrumbEnabled;
 

@@ -246,16 +246,7 @@ describe("createDocsLayout pageActions", () => {
     mkdirSync(join(tmpDir, "app", "docs", "guide"), { recursive: true });
     writeFileSync(
       join(tmpDir, "app", "docs", "guide", "page.mdx"),
-      [
-        "---",
-        "title: Guide",
-        "readingTime: 8",
-        "---",
-        "",
-        "# Guide",
-        "",
-        "Short body.",
-      ].join("\n"),
+      ["---", "title: Guide", "readingTime: 8", "---", "", "# Guide", "", "Short body."].join("\n"),
       "utf-8",
     );
 

@@ -72,11 +72,10 @@ describe("reading time helpers", () => {
 
   it("allows per-page overrides to opt into reading time even when disabled globally", () => {
     expect(
-      resolvePageReadingTime(
-        { readingTime: 8, title: "Guide" },
-        "Short page.",
-        { enabledByDefault: false, wordsPerMinute: 220 },
-      ),
+      resolvePageReadingTime({ readingTime: 8, title: "Guide" }, "Short page.", {
+        enabledByDefault: false,
+        wordsPerMinute: 220,
+      }),
     ).toBe(8);
   });
 

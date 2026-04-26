@@ -23,10 +23,7 @@ import type {
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
-import {
-  resolvePageReadingTime,
-  resolveReadingTimeOptions,
-} from "./reading-time.js";
+import { resolvePageReadingTime, resolveReadingTimeOptions } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
@@ -510,11 +507,7 @@ function buildReadingTimeMap(
       const source = fs.readFileSync(pagePath, "utf-8");
       const { data, content } = matter(source);
       const humanContent = resolveDocsAgentMdxContent(content, "human");
-      const minutes = resolvePageReadingTime(
-        data as PageFrontmatter,
-        humanContent,
-        options,
-      );
+      const minutes = resolvePageReadingTime(data as PageFrontmatter, humanContent, options);
 
       if (typeof minutes === "number") {
         const url =
