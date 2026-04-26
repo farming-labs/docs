@@ -177,6 +177,55 @@ describe("createDocsLayout pageActions", () => {
     expect(props?.openDocs).toBe(false);
   });
 
+  it("keeps reading time disabled when the config is unconfigured", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.readingTimeEnabled).toBe(false);
+    expect(props?.readingTimeMap).toEqual({});
+  });
+
+  it("passes computed reading time through to DocsPageClient when enabled", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "installation"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "installation", "page.mdx"),
+      [
+        "---",
+        "title: Installation",
+        "---",
+        "",
+        "# Installation",
+        "",
+        "This page explains how to install the framework in an existing app.",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({
+      entry: "docs",
+      readingTime: { enabled: true, wordsPerMinute: 200 },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.readingTimeEnabled).toBe(true);
+    expect(props?.readingTimeMap).toMatchObject({
+      "/docs": 1,
+      "/docs/installation": 1,
+    });
+  });
+
   it("adds changelog entries as a dedicated sidebar section under the docs route with a separator above it", () => {
     mkdirSync(join(tmpDir, "app", "docs", "changelog", "2026-04-15"), { recursive: true });
     mkdirSync(join(tmpDir, "app", "docs", "changelog", "2026-04-03"), { recursive: true });

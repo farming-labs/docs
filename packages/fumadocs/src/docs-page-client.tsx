@@ -58,6 +58,12 @@ interface DocsPageClientProps {
   lastModifiedMap?: Record<string, string>;
   /** Direct last-modified value override for the current page. */
   lastModified?: string;
+  /** Map of pathname → reading time in minutes */
+  readingTimeMap?: Record<string, number>;
+  /** Direct reading-time override for the current page. */
+  readingTime?: number;
+  /** Whether to show estimated reading time at the top of the page. */
+  readingTimeEnabled?: boolean;
   /** Whether to show "Last updated" at all */
   lastUpdatedEnabled?: boolean;
   /** Where to show the "Last updated" date: "footer" (next to Edit on GitHub) or "below-title" */
@@ -202,6 +208,11 @@ function decodeHashTarget(hash: string): string {
   }
 }
 
+function formatReadingTimeLabel(minutes: number): string {
+  const normalized = Math.max(1, Math.ceil(minutes));
+  return `${normalized} min read`;
+}
+
 function escapeIdSelector(value: string): string {
   if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
     return CSS.escape(value);
@@ -233,7 +244,7 @@ function injectTitleDecorations(
 
   let inserted = false;
 
-  const extras = [description, belowTitle].filter(Boolean);
+  const extras = Children.toArray([description, belowTitle].filter(Boolean));
   if (extras.length === 0) return { node, inserted: false };
 
   function visit(current: ReactNode): ReactNode {
@@ -251,7 +262,7 @@ function injectTitleDecorations(
 
     if (typeof current.type === "string" && current.type === "h1") {
       inserted = true;
-      return [current, ...extras];
+      return Children.toArray([current, ...extras]);
     }
 
     const childProps = (current.props as { children?: ReactNode } | null) ?? null;
@@ -292,12 +303,7 @@ function TitleDecorations({
 }) {
   if (!description && !belowTitle) return null;
 
-  return (
-    <>
-      {description}
-      {belowTitle}
-    </>
-  );
+  return <>{Children.toArray([description, belowTitle].filter(Boolean))}</>;
 }
 
 export function DocsPageClient({
@@ -319,6 +325,9 @@ export function DocsPageClient({
   editOnGithubUrl,
   lastModifiedMap,
   lastModified: lastModifiedProp,
+  readingTimeMap,
+  readingTime: readingTimeProp,
+  readingTimeEnabled = false,
   lastUpdatedEnabled = true,
   lastUpdatedPosition = "footer",
   llmsTxtEnabled = false,
@@ -348,6 +357,10 @@ export function DocsPageClient({
     changelogBasePath &&
     (normalizedPath === changelogBasePath || normalizedPath.startsWith(`${changelogBasePath}/`))
   );
+  const resolvedReadingTime =
+    !isChangelogRoute && readingTimeEnabled
+      ? (readingTimeProp ?? readingTimeMap?.[normalizedPath])
+      : undefined;
   const effectiveTocEnabled = isChangelogRoute ? false : tocEnabled;
   const effectiveBreadcrumbEnabled = isChangelogRoute ? false : breadcrumbEnabled;
 
@@ -465,13 +478,30 @@ export function DocsPageClient({
   const showLastUpdatedInFooter = !!lastModified && lastUpdatedPosition === "footer";
   const showFooter =
     !isChangelogRoute && (!!githubFileUrl || showLastUpdatedInFooter || llmsTxtEnabled);
+  const readingTimeBlock =
+    typeof resolvedReadingTime === "number" ? (
+      <div className="fd-page-meta not-prose">
+        <span className="fd-page-meta-dot" aria-hidden="true">
+          ·
+        </span>
+        <span className="fd-page-meta-item">{formatReadingTimeLabel(resolvedReadingTime)}</span>
+      </div>
+    ) : undefined;
 
   const titleDescription = pageDescription ? (
     <p className="fd-page-description">{pageDescription}</p>
   ) : undefined;
 
+  const showReadingTimeAboveTitle = !!readingTimeBlock && showActionsAboveTitle;
+  const showReadingTimeBelowTitle =
+    !!readingTimeBlock &&
+    !showReadingTimeAboveTitle &&
+    (showActionsBelowTitle ||
+      showLastUpdatedBelowTitle ||
+      (!showActions && pageActionsPosition === "below-title"));
+
   const belowTitleBlock =
-    showLastUpdatedBelowTitle || showActionsBelowTitle ? (
+    showLastUpdatedBelowTitle || showActionsBelowTitle || showReadingTimeBelowTitle ? (
       <div className="fd-below-title-block not-prose">
         {showLastUpdatedBelowTitle && (
           <p className="fd-last-updated-inline">Last updated {lastModified}</p>
@@ -488,6 +518,7 @@ export function DocsPageClient({
             />
           </div>
         )}
+        {showReadingTimeBelowTitle && readingTimeBlock}
       </div>
     ) : undefined;
 
@@ -556,8 +587,10 @@ export function DocsPageClient({
               githubFileUrl={githubFileUrl}
             />
           </div>
+          {readingTimeBlock}
         </div>
       )}
+      {!showReadingTimeAboveTitle && !showReadingTimeBelowTitle ? readingTimeBlock : null}
       <DocsBody style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ flex: 1 }}>{decoratedChildren}</div>
         {titleDecorationsPortal}

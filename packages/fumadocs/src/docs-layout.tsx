@@ -18,6 +18,7 @@ import type {
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
+import { resolveReadingTimeFromSource } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
@@ -480,6 +481,43 @@ function buildDescriptionMap(config: DocsConfig, ctx: DocsLocaleContext): Record
   return map;
 }
 
+function buildReadingTimeMap(
+  config: DocsConfig,
+  ctx: DocsLocaleContext,
+  wordsPerMinute: number,
+): Record<string, number> {
+  const docsDir = ctx.docsDir;
+  const map: Record<string, number> = {};
+  const excludedDirs = getExcludedDocsDirs(config, ctx);
+
+  function scan(dir: string, slugParts: string[]) {
+    if (!fs.existsSync(dir)) return;
+    if (isExcludedDir(dir, excludedDirs)) return;
+
+    const pagePath = path.join(dir, "page.mdx");
+    if (fs.existsSync(pagePath)) {
+      const source = fs.readFileSync(pagePath, "utf-8");
+      const minutes = resolveReadingTimeFromSource(source, wordsPerMinute);
+
+      if (minutes !== null) {
+        const url =
+          slugParts.length === 0 ? `/${ctx.entryPath}` : `/${ctx.entryPath}/${slugParts.join("/")}`;
+        map[url] = minutes;
+      }
+    }
+
+    for (const name of fs.readdirSync(dir)) {
+      const full = path.join(dir, name);
+      if (fs.statSync(full).isDirectory()) {
+        scan(full, [...slugParts, name]);
+      }
+    }
+  }
+
+  scan(docsDir, []);
+  return map;
+}
+
 // ─── createDocsMetadata ──────────────────────────────────────────────
 
 /**
@@ -789,6 +827,13 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
     (typeof lastUpdatedRaw !== "object" || lastUpdatedRaw.enabled !== false);
   const lastUpdatedPosition: "footer" | "below-title" =
     typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
+  const readingTimeRaw = config.readingTime;
+  const readingTimeEnabled =
+    readingTimeRaw !== undefined &&
+    readingTimeRaw !== false &&
+    (typeof readingTimeRaw !== "object" || readingTimeRaw.enabled !== false);
+  const readingTimeWordsPerMinute =
+    typeof readingTimeRaw === "object" ? (readingTimeRaw.wordsPerMinute ?? 220) : 220;
 
   // llms.txt config
   const llmsTxtEnabled = resolveBool(config.llmsTxt);
@@ -865,6 +910,9 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
 
   // Build description map from frontmatter
   const descriptionMap = buildDescriptionMap(config, localeContext);
+  const readingTimeMap = readingTimeEnabled
+    ? buildReadingTimeMap(config, localeContext, readingTimeWordsPerMinute)
+    : {};
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     const tree = buildTree(config, localeContext, !!sidebarFlat);
@@ -958,6 +1006,8 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
               lastModifiedMap={lastModifiedMap}
               lastUpdatedEnabled={lastUpdatedEnabled}
               lastUpdatedPosition={lastUpdatedPosition}
+              readingTimeEnabled={readingTimeEnabled}
+              readingTimeMap={readingTimeMap}
               llmsTxtEnabled={llmsTxtEnabled}
               descriptionMap={descriptionMap}
               feedbackEnabled={feedbackConfig.enabled}
