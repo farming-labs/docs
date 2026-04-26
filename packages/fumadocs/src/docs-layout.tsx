@@ -920,8 +920,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
     enabledByDefault: readingTimeEnabledByDefault,
     wordsPerMinute: readingTimeWordsPerMinute,
   });
-  const readingTimeEnabled =
-    readingTimeEnabledByDefault || Object.keys(readingTimeMap).length > 0;
+  const readingTimeEnabled = readingTimeEnabledByDefault || Object.keys(readingTimeMap).length > 0;
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     const tree = buildTree(config, localeContext, !!sidebarFlat);
