@@ -177,6 +177,21 @@ describe("createDocsLayout pageActions", () => {
     expect(props?.openDocs).toBe(false);
   });
 
+  it("keeps reading time disabled when the config is unconfigured", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.readingTimeEnabled).toBe(false);
+    expect(props?.readingTimeMap).toEqual({});
+  });
+
   it("passes computed reading time through to DocsPageClient when enabled", () => {
     mkdirSync(join(tmpDir, "app", "docs", "installation"), { recursive: true });
     writeFileSync(

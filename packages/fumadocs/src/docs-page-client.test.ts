@@ -82,7 +82,12 @@ describe("DocsPageClient reading time", () => {
       }),
     );
 
-    expect(html.indexOf("Mock Actions")).toBeLessThan(html.indexOf("5 min read"));
+    const actionsIndex = html.indexOf("Mock Actions");
+    const readingTimeIndex = html.indexOf("5 min read");
+
+    expect(actionsIndex).toBeGreaterThanOrEqual(0);
+    expect(readingTimeIndex).toBeGreaterThanOrEqual(0);
+    expect(actionsIndex).toBeLessThan(readingTimeIndex);
   });
 
   it("renders reading time below above-title page actions and above the page title", () => {
@@ -103,7 +108,69 @@ describe("DocsPageClient reading time", () => {
       }),
     );
 
-    expect(html.indexOf("Mock Actions")).toBeLessThan(html.indexOf("5 min read"));
-    expect(html.indexOf("5 min read")).toBeLessThan(html.indexOf("Installation"));
+    const actionsIndex = html.indexOf("Mock Actions");
+    const readingTimeIndex = html.indexOf("5 min read");
+    const titleIndex = html.indexOf("Installation");
+
+    expect(actionsIndex).toBeGreaterThanOrEqual(0);
+    expect(readingTimeIndex).toBeGreaterThanOrEqual(0);
+    expect(titleIndex).toBeGreaterThanOrEqual(0);
+    expect(actionsIndex).toBeLessThan(readingTimeIndex);
+    expect(readingTimeIndex).toBeLessThan(titleIndex);
+  });
+
+  it("renders reading time below the title when page actions are disabled and position is below-title", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        pageActionsPosition: "below-title",
+        readingTimeEnabled: true,
+        readingTime: 5,
+        children: React.createElement(
+          "article",
+          null,
+          React.createElement("h1", null, "Installation"),
+          React.createElement("p", null, "Docs"),
+        ),
+      }),
+    );
+
+    const titleIndex = html.indexOf("Installation");
+    const readingTimeIndex = html.indexOf("5 min read");
+
+    expect(titleIndex).toBeGreaterThanOrEqual(0);
+    expect(readingTimeIndex).toBeGreaterThanOrEqual(0);
+    expect(titleIndex).toBeLessThan(readingTimeIndex);
+  });
+
+  it("keeps reading time grouped with last updated when last updated is below-title", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        lastUpdatedEnabled: true,
+        lastUpdatedPosition: "below-title",
+        lastModified: "April 25, 2026",
+        readingTimeEnabled: true,
+        readingTime: 5,
+        children: React.createElement(
+          "article",
+          null,
+          React.createElement("h1", null, "Installation"),
+          React.createElement("p", null, "Docs"),
+        ),
+      }),
+    );
+
+    const titleIndex = html.indexOf("Installation");
+    const lastUpdatedIndex = html.indexOf("Last updated April 25, 2026");
+    const readingTimeIndex = html.indexOf("5 min read");
+
+    expect(titleIndex).toBeGreaterThanOrEqual(0);
+    expect(lastUpdatedIndex).toBeGreaterThanOrEqual(0);
+    expect(readingTimeIndex).toBeGreaterThanOrEqual(0);
+    expect(titleIndex).toBeLessThan(lastUpdatedIndex);
+    expect(lastUpdatedIndex).toBeLessThan(readingTimeIndex);
   });
 });

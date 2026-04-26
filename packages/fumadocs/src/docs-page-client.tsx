@@ -244,7 +244,7 @@ function injectTitleDecorations(
 
   let inserted = false;
 
-  const extras = [description, belowTitle].filter(Boolean);
+  const extras = Children.toArray([description, belowTitle].filter(Boolean));
   if (extras.length === 0) return { node, inserted: false };
 
   function visit(current: ReactNode): ReactNode {
@@ -262,7 +262,7 @@ function injectTitleDecorations(
 
     if (typeof current.type === "string" && current.type === "h1") {
       inserted = true;
-      return [current, ...extras];
+      return Children.toArray([current, ...extras]);
     }
 
     const childProps = (current.props as { children?: ReactNode } | null) ?? null;
@@ -303,12 +303,7 @@ function TitleDecorations({
 }) {
   if (!description && !belowTitle) return null;
 
-  return (
-    <>
-      {description}
-      {belowTitle}
-    </>
-  );
+  return <>{Children.toArray([description, belowTitle].filter(Boolean))}</>;
 }
 
 export function DocsPageClient({
@@ -497,8 +492,14 @@ export function DocsPageClient({
     <p className="fd-page-description">{pageDescription}</p>
   ) : undefined;
 
+  const showReadingTimeAboveTitle = !!readingTimeBlock && showActionsAboveTitle;
+  const showReadingTimeBelowTitle =
+    !!readingTimeBlock &&
+    !showReadingTimeAboveTitle &&
+    (showActionsBelowTitle || showLastUpdatedBelowTitle || (!showActions && pageActionsPosition === "below-title"));
+
   const belowTitleBlock =
-    showLastUpdatedBelowTitle || showActionsBelowTitle ? (
+    showLastUpdatedBelowTitle || showActionsBelowTitle || showReadingTimeBelowTitle ? (
       <div className="fd-below-title-block not-prose">
         {showLastUpdatedBelowTitle && (
           <p className="fd-last-updated-inline">Last updated {lastModified}</p>
@@ -515,7 +516,7 @@ export function DocsPageClient({
             />
           </div>
         )}
-        {showActionsBelowTitle && readingTimeBlock}
+        {showReadingTimeBelowTitle && readingTimeBlock}
       </div>
     ) : undefined;
 
@@ -587,7 +588,7 @@ export function DocsPageClient({
           {readingTimeBlock}
         </div>
       )}
-      {showActions ? null : readingTimeBlock}
+      {!showReadingTimeAboveTitle && !showReadingTimeBelowTitle ? readingTimeBlock : null}
       <DocsBody style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ flex: 1 }}>{decoratedChildren}</div>
         {titleDecorationsPortal}

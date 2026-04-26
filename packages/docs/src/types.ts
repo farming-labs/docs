@@ -1860,6 +1860,7 @@ export interface DocsConfig {
   /**
    * Estimated reading time shown at the top of docs pages.
    *
+   * - `undefined` → disabled by default
    * - `true` or `{ enabled: true }` → show a computed "{n} min read" label
    * - `false` → hide it entirely
    *

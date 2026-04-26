@@ -829,6 +829,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
     typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
   const readingTimeRaw = config.readingTime;
   const readingTimeEnabled =
+    readingTimeRaw !== undefined &&
     readingTimeRaw !== false &&
     (typeof readingTimeRaw !== "object" || readingTimeRaw.enabled !== false);
   const readingTimeWordsPerMinute =
