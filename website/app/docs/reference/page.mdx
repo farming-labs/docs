@@ -45,6 +45,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `components`  | `Record<string, unknown>`                       | —                | Custom MDX component overrides, including built-ins like `HoverLink`                |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void`              | —                | Callback when the user clicks the copy button on a code block (runs in addition to copy) |
 | `feedback`    | `boolean \| FeedbackConfig`                     | `false`          | Human page feedback UI plus optional agent feedback endpoints                        |
+| `readingTime` | `boolean \| ReadingTimeConfig`                  | `false`          | Opt-in estimated reading-time label with per-page overrides                          |
 | `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
 | `ai`          | `AIConfig`                                      | —                | RAG-powered AI chat                                                                  |
 | `search`      | `boolean \| DocsSearchConfig`                   | `true`           | Built-in simple search, Typesense, Algolia, or a custom adapter                     |
@@ -1154,6 +1155,31 @@ pageActions: {
 
 ---
 
+## `ReadingTimeConfig`
+
+Estimated reading-time label shown on docs pages.
+
+| Property         | Type      | Default | Description |
+| ---------------- | --------- | ------- | ----------- |
+| `enabled`        | `boolean` | `true`  | Show the computed read-time label when `readingTime` is configured |
+| `wordsPerMinute` | `number`  | `220`   | Word-count rate used for the estimate |
+
+```ts
+readingTime: {
+  enabled: true,
+  wordsPerMinute: 220,
+},
+```
+
+Notes:
+
+- `readingTime` is **disabled by default** until you configure it in `DocsConfig`
+- the estimate strips code blocks, inline code, links, images, HTML, and URLs before counting
+- page frontmatter can disable or override the value with `readingTime: false` or `readingTime: 8`
+- placement follows the page title slot: it sits directly below the page actions row when page actions are shown above or below the title
+
+---
+
 ## `DocsMetadata`
 
 SEO metadata configuration.
@@ -1213,6 +1239,7 @@ Each docs page (`.mdx` / `.md`) supports these frontmatter fields:
 | `title`       | `string`    | **Required.** Page title, shown in sidebar and page heading                        |
 | `description` | `string`    | Page description, used for meta tags and search                                    |
 | `related`     | `string[]`  | Related doc URLs rendered as a comma-separated metadata line in `.md` routes and MCP page output |
+| `readingTime` | `boolean \| number` | Disable the estimate for one page (`false`) or force an exact minute count |
 | `icon`        | `string`    | Icon key from the `icons` registry. Shows in sidebar.                              |
 | `order`       | `number`    | Sort order in the sidebar (only when `ordering: "numeric"`). Lower numbers first.   |
 | `tags`        | `string[]`  | Tags for categorization                                                            |
@@ -1249,6 +1276,7 @@ description: "Set up your docs in 5 minutes"
 related:
   - /docs/installation
   - /docs/customization/agent-primitive
+readingTime: 4
 icon: "rocket"
 order: 1
 ---

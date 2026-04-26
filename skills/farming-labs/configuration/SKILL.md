@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, agent.compact, metadata, og, apiReference, MCP, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, readingTime, agent.compact, metadata, og, apiReference, MCP, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration
@@ -42,6 +42,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `components` | `Record<string, Component>` | — | Custom MDX components and built-in overrides like `HoverLink` |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | — | Callback when user copies a code block (title, content, url, language) |
 | `feedback` | `boolean \| FeedbackConfig` | `false` | Human page feedback UI plus optional agent feedback endpoints |
+| `readingTime` | `boolean \| ReadingTimeConfig` | `false` | Opt-in estimated read-time label with per-page overrides |
 | `agent` | `DocsAgentConfig` | — | Defaults for `docs agent compact` |
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
@@ -194,6 +195,26 @@ pnpm exec docs agent compact --all
 
 Use the `cli` skill or `/docs/cli` when the user needs the full command syntax instead of the
 config shape.
+
+---
+
+## Reading time
+
+Use `readingTime` when the user wants a small `5 min read` label on docs pages.
+
+```ts
+readingTime: {
+  enabled: true,
+  wordsPerMinute: 220,
+},
+```
+
+Key points:
+
+- it is **disabled by default**
+- code blocks, inline code, links, images, HTML, and URLs are stripped before counting words
+- page frontmatter can override it with `readingTime: false` or `readingTime: 8`
+- the label follows the page-actions slot: `above-title` keeps it directly under the actions row, and `below-title` keeps it in the below-title metadata area
 
 ---
 
