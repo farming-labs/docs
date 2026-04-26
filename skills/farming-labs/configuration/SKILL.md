@@ -213,7 +213,8 @@ Key points:
 
 - it is **disabled by default**
 - code blocks, inline code, links, images, HTML, and URLs are stripped before counting words
-- page frontmatter can override it with `readingTime: false` or `readingTime: 8`
+- page frontmatter can override it with `readingTime: false`, `readingTime: true`, or `readingTime: 8`
+- page frontmatter wins even when the global `readingTime` config is off
 - the label follows the page-actions slot: `above-title` keeps it directly under the actions row, and `below-title` keeps it in the below-title metadata area
 
 ---
