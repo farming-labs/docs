@@ -756,7 +756,12 @@ function countNavigationPages(node: {
 }): number {
   const urls = new Set<string>();
 
-  const visit = (current: { children?: unknown[]; index?: unknown; type?: string; url?: unknown }) => {
+  const visit = (current: {
+    children?: unknown[];
+    index?: unknown;
+    type?: string;
+    url?: unknown;
+  }) => {
     if (current.type === "page" && typeof current.url === "string") {
       urls.add(current.url);
     }
@@ -804,7 +809,8 @@ function buildHumanCoverage(
     return estimateWordCount(content) >= 120 && hasSectionHeadings(content);
   }).length;
 
-  const descriptionCoverage = totalPages === 0 ? 0 : Math.round((describedPages / totalPages) * 100);
+  const descriptionCoverage =
+    totalPages === 0 ? 0 : Math.round((describedPages / totalPages) * 100);
   const structureCoverage =
     longPages === 0 ? 100 : Math.round((structuredLongPages / longPages) * 100);
 
