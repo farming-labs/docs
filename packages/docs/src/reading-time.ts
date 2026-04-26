@@ -43,8 +43,7 @@ export function resolveReadingTimeOptions(
   return {
     enabled: readingTime.enabled !== false,
     wordsPerMinute:
-      typeof readingTime.wordsPerMinute === "number" &&
-      Number.isFinite(readingTime.wordsPerMinute)
+      typeof readingTime.wordsPerMinute === "number" && Number.isFinite(readingTime.wordsPerMinute)
         ? readingTime.wordsPerMinute
         : undefined,
   };
