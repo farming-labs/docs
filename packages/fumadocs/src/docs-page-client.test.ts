@@ -83,6 +83,27 @@ describe("DocsPageClient reading time", () => {
     expect(html).toContain("8 min read");
   });
 
+  it("does not render path-based reading time when the global flag is off", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        readingTimeEnabled: false,
+        readingTimeMap: {
+          "/docs/installation": 6,
+        },
+        children: React.createElement(
+          "article",
+          null,
+          React.createElement("h1", null, "Installation"),
+          React.createElement("p", null, "Docs"),
+        ),
+      }),
+    );
+
+    expect(html).not.toContain("6 min read");
+  });
+
   it("renders reading time below below-title page actions", () => {
     const html = renderToStaticMarkup(
       React.createElement(DocsPageClient, {

@@ -261,7 +261,7 @@ describe("createDocsLayout pageActions", () => {
     const props = findDocsPageClientProps(tree);
 
     expect(props).toBeTruthy();
-    expect(props?.readingTimeEnabled).toBe(false);
+    expect(props?.readingTimeEnabled).toBe(true);
     expect(props?.readingTimeMap).toMatchObject({
       "/docs/guide": 8,
     });

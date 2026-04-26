@@ -838,7 +838,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const lastUpdatedPosition: "footer" | "below-title" =
     typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
   const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
-  const readingTimeEnabled = readingTimeOptions.enabled;
+  const readingTimeEnabledByDefault = readingTimeOptions.enabled;
   const readingTimeWordsPerMinute = readingTimeOptions.wordsPerMinute ?? 220;
 
   // llms.txt config
@@ -917,9 +917,11 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   // Build description map from frontmatter
   const descriptionMap = buildDescriptionMap(config, localeContext);
   const readingTimeMap = buildReadingTimeMap(config, localeContext, {
-    enabledByDefault: readingTimeEnabled,
+    enabledByDefault: readingTimeEnabledByDefault,
     wordsPerMinute: readingTimeWordsPerMinute,
   });
+  const readingTimeEnabled =
+    readingTimeEnabledByDefault || Object.keys(readingTimeMap).length > 0;
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     const tree = buildTree(config, localeContext, !!sidebarFlat);
