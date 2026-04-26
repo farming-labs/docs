@@ -291,10 +291,15 @@ curl "http://127.0.0.1:3000/docs/installation.md"
 Use `docs doctor --agent` when the user wants to inspect, score, or validate the machine-facing
 docs surface instead of generating content.
 
+Use `docs doctor --site` when the user wants the same kind of audit for the reader-facing docs
+experience instead.
+
 ```bash
 pnpm exec docs doctor
 pnpm exec docs doctor --agent
+pnpm exec docs doctor --site
 pnpm exec docs doctor agent
+pnpm exec docs doctor site
 pnpm exec docs doctor --agent --config docs.config.tsx
 ```
 
@@ -341,6 +346,7 @@ Useful checks:
 
 ```bash
 pnpm --dir examples/next exec docs doctor --agent --config docs.config.tsx
+pnpm --dir examples/next exec docs doctor --site --config docs.config.tsx
 pnpm --dir website exec docs doctor --agent --config docs.config.tsx
 ```
 
