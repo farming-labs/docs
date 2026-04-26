@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { resolveReadingTimeOptions } from "@farming-labs/docs";
 import { computed, ref, onMounted, onUnmounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useHead } from "#app";
@@ -170,11 +169,8 @@ const showPageActions = computed(
 );
 const showActionsAbove = computed(() => pageActionsPosition.value === "above-title" && showPageActions.value);
 const showActionsBelow = computed(() => pageActionsPosition.value === "below-title" && showPageActions.value);
-const readingTimeConfig = computed(() =>
-  resolveReadingTimeOptions(props.config?.readingTime as never),
-);
 const readingTimeValue = computed(() =>
-  readingTimeConfig.value.enabled && typeof props.data.readingTime === "number"
+  typeof props.data.readingTime === "number"
     ? Math.max(1, Math.ceil(props.data.readingTime))
     : null,
 );

@@ -61,8 +61,11 @@ interface DocsPageClientProps {
   /** Map of pathname → reading time in minutes */
   readingTimeMap?: Record<string, number>;
   /** Direct reading-time override for the current page. */
-  readingTime?: number;
-  /** Whether to show estimated reading time at the top of the page. */
+  readingTime?: number | null;
+  /**
+   * Whether path-based reading time values should render by default.
+   * Explicit `readingTime` overrides can still render when this is false.
+   */
   readingTimeEnabled?: boolean;
   /** Whether to show "Last updated" at all */
   lastUpdatedEnabled?: boolean;
@@ -357,10 +360,14 @@ export function DocsPageClient({
     changelogBasePath &&
     (normalizedPath === changelogBasePath || normalizedPath.startsWith(`${changelogBasePath}/`))
   );
-  const resolvedReadingTime =
-    !isChangelogRoute && readingTimeEnabled
-      ? (readingTimeProp ?? readingTimeMap?.[normalizedPath])
-      : undefined;
+  const matchedReadingTime = readingTimeMap?.[normalizedPath];
+  const resolvedReadingTime = !isChangelogRoute
+    ? readingTimeProp !== undefined
+      ? readingTimeProp
+      : readingTimeEnabled
+        ? matchedReadingTime
+        : undefined
+    : undefined;
   const effectiveTocEnabled = isChangelogRoute ? false : tocEnabled;
   const effectiveBreadcrumbEnabled = isChangelogRoute ? false : breadcrumbEnabled;
 

@@ -1189,6 +1189,7 @@ Default behavior:
 - the estimate uses `220` words per minute unless you override it
 - fenced code blocks, inline code, links, images, and raw HTML are stripped before counting words
 - changelog pages do not render the reading-time label
+- page frontmatter wins when `readingTime` is present, even if the global config is disabled
 
 Per-page overrides live in frontmatter:
 
@@ -1200,7 +1201,16 @@ readingTime: false
 ---
 ```
 
-You can also pin an exact number:
+You can also opt a page in explicitly when the global config is off:
+
+```md title="page.mdx"
+---
+title: "API Guide"
+readingTime: true
+---
+```
+
+And you can pin an exact number:
 
 ```md title="page.mdx"
 ---
@@ -1208,6 +1218,13 @@ title: "Long Guide"
 readingTime: 12
 ---
 ```
+
+That gives you a simple override model:
+
+- global `readingTime.enabled: true` -> pages get a computed label by default
+- page `readingTime: false` -> hide the label for that page
+- page `readingTime: true` -> force a computed label for that page
+- page `readingTime: 12` -> force an exact `12 min read` label for that page
 
 <Callout type="info" title="Placement with page actions">
   Reading time follows the same title-area slot as page actions. With

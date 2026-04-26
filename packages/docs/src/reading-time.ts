@@ -6,6 +6,10 @@ export interface ResolvedReadingTimeOptions {
   wordsPerMinute?: number;
 }
 
+function hasExplicitReadingTime(frontmatter: Partial<PageFrontmatter> | undefined): boolean {
+  return Object.prototype.hasOwnProperty.call(frontmatter ?? {}, "readingTime");
+}
+
 function normalizeWordsPerMinute(wordsPerMinute: number | undefined): number {
   if (typeof wordsPerMinute !== "number" || !Number.isFinite(wordsPerMinute)) return 220;
   return Math.max(1, Math.floor(wordsPerMinute));
@@ -63,6 +67,23 @@ export function resolveReadingTimeFromContent(
   }
 
   return estimateReadingTimeMinutes(content, wordsPerMinute);
+}
+
+export function resolvePageReadingTime(
+  frontmatter: Partial<PageFrontmatter> | undefined,
+  content: string,
+  options?: {
+    enabledByDefault?: boolean;
+    wordsPerMinute?: number;
+  },
+): number | null | undefined {
+  const enabledByDefault = options?.enabledByDefault ?? false;
+
+  if (!enabledByDefault && !hasExplicitReadingTime(frontmatter)) {
+    return undefined;
+  }
+
+  return resolveReadingTimeFromContent(frontmatter, content, options?.wordsPerMinute);
 }
 
 export function resolveReadingTimeFromSource(

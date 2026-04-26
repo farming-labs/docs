@@ -36,7 +36,7 @@ import {
   resolveDocsLocale,
   resolveDocsMarkdownRequest,
   resolveDocsPath,
-  resolveReadingTimeFromContent,
+  resolvePageReadingTime,
   resolveReadingTimeOptions,
   resolveDocsSkillFormat,
 } from "@farming-labs/docs";
@@ -627,9 +627,10 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     const { data, content } = matter(raw);
     const humanRawContent = resolveDocsAgentMdxContent(content, "human");
-    const readingTime = readingTimeOptions.enabled
-      ? resolveReadingTimeFromContent(data, humanRawContent, readingTimeOptions.wordsPerMinute)
-      : null;
+    const readingTime = resolvePageReadingTime(data, humanRawContent, {
+      enabledByDefault: readingTimeOptions.enabled,
+      wordsPerMinute: readingTimeOptions.wordsPerMinute,
+    });
     const html = await renderMarkdown(humanRawContent, { theme: config.theme });
 
     const currentUrl = isIndex ? `/${entry}` : `/${entry}/${slug}`;

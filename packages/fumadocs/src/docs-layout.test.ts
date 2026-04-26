@@ -242,6 +242,31 @@ describe("createDocsLayout pageActions", () => {
     });
   });
 
+  it("lets per-page frontmatter override a disabled global reading-time config", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "guide"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "guide", "page.mdx"),
+      ["---", "title: Guide", "readingTime: 8", "---", "", "# Guide", "", "Short body."].join("\n"),
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({
+      entry: "docs",
+      readingTime: false,
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.readingTimeEnabled).toBe(true);
+    expect(props?.readingTimeMap).toMatchObject({
+      "/docs/guide": 8,
+    });
+  });
+
   it("ignores Agent-only content when computing reading time", () => {
     mkdirSync(join(tmpDir, "app", "docs", "agent-safe"), { recursive: true });
     writeFileSync(

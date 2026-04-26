@@ -49,9 +49,10 @@ pageActions: {
 ```
 
 <Callout type="info" title="Reading time follows this slot">
-  If `readingTime` is enabled in `docs.config`, the read-time label stays attached to the same
+  If reading time is active for the current page, the read-time label stays attached to the same
   title-area slot. `above-title` places it directly under the action row. `below-title` keeps it
-  grouped in the below-title metadata area.
+  grouped in the below-title metadata area. This also applies when a page opts in with frontmatter
+  like `readingTime: true` or `readingTime: 8`.
 </Callout>
 
 ---
