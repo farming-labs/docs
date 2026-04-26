@@ -60,6 +60,7 @@ export default defineDocs({
     url: "/docs",
   },
   sidebar: { flat: false, collapsible: true },
+  readingTime: { enabled: true, wordsPerMinute: 220 },
   pageActions: {
     alignment: "right",
     copyMarkdown: { enabled: true },

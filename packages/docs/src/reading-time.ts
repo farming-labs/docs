@@ -1,5 +1,5 @@
 import matter from "gray-matter";
-import type { PageFrontmatter, ReadingTimeConfig } from "@farming-labs/docs";
+import type { PageFrontmatter, ReadingTimeConfig } from "./types.js";
 
 export interface ResolvedReadingTimeOptions {
   enabled: boolean;

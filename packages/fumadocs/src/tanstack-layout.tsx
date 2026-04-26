@@ -11,6 +11,7 @@ import type {
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
+import { resolveReadingTimeOptions } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
@@ -91,6 +92,7 @@ export interface TanstackDocsLayoutProps {
   tree: TreeRoot;
   locale?: string;
   description?: string;
+  readingTime?: number | null;
   lastModified?: string;
   editOnGithubUrl?: string;
   children: ReactNode;
@@ -314,6 +316,7 @@ export function TanstackDocsLayout({
   tree,
   locale,
   description,
+  readingTime,
   lastModified,
   editOnGithubUrl,
   children,
@@ -361,6 +364,7 @@ export function TanstackDocsLayout({
     (typeof lastUpdatedRaw !== "object" || lastUpdatedRaw.enabled !== false);
   const lastUpdatedPosition: "footer" | "below-title" =
     typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
+  const readingTimeEnabled = resolveReadingTimeOptions(config.readingTime).enabled;
 
   const llmsTxtEnabled = resolveBool(config.llmsTxt);
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
@@ -489,6 +493,8 @@ export function TanstackDocsLayout({
             lastUpdatedEnabled={lastUpdatedEnabled}
             lastUpdatedPosition={lastUpdatedPosition}
             lastModified={lastModified}
+            readingTimeEnabled={readingTimeEnabled}
+            readingTime={typeof readingTime === "number" ? readingTime : undefined}
             llmsTxtEnabled={llmsTxtEnabled}
             description={description}
             feedbackEnabled={feedbackConfig.enabled}

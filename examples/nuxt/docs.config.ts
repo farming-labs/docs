@@ -29,6 +29,7 @@ export default defineDocs({
     title: "Example Docs",
     url: "/docs",
   },
+  readingTime: { enabled: true, wordsPerMinute: 220 },
   ai: {
     enabled: true,
     model: {

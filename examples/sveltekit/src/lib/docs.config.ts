@@ -58,6 +58,7 @@ export default defineDocs({
     title: "Example Docs",
     url: "/docs",
   },
+  readingTime: { enabled: true, wordsPerMinute: 220 },
   themeToggle: { enabled: true, default: "dark" },
   breadcrumb: { enabled: true },
   metadata: {

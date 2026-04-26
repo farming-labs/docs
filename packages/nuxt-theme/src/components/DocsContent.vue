@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { resolveReadingTimeOptions } from "@farming-labs/docs";
 import { computed, ref, onMounted, onUnmounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useHead } from "#app";
@@ -15,6 +16,7 @@ const props = defineProps<{
     description?: string;
     html: string;
     rawMarkdown?: string;
+    readingTime?: number | null;
     previousPage?: { name: string; url: string } | null;
     nextPage?: { name: string; url: string } | null;
     editOnGithub?: string;
@@ -168,6 +170,29 @@ const showPageActions = computed(
 );
 const showActionsAbove = computed(() => pageActionsPosition.value === "above-title" && showPageActions.value);
 const showActionsBelow = computed(() => pageActionsPosition.value === "below-title" && showPageActions.value);
+const readingTimeConfig = computed(() =>
+  resolveReadingTimeOptions(props.config?.readingTime as never),
+);
+const readingTimeValue = computed(() =>
+  readingTimeConfig.value.enabled && typeof props.data.readingTime === "number"
+    ? Math.max(1, Math.ceil(props.data.readingTime))
+    : null,
+);
+const readingTimeLabel = computed(() =>
+  readingTimeValue.value ? `${readingTimeValue.value} min read` : null,
+);
+const showReadingTimeAbove = computed(() => !!readingTimeLabel.value && showActionsAbove.value);
+const showReadingTimeBelow = computed(
+  () =>
+    !!readingTimeLabel.value &&
+    !showReadingTimeAbove.value &&
+    (showActionsBelow.value ||
+      showLastUpdatedBelowTitle.value ||
+      (!showPageActions.value && pageActionsPosition.value === "below-title")),
+);
+const showReadingTimeStandalone = computed(
+  () => !!readingTimeLabel.value && !showReadingTimeAbove.value && !showReadingTimeBelow.value,
+);
 const feedbackConfig = computed(() => {
   const defaults = {
     enabled: false,
@@ -415,12 +440,24 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+    <div v-if="showReadingTimeAbove" class="fd-page-meta">
+      <span class="fd-page-meta-dot" aria-hidden="true">·</span>
+      <span class="fd-page-meta-item">{{ readingTimeLabel }}</span>
+    </div>
+    <div v-if="showReadingTimeStandalone" class="fd-page-meta">
+      <span class="fd-page-meta-dot" aria-hidden="true">·</span>
+      <span class="fd-page-meta-item">{{ readingTimeLabel }}</span>
+    </div>
 
     <h1 class="fd-page-title">{{ data.title }}</h1>
     <p v-if="data.description" class="fd-page-description">{{ data.description }}</p>
     <p v-if="showLastUpdatedBelowTitle && data.lastModified" class="fd-last-modified fd-last-modified-below-title">
       Last updated: {{ data.lastModified }}
     </p>
+    <div v-if="showReadingTimeBelow && !showActionsBelow" class="fd-page-meta">
+      <span class="fd-page-meta-dot" aria-hidden="true">·</span>
+      <span class="fd-page-meta-item">{{ readingTimeLabel }}</span>
+    </div>
 
     <!-- Below-title actions -->
     <template v-if="showActionsBelow">
@@ -479,6 +516,10 @@ onUnmounted(() => {
             </a>
           </div>
         </div>
+      </div>
+      <div v-if="showReadingTimeBelow" class="fd-page-meta">
+        <span class="fd-page-meta-dot" aria-hidden="true">·</span>
+        <span class="fd-page-meta-item">{{ readingTimeLabel }}</span>
       </div>
     </template>
 

@@ -58,6 +58,7 @@ export function TanstackDocsPage({
         tree={data.tree}
         locale={data.locale}
         description={data.description}
+        readingTime={data.readingTime}
         lastModified={data.lastModified}
         editOnGithubUrl={data.editOnGithub}
       >

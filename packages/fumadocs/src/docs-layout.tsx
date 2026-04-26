@@ -4,7 +4,12 @@ import matter from "gray-matter";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { Suspense, type ReactNode } from "react";
 import { serializeIcon } from "./serialize-icon.js";
-import { buildPageOpenGraph, buildPageTwitter, resolveChangelogConfig } from "@farming-labs/docs";
+import {
+  buildPageOpenGraph,
+  buildPageTwitter,
+  resolveChangelogConfig,
+  resolveDocsAgentMdxContent,
+} from "@farming-labs/docs";
 import type {
   DocsConfig,
   ThemeToggleConfig,
@@ -18,7 +23,7 @@ import type {
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
-import { resolveReadingTimeFromSource } from "./reading-time.js";
+import { resolveReadingTimeFromContent, resolveReadingTimeOptions } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
@@ -497,7 +502,13 @@ function buildReadingTimeMap(
     const pagePath = path.join(dir, "page.mdx");
     if (fs.existsSync(pagePath)) {
       const source = fs.readFileSync(pagePath, "utf-8");
-      const minutes = resolveReadingTimeFromSource(source, wordsPerMinute);
+      const { data, content } = matter(source);
+      const humanContent = resolveDocsAgentMdxContent(content, "human");
+      const minutes = resolveReadingTimeFromContent(
+        data as PageFrontmatter,
+        humanContent,
+        wordsPerMinute,
+      );
 
       if (minutes !== null) {
         const url =
@@ -827,13 +838,9 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
     (typeof lastUpdatedRaw !== "object" || lastUpdatedRaw.enabled !== false);
   const lastUpdatedPosition: "footer" | "below-title" =
     typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
-  const readingTimeRaw = config.readingTime;
-  const readingTimeEnabled =
-    readingTimeRaw !== undefined &&
-    readingTimeRaw !== false &&
-    (typeof readingTimeRaw !== "object" || readingTimeRaw.enabled !== false);
-  const readingTimeWordsPerMinute =
-    typeof readingTimeRaw === "object" ? (readingTimeRaw.wordsPerMinute ?? 220) : 220;
+  const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
+  const readingTimeEnabled = readingTimeOptions.enabled;
+  const readingTimeWordsPerMinute = readingTimeOptions.wordsPerMinute ?? 220;
 
   // llms.txt config
   const llmsTxtEnabled = resolveBool(config.llmsTxt);
