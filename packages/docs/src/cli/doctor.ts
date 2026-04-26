@@ -1405,7 +1405,7 @@ export async function inspectHumanReadiness(
     makeCheck(
       "trust",
       "Trust signals",
-      trustScore === 10 ? "pass" : trustScore > 0 ? "warn" : "warn",
+      trustScore === 10 ? "pass" : "warn",
       trustScore,
       10,
       githubEnabled && lastUpdatedEnabled
