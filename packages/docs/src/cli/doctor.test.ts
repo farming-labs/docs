@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { inspectAgentReadiness, parseDoctorArgs } from "./doctor.js";
+import { inspectAgentReadiness, inspectHumanReadiness, parseDoctorArgs } from "./doctor.js";
 
 function writePackageJson(
   rootDir: string,
@@ -39,18 +39,27 @@ description: "Docs home"
 
 describe("parseDoctorArgs", () => {
   it("defaults to agent mode", () => {
-    expect(parseDoctorArgs([])).toEqual({ agent: true });
+    expect(parseDoctorArgs([])).toEqual({ mode: "agent" });
   });
 
   it("parses explicit agent mode and config path", () => {
     expect(parseDoctorArgs(["--agent", "--config", "src/lib/docs.config.ts"])).toEqual({
-      agent: true,
+      mode: "agent",
       configPath: "src/lib/docs.config.ts",
     });
     expect(parseDoctorArgs(["agent", "--config=docs.config.tsx"])).toEqual({
-      agent: true,
+      mode: "agent",
       configPath: "docs.config.tsx",
     });
+  });
+
+  it("parses human mode aliases", () => {
+    expect(parseDoctorArgs(["--human"])).toEqual({ mode: "human" });
+    expect(parseDoctorArgs(["human", "--config=docs.config.ts"])).toEqual({
+      mode: "human",
+      configPath: "docs.config.ts",
+    });
+    expect(parseDoctorArgs(["--site"])).toEqual({ mode: "human" });
   });
 
   it("treats -h as help", () => {
@@ -620,5 +629,158 @@ export default defineDocsPublicHandler(config, useStorage);
     expect(publicRoutes?.detail).toBe(
       "Found Nuxt public docs middleware at server/middleware/docs-public.ts.",
     );
+  });
+});
+
+describe("inspectHumanReadiness", () => {
+  const originalCwd = process.cwd();
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(path.join(os.tmpdir(), "docs-human-doctor-"));
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("scores a healthy docs app as reader-ready", async () => {
+    writePackageJson(tmpDir, "doctor-human", { next: "16.0.0" });
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  contentDir: "docs",
+  search: true,
+  github: {
+    url: "https://github.com/farming-labs/docs",
+  },
+  lastUpdated: {
+    enabled: true,
+  },
+  feedback: {
+    enabled: true,
+  },
+  readingTime: {
+    enabled: true,
+  },
+};`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "docs", "installation"), { recursive: true });
+    mkdirSync(path.join(tmpDir, "docs", "configuration"), { recursive: true });
+
+    writeFileSync(
+      path.join(tmpDir, "docs", "page.mdx"),
+      `---
+title: "Overview"
+description: "Docs home"
+---
+
+# Overview
+
+Welcome to the docs.
+`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "docs", "installation", "page.mdx"),
+      `---
+title: "Installation"
+description: "Install the framework"
+---
+
+# Installation
+
+Intro text.
+
+## Prerequisites
+
+Make sure Node.js is installed before you begin.
+
+## Steps
+
+Run the install command, then verify the generated routes.
+`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "docs", "configuration", "page.mdx"),
+      `---
+title: "Configuration"
+description: "Configure the docs app"
+---
+
+# Configuration
+
+This page explains the available options for the docs framework and how they affect the generated output for teams working with the site every day. It intentionally includes enough prose to trigger the long-page structure check without becoming unreadable in the test fixture.
+
+## Core settings
+
+Choose the entry, content directory, and theme defaults.
+`,
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+
+    const report = await inspectHumanReadiness();
+
+    expect(report.mode).toBe("human");
+    expect(report.framework).toBe("nextjs");
+    expect(report.grade).toBe("Human-optimized");
+    expect(report.score).toBeGreaterThanOrEqual(85);
+    expect(report.coverage.totalPages).toBe(3);
+    expect(report.coverage.describedPages).toBe(3);
+    expect(report.checks.find((check) => check.id === "navigation")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "descriptions")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "structure")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "trust")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
+  });
+
+  it("treats lastUpdated as enabled by default for the reader-facing score", async () => {
+    writePackageJson(tmpDir, "doctor-human-default-last-updated", { next: "16.0.0" });
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  contentDir: "docs",
+  search: true,
+  github: {
+    url: "https://github.com/farming-labs/docs",
+  },
+};`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "docs", "page.mdx"),
+      `---
+title: "Overview"
+description: "Docs home"
+---
+
+# Overview
+
+Welcome to the docs.
+`,
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+
+    const report = await inspectHumanReadiness();
+    const trustCheck = report.checks.find((check) => check.id === "trust");
+
+    expect(trustCheck?.status).toBe("pass");
+    expect(trustCheck?.detail).toBe("Edit links and last-updated metadata are configured.");
   });
 });

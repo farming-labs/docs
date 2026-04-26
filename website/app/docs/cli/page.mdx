@@ -291,6 +291,9 @@ for when you should use compaction instead of writing `agent.md` by hand.
 Use `docs doctor --agent` when you want a quick health check for the machine-facing side of the
 docs site.
 
+Use `docs doctor --human` when you want a reader-facing audit of navigation, descriptions,
+structure, trust signals, feedback, and reading-time cues.
+
 This command does not generate files. It inspects the current project and scores how ready the docs
 are for agents, IDEs, and GEO-style crawlers.
 
@@ -315,7 +318,10 @@ Common forms:
 ```bash title="terminal"
 pnpm exec docs doctor
 pnpm exec docs doctor --agent
+pnpm exec docs doctor --human
+pnpm exec docs doctor --site
 pnpm exec docs doctor agent
+pnpm exec docs doctor human
 pnpm exec docs doctor --agent --config docs.config.tsx
 ```
 
@@ -341,6 +347,18 @@ WARN Explicit page optimization (5/10)
 _Sample abbreviated for brevity. Full runs can also include a `Next steps` section with the most
 useful follow-up improvements._
 
+Reader-facing runs use the same overall shape, but print `doctor — human` and score:
+
+- docs config resolution
+- docs content discovery
+- navigation coverage
+- page descriptions
+- page structure
+- search
+- trust signals
+- reader feedback
+- reading-time cues
+
 How to read it:
 
 - the **score** is a quick summary, not the only thing that matters
@@ -352,9 +370,10 @@ How to read it:
 When to use it:
 
 - before saying a docs site is agent-ready or agent-optimized
+- before calling the human docs experience polished or reader-ready
 - after changing `docs.config`, route wiring, `.well-known` endpoints, or MCP
 - before opening a PR for docs infrastructure work
-- in CI if you want a quick quality gate for the agent surface
+- in CI if you want a quick quality gate for the agent or human-facing surface
 
 How essential it is:
 

@@ -156,7 +156,7 @@ ${pc.dim("Usage:")}
 ${pc.dim("Commands:")}
   ${pc.cyan("init")}     Scaffold docs in your project (default)
   ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} to generate sibling agent.md files)
-  ${pc.cyan("doctor")}   Inspect and score agent-readiness for the current docs app
+  ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
   ${pc.cyan("mcp")}      Run the built-in docs MCP server over stdio
   ${pc.cyan("search")}   Search utilities (${pc.dim("sync")} for external indexes)
   ${pc.cyan("upgrade")}  Upgrade @farming-labs/* packages to latest (auto-detect or use --framework)
@@ -189,7 +189,10 @@ ${pc.dim("Options for agent compact:")}
 ${pc.dim("Options for doctor:")}
   ${pc.cyan("doctor")}                              Score the current docs app for agent-readiness
   ${pc.cyan("doctor --agent")}                      Same as ${pc.cyan("doctor")}; explicit agent scoring mode
+  ${pc.cyan("doctor --human")}                      Score the current docs app for reader-facing docs quality
+  ${pc.cyan("doctor --site")}                       Alias for ${pc.cyan("doctor --human")}
   ${pc.cyan("doctor agent")}                        Subcommand alias for agent scoring
+  ${pc.cyan("doctor human")}                        Subcommand alias for reader-facing scoring
   ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
 
 ${pc.dim("Options for search sync:")}
