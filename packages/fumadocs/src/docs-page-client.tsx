@@ -496,7 +496,9 @@ export function DocsPageClient({
   const showReadingTimeBelowTitle =
     !!readingTimeBlock &&
     !showReadingTimeAboveTitle &&
-    (showActionsBelowTitle || showLastUpdatedBelowTitle || (!showActions && pageActionsPosition === "below-title"));
+    (showActionsBelowTitle ||
+      showLastUpdatedBelowTitle ||
+      (!showActions && pageActionsPosition === "below-title"));
 
   const belowTitleBlock =
     showLastUpdatedBelowTitle || showActionsBelowTitle || showReadingTimeBelowTitle ? (
