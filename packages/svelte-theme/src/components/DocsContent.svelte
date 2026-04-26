@@ -1,4 +1,5 @@
 <script>
+  import { resolveReadingTimeOptions } from "@farming-labs/docs";
   import DocsPage from "./DocsPage.svelte";
   import { onMount, onDestroy } from "svelte";
 
@@ -125,12 +126,7 @@
   let showActionsAbove = $derived(pageActionsPosition === "above-title" && showPageActions);
   let showActionsBelow = $derived(pageActionsPosition === "below-title" && showPageActions);
   let readingTimeConfig = $derived.by(() => {
-    const rt = config?.readingTime;
-    if (rt === false || rt === undefined) return { enabled: false };
-    if (rt === true) return { enabled: true };
-    return {
-      enabled: rt.enabled !== false,
-    };
+    return resolveReadingTimeOptions(config?.readingTime);
   });
   let readingTimeValue = $derived(
     readingTimeConfig.enabled && typeof data.readingTime === "number"

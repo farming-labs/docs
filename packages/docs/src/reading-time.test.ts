@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { estimateReadingTimeMinutes, resolveReadingTimeFromSource } from "./reading-time.js";
+import {
+  estimateReadingTimeMinutes,
+  resolveReadingTimeFromContent,
+  resolveReadingTimeFromSource,
+  resolveReadingTimeOptions,
+} from "./reading-time.js";
 
 describe("reading time helpers", () => {
   it("ignores code blocks and links when estimating", () => {
@@ -36,5 +41,31 @@ describe("reading time helpers", () => {
         ["---", "readingTime: false", "---", "", "# Hello", "", "Short page."].join("\n"),
       ),
     ).toBeNull();
+  });
+
+  it("treats null config as disabled", () => {
+    expect(resolveReadingTimeOptions(null)).toEqual({ enabled: false });
+  });
+
+  it("ignores four-backtick fenced code blocks", () => {
+    const minutes = resolveReadingTimeFromContent(
+      {},
+      [
+        "# Guide",
+        "",
+        "This prose should count.",
+        "",
+        "````md",
+        "```ts",
+        "const hidden = true;",
+        "```",
+        "````",
+        "",
+        "This prose should count too.",
+      ].join("\n"),
+      4,
+    );
+
+    expect(minutes).toBe(3);
   });
 });

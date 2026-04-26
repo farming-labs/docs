@@ -11,6 +11,7 @@ import type {
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
+import { resolveReadingTimeOptions } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
@@ -363,11 +364,7 @@ export function TanstackDocsLayout({
     (typeof lastUpdatedRaw !== "object" || lastUpdatedRaw.enabled !== false);
   const lastUpdatedPosition: "footer" | "below-title" =
     typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
-  const readingTimeRaw = config.readingTime;
-  const readingTimeEnabled =
-    readingTimeRaw !== undefined &&
-    readingTimeRaw !== false &&
-    (typeof readingTimeRaw !== "object" || readingTimeRaw.enabled !== false);
+  const readingTimeEnabled = resolveReadingTimeOptions(config.readingTime).enabled;
 
   const llmsTxtEnabled = resolveBool(config.llmsTxt);
   const feedbackConfig = resolveFeedbackConfig(config.feedback);

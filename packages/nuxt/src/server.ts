@@ -36,7 +36,8 @@ import {
   resolveDocsLocale,
   resolveDocsMarkdownRequest,
   resolveDocsPath,
-  resolveReadingTimeFromSource,
+  resolveReadingTimeFromContent,
+  resolveReadingTimeOptions,
   resolveDocsSkillFormat,
 } from "@farming-labs/docs";
 import { createDocsMcpHttpHandler, resolveDocsMcpConfig } from "@farming-labs/docs/server";
@@ -471,9 +472,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   const githubRepo = github?.url;
   const githubBranch = github?.branch ?? "main";
   const githubContentPath = github?.directory;
-  const readingTimeConfig = config.readingTime;
-  const readingTimeWordsPerMinute =
-    typeof readingTimeConfig === "object" ? readingTimeConfig.wordsPerMinute : undefined;
+  const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
 
   const preloaded = config._preloadedContent as ContentFileMap | undefined;
 
@@ -628,7 +627,9 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     const { data, content } = matter(raw);
     const humanRawContent = resolveDocsAgentMdxContent(content, "human");
-    const readingTime = resolveReadingTimeFromSource(raw, readingTimeWordsPerMinute);
+    const readingTime = readingTimeOptions.enabled
+      ? resolveReadingTimeFromContent(data, humanRawContent, readingTimeOptions.wordsPerMinute)
+      : null;
     const html = await renderMarkdown(humanRawContent, { theme: config.theme });
 
     const currentUrl = isIndex ? `/${entry}` : `/${entry}/${slug}`;

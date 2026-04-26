@@ -17,7 +17,8 @@ import {
   resolveDocsLocale,
   resolveDocsMarkdownRequest,
   resolveDocsPath,
-  resolveReadingTimeFromSource,
+  resolveReadingTimeFromContent,
+  resolveReadingTimeOptions,
   resolveDocsSkillFormat,
 } from "@farming-labs/docs";
 import { createDocsMcpHttpHandler, resolveDocsMcpConfig } from "@farming-labs/docs/server";
@@ -477,9 +478,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
   const githubBranch = typeof githubRaw === "object" ? (githubRaw.branch ?? "main") : "main";
   const githubContentPath =
     typeof githubRaw === "object" ? githubRaw.directory?.replace(/^\/|\/$/g, "") : undefined;
-  const readingTimeConfig = config.readingTime;
-  const readingTimeWordsPerMinute =
-    typeof readingTimeConfig === "object" ? readingTimeConfig.wordsPerMinute : undefined;
+  const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
 
   const aiConfig: AIConfigObj = { enabled: false, ...config.ai };
   if (config.apiKey && !aiConfig.apiKey) {
@@ -627,7 +626,10 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     }
 
     const { data, content } = matter(raw);
-    const readingTime = resolveReadingTimeFromSource(raw, readingTimeWordsPerMinute);
+    const humanRawContent = resolveDocsAgentMdxContent(content, "human");
+    const readingTime = readingTimeOptions.enabled
+      ? resolveReadingTimeFromContent(data, humanRawContent, readingTimeOptions.wordsPerMinute)
+      : null;
 
     const currentUrl = isIndex ? `/${entry}` : `/${entry}/${slug}`;
     const currentIndex = flatPages.findIndex((page) => page.url === currentUrl);

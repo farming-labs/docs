@@ -192,6 +192,22 @@ describe("createDocsLayout pageActions", () => {
     expect(props?.readingTimeMap).toEqual({});
   });
 
+  it("keeps reading time disabled when the config is nullish at runtime", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      readingTime: null as never,
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.readingTimeEnabled).toBe(false);
+    expect(props?.readingTimeMap).toEqual({});
+  });
+
   it("passes computed reading time through to DocsPageClient when enabled", () => {
     mkdirSync(join(tmpDir, "app", "docs", "installation"), { recursive: true });
     writeFileSync(
@@ -223,6 +239,42 @@ describe("createDocsLayout pageActions", () => {
     expect(props?.readingTimeMap).toMatchObject({
       "/docs": 1,
       "/docs/installation": 1,
+    });
+  });
+
+  it("ignores Agent-only content when computing reading time", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "agent-safe"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "agent-safe", "page.mdx"),
+      [
+        "---",
+        "title: Agent Safe",
+        "---",
+        "",
+        "# Agent Safe",
+        "",
+        "Short human summary.",
+        "",
+        "<Agent>",
+        "These extra machine-only instructions should not count toward visible reading time even if they are verbose and packed with many additional words for testing purposes.",
+        "</Agent>",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({
+      entry: "docs",
+      readingTime: { enabled: true, wordsPerMinute: 10 },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.readingTimeMap).toMatchObject({
+      "/docs/agent-safe": 1,
     });
   });
 

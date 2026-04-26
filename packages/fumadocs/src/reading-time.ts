@@ -1,5 +1,10 @@
 import matter from "gray-matter";
-import type { PageFrontmatter } from "@farming-labs/docs";
+import type { PageFrontmatter, ReadingTimeConfig } from "@farming-labs/docs";
+
+export interface ResolvedReadingTimeOptions {
+  enabled: boolean;
+  wordsPerMinute?: number;
+}
 
 function normalizeWordsPerMinute(wordsPerMinute: number | undefined): number {
   if (typeof wordsPerMinute !== "number" || !Number.isFinite(wordsPerMinute)) return 220;
@@ -8,8 +13,8 @@ function normalizeWordsPerMinute(wordsPerMinute: number | undefined): number {
 
 function stripNonReadingContent(content: string): string {
   return content
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/~~~[\s\S]*?~~~/g, " ")
+    .replace(/(`{3,})[^\n]*\n[\s\S]*?\1/g, " ")
+    .replace(/(~{3,})[^\n]*\n[\s\S]*?\1/g, " ")
     .replace(/`[^`\n]+`/g, " ")
     .replace(/!\[[^\]]*\]\([^)]+\)/g, " ")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, " $1 ")
@@ -26,12 +31,31 @@ export function estimateReadingTimeMinutes(content: string, wordsPerMinute?: num
   return Math.max(1, Math.ceil(wordCount / normalizeWordsPerMinute(wordsPerMinute)));
 }
 
-export function resolveReadingTimeFromSource(
-  source: string,
+export function resolveReadingTimeOptions(
+  readingTime: boolean | ReadingTimeConfig | null | undefined,
+): ResolvedReadingTimeOptions {
+  if (readingTime === true) return { enabled: true };
+  if (readingTime === false || readingTime === undefined || readingTime === null) {
+    return { enabled: false };
+  }
+  if (typeof readingTime !== "object") return { enabled: false };
+
+  return {
+    enabled: readingTime.enabled !== false,
+    wordsPerMinute:
+      typeof readingTime.wordsPerMinute === "number" &&
+      Number.isFinite(readingTime.wordsPerMinute)
+        ? readingTime.wordsPerMinute
+        : undefined,
+  };
+}
+
+export function resolveReadingTimeFromContent(
+  frontmatter: Partial<PageFrontmatter> | undefined,
+  content: string,
   wordsPerMinute?: number,
 ): number | null {
-  const { data, content } = matter(source);
-  const pageData = data as PageFrontmatter;
+  const pageData = frontmatter ?? {};
 
   if (pageData.readingTime === false) return null;
 
@@ -40,4 +64,12 @@ export function resolveReadingTimeFromSource(
   }
 
   return estimateReadingTimeMinutes(content, wordsPerMinute);
+}
+
+export function resolveReadingTimeFromSource(
+  source: string,
+  wordsPerMinute?: number,
+): number | null {
+  const { data, content } = matter(source);
+  return resolveReadingTimeFromContent(data as PageFrontmatter, content, wordsPerMinute);
 }
