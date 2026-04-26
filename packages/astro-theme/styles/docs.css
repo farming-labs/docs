@@ -1641,6 +1641,33 @@ html.dark pre.shiki {
   margin-bottom: 1rem;
 }
 
+.fd-page-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 0.75rem;
+}
+
+.fd-page-meta-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fd-font-mono, ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace);
+  font-size: 0.8rem;
+  line-height: 1;
+  color: color-mix(in srgb, var(--color-fd-muted-foreground) 78%, transparent);
+}
+
+.fd-page-meta-item {
+  font-family: var(--fd-font-mono, ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground);
+}
+
 .fd-feedback {
   margin-top: 2rem;
   margin-bottom: 1.25rem;

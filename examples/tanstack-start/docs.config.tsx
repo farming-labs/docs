@@ -51,6 +51,7 @@ export default defineDocs({
   },
   sidebar: { flat: true },
   breadcrumb: { enabled: true },
+  readingTime: { enabled: true, wordsPerMinute: 220 },
   lastUpdated: { position: "below-title" },
   pageActions: {
     alignment: "right",

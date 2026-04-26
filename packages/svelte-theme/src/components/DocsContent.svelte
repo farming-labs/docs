@@ -124,6 +124,31 @@
   );
   let showActionsAbove = $derived(pageActionsPosition === "above-title" && showPageActions);
   let showActionsBelow = $derived(pageActionsPosition === "below-title" && showPageActions);
+  let readingTimeConfig = $derived.by(() => {
+    const rt = config?.readingTime;
+    if (rt === false || rt === undefined) return { enabled: false };
+    if (rt === true) return { enabled: true };
+    return {
+      enabled: rt.enabled !== false,
+    };
+  });
+  let readingTimeValue = $derived(
+    readingTimeConfig.enabled && typeof data.readingTime === "number"
+      ? Math.max(1, Math.ceil(data.readingTime))
+      : null
+  );
+  let readingTimeLabel = $derived(readingTimeValue ? `${readingTimeValue} min read` : null);
+  let showReadingTimeAbove = $derived(!!readingTimeLabel && showActionsAbove);
+  let showReadingTimeBelow = $derived(
+    !!readingTimeLabel &&
+      !showReadingTimeAbove &&
+      (showActionsBelow ||
+        showLastUpdatedBelowTitle ||
+        (!showPageActions && pageActionsPosition === "below-title"))
+  );
+  let showReadingTimeStandalone = $derived(
+    !!readingTimeLabel && !showReadingTimeAbove && !showReadingTimeBelow
+  );
   let feedbackPathKey = $derived(
     `${data.locale ?? ""}:${data.entry ?? config?.entry ?? "docs"}:${data.slug ?? ""}`
   );
@@ -373,6 +398,18 @@
           {/if}
         </div>
       {/if}
+      {#if showReadingTimeAbove}
+        <div class="fd-page-meta">
+          <span class="fd-page-meta-dot" aria-hidden="true">·</span>
+          <span class="fd-page-meta-item">{readingTimeLabel}</span>
+        </div>
+      {/if}
+      {#if showReadingTimeStandalone}
+        <div class="fd-page-meta">
+          <span class="fd-page-meta-dot" aria-hidden="true">·</span>
+          <span class="fd-page-meta-item">{readingTimeLabel}</span>
+        </div>
+      {/if}
 
       <h1 class="fd-page-title">{data.title}</h1>
       {#if data.description}
@@ -382,6 +419,12 @@
         <p class="fd-last-modified fd-last-modified-below-title">
           Last updated: {data.lastModified}
         </p>
+      {/if}
+      {#if showReadingTimeBelow && !showActionsBelow}
+        <div class="fd-page-meta">
+          <span class="fd-page-meta-dot" aria-hidden="true">·</span>
+          <span class="fd-page-meta-item">{readingTimeLabel}</span>
+        </div>
       {/if}
 
       {#if showActionsBelow}
@@ -444,6 +487,12 @@
             </div>
           {/if}
         </div>
+        {#if showReadingTimeBelow}
+          <div class="fd-page-meta">
+            <span class="fd-page-meta-dot" aria-hidden="true">·</span>
+            <span class="fd-page-meta-item">{readingTimeLabel}</span>
+          </div>
+        {/if}
       {/if}
 
       {@html htmlWithoutFirstH1}

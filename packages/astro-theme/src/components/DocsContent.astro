@@ -84,6 +84,9 @@ const pageActionsAlignment = (() => {
   if (typeof pa === "object" && pa !== null && pa.alignment) return pa.alignment;
   return "left";
 })();
+const showPageActions = copyMarkdownEnabled || openDocsEnabled;
+const showActionsAbove = pageActionsPosition === "above-title" && showPageActions;
+const showActionsBelow = pageActionsPosition === "below-title" && showPageActions;
 
 const lastUpdatedConfig = (() => {
   const lu = config?.lastUpdated;
@@ -97,6 +100,25 @@ const lastUpdatedConfig = (() => {
 
 const showLastUpdatedInFooter = !!data.lastModified && lastUpdatedConfig.enabled && lastUpdatedConfig.position === "footer";
 const showLastUpdatedBelowTitle = !!data.lastModified && lastUpdatedConfig.enabled && lastUpdatedConfig.position === "below-title";
+const readingTimeConfig = (() => {
+  const rt = config?.readingTime;
+  if (rt === false || rt === undefined) return { enabled: false };
+  if (rt === true) return { enabled: true };
+  return {
+    enabled: (rt as { enabled?: boolean }).enabled !== false,
+  };
+})();
+const readingTimeValue =
+  readingTimeConfig.enabled && typeof data.readingTime === "number"
+    ? Math.max(1, Math.ceil(data.readingTime))
+    : null;
+const readingTimeLabel = readingTimeValue ? `${readingTimeValue} min read` : null;
+const showReadingTimeAbove = !!readingTimeLabel && showActionsAbove;
+const showReadingTimeBelow =
+  !!readingTimeLabel &&
+  !showReadingTimeAbove &&
+  (showActionsBelow || showLastUpdatedBelowTitle || (!showPageActions && pageActionsPosition === "below-title"));
+const showReadingTimeStandalone = !!readingTimeLabel && !showReadingTimeAbove && !showReadingTimeBelow;
 const feedbackConfig = (() => {
   const defaults = {
     enabled: false,
@@ -188,10 +210,28 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
       )}
     </div>
   )}
+  {showReadingTimeAbove && (
+    <div class="fd-page-meta">
+      <span class="fd-page-meta-dot" aria-hidden="true">·</span>
+      <span class="fd-page-meta-item">{readingTimeLabel}</span>
+    </div>
+  )}
+  {showReadingTimeStandalone && (
+    <div class="fd-page-meta">
+      <span class="fd-page-meta-dot" aria-hidden="true">·</span>
+      <span class="fd-page-meta-item">{readingTimeLabel}</span>
+    </div>
+  )}
   <h1 class="fd-page-title">{data.title}</h1>
   {data.description && <p class="fd-page-description">{data.description}</p>}
   {showLastUpdatedBelowTitle && data.lastModified && (
     <p class="fd-last-modified fd-last-modified-below-title">Last updated: {data.lastModified}</p>
+  )}
+  {showReadingTimeBelow && !showActionsBelow && (
+    <div class="fd-page-meta">
+      <span class="fd-page-meta-dot" aria-hidden="true">·</span>
+      <span class="fd-page-meta-item">{readingTimeLabel}</span>
+    </div>
   )}
   {pageActionsPosition === "below-title" && (copyMarkdownEnabled || openDocsEnabled) && (
     <>
@@ -241,6 +281,12 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
           </div>
         )}
       </div>
+      {showReadingTimeBelow && (
+        <div class="fd-page-meta">
+          <span class="fd-page-meta-dot" aria-hidden="true">·</span>
+          <span class="fd-page-meta-item">{readingTimeLabel}</span>
+        </div>
+      )}
     </>
   )}
   <Fragment set:html={htmlWithoutFirstH1} />

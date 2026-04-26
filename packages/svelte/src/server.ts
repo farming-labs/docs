@@ -47,6 +47,7 @@ import {
   resolveDocsLocale,
   resolveDocsMarkdownRequest,
   resolveDocsPath,
+  resolveReadingTimeFromSource,
   resolveDocsSkillFormat,
 } from "@farming-labs/docs";
 import { createDocsMcpHttpHandler, resolveDocsMcpConfig } from "@farming-labs/docs/server";
@@ -136,6 +137,7 @@ export interface DocsServer {
     title: string;
     description?: string;
     html: string;
+    readingTime?: number | null;
     entry?: string;
     locale?: string;
     slug?: string;
@@ -491,6 +493,9 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   const githubRepo = github?.url;
   const githubBranch = github?.branch ?? "main";
   const githubContentPath = github?.directory;
+  const readingTimeConfig = config.readingTime;
+  const readingTimeWordsPerMinute =
+    typeof readingTimeConfig === "object" ? readingTimeConfig.wordsPerMinute : undefined;
 
   const rawPreloaded = config._preloadedContent as ContentFileMap | undefined;
   // Normalize keys: Vite's import.meta.glob may return paths without leading slash (e.g. "docs/...")
@@ -643,6 +648,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     const { data, content } = matter(raw);
     const humanRawContent = resolveDocsAgentMdxContent(content, "human");
+    const readingTime = resolveReadingTimeFromSource(raw, readingTimeWordsPerMinute);
     const html = await renderMarkdown(humanRawContent, { theme: config.theme });
 
     const currentUrl = isIndex ? `/${entry}` : `/${entry}/${slug}`;
@@ -667,6 +673,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       title: (data.title as string) ?? fallbackTitle,
       description: data.description as string | undefined,
       html,
+      readingTime,
       entry,
       locale: ctx.locale,
       ...(isIndex ? {} : { slug }),

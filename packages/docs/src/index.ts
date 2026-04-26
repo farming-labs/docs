@@ -15,6 +15,7 @@ export { deepMerge } from "./utils.js";
 export { createTheme, extendTheme } from "./create-theme.js";
 export { resolveDocsI18n, resolveDocsLocale, resolveDocsPath } from "./i18n.js";
 export { resolveTitle, resolveOGImage, buildPageOpenGraph, buildPageTwitter } from "./metadata.js";
+export { estimateReadingTimeMinutes, resolveReadingTimeFromSource } from "./reading-time.js";
 export { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 export {
   DEFAULT_AGENT_FEEDBACK_ROUTE,
