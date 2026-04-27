@@ -1,11 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createServer } from "node:http";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { AddressInfo } from "node:net";
 import { compactAgentDocs } from "./agent.js";
-import { inspectAgentReadiness, inspectHumanReadiness, parseDoctorArgs } from "./doctor.js";
+import {
+  inspectAgentReadiness,
+  inspectHumanReadiness,
+  parseDoctorArgs,
+  runDoctor,
+} from "./doctor.js";
 
 function writePackageJson(
   rootDir: string,
@@ -53,6 +58,17 @@ describe("parseDoctorArgs", () => {
     expect(parseDoctorArgs(["agent", "--config=docs.config.tsx"])).toEqual({
       mode: "agent",
       configPath: "docs.config.tsx",
+    });
+  });
+
+  it("parses json output mode", () => {
+    expect(parseDoctorArgs(["--json"])).toEqual({
+      mode: "agent",
+      json: true,
+    });
+    expect(parseDoctorArgs(["--site", "--json"])).toEqual({
+      mode: "human",
+      json: true,
     });
   });
 
@@ -995,5 +1011,96 @@ Welcome to the docs.
 
     expect(trustCheck?.status).toBe("pass");
     expect(trustCheck?.detail).toBe("Edit links and last-updated metadata are configured.");
+  });
+
+  it("prints agent reports as JSON for automation consumers", async () => {
+    writePackageJson(tmpDir, "doctor-agent-json", { next: "16.0.0" });
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  llmsTxt: { enabled: true },
+};`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "docs", "page.mdx"),
+      `---
+title: "Overview"
+description: "Docs home"
+---
+
+# Overview
+`,
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    try {
+      const report = await runDoctor({ mode: "agent", json: true });
+      expect(report.mode).toBe("agent");
+      expect(logSpy).toHaveBeenCalledTimes(1);
+
+      const serialized = logSpy.mock.calls[0]?.[0];
+      expect(typeof serialized).toBe("string");
+
+      const payload = JSON.parse(String(serialized)) as { mode: string; checks: unknown[] };
+      expect(payload.mode).toBe("agent");
+      expect(Array.isArray(payload.checks)).toBe(true);
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  it("prints site reports as JSON with the public mode name", async () => {
+    writePackageJson(tmpDir, "doctor-site-json", { next: "16.0.0" });
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  contentDir: "docs",
+  search: true,
+};`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "docs", "page.mdx"),
+      `---
+title: "Overview"
+description: "Docs home"
+---
+
+# Overview
+`,
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    try {
+      const report = await runDoctor({ mode: "human", json: true });
+      expect(report.mode).toBe("human");
+      expect(logSpy).toHaveBeenCalledTimes(1);
+
+      const serialized = logSpy.mock.calls[0]?.[0];
+      expect(typeof serialized).toBe("string");
+
+      const payload = JSON.parse(String(serialized)) as { mode: string; checks: unknown[] };
+      expect(payload.mode).toBe("site");
+      expect(Array.isArray(payload.checks)).toBe(true);
+    } finally {
+      logSpy.mockRestore();
+    }
   });
 });

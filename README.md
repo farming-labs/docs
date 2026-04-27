@@ -173,6 +173,7 @@ structure, trust signals, and feedback.
 ```bash
 pnpm exec docs doctor --agent
 pnpm exec docs doctor --site
+pnpm exec docs doctor --agent --json
 ```
 
 Expected output looks like:
@@ -215,6 +216,24 @@ agent-ready or agent-optimized, and it works well as a CI check for the machine-
 - trust signals (`github` / `lastUpdated`)
 - reader feedback
 - reading-time cues
+
+Use `--json` when the result needs to feed another system instead of a person reading the terminal:
+
+```bash
+pnpm exec docs doctor --agent --json
+pnpm exec docs doctor --site --json
+```
+
+That JSON form is useful for:
+
+- CI quality gates
+- GitHub Actions summaries or PR comments
+- dashboards that track docs quality over time
+- automation that reruns `docs agent compact --stale`
+- other agents that need structured readiness signals instead of terminal text
+
+The JSON report itself is written to stdout. Separate loader notices, such as config fallback
+warnings, are outside the JSON payload.
 
 ## Common Tasks
 
