@@ -15,7 +15,6 @@ export interface GeneratedAgentProvenance {
 export interface ParsedGeneratedAgentDocument {
   provenance?: GeneratedAgentProvenance;
   content: string;
-  hadProvenanceHeader: boolean;
 }
 
 function normalizeLineEndings(value: string): string {
@@ -28,10 +27,11 @@ export function normalizeGeneratedAgentContent(value: string): string {
 
 export function hashGeneratedAgentContent(value: string): string {
   const normalized = normalizeGeneratedAgentContent(value);
+  const bytes = new TextEncoder().encode(normalized);
   let hash = 0xcbf29ce484222325n;
 
-  for (const symbol of normalized) {
-    hash ^= BigInt(symbol.codePointAt(0) ?? 0);
+  for (const byte of bytes) {
+    hash ^= BigInt(byte);
     hash = BigInt.asUintN(64, hash * 0x100000001b3n);
   }
 
@@ -92,14 +92,12 @@ export function parseGeneratedAgentDocument(raw: string): ParsedGeneratedAgentDo
   if (!match) {
     return {
       content: normalized,
-      hadProvenanceHeader: false,
     };
   }
 
   return {
     provenance: parseProvenanceBlock(match[1]),
     content: normalized.slice(match[0].length),
-    hadProvenanceHeader: true,
   };
 }
 

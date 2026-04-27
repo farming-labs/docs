@@ -507,6 +507,10 @@ export function inspectAgentCompactionState(
     hashGeneratedAgentContent(currentDocument.content) !== currentDocument.provenance.outputHash;
 
   if (currentDocument.provenance.sourceKind === "agent-md") {
+    // Once a handwritten sibling agent.md has been compacted in place, the original source text is
+    // gone. We can still detect manual edits to the generated output, but we intentionally do not
+    // guess at "fresh" vs "stale" from the page markdown because that would conflate two different
+    // authoring sources. These files stay "unknown" unless the generated output itself changed.
     return {
       status: outputModified ? "modified" : "unknown",
       sourceKind,
