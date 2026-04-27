@@ -248,6 +248,7 @@ Keep this focused.
         agent: {
           compact: {
             maxOutputTokens: 900,
+            minOutputTokens: 500,
           },
         },
       });`,
@@ -317,7 +318,11 @@ Body.
       "utf-8",
     );
 
-    const seenRequests: Array<{ input: string; maxOutputTokens?: number }> = [];
+    const seenRequests: Array<{
+      input: string;
+      maxOutputTokens?: number;
+      minOutputTokens?: number;
+    }> = [];
     const server = createServer(async (req, res) => {
       const chunks: Buffer[] = [];
       for await (const chunk of req) {
@@ -328,12 +333,14 @@ Body.
         input: string;
         compression_settings?: {
           max_output_tokens?: number;
+          min_output_tokens?: number;
         };
       };
 
       seenRequests.push({
         input: payload.input,
         maxOutputTokens: payload.compression_settings?.max_output_tokens,
+        minOutputTokens: payload.compression_settings?.min_output_tokens,
       });
 
       let output = "Compacted output";
@@ -376,17 +383,20 @@ Body.
     expect(seenRequests).toHaveLength(3);
     expect(seenRequests[0]).toMatchObject({
       maxOutputTokens: 777,
+      minOutputTokens: 500,
     });
     expect(seenRequests[0].input).toContain("URL: /docs/installation");
 
     expect(seenRequests[1]).toMatchObject({
       maxOutputTokens: 333,
+      minOutputTokens: 333,
     });
     expect(seenRequests[1].input).toContain("Existing agent-only instructions.");
     expect(seenRequests[1].input).not.toContain("URL: /docs/existing");
 
     expect(seenRequests[2]).toMatchObject({
       maxOutputTokens: 1200,
+      minOutputTokens: 500,
     });
     expect(seenRequests[2].input).toContain("URL: /docs/quickstart");
 

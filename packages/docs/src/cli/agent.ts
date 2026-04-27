@@ -546,6 +546,13 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
     const pageOptions = mergeAgentCompactOptions(resolvedOptions, {
       maxOutputTokens: readPageTokenBudget(target.pagePath),
     });
+    if (
+      pageOptions.minOutputTokens !== undefined &&
+      pageOptions.maxOutputTokens !== undefined &&
+      pageOptions.minOutputTokens > pageOptions.maxOutputTokens
+    ) {
+      pageOptions.minOutputTokens = pageOptions.maxOutputTokens;
+    }
     const compressed = await compressDocument(sourceDocument, pageOptions);
     const nextContent = compressed.output.trimEnd();
 
