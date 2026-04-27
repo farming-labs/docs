@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import matter from "gray-matter";
 import pc from "picocolors";
 import { findDocsMarkdownPage, renderDocsMarkdownDocument } from "../index.js";
 import { createFilesystemDocsMcpSource } from "../server.js";
@@ -17,7 +18,7 @@ import {
   resolveDocsConfigPath,
   resolveDocsContentDir,
 } from "./config.js";
-import type { DocsConfig } from "../types.js";
+import type { DocsConfig, PageFrontmatter } from "../types.js";
 
 const DEFAULT_TTC_BASE_URL = "https://api.thetokencompany.com";
 const DEFAULT_TTC_MODEL = "bear-1.2";
@@ -332,6 +333,17 @@ function mergeAgentCompactOptions(
   };
 }
 
+function normalizeTokenBudget(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  return Math.max(1, Math.ceil(value));
+}
+
+function readPageTokenBudget(pagePath: string): number | undefined {
+  const source = readFileSync(pagePath, "utf-8");
+  const { data } = matter(source);
+  return normalizeTokenBudget((data as PageFrontmatter).agent?.tokenBudget);
+}
+
 function protectForCompression(input: string): string {
   const segments: string[] = [];
   const stash = (value: string) => {
@@ -531,7 +543,10 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
 
   for (const { page, target } of selectedPages) {
     const sourceDocument = renderDocsMarkdownDocument(page);
-    const compressed = await compressDocument(sourceDocument, resolvedOptions);
+    const pageOptions = mergeAgentCompactOptions(resolvedOptions, {
+      maxOutputTokens: readPageTokenBudget(target.pagePath),
+    });
+    const compressed = await compressDocument(sourceDocument, pageOptions);
     const nextContent = compressed.output.trimEnd();
 
     console.log(
@@ -570,6 +585,9 @@ ${pc.dim("Examples:")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact /docs/installation")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact --page installation --page configuration")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact --all")}
+
+${pc.dim("Per-page override:")}
+  Add ${pc.cyan("agent.tokenBudget")} to a page frontmatter block to override the compact output target for that page.
 
 ${pc.dim("Options:")}
   ${pc.cyan("--all")}                    Compact every folder-based docs page under the configured contentDir
