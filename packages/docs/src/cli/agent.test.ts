@@ -396,9 +396,9 @@ Body.
     expect(readFileSync(path.join(tmpDir, "app", "docs", "existing", "agent.md"), "utf-8")).toBe(
       "Existing compacted\n",
     );
-    expect(
-      readFileSync(path.join(tmpDir, "app", "docs", "quickstart", "agent.md"), "utf-8"),
-    ).toBe("Quickstart compacted\n");
+    expect(readFileSync(path.join(tmpDir, "app", "docs", "quickstart", "agent.md"), "utf-8")).toBe(
+      "Quickstart compacted\n",
+    );
   });
 
   it("supports --all with dry-run without writing files", async () => {
