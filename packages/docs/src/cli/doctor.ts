@@ -37,6 +37,7 @@ type DoctorMode = "agent" | "human";
 export interface DoctorOptions {
   configPath?: string;
   mode?: DoctorMode;
+  json?: boolean;
 }
 
 export interface ParsedDoctorArgs extends DoctorOptions {
@@ -157,6 +158,11 @@ export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
       continue;
     }
 
+    if (arg === "--json") {
+      parsed.json = true;
+      continue;
+    }
+
     if (arg === "--human" || arg === "human" || arg === "--site" || arg === "site") {
       parsed.mode = "human";
       continue;
@@ -199,6 +205,7 @@ ${pc.dim("Usage:")}
   pnpm exec docs doctor
   pnpm exec docs doctor --agent
   pnpm exec docs doctor --site
+  pnpm exec docs doctor --agent --json
   pnpm exec docs doctor agent
   pnpm exec docs doctor site
 
@@ -206,6 +213,7 @@ ${pc.dim("Options:")}
   ${pc.cyan("--agent")}            Score agent-readiness for the current docs app (default)
   ${pc.cyan("--site")}             Score reader-facing docs quality for the current docs app
   ${pc.cyan("--human")}            Alias for ${pc.cyan("--site")}
+  ${pc.cyan("--json")}             Print the report as JSON for CI, scripts, and other agents
   ${pc.cyan("--config <path>")}    Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
   ${pc.cyan("-h, --help")}         Show this help message
 `);
@@ -1697,14 +1705,37 @@ export function printHumanDoctorReport(report: HumanDoctorReport) {
   }
 }
 
+function serializeDoctorJsonReport(report: AgentDoctorReport | HumanDoctorReport) {
+  if (report.mode === "human") {
+    return {
+      ...report,
+      mode: "site" as const,
+    };
+  }
+
+  return report;
+}
+
+export function printDoctorJsonReport(report: AgentDoctorReport | HumanDoctorReport) {
+  console.log(JSON.stringify(serializeDoctorJsonReport(report), null, 2));
+}
+
 export async function runDoctor(options: DoctorOptions = {}) {
   if (options.mode === "human") {
     const report = await inspectHumanReadiness(options);
+    if (options.json) {
+      printDoctorJsonReport(report);
+      return report;
+    }
     printHumanDoctorReport(report);
     return report;
   }
 
   const report = await inspectAgentReadiness(options);
+  if (options.json) {
+    printDoctorJsonReport(report);
+    return report;
+  }
   printAgentDoctorReport(report);
   return report;
 }

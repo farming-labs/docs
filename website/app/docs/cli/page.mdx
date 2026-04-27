@@ -356,6 +356,7 @@ Common forms:
 pnpm exec docs doctor
 pnpm exec docs doctor --agent
 pnpm exec docs doctor --site
+pnpm exec docs doctor --agent --json
 pnpm exec docs doctor agent
 pnpm exec docs doctor site
 pnpm exec docs doctor --agent --config docs.config.tsx
@@ -395,6 +396,46 @@ Reader-facing runs use the same overall shape, but print `doctor — site` and s
 - reader feedback
 - reading-time cues
 
+When you need structured output instead of terminal text, add `--json`:
+
+```bash title="terminal"
+pnpm exec docs doctor --agent --json
+pnpm exec docs doctor --site --json
+```
+
+Sample shape:
+
+```json title="~"
+{
+  "mode": "agent",
+  "score": 87,
+  "maxScore": 100,
+  "grade": "Agent-ready",
+  "framework": "nextjs",
+  "entry": "docs",
+  "contentDir": "app/docs",
+  "coverage": {
+    "explicitPages": 10,
+    "totalPages": 41,
+    "explicitCoverage": 24
+  },
+  "checks": [
+    {
+      "id": "api-route",
+      "title": "Docs API route",
+      "status": "pass",
+      "score": 10,
+      "maxScore": 10
+    }
+  ],
+  "recommendations": [
+    "Enable feedback.agent if you want agents to discover and post feedback through the shared docs API."
+  ]
+}
+```
+
+Warnings still go to stderr, so stdout stays safe to parse in CI and automation.
+
 How to read it:
 
 - the **score** is a quick summary, not the only thing that matters
@@ -410,6 +451,7 @@ When to use it:
 - after changing `docs.config`, route wiring, `.well-known` endpoints, or MCP
 - before opening a PR for docs infrastructure work
 - in CI if you want a quick quality gate for the agent or human-facing surface
+- when another agent, script, or dashboard needs structured results instead of terminal formatting
 
 How essential it is:
 
