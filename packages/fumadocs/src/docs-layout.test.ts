@@ -100,6 +100,21 @@ describe("createDocsLayout pageActions", () => {
     expect(props?.pageActionsPosition).toBe("below-title");
   });
 
+  it("does not add an extra display: contents wrapper above the docs layout root", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+
+    expect(React.isValidElement(tree)).toBe(true);
+    expect(tree.type).not.toBe("div");
+    expect((tree.props as { id?: string; style?: { display?: string } }).id).toBeUndefined();
+    expect((tree.props as { id?: string; style?: { display?: string } }).style?.display).toBeUndefined();
+  });
+
   it("supports boolean shorthand, custom providers, and above-title placement", () => {
     const Layout = createDocsLayout({
       entry: "docs",

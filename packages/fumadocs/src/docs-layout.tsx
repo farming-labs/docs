@@ -955,81 +955,79 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
     }
 
     return (
-      <div id="nd-docs-layout" style={{ display: "contents" }}>
-        <DocsLayout
-          tree={localizedTree}
-          nav={{ title: navTitle, url: navUrl }}
-          themeSwitch={i18n ? { ...themeSwitch, enabled: false } : themeSwitch}
-          sidebar={finalSidebarProps}
-          {...(aiMode === "sidebar-icon" && aiEnabled
-            ? {
-                searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
-              }
-            : {})}
-        >
-          <ColorStyle colors={colors} />
-          <TypographyStyle typography={typography} />
-          <LayoutStyle layout={layoutDimensions} />
-          {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
-          {!staticExport && (
-            <Suspense fallback={null}>
-              <DocsCommandSearch api={docsApiUrl} locale={activeLocale} />
-            </Suspense>
-          )}
-          {aiEnabled && (
-            <Suspense fallback={null}>
-              <DocsAIFeatures
-                mode={aiMode}
-                api={docsApiUrl}
-                locale={activeLocale}
-                position={aiPosition}
-                floatingStyle={aiFloatingStyle}
-                triggerComponentHtml={aiTriggerComponentHtml}
-                suggestedQuestions={aiSuggestedQuestions}
-                aiLabel={aiLabel}
-                loaderVariant={aiLoaderVariant}
-                loadingComponentHtml={aiLoadingComponentHtml}
-                models={aiModels}
-                defaultModelId={aiDefaultModelId}
-              />
-            </Suspense>
-          )}
-          <Suspense fallback={children}>
-            <DocsPageClient
-              tocEnabled={tocEnabled}
-              tocStyle={tocStyle}
-              breadcrumbEnabled={breadcrumbEnabled}
-              changelogBasePath={changelogBasePath}
-              entry={localeContext.entryPath}
-              locale={activeLocale}
-              copyMarkdown={copyMarkdownEnabled}
-              openDocs={openDocsEnabled}
-              openDocsProviders={openDocsProviders as any}
-              pageActionsPosition={pageActionsPosition}
-              pageActionsAlignment={pageActionsAlignment}
-              githubUrl={githubUrl}
-              contentDir={contentDir}
-              githubBranch={githubBranch}
-              githubDirectory={githubDirectory}
-              lastModifiedMap={lastModifiedMap}
-              lastUpdatedEnabled={lastUpdatedEnabled}
-              lastUpdatedPosition={lastUpdatedPosition}
-              readingTimeEnabled={readingTimeEnabled}
-              readingTimeMap={readingTimeMap}
-              llmsTxtEnabled={llmsTxtEnabled}
-              descriptionMap={descriptionMap}
-              feedbackEnabled={feedbackConfig.enabled}
-              feedbackQuestion={feedbackConfig.question}
-              feedbackPlaceholder={feedbackConfig.placeholder}
-              feedbackPositiveLabel={feedbackConfig.positiveLabel}
-              feedbackNegativeLabel={feedbackConfig.negativeLabel}
-              feedbackSubmitLabel={feedbackConfig.submitLabel}
-            >
-              {children}
-            </DocsPageClient>
+      <DocsLayout
+        tree={localizedTree}
+        nav={{ title: navTitle, url: navUrl }}
+        themeSwitch={i18n ? { ...themeSwitch, enabled: false } : themeSwitch}
+        sidebar={finalSidebarProps}
+        {...(aiMode === "sidebar-icon" && aiEnabled
+          ? {
+              searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
+            }
+          : {})}
+      >
+        <ColorStyle colors={colors} />
+        <TypographyStyle typography={typography} />
+        <LayoutStyle layout={layoutDimensions} />
+        {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
+        {!staticExport && (
+          <Suspense fallback={null}>
+            <DocsCommandSearch api={docsApiUrl} locale={activeLocale} />
           </Suspense>
-        </DocsLayout>
-      </div>
+        )}
+        {aiEnabled && (
+          <Suspense fallback={null}>
+            <DocsAIFeatures
+              mode={aiMode}
+              api={docsApiUrl}
+              locale={activeLocale}
+              position={aiPosition}
+              floatingStyle={aiFloatingStyle}
+              triggerComponentHtml={aiTriggerComponentHtml}
+              suggestedQuestions={aiSuggestedQuestions}
+              aiLabel={aiLabel}
+              loaderVariant={aiLoaderVariant}
+              loadingComponentHtml={aiLoadingComponentHtml}
+              models={aiModels}
+              defaultModelId={aiDefaultModelId}
+            />
+          </Suspense>
+        )}
+        <Suspense fallback={children}>
+          <DocsPageClient
+            tocEnabled={tocEnabled}
+            tocStyle={tocStyle}
+            breadcrumbEnabled={breadcrumbEnabled}
+            changelogBasePath={changelogBasePath}
+            entry={localeContext.entryPath}
+            locale={activeLocale}
+            copyMarkdown={copyMarkdownEnabled}
+            openDocs={openDocsEnabled}
+            openDocsProviders={openDocsProviders as any}
+            pageActionsPosition={pageActionsPosition}
+            pageActionsAlignment={pageActionsAlignment}
+            githubUrl={githubUrl}
+            contentDir={contentDir}
+            githubBranch={githubBranch}
+            githubDirectory={githubDirectory}
+            lastModifiedMap={lastModifiedMap}
+            lastUpdatedEnabled={lastUpdatedEnabled}
+            lastUpdatedPosition={lastUpdatedPosition}
+            readingTimeEnabled={readingTimeEnabled}
+            readingTimeMap={readingTimeMap}
+            llmsTxtEnabled={llmsTxtEnabled}
+            descriptionMap={descriptionMap}
+            feedbackEnabled={feedbackConfig.enabled}
+            feedbackQuestion={feedbackConfig.question}
+            feedbackPlaceholder={feedbackConfig.placeholder}
+            feedbackPositiveLabel={feedbackConfig.positiveLabel}
+            feedbackNegativeLabel={feedbackConfig.negativeLabel}
+            feedbackSubmitLabel={feedbackConfig.submitLabel}
+          >
+            {children}
+          </DocsPageClient>
+        </Suspense>
+      </DocsLayout>
     );
   };
 }
