@@ -18,6 +18,8 @@ describe("TanstackDocsLayout", () => {
     expect(React.isValidElement(tree)).toBe(true);
     expect(tree.type).not.toBe("div");
     expect((tree.props as { id?: string; style?: { display?: string } }).id).toBeUndefined();
-    expect((tree.props as { id?: string; style?: { display?: string } }).style?.display).toBeUndefined();
+    expect(
+      (tree.props as { id?: string; style?: { display?: string } }).style?.display,
+    ).toBeUndefined();
   });
 });
