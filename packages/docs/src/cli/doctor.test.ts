@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type { AddressInfo } from "node:net";
+import { compactAgentDocs } from "./agent.js";
 import { inspectAgentReadiness, inspectHumanReadiness, parseDoctorArgs } from "./doctor.js";
 
 function writePackageJson(
@@ -216,6 +219,216 @@ Use this docs site through markdown routes and MCP.
     expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "metadata")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "compact")?.status).toBe("pass");
+  });
+
+  it("reports fresh, stale, modified, unknown, and token-budget-missing compaction states", async () => {
+    writePackageJson(tmpDir, "doctor-compaction", { next: "16.0.0" });
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  llmsTxt: { enabled: true },
+  search: true,
+  mcp: { enabled: true },
+  agent: {
+    compact: {
+      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+      model: "bear-1.2",
+    },
+  },
+};`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "next.config.ts"),
+      `import { withDocs } from "@farming-labs/next/config";
+
+export default withDocs({});
+`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "app", "api", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "api", "docs", "route.ts"),
+      `import { createDocsAPI } from "@farming-labs/next/api";
+
+export const { GET, POST } = createDocsAPI({});
+`,
+      "utf-8",
+    );
+
+    for (const slug of [
+      "installation",
+      "configuration",
+      "page-actions",
+      "budgeted",
+      "handwritten",
+    ]) {
+      mkdirSync(path.join(tmpDir, "app", "docs", slug), { recursive: true });
+    }
+
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "installation", "page.mdx"),
+      `---
+title: "Installation"
+description: "Install the framework"
+---
+
+# Installation
+
+Fresh body.
+`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "configuration", "page.mdx"),
+      `---
+title: "Configuration"
+description: "Configure the docs app"
+---
+
+# Configuration
+
+Original body.
+`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page-actions", "page.mdx"),
+      `---
+title: "Page Actions"
+description: "Customize page actions"
+---
+
+# Page Actions
+
+Original page actions body.
+`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "budgeted", "page.mdx"),
+      `---
+title: "Budgeted"
+description: "Needs compaction output"
+agent:
+  tokenBudget: 250
+---
+
+# Budgeted
+
+Token budget body.
+`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "handwritten", "page.mdx"),
+      `---
+title: "Handwritten"
+description: "Handwritten agent file"
+---
+
+# Handwritten
+
+Body.
+`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "handwritten", "agent.md"),
+      `Custom handwritten agent notes.
+`,
+      "utf-8",
+    );
+
+    const server = createServer(async (req, res) => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+
+      const payload = JSON.parse(Buffer.concat(chunks).toString("utf-8")) as { input: string };
+      let output = "Generic compacted";
+      if (payload.input.includes("/docs/installation")) output = "Installation compacted";
+      else if (payload.input.includes("/docs/configuration")) output = "Configuration compacted";
+      else if (payload.input.includes("/docs/page-actions")) output = "Page actions compacted";
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          output,
+          original_input_tokens: 100,
+          output_tokens: 25,
+        }),
+      );
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      process.chdir(tmpDir);
+
+      await compactAgentDocs({
+        apiKey: "test-key",
+        baseUrl: `http://127.0.0.1:${port}`,
+        pages: ["installation", "configuration", "page-actions"],
+      });
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "configuration", "page.mdx"),
+      `---
+title: "Configuration"
+description: "Configure the docs app"
+---
+
+# Configuration
+
+Updated body.
+`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page-actions", "agent.md"),
+      readFileSync(path.join(tmpDir, "app", "docs", "page-actions", "agent.md"), "utf-8").replace(
+        "Page actions compacted",
+        "Manual page actions edit",
+      ),
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const compactCheck = report.checks.find((check) => check.id === "compact");
+
+    expect(compactCheck?.status).toBe("warn");
+    expect(compactCheck?.detail).toContain("1 fresh");
+    expect(compactCheck?.detail).toContain("1 stale");
+    expect(compactCheck?.detail).toContain("1 modified");
+    expect(compactCheck?.detail).toContain("1 unknown");
+    expect(compactCheck?.detail).toContain("1 token-budget missing");
+    expect(compactCheck?.recommendation).toContain("docs agent compact --stale");
+    expect(compactCheck?.recommendation).toContain("--include-missing");
+    expect(report.coverage.compaction.freshGeneratedPages).toBe(1);
+    expect(report.coverage.compaction.staleGeneratedPages).toBe(1);
+    expect(report.coverage.compaction.modifiedGeneratedPages).toBe(1);
+    expect(report.coverage.compaction.unknownGeneratedPages).toBe(1);
+    expect(report.coverage.compaction.tokenBudgetMissingPages).toBe(1);
   });
 
   it("returns a failing report when docs config is missing", async () => {

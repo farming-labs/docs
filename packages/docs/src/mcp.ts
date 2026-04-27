@@ -7,6 +7,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import * as z from "zod/v4";
+import { stripGeneratedAgentProvenance } from "./agent-provenance.js";
 import { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 import { performDocsSearch } from "./search.js";
 import type {
@@ -672,7 +673,7 @@ function readFilesystemAgentDoc(dir: string) {
   const agentPath = path.join(dir, "agent.md");
   if (!fs.existsSync(agentPath)) return undefined;
 
-  const raw = fs.readFileSync(agentPath, "utf-8");
+  const raw = stripGeneratedAgentProvenance(fs.readFileSync(agentPath, "utf-8"));
   const { content } = matter(raw);
   return {
     agentContent: stripMarkdownForMcp(content),

@@ -179,7 +179,9 @@ ${pc.dim("Options for mcp:")}
 ${pc.dim("Options for agent compact:")}
   ${pc.cyan("agent compact <page...>")}             Compact pages and write sibling ${pc.dim("agent.md")} files
   ${pc.cyan("agent compact --all")}                 Compact every folder-based docs page
+  ${pc.cyan("agent compact --stale")}               Refresh only stale generated ${pc.dim("agent.md")} files
   ${pc.cyan("--page <slug|path>")}                  Repeatable explicit page flag; positional page args work too
+  ${pc.cyan("--include-missing")}                   With ${pc.cyan("--stale")}, also create explicit or token-budget pages missing ${pc.dim("agent.md")}
   ${pc.cyan("--api-key <key>")}                     Token Company API key (or use ${pc.dim("TOKEN_COMPANY_API_KEY")})
   ${pc.cyan("--api-key-env <name>")}                Custom env var name for the Token Company API key
   ${pc.cyan("--base-url <url>")}                    Override the Token Company API base URL

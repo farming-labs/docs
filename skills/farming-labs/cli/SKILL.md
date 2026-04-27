@@ -239,6 +239,8 @@ pnpm exec docs agent compact https://docs.example.com/docs/installation
 pnpm exec docs agent compact . --dry-run
 pnpm exec docs agent compact --page installation --page configuration
 pnpm exec docs agent compact --all
+pnpm exec docs agent compact --stale
+pnpm exec docs agent compact --stale --include-missing
 ```
 
 Behavior:
@@ -248,6 +250,10 @@ Behavior:
   page
 - the command loads `.env` and `.env.local`
 - defaults can come from `agent.compact` in `docs.config.ts` or `docs.config.tsx`
+- `--stale` refreshes only generated `agent.md` files whose page source or compaction settings
+  changed
+- `--include-missing` only works with `--stale`, and creates missing `agent.md` files for explicit
+  pages or pages that define `agent.tokenBudget`
 - it creates missing sibling `agent.md` files and overwrites existing ones
 - the written `agent.md` becomes the machine-readable source for `.md` routes,
   `GET /api/docs?format=markdown&path=...`, and MCP `read_page()`
@@ -255,6 +261,8 @@ Behavior:
 - page frontmatter `agent.tokenBudget` overrides the compact output target for that one page
 - if the page budget is lower than inherited `minOutputTokens`, the CLI clamps the minimum down to
   the page budget before calling the compression API
+- generated files carry hidden provenance metadata so `docs doctor --agent` can report fresh,
+  stale, modified, unknown, and token-budget-missing compaction states
 
 Recommended config:
 
@@ -330,7 +338,7 @@ What it checks:
 - agent feedback
 - page metadata
 - explicit agent-friendly pages
-- `agent.compact` defaults
+- generated `agent.md` freshness and `agent.compact` defaults
 
 Expected shape of the output:
 

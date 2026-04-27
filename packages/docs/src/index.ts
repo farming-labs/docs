@@ -24,6 +24,15 @@ export {
 } from "./reading-time.js";
 export { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 export {
+  GENERATED_AGENT_PROVENANCE_MARKER,
+  GENERATED_AGENT_PROVENANCE_VERSION,
+  hashGeneratedAgentContent,
+  normalizeGeneratedAgentContent,
+  parseGeneratedAgentDocument,
+  serializeGeneratedAgentDocument,
+  stripGeneratedAgentProvenance,
+} from "./agent-provenance.js";
+export {
   DEFAULT_AGENT_FEEDBACK_ROUTE,
   DEFAULT_AGENT_SPEC_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
@@ -63,6 +72,7 @@ export {
   performDocsSearch,
   resolveSearchRequestConfig,
 } from "./search.js";
+export type { GeneratedAgentProvenance, GeneratedAgentSourceKind } from "./agent-provenance.js";
 export type {
   DocsConfig,
   ChangelogConfig,

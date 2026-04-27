@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import type { AddressInfo } from "node:net";
 import { compactAgentDocs, parseAgentCompactArgs } from "./agent.js";
+import { parseGeneratedAgentDocument } from "../agent-provenance.js";
 
 describe("parseAgentCompactArgs", () => {
   it("treats -h as help instead of a positional page", () => {
@@ -66,6 +67,14 @@ describe("parseAgentCompactArgs", () => {
     expect(parseAgentCompactArgs(["--protect-json", "false"])).toEqual({
       protectJson: false,
       pages: [],
+    });
+  });
+
+  it("parses stale compaction flags", () => {
+    expect(parseAgentCompactArgs(["--stale", "--include-missing", "installation"])).toEqual({
+      stale: true,
+      includeMissing: true,
+      pages: ["installation"],
     });
   });
 });
@@ -211,14 +220,20 @@ Keep this focused.
       );
     }
 
-    expect(
-      readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
-    ).toBe("Installation compacted\n");
-    expect(
-      readFileSync(path.join(tmpDir, "app", "docs", "configuration", "agent.md"), "utf-8"),
-    ).toBe("Configuration compacted\n");
-    expect(readFileSync(path.join(tmpDir, "app", "docs", "existing", "agent.md"), "utf-8")).toBe(
-      "Existing agent compacted\n",
+    expectGeneratedAgentFile(
+      path.join(tmpDir, "app", "docs", "installation", "agent.md"),
+      "Installation compacted",
+      "resolved-page",
+    );
+    expectGeneratedAgentFile(
+      path.join(tmpDir, "app", "docs", "configuration", "agent.md"),
+      "Configuration compacted",
+      "resolved-page",
+    );
+    expectGeneratedAgentFile(
+      path.join(tmpDir, "app", "docs", "existing", "agent.md"),
+      "Existing agent compacted",
+      "agent-md",
     );
 
     expect(seenInputs).toHaveLength(3);
@@ -400,14 +415,20 @@ Body.
     });
     expect(seenRequests[2].input).toContain("URL: /docs/quickstart");
 
-    expect(
-      readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
-    ).toBe("Installation compacted\n");
-    expect(readFileSync(path.join(tmpDir, "app", "docs", "existing", "agent.md"), "utf-8")).toBe(
-      "Existing compacted\n",
+    expectGeneratedAgentFile(
+      path.join(tmpDir, "app", "docs", "installation", "agent.md"),
+      "Installation compacted",
+      "resolved-page",
     );
-    expect(readFileSync(path.join(tmpDir, "app", "docs", "quickstart", "agent.md"), "utf-8")).toBe(
-      "Quickstart compacted\n",
+    expectGeneratedAgentFile(
+      path.join(tmpDir, "app", "docs", "existing", "agent.md"),
+      "Existing compacted",
+      "agent-md",
+    );
+    expectGeneratedAgentFile(
+      path.join(tmpDir, "app", "docs", "quickstart", "agent.md"),
+      "Quickstart compacted",
+      "resolved-page",
     );
   });
 
@@ -567,9 +588,11 @@ Body.
         protect_json: false,
       },
     });
-    expect(
-      readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
-    ).toBe("Configured compacted output\n");
+    expectGeneratedAgentFile(
+      path.join(tmpDir, "app", "docs", "installation", "agent.md"),
+      "Configured compacted output",
+      "resolved-page",
+    );
   });
 
   it("loads docs.config.tsx and resolves apiKey from process.env expressions", async () => {
@@ -651,9 +674,11 @@ Body.
         aggressiveness: 0.2,
       },
     });
-    expect(
-      readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
-    ).toBe("TSX compacted output\n");
+    expectGeneratedAgentFile(
+      path.join(tmpDir, "app", "docs", "installation", "agent.md"),
+      "TSX compacted output",
+      "resolved-page",
+    );
   });
 
   it("loads TOKEN_COMPANY_API_KEY from project .env files", async () => {
@@ -738,9 +763,11 @@ Body.
     }
 
     expect(seenAuthHeader).toBe("Bearer dotenv-key");
-    expect(
-      readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
-    ).toBe("Dotenv compacted output\n");
+    expectGeneratedAgentFile(
+      path.join(tmpDir, "app", "docs", "installation", "agent.md"),
+      "Dotenv compacted output",
+      "resolved-page",
+    );
   });
 
   it("strips ttc_safe tags from compressed output before writing agent.md", async () => {
@@ -792,9 +819,331 @@ Body.
       );
     }
 
+    expectGeneratedAgentFile(
+      path.join(tmpDir, "app", "docs", "installation", "agent.md"),
+      "Clean output",
+      "resolved-page",
+    );
+  });
+
+  it("rejects --include-missing without --stale", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs" };`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: "Overview"
+description: "Docs home"
+---
+
+# Overview
+`,
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+
+    await expect(
+      compactAgentDocs({
+        apiKey: "test-key",
+        includeMissing: true,
+        pages: ["."],
+      }),
+    ).rejects.toThrow("Use --include-missing together with --stale.");
+  });
+
+  it("refreshes stale generated agent.md files with --stale", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  agent: {
+    compact: {
+      maxOutputTokens: 800,
+    },
+  },
+};`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "app", "docs", "installation"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "installation", "page.mdx"),
+      `---
+title: "Installation"
+description: "Install the framework"
+---
+
+# Installation
+
+First body.
+`,
+      "utf-8",
+    );
+
+    const seenInputs: string[] = [];
+    let generation = 0;
+    const server = createServer(async (req, res) => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+
+      const payload = JSON.parse(Buffer.concat(chunks).toString("utf-8")) as { input: string };
+      seenInputs.push(payload.input);
+      generation += 1;
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          output: generation === 1 ? "Initial compacted" : "Refreshed compacted",
+          original_input_tokens: 100,
+          output_tokens: 25,
+        }),
+      );
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      process.chdir(tmpDir);
+
+      await compactAgentDocs({
+        apiKey: "test-key",
+        baseUrl: `http://127.0.0.1:${port}`,
+        pages: ["installation"],
+      });
+
+      writeFileSync(
+        path.join(tmpDir, "app", "docs", "installation", "page.mdx"),
+        `---
+title: "Installation"
+description: "Install the framework"
+---
+
+# Installation
+
+Updated body.
+`,
+        "utf-8",
+      );
+
+      await compactAgentDocs({
+        apiKey: "test-key",
+        baseUrl: `http://127.0.0.1:${port}`,
+        stale: true,
+      });
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+
+    expect(seenInputs).toHaveLength(2);
+    expect(seenInputs[0]).toContain("First body.");
+    expect(seenInputs[1]).toContain("Updated body.");
+    expectGeneratedAgentFile(
+      path.join(tmpDir, "app", "docs", "installation", "agent.md"),
+      "Refreshed compacted",
+      "resolved-page",
+    );
     expect(
-      readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
-    ).toBe("Clean output\n");
+      logs.some((line) =>
+        line.includes("Compaction complete: 1 page processed (0 created, 1 overwritten)."),
+      ),
+    ).toBe(true);
+  });
+
+  it("skips modified generated agent.md files during --stale runs", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs" };`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "app", "docs", "installation"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "installation", "page.mdx"),
+      `---
+title: "Installation"
+description: "Install the framework"
+---
+
+# Installation
+
+Body.
+`,
+      "utf-8",
+    );
+
+    let requestCount = 0;
+    const server = createServer(async (_req, res) => {
+      requestCount += 1;
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          output: "Initial compacted",
+          original_input_tokens: 100,
+          output_tokens: 25,
+        }),
+      );
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      process.chdir(tmpDir);
+
+      await compactAgentDocs({
+        apiKey: "test-key",
+        baseUrl: `http://127.0.0.1:${port}`,
+        pages: ["installation"],
+      });
+
+      const raw = readFileSync(
+        path.join(tmpDir, "app", "docs", "installation", "agent.md"),
+        "utf-8",
+      );
+      writeFileSync(
+        path.join(tmpDir, "app", "docs", "installation", "agent.md"),
+        raw.replace("Initial compacted", "Manual edit"),
+        "utf-8",
+      );
+
+      await compactAgentDocs({
+        apiKey: "test-key",
+        baseUrl: `http://127.0.0.1:${port}`,
+        stale: true,
+      });
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+
+    expect(requestCount).toBe(1);
+    expectGeneratedAgentFile(
+      path.join(tmpDir, "app", "docs", "installation", "agent.md"),
+      "Manual edit",
+      "resolved-page",
+    );
+    expect(
+      logs.some((line) => line.includes("No stale generated agent.md files needed updates.")),
+    ).toBe(true);
+    expect(
+      logs.some((line) =>
+        line.includes("Skipped 0 fresh, 1 modified, 0 unknown, and 0 missing page"),
+      ),
+    ).toBe(true);
+  });
+
+  it("uses --stale --include-missing for token-budget pages and explicit missing pages", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs" };`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "app", "docs", "budgeted"), { recursive: true });
+    mkdirSync(path.join(tmpDir, "app", "docs", "plain"), { recursive: true });
+
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "budgeted", "page.mdx"),
+      `---
+title: "Budgeted"
+description: "Has a page token budget"
+agent:
+  tokenBudget: 420
+---
+
+# Budgeted
+
+Body.
+`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "plain", "page.mdx"),
+      `---
+title: "Plain"
+description: "No page token budget"
+---
+
+# Plain
+
+Body.
+`,
+      "utf-8",
+    );
+
+    const seenInputs: string[] = [];
+    const server = createServer(async (req, res) => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+
+      const payload = JSON.parse(Buffer.concat(chunks).toString("utf-8")) as { input: string };
+      seenInputs.push(payload.input);
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          output: payload.input.includes("/docs/budgeted")
+            ? "Budgeted compacted"
+            : "Plain compacted",
+          original_input_tokens: 100,
+          output_tokens: 25,
+        }),
+      );
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      process.chdir(tmpDir);
+
+      await compactAgentDocs({
+        apiKey: "test-key",
+        baseUrl: `http://127.0.0.1:${port}`,
+        stale: true,
+        includeMissing: true,
+      });
+
+      await compactAgentDocs({
+        apiKey: "test-key",
+        baseUrl: `http://127.0.0.1:${port}`,
+        stale: true,
+        includeMissing: true,
+        pages: ["plain"],
+      });
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+
+    expect(seenInputs).toHaveLength(2);
+    expect(seenInputs[0]).toContain("URL: /docs/budgeted");
+    expect(seenInputs[1]).toContain("URL: /docs/plain");
+    expectGeneratedAgentFile(
+      path.join(tmpDir, "app", "docs", "budgeted", "agent.md"),
+      "Budgeted compacted",
+      "resolved-page",
+    );
+    expectGeneratedAgentFile(
+      path.join(tmpDir, "app", "docs", "plain", "agent.md"),
+      "Plain compacted",
+      "resolved-page",
+    );
   });
 });
 
@@ -805,4 +1154,18 @@ function existsAtPath(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+function expectGeneratedAgentFile(
+  filePath: string,
+  expectedContent: string,
+  expectedSourceKind: "resolved-page" | "agent-md",
+) {
+  const parsed = parseGeneratedAgentDocument(readFileSync(filePath, "utf-8"));
+  expect(parsed.provenance).toBeDefined();
+  expect(parsed.provenance?.sourceKind).toBe(expectedSourceKind);
+  expect(parsed.provenance?.sourceHash).toMatch(/^fnv1a64:/);
+  expect(parsed.provenance?.settingsHash).toMatch(/^fnv1a64:/);
+  expect(parsed.provenance?.outputHash).toMatch(/^fnv1a64:/);
+  expect(parsed.content).toBe(`${expectedContent}\n`);
 }

@@ -125,6 +125,8 @@ resolved docs pages.
 
 ```bash
 pnpm exec docs agent compact installation
+pnpm exec docs agent compact --stale
+pnpm exec docs agent compact --stale --include-missing
 ```
 
 Optional defaults live in `docs.config.ts`:
@@ -151,6 +153,13 @@ That page-level `agent.tokenBudget` override beats global `agent.compact.maxOutp
 and CLI `--max-output-tokens` for the same page. If the page already has a sibling `agent.md`, the
 command compacts that file. Otherwise it compacts the generated machine-readable page first and
 writes a new sibling `agent.md`.
+
+Generated files carry hidden provenance metadata so the CLI can detect drift later:
+
+- `docs agent compact --stale` refreshes only stale generated `agent.md` files
+- `docs agent compact --stale --include-missing` also creates missing `agent.md` files for
+  explicitly requested pages or pages that define `agent.tokenBudget`
+- hand-edited generated `agent.md` files are treated as modified and skipped by `--stale`
 
 The generated `agent.md` becomes the machine-readable source for `.md` routes,
 `GET /api/docs?format=markdown&path=...`, and MCP `read_page()`.
@@ -190,7 +199,7 @@ The command checks the agent surface end to end:
 - agent feedback
 - page metadata
 - explicit agent-friendly pages
-- `agent.compact` defaults
+- generated `agent.md` freshness and `agent.compact` defaults
 
 It is not required to run the framework, but it is very useful before claiming a docs site is
 agent-ready or agent-optimized, and it works well as a CI check for the machine-facing docs layer.
