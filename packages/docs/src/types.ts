@@ -273,11 +273,21 @@ export interface ResolvedDocsRelatedLink {
   href: string;
 }
 
+export interface PageAgentFrontmatter {
+  /**
+   * Approximate output token target for machine-readable compaction on this page.
+   * Used by `docs agent compact` as a per-page override.
+   */
+  tokenBudget?: number;
+}
+
 export interface PageFrontmatter {
   title: string;
   description?: string;
   /** Related doc URLs rendered into machine-readable markdown routes and MCP page output. */
   related?: DocsRelatedItem[];
+  /** Per-page agent-oriented metadata used by machine-readable docs features. */
+  agent?: PageAgentFrontmatter;
   /** Override or disable the estimated reading time for this page. */
   readingTime?: boolean | number;
   tags?: string[];

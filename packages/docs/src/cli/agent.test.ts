@@ -240,6 +240,177 @@ Keep this focused.
     ).toBe(true);
   });
 
+  it("uses per-page agent.tokenBudget for pages with and without agent.md", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default defineDocs({
+        entry: "docs",
+        agent: {
+          compact: {
+            maxOutputTokens: 900,
+            minOutputTokens: 500,
+          },
+        },
+      });`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "app", "docs", "installation"), { recursive: true });
+    mkdirSync(path.join(tmpDir, "app", "docs", "existing"), { recursive: true });
+    mkdirSync(path.join(tmpDir, "app", "docs", "quickstart"), { recursive: true });
+
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "installation", "page.mdx"),
+      `---
+title: "Installation"
+description: "Install the framework"
+agent:
+  tokenBudget: 777
+---
+
+# Installation
+
+Run this:
+
+\`\`\`bash
+pnpm add @farming-labs/docs
+\`\`\`
+`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "existing", "page.mdx"),
+      `---
+title: "Existing"
+description: "This page already has an agent file"
+agent:
+  tokenBudget: 333
+---
+
+# Existing
+
+Human page body.
+`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "existing", "agent.md"),
+      `Existing agent-only instructions.
+
+Keep this focused.
+`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "quickstart", "page.mdx"),
+      `---
+title: "Quickstart"
+description: "No page override"
+---
+
+# Quickstart
+
+Body.
+`,
+      "utf-8",
+    );
+
+    const seenRequests: Array<{
+      input: string;
+      maxOutputTokens?: number;
+      minOutputTokens?: number;
+    }> = [];
+    const server = createServer(async (req, res) => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+
+      const payload = JSON.parse(Buffer.concat(chunks).toString("utf-8")) as {
+        input: string;
+        compression_settings?: {
+          max_output_tokens?: number;
+          min_output_tokens?: number;
+        };
+      };
+
+      seenRequests.push({
+        input: payload.input,
+        maxOutputTokens: payload.compression_settings?.max_output_tokens,
+        minOutputTokens: payload.compression_settings?.min_output_tokens,
+      });
+
+      let output = "Compacted output";
+      if (payload.input.includes("URL: /docs/installation")) {
+        output = "Installation compacted";
+      } else if (payload.input.includes("Existing agent-only instructions.")) {
+        output = "Existing compacted";
+      } else if (payload.input.includes("URL: /docs/quickstart")) {
+        output = "Quickstart compacted";
+      }
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          output,
+          original_input_tokens: 120,
+          output_tokens: 35,
+        }),
+      );
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      process.chdir(tmpDir);
+
+      await compactAgentDocs({
+        apiKey: "test-key",
+        baseUrl: `http://127.0.0.1:${port}`,
+        maxOutputTokens: 1200,
+        pages: ["installation", "existing", "quickstart"],
+      });
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+
+    expect(seenRequests).toHaveLength(3);
+    expect(seenRequests[0]).toMatchObject({
+      maxOutputTokens: 777,
+      minOutputTokens: 500,
+    });
+    expect(seenRequests[0].input).toContain("URL: /docs/installation");
+
+    expect(seenRequests[1]).toMatchObject({
+      maxOutputTokens: 333,
+      minOutputTokens: 333,
+    });
+    expect(seenRequests[1].input).toContain("Existing agent-only instructions.");
+    expect(seenRequests[1].input).not.toContain("URL: /docs/existing");
+
+    expect(seenRequests[2]).toMatchObject({
+      maxOutputTokens: 1200,
+      minOutputTokens: 500,
+    });
+    expect(seenRequests[2].input).toContain("URL: /docs/quickstart");
+
+    expect(
+      readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
+    ).toBe("Installation compacted\n");
+    expect(readFileSync(path.join(tmpDir, "app", "docs", "existing", "agent.md"), "utf-8")).toBe(
+      "Existing compacted\n",
+    );
+    expect(readFileSync(path.join(tmpDir, "app", "docs", "quickstart", "agent.md"), "utf-8")).toBe(
+      "Quickstart compacted\n",
+    );
+  });
+
   it("supports --all with dry-run without writing files", async () => {
     writeFileSync(
       path.join(tmpDir, "docs.config.ts"),
