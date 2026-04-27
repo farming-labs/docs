@@ -25,6 +25,8 @@ import {
   resolveDocsConfigPath,
   resolveDocsContentDir,
 } from "./config.js";
+import { inspectAgentCompactionState, scanDocsPageTargets } from "./agent.js";
+import type { AgentCompactOptions } from "./agent.js";
 import { detectFramework, type Framework } from "./utils.js";
 
 type DoctorStatus = "pass" | "warn" | "fail";
@@ -57,6 +59,16 @@ export interface AgentDoctorCoverage {
   pagesWithAgentBlocks: number;
   explicitPages: number;
   explicitCoverage: number;
+  compaction: AgentDoctorCompactionCoverage;
+}
+
+export interface AgentDoctorCompactionCoverage {
+  freshGeneratedPages: number;
+  staleGeneratedPages: number;
+  modifiedGeneratedPages: number;
+  unknownGeneratedPages: number;
+  tokenBudgetMissingPages: number;
+  otherMissingPages: number;
 }
 
 export interface AgentDoctorReport {
@@ -718,6 +730,126 @@ function buildCoverage(
     pagesWithAgentBlocks,
     explicitPages,
     explicitCoverage,
+    compaction: {
+      freshGeneratedPages: 0,
+      staleGeneratedPages: 0,
+      modifiedGeneratedPages: 0,
+      unknownGeneratedPages: 0,
+      tokenBudgetMissingPages: 0,
+      otherMissingPages: 0,
+    },
+  };
+}
+
+function buildCompactionCoverage(
+  rootDir: string,
+  contentDir: string,
+  entry: string,
+  pages: Awaited<ReturnType<ReturnType<typeof createFilesystemDocsMcpSource>["getPages"]>>,
+  defaults: AgentCompactOptions,
+): AgentDoctorCompactionCoverage {
+  const targets = scanDocsPageTargets(rootDir, contentDir, entry);
+  const targetsBySlug = new Map(targets.map((target) => [target.slug, target] as const));
+
+  const coverage: AgentDoctorCompactionCoverage = {
+    freshGeneratedPages: 0,
+    staleGeneratedPages: 0,
+    modifiedGeneratedPages: 0,
+    unknownGeneratedPages: 0,
+    tokenBudgetMissingPages: 0,
+    otherMissingPages: 0,
+  };
+
+  for (const page of pages) {
+    const target = targetsBySlug.get(page.slug);
+    if (!target) continue;
+
+    const state = inspectAgentCompactionState(page, target, defaults);
+
+    switch (state.status) {
+      case "fresh":
+        coverage.freshGeneratedPages += 1;
+        break;
+      case "stale":
+        coverage.staleGeneratedPages += 1;
+        break;
+      case "modified":
+      case "stale-modified":
+        coverage.modifiedGeneratedPages += 1;
+        break;
+      case "unknown":
+        coverage.unknownGeneratedPages += 1;
+        break;
+      case "missing":
+        if (state.tokenBudget !== undefined) coverage.tokenBudgetMissingPages += 1;
+        else coverage.otherMissingPages += 1;
+        break;
+    }
+  }
+
+  return coverage;
+}
+
+function compactionFreshnessScore(
+  coverage: AgentDoctorCompactionCoverage,
+  compactConfigured: boolean,
+): { status: DoctorStatus; score: number; recommendation?: string } {
+  const hasActionableIssues =
+    coverage.staleGeneratedPages > 0 ||
+    coverage.modifiedGeneratedPages > 0 ||
+    coverage.tokenBudgetMissingPages > 0;
+
+  if (hasActionableIssues) {
+    const recommendations: string[] = [];
+    if (coverage.staleGeneratedPages > 0) {
+      recommendations.push(
+        "Run docs agent compact --stale to refresh stale generated agent.md files.",
+      );
+    }
+    if (coverage.modifiedGeneratedPages > 0) {
+      recommendations.push(
+        "Review modified generated agent.md files before overwriting them; --stale skips manual edits on purpose.",
+      );
+    }
+    if (coverage.tokenBudgetMissingPages > 0) {
+      recommendations.push(
+        "Run docs agent compact --stale --include-missing to create generated agent.md files for pages that opted into agent.tokenBudget.",
+      );
+    }
+
+    return {
+      status: "warn",
+      score: compactConfigured ? 2 : 0,
+      recommendation: recommendations.join(" "),
+    };
+  }
+
+  if (coverage.unknownGeneratedPages > 0) {
+    return {
+      status: "pass",
+      score: compactConfigured ? 4 : 3,
+    };
+  }
+
+  if (coverage.freshGeneratedPages > 0) {
+    return {
+      status: "pass",
+      score: compactConfigured ? 5 : 4,
+    };
+  }
+
+  if (compactConfigured) {
+    return {
+      status: "pass",
+      score: 5,
+    };
+  }
+
+  return {
+    status: "warn",
+    score: 0,
+    recommendation:
+      "Add agent.compact defaults if you want docs agent compact and stale detection to run without repeating model and key settings.",
   };
 }
 
@@ -896,6 +1028,14 @@ export async function inspectAgentReadiness(
         pagesWithAgentBlocks: 0,
         explicitPages: 0,
         explicitCoverage: 0,
+        compaction: {
+          freshGeneratedPages: 0,
+          staleGeneratedPages: 0,
+          modifiedGeneratedPages: 0,
+          unknownGeneratedPages: 0,
+          tokenBudgetMissingPages: 0,
+          otherMissingPages: 0,
+        },
       },
       recommendations: checks.map((check) => check.recommendation).filter(Boolean) as string[],
     };
@@ -933,11 +1073,20 @@ export async function inspectAgentReadiness(
   });
   const pages = await Promise.resolve(source.getPages());
   const coverage = buildCoverage(pages);
+  const compactionCoverage = buildCompactionCoverage(
+    rootDir,
+    contentDir,
+    entry,
+    pages,
+    config?.agent?.compact ?? {},
+  );
+  coverage.compaction = compactionCoverage;
   const metadataCoverage = buildMetadataCoverage(pages);
   const metadataResult = metadataScore(
     metadataCoverage.descriptionCoverage,
     metadataCoverage.relatedCoverage,
   );
+  const compactionResult = compactionFreshnessScore(compactionCoverage, compactConfigured);
   const routeSurface = detectRouteSurface(rootDir, framework, staticExport, files);
   const mcpConfig = resolveDocsMcpConfig(
     (config?.mcp as boolean | DocsMcpConfig | undefined) ?? undefined,
@@ -1168,24 +1317,18 @@ export async function inspectAgentReadiness(
   );
 
   checks.push(
-    compactConfigured
-      ? makeCheck(
-          "compact",
-          "Compaction defaults",
-          "pass",
-          5,
-          5,
-          "agent.compact defaults are configured in docs.config for repeatable page compaction.",
-        )
-      : makeCheck(
-          "compact",
-          "Compaction defaults",
-          "warn",
-          0,
-          5,
-          "No agent.compact defaults were found in docs config.",
-          "Add agent.compact defaults if you want docs agent compact to run without repeating model and key settings.",
-        ),
+    makeCheck(
+      "compact",
+      "Agent compaction freshness",
+      compactionResult.status,
+      compactionResult.score,
+      5,
+      `${compactionCoverage.freshGeneratedPages} fresh, ${compactionCoverage.staleGeneratedPages} stale, ${compactionCoverage.modifiedGeneratedPages} modified, ${compactionCoverage.unknownGeneratedPages} unknown, ${compactionCoverage.tokenBudgetMissingPages} token-budget missing, and ${compactionCoverage.otherMissingPages} other missing page${compactionCoverage.otherMissingPages === 1 ? "" : "s"} across compactable docs pages.` +
+        (compactConfigured
+          ? " agent.compact defaults are configured."
+          : " No agent.compact defaults were found in docs config."),
+      compactionResult.recommendation,
+    ),
   );
 
   const score = checks.reduce((total, check) => total + check.score, 0);
@@ -1495,6 +1638,9 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
   );
   console.log(
     `${pc.bold("Explicit agent-friendly pages:")} ${report.coverage.explicitPages}/${report.coverage.totalPages} pages ${pc.dim(`(${report.coverage.explicitCoverage}%)`)}`,
+  );
+  console.log(
+    `${pc.bold("Generated agent.md freshness:")} ${report.coverage.compaction.freshGeneratedPages} fresh ${pc.dim("•")} ${report.coverage.compaction.staleGeneratedPages} stale ${pc.dim("•")} ${report.coverage.compaction.modifiedGeneratedPages} modified ${pc.dim("•")} ${report.coverage.compaction.tokenBudgetMissingPages} token-budget missing`,
   );
   console.log();
 

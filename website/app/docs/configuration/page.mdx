@@ -1086,6 +1086,8 @@ Notes:
 - if a sibling `agent.md` already exists, `docs agent compact` compacts that file
 - if no `agent.md` exists, the command compacts the generated machine-readable page output and then
   writes a new sibling `agent.md`
+- `docs agent compact --stale --include-missing` will also create missing `agent.md` files for
+  pages that define `agent.tokenBudget`
 - if inherited `minOutputTokens` would be greater than the page budget, the CLI clamps it down to
   that page budget before calling the compression API
 

@@ -40,6 +40,7 @@ import {
   performDocsSearch,
   renderDocsMarkdownDocument,
   renderDocsSkillDocument,
+  stripGeneratedAgentProvenance,
   resolveDocsAgentMdxContent,
   resolveSearchRequestConfig,
   resolveDocsI18n,
@@ -425,7 +426,7 @@ function readAgentDocFromMap(contentMap: ContentFileMap, dirPrefix: string, slug
   const raw = contentMap[key];
   if (!raw) return undefined;
 
-  const { content } = matter(raw);
+  const { content } = matter(stripGeneratedAgentProvenance(raw));
   return {
     agentContent: stripMarkdownText(content),
     agentRawContent: content,

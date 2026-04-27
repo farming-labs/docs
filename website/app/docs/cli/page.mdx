@@ -232,6 +232,8 @@ pnpm exec docs agent compact https://docs.example.com/docs/installation
 pnpm exec docs agent compact . --dry-run
 pnpm exec docs agent compact --page installation --page configuration
 pnpm exec docs agent compact --all
+pnpm exec docs agent compact --stale
+pnpm exec docs agent compact --stale --include-missing
 ```
 
 Selection notes:
@@ -240,6 +242,10 @@ Selection notes:
 - page identifiers can be a slug, docs path, `.md` path, full docs URL, or `.` for the root docs
   page
 - `--all` compacts every folder-based docs page under the configured `contentDir`
+- `--stale` only refreshes generated `agent.md` files whose source content or compaction settings
+  drifted
+- `--include-missing` only works with `--stale`, and creates missing `agent.md` files for explicit
+  pages or pages that define `agent.tokenBudget`
 - only folder-based pages can be written automatically, because the command needs a sibling
   `agent.md` target
 
@@ -295,6 +301,17 @@ the command compacts the generated machine-readable page output first and then w
 If a global `minOutputTokens` would be higher than the page budget, the CLI clamps it down to the
 same page budget before calling the compression API.
 
+Generated `agent.md` files include hidden provenance metadata so the CLI can tell the difference
+between:
+
+- **fresh** generated files
+- **stale** generated files whose page content or compact settings changed
+- **modified** generated files that were edited by hand after generation
+- **missing** files for pages that still use the fallback machine-readable page output
+
+`docs doctor --agent` reports those states, and `docs agent compact --stale` only refreshes the
+generated files that are actually stale.
+
 Useful checks:
 
 ```bash title="terminal"
@@ -331,7 +348,7 @@ What it checks:
 - agent feedback
 - page metadata
 - explicit agent-friendly pages
-- `agent.compact` defaults
+- generated `agent.md` freshness and `agent.compact` defaults
 
 Common forms:
 

@@ -2,6 +2,14 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import path from "node:path";
 import matter from "gray-matter";
 import pc from "picocolors";
+import {
+  GENERATED_AGENT_PROVENANCE_VERSION,
+  hashGeneratedAgentContent,
+  parseGeneratedAgentDocument,
+  serializeGeneratedAgentDocument,
+  type GeneratedAgentProvenance,
+  type GeneratedAgentSourceKind,
+} from "../agent-provenance.js";
 import { findDocsMarkdownPage, renderDocsMarkdownDocument } from "../index.js";
 import { createFilesystemDocsMcpSource } from "../server.js";
 import type { DocsMcpPage } from "../server.js";
@@ -37,6 +45,8 @@ export interface AgentCompactOptions {
   protectJson?: boolean;
   all?: boolean;
   pages?: string[];
+  stale?: boolean;
+  includeMissing?: boolean;
   dryRun?: boolean;
 }
 
@@ -44,13 +54,30 @@ export interface ParsedAgentCompactArgs extends AgentCompactOptions {
   help?: boolean;
 }
 
-interface DocsPageTarget {
+export interface DocsPageTarget {
   slug: string;
   url: string;
   pagePath: string;
   pageDir: string;
   agentPath: string;
   hasAgentFile: boolean;
+}
+
+export type AgentCompactionStateKind =
+  | "fresh"
+  | "stale"
+  | "modified"
+  | "stale-modified"
+  | "missing"
+  | "unknown";
+
+export interface AgentCompactionState {
+  status: AgentCompactionStateKind;
+  sourceKind: GeneratedAgentSourceKind;
+  pageOptions: AgentCompactOptions;
+  sourceDocument: string;
+  provenance?: GeneratedAgentProvenance;
+  tokenBudget?: number;
 }
 
 interface CompressResponse {
@@ -101,6 +128,16 @@ export function parseAgentCompactArgs(argv: string[]): ParsedAgentCompactArgs {
 
     if (arg === "--dry-run") {
       parsed.dryRun = true;
+      continue;
+    }
+
+    if (arg === "--stale") {
+      parsed.stale = true;
+      continue;
+    }
+
+    if (arg === "--include-missing") {
+      parsed.includeMissing = true;
       continue;
     }
 
@@ -210,7 +247,11 @@ function normalizeRequestedPage(entry: string, rawValue: string): string {
   return slug ? normalizeUrlPath(`${normalizedEntry}/${slug}`) : normalizedEntry;
 }
 
-function scanDocsPageTargets(rootDir: string, contentDir: string, entry: string): DocsPageTarget[] {
+export function scanDocsPageTargets(
+  rootDir: string,
+  contentDir: string,
+  entry: string,
+): DocsPageTarget[] {
   const contentDirAbs = path.resolve(rootDir, contentDir);
   const targets: DocsPageTarget[] = [];
 
@@ -338,10 +379,168 @@ function normalizeTokenBudget(value: unknown): number | undefined {
   return Math.max(1, Math.ceil(value));
 }
 
-function readPageTokenBudget(pagePath: string): number | undefined {
+export function readPageTokenBudget(pagePath: string): number | undefined {
   const source = readFileSync(pagePath, "utf-8");
   const { data } = matter(source);
   return normalizeTokenBudget((data as PageFrontmatter).agent?.tokenBudget);
+}
+
+function buildCompactionSettingsHash(options: AgentCompactOptions): string {
+  return hashGeneratedAgentContent(
+    JSON.stringify({
+      model: options.model ?? DEFAULT_TTC_MODEL,
+      aggressiveness: options.aggressiveness ?? DEFAULT_TTC_AGGRESSIVENESS,
+      maxOutputTokens: options.maxOutputTokens ?? null,
+      minOutputTokens: options.minOutputTokens ?? null,
+      protectJson: options.protectJson ?? null,
+    }),
+  );
+}
+
+function buildPageOptions(
+  defaults: AgentCompactOptions,
+  pagePath: string,
+): { pageOptions: AgentCompactOptions; tokenBudget?: number } {
+  const tokenBudget = readPageTokenBudget(pagePath);
+  const pageOptions = mergeAgentCompactOptions(defaults, {
+    maxOutputTokens: tokenBudget,
+  });
+
+  if (
+    pageOptions.minOutputTokens !== undefined &&
+    pageOptions.maxOutputTokens !== undefined &&
+    pageOptions.minOutputTokens > pageOptions.maxOutputTokens
+  ) {
+    pageOptions.minOutputTokens = pageOptions.maxOutputTokens;
+  }
+
+  return {
+    pageOptions,
+    tokenBudget,
+  };
+}
+
+function buildResolvedPageSourceDocument(page: DocsMcpPage): string {
+  return renderDocsMarkdownDocument({
+    ...page,
+    agentRawContent: undefined,
+  });
+}
+
+function buildAgentSourceDocument(page: DocsMcpPage): string {
+  if (typeof page.agentRawContent === "string") return page.agentRawContent;
+  return renderDocsMarkdownDocument(page);
+}
+
+function readCurrentAgentDocument(target: DocsPageTarget) {
+  if (!target.hasAgentFile || !existsSync(target.agentPath)) return undefined;
+  const raw = readFileSync(target.agentPath, "utf-8");
+  return parseGeneratedAgentDocument(raw);
+}
+
+function resolveSourceKindForCompaction(
+  target: DocsPageTarget,
+  currentDocument: ReturnType<typeof readCurrentAgentDocument>,
+): GeneratedAgentSourceKind {
+  if (!target.hasAgentFile) return "resolved-page";
+  if (currentDocument?.provenance?.sourceKind === "resolved-page") return "resolved-page";
+  return "agent-md";
+}
+
+function buildSourceDocumentForCompaction(
+  page: DocsMcpPage,
+  sourceKind: GeneratedAgentSourceKind,
+): string {
+  return sourceKind === "resolved-page"
+    ? buildResolvedPageSourceDocument(page)
+    : buildAgentSourceDocument(page);
+}
+
+function buildGeneratedAgentProvenance(
+  sourceKind: GeneratedAgentSourceKind,
+  sourceDocument: string,
+  output: string,
+  pageOptions: AgentCompactOptions,
+): GeneratedAgentProvenance {
+  return {
+    version: GENERATED_AGENT_PROVENANCE_VERSION,
+    sourceKind,
+    sourceHash: hashGeneratedAgentContent(sourceDocument),
+    settingsHash: buildCompactionSettingsHash(pageOptions),
+    outputHash: hashGeneratedAgentContent(output),
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+export function inspectAgentCompactionState(
+  page: DocsMcpPage,
+  target: DocsPageTarget,
+  defaults: AgentCompactOptions,
+): AgentCompactionState {
+  const { pageOptions, tokenBudget } = buildPageOptions(defaults, target.pagePath);
+  const currentDocument = readCurrentAgentDocument(target);
+
+  if (!currentDocument) {
+    return {
+      status: "missing",
+      sourceKind: "resolved-page",
+      pageOptions,
+      sourceDocument: buildResolvedPageSourceDocument(page),
+      tokenBudget,
+    };
+  }
+
+  const sourceKind = resolveSourceKindForCompaction(target, currentDocument);
+  const sourceDocument = buildSourceDocumentForCompaction(page, sourceKind);
+
+  if (!currentDocument.provenance) {
+    return {
+      status: "unknown",
+      sourceKind,
+      pageOptions,
+      sourceDocument,
+      tokenBudget,
+    };
+  }
+
+  const outputModified =
+    hashGeneratedAgentContent(currentDocument.content) !== currentDocument.provenance.outputHash;
+
+  if (currentDocument.provenance.sourceKind === "agent-md") {
+    // Once a handwritten sibling agent.md has been compacted in place, the original source text is
+    // gone. We can still detect manual edits to the generated output, but we intentionally do not
+    // guess at "fresh" vs "stale" from the page markdown because that would conflate two different
+    // authoring sources. These files stay "unknown" unless the generated output itself changed.
+    return {
+      status: outputModified ? "modified" : "unknown",
+      sourceKind,
+      pageOptions,
+      sourceDocument,
+      provenance: currentDocument.provenance,
+      tokenBudget,
+    };
+  }
+
+  const sourceChanged =
+    hashGeneratedAgentContent(sourceDocument) !== currentDocument.provenance.sourceHash;
+  const settingsChanged =
+    buildCompactionSettingsHash(pageOptions) !== currentDocument.provenance.settingsHash;
+
+  return {
+    status:
+      outputModified && (sourceChanged || settingsChanged)
+        ? "stale-modified"
+        : outputModified
+          ? "modified"
+          : sourceChanged || settingsChanged
+            ? "stale"
+            : "fresh",
+    sourceKind,
+    pageOptions,
+    sourceDocument,
+    provenance: currentDocument.provenance,
+    tokenBudget,
+  };
 }
 
 function protectForCompression(input: string): string {
@@ -507,10 +706,13 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
   if (resolvedOptions.all && resolvedOptions.pages && resolvedOptions.pages.length > 0) {
     throw new Error("Use either --all or specific page arguments, not both.");
   }
+  if (resolvedOptions.includeMissing && !resolvedOptions.stale) {
+    throw new Error("Use --include-missing together with --stale.");
+  }
 
   const requestedPages = resolvedOptions.pages?.filter((value) => value.trim().length > 0) ?? [];
-  if (!resolvedOptions.all && requestedPages.length === 0) {
-    throw new Error("Pass --all or at least one docs page slug/path to compact.");
+  if (!resolvedOptions.all && requestedPages.length === 0 && !resolvedOptions.stale) {
+    throw new Error("Pass --all, --stale, or at least one docs page slug/path to compact.");
   }
 
   const source = createFilesystemDocsMcpSource({
@@ -526,13 +728,9 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
   }
 
   const targets = scanDocsPageTargets(rootDir, contentDir, entry);
-  const selectedPages = resolveSelectedPages(
-    pages,
-    targets,
-    entry,
-    requestedPages,
-    resolvedOptions.all === true,
-  );
+  const selectAll =
+    resolvedOptions.all === true || (resolvedOptions.stale === true && requestedPages.length === 0);
+  const selectedPages = resolveSelectedPages(pages, targets, entry, requestedPages, selectAll);
 
   if (selectedPages.length === 0) {
     throw new Error("No compactable docs pages matched the request.");
@@ -540,21 +738,55 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
 
   let created = 0;
   let overwritten = 0;
+  let processed = 0;
+  let skippedFresh = 0;
+  let skippedModified = 0;
+  let skippedUnknown = 0;
+  let skippedMissing = 0;
+  const requestedExplicitPages = requestedPages.length > 0;
 
   for (const { page, target } of selectedPages) {
-    const sourceDocument = renderDocsMarkdownDocument(page);
-    const pageOptions = mergeAgentCompactOptions(resolvedOptions, {
-      maxOutputTokens: readPageTokenBudget(target.pagePath),
-    });
-    if (
-      pageOptions.minOutputTokens !== undefined &&
-      pageOptions.maxOutputTokens !== undefined &&
-      pageOptions.minOutputTokens > pageOptions.maxOutputTokens
-    ) {
-      pageOptions.minOutputTokens = pageOptions.maxOutputTokens;
+    const state = inspectAgentCompactionState(page, target, resolvedOptions);
+
+    if (resolvedOptions.stale) {
+      if (state.status === "fresh") {
+        skippedFresh += 1;
+        continue;
+      }
+
+      if (state.status === "modified" || state.status === "stale-modified") {
+        skippedModified += 1;
+        continue;
+      }
+
+      if (state.status === "unknown") {
+        skippedUnknown += 1;
+        continue;
+      }
+
+      if (state.status === "missing") {
+        const shouldCreateMissing =
+          resolvedOptions.includeMissing === true &&
+          (requestedExplicitPages || state.tokenBudget !== undefined);
+
+        if (!shouldCreateMissing) {
+          skippedMissing += 1;
+          continue;
+        }
+      }
     }
-    const compressed = await compressDocument(sourceDocument, pageOptions);
+
+    const compressed = await compressDocument(state.sourceDocument, state.pageOptions);
     const nextContent = compressed.output.trimEnd();
+    const generatedDocument = serializeGeneratedAgentDocument(
+      nextContent,
+      buildGeneratedAgentProvenance(
+        state.sourceKind,
+        state.sourceDocument,
+        nextContent,
+        state.pageOptions,
+      ),
+    );
 
     console.log(
       pc.dim(
@@ -565,19 +797,45 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
     if (resolvedOptions.dryRun) continue;
 
     mkdirSync(target.pageDir, { recursive: true });
-    writeFileSync(target.agentPath, `${nextContent}\n`, "utf-8");
+    writeFileSync(target.agentPath, generatedDocument, "utf-8");
 
     if (target.hasAgentFile) overwritten += 1;
     else created += 1;
+    processed += 1;
+  }
+
+  if (resolvedOptions.dryRun) {
+    processed =
+      selectedPages.length - skippedFresh - skippedModified - skippedUnknown - skippedMissing;
+  }
+
+  if (resolvedOptions.stale && processed === 0) {
+    console.log(pc.green("No stale generated agent.md files needed updates."));
+    if (skippedFresh + skippedModified + skippedUnknown + skippedMissing > 0) {
+      console.log(
+        pc.dim(
+          `Skipped ${skippedFresh} fresh, ${skippedModified} modified, ${skippedUnknown} unknown, and ${skippedMissing} missing page${skippedFresh + skippedModified + skippedUnknown + skippedMissing === 1 ? "" : "s"}.`,
+        ),
+      );
+    }
+    return;
   }
 
   const summaryPrefix = resolvedOptions.dryRun ? "Dry run complete" : "Compaction complete";
   console.log(
     pc.green(
-      `${summaryPrefix}: ${selectedPages.length} page${selectedPages.length === 1 ? "" : "s"} processed` +
+      `${summaryPrefix}: ${processed} page${processed === 1 ? "" : "s"} processed` +
         (resolvedOptions.dryRun ? "." : ` (${created} created, ${overwritten} overwritten).`),
     ),
   );
+
+  if (resolvedOptions.stale) {
+    console.log(
+      pc.dim(
+        `Skipped ${skippedFresh} fresh, ${skippedModified} modified, ${skippedUnknown} unknown, and ${skippedMissing} missing page${skippedFresh + skippedModified + skippedUnknown + skippedMissing === 1 ? "" : "s"}.`,
+      ),
+    );
+  }
 }
 
 export function printAgentCompactHelp(): void {
@@ -592,6 +850,8 @@ ${pc.dim("Examples:")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact /docs/installation")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact --page installation --page configuration")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact --all")}
+  ${pc.cyan("npx @farming-labs/docs@latest agent compact --stale")}
+  ${pc.cyan("npx @farming-labs/docs@latest agent compact --stale --include-missing")}
 
 ${pc.dim("Per-page override:")}
   Add ${pc.cyan("agent.tokenBudget")} to a page frontmatter block to override the compact output target for that page.
@@ -599,6 +859,8 @@ ${pc.dim("Per-page override:")}
 ${pc.dim("Options:")}
   ${pc.cyan("--all")}                    Compact every folder-based docs page under the configured contentDir
   ${pc.cyan("--page <slug|path>")}       Add a page explicitly (repeatable); positional page args work too
+  ${pc.cyan("--stale")}                  Re-compact only stale generated agent.md files
+  ${pc.cyan("--include-missing")}        With ${pc.cyan("--stale")}, also create missing agent.md files for explicit pages or pages that define ${pc.cyan("agent.tokenBudget")}
   ${pc.cyan("--config <path>")}          Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
   ${pc.cyan("--api-key <key>")}          Token Company API key (or set ${pc.dim("TOKEN_COMPANY_API_KEY")})
   ${pc.cyan("--api-key-env <name>")}     Custom env var name for the Token Company API key
