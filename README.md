@@ -232,7 +232,8 @@ That JSON form is useful for:
 - automation that reruns `docs agent compact --stale`
 - other agents that need structured readiness signals instead of terminal text
 
-Warnings still go to stderr, so stdout stays machine-parseable for scripts and CI.
+The JSON report itself is written to stdout. Separate loader notices, such as config fallback
+warnings, are outside the JSON payload.
 
 ## Common Tasks
 

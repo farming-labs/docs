@@ -365,7 +365,8 @@ How to explain it:
   fewer pages have extra machine-only context through `agent.md` or `Agent` blocks
 - `--json` is for CI, scripts, dashboards, and other agents that need structured output instead of
   terminal formatting
-- JSON stays on stdout while warnings stay on stderr, so CI parsers can consume it safely
+- the JSON report itself is written to stdout; separate loader notices, such as config fallback
+  warnings, are outside the JSON payload
 
 Useful checks:
 

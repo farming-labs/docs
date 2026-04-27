@@ -434,7 +434,8 @@ Sample shape:
 }
 ```
 
-Warnings still go to stderr, so stdout stays safe to parse in CI and automation.
+The JSON report itself is written to stdout. Separate loader notices, such as config fallback
+warnings, are outside the JSON payload.
 
 How to read it:
 
