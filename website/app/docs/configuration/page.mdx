@@ -128,6 +128,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `components`  | `Record<string, Component>`    | —               | Custom MDX components and built-in overrides like `HoverLink` |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
 | `feedback`    | `boolean \| FeedbackConfig`    | `false`         | Human page feedback UI plus optional agent feedback endpoints |
+| `agent`       | `DocsAgentConfig`              | —               | Defaults for `docs agent compact`                  |
 | `readingTime` | `boolean \| ReadingTimeConfig` | `false`         | Opt-in estimated read-time label with optional per-page overrides |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
@@ -1066,6 +1067,27 @@ pnpm exec docs agent compact installation configuration
 pnpm exec docs agent compact installation --dry-run
 pnpm exec docs agent compact --all
 ```
+
+Per-page compaction budgets live in frontmatter:
+
+```md title="app/docs/installation/page.mdx"
+---
+title: "Installation"
+description: "Install the framework"
+agent:
+  tokenBudget: 777
+---
+```
+
+Notes:
+
+- `agent.tokenBudget` overrides global `agent.compact.maxOutputTokens` defaults and CLI
+  `--max-output-tokens` for that one page
+- if a sibling `agent.md` already exists, `docs agent compact` compacts that file
+- if no `agent.md` exists, the command compacts the generated machine-readable page output and then
+  writes a new sibling `agent.md`
+- if inherited `minOutputTokens` would be greater than the page budget, the CLI clamps it down to
+  that page budget before calling the compression API
 
 See [CLI](/docs/cli) for the command surface and [Token Efficiency](/docs/token-efficiency) for
 when to use compaction instead of writing `agent.md` by hand.

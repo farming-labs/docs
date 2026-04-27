@@ -45,6 +45,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `components`  | `Record<string, unknown>`                       | —                | Custom MDX component overrides, including built-ins like `HoverLink`                |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void`              | —                | Callback when the user clicks the copy button on a code block (runs in addition to copy) |
 | `feedback`    | `boolean \| FeedbackConfig`                     | `false`          | Human page feedback UI plus optional agent feedback endpoints                        |
+| `agent`       | `DocsAgentConfig`                               | —                | Defaults for `docs agent compact` and related machine-docs workflows                 |
 | `readingTime` | `boolean \| ReadingTimeConfig`                  | `false`          | Opt-in estimated reading-time label with per-page overrides                          |
 | `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
 | `ai`          | `AIConfig`                                      | —                | RAG-powered AI chat                                                                  |
@@ -1239,6 +1240,7 @@ Each docs page (`.mdx` / `.md`) supports these frontmatter fields:
 | `title`       | `string`    | **Required.** Page title, shown in sidebar and page heading                        |
 | `description` | `string`    | Page description, used for meta tags and search                                    |
 | `related`     | `string[]`  | Related doc URLs rendered as a comma-separated metadata line in `.md` routes and MCP page output |
+| `agent`       | `PageAgentFrontmatter` | Per-page machine-docs metadata such as compaction token budgets |
 | `readingTime` | `boolean \| number` | Disable the estimate for one page (`false`) or force an exact minute count |
 | `icon`        | `string`    | Icon key from the `icons` registry. Shows in sidebar.                              |
 | `order`       | `number`    | Sort order in the sidebar (only when `ordering: "numeric"`). Lower numbers first.   |
@@ -1247,6 +1249,33 @@ Each docs page (`.mdx` / `.md`) supports these frontmatter fields:
 | `openGraph`   | `PageOpenGraph` | Full Open Graph object (e.g. `images: [{ url, width?, height? }]`). When set, replaces generated OG from the config (e.g. dynamic endpoint). |
 | `twitter`     | `PageTwitter`   | Full Twitter card object (e.g. `card`, `images`). When set, replaces generated twitter metadata. |
 | `hidden`      | `boolean`   | If `true`, hide the page from the sidebar (page remains reachable by URL). Optional; behavior may vary by adapter. |
+
+### `PageAgentFrontmatter`
+
+Page-level metadata for machine-readable docs workflows.
+
+| Property      | Type     | Description |
+| ------------- | -------- | ----------- |
+| `tokenBudget` | `number` | Approximate output token target for `docs agent compact` on this page |
+
+```md title="page-frontmatter.md"
+---
+title: "Installation"
+description: "Install the framework"
+agent:
+  tokenBudget: 777
+---
+```
+
+Notes:
+
+- `agent.tokenBudget` overrides global `agent.compact.maxOutputTokens` defaults and CLI
+  `--max-output-tokens` for that one page
+- if the page already has a sibling `agent.md`, `docs agent compact` compacts that file
+- if the page does not have `agent.md`, the command compacts the generated machine-readable page
+  output and writes a new sibling `agent.md`
+- inherited `minOutputTokens` is clamped down to `tokenBudget` when needed so the compression API
+  never receives `min_output_tokens > max_output_tokens`
 
 **Static OG example** — use `openGraph` and `twitter` in frontmatter to serve a static image instead of the dynamic OG endpoint:
 

@@ -184,6 +184,11 @@ Notes:
 - generated `agent.md` becomes the machine-readable source for `.md` routes,
   `GET /api/docs?format=markdown&path=...`, and MCP `read_page()`
 - the human docs UI still renders the normal page
+- page frontmatter `agent.tokenBudget` overrides `maxOutputTokens` for that page
+- if no sibling `agent.md` exists, the command compacts the generated machine-readable page output
+  first and then writes a new `agent.md`
+- if inherited `minOutputTokens` is greater than the page budget, the CLI clamps it down to the
+  page budget before calling the compression API
 
 Common commands:
 
@@ -191,6 +196,16 @@ Common commands:
 pnpm exec docs agent compact installation configuration
 pnpm exec docs agent compact installation --dry-run
 pnpm exec docs agent compact --all
+```
+
+Per-page override example:
+
+```md
+---
+title: "Installation"
+agent:
+  tokenBudget: 777
+---
 ```
 
 Use the `cli` skill or `/docs/cli` when the user needs the full command syntax instead of the

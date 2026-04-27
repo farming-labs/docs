@@ -275,6 +275,26 @@ export default defineDocs({
 The command loads `.env` and `.env.local` from the current project before it resolves the key, so
 the default `TOKEN_COMPANY_API_KEY` env var works without exporting it manually.
 
+Per-page budget overrides live in frontmatter:
+
+```md title="app/docs/installation/page.mdx"
+---
+title: "Installation"
+description: "Install the framework"
+agent:
+  tokenBudget: 777
+---
+```
+
+That `agent.tokenBudget` value becomes the compact output target for just that page. It overrides
+global `agent.compact.maxOutputTokens` defaults and CLI `--max-output-tokens` values for the same
+page. If the page already has a sibling `agent.md`, the command compacts that file. If it does not,
+the command compacts the generated machine-readable page output first and then writes the resulting
+`agent.md`.
+
+If a global `minOutputTokens` would be higher than the page budget, the CLI clamps it down to the
+same page budget before calling the compression API.
+
 Useful checks:
 
 ```bash title="terminal"

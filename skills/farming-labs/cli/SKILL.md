@@ -252,6 +252,9 @@ Behavior:
 - the written `agent.md` becomes the machine-readable source for `.md` routes,
   `GET /api/docs?format=markdown&path=...`, and MCP `read_page()`
 - only folder-based pages can be written automatically
+- page frontmatter `agent.tokenBudget` overrides the compact output target for that one page
+- if the page budget is lower than inherited `minOutputTokens`, the CLI clamps the minimum down to
+  the page budget before calling the compression API
 
 Recommended config:
 
@@ -282,6 +285,16 @@ Useful checks:
 pnpm exec docs agent compact installation --dry-run
 pnpm exec docs agent compact installation
 curl "http://127.0.0.1:3000/docs/installation.md"
+```
+
+Per-page override example:
+
+```md
+---
+title: "Installation"
+agent:
+  tokenBudget: 777
+---
 ```
 
 ---

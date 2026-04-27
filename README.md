@@ -137,6 +137,21 @@ agent: {
 },
 ```
 
+Per-page token budgets live in frontmatter:
+
+```md
+---
+title: "Installation"
+agent:
+  tokenBudget: 777
+---
+```
+
+That page-level `agent.tokenBudget` override beats global `agent.compact.maxOutputTokens` defaults
+and CLI `--max-output-tokens` for the same page. If the page already has a sibling `agent.md`, the
+command compacts that file. Otherwise it compacts the generated machine-readable page first and
+writes a new sibling `agent.md`.
+
 The generated `agent.md` becomes the machine-readable source for `.md` routes,
 `GET /api/docs?format=markdown&path=...`, and MCP `read_page()`.
 
