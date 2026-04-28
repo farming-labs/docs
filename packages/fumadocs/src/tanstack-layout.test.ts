@@ -45,7 +45,8 @@ describe("TanstackDocsLayout", () => {
       children: React.createElement("div", null, "child"),
     });
 
-    const resolvedTree = (tree.props as { tree: { children: Array<Record<string, unknown>> } }).tree;
+    const resolvedTree = (tree.props as { tree: { children: Array<Record<string, unknown>> } })
+      .tree;
     expect(resolvedTree.children[0]).toMatchObject({
       type: "folder",
       index: undefined,

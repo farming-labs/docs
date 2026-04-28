@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  applySidebarFolderIndexBehavior,
-  resolveSidebarFolderIndexBehavior,
-} from "./sidebar.js";
+import { applySidebarFolderIndexBehavior, resolveSidebarFolderIndexBehavior } from "./sidebar.js";
 
 describe("resolveSidebarFolderIndexBehavior", () => {
   it("defaults to link mode", () => {
@@ -52,9 +49,7 @@ describe("applySidebarFolderIndexBehavior", () => {
               name: "Forms",
               url: "/docs/components/forms",
               index: { type: "page", name: "Forms", url: "/docs/components/forms" },
-              children: [
-                { type: "page", name: "Input", url: "/docs/components/forms/input" },
-              ],
+              children: [{ type: "page", name: "Input", url: "/docs/components/forms/input" }],
             },
             { type: "page", name: "Button", url: "/docs/components/button" },
           ],
