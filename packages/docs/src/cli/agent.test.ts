@@ -1351,6 +1351,84 @@ Body.
       true,
     );
   });
+
+  it("supports --changed when contentDir points at the repository root", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "",
+  contentDir: ".",
+};`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "installation"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "installation", "page.mdx"),
+      `---
+title: "Installation"
+description: "Install the framework"
+---
+
+# Installation
+
+Body.
+`,
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+    initializeGitRepo(tmpDir);
+
+    writeFileSync(
+      path.join(tmpDir, "installation", "page.mdx"),
+      `---
+title: "Installation"
+description: "Install the framework"
+---
+
+# Installation
+
+Updated body.
+`,
+      "utf-8",
+    );
+
+    let requestCount = 0;
+    const server = createServer(async (_req, res) => {
+      requestCount += 1;
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          output: "Root compacted",
+          original_input_tokens: 100,
+          output_tokens: 25,
+        }),
+      );
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      await compactAgentDocs({
+        apiKey: "test-key",
+        baseUrl: `http://127.0.0.1:${port}`,
+        changed: true,
+      });
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+
+    expect(requestCount).toBe(1);
+    expectGeneratedAgentFile(
+      path.join(tmpDir, "installation", "agent.md"),
+      "Root compacted",
+      "resolved-page",
+    );
+  });
 });
 
 function existsAtPath(value: string): boolean {

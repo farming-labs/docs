@@ -340,17 +340,19 @@ function listGitChangedFiles(rootDir: string, contentDir: string): Set<string> {
   const contentDirAbs = path.resolve(rootDir, contentDir);
   const relativeContentDir = normalizeGitRelativePath(path.relative(gitRoot, contentDirAbs));
 
-  if (!relativeContentDir || relativeContentDir.startsWith("../")) {
+  if (relativeContentDir.startsWith("../")) {
     throw new Error(
       "Configured contentDir must live inside the current git repository for --changed.",
     );
   }
 
+  const pathspec = relativeContentDir || ".";
+
   const changedFiles = new Set<string>();
   const commands = [
-    ["diff", "--name-only", "--", relativeContentDir],
-    ["diff", "--name-only", "--cached", "--", relativeContentDir],
-    ["ls-files", "--others", "--exclude-standard", "--", relativeContentDir],
+    ["diff", "--name-only", "--", pathspec],
+    ["diff", "--name-only", "--cached", "--", pathspec],
+    ["ls-files", "--others", "--exclude-standard", "--", pathspec],
   ];
 
   for (const args of commands) {
