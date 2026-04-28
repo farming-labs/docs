@@ -41,6 +41,7 @@ When authoring agent-friendly docs with `@farming-labs/docs`, prioritize these i
 4. sibling `agent.md` only when the machine-readable page needs a full rewrite
 5. machine surfaces like `.md`, `llms.txt`, MCP, and the agent discovery spec
 6. validation with `docs doctor --agent`, then compaction with `docs agent compact` where helpful
+7. use `agent.tokenBudget` and stale-aware compaction instead of regenerating every page blindly
 </Agent>
 
 ## Start With The Human Page
@@ -75,6 +76,8 @@ related:
   - /docs/configuration
   - /docs/customization/agent-primitive
   - /docs/customization/mcp
+agent:
+  tokenBudget: 900
 ---
 ```
 
@@ -82,6 +85,7 @@ That alone gives the machine-readable route a stronger entry point:
 
 - `Description:` tells the model what problem the page solves
 - `Related:` gives it nearby pages without scraping the sidebar
+- `agent.tokenBudget` gives `docs agent compact` a per-page output target later
 - the normal body remains the human source of truth
 
 If a page is important enough to unblock implementation, it should also contain:
@@ -241,12 +245,19 @@ After writing a few strong pages, run the doctor command and treat it as an ongo
 pnpm exec docs doctor --agent
 ```
 
+When you want the result to feed CI, automation, or another agent, use JSON output:
+
+```bash title="terminal"
+pnpm exec docs doctor --agent --json
+```
+
 What you want to see improve over time:
 
 - discovery routes passing
 - machine surfaces enabled
 - metadata quality rising
 - **Explicit agent-friendly pages** increasing on the pages that matter most
+- stale generated `agent.md` files dropping toward zero
 
 If a team wants to say their docs are agent-optimized, this kind of audit should be part of the
 definition, not an afterthought.
@@ -258,7 +269,10 @@ Compaction is a token optimization step, not a substitute for clear structure.
 
 ```bash title="terminal"
 pnpm exec docs agent compact guides/agent-friendly-docs
-pnpm exec docs agent compact --all
+pnpm exec docs agent compact installation configuration
+pnpm exec docs agent compact --changed
+pnpm exec docs agent compact --stale
+pnpm exec docs agent compact --stale --include-missing
 ```
 
 Use it when:
@@ -267,7 +281,50 @@ Use it when:
 - the machine layer is too verbose
 - you want tighter `agent.md` files for `.md`, MCP, and API consumers
 
+The useful mental model is:
+
+- use positional page args when you already know the pages you want to compact
+- use `--changed` when you only want the pages touched in the current branch or working tree
+- use `--stale` when you want to refresh generated `agent.md` files whose source content or compact
+  settings drifted
+- use `--stale --include-missing` when you also want to materialize missing `agent.md` files for
+  pages that define `agent.tokenBudget` or that you explicitly target
+
+If a page already has a sibling `agent.md`, the CLI compacts that file. If it does not, the CLI
+uses the page's generated machine-readable markdown, then writes a sibling `agent.md`.
+
+```md title="page.mdx frontmatter"
+---
+title: "Agent-Friendly Docs"
+agent:
+  tokenBudget: 777
+---
+```
+
+That page-level `agent.tokenBudget` overrides broader compact defaults for that page only, which is
+useful when one page needs a tighter machine contract than the rest of the site.
+
 Do not use compaction to paper over vague docs. Shorter confusion is still confusion.
+
+## The Practical Authoring Loop
+
+For most teams, the healthy flow looks like this:
+
+1. write the human page
+2. add `description`, `related`, and verification
+3. add `<Agent>` only if the machine layer needs hints
+4. add `agent.tokenBudget` on pages that need a tighter compact target
+5. run `pnpm exec docs doctor --agent`
+6. compact only the pages you changed or the generated files that became stale
+
+```bash title="terminal"
+pnpm exec docs doctor --agent
+pnpm exec docs agent compact --changed
+pnpm exec docs agent compact --stale
+```
+
+That loop is much better than regenerating every page every time. It keeps the machine layer
+current without turning the repo into churn.
 
 ## A Practical Checklist
 
@@ -275,10 +332,12 @@ Before calling a page agent-friendly, ask:
 
 - does the page clearly state what it is for?
 - does frontmatter include `description` and `related`?
+- does this page need `agent.tokenBudget`?
 - does it include verification and troubleshooting?
 - should this page get an `Agent` block?
 - does it need a dedicated `agent.md`, or is the human page still canonical?
 - can an agent find it through `.md`, `llms.txt`, MCP, and the discovery spec?
+- does `docs doctor --agent` agree with the state of the site?
 
 If the answer is yes across the important task pages, you are not just publishing docs that agents
 can technically crawl. You are publishing docs they can actually work with.
@@ -288,5 +347,6 @@ can technically crawl. You are publishing docs they can actually work with.
 - [Agent Primitive](/docs/customization/agent-primitive) for `Agent` blocks and sibling `agent.md`
 - [llms.txt](/docs/customization/llms-txt) for the discovery layer
 - [MCP Server](/docs/customization/mcp) for tool-enabled retrieval
+- [CLI](/docs/cli#agent-compact) for `docs agent compact`
 - [CLI](/docs/cli#doctor) for `docs doctor --agent`
 - [Configuration](/docs/configuration) for the full config surface
