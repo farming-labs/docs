@@ -179,6 +179,7 @@ ${pc.dim("Options for mcp:")}
 ${pc.dim("Options for agent compact:")}
   ${pc.cyan("agent compact <page...>")}             Compact pages and write sibling ${pc.dim("agent.md")} files
   ${pc.cyan("agent compact --all")}                 Compact every folder-based docs page
+  ${pc.cyan("agent compact --changed")}             Compact only docs pages changed in the current git working tree
   ${pc.cyan("agent compact --stale")}               Refresh only stale generated ${pc.dim("agent.md")} files
   ${pc.cyan("--page <slug|path>")}                  Repeatable explicit page flag; positional page args work too
   ${pc.cyan("--include-missing")}                   With ${pc.cyan("--stale")}, also create explicit or token-budget pages missing ${pc.dim("agent.md")}

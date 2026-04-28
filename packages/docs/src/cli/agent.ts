@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import matter from "gray-matter";
 import pc from "picocolors";
@@ -45,6 +46,7 @@ export interface AgentCompactOptions {
   protectJson?: boolean;
   all?: boolean;
   pages?: string[];
+  changed?: boolean;
   stale?: boolean;
   includeMissing?: boolean;
   dryRun?: boolean;
@@ -128,6 +130,11 @@ export function parseAgentCompactArgs(argv: string[]): ParsedAgentCompactArgs {
 
     if (arg === "--dry-run") {
       parsed.dryRun = true;
+      continue;
+    }
+
+    if (arg === "--changed") {
+      parsed.changed = true;
       continue;
     }
 
@@ -308,6 +315,65 @@ function resolveCompressionEndpoint(rawBaseUrl?: string): string {
   return `${baseUrl.replace(/\/+$/, "")}/v1/compress`;
 }
 
+function runGitCommand(rootDir: string, args: string[]): string {
+  return execFileSync("git", args, {
+    cwd: rootDir,
+    encoding: "utf-8",
+  }).trim();
+}
+
+function normalizeGitRelativePath(value: string): string {
+  return value
+    .replace(/\\/g, "/")
+    .replace(/^\.\/+/, "")
+    .replace(/^\/+/, "");
+}
+
+function listGitChangedFiles(rootDir: string, contentDir: string): Set<string> {
+  let gitRoot: string;
+  try {
+    gitRoot = runGitCommand(rootDir, ["rev-parse", "--show-toplevel"]);
+  } catch {
+    throw new Error("Use --changed inside a git repository.");
+  }
+
+  const contentDirAbs = path.resolve(rootDir, contentDir);
+  const relativeContentDir = normalizeGitRelativePath(path.relative(gitRoot, contentDirAbs));
+
+  if (relativeContentDir.startsWith("../")) {
+    throw new Error(
+      "Configured contentDir must live inside the current git repository for --changed.",
+    );
+  }
+
+  const pathspec = relativeContentDir || ".";
+
+  const changedFiles = new Set<string>();
+  const commands = [
+    ["diff", "--name-only", "--", pathspec],
+    ["diff", "--name-only", "--cached", "--", pathspec],
+    ["ls-files", "--others", "--exclude-standard", "--", pathspec],
+  ];
+
+  for (const args of commands) {
+    const output = runGitCommand(gitRoot, args);
+    if (!output) continue;
+
+    for (const line of output.split("\n")) {
+      const normalized = normalizeGitRelativePath(line.trim());
+      if (!normalized) continue;
+
+      const absolutePath = path.resolve(gitRoot, normalized);
+      const relativeToRoot = normalizeGitRelativePath(path.relative(rootDir, absolutePath));
+      if (relativeToRoot && !relativeToRoot.startsWith("../")) {
+        changedFiles.add(relativeToRoot);
+      }
+    }
+  }
+
+  return changedFiles;
+}
+
 function resolveCompressionApiKey(explicitApiKey?: string, explicitApiKeyEnv?: string): string {
   const candidateKeys = [
     explicitApiKeyEnv,
@@ -436,6 +502,16 @@ function readCurrentAgentDocument(target: DocsPageTarget) {
   if (!target.hasAgentFile || !existsSync(target.agentPath)) return undefined;
   const raw = readFileSync(target.agentPath, "utf-8");
   return parseGeneratedAgentDocument(raw);
+}
+
+function shouldCompactChangedAgentFile(target: DocsPageTarget): boolean {
+  const currentDocument = readCurrentAgentDocument(target);
+  if (!currentDocument) return false;
+  if (!currentDocument.provenance) return true;
+  if (currentDocument.provenance.sourceKind !== "agent-md") return false;
+  return (
+    hashGeneratedAgentContent(currentDocument.content) !== currentDocument.provenance.outputHash
+  );
 }
 
 function resolveSourceKindForCompaction(
@@ -670,6 +746,22 @@ function resolveSelectedPages(
   return resolved;
 }
 
+function filterChangedPages(
+  rootDir: string,
+  contentDir: string,
+  selectedPages: Array<{ page: DocsMcpPage; target: DocsPageTarget }>,
+): Array<{ page: DocsMcpPage; target: DocsPageTarget }> {
+  const changedFiles = listGitChangedFiles(rootDir, contentDir);
+
+  return selectedPages.filter(({ target }) => {
+    const relativePagePath = normalizeGitRelativePath(path.relative(rootDir, target.pagePath));
+    if (changedFiles.has(relativePagePath)) return true;
+
+    const relativeAgentPath = normalizeGitRelativePath(path.relative(rootDir, target.agentPath));
+    return changedFiles.has(relativeAgentPath) && shouldCompactChangedAgentFile(target);
+  });
+}
+
 export async function compactAgentDocs(options: AgentCompactOptions = {}): Promise<void> {
   const rootDir = process.cwd();
   const loadedEnv = loadProjectEnv(rootDir);
@@ -711,8 +803,15 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
   }
 
   const requestedPages = resolvedOptions.pages?.filter((value) => value.trim().length > 0) ?? [];
-  if (!resolvedOptions.all && requestedPages.length === 0 && !resolvedOptions.stale) {
-    throw new Error("Pass --all, --stale, or at least one docs page slug/path to compact.");
+  if (
+    !resolvedOptions.all &&
+    requestedPages.length === 0 &&
+    !resolvedOptions.stale &&
+    !resolvedOptions.changed
+  ) {
+    throw new Error(
+      "Pass --all, --changed, --stale, or at least one docs page slug/path to compact.",
+    );
   }
 
   const source = createFilesystemDocsMcpSource({
@@ -729,10 +828,19 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
 
   const targets = scanDocsPageTargets(rootDir, contentDir, entry);
   const selectAll =
-    resolvedOptions.all === true || (resolvedOptions.stale === true && requestedPages.length === 0);
+    resolvedOptions.all === true ||
+    (resolvedOptions.stale === true && requestedPages.length === 0) ||
+    (resolvedOptions.changed === true && requestedPages.length === 0);
   const selectedPages = resolveSelectedPages(pages, targets, entry, requestedPages, selectAll);
+  const filteredPages = resolvedOptions.changed
+    ? filterChangedPages(rootDir, contentDir, selectedPages)
+    : selectedPages;
 
-  if (selectedPages.length === 0) {
+  if (filteredPages.length === 0) {
+    if (resolvedOptions.changed) {
+      console.log(pc.green("No changed docs pages needed compaction."));
+      return;
+    }
     throw new Error("No compactable docs pages matched the request.");
   }
 
@@ -745,7 +853,7 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
   let skippedMissing = 0;
   const requestedExplicitPages = requestedPages.length > 0;
 
-  for (const { page, target } of selectedPages) {
+  for (const { page, target } of filteredPages) {
     const state = inspectAgentCompactionState(page, target, resolvedOptions);
 
     if (resolvedOptions.stale) {
@@ -806,7 +914,7 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
 
   if (resolvedOptions.dryRun) {
     processed =
-      selectedPages.length - skippedFresh - skippedModified - skippedUnknown - skippedMissing;
+      filteredPages.length - skippedFresh - skippedModified - skippedUnknown - skippedMissing;
   }
 
   if (resolvedOptions.stale && processed === 0) {
@@ -850,6 +958,7 @@ ${pc.dim("Examples:")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact /docs/installation")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact --page installation --page configuration")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact --all")}
+  ${pc.cyan("npx @farming-labs/docs@latest agent compact --changed")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact --stale")}
   ${pc.cyan("npx @farming-labs/docs@latest agent compact --stale --include-missing")}
 
@@ -859,6 +968,7 @@ ${pc.dim("Per-page override:")}
 ${pc.dim("Options:")}
   ${pc.cyan("--all")}                    Compact every folder-based docs page under the configured contentDir
   ${pc.cyan("--page <slug|path>")}       Add a page explicitly (repeatable); positional page args work too
+  ${pc.cyan("--changed")}                Compact only docs pages changed in the current git working tree
   ${pc.cyan("--stale")}                  Re-compact only stale generated agent.md files
   ${pc.cyan("--include-missing")}        With ${pc.cyan("--stale")}, also create missing agent.md files for explicit pages or pages that define ${pc.cyan("agent.tokenBudget")}
   ${pc.cyan("--config <path>")}          Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
