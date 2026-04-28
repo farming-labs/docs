@@ -1301,7 +1301,8 @@ Updated body.
     expect(
       seenInputs.some(
         (input) =>
-          input.includes("Handwritten source updated.") && !input.includes("URL: /docs/handwritten"),
+          input.includes("Handwritten source updated.") &&
+          !input.includes("URL: /docs/handwritten"),
       ),
     ).toBe(true);
     expect(seenInputs.some((input) => input.includes("URL: /docs/generated"))).toBe(false);
@@ -1346,7 +1347,9 @@ Body.
       changed: true,
     });
 
-    expect(logs.some((line) => line.includes("No changed docs pages needed compaction."))).toBe(true);
+    expect(logs.some((line) => line.includes("No changed docs pages needed compaction."))).toBe(
+      true,
+    );
   });
 });
 

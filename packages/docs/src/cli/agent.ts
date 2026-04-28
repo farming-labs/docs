@@ -323,7 +323,10 @@ function runGitCommand(rootDir: string, args: string[]): string {
 }
 
 function normalizeGitRelativePath(value: string): string {
-  return value.replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/^\/+/, "");
+  return value
+    .replace(/\\/g, "/")
+    .replace(/^\.\/+/, "")
+    .replace(/^\/+/, "");
 }
 
 function listGitChangedFiles(rootDir: string, contentDir: string): Set<string> {
@@ -338,7 +341,9 @@ function listGitChangedFiles(rootDir: string, contentDir: string): Set<string> {
   const relativeContentDir = normalizeGitRelativePath(path.relative(gitRoot, contentDirAbs));
 
   if (!relativeContentDir || relativeContentDir.startsWith("../")) {
-    throw new Error("Configured contentDir must live inside the current git repository for --changed.");
+    throw new Error(
+      "Configured contentDir must live inside the current git repository for --changed.",
+    );
   }
 
   const changedFiles = new Set<string>();
@@ -502,7 +507,9 @@ function shouldCompactChangedAgentFile(target: DocsPageTarget): boolean {
   if (!currentDocument) return false;
   if (!currentDocument.provenance) return true;
   if (currentDocument.provenance.sourceKind !== "agent-md") return false;
-  return hashGeneratedAgentContent(currentDocument.content) !== currentDocument.provenance.outputHash;
+  return (
+    hashGeneratedAgentContent(currentDocument.content) !== currentDocument.provenance.outputHash
+  );
 }
 
 function resolveSourceKindForCompaction(
@@ -794,8 +801,15 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
   }
 
   const requestedPages = resolvedOptions.pages?.filter((value) => value.trim().length > 0) ?? [];
-  if (!resolvedOptions.all && requestedPages.length === 0 && !resolvedOptions.stale && !resolvedOptions.changed) {
-    throw new Error("Pass --all, --changed, --stale, or at least one docs page slug/path to compact.");
+  if (
+    !resolvedOptions.all &&
+    requestedPages.length === 0 &&
+    !resolvedOptions.stale &&
+    !resolvedOptions.changed
+  ) {
+    throw new Error(
+      "Pass --all, --changed, --stale, or at least one docs page slug/path to compact.",
+    );
   }
 
   const source = createFilesystemDocsMcpSource({
@@ -857,7 +871,7 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
       }
 
       if (state.status === "missing") {
-      const shouldCreateMissing =
+        const shouldCreateMissing =
           resolvedOptions.includeMissing === true &&
           (requestedExplicitPages || state.tokenBudget !== undefined);
 
