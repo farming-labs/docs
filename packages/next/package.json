@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/next",
-  "version": "0.1.53",
+  "version": "0.1.54",
   "description": "Next.js adapter for @farming-labs/docs — MDX config wrapper",
   "keywords": [
     "docs",
