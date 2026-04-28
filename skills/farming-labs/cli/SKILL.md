@@ -239,6 +239,7 @@ pnpm exec docs agent compact https://docs.example.com/docs/installation
 pnpm exec docs agent compact . --dry-run
 pnpm exec docs agent compact --page installation --page configuration
 pnpm exec docs agent compact --all
+pnpm exec docs agent compact --changed
 pnpm exec docs agent compact --stale
 pnpm exec docs agent compact --stale --include-missing
 ```
@@ -250,6 +251,8 @@ Behavior:
   page
 - the command loads `.env` and `.env.local`
 - defaults can come from `agent.compact` in `docs.config.ts` or `docs.config.tsx`
+- `--changed` compacts only docs pages changed in the current git working tree, including staged,
+  unstaged, and untracked docs changes plus handwritten `agent.md` sources
 - `--stale` refreshes only generated `agent.md` files whose page source or compaction settings
   changed
 - `--include-missing` only works with `--stale`, and creates missing `agent.md` files for explicit

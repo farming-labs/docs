@@ -187,6 +187,8 @@ Notes:
 - page frontmatter `agent.tokenBudget` overrides `maxOutputTokens` for that page
 - if no sibling `agent.md` exists, the command compacts the generated machine-readable page output
   first and then writes a new `agent.md`
+- `docs agent compact --changed` only processes docs pages changed in the current git working
+  tree, including staged, unstaged, and untracked docs changes
 - if inherited `minOutputTokens` is greater than the page budget, the CLI clamps it down to the
   page budget before calling the compression API
 
@@ -196,6 +198,7 @@ Common commands:
 pnpm exec docs agent compact installation configuration
 pnpm exec docs agent compact installation --dry-run
 pnpm exec docs agent compact --all
+pnpm exec docs agent compact --changed
 ```
 
 Per-page override example:

@@ -125,6 +125,7 @@ resolved docs pages.
 
 ```bash
 pnpm exec docs agent compact installation
+pnpm exec docs agent compact --changed
 pnpm exec docs agent compact --stale
 pnpm exec docs agent compact --stale --include-missing
 ```
@@ -156,6 +157,8 @@ writes a new sibling `agent.md`.
 
 Generated files carry hidden provenance metadata so the CLI can detect drift later:
 
+- `docs agent compact --changed` compacts only docs pages whose source files changed in the current
+  git working tree, including staged, unstaged, and untracked docs changes
 - `docs agent compact --stale` refreshes only stale generated `agent.md` files
 - `docs agent compact --stale --include-missing` also creates missing `agent.md` files for
   explicitly requested pages or pages that define `agent.tokenBudget`
