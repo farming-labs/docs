@@ -511,7 +511,8 @@ export interface SidebarConfig {
    * - `"toggle"` — clicking the parent row only expands/collapses children, and the
    *   folder landing page appears as the first child item instead
    *
-   * @default "link"
+   * When omitted, each adapter keeps its existing folder-parent behavior. Set this
+   * explicitly if you want the same sidebar interaction across frameworks.
    */
   folderIndexBehavior?: SidebarFolderIndexBehavior;
 }

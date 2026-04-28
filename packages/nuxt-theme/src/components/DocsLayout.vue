@@ -61,9 +61,9 @@ const localizedApi = computed(() => withLang("/api/docs"));
 const sidebarFolderIndexBehavior = computed(() =>
   props.config?.sidebar &&
   typeof props.config.sidebar === "object" &&
-  props.config.sidebar.folderIndexBehavior === "toggle"
-    ? "toggle"
-    : "link",
+  props.config.sidebar.folderIndexBehavior === "link"
+    ? "link"
+    : "toggle",
 );
 
 const showThemeToggle = computed(() => {
@@ -221,6 +221,7 @@ function suppressFolderSummaryToggle(event: MouseEvent) {
 
 function keepFolderLinkNavigation(event: MouseEvent) {
   event.stopPropagation();
+  closeSidebar();
 }
 
 function toggleFolder(event: MouseEvent) {

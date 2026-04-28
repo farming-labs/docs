@@ -52,9 +52,9 @@
   let sidebarFolderIndexBehavior = $derived(
     config?.sidebar &&
       typeof config.sidebar === "object" &&
-      config.sidebar.folderIndexBehavior === "toggle"
-      ? "toggle"
-      : "link"
+      config.sidebar.folderIndexBehavior === "link"
+      ? "link"
+      : "toggle"
   );
 
   let showThemeToggle = $derived.by(() => {
@@ -119,6 +119,7 @@
 
   function keepFolderLinkNavigation(event) {
     event.stopPropagation();
+    closeSidebar();
   }
 
   function toggleFolder(event) {
@@ -351,7 +352,7 @@
                       href={withLang(node.index.url)}
                       class="fd-sidebar-link fd-sidebar-folder-parent-link"
                       class:fd-sidebar-link-active={isActive(node.index.url)}
-                      data-active={isActive(node.index.url)}
+                      data-active={isActive(node.index.url) || undefined}
                       onclick={keepFolderLinkNavigation}
                     >
                       {#if getIcon(node.icon)}
@@ -417,7 +418,7 @@
                               href={withLang(child.index.url)}
                               class="fd-sidebar-link fd-sidebar-folder-parent-link"
                               class:fd-sidebar-link-active={isActive(child.index.url)}
-                              data-active={isActive(child.index.url)}
+                              data-active={isActive(child.index.url) || undefined}
                               onclick={keepFolderLinkNavigation}
                             >
                               {child.name}

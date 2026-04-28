@@ -9,9 +9,9 @@ const useFlatSidebar = sidebarFlat && Array.isArray(flatPages) && flatPages.leng
 const sidebarFolderIndexBehavior =
   config?.sidebar &&
   typeof config.sidebar === "object" &&
-  (config.sidebar as { folderIndexBehavior?: "link" | "toggle" }).folderIndexBehavior === "toggle"
-    ? "toggle"
-    : "link";
+  (config.sidebar as { folderIndexBehavior?: "link" | "toggle" }).folderIndexBehavior === "link"
+    ? "link"
+    : "toggle";
 
 const i18n = config?.i18n as { locales?: string[]; defaultLocale?: string } | undefined;
 const locales = Array.isArray(i18n?.locales) ? i18n.locales.filter(Boolean) : [];
