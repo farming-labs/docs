@@ -23,6 +23,7 @@ export {
   resolveReadingTimeOptions,
 } from "./reading-time.js";
 export { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
+export { applySidebarFolderIndexBehavior, resolveSidebarFolderIndexBehavior } from "./sidebar.js";
 export {
   GENERATED_AGENT_PROVENANCE_MARKER,
   GENERATED_AGENT_PROVENANCE_VERSION,
@@ -99,6 +100,7 @@ export type {
   BreadcrumbConfig,
   SidebarConfig,
   SidebarComponentProps,
+  SidebarFolderIndexBehavior,
   SidebarTree,
   SidebarNode,
   SidebarPageNode,

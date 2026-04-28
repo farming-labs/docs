@@ -19,6 +19,7 @@ import path from "node:path";
 import matter from "gray-matter";
 import { eventHandler, getRequestURL, readRawBody } from "h3";
 import {
+  applySidebarFolderIndexBehavior,
   buildDocsAgentDiscoverySpec,
   findDocsMarkdownPage,
   isDocsAgentDiscoveryRequest,
@@ -39,6 +40,7 @@ import {
   resolveDocsPath,
   resolvePageReadingTime,
   resolveReadingTimeOptions,
+  resolveSidebarFolderIndexBehavior,
   resolveDocsSkillFormat,
 } from "@farming-labs/docs";
 import { createDocsMcpHttpHandler, resolveDocsMcpConfig } from "@farming-labs/docs/server";
@@ -550,9 +552,12 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     }
     const locale = resolveDocsLocale(url.searchParams, i18n) ?? i18n?.defaultLocale;
     const ctx = resolveContextFromPath(url.pathname, locale);
-    const tree = preloaded
-      ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
-      : loadDocsNavTree(ctx.contentDirAbs, entry, ordering);
+    const tree = applySidebarFolderIndexBehavior(
+      preloaded
+        ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
+        : loadDocsNavTree(ctx.contentDirAbs, entry, ordering),
+      resolveSidebarFolderIndexBehavior(config.sidebar),
+    );
     const flatPages = flattenNavTree(tree);
 
     const slug = ctx.slug;
@@ -1056,9 +1061,12 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       },
       getNavigation(locale) {
         const ctx = resolveContextFromPath(`/${entry}`, resolveLocaleForMcp(locale));
-        return preloaded
-          ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
-          : loadDocsNavTree(ctx.contentDirAbs, entry, ordering);
+        return applySidebarFolderIndexBehavior(
+          preloaded
+            ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
+            : loadDocsNavTree(ctx.contentDirAbs, entry, ordering),
+          resolveSidebarFolderIndexBehavior(config.sidebar),
+        );
       },
     },
     mcp: (config as Record<string, unknown>).mcp as Record<string, unknown> | boolean | undefined,

@@ -372,13 +372,44 @@ samp {
   background: var(--color-fd-accent);
 }
 
+.fd-sidebar-folder-trigger-link {
+  gap: 8px;
+}
+
+.fd-sidebar-folder-parent-link {
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  color: inherit;
+  background: transparent !important;
+}
+
+.fd-sidebar-folder-parent-link:hover {
+  color: inherit;
+  background: transparent !important;
+}
+
+.fd-sidebar-folder-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .fd-sidebar-chevron {
   transition: transform 0.2s;
   flex-shrink: 0;
   opacity: 0.5;
 }
 
-.fd-sidebar-folder[open] > .fd-sidebar-folder-trigger .fd-sidebar-chevron {
+.fd-sidebar-folder[open] > .fd-sidebar-folder-trigger .fd-sidebar-chevron,
+.fd-sidebar-folder[open] > .fd-sidebar-folder-trigger-link .fd-sidebar-chevron {
   transform: rotate(180deg);
 }
 

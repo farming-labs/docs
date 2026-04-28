@@ -6,6 +6,12 @@ const { tree, config = null, title, titleUrl, flatPages = null } = Astro.props;
 
 const sidebarFlat = !!(config?.sidebar && typeof config.sidebar === "object" && (config.sidebar as { flat?: boolean }).flat);
 const useFlatSidebar = sidebarFlat && Array.isArray(flatPages) && flatPages.length > 0;
+const sidebarFolderIndexBehavior =
+  config?.sidebar &&
+  typeof config.sidebar === "object" &&
+  (config.sidebar as { folderIndexBehavior?: "link" | "toggle" }).folderIndexBehavior === "link"
+    ? "link"
+    : "toggle";
 
 const i18n = config?.i18n as { locales?: string[]; defaultLocale?: string } | undefined;
 const locales = Array.isArray(i18n?.locales) ? i18n.locales.filter(Boolean) : [];
@@ -253,17 +259,41 @@ const showSearch = !staticExport;
           const folderIcon = getIcon(node.icon);
           return (
             <details class={`fd-sidebar-folder ${i === 0 ? 'fd-sidebar-first-item' : ''}`} open>
-              <summary class="fd-sidebar-folder-trigger">
-                <span class="fd-sidebar-folder-label">
-                  {folderIcon && <span class="fd-sidebar-icon" set:html={folderIcon} />}
-                  {node.name}
-                </span>
-                <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </summary>
+              {sidebarFolderIndexBehavior === "link" && node.index ? (
+                <summary class="fd-sidebar-folder-trigger fd-sidebar-folder-trigger-link" data-folder-link-summary>
+                  <a
+                    href={withLang(node.index.url)}
+                    class={`fd-sidebar-link fd-sidebar-folder-parent-link ${isActive(node.index.url) ? 'fd-sidebar-link-active' : ''}`}
+                    data-active={isActive(node.index.url) || undefined}
+                    data-folder-link-anchor
+                  >
+                    {folderIcon && <span class="fd-sidebar-icon" set:html={folderIcon} />}
+                    {node.name}
+                  </a>
+                  <button
+                    type="button"
+                    class="fd-sidebar-folder-toggle"
+                    aria-label={`Toggle ${node.name}`}
+                    data-folder-toggle
+                  >
+                    <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
+                </summary>
+              ) : (
+                <summary class="fd-sidebar-folder-trigger">
+                  <span class="fd-sidebar-folder-label">
+                    {folderIcon && <span class="fd-sidebar-icon" set:html={folderIcon} />}
+                    {node.name}
+                  </span>
+                  <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </summary>
+              )}
               <div class="fd-sidebar-folder-content">
-                {node.index && (
+                {sidebarFolderIndexBehavior !== "link" && node.index && (
                   <a
                     href={withLang(node.index.url)}
                     class={`fd-sidebar-link fd-sidebar-child-link ${isActive(node.index.url) ? 'fd-sidebar-link-active' : ''}`}
@@ -286,14 +316,37 @@ const showSearch = !staticExport;
                   } else if (child.type === "folder") {
                     return (
                       <details class="fd-sidebar-folder fd-sidebar-nested-folder" open>
-                        <summary class="fd-sidebar-folder-trigger">
-                          <span class="fd-sidebar-folder-label">{child.name}</span>
-                          <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                            <polyline points="6 9 12 15 18 9" />
-                          </svg>
-                        </summary>
+                        {sidebarFolderIndexBehavior === "link" && child.index ? (
+                          <summary class="fd-sidebar-folder-trigger fd-sidebar-folder-trigger-link" data-folder-link-summary>
+                            <a
+                              href={withLang(child.index.url)}
+                              class={`fd-sidebar-link fd-sidebar-folder-parent-link ${isActive(child.index.url) ? 'fd-sidebar-link-active' : ''}`}
+                              data-active={isActive(child.index.url) || undefined}
+                              data-folder-link-anchor
+                            >
+                              {child.name}
+                            </a>
+                            <button
+                              type="button"
+                              class="fd-sidebar-folder-toggle"
+                              aria-label={`Toggle ${child.name}`}
+                              data-folder-toggle
+                            >
+                              <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                <polyline points="6 9 12 15 18 9" />
+                              </svg>
+                            </button>
+                          </summary>
+                        ) : (
+                          <summary class="fd-sidebar-folder-trigger">
+                            <span class="fd-sidebar-folder-label">{child.name}</span>
+                            <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                          </summary>
+                        )}
                         <div class="fd-sidebar-folder-content">
-                          {child.index && (
+                          {sidebarFolderIndexBehavior !== "link" && child.index && (
                             <a
                               href={withLang(child.index.url)}
                               class={`fd-sidebar-link fd-sidebar-child-link ${isActive(child.index.url) ? 'fd-sidebar-link-active' : ''}`}
@@ -441,5 +494,30 @@ const showSearch = !staticExport;
     if (target.value) url.searchParams.set('lang', target.value);
     else url.searchParams.delete('lang');
     window.location.assign(`${url.pathname}${url.search}${url.hash}`);
+  });
+
+  sidebar?.querySelectorAll('[data-folder-link-anchor]').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.stopPropagation();
+    });
+  });
+
+  sidebar?.querySelectorAll('[data-folder-link-summary]').forEach((summary) => {
+    summary.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('[data-folder-link-anchor]') || target?.closest('[data-folder-toggle]')) {
+        return;
+      }
+      event.preventDefault();
+    });
+  });
+
+  sidebar?.querySelectorAll('[data-folder-toggle]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const details = (event.currentTarget as HTMLElement | null)?.closest('details');
+      if (details) details.open = !details.open;
+    });
   });
 </script>
