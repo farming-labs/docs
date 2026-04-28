@@ -1,0 +1,265 @@
+@import "tailwindcss";
+@import "@farming-labs/theme/greentree/css";
+@import "@farming-labs/next/api-reference.css";
+
+:root {
+  --surge-primary: #8200ff;
+  --surge-primary-soft: #a684ff;
+  --surge-primary-deep: #7f22fe;
+  --surge-surface: #ffffff;
+  --surge-border: rgba(18, 18, 23, 0.08);
+}
+
+.dark {
+  --surge-surface: #09090f;
+  --surge-border: rgba(255, 255, 255, 0.1);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--surge-primary) 12%, transparent), transparent 36%),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--surge-primary-soft) 10%, transparent), transparent 32%),
+    var(--color-fd-background);
+}
+
+a {
+  transition: color 160ms ease, opacity 160ms ease, border-color 160ms ease;
+}
+
+.surge-home-shell {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surge-primary) 7%, transparent), transparent 18%),
+    var(--color-fd-background);
+}
+
+.surge-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.surge-card {
+  border: 1px solid var(--surge-border);
+  background: color-mix(in srgb, var(--surge-surface) 96%, transparent);
+  border-radius: 1.25rem;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.04);
+}
+
+.dark .surge-card {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.surge-glow {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--surge-primary) 10%, transparent),
+    0 18px 70px color-mix(in srgb, var(--surge-primary) 20%, transparent);
+}
+
+.surge-hero-art {
+  border: 1px solid var(--surge-border);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surge-primary) 9%, transparent), transparent),
+    color-mix(in srgb, var(--surge-surface) 96%, transparent);
+  border-radius: 1.5rem;
+  overflow: hidden;
+}
+
+.surge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--surge-border);
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--color-fd-foreground) 70%, transparent);
+  background: color-mix(in srgb, var(--surge-surface) 92%, transparent);
+}
+
+.surge-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  border-radius: 999px;
+  padding: 0.9rem 1.2rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+
+.surge-button-primary {
+  background: linear-gradient(135deg, var(--surge-primary), var(--surge-primary-deep));
+  color: white;
+}
+
+.surge-button-primary:hover {
+  opacity: 0.92;
+}
+
+.surge-button-secondary {
+  border-color: var(--surge-border);
+  color: var(--color-fd-foreground);
+  background: color-mix(in srgb, var(--surge-surface) 92%, transparent);
+}
+
+.surge-button-secondary:hover {
+  border-color: color-mix(in srgb, var(--surge-primary) 35%, var(--surge-border));
+  color: var(--surge-primary);
+}
+
+.surge-sidebar-banner {
+  display: grid;
+  gap: 0.75rem;
+  margin: -0.25rem 0 0.25rem;
+}
+
+.surge-sidebar-banner-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.surge-sidebar-banner-link {
+  border: 1px solid var(--surge-border);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: color-mix(in srgb, var(--color-fd-foreground) 78%, transparent);
+  background: color-mix(in srgb, var(--surge-surface) 92%, transparent);
+}
+
+.surge-sidebar-banner-link[data-active="true"] {
+  border-color: color-mix(in srgb, var(--surge-primary) 50%, transparent);
+  color: var(--surge-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--surge-primary) 12%, transparent);
+}
+
+.surge-sidebar-footer {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+}
+
+.surge-sidebar-footer-copy {
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--color-fd-foreground) 68%, transparent);
+}
+
+.surge-sidebar-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.surge-sidebar-footer-links a {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: color-mix(in srgb, var(--color-fd-foreground) 74%, transparent);
+}
+
+.surge-sidebar-footer-links a:hover {
+  color: var(--surge-primary);
+}
+
+.surge-warning {
+  margin: 1.5rem 0;
+  border: 1px solid color-mix(in srgb, var(--surge-primary) 18%, var(--surge-border));
+  background: color-mix(in srgb, var(--surge-primary) 8%, transparent);
+  border-radius: 1rem;
+  padding: 1rem 1rem 1rem 1.1rem;
+}
+
+.surge-warning strong {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.surge-steps {
+  display: grid;
+  gap: 1rem;
+  margin: 1.75rem 0;
+  counter-reset: surge-step;
+}
+
+.surge-step {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid var(--surge-border);
+  background: color-mix(in srgb, var(--surge-surface) 96%, transparent);
+  border-radius: 1.25rem;
+  padding: 1.1rem 1.15rem;
+}
+
+.surge-step-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.surge-step-index {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, var(--surge-primary), var(--surge-primary-deep));
+}
+
+.surge-step-index::before {
+  counter-increment: surge-step;
+  content: counter(surge-step);
+}
+
+.surge-step-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.surge-code-group {
+  display: grid;
+  gap: 1rem;
+}
+
+.surge-api-operation {
+  margin-top: 1.5rem;
+  border: 1px solid var(--surge-border);
+  border-radius: 1.25rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surge-surface) 96%, transparent);
+}
+
+.surge-api-operation [data-openapi-operation] {
+  margin: 0;
+}
+
+.surge-section-intro {
+  display: grid;
+  gap: 1rem;
+}
+
+.surge-section-links {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.surge-section-links a {
+  text-decoration: none;
+  font-weight: 600;
+}

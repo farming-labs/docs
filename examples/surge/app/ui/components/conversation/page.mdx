@@ -1,0 +1,81 @@
+---
+title: "Conversation"
+description: "The conversation component displays the messages and attachments"
+---
+<img
+  className="block rounded-lg"
+  src="/images/conversation-hero.jpg"
+  alt="The conversation component"
+/>
+
+The conversation component displays the messages and attachments in a single
+conversation and a composer that allows the user to send new messages in that
+conversation. It is often a good choice for embedding in customer detail pages
+where you don't want to display all of the possible conversations, but want your
+users to be able to easily message the customer they're currently viewing.
+
+## Installation
+
+The conversation component requires one of the following:
+
+* Surge Conversation ID
+* Surge Contact ID
+* Phone Number
+
+The conversation ID is the preferred method, and it will be the most performant
+as the other methods will redirect to the conversation ID when one exists, so
+the iframe may take longer to load.
+
+### With a conversation ID
+
+The simplest version of the conversation component can be embedded like this:
+
+```html
+<iframe
+  src="https://embed.surge.app/conversation/{CONVERSATION_ID}?user_id={SURGE_USER_ID}&token={ACCOUNT_TOKEN}"
+></iframe>
+```
+
+Both `{SURGE_USER_ID}` and `{ACCOUNT_TOKEN}` are required parameters. You can find
+them in the Surge dashboard. We will also be providing more robust auth options
+in the near future.
+
+The `{CONVERSATION_ID}` parameter is also required and should be the ID of the
+conversation to display.
+
+### With a contact ID
+
+```html
+<iframe
+  src="https://embed.surge.app/conversation/new?contact={CONTACT_ID}&user_id={SURGE_USER_ID}&token={ACCOUNT_TOKEN}"
+></iframe>
+```
+
+Both `{SURGE_USER_ID}` and `{ACCOUNT_TOKEN}` are required parameters. You can find
+them in the Surge dashboard. We will also be providing more robust auth options
+in the near future.
+
+The `{CONTACT_ID}` is also required in this instance and should be the ID of the
+contact whose conversation should be displayed.
+
+### With a phone number
+
+```html
+<iframe
+  src="https://embed.surge.app/conversation/new?phone_number={PHONE_NUMBER}&first_name={FIRST_NAME}&last_name={LAST_NAME}&user_id={SURGE_USER_ID}&token={ACCOUNT_TOKEN}"
+></iframe>
+```
+
+Both `{SURGE_USER_ID}` and `{ACCOUNT_TOKEN}` are required parameters. You can find
+them in the Surge dashboard. We will also be providing more robust auth options
+in the near future.
+
+The `{PHONE_NUMBER}` is the phone number for the person whose conversation
+should be displayed, or to whom messages should be sent if no conversation
+exists. This parameter is required.
+
+The `{FIRST_NAME}` and `{LAST_NAME}` parameters are optional, but highly
+encouraged as they will allow the contact's information to be displayed properly
+in the inbox. If no contact or conversation exists yet for the given phone
+number, these parameters will be attached to the contact when a message is sent
+and the contact is created.

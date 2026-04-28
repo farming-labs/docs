@@ -1,0 +1,289 @@
+---
+title: "Register a campaign"
+---
+To crack down on spam and other undesirable messaging, carriers must know the legal entity responsible for each text message sent from software to a device on their network. Each phone number that will be sending messages from an application to a person must be associated with a "campaign" that explains who will be sending messages, why, and how the end user will opt in to and out of receiving them.
+
+This guide covers registering a campaign through the API for an account.
+
+<Steps>
+  <Step title="Create an account">
+    Skip this step if you already have an account for this campaign.
+
+    Many fields on the account are optional at this step but will be required to register a campaign. Certain fields will also affect requirements for other fields; `organization.type`, for example, drastically affects which fields are required. We therefore recommend including all the fields you believe you need in the intial create to reduce iterations on providing missing fields.
+
+    See "[Create an account](/api-reference/endpoint/accounts/create)".
+
+    Here's an example where most of the fields required for local messaging are provided.
+
+    <CodeGroup>
+      ```sh title="Request" maxLines="15"
+      curl -X POST https://api.surge.app/accounts \
+           -H "Authorization: Bearer <token>" \
+           -H "Content-Type: application/json" \
+           -d '{
+        "name": "DT Precision Auto",
+        "organization": {
+          "address": {
+            "name": "DT Precision Auto",
+            "line1": "2640 Huron St",
+            "locality": "Los Angeles",
+            "postal_code": "90065",
+            "region": "CA",
+            "country": "US"
+          },
+          "contact": {
+            "first_name": "Dominic",
+            "last_name": "Toretto",
+            "email": "dom@dtprecisionauto.com",
+            "phone_number": "+13235556439"
+          },
+          "industry": "automotive",
+          "type": "llc",
+          "website": "https://dtprecisionauto.com"
+        }
+      }'
+      ```
+
+      ```json title="Response" maxLines="15"
+      {
+        "brand_name": null,
+        "id": "acct_01jpqjvfg9enpt7pyxd60pcmxj",
+        "name": "DT Precision Auto",
+        "organization": {
+          "address": {
+            "country": "US",
+            "line1": "2640 Huron St",
+            "line2": null,
+            "locality": "Los Angeles",
+            "name": "DT Precision Auto",
+            "postal_code": "90065",
+            "region": "CA"
+          },
+          "contact": {
+            "email": "dom@dtprecisionauto.com",
+            "first_name": "Dominic",
+            "last_name": "Toretto",
+            "phone_number": "+13235556439",
+            "title": null,
+            "title_other": null
+          },
+          "country": null,
+          "email": null,
+          "identifier": null,
+          "identifier_type": null,
+          "industry": "automotive",
+          "mobile_number": null,
+          "regions_of_operation": [],
+          "registered_name": null,
+          "stock_exchange": null,
+          "stock_symbol": null,
+          "type": "llc",
+          "website": "https://dtprecisionauto.com"
+        },
+        "time_zone": null
+      }
+      ```
+    </CodeGroup>
+  </Step>
+  <Step title="Check account capabilities (optional)">
+    This step allows you to check for missing or invalid fields on the account that must be provided or fixed before it is ready to register a campaign.
+
+    See "[Check account status](/api-reference/endpoint/accounts/check-status)".
+
+    This example checks the local messaging capability of the account created in the previous example.
+
+    <CodeGroup>
+      ```sh title="Request" maxLines="15"
+      curl -G https://api.surge.app/accounts/acct_01jpqjvfg9enpt7pyxd60pcmxj/status?capabilities=local_messaging \
+           -H "Authorization: Bearer <token>"
+      ```
+
+      ```json title="Response - initial" maxLines="15"
+      {
+        "capabilities": {
+          "local_messaging": {
+            "errors": [],
+            "fields_needed": [
+              "organization.contact.title",
+              "organization.country",
+              "organization.identifier",
+              "organization.identifier_type",
+              "organization.regions_of_operation",
+              "organization.registered_name"
+            ],
+            "status": "incomplete"
+          }
+        }
+      }
+      ```
+
+      ```json title="Response - fixed" maxLines="15"
+      {
+        "capabilities": {
+          "local_messaging": {
+            "errors": [],
+            "fields_needed": [],
+            "status": "ready"
+          }
+        }
+      }
+      ```
+    </CodeGroup>
+  </Step>
+  <Step title="Update account (optional)">
+    If the capability request did not return a ready status, you'll need to update the account to fix missing or broken fields. As mentioned in the "Create an account" step, fixing fields can uncover additional fields that need changed, so you may need to repeat this step and the previous until the account is ready for local messaging.
+
+    See "[Update an account](/api-reference/endpoint/accounts/update)".
+
+    This example provides the missing fields from the example in the previous step.
+
+    <CodeGroup>
+      ```sh title="Request" maxLines="15"
+      curl -X PATCH https://api.surge.app/accounts/acct_01jpqjvfg9enpt7pyxd60pcmxj \
+           -H "Authorization: Bearer <token>" \
+           -H "Content-Type: application/json" \
+           -d '{
+        "organization": {
+          "contact": {
+            "title": "other",
+            "title_other": "Owner"
+          },
+          "country": "US",
+          "identifier": "123456789",
+          "identifier_type": "ein",
+          "regions_of_operation": ["usa_and_canada"],
+          "registered_name": "DT Precision Auto LLC",
+        }
+      }'
+      ```
+
+      ```json title="Response" maxLines="15"
+      {
+        "brand_name": null,
+        "id": "acct_01jpqjvfg9enpt7pyxd60pcmxj",
+        "name": "DT Precision Auto",
+        "organization": {
+          "address": {
+            "country": "US",
+            "line1": "2640 Huron St",
+            "line2": null,
+            "locality": "Los Angeles",
+            "name": "DT Precision Auto",
+            "postal_code": "90065",
+            "region": "CA"
+          },
+          "contact": {
+            "email": "dom@dtprecisionauto.com",
+            "first_name": "Dominic",
+            "last_name": "Toretto",
+            "phone_number": "+13235556439",
+            "title": "other",
+            "title_other": "Owner"
+          },
+          "country": "US",
+          "email": "dom@dtprecisionauto.com",
+          "identifier": "123456789",
+          "identifier_type": "ein",
+          "industry": "automotive",
+          "mobile_number": null,
+          "regions_of_operation": [
+            "usa_and_canada"
+          ],
+          "registered_name": "DT Precision Auto LLC",
+          "stock_exchange": null,
+          "stock_symbol": null,
+          "type": "llc",
+          "website": "https://dtprecisionauto.com"
+        },
+        "time_zone": null
+      }
+      ```
+    </CodeGroup>
+  </Step>
+  <Step title="Create a campaign">
+    Once the account is ready for local messaging you can create a campaign documenting its intended messaging use case.
+
+    See "[Create a campaign](/api-reference/endpoint/campaigns/create)".
+
+    <CodeGroup>
+      ```sh title="Request" maxLines="15"
+      curl -X POST https://api.surge.app/accounts/acct_01jpqjvfg9enpt7pyxd60pcmxj/campaigns \
+           -H "Authorization: Bearer <token>" \
+           -H "Content-Type: application/json" \
+           -d '{
+        "consent_flow": "When customers bring in their car for service, they will fill out this web form for intake: https://fastauto.shop/bp108c In it they can choose to opt in to text message notifications. If they choose to opt in, we will send them notifications to let them know if our mechanics find issues and once the car is ready to go, as well as links to invoices and to leave us feedback.",
+        "description": "This phone number will send auto maintenance notifications to end users that have opted in. It will also be used for responding to customer inquiries and sending some marketing offers.",
+        "message_samples": [
+          "You are now opted in to receive repair notifications from DT Precision Auto. Frequency varies. Msg&data rates apply. Reply STOP to opt out.",
+          "You’re lucky that hundred shot of NOS didn’t blow the welds on the intake!",
+          "Your car is ready to go. See your invoice here: https://l.fastauto.shop/s034ij"
+        ],
+        "privacy_policy_url": "https://fastauto.shop/sms-privacy",
+        "use_cases": [
+          "account_notification",
+          "customer_care",
+          "marketing"
+        ],
+        "volume": "high",
+        "includes": [
+          "links",
+          "phone_numbers"
+        ],
+        "link_sample": "https://l.fastauto.shop/s034ij",
+        "terms_and_conditions_url": "https://fastauto.shop/terms-and-conditions"
+      }'
+      ```
+
+      ```json title="Response" maxLines="15"
+      {
+        "consent_flow": "When customers bring in their car for service, they will fill out this web form for intake: https://fastauto.shop/bp108c In it they can choose to opt in to text message notifications. If they choose to opt in, we will send them notifications to let them know if our mechanics find issues and once the car is ready to go, as well as links to invoices and to leave us feedback.",
+        "description": "This phone number will send auto maintenance notifications to end users that have opted in. It will also be used for responding to customer inquiries and sending some marketing offers.",
+        "id": "cpn_01k0qczvhbet4azgn5xm2ccfst",
+        "includes": [
+          "links",
+          "phone_numbers"
+        ],
+        "message_samples": [
+          "You are now opted in to receive repair notifications from DT Precision Auto. Frequency varies. Msg&data rates apply. Reply STOP to opt out.",
+          "You’re lucky that hundred shot of NOS didn’t blow the welds on the intake!",
+          "Your car is ready to go. See your invoice here: https://l.fastauto.shop/s034ij"
+        ],
+        "privacy_policy_url": "https://fastauto.shop/sms-privacy",
+        "use_cases": [
+          "account_notification",
+          "customer_care",
+          "marketing"
+        ],
+        "volume": "high",
+        "link_sample": "https://l.fastauto.shop/s034ij",
+        "terms_and_conditions_url": "https://fastauto.shop/terms-and-conditions"
+      }
+      ```
+    </CodeGroup>
+  </Step>
+  <Step title="Purchase a phone number">
+    While you await campaign approval, you can purchase a phone number for the account, and it will be ready to send text messages when the campaign is approved.
+
+    See "[Create a phone number](/api-reference/endpoint/phone-numbers/purchase)".
+
+    <CodeGroup>
+      ```sh title="Request"
+      curl -X POST https://api.surge.app/accounts/acct_01jpqjvfg9enpt7pyxd60pcmxj/phone_numbers \
+           -H "Authorization: Bearer <token>" \
+           -H "Content-Type: application/json" \
+           -d '{
+        "type": "local",
+        "area_code": "323"
+      }'
+      ```
+
+      ```json title="Response" maxLines="15"
+      {
+        "id": "pn_01jsjwe4d9fx3tpymgtg958d9w",
+        "number": "+18015551234",
+        "type": "local"
+      }
+      ```
+    </CodeGroup>
+  </Step>
+</Steps>

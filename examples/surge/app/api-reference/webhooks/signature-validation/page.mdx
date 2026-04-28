@@ -1,0 +1,42 @@
+---
+title: "Webhook Signature Validation"
+---
+Signatures provide a method to verify the authenticity and integrity of incoming webhooks. By
+using a shared secret and a defined verification process, you can ensure that webhooks are
+genuinely from Surge and haven't been modified.
+
+## Surge-Signature header
+
+Each webhook Surge delivers includes a "Surge-Signature" header that looks like this:
+
+```
+Surge-Signature: t=1737830031,v1=41f947e88a483327c878d6c08b27b22fbe7c9ea5608b035707c6667d1df866dd
+```
+
+Parameters:
+- `t`: Unix timestamp indicating when webhook was sent
+- `v1`: Lowercase hex-encoded HMAC-SHA256 signature
+  - We may send more than one `v1` hash when rolling credentials
+
+Parameter names and values will not include `,` or `=`, so these can be split upon to parse the header.
+
+## Validation Steps
+1. **Check timestamp**: Verify timestamp is within an acceptable time window (such as 5 minutes) to prevent replay attacks.
+
+2. **Generate payload**: The payload signed to create the header is a concatenation of 3 things:
+    1. Timestamp from step 1
+    2. Period (`.`)
+    3. Raw webhook body
+
+    Example
+    ```
+    1737830031.{"type":"message.received","id":"evt_01jjfeev3hf9n9c7k5231hd3hr",...}
+    ```
+
+3. **Compute expected hash**: Generate HMAC-SHA256 hash for the payload from step 2.
+    - Use the signing secret you received when setting up your webhook endpoint.
+4. **Compare hashes**: Check computed hash from step 3 with `v1` from header.
+    - Use constant-time string comparison to protect against timing attacks.
+    - There may be multiple `v1` parameters in the header
+      - Only compare to `v1`, not other versions which may be added in the future
+      - If any of the `v1` hashes match, the signature should be accepted as authentic

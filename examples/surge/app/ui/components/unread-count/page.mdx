@@ -1,0 +1,82 @@
+---
+title: "Unread Count"
+description: "The unread count component displays a count of all the unread"
+---
+<img
+  className="block rounded-lg"
+  src="/images/unread-count-hero.jpg"
+  alt="The unread count component"
+/>
+
+The unread count component displays a count of all the unread messages for a
+given user. It will typically be embedded in your main menu or sidebar to call
+attention to any unread messages to which the user should respond.
+
+The component will hide itself if there are no unread messages and display the
+count whenever unread messages are received. This allows you to always have the
+iframe displayed on your page.
+
+## Installation
+
+The simplest version of the unread count component can be embedded like this:
+
+```html
+<iframe
+  src="https://embed.surge.app/unread_count?user_id={SURGE_USER_ID}&token={ACCOUNT_TOKEN}&conversation_id={CONVERSATION_ID}"
+></iframe>
+```
+
+Both `{SURGE_USER_ID}` and `{ACCOUNT_TOKEN}` are required parameters. You can find
+them in the Surge dashboard. We will also be providing more robust auth options
+in the near future.
+
+The `{CONVERSATION_ID}` parameter is optional. If provided, the unread count
+will only display unread messages for that specific conversation. If not
+provided, the unread count will display unread messages across all conversations
+to which the user has access.
+
+### Styling
+
+With this component, we recommend styling the iframe to allow for automatic
+expansion. We recommend giving the link container relative positioning so that
+the iframe can have absolute positioning to allow it to be positioned in the
+bottom right corner of the link. This allows the button icon to remain centered
+within the container while the unread count floats over the top of it.
+
+Using Tailwind CSS, that can be accomplished like this:
+
+```html
+<a
+  href="/messages"
+  className="flex relative h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+>
+  <!-- Lucide message-circle icon -->
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
+    <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path>
+  </svg>
+  <span className="sr-only">Messages</span>
+
+  <iframe
+    className="-ml-1/2 pointer-events-none absolute left-2 mt-4 inline-flex h-6 min-w-6 max-w-10 scale-75"
+    src="https://embed.surge.app/unread_count?user_id={SURGE_USER_ID}&token={ACCOUNT_TOKEN}"
+  ></iframe>
+</a>
+```
+
+## Events
+
+The Unread Count component emits events that you can listen to in your
+application. Here are the events that you can listen to:
+
+### Count Updated
+
+Whenever the user reads an unread conversation or receives a new message, this event
+will be emitted with the updated unread count:
+
+```json
+{
+  "source": "surge-unread-count",
+  "type": "count-updated",
+  "count": 3
+}
+```

@@ -1,0 +1,52 @@
+---
+title: "Introduction"
+---
+Webhooks are like having a super-responsive assistant who taps you on the
+shoulder whenever something interesting happens in your SMS operations. Instead
+of constantly asking "Did I get a message? Did someone click my link?", webhooks
+proactively notify your application when these events occur.
+
+## Why use webhooks?
+
+* Real-time updates: receive instant notifications when things happen
+* Automation friendly: perfect for building automated workflows
+* Efficient: no need to poll for updates, we'll let you know when something happens
+* Reliable: make sure you never miss an important event
+
+## Getting started
+
+To start receiving webhooks, you'll need to:
+
+1. Set up a publicly accessible HTTPS endpoint on your server
+2. Register your webhook URL in the Surge dashboard
+3. Implement handlers for the events you care about
+
+<Warning>While it's not required to get started, we strongly encourage
+  [validating webhook signatures](/api-reference/webhooks/signature-validation)
+  to ensure the events you receive are coming from Surge.</Warning>
+
+## Webhook delivery & retries
+
+When your server receives a webhook, it's like getting a high-five from our
+system - and we want to make sure that high-five connects! Your endpoint should
+respond with either a `200 OK` or `201 Created` HTTP status code to let us know
+you've successfully received the webhook.
+
+If your server is having a rough day (hey, it happens to the best of us!),
+our retry system has got your back: Surge will attempt to deliver the webhook up
+to 20 times, using exponential backoff with jitter to make sure we don't
+overwhelm your system.
+
+## Best practices
+
+To ensure you're handling Surge's webhooks like a pro:
+
+1. Make your webhook handlers *idempotent* - receiving the same webhook multiple
+times should not have any unintended side effects
+2. Validate webhook signatures to ensure the events you receive are coming from
+Surge.
+3. Respond to webhooks quickly - if your server is slow to respond, we may
+attempt to deliver the webhook multiple times
+
+And as always, if you have any questions or need help, please reach out to us at
+[support@surge.app](mailto:support@surge.app).

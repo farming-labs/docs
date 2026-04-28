@@ -1,0 +1,107 @@
+---
+title: "Authentication"
+---
+Surge aims to be easy to use but also to provide for evolving security needs. To that end, embedded
+UI components can be authenticated in two ways: a long-lived token shared by the various users in
+an account, or a short-lived per-user token that will need to be rotated frequently.
+
+## Which token type should I use?
+
+Publishable account tokens are much easier to start with, but signed user tokens offer stronger
+security.
+
+| | Publishable token | Signed token |
+| --- | --- | --- |
+| Ease of use | easy | harder |
+| Security | weaker | strong |
+| Availability | HQ only | API |
+| Longevity | infinite | up to 1 hour |
+| Scope | account | user |
+
+## Publishable tokens
+
+Our sample iframe snippets here in the docs and in HQ use a publishable token. This token belongs
+to the account and can be used to authenticate any user in that account. Component URLs using this
+authentication method must have both "token" and "user_id" query parameters. An inbox URL, for
+example, will look like this:
+
+```
+https://embed.surge.app/conversations?user_id=usr_01jz3d51beesrr3zryp246cj0s&token=atok_live_7db4gv7yqw6o4opijyqes2agl4noofgjycrmufjf7mtovs5u32uwuz
+```
+
+## Signed tokens
+
+When you're ready to invest in added security for your embedded UI components, signed tokens belong
+to a specific user and are only valid for a limited duration.
+
+There are two ways to generate these tokens: you can sign your own, or you can have Surge sign them
+for you. Having Surge sign your tokens is less involved, but it requires an API request, which will
+not be as performant as signing tokens on your own server. A guide to self-signed tokens is
+forthcoming, but the endpoint for Surge-signed tokens is
+[POST /users/:user_id/tokens](/api-reference/endpoint/tokens/create-token).
+
+Component URLs using signed tokens need only the "token" query parameter. Since the token belongs
+to a user, a "user_id" query parameter would serve no purpose. The inbox URL from above, using
+instead a signed token, will look like this:
+
+```
+https://embed.surge.app/conversations?token=eyJhbGciOiJFZERTQSIsImtpZCI6InNnbl8wMWp5bWowZ3AwZjNidmJmMmpyazRoYnd0ayIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTA4ODkyMDgsInN1YiI6InVzcl8wMWp5bWdkZnJwZWMyYXNjNW0wejNhNmZyOSJ9.zKayo3EDrUm1Hw8URrofuYwajgyTu6dH2H0FEuRExprP1IV66FHa8wC3SfdzV7sR3AjDGAwkuAXztScq6rBnBw
+```
+
+### Rotating signed tokens
+
+Because signed tokens are short-lived they may expire while users are still interacting with the
+embedded UI components authenticated with the expiring tokens. Connections will remain
+authenticated after their token has expired, but any reconnects will trigger re-authentication. We
+recommend rotating tokens just before they expire to ensure your components will continue to work.
+
+#### Token expiring warning
+
+When an embedded UI component is authenticated with a token that is about to expire, it will emit
+an event warning of the pending expiration. This event will have the the type "token_expiring":
+
+```json
+{
+  "source": "surge_inbox",
+  "type": "token_expiring",
+  "data": {
+    "seconds_remaining": 15
+  }
+}
+```
+
+#### Updating a component's token
+
+Re-rendering the iframe with a new token in the URL could cause the component to lose necessary
+state, so embedded components also support an "update_token" message back into the iframe.
+
+```json
+{
+  "type": "update_token",
+  "data": {
+    "token": "eyJhbGciOiJFZERTQSIsImtpZCI6InNnbl8wMWp5bWowZ3AwZjNidmJmMmpyazRoYnd0ayIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTA4ODkyMDgsInN1YiI6InVzcl8wMWp5bWdkZnJwZWMyYXNjNW0wejNhNmZyOSJ9.zKayo3EDrUm1Hw8URrofuYwajgyTu6dH2H0FEuRExprP1IV66FHa8wC3SfdzV7sR3AjDGAwkuAXztScq6rBnBw"
+  }
+}
+```
+
+#### Example
+
+Here's an example snippet of some JavaScript in your app for rotating tokens before they expire. In
+this example `refreshSurgeToken` is a made-up function that makes a request to your server for a new
+token.
+
+```js
+const surgeInbox = document.querySelector('iframe#surge-inbox');
+
+window.addEventListener('message', async ({ data, origin }) => {
+  if (origin == 'https://embed.surge.app') {
+    const { type } = data;
+
+    if (type == 'token_expiring') {
+      const { token } = await refreshSurgeToken();
+      const message = { type: 'update_token', data: { token }};
+      surgeInbox.contentWindow.postMessage(message, origin);
+    }
+  }
+});
+```
