@@ -849,6 +849,7 @@ Sidebar visibility and customization. See [Sidebar](/docs/customization/sidebar)
 | `collapsible` | `boolean`                                        | `true`  | Whether sidebar is collapsible on desktop                                                                    |
 | `flat`        | `boolean`                                        | `false` | Render all items flat (Mintlify-style, no collapsible groups)                                                |
 | `folderIndexBehavior` | `"link" \| "toggle"`                    | adapter default | Whether folder parents with their own page navigate on click or only expand/collapse                         |
+| `folderIndexBehaviorOverrides` | `Record<string, "link" \| "toggle">` | — | Selective per-folder overrides keyed by the folder landing-page URL                                          |
 
 ### `SidebarComponentProps`
 
@@ -897,7 +898,14 @@ sidebar: true,                     // show (default)
 sidebar: false,                    // hide
 sidebar: { collapsible: false },   // non-collapsible
 sidebar: { flat: true },           // Mintlify-style flat
-sidebar: { folderIndexBehavior: "toggle" }, // parent row only toggles children
+sidebar: { folderIndexBehavior: "toggle" }, // all folder parents only toggle children
+sidebar: {
+  folderIndexBehavior: "link",
+  folderIndexBehaviorOverrides: {
+    "/docs/components": "toggle",
+    "/docs/customization": "toggle",
+  },
+},
 sidebar: {                         // custom component
   component: ({ tree }) => <MySidebar tree={tree} />,
 },

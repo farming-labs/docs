@@ -558,7 +558,10 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       preloaded
         ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
         : loadDocsNavTree(ctx.contentDirAbs, entry, ordering),
-      resolveSidebarFolderIndexBehavior(config.sidebar),
+      {
+        sidebar: config.sidebar,
+        defaultBehavior: "link",
+      },
     );
     const flatPages = flattenNavTree(tree);
 
@@ -1049,7 +1052,10 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
           preloaded
             ? navTreeFromMap(preloaded, ctx.dirPrefix, entry, ordering)
             : loadDocsNavTree(ctx.contentDirAbs, entry, ordering),
-          resolveSidebarFolderIndexBehavior(config.sidebar),
+          {
+            sidebar: config.sidebar,
+            defaultBehavior: "link",
+          },
         );
       },
     },

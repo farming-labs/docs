@@ -6,13 +6,6 @@ const { tree, config = null, title, titleUrl, flatPages = null } = Astro.props;
 
 const sidebarFlat = !!(config?.sidebar && typeof config.sidebar === "object" && (config.sidebar as { flat?: boolean }).flat);
 const useFlatSidebar = sidebarFlat && Array.isArray(flatPages) && flatPages.length > 0;
-const sidebarFolderIndexBehavior =
-  config?.sidebar &&
-  typeof config.sidebar === "object" &&
-  (config.sidebar as { folderIndexBehavior?: "link" | "toggle" }).folderIndexBehavior === "link"
-    ? "link"
-    : "toggle";
-
 const i18n = config?.i18n as { locales?: string[]; defaultLocale?: string } | undefined;
 const locales = Array.isArray(i18n?.locales) ? i18n.locales.filter(Boolean) : [];
 const defaultLocale = (i18n?.defaultLocale && locales.includes(i18n.defaultLocale))
@@ -259,7 +252,7 @@ const showSearch = !staticExport;
           const folderIcon = getIcon(node.icon);
           return (
             <details class={`fd-sidebar-folder ${i === 0 ? 'fd-sidebar-first-item' : ''}`} open>
-              {sidebarFolderIndexBehavior === "link" && node.index ? (
+              {node.index ? (
                 <summary class="fd-sidebar-folder-trigger fd-sidebar-folder-trigger-link" data-folder-link-summary>
                   <a
                     href={withLang(node.index.url)}
@@ -293,15 +286,6 @@ const showSearch = !staticExport;
                 </summary>
               )}
               <div class="fd-sidebar-folder-content">
-                {sidebarFolderIndexBehavior !== "link" && node.index && (
-                  <a
-                    href={withLang(node.index.url)}
-                    class={`fd-sidebar-link fd-sidebar-child-link ${isActive(node.index.url) ? 'fd-sidebar-link-active' : ''}`}
-                    data-active={isActive(node.index.url) || undefined}
-                  >
-                    {node.index.name}
-                  </a>
-                )}
                 {node.children?.map(child => {
                   if (child.type === "page") {
                     return (
@@ -316,7 +300,7 @@ const showSearch = !staticExport;
                   } else if (child.type === "folder") {
                     return (
                       <details class="fd-sidebar-folder fd-sidebar-nested-folder" open>
-                        {sidebarFolderIndexBehavior === "link" && child.index ? (
+                        {child.index ? (
                           <summary class="fd-sidebar-folder-trigger fd-sidebar-folder-trigger-link" data-folder-link-summary>
                             <a
                               href={withLang(child.index.url)}
@@ -346,15 +330,6 @@ const showSearch = !staticExport;
                           </summary>
                         )}
                         <div class="fd-sidebar-folder-content">
-                          {sidebarFolderIndexBehavior !== "link" && child.index && (
-                            <a
-                              href={withLang(child.index.url)}
-                              class={`fd-sidebar-link fd-sidebar-child-link ${isActive(child.index.url) ? 'fd-sidebar-link-active' : ''}`}
-                              data-active={isActive(child.index.url) || undefined}
-                            >
-                              {child.index.name}
-                            </a>
-                          )}
                           {child.children?.map(grandchild => {
                             if (grandchild.type === "page") {
                               return (

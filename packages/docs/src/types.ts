@@ -431,6 +431,8 @@ export interface SidebarComponentProps {
  */
 export type SidebarFolderIndexBehavior = "link" | "toggle";
 
+export type SidebarFolderIndexBehaviorOverrides = Record<string, SidebarFolderIndexBehavior>;
+
 export interface SidebarConfig {
   /**
    * Whether to show the sidebar.
@@ -515,6 +517,21 @@ export interface SidebarConfig {
    * explicitly if you want the same sidebar interaction across frameworks.
    */
   folderIndexBehavior?: SidebarFolderIndexBehavior;
+
+  /**
+   * Selective per-folder overrides keyed by the folder landing-page URL.
+   *
+   * ```ts
+   * sidebar: {
+   *   folderIndexBehavior: "link",
+   *   folderIndexBehaviorOverrides: {
+   *     "/docs/components": "toggle",
+   *     "/docs/guides": "toggle",
+   *   },
+   * }
+   * ```
+   */
+  folderIndexBehaviorOverrides?: SidebarFolderIndexBehaviorOverrides;
 }
 
 /**
