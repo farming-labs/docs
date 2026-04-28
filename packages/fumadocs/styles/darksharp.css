@@ -253,7 +253,8 @@ article a[class*="text-fd-muted-foreground"] {
   border-color: hsl(0 0% 12%);
 }
 
-.dark aside a[data-active] {
+.dark aside a[data-active],
+.dark aside button[aria-controls][aria-expanded] {
   border-radius: 0.2rem !important;
   padding: 0.4rem 0.5rem;
   font-size: 0.8125rem;

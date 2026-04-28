@@ -13,6 +13,7 @@ import {
   renderDocsSkillDocument,
   stripGeneratedAgentProvenance,
   resolveDocsAgentMdxContent,
+  resolvePageSidebarFolderIndexBehavior,
   resolveSearchRequestConfig,
   resolveDocsI18n,
   resolveDocsLlmsTxtFormat,
@@ -203,6 +204,7 @@ function navTreeFromMap(
     title: string;
     url: string;
     icon?: string;
+    folderIndexBehavior?: "link" | "toggle";
     order: number;
   }
 
@@ -233,6 +235,7 @@ function navTreeFromMap(
       title: (data.title as string) ?? fallbackTitle,
       url,
       icon: data.icon as string | undefined,
+      folderIndexBehavior: resolvePageSidebarFolderIndexBehavior(data.sidebar),
       order: typeof data.order === "number" ? data.order : Infinity,
     });
   }
@@ -302,6 +305,7 @@ function navTreeFromMap(
             name: child.title,
             icon: child.icon,
             index: { type: "page", name: child.title, url: child.url, icon: child.icon },
+            folderIndexBehavior: child.folderIndexBehavior,
             children: buildLevel(child.parts),
           } satisfies NavNode;
         }
@@ -331,6 +335,7 @@ function navTreeFromMap(
           name: child.title,
           icon: child.icon,
           index: { type: "page", name: child.title, url: child.url, icon: child.icon },
+          folderIndexBehavior: child.folderIndexBehavior,
           children: buildLevel(child.parts),
         } satisfies NavNode;
       }

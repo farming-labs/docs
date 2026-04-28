@@ -5,6 +5,15 @@ export interface SidebarFolderIndexBehaviorOptions {
   defaultBehavior?: SidebarFolderIndexBehavior;
 }
 
+export function resolvePageSidebarFolderIndexBehavior(
+  sidebar: unknown,
+): SidebarFolderIndexBehavior | undefined {
+  if (!sidebar || typeof sidebar !== "object") return undefined;
+
+  const value = (sidebar as { folderIndexBehavior?: unknown }).folderIndexBehavior;
+  return value === "link" || value === "toggle" ? value : undefined;
+}
+
 function normalizeSidebarFolderBehaviorPath(path: string | undefined): string | undefined {
   if (!path) return undefined;
 
@@ -80,6 +89,7 @@ export function applySidebarFolderIndexBehavior<TTree extends { children: unknow
       index?: unknown;
       children?: unknown[];
       url?: unknown;
+      folderIndexBehavior?: unknown;
     };
 
     if (candidate.type !== "folder" || !Array.isArray(candidate.children)) {
@@ -97,11 +107,16 @@ export function applySidebarFolderIndexBehavior<TTree extends { children: unknow
       typeof (candidate.index as { url?: unknown }).url === "string"
         ? ((candidate.index as { url?: string }).url ?? undefined)
         : undefined);
-    const behavior = resolveBehavior(folderPath);
+    const explicitBehavior =
+      candidate.folderIndexBehavior === "link" || candidate.folderIndexBehavior === "toggle"
+        ? candidate.folderIndexBehavior
+        : undefined;
+    const behavior = explicitBehavior ?? resolveBehavior(folderPath);
 
     if (behavior !== "toggle") {
       return {
         ...candidate,
+        folderIndexBehavior: undefined,
         index,
         children,
       };
@@ -109,6 +124,7 @@ export function applySidebarFolderIndexBehavior<TTree extends { children: unknow
 
     return {
       ...candidate,
+      folderIndexBehavior: undefined,
       index: undefined,
       url: undefined,
       children: index ? [index, ...children] : children,

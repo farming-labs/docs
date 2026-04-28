@@ -50,7 +50,8 @@
     linear-gradient(180deg, color-mix(in srgb, var(--color-fd-primary) 10%, var(--color-fd-background)), var(--color-fd-background));
 }
 
-aside a[data-active] {
+aside a[data-active],
+aside button[aria-controls][aria-expanded] {
   text-transform: uppercase;
   letter-spacing: 0.045em;
   font-size: 0.79rem;

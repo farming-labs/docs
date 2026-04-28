@@ -86,7 +86,8 @@ aside#nd-sidebar,
   background: var(--color-fd-background);
 }
 
-aside a[data-active] {
+aside a[data-active],
+aside button[aria-controls][aria-expanded] {
   font-size: 0.875rem;
   line-height: 1.5;
   font-weight: 500;

@@ -237,7 +237,8 @@ aside .overscroll-contain > div > div:last-child {
 
 /* ── Sidebar links (all levels) ──────────────────────────────────── */
 
-aside a[data-active] {
+aside a[data-active],
+aside button[aria-controls][aria-expanded] {
   font-size: 0.875rem;
   line-height: 1.6;
   border-radius: 0 !important;

@@ -26,6 +26,24 @@ body {
   font-family: var(--fd-font-sans, var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif));
 }
 
+/*
+ * Sidebar folder rows can render as either links or toggle buttons depending on
+ * folderIndexBehavior. Reset the button chrome so both variants can share the
+ * same layout metrics once theme styles are applied.
+ */
+:where(.fd-sidebar, aside#nd-sidebar, aside#nd-sidebar-mobile)
+  button[aria-controls][aria-expanded] {
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-transform: inherit;
+}
+
 code,
 kbd,
 pre,

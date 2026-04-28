@@ -440,6 +440,64 @@ describe("createDocsLayout pageActions", () => {
     });
   });
 
+  it("lets folder page frontmatter override sidebar.folderIndexBehavior config", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "components", "button"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "components", "page.mdx"),
+      [
+        "---",
+        'title: "Components"',
+        "sidebar:",
+        '  folderIndexBehavior: "toggle"',
+        "---",
+        "",
+        "# Components",
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "components", "button", "page.mdx"),
+      "---\ntitle: Button\n---\n\n# Button\n",
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({
+      entry: "docs",
+      sidebar: {
+        folderIndexBehavior: "link",
+        folderIndexBehaviorOverrides: {
+          "/docs/components": "link",
+        },
+      },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const sidebarTree = findDocsLayoutTree(tree);
+    const componentsNode = (sidebarTree?.children as Array<Record<string, unknown>>).find(
+      (entry) => entry.name === "Components",
+    );
+
+    expect(componentsNode).toMatchObject({
+      type: "folder",
+      index: undefined,
+      children: [
+        expect.objectContaining({
+          type: "page",
+          name: "Components",
+          url: "/docs/components",
+        }),
+        expect.objectContaining({
+          type: "page",
+          name: "Button",
+          url: "/docs/components/button",
+        }),
+      ],
+    });
+  });
+
   it("adds changelog entries as a dedicated sidebar section under the docs route with a separator above it", () => {
     mkdirSync(join(tmpDir, "app", "docs", "changelog", "2026-04-15"), { recursive: true });
     mkdirSync(join(tmpDir, "app", "docs", "changelog", "2026-04-03"), { recursive: true });

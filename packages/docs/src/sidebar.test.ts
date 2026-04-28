@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applySidebarFolderIndexBehavior,
+  resolvePageSidebarFolderIndexBehavior,
   resolveSidebarFolderIndexBehavior,
   resolveSidebarFolderIndexBehaviorForPath,
 } from "./sidebar.js";
@@ -48,6 +49,25 @@ describe("resolveSidebarFolderIndexBehaviorForPath", () => {
         "/docs/components",
       ),
     ).toBe("toggle");
+  });
+});
+
+describe("resolvePageSidebarFolderIndexBehavior", () => {
+  it("reads folderIndexBehavior from page frontmatter sidebar config", () => {
+    expect(
+      resolvePageSidebarFolderIndexBehavior({
+        folderIndexBehavior: "toggle",
+      }),
+    ).toBe("toggle");
+  });
+
+  it("ignores invalid sidebar frontmatter values", () => {
+    expect(resolvePageSidebarFolderIndexBehavior("toggle")).toBeUndefined();
+    expect(
+      resolvePageSidebarFolderIndexBehavior({
+        folderIndexBehavior: "sideways",
+      }),
+    ).toBeUndefined();
   });
 });
 
@@ -168,6 +188,91 @@ describe("applySidebarFolderIndexBehavior", () => {
           index: { type: "page", name: "Guides", url: "/docs/guides" },
           children: [{ type: "page", name: "Writing", url: "/docs/guides/writing" }],
         },
+      ],
+    });
+  });
+
+  it("prefers explicit folder behavior on the node over config overrides", () => {
+    const tree = {
+      name: "Docs",
+      children: [
+        {
+          type: "folder",
+          name: "Components",
+          folderIndexBehavior: "toggle",
+          url: "/docs/components",
+          index: { type: "page", name: "Components", url: "/docs/components" },
+          children: [{ type: "page", name: "Button", url: "/docs/components/button" }],
+        },
+      ],
+    };
+
+    expect(
+      applySidebarFolderIndexBehavior(tree, {
+        sidebar: {
+          folderIndexBehavior: "link",
+          folderIndexBehaviorOverrides: {
+            "/docs/components": "link",
+          },
+        },
+      }),
+    ).toEqual({
+      name: "Docs",
+      children: [
+        {
+          type: "folder",
+          index: undefined,
+          url: undefined,
+          name: "Components",
+          children: [
+            { type: "page", name: "Components", url: "/docs/components" },
+            { type: "page", name: "Button", url: "/docs/components/button" },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("preserves the folder row position among siblings when toggle behavior is applied", () => {
+    const tree = {
+      name: "Docs",
+      children: [
+        { type: "page", name: "Overview", url: "/docs/overview" },
+        {
+          type: "folder",
+          name: "Components",
+          folderIndexBehavior: "toggle",
+          url: "/docs/components",
+          index: { type: "page", name: "Components", url: "/docs/components" },
+          children: [{ type: "page", name: "Button", url: "/docs/components/button" }],
+        },
+        { type: "page", name: "Guides", url: "/docs/guides" },
+      ],
+    };
+
+    const result = applySidebarFolderIndexBehavior(tree, {
+      sidebar: {
+        folderIndexBehavior: "link",
+      },
+    });
+
+    expect(result.children.map((node) => (node as { name?: string }).name)).toEqual([
+      "Overview",
+      "Components",
+      "Guides",
+    ]);
+    expect(result.children[1]).toMatchObject({
+      type: "folder",
+      index: undefined,
+      children: [
+        expect.objectContaining({
+          name: "Components",
+          url: "/docs/components",
+        }),
+        expect.objectContaining({
+          name: "Button",
+          url: "/docs/components/button",
+        }),
       ],
     });
   });

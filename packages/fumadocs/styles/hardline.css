@@ -78,7 +78,8 @@ aside#nd-sidebar,
 }
 
 /* Sidebar links and categories */
-aside a[data-active] {
+aside a[data-active],
+aside button[aria-controls][aria-expanded] {
   font-weight: 600;
   font-size: 0.92rem;
   letter-spacing: 0.01em;
