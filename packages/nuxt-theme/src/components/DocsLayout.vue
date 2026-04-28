@@ -58,6 +58,13 @@ function withLang(url?: string | null) {
 const resolvedTitle = computed(() => props.title ?? props.config?.nav?.title ?? "Docs");
 const resolvedTitleUrl = computed(() => withLang(props.titleUrl ?? props.config?.nav?.url ?? "/docs"));
 const localizedApi = computed(() => withLang("/api/docs"));
+const sidebarFolderIndexBehavior = computed(() =>
+  props.config?.sidebar &&
+  typeof props.config.sidebar === "object" &&
+  props.config.sidebar.folderIndexBehavior === "toggle"
+    ? "toggle"
+    : "link",
+);
 
 const showThemeToggle = computed(() => {
   const toggle = props.config?.themeToggle;
@@ -206,6 +213,23 @@ function openSearch() {
 }
 function closeSearch() {
   searchOpen.value = false;
+}
+
+function suppressFolderSummaryToggle(event: MouseEvent) {
+  event.preventDefault();
+}
+
+function keepFolderLinkNavigation(event: MouseEvent) {
+  event.stopPropagation();
+}
+
+function toggleFolder(event: MouseEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+  const details = (event.currentTarget as HTMLElement | null)?.closest("details");
+  if (details) {
+    details.open = !details.open;
+  }
 }
 
 function isActive(url: string) {
@@ -363,7 +387,45 @@ const showFloatingAI = computed(
                   :class="{ 'fd-sidebar-first-item': i === 0 }"
                   open
                 >
-                  <summary class="fd-sidebar-folder-trigger">
+                  <summary
+                    v-if="sidebarFolderIndexBehavior === 'link' && node.index"
+                    class="fd-sidebar-folder-trigger fd-sidebar-folder-trigger-link"
+                    @click="suppressFolderSummaryToggle"
+                  >
+                    <NuxtLink
+                      :to="withLang(node.index.url)"
+                      class="fd-sidebar-link fd-sidebar-folder-parent-link"
+                      :class="{ 'fd-sidebar-link-active': isActive(node.index.url) }"
+                      :data-active="isActive(node.index.url) || undefined"
+                      @click="keepFolderLinkNavigation"
+                    >
+                      <span
+                        v-if="getIcon(node.icon)"
+                        class="fd-sidebar-icon"
+                        v-html="getIcon(node.icon)"
+                      />
+                      {{ node.name }}
+                    </NuxtLink>
+                    <button
+                      type="button"
+                      class="fd-sidebar-folder-toggle"
+                      :aria-label="`Toggle ${node.name}`"
+                      @click="toggleFolder"
+                    >
+                      <svg
+                        class="fd-sidebar-chevron"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
+                  </summary>
+                  <summary v-else class="fd-sidebar-folder-trigger">
                     <span class="fd-sidebar-folder-label">
                       <span
                         v-if="getIcon(node.icon)"
@@ -386,7 +448,7 @@ const showFloatingAI = computed(
                   </summary>
                   <div class="fd-sidebar-folder-content">
                     <NuxtLink
-                      v-if="node.index"
+                      v-if="sidebarFolderIndexBehavior !== 'link' && node.index"
                       :to="withLang(node.index.url)"
                       class="fd-sidebar-link fd-sidebar-child-link"
                       :class="{ 'fd-sidebar-link-active': isActive(node.index.url) }"
@@ -412,7 +474,40 @@ const showFloatingAI = computed(
                         class="fd-sidebar-folder fd-sidebar-nested-folder"
                         open
                       >
-                        <summary class="fd-sidebar-folder-trigger">
+                        <summary
+                          v-if="sidebarFolderIndexBehavior === 'link' && (child as any).index"
+                          class="fd-sidebar-folder-trigger fd-sidebar-folder-trigger-link"
+                          @click="suppressFolderSummaryToggle"
+                        >
+                          <NuxtLink
+                            :to="withLang((child as any).index.url)"
+                            class="fd-sidebar-link fd-sidebar-folder-parent-link"
+                            :class="{ 'fd-sidebar-link-active': isActive((child as any).index.url) }"
+                            :data-active="isActive((child as any).index.url) || undefined"
+                            @click="keepFolderLinkNavigation"
+                          >
+                            {{ child.name }}
+                          </NuxtLink>
+                          <button
+                            type="button"
+                            class="fd-sidebar-folder-toggle"
+                            :aria-label="`Toggle ${child.name}`"
+                            @click="toggleFolder"
+                          >
+                            <svg
+                              class="fd-sidebar-chevron"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                          </button>
+                        </summary>
+                        <summary v-else class="fd-sidebar-folder-trigger">
                           <span class="fd-sidebar-folder-label">{{ child.name }}</span>
                           <svg
                             class="fd-sidebar-chevron"
@@ -428,7 +523,7 @@ const showFloatingAI = computed(
                         </summary>
                         <div class="fd-sidebar-folder-content">
                           <NuxtLink
-                            v-if="(child as any).index"
+                            v-if="sidebarFolderIndexBehavior !== 'link' && (child as any).index"
                             :to="withLang((child as any).index.url)"
                             class="fd-sidebar-link fd-sidebar-child-link"
                             :class="{ 'fd-sidebar-link-active': isActive((child as any).index.url) }"

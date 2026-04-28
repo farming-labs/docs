@@ -8,6 +8,10 @@ import type {
   FontStyle,
   AIConfig,
 } from "@farming-labs/docs";
+import {
+  applySidebarFolderIndexBehavior,
+  resolveSidebarFolderIndexBehavior,
+} from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
@@ -336,6 +340,7 @@ export function TanstackDocsLayout({
       : undefined;
 
   const resolvedSidebar = resolveSidebar(config.sidebar);
+  const folderIndexBehavior = resolveSidebarFolderIndexBehavior(config.sidebar);
   const sidebarFlat = resolvedSidebar.flat;
   const sidebarComponentFn = resolvedSidebar.componentFn;
   const { flat: _sidebarFlat, componentFn: _componentFn, ...sidebarProps } = resolvedSidebar;
@@ -407,7 +412,9 @@ export function TanstackDocsLayout({
   const i18n = (config as DocsConfig & { i18n?: { locales?: string[]; defaultLocale?: string } })
     .i18n;
   const resolvedTree = resolveTreeIcons(
-    locale ? localizeTreeUrls(tree, locale) : tree,
+    locale
+      ? localizeTreeUrls(applySidebarFolderIndexBehavior(tree, folderIndexBehavior), locale)
+      : applySidebarFolderIndexBehavior(tree, folderIndexBehavior),
     config.icons as Record<string, unknown> | undefined,
   );
 

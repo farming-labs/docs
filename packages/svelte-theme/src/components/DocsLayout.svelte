@@ -49,6 +49,13 @@
   let staticExport = $derived(!!(config && config.staticExport));
   let showSearch = $derived(!staticExport);
   let showFloatingAI = $derived(!staticExport && config?.ai?.mode === "floating" && !!config?.ai?.enabled);
+  let sidebarFolderIndexBehavior = $derived(
+    config?.sidebar &&
+      typeof config.sidebar === "object" &&
+      config.sidebar.folderIndexBehavior === "toggle"
+      ? "toggle"
+      : "link"
+  );
 
   let showThemeToggle = $derived.by(() => {
     const toggle = config?.themeToggle;
@@ -104,6 +111,23 @@
 
   function closeSearch() {
     searchOpen = false;
+  }
+
+  function suppressFolderSummaryToggle(event) {
+    event.preventDefault();
+  }
+
+  function keepFolderLinkNavigation(event) {
+    event.stopPropagation();
+  }
+
+  function toggleFolder(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const details = event.currentTarget?.closest("details");
+    if (details) {
+      details.open = !details.open;
+    }
   }
 
   function handleKeydown(e) {
@@ -318,19 +342,49 @@
               </a>
             {:else if node.type === "folder"}
               <details class="fd-sidebar-folder" class:fd-sidebar-first-item={i === 0} open>
-                <summary class="fd-sidebar-folder-trigger">
-                  <span class="fd-sidebar-folder-label">
-                    {#if getIcon(node.icon)}
-                      <span class="fd-sidebar-icon">{@html getIcon(node.icon)}</span>
-                    {/if}
-                    {node.name}
-                  </span>
-                  <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </summary>
+                {#if sidebarFolderIndexBehavior === "link" && node.index}
+                  <summary
+                    class="fd-sidebar-folder-trigger fd-sidebar-folder-trigger-link"
+                    onclick={suppressFolderSummaryToggle}
+                  >
+                    <a
+                      href={withLang(node.index.url)}
+                      class="fd-sidebar-link fd-sidebar-folder-parent-link"
+                      class:fd-sidebar-link-active={isActive(node.index.url)}
+                      data-active={isActive(node.index.url)}
+                      onclick={keepFolderLinkNavigation}
+                    >
+                      {#if getIcon(node.icon)}
+                        <span class="fd-sidebar-icon">{@html getIcon(node.icon)}</span>
+                      {/if}
+                      {node.name}
+                    </a>
+                    <button
+                      type="button"
+                      class="fd-sidebar-folder-toggle"
+                      aria-label={`Toggle ${node.name}`}
+                      onclick={toggleFolder}
+                    >
+                      <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
+                  </summary>
+                {:else}
+                  <summary class="fd-sidebar-folder-trigger">
+                    <span class="fd-sidebar-folder-label">
+                      {#if getIcon(node.icon)}
+                        <span class="fd-sidebar-icon">{@html getIcon(node.icon)}</span>
+                      {/if}
+                      {node.name}
+                    </span>
+                    <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </summary>
+                {/if}
                 <div class="fd-sidebar-folder-content">
-                  {#if node.index}
+                  {#if sidebarFolderIndexBehavior !== "link" && node.index}
                     <a
                       href={withLang(node.index.url)}
                       class="fd-sidebar-link fd-sidebar-child-link"
@@ -354,16 +408,43 @@
                       </a>
                     {:else if child.type === "folder"}
                       <details class="fd-sidebar-folder fd-sidebar-nested-folder" open>
-                        <summary class="fd-sidebar-folder-trigger">
-                          <span class="fd-sidebar-folder-label">
-                            {child.name}
-                          </span>
-                          <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                            <polyline points="6 9 12 15 18 9" />
-                          </svg>
-                        </summary>
+                        {#if sidebarFolderIndexBehavior === "link" && child.index}
+                          <summary
+                            class="fd-sidebar-folder-trigger fd-sidebar-folder-trigger-link"
+                            onclick={suppressFolderSummaryToggle}
+                          >
+                            <a
+                              href={withLang(child.index.url)}
+                              class="fd-sidebar-link fd-sidebar-folder-parent-link"
+                              class:fd-sidebar-link-active={isActive(child.index.url)}
+                              data-active={isActive(child.index.url)}
+                              onclick={keepFolderLinkNavigation}
+                            >
+                              {child.name}
+                            </a>
+                            <button
+                              type="button"
+                              class="fd-sidebar-folder-toggle"
+                              aria-label={`Toggle ${child.name}`}
+                              onclick={toggleFolder}
+                            >
+                              <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                <polyline points="6 9 12 15 18 9" />
+                              </svg>
+                            </button>
+                          </summary>
+                        {:else}
+                          <summary class="fd-sidebar-folder-trigger">
+                            <span class="fd-sidebar-folder-label">
+                              {child.name}
+                            </span>
+                            <svg class="fd-sidebar-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                          </summary>
+                        {/if}
                         <div class="fd-sidebar-folder-content">
-                          {#if child.index}
+                          {#if sidebarFolderIndexBehavior !== "link" && child.index}
                             <a
                               href={withLang(child.index.url)}
                               class="fd-sidebar-link fd-sidebar-child-link"

@@ -422,6 +422,15 @@ export interface SidebarComponentProps {
   flat: boolean;
 }
 
+/**
+ * Controls how folders with their own landing page behave in the default sidebar.
+ *
+ * - `"link"` — clicking the parent row navigates to the folder landing page
+ * - `"toggle"` — clicking the parent row only expands/collapses children, and the
+ *   landing page is rendered as the first child item instead
+ */
+export type SidebarFolderIndexBehavior = "link" | "toggle";
+
 export interface SidebarConfig {
   /**
    * Whether to show the sidebar.
@@ -494,6 +503,17 @@ export interface SidebarConfig {
    * @default false
    */
   flat?: boolean;
+
+  /**
+   * How folders with their own `page.mdx` / `page.md` behave in the default sidebar.
+   *
+   * - `"link"` — clicking the parent row navigates to the folder landing page
+   * - `"toggle"` — clicking the parent row only expands/collapses children, and the
+   *   folder landing page appears as the first child item instead
+   *
+   * @default "link"
+   */
+  folderIndexBehavior?: SidebarFolderIndexBehavior;
 }
 
 /**

@@ -138,6 +138,10 @@ All configuration lives in a single `docs.config.ts` file.
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions or a hosted OpenAPI JSON |
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template                              |
+
+For sidebar folder parents that have their own landing page, use
+`sidebar.folderIndexBehavior: "toggle"` if you want the parent row to only open and close its
+children instead of navigating.
 | `og`          | `OGConfig`                     | —               | Dynamic Open Graph images (see [API Reference](/docs/reference#ogconfig)) |
 
 ## Machine-readable markdown routes

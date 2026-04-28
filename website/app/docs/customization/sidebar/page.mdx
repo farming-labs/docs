@@ -52,12 +52,24 @@ Nested directories automatically become collapsible groups. A directory with its
 ```text
 app/docs/
   plugins/
-    page.mdx            # Folder index (clickable)
+    page.mdx            # Folder index (clickable by default)
     organizations/
       page.mdx           # Child page
     two-factor/
       page.mdx           # Child page
 ```
+
+If you want the parent row to only expand/collapse instead of navigating, switch the folder index
+behavior:
+
+```tsx title="docs.config.tsx"
+sidebar: {
+  folderIndexBehavior: "toggle",
+},
+```
+
+With `folderIndexBehavior: "toggle"`, the folder landing page is rendered as the first child item
+inside the group, and clicking the parent row no longer changes the URL.
 
 ## Flat Mode
 

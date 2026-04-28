@@ -848,6 +848,7 @@ Sidebar visibility and customization. See [Sidebar](/docs/customization/sidebar)
 | `banner`      | `ReactNode`                                      | —       | Content rendered above nav items                                                                             |
 | `collapsible` | `boolean`                                        | `true`  | Whether sidebar is collapsible on desktop                                                                    |
 | `flat`        | `boolean`                                        | `false` | Render all items flat (Mintlify-style, no collapsible groups)                                                |
+| `folderIndexBehavior` | `"link" \| "toggle"`                    | `"link"`| Whether folder parents with their own page navigate on click or only expand/collapse                         |
 
 ### `SidebarComponentProps`
 
@@ -896,6 +897,7 @@ sidebar: true,                     // show (default)
 sidebar: false,                    // hide
 sidebar: { collapsible: false },   // non-collapsible
 sidebar: { flat: true },           // Mintlify-style flat
+sidebar: { folderIndexBehavior: "toggle" }, // parent row only toggles children
 sidebar: {                         // custom component
   component: ({ tree }) => <MySidebar tree={tree} />,
 },

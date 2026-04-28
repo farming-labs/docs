@@ -5,8 +5,10 @@ import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { Suspense, type ReactNode } from "react";
 import { serializeIcon } from "./serialize-icon.js";
 import {
+  applySidebarFolderIndexBehavior,
   buildPageOpenGraph,
   buildPageTwitter,
+  resolveSidebarFolderIndexBehavior,
   resolveChangelogConfig,
   resolveDocsAgentMdxContent,
 } from "@farming-labs/docs";
@@ -801,6 +803,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
 
   // Sidebar
   const resolvedSidebar = resolveSidebar(config.sidebar);
+  const folderIndexBehavior = resolveSidebarFolderIndexBehavior(config.sidebar);
   const sidebarFlat = resolvedSidebar.flat;
   const sidebarComponentFn = resolvedSidebar.componentFn;
   const { flat: _sidebarFlat, componentFn: _componentFn, ...sidebarProps } = resolvedSidebar;
@@ -923,7 +926,10 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const readingTimeEnabled = readingTimeEnabledByDefault || Object.keys(readingTimeMap).length > 0;
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
-    const tree = buildTree(config, localeContext, !!sidebarFlat);
+    const tree = applySidebarFolderIndexBehavior(
+      buildTree(config, localeContext, !!sidebarFlat),
+      folderIndexBehavior,
+    );
     const localizedTree = i18n ? localizeTreeUrls(tree, activeLocale) : tree;
 
     const finalSidebarProps = { ...sidebarProps } as Record<string, unknown>;
