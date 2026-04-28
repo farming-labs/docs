@@ -72,6 +72,22 @@ With `folderIndexBehavior: "toggle"`, the folder landing page is rendered as the
 inside the group, and clicking the parent row no longer changes the URL. Set
 `folderIndexBehavior: "link"` if you want the parent row itself to navigate.
 
+If you only want that behavior in selected sections, use
+`sidebar.folderIndexBehaviorOverrides` and key each override by the folder landing-page URL:
+
+```tsx title="docs.config.tsx"
+sidebar: {
+  folderIndexBehavior: "link",
+  folderIndexBehaviorOverrides: {
+    "/docs/components": "toggle",
+    "/docs/customization": "toggle",
+  },
+},
+```
+
+That lets one folder like `Components` stay toggle-only while other folders still navigate on
+parent click.
+
 ## Flat Mode
 
 Render all sidebar items without collapsible sections (Mintlify-style):

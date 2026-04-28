@@ -1,17 +1,76 @@
 import type { SidebarConfig, SidebarFolderIndexBehavior } from "./types.js";
 
+export interface SidebarFolderIndexBehaviorOptions {
+  sidebar: boolean | SidebarConfig | undefined;
+  defaultBehavior?: SidebarFolderIndexBehavior;
+}
+
+function normalizeSidebarFolderBehaviorPath(path: string | undefined): string | undefined {
+  if (!path) return undefined;
+
+  let value = path.trim();
+  if (!value) return undefined;
+
+  if (/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(value)) {
+    try {
+      value = new URL(value).pathname;
+    } catch {
+      return undefined;
+    }
+  } else {
+    value = value.split("#", 1)[0]?.split("?", 1)[0] ?? value;
+  }
+
+  if (!value.startsWith("/")) value = `/${value}`;
+
+  const normalized = value.replace(/\/$/, "") || "/";
+  return normalized;
+}
+
 export function resolveSidebarFolderIndexBehavior(
   sidebar: boolean | SidebarConfig | undefined,
+  defaultBehavior: SidebarFolderIndexBehavior = "link",
 ): SidebarFolderIndexBehavior {
-  if (sidebar === undefined || sidebar === true || sidebar === false) return "link";
-  return sidebar.folderIndexBehavior === "toggle" ? "toggle" : "link";
+  if (sidebar === undefined || sidebar === true || sidebar === false) return defaultBehavior;
+  if (sidebar.folderIndexBehavior === "toggle") return "toggle";
+  if (sidebar.folderIndexBehavior === "link") return "link";
+  return defaultBehavior;
+}
+
+export function resolveSidebarFolderIndexBehaviorForPath(
+  sidebar: boolean | SidebarConfig | undefined,
+  folderPath: string | undefined,
+  defaultBehavior: SidebarFolderIndexBehavior = "link",
+): SidebarFolderIndexBehavior {
+  const fallback = resolveSidebarFolderIndexBehavior(sidebar, defaultBehavior);
+
+  if (!sidebar || typeof sidebar !== "object") return fallback;
+
+  const normalizedPath = normalizeSidebarFolderBehaviorPath(folderPath);
+  if (!normalizedPath) return fallback;
+
+  for (const [rawPath, override] of Object.entries(sidebar.folderIndexBehaviorOverrides ?? {})) {
+    if (normalizeSidebarFolderBehaviorPath(rawPath) === normalizedPath) {
+      return override === "link" || override === "toggle" ? override : fallback;
+    }
+  }
+
+  return fallback;
 }
 
 export function applySidebarFolderIndexBehavior<TTree extends { children: unknown[] }>(
   tree: TTree,
-  behavior: SidebarFolderIndexBehavior,
+  behaviorOrOptions: SidebarFolderIndexBehavior | SidebarFolderIndexBehaviorOptions,
 ): TTree {
-  if (behavior !== "toggle") return tree;
+  const resolveBehavior =
+    typeof behaviorOrOptions === "string"
+      ? () => behaviorOrOptions
+      : (folderPath: string | undefined) =>
+          resolveSidebarFolderIndexBehaviorForPath(
+            behaviorOrOptions.sidebar,
+            folderPath,
+            behaviorOrOptions.defaultBehavior,
+          );
 
   function mapNode(node: unknown): unknown {
     if (!node || typeof node !== "object") return node;
@@ -29,6 +88,24 @@ export function applySidebarFolderIndexBehavior<TTree extends { children: unknow
 
     const children = candidate.children.map(mapNode);
     const index = candidate.index ? mapNode(candidate.index) : undefined;
+
+    const folderPath =
+      (typeof candidate.url === "string" ? candidate.url : undefined) ||
+      (candidate.index &&
+      typeof candidate.index === "object" &&
+      "url" in candidate.index &&
+      typeof (candidate.index as { url?: unknown }).url === "string"
+        ? ((candidate.index as { url?: string }).url ?? undefined)
+        : undefined);
+    const behavior = resolveBehavior(folderPath);
+
+    if (behavior !== "toggle") {
+      return {
+        ...candidate,
+        index,
+        children,
+      };
+    }
 
     return {
       ...candidate,

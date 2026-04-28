@@ -49,14 +49,6 @@
   let staticExport = $derived(!!(config && config.staticExport));
   let showSearch = $derived(!staticExport);
   let showFloatingAI = $derived(!staticExport && config?.ai?.mode === "floating" && !!config?.ai?.enabled);
-  let sidebarFolderIndexBehavior = $derived(
-    config?.sidebar &&
-      typeof config.sidebar === "object" &&
-      config.sidebar.folderIndexBehavior === "link"
-      ? "link"
-      : "toggle"
-  );
-
   let showThemeToggle = $derived.by(() => {
     const toggle = config?.themeToggle;
     if (toggle === undefined || toggle === true) return true;
@@ -343,7 +335,7 @@
               </a>
             {:else if node.type === "folder"}
               <details class="fd-sidebar-folder" class:fd-sidebar-first-item={i === 0} open>
-                {#if sidebarFolderIndexBehavior === "link" && node.index}
+                {#if node.index}
                   <summary
                     class="fd-sidebar-folder-trigger fd-sidebar-folder-trigger-link"
                     onclick={suppressFolderSummaryToggle}
@@ -385,17 +377,6 @@
                   </summary>
                 {/if}
                 <div class="fd-sidebar-folder-content">
-                  {#if sidebarFolderIndexBehavior !== "link" && node.index}
-                    <a
-                      href={withLang(node.index.url)}
-                      class="fd-sidebar-link fd-sidebar-child-link"
-                      class:fd-sidebar-link-active={isActive(node.index.url)}
-                      data-active={isActive(node.index.url)}
-                      onclick={closeSidebar}
-                    >
-                      {node.index.name}
-                    </a>
-                  {/if}
                   {#each node.children as child}
                     {#if child.type === "page"}
                       <a
@@ -409,7 +390,7 @@
                       </a>
                     {:else if child.type === "folder"}
                       <details class="fd-sidebar-folder fd-sidebar-nested-folder" open>
-                        {#if sidebarFolderIndexBehavior === "link" && child.index}
+                        {#if child.index}
                           <summary
                             class="fd-sidebar-folder-trigger fd-sidebar-folder-trigger-link"
                             onclick={suppressFolderSummaryToggle}
@@ -445,17 +426,6 @@
                           </summary>
                         {/if}
                         <div class="fd-sidebar-folder-content">
-                          {#if sidebarFolderIndexBehavior !== "link" && child.index}
-                            <a
-                              href={withLang(child.index.url)}
-                              class="fd-sidebar-link fd-sidebar-child-link"
-                              class:fd-sidebar-link-active={isActive(child.index.url)}
-                              data-active={isActive(child.index.url)}
-                              onclick={closeSidebar}
-                            >
-                              {child.index.name}
-                            </a>
-                          {/if}
                           {#each child.children as grandchild}
                             {#if grandchild.type === "page"}
                               <a

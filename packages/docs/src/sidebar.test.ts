@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { applySidebarFolderIndexBehavior, resolveSidebarFolderIndexBehavior } from "./sidebar.js";
+import {
+  applySidebarFolderIndexBehavior,
+  resolveSidebarFolderIndexBehavior,
+  resolveSidebarFolderIndexBehaviorForPath,
+} from "./sidebar.js";
 
 describe("resolveSidebarFolderIndexBehavior", () => {
   it("defaults to link mode", () => {
@@ -13,6 +17,36 @@ describe("resolveSidebarFolderIndexBehavior", () => {
       resolveSidebarFolderIndexBehavior({
         folderIndexBehavior: "toggle",
       }),
+    ).toBe("toggle");
+  });
+});
+
+describe("resolveSidebarFolderIndexBehaviorForPath", () => {
+  it("uses per-folder overrides when present", () => {
+    expect(
+      resolveSidebarFolderIndexBehaviorForPath(
+        {
+          folderIndexBehavior: "link",
+          folderIndexBehaviorOverrides: {
+            "/docs/components": "toggle",
+          },
+        },
+        "/docs/components",
+      ),
+    ).toBe("toggle");
+  });
+
+  it("normalizes trailing slashes before matching overrides", () => {
+    expect(
+      resolveSidebarFolderIndexBehaviorForPath(
+        {
+          folderIndexBehavior: "link",
+          folderIndexBehaviorOverrides: {
+            "/docs/components/": "toggle",
+          },
+        },
+        "/docs/components",
+      ),
     ).toBe("toggle");
   });
 });
@@ -79,6 +113,60 @@ describe("applySidebarFolderIndexBehavior", () => {
             },
             { type: "page", name: "Button", url: "/docs/components/button" },
           ],
+        },
+      ],
+    });
+  });
+
+  it("applies selective overrides per folder URL", () => {
+    const tree = {
+      name: "Docs",
+      children: [
+        {
+          type: "folder",
+          name: "Components",
+          url: "/docs/components",
+          index: { type: "page", name: "Components", url: "/docs/components" },
+          children: [{ type: "page", name: "Button", url: "/docs/components/button" }],
+        },
+        {
+          type: "folder",
+          name: "Guides",
+          url: "/docs/guides",
+          index: { type: "page", name: "Guides", url: "/docs/guides" },
+          children: [{ type: "page", name: "Writing", url: "/docs/guides/writing" }],
+        },
+      ],
+    };
+
+    expect(
+      applySidebarFolderIndexBehavior(tree, {
+        sidebar: {
+          folderIndexBehavior: "link",
+          folderIndexBehaviorOverrides: {
+            "/docs/components": "toggle",
+          },
+        },
+      }),
+    ).toEqual({
+      name: "Docs",
+      children: [
+        {
+          type: "folder",
+          name: "Components",
+          index: undefined,
+          url: undefined,
+          children: [
+            { type: "page", name: "Components", url: "/docs/components" },
+            { type: "page", name: "Button", url: "/docs/components/button" },
+          ],
+        },
+        {
+          type: "folder",
+          name: "Guides",
+          url: "/docs/guides",
+          index: { type: "page", name: "Guides", url: "/docs/guides" },
+          children: [{ type: "page", name: "Writing", url: "/docs/guides/writing" }],
         },
       ],
     });

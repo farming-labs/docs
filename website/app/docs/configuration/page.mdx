@@ -141,8 +141,9 @@ All configuration lives in a single `docs.config.ts` file.
 | `og`          | `OGConfig`                     | —               | Dynamic Open Graph images (see [API Reference](/docs/reference#ogconfig)) |
 
 For sidebar folder parents that have their own landing page, use
-`sidebar.folderIndexBehavior: "toggle"` if you want the parent row to only open and close its
-children instead of navigating.
+`sidebar.folderIndexBehavior: "toggle"` if you want parent rows to only open and close their
+children instead of navigating. Use `sidebar.folderIndexBehaviorOverrides` when only selected
+sections should behave that way.
 
 ## Machine-readable markdown routes
 

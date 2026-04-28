@@ -8,7 +8,6 @@ import {
   applySidebarFolderIndexBehavior,
   buildPageOpenGraph,
   buildPageTwitter,
-  resolveSidebarFolderIndexBehavior,
   resolveChangelogConfig,
   resolveDocsAgentMdxContent,
 } from "@farming-labs/docs";
@@ -803,7 +802,6 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
 
   // Sidebar
   const resolvedSidebar = resolveSidebar(config.sidebar);
-  const folderIndexBehavior = resolveSidebarFolderIndexBehavior(config.sidebar);
   const sidebarFlat = resolvedSidebar.flat;
   const sidebarComponentFn = resolvedSidebar.componentFn;
   const { flat: _sidebarFlat, componentFn: _componentFn, ...sidebarProps } = resolvedSidebar;
@@ -928,7 +926,10 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
     const tree = applySidebarFolderIndexBehavior(
       buildTree(config, localeContext, !!sidebarFlat),
-      folderIndexBehavior,
+      {
+        sidebar: config.sidebar,
+        defaultBehavior: "link",
+      },
     );
     const localizedTree = i18n ? localizeTreeUrls(tree, activeLocale) : tree;
 
