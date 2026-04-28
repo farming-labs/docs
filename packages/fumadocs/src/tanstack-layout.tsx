@@ -8,9 +8,7 @@ import type {
   FontStyle,
   AIConfig,
 } from "@farming-labs/docs";
-import {
-  applySidebarFolderIndexBehavior,
-} from "@farming-labs/docs";
+import { applySidebarFolderIndexBehavior } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";

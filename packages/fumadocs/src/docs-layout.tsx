@@ -924,13 +924,10 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const readingTimeEnabled = readingTimeEnabledByDefault || Object.keys(readingTimeMap).length > 0;
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
-    const tree = applySidebarFolderIndexBehavior(
-      buildTree(config, localeContext, !!sidebarFlat),
-      {
-        sidebar: config.sidebar,
-        defaultBehavior: "link",
-      },
-    );
+    const tree = applySidebarFolderIndexBehavior(buildTree(config, localeContext, !!sidebarFlat), {
+      sidebar: config.sidebar,
+      defaultBehavior: "link",
+    });
     const localizedTree = i18n ? localizeTreeUrls(tree, activeLocale) : tree;
 
     const finalSidebarProps = { ...sidebarProps } as Record<string, unknown>;
