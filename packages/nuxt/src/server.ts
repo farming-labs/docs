@@ -654,7 +654,9 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       theme: config.theme,
       icons: serializeDocsIconRegistry(config.icons),
       openDocsProviders: serializeOpenDocsProviders(
-        typeof config.pageActions?.openDocs === "object" ? config.pageActions.openDocs.providers : undefined,
+        typeof config.pageActions?.openDocs === "object"
+          ? config.pageActions.openDocs.providers
+          : undefined,
       ),
     });
 

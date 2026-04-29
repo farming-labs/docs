@@ -25,10 +25,7 @@ import { createPreWithCopyCallback } from "./code-block-copy-wrapper.js";
 import { HoverLink, type HoverLinkProps } from "./hover-link.js";
 import { Prompt, type PromptProps } from "./prompt.js";
 import { extractPromptText } from "./prompt-text.js";
-import {
-  type CodeBlockCopyData,
-  type DocsTheme,
-} from "@farming-labs/docs";
+import { type CodeBlockCopyData, type DocsTheme } from "@farming-labs/docs";
 
 function Table(props: React.ComponentPropsWithoutRef<"table">) {
   return React.createElement(

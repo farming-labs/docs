@@ -102,7 +102,9 @@ export function parsePromptStringArray(value: unknown): string[] | undefined {
 }
 
 export function resolvePromptProviderChoices(
-  availableProviders?: Array<Pick<SerializedOpenDocsProvider, "name" | "iconHtml" | "promptUrlTemplate">>,
+  availableProviders?: Array<
+    Pick<SerializedOpenDocsProvider, "name" | "iconHtml" | "promptUrlTemplate">
+  >,
   preferredNames?: string[],
 ): PromptProviderChoice[] {
   const configuredByName = new Map(
@@ -112,9 +114,10 @@ export function resolvePromptProviderChoices(
     ]),
   );
 
-  const names = preferredNames && preferredNames.length > 0
-    ? preferredNames
-    : (availableProviders ?? []).map((provider) => provider.name);
+  const names =
+    preferredNames && preferredNames.length > 0
+      ? preferredNames
+      : (availableProviders ?? []).map((provider) => provider.name);
 
   const seen = new Set<string>();
   const resolved: PromptProviderChoice[] = [];
@@ -128,8 +131,7 @@ export function resolvePromptProviderChoices(
     seen.add(normalized);
 
     const configured = configuredByName.get(normalized);
-    const template =
-      configured?.promptUrlTemplate ?? DEFAULT_PROMPT_PROVIDER_TEMPLATES[normalized];
+    const template = configured?.promptUrlTemplate ?? DEFAULT_PROMPT_PROVIDER_TEMPLATES[normalized];
 
     if (!template) continue;
 

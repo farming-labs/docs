@@ -196,9 +196,11 @@ function resolveActionIcon(
 
   const registryMatch = iconRegistry?.[name];
   if (registryMatch) {
-    return typeof registryMatch === "string"
-      ? <IconHtml className="fd-prompt-action-icon" html={registryMatch} />
-      : registryMatch;
+    return typeof registryMatch === "string" ? (
+      <IconHtml className="fd-prompt-action-icon" html={registryMatch} />
+    ) : (
+      registryMatch
+    );
   }
 
   if (name in builtInIcons) {
@@ -261,7 +263,8 @@ export function Prompt({
   const [menuOpen, setMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const promptText = useMemo(
-    () => (typeof prompt === "string" && prompt.trim() ? prompt.trim() : extractPromptText(children)),
+    () =>
+      typeof prompt === "string" && prompt.trim() ? prompt.trim() : extractPromptText(children),
     [prompt, children],
   );
   const promptIcon = icon && iconRegistry?.[icon] ? iconRegistry[icon] : undefined;
@@ -329,9 +332,11 @@ export function Prompt({
       {(promptIcon || visibleTitle || visibleDescription) && (
         <div className="fd-prompt-header">
           {promptIcon &&
-            (typeof promptIcon === "string"
-              ? <IconHtml className="fd-prompt-icon" html={promptIcon} />
-              : <span className="fd-prompt-icon">{promptIcon}</span>)}
+            (typeof promptIcon === "string" ? (
+              <IconHtml className="fd-prompt-icon" html={promptIcon} />
+            ) : (
+              <span className="fd-prompt-icon">{promptIcon}</span>
+            ))}
           <div className="fd-prompt-copy">
             {visibleTitle && <p className="fd-prompt-title">{visibleTitle}</p>}
             {visibleDescription && <p className="fd-prompt-description">{visibleDescription}</p>}
@@ -348,7 +353,12 @@ export function Prompt({
       {(showCopy || showOpen) && (
         <div className="fd-prompt-actions">
           {showCopy && (
-            <button type="button" className="fd-prompt-action-btn" data-copied={copied} onClick={handleCopy}>
+            <button
+              type="button"
+              className="fd-prompt-action-btn"
+              data-copied={copied}
+              onClick={handleCopy}
+            >
               {copied
                 ? resolveActionIcon(copiedIcon, iconRegistry)
                 : resolveActionIcon(copyIcon, iconRegistry)}
@@ -363,7 +373,9 @@ export function Prompt({
               onClick={() => handleOpen(singleProvider)}
             >
               {resolveActionIcon(openIcon, iconRegistry)}
-              <span>{openLabel} {singleProvider.name}</span>
+              <span>
+                {openLabel} {singleProvider.name}
+              </span>
             </button>
           ) : null}
 
@@ -390,12 +402,16 @@ export function Prompt({
                       className="fd-prompt-menu-item"
                       onClick={() => handleOpen(provider)}
                     >
-                      {provider.icon
-                        ? (typeof provider.icon === "string"
-                            ? <IconHtml className="fd-prompt-menu-icon" html={provider.icon} />
-                            : <span className="fd-prompt-menu-icon">{provider.icon}</span>)
-                        : null}
-                      <span className="fd-prompt-menu-label">{openLabel} {provider.name}</span>
+                      {provider.icon ? (
+                        typeof provider.icon === "string" ? (
+                          <IconHtml className="fd-prompt-menu-icon" html={provider.icon} />
+                        ) : (
+                          <span className="fd-prompt-menu-icon">{provider.icon}</span>
+                        )
+                      ) : null}
+                      <span className="fd-prompt-menu-label">
+                        {openLabel} {provider.name}
+                      </span>
                     </button>
                   ))}
                 </div>

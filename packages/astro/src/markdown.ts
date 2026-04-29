@@ -9,10 +9,7 @@
  *   - Tables, lists, inline formatting, headings with anchor IDs
  */
 
-import {
-  resolveDocsAgentMdxContent,
-  type DocsTheme,
-} from "@farming-labs/docs";
+import { resolveDocsAgentMdxContent, type DocsTheme } from "@farming-labs/docs";
 import {
   parsePromptStringArray,
   resolvePromptProviderChoices,
@@ -259,14 +256,20 @@ function renderPromptIconHtml(
   return promptActionIcons[name] ?? "";
 }
 
-function renderPrompt(attrSource: string, children: string, options: RenderMarkdownOptions): string {
+function renderPrompt(
+  attrSource: string,
+  children: string,
+  options: RenderMarkdownOptions,
+): string {
   const attrs = parseJsxAttributes(attrSource);
   const defaults = resolvePromptOptions(options.theme);
   const title = toStringValue(attrs.title) ?? toStringValue(defaults.title);
   const description = toStringValue(attrs.description) ?? toStringValue(defaults.description);
   const iconName = toStringValue(attrs.icon) ?? toStringValue(defaults.icon);
   const showTitle =
-    attrs.showTitle !== undefined ? toBoolean(attrs.showTitle, true) : toBoolean(defaults.showTitle, true);
+    attrs.showTitle !== undefined
+      ? toBoolean(attrs.showTitle, true)
+      : toBoolean(defaults.showTitle, true);
   const showDescription =
     attrs.showDescription !== undefined
       ? toBoolean(attrs.showDescription, true)
@@ -282,17 +285,13 @@ function renderPrompt(attrSource: string, children: string, options: RenderMarkd
       parsePromptStringArray(attrs.providers ?? defaults.providers),
     ) ?? [];
   const copyLabel =
-    toStringValue(attrs.copyLabel) ??
-    toStringValue(defaults.copyLabel) ??
-    promptDefaults.copyLabel;
+    toStringValue(attrs.copyLabel) ?? toStringValue(defaults.copyLabel) ?? promptDefaults.copyLabel;
   const copiedLabel =
     toStringValue(attrs.copiedLabel) ??
     toStringValue(defaults.copiedLabel) ??
     promptDefaults.copiedLabel;
   const openLabel =
-    toStringValue(attrs.openLabel) ??
-    toStringValue(defaults.openLabel) ??
-    promptDefaults.openLabel;
+    toStringValue(attrs.openLabel) ?? toStringValue(defaults.openLabel) ?? promptDefaults.openLabel;
   const copyIcon = resolvePromptIconName(attrs.copyIcon ?? defaults.copyIcon);
   const copiedIcon = resolvePromptIconName(attrs.copiedIcon ?? defaults.copiedIcon);
   const openIcon = resolvePromptIconName(attrs.openIcon ?? defaults.openIcon);
@@ -357,7 +356,7 @@ function renderPrompt(attrSource: string, children: string, options: RenderMarkd
 
   return (
     `<div class="fd-prompt" data-prompt-card>` +
-    ((cardIconHtml || (showTitle && title) || (showDescription && description))
+    (cardIconHtml || (showTitle && title) || (showDescription && description)
       ? `<div class="fd-prompt-header">` +
         (cardIconHtml ? `<span class="fd-prompt-icon">${cardIconHtml}</span>` : "") +
         `<div class="fd-prompt-copy">` +

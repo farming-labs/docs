@@ -1873,11 +1873,11 @@ export interface DocsConfig {
   mcp?: boolean | DocsMcpConfig;
   /**
    * Shared icon registry for sidebar items and built-in MDX components.
- *
- * Map string labels to React elements. Reference them in page frontmatter
- * with `icon: "label"` and the matching icon renders in the sidebar.
- * Built-in components such as `Prompt` can also reference these keys for
- * their card and action icons.
+   *
+   * Map string labels to React elements. Reference them in page frontmatter
+   * with `icon: "label"` and the matching icon renders in the sidebar.
+   * Built-in components such as `Prompt` can also reference these keys for
+   * their card and action icons.
    *
    * @example
    * ```tsx
