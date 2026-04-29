@@ -191,6 +191,9 @@
           "title": "Managed Markdown Runtime",
           "type": "object",
           "additionalProperties": false,
+          "required": [
+            "framework"
+          ],
           "properties": {
             "framework": {
               "type": "string",
@@ -209,6 +212,9 @@
           "title": "Framework Runtime",
           "type": "object",
           "additionalProperties": false,
+          "required": [
+            "framework"
+          ],
           "properties": {
             "framework": {
               "type": "string",
