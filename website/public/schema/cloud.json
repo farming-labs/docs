@@ -1,0 +1,785 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docs.farming-labs.dev/schema/cloud.json",
+  "title": "Docs Cloud Config",
+  "description": "Schema for docs.cloud.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "href": {
+      "type": "string",
+      "minLength": 1
+    },
+    "assetPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "href": {
+          "$ref": "#/$defs/href"
+        },
+        "external": {
+          "type": "boolean"
+        },
+        "icon": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "label",
+        "href"
+      ]
+    },
+    "social": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "platform": {
+          "type": "string",
+          "enum": [
+            "github",
+            "gitlab",
+            "discord",
+            "slack",
+            "x",
+            "linkedin",
+            "youtube",
+            "website",
+            "custom"
+          ],
+          "default": "custom"
+        },
+        "href": {
+          "$ref": "#/$defs/href"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "href"
+      ]
+    },
+    "assetSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "light": {
+          "$ref": "#/$defs/assetPath"
+        },
+        "dark": {
+          "$ref": "#/$defs/assetPath"
+        },
+        "alt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "href": {
+          "$ref": "#/$defs/href"
+        }
+      }
+    },
+    "openapiSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "route": {
+          "type": "string",
+          "minLength": 1
+        },
+        "navigationLabel": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "name",
+        "path"
+      ]
+    },
+    "navigationGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "group": {
+          "type": "string",
+          "minLength": 1
+        },
+        "icon": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pages": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "links": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/link"
+          }
+        }
+      },
+      "required": [
+        "group"
+      ]
+    },
+    "footerColumn": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "links": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/link"
+          }
+        }
+      },
+      "required": [
+        "title"
+      ]
+    }
+  },
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri",
+      "default": "https://docs.farming-labs.dev/schema/cloud.json",
+      "description": "Schema URL for docs.cloud.json."
+    },
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "default": 1,
+      "description": "Config schema version."
+    },
+    "docs": {
+      "description": "Docs runtime configuration. In managed mode, authored content stays in ./docs and ./api-reference while docs.root points at the generated runtime directory.",
+      "default": {
+        "framework": "nextjs",
+        "root": "apps/docs"
+      },
+      "oneOf": [
+        {
+          "title": "Managed Markdown Runtime",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "framework": {
+              "type": "string",
+              "const": "managed",
+              "default": "managed",
+              "description": "Markdown-first mode managed by Docs Cloud."
+            },
+            "root": {
+              "type": "string",
+              "default": ".docs-cloud/site",
+              "description": "Generated runtime root used by managed mode."
+            }
+          }
+        },
+        {
+          "title": "Framework Runtime",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "framework": {
+              "type": "string",
+              "enum": [
+                "nextjs",
+                "tanstack-start",
+                "sveltekit",
+                "astro",
+                "nuxt"
+              ],
+              "default": "nextjs",
+              "description": "Framework used by the docs runtime."
+            },
+            "root": {
+              "type": "string",
+              "default": "apps/docs",
+              "description": "Root directory of the framework-specific docs app."
+            }
+          }
+        }
+      ]
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Content source roots and API reference specifications.",
+      "properties": {
+        "docsRoot": {
+          "type": "string",
+          "default": "docs",
+          "description": "Root folder for primary docs content."
+        },
+        "apiReferenceRoot": {
+          "type": "string",
+          "default": "api-reference",
+          "description": "Root folder for API reference content."
+        },
+        "openapi": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/openapiSpec"
+          }
+        }
+      }
+    },
+    "site": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "High-level site metadata.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "titleTemplate": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "language": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 20,
+          "default": "en"
+        },
+        "favicon": {
+          "$ref": "#/$defs/assetPath"
+        },
+        "keywords": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "branding": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Brand and visual identity assets.",
+      "properties": {
+        "logo": {
+          "$ref": "#/$defs/assetSet"
+        },
+        "wordmark": {
+          "$ref": "#/$defs/assetSet"
+        },
+        "icon": {
+          "$ref": "#/$defs/assetPath"
+        },
+        "favicon": {
+          "$ref": "#/$defs/assetPath"
+        },
+        "ogImage": {
+          "$ref": "#/$defs/assetPath"
+        }
+      }
+    },
+    "theme": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Theme and presentation options similar to hosted docs products.",
+      "properties": {
+        "preset": {
+          "type": "string",
+          "minLength": 1,
+          "default": "default"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "light",
+            "dark",
+            "system"
+          ],
+          "default": "system"
+        },
+        "rounded": {
+          "type": "string",
+          "enum": [
+            "none",
+            "sm",
+            "md",
+            "lg",
+            "xl",
+            "full"
+          ]
+        },
+        "colors": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "primary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "accent": {
+              "type": "string",
+              "minLength": 1
+            },
+            "background": {
+              "type": "string",
+              "minLength": 1
+            },
+            "surface": {
+              "type": "string",
+              "minLength": 1
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "muted": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "fonts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "heading": {
+              "type": "string",
+              "minLength": 1
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mono": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "codeBlock": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "light": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dark": {
+              "type": "string",
+              "minLength": 1
+            },
+            "showLineNumbers": {
+              "type": "boolean"
+            }
+          }
+        },
+        "customCss": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "navigation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Navigation structure for tabs, anchors, and sidebar groups.",
+      "properties": {
+        "tabs": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/link"
+          }
+        },
+        "anchors": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/link"
+          }
+        },
+        "global": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/link"
+          }
+        },
+        "sidebar": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/navigationGroup"
+          }
+        }
+      }
+    },
+    "navbar": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Top navigation and primary call-to-action.",
+      "properties": {
+        "links": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/link"
+          }
+        },
+        "primary": {
+          "$ref": "#/$defs/link"
+        }
+      }
+    },
+    "footer": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Footer links, columns, and social destinations.",
+      "properties": {
+        "socials": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/social"
+          }
+        },
+        "links": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/link"
+          }
+        },
+        "columns": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/footerColumn"
+          }
+        },
+        "copyright": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "links": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Common external product links.",
+      "properties": {
+        "website": {
+          "$ref": "#/$defs/href"
+        },
+        "documentation": {
+          "$ref": "#/$defs/href"
+        },
+        "github": {
+          "$ref": "#/$defs/href"
+        },
+        "discord": {
+          "$ref": "#/$defs/href"
+        },
+        "support": {
+          "$ref": "#/$defs/href"
+        },
+        "changelog": {
+          "$ref": "#/$defs/href"
+        },
+        "blog": {
+          "$ref": "#/$defs/href"
+        }
+      }
+    },
+    "search": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Search UI and provider configuration.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "local",
+            "algolia",
+            "custom"
+          ]
+        },
+        "placeholder": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Vendor-specific or project-specific extensions. Prefer namespaced keys such as your company or package name.",
+      "additionalProperties": true
+    },
+    "preview": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {
+        "enabled": true
+      },
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether Docs Cloud should request preview deployments."
+        }
+      }
+    },
+    "publish": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {
+        "mode": "draft-pr",
+        "baseBranch": "main"
+      },
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "draft-pr",
+            "direct-commit"
+          ],
+          "default": "draft-pr",
+          "description": "How Docs Cloud publishes generated documentation changes."
+        },
+        "baseBranch": {
+          "type": "string",
+          "minLength": 1,
+          "default": "main",
+          "description": "Repository branch that docs work should target."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "$schema": "https://docs.farming-labs.dev/schema/cloud.json",
+      "version": 1,
+      "docs": {
+        "framework": "managed",
+        "root": ".docs-cloud/site"
+      },
+      "content": {
+        "docsRoot": "docs",
+        "apiReferenceRoot": "api-reference",
+        "openapi": [
+          {
+            "name": "Core API",
+            "path": "api/openapi.json",
+            "route": "/api-reference/core",
+            "navigationLabel": "Core API"
+          }
+        ]
+      },
+      "site": {
+        "name": "Acme Docs",
+        "title": "Acme Documentation",
+        "description": "Developer docs for Acme.",
+        "titleTemplate": "%s | Acme Docs",
+        "url": "https://docs.acme.dev",
+        "language": "en",
+        "favicon": "/favicon.ico",
+        "keywords": [
+          "acme",
+          "api",
+          "docs"
+        ]
+      },
+      "branding": {
+        "logo": {
+          "light": "/logo-light.svg",
+          "dark": "/logo-dark.svg",
+          "alt": "Acme"
+        },
+        "icon": "/icon.svg",
+        "ogImage": "/og.png"
+      },
+      "theme": {
+        "preset": "default",
+        "mode": "system",
+        "rounded": "lg",
+        "colors": {
+          "primary": "#2563eb",
+          "accent": "#14b8a6",
+          "background": "#0b1020",
+          "surface": "#111827",
+          "text": "#f9fafb",
+          "muted": "#94a3b8"
+        },
+        "fonts": {
+          "heading": "Geist",
+          "body": "Geist",
+          "mono": "Geist Mono"
+        },
+        "codeBlock": {
+          "light": "github-light",
+          "dark": "github-dark",
+          "showLineNumbers": true
+        }
+      },
+      "navigation": {
+        "tabs": [
+          {
+            "label": "Docs",
+            "href": "/docs"
+          },
+          {
+            "label": "API",
+            "href": "/api-reference"
+          }
+        ],
+        "sidebar": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "docs/index.mdx",
+              "docs/quickstart.mdx"
+            ]
+          },
+          {
+            "group": "API Reference",
+            "pages": [
+              "api-reference/index.mdx"
+            ]
+          }
+        ]
+      },
+      "navbar": {
+        "links": [
+          {
+            "label": "GitHub",
+            "href": "https://github.com/acme/docs",
+            "external": true
+          }
+        ],
+        "primary": {
+          "label": "Start Building",
+          "href": "https://acme.dev/signup",
+          "external": true
+        }
+      },
+      "footer": {
+        "socials": [
+          {
+            "platform": "github",
+            "href": "https://github.com/acme"
+          },
+          {
+            "platform": "discord",
+            "href": "https://discord.gg/acme"
+          }
+        ],
+        "columns": [
+          {
+            "title": "Resources",
+            "links": [
+              {
+                "label": "Support",
+                "href": "https://acme.dev/support",
+                "external": true
+              },
+              {
+                "label": "Changelog",
+                "href": "https://acme.dev/changelog",
+                "external": true
+              }
+            ]
+          }
+        ],
+        "copyright": "© Acme"
+      },
+      "links": {
+        "website": "https://acme.dev",
+        "github": "https://github.com/acme",
+        "support": "https://acme.dev/support",
+        "changelog": "https://acme.dev/changelog"
+      },
+      "extensions": {
+        "acme": {
+          "releaseChannels": [
+            "stable",
+            "beta"
+          ]
+        }
+      },
+      "search": {
+        "enabled": true,
+        "provider": "local",
+        "placeholder": "Search the docs"
+      },
+      "preview": {
+        "enabled": true
+      },
+      "publish": {
+        "mode": "draft-pr",
+        "baseBranch": "main"
+      }
+    },
+    {
+      "$schema": "https://docs.farming-labs.dev/schema/cloud.json",
+      "version": 1,
+      "docs": {
+        "framework": "nextjs",
+        "root": "apps/docs"
+      },
+      "preview": {
+        "enabled": true
+      },
+      "publish": {
+        "mode": "draft-pr",
+        "baseBranch": "main"
+      }
+    }
+  ]
+}

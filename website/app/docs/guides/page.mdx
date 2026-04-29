@@ -3,6 +3,7 @@ title: "Guides"
 description: "Long-form playbooks for building docs that work well for humans, IDEs, and agents"
 related:
   - /docs/guides/agent-friendly-docs
+  - /docs/guides/docs-cloud-json
   - /docs/customization/agent-primitive
   - /docs/customization/llms-txt
   - /docs/customization/mcp
@@ -71,6 +72,15 @@ These are the longer, more opinionated walkthroughs in the docs. They sit on top
   tags={["agent.md", "<Agent>", "llms.txt", "MCP", "Doctor"]}
 />
 
+<GuideCard
+  href="/docs/guides/docs-cloud-json"
+  label="Guide 02"
+  metaItems={["Apr 2026", "10 min read"]}
+  title="How to Host a docs.cloud.json Schema"
+  description="A release-oriented contract for serving a public JSON Schema from the docs website so editors, agents, and Cloud tooling all agree on the same config format."
+  tags={["docs.cloud.json", "JSON Schema", "Managed mode", "Cloud", "Website host"]}
+/>
+
 ## What These Guides Optimize For
 
 - **One source of truth** - the human page stays canonical unless a route truly needs a dedicated `agent.md`
@@ -86,6 +96,6 @@ These are the longer, more opinionated walkthroughs in the docs. They sit on top
 
 ## Coming Next
 
-- An implementation checklist for launching an agent-optimized docs site
+- A rollout guide for evolving the schema contract once breaking versions are needed
 - A page-level playbook for when to use `Agent` blocks versus sibling `agent.md`
 - A docs operations guide for `docs doctor --agent`, compaction, and ongoing audits
