@@ -41,8 +41,8 @@ Top-level configuration object passed to `defineDocs()`.
 | `themeToggle` | `boolean \| ThemeToggleConfig`                  | `true`           | Light/dark mode toggle                                                               |
 | `breadcrumb`  | `boolean \| BreadcrumbConfig`                   | `true`           | Breadcrumb navigation                                                                |
 | `sidebar`     | `boolean \| SidebarConfig`                      | `true`           | Sidebar visibility and customization                                                 |
-| `icons`       | `Record<string, unknown>`                       | —                | Icon registry for frontmatter `icon` fields                                          |
-| `components`  | `Record<string, unknown>`                       | —                | Custom MDX component overrides, including built-ins like `HoverLink`                |
+| `icons`       | `Record<string, unknown>`                       | —                | Shared icon registry for frontmatter `icon` fields and built-ins like `Prompt`       |
+| `components`  | `Record<string, unknown>`                       | —                | Custom MDX component overrides, including built-ins like `HoverLink` and `Prompt`    |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void`              | —                | Callback when the user clicks the copy button on a code block (runs in addition to copy) |
 | `feedback`    | `boolean \| FeedbackConfig`                     | `false`          | Human page feedback UI plus optional agent feedback endpoints                        |
 | `agent`       | `DocsAgentConfig`                               | —                | Defaults for `docs agent compact` and related machine-docs workflows                 |
@@ -59,7 +59,7 @@ Top-level configuration object passed to `defineDocs()`.
 
 ---
 
-`components` is merged into the default MDX component map, so you can both add your own components and replace built-ins such as `Callout`, `Tabs`, or `HoverLink`. For built-in defaults like `theme.ui.components.HoverLink`, see [Creating themes](/docs/themes/creating-themes). For usage examples and a live demo, see [Components](/docs/customization/components).
+`components` is merged into the default MDX component map, so you can both add your own components and replace built-ins such as `Callout`, `Tabs`, `HoverLink`, or `Prompt`. For built-in defaults like `theme.ui.components.HoverLink` and `theme.ui.components.Prompt`, see [Creating themes](/docs/themes/creating-themes). For usage examples and a live demo, see [Components](/docs/customization/components).
 
 ---
 
@@ -1159,6 +1159,7 @@ Action buttons shown on each docs page. See [Page Actions](/docs/customization/p
 | `name`        | `string`    | Display name (e.g. `"ChatGPT"`, `"Claude"`)                                       |
 | `icon`        | `ReactNode` | Icon rendered next to the name                                                    |
 | `urlTemplate` | `string`    | URL template. `{url}` is replaced with the page URL, `{mdxUrl}` with the raw MDX source URL, and `{githubUrl}` with the GitHub edit URL when `github` is configured. Use `{url}.md` when you want the public machine-readable page route. |
+| `promptUrlTemplate` | `string` | Optional URL template used by the built-in `Prompt` component. `{prompt}` is replaced with the prompt text. Known providers like ChatGPT, Claude, Cursor, Gemini, and Copilot fall back to built-in prompt templates by name when this is omitted. |
 
 ```ts
 pageActions: {

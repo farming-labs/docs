@@ -113,6 +113,7 @@ interface OpenDocsProvider {
   name: string;      // Display name (e.g. "ChatGPT", "Claude")
   icon?: ReactNode;  // Optional icon element
   urlTemplate: string; // URL template; placeholders are replaced
+  promptUrlTemplate?: string; // Optional built-in Prompt target; `{prompt}` is replaced
 }
 ```
 
@@ -123,6 +124,12 @@ interface OpenDocsProvider {
 | `{url}` | Current page URL (e.g. `https://docs.example.com/docs/installation`) |
 | `{mdxUrl}` | Raw `.mdx` source URL for the page |
 | `{githubUrl}` | GitHub **edit** URL for the current page. Requires `github` in config. Use `urlTemplate: "{githubUrl}"` for "Open in GitHub". |
+
+For the built-in `Prompt` MDX component, `promptUrlTemplate` can use:
+
+| Placeholder | Replaced with |
+| ----------- | -------------- |
+| `{prompt}` | Prompt text from the Prompt card |
 
 If the project exposes machine-readable markdown routes, use `{url}.md` when you want a link to the
 public page markdown instead of the raw source file. In Next.js, that route can return a sibling

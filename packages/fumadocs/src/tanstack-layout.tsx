@@ -7,6 +7,7 @@ import type {
   TypographyConfig,
   FontStyle,
   AIConfig,
+  OpenDocsProvider,
 } from "@farming-labs/docs";
 import { applySidebarFolderIndexBehavior } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
@@ -376,7 +377,7 @@ export function TanstackDocsLayout({
     typeof pageActions?.openDocs === "object" && pageActions.openDocs.providers
       ? pageActions.openDocs.providers
       : undefined;
-  const openDocsProviders = rawProviders?.map((provider) => ({
+  const openDocsProviders = rawProviders?.map((provider: OpenDocsProvider) => ({
     name: provider.name,
     urlTemplate: provider.urlTemplate,
   }));

@@ -65,6 +65,11 @@ export function useMDXComponents(components?: MDXComponents): MDXComponents {
     {
       onCopyClick: docsConfig.onCopyClick,
       theme: docsConfig.theme,
+      icons: docsConfig.icons,
+      openDocsProviders:
+        typeof docsConfig.pageActions?.openDocs === "object"
+          ? docsConfig.pageActions.openDocs.providers
+          : undefined,
     },
   );
 }

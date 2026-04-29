@@ -9,10 +9,19 @@
  *   - Tables, lists, inline formatting, headings with anchor IDs
  */
 
-import { resolveDocsAgentMdxContent, type DocsTheme } from "@farming-labs/docs";
+import {
+  resolveDocsAgentMdxContent,
+  type DocsTheme,
+} from "@farming-labs/docs";
+import {
+  parsePromptStringArray,
+  resolvePromptProviderChoices,
+  sanitizePromptText,
+  type SerializedOpenDocsProvider,
+} from "@farming-labs/docs/server";
 import { createHighlighter, type Highlighter } from "shiki";
 
-let highlighterPromise: Promise<Highlighter> | undefined;
+let highlighterPromise: Promise<Highlighter> | null = null;
 
 function getHighlighter(): Promise<Highlighter> {
   if (!highlighterPromise) {
@@ -57,8 +66,30 @@ const hoverLinkDefaults = {
   sideOffset: 12,
 } as const;
 
+const promptDefaults = {
+  actions: ["copy"],
+  copyLabel: "Copy prompt",
+  copiedLabel: "Copied",
+  openLabel: "Open in",
+  copyIcon: "copy",
+  copiedIcon: "check",
+  openIcon: "arrowUpRight",
+} as const;
+
+const promptActionIcons: Record<string, string> = {
+  copy: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>',
+  check:
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>',
+  arrowUpRight:
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>',
+  chevronDown:
+    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>',
+};
+
 interface RenderMarkdownOptions {
   theme?: DocsTheme;
+  icons?: Record<string, string>;
+  openDocsProviders?: SerializedOpenDocsProvider[];
 }
 
 function escapeHtml(value: string): string {
@@ -133,6 +164,25 @@ function resolveHoverLinkOptions(theme?: DocsTheme): Record<string, unknown> {
   return base;
 }
 
+function resolvePromptOptions(theme?: DocsTheme): Record<string, unknown> {
+  const configured = theme?.ui?.components?.Prompt;
+  const base = { ...promptDefaults } as Record<string, unknown>;
+
+  if (typeof configured === "function") {
+    const resolved = configured(base);
+    if (resolved && typeof resolved === "object") {
+      return { ...base, ...(resolved as Record<string, unknown>) };
+    }
+    return base;
+  }
+
+  if (configured && typeof configured === "object") {
+    return { ...base, ...(configured as Record<string, unknown>) };
+  }
+
+  return base;
+}
+
 function renderHoverLink(attrSource: string, children: string, theme?: DocsTheme): string {
   const attrs = parseJsxAttributes(attrSource);
   const defaults = resolveHoverLinkOptions(theme);
@@ -187,6 +237,141 @@ function renderHoverLink(attrSource: string, children: string, theme?: DocsTheme
     `</span>` +
     `</span>` +
     `</span>`
+  );
+}
+
+function resolvePromptIconName(value: unknown): string | false | undefined {
+  if (value === false) return false;
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (trimmed === "false") return false;
+  return trimmed;
+}
+
+function renderPromptIconHtml(
+  name: string | false | undefined,
+  iconRegistry?: Record<string, string>,
+): string {
+  if (!name) return "";
+  const registryMatch = iconRegistry?.[name];
+  if (registryMatch) return registryMatch;
+  return promptActionIcons[name] ?? "";
+}
+
+function renderPrompt(attrSource: string, children: string, options: RenderMarkdownOptions): string {
+  const attrs = parseJsxAttributes(attrSource);
+  const defaults = resolvePromptOptions(options.theme);
+  const title = toStringValue(attrs.title) ?? toStringValue(defaults.title);
+  const description = toStringValue(attrs.description) ?? toStringValue(defaults.description);
+  const iconName = toStringValue(attrs.icon) ?? toStringValue(defaults.icon);
+  const showTitle =
+    attrs.showTitle !== undefined ? toBoolean(attrs.showTitle, true) : toBoolean(defaults.showTitle, true);
+  const showDescription =
+    attrs.showDescription !== undefined
+      ? toBoolean(attrs.showDescription, true)
+      : toBoolean(defaults.showDescription, true);
+  const showPrompt =
+    attrs.showPrompt !== undefined
+      ? toBoolean(attrs.showPrompt, false)
+      : toBoolean(defaults.showPrompt, false);
+  const actions = parsePromptStringArray(attrs.actions ?? defaults.actions) ?? ["copy"];
+  const providers =
+    resolvePromptProviderChoices(
+      options.openDocsProviders,
+      parsePromptStringArray(attrs.providers ?? defaults.providers),
+    ) ?? [];
+  const copyLabel =
+    toStringValue(attrs.copyLabel) ??
+    toStringValue(defaults.copyLabel) ??
+    promptDefaults.copyLabel;
+  const copiedLabel =
+    toStringValue(attrs.copiedLabel) ??
+    toStringValue(defaults.copiedLabel) ??
+    promptDefaults.copiedLabel;
+  const openLabel =
+    toStringValue(attrs.openLabel) ??
+    toStringValue(defaults.openLabel) ??
+    promptDefaults.openLabel;
+  const copyIcon = resolvePromptIconName(attrs.copyIcon ?? defaults.copyIcon);
+  const copiedIcon = resolvePromptIconName(attrs.copiedIcon ?? defaults.copiedIcon);
+  const openIcon = resolvePromptIconName(attrs.openIcon ?? defaults.openIcon);
+  const promptText = sanitizePromptText(dedentCode(children.trim()));
+
+  if (!promptText) return "";
+
+  const cardIconHtml = iconName && options.icons?.[iconName] ? options.icons[iconName] : "";
+  const copyIconHtml = renderPromptIconHtml(copyIcon, options.icons);
+  const copiedIconHtml = renderPromptIconHtml(copiedIcon, options.icons);
+  const openIconHtml = renderPromptIconHtml(openIcon, options.icons);
+  const showCopy = actions.includes("copy");
+  const showOpen = actions.includes("open") && providers.length > 0;
+  const escapedPrompt = escapeHtml(promptText);
+  const singleProvider = showOpen && providers.length === 1 ? providers[0] : null;
+
+  let actionsHtml = "";
+
+  if (showCopy || showOpen) {
+    actionsHtml += '<div class="fd-prompt-actions">';
+
+    if (showCopy) {
+      actionsHtml +=
+        `<button type="button" class="fd-prompt-action-btn" data-prompt-copy>` +
+        `<span class="fd-prompt-action-icon">${copyIconHtml}</span>` +
+        `<span data-prompt-copy-label="${escapeHtml(copiedLabel)}">${escapeHtml(copyLabel)}</span>` +
+        `<span class="fd-prompt-action-icon fd-prompt-action-icon-copied" hidden>${copiedIconHtml}</span>` +
+        `</button>`;
+    }
+
+    if (singleProvider) {
+      actionsHtml +=
+        `<button type="button" class="fd-prompt-action-btn" data-prompt-open-direct data-url-template="${escapeHtml(singleProvider.urlTemplate)}">` +
+        `<span class="fd-prompt-action-icon">${openIconHtml}</span>` +
+        `<span>${escapeHtml(openLabel)} ${escapeHtml(singleProvider.name)}</span>` +
+        `</button>`;
+    } else if (showOpen) {
+      actionsHtml +=
+        `<div class="fd-prompt-dropdown" data-prompt-dropdown>` +
+        `<button type="button" class="fd-prompt-action-btn" aria-expanded="false" data-prompt-trigger>` +
+        `<span class="fd-prompt-action-icon">${openIconHtml}</span>` +
+        `<span>${escapeHtml(openLabel)}</span>` +
+        `<span class="fd-prompt-action-chevron">${promptActionIcons.chevronDown}</span>` +
+        `</button>` +
+        `<div class="fd-prompt-menu" role="menu" hidden data-prompt-menu>`;
+
+      for (const provider of providers) {
+        actionsHtml +=
+          `<button type="button" role="menuitem" class="fd-prompt-menu-item" data-prompt-open-provider data-url-template="${escapeHtml(provider.urlTemplate)}">` +
+          (provider.iconHtml
+            ? `<span class="fd-prompt-menu-icon">${provider.iconHtml}</span>`
+            : "") +
+          `<span class="fd-prompt-menu-label">${escapeHtml(openLabel)} ${escapeHtml(provider.name)}</span>` +
+          `</button>`;
+      }
+
+      actionsHtml += `</div></div>`;
+    }
+
+    actionsHtml += `</div>`;
+  }
+
+  return (
+    `<div class="fd-prompt" data-prompt-card>` +
+    ((cardIconHtml || (showTitle && title) || (showDescription && description))
+      ? `<div class="fd-prompt-header">` +
+        (cardIconHtml ? `<span class="fd-prompt-icon">${cardIconHtml}</span>` : "") +
+        `<div class="fd-prompt-copy">` +
+        (showTitle && title ? `<p class="fd-prompt-title">${escapeHtml(title)}</p>` : "") +
+        (showDescription && description
+          ? `<p class="fd-prompt-description">${escapeHtml(description)}</p>`
+          : "") +
+        `</div></div>`
+      : "") +
+    (showPrompt
+      ? `<div class="fd-prompt-body" data-prompt-text><pre class="fd-prompt-code">${escapedPrompt}</pre></div>`
+      : "") +
+    actionsHtml +
+    `</div>`
   );
 }
 
@@ -275,7 +460,7 @@ function dedentCode(raw: string): string {
  * Render a markdown string to HTML with full syntax highlighting,
  * callouts, tables, tabs, and copy-to-clipboard support.
  *
- * Designed for server-side use in SvelteKit `+page.server` loaders.
+ * Designed for server-side use in Astro page loaders.
  */
 export async function renderMarkdown(
   content: string,
@@ -349,6 +534,16 @@ export async function renderMarkdown(
     },
   );
 
+  const promptBlocks: string[] = [];
+  result = result.replace(
+    /<Prompt(?:\s+([^>]*?))?>([\s\S]*?)<\/Prompt>/g,
+    (_: string, attrSource: string | undefined, children: string) => {
+      const placeholder = `%%PROMPT_${promptBlocks.length}%%`;
+      promptBlocks.push(renderPrompt(attrSource ?? "", children, options));
+      return placeholder;
+    },
+  );
+
   // Inline code
   result = result.replace(/`([^`]+)`/g, "<code>$1</code>");
 
@@ -396,6 +591,12 @@ export async function renderMarkdown(
   result = result.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   result = result.replace(/\*(.+?)\*/g, "<em>$1</em>");
 
+  // Images — before links so ![alt](url) is not captured as a link
+  result = result.replace(
+    /!\[([^\]]*)\]\(([^)]+)\)/g,
+    (_: string, alt: string, src: string) =>
+      `<img src="${src}" alt="${alt.replace(/"/g, "&quot;")}" class="fd-docs-content-img" loading="lazy" decoding="async" />`,
+  );
   // Links
   result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
 
@@ -454,7 +655,7 @@ export async function renderMarkdown(
       block = block.trim();
       if (!block) return "";
       if (/^<(h[1-6]|pre|ul|ol|blockquote|hr|table|div)/.test(block)) return block;
-      if (/^%%(CODEBLOCK|CALLOUT|TABS)_\d+%%$/.test(block)) return block;
+      if (/^%%(CODEBLOCK|CALLOUT|TABS|PROMPT|HOVERLINK)_\d+%%$/.test(block)) return block;
       return `<p>${block}</p>`;
     })
     .join("\n");
@@ -471,6 +672,9 @@ export async function renderMarkdown(
   }
   for (let i = 0; i < hoverLinkBlocks.length; i++) {
     result = result.replace(`%%HOVERLINK_${i}%%`, hoverLinkBlocks[i]);
+  }
+  for (let i = 0; i < promptBlocks.length; i++) {
+    result = result.replace(`%%PROMPT_${i}%%`, promptBlocks[i]);
   }
 
   return result;

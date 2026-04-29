@@ -23,7 +23,12 @@ import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { MDXImg } from "./mdx-img.js";
 import { createPreWithCopyCallback } from "./code-block-copy-wrapper.js";
 import { HoverLink, type HoverLinkProps } from "./hover-link.js";
-import type { CodeBlockCopyData, DocsTheme } from "@farming-labs/docs";
+import { Prompt, type PromptProps } from "./prompt.js";
+import { extractPromptText } from "./prompt-text.js";
+import {
+  type CodeBlockCopyData,
+  type DocsTheme,
+} from "@farming-labs/docs";
 
 function Table(props: React.ComponentPropsWithoutRef<"table">) {
   return React.createElement(
@@ -45,6 +50,7 @@ const extendedMdxComponents = {
   table: Table,
   Agent,
   HoverLink,
+  Prompt,
   Tab,
   Tabs,
 };
@@ -54,6 +60,15 @@ export interface GetMDXComponentsOptions {
   onCopyClick?: (data: CodeBlockCopyData) => void;
   /** Theme config used to apply built-in MDX component defaults from `theme.ui.components`. */
   theme?: DocsTheme;
+  /** Shared icon registry from `docs.config.ts[x]`. */
+  icons?: Record<string, unknown>;
+  /** Optional site-wide "Open in …" providers used by built-in components such as `Prompt`. */
+  openDocsProviders?: Array<{
+    name: string;
+    icon?: unknown;
+    urlTemplate: string;
+    promptUrlTemplate?: string;
+  }>;
 }
 
 const mdxComponentDefaults = {
@@ -65,6 +80,18 @@ const mdxComponentDefaults = {
     sideOffset: 12,
     closeDelay: 90,
   } satisfies Partial<HoverLinkProps>,
+  Prompt: {
+    showTitle: true,
+    showDescription: true,
+    showPrompt: false,
+    actions: ["copy"],
+    copyLabel: "Copy prompt",
+    copiedLabel: "Copied",
+    openLabel: "Open in",
+    copyIcon: "copy",
+    copiedIcon: "check",
+    openIcon: "arrowUpRight",
+  } satisfies Partial<PromptProps>,
 } as const;
 
 function applyBuiltInComponentDefaults<T extends Record<string, unknown>>(
@@ -83,10 +110,12 @@ function applyBuiltInComponentDefaults<T extends Record<string, unknown>>(
     if (!Component) continue;
 
     const builtInDefaults = (mdxComponentDefaults as Record<string, unknown>)[name] ?? {};
+    const configuredDefaults =
+      value && typeof value === "object" ? (value as Record<string, unknown>) : {};
     const componentDefaults =
       typeof value === "function"
         ? value(builtInDefaults)
-        : { ...(builtInDefaults as Record<string, unknown>), ...value };
+        : { ...(builtInDefaults as Record<string, unknown>), ...configuredDefaults };
 
     if (!componentDefaults || typeof componentDefaults !== "object") continue;
 
@@ -107,6 +136,25 @@ export function getMDXComponents<T extends Record<string, unknown> = Record<stri
 ): typeof extendedMdxComponents & T {
   const builtIns = applyBuiltInComponentDefaults<T>(options);
   const base = { ...builtIns, ...overrides } as typeof extendedMdxComponents & T;
+
+  if ((base as Record<string, unknown>).Prompt) {
+    const DefaultPrompt = (base as Record<string, unknown>).Prompt as React.ComponentType<
+      React.PropsWithChildren<PromptProps>
+    >;
+
+    (base as Record<string, unknown>).Prompt = function PromptWithDocsContext(
+      props: React.PropsWithChildren<PromptProps>,
+    ) {
+      const { children, ...rest } = props;
+      return React.createElement(DefaultPrompt, {
+        iconRegistry: options?.icons,
+        openDocsProviders: options?.openDocsProviders,
+        prompt: extractPromptText(children),
+        ...rest,
+      });
+    };
+  }
+
   if (options?.onCopyClick) {
     const DefaultPre = (base as Record<string, unknown>).pre as
       | React.ComponentType<React.ComponentPropsWithoutRef<"pre">>
@@ -122,4 +170,4 @@ export function getMDXComponents<T extends Record<string, unknown> = Record<stri
   return base;
 }
 
-export { Agent, defaultMdxComponents, extendedMdxComponents, HoverLink, Tab, Tabs };
+export { Agent, defaultMdxComponents, extendedMdxComponents, HoverLink, Prompt, Tab, Tabs };

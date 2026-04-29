@@ -124,8 +124,8 @@ All configuration lives in a single `docs.config.ts` file.
 | `themeToggle` | `boolean \| ThemeToggleConfig` | `true`          | Light/dark mode toggle                             |
 | `breadcrumb`  | `boolean \| BreadcrumbConfig`  | `true`          | Breadcrumb navigation                              |
 | `sidebar`     | `boolean \| SidebarConfig`     | `true`          | Sidebar visibility and style                       |
-| `icons`       | `Record<string, Component>`    | —               | Icon registry for frontmatter `icon` fields        |
-| `components`  | `Record<string, Component>`    | —               | Custom MDX components and built-in overrides like `HoverLink` |
+| `icons`       | `Record<string, Component>`    | —               | Shared icon registry for frontmatter `icon` fields and built-ins like `Prompt` |
+| `components`  | `Record<string, Component>`    | —               | Custom MDX components and built-in overrides like `HoverLink` and `Prompt` |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
 | `feedback`    | `boolean \| FeedbackConfig`    | `false`         | Human page feedback UI plus optional agent feedback endpoints |
 | `agent`       | `DocsAgentConfig`              | —               | Defaults for `docs agent compact`                  |
@@ -1294,6 +1294,23 @@ pageActions: {
 ```
 
 Use `openDocs: true` for the built-in ChatGPT + Claude provider list, or pass `providers` to fully customize it.
+
+If you use the built-in `Prompt` component, you can also add `promptUrlTemplate` to a provider so the same provider name and icon can open prompt text directly:
+
+```ts
+pageActions: {
+  openDocs: {
+    enabled: true,
+    providers: [
+      {
+        name: "Cursor",
+        urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}",
+        promptUrlTemplate: "https://cursor.com/link/prompt?text={prompt}",
+      },
+    ],
+  },
+},
+```
 
 See the full [Page Actions reference](/docs/customization/page-actions) for all options.
 

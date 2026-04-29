@@ -66,6 +66,11 @@ export function TanstackDocsPage({
           components={getMDXComponents(config.components as Record<string, unknown>, {
             onCopyClick: config.onCopyClick,
             theme: config.theme,
+            icons: config.icons,
+            openDocsProviders:
+              typeof config.pageActions?.openDocs === "object"
+                ? config.pageActions.openDocs.providers
+                : undefined,
           })}
         />
       </TanstackDocsLayout>
