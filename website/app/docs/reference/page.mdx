@@ -851,6 +851,15 @@ Sidebar visibility and customization. See [Sidebar](/docs/customization/sidebar)
 | `folderIndexBehavior` | `"link" \| "toggle"`                    | adapter default | Whether folder parents with their own page navigate on click or only expand/collapse                         |
 | `folderIndexBehaviorOverrides` | `Record<string, "link" \| "toggle">` | — | Selective per-folder overrides keyed by the folder landing-page URL                                          |
 
+Folder landing pages can still override both of those with frontmatter:
+
+```mdx title="page.mdx"
+---
+sidebar:
+  folderIndexBehavior: "toggle"
+---
+```
+
 ### `SidebarComponentProps`
 
 Props passed to a custom sidebar component:
@@ -1251,6 +1260,7 @@ Each docs page (`.mdx` / `.md`) supports these frontmatter fields:
 | `description` | `string`    | Page description, used for meta tags and search                                    |
 | `related`     | `string[]`  | Related doc URLs rendered as a comma-separated metadata line in `.md` routes and MCP page output |
 | `agent`       | `PageAgentFrontmatter` | Per-page machine-docs metadata such as compaction token budgets |
+| `sidebar`     | `PageSidebarFrontmatter` | Per-folder sidebar metadata such as `folderIndexBehavior` overrides |
 | `readingTime` | `boolean \| number` | Disable the estimate for one page (`false`) or force an exact minute count |
 | `icon`        | `string`    | Icon key from the `icons` registry. Shows in sidebar.                              |
 | `order`       | `number`    | Sort order in the sidebar (only when `ordering: "numeric"`). Lower numbers first.   |
@@ -1290,6 +1300,28 @@ Notes:
   pages that define `agent.tokenBudget`
 - inherited `minOutputTokens` is clamped down to `tokenBudget` when needed so the compression API
   never receives `min_output_tokens > max_output_tokens`
+
+### `PageSidebarFrontmatter`
+
+Page-level sidebar metadata used while building the docs navigation tree.
+
+| Property              | Type                 | Description |
+| --------------------- | -------------------- | ----------- |
+| `folderIndexBehavior` | `"link" \| "toggle"` | Override how this folder page behaves in the default sidebar when it has child pages |
+
+```mdx title="app/docs/components/page.mdx"
+---
+title: "Components"
+sidebar:
+  folderIndexBehavior: "toggle"
+---
+```
+
+Notes:
+
+- this is only read from folder landing pages such as `page.mdx` / `index.md`
+- it overrides global `sidebar.folderIndexBehavior`
+- it also overrides `sidebar.folderIndexBehaviorOverrides` for that same folder
 
 **Static OG example** — use `openGraph` and `twitter` in frontmatter to serve a static image instead of the dynamic OG endpoint:
 

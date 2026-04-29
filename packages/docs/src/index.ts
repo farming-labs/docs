@@ -25,6 +25,7 @@ export {
 export { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 export {
   applySidebarFolderIndexBehavior,
+  resolvePageSidebarFolderIndexBehavior,
   resolveSidebarFolderIndexBehavior,
   resolveSidebarFolderIndexBehaviorForPath,
 } from "./sidebar.js";
@@ -100,6 +101,7 @@ export type {
   FontStyle,
   TypographyConfig,
   PageFrontmatter,
+  PageSidebarFrontmatter,
   ThemeToggleConfig,
   BreadcrumbConfig,
   SidebarConfig,

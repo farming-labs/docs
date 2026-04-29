@@ -143,7 +143,14 @@ All configuration lives in a single `docs.config.ts` file.
 For sidebar folder parents that have their own landing page, use
 `sidebar.folderIndexBehavior: "toggle"` if you want parent rows to only open and close their
 children instead of navigating. Use `sidebar.folderIndexBehaviorOverrides` when only selected
-sections should behave that way.
+sections should behave that way. A folder landing page can also override both with frontmatter:
+
+```mdx title="page.mdx"
+---
+sidebar:
+  folderIndexBehavior: "toggle"
+---
+```
 
 ## Machine-readable markdown routes
 

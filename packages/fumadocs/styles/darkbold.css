@@ -101,12 +101,16 @@ aside a > img:first-child {
 }
 
 /* ── Sidebar links — match DarkBold: 14px, 400 weight, minimal pad ─ */
-aside a[data-active] {
+aside a[data-active],
+aside button[aria-controls][aria-expanded] {
   font-size: 0.875rem;
   line-height: 1.5;
-  font-weight: 400;
   padding: 6px 8px;
   border-radius: 6px;
+}
+
+aside a[data-active] {
+  font-weight: 400;
   color: var(--color-fd-muted-foreground);
   transition: color 150ms;
 }

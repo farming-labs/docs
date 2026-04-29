@@ -281,6 +281,15 @@ export interface PageAgentFrontmatter {
   tokenBudget?: number;
 }
 
+export interface PageSidebarFrontmatter {
+  /**
+   * Override how this folder page behaves in the default sidebar when it has children.
+   *
+   * This is only read from folder landing pages such as `page.mdx` / `index.md`.
+   */
+  folderIndexBehavior?: SidebarFolderIndexBehavior;
+}
+
 export interface PageFrontmatter {
   title: string;
   description?: string;
@@ -288,6 +297,8 @@ export interface PageFrontmatter {
   related?: DocsRelatedItem[];
   /** Per-page agent-oriented metadata used by machine-readable docs features. */
   agent?: PageAgentFrontmatter;
+  /** Per-page sidebar metadata used when building the docs navigation tree. */
+  sidebar?: PageSidebarFrontmatter;
   /** Override or disable the estimated reading time for this page. */
   readingTime?: boolean | number;
   tags?: string[];
@@ -389,6 +400,11 @@ export interface SidebarFolderNode {
   icon?: unknown;
   /** Index page for this folder (the folder's own landing page). */
   index?: SidebarPageNode;
+  /**
+   * Optional per-folder override read from the folder page frontmatter before the
+   * tree is normalized for the default sidebar.
+   */
+  folderIndexBehavior?: SidebarFolderIndexBehavior;
   /** Child pages and sub-folders. */
   children: SidebarNode[];
   /** Whether this folder section is collapsible. */
@@ -513,6 +529,16 @@ export interface SidebarConfig {
    * - `"toggle"` — clicking the parent row only expands/collapses children, and the
    *   folder landing page appears as the first child item instead
    *
+   * This is the global default. Individual folder pages can still override it with
+   * page frontmatter:
+   *
+   * ```mdx
+   * ---
+   * sidebar:
+   *   folderIndexBehavior: "toggle"
+   * ---
+   * ```
+   *
    * When omitted, each adapter keeps its existing folder-parent behavior. Set this
    * explicitly if you want the same sidebar interaction across frameworks.
    */
@@ -520,6 +546,7 @@ export interface SidebarConfig {
 
   /**
    * Selective per-folder overrides keyed by the folder landing-page URL.
+   * Folder page frontmatter still wins when both are present.
    *
    * ```ts
    * sidebar: {

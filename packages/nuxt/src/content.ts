@@ -12,8 +12,10 @@ import matter from "gray-matter";
 import {
   normalizeDocsRelated,
   resolveDocsAgentMdxContent,
+  resolvePageSidebarFolderIndexBehavior,
   type OrderingItem,
   type ResolvedDocsRelatedLink,
+  type SidebarFolderIndexBehavior,
 } from "@farming-labs/docs";
 
 export interface PageNode {
@@ -29,6 +31,7 @@ export interface FolderNode {
   name: string;
   icon?: string;
   index?: PageNode;
+  folderIndexBehavior?: SidebarFolderIndexBehavior;
   children: NavNode[];
 }
 
@@ -194,6 +197,7 @@ function buildNavNode(
       name: displayName,
       icon,
       index: { type: "page", name: displayName, url, icon },
+      folderIndexBehavior: resolvePageSidebarFolderIndexBehavior(data.sidebar),
       children: scanDir(full, slug, entry, ordering, childSlugOrder),
     };
   }

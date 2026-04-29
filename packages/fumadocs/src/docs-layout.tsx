@@ -10,6 +10,7 @@ import {
   buildPageTwitter,
   resolveChangelogConfig,
   resolveDocsAgentMdxContent,
+  resolvePageSidebarFolderIndexBehavior,
 } from "@farming-labs/docs";
 import type {
   DocsConfig,
@@ -40,6 +41,7 @@ interface FolderNode {
   name: string;
   icon?: ReactNode;
   index?: PageNode;
+  folderIndexBehavior?: "link" | "toggle";
   children: TreeNode[];
   collapsible?: boolean;
   defaultOpen?: boolean;
@@ -302,6 +304,7 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
         name: displayName,
         icon,
         index: { type: "page", name: displayName, url, icon },
+        folderIndexBehavior: resolvePageSidebarFolderIndexBehavior(data.sidebar),
         children: folderChildren,
         ...(flat ? { collapsible: false, defaultOpen: true } : {}),
       };

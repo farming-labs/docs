@@ -201,16 +201,20 @@ aside .overscroll-contain > div > div:last-child {
 
 /* ── Sidebar links (all levels) ──────────────────────────────────── */
 
-aside a[data-active] {
+aside a[data-active],
+aside button[aria-controls][aria-expanded] {
   font-size: 0.875rem !important;
   line-height: 1.6 !important;
   border-radius: 0 !important;
   padding: 0.5rem 0.625rem !important;
   transition: color 0.15s ease !important;
-  color: var(--color-fd-muted-foreground) !important;
-  font-weight: 400 !important;
   overflow: hidden !important;
   background-color: transparent !important;
+}
+
+aside a[data-active] {
+  color: var(--color-fd-muted-foreground) !important;
+  font-weight: 400 !important;
 }
 
 aside a[data-active="true"],

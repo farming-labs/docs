@@ -154,11 +154,13 @@
     z-index: 1 !important;
   }
 
-  #nd-docs-layout aside .overscroll-contain > div > a[data-active] {
+  #nd-docs-layout aside .overscroll-contain > div > a[data-active],
+  #nd-docs-layout aside .overscroll-contain > div > div[data-state] > button[aria-controls][aria-expanded] {
     padding-right: calc(1rem + var(--fd-sidebar-item-inset)) !important;
   }
 
-  #nd-docs-layout aside a[data-active] {
+  #nd-docs-layout aside a[data-active],
+  #nd-docs-layout aside button[aria-controls][aria-expanded] {
     padding-left: calc(0.625rem + var(--fd-sidebar-item-inset)) !important;
     padding-right: calc(0.625rem + var(--fd-sidebar-item-inset)) !important;
   }

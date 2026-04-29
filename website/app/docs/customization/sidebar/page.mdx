@@ -88,6 +88,17 @@ sidebar: {
 That lets one folder like `Components` stay toggle-only while other folders still navigate on
 parent click.
 
+You can also override the behavior from the folder landing page itself. This wins over the global
+config and over `folderIndexBehaviorOverrides`:
+
+```mdx title="app/docs/components/page.mdx"
+---
+title: "Components"
+sidebar:
+  folderIndexBehavior: "toggle"
+---
+```
+
 ## Flat Mode
 
 Render all sidebar items without collapsible sections (Mintlify-style):

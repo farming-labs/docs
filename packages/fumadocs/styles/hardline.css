@@ -78,12 +78,16 @@ aside#nd-sidebar,
 }
 
 /* Sidebar links and categories */
-aside a[data-active] {
-  font-weight: 600;
+aside a[data-active],
+aside button[aria-controls][aria-expanded] {
   font-size: 0.92rem;
-  letter-spacing: 0.01em;
   padding: 0.5rem 0.625rem;
   border: 1px solid transparent;
+}
+
+aside a[data-active] {
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--color-fd-foreground);
 }
 
