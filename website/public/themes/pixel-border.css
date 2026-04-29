@@ -208,10 +208,13 @@ aside button[aria-controls][aria-expanded] {
   border-radius: 0 !important;
   padding: 0.5rem 0.625rem !important;
   transition: color 0.15s ease !important;
-  color: var(--color-fd-muted-foreground) !important;
-  font-weight: 400 !important;
   overflow: hidden !important;
   background-color: transparent !important;
+}
+
+aside a[data-active] {
+  color: var(--color-fd-muted-foreground) !important;
+  font-weight: 400 !important;
 }
 
 aside a[data-active="true"],
