@@ -1,0 +1,248 @@
+---
+title: "Use the Shared docs.cloud.json Schema"
+description: "Point your docs.cloud.json to the shared schema URL for autocomplete and validation."
+related:
+  - /docs/configuration
+  - /docs/reference
+  - /cloud
+  - /docs/guides/agent-friendly-docs
+icon: "lightbulb"
+order: 3.8
+---
+
+# Use the Shared `docs.cloud.json` Schema
+
+Most users do not need to host anything.
+
+The normal setup is:
+
+- this repo hosts one shared schema at `https://docs.farming-labs.dev/schema/cloud.json`
+- user projects point their own `docs.cloud.json` to that URL
+- editors use that schema for autocomplete and validation
+
+After the website deploys to `https://docs.farming-labs.dev`, that file is available at:
+
+```txt
+https://docs.farming-labs.dev/schema/cloud.json
+```
+
+User projects can point their own `docs.cloud.json` to that URL:
+
+```json
+{
+  "$schema": "https://docs.farming-labs.dev/schema/cloud.json"
+}
+```
+
+Most projects should stop there. They do not need to host their own schema.
+
+## Do I need to host a schema?
+
+No.
+
+If you are using the standard `docs.cloud.json` contract, just reference the shared schema URL.
+
+You only need your own schema if you want custom validation for your own extra fields.
+
+## What this file is
+
+`/schema/cloud.json` is the rules file for `docs.cloud.json`.
+
+It is not a sample config.
+
+It tells tools which fields are allowed, what types they have, and which values are valid.
+
+That gives editors and tools:
+
+- Autocomplete for supported properties
+- Validation errors for wrong values
+- Hover text and defaults
+
+That means a project can keep its own config file locally:
+
+```txt
+my-project/
+  docs.cloud.json
+```
+
+while still reusing the shared schema hosted by `docs.farming-labs.dev`.
+
+For maintainers of this repo, the shared schema is published from:
+
+```txt
+website/public/schema/cloud.json
+```
+
+The schema file itself starts like this:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docs.farming-labs.dev/schema/cloud.json",
+  "title": "Docs Cloud Config",
+  "type": "object"
+}
+```
+
+## Supported sections
+
+These are the main top-level keys supported by `docs.cloud.json`:
+
+- `$schema`
+- `version`
+- `docs`
+- `content`
+- `site`
+- `branding`
+- `theme`
+- `navigation`
+- `navbar`
+- `footer`
+- `links`
+- `search`
+- `extensions`
+- `preview`
+- `publish`
+
+The schema stays strict at the top level. That means random top-level keys should not be accepted.
+
+Custom framework or vendor fields should go under `extensions`:
+
+```json
+{
+  "extensions": {
+    "your-framework": {}
+  }
+}
+```
+
+This is the important distinction:
+
+- users write their own `docs.cloud.json`
+- users normally reference the shared schema URL
+- users only need their own schema if they want custom validation for their own extra fields
+
+In practice, the contract is split like this:
+
+- `docs`: framework and runtime root
+- `content`: docs roots and OpenAPI inputs
+- `site`, `branding`, `theme`: metadata and presentation
+- `navigation`, `navbar`, `footer`, `links`: docs structure and external links
+- `search`, `preview`, `publish`: runtime behavior
+- `extensions`: namespaced custom fields
+
+## Managed mode
+
+- `docs.framework = "managed"`
+- `docs.root = ".docs-cloud/site"`
+- `content.docsRoot = "docs"`
+- `content.apiReferenceRoot = "api-reference"`
+
+That means authored markdown lives in:
+
+```txt
+docs/
+api-reference/
+```
+
+and the generated runtime can live in:
+
+```txt
+.docs-cloud/site/
+```
+
+## Minimal example
+
+This is the typical starting config:
+
+```json
+{
+  "$schema": "https://docs.farming-labs.dev/schema/cloud.json",
+  "version": 1,
+  "docs": {
+    "framework": "managed",
+    "root": ".docs-cloud/site"
+  },
+  "content": {
+    "docsRoot": "docs",
+    "apiReferenceRoot": "api-reference"
+  },
+  "theme": {
+    "preset": "default",
+    "mode": "system"
+  },
+  "search": {
+    "enabled": true
+  },
+  "preview": {
+    "enabled": true
+  },
+  "publish": {
+    "mode": "draft-pr",
+    "baseBranch": "main"
+  }
+}
+```
+
+For the full field list, use the schema file itself:
+
+```txt
+website/public/schema/cloud.json
+```
+
+## Frameworkless project contract
+
+The goal is not to make end users build a docs app by hand.
+
+The goal is to let a project work with just:
+
+```txt
+docs.cloud.json
+docs/
+api-reference/
+```
+
+In managed mode, those three things are the source of truth.
+
+- `docs.cloud.json` defines config like theme, branding, navigation, search, preview, and publish behavior
+- `docs/` contains the main docs pages
+- `api-reference/` contains API reference pages and related generated content
+
+That means a user should be able to start with a repo like this:
+
+```txt
+my-project/
+  docs.cloud.json
+  docs/
+    index.mdx
+    quickstart.mdx
+  api-reference/
+    index.mdx
+```
+
+and not need to create a Next.js, Astro, Nuxt, or other framework docs app themselves.
+
+The managed system can then generate or deploy the runtime for them based on `docs.cloud.json`.
+
+For the frameworkless flow, the important rules are:
+
+1. Use `"$schema": "https://docs.farming-labs.dev/schema/cloud.json"` in `docs.cloud.json`.
+2. Treat `docs/` and `api-reference/` as the authored content source.
+3. Let `docs.cloud.json` drive the docs behavior and presentation.
+4. Keep the generated runtime hidden or managed, such as `.docs-cloud/site/`.
+5. Reject unknown top-level keys except through `extensions`.
+
+## When a project needs its own schema
+
+Most projects do not need this.
+
+A project should only host its own schema if it wants to extend the base contract with its own
+strictly validated custom fields.
+
+For example:
+
+- shared schema: validates the standard `docs`, `theme`, `navigation`, `publish`, and other built-in fields
+- project schema: adds exact validation for something like `extensions.acme`
+
+Without a project-specific schema, custom fields under `extensions` are still allowed, but they are
+not fully typed beyond being custom data.
