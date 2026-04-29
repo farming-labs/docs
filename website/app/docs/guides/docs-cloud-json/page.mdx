@@ -1,6 +1,6 @@
 ---
-title: "Host a docs.cloud.json Schema"
-description: "Serve the public JSON Schema for docs.cloud.json from the website app that owns the docs domain."
+title: "Use the Shared docs.cloud.json Schema"
+description: "Point your docs.cloud.json to the shared schema URL for autocomplete and validation."
 related:
   - /docs/configuration
   - /docs/reference
@@ -10,21 +10,23 @@ icon: "lightbulb"
 order: 3.8
 ---
 
-# Host a `docs.cloud.json` Schema
+# Use the Shared `docs.cloud.json` Schema
 
-If your public docs site lives in `website/`, the schema should be hosted by that same app.
+Most users do not need to host anything.
 
-```txt
-website/public/schema/cloud.json
-```
+The normal setup is:
 
-When the website deploys to `https://docs.farming-labs.dev`, that file is served at:
+- this repo hosts one shared schema at `https://docs.farming-labs.dev/schema/cloud.json`
+- user projects point their own `docs.cloud.json` to that URL
+- editors use that schema for autocomplete and validation
+
+After the website deploys to `https://docs.farming-labs.dev`, that file is available at:
 
 ```txt
 https://docs.farming-labs.dev/schema/cloud.json
 ```
 
-Users reference that URL in their own `docs.cloud.json`:
+User projects can point their own `docs.cloud.json` to that URL:
 
 ```json
 {
@@ -32,10 +34,23 @@ Users reference that URL in their own `docs.cloud.json`:
 }
 ```
 
+Most projects should stop there. They do not need to host their own schema.
+
+## Do I need to host a schema?
+
+No.
+
+If you are using the standard `docs.cloud.json` contract, just reference the shared schema URL.
+
+You only need your own schema if you want custom validation for your own extra fields.
+
 ## What this file is
 
-`/schema/cloud.json` does not return a sample config. It returns a JSON Schema document that
-describes the config format.
+`/schema/cloud.json` is the rules file for `docs.cloud.json`.
+
+It is not a sample config.
+
+It tells tools which fields are allowed, what types they have, and which values are valid.
 
 That gives editors and tools:
 
@@ -43,7 +58,22 @@ That gives editors and tools:
 - Validation errors for wrong values
 - Hover text and defaults
 
-The schema document itself starts like this:
+That means a project can keep its own config file locally:
+
+```txt
+my-project/
+  docs.cloud.json
+```
+
+while still reusing the shared schema hosted by `docs.farming-labs.dev`.
+
+For maintainers of this repo, the shared schema is published from:
+
+```txt
+website/public/schema/cloud.json
+```
+
+The schema file itself starts like this:
 
 ```json
 {
@@ -56,7 +86,7 @@ The schema document itself starts like this:
 
 ## Supported sections
 
-The initial contract supports these top-level keys:
+These are the main top-level keys supported by `docs.cloud.json`:
 
 - `$schema`
 - `version`
@@ -74,7 +104,7 @@ The initial contract supports these top-level keys:
 - `preview`
 - `publish`
 
-The schema stays strict at the top level with `additionalProperties: false`.
+The schema stays strict at the top level. That means random top-level keys should not be accepted.
 
 Custom framework or vendor fields should go under `extensions`:
 
@@ -85,6 +115,12 @@ Custom framework or vendor fields should go under `extensions`:
   }
 }
 ```
+
+This is the important distinction:
+
+- users write their own `docs.cloud.json`
+- users normally reference the shared schema URL
+- users only need their own schema if they want custom validation for their own extra fields
 
 In practice, the contract is split like this:
 
@@ -195,3 +231,18 @@ For the frameworkless flow, the important rules are:
 3. Let `docs.cloud.json` drive the docs behavior and presentation.
 4. Keep the generated runtime hidden or managed, such as `.docs-cloud/site/`.
 5. Reject unknown top-level keys except through `extensions`.
+
+## When a project needs its own schema
+
+Most projects do not need this.
+
+A project should only host its own schema if it wants to extend the base contract with its own
+strictly validated custom fields.
+
+For example:
+
+- shared schema: validates the standard `docs`, `theme`, `navigation`, `publish`, and other built-in fields
+- project schema: adds exact validation for something like `extensions.acme`
+
+Without a project-specific schema, custom fields under `extensions` are still allowed, but they are
+not fully typed beyond being custom data.
