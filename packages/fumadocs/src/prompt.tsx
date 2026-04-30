@@ -4,9 +4,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { extractPromptText } from "./prompt-text.js";
 type PromptAction = "copy" | "open";
 
-type PromptIconValue = React.ReactNode | string;
+export type PromptIconValue = React.ReactNode | string;
 
-interface PromptOpenDocsProvider {
+export interface PromptOpenDocsProvider {
   name: string;
   icon?: PromptIconValue;
   urlTemplate: string;
@@ -19,7 +19,7 @@ interface PromptProviderChoice {
   urlTemplate: string;
 }
 
-interface PromptProps {
+export interface PromptProps {
   title?: string;
   description?: string;
   prompt?: string;
@@ -413,5 +413,3 @@ export function Prompt({
     </div>
   );
 }
-
-export type { PromptProps };

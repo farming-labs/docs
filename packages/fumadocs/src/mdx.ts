@@ -23,7 +23,12 @@ import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { MDXImg } from "./mdx-img.js";
 import { createPreWithCopyCallback } from "./code-block-copy-wrapper.js";
 import { HoverLink, type HoverLinkProps } from "./hover-link.js";
-import { Prompt, type PromptProps } from "./prompt.js";
+import {
+  Prompt,
+  type PromptIconValue,
+  type PromptOpenDocsProvider,
+  type PromptProps,
+} from "./prompt.js";
 import { extractPromptText } from "./prompt-text.js";
 import { type CodeBlockCopyData, type DocsTheme } from "@farming-labs/docs";
 
@@ -58,14 +63,9 @@ export interface GetMDXComponentsOptions {
   /** Theme config used to apply built-in MDX component defaults from `theme.ui.components`. */
   theme?: DocsTheme;
   /** Shared icon registry from `docs.config.ts[x]`. */
-  icons?: Record<string, unknown>;
+  icons?: Record<string, PromptIconValue>;
   /** Optional site-wide "Open in …" providers used by built-in components such as `Prompt`. */
-  openDocsProviders?: Array<{
-    name: string;
-    icon?: unknown;
-    urlTemplate: string;
-    promptUrlTemplate?: string;
-  }>;
+  openDocsProviders?: PromptOpenDocsProvider[];
 }
 
 const mdxComponentDefaults = {
