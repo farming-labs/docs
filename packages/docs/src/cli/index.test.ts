@@ -51,6 +51,13 @@ describe("parseFlags", () => {
     expect(flags.collection).toBe("docs");
   });
 
+  it("parses dev flags including verbose and hostname aliases", () => {
+    const flags = parseFlags(["dev", "--verbose", "--port", "4010", "--host", "0.0.0.0"]);
+    expect(flags.verbose).toBe(true);
+    expect(flags.port).toBe("4010");
+    expect(flags.host).toBe("0.0.0.0");
+  });
+
   it("parses boolean values in --key=value form", () => {
     const flags = parseFlags(["--api-reference=false", "--theme=colorful"]);
     expect(flags["api-reference"]).toBe(false);

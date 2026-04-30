@@ -28,7 +28,7 @@ export function parseCommandAlias(rawCommand?: string): {
 /** Parse flags like --template next, --name my-docs, --theme concrete, --entry docs, --framework astro (exported for tests). */
 export function parseFlags(argv: string[]): Record<string, string | boolean | undefined> {
   const flags: Record<string, string | boolean | undefined> = {};
-  const booleanFlags = new Set(["api-reference", "typesense", "algolia"]);
+  const booleanFlags = new Set(["api-reference", "typesense", "algolia", "verbose"]);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg.startsWith("--") && arg.includes("=")) {
@@ -68,6 +68,16 @@ async function main() {
   const mcpOptions = {
     configPath: typeof flags.config === "string" ? flags.config : undefined,
   };
+  const devOptions = {
+    verbose: typeof flags.verbose === "boolean" ? flags.verbose : undefined,
+    port: typeof flags.port === "string" ? flags.port : undefined,
+    hostname:
+      typeof flags.hostname === "string"
+        ? flags.hostname
+        : typeof flags.host === "string"
+          ? flags.host
+          : undefined,
+  };
   const searchSyncOptions = {
     configPath: typeof flags.config === "string" ? flags.config : undefined,
     provider: typeof flags.provider === "string" ? flags.provider : undefined,
@@ -89,6 +99,9 @@ async function main() {
   if (!parsedCommand.command || parsedCommand.command === "init") {
     const { init } = await import("./init.js");
     await init(initOptions);
+  } else if (parsedCommand.command === "dev") {
+    const { dev } = await import("./dev.js");
+    await dev(devOptions);
   } else if (parsedCommand.command === "mcp") {
     const { runMcp } = await import("./mcp.js");
     await runMcp(mcpOptions);
@@ -155,6 +168,7 @@ ${pc.dim("Usage:")}
 
 ${pc.dim("Commands:")}
   ${pc.cyan("init")}     Scaffold docs in your project (default)
+  ${pc.cyan("dev")}      Run frameworkless docs locally from ${pc.dim("docs.cloud.json")}
   ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} to generate sibling agent.md files)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
   ${pc.cyan("mcp")}      Run the built-in docs MCP server over stdio
@@ -175,6 +189,12 @@ ${pc.dim("Options for init:")}
 
 ${pc.dim("Options for mcp:")}
   ${pc.cyan("--config <path>")}     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
+
+${pc.dim("Options for dev:")}
+  ${pc.cyan("--port <number>")}     Run the frameworkless preview on a custom port
+  ${pc.cyan("--hostname <host>")}   Bind the preview server to a custom hostname
+  ${pc.cyan("--host <host>")}       Alias for ${pc.cyan("--hostname")}
+  ${pc.cyan("--verbose")}           Show raw runtime logs in addition to branded CLI output
 
 ${pc.dim("Options for agent compact:")}
   ${pc.cyan("agent compact <page...>")}             Compact pages and write sibling ${pc.dim("agent.md")} files
