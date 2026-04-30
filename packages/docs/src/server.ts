@@ -32,6 +32,16 @@ export {
   performDocsSearch,
   resolveSearchRequestConfig,
 } from "./search.js";
+export {
+  DEFAULT_PROMPT_PROVIDER_TEMPLATES,
+  normalizePromptProviderName,
+  parsePromptStringArray,
+  resolvePromptProviderChoices,
+  sanitizePromptText,
+  serializeDocsIcon,
+  serializeDocsIconRegistry,
+  serializeOpenDocsProviders,
+} from "./prompt-utils.js";
 export type {
   DocsMcpHttpHandlers,
   DocsMcpNavigationNode,
@@ -40,6 +50,11 @@ export type {
   DocsMcpResolvedConfig,
   DocsMcpSource,
 } from "./mcp.js";
+export type {
+  PromptAction,
+  PromptProviderChoice,
+  SerializedOpenDocsProvider,
+} from "./prompt-utils.js";
 export type {
   DocsSearchAdapter,
   DocsSearchAdapterContext,

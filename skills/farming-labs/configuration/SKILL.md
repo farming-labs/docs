@@ -38,8 +38,8 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `themeToggle` | `boolean \| ThemeToggleConfig` | `true` | Light/dark mode toggle |
 | `breadcrumb` | `boolean \| BreadcrumbConfig` | `true` | Breadcrumb navigation |
 | `sidebar` | `boolean \| SidebarConfig` | `true` | Sidebar visibility and style |
-| `icons` | `Record<string, Component>` | — | Icon registry for frontmatter `icon` fields |
-| `components` | `Record<string, Component>` | — | Custom MDX components and built-in overrides like `HoverLink` |
+| `icons` | `Record<string, Component>` | — | Shared icon registry for frontmatter `icon` fields and built-ins like `Prompt` |
+| `components` | `Record<string, Component>` | — | Custom MDX components and built-in overrides like `HoverLink` and `Prompt` |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | — | Callback when user copies a code block (title, content, url, language) |
 | `feedback` | `boolean \| FeedbackConfig` | `false` | Human page feedback UI plus optional agent feedback endpoints |
 | `readingTime` | `boolean \| ReadingTimeConfig` | `false` | Opt-in estimated read-time label with per-page overrides |
@@ -253,9 +253,9 @@ Enables "Edit on GitHub" links and allows `{githubUrl}` in `pageActions.openDocs
 ## Components and built-ins
 
 `components` is merged into the default MDX component map, so you can both add your own
-components and override built-ins such as `Callout`, `Tabs`, or `HoverLink`.
+components and override built-ins such as `Callout`, `Tabs`, `HoverLink`, or `Prompt`.
 
-Use `theme.ui.components` when you want to keep a built-in like `HoverLink` but change its default
+Use `theme.ui.components` when you want to keep a built-in like `HoverLink` or `Prompt` but change its default
 props globally (for example `linkLabel`, `showIndicator`, or `align`).
 
 ---

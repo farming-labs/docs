@@ -55,7 +55,12 @@ import {
   resolveSidebarFolderIndexBehavior,
   resolveDocsSkillFormat,
 } from "@farming-labs/docs";
-import { createDocsMcpHttpHandler, resolveDocsMcpConfig } from "@farming-labs/docs/server";
+import {
+  createDocsMcpHttpHandler,
+  resolveDocsMcpConfig,
+  serializeDocsIconRegistry,
+  serializeOpenDocsProviders,
+} from "@farming-labs/docs/server";
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
 import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
 import { renderMarkdown } from "./markdown.js";
@@ -655,7 +660,15 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       enabledByDefault: readingTimeOptions.enabled,
       wordsPerMinute: readingTimeOptions.wordsPerMinute,
     });
-    const html = await renderMarkdown(humanRawContent, { theme: config.theme });
+    const html = await renderMarkdown(humanRawContent, {
+      theme: config.theme,
+      icons: serializeDocsIconRegistry(config.icons),
+      openDocsProviders: serializeOpenDocsProviders(
+        config.pageActions?.openDocs && typeof config.pageActions.openDocs === "object"
+          ? config.pageActions.openDocs.providers
+          : undefined,
+      ),
+    });
 
     const currentUrl = isIndex ? `/${entry}` : `/${entry}/${slug}`;
     const currentIndex = flatPages.findIndex((p) => p.url === currentUrl);

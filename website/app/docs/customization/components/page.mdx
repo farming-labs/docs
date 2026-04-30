@@ -14,7 +14,7 @@ Pass custom React components that become available in **all MDX files** — no i
 When you register components in `docs.config.ts`, they're merged into the MDX component map via `getMDXComponents()`. The merge order is:
 
 1. **Built-in components** — headings, code blocks, callouts, `Tab`, `Tabs`, `HoverLink`, etc.
-2. **Theme defaults** — from `theme.ui.components` for built-ins like `HoverLink`
+2. **Theme defaults** — from `theme.ui.components` for built-ins like `HoverLink` and `Prompt`
 3. **Your components** — from `docs.config.ts` (overrides built-ins if names match)
 
 This means you can both **add new components** and **override existing ones**.
@@ -93,6 +93,7 @@ The following components are available by default (from `fumadocs-ui`):
 - `blockquote` — blockquotes
 - `hr` — horizontal rules
 - `HoverLink` — hover-triggered popover link card with title, description, and CTA
+- `Prompt` — reusable AI prompt card with copy/open actions
 - `Tab`, `Tabs` — tabbed content
 - `Callout` — callout/admonition boxes
 
@@ -124,7 +125,7 @@ Live example:
 
 ### Theme defaults vs config overrides
 
-Use `theme.ui.components` when you want to keep the built-in `HoverLink` but change its default props across the site. Use `components.HoverLink` when you want to replace the component entirely.
+Use `theme.ui.components` when you want to keep a built-in like `HoverLink` or `Prompt` but change its default props across the site. Use `components.HoverLink` or `components.Prompt` when you want to replace the component entirely.
 
 ```tsx title="docs.config.tsx"
 import { defineDocs } from "@farming-labs/docs";
@@ -155,6 +156,124 @@ export default defineDocs({
   },
 });
 ```
+
+### Example: Use `Prompt`
+
+`Prompt` turns a reusable AI prompt into a first-class docs component. By default, the prompt body is treated as payload for copy/open actions rather than visible page content, so the card stays compact like Mintlify-style prompt blocks.
+
+```tsx title="docs.config.tsx"
+import { ArrowUpRight, Check, Copy, Sparkles } from "lucide-react";
+import { defineDocs } from "@farming-labs/docs";
+import { pixelBorder } from "@farming-labs/theme/pixel-border";
+
+export default defineDocs({
+  icons: {
+    sparkles: <Sparkles size={16} />,
+    copy: <Copy size={16} />,
+    check: <Check size={16} />,
+    arrowUpRight: <ArrowUpRight size={16} />,
+  },
+  theme: pixelBorder({
+    ui: {
+      components: {
+        Prompt: {
+          icon: "sparkles",
+          actions: ["copy", "open"],
+          providers: ["ChatGPT", "Claude", "Cursor"],
+          copyIcon: "copy",
+          copiedIcon: "check",
+          openIcon: "arrowUpRight",
+        },
+      },
+    },
+  }),
+  pageActions: {
+    openDocs: {
+      enabled: true,
+      providers: [
+        {
+          name: "ChatGPT",
+          urlTemplate: "https://chatgpt.com/?q=Read+this+documentation:+{url}",
+          promptUrlTemplate: "https://chatgpt.com/?q={prompt}",
+        },
+        {
+          name: "Claude",
+          urlTemplate: "https://claude.ai/new?q=Read+this+documentation:+{url}",
+          promptUrlTemplate: "https://claude.ai/new?q={prompt}",
+        },
+        {
+          name: "Cursor",
+          urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}",
+          promptUrlTemplate: "https://cursor.com/link/prompt?text={prompt}",
+        },
+      ],
+    },
+  },
+});
+```
+
+```mdx title="page.mdx"
+<Prompt
+  title="Write agent-friendly docs"
+  description="Give contributors a reusable authoring prompt."
+>
+Write a concise agent-friendly documentation page for this feature.
+
+Include:
+- the user problem it solves
+- the exact setup steps
+- one verification checklist
+- one troubleshooting section
+</Prompt>
+```
+
+Useful visibility props:
+
+- `showPrompt` — render the prompt body inside the card
+- `showTitle` — hide the title even if `title` is set
+- `showDescription` — hide the description even if `description` is set
+
+Live example:
+
+<Prompt
+  title="Write agent-friendly docs"
+  description="Give contributors a reusable authoring prompt."
+>
+Write a concise agent-friendly documentation page for this feature.
+
+Include:
+- the user problem it solves
+- the exact setup steps
+- one verification checklist
+- one troubleshooting section
+</Prompt>
+
+If you want the prompt text visible on the page too, opt in:
+
+```mdx title="page.mdx"
+<Prompt
+  title="Visible prompt body"
+  description="Show the prompt on the page and still keep copy/open actions."
+  showPrompt
+>
+Write a concise troubleshooting checklist for this feature.
+</Prompt>
+```
+Live example: 
+<Prompt
+  title="Write agent-friendly docs"
+  description="Give contributors a reusable authoring prompt."
+  showPrompt
+>
+Write a concise agent-friendly documentation page for this feature.
+
+Include:
+- the user problem it solves
+- the exact setup steps
+- one verification checklist
+- one troubleshooting section
+</Prompt>
+
 ### Example: Override the `a` tag
 
 ```tsx title="components/custom-link.tsx"

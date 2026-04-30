@@ -28,6 +28,9 @@ import {
   Image,
   LayoutGrid,
   GitPullRequest,
+  Copy,
+  Check,
+  ArrowUpRight,
 } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 import { Callout } from "@/components/ui/callout";
@@ -63,6 +66,16 @@ export default defineDocs({
     ui: {
       layout: { toc: { enabled: true, depth: 3, style: "directional" }, sidebarWidth: 320 },
       sidebar: { style: "floating" },
+      components: {
+        Prompt: {
+          icon: "sparkles",
+          actions: ["copy", "open"],
+          providers: ["ChatGPT", "Claude", "Cursor"],
+          copyIcon: "copy",
+          copiedIcon: "check",
+          openIcon: "arrowUpRight",
+        },
+      },
       typography: {
         font: {
           style: {
@@ -117,6 +130,9 @@ export default defineDocs({
     mousePointerClick: <MousePointerClick size={16} />,
     image: <Image size={16} />,
     gitPullRequest: <GitPullRequest size={16} />,
+    copy: <Copy size={16} />,
+    check: <Check size={16} />,
+    arrowUpRight: <ArrowUpRight size={16} />,
   },
   github: {
     url: "https://github.com/farming-labs/docs",
@@ -152,6 +168,7 @@ export default defineDocs({
             </svg>
           ),
           urlTemplate: "https://chatgpt.com/?q=Read+this+documentation:+{url}",
+          promptUrlTemplate: "https://chatgpt.com/?q={prompt}",
         },
         {
           name: "Claude",
@@ -162,6 +179,7 @@ export default defineDocs({
             </svg>
           ),
           urlTemplate: "https://claude.ai/new?q=Read+this+documentation:+{url}",
+          promptUrlTemplate: "https://claude.ai/new?q={prompt}",
         },
         {
           name: "Cursor",
@@ -171,6 +189,7 @@ export default defineDocs({
             </svg>
           ),
           urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}",
+          promptUrlTemplate: "https://cursor.com/link/prompt?text={prompt}",
         },
       ],
     },

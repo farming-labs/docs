@@ -192,7 +192,7 @@ export interface UIConfig {
     /** Card background color override */
     background?: string;
   };
-  /** Default props/variants for built-in MDX components (Callout, CodeBlock, Tabs, HoverLink, etc.) */
+  /** Default props/variants for built-in MDX components (Callout, CodeBlock, Tabs, HoverLink, Prompt, etc.) */
   components?: {
     [key: string]: Record<string, unknown> | ((defaults: unknown) => unknown);
   };
@@ -566,7 +566,12 @@ export interface SidebarConfig {
  *
  * @example
  * ```ts
- * { name: "Claude", icon: <ClaudeIcon />, urlTemplate: "https://claude.ai?url={url}" }
+ * {
+ *   name: "Claude",
+ *   icon: <ClaudeIcon />,
+ *   urlTemplate: "https://claude.ai?url={url}",
+ *   promptUrlTemplate: "https://claude.ai/new?q={prompt}",
+ * }
  * ```
  */
 export interface OpenDocsProvider {
@@ -584,6 +589,17 @@ export interface OpenDocsProvider {
    * @example "{githubUrl}" — open current page file on GitHub (edit view)
    */
   urlTemplate: string;
+  /**
+   * Optional URL template used by the built-in `Prompt` MDX component.
+   * When omitted, known providers such as ChatGPT, Claude, Cursor, Gemini,
+   * and Copilot fall back to a built-in `{prompt}` template by provider name.
+   *
+   * Placeholders:
+   * - `{prompt}` — prompt text (encoded).
+   *
+   * @example "https://cursor.com/link/prompt?text={prompt}"
+   */
+  promptUrlTemplate?: string;
 }
 
 /**
@@ -1856,10 +1872,12 @@ export interface DocsConfig {
    */
   mcp?: boolean | DocsMcpConfig;
   /**
-   * Icon registry for sidebar items.
+   * Shared icon registry for sidebar items and built-in MDX components.
    *
    * Map string labels to React elements. Reference them in page frontmatter
    * with `icon: "label"` and the matching icon renders in the sidebar.
+   * Built-in components such as `Prompt` can also reference these keys for
+   * their card and action icons.
    *
    * @example
    * ```tsx

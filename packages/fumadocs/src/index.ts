@@ -130,6 +130,8 @@ export {
 export { Agent } from "./mdx.js";
 export { HoverLink } from "./hover-link.js";
 export type { HoverLinkProps } from "./hover-link.js";
+export { Prompt } from "./prompt.js";
+export type { PromptProps } from "./prompt.js";
 export type { DocsFeedbackProps } from "./docs-feedback.js";
 
 // ─── Core helpers (re-exported for convenience) ───────────────────────

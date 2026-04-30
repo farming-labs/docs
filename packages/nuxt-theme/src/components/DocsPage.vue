@@ -88,6 +88,48 @@ function closeOpenHoverLinks(event: Event) {
   });
 }
 
+async function fallbackCopyPromptText(text: string): Promise<boolean> {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "0";
+  textarea.style.left = "0";
+  textarea.style.opacity = "0";
+  textarea.style.pointerEvents = "none";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } catch {
+    copied = false;
+  } finally {
+    document.body.removeChild(textarea);
+  }
+
+  return copied;
+}
+
+function setPromptMenuOpen(root: HTMLElement, open: boolean) {
+  const trigger = root.querySelector("[data-prompt-trigger]");
+  const menu = root.querySelector("[data-prompt-menu]");
+  if (!(trigger instanceof HTMLElement) || !(menu instanceof HTMLElement)) return;
+
+  trigger.setAttribute("aria-expanded", String(open));
+  menu.hidden = !open;
+}
+
+function closeOpenPromptMenus(event: Event) {
+  document.querySelectorAll("[data-prompt-dropdown]").forEach((root) => {
+    if (!(root instanceof HTMLElement)) return;
+    if (event.target instanceof Node && root.contains(event.target)) return;
+    setPromptMenuOpen(root, false);
+  });
+}
+
 function wireInteractive() {
   requestAnimationFrame(() => {
     document.querySelectorAll(".fd-copy-btn").forEach((btn) => {
@@ -215,6 +257,91 @@ function wireInteractive() {
 
       document.addEventListener("pointerdown", closeOpenHoverLinks);
       document.addEventListener("focusin", closeOpenHoverLinks);
+    }
+
+    document.querySelectorAll("[data-prompt-card]").forEach((root) => {
+      if (!(root instanceof HTMLElement)) return;
+      if (root.dataset.fdPromptBound === "true") return;
+      root.dataset.fdPromptBound = "true";
+
+      const promptTextNode = root.querySelector("[data-prompt-text]");
+      const promptText = promptTextNode?.textContent?.trim() ?? "";
+
+      const copyButton = root.querySelector("[data-prompt-copy]");
+      if (copyButton instanceof HTMLButtonElement && promptText) {
+        copyButton.addEventListener("click", async () => {
+          const defaultIcon = copyButton.querySelector(".fd-prompt-action-icon");
+          const copiedIcon = copyButton.querySelector(".fd-prompt-action-icon-copied");
+          const label = copyButton.querySelector("[data-prompt-copy-label]");
+          const copiedLabel = label?.getAttribute("data-prompt-copy-label") ?? "Copied";
+          const defaultLabel =
+            label?.getAttribute("data-prompt-default-label") ??
+            label?.textContent ??
+            "Copy prompt";
+
+          let copied = false;
+          try {
+            if (navigator.clipboard?.writeText) {
+              await navigator.clipboard.writeText(promptText);
+              copied = true;
+            } else {
+              copied = await fallbackCopyPromptText(promptText);
+            }
+          } catch {
+            copied = await fallbackCopyPromptText(promptText);
+          }
+
+          if (!copied || !(label instanceof HTMLElement)) return;
+
+          copyButton.dataset.copied = "true";
+          label.textContent = copiedLabel;
+          if (defaultIcon instanceof HTMLElement) defaultIcon.hidden = true;
+          if (copiedIcon instanceof HTMLElement) copiedIcon.hidden = false;
+
+          window.setTimeout(() => {
+            copyButton.dataset.copied = "false";
+            label.textContent = defaultLabel;
+            if (defaultIcon instanceof HTMLElement) defaultIcon.hidden = false;
+            if (copiedIcon instanceof HTMLElement) copiedIcon.hidden = true;
+          }, 2000);
+        });
+      }
+
+      const directOpen = root.querySelector("[data-prompt-open-direct]");
+      if (directOpen instanceof HTMLButtonElement && promptText) {
+        directOpen.addEventListener("click", () => {
+          const template = directOpen.getAttribute("data-url-template");
+          if (!template) return;
+          const url = template.replace(/\{prompt\}/g, encodeURIComponent(promptText));
+          window.open(url, "_blank", "noopener,noreferrer");
+        });
+      }
+
+      const dropdown = root.querySelector("[data-prompt-dropdown]");
+      const trigger = root.querySelector("[data-prompt-trigger]");
+      if (dropdown instanceof HTMLElement && trigger instanceof HTMLButtonElement) {
+        trigger.addEventListener("click", () => {
+          const isOpen = trigger.getAttribute("aria-expanded") === "true";
+          setPromptMenuOpen(dropdown, !isOpen);
+        });
+      }
+
+      root.querySelectorAll("[data-prompt-open-provider]").forEach((providerButton) => {
+        if (!(providerButton instanceof HTMLButtonElement) || !promptText) return;
+        providerButton.addEventListener("click", () => {
+          const template = providerButton.getAttribute("data-url-template");
+          if (!template) return;
+          const url = template.replace(/\{prompt\}/g, encodeURIComponent(promptText));
+          window.open(url, "_blank", "noopener,noreferrer");
+          if (dropdown instanceof HTMLElement) setPromptMenuOpen(dropdown, false);
+        });
+      });
+    });
+
+    if (document.documentElement.dataset.fdPromptGlobalBound !== "true") {
+      document.documentElement.dataset.fdPromptGlobalBound = "true";
+      document.addEventListener("pointerdown", closeOpenPromptMenus);
+      document.addEventListener("focusin", closeOpenPromptMenus);
     }
   });
 }
