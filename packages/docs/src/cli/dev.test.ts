@@ -123,10 +123,7 @@ title: "Authentication"
       path.join(projectRoot, ".docs-cloud/site/app/api-reference/authentication/page.mdx"),
       "utf-8",
     );
-    const proxy = fs.readFileSync(
-      path.join(projectRoot, ".docs-cloud/site/proxy.ts"),
-      "utf-8",
-    );
+    const proxy = fs.readFileSync(path.join(projectRoot, ".docs-cloud/site/proxy.ts"), "utf-8");
 
     expect(docsIndex).toContain("[Installation](installation)");
     expect(docsIndex).toContain("[Authentication](../api-reference/authentication)");
@@ -135,7 +132,7 @@ title: "Authentication"
     expect(apiConfig).toContain('entry: "api-reference"');
     expect(apiConfig).toContain('from "@farming-labs/theme/colorful"');
     expect(proxy).toContain('matcher: ["/docs/:path*", "/api-reference/:path*"]');
-    expect(proxy).toContain('console.log(`${LOG_PREFIX} ${pathname}`)');
+    expect(proxy).toContain("console.log(`${LOG_PREFIX} ${pathname}`)");
     expect(
       fs.existsSync(path.join(projectRoot, ".docs-cloud/site/app/docs/installation/diagram.png")),
     ).toBe(true);

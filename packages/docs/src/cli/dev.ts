@@ -421,7 +421,9 @@ export function parseNextDevLine(rawLine: string): NextDevEvent | null {
     };
   }
 
-  if (/\b(failed to compile|module not found|error:|type error|syntax error|uncaught)\b/i.test(line)) {
+  if (
+    /\b(failed to compile|module not found|error:|type error|syntax error|uncaught)\b/i.test(line)
+  ) {
     return { type: "error", message: line };
   }
 
@@ -502,8 +504,7 @@ function readManagedDocsProject(projectRoot: string): ManagedDocsProject {
   }
 
   const docsRoot = parsed.data.content?.docsRoot ?? DEFAULT_DOCS_ROOT;
-  const apiReferenceRoot =
-    parsed.data.content?.apiReferenceRoot ?? DEFAULT_API_REFERENCE_ROOT;
+  const apiReferenceRoot = parsed.data.content?.apiReferenceRoot ?? DEFAULT_API_REFERENCE_ROOT;
   const runtimeDir = path.resolve(projectRoot, parsed.data.docs.root ?? DEFAULT_RUNTIME_ROOT);
   const docsSourceDir = path.resolve(projectRoot, docsRoot);
   const apiReferenceSourceDir = path.resolve(projectRoot, apiReferenceRoot);
@@ -549,7 +550,9 @@ function resolveLocalPackageSpec(
     "@farming-labs/theme": path.join(frameworkRoot, "packages", "fumadocs"),
   };
 
-  if (!Object.values(packageDirs).every((value) => fs.existsSync(path.join(value, "package.json")))) {
+  if (
+    !Object.values(packageDirs).every((value) => fs.existsSync(path.join(value, "package.json")))
+  ) {
     return null;
   }
 
@@ -756,7 +759,9 @@ function resolveGeneratedRoute(baseRoute: string, relativeSourcePath: string): s
     return sourceDirPosix ? `/${baseRoute}/${sourceDirPosix}` : `/${baseRoute}`;
   }
 
-  return sourceDirPosix ? `/${baseRoute}/${sourceDirPosix}/${baseName}` : `/${baseRoute}/${baseName}`;
+  return sourceDirPosix
+    ? `/${baseRoute}/${sourceDirPosix}/${baseName}`
+    : `/${baseRoute}/${baseName}`;
 }
 
 function buildPageCandidates(basePath: string): string[] {
@@ -837,7 +842,12 @@ function rewriteReference(rawReference: string, context: RewriteContext): string
   const wrapped = trimmed.startsWith("<") && trimmed.endsWith(">");
   const reference = wrapped ? trimmed.slice(1, -1) : trimmed;
 
-  if (!reference || reference.startsWith("#") || path.isAbsolute(reference) || isExternalReference(reference)) {
+  if (
+    !reference ||
+    reference.startsWith("#") ||
+    path.isAbsolute(reference) ||
+    isExternalReference(reference)
+  ) {
     return rawReference;
   }
 
@@ -864,10 +874,7 @@ function rewriteReference(rawReference: string, context: RewriteContext): string
 
   const assetSourcePath = path.resolve(path.dirname(context.sourcePagePath), pathPart);
   if (fs.existsSync(assetSourcePath) && fs.statSync(assetSourcePath).isFile()) {
-    const assetDestinationPath = path.resolve(
-      path.dirname(context.destinationPagePath),
-      pathPart,
-    );
+    const assetDestinationPath = path.resolve(path.dirname(context.destinationPagePath), pathPart);
     context.assetCopies.set(normalizePathKey(assetDestinationPath), assetSourcePath);
   }
 
@@ -879,21 +886,26 @@ function rewritePageContent(content: string, context: RewriteContext): string {
     return `${prefix}${rewriteReference(url, context)}${suffix}`;
   });
 
-  output = output.replace(/\b(href|src)=("([^"]+)"|'([^']+)')/g, (match, attr, quoted, dbl, sgl) => {
-    const raw = dbl ?? sgl;
-    if (!raw || raw.includes("{")) return match;
-    const rewritten = rewriteReference(raw, context);
-    const quote = quoted.startsWith('"') ? '"' : "'";
-    return `${attr}=${quote}${rewritten}${quote}`;
-  });
+  output = output.replace(
+    /\b(href|src)=("([^"]+)"|'([^']+)')/g,
+    (match, attr, quoted, dbl, sgl) => {
+      const raw = dbl ?? sgl;
+      if (!raw || raw.includes("{")) return match;
+      const rewritten = rewriteReference(raw, context);
+      const quote = quoted.startsWith('"') ? '"' : "'";
+      return `${attr}=${quote}${rewritten}${quote}`;
+    },
+  );
 
   return output;
 }
 
-function buildManagedPageMap(sections: Array<{
-  sourceDir: string;
-  destinationDir: string;
-}>): Map<string, string> {
+function buildManagedPageMap(
+  sections: Array<{
+    sourceDir: string;
+    destinationDir: string;
+  }>,
+): Map<string, string> {
   const pageMap = new Map<string, string>();
 
   for (const section of sections) {
@@ -1021,19 +1033,16 @@ export function materializeManagedRuntime(projectRoot: string): MaterializedMana
   fs.mkdirSync(project.runtimeDir, { recursive: true });
   fs.rmSync(legacyMiddlewarePath, { force: true });
 
-  writeFileIfChanged(path.join(project.runtimeDir, "package.json"), renderRuntimePackageJson(project));
+  writeFileIfChanged(
+    path.join(project.runtimeDir, "package.json"),
+    renderRuntimePackageJson(project),
+  );
   writeFileIfChanged(path.join(project.runtimeDir, "next.config.ts"), renderNextConfig(project));
   writeFileIfChanged(path.join(project.runtimeDir, "next-env.d.ts"), renderNextEnvDts());
-  writeFileIfChanged(
-    path.join(project.runtimeDir, "proxy.ts"),
-    renderManagedPreviewProxy(),
-  );
+  writeFileIfChanged(path.join(project.runtimeDir, "proxy.ts"), renderManagedPreviewProxy());
   writeFileIfChanged(path.join(project.runtimeDir, "tsconfig.json"), tsconfigTemplate(true));
   writeFileIfChanged(path.join(project.runtimeDir, "postcss.config.mjs"), postcssConfigTemplate());
-  writeFileIfChanged(
-    path.join(project.runtimeDir, ".gitignore"),
-    ".next\nnode_modules\n",
-  );
+  writeFileIfChanged(path.join(project.runtimeDir, ".gitignore"), ".next\nnode_modules\n");
   writeFileIfChanged(
     path.join(project.runtimeDir, "docs.config.ts"),
     renderDocsConfigFile({
@@ -1058,8 +1067,14 @@ export function materializeManagedRuntime(projectRoot: string): MaterializedMana
       theme: project.theme,
     }),
   );
-  writeFileIfChanged(path.join(appDir, "layout.tsx"), rootLayoutTemplate(templateConfig, "app/global.css"));
-  writeFileIfChanged(path.join(appDir, "global.css"), globalCssTemplate(project.theme.templateTheme));
+  writeFileIfChanged(
+    path.join(appDir, "layout.tsx"),
+    rootLayoutTemplate(templateConfig, "app/global.css"),
+  );
+  writeFileIfChanged(
+    path.join(appDir, "global.css"),
+    globalCssTemplate(project.theme.templateTheme),
+  );
   writeFileIfChanged(path.join(docsDir, "layout.tsx"), docsLayoutTemplate(templateConfig));
   writeFileIfChanged(
     path.join(apiReferenceDir, "layout.tsx"),
@@ -1192,9 +1207,7 @@ async function runCapturedCommand(options: {
 
       if (code && code !== 0) {
         const details =
-          recentLines.length > 0
-            ? `\n${recentLines.map((line) => `  ${line}`).join("\n")}`
-            : "";
+          recentLines.length > 0 ? `\n${recentLines.map((line) => `  ${line}`).join("\n")}` : "";
         reject(new Error(`${options.failureMessage}${details}`));
         return;
       }
@@ -1286,7 +1299,10 @@ export async function dev(options: DevOptions = {}): Promise<void> {
 
   console.log(pc.dim("Preparing local preview..."));
   if (options.verbose) {
-    logLine("source", `${pc.cyan(MANAGED_CONFIG_FILE)} drives ${pc.cyan(`${project.docsRoot}/`)} and ${pc.cyan(`${project.apiReferenceRoot}/`)}`);
+    logLine(
+      "source",
+      `${pc.cyan(MANAGED_CONFIG_FILE)} drives ${pc.cyan(`${project.docsRoot}/`)} and ${pc.cyan(`${project.apiReferenceRoot}/`)}`,
+    );
     logLine(
       "runtime",
       `Generated runtime at ${pc.cyan(path.relative(projectRoot, project.runtimeDir) || project.runtimeDir)}`,

@@ -72,13 +72,8 @@ async function main() {
     verbose: typeof flags.verbose === "boolean" ? flags.verbose : undefined,
     port: typeof flags.port === "string" ? flags.port : undefined,
     host:
-      typeof flags.host === "boolean" || typeof flags.host === "string"
-        ? flags.host
-        : undefined,
-    hostname:
-      typeof flags.hostname === "string"
-        ? flags.hostname
-        : undefined,
+      typeof flags.host === "boolean" || typeof flags.host === "string" ? flags.host : undefined,
+    hostname: typeof flags.hostname === "string" ? flags.hostname : undefined,
   };
   const searchSyncOptions = {
     configPath: typeof flags.config === "string" ? flags.config : undefined,
