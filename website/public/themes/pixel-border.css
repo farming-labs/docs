@@ -548,6 +548,66 @@ body .fd-page-action-menu-item:hover {
   color: var(--color-fd-foreground) !important;
 }
 
+/* ─── Prompt (pixel-border theme) — body for consistency ───────── */
+
+body .fd-prompt {
+  border-radius: 0 !important;
+  border: 1px solid var(--color-fd-border) !important;
+  background: var(--color-fd-card, var(--color-fd-background)) !important;
+  box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%)) !important;
+}
+
+body .fd-prompt-body {
+  border-radius: 0 !important;
+  border-top: 1px solid var(--color-fd-border) !important;
+  background: var(--color-fd-background) !important;
+}
+
+body .fd-prompt-action-btn {
+  text-transform: uppercase !important;
+  box-shadow: 2px 2px 0 0 var(--color-fd-border, #262626) !important;
+  font-family: var(--fd-font-mono, var(--font-geist-mono, ui-monospace, monospace)) !important;
+  border-radius: 0 !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.03em !important;
+  background: var(--color-fd-background) !important;
+  color: var(--color-fd-foreground) !important;
+  border: 1px solid var(--color-fd-border) !important;
+}
+
+body .fd-prompt-action-btn:hover {
+  background: var(--color-fd-muted) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+body .fd-prompt-menu {
+  border-radius: 0 !important;
+  box-shadow: 4px 4px 0 0 var(--color-fd-border, hsl(0 0% 15%)), 0 4px 24px hsl(0 0% 0% / 0.5) !important;
+  background: var(--color-fd-popover) !important;
+  border: 2px solid var(--color-fd-border) !important;
+  padding: 0.375rem !important;
+}
+
+body .fd-prompt-menu-item {
+  border-radius: 0 !important;
+  font-size: 0.8rem !important;
+  font-family: var(--fd-font-mono, ui-monospace, monospace) !important;
+  color: var(--color-fd-popover-foreground) !important;
+  background: transparent !important;
+  border-top: 1px solid var(--color-fd-border) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.03em !important;
+}
+
+body .fd-prompt-menu-item:first-child {
+  border-top: none !important;
+}
+
+body .fd-prompt-menu-item:hover {
+  background: var(--color-fd-muted) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
 /* ─── AI Chat (pixel-border — zero radius, pixel-art, monospace) ── */
 
 .fd-ai-dialog {
