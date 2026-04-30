@@ -57,7 +57,8 @@ title: "Home"
 
 # Home
 
-[Installation](./installation.mdx)
+[Installation](./docs/installation.mdx)
+[Authentication](./api-reference/authentication.mdx)
 `,
     );
     writeFile(
@@ -69,7 +70,7 @@ title: "Installation"
 
 # Installation
 
-[Back home](./index.mdx)
+[Back home](./docs/index.mdx)
 ![Diagram](./diagram.png)
 `,
     );
@@ -118,17 +119,23 @@ title: "Authentication"
       path.join(projectRoot, ".docs-cloud/site/api-reference.config.ts"),
       "utf-8",
     );
-    const middleware = fs.readFileSync(
-      path.join(projectRoot, ".docs-cloud/site/middleware.ts"),
+    const authenticationPage = fs.readFileSync(
+      path.join(projectRoot, ".docs-cloud/site/app/api-reference/authentication/page.mdx"),
+      "utf-8",
+    );
+    const proxy = fs.readFileSync(
+      path.join(projectRoot, ".docs-cloud/site/proxy.ts"),
       "utf-8",
     );
 
     expect(docsIndex).toContain("[Installation](installation)");
+    expect(docsIndex).toContain("[Authentication](../api-reference/authentication)");
     expect(installationPage).toContain("[Back home](..)");
+    expect(authenticationPage).toContain("# Authentication");
     expect(apiConfig).toContain('entry: "api-reference"');
     expect(apiConfig).toContain('from "@farming-labs/theme/colorful"');
-    expect(middleware).toContain('matcher: ["/docs/:path*", "/api-reference/:path*"]');
-    expect(middleware).toContain('console.log(`${LOG_PREFIX} ${pathname}`)');
+    expect(proxy).toContain('matcher: ["/docs/:path*", "/api-reference/:path*"]');
+    expect(proxy).toContain('console.log(`${LOG_PREFIX} ${pathname}`)');
     expect(
       fs.existsSync(path.join(projectRoot, ".docs-cloud/site/app/docs/installation/diagram.png")),
     ).toBe(true);
@@ -185,8 +192,8 @@ title: "Home"
 
 describe("parseNextDevLine", () => {
   it("extracts managed route logs from the preview middleware", () => {
-    expect(parseNextDevLine("[docs-route] /docs")).toEqual({
-      type: "route",
+    expect(parseNextDevLine("[docs-page] /docs")).toEqual({
+      type: "page",
       pathname: "/docs",
     });
   });

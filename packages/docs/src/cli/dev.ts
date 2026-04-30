@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import pc from "picocolors";
 import { z } from "zod";
+import { createDevLogger, printDevBanner } from "./dev-banner.js";
 import {
   docsLayoutTemplate,
   globalCssTemplate,
@@ -74,6 +75,7 @@ interface MaterializedManagedRuntime {
 export interface DevOptions {
   verbose?: boolean;
   port?: string;
+  host?: string | boolean;
   hostname?: string;
 }
 
@@ -82,6 +84,8 @@ interface RewriteContext {
   destinationPagePath: string;
   pageMap: Map<string, string>;
   assetCopies: Map<string, string>;
+  projectRoot: string;
+  contentRootHints: string[];
 }
 
 type DevLabel =
@@ -92,7 +96,7 @@ type DevLabel =
   | "watch"
   | "server"
   | "sync"
-  | "route"
+  | "PAGE"
   | "compile"
   | "ready"
   | "local"
@@ -107,7 +111,7 @@ type NextDevEvent =
   | { type: "local"; url: string }
   | { type: "network"; url: string }
   | { type: "ready"; duration?: string }
-  | { type: "route"; pathname: string }
+  | { type: "page"; pathname: string }
   | { type: "compiling"; target: string }
   | { type: "compiled"; target: string; duration?: string }
   | { type: "warning"; message: string }
@@ -224,14 +228,23 @@ function normalizePathKey(value: string): string {
 }
 
 function getDocsPackageVersion(): string {
-  try {
-    const packageJsonPath = fileURLToPath(new URL("../../package.json", import.meta.url));
-    const raw = fs.readFileSync(packageJsonPath, "utf-8");
-    const parsed = JSON.parse(raw) as { version?: string };
-    return parsed.version ?? "latest";
-  } catch {
-    return "latest";
+  const candidateUrls = [
+    new URL("../package.json", import.meta.url),
+    new URL("../../package.json", import.meta.url),
+  ];
+
+  for (const candidateUrl of candidateUrls) {
+    try {
+      const packageJsonPath = fileURLToPath(candidateUrl);
+      const raw = fs.readFileSync(packageJsonPath, "utf-8");
+      const parsed = JSON.parse(raw) as { name?: string; version?: string };
+      if (parsed.name === "@farming-labs/docs" && parsed.version) {
+        return parsed.version;
+      }
+    } catch {}
   }
+
+  return "latest";
 }
 
 function resolveThemePreset(preset?: string): ManagedThemePreset {
@@ -272,6 +285,8 @@ function formatLogLabel(label: DevLabel): string {
     case "note":
     case "next":
       return pc.bold(pc.dim(`[${label}]`));
+    case "PAGE":
+      return pc.bold(pc.green(`[${label}]`));
     default:
       return pc.bold(pc.blue(`[${label}]`));
   }
@@ -291,6 +306,42 @@ function stripAnsi(value: string): string {
 
 function normalizeLogLine(value: string): string {
   return stripAnsi(value).replace(/\r/g, "").trim();
+}
+
+function normalizeVersionTag(value: string): string {
+  return value.startsWith("v") ? value : `v${value}`;
+}
+
+function resolveRequestedHost(options: DevOptions): string | boolean | undefined {
+  return options.hostname ?? options.host;
+}
+
+function resolveBannerPort(localUrl: string | undefined, fallbackPort: string | undefined): number {
+  if (localUrl) {
+    try {
+      const parsed = new URL(localUrl);
+      if (parsed.port) return Number(parsed.port);
+      return parsed.protocol === "https:" ? 443 : 80;
+    } catch {}
+  }
+
+  if (fallbackPort) {
+    const numeric = Number(fallbackPort);
+    if (Number.isFinite(numeric) && numeric > 0) return numeric;
+  }
+
+  return 3000;
+}
+
+function resolveBannerProtocol(localUrl: string | undefined): "http" | "https" {
+  if (!localUrl) return "http";
+
+  try {
+    const parsed = new URL(localUrl);
+    return parsed.protocol === "https:" ? "https" : "http";
+  } catch {
+    return "http";
+  }
 }
 
 function createLineReader(onLine: (line: string) => void): {
@@ -322,9 +373,9 @@ export function parseNextDevLine(rawLine: string): NextDevEvent | null {
   const line = normalizeLogLine(rawLine);
   if (!line) return null;
 
-  const routeMatch = line.match(/^\[docs-route\]\s+(\S+)$/);
+  const routeMatch = line.match(/^\[docs-page\]\s+(\S+)$/);
   if (routeMatch) {
-    return { type: "route", pathname: routeMatch[1] };
+    return { type: "page", pathname: routeMatch[1] };
   }
 
   const localMatch = line.match(/Local:\s*(https?:\/\/\S+)/i);
@@ -642,13 +693,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 `;
 }
 
-function renderManagedPreviewMiddleware(): string {
+function renderManagedPreviewProxy(): string {
   return `import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const LOG_PREFIX = "[docs-route]";
+const LOG_PREFIX = "[docs-page]";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const purpose = request.headers.get("purpose");
   const prefetch = request.headers.get("next-router-prefetch");
@@ -708,6 +759,18 @@ function resolveGeneratedRoute(baseRoute: string, relativeSourcePath: string): s
   return sourceDirPosix ? `/${baseRoute}/${sourceDirPosix}/${baseName}` : `/${baseRoute}/${baseName}`;
 }
 
+function buildPageCandidates(basePath: string): string[] {
+  return [
+    basePath,
+    `${basePath}.mdx`,
+    `${basePath}.md`,
+    path.join(basePath, "index.mdx"),
+    path.join(basePath, "index.md"),
+    path.join(basePath, "page.mdx"),
+    path.join(basePath, "page.md"),
+  ];
+}
+
 function splitReference(value: string): {
   pathPart: string;
   suffix: string;
@@ -728,25 +791,42 @@ function isExternalReference(value: string): boolean {
   return /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(value);
 }
 
+function stripRelativeReferencePrefix(value: string): string {
+  let stripped = value;
+  while (stripped.startsWith("./")) {
+    stripped = stripped.slice(2);
+  }
+  while (stripped.startsWith("../")) {
+    stripped = stripped.slice(3);
+  }
+  return stripped;
+}
+
+function matchesContentRootHint(value: string, contentRootHints: string[]): boolean {
+  const normalized = toPosixPath(value).replace(/^\/+/, "");
+  return contentRootHints.some((hint) => normalized === hint || normalized.startsWith(`${hint}/`));
+}
+
 function resolveLinkedSourcePage(
   sourcePagePath: string,
   referencePath: string,
   pageMap: Map<string, string>,
+  projectRoot: string,
+  contentRootHints: string[],
 ): string | null {
   const basePath = path.resolve(path.dirname(sourcePagePath), referencePath);
-  const candidates = [
-    basePath,
-    `${basePath}.mdx`,
-    `${basePath}.md`,
-    path.join(basePath, "index.mdx"),
-    path.join(basePath, "index.md"),
-    path.join(basePath, "page.mdx"),
-    path.join(basePath, "page.md"),
-  ];
-
-  for (const candidate of candidates) {
+  for (const candidate of buildPageCandidates(basePath)) {
     const normalized = normalizePathKey(candidate);
     if (pageMap.has(normalized)) return normalized;
+  }
+
+  const rootRelativeReference = stripRelativeReferencePrefix(referencePath);
+  if (matchesContentRootHint(rootRelativeReference, contentRootHints)) {
+    const rootRelativeBasePath = path.resolve(projectRoot, rootRelativeReference);
+    for (const candidate of buildPageCandidates(rootRelativeBasePath)) {
+      const normalized = normalizePathKey(candidate);
+      if (pageMap.has(normalized)) return normalized;
+    }
   }
 
   return null;
@@ -768,6 +848,8 @@ function rewriteReference(rawReference: string, context: RewriteContext): string
     context.sourcePagePath,
     pathPart,
     context.pageMap,
+    context.projectRoot,
+    context.contentRootHints,
   );
 
   if (linkedSourcePage) {
@@ -808,10 +890,33 @@ function rewritePageContent(content: string, context: RewriteContext): string {
   return output;
 }
 
+function buildManagedPageMap(sections: Array<{
+  sourceDir: string;
+  destinationDir: string;
+}>): Map<string, string> {
+  const pageMap = new Map<string, string>();
+
+  for (const section of sections) {
+    const pageFiles = walkFiles(section.sourceDir).filter(isPageSourceFile);
+    for (const pageFile of pageFiles) {
+      const relativeSourcePath = path.relative(section.sourceDir, pageFile);
+      pageMap.set(
+        normalizePathKey(pageFile),
+        resolveGeneratedPagePath(section.destinationDir, relativeSourcePath),
+      );
+    }
+  }
+
+  return pageMap;
+}
+
 function syncManagedSection(options: {
   sourceDir: string;
   destinationDir: string;
   baseRoute: string;
+  pageMap: Map<string, string>;
+  projectRoot: string;
+  contentRootHints: string[];
 }): SyncResult {
   fs.rmSync(options.destinationDir, { recursive: true, force: true });
 
@@ -824,28 +929,21 @@ function syncManagedSection(options: {
     };
   }
 
-  const pageMap = new Map<string, string>();
-  for (const pageFile of pageFiles) {
-    const relativeSourcePath = path.relative(options.sourceDir, pageFile);
-    pageMap.set(
-      normalizePathKey(pageFile),
-      resolveGeneratedPagePath(options.destinationDir, relativeSourcePath),
-    );
-  }
-
   const assetCopies = new Map<string, string>();
   const routes: string[] = [];
 
   for (const pageFile of pageFiles) {
     const normalizedSource = normalizePathKey(pageFile);
-    const destinationPagePath = pageMap.get(normalizedSource)!;
+    const destinationPagePath = options.pageMap.get(normalizedSource)!;
     const relativeSourcePath = path.relative(options.sourceDir, pageFile);
     const content = fs.readFileSync(pageFile, "utf-8");
     const rewritten = rewritePageContent(content, {
       sourcePagePath: pageFile,
       destinationPagePath,
-      pageMap,
+      pageMap: options.pageMap,
       assetCopies,
+      projectRoot: options.projectRoot,
+      contentRootHints: options.contentRootHints,
     });
     writeFileIfChanged(destinationPagePath, rewritten);
     routes.push(resolveGeneratedRoute(options.baseRoute, relativeSourcePath));
@@ -918,15 +1016,17 @@ export function materializeManagedRuntime(projectRoot: string): MaterializedMana
   const appDir = path.join(project.runtimeDir, "app");
   const docsDir = path.join(appDir, "docs");
   const apiReferenceDir = path.join(appDir, "api-reference");
+  const legacyMiddlewarePath = path.join(project.runtimeDir, "middleware.ts");
 
   fs.mkdirSync(project.runtimeDir, { recursive: true });
+  fs.rmSync(legacyMiddlewarePath, { force: true });
 
   writeFileIfChanged(path.join(project.runtimeDir, "package.json"), renderRuntimePackageJson(project));
   writeFileIfChanged(path.join(project.runtimeDir, "next.config.ts"), renderNextConfig(project));
   writeFileIfChanged(path.join(project.runtimeDir, "next-env.d.ts"), renderNextEnvDts());
   writeFileIfChanged(
-    path.join(project.runtimeDir, "middleware.ts"),
-    renderManagedPreviewMiddleware(),
+    path.join(project.runtimeDir, "proxy.ts"),
+    renderManagedPreviewProxy(),
   );
   writeFileIfChanged(path.join(project.runtimeDir, "tsconfig.json"), tsconfigTemplate(true));
   writeFileIfChanged(path.join(project.runtimeDir, "postcss.config.mjs"), postcssConfigTemplate());
@@ -966,15 +1066,36 @@ export function materializeManagedRuntime(projectRoot: string): MaterializedMana
     renderAlternateSectionLayout("@/api-reference.config"),
   );
 
+  const pageMap = buildManagedPageMap([
+    {
+      sourceDir: docsSourceDir,
+      destinationDir: docsDir,
+    },
+    {
+      sourceDir: apiReferenceSourceDir,
+      destinationDir: apiReferenceDir,
+    },
+  ]);
+  const contentRootHints = [
+    toPosixPath(project.docsRoot).replace(/\/+$/, ""),
+    toPosixPath(project.apiReferenceRoot).replace(/\/+$/, ""),
+  ];
+
   const docs = syncManagedSection({
     sourceDir: docsSourceDir,
     destinationDir: docsDir,
     baseRoute: "docs",
+    pageMap,
+    projectRoot: project.projectRoot,
+    contentRootHints,
   });
   const apiReference = syncManagedSection({
     sourceDir: apiReferenceSourceDir,
     destinationDir: apiReferenceDir,
     baseRoute: "api-reference",
+    pageMap,
+    projectRoot: project.projectRoot,
+    contentRootHints,
   });
 
   const homeTarget = pickHomeTarget(docs, apiReference);
@@ -1086,9 +1207,11 @@ async function runCapturedCommand(options: {
 function terminateChildProcessTree(child: ReturnType<typeof spawn>): void {
   if (child.exitCode !== null || child.killed) return;
 
-  if (process.platform !== "win32" && typeof child.pid === "number") {
+  const childPid = child.pid;
+
+  if (process.platform !== "win32" && typeof childPid === "number") {
     try {
-      process.kill(-child.pid, "SIGTERM");
+      process.kill(-childPid, "SIGTERM");
     } catch {
       child.kill("SIGTERM");
       return;
@@ -1097,7 +1220,7 @@ function terminateChildProcessTree(child: ReturnType<typeof spawn>): void {
     const forceKillTimer = setTimeout(() => {
       if (child.exitCode !== null || child.killed) return;
       try {
-        process.kill(-child.pid, "SIGKILL");
+        process.kill(-childPid, "SIGKILL");
       } catch {}
     }, 1500);
     forceKillTimer.unref();
@@ -1142,30 +1265,14 @@ function getNextDevArgs(options: DevOptions): string[] {
     args.push("--port", options.port);
   }
 
-  const hostname = options.hostname;
-  if (hostname) {
-    args.push("--hostname", hostname);
+  const requestedHost = resolveRequestedHost(options);
+  if (requestedHost === true) {
+    args.push("--hostname", "0.0.0.0");
+  } else if (typeof requestedHost === "string") {
+    args.push("--hostname", requestedHost);
   }
 
   return args;
-}
-
-function logReadySummary(state: {
-  localUrl?: string;
-  networkUrl?: string;
-  readyShown: boolean;
-}): void {
-  if (state.localUrl) {
-    logLine("local", pc.underline(state.localUrl));
-  }
-
-  if (state.networkUrl) {
-    logLine("network", pc.underline(state.networkUrl));
-  }
-
-  if (!state.readyShown) {
-    logLine("note", `Press ${pc.dim("Ctrl+C")} to stop the server.`);
-  }
 }
 
 export async function dev(options: DevOptions = {}): Promise<void> {
@@ -1174,8 +1281,10 @@ export async function dev(options: DevOptions = {}): Promise<void> {
   const packageManager = detectNearestPackageManager(projectRoot);
   const initial = materializeManagedRuntime(projectRoot);
   const runtimeNodeModules = path.join(project.runtimeDir, "node_modules");
+  const devLogger = createDevLogger();
+  const version = normalizeVersionTag(getDocsPackageVersion());
 
-  logLine("docs", "Preparing local preview...");
+  console.log(pc.dim("Preparing local preview..."));
   if (options.verbose) {
     logLine("source", `${pc.cyan(MANAGED_CONFIG_FILE)} drives ${pc.cyan(`${project.docsRoot}/`)} and ${pc.cyan(`${project.apiReferenceRoot}/`)}`);
     logLine(
@@ -1235,6 +1344,7 @@ export async function dev(options: DevOptions = {}): Promise<void> {
     }
   }, DEFAULT_POLL_INTERVAL_MS);
 
+  const serverStartTime = Date.now();
   const { command, args } = getRunScriptCommand(packageManager, "dev", getNextDevArgs(options));
   const child = spawn(command, args, {
     cwd: initial.runtimeDir,
@@ -1269,28 +1379,29 @@ export async function dev(options: DevOptions = {}): Promise<void> {
           return;
         case "local":
           serverState.localUrl = event.url;
-          if (serverState.readyShown) {
-            logLine("local", pc.underline(event.url));
-          }
           return;
         case "network":
           serverState.networkUrl = event.url;
-          if (serverState.readyShown) {
-            logLine("network", pc.underline(event.url));
-          }
           return;
         case "ready":
-          logLine(
-            "ready",
-            event.duration
-              ? `Preview ready in ${pc.bold(event.duration)}`
-              : "Preview ready",
-          );
-          logReadySummary(serverState);
+          if (serverState.readyShown) {
+            return;
+          }
+          printDevBanner({
+            name: "@farming-labs/docs",
+            version,
+            port: resolveBannerPort(serverState.localUrl, options.port),
+            host: resolveRequestedHost(options),
+            protocol: resolveBannerProtocol(serverState.localUrl),
+            startTime: serverStartTime,
+            localUrl: serverState.localUrl,
+            networkUrl: serverState.networkUrl,
+          });
+          console.log(pc.dim("  press Ctrl+C to stop"));
           serverState.readyShown = true;
           return;
-        case "route":
-          logLine("route", event.pathname);
+        case "page":
+          logLine("PAGE", event.pathname);
           return;
         case "compiling":
           if (options.verbose) {
@@ -1306,20 +1417,19 @@ export async function dev(options: DevOptions = {}): Promise<void> {
           }
           return;
         case "warning":
-          logLine("warn", event.message);
+          devLogger.warn(event.message);
           return;
         case "error":
-          logErrorLine(event.message);
+          devLogger.error(event.message);
           return;
       }
     }
 
     if (stream === "stderr") {
-      const label = /\bwarn(?:ing)?\b/i.test(normalized) ? "warn" : "error";
-      if (label === "warn") {
-        logLine("warn", normalized);
+      if (/\bwarn(?:ing)?\b/i.test(normalized)) {
+        devLogger.warn(normalized);
       } else {
-        logErrorLine(normalized);
+        devLogger.error(normalized);
       }
       return;
     }

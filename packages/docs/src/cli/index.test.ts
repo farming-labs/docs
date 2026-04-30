@@ -58,6 +58,11 @@ describe("parseFlags", () => {
     expect(flags.host).toBe("0.0.0.0");
   });
 
+  it("parses bare --host for frameworkless preview exposure", () => {
+    const flags = parseFlags(["dev", "--host"]);
+    expect(flags.host).toBe(true);
+  });
+
   it("parses boolean values in --key=value form", () => {
     const flags = parseFlags(["--api-reference=false", "--theme=colorful"]);
     expect(flags["api-reference"]).toBe(false);

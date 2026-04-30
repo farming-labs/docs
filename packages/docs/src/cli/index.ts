@@ -28,7 +28,7 @@ export function parseCommandAlias(rawCommand?: string): {
 /** Parse flags like --template next, --name my-docs, --theme concrete, --entry docs, --framework astro (exported for tests). */
 export function parseFlags(argv: string[]): Record<string, string | boolean | undefined> {
   const flags: Record<string, string | boolean | undefined> = {};
-  const booleanFlags = new Set(["api-reference", "typesense", "algolia", "verbose"]);
+  const booleanFlags = new Set(["api-reference", "typesense", "algolia", "verbose", "host"]);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg.startsWith("--") && arg.includes("=")) {
@@ -71,12 +71,14 @@ async function main() {
   const devOptions = {
     verbose: typeof flags.verbose === "boolean" ? flags.verbose : undefined,
     port: typeof flags.port === "string" ? flags.port : undefined,
+    host:
+      typeof flags.host === "boolean" || typeof flags.host === "string"
+        ? flags.host
+        : undefined,
     hostname:
       typeof flags.hostname === "string"
         ? flags.hostname
-        : typeof flags.host === "string"
-          ? flags.host
-          : undefined,
+        : undefined,
   };
   const searchSyncOptions = {
     configPath: typeof flags.config === "string" ? flags.config : undefined,
@@ -193,7 +195,7 @@ ${pc.dim("Options for mcp:")}
 ${pc.dim("Options for dev:")}
   ${pc.cyan("--port <number>")}     Run the frameworkless preview on a custom port
   ${pc.cyan("--hostname <host>")}   Bind the preview server to a custom hostname
-  ${pc.cyan("--host <host>")}       Alias for ${pc.cyan("--hostname")}
+  ${pc.cyan("--host [host]")}       Expose the preview on your network; optionally pass a host value
   ${pc.cyan("--verbose")}           Show raw runtime logs in addition to branded CLI output
 
 ${pc.dim("Options for agent compact:")}
