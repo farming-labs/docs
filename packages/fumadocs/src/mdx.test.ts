@@ -80,13 +80,8 @@ describe("getMDXComponents", () => {
 
   it("preserves children for overridden Prompt components", () => {
     const components = getMDXComponents({
-      Prompt: ({
-        children,
-        prompt,
-      }: {
-        children?: React.ReactNode;
-        prompt?: string;
-      }) => React.createElement("div", { "data-prompt": prompt }, children),
+      Prompt: ({ children, prompt }: { children?: React.ReactNode; prompt?: string }) =>
+        React.createElement("div", { "data-prompt": prompt }, children),
     });
     const PromptComponent = components.Prompt as React.ComponentType<{
       children?: React.ReactNode;

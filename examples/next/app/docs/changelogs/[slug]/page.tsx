@@ -18,7 +18,16 @@ export const changelogEntries: GeneratedChangelogEntry[] = [
     url: "/docs/changelogs/2026-04-15",
     sourcePath: "app/docs/changelog/2026-04-15/page.mdx",
     Component: ChangelogEntry1,
-    metadata: {"title":"API Reference: OpenAPI mode is now the default","description":"The Next example now ships with the faster OpenAPI experience, plus a tighter docs/API switcher.","image":"/images/changelog/fumadocs-openapi-mode.png","authors":["Farming Labs"],"version":"v0.1.13","tags":["api-reference","next"],"pinned":true},
+    metadata: {
+      title: "API Reference: OpenAPI mode is now the default",
+      description:
+        "The Next example now ships with the faster OpenAPI experience, plus a tighter docs/API switcher.",
+      image: "/images/changelog/fumadocs-openapi-mode.png",
+      authors: ["Farming Labs"],
+      version: "v0.1.13",
+      tags: ["api-reference", "next"],
+      pinned: true,
+    },
   },
   {
     slug: "2026-04-03",
@@ -26,7 +35,15 @@ export const changelogEntries: GeneratedChangelogEntry[] = [
     url: "/docs/changelogs/2026-04-03",
     sourcePath: "app/docs/changelog/2026-04-03/page.mdx",
     Component: ChangelogEntry2,
-    metadata: {"title":"Colorful theme cleanup across docs and API routes","description":"We tightened the theme handoff so the colorful preset keeps its own identity when moving between docs and API reference.","image":"/images/changelog/colorful-theme-cleanup.png","authors":["Farming Labs"],"version":"v0.1.12","tags":["themes","colorful"]},
+    metadata: {
+      title: "Colorful theme cleanup across docs and API routes",
+      description:
+        "We tightened the theme handoff so the colorful preset keeps its own identity when moving between docs and API reference.",
+      image: "/images/changelog/colorful-theme-cleanup.png",
+      authors: ["Farming Labs"],
+      version: "v0.1.12",
+      tags: ["themes", "colorful"],
+    },
   },
   {
     slug: "2026-03-18",
@@ -34,10 +51,17 @@ export const changelogEntries: GeneratedChangelogEntry[] = [
     url: "/docs/changelogs/2026-03-18",
     sourcePath: "app/docs/changelog/2026-03-18/page.mdx",
     Component: ChangelogEntry3,
-    metadata: {"title":"Cloud page motion pass","description":"The cloud landing page picked up smoother looping motion, better path-based SVG behavior, and more stable theme controls.","image":"/images/changelog/cloud-motion-pass.png","authors":["Farming Labs"],"version":"v0.1.11","tags":["cloud","website"]},
-  }
+    metadata: {
+      title: "Cloud page motion pass",
+      description:
+        "The cloud landing page picked up smoother looping motion, better path-based SVG behavior, and more stable theme controls.",
+      image: "/images/changelog/cloud-motion-pass.png",
+      authors: ["Farming Labs"],
+      version: "v0.1.11",
+      tags: ["cloud", "website"],
+    },
+  },
 ];
-
 
 export const generateStaticParams = createNextChangelogStaticParams(changelogEntries);
 export const generateMetadata = createNextChangelogEntryMetadata(docsConfig, changelogEntries);

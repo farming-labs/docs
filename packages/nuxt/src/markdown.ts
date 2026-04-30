@@ -367,7 +367,9 @@ function renderPrompt(
         `</div></div>`
       : "") +
     `<div data-prompt-text hidden aria-hidden="true">${escapedPrompt}</div>` +
-    (showPrompt ? `<div class="fd-prompt-body"><pre class="fd-prompt-code">${escapedPrompt}</pre></div>` : "") +
+    (showPrompt
+      ? `<div class="fd-prompt-body"><pre class="fd-prompt-code">${escapedPrompt}</pre></div>`
+      : "") +
     actionsHtml +
     `</div>`
   );
