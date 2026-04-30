@@ -2,7 +2,7 @@ import type { ComponentType } from "react";
 import type { DocsConfig, FeedbackConfig } from "@farming-labs/docs";
 import { DocsClientHooks } from "@farming-labs/theme/client-hooks";
 import { TanstackDocsLayout } from "@farming-labs/theme/tanstack";
-import { getMDXComponents } from "@farming-labs/theme/mdx";
+import { getMDXComponents, type GetMDXComponentsOptions } from "@farming-labs/theme/mdx";
 import type { DocsServerLoadResult } from "./server.js";
 
 interface MdxModule {
@@ -29,6 +29,11 @@ export function TanstackDocsPage({
   config: DocsConfig;
   data: DocsServerLoadResult;
 }) {
+  const promptIconRegistry = config.icons as GetMDXComponentsOptions["icons"];
+  const promptOpenDocsProviders =
+    config.pageActions?.openDocs && typeof config.pageActions.openDocs === "object"
+      ? (config.pageActions.openDocs.providers as GetMDXComponentsOptions["openDocsProviders"])
+      : undefined;
   const module = docModules[data.sourcePath] as MdxModule | undefined;
   const Content = module?.default ?? null;
 
@@ -66,11 +71,8 @@ export function TanstackDocsPage({
           components={getMDXComponents(config.components as Record<string, unknown>, {
             onCopyClick: config.onCopyClick,
             theme: config.theme,
-            icons: config.icons,
-            openDocsProviders:
-              config.pageActions?.openDocs && typeof config.pageActions.openDocs === "object"
-                ? config.pageActions.openDocs.providers
-                : undefined,
+            icons: promptIconRegistry,
+            openDocsProviders: promptOpenDocsProviders,
           })}
         />
       </TanstackDocsLayout>
