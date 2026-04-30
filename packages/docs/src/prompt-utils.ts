@@ -18,6 +18,9 @@ export interface PromptProviderChoice {
   urlTemplate: string;
 }
 
+type PromptProviderInput = Pick<SerializedOpenDocsProvider, "name" | "iconHtml"> &
+  Partial<Pick<SerializedOpenDocsProvider, "promptUrlTemplate" | "urlTemplate">>;
+
 export const DEFAULT_PROMPT_PROVIDER_TEMPLATES: Record<string, string> = {
   chatgpt: "https://chatgpt.com/?q={prompt}",
   claude: "https://claude.ai/new?q={prompt}",
@@ -102,9 +105,7 @@ export function parsePromptStringArray(value: unknown): string[] | undefined {
 }
 
 export function resolvePromptProviderChoices(
-  availableProviders?: Array<
-    Pick<SerializedOpenDocsProvider, "name" | "iconHtml" | "promptUrlTemplate" | "urlTemplate">
-  >,
+  availableProviders?: PromptProviderInput[],
   preferredNames?: string[],
 ): PromptProviderChoice[] {
   const configuredByName = new Map(
