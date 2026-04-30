@@ -790,7 +790,8 @@ samp {
   display: none !important;
 }
 
-.fd-page-action-menu-item {
+.fd-page-action-menu-item,
+.fd-prompt-menu-item {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -806,11 +807,6 @@ samp {
   text-align: left;
   text-decoration: none;
   transition: background 0.1s, color 0.1s;
-}
-
-.fd-page-action-menu-item:hover {
-  background: var(--color-fd-accent);
-  color: var(--color-fd-accent-foreground);
 }
 
 .fd-page-action-menu-label {
@@ -985,23 +981,7 @@ samp {
   display: none !important;
 }
 
-.fd-prompt-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.35rem 0.625rem;
-  font-size: 0.8125rem;
-  font-weight: 400;
-  color: var(--color-fd-foreground);
-  background: transparent;
-  border: none;
-  border-radius: 0.25rem;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.1s, color 0.1s;
-}
-
+.fd-page-action-menu-item:hover,
 .fd-prompt-menu-item:hover {
   background: var(--color-fd-accent);
   color: var(--color-fd-accent-foreground);
