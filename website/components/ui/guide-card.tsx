@@ -79,12 +79,7 @@ export function GuideCard({
               {description}
             </p>
           </div>
-
-          <span className="mt-1 inline-flex size-9 shrink-0 items-center justify-center border border-black/10 bg-white/70 text-black/55 transition-transform group-hover:translate-x-0.5 dark:border-white/10 dark:bg-black/40 dark:text-white/55">
-            <ArrowRight className="size-4" />
-          </span>
         </div>
-
         {tags.length > 0 ? (
           <div className="mt-6 flex flex-wrap gap-2">
             {tags.map((tag) => (
