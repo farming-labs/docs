@@ -852,7 +852,9 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   // Serialize provider icons to HTML strings so they survive the
   // server → client component boundary.
   const rawProviders =
-    typeof pageActions?.openDocs === "object" && pageActions.openDocs.providers
+    pageActions?.openDocs &&
+    typeof pageActions.openDocs === "object" &&
+    pageActions.openDocs.providers
       ? (pageActions.openDocs.providers as Array<{
           name: string;
           icon?: unknown;

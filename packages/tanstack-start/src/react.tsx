@@ -68,7 +68,7 @@ export function TanstackDocsPage({
             theme: config.theme,
             icons: config.icons,
             openDocsProviders:
-              typeof config.pageActions?.openDocs === "object"
+              config.pageActions?.openDocs && typeof config.pageActions.openDocs === "object"
                 ? config.pageActions.openDocs.providers
                 : undefined,
           })}

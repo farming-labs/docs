@@ -67,7 +67,7 @@ export function useMDXComponents(components?: MDXComponents): MDXComponents {
       theme: docsConfig.theme,
       icons: docsConfig.icons,
       openDocsProviders:
-        typeof docsConfig.pageActions?.openDocs === "object"
+        docsConfig.pageActions?.openDocs && typeof docsConfig.pageActions.openDocs === "object"
           ? docsConfig.pageActions.openDocs.providers
           : undefined,
     },

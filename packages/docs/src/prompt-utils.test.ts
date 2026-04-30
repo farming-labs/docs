@@ -56,6 +56,27 @@ describe("resolvePromptProviderChoices", () => {
       },
     ]);
   });
+
+  it("falls back to a provider urlTemplate when no prompt template is configured", () => {
+    expect(
+      resolvePromptProviderChoices(
+        [
+          {
+            name: "Internal",
+            urlTemplate: "https://internal.example/?prompt={prompt}",
+            iconHtml: "<svg />",
+          },
+        ],
+        ["Internal"],
+      ),
+    ).toEqual([
+      {
+        name: "Internal",
+        urlTemplate: "https://internal.example/?prompt={prompt}",
+        iconHtml: "<svg />",
+      },
+    ]);
+  });
 });
 
 describe("serializeDocsIconRegistry", () => {

@@ -103,7 +103,7 @@ export function parsePromptStringArray(value: unknown): string[] | undefined {
 
 export function resolvePromptProviderChoices(
   availableProviders?: Array<
-    Pick<SerializedOpenDocsProvider, "name" | "iconHtml" | "promptUrlTemplate">
+    Pick<SerializedOpenDocsProvider, "name" | "iconHtml" | "promptUrlTemplate" | "urlTemplate">
   >,
   preferredNames?: string[],
 ): PromptProviderChoice[] {
@@ -131,7 +131,10 @@ export function resolvePromptProviderChoices(
     seen.add(normalized);
 
     const configured = configuredByName.get(normalized);
-    const template = configured?.promptUrlTemplate ?? DEFAULT_PROMPT_PROVIDER_TEMPLATES[normalized];
+    const template =
+      configured?.promptUrlTemplate ??
+      configured?.urlTemplate ??
+      DEFAULT_PROMPT_PROVIDER_TEMPLATES[normalized];
 
     if (!template) continue;
 

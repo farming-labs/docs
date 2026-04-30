@@ -317,7 +317,7 @@ function renderPrompt(
       actionsHtml +=
         `<button type="button" class="fd-prompt-action-btn" data-prompt-copy>` +
         `<span class="fd-prompt-action-icon">${copyIconHtml}</span>` +
-        `<span data-prompt-copy-label="${escapeHtml(copiedLabel)}">${escapeHtml(copyLabel)}</span>` +
+        `<span data-prompt-copy-label="${escapeHtml(copiedLabel)}" data-prompt-default-label="${escapeHtml(copyLabel)}">${escapeHtml(copyLabel)}</span>` +
         `<span class="fd-prompt-action-icon fd-prompt-action-icon-copied" hidden>${copiedIconHtml}</span>` +
         `</button>`;
     }
@@ -366,9 +366,8 @@ function renderPrompt(
           : "") +
         `</div></div>`
       : "") +
-    (showPrompt
-      ? `<div class="fd-prompt-body" data-prompt-text><pre class="fd-prompt-code">${escapedPrompt}</pre></div>`
-      : "") +
+    `<div data-prompt-text hidden aria-hidden="true">${escapedPrompt}</div>` +
+    (showPrompt ? `<div class="fd-prompt-body"><pre class="fd-prompt-code">${escapedPrompt}</pre></div>` : "") +
     actionsHtml +
     `</div>`
   );
@@ -459,7 +458,7 @@ function dedentCode(raw: string): string {
  * Render a markdown string to HTML with full syntax highlighting,
  * callouts, tables, tabs, and copy-to-clipboard support.
  *
- * Designed for server-side use in Astro page loaders.
+ * Designed for server-side use in Nuxt page loaders.
  */
 export async function renderMarkdown(
   content: string,

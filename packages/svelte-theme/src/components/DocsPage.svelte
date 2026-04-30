@@ -262,7 +262,10 @@
             const copiedIcon = copyButton.querySelector(".fd-prompt-action-icon-copied");
             const label = copyButton.querySelector("[data-prompt-copy-label]");
             const copiedLabel = label?.getAttribute("data-prompt-copy-label") ?? "Copied";
-            const defaultLabel = label?.textContent ?? "Copy prompt";
+            const defaultLabel =
+              label?.getAttribute("data-prompt-default-label") ??
+              label?.textContent ??
+              "Copy prompt";
 
             let copied = false;
             try {

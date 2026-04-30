@@ -170,7 +170,10 @@ function resolveProviderChoices(
     seen.add(normalized);
 
     const configured = configuredByName.get(normalized);
-    const template = configured?.promptUrlTemplate ?? defaultPromptProviderTemplates[normalized];
+    const template =
+      configured?.promptUrlTemplate ??
+      configured?.urlTemplate ??
+      defaultPromptProviderTemplates[normalized];
     if (!template) continue;
 
     resolved.push({
@@ -183,10 +186,6 @@ function resolveProviderChoices(
   return resolved;
 }
 
-function IconHtml({ html, className }: { html: string; className?: string }) {
-  return <span className={className} dangerouslySetInnerHTML={{ __html: html }} />;
-}
-
 function resolveActionIcon(
   name: string | false | undefined,
   iconRegistry?: Record<string, PromptIconValue>,
@@ -196,11 +195,9 @@ function resolveActionIcon(
 
   const registryMatch = iconRegistry?.[name];
   if (registryMatch) {
-    return typeof registryMatch === "string" ? (
-      <IconHtml className="fd-prompt-action-icon" html={registryMatch} />
-    ) : (
-      registryMatch
-    );
+    if (typeof registryMatch !== "string") {
+      return registryMatch;
+    }
   }
 
   if (name in builtInIcons) {
@@ -267,7 +264,9 @@ export function Prompt({
       typeof prompt === "string" && prompt.trim() ? prompt.trim() : extractPromptText(children),
     [prompt, children],
   );
-  const promptIcon = icon && iconRegistry?.[icon] ? iconRegistry[icon] : undefined;
+  const promptIconValue = icon && iconRegistry?.[icon] ? iconRegistry[icon] : undefined;
+  const promptIcon =
+    promptIconValue && typeof promptIconValue !== "string" ? promptIconValue : null;
   const resolvedActions = useMemo(
     () => (parseStringArray(actions) as PromptAction[] | undefined) ?? ["copy"],
     [actions],
@@ -331,12 +330,7 @@ export function Prompt({
     <div className="fd-prompt" data-prompt-card>
       {(promptIcon || visibleTitle || visibleDescription) && (
         <div className="fd-prompt-header">
-          {promptIcon &&
-            (typeof promptIcon === "string" ? (
-              <IconHtml className="fd-prompt-icon" html={promptIcon} />
-            ) : (
-              <span className="fd-prompt-icon">{promptIcon}</span>
-            ))}
+          {promptIcon ? <span className="fd-prompt-icon">{promptIcon}</span> : null}
           <div className="fd-prompt-copy">
             {visibleTitle && <p className="fd-prompt-title">{visibleTitle}</p>}
             {visibleDescription && <p className="fd-prompt-description">{visibleDescription}</p>}
@@ -402,12 +396,8 @@ export function Prompt({
                       className="fd-prompt-menu-item"
                       onClick={() => handleOpen(provider)}
                     >
-                      {provider.icon ? (
-                        typeof provider.icon === "string" ? (
-                          <IconHtml className="fd-prompt-menu-icon" html={provider.icon} />
-                        ) : (
-                          <span className="fd-prompt-menu-icon">{provider.icon}</span>
-                        )
+                      {provider.icon && typeof provider.icon !== "string" ? (
+                        <span className="fd-prompt-menu-icon">{provider.icon}</span>
                       ) : null}
                       <span className="fd-prompt-menu-label">
                         {openLabel} {provider.name}

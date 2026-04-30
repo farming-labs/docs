@@ -148,6 +148,7 @@ export function getMDXComponents<T extends Record<string, unknown> = Record<stri
         openDocsProviders: options?.openDocsProviders,
         prompt: extractPromptText(children),
         ...rest,
+        children,
       });
     };
   }

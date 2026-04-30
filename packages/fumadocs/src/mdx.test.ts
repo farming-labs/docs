@@ -77,4 +77,53 @@ describe("getMDXComponents", () => {
 
     expect(html).toContain("Write release notes for this change.");
   });
+
+  it("preserves children for overridden Prompt components", () => {
+    const components = getMDXComponents({
+      Prompt: ({
+        children,
+        prompt,
+      }: {
+        children?: React.ReactNode;
+        prompt?: string;
+      }) => React.createElement("div", { "data-prompt": prompt }, children),
+    });
+    const PromptComponent = components.Prompt as React.ComponentType<{
+      children?: React.ReactNode;
+    }>;
+    const html = renderToStaticMarkup(
+      React.createElement(PromptComponent, null, "Write release notes for this change."),
+    );
+
+    expect(html).toContain("Write release notes for this change.");
+    expect(html).toContain('data-prompt="Write release notes for this change."');
+  });
+
+  it("supports custom provider urlTemplate values for Prompt open actions", () => {
+    const components = getMDXComponents(undefined, {
+      openDocsProviders: [
+        {
+          name: "Internal",
+          urlTemplate: "https://internal.example/?prompt={prompt}",
+        },
+      ],
+    });
+    const PromptComponent = components.Prompt as React.ComponentType<{
+      actions?: string[];
+      providers?: string[];
+      children?: React.ReactNode;
+    }>;
+    const html = renderToStaticMarkup(
+      React.createElement(
+        PromptComponent,
+        {
+          actions: ["open"],
+          providers: ["Internal"],
+        },
+        "Write release notes for this change.",
+      ),
+    );
+
+    expect(html).toContain("Open in Internal");
+  });
 });

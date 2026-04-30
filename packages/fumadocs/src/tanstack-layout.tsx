@@ -374,7 +374,9 @@ export function TanstackDocsLayout({
   const staticExport = !!(config as { staticExport?: boolean }).staticExport;
 
   const rawProviders =
-    typeof pageActions?.openDocs === "object" && pageActions.openDocs.providers
+    pageActions?.openDocs &&
+    typeof pageActions.openDocs === "object" &&
+    pageActions.openDocs.providers
       ? pageActions.openDocs.providers
       : undefined;
   const openDocsProviders = rawProviders?.map((provider: OpenDocsProvider) => ({
