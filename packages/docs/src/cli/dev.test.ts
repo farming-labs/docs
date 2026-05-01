@@ -34,7 +34,8 @@ describe("materializeManagedRuntime", () => {
       JSON.stringify(
         {
           docs: {
-            framework: "managed",
+            mode: "frameworkless",
+            runtime: "nextjs",
           },
           site: {
             name: "Acme Docs",
@@ -108,34 +109,34 @@ title: "Authentication"
     ]);
 
     const docsIndex = fs.readFileSync(
-      path.join(projectRoot, ".docs-cloud/site/app/docs/page.mdx"),
+      path.join(projectRoot, ".docs/site/app/docs/page.mdx"),
       "utf-8",
     );
     const installationPage = fs.readFileSync(
-      path.join(projectRoot, ".docs-cloud/site/app/docs/installation/page.mdx"),
+      path.join(projectRoot, ".docs/site/app/docs/installation/page.mdx"),
       "utf-8",
     );
     const docsLayout = fs.readFileSync(
-      path.join(projectRoot, ".docs-cloud/site/app/docs/layout.tsx"),
+      path.join(projectRoot, ".docs/site/app/docs/layout.tsx"),
       "utf-8",
     );
     const apiReferenceLayout = fs.readFileSync(
-      path.join(projectRoot, ".docs-cloud/site/app/api-reference/layout.tsx"),
+      path.join(projectRoot, ".docs/site/app/api-reference/layout.tsx"),
       "utf-8",
     );
     const apiConfig = fs.readFileSync(
-      path.join(projectRoot, ".docs-cloud/site/api-reference.config.ts"),
+      path.join(projectRoot, ".docs/site/api-reference.config.ts"),
       "utf-8",
     );
     const apiReferenceIndex = fs.readFileSync(
-      path.join(projectRoot, ".docs-cloud/site/app/api-reference/page.mdx"),
+      path.join(projectRoot, ".docs/site/app/api-reference/page.mdx"),
       "utf-8",
     );
     const authenticationPage = fs.readFileSync(
-      path.join(projectRoot, ".docs-cloud/site/app/api-reference/authentication/page.mdx"),
+      path.join(projectRoot, ".docs/site/app/api-reference/authentication/page.mdx"),
       "utf-8",
     );
-    const proxy = fs.readFileSync(path.join(projectRoot, ".docs-cloud/site/proxy.ts"), "utf-8");
+    const proxy = fs.readFileSync(path.join(projectRoot, ".docs/site/proxy.ts"), "utf-8");
 
     expect(docsIndex).toContain("[Installation](/docs/installation)");
     expect(docsIndex).toContain("[Authentication](/api-reference/authentication)");
@@ -149,11 +150,11 @@ title: "Authentication"
     expect(proxy).toContain('matcher: ["/docs/:path*", "/api-reference/:path*"]');
     expect(proxy).toContain("console.log(`${LOG_PREFIX} ${pathname}`)");
     expect(
-      fs.existsSync(path.join(projectRoot, ".docs-cloud/site/app/docs/installation/diagram.png")),
+      fs.existsSync(path.join(projectRoot, ".docs/site/app/docs/installation/diagram.png")),
     ).toBe(true);
     expect(
       fs.existsSync(
-        path.join(projectRoot, ".docs-cloud/site/app/api-reference/authentication/page.mdx"),
+        path.join(projectRoot, ".docs/site/app/api-reference/authentication/page.mdx"),
       ),
     ).toBe(true);
   });
@@ -167,7 +168,8 @@ title: "Authentication"
       JSON.stringify(
         {
           docs: {
-            framework: "managed",
+            mode: "frameworkless",
+            runtime: "nextjs",
           },
           content: {
             docsRoot: "docs",
@@ -229,23 +231,23 @@ title: "Home"
     expect(runtime.apiReference.routes).toEqual(["/api-reference"]);
 
     const docsConfig = fs.readFileSync(
-      path.join(projectRoot, ".docs-cloud/site/docs.config.ts"),
+      path.join(projectRoot, ".docs/site/docs.config.ts"),
       "utf-8",
     );
     const rootLayout = fs.readFileSync(
-      path.join(projectRoot, ".docs-cloud/site/app/layout.tsx"),
+      path.join(projectRoot, ".docs/site/app/layout.tsx"),
       "utf-8",
     );
     const apiReferenceLayout = fs.readFileSync(
-      path.join(projectRoot, ".docs-cloud/site/app/api-reference/layout.tsx"),
+      path.join(projectRoot, ".docs/site/app/api-reference/layout.tsx"),
       "utf-8",
     );
     const apiReferencePage = fs.readFileSync(
-      path.join(projectRoot, ".docs-cloud/site/app/api-reference/[[...slug]]/page.tsx"),
+      path.join(projectRoot, ".docs/site/app/api-reference/[[...slug]]/page.tsx"),
       "utf-8",
     );
     const openApiRoute = fs.readFileSync(
-      path.join(projectRoot, ".docs-cloud/site/app/api/docs/openapi/route.ts"),
+      path.join(projectRoot, ".docs/site/app/api/docs/openapi/route.ts"),
       "utf-8",
     );
 
@@ -262,7 +264,7 @@ title: "Home"
       'const specPath = path.resolve(projectRoot, "api/openapi.yaml")',
     );
     expect(
-      fs.existsSync(path.join(projectRoot, ".docs-cloud/site/app/api-reference/page.mdx")),
+      fs.existsSync(path.join(projectRoot, ".docs/site/app/api-reference/page.mdx")),
     ).toBe(false);
   });
 
@@ -275,7 +277,8 @@ title: "Home"
       JSON.stringify(
         {
           docs: {
-            framework: "managed",
+            mode: "frameworkless",
+            runtime: "nextjs",
           },
         },
         null,
@@ -312,7 +315,7 @@ title: "Home"
 
     const runtime = materializeManagedRuntime(projectRoot);
     const docsConfig = fs.readFileSync(
-      path.join(projectRoot, ".docs-cloud/site/docs.config.ts"),
+      path.join(projectRoot, ".docs/site/docs.config.ts"),
       "utf-8",
     );
 
@@ -320,7 +323,7 @@ title: "Home"
     expect(runtime.apiReference.routes).toEqual(["/api-reference"]);
     expect(docsConfig).toContain('specUrl: "/api/docs/openapi"');
     expect(
-      fs.existsSync(path.join(projectRoot, ".docs-cloud/site/app/api/docs/openapi/route.ts")),
+      fs.existsSync(path.join(projectRoot, ".docs/site/app/api/docs/openapi/route.ts")),
     ).toBe(true);
   });
 
@@ -333,7 +336,8 @@ title: "Home"
       JSON.stringify(
         {
           docs: {
-            framework: "managed",
+            mode: "frameworkless",
+            runtime: "nextjs",
           },
           content: {
             openapi: [
@@ -364,7 +368,7 @@ title: "Home"
 
     const runtime = materializeManagedRuntime(projectRoot);
     const docsConfig = fs.readFileSync(
-      path.join(projectRoot, ".docs-cloud/site/docs.config.ts"),
+      path.join(projectRoot, ".docs/site/docs.config.ts"),
       "utf-8",
     );
 
@@ -374,7 +378,7 @@ title: "Home"
     expect(docsConfig).toContain('path: "api-reference"');
     expect(docsConfig).toContain('specUrl: "https://petstore3.swagger.io/api/v3/openapi.json"');
     expect(
-      fs.existsSync(path.join(projectRoot, ".docs-cloud/site/app/api/docs/openapi/route.ts")),
+      fs.existsSync(path.join(projectRoot, ".docs/site/app/api/docs/openapi/route.ts")),
     ).toBe(false);
   });
 
@@ -387,7 +391,8 @@ title: "Home"
       JSON.stringify(
         {
           docs: {
-            framework: "managed",
+            mode: "frameworkless",
+            runtime: "nextjs",
           },
         },
         null,
@@ -419,6 +424,65 @@ title: "Home"
     const secondStamp = computeManagedSourceStamp(projectRoot);
 
     expect(firstStamp).not.toBe(secondStamp);
+  });
+
+  it("still accepts the legacy managed framework flag", () => {
+    const projectRoot = makeTempProject();
+
+    writeFile(
+      projectRoot,
+      "docs.cloud.json",
+      JSON.stringify(
+        {
+          docs: {
+            framework: "managed",
+          },
+        },
+        null,
+        2,
+      ),
+    );
+    writeFile(
+      projectRoot,
+      "docs/index.mdx",
+      `---
+title: "Home"
+---
+
+# Home
+`,
+    );
+
+    const runtime = materializeManagedRuntime(projectRoot);
+
+    expect(runtime.homeTarget).toBe("/docs");
+    expect(
+      fs.existsSync(path.join(projectRoot, ".docs/site/app/docs/page.mdx")),
+    ).toBe(true);
+  });
+
+  it("rejects framework mode for frameworkless dev", () => {
+    const projectRoot = makeTempProject();
+
+    writeFile(
+      projectRoot,
+      "docs.cloud.json",
+      JSON.stringify(
+        {
+          docs: {
+            mode: "framework",
+            runtime: "nextjs",
+            root: "apps/docs",
+          },
+        },
+        null,
+        2,
+      ),
+    );
+
+    expect(() => materializeManagedRuntime(projectRoot)).toThrow(
+      'docs.cloud.json uses docs.mode = "framework"',
+    );
   });
 });
 

@@ -39,6 +39,9 @@ yarn-error.log*
 mdx-components.tsx
 app/api/search/route.ts
 
+# Frameworkless generated docs runtimes
+.docs/
+
 # Benchmark run artifacts
 benchmark/codex/artifacts/
 benchmark/codex/*/artifacts/

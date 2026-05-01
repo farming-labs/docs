@@ -2,8 +2,9 @@
   "$schema": "https://docs.farming-labs.dev/schema/cloud.json",
   "version": 1,
   "docs": {
-    "framework": "managed",
-    "root": ".docs-cloud/site"
+    "mode": "frameworkless",
+    "runtime": "nextjs",
+    "root": ".docs/site"
   },
   "content": {
     "docsRoot": "docs",
@@ -23,5 +24,8 @@
   },
   "theme": {
     "preset": "colorful"
+  },
+  "cloud": {
+    "enabled": false
   }
 }

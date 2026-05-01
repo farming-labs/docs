@@ -16,7 +16,7 @@ import {
 import { detectPackageManagerFromLockfile, type PackageManager } from "./utils.js";
 
 const MANAGED_CONFIG_FILE = "docs.cloud.json";
-const DEFAULT_RUNTIME_ROOT = ".docs-cloud/site";
+const DEFAULT_RUNTIME_ROOT = ".docs/site";
 const DEFAULT_DOCS_ROOT = "docs";
 const DEFAULT_API_REFERENCE_ROOT = "api-reference";
 const DEFAULT_MANAGED_OPENAPI_ENDPOINT = "/api/docs/openapi";
@@ -36,6 +36,14 @@ const MANAGED_OPENAPI_CONVENTION_CANDIDATES = [
   "openapi.yaml",
   "openapi.yml",
 ] as const;
+const RUNTIME_FRAMEWORK_VALUES = [
+  "nextjs",
+  "tanstack-start",
+  "sveltekit",
+  "astro",
+  "nuxt",
+] as const;
+type RuntimeFrameworkName = (typeof RUNTIME_FRAMEWORK_VALUES)[number];
 
 type ThemePresetName =
   | "default"
@@ -61,6 +69,7 @@ interface ManagedDocsProject {
   configPath: string;
   projectRoot: string;
   runtimeDir: string;
+  runtimeFramework: RuntimeFrameworkName;
   docsRoot: string;
   apiReferenceRoot: string;
   apiReferenceSpec?: ManagedOpenApiSpec;
@@ -208,12 +217,29 @@ const THEME_PRESETS: Record<string, ManagedThemePreset> = {
 
 const managedConfigSchema = z
   .object({
-    docs: z
-      .object({
-        framework: z.literal("managed"),
-        root: z.string().optional(),
-      })
-      .passthrough(),
+    docs: z.union([
+      z
+        .object({
+          mode: z.literal("frameworkless"),
+          root: z.string().optional(),
+          runtime: z.enum(RUNTIME_FRAMEWORK_VALUES).optional(),
+        })
+        .passthrough(),
+      z
+        .object({
+          mode: z.literal("framework"),
+          root: z.string().optional(),
+          runtime: z.enum(RUNTIME_FRAMEWORK_VALUES),
+        })
+        .passthrough(),
+      z
+        .object({
+          framework: z.literal("managed"),
+          root: z.string().optional(),
+          runtime: z.enum(RUNTIME_FRAMEWORK_VALUES).optional(),
+        })
+        .passthrough(),
+    ]),
     content: z
       .object({
         docsRoot: z.string().optional(),
@@ -245,6 +271,12 @@ const managedConfigSchema = z
     theme: z
       .object({
         preset: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+    cloud: z
+      .object({
+        enabled: z.boolean().optional(),
       })
       .passthrough()
       .optional(),
@@ -600,9 +632,30 @@ function readManagedDocsProject(projectRoot: string): ManagedDocsProject {
     throw new Error(`Invalid ${MANAGED_CONFIG_FILE}: ${formatZodError(parsed.error)}`);
   }
 
+  const docsConfig = parsed.data.docs;
+  const docsMode =
+    "mode" in docsConfig
+      ? docsConfig.mode
+      : docsConfig.framework === "managed"
+        ? "frameworkless"
+        : "framework";
+  if (docsMode !== "frameworkless") {
+    throw new Error(
+      `${MANAGED_CONFIG_FILE} uses docs.mode = "framework". ${pc.cyan("docs dev")} only supports frameworkless projects right now.`,
+    );
+  }
+
+  const runtimeFramework =
+    "runtime" in docsConfig && docsConfig.runtime ? docsConfig.runtime : "nextjs";
+  if (runtimeFramework !== "nextjs") {
+    throw new Error(
+      `Frameworkless ${pc.cyan("docs dev")} currently supports only docs.runtime = "nextjs".`,
+    );
+  }
+
   const docsRoot = parsed.data.content?.docsRoot ?? DEFAULT_DOCS_ROOT;
   const apiReferenceRoot = parsed.data.content?.apiReferenceRoot ?? DEFAULT_API_REFERENCE_ROOT;
-  const runtimeDir = path.resolve(projectRoot, parsed.data.docs.root ?? DEFAULT_RUNTIME_ROOT);
+  const runtimeDir = path.resolve(projectRoot, docsConfig.root ?? DEFAULT_RUNTIME_ROOT);
   const docsSourceDir = path.resolve(projectRoot, docsRoot);
   const apiReferenceSourceDir = path.resolve(projectRoot, apiReferenceRoot);
   const apiReferenceSpec = resolveManagedOpenApiSpec(projectRoot, parsed.data.content?.openapi);
@@ -626,6 +679,7 @@ function readManagedDocsProject(projectRoot: string): ManagedDocsProject {
     configPath,
     projectRoot,
     runtimeDir,
+    runtimeFramework,
     docsRoot,
     apiReferenceRoot,
     apiReferenceSpec,
@@ -1257,7 +1311,7 @@ export function materializeManagedRuntime(projectRoot: string): MaterializedMana
     entry: "docs",
     theme: project.theme.templateTheme,
     projectName: project.siteName,
-    framework: "nextjs",
+    framework: project.runtimeFramework,
     useAlias: true,
     nextAppDir: "app",
     apiReference: {

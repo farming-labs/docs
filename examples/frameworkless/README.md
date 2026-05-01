@@ -21,7 +21,7 @@ cd examples/frameworkless
 node ../../packages/docs/dist/cli/index.mjs dev
 ```
 
-The command generates a hidden runtime under `.docs-cloud/site` and serves:
+The command generates a hidden runtime under `.docs/site` and serves:
 
 - `/docs`
 - `/docs/installation`
@@ -35,8 +35,9 @@ Current example config:
   "$schema": "https://docs.farming-labs.dev/schema/cloud.json",
   "version": 1,
   "docs": {
-    "framework": "managed",
-    "root": ".docs-cloud/site"
+    "mode": "frameworkless",
+    "runtime": "nextjs",
+    "root": ".docs/site"
   },
   "content": {
     "docsRoot": "docs",
@@ -47,6 +48,9 @@ Current example config:
         "route": "/api-reference"
       }
     ]
+  },
+  "cloud": {
+    "enabled": false
   }
 }
 ```
