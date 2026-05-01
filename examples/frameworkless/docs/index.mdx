@@ -5,7 +5,14 @@ description: "Welcome to the frameworkless example."
 
 # Frameworkless Docs
 
-This project only contains markdown and `docs.cloud.json`.
+This project only contains markdown, `docs.cloud.json`, and an OpenAPI source.
+
+`content.openapi[].path` can point to either:
+
+- a local file like `api/openapi.yaml`
+- a remote URL like `https://example.com/openapi.json`
+
+This example is currently using a remote OpenAPI URL for `/api-reference`.
 
 - [Installation](./installation.mdx)
 - [API Reference](/api-reference)

@@ -4,7 +4,14 @@ This example is intentionally minimal:
 
 - `docs.cloud.json`
 - `docs/`
-- `api-reference/`
+- a remote OpenAPI URL in `docs.cloud.json`
+
+This checked-in example is wired to a remote OpenAPI document so you can test the frameworkless remote flow immediately.
+
+Frameworkless projects support either:
+
+- a checked-in local spec file like `api/openapi.yaml`
+- a remote spec URL in `docs.cloud.json`, such as `https://example.com/openapi.json`
 
 Run the local frameworkless dev server from this folder after building the CLI:
 
@@ -19,4 +26,27 @@ The command generates a hidden runtime under `.docs-cloud/site` and serves:
 - `/docs`
 - `/docs/installation`
 - `/api-reference`
-- `/api-reference/authentication`
+- `/api-reference/pet/findByStatus`
+
+Current example config:
+
+```json
+{
+  "$schema": "https://docs.farming-labs.dev/schema/cloud.json",
+  "version": 1,
+  "docs": {
+    "framework": "managed",
+    "root": ".docs-cloud/site"
+  },
+  "content": {
+    "docsRoot": "docs",
+    "openapi": [
+      {
+        "name": "Remote API",
+        "path": "https://petstore3.swagger.io/api/v3/openapi.json",
+        "route": "/api-reference"
+      }
+    ]
+  }
+}
+```

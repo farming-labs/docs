@@ -7,6 +7,7 @@ export default withDocs({
   // Keep local dev on `.next`, but build/start on a separate directory so
   // workspace builds don't fail when example dev is already running.
   distDir: process.env.NODE_ENV === "production" && !process.env.VERCEL ? ".next-build" : ".next",
+  allowedDevOrigins: ["127.0.0.1"],
   turbopack: {
     root: repoRoot,
   },

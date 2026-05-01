@@ -503,12 +503,15 @@ export function rootLayoutTemplate(
 
   const appDir = cfg.nextAppDir ?? "app";
   const configImport = nextRootLayoutConfigImport(cfg.useAlias, appDir);
+  const apiReferenceCssImport = cfg.apiReference
+    ? 'import "@farming-labs/next/api-reference.css";\n'
+    : "";
 
   return `\
 import type { Metadata } from "next";
 import { RootProvider } from "@farming-labs/theme";
 import docsConfig from "${configImport}";
-import "${cssImport}";
+${apiReferenceCssImport}import "${cssImport}";
 
 export const metadata: Metadata = {
   title: {
@@ -631,11 +634,11 @@ export function docsLayoutTemplate(cfg: TemplateConfig): string {
   const configImport = nextDocsLayoutConfigImport(cfg.useAlias, appDir);
   return `\
 import docsConfig from "${configImport}";
-import { createDocsLayout, createDocsMetadata } from "@farming-labs/theme";
+import { createNextDocsLayout, createNextDocsMetadata } from "@farming-labs/next/layout";
 
-export const metadata = createDocsMetadata(docsConfig);
+export const metadata = createNextDocsMetadata(docsConfig);
 
-const DocsLayout = createDocsLayout(docsConfig);
+const DocsLayout = createNextDocsLayout(docsConfig);
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -666,7 +669,6 @@ export function nextApiReferencePageTemplate(cfg: TemplateConfig, filePath: stri
   const configImport = nextApiReferenceConfigImport(cfg.useAlias, appDir, filePath);
 
   return `
-import "@farming-labs/next/api-reference.css";
 import docsConfig from "${configImport}";
 import { createNextApiReferencePage } from "@farming-labs/next/api-reference";
 

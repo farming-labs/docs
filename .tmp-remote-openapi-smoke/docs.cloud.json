@@ -7,19 +7,17 @@
   },
   "content": {
     "docsRoot": "docs",
-    "apiReferenceRoot": "api-reference",
     "openapi": [
       {
         "name": "Remote API",
-        "path": "https://petstore3.swagger.io/api/v3/openapi.json",
+        "path": "http://127.0.0.1:4678/openapi.json",
         "route": "/api-reference"
       }
     ]
   },
   "site": {
-    "name": "Frameworkless Example",
-    "titleTemplate": "%s | Frameworkless Example",
-    "description": "A local frameworkless docs project powered by @farming-labs/docs."
+    "name": "Remote OpenAPI Smoke Test",
+    "titleTemplate": "%s | Remote OpenAPI Smoke Test"
   },
   "theme": {
     "preset": "colorful"

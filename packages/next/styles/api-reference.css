@@ -39,17 +39,238 @@
   --color-fd-overlay: hsla(0, 0%, 0%, 0.2);
 }
 
+.fd-api-reference-switcher {
+  --fd-api-switcher-card-radius: var(--radius, 0.75rem);
+  --fd-api-switcher-icon-radius: var(--radius, 0.75rem);
+  --fd-api-switcher-shadow: none;
+  --fd-api-switcher-surface: var(--color-fd-card);
+  --fd-api-switcher-summary-surface: color-mix(
+    in srgb,
+    var(--color-fd-secondary) 72%,
+    var(--color-fd-card) 28%
+  );
+  --fd-api-switcher-border: color-mix(in srgb, var(--color-fd-border) 92%, transparent);
+  --fd-api-switcher-muted: rgb(71 85 105 / 0.84);
+  --fd-api-switcher-current-surface: color-mix(
+    in srgb,
+    var(--color-fd-primary, rgb(214 145 0)) 12%,
+    var(--color-fd-card) 88%
+  );
+  --fd-api-switcher-current-border: color-mix(
+    in srgb,
+    var(--color-fd-primary, rgb(214 145 0)) 22%,
+    transparent
+  );
+  --fd-api-switcher-glyph-surface: color-mix(
+    in srgb,
+    var(--color-fd-secondary) 64%,
+    var(--color-fd-card) 36%
+  );
+}
+
+.dark .fd-api-reference-switcher {
+  --fd-api-switcher-shadow: 0 0 0 1px rgb(255 255 255 / 0.06);
+  --fd-api-switcher-surface: color-mix(in srgb, rgb(20 20 20) 94%, transparent);
+  --fd-api-switcher-summary-surface: color-mix(in srgb, rgb(28 28 28) 96%, transparent);
+  --fd-api-switcher-border: rgb(255 255 255 / 0.08);
+  --fd-api-switcher-muted: rgb(255 255 255 / 0.68);
+  --fd-api-switcher-current-surface: color-mix(
+    in srgb,
+    var(--color-fd-primary, rgb(250 204 21)) 18%,
+    transparent
+  );
+  --fd-api-switcher-current-border: color-mix(
+    in srgb,
+    var(--color-fd-primary, rgb(250 204 21)) 22%,
+    rgb(255 255 255 / 0.08)
+  );
+  --fd-api-switcher-glyph-surface: color-mix(in srgb, rgb(28 28 28) 94%, transparent);
+}
+
+.fd-api-reference-switcher {
+  border: 1px solid var(--fd-api-switcher-border);
+  border-radius: var(--fd-api-switcher-card-radius);
+  background: var(--fd-api-switcher-surface);
+  box-shadow: var(--fd-api-switcher-shadow);
+}
+
+.fd-api-reference-switcher-summary {
+  list-style: none;
+  background: var(--fd-api-switcher-summary-surface);
+  border-radius: calc(var(--fd-api-switcher-card-radius) - 1px);
+  color: inherit;
+  border-bottom: 1px solid color-mix(in srgb, var(--fd-api-switcher-border) 72%, transparent);
+}
+
+.fd-api-reference-switcher-summary::-webkit-details-marker {
+  display: none;
+}
+
+.fd-api-reference-switcher-options {
+  background: var(--fd-api-switcher-surface);
+}
+
+.fd-api-reference-switcher-option {
+  border: 1px solid transparent;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.fd-api-reference-switcher-option:hover {
+  background: color-mix(in srgb, var(--color-fd-accent) 55%, transparent);
+}
+
+.fd-api-reference-switcher-option[data-current="true"] {
+  background: var(--fd-api-switcher-current-surface);
+  border-color: var(--fd-api-switcher-current-border);
+}
+
+.fd-api-reference-switcher-glyph {
+  border: 1px solid var(--fd-api-switcher-border);
+  border-radius: var(--fd-api-switcher-icon-radius);
+  background: var(--fd-api-switcher-glyph-surface);
+  box-shadow: var(--fd-api-switcher-shadow);
+}
+
+.fd-api-reference-switcher-glyph[data-active="false"] {
+  color: var(--fd-api-switcher-muted);
+}
+
+.fd-api-reference-switcher-chevron {
+  color: var(--fd-api-switcher-muted);
+}
+
+.light .fd-api-reference-switcher {
+  --fd-api-switcher-surface: var(--color-fd-card);
+  --fd-api-switcher-summary-surface: color-mix(
+    in srgb,
+    var(--color-fd-primary) 12%,
+    var(--color-fd-card) 88%
+  );
+  --fd-api-switcher-current-surface: color-mix(
+    in srgb,
+    var(--color-fd-primary) 14%,
+    var(--color-fd-card) 86%
+  );
+  --fd-api-switcher-glyph-surface: color-mix(
+    in srgb,
+    var(--color-fd-primary) 10%,
+    var(--color-fd-card) 90%
+  );
+}
+
+.light .fd-api-reference-route article .border,
+.light .fd-api-reference-route article [class*=" border"],
+.light .fd-api-reference-route article [class^="border"] {
+  border-color: rgb(15 23 42 / 0.12);
+}
+
+.light .fd-api-reference-route article .bg-fd-card,
+.light .fd-api-reference-route article .bg-fd-background {
+  background: color-mix(in srgb, rgb(255 255 255) 95%, rgb(245 241 232) 5%);
+}
+
+.light .fd-api-reference-route article .shadow-md,
+.light .fd-api-reference-route article .shadow-sm {
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 0.05),
+    0 10px 30px rgb(15 23 42 / 0.04);
+}
+
+.light .fd-api-reference-route article .text-fd-muted-foreground {
+  color: rgb(71 85 105 / 0.9);
+}
+
+.light .fd-api-reference-switcher[data-theme-style="colorful"] .fd-api-reference-switcher-summary {
+  background: color-mix(in srgb, var(--color-fd-primary) 18%, white 82%);
+  color: var(--color-fd-primary);
+}
+
+.light .fd-api-reference-switcher[data-theme-style="colorful"] {
+  border-color: color-mix(in srgb, var(--color-fd-primary) 28%, var(--color-fd-border));
+  background: var(--color-fd-card);
+  box-shadow: none;
+}
+
+.light
+  .fd-api-reference-switcher[data-theme-style="colorful"]
+  .fd-api-reference-switcher-summary
+  .fd-api-reference-switcher-chevron {
+  color: color-mix(in srgb, var(--color-fd-primary) 78%, black 22%);
+}
+
+.light
+  .fd-api-reference-switcher[data-theme-style="colorful"]
+  .fd-api-reference-switcher-summary
+  .fd-api-reference-switcher-glyph {
+  background: color-mix(in srgb, var(--color-fd-primary) 24%, white 76%);
+  border-color: color-mix(in srgb, var(--color-fd-primary) 38%, var(--color-fd-border));
+  color: var(--color-fd-primary);
+}
+
+.light .fd-api-reference-switcher[data-theme-style="colorful"] .fd-api-reference-switcher-options {
+  background: var(--color-fd-card);
+}
+
+.light
+  .fd-api-reference-switcher[data-theme-style="colorful"]
+  .fd-api-reference-switcher-option[data-current="true"] {
+  background: color-mix(in srgb, var(--color-fd-primary) 18%, white 82%);
+  border-color: color-mix(in srgb, var(--color-fd-primary) 32%, var(--color-fd-border));
+}
+
+.light
+  .fd-api-reference-route[data-theme-style="colorful"]
+  .fd-api-reference-pagination-item:hover {
+  border-color: color-mix(in srgb, var(--color-fd-primary) 36%, var(--color-fd-border));
+  background: color-mix(in srgb, var(--color-fd-card) 88%, var(--color-fd-primary) 12%);
+}
+
 .fd-api-reference-route #nd-subnav {
   display: none;
 }
 
 .fd-api-reference-route #nd-page.fd-api-reference-page > * {
   width: 100%;
-  max-width: 1180px;
+  max-width: 1285px;
 }
 
-.fd-api-reference-route #nd-page.fd-api-reference-page > .prose {
-  max-width: 1180px;
+.fd-api-reference-route #nd-page.fd-api-reference-page > .fd-api-reference-body {
+  width: 100%;
+  max-width: none;
+}
+
+.fd-api-reference-route
+  #nd-page.fd-api-reference-page
+  > .fd-api-reference-body
+  > .flex.flex-col.gap-24.text-sm {
+  width: 100%;
+}
+
+.fd-api-reference-operation {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem 1.5rem;
+}
+
+.fd-api-reference-operation-main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.fd-api-reference-operation-description {
+  margin-top: 0.9rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+.fd-api-reference-operation-description > * {
+  margin: 0;
+}
+
+.fd-api-reference-operation-example {
+  min-width: 0;
 }
 
 .fd-api-reference-pagination {
@@ -118,6 +339,21 @@
 
   .fd-api-reference-route #nd-notebook-layout #nd-page::before {
     display: none;
+  }
+}
+
+@media (min-width: 960px) {
+  .fd-api-reference-operation {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 25rem);
+    align-items: start;
+  }
+
+  .fd-api-reference-operation-example {
+    position: sticky;
+    top: calc(var(--fd-docs-row-1, 2rem) + 1rem);
+    width: min(100%, 25rem);
+    justify-self: end;
   }
 }
 

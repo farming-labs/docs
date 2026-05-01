@@ -115,8 +115,20 @@ title: "Authentication"
       path.join(projectRoot, ".docs-cloud/site/app/docs/installation/page.mdx"),
       "utf-8",
     );
+    const docsLayout = fs.readFileSync(
+      path.join(projectRoot, ".docs-cloud/site/app/docs/layout.tsx"),
+      "utf-8",
+    );
+    const apiReferenceLayout = fs.readFileSync(
+      path.join(projectRoot, ".docs-cloud/site/app/api-reference/layout.tsx"),
+      "utf-8",
+    );
     const apiConfig = fs.readFileSync(
       path.join(projectRoot, ".docs-cloud/site/api-reference.config.ts"),
+      "utf-8",
+    );
+    const apiReferenceIndex = fs.readFileSync(
+      path.join(projectRoot, ".docs-cloud/site/app/api-reference/page.mdx"),
       "utf-8",
     );
     const authenticationPage = fs.readFileSync(
@@ -125,9 +137,12 @@ title: "Authentication"
     );
     const proxy = fs.readFileSync(path.join(projectRoot, ".docs-cloud/site/proxy.ts"), "utf-8");
 
-    expect(docsIndex).toContain("[Installation](installation)");
-    expect(docsIndex).toContain("[Authentication](../api-reference/authentication)");
-    expect(installationPage).toContain("[Back home](..)");
+    expect(docsIndex).toContain("[Installation](/docs/installation)");
+    expect(docsIndex).toContain("[Authentication](/api-reference/authentication)");
+    expect(installationPage).toContain("[Back home](/docs)");
+    expect(apiReferenceIndex).toContain("[Authentication](/api-reference/authentication)");
+    expect(docsLayout).toContain("createNextDocsLayout");
+    expect(apiReferenceLayout).toContain('import docsConfig from "@/api-reference.config"');
     expect(authenticationPage).toContain("# Authentication");
     expect(apiConfig).toContain('entry: "api-reference"');
     expect(apiConfig).toContain('from "@farming-labs/theme/colorful"');
@@ -141,6 +156,226 @@ title: "Authentication"
         path.join(projectRoot, ".docs-cloud/site/app/api-reference/authentication/page.mdx"),
       ),
     ).toBe(true);
+  });
+
+  it("builds a Fumadocs API reference from content.openapi", () => {
+    const projectRoot = makeTempProject();
+
+    writeFile(
+      projectRoot,
+      "docs.cloud.json",
+      JSON.stringify(
+        {
+          docs: {
+            framework: "managed",
+          },
+          content: {
+            docsRoot: "docs",
+            openapi: [
+              {
+                name: "Core API",
+                path: "api/openapi.yaml",
+                route: "/api-reference",
+              },
+            ],
+          },
+          site: {
+            name: "Acme Docs",
+            titleTemplate: "%s | Acme Docs",
+          },
+          theme: {
+            preset: "colorful",
+          },
+        },
+        null,
+        2,
+      ),
+    );
+    writeFile(
+      projectRoot,
+      "docs/index.mdx",
+      `---
+title: "Home"
+---
+
+# Home
+
+[API Reference](/api-reference)
+`,
+    );
+    writeFile(
+      projectRoot,
+      "api/openapi.yaml",
+      [
+        "openapi: 3.1.0",
+        "info:",
+        "  title: Core API",
+        "  version: 1.0.0",
+        "paths:",
+        "  /auth/login:",
+        "    post:",
+        "      summary: Login",
+        "      responses:",
+        '        "200":',
+        "          description: OK",
+        "",
+      ].join("\n"),
+    );
+
+    const runtime = materializeManagedRuntime(projectRoot);
+
+    expect(runtime.homeTarget).toBe("/docs");
+    expect(runtime.docs.routes).toEqual(["/docs"]);
+    expect(runtime.apiReference.routes).toEqual(["/api-reference"]);
+
+    const docsConfig = fs.readFileSync(
+      path.join(projectRoot, ".docs-cloud/site/docs.config.ts"),
+      "utf-8",
+    );
+    const rootLayout = fs.readFileSync(
+      path.join(projectRoot, ".docs-cloud/site/app/layout.tsx"),
+      "utf-8",
+    );
+    const apiReferenceLayout = fs.readFileSync(
+      path.join(projectRoot, ".docs-cloud/site/app/api-reference/layout.tsx"),
+      "utf-8",
+    );
+    const apiReferencePage = fs.readFileSync(
+      path.join(projectRoot, ".docs-cloud/site/app/api-reference/[[...slug]]/page.tsx"),
+      "utf-8",
+    );
+    const openApiRoute = fs.readFileSync(
+      path.join(projectRoot, ".docs-cloud/site/app/api/docs/openapi/route.ts"),
+      "utf-8",
+    );
+
+    expect(docsConfig).toContain("apiReference:");
+    expect(docsConfig).toContain('path: "api-reference"');
+    expect(docsConfig).toContain('specUrl: "/api/docs/openapi"');
+    expect(docsConfig).toContain('renderer: "fumadocs"');
+    expect(rootLayout).toContain('@farming-labs/next/api-reference.css');
+    expect(apiReferenceLayout).toContain("createNextApiReferenceLayout");
+    expect(apiReferencePage).toContain("createNextApiReferencePage");
+    expect(apiReferencePage).not.toContain('@farming-labs/next/api-reference.css');
+    expect(openApiRoute).toContain('import { parse } from "yaml"');
+    expect(openApiRoute).toContain('const specPath = path.resolve(projectRoot, "api/openapi.yaml")');
+    expect(
+      fs.existsSync(path.join(projectRoot, ".docs-cloud/site/app/api-reference/page.mdx")),
+    ).toBe(false);
+  });
+
+  it("detects api/openapi.json by convention when content.openapi is omitted", () => {
+    const projectRoot = makeTempProject();
+
+    writeFile(
+      projectRoot,
+      "docs.cloud.json",
+      JSON.stringify(
+        {
+          docs: {
+            framework: "managed",
+          },
+        },
+        null,
+        2,
+      ),
+    );
+    writeFile(
+      projectRoot,
+      "api/openapi.json",
+      JSON.stringify(
+        {
+          openapi: "3.1.0",
+          info: {
+            title: "Convention API",
+            version: "1.0.0",
+          },
+          paths: {
+            "/health": {
+              get: {
+                summary: "Health",
+                responses: {
+                  "200": {
+                    description: "OK",
+                  },
+                },
+              },
+            },
+          },
+        },
+        null,
+        2,
+      ),
+    );
+
+    const runtime = materializeManagedRuntime(projectRoot);
+    const docsConfig = fs.readFileSync(
+      path.join(projectRoot, ".docs-cloud/site/docs.config.ts"),
+      "utf-8",
+    );
+
+    expect(runtime.homeTarget).toBe("/api-reference");
+    expect(runtime.apiReference.routes).toEqual(["/api-reference"]);
+    expect(docsConfig).toContain('specUrl: "/api/docs/openapi"');
+    expect(
+      fs.existsSync(path.join(projectRoot, ".docs-cloud/site/app/api/docs/openapi/route.ts")),
+    ).toBe(true);
+  });
+
+  it("passes through a remote OpenAPI URL from content.openapi", () => {
+    const projectRoot = makeTempProject();
+
+    writeFile(
+      projectRoot,
+      "docs.cloud.json",
+      JSON.stringify(
+        {
+          docs: {
+            framework: "managed",
+          },
+          content: {
+            openapi: [
+              {
+                name: "Remote API",
+                path: "https://petstore3.swagger.io/api/v3/openapi.json",
+                route: "/api-reference",
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    );
+    writeFile(
+      projectRoot,
+      "docs/index.mdx",
+      `---
+title: "Home"
+---
+
+# Home
+
+[API Reference](/api-reference)
+`,
+    );
+
+    const runtime = materializeManagedRuntime(projectRoot);
+    const docsConfig = fs.readFileSync(
+      path.join(projectRoot, ".docs-cloud/site/docs.config.ts"),
+      "utf-8",
+    );
+
+    expect(runtime.homeTarget).toBe("/docs");
+    expect(runtime.apiReference.routes).toEqual(["/api-reference"]);
+    expect(docsConfig).toContain("apiReference:");
+    expect(docsConfig).toContain('path: "api-reference"');
+    expect(docsConfig).toContain(
+      'specUrl: "https://petstore3.swagger.io/api/v3/openapi.json"',
+    );
+    expect(
+      fs.existsSync(path.join(projectRoot, ".docs-cloud/site/app/api/docs/openapi/route.ts")),
+    ).toBe(false);
   });
 
   it("tracks source changes through the computed stamp", () => {

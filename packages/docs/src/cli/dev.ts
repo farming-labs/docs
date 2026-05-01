@@ -19,6 +19,7 @@ const MANAGED_CONFIG_FILE = "docs.cloud.json";
 const DEFAULT_RUNTIME_ROOT = ".docs-cloud/site";
 const DEFAULT_DOCS_ROOT = "docs";
 const DEFAULT_API_REFERENCE_ROOT = "api-reference";
+const DEFAULT_MANAGED_OPENAPI_ENDPOINT = "/api/docs/openapi";
 const DEFAULT_THEME_PRESET = "default";
 const DEFAULT_POLL_INTERVAL_MS = 750;
 const DEFAULT_NEXT_VERSION = "16.2.3";
@@ -27,6 +28,14 @@ const DEFAULT_TAILWIND_VERSION = "^4.1.18";
 const DEFAULT_POSTCSS_VERSION = "^8.5.6";
 const DEFAULT_TYPESCRIPT_VERSION = "^5.9.3";
 const ANSI_ESCAPE_PATTERN = /\u001B\[[0-9;]*m/g;
+const MANAGED_OPENAPI_CONVENTION_CANDIDATES = [
+  "api/openapi.json",
+  "api/openapi.yaml",
+  "api/openapi.yml",
+  "openapi.json",
+  "openapi.yaml",
+  "openapi.yml",
+] as const;
 
 type ThemePresetName =
   | "default"
@@ -54,10 +63,20 @@ interface ManagedDocsProject {
   runtimeDir: string;
   docsRoot: string;
   apiReferenceRoot: string;
+  apiReferenceSpec?: ManagedOpenApiSpec;
   siteName: string;
   titleTemplate: string;
   description: string;
   theme: ManagedThemePreset;
+}
+
+interface ManagedOpenApiSpec {
+  name: string;
+  route: string;
+  path: string;
+  specUrl: string;
+  sourcePath?: string;
+  navigationLabel?: string;
 }
 
 interface SyncResult {
@@ -83,6 +102,7 @@ interface RewriteContext {
   sourcePagePath: string;
   destinationPagePath: string;
   pageMap: Map<string, string>;
+  routeMap: Map<string, string>;
   assetCopies: Map<string, string>;
   projectRoot: string;
   contentRootHints: string[];
@@ -198,6 +218,18 @@ const managedConfigSchema = z
       .object({
         docsRoot: z.string().optional(),
         apiReferenceRoot: z.string().optional(),
+        openapi: z
+          .array(
+            z
+              .object({
+                name: z.string().optional(),
+                path: z.string(),
+                route: z.string().optional(),
+                navigationLabel: z.string().optional(),
+              })
+              .passthrough(),
+          )
+          .optional(),
       })
       .passthrough()
       .optional(),
@@ -225,6 +257,71 @@ function toPosixPath(value: string): string {
 
 function normalizePathKey(value: string): string {
   return path.resolve(value);
+}
+
+function normalizeManagedRoutePath(value?: string): string {
+  const normalized = value?.trim().replace(/^\/+|\/+$/g, "");
+  return normalized || DEFAULT_API_REFERENCE_ROOT;
+}
+
+function isRemoteManagedSpecPath(value: string): boolean {
+  return /^(?:https?:)?\/\//i.test(value);
+}
+
+function isRequestRelativeManagedSpecPath(value: string): boolean {
+  return value.startsWith("/");
+}
+
+function resolveManagedOpenApiSpec(
+  projectRoot: string,
+  openapi:
+    | Array<{
+        name?: string;
+        path: string;
+        route?: string;
+        navigationLabel?: string;
+      }>
+    | undefined,
+): ManagedOpenApiSpec | undefined {
+  const configured = openapi?.find((entry) => typeof entry.path === "string" && entry.path.trim());
+  if (configured) {
+    const rawPath = configured.path.trim();
+    const route = normalizeManagedRoutePath(configured.route);
+
+    if (isRemoteManagedSpecPath(rawPath) || isRequestRelativeManagedSpecPath(rawPath)) {
+      return {
+        name: configured.name?.trim() || "API Reference",
+        route,
+        path: rawPath,
+        specUrl: rawPath,
+        navigationLabel: configured.navigationLabel?.trim() || undefined,
+      };
+    }
+
+    return {
+      name: configured.name?.trim() || "API Reference",
+      route,
+      path: rawPath,
+      specUrl: DEFAULT_MANAGED_OPENAPI_ENDPOINT,
+      sourcePath: path.resolve(projectRoot, rawPath),
+      navigationLabel: configured.navigationLabel?.trim() || undefined,
+    };
+  }
+
+  for (const candidate of MANAGED_OPENAPI_CONVENTION_CANDIDATES) {
+    const sourcePath = path.join(projectRoot, candidate);
+    if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) continue;
+
+    return {
+      name: "API Reference",
+      route: DEFAULT_API_REFERENCE_ROOT,
+      path: candidate,
+      specUrl: DEFAULT_MANAGED_OPENAPI_ENDPOINT,
+      sourcePath,
+    };
+  }
+
+  return undefined;
 }
 
 function getDocsPackageVersion(): string {
@@ -508,6 +605,7 @@ function readManagedDocsProject(projectRoot: string): ManagedDocsProject {
   const runtimeDir = path.resolve(projectRoot, parsed.data.docs.root ?? DEFAULT_RUNTIME_ROOT);
   const docsSourceDir = path.resolve(projectRoot, docsRoot);
   const apiReferenceSourceDir = path.resolve(projectRoot, apiReferenceRoot);
+  const apiReferenceSpec = resolveManagedOpenApiSpec(projectRoot, parsed.data.content?.openapi);
 
   if (
     runtimeDir === docsSourceDir ||
@@ -530,6 +628,7 @@ function readManagedDocsProject(projectRoot: string): ManagedDocsProject {
     runtimeDir,
     docsRoot,
     apiReferenceRoot,
+    apiReferenceSpec,
     siteName,
     titleTemplate: parsed.data.site?.titleTemplate ?? `%s | ${siteName}`,
     description: parsed.data.site?.description ?? `Documentation for ${siteName}.`,
@@ -587,6 +686,7 @@ function renderRuntimePackageJson(project: ManagedDocsProject): string {
         next: DEFAULT_NEXT_VERSION,
         react: DEFAULT_REACT_VERSION,
         "react-dom": DEFAULT_REACT_VERSION,
+        yaml: "^2.8.2",
       },
       devDependencies: {
         "@tailwindcss/postcss": DEFAULT_TAILWIND_VERSION,
@@ -660,7 +760,21 @@ function renderDocsConfigFile(options: {
   titleTemplate: string;
   description: string;
   theme: ManagedThemePreset;
+  apiReference?: {
+    path: string;
+    specUrl: string;
+  };
 }): string {
+  const apiReferenceBlock = options.apiReference
+    ? `  apiReference: {
+    enabled: true,
+    path: ${JSON.stringify(options.apiReference.path)},
+    renderer: "fumadocs",
+    specUrl: ${JSON.stringify(options.apiReference.specUrl)},
+  },
+`
+    : "";
+
   return `import { defineDocs } from "@farming-labs/docs";
 import { ${options.theme.factory} } from "${options.theme.importPath}";
 
@@ -678,8 +792,116 @@ export default defineDocs({
     titleTemplate: ${JSON.stringify(options.titleTemplate)},
     description: ${JSON.stringify(options.description)},
   },
-});
+${apiReferenceBlock}});
 `;
+}
+
+function renderManagedApiReferenceLayout(): string {
+  return `import docsConfig from "@/docs.config";
+import { createNextApiReferenceLayout } from "@farming-labs/next/api-reference";
+
+const ApiReferenceLayout = createNextApiReferenceLayout(docsConfig);
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return <ApiReferenceLayout>{children}</ApiReferenceLayout>;
+}
+`;
+}
+
+function renderManagedApiReferencePage(): string {
+  return `import docsConfig from "@/docs.config";
+import { createNextApiReferencePage } from "@farming-labs/next/api-reference";
+
+const ApiReferencePage = createNextApiReferencePage(docsConfig);
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default ApiReferencePage;
+`;
+}
+
+function renderManagedOpenApiRoute(project: ManagedDocsProject, spec: ManagedOpenApiSpec): string {
+  const relativeProjectRoot = toPosixPath(
+    path.relative(project.runtimeDir, project.projectRoot) || ".",
+  );
+
+  return `import fs from "node:fs/promises";
+import path from "node:path";
+import { parse } from "yaml";
+
+const projectRoot = path.resolve(process.cwd(), ${JSON.stringify(relativeProjectRoot)});
+const specPath = path.resolve(projectRoot, ${JSON.stringify(spec.path)});
+
+function parseOpenApiDocument(source: string, filePath: string) {
+  const extension = path.extname(filePath).toLowerCase();
+  if (extension === ".yaml" || extension === ".yml") {
+    return parse(source);
+  }
+
+  return JSON.parse(source) as Record<string, unknown>;
+}
+
+export async function GET() {
+  try {
+    const raw = await fs.readFile(specPath, "utf-8");
+    return Response.json(parseOpenApiDocument(raw, specPath));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+
+    return Response.json(
+      {
+        error: "Unable to load OpenAPI document",
+        message,
+        specPath,
+      },
+      {
+        status: 500,
+      },
+    );
+  }
+}
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+`;
+}
+
+function resolveAppRouteDir(appDir: string, route: string): string {
+  return path.join(appDir, ...normalizeManagedRoutePath(route).split("/"));
+}
+
+function createManagedOpenApiSyncResult(route: string): SyncResult {
+  return {
+    pageCount: 1,
+    routes: [`/${normalizeManagedRoutePath(route)}`],
+  };
+}
+
+function getManagedOpenApiTrackedPaths(project: ManagedDocsProject): string[] {
+  if (project.apiReferenceSpec && !project.apiReferenceSpec.sourcePath) {
+    return [];
+  }
+
+  if (project.apiReferenceSpec?.sourcePath) {
+    return [project.apiReferenceSpec.sourcePath];
+  }
+
+  return MANAGED_OPENAPI_CONVENTION_CANDIDATES.map((candidate) =>
+    path.join(project.projectRoot, candidate),
+  );
+}
+
+function validateManagedOpenApiSpec(project: ManagedDocsProject): void {
+  const sourcePath = project.apiReferenceSpec?.sourcePath;
+  if (!sourcePath) return;
+
+  if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) {
+    const relativePath = path.relative(project.projectRoot, sourcePath) || sourcePath;
+    throw new Error(
+      `OpenAPI source not found at ${relativePath}. Update ${MANAGED_CONFIG_FILE} or add the spec file and try again.`,
+    );
+  }
 }
 
 function renderAlternateSectionLayout(configImportPath: string): string {
@@ -863,12 +1085,8 @@ function rewriteReference(rawReference: string, context: RewriteContext): string
   );
 
   if (linkedSourcePage) {
-    const destinationPage = context.pageMap.get(linkedSourcePage)!;
-    let relativeTarget = toPosixPath(
-      path.relative(path.dirname(context.destinationPagePath), path.dirname(destinationPage)),
-    );
-    if (!relativeTarget) relativeTarget = ".";
-    const rewritten = `${relativeTarget}${suffix}`;
+    const destinationRoute = context.routeMap.get(linkedSourcePage)!;
+    const rewritten = `${destinationRoute}${suffix}`;
     return wrapped ? `<${rewritten}>` : rewritten;
   }
 
@@ -904,22 +1122,35 @@ function buildManagedPageMap(
   sections: Array<{
     sourceDir: string;
     destinationDir: string;
+    baseRoute: string;
   }>,
-): Map<string, string> {
+): {
+  pageMap: Map<string, string>;
+  routeMap: Map<string, string>;
+} {
   const pageMap = new Map<string, string>();
+  const routeMap = new Map<string, string>();
 
   for (const section of sections) {
     const pageFiles = walkFiles(section.sourceDir).filter(isPageSourceFile);
     for (const pageFile of pageFiles) {
       const relativeSourcePath = path.relative(section.sourceDir, pageFile);
+      const normalizedSource = normalizePathKey(pageFile);
       pageMap.set(
-        normalizePathKey(pageFile),
+        normalizedSource,
         resolveGeneratedPagePath(section.destinationDir, relativeSourcePath),
+      );
+      routeMap.set(
+        normalizedSource,
+        resolveGeneratedRoute(section.baseRoute, relativeSourcePath),
       );
     }
   }
 
-  return pageMap;
+  return {
+    pageMap,
+    routeMap,
+  };
 }
 
 function syncManagedSection(options: {
@@ -927,6 +1158,7 @@ function syncManagedSection(options: {
   destinationDir: string;
   baseRoute: string;
   pageMap: Map<string, string>;
+  routeMap: Map<string, string>;
   projectRoot: string;
   contentRootHints: string[];
 }): SyncResult {
@@ -953,6 +1185,7 @@ function syncManagedSection(options: {
       sourcePagePath: pageFile,
       destinationPagePath,
       pageMap: options.pageMap,
+      routeMap: options.routeMap,
       assetCopies,
       projectRoot: options.projectRoot,
       contentRootHints: options.contentRootHints,
@@ -996,6 +1229,8 @@ export function computeManagedSourceStamp(projectRoot: string): string {
     trackedPaths.push(...walkFiles(path.join(project.projectRoot, rootName)));
   }
 
+  trackedPaths.push(...getManagedOpenApiTrackedPaths(project));
+
   return trackedPaths
     .map((filePath) => {
       if (!fs.existsSync(filePath)) return `${filePath}:missing`;
@@ -1009,10 +1244,15 @@ export function materializeManagedRuntime(projectRoot: string): MaterializedMana
   const project = readManagedDocsProject(projectRoot);
   const docsSourceDir = path.join(project.projectRoot, project.docsRoot);
   const apiReferenceSourceDir = path.join(project.projectRoot, project.apiReferenceRoot);
+  const hasOpenApiSpec = Boolean(project.apiReferenceSpec);
+  const hasDocsMarkdown = directoryHasMarkdown(docsSourceDir);
+  const hasApiReferenceMarkdown = directoryHasMarkdown(apiReferenceSourceDir);
 
-  if (!directoryHasMarkdown(docsSourceDir) && !directoryHasMarkdown(apiReferenceSourceDir)) {
+  validateManagedOpenApiSpec(project);
+
+  if (!hasDocsMarkdown && !hasApiReferenceMarkdown && !hasOpenApiSpec) {
     throw new Error(
-      `No markdown content found. Add files under ${project.docsRoot}/ or ${project.apiReferenceRoot}/ and try again.`,
+      `No docs content found. Add markdown files under ${project.docsRoot}/ or ${project.apiReferenceRoot}/, or point content.openapi at an OpenAPI file in ${MANAGED_CONFIG_FILE}.`,
     );
   }
 
@@ -1023,11 +1263,17 @@ export function materializeManagedRuntime(projectRoot: string): MaterializedMana
     framework: "nextjs",
     useAlias: true,
     nextAppDir: "app",
+    apiReference: {
+      path: normalizeManagedRoutePath(project.apiReferenceSpec?.route),
+      routeRoot: "api",
+    },
   };
 
   const appDir = path.join(project.runtimeDir, "app");
   const docsDir = path.join(appDir, "docs");
-  const apiReferenceDir = path.join(appDir, "api-reference");
+  const apiReferenceRoute = project.apiReferenceSpec?.route ?? DEFAULT_API_REFERENCE_ROOT;
+  const apiReferenceDir = resolveAppRouteDir(appDir, apiReferenceRoute);
+  const managedOpenApiRouteDir = path.join(appDir, "api", "docs", "openapi");
   const legacyMiddlewarePath = path.join(project.runtimeDir, "middleware.ts");
 
   fs.mkdirSync(project.runtimeDir, { recursive: true });
@@ -1053,20 +1299,30 @@ export function materializeManagedRuntime(projectRoot: string): MaterializedMana
       titleTemplate: project.titleTemplate,
       description: project.description,
       theme: project.theme,
+      apiReference: project.apiReferenceSpec
+        ? {
+            path: apiReferenceRoute,
+            specUrl: project.apiReferenceSpec.specUrl,
+          }
+        : undefined,
     }),
   );
-  writeFileIfChanged(
-    path.join(project.runtimeDir, "api-reference.config.ts"),
-    renderDocsConfigFile({
-      entry: "api-reference",
-      navTitle: `${project.siteName} API Reference`,
-      navUrl: "/api-reference",
-      siteName: project.siteName,
-      titleTemplate: project.titleTemplate,
-      description: project.description,
-      theme: project.theme,
-    }),
-  );
+  if (!project.apiReferenceSpec) {
+    writeFileIfChanged(
+      path.join(project.runtimeDir, "api-reference.config.ts"),
+      renderDocsConfigFile({
+        entry: "api-reference",
+        navTitle: `${project.siteName} API Reference`,
+        navUrl: "/api-reference",
+        siteName: project.siteName,
+        titleTemplate: project.titleTemplate,
+        description: project.description,
+        theme: project.theme,
+      }),
+    );
+  } else {
+    fs.rmSync(path.join(project.runtimeDir, "api-reference.config.ts"), { force: true });
+  }
   writeFileIfChanged(
     path.join(appDir, "layout.tsx"),
     rootLayoutTemplate(templateConfig, "app/global.css"),
@@ -1075,22 +1331,27 @@ export function materializeManagedRuntime(projectRoot: string): MaterializedMana
     path.join(appDir, "global.css"),
     globalCssTemplate(project.theme.templateTheme),
   );
-  writeFileIfChanged(path.join(docsDir, "layout.tsx"), docsLayoutTemplate(templateConfig));
-  writeFileIfChanged(
-    path.join(apiReferenceDir, "layout.tsx"),
-    renderAlternateSectionLayout("@/api-reference.config"),
-  );
 
-  const pageMap = buildManagedPageMap([
-    {
-      sourceDir: docsSourceDir,
-      destinationDir: docsDir,
-    },
-    {
-      sourceDir: apiReferenceSourceDir,
-      destinationDir: apiReferenceDir,
-    },
-  ]);
+  const { pageMap, routeMap } = buildManagedPageMap(
+    [
+      {
+        sourceDir: docsSourceDir,
+        destinationDir: docsDir,
+        baseRoute: "docs",
+      },
+      !project.apiReferenceSpec
+        ? {
+            sourceDir: apiReferenceSourceDir,
+            destinationDir: apiReferenceDir,
+            baseRoute: "api-reference",
+          }
+        : null,
+    ].filter(Boolean) as Array<{
+      sourceDir: string;
+      destinationDir: string;
+      baseRoute: string;
+    }>,
+  );
   const contentRootHints = [
     toPosixPath(project.docsRoot).replace(/\/+$/, ""),
     toPosixPath(project.apiReferenceRoot).replace(/\/+$/, ""),
@@ -1101,17 +1362,50 @@ export function materializeManagedRuntime(projectRoot: string): MaterializedMana
     destinationDir: docsDir,
     baseRoute: "docs",
     pageMap,
+    routeMap,
     projectRoot: project.projectRoot,
     contentRootHints,
   });
-  const apiReference = syncManagedSection({
-    sourceDir: apiReferenceSourceDir,
-    destinationDir: apiReferenceDir,
-    baseRoute: "api-reference",
-    pageMap,
-    projectRoot: project.projectRoot,
-    contentRootHints,
-  });
+  let apiReference: SyncResult;
+
+  if (project.apiReferenceSpec) {
+    fs.rmSync(apiReferenceDir, { recursive: true, force: true });
+    writeFileIfChanged(path.join(apiReferenceDir, "layout.tsx"), renderManagedApiReferenceLayout());
+    writeFileIfChanged(
+      path.join(apiReferenceDir, "[[...slug]]", "page.tsx"),
+      renderManagedApiReferencePage(),
+    );
+
+    if (project.apiReferenceSpec.sourcePath) {
+      writeFileIfChanged(
+        path.join(managedOpenApiRouteDir, "route.ts"),
+        renderManagedOpenApiRoute(project, project.apiReferenceSpec),
+      );
+    } else {
+      fs.rmSync(managedOpenApiRouteDir, { recursive: true, force: true });
+    }
+
+    apiReference = createManagedOpenApiSyncResult(project.apiReferenceSpec.route);
+  } else {
+    fs.rmSync(managedOpenApiRouteDir, { recursive: true, force: true });
+    apiReference = syncManagedSection({
+      sourceDir: apiReferenceSourceDir,
+      destinationDir: apiReferenceDir,
+      baseRoute: "api-reference",
+      pageMap,
+      routeMap,
+      projectRoot: project.projectRoot,
+      contentRootHints,
+    });
+  }
+
+  writeFileIfChanged(path.join(docsDir, "layout.tsx"), docsLayoutTemplate(templateConfig));
+  if (!project.apiReferenceSpec) {
+    writeFileIfChanged(
+      path.join(apiReferenceDir, "layout.tsx"),
+      renderAlternateSectionLayout("@/api-reference.config"),
+    );
+  }
 
   const homeTarget = pickHomeTarget(docs, apiReference);
   writeFileIfChanged(
@@ -1158,6 +1452,10 @@ function getInstallCommand(packageManager: PackageManager): {
     command: "npm",
     args: ["install", "--prefer-offline"],
   };
+}
+
+function getRuntimeInstallStamp(project: ManagedDocsProject): string {
+  return fs.readFileSync(path.join(project.runtimeDir, "package.json"), "utf-8");
 }
 
 async function runCapturedCommand(options: {
@@ -1288,14 +1586,29 @@ function getNextDevArgs(options: DevOptions): string[] {
   return args;
 }
 
+function resolveLocalPreviewOrigin(options: DevOptions): string {
+  const port = options.port ?? "3000";
+  const requestedHost = resolveRequestedHost(options);
+  const hostname =
+    requestedHost === true || requestedHost === "0.0.0.0"
+      ? "localhost"
+      : typeof requestedHost === "string" && requestedHost.trim()
+        ? requestedHost.trim()
+        : "localhost";
+
+  return `http://${hostname}:${port}`;
+}
+
 export async function dev(options: DevOptions = {}): Promise<void> {
   const projectRoot = process.cwd();
   const project = readManagedDocsProject(projectRoot);
   const packageManager = detectNearestPackageManager(projectRoot);
   const initial = materializeManagedRuntime(projectRoot);
   const runtimeNodeModules = path.join(project.runtimeDir, "node_modules");
+  const runtimeInstallMarker = path.join(project.runtimeDir, ".docs-runtime-install-stamp");
   const devLogger = createDevLogger();
   const version = normalizeVersionTag(getDocsPackageVersion());
+  const runtimeInstallStamp = getRuntimeInstallStamp(project);
 
   console.log(pc.dim("Preparing local preview..."));
   if (options.verbose) {
@@ -1317,7 +1630,11 @@ export async function dev(options: DevOptions = {}): Promise<void> {
     );
   }
 
-  if (!fs.existsSync(runtimeNodeModules)) {
+  if (
+    !fs.existsSync(runtimeNodeModules) ||
+    !fs.existsSync(runtimeInstallMarker) ||
+    fs.readFileSync(runtimeInstallMarker, "utf-8") !== runtimeInstallStamp
+  ) {
     if (options.verbose) {
       logLine("install", `Installing runtime dependencies with ${pc.cyan(packageManager)}`);
     }
@@ -1330,6 +1647,7 @@ export async function dev(options: DevOptions = {}): Promise<void> {
       verbose: options.verbose,
       failureMessage: `Failed to install runtime dependencies with ${packageManager}.`,
     });
+    writeFileIfChanged(runtimeInstallMarker, runtimeInstallStamp);
     if (options.verbose) {
       logLine("install", "Runtime dependencies ready");
     }
@@ -1365,6 +1683,10 @@ export async function dev(options: DevOptions = {}): Promise<void> {
   const child = spawn(command, args, {
     cwd: initial.runtimeDir,
     detached: process.platform !== "win32",
+    env: {
+      ...process.env,
+      FARMING_LABS_DOCS_DEV_ORIGIN: resolveLocalPreviewOrigin(options),
+    },
     stdio: ["inherit", "pipe", "pipe"],
     shell: process.platform === "win32",
   });
