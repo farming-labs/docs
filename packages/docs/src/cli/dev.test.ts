@@ -153,9 +153,7 @@ title: "Authentication"
       fs.existsSync(path.join(projectRoot, ".docs/site/app/docs/installation/diagram.png")),
     ).toBe(true);
     expect(
-      fs.existsSync(
-        path.join(projectRoot, ".docs/site/app/api-reference/authentication/page.mdx"),
-      ),
+      fs.existsSync(path.join(projectRoot, ".docs/site/app/api-reference/authentication/page.mdx")),
     ).toBe(true);
   });
 
@@ -263,9 +261,9 @@ title: "Home"
     expect(openApiRoute).toContain(
       'const specPath = path.resolve(projectRoot, "api/openapi.yaml")',
     );
-    expect(
-      fs.existsSync(path.join(projectRoot, ".docs/site/app/api-reference/page.mdx")),
-    ).toBe(false);
+    expect(fs.existsSync(path.join(projectRoot, ".docs/site/app/api-reference/page.mdx"))).toBe(
+      false,
+    );
   });
 
   it("detects api/openapi.json by convention when content.openapi is omitted", () => {
@@ -322,9 +320,9 @@ title: "Home"
     expect(runtime.homeTarget).toBe("/api-reference");
     expect(runtime.apiReference.routes).toEqual(["/api-reference"]);
     expect(docsConfig).toContain('specUrl: "/api/docs/openapi"');
-    expect(
-      fs.existsSync(path.join(projectRoot, ".docs/site/app/api/docs/openapi/route.ts")),
-    ).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, ".docs/site/app/api/docs/openapi/route.ts"))).toBe(
+      true,
+    );
   });
 
   it("passes through a remote OpenAPI URL from content.openapi", () => {
@@ -377,9 +375,9 @@ title: "Home"
     expect(docsConfig).toContain("apiReference:");
     expect(docsConfig).toContain('path: "api-reference"');
     expect(docsConfig).toContain('specUrl: "https://petstore3.swagger.io/api/v3/openapi.json"');
-    expect(
-      fs.existsSync(path.join(projectRoot, ".docs/site/app/api/docs/openapi/route.ts")),
-    ).toBe(false);
+    expect(fs.existsSync(path.join(projectRoot, ".docs/site/app/api/docs/openapi/route.ts"))).toBe(
+      false,
+    );
   });
 
   it("tracks source changes through the computed stamp", () => {
@@ -456,9 +454,7 @@ title: "Home"
     const runtime = materializeManagedRuntime(projectRoot);
 
     expect(runtime.homeTarget).toBe("/docs");
-    expect(
-      fs.existsSync(path.join(projectRoot, ".docs/site/app/docs/page.mdx")),
-    ).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, ".docs/site/app/docs/page.mdx"))).toBe(true);
   });
 
   it("rejects framework mode for frameworkless dev", () => {
