@@ -212,7 +212,7 @@
                 "nuxt"
               ],
               "default": "nextjs",
-              "description": "Generated runtime framework. Next.js is the currently shipped frameworkless runtime."
+              "description": "Generated runtime framework for frameworkless docs."
             },
             "root": {
               "type": "string",

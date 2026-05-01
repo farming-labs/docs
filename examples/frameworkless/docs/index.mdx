@@ -42,8 +42,8 @@ Docs Cloud itself is currently waitlist-based. If you want preview deploys, publ
 AI, or managed hosting, join the waitlist on the
 [Cloud page](https://docs.farming-labs.dev/cloud).
 
-Frameworkless local dev currently uses `nextjs` as the generated runtime, while `docs.runtime`
-is where the underlying runtime choice is defined in the shared config contract.
+`docs.runtime` is intentionally explicit in the shared contract so the runtime can be something
+other than `nextjs` too. This example is using `nextjs` today.
 
 - [Installation](./installation.mdx)
 - [API Reference](/api-reference)

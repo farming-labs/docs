@@ -53,7 +53,8 @@ For a framework-owned docs app:
 ```
 
 `mode` tells you whether content is authored as plain folders or inside a framework app.
-`runtime` tells you which docs runtime is responsible for rendering it.
+`runtime` tells you which docs runtime is responsible for rendering it, and it is meant to stay an
+explicit choice in the contract rather than being implied.
 
 ## Cloud Services
 
@@ -88,5 +89,8 @@ This keeps product packaging separate from docs structure:
 
 ## Current Note
 
-Frameworkless local dev currently ships with a generated Next.js runtime, so `docs.runtime` should
-stay `"nextjs"` for now when using `pnpm exec docs dev`.
+This example uses `nextjs`, but the config shape keeps `docs.runtime` explicit so the same contract
+can support other runtimes too.
+
+When using `pnpm exec docs dev` today, the local frameworkless preview is still generated through
+the Next.js runtime.
