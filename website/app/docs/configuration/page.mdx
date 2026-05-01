@@ -974,6 +974,13 @@ If you just want the UI without a callback, use `feedback: true`.
 
 **Astro:** `feedback: true` still enables the built-in UI with no extra setup. For optional client-side analytics hooks, the same payload is also emitted through `window.__fdOnFeedback__` and the `fd:feedback` custom event.
 
+<Callout type="info" title="Feedback is not prompt context">
+  Page feedback is emitted as untrusted user data. The framework does not add comments from this
+  endpoint to Ask AI prompts, docs search context, or `llms.txt`. If your `onFeedback` callback
+  forwards feedback to an LLM, issue triager, or support workflow, label it as user-provided text
+  and keep your own validation, length limits, and rate limiting in place.
+</Callout>
+
 <Callout type="info" title="How this docs site uses it">
   This website enables `feedback` in `website/docs.config.tsx` and posts the callback payload to
   `website/app/api/feedback/route.ts`, where it is inserted into Prisma with the model defined in
@@ -1149,6 +1156,12 @@ Default behavior:
 - the shared `/api/docs` handler is still the source of truth
 - in Next.js, `withDocs()` adds the public rewrites automatically
 - `feedback.agent` alone does not enable the human footer UI
+
+<Callout type="info" title="Safe by default">
+  Agent feedback submissions are validated data passed to `feedback.agent.onFeedback`; they are not
+  inserted into the Ask AI system prompt or retrieved as documentation context. Treat the payload as
+  untrusted if your callback stores it, opens issues, posts to chat, or sends it to another model.
+</Callout>
 
 Default request shape:
 
