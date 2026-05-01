@@ -14,5 +14,28 @@ This project only contains markdown, `docs.cloud.json`, and an OpenAPI source.
 
 This example is currently using a remote OpenAPI URL for `/api-reference`.
 
+## Config Shape
+
+In this example, `docs.cloud.json` separates the docs project from the hosted cloud layer:
+
+```json
+{
+  "docs": {
+    "mode": "frameworkless",
+    "runtime": "nextjs",
+    "root": ".docs/site"
+  },
+  "cloud": {
+    "enabled": false
+  }
+}
+```
+
+- `docs.mode` describes how the project is authored
+- `docs.runtime` is the generated docs runtime
+- `cloud.enabled` turns the Docs Cloud service layer on or off
+
+Frameworkless local dev currently uses `nextjs` as the generated runtime.
+
 - [Installation](./installation.mdx)
 - [API Reference](/api-reference)
