@@ -107,6 +107,10 @@ function normalizeRemoteSpecUrl(value?: string): string | undefined {
   return trimmed;
 }
 
+function isRequestRelativeSpecUrl(value?: string): boolean {
+  return typeof value === "string" && value.startsWith("/");
+}
+
 export function buildApiReferencePageTitle(config: DocsConfig, title = "API Reference"): string {
   const template = config.metadata?.titleTemplate;
   if (!template) return title;
@@ -532,7 +536,7 @@ export function buildApiReferenceOpenApiDocument(
   }
 
   const routes = buildApiReferenceRoutes(config, options);
-  return buildOpenApiDocumentFromRoutes(config, options.framework, routes);
+  return buildOpenApiDocumentFromRoutes(config, options.framework, routes, options.baseUrl);
 }
 
 export async function buildApiReferenceOpenApiDocumentAsync(
@@ -546,7 +550,7 @@ export async function buildApiReferenceOpenApiDocumentAsync(
 
   try {
     const document = await fetchRemoteOpenApiDocument(apiReference.specUrl, options.baseUrl);
-    return normalizeRemoteOpenApiDocument(document, config);
+    return normalizeRemoteOpenApiDocument(document, config, options.baseUrl);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return buildUnavailableOpenApiDocument(
@@ -560,6 +564,7 @@ function buildOpenApiDocumentFromRoutes(
   config: DocsConfig,
   framework: ApiReferenceFramework,
   routes: ApiReferenceRoute[],
+  baseUrl?: string,
 ): Record<string, unknown> {
   const tags = Array.from(new Set(routes.map((route) => route.tag))).map((name) => ({
     name,
@@ -573,7 +578,7 @@ function buildOpenApiDocumentFromRoutes(
       description: config.metadata?.description ?? `Generated API reference for ${framework}.`,
       version: "0.0.0",
     },
-    servers: [{ url: "/" }],
+    servers: [{ url: baseUrl ?? "/" }],
     tags,
     paths: buildOpenApiPaths(routes),
   };
@@ -680,11 +685,18 @@ async function fetchRemoteOpenApiDocument(
 function normalizeRemoteOpenApiDocument(
   document: Record<string, unknown>,
   config: DocsConfig,
+  baseUrl?: string,
 ): Record<string, unknown> {
+  const apiReference = resolveApiReferenceConfig(config.apiReference);
   const info =
     document.info && typeof document.info === "object" && !Array.isArray(document.info)
       ? (document.info as Record<string, unknown>)
       : {};
+  const normalizedPaths = normalizeRemoteOpenApiPaths(document.paths);
+  const normalizedTags = normalizeRemoteOpenApiTags(document.tags, normalizedPaths);
+  const normalizedServers = isRequestRelativeSpecUrl(apiReference.specUrl)
+    ? [{ url: baseUrl ?? "/" }]
+    : document.servers;
 
   return {
     ...document,
@@ -697,7 +709,116 @@ function normalizeRemoteOpenApiDocument(
           ? info.description
           : config.metadata?.description,
     },
+    servers: normalizedServers,
+    paths: normalizedPaths,
+    tags: normalizedTags,
   };
+}
+
+function normalizeRemoteOpenApiPaths(
+  value: unknown,
+): Record<string, Record<string, unknown>> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const paths = value as Record<string, unknown>;
+  const normalized: Record<string, Record<string, unknown>> = {};
+
+  for (const [routePath, pathItem] of Object.entries(paths)) {
+    if (!pathItem || typeof pathItem !== "object" || Array.isArray(pathItem)) {
+      continue;
+    }
+
+    const normalizedPathItem: Record<string, unknown> = {
+      ...(pathItem as Record<string, unknown>),
+    };
+
+    for (const method of ["get", "post", "put", "patch", "delete", "options", "head"] as const) {
+      const operation = normalizedPathItem[method];
+      if (!operation || typeof operation !== "object" || Array.isArray(operation)) {
+        continue;
+      }
+
+      const operationRecord = operation as Record<string, unknown>;
+      const tags = Array.isArray(operationRecord.tags)
+        ? operationRecord.tags.filter(
+            (tag): tag is string => typeof tag === "string" && tag.trim().length > 0,
+          )
+        : [];
+
+      normalizedPathItem[method] = {
+        ...operationRecord,
+        tags: tags.length > 0 ? tags : [inferRemoteOpenApiTag(routePath)],
+      };
+    }
+
+    normalized[routePath] = normalizedPathItem;
+  }
+
+  return normalized;
+}
+
+function inferRemoteOpenApiTag(routePath: string): string {
+  const segment =
+    routePath
+      .split("/")
+      .filter(Boolean)
+      .find((value) => !value.startsWith("{")) ?? "general";
+
+  return humanizeSegment(segment);
+}
+
+function normalizeRemoteOpenApiTags(
+  value: unknown,
+  paths: Record<string, Record<string, unknown>> | undefined,
+): Array<Record<string, unknown>> {
+  const existingTags = Array.isArray(value)
+    ? value.filter((tag): tag is Record<string, unknown> => !!tag && typeof tag === "object")
+    : [];
+  const tagsByName = new Map<string, Record<string, unknown>>();
+
+  for (const tag of existingTags) {
+    const name = typeof tag.name === "string" && tag.name.trim() ? tag.name.trim() : undefined;
+    if (!name) continue;
+    tagsByName.set(name, tag);
+  }
+
+  if (paths) {
+    for (const pathItem of Object.values(paths)) {
+      for (const method of ["get", "post", "put", "patch", "delete", "options", "head"] as const) {
+        const operation = pathItem[method];
+        if (!operation || typeof operation !== "object" || Array.isArray(operation)) {
+          continue;
+        }
+
+        const tags = Array.isArray((operation as Record<string, unknown>).tags)
+          ? ((operation as Record<string, unknown>).tags as unknown[])
+          : [];
+
+        for (const tag of tags) {
+          if (typeof tag !== "string" || !tag.trim()) continue;
+          if (!tagsByName.has(tag)) {
+            tagsByName.set(tag, {
+              name: tag,
+              description: `${tag} endpoints`,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  if (tagsByName.size === 0) {
+    return [
+      {
+        name: "General",
+        description: "General endpoints",
+      },
+    ];
+  }
+
+  return Array.from(tagsByName.values());
 }
 
 function buildUnavailableOpenApiDocument(

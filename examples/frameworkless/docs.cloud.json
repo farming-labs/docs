@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.farming-labs.dev/schema/cloud.json",
+  "version": 1,
+  "docs": {
+    "mode": "frameworkless",
+    "runtime": "nextjs",
+    "root": ".docs/site"
+  },
+  "content": {
+    "docsRoot": "docs",
+    "apiReferenceRoot": "api-reference",
+    "openapi": [
+      {
+        "name": "Remote API",
+        "path": "https://petstore3.swagger.io/api/v3/openapi.json",
+        "route": "/api-reference"
+      }
+    ]
+  },
+  "site": {
+    "name": "Frameworkless Example",
+    "titleTemplate": "%s | Frameworkless Example",
+    "description": "A local frameworkless docs project powered by @farming-labs/docs."
+  },
+  "theme": {
+    "preset": "colorful"
+  },
+  "cloud": {
+    "enabled": false
+  }
+}

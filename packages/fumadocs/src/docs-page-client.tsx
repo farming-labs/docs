@@ -1,7 +1,15 @@
 "use client";
 
 import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page";
-import { Children, cloneElement, isValidElement, useEffect, useState, type ReactNode } from "react";
+import {
+  Children,
+  Fragment,
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "fumadocs-core/framework";
 import type { DocsFeedbackData } from "@farming-labs/docs";
@@ -250,6 +258,10 @@ function injectTitleDecorations(
   const extras = Children.toArray([description, belowTitle].filter(Boolean));
   if (extras.length === 0) return { node, inserted: false };
 
+  const insertedExtras = extras.map((extra, index) => (
+    <Fragment key={`fd-title-decoration-${index}`}>{extra}</Fragment>
+  ));
+
   function visit(current: ReactNode): ReactNode {
     if (current == null || typeof current === "boolean") return current;
     if (inserted) return current;
@@ -265,7 +277,12 @@ function injectTitleDecorations(
 
     if (typeof current.type === "string" && current.type === "h1") {
       inserted = true;
-      return Children.toArray([current, ...extras]);
+      return (
+        <Fragment key="fd-title-decoration-block">
+          {current}
+          {insertedExtras}
+        </Fragment>
+      );
     }
 
     const childProps = (current.props as { children?: ReactNode } | null) ?? null;
@@ -570,6 +587,7 @@ export function DocsPageClient({
           titlePortalHost,
         )
       : null;
+  const renderedChildren = Children.toArray(decoratedChildren);
 
   return (
     <DocsPage
@@ -599,7 +617,7 @@ export function DocsPageClient({
       )}
       {!showReadingTimeAboveTitle && !showReadingTimeBelowTitle ? readingTimeBlock : null}
       <DocsBody style={{ display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1 }}>{decoratedChildren}</div>
+        <div style={{ flex: 1 }}>{renderedChildren}</div>
         {titleDecorationsPortal}
         {!isChangelogRoute && feedbackEnabled && (
           <DocsFeedback

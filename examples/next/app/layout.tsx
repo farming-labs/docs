@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bebas_Neue, Geist, Geist_Mono, IBM_Plex_Mono } from "next/font/google";
 import { RootProvider } from "@farming-labs/theme";
 import docsConfig from "@/docs.config";
+import "@farming-labs/next/api-reference.css";
 import "./global.css";
 
 const geistSans = Geist({

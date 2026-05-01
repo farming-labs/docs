@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import {
   buildNextOpenApiDocument,
   createNextApiReference,
+  flattenApiReferencePageTreeForSidebar,
   getNextApiReferenceMode,
   withNextApiReferenceBanner,
 } from "./api-reference.js";
@@ -178,5 +179,37 @@ describe("createNextApiReference", () => {
     const response = await handler();
 
     expect(response.status).toBe(404);
+  });
+});
+
+describe("flattenApiReferencePageTreeForSidebar", () => {
+  it("promotes a single top-level folder into direct sidebar items", () => {
+    expect(
+      flattenApiReferencePageTreeForSidebar({
+        name: "API",
+        children: [
+          {
+            type: "folder",
+            name: "Api",
+            children: [
+              {
+                type: "page",
+                name: "Checkout",
+                url: "/api-reference/api/checkout",
+              },
+            ],
+          },
+        ],
+      }),
+    ).toEqual({
+      name: "API",
+      children: [
+        {
+          type: "page",
+          name: "Checkout",
+          url: "/api-reference/api/checkout",
+        },
+      ],
+    });
   });
 });

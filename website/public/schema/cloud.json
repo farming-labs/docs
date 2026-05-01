@@ -181,42 +181,28 @@
       "description": "Config schema version."
     },
     "docs": {
-      "description": "Docs runtime configuration. In managed mode, authored content stays in ./docs and ./api-reference while docs.root points at the generated runtime directory.",
+      "description": "Docs project shape. mode describes whether content is authored as a frameworkless source tree or inside a framework app. runtime describes the underlying docs runtime.",
       "default": {
-        "framework": "nextjs",
-        "root": "apps/docs"
+        "mode": "frameworkless",
+        "runtime": "nextjs",
+        "root": ".docs/site"
       },
       "oneOf": [
         {
-          "title": "Managed Markdown Runtime",
+          "title": "Frameworkless Runtime",
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "framework"
+            "mode"
           ],
           "properties": {
-            "framework": {
+            "mode": {
               "type": "string",
-              "const": "managed",
-              "default": "managed",
-              "description": "Markdown-first mode managed by Docs Cloud."
+              "const": "frameworkless",
+              "default": "frameworkless",
+              "description": "Markdown-first docs authored in docs/ and api-reference/, with a generated hidden runtime."
             },
-            "root": {
-              "type": "string",
-              "default": ".docs-cloud/site",
-              "description": "Generated runtime root used by managed mode."
-            }
-          }
-        },
-        {
-          "title": "Framework Runtime",
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "framework"
-          ],
-          "properties": {
-            "framework": {
+            "runtime": {
               "type": "string",
               "enum": [
                 "nextjs",
@@ -226,7 +212,41 @@
                 "nuxt"
               ],
               "default": "nextjs",
-              "description": "Framework used by the docs runtime."
+              "description": "Generated runtime framework. Next.js is the currently shipped frameworkless runtime."
+            },
+            "root": {
+              "type": "string",
+              "default": ".docs/site",
+              "description": "Generated runtime root used by frameworkless mode."
+            }
+          }
+        },
+        {
+          "title": "Framework Runtime",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "runtime"
+          ],
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "framework",
+              "default": "framework",
+              "description": "Docs run inside a user-owned framework app."
+            },
+            "runtime": {
+              "type": "string",
+              "enum": [
+                "nextjs",
+                "tanstack-start",
+                "sveltekit",
+                "astro",
+                "nuxt"
+              ],
+              "default": "nextjs",
+              "description": "Framework used by the docs app."
             },
             "root": {
               "type": "string",
@@ -563,49 +583,86 @@
         }
       }
     },
+    "cloud": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {
+        "enabled": false
+      },
+      "description": "Hosted Docs Cloud services layered on top of the docs project. Authentication and API keys are handled outside this file.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this project is connected to Docs Cloud services."
+        },
+        "preview": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": {
+            "enabled": true
+          },
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether Docs Cloud should request preview deployments."
+            }
+          }
+        },
+        "publish": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": {
+            "mode": "draft-pr",
+            "baseBranch": "main"
+          },
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "draft-pr",
+                "direct-commit"
+              ],
+              "default": "draft-pr",
+              "description": "How Docs Cloud publishes generated documentation changes."
+            },
+            "baseBranch": {
+              "type": "string",
+              "minLength": 1,
+              "default": "main",
+              "description": "Repository branch that docs work should target."
+            }
+          }
+        },
+        "ai": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether hosted Docs Cloud AI features are enabled for this project."
+            }
+          }
+        },
+        "deploy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether Docs Cloud should manage hosted docs deployments for this project."
+            }
+          }
+        }
+      }
+    },
     "extensions": {
       "type": "object",
       "description": "Vendor-specific or project-specific extensions. Prefer namespaced keys such as your company or package name.",
       "additionalProperties": true
-    },
-    "preview": {
-      "type": "object",
-      "additionalProperties": false,
-      "default": {
-        "enabled": true
-      },
-      "properties": {
-        "enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Whether Docs Cloud should request preview deployments."
-        }
-      }
-    },
-    "publish": {
-      "type": "object",
-      "additionalProperties": false,
-      "default": {
-        "mode": "draft-pr",
-        "baseBranch": "main"
-      },
-      "properties": {
-        "mode": {
-          "type": "string",
-          "enum": [
-            "draft-pr",
-            "direct-commit"
-          ],
-          "default": "draft-pr",
-          "description": "How Docs Cloud publishes generated documentation changes."
-        },
-        "baseBranch": {
-          "type": "string",
-          "minLength": 1,
-          "default": "main",
-          "description": "Repository branch that docs work should target."
-        }
-      }
     }
   },
   "examples": [
@@ -613,8 +670,9 @@
       "$schema": "https://docs.farming-labs.dev/schema/cloud.json",
       "version": 1,
       "docs": {
-        "framework": "managed",
-        "root": ".docs-cloud/site"
+        "mode": "frameworkless",
+        "runtime": "nextjs",
+        "root": ".docs/site"
       },
       "content": {
         "docsRoot": "docs",
@@ -751,6 +809,22 @@
         "support": "https://acme.dev/support",
         "changelog": "https://acme.dev/changelog"
       },
+      "cloud": {
+        "enabled": true,
+        "preview": {
+          "enabled": true
+        },
+        "publish": {
+          "mode": "draft-pr",
+          "baseBranch": "main"
+        },
+        "ai": {
+          "enabled": true
+        },
+        "deploy": {
+          "enabled": true
+        }
+      },
       "extensions": {
         "acme": {
           "releaseChannels": [
@@ -763,28 +837,25 @@
         "enabled": true,
         "provider": "local",
         "placeholder": "Search the docs"
-      },
-      "preview": {
-        "enabled": true
-      },
-      "publish": {
-        "mode": "draft-pr",
-        "baseBranch": "main"
       }
     },
     {
       "$schema": "https://docs.farming-labs.dev/schema/cloud.json",
       "version": 1,
       "docs": {
-        "framework": "nextjs",
+        "mode": "framework",
+        "runtime": "nextjs",
         "root": "apps/docs"
       },
-      "preview": {
-        "enabled": true
-      },
-      "publish": {
-        "mode": "draft-pr",
-        "baseBranch": "main"
+      "cloud": {
+        "enabled": true,
+        "preview": {
+          "enabled": true
+        },
+        "publish": {
+          "mode": "draft-pr",
+          "baseBranch": "main"
+        }
       }
     }
   ]

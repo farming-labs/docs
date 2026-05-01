@@ -1,0 +1,35 @@
+openapi: 3.1.0
+info:
+  title: Frameworkless Example API
+  version: 1.0.0
+  description: API reference rendered from a local OpenAPI file in frameworkless mode.
+paths:
+  /auth/login:
+    post:
+      summary: Login
+      description: Exchange credentials for an access token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required:
+                - email
+                - password
+      responses:
+        "200":
+          description: Login succeeded.
+  /auth/me:
+    get:
+      summary: Get Current User
+      description: Return the authenticated user profile.
+      responses:
+        "200":
+          description: User profile.

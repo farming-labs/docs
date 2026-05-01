@@ -52,12 +52,12 @@ const i18nConfig: NonNullable<TemplateConfig["i18n"]> = {
 };
 
 describe("docsLayoutTemplate", () => {
-  it("includes createDocsLayout, createDocsMetadata, and explicit Layout export", () => {
+  it("includes createNextDocsLayout, createNextDocsMetadata, and explicit Layout export", () => {
     const out = docsLayoutTemplate(baseConfig);
-    expect(out).toContain("createDocsLayout");
-    expect(out).toContain("createDocsMetadata");
-    expect(out).toContain("export const metadata = createDocsMetadata(docsConfig)");
-    expect(out).toContain("const DocsLayout = createDocsLayout(docsConfig)");
+    expect(out).toContain("createNextDocsLayout");
+    expect(out).toContain("createNextDocsMetadata");
+    expect(out).toContain("export const metadata = createNextDocsMetadata(docsConfig)");
+    expect(out).toContain("const DocsLayout = createNextDocsLayout(docsConfig)");
     expect(out).toContain("export default function Layout(");
     expect(out).toContain("<DocsLayout>{children}</DocsLayout>");
     expect(out).toContain("{children}");
@@ -97,7 +97,6 @@ describe("docsLayoutTemplate", () => {
       { ...baseConfig, useAlias: false, nextAppDir: "app" },
       "app/api-reference/[[...slug]]/page.tsx",
     );
-    expect(out).toContain('import "@farming-labs/next/api-reference.css"');
     expect(out).toContain("createNextApiReferencePage");
     expect(out).toContain('import docsConfig from "../../../docs.config"');
   });
@@ -116,6 +115,25 @@ describe("rootLayoutTemplate", () => {
   it("resolves CSS import for app/ path", () => {
     const out = rootLayoutTemplate(baseConfig, "app/globals.css");
     expect(out).toContain('import "./globals.css"');
+  });
+
+  it("loads api-reference.css before theme css when apiReference is enabled", () => {
+    const out = rootLayoutTemplate(
+      {
+        ...baseConfig,
+        apiReference: {
+          path: "api-reference",
+          routeRoot: "api",
+        },
+      },
+      "app/globals.css",
+    );
+    expect(out).toContain('import "@farming-labs/next/api-reference.css";');
+    expect(out).toContain('import "./globals.css"');
+    expect(
+      out.indexOf('import "@farming-labs/next/api-reference.css";') <
+        out.indexOf('import "./globals.css"'),
+    ).toBe(true);
   });
 
   it("resolves CSS import for src/app/ path", () => {

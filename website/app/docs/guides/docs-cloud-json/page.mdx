@@ -1,0 +1,92 @@
+---
+title: "docs.cloud.json"
+description: "How the shared docs.cloud.json contract separates docs structure from Docs Cloud services"
+related:
+  - /docs/guides
+  - /docs/configuration
+  - /docs/cli
+order: 2
+---
+
+# docs.cloud.json
+
+Use `docs.cloud.json` when you want a repo-level contract for frameworkless docs or for connecting
+an existing docs app to Docs Cloud services.
+
+The important split is:
+
+- `docs` describes how the docs project is structured
+- `cloud` describes hosted Docs Cloud services layered on top
+
+## Project Shape
+
+For frameworkless docs:
+
+```json
+{
+  "$schema": "https://docs.farming-labs.dev/schema/cloud.json",
+  "version": 1,
+  "docs": {
+    "mode": "frameworkless",
+    "runtime": "nextjs",
+    "root": ".docs/site"
+  },
+  "content": {
+    "docsRoot": "docs",
+    "apiReferenceRoot": "api-reference"
+  }
+}
+```
+
+For a framework-owned docs app:
+
+```json
+{
+  "$schema": "https://docs.farming-labs.dev/schema/cloud.json",
+  "version": 1,
+  "docs": {
+    "mode": "framework",
+    "runtime": "nextjs",
+    "root": "apps/docs"
+  }
+}
+```
+
+`mode` tells you whether content is authored as plain folders or inside a framework app.
+`runtime` tells you which docs runtime is responsible for rendering it.
+
+## Cloud Services
+
+Hosted features live under `cloud`:
+
+```json
+{
+  "cloud": {
+    "enabled": true,
+    "preview": {
+      "enabled": true
+    },
+    "publish": {
+      "mode": "draft-pr",
+      "baseBranch": "main"
+    },
+    "ai": {
+      "enabled": true
+    },
+    "deploy": {
+      "enabled": true
+    }
+  }
+}
+```
+
+This keeps product packaging separate from docs structure:
+
+- `frameworkless` is an authoring mode
+- `nextjs` is a runtime
+- Docs Cloud is the hosted layer that can add preview, publish, AI, and deploy services
+
+## Current Note
+
+Frameworkless local dev currently ships with a generated Next.js runtime, so `docs.runtime` should
+stay `"nextjs"` for now when using `pnpm exec docs dev`.

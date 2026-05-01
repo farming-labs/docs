@@ -11,7 +11,7 @@ import {
 } from "@farming-labs/docs/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import DocsClientCallbacks from "./client-callbacks.js";
 
 export { resolveApiReferenceConfig };
@@ -37,6 +37,7 @@ export interface NextApiReferenceSourceState {
     title: string;
     description?: string;
   };
+  primaryServerUrl?: string;
   pages: Array<{ url: string } & Record<string, any>>;
   server: any;
   source: {
@@ -240,14 +241,34 @@ function getForwardedHeaderValue(value: string | null): string | undefined {
   return first || undefined;
 }
 
+function getOriginFromHeaderUrl(value: string | null): string | undefined {
+  if (!value) return undefined;
+
+  try {
+    return new URL(value).origin;
+  } catch {
+    return undefined;
+  }
+}
+
 async function getOriginFromNextHeaders(): Promise<string | undefined> {
   const { headers } = await import("next/headers");
   const headerList = await headers();
+  const hintedOrigin =
+    getOriginFromHeaderUrl(headerList.get("origin")) ??
+    getOriginFromHeaderUrl(headerList.get("referer"));
+
+  if (hintedOrigin) {
+    return hintedOrigin;
+  }
+
   const host =
     getForwardedHeaderValue(headerList.get("x-forwarded-host")) ??
     getForwardedHeaderValue(headerList.get("host"));
 
-  if (!host) return undefined;
+  if (!host || host === "loading") {
+    return process.env.FARMING_LABS_DOCS_DEV_ORIGIN;
+  }
 
   const protocol = getForwardedHeaderValue(headerList.get("x-forwarded-proto")) ?? "https";
   return `${protocol}://${host}`;
@@ -444,6 +465,8 @@ function SwitcherGlyph({
 
   return (
     <span
+      className="fd-api-reference-switcher-glyph"
+      data-active={active ? "true" : "false"}
       aria-hidden="true"
       style={{
         display: "inline-flex",
@@ -451,13 +474,10 @@ function SwitcherGlyph({
         height: 22,
         alignItems: "center",
         justifyContent: "center",
-        borderRadius: radius,
-        border: "1px solid color-mix(in srgb, var(--color-fd-border, #2a2a2a) 100%, transparent)",
-        background: "color-mix(in srgb, var(--color-fd-card, #161616) 92%, transparent)",
         color: active
           ? "var(--color-fd-primary, currentColor)"
-          : "var(--color-fd-muted-foreground, rgba(255,255,255,0.72))",
-        boxShadow: "0 0 0 1px color-mix(in srgb, var(--color-fd-border, #2a2a2a) 32%, transparent)",
+          : "var(--fd-api-switcher-muted, var(--color-fd-muted-foreground, rgba(255,255,255,0.72)))",
+        borderRadius: radius,
       }}
     >
       {isApi ? (
@@ -487,12 +507,12 @@ function SwitcherGlyph({
 function ChevronStack() {
   return (
     <span
+      className="fd-api-reference-switcher-chevron"
       aria-hidden="true"
       style={{
         display: "inline-flex",
         flexDirection: "column",
         gap: 2,
-        color: "var(--color-fd-muted-foreground, rgba(255,255,255,0.65))",
       }}
     >
       <svg width="11" height="7" viewBox="0 0 10 6" fill="none">
@@ -717,6 +737,40 @@ function ApiReferenceThemeBridge({ config }: { config: DocsConfig }) {
   );
 }
 
+function ApiReferenceServerUrlPatchScript({ serverUrl }: { serverUrl?: string }) {
+  if (!serverUrl) return null;
+
+  const script = `(function () {
+    var raw = ${JSON.stringify(serverUrl)};
+    var resolve = function () {
+      try {
+        return new URL(raw, window.location.origin).toString();
+      } catch {
+        return window.location.origin;
+      }
+    };
+    var apply = function () {
+      var label = resolve();
+      document
+        .querySelectorAll('.fd-api-reference-route button[aria-haspopup="dialog"] code.truncate')
+        .forEach(function (node) {
+          if (node.textContent && node.textContent.trim() === 'loading...') {
+            node.textContent = label;
+          }
+        });
+    };
+
+    apply();
+    window.requestAnimationFrame(apply);
+    window.setTimeout(apply, 200);
+    window.setTimeout(apply, 1200);
+  })();`;
+
+  return (
+    <script id="fd-api-reference-server-url-patch" dangerouslySetInnerHTML={{ __html: script }} />
+  );
+}
+
 function SwitcherOption({
   href,
   kind,
@@ -736,6 +790,8 @@ function SwitcherOption({
 
   return (
     <Link
+      className="fd-api-reference-switcher-option"
+      data-current={current ? "true" : "false"}
       href={href}
       prefetch
       style={{
@@ -747,9 +803,6 @@ function SwitcherOption({
         borderRadius: "0.625rem",
         textDecoration: "none",
         color: "inherit",
-        background: current
-          ? "linear-gradient(90deg, color-mix(in srgb, var(--color-fd-primary, #facc15) 20%, transparent), color-mix(in srgb, var(--color-fd-primary, #facc15) 14%, transparent))"
-          : "transparent",
         backgroundImage: current ? theme.backgroundImage : undefined,
       }}
     >
@@ -783,30 +836,33 @@ function ApiReferenceSwitcher({
 }) {
   const currentLabel = current === "api" ? "API Reference" : "Documentation";
   const theme = getApiReferenceSwitcherTheme(config);
+  const themeStyle = resolveApiReferenceThemeStyle(config);
+  const switcherStyle = {
+    position: "relative",
+    marginBottom: 16,
+    overflow: "hidden",
+    backgroundImage: theme.backgroundImage,
+    boxShadow: theme.boxShadow,
+    ["--fd-api-switcher-card-radius" as "--fd-api-switcher-card-radius"]: theme.cardRadius,
+    ["--fd-api-switcher-icon-radius" as "--fd-api-switcher-icon-radius"]: theme.iconRadius,
+    ["--fd-api-switcher-shadow" as "--fd-api-switcher-shadow"]: theme.boxShadow,
+  } as CSSProperties;
 
   return (
     <details
-      style={{
-        position: "relative",
-        marginBottom: 16,
-        borderRadius: theme.cardRadius,
-        border: "1px solid color-mix(in srgb, var(--color-fd-border, #2a2a2a) 100%, transparent)",
-        background: "color-mix(in srgb, var(--color-fd-card, #141414) 94%, transparent)",
-        boxShadow: theme.boxShadow,
-        overflow: "hidden",
-        backgroundImage: theme.backgroundImage,
-      }}
+      className="fd-api-reference-switcher"
+      data-theme-style={themeStyle}
+      style={switcherStyle}
     >
       <summary
+        className="fd-api-reference-switcher-summary"
         style={{
-          listStyle: "none",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           gap: 10,
           cursor: "pointer",
           padding: "10px 13px",
-          background: "color-mix(in srgb, var(--color-fd-card, #202020) 96%, transparent)",
         }}
       >
         <span style={{ display: "flex", minWidth: 0, alignItems: "center", gap: 10 }}>
@@ -819,12 +875,12 @@ function ApiReferenceSwitcher({
       </summary>
 
       <div
+        className="fd-api-reference-switcher-options"
         style={{
           display: "flex",
           flexDirection: "column",
           gap: 2,
           padding: "8px 8px 9px",
-          background: "color-mix(in srgb, var(--color-fd-card, #151515) 96%, transparent)",
         }}
       >
         <SwitcherOption
@@ -853,6 +909,12 @@ function getExistingSidebarBanner(config: DocsConfig): unknown {
   return config.sidebar.banner;
 }
 
+function resolveApiReferenceThemeStyle(config: DocsConfig): string | undefined {
+  const themeName = config.theme?.name?.toLowerCase() ?? "";
+  if (themeName.includes("colorful")) return "colorful";
+  return undefined;
+}
+
 function mergeBanner(existing: unknown, next: ReactNode) {
   if (!existing) return next;
 
@@ -860,6 +922,75 @@ function mergeBanner(existing: unknown, next: ReactNode) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {existing as ReactNode}
       {next}
+    </div>
+  );
+}
+
+export function flattenApiReferencePageTreeForSidebar(tree: any) {
+  if (!tree || typeof tree !== "object") return tree;
+
+  const root = tree as {
+    children?: unknown[];
+  };
+
+  if (!Array.isArray(root.children) || root.children.length !== 1) {
+    return tree;
+  }
+
+  const [onlyChild] = root.children;
+  if (!onlyChild || typeof onlyChild !== "object") {
+    return tree;
+  }
+
+  const folder = onlyChild as {
+    type?: string;
+    children?: unknown[];
+    index?: unknown;
+  };
+
+  if (folder.type !== "folder" || !Array.isArray(folder.children)) {
+    return tree;
+  }
+
+  const nextChildren = [...(folder.index ? [folder.index] : []), ...folder.children];
+  if (nextChildren.length === 0) {
+    return tree;
+  }
+
+  return {
+    ...root,
+    children: nextChildren,
+  };
+}
+
+function renderApiReferenceOperationLayout(slots: {
+  header: ReactNode;
+  description: ReactNode;
+  apiExample: ReactNode;
+  apiPlayground: ReactNode;
+  authSchemes: ReactNode;
+  parameters: ReactNode;
+  body: ReactNode;
+  responses: ReactNode;
+  callbacks: ReactNode;
+}) {
+  return (
+    <div className="fd-api-reference-operation">
+      <div className="fd-api-reference-operation-main">
+        {slots.header}
+        {slots.apiPlayground}
+        {slots.description ? (
+          <div className="fd-api-reference-operation-description">{slots.description}</div>
+        ) : null}
+        {slots.authSchemes}
+        {slots.parameters}
+        {slots.body}
+        {slots.responses}
+        {slots.callbacks}
+      </div>
+      {slots.apiExample ? (
+        <div className="fd-api-reference-operation-example">{slots.apiExample}</div>
+      ) : null}
     </div>
   );
 }
@@ -960,11 +1091,10 @@ export function createNextApiReferencePage(config: DocsConfig) {
   return async function NextApiReferencePage(props?: {
     params?: Promise<{ slug?: string[] }> | { slug?: string[] };
   }) {
-    const [{ createAPIPage }, { DocsBody, DocsDescription, DocsPage, DocsTitle }] =
-      await Promise.all([
-        import("fumadocs-openapi/ui"),
-        import("fumadocs-ui/layouts/notebook/page"),
-      ]);
+    const [{ createAPIPage }, { DocsDescription, DocsPage, DocsTitle }] = await Promise.all([
+      import("fumadocs-openapi/ui"),
+      import("fumadocs-ui/layouts/notebook/page"),
+    ]);
     const { info, pages, server, source } = await getNextApiReferenceSourceState(config);
     const resolvedParams = props?.params ? await props.params : undefined;
     const slug = resolvedParams?.slug ?? [];
@@ -974,11 +1104,11 @@ export function createNextApiReferencePage(config: DocsConfig) {
         <DocsPage full>
           <DocsTitle>{info.title}</DocsTitle>
           <DocsDescription>{info.description}</DocsDescription>
-          <DocsBody>
+          <div className="fd-api-reference-body">
             <div className="rounded-xl border border-fd-border bg-fd-card p-6 text-sm text-fd-muted-foreground">
               No operations were found in the OpenAPI document.
             </div>
-          </DocsBody>
+          </div>
         </DocsPage>
       );
     }
@@ -988,7 +1118,11 @@ export function createNextApiReferencePage(config: DocsConfig) {
       notFound();
     }
 
-    const APIPage = createAPIPage(server);
+    const APIPage = (createAPIPage as any)(server, {
+      content: {
+        renderOperationLayout: renderApiReferenceOperationLayout,
+      },
+    });
     const currentPageIndex =
       slug.length === 0 ? 0 : pages.findIndex((entry) => entry.url === page.url);
     const previousPage = currentPageIndex > 0 ? pages[currentPageIndex - 1] : undefined;
@@ -1010,9 +1144,9 @@ export function createNextApiReferencePage(config: DocsConfig) {
             ? page.data.description
             : info.description}
         </DocsDescription>
-        <DocsBody>
+        <div className="fd-api-reference-body">
           <APIPage {...page.data.getAPIPageProps()} />
-        </DocsBody>
+        </div>
         {previousPage || nextPage ? (
           <nav className="fd-api-reference-pagination" aria-label="API reference pagination">
             {previousPage ? (
@@ -1061,20 +1195,22 @@ export function createNextApiReferencePage(config: DocsConfig) {
 export function createNextApiReferenceLayout(config: DocsConfig) {
   return async function NextApiReferenceLayout(props: { children: React.ReactNode }) {
     const { DocsLayout } = await import("fumadocs-ui/layouts/notebook");
-    const { apiReference, source } = await getNextApiReferenceSourceState(config);
+    const { apiReference, primaryServerUrl, source } = await getNextApiReferenceSourceState(config);
+    const sidebarTree = flattenApiReferencePageTreeForSidebar(source.getPageTree());
     const docsUrl = getDocsUrl(config);
     const apiUrl = `/${apiReference.path}`;
     const themeSwitch = resolveApiReferenceThemeSwitch(config.themeToggle);
+    const themeStyle = resolveApiReferenceThemeStyle(config);
     const banner = mergeBanner(
       getExistingSidebarBanner(config),
       <ApiReferenceSwitcher docsUrl={docsUrl} apiUrl={apiUrl} current="api" config={config} />,
     );
 
     return (
-      <div className="fd-api-reference-route" data-api-reference="">
-        <DocsClientCallbacks />
+      <div className="fd-api-reference-route" data-api-reference="" data-theme-style={themeStyle}>
+        <DocsClientCallbacks apiReferencePrimaryServerUrl={primaryServerUrl} />
         <DocsLayout
-          tree={source.getPageTree()}
+          tree={sidebarTree}
           sidebar={{ banner }}
           themeSwitch={themeSwitch}
           nav={{
@@ -1083,6 +1219,7 @@ export function createNextApiReferenceLayout(config: DocsConfig) {
           }}
         >
           <ApiReferenceThemeBridge config={config} />
+          <ApiReferenceServerUrlPatchScript serverUrl={primaryServerUrl} />
           {props.children}
         </DocsLayout>
       </div>
@@ -1142,6 +1279,11 @@ export async function getNextApiReferenceSourceState(
     apiReference,
     document,
     info,
+    primaryServerUrl:
+      Array.isArray((document as { servers?: Array<{ url?: unknown }> }).servers) &&
+      typeof (document as { servers?: Array<{ url?: unknown }> }).servers?.[0]?.url === "string"
+        ? ((document as { servers?: Array<{ url?: string }> }).servers?.[0]?.url ?? undefined)
+        : undefined,
     pages: source.getPages(),
     server,
     source,

@@ -128,6 +128,39 @@ describe("buildApiReferenceOpenApiDocument", () => {
     }
   });
 
+  it("adds fallback tags to hosted OpenAPI operations when they are missing", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => createRemoteOpenApiResponse()),
+    );
+
+    const config = defineDocs({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+        specUrl: "https://example.com/openapi.json",
+      },
+    });
+
+    const document = await buildApiReferenceOpenApiDocumentAsync(config, {
+      framework: "next",
+    });
+
+    expect(document.tags).toEqual([
+      {
+        name: "Pets",
+        description: "Pets endpoints",
+      },
+    ]);
+    expect(document.paths).toMatchObject({
+      "/pets": {
+        get: {
+          tags: ["Pets"],
+        },
+      },
+    });
+  });
+
   it("resolves request-relative spec URLs against the request origin", async () => {
     const fetchMock = vi.fn().mockImplementation(async (input: URL | string) => {
       expect(String(input)).toBe("https://example.com/api/openapi.json");
@@ -152,6 +185,7 @@ describe("buildApiReferenceOpenApiDocument", () => {
       info: {
         title: "Remote Pets",
       },
+      servers: [{ url: "https://example.com" }],
       paths: {
         "/pets": {
           get: expect.any(Object),
@@ -159,6 +193,47 @@ describe("buildApiReferenceOpenApiDocument", () => {
       },
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the provided request origin for generated local route references", () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-api-ref-local-"));
+    tempDirs.push(rootDir);
+
+    const apiDir = join(rootDir, "app", "api", "checkout");
+    mkdirSync(apiDir, { recursive: true });
+    writeFileSync(
+      join(apiDir, "route.ts"),
+      [
+        "/** Create a checkout session. */",
+        "export async function POST() {",
+        "  return Response.json({ ok: true });",
+        "}",
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    const config = defineDocs({
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+      },
+    });
+
+    const document = buildApiReferenceOpenApiDocument(config, {
+      framework: "next",
+      rootDir,
+      baseUrl: "http://127.0.0.1:4041",
+    });
+
+    expect(document).toMatchObject({
+      servers: [{ url: "http://127.0.0.1:4041" }],
+      paths: {
+        "/api/checkout": {
+          post: expect.any(Object),
+        },
+      },
+    });
   });
 
   it("renders hosted OpenAPI HTML for every framework", async () => {
