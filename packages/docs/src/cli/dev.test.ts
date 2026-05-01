@@ -253,12 +253,14 @@ title: "Home"
     expect(docsConfig).toContain('path: "api-reference"');
     expect(docsConfig).toContain('specUrl: "/api/docs/openapi"');
     expect(docsConfig).toContain('renderer: "fumadocs"');
-    expect(rootLayout).toContain('@farming-labs/next/api-reference.css');
+    expect(rootLayout).toContain("@farming-labs/next/api-reference.css");
     expect(apiReferenceLayout).toContain("createNextApiReferenceLayout");
     expect(apiReferencePage).toContain("createNextApiReferencePage");
-    expect(apiReferencePage).not.toContain('@farming-labs/next/api-reference.css');
+    expect(apiReferencePage).not.toContain("@farming-labs/next/api-reference.css");
     expect(openApiRoute).toContain('import { parse } from "yaml"');
-    expect(openApiRoute).toContain('const specPath = path.resolve(projectRoot, "api/openapi.yaml")');
+    expect(openApiRoute).toContain(
+      'const specPath = path.resolve(projectRoot, "api/openapi.yaml")',
+    );
     expect(
       fs.existsSync(path.join(projectRoot, ".docs-cloud/site/app/api-reference/page.mdx")),
     ).toBe(false);
@@ -370,9 +372,7 @@ title: "Home"
     expect(runtime.apiReference.routes).toEqual(["/api-reference"]);
     expect(docsConfig).toContain("apiReference:");
     expect(docsConfig).toContain('path: "api-reference"');
-    expect(docsConfig).toContain(
-      'specUrl: "https://petstore3.swagger.io/api/v3/openapi.json"',
-    );
+    expect(docsConfig).toContain('specUrl: "https://petstore3.swagger.io/api/v3/openapi.json"');
     expect(
       fs.existsSync(path.join(projectRoot, ".docs-cloud/site/app/api/docs/openapi/route.ts")),
     ).toBe(false);

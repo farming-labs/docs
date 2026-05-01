@@ -1140,10 +1140,7 @@ function buildManagedPageMap(
         normalizedSource,
         resolveGeneratedPagePath(section.destinationDir, relativeSourcePath),
       );
-      routeMap.set(
-        normalizedSource,
-        resolveGeneratedRoute(section.baseRoute, relativeSourcePath),
-      );
+      routeMap.set(normalizedSource, resolveGeneratedRoute(section.baseRoute, relativeSourcePath));
     }
   }
 

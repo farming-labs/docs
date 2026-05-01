@@ -766,7 +766,9 @@ function ApiReferenceServerUrlPatchScript({ serverUrl }: { serverUrl?: string })
     window.setTimeout(apply, 1200);
   })();`;
 
-  return <script id="fd-api-reference-server-url-patch" dangerouslySetInnerHTML={{ __html: script }} />;
+  return (
+    <script id="fd-api-reference-server-url-patch" dangerouslySetInnerHTML={{ __html: script }} />
+  );
 }
 
 function SwitcherOption({
@@ -1089,11 +1091,10 @@ export function createNextApiReferencePage(config: DocsConfig) {
   return async function NextApiReferencePage(props?: {
     params?: Promise<{ slug?: string[] }> | { slug?: string[] };
   }) {
-    const [{ createAPIPage }, { DocsDescription, DocsPage, DocsTitle }] =
-      await Promise.all([
-        import("fumadocs-openapi/ui"),
-        import("fumadocs-ui/layouts/notebook/page"),
-      ]);
+    const [{ createAPIPage }, { DocsDescription, DocsPage, DocsTitle }] = await Promise.all([
+      import("fumadocs-openapi/ui"),
+      import("fumadocs-ui/layouts/notebook/page"),
+    ]);
     const { info, pages, server, source } = await getNextApiReferenceSourceState(config);
     const resolvedParams = props?.params ? await props.params : undefined;
     const slug = resolvedParams?.slug ?? [];
@@ -1206,11 +1207,7 @@ export function createNextApiReferenceLayout(config: DocsConfig) {
     );
 
     return (
-      <div
-        className="fd-api-reference-route"
-        data-api-reference=""
-        data-theme-style={themeStyle}
-      >
+      <div className="fd-api-reference-route" data-api-reference="" data-theme-style={themeStyle}>
         <DocsClientCallbacks apiReferencePrimaryServerUrl={primaryServerUrl} />
         <DocsLayout
           tree={sidebarTree}

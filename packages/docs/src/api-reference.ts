@@ -730,7 +730,9 @@ function normalizeRemoteOpenApiPaths(
       continue;
     }
 
-    const normalizedPathItem: Record<string, unknown> = { ...(pathItem as Record<string, unknown>) };
+    const normalizedPathItem: Record<string, unknown> = {
+      ...(pathItem as Record<string, unknown>),
+    };
 
     for (const method of ["get", "post", "put", "patch", "delete", "options", "head"] as const) {
       const operation = normalizedPathItem[method];
