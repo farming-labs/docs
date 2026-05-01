@@ -32,10 +32,18 @@ In this example, `docs.cloud.json` separates the docs project from the hosted cl
 ```
 
 - `docs.mode` describes how the project is authored
-- `docs.runtime` is the generated docs runtime
+- `docs.runtime` is the generated docs runtime choice
 - `cloud.enabled` turns the Docs Cloud service layer on or off
 
-Frameworkless local dev currently uses `nextjs` as the generated runtime.
+See the full contract in the
+[`docs.cloud.json` guide](https://docs.farming-labs.dev/docs/guides/docs-cloud-json).
+
+Docs Cloud itself is currently waitlist-based. If you want preview deploys, publishing workflows,
+AI, or managed hosting, join the waitlist on the
+[Cloud page](https://docs.farming-labs.dev/cloud).
+
+Frameworkless local dev currently uses `nextjs` as the generated runtime, while `docs.runtime`
+is where the underlying runtime choice is defined in the shared config contract.
 
 - [Installation](./installation.mdx)
 - [API Reference](/api-reference)
