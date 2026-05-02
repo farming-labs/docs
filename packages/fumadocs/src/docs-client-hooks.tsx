@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { emitDocsAnalyticsEvent } from "@farming-labs/docs";
+import { emitClientAnalyticsEvent } from "./client-analytics.js";
 import type {
   CodeBlockCopyData,
   DocsAnalyticsConfig,
@@ -85,7 +86,6 @@ function useCodeCopyAnalytics(analytics?: boolean | DocsAnalyticsConfig) {
       if (!code) return;
 
       const content = code.textContent ?? "";
-      const url = window.location.href;
       const language =
         code.getAttribute("data-language") ?? figure.getAttribute("data-language") ?? undefined;
       const title =
@@ -93,11 +93,8 @@ function useCodeCopyAnalytics(analytics?: boolean | DocsAnalyticsConfig) {
         (figure.querySelector(".fd-codeblock-title-text") as HTMLElement)?.textContent?.trim() ??
         undefined;
 
-      void emitDocsAnalyticsEvent(analytics, {
+      emitClientAnalyticsEvent({
         type: "code_block_copy",
-        source: "client",
-        url,
-        path: window.location.pathname,
         input: { content },
         properties: {
           title,

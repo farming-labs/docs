@@ -46,6 +46,12 @@ interface DocsAnalyticsEvent {
   path?: string;
   referrer?: string;
   locale?: string;
+  input?: {
+    query?: string;
+    question?: string;
+    feedbackComment?: string;
+    content?: string;
+  };
   properties?: Record<string, unknown>;
 }
 ```
@@ -56,7 +62,7 @@ Client events:
 
 - `page_view`
 - `search_open`, `search_close`, `search_query`, `search_result_click`, `search_error`
-- `ai_open`, `ai_question`, `ai_response`, `ai_error`, `ai_clear`
+- `ai_open`, `ai_close`, `ai_question`, `ai_response`, `ai_error`, `ai_clear`
 - `page_action_copy_markdown`, `page_action_open_docs_menu`, `page_action_open_docs`
 - `code_block_copy`
 - `feedback_select`, `feedback_submit`, `feedback_error`

@@ -1163,15 +1163,33 @@ export function FloatingAIChat({
     setMounted(true);
   }, []);
 
+  const closeFloatingAI = useCallback(
+    (trigger: "button" | "escape" | "overlay") => {
+      setIsOpen((wasOpen) => {
+        if (wasOpen && analytics) {
+          emitClientAnalyticsEvent({
+            type: "ai_close",
+            properties: {
+              mode: floatingStyle === "full-modal" ? "full-modal" : "floating",
+              trigger,
+            },
+          });
+        }
+        return false;
+      });
+    },
+    [analytics, floatingStyle],
+  );
+
   useEffect(() => {
     if (isOpen) {
       const handler = (e: globalThis.KeyboardEvent) => {
-        if (e.key === "Escape") setIsOpen(false);
+        if (e.key === "Escape") closeFloatingAI("escape");
       };
       document.addEventListener("keydown", handler);
       return () => document.removeEventListener("keydown", handler);
     }
-  }, [isOpen]);
+  }, [closeFloatingAI, isOpen]);
 
   useEffect(() => {
     if (isOpen && (floatingStyle === "modal" || floatingStyle === "full-modal"))
@@ -1190,6 +1208,7 @@ export function FloatingAIChat({
         api={api}
         isOpen={isOpen}
         setIsOpen={setIsOpen}
+        closeAI={closeFloatingAI}
         messages={messages}
         setMessages={setMessages}
         aiInput={aiInput}
@@ -1216,7 +1235,9 @@ export function FloatingAIChat({
 
   return createPortal(
     <>
-      {isOpen && isModal && <div onClick={() => setIsOpen(false)} className="fd-ai-overlay" />}
+      {isOpen && isModal && (
+        <div onClick={() => closeFloatingAI("overlay")} className="fd-ai-overlay" />
+      )}
 
       {isOpen && (
         <div
@@ -1228,7 +1249,7 @@ export function FloatingAIChat({
             <SparklesIcon size={16} />
             <span className="fd-ai-header-title">Ask {aiName}</span>
             {isModal && <kbd className="fd-ai-esc">ESC</kbd>}
-            <button onClick={() => setIsOpen(false)} className="fd-ai-close-btn">
+            <button onClick={() => closeFloatingAI("button")} className="fd-ai-close-btn">
               <XIcon />
             </button>
           </div>
@@ -1303,6 +1324,7 @@ function FullModalAIChat({
   api,
   isOpen,
   setIsOpen,
+  closeAI,
   messages,
   setMessages,
   aiInput,
@@ -1322,6 +1344,7 @@ function FullModalAIChat({
   api: string;
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
+  closeAI: (trigger: "button" | "escape" | "overlay") => void;
   messages: ChatMessage[];
   setMessages: (m: ChatMessage[]) => void;
   aiInput: string;
@@ -1503,12 +1526,12 @@ function FullModalAIChat({
         <div
           className="fd-ai-fm-overlay"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setIsOpen(false);
+            if (e.target === e.currentTarget) closeAI("overlay");
           }}
         >
           {/* Close button */}
           <div className="fd-ai-fm-topbar">
-            <button onClick={() => setIsOpen(false)} className="fd-ai-fm-close-btn">
+            <button onClick={() => closeAI("button")} className="fd-ai-fm-close-btn">
               <XIcon />
             </button>
           </div>
@@ -1732,14 +1755,30 @@ export function AIModalDialog({
   const [aiInput, setAiInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
 
+  const closeModalAI = useCallback(
+    (trigger: "button" | "escape" | "overlay") => {
+      if (analytics) {
+        emitClientAnalyticsEvent({
+          type: "ai_close",
+          properties: {
+            mode: "modal",
+            trigger,
+          },
+        });
+      }
+      onOpenChange(false);
+    },
+    [analytics, onOpenChange],
+  );
+
   useEffect(() => {
     if (!open) return;
     const handler = (e: globalThis.KeyboardEvent) => {
-      if (e.key === "Escape") onOpenChange(false);
+      if (e.key === "Escape") closeModalAI("escape");
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [open, onOpenChange]);
+  }, [closeModalAI, open]);
 
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
@@ -1755,7 +1794,7 @@ export function AIModalDialog({
 
   return createPortal(
     <>
-      <div onClick={() => onOpenChange(false)} className="fd-ai-overlay" />
+      <div onClick={() => closeModalAI("overlay")} className="fd-ai-overlay" />
       <div
         role="dialog"
         aria-modal="true"
@@ -1774,7 +1813,7 @@ export function AIModalDialog({
           <SparklesIcon size={16} />
           <span className="fd-ai-header-title">Ask {aiName}</span>
           <kbd className="fd-ai-esc">ESC</kbd>
-          <button onClick={() => onOpenChange(false)} className="fd-ai-close-btn">
+          <button onClick={() => closeModalAI("button")} className="fd-ai-close-btn">
             <XIcon />
           </button>
         </div>

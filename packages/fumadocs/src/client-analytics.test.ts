@@ -10,6 +10,7 @@ const CLIENT_ANALYTICS_EVENTS = [
   "search_result_click",
   "search_error",
   "ai_open",
+  "ai_close",
   "ai_question",
   "ai_response",
   "ai_error",
@@ -99,5 +100,18 @@ describe("client analytics", () => {
       source: "client",
       path: "/docs/installation",
     });
+  });
+
+  it("does not throw when analytics hooks reject or DOM listeners throw", () => {
+    const { target } = installClientGlobals(() => Promise.reject(new Error("analytics failed")));
+    target.dispatchEvent = () => {
+      throw new Error("listener failed");
+    };
+
+    expect(() =>
+      emitClientAnalyticsEvent({
+        type: "search_open",
+      }),
+    ).not.toThrow();
   });
 });
