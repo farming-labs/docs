@@ -21,6 +21,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { highlight } from "sugar-high";
+import { emitClientAnalyticsEvent } from "./client-analytics.js";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -497,6 +498,8 @@ function AIChat({
   loadingComponentHtml,
   models,
   defaultModelId,
+  analytics,
+  surface = "chat",
 }: {
   api: string;
   messages: ChatMessage[];
@@ -511,6 +514,8 @@ function AIChat({
   loadingComponentHtml?: string;
   models?: AIModelOption[];
   defaultModelId?: string;
+  analytics?: boolean;
+  surface?: string;
 }) {
   const label = aiLabel || "AI";
   const aiInputRef = useRef<HTMLInputElement>(null);
@@ -539,6 +544,19 @@ function AIChat({
       setAiInput("");
       setIsStreaming(true);
       setMessages([...newMessages, { role: "assistant", content: "" }]);
+      const startedAt = Date.now();
+
+      if (analytics) {
+        emitClientAnalyticsEvent({
+          type: "ai_question",
+          properties: {
+            surface,
+            questionLength: question.length,
+            messageCount: newMessages.length,
+            model: effectiveModelId,
+          },
+        });
+      }
 
       try {
         const res = await fetch(api, {
@@ -558,6 +576,17 @@ function AIChat({
           } catch {}
           setMessages([...newMessages, { role: "assistant", content: errMsg }]);
           setIsStreaming(false);
+          if (analytics) {
+            emitClientAnalyticsEvent({
+              type: "ai_error",
+              properties: {
+                surface,
+                status: res.status,
+                questionLength: question.length,
+                durationMs: Math.max(0, Date.now() - startedAt),
+              },
+            });
+          }
           return;
         }
 
@@ -589,15 +618,47 @@ function AIChat({
         }
         if (assistantContent)
           setMessages([...newMessages, { role: "assistant", content: assistantContent }]);
+        if (analytics) {
+          emitClientAnalyticsEvent({
+            type: "ai_response",
+            properties: {
+              surface,
+              questionLength: question.length,
+              responseLength: assistantContent.length,
+              durationMs: Math.max(0, Date.now() - startedAt),
+              model: effectiveModelId,
+            },
+          });
+        }
       } catch {
         setMessages([
           ...newMessages,
           { role: "assistant", content: "Failed to connect. Please try again." },
         ]);
+        if (analytics) {
+          emitClientAnalyticsEvent({
+            type: "ai_error",
+            properties: {
+              surface,
+              questionLength: question.length,
+              durationMs: Math.max(0, Date.now() - startedAt),
+            },
+          });
+        }
       }
       setIsStreaming(false);
     },
-    [messages, api, isStreaming, setMessages, setAiInput, setIsStreaming, effectiveModelId],
+    [
+      messages,
+      api,
+      isStreaming,
+      setMessages,
+      setAiInput,
+      setIsStreaming,
+      effectiveModelId,
+      analytics,
+      surface,
+    ],
   );
 
   const handleAskAI = useCallback(async () => {
@@ -680,6 +741,14 @@ function AIChat({
               onClick={() => {
                 setMessages([]);
                 setAiInput("");
+                if (analytics) {
+                  emitClientAnalyticsEvent({
+                    type: "ai_clear",
+                    properties: {
+                      surface,
+                    },
+                  });
+                }
               }}
               className="fd-ai-clear-btn"
             >
@@ -725,6 +794,7 @@ export function DocsSearchDialog({
   loadingComponentHtml,
   models,
   defaultModelId,
+  analytics = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -735,6 +805,7 @@ export function DocsSearchDialog({
   loadingComponentHtml?: string;
   models?: AIModelOption[];
   defaultModelId?: string;
+  analytics?: boolean;
 }) {
   const [tab, setTab] = useState<"search" | "ai">("search");
   const [searchQuery, setSearchQuery] = useState("");
@@ -756,6 +827,15 @@ export function DocsSearchDialog({
 
   useEffect(() => {
     if (open) {
+      if (analytics) {
+        emitClientAnalyticsEvent({
+          type: "search_open",
+          properties: {
+            mode: "ai-dialog",
+            tab,
+          },
+        });
+      }
       setSearchQuery("");
       setSearchResults([]);
       setActiveIndex(0);
@@ -763,7 +843,7 @@ export function DocsSearchDialog({
         if (tab === "search") searchInputRef.current?.focus();
       }, 50);
     }
-  }, [open, tab]);
+  }, [analytics, open, tab]);
 
   useEffect(() => {
     if (!open) return;
@@ -790,6 +870,7 @@ export function DocsSearchDialog({
     }
     setIsSearching(true);
     const timer = setTimeout(async () => {
+      const startedAt = Date.now();
       try {
         const requestUrl = new URL(api, window.location.origin);
         requestUrl.searchParams.set("query", searchQuery);
@@ -798,12 +879,34 @@ export function DocsSearchDialog({
           const data = await res.json();
           setSearchResults(data);
           setActiveIndex(0);
+          if (analytics) {
+            emitClientAnalyticsEvent({
+              type: "search_query",
+              properties: {
+                mode: "ai-dialog",
+                queryLength: searchQuery.length,
+                resultCount: Array.isArray(data) ? data.length : 0,
+                durationMs: Math.max(0, Date.now() - startedAt),
+              },
+            });
+          }
         }
-      } catch {}
+      } catch {
+        if (analytics) {
+          emitClientAnalyticsEvent({
+            type: "search_error",
+            properties: {
+              mode: "ai-dialog",
+              queryLength: searchQuery.length,
+              durationMs: Math.max(0, Date.now() - startedAt),
+            },
+          });
+        }
+      }
       setIsSearching(false);
     }, 150);
     return () => clearTimeout(timer);
-  }, [searchQuery, api, tab]);
+  }, [analytics, searchQuery, api, tab]);
 
   const handleSearchKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
@@ -815,6 +918,19 @@ export function DocsSearchDialog({
     } else if (e.key === "Enter" && searchResults[activeIndex]) {
       e.preventDefault();
       onOpenChange(false);
+      if (analytics) {
+        emitClientAnalyticsEvent({
+          type: "search_result_click",
+          path: searchResults[activeIndex].url,
+          properties: {
+            mode: "ai-dialog",
+            resultId: searchResults[activeIndex].id,
+            resultUrl: searchResults[activeIndex].url,
+            resultType: searchResults[activeIndex].type,
+            queryLength: searchQuery.length,
+          },
+        });
+      }
       window.location.href = searchResults[activeIndex].url;
     }
   };
@@ -848,7 +964,22 @@ export function DocsSearchDialog({
           >
             <SearchIcon /> Search
           </button>
-          <button onClick={() => setTab("ai")} className="fd-ai-tab" data-active={tab === "ai"}>
+          <button
+            onClick={() => {
+              setTab("ai");
+              if (analytics) {
+                emitClientAnalyticsEvent({
+                  type: "ai_open",
+                  properties: {
+                    mode: "ai-dialog",
+                    trigger: "tab",
+                  },
+                });
+              }
+            }}
+            className="fd-ai-tab"
+            data-active={tab === "ai"}
+          >
             <SparklesIcon /> Ask {aiName}
           </button>
           <div style={{ marginLeft: "auto", display: "flex", gap: 4, alignItems: "center" }}>
@@ -878,6 +1009,19 @@ export function DocsSearchDialog({
                     key={result.id}
                     onClick={() => {
                       onOpenChange(false);
+                      if (analytics) {
+                        emitClientAnalyticsEvent({
+                          type: "search_result_click",
+                          path: result.url,
+                          properties: {
+                            mode: "ai-dialog",
+                            resultId: result.id,
+                            resultUrl: result.url,
+                            resultType: result.type,
+                            queryLength: searchQuery.length,
+                          },
+                        });
+                      }
                       window.location.href = result.url;
                     }}
                     onMouseEnter={() => setActiveIndex(i)}
@@ -919,6 +1063,8 @@ export function DocsSearchDialog({
             loadingComponentHtml={loadingComponentHtml}
             models={models}
             defaultModelId={effectiveModelId}
+            analytics={analytics}
+            surface="ai-dialog"
           />
         )}
       </div>
@@ -993,6 +1139,7 @@ export function FloatingAIChat({
   loadingComponentHtml,
   models,
   defaultModelId,
+  analytics = false,
 }: {
   api?: string;
   position?: FloatingPosition;
@@ -1004,6 +1151,7 @@ export function FloatingAIChat({
   loadingComponentHtml?: string;
   models?: AIModelOption[];
   defaultModelId?: string;
+  analytics?: boolean;
 }) {
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -1056,6 +1204,7 @@ export function FloatingAIChat({
         position={position}
         models={models}
         defaultModelId={defaultModelId}
+        analytics={analytics}
       />
     );
   }
@@ -1096,6 +1245,8 @@ export function FloatingAIChat({
             aiLabel={aiLabel}
             loaderVariant={loaderVariant}
             loadingComponentHtml={loadingComponentHtml}
+            analytics={analytics}
+            surface="floating"
           />
         </div>
       )}
@@ -1103,14 +1254,36 @@ export function FloatingAIChat({
       {!isOpen &&
         (triggerComponentHtml ? (
           <div
-            onClick={() => setIsOpen(true)}
+            onClick={() => {
+              setIsOpen(true);
+              if (analytics) {
+                emitClientAnalyticsEvent({
+                  type: "ai_open",
+                  properties: {
+                    mode: "floating",
+                    trigger: "custom-trigger",
+                  },
+                });
+              }
+            }}
             className="fd-ai-floating-trigger"
             style={btnPosition}
             dangerouslySetInnerHTML={{ __html: triggerComponentHtml }}
           />
         ) : (
           <button
-            onClick={() => setIsOpen(true)}
+            onClick={() => {
+              setIsOpen(true);
+              if (analytics) {
+                emitClientAnalyticsEvent({
+                  type: "ai_open",
+                  properties: {
+                    mode: "floating",
+                    trigger: "button",
+                  },
+                });
+              }
+            }}
             aria-label={`Ask ${aiName}`}
             className="fd-ai-floating-btn"
             style={btnPosition}
@@ -1144,6 +1317,7 @@ function FullModalAIChat({
   position,
   models,
   defaultModelId,
+  analytics,
 }: {
   api: string;
   isOpen: boolean;
@@ -1162,6 +1336,7 @@ function FullModalAIChat({
   position: FloatingPosition;
   models?: AIModelOption[];
   defaultModelId?: string;
+  analytics?: boolean;
 }) {
   const label = aiLabel || "AI";
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -1195,6 +1370,19 @@ function FullModalAIChat({
       setAiInput("");
       setIsStreaming(true);
       setMessages([...newMessages, { role: "assistant", content: "" }]);
+      const startedAt = Date.now();
+
+      if (analytics) {
+        emitClientAnalyticsEvent({
+          type: "ai_question",
+          properties: {
+            surface: "full-modal",
+            questionLength: question.length,
+            messageCount: newMessages.length,
+            model: effectiveModelId,
+          },
+        });
+      }
 
       try {
         const res = await fetch(api, {
@@ -1214,6 +1402,17 @@ function FullModalAIChat({
           } catch {}
           setMessages([...newMessages, { role: "assistant", content: errMsg }]);
           setIsStreaming(false);
+          if (analytics) {
+            emitClientAnalyticsEvent({
+              type: "ai_error",
+              properties: {
+                surface: "full-modal",
+                status: res.status,
+                questionLength: question.length,
+                durationMs: Math.max(0, Date.now() - startedAt),
+              },
+            });
+          }
           return;
         }
 
@@ -1245,15 +1444,46 @@ function FullModalAIChat({
         }
         if (assistantContent)
           setMessages([...newMessages, { role: "assistant", content: assistantContent }]);
+        if (analytics) {
+          emitClientAnalyticsEvent({
+            type: "ai_response",
+            properties: {
+              surface: "full-modal",
+              questionLength: question.length,
+              responseLength: assistantContent.length,
+              durationMs: Math.max(0, Date.now() - startedAt),
+              model: effectiveModelId,
+            },
+          });
+        }
       } catch {
         setMessages([
           ...newMessages,
           { role: "assistant", content: "Failed to connect. Please try again." },
         ]);
+        if (analytics) {
+          emitClientAnalyticsEvent({
+            type: "ai_error",
+            properties: {
+              surface: "full-modal",
+              questionLength: question.length,
+              durationMs: Math.max(0, Date.now() - startedAt),
+            },
+          });
+        }
       }
       setIsStreaming(false);
     },
-    [messages, api, isStreaming, setMessages, setAiInput, setIsStreaming, effectiveModelId],
+    [
+      messages,
+      api,
+      isStreaming,
+      setMessages,
+      setAiInput,
+      setIsStreaming,
+      effectiveModelId,
+      analytics,
+    ],
   );
 
   const canSend = !!(aiInput.trim() && !isStreaming);
@@ -1320,12 +1550,34 @@ function FullModalAIChat({
         {!isOpen ? (
           triggerComponentHtml ? (
             <div
-              onClick={() => setIsOpen(true)}
+              onClick={() => {
+                setIsOpen(true);
+                if (analytics) {
+                  emitClientAnalyticsEvent({
+                    type: "ai_open",
+                    properties: {
+                      mode: "full-modal",
+                      trigger: "custom-trigger",
+                    },
+                  });
+                }
+              }}
               dangerouslySetInnerHTML={{ __html: triggerComponentHtml }}
             />
           ) : (
             <button
-              onClick={() => setIsOpen(true)}
+              onClick={() => {
+                setIsOpen(true);
+                if (analytics) {
+                  emitClientAnalyticsEvent({
+                    type: "ai_open",
+                    properties: {
+                      mode: "full-modal",
+                      trigger: "button",
+                    },
+                  });
+                }
+              }}
               className="fd-ai-fm-trigger-btn"
               aria-label={`Ask ${label}`}
             >
@@ -1403,6 +1655,14 @@ function FullModalAIChat({
                     if (!isStreaming) {
                       setMessages([]);
                       setAiInput("");
+                      if (analytics) {
+                        emitClientAnalyticsEvent({
+                          type: "ai_clear",
+                          properties: {
+                            surface: "full-modal",
+                          },
+                        });
+                      }
                     }
                   }}
                   aria-disabled={isStreaming}
@@ -1455,6 +1715,7 @@ export function AIModalDialog({
   loadingComponentHtml,
   models,
   defaultModelId,
+  analytics = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1465,6 +1726,7 @@ export function AIModalDialog({
   loadingComponentHtml?: string;
   models?: AIModelOption[];
   defaultModelId?: string;
+  analytics?: boolean;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [aiInput, setAiInput] = useState("");
@@ -1531,6 +1793,8 @@ export function AIModalDialog({
           loadingComponentHtml={loadingComponentHtml}
           models={models}
           defaultModelId={defaultModelId}
+          analytics={analytics}
+          surface="modal"
         />
 
         <div className="fd-ai-modal-footer">
@@ -1541,6 +1805,14 @@ export function AIModalDialog({
                 if (!isStreaming) {
                   setMessages([]);
                   setAiInput("");
+                  if (analytics) {
+                    emitClientAnalyticsEvent({
+                      type: "ai_clear",
+                      properties: {
+                        surface: "modal",
+                      },
+                    });
+                  }
                 }
               }}
               aria-disabled={isStreaming}

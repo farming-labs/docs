@@ -10,7 +10,9 @@ import * as z from "zod/v4";
 import { stripGeneratedAgentProvenance } from "./agent-provenance.js";
 import { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 import { performDocsSearch } from "./search.js";
+import { emitDocsAnalyticsEvent } from "./analytics.js";
 import type {
+  DocsAnalyticsConfig,
   DocsMcpConfig,
   DocsSearchConfig,
   DocsSearchSourcePage,
@@ -86,6 +88,7 @@ interface CreateDocsMcpServerOptions {
   source: DocsMcpSource;
   mcp?: boolean | DocsMcpConfig;
   search?: boolean | DocsSearchConfig;
+  analytics?: boolean | DocsAnalyticsConfig;
   defaultName?: string;
   defaultVersion?: string;
 }
@@ -211,6 +214,14 @@ export function createFilesystemDocsMcpSource(
   };
 }
 
+function nowMs() {
+  return Date.now();
+}
+
+function durationMs(startedAt: number) {
+  return Math.max(0, Date.now() - startedAt);
+}
+
 export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): Promise<McpServer> {
   const resolved = resolveDocsMcpConfig(options.mcp, {
     defaultName: options.defaultName ?? options.source.siteTitle ?? DEFAULT_MCP_NAME,
@@ -277,7 +288,18 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         annotations: { readOnlyHint: true },
       },
       async ({ locale }) => {
+        const startedAt = nowMs();
         const pages = toPageSummaries(dedupePages(await options.source.getPages(locale)));
+        await emitDocsAnalyticsEvent(options.analytics, {
+          type: "mcp_tool",
+          source: "mcp",
+          locale,
+          properties: {
+            tool: "list_pages",
+            resultCount: pages.length,
+            durationMs: durationMs(startedAt),
+          },
+        });
         return {
           content: [
             {
@@ -300,7 +322,17 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         annotations: { readOnlyHint: true },
       },
       async ({ locale }) => {
+        const startedAt = nowMs();
         const tree = await options.source.getNavigation(locale);
+        await emitDocsAnalyticsEvent(options.analytics, {
+          type: "mcp_tool",
+          source: "mcp",
+          locale,
+          properties: {
+            tool: "get_navigation",
+            durationMs: durationMs(startedAt),
+          },
+        });
         return {
           content: [
             {
@@ -323,6 +355,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         annotations: { readOnlyHint: true },
       },
       async ({ query, limit, locale }) => {
+        const startedAt = nowMs();
         const pages = dedupePages(await options.source.getPages(locale));
         const results = await performDocsSearch({
           pages: toSearchSourcePages(pages),
@@ -331,6 +364,19 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           locale,
           siteTitle: options.source.siteTitle,
           limit: limit ?? 10,
+        });
+        await emitDocsAnalyticsEvent(options.analytics, {
+          type: "mcp_tool",
+          source: "mcp",
+          locale,
+          input: { query },
+          properties: {
+            tool: "search_docs",
+            queryLength: query.length,
+            limit: limit ?? 10,
+            resultCount: results.length,
+            durationMs: durationMs(startedAt),
+          },
         });
         return {
           content: [
@@ -354,10 +400,34 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         annotations: { readOnlyHint: true },
       },
       async ({ path: requestedPath, locale }) => {
+        const startedAt = nowMs();
         const pages = dedupePages(await options.source.getPages(locale));
         const page = findDocsPage(pages, requestedPath, options.source.entry);
 
         if (!page) {
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "agent_read",
+            source: "mcp",
+            locale,
+            properties: {
+              delivery: "mcp_tool",
+              tool: "read_page",
+              requestedPath,
+              found: false,
+              durationMs: durationMs(startedAt),
+            },
+          });
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "mcp_tool",
+            source: "mcp",
+            locale,
+            properties: {
+              tool: "read_page",
+              path: requestedPath,
+              found: false,
+              durationMs: durationMs(startedAt),
+            },
+          });
           return {
             content: [
               {
@@ -375,11 +445,43 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           };
         }
 
+        const document = renderPageDocument(page);
+
+        await emitDocsAnalyticsEvent(options.analytics, {
+          type: "agent_read",
+          source: "mcp",
+          locale,
+          path: page.url,
+          properties: {
+            delivery: "mcp_tool",
+            tool: "read_page",
+            requestedPath,
+            slug: page.slug,
+            found: true,
+            contentLength: document.length,
+            durationMs: durationMs(startedAt),
+          },
+        });
+        await emitDocsAnalyticsEvent(options.analytics, {
+          type: "mcp_tool",
+          source: "mcp",
+          locale,
+          path: page.url,
+          properties: {
+            tool: "read_page",
+            requestedPath,
+            slug: page.slug,
+            found: true,
+            contentLength: document.length,
+            durationMs: durationMs(startedAt),
+          },
+        });
+
         return {
           content: [
             {
               type: "text",
-              text: renderPageDocument(page),
+              text: document,
             },
           ],
         };
@@ -443,6 +545,7 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
   }
 
   async function handle(request: Request): Promise<Response> {
+    const url = new URL(request.url);
     const method = request.method.toUpperCase();
     const sessionId =
       request.headers.get("mcp-session-id") ?? request.headers.get("Mcp-Session-Id");
@@ -458,6 +561,18 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
     }
 
     const initializeRequest = method === "POST" && parsedBody && isInitializeRequest(parsedBody);
+
+    await emitDocsAnalyticsEvent(options.analytics, {
+      type: "mcp_request",
+      source: "mcp",
+      url: request.url,
+      path: url.pathname,
+      properties: {
+        method,
+        hasSession: Boolean(existing),
+        initialize: Boolean(initializeRequest),
+      },
+    });
 
     if (!existing) {
       if (!initializeRequest) {

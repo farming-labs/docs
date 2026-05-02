@@ -52,6 +52,7 @@ export function TanstackDocsPage({
     <>
       <DocsClientHooks
         onCopyClick={config.onCopyClick}
+        analytics={config.analytics}
         onFeedback={
           typeof config.feedback === "object"
             ? (config.feedback as FeedbackConfig).onFeedback

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { DocsFeedbackData, DocsFeedbackValue } from "@farming-labs/docs";
+import { emitClientAnalyticsEvent } from "./client-analytics.js";
 
 interface DocsWindowHooks extends Window {
   __fdOnFeedback__?: (data: DocsFeedbackData) => void | Promise<void>;
@@ -17,6 +18,7 @@ export interface DocsFeedbackProps {
   negativeLabel?: string;
   submitLabel?: string;
   onFeedback?: (data: DocsFeedbackData) => void | Promise<void>;
+  analytics?: boolean;
 }
 
 function normalizePathname(pathname: string) {
@@ -139,6 +141,7 @@ export function DocsFeedback({
   negativeLabel = "Bad",
   submitLabel = "Submit",
   onFeedback,
+  analytics = false,
 }: DocsFeedbackProps) {
   const [selected, setSelected] = useState<DocsFeedbackValue | null>(null);
   const [comment, setComment] = useState("");
@@ -156,6 +159,17 @@ export function DocsFeedback({
   function handleSelect(value: DocsFeedbackValue) {
     setSelected(value);
     if (status !== "idle") setStatus("idle");
+    if (analytics) {
+      emitClientAnalyticsEvent({
+        type: "feedback_select",
+        locale,
+        path: normalizedPathname,
+        properties: {
+          value,
+          slug: resolveSlug(entry, normalizedPathname),
+        },
+      });
+    }
   }
 
   async function handleSubmit() {
@@ -164,12 +178,36 @@ export function DocsFeedback({
     setStatus("submitting");
 
     try {
-      await emitFeedback(
-        buildFeedbackPayload(selected, normalizedPathname, entry, comment, locale),
-        onFeedback,
-      );
+      const payload = buildFeedbackPayload(selected, normalizedPathname, entry, comment, locale);
+      await emitFeedback(payload, onFeedback);
+      if (analytics) {
+        emitClientAnalyticsEvent({
+          type: "feedback_submit",
+          locale,
+          path: normalizedPathname,
+          properties: {
+            value: payload.value,
+            slug: payload.slug,
+            hasComment: Boolean(payload.comment),
+            commentLength: payload.comment?.length ?? 0,
+          },
+        });
+      }
       setStatus("submitted");
     } catch {
+      if (analytics) {
+        emitClientAnalyticsEvent({
+          type: "feedback_error",
+          locale,
+          path: normalizedPathname,
+          properties: {
+            value: selected,
+            slug: resolveSlug(entry, normalizedPathname),
+            hasComment: Boolean(comment.trim()),
+            commentLength: comment.trim().length,
+          },
+        });
+      }
       setStatus("error");
     }
   }

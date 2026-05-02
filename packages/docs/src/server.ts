@@ -1,3 +1,4 @@
+export { emitDocsAnalyticsEvent, resolveDocsAnalyticsConfig } from "./analytics.js";
 export {
   resolveApiReferenceConfig,
   resolveApiReferenceRenderer,
@@ -65,4 +66,8 @@ export type {
   DocsSearchResult,
   DocsSearchSourcePage,
   McpDocsSearchConfig,
+  DocsAnalyticsConfig,
+  DocsAnalyticsEvent,
+  DocsAnalyticsEventInput,
 } from "./types.js";
+export type { ResolvedDocsAnalyticsConfig } from "./analytics.js";

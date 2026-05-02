@@ -3,6 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types";
+import type { DocsAnalyticsEvent } from "./types.js";
 import {
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
@@ -405,6 +406,121 @@ No frontmatter title here.
     });
 
     expect(deleteResponse.status).toBe(200);
+  });
+
+  it("emits analytics for MCP requests, tools, and agent page reads", async () => {
+    const rootDir = createTempDocsProject();
+    const source = createFilesystemDocsMcpSource({
+      rootDir,
+      entry: "docs",
+      contentDir: "docs",
+      siteTitle: "Example Docs",
+    });
+    const events: DocsAnalyticsEvent[] = [];
+
+    const handlers = createDocsMcpHttpHandler({
+      source,
+      mcp: { enabled: true, name: "Example Docs" },
+      analytics: {
+        console: false,
+        onEvent(event) {
+          events.push(event);
+        },
+      },
+    });
+
+    const initializeResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: LATEST_PROTOCOL_VERSION,
+            capabilities: {},
+            clientInfo: {
+              name: "vitest",
+              version: "1.0.0",
+            },
+          },
+        }),
+      }),
+    });
+
+    const sessionId = initializeResponse.headers.get("mcp-session-id");
+    expect(sessionId).toBeTruthy();
+
+    let requestId = 2;
+    async function callTool(name: string, args: Record<string, unknown>) {
+      const response = await handlers.POST({
+        request: new Request("http://localhost/api/docs/mcp", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            accept: "application/json, text/event-stream",
+            "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+            "mcp-session-id": sessionId!,
+          },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: requestId++,
+            method: "tools/call",
+            params: {
+              name,
+              arguments: args,
+            },
+          }),
+        }),
+      });
+
+      return parseMcpPayload<{ result?: unknown }>(response);
+    }
+
+    await callTool("list_pages", {});
+    await callTool("get_navigation", {});
+    await callTool("search_docs", { query: "generated example paths" });
+    await callTool("read_page", { path: "guides/quickstart" });
+    await callTool("read_page", { path: "missing" });
+
+    expect(events.map((event) => event.type)).toEqual(
+      expect.arrayContaining(["mcp_request", "mcp_tool", "agent_read"]),
+    );
+    expect(events.filter((event) => event.type === "mcp_request")).toHaveLength(6);
+    expect(
+      events.filter((event) => event.type === "mcp_tool").map((event) => event.properties),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ tool: "list_pages", resultCount: 3 }),
+        expect.objectContaining({ tool: "get_navigation" }),
+        expect.objectContaining({ tool: "search_docs", queryLength: 23 }),
+        expect.objectContaining({ tool: "read_page", found: true }),
+        expect.objectContaining({ tool: "read_page", found: false }),
+      ]),
+    );
+    expect(
+      events.filter((event) => event.type === "agent_read").map((event) => event.properties),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          delivery: "mcp_tool",
+          tool: "read_page",
+          requestedPath: "guides/quickstart",
+          found: true,
+        }),
+        expect.objectContaining({
+          delivery: "mcp_tool",
+          tool: "read_page",
+          requestedPath: "missing",
+          found: false,
+        }),
+      ]),
+    );
   });
 
   it("uses the shared search adapter pipeline for search_docs", async () => {

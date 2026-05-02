@@ -19,6 +19,7 @@ import { useState, useEffect } from "react";
 import { DocsSearchDialog, FloatingAIChat, AIModalDialog } from "./ai-search-dialog.js";
 import { useWindowSearchParams } from "./client-location.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
+import { emitClientAnalyticsEvent } from "./client-analytics.js";
 
 interface DocsAIFeaturesProps {
   mode: "search" | "floating" | "sidebar-icon";
@@ -33,6 +34,7 @@ interface DocsAIFeaturesProps {
   loadingComponentHtml?: string;
   models?: { id: string; label: string }[];
   defaultModelId?: string;
+  analytics?: boolean;
 }
 
 export function DocsAIFeatures({
@@ -48,6 +50,7 @@ export function DocsAIFeatures({
   loadingComponentHtml,
   models,
   defaultModelId,
+  analytics = false,
 }: DocsAIFeaturesProps) {
   const searchParams = useWindowSearchParams();
   const activeLocale = resolveClientLocale(searchParams, locale);
@@ -63,6 +66,7 @@ export function DocsAIFeatures({
         loadingComponentHtml={loadingComponentHtml}
         models={models}
         defaultModelId={defaultModelId}
+        analytics={analytics}
       />
     );
   }
@@ -77,6 +81,7 @@ export function DocsAIFeatures({
         loadingComponentHtml={loadingComponentHtml}
         models={models}
         defaultModelId={defaultModelId}
+        analytics={analytics}
       />
     );
   }
@@ -93,6 +98,7 @@ export function DocsAIFeatures({
       loadingComponentHtml={loadingComponentHtml}
       models={models}
       defaultModelId={defaultModelId}
+      analytics={analytics}
     />
   );
 }
@@ -105,6 +111,7 @@ function SearchModeAI({
   loadingComponentHtml,
   models,
   defaultModelId,
+  analytics,
 }: {
   api: string;
   suggestedQuestions?: string[];
@@ -113,6 +120,7 @@ function SearchModeAI({
   loadingComponentHtml?: string;
   models?: { id: string; label: string }[];
   defaultModelId?: string;
+  analytics?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -123,11 +131,20 @@ function SearchModeAI({
         e.stopPropagation();
         e.stopImmediatePropagation();
         setOpen(true);
+        if (analytics) {
+          emitClientAnalyticsEvent({
+            type: "search_open",
+            properties: {
+              mode: "ai-search",
+              trigger: "keyboard",
+            },
+          });
+        }
       }
     }
     document.addEventListener("keydown", handler, true);
     return () => document.removeEventListener("keydown", handler, true);
-  }, []);
+  }, [analytics]);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -140,11 +157,20 @@ function SearchModeAI({
         e.stopPropagation();
         e.stopImmediatePropagation();
         setOpen(true);
+        if (analytics) {
+          emitClientAnalyticsEvent({
+            type: "search_open",
+            properties: {
+              mode: "ai-search",
+              trigger: "button",
+            },
+          });
+        }
       }
     }
     document.addEventListener("click", handler, true);
     return () => document.removeEventListener("click", handler, true);
-  }, []);
+  }, [analytics]);
 
   return (
     <DocsSearchDialog
@@ -157,6 +183,7 @@ function SearchModeAI({
       loadingComponentHtml={loadingComponentHtml}
       models={models}
       defaultModelId={defaultModelId}
+      analytics={analytics}
     />
   );
 }
@@ -169,6 +196,7 @@ function SidebarIconModeAI({
   loadingComponentHtml,
   models,
   defaultModelId,
+  analytics,
 }: {
   api: string;
   suggestedQuestions?: string[];
@@ -177,6 +205,7 @@ function SidebarIconModeAI({
   loadingComponentHtml?: string;
   models?: { id: string; label: string }[];
   defaultModelId?: string;
+  analytics?: boolean;
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -197,9 +226,27 @@ function SidebarIconModeAI({
   useEffect(() => {
     function onSearch() {
       setSearchOpen(true);
+      if (analytics) {
+        emitClientAnalyticsEvent({
+          type: "search_open",
+          properties: {
+            mode: "sidebar-icon",
+            trigger: "sidebar-search",
+          },
+        });
+      }
     }
     function onAI() {
       setAiOpen(true);
+      if (analytics) {
+        emitClientAnalyticsEvent({
+          type: "ai_open",
+          properties: {
+            mode: "sidebar-icon",
+            trigger: "sidebar-ai",
+          },
+        });
+      }
     }
     window.addEventListener("fd-open-search", onSearch);
     window.addEventListener("fd-open-ai", onAI);
@@ -207,7 +254,7 @@ function SidebarIconModeAI({
       window.removeEventListener("fd-open-search", onSearch);
       window.removeEventListener("fd-open-ai", onAI);
     };
-  }, []);
+  }, [analytics]);
 
   return (
     <>
@@ -221,6 +268,7 @@ function SidebarIconModeAI({
         loadingComponentHtml={loadingComponentHtml}
         models={models}
         defaultModelId={defaultModelId}
+        analytics={analytics}
       />
       <AIModalDialog
         open={aiOpen}
@@ -232,6 +280,7 @@ function SidebarIconModeAI({
         loadingComponentHtml={loadingComponentHtml}
         models={models}
         defaultModelId={defaultModelId}
+        analytics={analytics}
       />
     </>
   );

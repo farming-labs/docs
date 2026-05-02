@@ -27,11 +27,13 @@ import {
   normalizeDocsRelated,
   renderDocsRelatedMarkdownLines,
   resolveChangelogConfig,
+  emitDocsAnalyticsEvent,
   resolveDocsI18n,
   resolveDocsLocale,
 } from "@farming-labs/docs";
 import type {
   ChangelogConfig,
+  DocsAnalyticsConfig,
   DocsAgentFeedbackContext,
   DocsAgentFeedbackData,
   DocsI18nConfig,
@@ -98,6 +100,8 @@ interface DocsAPIOptions {
   i18n?: DocsI18nConfig;
   /** Search configuration */
   search?: boolean | DocsSearchConfig;
+  /** Analytics configuration */
+  analytics?: boolean | DocsAnalyticsConfig;
   /** Feedback configuration */
   feedback?: boolean | FeedbackConfig;
   /** MCP configuration used for the agent discovery spec. */
@@ -112,6 +116,7 @@ interface DocsMCPAPIOptions {
   ordering?: "alphabetical" | "numeric" | OrderingItem[];
   mcp?: boolean | DocsMcpConfig;
   search?: boolean | DocsSearchConfig;
+  analytics?: boolean | DocsAnalyticsConfig;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -1261,15 +1266,17 @@ function acceptsMarkdown(request: Request): boolean {
     });
 }
 
-function resolveMarkdownRequest(
-  entry: string,
-  url: URL,
-  request: Request,
-): { requestedPath: string } | null {
+type MarkdownRequest = {
+  requestedPath: string;
+  delivery: "api_format" | "md_route" | "accept_header";
+};
+
+function resolveMarkdownRequest(entry: string, url: URL, request: Request): MarkdownRequest | null {
   const format = url.searchParams.get("format")?.trim();
   if (format === "markdown") {
     return {
       requestedPath: url.searchParams.get("path")?.trim() ?? "",
+      delivery: "api_format",
     };
   }
 
@@ -1277,24 +1284,26 @@ function resolveMarkdownRequest(
   const normalizedEntry = `/${normalizePathSegment(entry)}`;
 
   if (pathname === `${normalizedEntry}.md`) {
-    return { requestedPath: "" };
+    return { requestedPath: "", delivery: "md_route" };
   }
 
   const slugPrefix = `${normalizedEntry}/`;
   if (pathname.startsWith(slugPrefix) && pathname.endsWith(".md")) {
     return {
       requestedPath: pathname.slice(slugPrefix.length, -3),
+      delivery: "md_route",
     };
   }
 
   if (acceptsMarkdown(request)) {
     if (pathname === normalizedEntry) {
-      return { requestedPath: "" };
+      return { requestedPath: "", delivery: "accept_header" };
     }
 
     if (pathname.startsWith(slugPrefix)) {
       return {
         requestedPath: pathname.slice(slugPrefix.length),
+        delivery: "accept_header",
       };
     }
   }
@@ -1513,12 +1522,28 @@ async function handleAskAI(
   request: Request,
   indexes: DocsSearchSourcePage[],
   aiConfig: AIOptions,
+  analytics?: boolean | DocsAnalyticsConfig,
+  analyticsContext: { locale?: string } = {},
 ): Promise<Response> {
+  const url = new URL(request.url);
+  const requestStartedAt = Date.now();
+
   // ── Parse request ──────────────────────────────────────────────
   let body: { messages?: ChatMessage[]; model?: string };
   try {
     body = await request.json();
   } catch {
+    await emitDocsAnalyticsEvent(analytics, {
+      type: "api_ai_error",
+      source: "server",
+      url: request.url,
+      path: url.pathname,
+      locale: analyticsContext.locale,
+      properties: {
+        reason: "invalid_json",
+        durationMs: Math.max(0, Date.now() - requestStartedAt),
+      },
+    });
     return Response.json(
       { error: "Invalid JSON body. Expected { messages: [...] }" },
       { status: 400 },
@@ -1527,6 +1552,17 @@ async function handleAskAI(
 
   const messages = body.messages;
   if (!Array.isArray(messages) || messages.length === 0) {
+    await emitDocsAnalyticsEvent(analytics, {
+      type: "api_ai_error",
+      source: "server",
+      url: request.url,
+      path: url.pathname,
+      locale: analyticsContext.locale,
+      properties: {
+        reason: "missing_messages",
+        durationMs: Math.max(0, Date.now() - requestStartedAt),
+      },
+    });
     return Response.json(
       { error: "messages array is required and must not be empty." },
       { status: 400 },
@@ -1535,6 +1571,18 @@ async function handleAskAI(
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
   if (!lastUserMessage) {
+    await emitDocsAnalyticsEvent(analytics, {
+      type: "api_ai_error",
+      source: "server",
+      url: request.url,
+      path: url.pathname,
+      locale: analyticsContext.locale,
+      properties: {
+        reason: "missing_user_message",
+        messageCount: messages.length,
+        durationMs: Math.max(0, Date.now() - requestStartedAt),
+      },
+    });
     return Response.json({ error: "At least one user message is required." }, { status: 400 });
   }
 
@@ -1585,6 +1633,22 @@ async function handleAskAI(
   const resolved = resolveModelAndProvider(aiConfig, requestedModel);
 
   if (!resolved.apiKey) {
+    await emitDocsAnalyticsEvent(analytics, {
+      type: "api_ai_error",
+      source: "server",
+      url: request.url,
+      path: url.pathname,
+      locale: analyticsContext.locale,
+      input: { question: query },
+      properties: {
+        reason: "missing_api_key",
+        messageCount: messages.length,
+        questionLength: query.length,
+        retrievedCount: scored.length,
+        model: resolved.model,
+        durationMs: Math.max(0, Date.now() - requestStartedAt),
+      },
+    });
     return Response.json(
       {
         error: `AI is enabled but no API key was found. Either set apiKey in your docs.config ai section, configure a provider, or add OPENAI_API_KEY to your .env.local file.`,
@@ -1592,6 +1656,21 @@ async function handleAskAI(
       { status: 500 },
     );
   }
+
+  await emitDocsAnalyticsEvent(analytics, {
+    type: "api_ai_request",
+    source: "server",
+    url: request.url,
+    path: url.pathname,
+    locale: analyticsContext.locale,
+    input: { question: query },
+    properties: {
+      messageCount: messages.length,
+      questionLength: query.length,
+      retrievedCount: scored.length,
+      model: resolved.model,
+    },
+  });
 
   const llmResponse = await fetch(`${resolved.baseUrl}/chat/completions`, {
     method: "POST",
@@ -1608,11 +1687,44 @@ async function handleAskAI(
 
   if (!llmResponse.ok) {
     const errText = await llmResponse.text().catch(() => "Unknown error");
+    await emitDocsAnalyticsEvent(analytics, {
+      type: "api_ai_error",
+      source: "server",
+      url: request.url,
+      path: url.pathname,
+      locale: analyticsContext.locale,
+      input: { question: query },
+      properties: {
+        reason: "llm_error",
+        status: llmResponse.status,
+        messageCount: messages.length,
+        questionLength: query.length,
+        retrievedCount: scored.length,
+        model: resolved.model,
+        durationMs: Math.max(0, Date.now() - requestStartedAt),
+      },
+    });
     return Response.json(
       { error: `LLM API error (${llmResponse.status}): ${errText}` },
       { status: 502 },
     );
   }
+
+  await emitDocsAnalyticsEvent(analytics, {
+    type: "api_ai_response",
+    source: "server",
+    url: request.url,
+    path: url.pathname,
+    locale: analyticsContext.locale,
+    input: { question: query },
+    properties: {
+      messageCount: messages.length,
+      questionLength: query.length,
+      retrievedCount: scored.length,
+      model: resolved.model,
+      durationMs: Math.max(0, Date.now() - requestStartedAt),
+    },
+  });
 
   // Proxy the SSE stream directly to the client
   return new Response(llmResponse.body, {
@@ -1727,6 +1839,7 @@ function generateLlmsTxt(
 export function createDocsAPI(options?: DocsAPIOptions) {
   const root = options?.rootDir ?? process.cwd();
   const entry = options?.entry ?? readEntry(root);
+  const analytics = options?.analytics;
   const appDir = getNextAppDir(root);
   const contentDir = options?.contentDir ?? path.join(appDir, entry);
   const changelogConfig = resolveChangelogConfig(options?.changelog);
@@ -1933,6 +2046,16 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       const ctx = resolveContextFromRequest(request);
       const url = new URL(request.url);
       if (resolveAgentSpecRequest(url)) {
+        await emitDocsAnalyticsEvent(analytics, {
+          type: "agent_spec_request",
+          source: "server",
+          url: request.url,
+          path: url.pathname,
+          locale: ctx.locale,
+          properties: {
+            method: "GET",
+          },
+        });
         return Response.json(
           buildAgentSpec({
             origin: url.origin,
@@ -1967,6 +2090,16 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           );
         }
 
+        await emitDocsAnalyticsEvent(analytics, {
+          type: "agent_feedback_schema",
+          source: "server",
+          url: request.url,
+          path: url.pathname,
+          locale: ctx.locale,
+          properties: {
+            method: "GET",
+          },
+        });
         return new Response(JSON.stringify(agentFeedbackConfig.schema, null, 2), {
           headers: {
             "Content-Type": "application/schema+json; charset=utf-8",
@@ -1977,6 +2110,16 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       }
 
       if (resolveSkillRequest(url)) {
+        await emitDocsAnalyticsEvent(analytics, {
+          type: "skill_request",
+          source: "server",
+          url: request.url,
+          path: url.pathname,
+          locale: ctx.locale,
+          properties: {
+            method: "GET",
+          },
+        });
         return new Response(
           readRootSkillDocument(root) ??
             renderSkillDocument({
@@ -2004,6 +2147,30 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         const document = await getMarkdownDocument(ctx, markdownRequest.requestedPath);
 
         if (!document) {
+          await emitDocsAnalyticsEvent(analytics, {
+            type: "agent_read",
+            source: "server",
+            url: request.url,
+            path: url.pathname,
+            locale: ctx.locale,
+            properties: {
+              requestedPath: markdownRequest.requestedPath,
+              delivery: markdownRequest.delivery,
+              found: false,
+            },
+          });
+          await emitDocsAnalyticsEvent(analytics, {
+            type: "markdown_request",
+            source: "server",
+            url: request.url,
+            path: url.pathname,
+            locale: ctx.locale,
+            properties: {
+              requestedPath: markdownRequest.requestedPath,
+              delivery: markdownRequest.delivery,
+              found: false,
+            },
+          });
           return new Response("Not Found", {
             status: 404,
             headers: {
@@ -2013,6 +2180,32 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           });
         }
 
+        await emitDocsAnalyticsEvent(analytics, {
+          type: "agent_read",
+          source: "server",
+          url: request.url,
+          path: url.pathname,
+          locale: ctx.locale,
+          properties: {
+            requestedPath: markdownRequest.requestedPath,
+            delivery: markdownRequest.delivery,
+            found: true,
+            contentLength: document.length,
+          },
+        });
+        await emitDocsAnalyticsEvent(analytics, {
+          type: "markdown_request",
+          source: "server",
+          url: request.url,
+          path: url.pathname,
+          locale: ctx.locale,
+          properties: {
+            requestedPath: markdownRequest.requestedPath,
+            delivery: markdownRequest.delivery,
+            found: true,
+            contentLength: document.length,
+          },
+        });
         return new Response(document, {
           headers: {
             "Content-Type": "text/markdown; charset=utf-8",
@@ -2024,6 +2217,16 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
       const llmsFormat = resolveLlmsTxtFormat(url);
       if (llmsFormat === "llms") {
+        await emitDocsAnalyticsEvent(analytics, {
+          type: "llms_request",
+          source: "server",
+          url: request.url,
+          path: url.pathname,
+          locale: ctx.locale,
+          properties: {
+            format: "llms",
+          },
+        });
         return new Response(getLlmsContent(ctx).llmsTxt, {
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
@@ -2033,6 +2236,16 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       }
 
       if (llmsFormat === "llms-full") {
+        await emitDocsAnalyticsEvent(analytics, {
+          type: "llms_request",
+          source: "server",
+          url: request.url,
+          path: url.pathname,
+          locale: ctx.locale,
+          properties: {
+            format: "llms-full",
+          },
+        });
         return new Response(getLlmsContent(ctx).llmsFullTxt, {
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
@@ -2048,6 +2261,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         });
       }
 
+      const searchStartedAt = Date.now();
       const results = await performDocsSearch({
         pages: getIndexes(ctx),
         query,
@@ -2055,6 +2269,20 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         locale: ctx.locale,
         pathname: url.searchParams.get("pathname") ?? undefined,
         siteTitle: llmsConfig.siteTitle ?? "Documentation",
+      });
+      await emitDocsAnalyticsEvent(analytics, {
+        type: "api_search",
+        source: "server",
+        url: request.url,
+        path: url.pathname,
+        locale: ctx.locale,
+        input: { query },
+        properties: {
+          queryLength: query.length,
+          resultCount: results.length,
+          pathname: url.searchParams.get("pathname") ?? undefined,
+          durationMs: Math.max(0, Date.now() - searchStartedAt),
+        },
       });
 
       return new Response(JSON.stringify(results), {
@@ -2068,10 +2296,8 @@ export function createDocsAPI(options?: DocsAPIOptions) {
      * Response: SSE stream of chat completion chunks.
      */
     async POST(request: Request): Promise<Response> {
-      const agentFeedbackRequest = resolveAgentFeedbackRequest(
-        new URL(request.url),
-        agentFeedbackConfig,
-      );
+      const url = new URL(request.url);
+      const agentFeedbackRequest = resolveAgentFeedbackRequest(url, agentFeedbackConfig);
 
       if (agentFeedbackRequest) {
         if (agentFeedbackRequest.kind === "schema") {
@@ -2087,25 +2313,77 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         }
 
         const parsed = await parseAgentFeedbackData(request);
-        if (!parsed.ok) return parsed.response;
+        if (!parsed.ok) {
+          await emitDocsAnalyticsEvent(analytics, {
+            type: "agent_feedback_error",
+            source: "server",
+            url: request.url,
+            path: url.pathname,
+            properties: {
+              reason: "invalid_body",
+            },
+          });
+          return parsed.response;
+        }
 
         const payloadError = validateAgentFeedbackPayload(
           parsed.data.payload,
           agentFeedbackConfig.payloadSchema,
         );
         if (payloadError) {
+          await emitDocsAnalyticsEvent(analytics, {
+            type: "agent_feedback_error",
+            source: "server",
+            url: request.url,
+            path: url.pathname,
+            properties: {
+              reason: "invalid_payload",
+              error: payloadError,
+            },
+          });
           return Response.json({ error: payloadError }, { status: 400 });
         }
 
         if (!agentFeedbackConfig.onFeedback) {
+          await emitDocsAnalyticsEvent(analytics, {
+            type: "agent_feedback_submit",
+            source: "server",
+            url: request.url,
+            path: url.pathname,
+            properties: {
+              handled: false,
+              payloadKeys: Object.keys(parsed.data.payload),
+              hasContext: Boolean(parsed.data.context),
+            },
+          });
           return Response.json({ ok: true, handled: false }, { status: 202 });
         }
 
         await agentFeedbackConfig.onFeedback(parsed.data);
+        await emitDocsAnalyticsEvent(analytics, {
+          type: "agent_feedback_submit",
+          source: "server",
+          url: request.url,
+          path: url.pathname,
+          properties: {
+            handled: true,
+            payloadKeys: Object.keys(parsed.data.payload),
+            hasContext: Boolean(parsed.data.context),
+          },
+        });
         return Response.json({ ok: true, handled: true }, { status: 201 });
       }
 
       if (!aiConfig.enabled) {
+        await emitDocsAnalyticsEvent(analytics, {
+          type: "api_ai_error",
+          source: "server",
+          url: request.url,
+          path: url.pathname,
+          properties: {
+            reason: "disabled",
+          },
+        });
         return Response.json(
           {
             error:
@@ -2116,7 +2394,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       }
 
       const ctx = resolveContextFromRequest(request);
-      return handleAskAI(request, getIndexes(ctx), aiConfig);
+      return handleAskAI(request, getIndexes(ctx), aiConfig, analytics, { locale: ctx.locale });
     },
   };
 }
@@ -2152,6 +2430,7 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
     source,
     mcp: options.mcp ?? readMcpConfig(rootDir),
     search: options.search,
+    analytics: options.analytics,
     defaultName: navTitle,
   });
 

@@ -17,6 +17,7 @@ import { PageActions } from "./page-actions.js";
 import { useWindowSearchParams } from "./client-location.js";
 import { DocsFeedback } from "./docs-feedback.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
+import { emitClientAnalyticsEvent } from "./client-analytics.js";
 
 interface TOCItem {
   title: string;
@@ -93,6 +94,7 @@ interface DocsPageClientProps {
   feedbackNegativeLabel?: string;
   feedbackSubmitLabel?: string;
   feedbackOnFeedback?: (data: DocsFeedbackData) => void | Promise<void>;
+  analytics?: boolean;
   children: ReactNode;
 }
 
@@ -360,6 +362,7 @@ export function DocsPageClient({
   feedbackNegativeLabel,
   feedbackSubmitLabel,
   feedbackOnFeedback,
+  analytics = false,
   children,
 }: DocsPageClientProps) {
   const fdTocStyle = tocStyle === "directional" ? "clerk" : undefined;
@@ -378,6 +381,20 @@ export function DocsPageClient({
     (normalizedPath === changelogBasePath || normalizedPath.startsWith(`${changelogBasePath}/`))
   );
   const matchedReadingTime = readingTimeMap?.[normalizedPath];
+
+  useEffect(() => {
+    if (!analytics) return;
+    emitClientAnalyticsEvent({
+      type: "page_view",
+      locale: activeLocale,
+      path: normalizedPath,
+      properties: {
+        entry,
+        pathname: normalizedPath,
+        isChangelogRoute,
+      },
+    });
+  }, [analytics, activeLocale, entry, isChangelogRoute, normalizedPath]);
   const resolvedReadingTime = !isChangelogRoute
     ? readingTimeProp !== undefined
       ? readingTimeProp
@@ -539,6 +556,7 @@ export function DocsPageClient({
               providers={openDocsProviders}
               alignment={pageActionsAlignment}
               githubFileUrl={githubFileUrl}
+              analytics={analytics}
             />
           </div>
         )}
@@ -610,6 +628,7 @@ export function DocsPageClient({
               providers={openDocsProviders}
               alignment={pageActionsAlignment}
               githubFileUrl={githubFileUrl}
+              analytics={analytics}
             />
           </div>
           {readingTimeBlock}
@@ -630,6 +649,7 @@ export function DocsPageClient({
             negativeLabel={feedbackNegativeLabel}
             submitLabel={feedbackSubmitLabel}
             onFeedback={feedbackOnFeedback}
+            analytics={analytics}
           />
         )}
         {showFooter && (

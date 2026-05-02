@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { usePathname } from "fumadocs-core/framework";
+import { emitClientAnalyticsEvent } from "./client-analytics.js";
 
 /** Serializable provider — icon is an HTML string, not JSX. */
 interface SerializedProvider {
@@ -17,6 +18,7 @@ interface PageActionsProps {
   alignment?: "left" | "right";
   /** GitHub file URL (edit view) for the current page. Used when urlTemplate contains {githubUrl}. */
   githubFileUrl?: string | null;
+  analytics?: boolean;
 }
 
 const CopyIcon = () => (
@@ -100,6 +102,7 @@ export function PageActions({
   providers,
   alignment = "left",
   githubFileUrl,
+  analytics = false,
 }: PageActionsProps) {
   const [copied, setCopied] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -112,17 +115,28 @@ export function PageActions({
     try {
       const article = document.querySelector("article");
       if (article) {
-        await navigator.clipboard.writeText(article.innerText || "");
+        const content = article.innerText || "";
+        await navigator.clipboard.writeText(content);
+        if (analytics) {
+          emitClientAnalyticsEvent({
+            type: "page_action_copy_markdown",
+            properties: {
+              contentLength: content.length,
+              pathname,
+            },
+          });
+        }
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }
     } catch {
       // silent
     }
-  }, []);
+  }, [analytics, pathname]);
 
   const handleOpen = useCallback(
-    (template: string) => {
+    (provider: SerializedProvider) => {
+      const template = provider.urlTemplate;
       if (/\{githubUrl\}/.test(template) && !githubFileUrl) {
         setDropdownOpen(false);
         return;
@@ -133,10 +147,20 @@ export function PageActions({
         .replace(/\{url\}/g, encodeURIComponent(pageUrl))
         .replace(/\{mdxUrl\}/g, encodeURIComponent(mdxUrl))
         .replace(/\{githubUrl\}/g, githubFileUrl ?? "");
+      if (analytics) {
+        emitClientAnalyticsEvent({
+          type: "page_action_open_docs",
+          properties: {
+            provider: provider.name,
+            pathname,
+            usesGithubUrl: template.includes("{githubUrl}"),
+          },
+        });
+      }
       window.open(url, "_blank", "noopener,noreferrer");
       setDropdownOpen(false);
     },
-    [pathname, githubFileUrl],
+    [analytics, pathname, githubFileUrl],
   );
 
   // Close dropdown on click outside
@@ -177,7 +201,19 @@ export function PageActions({
         <div ref={dropdownRef} className="fd-page-action-dropdown">
           <button
             type="button"
-            onClick={() => setDropdownOpen(!dropdownOpen)}
+            onClick={() => {
+              const next = !dropdownOpen;
+              setDropdownOpen(next);
+              if (analytics && next) {
+                emitClientAnalyticsEvent({
+                  type: "page_action_open_docs_menu",
+                  properties: {
+                    providerCount: resolvedProviders.length,
+                    pathname,
+                  },
+                });
+              }
+            }}
             className="fd-page-action-btn"
             aria-expanded={dropdownOpen}
           >
@@ -193,7 +229,7 @@ export function PageActions({
                   type="button"
                   role="menuitem"
                   className="fd-page-action-menu-item"
-                  onClick={() => handleOpen(provider.urlTemplate)}
+                  onClick={() => handleOpen(provider)}
                 >
                   {provider.iconHtml && (
                     <span
