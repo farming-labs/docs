@@ -72,6 +72,26 @@ function normalizeWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
+function truncatePaginationText(value: string, maxLength: number) {
+  const normalized = normalizeWhitespace(value);
+  if (normalized.length <= maxLength) return normalized;
+
+  const sliced = normalized.slice(0, maxLength + 1).trimEnd();
+  const boundary = sliced.lastIndexOf(" ");
+  const safe =
+    boundary >= Math.floor(maxLength * 0.6) ? sliced.slice(0, boundary) : sliced.slice(0, maxLength);
+
+  return `${safe.replace(/[.,;:!?-]+$/g, "").trimEnd()}…`;
+}
+
+function truncatePaginationTitle(value: string, maxLength = 72) {
+  return truncatePaginationText(value, maxLength);
+}
+
+function truncatePaginationDescription(value: string, maxLength = 110) {
+  return truncatePaginationText(value, maxLength);
+}
+
 function stripInlineMarkdown(value: string) {
   return normalizeWhitespace(
     value
@@ -302,12 +322,15 @@ function ChangelogEntryPagination(props: {
             <span aria-hidden>←</span>
             Previous
           </span>
-          <span className="fd-page-nav-title">{props.previous.title}</span>
-          {props.previous.description ? (
-            <span className="line-clamp-2 text-sm text-fd-muted-foreground">
-              {props.previous.description}
-            </span>
-          ) : null}
+          <span className="fd-page-nav-title">{truncatePaginationTitle(props.previous.title)}</span>
+          <span
+            className={`fd-page-nav-description${props.previous.description ? "" : " fd-page-nav-description-empty"}`}
+            aria-hidden={props.previous.description ? undefined : true}
+          >
+            {props.previous.description
+              ? truncatePaginationDescription(props.previous.description)
+              : "\u00A0"}
+          </span>
         </Link>
       ) : both ? (
         <div aria-hidden="true" />
@@ -318,12 +341,13 @@ function ChangelogEntryPagination(props: {
             Next
             <span aria-hidden>→</span>
           </span>
-          <span className="fd-page-nav-title">{props.next.title}</span>
-          {props.next.description ? (
-            <span className="line-clamp-2 text-sm text-fd-muted-foreground">
-              {props.next.description}
-            </span>
-          ) : null}
+          <span className="fd-page-nav-title">{truncatePaginationTitle(props.next.title)}</span>
+          <span
+            className={`fd-page-nav-description${props.next.description ? "" : " fd-page-nav-description-empty"}`}
+            aria-hidden={props.next.description ? undefined : true}
+          >
+            {props.next.description ? truncatePaginationDescription(props.next.description) : "\u00A0"}
+          </span>
         </Link>
       ) : both ? (
         <div aria-hidden="true" />
