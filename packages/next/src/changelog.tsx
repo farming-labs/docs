@@ -79,7 +79,9 @@ function truncatePaginationText(value: string, maxLength: number) {
   const sliced = normalized.slice(0, maxLength + 1).trimEnd();
   const boundary = sliced.lastIndexOf(" ");
   const safe =
-    boundary >= Math.floor(maxLength * 0.6) ? sliced.slice(0, boundary) : sliced.slice(0, maxLength);
+    boundary >= Math.floor(maxLength * 0.6)
+      ? sliced.slice(0, boundary)
+      : sliced.slice(0, maxLength);
 
   return `${safe.replace(/[.,;:!?-]+$/g, "").trimEnd()}…`;
 }
@@ -346,7 +348,9 @@ function ChangelogEntryPagination(props: {
             className={`fd-page-nav-description${props.next.description ? "" : " fd-page-nav-description-empty"}`}
             aria-hidden={props.next.description ? undefined : true}
           >
-            {props.next.description ? truncatePaginationDescription(props.next.description) : "\u00A0"}
+            {props.next.description
+              ? truncatePaginationDescription(props.next.description)
+              : "\u00A0"}
           </span>
         </Link>
       ) : both ? (
