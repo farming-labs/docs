@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://docs.farming-labs.dev/schema/docs.json",
+  "$id": "https://docs.farming-labs.dev/schema/cloud.json",
   "title": "Docs Cloud Config",
   "description": "Schema for docs.json.",
   "type": "object",
