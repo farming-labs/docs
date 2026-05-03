@@ -1,5 +1,5 @@
 {
-  "$schema": "https://docs.farming-labs.dev/schema/cloud.json",
+  "$schema": "https://docs.farming-labs.dev/schema/docs.json",
   "version": 1,
   "docs": {
     "mode": "frameworkless",

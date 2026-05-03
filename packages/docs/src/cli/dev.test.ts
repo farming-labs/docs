@@ -25,12 +25,12 @@ afterEach(() => {
 });
 
 describe("materializeManagedRuntime", () => {
-  it("builds a hidden runtime from docs.cloud.json, docs/, and api-reference/", () => {
+  it("builds a hidden runtime from docs.json, docs/, and api-reference/", () => {
     const projectRoot = makeTempProject();
 
     writeFile(
       projectRoot,
-      "docs.cloud.json",
+      "docs.json",
       JSON.stringify(
         {
           docs: {
@@ -162,7 +162,7 @@ title: "Authentication"
 
     writeFile(
       projectRoot,
-      "docs.cloud.json",
+      "docs.json",
       JSON.stringify(
         {
           docs: {
@@ -271,7 +271,7 @@ title: "Home"
 
     writeFile(
       projectRoot,
-      "docs.cloud.json",
+      "docs.json",
       JSON.stringify(
         {
           docs: {
@@ -330,7 +330,7 @@ title: "Home"
 
     writeFile(
       projectRoot,
-      "docs.cloud.json",
+      "docs.json",
       JSON.stringify(
         {
           docs: {
@@ -385,7 +385,7 @@ title: "Home"
 
     writeFile(
       projectRoot,
-      "docs.cloud.json",
+      "docs.json",
       JSON.stringify(
         {
           docs: {
@@ -424,7 +424,7 @@ title: "Home"
     expect(firstStamp).not.toBe(secondStamp);
   });
 
-  it("still accepts the legacy managed framework flag", () => {
+  it("still accepts the legacy docs.cloud.json filename", () => {
     const projectRoot = makeTempProject();
 
     writeFile(
@@ -462,7 +462,7 @@ title: "Home"
 
     writeFile(
       projectRoot,
-      "docs.cloud.json",
+      "docs.json",
       JSON.stringify(
         {
           docs: {
@@ -477,7 +477,7 @@ title: "Home"
     );
 
     expect(() => materializeManagedRuntime(projectRoot)).toThrow(
-      'docs.cloud.json uses docs.mode = "framework"',
+      'docs.json uses docs.mode = "framework"',
     );
   });
 });

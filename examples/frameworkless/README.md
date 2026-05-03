@@ -2,16 +2,16 @@
 
 This example is intentionally minimal:
 
-- `docs.cloud.json`
+- `docs.json`
 - `docs/`
-- a remote OpenAPI URL in `docs.cloud.json`
+- a remote OpenAPI URL in `docs.json`
 
 This checked-in example is wired to a remote OpenAPI document so you can test the frameworkless remote flow immediately.
 
 Frameworkless projects support either:
 
 - a checked-in local spec file like `api/openapi.yaml`
-- a remote spec URL in `docs.cloud.json`, such as `https://example.com/openapi.json`
+- a remote spec URL in `docs.json`, such as `https://example.com/openapi.json`
 
 Run the local frameworkless dev server from this folder after building the CLI:
 
@@ -32,7 +32,7 @@ Current example config:
 
 ```json
 {
-  "$schema": "https://docs.farming-labs.dev/schema/cloud.json",
+  "$schema": "https://docs.farming-labs.dev/schema/docs.json",
   "version": 1,
   "docs": {
     "mode": "frameworkless",
