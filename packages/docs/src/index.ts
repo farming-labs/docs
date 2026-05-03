@@ -10,6 +10,7 @@
 import type { DocsConfig } from "./types.js";
 
 export { defineDocs } from "./define-docs.js";
+export { emitDocsAnalyticsEvent, resolveDocsAnalyticsConfig } from "./analytics.js";
 export { resolveChangelogConfig } from "./changelog.js";
 export { deepMerge } from "./utils.js";
 export { createTheme, extendTheme } from "./create-theme.js";
@@ -144,7 +145,14 @@ export type {
   CustomDocsSearchConfig,
   DocsSearchEmbeddingsConfig,
   McpDocsSearchConfig,
+  DocsAnalyticsConfig,
+  DocsAnalyticsEvent,
+  DocsAnalyticsEventInput,
+  DocsAnalyticsEventType,
+  DocsAnalyticsInput,
+  DocsAnalyticsSource,
 } from "./types.js";
+export type { ResolvedDocsAnalyticsConfig } from "./analytics.js";
 export type { ChangelogEntrySummary, ResolvedChangelogConfig } from "./changelog.js";
 export type { ResolvedDocsI18n, DocsPathMatch } from "./i18n.js";
 export type {

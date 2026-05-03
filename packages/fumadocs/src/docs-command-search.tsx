@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { useWindowSearchParams } from "./client-location.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
+import { emitClientAnalyticsEvent } from "./client-analytics.js";
 
 function cn(...classes: Array<string | undefined | null | false>) {
   return classes.filter(Boolean).join(" ");
@@ -363,9 +364,11 @@ interface ResultItem {
 export function DocsCommandSearch({
   api = "/api/docs",
   locale,
+  analytics = false,
 }: {
   api?: string;
   locale?: string;
+  analytics?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -381,6 +384,22 @@ export function DocsCommandSearch({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  const setOpenWithAnalytics = useCallback(
+    (nextOpen: boolean, trigger: string) => {
+      setOpen(nextOpen);
+      if (!analytics) return;
+      emitClientAnalyticsEvent({
+        type: nextOpen ? "search_open" : "search_close",
+        locale: activeLocale,
+        properties: {
+          trigger,
+          mode: "command",
+        },
+      });
+    },
+    [activeLocale, analytics],
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -401,12 +420,12 @@ export function DocsCommandSearch({
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
-        setOpen(true);
+        setOpenWithAnalytics(true, "keyboard");
       }
     }
     document.addEventListener("keydown", handler, true);
     return () => document.removeEventListener("keydown", handler, true);
-  }, []);
+  }, [setOpenWithAnalytics]);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -423,12 +442,12 @@ export function DocsCommandSearch({
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
-        setOpen(true);
+        setOpenWithAnalytics(true, "button");
       }
     }
     document.addEventListener("click", handler, true);
     return () => document.removeEventListener("click", handler, true);
-  }, []);
+  }, [setOpenWithAnalytics]);
 
   useEffect(() => {
     if (!debouncedQuery.trim()) {
@@ -440,6 +459,7 @@ export function DocsCommandSearch({
     setLoading(true);
 
     (async () => {
+      const startedAt = Date.now();
       try {
         const requestUrl = new URL(searchApi, window.location.origin);
         requestUrl.searchParams.set("query", debouncedQuery);
@@ -465,15 +485,39 @@ export function DocsCommandSearch({
         if (!cancelled) {
           setResults(items);
           setActiveIndex(0);
+          if (analytics) {
+            emitClientAnalyticsEvent({
+              type: "search_query",
+              locale: activeLocale,
+              properties: {
+                mode: "command",
+                queryLength: debouncedQuery.length,
+                resultCount: items.length,
+                durationMs: Math.max(0, Date.now() - startedAt),
+              },
+            });
+          }
         }
-      } catch {}
+      } catch {
+        if (!cancelled && analytics) {
+          emitClientAnalyticsEvent({
+            type: "search_error",
+            locale: activeLocale,
+            properties: {
+              mode: "command",
+              queryLength: debouncedQuery.length,
+              durationMs: Math.max(0, Date.now() - startedAt),
+            },
+          });
+        }
+      }
       if (!cancelled) setLoading(false);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [activeLocale, debouncedQuery, searchApi]);
+  }, [activeLocale, analytics, debouncedQuery, searchApi]);
 
   useEffect(() => {
     if (open) {
@@ -512,12 +556,12 @@ export function DocsCommandSearch({
     if (!open) return;
     function handler(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        setOpen(false);
+        setOpenWithAnalytics(false, "escape");
       }
     }
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [open]);
+  }, [open, setOpenWithAnalytics]);
 
   const saveRecent = useCallback(
     (item: ResultItem) => {
@@ -533,12 +577,26 @@ export function DocsCommandSearch({
 
   const execute = useCallback(
     (item: ResultItem) => {
+      if (analytics) {
+        emitClientAnalyticsEvent({
+          type: "search_result_click",
+          locale: activeLocale,
+          path: item.url,
+          properties: {
+            mode: "command",
+            resultId: item.id,
+            resultUrl: item.url,
+            labelLength: item.label.length,
+            queryLength: query.length,
+          },
+        });
+      }
       saveRecent(item);
       setOpen(false);
       if (item.url.startsWith("http")) window.open(item.url, "_blank", "noopener");
       else window.location.href = item.url;
     },
-    [saveRecent],
+    [activeLocale, analytics, query.length, saveRecent],
   );
 
   const displayItems = useMemo(() => {
@@ -591,7 +649,7 @@ export function DocsCommandSearch({
 
   return createPortal(
     <>
-      <div className="omni-overlay" onClick={() => setOpen(false)} />
+      <div className="omni-overlay" onClick={() => setOpenWithAnalytics(false, "overlay")} />
       <div
         className="omni-content"
         role="dialog"
@@ -615,7 +673,11 @@ export function DocsCommandSearch({
               className="omni-search-input"
             />
             <kbd className="omni-kbd">⌘ K</kbd>
-            <button aria-label="Close" className="omni-close-btn" onClick={() => setOpen(false)}>
+            <button
+              aria-label="Close"
+              className="omni-close-btn"
+              onClick={() => setOpenWithAnalytics(false, "button")}
+            >
               <CloseIcon />
             </button>
           </div>

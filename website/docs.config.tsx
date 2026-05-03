@@ -62,6 +62,9 @@ const searchConfig =
 export default defineDocs({
   entry: "docs",
   search: searchConfig,
+  analytics: {
+    console: "info",
+  },
   theme: pixelBorder({
     ui: {
       layout: { toc: { enabled: true, depth: 3, style: "directional" }, sidebarWidth: 320 },

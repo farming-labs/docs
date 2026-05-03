@@ -1,0 +1,116 @@
+---
+title: "Analytics"
+description: "Log docs, search, AI, feedback, agent, and MCP events from one config hook"
+icon: "zap"
+order: 5.65
+---
+
+# Analytics
+
+Use the built-in analytics stream when you want visibility into how humans and agents use your docs. It tracks page views, search, Ask AI, feedback, page actions, code-copy, markdown/llms routes, agent feedback, and MCP requests through one typed event contract.
+
+## Quick Start
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  analytics: true,
+});
+```
+
+`analytics: true` logs every framework event to the console with the `[farming-labs:analytics]` prefix.
+
+## Send Events To Your Own Sink
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  analytics: {
+    async onEvent(event) {
+      await fetch("https://analytics.example.com/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(event),
+      });
+    },
+  },
+});
+```
+
+Events have this shape:
+
+```ts
+interface DocsAnalyticsEvent {
+  type: string;
+  timestamp: string;
+  source: "client" | "server" | "mcp";
+  url?: string;
+  path?: string;
+  referrer?: string;
+  locale?: string;
+  input?: {
+    query?: string;
+    question?: string;
+    feedbackComment?: string;
+    content?: string;
+  };
+  properties?: Record<string, unknown>;
+}
+```
+
+## Logged Events
+
+Client events:
+
+- `page_view`
+- `search_open`, `search_close`, `search_query`, `search_result_click`, `search_error`
+- `ai_open`, `ai_close`, `ai_question`, `ai_response`, `ai_error`, `ai_clear`
+- `page_action_copy_markdown`, `page_action_open_docs_menu`, `page_action_open_docs`
+- `code_block_copy`
+- `feedback_select`, `feedback_submit`, `feedback_error`
+
+Server and agent events:
+
+- `api_search`
+- `api_ai_request`, `api_ai_response`, `api_ai_error`
+- `agent_read`
+- `markdown_request`, `llms_request`, `skill_request`
+- `agent_spec_request`, `agent_feedback_schema`, `agent_feedback_submit`, `agent_feedback_error`
+- `mcp_request`, `mcp_tool`
+
+`agent_read` fires when a page is read through the machine-readable surface: `/docs/page.md`,
+`/docs/page` with `Accept: text/markdown`, `GET /api/docs?format=markdown&path=page`, or MCP
+`read_page`. Its `properties.delivery` value is `md_route`, `accept_header`, `api_format`, or
+`mcp_tool`.
+
+## Input Privacy
+
+By default, analytics events only include safe metadata such as paths, counts, durations, status, result counts, model IDs, content lengths, and whether a comment exists.
+
+<Callout type="warning" title="Inputs are excluded by default">
+  Search queries, AI questions, feedback comments, and copied content are not included unless you
+  explicitly set `includeInputs: true`. This keeps analytics separate from prompt context and avoids
+  logging user-authored text by accident.
+</Callout>
+
+Enable raw input capture only when you have user consent and a retention policy:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  analytics: {
+    includeInputs: true,
+    onEvent(event) {
+      console.info(event);
+    },
+  },
+});
+```
+
+## Options
+
+| Option          | Type                                      | Default                      |
+| --------------- | ----------------------------------------- | ---------------------------- |
+| `enabled`       | `boolean`                                 | `true` when object is passed |
+| `console`       | `boolean \| "log" \| "info" \| "debug"` | `true` for `analytics: true` |
+| `includeInputs` | `boolean`                                 | `false`                      |
+| `onEvent`       | `(event) => void \| Promise<void>`        | `undefined`                  |
+
+When both `console` and `onEvent` are set, the framework logs to both places.

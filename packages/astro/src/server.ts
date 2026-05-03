@@ -34,6 +34,7 @@ import matter from "gray-matter";
 import {
   applySidebarFolderIndexBehavior,
   buildDocsAgentDiscoverySpec,
+  emitDocsAnalyticsEvent,
   findDocsMarkdownPage,
   isDocsAgentDiscoveryRequest,
   isDocsSkillRequest,
@@ -484,6 +485,7 @@ function findPageInMap(
  */
 export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   const entry = (config.entry as string) ?? "docs";
+  const analytics = config.analytics;
   const contentDirBase =
     ((config as Record<string, unknown>).contentDir as string | undefined) ?? entry;
   const rootDir = path.resolve(
@@ -924,6 +926,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       });
     }
 
+    const searchStartedAt = Date.now();
     const results = await performDocsSearch({
       pages: getSearchIndex(ctx),
       query,
@@ -931,6 +934,20 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       locale: ctx.locale,
       pathname: url.searchParams.get("pathname") ?? undefined,
       siteTitle: llmsTitle,
+    });
+    await emitDocsAnalyticsEvent(analytics, {
+      type: "api_search",
+      source: "server",
+      url: context.request.url,
+      path: url.pathname,
+      locale: ctx.locale,
+      input: { query },
+      properties: {
+        queryLength: query.length,
+        resultCount: results.length,
+        pathname: url.searchParams.get("pathname") ?? undefined,
+        durationMs: Math.max(0, Date.now() - searchStartedAt),
+      },
     });
 
     return new Response(JSON.stringify(results), {
@@ -973,7 +990,16 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   }
 
   async function POST(context: { request: Request }): Promise<Response> {
+    const requestUrl = new URL(context.request.url);
+    const requestStartedAt = Date.now();
     if (!aiConfig.enabled) {
+      await emitDocsAnalyticsEvent(analytics, {
+        type: "api_ai_error",
+        source: "server",
+        url: context.request.url,
+        path: requestUrl.pathname,
+        properties: { reason: "disabled" },
+      });
       return new Response(
         JSON.stringify({
           error: "AI is not enabled. Set `ai: { enabled: true }` in your docs config to enable it.",
@@ -988,6 +1014,16 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       (typeof process !== "undefined" ? process.env?.OPENAI_API_KEY : undefined);
 
     if (!resolvedKey) {
+      await emitDocsAnalyticsEvent(analytics, {
+        type: "api_ai_error",
+        source: "server",
+        url: context.request.url,
+        path: requestUrl.pathname,
+        properties: {
+          reason: "missing_api_key",
+          durationMs: Math.max(0, Date.now() - requestStartedAt),
+        },
+      });
       return new Response(
         JSON.stringify({
           error:
@@ -1003,6 +1039,17 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     try {
       body = await context.request.json();
     } catch {
+      await emitDocsAnalyticsEvent(analytics, {
+        type: "api_ai_error",
+        source: "server",
+        url: context.request.url,
+        path: requestUrl.pathname,
+        locale: ctx.locale,
+        properties: {
+          reason: "invalid_json",
+          durationMs: Math.max(0, Date.now() - requestStartedAt),
+        },
+      });
       return new Response(
         JSON.stringify({ error: "Invalid JSON body. Expected { messages: [...] }" }),
         { status: 400, headers: { "Content-Type": "application/json" } },
@@ -1011,6 +1058,17 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     const messages = body.messages;
     if (!Array.isArray(messages) || messages.length === 0) {
+      await emitDocsAnalyticsEvent(analytics, {
+        type: "api_ai_error",
+        source: "server",
+        url: context.request.url,
+        path: requestUrl.pathname,
+        locale: ctx.locale,
+        properties: {
+          reason: "missing_messages",
+          durationMs: Math.max(0, Date.now() - requestStartedAt),
+        },
+      });
       return new Response(
         JSON.stringify({ error: "messages array is required and must not be empty." }),
         { status: 400, headers: { "Content-Type": "application/json" } },
@@ -1019,6 +1077,18 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
     if (!lastUserMessage) {
+      await emitDocsAnalyticsEvent(analytics, {
+        type: "api_ai_error",
+        source: "server",
+        url: context.request.url,
+        path: requestUrl.pathname,
+        locale: ctx.locale,
+        properties: {
+          reason: "missing_user_message",
+          messageCount: messages.length,
+          durationMs: Math.max(0, Date.now() - requestStartedAt),
+        },
+      });
       return new Response(JSON.stringify({ error: "At least one user message is required." }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -1054,6 +1124,21 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     const resolved = resolveAIModelAndProvider(aiConfig, requestedModel);
     const finalKey = resolved.apiKey ?? resolvedKey;
 
+    await emitDocsAnalyticsEvent(analytics, {
+      type: "api_ai_request",
+      source: "server",
+      url: context.request.url,
+      path: requestUrl.pathname,
+      locale: ctx.locale,
+      input: { question: lastUserMessage.content },
+      properties: {
+        messageCount: messages.length,
+        questionLength: lastUserMessage.content.length,
+        retrievedCount: scored.length,
+        model: resolved.model,
+      },
+    });
+
     const llmResponse = await fetch(`${resolved.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
@@ -1065,11 +1150,44 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     if (!llmResponse.ok) {
       const errText = await llmResponse.text().catch(() => "Unknown error");
+      await emitDocsAnalyticsEvent(analytics, {
+        type: "api_ai_error",
+        source: "server",
+        url: context.request.url,
+        path: requestUrl.pathname,
+        locale: ctx.locale,
+        input: { question: lastUserMessage.content },
+        properties: {
+          reason: "llm_error",
+          status: llmResponse.status,
+          messageCount: messages.length,
+          questionLength: lastUserMessage.content.length,
+          retrievedCount: scored.length,
+          model: resolved.model,
+          durationMs: Math.max(0, Date.now() - requestStartedAt),
+        },
+      });
       return new Response(
         JSON.stringify({ error: `LLM API error (${llmResponse.status}): ${errText}` }),
         { status: 502, headers: { "Content-Type": "application/json" } },
       );
     }
+
+    await emitDocsAnalyticsEvent(analytics, {
+      type: "api_ai_response",
+      source: "server",
+      url: context.request.url,
+      path: requestUrl.pathname,
+      locale: ctx.locale,
+      input: { question: lastUserMessage.content },
+      properties: {
+        messageCount: messages.length,
+        questionLength: lastUserMessage.content.length,
+        retrievedCount: scored.length,
+        model: resolved.model,
+        durationMs: Math.max(0, Date.now() - requestStartedAt),
+      },
+    });
 
     return new Response(llmResponse.body, {
       headers: {
@@ -1107,6 +1225,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       },
     },
     mcp: (config as Record<string, unknown>).mcp as Record<string, unknown> | boolean | undefined,
+    analytics,
     defaultName: mcpSiteTitle,
   });
 

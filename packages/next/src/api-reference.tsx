@@ -843,9 +843,9 @@ function ApiReferenceSwitcher({
     overflow: "hidden",
     backgroundImage: theme.backgroundImage,
     boxShadow: theme.boxShadow,
-    ["--fd-api-switcher-card-radius" as "--fd-api-switcher-card-radius"]: theme.cardRadius,
-    ["--fd-api-switcher-icon-radius" as "--fd-api-switcher-icon-radius"]: theme.iconRadius,
-    ["--fd-api-switcher-shadow" as "--fd-api-switcher-shadow"]: theme.boxShadow,
+    ["--fd-api-switcher-card-radius" as const]: theme.cardRadius,
+    ["--fd-api-switcher-icon-radius" as const]: theme.iconRadius,
+    ["--fd-api-switcher-shadow" as const]: theme.boxShadow,
   } as CSSProperties;
 
   return (

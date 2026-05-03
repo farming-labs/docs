@@ -43,6 +43,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `sidebar`     | `boolean \| SidebarConfig`                      | `true`           | Sidebar visibility and customization                                                 |
 | `icons`       | `Record<string, unknown>`                       | —                | Shared icon registry for frontmatter `icon` fields and built-ins like `Prompt`       |
 | `components`  | `Record<string, unknown>`                       | —                | Custom MDX component overrides, including built-ins like `HoverLink` and `Prompt`    |
+| `analytics`   | `boolean \| DocsAnalyticsConfig`                | `false`          | Built-in event stream for page views, search, AI, feedback, page actions, agent routes, and MCP |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void`              | —                | Callback when the user clicks the copy button on a code block (runs in addition to copy) |
 | `feedback`    | `boolean \| FeedbackConfig`                     | `false`          | Human page feedback UI plus optional agent feedback endpoints                        |
 | `agent`       | `DocsAgentConfig`                               | —                | Defaults for `docs agent compact` and related machine-docs workflows                 |
@@ -60,6 +61,32 @@ Top-level configuration object passed to `defineDocs()`.
 ---
 
 `components` is merged into the default MDX component map, so you can both add your own components and replace built-ins such as `Callout`, `Tabs`, `HoverLink`, or `Prompt`. For built-in defaults like `theme.ui.components.HoverLink` and `theme.ui.components.Prompt`, see [Creating themes](/docs/themes/creating-themes). For usage examples and a live demo, see [Components](/docs/customization/components).
+
+---
+
+## `analytics` and `DocsAnalyticsConfig`
+
+Built-in analytics event stream. See [Analytics](/docs/customization/analytics) for the full guide and event list.
+
+| Option          | Type                                      | Default                      | Description                                                        |
+| --------------- | ----------------------------------------- | ---------------------------- | ------------------------------------------------------------------ |
+| `enabled`       | `boolean`                                 | `true` when object is passed | Enable or disable the analytics stream                             |
+| `console`       | `boolean \| "log" \| "info" \| "debug"` | `true` for `analytics: true` | Log analytics events to the console                                |
+| `includeInputs` | `boolean`                                 | `false`                      | Include raw queries, AI questions, feedback comments, copied text   |
+| `onEvent`       | `(event) => void \| Promise<void>`        | —                            | Callback fired for every analytics event                           |
+
+```ts title="docs.config.ts"
+analytics: {
+  onEvent(event) {
+    console.info(event.type, event.properties);
+  },
+}
+```
+
+<Callout type="warning" title="Inputs stay out unless requested">
+  Search queries, AI questions, feedback comments, and copied content are omitted by default. Set
+  `includeInputs: true` only when your project is allowed to store that text.
+</Callout>
 
 ---
 

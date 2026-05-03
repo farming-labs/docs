@@ -9,6 +9,7 @@ export const { GET, POST, DELETE } = createDocsMCPAPI({
   nav: docsConfig.nav,
   ordering: docsConfig.ordering,
   search: docsConfig.search,
+  analytics: docsConfig.analytics,
   mcp: docsConfig.mcp,
 });
 

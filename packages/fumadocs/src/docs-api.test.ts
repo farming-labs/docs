@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import type { DocsAnalyticsEvent } from "@farming-labs/docs";
 import { createDocsAPI, createDocsMCPAPI } from "./docs-api.js";
 
 function createDeferredPromise<T = void>() {
@@ -667,6 +668,326 @@ Config content.
     );
     expect(substringAcceptResponse.headers.get("content-type")).not.toContain("text/markdown");
     expect(await substringAcceptResponse.text()).toBe("[]");
+  });
+
+  it("emits agent_read analytics for markdown API, .md routes, and Accept header reads", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-agent-read-analytics-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "guides", "setup"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    writeFileSync(
+      join(rootDir, "app", "docs", "guides", "setup", "page.mdx"),
+      `---
+title: "Setup"
+---
+
+# Setup
+
+Install the package.
+`,
+    );
+
+    const events: Array<{
+      type: string;
+      source?: string;
+      path?: string;
+      properties?: Record<string, unknown>;
+    }> = [];
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      analytics: {
+        console: false,
+        onEvent(event) {
+          events.push(event);
+        },
+      },
+    });
+
+    await GET(new Request("http://localhost/api/docs?format=markdown&path=guides/setup"));
+    await GET(new Request("http://localhost/docs/guides/setup.md"));
+    await GET(
+      new Request("http://localhost/docs/guides/setup", {
+        headers: { accept: "text/markdown" },
+      }),
+    );
+
+    const agentReads = events.filter((event) => event.type === "agent_read");
+    expect(agentReads).toHaveLength(3);
+    expect(agentReads.map((event) => event.properties?.delivery)).toEqual([
+      "api_format",
+      "md_route",
+      "accept_header",
+    ]);
+    expect(agentReads).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "server",
+          path: "/api/docs",
+          properties: expect.objectContaining({
+            requestedPath: "guides/setup",
+            found: true,
+          }),
+        }),
+        expect.objectContaining({
+          source: "server",
+          path: "/docs/guides/setup.md",
+          properties: expect.objectContaining({
+            requestedPath: "guides/setup",
+            found: true,
+          }),
+        }),
+        expect.objectContaining({
+          source: "server",
+          path: "/docs/guides/setup",
+          properties: expect.objectContaining({
+            requestedPath: "guides/setup",
+            found: true,
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it("emits analytics for docs API, agent, markdown, feedback, and search routes", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-api-analytics-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "guides", "setup"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+description: "Start here"
+---
+
+# Introduction
+
+Welcome to the docs.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "guides", "setup", "page.mdx"),
+      `---
+title: "Setup"
+description: "Install the framework"
+---
+
+# Setup
+
+Install the package.
+`,
+    );
+    writeFileSync(join(rootDir, "skill.md"), "# Site skill\n\nUse the framework routes.\n");
+
+    const events: DocsAnalyticsEvent[] = [];
+    const onFeedback = vi.fn(async () => undefined);
+    const { GET, POST } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      analytics: {
+        console: false,
+        onEvent(event) {
+          events.push(event);
+        },
+      },
+      feedback: {
+        agent: {
+          enabled: true,
+          onFeedback,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              task: { type: "string" },
+              outcome: { type: "string" },
+            },
+            required: ["task", "outcome"],
+          },
+        },
+      },
+    });
+
+    await GET(new Request("http://localhost/api/docs/agent/spec"));
+    await GET(new Request("http://localhost/api/docs/agent/feedback/schema"));
+    await GET(new Request("http://localhost/api/docs?format=skill"));
+    await GET(new Request("http://localhost/api/docs?format=markdown&path=guides/setup"));
+    await GET(new Request("http://localhost/docs/guides/setup.md"));
+    await GET(
+      new Request("http://localhost/docs/guides/setup", {
+        headers: { accept: "text/markdown" },
+      }),
+    );
+    await GET(new Request("http://localhost/api/docs?format=llms"));
+    await GET(new Request("http://localhost/api/docs?format=llms-full"));
+    await GET(new Request("http://localhost/api/docs?query=install"));
+
+    const invalidFeedback = await POST(
+      new Request("http://localhost/api/docs/agent/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          payload: {
+            task: "validate analytics",
+          },
+        }),
+      }),
+    );
+    expect(invalidFeedback.status).toBe(400);
+
+    const validFeedback = await POST(
+      new Request("http://localhost/api/docs/agent/feedback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          context: {
+            page: "/docs/guides/setup",
+          },
+          payload: {
+            task: "validate analytics",
+            outcome: "implemented",
+          },
+        }),
+      }),
+    );
+    expect(validFeedback.status).toBe(201);
+
+    const disabledAi = await POST(
+      new Request("http://localhost/api/docs", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: "How do I install?" }],
+        }),
+      }),
+    );
+    expect(disabledAi.status).toBe(404);
+
+    expect(events.map((event) => event.type)).toEqual(
+      expect.arrayContaining([
+        "agent_spec_request",
+        "agent_feedback_schema",
+        "skill_request",
+        "agent_read",
+        "markdown_request",
+        "llms_request",
+        "api_search",
+        "agent_feedback_error",
+        "agent_feedback_submit",
+        "api_ai_error",
+      ]),
+    );
+    expect(
+      events.filter((event) => event.type === "agent_read").map((event) => event.properties),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ delivery: "api_format", found: true }),
+        expect.objectContaining({ delivery: "md_route", found: true }),
+        expect.objectContaining({ delivery: "accept_header", found: true }),
+      ]),
+    );
+    expect(events.find((event) => event.type === "api_search")).toMatchObject({
+      source: "server",
+      path: "/api/docs",
+      properties: expect.objectContaining({
+        queryLength: 7,
+      }),
+    });
+    expect(events.find((event) => event.type === "agent_feedback_submit")).toMatchObject({
+      properties: expect.objectContaining({
+        handled: true,
+        payloadKeys: ["task", "outcome"],
+      }),
+    });
+    expect(events.find((event) => event.type === "api_ai_error")).toMatchObject({
+      properties: expect.objectContaining({
+        reason: "disabled",
+      }),
+    });
+  });
+
+  it("emits analytics for successful Ask AI requests and responses", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-api-ai-analytics-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Installation"
+---
+
+# Installation
+
+Install the framework with pnpm.
+`,
+    );
+
+    const events: DocsAnalyticsEvent[] = [];
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response("data: {}\n\n", {
+        status: 200,
+        headers: {
+          "content-type": "text/event-stream",
+        },
+      }),
+    ) as typeof fetch;
+
+    try {
+      const { POST } = createDocsAPI({
+        rootDir,
+        entry: "docs",
+        ai: {
+          enabled: true,
+          apiKey: "test-key",
+          baseUrl: "https://llm.example/v1",
+          model: "test-model",
+        },
+        analytics: {
+          console: false,
+          onEvent(event) {
+            events.push(event);
+          },
+        },
+      });
+
+      const response = await POST(
+        new Request("http://localhost/api/docs", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: "Install" }],
+          }),
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(events.map((event) => event.type)).toEqual(["api_ai_request", "api_ai_response"]);
+      expect(events[0]).toMatchObject({
+        properties: expect.objectContaining({
+          model: "test-model",
+          questionLength: 7,
+          retrievedCount: 1,
+        }),
+      });
+      expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe(
+        "https://llm.example/v1/chat/completions",
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.restoreAllMocks();
+    }
   });
 
   it("returns 404 for markdown mode when the requested page does not exist", async () => {

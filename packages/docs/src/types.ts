@@ -678,6 +678,89 @@ export interface PageActionsConfig {
   alignment?: "left" | "right";
 }
 
+export type DocsAnalyticsSource = "client" | "server" | "mcp";
+
+export type DocsAnalyticsEventType =
+  | "page_view"
+  | "search_open"
+  | "search_close"
+  | "search_query"
+  | "search_result_click"
+  | "search_error"
+  | "ai_open"
+  | "ai_close"
+  | "ai_question"
+  | "ai_response"
+  | "ai_error"
+  | "ai_clear"
+  | "page_action_copy_markdown"
+  | "page_action_open_docs_menu"
+  | "page_action_open_docs"
+  | "code_block_copy"
+  | "feedback_select"
+  | "feedback_submit"
+  | "feedback_error"
+  | "agent_read"
+  | "agent_spec_request"
+  | "agent_feedback_schema"
+  | "agent_feedback_submit"
+  | "agent_feedback_error"
+  | "markdown_request"
+  | "llms_request"
+  | "skill_request"
+  | "api_search"
+  | "api_ai_request"
+  | "api_ai_response"
+  | "api_ai_error"
+  | "mcp_request"
+  | "mcp_tool";
+
+export interface DocsAnalyticsInput {
+  query?: string;
+  question?: string;
+  feedbackComment?: string;
+  content?: string;
+}
+
+export interface DocsAnalyticsEvent {
+  type: DocsAnalyticsEventType | (string & {});
+  timestamp: string;
+  source: DocsAnalyticsSource;
+  url?: string;
+  path?: string;
+  referrer?: string;
+  locale?: string;
+  input?: DocsAnalyticsInput;
+  properties?: Record<string, unknown>;
+}
+
+export type DocsAnalyticsEventInput = Omit<DocsAnalyticsEvent, "timestamp" | "source"> & {
+  timestamp?: string;
+  source?: DocsAnalyticsSource;
+};
+
+export interface DocsAnalyticsConfig {
+  /** Enable analytics event emission. Defaults to `true` when this object is provided. */
+  enabled?: boolean;
+  /**
+   * Log analytics events to the console.
+   *
+   * `analytics: true` logs with `console.info`. When `onEvent` is provided,
+   * console logging is disabled unless this is set.
+   */
+  console?: boolean | "log" | "info" | "debug";
+  /**
+   * Include raw search queries, AI questions, feedback comments, and copied
+   * content in emitted events.
+   *
+   * Defaults to `false`; events still include safe metadata such as lengths,
+   * counts, routes, status, and duration.
+   */
+  includeInputs?: boolean;
+  /** Callback fired for every analytics event. */
+  onEvent?: (event: DocsAnalyticsEvent) => void | Promise<void>;
+}
+
 /**
  * Configuration for the "Last updated" date display.
  *
@@ -1738,6 +1821,17 @@ export interface DocsConfig {
   staticExport?: boolean;
   /** Theme configuration - single source of truth for UI */
   theme?: DocsTheme;
+  /**
+   * Built-in analytics event stream for docs interactions.
+   *
+   * - `false` or omitted -> analytics disabled (default)
+   * - `true` -> log all framework events to the console
+   * - `{ onEvent(event) { ... } }` -> send events to your analytics sink
+   *
+   * Raw queries, AI questions, feedback comments, and copied content are not
+   * included unless `includeInputs: true` is set.
+   */
+  analytics?: boolean | DocsAnalyticsConfig;
   /**
    * GitHub repository URL or config. Enables "Edit on GitHub" links
    * on each docs page footer, pointing to the source `.mdx` file.

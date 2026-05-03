@@ -9,7 +9,7 @@ import type {
   AIConfig,
   OpenDocsProvider,
 } from "@farming-labs/docs";
-import { applySidebarFolderIndexBehavior } from "@farming-labs/docs";
+import { applySidebarFolderIndexBehavior, resolveDocsAnalyticsConfig } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
@@ -327,6 +327,7 @@ export function TanstackDocsLayout({
   const tocConfig = config.theme?.ui?.layout?.toc;
   const tocEnabled = tocConfig?.enabled !== false;
   const tocStyle = tocConfig?.style as "default" | "directional" | undefined;
+  const analyticsEnabled = resolveDocsAnalyticsConfig(config.analytics).enabled;
   const docsApiUrl = withLangInUrl("/api/docs", locale);
   const navTitle = (config.nav?.title as ReactNode) ?? "Docs";
   const navUrl = withLangInUrl(config.nav?.url ?? `/${config.entry ?? "docs"}`, locale);
@@ -473,7 +474,7 @@ export function TanstackDocsLayout({
       {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
       {!staticExport && (
         <Suspense fallback={null}>
-          <DocsCommandSearch api={docsApiUrl} locale={locale} />
+          <DocsCommandSearch api={docsApiUrl} locale={locale} analytics={analyticsEnabled} />
         </Suspense>
       )}
       {aiEnabled && (
@@ -489,6 +490,7 @@ export function TanstackDocsLayout({
             loaderVariant={aiLoaderVariant}
             models={aiModels}
             defaultModelId={aiDefaultModelId}
+            analytics={analyticsEnabled}
           />
         </Suspense>
       )}
@@ -518,6 +520,7 @@ export function TanstackDocsLayout({
           feedbackPositiveLabel={feedbackConfig.positiveLabel}
           feedbackNegativeLabel={feedbackConfig.negativeLabel}
           feedbackSubmitLabel={feedbackConfig.submitLabel}
+          analytics={analyticsEnabled}
         >
           {children}
         </DocsPageClient>

@@ -10,6 +10,7 @@ import {
   buildPageTwitter,
   resolveChangelogConfig,
   resolveDocsAgentMdxContent,
+  resolveDocsAnalyticsConfig,
   resolvePageSidebarFolderIndexBehavior,
 } from "@farming-labs/docs";
 import type {
@@ -780,6 +781,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const tocConfig = config.theme?.ui?.layout?.toc;
   const tocEnabled = tocConfig?.enabled !== false;
   const tocStyle = (tocConfig as any)?.style as "default" | "directional" | undefined;
+  const analyticsEnabled = resolveDocsAnalyticsConfig(config.analytics).enabled;
 
   const localeContext = resolveDocsLocaleContext(config, options?.locale);
   const i18n = resolveDocsI18nConfig(getDocsI18n(config));
@@ -981,7 +983,11 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
         {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
         {!staticExport && (
           <Suspense fallback={null}>
-            <DocsCommandSearch api={docsApiUrl} locale={activeLocale} />
+            <DocsCommandSearch
+              api={docsApiUrl}
+              locale={activeLocale}
+              analytics={analyticsEnabled}
+            />
           </Suspense>
         )}
         {aiEnabled && (
@@ -999,6 +1005,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
               loadingComponentHtml={aiLoadingComponentHtml}
               models={aiModels}
               defaultModelId={aiDefaultModelId}
+              analytics={analyticsEnabled}
             />
           </Suspense>
         )}
@@ -1032,6 +1039,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             feedbackPositiveLabel={feedbackConfig.positiveLabel}
             feedbackNegativeLabel={feedbackConfig.negativeLabel}
             feedbackSubmitLabel={feedbackConfig.submitLabel}
+            analytics={analyticsEnabled}
           >
             {children}
           </DocsPageClient>
