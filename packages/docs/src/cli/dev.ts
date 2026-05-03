@@ -15,7 +15,8 @@ import {
 } from "./templates.js";
 import { detectPackageManagerFromLockfile, type PackageManager } from "./utils.js";
 
-const MANAGED_CONFIG_FILE = "docs.cloud.json";
+const PRIMARY_MANAGED_CONFIG_FILE = "docs.json";
+const LEGACY_MANAGED_CONFIG_FILE = "docs.cloud.json";
 const DEFAULT_RUNTIME_ROOT = ".docs/site";
 const DEFAULT_DOCS_ROOT = "docs";
 const DEFAULT_API_REFERENCE_ROOT = "api-reference";
@@ -67,6 +68,7 @@ interface ManagedThemePreset {
 
 interface ManagedDocsProject {
   configPath: string;
+  configFileName: string;
   projectRoot: string;
   runtimeDir: string;
   runtimeFramework: RuntimeFrameworkName;
@@ -610,26 +612,46 @@ function detectNearestPackageManager(startDir: string): PackageManager {
   }
 }
 
-function readManagedDocsProject(projectRoot: string): ManagedDocsProject {
-  const configPath = path.join(projectRoot, MANAGED_CONFIG_FILE);
-  if (!fs.existsSync(configPath)) {
-    throw new Error(
-      `Could not find ${MANAGED_CONFIG_FILE} in ${projectRoot}. Frameworkless dev expects ${MANAGED_CONFIG_FILE}, ${DEFAULT_DOCS_ROOT}/, and optionally ${DEFAULT_API_REFERENCE_ROOT}/.`,
-    );
+function resolveManagedConfigPath(projectRoot: string): {
+  configPath: string;
+  configFileName: string;
+} {
+  const primaryPath = path.join(projectRoot, PRIMARY_MANAGED_CONFIG_FILE);
+  if (fs.existsSync(primaryPath)) {
+    return {
+      configPath: primaryPath,
+      configFileName: PRIMARY_MANAGED_CONFIG_FILE,
+    };
   }
+
+  const legacyPath = path.join(projectRoot, LEGACY_MANAGED_CONFIG_FILE);
+  if (fs.existsSync(legacyPath)) {
+    return {
+      configPath: legacyPath,
+      configFileName: LEGACY_MANAGED_CONFIG_FILE,
+    };
+  }
+
+  throw new Error(
+    `Could not find ${PRIMARY_MANAGED_CONFIG_FILE} in ${projectRoot}. Frameworkless dev expects ${PRIMARY_MANAGED_CONFIG_FILE}, ${DEFAULT_DOCS_ROOT}/, and optionally ${DEFAULT_API_REFERENCE_ROOT}/. ${LEGACY_MANAGED_CONFIG_FILE} is still supported for older repos.`,
+  );
+}
+
+function readManagedDocsProject(projectRoot: string): ManagedDocsProject {
+  const { configPath, configFileName } = resolveManagedConfigPath(projectRoot);
 
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(fs.readFileSync(configPath, "utf-8"));
   } catch (error) {
     throw new Error(
-      `Could not parse ${MANAGED_CONFIG_FILE}. The file must be valid JSON.${error instanceof Error ? ` ${error.message}` : ""}`,
+      `Could not parse ${configFileName}. The file must be valid JSON.${error instanceof Error ? ` ${error.message}` : ""}`,
     );
   }
 
   const parsed = managedConfigSchema.safeParse(parsedJson);
   if (!parsed.success) {
-    throw new Error(`Invalid ${MANAGED_CONFIG_FILE}: ${formatZodError(parsed.error)}`);
+    throw new Error(`Invalid ${configFileName}: ${formatZodError(parsed.error)}`);
   }
 
   const docsConfig = parsed.data.docs;
@@ -641,7 +663,7 @@ function readManagedDocsProject(projectRoot: string): ManagedDocsProject {
         : "framework";
   if (docsMode !== "frameworkless") {
     throw new Error(
-      `${MANAGED_CONFIG_FILE} uses docs.mode = "framework". ${pc.cyan("docs dev")} only supports frameworkless projects right now.`,
+      `${configFileName} uses docs.mode = "framework". ${pc.cyan("docs dev")} only supports frameworkless projects right now.`,
     );
   }
 
@@ -677,6 +699,7 @@ function readManagedDocsProject(projectRoot: string): ManagedDocsProject {
 
   return {
     configPath,
+    configFileName,
     projectRoot,
     runtimeDir,
     runtimeFramework,
@@ -953,7 +976,7 @@ function validateManagedOpenApiSpec(project: ManagedDocsProject): void {
   if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) {
     const relativePath = path.relative(project.projectRoot, sourcePath) || sourcePath;
     throw new Error(
-      `OpenAPI source not found at ${relativePath}. Update ${MANAGED_CONFIG_FILE} or add the spec file and try again.`,
+      `OpenAPI source not found at ${relativePath}. Update ${project.configFileName} or add the spec file and try again.`,
     );
   }
 }
@@ -1303,7 +1326,7 @@ export function materializeManagedRuntime(projectRoot: string): MaterializedMana
 
   if (!hasDocsMarkdown && !hasApiReferenceMarkdown && !hasOpenApiSpec) {
     throw new Error(
-      `No docs content found. Add markdown files under ${project.docsRoot}/ or ${project.apiReferenceRoot}/, or point content.openapi at an OpenAPI file in ${MANAGED_CONFIG_FILE}.`,
+      `No docs content found. Add markdown files under ${project.docsRoot}/ or ${project.apiReferenceRoot}/, or point content.openapi at an OpenAPI file in ${project.configFileName}.`,
     );
   }
 
@@ -1665,7 +1688,7 @@ export async function dev(options: DevOptions = {}): Promise<void> {
   if (options.verbose) {
     logLine(
       "source",
-      `${pc.cyan(MANAGED_CONFIG_FILE)} drives ${pc.cyan(`${project.docsRoot}/`)} and ${pc.cyan(`${project.apiReferenceRoot}/`)}`,
+      `${pc.cyan(project.configFileName)} drives ${pc.cyan(`${project.docsRoot}/`)} and ${pc.cyan(`${project.apiReferenceRoot}/`)}`,
     );
     logLine(
       "runtime",
@@ -1673,7 +1696,7 @@ export async function dev(options: DevOptions = {}): Promise<void> {
     );
     logLine(
       "watch",
-      `Watching ${project.docsRoot}/, ${project.apiReferenceRoot}/, and ${MANAGED_CONFIG_FILE}`,
+      `Watching ${project.docsRoot}/, ${project.apiReferenceRoot}/, and ${project.configFileName}`,
     );
     logLine(
       "sync",

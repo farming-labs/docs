@@ -1,6 +1,6 @@
 ---
-title: "docs.cloud.json"
-description: "How the shared docs.cloud.json contract separates docs structure from Docs Cloud services"
+title: "docs.json"
+description: "How the shared docs.json contract separates docs structure from Docs Cloud services"
 related:
   - /docs/guides
   - /docs/configuration
@@ -8,9 +8,9 @@ related:
 order: 2
 ---
 
-# docs.cloud.json
+# docs.json
 
-Use `docs.cloud.json` when you want a repo-level contract for frameworkless docs or for connecting
+Use `docs.json` when you want a repo-level contract for frameworkless docs or for connecting
 an existing docs app to Docs Cloud services.
 
 The important split is:
@@ -24,7 +24,7 @@ For frameworkless docs:
 
 ```json
 {
-  "$schema": "https://docs.farming-labs.dev/schema/cloud.json",
+  "$schema": "https://docs.farming-labs.dev/schema/docs.json",
   "version": 1,
   "docs": {
     "mode": "frameworkless",
@@ -42,7 +42,7 @@ For a framework-owned docs app:
 
 ```json
 {
-  "$schema": "https://docs.farming-labs.dev/schema/cloud.json",
+  "$schema": "https://docs.farming-labs.dev/schema/docs.json",
   "version": 1,
   "docs": {
     "mode": "framework",
@@ -86,6 +86,17 @@ This keeps product packaging separate from docs structure:
 - `frameworkless` is an authoring mode
 - `nextjs` is a runtime
 - Docs Cloud is the hosted layer that can add preview, publish, AI, and deploy services
+
+Set `cloud.enabled` to `false` when the repo is using `docs.json` only as a local project contract.
+Set it to `true` once the repo is actually connected to Docs Cloud services.
+
+## Compatibility
+
+`docs.json` is the canonical config name and contract going forward.
+
+Older repos that still use `docs.cloud.json`, `docs.framework`, or top-level `preview` and `publish`
+can still be read for compatibility, but new examples and generated configs should use the
+`docs.mode`, `docs.runtime`, and `cloud.*` shape shown here.
 
 ## Current Note
 

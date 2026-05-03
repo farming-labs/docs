@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://docs.farming-labs.dev/schema/cloud.json",
+  "$id": "https://docs.farming-labs.dev/schema/docs.json",
   "title": "Docs Cloud Config",
-  "description": "Legacy alias for the docs.json schema.",
+  "description": "Schema for docs.json.",
   "type": "object",
   "additionalProperties": false,
   "$defs": {
@@ -171,8 +171,8 @@
     "$schema": {
       "type": "string",
       "format": "uri",
-      "default": "https://docs.farming-labs.dev/schema/cloud.json",
-      "description": "Legacy schema URL alias. Prefer https://docs.farming-labs.dev/schema/docs.json for new configs."
+      "default": "https://docs.farming-labs.dev/schema/docs.json",
+      "description": "Schema URL for docs.json."
     },
     "version": {
       "type": "integer",

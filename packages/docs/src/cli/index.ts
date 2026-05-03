@@ -165,7 +165,7 @@ ${pc.dim("Usage:")}
 
 ${pc.dim("Commands:")}
   ${pc.cyan("init")}     Scaffold docs in your project (default)
-  ${pc.cyan("dev")}      Run frameworkless docs locally from ${pc.dim("docs.cloud.json")}
+  ${pc.cyan("dev")}      Run frameworkless docs locally from ${pc.dim("docs.json")}
   ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} to generate sibling agent.md files)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
   ${pc.cyan("mcp")}      Run the built-in docs MCP server over stdio
