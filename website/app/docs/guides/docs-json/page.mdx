@@ -87,6 +87,17 @@ This keeps product packaging separate from docs structure:
 - `nextjs` is a runtime
 - Docs Cloud is the hosted layer that can add preview, publish, AI, and deploy services
 
+Set `cloud.enabled` to `false` when the repo is using `docs.json` only as a local project contract.
+Set it to `true` once the repo is actually connected to Docs Cloud services.
+
+## Compatibility
+
+`docs.json` is the canonical config name and contract going forward.
+
+Older repos that still use `docs.cloud.json`, `docs.framework`, or top-level `preview` and `publish`
+can still be read for compatibility, but new examples and generated configs should use the
+`docs.mode`, `docs.runtime`, and `cloud.*` shape shown here.
+
 ## Current Note
 
 This example uses `nextjs`, but the config shape keeps `docs.runtime` explicit so the same contract
