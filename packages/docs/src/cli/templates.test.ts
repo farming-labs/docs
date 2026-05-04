@@ -258,6 +258,11 @@ describe("globalCssTemplate", () => {
     const out = globalCssTemplate("hardline");
     expect(out).toContain("@farming-labs/theme/hardline/css");
   });
+
+  it("uses correct theme path for ledger", () => {
+    const out = globalCssTemplate("ledger");
+    expect(out).toContain("@farming-labs/theme/ledger/css");
+  });
 });
 
 describe("injectCssImport", () => {
@@ -317,6 +322,12 @@ describe("docsConfigTemplate", () => {
     const out = docsConfigTemplate({ ...baseConfig, theme: "hardline" });
     expect(out).toContain("hardline");
     expect(out).toContain("@farming-labs/theme/hardline");
+  });
+
+  it("uses correct theme factory for ledger", () => {
+    const out = docsConfigTemplate({ ...baseConfig, theme: "ledger" });
+    expect(out).toContain("ledger");
+    expect(out).toContain("@farming-labs/theme/ledger");
   });
 
   it("uses local theme path for custom theme with customThemeName", () => {

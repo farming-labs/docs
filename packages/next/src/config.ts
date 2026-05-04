@@ -299,6 +299,7 @@ function createDocsWorkspaceAliases(): Record<string, string> {
     "@farming-labs/theme/client-hooks": "./packages/fumadocs/src/docs-client-hooks.tsx",
     "@farming-labs/theme/concrete": "./packages/fumadocs/src/concrete/index.ts",
     "@farming-labs/theme/hardline": "./packages/fumadocs/src/hardline/index.ts",
+    "@farming-labs/theme/ledger": "./packages/fumadocs/src/ledger/index.ts",
     "@farming-labs/theme/mdx": "./packages/fumadocs/src/mdx.ts",
     "@farming-labs/theme/search": "./packages/fumadocs/src/search.ts",
   };

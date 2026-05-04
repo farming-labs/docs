@@ -6,7 +6,14 @@ import { highlight } from "sugar-high";
 import { FloatingAIChat } from "@farming-labs/theme/ai";
 import { cn } from "@/lib/utils";
 
-type PresetKey = "default" | "colorful" | "darksharp" | "pixel-border" | "shiny" | "darkbold";
+type PresetKey =
+  | "default"
+  | "colorful"
+  | "darksharp"
+  | "pixel-border"
+  | "shiny"
+  | "ledger"
+  | "darkbold";
 type SidebarStyle = "default" | "bordered" | "floating";
 type TocStyle = "default" | "directional";
 
@@ -161,6 +168,26 @@ const PRESETS: Record<
     sidebar: "default",
     toc: { style: "default" },
     radius: "0.75rem",
+  },
+  ledger: {
+    label: "Ledger",
+    desc: "Stripe Docs-inspired product shell",
+    cssImport: "@farming-labs/theme/ledger/css",
+    themeImport: { from: "@farming-labs/theme/ledger", name: "ledger" },
+    colors: {
+      primary: "#5f6cf6",
+      primaryForeground: "#ffffff",
+      background: "#f6f8fb",
+      foreground: "#30364a",
+      muted: "#eef3fb",
+      mutedForeground: "#677187",
+      border: "#dbe3ef",
+      card: "#ffffff",
+      ring: "#5f6cf6",
+    },
+    sidebar: "bordered",
+    toc: { style: "default" },
+    radius: "0.5rem",
   },
   darkbold: {
     label: "DarkBold",
@@ -1282,12 +1309,12 @@ export function ThemeCustomizer() {
             });
           }}
           style={
-            state.preset === "shiny" || state.preset === "colorful" || state.preset === "default"
+            ["shiny", "colorful", "default", "ledger"].includes(state.preset)
               ? {
                   borderRadius: "14px",
                   background: "var(--color-fd-secondary, #fafafa)",
                   color: "var(--color-fd-foreground, #0a0a0a)",
-                  boxShadow: "0 0 0 0 var(--color-fd-border, #e5e5e5)",
+                  boxShadow: "none",
                   borderColor: "var(--color-fd-border, #e5e5e5)",
                 }
               : {

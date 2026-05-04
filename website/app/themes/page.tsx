@@ -100,6 +100,25 @@ export default defineDocs({
 @import "@farming-labs/theme/shiny/css";`,
   },
   {
+    key: "ledger",
+    name: "Ledger",
+    description:
+      "Stripe Docs-inspired product docs shell with tabbed navigation and navy code panels.",
+    cssImport: '@import "@farming-labs/theme/ledger/css";',
+    colors: ["#5f6cf6", "#f6f8fb", "#30364a", "#262c43"],
+    accent: "#5f6cf6",
+    previewEnabled: true,
+    configSnippet: `import { defineDocs } from "@farming-labs/docs";
+import { ledger } from "@farming-labs/theme/ledger";
+
+export default defineDocs({
+  entry: "docs",
+  theme: ledger(),
+});`,
+    globalCss: `@import "tailwindcss";
+@import "@farming-labs/theme/ledger/css";`,
+  },
+  {
     key: "darkbold",
     name: "DarkBold",
     description: "Pure monochrome with tight Geist typography and bold, minimal surfaces.",

@@ -1,0 +1,57 @@
+---
+title: "Ledger"
+description: "Stripe Docs-inspired theme with tabbed navigation, blue-violet actions, and deep code panels"
+icon: "credit-card"
+order: 4.85
+---
+
+# Ledger Theme
+
+A product-docs preset inspired by <HoverLink href="https://docs.stripe.com/" title="Stripe Docs" description="Stripe's documentation uses compact navigation, strong search affordances, crisp product links, and dark code examples." linkLabel="Visit Stripe Docs" external>Stripe Docs</HoverLink>, with neutral branding for @farming-labs/docs projects.
+
+## Usage
+
+```tsx title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+import { ledger } from "@farming-labs/theme/ledger";
+
+export default defineDocs({
+  entry: "docs",
+  theme: ledger(),
+});
+```
+
+```css title="app/global.css"
+@import "tailwindcss";
+@import "@farming-labs/theme/ledger/css";
+```
+
+## Defaults
+
+| Property      | Value                              |
+| ------------- | ---------------------------------- |
+| Primary       | `#5f6cf6`                          |
+| Background    | `#f6f8fb` (light), `#0f1424` (dark) |
+| Border        | `#dbe3ef`                          |
+| Border radius | `0.5rem`                           |
+| Content width | 820px                              |
+| Sidebar width | 292px                              |
+| Header height | 64px                               |
+
+## Style Notes
+
+- Compact tab-like navigation and pill search controls
+- Light product-docs surfaces with subtle borders and restrained shadows
+- Blue-violet active states for sidebar, TOC, tabs, and actions
+- Deep navy code blocks designed to stand out from the light docs shell
+
+## Customizing
+
+```tsx title="customizing.tsx"
+theme: ledger({
+  ui: {
+    colors: { primary: "#2563eb" },
+    layout: { sidebarWidth: 304, tocWidth: 248 },
+  },
+}),
+```

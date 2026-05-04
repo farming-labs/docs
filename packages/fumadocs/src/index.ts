@@ -8,6 +8,7 @@
  *   - `@farming-labs/theme/command-grid` → better-cmdk inspired paper-grid docs shell
  *   - `@farming-labs/theme/concrete`     → brutalist poster-style hard-edge theme
  *   - `@farming-labs/theme/hardline`     → high-contrast hard-edge theme
+ *   - `@farming-labs/theme/ledger`       → Stripe Docs-inspired product docs theme
  *
  * This root export provides layout helpers, the RootProvider, and re-exports
  * the base `fumadocs()` preset from `/default` for backward compatibility.
@@ -72,6 +73,7 @@ export { fumadocs, DefaultUIDefaults as FumadocsUIDefaults } from "./default/ind
 export { commandGrid, CommandGridUIDefaults } from "./command-grid/index.js";
 export { concrete, ConcreteUIDefaults } from "./concrete/index.js";
 export { hardline, HardlineUIDefaults } from "./hardline/index.js";
+export { ledger, LedgerUIDefaults } from "./ledger/index.js";
 
 // ─── UI primitives for custom theme layouts ───────────────────────────
 // These are the building blocks theme authors use to compose custom layouts
