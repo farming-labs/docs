@@ -343,7 +343,7 @@ figure.shiki figcaption,
   display: flex;
   min-height: 2.5rem;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0;
   border-bottom: 1px solid var(--fd-ledger-code-border);
   background: var(--fd-ledger-code-bg);
   font-size: 0.8125rem;
@@ -357,6 +357,12 @@ figure.shiki figcaption,
 figure.shiki figcaption,
 .fd-ai-code-header span {
   font-weight: 700;
+}
+
+.fd-codeblock-title .fd-copy-btn,
+figure.shiki:has(figcaption) > div:first-child > button,
+figure.shiki:has(figcaption) > div:first-child > div:last-child {
+  margin-left: auto;
 }
 
 .fd-copy-btn,

@@ -349,7 +349,7 @@ body:has(#nd-docs-layout),
   display: flex !important;
   min-height: 2.5rem !important;
   align-items: center !important;
-  gap: 0.5rem !important;
+  gap: 0 !important;
   border-bottom: 1px solid var(--fd-ledger-code-border) !important;
   background: var(--fd-ledger-code-bg) !important;
   color: var(--fd-ledger-code-title) !important;
@@ -365,6 +365,12 @@ body:has(#nd-docs-layout),
 #nd-docs-layout .fd-ai-code-header span {
   color: var(--fd-ledger-code-title) !important;
   font-weight: 700 !important;
+}
+
+#nd-docs-layout .fd-codeblock-title .fd-copy-btn,
+#nd-docs-layout figure.shiki:has(figcaption) > div:first-child > button,
+#nd-docs-layout figure.shiki:has(figcaption) > div:first-child > div:last-child {
+  margin-left: auto !important;
 }
 
 #nd-docs-layout .fd-copy-btn,
