@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/nuxt",
-  "version": "0.1.63",
+  "version": "0.1.64",
   "description": "Nuxt adapter for @farming-labs/docs — content loading and navigation utilities",
   "keywords": [
     "docs",
