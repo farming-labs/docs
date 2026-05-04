@@ -408,6 +408,82 @@ No frontmatter title here.
     expect(deleteResponse.status).toBe(200);
   });
 
+  it("returns JSON-RPC errors for missing or expired MCP sessions", async () => {
+    const rootDir = createTempDocsProject();
+    const source = createFilesystemDocsMcpSource({
+      rootDir,
+      entry: "docs",
+      contentDir: "docs",
+      siteTitle: "Example Docs",
+    });
+
+    const handlers = createDocsMcpHttpHandler({
+      source,
+      mcp: { enabled: true, name: "Example Docs" },
+    });
+
+    const missingSessionResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "tools-without-session",
+          method: "tools/list",
+          params: {},
+        }),
+      }),
+    });
+
+    expect(missingSessionResponse.status).toBe(400);
+    await expect(missingSessionResponse.json()).resolves.toMatchObject({
+      jsonrpc: "2.0",
+      id: "tools-without-session",
+      error: {
+        code: -32000,
+        message: expect.stringContaining("MCP session not initialized"),
+        data: {
+          reason: "session_not_initialized",
+        },
+      },
+    });
+
+    const expiredSessionResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": "expired-session",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "tools-expired-session",
+          method: "tools/list",
+          params: {},
+        }),
+      }),
+    });
+
+    expect(expiredSessionResponse.status).toBe(404);
+    await expect(expiredSessionResponse.json()).resolves.toMatchObject({
+      jsonrpc: "2.0",
+      id: "tools-expired-session",
+      error: {
+        code: -32001,
+        message: expect.stringContaining("Session not found"),
+        data: {
+          reason: "session_not_found",
+        },
+      },
+    });
+  });
+
   it("emits analytics for MCP requests, tools, and agent page reads", async () => {
     const rootDir = createTempDocsProject();
     const source = createFilesystemDocsMcpSource({
@@ -691,7 +767,7 @@ No frontmatter title here.
     expect(searchPayload.result?.content?.[0]?.text).not.toContain("#quickstart");
   });
 
-  it("returns 404 responses when MCP is disabled", async () => {
+  it("returns JSON-RPC 404 responses when MCP is disabled", async () => {
     const rootDir = createTempDocsProject();
     const source = createFilesystemDocsMcpSource({
       rootDir,
@@ -722,7 +798,15 @@ No frontmatter title here.
 
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toMatchObject({
-      error: expect.stringContaining("MCP is disabled"),
+      jsonrpc: "2.0",
+      id: 1,
+      error: {
+        code: -32000,
+        message: expect.stringContaining("MCP is disabled"),
+        data: {
+          reason: "mcp_disabled",
+        },
+      },
     });
   });
 
