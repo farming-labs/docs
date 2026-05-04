@@ -812,6 +812,12 @@ function ThemesSection() {
       colors: ["#6c47ff", "#f7f7f8", "#73738c", "#e5e5ea"],
     },
     {
+      name: "Ledger",
+      description: "Stripe Docs-inspired product docs shell with navy code panels",
+      import: '@import "@farming-labs/theme/ledger/css";',
+      colors: ["#5f6cf6", "#f6f8fb", "#30364a", "#262c43"],
+    },
+    {
       name: "DarkBold",
       description: "Pure monochrome design — clean, bold, minimal",
       import: '@import "@farming-labs/theme/darkbold/css";',
