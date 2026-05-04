@@ -498,23 +498,21 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
     defaultVersion: options.defaultVersion,
   });
 
+  const disabledMessage =
+    "MCP is disabled. Remove `mcp: false` or set `mcp: { enabled: true }` in docs.config to enable it again.";
+
   if (!resolved.enabled) {
     return {
-      GET: async () =>
-        createJsonErrorResponse(
-          404,
-          "MCP is disabled. Remove `mcp: false` or set `mcp: { enabled: true }` in docs.config to enable it again.",
-        ),
-      POST: async () =>
-        createJsonErrorResponse(
-          404,
-          "MCP is disabled. Remove `mcp: false` or set `mcp: { enabled: true }` in docs.config to enable it again.",
-        ),
-      DELETE: async () =>
-        createJsonErrorResponse(
-          404,
-          "MCP is disabled. Remove `mcp: false` or set `mcp: { enabled: true }` in docs.config to enable it again.",
-        ),
+      GET: async () => createJsonErrorResponse(404, disabledMessage),
+      POST: async ({ request }) =>
+        createJsonRpcErrorResponse({
+          status: 404,
+          code: -32000,
+          message: disabledMessage,
+          id: readJsonRpcId(await parseJsonBody(request)),
+          data: { reason: "mcp_disabled" },
+        }),
+      DELETE: async () => createJsonErrorResponse(404, disabledMessage),
     };
   }
 
@@ -552,10 +550,12 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
     const existing = sessionId ? sessions.get(sessionId) : undefined;
 
     let parsedBody: unknown;
+    let bodyParseFailed = false;
     if (method === "POST") {
       try {
         parsedBody = await request.clone().json();
       } catch {
+        bodyParseFailed = true;
         parsedBody = undefined;
       }
     }
@@ -575,12 +575,27 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
     });
 
     if (!existing) {
+      if (method === "POST" && bodyParseFailed) {
+        return createJsonRpcErrorResponse({
+          status: 400,
+          code: -32700,
+          message: "Parse error: Invalid JSON",
+        });
+      }
+
       if (!initializeRequest) {
-        const status = method === "DELETE" ? 404 : 400;
-        return createJsonErrorResponse(
+        const status = sessionId || method === "DELETE" ? 404 : 400;
+        return createJsonRpcErrorResponse({
           status,
-          "MCP session not initialized. Start with an initialize request against this endpoint.",
-        );
+          code: sessionId ? -32001 : -32000,
+          message: sessionId
+            ? "Session not found. Reinitialize the MCP client before calling docs tools."
+            : "MCP session not initialized. Start with an initialize request against this endpoint.",
+          id: readJsonRpcId(parsedBody),
+          data: {
+            reason: sessionId ? "session_not_found" : "session_not_initialized",
+          },
+        });
       }
 
       const created = await createSession();
@@ -614,6 +629,46 @@ function createJsonErrorResponse(status: number, error: string): Response {
     status,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+async function parseJsonBody(request: Request): Promise<unknown> {
+  try {
+    return await request.clone().json();
+  } catch {
+    return undefined;
+  }
+}
+
+function readJsonRpcId(value: unknown): string | number | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const id = (value as { id?: unknown }).id;
+  return typeof id === "string" || typeof id === "number" ? id : null;
+}
+
+function createJsonRpcErrorResponse({
+  status,
+  code,
+  message,
+  id = null,
+  data,
+}: {
+  status: number;
+  code: number;
+  message: string;
+  id?: string | number | null;
+  data?: Record<string, unknown>;
+}): Response {
+  return new Response(
+    JSON.stringify({
+      jsonrpc: "2.0",
+      id,
+      error: data ? { code, message, data } : { code, message },
+    }),
+    {
+      status,
+      headers: { "Content-Type": "application/json" },
+    },
+  );
 }
 
 function normalizePathSegment(value: string): string {
