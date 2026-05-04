@@ -904,9 +904,7 @@ ${analyticsBlock}${apiReferenceBlock}});
 `;
 }
 
-function renderManagedAnalyticsBlock(
-  analytics: ManagedCloudAnalyticsConfig | undefined,
-): string {
+function renderManagedAnalyticsBlock(analytics: ManagedCloudAnalyticsConfig | undefined): string {
   if (typeof analytics === "undefined") {
     return "";
   }
