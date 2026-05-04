@@ -117,6 +117,17 @@ const THEME_INFO: Record<string, ThemeInfo> = {
     astroCssTheme: "shiny",
     nuxtCssTheme: "shiny",
   },
+  ledger: {
+    factory: "ledger",
+    nextImport: "@farming-labs/theme/ledger",
+    svelteImport: "@farming-labs/svelte-theme/ledger",
+    astroImport: "@farming-labs/astro-theme/ledger",
+    nuxtImport: "@farming-labs/nuxt-theme/ledger",
+    nextCssImport: "ledger",
+    svelteCssTheme: "ledger",
+    astroCssTheme: "ledger",
+    nuxtCssTheme: "ledger",
+  },
   greentree: {
     factory: "greentree",
     nextImport: "@farming-labs/theme/greentree",

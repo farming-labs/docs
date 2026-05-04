@@ -18,7 +18,7 @@ import {
   Users,
   Mail,
 } from "lucide-react";
-import { colorful } from "@farming-labs/theme/colorful";
+import { ledger } from "@farming-labs/theme/ledger";
 
 const typesenseBaseUrl = process.env.TYPESENSE_URL ?? process.env.TYPESENSE_BASE_URL;
 const typesenseCollection = process.env.TYPESENSE_COLLECTION ?? "docs";
@@ -82,7 +82,7 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
-  theme: colorful({
+  theme: ledger({
     ui: {
       layout: {
         sidebarWidth: 300,

@@ -20,3 +20,5 @@ export declare const concrete: (overrides?: { ui?: Record<string, unknown> }) =>
 export declare const ConcreteUIDefaults: Record<string, unknown>;
 export declare const hardline: (overrides?: { ui?: Record<string, unknown> }) => DocsTheme;
 export declare const HardlineUIDefaults: Record<string, unknown>;
+export declare const ledger: (overrides?: { ui?: Record<string, unknown> }) => DocsTheme;
+export declare const LedgerUIDefaults: Record<string, unknown>;

@@ -40,6 +40,9 @@
       ],
       "hardline": [
         "./src/themes/hardline.d.ts"
+      ],
+      "ledger": [
+        "./src/themes/ledger.d.ts"
       ]
     }
   },
@@ -85,6 +88,11 @@
       "import": "./src/themes/command-grid.js",
       "default": "./src/themes/command-grid.js"
     },
+    "./ledger": {
+      "types": "./src/themes/ledger.d.ts",
+      "import": "./src/themes/ledger.js",
+      "default": "./src/themes/ledger.js"
+    },
     "./css": "./styles/docs.css",
     "./fumadocs/css": "./styles/docs.css",
     "./styles/pixel-border.css": "./styles/pixel-border.css",
@@ -105,7 +113,9 @@
     "./styles/concrete.css": "./styles/concrete.css",
     "./concrete/css": "./styles/concrete-bundle.css",
     "./styles/command-grid.css": "./styles/command-grid.css",
-    "./command-grid/css": "./styles/command-grid-bundle.css"
+    "./command-grid/css": "./styles/command-grid-bundle.css",
+    "./styles/ledger.css": "./styles/ledger.css",
+    "./ledger/css": "./styles/ledger-bundle.css"
   },
   "scripts": {
     "build": "echo 'Astro components are shipped as source'",

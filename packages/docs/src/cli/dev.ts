@@ -54,6 +54,7 @@ type ThemePresetName =
   | "colorful"
   | "darkbold"
   | "shiny"
+  | "ledger"
   | "greentree"
   | "concrete"
   | "command-grid"
@@ -190,6 +191,12 @@ const THEME_PRESETS: Record<string, ManagedThemePreset> = {
     templateTheme: "shiny",
     importPath: "@farming-labs/theme/shiny",
     factory: "shiny",
+  },
+  ledger: {
+    configName: "ledger",
+    templateTheme: "ledger",
+    importPath: "@farming-labs/theme/ledger",
+    factory: "ledger",
   },
   greentree: {
     configName: "greentree",
