@@ -80,6 +80,7 @@ interface ManagedDocsProject {
   titleTemplate: string;
   description: string;
   theme: ManagedThemePreset;
+  analytics?: ManagedCloudAnalyticsConfig;
 }
 
 interface ManagedOpenApiSpec {
@@ -102,6 +103,14 @@ interface MaterializedManagedRuntime {
   apiReference: SyncResult;
   homeTarget: string;
 }
+
+type ManagedCloudAnalyticsConfig =
+  | boolean
+  | {
+      enabled?: boolean;
+      console?: boolean | "log" | "info" | "debug";
+      includeInputs?: boolean;
+    };
 
 export interface DevOptions {
   verbose?: boolean;
@@ -286,6 +295,18 @@ const managedConfigSchema = z
     cloud: z
       .object({
         enabled: z.boolean().optional(),
+        analytics: z
+          .union([
+            z.boolean(),
+            z
+              .object({
+                enabled: z.boolean().optional(),
+                console: z.union([z.boolean(), z.enum(["log", "info", "debug"])]).optional(),
+                includeInputs: z.boolean().optional(),
+              })
+              .passthrough(),
+          ])
+          .optional(),
       })
       .passthrough()
       .optional(),
@@ -717,6 +738,7 @@ function readManagedDocsProject(projectRoot: string): ManagedDocsProject {
     titleTemplate: parsed.data.site?.titleTemplate ?? `%s | ${siteName}`,
     description: parsed.data.site?.description ?? `Documentation for ${siteName}.`,
     theme,
+    analytics: parsed.data.cloud?.analytics,
   };
 }
 
@@ -844,6 +866,7 @@ function renderDocsConfigFile(options: {
   titleTemplate: string;
   description: string;
   theme: ManagedThemePreset;
+  analytics?: ManagedCloudAnalyticsConfig;
   apiReference?: {
     path: string;
     specUrl: string;
@@ -858,6 +881,7 @@ function renderDocsConfigFile(options: {
   },
 `
     : "";
+  const analyticsBlock = renderManagedAnalyticsBlock(options.analytics);
 
   return `import { defineDocs } from "@farming-labs/docs";
 import { ${options.theme.factory} } from "${options.theme.importPath}";
@@ -876,8 +900,40 @@ export default defineDocs({
     titleTemplate: ${JSON.stringify(options.titleTemplate)},
     description: ${JSON.stringify(options.description)},
   },
-${apiReferenceBlock}});
+${analyticsBlock}${apiReferenceBlock}});
 `;
+}
+
+function renderManagedAnalyticsBlock(
+  analytics: ManagedCloudAnalyticsConfig | undefined,
+): string {
+  if (typeof analytics === "undefined") {
+    return "";
+  }
+
+  if (typeof analytics === "boolean") {
+    return `  analytics: ${analytics},\n`;
+  }
+
+  const properties: string[] = [];
+
+  if (typeof analytics.enabled === "boolean") {
+    properties.push(`    enabled: ${analytics.enabled},`);
+  }
+
+  if (typeof analytics.console !== "undefined") {
+    properties.push(`    console: ${JSON.stringify(analytics.console)},`);
+  }
+
+  if (typeof analytics.includeInputs === "boolean") {
+    properties.push(`    includeInputs: ${analytics.includeInputs},`);
+  }
+
+  if (properties.length === 0) {
+    return "  analytics: {},\n";
+  }
+
+  return `  analytics: {\n${properties.join("\n")}\n  },\n`;
 }
 
 function renderManagedApiReferenceLayout(): string {
@@ -1380,6 +1436,7 @@ export function materializeManagedRuntime(projectRoot: string): MaterializedMana
       titleTemplate: project.titleTemplate,
       description: project.description,
       theme: project.theme,
+      analytics: project.analytics,
       apiReference: project.apiReferenceSpec
         ? {
             path: apiReferenceRoute,
@@ -1399,6 +1456,7 @@ export function materializeManagedRuntime(projectRoot: string): MaterializedMana
         titleTemplate: project.titleTemplate,
         description: project.description,
         theme: project.theme,
+        analytics: project.analytics,
       }),
     );
   } else {

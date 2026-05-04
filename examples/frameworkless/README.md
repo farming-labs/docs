@@ -50,7 +50,12 @@ Current example config:
     ]
   },
   "cloud": {
-    "enabled": false
+    "enabled": false,
+    "analytics": {
+      "enabled": true,
+      "console": "info",
+      "includeInputs": false
+    }
   }
 }
 ```

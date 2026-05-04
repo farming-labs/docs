@@ -656,6 +656,48 @@
               "description": "Whether Docs Cloud should manage hosted docs deployments for this project."
             }
           }
+        },
+        "analytics": {
+          "description": "Hosted analytics settings for Docs Cloud. Frameworkless projects can also materialize this serializable subset into the generated docs runtime.",
+          "oneOf": [
+            {
+              "type": "boolean",
+              "description": "Enable or disable Docs Cloud analytics with default behavior."
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Serializable analytics options. Function callbacks such as onEvent still belong in docs.config.ts.",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Whether Docs Cloud analytics is enabled for this project."
+                },
+                "console": {
+                  "oneOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "string",
+                      "enum": [
+                        "log",
+                        "info",
+                        "debug"
+                      ]
+                    }
+                  ],
+                  "description": "Console logging mode for generated frameworkless runtime analytics."
+                },
+                "includeInputs": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Whether raw search queries, AI questions, feedback comments, and copied content may be included."
+                }
+              }
+            }
+          ]
         }
       }
     },
@@ -811,6 +853,11 @@
       },
       "cloud": {
         "enabled": true,
+        "analytics": {
+          "enabled": true,
+          "console": "info",
+          "includeInputs": false
+        },
         "preview": {
           "enabled": true
         },
@@ -849,6 +896,7 @@
       },
       "cloud": {
         "enabled": true,
+        "analytics": true,
         "preview": {
           "enabled": true
         },

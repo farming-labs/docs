@@ -64,6 +64,11 @@ Hosted features live under `cloud`:
 {
   "cloud": {
     "enabled": true,
+    "analytics": {
+      "enabled": true,
+      "console": "info",
+      "includeInputs": false
+    },
     "preview": {
       "enabled": true
     },
@@ -86,6 +91,48 @@ This keeps product packaging separate from docs structure:
 - `frameworkless` is an authoring mode
 - `nextjs` is a runtime
 - Docs Cloud is the hosted layer that can add preview, publish, AI, and deploy services
+
+## Cloud Analytics
+
+Use `cloud.analytics` when you want the shared repo contract to carry analytics settings for Docs
+Cloud and for frameworkless generated runtimes.
+
+```json
+{
+  "cloud": {
+    "enabled": true,
+    "analytics": true
+  }
+}
+```
+
+Or, when you need the serializable subset:
+
+```json
+{
+  "cloud": {
+    "enabled": true,
+    "analytics": {
+      "enabled": true,
+      "console": "info",
+      "includeInputs": false
+    }
+  }
+}
+```
+
+`cloud.analytics` is intentionally limited to JSON-safe options:
+
+- `enabled`
+- `console`
+- `includeInputs`
+
+Function hooks such as `onEvent` still belong in `docs.config.ts`, because `docs.json` is a repo
+contract and not an executable config file.
+
+For frameworkless projects, this serializable subset can be materialized into the generated hidden
+runtime even before the repo is fully connected to hosted Docs Cloud services. For framework-owned
+apps, `docs.config.ts` remains the canonical place for advanced runtime analytics behavior.
 
 Set `cloud.enabled` to `false` when the repo is using `docs.json` only as a local project contract.
 Set it to `true` once the repo is actually connected to Docs Cloud services.
