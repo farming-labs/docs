@@ -751,6 +751,65 @@ function toImportPath(fromFile: string, toFile: string): string {
   return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
 }
 
+function toObjectKeySource(key: string): string {
+  return /^[A-Za-z_$][\w$]*$/.test(key) ? key : JSON.stringify(key);
+}
+
+function toInlineValueSource(value: unknown): string {
+  if (typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "boolean") return String(value);
+  if (value === null) return "null";
+  return JSON.stringify(value) ?? "undefined";
+}
+
+function toObjectPropertySource(key: string, value: unknown, depth: number): string {
+  const childIndent = " ".repeat(depth + 2);
+  const wrappedValueIndent = " ".repeat(depth + 4);
+  const valueSource = toChangelogMetadataSource(value, depth + 2);
+  const inlineSource = `${childIndent}${toObjectKeySource(key)}: ${valueSource},`;
+
+  if (!valueSource.includes("\n") && inlineSource.length > 100) {
+    return `${childIndent}${toObjectKeySource(key)}:\n${wrappedValueIndent}${valueSource},`;
+  }
+
+  return inlineSource;
+}
+
+function toChangelogMetadataSource(value: unknown, depth = 0): string {
+  const indent = " ".repeat(depth);
+  const childIndent = " ".repeat(depth + 2);
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "[]";
+
+    const inline = value.every(
+      (item) =>
+        item === null ||
+        typeof item === "string" ||
+        typeof item === "number" ||
+        typeof item === "boolean",
+    );
+
+    if (inline) return `[${value.map(toInlineValueSource).join(", ")}]`;
+
+    return `[
+${value.map((item) => `${childIndent}${toChangelogMetadataSource(item, depth + 2)},`).join("\n")}
+${indent}]`;
+  }
+
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value).filter((entry) => entry[1] !== undefined);
+    if (entries.length === 0) return "{}";
+
+    return `{
+${entries.map(([key, item]) => toObjectPropertySource(key, item, depth)).join("\n")}
+${indent}}`;
+  }
+
+  return toInlineValueSource(value);
+}
+
 function buildInlineChangelogEntriesSource(
   root: string,
   pagePath: string,
@@ -772,7 +831,7 @@ function buildInlineChangelogEntriesSource(
     url: ${JSON.stringify(`/${entryPath}/${routePath}/${entry.slug}`)},
     sourcePath: ${JSON.stringify(relative(root, entry.sourceFile).replaceAll("\\", "/"))},
     Component: ${importName},
-    metadata: ${JSON.stringify(entry.metadata)},
+    metadata: ${toChangelogMetadataSource(entry.metadata, 4)},
   }`);
   });
 
@@ -780,9 +839,8 @@ function buildInlineChangelogEntriesSource(
     importsSource: `import type { GeneratedChangelogEntry } from "@farming-labs/next/changelog";
 ${imports.join("\n")}`.trimEnd(),
     entriesSource: `export const changelogEntries: GeneratedChangelogEntry[] = [
-${records.join(",\n")}
-];
-`,
+${records.length > 0 ? `${records.join(",\n")},` : ""}
+];`,
   };
 }
 
