@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createDocsCloudAnalytics } from "./cloud-analytics.js";
 import { emitDocsAnalyticsEvent, resolveDocsAnalyticsConfig } from "./analytics.js";
 import type { DocsAnalyticsEvent, DocsAnalyticsEventType } from "./types.js";
 
@@ -39,6 +40,13 @@ const ALL_ANALYTICS_EVENTS = [
 ] as const satisfies readonly DocsAnalyticsEventType[];
 
 describe("analytics", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED;
+    delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
+    delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY;
+  });
+
   it("emits every built-in analytics event type through the shared hook", async () => {
     const events: DocsAnalyticsEvent[] = [];
 
@@ -121,5 +129,178 @@ describe("analytics", () => {
       console: false,
       includeInputs: true,
     });
+  });
+
+  it("posts Docs Cloud analytics events to the configured ingestion endpoint", async () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 202 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await emitDocsAnalyticsEvent(
+      createDocsCloudAnalytics({
+        projectId: "project_123",
+        console: false,
+        includeInputs: true,
+      }),
+      {
+        type: "page_view",
+        source: "client",
+        path: "/docs",
+        properties: {
+          title: "Home",
+        },
+      },
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://docs.farming-labs.dev/api/analytics/events",
+      expect.objectContaining({
+        method: "POST",
+        keepalive: true,
+        headers: {
+          "content-type": "application/json",
+        },
+      }),
+    );
+
+    const request = fetchMock.mock.calls[0]?.[1];
+    expect(typeof request?.body).toBe("string");
+    expect(JSON.parse(String(request?.body))).toMatchObject({
+      projectId: "project_123",
+      event: {
+        type: "page_view",
+        source: "client",
+        path: "/docs",
+      },
+    });
+  });
+
+  it("no-ops Docs Cloud analytics events when endpoint or project id is missing", async () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 202 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await emitDocsAnalyticsEvent(
+      createDocsCloudAnalytics({
+        console: false,
+      }),
+      {
+        type: "page_view",
+        source: "client",
+      },
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("internally wraps analytics with the Docs Cloud sink when cloud env is enabled", async () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "true";
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_env";
+
+    const fetchMock = vi.fn(async () => new Response(null, { status: 202 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const seen: DocsAnalyticsEvent[] = [];
+
+    await emitDocsAnalyticsEvent(
+      {
+        console: false,
+        onEvent(event) {
+          seen.push(event);
+        },
+      },
+      {
+        type: "feedback_submit",
+        source: "client",
+        path: "/docs",
+        properties: {
+          value: "positive",
+        },
+      },
+    );
+
+    expect(seen).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://docs.farming-labs.dev/api/analytics/events",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+  });
+
+  it("preserves the user onEvent callback when Docs Cloud delivery fails", async () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "true";
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_env_failure";
+
+    const fetchMock = vi.fn(async () => {
+      throw new Error("network down");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const seen: DocsAnalyticsEvent[] = [];
+
+    await emitDocsAnalyticsEvent(
+      {
+        console: false,
+        onEvent(event) {
+          seen.push(event);
+        },
+      },
+      {
+        type: "page_view",
+        source: "client",
+        path: "/docs",
+      },
+    );
+
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.path).toBe("/docs");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("still sends Docs Cloud analytics when the user onEvent throws", async () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "true";
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_env_user_throw";
+
+    const fetchMock = vi.fn(async () => new Response(null, { status: 202 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const userOnEvent = vi.fn(async () => {
+      throw new Error("user callback failed");
+    });
+
+    await emitDocsAnalyticsEvent(
+      {
+        console: false,
+        onEvent: userOnEvent,
+      },
+      {
+        type: "feedback_submit",
+        source: "client",
+        path: "/docs",
+      },
+    );
+
+    expect(userOnEvent).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("enables analytics by default when Docs Cloud env is enabled and config is omitted", async () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "true";
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_default";
+
+    const fetchMock = vi.fn(async () => new Response(null, { status: 202 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const resolved = resolveDocsAnalyticsConfig();
+    expect(resolved.enabled).toBe(true);
+
+    await emitDocsAnalyticsEvent(undefined, {
+      type: "page_view",
+      source: "client",
+      path: "/docs",
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
