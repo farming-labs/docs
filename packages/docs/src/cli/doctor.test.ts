@@ -72,6 +72,18 @@ describe("parseDoctorArgs", () => {
     });
   });
 
+  it("parses hosted URL probes", () => {
+    expect(parseDoctorArgs(["--agent", "--url", "https://docs.example.com"])).toEqual({
+      mode: "agent",
+      url: "https://docs.example.com",
+    });
+    expect(parseDoctorArgs(["--url=https://docs.example.com", "--json"])).toEqual({
+      mode: "agent",
+      url: "https://docs.example.com",
+      json: true,
+    });
+  });
+
   it("parses human mode aliases", () => {
     expect(parseDoctorArgs(["--human"])).toEqual({ mode: "human" });
     expect(parseDoctorArgs(["human", "--config=docs.config.ts"])).toEqual({
@@ -87,6 +99,11 @@ describe("parseDoctorArgs", () => {
 
   it("rejects an empty inline config value", () => {
     expect(() => parseDoctorArgs(["--config="])).toThrow("Missing value for --config.");
+  });
+
+  it("rejects missing URL values", () => {
+    expect(() => parseDoctorArgs(["--url"])).toThrow("Missing value for --url.");
+    expect(() => parseDoctorArgs(["--url="])).toThrow("Missing value for --url.");
   });
 });
 
@@ -235,6 +252,165 @@ Use this docs site through markdown routes and MCP.
     expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "metadata")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "compact")?.status).toBe("pass");
+  });
+
+  it("probes hosted agent surfaces when --url is provided", async () => {
+    writePackageJson(tmpDir, "doctor-hosted", { next: "16.0.0" });
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  llmsTxt: { enabled: true },
+  search: true,
+  mcp: { enabled: true },
+};`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "next.config.ts"),
+      `import { withDocs } from "@farming-labs/next/config";
+
+export default withDocs({});
+`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "app", "api", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "api", "docs", "route.ts"),
+      `import { createDocsAPI } from "@farming-labs/next/api";
+
+export const { GET, POST } = createDocsAPI({});
+`,
+      "utf-8",
+    );
+
+    writeDocsPage(tmpDir);
+
+    const server = createServer(async (req, res) => {
+      const url = new URL(req.url ?? "/", "http://127.0.0.1");
+
+      if (req.method === "GET") {
+        if (url.pathname === "/.well-known/agent.json") {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ mcp: { enabled: true }, llms: { enabled: true } }));
+          return;
+        }
+
+        if (url.pathname === "/llms.txt" || url.pathname === "/llms-full.txt") {
+          res.writeHead(200, { "Content-Type": "text/plain" });
+          res.end(`# Docs\n\n${url.pathname}`);
+          return;
+        }
+
+        if (url.pathname === "/skill.md" || url.pathname === "/.well-known/skill.md") {
+          res.writeHead(200, { "Content-Type": "text/markdown" });
+          res.end("# Skill\n\nUse MCP and markdown routes.");
+          return;
+        }
+
+        if (url.pathname === "/docs.md") {
+          res.writeHead(200, { "Content-Type": "text/markdown" });
+          res.end("# Overview\n\nMarkdown route content.");
+          return;
+        }
+      }
+
+      if (
+        (url.pathname === "/mcp" || url.pathname === "/.well-known/mcp") &&
+        (req.method === "POST" || req.method === "DELETE")
+      ) {
+        if (req.method === "DELETE") {
+          res.writeHead(200);
+          res.end();
+          return;
+        }
+
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        }
+
+        const payload = JSON.parse(Buffer.concat(chunks).toString("utf-8")) as {
+          id?: string | number;
+          method?: string;
+        };
+
+        if (payload.method === "initialize") {
+          res.writeHead(200, {
+            "Content-Type": "application/json",
+            "mcp-session-id": `session-${url.pathname.replace(/\W+/g, "-")}`,
+          });
+          res.end(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              id: payload.id,
+              result: {
+                protocolVersion: "2025-11-25",
+                capabilities: {},
+                serverInfo: { name: "doctor-test", version: "1.0.0" },
+              },
+            }),
+          );
+          return;
+        }
+
+        if (payload.method === "notifications/initialized") {
+          res.writeHead(202);
+          res.end();
+          return;
+        }
+
+        if (payload.method === "tools/list") {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              id: payload.id,
+              result: {
+                tools: [
+                  { name: "list_pages" },
+                  { name: "get_navigation" },
+                  { name: "search_docs" },
+                  { name: "read_page" },
+                ],
+              },
+            }),
+          );
+          return;
+        }
+      }
+
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Not found");
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      process.chdir(tmpDir);
+      const report = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
+
+      expect(report.url).toBe(`http://127.0.0.1:${port}`);
+      expect(report.maxScore).toBe(130);
+      expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(
+        "pass",
+      );
+      expect(report.checks.find((check) => check.id === "hosted-llms")?.status).toBe("pass");
+      expect(report.checks.find((check) => check.id === "hosted-skill")?.status).toBe("pass");
+      expect(report.checks.find((check) => check.id === "hosted-markdown")?.status).toBe("pass");
+      expect(report.checks.find((check) => check.id === "hosted-mcp")?.status).toBe("pass");
+      expect(report.checks.find((check) => check.id === "hosted-mcp")?.detail).toContain(
+        "/.well-known/mcp initialized",
+      );
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
   });
 
   it("reports fresh, stale, modified, unknown, and token-budget-missing compaction states", async () => {
