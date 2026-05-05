@@ -12,6 +12,7 @@ The `@farming-labs/docs` CLI has a few main jobs:
 - **`init`** — create a new docs app or add docs to an existing app
 - **`upgrade`** — bump the docs packages in an existing project
 - **`agent compact`** — generate sibling `agent.md` files from resolved docs pages
+- **`doctor`** — audit local docs readiness and optional hosted agent routes
 - **`mcp`** — run the built-in docs MCP server over stdio for local clients and IDE agents
 - **`search sync`** — push docs content into an external search index like Typesense or Algolia
 
@@ -364,6 +365,8 @@ pnpm exec docs doctor --agent --json
 pnpm exec docs doctor agent
 pnpm exec docs doctor site
 pnpm exec docs doctor --agent --config docs.config.tsx
+pnpm exec docs doctor --agent --url https://docs.example.com
+pnpm exec docs doctor --agent --url https://docs.example.com --json
 ```
 
 Expected output:
@@ -440,6 +443,47 @@ Sample shape:
 
 The JSON report itself is written to stdout. Separate loader notices, such as config fallback
 warnings, are outside the JSON payload.
+
+### Hosted agent checks
+
+Add `--url` when you want the doctor to verify a deployed docs site in addition to the local
+project files:
+
+```bash title="terminal"
+pnpm exec docs doctor --agent --url https://docs.example.com
+```
+
+Without `--url`, the command only inspects the repository: config, content, route files, metadata,
+and local agent-readiness signals. With `--url`, it also sends real requests to the hosted site and
+adds hosted checks to the report.
+
+The hosted pass probes:
+
+- `/.well-known/agent.json`
+- `/llms.txt`
+- `/llms-full.txt`
+- `/skill.md`
+- `/.well-known/skill.md`
+- one representative page markdown route, such as `/docs.md`
+- `/mcp`
+- `/.well-known/mcp`
+
+For MCP, the doctor performs a Streamable HTTP `initialize` request, checks for an
+`mcp-session-id`, sends `tools/list`, and expects the built-in docs tools:
+
+- `list_pages`
+- `get_navigation`
+- `search_docs`
+- `read_page`
+
+Hosted checks raise the agent report from `100` possible points to `130` possible points. The JSON
+report also includes the normalized `url` field and hosted check IDs such as
+`hosted-agent-discovery`, `hosted-llms`, `hosted-skill`, `hosted-markdown`, and `hosted-mcp`.
+
+Use this form after deploying, in preview-deployment CI, or any time a site looks healthy locally
+but an agent cannot discover the public routes. A hosted failure usually means the deployment is
+missing a rewrite, middleware forwarder, or public route, not that the MDX page content itself is
+wrong.
 
 How to read it:
 

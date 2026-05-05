@@ -1,5 +1,6 @@
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types";
 import pc from "picocolors";
 import {
   DEFAULT_AGENT_FEEDBACK_ROUTE,
@@ -38,6 +39,7 @@ export interface DoctorOptions {
   configPath?: string;
   mode?: DoctorMode;
   json?: boolean;
+  url?: string;
 }
 
 export interface ParsedDoctorArgs extends DoctorOptions {
@@ -78,6 +80,7 @@ export interface AgentDoctorReport {
   configPath?: string;
   entry?: string;
   contentDir?: string;
+  url?: string;
   score: number;
   maxScore: number;
   grade: AgentDoctorGrade;
@@ -177,6 +180,25 @@ export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
       continue;
     }
 
+    if (arg.startsWith("--url=")) {
+      const value = parseInlineFlag(arg).value;
+      if (!value) {
+        throw new Error("Missing value for --url.");
+      }
+      parsed.url = value;
+      continue;
+    }
+
+    if (arg === "--url") {
+      const value = argv[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error("Missing value for --url.");
+      }
+      parsed.url = value;
+      index += 1;
+      continue;
+    }
+
     if (arg === "--config") {
       const value = argv[index + 1];
       if (!value || value.startsWith("--")) {
@@ -214,6 +236,7 @@ ${pc.dim("Options:")}
   ${pc.cyan("--site")}             Score reader-facing docs quality for the current docs app
   ${pc.cyan("--human")}            Alias for ${pc.cyan("--site")}
   ${pc.cyan("--json")}             Print the report as JSON for CI, scripts, and other agents
+  ${pc.cyan("--url <url>")}        Probe hosted agent surfaces, e.g. ${pc.dim("https://docs.example.com")}
   ${pc.cyan("--config <path>")}    Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
   ${pc.cyan("-h, --help")}         Show this help message
 `);
@@ -707,6 +730,11 @@ function gradeForHumanScore(score: number): HumanDoctorGrade {
   return "Needs work";
 }
 
+function percentageScore(score: number, maxScore: number): number {
+  if (maxScore <= 0) return 0;
+  return Math.round((score / maxScore) * 100);
+}
+
 function formatStatus(status: DoctorStatus): string {
   if (status === "pass") return pc.green("PASS");
   if (status === "warn") return pc.yellow("WARN");
@@ -963,6 +991,413 @@ function buildHumanCoverage(
     structureCoverage,
     navigationPages,
   };
+}
+
+function normalizeDoctorBaseUrl(value: string): string {
+  const url = new URL(value);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("URL must use http or https.");
+  }
+
+  url.hash = "";
+  url.search = "";
+  url.pathname = url.pathname.replace(/\/+$/, "");
+  return url.toString().replace(/\/+$/, "");
+}
+
+function joinDoctorUrl(baseUrl: string, route: string): string {
+  const base = new URL(baseUrl);
+  const basePath = base.pathname.replace(/\/+$/, "");
+  const routePath = route.startsWith("/") ? route : `/${route}`;
+  return new URL(`${basePath}${routePath}`, base.origin).toString();
+}
+
+function toMarkdownRoute(pageUrl?: string): string | undefined {
+  if (!pageUrl) return undefined;
+  const normalized = pageUrl === "/" ? "/index" : pageUrl.replace(/\/+$/, "");
+  return normalized.endsWith(".md") ? normalized : `${normalized}.md`;
+}
+
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = 8000,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function probeTextRoute(
+  baseUrl: string,
+  route: string,
+): Promise<{ ok: boolean; status?: number; detail: string }> {
+  const url = joinDoctorUrl(baseUrl, route);
+
+  try {
+    const response = await fetchWithTimeout(url, {
+      headers: {
+        Accept: "text/plain, text/markdown, */*",
+      },
+    });
+    const body = await response.text().catch(() => "");
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: response.status,
+        detail: `${route} returned HTTP ${response.status}.`,
+      };
+    }
+
+    if (body.trim().length === 0) {
+      return {
+        ok: false,
+        status: response.status,
+        detail: `${route} returned an empty body.`,
+      };
+    }
+
+    return {
+      ok: true,
+      status: response.status,
+      detail: `${route} returned HTTP ${response.status} with ${body.length} characters.`,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      detail: `${route} failed: ${error instanceof Error ? error.message : String(error)}.`,
+    };
+  }
+}
+
+async function probeJsonRoute(
+  baseUrl: string,
+  route: string,
+): Promise<{ ok: boolean; status?: number; detail: string; body?: unknown }> {
+  const url = joinDoctorUrl(baseUrl, route);
+
+  try {
+    const response = await fetchWithTimeout(url, {
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    const text = await response.text().catch(() => "");
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: response.status,
+        detail: `${route} returned HTTP ${response.status}.`,
+      };
+    }
+
+    try {
+      const body = JSON.parse(text) as unknown;
+      return {
+        ok: true,
+        status: response.status,
+        detail: `${route} returned valid JSON.`,
+        body,
+      };
+    } catch {
+      return {
+        ok: false,
+        status: response.status,
+        detail: `${route} did not return valid JSON.`,
+      };
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      detail: `${route} failed: ${error instanceof Error ? error.message : String(error)}.`,
+    };
+  }
+}
+
+async function parseMcpResponse(response: Response): Promise<{
+  jsonrpc?: string;
+  id?: unknown;
+  result?: unknown;
+  error?: { code?: unknown; message?: unknown; data?: unknown };
+}> {
+  const contentType = response.headers.get("content-type") ?? "";
+  const body = await response.text();
+
+  if (contentType.includes("application/json")) {
+    return JSON.parse(body);
+  }
+
+  const data = body
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("data:"))
+    .map((line) => line.slice("data:".length).trimStart())
+    .filter(Boolean)
+    .at(-1);
+
+  if (!data) {
+    throw new Error(`Expected MCP JSON-RPC payload, got ${body.slice(0, 120) || "empty body"}.`);
+  }
+
+  return JSON.parse(data);
+}
+
+async function postMcpJson(
+  baseUrl: string,
+  route: string,
+  body: unknown,
+  sessionId?: string,
+): Promise<Response> {
+  return fetchWithTimeout(joinDoctorUrl(baseUrl, route), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+      "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+      ...(sessionId ? { "mcp-session-id": sessionId } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+async function probeMcpRoute(
+  baseUrl: string,
+  route: string,
+): Promise<{ ok: boolean; detail: string }> {
+  try {
+    const initializeResponse = await postMcpJson(baseUrl, route, {
+      jsonrpc: "2.0",
+      id: "doctor-initialize",
+      method: "initialize",
+      params: {
+        protocolVersion: LATEST_PROTOCOL_VERSION,
+        capabilities: {},
+        clientInfo: {
+          name: "@farming-labs/docs doctor",
+          version: "0.0.0",
+        },
+      },
+    });
+    const initializePayload = await parseMcpResponse(initializeResponse);
+
+    if (!initializeResponse.ok || initializePayload.error) {
+      return {
+        ok: false,
+        detail: `${route} initialize returned HTTP ${initializeResponse.status}: ${String(initializePayload.error?.message ?? "unknown MCP error")}.`,
+      };
+    }
+
+    const sessionId = initializeResponse.headers.get("mcp-session-id");
+    if (!sessionId) {
+      return {
+        ok: false,
+        detail: `${route} initialize did not return mcp-session-id.`,
+      };
+    }
+
+    await postMcpJson(
+      baseUrl,
+      route,
+      {
+        jsonrpc: "2.0",
+        method: "notifications/initialized",
+        params: {},
+      },
+      sessionId,
+    ).catch(() => undefined);
+
+    const toolsResponse = await postMcpJson(
+      baseUrl,
+      route,
+      {
+        jsonrpc: "2.0",
+        id: "doctor-tools-list",
+        method: "tools/list",
+        params: {},
+      },
+      sessionId,
+    );
+    const toolsPayload = await parseMcpResponse(toolsResponse);
+
+    await fetchWithTimeout(joinDoctorUrl(baseUrl, route), {
+      method: "DELETE",
+      headers: {
+        "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+        "mcp-session-id": sessionId,
+      },
+    }).catch(() => undefined);
+
+    if (!toolsResponse.ok || toolsPayload.error) {
+      return {
+        ok: false,
+        detail: `${route} tools/list returned HTTP ${toolsResponse.status}: ${String(toolsPayload.error?.message ?? "unknown MCP error")}.`,
+      };
+    }
+
+    const tools = (toolsPayload.result as { tools?: Array<{ name?: unknown }> } | undefined)?.tools;
+    const toolNames = Array.isArray(tools)
+      ? tools.map((tool) => tool.name).filter((name): name is string => typeof name === "string")
+      : [];
+    const expectedTools = ["list_pages", "get_navigation", "search_docs", "read_page"];
+    const missingTools = expectedTools.filter((tool) => !toolNames.includes(tool));
+
+    if (missingTools.length > 0) {
+      return {
+        ok: false,
+        detail: `${route} connected but is missing tools: ${missingTools.join(", ")}.`,
+      };
+    }
+
+    return {
+      ok: true,
+      detail: `${route} initialized and exposed ${toolNames.length} MCP tool${toolNames.length === 1 ? "" : "s"}.`,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      detail: `${route} failed: ${error instanceof Error ? error.message : String(error)}.`,
+    };
+  }
+}
+
+async function buildHostedAgentChecks(
+  url: string,
+  pages: Array<{ url: string }>,
+): Promise<{ baseUrl?: string; checks: AgentDoctorCheck[] }> {
+  let baseUrl: string;
+
+  try {
+    baseUrl = normalizeDoctorBaseUrl(url);
+  } catch (error) {
+    return {
+      checks: [
+        makeCheck(
+          "hosted-url",
+          "Hosted URL",
+          "fail",
+          0,
+          5,
+          `Could not parse --url "${url}": ${error instanceof Error ? error.message : String(error)}`,
+          "Pass a full hosted URL such as https://docs.example.com.",
+        ),
+      ],
+    };
+  }
+
+  const checks: AgentDoctorCheck[] = [];
+  const discovery = await probeJsonRoute(baseUrl, DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE);
+  checks.push(
+    makeCheck(
+      "hosted-agent-discovery",
+      "Hosted agent discovery",
+      discovery.ok ? "pass" : "fail",
+      discovery.ok ? 5 : 0,
+      5,
+      `${baseUrl}: ${discovery.detail}`,
+      discovery.ok
+        ? undefined
+        : `Make sure ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE} is routed to the shared docs API on the deployed site.`,
+    ),
+  );
+
+  const llms = await Promise.all([
+    probeTextRoute(baseUrl, DEFAULT_LLMS_TXT_ROUTE),
+    probeTextRoute(baseUrl, DEFAULT_LLMS_FULL_TXT_ROUTE),
+  ]);
+  const llmsPassed = llms.filter((result) => result.ok).length;
+  checks.push(
+    makeCheck(
+      "hosted-llms",
+      "Hosted llms.txt",
+      llmsPassed === llms.length ? "pass" : llmsPassed > 0 ? "warn" : "fail",
+      llmsPassed === llms.length ? 5 : llmsPassed > 0 ? 3 : 0,
+      5,
+      llms.map((result) => result.detail).join(" "),
+      llmsPassed === llms.length
+        ? undefined
+        : "Verify deployed /llms.txt and /llms-full.txt routes return non-empty text.",
+    ),
+  );
+
+  const skill = await Promise.all([
+    probeTextRoute(baseUrl, DEFAULT_SKILL_MD_ROUTE),
+    probeTextRoute(baseUrl, DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE),
+  ]);
+  const skillPassed = skill.filter((result) => result.ok).length;
+  checks.push(
+    makeCheck(
+      "hosted-skill",
+      "Hosted skill.md",
+      skillPassed === skill.length ? "pass" : skillPassed > 0 ? "warn" : "fail",
+      skillPassed === skill.length ? 5 : skillPassed > 0 ? 3 : 0,
+      5,
+      skill.map((result) => result.detail).join(" "),
+      skillPassed === skill.length
+        ? undefined
+        : "Verify deployed /skill.md and /.well-known/skill.md routes return non-empty markdown.",
+    ),
+  );
+
+  const markdownRoute = toMarkdownRoute(pages[0]?.url);
+  if (markdownRoute) {
+    const markdown = await probeTextRoute(baseUrl, markdownRoute);
+    checks.push(
+      makeCheck(
+        "hosted-markdown",
+        "Hosted markdown route",
+        markdown.ok ? "pass" : "fail",
+        markdown.ok ? 5 : 0,
+        5,
+        markdown.detail,
+        markdown.ok
+          ? undefined
+          : `Verify deployed markdown routes are forwarded, starting with ${markdownRoute}.`,
+      ),
+    );
+  } else {
+    checks.push(
+      makeCheck(
+        "hosted-markdown",
+        "Hosted markdown route",
+        "warn",
+        0,
+        5,
+        "No local docs page was available to choose a sample .md route.",
+        "Add docs pages so the hosted doctor can probe a representative .md route.",
+      ),
+    );
+  }
+
+  const mcp = await Promise.all([
+    probeMcpRoute(baseUrl, DEFAULT_MCP_PUBLIC_ROUTE),
+    probeMcpRoute(baseUrl, DEFAULT_MCP_WELL_KNOWN_ROUTE),
+  ]);
+  const mcpPassed = mcp.filter((result) => result.ok).length;
+  checks.push(
+    makeCheck(
+      "hosted-mcp",
+      "Hosted MCP handshake",
+      mcpPassed === mcp.length ? "pass" : mcpPassed > 0 ? "warn" : "fail",
+      mcpPassed === mcp.length ? 10 : mcpPassed > 0 ? 5 : 0,
+      10,
+      mcp.map((result) => result.detail).join(" "),
+      mcpPassed === mcp.length
+        ? undefined
+        : `Verify deployed ${DEFAULT_MCP_PUBLIC_ROUTE} and ${DEFAULT_MCP_WELL_KNOWN_ROUTE} support Streamable HTTP initialize and tools/list.`,
+    ),
+  );
+
+  return { baseUrl, checks };
 }
 
 async function loadDocsConfigModuleWithProjectEnv(
@@ -1339,6 +1774,11 @@ export async function inspectAgentReadiness(
     ),
   );
 
+  const hosted = options.url ? await buildHostedAgentChecks(options.url, pages) : undefined;
+  if (hosted) {
+    checks.push(...hosted.checks);
+  }
+
   const score = checks.reduce((total, check) => total + check.score, 0);
   const maxScore = checks.reduce((total, check) => total + check.maxScore, 0);
 
@@ -1348,9 +1788,10 @@ export async function inspectAgentReadiness(
     configPath: path.relative(rootDir, configPath).replace(/\\/g, "/"),
     entry,
     contentDir,
+    url: hosted?.baseUrl,
     score,
     maxScore,
-    grade: gradeForAgentScore(score),
+    grade: gradeForAgentScore(percentageScore(score, maxScore)),
     checks,
     coverage,
     recommendations: checks
@@ -1625,7 +2066,7 @@ export async function inspectHumanReadiness(
     contentDir,
     score,
     maxScore,
-    grade: gradeForHumanScore(score),
+    grade: gradeForHumanScore(percentageScore(score, maxScore)),
     checks,
     coverage,
     recommendations: checks
@@ -1644,6 +2085,9 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
   console.log(
     `${pc.bold("Framework:")} ${report.framework} ${pc.dim("•")} ${pc.bold("Entry:")} ${report.entry ?? "docs"} ${pc.dim("•")} ${pc.bold("Content:")} ${report.contentDir ?? "-"}`,
   );
+  if (report.url) {
+    console.log(`${pc.bold("Hosted URL:")} ${report.url}`);
+  }
   console.log(
     `${pc.bold("Explicit agent-friendly pages:")} ${report.coverage.explicitPages}/${report.coverage.totalPages} pages ${pc.dim(`(${report.coverage.explicitCoverage}%)`)}`,
   );
