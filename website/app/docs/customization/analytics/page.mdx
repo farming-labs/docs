@@ -19,6 +19,11 @@ export default defineDocs({
 
 `analytics: true` logs every framework event to the console with the `[farming-labs:analytics]` prefix.
 
+<Callout type="info" title="Frameworkless docs.json support">
+  When you are using frameworkless `docs.json`, the serializable subset can live under
+  `cloud.analytics`. Use `docs.config.ts` when you need executable hooks like `onEvent`.
+</Callout>
+
 ## Send Events To Your Own Sink
 
 ```ts title="docs.config.ts"
