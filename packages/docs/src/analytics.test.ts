@@ -132,7 +132,9 @@ describe("analytics", () => {
   });
 
   it("posts Docs Cloud analytics events to the configured ingestion endpoint", async () => {
-    const fetchMock = vi.fn(async () => new Response(null, { status: 202 }));
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 202 }),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     await emitDocsAnalyticsEvent(
@@ -176,7 +178,9 @@ describe("analytics", () => {
   });
 
   it("no-ops Docs Cloud analytics events when endpoint or project id is missing", async () => {
-    const fetchMock = vi.fn(async () => new Response(null, { status: 202 }));
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 202 }),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     await emitDocsAnalyticsEvent(
@@ -196,7 +200,9 @@ describe("analytics", () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "true";
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_env";
 
-    const fetchMock = vi.fn(async () => new Response(null, { status: 202 }));
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 202 }),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     const seen: DocsAnalyticsEvent[] = [];
@@ -232,7 +238,7 @@ describe("analytics", () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "true";
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_env_failure";
 
-    const fetchMock = vi.fn(async () => {
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(async () => {
       throw new Error("network down");
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -262,7 +268,9 @@ describe("analytics", () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "true";
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_env_user_throw";
 
-    const fetchMock = vi.fn(async () => new Response(null, { status: 202 }));
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 202 }),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     const userOnEvent = vi.fn(async () => {
@@ -289,7 +297,9 @@ describe("analytics", () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "true";
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_default";
 
-    const fetchMock = vi.fn(async () => new Response(null, { status: 202 }));
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 202 }),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     const resolved = resolveDocsAnalyticsConfig();
