@@ -738,7 +738,14 @@ function readManagedDocsProject(projectRoot: string): ManagedDocsProject {
     titleTemplate: parsed.data.site?.titleTemplate ?? `%s | ${siteName}`,
     description: parsed.data.site?.description ?? `Documentation for ${siteName}.`,
     theme,
-    analytics: parsed.data.cloud?.analytics,
+    analytics:
+      typeof parsed.data.cloud?.analytics !== "undefined"
+        ? parsed.data.cloud.analytics
+        : parsed.data.cloud?.enabled
+          ? {
+              console: false,
+            }
+          : undefined,
   };
 }
 

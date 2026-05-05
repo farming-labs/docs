@@ -423,10 +423,53 @@ title: "Home"
       "utf-8",
     );
 
+    expect(docsConfig).not.toContain("createDocsCloudAnalytics");
     expect(docsConfig).toContain("analytics: {");
     expect(docsConfig).toContain("enabled: true");
     expect(docsConfig).toContain('console: "info"');
     expect(docsConfig).toContain("includeInputs: false");
+  });
+
+  it("enables runtime analytics by default when cloud.enabled is true", () => {
+    const projectRoot = makeTempProject();
+
+    writeFile(
+      projectRoot,
+      "docs.json",
+      JSON.stringify(
+        {
+          docs: {
+            mode: "frameworkless",
+            runtime: "nextjs",
+          },
+          cloud: {
+            enabled: true,
+          },
+        },
+        null,
+        2,
+      ),
+    );
+    writeFile(
+      projectRoot,
+      "docs/index.mdx",
+      `---
+title: "Home"
+---
+
+# Home
+`,
+    );
+
+    materializeManagedRuntime(projectRoot);
+
+    const docsConfig = fs.readFileSync(
+      path.join(projectRoot, ".docs/site/docs.config.ts"),
+      "utf-8",
+    );
+
+    expect(docsConfig).toContain("analytics: {");
+    expect(docsConfig).toContain("console: false");
   });
 
   it("tracks source changes through the computed stamp", () => {

@@ -10,6 +10,7 @@
 import type { DocsConfig } from "./types.js";
 
 export { defineDocs } from "./define-docs.js";
+export { createDocsCloudAnalytics } from "./cloud-analytics.js";
 export { emitDocsAnalyticsEvent, resolveDocsAnalyticsConfig } from "./analytics.js";
 export { resolveChangelogConfig } from "./changelog.js";
 export { deepMerge } from "./utils.js";
@@ -153,6 +154,7 @@ export type {
   DocsAnalyticsSource,
 } from "./types.js";
 export type { ResolvedDocsAnalyticsConfig } from "./analytics.js";
+export type { DocsCloudAnalyticsOptions } from "./cloud-analytics.js";
 export type { ChangelogEntrySummary, ResolvedChangelogConfig } from "./changelog.js";
 export type { ResolvedDocsI18n, DocsPathMatch } from "./i18n.js";
 export type {

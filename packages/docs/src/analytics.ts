@@ -1,3 +1,7 @@
+import {
+  resolveDocsCloudAnalyticsOptions,
+  sendDocsCloudAnalyticsEvent,
+} from "./cloud-analytics.js";
 import type { DocsAnalyticsConfig, DocsAnalyticsEvent, DocsAnalyticsEventInput } from "./types.js";
 
 export interface ResolvedDocsAnalyticsConfig {
@@ -5,6 +9,39 @@ export interface ResolvedDocsAnalyticsConfig {
   console: false | "log" | "info" | "debug";
   includeInputs: boolean;
   onEvent?: (event: DocsAnalyticsEvent) => void | Promise<void>;
+}
+
+function composeAnalyticsHandlers(
+  userOnEvent: DocsAnalyticsConfig["onEvent"] | undefined,
+  cloudOnEvent: ((event: DocsAnalyticsEvent) => Promise<void>) | undefined,
+): ((event: DocsAnalyticsEvent) => Promise<void>) | undefined {
+  if (typeof userOnEvent !== "function" && !cloudOnEvent) {
+    return undefined;
+  }
+
+  return async (event: DocsAnalyticsEvent) => {
+    let userError: unknown;
+
+    if (typeof userOnEvent === "function") {
+      try {
+        await userOnEvent(event);
+      } catch (error) {
+        userError = error;
+      }
+    }
+
+    if (cloudOnEvent) {
+      try {
+        await cloudOnEvent(event);
+      } catch {
+        // Docs Cloud delivery should never interfere with user analytics hooks.
+      }
+    }
+
+    if (typeof userError !== "undefined") {
+      throw userError;
+    }
+  };
 }
 
 function resolveConsoleLevel(
@@ -20,11 +57,27 @@ function resolveConsoleLevel(
 export function resolveDocsAnalyticsConfig(
   analytics?: boolean | DocsAnalyticsConfig,
 ): ResolvedDocsAnalyticsConfig {
+  const cloudOptions = resolveDocsCloudAnalyticsOptions(analytics);
+  const cloudOnEvent = cloudOptions
+    ? async (event: DocsAnalyticsEvent) => {
+        await sendDocsCloudAnalyticsEvent(cloudOptions, event);
+      }
+    : undefined;
+
   if (!analytics) {
+    if (!cloudOnEvent) {
+      return {
+        enabled: false,
+        console: false,
+        includeInputs: false,
+      };
+    }
+
     return {
-      enabled: false,
+      enabled: true,
       console: false,
       includeInputs: false,
+      onEvent: cloudOnEvent,
     };
   }
 
@@ -33,16 +86,19 @@ export function resolveDocsAnalyticsConfig(
       enabled: true,
       console: "info",
       includeInputs: false,
+      onEvent: cloudOnEvent,
     };
   }
 
-  const hasEventHandler = typeof analytics.onEvent === "function";
+  const userOnEvent = analytics.onEvent;
+  const hasEventHandler = typeof userOnEvent === "function" || Boolean(cloudOnEvent);
+  const onEvent = composeAnalyticsHandlers(userOnEvent, cloudOnEvent);
 
   return {
     enabled: analytics.enabled !== false,
     console: resolveConsoleLevel(analytics.console, hasEventHandler),
     includeInputs: analytics.includeInputs === true,
-    onEvent: analytics.onEvent,
+    onEvent,
   };
 }
 
