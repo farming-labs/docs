@@ -56,8 +56,7 @@ export function resolveDocsCloudAnalyticsOptions(
   }
 
   const projectId =
-    readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID") ??
-    readRuntimeEnv("DOCS_CLOUD_PROJECT_ID");
+    readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID") ?? readRuntimeEnv("DOCS_CLOUD_PROJECT_ID");
   const apiKey =
     readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY") ??
     readRuntimeEnv("DOCS_CLOUD_ANALYTICS_KEY");
