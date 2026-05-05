@@ -1,3 +1,4 @@
+export { createDocsCloudAnalytics } from "./cloud-analytics.js";
 export { emitDocsAnalyticsEvent, resolveDocsAnalyticsConfig } from "./analytics.js";
 export {
   resolveApiReferenceConfig,
@@ -71,3 +72,4 @@ export type {
   DocsAnalyticsEventInput,
 } from "./types.js";
 export type { ResolvedDocsAnalyticsConfig } from "./analytics.js";
+export type { DocsCloudAnalyticsOptions } from "./cloud-analytics.js";
