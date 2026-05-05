@@ -290,6 +290,15 @@ When you want the result to feed CI, automation, or another agent, use JSON outp
 pnpm exec docs doctor --agent --json
 ```
 
+After deployment, add `--url` to verify the public routes agents actually call:
+
+```bash title="terminal"
+pnpm exec docs doctor --agent --url https://docs.example.com
+```
+
+That hosted pass checks discovery, `llms.txt`, `skill.md`, representative `.md` pages, and MCP at
+both `/mcp` and `/.well-known/mcp`.
+
 What you want to see improve over time:
 
 - discovery routes passing

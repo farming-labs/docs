@@ -1,14 +1,14 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold, upgrade, compact agent docs, sync external search indexes, and run MCP for docs. Use when running init, upgrade, agent compact, search sync, mcp, or using flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --config, --page, --all, --api-key, or --dry-run. Covers init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), npm/pnpm/yarn/bun, and framework detection.
+description: @farming-labs/docs CLI — scaffold, upgrade, run doctor audits, compact agent docs, sync external search indexes, and run MCP for docs. Use when running init, upgrade, doctor, agent compact, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
 ---
 
 # @farming-labs/docs — CLI
 
-The `@farming-labs/docs` CLI scaffolds, upgrades, compacts page-level agent docs, syncs external
-search indexes, and can run the built-in MCP server for documentation projects. Use this skill when
-the user asks about CLI commands, init, upgrade, `agent compact`, search sync, mcp, or
-scaffolding.
+The `@farming-labs/docs` CLI scaffolds, upgrades, audits agent and reader readiness, compacts
+page-level agent docs, syncs external search indexes, and can run the built-in MCP server for
+documentation projects. Use this skill when the user asks about CLI commands, init, upgrade,
+`doctor`, `agent compact`, search sync, mcp, or scaffolding.
 
 ---
 
@@ -326,6 +326,8 @@ pnpm exec docs doctor --agent --json
 pnpm exec docs doctor agent
 pnpm exec docs doctor site
 pnpm exec docs doctor --agent --config docs.config.tsx
+pnpm exec docs doctor --agent --url https://docs.example.com
+pnpm exec docs doctor --agent --url https://docs.example.com --json
 ```
 
 What it checks:
@@ -343,6 +345,21 @@ What it checks:
 - page metadata
 - explicit agent-friendly pages
 - generated `agent.md` freshness and `agent.compact` defaults
+
+With `--url`, `docs doctor --agent` also probes the deployed public agent surface:
+
+- `/.well-known/agent.json`
+- `/llms.txt`
+- `/llms-full.txt`
+- `/skill.md`
+- `/.well-known/skill.md`
+- one representative `.md` page route, such as `/docs.md`
+- `/mcp`
+- `/.well-known/mcp`
+
+For hosted MCP, the command performs a Streamable HTTP initialize handshake, checks for
+`mcp-session-id`, calls `tools/list`, and expects `list_pages`, `get_navigation`, `search_docs`,
+and `read_page`. Hosted checks raise the agent max score from `100` to `130`.
 
 Expected shape of the output:
 
@@ -368,6 +385,8 @@ How to explain it:
   fewer pages have extra machine-only context through `agent.md` or `Agent` blocks
 - `--json` is for CI, scripts, dashboards, and other agents that need structured output instead of
   terminal formatting
+- `--url` is for deployed or preview sites; use it after local static checks pass and you want to
+  confirm public rewrites, `.well-known` routes, markdown routes, and MCP are reachable
 - the JSON report itself is written to stdout; separate loader notices, such as config fallback
   warnings, are outside the JSON payload
 
@@ -375,6 +394,7 @@ Useful checks:
 
 ```bash
 pnpm --dir examples/next exec docs doctor --agent --config docs.config.tsx
+pnpm --dir examples/next exec docs doctor --agent --config docs.config.tsx --url http://127.0.0.1:3000
 pnpm --dir examples/next exec docs doctor --site --config docs.config.tsx
 pnpm --dir website exec docs doctor --agent --config docs.config.tsx
 ```

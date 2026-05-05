@@ -177,6 +177,7 @@ structure, trust signals, and feedback.
 pnpm exec docs doctor --agent
 pnpm exec docs doctor --site
 pnpm exec docs doctor --agent --json
+pnpm exec docs doctor --agent --url https://docs.example.com
 ```
 
 Expected output looks like:
@@ -207,6 +208,19 @@ The command checks the agent surface end to end:
 
 It is not required to run the framework, but it is very useful before claiming a docs site is
 agent-ready or agent-optimized, and it works well as a CI check for the machine-facing docs layer.
+
+Add `--url` after deploying when you want to test the public agent surface too:
+
+```bash
+pnpm exec docs doctor --agent --url https://docs.example.com
+pnpm exec docs doctor --agent --url https://docs.example.com --json
+```
+
+Hosted checks request `/.well-known/agent.json`, `/llms.txt`, `/llms-full.txt`, `/skill.md`,
+`/.well-known/skill.md`, one representative `.md` page route, `/mcp`, and `/.well-known/mcp`.
+For MCP, the doctor performs an HTTP initialize handshake, checks the session header, and verifies
+the built-in docs tools are exposed. With hosted checks enabled, the agent score is out of `130`
+instead of `100`.
 
 `docs doctor --site` focuses on the reader-facing surface instead:
 

@@ -730,6 +730,11 @@ function gradeForHumanScore(score: number): HumanDoctorGrade {
   return "Needs work";
 }
 
+function percentageScore(score: number, maxScore: number): number {
+  if (maxScore <= 0) return 0;
+  return Math.round((score / maxScore) * 100);
+}
+
 function formatStatus(status: DoctorStatus): string {
   if (status === "pass") return pc.green("PASS");
   if (status === "warn") return pc.yellow("WARN");
@@ -1786,7 +1791,7 @@ export async function inspectAgentReadiness(
     url: hosted?.baseUrl,
     score,
     maxScore,
-    grade: gradeForAgentScore(score),
+    grade: gradeForAgentScore(percentageScore(score, maxScore)),
     checks,
     coverage,
     recommendations: checks
@@ -2061,7 +2066,7 @@ export async function inspectHumanReadiness(
     contentDir,
     score,
     maxScore,
-    grade: gradeForHumanScore(score),
+    grade: gradeForHumanScore(percentageScore(score, maxScore)),
     checks,
     coverage,
     recommendations: checks

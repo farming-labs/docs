@@ -413,6 +413,104 @@ export const { GET, POST } = createDocsAPI({});
     }
   });
 
+  it("normalizes the grade when hosted checks increase the max score", async () => {
+    writePackageJson(tmpDir, "doctor-hosted-grade", { next: "16.0.0" });
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  llmsTxt: { enabled: true },
+  search: true,
+  mcp: { enabled: true },
+  feedback: {
+    agent: {
+      enabled: true,
+    },
+  },
+  agent: {
+    compact: {
+      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+      model: "bear-1.2",
+    },
+  },
+};`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "next.config.ts"),
+      `import { withDocs } from "@farming-labs/next/config";
+
+export default withDocs({});
+`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "app", "api", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "api", "docs", "route.ts"),
+      `import { createDocsAPI } from "@farming-labs/next/api";
+
+export const { GET, POST } = createDocsAPI({});
+`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "page.mdx"),
+      `---
+title: "Overview"
+description: "Docs home"
+related:
+  - /docs
+---
+
+# Overview
+
+Human docs home.
+
+<Agent>
+Machine-only overview hints.
+</Agent>
+`,
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "skill.md"),
+      `# Skill
+
+Use this docs site through markdown routes and MCP.
+`,
+      "utf-8",
+    );
+
+    const server = createServer((_req, res) => {
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Not found");
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      process.chdir(tmpDir);
+      const report = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
+
+      expect(report.maxScore).toBe(130);
+      expect(report.score).toBeGreaterThanOrEqual(90);
+      expect(report.grade).not.toBe("Agent-optimized");
+      expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(
+        "fail",
+      );
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+
   it("reports fresh, stale, modified, unknown, and token-budget-missing compaction states", async () => {
     writePackageJson(tmpDir, "doctor-compaction", { next: "16.0.0" });
 
