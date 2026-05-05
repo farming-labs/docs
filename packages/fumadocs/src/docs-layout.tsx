@@ -271,12 +271,14 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
 
   if (fs.existsSync(path.join(docsDir, "page.mdx"))) {
     const data = readFrontmatter(path.join(docsDir, "page.mdx"));
-    rootChildren.push({
-      type: "page",
-      name: (data.title as string) ?? "Documentation",
-      url: `/${ctx.entryPath}`,
-      icon: resolveIcon(data.icon as string | undefined, icons),
-    });
+    if (data.hidden !== true) {
+      rootChildren.push({
+        type: "page",
+        name: (data.title as string) ?? "Documentation",
+        url: `/${ctx.entryPath}`,
+        icon: resolveIcon(data.icon as string | undefined, icons),
+      });
+    }
   }
 
   function buildNode(
@@ -297,8 +299,22 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
     const url = `/${ctx.entryPath}/${slug.join("/")}`;
     const icon = resolveIcon(data.icon as string | undefined, icons);
     const displayName = (data.title as string) ?? name.replace(/-/g, " ");
+    const hasChildren = hasChildPages(full, excludedDirs);
 
-    if (hasChildPages(full, excludedDirs)) {
+    if (data.hidden === true) {
+      if (!hasChildren) return null;
+
+      const folderChildren = scanDir(full, slug, slugOrder);
+      return {
+        type: "folder",
+        name: displayName,
+        icon,
+        children: folderChildren,
+        ...(flat ? { collapsible: false, defaultOpen: true } : {}),
+      };
+    }
+
+    if (hasChildren) {
       const folderChildren = scanDir(full, slug, slugOrder);
       return {
         type: "folder",
