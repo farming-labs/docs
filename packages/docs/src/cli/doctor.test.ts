@@ -337,14 +337,30 @@ export const { GET, POST } = createDocsAPI({});
           id?: string | number;
           method?: string;
         };
+        const writeMcpPayload = (
+          value: unknown,
+          headers: Record<string, string> = {},
+          status = 200,
+        ) => {
+          if (url.pathname === "/.well-known/mcp") {
+            res.writeHead(status, {
+              "Content-Type": "text/event-stream",
+              ...headers,
+            });
+            res.end(`data:${JSON.stringify(value)}\n\n`);
+            return;
+          }
+
+          res.writeHead(status, {
+            "Content-Type": "application/json",
+            ...headers,
+          });
+          res.end(JSON.stringify(value));
+        };
 
         if (payload.method === "initialize") {
-          res.writeHead(200, {
-            "Content-Type": "application/json",
-            "mcp-session-id": `session-${url.pathname.replace(/\W+/g, "-")}`,
-          });
-          res.end(
-            JSON.stringify({
+          writeMcpPayload(
+            {
               jsonrpc: "2.0",
               id: payload.id,
               result: {
@@ -352,7 +368,10 @@ export const { GET, POST } = createDocsAPI({});
                 capabilities: {},
                 serverInfo: { name: "doctor-test", version: "1.0.0" },
               },
-            }),
+            },
+            {
+              "mcp-session-id": `session-${url.pathname.replace(/\W+/g, "-")}`,
+            },
           );
           return;
         }
@@ -364,21 +383,18 @@ export const { GET, POST } = createDocsAPI({});
         }
 
         if (payload.method === "tools/list") {
-          res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(
-            JSON.stringify({
-              jsonrpc: "2.0",
-              id: payload.id,
-              result: {
-                tools: [
-                  { name: "list_pages" },
-                  { name: "get_navigation" },
-                  { name: "search_docs" },
-                  { name: "read_page" },
-                ],
-              },
-            }),
-          );
+          writeMcpPayload({
+            jsonrpc: "2.0",
+            id: payload.id,
+            result: {
+              tools: [
+                { name: "list_pages" },
+                { name: "get_navigation" },
+                { name: "search_docs" },
+                { name: "read_page" },
+              ],
+            },
+          });
           return;
         }
       }

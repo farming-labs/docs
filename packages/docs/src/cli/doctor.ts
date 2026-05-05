@@ -1140,8 +1140,8 @@ async function parseMcpResponse(response: Response): Promise<{
   const data = body
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line.startsWith("data: "))
-    .map((line) => line.slice("data: ".length).trim())
+    .filter((line) => line.startsWith("data:"))
+    .map((line) => line.slice("data:".length).trimStart())
     .filter(Boolean)
     .at(-1);
 
