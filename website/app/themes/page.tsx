@@ -107,7 +107,7 @@ export default defineDocs({
     cssImport: '@import "@farming-labs/theme/ledger/css";',
     colors: ["#5f6cf6", "#f6f8fb", "#30364a", "#262c43"],
     accent: "#5f6cf6",
-    previewEnabled: true,
+    previewEnabled: false, 
     configSnippet: `import { defineDocs } from "@farming-labs/docs";
 import { ledger } from "@farming-labs/theme/ledger";
 
