@@ -1352,7 +1352,8 @@ Notes:
 - it overrides global `sidebar.folderIndexBehavior`
 - it also overrides `sidebar.folderIndexBehaviorOverrides` for that same folder
 - `folderIndexBehavior: "hidden"` keeps the folder route available but omits the folder index
-  link from the sidebar tree; in flat mode this becomes a label-only group with child links only
+  link from the sidebar tree; in flat mode this becomes a label-only group with child links only,
+  and direct visits to the hidden parent route redirect to the first visible child
 
 **Static OG example** — use `openGraph` and `twitter` in frontmatter to serve a static image instead of the dynamic OG endpoint:
 
