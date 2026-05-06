@@ -366,6 +366,45 @@ describe("createDocsLayout pageActions", () => {
     });
   });
 
+  it("keeps only child pages in the folder when sidebar.folderIndexBehavior is hidden", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "overview", "what-is-surge"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "overview", "page.mdx"),
+      "---\ntitle: Overview\nsidebar:\n  folderIndexBehavior: hidden\n---\n\n# Overview\n",
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "overview", "what-is-surge", "page.mdx"),
+      "---\ntitle: What is Surge\n---\n\n# What is Surge\n",
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({
+      entry: "docs",
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const sidebarTree = findDocsLayoutTree(tree);
+    const overviewNode = (sidebarTree?.children as Array<Record<string, unknown>>).find(
+      (entry) => entry.name === "Overview",
+    );
+
+    expect(overviewNode).toMatchObject({
+      type: "folder",
+      index: undefined,
+      url: undefined,
+      children: [
+        expect.objectContaining({
+          type: "page",
+          name: "What is Surge",
+          url: "/docs/overview/what-is-surge",
+        }),
+      ],
+    });
+  });
+
   it("applies sidebar.folderIndexBehaviorOverrides selectively", () => {
     mkdirSync(join(tmpDir, "app", "docs", "components", "button"), { recursive: true });
     mkdirSync(join(tmpDir, "app", "docs", "guides", "writing"), { recursive: true });

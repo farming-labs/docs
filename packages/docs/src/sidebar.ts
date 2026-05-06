@@ -11,7 +11,7 @@ export function resolvePageSidebarFolderIndexBehavior(
   if (!sidebar || typeof sidebar !== "object") return undefined;
 
   const value = (sidebar as { folderIndexBehavior?: unknown }).folderIndexBehavior;
-  return value === "link" || value === "toggle" ? value : undefined;
+  return value === "link" || value === "toggle" || value === "hidden" ? value : undefined;
 }
 
 function normalizeSidebarFolderBehaviorPath(path: string | undefined): string | undefined {
@@ -42,6 +42,7 @@ export function resolveSidebarFolderIndexBehavior(
 ): SidebarFolderIndexBehavior {
   if (sidebar === undefined || sidebar === true || sidebar === false) return defaultBehavior;
   if (sidebar.folderIndexBehavior === "toggle") return "toggle";
+  if (sidebar.folderIndexBehavior === "hidden") return "hidden";
   if (sidebar.folderIndexBehavior === "link") return "link";
   return defaultBehavior;
 }
@@ -60,7 +61,9 @@ export function resolveSidebarFolderIndexBehaviorForPath(
 
   for (const [rawPath, override] of Object.entries(sidebar.folderIndexBehaviorOverrides ?? {})) {
     if (normalizeSidebarFolderBehaviorPath(rawPath) === normalizedPath) {
-      return override === "link" || override === "toggle" ? override : fallback;
+      return override === "link" || override === "toggle" || override === "hidden"
+        ? override
+        : fallback;
     }
   }
 
@@ -108,16 +111,28 @@ export function applySidebarFolderIndexBehavior<TTree extends { children: unknow
         ? ((candidate.index as { url?: string }).url ?? undefined)
         : undefined);
     const explicitBehavior =
-      candidate.folderIndexBehavior === "link" || candidate.folderIndexBehavior === "toggle"
+      candidate.folderIndexBehavior === "link" ||
+      candidate.folderIndexBehavior === "toggle" ||
+      candidate.folderIndexBehavior === "hidden"
         ? candidate.folderIndexBehavior
         : undefined;
     const behavior = explicitBehavior ?? resolveBehavior(folderPath);
 
-    if (behavior !== "toggle") {
+    if (behavior === "link") {
       return {
         ...candidate,
         folderIndexBehavior: undefined,
         index,
+        children,
+      };
+    }
+
+    if (behavior === "hidden") {
+      return {
+        ...candidate,
+        folderIndexBehavior: undefined,
+        index: undefined,
+        url: undefined,
         children,
       };
     }

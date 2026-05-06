@@ -20,6 +20,14 @@ describe("resolveSidebarFolderIndexBehavior", () => {
       }),
     ).toBe("toggle");
   });
+
+  it("returns hidden mode when configured", () => {
+    expect(
+      resolveSidebarFolderIndexBehavior({
+        folderIndexBehavior: "hidden",
+      }),
+    ).toBe("hidden");
+  });
 });
 
 describe("resolveSidebarFolderIndexBehaviorForPath", () => {
@@ -59,6 +67,11 @@ describe("resolvePageSidebarFolderIndexBehavior", () => {
         folderIndexBehavior: "toggle",
       }),
     ).toBe("toggle");
+    expect(
+      resolvePageSidebarFolderIndexBehavior({
+        folderIndexBehavior: "hidden",
+      }),
+    ).toBe("hidden");
   });
 
   it("ignores invalid sidebar frontmatter values", () => {
@@ -132,6 +145,48 @@ describe("applySidebarFolderIndexBehavior", () => {
               ],
             },
             { type: "page", name: "Button", url: "/docs/components/button" },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("removes the folder index link while keeping child pages in hidden mode", () => {
+    const tree = {
+      name: "Docs",
+      children: [
+        {
+          type: "folder",
+          name: "Overview",
+          url: "/docs/overview",
+          index: { type: "page", name: "Overview", url: "/docs/overview" },
+          children: [
+            { type: "page", name: "What is Surge", url: "/docs/overview/what-is-surge" },
+            {
+              type: "page",
+              name: "Send Your First Message",
+              url: "/docs/overview/send-your-first-message",
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(applySidebarFolderIndexBehavior(tree, "hidden")).toEqual({
+      name: "Docs",
+      children: [
+        {
+          type: "folder",
+          name: "Overview",
+          index: undefined,
+          url: undefined,
+          children: [
+            { type: "page", name: "What is Surge", url: "/docs/overview/what-is-surge" },
+            {
+              type: "page",
+              name: "Send Your First Message",
+              url: "/docs/overview/send-your-first-message",
+            },
           ],
         },
       ],

@@ -59,8 +59,8 @@ app/docs/
       page.mdx           # Child page
 ```
 
-Use `sidebar.folderIndexBehavior` when you want to control whether the parent row navigates or only
-expands/collapses:
+Use `sidebar.folderIndexBehavior` when you want to control whether the parent row navigates, only
+expands/collapses, or stays as a plain label:
 
 ```tsx title="docs.config.tsx"
 sidebar: {
@@ -71,6 +71,23 @@ sidebar: {
 With `folderIndexBehavior: "toggle"`, the folder landing page is rendered as the first child item
 inside the group, and clicking the parent row no longer changes the URL. Set
 `folderIndexBehavior: "link"` if you want the parent row itself to navigate.
+
+If you want to remove the folder landing-page link entirely and only show the child pages, use
+`folderIndexBehavior: "hidden"`:
+
+```mdx title="app/docs/sending/page.mdx"
+---
+title: "Sending Messages"
+sidebar:
+  folderIndexBehavior: "hidden"
+---
+```
+
+With `folderIndexBehavior: "hidden"`, the route still exists, but the framework omits the
+landing-page link from the sidebar tree. In the default flat sidebar, that gives you a label-only
+parent row with a plain list of children underneath. For example, a `Sending Messages` section can
+stay available at `/docs/sending` while the sidebar only shows its child pages like `Send to One
+Person`, `Send to Many People`, and `Track Message Delivery`.
 
 If you only want that behavior in selected sections, use
 `sidebar.folderIndexBehaviorOverrides` and key each override by the folder landing-page URL:
@@ -106,6 +123,9 @@ Render all sidebar items without collapsible sections (Mintlify-style):
 ```tsx title="docs.config.tsx"
 sidebar: { flat: true },
 ```
+
+Pair `flat: true` with `folderIndexBehavior: "hidden"` on a folder landing page when you want a Mintlify-style
+section label with child links, but no parent navigation target.
 
 ## Sidebar Header & Footer
 

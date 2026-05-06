@@ -30,7 +30,7 @@ interface FolderNode {
   name: string;
   icon?: ReactNode;
   index?: PageNode;
-  folderIndexBehavior?: "link" | "toggle";
+  folderIndexBehavior?: "link" | "toggle" | "hidden";
   children: (PageNode | FolderNode)[];
   collapsible?: boolean;
   defaultOpen?: boolean;
