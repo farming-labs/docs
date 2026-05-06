@@ -41,7 +41,7 @@ export function GuideCard({
             "repeating-linear-gradient(-45deg, transparent, transparent 5px, color-mix(in srgb, var(--color-fd-foreground) 5%, transparent) 5px, color-mix(in srgb, var(--color-fd-foreground) 5%, transparent) 6px)",
         }}
       />
-      
+
       {/* <div className="absolute inset-y-0 left-0 w-px bg-black/10 dark:bg-white/10" />
       <div className="absolute inset-y-0 right-0 w-px bg-black/10 dark:bg-white/10" />
       <div className="absolute left-0 top-0 h-px w-full bg-black/10 dark:bg-white/10" />
