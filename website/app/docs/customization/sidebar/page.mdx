@@ -75,9 +75,9 @@ inside the group, and clicking the parent row no longer changes the URL. Set
 If you want to remove the folder landing-page link entirely and only show the child pages, use
 `folderIndexBehavior: "hidden"`:
 
-```mdx title="app/docs/overview/page.mdx"
+```mdx title="app/docs/sending/page.mdx"
 ---
-title: "Overview"
+title: "Sending Messages"
 sidebar:
   folderIndexBehavior: "hidden"
 ---
@@ -85,7 +85,9 @@ sidebar:
 
 With `folderIndexBehavior: "hidden"`, the route still exists, but the framework omits the
 landing-page link from the sidebar tree. In the default flat sidebar, that gives you a label-only
-parent row with a plain list of children underneath.
+parent row with a plain list of children underneath. For example, a `Sending Messages` section can
+stay available at `/docs/sending` while the sidebar only shows its child pages like `Send to One
+Person`, `Send to Many People`, and `Track Message Delivery`.
 
 If you only want that behavior in selected sections, use
 `sidebar.folderIndexBehaviorOverrides` and key each override by the folder landing-page URL:
