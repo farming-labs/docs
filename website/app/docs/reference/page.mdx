@@ -876,8 +876,8 @@ Sidebar visibility and customization. See [Sidebar](/docs/customization/sidebar)
 | `banner`      | `ReactNode`                                      | —       | Content rendered above nav items                                                                             |
 | `collapsible` | `boolean`                                        | `true`  | Whether sidebar is collapsible on desktop                                                                    |
 | `flat`        | `boolean`                                        | `false` | Render all items flat (Mintlify-style, no collapsible groups)                                                |
-| `folderIndexBehavior` | `"link" \| "toggle"`                    | adapter default | Whether folder parents with their own page navigate on click or only expand/collapse                         |
-| `folderIndexBehaviorOverrides` | `Record<string, "link" \| "toggle">` | — | Selective per-folder overrides keyed by the folder landing-page URL                                          |
+| `folderIndexBehavior` | `"link" \| "toggle" \| "hidden"`       | adapter default | Whether folder parents with their own page navigate, only expand/collapse, or render as label-only groups |
+| `folderIndexBehaviorOverrides` | `Record<string, "link" \| "toggle" \| "hidden">` | — | Selective per-folder overrides keyed by the folder landing-page URL |
 
 Folder landing pages can still override both of those with frontmatter:
 
@@ -1336,7 +1336,7 @@ Page-level sidebar metadata used while building the docs navigation tree.
 
 | Property              | Type                 | Description |
 | --------------------- | -------------------- | ----------- |
-| `folderIndexBehavior` | `"link" \| "toggle"` | Override how this folder page behaves in the default sidebar when it has child pages |
+| `folderIndexBehavior` | `"link" \| "toggle" \| "hidden"` | Override how this folder page behaves in the default sidebar when it has child pages |
 
 ```mdx title="app/docs/components/page.mdx"
 ---
@@ -1351,6 +1351,8 @@ Notes:
 - this is only read from folder landing pages such as `page.mdx` / `index.md`
 - it overrides global `sidebar.folderIndexBehavior`
 - it also overrides `sidebar.folderIndexBehaviorOverrides` for that same folder
+- `folderIndexBehavior: "hidden"` keeps the folder route available but omits the folder index
+  link from the sidebar tree; in flat mode this becomes a label-only group with child links only
 
 **Static OG example** — use `openGraph` and `twitter` in frontmatter to serve a static image instead of the dynamic OG endpoint:
 

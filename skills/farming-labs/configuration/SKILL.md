@@ -610,11 +610,11 @@ Set `enabled: false` to hide the toggle or force a single mode.
 
 ## Sidebar and breadcrumb
 
-- **sidebar:** `true` (default) or `SidebarConfig` (style, banner, footer, `folderIndexBehavior`, etc.). Use `folderIndexBehavior: "toggle"` when all folder parents should only expand/collapse instead of navigating to their landing page. Use `folderIndexBehaviorOverrides` to do that selectively for specific folder landing-page URLs such as `"/docs/components"`. A folder landing page can also override both with frontmatter:
+- **sidebar:** `true` (default) or `SidebarConfig` (style, banner, footer, `folderIndexBehavior`, etc.). Use `folderIndexBehavior: "toggle"` when all folder parents should only expand/collapse instead of navigating to their landing page. Use `folderIndexBehavior: "hidden"` when the folder landing-page route should still exist but the sidebar should render that folder as a plain label with child links only. Use `folderIndexBehaviorOverrides` to do that selectively for specific folder landing-page URLs such as `"/docs/components"`. A folder landing page can also override both with frontmatter:
   ```mdx
   ---
   sidebar:
-    folderIndexBehavior: "toggle"
+    folderIndexBehavior: "hidden"
   ---
   ```
 - **breadcrumb:** `true` (default) or `BreadcrumbConfig` to show/hide or configure breadcrumb.

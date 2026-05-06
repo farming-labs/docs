@@ -239,7 +239,7 @@ function navTreeFromMap(
     title: string;
     url: string;
     icon?: string;
-    folderIndexBehavior?: "link" | "toggle";
+    folderIndexBehavior?: "link" | "toggle" | "hidden";
     order: number;
   }
 

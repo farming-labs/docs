@@ -445,7 +445,7 @@ export interface SidebarComponentProps {
  * - `"toggle"` — clicking the parent row only expands/collapses children, and the
  *   landing page is rendered as the first child item instead
  */
-export type SidebarFolderIndexBehavior = "link" | "toggle";
+export type SidebarFolderIndexBehavior = "link" | "toggle" | "hidden";
 
 export type SidebarFolderIndexBehaviorOverrides = Record<string, SidebarFolderIndexBehavior>;
 
@@ -528,6 +528,8 @@ export interface SidebarConfig {
    * - `"link"` — clicking the parent row navigates to the folder landing page
    * - `"toggle"` — clicking the parent row only expands/collapses children, and the
    *   folder landing page appears as the first child item instead
+   * - `"hidden"` — the folder landing page route still exists, but the parent row
+   *   becomes a plain label and only the child pages appear in the sidebar
    *
    * This is the global default. Individual folder pages can still override it with
    * page frontmatter:
@@ -535,7 +537,7 @@ export interface SidebarConfig {
    * ```mdx
    * ---
    * sidebar:
-   *   folderIndexBehavior: "toggle"
+   *   folderIndexBehavior: "hidden"
    * ---
    * ```
    *

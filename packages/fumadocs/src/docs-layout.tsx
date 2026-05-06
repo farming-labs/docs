@@ -42,7 +42,7 @@ interface FolderNode {
   name: string;
   icon?: ReactNode;
   index?: PageNode;
-  folderIndexBehavior?: "link" | "toggle";
+  folderIndexBehavior?: "link" | "toggle" | "hidden";
   children: TreeNode[];
   collapsible?: boolean;
   defaultOpen?: boolean;
