@@ -29,22 +29,23 @@ export function GuideCard({
     <Link
       href={href}
       className={cn(
-        "not-prose group relative block overflow-hidden border border-black/10 bg-black/[0.02] no-underline transition-colors hover:border-black/20 hover:bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.02] dark:hover:border-white/20 dark:hover:bg-white/[0.04]",
+        "not-prose group relative my-3 block overflow-hidden border border-black/10 bg-black/[0.02] no-underline transition-colors hover:border-black/10 hover:bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.02] dark:hover:border-white/[10%]! dark:hover:bg-white/[4%]!",
         featured ? "px-6 py-6 sm:px-7 sm:py-7" : "px-5 py-5 sm:px-6 sm:py-6",
       )}
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-70"
+        className="pointer-events-none absolute inset-0 opacity-40"
         style={{
           backgroundImage:
             "repeating-linear-gradient(-45deg, transparent, transparent 5px, color-mix(in srgb, var(--color-fd-foreground) 5%, transparent) 5px, color-mix(in srgb, var(--color-fd-foreground) 5%, transparent) 6px)",
         }}
       />
-      <div className="absolute inset-y-0 left-0 w-px bg-black/10 dark:bg-white/10" />
+      
+      {/* <div className="absolute inset-y-0 left-0 w-px bg-black/10 dark:bg-white/10" />
       <div className="absolute inset-y-0 right-0 w-px bg-black/10 dark:bg-white/10" />
       <div className="absolute left-0 top-0 h-px w-full bg-black/10 dark:bg-white/10" />
-      <div className="absolute bottom-0 left-0 h-px w-full bg-black/10 dark:bg-white/10" />
+      <div className="absolute bottom-0 left-0 h-px w-full bg-black/10 dark:bg-white/10" /> */}
 
       <div className="relative z-10">
         <div className="flex flex-wrap items-center gap-y-2 font-mono text-[11px] uppercase tracking-normal text-black/45 dark:text-white/45">
