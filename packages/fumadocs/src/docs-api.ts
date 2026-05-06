@@ -30,6 +30,7 @@ import {
   emitDocsAnalyticsEvent,
   resolveDocsI18n,
   resolveDocsLocale,
+  resolvePageSidebarFolderIndexBehavior,
 } from "@farming-labs/docs";
 import type {
   ChangelogConfig,
@@ -1049,6 +1050,60 @@ function stripMdx(content: string): string {
     .trim();
 }
 
+function resolveDocsSearchPageSource(dir: string): string | undefined {
+  return ["page.mdx", "page.md"]
+    .map((fileName) => path.join(dir, fileName))
+    .find((candidate) => fs.existsSync(candidate));
+}
+
+function hasVisibleDescendantDocsSearchPage(dir: string): boolean {
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(dir);
+  } catch {
+    return false;
+  }
+
+  for (const name of entries.sort()) {
+    const full = path.join(dir, name);
+    try {
+      if (!fs.statSync(full).isDirectory()) continue;
+    } catch {
+      continue;
+    }
+
+    const pageSource = resolveDocsSearchPageSource(full);
+    if (pageSource) {
+      try {
+        const data = matter(fs.readFileSync(pageSource, "utf-8")).data;
+        const hiddenFolderIndex = resolvePageSidebarFolderIndexBehavior(data.sidebar) === "hidden";
+        if (data.hidden !== true && !hiddenFolderIndex) return true;
+      } catch {
+        return true;
+      }
+    }
+
+    if (hasVisibleDescendantDocsSearchPage(full)) return true;
+  }
+
+  return false;
+}
+
+function isHiddenFolderIndexPageDir(dir: string): boolean {
+  const pageSource = resolveDocsSearchPageSource(dir);
+  if (!pageSource) return false;
+
+  try {
+    const data = matter(fs.readFileSync(pageSource, "utf-8")).data;
+    return (
+      resolvePageSidebarFolderIndexBehavior(data.sidebar) === "hidden" &&
+      hasVisibleDescendantDocsSearchPage(dir)
+    );
+  } catch {
+    return false;
+  }
+}
+
 function scanDocsDir(
   docsDir: string,
   entry: string,
@@ -1069,33 +1124,41 @@ function scanDocsDir(
     if (!fs.existsSync(dir)) return;
     if (isExcluded(dir)) return;
 
-    const pagePath = path.join(dir, "page.mdx");
-    if (fs.existsSync(pagePath)) {
+    const pageSource = resolveDocsSearchPageSource(dir);
+    if (pageSource) {
       try {
-        const raw = fs.readFileSync(pagePath, "utf-8");
+        const raw = fs.readFileSync(pageSource, "utf-8");
         const { data } = matter(raw);
-        const title =
-          (data.title as string) ||
-          slugParts[slugParts.length - 1]?.replace(/-/g, " ") ||
-          "Documentation";
-        const description = data.description as string | undefined;
-        const { content: fileContent } = matter(raw);
-        const rawContent = resolveAgentMdxContent(fileContent, "human");
-        const agentRawContent = resolveAgentMdxContent(fileContent, "agent");
-        const content = stripMdx(rawContent);
-        const baseUrl = slugParts.length === 0 ? `/${entry}` : `/${entry}/${slugParts.join("/")}`;
-        const url = withLangInUrl(baseUrl, locale);
+        const hiddenFolderIndex =
+          resolvePageSidebarFolderIndexBehavior(data.sidebar) === "hidden" &&
+          hasVisibleDescendantDocsSearchPage(dir);
+        if (hiddenFolderIndex) {
+          // Hidden folder indexes should redirect to their first child at the
+          // app layer and should not remain searchable as standalone pages.
+        } else {
+          const title =
+            (data.title as string) ||
+            slugParts[slugParts.length - 1]?.replace(/-/g, " ") ||
+            "Documentation";
+          const description = data.description as string | undefined;
+          const { content: fileContent } = matter(raw);
+          const rawContent = resolveAgentMdxContent(fileContent, "human");
+          const agentRawContent = resolveAgentMdxContent(fileContent, "agent");
+          const content = stripMdx(rawContent);
+          const baseUrl = slugParts.length === 0 ? `/${entry}` : `/${entry}/${slugParts.join("/")}`;
+          const url = withLangInUrl(baseUrl, locale);
 
-        indexes.push({
-          title,
-          description,
-          relatedInput: data.related,
-          content,
-          rawContent,
-          agentFallbackRawContent: agentRawContent !== rawContent ? agentRawContent : undefined,
-          url,
-          locale,
-        });
+          indexes.push({
+            title,
+            description,
+            relatedInput: data.related,
+            content,
+            rawContent,
+            agentFallbackRawContent: agentRawContent !== rawContent ? agentRawContent : undefined,
+            url,
+            locale,
+          });
+        }
       } catch {
         // skip unreadable files
       }
@@ -2001,12 +2064,23 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   }
 
   async function getMarkdownDocument(ctx: DocsContext, requestedPath: string) {
+    const normalizedRequest = normalizeRequestedMarkdownPath(ctx.entryPath, requestedPath);
+    const normalizedEntry = `/${normalizePathSegment(ctx.entryPath)}`;
+    const relativeSlug =
+      normalizedRequest === normalizedEntry
+        ? ""
+        : normalizedRequest.slice(normalizedEntry.length).replace(/^\/+/, "");
+
+    for (const docsDir of ctx.docsDirs) {
+      const candidateDir = relativeSlug ? path.join(docsDir, ...relativeSlug.split("/")) : docsDir;
+      if (isHiddenFolderIndexPageDir(candidateDir)) return null;
+    }
+
     for (const source of getMarkdownSources(ctx)) {
       const page = findDocsMcpPage(ctx.entryPath, await source.getPages(), requestedPath);
       if (page) return renderMarkdownDocument(page);
     }
 
-    const normalizedRequest = normalizeRequestedMarkdownPath(ctx.entryPath, requestedPath);
     const fallbackPage = getIndexes(ctx).find(
       (page) => normalizeUrlPath(page.url) === normalizedRequest,
     );

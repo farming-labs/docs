@@ -26,8 +26,18 @@ type TestRewriteResult =
       fallback?: TestRewrite[];
     };
 
+type TestRedirect = {
+  source: string;
+  destination: string;
+  permanent: boolean;
+};
+
 async function readRewrites(nextConfig: ReturnType<typeof withDocs>) {
   return (nextConfig.rewrites as () => Promise<TestRewriteResult>)();
+}
+
+async function readRedirects(nextConfig: ReturnType<typeof withDocs>) {
+  return (nextConfig.redirects as () => Promise<TestRedirect[]>)();
 }
 
 function getBeforeFilesRewrites(result: TestRewriteResult): TestRewrite[] {
@@ -332,6 +342,47 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(acceptPattern.test("application/json, text/markdown;profile=agent;q=0")).toBe(false);
     expect(acceptPattern.test("text/markdown-v2")).toBe(false);
     expect(acceptPattern.test("application/not-text/markdownish")).toBe(false);
+  });
+
+  it("redirects hidden folder parents to their first visible child", async () => {
+    mkdirSync(join(tmpDir, "app", "docs", "overview", "what-is-surge"), { recursive: true });
+    mkdirSync(join(tmpDir, "app", "docs", "sending", "send-one"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "overview", "page.mdx"),
+      "---\ntitle: Overview\nsidebar:\n  folderIndexBehavior: hidden\n---\n",
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "overview", "what-is-surge", "page.mdx"),
+      "# What is Surge\n",
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "sending", "page.mdx"),
+      "---\ntitle: Sending\nsidebar:\n  folderIndexBehavior: hidden\n---\n",
+      "utf-8",
+    );
+    writeFileSync(join(tmpDir, "app", "docs", "sending", "send-one", "page.mdx"), "# Send\n");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+    const redirects = await readRedirects(nextConfig);
+
+    expect(redirects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/docs/overview",
+          destination: "/docs/overview/what-is-surge",
+          permanent: false,
+        }),
+        expect.objectContaining({
+          source: "/docs/sending",
+          destination: "/docs/sending/send-one",
+          permanent: false,
+        }),
+      ]),
+    );
   });
 
   it("adds agent feedback rewrites through the shared docs api handler when configured", async () => {

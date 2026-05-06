@@ -357,6 +357,53 @@ Install and configure the docs framework.
     expect(payload[0]?.content).toContain("Quickstart");
   });
 
+  it("omits hidden folder index pages from search and markdown lookups", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-hidden-folder-index-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "overview", "what-is-surge"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    writeFileSync(
+      join(rootDir, "app", "docs", "overview", "page.mdx"),
+      `---
+title: "Overview"
+sidebar:
+  folderIndexBehavior: hidden
+---
+
+# Overview
+
+This page should not be indexed as a standalone doc.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "overview", "what-is-surge", "page.mdx"),
+      `---
+title: "What is Surge"
+---
+
+# What is Surge
+
+Surge overview child.
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      entry: "docs",
+    });
+
+    const searchResponse = await GET(new Request("http://localhost/api/docs?query=standalone"));
+    const searchPayload = (await searchResponse.json()) as Array<{ url: string }>;
+    expect(searchPayload.some((entry) => entry.url === "/docs/overview")).toBe(false);
+
+    const markdownResponse = await GET(
+      new Request("http://localhost/api/docs?format=markdown&path=overview"),
+    );
+    expect(markdownResponse.status).toBe(404);
+  });
+
   it("serves llms.txt aliases through the shared docs api handler", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-llms-alias-route-"));
     tempDirs.push(rootDir);

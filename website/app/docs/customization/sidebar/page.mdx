@@ -83,11 +83,11 @@ sidebar:
 ---
 ```
 
-With `folderIndexBehavior: "hidden"`, the route still exists, but the framework omits the
-landing-page link from the sidebar tree. In the default flat sidebar, that gives you a label-only
-parent row with a plain list of children underneath. For example, a `Sending Messages` section can
-stay available at `/docs/sending` while the sidebar only shows its child pages like `Send to One
-Person`, `Send to Many People`, and `Track Message Delivery`.
+With `folderIndexBehavior: "hidden"`, the framework omits the landing-page link from the sidebar
+tree and treats the folder like a label-only parent. In the default flat sidebar, that gives you a
+plain list of child links underneath. If someone manually opens the parent route, the framework
+redirects it to the first visible child. Hidden folder landing pages are also left out of the
+machine-readable markdown/search surfaces so they do not keep behaving like standalone docs pages.
 
 If you only want that behavior in selected sections, use
 `sidebar.folderIndexBehaviorOverrides` and key each override by the folder landing-page URL:

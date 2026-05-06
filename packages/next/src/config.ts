@@ -1045,6 +1045,13 @@ type NextRewrite = {
   [key: string]: unknown;
 };
 
+type NextRedirect = {
+  source: string;
+  destination: string;
+  permanent: boolean;
+  [key: string]: unknown;
+};
+
 type NextRewriteResult =
   | NextRewrite[]
   | {
@@ -1179,6 +1186,136 @@ function dedupeRewrites(rewrites: NextRewrite[]): NextRewrite[] {
   return result;
 }
 
+function dedupeRedirects(redirects: NextRedirect[]): NextRedirect[] {
+  const seen = new Set<string>();
+  const result: NextRedirect[] = [];
+
+  for (const redirect of redirects) {
+    const key = redirect.source;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(redirect);
+  }
+
+  return result;
+}
+
+function resolveDocsPageSourceFile(dir: string): string | undefined {
+  return ["page.mdx", "page.md"]
+    .map((fileName) => join(dir, fileName))
+    .find((candidate) => existsSync(candidate));
+}
+
+function readDocsPageFrontmatter(filePath: string): Record<string, unknown> {
+  try {
+    return matter(readFileSync(filePath, "utf-8")).data;
+  } catch {
+    return {};
+  }
+}
+
+function resolveDocsPageOrder(dir: string): number {
+  const pageSource = resolveDocsPageSourceFile(dir);
+  if (!pageSource) return Number.POSITIVE_INFINITY;
+
+  const data = readDocsPageFrontmatter(pageSource);
+  return typeof data.order === "number" ? data.order : Number.POSITIVE_INFINITY;
+}
+
+function resolveDocsPageFolderIndexBehavior(data: Record<string, unknown>): string | undefined {
+  const sidebar = data.sidebar;
+  if (!sidebar || typeof sidebar !== "object") return undefined;
+
+  const value = (sidebar as { folderIndexBehavior?: unknown }).folderIndexBehavior;
+  return value === "link" || value === "toggle" || value === "hidden" ? value : undefined;
+}
+
+function listSortedDocsChildDirectories(dir: string): string[] {
+  let entries: string[];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return [];
+  }
+
+  return entries
+    .map((name) => ({ name, fullPath: join(dir, name) }))
+    .filter(({ fullPath }) => {
+      try {
+        return statSync(fullPath).isDirectory();
+      } catch {
+        return false;
+      }
+    })
+    .sort((left, right) => {
+      const leftOrder = resolveDocsPageOrder(left.fullPath);
+      const rightOrder = resolveDocsPageOrder(right.fullPath);
+      if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+      return left.name.localeCompare(right.name);
+    })
+    .map(({ name }) => name);
+}
+
+function findFirstVisibleDocsChildSlug(dir: string, slugParts: string[]): string[] | undefined {
+  for (const name of listSortedDocsChildDirectories(dir)) {
+    const childDir = join(dir, name);
+    const childSlugParts = [...slugParts, name];
+    const pageSource = resolveDocsPageSourceFile(childDir);
+
+    if (!pageSource) {
+      const descendant = findFirstVisibleDocsChildSlug(childDir, childSlugParts);
+      if (descendant) return descendant;
+      continue;
+    }
+
+    const data = readDocsPageFrontmatter(pageSource);
+    const folderIndexBehavior = resolveDocsPageFolderIndexBehavior(data);
+    if (data.hidden === true || folderIndexBehavior === "hidden") {
+      const descendant = findFirstVisibleDocsChildSlug(childDir, childSlugParts);
+      if (descendant) return descendant;
+      continue;
+    }
+
+    return childSlugParts;
+  }
+
+  return undefined;
+}
+
+function buildHiddenFolderRedirects(docsDir: string, entry: string): NextRedirect[] {
+  const redirects: NextRedirect[] = [];
+
+  function scan(dir: string, slugParts: string[]) {
+    if (!existsSync(dir)) return;
+
+    const pageSource = resolveDocsPageSourceFile(dir);
+    if (pageSource) {
+      const data = readDocsPageFrontmatter(pageSource);
+      if (resolveDocsPageFolderIndexBehavior(data) === "hidden") {
+        const destinationSlug = findFirstVisibleDocsChildSlug(dir, slugParts);
+        if (destinationSlug && destinationSlug.join("/") !== slugParts.join("/")) {
+          const source = slugParts.length > 0 ? `/${entry}/${slugParts.join("/")}` : `/${entry}`;
+          const destination =
+            destinationSlug.length > 0 ? `/${entry}/${destinationSlug.join("/")}` : `/${entry}`;
+
+          redirects.push({
+            source,
+            destination,
+            permanent: false,
+          });
+        }
+      }
+    }
+
+    for (const name of listSortedDocsChildDirectories(dir)) {
+      scan(join(dir, name), [...slugParts, name]);
+    }
+  }
+
+  scan(docsDir, []);
+  return dedupeRedirects(redirects);
+}
+
 function mergeDocsMarkdownRewrites(
   entry: string,
   mcp: {
@@ -1218,6 +1355,13 @@ function mergeDocsMarkdownRewrites(
     afterFiles: result.afterFiles ?? [],
     fallback: result.fallback ?? [],
   };
+}
+
+function mergeDocsRedirects(
+  autoRedirects: NextRedirect[],
+  redirects: NextRedirect[] | undefined,
+): NextRedirect[] {
+  return dedupeRedirects([...(redirects ?? []), ...autoRedirects]);
 }
 
 // ─── withDocs ───────────────────────────────────────────────────────
@@ -1528,6 +1672,7 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
     {};
   const docsTraceGlob = docsContentDir.replace(/\\/g, "/").replace(/^\.?\//, "") + "/**/*";
   const skillTraceFile = "skill.md";
+  const docsContentRoot = isAbsolute(docsContentDir) ? docsContentDir : join(root, docsContentDir);
 
   if (!isStaticExport) {
     const existingRewrites = nextConfig.rewrites as
@@ -1539,6 +1684,20 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
         typeof existingRewrites === "function" ? await existingRewrites() : existingRewrites;
       return mergeDocsMarkdownRewrites(entry, mcp, agentFeedback, rewrites);
     };
+
+    const autoRedirects = buildHiddenFolderRedirects(docsContentRoot, entry);
+    if (autoRedirects.length > 0) {
+      const existingRedirects = nextConfig.redirects as
+        | NextRedirect[]
+        | (() => NextRedirect[] | Promise<NextRedirect[]>)
+        | undefined;
+
+      nextConfig.redirects = async () => {
+        const redirects =
+          typeof existingRedirects === "function" ? await existingRedirects() : existingRedirects;
+        return mergeDocsRedirects(autoRedirects, redirects);
+      };
+    }
   }
 
   nextConfig.outputFileTracingIncludes = {

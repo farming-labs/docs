@@ -10,6 +10,7 @@ import * as z from "zod/v4";
 import { stripGeneratedAgentProvenance } from "./agent-provenance.js";
 import { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 import { performDocsSearch } from "./search.js";
+import { resolvePageSidebarFolderIndexBehavior } from "./sidebar.js";
 import { emitDocsAnalyticsEvent } from "./analytics.js";
 import type {
   DocsAnalyticsConfig,
@@ -776,6 +777,45 @@ function stripMarkdownForMcp(content: string): string {
     .trim();
 }
 
+function resolveFilesystemDocsPageSource(dir: string): string | undefined {
+  return ["page.mdx", "page.md", "page.svx"]
+    .map((fileName) => path.join(dir, fileName))
+    .find((candidate) => fs.existsSync(candidate));
+}
+
+function hasVisibleDescendantFilesystemDocsPage(dir: string): boolean {
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(dir);
+  } catch {
+    return false;
+  }
+
+  for (const name of entries.sort()) {
+    const full = path.join(dir, name);
+    try {
+      if (!fs.statSync(full).isDirectory()) continue;
+    } catch {
+      continue;
+    }
+
+    const pageSource = resolveFilesystemDocsPageSource(full);
+    if (pageSource) {
+      try {
+        const data = matter(fs.readFileSync(pageSource, "utf-8")).data;
+        const hiddenFolderIndex = resolvePageSidebarFolderIndexBehavior(data.sidebar) === "hidden";
+        if (data.hidden !== true && !hiddenFolderIndex) return true;
+      } catch {
+        return true;
+      }
+    }
+
+    if (hasVisibleDescendantFilesystemDocsPage(full)) return true;
+  }
+
+  return false;
+}
+
 function scanFilesystemDocsPages(contentDirAbs: string, entry: string): ScannedDocsMcpPage[] {
   const pages: Array<ScannedDocsMcpPage & { relatedInput?: unknown }> = [];
 
@@ -797,6 +837,14 @@ function scanFilesystemDocsPages(contentDirAbs: string, entry: string): ScannedD
 
       const raw = fs.readFileSync(full, "utf-8");
       const { data, content } = matter(raw);
+      const baseName = name.replace(/\.(md|mdx|svx)$/, "");
+      const isIndex = baseName === "index" || baseName === "page" || baseName === "+page";
+      const hiddenFolderIndex =
+        isIndex &&
+        resolvePageSidebarFolderIndexBehavior(data.sidebar) === "hidden" &&
+        hasVisibleDescendantFilesystemDocsPage(dir);
+      if (hiddenFolderIndex) continue;
+
       const humanRawContent = resolveAgentMdxContent(content, "human");
       const pageAgentRawContent = resolveAgentMdxContent(content, "agent");
       const pageAgentContent =
@@ -804,8 +852,6 @@ function scanFilesystemDocsPages(contentDirAbs: string, entry: string): ScannedD
           ? stripMarkdownForMcp(pageAgentRawContent)
           : undefined;
 
-      const baseName = name.replace(/\.(md|mdx|svx)$/, "");
-      const isIndex = baseName === "index" || baseName === "page" || baseName === "+page";
       const slug = isIndex ? slugParts.join("/") : [...slugParts, baseName].join("/");
       const url = slug ? `/${entry}/${slug}` : `/${entry}`;
       const agentDoc = isIndex ? readFilesystemAgentDoc(dir) : undefined;

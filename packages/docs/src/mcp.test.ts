@@ -230,6 +230,40 @@ No frontmatter title here.
     );
   });
 
+  it("omits hidden folder index pages from MCP pages while keeping their children", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-mcp-hidden-folder-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "docs", "overview", "what-is-surge"), { recursive: true });
+    writeFileSync(join(rootDir, "docs", "page.mdx"), "# Home\n");
+    writeFileSync(
+      join(rootDir, "docs", "overview", "page.mdx"),
+      `---
+title: "Overview"
+sidebar:
+  folderIndexBehavior: hidden
+---
+
+# Overview
+`,
+    );
+    writeFileSync(
+      join(rootDir, "docs", "overview", "what-is-surge", "page.mdx"),
+      "# What is Surge\n",
+    );
+
+    const source = createFilesystemDocsMcpSource({
+      rootDir,
+      entry: "docs",
+      contentDir: "docs",
+    });
+
+    const pages = await source.getPages();
+
+    expect(pages.some((page) => page.url === "/docs/overview")).toBe(false);
+    expect(pages.some((page) => page.url === "/docs/overview/what-is-surge")).toBe(true);
+  });
+
   it("serves a working MCP transport with the built-in tools", async () => {
     const rootDir = createTempDocsProject();
     const source = createFilesystemDocsMcpSource({
