@@ -1296,9 +1296,7 @@ function buildHiddenFolderRedirects(docsDir: string, entry: string): NextRedirec
         if (destinationSlug && destinationSlug.join("/") !== slugParts.join("/")) {
           const source = slugParts.length > 0 ? `/${entry}/${slugParts.join("/")}` : `/${entry}`;
           const destination =
-            destinationSlug.length > 0
-              ? `/${entry}/${destinationSlug.join("/")}`
-              : `/${entry}`;
+            destinationSlug.length > 0 ? `/${entry}/${destinationSlug.join("/")}` : `/${entry}`;
 
           redirects.push({
             source,

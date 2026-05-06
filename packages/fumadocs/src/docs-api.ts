@@ -1145,8 +1145,7 @@ function scanDocsDir(
           const rawContent = resolveAgentMdxContent(fileContent, "human");
           const agentRawContent = resolveAgentMdxContent(fileContent, "agent");
           const content = stripMdx(rawContent);
-          const baseUrl =
-            slugParts.length === 0 ? `/${entry}` : `/${entry}/${slugParts.join("/")}`;
+          const baseUrl = slugParts.length === 0 ? `/${entry}` : `/${entry}/${slugParts.join("/")}`;
           const url = withLangInUrl(baseUrl, locale);
 
           indexes.push({
@@ -2073,9 +2072,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         : normalizedRequest.slice(normalizedEntry.length).replace(/^\/+/, "");
 
     for (const docsDir of ctx.docsDirs) {
-      const candidateDir = relativeSlug
-        ? path.join(docsDir, ...relativeSlug.split("/"))
-        : docsDir;
+      const candidateDir = relativeSlug ? path.join(docsDir, ...relativeSlug.split("/")) : docsDir;
       if (isHiddenFolderIndexPageDir(candidateDir)) return null;
     }
 
