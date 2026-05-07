@@ -62,7 +62,7 @@ const searchConfig =
 export default defineDocs({
   entry: "docs",
   search: searchConfig,
-  analytics: {
+  observability: {
     console: "info",
   },
   theme: pixelBorder({

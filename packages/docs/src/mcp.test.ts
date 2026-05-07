@@ -599,9 +599,39 @@ sidebar:
     await callTool("read_page", { path: "missing" });
 
     expect(events.map((event) => event.type)).toEqual(
-      expect.arrayContaining(["mcp_request", "mcp_tool", "agent_read"]),
+      expect.arrayContaining([
+        "mcp_request",
+        "mcp_tool",
+        "agent_read",
+        "tool.call",
+        "tool.result",
+        "tool.error",
+      ]),
     );
     expect(events.filter((event) => event.type === "mcp_request")).toHaveLength(6);
+    expect(events.filter((event) => event.type === "tool.call")).toHaveLength(5);
+    expect(events.filter((event) => event.type === "tool.result")).toHaveLength(4);
+    expect(events.filter((event) => event.type === "tool.error")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "tool.call").map((event) => event.name)).toEqual(
+      ["list_pages", "get_navigation", "search_docs", "read_page", "read_page"],
+    );
+    expect(
+      events.filter((event) => event.type === "tool.result").map((event) => event.outputPreview),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ resultCount: 3 }),
+        expect.objectContaining({ chars: expect.any(Number) }),
+        expect.objectContaining({ resultCount: expect.any(Number) }),
+        expect.objectContaining({ found: true, chars: expect.any(Number) }),
+      ]),
+    );
+    expect(events.find((event) => event.type === "tool.error")).toMatchObject({
+      name: "read_page",
+      status: "error",
+      durationMs: expect.any(Number),
+      outputPreview: expect.objectContaining({ found: false, path: "missing" }),
+      metadata: expect.objectContaining({ reason: "not_found" }),
+    });
     expect(
       events.filter((event) => event.type === "mcp_tool").map((event) => event.properties),
     ).toEqual(

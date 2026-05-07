@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createDocsCloudAnalytics } from "./cloud-analytics.js";
-import { emitDocsAnalyticsEvent, resolveDocsAnalyticsConfig } from "./analytics.js";
+import {
+  DOCS_AGENT_TRACE_EVENT_TYPES,
+  emitDocsAgentTraceEvent,
+  emitDocsAnalyticsEvent,
+  resolveDocsAnalyticsConfig,
+} from "./analytics.js";
 import type { DocsAnalyticsEvent, DocsAnalyticsEventType } from "./types.js";
 
 const ALL_ANALYTICS_EVENTS = [
@@ -86,6 +91,60 @@ describe("analytics", () => {
     });
   });
 
+  it("emits every agent trace event type with measurable fields", async () => {
+    const events: DocsAnalyticsEvent[] = [];
+
+    for (const [index, type] of DOCS_AGENT_TRACE_EVENT_TYPES.entries()) {
+      await emitDocsAgentTraceEvent(
+        {
+          console: false,
+          onEvent(event) {
+            events.push(event);
+          },
+        },
+        {
+          type,
+          source: type.startsWith("tool.") ? "mcp" : "server",
+          traceId: "run_test",
+          spanId: `span_${index}`,
+          parentSpanId: index === 0 ? undefined : "run_test",
+          name: type,
+          startedAt: "2026-01-01T00:00:00.000Z",
+          endedAt: "2026-01-01T00:00:00.010Z",
+          durationMs: index,
+          status:
+            type.endsWith(".error") || type === "error"
+              ? "error"
+              : type === "retry"
+                ? "retry"
+                : type === "timeout"
+                  ? "timeout"
+                  : "success",
+          inputPreview: { kind: "test" },
+          outputPreview: { index },
+          metadata: { test: true },
+        },
+      );
+    }
+
+    expect(events.map((event) => event.type)).toEqual(DOCS_AGENT_TRACE_EVENT_TYPES);
+    expect(events).toHaveLength(DOCS_AGENT_TRACE_EVENT_TYPES.length);
+    expect(events.every((event) => event.traceId === "run_test")).toBe(true);
+    expect(events.every((event) => typeof event.spanId === "string")).toBe(true);
+    expect(events.every((event) => typeof event.name === "string")).toBe(true);
+    expect(events.every((event) => typeof event.durationMs === "number")).toBe(true);
+    expect(events.every((event) => typeof event.startedAt === "string")).toBe(true);
+    expect(events.every((event) => typeof event.endedAt === "string")).toBe(true);
+    expect(events.every((event) => typeof event.status === "string")).toBe(true);
+    expect(events[0]).toMatchObject({
+      type: "run.start",
+      source: "server",
+      inputPreview: { kind: "test" },
+      outputPreview: { index: 0 },
+      metadata: { test: true },
+    });
+  });
+
   it("omits raw input fields unless includeInputs is enabled", async () => {
     const events: DocsAnalyticsEvent[] = [];
 
@@ -129,6 +188,29 @@ describe("analytics", () => {
       console: false,
       includeInputs: true,
     });
+  });
+
+  it("logs console analytics with the package-scoped prefix", async () => {
+    const debug = vi.spyOn(console, "debug").mockImplementation(() => undefined);
+
+    await emitDocsAnalyticsEvent(
+      {
+        console: "debug",
+      },
+      {
+        type: "page_view",
+        source: "client",
+        path: "/docs",
+      },
+    );
+
+    expect(debug).toHaveBeenCalledWith(
+      "[@farming-labs/docs:analytics]",
+      expect.objectContaining({
+        type: "page_view",
+        path: "/docs",
+      }),
+    );
   });
 
   it("posts Docs Cloud analytics events to the configured ingestion endpoint", async () => {

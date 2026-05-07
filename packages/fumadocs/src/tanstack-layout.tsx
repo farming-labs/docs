@@ -327,7 +327,9 @@ export function TanstackDocsLayout({
   const tocConfig = config.theme?.ui?.layout?.toc;
   const tocEnabled = tocConfig?.enabled !== false;
   const tocStyle = tocConfig?.style as "default" | "directional" | undefined;
-  const analyticsEnabled = resolveDocsAnalyticsConfig(config.analytics).enabled;
+  const analyticsEnabled = resolveDocsAnalyticsConfig(
+    config.observability ?? config.analytics,
+  ).enabled;
   const docsApiUrl = withLangInUrl("/api/docs", locale);
   const navTitle = (config.nav?.title as ReactNode) ?? "Docs";
   const navUrl = withLangInUrl(config.nav?.url ?? `/${config.entry ?? "docs"}`, locale);

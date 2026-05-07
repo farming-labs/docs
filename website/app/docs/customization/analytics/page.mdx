@@ -7,17 +7,25 @@ order: 5.65
 
 # Analytics
 
-Use the built-in analytics stream when you want visibility into how humans and agents use your docs. It tracks page views, search, Ask AI, feedback, page actions, code-copy, markdown/llms routes, agent feedback, and MCP requests through one typed event contract.
+Use the built-in event stream when you want visibility into how humans and agents use your docs. It
+tracks page views, search, Ask AI, feedback, page actions, code-copy, markdown/llms routes, agent
+feedback, and MCP requests through one typed event contract.
 
 ## Quick Start
 
 ```ts title="docs.config.ts"
 export default defineDocs({
-  analytics: true,
+  observability: true,
 });
 ```
 
-`analytics: true` logs every framework event to the console with the `[farming-labs:analytics]` prefix.
+`observability: true` logs every framework event to the console with the
+`[@farming-labs/docs:analytics]` prefix.
+
+<Callout type="info" title="Analytics is still supported">
+  `analytics` uses the same config shape and remains supported for existing projects.
+  `observability` is the clearer name when you are wiring logs, traces, metrics, and callbacks.
+</Callout>
 
 <Callout type="info" title="Frameworkless docs.json support">
   When you are using frameworkless `docs.json`, the serializable subset can live under
@@ -26,9 +34,12 @@ export default defineDocs({
 
 ## Send Events To Your Own Sink
 
+`onEvent` receives the same normalized object that console analytics prints. Use it as the
+observability callback for logs, traces, metrics, or your own dashboard.
+
 ```ts title="docs.config.ts"
 export default defineDocs({
-  analytics: {
+  observability: {
     async onEvent(event) {
       await fetch("https://analytics.example.com/events", {
         method: "POST",
@@ -40,6 +51,60 @@ export default defineDocs({
 });
 ```
 
+## Live Local Logs
+
+Use console analytics when you want to watch agent traces while developing:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  observability: {
+    console: "debug",
+  },
+});
+```
+
+With console analytics enabled, Ask AI and MCP calls print every trace event to the dev-server
+terminal as they happen.
+
+## Observability Callback
+
+Use `onEvent` when you want code-level access to every detail:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  observability: {
+    console: "debug",
+    async onEvent(event) {
+      if (event.traceId) {
+        console.log("agent trace", {
+          type: event.type,
+          traceId: event.traceId,
+          spanId: event.spanId,
+          parentSpanId: event.parentSpanId,
+          name: event.name,
+          status: event.status,
+          durationMs: event.durationMs,
+          inputPreview: event.inputPreview,
+          outputPreview: event.outputPreview,
+          metadata: event.metadata,
+        });
+      }
+
+      await fetch("https://observability.example.com/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(event),
+      });
+    },
+  },
+});
+```
+
+Set `console: false` if you only want the callback and do not want terminal logs.
+
+For metrics, aggregate by `event.type`, `event.name`, `event.status`, and `event.durationMs`. For
+traces, group events by `event.traceId` and order them by `startedAt` or `timestamp`.
+
 Events have this shape:
 
 ```ts
@@ -47,6 +112,16 @@ interface DocsAnalyticsEvent {
   type: string;
   timestamp: string;
   source: "client" | "server" | "mcp";
+  traceId?: string;
+  spanId?: string;
+  parentSpanId?: string;
+  name?: string;
+  startedAt?: string;
+  endedAt?: string;
+  durationMs?: number;
+  status?: "started" | "success" | "error" | "retry" | "timeout";
+  inputPreview?: Record<string, unknown>;
+  outputPreview?: Record<string, unknown>;
   url?: string;
   path?: string;
   referrer?: string;
@@ -57,6 +132,7 @@ interface DocsAnalyticsEvent {
     feedbackComment?: string;
     content?: string;
   };
+  metadata?: Record<string, unknown>;
   properties?: Record<string, unknown>;
 }
 ```
@@ -86,6 +162,60 @@ Server and agent events:
 `read_page`. Its `properties.delivery` value is `md_route`, `accept_header`, `api_format`, or
 `mcp_tool`.
 
+## Agent Trace Events
+
+Ask AI and MCP tools also emit span-like trace events with stable `traceId`, `spanId`, timing,
+status, previews, and metadata. Use these when you want step-level observability across prompt
+building, retrieval, model calls, tool calls, failures, and final responses.
+
+Trace events:
+
+- `run.start` — an Ask AI run started
+- `user.input` — a user message was accepted for the run
+- `retrieval.query` — docs retrieval started
+- `retrieval.result` — docs retrieval finished with measurable result counts
+- `retrieval.error` — docs retrieval failed
+- `prompt.build` — the system/context prompt was built
+- `model.call` — the model request started
+- `model.response` — the model returned response headers successfully
+- `model.stream` — a streaming model response was handed back to the client
+- `model.error` — the model request failed or returned an error status
+- `tool.call` — an MCP tool started
+- `tool.result` — an MCP tool completed successfully
+- `tool.error` — an MCP tool returned an error result or threw
+- `retry` — a retry attempt was recorded
+- `timeout` — a step timed out
+- `error` — a generic run-level error was recorded
+- `run.error` — the run finished unsuccessfully
+- `agent.final` — the final agent response handoff was reached
+- `run.end` — the run finished
+
+Example event:
+
+```ts
+{
+  traceId: "run_123",
+  spanId: "span_456",
+  parentSpanId: "run_123",
+  type: "tool.call",
+  name: "read_page",
+  startedAt: "2026-01-01T00:00:00.000Z",
+  endedAt: "2026-01-01T00:00:00.082Z",
+  durationMs: 82,
+  status: "success",
+  inputPreview: { page: "/docs/mcp" },
+  outputPreview: { chars: 4210 },
+  metadata: {
+    attempt: 1,
+    model: "gpt-5.2",
+  },
+}
+```
+
+The framework keeps raw inputs out of `inputPreview` unless you add them yourself through a custom
+event. Built-in trace events use lengths, counts, route names, model IDs, status codes, and content
+sizes so they are safe to aggregate.
+
 ## Input Privacy
 
 By default, analytics events only include safe metadata such as paths, counts, durations, status, result counts, model IDs, content lengths, and whether a comment exists.
@@ -100,7 +230,7 @@ Enable raw input capture only when you have user consent and a retention policy:
 
 ```ts title="docs.config.ts"
 export default defineDocs({
-  analytics: {
+  observability: {
     includeInputs: true,
     onEvent(event) {
       console.info(event);
@@ -118,4 +248,5 @@ export default defineDocs({
 | `includeInputs` | `boolean`                                 | `false`                      |
 | `onEvent`       | `(event) => void \| Promise<void>`        | `undefined`                  |
 
-When both `console` and `onEvent` are set, the framework logs to both places.
+`observability` and `analytics` accept the same options. When both `console` and `onEvent` are set,
+the framework logs to both places.

@@ -4,6 +4,9 @@ import matter from "gray-matter";
 import {
   applySidebarFolderIndexBehavior,
   buildDocsAgentDiscoverySpec,
+  createDocsAgentTraceContext,
+  createDocsAgentTraceId,
+  emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
   findDocsMarkdownPage,
   isDocsAgentDiscoveryRequest,
@@ -26,6 +29,7 @@ import {
   resolveSidebarFolderIndexBehavior,
   resolveDocsSkillFormat,
 } from "@farming-labs/docs";
+import type { DocsAgentTraceEventInput } from "@farming-labs/docs";
 import { createDocsMcpHttpHandler, resolveDocsMcpConfig } from "@farming-labs/docs/server";
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
 import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
@@ -91,6 +95,14 @@ function resolveAIModelAndProvider(
     (providerConfig && providerConfig.apiKey) || aiConfig.apiKey || process.env?.OPENAI_API_KEY;
 
   return { model: modelId, baseUrl, apiKey };
+}
+
+function safeUrlOrigin(value: string): string {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return value;
+  }
 }
 
 export interface DocsServerLoadResult {
@@ -473,7 +485,7 @@ function readRootSkillDocument(contentMap: ContentFileMap | null, rootDir: strin
 
 export function createDocsServer(config: Record<string, any>): DocsServer {
   const entry = config.entry ?? "docs";
-  const analytics = config.analytics;
+  const analytics = config.observability ?? config.analytics;
   const ordering = config.ordering;
   const contentDirBase = config.contentDir ?? entry;
   const rootDir = path.resolve((config.rootDir as string | undefined) ?? process.cwd());
@@ -957,6 +969,60 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
   async function POST(event: { request: Request }): Promise<Response> {
     const requestUrl = new URL(event.request.url);
     const requestStartedAt = Date.now();
+    const trace = createDocsAgentTraceContext("ask-ai");
+    const runSpanId = createDocsAgentTraceId("span");
+    const traceBase = {
+      source: "server" as const,
+      traceId: trace.traceId,
+      url: event.request.url,
+      path: requestUrl.pathname,
+    };
+
+    async function emitTrace(traceEvent: DocsAgentTraceEventInput): Promise<void> {
+      await emitDocsAgentTraceEvent(analytics, {
+        ...traceBase,
+        ...traceEvent,
+      });
+    }
+
+    async function emitRunError(
+      reason: string,
+      outputPreview: Record<string, unknown> = {},
+    ): Promise<void> {
+      const endedAt = new Date().toISOString();
+      const elapsed = Math.max(0, Date.now() - requestStartedAt);
+      const common = {
+        name: "ask-ai",
+        parentSpanId: runSpanId,
+        startedAt: trace.startedAt,
+        endedAt,
+        durationMs: elapsed,
+        status: "error" as const,
+        outputPreview: {
+          reason,
+          ...outputPreview,
+        },
+        metadata: { reason },
+      };
+
+      await emitTrace({ ...common, type: "error" });
+      await emitTrace({ ...common, type: "run.error" });
+      await emitTrace({ ...common, type: "run.end" });
+    }
+
+    await emitTrace({
+      type: "run.start",
+      name: "ask-ai",
+      spanId: runSpanId,
+      startedAt: trace.startedAt,
+      durationMs: 0,
+      status: "started",
+      inputPreview: {
+        method: event.request.method,
+        path: requestUrl.pathname,
+      },
+    });
+
     if (!aiConfig.enabled) {
       await emitDocsAnalyticsEvent(analytics, {
         type: "api_ai_error",
@@ -967,6 +1033,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
           reason: "disabled",
         },
       });
+      await emitRunError("disabled", { status: 404 });
       return new Response(
         JSON.stringify({
           error: "AI is not enabled. Set `ai: { enabled: true }` in your docs config to enable it.",
@@ -988,6 +1055,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
           durationMs: Math.max(0, Date.now() - requestStartedAt),
         },
       });
+      await emitRunError("missing_api_key", { status: 500 });
       return new Response(
         JSON.stringify({
           error:
@@ -1014,6 +1082,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
           durationMs: Math.max(0, Date.now() - requestStartedAt),
         },
       });
+      await emitRunError("invalid_json", { status: 400, locale: ctx.locale });
       return new Response(
         JSON.stringify({ error: "Invalid JSON body. Expected { messages: [...] }" }),
         { status: 400, headers: { "Content-Type": "application/json" } },
@@ -1033,6 +1102,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
           durationMs: Math.max(0, Date.now() - requestStartedAt),
         },
       });
+      await emitRunError("missing_messages", { status: 400, locale: ctx.locale });
       return new Response(
         JSON.stringify({ error: "messages array is required and must not be empty." }),
         { status: 400, headers: { "Content-Type": "application/json" } },
@@ -1053,6 +1123,11 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
           durationMs: Math.max(0, Date.now() - requestStartedAt),
         },
       });
+      await emitRunError("missing_user_message", {
+        status: 400,
+        locale: ctx.locale,
+        messageCount: messages.length,
+      });
       return new Response(JSON.stringify({ error: "At least one user message is required." }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -1060,8 +1135,60 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     }
 
     const maxResults = aiConfig.maxResults ?? 5;
+    await emitTrace({
+      type: "user.input",
+      name: "ask-ai",
+      parentSpanId: runSpanId,
+      startedAt: new Date().toISOString(),
+      endedAt: new Date().toISOString(),
+      durationMs: 0,
+      status: "success",
+      locale: ctx.locale,
+      inputPreview: {
+        messageCount: messages.length,
+        questionLength: lastUserMessage.content.length,
+        requestedModel:
+          typeof body.model === "string" && body.model.trim().length > 0
+            ? body.model.trim()
+            : undefined,
+      },
+    });
+    const retrievalStartedAt = Date.now();
+    const retrievalStartedAtIso = new Date().toISOString();
+    const retrievalSpanId = createDocsAgentTraceId("span");
+    await emitTrace({
+      type: "retrieval.query",
+      name: "docs-index",
+      spanId: retrievalSpanId,
+      parentSpanId: runSpanId,
+      startedAt: retrievalStartedAtIso,
+      status: "started",
+      locale: ctx.locale,
+      inputPreview: {
+        queryLength: lastUserMessage.content.length,
+        maxResults,
+      },
+    });
     const scored = searchByQuery(lastUserMessage.content.toLowerCase(), ctx).slice(0, maxResults);
+    await emitTrace({
+      type: "retrieval.result",
+      name: "docs-index",
+      parentSpanId: retrievalSpanId,
+      startedAt: retrievalStartedAtIso,
+      endedAt: new Date().toISOString(),
+      durationMs: Math.max(0, Date.now() - retrievalStartedAt),
+      status: "success",
+      locale: ctx.locale,
+      outputPreview: {
+        resultCount: scored.length,
+        urls: scored.slice(0, 5).map((doc) => doc.url),
+      },
+      metadata: { maxResults },
+    });
 
+    const promptStartedAt = Date.now();
+    const promptStartedAtIso = new Date().toISOString();
+    const promptSpanId = createDocsAgentTraceId("span");
     const contextParts = scored.map(
       (doc) =>
         `## ${doc.title}\nURL: ${doc.url}\n${doc.description ? `Description: ${doc.description}\n` : ""}\n${doc.content}`,
@@ -1080,6 +1207,26 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       systemMessage,
       ...messages.filter((message) => message.role !== "system"),
     ];
+    await emitTrace({
+      type: "prompt.build",
+      name: "ask-ai.prompt",
+      spanId: promptSpanId,
+      parentSpanId: runSpanId,
+      startedAt: promptStartedAtIso,
+      endedAt: new Date().toISOString(),
+      durationMs: Math.max(0, Date.now() - promptStartedAt),
+      status: "success",
+      locale: ctx.locale,
+      inputPreview: {
+        messageCount: messages.length,
+        retrievedCount: scored.length,
+      },
+      outputPreview: {
+        llmMessageCount: llmMessages.length,
+        contextChars: context.length,
+        systemMessageChars: systemMessage.content.length,
+      },
+    });
 
     const requestedModel =
       typeof body.model === "string" && body.model.trim().length > 0
@@ -1103,17 +1250,97 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       },
     });
 
-    const llmResponse = await fetch(`${resolved.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${finalKey}`,
+    const modelStartedAt = Date.now();
+    const modelStartedAtIso = new Date().toISOString();
+    const modelSpanId = createDocsAgentTraceId("span");
+    const providerOrigin = safeUrlOrigin(resolved.baseUrl);
+    await emitTrace({
+      type: "model.call",
+      name: resolved.model,
+      spanId: modelSpanId,
+      parentSpanId: runSpanId,
+      startedAt: modelStartedAtIso,
+      status: "started",
+      locale: ctx.locale,
+      inputPreview: {
+        messageCount: llmMessages.length,
+        stream: true,
+        providerOrigin,
       },
-      body: JSON.stringify({ model: resolved.model, stream: true, messages: llmMessages }),
+      metadata: { model: resolved.model },
     });
+
+    let llmResponse: Response;
+    try {
+      llmResponse = await fetch(`${resolved.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${finalKey}`,
+        },
+        body: JSON.stringify({ model: resolved.model, stream: true, messages: llmMessages }),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      await emitTrace({
+        type: "model.error",
+        name: resolved.model,
+        parentSpanId: modelSpanId,
+        startedAt: modelStartedAtIso,
+        endedAt: new Date().toISOString(),
+        durationMs: Math.max(0, Date.now() - modelStartedAt),
+        status: "error",
+        locale: ctx.locale,
+        outputPreview: { message },
+        metadata: { model: resolved.model, providerOrigin },
+      });
+      await emitDocsAnalyticsEvent(analytics, {
+        type: "api_ai_error",
+        source: "server",
+        url: event.request.url,
+        path: requestUrl.pathname,
+        locale: ctx.locale,
+        input: { question: lastUserMessage.content },
+        properties: {
+          reason: "llm_fetch_error",
+          messageCount: messages.length,
+          questionLength: lastUserMessage.content.length,
+          retrievedCount: scored.length,
+          model: resolved.model,
+          durationMs: Math.max(0, Date.now() - requestStartedAt),
+        },
+      });
+      await emitRunError("llm_fetch_error", {
+        status: 502,
+        locale: ctx.locale,
+        messageCount: messages.length,
+        questionLength: lastUserMessage.content.length,
+        retrievedCount: scored.length,
+        model: resolved.model,
+      });
+      return new Response(JSON.stringify({ error: `LLM API request failed: ${message}` }), {
+        status: 502,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     if (!llmResponse.ok) {
       const errText = await llmResponse.text().catch(() => "Unknown error");
+      await emitTrace({
+        type: "model.error",
+        name: resolved.model,
+        parentSpanId: modelSpanId,
+        startedAt: modelStartedAtIso,
+        endedAt: new Date().toISOString(),
+        durationMs: Math.max(0, Date.now() - modelStartedAt),
+        status: "error",
+        locale: ctx.locale,
+        outputPreview: {
+          status: llmResponse.status,
+          errorChars: errText.length,
+        },
+        metadata: { model: resolved.model, providerOrigin },
+      });
       await emitDocsAnalyticsEvent(analytics, {
         type: "api_ai_error",
         source: "server",
@@ -1130,6 +1357,15 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
           model: resolved.model,
           durationMs: Math.max(0, Date.now() - requestStartedAt),
         },
+      });
+      await emitRunError("llm_error", {
+        status: 502,
+        modelStatus: llmResponse.status,
+        locale: ctx.locale,
+        messageCount: messages.length,
+        questionLength: lastUserMessage.content.length,
+        retrievedCount: scored.length,
+        model: resolved.model,
       });
       return new Response(
         JSON.stringify({ error: `LLM API error (${llmResponse.status}): ${errText}` }),
@@ -1151,6 +1387,67 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         model: resolved.model,
         durationMs: Math.max(0, Date.now() - requestStartedAt),
       },
+    });
+    const responseEndedAt = new Date().toISOString();
+    const modelDurationMs = Math.max(0, Date.now() - modelStartedAt);
+    await emitTrace({
+      type: "model.response",
+      name: resolved.model,
+      parentSpanId: modelSpanId,
+      startedAt: modelStartedAtIso,
+      endedAt: responseEndedAt,
+      durationMs: modelDurationMs,
+      status: "success",
+      locale: ctx.locale,
+      outputPreview: {
+        status: llmResponse.status,
+        stream: true,
+        contentType: llmResponse.headers.get("content-type") ?? undefined,
+      },
+      metadata: { model: resolved.model, providerOrigin },
+    });
+    await emitTrace({
+      type: "model.stream",
+      name: resolved.model,
+      parentSpanId: modelSpanId,
+      startedAt: modelStartedAtIso,
+      endedAt: responseEndedAt,
+      durationMs: modelDurationMs,
+      status: "success",
+      locale: ctx.locale,
+      outputPreview: { stream: true },
+      metadata: { model: resolved.model },
+    });
+    const runDurationMs = Math.max(0, Date.now() - requestStartedAt);
+    await emitTrace({
+      type: "agent.final",
+      name: "ask-ai",
+      parentSpanId: runSpanId,
+      startedAt: trace.startedAt,
+      endedAt: new Date().toISOString(),
+      durationMs: runDurationMs,
+      status: "success",
+      locale: ctx.locale,
+      outputPreview: {
+        stream: true,
+        retrievedCount: scored.length,
+      },
+      metadata: { model: resolved.model },
+    });
+    await emitTrace({
+      type: "run.end",
+      name: "ask-ai",
+      parentSpanId: runSpanId,
+      startedAt: trace.startedAt,
+      endedAt: new Date().toISOString(),
+      durationMs: runDurationMs,
+      status: "success",
+      locale: ctx.locale,
+      outputPreview: {
+        stream: true,
+        retrievedCount: scored.length,
+      },
+      metadata: { model: resolved.model },
     });
 
     return new Response(llmResponse.body, {

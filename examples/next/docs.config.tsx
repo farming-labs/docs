@@ -77,6 +77,9 @@ const searchConfig: DocsSearchConfig | undefined =
 export default defineDocs({
   entry: "docs",
   ...(searchConfig ? { search: searchConfig } : {}),
+  observability: {
+    console: "debug",
+  },
   github: {
     url: "https://github.com/farming-labs/docs",
     branch: "main",

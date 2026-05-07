@@ -43,6 +43,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `sidebar`     | `boolean \| SidebarConfig`                      | `true`           | Sidebar visibility and customization                                                 |
 | `icons`       | `Record<string, unknown>`                       | —                | Shared icon registry for frontmatter `icon` fields and built-ins like `Prompt`       |
 | `components`  | `Record<string, unknown>`                       | —                | Custom MDX component overrides, including built-ins like `HoverLink` and `Prompt`    |
+| `observability` | `boolean \| DocsObservabilityConfig`          | `false`          | Event stream for logs, traces, metrics, callbacks, Ask AI, MCP, and agent routes     |
 | `analytics`   | `boolean \| DocsAnalyticsConfig`                | `false`          | Built-in event stream for page views, search, AI, feedback, page actions, agent routes, and MCP |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void`              | —                | Callback when the user clicks the copy button on a code block (runs in addition to copy) |
 | `feedback`    | `boolean \| FeedbackConfig`                     | `false`          | Human page feedback UI plus optional agent feedback endpoints                        |
@@ -64,9 +65,12 @@ Top-level configuration object passed to `defineDocs()`.
 
 ---
 
-## `analytics` and `DocsAnalyticsConfig`
+## `observability`, `analytics`, and `DocsAnalyticsConfig`
 
-Built-in analytics event stream. See [Analytics](/docs/customization/analytics) for the full guide and event list.
+Built-in event stream for product analytics and operational observability. Prefer `observability`
+for logs, traces, metrics, and agent debugging. `analytics` uses the same config shape and remains
+supported for existing projects. See [Analytics](/docs/customization/analytics) for the full guide
+and event list.
 
 | Option          | Type                                      | Default                      | Description                                                        |
 | --------------- | ----------------------------------------- | ---------------------------- | ------------------------------------------------------------------ |
@@ -76,9 +80,10 @@ Built-in analytics event stream. See [Analytics](/docs/customization/analytics) 
 | `onEvent`       | `(event) => void \| Promise<void>`        | —                            | Callback fired for every analytics event                           |
 
 ```ts title="docs.config.ts"
-analytics: {
+observability: {
+  console: "debug",
   onEvent(event) {
-    console.info(event.type, event.properties);
+    console.info(event.type, event.traceId, event.durationMs);
   },
 }
 ```

@@ -11,7 +11,12 @@ import { stripGeneratedAgentProvenance } from "./agent-provenance.js";
 import { normalizeDocsRelated, renderDocsRelatedMarkdownLines } from "./related.js";
 import { performDocsSearch } from "./search.js";
 import { resolvePageSidebarFolderIndexBehavior } from "./sidebar.js";
-import { emitDocsAnalyticsEvent } from "./analytics.js";
+import {
+  createDocsAgentTraceContext,
+  createDocsAgentTraceId,
+  emitDocsAgentTraceEvent,
+  emitDocsAnalyticsEvent,
+} from "./analytics.js";
 import type {
   DocsAnalyticsConfig,
   DocsMcpConfig,
@@ -290,25 +295,74 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
       },
       async ({ locale }) => {
         const startedAt = nowMs();
-        const pages = toPageSummaries(dedupePages(await options.source.getPages(locale)));
-        await emitDocsAnalyticsEvent(options.analytics, {
-          type: "mcp_tool",
+        const trace = createDocsAgentTraceContext("mcp.tool.list_pages");
+        const callSpanId = createDocsAgentTraceId("span");
+        await emitDocsAgentTraceEvent(options.analytics, {
+          type: "tool.call",
           source: "mcp",
+          traceId: trace.traceId,
+          spanId: callSpanId,
+          name: "list_pages",
+          startedAt: trace.startedAt,
+          status: "started",
           locale,
-          properties: {
-            tool: "list_pages",
-            resultCount: pages.length,
-            durationMs: durationMs(startedAt),
-          },
+          inputPreview: { locale },
+          metadata: { tool: "list_pages" },
         });
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({ pages }, null, 2),
+
+        try {
+          const pages = toPageSummaries(dedupePages(await options.source.getPages(locale)));
+          const elapsed = durationMs(startedAt);
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "mcp_tool",
+            source: "mcp",
+            locale,
+            properties: {
+              tool: "list_pages",
+              resultCount: pages.length,
+              durationMs: elapsed,
             },
-          ],
-        };
+          });
+          await emitDocsAgentTraceEvent(options.analytics, {
+            type: "tool.result",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "list_pages",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "success",
+            locale,
+            outputPreview: { resultCount: pages.length },
+            metadata: { tool: "list_pages" },
+          });
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({ pages }, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          const elapsed = durationMs(startedAt);
+          await emitDocsAgentTraceEvent(options.analytics, {
+            type: "tool.error",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "list_pages",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "error",
+            locale,
+            outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
+            metadata: { tool: "list_pages" },
+          });
+          throw error;
+        }
       },
     );
   }
@@ -324,24 +378,74 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
       },
       async ({ locale }) => {
         const startedAt = nowMs();
-        const tree = await options.source.getNavigation(locale);
-        await emitDocsAnalyticsEvent(options.analytics, {
-          type: "mcp_tool",
+        const trace = createDocsAgentTraceContext("mcp.tool.get_navigation");
+        const callSpanId = createDocsAgentTraceId("span");
+        await emitDocsAgentTraceEvent(options.analytics, {
+          type: "tool.call",
           source: "mcp",
+          traceId: trace.traceId,
+          spanId: callSpanId,
+          name: "get_navigation",
+          startedAt: trace.startedAt,
+          status: "started",
           locale,
-          properties: {
-            tool: "get_navigation",
-            durationMs: durationMs(startedAt),
-          },
+          inputPreview: { locale },
+          metadata: { tool: "get_navigation" },
         });
-        return {
-          content: [
-            {
-              type: "text",
-              text: renderNavigationTree(tree),
+
+        try {
+          const tree = await options.source.getNavigation(locale);
+          const text = renderNavigationTree(tree);
+          const elapsed = durationMs(startedAt);
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "mcp_tool",
+            source: "mcp",
+            locale,
+            properties: {
+              tool: "get_navigation",
+              durationMs: elapsed,
             },
-          ],
-        };
+          });
+          await emitDocsAgentTraceEvent(options.analytics, {
+            type: "tool.result",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "get_navigation",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "success",
+            locale,
+            outputPreview: { chars: text.length },
+            metadata: { tool: "get_navigation" },
+          });
+          return {
+            content: [
+              {
+                type: "text",
+                text,
+              },
+            ],
+          };
+        } catch (error) {
+          const elapsed = durationMs(startedAt);
+          await emitDocsAgentTraceEvent(options.analytics, {
+            type: "tool.error",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "get_navigation",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "error",
+            locale,
+            outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
+            metadata: { tool: "get_navigation" },
+          });
+          throw error;
+        }
       },
     );
   }
@@ -357,36 +461,86 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
       },
       async ({ query, limit, locale }) => {
         const startedAt = nowMs();
-        const pages = dedupePages(await options.source.getPages(locale));
-        const results = await performDocsSearch({
-          pages: toSearchSourcePages(pages),
-          query,
-          search: toolSearchConfig ?? true,
-          locale,
-          siteTitle: options.source.siteTitle,
-          limit: limit ?? 10,
-        });
-        await emitDocsAnalyticsEvent(options.analytics, {
-          type: "mcp_tool",
+        const resolvedLimit = limit ?? 10;
+        const trace = createDocsAgentTraceContext("mcp.tool.search_docs");
+        const callSpanId = createDocsAgentTraceId("span");
+        await emitDocsAgentTraceEvent(options.analytics, {
+          type: "tool.call",
           source: "mcp",
+          traceId: trace.traceId,
+          spanId: callSpanId,
+          name: "search_docs",
+          startedAt: trace.startedAt,
+          status: "started",
           locale,
-          input: { query },
-          properties: {
-            tool: "search_docs",
-            queryLength: query.length,
-            limit: limit ?? 10,
-            resultCount: results.length,
-            durationMs: durationMs(startedAt),
-          },
+          inputPreview: { queryLength: query.length, limit: resolvedLimit, locale },
+          metadata: { tool: "search_docs" },
         });
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({ results }, null, 2),
+
+        try {
+          const pages = dedupePages(await options.source.getPages(locale));
+          const results = await performDocsSearch({
+            pages: toSearchSourcePages(pages),
+            query,
+            search: toolSearchConfig ?? true,
+            locale,
+            siteTitle: options.source.siteTitle,
+            limit: resolvedLimit,
+          });
+          const elapsed = durationMs(startedAt);
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "mcp_tool",
+            source: "mcp",
+            locale,
+            input: { query },
+            properties: {
+              tool: "search_docs",
+              queryLength: query.length,
+              limit: resolvedLimit,
+              resultCount: results.length,
+              durationMs: elapsed,
             },
-          ],
-        };
+          });
+          await emitDocsAgentTraceEvent(options.analytics, {
+            type: "tool.result",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "search_docs",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "success",
+            locale,
+            outputPreview: { resultCount: results.length },
+            metadata: { tool: "search_docs" },
+          });
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({ results }, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          const elapsed = durationMs(startedAt);
+          await emitDocsAgentTraceEvent(options.analytics, {
+            type: "tool.error",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "search_docs",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "error",
+            locale,
+            outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
+            metadata: { tool: "search_docs" },
+          });
+          throw error;
+        }
       },
     );
   }
@@ -402,90 +556,155 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
       },
       async ({ path: requestedPath, locale }) => {
         const startedAt = nowMs();
-        const pages = dedupePages(await options.source.getPages(locale));
-        const page = findDocsPage(pages, requestedPath, options.source.entry);
+        const trace = createDocsAgentTraceContext("mcp.tool.read_page");
+        const callSpanId = createDocsAgentTraceId("span");
+        await emitDocsAgentTraceEvent(options.analytics, {
+          type: "tool.call",
+          source: "mcp",
+          traceId: trace.traceId,
+          spanId: callSpanId,
+          name: "read_page",
+          startedAt: trace.startedAt,
+          status: "started",
+          locale,
+          inputPreview: { path: requestedPath, locale },
+          metadata: { tool: "read_page" },
+        });
 
-        if (!page) {
+        try {
+          const pages = dedupePages(await options.source.getPages(locale));
+          const page = findDocsPage(pages, requestedPath, options.source.entry);
+
+          if (!page) {
+            const elapsed = durationMs(startedAt);
+            await emitDocsAnalyticsEvent(options.analytics, {
+              type: "agent_read",
+              source: "mcp",
+              locale,
+              properties: {
+                delivery: "mcp_tool",
+                tool: "read_page",
+                requestedPath,
+                found: false,
+                durationMs: elapsed,
+              },
+            });
+            await emitDocsAnalyticsEvent(options.analytics, {
+              type: "mcp_tool",
+              source: "mcp",
+              locale,
+              properties: {
+                tool: "read_page",
+                path: requestedPath,
+                found: false,
+                durationMs: elapsed,
+              },
+            });
+            await emitDocsAgentTraceEvent(options.analytics, {
+              type: "tool.error",
+              source: "mcp",
+              traceId: trace.traceId,
+              parentSpanId: callSpanId,
+              name: "read_page",
+              startedAt: trace.startedAt,
+              endedAt: new Date().toISOString(),
+              durationMs: elapsed,
+              status: "error",
+              locale,
+              outputPreview: { found: false, path: requestedPath },
+              metadata: { tool: "read_page", reason: "not_found" },
+            });
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(
+                    {
+                      error: `No docs page matched "${requestedPath}".`,
+                    },
+                    null,
+                    2,
+                  ),
+                },
+              ],
+              isError: true,
+            };
+          }
+
+          const document = renderPageDocument(page);
+          const elapsed = durationMs(startedAt);
+
           await emitDocsAnalyticsEvent(options.analytics, {
             type: "agent_read",
             source: "mcp",
             locale,
+            path: page.url,
             properties: {
               delivery: "mcp_tool",
               tool: "read_page",
               requestedPath,
-              found: false,
-              durationMs: durationMs(startedAt),
+              slug: page.slug,
+              found: true,
+              contentLength: document.length,
+              durationMs: elapsed,
             },
           });
           await emitDocsAnalyticsEvent(options.analytics, {
             type: "mcp_tool",
             source: "mcp",
             locale,
+            path: page.url,
             properties: {
               tool: "read_page",
-              path: requestedPath,
-              found: false,
-              durationMs: durationMs(startedAt),
+              requestedPath,
+              slug: page.slug,
+              found: true,
+              contentLength: document.length,
+              durationMs: elapsed,
             },
           });
+          await emitDocsAgentTraceEvent(options.analytics, {
+            type: "tool.result",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "read_page",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "success",
+            locale,
+            path: page.url,
+            outputPreview: { found: true, chars: document.length, slug: page.slug },
+            metadata: { tool: "read_page" },
+          });
+
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify(
-                  {
-                    error: `No docs page matched "${requestedPath}".`,
-                  },
-                  null,
-                  2,
-                ),
+                text: document,
               },
             ],
-            isError: true,
           };
+        } catch (error) {
+          const elapsed = durationMs(startedAt);
+          await emitDocsAgentTraceEvent(options.analytics, {
+            type: "tool.error",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "read_page",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "error",
+            locale,
+            outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
+            metadata: { tool: "read_page" },
+          });
+          throw error;
         }
-
-        const document = renderPageDocument(page);
-
-        await emitDocsAnalyticsEvent(options.analytics, {
-          type: "agent_read",
-          source: "mcp",
-          locale,
-          path: page.url,
-          properties: {
-            delivery: "mcp_tool",
-            tool: "read_page",
-            requestedPath,
-            slug: page.slug,
-            found: true,
-            contentLength: document.length,
-            durationMs: durationMs(startedAt),
-          },
-        });
-        await emitDocsAnalyticsEvent(options.analytics, {
-          type: "mcp_tool",
-          source: "mcp",
-          locale,
-          path: page.url,
-          properties: {
-            tool: "read_page",
-            requestedPath,
-            slug: page.slug,
-            found: true,
-            contentLength: document.length,
-            durationMs: durationMs(startedAt),
-          },
-        });
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: document,
-            },
-          ],
-        };
       },
     );
   }

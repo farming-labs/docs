@@ -1020,11 +1020,43 @@ Install the framework with pnpm.
       );
 
       expect(response.status).toBe(200);
-      expect(events.map((event) => event.type)).toEqual(["api_ai_request", "api_ai_response"]);
-      expect(events[0]).toMatchObject({
+      expect(events.map((event) => event.type)).toEqual([
+        "run.start",
+        "user.input",
+        "retrieval.query",
+        "retrieval.result",
+        "prompt.build",
+        "api_ai_request",
+        "model.call",
+        "api_ai_response",
+        "model.response",
+        "model.stream",
+        "agent.final",
+        "run.end",
+      ]);
+      expect(events.find((event) => event.type === "api_ai_request")).toMatchObject({
         properties: expect.objectContaining({
           model: "test-model",
           questionLength: 7,
+          retrievedCount: 1,
+        }),
+      });
+      expect(events.find((event) => event.type === "model.call")).toMatchObject({
+        traceId: expect.any(String),
+        name: "test-model",
+        status: "started",
+        inputPreview: expect.objectContaining({
+          messageCount: 2,
+          stream: true,
+          providerOrigin: "https://llm.example",
+        }),
+      });
+      expect(events.find((event) => event.type === "run.end")).toMatchObject({
+        traceId: expect.any(String),
+        status: "success",
+        durationMs: expect.any(Number),
+        outputPreview: expect.objectContaining({
+          stream: true,
           retrievedCount: 1,
         }),
       });

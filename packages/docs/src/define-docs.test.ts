@@ -65,4 +65,23 @@ describe("defineDocs", () => {
       actionsComponent,
     });
   });
+
+  it("uses observability as the preferred event stream config", () => {
+    const onEvent = vi.fn();
+
+    const config = defineDocs({
+      entry: "docs",
+      analytics: false,
+      observability: {
+        console: "debug",
+        onEvent,
+      },
+    });
+
+    expect(config.observability).toEqual({
+      console: "debug",
+      onEvent,
+    });
+    expect(config.analytics).toEqual(config.observability);
+  });
 });

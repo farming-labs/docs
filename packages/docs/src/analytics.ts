@@ -2,7 +2,44 @@ import {
   resolveDocsCloudAnalyticsOptions,
   sendDocsCloudAnalyticsEvent,
 } from "./cloud-analytics.js";
-import type { DocsAnalyticsConfig, DocsAnalyticsEvent, DocsAnalyticsEventInput } from "./types.js";
+import type {
+  DocsAgentTraceEventInput,
+  DocsAgentTraceEventType,
+  DocsAnalyticsConfig,
+  DocsAnalyticsEvent,
+  DocsAnalyticsEventInput,
+} from "./types.js";
+
+const ANALYTICS_LOG_PREFIX = "[@farming-labs/docs:analytics]";
+
+export const DOCS_AGENT_TRACE_EVENT_TYPES = [
+  "run.start",
+  "run.end",
+  "run.error",
+  "user.input",
+  "prompt.build",
+  "retrieval.query",
+  "retrieval.result",
+  "retrieval.error",
+  "model.call",
+  "model.response",
+  "model.stream",
+  "model.error",
+  "tool.call",
+  "tool.result",
+  "tool.error",
+  "retry",
+  "timeout",
+  "error",
+  "agent.final",
+] as const satisfies readonly DocsAgentTraceEventType[];
+
+export interface DocsAgentTraceContext {
+  traceId: string;
+  name: string;
+  startedAt: string;
+  startedMs: number;
+}
 
 export interface ResolvedDocsAnalyticsConfig {
   enabled: boolean;
@@ -52,6 +89,20 @@ function resolveConsoleLevel(
   if (value === true) return "info";
   if (value === "log" || value === "info" || value === "debug") return value;
   return hasEventHandler ? false : "info";
+}
+
+export function createDocsAgentTraceId(prefix = "trace"): string {
+  const safePrefix = prefix.replace(/[^a-zA-Z0-9_-]/g, "_") || "trace";
+  return `${safePrefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function createDocsAgentTraceContext(name = "agent.run"): DocsAgentTraceContext {
+  return {
+    traceId: createDocsAgentTraceId("run"),
+    name,
+    startedAt: new Date().toISOString(),
+    startedMs: Date.now(),
+  };
 }
 
 export function resolveDocsAnalyticsConfig(
@@ -130,7 +181,7 @@ export async function emitDocsAnalyticsEvent(
 
   if (resolved.console) {
     const logger = console[resolved.console] ?? console.info;
-    logger.call(console, "[farming-labs:analytics]", normalized);
+    logger.call(console, ANALYTICS_LOG_PREFIX, normalized);
   }
 
   if (!resolved.onEvent) return;
@@ -139,7 +190,24 @@ export async function emitDocsAnalyticsEvent(
     await resolved.onEvent(normalized);
   } catch (error) {
     if (resolved.console !== false) {
-      console.warn("[farming-labs:analytics] onEvent failed", error);
+      console.warn(`${ANALYTICS_LOG_PREFIX} onEvent failed`, error);
     }
   }
+}
+
+export async function emitDocsAgentTraceEvent(
+  analytics: boolean | DocsAnalyticsConfig | undefined,
+  event: DocsAgentTraceEventInput,
+): Promise<void> {
+  const timestamp = event.timestamp ?? new Date().toISOString();
+
+  await emitDocsAnalyticsEvent(analytics, {
+    ...event,
+    timestamp,
+    source: event.source ?? "server",
+    traceId: event.traceId ?? createDocsAgentTraceId("run"),
+    spanId: event.spanId ?? createDocsAgentTraceId("span"),
+    startedAt: event.startedAt ?? timestamp,
+    status: event.status ?? "success",
+  });
 }

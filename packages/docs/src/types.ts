@@ -682,6 +682,29 @@ export interface PageActionsConfig {
 
 export type DocsAnalyticsSource = "client" | "server" | "mcp";
 
+export type DocsAgentTraceStatus = "started" | "success" | "error" | "retry" | "timeout";
+
+export type DocsAgentTraceEventType =
+  | "run.start"
+  | "run.end"
+  | "run.error"
+  | "user.input"
+  | "prompt.build"
+  | "retrieval.query"
+  | "retrieval.result"
+  | "retrieval.error"
+  | "model.call"
+  | "model.response"
+  | "model.stream"
+  | "model.error"
+  | "tool.call"
+  | "tool.result"
+  | "tool.error"
+  | "retry"
+  | "timeout"
+  | "error"
+  | "agent.final";
+
 export type DocsAnalyticsEventType =
   | "page_view"
   | "search_open"
@@ -715,7 +738,8 @@ export type DocsAnalyticsEventType =
   | "api_ai_response"
   | "api_ai_error"
   | "mcp_request"
-  | "mcp_tool";
+  | "mcp_tool"
+  | DocsAgentTraceEventType;
 
 export interface DocsAnalyticsInput {
   query?: string;
@@ -728,17 +752,33 @@ export interface DocsAnalyticsEvent {
   type: DocsAnalyticsEventType | (string & {});
   timestamp: string;
   source: DocsAnalyticsSource;
+  traceId?: string;
+  spanId?: string;
+  parentSpanId?: string;
+  name?: string;
+  startedAt?: string;
+  endedAt?: string;
+  durationMs?: number;
+  status?: DocsAgentTraceStatus;
+  inputPreview?: Record<string, unknown>;
+  outputPreview?: Record<string, unknown>;
   url?: string;
   path?: string;
   referrer?: string;
   locale?: string;
   input?: DocsAnalyticsInput;
+  metadata?: Record<string, unknown>;
   properties?: Record<string, unknown>;
 }
 
 export type DocsAnalyticsEventInput = Omit<DocsAnalyticsEvent, "timestamp" | "source"> & {
   timestamp?: string;
   source?: DocsAnalyticsSource;
+};
+
+export type DocsAgentTraceEventInput = Omit<DocsAnalyticsEventInput, "type"> & {
+  type: DocsAgentTraceEventType;
+  name: string;
 };
 
 export interface DocsAnalyticsConfig {
@@ -762,6 +802,12 @@ export interface DocsAnalyticsConfig {
   /** Callback fired for every analytics event. */
   onEvent?: (event: DocsAnalyticsEvent) => void | Promise<void>;
 }
+
+/**
+ * Observability uses the same event contract as analytics, but is named for
+ * operational logs, traces, metrics, and agent debugging.
+ */
+export interface DocsObservabilityConfig extends DocsAnalyticsConfig {}
 
 /**
  * Configuration for the "Last updated" date display.
@@ -1834,6 +1880,22 @@ export interface DocsConfig {
    * included unless `includeInputs: true` is set.
    */
   analytics?: boolean | DocsAnalyticsConfig;
+  /**
+   * Built-in observability stream for logs, traces, metrics, and agent debugging.
+   *
+   * This uses the same event contract as `analytics`, but reads more clearly for
+   * operational callbacks:
+   *
+   * ```ts
+   * observability: {
+   *   console: "debug",
+   *   onEvent(event) {
+   *     console.info(event.type, event.traceId, event.durationMs)
+   *   },
+   * }
+   * ```
+   */
+  observability?: boolean | DocsObservabilityConfig;
   /**
    * GitHub repository URL or config. Enables "Edit on GitHub" links
    * on each docs page footer, pointing to the source `.mdx` file.
