@@ -1002,6 +1002,7 @@ RAG-powered AI chat. See [Ask AI](/docs/customization/ai-chat) for usage guide.
 | `maxResults`         | `number`                                             | `5`                           | Number of doc pages to include as RAG context           |
 | `suggestedQuestions` | `string[]`                                           | —                             | Pre-filled questions shown when chat is empty           |
 | `aiLabel`            | `string`                                             | `"AI"`                        | Display name for the AI assistant                       |
+| `feedback`           | `boolean \| DocsAskAIFeedbackConfig`                 | `true`                        | Copy, like, and dislike action row for completed answers |
 | `onActions`          | `(data: DocsAskAIActionData) => void \| Promise<void>` | —                             | Callback for copy, like, and dislike response actions   |
 | `packageName`        | `string`                                             | inferred from docs context    | Optional package-name override for import examples       |
 | `docsUrl`            | `string`                                             | —                             | Base URL the AI uses for links                          |

@@ -1,6 +1,6 @@
 ---
 name: ask-ai
-description: Configure the Ask AI (RAG-powered AI chat) in @farming-labs/docs. Use when enabling AI chat, setting mode (search vs floating), floatingStyle (panel, modal, popover, full-modal), position, providers, models, suggestedQuestions, apiKey, systemPrompt, or maxResults. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt, and env vars.
+description: Configure the Ask AI (RAG-powered AI chat) in @farming-labs/docs. Use when enabling AI chat, setting mode (search vs floating), floatingStyle (panel, modal, popover, full-modal), position, providers, models, suggestedQuestions, apiKey, systemPrompt, maxResults, feedback, or onActions. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt, and env vars.
 ---
 
 # @farming-labs/docs — Ask AI (AI Chat)

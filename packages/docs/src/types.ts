@@ -1198,7 +1198,7 @@ export interface DocsAskAIFeedbackData {
 
 export interface DocsAskAIFeedbackConfig {
   /**
-   * Whether to show response rating controls after each completed Ask AI answer.
+   * Whether to show the copy, like, and dislike action row after each completed Ask AI answer.
    * @default true
    */
   enabled?: boolean;
@@ -1569,10 +1569,10 @@ export interface AIConfig {
   loadingComponent?: (props: { name: string }) => unknown;
 
   /**
-   * Response rating controls for generated Ask AI answers.
+   * Copy, like, and dislike action row for generated Ask AI answers.
    *
-   * Set to `false` to hide the buttons. Pass an object to customize labels
-   * and receive callback payloads with the question, answer, model, and UI surface.
+   * Set to `false` to hide the row. Pass an object to customize rating labels
+   * and receive legacy like/dislike callback payloads.
    *
    * @default true
    *
