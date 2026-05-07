@@ -446,6 +446,56 @@ pnpm add @farming-labs/docs
     expect(context.context).toContain("pnpm add @farming-labs/docs");
   });
 
+  it("keeps duplicate heading titles on the same page when URL hashes differ", async () => {
+    const context = await buildDocsAskAIContext({
+      pages: [
+        {
+          title: "Plugins",
+          url: "/docs/plugins",
+          content: "Configure server and client plugins.",
+          rawContent: `# Plugins
+
+## Configure
+
+Server plugin setup.
+
+## Configure
+
+Client plugin setup.
+`,
+        },
+      ],
+      query: "configure plugins",
+      limit: 2,
+      search: createCustomSearchAdapter({
+        name: "duplicate-headings",
+        async search() {
+          return [
+            {
+              id: "server-configure",
+              url: "/docs/plugins#configure",
+              content: "Plugins — Configure",
+              type: "heading",
+              section: "Configure",
+            },
+            {
+              id: "client-configure",
+              url: "/docs/plugins#configure-1",
+              content: "Plugins — Configure",
+              type: "heading",
+              section: "Configure",
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(context.results.map((result) => result.url)).toEqual([
+      "/docs/plugins#configure",
+      "/docs/plugins#configure-1",
+    ]);
+  });
+
   it("supplements stale external search results with local section ranking", async () => {
     const context = await buildDocsAskAIContext({
       pages: [

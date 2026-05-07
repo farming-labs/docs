@@ -1055,15 +1055,13 @@ function AIChat({
                         }
                         dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
                       />
-                      {feedbackEnabled &&
-                        !msg.isError &&
-                        !(isStreaming && i === messages.length - 1) && (
-                          <AIFeedbackControls
-                            value={msg.feedback}
-                            onCopy={() => handleCopyMessage(msg, i)}
-                            onSelect={(value) => handleFeedback(msg, i, value)}
-                          />
-                        )}
+                      {feedbackEnabled && !msg.isError && !isStreaming && (
+                        <AIFeedbackControls
+                          value={msg.feedback}
+                          onCopy={() => handleCopyMessage(msg, i)}
+                          onSelect={(value) => handleFeedback(msg, i, value)}
+                        />
+                      )}
                     </>
                   ) : loadingComponentHtml ? (
                     <div dangerouslySetInnerHTML={{ __html: loadingComponentHtml }} />
@@ -1971,7 +1969,7 @@ function FullModalAIChat({
                         {msg.role === "assistant" &&
                           feedbackEnabled &&
                           !msg.isError &&
-                          !(isStreaming && i === messages.length - 1) && (
+                          !isStreaming && (
                             <AIFeedbackControls
                               value={msg.feedback}
                               onCopy={() => handleCopyMessage(msg, i)}

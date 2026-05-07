@@ -402,7 +402,7 @@ function getSearchResultKey(result: DocsSearchResult): string {
   }
 
   return `${normalizeUrlPathname(result.url)}#${normalizeWhitespace(
-    result.section ?? hash,
+    hash || result.section || "",
   ).toLowerCase()}`;
 }
 
@@ -1479,7 +1479,7 @@ export async function buildDocsAskAIContext(options: {
   const results = formattedResults
     .filter((result) => result.section || !sectionResultPaths.has(normalizeUrlPathname(result.url)))
     .filter((result) => {
-      const key = `${normalizeUrlPathname(result.url)}#${result.section ?? ""}`;
+      const key = getSearchResultKey(result);
       if (seen.has(key)) return false;
       seen.add(key);
       return result.contextContent.length > 0;
