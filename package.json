@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.9.0",
   "scripts": {
     "build": "pnpm --filter @farming-labs/docs run build && pnpm --filter @farming-labs/theme run build && pnpm --filter './packages/*' --filter '!@farming-labs/docs' --filter '!@farming-labs/theme' run build",
     "try:init": "pnpm --filter @farming-labs/docs run build && cd examples/next && node ../../packages/docs/dist/cli/index.mjs init",
