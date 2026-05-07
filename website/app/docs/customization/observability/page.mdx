@@ -124,33 +124,43 @@ Example tool event:
 
 ## Trace Events
 
-Ask AI events:
+Observability events describe runtime steps inside an agent run. They are span-like: use
+`traceId` to group a run, `spanId` to identify a step, and `parentSpanId` to connect child steps to
+their parent.
 
-- `run.start` — an Ask AI run started
-- `user.input` — a user message was accepted for the run
-- `retrieval.query` — docs retrieval started
-- `retrieval.result` — docs retrieval finished with measurable result counts
-- `retrieval.error` — docs retrieval failed
-- `prompt.build` — the system/context prompt was built
-- `model.call` — the model request started
-- `model.response` — the model returned response headers successfully
-- `model.stream` — a streaming model response was handed back to the client
-- `model.error` — the model request failed or returned an error status
-- `agent.final` — the final agent response handoff was reached
-- `run.error` — the run finished unsuccessfully
-- `run.end` — the run finished
+### Ask AI Events
 
-MCP tool events:
+| Event              | Meaning                                                               |
+| ------------------ | --------------------------------------------------------------------- |
+| `run.start`        | A new Ask AI run started. This is the root span for the request.       |
+| `user.input`       | The latest user message was accepted and summarized into safe counts. |
+| `retrieval.query`  | Docs retrieval started for the user question.                         |
+| `retrieval.result` | Docs retrieval completed and produced measurable result counts.       |
+| `retrieval.error`  | Docs retrieval failed before the model call could use the context.    |
+| `prompt.build`     | The system prompt and retrieved docs context were assembled.          |
+| `model.call`       | The outbound model request started.                                   |
+| `model.response`   | The model provider returned successful response headers.              |
+| `model.stream`     | A streaming model response was handed back to the client.             |
+| `model.error`      | The model request failed, threw, or returned an error status.         |
+| `agent.final`      | The final response handoff was reached after a successful model call. |
+| `run.error`        | The run ended unsuccessfully.                                         |
+| `run.end`          | The run ended, either successfully or after an error.                 |
 
-- `tool.call` — an MCP tool started
-- `tool.result` — an MCP tool completed successfully
-- `tool.error` — an MCP tool returned an error result or threw
+### MCP Tool Events
 
-Generic runtime events:
+| Event         | Meaning                                                           |
+| ------------- | ----------------------------------------------------------------- |
+| `tool.call`   | An MCP tool call started, such as `search_docs` or `read_page`.   |
+| `tool.result` | An MCP tool completed successfully and returned a result.         |
+| `tool.error`  | An MCP tool returned an error result or threw during execution.   |
 
-- `retry` — a retry attempt was recorded
-- `timeout` — a step timed out
-- `error` — a generic run-level error was recorded
+### Generic Runtime Events
+
+| Event     | Meaning                                                               |
+| --------- | --------------------------------------------------------------------- |
+| `retry`   | A retry attempt was recorded for a failed or unstable step.           |
+| `timeout` | A step timed out before it could complete.                            |
+| `error`   | A generic run-level error was recorded outside a more specific event. |
 
 Built-in trace events avoid raw user-authored text. They use lengths, counts, route names, model
 IDs, status codes, and content sizes so they are safer to aggregate.

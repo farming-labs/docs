@@ -64,30 +64,57 @@ interface DocsAnalyticsEvent {
 }
 ```
 
-## Events
+## Event Types
 
-Client events:
+Analytics events describe product usage: what a person or agent did, which surface they used, and
+whether the action completed.
 
-- `page_view`
-- `search_open`, `search_close`, `search_query`, `search_result_click`, `search_error`
-- `ai_open`, `ai_close`, `ai_question`, `ai_response`, `ai_error`, `ai_clear`
-- `page_action_copy_markdown`, `page_action_open_docs_menu`, `page_action_open_docs`
-- `code_block_copy`
-- `feedback_select`, `feedback_submit`, `feedback_error`
+### Client Events
 
-Server and agent-surface events:
+| Event                            | Meaning                                                                 |
+| -------------------------------- | ----------------------------------------------------------------------- |
+| `page_view`                      | A docs page was viewed in the browser.                                  |
+| `search_open`                    | The search UI was opened.                                               |
+| `search_close`                   | The search UI was closed.                                               |
+| `search_query`                   | A search query was submitted or changed enough to run search.           |
+| `search_result_click`            | A search result was selected.                                           |
+| `search_error`                   | Client-side search failed.                                              |
+| `ai_open`                        | The Ask AI UI was opened.                                               |
+| `ai_close`                       | The Ask AI UI was closed.                                               |
+| `ai_question`                    | A user submitted a question to Ask AI from the client UI.                |
+| `ai_response`                    | The Ask AI UI received a successful response.                            |
+| `ai_feedback`                    | A user rated a completed Ask AI answer with the response feedback buttons. |
+| `ai_error`                       | The Ask AI UI encountered an error.                                     |
+| `ai_clear`                       | The Ask AI conversation was cleared.                                    |
+| `page_action_copy_markdown`      | The Copy Markdown page action was used.                                 |
+| `page_action_open_docs_menu`     | The Open in LLM/Open docs page-action menu was opened.                  |
+| `page_action_open_docs`          | A destination in the Open in LLM/Open docs menu was selected.           |
+| `code_block_copy`                | A code block copy button was clicked.                                   |
+| `feedback_select`                | A feedback rating or option was selected.                               |
+| `feedback_submit`                | Feedback was submitted successfully.                                    |
+| `feedback_error`                 | Feedback submission failed.                                             |
 
-- `api_search`
-- `api_ai_request`, `api_ai_response`, `api_ai_error`
-- `agent_read`
-- `markdown_request`, `llms_request`, `skill_request`
-- `agent_spec_request`, `agent_feedback_schema`, `agent_feedback_submit`, `agent_feedback_error`
-- `mcp_request`, `mcp_tool`
+### Server And Agent-Surface Events
 
-`agent_read` fires when a page is read through the machine-readable surface: `/docs/page.md`,
-`/docs/page` with `Accept: text/markdown`, `GET /api/docs?format=markdown&path=page`, or MCP
-`read_page`. Its `properties.delivery` value is `md_route`, `accept_header`, `api_format`, or
-`mcp_tool`.
+| Event                           | Meaning                                                                 |
+| ------------------------------- | ----------------------------------------------------------------------- |
+| `api_search`                    | The docs API handled a search request.                                  |
+| `api_ai_request`                | The docs API accepted an Ask AI request.                                |
+| `api_ai_response`               | The docs API returned a successful Ask AI response.                     |
+| `api_ai_error`                  | The docs API rejected or failed an Ask AI request.                      |
+| `agent_read`                    | A page was read through a machine-readable docs surface.                |
+| `markdown_request`              | A markdown route or API markdown request was served.                    |
+| `llms_request`                  | `/llms.txt` or `/llms-full.txt` was requested.                          |
+| `skill_request`                 | An Agent Skills file or skill index was requested.                      |
+| `agent_spec_request`            | The agent-facing docs spec endpoint was requested.                      |
+| `agent_feedback_schema`         | The agent feedback schema endpoint was requested.                       |
+| `agent_feedback_submit`         | Agent feedback was submitted successfully.                              |
+| `agent_feedback_error`          | Agent feedback submission failed.                                       |
+| `mcp_request`                   | The MCP endpoint received a request.                                    |
+| `mcp_tool`                      | An MCP tool call was handled, such as `search_docs` or `read_page`.     |
+
+`agent_read` includes `properties.delivery` so you can see how the page was read: `md_route`,
+`accept_header`, `api_format`, or `mcp_tool`.
 
 ## Input Privacy
 

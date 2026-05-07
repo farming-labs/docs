@@ -81,11 +81,14 @@ export {
 } from "./agent.js";
 export {
   buildDocsSearchDocuments,
+  buildDocsAskAIContext,
   createAlgoliaSearchAdapter,
   createCustomSearchAdapter,
   createMcpSearchAdapter,
   createSimpleSearchAdapter,
   createTypesenseSearchAdapter,
+  formatDocsAskAIPackageHints,
+  inferDocsAskAIPackageHints,
   performDocsSearch,
   resolveSearchRequestConfig,
 } from "./search.js";
@@ -128,6 +131,10 @@ export type {
   OpenDocsProvider,
   GithubConfig,
   AIConfig,
+  DocsAskAIFeedbackConfig,
+  DocsAskAIFeedbackData,
+  DocsAskAIFeedbackMessage,
+  DocsAskAIFeedbackValue,
   OrderingItem,
   LastUpdatedConfig,
   ReadingTimeConfig,

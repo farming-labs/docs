@@ -20,11 +20,13 @@ import matter from "gray-matter";
 import { eventHandler, getRequestURL, readRawBody } from "h3";
 import {
   applySidebarFolderIndexBehavior,
+  buildDocsAskAIContext,
   buildDocsAgentDiscoverySpec,
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
+  formatDocsAskAIPackageHints,
   findDocsMarkdownPage,
   isDocsAgentDiscoveryRequest,
   isDocsMcpRequest,
@@ -722,21 +724,6 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     return index;
   }
 
-  function searchByQuery(query: string, ctx: ReturnType<typeof resolveContextFromPath>) {
-    const index = getSearchIndex(ctx);
-    return index
-      .map((page) => {
-        const titleMatch = page.title.toLowerCase().includes(query) ? 10 : 0;
-        const words = query.split(/\s+/);
-        const contentMatch = words.reduce((score, word) => {
-          return score + (page.content.toLowerCase().includes(word) ? 1 : 0);
-        }, 0);
-        return { ...page, score: titleMatch + contentMatch };
-      })
-      .filter((r) => r.score > 0)
-      .sort((a, b) => b.score - a.score);
-  }
-
   // ─── llms.txt content builder ────────────────────────────────
   const llmsSiteTitle =
     typeof (config as Record<string, unknown>).nav === "object" &&
@@ -969,12 +956,18 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   function buildDefaultSystemPrompt(): string {
     const lines = [
       `You are a helpful documentation assistant${projectName ? ` for ${projectName}` : ""}.`,
-      "Answer questions based on the provided documentation context.",
+      "Answer only from the provided documentation context.",
+      "Prefer exact code/config snippets from the context when the question asks how to implement something.",
+      "Cite the relevant documentation URL when you use a source.",
+      "Use only URLs exactly as they appear in the context; do not invent placeholder domains.",
+      'Never use placeholder package names or imports such as "your-auth-library", "your-package", "your-sdk", "replace-me", or "example-library". If the exact package or import is not in the context, do not include an import snippet.',
       "Be concise and accurate. If the answer is not in the context, say so honestly.",
       "Use markdown formatting for code examples and links.",
     ];
     if (packageName) {
-      lines.push(`When showing import examples, always use "${packageName}" as the package name.`);
+      lines.push(
+        `When showing import examples, use "${packageName}" as the package name and prefer exact imports copied from the documentation context.`,
+      );
     }
     if (docsUrl) {
       lines.push(
@@ -1192,7 +1185,17 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         maxResults,
       },
     });
-    const scored = searchByQuery(lastUserMessage.content.toLowerCase(), ctx).slice(0, maxResults);
+    const retrieval = await buildDocsAskAIContext({
+      pages: getSearchIndex(ctx),
+      query: lastUserMessage.content,
+      search: resolveSearchRequestConfig(config.search, context.request.url),
+      locale: ctx.locale,
+      pathname: requestUrl.searchParams.get("pathname") ?? undefined,
+      siteTitle: llmsTitle,
+      baseUrl: requestUrl.origin,
+      limit: maxResults,
+    });
+    const scored = retrieval.results;
     await emitTrace({
       type: "retrieval.result",
       name: "docs-index",
@@ -1212,18 +1215,16 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     const promptStartedAt = Date.now();
     const promptStartedAtIso = new Date().toISOString();
     const promptSpanId = createDocsAgentTraceId("span");
-    const contextParts = scored.map(
-      (doc) =>
-        `## ${doc.title}\nURL: ${doc.url}\n${doc.description ? `Description: ${doc.description}\n` : ""}\n${doc.content}`,
-    );
-    const ragContext = contextParts.join("\n\n---\n\n");
+    const ragContext = retrieval.context;
 
     const systemPrompt = aiConfig.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
+    const packageHintsPrompt = formatDocsAskAIPackageHints(retrieval.packageHints, packageName);
+    const fullSystemPrompt = [systemPrompt, packageHintsPrompt].filter(Boolean).join("\n\n");
     const systemMessage: ChatMessage = {
       role: "system",
       content: ragContext
-        ? `${systemPrompt}\n\n---\n\nDocumentation context:\n\n${ragContext}`
-        : systemPrompt,
+        ? `${fullSystemPrompt}\n\n---\n\nDocumentation context:\n\n${ragContext}`
+        : fullSystemPrompt,
     };
 
     const llmMessages: ChatMessage[] = [

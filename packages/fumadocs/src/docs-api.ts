@@ -51,7 +51,12 @@ import {
   resolveDocsMcpConfig,
   type DocsMcpPage,
 } from "@farming-labs/docs/server";
-import { performDocsSearch, resolveSearchRequestConfig } from "@farming-labs/docs";
+import {
+  buildDocsAskAIContext,
+  formatDocsAskAIPackageHints,
+  performDocsSearch,
+  resolveSearchRequestConfig,
+} from "@farming-labs/docs";
 import type {
   DocsMcpConfig,
   DocsSearchConfig,
@@ -83,6 +88,10 @@ interface AIOptions {
   model?: string | AIModelConfig;
   providers?: Record<string, AIProviderConfig>;
   systemPrompt?: string;
+  /** Package name the AI should use in import examples. */
+  packageName?: string;
+  /** Public docs URL the AI should use for absolute links. */
+  docsUrl?: string;
   /** Default baseUrl when no per-model provider is configured. */
   baseUrl?: string;
   /** Default apiKey when no per-model provider is configured. */
@@ -676,6 +685,10 @@ function readAIConfig(root: string): AIOptions {
         const systemPromptMatch = content.match(
           /ai\s*:\s*\{[^}]*systemPrompt\s*:\s*["'`]([^"'`]+)["'`]/s,
         );
+        const packageNameMatch = content.match(
+          /ai\s*:\s*\{[^}]*packageName\s*:\s*["'`]([^"'`]+)["'`]/s,
+        );
+        const docsUrlMatch = content.match(/ai\s*:\s*\{[^}]*docsUrl\s*:\s*["'`]([^"'`]+)["'`]/s);
 
         return {
           enabled: true,
@@ -684,6 +697,8 @@ function readAIConfig(root: string): AIOptions {
           apiKey: apiKeyMatch?.[1] ? process.env[apiKeyMatch[1]] : undefined,
           maxResults: maxResultsMatch ? parseInt(maxResultsMatch[1], 10) : undefined,
           systemPrompt: systemPromptMatch?.[1],
+          packageName: packageNameMatch?.[1],
+          docsUrl: docsUrlMatch?.[1],
         };
       } catch {
         // fall through
@@ -1546,7 +1561,32 @@ function toYamlString(value: string): string {
 
 // ─── AI Chat (RAG) ─────────────────────────────────────────────────
 
-const DEFAULT_SYSTEM_PROMPT = `You are a helpful documentation assistant. Answer questions based on the provided documentation context. Be concise and accurate. If the answer is not in the context, say so honestly. Use markdown formatting for code examples and links.`;
+function buildDefaultSystemPrompt(aiConfig: AIOptions): string {
+  const lines = [
+    "You are a helpful documentation assistant.",
+    "Answer only from the provided documentation context.",
+    "Prefer exact code/config snippets from the context when the question asks how to implement something.",
+    "Cite the relevant documentation URL when you use a source.",
+    "Use only URLs exactly as they appear in the context; do not invent placeholder domains.",
+    'Never use placeholder package names or imports such as "your-auth-library", "your-package", "your-sdk", "replace-me", or "example-library". If the exact package or import is not in the context, do not include an import snippet.',
+    "Be concise and accurate. If the answer is not in the context, say so honestly.",
+    "Use markdown formatting for code examples and links.",
+  ];
+
+  if (aiConfig.packageName) {
+    lines.push(
+      `When showing import examples, use "${aiConfig.packageName}" as the package name and prefer exact imports copied from the documentation context.`,
+    );
+  }
+
+  if (aiConfig.docsUrl) {
+    lines.push(
+      `When linking to documentation pages, use "${aiConfig.docsUrl}" as the base URL (e.g. ${aiConfig.docsUrl}/docs/get-started).`,
+    );
+  }
+
+  return lines.join(" ");
+}
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -1601,6 +1641,7 @@ async function handleAskAI(
   request: Request,
   indexes: DocsSearchSourcePage[],
   aiConfig: AIOptions,
+  search: boolean | DocsSearchConfig | undefined,
   analytics?: boolean | DocsAnalyticsConfig,
   observability?: boolean | DocsObservabilityConfig,
   analyticsContext: { locale?: string } = {},
@@ -1755,7 +1796,6 @@ async function handleAskAI(
     },
   });
 
-  // Use the in-memory index for fast context retrieval
   const retrievalStartedAt = Date.now();
   const retrievalStartedAtIso = new Date().toISOString();
   const retrievalSpanId = createDocsAgentTraceId("span");
@@ -1772,19 +1812,17 @@ async function handleAskAI(
       indexSize: indexes.length,
     },
   });
-  const scored = indexes
-    .map((doc) => {
-      const q = query.toLowerCase();
-      const titleMatch = doc.title.toLowerCase().includes(q) ? 10 : 0;
-      const contentWords = q.split(/\s+/);
-      const contentMatch = contentWords.reduce((score, word) => {
-        return score + (doc.content.toLowerCase().includes(word) ? 1 : 0);
-      }, 0);
-      return { ...doc, score: titleMatch + contentMatch };
-    })
-    .filter((d) => d.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, maxResults);
+  const retrieval = await buildDocsAskAIContext({
+    pages: indexes,
+    query,
+    search,
+    locale: analyticsContext.locale,
+    pathname: url.searchParams.get("pathname") ?? undefined,
+    siteTitle: "Documentation",
+    baseUrl: url.origin,
+    limit: maxResults,
+  });
+  const scored = retrieval.results;
   await emitTrace({
     type: "retrieval.result",
     name: "docs-index",
@@ -1807,19 +1845,20 @@ async function handleAskAI(
   const promptStartedAt = Date.now();
   const promptStartedAtIso = new Date().toISOString();
   const promptSpanId = createDocsAgentTraceId("span");
-  const contextParts = scored.map(
-    (doc) =>
-      `## ${doc.title}\nURL: ${doc.url}\n${doc.description ? `Description: ${doc.description}\n` : ""}\n${doc.content}`,
-  );
-  const context = contextParts.join("\n\n---\n\n");
+  const context = retrieval.context;
 
   // ── Build LLM messages ─────────────────────────────────────────
-  const systemPrompt = aiConfig.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
+  const systemPrompt = aiConfig.systemPrompt ?? buildDefaultSystemPrompt(aiConfig);
+  const packageHintsPrompt = formatDocsAskAIPackageHints(
+    retrieval.packageHints,
+    aiConfig.packageName,
+  );
+  const fullSystemPrompt = [systemPrompt, packageHintsPrompt].filter(Boolean).join("\n\n");
   const systemMessage: ChatMessage = {
     role: "system",
     content: context
-      ? `${systemPrompt}\n\n---\n\nDocumentation context:\n\n${context}`
-      : systemPrompt,
+      ? `${fullSystemPrompt}\n\n---\n\nDocumentation context:\n\n${context}`
+      : fullSystemPrompt,
   };
 
   const llmMessages: ChatMessage[] = [
@@ -2795,9 +2834,17 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       }
 
       const ctx = resolveContextFromRequest(request);
-      return handleAskAI(request, getIndexes(ctx), aiConfig, analytics, observability, {
-        locale: ctx.locale,
-      });
+      return handleAskAI(
+        request,
+        getIndexes(ctx),
+        aiConfig,
+        resolveSearchRequestConfig(searchConfig, request.url),
+        analytics,
+        observability,
+        {
+          locale: ctx.locale,
+        },
+      );
     },
   };
 }

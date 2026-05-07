@@ -172,9 +172,52 @@ Number of search results used as context for the AI. More = more context, higher
 | ---- | ------- |
 | `number` | `5` |
 
+### feedback
+
+Like/dislike buttons shown after a completed Ask AI answer.
+
+| Type | Default |
+| ---- | ------- |
+| `boolean \| { enabled?: boolean; onFeedback?: (data) => void \| Promise<void> }` | `true` |
+
+```ts
+ai: {
+  enabled: true,
+  feedback: {
+    onFeedback(data) {
+      console.log(data.value, data.question, data.answer, data.model);
+    },
+  },
+}
+```
+
+The callback receives the rating value, question, answer, model, UI surface, URL/path, and visible
+chat messages up to that answer. The client also dispatches `fd:ai-feedback` and emits
+`ai_feedback` when analytics is enabled.
+
+### Retrieval quality
+
+Ask AI uses the configured docs search pipeline before building model context, including simple
+search, Typesense, Algolia, MCP search, or custom adapters. The model context is hydrated from the
+matched local page/section, preserves fenced code blocks for commands and config snippets, and
+infers package names plus exact import lines from the retrieved context.
+
 ### aiLabel
 
 Label for the AI button (e.g. "DocsBot", "Ask AI").
+
+### packageName
+
+Optional package-name override for unusual docs where install/import examples do not mention the
+main package clearly. Most projects should leave this unset because Ask AI infers package names and
+exact imports from retrieved docs context.
+
+```ts
+ai: {
+  enabled: true,
+  packageName: "@farming-labs/docs",
+}
+```
 
 ---
 

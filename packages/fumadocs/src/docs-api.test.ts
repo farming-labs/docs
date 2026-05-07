@@ -1079,6 +1079,92 @@ Install the framework with pnpm.
     }
   });
 
+  it("infers package guidance from Ask AI context so examples avoid placeholder imports", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-api-ai-package-prompt-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Installation"
+---
+
+# Installation
+
+Install Better Auth with pnpm.
+
+\`\`\`ts
+import { betterAuth } from "better-auth";
+
+export const auth = betterAuth({
+  emailAndPassword: {
+    enabled: true,
+  },
+});
+\`\`\`
+`,
+    );
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response("data: {}\n\n", {
+        status: 200,
+        headers: {
+          "content-type": "text/event-stream",
+        },
+      }),
+    ) as typeof fetch;
+
+    try {
+      const { POST } = createDocsAPI({
+        rootDir,
+        entry: "docs",
+        ai: {
+          enabled: true,
+          apiKey: "test-key",
+          baseUrl: "https://llm.example/v1",
+          model: "test-model",
+          docsUrl: "https://docs.example.com",
+        },
+      });
+
+      const response = await POST(
+        new Request("http://localhost/api/docs", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: "How do I create the auth instance?" }],
+          }),
+        }),
+      );
+
+      expect(response.status).toBe(200);
+
+      const init = vi.mocked(globalThis.fetch).mock.calls[0]?.[1];
+      const upstreamBody = JSON.parse(String(init?.body)) as {
+        messages?: Array<{ role?: string; content?: string }>;
+      };
+      const systemMessage = upstreamBody.messages?.find((message) => message.role === "system");
+      expect(systemMessage?.content).toContain(
+        'Never use placeholder package names or imports such as "your-auth-library"',
+      );
+      expect(systemMessage?.content).toContain(
+        "Package and import hints inferred from the retrieved documentation context",
+      );
+      expect(systemMessage?.content).toContain(
+        "Package names found in install/import examples: better-auth",
+      );
+      expect(systemMessage?.content).toContain('import { betterAuth } from "better-auth";');
+      expect(systemMessage?.content).toContain("https://docs.example.com");
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.restoreAllMocks();
+    }
+  });
+
   it("keeps upstream Ask AI fetch error details out of API responses", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-api-ai-fetch-error-"));
     tempDirs.push(rootDir);

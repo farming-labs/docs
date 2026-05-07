@@ -346,6 +346,60 @@ ai: {
 }
 ```
 
+### Retrieval Quality
+
+Ask AI uses the same configured docs search pipeline as the search API. If you configure simple
+search, Typesense, Algolia, MCP search, or a custom search adapter, Ask AI uses those results before
+building the model context.
+
+The context passed to the model is hydrated from the local docs page or matching section, preserving
+fenced code blocks so install commands, config snippets, and examples can be quoted accurately.
+
+```ts title="docs.config.ts"
+import { createCustomSearchAdapter } from "@farming-labs/docs";
+
+export default defineDocs({
+  search: createCustomSearchAdapter({
+    name: "my-index",
+    async search(query) {
+      const results = await fetch("https://search.example.com/docs", {
+        method: "POST",
+        body: JSON.stringify(query),
+      }).then((res) => res.json());
+
+      return results;
+    },
+  }),
+  ai: {
+    enabled: true,
+  },
+});
+```
+
+### `feedback`
+
+Completed Ask AI responses show like/dislike buttons by default. Use `feedback.onFeedback` to send
+ratings to your own analytics, data warehouse, or issue triage pipeline.
+
+| Type                                             | Default |
+| ------------------------------------------------ | ------- |
+| `boolean \| { enabled?: boolean; onFeedback?: (data) => void \| Promise<void> }` | `true` |
+
+```ts title="docs.config.ts"
+ai: {
+  enabled: true,
+  feedback: {
+    onFeedback(data) {
+      console.log(data.value, data.question, data.answer, data.model);
+    },
+  },
+}
+```
+
+The callback receives `value` (`"like"` or `"dislike"`), `question`, `answer`, `model`, `surface`,
+`url`, `path`, and the visible chat messages up to that answer. The UI also dispatches a
+`fd:ai-feedback` browser event and emits an `ai_feedback` analytics event when analytics is enabled.
+
 ### `suggestedQuestions`
 
 Pre-filled suggested questions shown in the AI chat when the conversation is empty. Clicking one fills the input and submits automatically.
@@ -382,13 +436,15 @@ ai: {
 
 ### `packageName`
 
-The npm package name used in code examples. The AI will use this in import snippets instead of generic placeholders.
+Optional package-name override for unusual docs where install/import examples do not mention the
+main package clearly. Most projects should leave this unset: Ask AI infers package names, install
+commands, and exact import lines from the retrieved docs context.
 
 | Type     | Default |
 | -------- | ------- |
-| `string` | —       |
+| `string` | inferred from docs context |
 
-```ts 
+```ts
 ai: {
   enabled: true,
   packageName: "@farming-labs/docs",
@@ -539,7 +595,6 @@ export default defineDocs({
     floatingStyle: "full-modal",
     model: "gpt-4o-mini",
     aiLabel: "DocsBot",
-    packageName: "@farming-labs/docs",
     docsUrl: "https://docs.farming-labs.dev",
     maxResults: 5,
     suggestedQuestions: [

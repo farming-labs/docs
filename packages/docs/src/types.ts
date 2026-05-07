@@ -716,6 +716,7 @@ export type DocsAnalyticsEventType =
   | "ai_close"
   | "ai_question"
   | "ai_response"
+  | "ai_feedback"
   | "ai_error"
   | "ai_clear"
   | "page_action_copy_markdown"
@@ -743,6 +744,7 @@ export type DocsAnalyticsEventType =
 export interface DocsAnalyticsInput {
   query?: string;
   question?: string;
+  feedbackValue?: string;
   feedbackComment?: string;
   content?: string;
 }
@@ -1158,6 +1160,40 @@ export interface GithubConfig {
   directory?: string;
 }
 
+export type DocsAskAIFeedbackValue = "like" | "dislike";
+
+export interface DocsAskAIFeedbackMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface DocsAskAIFeedbackData {
+  value: DocsAskAIFeedbackValue;
+  question: string;
+  answer: string;
+  messageId?: string;
+  messageIndex?: number;
+  model?: string;
+  surface?: string;
+  url?: string;
+  path?: string;
+  messages?: DocsAskAIFeedbackMessage[];
+}
+
+export interface DocsAskAIFeedbackConfig {
+  /**
+   * Whether to show response rating controls after each completed Ask AI answer.
+   * @default true
+   */
+  enabled?: boolean;
+  /** Label for the positive rating button. @default "Helpful" */
+  positiveLabel?: string;
+  /** Label for the negative rating button. @default "Not helpful" */
+  negativeLabel?: string;
+  /** Called when a user rates an Ask AI response. */
+  onFeedback?: (data: DocsAskAIFeedbackData) => void | Promise<void>;
+}
+
 /**
  * Configuration for "Ask AI" — a RAG-powered chat that lets users
  * ask questions about the documentation content.
@@ -1427,8 +1463,8 @@ export interface AIConfig {
   aiLabel?: string;
 
   /**
-   * The npm package name used in import examples.
-   * The AI will use this in code snippets instead of generic placeholders.
+   * Optional npm package-name override used in import examples.
+   * Ask AI normally infers package names and exact imports from retrieved docs context.
    *
    * @example
    * ```ts
@@ -1515,6 +1551,28 @@ export interface AIConfig {
    * ```
    */
   loadingComponent?: (props: { name: string }) => unknown;
+
+  /**
+   * Response rating controls for generated Ask AI answers.
+   *
+   * Set to `false` to hide the buttons. Pass an object to customize labels
+   * and receive callback payloads with the question, answer, model, and UI surface.
+   *
+   * @default true
+   *
+   * @example
+   * ```ts
+   * ai: {
+   *   enabled: true,
+   *   feedback: {
+   *     onFeedback(data) {
+   *       console.log(data.value, data.question, data.answer);
+   *     },
+   *   },
+   * }
+   * ```
+   */
+  feedback?: boolean | DocsAskAIFeedbackConfig;
 }
 
 /**

@@ -58,6 +58,11 @@ export function TanstackDocsPage({
             ? (config.feedback as FeedbackConfig).onFeedback
             : undefined
         }
+        onAIFeedback={
+          config.ai?.feedback && typeof config.ai.feedback === "object"
+            ? config.ai.feedback.onFeedback
+            : undefined
+        }
       />
       <TanstackDocsLayout
         config={config}

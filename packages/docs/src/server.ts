@@ -35,11 +35,14 @@ export {
 } from "./mcp.js";
 export {
   buildDocsSearchDocuments,
+  buildDocsAskAIContext,
   createAlgoliaSearchAdapter,
   createCustomSearchAdapter,
   createMcpSearchAdapter,
   createSimpleSearchAdapter,
   createTypesenseSearchAdapter,
+  formatDocsAskAIPackageHints,
+  inferDocsAskAIPackageHints,
   performDocsSearch,
   resolveSearchRequestConfig,
 } from "./search.js";
@@ -76,6 +79,10 @@ export type {
   DocsSearchResult,
   DocsSearchSourcePage,
   McpDocsSearchConfig,
+  DocsAskAIFeedbackConfig,
+  DocsAskAIFeedbackData,
+  DocsAskAIFeedbackMessage,
+  DocsAskAIFeedbackValue,
   DocsAnalyticsConfig,
   DocsAnalyticsEvent,
   DocsAnalyticsEventInput,
