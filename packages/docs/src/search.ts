@@ -18,6 +18,39 @@ const DEFAULT_SEARCH_LIMIT = 10;
 const DEFAULT_MCP_PROTOCOL_VERSION = "2025-11-25";
 const syncedIndexes = new Set<string>();
 const ALGOLIA_MAX_RECORD_BYTES = 9_500;
+const DEFAULT_ASK_AI_CONTEXT_CHARS = 24_000;
+const DEFAULT_ASK_AI_RESULT_CHARS = 6_000;
+const SEARCH_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "be",
+  "can",
+  "do",
+  "does",
+  "for",
+  "from",
+  "how",
+  "i",
+  "in",
+  "is",
+  "it",
+  "of",
+  "on",
+  "or",
+  "the",
+  "this",
+  "to",
+  "use",
+  "what",
+  "when",
+  "where",
+  "which",
+  "with",
+]);
 
 interface ResolvedDocsSearchConfig {
   enabled: boolean;
@@ -27,11 +60,30 @@ interface ResolvedDocsSearchConfig {
   raw?: DocsSearchConfig;
 }
 
+export interface DocsAskAIContextResult extends DocsSearchResult {
+  title: string;
+  contextContent: string;
+}
+
+export interface DocsAskAIContext {
+  context: string;
+  results: DocsAskAIContextResult[];
+  searchResults: DocsSearchResult[];
+  packageHints: DocsAskAIPackageHints;
+}
+
+export interface DocsAskAIPackageHints {
+  packages: string[];
+  imports: string[];
+  installCommands: string[];
+}
+
 function stripMarkdownText(content: string): string {
-  return content
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/~~~[\s\S]*?~~~/g, "")
-    .replace(/^(import|export)\s.*$/gm, "")
+  return removeMdxModuleLinesOutsideFences(content)
+    .replace(/```[^\n]*\n([\s\S]*?)```/g, "$1")
+    .replace(/```([\s\S]*?)```/g, "$1")
+    .replace(/~~~[^\n]*\n([\s\S]*?)~~~/g, "$1")
+    .replace(/~~~([\s\S]*?)~~~/g, "$1")
     .replace(/<[^>]+\/>/g, "")
     .replace(/<\/?[A-Z][^>]*>/g, "")
     .replace(/<\/?[a-z][^>]*>/g, "")
@@ -69,6 +121,329 @@ function normalizeMcpSsePayload(body: string) {
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
+}
+
+function tokenizeSearchQuery(query: string): string[] {
+  return Array.from(
+    new Set(
+      query
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}@/_:.-]+/gu, " ")
+        .split(/\s+/)
+        .map((word) => word.replace(/^[^\p{L}\p{N}@]+|[^\p{L}\p{N}]+$/gu, ""))
+        .filter((word) => word.length > 1 && !SEARCH_STOP_WORDS.has(word)),
+    ),
+  );
+}
+
+function normalizeUrlPathname(value: string): string {
+  try {
+    return new URL(value, "https://docs.local").pathname.replace(/\/+$/, "") || "/";
+  } catch {
+    return value.split(/[?#]/)[0]?.replace(/\/+$/, "") || "/";
+  }
+}
+
+function resolveAskAIContextUrl(value: string, baseUrl?: string): string {
+  if (!baseUrl) return value;
+
+  try {
+    return new URL(value, baseUrl).toString();
+  } catch {
+    return value;
+  }
+}
+
+function getAskAIPageContent(page: DocsSearchSourcePage): string {
+  return page.agentRawContent ?? page.agentFallbackRawContent ?? page.rawContent ?? page.content;
+}
+
+function removeMdxModuleLinesOutsideFences(content: string): string {
+  let inFence = false;
+
+  return content
+    .split("\n")
+    .filter((line) => {
+      const trimmed = line.trimStart();
+      if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
+        inFence = !inFence;
+        return true;
+      }
+
+      return inFence || !/^(import|export)\s/.test(trimmed);
+    })
+    .join("\n");
+}
+
+function cleanAskAIContextMarkdown(content: string): string {
+  return removeMdxModuleLinesOutsideFences(content)
+    .replace(/<[^>]+\/>/g, "")
+    .replace(/<\/?[A-Z][^>]*>/g, "")
+    .replace(/<\/?[a-z][^>]*>/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function packageRootFromSpecifier(specifier: string): string | null {
+  if (
+    !specifier ||
+    specifier.startsWith(".") ||
+    specifier.startsWith("/") ||
+    specifier.startsWith("@/") ||
+    specifier.startsWith("~/") ||
+    specifier.startsWith("#")
+  ) {
+    return null;
+  }
+
+  const parts = specifier.split("/").filter(Boolean);
+  if (parts.length === 0) return null;
+  if (parts[0]?.startsWith("@")) {
+    return parts.length > 1 ? `${parts[0]}/${parts[1]}` : null;
+  }
+  return parts[0];
+}
+
+function cleanPackageToken(token: string): string | null {
+  const trimmed = token
+    .trim()
+    .replace(/^["'`]+|["'`,;]+$/g, "")
+    .replace(/\\$/g, "");
+
+  if (!trimmed || trimmed.startsWith("-") || /^[A-Z_][A-Z0-9_]*=/.test(trimmed)) return null;
+  if (/^(npm|pnpm|yarn|bun|install|add|i|x|dlx|run|exec)$/.test(trimmed)) return null;
+
+  const withoutVersion = trimmed.startsWith("@")
+    ? trimmed.replace(/^(@[^/]+\/[^@]+)@.+$/, "$1")
+    : trimmed.replace(/^([^@]+)@.+$/, "$1");
+
+  return packageRootFromSpecifier(withoutVersion);
+}
+
+export function inferDocsAskAIPackageHints(content: string): DocsAskAIPackageHints {
+  const packages = new Set<string>();
+  const imports = new Set<string>();
+  const installCommands = new Set<string>();
+
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const importSpecifier = trimmed.match(
+      /^(?:import|export)\s+(?:type\s+)?[\s\S]*?\s+from\s+["']([^"']+)["']/,
+    )?.[1];
+    const bareImportSpecifier = trimmed.match(/^import\s+["']([^"']+)["']/)?.[1];
+    const requireSpecifier = trimmed.match(/require\(["']([^"']+)["']\)/)?.[1];
+    const specifier = importSpecifier ?? bareImportSpecifier ?? requireSpecifier;
+    const packageName = specifier ? packageRootFromSpecifier(specifier) : null;
+
+    if (packageName) {
+      packages.add(packageName);
+      if (/^(?:import|export)\s/.test(trimmed)) {
+        imports.add(trimmed);
+      }
+    }
+
+    const installMatch = trimmed.match(
+      /^(?:npm\s+(?:install|i)|pnpm\s+add|yarn\s+add|bun\s+add)\s+(.+)$/,
+    );
+    if (!installMatch) continue;
+
+    const commandPackages = installMatch[1]
+      .split(/\s+/)
+      .map(cleanPackageToken)
+      .filter((value): value is string => Boolean(value));
+
+    if (commandPackages.length > 0) {
+      installCommands.add(trimmed);
+      for (const name of commandPackages) packages.add(name);
+    }
+  }
+
+  return {
+    packages: Array.from(packages).slice(0, 8),
+    imports: Array.from(imports).slice(0, 12),
+    installCommands: Array.from(installCommands).slice(0, 8),
+  };
+}
+
+export function formatDocsAskAIPackageHints(
+  hints: DocsAskAIPackageHints,
+  packageName?: string,
+): string | undefined {
+  const packages = packageName
+    ? Array.from(new Set([packageName, ...hints.packages]))
+    : hints.packages;
+
+  if (packages.length === 0 && hints.imports.length === 0 && hints.installCommands.length === 0) {
+    return undefined;
+  }
+
+  const lines = ["Package and import hints inferred from the retrieved documentation context:"];
+
+  if (packages.length > 0) {
+    lines.push(`- Package names found in install/import examples: ${packages.join(", ")}`);
+  }
+
+  if (hints.imports.length > 0) {
+    lines.push(
+      `- Exact import lines found in context: ${hints.imports.map((line) => `\`${line}\``).join("; ")}`,
+    );
+  }
+
+  if (hints.installCommands.length > 0) {
+    lines.push(
+      `- Exact install commands found in context: ${hints.installCommands
+        .map((line) => `\`${line}\``)
+        .join("; ")}`,
+    );
+  }
+
+  lines.push(
+    "Use these exact package names, install commands, and import lines when relevant. Do not replace them with placeholders.",
+  );
+
+  return lines.join("\n");
+}
+
+function clampText(value: string, maxChars: number): string {
+  if (maxChars <= 0) return "";
+  if (value.length <= maxChars) return value;
+  return `${value.slice(0, maxChars).trimEnd()}...`;
+}
+
+function extractHeadingText(line: string): { level: number; text: string } | null {
+  const match = line.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
+  if (!match) return null;
+  return {
+    level: match[1].length,
+    text: normalizeWhitespace(match[2].replace(/[`*_~]/g, "")),
+  };
+}
+
+function extractSectionMarkdown(content: string, section?: string): string {
+  if (!section) return content;
+
+  const target = normalizeWhitespace(section).toLowerCase();
+  const lines = content.split("\n");
+  let start = -1;
+  let level = 0;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const heading = extractHeadingText(lines[i]);
+    if (!heading) continue;
+
+    if (heading.text.toLowerCase() === target) {
+      start = i;
+      level = heading.level;
+      break;
+    }
+  }
+
+  if (start === -1) return content;
+
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i += 1) {
+    const heading = extractHeadingText(lines[i]);
+    if (heading && heading.level <= level) {
+      end = i;
+      break;
+    }
+  }
+
+  return lines.slice(start, end).join("\n");
+}
+
+function findPageForSearchResult(
+  pages: DocsSearchSourcePage[],
+  result: DocsSearchResult,
+): DocsSearchSourcePage | undefined {
+  const resultPath = normalizeUrlPathname(result.url);
+  return pages.find((page) => normalizeUrlPathname(page.url) === resultPath);
+}
+
+function inferResultTitle(result: DocsSearchResult, page?: DocsSearchSourcePage): string {
+  if (page) return page.title;
+
+  const content = stripHtml(result.content).trim();
+  const title = content.split("—")[0]?.trim();
+  return title || result.url;
+}
+
+function formatAskAIContextResult(options: {
+  result: DocsSearchResult;
+  page?: DocsSearchSourcePage;
+  maxChars: number;
+  baseUrl?: string;
+}): DocsAskAIContextResult {
+  const { result, page, maxChars, baseUrl } = options;
+  const title = inferResultTitle(result, page);
+  const section = result.section;
+  const rawContent = page
+    ? extractSectionMarkdown(getAskAIPageContent(page), section)
+    : [result.content, result.description].filter(Boolean).join("\n\n");
+  const contextContent = clampText(cleanAskAIContextMarkdown(rawContent), maxChars);
+
+  return {
+    ...result,
+    url: resolveAskAIContextUrl(result.url, baseUrl),
+    title,
+    contextContent,
+  };
+}
+
+function getSearchResultKey(result: DocsSearchResult): string {
+  let hash = "";
+
+  try {
+    hash = new URL(result.url, "https://docs.local").hash.replace(/^#/, "");
+  } catch {
+    hash = result.url.split("#")[1]?.split(/[?&]/)[0] ?? "";
+  }
+
+  return `${normalizeUrlPathname(result.url)}#${normalizeWhitespace(
+    hash || result.section || "",
+  ).toLowerCase()}`;
+}
+
+function mergeSearchResults(...groups: DocsSearchResult[][]): DocsSearchResult[] {
+  const seen = new Set<string>();
+  const results: DocsSearchResult[] = [];
+
+  for (const group of groups) {
+    for (const result of group) {
+      const key = getSearchResultKey(result);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      results.push(result);
+    }
+  }
+
+  return results;
+}
+
+function shouldSupplementAskAIWithSimpleSearch(search: ResolvedDocsSearchConfig): boolean {
+  return search.enabled && search.provider !== "simple";
+}
+
+function rankAskAIContextResult(query: string, result: DocsAskAIContextResult): number {
+  return scoreDocument(query, {
+    id: result.id,
+    url: result.url,
+    title: result.title,
+    content: result.contextContent,
+    description: result.description,
+    type: result.type,
+    section: result.section,
+  });
+}
+
+function buildAskAIContextBlock(result: DocsAskAIContextResult): string {
+  const lines = [`## ${result.title}`, `URL: ${result.url}`];
+  if (result.section) lines.push(`Section: ${result.section}`);
+  if (result.description) lines.push(`Search snippet: ${result.description}`);
+  lines.push("", result.contextContent);
+  return lines.join("\n").trim();
 }
 
 function makeDocumentId(url: string, suffix: string): string {
@@ -174,15 +549,17 @@ export function buildDocsSearchDocuments(
 }
 
 function scoreDocument(query: string, document: DocsSearchDocument): number {
-  const q = query.toLowerCase().trim();
+  const q = normalizeWhitespace(query.toLowerCase().replace(/[?!.,;:]+$/g, ""));
   if (!q) return 0;
 
-  const words = Array.from(new Set(q.split(/\s+/).filter(Boolean)));
+  const words = tokenizeSearchQuery(q);
   const title = document.title.toLowerCase();
   const section = document.section?.toLowerCase() ?? "";
   const description = document.description?.toLowerCase() ?? "";
   const content = document.content.toLowerCase();
   const url = document.url.toLowerCase();
+  const titleTokens = tokenizeSearchQuery(title);
+  const sectionTokens = tokenizeSearchQuery(section);
 
   let score = 0;
 
@@ -236,6 +613,19 @@ function scoreDocument(query: string, document: DocsSearchDocument): number {
     }
 
     if (matched) matchedWords += 1;
+  }
+
+  if (words.length > 1) {
+    if (sectionTokens.length > 0 && words.every((word) => sectionTokens.includes(word))) {
+      score += 30;
+    }
+    if (
+      document.type === "page" &&
+      titleTokens.length > 0 &&
+      words.every((word) => titleTokens.includes(word))
+    ) {
+      score += 24;
+    }
   }
 
   if (matchedWords === words.length && words.length > 1) score += 20;
@@ -1013,6 +1403,116 @@ export async function performDocsSearch(options: {
   } catch {
     return createSimpleSearchAdapter().search(query, context);
   }
+}
+
+export async function buildDocsAskAIContext(options: {
+  pages: DocsSearchSourcePage[];
+  query: string;
+  search?: boolean | DocsSearchConfig;
+  locale?: string;
+  pathname?: string;
+  siteTitle?: string;
+  baseUrl?: string;
+  limit?: number;
+  maxContextChars?: number;
+  maxResultChars?: number;
+}): Promise<DocsAskAIContext> {
+  const limit = options.limit ?? 5;
+  const searchLimit = Math.max(limit * 2, limit);
+  const initialSearch = options.search === false ? true : options.search;
+  const initialSearchConfig = normalizeDocsSearchConfig(initialSearch);
+  const primarySearch = initialSearchConfig.enabled ? initialSearch : true;
+  const primarySearchConfig = normalizeDocsSearchConfig(primarySearch);
+  const primarySearchResults = await performDocsSearch({
+    pages: options.pages,
+    query: options.query,
+    search: primarySearch,
+    locale: options.locale,
+    pathname: options.pathname,
+    siteTitle: options.siteTitle,
+    limit: searchLimit,
+  });
+  const localSearchResults = shouldSupplementAskAIWithSimpleSearch(primarySearchConfig)
+    ? await performDocsSearch({
+        pages: options.pages,
+        query: options.query,
+        search: {
+          provider: "simple",
+          enabled: true,
+          chunking: primarySearchConfig.chunking,
+          maxResults: searchLimit,
+        },
+        locale: options.locale,
+        pathname: options.pathname,
+        siteTitle: options.siteTitle,
+        limit: searchLimit,
+      })
+    : [];
+  const searchResults = mergeSearchResults(primarySearchResults, localSearchResults);
+
+  const seen = new Set<string>();
+  const maxResultChars = options.maxResultChars ?? DEFAULT_ASK_AI_RESULT_CHARS;
+  const rankedResults = searchResults
+    .map((result, index) => {
+      const page = findPageForSearchResult(options.pages, result);
+      const formatted = formatAskAIContextResult({
+        result,
+        page,
+        maxChars: maxResultChars,
+        baseUrl: options.baseUrl,
+      });
+
+      return {
+        result,
+        formatted,
+        index,
+        rank: rankAskAIContextResult(options.query, formatted),
+      };
+    })
+    .sort((a, b) => b.rank - a.rank || a.index - b.index);
+  const formattedResults = rankedResults.map((item) => item.formatted);
+  const sectionResultPaths = new Set(
+    formattedResults
+      .filter((result) => result.section)
+      .map((result) => normalizeUrlPathname(result.url)),
+  );
+  const results = formattedResults
+    .filter((result) => result.section || !sectionResultPaths.has(normalizeUrlPathname(result.url)))
+    .filter((result) => {
+      const key = getSearchResultKey(result);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return result.contextContent.length > 0;
+    })
+    .slice(0, limit);
+
+  const maxContextChars = options.maxContextChars ?? DEFAULT_ASK_AI_CONTEXT_CHARS;
+  const blocks: string[] = [];
+  let usedChars = 0;
+
+  for (const result of results) {
+    const block = buildAskAIContextBlock(result);
+    const separatorChars = blocks.length === 0 ? 0 : "\n\n---\n\n".length;
+    if (usedChars + separatorChars + block.length > maxContextChars) {
+      const remaining = maxContextChars - usedChars - separatorChars;
+      if (remaining > 400) {
+        blocks.push(clampText(block, remaining));
+      }
+      break;
+    }
+
+    blocks.push(block);
+    usedChars += separatorChars + block.length;
+  }
+
+  const context = blocks.join("\n\n---\n\n");
+
+  return {
+    context,
+    results: results.slice(0, blocks.length),
+    searchResults: rankedResults.map((item) => item.result),
+    packageHints: inferDocsAskAIPackageHints(context),
+  };
 }
 
 export function createCustomSearchAdapter(

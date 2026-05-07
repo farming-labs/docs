@@ -337,6 +337,48 @@
   animation: fd-ai-msg-in 300ms ease-out;
 }
 
+.fd-ai-feedback {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--color-fd-border, #1f1f2e) 70%, transparent);
+}
+
+.fd-ai-feedback-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: var(--radius, 6px);
+  background: transparent;
+  color: var(--color-fd-muted-foreground, #71717a);
+  cursor: pointer;
+  transition:
+    background 150ms,
+    border-color 150ms,
+    color 150ms;
+}
+
+.fd-ai-feedback-btn:hover {
+  color: var(--color-fd-foreground, #e4e4e7);
+  background: var(--color-fd-accent, rgba(255, 255, 255, 0.06));
+}
+
+.fd-ai-feedback-btn[data-active="true"] {
+  color: var(--color-fd-primary, #6366f1);
+  border-color: color-mix(in srgb, var(--color-fd-primary, #6366f1) 40%, transparent);
+  background: color-mix(in srgb, var(--color-fd-primary, #6366f1) 10%, transparent);
+}
+
+.fd-ai-feedback-btn[data-copied="true"] {
+  color: var(--color-fd-primary, #6366f1);
+  background: color-mix(in srgb, var(--color-fd-primary, #6366f1) 10%, transparent);
+}
+
 @keyframes fd-ai-msg-in {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }

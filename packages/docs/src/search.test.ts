@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DocsSearchAdapterContext } from "./types.js";
 import {
+  buildDocsAskAIContext,
   buildDocsSearchDocuments,
   createAlgoliaSearchAdapter,
   createCustomSearchAdapter,
@@ -82,6 +83,39 @@ Second section.
 
     expect(documents.find((item) => item.type === "page")?.content).not.toContain("!");
     expect(documents.find((item) => item.section === "Flow")?.content).toContain("Flow chart");
+  });
+
+  it("keeps fenced code searchable in section documents", () => {
+    const documents = buildDocsSearchDocuments([
+      {
+        title: "Doctor",
+        url: "/docs/doctor",
+        content: "Validate docs readiness.",
+        rawContent: `import { Callout } from "@/components/callout";
+
+# Doctor
+
+## Remote URL
+
+Run the doctor against a deployed site:
+
+\`\`\`bash
+docs doctor --url https://docs.example.com
+\`\`\`
+
+\`\`\`ts
+import { betterAuth } from "better-auth";
+export const auth = betterAuth({});
+\`\`\`
+`,
+      },
+    ]);
+
+    const sectionContent = documents.find((item) => item.section === "Remote URL")?.content;
+    expect(sectionContent).toContain("docs doctor --url https://docs.example.com");
+    expect(sectionContent).toContain('import { betterAuth } from "better-auth";');
+    expect(sectionContent).toContain("export const auth = betterAuth({});");
+    expect(sectionContent).not.toContain("@/components/callout");
   });
 });
 
@@ -284,6 +318,264 @@ Your page is now available at \`/docs/my-page\`.
     expect(results[0]?.description).not.toContain("```");
     expect(results[0]?.description).not.toContain("`");
     expect(results[0]?.description).not.toContain("|");
+  });
+
+  it("ignores question stopwords and punctuation when ranking natural-language queries", async () => {
+    const results = await performDocsSearch({
+      pages: [
+        {
+          title: "AI Chat",
+          url: "/docs/ai-chat",
+          content: "suggestedQuestions: What themes are available?",
+          rawContent: `# AI Chat
+
+## Suggested Questions
+
+\`\`\`ts
+suggestedQuestions: ["What themes are available?"]
+\`\`\`
+`,
+        },
+        {
+          title: "Customize",
+          url: "/docs/customize",
+          content: "Nine built-in themes are available.",
+          rawContent: `# Customize
+
+## Available Themes
+
+Nine built-in themes are available: fumadocs, darksharp, pixel-border, colorful, shiny, darkbold, greentree, hardline, and concrete.
+`,
+        },
+      ],
+      query: "What themes are available?",
+    });
+
+    expect(results[0]).toMatchObject({
+      url: "/docs/customize#available-themes",
+      section: "Available Themes",
+    });
+  });
+});
+
+describe("buildDocsAskAIContext", () => {
+  it("uses section search and preserves code blocks for the model context", async () => {
+    const context = await buildDocsAskAIContext({
+      pages: [
+        {
+          title: "Doctor",
+          url: "/docs/doctor",
+          description: "Validate docs readiness before shipping.",
+          content: "Validate docs readiness.",
+          rawContent: `# Doctor
+
+## Local Checks
+
+Run local checks before publishing.
+
+## Remote URL
+
+Run the doctor against a hosted site:
+
+\`\`\`bash
+docs doctor --url https://docs.example.com
+\`\`\`
+
+\`\`\`ts
+import { betterAuth } from "better-auth";
+\`\`\`
+`,
+        },
+      ],
+      query: "docs doctor --url",
+      limit: 1,
+    });
+
+    expect(context.results[0]).toMatchObject({
+      url: "/docs/doctor#remote-url",
+      section: "Remote URL",
+    });
+    expect(context.context).toContain("URL: /docs/doctor#remote-url");
+    expect(context.context).toContain("```bash");
+    expect(context.context).toContain("docs doctor --url https://docs.example.com");
+    expect(context.context).toContain('import { betterAuth } from "better-auth";');
+    expect(context.packageHints.packages).toContain("better-auth");
+    expect(context.packageHints.imports).toContain('import { betterAuth } from "better-auth";');
+    expect(context.context).not.toContain("Local Checks");
+  });
+
+  it("hydrates custom search results with local page content", async () => {
+    const context = await buildDocsAskAIContext({
+      pages: [
+        {
+          title: "Installation",
+          url: "/docs/installation",
+          content: "Install the package.",
+          rawContent: `# Installation
+
+## Package Manager
+
+\`\`\`bash
+pnpm add @farming-labs/docs
+\`\`\`
+`,
+        },
+      ],
+      query: "install",
+      search: createCustomSearchAdapter({
+        name: "custom",
+        async search() {
+          return [
+            {
+              id: "custom-install",
+              url: "/docs/installation#package-manager",
+              content: "Installation — Package Manager",
+              type: "heading",
+              section: "Package Manager",
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(context.searchResults.some((result) => result.id === "custom-install")).toBe(true);
+    expect(context.results[0]).toMatchObject({
+      url: "/docs/installation#package-manager",
+      section: "Package Manager",
+    });
+    expect(context.context).toContain("pnpm add @farming-labs/docs");
+  });
+
+  it("keeps duplicate heading titles on the same page when URL hashes differ", async () => {
+    const context = await buildDocsAskAIContext({
+      pages: [
+        {
+          title: "Plugins",
+          url: "/docs/plugins",
+          content: "Configure server and client plugins.",
+          rawContent: `# Plugins
+
+## Configure
+
+Server plugin setup.
+
+## Configure
+
+Client plugin setup.
+`,
+        },
+      ],
+      query: "configure plugins",
+      limit: 2,
+      search: createCustomSearchAdapter({
+        name: "duplicate-headings",
+        async search() {
+          return [
+            {
+              id: "server-configure",
+              url: "/docs/plugins#configure",
+              content: "Plugins — Configure",
+              type: "heading",
+              section: "Configure",
+            },
+            {
+              id: "client-configure",
+              url: "/docs/plugins#configure-1",
+              content: "Plugins — Configure",
+              type: "heading",
+              section: "Configure",
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(context.results.map((result) => result.url)).toEqual([
+      "/docs/plugins#configure",
+      "/docs/plugins#configure-1",
+    ]);
+  });
+
+  it("supplements stale external search results with local section ranking", async () => {
+    const context = await buildDocsAskAIContext({
+      pages: [
+        {
+          title: "AI Chat",
+          url: "/docs/getting-started/ai-native",
+          content: "suggestedQuestions: What themes are available?",
+          rawContent: `# AI Chat
+
+## Suggested Questions
+
+\`\`\`ts
+suggestedQuestions: ["What themes are available?"]
+\`\`\`
+`,
+        },
+        {
+          title: "Customize",
+          url: "/docs/customize",
+          content: "Nine built-in themes are available.",
+          rawContent: `# Customize
+
+## Available Themes
+
+Nine built-in themes are available: default, colorful, concrete, darkbold,
+darksharp, hardline, ledger, minimal, and shiny.
+`,
+        },
+      ],
+      query: "What themes are available?",
+      limit: 1,
+      search: createCustomSearchAdapter({
+        name: "stale",
+        async search() {
+          return [
+            {
+              id: "stale-suggested-questions",
+              url: "/docs/getting-started/ai-native#suggested-questions",
+              content: "AI Chat — Suggested Questions",
+              type: "heading",
+              section: "Suggested Questions",
+            },
+          ];
+        },
+      }),
+    });
+
+    expect(context.results[0]).toMatchObject({
+      url: "/docs/customize#available-themes",
+      section: "Available Themes",
+    });
+    expect(context.context).toContain("Nine built-in themes are available");
+  });
+
+  it("uses absolute context URLs when a request base URL is provided", async () => {
+    const context = await buildDocsAskAIContext({
+      pages: [
+        {
+          title: "Customize",
+          url: "/docs/customize",
+          content: "Nine built-in themes are available.",
+          rawContent: `# Customize
+
+## Available Themes
+
+Nine built-in themes are available.
+`,
+        },
+      ],
+      query: "available themes",
+      baseUrl: "https://docs.example.com/api/docs",
+      limit: 1,
+    });
+
+    expect(context.results[0]?.url).toBe(
+      "https://docs.example.com/docs/customize#available-themes",
+    );
+    expect(context.context).toContain(
+      "URL: https://docs.example.com/docs/customize#available-themes",
+    );
   });
 });
 

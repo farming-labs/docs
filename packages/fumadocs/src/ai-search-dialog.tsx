@@ -17,11 +17,19 @@ import {
   useEffect,
   useRef,
   useCallback,
+  type Dispatch,
   type KeyboardEvent as ReactKeyboardEvent,
+  type SetStateAction,
 } from "react";
 import { createPortal } from "react-dom";
 import { highlight } from "sugar-high";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
+import type {
+  DocsAskAIActionData,
+  DocsAskAIActionType,
+  DocsAskAIFeedbackData,
+  DocsAskAIFeedbackValue,
+} from "@farming-labs/docs";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -35,9 +43,165 @@ interface SearchResult {
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  id?: string;
+  model?: string;
+  feedback?: DocsAskAIFeedbackValue;
+  isError?: boolean;
 }
 
 type AIModelOption = { id: string; label: string };
+
+interface DocsWindowHooks extends Window {
+  __fdOnAIActions__?: (data: DocsAskAIActionData) => void | Promise<void>;
+  __fdOnAIFeedback__?: (data: DocsAskAIFeedbackData) => void | Promise<void>;
+}
+
+let aiMessageId = 0;
+
+function createAIMessageId(): string {
+  aiMessageId += 1;
+  return `ai_${Date.now().toString(36)}_${aiMessageId.toString(36)}`;
+}
+
+function getLastUserQuestion(messages: ChatMessage[], assistantIndex: number): string {
+  for (let i = assistantIndex - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    if (message?.role === "user") return message.content;
+  }
+
+  return "";
+}
+
+function buildActionPayload(options: {
+  type: DocsAskAIActionType;
+  message: ChatMessage;
+  messages: ChatMessage[];
+  index: number;
+  surface: string;
+  copied?: boolean;
+}): DocsAskAIActionData {
+  const location =
+    typeof window !== "undefined"
+      ? {
+          url: window.location.href,
+          path: window.location.pathname,
+        }
+      : {};
+
+  return {
+    type: options.type,
+    value: options.type === "like" || options.type === "dislike" ? options.type : undefined,
+    question: getLastUserQuestion(options.messages, options.index),
+    answer: options.message.content,
+    messageId: options.message.id,
+    messageIndex: options.index,
+    model: options.message.model,
+    surface: options.surface,
+    messages: options.messages
+      .slice(0, options.index + 1)
+      .map((message) => ({ role: message.role, content: message.content })),
+    copied: options.copied,
+    ...location,
+  };
+}
+
+function toFeedbackPayload(data: DocsAskAIActionData): DocsAskAIFeedbackData | null {
+  if (data.type !== "like" && data.type !== "dislike") return null;
+
+  return {
+    value: data.type,
+    question: data.question,
+    answer: data.answer,
+    messageId: data.messageId,
+    messageIndex: data.messageIndex,
+    model: data.model,
+    surface: data.surface,
+    url: data.url,
+    path: data.path,
+    messages: data.messages,
+  };
+}
+
+function emitAskAIAction(data: DocsAskAIActionData) {
+  if (typeof window === "undefined") return;
+
+  try {
+    const result = (window as DocsWindowHooks).__fdOnAIActions__?.(data);
+    if (result && typeof (result as Promise<void>).catch === "function") {
+      void (result as Promise<void>).catch(() => {});
+    }
+  } catch {}
+
+  try {
+    window.dispatchEvent(new CustomEvent("fd:ai-action", { detail: data }));
+  } catch {}
+}
+
+function emitAskAIFeedback(data: DocsAskAIFeedbackData, analytics?: boolean) {
+  if (analytics) {
+    emitClientAnalyticsEvent({
+      type: "ai_feedback",
+      input: {
+        question: data.question,
+        feedbackValue: data.value,
+      },
+      properties: {
+        value: data.value,
+        surface: data.surface,
+        model: data.model,
+        questionLength: data.question.length,
+        answerLength: data.answer.length,
+        messageIndex: data.messageIndex,
+      },
+    });
+  }
+
+  if (typeof window === "undefined") return;
+
+  try {
+    const result = (window as DocsWindowHooks).__fdOnAIFeedback__?.(data);
+    if (result && typeof (result as Promise<void>).catch === "function") {
+      void (result as Promise<void>).catch(() => {});
+    }
+  } catch {}
+
+  try {
+    window.dispatchEvent(new CustomEvent("fd:ai-feedback", { detail: data }));
+  } catch {}
+}
+
+function fallbackCopyText(text: string): boolean {
+  if (typeof document === "undefined") return false;
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "-9999px";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+
+  try {
+    document.execCommand("copy");
+    return true;
+  } catch {
+    return false;
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  if (!text) return false;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return fallbackCopyText(text);
+  }
+}
 
 // ─── Markdown renderer ──────────────────────────────────────────────
 
@@ -247,6 +411,77 @@ function XIcon() {
     >
       <path d="M18 6 6 18" />
       <path d="m6 6 12 12" />
+    </svg>
+  );
+}
+
+function ThumbsUpIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M7 10v12" />
+      <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z" />
+    </svg>
+  );
+}
+
+function ThumbsDownIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M17 14V2" />
+      <path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20 6 9 17l-5-5" />
     </svg>
   );
 }
@@ -482,6 +717,62 @@ function ModelSelector({
   );
 }
 
+function AIFeedbackControls({
+  value,
+  onCopy,
+  onSelect,
+}: {
+  value?: DocsAskAIFeedbackValue;
+  onCopy: () => boolean | Promise<boolean>;
+  onSelect: (value: DocsAskAIFeedbackValue) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = useCallback(async () => {
+    const didCopy = await onCopy();
+    if (!didCopy) return;
+
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  }, [onCopy]);
+
+  return (
+    <div className="fd-ai-feedback" role="group" aria-label="Rate this Ask AI response">
+      <button
+        type="button"
+        className="fd-ai-feedback-btn"
+        data-copied={copied ? "true" : undefined}
+        aria-label={copied ? "Copied response" : "Copy response"}
+        title={copied ? "Copied" : "Copy response"}
+        onClick={handleCopy}
+      >
+        {copied ? <CheckIcon /> : <CopyIcon />}
+      </button>
+      <button
+        type="button"
+        className="fd-ai-feedback-btn"
+        data-active={value === "like"}
+        aria-pressed={value === "like"}
+        aria-label="Helpful"
+        title="Helpful"
+        onClick={() => onSelect("like")}
+      >
+        <ThumbsUpIcon />
+      </button>
+      <button
+        type="button"
+        className="fd-ai-feedback-btn"
+        data-active={value === "dislike"}
+        aria-pressed={value === "dislike"}
+        aria-label="Not helpful"
+        title="Not helpful"
+        onClick={() => onSelect("dislike")}
+      >
+        <ThumbsDownIcon />
+      </button>
+    </div>
+  );
+}
+
 // ─── Shared AI Chat Component ───────────────────────────────────────
 
 function AIChat({
@@ -499,11 +790,12 @@ function AIChat({
   models,
   defaultModelId,
   analytics,
+  feedbackEnabled = true,
   surface = "chat",
 }: {
   api: string;
   messages: ChatMessage[];
-  setMessages: (m: ChatMessage[]) => void;
+  setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
   aiInput: string;
   setAiInput: (v: string) => void;
   isStreaming: boolean;
@@ -515,6 +807,7 @@ function AIChat({
   models?: AIModelOption[];
   defaultModelId?: string;
   analytics?: boolean;
+  feedbackEnabled?: boolean;
   surface?: string;
 }) {
   const label = aiLabel || "AI";
@@ -541,9 +834,15 @@ function AIChat({
       if (!question.trim() || isStreaming) return;
       const userMessage: ChatMessage = { role: "user", content: question };
       const newMessages = [...messages, userMessage];
+      const assistantMessage: ChatMessage = {
+        role: "assistant",
+        content: "",
+        id: createAIMessageId(),
+        model: effectiveModelId,
+      };
       setAiInput("");
       setIsStreaming(true);
-      setMessages([...newMessages, { role: "assistant", content: "" }]);
+      setMessages([...newMessages, assistantMessage]);
       const startedAt = Date.now();
 
       if (analytics) {
@@ -574,7 +873,7 @@ function AIChat({
             const err = await res.json();
             errMsg = err.error || errMsg;
           } catch {}
-          setMessages([...newMessages, { role: "assistant", content: errMsg }]);
+          setMessages([...newMessages, { ...assistantMessage, content: errMsg, isError: true }]);
           setIsStreaming(false);
           if (analytics) {
             emitClientAnalyticsEvent({
@@ -610,14 +909,14 @@ function AIChat({
                 const content = json.choices?.[0]?.delta?.content;
                 if (content) {
                   assistantContent += content;
-                  setMessages([...newMessages, { role: "assistant", content: assistantContent }]);
+                  setMessages([...newMessages, { ...assistantMessage, content: assistantContent }]);
                 }
               } catch {}
             }
           }
         }
         if (assistantContent)
-          setMessages([...newMessages, { role: "assistant", content: assistantContent }]);
+          setMessages([...newMessages, { ...assistantMessage, content: assistantContent }]);
         if (analytics) {
           emitClientAnalyticsEvent({
             type: "ai_response",
@@ -633,7 +932,11 @@ function AIChat({
       } catch {
         setMessages([
           ...newMessages,
-          { role: "assistant", content: "Failed to connect. Please try again." },
+          {
+            ...assistantMessage,
+            content: "Failed to connect. Please try again.",
+            isError: true,
+          },
         ]);
         if (analytics) {
           emitClientAnalyticsEvent({
@@ -673,6 +976,46 @@ function AIChat({
   };
 
   const canSend = !!(aiInput.trim() && !isStreaming);
+  const handleFeedback = useCallback(
+    (message: ChatMessage, index: number, value: DocsAskAIFeedbackValue) => {
+      if (message.feedback === value) return;
+
+      const updatedMessage = { ...message, feedback: value };
+      const updatedMessages = messages.map((item, itemIndex) =>
+        itemIndex === index ? updatedMessage : item,
+      );
+      setMessages(updatedMessages);
+      const actionPayload = buildActionPayload({
+        type: value,
+        message: updatedMessage,
+        messages: updatedMessages,
+        index,
+        surface,
+      });
+      emitAskAIAction(actionPayload);
+
+      const feedbackPayload = toFeedbackPayload(actionPayload);
+      if (feedbackPayload) emitAskAIFeedback(feedbackPayload, analytics);
+    },
+    [analytics, messages, setMessages, surface],
+  );
+  const handleCopyMessage = useCallback(
+    async (message: ChatMessage, index: number) => {
+      const copied = await copyTextToClipboard(message.content);
+      emitAskAIAction(
+        buildActionPayload({
+          type: "copy",
+          message,
+          messages,
+          index,
+          surface,
+          copied,
+        }),
+      );
+      return copied;
+    },
+    [messages, surface],
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
@@ -705,12 +1048,21 @@ function AIChat({
               ) : (
                 <div className="fd-ai-bubble-ai">
                   {msg.content ? (
-                    <div
-                      className={
-                        isStreaming && i === messages.length - 1 ? "fd-ai-streaming" : undefined
-                      }
-                      dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
-                    />
+                    <>
+                      <div
+                        className={
+                          isStreaming && i === messages.length - 1 ? "fd-ai-streaming" : undefined
+                        }
+                        dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                      />
+                      {feedbackEnabled && !msg.isError && !isStreaming && (
+                        <AIFeedbackControls
+                          value={msg.feedback}
+                          onCopy={() => handleCopyMessage(msg, i)}
+                          onSelect={(value) => handleFeedback(msg, i, value)}
+                        />
+                      )}
+                    </>
                   ) : loadingComponentHtml ? (
                     <div dangerouslySetInnerHTML={{ __html: loadingComponentHtml }} />
                   ) : (
@@ -795,6 +1147,7 @@ export function DocsSearchDialog({
   models,
   defaultModelId,
   analytics = false,
+  feedbackEnabled = true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -806,6 +1159,7 @@ export function DocsSearchDialog({
   models?: AIModelOption[];
   defaultModelId?: string;
   analytics?: boolean;
+  feedbackEnabled?: boolean;
 }) {
   const [tab, setTab] = useState<"search" | "ai">("search");
   const [searchQuery, setSearchQuery] = useState("");
@@ -1064,6 +1418,7 @@ export function DocsSearchDialog({
             models={models}
             defaultModelId={effectiveModelId}
             analytics={analytics}
+            feedbackEnabled={feedbackEnabled}
             surface="ai-dialog"
           />
         )}
@@ -1140,6 +1495,7 @@ export function FloatingAIChat({
   models,
   defaultModelId,
   analytics = false,
+  feedbackEnabled = true,
 }: {
   api?: string;
   position?: FloatingPosition;
@@ -1152,6 +1508,7 @@ export function FloatingAIChat({
   models?: AIModelOption[];
   defaultModelId?: string;
   analytics?: boolean;
+  feedbackEnabled?: boolean;
 }) {
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -1224,6 +1581,7 @@ export function FloatingAIChat({
         models={models}
         defaultModelId={defaultModelId}
         analytics={analytics}
+        feedbackEnabled={feedbackEnabled}
       />
     );
   }
@@ -1266,7 +1624,10 @@ export function FloatingAIChat({
             aiLabel={aiLabel}
             loaderVariant={loaderVariant}
             loadingComponentHtml={loadingComponentHtml}
+            models={models}
+            defaultModelId={defaultModelId}
             analytics={analytics}
+            feedbackEnabled={feedbackEnabled}
             surface="floating"
           />
         </div>
@@ -1340,13 +1701,14 @@ function FullModalAIChat({
   models,
   defaultModelId,
   analytics,
+  feedbackEnabled = true,
 }: {
   api: string;
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
   closeAI: (trigger: "button" | "escape" | "overlay") => void;
   messages: ChatMessage[];
-  setMessages: (m: ChatMessage[]) => void;
+  setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
   aiInput: string;
   setAiInput: (v: string) => void;
   isStreaming: boolean;
@@ -1360,6 +1722,7 @@ function FullModalAIChat({
   models?: AIModelOption[];
   defaultModelId?: string;
   analytics?: boolean;
+  feedbackEnabled?: boolean;
 }) {
   const label = aiLabel || "AI";
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -1390,9 +1753,15 @@ function FullModalAIChat({
       if (!question.trim() || isStreaming) return;
       const userMessage: ChatMessage = { role: "user", content: question };
       const newMessages = [...messages, userMessage];
+      const assistantMessage: ChatMessage = {
+        role: "assistant",
+        content: "",
+        id: createAIMessageId(),
+        model: effectiveModelId,
+      };
       setAiInput("");
       setIsStreaming(true);
-      setMessages([...newMessages, { role: "assistant", content: "" }]);
+      setMessages([...newMessages, assistantMessage]);
       const startedAt = Date.now();
 
       if (analytics) {
@@ -1423,7 +1792,7 @@ function FullModalAIChat({
             const err = await res.json();
             errMsg = err.error || errMsg;
           } catch {}
-          setMessages([...newMessages, { role: "assistant", content: errMsg }]);
+          setMessages([...newMessages, { ...assistantMessage, content: errMsg, isError: true }]);
           setIsStreaming(false);
           if (analytics) {
             emitClientAnalyticsEvent({
@@ -1459,14 +1828,14 @@ function FullModalAIChat({
                 const content = json.choices?.[0]?.delta?.content;
                 if (content) {
                   assistantContent += content;
-                  setMessages([...newMessages, { role: "assistant", content: assistantContent }]);
+                  setMessages([...newMessages, { ...assistantMessage, content: assistantContent }]);
                 }
               } catch {}
             }
           }
         }
         if (assistantContent)
-          setMessages([...newMessages, { role: "assistant", content: assistantContent }]);
+          setMessages([...newMessages, { ...assistantMessage, content: assistantContent }]);
         if (analytics) {
           emitClientAnalyticsEvent({
             type: "ai_response",
@@ -1482,7 +1851,11 @@ function FullModalAIChat({
       } catch {
         setMessages([
           ...newMessages,
-          { role: "assistant", content: "Failed to connect. Please try again." },
+          {
+            ...assistantMessage,
+            content: "Failed to connect. Please try again.",
+            isError: true,
+          },
         ]);
         if (analytics) {
           emitClientAnalyticsEvent({
@@ -1511,6 +1884,46 @@ function FullModalAIChat({
 
   const canSend = !!(aiInput.trim() && !isStreaming);
   const showSuggestions = messages.length === 0 && !isStreaming;
+  const handleFeedback = useCallback(
+    (message: ChatMessage, index: number, value: DocsAskAIFeedbackValue) => {
+      if (message.feedback === value) return;
+
+      const updatedMessage = { ...message, feedback: value };
+      const updatedMessages = messages.map((item, itemIndex) =>
+        itemIndex === index ? updatedMessage : item,
+      );
+      setMessages(updatedMessages);
+      const actionPayload = buildActionPayload({
+        type: value,
+        message: updatedMessage,
+        messages: updatedMessages,
+        index,
+        surface: "full-modal",
+      });
+      emitAskAIAction(actionPayload);
+
+      const feedbackPayload = toFeedbackPayload(actionPayload);
+      if (feedbackPayload) emitAskAIFeedback(feedbackPayload, analytics);
+    },
+    [analytics, messages, setMessages],
+  );
+  const handleCopyMessage = useCallback(
+    async (message: ChatMessage, index: number) => {
+      const copied = await copyTextToClipboard(message.content);
+      emitAskAIAction(
+        buildActionPayload({
+          type: "copy",
+          message,
+          messages,
+          index,
+          surface: "full-modal",
+          copied,
+        }),
+      );
+      return copied;
+    },
+    [messages],
+  );
 
   const handleKeyDown = (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -1546,12 +1959,24 @@ function FullModalAIChat({
                   </div>
                   <div className="fd-ai-fm-msg-content">
                     {msg.content ? (
-                      <div
-                        className={
-                          isStreaming && i === messages.length - 1 ? "fd-ai-streaming" : undefined
-                        }
-                        dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
-                      />
+                      <>
+                        <div
+                          className={
+                            isStreaming && i === messages.length - 1 ? "fd-ai-streaming" : undefined
+                          }
+                          dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                        />
+                        {msg.role === "assistant" &&
+                          feedbackEnabled &&
+                          !msg.isError &&
+                          !isStreaming && (
+                            <AIFeedbackControls
+                              value={msg.feedback}
+                              onCopy={() => handleCopyMessage(msg, i)}
+                              onSelect={(value) => handleFeedback(msg, i, value)}
+                            />
+                          )}
+                      </>
                     ) : loadingComponentHtml ? (
                       <div dangerouslySetInnerHTML={{ __html: loadingComponentHtml }} />
                     ) : (
@@ -1739,6 +2164,7 @@ export function AIModalDialog({
   models,
   defaultModelId,
   analytics = false,
+  feedbackEnabled = true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1750,6 +2176,7 @@ export function AIModalDialog({
   models?: AIModelOption[];
   defaultModelId?: string;
   analytics?: boolean;
+  feedbackEnabled?: boolean;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [aiInput, setAiInput] = useState("");
@@ -1833,6 +2260,7 @@ export function AIModalDialog({
           models={models}
           defaultModelId={defaultModelId}
           analytics={analytics}
+          feedbackEnabled={feedbackEnabled}
           surface="modal"
         />
 

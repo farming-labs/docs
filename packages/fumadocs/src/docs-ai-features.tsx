@@ -35,6 +35,7 @@ interface DocsAIFeaturesProps {
   models?: { id: string; label: string }[];
   defaultModelId?: string;
   analytics?: boolean;
+  feedbackEnabled?: boolean;
 }
 
 export function DocsAIFeatures({
@@ -51,6 +52,7 @@ export function DocsAIFeatures({
   models,
   defaultModelId,
   analytics = false,
+  feedbackEnabled = true,
 }: DocsAIFeaturesProps) {
   const searchParams = useWindowSearchParams();
   const activeLocale = resolveClientLocale(searchParams, locale);
@@ -67,6 +69,7 @@ export function DocsAIFeatures({
         models={models}
         defaultModelId={defaultModelId}
         analytics={analytics}
+        feedbackEnabled={feedbackEnabled}
       />
     );
   }
@@ -82,6 +85,7 @@ export function DocsAIFeatures({
         models={models}
         defaultModelId={defaultModelId}
         analytics={analytics}
+        feedbackEnabled={feedbackEnabled}
       />
     );
   }
@@ -99,6 +103,7 @@ export function DocsAIFeatures({
       models={models}
       defaultModelId={defaultModelId}
       analytics={analytics}
+      feedbackEnabled={feedbackEnabled}
     />
   );
 }
@@ -112,6 +117,7 @@ function SearchModeAI({
   models,
   defaultModelId,
   analytics,
+  feedbackEnabled,
 }: {
   api: string;
   suggestedQuestions?: string[];
@@ -121,6 +127,7 @@ function SearchModeAI({
   models?: { id: string; label: string }[];
   defaultModelId?: string;
   analytics?: boolean;
+  feedbackEnabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -184,6 +191,7 @@ function SearchModeAI({
       models={models}
       defaultModelId={defaultModelId}
       analytics={analytics}
+      feedbackEnabled={feedbackEnabled}
     />
   );
 }
@@ -197,6 +205,7 @@ function SidebarIconModeAI({
   models,
   defaultModelId,
   analytics,
+  feedbackEnabled,
 }: {
   api: string;
   suggestedQuestions?: string[];
@@ -206,6 +215,7 @@ function SidebarIconModeAI({
   models?: { id: string; label: string }[];
   defaultModelId?: string;
   analytics?: boolean;
+  feedbackEnabled?: boolean;
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -269,6 +279,7 @@ function SidebarIconModeAI({
         models={models}
         defaultModelId={defaultModelId}
         analytics={analytics}
+        feedbackEnabled={feedbackEnabled}
       />
       <AIModalDialog
         open={aiOpen}
@@ -281,6 +292,7 @@ function SidebarIconModeAI({
         models={models}
         defaultModelId={defaultModelId}
         analytics={analytics}
+        feedbackEnabled={feedbackEnabled}
       />
     </>
   );

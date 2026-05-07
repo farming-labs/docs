@@ -913,6 +913,11 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const aiSuggestedQuestions = aiConfig?.suggestedQuestions;
   const aiLabel = aiConfig?.aiLabel;
   const aiLoaderVariant = aiConfig?.loader;
+  const aiFeedbackEnabled =
+    aiConfig?.feedback === false ||
+    (typeof aiConfig?.feedback === "object" && aiConfig.feedback.enabled === false)
+      ? false
+      : true;
   const aiLoadingComponentHtml =
     typeof aiConfig?.loadingComponent === "function"
       ? serializeIcon(aiConfig.loadingComponent({ name: aiLabel || "AI" }))
@@ -1022,6 +1027,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
               models={aiModels}
               defaultModelId={aiDefaultModelId}
               analytics={analyticsEnabled}
+              feedbackEnabled={aiFeedbackEnabled}
             />
           </Suspense>
         )}

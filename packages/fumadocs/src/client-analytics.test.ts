@@ -13,6 +13,7 @@ const CLIENT_ANALYTICS_EVENTS = [
   "ai_close",
   "ai_question",
   "ai_response",
+  "ai_feedback",
   "ai_error",
   "ai_clear",
   "page_action_copy_markdown",

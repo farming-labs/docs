@@ -255,6 +255,9 @@ export default defineDocs({
       defaultModel: "gpt-4o-mini",
     },
     aiLabel: "DocsBot",
+    onActions(data) {
+      console.log("[@farming-labs/docs:ask-ai-action]", data);
+    },
     suggestedQuestions: [
       "How do I get started?",
       "How do I create my own theme?",
