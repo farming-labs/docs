@@ -174,26 +174,32 @@ Number of search results used as context for the AI. More = more context, higher
 
 ### feedback
 
-Like/dislike buttons shown after a completed Ask AI answer.
+Copy, like, and dislike action row shown after a completed Ask AI answer. Set `feedback: false` to
+hide the row.
 
 | Type | Default |
 | ---- | ------- |
 | `boolean \| { enabled?: boolean; onFeedback?: (data) => void \| Promise<void> }` | `true` |
 
+### onActions
+
+Single callback for copy, like, and dislike actions. Use `data.type` to branch.
+
 ```ts
 ai: {
   enabled: true,
-  feedback: {
-    onFeedback(data) {
-      console.log(data.value, data.question, data.answer, data.model);
-    },
+  onActions(data) {
+    if (data.type === "copy") console.log("Copied", data.answer);
+    if (data.type === "like") console.log("Helpful", data.question);
+    if (data.type === "dislike") console.log("Not helpful", data.question);
   },
 }
 ```
 
-The callback receives the rating value, question, answer, model, UI surface, URL/path, and visible
-chat messages up to that answer. The client also dispatches `fd:ai-feedback` and emits
-`ai_feedback` when analytics is enabled.
+The callback receives the action type, question, answer, model, UI surface, URL/path, visible chat
+messages up to that answer, and `copied` for copy actions. Like/dislike also dispatch the legacy
+`fd:ai-feedback` browser event and emit `ai_feedback` when analytics is enabled. All actions
+dispatch `fd:ai-action`.
 
 ### Retrieval quality
 

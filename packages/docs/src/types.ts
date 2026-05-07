@@ -1161,10 +1161,26 @@ export interface GithubConfig {
 }
 
 export type DocsAskAIFeedbackValue = "like" | "dislike";
+export type DocsAskAIActionType = "copy" | DocsAskAIFeedbackValue;
 
 export interface DocsAskAIFeedbackMessage {
   role: "user" | "assistant";
   content: string;
+}
+
+export interface DocsAskAIActionData {
+  type: DocsAskAIActionType;
+  value?: DocsAskAIFeedbackValue;
+  question: string;
+  answer: string;
+  messageId?: string;
+  messageIndex?: number;
+  model?: string;
+  surface?: string;
+  url?: string;
+  path?: string;
+  messages?: DocsAskAIFeedbackMessage[];
+  copied?: boolean;
 }
 
 export interface DocsAskAIFeedbackData {
@@ -1573,6 +1589,25 @@ export interface AIConfig {
    * ```
    */
   feedback?: boolean | DocsAskAIFeedbackConfig;
+
+  /**
+   * Called when a user clicks an Ask AI response action.
+   *
+   * `data.type` is `"copy"`, `"like"`, or `"dislike"`.
+   *
+   * @example
+   * ```ts
+   * ai: {
+   *   enabled: true,
+   *   onActions(data) {
+   *     if (data.type === "copy") console.log("Copied", data.answer);
+   *     if (data.type === "like") console.log("Helpful", data.question);
+   *     if (data.type === "dislike") console.log("Not helpful", data.question);
+   *   },
+   * }
+   * ```
+   */
+  onActions?: (data: DocsAskAIActionData) => void | Promise<void>;
 }
 
 /**

@@ -24,7 +24,12 @@ import {
 import { createPortal } from "react-dom";
 import { highlight } from "sugar-high";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
-import type { DocsAskAIFeedbackData, DocsAskAIFeedbackValue } from "@farming-labs/docs";
+import type {
+  DocsAskAIActionData,
+  DocsAskAIActionType,
+  DocsAskAIFeedbackData,
+  DocsAskAIFeedbackValue,
+} from "@farming-labs/docs";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -47,6 +52,7 @@ interface ChatMessage {
 type AIModelOption = { id: string; label: string };
 
 interface DocsWindowHooks extends Window {
+  __fdOnAIActions__?: (data: DocsAskAIActionData) => void | Promise<void>;
   __fdOnAIFeedback__?: (data: DocsAskAIFeedbackData) => void | Promise<void>;
 }
 
@@ -66,13 +72,14 @@ function getLastUserQuestion(messages: ChatMessage[], assistantIndex: number): s
   return "";
 }
 
-function buildFeedbackPayload(options: {
-  value: DocsAskAIFeedbackValue;
+function buildActionPayload(options: {
+  type: DocsAskAIActionType;
   message: ChatMessage;
   messages: ChatMessage[];
   index: number;
   surface: string;
-}): DocsAskAIFeedbackData {
+  copied?: boolean;
+}): DocsAskAIActionData {
   const location =
     typeof window !== "undefined"
       ? {
@@ -82,7 +89,8 @@ function buildFeedbackPayload(options: {
       : {};
 
   return {
-    value: options.value,
+    type: options.type,
+    value: options.type === "like" || options.type === "dislike" ? options.type : undefined,
     question: getLastUserQuestion(options.messages, options.index),
     answer: options.message.content,
     messageId: options.message.id,
@@ -92,8 +100,41 @@ function buildFeedbackPayload(options: {
     messages: options.messages
       .slice(0, options.index + 1)
       .map((message) => ({ role: message.role, content: message.content })),
+    copied: options.copied,
     ...location,
   };
+}
+
+function toFeedbackPayload(data: DocsAskAIActionData): DocsAskAIFeedbackData | null {
+  if (data.type !== "like" && data.type !== "dislike") return null;
+
+  return {
+    value: data.type,
+    question: data.question,
+    answer: data.answer,
+    messageId: data.messageId,
+    messageIndex: data.messageIndex,
+    model: data.model,
+    surface: data.surface,
+    url: data.url,
+    path: data.path,
+    messages: data.messages,
+  };
+}
+
+function emitAskAIAction(data: DocsAskAIActionData) {
+  if (typeof window === "undefined") return;
+
+  try {
+    const result = (window as DocsWindowHooks).__fdOnAIActions__?.(data);
+    if (result && typeof (result as Promise<void>).catch === "function") {
+      void (result as Promise<void>).catch(() => {});
+    }
+  } catch {}
+
+  try {
+    window.dispatchEvent(new CustomEvent("fd:ai-action", { detail: data }));
+  } catch {}
 }
 
 function emitAskAIFeedback(data: DocsAskAIFeedbackData, analytics?: boolean) {
@@ -682,13 +723,15 @@ function AIFeedbackControls({
   onSelect,
 }: {
   value?: DocsAskAIFeedbackValue;
-  onCopy: () => void;
+  onCopy: () => boolean | Promise<boolean>;
   onSelect: (value: DocsAskAIFeedbackValue) => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const handleCopy = useCallback(() => {
+  const handleCopy = useCallback(async () => {
+    const didCopy = await onCopy();
+    if (!didCopy) return;
+
     setCopied(true);
-    onCopy();
     window.setTimeout(() => setCopied(false), 1500);
   }, [onCopy]);
 
@@ -942,22 +985,37 @@ function AIChat({
         itemIndex === index ? updatedMessage : item,
       );
       setMessages(updatedMessages);
-      emitAskAIFeedback(
-        buildFeedbackPayload({
-          value,
-          message: updatedMessage,
-          messages: updatedMessages,
-          index,
-          surface,
-        }),
-        analytics,
-      );
+      const actionPayload = buildActionPayload({
+        type: value,
+        message: updatedMessage,
+        messages: updatedMessages,
+        index,
+        surface,
+      });
+      emitAskAIAction(actionPayload);
+
+      const feedbackPayload = toFeedbackPayload(actionPayload);
+      if (feedbackPayload) emitAskAIFeedback(feedbackPayload, analytics);
     },
     [analytics, messages, setMessages, surface],
   );
-  const handleCopyMessage = useCallback((message: ChatMessage) => {
-    void copyTextToClipboard(message.content);
-  }, []);
+  const handleCopyMessage = useCallback(
+    async (message: ChatMessage, index: number) => {
+      const copied = await copyTextToClipboard(message.content);
+      emitAskAIAction(
+        buildActionPayload({
+          type: "copy",
+          message,
+          messages,
+          index,
+          surface,
+          copied,
+        }),
+      );
+      return copied;
+    },
+    [messages, surface],
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
@@ -1002,7 +1060,7 @@ function AIChat({
                         !(isStreaming && i === messages.length - 1) && (
                           <AIFeedbackControls
                             value={msg.feedback}
-                            onCopy={() => handleCopyMessage(msg)}
+                            onCopy={() => handleCopyMessage(msg, i)}
                             onSelect={(value) => handleFeedback(msg, i, value)}
                           />
                         )}
@@ -1837,22 +1895,37 @@ function FullModalAIChat({
         itemIndex === index ? updatedMessage : item,
       );
       setMessages(updatedMessages);
-      emitAskAIFeedback(
-        buildFeedbackPayload({
-          value,
-          message: updatedMessage,
-          messages: updatedMessages,
-          index,
-          surface: "full-modal",
-        }),
-        analytics,
-      );
+      const actionPayload = buildActionPayload({
+        type: value,
+        message: updatedMessage,
+        messages: updatedMessages,
+        index,
+        surface: "full-modal",
+      });
+      emitAskAIAction(actionPayload);
+
+      const feedbackPayload = toFeedbackPayload(actionPayload);
+      if (feedbackPayload) emitAskAIFeedback(feedbackPayload, analytics);
     },
     [analytics, messages, setMessages],
   );
-  const handleCopyMessage = useCallback((message: ChatMessage) => {
-    void copyTextToClipboard(message.content);
-  }, []);
+  const handleCopyMessage = useCallback(
+    async (message: ChatMessage, index: number) => {
+      const copied = await copyTextToClipboard(message.content);
+      emitAskAIAction(
+        buildActionPayload({
+          type: "copy",
+          message,
+          messages,
+          index,
+          surface: "full-modal",
+          copied,
+        }),
+      );
+      return copied;
+    },
+    [messages],
+  );
 
   const handleKeyDown = (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -1901,7 +1974,7 @@ function FullModalAIChat({
                           !(isStreaming && i === messages.length - 1) && (
                             <AIFeedbackControls
                               value={msg.feedback}
-                              onCopy={() => handleCopyMessage(msg)}
+                              onCopy={() => handleCopyMessage(msg, i)}
                               onSelect={(value) => handleFeedback(msg, i, value)}
                             />
                           )}

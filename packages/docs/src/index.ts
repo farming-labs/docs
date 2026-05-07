@@ -131,6 +131,8 @@ export type {
   OpenDocsProvider,
   GithubConfig,
   AIConfig,
+  DocsAskAIActionData,
+  DocsAskAIActionType,
   DocsAskAIFeedbackConfig,
   DocsAskAIFeedbackData,
   DocsAskAIFeedbackMessage,

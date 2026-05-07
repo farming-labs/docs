@@ -7,18 +7,21 @@ import type {
   CodeBlockCopyData,
   DocsAnalyticsConfig,
   DocsAnalyticsEvent,
+  DocsAskAIActionData,
   DocsAskAIFeedbackData,
   DocsFeedbackData,
 } from "@farming-labs/docs";
 
 type CopyHandler = (data: CodeBlockCopyData) => void;
 type FeedbackHandler = (data: DocsFeedbackData) => void | Promise<void>;
+type AIActionHandler = (data: DocsAskAIActionData) => void | Promise<void>;
 type AIFeedbackHandler = (data: DocsAskAIFeedbackData) => void | Promise<void>;
 type AnalyticsHandler = (event: DocsAnalyticsEvent) => void | Promise<void>;
 
 interface DocsWindowHooks extends Window {
   __fdOnCopyClick__?: CopyHandler;
   __fdOnFeedback__?: FeedbackHandler;
+  __fdOnAIActions__?: AIActionHandler;
   __fdOnAIFeedback__?: AIFeedbackHandler;
   __fdAnalytics__?: AnalyticsHandler;
   __fdAnalyticsQueue__?: DocsAnalyticsEvent[];
@@ -115,16 +118,19 @@ function useCodeCopyAnalytics(analytics?: boolean | DocsAnalyticsConfig) {
 export function DocsClientHooks({
   onCopyClick,
   onFeedback,
+  onAIActions,
   onAIFeedback,
   analytics,
 }: {
   onCopyClick?: CopyHandler;
   onFeedback?: FeedbackHandler;
+  onAIActions?: AIActionHandler;
   onAIFeedback?: AIFeedbackHandler;
   analytics?: boolean | DocsAnalyticsConfig;
 }) {
   useWindowHook("__fdOnCopyClick__", onCopyClick);
   useWindowHook("__fdOnFeedback__", onFeedback);
+  useWindowHook("__fdOnAIActions__", onAIActions);
   useWindowHook("__fdOnAIFeedback__", onAIFeedback);
   useAnalyticsHook(analytics);
   useCodeCopyAnalytics(analytics);

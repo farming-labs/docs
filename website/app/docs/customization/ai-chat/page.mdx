@@ -378,27 +378,39 @@ export default defineDocs({
 
 ### `feedback`
 
-Completed Ask AI responses show like/dislike buttons by default. Use `feedback.onFeedback` to send
-ratings to your own analytics, data warehouse, or issue triage pipeline.
+Completed Ask AI responses show copy, like, and dislike actions by default. Set `feedback: false`
+to hide the action row.
 
-| Type                                             | Default |
-| ------------------------------------------------ | ------- |
+| Type | Default |
+| ---- | ------- |
 | `boolean \| { enabled?: boolean; onFeedback?: (data) => void \| Promise<void> }` | `true` |
+
+### `onActions`
+
+Single callback for Ask AI response actions. Use `data.type` to handle `"copy"`, `"like"`, and
+`"dislike"` from one place.
 
 ```ts title="docs.config.ts"
 ai: {
   enabled: true,
-  feedback: {
-    onFeedback(data) {
-      console.log(data.value, data.question, data.answer, data.model);
-    },
+  onActions(data) {
+    if (data.type === "copy") {
+      console.log("Copied AI response", data.answer);
+    }
+
+    if (data.type === "like" || data.type === "dislike") {
+      console.log(data.type, data.question, data.answer, data.model);
+    }
   },
 }
 ```
 
-The callback receives `value` (`"like"` or `"dislike"`), `question`, `answer`, `model`, `surface`,
-`url`, `path`, and the visible chat messages up to that answer. The UI also dispatches a
-`fd:ai-feedback` browser event and emits an `ai_feedback` analytics event when analytics is enabled.
+The callback receives `type`, `question`, `answer`, `model`, `surface`, `url`, `path`, and the
+visible chat messages up to that answer. Copy actions also include `copied`. Like/dislike actions
+also include `value` for compatibility with `feedback.onFeedback`.
+
+Like/dislike still dispatch the legacy `fd:ai-feedback` browser event and emit an `ai_feedback`
+analytics event when analytics is enabled. All three actions dispatch `fd:ai-action`.
 
 ### `suggestedQuestions`
 

@@ -52,6 +52,7 @@ export default function DocsClientCallbacks(props?: { apiReferencePrimaryServerU
           ? docsConfig.ai.feedback.onFeedback
           : undefined
       }
+      onAIActions={docsConfig.ai?.onActions}
     />
   );
 }

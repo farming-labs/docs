@@ -255,10 +255,8 @@ export default defineDocs({
       defaultModel: "gpt-4o-mini",
     },
     aiLabel: "DocsBot",
-    feedback: {
-      onFeedback(data) {
-        console.log("[@farming-labs/docs:ask-ai-feedback]", data);
-      },
+    onActions(data) {
+      console.log("[@farming-labs/docs:ask-ai-action]", data);
     },
     suggestedQuestions: [
       "How do I get started?",
