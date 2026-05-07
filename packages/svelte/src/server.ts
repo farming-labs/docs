@@ -506,7 +506,8 @@ function findPageInMap(
  */
 export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   const entry = (config.entry as string) ?? "docs";
-  const analytics = config.observability ?? config.analytics;
+  const analytics = config.analytics;
+  const observability = config.observability;
   const contentDirBase =
     ((config as Record<string, unknown>).contentDir as string | undefined) ?? entry;
   const rootDir = path.resolve(
@@ -1022,7 +1023,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     };
 
     async function emitTrace(traceEvent: DocsAgentTraceEventInput): Promise<void> {
-      await emitDocsAgentTraceEvent(analytics, {
+      await emitDocsAgentTraceEvent(observability, {
         ...traceBase,
         ...traceEvent,
       });
@@ -1036,7 +1037,6 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       const elapsed = Math.max(0, Date.now() - requestStartedAt);
       const common = {
         name: "ask-ai",
-        parentSpanId: runSpanId,
         startedAt: trace.startedAt,
         endedAt,
         durationMs: elapsed,
@@ -1048,9 +1048,9 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         metadata: { reason },
       };
 
-      await emitTrace({ ...common, type: "error" });
-      await emitTrace({ ...common, type: "run.error" });
-      await emitTrace({ ...common, type: "run.end" });
+      await emitTrace({ ...common, type: "error", parentSpanId: runSpanId });
+      await emitTrace({ ...common, type: "run.error", spanId: runSpanId });
+      await emitTrace({ ...common, type: "run.end", spanId: runSpanId });
     }
 
     await emitTrace({
@@ -1362,7 +1362,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         retrievedCount: scored.length,
         model: resolved.model,
       });
-      return new Response(JSON.stringify({ error: `LLM API request failed: ${message}` }), {
+      return new Response(JSON.stringify({ error: "LLM API request failed." }), {
         status: 502,
         headers: { "Content-Type": "application/json" },
       });
@@ -1481,7 +1481,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     await emitTrace({
       type: "run.end",
       name: "ask-ai",
-      parentSpanId: runSpanId,
+      spanId: runSpanId,
       startedAt: trace.startedAt,
       endedAt: new Date().toISOString(),
       durationMs: runDurationMs,
@@ -1531,6 +1531,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     },
     mcp: (config as Record<string, unknown>).mcp as Record<string, unknown> | boolean | undefined,
     analytics,
+    observability,
     defaultName: mcpSiteTitle,
   });
 

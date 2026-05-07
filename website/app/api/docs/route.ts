@@ -9,7 +9,8 @@ export const { GET, POST } = createDocsAPI({
   feedback: docsConfig.feedback,
   mcp: docsConfig.mcp,
   search: docsConfig.search,
-  analytics: docsConfig.observability ?? docsConfig.analytics,
+  analytics: docsConfig.analytics,
+  observability: docsConfig.observability,
   ai: docsConfig.ai,
 });
 

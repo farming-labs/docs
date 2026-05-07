@@ -42,6 +42,7 @@ import type {
   DocsAgentFeedbackContext,
   DocsAgentFeedbackData,
   DocsI18nConfig,
+  DocsObservabilityConfig,
   FeedbackConfig,
 } from "@farming-labs/docs";
 import {
@@ -107,8 +108,8 @@ interface DocsAPIOptions {
   search?: boolean | DocsSearchConfig;
   /** Analytics configuration */
   analytics?: boolean | DocsAnalyticsConfig;
-  /** Observability configuration. Preferred for logs, traces, and metrics callbacks. */
-  observability?: boolean | DocsAnalyticsConfig;
+  /** Observability configuration for logs, traces, and metrics callbacks. */
+  observability?: boolean | DocsObservabilityConfig;
   /** Feedback configuration */
   feedback?: boolean | FeedbackConfig;
   /** MCP configuration used for the agent discovery spec. */
@@ -124,7 +125,7 @@ interface DocsMCPAPIOptions {
   mcp?: boolean | DocsMcpConfig;
   search?: boolean | DocsSearchConfig;
   analytics?: boolean | DocsAnalyticsConfig;
-  observability?: boolean | DocsAnalyticsConfig;
+  observability?: boolean | DocsObservabilityConfig;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -1601,6 +1602,7 @@ async function handleAskAI(
   indexes: DocsSearchSourcePage[],
   aiConfig: AIOptions,
   analytics?: boolean | DocsAnalyticsConfig,
+  observability?: boolean | DocsObservabilityConfig,
   analyticsContext: { locale?: string } = {},
 ): Promise<Response> {
   const url = new URL(request.url);
@@ -1616,7 +1618,7 @@ async function handleAskAI(
   };
 
   async function emitTrace(event: DocsAgentTraceEventInput): Promise<void> {
-    await emitDocsAgentTraceEvent(analytics, {
+    await emitDocsAgentTraceEvent(observability, {
       ...traceBase,
       ...event,
     });
@@ -1630,7 +1632,6 @@ async function handleAskAI(
     const elapsed = Math.max(0, Date.now() - requestStartedAt);
     const common = {
       name: "ask-ai",
-      parentSpanId: runSpanId,
       startedAt: trace.startedAt,
       endedAt,
       durationMs: elapsed,
@@ -1645,14 +1646,17 @@ async function handleAskAI(
     await emitTrace({
       ...common,
       type: "error",
+      parentSpanId: runSpanId,
     });
     await emitTrace({
       ...common,
       type: "run.error",
+      spanId: runSpanId,
     });
     await emitTrace({
       ...common,
       type: "run.end",
+      spanId: runSpanId,
     });
   }
 
@@ -1972,7 +1976,7 @@ async function handleAskAI(
       retrievedCount: scored.length,
       model: resolved.model,
     });
-    return Response.json({ error: `LLM API request failed: ${message}` }, { status: 502 });
+    return Response.json({ error: "LLM API request failed." }, { status: 502 });
   }
 
   if (!llmResponse.ok) {
@@ -2097,7 +2101,7 @@ async function handleAskAI(
   await emitTrace({
     type: "run.end",
     name: "ask-ai",
-    parentSpanId: runSpanId,
+    spanId: runSpanId,
     startedAt: trace.startedAt,
     endedAt: new Date().toISOString(),
     durationMs: runDurationMs,
@@ -2224,7 +2228,8 @@ function generateLlmsTxt(
 export function createDocsAPI(options?: DocsAPIOptions) {
   const root = options?.rootDir ?? process.cwd();
   const entry = options?.entry ?? readEntry(root);
-  const analytics = options?.observability ?? options?.analytics;
+  const analytics = options?.analytics;
+  const observability = options?.observability;
   const appDir = getNextAppDir(root);
   const contentDir = options?.contentDir ?? path.join(appDir, entry);
   const changelogConfig = resolveChangelogConfig(options?.changelog);
@@ -2790,7 +2795,9 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       }
 
       const ctx = resolveContextFromRequest(request);
-      return handleAskAI(request, getIndexes(ctx), aiConfig, analytics, { locale: ctx.locale });
+      return handleAskAI(request, getIndexes(ctx), aiConfig, analytics, observability, {
+        locale: ctx.locale,
+      });
     },
   };
 }
@@ -2826,7 +2833,8 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
     source,
     mcp: options.mcp ?? readMcpConfig(rootDir),
     search: options.search,
-    analytics: options.observability ?? options.analytics,
+    analytics: options.analytics,
+    observability: options.observability,
     defaultName: navTitle,
   });
 

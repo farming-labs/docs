@@ -797,9 +797,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const tocConfig = config.theme?.ui?.layout?.toc;
   const tocEnabled = tocConfig?.enabled !== false;
   const tocStyle = (tocConfig as any)?.style as "default" | "directional" | undefined;
-  const analyticsEnabled = resolveDocsAnalyticsConfig(
-    config.observability ?? config.analytics,
-  ).enabled;
+  const analyticsEnabled = resolveDocsAnalyticsConfig(config.analytics).enabled;
 
   const localeContext = resolveDocsLocaleContext(config, options?.locale);
   const i18n = resolveDocsI18nConfig(getDocsI18n(config));

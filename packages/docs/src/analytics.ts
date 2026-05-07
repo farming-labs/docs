@@ -8,9 +8,13 @@ import type {
   DocsAnalyticsConfig,
   DocsAnalyticsEvent,
   DocsAnalyticsEventInput,
+  DocsObservabilityConfig,
+  DocsObservabilityEvent,
+  DocsObservabilityEventInput,
 } from "./types.js";
 
 const ANALYTICS_LOG_PREFIX = "[@farming-labs/docs:analytics]";
+const OBSERVABILITY_LOG_PREFIX = "[@farming-labs/docs:observability]";
 
 export const DOCS_AGENT_TRACE_EVENT_TYPES = [
   "run.start",
@@ -46,6 +50,13 @@ export interface ResolvedDocsAnalyticsConfig {
   console: false | "log" | "info" | "debug";
   includeInputs: boolean;
   onEvent?: (event: DocsAnalyticsEvent) => void | Promise<void>;
+}
+
+export interface ResolvedDocsObservabilityConfig {
+  enabled: boolean;
+  console: false | "log" | "info" | "debug";
+  includeInputs: boolean;
+  onEvent?: (event: DocsObservabilityEvent) => void | Promise<void>;
 }
 
 function composeAnalyticsHandlers(
@@ -153,11 +164,57 @@ export function resolveDocsAnalyticsConfig(
   };
 }
 
+export function resolveDocsObservabilityConfig(
+  observability?: boolean | DocsObservabilityConfig,
+): ResolvedDocsObservabilityConfig {
+  if (!observability) {
+    return {
+      enabled: false,
+      console: false,
+      includeInputs: false,
+    };
+  }
+
+  if (observability === true) {
+    return {
+      enabled: true,
+      console: "info",
+      includeInputs: false,
+    };
+  }
+
+  const hasEventHandler = typeof observability.onEvent === "function";
+
+  return {
+    enabled: observability.enabled !== false,
+    console: resolveConsoleLevel(observability.console, hasEventHandler),
+    includeInputs: observability.includeInputs === true,
+    onEvent: observability.onEvent,
+  };
+}
+
 function normalizeAnalyticsEvent(
   event: DocsAnalyticsEventInput,
   config: ResolvedDocsAnalyticsConfig,
 ): DocsAnalyticsEvent {
   const normalized: DocsAnalyticsEvent = {
+    ...event,
+    source: event.source ?? "server",
+    timestamp: event.timestamp ?? new Date().toISOString(),
+  };
+
+  if (!config.includeInputs && normalized.input) {
+    delete normalized.input;
+  }
+
+  return normalized;
+}
+
+function normalizeObservabilityEvent(
+  event: DocsObservabilityEventInput,
+  config: ResolvedDocsObservabilityConfig,
+): DocsObservabilityEvent {
+  const normalized: DocsObservabilityEvent = {
     ...event,
     source: event.source ?? "server",
     timestamp: event.timestamp ?? new Date().toISOString(),
@@ -195,13 +252,38 @@ export async function emitDocsAnalyticsEvent(
   }
 }
 
+export async function emitDocsObservabilityEvent(
+  observability: boolean | DocsObservabilityConfig | undefined,
+  event: DocsObservabilityEventInput,
+): Promise<void> {
+  const resolved = resolveDocsObservabilityConfig(observability);
+  if (!resolved.enabled) return;
+
+  const normalized = normalizeObservabilityEvent(event, resolved);
+
+  if (resolved.console) {
+    const logger = console[resolved.console] ?? console.info;
+    logger.call(console, OBSERVABILITY_LOG_PREFIX, normalized);
+  }
+
+  if (!resolved.onEvent) return;
+
+  try {
+    await resolved.onEvent(normalized);
+  } catch (error) {
+    if (resolved.console !== false) {
+      console.warn(`${OBSERVABILITY_LOG_PREFIX} onEvent failed`, error);
+    }
+  }
+}
+
 export async function emitDocsAgentTraceEvent(
-  analytics: boolean | DocsAnalyticsConfig | undefined,
+  observability: boolean | DocsObservabilityConfig | undefined,
   event: DocsAgentTraceEventInput,
 ): Promise<void> {
   const timestamp = event.timestamp ?? new Date().toISOString();
 
-  await emitDocsAnalyticsEvent(analytics, {
+  await emitDocsObservabilityEvent(observability, {
     ...event,
     timestamp,
     source: event.source ?? "server",

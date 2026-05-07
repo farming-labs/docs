@@ -66,22 +66,30 @@ describe("defineDocs", () => {
     });
   });
 
-  it("uses observability as the preferred event stream config", () => {
-    const onEvent = vi.fn();
+  it("keeps analytics and observability as separate event stream configs", () => {
+    const onAnalyticsEvent = vi.fn();
+    const onObservabilityEvent = vi.fn();
 
     const config = defineDocs({
       entry: "docs",
-      analytics: false,
+      analytics: {
+        console: "info",
+        onEvent: onAnalyticsEvent,
+      },
       observability: {
         console: "debug",
-        onEvent,
+        onEvent: onObservabilityEvent,
       },
     });
 
+    expect(config.analytics).toEqual({
+      console: "info",
+      onEvent: onAnalyticsEvent,
+    });
     expect(config.observability).toEqual({
       console: "debug",
-      onEvent,
+      onEvent: onObservabilityEvent,
     });
-    expect(config.analytics).toEqual(config.observability);
+    expect(config.analytics).not.toBe(config.observability);
   });
 });

@@ -5,7 +5,9 @@ export {
   createDocsAgentTraceId,
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
+  emitDocsObservabilityEvent,
   resolveDocsAnalyticsConfig,
+  resolveDocsObservabilityConfig,
 } from "./analytics.js";
 export {
   resolveApiReferenceConfig,
@@ -78,9 +80,15 @@ export type {
   DocsAnalyticsEvent,
   DocsAnalyticsEventInput,
   DocsObservabilityConfig,
+  DocsObservabilityEvent,
+  DocsObservabilityEventInput,
   DocsAgentTraceEventInput,
   DocsAgentTraceEventType,
   DocsAgentTraceStatus,
 } from "./types.js";
-export type { DocsAgentTraceContext, ResolvedDocsAnalyticsConfig } from "./analytics.js";
+export type {
+  DocsAgentTraceContext,
+  ResolvedDocsAnalyticsConfig,
+  ResolvedDocsObservabilityConfig,
+} from "./analytics.js";
 export type { DocsCloudAnalyticsOptions } from "./cloud-analytics.js";

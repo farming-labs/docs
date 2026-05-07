@@ -20,6 +20,7 @@ import {
 import type {
   DocsAnalyticsConfig,
   DocsMcpConfig,
+  DocsObservabilityConfig,
   DocsSearchConfig,
   DocsSearchSourcePage,
   McpDocsSearchConfig,
@@ -95,6 +96,7 @@ interface CreateDocsMcpServerOptions {
   mcp?: boolean | DocsMcpConfig;
   search?: boolean | DocsSearchConfig;
   analytics?: boolean | DocsAnalyticsConfig;
+  observability?: boolean | DocsObservabilityConfig;
   defaultName?: string;
   defaultVersion?: string;
 }
@@ -297,7 +299,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         const startedAt = nowMs();
         const trace = createDocsAgentTraceContext("mcp.tool.list_pages");
         const callSpanId = createDocsAgentTraceId("span");
-        await emitDocsAgentTraceEvent(options.analytics, {
+        await emitDocsAgentTraceEvent(options.observability, {
           type: "tool.call",
           source: "mcp",
           traceId: trace.traceId,
@@ -323,7 +325,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               durationMs: elapsed,
             },
           });
-          await emitDocsAgentTraceEvent(options.analytics, {
+          await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.result",
             source: "mcp",
             traceId: trace.traceId,
@@ -347,7 +349,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           };
         } catch (error) {
           const elapsed = durationMs(startedAt);
-          await emitDocsAgentTraceEvent(options.analytics, {
+          await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.error",
             source: "mcp",
             traceId: trace.traceId,
@@ -380,7 +382,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         const startedAt = nowMs();
         const trace = createDocsAgentTraceContext("mcp.tool.get_navigation");
         const callSpanId = createDocsAgentTraceId("span");
-        await emitDocsAgentTraceEvent(options.analytics, {
+        await emitDocsAgentTraceEvent(options.observability, {
           type: "tool.call",
           source: "mcp",
           traceId: trace.traceId,
@@ -406,7 +408,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               durationMs: elapsed,
             },
           });
-          await emitDocsAgentTraceEvent(options.analytics, {
+          await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.result",
             source: "mcp",
             traceId: trace.traceId,
@@ -430,7 +432,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           };
         } catch (error) {
           const elapsed = durationMs(startedAt);
-          await emitDocsAgentTraceEvent(options.analytics, {
+          await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.error",
             source: "mcp",
             traceId: trace.traceId,
@@ -464,7 +466,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         const resolvedLimit = limit ?? 10;
         const trace = createDocsAgentTraceContext("mcp.tool.search_docs");
         const callSpanId = createDocsAgentTraceId("span");
-        await emitDocsAgentTraceEvent(options.analytics, {
+        await emitDocsAgentTraceEvent(options.observability, {
           type: "tool.call",
           source: "mcp",
           traceId: trace.traceId,
@@ -501,7 +503,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               durationMs: elapsed,
             },
           });
-          await emitDocsAgentTraceEvent(options.analytics, {
+          await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.result",
             source: "mcp",
             traceId: trace.traceId,
@@ -525,7 +527,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           };
         } catch (error) {
           const elapsed = durationMs(startedAt);
-          await emitDocsAgentTraceEvent(options.analytics, {
+          await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.error",
             source: "mcp",
             traceId: trace.traceId,
@@ -558,7 +560,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
         const startedAt = nowMs();
         const trace = createDocsAgentTraceContext("mcp.tool.read_page");
         const callSpanId = createDocsAgentTraceId("span");
-        await emitDocsAgentTraceEvent(options.analytics, {
+        await emitDocsAgentTraceEvent(options.observability, {
           type: "tool.call",
           source: "mcp",
           traceId: trace.traceId,
@@ -600,7 +602,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
                 durationMs: elapsed,
               },
             });
-            await emitDocsAgentTraceEvent(options.analytics, {
+            await emitDocsAgentTraceEvent(options.observability, {
               type: "tool.error",
               source: "mcp",
               traceId: trace.traceId,
@@ -663,7 +665,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               durationMs: elapsed,
             },
           });
-          await emitDocsAgentTraceEvent(options.analytics, {
+          await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.result",
             source: "mcp",
             traceId: trace.traceId,
@@ -689,7 +691,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
           };
         } catch (error) {
           const elapsed = durationMs(startedAt);
-          await emitDocsAgentTraceEvent(options.analytics, {
+          await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.error",
             source: "mcp",
             traceId: trace.traceId,

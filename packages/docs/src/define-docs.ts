@@ -4,8 +4,6 @@ import type { DocsConfig } from "./types.js";
  * Define docs configuration. Validates and returns the config.
  */
 export function defineDocs(config: DocsConfig): DocsConfig {
-  const analytics = config.observability ?? config.analytics;
-
   return {
     entry: config.entry ?? "docs",
     contentDir: config.contentDir,
@@ -17,7 +15,7 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     breadcrumb: config.breadcrumb,
     sidebar: config.sidebar,
     components: config.components,
-    analytics,
+    analytics: config.analytics,
     observability: config.observability,
     onCopyClick: config.onCopyClick,
     feedback: config.feedback,

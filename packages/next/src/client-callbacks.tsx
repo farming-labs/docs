@@ -41,7 +41,7 @@ export default function DocsClientCallbacks(props?: { apiReferencePrimaryServerU
   return (
     <DocsClientHooks
       onCopyClick={docsConfig.onCopyClick}
-      analytics={docsConfig.observability ?? docsConfig.analytics}
+      analytics={docsConfig.analytics}
       onFeedback={
         docsConfig.feedback && typeof docsConfig.feedback === "object"
           ? docsConfig.feedback.onFeedback

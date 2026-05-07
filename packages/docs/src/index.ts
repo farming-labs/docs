@@ -17,7 +17,9 @@ export {
   createDocsAgentTraceId,
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
+  emitDocsObservabilityEvent,
   resolveDocsAnalyticsConfig,
+  resolveDocsObservabilityConfig,
 } from "./analytics.js";
 export { resolveChangelogConfig } from "./changelog.js";
 export { deepMerge } from "./utils.js";
@@ -160,11 +162,17 @@ export type {
   DocsAnalyticsInput,
   DocsAnalyticsSource,
   DocsObservabilityConfig,
+  DocsObservabilityEvent,
+  DocsObservabilityEventInput,
   DocsAgentTraceEventInput,
   DocsAgentTraceEventType,
   DocsAgentTraceStatus,
 } from "./types.js";
-export type { DocsAgentTraceContext, ResolvedDocsAnalyticsConfig } from "./analytics.js";
+export type {
+  DocsAgentTraceContext,
+  ResolvedDocsAnalyticsConfig,
+  ResolvedDocsObservabilityConfig,
+} from "./analytics.js";
 export type { DocsCloudAnalyticsOptions } from "./cloud-analytics.js";
 export type { ChangelogEntrySummary, ResolvedChangelogConfig } from "./changelog.js";
 export type { ResolvedDocsI18n, DocsPathMatch } from "./i18n.js";

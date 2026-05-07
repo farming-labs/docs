@@ -4,9 +4,15 @@ import {
   DOCS_AGENT_TRACE_EVENT_TYPES,
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
+  emitDocsObservabilityEvent,
   resolveDocsAnalyticsConfig,
+  resolveDocsObservabilityConfig,
 } from "./analytics.js";
-import type { DocsAnalyticsEvent, DocsAnalyticsEventType } from "./types.js";
+import type {
+  DocsAnalyticsEvent,
+  DocsAnalyticsEventType,
+  DocsObservabilityEvent,
+} from "./types.js";
 
 const ALL_ANALYTICS_EVENTS = [
   "page_view",
@@ -53,7 +59,7 @@ describe("analytics", () => {
   });
 
   it("emits every built-in analytics event type through the shared hook", async () => {
-    const events: DocsAnalyticsEvent[] = [];
+    const events: DocsObservabilityEvent[] = [];
 
     for (const type of ALL_ANALYTICS_EVENTS) {
       await emitDocsAnalyticsEvent(
@@ -92,7 +98,7 @@ describe("analytics", () => {
   });
 
   it("emits every agent trace event type with measurable fields", async () => {
-    const events: DocsAnalyticsEvent[] = [];
+    const events: DocsObservabilityEvent[] = [];
 
     for (const [index, type] of DOCS_AGENT_TRACE_EVENT_TYPES.entries()) {
       await emitDocsAgentTraceEvent(
@@ -190,6 +196,24 @@ describe("analytics", () => {
     });
   });
 
+  it("resolves observability defaults separately from analytics", () => {
+    expect(resolveDocsObservabilityConfig()).toMatchObject({
+      enabled: false,
+      console: false,
+      includeInputs: false,
+    });
+    expect(resolveDocsObservabilityConfig(true)).toMatchObject({
+      enabled: true,
+      console: "info",
+      includeInputs: false,
+    });
+    expect(resolveDocsObservabilityConfig({ console: false, includeInputs: true })).toMatchObject({
+      enabled: true,
+      console: false,
+      includeInputs: true,
+    });
+  });
+
   it("logs console analytics with the package-scoped prefix", async () => {
     const debug = vi.spyOn(console, "debug").mockImplementation(() => undefined);
 
@@ -209,6 +233,29 @@ describe("analytics", () => {
       expect.objectContaining({
         type: "page_view",
         path: "/docs",
+      }),
+    );
+  });
+
+  it("logs console observability with a separate package-scoped prefix", async () => {
+    const debug = vi.spyOn(console, "debug").mockImplementation(() => undefined);
+
+    await emitDocsObservabilityEvent(
+      {
+        console: "debug",
+      },
+      {
+        type: "tool.call",
+        source: "mcp",
+        name: "read_page",
+      },
+    );
+
+    expect(debug).toHaveBeenCalledWith(
+      "[@farming-labs/docs:observability]",
+      expect.objectContaining({
+        type: "tool.call",
+        name: "read_page",
       }),
     );
   });

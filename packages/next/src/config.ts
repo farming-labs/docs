@@ -105,7 +105,8 @@ export const { GET, POST } = createDocsAPI({
   feedback: docsConfig.feedback,
   mcp: docsConfig.mcp,
   search: docsConfig.search,
-  analytics: docsConfig.observability ?? docsConfig.analytics,
+  analytics: docsConfig.analytics,
+  observability: docsConfig.observability,
   ai: docsConfig.ai,
 });
 
@@ -123,7 +124,8 @@ export const { GET, POST, DELETE } = createDocsMCPAPI({
   nav: docsConfig.nav,
   ordering: docsConfig.ordering,
   search: docsConfig.search,
-  analytics: docsConfig.observability ?? docsConfig.analytics,
+  analytics: docsConfig.analytics,
+  observability: docsConfig.observability,
   mcp: docsConfig.mcp,
 });
 
