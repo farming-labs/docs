@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import type { DocsAnalyticsEvent } from "@farming-labs/docs";
+import type { DocsAnalyticsEvent, DocsObservabilityEvent } from "@farming-labs/docs";
 import { createDocsAPI, createDocsMCPAPI } from "./docs-api.js";
 
 function createDeferredPromise<T = void>() {
@@ -961,7 +961,7 @@ Install the package.
     });
   });
 
-  it("emits analytics for successful Ask AI requests and responses", async () => {
+  it("emits analytics and observability separately for successful Ask AI requests and responses", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-api-ai-analytics-"));
     tempDirs.push(rootDir);
 
@@ -978,7 +978,8 @@ Install the framework with pnpm.
 `,
     );
 
-    const events: DocsAnalyticsEvent[] = [];
+    const analyticsEvents: DocsAnalyticsEvent[] = [];
+    const traceEvents: DocsObservabilityEvent[] = [];
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockResolvedValue(
       new Response("data: {}\n\n", {
@@ -1002,7 +1003,13 @@ Install the framework with pnpm.
         analytics: {
           console: false,
           onEvent(event) {
-            events.push(event);
+            analyticsEvents.push(event);
+          },
+        },
+        observability: {
+          console: false,
+          onEvent(event) {
+            traceEvents.push(event);
           },
         },
       });
@@ -1020,17 +1027,131 @@ Install the framework with pnpm.
       );
 
       expect(response.status).toBe(200);
-      expect(events.map((event) => event.type)).toEqual(["api_ai_request", "api_ai_response"]);
-      expect(events[0]).toMatchObject({
+      expect(analyticsEvents.map((event) => event.type)).toEqual([
+        "api_ai_request",
+        "api_ai_response",
+      ]);
+      expect(traceEvents.map((event) => event.type)).toEqual([
+        "run.start",
+        "user.input",
+        "retrieval.query",
+        "retrieval.result",
+        "prompt.build",
+        "model.call",
+        "model.response",
+        "model.stream",
+        "agent.final",
+        "run.end",
+      ]);
+      expect(analyticsEvents.find((event) => event.type === "api_ai_request")).toMatchObject({
         properties: expect.objectContaining({
           model: "test-model",
           questionLength: 7,
           retrievedCount: 1,
         }),
       });
+      expect(traceEvents.find((event) => event.type === "model.call")).toMatchObject({
+        traceId: expect.any(String),
+        name: "test-model",
+        status: "started",
+        inputPreview: expect.objectContaining({
+          messageCount: 2,
+          stream: true,
+          providerOrigin: "https://llm.example",
+        }),
+      });
+      expect(traceEvents.find((event) => event.type === "run.end")).toMatchObject({
+        traceId: expect.any(String),
+        spanId: traceEvents.find((event) => event.type === "run.start")?.spanId,
+        status: "success",
+        durationMs: expect.any(Number),
+        outputPreview: expect.objectContaining({
+          stream: true,
+          retrievedCount: 1,
+        }),
+      });
       expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe(
         "https://llm.example/v1/chat/completions",
       );
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("keeps upstream Ask AI fetch error details out of API responses", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-api-ai-fetch-error-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Installation"
+---
+
+# Installation
+
+Install the framework with pnpm.
+`,
+    );
+
+    const traceEvents: DocsObservabilityEvent[] = [];
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(new Error("secret upstream detail")) as typeof fetch;
+
+    try {
+      const { POST } = createDocsAPI({
+        rootDir,
+        entry: "docs",
+        ai: {
+          enabled: true,
+          apiKey: "test-key",
+          baseUrl: "https://llm.example/v1",
+          model: "test-model",
+        },
+        observability: {
+          console: false,
+          onEvent(event) {
+            traceEvents.push(event);
+          },
+        },
+      });
+
+      const response = await POST(
+        new Request("http://localhost/api/docs", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: "Install" }],
+          }),
+        }),
+      );
+
+      const body = await response.text();
+      expect(response.status).toBe(502);
+      expect(JSON.parse(body)).toEqual({ error: "LLM API request failed." });
+      expect(body).not.toContain("secret upstream detail");
+
+      const runSpanId = traceEvents.find((event) => event.type === "run.start")?.spanId;
+      expect(runSpanId).toEqual(expect.any(String));
+      expect(traceEvents.find((event) => event.type === "model.error")).toMatchObject({
+        outputPreview: {
+          message: "secret upstream detail",
+        },
+      });
+      expect(traceEvents.find((event) => event.type === "run.error")).toMatchObject({
+        spanId: runSpanId,
+        status: "error",
+      });
+      expect(traceEvents.find((event) => event.type === "run.end")).toMatchObject({
+        spanId: runSpanId,
+        status: "error",
+      });
     } finally {
       globalThis.fetch = originalFetch;
       vi.restoreAllMocks();

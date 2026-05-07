@@ -10,6 +10,7 @@ export const { GET, POST, DELETE } = createDocsMCPAPI({
   ordering: docsConfig.ordering,
   search: docsConfig.search,
   analytics: docsConfig.analytics,
+  observability: docsConfig.observability,
   mcp: docsConfig.mcp,
 });
 

@@ -27,6 +27,9 @@ import {
   normalizeDocsRelated,
   renderDocsRelatedMarkdownLines,
   resolveChangelogConfig,
+  createDocsAgentTraceContext,
+  createDocsAgentTraceId,
+  emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
   resolveDocsI18n,
   resolveDocsLocale,
@@ -34,10 +37,12 @@ import {
 } from "@farming-labs/docs";
 import type {
   ChangelogConfig,
+  DocsAgentTraceEventInput,
   DocsAnalyticsConfig,
   DocsAgentFeedbackContext,
   DocsAgentFeedbackData,
   DocsI18nConfig,
+  DocsObservabilityConfig,
   FeedbackConfig,
 } from "@farming-labs/docs";
 import {
@@ -103,6 +108,8 @@ interface DocsAPIOptions {
   search?: boolean | DocsSearchConfig;
   /** Analytics configuration */
   analytics?: boolean | DocsAnalyticsConfig;
+  /** Observability configuration for logs, traces, and metrics callbacks. */
+  observability?: boolean | DocsObservabilityConfig;
   /** Feedback configuration */
   feedback?: boolean | FeedbackConfig;
   /** MCP configuration used for the agent discovery spec. */
@@ -118,6 +125,7 @@ interface DocsMCPAPIOptions {
   mcp?: boolean | DocsMcpConfig;
   search?: boolean | DocsSearchConfig;
   analytics?: boolean | DocsAnalyticsConfig;
+  observability?: boolean | DocsObservabilityConfig;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -1581,15 +1589,89 @@ function resolveModelAndProvider(
   return { model: modelId, baseUrl, apiKey };
 }
 
+function safeUrlOrigin(value: string): string {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return value;
+  }
+}
+
 async function handleAskAI(
   request: Request,
   indexes: DocsSearchSourcePage[],
   aiConfig: AIOptions,
   analytics?: boolean | DocsAnalyticsConfig,
+  observability?: boolean | DocsObservabilityConfig,
   analyticsContext: { locale?: string } = {},
 ): Promise<Response> {
   const url = new URL(request.url);
   const requestStartedAt = Date.now();
+  const trace = createDocsAgentTraceContext("ask-ai");
+  const runSpanId = createDocsAgentTraceId("span");
+  const traceBase = {
+    source: "server" as const,
+    traceId: trace.traceId,
+    url: request.url,
+    path: url.pathname,
+    locale: analyticsContext.locale,
+  };
+
+  async function emitTrace(event: DocsAgentTraceEventInput): Promise<void> {
+    await emitDocsAgentTraceEvent(observability, {
+      ...traceBase,
+      ...event,
+    });
+  }
+
+  async function emitRunError(
+    reason: string,
+    outputPreview: Record<string, unknown> = {},
+  ): Promise<void> {
+    const endedAt = new Date().toISOString();
+    const elapsed = Math.max(0, Date.now() - requestStartedAt);
+    const common = {
+      name: "ask-ai",
+      startedAt: trace.startedAt,
+      endedAt,
+      durationMs: elapsed,
+      status: "error" as const,
+      outputPreview: {
+        reason,
+        ...outputPreview,
+      },
+      metadata: { reason },
+    };
+
+    await emitTrace({
+      ...common,
+      type: "error",
+      parentSpanId: runSpanId,
+    });
+    await emitTrace({
+      ...common,
+      type: "run.error",
+      spanId: runSpanId,
+    });
+    await emitTrace({
+      ...common,
+      type: "run.end",
+      spanId: runSpanId,
+    });
+  }
+
+  await emitTrace({
+    type: "run.start",
+    name: "ask-ai",
+    spanId: runSpanId,
+    startedAt: trace.startedAt,
+    durationMs: 0,
+    status: "started",
+    inputPreview: {
+      method: request.method,
+      path: url.pathname,
+    },
+  });
 
   // ── Parse request ──────────────────────────────────────────────
   let body: { messages?: ChatMessage[]; model?: string };
@@ -1607,6 +1689,7 @@ async function handleAskAI(
         durationMs: Math.max(0, Date.now() - requestStartedAt),
       },
     });
+    await emitRunError("invalid_json", { status: 400 });
     return Response.json(
       { error: "Invalid JSON body. Expected { messages: [...] }" },
       { status: 400 },
@@ -1626,6 +1709,7 @@ async function handleAskAI(
         durationMs: Math.max(0, Date.now() - requestStartedAt),
       },
     });
+    await emitRunError("missing_messages", { status: 400 });
     return Response.json(
       { error: "messages array is required and must not be empty." },
       { status: 400 },
@@ -1646,14 +1730,48 @@ async function handleAskAI(
         durationMs: Math.max(0, Date.now() - requestStartedAt),
       },
     });
+    await emitRunError("missing_user_message", { status: 400, messageCount: messages.length });
     return Response.json({ error: "At least one user message is required." }, { status: 400 });
   }
 
   // ── Search for relevant docs (RAG retrieval) ───────────────────
   const maxResults = aiConfig.maxResults ?? 5;
   const query = lastUserMessage.content;
+  await emitTrace({
+    type: "user.input",
+    name: "ask-ai",
+    parentSpanId: runSpanId,
+    startedAt: new Date().toISOString(),
+    endedAt: new Date().toISOString(),
+    durationMs: 0,
+    status: "success",
+    inputPreview: {
+      messageCount: messages.length,
+      questionLength: query.length,
+      requestedModel:
+        typeof body.model === "string" && body.model.trim().length > 0
+          ? body.model.trim()
+          : undefined,
+    },
+  });
 
   // Use the in-memory index for fast context retrieval
+  const retrievalStartedAt = Date.now();
+  const retrievalStartedAtIso = new Date().toISOString();
+  const retrievalSpanId = createDocsAgentTraceId("span");
+  await emitTrace({
+    type: "retrieval.query",
+    name: "docs-index",
+    spanId: retrievalSpanId,
+    parentSpanId: runSpanId,
+    startedAt: retrievalStartedAtIso,
+    status: "started",
+    inputPreview: {
+      queryLength: query.length,
+      maxResults,
+      indexSize: indexes.length,
+    },
+  });
   const scored = indexes
     .map((doc) => {
       const q = query.toLowerCase();
@@ -1667,8 +1785,28 @@ async function handleAskAI(
     .filter((d) => d.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, maxResults);
+  await emitTrace({
+    type: "retrieval.result",
+    name: "docs-index",
+    parentSpanId: retrievalSpanId,
+    startedAt: retrievalStartedAtIso,
+    endedAt: new Date().toISOString(),
+    durationMs: Math.max(0, Date.now() - retrievalStartedAt),
+    status: "success",
+    outputPreview: {
+      resultCount: scored.length,
+      urls: scored.slice(0, 5).map((doc) => doc.url),
+    },
+    metadata: {
+      maxResults,
+      indexSize: indexes.length,
+    },
+  });
 
   // Build context from relevant docs
+  const promptStartedAt = Date.now();
+  const promptStartedAtIso = new Date().toISOString();
+  const promptSpanId = createDocsAgentTraceId("span");
   const contextParts = scored.map(
     (doc) =>
       `## ${doc.title}\nURL: ${doc.url}\n${doc.description ? `Description: ${doc.description}\n` : ""}\n${doc.content}`,
@@ -1688,6 +1826,25 @@ async function handleAskAI(
     systemMessage,
     ...messages.filter((m) => m.role !== "system"),
   ];
+  await emitTrace({
+    type: "prompt.build",
+    name: "ask-ai.prompt",
+    spanId: promptSpanId,
+    parentSpanId: runSpanId,
+    startedAt: promptStartedAtIso,
+    endedAt: new Date().toISOString(),
+    durationMs: Math.max(0, Date.now() - promptStartedAt),
+    status: "success",
+    inputPreview: {
+      messageCount: messages.length,
+      retrievedCount: scored.length,
+    },
+    outputPreview: {
+      llmMessageCount: llmMessages.length,
+      contextChars: context.length,
+      systemMessageChars: systemMessage.content.length,
+    },
+  });
 
   // ── Resolve model + provider ────────────────────────────────────
   const requestedModel =
@@ -1712,6 +1869,13 @@ async function handleAskAI(
         durationMs: Math.max(0, Date.now() - requestStartedAt),
       },
     });
+    await emitRunError("missing_api_key", {
+      status: 500,
+      messageCount: messages.length,
+      questionLength: query.length,
+      retrievedCount: scored.length,
+      model: resolved.model,
+    });
     return Response.json(
       {
         error: `AI is enabled but no API key was found. Either set apiKey in your docs.config ai section, configure a provider, or add OPENAI_API_KEY to your .env.local file.`,
@@ -1735,21 +1899,106 @@ async function handleAskAI(
     },
   });
 
-  const llmResponse = await fetch(`${resolved.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${resolved.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: resolved.model,
+  const modelStartedAt = Date.now();
+  const modelStartedAtIso = new Date().toISOString();
+  const modelSpanId = createDocsAgentTraceId("span");
+  const providerOrigin = safeUrlOrigin(resolved.baseUrl);
+  await emitTrace({
+    type: "model.call",
+    name: resolved.model,
+    spanId: modelSpanId,
+    parentSpanId: runSpanId,
+    startedAt: modelStartedAtIso,
+    status: "started",
+    inputPreview: {
+      messageCount: llmMessages.length,
       stream: true,
-      messages: llmMessages,
-    }),
+      providerOrigin,
+    },
+    metadata: {
+      model: resolved.model,
+    },
   });
+
+  let llmResponse: Response;
+  try {
+    llmResponse = await fetch(`${resolved.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolved.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: resolved.model,
+        stream: true,
+        messages: llmMessages,
+      }),
+    });
+  } catch (error) {
+    const elapsed = Math.max(0, Date.now() - modelStartedAt);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    await emitTrace({
+      type: "model.error",
+      name: resolved.model,
+      parentSpanId: modelSpanId,
+      startedAt: modelStartedAtIso,
+      endedAt: new Date().toISOString(),
+      durationMs: elapsed,
+      status: "error",
+      outputPreview: {
+        message,
+      },
+      metadata: {
+        model: resolved.model,
+        providerOrigin,
+      },
+    });
+    await emitDocsAnalyticsEvent(analytics, {
+      type: "api_ai_error",
+      source: "server",
+      url: request.url,
+      path: url.pathname,
+      locale: analyticsContext.locale,
+      input: { question: query },
+      properties: {
+        reason: "llm_fetch_error",
+        messageCount: messages.length,
+        questionLength: query.length,
+        retrievedCount: scored.length,
+        model: resolved.model,
+        durationMs: Math.max(0, Date.now() - requestStartedAt),
+      },
+    });
+    await emitRunError("llm_fetch_error", {
+      status: 502,
+      messageCount: messages.length,
+      questionLength: query.length,
+      retrievedCount: scored.length,
+      model: resolved.model,
+    });
+    return Response.json({ error: "LLM API request failed." }, { status: 502 });
+  }
 
   if (!llmResponse.ok) {
     const errText = await llmResponse.text().catch(() => "Unknown error");
+    const elapsed = Math.max(0, Date.now() - modelStartedAt);
+    await emitTrace({
+      type: "model.error",
+      name: resolved.model,
+      parentSpanId: modelSpanId,
+      startedAt: modelStartedAtIso,
+      endedAt: new Date().toISOString(),
+      durationMs: elapsed,
+      status: "error",
+      outputPreview: {
+        status: llmResponse.status,
+        errorChars: errText.length,
+      },
+      metadata: {
+        model: resolved.model,
+        providerOrigin,
+      },
+    });
     await emitDocsAnalyticsEvent(analytics, {
       type: "api_ai_error",
       source: "server",
@@ -1766,6 +2015,14 @@ async function handleAskAI(
         model: resolved.model,
         durationMs: Math.max(0, Date.now() - requestStartedAt),
       },
+    });
+    await emitRunError("llm_error", {
+      status: 502,
+      modelStatus: llmResponse.status,
+      messageCount: messages.length,
+      questionLength: query.length,
+      retrievedCount: scored.length,
+      model: resolved.model,
     });
     return Response.json(
       { error: `LLM API error (${llmResponse.status}): ${errText}` },
@@ -1786,6 +2043,75 @@ async function handleAskAI(
       retrievedCount: scored.length,
       model: resolved.model,
       durationMs: Math.max(0, Date.now() - requestStartedAt),
+    },
+  });
+  const responseEndedAt = new Date().toISOString();
+  const modelDurationMs = Math.max(0, Date.now() - modelStartedAt);
+  await emitTrace({
+    type: "model.response",
+    name: resolved.model,
+    parentSpanId: modelSpanId,
+    startedAt: modelStartedAtIso,
+    endedAt: responseEndedAt,
+    durationMs: modelDurationMs,
+    status: "success",
+    outputPreview: {
+      status: llmResponse.status,
+      stream: true,
+      contentType: llmResponse.headers.get("content-type") ?? undefined,
+    },
+    metadata: {
+      model: resolved.model,
+      providerOrigin,
+    },
+  });
+  await emitTrace({
+    type: "model.stream",
+    name: resolved.model,
+    parentSpanId: modelSpanId,
+    startedAt: modelStartedAtIso,
+    endedAt: responseEndedAt,
+    durationMs: modelDurationMs,
+    status: "success",
+    outputPreview: {
+      stream: true,
+    },
+    metadata: {
+      model: resolved.model,
+    },
+  });
+
+  const runDurationMs = Math.max(0, Date.now() - requestStartedAt);
+  await emitTrace({
+    type: "agent.final",
+    name: "ask-ai",
+    parentSpanId: runSpanId,
+    startedAt: trace.startedAt,
+    endedAt: new Date().toISOString(),
+    durationMs: runDurationMs,
+    status: "success",
+    outputPreview: {
+      stream: true,
+      retrievedCount: scored.length,
+    },
+    metadata: {
+      model: resolved.model,
+    },
+  });
+  await emitTrace({
+    type: "run.end",
+    name: "ask-ai",
+    spanId: runSpanId,
+    startedAt: trace.startedAt,
+    endedAt: new Date().toISOString(),
+    durationMs: runDurationMs,
+    status: "success",
+    outputPreview: {
+      stream: true,
+      retrievedCount: scored.length,
+    },
+    metadata: {
+      model: resolved.model,
     },
   });
 
@@ -1903,6 +2229,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const root = options?.rootDir ?? process.cwd();
   const entry = options?.entry ?? readEntry(root);
   const analytics = options?.analytics;
+  const observability = options?.observability;
   const appDir = getNextAppDir(root);
   const contentDir = options?.contentDir ?? path.join(appDir, entry);
   const changelogConfig = resolveChangelogConfig(options?.changelog);
@@ -2468,7 +2795,9 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       }
 
       const ctx = resolveContextFromRequest(request);
-      return handleAskAI(request, getIndexes(ctx), aiConfig, analytics, { locale: ctx.locale });
+      return handleAskAI(request, getIndexes(ctx), aiConfig, analytics, observability, {
+        locale: ctx.locale,
+      });
     },
   };
 }
@@ -2505,6 +2834,7 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
     mcp: options.mcp ?? readMcpConfig(rootDir),
     search: options.search,
     analytics: options.analytics,
+    observability: options.observability,
     defaultName: navTitle,
   });
 

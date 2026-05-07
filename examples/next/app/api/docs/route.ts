@@ -10,6 +10,8 @@ export const { GET, POST } = createDocsAPI({
   mcp: docsConfig.mcp,
   search: docsConfig.search,
   ai: docsConfig.ai,
+  analytics: docsConfig.analytics,
+  observability: docsConfig.observability,
 });
 
 export const revalidate = false;

@@ -15,7 +15,7 @@ overrides:
   picomatch@>=4.0.0 <4.0.4: 4.0.4
   path-to-regexp@>=4.0.0 <6.3.0: 6.3.0
   path-to-regexp@>=8.0.0 <8.4.0: 8.4.0
-  basic-ftp: 5.3.0
+  basic-ftp: 5.3.1
   lodash: 4.18.1
   simple-git: ^3.36.0
   serialize-javascript: ^7.0.3
@@ -3981,8 +3981,8 @@ packages:
     resolution: {integrity: sha512-ipDqC8FrAl/76p2SSWKSI+H9tFwm7vYqXQrItCuiVPt26Km0jS+NzSsBWAaBusvSbQcfJG+JitdMm+wZAgTYqg==}
     hasBin: true
 
-  basic-ftp@5.3.0:
-    resolution: {integrity: sha512-5K9eNNn7ywHPsYnFwjKgYH8Hf8B5emh7JKcPaVjjrMJFQQwGpwowEnZNEtHs7DfR7hCZsmaK3VA4HUK0YarT+w==}
+  basic-ftp@5.3.1:
+    resolution: {integrity: sha512-bopVNp6ugyA150DDuZfPFdt1KZ5a94ZDiwX4hMgZDzF+GttD80lEy8kj98kbyhLXnPvhtIo93mdnLIjpCAeeOw==}
     engines: {node: '>=10.0.0'}
 
   binary-extensions@2.3.0:
@@ -11247,7 +11247,7 @@ snapshots:
 
   baseline-browser-mapping@2.9.19: {}
 
-  basic-ftp@5.3.0: {}
+  basic-ftp@5.3.1: {}
 
   binary-extensions@2.3.0: {}
 
@@ -12329,7 +12329,7 @@ snapshots:
 
   get-uri@6.0.5:
     dependencies:
-      basic-ftp: 5.3.0
+      basic-ftp: 5.3.1
       data-uri-to-buffer: 6.0.2
       debug: 4.4.3
     transitivePeerDependencies:

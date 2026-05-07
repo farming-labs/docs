@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types";
-import type { DocsAnalyticsEvent } from "./types.js";
+import type { DocsAnalyticsEvent, DocsObservabilityEvent } from "./types.js";
 import {
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
@@ -518,7 +518,7 @@ sidebar:
     });
   });
 
-  it("emits analytics for MCP requests, tools, and agent page reads", async () => {
+  it("emits analytics and observability separately for MCP requests, tools, and agent page reads", async () => {
     const rootDir = createTempDocsProject();
     const source = createFilesystemDocsMcpSource({
       rootDir,
@@ -526,7 +526,8 @@ sidebar:
       contentDir: "docs",
       siteTitle: "Example Docs",
     });
-    const events: DocsAnalyticsEvent[] = [];
+    const analyticsEvents: DocsAnalyticsEvent[] = [];
+    const traceEvents: DocsObservabilityEvent[] = [];
 
     const handlers = createDocsMcpHttpHandler({
       source,
@@ -534,7 +535,13 @@ sidebar:
       analytics: {
         console: false,
         onEvent(event) {
-          events.push(event);
+          analyticsEvents.push(event);
+        },
+      },
+      observability: {
+        console: false,
+        onEvent(event) {
+          traceEvents.push(event);
         },
       },
     });
@@ -598,12 +605,43 @@ sidebar:
     await callTool("read_page", { path: "guides/quickstart" });
     await callTool("read_page", { path: "missing" });
 
-    expect(events.map((event) => event.type)).toEqual(
+    expect(analyticsEvents.map((event) => event.type)).toEqual(
       expect.arrayContaining(["mcp_request", "mcp_tool", "agent_read"]),
     );
-    expect(events.filter((event) => event.type === "mcp_request")).toHaveLength(6);
+    expect(analyticsEvents.map((event) => event.type)).not.toEqual(
+      expect.arrayContaining(["tool.call", "tool.result", "tool.error"]),
+    );
+    expect(analyticsEvents.filter((event) => event.type === "mcp_request")).toHaveLength(6);
+    expect(traceEvents.map((event) => event.type)).toEqual(
+      expect.arrayContaining(["tool.call", "tool.result", "tool.error"]),
+    );
+    expect(traceEvents.filter((event) => event.type === "tool.call")).toHaveLength(5);
+    expect(traceEvents.filter((event) => event.type === "tool.result")).toHaveLength(4);
+    expect(traceEvents.filter((event) => event.type === "tool.error")).toHaveLength(1);
     expect(
-      events.filter((event) => event.type === "mcp_tool").map((event) => event.properties),
+      traceEvents.filter((event) => event.type === "tool.call").map((event) => event.name),
+    ).toEqual(["list_pages", "get_navigation", "search_docs", "read_page", "read_page"]);
+    expect(
+      traceEvents
+        .filter((event) => event.type === "tool.result")
+        .map((event) => event.outputPreview),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ resultCount: 3 }),
+        expect.objectContaining({ chars: expect.any(Number) }),
+        expect.objectContaining({ resultCount: expect.any(Number) }),
+        expect.objectContaining({ found: true, chars: expect.any(Number) }),
+      ]),
+    );
+    expect(traceEvents.find((event) => event.type === "tool.error")).toMatchObject({
+      name: "read_page",
+      status: "error",
+      durationMs: expect.any(Number),
+      outputPreview: expect.objectContaining({ found: false, path: "missing" }),
+      metadata: expect.objectContaining({ reason: "not_found" }),
+    });
+    expect(
+      analyticsEvents.filter((event) => event.type === "mcp_tool").map((event) => event.properties),
     ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ tool: "list_pages", resultCount: 3 }),
@@ -614,7 +652,9 @@ sidebar:
       ]),
     );
     expect(
-      events.filter((event) => event.type === "agent_read").map((event) => event.properties),
+      analyticsEvents
+        .filter((event) => event.type === "agent_read")
+        .map((event) => event.properties),
     ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

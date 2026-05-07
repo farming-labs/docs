@@ -10,6 +10,8 @@ export const { GET, POST, DELETE } = createDocsMCPAPI({
   ordering: docsConfig.ordering,
   search: docsConfig.search,
   mcp: docsConfig.mcp,
+  analytics: docsConfig.analytics,
+  observability: docsConfig.observability,
 });
 
 export const revalidate = false;

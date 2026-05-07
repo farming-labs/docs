@@ -1,13 +1,19 @@
 ---
 title: "Analytics"
-description: "Log docs, search, AI, feedback, agent, and MCP events from one config hook"
-icon: "zap"
-order: 5.65
+description: "Track product and usage events from docs, search, AI, feedback, agent, and MCP routes"
+icon: "chart-no-axes-column"
+order: 5.64
 ---
 
 # Analytics
 
-Use the built-in analytics stream when you want visibility into how humans and agents use your docs. It tracks page views, search, Ask AI, feedback, page actions, code-copy, markdown/llms routes, agent feedback, and MCP requests through one typed event contract.
+Use `analytics` when you want to understand how people and agents use your docs. It emits
+product-level usage events: page views, search activity, Ask AI requests, feedback, page actions,
+machine-readable markdown reads, agent feedback routes, and MCP requests.
+
+Analytics is intentionally separate from [Observability](/docs/customization/observability).
+Analytics answers "what did users or agents do?" Observability answers "what happened inside this
+agent run?"
 
 ## Quick Start
 
@@ -17,12 +23,8 @@ export default defineDocs({
 });
 ```
 
-`analytics: true` logs every framework event to the console with the `[farming-labs:analytics]` prefix.
-
-<Callout type="info" title="Frameworkless docs.json support">
-  When you are using frameworkless `docs.json`, the serializable subset can live under
-  `cloud.analytics`. Use `docs.config.ts` when you need executable hooks like `onEvent`.
-</Callout>
+`analytics: true` logs usage events to the console with the `[@farming-labs/docs:analytics]`
+prefix.
 
 ## Send Events To Your Own Sink
 
@@ -40,7 +42,7 @@ export default defineDocs({
 });
 ```
 
-Events have this shape:
+The callback receives a normalized `DocsAnalyticsEvent`:
 
 ```ts
 interface DocsAnalyticsEvent {
@@ -57,11 +59,12 @@ interface DocsAnalyticsEvent {
     feedbackComment?: string;
     content?: string;
   };
+  metadata?: Record<string, unknown>;
   properties?: Record<string, unknown>;
 }
 ```
 
-## Logged Events
+## Events
 
 Client events:
 
@@ -72,7 +75,7 @@ Client events:
 - `code_block_copy`
 - `feedback_select`, `feedback_submit`, `feedback_error`
 
-Server and agent events:
+Server and agent-surface events:
 
 - `api_search`
 - `api_ai_request`, `api_ai_response`, `api_ai_error`
@@ -88,12 +91,12 @@ Server and agent events:
 
 ## Input Privacy
 
-By default, analytics events only include safe metadata such as paths, counts, durations, status, result counts, model IDs, content lengths, and whether a comment exists.
+By default, analytics events include safe metadata such as paths, counts, durations, status, result
+counts, model IDs, content lengths, and whether a comment exists.
 
 <Callout type="warning" title="Inputs are excluded by default">
   Search queries, AI questions, feedback comments, and copied content are not included unless you
-  explicitly set `includeInputs: true`. This keeps analytics separate from prompt context and avoids
-  logging user-authored text by accident.
+  explicitly set `includeInputs: true`.
 </Callout>
 
 Enable raw input capture only when you have user consent and a retention policy:
@@ -118,4 +121,16 @@ export default defineDocs({
 | `includeInputs` | `boolean`                                 | `false`                      |
 | `onEvent`       | `(event) => void \| Promise<void>`        | `undefined`                  |
 
-When both `console` and `onEvent` are set, the framework logs to both places.
+Configure both streams when you want usage analytics and runtime traces:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  analytics: {
+    onEvent: sendUsageEvent,
+  },
+  observability: {
+    console: "debug",
+    onEvent: sendTraceEvent,
+  },
+});
+```

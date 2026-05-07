@@ -65,4 +65,31 @@ describe("defineDocs", () => {
       actionsComponent,
     });
   });
+
+  it("keeps analytics and observability as separate event stream configs", () => {
+    const onAnalyticsEvent = vi.fn();
+    const onObservabilityEvent = vi.fn();
+
+    const config = defineDocs({
+      entry: "docs",
+      analytics: {
+        console: "info",
+        onEvent: onAnalyticsEvent,
+      },
+      observability: {
+        console: "debug",
+        onEvent: onObservabilityEvent,
+      },
+    });
+
+    expect(config.analytics).toEqual({
+      console: "info",
+      onEvent: onAnalyticsEvent,
+    });
+    expect(config.observability).toEqual({
+      console: "debug",
+      onEvent: onObservabilityEvent,
+    });
+    expect(config.analytics).not.toBe(config.observability);
+  });
 });

@@ -682,6 +682,29 @@ export interface PageActionsConfig {
 
 export type DocsAnalyticsSource = "client" | "server" | "mcp";
 
+export type DocsAgentTraceStatus = "started" | "success" | "error" | "retry" | "timeout";
+
+export type DocsAgentTraceEventType =
+  | "run.start"
+  | "run.end"
+  | "run.error"
+  | "user.input"
+  | "prompt.build"
+  | "retrieval.query"
+  | "retrieval.result"
+  | "retrieval.error"
+  | "model.call"
+  | "model.response"
+  | "model.stream"
+  | "model.error"
+  | "tool.call"
+  | "tool.result"
+  | "tool.error"
+  | "retry"
+  | "timeout"
+  | "error"
+  | "agent.final";
+
 export type DocsAnalyticsEventType =
   | "page_view"
   | "search_open"
@@ -724,8 +747,7 @@ export interface DocsAnalyticsInput {
   content?: string;
 }
 
-export interface DocsAnalyticsEvent {
-  type: DocsAnalyticsEventType | (string & {});
+interface DocsEventBase {
   timestamp: string;
   source: DocsAnalyticsSource;
   url?: string;
@@ -733,7 +755,12 @@ export interface DocsAnalyticsEvent {
   referrer?: string;
   locale?: string;
   input?: DocsAnalyticsInput;
+  metadata?: Record<string, unknown>;
   properties?: Record<string, unknown>;
+}
+
+export interface DocsAnalyticsEvent extends DocsEventBase {
+  type: DocsAnalyticsEventType | (string & {});
 }
 
 export type DocsAnalyticsEventInput = Omit<DocsAnalyticsEvent, "timestamp" | "source"> & {
@@ -741,11 +768,35 @@ export type DocsAnalyticsEventInput = Omit<DocsAnalyticsEvent, "timestamp" | "so
   source?: DocsAnalyticsSource;
 };
 
+export interface DocsObservabilityEvent extends DocsEventBase {
+  type: DocsAgentTraceEventType | (string & {});
+  traceId?: string;
+  spanId?: string;
+  parentSpanId?: string;
+  name?: string;
+  startedAt?: string;
+  endedAt?: string;
+  durationMs?: number;
+  status?: DocsAgentTraceStatus;
+  inputPreview?: Record<string, unknown>;
+  outputPreview?: Record<string, unknown>;
+}
+
+export type DocsObservabilityEventInput = Omit<DocsObservabilityEvent, "timestamp" | "source"> & {
+  timestamp?: string;
+  source?: DocsAnalyticsSource;
+};
+
+export type DocsAgentTraceEventInput = Omit<DocsObservabilityEventInput, "type"> & {
+  type: DocsAgentTraceEventType;
+  name: string;
+};
+
 export interface DocsAnalyticsConfig {
-  /** Enable analytics event emission. Defaults to `true` when this object is provided. */
+  /** Enable event emission. Defaults to `true` when this object is provided. */
   enabled?: boolean;
   /**
-   * Log analytics events to the console.
+   * Log events to the console.
    *
    * `analytics: true` logs with `console.info`. When `onEvent` is provided,
    * console logging is disabled unless this is set.
@@ -759,8 +810,30 @@ export interface DocsAnalyticsConfig {
    * counts, routes, status, and duration.
    */
   includeInputs?: boolean;
-  /** Callback fired for every analytics event. */
+  /** Callback fired for every emitted event. */
   onEvent?: (event: DocsAnalyticsEvent) => void | Promise<void>;
+}
+
+export interface DocsObservabilityConfig {
+  /** Enable trace emission. Defaults to `true` when this object is provided. */
+  enabled?: boolean;
+  /**
+   * Log trace events to the console.
+   *
+   * `observability: true` logs with `console.info`. When `onEvent` is provided,
+   * console logging is disabled unless this is set.
+   */
+  console?: boolean | "log" | "info" | "debug";
+  /**
+   * Include raw `input` fields on observability events.
+   *
+   * Defaults to `false`; events still include safe metadata such as lengths,
+   * counts, routes, status, and duration. Built-in trace events use previews
+   * instead of raw user-authored text.
+   */
+  includeInputs?: boolean;
+  /** Callback fired for every emitted trace event. */
+  onEvent?: (event: DocsObservabilityEvent) => void | Promise<void>;
 }
 
 /**
@@ -1827,13 +1900,27 @@ export interface DocsConfig {
    * Built-in analytics event stream for docs interactions.
    *
    * - `false` or omitted -> analytics disabled (default)
-   * - `true` -> log all framework events to the console
+   * - `true` -> log product/usage events to the console
    * - `{ onEvent(event) { ... } }` -> send events to your analytics sink
    *
    * Raw queries, AI questions, feedback comments, and copied content are not
    * included unless `includeInputs: true` is set.
    */
   analytics?: boolean | DocsAnalyticsConfig;
+  /**
+   * Built-in observability stream for agent traces, timing, errors, and runtime debugging.
+   * This is separate from `analytics`; it emits span-like Ask AI and MCP trace events.
+   *
+   * ```ts
+   * observability: {
+   *   console: "debug",
+   *   onEvent(event) {
+   *     console.info(event.type, event.traceId, event.durationMs)
+   *   },
+   * }
+   * ```
+   */
+  observability?: boolean | DocsObservabilityConfig;
   /**
    * GitHub repository URL or config. Enables "Edit on GitHub" links
    * on each docs page footer, pointing to the source `.mdx` file.
