@@ -241,6 +241,57 @@ export default defineDocs({
 });
 ```
 
+For Ask AI only, keep the top-level search provider as-is and enable MCP retrieval in the AI config.
+This uses the MCP server the docs site already exposes:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  ai: {
+    enabled: true,
+    useMcp: true,
+  },
+});
+```
+
+If you changed the canonical MCP route, `useMcp: true` follows it automatically:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  mcp: {
+    route: "/custom/docs/mcp",
+  },
+  ai: {
+    enabled: true,
+    useMcp: true,
+  },
+});
+```
+
+For a hosted or external MCP endpoint, configure the endpoint on `ai.useMcp` instead. This does not
+replace your LLM provider config; the MCP endpoint retrieves docs context, then Ask AI still sends
+the final prompt to your configured model provider.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  ai: {
+    enabled: true,
+    model: "gpt-4o-mini",
+    apiKey: process.env.OPENAI_API_KEY,
+    useMcp: {
+      endpoint: "https://docs.example.com/mcp",
+      headers: {
+        Authorization: `Bearer ${process.env.DOCS_MCP_TOKEN}`,
+      },
+      toolName: "search_docs",
+    },
+  },
+});
+```
+
+The custom MCP endpoint must support Streamable HTTP MCP, return an `mcp-session-id` on
+`initialize`, and expose a search tool that returns docs results. The default tool name is
+`search_docs`; override `toolName` only if your server uses a different name.
+
 For local self-hosted setups, relative MCP endpoints like `/mcp` and `/.well-known/mcp` are
 supported. The canonical `/api/docs/mcp` route remains available too. The built-in `search_docs`
 tool automatically falls back to simple search internally when it detects that same-route loop, so

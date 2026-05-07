@@ -1000,6 +1000,7 @@ RAG-powered AI chat. See [Ask AI](/docs/customization/ai-chat) for usage guide.
 | `baseUrl`            | `string`                                             | `"https://api.openai.com/v1"` | OpenAI-compatible API base URL                          |
 | `apiKey`             | `string`                                             | `process.env.OPENAI_API_KEY`  | API key for the LLM provider                            |
 | `maxResults`         | `number`                                             | `5`                           | Number of doc pages to include as RAG context           |
+| `useMcp`             | `boolean \| DocsAskAIMcpConfig`                      | `false`                       | Route Ask AI retrieval through MCP `search_docs` without changing the search API |
 | `suggestedQuestions` | `string[]`                                           | —                             | Pre-filled questions shown when chat is empty           |
 | `aiLabel`            | `string`                                             | `"AI"`                        | Display name for the AI assistant                       |
 | `feedback`           | `boolean \| DocsAskAIFeedbackConfig`                 | `true`                        | Copy, like, and dislike action row for completed answers |

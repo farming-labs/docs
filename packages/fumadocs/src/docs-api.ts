@@ -55,9 +55,11 @@ import {
   buildDocsAskAIContext,
   formatDocsAskAIPackageHints,
   performDocsSearch,
+  resolveAskAISearchRequestConfig,
   resolveSearchRequestConfig,
 } from "@farming-labs/docs";
 import type {
+  DocsAskAIMcpConfig,
   DocsMcpConfig,
   DocsSearchConfig,
   DocsSearchSourcePage,
@@ -97,6 +99,7 @@ interface AIOptions {
   /** Default apiKey when no per-model provider is configured. */
   apiKey?: string;
   maxResults?: number;
+  useMcp?: boolean | DocsAskAIMcpConfig;
 }
 
 interface DocsAPIOptions {
@@ -682,6 +685,7 @@ function readAIConfig(root: string): AIOptions {
         // Match `apiKey: process.env.SOME_VAR` and resolve it at runtime
         const apiKeyMatch = content.match(/ai\s*:\s*\{[^}]*apiKey\s*:\s*process\.env\.(\w+)/s);
         const maxResultsMatch = content.match(/ai\s*:\s*\{[^}]*maxResults\s*:\s*(\d+)/s);
+        const useMcpMatch = content.match(/ai\s*:\s*\{[^}]*useMcp\s*:\s*(true|false)/s);
         const systemPromptMatch = content.match(
           /ai\s*:\s*\{[^}]*systemPrompt\s*:\s*["'`]([^"'`]+)["'`]/s,
         );
@@ -696,6 +700,7 @@ function readAIConfig(root: string): AIOptions {
           baseUrl: baseUrlMatch?.[1],
           apiKey: apiKeyMatch?.[1] ? process.env[apiKeyMatch[1]] : undefined,
           maxResults: maxResultsMatch ? parseInt(maxResultsMatch[1], 10) : undefined,
+          useMcp: useMcpMatch ? useMcpMatch[1] === "true" : undefined,
           systemPrompt: systemPromptMatch?.[1],
           packageName: packageNameMatch?.[1],
           docsUrl: docsUrlMatch?.[1],
@@ -2838,7 +2843,14 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         request,
         getIndexes(ctx),
         aiConfig,
-        resolveSearchRequestConfig(searchConfig, request.url),
+        resolveAskAISearchRequestConfig({
+          search: searchConfig,
+          useMcp: aiConfig.useMcp,
+          mcpEndpoint: mcpConfig.route,
+          mcpEnabled: mcpConfig.enabled,
+          mcpSearchEnabled: mcpConfig.tools.searchDocs,
+          requestUrl: request.url,
+        }),
         analytics,
         observability,
         {

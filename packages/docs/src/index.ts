@@ -90,6 +90,7 @@ export {
   formatDocsAskAIPackageHints,
   inferDocsAskAIPackageHints,
   performDocsSearch,
+  resolveAskAISearchRequestConfig,
   resolveSearchRequestConfig,
 } from "./search.js";
 export type { GeneratedAgentProvenance, GeneratedAgentSourceKind } from "./agent-provenance.js";
@@ -148,6 +149,7 @@ export type {
   DocsAgentFeedbackData,
   FeedbackConfig,
   AgentFeedbackConfig,
+  DocsAskAIMcpConfig,
   DocsSearchAdapter,
   DocsSearchAdapterContext,
   DocsSearchAdapterFactory,

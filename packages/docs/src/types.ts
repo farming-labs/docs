@@ -1069,6 +1069,10 @@ export interface McpDocsSearchConfig {
   chunking?: DocsSearchChunkingConfig;
 }
 
+export type DocsAskAIMcpConfig = Omit<McpDocsSearchConfig, "provider"> & {
+  provider?: "mcp";
+};
+
 export interface CustomDocsSearchConfig {
   provider: "custom";
   enabled?: boolean;
@@ -1443,6 +1447,28 @@ export interface AIConfig {
    * @default 5
    */
   maxResults?: number;
+
+  /**
+   * Route Ask AI retrieval through the configured MCP `search_docs` tool.
+   *
+   * - `true` uses the MCP server this docs site already exposes at `mcp.route`
+   *   (default `/api/docs/mcp`)
+   * - an object can point Ask AI at another Streamable HTTP MCP endpoint
+   *
+   * This only affects Ask AI retrieval. The normal docs search API still uses
+   * the top-level `search` config.
+   *
+   * @default false
+   *
+   * @example
+   * ```ts
+   * ai: {
+   *   enabled: true,
+   *   useMcp: true,
+   * }
+   * ```
+   */
+  useMcp?: boolean | DocsAskAIMcpConfig;
 
   /**
    * Pre-filled suggested questions shown in the AI chat when empty.
