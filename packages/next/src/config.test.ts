@@ -625,11 +625,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const nextConfig = withDocs({});
 
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
-      "/api/docs": [
-        "website/app/docs/**/*",
-        "skill.md",
-        ".farming-labs/sitemap-manifest.json",
-      ],
+      "/api/docs": ["website/app/docs/**/*", "skill.md", ".farming-labs/sitemap-manifest.json"],
       "/api/docs/mcp": ["website/app/docs/**/*"],
     });
   });

@@ -207,8 +207,9 @@ export async function generateSitemap(options: SitemapGenerateOptions = {}): Pro
   const config = loadedConfigModule?.config;
 
   const entry =
-    normalizePathSegment(config?.entry ?? readTopLevelStringProperty(configContent, "entry") ?? "docs") ||
-    "docs";
+    normalizePathSegment(
+      config?.entry ?? readTopLevelStringProperty(configContent, "entry") ?? "docs",
+    ) || "docs";
   const contentDir =
     typeof config?.contentDir === "string"
       ? config.contentDir

@@ -20,9 +20,7 @@ describe("docs sitemap helpers", () => {
   });
 
   it("detects public and API sitemap requests", () => {
-    expect(resolveDocsSitemapRequest(new URL("https://example.com/sitemap.xml"), true)).toBe(
-      "xml",
-    );
+    expect(resolveDocsSitemapRequest(new URL("https://example.com/sitemap.xml"), true)).toBe("xml");
     expect(resolveDocsSitemapRequest(new URL("https://example.com/sitemap.md"), true)).toBe(
       "markdown",
     );

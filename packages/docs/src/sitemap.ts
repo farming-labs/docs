@@ -141,8 +141,7 @@ export function resolveDocsSitemapConfig(
     manifestPath: objectConfig.manifestPath ?? DEFAULT_SITEMAP_MANIFEST_PATH,
     xml: {
       enabled: xmlEnabled,
-      includeLastmod:
-        typeof xmlConfig === "object" ? (xmlConfig.includeLastmod ?? true) : true,
+      includeLastmod: typeof xmlConfig === "object" ? (xmlConfig.includeLastmod ?? true) : true,
       route: joinRoute(routePrefix, DEFAULT_SITEMAP_XML_ROUTE),
     },
     markdown: {
@@ -151,7 +150,8 @@ export function resolveDocsSitemapConfig(
         typeof markdownConfig === "object" ? (markdownConfig.includeDescriptions ?? true) : true,
       includeLastmod:
         typeof markdownConfig === "object" ? (markdownConfig.includeLastmod ?? true) : true,
-      linkTarget: typeof markdownConfig === "object" ? (markdownConfig.linkTarget ?? "both") : "both",
+      linkTarget:
+        typeof markdownConfig === "object" ? (markdownConfig.linkTarget ?? "both") : "both",
       route: joinRoute(routePrefix, DEFAULT_SITEMAP_MD_ROUTE),
       wellKnownRoute: joinRoute(routePrefix, DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE),
     },
@@ -248,9 +248,7 @@ export function buildDocsSitemapManifest(options: {
   generatedAt?: string;
   resolveLastmod?: (
     page: DocsSitemapPageInput,
-  ) =>
-    | { lastmod?: string; lastmodSource?: DocsSitemapManifestPage["lastmodSource"] }
-    | undefined;
+  ) => { lastmod?: string; lastmodSource?: DocsSitemapManifestPage["lastmodSource"] } | undefined;
 }): DocsSitemapManifest {
   const baseUrl = normalizeBaseUrl(options.baseUrl);
   const seen = new Set<string>();
@@ -441,7 +439,8 @@ export function createDocsSitemapResponse({
     ETag: hashString(body),
   });
   const lastModified = newestLastmod(nextManifest.pages);
-  if (lastModified) headers.set("Last-Modified", new Date(`${lastModified}T00:00:00.000Z`).toUTCString());
+  if (lastModified)
+    headers.set("Last-Modified", new Date(`${lastModified}T00:00:00.000Z`).toUTCString());
 
   if (request.headers.get("if-none-match") === headers.get("ETag")) {
     return new Response(null, { status: 304, headers });

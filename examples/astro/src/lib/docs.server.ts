@@ -4,9 +4,9 @@ import config from "./docs.config";
 const contentFiles = import.meta.glob(
   ["/docs/**/*.{md,mdx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"],
   {
-  query: "?raw",
-  import: "default",
-  eager: true,
+    query: "?raw",
+    import: "default",
+    eager: true,
   },
 ) as Record<string, string>;
 
