@@ -1,6 +1,6 @@
 ---
 title: "CLI"
-description: "Scaffold, upgrade, compact agent docs, sync search, and run MCP"
+description: "Scaffold, upgrade, compact agent docs, generate sitemaps, sync search, and run MCP"
 icon: "terminal"
 order: 2
 ---
@@ -15,6 +15,7 @@ The `@farming-labs/docs` CLI has a few main jobs:
 - **`doctor`** — audit local docs readiness and optional hosted agent routes
 - **`mcp`** — run the built-in docs MCP server over stdio for local clients and IDE agents
 - **`search sync`** — push docs content into an external search index like Typesense or Algolia
+- **`sitemap generate`** — write sitemap metadata plus static `sitemap.xml` and `sitemap.md` files
 
 If you only need the common commands, start here. The framework-specific output and generated file lists are further down this page.
 
@@ -203,6 +204,42 @@ ALGOLIA_APP_ID=your-app-id
 ALGOLIA_ADMIN_API_KEY=your-admin-key
 ALGOLIA_SEARCH_API_KEY=your-search-key
 ```
+
+### Generate sitemaps
+
+Use `sitemap generate` when you want static `sitemap.xml` and `sitemap.md` files, or when a
+server-rendered deployment needs a generated manifest with reliable `lastmod` dates.
+
+```bash title="terminal"
+pnpm exec docs sitemap generate
+```
+
+By default the command writes:
+
+- `.farming-labs/sitemap-manifest.json`
+- `public/sitemap.xml`
+- `public/sitemap.md`
+- `public/.well-known/sitemap.md`
+
+SvelteKit writes the public files under `static/` instead of `public/`. Use `--config` when your
+config lives outside the project root:
+
+```bash title="terminal"
+pnpm exec docs sitemap generate --config src/lib/docs.config.ts
+```
+
+Useful flags:
+
+| Flag | Description |
+| ---- | ----------- |
+| `--config <path>` | Use a custom docs config path. |
+| `--manifest-only` | Write only `.farming-labs/sitemap-manifest.json`. Useful for server-rendered apps that serve sitemap routes through the runtime. |
+| `--public` | Explicitly write public sitemap files. This is already the default unless `--manifest-only` is set. |
+| `--check` | Fail if the generated manifest or public sitemap files are stale. |
+
+The generator resolves `lastmod` from each page source file's last git commit date, then falls back
+to filesystem modified time. See [Sitemaps](/docs/customization/sitemaps) for route config, static
+export setup, and output examples.
 
 ### Compact page-level agent docs
 

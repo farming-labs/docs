@@ -5,6 +5,7 @@ related:
   - /docs/guides
   - /docs/customization/agent-primitive
   - /docs/customization/llms-txt
+  - /docs/customization/sitemaps
   - /docs/customization/mcp
   - /docs/configuration
   - /docs/cli
@@ -212,6 +213,10 @@ export default defineDocs({
     enabled: true,
     baseUrl: "https://docs.example.com",
   },
+  sitemap: {
+    enabled: true,
+    baseUrl: "https://docs.example.com",
+  },
   mcp: {
     enabled: true,
   },
@@ -227,6 +232,7 @@ That gives agents a much better workflow:
 
 - `/.well-known/agent.json` tells them which routes exist
 - `/llms.txt` and `/llms-full.txt` expose site-level machine summaries
+- `/sitemap.xml` and `/sitemap.md` expose canonical URLs and freshness metadata
 - `{page}.md` gives them clean page markdown
 - MCP lets tool-enabled agents search and read docs semantically
 
@@ -251,6 +257,7 @@ Example:
 - Open `http://localhost:3000/docs`
 - Fetch `http://localhost:3000/docs.md`
 - Fetch `http://localhost:3000/.well-known/agent.json`
+- Fetch `http://localhost:3000/sitemap.md`
 
 ## Troubleshooting
 
@@ -388,7 +395,7 @@ Before calling a page agent-friendly, ask:
 - should this page get an additive `<Agent>` block?
 - does it need a dedicated `agent.md`, or is the human page still canonical?
 - does this page need `agent.tokenBudget` before compaction?
-- can an agent find it through `.md`, `llms.txt`, MCP, and the discovery spec?
+- can an agent find it through `.md`, `llms.txt`, sitemaps, MCP, and the discovery spec?
 - does `docs doctor --agent` agree with the state of the site?
 
 <Callout type="warning" title="Keep evaluation input out of prompt context">
@@ -403,7 +410,7 @@ can technically crawl. You are publishing docs they can actually work with.
 ## Read Next
 
 - [Agent Primitive](/docs/customization/agent-primitive) for `Agent` blocks and sibling `agent.md`
-- [llms.txt](/docs/customization/llms-txt) for the discovery layer
+- [llms.txt](/docs/customization/llms-txt) and [Sitemaps](/docs/customization/sitemaps) for the discovery layer
 - [MCP Server](/docs/customization/mcp) for tool-enabled retrieval
 - [CLI](/docs/cli#agent-compact) for `docs agent compact`
 - [CLI](/docs/cli#doctor) for `docs doctor --agent`

@@ -1,0 +1,331 @@
+---
+title: "Sitemaps"
+description: "Generate sitemap.xml and sitemap.md for crawlers, agents, and static exports"
+icon: "file"
+order: 5.85
+related:
+  - /docs/customization/llms-txt
+  - /docs/customization/agent-primitive
+  - /docs/customization/mcp
+  - /docs/configuration
+  - /docs/cli
+---
+
+# Sitemaps
+
+Generate both a standard `sitemap.xml` and a semantic `sitemap.md` from the same docs source. The
+XML file gives search crawlers a canonical URL list with freshness dates. The Markdown file gives
+agents, contributors, and automation a readable map of the docs tree with titles, descriptions,
+markdown URLs, last-updated dates, and related pages.
+
+<Agent>
+Use this page when the task is to enable or troubleshoot generated sitemaps.
+
+Default public routes:
+- `/sitemap.xml`
+- `/sitemap.md`
+- `/.well-known/sitemap.md`
+
+Static export command:
+- `pnpm exec docs sitemap generate`
+
+The command writes `.farming-labs/sitemap-manifest.json` plus public sitemap files unless
+`--manifest-only` is used. Lastmod dates come from `git log -1` for each page source path first,
+then filesystem mtime as a fallback.
+</Agent>
+
+## Quick Start
+
+Enable sitemaps in `docs.config.ts`:
+
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  sitemap: {
+    enabled: true,
+    baseUrl: "https://docs.example.com",
+  },
+});
+```
+
+That exposes these routes through the same docs server wrapper and public forwarding layer:
+
+- `GET /sitemap.xml`
+- `GET /sitemap.md`
+- `GET /.well-known/sitemap.md`
+- `GET /api/docs?format=sitemap-xml`
+- `GET /api/docs?format=sitemap-md`
+
+Next.js `withDocs()` adds the public rewrites automatically. TanStack Start, SvelteKit, Astro, and
+Nuxt use the same generated public forwarder that already handles `.md`, `llms.txt`, `.well-known`,
+and MCP routes.
+
+## Static Export
+
+For static hosting, run the generator before your framework build:
+
+```bash title="terminal"
+pnpm exec docs sitemap generate
+```
+
+The command writes:
+
+- `.farming-labs/sitemap-manifest.json`
+- `public/sitemap.xml`
+- `public/sitemap.md`
+- `public/.well-known/sitemap.md`
+
+SvelteKit uses `static/` instead of `public/`.
+
+`docs sitemap generate` is enough for static output. The `--public` flag is only an explicit spelling
+for the default behavior. Use `--manifest-only` when a server-rendered app only needs the generated
+manifest for accurate `lastmod` values and should keep the public route handled by the runtime.
+
+```bash title="terminal"
+pnpm exec docs sitemap generate --manifest-only
+```
+
+Use a custom config path for adapters whose config lives outside the project root:
+
+```bash title="terminal"
+pnpm exec docs sitemap generate --config src/lib/docs.config.ts
+```
+
+Common build scripts:
+
+<Tabs items={["Next.js", "Astro", "SvelteKit", "TanStack Start", "Nuxt"]}>
+  <Tab value="Next.js">
+    ```json title="package.json"
+    {
+      "scripts": {
+        "build": "docs sitemap generate --manifest-only && next build"
+      }
+    }
+    ```
+
+    For `output: "export"`, drop `--manifest-only` so `public/sitemap.xml` and `public/sitemap.md`
+    are written before `next build`.
+  </Tab>
+  <Tab value="Astro">
+    ```json title="package.json"
+    {
+      "scripts": {
+        "build": "docs sitemap generate --config src/lib/docs.config.ts && astro build"
+      }
+    }
+    ```
+  </Tab>
+  <Tab value="SvelteKit">
+    ```json title="package.json"
+    {
+      "scripts": {
+        "build": "docs sitemap generate --config src/lib/docs.config.ts && vite build"
+      }
+    }
+    ```
+  </Tab>
+  <Tab value="TanStack Start">
+    ```json title="package.json"
+    {
+      "scripts": {
+        "build": "docs sitemap generate && vite build"
+      }
+    }
+    ```
+  </Tab>
+  <Tab value="Nuxt">
+    ```json title="package.json"
+    {
+      "scripts": {
+        "build": "docs sitemap generate && nuxt build"
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+When you dogfood unpublished workspace packages, you may need to call the built CLI file directly
+after building the package. Published apps should use `docs` in package scripts or `pnpm exec docs`
+from the terminal.
+
+## What `lastmod` Means
+
+`lastmod` is the last known content update date for a page. It appears as `<lastmod>` in
+`sitemap.xml` and as `Last updated:` in `sitemap.md`.
+
+The CLI resolves dates in this order:
+
+1. the last git commit date for the page source file
+2. the filesystem modified date for the page source file
+3. no date, if neither source is available
+
+Git dates are preferred because they are stable across machines and CI runs. Filesystem dates are a
+fallback for new files, generated content, or projects that are not in a git checkout.
+
+Freshness is useful because crawlers and agents can:
+
+- detect pages that changed since the last crawl
+- prioritize recently edited documentation
+- avoid re-reading stable pages unnecessarily
+- show contributors where docs may have gone stale
+
+If you do not want freshness dates, disable them per output:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  sitemap: {
+    xml: {
+      includeLastmod: false,
+    },
+    markdown: {
+      includeLastmod: false,
+    },
+  },
+});
+```
+
+## Route Prefix
+
+Use `routePrefix` when you want the sitemap routes under a custom prefix:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  sitemap: {
+    enabled: true,
+    routePrefix: "/docs-map",
+    baseUrl: "https://docs.example.com",
+  },
+});
+```
+
+This generates:
+
+- `/docs-map/sitemap.xml`
+- `/docs-map/sitemap.md`
+- `/docs-map/.well-known/sitemap.md`
+
+There is no separate well-known route setting. The prefix applies to all sitemap routes together so
+adapters only need one forwarding rule.
+
+## Configuration Reference
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  sitemap: {
+    enabled: true,
+    routePrefix: "",
+    baseUrl: "https://docs.example.com",
+    manifestPath: ".farming-labs/sitemap-manifest.json",
+    xml: {
+      enabled: true,
+      includeLastmod: true,
+    },
+    markdown: {
+      enabled: true,
+      includeDescriptions: true,
+      includeLastmod: true,
+      linkTarget: "both",
+    },
+  },
+});
+```
+
+| Option | Type | Default | Description |
+| ------ | ---- | ------- | ----------- |
+| `sitemap` | `boolean \| DocsSitemapConfig` | `false` | Enable or configure sitemap routes. |
+| `sitemap.enabled` | `boolean` | `true` when `sitemap` is an object | Disable without removing the object. |
+| `sitemap.routePrefix` | `string` | `""` | Prefix all public sitemap routes. |
+| `sitemap.baseUrl` | `string` | request origin at runtime, `llmsTxt.baseUrl` in the CLI | Absolute base URL for XML `<loc>` values. |
+| `sitemap.manifestPath` | `string` | `.farming-labs/sitemap-manifest.json` | Internal generated manifest path. |
+| `sitemap.xml` | `boolean \| SitemapXmlConfig` | enabled | Enable or configure `sitemap.xml`. |
+| `sitemap.xml.includeLastmod` | `boolean` | `true` | Include `<lastmod>` when a page date is known. |
+| `sitemap.markdown` | `boolean \| SitemapMarkdownConfig` | enabled | Enable or configure `sitemap.md`. |
+| `sitemap.markdown.includeDescriptions` | `boolean` | `true` | Include page descriptions in the Markdown sitemap. |
+| `sitemap.markdown.includeLastmod` | `boolean` | `true` | Include `Last updated:` lines when a page date is known. |
+| `sitemap.markdown.linkTarget` | `"html" \| "markdown" \| "both"` | `"both"` | Choose whether list items link to HTML pages, Markdown pages, or both. |
+
+## Output Examples
+
+### `sitemap.xml`
+
+```xml title="sitemap.xml"
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://docs.example.com/docs</loc>
+    <lastmod>2026-05-08</lastmod>
+  </url>
+  <url>
+    <loc>https://docs.example.com/docs/installation</loc>
+    <lastmod>2026-05-08</lastmod>
+  </url>
+</urlset>
+```
+
+### `sitemap.md`
+
+```markdown title="sitemap.md"
+# Example Docs Sitemap
+
+Base URL: https://docs.example.com
+Docs entry: /docs
+Generated: 2026-05-08
+
+## Overview
+
+- [Introduction](/docs)
+  Markdown: /docs.md
+  Description: Start here
+  Last updated: 2026-05-08
+
+## Installation
+
+- [Installation](/docs/installation)
+  Markdown: /docs/installation.md
+  Description: Install the docs framework
+  Last updated: 2026-05-08
+  Related: /docs/configuration
+```
+
+### Manifest
+
+```json title=".farming-labs/sitemap-manifest.json"
+{
+  "version": 1,
+  "generatedAt": "2026-05-08T00:00:00.000Z",
+  "baseUrl": "https://docs.example.com",
+  "entry": "docs",
+  "siteTitle": "Example Docs",
+  "pages": [
+    {
+      "url": "/docs/installation",
+      "absoluteUrl": "https://docs.example.com/docs/installation",
+      "markdownUrl": "/docs/installation.md",
+      "title": "Installation",
+      "description": "Install the docs framework",
+      "sourcePath": "docs/installation/page.mdx",
+      "lastmod": "2026-05-08",
+      "lastmodSource": "git",
+      "related": ["/docs/configuration"]
+    }
+  ]
+}
+```
+
+## Verification
+
+After enabling the feature, check the public routes:
+
+```bash title="terminal"
+curl "http://127.0.0.1:3000/sitemap.xml"
+curl "http://127.0.0.1:3000/sitemap.md"
+curl "http://127.0.0.1:3000/.well-known/sitemap.md"
+```
+
+In CI, use `--check` to fail when generated static output is stale:
+
+```bash title="terminal"
+pnpm exec docs sitemap generate --check
+```

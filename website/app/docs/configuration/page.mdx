@@ -136,6 +136,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `changelog`   | `boolean \| ChangelogConfig`   | `false`         | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
 | `mcp`         | `boolean \| DocsMcpConfig`     | enabled         | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions or a hosted OpenAPI JSON |
+| `sitemap`     | `boolean \| DocsSitemapConfig` | `false`         | Generated `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` |
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template                              |
 | `og`          | `OGConfig`                     | —               | Dynamic Open Graph images (see [API Reference](/docs/reference#ogconfig)) |
@@ -191,6 +192,51 @@ related:
 ```
 
 See [Agent Primitive](/docs/customization/agent-primitive) for the page-level authoring model.
+
+## Sitemaps
+
+Use `sitemap` when you want both crawler-friendly XML and agent-friendly Markdown maps of your docs:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  sitemap: {
+    enabled: true,
+    baseUrl: "https://docs.example.com",
+  },
+});
+```
+
+Default routes:
+
+- `/sitemap.xml`
+- `/sitemap.md`
+- `/.well-known/sitemap.md`
+- `/api/docs?format=sitemap-xml`
+- `/api/docs?format=sitemap-md`
+
+For static export, run the generator before your framework build:
+
+```bash title="terminal"
+pnpm exec docs sitemap generate
+```
+
+The command writes `.farming-labs/sitemap-manifest.json` plus public sitemap files. It uses each
+page source file's last git commit date for `lastmod`, with filesystem modified time as a fallback.
+
+Use `routePrefix` to move all sitemap routes together:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  sitemap: {
+    routePrefix: "/docs-map",
+  },
+});
+```
+
+That generates `/docs-map/sitemap.xml`, `/docs-map/sitemap.md`, and
+`/docs-map/.well-known/sitemap.md`. See [Sitemaps](/docs/customization/sitemaps) for static export,
+manifest, `lastmod`, and output examples.
 
 ## Static export
 
