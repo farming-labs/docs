@@ -130,6 +130,7 @@ describe("inspectAgentReadiness", () => {
       `export default {
   entry: "docs",
   llmsTxt: { enabled: true },
+  sitemap: { enabled: true },
   search: true,
   mcp: { enabled: true },
   feedback: {
@@ -248,6 +249,7 @@ Use this docs site through markdown routes and MCP.
     expect(report.checks.find((check) => check.id === "api-route")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "public-routes")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "agent-discovery")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "sitemap")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "skill")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "metadata")?.status).toBe("pass");
@@ -262,6 +264,7 @@ Use this docs site through markdown routes and MCP.
       `export default {
   entry: "docs",
   llmsTxt: { enabled: true },
+  sitemap: { enabled: true },
   search: true,
   mcp: { enabled: true },
 };`,
@@ -302,6 +305,16 @@ export const { GET, POST } = createDocsAPI({});
         if (url.pathname === "/llms.txt" || url.pathname === "/llms-full.txt") {
           res.writeHead(200, { "Content-Type": "text/plain" });
           res.end(`# Docs\n\n${url.pathname}`);
+          return;
+        }
+
+        if (
+          url.pathname === "/sitemap.xml" ||
+          url.pathname === "/sitemap.md" ||
+          url.pathname === "/.well-known/sitemap.md"
+        ) {
+          res.writeHead(200, { "Content-Type": "text/plain" });
+          res.end(url.pathname.endsWith(".xml") ? "<urlset></urlset>" : "# Docs Sitemap");
           return;
         }
 
@@ -411,11 +424,12 @@ export const { GET, POST } = createDocsAPI({});
       const report = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
 
       expect(report.url).toBe(`http://127.0.0.1:${port}`);
-      expect(report.maxScore).toBe(130);
+      expect(report.maxScore).toBe(135);
       expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(
         "pass",
       );
       expect(report.checks.find((check) => check.id === "hosted-llms")?.status).toBe("pass");
+      expect(report.checks.find((check) => check.id === "hosted-sitemap")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-skill")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-markdown")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-mcp")?.status).toBe("pass");
@@ -437,6 +451,7 @@ export const { GET, POST } = createDocsAPI({});
       `export default {
   entry: "docs",
   llmsTxt: { enabled: true },
+  sitemap: { enabled: true },
   search: true,
   mcp: { enabled: true },
   feedback: {
@@ -514,7 +529,7 @@ Use this docs site through markdown routes and MCP.
       process.chdir(tmpDir);
       const report = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
 
-      expect(report.maxScore).toBe(130);
+      expect(report.maxScore).toBe(135);
       expect(report.score).toBeGreaterThanOrEqual(90);
       expect(report.grade).not.toBe("Agent-optimized");
       expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(

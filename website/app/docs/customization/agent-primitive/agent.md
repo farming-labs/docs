@@ -61,11 +61,12 @@ The spec is generated from `docs.config` and includes:
 
 - site title, description, docs entry, and base URL
 - configured locales and the `lang`/`locale` query parameters
-- capability flags for markdown, MCP, search, feedback, skills, and `llms.txt`
+- capability flags for markdown, MCP, search, feedback, skills, `llms.txt`, and sitemap
 - shared docs API route
 - search endpoint and query parameter
 - markdown route patterns
 - `llms.txt` and `llms-full.txt` routes
+- `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` routes when enabled
 - `skill.md` route, well-known alias, API format, and root file convention
 - Skills CLI install command and recommended skill metadata
 - MCP enabled state, endpoint, server name, version, and tool toggles
@@ -84,7 +85,8 @@ You are reading this docs site as an implementation agent.
 Before implementing from these docs, fetch `/.well-known/agent.json` from the same origin. If that
 is unavailable, fall back to `/.well-known/agent`, then `/api/docs/agent/spec`. Use that JSON as the
 source of truth for the docs entry path, markdown route pattern, search endpoint, MCP endpoint,
-`llms.txt` routes, `skill.md`, skills install command, locale handling, and feedback endpoints.
+`llms.txt` routes, `sitemap.xml` / `sitemap.md` routes, `skill.md`, skills install command, locale
+handling, and feedback endpoints.
 
 Recommended bootstrap flow:
 
@@ -92,11 +94,12 @@ Recommended bootstrap flow:
 2. Read `spec.skills.route` or `spec.skills.wellKnown` when a concise site skill is useful.
 3. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read relevant docs pages as markdown.
 4. Use `spec.search.endpoint` when you need to find the right page first.
-5. Use `spec.mcp.wellKnownEndpoint`, `spec.mcp.publicEndpoint`, or `spec.mcp.endpoint` when MCP is enabled and your environment supports MCP.
-6. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
+5. Use `spec.sitemap.markdown.route` for the semantic docs map and `spec.sitemap.xml.route` for canonical freshness when sitemap is enabled.
+6. Use `spec.mcp.wellKnownEndpoint`, `spec.mcp.publicEndpoint`, or `spec.mcp.endpoint` when MCP is enabled and your environment supports MCP.
+7. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
 
-Do not scrape the HTML page when markdown, search, MCP, or `llms.txt` routes are available in the
-spec.
+Do not scrape the HTML page when markdown, search, sitemap, MCP, or `llms.txt` routes are available
+in the spec.
 </Agent>
 ```
 

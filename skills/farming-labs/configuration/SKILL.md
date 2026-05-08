@@ -487,7 +487,7 @@ feedback: {
 Default behavior:
 
 - `GET /.well-known/agent.json` is the preferred public agent discovery document, with `/.well-known/agent` as fallback and `/api/docs/agent/spec` as the canonical framework route
-- the discovery document includes site identity, locale config, capability flags, search, markdown routes, `llms.txt`, root `skill.md` metadata, Skills CLI install metadata, MCP, and feedback routes
+- the discovery document includes site identity, locale config, capability flags, search, markdown routes, `llms.txt`, sitemap routes, root `skill.md` metadata, Skills CLI install metadata, MCP, and feedback routes
 - `GET /skill.md` serves the root `skill.md` file when present, `GET /.well-known/skill.md` is the fallback alias, and `GET /api/docs?format=skill` is the shared API format
 - `GET /api/docs/agent/feedback/schema` returns the machine-readable schema
 - `POST /api/docs/agent/feedback` accepts `{ context?, payload }`

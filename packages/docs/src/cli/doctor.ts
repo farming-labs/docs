@@ -14,7 +14,13 @@ import {
   DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
 } from "../agent.js";
 import { createFilesystemDocsMcpSource, resolveDocsMcpConfig } from "../server.js";
-import type { DocsConfig, DocsMcpConfig } from "../types.js";
+import {
+  DEFAULT_SITEMAP_MD_ROUTE,
+  DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE,
+  DEFAULT_SITEMAP_XML_ROUTE,
+  resolveDocsSitemapConfig,
+} from "../sitemap.js";
+import type { DocsConfig, DocsMcpConfig, DocsSitemapConfig } from "../types.js";
 import {
   extractNestedObjectLiteral,
   extractTopLevelConfigObject,
@@ -333,6 +339,17 @@ function readTopLevelBooleanProperty(content: string, key: string): boolean | un
   return undefined;
 }
 
+function readObjectBooleanProperty(content: string, key: string): boolean | undefined {
+  const propertyPattern = new RegExp(`^\\s*${escapeRegExp(key)}\\s*:\\s*(true|false)(?:\\s|$)`);
+
+  for (const property of splitTopLevelProperties(content)) {
+    const match = property.trim().match(propertyPattern);
+    if (match) return match[1] === "true";
+  }
+
+  return undefined;
+}
+
 function resolveFeatureEnabled(
   config: DocsConfig | undefined,
   content: string,
@@ -353,6 +370,27 @@ function resolveFeatureEnabled(
 
   const enabled = readBooleanProperty(block, "enabled");
   return enabled ?? true;
+}
+
+function readSitemapConfigFromStatic(content: string): boolean | DocsSitemapConfig | undefined {
+  const topLevelBoolean = readTopLevelBooleanProperty(content, "sitemap");
+  if (typeof topLevelBoolean === "boolean") return topLevelBoolean;
+
+  const block = extractNestedObjectLiteral(content, ["sitemap"]);
+  if (!block) return undefined;
+
+  const config: DocsSitemapConfig = {};
+  const enabled = readObjectBooleanProperty(block, "enabled");
+  const routePrefix = block.match(/\broutePrefix\s*:\s*["'`]([^"'`]+)["'`]/)?.[1];
+  const baseUrl = block.match(/\bbaseUrl\s*:\s*["'`]([^"'`]+)["'`]/)?.[1];
+  const manifestPath = block.match(/\bmanifestPath\s*:\s*["'`]([^"'`]+)["'`]/)?.[1];
+
+  if (typeof enabled === "boolean") config.enabled = enabled;
+  if (routePrefix) config.routePrefix = routePrefix;
+  if (baseUrl) config.baseUrl = baseUrl;
+  if (manifestPath) config.manifestPath = manifestPath;
+
+  return config;
 }
 
 function resolveStaticExport(config: DocsConfig | undefined, content: string): boolean {
@@ -534,7 +572,7 @@ function detectRouteSurface(
         apiDetail: "Next static export disables /api/docs and the shared agent endpoints.",
         publicMounted: false,
         publicDetail:
-          "Public .md, llms.txt, skill.md, and agent discovery routes depend on /api/docs.",
+          "Public .md, llms.txt, sitemap, skill.md, and agent discovery routes depend on /api/docs.",
       };
     }
 
@@ -1270,6 +1308,41 @@ async function probeMcpRoute(
   }
 }
 
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
+}
+
+function readDiscoveryRoute(value: unknown): string | undefined {
+  return typeof value === "string" && value.startsWith("/") ? value : undefined;
+}
+
+function hostedSitemapRoutes(discoveryBody: unknown): {
+  enabled: boolean;
+  routes: string[];
+} {
+  const sitemap = asRecord(asRecord(discoveryBody)?.sitemap);
+
+  if (sitemap?.enabled === false) {
+    return { enabled: false, routes: [] };
+  }
+
+  const xml = asRecord(sitemap?.xml);
+  const markdown = asRecord(sitemap?.markdown);
+  const routes = [
+    xml?.enabled === false
+      ? undefined
+      : (readDiscoveryRoute(xml?.route) ?? DEFAULT_SITEMAP_XML_ROUTE),
+    markdown?.enabled === false
+      ? undefined
+      : (readDiscoveryRoute(markdown?.route) ?? DEFAULT_SITEMAP_MD_ROUTE),
+    markdown?.enabled === false
+      ? undefined
+      : (readDiscoveryRoute(markdown?.wellKnownRoute) ?? DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE),
+  ].filter((route): route is string => typeof route === "string");
+
+  return { enabled: true, routes: Array.from(new Set(routes)) };
+}
+
 async function buildHostedAgentChecks(
   url: string,
   pages: Array<{ url: string }>,
@@ -1328,6 +1401,51 @@ async function buildHostedAgentChecks(
         : "Verify deployed /llms.txt and /llms-full.txt routes return non-empty text.",
     ),
   );
+
+  const sitemapRoutes = hostedSitemapRoutes(discovery.body);
+  if (sitemapRoutes.enabled && sitemapRoutes.routes.length > 0) {
+    const sitemap = await Promise.all(
+      sitemapRoutes.routes.map((route) => probeTextRoute(baseUrl, route)),
+    );
+    const sitemapPassed = sitemap.filter((result) => result.ok).length;
+    checks.push(
+      makeCheck(
+        "hosted-sitemap",
+        "Hosted sitemap",
+        sitemapPassed === sitemap.length ? "pass" : sitemapPassed > 0 ? "warn" : "fail",
+        sitemapPassed === sitemap.length ? 5 : sitemapPassed > 0 ? 3 : 0,
+        5,
+        sitemap.map((result) => result.detail).join(" "),
+        sitemapPassed === sitemap.length
+          ? undefined
+          : `Verify deployed sitemap routes return non-empty text: ${sitemapRoutes.routes.join(", ")}.`,
+      ),
+    );
+  } else if (sitemapRoutes.enabled) {
+    checks.push(
+      makeCheck(
+        "hosted-sitemap",
+        "Hosted sitemap",
+        "warn",
+        0,
+        5,
+        "The hosted discovery spec reports sitemap support but did not expose sitemap routes.",
+        "Check sitemap.xml and sitemap.markdown config so at least one sitemap route is enabled.",
+      ),
+    );
+  } else {
+    checks.push(
+      makeCheck(
+        "hosted-sitemap",
+        "Hosted sitemap",
+        "warn",
+        0,
+        5,
+        "The hosted discovery spec reports sitemap routes as disabled.",
+        "Enable sitemap in docs.config when agents and crawlers should discover canonical URLs and freshness metadata.",
+      ),
+    );
+  }
 
   const skill = await Promise.all([
     probeTextRoute(baseUrl, DEFAULT_SKILL_MD_ROUTE),
@@ -1537,6 +1655,9 @@ export async function inspectAgentReadiness(
       defaultName: siteTitle,
     },
   );
+  const sitemapConfig = resolveDocsSitemapConfig(
+    config?.sitemap ?? readSitemapConfigFromStatic(configContent) ?? false,
+  );
   const feedbackRoute = DEFAULT_AGENT_FEEDBACK_ROUTE;
   const feedbackSchemaRoute = `${feedbackRoute}/schema`;
 
@@ -1587,7 +1708,7 @@ export async function inspectAgentReadiness(
       routeSurface.apiDetail,
       routeSurface.apiMounted
         ? undefined
-        : "Wire the framework docs API route so /api/docs can serve markdown, llms.txt, skill.md, and discovery responses.",
+        : "Wire the framework docs API route so /api/docs can serve markdown, llms.txt, sitemap, skill.md, and discovery responses.",
     ),
   );
 
@@ -1601,7 +1722,7 @@ export async function inspectAgentReadiness(
       routeSurface.publicDetail,
       routeSurface.publicMounted
         ? undefined
-        : "Add the framework public forwarder so /.well-known/*, /llms.txt, /skill.md, /mcp, and .md routes resolve from the shared docs API.",
+        : "Add the framework public forwarder so /.well-known/*, /llms.txt, /sitemap.xml, /sitemap.md, /skill.md, /mcp, and .md routes resolve from the shared docs API.",
     ),
   );
 
@@ -1627,8 +1748,8 @@ export async function inspectAgentReadiness(
           "llms",
           "llms.txt discovery",
           "pass",
-          10,
-          10,
+          5,
+          5,
           `Enabled via ${DEFAULT_LLMS_TXT_ROUTE} and ${DEFAULT_LLMS_FULL_TXT_ROUTE}.`,
         )
       : makeCheck(
@@ -1636,9 +1757,30 @@ export async function inspectAgentReadiness(
           "llms.txt discovery",
           "warn",
           0,
-          10,
+          5,
           `${DEFAULT_LLMS_TXT_ROUTE} and ${DEFAULT_LLMS_FULL_TXT_ROUTE} are disabled in docs config.`,
           "Enable llmsTxt so agents and GEO crawlers can discover the docs index and full context surfaces.",
+        ),
+  );
+
+  checks.push(
+    sitemapConfig.enabled
+      ? makeCheck(
+          "sitemap",
+          "Sitemap discovery",
+          "pass",
+          5,
+          5,
+          `Enabled via ${sitemapConfig.xml.route}, ${sitemapConfig.markdown.route}, and ${sitemapConfig.markdown.wellKnownRoute}.`,
+        )
+      : makeCheck(
+          "sitemap",
+          "Sitemap discovery",
+          "warn",
+          0,
+          5,
+          "Generated sitemap routes are disabled in docs config.",
+          "Enable sitemap so crawlers and agents can discover canonical docs URLs, semantic sections, and lastmod freshness metadata.",
         ),
   );
 

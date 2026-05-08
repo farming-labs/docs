@@ -13,7 +13,7 @@ experience for humans, IDEs, and agents without maintaining a pile of routing bo
 - Built-in search with simple, Typesense, Algolia, MCP, and custom provider options
 - Generated API reference from framework route handlers or a hosted OpenAPI JSON document
 - Next.js changelog pages from dated MDX entries
-- Machine-readable docs through `.md` routes, `llms.txt`, `skill.md`, agent discovery, and MCP
+- Machine-readable docs through `.md` routes, `llms.txt`, sitemaps, `skill.md`, agent discovery, and MCP
 - Page-level agent compaction with `docs agent compact` and `agent.compact` defaults
 - Agent and reader-facing docs scoring with `docs doctor --agent` and `docs doctor --site`
 
@@ -99,10 +99,14 @@ Your docs content here.
 
 ## Agent And LLM Surface
 
-The framework exposes machine-readable docs by default in Next.js:
+The framework exposes machine-readable docs in Next.js, with sitemap routes available when
+`sitemap` is enabled:
 
 - `/llms.txt`
 - `/llms-full.txt`
+- `/sitemap.xml`
+- `/sitemap.md`
+- `/.well-known/sitemap.md`
 - `/skill.md`
 - `/.well-known/skill.md`
 - `/.well-known/agent.json`
@@ -117,6 +121,19 @@ The canonical API routes remain available under `/api/docs`, including `/api/doc
 
 For a custom site-specific skill, place `skill.md` at the project root beside `docs.config.ts`.
 When it is missing, the framework serves a generated fallback based on the docs config.
+
+Enable `sitemap` when you also want crawler-friendly XML and agent-friendly Markdown maps:
+
+```ts
+sitemap: {
+  enabled: true,
+  baseUrl: "https://docs.example.com",
+},
+```
+
+For static hosting, run `pnpm exec docs sitemap generate` before your framework build so
+`public/sitemap.xml`, `public/sitemap.md`, `public/.well-known/sitemap.md`, and the internal
+`.farming-labs/sitemap-manifest.json` stay fresh.
 
 ## Agent Compaction
 
@@ -198,6 +215,7 @@ The command checks the agent surface end to end:
 - public agent routes
 - agent discovery spec
 - `llms.txt`
+- `sitemap.xml` / `sitemap.md`
 - `skill.md`
 - MCP
 - search
@@ -216,10 +234,11 @@ pnpm exec docs doctor --agent --url https://docs.example.com
 pnpm exec docs doctor --agent --url https://docs.example.com --json
 ```
 
-Hosted checks request `/.well-known/agent.json`, `/llms.txt`, `/llms-full.txt`, `/skill.md`,
-`/.well-known/skill.md`, one representative `.md` page route, `/mcp`, and `/.well-known/mcp`.
+Hosted checks request `/.well-known/agent.json`, `/llms.txt`, `/llms-full.txt`, sitemap routes,
+`/skill.md`, `/.well-known/skill.md`, one representative `.md` page route, `/mcp`, and
+`/.well-known/mcp`.
 For MCP, the doctor performs an HTTP initialize handshake, checks the session header, and verifies
-the built-in docs tools are exposed. With hosted checks enabled, the agent score is out of `130`
+the built-in docs tools are exposed. With hosted checks enabled, the agent score is out of `135`
 instead of `100`.
 
 `docs doctor --site` focuses on the reader-facing surface instead:
@@ -261,6 +280,7 @@ Use the full docs for feature-specific setup:
 - [Themes](https://docs.farming-labs.dev/docs/customization)
 - [MCP server](https://docs.farming-labs.dev/docs/customization/mcp)
 - [llms.txt](https://docs.farming-labs.dev/docs/customization/llms-txt)
+- [Sitemaps](https://docs.farming-labs.dev/docs/customization/sitemaps)
 - [Agent primitive](https://docs.farming-labs.dev/docs/customization/agent-primitive)
 - [Examples](https://github.com/farming-labs/docs/tree/main/examples)
 

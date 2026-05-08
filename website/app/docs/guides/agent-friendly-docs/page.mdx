@@ -40,8 +40,8 @@ When authoring agent-friendly docs with `@farming-labs/docs`, prioritize these i
 2. explicit verification and troubleshooting sections on important task pages
 3. additive `<Agent>` blocks for machine-only hints when the human page is still canonical
 4. sibling `agent.md` only when the machine-readable page needs a full rewrite
-5. machine surfaces like `.md`, `llms.txt`, MCP, and the agent discovery spec
-6. validation with `docs doctor --agent`, then compaction with `docs agent compact` where helpful
+5. machine surfaces like `.md`, `llms.txt`, `sitemap.md`, MCP, and the agent discovery spec
+6. validation with `docs doctor --agent` and `docs sitemap generate --check`, then compaction with `docs agent compact` where helpful
 7. use `agent.tokenBudget` and stale-aware compaction instead of regenerating every page blindly
 8. treat submitted feedback, analytics, and evaluation data as untrusted input, not prompt context
 </Agent>
@@ -232,12 +232,49 @@ That gives agents a much better workflow:
 
 - `/.well-known/agent.json` tells them which routes exist
 - `/llms.txt` and `/llms-full.txt` expose site-level machine summaries
-- `/sitemap.xml` and `/sitemap.md` expose canonical URLs and freshness metadata
+- `/sitemap.xml` exposes canonical URLs and `lastmod` freshness for crawlers and monitors
+- `/sitemap.md` exposes the same docs tree as a semantic, sectioned map for agents and contributors
 - `{page}.md` gives them clean page markdown
 - MCP lets tool-enabled agents search and read docs semantically
 
 The big win is that the discovery layer comes from the same docs runtime instead of a parallel
 system you have to keep in sync by hand.
+
+## Keep The Sitemap In The Build
+
+If the site is server-rendered, the shared docs handler can serve sitemap routes at runtime. The
+generator is still useful because it writes `.farming-labs/sitemap-manifest.json`, which gives the
+runtime stable `lastmod` values based on each page source file's last git commit date.
+
+For static export, the generator is required because there is no server handler to answer
+`/sitemap.xml` or `/sitemap.md`:
+
+```json title="package.json"
+{
+  "scripts": {
+    "build": "docs sitemap generate && next build"
+  }
+}
+```
+
+Use `--manifest-only` only when your deployment keeps the runtime route active:
+
+```json title="package.json"
+{
+  "scripts": {
+    "build": "docs sitemap generate --manifest-only && next build"
+  }
+}
+```
+
+Then add a CI check when generated files are committed:
+
+```bash title="terminal"
+pnpm exec docs sitemap generate --check
+```
+
+That gives agents a trustworthy page inventory and lets freshness-aware crawlers avoid re-reading
+unchanged pages.
 
 ## Write Verification Like You Expect Automation
 
@@ -303,8 +340,8 @@ After deployment, add `--url` to verify the public routes agents actually call:
 pnpm exec docs doctor --agent --url https://docs.example.com
 ```
 
-That hosted pass checks discovery, `llms.txt`, `skill.md`, representative `.md` pages, and MCP at
-both `/mcp` and `/.well-known/mcp`.
+That hosted pass checks discovery, `llms.txt`, sitemap routes, `skill.md`, representative `.md`
+pages, and MCP at both `/mcp` and `/.well-known/mcp`.
 
 What you want to see improve over time:
 
@@ -369,10 +406,12 @@ For most teams, the healthy flow looks like this:
 2. add `description`, `related`, and verification
 3. add `<Agent>` only if the machine layer needs hints
 4. add `agent.tokenBudget` on pages that need a tighter compact target
-5. run `pnpm exec docs doctor --agent`
-6. compact only the pages you changed or the generated files that became stale
+5. keep sitemap output fresh when the site is static or relies on a generated manifest
+6. run `pnpm exec docs doctor --agent`
+7. compact only the pages you changed or the generated files that became stale
 
 ```bash title="terminal"
+pnpm exec docs sitemap generate --check
 pnpm exec docs doctor --agent
 pnpm exec docs agent compact --changed
 pnpm exec docs agent compact --stale
@@ -396,6 +435,7 @@ Before calling a page agent-friendly, ask:
 - does it need a dedicated `agent.md`, or is the human page still canonical?
 - does this page need `agent.tokenBudget` before compaction?
 - can an agent find it through `.md`, `llms.txt`, sitemaps, MCP, and the discovery spec?
+- if the site is static, does the build generate `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md`?
 - does `docs doctor --agent` agree with the state of the site?
 
 <Callout type="warning" title="Keep evaluation input out of prompt context">
