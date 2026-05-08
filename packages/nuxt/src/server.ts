@@ -39,6 +39,7 @@ import {
   stripGeneratedAgentProvenance,
   resolveDocsAgentMdxContent,
   resolvePageSidebarFolderIndexBehavior,
+  resolveAskAISearchRequestConfig,
   resolveSearchRequestConfig,
   resolveDocsI18n,
   resolveDocsLlmsTxtFormat,
@@ -50,7 +51,7 @@ import {
   resolveSidebarFolderIndexBehavior,
   resolveDocsSkillFormat,
 } from "@farming-labs/docs";
-import type { DocsAgentTraceEventInput } from "@farming-labs/docs";
+import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig } from "@farming-labs/docs";
 import {
   createDocsMcpHttpHandler,
   resolveDocsMcpConfig,
@@ -88,6 +89,7 @@ interface AIConfigObj {
   baseUrl?: string;
   apiKey?: string;
   maxResults?: number;
+  useMcp?: boolean | DocsAskAIMcpConfig;
   suggestedQuestions?: string[];
   aiLabel?: string;
   packageName?: string;
@@ -1188,7 +1190,14 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     const retrieval = await buildDocsAskAIContext({
       pages: getSearchIndex(ctx),
       query: lastUserMessage.content,
-      search: resolveSearchRequestConfig(config.search, context.request.url),
+      search: resolveAskAISearchRequestConfig({
+        search: config.search,
+        useMcp: aiConfig.useMcp,
+        mcpEndpoint: mcpConfig.route,
+        mcpEnabled: mcpConfig.enabled,
+        mcpSearchEnabled: mcpConfig.tools.searchDocs,
+        requestUrl: context.request.url,
+      }),
       locale: ctx.locale,
       pathname: requestUrl.searchParams.get("pathname") ?? undefined,
       siteTitle: llmsTitle,

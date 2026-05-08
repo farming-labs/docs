@@ -1,6 +1,7 @@
 import type {
   AlgoliaDocsSearchConfig,
   CustomDocsSearchConfig,
+  DocsAskAIMcpConfig,
   DocsSearchAdapter,
   DocsSearchAdapterFactory,
   DocsSearchAdapterContext,
@@ -1091,6 +1092,41 @@ export function resolveSearchRequestConfig(
     ...search,
     endpoint: new URL(search.endpoint, requestUrl).toString(),
   };
+}
+
+export function resolveAskAISearchRequestConfig(options: {
+  search: boolean | DocsSearchConfig | undefined;
+  useMcp?: boolean | DocsAskAIMcpConfig;
+  mcpEndpoint?: string;
+  mcpEnabled?: boolean;
+  mcpSearchEnabled?: boolean;
+  requestUrl?: string;
+}): boolean | DocsSearchConfig | undefined {
+  if (!options.useMcp) {
+    return resolveSearchRequestConfig(options.search, options.requestUrl);
+  }
+
+  if (typeof options.useMcp === "object") {
+    return resolveSearchRequestConfig(
+      {
+        ...options.useMcp,
+        provider: "mcp",
+      },
+      options.requestUrl,
+    );
+  }
+
+  if (options.mcpEnabled === false || options.mcpSearchEnabled === false || !options.mcpEndpoint) {
+    return resolveSearchRequestConfig(options.search, options.requestUrl);
+  }
+
+  return resolveSearchRequestConfig(
+    {
+      provider: "mcp",
+      endpoint: options.mcpEndpoint,
+    },
+    options.requestUrl,
+  );
 }
 
 export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchAdapter {

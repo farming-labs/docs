@@ -1,6 +1,6 @@
 ---
 name: ask-ai
-description: Configure the Ask AI (RAG-powered AI chat) in @farming-labs/docs. Use when enabling AI chat, setting mode (search vs floating), floatingStyle (panel, modal, popover, full-modal), position, providers, models, suggestedQuestions, apiKey, systemPrompt, maxResults, feedback, or onActions. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt, and env vars.
+description: Configure the Ask AI (RAG-powered AI chat) in @farming-labs/docs. Use when enabling AI chat, setting mode (search vs floating), floatingStyle (panel, modal, popover, full-modal), position, providers, models, suggestedQuestions, apiKey, systemPrompt, maxResults, useMcp, feedback, or onActions. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt, and env vars.
 ---
 
 # @farming-labs/docs — Ask AI (AI Chat)
@@ -207,6 +207,17 @@ Ask AI uses the configured docs search pipeline before building model context, i
 search, Typesense, Algolia, MCP search, or custom adapters. The model context is hydrated from the
 matched local page/section, preserves fenced code blocks for commands and config snippets, and
 infers package names plus exact import lines from the retrieved context.
+
+Use `ai.useMcp: true` when only Ask AI should retrieve through the built-in MCP `search_docs` tool
+while the normal docs search API keeps its own provider. `true` uses `mcp.route` (default
+`/api/docs/mcp`) from the MCP server the docs site already exposes. If a project sets
+`mcp: { route: "/custom/docs/mcp" }`, `useMcp: true` follows that route automatically. Pass
+`{ endpoint: "https://docs.example.com/mcp", headers: { Authorization: "Bearer ..." } }` only for a
+hosted or external MCP endpoint. MCP handles retrieval only; `model`, `apiKey`, `baseUrl`, or
+`providers` still control the LLM generation request. Custom MCP endpoints must support Streamable
+HTTP MCP, return an `mcp-session-id` on `initialize`, and expose a search tool (default
+`search_docs`; override with `toolName` if needed). If MCP is disabled or `search_docs` is turned
+off, Ask AI falls back to the normal top-level `search` config.
 
 ### aiLabel
 

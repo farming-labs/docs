@@ -2268,4 +2268,407 @@ Welcome to the docs.
       vi.restoreAllMocks();
     }
   });
+
+  it.each([
+    {
+      label: "default MCP route",
+      mcp: undefined,
+      endpoint: "http://localhost/api/docs/mcp",
+    },
+    {
+      label: "custom MCP route",
+      mcp: { route: "/custom/docs/mcp" },
+      endpoint: "http://localhost/custom/docs/mcp",
+    },
+  ])("routes Ask AI retrieval through the $label when ai.useMcp is enabled", async (scenario) => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-ai-use-mcp-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+
+Welcome to the docs.
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              serverInfo: { name: "docs-mcp", version: "1.0.0" },
+            },
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              "mcp-session-id": "session-1",
+            },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    results: [
+                      {
+                        id: "mcp-ask-ai-1",
+                        url: "/docs/introduction",
+                        content: "Introduction - Ask AI MCP result",
+                        description: "Returned from MCP search_docs for Ask AI.",
+                        type: "heading",
+                        section: "Ask AI",
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response("data: {}\n\n", {
+          status: 200,
+          headers: {
+            "content-type": "text/event-stream",
+          },
+        }),
+      ) as typeof fetch;
+
+    try {
+      const { POST } = createDocsAPI({
+        entry: "docs",
+        ai: {
+          enabled: true,
+          apiKey: "test-key",
+          baseUrl: "https://llm.example/v1",
+          model: "test-model",
+          useMcp: true,
+        },
+        mcp: scenario.mcp,
+      });
+
+      const response = await POST(
+        new Request("http://localhost/api/docs", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: "How does Ask AI use MCP?" }],
+          }),
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe(scenario.endpoint);
+      expect(vi.mocked(globalThis.fetch).mock.calls[1]?.[0]).toBe(scenario.endpoint);
+      expect(vi.mocked(globalThis.fetch).mock.calls[2]?.[0]).toBe(scenario.endpoint);
+      expect(vi.mocked(globalThis.fetch).mock.calls[3]?.[0]).toBe(
+        "https://llm.example/v1/chat/completions",
+      );
+
+      const upstreamInit = vi.mocked(globalThis.fetch).mock.calls[3]?.[1];
+      const upstreamBody = JSON.parse(String(upstreamInit?.body)) as {
+        messages?: Array<{ role?: string; content?: string }>;
+      };
+      const systemMessage = upstreamBody.messages?.find((message) => message.role === "system");
+      expect(systemMessage?.content).toContain("Returned from MCP search_docs for Ask AI.");
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("supports a custom Ask AI MCP endpoint with headers and tool name", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-ai-use-mcp-custom-endpoint-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+
+Welcome to the docs.
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              serverInfo: { name: "remote-docs-mcp", version: "1.0.0" },
+            },
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              "mcp-session-id": "remote-session-1",
+            },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    results: [
+                      {
+                        id: "remote-mcp-ask-ai-1",
+                        url: "/docs/remote",
+                        content: "Remote MCP result",
+                        description: "Returned from a custom MCP endpoint.",
+                        type: "page",
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response("data: {}\n\n", {
+          status: 200,
+          headers: {
+            "content-type": "text/event-stream",
+          },
+        }),
+      ) as typeof fetch;
+
+    try {
+      const { POST } = createDocsAPI({
+        entry: "docs",
+        ai: {
+          enabled: true,
+          apiKey: "test-key",
+          baseUrl: "https://llm.example/v1",
+          model: "test-model",
+          useMcp: {
+            endpoint: "https://docs.example.com/mcp",
+            headers: {
+              Authorization: "Bearer docs-mcp-token",
+            },
+            toolName: "custom_search_docs",
+          },
+        },
+      });
+
+      const response = await POST(
+        new Request("http://localhost/api/docs", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: "How does custom MCP work?" }],
+          }),
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe("https://docs.example.com/mcp");
+      expect(vi.mocked(globalThis.fetch).mock.calls[1]?.[0]).toBe("https://docs.example.com/mcp");
+
+      const initializeInit = vi.mocked(globalThis.fetch).mock.calls[0]?.[1];
+      expect(initializeInit?.headers).toMatchObject({
+        Authorization: "Bearer docs-mcp-token",
+      });
+
+      const toolInit = vi.mocked(globalThis.fetch).mock.calls[1]?.[1];
+      expect(toolInit?.headers).toMatchObject({
+        Authorization: "Bearer docs-mcp-token",
+        "mcp-session-id": "remote-session-1",
+      });
+      expect(JSON.parse(String(toolInit?.body))).toMatchObject({
+        method: "tools/call",
+        params: {
+          name: "custom_search_docs",
+        },
+      });
+
+      const upstreamInit = vi.mocked(globalThis.fetch).mock.calls[3]?.[1];
+      const upstreamBody = JSON.parse(String(upstreamInit?.body)) as {
+        messages?: Array<{ role?: string; content?: string }>;
+      };
+      const systemMessage = upstreamBody.messages?.find((message) => message.role === "system");
+      expect(systemMessage?.content).toContain("Returned from a custom MCP endpoint.");
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("uses a real custom MCP endpoint for Ask AI retrieval before generation", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-ai-real-mcp-endpoint-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "guides"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "guides", "page.mdx"),
+      `---
+title: "MCP Integration"
+description: "Use MCP retrieval for Ask AI."
+---
+
+# MCP Integration
+
+Ask AI should retrieve this exact MCP Actual Retrieval Token from the real MCP handler.
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const mcpHandlers = createDocsMCPAPI({
+      rootDir,
+      entry: "docs",
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      const url = new URL(request.url);
+
+      if (url.href === "https://docs.example.com/mcp") {
+        if (request.method === "POST") return mcpHandlers.POST(request);
+        if (request.method === "DELETE") return mcpHandlers.DELETE(request);
+        return mcpHandlers.GET(request);
+      }
+
+      if (url.href === "https://llm.example/v1/chat/completions") {
+        return new Response("data: {}\n\n", {
+          status: 200,
+          headers: {
+            "content-type": "text/event-stream",
+          },
+        });
+      }
+
+      throw new Error(`Unexpected fetch request: ${url.href}`);
+    }) as typeof fetch;
+
+    try {
+      const { POST } = createDocsAPI({
+        rootDir,
+        entry: "docs",
+        ai: {
+          enabled: true,
+          apiKey: "test-key",
+          baseUrl: "https://llm.example/v1",
+          model: "test-model",
+          useMcp: {
+            endpoint: "https://docs.example.com/mcp",
+            headers: {
+              Authorization: "Bearer docs-mcp-token",
+            },
+          },
+        },
+      });
+
+      const response = await POST(
+        new Request("http://localhost/api/docs", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: "How do I use MCP retrieval?" }],
+          }),
+        }),
+      );
+
+      expect(response.status).toBe(200);
+
+      const calls = vi.mocked(globalThis.fetch).mock.calls.map(([input, init]) => ({
+        request: input instanceof Request ? input : new Request(input, init),
+        init,
+      }));
+      const mcpCalls = calls.filter(
+        ({ request }) => request.url === "https://docs.example.com/mcp",
+      );
+      expect(mcpCalls.map(({ request }) => request.method)).toEqual(["POST", "POST", "DELETE"]);
+      expect(new Headers(mcpCalls[0]?.init?.headers).get("authorization")).toBe(
+        "Bearer docs-mcp-token",
+      );
+      expect(new Headers(mcpCalls[1]?.init?.headers).get("mcp-session-id")).toEqual(
+        expect.any(String),
+      );
+      expect(JSON.parse(String(mcpCalls[1]?.init?.body))).toMatchObject({
+        method: "tools/call",
+        params: {
+          name: "search_docs",
+        },
+      });
+
+      const llmCall = calls.find(
+        ({ request }) => request.url === "https://llm.example/v1/chat/completions",
+      );
+      expect(llmCall).toBeDefined();
+      const upstreamBody = JSON.parse(String(llmCall?.init?.body)) as {
+        messages?: Array<{ role?: string; content?: string }>;
+      };
+      const systemMessage = upstreamBody.messages?.find((message) => message.role === "system");
+      expect(systemMessage?.content).toContain("MCP Actual Retrieval Token");
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.restoreAllMocks();
+    }
+  });
 });

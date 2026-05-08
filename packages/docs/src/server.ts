@@ -44,6 +44,7 @@ export {
   formatDocsAskAIPackageHints,
   inferDocsAskAIPackageHints,
   performDocsSearch,
+  resolveAskAISearchRequestConfig,
   resolveSearchRequestConfig,
 } from "./search.js";
 export {
@@ -73,6 +74,7 @@ export type {
   DocsSearchAdapter,
   DocsSearchAdapterContext,
   DocsSearchAdapterFactory,
+  DocsAskAIMcpConfig,
   DocsSearchConfig,
   DocsSearchDocument,
   DocsSearchQuery,

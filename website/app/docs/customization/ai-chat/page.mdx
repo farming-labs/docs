@@ -346,6 +346,76 @@ ai: {
 }
 ```
 
+### `useMcp`
+
+Route Ask AI retrieval through the MCP server your docs site already exposes, without changing the
+normal docs search API.
+
+| Type | Default |
+| ---- | ------- |
+| `boolean \| DocsAskAIMcpConfig` | `false` |
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  ai: {
+    enabled: true,
+    useMcp: true,
+  },
+});
+```
+
+`useMcp: true` uses the built-in docs MCP server and calls its `search_docs` tool to retrieve Ask AI
+context. By default that is the canonical `mcp.route` at `/api/docs/mcp`; if you configure
+`mcp.route`, Ask AI uses that route automatically:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  mcp: {
+    route: "/custom/docs/mcp",
+  },
+  ai: {
+    enabled: true,
+    useMcp: true,
+  },
+});
+```
+
+Pass an object only when Ask AI should use a hosted or external MCP endpoint instead of this site's
+own MCP route. MCP handles retrieval only; the `model`, `apiKey`, `baseUrl`, or `providers` config
+still controls the LLM generation request.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  ai: {
+    enabled: true,
+    model: "gpt-4o-mini",
+    apiKey: process.env.OPENAI_API_KEY,
+    useMcp: {
+      endpoint: "https://docs.example.com/mcp",
+      headers: {
+        Authorization: `Bearer ${process.env.DOCS_MCP_TOKEN}`,
+      },
+    },
+  },
+});
+```
+
+If your top-level `search` config already uses `provider: "mcp"`, Ask AI follows that automatically.
+Use `ai.useMcp` when only Ask AI should route retrieval through MCP.
+
+`DocsAskAIMcpConfig` accepts the MCP search options (`endpoint`, `headers`, `toolName`,
+`protocolVersion`, `maxResults`, and `enabled`). If MCP is disabled or `search_docs` is turned off,
+Ask AI falls back to the normal top-level `search` config.
+
+End-to-end, Ask AI does two server-side calls:
+
+1. Retrieve docs context from `search_docs` on the configured MCP endpoint.
+2. Send the prompt plus retrieved context to the configured OpenAI-compatible model endpoint.
+
+So a custom MCP endpoint must support Streamable HTTP MCP, return an `mcp-session-id` on
+`initialize`, expose a search tool (default `search_docs`), and return results with `url`,
+`content`, optional `description`, and optional `section`.
+
 ### Retrieval Quality
 
 Ask AI uses the same configured docs search pipeline as the search API. If you configure simple
