@@ -1,5 +1,3 @@
-import { existsSync, readFileSync } from "node:fs";
-import path from "node:path";
 import type { DocsSitemapConfig, ResolvedDocsRelatedLink } from "./types.js";
 
 export const DEFAULT_SITEMAP_XML_ROUTE = "/sitemap.xml";
@@ -359,21 +357,6 @@ export function renderDocsSitemapMarkdown(
   }
 
   return lines.join("\n").replace(/\n{3,}/g, "\n\n");
-}
-
-export function readDocsSitemapManifest(
-  rootDir: string,
-  sitemap?: boolean | DocsSitemapConfig,
-): DocsSitemapManifest | null {
-  const resolved = resolveDocsSitemapConfig(sitemap);
-  const manifestPath = path.resolve(rootDir, resolved.manifestPath);
-  if (!existsSync(manifestPath)) return null;
-
-  try {
-    return JSON.parse(readFileSync(manifestPath, "utf-8")) as DocsSitemapManifest;
-  } catch {
-    return null;
-  }
 }
 
 export function readDocsSitemapManifestFromContentMap(

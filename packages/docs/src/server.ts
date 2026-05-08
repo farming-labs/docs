@@ -64,7 +64,6 @@ export {
   DEFAULT_SITEMAP_XML_ROUTE,
   buildDocsSitemapManifest,
   createDocsSitemapResponse,
-  readDocsSitemapManifest,
   readDocsSitemapManifestFromContentMap,
   renderDocsSitemapMarkdown,
   renderDocsSitemapXml,
@@ -72,6 +71,7 @@ export {
   resolveDocsSitemapRequest,
   toDocsSitemapMarkdownUrl,
 } from "./sitemap.js";
+export { readDocsSitemapManifest } from "./sitemap-server.js";
 export type {
   DocsSitemapFormat,
   DocsSitemapManifest,

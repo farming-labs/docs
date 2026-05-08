@@ -86,7 +86,6 @@ export {
   DEFAULT_SITEMAP_XML_ROUTE,
   buildDocsSitemapManifest,
   createDocsSitemapResponse,
-  readDocsSitemapManifest,
   readDocsSitemapManifestFromContentMap,
   renderDocsSitemapMarkdown,
   renderDocsSitemapXml,

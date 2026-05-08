@@ -35,7 +35,6 @@ import {
   resolveDocsLocale,
   resolvePageSidebarFolderIndexBehavior,
   createDocsSitemapResponse,
-  readDocsSitemapManifest,
   resolveDocsSitemapConfig,
 } from "@farming-labs/docs";
 import type {
@@ -51,6 +50,7 @@ import type {
 import {
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
+  readDocsSitemapManifest,
   resolveDocsMcpConfig,
   type DocsMcpPage,
 } from "@farming-labs/docs/server";

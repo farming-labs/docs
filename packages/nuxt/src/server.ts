@@ -37,7 +37,6 @@ import {
   performDocsSearch,
   renderDocsMarkdownDocument,
   renderDocsSkillDocument,
-  readDocsSitemapManifest,
   readDocsSitemapManifestFromContentMap,
   stripGeneratedAgentProvenance,
   resolveDocsAgentMdxContent,
@@ -51,12 +50,12 @@ import {
   resolveDocsPath,
   resolvePageReadingTime,
   resolveReadingTimeOptions,
-  resolveSidebarFolderIndexBehavior,
   resolveDocsSkillFormat,
 } from "@farming-labs/docs";
 import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig } from "@farming-labs/docs";
 import {
   createDocsMcpHttpHandler,
+  readDocsSitemapManifest,
   resolveDocsMcpConfig,
   serializeDocsIconRegistry,
   serializeOpenDocsProviders,

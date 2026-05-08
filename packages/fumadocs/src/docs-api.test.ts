@@ -1393,6 +1393,7 @@ title: "Home"
       skills: true,
       mcp: true,
       search: true,
+      sitemap: false,
       agentFeedback: true,
       locales: true,
     });
@@ -1560,6 +1561,7 @@ title: "Home"
       skills: true,
       mcp: false,
       search: false,
+      sitemap: false,
       agentFeedback: false,
       locales: false,
     });

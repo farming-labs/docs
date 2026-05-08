@@ -18,7 +18,6 @@ import {
   performDocsSearch,
   renderDocsMarkdownDocument,
   renderDocsSkillDocument,
-  readDocsSitemapManifest,
   readDocsSitemapManifestFromContentMap,
   stripGeneratedAgentProvenance,
   resolveDocsAgentMdxContent,
@@ -32,11 +31,14 @@ import {
   resolveDocsPath,
   resolvePageReadingTime,
   resolveReadingTimeOptions,
-  resolveSidebarFolderIndexBehavior,
   resolveDocsSkillFormat,
 } from "@farming-labs/docs";
 import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig } from "@farming-labs/docs";
-import { createDocsMcpHttpHandler, resolveDocsMcpConfig } from "@farming-labs/docs/server";
+import {
+  createDocsMcpHttpHandler,
+  readDocsSitemapManifest,
+  resolveDocsMcpConfig,
+} from "@farming-labs/docs/server";
 import type { DocsMcpHttpHandlers } from "@farming-labs/docs/server";
 import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
