@@ -606,7 +606,7 @@ export function createDocsMetadata(config: DocsConfig) {
  * ```ts
  * export function generateMetadata({ params }) {
  *   const page = getPage(params.slug);
- *   return createPageMetadata(docsConfig, page.data, undefined, page.url);
+ *   return createPageMetadata(docsConfig, page.data, undefined, page.url, { locale });
  * }
  * ```
  */
@@ -615,6 +615,7 @@ export function createPageMetadata(
   page: Pick<PageFrontmatter, "title" | "description" | "ogImage" | "openGraph" | "twitter">,
   baseUrl?: string,
   url?: string,
+  options: { locale?: string } = {},
 ) {
   const result: Record<string, unknown> = {
     title: page.title,
@@ -624,7 +625,7 @@ export function createPageMetadata(
   if (url && !(config as { staticExport?: boolean }).staticExport) {
     result.alternates = {
       types: {
-        "text/markdown": toDocsMarkdownUrl(url),
+        "text/markdown": toDocsMarkdownUrl(url, { locale: options.locale }),
       },
     };
   }
