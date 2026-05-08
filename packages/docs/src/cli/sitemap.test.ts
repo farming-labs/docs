@@ -26,7 +26,7 @@ describe("sitemap cli", () => {
     });
   });
 
-  it("writes a manifest and public files", async () => {
+  it("writes a manifest and public files by default", async () => {
     writeFileSync(
       path.join(tmpDir, "docs.config.ts"),
       `export default {
@@ -52,7 +52,7 @@ description: "Configure docs"
     );
 
     process.chdir(tmpDir);
-    await generateSitemap({ public: true });
+    await generateSitemap();
 
     const manifestPath = path.join(tmpDir, ".farming-labs", "sitemap-manifest.json");
     expect(existsSync(manifestPath)).toBe(true);
@@ -101,12 +101,43 @@ description: "Configure docs"
     );
 
     process.chdir(tmpDir);
-    await generateSitemap({ public: true });
+    await generateSitemap();
 
     const manifestPath = path.join(tmpDir, ".farming-labs", "sitemap-manifest.json");
     const originalManifest = readFileSync(manifestPath, "utf-8");
 
-    await expect(generateSitemap({ public: true, check: true })).resolves.toBeUndefined();
+    await expect(generateSitemap({ check: true })).resolves.toBeUndefined();
     expect(readFileSync(manifestPath, "utf-8")).toBe(originalManifest);
+  });
+
+  it("can write only the internal manifest", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  contentDir: "docs",
+  sitemap: { enabled: true, baseUrl: "https://docs.example.com" },
+};
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "docs", "page.md"),
+      `---
+title: "Home"
+---
+
+# Home
+`,
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+    await generateSitemap({ manifestOnly: true });
+
+    expect(existsSync(path.join(tmpDir, ".farming-labs", "sitemap-manifest.json"))).toBe(true);
+    expect(existsSync(path.join(tmpDir, "public", "sitemap.xml"))).toBe(false);
+    expect(existsSync(path.join(tmpDir, "public", "sitemap.md"))).toBe(false);
   });
 });

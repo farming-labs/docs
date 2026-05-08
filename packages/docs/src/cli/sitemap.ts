@@ -264,8 +264,7 @@ export async function generateSitemap(options: SitemapGenerateOptions = {}): Pro
   const manifestJson = `${JSON.stringify(manifest, null, 2)}\n`;
   const manifestChanged = writeIfChanged(manifestPath, manifestJson, options.check === true);
 
-  const shouldWritePublic =
-    options.public === true || (config?.staticExport === true && options.manifestOnly !== true);
+  const shouldWritePublic = options.manifestOnly !== true;
   const publicWrites: string[] = [];
 
   if (shouldWritePublic) {
@@ -313,7 +312,7 @@ ${pc.dim("Usage:")}
 
 ${pc.dim("Options:")}
   ${pc.cyan("--config <path>")}     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
-  ${pc.cyan("--public")}            Also write public sitemap.xml and sitemap.md files
+  ${pc.cyan("--public")}            Explicitly write public sitemap.xml and sitemap.md files
   ${pc.cyan("--manifest-only")}     Only write the internal sitemap manifest
   ${pc.cyan("--check")}             Fail if generated output is stale
   ${pc.cyan("-h, --help")}          Show this help message

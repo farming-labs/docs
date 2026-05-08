@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "docs sitemap generate --config src/lib/docs.config.ts && astro build",
     "preview": "astro preview"
   },
   "dependencies": {
