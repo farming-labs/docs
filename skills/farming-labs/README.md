@@ -20,6 +20,7 @@ Useful routes:
 
 - Agent discovery spec: `http://127.0.0.1:3000/api/docs/agent/spec`
 - Site skill: `http://127.0.0.1:3000/skill.md` or `http://127.0.0.1:3000/.well-known/skill.md`
+- Sitemaps: `http://127.0.0.1:3000/sitemap.xml`, `http://127.0.0.1:3000/sitemap.md`, or `http://127.0.0.1:3000/.well-known/sitemap.md`
 - MCP: `http://127.0.0.1:3000/mcp` or `http://127.0.0.1:3000/.well-known/mcp`
 - Search API: `http://127.0.0.1:3000/api/docs?query=session`
 - Docs API markdown: `http://127.0.0.1:3000/api/docs?format=markdown&path=quickstart`
@@ -31,11 +32,13 @@ Useful routes:
 Useful command:
 
 ```bash
+pnpm --dir examples/next exec docs sitemap generate --config docs.config.tsx
 pnpm --dir examples/next exec docs agent compact installation --config docs.config.tsx
 ```
 
-The agent discovery spec also advertises the root `skill.md` route, this Skills pack through
-`npx skills add farming-labs/docs`, and recommends the `getting-started` skill for first-run setup.
+The agent discovery spec also advertises the sitemap routes, the root `skill.md` route, this Skills
+pack through `npx skills add farming-labs/docs`, and recommends the `getting-started` skill for
+first-run setup.
 
 ---
 

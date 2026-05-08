@@ -329,3 +329,13 @@ In CI, use `--check` to fail when generated static output is stale:
 ```bash title="terminal"
 pnpm exec docs sitemap generate --check
 ```
+
+Use the agent doctor when you want the sitemap to count toward the broader machine-facing surface:
+
+```bash title="terminal"
+pnpm exec docs doctor --agent
+pnpm exec docs doctor --agent --url https://docs.example.com
+```
+
+The hosted doctor reads sitemap routes from `/.well-known/agent.json`, so custom `routePrefix`
+values are checked through the configured routes instead of assuming root-level defaults.

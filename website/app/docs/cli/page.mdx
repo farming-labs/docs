@@ -384,6 +384,7 @@ What it checks:
 - public agent route wiring
 - agent discovery spec
 - `llms.txt`
+- `sitemap.xml` and `sitemap.md`
 - `skill.md`
 - MCP
 - search
@@ -499,6 +500,7 @@ The hosted pass probes:
 - `/.well-known/agent.json`
 - `/llms.txt`
 - `/llms-full.txt`
+- sitemap routes from the discovery spec, usually `/sitemap.xml`, `/sitemap.md`, and `/.well-known/sitemap.md`
 - `/skill.md`
 - `/.well-known/skill.md`
 - one representative page markdown route, such as `/docs.md`
@@ -513,9 +515,10 @@ For MCP, the doctor performs a Streamable HTTP `initialize` request, checks for 
 - `search_docs`
 - `read_page`
 
-Hosted checks raise the agent report from `100` possible points to `130` possible points. The JSON
+Hosted checks raise the agent report from `100` possible points to `135` possible points. The JSON
 report also includes the normalized `url` field and hosted check IDs such as
-`hosted-agent-discovery`, `hosted-llms`, `hosted-skill`, `hosted-markdown`, and `hosted-mcp`.
+`hosted-agent-discovery`, `hosted-llms`, `hosted-sitemap`, `hosted-skill`, `hosted-markdown`, and
+`hosted-mcp`.
 
 Use this form after deploying, in preview-deployment CI, or any time a site looks healthy locally
 but an agent cannot discover the public routes. A hosted failure usually means the deployment is
@@ -871,7 +874,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
        - `src/routes/{entry}/index.tsx` — Docs index route
        - `src/routes/{entry}/$.tsx` — Catch-all docs route
        - `src/routes/api/docs.ts` — Search and AI API route
-       - `src/routes/$.ts` — Public `llms.txt`, `.well-known`, `.md`, and MCP aliases
+       - `src/routes/$.ts` — Public `llms.txt`, sitemap, `.well-known`, `.md`, and MCP aliases
        - `src/styles/app.css` — Imports Tailwind and theme CSS
        - `docs/page.mdx` — Sample documentation page
        - `docs/installation/page.mdx` — Sample installation guide
@@ -896,7 +899,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
        - `src/routes/docs/[...slug]/+page.svelte` — Dynamic page component
        - `src/routes/docs/+page.svelte` — Generated when i18n is enabled
        - `src/routes/api/docs/+server.ts` — Search and AI API route
-       - `src/hooks.server.ts` — Public `llms.txt`, `.well-known`, `.md`, and MCP aliases
+       - `src/hooks.server.ts` — Public `llms.txt`, sitemap, `.well-known`, `.md`, and MCP aliases
        - `src/app.css` — Theme CSS import
        - `docs/page.md` — Sample documentation page
        - `docs/installation/page.md` — Sample installation guide
@@ -918,7 +921,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
        - `src/pages/{entry}/index.astro` — Docs index page
        - `src/pages/{entry}/[...slug].astro` — Dynamic page component
        - `src/pages/api/{entry}.ts` — API route for search and AI
-       - `src/middleware.ts` — Public `llms.txt`, `.well-known`, `.md`, and MCP aliases
+       - `src/middleware.ts` — Public `llms.txt`, sitemap, `.well-known`, `.md`, and MCP aliases
        - `astro.config.mjs` — Astro config with SSR enabled
        - `docs/page.md` — Sample documentation page
        - `docs/installation/page.md` — Sample installation guide
@@ -938,7 +941,7 @@ When you choose **Existing project**, the CLI does the following (framework-spec
        - `docs.config.ts` — Full config with your selected theme
        - `nuxt.config.ts` — Nuxt config with theme CSS and server assets
        - `server/api/docs.ts` — docs data, search, AI, and page loading
-       - `server/middleware/docs-public.ts` — public `llms.txt`, `.well-known`, `.md`, and MCP aliases
+       - `server/middleware/docs-public.ts` — public `llms.txt`, sitemap, `.well-known`, `.md`, and MCP aliases
        - `pages/docs/[[...slug]].vue` — Catch-all page component that handles the docs index and nested docs routes
        - `docs/page.md` — Sample documentation page
        - `docs/installation/page.md` — Sample installation guide

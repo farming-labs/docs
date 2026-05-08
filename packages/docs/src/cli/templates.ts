@@ -2781,7 +2781,7 @@ ${cfg.entry}/                   # Markdown content
   quickstart/page.md
 server/
   api/docs.ts                   # Page data, search, and AI chat API
-  middleware/docs-public.ts     # llms.txt, .well-known, .md, and MCP aliases
+  middleware/docs-public.ts     # llms.txt, sitemap, .well-known, .md, and MCP aliases
 pages/
   ${cfg.entry}/[[...slug]].vue   # Docs catch-all page
 docs.config.ts

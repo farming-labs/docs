@@ -396,6 +396,7 @@ What it checks:
 - public agent routes
 - agent discovery spec
 - `llms.txt`
+- `sitemap.xml` and `sitemap.md`
 - `skill.md`
 - MCP
 - search
@@ -409,6 +410,7 @@ With `--url`, `docs doctor --agent` also probes the deployed public agent surfac
 - `/.well-known/agent.json`
 - `/llms.txt`
 - `/llms-full.txt`
+- sitemap routes from the discovery spec, usually `/sitemap.xml`, `/sitemap.md`, and `/.well-known/sitemap.md`
 - `/skill.md`
 - `/.well-known/skill.md`
 - one representative `.md` page route, such as `/docs.md`
@@ -417,7 +419,10 @@ With `--url`, `docs doctor --agent` also probes the deployed public agent surfac
 
 For hosted MCP, the command performs a Streamable HTTP initialize handshake, checks for
 `mcp-session-id`, calls `tools/list`, and expects `list_pages`, `get_navigation`, `search_docs`,
-and `read_page`. Hosted checks raise the agent max score from `100` to `130`.
+and `read_page`. Hosted checks raise the agent max score from `100` to `135`.
+
+Hosted JSON check IDs include `hosted-agent-discovery`, `hosted-llms`, `hosted-sitemap`,
+`hosted-skill`, `hosted-markdown`, and `hosted-mcp`.
 
 Expected shape of the output:
 
@@ -464,10 +469,10 @@ pnpm --dir website exec docs doctor --agent --config docs.config.tsx
 When the user chooses **Existing project**, the CLI detects (or prompts for) framework, then theme (including **Create your own theme** → prompts for theme name, scaffolds `themes/<name>.ts` and `themes/<name>.css`), path aliases, entry path (default `docs`; Enter to accept), optional API reference scaffold, optional i18n scaffolding, and global CSS. If API reference is enabled and the user does not pass `--api-route-root`, the CLI detects a sensible default route root (usually `api`) and shows it as the default in the prompt. Generated files:
 
 - **Next.js:** `docs.config.ts`, `next.config.ts`, `app/global.css`, `app/layout.tsx`, `app/docs/layout.tsx`, sample MDX pages; installs `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next`; can start dev server. If API reference is enabled, the CLI also writes `app/api-reference/[[...slug]]/route.ts` (or `src/app/...`).
-- **TanStack Start:** `docs.config.ts`, `src/lib/docs.server.ts`, `src/lib/docs.functions.ts`, `src/routes/<entry>/index.tsx`, `src/routes/<entry>/$.tsx`, `src/routes/api/docs.ts`, one `src/routes/$.ts` public docs forwarder for `/llms.txt`, `.well-known`, `.md`, and MCP, optional `src/routes/api-reference.index.ts` + `src/routes/api-reference.$.ts`, updates `src/routes/__root.tsx`, updates `vite.config.ts`, and wires theme CSS into the selected global stylesheet; installs `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/tanstack-start`.
-- **SvelteKit:** `src/lib/docs.config.ts`, `src/lib/docs.server.ts`, `src/routes/docs/*`, `src/routes/api/docs/+server.ts`, one `src/hooks.server.ts` public docs forwarder for `/llms.txt`, `.well-known`, `.md`, and MCP, optional `src/routes/api-reference/+server.ts` + `src/routes/api-reference/[...slug]/+server.ts`, `src/app.css`, `docs/*.md`; installs svelte + svelte-theme packages.
-- **Astro:** `src/lib/docs.config.ts`, `src/lib/docs.server.ts`, `src/pages/**`, `src/pages/api/docs.ts`, one `src/middleware.ts` public docs forwarder for `/llms.txt`, `.well-known`, `.md`, and MCP, optional `src/pages/api-reference/index.ts` + `src/pages/api-reference/[...slug].ts`, `docs/*.md`; installs astro + astro-theme packages.
-- **Nuxt:** `docs.config.ts`, `nuxt.config.ts`, `server/api/docs.ts`, `server/middleware/docs-public.ts` for `/llms.txt`, `.well-known`, `.md`, and MCP forwarding, optional `server/routes/api-reference/index.ts` + `server/routes/api-reference/[...slug].ts`, `pages/docs/[...slug].vue`, `docs/*.md`; installs nuxt + nuxt-theme packages.
+- **TanStack Start:** `docs.config.ts`, `src/lib/docs.server.ts`, `src/lib/docs.functions.ts`, `src/routes/<entry>/index.tsx`, `src/routes/<entry>/$.tsx`, `src/routes/api/docs.ts`, one `src/routes/$.ts` public docs forwarder for `/llms.txt`, sitemap routes, `.well-known`, `.md`, and MCP, optional `src/routes/api-reference.index.ts` + `src/routes/api-reference.$.ts`, updates `src/routes/__root.tsx`, updates `vite.config.ts`, and wires theme CSS into the selected global stylesheet; installs `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/tanstack-start`.
+- **SvelteKit:** `src/lib/docs.config.ts`, `src/lib/docs.server.ts`, `src/routes/docs/*`, `src/routes/api/docs/+server.ts`, one `src/hooks.server.ts` public docs forwarder for `/llms.txt`, sitemap routes, `.well-known`, `.md`, and MCP, optional `src/routes/api-reference/+server.ts` + `src/routes/api-reference/[...slug]/+server.ts`, `src/app.css`, `docs/*.md`; installs svelte + svelte-theme packages.
+- **Astro:** `src/lib/docs.config.ts`, `src/lib/docs.server.ts`, `src/pages/**`, `src/pages/api/docs.ts`, one `src/middleware.ts` public docs forwarder for `/llms.txt`, sitemap routes, `.well-known`, `.md`, and MCP, optional `src/pages/api-reference/index.ts` + `src/pages/api-reference/[...slug].ts`, `docs/*.md`; installs astro + astro-theme packages.
+- **Nuxt:** `docs.config.ts`, `nuxt.config.ts`, `server/api/docs.ts`, `server/middleware/docs-public.ts` for `/llms.txt`, sitemap routes, `.well-known`, `.md`, and MCP forwarding, optional `server/routes/api-reference/index.ts` + `server/routes/api-reference/[...slug].ts`, `pages/docs/[...slug].vue`, `docs/*.md`; installs nuxt + nuxt-theme packages.
 
 **Create your own theme:** If the user selects this, the CLI prompts for a theme name (default `my-theme`; Enter to accept), then creates `themes/<name>.ts` and `themes/<name>.css` and wires them in `docs.config` and global CSS. See the `creating-themes` skill for the API.
 

@@ -200,6 +200,17 @@ Your docs are automatically served in LLM-optimized format — no extra routes n
 
 See the [llms.txt docs](/docs/customization/llms-txt) for details.
 
+### Sitemaps
+
+Enable `sitemap` when agents and crawlers need a compact inventory before reading pages:
+
+```text
+/sitemap.xml  → canonical URLs with lastmod dates
+/sitemap.md   → semantic docs map with descriptions and markdown URLs
+```
+
+See the [Sitemaps docs](/docs/customization/sitemaps) for static export and manifest details.
+
 ### AI Chat with RAG
 
 Built-in AI chat with retrieval-augmented generation. A simple setup is just two lines:
