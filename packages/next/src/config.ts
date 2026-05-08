@@ -104,6 +104,7 @@ export const { GET, POST } = createDocsAPI({
   changelog: docsConfig.changelog,
   feedback: docsConfig.feedback,
   mcp: docsConfig.mcp,
+  sitemap: docsConfig.sitemap,
   search: docsConfig.search,
   analytics: docsConfig.analytics,
   observability: docsConfig.observability,
@@ -193,6 +194,10 @@ const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms-full.txt";
 const DEFAULT_SKILL_MD_ROUTE = "/skill.md";
 const DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE = "/.well-known/skill.md";
+const DEFAULT_SITEMAP_XML_ROUTE = "/sitemap.xml";
+const DEFAULT_SITEMAP_MD_ROUTE = "/sitemap.md";
+const DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE = "/.well-known/sitemap.md";
+const DEFAULT_SITEMAP_MANIFEST_PATH = ".farming-labs/sitemap-manifest.json";
 const MARKDOWN_ACCEPT_HEADER_VALUE = [
   "(?:^|.*,\\s*)",
   "text/markdown",
@@ -980,6 +985,53 @@ function normalizeRoutePath(route: string): string {
   return normalized !== "/" ? normalized.replace(/\/+$/, "") : DEFAULT_MCP_ROUTE;
 }
 
+function normalizeRoutePrefix(prefix?: string): string {
+  if (!prefix) return "";
+  const normalized = `/${prefix.replace(/^\/+|\/+$/g, "")}`.replace(/\/+/g, "/");
+  return normalized === "/" ? "" : normalized;
+}
+
+function joinPublicRoute(prefix: string, route: string): string {
+  return `${prefix}/${route.replace(/^\/+/, "")}`.replace(/\/+/g, "/");
+}
+
+function readSitemapConfig(root: string): {
+  enabled: boolean;
+  routePrefix: string;
+} {
+  for (const ext of FILE_EXTS) {
+    const configPath = join(root, `docs.config.${ext}`);
+    if (!existsSync(configPath)) continue;
+
+    try {
+      const content = readFileSync(configPath, "utf-8");
+
+      if (content.match(/sitemap\s*:\s*false/)) {
+        return { enabled: false, routePrefix: "" };
+      }
+
+      if (content.match(/sitemap\s*:\s*true/)) {
+        return { enabled: true, routePrefix: "" };
+      }
+
+      const block = extractObjectLiteral(content, "sitemap");
+      if (!block) continue;
+
+      const enabledMatch = block.match(/enabled\s*:\s*(true|false)/);
+      const routePrefixMatch = block.match(/routePrefix\s*:\s*["']([^"']+)["']/);
+
+      return {
+        enabled: enabledMatch ? enabledMatch[1] !== "false" : true,
+        routePrefix: normalizeRoutePrefix(routePrefixMatch?.[1]),
+      };
+    } catch {
+      return { enabled: false, routePrefix: "" };
+    }
+  }
+
+  return { enabled: false, routePrefix: "" };
+}
+
 function normalizeAgentFeedbackRoute(
   route?: string,
   fallback = DEFAULT_AGENT_FEEDBACK_ROUTE,
@@ -1140,6 +1192,26 @@ function buildSkillMdRewrites(): NextRewrite[] {
     {
       source: DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
       destination: "/api/docs?format=skill",
+    },
+  ];
+}
+
+function buildSitemapRewrites(config: { enabled: boolean; routePrefix: string }): NextRewrite[] {
+  if (!config.enabled) return [];
+  const prefix = config.routePrefix;
+
+  return [
+    {
+      source: joinPublicRoute(prefix, DEFAULT_SITEMAP_XML_ROUTE),
+      destination: "/api/docs?format=sitemap-xml",
+    },
+    {
+      source: joinPublicRoute(prefix, DEFAULT_SITEMAP_MD_ROUTE),
+      destination: "/api/docs?format=sitemap-md",
+    },
+    {
+      source: joinPublicRoute(prefix, DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE),
+      destination: "/api/docs?format=sitemap-md",
     },
   ];
 }
@@ -1324,6 +1396,10 @@ function mergeDocsMarkdownRewrites(
     enabled: boolean;
     route: string;
   },
+  sitemap: {
+    enabled: boolean;
+    routePrefix: string;
+  },
   agentFeedback: {
     enabled: boolean;
     route: string;
@@ -1336,6 +1412,7 @@ function mergeDocsMarkdownRewrites(
     ...buildMcpRewrites(mcp),
     ...buildLlmsTxtRewrites(),
     ...buildSkillMdRewrites(),
+    ...buildSitemapRewrites(sitemap),
     ...buildDocsMarkdownRewrites(entry),
     ...buildAgentFeedbackRewrites(agentFeedback),
   ];
@@ -1410,6 +1487,7 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
   }
 
   const mcp = readMcpConfig(root);
+  const sitemap = readSitemapConfig(root);
   const docsMcpRouteDir = join(root, appDir, "api", "docs", "mcp");
   if (
     mcp.enabled &&
@@ -1674,6 +1752,7 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
     {};
   const docsTraceGlob = docsContentDir.replace(/\\/g, "/").replace(/^\.?\//, "") + "/**/*";
   const skillTraceFile = "skill.md";
+  const sitemapManifestTraceFile = DEFAULT_SITEMAP_MANIFEST_PATH;
   const docsContentRoot = isAbsolute(docsContentDir) ? docsContentDir : join(root, docsContentDir);
 
   if (!isStaticExport) {
@@ -1684,7 +1763,7 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
     nextConfig.rewrites = async () => {
       const rewrites =
         typeof existingRewrites === "function" ? await existingRewrites() : existingRewrites;
-      return mergeDocsMarkdownRewrites(entry, mcp, agentFeedback, rewrites);
+      return mergeDocsMarkdownRewrites(entry, mcp, sitemap, agentFeedback, rewrites);
     };
 
     const autoRedirects = buildHiddenFolderRedirects(docsContentRoot, entry);
@@ -1705,7 +1784,12 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
   nextConfig.outputFileTracingIncludes = {
     ...existingTracingIncludes,
     "/api/docs": [
-      ...new Set([...(existingTracingIncludes["/api/docs"] ?? []), docsTraceGlob, skillTraceFile]),
+      ...new Set([
+        ...(existingTracingIncludes["/api/docs"] ?? []),
+        docsTraceGlob,
+        skillTraceFile,
+        sitemapManifestTraceFile,
+      ]),
     ],
     [DEFAULT_MCP_ROUTE]: [
       ...new Set([...(existingTracingIncludes[DEFAULT_MCP_ROUTE] ?? []), docsTraceGlob]),

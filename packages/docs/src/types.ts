@@ -873,6 +873,74 @@ export interface LlmsTxtConfig {
   siteDescription?: string;
 }
 
+export interface SitemapXmlConfig {
+  /**
+   * Whether to expose the XML sitemap route.
+   * @default true
+   */
+  enabled?: boolean;
+  /**
+   * Include per-page `<lastmod>` entries when a reliable page date is available.
+   * @default true
+   */
+  includeLastmod?: boolean;
+}
+
+export interface SitemapMarkdownConfig {
+  /**
+   * Whether to expose the Markdown sitemap route.
+   * @default true
+   */
+  enabled?: boolean;
+  /**
+   * Include page descriptions in the Markdown sitemap.
+   * @default true
+   */
+  includeDescriptions?: boolean;
+  /**
+   * Include per-page freshness dates in the Markdown sitemap.
+   * @default true
+   */
+  includeLastmod?: boolean;
+  /**
+   * Which URL each Markdown list item should primarily link to.
+   * @default "both"
+   */
+  linkTarget?: "html" | "markdown" | "both";
+}
+
+/**
+ * Configuration for generated `/sitemap.xml`, `/sitemap.md`, and
+ * `/.well-known/sitemap.md` routes.
+ */
+export interface DocsSitemapConfig {
+  /**
+   * Whether to enable sitemap routes.
+   * @default true when `sitemap` is an object
+   */
+  enabled?: boolean;
+  /**
+   * Optional route prefix. For example, `"/docs"` generates
+   * `/docs/sitemap.xml`, `/docs/sitemap.md`, and `/docs/.well-known/sitemap.md`.
+   * @default ""
+   */
+  routePrefix?: string;
+  /**
+   * Public site URL used to build absolute XML sitemap URLs.
+   * Falls back to the request origin at runtime or llmsTxt.baseUrl in the CLI.
+   */
+  baseUrl?: string;
+  /**
+   * Internal generated manifest path.
+   * @default ".farming-labs/sitemap-manifest.json"
+   */
+  manifestPath?: string;
+  /** XML sitemap options. */
+  xml?: boolean | SitemapXmlConfig;
+  /** Markdown sitemap options. */
+  markdown?: boolean | SitemapMarkdownConfig;
+}
+
 /**
  * Tool-level toggles for the built-in MCP server.
  *
@@ -926,6 +994,9 @@ export interface DocsSearchSourcePage {
   content: string;
   description?: string;
   related?: ResolvedDocsRelatedLink[];
+  sourcePath?: string;
+  lastModified?: string;
+  lastmod?: string;
   rawContent?: string;
   agentContent?: string;
   agentRawContent?: string;
@@ -2347,6 +2418,20 @@ export interface DocsConfig {
    * @see https://llmstxt.org
    */
   llmsTxt?: boolean | LlmsTxtConfig;
+  /**
+   * Generated XML and Markdown sitemaps for crawlers, agents, and static export.
+   *
+   * @example
+   * ```ts
+   * sitemap: true
+   *
+   * sitemap: {
+   *   routePrefix: "/docs",
+   *   baseUrl: "https://docs.example.com",
+   * }
+   * ```
+   */
+  sitemap?: boolean | DocsSitemapConfig;
   /**
    * Generated changelog pages backed by date-folder MDX entries inside the docs
    * content tree.

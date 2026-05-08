@@ -122,6 +122,15 @@ const DOCS_CONFIG_WITH_CUSTOM_MCP_ROUTE = `export default {
 };
 `;
 
+const DOCS_CONFIG_WITH_SITEMAP = `export default {
+  entry: "docs",
+  sitemap: {
+    enabled: true,
+    routePrefix: "/docs-map",
+  },
+};
+`;
+
 const DOCS_CONFIG_WITH_AGENT_FEEDBACK = `export default {
   entry: "docs",
   feedback: {
@@ -342,6 +351,32 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(acceptPattern.test("application/json, text/markdown;profile=agent;q=0")).toBe(false);
     expect(acceptPattern.test("text/markdown-v2")).toBe(false);
     expect(acceptPattern.test("application/not-text/markdownish")).toBe(false);
+  });
+
+  it("routes sitemap rewrites through the shared docs api handler when enabled", async () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_SITEMAP, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
+
+    expect(rewrites).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/docs-map/sitemap.xml",
+          destination: "/api/docs?format=sitemap-xml",
+        }),
+        expect.objectContaining({
+          source: "/docs-map/sitemap.md",
+          destination: "/api/docs?format=sitemap-md",
+        }),
+        expect.objectContaining({
+          source: "/docs-map/.well-known/sitemap.md",
+          destination: "/api/docs?format=sitemap-md",
+        }),
+      ]),
+    );
   });
 
   it("redirects hidden folder parents to their first visible child", async () => {
@@ -577,7 +612,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const nextConfig = withDocs({});
 
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
-      "/api/docs": ["app/docs/**/*", "skill.md"],
+      "/api/docs": ["app/docs/**/*", "skill.md", ".farming-labs/sitemap-manifest.json"],
       "/api/docs/mcp": ["app/docs/**/*"],
     });
   });
@@ -590,7 +625,11 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const nextConfig = withDocs({});
 
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
-      "/api/docs": ["website/app/docs/**/*", "skill.md"],
+      "/api/docs": [
+        "website/app/docs/**/*",
+        "skill.md",
+        ".farming-labs/sitemap-manifest.json",
+      ],
       "/api/docs/mcp": ["website/app/docs/**/*"],
     });
   });

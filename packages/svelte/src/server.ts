@@ -35,6 +35,7 @@ import {
   applySidebarFolderIndexBehavior,
   buildDocsAskAIContext,
   buildDocsAgentDiscoverySpec,
+  createDocsSitemapResponse,
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
   emitDocsAgentTraceEvent,
@@ -47,6 +48,8 @@ import {
   performDocsSearch,
   renderDocsMarkdownDocument,
   renderDocsSkillDocument,
+  readDocsSitemapManifest,
+  readDocsSitemapManifestFromContentMap,
   stripGeneratedAgentProvenance,
   resolveDocsAgentMdxContent,
   resolvePageSidebarFolderIndexBehavior,
@@ -837,6 +840,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
               siteTitle: llmsTitle,
               siteDescription: llmsDesc,
             },
+            sitemap: config.sitemap,
             markdown: {
               acceptHeader: false,
             },
@@ -868,6 +872,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
               siteTitle: llmsTitle,
               siteDescription: llmsDesc,
             },
+            sitemap: config.sitemap,
             markdown: {
               acceptHeader: false,
             },
@@ -881,6 +886,19 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         },
       );
     }
+
+    const sitemapResponse = createDocsSitemapResponse({
+      request: event.request,
+      sitemap: config.sitemap,
+      entry,
+      siteTitle: llmsTitle,
+      baseUrl: llmsBaseUrl || event.url.origin,
+      pages: getSearchIndex(ctx),
+      manifest:
+        readDocsSitemapManifestFromContentMap(preloaded) ??
+        readDocsSitemapManifest(rootDir, config.sitemap),
+    });
+    if (sitemapResponse) return sitemapResponse;
 
     const markdownRequest = resolveDocsMarkdownRequest(entry, event.url, event.request);
     if (markdownRequest) {

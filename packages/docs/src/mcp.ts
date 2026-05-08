@@ -34,6 +34,8 @@ export interface DocsMcpPage {
   description?: string;
   related?: DocsSearchSourcePage["related"];
   icon?: string;
+  sourcePath?: string;
+  lastModified?: string;
   content: string;
   rawContent?: string;
   agentContent?: string;
@@ -196,7 +198,7 @@ export function createFilesystemDocsMcpSource(
     const cached = cache.get("__default__");
     if (cached) return cached;
 
-    const pages = scanFilesystemDocsPages(contentDirAbs, entry);
+    const pages = scanFilesystemDocsPages(contentDirAbs, entry, rootDir);
     cache.set("__default__", pages);
     return pages;
   }
@@ -1037,7 +1039,11 @@ function hasVisibleDescendantFilesystemDocsPage(dir: string): boolean {
   return false;
 }
 
-function scanFilesystemDocsPages(contentDirAbs: string, entry: string): ScannedDocsMcpPage[] {
+function scanFilesystemDocsPages(
+  contentDirAbs: string,
+  entry: string,
+  rootDir: string,
+): ScannedDocsMcpPage[] {
   const pages: Array<ScannedDocsMcpPage & { relatedInput?: unknown }> = [];
 
   function scan(dir: string, slugParts: string[]) {
@@ -1091,6 +1097,8 @@ function scanFilesystemDocsPages(contentDirAbs: string, entry: string): ScannedD
         description: data.description as string | undefined,
         relatedInput: data.related,
         icon: data.icon as string | undefined,
+        sourcePath: path.relative(rootDir, full).replace(/\\/g, "/"),
+        lastModified: stat.mtime.toISOString(),
         content: stripMarkdownForMcp(humanRawContent),
         rawContent: humanRawContent,
         agentFallbackContent: pageAgentContent,
@@ -1270,6 +1278,8 @@ function toSearchSourcePages(pages: DocsMcpPage[]): DocsSearchSourcePage[] {
     url: page.url,
     content: page.agentContent ?? page.agentFallbackContent ?? page.content,
     rawContent: page.agentRawContent ?? page.agentFallbackRawContent ?? page.rawContent,
+    sourcePath: page.sourcePath,
+    lastModified: page.lastModified,
     agentContent: page.agentContent,
     agentRawContent: page.agentRawContent,
     agentFallbackContent: page.agentFallbackContent,

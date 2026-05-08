@@ -19,7 +19,7 @@ export async function handle({ event, resolve }) {
 
   if (
     (method === "GET" || method === "HEAD") &&
-    isDocsPublicGetRequest(docsEntry, event.url, event.request)
+    isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: config.sitemap })
   ) {
     return GET({ url: event.url, request: event.request });
   }

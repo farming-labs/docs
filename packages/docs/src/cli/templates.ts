@@ -1127,7 +1127,7 @@ export const Route = createFileRoute("${entryUrl}/$")({
     handlers: {
       GET: async ({ request }) => {
         const url = new URL(request.url);
-        if (isDocsPublicGetRequest(${JSON.stringify(opts.entry)}, url, request)) {
+        if (isDocsPublicGetRequest(${JSON.stringify(opts.entry)}, url, request, { sitemap: docsConfig.sitemap })) {
           return docsServer.GET({ request });
         }
         return undefined;
@@ -1217,7 +1217,7 @@ async function handlePublicDocsRequest(request: Request) {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, url, request)) {
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, url, request, { sitemap: docsConfig.sitemap })) {
     return docsServer.GET({ request });
   }
 
@@ -1597,7 +1597,7 @@ import { createDocsServer } from "@farming-labs/svelte/server";
 import config from "${configImport}";
 
 // preload for production
-const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx,svx}", "/skill.md"], {
+const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx,svx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"], {
   query: "?raw",
   import: "default",
   eager: true,
@@ -1693,7 +1693,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request)) {
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: config.sitemap })) {
     return GET({ url: event.url, request: event.request });
   }
 
@@ -1758,7 +1758,7 @@ const docsPublicHandle: Handle = async ({ event, resolve }) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request)) {
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: config.sitemap })) {
     return docsGET({ url: event.url, request: event.request });
   }
 
@@ -2090,7 +2090,7 @@ export function astroDocsServerTemplate(cfg: TemplateConfig): string {
 import { createDocsServer } from "@farming-labs/astro/server";
 import config from "${configImport}";
 
-const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx}", "/skill.md"], {
+const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"], {
   query: "?raw",
   import: "default",
   eager: true,
@@ -2236,7 +2236,7 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request)) {
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: config.sitemap })) {
     return GET({ request: context.request });
   }
 
@@ -2303,7 +2303,7 @@ const docsPublicMiddleware: MiddlewareHandler = async (context, next) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request)) {
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: config.sitemap })) {
     return docsGET({ request: context.request });
   }
 

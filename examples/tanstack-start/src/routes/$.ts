@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
 import { docsServer } from "@/lib/docs.server";
+import docsConfig from "../../docs.config";
 
 const docsEntry = "docs";
 
@@ -18,7 +19,10 @@ async function handlePublicDocsRequest(request: Request) {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, url, request)) {
+  if (
+    (method === "GET" || method === "HEAD") &&
+    isDocsPublicGetRequest(docsEntry, url, request, { sitemap: docsConfig.sitemap })
+  ) {
     return docsServer.GET({ request });
   }
 

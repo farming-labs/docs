@@ -2,6 +2,14 @@ import type { DocsSearchConfig, DocsSearchSourcePage, ResolvedDocsRelatedLink } 
 import type { ResolvedDocsI18n } from "./i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
 import { renderDocsRelatedMarkdownLines } from "./related.js";
+import {
+  DEFAULT_SITEMAP_MD_ROUTE,
+  DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE,
+  DEFAULT_SITEMAP_XML_ROUTE,
+  resolveDocsSitemapConfig,
+  resolveDocsSitemapRequest,
+} from "./sitemap.js";
+import type { DocsSitemapConfig } from "./types.js";
 
 export const DEFAULT_DOCS_API_ROUTE = "/api/docs";
 export const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
@@ -39,6 +47,7 @@ export interface DocsAgentDiscoverySpecOptions {
   mcp: DocsMcpResolvedConfig;
   feedback?: DocsAgentFeedbackDiscoveryConfig;
   llms?: DocsLlmsDiscoveryConfig;
+  sitemap?: boolean | DocsSitemapConfig;
   markdown?: {
     acceptHeader?: boolean;
   };
@@ -51,6 +60,7 @@ export interface DocsSkillDocumentOptions {
   mcp: DocsMcpResolvedConfig;
   feedback?: DocsAgentFeedbackDiscoveryConfig;
   llms?: DocsLlmsDiscoveryConfig;
+  sitemap?: boolean | DocsSitemapConfig;
   markdown?: {
     acceptHeader?: boolean;
   };
@@ -115,7 +125,12 @@ export function resolveDocsSkillFormat(url: URL): "skill" | null {
   return url.searchParams.get("format")?.trim() === "skill" ? "skill" : null;
 }
 
-export function isDocsPublicGetRequest(entry: string, url: URL, request: Request): boolean {
+export function isDocsPublicGetRequest(
+  entry: string,
+  url: URL,
+  request: Request,
+  options: { sitemap?: boolean | DocsSitemapConfig } = {},
+): boolean {
   const pathname = normalizeDocsUrlPath(url.pathname);
   if (pathname === DEFAULT_DOCS_API_ROUTE || pathname === DEFAULT_MCP_ROUTE) return false;
 
@@ -123,6 +138,7 @@ export function isDocsPublicGetRequest(entry: string, url: URL, request: Request
     isDocsAgentDiscoveryRequest(url) ||
     isDocsSkillRequest(url) ||
     resolveDocsLlmsTxtFormat(url) !== null ||
+    resolveDocsSitemapRequest(url, options.sitemap) !== null ||
     resolveDocsMarkdownRequest(entry, url, request) !== null
   );
 }
@@ -231,6 +247,7 @@ export function renderDocsSkillDocument({
   mcp,
   feedback,
   llms,
+  sitemap,
   markdown,
 }: DocsSkillDocumentOptions): string {
   const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
@@ -241,6 +258,7 @@ export function renderDocsSkillDocument({
   const llmsEnabled = llms?.enabled ?? true;
   const searchEnabled = isSearchEnabled(search);
   const feedbackEnabled = feedback?.enabled ?? false;
+  const sitemapConfig = resolveDocsSitemapConfig(sitemap);
   const feedbackRoute = feedback?.route ?? DEFAULT_AGENT_FEEDBACK_ROUTE;
   const feedbackSchemaRoute = feedback?.schemaRoute ?? `${feedbackRoute}/schema`;
   const description = truncateSkillDescription(
@@ -290,6 +308,15 @@ export function renderDocsSkillDocument({
     );
   }
 
+  if (sitemapConfig.enabled) {
+    if (sitemapConfig.xml.enabled) {
+      lines.push(`- Use ${sitemapConfig.xml.route} to check canonical page freshness.`);
+    }
+    if (sitemapConfig.markdown.enabled) {
+      lines.push(`- Use ${sitemapConfig.markdown.route} for a semantic docs map.`);
+    }
+  }
+
   if (mcp.enabled) {
     lines.push(
       `- Use ${DEFAULT_MCP_WELL_KNOWN_ROUTE} or ${DEFAULT_MCP_PUBLIC_ROUTE} for MCP tools when your environment supports MCP.`,
@@ -318,6 +345,16 @@ export function renderDocsSkillDocument({
       `- llms-full.txt: ${DEFAULT_LLMS_FULL_TXT_ROUTE}`,
       `- llms well-known aliases: ${DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE}, ${DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE}`,
     );
+  }
+
+  if (sitemapConfig.enabled) {
+    if (sitemapConfig.xml.enabled) lines.push(`- Sitemap XML: ${sitemapConfig.xml.route}`);
+    if (sitemapConfig.markdown.enabled) {
+      lines.push(
+        `- Sitemap Markdown: ${sitemapConfig.markdown.route}`,
+        `- Sitemap well-known alias: ${sitemapConfig.markdown.wellKnownRoute}`,
+      );
+    }
   }
 
   if (mcp.enabled) {
@@ -424,6 +461,7 @@ export function buildDocsAgentDiscoverySpec({
   mcp,
   feedback,
   llms,
+  sitemap,
   markdown,
 }: DocsAgentDiscoverySpecOptions) {
   const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
@@ -432,6 +470,7 @@ export function buildDocsAgentDiscoverySpec({
   const feedbackRoute = feedback?.route ?? DEFAULT_AGENT_FEEDBACK_ROUTE;
   const feedbackSchemaRoute = feedback?.schemaRoute ?? `${feedbackRoute}/schema`;
   const llmsEnabled = llms?.enabled ?? true;
+  const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms?.baseUrl });
 
   return {
     version: "1",
@@ -458,6 +497,7 @@ export function buildDocsAgentDiscoverySpec({
       skills: true,
       mcp: mcp.enabled,
       search: searchEnabled,
+      sitemap: sitemapConfig.enabled,
       agentFeedback: feedback?.enabled ?? false,
       locales: localesEnabled,
     },
@@ -488,6 +528,23 @@ export function buildDocsAgentDiscoverySpec({
       publicFull: DEFAULT_LLMS_FULL_TXT_ROUTE,
       wellKnownTxt: DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE,
       wellKnownFull: DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
+    },
+    sitemap: {
+      enabled: sitemapConfig.enabled,
+      xml: {
+        enabled: sitemapConfig.xml.enabled,
+        route: sitemapConfig.xml.route,
+        api: `${DEFAULT_DOCS_API_ROUTE}?format=sitemap-xml`,
+        defaultRoute: DEFAULT_SITEMAP_XML_ROUTE,
+      },
+      markdown: {
+        enabled: sitemapConfig.markdown.enabled,
+        route: sitemapConfig.markdown.route,
+        wellKnownRoute: sitemapConfig.markdown.wellKnownRoute,
+        api: `${DEFAULT_DOCS_API_ROUTE}?format=sitemap-md`,
+        defaultRoute: DEFAULT_SITEMAP_MD_ROUTE,
+        defaultWellKnownRoute: DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE,
+      },
     },
     search: {
       enabled: searchEnabled,

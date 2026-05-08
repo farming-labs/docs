@@ -22,6 +22,7 @@ import {
   applySidebarFolderIndexBehavior,
   buildDocsAskAIContext,
   buildDocsAgentDiscoverySpec,
+  createDocsSitemapResponse,
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
   emitDocsAgentTraceEvent,
@@ -36,6 +37,8 @@ import {
   performDocsSearch,
   renderDocsMarkdownDocument,
   renderDocsSkillDocument,
+  readDocsSitemapManifest,
+  readDocsSitemapManifestFromContentMap,
   stripGeneratedAgentProvenance,
   resolveDocsAgentMdxContent,
   resolvePageSidebarFolderIndexBehavior,
@@ -818,6 +821,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
               siteTitle: llmsTitle,
               siteDescription: llmsDesc,
             },
+            sitemap: config.sitemap,
             markdown: {
               acceptHeader: false,
             },
@@ -849,6 +853,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
               siteTitle: llmsTitle,
               siteDescription: llmsDesc,
             },
+            sitemap: config.sitemap,
             markdown: {
               acceptHeader: false,
             },
@@ -862,6 +867,19 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         },
       );
     }
+
+    const sitemapResponse = createDocsSitemapResponse({
+      request: context.request,
+      sitemap: config.sitemap,
+      entry,
+      siteTitle: llmsTitle,
+      baseUrl: llmsBaseUrl || url.origin,
+      pages: getSearchIndex(ctx),
+      manifest:
+        readDocsSitemapManifestFromContentMap(preloaded) ??
+        readDocsSitemapManifest(rootDir, config.sitemap),
+    });
+    if (sitemapResponse) return sitemapResponse;
 
     const markdownRequest = resolveDocsMarkdownRequest(entry, url, context.request);
     if (markdownRequest) {
@@ -1691,7 +1709,9 @@ export function defineDocsPublicHandler(config: Record<string, any>, storage: Do
 
     if (method === "GET" || method === "HEAD") {
       const request = new Request(url.href, { method, headers });
-      if (!isDocsPublicGetRequest(entry, url, request)) return undefined;
+      if (!isDocsPublicGetRequest(entry, url, request, { sitemap: config.sitemap })) {
+        return undefined;
+      }
 
       const server = await getServer();
       return server.GET({

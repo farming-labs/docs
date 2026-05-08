@@ -49,6 +49,8 @@ export interface ContentPage {
   description?: string;
   related?: ResolvedDocsRelatedLink[];
   icon?: string;
+  sourcePath?: string;
+  lastModified?: string;
   content: string;
   rawContent: string;
   agentContent?: string;
@@ -101,6 +103,8 @@ export function loadDocsContent(contentDir: string, entry: string = "docs"): Con
         description: data.description as string | undefined,
         ...(related.length > 0 ? { related } : {}),
         icon: data.icon as string | undefined,
+        sourcePath: full.replace(/\\/g, "/"),
+        lastModified: stat.mtime.toISOString(),
         content: stripMarkdown(humanRawContent),
         rawContent: humanRawContent,
         ...(pageAgentRawContent !== humanRawContent
