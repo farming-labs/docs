@@ -133,6 +133,21 @@ async function main() {
     console.error();
     printHelp();
     process.exit(1);
+  } else if (parsedCommand.command === "sitemap" && subcommand === "generate") {
+    const { generateSitemap, parseSitemapGenerateArgs, printSitemapGenerateHelp } =
+      await import("./sitemap.js");
+    const sitemapOptions = parseSitemapGenerateArgs(args.slice(2));
+    if (sitemapOptions.help) {
+      printSitemapGenerateHelp();
+      return;
+    }
+    await generateSitemap(sitemapOptions);
+  } else if (parsedCommand.command === "sitemap") {
+    console.error(pc.red(`Unknown sitemap subcommand: ${subcommand ?? "(missing)"}`));
+    console.error();
+    const { printSitemapGenerateHelp } = await import("./sitemap.js");
+    printSitemapGenerateHelp();
+    process.exit(1);
   } else if (parsedCommand.command === "upgrade") {
     const { upgrade } = await import("./upgrade.js");
     const framework =
@@ -170,6 +185,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
   ${pc.cyan("mcp")}      Run the built-in docs MCP server over stdio
   ${pc.cyan("search")}   Search utilities (${pc.dim("sync")} for external indexes)
+  ${pc.cyan("sitemap")}  Sitemap utilities (${pc.dim("generate")} for sitemap XML/Markdown data)
   ${pc.cyan("upgrade")}  Upgrade @farming-labs/* packages to latest (auto-detect or use --framework)
 
 ${pc.dim("Supported frameworks:")}
@@ -234,6 +250,13 @@ ${pc.dim("Options for search sync:")}
   ${pc.cyan("--app-id <id>")}                      Algolia app id (or use ${pc.dim("ALGOLIA_APP_ID")})
   ${pc.cyan("--index-name <name>")}                Algolia index name (default ${pc.dim("docs")})
   ${pc.cyan("--search-api-key <key>")}             Algolia search key (or use ${pc.dim("ALGOLIA_SEARCH_API_KEY")})
+
+${pc.dim("Options for sitemap generate:")}
+  ${pc.cyan("sitemap generate")}                   Generate sitemap manifest and public ${pc.dim("sitemap.xml")}/${pc.dim("sitemap.md")}
+  ${pc.cyan("--public")}                           Explicitly write public ${pc.dim("sitemap.xml")} and ${pc.dim("sitemap.md")} files
+  ${pc.cyan("--manifest-only")}                    Only write the internal sitemap manifest
+  ${pc.cyan("--check")}                            Fail if generated sitemap output is stale
+  ${pc.cyan("--config <path>")}                    Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
 
 ${pc.dim("Options for upgrade:")}
   ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect

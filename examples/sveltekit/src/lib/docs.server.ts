@@ -3,11 +3,14 @@ import { env } from "$env/dynamic/private";
 import config from "./docs.config";
 
 // preload for production
-const contentFiles = import.meta.glob(["/docs/**/*.{md,mdx,svx}", "/skill.md"], {
-  query: "?raw",
-  import: "default",
-  eager: true,
-}) as Record<string, string>;
+const contentFiles = import.meta.glob(
+  ["/docs/**/*.{md,mdx,svx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"],
+  {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  },
+) as Record<string, string>;
 
 export const { load, GET, POST, MCP } = createDocsServer({
   ...config,

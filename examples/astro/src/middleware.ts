@@ -20,7 +20,7 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
 
   if (
     (method === "GET" || method === "HEAD") &&
-    isDocsPublicGetRequest(docsEntry, context.url, context.request)
+    isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: config.sitemap })
   ) {
     return GET({ request: context.request });
   }

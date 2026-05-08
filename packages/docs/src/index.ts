@@ -80,6 +80,27 @@ export {
   resolveDocsMarkdownRequest,
 } from "./agent.js";
 export {
+  DEFAULT_SITEMAP_MANIFEST_PATH,
+  DEFAULT_SITEMAP_MD_ROUTE,
+  DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE,
+  DEFAULT_SITEMAP_XML_ROUTE,
+  buildDocsSitemapManifest,
+  createDocsSitemapResponse,
+  readDocsSitemapManifestFromContentMap,
+  renderDocsSitemapMarkdown,
+  renderDocsSitemapXml,
+  resolveDocsSitemapConfig,
+  resolveDocsSitemapRequest,
+  toDocsSitemapMarkdownUrl,
+} from "./sitemap.js";
+export type {
+  DocsSitemapFormat,
+  DocsSitemapManifest,
+  DocsSitemapManifestPage,
+  DocsSitemapPageInput,
+  DocsSitemapResolvedConfig,
+} from "./sitemap.js";
+export {
   buildDocsSearchDocuments,
   buildDocsAskAIContext,
   createAlgoliaSearchAdapter,
@@ -96,6 +117,7 @@ export {
 export type { GeneratedAgentProvenance, GeneratedAgentSourceKind } from "./agent-provenance.js";
 export type {
   DocsConfig,
+  DocsSitemapConfig,
   ChangelogConfig,
   ChangelogFrontmatter,
   ApiReferenceConfig,

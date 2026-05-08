@@ -88,6 +88,7 @@ export default defineDocs({
     submitLabel: "Submit",
   },
   llmsTxt: { enabled: true, baseUrl: "https://docs.farming-labs.dev" },
+  sitemap: { enabled: true, baseUrl: "https://docs.farming-labs.dev" },
   lastUpdated: { enabled: true, position: "below-title" },
   themeToggle: { enabled: true, default: "dark" },
   breadcrumb: { enabled: true },

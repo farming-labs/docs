@@ -35,6 +35,7 @@ import {
   applySidebarFolderIndexBehavior,
   buildDocsAskAIContext,
   buildDocsAgentDiscoverySpec,
+  createDocsSitemapResponse,
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
   emitDocsAgentTraceEvent,
@@ -47,6 +48,7 @@ import {
   performDocsSearch,
   renderDocsMarkdownDocument,
   renderDocsSkillDocument,
+  readDocsSitemapManifestFromContentMap,
   stripGeneratedAgentProvenance,
   resolveDocsAgentMdxContent,
   resolvePageSidebarFolderIndexBehavior,
@@ -59,12 +61,12 @@ import {
   resolveDocsPath,
   resolvePageReadingTime,
   resolveReadingTimeOptions,
-  resolveSidebarFolderIndexBehavior,
   resolveDocsSkillFormat,
 } from "@farming-labs/docs";
 import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig } from "@farming-labs/docs";
 import {
   createDocsMcpHttpHandler,
+  readDocsSitemapManifest,
   resolveDocsMcpConfig,
   serializeDocsIconRegistry,
   serializeOpenDocsProviders,
@@ -829,6 +831,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
               siteTitle: llmsTitle,
               siteDescription: llmsDesc,
             },
+            sitemap: config.sitemap,
             markdown: {
               acceptHeader: false,
             },
@@ -860,6 +863,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
               siteTitle: llmsTitle,
               siteDescription: llmsDesc,
             },
+            sitemap: config.sitemap,
             markdown: {
               acceptHeader: false,
             },
@@ -873,6 +877,19 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         },
       );
     }
+
+    const sitemapResponse = createDocsSitemapResponse({
+      request: context.request,
+      sitemap: config.sitemap,
+      entry,
+      siteTitle: llmsTitle,
+      baseUrl: llmsBaseUrl || url.origin,
+      pages: getSearchIndex(ctx),
+      manifest:
+        readDocsSitemapManifestFromContentMap(preloaded) ??
+        readDocsSitemapManifest(rootDir, config.sitemap),
+    });
+    if (sitemapResponse) return sitemapResponse;
 
     const markdownRequest = resolveDocsMarkdownRequest(entry, url, context.request);
     if (markdownRequest) {

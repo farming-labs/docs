@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "pnpm --dir ../.. --filter @farming-labs/docs run build && node ../../packages/docs/dist/cli/index.mjs sitemap generate --config src/lib/docs.config.ts && astro build",
     "preview": "astro preview"
   },
   "dependencies": {

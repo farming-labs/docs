@@ -26,6 +26,7 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     lastUpdated: config.lastUpdated,
     readingTime: config.readingTime,
     llmsTxt: config.llmsTxt,
+    sitemap: config.sitemap,
     ai: config.ai,
     ordering: config.ordering,
     metadata: config.metadata,

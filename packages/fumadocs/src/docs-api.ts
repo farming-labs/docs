@@ -34,6 +34,8 @@ import {
   resolveDocsI18n,
   resolveDocsLocale,
   resolvePageSidebarFolderIndexBehavior,
+  createDocsSitemapResponse,
+  resolveDocsSitemapConfig,
 } from "@farming-labs/docs";
 import type {
   ChangelogConfig,
@@ -48,6 +50,7 @@ import type {
 import {
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
+  readDocsSitemapManifest,
   resolveDocsMcpConfig,
   type DocsMcpPage,
 } from "@farming-labs/docs/server";
@@ -63,6 +66,7 @@ import type {
   DocsMcpConfig,
   DocsSearchConfig,
   DocsSearchSourcePage,
+  DocsSitemapConfig,
   OrderingItem,
 } from "@farming-labs/docs";
 import { withLangInUrl } from "./i18n.js";
@@ -126,6 +130,8 @@ interface DocsAPIOptions {
   feedback?: boolean | FeedbackConfig;
   /** MCP configuration used for the agent discovery spec. */
   mcp?: boolean | DocsMcpConfig;
+  /** Sitemap configuration used for sitemap.xml and sitemap.md. */
+  sitemap?: boolean | DocsSitemapConfig;
 }
 
 interface DocsMCPAPIOptions {
@@ -222,6 +228,7 @@ interface AgentSpecOptions {
   mcp: ReturnType<typeof resolveDocsMcpConfig>;
   feedback: ResolvedAgentFeedbackConfig;
   llms: LlmsTxtOptions & { enabled: boolean };
+  sitemap?: boolean | DocsSitemapConfig;
 }
 
 interface SkillDocumentOptions extends AgentSpecOptions {}
@@ -349,10 +356,20 @@ function isSearchEnabled(search?: boolean | DocsSearchConfig): boolean {
   return true;
 }
 
-function buildAgentSpec({ origin, entry, i18n, search, mcp, feedback, llms }: AgentSpecOptions) {
+function buildAgentSpec({
+  origin,
+  entry,
+  i18n,
+  search,
+  mcp,
+  feedback,
+  llms,
+  sitemap,
+}: AgentSpecOptions) {
   const normalizedEntry = normalizePathSegment(entry) || "docs";
   const localesEnabled = i18n !== null;
   const searchEnabled = isSearchEnabled(search);
+  const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms.baseUrl });
 
   return {
     version: "1",
@@ -379,6 +396,7 @@ function buildAgentSpec({ origin, entry, i18n, search, mcp, feedback, llms }: Ag
       skills: true,
       mcp: mcp.enabled,
       search: searchEnabled,
+      sitemap: sitemapConfig.enabled,
       agentFeedback: feedback.enabled,
       locales: localesEnabled,
     },
@@ -412,6 +430,20 @@ function buildAgentSpec({ origin, entry, i18n, search, mcp, feedback, llms }: Ag
       publicFull: DEFAULT_LLMS_FULL_TXT_ROUTE,
       wellKnownTxt: DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE,
       wellKnownFull: DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
+    },
+    sitemap: {
+      enabled: sitemapConfig.enabled,
+      xml: {
+        enabled: sitemapConfig.xml.enabled,
+        route: sitemapConfig.xml.route,
+        api: `${DEFAULT_DOCS_API_ROUTE}?format=sitemap-xml`,
+      },
+      markdown: {
+        enabled: sitemapConfig.markdown.enabled,
+        route: sitemapConfig.markdown.route,
+        wellKnownRoute: sitemapConfig.markdown.wellKnownRoute,
+        api: `${DEFAULT_DOCS_API_ROUTE}?format=sitemap-md`,
+      },
     },
     search: {
       enabled: searchEnabled,
@@ -1184,6 +1216,8 @@ function scanDocsDir(
             rawContent,
             agentFallbackRawContent: agentRawContent !== rawContent ? agentRawContent : undefined,
             url,
+            sourcePath: pageSource.replace(/\\/g, "/"),
+            lastModified: fs.statSync(pageSource).mtime.toISOString(),
             locale,
           });
         }
@@ -1440,11 +1474,13 @@ function renderSkillDocument({
   mcp,
   feedback,
   llms,
+  sitemap,
 }: SkillDocumentOptions): string {
   const normalizedEntry = normalizePathSegment(entry) || "docs";
   const siteTitle = compactSkillText(llms.siteTitle ?? "Documentation");
   const siteDescription = llms.siteDescription ? compactSkillText(llms.siteDescription) : undefined;
   const searchEnabled = isSearchEnabled(search);
+  const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms.baseUrl });
   const description = truncateSkillDescription(
     `Use ${siteTitle} through markdown routes, llms.txt, agent discovery, search, and MCP when available.`,
   );
@@ -1488,6 +1524,15 @@ function renderSkillDocument({
     );
   }
 
+  if (sitemapConfig.enabled) {
+    if (sitemapConfig.xml.enabled) {
+      lines.push(`- Use ${sitemapConfig.xml.route} to check canonical page freshness.`);
+    }
+    if (sitemapConfig.markdown.enabled) {
+      lines.push(`- Use ${sitemapConfig.markdown.route} for a semantic docs map.`);
+    }
+  }
+
   if (mcp.enabled) {
     lines.push(
       `- Use ${DEFAULT_MCP_WELL_KNOWN_ROUTE} or ${DEFAULT_MCP_PUBLIC_ROUTE} for MCP tools when your environment supports MCP.`,
@@ -1518,6 +1563,16 @@ function renderSkillDocument({
       `- llms-full.txt: ${DEFAULT_LLMS_FULL_TXT_ROUTE}`,
       `- llms well-known aliases: ${DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE}, ${DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE}`,
     );
+  }
+
+  if (sitemapConfig.enabled) {
+    if (sitemapConfig.xml.enabled) lines.push(`- Sitemap XML: ${sitemapConfig.xml.route}`);
+    if (sitemapConfig.markdown.enabled) {
+      lines.push(
+        `- Sitemap Markdown: ${sitemapConfig.markdown.route}`,
+        `- Sitemap well-known alias: ${sitemapConfig.markdown.wellKnownRoute}`,
+      );
+    }
   }
 
   if (mcp.enabled) {
@@ -2216,6 +2271,37 @@ function readLlmsTxtConfig(root: string): LlmsTxtOptions & { enabled: boolean } 
   return { enabled: false };
 }
 
+function readSitemapConfig(root: string): boolean | DocsSitemapConfig | undefined {
+  for (const ext of FILE_EXTS) {
+    const configPath = path.join(root, `docs.config.${ext}`);
+    if (!fs.existsSync(configPath)) continue;
+
+    try {
+      const content = fs.readFileSync(configPath, "utf-8");
+      if (!content.includes("sitemap")) return undefined;
+      if (/sitemap\s*:\s*false/.test(content)) return false;
+      if (/sitemap\s*:\s*true/.test(content)) return true;
+
+      const sitemapBlock = content.match(/sitemap\s*:\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? "";
+      const routePrefix = sitemapBlock.match(/routePrefix\s*:\s*["']([^"']+)["']/)?.[1];
+      const baseUrl = sitemapBlock.match(/baseUrl\s*:\s*["']([^"']+)["']/)?.[1];
+      const manifestPath = sitemapBlock.match(/manifestPath\s*:\s*["']([^"']+)["']/)?.[1];
+      const enabledMatch = sitemapBlock.match(/enabled\s*:\s*(true|false)/);
+
+      return {
+        enabled: enabledMatch ? enabledMatch[1] === "true" : true,
+        routePrefix,
+        baseUrl,
+        manifestPath,
+      };
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
+}
+
 function generateLlmsTxt(
   indexes: DocsSearchSourcePage[],
   options: LlmsTxtOptions,
@@ -2288,6 +2374,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
   // Read llms.txt config
   const llmsConfig = readLlmsTxtConfig(root);
+  const sitemapConfig = options?.sitemap ?? readSitemapConfig(root);
   const mcpConfig = resolveDocsMcpConfig(options?.mcp ?? readMcpConfig(root), {
     defaultName: llmsConfig.siteTitle ?? "Documentation",
   });
@@ -2510,6 +2597,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             mcp: mcpConfig,
             feedback: agentFeedbackConfig,
             llms: llmsConfig,
+            sitemap: sitemapConfig,
           }),
           {
             headers: {
@@ -2575,6 +2663,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
               mcp: mcpConfig,
               feedback: agentFeedbackConfig,
               llms: llmsConfig,
+              sitemap: sitemapConfig,
             }),
           {
             headers: {
@@ -2585,6 +2674,17 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           },
         );
       }
+
+      const sitemapResponse = createDocsSitemapResponse({
+        request,
+        sitemap: sitemapConfig,
+        entry,
+        siteTitle: llmsConfig.siteTitle ?? "Documentation",
+        baseUrl: llmsConfig.baseUrl ?? url.origin,
+        pages: getIndexes(ctx),
+        manifest: readDocsSitemapManifest(root, sitemapConfig),
+      });
+      if (sitemapResponse) return sitemapResponse;
 
       const markdownRequest = resolveMarkdownRequest(entry, url, request);
 

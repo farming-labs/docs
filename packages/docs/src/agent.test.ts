@@ -69,6 +69,22 @@ describe("agent route helpers", () => {
     expect(
       isDocsPublicGetRequest(
         "docs",
+        new URL("https://example.com/sitemap.xml"),
+        new Request("https://example.com/sitemap.xml"),
+        { sitemap: true },
+      ),
+    ).toBe(true);
+    expect(
+      isDocsPublicGetRequest(
+        "docs",
+        new URL("https://example.com/docs/sitemap.md"),
+        new Request("https://example.com/docs/sitemap.md"),
+        { sitemap: { routePrefix: "/docs" } },
+      ),
+    ).toBe(true);
+    expect(
+      isDocsPublicGetRequest(
+        "docs",
         new URL("https://example.com/api/docs?format=llms"),
         new Request("https://example.com/api/docs?format=llms"),
       ),
@@ -188,6 +204,7 @@ describe("agent route helpers", () => {
         },
       },
       llms: { enabled: true, siteTitle: "Docs" },
+      sitemap: true,
     });
 
     expect(spec.api.agentSpecDefault).toBe("/.well-known/agent.json");
@@ -199,5 +216,7 @@ describe("agent route helpers", () => {
     expect(spec.skills.api).toBe("/api/docs?format=skill");
     expect(spec.skills.generatedFallback).toBe(true);
     expect(spec.mcp.publicEndpoints).toEqual(["/mcp", "/.well-known/mcp"]);
+    expect(spec.sitemap.xml.route).toBe("/sitemap.xml");
+    expect(spec.sitemap.markdown.wellKnownRoute).toBe("/.well-known/sitemap.md");
   });
 });
