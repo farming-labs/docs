@@ -1,5 +1,6 @@
 ---
 import DocsPage from "./DocsPage.astro";
+import { toDocsMarkdownUrl } from "@farming-labs/docs";
 
 const { data, config = null } = Astro.props;
 
@@ -71,6 +72,10 @@ const openDocsProviders = (() => {
 })();
 
 const pathname = Astro.url.pathname;
+const pageUrl = typeof data.url === "string" ? data.url : pathname;
+const markdownAlternateHref = config?.staticExport
+  ? null
+  : toDocsMarkdownUrl(pageUrl, { locale: data.locale });
 const githubFileUrl = config?.github && data.editOnGithub ? data.editOnGithub : null;
 
 const pageActionsPosition = (() => {
@@ -141,6 +146,7 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
 <head>
   <title>{data.title}{titleSuffix}</title>
   {data.description && <meta name="description" content={data.description} />}
+  {markdownAlternateHref && <link rel="alternate" type="text/markdown" href={markdownAlternateHref} />}
 </head>
 
 <DocsPage

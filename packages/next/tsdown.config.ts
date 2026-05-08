@@ -14,6 +14,7 @@ export default defineConfig({
     "src/mdx-plugins/rehype-toc.ts",
     "src/mdx-plugins/rehype-code.ts",
     "src/mdx-plugins/remark-og.ts",
+    "src/mdx-plugins/remark-markdown-alternate.ts",
   ],
   format: "esm",
   dts: true,

@@ -2,6 +2,7 @@
 import { computed, ref, onMounted, onUnmounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useHead } from "#app";
+import { toDocsMarkdownUrl } from "@farming-labs/docs";
 import DocsPage from "./DocsPage.vue";
 
 const DEFAULT_OPEN_PROVIDERS = [
@@ -12,6 +13,7 @@ const DEFAULT_OPEN_PROVIDERS = [
 const props = defineProps<{
   data: {
     title: string;
+    url?: string;
     description?: string;
     html: string;
     rawMarkdown?: string;
@@ -88,6 +90,12 @@ const llmsTxtEnabled = computed(() => {
 });
 
 const entry = computed(() => (props.data.entry as string) ?? (props.config?.entry as string) ?? "docs");
+const pageUrl = computed(() =>
+  props.data.url ?? `/${entry.value}${props.data.slug ? `/${props.data.slug}` : ""}`,
+);
+const markdownAlternateHref = computed(() =>
+  props.config?.staticExport ? null : toDocsMarkdownUrl(pageUrl.value, { locale: props.data.locale }),
+);
 
 const copyMarkdownEnabled = computed(() => {
   const pa = props.config?.pageActions as Record<string, unknown> | undefined;
@@ -227,6 +235,10 @@ useHead({
   title: () => `${props.data.title}${titleSuffix.value}`,
   meta: () =>
     metaDescription.value ? [{ name: "description", content: metaDescription.value }] : [],
+  link: () =>
+    markdownAlternateHref.value
+      ? [{ rel: "alternate", type: "text/markdown", href: markdownAlternateHref.value }]
+      : [],
 });
 
 function handleCopyPage() {

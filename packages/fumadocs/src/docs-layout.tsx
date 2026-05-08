@@ -12,6 +12,7 @@ import {
   resolveDocsAgentMdxContent,
   resolveDocsAnalyticsConfig,
   resolvePageSidebarFolderIndexBehavior,
+  toDocsMarkdownUrl,
 } from "@farming-labs/docs";
 import type {
   DocsConfig,
@@ -605,7 +606,7 @@ export function createDocsMetadata(config: DocsConfig) {
  * ```ts
  * export function generateMetadata({ params }) {
  *   const page = getPage(params.slug);
- *   return createPageMetadata(docsConfig, page.data);
+ *   return createPageMetadata(docsConfig, page.data, undefined, page.url);
  * }
  * ```
  */
@@ -613,11 +614,20 @@ export function createPageMetadata(
   config: DocsConfig,
   page: Pick<PageFrontmatter, "title" | "description" | "ogImage" | "openGraph" | "twitter">,
   baseUrl?: string,
+  url?: string,
 ) {
   const result: Record<string, unknown> = {
     title: page.title,
     ...(page.description ? { description: page.description } : {}),
   };
+
+  if (url && !(config as { staticExport?: boolean }).staticExport) {
+    result.alternates = {
+      types: {
+        "text/markdown": toDocsMarkdownUrl(url),
+      },
+    };
+  }
 
   if (config.og?.enabled !== false) {
     const openGraph = buildPageOpenGraph(page, config.og, baseUrl);

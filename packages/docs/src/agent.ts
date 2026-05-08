@@ -90,6 +90,17 @@ export function normalizeDocsUrlPath(value: string): string {
   return normalized.replace(/\/+$/, "");
 }
 
+export function toDocsMarkdownUrl(url: string, options: { locale?: string } = {}): string {
+  const [withoutHash, hash = ""] = url.split("#", 2);
+  const [pathname, query = ""] = withoutHash.split("?", 2);
+  const normalizedPath = normalizeDocsUrlPath(pathname || "/");
+  const markdownPath = normalizedPath.endsWith(".md") ? normalizedPath : `${normalizedPath}.md`;
+  const params = new URLSearchParams(query);
+  if (options.locale && !params.has("lang")) params.set("lang", options.locale);
+  const search = params.toString();
+  return `${markdownPath}${search ? `?${search}` : ""}${hash ? `#${hash}` : ""}`;
+}
+
 export function isDocsAgentDiscoveryRequest(url: URL): boolean {
   const pathname = normalizeDocsUrlPath(url.pathname);
   if (pathname === DEFAULT_DOCS_API_ROUTE && url.searchParams.get("agent")?.trim() === "spec") {
