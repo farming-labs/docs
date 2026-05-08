@@ -1,6 +1,6 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold, upgrade, run doctor audits, compact agent docs, sync external search indexes, and run MCP for docs. Use when running init, upgrade, doctor, agent compact, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
+description: @farming-labs/docs CLI — scaffold, upgrade, run doctor audits, compact agent docs, generate sitemaps, sync external search indexes, and run MCP for docs. Use when running init, upgrade, doctor, agent compact, sitemap generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
 ---
 
 # @farming-labs/docs — CLI
@@ -8,7 +8,7 @@ description: @farming-labs/docs CLI — scaffold, upgrade, run doctor audits, co
 The `@farming-labs/docs` CLI scaffolds, upgrades, audits agent and reader readiness, compacts
 page-level agent docs, syncs external search indexes, and can run the built-in MCP server for
 documentation projects. Use this skill when the user asks about CLI commands, init, upgrade,
-`doctor`, `agent compact`, search sync, mcp, or scaffolding.
+`doctor`, `agent compact`, `sitemap generate`, search sync, mcp, or scaffolding.
 
 ---
 
@@ -223,6 +223,64 @@ Then verify:
 
 - MCP: `http://127.0.0.1:3000/mcp` or `http://127.0.0.1:3000/.well-known/mcp`
 - Search: `http://127.0.0.1:3000/api/docs?query=session`
+
+---
+
+## Sitemap generate
+
+Use `sitemap generate` when the user wants static sitemap files, `lastmod` freshness metadata, or
+CI validation for generated sitemap output.
+
+```bash
+pnpm exec docs sitemap generate
+pnpm exec docs sitemap generate --config src/lib/docs.config.ts
+pnpm exec docs sitemap generate --manifest-only
+pnpm exec docs sitemap generate --check
+```
+
+Behavior:
+
+- reads `docs.config.ts[x]` by default, or the path passed with `--config`
+- scans docs content using `entry` and `contentDir`
+- writes `.farming-labs/sitemap-manifest.json`
+- writes public sitemap files by default: `sitemap.xml`, `sitemap.md`, and `.well-known/sitemap.md`
+- writes to `static/` for SvelteKit and `public/` for other frameworks
+- resolves `lastmod` from `git log -1` for each page source path, falling back to filesystem mtime
+- preserves `generatedAt` when the comparable manifest content has not changed
+
+Flags:
+
+| Flag | Description |
+| ---- | ----------- |
+| `--config <path>` | Use a custom docs config path. |
+| `--manifest-only` | Only write `.farming-labs/sitemap-manifest.json`. |
+| `--public` | Explicitly write public sitemap files; this is already the default unless `--manifest-only` is set. |
+| `--check` | Fail when generated output is stale. |
+
+Build script examples:
+
+```json
+{
+  "scripts": {
+    "build": "docs sitemap generate --config src/lib/docs.config.ts && astro build"
+  }
+}
+```
+
+```json
+{
+  "scripts": {
+    "build": "docs sitemap generate --manifest-only && next build"
+  }
+}
+```
+
+For normal published apps, package scripts can call `docs` because the installed package exposes
+the bin. In this repo while dogfooding unpublished workspace builds, call the built CLI file
+directly after `@farming-labs/docs` has been built if the package bin is not available.
+
+Use the `configuration` skill or `/docs/customization/sitemaps` for `sitemap` config options and
+output examples.
 
 ---
 

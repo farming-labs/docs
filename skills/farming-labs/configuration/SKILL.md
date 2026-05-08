@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, readingTime, agent.compact, metadata, og, apiReference, MCP, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, readingTime, agent.compact, metadata, og, apiReference, MCP, sitemap, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration
@@ -50,6 +50,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `changelog` | `boolean \| ChangelogConfig` | `false` | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
 | `mcp` | `boolean \| DocsMcpConfig` | enabled | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON document |
+| `sitemap` | `boolean \| DocsSitemapConfig` | `false` | Generated `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` |
 | `metadata` | `DocsMetadata` | — | SEO: titleTemplate, description, etc. |
 | `og` | `OGConfig` | — | Dynamic Open Graph images |
 
@@ -146,6 +147,66 @@ Call out content negotiation when relevant: in Next.js, `/docs/<slug>` remains t
 for browsers, but agents/scripts can send `Accept: text/markdown` to the same URL and receive the
 machine-readable markdown representation without appending `.md`. In other adapters, use
 `/docs/<slug>.md` or the API format route.
+
+---
+
+## Sitemaps
+
+Use `sitemap` when the project should expose crawler-friendly XML and agent-friendly Markdown maps
+of the docs tree.
+
+```ts
+sitemap: {
+  enabled: true,
+  baseUrl: "https://docs.example.com",
+},
+```
+
+Default routes:
+
+- `/sitemap.xml`
+- `/sitemap.md`
+- `/.well-known/sitemap.md`
+- `/api/docs?format=sitemap-xml`
+- `/api/docs?format=sitemap-md`
+
+Static generation:
+
+```bash
+pnpm exec docs sitemap generate
+pnpm exec docs sitemap generate --config src/lib/docs.config.ts
+pnpm exec docs sitemap generate --manifest-only
+pnpm exec docs sitemap generate --check
+```
+
+Behavior:
+
+- `docs sitemap generate` writes `.farming-labs/sitemap-manifest.json` plus public sitemap files by default
+- SvelteKit public output goes to `static/`; other adapters use `public/`
+- `--manifest-only` writes only the manifest for server-rendered apps that serve routes at runtime
+- `--public` is an explicit spelling of the default public-file behavior
+- `--check` fails when generated sitemap output is stale
+- `lastmod` uses each page source file's last git commit date first, then filesystem mtime
+- `routePrefix: "/docs-map"` moves all sitemap routes to `/docs-map/sitemap.xml`, `/docs-map/sitemap.md`, and `/docs-map/.well-known/sitemap.md`
+- there is no separate well-known route config; the route prefix applies to all sitemap routes together
+
+Useful config:
+
+```ts
+sitemap: {
+  routePrefix: "/docs-map",
+  baseUrl: "https://docs.example.com",
+  xml: { includeLastmod: true },
+  markdown: {
+    includeDescriptions: true,
+    includeLastmod: true,
+    linkTarget: "both",
+  },
+},
+```
+
+Use `/docs/customization/sitemaps` when the user needs output examples or static export details.
+Use the `cli` skill when they ask about command syntax.
 
 ---
 
