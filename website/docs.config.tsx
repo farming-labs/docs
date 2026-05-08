@@ -31,6 +31,8 @@ import {
   Copy,
   Check,
   ArrowUpRight,
+  ChartNoAxesColumn,
+  Activity,
 } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 import { Callout } from "@/components/ui/callout";
@@ -136,6 +138,8 @@ export default defineDocs({
     copy: <Copy size={16} />,
     check: <Check size={16} />,
     arrowUpRight: <ArrowUpRight size={16} />,
+    "chart-no-axes-column": <ChartNoAxesColumn size={16} />,
+    activity: <Activity size={16} />,
   },
   github: {
     url: "https://github.com/farming-labs/docs",
