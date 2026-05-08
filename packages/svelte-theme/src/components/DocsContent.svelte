@@ -1,6 +1,7 @@
 <script>
   import DocsPage from "./DocsPage.svelte";
   import { onMount, onDestroy } from "svelte";
+  import { toDocsMarkdownUrl } from "@farming-labs/docs";
 
   const DEFAULT_OPEN_PROVIDERS = [
     { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?hints=search&q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." },
@@ -28,6 +29,14 @@
 
   let tocStyle = $derived(
     (config?.theme?.ui?.layout?.toc?.style === "directional") ? "directional" : "default"
+  );
+
+  let pageUrl = $derived(
+    data.url ?? `/${data.entry ?? config?.entry ?? "docs"}${data.slug ? `/${data.slug}` : ""}`
+  );
+
+  let markdownAlternateHref = $derived(
+    config?.staticExport ? null : toDocsMarkdownUrl(pageUrl, { locale: data.locale })
   );
 
   let breadcrumbEnabled = $derived.by(() => {
@@ -313,6 +322,9 @@
   <title>{data.title}{titleSuffix}</title>
   {#if data.description}
     <meta name="description" content={data.description} />
+  {/if}
+  {#if markdownAlternateHref}
+    <link rel="alternate" type="text/markdown" href={markdownAlternateHref} />
   {/if}
 </svelte:head>
 

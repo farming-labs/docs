@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { createDocsLayout } from "./docs-layout.js";
+import { createDocsLayout, createPageMetadata } from "./docs-layout.js";
 
 function findDocsPageClientProps(node: unknown): Record<string, unknown> | null {
   if (!node || typeof node !== "object") return null;
@@ -56,6 +56,20 @@ function findDocsLayoutTree(node: unknown): Record<string, unknown> | null {
 
   return children ? findDocsLayoutTree(children) : null;
 }
+
+describe("createPageMetadata", () => {
+  it("preserves the active locale in markdown alternate links", () => {
+    const metadata = createPageMetadata(
+      { entry: "docs" },
+      { title: "Installation", description: "Install the framework" },
+      undefined,
+      "/docs/installation",
+      { locale: "fr" },
+    ) as { alternates?: { types?: Record<string, string> } };
+
+    expect(metadata.alternates?.types?.["text/markdown"]).toBe("/docs/installation.md?lang=fr");
+  });
+});
 
 describe("createDocsLayout pageActions", () => {
   let tmpDir: string;

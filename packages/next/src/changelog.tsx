@@ -557,10 +557,15 @@ export function createNextChangelogStaticParams(entries: GeneratedChangelogEntry
 
 export function createNextChangelogIndexMetadata(config: DocsConfig): Metadata {
   const changelog = resolveChangelogConfig(config.changelog);
-  return createPageMetadata(config, {
-    title: changelog.title,
-    description: changelog.description,
-  }) as Metadata;
+  return createPageMetadata(
+    config,
+    {
+      title: changelog.title,
+      description: changelog.description,
+    },
+    undefined,
+    getListingUrl(config),
+  ) as Metadata;
 }
 
 export function createNextChangelogEntryMetadata(
@@ -576,15 +581,25 @@ export function createNextChangelogEntryMetadata(
 
     if (!entry) {
       const changelog = resolveChangelogConfig(config.changelog);
-      return createPageMetadata(config, {
-        title: changelog.title,
-        description: changelog.description,
-      }) as Metadata;
+      return createPageMetadata(
+        config,
+        {
+          title: changelog.title,
+          description: changelog.description,
+        },
+        undefined,
+        getListingUrl(config),
+      ) as Metadata;
     }
 
-    return createPageMetadata(config, {
-      title: entry.title,
-      description: entry.description,
-    }) as Metadata;
+    return createPageMetadata(
+      config,
+      {
+        title: entry.title,
+        description: entry.description,
+      },
+      undefined,
+      `${getListingUrl(config)}/${entry.slug}`,
+    ) as Metadata;
   };
 }

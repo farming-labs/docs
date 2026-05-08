@@ -73,6 +73,11 @@
       "types": "./dist/mdx-plugins/remark-og.d.mts",
       "import": "./dist/mdx-plugins/remark-og.mjs",
       "default": "./dist/mdx-plugins/remark-og.mjs"
+    },
+    "./mdx-plugins/remark-markdown-alternate": {
+      "types": "./dist/mdx-plugins/remark-markdown-alternate.d.mts",
+      "import": "./dist/mdx-plugins/remark-markdown-alternate.mjs",
+      "default": "./dist/mdx-plugins/remark-markdown-alternate.mjs"
     }
   },
   "scripts": {

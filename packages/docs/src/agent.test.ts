@@ -12,6 +12,7 @@ import {
   resolveDocsLlmsTxtFormat,
   resolveDocsSkillFormat,
   resolveDocsMarkdownRequest,
+  toDocsMarkdownUrl,
 } from "./agent.js";
 
 describe("agent route helpers", () => {
@@ -121,6 +122,18 @@ describe("agent route helpers", () => {
       new Request("https://example.com/blog?format=markdown&path=install"),
     );
     expect(hijackRoute).toBeNull();
+  });
+
+  it("builds per-page markdown alternate URLs", () => {
+    expect(toDocsMarkdownUrl("/docs")).toBe("/docs.md");
+    expect(toDocsMarkdownUrl("/docs/install")).toBe("/docs/install.md");
+    expect(toDocsMarkdownUrl("/docs/install.md")).toBe("/docs/install.md");
+    expect(toDocsMarkdownUrl("/docs/install?ref=sidebar", { locale: "fr" })).toBe(
+      "/docs/install.md?ref=sidebar&lang=fr",
+    );
+    expect(toDocsMarkdownUrl("/docs/install?lang=es", { locale: "fr" })).toBe(
+      "/docs/install.md?lang=es",
+    );
   });
 
   it("renders agent-specific markdown documents", () => {

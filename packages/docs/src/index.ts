@@ -78,6 +78,7 @@ export {
   resolveDocsLlmsTxtFormat,
   resolveDocsSkillFormat,
   resolveDocsMarkdownRequest,
+  toDocsMarkdownUrl,
 } from "./agent.js";
 export {
   DEFAULT_SITEMAP_MANIFEST_PATH,

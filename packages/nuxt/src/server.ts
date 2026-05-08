@@ -142,6 +142,7 @@ export interface DocsServer {
   load: (pathname: string) => Promise<{
     tree: ReturnType<typeof loadDocsNavTree>;
     flatPages: PageNode[];
+    url: string;
     title: string;
     description?: string;
     html: string;
@@ -700,6 +701,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     return {
       tree,
       flatPages,
+      url: currentUrl,
       title: (data.title as string) ?? fallbackTitle,
       description: data.description as string | undefined,
       html,

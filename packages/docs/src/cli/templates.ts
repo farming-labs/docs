@@ -1085,6 +1085,7 @@ export function tanstackDocsIndexRouteTemplate(opts: TanstackRouteTemplateOption
   const entryUrl = `/${opts.entry.replace(/^\/+|\/+$/g, "")}`;
   return `\
 import { createFileRoute } from "@tanstack/react-router";
+import { toDocsMarkdownUrl } from "@farming-labs/docs";
 import { TanstackDocsPage } from "@farming-labs/tanstack-start/react";
 import { loadDocPage } from "${tanstackDocsFunctionsImport(opts)}";
 import docsConfig from "${tanstackDocsConfigImport(opts.filePath)}";
@@ -1092,6 +1093,9 @@ import docsConfig from "${tanstackDocsConfigImport(opts.filePath)}";
 export const Route = createFileRoute("${entryUrl}/")({
   loader: () => loadDocPage({ data: { pathname: "${entryUrl}" } }),
   head: ({ loaderData }) => ({
+    links: loaderData && !docsConfig.staticExport
+      ? [{ rel: "alternate", type: "text/markdown", href: toDocsMarkdownUrl(loaderData.url, { locale: loaderData.locale }) }]
+      : [],
     meta: [
       { title: loaderData ? \`\${loaderData.title} – ${opts.projectName}\` : "${opts.projectName}" },
       ...(loaderData?.description
@@ -1116,7 +1120,7 @@ export function tanstackDocsCatchAllRouteTemplate(opts: TanstackRouteTemplateOpt
     : relativeImport(opts.filePath, "src/lib/docs.server.ts");
   return `\
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { isDocsPublicGetRequest } from "@farming-labs/docs";
+import { isDocsPublicGetRequest, toDocsMarkdownUrl } from "@farming-labs/docs";
 import { TanstackDocsPage } from "@farming-labs/tanstack-start/react";
 import { loadDocPage } from "${tanstackDocsFunctionsImport(opts)}";
 import { docsServer } from "${serverImport}";
@@ -1150,6 +1154,9 @@ export const Route = createFileRoute("${entryUrl}/$")({
     }
   },
   head: ({ loaderData }) => ({
+    links: loaderData && !docsConfig.staticExport
+      ? [{ rel: "alternate", type: "text/markdown", href: toDocsMarkdownUrl(loaderData.url, { locale: loaderData.locale }) }]
+      : [],
     meta: [
       { title: loaderData ? \`\${loaderData.title} – ${opts.projectName}\` : "${opts.projectName}" },
       ...(loaderData?.description

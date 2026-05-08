@@ -301,6 +301,8 @@ function createDocsWorkspaceAliases(): Record<string, string> {
     "@farming-labs/next/mdx-plugins/remark-heading":
       "./packages/next/src/mdx-plugins/remark-heading.ts",
     "@farming-labs/next/mdx-plugins/remark-og": "./packages/next/src/mdx-plugins/remark-og.ts",
+    "@farming-labs/next/mdx-plugins/remark-markdown-alternate":
+      "./packages/next/src/mdx-plugins/remark-markdown-alternate.ts",
     "@farming-labs/theme": "./packages/fumadocs/src/index.ts",
     "@farming-labs/theme/api": "./packages/fumadocs/src/docs-api.ts",
     "@farming-labs/theme/client-hooks": "./packages/fumadocs/src/docs-client-hooks.tsx",
@@ -1628,6 +1630,10 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
   if (ogEndpoint) {
     remarkPlugins.push(["@farming-labs/next/mdx-plugins/remark-og", { endpoint: ogEndpoint }]);
   }
+  remarkPlugins.push([
+    "@farming-labs/next/mdx-plugins/remark-markdown-alternate",
+    { entry, appDir, contentDir: docsContentDir, enabled: !isStaticExport },
+  ]);
   remarkPlugins.push(
     ["remark-mdx-frontmatter", { name: "metadata" }],
     "@farming-labs/next/mdx-plugins/remark-heading",
@@ -1721,6 +1727,14 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
           "client-callbacks.mjs",
         ),
         "@farming-labs/next/layout": join(workspaceRoot, "packages", "next", "dist", "layout.mjs"),
+        "@farming-labs/next/mdx-plugins/remark-markdown-alternate": join(
+          workspaceRoot,
+          "packages",
+          "next",
+          "dist",
+          "mdx-plugins",
+          "remark-markdown-alternate.mjs",
+        ),
         "@farming-labs/theme$": join(workspaceRoot, "packages", "fumadocs", "dist", "index.mjs"),
         "@farming-labs/theme/api": join(
           workspaceRoot,
