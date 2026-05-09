@@ -5,7 +5,7 @@ This folder contains [Agent Skills](https://skills.sh/) (conforming to the [Agen
 Each skill is a separate directory with a `SKILL.md` file. Use the skill that matches the task
 (getting started, CLI, creating themes, Ask AI, page actions, or configuration, including search
 adapters, changelog setup, human page feedback, `agent.compact`, agent discovery/spec routes,
-`skill.md`, agent feedback endpoints, API reference, MCP, `llms.txt`, sitemaps, and machine-readable markdown
+`skill.md`, agent feedback endpoints, API reference, MCP, `llms.txt`, sitemaps, `robots.txt`, and machine-readable markdown
 routes with embedded `Agent` blocks, generated or hand-written `agent.md` overrides, or
 `Accept: text/markdown` negotiation).
 
@@ -21,6 +21,7 @@ Useful routes:
 - Agent discovery spec: `http://127.0.0.1:3000/api/docs/agent/spec`
 - Site skill: `http://127.0.0.1:3000/skill.md` or `http://127.0.0.1:3000/.well-known/skill.md`
 - Sitemaps: `http://127.0.0.1:3000/sitemap.xml`, `http://127.0.0.1:3000/sitemap.md`, or `http://127.0.0.1:3000/.well-known/sitemap.md`
+- Robots: `http://127.0.0.1:3000/robots.txt` after running `docs robots generate`
 - MCP: `http://127.0.0.1:3000/mcp` or `http://127.0.0.1:3000/.well-known/mcp`
 - Search API: `http://127.0.0.1:3000/api/docs?query=session`
 - Docs API markdown: `http://127.0.0.1:3000/api/docs?format=markdown&path=quickstart`
@@ -33,6 +34,7 @@ Useful command:
 
 ```bash
 pnpm --dir examples/next exec docs sitemap generate --config docs.config.tsx
+pnpm --dir examples/next exec docs robots generate --config docs.config.tsx
 pnpm --dir examples/next exec docs agent compact installation --config docs.config.tsx
 ```
 
@@ -47,11 +49,11 @@ first-run setup.
 | Skill | Path | When to use |
 | ----- | ---- | ----------- |
 | **Getting started** | [getting-started](./getting-started/SKILL.md) | Setting up docs, init, manual install, theme CSS, docs.config, packages by framework, generated changelog pages in Next.js, machine-readable markdown routes with `Agent` blocks or `agent.md` overrides, and API reference wiring from local routes or a hosted OpenAPI JSON. |
-| **CLI** | [cli](./cli/SKILL.md) | Scaffolding and commands: init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), `init` / `upgrade` / `doctor` / `agent compact` / `sitemap generate` / `mcp`, hosted `doctor --agent --url`, `--template`, `--name`, `--theme`, `--entry`, `--api-reference`, `--framework`, `--config`, package manager commands. |
+| **CLI** | [cli](./cli/SKILL.md) | Scaffolding and commands: init flow (existing vs fresh), Create your own theme, optional defaults (Enter to accept), `init` / `upgrade` / `doctor` / `agent compact` / `sitemap generate` / `robots generate` / `mcp`, hosted `doctor --agent --url`, `--template`, `--name`, `--theme`, `--entry`, `--api-reference`, `--framework`, `--config`, package manager commands. |
 | **Creating themes** | [creating-themes](./creating-themes/SKILL.md) | Building a custom theme with `createTheme()`, `extendTheme()`, `ui.components` defaults like `HoverLink`, publishing as npm, CSS overrides. |
 | **Ask AI** | [ask-ai](./ask-ai/SKILL.md) | Enabling and configuring the RAG-powered AI chat: mode, floatingStyle, providers, models, suggestedQuestions, apiKey. |
 | **Page actions** | [page-actions](./page-actions/SKILL.md) | Copy Markdown and Open in LLM buttons: copyMarkdown, openDocs, providers, urlTemplate, `{url}.md` markdown route patterns, position, alignment, and provider defaults. |
-| **Configuration** | [configuration](./configuration/SKILL.md) | docs.config.ts options: entry, theme, staticExport, sidebar, breadcrumb, github, components, `search`, `changelog`, `agent.compact`, human page feedback, agent feedback endpoints, metadata, og, `mcp`, `sitemap`, built-in markdown routes with `Agent` blocks or `agent.md`, and `apiReference` including remote `specUrl` support. |
+| **Configuration** | [configuration](./configuration/SKILL.md) | docs.config.ts options: entry, theme, staticExport, sidebar, breadcrumb, github, components, `search`, `changelog`, `agent.compact`, human page feedback, agent feedback endpoints, metadata, og, `mcp`, `sitemap`, `robots`, built-in markdown routes with `Agent` blocks or `agent.md`, and `apiReference` including remote `specUrl` support. |
 
 ---
 

@@ -42,6 +42,7 @@ Eleven built-in theme entrypoints: `fumadocs` (default), `darksharp`, `pixel-bor
 - **MDX components** — built-ins like `Callout`, `Tabs`, and `HoverLink` are available without imports.
 - **Page feedback** — enable with `feedback: true` or `feedback: { enabled: true, onFeedback() {} }`.
 - **Agent discovery spec** — agents should call `/.well-known/agent.json`, fall back to `/.well-known/agent`, and use `/api/docs/agent/spec` as the canonical framework route. The spec discovers site identity, locale config, capability flags, search, markdown routes, `llms.txt` routes, sitemap routes, root `skill.md` route, Skills CLI install metadata, MCP config, and feedback endpoints generated from `docs.config`.
+- **Generated robots.txt** — use `docs robots generate` to write a static policy that allows docs routes, `.md` routes, `llms.txt`, sitemaps, `skill.md`, MCP aliases, agent discovery routes, and common AI crawler user agents. Existing files are preserved by default; use `--append` to add the managed block or `--force` to replace the file.
 - **Agent feedback endpoints** — add `feedback.agent` when agents should report structured `{ context?, payload }` feedback through `/api/docs/agent/feedback` and `/api/docs/agent/feedback/schema`.
 - **Page actions** — enable with `pageActions.copyMarkdown` and `pageActions.openDocs`.
 - **Built-in changelog pages (Next.js)** — enable `changelog` to publish a release feed from dated MDX entries.

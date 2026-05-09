@@ -1,6 +1,6 @@
 ---
 title: "Customization"
-description: "Colors, typography, sidebar, components, analytics, observability, agent primitives, OG images, AI chat, and page actions"
+description: "Colors, typography, sidebar, components, analytics, observability, agent primitives, robots.txt, OG images, AI chat, and page actions"
 icon: "settings"
 order: 5
 ---
@@ -24,5 +24,6 @@ Everything is customizable from `docs.config.ts`. No CSS files to edit, no layou
 - **[MCP Server](/docs/customization/mcp)** — Built-in MCP tools/resources over stdio, `/mcp`, and `/.well-known/mcp`
 - **[llms.txt](/docs/customization/llms-txt)** — Auto-generate `llms.txt` and `llms-full.txt` for LLM-friendly documentation
 - **[Sitemaps](/docs/customization/sitemaps)** — Generate `sitemap.xml` and `sitemap.md` for crawlers, agents, and static exports
+- **Robots.txt** — Generate an agent-friendly crawl policy with `docs robots generate`; configure defaults in [Configuration](/docs/configuration)
 
 All customization happens through the `theme` and top-level config options in `docs.config.ts`.

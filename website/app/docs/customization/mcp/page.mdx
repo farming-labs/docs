@@ -430,7 +430,9 @@ The built-in resources mirror that same data:
 
 - Use **markdown routes** when you want a plain HTTP URL for one page; in Next.js, `Signature-Agent` can return markdown from the canonical page URL too
 - Use **`llms.txt`** when you want a static, crawler-friendly docs summary
+- Use **`robots.txt`** when crawlers and AI agents need an explicit policy that allows docs and machine-readable routes
 - Use **MCP** when you want a structured, queryable docs interface for agents and IDE tools
 
 They complement each other well. Markdown routes are the simplest page-level HTTP surface,
-`llms.txt` is lightweight and public, and MCP is interactive and tool-based.
+`llms.txt` is lightweight and public, `robots.txt` makes access policy explicit, and MCP is
+interactive and tool-based.

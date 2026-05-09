@@ -211,6 +211,19 @@ Enable `sitemap` when agents and crawlers need a compact inventory before readin
 
 See the [Sitemaps docs](/docs/customization/sitemaps) for static export and manifest details.
 
+### Robots.txt
+
+Generate `robots.txt` when crawlers and AI agents need an explicit public access policy for docs and
+machine-readable routes:
+
+```text
+/robots.txt  → allows docs, .md routes, llms.txt, sitemaps, skill.md, MCP, and agent discovery
+```
+
+Use `docs robots generate`, or `docs robots generate --append` when the project already owns a
+custom `robots.txt`. The agent doctor checks the resolved file path and warns when the policy blocks
+agent-readable routes or common AI crawlers.
+
 ### AI Chat with RAG
 
 Built-in AI chat with retrieval-augmented generation. A simple setup is just two lines:

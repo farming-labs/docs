@@ -137,6 +137,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `mcp`         | `boolean \| DocsMcpConfig`     | enabled         | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions or a hosted OpenAPI JSON |
 | `sitemap`     | `boolean \| DocsSitemapConfig` | `false`         | Generated `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` |
+| `robots`     | `boolean \| DocsRobotsConfig`  | enabled when configured | Generated `robots.txt` policy for docs and agent-readable routes |
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template                              |
 | `og`          | `OGConfig`                     | —               | Dynamic Open Graph images (see [API Reference](/docs/reference#ogconfig)) |
@@ -1245,9 +1246,11 @@ Agents should discover the configured routes first with `GET /.well-known/agent.
 `GET /.well-known/agent` is the fallback public alias, and `GET /api/docs/agent/spec` is the
 canonical framework route. Generated projects wire all three to the same JSON. The spec includes
 site identity, locale config, capability flags, the search endpoint, markdown route pattern,
-`Accept: text/markdown` contract, `Signature-Agent` support, API and public `llms.txt` routes, sitemap routes, root
-`skill.md` metadata, Skills CLI install metadata, MCP public/well-known endpoints and enabled tools,
-and the active agent feedback schema and submit endpoints.
+`Accept: text/markdown` contract, `Signature-Agent` support, API and public `llms.txt` routes,
+sitemap routes, root `skill.md` metadata, Skills CLI install metadata, MCP public/well-known
+endpoints and enabled tools, and the active agent feedback schema and submit endpoints. Publish
+`/robots.txt` separately with `docs robots generate` when crawlers and AI agents need an explicit
+access policy.
 
 ```ts title="docs.config.ts"
 export default defineDocs({

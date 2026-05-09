@@ -116,6 +116,10 @@ The agent discovery spec also advertises `defaultTxt: "/llms.txt"` and
 own framework-specific routes. TanStack Start, SvelteKit, Astro, and Nuxt can use the shared API
 query routes directly when they do not want to add the public aliases.
 
+When you also want crawlers and AI agents to see an explicit access policy, publish
+`/robots.txt` with `docs robots generate`. The generated policy allows the public `llms.txt`
+aliases along with docs, markdown, sitemap, skill, MCP, and agent discovery routes.
+
 ---
 
 ## Output Example

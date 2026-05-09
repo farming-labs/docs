@@ -1,14 +1,15 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold, upgrade, run doctor audits, compact agent docs, generate sitemaps, sync external search indexes, and run MCP for docs. Use when running init, upgrade, doctor, agent compact, sitemap generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
+description: @farming-labs/docs CLI — scaffold, upgrade, run doctor audits, compact agent docs, generate sitemaps, generate robots.txt, sync external search indexes, and run MCP for docs. Use when running init, upgrade, doctor, agent compact, sitemap generate, robots generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
 ---
 
 # @farming-labs/docs — CLI
 
 The `@farming-labs/docs` CLI scaffolds, upgrades, audits agent and reader readiness, compacts
-page-level agent docs, syncs external search indexes, and can run the built-in MCP server for
-documentation projects. Use this skill when the user asks about CLI commands, init, upgrade,
-`doctor`, `agent compact`, `sitemap generate`, search sync, mcp, or scaffolding.
+page-level agent docs, syncs external search indexes, generates robots.txt policy files, and can
+run the built-in MCP server for documentation projects. Use this skill when the user asks about CLI
+commands, init, upgrade, `doctor`, `agent compact`, `sitemap generate`, `robots generate`, search
+sync, mcp, or scaffolding.
 
 ---
 
@@ -368,6 +369,36 @@ agent:
 
 ---
 
+## Robots generate
+
+Use `robots generate` when the user wants a static `robots.txt` policy that advertises docs routes,
+agent-readable markdown routes, `llms.txt`, sitemap routes, `skill.md`, MCP aliases, and common AI
+crawler user agents.
+
+```bash
+pnpm exec docs robots generate
+pnpm exec docs robots generate --append
+pnpm exec docs robots generate --force
+pnpm exec docs robots generate --path public/robots.txt --append
+pnpm exec docs robots generate --check
+pnpm exec docs robots generate --config src/lib/docs.config.ts
+```
+
+Behavior:
+
+- default output is `public/robots.txt`, or `static/robots.txt` for SvelteKit
+- `robots.path` in `docs.config.ts` sets the default path
+- positional path or `--path` overrides the configured/default path
+- existing unknown files are preserved by default
+- `--append` adds or updates the generated managed block inside an existing file
+- `--force` replaces the whole file with the generated policy
+- `--check` fails when the resolved file is stale
+
+Use `docs doctor --agent` after generation; it checks the resolved robots path and warns when
+agent routes or common AI crawlers are blocked.
+
+---
+
 ## Doctor
 
 Use `docs doctor --agent` when the user wants to inspect, score, or validate the machine-facing
@@ -397,6 +428,7 @@ What it checks:
 - agent discovery spec
 - `llms.txt`
 - `sitemap.xml` and `sitemap.md`
+- `robots.txt`
 - `skill.md`
 - MCP
 - search
@@ -411,6 +443,7 @@ With `--url`, `docs doctor --agent` also probes the deployed public agent surfac
 - `/llms.txt`
 - `/llms-full.txt`
 - sitemap routes from the discovery spec, usually `/sitemap.xml`, `/sitemap.md`, and `/.well-known/sitemap.md`
+- `/robots.txt`
 - `/skill.md`
 - `/.well-known/skill.md`
 - one representative `.md` page route, such as `/docs.md`
@@ -419,17 +452,17 @@ With `--url`, `docs doctor --agent` also probes the deployed public agent surfac
 
 For hosted MCP, the command performs a Streamable HTTP initialize handshake, checks for
 `mcp-session-id`, calls `tools/list`, and expects `list_pages`, `get_navigation`, `search_docs`,
-and `read_page`. Hosted checks raise the agent max score from `100` to `135`.
+and `read_page`. Hosted checks raise the agent max score from `105` to `145`.
 
 Hosted JSON check IDs include `hosted-agent-discovery`, `hosted-llms`, `hosted-sitemap`,
-`hosted-skill`, `hosted-markdown`, and `hosted-mcp`.
+`hosted-robots`, `hosted-skill`, `hosted-markdown`, and `hosted-mcp`.
 
 Expected shape of the output:
 
 ```txt
 @farming-labs/docs doctor — agent
 
-Score: 87/100 (Agent-ready)
+Score: 92/105 (Agent-ready)
 Framework: nextjs • Entry: docs • Content: app/docs
 Explicit agent-friendly pages: 10/41 pages (24%)
 

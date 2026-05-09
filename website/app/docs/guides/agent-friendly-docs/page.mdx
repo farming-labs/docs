@@ -40,8 +40,8 @@ When authoring agent-friendly docs with `@farming-labs/docs`, prioritize these i
 2. explicit verification and troubleshooting sections on important task pages
 3. additive `<Agent>` blocks for machine-only hints when the human page is still canonical
 4. sibling `agent.md` only when the machine-readable page needs a full rewrite
-5. machine surfaces like `.md`, `Signature-Agent`, `llms.txt`, `sitemap.md`, MCP, and the agent discovery spec
-6. validation with `docs doctor --agent` and `docs sitemap generate --check`, then compaction with `docs agent compact` where helpful
+5. machine surfaces like `.md`, `Signature-Agent`, `llms.txt`, `sitemap.md`, `robots.txt`, MCP, and the agent discovery spec
+6. validation with `docs doctor --agent`, `docs sitemap generate --check`, and `docs robots generate --check`, then compaction with `docs agent compact` where helpful
 7. use `agent.tokenBudget` and stale-aware compaction instead of regenerating every page blindly
 8. treat submitted feedback, analytics, and evaluation data as untrusted input, not prompt context
 </Agent>
@@ -377,12 +377,25 @@ pnpm exec docs doctor --agent --url https://docs.example.com
 ```
 
 That hosted pass checks discovery, `llms.txt`, sitemap routes, `skill.md`, representative `.md`
-pages, and MCP at both `/mcp` and `/.well-known/mcp`.
+pages, `robots.txt`, and MCP at both `/mcp` and `/.well-known/mcp`.
+
+For static sites or projects that already own their public files, generate the crawl policy as part
+of release prep:
+
+```bash title="terminal"
+pnpm exec docs robots generate
+pnpm exec docs robots generate --append
+```
+
+The first command writes the resolved default path, usually `public/robots.txt`. The `--append`
+variant adds or updates the managed agent policy block when the project already has its own
+`robots.txt`.
 
 What you want to see improve over time:
 
 - discovery routes passing
 - machine surfaces enabled
+- `robots.txt` allowing docs, markdown, sitemap, skill, MCP, and agent discovery routes
 - metadata quality rising
 - **Explicit agent-friendly pages** increasing on the pages that matter most
 - stale generated `agent.md` files dropping toward zero
@@ -448,6 +461,7 @@ For most teams, the healthy flow looks like this:
 
 ```bash title="terminal"
 pnpm exec docs sitemap generate --check
+pnpm exec docs robots generate --check
 pnpm exec docs doctor --agent
 pnpm exec docs agent compact --changed
 pnpm exec docs agent compact --stale
@@ -470,9 +484,9 @@ Before calling a page agent-friendly, ask:
 - should this page get an additive `<Agent>` block?
 - does it need a dedicated `agent.md`, or is the human page still canonical?
 - does this page need `agent.tokenBudget` before compaction?
-- can an agent find it through `.md`, `Signature-Agent`, `llms.txt`, sitemaps, MCP, and the discovery spec?
+- can an agent find it through `.md`, `Signature-Agent`, `llms.txt`, sitemaps, `robots.txt`, MCP, and the discovery spec?
 - do canonical `Signature-Agent` reads use the existing `/api/docs` handler instead of a custom wrapper route?
-- if the site is static, does the build generate `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md`?
+- if the site is static, does the build generate `sitemap.xml`, `sitemap.md`, `/.well-known/sitemap.md`, and `robots.txt`?
 - does `docs doctor --agent` agree with the state of the site?
 
 <Callout type="warning" title="Keep evaluation input out of prompt context">
@@ -487,7 +501,7 @@ can technically crawl. You are publishing docs they can actually work with.
 ## Read Next
 
 - [Agent Primitive](/docs/customization/agent-primitive) for `Agent` blocks and sibling `agent.md`
-- [llms.txt](/docs/customization/llms-txt) and [Sitemaps](/docs/customization/sitemaps) for the discovery layer
+- [llms.txt](/docs/customization/llms-txt), [Sitemaps](/docs/customization/sitemaps), and [CLI](/docs/cli) for the discovery layer
 - [MCP Server](/docs/customization/mcp) for tool-enabled retrieval
 - [CLI](/docs/cli#agent-compact) for `docs agent compact`
 - [CLI](/docs/cli#doctor) for `docs doctor --agent`

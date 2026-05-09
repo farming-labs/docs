@@ -13,7 +13,7 @@ experience for humans, IDEs, and agents without maintaining a pile of routing bo
 - Built-in search with simple, Typesense, Algolia, MCP, and custom provider options
 - Generated API reference from framework route handlers or a hosted OpenAPI JSON document
 - Next.js changelog pages from dated MDX entries
-- Machine-readable docs through `.md` routes, `llms.txt`, sitemaps, `skill.md`, agent discovery, and MCP
+- Machine-readable docs through `.md` routes, `llms.txt`, sitemaps, `robots.txt`, `skill.md`, agent discovery, and MCP
 - Page-level agent compaction with `docs agent compact` and `agent.compact` defaults
 - Agent and reader-facing docs scoring with `docs doctor --agent` and `docs doctor --site`
 
@@ -210,7 +210,7 @@ Expected output looks like:
 ```txt
 @farming-labs/docs doctor — agent
 
-Score: 87/100 (Agent-ready)
+Score: 92/105 (Agent-ready)
 Framework: nextjs • Entry: docs • Content: app/docs
 Explicit agent-friendly pages: 10/41 pages (24%)
 ```
@@ -224,6 +224,7 @@ The command checks the agent surface end to end:
 - agent discovery spec
 - `llms.txt`
 - `sitemap.xml` / `sitemap.md`
+- `robots.txt`
 - `skill.md`
 - MCP
 - search
@@ -243,11 +244,11 @@ pnpm exec docs doctor --agent --url https://docs.example.com --json
 ```
 
 Hosted checks request `/.well-known/agent.json`, `/llms.txt`, `/llms-full.txt`, sitemap routes,
-`/skill.md`, `/.well-known/skill.md`, one representative `.md` page route, `/mcp`, and
-`/.well-known/mcp`.
+`/robots.txt`, `/skill.md`, `/.well-known/skill.md`, one representative `.md` page route,
+`/mcp`, and `/.well-known/mcp`.
 For MCP, the doctor performs an HTTP initialize handshake, checks the session header, and verifies
-the built-in docs tools are exposed. With hosted checks enabled, the agent score is out of `135`
-instead of `100`.
+the built-in docs tools are exposed. With hosted checks enabled, the agent score is out of `145`
+instead of `105`.
 
 `docs doctor --site` focuses on the reader-facing surface instead:
 

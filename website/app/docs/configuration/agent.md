@@ -18,6 +18,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
    - `mcp`
    - `llmsTxt`
    - `sitemap`
+   - `robots`
    - `apiReference`
    - `staticExport`
    - `i18n`
@@ -37,6 +38,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
   - `mcp` for the built-in MCP server
   - `llmsTxt` for crawler-friendly site summaries
   - `sitemap` for XML and Markdown maps with canonical URLs and freshness dates
+  - `robots` plus `docs robots generate` for a static crawler and AI-agent access policy
   - markdown routes for page-level machine-readable content
 - When they ask about generated API docs, use `apiReference`.
 - When they ask about static hosting, mention `staticExport: true`.
@@ -50,7 +52,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
 ## Follow-up pages
 
 - Use [/docs/installation](/docs/installation) when the user is still wiring the framework into an app or has not created the docs route yet.
-- Use [/docs/cli](/docs/cli) when they want scaffolding, upgrades, search sync, or MCP commands instead of manual setup.
+- Use [/docs/cli](/docs/cli) when they want scaffolding, upgrades, sitemap generation, robots generation, search sync, or MCP commands instead of manual setup.
 - Use [/docs/reference](/docs/reference) when they need the full typed `defineDocs()` surface or nested option details.
 - Use [/docs/customization](/docs/customization) when the question moves from config into layout, sidebar, colors, or page-level polish.
 - Use [/docs/themes](/docs/themes) when they are choosing a preset theme or building their own.
@@ -67,9 +69,9 @@ Use this machine-oriented page when the user needs implementation guidance for `
 
 1. Confirm the runtime and config file path first.
 2. Verify `entry`, `contentDir`, `nav`, and `theme` before discussing advanced features.
-3. Move to `search`, `ai`, `mcp`, `pageActions`, `llmsTxt`, or `sitemap` only after the base project shape is correct.
+3. Move to `search`, `ai`, `mcp`, `pageActions`, `llmsTxt`, `sitemap`, or `robots` only after the base project shape is correct.
 4. Use customization and theme pages once routing and content structure are stable.
-5. Use markdown routes, sitemaps, `agent.compact`, MCP, and token-efficiency docs when the user is optimizing for agents or machine-readable access.
+5. Use markdown routes, sitemaps, `robots.txt`, `agent.compact`, MCP, and token-efficiency docs when the user is optimizing for agents or machine-readable access.
 
 ## Output style
 

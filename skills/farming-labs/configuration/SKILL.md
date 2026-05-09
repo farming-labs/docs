@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, readingTime, agent.compact, metadata, og, apiReference, MCP, sitemap, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, readingTime, agent.compact, metadata, og, apiReference, MCP, sitemap, robots, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration
@@ -51,6 +51,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `mcp` | `boolean \| DocsMcpConfig` | enabled | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON document |
 | `sitemap` | `boolean \| DocsSitemapConfig` | `false` | Generated `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` |
+| `robots` | `boolean \| DocsRobotsConfig` | enabled for generation when configured | Generated `robots.txt` policy for docs routes, agent-readable files, and common AI crawler user agents |
 | `metadata` | `DocsMetadata` | — | SEO: titleTemplate, description, etc. |
 | `og` | `OGConfig` | — | Dynamic Open Graph images |
 
@@ -209,6 +210,36 @@ sitemap: {
 
 Use `/docs/customization/sitemaps` when the user needs output examples or static export details.
 Use the `cli` skill when they ask about command syntax.
+
+---
+
+## Robots.txt
+
+Use `robots` when the project should generate a static `robots.txt` policy for docs and
+agent-readable routes.
+
+```ts
+robots: {
+  enabled: true,
+  baseUrl: "https://docs.example.com",
+  path: "public/robots.txt",
+  ai: "allow",
+},
+```
+
+Behavior:
+
+- `docs robots generate` writes the generated policy
+- default output is `public/robots.txt`, or `static/robots.txt` for SvelteKit
+- `path` changes where the CLI reads and writes the file
+- existing files are preserved unless the user passes `--append` or `--force`
+- generated policy includes docs entry routes, `.md` routes, `llms.txt`, sitemap routes,
+  `skill.md`, MCP aliases, agent discovery routes, and common AI crawler user agents
+- `baseUrl` lets the generator include an absolute `Sitemap:` line
+- `docs doctor --agent` validates the resolved robots path and warns when agent routes or common AI
+  crawlers are blocked
+
+Use the `cli` skill when the user asks about `docs robots generate` flags.
 
 ---
 
