@@ -12,7 +12,9 @@ Keep this contract true:
 
 - `/docs/getting-started/agent-ready-docs` renders the human HTML page
 - `/docs/getting-started/agent-ready-docs.md` returns this file
+- `/docs/getting-started/agent-ready-docs` with `Signature-Agent` returns this file
 - pages without `agent.md` should still work through `/docs/<slug>.md`
+- pages without `agent.md` should also work through `/docs/<slug>` with `Signature-Agent`
 - the human page remains readable and does not need to be rewritten for agents
 
 ## Primary Files
@@ -32,6 +34,8 @@ packages/fumadocs/src/docs-api.ts
 ```ts
 "/docs.md" -> "/api/docs?format=markdown"
 "/docs/:slug*.md" -> "/api/docs?format=markdown&path=:slug*"
+"/docs" + Signature-Agent -> "/api/docs/markdown"
+"/docs/:slug*" + Signature-Agent -> "/api/docs/markdown/:slug*"
 ```
 
 For this page:
@@ -39,6 +43,7 @@ For this page:
 ```txt
 /docs/getting-started/agent-ready-docs
 /docs/getting-started/agent-ready-docs.md
+/docs/getting-started/agent-ready-docs with Signature-Agent
 ```
 
 ## Markdown Route Shape
@@ -55,11 +60,30 @@ export async function GET(request, { params }) {
 }
 ```
 
+## Signature-Agent Behavior
+
+`Signature-Agent` lets agents request the canonical docs URL and still receive markdown when they do
+not send `Accept: text/markdown`.
+
+```bash
+curl http://localhost:3000/docs/getting-started/agent-ready-docs \
+  -H "Signature-Agent: https://chatgpt.com"
+```
+
+Implementation contract:
+
+- detect any non-empty `Signature-Agent` header
+- only apply the markdown response under the configured docs entry route
+- preserve request headers when forwarding through the generated markdown bridge route
+- derive `path` from the canonical docs slug and call `/api/docs` with `format=markdown`
+- keep normal browser requests on the HTML page
+
 ## Implementation Notes
 
 - `contentDir` must fall back to `app/${entry}` in the Next example
 - `withDocs()` should auto-generate the markdown bridge route and rewrites
 - the existing `/api/docs` GET handler should own markdown mode
+- `Signature-Agent` rewrites should target the generated markdown bridge route, not a `.md` URL
 - normalize slug paths before matching page URLs
 - use the shared docs page source for fallback markdown, so standard pages do not need extra setup
 - fall back to normal page markdown when a page does not have `agent.md`
@@ -92,14 +116,20 @@ surface for both cases:
 ```bash
 curl http://localhost:3000/docs/getting-started/agent-ready-docs
 curl http://localhost:3000/docs/getting-started/agent-ready-docs.md
+curl http://localhost:3000/docs/getting-started/agent-ready-docs \
+  -H "Signature-Agent: https://chatgpt.com"
 curl http://localhost:3000/docs/getting-started/quickstart.md
+curl http://localhost:3000/docs/getting-started/quickstart \
+  -H "Signature-Agent: https://chatgpt.com"
 curl "http://localhost:3000/api/docs?format=markdown&path=getting-started/quickstart"
 ```
 
 ## Accept When
 
 - `/docs/getting-started/agent-ready-docs.md` returns this file verbatim
+- `/docs/getting-started/agent-ready-docs` with `Signature-Agent` returns this file verbatim
 - `/docs/getting-started/quickstart.md` returns normal page markdown
+- `/docs/getting-started/quickstart` with `Signature-Agent` returns normal page markdown
 - `/docs/getting-started/agent-ready-docs` still renders the browser page
 - MCP `read_page("/docs/getting-started/quickstart")` still returns normal docs content
 - the implementation still works for pages that do not have `agent.md`

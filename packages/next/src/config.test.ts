@@ -64,6 +64,11 @@ const MARKDOWN_ACCEPT_HEADER = {
   ].join(""),
 };
 
+const MARKDOWN_SIGNATURE_AGENT_HEADER = {
+  type: "header",
+  key: "signature-agent",
+};
+
 const DOCS_CONFIG_WITH_API_REFERENCE = `export default {
   entry: "docs",
   apiReference: {
@@ -273,7 +278,11 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     const nextConfig = withDocs({});
 
-    expect(existsSync(join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts"))).toBe(false);
+    const markdownRoute = join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts");
+    expect(existsSync(markdownRoute)).toBe(true);
+    expect(readFileSync(markdownRoute, "utf-8")).toContain(
+      'url.searchParams.set("format", "markdown")',
+    );
 
     const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
 
@@ -340,6 +349,16 @@ describe("withDocs (app dir: src/app vs app)", () => {
           source: "/docs/:slug*",
           has: [MARKDOWN_ACCEPT_HEADER],
           destination: "/api/docs?format=markdown&path=:slug*",
+        }),
+        expect.objectContaining({
+          source: "/docs",
+          has: [MARKDOWN_SIGNATURE_AGENT_HEADER],
+          destination: "/api/docs/markdown",
+        }),
+        expect.objectContaining({
+          source: "/docs/:slug*",
+          has: [MARKDOWN_SIGNATURE_AGENT_HEADER],
+          destination: "/api/docs/markdown/:slug*",
         }),
       ]),
     );
@@ -546,6 +565,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const nextConfig = withDocs({ output: "export" });
 
     expect(nextConfig.rewrites).toBeUndefined();
+    expect(existsSync(join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts"))).toBe(false);
   });
 
   it("parses apiReference blocks that contain nested objects", () => {
@@ -613,6 +633,12 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
       "/api/docs": ["app/docs/**/*", "skill.md", ".farming-labs/sitemap-manifest.json"],
+      "/api/docs/markdown": ["app/docs/**/*", "skill.md", ".farming-labs/sitemap-manifest.json"],
+      "/api/docs/markdown/:path*": [
+        "app/docs/**/*",
+        "skill.md",
+        ".farming-labs/sitemap-manifest.json",
+      ],
       "/api/docs/mcp": ["app/docs/**/*"],
     });
   });
@@ -705,6 +731,11 @@ describe("withDocs (app dir: src/app vs app)", () => {
           source: "/docs/:slug*",
           has: [MARKDOWN_ACCEPT_HEADER],
           destination: "/api/docs?format=markdown&path=:slug*",
+        }),
+        expect.objectContaining({
+          source: "/docs/:slug*",
+          has: [MARKDOWN_SIGNATURE_AGENT_HEADER],
+          destination: "/api/docs/markdown/:slug*",
         }),
       ]),
     );

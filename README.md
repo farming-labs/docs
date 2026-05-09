@@ -115,6 +115,7 @@ The framework exposes machine-readable docs in Next.js, with sitemap routes avai
 - `/.well-known/mcp`
 - `/docs/<slug>.md`
 - `/docs/<slug>` with `Accept: text/markdown`
+- `/docs/<slug>` with `Signature-Agent`
 
 The canonical API routes remain available under `/api/docs`, including `/api/docs?format=skill`,
 `/api/docs/mcp`, and `/api/docs/agent/spec`.

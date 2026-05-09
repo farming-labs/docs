@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDocsAgentDiscoverySpec,
   findDocsMarkdownPage,
+  hasDocsMarkdownSignatureAgent,
   isDocsAgentDiscoveryRequest,
   isDocsMcpRequest,
   isDocsPublicGetRequest,
@@ -86,6 +87,15 @@ describe("agent route helpers", () => {
     expect(
       isDocsPublicGetRequest(
         "docs",
+        new URL("https://example.com/docs/install"),
+        new Request("https://example.com/docs/install", {
+          headers: { "Signature-Agent": "https://chatgpt.com" },
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      isDocsPublicGetRequest(
+        "docs",
         new URL("https://example.com/api/docs?format=llms"),
         new Request("https://example.com/api/docs?format=llms"),
       ),
@@ -109,6 +119,23 @@ describe("agent route helpers", () => {
     );
     expect(acceptRoute).toEqual({ requestedPath: "install" });
 
+    const signatureAgentRoute = resolveDocsMarkdownRequest(
+      "docs",
+      new URL("https://example.com/docs/install"),
+      new Request("https://example.com/docs/install", {
+        headers: { "Signature-Agent": "https://chatgpt.com" },
+      }),
+    );
+    expect(signatureAgentRoute).toEqual({ requestedPath: "install" });
+
+    expect(
+      hasDocsMarkdownSignatureAgent(
+        new Request("https://example.com/docs/install", {
+          headers: { "Signature-Agent": "https://chatgpt.com" },
+        }),
+      ),
+    ).toBe(true);
+
     const apiFormatRoute = resolveDocsMarkdownRequest(
       "docs",
       new URL("https://example.com/api/docs?format=markdown&path=install"),
@@ -122,6 +149,15 @@ describe("agent route helpers", () => {
       new Request("https://example.com/blog?format=markdown&path=install"),
     );
     expect(hijackRoute).toBeNull();
+
+    const signatureAgentHijackRoute = resolveDocsMarkdownRequest(
+      "docs",
+      new URL("https://example.com/blog/install"),
+      new Request("https://example.com/blog/install", {
+        headers: { "Signature-Agent": "https://chatgpt.com" },
+      }),
+    );
+    expect(signatureAgentHijackRoute).toBeNull();
   });
 
   it("builds per-page markdown alternate URLs", () => {
@@ -222,6 +258,7 @@ describe("agent route helpers", () => {
 
     expect(spec.api.agentSpecDefault).toBe("/.well-known/agent.json");
     expect(spec.markdown.rootPage).toBe("/docs.md");
+    expect(spec.markdown.signatureAgentHeader).toBe("Signature-Agent");
     expect(spec.llms.publicTxt).toBe("/llms.txt");
     expect(spec.skills.file).toBe("skill.md");
     expect(spec.skills.route).toBe("/skill.md");

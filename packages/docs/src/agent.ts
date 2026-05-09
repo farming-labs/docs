@@ -25,6 +25,7 @@ export const DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms-full.tx
 export const DEFAULT_SKILL_MD_ROUTE = "/skill.md";
 export const DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE = "/.well-known/skill.md";
 export const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
+export const DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER = "Signature-Agent";
 
 export interface DocsAgentFeedbackDiscoveryConfig {
   enabled?: boolean;
@@ -50,6 +51,7 @@ export interface DocsAgentDiscoverySpecOptions {
   sitemap?: boolean | DocsSitemapConfig;
   markdown?: {
     acceptHeader?: boolean;
+    signatureAgentHeader?: boolean;
   };
 }
 
@@ -63,6 +65,7 @@ export interface DocsSkillDocumentOptions {
   sitemap?: boolean | DocsSitemapConfig;
   markdown?: {
     acceptHeader?: boolean;
+    signatureAgentHeader?: boolean;
   };
 }
 
@@ -200,7 +203,7 @@ export function resolveDocsMarkdownRequest(
     };
   }
 
-  if (acceptsMarkdown(request)) {
+  if (acceptsMarkdown(request) || hasDocsMarkdownSignatureAgent(request)) {
     if (pathname === normalizedEntry) {
       return { requestedPath: "" };
     }
@@ -213,6 +216,10 @@ export function resolveDocsMarkdownRequest(
   }
 
   return null;
+}
+
+export function hasDocsMarkdownSignatureAgent(request: Request): boolean {
+  return Boolean(request.headers.get(DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER)?.trim());
 }
 
 export function findDocsMarkdownPage<T extends DocsMarkdownPage>(
@@ -276,6 +283,8 @@ export function renderDocsSkillDocument({
     `Use ${siteTitle} through markdown routes, llms.txt, agent discovery, search, and MCP when available.`,
   );
   const markdownAcceptHeader = markdown?.acceptHeader === false ? null : "text/markdown";
+  const markdownSignatureAgentHeader =
+    markdown?.signatureAgentHeader === false ? null : DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER;
   const lines = [
     "---",
     "name: docs",
@@ -304,6 +313,12 @@ export function renderDocsSkillDocument({
 
   if (markdownAcceptHeader) {
     lines.push(`- You can also request ${markdownAcceptHeader} from normal page URLs.`);
+  }
+
+  if (markdownSignatureAgentHeader) {
+    lines.push(
+      `- Requests with ${markdownSignatureAgentHeader} on normal page URLs receive markdown automatically.`,
+    );
   }
 
   if (searchEnabled) {
@@ -524,6 +539,8 @@ export function buildDocsAgentDiscoverySpec({
     markdown: {
       enabled: true,
       acceptHeader: markdown?.acceptHeader === false ? null : "text/markdown",
+      signatureAgentHeader:
+        markdown?.signatureAgentHeader === false ? null : DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER,
       pagePattern: `/${normalizedEntry}/{slug}.md`,
       rootPage: `/${normalizedEntry}.md`,
       apiPattern: `${DEFAULT_DOCS_API_ROUTE}?format=markdown&path={slug}`,
