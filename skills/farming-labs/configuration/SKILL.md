@@ -87,6 +87,7 @@ Default behavior:
 - **Astro:** current `init` scaffolds one `src/middleware.ts` public forwarder for `/docs.md` and `/docs/<slug>.md`
 - **Nuxt:** current `init` scaffolds one `server/middleware/docs-public.ts` public forwarder for `/docs.md` and `/docs/<slug>.md`
 - **Next.js:** `Accept: text/markdown` on `/docs/<slug>` returns the same markdown response; other adapters should use the `.md` URL or API format route
+- Requests with `Signature-Agent` on normal docs URLs return the same markdown response, so agent fetchers can read canonical URLs without appending `.md`
 - embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI and are included in the markdown fallback
 - if a page folder has `agent.md`, that file becomes the markdown response for that page
 - if `agent.md` is missing, the markdown response falls back to the normal page markdown
@@ -140,6 +141,7 @@ Useful checks:
 curl "http://127.0.0.1:3000/api/docs?format=markdown&path=quickstart"
 curl "http://127.0.0.1:3000/docs/quickstart.md"
 curl "http://127.0.0.1:3000/docs/quickstart" -H "Accept: text/markdown" # Next.js
+curl "http://127.0.0.1:3000/docs/quickstart" -H "Signature-Agent: https://chatgpt.com"
 curl "http://127.0.0.1:3000/docs/getting-started/agent-ready-docs.md"
 ```
 

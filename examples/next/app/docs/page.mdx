@@ -16,9 +16,9 @@ Before implementing from this docs site, fetch `/api/docs/agent/spec` from the s
 returned markdown route pattern, search endpoint, MCP endpoint, `llms.txt` routes, skills metadata,
 locale config, and feedback endpoints instead of hard-coding defaults.
 
-Prefer markdown reads over HTML scraping. For Next.js, `/docs.md`, `/docs/<slug>.md`, and
-`Accept: text/markdown` on `/docs/<slug>` are the page-level machine-readable entry points when
-reported by the spec.
+Prefer markdown reads over HTML scraping. For Next.js, `/docs.md`, `/docs/<slug>.md`,
+`Accept: text/markdown` on `/docs/<slug>`, and `Signature-Agent` on `/docs/<slug>` are the
+page-level machine-readable entry points when reported by the spec.
 </Agent>
 
 ## Features

@@ -12,16 +12,19 @@ single docs topic in two different forms:
 
 - `/docs/getting-started/agent-ready-docs` for human HTML
 - `/docs/getting-started/agent-ready-docs.md` for the page's direct `agent.md`
+- `/docs/getting-started/agent-ready-docs` with `Signature-Agent` for automatic markdown
 
 Because this folder includes a sibling `agent.md`, the `.md` route returns that file. For pages
-without `agent.md`, the same `.md` route falls back to the normal page markdown.
+without `agent.md`, the same `.md` route and header-based markdown response fall back to the normal
+page markdown.
 
 ## What To Open
 
 1. Open `/docs/getting-started/agent-ready-docs` in the browser to see the full narrative.
 2. Open `/docs/getting-started/agent-ready-docs.md` to see the focused agent payload.
-3. Use your own prompt cases to compare the human page output and the `.md` agent payload.
-4. Compare how much broader explanation humans get versus how much narrower implementation detail an agent gets.
+3. Request `/docs/getting-started/agent-ready-docs` with `Signature-Agent` to get the same focused payload from the canonical URL.
+4. Use your own prompt cases to compare the human page output and the markdown agent payload.
+5. Compare how much broader explanation humans get versus how much narrower implementation detail an agent gets.
 
 ## Why It Matters
 
@@ -38,9 +41,11 @@ The example app exposes two ways to read the same docs topic:
 
 - `/docs/<slug>` for human HTML pages
 - `/docs/<slug>.md` for machine-readable markdown
+- `/docs/<slug>` with `Signature-Agent` for agents that read canonical URLs
 
-When a page folder has an `agent.md`, the `.md` route should return that file. When it does not,
-the same route should fall back to the normal page markdown.
+When a page folder has an `agent.md`, the `.md` route and `Signature-Agent` response should return
+that file. When it does not, both markdown entry points should fall back to the normal page
+markdown.
 
 That fallback comes from the same docs source lookup used by the shared page reader, so pages
 without `agent.md` do not need any extra configuration.
@@ -55,6 +60,7 @@ examples/next/app/api/docs/mcp/route.ts
 examples/next/app/docs/getting-started/agent-ready-docs/page.mdx
 examples/next/app/docs/getting-started/agent-ready-docs/agent.md
 examples/next/docs.config.tsx
+packages/docs/src/agent.ts
 packages/next/src/config.ts
 packages/next/src/api.ts
 ```
@@ -76,8 +82,8 @@ export default withDocs({
 ## Built-In Markdown Route
 
 `withDocs()` wires the public `.md` URLs into the existing `/api/docs` handler. The public rewrite
-can land on `/api/docs` with the original docs pathname preserved, so the shared docs API accepts
-both direct markdown queries and rewritten page URLs like `/docs/getting-started/agent-ready-docs.md`:
+lands on `/api/docs` with `format=markdown`, so the shared docs API accepts both direct markdown
+queries and rewritten page URLs like `/docs/getting-started/agent-ready-docs.md`:
 
 ```ts title="packages/next/src/config.ts"
 function buildDocsMarkdownRewrites(entry: string) {
@@ -108,6 +114,38 @@ if (markdownRequest) {
   });
 }
 ```
+
+## Signature-Agent Auto-Rewrite
+
+Some agents fetch the canonical page URL and identify themselves with `Signature-Agent` instead of
+sending `Accept: text/markdown`. `withDocs()` handles that case automatically: the normal HTML URL
+continues to work for browsers, while requests with the header are rewritten to a generated markdown
+bridge route.
+
+```bash title="terminal"
+curl http://localhost:3000/docs/getting-started/agent-ready-docs \
+  -H "Signature-Agent: https://chatgpt.com"
+```
+
+```ts title="packages/next/src/config.ts"
+{
+  source: `/${entry}/:slug*`,
+  has: [{ type: "header", key: "signature-agent" }],
+  destination: "/api/docs/markdown/:slug*",
+}
+```
+
+The bridge route converts the slug back into the shared markdown API shape:
+
+```ts title="app/api/docs/markdown/[[...slug]]/route.ts"
+url.searchParams.set("format", "markdown");
+if (slug) url.searchParams.set("path", slug);
+
+return docsApi.GET(new Request(url.toString(), request));
+```
+
+No docs config flag is required. The header only changes docs page responses under the configured
+entry route, so unrelated pages are not hijacked.
 
 ## MCP Route
 
@@ -161,8 +199,14 @@ That is the whole pattern.
 
 When a request comes in for `/docs/getting-started/agent-ready-docs.md`, `withDocs()` handles the
 rewrite automatically into the existing `/api/docs` handler. The shared docs API accepts either the
-explicit `format=markdown&path=...` query or the preserved rewritten `.md` pathname, then resolves
-the requested slug and checks whether the page has `agentRawContent`.
+explicit `format=markdown&path=...` query produced by the rewrite or a direct `.md` pathname in
+adapters that pass the public URL through, then resolves the requested slug and checks whether the
+page has `agentRawContent`.
+
+When a request comes in for `/docs/getting-started/agent-ready-docs` with `Signature-Agent`,
+`withDocs()` routes it through the generated markdown bridge route. That route preserves the request
+headers, sets `format=markdown`, derives `path` from the current docs slug, and calls the same
+`/api/docs` markdown handler.
 
 Because this page has a sibling `agent.md`, the response becomes the raw contents of that file. If
 another page does not have `agent.md`, the same route falls back to the normal page markdown.
@@ -172,6 +216,8 @@ another page does not have `agent.md`, the same route falls back to the normal p
 ```bash title="terminal"
 curl http://localhost:3000/docs/getting-started/agent-ready-docs
 curl http://localhost:3000/docs/getting-started/agent-ready-docs.md
+curl http://localhost:3000/docs/getting-started/agent-ready-docs \
+  -H "Signature-Agent: https://chatgpt.com"
 curl http://localhost:3000/docs/getting-started/quickstart.md
 ```
 
@@ -186,6 +232,8 @@ curl http://localhost:3000/api/docs?format=markdown\&path=getting-started/quicks
 - In the Next example, `contentDir` should default to `app/${entry}` when the config does not set
   it explicitly.
 - The `.md` route is automatic in Next when you use `withDocs()`.
+- `Signature-Agent` is automatic in Next when you use `withDocs()` and does not require a
+  `docs.config` option.
 - `agent.md` should stay hidden from normal docs discovery and sidebar generation.
 - When `agent.md` exists, it overrides the normal markdown for that slug.
 
