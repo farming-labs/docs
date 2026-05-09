@@ -37,6 +37,7 @@ import {
   normalizeDocsRelated,
   performDocsSearch,
   renderDocsMarkdownDocument,
+  renderDocsMarkdownNotFound,
   renderDocsSkillDocument,
   readDocsSitemapManifestFromContentMap,
   stripGeneratedAgentProvenance,
@@ -889,14 +890,21 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       const varyHeader = getDocsMarkdownVaryHeader(context.request);
 
       if (!document) {
-        return new Response("Not Found", {
-          status: 404,
-          headers: {
-            "Content-Type": "text/plain; charset=utf-8",
-            ...(varyHeader ? { Vary: varyHeader } : {}),
-            "X-Robots-Tag": "noindex",
+        return new Response(
+          renderDocsMarkdownNotFound({
+            entry,
+            requestedPath: markdownRequest.requestedPath,
+            sitemap: config.sitemap,
+          }),
+          {
+            status: 404,
+            headers: {
+              "Content-Type": "text/markdown; charset=utf-8",
+              ...(varyHeader ? { Vary: varyHeader } : {}),
+              "X-Robots-Tag": "noindex",
+            },
           },
-        });
+        );
       }
 
       return new Response(document, {

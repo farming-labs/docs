@@ -76,6 +76,7 @@ export {
   normalizeDocsPathSegment,
   normalizeDocsUrlPath,
   renderDocsMarkdownDocument,
+  renderDocsMarkdownNotFound,
   renderDocsSkillDocument,
   resolveDocsAgentMdxContent,
   resolveDocsLlmsTxtFormat,

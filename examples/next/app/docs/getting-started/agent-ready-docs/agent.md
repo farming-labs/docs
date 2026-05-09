@@ -34,8 +34,8 @@ packages/fumadocs/src/docs-api.ts
 ```ts
 "/docs.md" -> "/api/docs?format=markdown"
 "/docs/:slug*.md" -> "/api/docs?format=markdown&path=:slug*"
-"/docs" + Signature-Agent -> "/api/docs/markdown"
-"/docs/:slug*" + Signature-Agent -> "/api/docs/markdown/:slug*"
+"/docs" + Signature-Agent -> "/api/docs?format=markdown"
+"/docs/:slug*" + Signature-Agent -> "/api/docs?format=markdown&path=:slug*"
 ```
 
 For this page:
@@ -74,16 +74,16 @@ Implementation contract:
 
 - detect any non-empty `Signature-Agent` header
 - only apply the markdown response under the configured docs entry route
-- preserve request headers when forwarding through the generated markdown bridge route
-- derive `path` from the canonical docs slug and call `/api/docs` with `format=markdown`
+- rewrite to the existing `/api/docs` handler with `format=markdown`
+- derive `path` from the canonical docs slug without generating another API wrapper
 - keep normal browser requests on the HTML page
 
 ## Implementation Notes
 
 - `contentDir` must fall back to `app/${entry}` in the Next example
-- `withDocs()` should auto-generate the markdown bridge route and rewrites
+- `withDocs()` should auto-generate the existing docs API route and markdown rewrites
 - the existing `/api/docs` GET handler should own markdown mode
-- `Signature-Agent` rewrites should target the generated markdown bridge route, not a `.md` URL
+- `Signature-Agent` rewrites should target `/api/docs?format=markdown`, not a separate wrapper
 - normalize slug paths before matching page URLs
 - use the shared docs page source for fallback markdown, so standard pages do not need extra setup
 - fall back to normal page markdown when a page does not have `agent.md`

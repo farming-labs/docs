@@ -83,6 +83,12 @@ export interface DocsMarkdownPage {
   agentFallbackRawContent?: string;
 }
 
+export interface DocsMarkdownNotFoundOptions {
+  entry?: string;
+  requestedPath: string;
+  sitemap?: boolean | DocsSitemapConfig;
+}
+
 export function normalizeDocsPathSegment(value: string): string {
   return value.replace(/^\/+|\/+$/g, "");
 }
@@ -228,6 +234,62 @@ export function getDocsMarkdownVaryHeader(request: Request): string | null {
   }
 
   return acceptsMarkdown(request) ? "Accept" : null;
+}
+
+export function renderDocsMarkdownNotFound({
+  entry = "docs",
+  requestedPath,
+  sitemap,
+}: DocsMarkdownNotFoundOptions): string {
+  const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
+  const normalizedRequest = normalizeRequestedMarkdownPath(normalizedEntry, requestedPath);
+  const slugPrefix = `/${normalizedEntry}/`;
+  const requestedSlug =
+    normalizedRequest === `/${normalizedEntry}` ? "" : normalizedRequest.slice(slugPrefix.length);
+  const encodedRequestedSlug = requestedSlug.split("/").map(encodeURIComponent).join("/");
+  const requestedMarkdownRoute = toDocsMarkdownUrl(normalizedRequest);
+  const requestedApiRoute = requestedSlug
+    ? `${DEFAULT_DOCS_API_ROUTE}?format=markdown&path=${encodedRequestedSlug}`
+    : `${DEFAULT_DOCS_API_ROUTE}?format=markdown`;
+  const sitemapConfig = resolveDocsSitemapConfig(sitemap);
+  const lines = [
+    "# Docs Page Not Found",
+    "",
+    `Could not find a markdown page for \`${requestedMarkdownRoute}\`.`,
+    "",
+    "Use these discovery routes to find the right page:",
+    "",
+    `- Agent discovery spec: \`${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}\``,
+    `- Agent discovery fallback: \`${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}\``,
+    `- Agent discovery API: \`${DEFAULT_AGENT_SPEC_ROUTE}\``,
+    `- Search endpoint: \`${DEFAULT_DOCS_API_ROUTE}?query={query}\``,
+    `- Docs index markdown: \`/${normalizedEntry}.md\``,
+    `- Requested markdown API route: \`${requestedApiRoute}\``,
+  ];
+
+  if (sitemapConfig.enabled) {
+    if (sitemapConfig.markdown.enabled) {
+      lines.push(`- Semantic sitemap: \`${sitemapConfig.markdown.route}\``);
+      lines.push(
+        `- Semantic sitemap well-known alias: \`${sitemapConfig.markdown.wellKnownRoute}\``,
+      );
+    }
+
+    if (sitemapConfig.xml.enabled) {
+      lines.push(`- XML sitemap: \`${sitemapConfig.xml.route}\``);
+    }
+  } else {
+    lines.push(
+      `- Sitemap discovery, if enabled: \`${DEFAULT_SITEMAP_MD_ROUTE}\`, \`${DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE}\`, or \`${DEFAULT_SITEMAP_XML_ROUTE}\``,
+    );
+  }
+
+  lines.push(
+    "",
+    "The agent discovery spec is the safest first step because it lists the active markdown, sitemap, search, MCP, and feedback routes for this deployment.",
+  );
+
+  return lines.join("\n");
 }
 
 export function findDocsMarkdownPage<T extends DocsMarkdownPage>(

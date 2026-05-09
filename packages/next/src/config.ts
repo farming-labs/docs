@@ -114,45 +114,6 @@ export const { GET, POST } = createDocsAPI({
 export const revalidate = false;
 `;
 
-const DOCS_MARKDOWN_ROUTE_TEMPLATE = `\
-${GENERATED_BANNER}
-import docsConfig from "@/docs.config";
-import { createDocsAPI } from "@farming-labs/next/api";
-
-const docsApi = createDocsAPI({
-  entry: docsConfig.entry,
-  contentDir: docsConfig.contentDir,
-  i18n: docsConfig.i18n,
-  changelog: docsConfig.changelog,
-  feedback: docsConfig.feedback,
-  mcp: docsConfig.mcp,
-  sitemap: docsConfig.sitemap,
-  search: docsConfig.search,
-  analytics: docsConfig.analytics,
-  observability: docsConfig.observability,
-  ai: docsConfig.ai,
-});
-
-type MarkdownRouteContext = {
-  params?: Promise<{ slug?: string[] }> | { slug?: string[] };
-};
-
-export async function GET(request: Request, context: MarkdownRouteContext = {}) {
-  const params = context.params ? await context.params : undefined;
-  const slug = params?.slug?.join("/") ?? "";
-  const url = new URL(request.url);
-
-  url.pathname = "/api/docs";
-  url.search = "";
-  url.searchParams.set("format", "markdown");
-  if (slug) url.searchParams.set("path", slug);
-
-  return docsApi.GET(new Request(url.toString(), request));
-}
-
-export const revalidate = false;
-`;
-
 const DOCS_MCP_ROUTE_TEMPLATE = `\
 ${GENERATED_BANNER}
 import docsConfig from "@/docs.config";
@@ -1190,12 +1151,12 @@ function buildDocsMarkdownRewrites(entry: string): NextRewrite[] {
     {
       source: `/${normalizedEntry}`,
       has: [markdownSignatureAgentHeader],
-      destination: "/api/docs/markdown",
+      destination: "/api/docs?format=markdown",
     },
     {
       source: `/${normalizedEntry}/:slug*`,
       has: [markdownSignatureAgentHeader],
-      destination: "/api/docs/markdown/:slug*",
+      destination: "/api/docs?format=markdown&path=:slug*",
     },
   ];
 }
@@ -1546,16 +1507,6 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
     writeFileSync(join(docsApiRouteDir, "route.ts"), DOCS_API_ROUTE_TEMPLATE);
   }
 
-  const docsMarkdownRouteDir = join(root, appDir, "api", "docs", "markdown", "[[...slug]]");
-  const docsMarkdownRoutePath = join(docsMarkdownRouteDir, "route.ts");
-  if (
-    !isStaticExport &&
-    (!hasFile(docsMarkdownRouteDir, "route") || isManagedGeneratedFile(docsMarkdownRoutePath))
-  ) {
-    mkdirSync(docsMarkdownRouteDir, { recursive: true });
-    writeFileSync(docsMarkdownRoutePath, DOCS_MARKDOWN_ROUTE_TEMPLATE);
-  }
-
   const mcp = readMcpConfig(root);
   const sitemap = readSitemapConfig(root);
   const docsMcpRouteDir = join(root, appDir, "api", "docs", "mcp");
@@ -1868,22 +1819,6 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
     "/api/docs": [
       ...new Set([
         ...(existingTracingIncludes["/api/docs"] ?? []),
-        docsTraceGlob,
-        skillTraceFile,
-        sitemapManifestTraceFile,
-      ]),
-    ],
-    "/api/docs/markdown": [
-      ...new Set([
-        ...(existingTracingIncludes["/api/docs/markdown"] ?? []),
-        docsTraceGlob,
-        skillTraceFile,
-        sitemapManifestTraceFile,
-      ]),
-    ],
-    "/api/docs/markdown/:path*": [
-      ...new Set([
-        ...(existingTracingIncludes["/api/docs/markdown/:path*"] ?? []),
         docsTraceGlob,
         skillTraceFile,
         sitemapManifestTraceFile,

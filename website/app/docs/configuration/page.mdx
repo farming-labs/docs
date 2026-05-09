@@ -193,6 +193,10 @@ No separate config flag is required for machine-readable page markdown.
   /docs/installation + Accept: text/markdown       -> cached markdown
   /docs/installation + Signature-Agent: <agent-id> -> cached markdown
   ```
+
+  If a markdown request misses, the 404 response is still markdown. It points agents at the agent
+  discovery spec, search endpoint, and sitemap routes so they can recover instead of stopping at a
+  plain `Not Found`.
 </Callout>
 
 ```mdx title="page.mdx"

@@ -1284,7 +1284,13 @@ title: "Home"
       new Request("http://localhost/api/docs?format=markdown&path=missing"),
     );
     expect(response.status).toBe(404);
-    expect(await response.text()).toBe("Not Found");
+    expect(response.headers.get("content-type")).toContain("text/markdown");
+    const notFoundDocument = await response.text();
+    expect(notFoundDocument).toContain("# Docs Page Not Found");
+    expect(notFoundDocument).toContain("`/docs/missing.md`");
+    expect(notFoundDocument).toContain("`/.well-known/agent.json`");
+    expect(notFoundDocument).toContain("`/api/docs?query={query}`");
+    expect(notFoundDocument).toContain("`/sitemap.md`");
   });
 
   it("serves the agent discovery spec through the shared docs api handler", async () => {

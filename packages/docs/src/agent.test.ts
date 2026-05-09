@@ -9,6 +9,7 @@ import {
   isDocsPublicGetRequest,
   isDocsSkillRequest,
   renderDocsMarkdownDocument,
+  renderDocsMarkdownNotFound,
   renderDocsSkillDocument,
   resolveDocsAgentMdxContent,
   resolveDocsLlmsTxtFormat,
@@ -186,6 +187,23 @@ describe("agent route helpers", () => {
     expect(toDocsMarkdownUrl("/docs/install?lang=es", { locale: "fr" })).toBe(
       "/docs/install.md?lang=es",
     );
+  });
+
+  it("renders recovery links for markdown 404 responses", () => {
+    const document = renderDocsMarkdownNotFound({
+      entry: "docs",
+      requestedPath: "missing/page",
+      sitemap: { routePrefix: "/docs-map" },
+    });
+
+    expect(document).toContain("# Docs Page Not Found");
+    expect(document).toContain("`/docs/missing/page.md`");
+    expect(document).toContain("`/.well-known/agent.json`");
+    expect(document).toContain("`/api/docs?query={query}`");
+    expect(document).toContain("`/api/docs?format=markdown&path=missing/page`");
+    expect(document).toContain("`/docs-map/sitemap.md`");
+    expect(document).toContain("`/docs-map/.well-known/sitemap.md`");
+    expect(document).toContain("`/docs-map/sitemap.xml`");
   });
 
   it("renders agent-specific markdown documents", () => {

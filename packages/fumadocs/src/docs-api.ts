@@ -32,6 +32,7 @@ import {
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
   getDocsMarkdownVaryHeader,
+  renderDocsMarkdownNotFound,
   resolveDocsI18n,
   resolveDocsLocale,
   resolvePageSidebarFolderIndexBehavior,
@@ -2718,14 +2719,21 @@ export function createDocsAPI(options?: DocsAPIOptions) {
               found: false,
             },
           });
-          return new Response("Not Found", {
-            status: 404,
-            headers: {
-              "Content-Type": "text/plain; charset=utf-8",
-              ...(varyHeader ? { Vary: varyHeader } : {}),
-              "X-Robots-Tag": "noindex",
+          return new Response(
+            renderDocsMarkdownNotFound({
+              entry,
+              requestedPath: markdownRequest.requestedPath,
+              sitemap: sitemapConfig,
+            }),
+            {
+              status: 404,
+              headers: {
+                "Content-Type": "text/markdown; charset=utf-8",
+                ...(varyHeader ? { Vary: varyHeader } : {}),
+                "X-Robots-Tag": "noindex",
+              },
             },
-          });
+          );
         }
 
         await emitDocsAnalyticsEvent(analytics, {
