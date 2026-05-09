@@ -32,6 +32,9 @@ The same page model also powers the built-in machine-readable routes:
   The markdown response varies by the relevant request headers, so CDNs do not mix the HTML and
   markdown representations for the same URL. A browser can keep receiving cached HTML while an
   agent receives cached markdown for `/docs/installation`.
+
+  Missing markdown pages return a markdown 404 with recovery links to the agent discovery spec,
+  search endpoint, and sitemap routes.
 </Callout>
 
 Use `Agent` when the human page is already mostly correct and just needs a little extra implementation

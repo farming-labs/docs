@@ -119,8 +119,8 @@ if (markdownRequest) {
 
 Some agents fetch the canonical page URL and identify themselves with `Signature-Agent` instead of
 sending `Accept: text/markdown`. `withDocs()` handles that case automatically: the normal HTML URL
-continues to work for browsers, while requests with the header are rewritten to a generated markdown
-bridge route.
+continues to work for browsers, while requests with the header are rewritten to the existing
+`/api/docs` handler with `format=markdown`.
 
 ```bash title="terminal"
 curl http://localhost:3000/docs/getting-started/agent-ready-docs \
@@ -131,21 +131,13 @@ curl http://localhost:3000/docs/getting-started/agent-ready-docs \
 {
   source: `/${entry}/:slug*`,
   has: [{ type: "header", key: "signature-agent" }],
-  destination: "/api/docs/markdown/:slug*",
+  destination: "/api/docs?format=markdown&path=:slug*",
 }
 ```
 
-The bridge route converts the slug back into the shared markdown API shape:
-
-```ts title="app/api/docs/markdown/[[...slug]]/route.ts"
-url.searchParams.set("format", "markdown");
-if (slug) url.searchParams.set("path", slug);
-
-return docsApi.GET(new Request(url.toString(), request));
-```
-
 No docs config flag is required. The header only changes docs page responses under the configured
-entry route, so unrelated pages are not hijacked.
+entry route, so unrelated pages are not hijacked. No extra API wrapper is generated; the existing
+`app/api/docs/route.ts` remains the single docs API entry point.
 
 ## MCP Route
 
@@ -204,9 +196,9 @@ adapters that pass the public URL through, then resolves the requested slug and 
 page has `agentRawContent`.
 
 When a request comes in for `/docs/getting-started/agent-ready-docs` with `Signature-Agent`,
-`withDocs()` routes it through the generated markdown bridge route. That route preserves the request
-headers, sets `format=markdown`, derives `path` from the current docs slug, and calls the same
-`/api/docs` markdown handler.
+`withDocs()` rewrites it into the existing `/api/docs` handler with `format=markdown` and the
+current docs slug as `path`. The same generated `app/api/docs/route.ts` handles search, markdown,
+llms.txt, skill, sitemap, feedback, and agent discovery formats.
 
 Because this page has a sibling `agent.md`, the response becomes the raw contents of that file. If
 another page does not have `agent.md`, the same route falls back to the normal page markdown.

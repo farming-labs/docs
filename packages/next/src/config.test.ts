@@ -67,6 +67,7 @@ const MARKDOWN_ACCEPT_HEADER = {
 const MARKDOWN_SIGNATURE_AGENT_HEADER = {
   type: "header",
   key: "signature-agent",
+  value: ".+",
 };
 
 const DOCS_CONFIG_WITH_API_REFERENCE = `export default {
@@ -278,11 +279,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     const nextConfig = withDocs({});
 
-    const markdownRoute = join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts");
-    expect(existsSync(markdownRoute)).toBe(true);
-    expect(readFileSync(markdownRoute, "utf-8")).toContain(
-      'url.searchParams.set("format", "markdown")',
-    );
+    expect(existsSync(join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts"))).toBe(false);
 
     const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
 
@@ -353,12 +350,12 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/docs",
           has: [MARKDOWN_SIGNATURE_AGENT_HEADER],
-          destination: "/api/docs/markdown",
+          destination: "/api/docs?format=markdown",
         }),
         expect.objectContaining({
           source: "/docs/:slug*",
           has: [MARKDOWN_SIGNATURE_AGENT_HEADER],
-          destination: "/api/docs/markdown/:slug*",
+          destination: "/api/docs?format=markdown&path=:slug*",
         }),
       ]),
     );
@@ -633,12 +630,6 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
       "/api/docs": ["app/docs/**/*", "skill.md", ".farming-labs/sitemap-manifest.json"],
-      "/api/docs/markdown": ["app/docs/**/*", "skill.md", ".farming-labs/sitemap-manifest.json"],
-      "/api/docs/markdown/:path*": [
-        "app/docs/**/*",
-        "skill.md",
-        ".farming-labs/sitemap-manifest.json",
-      ],
       "/api/docs/mcp": ["app/docs/**/*"],
     });
   });
@@ -735,7 +726,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/docs/:slug*",
           has: [MARKDOWN_SIGNATURE_AGENT_HEADER],
-          destination: "/api/docs/markdown/:slug*",
+          destination: "/api/docs?format=markdown&path=:slug*",
         }),
       ]),
     );

@@ -714,6 +714,18 @@ Config content.
     expect(signatureAgentResponse.headers.get("vary")).toBe("Accept, Signature-Agent");
     expect(await signatureAgentResponse.text()).toBe("Use this page as the implementation map.\n");
 
+    const signatureAgentPageResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: { "Signature-Agent": "https://chatgpt.com" },
+      }),
+    );
+    expect(signatureAgentPageResponse.status).toBe(200);
+    expect(signatureAgentPageResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(signatureAgentPageResponse.headers.get("vary")).toBe("Accept, Signature-Agent");
+    expect(await signatureAgentPageResponse.text()).toBe(
+      "Use this page as the implementation map.\n",
+    );
+
     const zeroQualityAcceptResponse = await GET(
       new Request("http://localhost/docs/overview", {
         headers: { accept: "application/json, text/markdown;profile=agent;q=0" },
@@ -1284,7 +1296,13 @@ title: "Home"
       new Request("http://localhost/api/docs?format=markdown&path=missing"),
     );
     expect(response.status).toBe(404);
-    expect(await response.text()).toBe("Not Found");
+    expect(response.headers.get("content-type")).toContain("text/markdown");
+    const notFoundDocument = await response.text();
+    expect(notFoundDocument).toContain("# Docs Page Not Found");
+    expect(notFoundDocument).toContain("`/docs/missing.md`");
+    expect(notFoundDocument).toContain("`/.well-known/agent.json`");
+    expect(notFoundDocument).toContain("`/api/docs?query={query}`");
+    expect(notFoundDocument).toContain("`/sitemap.md`");
   });
 
   it("serves the agent discovery spec through the shared docs api handler", async () => {

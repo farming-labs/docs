@@ -32,6 +32,8 @@ import {
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
   getDocsMarkdownVaryHeader,
+  hasDocsMarkdownSignatureAgent,
+  renderDocsMarkdownNotFound,
   resolveDocsI18n,
   resolveDocsLocale,
   resolvePageSidebarFolderIndexBehavior,
@@ -1394,7 +1396,7 @@ function acceptsMarkdown(request: Request): boolean {
 
 type MarkdownRequest = {
   requestedPath: string;
-  delivery: "api_format" | "md_route" | "accept_header";
+  delivery: "api_format" | "md_route" | "accept_header" | "signature_agent";
 };
 
 function resolveMarkdownRequest(entry: string, url: URL, request: Request): MarkdownRequest | null {
@@ -1421,15 +1423,18 @@ function resolveMarkdownRequest(entry: string, url: URL, request: Request): Mark
     };
   }
 
-  if (acceptsMarkdown(request)) {
+  const hasSignatureAgent = hasDocsMarkdownSignatureAgent(request);
+  if (acceptsMarkdown(request) || hasSignatureAgent) {
+    const delivery = hasSignatureAgent ? "signature_agent" : "accept_header";
+
     if (pathname === normalizedEntry) {
-      return { requestedPath: "", delivery: "accept_header" };
+      return { requestedPath: "", delivery };
     }
 
     if (pathname.startsWith(slugPrefix)) {
       return {
         requestedPath: pathname.slice(slugPrefix.length),
-        delivery: "accept_header",
+        delivery,
       };
     }
   }
@@ -2718,14 +2723,21 @@ export function createDocsAPI(options?: DocsAPIOptions) {
               found: false,
             },
           });
-          return new Response("Not Found", {
-            status: 404,
-            headers: {
-              "Content-Type": "text/plain; charset=utf-8",
-              ...(varyHeader ? { Vary: varyHeader } : {}),
-              "X-Robots-Tag": "noindex",
+          return new Response(
+            renderDocsMarkdownNotFound({
+              entry,
+              requestedPath: markdownRequest.requestedPath,
+              sitemap: sitemapConfig,
+            }),
+            {
+              status: 404,
+              headers: {
+                "Content-Type": "text/markdown; charset=utf-8",
+                ...(varyHeader ? { Vary: varyHeader } : {}),
+                "X-Robots-Tag": "noindex",
+              },
             },
-          });
+          );
         }
 
         await emitDocsAnalyticsEvent(analytics, {
