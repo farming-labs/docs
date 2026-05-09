@@ -195,6 +195,8 @@ Once `agent.md` exists, it becomes the source for:
 
 - `{page}.md`
 - `GET /api/docs?format=markdown&path=<slug>`
+- `{page}` with `Accept: text/markdown` in Next.js
+- `{page}` with `Signature-Agent` in Next.js
 - MCP `read_page`
 
 So use it when that stronger machine contract is genuinely worth owning.
@@ -240,6 +242,36 @@ That gives agents a much better workflow:
 
 The big win is that the discovery layer comes from the same docs runtime instead of a parallel
 system you have to keep in sync by hand.
+
+## Know How Canonical Markdown Is Served
+
+In Next.js, agents can read markdown without changing the URL they already discovered from the
+human page, search result, sitemap, or browser history:
+
+```bash title="terminal"
+curl "https://docs.example.com/docs/installation" \
+  -H "Accept: text/markdown"
+
+curl "https://docs.example.com/docs/installation" \
+  -H "Signature-Agent: https://chatgpt.com"
+```
+
+Both requests are served by the existing shared docs API. `withDocs()` forwards the request into the
+same `/api/docs` handler that already powers search, markdown format routes, `llms.txt`, `skill.md`,
+sitemaps, MCP, and the agent discovery spec. It does not generate or require another
+`/api/docs/markdown` wrapper route.
+
+That detail matters for agent-friendly docs because there is only one page resolver to keep correct:
+
+- `/docs/installation.md` and `/api/docs?format=markdown&path=installation` are explicit markdown entry points
+- `/docs/installation` with `Accept: text/markdown` returns the same markdown and varies by `Accept`
+- `/docs/installation` with `Signature-Agent` returns the same markdown and varies by `Accept, Signature-Agent`
+- `/docs/installation` without those headers remains the normal HTML page
+
+If a markdown request misses, the response is still markdown. The 404 points the agent to
+`/.well-known/agent.json`, `/.well-known/agent`, `/api/docs/agent/spec`, search, the requested API
+markdown route, and sitemap routes so the agent can recover instead of treating the site as a dead
+end.
 
 ## Keep The Sitemap In The Build
 
@@ -295,12 +327,14 @@ Example:
 - Open `http://localhost:3000/docs`
 - Fetch `http://localhost:3000/docs.md`
 - Fetch `http://localhost:3000/docs` with `Signature-Agent: https://chatgpt.com`
+- Confirm the `Signature-Agent` response is `text/markdown` and includes `Vary: Accept, Signature-Agent`
 - Fetch `http://localhost:3000/.well-known/agent.json`
 - Fetch `http://localhost:3000/sitemap.md`
 
 ## Troubleshooting
 
 - If `/docs.md` returns `404`, check the docs route wiring.
+- If `Signature-Agent` returns JSON or HTML in Next.js, check that the request is reaching the shared `/api/docs` handler and that no custom rewrite is shadowing the generated docs rewrites.
 - If `/.well-known/agent.json` is missing, confirm the docs API route is mounted.
 - If the page renders but search is empty, verify the search provider config.
 ```
@@ -437,6 +471,7 @@ Before calling a page agent-friendly, ask:
 - does it need a dedicated `agent.md`, or is the human page still canonical?
 - does this page need `agent.tokenBudget` before compaction?
 - can an agent find it through `.md`, `Signature-Agent`, `llms.txt`, sitemaps, MCP, and the discovery spec?
+- do canonical `Signature-Agent` reads use the existing `/api/docs` handler instead of a custom wrapper route?
 - if the site is static, does the build generate `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md`?
 - does `docs doctor --agent` agree with the state of the site?
 

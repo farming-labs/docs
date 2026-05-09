@@ -119,6 +119,8 @@ The framework exposes machine-readable docs in Next.js, with sitemap routes avai
 
 The canonical API routes remain available under `/api/docs`, including `/api/docs?format=skill`,
 `/api/docs/mcp`, and `/api/docs/agent/spec`.
+Canonical Next.js markdown reads with `Accept: text/markdown` or `Signature-Agent` are handled by
+that same shared `/api/docs` route, so apps do not need a second markdown-only API wrapper.
 
 For a custom site-specific skill, place `skill.md` at the project root beside `docs.config.ts`.
 When it is missing, the framework serves a generated fallback based on the docs config.

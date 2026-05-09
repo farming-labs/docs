@@ -29,6 +29,10 @@ The same page model also powers the built-in machine-readable routes:
   machine-readable version without appending `.md`. In the other adapters, use
   `/docs/installation.md` or the `format=markdown` API route.
 
+  These reads go through the existing shared `/api/docs` handler. You do not need another
+  markdown-specific API wrapper, and adding one usually makes discovery, caching, and 404 recovery
+  harder to keep aligned.
+
   The markdown response varies by the relevant request headers, so CDNs do not mix the HTML and
   markdown representations for the same URL. A browser can keep receiving cached HTML while an
   agent receives cached markdown for `/docs/installation`.
