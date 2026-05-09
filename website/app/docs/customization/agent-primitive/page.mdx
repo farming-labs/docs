@@ -28,6 +28,9 @@ The same page model also powers the built-in machine-readable routes:
   `Accept: text/markdown` or `Signature-Agent` to that same URL when an agent or script wants the
   machine-readable version without appending `.md`. In the other adapters, use
   `/docs/installation.md` or the `format=markdown` API route.
+
+  The markdown response varies by the relevant request headers, so CDNs do not mix the HTML and
+  markdown representations for the same URL.
 </Callout>
 
 Use `Agent` when the human page is already mostly correct and just needs a little extra implementation

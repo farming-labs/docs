@@ -222,6 +222,14 @@ export function hasDocsMarkdownSignatureAgent(request: Request): boolean {
   return Boolean(request.headers.get(DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER)?.trim());
 }
 
+export function getDocsMarkdownVaryHeader(request: Request): string | null {
+  if (hasDocsMarkdownSignatureAgent(request)) {
+    return `Accept, ${DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER}`;
+  }
+
+  return acceptsMarkdown(request) ? "Accept" : null;
+}
+
 export function findDocsMarkdownPage<T extends DocsMarkdownPage>(
   entry: string,
   pages: T[],

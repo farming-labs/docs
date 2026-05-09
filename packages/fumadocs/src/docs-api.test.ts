@@ -641,6 +641,7 @@ Config content.
     );
     expect(fallbackResponse.status).toBe(200);
     expect(fallbackResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(fallbackResponse.headers.get("vary")).toBeNull();
     const fallbackDocument = await fallbackResponse.text();
     expect(fallbackDocument).toContain("# Quickstart\nURL: /docs/getting-started/quickstart");
     expect(fallbackDocument).toContain(
@@ -662,6 +663,7 @@ Config content.
     );
     expect(rewrittenFallbackResponse.status).toBe(200);
     expect(rewrittenFallbackResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(rewrittenFallbackResponse.headers.get("vary")).toBeNull();
     expect(await rewrittenFallbackResponse.text()).toContain(
       "Verify the onboarding command examples before changing this page.",
     );
@@ -677,6 +679,7 @@ Config content.
     );
     expect(acceptFallbackResponse.status).toBe(200);
     expect(acceptFallbackResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(acceptFallbackResponse.headers.get("vary")).toBe("Accept");
     expect(await acceptFallbackResponse.text()).toContain(
       "Verify the onboarding command examples before changing this page.",
     );
@@ -687,6 +690,7 @@ Config content.
       }),
     );
     expect(acceptAgentResponse.status).toBe(200);
+    expect(acceptAgentResponse.headers.get("vary")).toBe("Accept");
     expect(await acceptAgentResponse.text()).toBe("Use this page as the implementation map.\n");
 
     const weightedAcceptAgentResponse = await GET(
@@ -696,9 +700,19 @@ Config content.
     );
     expect(weightedAcceptAgentResponse.status).toBe(200);
     expect(weightedAcceptAgentResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(weightedAcceptAgentResponse.headers.get("vary")).toBe("Accept");
     expect(await weightedAcceptAgentResponse.text()).toBe(
       "Use this page as the implementation map.\n",
     );
+
+    const signatureAgentResponse = await GET(
+      new Request("http://localhost/api/docs?format=markdown&path=overview", {
+        headers: { "Signature-Agent": "https://chatgpt.com" },
+      }),
+    );
+    expect(signatureAgentResponse.status).toBe(200);
+    expect(signatureAgentResponse.headers.get("vary")).toBe("Accept, Signature-Agent");
+    expect(await signatureAgentResponse.text()).toBe("Use this page as the implementation map.\n");
 
     const zeroQualityAcceptResponse = await GET(
       new Request("http://localhost/docs/overview", {
