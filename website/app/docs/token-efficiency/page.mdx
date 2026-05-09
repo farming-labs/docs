@@ -142,9 +142,9 @@ A declarative config file is hard to break. An AI can add `ai: { enabled: true }
 
 ## Compact Page-Level Agent Docs
 
-The framework already gives agents clean page-level markdown through `.md` routes, hidden
-`<Agent>...</Agent>` blocks, and sibling `agent.md` files. When you want that machine-readable layer
-to be even tighter, use `docs agent compact`.
+The framework already gives agents clean page-level markdown through `.md` routes, canonical URLs
+with `Signature-Agent` in Next.js, hidden `<Agent>...</Agent>` blocks, and sibling `agent.md` files.
+When you want that machine-readable layer to be even tighter, use `docs agent compact`.
 
 The command resolves the same page contract the runtime already uses:
 
@@ -157,8 +157,8 @@ Then it sends that resolved document to the Token Company compression API and wr
 
 <Callout type="info" title="Compaction only changes the machine-readable layer">
   The visible docs UI still renders `page.mdx` or `page.md`. The generated `agent.md` becomes the
-  page-level source for `.md` routes, `GET /api/docs?format=markdown&path=<slug>`, and MCP
-  `read_page()`.
+  page-level source for `.md` routes, `Signature-Agent` markdown reads in Next.js,
+  `GET /api/docs?format=markdown&path=<slug>`, and MCP `read_page()`.
 </Callout>
 
 ```ts title="docs.config.ts"

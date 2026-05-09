@@ -22,14 +22,14 @@ You are reading the machine-readable entry page for `@farming-labs/docs`.
 Before implementing from this docs site, fetch `/.well-known/agent.json` from the same origin. If
 that is unavailable, fall back to `/.well-known/agent`. Treat that JSON as the source of truth for
 the docs entry path, markdown route pattern, search endpoint, MCP endpoint, `llms.txt` routes,
-`sitemap.xml` / `sitemap.md` routes, `skill.md` route, skills install command, locale handling, and
-feedback endpoints.
+`sitemap.xml` / `sitemap.md` routes, `skill.md` route, skills install command, locale handling,
+`Signature-Agent` support, and feedback endpoints.
 
 Recommended bootstrap flow:
 
 1. Fetch `/.well-known/agent.json`, then fall back to `/.well-known/agent`.
 2. Read `spec.skills.route` or `spec.skills.wellKnown` when a concise site skill is useful.
-3. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read the exact docs pages you need as markdown.
+3. Use `spec.markdown.pagePattern`, `spec.markdown.acceptHeader`, or `spec.markdown.signatureAgentHeader` to read the exact docs pages you need as markdown.
 4. Use `spec.search.endpoint` when you need to find the right page before reading it.
 5. Use `spec.sitemap.markdown.route` for the semantic page map and `spec.sitemap.xml.route` for canonical URL freshness when sitemap is enabled.
 6. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and the environment supports MCP.

@@ -17,6 +17,7 @@ The same page model also powers the built-in machine-readable routes:
 - the shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
 - Next.js `withDocs()` and the generated TanStack Start, SvelteKit, Astro, and Nuxt forwarding layer serve `/docs.md` and `/docs/<slug>.md`
 - in Next.js, `Accept: text/markdown` on `/docs/<slug>` returns the same markdown
+- in Next.js, `Signature-Agent` on `/docs/<slug>` returns the same markdown for agents that fetch canonical URLs
 - agents can fetch the site skill with `GET /skill.md`, fall back to
   `GET /.well-known/skill.md`, or use `GET /api/docs?format=skill`
 - agents can discover the configured contract with `GET /.well-known/agent.json`, fall back to
@@ -24,9 +25,9 @@ The same page model also powers the built-in machine-readable routes:
 
 <Callout type="info" title="Same URL, different representation">
   `/docs/installation` stays the human HTML page by default. In Next.js, send
-  `Accept: text/markdown` to that same URL when an agent or script wants the machine-readable
-  version without appending `.md`. In the other adapters, use `/docs/installation.md` or the
-  `format=markdown` API route.
+  `Accept: text/markdown` or `Signature-Agent` to that same URL when an agent or script wants the
+  machine-readable version without appending `.md`. In the other adapters, use
+  `/docs/installation.md` or the `format=markdown` API route.
 </Callout>
 
 Use `Agent` when the human page is already mostly correct and just needs a little extra implementation
@@ -62,6 +63,7 @@ That gives you:
 - `/docs/installation` for the normal UI page
 - `/docs/installation.md` for machine-readable markdown that includes the `Agent` block
 - `/docs/installation` with `Accept: text/markdown` for the same machine-readable markdown
+- `/docs/installation` with `Signature-Agent` for agents that read the canonical URL
 - MCP `read_page("/docs/installation")` with the same page-level machine context
 
 ## Bootstrap Agents With The Spec
@@ -88,7 +90,7 @@ Recommended bootstrap flow:
 
 1. Fetch `/.well-known/agent.json`, then fall back to `/.well-known/agent`.
 2. Read `spec.skills.route` or `spec.skills.wellKnown` when you want the concise site skill.
-3. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read relevant docs pages as markdown.
+3. Use `spec.markdown.pagePattern`, `spec.markdown.acceptHeader`, or `spec.markdown.signatureAgentHeader` to read relevant docs pages as markdown.
 4. Use `spec.search.endpoint` when you need to find the right page first.
 5. Use `spec.sitemap.markdown.route` for the semantic docs map and `spec.sitemap.xml.route` for canonical freshness when sitemap is enabled.
 6. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and your environment supports MCP.
@@ -101,7 +103,7 @@ in the spec.
 
 This works well on `/docs` because many agents start there first. The instruction stays hidden from
 the human UI, but it appears when an agent reads `/docs.md`, requests `/docs` with
-`Accept: text/markdown`, or reads the page through MCP.
+`Accept: text/markdown` or `Signature-Agent`, or reads the page through MCP.
 
 ## Use `agent.md` For A Full Override
 
@@ -216,6 +218,7 @@ Agents should fetch it before choosing a transport. It tells them:
 - which agent discovery URL is the default and which public route to use as fallback
 - where to search the docs with a query
 - which markdown URL pattern to use for page reads
+- whether the same docs URLs support `Accept: text/markdown` or `Signature-Agent`
 - where to fetch `llms.txt` and `llms-full.txt` content, including the default public URLs and the
   public `/.well-known` aliases when available
 - where to fetch `sitemap.xml`, `sitemap.md`, and the `/.well-known/sitemap.md` alias when sitemap is enabled

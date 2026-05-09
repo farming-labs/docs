@@ -44,6 +44,7 @@ pnpm exec docs agent compact --all
 
 - Human page: `/docs/customization/agent-primitive`
 - Markdown route: `/docs/customization/agent-primitive.md`
+- Canonical markdown request: `/docs/customization/agent-primitive` with `Signature-Agent`
 - API route: `/api/docs?format=markdown&path=customization/agent-primitive`
 - MCP read target: `/docs/customization/agent-primitive`
 
@@ -64,7 +65,7 @@ The spec is generated from `docs.config` and includes:
 - capability flags for markdown, MCP, search, feedback, skills, `llms.txt`, and sitemap
 - shared docs API route
 - search endpoint and query parameter
-- markdown route patterns
+- markdown route patterns, `Accept: text/markdown`, and `Signature-Agent` support
 - `llms.txt` and `llms-full.txt` routes
 - `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` routes when enabled
 - `skill.md` route, well-known alias, API format, and root file convention
@@ -92,7 +93,7 @@ Recommended bootstrap flow:
 
 1. Fetch `/.well-known/agent.json`, then fall back to `/.well-known/agent` and `/api/docs/agent/spec`.
 2. Read `spec.skills.route` or `spec.skills.wellKnown` when a concise site skill is useful.
-3. Use `spec.markdown.pagePattern` or `spec.markdown.acceptHeader` to read relevant docs pages as markdown.
+3. Use `spec.markdown.pagePattern`, `spec.markdown.acceptHeader`, or `spec.markdown.signatureAgentHeader` to read relevant docs pages as markdown.
 4. Use `spec.search.endpoint` when you need to find the right page first.
 5. Use `spec.sitemap.markdown.route` for the semantic docs map and `spec.sitemap.xml.route` for canonical freshness when sitemap is enabled.
 6. Use `spec.mcp.wellKnownEndpoint`, `spec.mcp.publicEndpoint`, or `spec.mcp.endpoint` when MCP is enabled and your environment supports MCP.

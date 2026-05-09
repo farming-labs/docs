@@ -25,6 +25,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
    - `og`
 3. If the config contains JSX, prefer `docs.config.tsx`.
 4. If the user only needs machine-readable page content, prefer `.md` routes or MCP `read_page` over scraping HTML.
+5. For Next.js docs routes, mention `Signature-Agent` when the user wants agents to read canonical URLs as markdown.
 
 ## Guidance
 
@@ -42,7 +43,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
 
 ## Framework notes
 
-- Next.js uses `withDocs()` and can expose page-level `.md` routes automatically.
+- Next.js uses `withDocs()` and can expose page-level `.md`, `Accept: text/markdown`, and `Signature-Agent` markdown routes automatically.
 - TanStack Start, SvelteKit, Astro, and Nuxt use the shared docs API markdown mode through their framework-specific docs route setup.
 - Do not switch frameworks unless the user explicitly asks to migrate.
 
