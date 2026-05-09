@@ -256,6 +256,75 @@ Use this docs site through markdown routes and MCP.
     expect(report.checks.find((check) => check.id === "compact")?.status).toBe("pass");
   });
 
+  it("checks the local robots.txt agent policy", async () => {
+    writePackageJson(tmpDir, "doctor-robots", { next: "16.0.0" });
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  llmsTxt: { enabled: true, baseUrl: "https://docs.example.com" },
+  sitemap: { enabled: true, baseUrl: "https://docs.example.com" },
+  robots: { enabled: true },
+};`,
+      "utf-8",
+    );
+
+    writeFileSync(
+      path.join(tmpDir, "next.config.ts"),
+      `import { withDocs } from "@farming-labs/next/config";
+
+export default withDocs({});
+`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "app", "api", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "api", "docs", "route.ts"),
+      `import { createDocsAPI } from "@farming-labs/next/api";
+
+export const { GET, POST } = createDocsAPI({});
+`,
+      "utf-8",
+    );
+    mkdirSync(path.join(tmpDir, "public"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "public", "robots.txt"),
+      `User-agent: *
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /sitemap.xml
+Allow: /sitemap.md
+Allow: /.well-known/sitemap.md
+Allow: /.well-known/agent.json
+Allow: /.well-known/agent
+Allow: /skill.md
+Allow: /mcp
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+`,
+      "utf-8",
+    );
+    writeDocsPage(tmpDir);
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+
+    expect(report.checks.find((check) => check.id === "robots")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "robots")?.detail).toContain(
+      "public/robots.txt",
+    );
+  });
+
   it("probes hosted agent surfaces when --url is provided", async () => {
     writePackageJson(tmpDir, "doctor-hosted", { next: "16.0.0" });
 
@@ -315,6 +384,32 @@ export const { GET, POST } = createDocsAPI({});
         ) {
           res.writeHead(200, { "Content-Type": "text/plain" });
           res.end(url.pathname.endsWith(".xml") ? "<urlset></urlset>" : "# Docs Sitemap");
+          return;
+        }
+
+        if (url.pathname === "/robots.txt") {
+          res.writeHead(200, { "Content-Type": "text/plain" });
+          res.end(`User-agent: *
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /sitemap.xml
+Allow: /sitemap.md
+Allow: /.well-known/sitemap.md
+Allow: /.well-known/agent.json
+Allow: /.well-known/agent
+Allow: /skill.md
+Allow: /mcp
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+`);
           return;
         }
 
@@ -424,12 +519,13 @@ export const { GET, POST } = createDocsAPI({});
       const report = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
 
       expect(report.url).toBe(`http://127.0.0.1:${port}`);
-      expect(report.maxScore).toBe(135);
+      expect(report.maxScore).toBe(145);
       expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(
         "pass",
       );
       expect(report.checks.find((check) => check.id === "hosted-llms")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-sitemap")?.status).toBe("pass");
+      expect(report.checks.find((check) => check.id === "hosted-robots")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-skill")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-markdown")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-mcp")?.status).toBe("pass");
@@ -529,7 +625,7 @@ Use this docs site through markdown routes and MCP.
       process.chdir(tmpDir);
       const report = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
 
-      expect(report.maxScore).toBe(135);
+      expect(report.maxScore).toBe(145);
       expect(report.score).toBeGreaterThanOrEqual(90);
       expect(report.grade).not.toBe("Agent-optimized");
       expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(

@@ -98,6 +98,18 @@ export {
   resolveDocsSitemapRequest,
   toDocsSitemapMarkdownUrl,
 } from "./sitemap.js";
+export {
+  DEFAULT_DOCS_AI_ROBOTS_USER_AGENTS,
+  DEFAULT_ROBOTS_TXT_ROUTE,
+  DOCS_ROBOTS_GENERATED_BLOCK_END,
+  DOCS_ROBOTS_GENERATED_BLOCK_START,
+  analyzeDocsRobotsTxt,
+  getDocsRobotsAllowRoutes,
+  renderDocsRobotsGeneratedBlock,
+  renderDocsRobotsTxt,
+  resolveDocsRobotsConfig,
+  upsertDocsRobotsGeneratedBlock,
+} from "./robots.js";
 export type {
   DocsSitemapFormat,
   DocsSitemapManifest,
@@ -105,6 +117,7 @@ export type {
   DocsSitemapPageInput,
   DocsSitemapResolvedConfig,
 } from "./sitemap.js";
+export type { DocsRobotsResolvedConfig, DocsRobotsRenderOptions } from "./robots.js";
 export {
   buildDocsSearchDocuments,
   buildDocsAskAIContext,
@@ -123,6 +136,8 @@ export type { GeneratedAgentProvenance, GeneratedAgentSourceKind } from "./agent
 export type {
   DocsConfig,
   DocsSitemapConfig,
+  DocsRobotsConfig,
+  DocsRobotsRule,
   ChangelogConfig,
   ChangelogFrontmatter,
   ApiReferenceConfig,
