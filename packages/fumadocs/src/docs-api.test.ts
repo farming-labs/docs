@@ -714,6 +714,18 @@ Config content.
     expect(signatureAgentResponse.headers.get("vary")).toBe("Accept, Signature-Agent");
     expect(await signatureAgentResponse.text()).toBe("Use this page as the implementation map.\n");
 
+    const signatureAgentPageResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: { "Signature-Agent": "https://chatgpt.com" },
+      }),
+    );
+    expect(signatureAgentPageResponse.status).toBe(200);
+    expect(signatureAgentPageResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(signatureAgentPageResponse.headers.get("vary")).toBe("Accept, Signature-Agent");
+    expect(await signatureAgentPageResponse.text()).toBe(
+      "Use this page as the implementation map.\n",
+    );
+
     const zeroQualityAcceptResponse = await GET(
       new Request("http://localhost/docs/overview", {
         headers: { accept: "application/json, text/markdown;profile=agent;q=0" },

@@ -1127,6 +1127,7 @@ function buildDocsMarkdownRewrites(entry: string): NextRewrite[] {
   const markdownSignatureAgentHeader = {
     type: "header",
     key: "signature-agent",
+    value: ".+",
   };
 
   return [

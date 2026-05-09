@@ -67,6 +67,7 @@ const MARKDOWN_ACCEPT_HEADER = {
 const MARKDOWN_SIGNATURE_AGENT_HEADER = {
   type: "header",
   key: "signature-agent",
+  value: ".+",
 };
 
 const DOCS_CONFIG_WITH_API_REFERENCE = `export default {
