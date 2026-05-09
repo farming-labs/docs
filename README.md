@@ -116,6 +116,7 @@ The framework exposes machine-readable docs in Next.js, with sitemap routes avai
 - `/docs/<slug>.md`
 - `/docs/<slug>` with `Accept: text/markdown`
 - `/docs/<slug>` with `Signature-Agent`
+- generated `robots.txt` via `docs robots generate`
 
 The canonical API routes remain available under `/api/docs`, including `/api/docs?format=skill`,
 `/api/docs/mcp`, and `/api/docs/agent/spec`.
@@ -137,6 +138,10 @@ sitemap: {
 For static hosting, run `pnpm exec docs sitemap generate` before your framework build so
 `public/sitemap.xml`, `public/sitemap.md`, `public/.well-known/sitemap.md`, and the internal
 `.farming-labs/sitemap-manifest.json` stay fresh.
+
+Run `pnpm exec docs robots generate` when you also want a committed `robots.txt` policy. Existing
+files are preserved by default; use `--append` to add the generated block or `--force` to replace
+the file.
 
 ## Agent Compaction
 

@@ -16,6 +16,7 @@ The `@farming-labs/docs` CLI has a few main jobs:
 - **`mcp`** — run the built-in docs MCP server over stdio for local clients and IDE agents
 - **`search sync`** — push docs content into an external search index like Typesense or Algolia
 - **`sitemap generate`** — write sitemap metadata plus static `sitemap.xml` and `sitemap.md` files
+- **`robots generate`** — write or append an agent-friendly `robots.txt` policy
 
 If you only need the common commands, start here. The framework-specific output and generated file lists are further down this page.
 
@@ -241,6 +242,43 @@ The generator resolves `lastmod` from each page source file's last git commit da
 to filesystem modified time. See [Sitemaps](/docs/customization/sitemaps) for route config, static
 export setup, and output examples.
 
+### Generate robots.txt
+
+Use `robots generate` when you want a static `robots.txt` file that explicitly allows docs,
+markdown, `llms.txt`, sitemap, skill, MCP, and agent discovery routes.
+
+```bash title="terminal"
+pnpm exec docs robots generate
+```
+
+By default the command resolves the framework public directory and writes:
+
+- `public/robots.txt` for Next.js, TanStack Start, Astro, and Nuxt projects
+- `static/robots.txt` for SvelteKit projects
+
+If the target file already exists, the command keeps it untouched. Use `--append` to add or update
+the generated `@farming-labs/docs` block inside an existing policy, or `--force` to replace the
+file:
+
+```bash title="terminal"
+pnpm exec docs robots generate --append
+pnpm exec docs robots generate --force
+pnpm exec docs robots generate --path public/robots.txt --append
+```
+
+Useful flags:
+
+| Flag | Description |
+| ---- | ----------- |
+| `--path <path>` | Write to a specific robots.txt path. Positional paths work too. |
+| `--append` | Add or update the generated block inside an existing robots.txt. |
+| `--force` | Replace the target robots.txt with the generated policy. |
+| `--check` | Fail if the generated output would change. |
+| `--config <path>` | Use a custom docs config path. |
+
+Configure defaults with `robots` in `docs.config.ts`, then run the command during release prep or
+static export builds when you want the policy committed.
+
 ### Compact page-level agent docs
 
 For commands, config, and how generated `agent.md` files affect `.md` routes, docs API markdown
@@ -385,6 +423,7 @@ What it checks:
 - agent discovery spec
 - `llms.txt`
 - `sitemap.xml` and `sitemap.md`
+- `robots.txt`
 - `skill.md`
 - MCP
 - search
@@ -412,7 +451,7 @@ Expected output:
 ```txt
 @farming-labs/docs doctor — agent
 
-Score: 87/100 (Agent-ready)
+Score: 92/105 (Agent-ready)
 Framework: nextjs • Entry: docs • Content: app/docs
 Explicit agent-friendly pages: 10/41 pages (24%)
 
@@ -420,6 +459,8 @@ PASS Docs API route (10/10)
   Found docs API route at app/api/docs/route.ts.
 PASS Agent discovery spec (5/5)
   Expected discovery endpoints are available through /.well-known/agent.json, /.well-known/agent, and /api/docs?agent=spec.
+PASS Robots agent policy (5/5)
+  public/robots.txt advertises agent-readable routes and common AI crawler policy.
 WARN Skill document (3/5)
   No root skill.md found; the framework will serve the generated fallback at /skill.md.
 WARN Explicit page optimization (5/10)
@@ -501,6 +542,7 @@ The hosted pass probes:
 - `/llms.txt`
 - `/llms-full.txt`
 - sitemap routes from the discovery spec, usually `/sitemap.xml`, `/sitemap.md`, and `/.well-known/sitemap.md`
+- `/robots.txt`
 - `/skill.md`
 - `/.well-known/skill.md`
 - one representative page markdown route, such as `/docs.md`
@@ -515,10 +557,10 @@ For MCP, the doctor performs a Streamable HTTP `initialize` request, checks for 
 - `search_docs`
 - `read_page`
 
-Hosted checks raise the agent report from `100` possible points to `135` possible points. The JSON
+Hosted checks raise the agent report from `105` possible points to `145` possible points. The JSON
 report also includes the normalized `url` field and hosted check IDs such as
-`hosted-agent-discovery`, `hosted-llms`, `hosted-sitemap`, `hosted-skill`, `hosted-markdown`, and
-`hosted-mcp`.
+`hosted-agent-discovery`, `hosted-llms`, `hosted-sitemap`, `hosted-robots`, `hosted-skill`,
+`hosted-markdown`, and `hosted-mcp`.
 
 Use this form after deploying, in preview-deployment CI, or any time a site looks healthy locally
 but an agent cannot discover the public routes. A hosted failure usually means the deployment is

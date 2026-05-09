@@ -148,6 +148,21 @@ async function main() {
     const { printSitemapGenerateHelp } = await import("./sitemap.js");
     printSitemapGenerateHelp();
     process.exit(1);
+  } else if (parsedCommand.command === "robots" && subcommand === "generate") {
+    const { generateRobots, parseRobotsGenerateArgs, printRobotsGenerateHelp } =
+      await import("./robots.js");
+    const robotsOptions = parseRobotsGenerateArgs(args.slice(2));
+    if (robotsOptions.help) {
+      printRobotsGenerateHelp();
+      return;
+    }
+    await generateRobots(robotsOptions);
+  } else if (parsedCommand.command === "robots") {
+    console.error(pc.red(`Unknown robots subcommand: ${subcommand ?? "(missing)"}`));
+    console.error();
+    const { printRobotsGenerateHelp } = await import("./robots.js");
+    printRobotsGenerateHelp();
+    process.exit(1);
   } else if (parsedCommand.command === "upgrade") {
     const { upgrade } = await import("./upgrade.js");
     const framework =
@@ -184,6 +199,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} to generate sibling agent.md files)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
   ${pc.cyan("mcp")}      Run the built-in docs MCP server over stdio
+  ${pc.cyan("robots")}   Robots.txt utilities (${pc.dim("generate")} for agent access policy)
   ${pc.cyan("search")}   Search utilities (${pc.dim("sync")} for external indexes)
   ${pc.cyan("sitemap")}  Sitemap utilities (${pc.dim("generate")} for sitemap XML/Markdown data)
   ${pc.cyan("upgrade")}  Upgrade @farming-labs/* packages to latest (auto-detect or use --framework)
@@ -257,6 +273,14 @@ ${pc.dim("Options for sitemap generate:")}
   ${pc.cyan("--manifest-only")}                    Only write the internal sitemap manifest
   ${pc.cyan("--check")}                            Fail if generated sitemap output is stale
   ${pc.cyan("--config <path>")}                    Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
+
+${pc.dim("Options for robots generate:")}
+  ${pc.cyan("robots generate [path]")}              Generate a static ${pc.dim("robots.txt")} agent access policy
+  ${pc.cyan("--path <path>")}                       Write to a specific file; defaults to ${pc.dim("public/robots.txt")} or ${pc.dim("static/robots.txt")}
+  ${pc.cyan("--append")}                            Add/update a generated block inside an existing file
+  ${pc.cyan("--force")}                             Replace the target file with the generated policy
+  ${pc.cyan("--check")}                             Fail if generated robots output is stale
+  ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
 
 ${pc.dim("Options for upgrade:")}
   ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect

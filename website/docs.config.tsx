@@ -232,6 +232,11 @@ export default defineDocs({
     enabled: true,
     baseUrl: "https://docs.farming-labs.dev",
   },
+  robots: {
+    enabled: true,
+    baseUrl: "https://docs.farming-labs.dev",
+    path: "public/robots.txt",
+  },
   og: {
     enabled: true,
     type: "dynamic",

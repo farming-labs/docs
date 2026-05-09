@@ -259,6 +259,54 @@ That generates `/docs-map/sitemap.xml`, `/docs-map/sitemap.md`, and
 `/docs-map/.well-known/sitemap.md`. See [Sitemaps](/docs/customization/sitemaps) for static export,
 manifest, `lastmod`, and output examples.
 
+## Robots.txt
+
+Use `robots` when you want `docs robots generate` to produce an agent-friendly crawl policy:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  robots: {
+    enabled: true,
+    baseUrl: "https://docs.example.com",
+    ai: "allow",
+  },
+});
+```
+
+The generated policy explicitly allows the docs entry, `.md` routes, `llms.txt`, sitemap routes,
+`skill.md`, MCP aliases, and agent discovery routes. It also includes common AI crawler user agents
+such as `GPTBot`, `ChatGPT-User`, `ClaudeBot`, `CCBot`, and `Google-Extended`.
+
+Generate the file with:
+
+```bash title="terminal"
+pnpm exec docs robots generate
+```
+
+If a project already owns `public/robots.txt`, the command leaves it alone. Use `--append` to add or
+update the generated block inside the existing file, or `--force` when you intentionally want to
+replace the file:
+
+```bash title="terminal"
+pnpm exec docs robots generate --append
+pnpm exec docs robots generate --path public/robots.txt --append
+pnpm exec docs robots generate --force
+```
+
+Use `path` when the file lives somewhere custom:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  robots: {
+    path: "public/robots.txt",
+    baseUrl: "https://docs.example.com",
+  },
+});
+```
+
+`docs doctor --agent` checks the resolved `robots.txt` path, warns when it is missing, and flags
+policies that block agent-readable docs routes or common AI crawlers.
+
 ## Static export
 
 For fully static builds (e.g. **Cloudflare Pages**, static hosting with no server), set `staticExport: true` in your config. This:

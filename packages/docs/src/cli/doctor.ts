@@ -1,6 +1,6 @@
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types";
+import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 import pc from "picocolors";
 import {
   DEFAULT_AGENT_FEEDBACK_ROUTE,
@@ -20,7 +20,12 @@ import {
   DEFAULT_SITEMAP_XML_ROUTE,
   resolveDocsSitemapConfig,
 } from "../sitemap.js";
-import type { DocsConfig, DocsMcpConfig, DocsSitemapConfig } from "../types.js";
+import {
+  DEFAULT_ROBOTS_TXT_ROUTE,
+  analyzeDocsRobotsTxt,
+  resolveDocsRobotsConfig,
+} from "../robots.js";
+import type { DocsConfig, DocsMcpConfig, DocsRobotsConfig, DocsSitemapConfig } from "../types.js";
 import {
   extractNestedObjectLiteral,
   extractTopLevelConfigObject,
@@ -391,6 +396,49 @@ function readSitemapConfigFromStatic(content: string): boolean | DocsSitemapConf
   if (manifestPath) config.manifestPath = manifestPath;
 
   return config;
+}
+
+function readRobotsConfigFromStatic(content: string): boolean | DocsRobotsConfig | undefined {
+  const topLevelBoolean = readTopLevelBooleanProperty(content, "robots");
+  if (typeof topLevelBoolean === "boolean") return topLevelBoolean;
+
+  const block = extractNestedObjectLiteral(content, ["robots"]);
+  if (!block) return undefined;
+
+  const config: DocsRobotsConfig = {};
+  const enabled = readObjectBooleanProperty(block, "enabled");
+  const pathValue = block.match(/\bpath\s*:\s*["'`]([^"'`]+)["'`]/)?.[1];
+  const baseUrl = block.match(/\bbaseUrl\s*:\s*["'`]([^"'`]+)["'`]/)?.[1];
+  const aiString = block.match(/\bai\s*:\s*["'`](allow|disallow)["'`]/)?.[1] as
+    | "allow"
+    | "disallow"
+    | undefined;
+  const aiBoolean = readObjectBooleanProperty(block, "ai");
+
+  if (typeof enabled === "boolean") config.enabled = enabled;
+  if (pathValue) config.path = pathValue;
+  if (baseUrl) config.baseUrl = baseUrl;
+  if (aiString) config.ai = aiString;
+  else if (typeof aiBoolean === "boolean") config.ai = aiBoolean;
+
+  return config;
+}
+
+function resolvePublicDir(rootDir: string, framework: Framework | "unknown"): string {
+  if (framework === "sveltekit") return path.join(rootDir, "static");
+  return path.join(rootDir, "public");
+}
+
+function resolveRobotsFilePath(
+  rootDir: string,
+  framework: Framework | "unknown",
+  robots: DocsRobotsConfig | undefined,
+): string {
+  if (robots?.path) {
+    return path.isAbsolute(robots.path) ? robots.path : path.resolve(rootDir, robots.path);
+  }
+
+  return path.join(resolvePublicDir(rootDir, framework), "robots.txt");
 }
 
 function resolveStaticExport(config: DocsConfig | undefined, content: string): boolean {
@@ -1117,6 +1165,53 @@ async function probeTextRoute(
   }
 }
 
+async function probeRobotsRoute(baseUrl: string): Promise<{
+  ok: boolean;
+  status?: number;
+  detail: string;
+  body?: string;
+}> {
+  const route = DEFAULT_ROBOTS_TXT_ROUTE;
+  const url = joinDoctorUrl(baseUrl, route);
+
+  try {
+    const response = await fetchWithTimeout(url, {
+      headers: {
+        Accept: "text/plain, */*",
+      },
+    });
+    const body = await response.text().catch(() => "");
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: response.status,
+        detail: `${route} returned HTTP ${response.status}.`,
+      };
+    }
+
+    if (body.trim().length === 0) {
+      return {
+        ok: false,
+        status: response.status,
+        detail: `${route} returned an empty body.`,
+      };
+    }
+
+    return {
+      ok: true,
+      status: response.status,
+      body,
+      detail: `${route} returned HTTP ${response.status} with ${body.length} characters.`,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      detail: `${route} failed: ${error instanceof Error ? error.message : String(error)}.`,
+    };
+  }
+}
+
 async function probeJsonRoute(
   baseUrl: string,
   route: string,
@@ -1447,6 +1542,34 @@ async function buildHostedAgentChecks(
     );
   }
 
+  const robots = await probeRobotsRoute(baseUrl);
+  const robotsAnalysis = robots.body ? analyzeDocsRobotsTxt(robots.body) : undefined;
+  const robotsBlocked = robotsAnalysis?.blocksAgentRoutes || robotsAnalysis?.blocksAiAgents;
+  const robotsComplete = robotsAnalysis?.hasAgentRoutes && robotsAnalysis?.hasAiPolicy;
+  checks.push(
+    makeCheck(
+      "hosted-robots",
+      "Hosted robots.txt",
+      robots.ok && !robotsBlocked && robotsComplete
+        ? "pass"
+        : robots.ok && !robotsBlocked
+          ? "warn"
+          : "fail",
+      robots.ok && !robotsBlocked && robotsComplete ? 5 : robots.ok && !robotsBlocked ? 3 : 0,
+      5,
+      robots.ok
+        ? robotsBlocked
+          ? `${DEFAULT_ROBOTS_TXT_ROUTE} is reachable but blocks ${robotsAnalysis?.blocksAiAgents ? "common AI crawlers" : "agent-readable docs routes"}.`
+          : robotsComplete
+            ? `${robots.detail} It advertises agent-readable routes and common AI crawler policy.`
+            : `${robots.detail} It is missing ${robotsAnalysis?.missingRoutes.length ? `agent routes (${robotsAnalysis.missingRoutes.join(", ")})` : "common AI crawler policy"}.`
+        : robots.detail,
+      robots.ok && !robotsBlocked && robotsComplete
+        ? undefined
+        : "Publish an agent-friendly robots.txt with `docs robots generate`, or append the generated block to the existing file.",
+    ),
+  );
+
   const skill = await Promise.all([
     probeTextRoute(baseUrl, DEFAULT_SKILL_MD_ROUTE),
     probeTextRoute(baseUrl, DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE),
@@ -1658,6 +1781,20 @@ export async function inspectAgentReadiness(
   const sitemapConfig = resolveDocsSitemapConfig(
     config?.sitemap ?? readSitemapConfigFromStatic(configContent) ?? false,
   );
+  const robotsInput = config?.robots ?? readRobotsConfigFromStatic(configContent) ?? true;
+  const robotsConfig =
+    robotsInput === false
+      ? resolveDocsRobotsConfig(false)
+      : resolveDocsRobotsConfig(robotsInput, {
+          baseUrl:
+            (typeof robotsInput === "object" ? robotsInput.baseUrl : undefined) ??
+            sitemapConfig.baseUrl,
+        });
+  const robotsPath = resolveRobotsFilePath(
+    rootDir,
+    framework,
+    typeof robotsInput === "object" ? robotsInput : undefined,
+  );
   const feedbackRoute = DEFAULT_AGENT_FEEDBACK_ROUTE;
   const feedbackSchemaRoute = `${feedbackRoute}/schema`;
 
@@ -1783,6 +1920,61 @@ export async function inspectAgentReadiness(
           "Enable sitemap so crawlers and agents can discover canonical docs URLs, semantic sections, and lastmod freshness metadata.",
         ),
   );
+
+  const relativeRobotsPath = path.relative(rootDir, robotsPath).replace(/\\/g, "/");
+  if (!robotsConfig.enabled) {
+    checks.push(
+      makeCheck(
+        "robots",
+        "Robots agent policy",
+        "warn",
+        0,
+        5,
+        "Robots generation is disabled in docs config.",
+        "Enable robots and run `docs robots generate` so crawlers can discover agent-readable docs routes.",
+      ),
+    );
+  } else if (!existsSync(robotsPath)) {
+    checks.push(
+      makeCheck(
+        "robots",
+        "Robots agent policy",
+        "warn",
+        0,
+        5,
+        `No robots.txt found at ${relativeRobotsPath}.`,
+        `Run docs robots generate --path ${relativeRobotsPath} to publish an agent-friendly crawl policy.`,
+      ),
+    );
+  } else {
+    const robots = readFileSync(robotsPath, "utf-8");
+    const analysis = analyzeDocsRobotsTxt(robots, {
+      entry,
+      sitemap: sitemapConfig,
+      baseUrl: robotsConfig.baseUrl,
+      robots: robotsConfig,
+    });
+    const blocked = analysis.blocksAgentRoutes || analysis.blocksAiAgents;
+    const complete = analysis.hasAgentRoutes && analysis.hasAiPolicy;
+
+    checks.push(
+      makeCheck(
+        "robots",
+        "Robots agent policy",
+        blocked ? "fail" : complete ? "pass" : "warn",
+        blocked ? 0 : complete ? 5 : 3,
+        5,
+        blocked
+          ? `${relativeRobotsPath} blocks ${analysis.blocksAiAgents ? "common AI crawlers" : "agent-readable docs routes"}.`
+          : complete
+            ? `${relativeRobotsPath} advertises agent-readable routes and common AI crawler policy.`
+            : `${relativeRobotsPath} exists, but is missing ${analysis.missingRoutes.length > 0 ? `agent routes (${analysis.missingRoutes.join(", ")})` : "common AI crawler policy"}.`,
+        blocked || !complete
+          ? `Run docs robots generate --append --path ${relativeRobotsPath} to add the generated agent policy without replacing the existing file.`
+          : undefined,
+      ),
+    );
+  }
 
   checks.push(
     skillFileExists

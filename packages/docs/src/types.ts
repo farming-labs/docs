@@ -941,6 +941,52 @@ export interface DocsSitemapConfig {
   markdown?: boolean | SitemapMarkdownConfig;
 }
 
+export interface DocsRobotsRule {
+  /** User-agent name or names for this robots.txt rule block. */
+  userAgent: string | string[];
+  /** Routes to allow for the user-agent block. */
+  allow?: string | string[];
+  /** Routes to disallow for the user-agent block. */
+  disallow?: string | string[];
+  /** Optional crawl-delay value emitted as-is for crawlers that support it. */
+  crawlDelay?: number;
+}
+
+/**
+ * Configuration for generated `robots.txt` agent access policy files.
+ */
+export interface DocsRobotsConfig {
+  /**
+   * Whether robots.txt generation is enabled.
+   * @default true when `robots` is an object
+   */
+  enabled?: boolean;
+  /**
+   * Output file path used by `docs robots generate`.
+   * Falls back to the framework public directory, such as `public/robots.txt`
+   * or `static/robots.txt` for SvelteKit.
+   */
+  path?: string;
+  /**
+   * Public site URL used for the `Sitemap:` line.
+   * Falls back to `sitemap.baseUrl` or `llmsTxt.baseUrl` in the CLI.
+   */
+  baseUrl?: string;
+  /**
+   * Whether to explicitly allow or disallow common AI crawlers.
+   * @default "allow"
+   */
+  ai?: boolean | "allow" | "disallow";
+  /**
+   * Additional AI user-agent names to include beside the defaults.
+   */
+  aiUserAgents?: string | string[];
+  /**
+   * Extra robots.txt rule blocks appended after the generated agent policy.
+   */
+  extraRules?: DocsRobotsRule[];
+}
+
 /**
  * Tool-level toggles for the built-in MCP server.
  *
@@ -2432,6 +2478,18 @@ export interface DocsConfig {
    * ```
    */
   sitemap?: boolean | DocsSitemapConfig;
+  /**
+   * Generated robots.txt policy for docs and agent-readable routes.
+   *
+   * @example
+   * ```ts
+   * robots: {
+   *   baseUrl: "https://docs.example.com",
+   *   ai: "allow",
+   * }
+   * ```
+   */
+  robots?: boolean | DocsRobotsConfig;
   /**
    * Generated changelog pages backed by date-folder MDX entries inside the docs
    * content tree.
