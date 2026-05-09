@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDocsAgentDiscoverySpec,
   findDocsMarkdownPage,
+  getDocsMarkdownVaryHeader,
   hasDocsMarkdownSignatureAgent,
   isDocsAgentDiscoveryRequest,
   isDocsMcpRequest,
@@ -135,6 +136,21 @@ describe("agent route helpers", () => {
         }),
       ),
     ).toBe(true);
+    expect(
+      getDocsMarkdownVaryHeader(
+        new Request("https://example.com/docs/install", {
+          headers: { accept: "text/markdown" },
+        }),
+      ),
+    ).toBe("Accept");
+    expect(
+      getDocsMarkdownVaryHeader(
+        new Request("https://example.com/docs/install", {
+          headers: { "Signature-Agent": "https://chatgpt.com" },
+        }),
+      ),
+    ).toBe("Accept, Signature-Agent");
+    expect(getDocsMarkdownVaryHeader(new Request("https://example.com/docs/install"))).toBeNull();
 
     const apiFormatRoute = resolveDocsMarkdownRequest(
       "docs",

@@ -31,6 +31,7 @@ import {
   createDocsAgentTraceId,
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
+  getDocsMarkdownVaryHeader,
   resolveDocsI18n,
   resolveDocsLocale,
   resolvePageSidebarFolderIndexBehavior,
@@ -2690,6 +2691,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
       if (markdownRequest) {
         const document = await getMarkdownDocument(ctx, markdownRequest.requestedPath);
+        const varyHeader = getDocsMarkdownVaryHeader(request);
 
         if (!document) {
           await emitDocsAnalyticsEvent(analytics, {
@@ -2720,6 +2722,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             status: 404,
             headers: {
               "Content-Type": "text/plain; charset=utf-8",
+              ...(varyHeader ? { Vary: varyHeader } : {}),
               "X-Robots-Tag": "noindex",
             },
           });
@@ -2755,6 +2758,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           headers: {
             "Content-Type": "text/markdown; charset=utf-8",
             "Cache-Control": "public, max-age=0, s-maxage=3600",
+            ...(varyHeader ? { Vary: varyHeader } : {}),
             "X-Robots-Tag": "noindex",
           },
         });

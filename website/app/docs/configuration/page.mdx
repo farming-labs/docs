@@ -181,6 +181,18 @@ No separate config flag is required for machine-readable page markdown.
   In Next.js, browsers still receive HTML from `/docs/installation`; agents, scripts, and crawlers
   that send `Accept: text/markdown` or `Signature-Agent` receive the same machine-readable output
   as `/docs/installation.md`. Other adapters should use the `.md` URL or the API format route.
+
+  Negotiated markdown responses include cache-safe `Vary` headers: `Accept` for
+  `Accept: text/markdown`, and `Accept, Signature-Agent` for `Signature-Agent`.
+
+  That means a CDN can cache the HTML and markdown versions separately even though the URL is the
+  same:
+
+  ```txt
+  /docs/installation + normal browser headers      -> cached HTML
+  /docs/installation + Accept: text/markdown       -> cached markdown
+  /docs/installation + Signature-Agent: <agent-id> -> cached markdown
+  ```
 </Callout>
 
 ```mdx title="page.mdx"

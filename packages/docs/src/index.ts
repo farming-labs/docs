@@ -67,6 +67,7 @@ export {
   DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER,
   buildDocsAgentDiscoverySpec,
   findDocsMarkdownPage,
+  getDocsMarkdownVaryHeader,
   hasDocsMarkdownSignatureAgent,
   isDocsAgentDiscoveryRequest,
   isDocsMcpRequest,

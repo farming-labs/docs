@@ -12,6 +12,7 @@ import {
   emitDocsAnalyticsEvent,
   formatDocsAskAIPackageHints,
   findDocsMarkdownPage,
+  getDocsMarkdownVaryHeader,
   isDocsAgentDiscoveryRequest,
   isDocsSkillRequest,
   normalizeDocsRelated,
@@ -869,12 +870,14 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     const markdownRequest = resolveDocsMarkdownRequest(entry, url, event.request);
     if (markdownRequest) {
       const document = getMarkdownDocument(ctx, markdownRequest.requestedPath);
+      const varyHeader = getDocsMarkdownVaryHeader(event.request);
 
       if (!document) {
         return new Response("Not Found", {
           status: 404,
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
+            ...(varyHeader ? { Vary: varyHeader } : {}),
             "X-Robots-Tag": "noindex",
           },
         });
@@ -884,6 +887,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         headers: {
           "Content-Type": "text/markdown; charset=utf-8",
           "Cache-Control": "public, max-age=0, s-maxage=3600",
+          ...(varyHeader ? { Vary: varyHeader } : {}),
           "X-Robots-Tag": "noindex",
         },
       });
