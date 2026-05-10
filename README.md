@@ -122,6 +122,8 @@ The canonical API routes remain available under `/api/docs`, including `/api/doc
 `/api/docs/mcp`, and `/api/docs/agent/spec`.
 Canonical Next.js markdown reads with `Accept: text/markdown` or `Signature-Agent` are handled by
 that same shared `/api/docs` route, so apps do not need a second markdown-only API wrapper.
+The agent discovery JSON also includes `robots.enabled`, `robots.route`, and
+`robots.defaultRoute` so agents can find the static crawl policy without guessing.
 
 For a custom site-specific skill, place `skill.md` at the project root beside `docs.config.ts`.
 When it is missing, the framework serves a generated fallback based on the docs config.
@@ -244,8 +246,8 @@ pnpm exec docs doctor --agent --url https://docs.example.com --json
 ```
 
 Hosted checks request `/.well-known/agent.json`, `/llms.txt`, `/llms-full.txt`, sitemap routes,
-`/robots.txt`, `/skill.md`, `/.well-known/skill.md`, one representative `.md` page route,
-`/mcp`, and `/.well-known/mcp`.
+the robots route from the discovery spec, `/skill.md`, `/.well-known/skill.md`, one representative
+`.md` page route, `/mcp`, and `/.well-known/mcp`.
 For MCP, the doctor performs an HTTP initialize handshake, checks the session header, and verifies
 the built-in docs tools are exposed. With hosted checks enabled, the agent score is out of `145`
 instead of `105`.

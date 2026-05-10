@@ -67,6 +67,7 @@ import {
 import type {
   DocsAskAIMcpConfig,
   DocsMcpConfig,
+  DocsRobotsConfig,
   DocsSearchConfig,
   DocsSearchSourcePage,
   DocsSitemapConfig,
@@ -135,6 +136,8 @@ interface DocsAPIOptions {
   mcp?: boolean | DocsMcpConfig;
   /** Sitemap configuration used for sitemap.xml and sitemap.md. */
   sitemap?: boolean | DocsSitemapConfig;
+  /** Robots.txt generation policy used for the agent discovery spec. */
+  robots?: boolean | DocsRobotsConfig;
 }
 
 interface DocsMCPAPIOptions {
@@ -165,6 +168,7 @@ const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms-full.txt";
 const DEFAULT_SKILL_MD_ROUTE = "/skill.md";
 const DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE = "/.well-known/skill.md";
+const DEFAULT_ROBOTS_TXT_ROUTE = "/robots.txt";
 const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
 const DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA: Record<string, unknown> = {
   type: "object",
@@ -232,6 +236,7 @@ interface AgentSpecOptions {
   feedback: ResolvedAgentFeedbackConfig;
   llms: LlmsTxtOptions & { enabled: boolean };
   sitemap?: boolean | DocsSitemapConfig;
+  robots?: boolean | DocsRobotsConfig;
 }
 
 interface SkillDocumentOptions extends AgentSpecOptions {}
@@ -359,6 +364,12 @@ function isSearchEnabled(search?: boolean | DocsSearchConfig): boolean {
   return true;
 }
 
+function isRobotsDiscoveryEnabled(robots?: boolean | DocsRobotsConfig): boolean {
+  if (robots === false) return false;
+  if (robots && typeof robots === "object" && robots.enabled === false) return false;
+  return true;
+}
+
 function buildAgentSpec({
   origin,
   entry,
@@ -368,11 +379,13 @@ function buildAgentSpec({
   feedback,
   llms,
   sitemap,
+  robots,
 }: AgentSpecOptions) {
   const normalizedEntry = normalizePathSegment(entry) || "docs";
   const localesEnabled = i18n !== null;
   const searchEnabled = isSearchEnabled(search);
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms.baseUrl });
+  const robotsEnabled = isRobotsDiscoveryEnabled(robots);
 
   return {
     version: "1",
@@ -400,6 +413,7 @@ function buildAgentSpec({
       mcp: mcp.enabled,
       search: searchEnabled,
       sitemap: sitemapConfig.enabled,
+      robots: robotsEnabled,
       agentFeedback: feedback.enabled,
       locales: localesEnabled,
     },
@@ -447,6 +461,11 @@ function buildAgentSpec({
         wellKnownRoute: sitemapConfig.markdown.wellKnownRoute,
         api: `${DEFAULT_DOCS_API_ROUTE}?format=sitemap-md`,
       },
+    },
+    robots: {
+      enabled: robotsEnabled,
+      route: DEFAULT_ROBOTS_TXT_ROUTE,
+      defaultRoute: DEFAULT_ROBOTS_TXT_ROUTE,
     },
     search: {
       enabled: searchEnabled,
@@ -1481,14 +1500,16 @@ function renderSkillDocument({
   feedback,
   llms,
   sitemap,
+  robots,
 }: SkillDocumentOptions): string {
   const normalizedEntry = normalizePathSegment(entry) || "docs";
   const siteTitle = compactSkillText(llms.siteTitle ?? "Documentation");
   const siteDescription = llms.siteDescription ? compactSkillText(llms.siteDescription) : undefined;
   const searchEnabled = isSearchEnabled(search);
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms.baseUrl });
+  const robotsEnabled = isRobotsDiscoveryEnabled(robots);
   const description = truncateSkillDescription(
-    `Use ${siteTitle} through markdown routes, llms.txt, agent discovery, search, and MCP when available.`,
+    `Use ${siteTitle} through markdown routes, llms.txt, robots.txt, agent discovery, search, and MCP when available.`,
   );
   const lines = [
     "---",
@@ -1539,6 +1560,10 @@ function renderSkillDocument({
     }
   }
 
+  if (robotsEnabled) {
+    lines.push(`- Check ${DEFAULT_ROBOTS_TXT_ROUTE} for crawler and AI-agent access policy.`);
+  }
+
   if (mcp.enabled) {
     lines.push(
       `- Use ${DEFAULT_MCP_WELL_KNOWN_ROUTE} or ${DEFAULT_MCP_PUBLIC_ROUTE} for MCP tools when your environment supports MCP.`,
@@ -1562,6 +1587,10 @@ function renderSkillDocument({
     `- Markdown root: /${normalizedEntry}.md`,
     `- Markdown pages: /${normalizedEntry}/{slug}.md`,
   );
+
+  if (robotsEnabled) {
+    lines.push(`- Robots policy: ${DEFAULT_ROBOTS_TXT_ROUTE}`);
+  }
 
   if (llms.enabled) {
     lines.push(
@@ -2308,6 +2337,37 @@ function readSitemapConfig(root: string): boolean | DocsSitemapConfig | undefine
   return undefined;
 }
 
+function readRobotsConfig(root: string): boolean | DocsRobotsConfig | undefined {
+  for (const ext of FILE_EXTS) {
+    const configPath = path.join(root, `docs.config.${ext}`);
+    if (!fs.existsSync(configPath)) continue;
+
+    try {
+      const content = fs.readFileSync(configPath, "utf-8");
+      if (!content.includes("robots")) return undefined;
+      if (/robots\s*:\s*false/.test(content)) return false;
+      if (/robots\s*:\s*true/.test(content)) return true;
+
+      const robotsBlock = content.match(/robots\s*:\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? "";
+      const enabledMatch = robotsBlock.match(/enabled\s*:\s*(true|false)/);
+      const pathMatch = robotsBlock.match(/path\s*:\s*["']([^"']+)["']/);
+      const baseUrlMatch = robotsBlock.match(/baseUrl\s*:\s*["']([^"']+)["']/);
+      const aiMatch = robotsBlock.match(/ai\s*:\s*["'](allow|disallow)["']/);
+
+      return {
+        enabled: enabledMatch ? enabledMatch[1] === "true" : true,
+        path: pathMatch?.[1],
+        baseUrl: baseUrlMatch?.[1],
+        ai: aiMatch?.[1] as DocsRobotsConfig["ai"],
+      };
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
+}
+
 function generateLlmsTxt(
   indexes: DocsSearchSourcePage[],
   options: LlmsTxtOptions,
@@ -2381,6 +2441,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   // Read llms.txt config
   const llmsConfig = readLlmsTxtConfig(root);
   const sitemapConfig = options?.sitemap ?? readSitemapConfig(root);
+  const robotsConfig = options?.robots ?? readRobotsConfig(root);
   const mcpConfig = resolveDocsMcpConfig(options?.mcp ?? readMcpConfig(root), {
     defaultName: llmsConfig.siteTitle ?? "Documentation",
   });
@@ -2604,6 +2665,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             feedback: agentFeedbackConfig,
             llms: llmsConfig,
             sitemap: sitemapConfig,
+            robots: robotsConfig,
           }),
           {
             headers: {
@@ -2670,6 +2732,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
               feedback: agentFeedbackConfig,
               llms: llmsConfig,
               sitemap: sitemapConfig,
+              robots: robotsConfig,
             }),
           {
             headers: {

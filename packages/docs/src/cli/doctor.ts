@@ -1165,13 +1165,15 @@ async function probeTextRoute(
   }
 }
 
-async function probeRobotsRoute(baseUrl: string): Promise<{
+async function probeRobotsRoute(
+  baseUrl: string,
+  route = DEFAULT_ROBOTS_TXT_ROUTE,
+): Promise<{
   ok: boolean;
   status?: number;
   detail: string;
   body?: string;
 }> {
-  const route = DEFAULT_ROBOTS_TXT_ROUTE;
   const url = joinDoctorUrl(baseUrl, route);
 
   try {
@@ -1438,6 +1440,14 @@ function hostedSitemapRoutes(discoveryBody: unknown): {
   return { enabled: true, routes: Array.from(new Set(routes)) };
 }
 
+function hostedRobotsRoute(discoveryBody: unknown): { enabled: boolean; route: string } {
+  const robots = asRecord(asRecord(discoveryBody)?.robots);
+  return {
+    enabled: robots?.enabled === false ? false : true,
+    route: readDiscoveryRoute(robots?.route) ?? DEFAULT_ROBOTS_TXT_ROUTE,
+  };
+}
+
 async function buildHostedAgentChecks(
   url: string,
   pages: Array<{ url: string }>,
@@ -1542,33 +1552,48 @@ async function buildHostedAgentChecks(
     );
   }
 
-  const robots = await probeRobotsRoute(baseUrl);
-  const robotsAnalysis = robots.body ? analyzeDocsRobotsTxt(robots.body) : undefined;
-  const robotsBlocked = robotsAnalysis?.blocksAgentRoutes || robotsAnalysis?.blocksAiAgents;
-  const robotsComplete = robotsAnalysis?.hasAgentRoutes && robotsAnalysis?.hasAiPolicy;
-  checks.push(
-    makeCheck(
-      "hosted-robots",
-      "Hosted robots.txt",
-      robots.ok && !robotsBlocked && robotsComplete
-        ? "pass"
-        : robots.ok && !robotsBlocked
-          ? "warn"
-          : "fail",
-      robots.ok && !robotsBlocked && robotsComplete ? 5 : robots.ok && !robotsBlocked ? 3 : 0,
-      5,
-      robots.ok
-        ? robotsBlocked
-          ? `${DEFAULT_ROBOTS_TXT_ROUTE} is reachable but blocks ${robotsAnalysis?.blocksAiAgents ? "common AI crawlers" : "agent-readable docs routes"}.`
-          : robotsComplete
-            ? `${robots.detail} It advertises agent-readable routes and common AI crawler policy.`
-            : `${robots.detail} It is missing ${robotsAnalysis?.missingRoutes.length ? `agent routes (${robotsAnalysis.missingRoutes.join(", ")})` : "common AI crawler policy"}.`
-        : robots.detail,
-      robots.ok && !robotsBlocked && robotsComplete
-        ? undefined
-        : "Publish an agent-friendly robots.txt with `docs robots generate`, or append the generated block to the existing file.",
-    ),
-  );
+  const robotsRoute = hostedRobotsRoute(discovery.body);
+  if (robotsRoute.enabled) {
+    const robots = await probeRobotsRoute(baseUrl, robotsRoute.route);
+    const robotsAnalysis = robots.body ? analyzeDocsRobotsTxt(robots.body) : undefined;
+    const robotsBlocked = robotsAnalysis?.blocksAgentRoutes || robotsAnalysis?.blocksAiAgents;
+    const robotsComplete = robotsAnalysis?.hasAgentRoutes && robotsAnalysis?.hasAiPolicy;
+    checks.push(
+      makeCheck(
+        "hosted-robots",
+        "Hosted robots.txt",
+        robots.ok && !robotsBlocked && robotsComplete
+          ? "pass"
+          : robots.ok && !robotsBlocked
+            ? "warn"
+            : "fail",
+        robots.ok && !robotsBlocked && robotsComplete ? 5 : robots.ok && !robotsBlocked ? 3 : 0,
+        5,
+        robots.ok
+          ? robotsBlocked
+            ? `${robotsRoute.route} is reachable but blocks ${robotsAnalysis?.blocksAiAgents ? "common AI crawlers" : "agent-readable docs routes"}.`
+            : robotsComplete
+              ? `${robots.detail} It advertises agent-readable routes and common AI crawler policy.`
+              : `${robots.detail} It is missing ${robotsAnalysis?.missingRoutes.length ? `agent routes (${robotsAnalysis.missingRoutes.join(", ")})` : "common AI crawler policy"}.`
+          : robots.detail,
+        robots.ok && !robotsBlocked && robotsComplete
+          ? undefined
+          : "Publish an agent-friendly robots.txt with `docs robots generate`, or append the generated block to the existing file.",
+      ),
+    );
+  } else {
+    checks.push(
+      makeCheck(
+        "hosted-robots",
+        "Hosted robots.txt",
+        "warn",
+        0,
+        5,
+        "The hosted discovery spec reports robots.txt as disabled.",
+        "Enable robots and publish an agent-friendly robots.txt with `docs robots generate`.",
+      ),
+    );
+  }
 
   const skill = await Promise.all([
     probeTextRoute(baseUrl, DEFAULT_SKILL_MD_ROUTE),

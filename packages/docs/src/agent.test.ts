@@ -266,6 +266,7 @@ describe("agent route helpers", () => {
     expect(document).toContain("Base URL: https://docs.example.com");
     expect(document).toContain("/guides.md");
     expect(document).toContain("/.well-known/agent.json");
+    expect(document).toContain("/robots.txt");
     expect(document).toContain("/api/docs?format=skill");
     expect(document).toContain("npx skills add farming-labs/docs");
   });
@@ -288,6 +289,7 @@ describe("agent route helpers", () => {
       },
       llms: { enabled: true, siteTitle: "Docs" },
       sitemap: true,
+      robots: true,
     });
 
     expect(spec.api.agentSpecDefault).toBe("/.well-known/agent.json");
@@ -302,5 +304,11 @@ describe("agent route helpers", () => {
     expect(spec.mcp.publicEndpoints).toEqual(["/mcp", "/.well-known/mcp"]);
     expect(spec.sitemap.xml.route).toBe("/sitemap.xml");
     expect(spec.sitemap.markdown.wellKnownRoute).toBe("/.well-known/sitemap.md");
+    expect(spec.capabilities.robots).toBe(true);
+    expect(spec.robots).toEqual({
+      enabled: true,
+      route: "/robots.txt",
+      defaultRoute: "/robots.txt",
+    });
   });
 });

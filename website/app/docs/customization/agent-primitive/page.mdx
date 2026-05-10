@@ -94,8 +94,8 @@ You are reading this docs site as an implementation agent.
 Before implementing from these docs, fetch `/.well-known/agent.json` from the same origin. If that
 is unavailable, fall back to `/.well-known/agent`. Use that JSON as the source of truth for the docs
 entry path, markdown route pattern, search endpoint, MCP endpoints, `llms.txt` routes, skills install
-command, `sitemap.xml` / `sitemap.md` routes, `skill.md` route, locale handling, and feedback
-endpoints.
+command, `sitemap.xml` / `sitemap.md` routes, `robots.txt` route, `skill.md` route, locale
+handling, and feedback endpoints.
 
 Recommended bootstrap flow:
 
@@ -104,11 +104,12 @@ Recommended bootstrap flow:
 3. Use `spec.markdown.pagePattern`, `spec.markdown.acceptHeader`, or `spec.markdown.signatureAgentHeader` to read relevant docs pages as markdown.
 4. Use `spec.search.endpoint` when you need to find the right page first.
 5. Use `spec.sitemap.markdown.route` for the semantic docs map and `spec.sitemap.xml.route` for canonical freshness when sitemap is enabled.
-6. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and your environment supports MCP.
-7. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
+6. Fetch `spec.robots.route` when you need to confirm crawler and AI-agent access policy.
+7. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and your environment supports MCP.
+8. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
 
-Do not scrape the HTML page when markdown, search, sitemap, MCP, or `llms.txt` routes are available
-in the spec.
+Do not scrape the HTML page when markdown, search, sitemap, robots, MCP, or `llms.txt` routes are
+available in the spec.
 </Agent>
 ```
 
@@ -233,21 +234,22 @@ Agents should fetch it before choosing a transport. It tells them:
 - where to fetch `llms.txt` and `llms-full.txt` content, including the default public URLs and the
   public `/.well-known` aliases when available
 - where to fetch `sitemap.xml`, `sitemap.md`, and the `/.well-known/sitemap.md` alias when sitemap is enabled
-- where to fetch the `skill.md` document for this site
+- where to fetch `robots.txt` and the `skill.md` document for this site
 - how to install the published Skills pack and which skill is recommended first
 - whether MCP is enabled, which public/well-known endpoint to call, and which tools are available
 - whether agent feedback is enabled, plus the schema and submit endpoints to use
 
 The generated spec includes `agentSpecDefault: "/.well-known/agent.json"` and
 `agentSpecFallback: "/.well-known/agent"` so downstream integrations do not need to hard-code the
-preference themselves.
+preference themselves. It also includes `robots.route` so agents can find the static crawl policy
+without guessing.
 
 The skill document is available at `GET /skill.md`, with `GET /.well-known/skill.md` as the
 well-known alias and `GET /api/docs?format=skill` as the shared API format. Put a `skill.md` file at
 the project root, beside `docs.config.ts`, when you want custom site-specific instructions. If that
 file is missing, the framework generates a short fallback from config that points agents to
-markdown, search, MCP, `llms.txt`, sitemap routes, feedback, and the reusable Skills CLI install
-command.
+markdown, search, MCP, `llms.txt`, sitemap routes, `robots.txt`, feedback, and the reusable Skills
+CLI install command.
 
 ## Choosing Between Them
 

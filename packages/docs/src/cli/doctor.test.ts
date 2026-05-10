@@ -367,7 +367,13 @@ export const { GET, POST } = createDocsAPI({});
       if (req.method === "GET") {
         if (url.pathname === "/.well-known/agent.json") {
           res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ mcp: { enabled: true }, llms: { enabled: true } }));
+          res.end(
+            JSON.stringify({
+              mcp: { enabled: true },
+              llms: { enabled: true },
+              robots: { enabled: true, route: "/robots.txt" },
+            }),
+          );
           return;
         }
 

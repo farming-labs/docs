@@ -1324,6 +1324,9 @@ title: "Home"
     locales: ["en", "fr"],
     defaultLocale: "fr",
   },
+  robots: {
+    enabled: true,
+  },
 };`,
     );
 
@@ -1376,6 +1379,7 @@ title: "Home"
         queryParam: string;
         localeParam: string;
       };
+      robots: { enabled: boolean; route: string; defaultRoute: string };
       skills: {
         enabled: boolean;
         file: string;
@@ -1426,6 +1430,7 @@ title: "Home"
       mcp: true,
       search: true,
       sitemap: false,
+      robots: true,
       agentFeedback: true,
       locales: true,
     });
@@ -1462,6 +1467,11 @@ title: "Home"
       method: "GET",
       queryParam: "query",
       localeParam: "lang",
+    });
+    expect(spec.robots).toEqual({
+      enabled: true,
+      route: "/robots.txt",
+      defaultRoute: "/robots.txt",
     });
     expect(spec.skills).toEqual({
       enabled: true,
@@ -1551,6 +1561,7 @@ title: "Home"
       markdown: { acceptHeader: string; pagePattern: string; rootPage: string };
       llms: Record<string, string | boolean>;
       search: { enabled: boolean; endpoint: string; method: string };
+      robots: { enabled: boolean; route: string; defaultRoute: string };
       skills: {
         enabled: boolean;
         file: string;
@@ -1594,6 +1605,7 @@ title: "Home"
       mcp: false,
       search: false,
       sitemap: false,
+      robots: true,
       agentFeedback: false,
       locales: false,
     });
@@ -1617,6 +1629,11 @@ title: "Home"
       enabled: false,
       endpoint: "/api/docs?query={query}",
       method: "GET",
+    });
+    expect(spec.robots).toEqual({
+      enabled: true,
+      route: "/robots.txt",
+      defaultRoute: "/robots.txt",
     });
     expect(spec.skills).toMatchObject({
       enabled: true,
