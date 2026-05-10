@@ -443,7 +443,7 @@ With `--url`, `docs doctor --agent` also probes the deployed public agent surfac
 - `/llms.txt`
 - `/llms-full.txt`
 - sitemap routes from the discovery spec, usually `/sitemap.xml`, `/sitemap.md`, and `/.well-known/sitemap.md`
-- `/robots.txt`
+- the robots route from the discovery spec, usually `/robots.txt`
 - `/skill.md`
 - `/.well-known/skill.md`
 - one representative `.md` page route, such as `/docs.md`

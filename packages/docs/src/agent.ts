@@ -1,4 +1,9 @@
-import type { DocsSearchConfig, DocsSearchSourcePage, ResolvedDocsRelatedLink } from "./types.js";
+import type {
+  DocsRobotsConfig,
+  DocsSearchConfig,
+  DocsSearchSourcePage,
+  ResolvedDocsRelatedLink,
+} from "./types.js";
 import type { ResolvedDocsI18n } from "./i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
 import { renderDocsRelatedMarkdownLines } from "./related.js";
@@ -24,6 +29,7 @@ export const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
 export const DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms-full.txt";
 export const DEFAULT_SKILL_MD_ROUTE = "/skill.md";
 export const DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE = "/.well-known/skill.md";
+const DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE = "/robots.txt";
 export const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
 export const DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER = "Signature-Agent";
 
@@ -49,6 +55,7 @@ export interface DocsAgentDiscoverySpecOptions {
   feedback?: DocsAgentFeedbackDiscoveryConfig;
   llms?: DocsLlmsDiscoveryConfig;
   sitemap?: boolean | DocsSitemapConfig;
+  robots?: boolean | DocsRobotsConfig;
   markdown?: {
     acceptHeader?: boolean;
     signatureAgentHeader?: boolean;
@@ -63,6 +70,7 @@ export interface DocsSkillDocumentOptions {
   feedback?: DocsAgentFeedbackDiscoveryConfig;
   llms?: DocsLlmsDiscoveryConfig;
   sitemap?: boolean | DocsSitemapConfig;
+  robots?: boolean | DocsRobotsConfig;
   markdown?: {
     acceptHeader?: boolean;
     signatureAgentHeader?: boolean;
@@ -286,7 +294,7 @@ export function renderDocsMarkdownNotFound({
 
   lines.push(
     "",
-    "The agent discovery spec is the safest first step because it lists the active markdown, sitemap, search, MCP, and feedback routes for this deployment.",
+    "The agent discovery spec is the safest first step because it lists the active markdown, sitemap, robots, search, MCP, and feedback routes for this deployment.",
   );
 
   return lines.join("\n");
@@ -336,6 +344,7 @@ export function renderDocsSkillDocument({
   feedback,
   llms,
   sitemap,
+  robots,
   markdown,
 }: DocsSkillDocumentOptions): string {
   const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
@@ -347,10 +356,11 @@ export function renderDocsSkillDocument({
   const searchEnabled = isSearchEnabled(search);
   const feedbackEnabled = feedback?.enabled ?? false;
   const sitemapConfig = resolveDocsSitemapConfig(sitemap);
+  const robotsEnabled = isRobotsDiscoveryEnabled(robots);
   const feedbackRoute = feedback?.route ?? DEFAULT_AGENT_FEEDBACK_ROUTE;
   const feedbackSchemaRoute = feedback?.schemaRoute ?? `${feedbackRoute}/schema`;
   const description = truncateSkillDescription(
-    `Use ${siteTitle} through markdown routes, llms.txt, agent discovery, search, and MCP when available.`,
+    `Use ${siteTitle} through markdown routes, llms.txt, robots.txt, agent discovery, search, and MCP when available.`,
   );
   const markdownAcceptHeader = markdown?.acceptHeader === false ? null : "text/markdown";
   const markdownSignatureAgentHeader =
@@ -413,6 +423,12 @@ export function renderDocsSkillDocument({
     }
   }
 
+  if (robotsEnabled) {
+    lines.push(
+      `- Check ${DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE} for crawler and AI-agent access policy.`,
+    );
+  }
+
   if (mcp.enabled) {
     lines.push(
       `- Use ${DEFAULT_MCP_WELL_KNOWN_ROUTE} or ${DEFAULT_MCP_PUBLIC_ROUTE} for MCP tools when your environment supports MCP.`,
@@ -434,6 +450,10 @@ export function renderDocsSkillDocument({
     `- Markdown root: /${normalizedEntry}.md`,
     `- Markdown pages: /${normalizedEntry}/{slug}.md`,
   );
+
+  if (robotsEnabled) {
+    lines.push(`- Robots policy: ${DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE}`);
+  }
 
   if (llmsEnabled) {
     lines.push(
@@ -558,6 +578,7 @@ export function buildDocsAgentDiscoverySpec({
   feedback,
   llms,
   sitemap,
+  robots,
   markdown,
 }: DocsAgentDiscoverySpecOptions) {
   const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
@@ -567,6 +588,7 @@ export function buildDocsAgentDiscoverySpec({
   const feedbackSchemaRoute = feedback?.schemaRoute ?? `${feedbackRoute}/schema`;
   const llmsEnabled = llms?.enabled ?? true;
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms?.baseUrl });
+  const robotsEnabled = isRobotsDiscoveryEnabled(robots);
 
   return {
     version: "1",
@@ -594,6 +616,7 @@ export function buildDocsAgentDiscoverySpec({
       mcp: mcp.enabled,
       search: searchEnabled,
       sitemap: sitemapConfig.enabled,
+      robots: robotsEnabled,
       agentFeedback: feedback?.enabled ?? false,
       locales: localesEnabled,
     },
@@ -643,6 +666,11 @@ export function buildDocsAgentDiscoverySpec({
         defaultRoute: DEFAULT_SITEMAP_MD_ROUTE,
         defaultWellKnownRoute: DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE,
       },
+    },
+    robots: {
+      enabled: robotsEnabled,
+      route: DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE,
+      defaultRoute: DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE,
     },
     search: {
       enabled: searchEnabled,
@@ -732,6 +760,12 @@ function normalizeRequestedMarkdownPath(entry: string, requestedPath: string): s
 function isSearchEnabled(search?: boolean | DocsSearchConfig): boolean {
   if (search === false) return false;
   if (search && typeof search === "object" && search.enabled === false) return false;
+  return true;
+}
+
+function isRobotsDiscoveryEnabled(robots?: boolean | DocsRobotsConfig): boolean {
+  if (robots === false) return false;
+  if (robots && typeof robots === "object" && robots.enabled === false) return false;
   return true;
 }
 

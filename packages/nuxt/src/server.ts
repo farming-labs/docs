@@ -825,6 +825,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
               siteDescription: llmsDesc,
             },
             sitemap: config.sitemap,
+            robots: config.robots,
             markdown: {
               acceptHeader: false,
             },
@@ -857,6 +858,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
               siteDescription: llmsDesc,
             },
             sitemap: config.sitemap,
+            robots: config.robots,
             markdown: {
               acceptHeader: false,
             },

@@ -107,7 +107,7 @@ also expose the crawler-friendly public aliases:
 - `GET /llms-full.txt` — default full-content route
 - `GET /.well-known/llms.txt`
 - `GET /.well-known/llms-full.txt`
-- `GET /.well-known/agent.json` for the preferred agent discovery spec that references those `llms.txt` routes and the sitemap routes when enabled
+- `GET /.well-known/agent.json` for the preferred agent discovery spec that references those `llms.txt` routes, the `robots.txt` route, and the sitemap routes when enabled
 - `GET /.well-known/agent` as the fallback agent discovery alias
 
 Those aliases rewrite to the same shared API output, so there is still only one content pipeline.
