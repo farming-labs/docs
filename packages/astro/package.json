@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/astro",
-  "version": "0.1.87",
+  "version": "0.1.88",
   "description": "Astro adapter for @farming-labs/docs — content loading and navigation utilities",
   "keywords": [
     "astro",
