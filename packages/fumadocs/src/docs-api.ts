@@ -37,6 +37,7 @@ import {
   resolveDocsI18n,
   resolveDocsLocale,
   resolvePageSidebarFolderIndexBehavior,
+  toDocsMarkdownUrl,
   createDocsSitemapResponse,
   resolveDocsSitemapConfig,
 } from "@farming-labs/docs";
@@ -2387,7 +2388,7 @@ function generateLlmsTxt(
   if (siteDescription) llmsTxt += `> ${siteDescription}\n\n`;
   llmsTxt += `## Pages\n\n`;
   for (const page of indexes) {
-    llmsTxt += `- [${page.title}](${baseUrl}${page.url})`;
+    llmsTxt += `- [${page.title}](${baseUrl}${toDocsMarkdownUrl(page.url)})`;
     if (page.description) llmsTxt += `: ${page.description}`;
     llmsTxt += `\n`;
   }

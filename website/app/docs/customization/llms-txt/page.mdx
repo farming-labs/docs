@@ -116,6 +116,12 @@ The agent discovery spec also advertises `defaultTxt: "/llms.txt"` and
 own framework-specific routes. TanStack Start, SvelteKit, Astro, and Nuxt can use the shared API
 query routes directly when they do not want to add the public aliases.
 
+The compact `llms.txt` listing links to each page's markdown route by default, for example
+`/docs/installation.md` instead of `/docs/installation`. That gives agents a direct path to the
+machine-readable page and keeps the root index aligned with AFDocs-style checks. `llms-full.txt`
+still includes the canonical page URL in its `URL:` line because the content is already embedded in
+that file.
+
 When you also want crawlers and AI agents to see an explicit access policy, publish
 `/robots.txt` with `docs robots generate`. The generated policy allows the public `llms.txt`
 aliases along with docs, markdown, sitemap, skill, MCP, and agent discovery routes.
@@ -133,9 +139,9 @@ aliases along with docs, markdown, sitemap, skill, MCP, and agent discovery rout
 
 ## Pages
 
-- [Introduction](https://docs.example.com/docs): Getting started guide
-- [Installation](https://docs.example.com/docs/installation): How to install
-- [Configuration](https://docs.example.com/docs/configuration): Config reference
+- [Introduction](https://docs.example.com/docs.md): Getting started guide
+- [Installation](https://docs.example.com/docs/installation.md): How to install
+- [Configuration](https://docs.example.com/docs/configuration.md): Config reference
 ```
 
 ### `/api/docs?format=llms-full`
