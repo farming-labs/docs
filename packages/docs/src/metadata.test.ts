@@ -248,5 +248,13 @@ describe("buildDocsPageStructuredData", () => {
         entry: "docs",
       }),
     ).toBe("https://llms.example.com");
+
+    expect(
+      resolveDocsMetadataBaseUrl({
+        sitemap: { enabled: true, baseUrl: "not a url" },
+        llmsTxt: { enabled: true, baseUrl: "https://llms.example.com" },
+        entry: "docs",
+      }),
+    ).toBe("https://llms.example.com");
   });
 });

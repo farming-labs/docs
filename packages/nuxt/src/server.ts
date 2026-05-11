@@ -53,6 +53,7 @@ import {
   resolveDocsPath,
   resolvePageReadingTime,
   resolveReadingTimeOptions,
+  resolveDocsSitemapPageLastmod,
   resolveDocsSkillFormat,
   renderDocsPageStructuredDataJson,
 } from "@farming-labs/docs";
@@ -515,6 +516,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
 
   const preloaded = config._preloadedContent as ContentFileMap | undefined;
+  const preloadedSitemapManifest = readDocsSitemapManifestFromContentMap(preloaded);
 
   const ordering = config.ordering as
     | "alphabetical"
@@ -602,11 +604,12 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     const slug = ctx.slug;
     const isIndex = slug === "";
+    const currentUrl = isIndex ? `/${entry}` : `/${entry}/${slug}`;
 
     let raw: string;
     let relPath: string;
     let lastModified: string;
-    let lastModifiedIso: string;
+    let lastModifiedIso: string | undefined;
 
     if (preloaded) {
       const result = findPageInMap(preloaded, ctx.dirPrefix, slug);
@@ -619,12 +622,16 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       }
       raw = result.raw;
       relPath = result.relPath;
-      lastModified = new Date().toLocaleDateString("en-US", {
+      const manifestLastmod = resolveDocsSitemapPageLastmod(preloadedSitemapManifest, currentUrl);
+      const lastModifiedDate = manifestLastmod
+        ? new Date(`${manifestLastmod}T00:00:00`)
+        : new Date();
+      lastModified = lastModifiedDate.toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
         day: "numeric",
       });
-      lastModifiedIso = new Date().toISOString();
+      lastModifiedIso = manifestLastmod ? `${manifestLastmod}T00:00:00.000Z` : undefined;
     } else {
       let filePath: string | null = null;
       relPath = "";
@@ -690,7 +697,6 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       ),
     });
 
-    const currentUrl = isIndex ? `/${entry}` : `/${entry}/${slug}`;
     const currentIndex = flatPages.findIndex((p) => p.url === currentUrl);
     const previousPage = currentIndex > 0 ? flatPages[currentIndex - 1] : null;
     const nextPage = currentIndex < flatPages.length - 1 ? flatPages[currentIndex + 1] : null;
@@ -897,9 +903,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       siteTitle: llmsTitle,
       baseUrl: llmsBaseUrl || url.origin,
       pages: getSearchIndex(ctx),
-      manifest:
-        readDocsSitemapManifestFromContentMap(preloaded) ??
-        readDocsSitemapManifest(rootDir, config.sitemap),
+      manifest: preloadedSitemapManifest ?? readDocsSitemapManifest(rootDir, config.sitemap),
     });
     if (sitemapResponse) return sitemapResponse;
 

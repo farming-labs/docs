@@ -18,6 +18,7 @@ import { useWindowSearchParams } from "./client-location.js";
 import { DocsFeedback } from "./docs-feedback.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
+import { escapeJsonLdForScript } from "./json-ld.js";
 
 interface TOCItem {
   title: string;
@@ -621,7 +622,7 @@ export function DocsPageClient({
       {structuredDataJson && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: structuredDataJson }}
+          dangerouslySetInnerHTML={{ __html: escapeJsonLdForScript(structuredDataJson) }}
         />
       )}
       <DocsPage

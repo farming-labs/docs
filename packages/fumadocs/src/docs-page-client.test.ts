@@ -54,7 +54,7 @@ describe("DocsPageClient structured data", () => {
           "/docs/installation": JSON.stringify({
             "@context": "https://schema.org",
             "@type": "TechArticle",
-            headline: "Installation",
+            headline: "</script><script>alert(1)</script>",
           }),
         },
         children: React.createElement("article", null, "Docs"),
@@ -63,7 +63,8 @@ describe("DocsPageClient structured data", () => {
 
     expect(html).toContain('type="application/ld+json"');
     expect(html).toContain('"@type":"TechArticle"');
-    expect(html).toContain('"headline":"Installation"');
+    expect(html).toContain('"headline":"\\u003c/script>');
+    expect(html).not.toContain("</script><script>");
   });
 });
 

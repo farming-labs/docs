@@ -212,7 +212,9 @@ export function resolveDocsMetadataBaseUrl(config: DocsConfig): string | undefin
   const sitemapBaseUrl = typeof config.sitemap === "object" ? config.sitemap.baseUrl : undefined;
   const llmsBaseUrl = typeof config.llmsTxt === "object" ? config.llmsTxt.baseUrl : undefined;
   const robotsBaseUrl = typeof config.robots === "object" ? config.robots.baseUrl : undefined;
-  return normalizeBaseUrl(sitemapBaseUrl ?? llmsBaseUrl ?? robotsBaseUrl ?? config.ai?.docsUrl);
+  return [sitemapBaseUrl, llmsBaseUrl, robotsBaseUrl, config.ai?.docsUrl]
+    .map((value) => normalizeBaseUrl(value))
+    .find((value): value is string => Boolean(value));
 }
 
 /**

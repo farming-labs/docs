@@ -102,6 +102,7 @@ export {
   readDocsSitemapManifestFromContentMap,
   renderDocsSitemapMarkdown,
   renderDocsSitemapXml,
+  resolveDocsSitemapPageLastmod,
   resolveDocsSitemapConfig,
   resolveDocsSitemapRequest,
   toDocsSitemapMarkdownUrl,

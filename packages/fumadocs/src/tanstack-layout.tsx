@@ -17,6 +17,7 @@ import { resolveReadingTimeOptions } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
+import { escapeJsonLdForScript } from "./json-ld.js";
 
 interface PageNode {
   type: "page";
@@ -534,7 +535,10 @@ export function TanstackDocsLayout({
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: escapeJsonLdForScript(structuredData) }}
+      />
       {layout}
     </>
   );
