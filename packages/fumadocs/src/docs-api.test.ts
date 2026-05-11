@@ -421,12 +421,26 @@ description: "Start here"
 Welcome to the docs.
 `,
     );
+    mkdirSync(join(rootDir, "app", "docs", "installation"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "installation", "page.mdx"),
+      `---
+title: "Installation"
+description: "How to install"
+---
+
+# Installation
+
+Install the package.
+`,
+    );
     writeFileSync(
       join(rootDir, "docs.config.ts"),
       `export default {
   llmsTxt: {
     enabled: true,
     siteTitle: "Alias Docs",
+    baseUrl: "https://docs.example.com",
   },
 };`,
     );
@@ -443,6 +457,11 @@ Welcome to the docs.
     expect(llmsApi.status).toBe(200);
     expect(llmsApi.headers.get("content-type")).toContain("text/plain");
     expect(llmsApiText).toContain("# Alias Docs");
+    expect(llmsApiText).toContain("- [Introduction](https://docs.example.com/docs.md): Start here");
+    expect(llmsApiText).toContain(
+      "- [Installation](https://docs.example.com/docs/installation.md): How to install",
+    );
+    expect(llmsApiText).not.toContain("(https://docs.example.com/docs/installation):");
 
     for (const path of ["/llms.txt", "/.well-known/llms.txt"]) {
       const response = await GET(new Request(`http://localhost${path}`));

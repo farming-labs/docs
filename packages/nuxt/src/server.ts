@@ -56,6 +56,7 @@ import {
   resolveDocsSitemapPageLastmod,
   resolveDocsSkillFormat,
   renderDocsPageStructuredDataJson,
+  toDocsMarkdownUrl,
 } from "@farming-labs/docs";
 import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig } from "@farming-labs/docs";
 import {
@@ -798,7 +799,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     llmsTxt += `## Pages\n\n`;
     for (const page of pages) {
-      llmsTxt += `- [${page.title}](${llmsBaseUrl}${page.url})`;
+      llmsTxt += `- [${page.title}](${llmsBaseUrl}${toDocsMarkdownUrl(page.url)})`;
       if (page.description) llmsTxt += `: ${page.description}`;
       llmsTxt += `\n`;
 
