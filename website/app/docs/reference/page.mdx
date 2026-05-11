@@ -215,6 +215,72 @@ nav: {
 
 ---
 
+## `LlmsTxtConfig`
+
+Generated `llms.txt` files for agent-readable docs indexes. The root files are enabled by default;
+section files are opt-in and only add route handling plus discovery metadata.
+
+| Property          | Type                     | Default                          | Description |
+| ----------------- | ------------------------ | -------------------------------- | ----------- |
+| `enabled`         | `boolean`                | `true`                           | Enable or disable llms.txt generation |
+| `baseUrl`         | `string`                 | request origin at runtime        | Base URL used for absolute links |
+| `siteTitle`       | `string`                 | `nav.title` or `"Documentation"` | Heading shown in generated files |
+| `siteDescription` | `string`                 | `undefined`                      | Description shown below the heading |
+| `maxChars`        | `LlmsTxtMaxCharsConfig`  | `{ mode: "warn", chars: 50000 }` | Budget for compact `llms.txt` files |
+| `sections`        | `LlmsTxtSectionConfig[]` | `[]`                             | Optional section-level `llms.txt` files |
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  llmsTxt: {
+    baseUrl: "https://docs.example.com",
+    maxChars: {
+      mode: "warn",
+      chars: 50_000,
+    },
+    sections: [
+      {
+        title: "API",
+        description: "Endpoint, SDK, and integration reference pages.",
+        match: "/docs/api/**",
+        maxChars: {
+          mode: "warn",
+          chars: 25_000,
+        },
+      },
+    ],
+  },
+});
+```
+
+Default routes:
+
+- `/llms.txt`
+- `/llms-full.txt`
+- `/.well-known/llms.txt`
+- `/.well-known/llms-full.txt`
+
+For `sections`, the route is derived from the first `match` value. For example, `/docs/api/**`
+creates `/docs/api/llms.txt` and `/docs/api/llms-full.txt`. Root `/llms.txt` lists configured
+sections first and keeps matching pages inside those section files.
+
+### `LlmsTxtMaxCharsConfig`
+
+| Property | Type                         | Default | Description |
+| -------- | ---------------------------- | ------- | ----------- |
+| `mode`   | `"warn" \| "error" \| "off"` | `"warn"` | Warn, fail the response, or disable budget checks |
+| `chars`  | `number`                     | `50000` | Maximum recommended character count |
+
+### `LlmsTxtSectionConfig`
+
+| Property      | Type                    | Description |
+| ------------- | ----------------------- | ----------- |
+| `title`       | `string`                | Section title shown in root and section files |
+| `description` | `string`                | Optional description shown next to the section link |
+| `match`       | `string \| string[]`    | Public URL matcher, such as `/docs/api/**` |
+| `maxChars`    | `LlmsTxtMaxCharsConfig` | Optional section-specific budget |
+
+---
+
 ## `DocsMcpConfig`
 
 Built-in MCP server configuration for AI clients, IDE agents, and local MCP tooling.

@@ -92,6 +92,63 @@ Description shown below the title.
 | -------- | ----------- |
 | `string` | `undefined` |
 
+### `llmsTxt.maxChars`
+
+Character budget for generated compact `llms.txt` files. The default warns when a root or section
+file grows past 50,000 characters. `llms-full.txt` is intentionally not budgeted because it is the
+full-content fallback.
+
+| Type                                       | Default                         |
+| ------------------------------------------ | ------------------------------- |
+| `{ mode?: "warn" \| "error" \| "off"; chars?: number }` | `{ mode: "warn", chars: 50000 }` |
+
+```ts title="llmstxt-maxchars.ts"
+llmsTxt: {
+  maxChars: {
+    mode: "warn",
+    chars: 50_000,
+  },
+}
+```
+
+### `llmsTxt.sections`
+
+Optional section-level `llms.txt` files for larger docs. Each matcher is a public URL pattern.
+The framework derives both routes from `match`.
+
+```ts title="llmstxt-sections.ts"
+llmsTxt: {
+  sections: [
+    {
+      title: "API",
+      description: "Endpoint, SDK, and integration reference pages.",
+      match: "/docs/api/**",
+      maxChars: {
+        mode: "warn",
+        chars: 25_000,
+      },
+    },
+    {
+      title: "Guides",
+      description: "Task-based implementation walkthroughs.",
+      match: "/docs/guides/**",
+    },
+  ],
+}
+```
+
+Derived routes:
+
+- `/docs/api/llms.txt`
+- `/docs/api/llms-full.txt`
+- `/docs/guides/llms.txt`
+- `/docs/guides/llms-full.txt`
+
+This docs site dogfoods the section feature with one live `Guides` section. The generated compact
+section file is [`/docs/guides/llms.txt`](/docs/guides/llms.txt), and the full-content sibling is
+[`/docs/guides/llms-full.txt`](/docs/guides/llms-full.txt). Those routes are not UI pages; they are
+machine-readable text responses served by the same docs API.
+
 ---
 
 ## How It Works
@@ -122,6 +179,11 @@ The compact `llms.txt` listing links to each page's markdown route by default, f
 machine-readable page and keeps the root index aligned with AFDocs-style checks. `llms-full.txt`
 still includes the canonical page URL in its `URL:` line because the content is already embedded in
 that file.
+
+When `llmsTxt.sections` is configured, root `/llms.txt` lists those section files first and only
+keeps unmatched pages in the root page list. Each section route serves the matching pages, and its
+`llms-full.txt` sibling serves the full matching content. No UI is added; this only changes the
+machine-readable route layer.
 
 When you also want crawlers and AI agents to see an explicit access policy, publish
 `/robots.txt` with `docs robots generate`. The generated policy allows the public `llms.txt`

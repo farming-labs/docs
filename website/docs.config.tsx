@@ -227,6 +227,27 @@ export default defineDocs({
     baseUrl: "https://docs.farming-labs.dev",
     siteDescription:
       "An AI-native documentation framework for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt.",
+    maxChars: {
+      mode: "warn",
+      chars: 50_000,
+    },
+    sections: [
+      {
+        title: "Guides",
+        description: "Task-based guides for agent-friendly docs and discovery surfaces.",
+        match: "/docs/guides/**",
+      },
+      {
+        title: "Customization",
+        description: "Configuration guides for AI chat, MCP, analytics, sitemaps, and theming.",
+        match: "/docs/customization/**",
+      },
+      {
+        title: "Themes",
+        description: "Theme previews and theme creation guides.",
+        match: "/docs/themes/**",
+      },
+    ],
   },
   sitemap: {
     enabled: true,

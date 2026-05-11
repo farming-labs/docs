@@ -33,11 +33,15 @@ import {
   emitDocsAnalyticsEvent,
   getDocsMarkdownVaryHeader,
   hasDocsMarkdownSignatureAgent,
+  getDocsLlmsTxtMaxCharsIssue,
   renderDocsMarkdownNotFound,
+  renderDocsLlmsTxt,
   resolveDocsI18n,
+  resolveDocsLlmsTxtRequest,
+  resolveDocsLlmsTxtSections,
   resolveDocsLocale,
   resolvePageSidebarFolderIndexBehavior,
-  toDocsMarkdownUrl,
+  selectDocsLlmsTxtContent,
   createDocsSitemapResponse,
   resolveDocsSitemapConfig,
 } from "@farming-labs/docs";
@@ -48,6 +52,7 @@ import type {
   DocsAgentFeedbackContext,
   DocsAgentFeedbackData,
   DocsI18nConfig,
+  LlmsTxtConfig,
   DocsObservabilityConfig,
   FeedbackConfig,
 } from "@farming-labs/docs";
@@ -389,6 +394,7 @@ function buildAgentSpec({
   const searchEnabled = isSearchEnabled(search);
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms.baseUrl });
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
+  const llmsSections = resolveDocsLlmsTxtSections(llms);
 
   return {
     version: "1",
@@ -451,6 +457,17 @@ function buildAgentSpec({
       publicFull: DEFAULT_LLMS_FULL_TXT_ROUTE,
       wellKnownTxt: DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE,
       wellKnownFull: DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
+      ...(llmsSections.length > 0
+        ? {
+            sections: llmsSections.map((section) => ({
+              title: section.title,
+              description: section.description,
+              match: section.match,
+              txt: section.route,
+              full: section.fullRoute,
+            })),
+          }
+        : {}),
     },
     sitemap: {
       enabled: sitemapConfig.enabled,
@@ -1473,24 +1490,6 @@ function resolveMarkdownRequest(entry: string, url: URL, request: Request): Mark
   return null;
 }
 
-function resolveLlmsTxtFormat(url: URL): "llms" | "llms-full" | null {
-  const pathname = normalizeUrlPath(url.pathname);
-
-  if (pathname === DEFAULT_LLMS_TXT_ROUTE || pathname === DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE) {
-    return "llms";
-  }
-
-  if (
-    pathname === DEFAULT_LLMS_FULL_TXT_ROUTE ||
-    pathname === DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE
-  ) {
-    return "llms-full";
-  }
-
-  const format = url.searchParams.get("format");
-  return format === "llms" || format === "llms-full" ? format : null;
-}
-
 function renderMarkdownDocument(page: DocsMcpPage | DocsSearchSourcePage): string {
   if ("agentRawContent" in page && page.agentRawContent !== undefined) {
     return page.agentRawContent;
@@ -1520,6 +1519,7 @@ function renderSkillDocument({
   const searchEnabled = isSearchEnabled(search);
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms.baseUrl });
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
+  const llmsSections = resolveDocsLlmsTxtSections(llms);
   const description = truncateSkillDescription(
     `Use ${siteTitle} through markdown routes, llms.txt, robots.txt, agent discovery, search, and MCP when available.`,
   );
@@ -1561,6 +1561,9 @@ function renderSkillDocument({
       `- Use ${DEFAULT_LLMS_TXT_ROUTE} for a compact docs index.`,
       `- Use ${DEFAULT_LLMS_FULL_TXT_ROUTE} for full markdown context.`,
     );
+    for (const section of llmsSections) {
+      lines.push(`- Use ${section.route} for the ${section.title} llms.txt section.`);
+    }
   }
 
   if (sitemapConfig.enabled) {
@@ -1610,6 +1613,10 @@ function renderSkillDocument({
       `- llms-full.txt: ${DEFAULT_LLMS_FULL_TXT_ROUTE}`,
       `- llms well-known aliases: ${DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE}, ${DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE}`,
     );
+    for (const section of llmsSections) {
+      lines.push(`- ${section.title} llms.txt: ${section.route}`);
+      lines.push(`- ${section.title} llms-full.txt: ${section.fullRoute}`);
+    }
   }
 
   if (sitemapConfig.enabled) {
@@ -2273,12 +2280,7 @@ async function handleAskAI(
 
 // ─── llms.txt generation ────────────────────────────────────────────
 
-interface LlmsTxtOptions {
-  enabled?: boolean;
-  siteTitle?: string;
-  siteDescription?: string;
-  baseUrl?: string;
-}
+type LlmsTxtOptions = LlmsTxtConfig;
 
 function readLlmsTxtConfig(root: string): LlmsTxtOptions & { enabled: boolean } {
   for (const ext of FILE_EXTS) {
@@ -2412,28 +2414,8 @@ function readRobotsConfig(root: string): boolean | DocsRobotsConfig | undefined 
 function generateLlmsTxt(
   indexes: DocsSearchSourcePage[],
   options: LlmsTxtOptions,
-): { llmsTxt: string; llmsFullTxt: string } {
-  const { siteTitle = "Documentation", siteDescription, baseUrl = "" } = options;
-
-  let llmsTxt = `# ${siteTitle}\n\n`;
-  if (siteDescription) llmsTxt += `> ${siteDescription}\n\n`;
-  llmsTxt += `## Pages\n\n`;
-  for (const page of indexes) {
-    llmsTxt += `- [${page.title}](${baseUrl}${toDocsMarkdownUrl(page.url)})`;
-    if (page.description) llmsTxt += `: ${page.description}`;
-    llmsTxt += `\n`;
-  }
-
-  let llmsFullTxt = `# ${siteTitle}\n\n`;
-  if (siteDescription) llmsFullTxt += `> ${siteDescription}\n\n`;
-  for (const page of indexes) {
-    llmsFullTxt += `## ${page.title}\n\n`;
-    llmsFullTxt += `URL: ${baseUrl}${page.url}\n\n`;
-    if (page.description) llmsFullTxt += `${page.description}\n\n`;
-    llmsFullTxt += `${page.content}\n\n---\n\n`;
-  }
-
-  return { llmsTxt, llmsFullTxt };
+): ReturnType<typeof renderDocsLlmsTxt> {
+  return renderDocsLlmsTxt(indexes, options);
 }
 
 // ─── createDocsAPI ──────────────────────────────────────────────────
@@ -2581,7 +2563,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   }
 
   const indexesByLocale = new Map<string, DocsSearchSourcePage[]>();
-  const llmsCacheByLocale = new Map<string, { llmsTxt: string; llmsFullTxt: string }>();
+  const llmsCacheByLocale = new Map<string, ReturnType<typeof renderDocsLlmsTxt>>();
   const markdownSourcesByLocale = new Map<
     string,
     ReturnType<typeof createFilesystemDocsMcpSource>[]
@@ -2673,6 +2655,8 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       siteTitle: llmsConfig.siteTitle ?? "Documentation",
       siteDescription: llmsConfig.siteDescription,
       baseUrl: llmsConfig.baseUrl ?? "",
+      maxChars: llmsConfig.maxChars,
+      sections: llmsConfig.sections,
     });
     llmsCacheByLocale.set(key, next);
     return next;
@@ -2880,8 +2864,8 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         });
       }
 
-      const llmsFormat = resolveLlmsTxtFormat(url);
-      if (llmsFormat === "llms" || llmsFormat === "llms-full") {
+      const llmsRequest = resolveDocsLlmsTxtRequest(url, llmsConfig);
+      if (llmsRequest) {
         if (!llmsConfig.enabled) {
           return new Response("Not Found", {
             status: 404,
@@ -2891,9 +2875,36 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             },
           });
         }
-      }
 
-      if (llmsFormat === "llms") {
+        const selected = selectDocsLlmsTxtContent(getLlmsContent(ctx), llmsRequest);
+        if (!selected) {
+          return new Response("Not Found", {
+            status: 404,
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
+
+        const budgetIssue = getDocsLlmsTxtMaxCharsIssue(
+          selected.label,
+          selected.content,
+          selected.maxChars,
+        );
+        if (budgetIssue?.mode === "error") {
+          return new Response(budgetIssue.message, {
+            status: 500,
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
+        if (budgetIssue?.mode === "warn") {
+          console.warn(`[docs] ${budgetIssue.message}`);
+        }
+
         await emitDocsAnalyticsEvent(analytics, {
           type: "llms_request",
           source: "server",
@@ -2901,29 +2912,12 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           path: url.pathname,
           locale: ctx.locale,
           properties: {
-            format: "llms",
+            format: llmsRequest.format,
+            section: llmsRequest.section?.route,
+            contentLength: selected.content.length,
           },
         });
-        return new Response(getLlmsContent(ctx).llmsTxt, {
-          headers: {
-            "Content-Type": "text/plain; charset=utf-8",
-            "Cache-Control": "public, max-age=3600",
-          },
-        });
-      }
-
-      if (llmsFormat === "llms-full") {
-        await emitDocsAnalyticsEvent(analytics, {
-          type: "llms_request",
-          source: "server",
-          url: request.url,
-          path: url.pathname,
-          locale: ctx.locale,
-          properties: {
-            format: "llms-full",
-          },
-        });
-        return new Response(getLlmsContent(ctx).llmsFullTxt, {
+        return new Response(selected.content, {
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
             "Cache-Control": "public, max-age=3600",

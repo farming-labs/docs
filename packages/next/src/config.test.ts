@@ -322,6 +322,14 @@ describe("withDocs (app dir: src/app vs app)", () => {
           destination: "/api/docs?format=llms-full",
         }),
         expect.objectContaining({
+          source: "/docs/:section*/llms.txt",
+          destination: "/api/docs?format=llms&section=/docs/:section*/llms.txt",
+        }),
+        expect.objectContaining({
+          source: "/docs/:section*/llms-full.txt",
+          destination: "/api/docs?format=llms-full&section=/docs/:section*/llms-full.txt",
+        }),
+        expect.objectContaining({
           source: "/skill.md",
           destination: "/api/docs?format=skill",
         }),
@@ -702,6 +710,14 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/.well-known/llms-full.txt",
           destination: "/api/docs?format=llms-full",
+        }),
+        expect.objectContaining({
+          source: "/docs/:section*/llms.txt",
+          destination: "/api/docs?format=llms&section=/docs/:section*/llms.txt",
+        }),
+        expect.objectContaining({
+          source: "/docs/:section*/llms-full.txt",
+          destination: "/api/docs?format=llms-full&section=/docs/:section*/llms-full.txt",
         }),
         expect.objectContaining({
           source: "/skill.md",

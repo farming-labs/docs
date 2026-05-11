@@ -2,6 +2,10 @@ import type {
   DocsRobotsConfig,
   DocsSearchConfig,
   DocsSearchSourcePage,
+  LlmsTxtConfig,
+  LlmsTxtMaxCharsConfig,
+  LlmsTxtMaxCharsMode,
+  LlmsTxtSectionConfig,
   ResolvedDocsRelatedLink,
 } from "./types.js";
 import type { ResolvedDocsI18n } from "./i18n.js";
@@ -27,6 +31,7 @@ export const DEFAULT_LLMS_TXT_ROUTE = "/llms.txt";
 export const DEFAULT_LLMS_FULL_TXT_ROUTE = "/llms-full.txt";
 export const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
 export const DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms-full.txt";
+export const DEFAULT_LLMS_TXT_MAX_CHARS = 50_000;
 export const DEFAULT_SKILL_MD_ROUTE = "/skill.md";
 export const DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE = "/.well-known/skill.md";
 const DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE = "/robots.txt";
@@ -44,6 +49,60 @@ export interface DocsLlmsDiscoveryConfig {
   baseUrl?: string;
   siteTitle?: string;
   siteDescription?: string;
+  maxChars?: LlmsTxtMaxCharsConfig;
+  sections?: LlmsTxtSectionConfig[];
+}
+
+export interface DocsLlmsTxtResolvedMaxChars {
+  mode: LlmsTxtMaxCharsMode;
+  chars: number;
+}
+
+export interface DocsLlmsTxtResolvedSection {
+  title: string;
+  description?: string;
+  match: string[];
+  route: string;
+  fullRoute: string;
+  maxChars: DocsLlmsTxtResolvedMaxChars;
+}
+
+export interface DocsLlmsTxtRequest {
+  format: "llms" | "llms-full";
+  section?: DocsLlmsTxtResolvedSection;
+}
+
+export interface DocsLlmsTxtPageInput {
+  url: string;
+  title: string;
+  description?: string;
+  content: string;
+}
+
+export interface DocsLlmsTxtGeneratedSection extends DocsLlmsTxtResolvedSection {
+  llmsTxt: string;
+  llmsFullTxt: string;
+}
+
+export interface DocsLlmsTxtGeneratedContent {
+  llmsTxt: string;
+  llmsFullTxt: string;
+  maxChars: DocsLlmsTxtResolvedMaxChars;
+  sections: DocsLlmsTxtGeneratedSection[];
+}
+
+export interface DocsLlmsTxtSelectedContent {
+  content: string;
+  label: string;
+  maxChars: DocsLlmsTxtResolvedMaxChars;
+}
+
+export interface DocsLlmsTxtMaxCharsIssue {
+  mode: Exclude<LlmsTxtMaxCharsMode, "off">;
+  chars: number;
+  actual: number;
+  label: string;
+  message: string;
 }
 
 export interface DocsAgentDiscoverySpecOptions {
@@ -118,6 +177,267 @@ export function toDocsMarkdownUrl(url: string, options: { locale?: string } = {}
   return `${markdownPath}${search ? `?${search}` : ""}${hash ? `#${hash}` : ""}`;
 }
 
+function joinDocsPublicRoute(prefix: string, suffix: string): string {
+  const normalizedPrefix = normalizeDocsUrlPath(`/${normalizeDocsPathSegment(prefix)}`);
+  const normalizedSuffix = `/${normalizeDocsPathSegment(suffix)}`;
+  if (normalizedPrefix === "/") return normalizedSuffix;
+  return normalizeDocsUrlPath(`${normalizedPrefix}${normalizedSuffix}`);
+}
+
+function normalizeLlmsTxtMatch(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "/";
+  return normalizeDocsUrlPath(trimmed.startsWith("/") ? trimmed : `/${trimmed}`);
+}
+
+function llmsTxtMatchPrefix(value: string): string {
+  const normalized = normalizeLlmsTxtMatch(value);
+  const wildcardIndex = normalized.indexOf("*");
+  const withoutWildcard = wildcardIndex >= 0 ? normalized.slice(0, wildcardIndex) : normalized;
+  return normalizeDocsUrlPath(withoutWildcard.replace(/\/+$/, "") || "/");
+}
+
+function deriveLlmsTxtSectionRoute(match: string[]): string {
+  const prefix = llmsTxtMatchPrefix(match[0] ?? "/");
+  return joinDocsPublicRoute(prefix, "llms.txt");
+}
+
+function deriveLlmsTxtSectionFullRoute(route: string): string {
+  const normalized = normalizeDocsUrlPath(route);
+  if (normalized.endsWith("/llms.txt")) {
+    return `${normalized.slice(0, -"/llms.txt".length)}/llms-full.txt`;
+  }
+  return joinDocsPublicRoute(normalized, "llms-full.txt");
+}
+
+function normalizeLlmsTxtMaxChars(
+  value: LlmsTxtMaxCharsConfig | undefined,
+  fallback?: DocsLlmsTxtResolvedMaxChars,
+): DocsLlmsTxtResolvedMaxChars {
+  const mode = value?.mode ?? fallback?.mode ?? "warn";
+  const chars = value?.chars ?? fallback?.chars ?? DEFAULT_LLMS_TXT_MAX_CHARS;
+  return {
+    mode,
+    chars: Number.isFinite(chars) && chars > 0 ? Math.floor(chars) : DEFAULT_LLMS_TXT_MAX_CHARS,
+  };
+}
+
+export function resolveDocsLlmsTxtSections(
+  llms?: boolean | DocsLlmsDiscoveryConfig | LlmsTxtConfig,
+): DocsLlmsTxtResolvedSection[] {
+  if (!llms || typeof llms !== "object" || !Array.isArray(llms.sections)) return [];
+
+  const rootMaxChars = normalizeLlmsTxtMaxChars(llms.maxChars);
+  return llms.sections
+    .map((section) => {
+      const match = (Array.isArray(section.match) ? section.match : [section.match])
+        .map(normalizeLlmsTxtMatch)
+        .filter(Boolean);
+      if (match.length === 0) return null;
+
+      const route = deriveLlmsTxtSectionRoute(match);
+      return {
+        title: section.title,
+        description: section.description,
+        match,
+        route,
+        fullRoute: deriveLlmsTxtSectionFullRoute(route),
+        maxChars: normalizeLlmsTxtMaxChars(section.maxChars, rootMaxChars),
+      } satisfies DocsLlmsTxtResolvedSection;
+    })
+    .filter((section): section is DocsLlmsTxtResolvedSection => Boolean(section));
+}
+
+export function matchesDocsLlmsTxtSection(pageUrl: string, section: DocsLlmsTxtResolvedSection) {
+  const pathname = normalizeDocsUrlPath(pageUrl.split(/[?#]/, 1)[0] || "/");
+  return section.match.some((pattern) => {
+    const normalized = normalizeLlmsTxtMatch(pattern);
+    if (normalized.endsWith("/**")) {
+      const prefix = normalizeDocsUrlPath(normalized.slice(0, -"/**".length) || "/");
+      return pathname === prefix || pathname.startsWith(`${prefix}/`);
+    }
+    if (normalized.endsWith("/*")) {
+      const prefix = normalizeDocsUrlPath(normalized.slice(0, -"/*".length) || "/");
+      if (!pathname.startsWith(`${prefix}/`)) return false;
+      return !pathname.slice(prefix.length + 1).includes("/");
+    }
+    return pathname === normalized;
+  });
+}
+
+export function resolveDocsLlmsTxtRequest(
+  url: URL,
+  llms?: boolean | DocsLlmsDiscoveryConfig | LlmsTxtConfig,
+): DocsLlmsTxtRequest | null {
+  const pathname = normalizeDocsUrlPath(url.pathname);
+  const sections = resolveDocsLlmsTxtSections(llms);
+
+  for (const section of sections) {
+    if (pathname === section.route) return { format: "llms", section };
+    if (pathname === section.fullRoute) return { format: "llms-full", section };
+  }
+
+  const format = url.searchParams.get("format");
+  if (pathname === DEFAULT_DOCS_API_ROUTE && (format === "llms" || format === "llms-full")) {
+    const sectionRoute = url.searchParams.get("section")?.trim();
+    const normalizedSectionRoute = sectionRoute ? normalizeDocsUrlPath(sectionRoute) : undefined;
+    const section = normalizedSectionRoute
+      ? (sections.find(
+          (candidate) =>
+            candidate.route === normalizedSectionRoute ||
+            candidate.fullRoute === normalizedSectionRoute,
+        ) ?? {
+          title: "",
+          match: [],
+          route: normalizedSectionRoute,
+          fullRoute: normalizedSectionRoute,
+          maxChars: normalizeLlmsTxtMaxChars(undefined),
+        })
+      : undefined;
+    return { format, section };
+  }
+
+  if (pathname === DEFAULT_LLMS_TXT_ROUTE || pathname === DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE) {
+    return { format: "llms" };
+  }
+
+  if (
+    pathname === DEFAULT_LLMS_FULL_TXT_ROUTE ||
+    pathname === DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE
+  ) {
+    return { format: "llms-full" };
+  }
+
+  return null;
+}
+
+function renderLlmsTxtPageList(pages: DocsLlmsTxtPageInput[], baseUrl: string): string {
+  let content = "";
+  for (const page of pages) {
+    content += `- [${page.title}](${baseUrl}${toDocsMarkdownUrl(page.url)})`;
+    if (page.description) content += `: ${page.description}`;
+    content += "\n";
+  }
+  return content;
+}
+
+function renderLlmsFullTxtPages(pages: DocsLlmsTxtPageInput[], baseUrl: string): string {
+  let content = "";
+  for (const page of pages) {
+    content += `## ${page.title}\n\n`;
+    content += `URL: ${baseUrl}${page.url}\n\n`;
+    if (page.description) content += `${page.description}\n\n`;
+    content += `${page.content}\n\n---\n\n`;
+  }
+  return content;
+}
+
+export function renderDocsLlmsTxt(
+  pages: DocsLlmsTxtPageInput[],
+  options: DocsLlmsDiscoveryConfig = {},
+): DocsLlmsTxtGeneratedContent {
+  const siteTitle = options.siteTitle ?? "Documentation";
+  const siteDescription = options.siteDescription;
+  const baseUrl = options.baseUrl ?? "";
+  const maxChars = normalizeLlmsTxtMaxChars(options.maxChars);
+  const sections = resolveDocsLlmsTxtSections(options);
+  const matchedPageUrls = new Set<string>();
+
+  const generatedSections = sections.map((section) => {
+    const sectionPages = pages.filter((page) => matchesDocsLlmsTxtSection(page.url, section));
+    for (const page of sectionPages) matchedPageUrls.add(normalizeDocsUrlPath(page.url));
+
+    let llmsTxt = `# ${siteTitle} - ${section.title}\n\n`;
+    if (section.description) llmsTxt += `> ${section.description}\n\n`;
+    else if (siteDescription) llmsTxt += `> ${siteDescription}\n\n`;
+    llmsTxt += "## Pages\n\n";
+    llmsTxt += renderLlmsTxtPageList(sectionPages, baseUrl);
+
+    let llmsFullTxt = `# ${siteTitle} - ${section.title}\n\n`;
+    if (section.description) llmsFullTxt += `> ${section.description}\n\n`;
+    else if (siteDescription) llmsFullTxt += `> ${siteDescription}\n\n`;
+    llmsFullTxt += renderLlmsFullTxtPages(sectionPages, baseUrl);
+
+    return {
+      ...section,
+      llmsTxt,
+      llmsFullTxt,
+    };
+  });
+
+  const rootPages =
+    generatedSections.length > 0
+      ? pages.filter((page) => !matchedPageUrls.has(normalizeDocsUrlPath(page.url)))
+      : pages;
+
+  let llmsTxt = `# ${siteTitle}\n\n`;
+  if (siteDescription) llmsTxt += `> ${siteDescription}\n\n`;
+  if (generatedSections.length > 0) {
+    llmsTxt += "## Sections\n\n";
+    for (const section of generatedSections) {
+      llmsTxt += `- [${section.title}](${baseUrl}${section.route})`;
+      if (section.description) llmsTxt += `: ${section.description}`;
+      llmsTxt += "\n";
+    }
+    llmsTxt += "\n";
+  }
+  if (rootPages.length > 0 || generatedSections.length === 0) {
+    llmsTxt += "## Pages\n\n";
+    llmsTxt += renderLlmsTxtPageList(rootPages, baseUrl);
+  }
+
+  let llmsFullTxt = `# ${siteTitle}\n\n`;
+  if (siteDescription) llmsFullTxt += `> ${siteDescription}\n\n`;
+  llmsFullTxt += renderLlmsFullTxtPages(pages, baseUrl);
+
+  return {
+    llmsTxt,
+    llmsFullTxt,
+    maxChars,
+    sections: generatedSections,
+  };
+}
+
+export function selectDocsLlmsTxtContent(
+  content: DocsLlmsTxtGeneratedContent,
+  request: DocsLlmsTxtRequest,
+): DocsLlmsTxtSelectedContent | null {
+  if (request.section) {
+    const section = content.sections.find(
+      (candidate) => candidate.route === request.section?.route,
+    );
+    if (!section) return null;
+    return {
+      content: request.format === "llms-full" ? section.llmsFullTxt : section.llmsTxt,
+      label: request.format === "llms-full" ? section.fullRoute : section.route,
+      maxChars:
+        request.format === "llms-full" ? { ...section.maxChars, mode: "off" } : section.maxChars,
+    };
+  }
+
+  return {
+    content: request.format === "llms-full" ? content.llmsFullTxt : content.llmsTxt,
+    label: request.format === "llms-full" ? DEFAULT_LLMS_FULL_TXT_ROUTE : DEFAULT_LLMS_TXT_ROUTE,
+    maxChars:
+      request.format === "llms-full" ? { ...content.maxChars, mode: "off" } : content.maxChars,
+  };
+}
+
+export function getDocsLlmsTxtMaxCharsIssue(
+  label: string,
+  content: string,
+  maxChars: DocsLlmsTxtResolvedMaxChars,
+): DocsLlmsTxtMaxCharsIssue | null {
+  if (maxChars.mode === "off" || content.length <= maxChars.chars) return null;
+  return {
+    mode: maxChars.mode,
+    chars: maxChars.chars,
+    actual: content.length,
+    label,
+    message: `${label} is ${content.length.toLocaleString()} chars, above the configured ${maxChars.chars.toLocaleString()} char llms.txt budget.`,
+  };
+}
+
 export function isDocsAgentDiscoveryRequest(url: URL): boolean {
   const pathname = normalizeDocsUrlPath(url.pathname);
   if (pathname === DEFAULT_DOCS_API_ROUTE && url.searchParams.get("agent")?.trim() === "spec") {
@@ -157,7 +477,10 @@ export function isDocsPublicGetRequest(
   entry: string,
   url: URL,
   request: Request,
-  options: { sitemap?: boolean | DocsSitemapConfig } = {},
+  options: {
+    sitemap?: boolean | DocsSitemapConfig;
+    llms?: boolean | DocsLlmsDiscoveryConfig | LlmsTxtConfig;
+  } = {},
 ): boolean {
   const pathname = normalizeDocsUrlPath(url.pathname);
   if (pathname === DEFAULT_DOCS_API_ROUTE || pathname === DEFAULT_MCP_ROUTE) return false;
@@ -165,30 +488,14 @@ export function isDocsPublicGetRequest(
   return (
     isDocsAgentDiscoveryRequest(url) ||
     isDocsSkillRequest(url) ||
-    resolveDocsLlmsTxtFormat(url) !== null ||
+    resolveDocsLlmsTxtRequest(url, options.llms) !== null ||
     resolveDocsSitemapRequest(url, options.sitemap) !== null ||
     resolveDocsMarkdownRequest(entry, url, request) !== null
   );
 }
 
 export function resolveDocsLlmsTxtFormat(url: URL): "llms" | "llms-full" | null {
-  const pathname = normalizeDocsUrlPath(url.pathname);
-
-  if (pathname === DEFAULT_LLMS_TXT_ROUTE || pathname === DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE) {
-    return "llms";
-  }
-
-  if (
-    pathname === DEFAULT_LLMS_FULL_TXT_ROUTE ||
-    pathname === DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE
-  ) {
-    return "llms-full";
-  }
-
-  const format = url.searchParams.get("format");
-  return pathname === DEFAULT_DOCS_API_ROUTE && (format === "llms" || format === "llms-full")
-    ? format
-    : null;
+  return resolveDocsLlmsTxtRequest(url)?.format ?? null;
 }
 
 export function resolveDocsMarkdownRequest(
@@ -359,6 +666,7 @@ export function renderDocsSkillDocument({
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
   const feedbackRoute = feedback?.route ?? DEFAULT_AGENT_FEEDBACK_ROUTE;
   const feedbackSchemaRoute = feedback?.schemaRoute ?? `${feedbackRoute}/schema`;
+  const llmsSections = resolveDocsLlmsTxtSections(llms);
   const description = truncateSkillDescription(
     `Use ${siteTitle} through markdown routes, llms.txt, robots.txt, agent discovery, search, and MCP when available.`,
   );
@@ -412,6 +720,9 @@ export function renderDocsSkillDocument({
       `- Use ${DEFAULT_LLMS_TXT_ROUTE} for a compact docs index.`,
       `- Use ${DEFAULT_LLMS_FULL_TXT_ROUTE} for full markdown context.`,
     );
+    for (const section of llmsSections) {
+      lines.push(`- Use ${section.route} for the ${section.title} llms.txt section.`);
+    }
   }
 
   if (sitemapConfig.enabled) {
@@ -461,6 +772,10 @@ export function renderDocsSkillDocument({
       `- llms-full.txt: ${DEFAULT_LLMS_FULL_TXT_ROUTE}`,
       `- llms well-known aliases: ${DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE}, ${DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE}`,
     );
+    for (const section of llmsSections) {
+      lines.push(`- ${section.title} llms.txt: ${section.route}`);
+      lines.push(`- ${section.title} llms-full.txt: ${section.fullRoute}`);
+    }
   }
 
   if (sitemapConfig.enabled) {
@@ -587,6 +902,7 @@ export function buildDocsAgentDiscoverySpec({
   const feedbackRoute = feedback?.route ?? DEFAULT_AGENT_FEEDBACK_ROUTE;
   const feedbackSchemaRoute = feedback?.schemaRoute ?? `${feedbackRoute}/schema`;
   const llmsEnabled = llms?.enabled ?? true;
+  const llmsSections = resolveDocsLlmsTxtSections(llms);
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms?.baseUrl });
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
 
@@ -650,6 +966,17 @@ export function buildDocsAgentDiscoverySpec({
       publicFull: DEFAULT_LLMS_FULL_TXT_ROUTE,
       wellKnownTxt: DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE,
       wellKnownFull: DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
+      ...(llmsSections.length > 0
+        ? {
+            sections: llmsSections.map((section) => ({
+              title: section.title,
+              description: section.description,
+              match: section.match,
+              txt: section.route,
+              full: section.fullRoute,
+            })),
+          }
+        : {}),
     },
     sitemap: {
       enabled: sitemapConfig.enabled,

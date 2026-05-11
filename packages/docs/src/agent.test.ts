@@ -8,13 +8,18 @@ import {
   isDocsMcpRequest,
   isDocsPublicGetRequest,
   isDocsSkillRequest,
+  getDocsLlmsTxtMaxCharsIssue,
   renderDocsMarkdownDocument,
   renderDocsMarkdownNotFound,
+  renderDocsLlmsTxt,
   renderDocsSkillDocument,
   resolveDocsAgentMdxContent,
   resolveDocsLlmsTxtFormat,
+  resolveDocsLlmsTxtRequest,
+  resolveDocsLlmsTxtSections,
   resolveDocsSkillFormat,
   resolveDocsMarkdownRequest,
+  selectDocsLlmsTxtContent,
   toDocsMarkdownUrl,
 } from "./agent.js";
 
@@ -50,6 +55,111 @@ describe("agent route helpers", () => {
     expect(
       resolveDocsSkillFormat(new URL("https://example.com/internal/docs?format=llms")),
     ).toBeNull();
+  });
+
+  it("derives section-level llms.txt routes from URL matchers", () => {
+    const config = {
+      sections: [
+        {
+          title: "API",
+          description: "Endpoint reference",
+          match: "/docs/api/**",
+          maxChars: { mode: "error" as const, chars: 20 },
+        },
+        {
+          title: "Guides",
+          match: ["/docs/guides/**", "/docs/tutorials/**"],
+        },
+      ],
+    };
+
+    const sections = resolveDocsLlmsTxtSections(config);
+    expect(sections.map((section) => [section.route, section.fullRoute])).toEqual([
+      ["/docs/api/llms.txt", "/docs/api/llms-full.txt"],
+      ["/docs/guides/llms.txt", "/docs/guides/llms-full.txt"],
+    ]);
+    expect(sections[0]?.maxChars).toEqual({ mode: "error", chars: 20 });
+
+    expect(
+      resolveDocsLlmsTxtRequest(new URL("https://example.com/docs/api/llms.txt"), config),
+    ).toMatchObject({
+      format: "llms",
+      section: { title: "API", route: "/docs/api/llms.txt" },
+    });
+    expect(
+      resolveDocsLlmsTxtRequest(new URL("https://example.com/docs/api/llms-full.txt"), config),
+    ).toMatchObject({
+      format: "llms-full",
+      section: { title: "API", route: "/docs/api/llms.txt" },
+    });
+    expect(
+      isDocsPublicGetRequest(
+        "docs",
+        new URL("https://example.com/docs/api/llms.txt"),
+        new Request("https://example.com/docs/api/llms.txt"),
+        { llms: config },
+      ),
+    ).toBe(true);
+  });
+
+  it("renders root and section llms.txt content with progressive disclosure", () => {
+    const content = renderDocsLlmsTxt(
+      [
+        {
+          url: "/docs",
+          title: "Overview",
+          description: "Start here",
+          content: "Welcome.",
+        },
+        {
+          url: "/docs/api/users",
+          title: "Users API",
+          description: "User endpoints",
+          content: "Use the Users API.",
+        },
+        {
+          url: "/docs/guides/auth",
+          title: "Auth Guide",
+          content: "Set up auth.",
+        },
+      ],
+      {
+        siteTitle: "Example Docs",
+        baseUrl: "https://docs.example.com",
+        maxChars: { mode: "warn", chars: 80 },
+        sections: [
+          {
+            title: "API",
+            description: "Endpoint reference",
+            match: "/docs/api/**",
+          },
+        ],
+      },
+    );
+
+    expect(content.llmsTxt).toContain("## Sections");
+    expect(content.llmsTxt).toContain(
+      "- [API](https://docs.example.com/docs/api/llms.txt): Endpoint reference",
+    );
+    expect(content.llmsTxt).toContain("- [Overview](https://docs.example.com/docs.md): Start here");
+    expect(content.llmsTxt).not.toContain("Users API");
+
+    const request = resolveDocsLlmsTxtRequest(
+      new URL("https://docs.example.com/docs/api/llms.txt"),
+      {
+        sections: [{ title: "API", match: "/docs/api/**" }],
+      },
+    );
+    expect(request).not.toBeNull();
+    const selected = request ? selectDocsLlmsTxtContent(content, request) : null;
+    expect(selected?.content).toContain("# Example Docs - API");
+    expect(selected?.content).toContain(
+      "- [Users API](https://docs.example.com/docs/api/users.md)",
+    );
+    expect(selected?.content).not.toContain("Overview");
+
+    const issue = getDocsLlmsTxtMaxCharsIssue("/llms.txt", content.llmsTxt, content.maxChars);
+    expect(issue?.mode).toBe("warn");
   });
 
   it("detects public docs forwarder requests without taking over api/docs", () => {

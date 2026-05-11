@@ -1180,7 +1180,9 @@ function buildAgentSpecRewrites(): NextRewrite[] {
   ];
 }
 
-function buildLlmsTxtRewrites(): NextRewrite[] {
+function buildLlmsTxtRewrites(entry: string): NextRewrite[] {
+  const normalizedEntry = entry.replace(/^\/+|\/+$/g, "") || "docs";
+
   return [
     {
       source: DEFAULT_LLMS_TXT_ROUTE,
@@ -1197,6 +1199,14 @@ function buildLlmsTxtRewrites(): NextRewrite[] {
     {
       source: DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
       destination: "/api/docs?format=llms-full",
+    },
+    {
+      source: `/${normalizedEntry}/:section*/llms.txt`,
+      destination: `/api/docs?format=llms&section=/${normalizedEntry}/:section*/llms.txt`,
+    },
+    {
+      source: `/${normalizedEntry}/:section*/llms-full.txt`,
+      destination: `/api/docs?format=llms-full&section=/${normalizedEntry}/:section*/llms-full.txt`,
     },
   ];
 }
@@ -1433,7 +1443,7 @@ function mergeDocsMarkdownRewrites(
   const autoRewrites = [
     ...buildAgentSpecRewrites(),
     ...buildMcpRewrites(mcp),
-    ...buildLlmsTxtRewrites(),
+    ...buildLlmsTxtRewrites(entry),
     ...buildSkillMdRewrites(),
     ...buildSitemapRewrites(sitemap),
     ...buildDocsMarkdownRewrites(entry),

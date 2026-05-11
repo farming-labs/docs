@@ -499,6 +499,99 @@ Install the package.
     }
   });
 
+  it("serves opt-in section-level llms.txt routes", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-llms-sections-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "api", "users"), { recursive: true });
+    mkdirSync(join(rootDir, "app", "docs", "guides", "auth"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Overview"
+description: "Start here"
+---
+
+# Overview
+
+Welcome.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "api", "users", "page.mdx"),
+      `---
+title: "Users API"
+description: "User endpoints"
+---
+
+# Users API
+
+Use the Users API.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "guides", "auth", "page.mdx"),
+      `---
+title: "Auth Guide"
+---
+
+# Auth Guide
+
+Set up auth.
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      llmsTxt: {
+        enabled: true,
+        siteTitle: "Section Docs",
+        baseUrl: "https://docs.example.com",
+        maxChars: { mode: "warn", chars: 50_000 },
+        sections: [
+          {
+            title: "API",
+            description: "Endpoint reference",
+            match: "/docs/api/**",
+          },
+        ],
+      },
+    });
+
+    const rootResponse = await GET(new Request("http://localhost/llms.txt"));
+    const rootText = await rootResponse.text();
+    expect(rootResponse.status).toBe(200);
+    expect(rootText).toContain("## Sections");
+    expect(rootText).toContain(
+      "- [API](https://docs.example.com/docs/api/llms.txt): Endpoint reference",
+    );
+    expect(rootText).toContain("- [Overview](https://docs.example.com/docs.md): Start here");
+    expect(rootText).not.toContain("Users API");
+
+    const sectionResponse = await GET(new Request("http://localhost/docs/api/llms.txt"));
+    const sectionText = await sectionResponse.text();
+    expect(sectionResponse.status).toBe(200);
+    expect(sectionText).toContain("# Section Docs - API");
+    expect(sectionText).toContain(
+      "- [Users API](https://docs.example.com/docs/api/users.md): User endpoints",
+    );
+    expect(sectionText).not.toContain("Overview");
+
+    const sectionFullResponse = await GET(new Request("http://localhost/docs/api/llms-full.txt"));
+    const sectionFullText = await sectionFullResponse.text();
+    expect(sectionFullResponse.status).toBe(200);
+    expect(sectionFullText).toContain("Use the Users API.");
+    expect(sectionFullText).not.toContain("Welcome.");
+
+    const apiResponse = await GET(
+      new Request("http://localhost/api/docs?format=llms&section=/docs/api/llms.txt"),
+    );
+    expect(await apiResponse.text()).toBe(sectionText);
+  });
+
   it("serves llms.txt by default when llmsTxt is omitted", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-llms-default-route-"));
     tempDirs.push(rootDir);
