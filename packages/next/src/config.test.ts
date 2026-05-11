@@ -762,20 +762,10 @@ describe("withDocs (app dir: src/app vs app)", () => {
       | undefined;
 
     expect(turbopack?.root).toBe(realpathSync(workspaceRoot));
-    expect(turbopack?.resolveAlias?.["@farming-labs/docs"]).toBe(
-      "../../packages/docs/dist/index.mjs",
-    );
-    expect(turbopack?.resolveAlias?.["@farming-labs/next/api"]).toBe(
-      "../../packages/next/dist/api.mjs",
-    );
-    expect(turbopack?.resolveAlias?.["@farming-labs/next/api-reference"]).toBe(
-      "../../packages/next/dist/api-reference.mjs",
-    );
-    expect(turbopack?.resolveAlias?.["@farming-labs/theme/colorful"]).toBe(
-      "../../packages/fumadocs/dist/colorful/index.mjs",
-    );
+    expect(turbopack?.resolveAlias?.["@farming-labs/docs"]).toBe("./packages/docs/src/index.ts");
+    expect(turbopack?.resolveAlias?.["@farming-labs/next/api"]).toBe("./packages/next/src/api.ts");
     expect(turbopack?.resolveAlias?.["@farming-labs/theme/search"]).toBe(
-      "../../packages/fumadocs/dist/search.mjs",
+      "./packages/fumadocs/src/search.ts",
     );
   });
 });
