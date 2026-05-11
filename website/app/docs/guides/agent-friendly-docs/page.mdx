@@ -311,6 +311,23 @@ pnpm exec docs sitemap generate --check
 That gives agents a trustworthy page inventory and lets freshness-aware crawlers avoid re-reading
 unchanged pages.
 
+## Keep Structured Data Stable
+
+Every docs page also ships a hidden Schema.org JSON-LD script. Agents and search crawlers can use it
+for the page title, description, canonical URL, breadcrumbs, and `dateModified` without parsing the
+visible article.
+
+You do not need a config flag for this. What matters is giving the runtime stable inputs:
+
+- use frontmatter `title` and `description` on important pages
+- configure a public base URL through `sitemap.baseUrl`, `llmsTxt.baseUrl`, `robots.baseUrl`, or `ai.docsUrl`
+- keep `.farming-labs/sitemap-manifest.json` fresh when the adapter preloads docs content
+
+The framework escapes JSON-LD before inserting it into the page. For preloaded Astro, SvelteKit,
+Nuxt, and TanStack Start builds, `dateModified` comes from the generated sitemap manifest when that
+manifest is bundled with `_preloadedContent`; otherwise the runtime omits `dateModified` instead of
+claiming the page changed at request time.
+
 ## Write Verification Like You Expect Automation
 
 If you want agents to succeed, write setup pages like someone will actually run them without
@@ -332,12 +349,14 @@ Example:
 - Confirm the `Signature-Agent` response is `text/markdown` and includes `Vary: Accept, Signature-Agent`
 - Fetch `http://localhost:3000/.well-known/agent.json`
 - Fetch `http://localhost:3000/sitemap.md`
+- View the page HTML and confirm it includes `application/ld+json`
 
 ## Troubleshooting
 
 - If `/docs.md` returns `404`, check the docs route wiring.
 - If `Signature-Agent` returns JSON or HTML in Next.js, check that the request is reaching the shared `/api/docs` handler and that no custom rewrite is shadowing the generated docs rewrites.
 - If `/.well-known/agent.json` is missing, confirm the docs API route is mounted.
+- If JSON-LD lacks `dateModified` in a preloaded adapter, run `docs sitemap generate` and make sure `/.farming-labs/sitemap-manifest.json` is included in `_preloadedContent`.
 - If the page renders but search is empty, verify the search provider config.
 ```
 
@@ -398,7 +417,7 @@ What you want to see improve over time:
 - discovery routes passing
 - machine surfaces enabled
 - `robots.txt` allowing docs, markdown, sitemap, skill, MCP, and agent discovery routes
-- metadata quality rising
+- metadata quality rising, which also improves markdown output and JSON-LD
 - **Explicit agent-friendly pages** increasing on the pages that matter most
 - stale generated `agent.md` files dropping toward zero
 
@@ -488,6 +507,7 @@ Before calling a page agent-friendly, ask:
 - does this page need `agent.tokenBudget` before compaction?
 - can an agent find it through `.md`, `Signature-Agent`, JSON-LD structured data, `llms.txt`, sitemaps, `robots.txt`, MCP, and the discovery spec?
 - do canonical `Signature-Agent` reads use the existing `/api/docs` handler instead of a custom wrapper route?
+- if the adapter preloads content, is the sitemap manifest bundled so JSON-LD freshness stays stable?
 - if the site is static, does the build generate `sitemap.xml`, `sitemap.md`, `/.well-known/sitemap.md`, and `robots.txt`?
 - does `docs doctor --agent` agree with the state of the site?
 

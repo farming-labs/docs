@@ -226,6 +226,13 @@ The page `title` and `description` come from frontmatter. The canonical URL uses
 The agent discovery JSON advertises this as `capabilities.structuredData` so agents know the HTML
 page contains structured metadata.
 
+The JSON-LD script is escaped before insertion so page titles and descriptions cannot break out of
+the `application/ld+json` script tag. For filesystem-backed pages, `dateModified` comes from the
+page source file. For preloaded Astro, SvelteKit, Nuxt, and TanStack Start builds, run
+`docs sitemap generate` and include `/.farming-labs/sitemap-manifest.json` in `_preloadedContent`
+so `dateModified` can reuse stable sitemap `lastmod` values. If no stable freshness date is
+available, the runtime omits `dateModified` instead of using the current request time.
+
 ## Sitemaps
 
 Use `sitemap` when you want both crawler-friendly XML and agent-friendly Markdown maps of your docs:
@@ -256,6 +263,7 @@ pnpm exec docs sitemap generate
 
 The command writes `.farming-labs/sitemap-manifest.json` plus public sitemap files. It uses each
 page source file's last git commit date for `lastmod`, with filesystem modified time as a fallback.
+Preloaded adapters can also read the generated manifest for stable JSON-LD `dateModified` values.
 
 Use `routePrefix` to move all sitemap routes together:
 

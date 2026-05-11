@@ -472,11 +472,14 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
     import { createDocsServer } from "@farming-labs/svelte/server";
     import config from "./docs.config";
 
-    const contentFiles = import.meta.glob("/docs/**/*.{md,mdx,svx}", {
-      query: "?raw",
-      import: "default",
-      eager: true,
-    }) as Record<string, string>;
+    const contentFiles = import.meta.glob(
+      ["/docs/**/*.{md,mdx,svx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"],
+      {
+        query: "?raw",
+        import: "default",
+        eager: true,
+      },
+    ) as Record<string, string>;
 
     export const { load, GET, POST } = createDocsServer({
       ...config,
@@ -609,11 +612,14 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
     import { createDocsServer } from "@farming-labs/astro/server";
     import config from "./docs.config";
 
-    const contentFiles = import.meta.glob("/docs/**/*.{md,mdx}", {
-      query: "?raw",
-      import: "default",
-      eager: true,
-    }) as Record<string, string>;
+    const contentFiles = import.meta.glob(
+      ["/docs/**/*.{md,mdx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"],
+      {
+        query: "?raw",
+        import: "default",
+        eager: true,
+      },
+    ) as Record<string, string>;
 
     export const { load, GET, POST } = createDocsServer({
       ...config,

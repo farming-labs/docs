@@ -428,7 +428,7 @@ What it checks:
 - MCP
 - search
 - agent feedback
-- page metadata
+- page metadata that feeds markdown output and JSON-LD structured data
 - explicit agent-friendly pages
 - generated `agent.md` freshness and `agent.compact` defaults
 
@@ -533,8 +533,8 @@ pnpm exec docs doctor --agent --url https://docs.example.com
 ```
 
 Without `--url`, the command only inspects the repository: config, content, route files, metadata,
-and local agent-readiness signals. With `--url`, it also sends real requests to the hosted site and
-adds hosted checks to the report.
+generated sitemap state, and local agent-readiness signals. With `--url`, it also sends real
+requests to the hosted site and adds hosted checks to the report.
 
 The hosted pass probes:
 
@@ -1576,11 +1576,14 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     import config from "./docs.config";
 
     // preloading for production
-    const contentFiles = import.meta.glob("/docs/**/*.{md,mdx,svx}", {
-      query: "?raw",
-      import: "default",
-      eager: true,
-    }) as Record<string, string>;
+    const contentFiles = import.meta.glob(
+      ["/docs/**/*.{md,mdx,svx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"],
+      {
+        query: "?raw",
+        import: "default",
+        eager: true,
+      },
+    ) as Record<string, string>;
 
     export const { load, GET, POST } = createDocsServer({
       ...config,
@@ -1682,11 +1685,14 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     import { createDocsServer } from "@farming-labs/astro/server";
     import config from "./docs.config";
 
-    const contentFiles = import.meta.glob("/docs/**/*.{md,mdx}", {
-      query: "?raw",
-      import: "default",
-      eager: true,
-    }) as Record<string, string>;
+    const contentFiles = import.meta.glob(
+      ["/docs/**/*.{md,mdx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"],
+      {
+        query: "?raw",
+        import: "default",
+        eager: true,
+      },
+    ) as Record<string, string>;
 
     export const { load, GET, POST } = createDocsServer({
       ...config,
