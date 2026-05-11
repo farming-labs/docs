@@ -464,7 +464,7 @@ Expected output:
 ```txt
 @farming-labs/docs doctor — agent
 
-Score: 105/105 (Agent-optimized)
+Score: 100% (Agent-optimized)
 Framework: nextjs • Entry: docs • Content: app/docs
 Explicit agent-friendly pages: 37/37 pages (100%)
 
@@ -572,8 +572,8 @@ For MCP, the doctor performs a Streamable HTTP `initialize` request, checks for 
 - `search_docs`
 - `read_page`
 
-Hosted checks raise the agent report from `105` possible points to `145` possible points. The JSON
-report also includes the normalized `url` field and hosted check IDs such as
+Hosted checks add extra weighted checks, but the top-level score stays normalized to `100%`. The
+JSON report also includes the normalized `url` field and hosted check IDs such as
 `hosted-agent-discovery`, `hosted-llms`, `hosted-sitemap`, `hosted-robots`, `hosted-skill`,
 `hosted-markdown`, and `hosted-mcp`.
 

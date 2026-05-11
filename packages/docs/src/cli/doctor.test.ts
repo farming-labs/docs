@@ -241,7 +241,8 @@ Use this docs site through markdown routes and MCP.
 
     expect(report.framework).toBe("nextjs");
     expect(report.grade).toBe("Agent-optimized");
-    expect(report.score).toBeGreaterThanOrEqual(95);
+    expect(report.score).toBeGreaterThanOrEqual(90);
+    expect(report.maxScore).toBe(100);
     expect(report.coverage.totalPages).toBe(3);
     expect(report.coverage.pagesWithAgentFiles).toBe(1);
     expect(report.coverage.pagesWithAgentBlocks).toBe(1);
@@ -563,7 +564,9 @@ Allow: /
       const report = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
 
       expect(report.url).toBe(`http://127.0.0.1:${port}`);
-      expect(report.maxScore).toBe(145);
+      expect(report.maxScore).toBe(100);
+      expect(report.score).toBeLessThanOrEqual(100);
+      expect(report.score).toBeGreaterThan(75);
       expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(
         "pass",
       );
@@ -669,8 +672,8 @@ Use this docs site through markdown routes and MCP.
       process.chdir(tmpDir);
       const report = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
 
-      expect(report.maxScore).toBe(145);
-      expect(report.score).toBeGreaterThanOrEqual(90);
+      expect(report.maxScore).toBe(100);
+      expect(report.score).toBeLessThan(90);
       expect(report.grade).not.toBe("Agent-optimized");
       expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(
         "fail",
