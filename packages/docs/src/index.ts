@@ -237,10 +237,7 @@ export type {
 export type { DocsCloudAnalyticsOptions } from "./cloud-analytics.js";
 export type { ChangelogEntrySummary, ResolvedChangelogConfig } from "./changelog.js";
 export type { ResolvedDocsI18n, DocsPathMatch } from "./i18n.js";
-export type {
-  DocsPageStructuredDataInput,
-  DocsStructuredDataBreadcrumb,
-} from "./metadata.js";
+export type { DocsPageStructuredDataInput, DocsStructuredDataBreadcrumb } from "./metadata.js";
 export type {
   DocsAgentDiscoverySpecOptions,
   DocsAgentFeedbackDiscoveryConfig,
