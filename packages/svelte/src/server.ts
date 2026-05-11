@@ -42,6 +42,7 @@ import {
   emitDocsAnalyticsEvent,
   formatDocsAskAIPackageHints,
   findDocsMarkdownPage,
+  getDocsLlmsTxtMaxCharsIssue,
   getDocsMarkdownVaryHeader,
   isDocsAgentDiscoveryRequest,
   isDocsSkillRequest,
@@ -49,6 +50,7 @@ import {
   performDocsSearch,
   renderDocsMarkdownDocument,
   renderDocsMarkdownNotFound,
+  renderDocsLlmsTxt,
   renderDocsSkillDocument,
   readDocsSitemapManifestFromContentMap,
   stripGeneratedAgentProvenance,
@@ -57,7 +59,7 @@ import {
   resolveAskAISearchRequestConfig,
   resolveSearchRequestConfig,
   resolveDocsI18n,
-  resolveDocsLlmsTxtFormat,
+  resolveDocsLlmsTxtRequest,
   resolveDocsLocale,
   resolveDocsMarkdownRequest,
   resolveDocsMetadataBaseUrl,
@@ -67,7 +69,7 @@ import {
   resolveDocsSitemapPageLastmod,
   resolveDocsSkillFormat,
   renderDocsPageStructuredDataJson,
-  toDocsMarkdownUrl,
+  selectDocsLlmsTxtContent,
 } from "@farming-labs/docs";
 import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig } from "@farming-labs/docs";
 import {
@@ -785,7 +787,19 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
   const llmsTxtConfig = (config as Record<string, unknown>).llmsTxt as
     | boolean
-    | { enabled?: boolean; baseUrl?: string; siteTitle?: string; siteDescription?: string }
+    | {
+        enabled?: boolean;
+        baseUrl?: string;
+        siteTitle?: string;
+        siteDescription?: string;
+        maxChars?: { mode?: "warn" | "error" | "off"; chars?: number };
+        sections?: Array<{
+          title: string;
+          description?: string;
+          match: string | string[];
+          maxChars?: { mode?: "warn" | "error" | "off"; chars?: number };
+        }>;
+      }
     | undefined;
 
   const llmsBaseUrl = typeof llmsTxtConfig === "object" ? (llmsTxtConfig.baseUrl ?? "") : "";
@@ -802,34 +816,20 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     },
   );
 
-  const llmsCache = new Map<string, { llmsTxt: string; llmsFullTxt: string }>();
+  const llmsCache = new Map<string, ReturnType<typeof renderDocsLlmsTxt>>();
 
   function getLlmsContent(ctx: ReturnType<typeof resolveContextFromPath>) {
     const key = ctx.locale ?? "__default__";
     const cached = llmsCache.get(key);
     if (cached) return cached;
 
-    const pages = getSearchIndex(ctx);
-    let llmsTxt = `# ${llmsTitle}\n\n`;
-    let llmsFullTxt = `# ${llmsTitle}\n\n`;
-    if (llmsDesc) {
-      llmsTxt += `> ${llmsDesc}\n\n`;
-      llmsFullTxt += `> ${llmsDesc}\n\n`;
-    }
-
-    llmsTxt += `## Pages\n\n`;
-    for (const page of pages) {
-      llmsTxt += `- [${page.title}](${llmsBaseUrl}${toDocsMarkdownUrl(page.url)})`;
-      if (page.description) llmsTxt += `: ${page.description}`;
-      llmsTxt += `\n`;
-
-      llmsFullTxt += `## ${page.title}\n\n`;
-      llmsFullTxt += `URL: ${llmsBaseUrl}${page.url}\n\n`;
-      if (page.description) llmsFullTxt += `${page.description}\n\n`;
-      llmsFullTxt += `${page.content}\n\n---\n\n`;
-    }
-
-    const next = { llmsTxt, llmsFullTxt };
+    const next = renderDocsLlmsTxt(getSearchIndex(ctx), {
+      siteTitle: llmsTitle,
+      siteDescription: llmsDesc,
+      baseUrl: llmsBaseUrl,
+      maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
+      sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
+    });
     llmsCache.set(key, next);
     return next;
   }
@@ -866,6 +866,8 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
               baseUrl: llmsBaseUrl || undefined,
               siteTitle: llmsTitle,
               siteDescription: llmsDesc,
+              maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
+              sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
             },
             sitemap: config.sitemap,
             robots: config.robots,
@@ -899,6 +901,8 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
               baseUrl: llmsBaseUrl || undefined,
               siteTitle: llmsTitle,
               siteDescription: llmsDesc,
+              maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
+              sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
             },
             sitemap: config.sitemap,
             robots: config.robots,
@@ -960,8 +964,8 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       });
     }
 
-    const llmsFormat = resolveDocsLlmsTxtFormat(event.url);
-    if (llmsFormat === "llms" || llmsFormat === "llms-full") {
+    const llmsRequest = resolveDocsLlmsTxtRequest(event.url, llmsTxtConfig);
+    if (llmsRequest) {
       if (!llmsEnabled) {
         return new Response("Not Found", {
           status: 404,
@@ -972,16 +976,41 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         });
       }
 
-      const llmsContent = getLlmsContent(ctx);
-      return new Response(
-        llmsFormat === "llms-full" ? llmsContent.llmsFullTxt : llmsContent.llmsTxt,
-        {
+      const selected = selectDocsLlmsTxtContent(getLlmsContent(ctx), llmsRequest);
+      if (!selected) {
+        return new Response("Not Found", {
+          status: 404,
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
-            "Cache-Control": "public, max-age=3600",
+            "X-Robots-Tag": "noindex",
           },
-        },
+        });
+      }
+
+      const budgetIssue = getDocsLlmsTxtMaxCharsIssue(
+        selected.label,
+        selected.content,
+        selected.maxChars,
       );
+      if (budgetIssue?.mode === "error") {
+        return new Response(budgetIssue.message, {
+          status: 500,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "X-Robots-Tag": "noindex",
+          },
+        });
+      }
+      if (budgetIssue?.mode === "warn") {
+        console.warn(`[docs] ${budgetIssue.message}`);
+      }
+
+      return new Response(selected.content, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "public, max-age=3600",
+        },
+      });
     }
 
     const query = event.url.searchParams.get("query")?.trim();

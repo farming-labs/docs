@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, readingTime, agent.compact, metadata, og, apiReference, MCP, sitemap, robots, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, readingTime, agent.compact, metadata, og, apiReference, MCP, llmsTxt, sitemap, robots, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration
@@ -47,6 +47,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
 | `search` | `boolean \| DocsSearchConfig` | `true` | Built-in simple search, Typesense, Algolia, or a custom adapter |
+| `llmsTxt` | `boolean \| LlmsTxtConfig` | `true` | Generated `/llms.txt`, `/llms-full.txt`, and optional section-level llms files |
 | `changelog` | `boolean \| ChangelogConfig` | `false` | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
 | `mcp` | `boolean \| DocsMcpConfig` | enabled | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON document |
@@ -150,6 +151,49 @@ Call out content negotiation when relevant: in Next.js, `/docs/<slug>` remains t
 for browsers, but agents/scripts can send `Accept: text/markdown` to the same URL and receive the
 machine-readable markdown representation without appending `.md`. In other adapters, use
 `/docs/<slug>.md` or the API format route.
+
+---
+
+## llms.txt
+
+`llmsTxt` is enabled by default and serves compact and full machine-readable indexes through the
+existing docs API and public aliases.
+
+```ts
+llmsTxt: {
+  baseUrl: "https://docs.example.com",
+  maxChars: {
+    mode: "warn",
+    chars: 50_000,
+  },
+  sections: [
+    {
+      title: "API",
+      description: "Endpoint, SDK, and integration reference pages.",
+      match: "/docs/api/**",
+      maxChars: {
+        mode: "warn",
+        chars: 25_000,
+      },
+    },
+  ],
+},
+```
+
+Behavior:
+
+- default routes are `/llms.txt`, `/llms-full.txt`, `/.well-known/llms.txt`, and
+  `/.well-known/llms-full.txt`
+- compact `llms.txt` links point to page markdown routes such as `/docs/install.md`
+- `maxChars` defaults to `{ mode: "warn", chars: 50000 }`; `mode: "error"` returns an error for
+  an over-budget compact file, and `mode: "off"` disables the check
+- `sections` is opt-in and has no UI; it only adds route handling and discovery metadata
+- section routes are derived from the first matcher, so `/docs/api/**` creates
+  `/docs/api/llms.txt` and `/docs/api/llms-full.txt`
+- root `/llms.txt` lists configured sections first and leaves matched pages to their section files
+- section `maxChars` inherits the root `llmsTxt.maxChars` when omitted
+
+Use `/docs/customization/llms-txt` for output examples.
 
 ---
 
@@ -529,7 +573,7 @@ feedback: {
 Default behavior:
 
 - `GET /.well-known/agent.json` is the preferred public agent discovery document, with `/.well-known/agent` as fallback and `/api/docs/agent/spec` as the canonical framework route
-- the discovery document includes site identity, locale config, capability flags, search, markdown routes, `llms.txt`, sitemap routes, `robots.route`, root `skill.md` metadata, Skills CLI install metadata, MCP, and feedback routes
+- the discovery document includes site identity, locale config, capability flags, search, markdown routes, root and section `llms.txt` routes, sitemap routes, `robots.route`, root `skill.md` metadata, Skills CLI install metadata, MCP, and feedback routes
 - `GET /skill.md` serves the root `skill.md` file when present, `GET /.well-known/skill.md` is the fallback alias, and `GET /api/docs?format=skill` is the shared API format
 - `GET /api/docs/agent/feedback/schema` returns the machine-readable schema
 - `POST /api/docs/agent/feedback` accepts `{ context?, payload }`

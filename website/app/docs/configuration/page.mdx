@@ -133,7 +133,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
 | `search`      | `boolean \| DocsSearchConfig`  | `true`          | Built-in simple search, Typesense, Algolia, or a custom adapter |
-| `llmsTxt`     | `boolean \| LlmsTxtConfig`     | `true`          | Generated `/llms.txt` and `/llms-full.txt` with markdown page links |
+| `llmsTxt`     | `boolean \| LlmsTxtConfig`     | `true`          | Generated root and optional section-level `llms.txt` files with markdown page links |
 | `changelog`   | `boolean \| ChangelogConfig`   | `false`         | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
 | `mcp`         | `boolean \| DocsMcpConfig`     | enabled         | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions or a hosted OpenAPI JSON |
@@ -1266,11 +1266,11 @@ Agents should discover the configured routes first with `GET /.well-known/agent.
 `GET /.well-known/agent` is the fallback public alias, and `GET /api/docs/agent/spec` is the
 canonical framework route. Generated projects wire all three to the same JSON. The spec includes
 site identity, locale config, capability flags, the search endpoint, markdown route pattern,
-`Accept: text/markdown` contract, `Signature-Agent` support, API and public `llms.txt` routes,
-sitemap routes, the `robots.txt` route, root `skill.md` metadata, Skills CLI install metadata, MCP
-public/well-known endpoints and enabled tools, and the active agent feedback schema and submit
-endpoints. Publish `/robots.txt` with `docs robots generate` when crawlers and AI agents need an
-explicit access policy at the advertised route.
+`Accept: text/markdown` contract, `Signature-Agent` support, API, public, and section-level
+`llms.txt` routes, sitemap routes, the `robots.txt` route, root `skill.md` metadata, Skills CLI
+install metadata, MCP public/well-known endpoints and enabled tools, and the active agent feedback
+schema and submit endpoints. Publish `/robots.txt` with `docs robots generate` when crawlers and AI
+agents need an explicit access policy at the advertised route.
 
 ```ts title="docs.config.ts"
 export default defineDocs({
@@ -1293,7 +1293,7 @@ Default behavior:
 - `GET /api/docs/agent/spec` returns the canonical framework discovery document
 - `GET /skill.md` serves a root `skill.md` file when present, and otherwise returns a generated fallback
 - `GET /.well-known/skill.md` and `GET /api/docs?format=skill` return the same skill document
-- the discovery JSON advertises `agentSpecDefault`, `agentSpecFallback`, `skills.file`, `skills.route`, the `llms.txt` defaults, `robots.route`, and sitemap routes when enabled
+- the discovery JSON advertises `agentSpecDefault`, `agentSpecFallback`, `skills.file`, `skills.route`, the root and section `llms.txt` routes, `robots.route`, and sitemap routes when enabled
 - `GET /api/docs/agent/feedback/schema` returns the feedback schema
 - `POST /api/docs/agent/feedback` accepts `{ context?, payload }`
 - the shared `/api/docs` handler is still the source of truth

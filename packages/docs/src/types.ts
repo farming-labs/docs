@@ -871,6 +871,64 @@ export interface LlmsTxtConfig {
    * Site description shown below the title.
    */
   siteDescription?: string;
+  /**
+   * Character budget for generated compact `llms.txt` files.
+   *
+   * `mode: "warn"` logs a warning when the generated content is over budget.
+   * `mode: "error"` returns an error response for that generated file.
+   * `mode: "off"` disables the budget check.
+   *
+   * @default { mode: "warn", chars: 50000 }
+   */
+  maxChars?: LlmsTxtMaxCharsConfig;
+  /**
+   * Optional section-level llms.txt files for progressive disclosure.
+   *
+   * Each section is matched against public docs URLs, for example
+   * `/docs/api/**` derives `/docs/api/llms.txt` and
+   * `/docs/api/llms-full.txt`.
+   */
+  sections?: LlmsTxtSectionConfig[];
+}
+
+export type LlmsTxtMaxCharsMode = "warn" | "error" | "off";
+
+export interface LlmsTxtMaxCharsConfig {
+  /**
+   * How to handle generated llms.txt content that exceeds `chars`.
+   *
+   * @default "warn"
+   */
+  mode?: LlmsTxtMaxCharsMode;
+  /**
+   * Maximum recommended character count.
+   *
+   * @default 50000
+   */
+  chars?: number;
+}
+
+export interface LlmsTxtSectionConfig {
+  /**
+   * Human-readable section title shown in the root and section files.
+   */
+  title: string;
+  /**
+   * Optional description shown next to the section link in root llms.txt.
+   */
+  description?: string;
+  /**
+   * Public URL matcher for pages included in this section.
+   *
+   * Supported forms include exact paths such as `/docs/reference` and
+   * prefix globs such as `/docs/api/**`.
+   */
+  match: string | string[];
+  /**
+   * Optional section-specific character budget. Inherits `llmsTxt.maxChars`
+   * when omitted.
+   */
+  maxChars?: LlmsTxtMaxCharsConfig;
 }
 
 export interface SitemapXmlConfig {

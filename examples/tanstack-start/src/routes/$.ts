@@ -21,7 +21,10 @@ async function handlePublicDocsRequest(request: Request) {
 
   if (
     (method === "GET" || method === "HEAD") &&
-    isDocsPublicGetRequest(docsEntry, url, request, { sitemap: docsConfig.sitemap })
+    isDocsPublicGetRequest(docsEntry, url, request, {
+      sitemap: docsConfig.sitemap,
+      llms: docsConfig.llmsTxt,
+    })
   ) {
     return docsServer.GET({ request });
   }
