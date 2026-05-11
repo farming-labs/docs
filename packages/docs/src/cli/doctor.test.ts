@@ -254,6 +254,7 @@ Use this docs site through markdown routes and MCP.
     expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "metadata")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "compact")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "compact")?.score).toBe(5);
   });
 
   it("checks the local robots.txt agent policy", async () => {
@@ -323,6 +324,43 @@ Allow: /
     expect(report.checks.find((check) => check.id === "robots")?.detail).toContain(
       "public/robots.txt",
     );
+  });
+
+  it("detects agent.compact in static config parsing when feedback.agent appears first", async () => {
+    writePackageJson(tmpDir, "doctor-static-agent", { next: "16.0.0" });
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.tsx"),
+      `export default {
+  entry: "docs",
+  nav: {
+    title: <span>Docs</span>,
+  },
+  feedback: {
+    agent: {
+      enabled: true,
+    },
+  },
+  agent: {
+    compact: {
+      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+      model: "bear-1.2",
+    },
+  },
+};`,
+      "utf-8",
+    );
+
+    writeDocsPage(tmpDir, path.join("app", "docs"));
+
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const compactCheck = report.checks.find((check) => check.id === "compact");
+
+    expect(compactCheck?.status).toBe("pass");
+    expect(compactCheck?.score).toBe(5);
+    expect(compactCheck?.detail).toContain("agent.compact defaults are configured");
   });
 
   it("probes hosted agent surfaces when --url is provided", async () => {

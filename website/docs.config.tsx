@@ -211,6 +211,14 @@ export default defineDocs({
       },
     },
   },
+  agent: {
+    compact: {
+      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+      model: "bear-1.2",
+      aggressiveness: 0.3,
+      protectJson: true,
+    },
+  },
   mcp: {
     enabled: true,
     name: "@farming-labs/docs",

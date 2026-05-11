@@ -3,6 +3,11 @@ title: "Configuration"
 description: "Everything lives in docs.config.ts"
 icon: "settings"
 order: 3
+related:
+  - /docs/reference
+  - /docs/cli
+  - /docs/customization
+  - /docs/guides/agent-friendly-docs
 ---
 
 # Configuration
@@ -1218,6 +1223,10 @@ Supported fields:
   `GET /api/docs?format=markdown&path=<slug>`, and MCP `read_page()`. The human docs UI still
   renders the normal page.
 </Callout>
+
+Handwritten `agent.md` files are also valid. They count as explicit machine context in
+`docs doctor --agent`, but their freshness is reported as `unknown` because there is no generated
+provenance block to compare against the page source.
 
 The CLI loads `.env` and `.env.local` before resolving the key, so `TOKEN_COMPANY_API_KEY` works
 out of the box. Use positional page args by default:

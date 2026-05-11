@@ -949,7 +949,7 @@ function compactionFreshnessScore(
   if (coverage.unknownGeneratedPages > 0) {
     return {
       status: "pass",
-      score: compactConfigured ? 4 : 3,
+      score: compactConfigured ? 5 : 3,
     };
   }
 
