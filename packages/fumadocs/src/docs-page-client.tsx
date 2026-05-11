@@ -18,6 +18,7 @@ import { useWindowSearchParams } from "./client-location.js";
 import { DocsFeedback } from "./docs-feedback.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
+import { escapeJsonLdForScript } from "./json-ld.js";
 
 interface TOCItem {
   title: string;
@@ -71,6 +72,10 @@ interface DocsPageClientProps {
   readingTimeMap?: Record<string, number>;
   /** Direct reading-time override for the current page. */
   readingTime?: number | null;
+  /** Map of pathname → serialized Schema.org JSON-LD. */
+  structuredDataMap?: Record<string, string>;
+  /** Direct serialized Schema.org JSON-LD override for the current page. */
+  structuredData?: string;
   /**
    * Whether path-based reading time values should render by default.
    * Explicit `readingTime` overrides can still render when this is false.
@@ -349,6 +354,8 @@ export function DocsPageClient({
   lastModified: lastModifiedProp,
   readingTimeMap,
   readingTime: readingTimeProp,
+  structuredDataMap,
+  structuredData: structuredDataProp,
   readingTimeEnabled = false,
   lastUpdatedEnabled = true,
   lastUpdatedPosition = "footer",
@@ -381,6 +388,9 @@ export function DocsPageClient({
     (normalizedPath === changelogBasePath || normalizedPath.startsWith(`${changelogBasePath}/`))
   );
   const matchedReadingTime = readingTimeMap?.[normalizedPath];
+  const structuredDataJson = !isChangelogRoute
+    ? (structuredDataProp ?? structuredDataMap?.[normalizedPath])
+    : undefined;
 
   useEffect(() => {
     if (!analytics) return;
@@ -608,79 +618,87 @@ export function DocsPageClient({
   const renderedChildren = Children.toArray(decoratedChildren);
 
   return (
-    <DocsPage
-      full={false}
-      toc={toc}
-      tableOfContent={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
-      tableOfContentPopover={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
-      breadcrumb={{ enabled: false }}
-      footer={{ enabled: !isChangelogRoute }}
-    >
-      {effectiveBreadcrumbEnabled && (
-        <PathBreadcrumb pathname={pathname} entry={entry} locale={activeLocale} />
+    <>
+      {structuredDataJson && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: escapeJsonLdForScript(structuredDataJson) }}
+        />
       )}
-      {showActionsAboveTitle && (
-        <div className="fd-below-title-block not-prose">
-          <div className="fd-actions-portal" data-actions-alignment={pageActionsAlignment}>
-            <PageActions
-              copyMarkdown={copyMarkdown}
-              openDocs={openDocs}
-              providers={openDocsProviders}
-              alignment={pageActionsAlignment}
-              githubFileUrl={githubFileUrl}
+      <DocsPage
+        full={false}
+        toc={toc}
+        tableOfContent={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
+        tableOfContentPopover={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
+        breadcrumb={{ enabled: false }}
+        footer={{ enabled: !isChangelogRoute }}
+      >
+        {effectiveBreadcrumbEnabled && (
+          <PathBreadcrumb pathname={pathname} entry={entry} locale={activeLocale} />
+        )}
+        {showActionsAboveTitle && (
+          <div className="fd-below-title-block not-prose">
+            <div className="fd-actions-portal" data-actions-alignment={pageActionsAlignment}>
+              <PageActions
+                copyMarkdown={copyMarkdown}
+                openDocs={openDocs}
+                providers={openDocsProviders}
+                alignment={pageActionsAlignment}
+                githubFileUrl={githubFileUrl}
+                analytics={analytics}
+              />
+            </div>
+            {readingTimeBlock}
+          </div>
+        )}
+        {!showReadingTimeAboveTitle && !showReadingTimeBelowTitle ? readingTimeBlock : null}
+        <DocsBody style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 1 }}>{renderedChildren}</div>
+          {titleDecorationsPortal}
+          {!isChangelogRoute && feedbackEnabled && (
+            <DocsFeedback
+              pathname={normalizedPath}
+              entry={entry}
+              locale={activeLocale}
+              question={feedbackQuestion}
+              placeholder={feedbackPlaceholder}
+              positiveLabel={feedbackPositiveLabel}
+              negativeLabel={feedbackNegativeLabel}
+              submitLabel={feedbackSubmitLabel}
+              onFeedback={feedbackOnFeedback}
               analytics={analytics}
             />
-          </div>
-          {readingTimeBlock}
-        </div>
-      )}
-      {!showReadingTimeAboveTitle && !showReadingTimeBelowTitle ? readingTimeBlock : null}
-      <DocsBody style={{ display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1 }}>{renderedChildren}</div>
-        {titleDecorationsPortal}
-        {!isChangelogRoute && feedbackEnabled && (
-          <DocsFeedback
-            pathname={normalizedPath}
-            entry={entry}
-            locale={activeLocale}
-            question={feedbackQuestion}
-            placeholder={feedbackPlaceholder}
-            positiveLabel={feedbackPositiveLabel}
-            negativeLabel={feedbackNegativeLabel}
-            submitLabel={feedbackSubmitLabel}
-            onFeedback={feedbackOnFeedback}
-            analytics={analytics}
-          />
-        )}
-        {showFooter && (
-          <div className="not-prose fd-page-footer">
-            {githubFileUrl && <EditOnGitHub href={githubFileUrl} />}
-            {llmsTxtEnabled && (
-              <span className="fd-llms-txt-links">
-                <a
-                  href={`/llms.txt${llmsLangQuery}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="fd-llms-txt-link"
-                >
-                  llms.txt
-                </a>
-                <a
-                  href={`/llms-full.txt${llmsLangQuery}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="fd-llms-txt-link"
-                >
-                  llms-full.txt
-                </a>
-              </span>
-            )}
-            {showLastUpdatedInFooter && lastModified && (
-              <span className="fd-last-updated-footer">Last updated {lastModified}</span>
-            )}
-          </div>
-        )}
-      </DocsBody>
-    </DocsPage>
+          )}
+          {showFooter && (
+            <div className="not-prose fd-page-footer">
+              {githubFileUrl && <EditOnGitHub href={githubFileUrl} />}
+              {llmsTxtEnabled && (
+                <span className="fd-llms-txt-links">
+                  <a
+                    href={`/llms.txt${llmsLangQuery}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="fd-llms-txt-link"
+                  >
+                    llms.txt
+                  </a>
+                  <a
+                    href={`/llms-full.txt${llmsLangQuery}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="fd-llms-txt-link"
+                  >
+                    llms-full.txt
+                  </a>
+                </span>
+              )}
+              {showLastUpdatedInFooter && lastModified && (
+                <span className="fd-last-updated-footer">Last updated {lastModified}</span>
+              )}
+            </div>
+          )}
+        </DocsBody>
+      </DocsPage>
+    </>
   );
 }

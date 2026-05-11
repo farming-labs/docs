@@ -374,6 +374,16 @@ export function readDocsSitemapManifestFromContentMap(
   }
 }
 
+export function resolveDocsSitemapPageLastmod(
+  manifest: DocsSitemapManifest | null | undefined,
+  url: string,
+): string | undefined {
+  if (!manifest) return undefined;
+  const normalizedUrl = normalizeUrlPath(url);
+  const page = manifest.pages.find((entry) => normalizeUrlPath(entry.url) === normalizedUrl);
+  return normalizeDateOnly(page?.lastmod);
+}
+
 export function createDocsSitemapResponse({
   request,
   sitemap,

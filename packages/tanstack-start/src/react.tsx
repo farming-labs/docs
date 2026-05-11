@@ -72,6 +72,7 @@ export function TanstackDocsPage({
         description={data.description}
         readingTime={data.readingTime}
         lastModified={data.lastModified}
+        structuredData={data.structuredData}
         editOnGithubUrl={data.editOnGithub}
       >
         <Content

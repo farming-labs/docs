@@ -5,6 +5,7 @@ import {
   renderDocsSitemapMarkdown,
   renderDocsSitemapXml,
   resolveDocsSitemapConfig,
+  resolveDocsSitemapPageLastmod,
   resolveDocsSitemapRequest,
 } from "./sitemap.js";
 
@@ -70,5 +71,19 @@ describe("docs sitemap helpers", () => {
     expect(response?.headers.get("content-type")).toContain("application/xml");
     expect(response?.headers.get("etag")).toBeTruthy();
     expect(await response?.text()).toContain("<urlset");
+  });
+
+  it("looks up stable page freshness from a sitemap manifest", () => {
+    const manifest = buildDocsSitemapManifest({
+      entry: "docs",
+      pages: [
+        { url: "/docs", title: "Home", lastmod: "2026-05-08T10:00:00.000Z" },
+        { url: "/docs/configuration", title: "Configuration", lastmod: "2026-05-09" },
+      ],
+    });
+
+    expect(resolveDocsSitemapPageLastmod(manifest, "/docs/configuration")).toBe("2026-05-09");
+    expect(resolveDocsSitemapPageLastmod(manifest, "/docs/missing")).toBeUndefined();
+    expect(resolveDocsSitemapPageLastmod(null, "/docs")).toBeUndefined();
   });
 });

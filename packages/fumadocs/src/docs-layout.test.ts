@@ -114,6 +114,23 @@ describe("createDocsLayout pageActions", () => {
     expect(props?.pageActionsPosition).toBe("below-title");
   });
 
+  it("passes Schema.org structured data through to DocsPageClient", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      sitemap: { enabled: true, baseUrl: "https://docs.example.com" },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+    const map = props?.structuredDataMap as Record<string, string> | undefined;
+
+    expect(map?.["/docs"]).toContain('"@type":"TechArticle"');
+    expect(map?.["/docs"]).toContain('"url":"https://docs.example.com/docs"');
+    expect(map?.["/docs"]).toContain('"headline":"Home"');
+  });
+
   it("does not add an extra display: contents wrapper above the docs layout root", () => {
     const Layout = createDocsLayout({
       entry: "docs",

@@ -22,6 +22,7 @@ const props = defineProps<{
     nextPage?: { name: string; url: string } | null;
     editOnGithub?: string;
     lastModified?: string;
+    structuredData?: string;
     entry?: string;
     slug?: string;
     locale?: string;
@@ -238,6 +239,10 @@ useHead({
   link: () =>
     markdownAlternateHref.value
       ? [{ rel: "alternate", type: "text/markdown", href: markdownAlternateHref.value }]
+      : [],
+  script: () =>
+    props.data.structuredData
+      ? [{ type: "application/ld+json", innerHTML: props.data.structuredData }]
       : [],
 });
 

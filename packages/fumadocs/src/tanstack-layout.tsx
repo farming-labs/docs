@@ -17,6 +17,7 @@ import { resolveReadingTimeOptions } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
+import { escapeJsonLdForScript } from "./json-ld.js";
 
 interface PageNode {
   type: "page";
@@ -97,6 +98,7 @@ export interface TanstackDocsLayoutProps {
   description?: string;
   readingTime?: number | null;
   lastModified?: string;
+  structuredData?: string;
   editOnGithubUrl?: string;
   children: ReactNode;
 }
@@ -321,6 +323,7 @@ export function TanstackDocsLayout({
   description,
   readingTime,
   lastModified,
+  structuredData,
   editOnGithubUrl,
   children,
 }: TanstackDocsLayoutProps) {
@@ -456,7 +459,7 @@ export function TanstackDocsLayout({
     }) as ReactNode;
   }
 
-  return (
+  const layout = (
     <DocsLayout
       tree={resolvedTree}
       nav={{ title: navTitle, url: navUrl }}
@@ -526,5 +529,17 @@ export function TanstackDocsLayout({
         </DocsPageClient>
       </Suspense>
     </DocsLayout>
+  );
+
+  if (!structuredData) return layout;
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: escapeJsonLdForScript(structuredData) }}
+      />
+      {layout}
+    </>
   );
 }

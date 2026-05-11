@@ -414,6 +414,7 @@ function buildAgentSpec({
       search: searchEnabled,
       sitemap: sitemapConfig.enabled,
       robots: robotsEnabled,
+      structuredData: true,
       agentFeedback: feedback.enabled,
       locales: localesEnabled,
     },
@@ -466,6 +467,14 @@ function buildAgentSpec({
       enabled: robotsEnabled,
       route: DEFAULT_ROBOTS_TXT_ROUTE,
       defaultRoute: DEFAULT_ROBOTS_TXT_ROUTE,
+    },
+    structuredData: {
+      enabled: true,
+      format: "application/ld+json",
+      schema: "https://schema.org/TechArticle",
+      fields: ["headline", "description", "url", "dateModified", "breadcrumb"],
+      canonicalUrlField: "url",
+      breadcrumbType: "BreadcrumbList",
     },
     search: {
       enabled: searchEnabled,

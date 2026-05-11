@@ -44,6 +44,30 @@ describe("DocsPageClient llms.txt footer links", () => {
   });
 });
 
+describe("DocsPageClient structured data", () => {
+  it("renders serialized Schema.org JSON-LD for the active docs page", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        structuredDataMap: {
+          "/docs/installation": JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "TechArticle",
+            headline: "</script><script>alert(1)</script>",
+          }),
+        },
+        children: React.createElement("article", null, "Docs"),
+      }),
+    );
+
+    expect(html).toContain('type="application/ld+json"');
+    expect(html).toContain('"@type":"TechArticle"');
+    expect(html).toContain('"headline":"\\u003c/script>');
+    expect(html).not.toContain("</script><script>");
+  });
+});
+
 describe("DocsPageClient reading time", () => {
   it("renders the reading-time row when enabled", () => {
     const html = renderToStaticMarkup(

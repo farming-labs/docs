@@ -60,10 +60,13 @@ import {
   resolveDocsLlmsTxtFormat,
   resolveDocsLocale,
   resolveDocsMarkdownRequest,
+  resolveDocsMetadataBaseUrl,
   resolveDocsPath,
   resolvePageReadingTime,
   resolveReadingTimeOptions,
+  resolveDocsSitemapPageLastmod,
   resolveDocsSkillFormat,
+  renderDocsPageStructuredDataJson,
 } from "@farming-labs/docs";
 import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig } from "@farming-labs/docs";
 import {
@@ -169,6 +172,7 @@ export interface DocsServer {
     nextPage: PageNode | null;
     editOnGithub?: string;
     lastModified: string;
+    structuredData: string;
   }>;
   GET: (context: { request: Request }) => Promise<Response>;
   POST: (context: { request: Request }) => Promise<Response>;
@@ -525,6 +529,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
 
   const preloaded = config._preloadedContent as ContentFileMap | undefined;
+  const preloadedSitemapManifest = readDocsSitemapManifestFromContentMap(preloaded);
 
   const ordering = config.ordering as
     | "alphabetical"
@@ -609,10 +614,12 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     const slug = ctx.slug;
     const isIndex = slug === "";
+    const currentUrl = isIndex ? `/${entry}` : `/${entry}/${slug}`;
 
     let raw: string;
     let relPath: string;
     let lastModified: string;
+    let lastModifiedIso: string | undefined;
 
     if (preloaded) {
       const result = findPageInMap(preloaded, ctx.dirPrefix, slug);
@@ -625,11 +632,16 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       }
       raw = result.raw;
       relPath = result.relPath;
-      lastModified = new Date().toLocaleDateString("en-US", {
+      const manifestLastmod = resolveDocsSitemapPageLastmod(preloadedSitemapManifest, currentUrl);
+      const lastModifiedDate = manifestLastmod
+        ? new Date(`${manifestLastmod}T00:00:00`)
+        : new Date();
+      lastModified = lastModifiedDate.toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
         day: "numeric",
       });
+      lastModifiedIso = manifestLastmod ? `${manifestLastmod}T00:00:00.000Z` : undefined;
     } else {
       let filePath: string | null = null;
       relPath = "";
@@ -671,6 +683,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
       raw = fs.readFileSync(filePath, "utf-8");
       const stat = fs.statSync(filePath);
+      lastModifiedIso = stat.mtime.toISOString();
       lastModified = stat.mtime.toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
@@ -694,7 +707,6 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       ),
     });
 
-    const currentUrl = isIndex ? `/${entry}` : `/${entry}/${slug}`;
     const currentIndex = flatPages.findIndex((p) => p.url === currentUrl);
     const previousPage = currentIndex > 0 ? flatPages[currentIndex - 1] : null;
     const nextPage = currentIndex < flatPages.length - 1 ? flatPages[currentIndex + 1] : null;
@@ -709,13 +721,23 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     const fallbackTitle = isIndex
       ? "Documentation"
       : (slug.split("/").pop()?.replace(/-/g, " ") ?? "Documentation");
+    const title = (data.title as string) ?? fallbackTitle;
+    const description = data.description as string | undefined;
+    const structuredData = renderDocsPageStructuredDataJson({
+      title,
+      description,
+      url: currentUrl,
+      baseUrl: resolveDocsMetadataBaseUrl(config as any),
+      entry,
+      dateModified: lastModifiedIso,
+    });
 
     return {
       tree,
       flatPages,
       url: currentUrl,
-      title: (data.title as string) ?? fallbackTitle,
-      description: data.description as string | undefined,
+      title,
+      description,
       html,
       rawMarkdown: humanRawContent,
       readingTime,
@@ -726,6 +748,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       nextPage,
       editOnGithub,
       lastModified,
+      structuredData,
     };
   }
 
@@ -891,9 +914,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       siteTitle: llmsTitle,
       baseUrl: llmsBaseUrl || url.origin,
       pages: getSearchIndex(ctx),
-      manifest:
-        readDocsSitemapManifestFromContentMap(preloaded) ??
-        readDocsSitemapManifest(rootDir, config.sitemap),
+      manifest: preloadedSitemapManifest ?? readDocsSitemapManifest(rootDir, config.sitemap),
     });
     if (sitemapResponse) return sitemapResponse;
 

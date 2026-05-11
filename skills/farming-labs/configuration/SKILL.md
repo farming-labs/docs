@@ -52,7 +52,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON document |
 | `sitemap` | `boolean \| DocsSitemapConfig` | `false` | Generated `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` |
 | `robots` | `boolean \| DocsRobotsConfig` | enabled for generation when configured | Generated `robots.txt` policy for docs routes, agent-readable files, and common AI crawler user agents |
-| `metadata` | `DocsMetadata` | — | SEO: titleTemplate, description, etc. |
+| `metadata` | `DocsMetadata` | — | SEO and JSON-LD inputs: titleTemplate, description, etc. |
 | `og` | `OGConfig` | — | Dynamic Open Graph images |
 
 ---
@@ -240,6 +240,13 @@ Behavior:
 - `baseUrl` lets the generator include an absolute `Sitemap:` line
 - `docs doctor --agent` validates the resolved robots path and warns when agent routes or common AI
   crawlers are blocked
+
+### Structured data
+
+Every docs page automatically emits Schema.org `TechArticle` JSON-LD with `headline`,
+`description`, canonical `url`, `dateModified`, and `BreadcrumbList`. There is no separate config
+flag. Absolute URLs reuse `sitemap.baseUrl`, `llmsTxt.baseUrl`, `robots.baseUrl`, or `ai.docsUrl`.
+The agent discovery JSON advertises this as `capabilities.structuredData`.
 
 Use the `cli` skill when the user asks about `docs robots generate` flags.
 
