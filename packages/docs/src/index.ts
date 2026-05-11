@@ -213,7 +213,6 @@ export type {
   OrderingItem,
   LastUpdatedConfig,
   ReadingTimeConfig,
-  LlmsTxtConfig,
   CodeBlockCopyData,
   DocsFeedbackValue,
   DocsFeedbackData,

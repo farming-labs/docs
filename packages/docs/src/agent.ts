@@ -228,24 +228,23 @@ export function resolveDocsLlmsTxtSections(
   if (!llms || typeof llms !== "object" || !Array.isArray(llms.sections)) return [];
 
   const rootMaxChars = normalizeLlmsTxtMaxChars(llms.maxChars);
-  return llms.sections
-    .map((section) => {
-      const match = (Array.isArray(section.match) ? section.match : [section.match])
-        .map(normalizeLlmsTxtMatch)
-        .filter(Boolean);
-      if (match.length === 0) return null;
+  return llms.sections.flatMap((section) => {
+    const match = (Array.isArray(section.match) ? section.match : [section.match])
+      .map(normalizeLlmsTxtMatch)
+      .filter(Boolean);
+    if (match.length === 0) return [];
 
-      const route = deriveLlmsTxtSectionRoute(match);
-      return {
-        title: section.title,
-        description: section.description,
-        match,
-        route,
-        fullRoute: deriveLlmsTxtSectionFullRoute(route),
-        maxChars: normalizeLlmsTxtMaxChars(section.maxChars, rootMaxChars),
-      } satisfies DocsLlmsTxtResolvedSection;
-    })
-    .filter((section): section is DocsLlmsTxtResolvedSection => Boolean(section));
+    const route = deriveLlmsTxtSectionRoute(match);
+    const resolved: DocsLlmsTxtResolvedSection = {
+      title: section.title,
+      match,
+      route,
+      fullRoute: deriveLlmsTxtSectionFullRoute(route),
+      maxChars: normalizeLlmsTxtMaxChars(section.maxChars, rootMaxChars),
+    };
+    if (section.description !== undefined) resolved.description = section.description;
+    return [resolved];
+  });
 }
 
 export function matchesDocsLlmsTxtSection(pageUrl: string, section: DocsLlmsTxtResolvedSection) {
@@ -254,10 +253,15 @@ export function matchesDocsLlmsTxtSection(pageUrl: string, section: DocsLlmsTxtR
     const normalized = normalizeLlmsTxtMatch(pattern);
     if (normalized.endsWith("/**")) {
       const prefix = normalizeDocsUrlPath(normalized.slice(0, -"/**".length) || "/");
+      if (prefix === "/") return true;
       return pathname === prefix || pathname.startsWith(`${prefix}/`);
     }
     if (normalized.endsWith("/*")) {
       const prefix = normalizeDocsUrlPath(normalized.slice(0, -"/*".length) || "/");
+      if (prefix === "/") {
+        const directChild = pathname.slice(1);
+        return directChild.length > 0 && !directChild.includes("/");
+      }
       if (!pathname.startsWith(`${prefix}/`)) return false;
       return !pathname.slice(prefix.length + 1).includes("/");
     }

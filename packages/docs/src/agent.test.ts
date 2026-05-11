@@ -9,6 +9,7 @@ import {
   isDocsPublicGetRequest,
   isDocsSkillRequest,
   getDocsLlmsTxtMaxCharsIssue,
+  matchesDocsLlmsTxtSection,
   renderDocsMarkdownDocument,
   renderDocsMarkdownNotFound,
   renderDocsLlmsTxt,
@@ -100,6 +101,20 @@ describe("agent route helpers", () => {
         { llms: config },
       ),
     ).toBe(true);
+
+    const [rootDeepSection] = resolveDocsLlmsTxtSections({
+      sections: [{ title: "Everything", match: "/**" }],
+    });
+    expect(rootDeepSection).toBeDefined();
+    expect(matchesDocsLlmsTxtSection("/docs/api/users", rootDeepSection!)).toBe(true);
+    expect(matchesDocsLlmsTxtSection("/docs", rootDeepSection!)).toBe(true);
+
+    const [rootShallowSection] = resolveDocsLlmsTxtSections({
+      sections: [{ title: "Top Level", match: "/*" }],
+    });
+    expect(rootShallowSection).toBeDefined();
+    expect(matchesDocsLlmsTxtSection("/docs", rootShallowSection!)).toBe(true);
+    expect(matchesDocsLlmsTxtSection("/docs/api", rootShallowSection!)).toBe(false);
   });
 
   it("renders root and section llms.txt content with progressive disclosure", () => {
