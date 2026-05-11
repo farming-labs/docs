@@ -273,6 +273,12 @@ function resolveBool(value: boolean | { enabled?: boolean } | undefined): boolea
   return value.enabled !== false;
 }
 
+function resolveEnabledByDefault(value: boolean | { enabled?: boolean } | undefined): boolean {
+  if (value === undefined) return true;
+  if (typeof value === "boolean") return value;
+  return value.enabled !== false;
+}
+
 function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
   const defaults = {
     enabled: false,
@@ -373,7 +379,7 @@ export function TanstackDocsLayout({
     typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
   const readingTimeEnabled = resolveReadingTimeOptions(config.readingTime).enabled;
 
-  const llmsTxtEnabled = resolveBool(config.llmsTxt);
+  const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
   const staticExport = !!(config as { staticExport?: boolean }).staticExport;
 

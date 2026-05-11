@@ -929,7 +929,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const readingTimeWordsPerMinute = readingTimeOptions.wordsPerMinute ?? 220;
 
   // llms.txt config
-  const llmsTxtEnabled = resolveBool(config.llmsTxt);
+  const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
 
   // Serialize provider icons to HTML strings so they survive the
@@ -1141,6 +1141,12 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
 /** Resolve `boolean | { enabled?: boolean }` to a simple boolean. */
 function resolveBool(v: boolean | { enabled?: boolean } | undefined): boolean {
   if (v === undefined) return false;
+  if (typeof v === "boolean") return v;
+  return v.enabled !== false;
+}
+
+function resolveEnabledByDefault(v: boolean | { enabled?: boolean } | undefined): boolean {
+  if (v === undefined) return true;
   if (typeof v === "boolean") return v;
   return v.enabled !== false;
 }

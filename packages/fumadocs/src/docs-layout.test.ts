@@ -114,6 +114,35 @@ describe("createDocsLayout pageActions", () => {
     expect(props?.pageActionsPosition).toBe("below-title");
   });
 
+  it("enables llms.txt footer links by default", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.llmsTxtEnabled).toBe(true);
+  });
+
+  it("honors llmsTxt opt-out for footer links", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      llmsTxt: false,
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.llmsTxtEnabled).toBe(false);
+  });
+
   it("passes Schema.org structured data through to DocsPageClient", () => {
     const Layout = createDocsLayout({
       entry: "docs",

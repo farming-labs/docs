@@ -55,9 +55,11 @@
 
   let llmsTxtEnabled = $derived.by(() => {
     const cfg = config?.llmsTxt;
+    if (cfg === undefined) return true;
     if (cfg === true) return true;
+    if (cfg === false) return false;
     if (typeof cfg === "object" && cfg !== null) return cfg.enabled !== false;
-    return false;
+    return true;
   });
 
   let copyMarkdownEnabled = $derived.by(() => {

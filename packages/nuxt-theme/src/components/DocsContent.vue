@@ -85,9 +85,11 @@ const showLastModified = computed(() => !!props.data.lastModified);
 
 const llmsTxtEnabled = computed(() => {
   const cfg = props.config?.llmsTxt;
+  if (cfg === undefined) return true;
   if (cfg === true) return true;
+  if (cfg === false) return false;
   if (typeof cfg === "object" && cfg !== null) return (cfg as { enabled?: boolean }).enabled !== false;
-  return false;
+  return true;
 });
 
 const entry = computed(() => (props.data.entry as string) ?? (props.config?.entry as string) ?? "docs");
