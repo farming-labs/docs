@@ -241,7 +241,8 @@ Use this docs site through markdown routes and MCP.
 
     expect(report.framework).toBe("nextjs");
     expect(report.grade).toBe("Agent-optimized");
-    expect(report.score).toBeGreaterThanOrEqual(95);
+    expect(report.score).toBeGreaterThanOrEqual(90);
+    expect(report.maxScore).toBe(100);
     expect(report.coverage.totalPages).toBe(3);
     expect(report.coverage.pagesWithAgentFiles).toBe(1);
     expect(report.coverage.pagesWithAgentBlocks).toBe(1);
@@ -254,6 +255,7 @@ Use this docs site through markdown routes and MCP.
     expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "metadata")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "compact")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "compact")?.score).toBe(5);
   });
 
   it("checks the local robots.txt agent policy", async () => {
@@ -323,6 +325,43 @@ Allow: /
     expect(report.checks.find((check) => check.id === "robots")?.detail).toContain(
       "public/robots.txt",
     );
+  });
+
+  it("detects agent.compact in static config parsing when feedback.agent appears first", async () => {
+    writePackageJson(tmpDir, "doctor-static-agent", { next: "16.0.0" });
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.tsx"),
+      `export default {
+  entry: "docs",
+  nav: {
+    title: <span>Docs</span>,
+  },
+  feedback: {
+    agent: {
+      enabled: true,
+    },
+  },
+  agent: {
+    compact: {
+      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+      model: "bear-1.2",
+    },
+  },
+};`,
+      "utf-8",
+    );
+
+    writeDocsPage(tmpDir, path.join("app", "docs"));
+
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const compactCheck = report.checks.find((check) => check.id === "compact");
+
+    expect(compactCheck?.status).toBe("pass");
+    expect(compactCheck?.score).toBe(5);
+    expect(compactCheck?.detail).toContain("agent.compact defaults are configured");
   });
 
   it("probes hosted agent surfaces when --url is provided", async () => {
@@ -525,7 +564,9 @@ Allow: /
       const report = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
 
       expect(report.url).toBe(`http://127.0.0.1:${port}`);
-      expect(report.maxScore).toBe(145);
+      expect(report.maxScore).toBe(100);
+      expect(report.score).toBeLessThanOrEqual(100);
+      expect(report.score).toBeGreaterThan(75);
       expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(
         "pass",
       );
@@ -631,8 +672,8 @@ Use this docs site through markdown routes and MCP.
       process.chdir(tmpDir);
       const report = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
 
-      expect(report.maxScore).toBe(145);
-      expect(report.score).toBeGreaterThanOrEqual(90);
+      expect(report.maxScore).toBe(100);
+      expect(report.score).toBeLessThan(90);
       expect(report.grade).not.toBe("Agent-optimized");
       expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(
         "fail",

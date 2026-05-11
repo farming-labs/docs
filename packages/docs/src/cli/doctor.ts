@@ -821,6 +821,13 @@ function percentageScore(score: number, maxScore: number): number {
   return Math.round((score / maxScore) * 100);
 }
 
+function normalizedDoctorScore(score: number, maxScore: number): { score: number; maxScore: 100 } {
+  return {
+    score: percentageScore(score, maxScore),
+    maxScore: 100,
+  };
+}
+
 function formatStatus(status: DoctorStatus): string {
   if (status === "pass") return pc.green("PASS");
   if (status === "warn") return pc.yellow("WARN");
@@ -949,7 +956,7 @@ function compactionFreshnessScore(
   if (coverage.unknownGeneratedPages > 0) {
     return {
       status: "pass",
-      score: compactConfigured ? 4 : 3,
+      score: compactConfigured ? 5 : 3,
     };
   }
 
@@ -2138,8 +2145,9 @@ export async function inspectAgentReadiness(
     checks.push(...hosted.checks);
   }
 
-  const score = checks.reduce((total, check) => total + check.score, 0);
-  const maxScore = checks.reduce((total, check) => total + check.maxScore, 0);
+  const rawScore = checks.reduce((total, check) => total + check.score, 0);
+  const rawMaxScore = checks.reduce((total, check) => total + check.maxScore, 0);
+  const { score, maxScore } = normalizedDoctorScore(rawScore, rawMaxScore);
 
   return {
     mode: "agent",
@@ -2150,7 +2158,7 @@ export async function inspectAgentReadiness(
     url: hosted?.baseUrl,
     score,
     maxScore,
-    grade: gradeForAgentScore(percentageScore(score, maxScore)),
+    grade: gradeForAgentScore(score),
     checks,
     coverage,
     recommendations: checks
@@ -2414,8 +2422,9 @@ export async function inspectHumanReadiness(
         ),
   );
 
-  const score = checks.reduce((total, check) => total + check.score, 0);
-  const maxScore = checks.reduce((total, check) => total + check.maxScore, 0);
+  const rawScore = checks.reduce((total, check) => total + check.score, 0);
+  const rawMaxScore = checks.reduce((total, check) => total + check.maxScore, 0);
+  const { score, maxScore } = normalizedDoctorScore(rawScore, rawMaxScore);
 
   return {
     mode: "human",
@@ -2425,7 +2434,7 @@ export async function inspectHumanReadiness(
     contentDir,
     score,
     maxScore,
-    grade: gradeForHumanScore(percentageScore(score, maxScore)),
+    grade: gradeForHumanScore(score),
     checks,
     coverage,
     recommendations: checks
@@ -2438,9 +2447,7 @@ export async function inspectHumanReadiness(
 export function printAgentDoctorReport(report: AgentDoctorReport) {
   console.log(`${pc.bold("@farming-labs/docs doctor")} ${pc.dim("—")} ${pc.bold("agent")}`);
   console.log();
-  console.log(
-    `${pc.bold("Score:")} ${pc.cyan(`${report.score}/${report.maxScore}`)} ${pc.dim(`(${report.grade})`)}`,
-  );
+  console.log(`${pc.bold("Score:")} ${pc.cyan(`${report.score}%`)} ${pc.dim(`(${report.grade})`)}`);
   console.log(
     `${pc.bold("Framework:")} ${report.framework} ${pc.dim("•")} ${pc.bold("Entry:")} ${report.entry ?? "docs"} ${pc.dim("•")} ${pc.bold("Content:")} ${report.contentDir ?? "-"}`,
   );
@@ -2481,9 +2488,7 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
 export function printHumanDoctorReport(report: HumanDoctorReport) {
   console.log(`${pc.bold("@farming-labs/docs doctor")} ${pc.dim("—")} ${pc.bold("site")}`);
   console.log();
-  console.log(
-    `${pc.bold("Score:")} ${pc.cyan(`${report.score}/${report.maxScore}`)} ${pc.dim(`(${report.grade})`)}`,
-  );
+  console.log(`${pc.bold("Score:")} ${pc.cyan(`${report.score}%`)} ${pc.dim(`(${report.grade})`)}`);
   console.log(
     `${pc.bold("Framework:")} ${report.framework} ${pc.dim("•")} ${pc.bold("Entry:")} ${report.entry ?? "docs"} ${pc.dim("•")} ${pc.bold("Content:")} ${report.contentDir ?? "-"}`,
   );

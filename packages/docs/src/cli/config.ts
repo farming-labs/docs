@@ -148,6 +148,45 @@ export function extractObjectLiteral(content: string, key: string): string | und
   return braceEnd === -1 ? undefined : content.slice(braceStart + 1, braceEnd);
 }
 
+function stripLeadingPropertyTrivia(content: string): string {
+  let current = content;
+
+  while (true) {
+    const trimmed = current.replace(/^\s+/, "");
+
+    if (trimmed.startsWith("//")) {
+      const lineEnd = trimmed.indexOf("\n");
+      current = lineEnd === -1 ? "" : trimmed.slice(lineEnd + 1);
+      continue;
+    }
+
+    if (trimmed.startsWith("/*")) {
+      const blockEnd = trimmed.indexOf("*/");
+      current = blockEnd === -1 ? trimmed : trimmed.slice(blockEnd + 2);
+      continue;
+    }
+
+    return trimmed;
+  }
+}
+
+function extractTopLevelObjectLiteral(content: string, key: string): string | undefined {
+  const propertyPattern = new RegExp(`^${escapeRegExp(key)}\\s*:\\s*\\{`);
+
+  for (const property of splitTopLevelProperties(content)) {
+    const normalizedProperty = stripLeadingPropertyTrivia(property);
+    if (!propertyPattern.test(normalizedProperty)) continue;
+
+    const braceStart = normalizedProperty.indexOf("{");
+    if (braceStart === -1) return undefined;
+
+    const braceEnd = findBalancedBraceEnd(normalizedProperty, braceStart);
+    return braceEnd === -1 ? undefined : normalizedProperty.slice(braceStart + 1, braceEnd);
+  }
+
+  return undefined;
+}
+
 export function extractTopLevelConfigObject(content: string): string | undefined {
   for (const marker of ["defineDocs(", "export default"]) {
     const markerIndex = content.indexOf(marker);
@@ -171,7 +210,7 @@ export function extractNestedObjectLiteral(content: string, keys: string[]): str
   let current = extractTopLevelConfigObject(content) ?? content;
 
   for (const key of keys) {
-    const next = extractObjectLiteral(current, key);
+    const next = extractTopLevelObjectLiteral(current, key);
     if (!next) return undefined;
     current = next;
   }

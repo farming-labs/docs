@@ -3,9 +3,20 @@ title: "CLI"
 description: "Scaffold, upgrade, compact agent docs, generate sitemaps and robots.txt, sync search, and run MCP"
 icon: "terminal"
 order: 2
+related:
+  - /docs/configuration
+  - /docs/guides/agent-friendly-docs
+  - /docs/customization/sitemaps
+  - /docs/customization/llms-txt
 ---
 
 # CLI
+
+<Agent>
+Use this page when the user asks about this topic: Scaffold, upgrade, compact agent docs, generate sitemaps and robots.txt, sync search, and run MCP.
+Keep answers grounded in the exact options, routes, commands, and examples documented here.
+If the request moves beyond this page, point to the closest related docs instead of inventing config.
+</Agent>
 
 The `@farming-labs/docs` CLI has a few main jobs:
 
@@ -386,10 +397,12 @@ between:
 - **fresh** generated files
 - **stale** generated files whose page content or compact settings changed
 - **modified** generated files that were edited by hand after generation
+- **unknown** handwritten `agent.md` files that do not carry generated provenance
 - **missing** files for pages that still use the fallback machine-readable page output
 
 `docs doctor --agent` reports those states, and `docs agent compact --stale` only refreshes the
-generated files that are actually stale.
+generated files that are actually stale. Handwritten `agent.md` files still count as explicit
+machine context; the doctor reports them as `unknown` freshness instead of treating them as stale.
 
 Useful checks:
 
@@ -451,9 +464,9 @@ Expected output:
 ```txt
 @farming-labs/docs doctor — agent
 
-Score: 92/105 (Agent-ready)
+Score: 100% (Agent-optimized)
 Framework: nextjs • Entry: docs • Content: app/docs
-Explicit agent-friendly pages: 10/41 pages (24%)
+Explicit agent-friendly pages: 37/37 pages (100%)
 
 PASS Docs API route (10/10)
   Found docs API route at app/api/docs/route.ts.
@@ -461,10 +474,12 @@ PASS Agent discovery spec (5/5)
   Expected discovery endpoints are available through /.well-known/agent.json, /.well-known/agent, and /api/docs?agent=spec.
 PASS Robots agent policy (5/5)
   public/robots.txt advertises agent-readable routes and common AI crawler policy.
-WARN Skill document (3/5)
-  No root skill.md found; the framework will serve the generated fallback at /skill.md.
-WARN Explicit page optimization (5/10)
-  10/41 pages define explicit machine-only context (6 agent.md, 5 Agent blocks, 24% of pages).
+PASS Page metadata (5/5)
+  37/37 pages include descriptions and 8/37 pages include related links (100% described, 22% related).
+PASS Explicit page optimization (10/10)
+  37/37 pages define explicit machine-only context (2 agent.md, 35 Agent blocks, 100% of pages).
+PASS Agent compaction freshness (5/5)
+  0 fresh, 0 stale, 0 modified, 2 unknown, 0 token-budget missing, and 35 other missing pages across compactable docs pages. agent.compact defaults are configured.
 ```
 
 _Sample abbreviated for brevity. Full runs can also include a `Next steps` section with the most
@@ -557,8 +572,8 @@ For MCP, the doctor performs a Streamable HTTP `initialize` request, checks for 
 - `search_docs`
 - `read_page`
 
-Hosted checks raise the agent report from `105` possible points to `145` possible points. The JSON
-report also includes the normalized `url` field and hosted check IDs such as
+Hosted checks add extra weighted checks, but the top-level score stays normalized to `100%`. The
+JSON report also includes the normalized `url` field and hosted check IDs such as
 `hosted-agent-discovery`, `hosted-llms`, `hosted-sitemap`, `hosted-robots`, `hosted-skill`,
 `hosted-markdown`, and `hosted-mcp`.
 
