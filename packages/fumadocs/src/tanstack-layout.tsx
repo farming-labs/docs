@@ -97,6 +97,7 @@ export interface TanstackDocsLayoutProps {
   description?: string;
   readingTime?: number | null;
   lastModified?: string;
+  structuredData?: string;
   editOnGithubUrl?: string;
   children: ReactNode;
 }
@@ -321,6 +322,7 @@ export function TanstackDocsLayout({
   description,
   readingTime,
   lastModified,
+  structuredData,
   editOnGithubUrl,
   children,
 }: TanstackDocsLayoutProps) {
@@ -456,75 +458,84 @@ export function TanstackDocsLayout({
     }) as ReactNode;
   }
 
-  return (
+  const layout = (
     <DocsLayout
-      tree={resolvedTree}
-      nav={{ title: navTitle, url: navUrl }}
-      themeSwitch={locale && i18n?.locales ? { ...themeSwitch, enabled: false } : themeSwitch}
-      sidebar={finalSidebarProps}
-      {...(aiMode === "sidebar-icon" && aiEnabled
-        ? {
-            searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
-          }
-        : {})}
-    >
-      <ColorStyle colors={colors} />
-      <TypographyStyle typography={typography} />
-      <LayoutStyle layout={layoutDimensions} />
-      {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
-      {!staticExport && (
-        <Suspense fallback={null}>
-          <DocsCommandSearch api={docsApiUrl} locale={locale} analytics={analyticsEnabled} />
-        </Suspense>
-      )}
-      {aiEnabled && (
-        <Suspense fallback={null}>
-          <DocsAIFeatures
-            mode={aiMode}
-            api={docsApiUrl}
+        tree={resolvedTree}
+        nav={{ title: navTitle, url: navUrl }}
+        themeSwitch={locale && i18n?.locales ? { ...themeSwitch, enabled: false } : themeSwitch}
+        sidebar={finalSidebarProps}
+        {...(aiMode === "sidebar-icon" && aiEnabled
+          ? {
+              searchToggle: { components: { lg: <SidebarSearchWithAI /> } },
+            }
+          : {})}
+      >
+        <ColorStyle colors={colors} />
+        <TypographyStyle typography={typography} />
+        <LayoutStyle layout={layoutDimensions} />
+        {forcedTheme && <ForcedThemeScript theme={forcedTheme} />}
+        {!staticExport && (
+          <Suspense fallback={null}>
+            <DocsCommandSearch api={docsApiUrl} locale={locale} analytics={analyticsEnabled} />
+          </Suspense>
+        )}
+        {aiEnabled && (
+          <Suspense fallback={null}>
+            <DocsAIFeatures
+              mode={aiMode}
+              api={docsApiUrl}
+              locale={locale}
+              position={aiPosition}
+              floatingStyle={aiFloatingStyle}
+              suggestedQuestions={aiSuggestedQuestions}
+              aiLabel={aiLabel}
+              loaderVariant={aiLoaderVariant}
+              models={aiModels}
+              defaultModelId={aiDefaultModelId}
+              analytics={analyticsEnabled}
+            />
+          </Suspense>
+        )}
+        <Suspense fallback={children}>
+          <DocsPageClient
+            tocEnabled={tocEnabled}
+            tocStyle={tocStyle}
+            breadcrumbEnabled={breadcrumbEnabled}
+            entry={config.entry ?? "docs"}
             locale={locale}
-            position={aiPosition}
-            floatingStyle={aiFloatingStyle}
-            suggestedQuestions={aiSuggestedQuestions}
-            aiLabel={aiLabel}
-            loaderVariant={aiLoaderVariant}
-            models={aiModels}
-            defaultModelId={aiDefaultModelId}
+            copyMarkdown={copyMarkdownEnabled}
+            openDocs={openDocsEnabled}
+            openDocsProviders={openDocsProviders}
+            pageActionsPosition={pageActionsPosition}
+            pageActionsAlignment={pageActionsAlignment}
+            editOnGithubUrl={editOnGithubUrl}
+            lastUpdatedEnabled={lastUpdatedEnabled}
+            lastUpdatedPosition={lastUpdatedPosition}
+            lastModified={lastModified}
+            readingTimeEnabled={readingTimeEnabled}
+            readingTime={typeof readingTime === "number" ? readingTime : undefined}
+            llmsTxtEnabled={llmsTxtEnabled}
+            description={description}
+            feedbackEnabled={feedbackConfig.enabled}
+            feedbackQuestion={feedbackConfig.question}
+            feedbackPlaceholder={feedbackConfig.placeholder}
+            feedbackPositiveLabel={feedbackConfig.positiveLabel}
+            feedbackNegativeLabel={feedbackConfig.negativeLabel}
+            feedbackSubmitLabel={feedbackConfig.submitLabel}
             analytics={analyticsEnabled}
-          />
+          >
+            {children}
+          </DocsPageClient>
         </Suspense>
-      )}
-      <Suspense fallback={children}>
-        <DocsPageClient
-          tocEnabled={tocEnabled}
-          tocStyle={tocStyle}
-          breadcrumbEnabled={breadcrumbEnabled}
-          entry={config.entry ?? "docs"}
-          locale={locale}
-          copyMarkdown={copyMarkdownEnabled}
-          openDocs={openDocsEnabled}
-          openDocsProviders={openDocsProviders}
-          pageActionsPosition={pageActionsPosition}
-          pageActionsAlignment={pageActionsAlignment}
-          editOnGithubUrl={editOnGithubUrl}
-          lastUpdatedEnabled={lastUpdatedEnabled}
-          lastUpdatedPosition={lastUpdatedPosition}
-          lastModified={lastModified}
-          readingTimeEnabled={readingTimeEnabled}
-          readingTime={typeof readingTime === "number" ? readingTime : undefined}
-          llmsTxtEnabled={llmsTxtEnabled}
-          description={description}
-          feedbackEnabled={feedbackConfig.enabled}
-          feedbackQuestion={feedbackConfig.question}
-          feedbackPlaceholder={feedbackConfig.placeholder}
-          feedbackPositiveLabel={feedbackConfig.positiveLabel}
-          feedbackNegativeLabel={feedbackConfig.negativeLabel}
-          feedbackSubmitLabel={feedbackConfig.submitLabel}
-          analytics={analyticsEnabled}
-        >
-          {children}
-        </DocsPageClient>
-      </Suspense>
     </DocsLayout>
+  );
+
+  if (!structuredData) return layout;
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }} />
+      {layout}
+    </>
   );
 }

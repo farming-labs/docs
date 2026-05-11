@@ -326,6 +326,9 @@
   {#if markdownAlternateHref}
     <link rel="alternate" type="text/markdown" href={markdownAlternateHref} />
   {/if}
+  {#if data.structuredData}
+    <script type="application/ld+json">{@html data.structuredData}</script>
+  {/if}
 </svelte:head>
 
 <DocsPage

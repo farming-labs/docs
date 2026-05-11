@@ -1,10 +1,26 @@
 import type {
+  DocsConfig,
   DocsMetadata,
   OGConfig,
   PageFrontmatter,
   PageOpenGraph,
   PageTwitter,
 } from "./types.js";
+
+export interface DocsStructuredDataBreadcrumb {
+  name: string;
+  url: string;
+}
+
+export interface DocsPageStructuredDataInput {
+  title: string;
+  description?: string;
+  url: string;
+  baseUrl?: string;
+  entry?: string;
+  dateModified?: string;
+  breadcrumbs?: DocsStructuredDataBreadcrumb[];
+}
 
 /**
  * Resolve page title using metadata titleTemplate.
@@ -109,4 +125,139 @@ export function buildPageTwitter(
     ...(page.description && { description: page.description }),
     images: [url],
   };
+}
+
+function normalizeBaseUrl(value?: string): string | undefined {
+  if (!value) return undefined;
+
+  try {
+    const url = new URL(value);
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return undefined;
+  }
+}
+
+function absolutizeUrl(url: string, baseUrl?: string): string {
+  const base = normalizeBaseUrl(baseUrl);
+  if (!base) return url;
+
+  try {
+    return new URL(url, `${base}/`).toString();
+  } catch {
+    return url;
+  }
+}
+
+function titleFromSegment(segment: string): string {
+  return segment
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function normalizeRoutePath(url: string): string {
+  try {
+    const parsed = new URL(url, "https://farming-labs.local");
+    return parsed.pathname.replace(/\/+$/, "") || "/";
+  } catch {
+    return `/${url.replace(/^\/+/, "")}`.replace(/\/+$/, "") || "/";
+  }
+}
+
+function buildDefaultBreadcrumbs(
+  input: DocsPageStructuredDataInput,
+): DocsStructuredDataBreadcrumb[] {
+  const routePath = normalizeRoutePath(input.url);
+  const entry = (input.entry ?? "docs").replace(/^\/+|\/+$/g, "") || "docs";
+  const segments = routePath.split("/").filter(Boolean);
+  const entryParts = entry.split("/").filter(Boolean);
+  const contentSegments =
+    segments.slice(0, entryParts.length).join("/") === entryParts.join("/")
+      ? segments.slice(entryParts.length)
+      : segments;
+
+  const breadcrumbs: DocsStructuredDataBreadcrumb[] = [
+    {
+      name: titleFromSegment(entryParts[entryParts.length - 1] ?? "Docs"),
+      url: `/${entry}`,
+    },
+  ];
+
+  let current = `/${entry}`;
+  contentSegments.forEach((segment, index) => {
+    current = `${current}/${segment}`.replace(/\/+/g, "/");
+    breadcrumbs.push({
+      name: index === contentSegments.length - 1 ? input.title : titleFromSegment(segment),
+      url: current,
+    });
+  });
+
+  return breadcrumbs;
+}
+
+function normalizeDateModified(value?: string): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toISOString();
+}
+
+/**
+ * Resolve the public docs site URL from existing agent-facing config.
+ *
+ * The framework intentionally reuses `sitemap.baseUrl`, `llmsTxt.baseUrl`,
+ * `robots.baseUrl`, or `ai.docsUrl` instead of requiring another setting.
+ */
+export function resolveDocsMetadataBaseUrl(config: DocsConfig): string | undefined {
+  const sitemapBaseUrl = typeof config.sitemap === "object" ? config.sitemap.baseUrl : undefined;
+  const llmsBaseUrl = typeof config.llmsTxt === "object" ? config.llmsTxt.baseUrl : undefined;
+  const robotsBaseUrl = typeof config.robots === "object" ? config.robots.baseUrl : undefined;
+  return normalizeBaseUrl(sitemapBaseUrl ?? llmsBaseUrl ?? robotsBaseUrl ?? config.ai?.docsUrl);
+}
+
+/**
+ * Build Schema.org JSON-LD for a docs page.
+ *
+ * The shape follows Vercel's agent readability guidance: a `TechArticle`
+ * with title, description, canonical URL, freshness, and breadcrumbs.
+ */
+export function buildDocsPageStructuredData(input: DocsPageStructuredDataInput) {
+  const breadcrumbs = input.breadcrumbs?.length
+    ? input.breadcrumbs
+    : buildDefaultBreadcrumbs(input);
+
+  const result: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    headline: input.title,
+    name: input.title,
+    url: absolutizeUrl(input.url, input.baseUrl),
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": absolutizeUrl(input.url, input.baseUrl),
+    },
+    breadcrumb: {
+      "@type": "BreadcrumbList",
+      itemListElement: breadcrumbs.map((item, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: item.name,
+        item: absolutizeUrl(item.url, input.baseUrl),
+      })),
+    },
+  };
+
+  if (input.description) result.description = input.description;
+
+  const dateModified = normalizeDateModified(input.dateModified);
+  if (dateModified) result.dateModified = dateModified;
+
+  return result;
+}
+
+/**
+ * Serialize Schema.org JSON-LD for safe insertion into a `<script>` tag.
+ */
+export function renderDocsPageStructuredDataJson(input: DocsPageStructuredDataInput): string {
+  return JSON.stringify(buildDocsPageStructuredData(input)).replace(/</g, "\\u003c");
 }

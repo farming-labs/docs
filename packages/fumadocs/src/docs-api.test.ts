@@ -1380,6 +1380,7 @@ title: "Home"
         localeParam: string;
       };
       robots: { enabled: boolean; route: string; defaultRoute: string };
+      structuredData: Record<string, unknown>;
       skills: {
         enabled: boolean;
         file: string;
@@ -1431,6 +1432,7 @@ title: "Home"
       search: true,
       sitemap: false,
       robots: true,
+      structuredData: true,
       agentFeedback: true,
       locales: true,
     });
@@ -1472,6 +1474,14 @@ title: "Home"
       enabled: true,
       route: "/robots.txt",
       defaultRoute: "/robots.txt",
+    });
+    expect(spec.structuredData).toEqual({
+      enabled: true,
+      format: "application/ld+json",
+      schema: "https://schema.org/TechArticle",
+      fields: ["headline", "description", "url", "dateModified", "breadcrumb"],
+      canonicalUrlField: "url",
+      breadcrumbType: "BreadcrumbList",
     });
     expect(spec.skills).toEqual({
       enabled: true,
@@ -1562,6 +1572,7 @@ title: "Home"
       llms: Record<string, string | boolean>;
       search: { enabled: boolean; endpoint: string; method: string };
       robots: { enabled: boolean; route: string; defaultRoute: string };
+      structuredData: Record<string, unknown>;
       skills: {
         enabled: boolean;
         file: string;
@@ -1606,6 +1617,7 @@ title: "Home"
       search: false,
       sitemap: false,
       robots: true,
+      structuredData: true,
       agentFeedback: false,
       locales: false,
     });
@@ -1634,6 +1646,11 @@ title: "Home"
       enabled: true,
       route: "/robots.txt",
       defaultRoute: "/robots.txt",
+    });
+    expect(spec.structuredData).toMatchObject({
+      enabled: true,
+      format: "application/ld+json",
+      schema: "https://schema.org/TechArticle",
     });
     expect(spec.skills).toMatchObject({
       enabled: true,

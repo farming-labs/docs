@@ -62,10 +62,11 @@ The spec is generated from `docs.config` and includes:
 
 - site title, description, docs entry, and base URL
 - configured locales and the `lang`/`locale` query parameters
-- capability flags for markdown, MCP, search, feedback, skills, `llms.txt`, and sitemap
+- capability flags for markdown, structured data, MCP, search, feedback, skills, `llms.txt`, and sitemap
 - shared docs API route
 - search endpoint and query parameter
 - markdown route patterns, `Accept: text/markdown`, and `Signature-Agent` support
+- JSON-LD structured data schema and fields
 - `llms.txt` and `llms-full.txt` routes
 - `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` routes when enabled
 - `skill.md` route, well-known alias, API format, and root file convention

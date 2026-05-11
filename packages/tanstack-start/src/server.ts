@@ -30,10 +30,12 @@ import {
   resolveDocsLlmsTxtFormat,
   resolveDocsLocale,
   resolveDocsMarkdownRequest,
+  resolveDocsMetadataBaseUrl,
   resolveDocsPath,
   resolvePageReadingTime,
   resolveReadingTimeOptions,
   resolveDocsSkillFormat,
+  renderDocsPageStructuredDataJson,
 } from "@farming-labs/docs";
 import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig } from "@farming-labs/docs";
 import {
@@ -132,6 +134,7 @@ export interface DocsServerLoadResult {
   nextPage: PageNode | null;
   editOnGithub?: string;
   lastModified: string;
+  structuredData: string;
 }
 
 export interface DocsServer {
@@ -603,6 +606,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     let raw: string;
     let relPath: string;
     let lastModified: string;
+    let lastModifiedIso: string;
 
     if (preloaded) {
       const result = findPageInMap(preloaded, ctx.dirPrefix, slug);
@@ -619,6 +623,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
         month: "long",
         day: "numeric",
       });
+      lastModifiedIso = new Date().toISOString();
     } else {
       let filePath: string | null = null;
       relPath = "";
@@ -659,6 +664,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
 
       raw = fs.readFileSync(filePath, "utf-8");
       const stat = fs.statSync(filePath);
+      lastModifiedIso = stat.mtime.toISOString();
       lastModified = stat.mtime.toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
@@ -689,12 +695,23 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       ? "Documentation"
       : (slug.split("/").pop()?.replace(/-/g, " ") ?? "Documentation");
 
+    const title = (data.title as string) ?? fallbackTitle;
+    const description = data.description as string | undefined;
+    const structuredData = renderDocsPageStructuredDataJson({
+      title,
+      description,
+      url: currentUrl,
+      baseUrl: resolveDocsMetadataBaseUrl(config as any),
+      entry,
+      dateModified: lastModifiedIso,
+    });
+
     return {
       tree,
       flatPages,
       url: currentUrl,
-      title: (data.title as string) ?? fallbackTitle,
-      description: data.description as string | undefined,
+      title,
+      description,
       rawContent: content,
       readingTime,
       sourcePath: toSourcePath(ctx.contentDirRel, relPath, rootDir),
@@ -705,6 +722,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       nextPage,
       editOnGithub,
       lastModified,
+      structuredData,
     };
   }
 

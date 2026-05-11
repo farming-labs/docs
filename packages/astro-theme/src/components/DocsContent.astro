@@ -147,6 +147,7 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
   <title>{data.title}{titleSuffix}</title>
   {data.description && <meta name="description" content={data.description} />}
   {markdownAlternateHref && <link rel="alternate" type="text/markdown" href={markdownAlternateHref} />}
+  {data.structuredData && <script type="application/ld+json" set:html={data.structuredData} />}
 </head>
 
 <DocsPage

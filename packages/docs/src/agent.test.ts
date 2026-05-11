@@ -305,10 +305,19 @@ describe("agent route helpers", () => {
     expect(spec.sitemap.xml.route).toBe("/sitemap.xml");
     expect(spec.sitemap.markdown.wellKnownRoute).toBe("/.well-known/sitemap.md");
     expect(spec.capabilities.robots).toBe(true);
+    expect(spec.capabilities.structuredData).toBe(true);
     expect(spec.robots).toEqual({
       enabled: true,
       route: "/robots.txt",
       defaultRoute: "/robots.txt",
+    });
+    expect(spec.structuredData).toEqual({
+      enabled: true,
+      format: "application/ld+json",
+      schema: "https://schema.org/TechArticle",
+      fields: ["headline", "description", "url", "dateModified", "breadcrumb"],
+      canonicalUrlField: "url",
+      breadcrumbType: "BreadcrumbList",
     });
   });
 });

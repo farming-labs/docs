@@ -8,9 +8,11 @@ import {
   applySidebarFolderIndexBehavior,
   buildPageOpenGraph,
   buildPageTwitter,
+  renderDocsPageStructuredDataJson,
   resolveChangelogConfig,
   resolveDocsAgentMdxContent,
   resolveDocsAnalyticsConfig,
+  resolveDocsMetadataBaseUrl,
   resolvePageSidebarFolderIndexBehavior,
   toDocsMarkdownUrl,
 } from "@farming-labs/docs";
@@ -550,6 +552,58 @@ function buildReadingTimeMap(
   return map;
 }
 
+function findDocsPageFile(dir: string): string | undefined {
+  return ["page.mdx", "page.md"].map((fileName) => path.join(dir, fileName)).find(fs.existsSync);
+}
+
+function buildStructuredDataMap(
+  config: DocsConfig,
+  ctx: DocsLocaleContext,
+): Record<string, string> {
+  const docsDir = ctx.docsDir;
+  const map: Record<string, string> = {};
+  const excludedDirs = getExcludedDocsDirs(config, ctx);
+  const baseUrl = resolveDocsMetadataBaseUrl(config);
+
+  function scan(dir: string, slugParts: string[]) {
+    if (!fs.existsSync(dir)) return;
+    if (isExcludedDir(dir, excludedDirs)) return;
+
+    const pagePath = findDocsPageFile(dir);
+    if (pagePath) {
+      const source = fs.readFileSync(pagePath, "utf-8");
+      const { data } = matter(source);
+      const route =
+        slugParts.length === 0 ? `/${ctx.entryPath}` : `/${ctx.entryPath}/${slugParts.join("/")}`;
+      const title =
+        typeof data.title === "string"
+          ? data.title
+          : slugParts.at(-1)?.replace(/-/g, " ") || "Documentation";
+      const description = typeof data.description === "string" ? data.description : undefined;
+      const stat = fs.statSync(pagePath);
+
+      map[route] = renderDocsPageStructuredDataJson({
+        title,
+        description,
+        url: withLangInUrl(route, ctx.locale),
+        baseUrl,
+        entry: ctx.entryPath,
+        dateModified: stat.mtime.toISOString(),
+      });
+    }
+
+    for (const name of fs.readdirSync(dir)) {
+      const full = path.join(dir, name);
+      if (fs.statSync(full).isDirectory()) {
+        scan(full, [...slugParts, name]);
+      }
+    }
+  }
+
+  scan(docsDir, []);
+  return map;
+}
+
 // ─── createDocsMetadata ──────────────────────────────────────────────
 
 /**
@@ -960,6 +1014,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
     enabledByDefault: readingTimeEnabledByDefault,
     wordsPerMinute: readingTimeWordsPerMinute,
   });
+  const structuredDataMap = buildStructuredDataMap(config, localeContext);
   const readingTimeEnabled = readingTimeEnabledByDefault || Object.keys(readingTimeMap).length > 0;
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
@@ -1064,6 +1119,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             lastUpdatedPosition={lastUpdatedPosition}
             readingTimeEnabled={readingTimeEnabled}
             readingTimeMap={readingTimeMap}
+            structuredDataMap={structuredDataMap}
             llmsTxtEnabled={llmsTxtEnabled}
             descriptionMap={descriptionMap}
             feedbackEnabled={feedbackConfig.enabled}

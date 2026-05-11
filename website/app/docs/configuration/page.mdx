@@ -139,7 +139,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `sitemap`     | `boolean \| DocsSitemapConfig` | `false`         | Generated `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` |
 | `robots`     | `boolean \| DocsRobotsConfig`  | enabled when configured | Generated `robots.txt` policy for docs and agent-readable routes |
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
-| `metadata`    | `DocsMetadata`                 | —               | SEO metadata template                              |
+| `metadata`    | `DocsMetadata`                 | —               | SEO metadata template and JSON-LD page inputs      |
 | `og`          | `OGConfig`                     | —               | Dynamic Open Graph images (see [API Reference](/docs/reference#ogconfig)) |
 
 For sidebar folder parents that have their own landing page, use
@@ -214,6 +214,17 @@ related:
 ```
 
 See [Agent Primitive](/docs/customization/agent-primitive) for the page-level authoring model.
+
+## Structured data
+
+Every docs page automatically includes Schema.org JSON-LD using `TechArticle`,
+`BreadcrumbList`, canonical URL, and `dateModified`. This is a hidden
+`application/ld+json` script, not a visible component and not a separate route.
+
+The page `title` and `description` come from frontmatter. The canonical URL uses
+`sitemap.baseUrl`, `llmsTxt.baseUrl`, `robots.baseUrl`, or `ai.docsUrl` when one is configured.
+The agent discovery JSON advertises this as `capabilities.structuredData` so agents know the HTML
+page contains structured metadata.
 
 ## Sitemaps
 
