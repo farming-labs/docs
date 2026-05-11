@@ -148,17 +148,40 @@ export function extractObjectLiteral(content: string, key: string): string | und
   return braceEnd === -1 ? undefined : content.slice(braceStart + 1, braceEnd);
 }
 
+function stripLeadingPropertyTrivia(content: string): string {
+  let current = content;
+
+  while (true) {
+    const trimmed = current.replace(/^\s+/, "");
+
+    if (trimmed.startsWith("//")) {
+      const lineEnd = trimmed.indexOf("\n");
+      current = lineEnd === -1 ? "" : trimmed.slice(lineEnd + 1);
+      continue;
+    }
+
+    if (trimmed.startsWith("/*")) {
+      const blockEnd = trimmed.indexOf("*/");
+      current = blockEnd === -1 ? trimmed : trimmed.slice(blockEnd + 2);
+      continue;
+    }
+
+    return trimmed;
+  }
+}
+
 function extractTopLevelObjectLiteral(content: string, key: string): string | undefined {
-  const propertyPattern = new RegExp(`^\\s*${escapeRegExp(key)}\\s*:\\s*\\{`);
+  const propertyPattern = new RegExp(`^${escapeRegExp(key)}\\s*:\\s*\\{`);
 
   for (const property of splitTopLevelProperties(content)) {
-    if (!propertyPattern.test(property)) continue;
+    const normalizedProperty = stripLeadingPropertyTrivia(property);
+    if (!propertyPattern.test(normalizedProperty)) continue;
 
-    const braceStart = property.indexOf("{");
+    const braceStart = normalizedProperty.indexOf("{");
     if (braceStart === -1) return undefined;
 
-    const braceEnd = findBalancedBraceEnd(property, braceStart);
-    return braceEnd === -1 ? undefined : property.slice(braceStart + 1, braceEnd);
+    const braceEnd = findBalancedBraceEnd(normalizedProperty, braceStart);
+    return braceEnd === -1 ? undefined : normalizedProperty.slice(braceStart + 1, braceEnd);
   }
 
   return undefined;

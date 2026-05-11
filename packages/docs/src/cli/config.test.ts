@@ -152,4 +152,34 @@ describe("property readers", () => {
       'apiKeyEnv: "TOKEN_{COMPANY}_API_KEY"',
     );
   });
+
+  it("extracts top-level config blocks that are preceded by comments", () => {
+    const content = `
+      export default defineDocs({
+        feedback: {
+          agent: {
+            enabled: true,
+          },
+        },
+        // Global machine-doc defaults.
+        // Keep these readable for automation.
+        agent: {
+          compact: {
+            apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+          },
+        },
+        /*
+         * Generated sitemap settings.
+         */
+        sitemap: {
+          enabled: true,
+        },
+      });
+    `;
+
+    expect(extractNestedObjectLiteral(content, ["agent", "compact"])).toContain(
+      'apiKeyEnv: "TOKEN_COMPANY_API_KEY"',
+    );
+    expect(extractNestedObjectLiteral(content, ["sitemap"])).toContain("enabled: true");
+  });
 });
