@@ -8,6 +8,7 @@ export const { GET, POST } = createDocsAPI({
   changelog: docsConfig.changelog,
   feedback: docsConfig.feedback,
   mcp: docsConfig.mcp,
+  llmsTxt: docsConfig.llmsTxt,
   search: docsConfig.search,
   analytics: docsConfig.analytics,
   observability: docsConfig.observability,

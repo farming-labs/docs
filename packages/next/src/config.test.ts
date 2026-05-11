@@ -618,6 +618,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(route).not.toContain("resolveNextProjectRoot");
     expect(route).not.toContain("rootDir,");
     expect(route).toContain("changelog: docsConfig.changelog");
+    expect(route).toContain("llmsTxt: docsConfig.llmsTxt");
     expect(route).toContain("search: docsConfig.search");
     expect(route).toContain("ai: docsConfig.ai");
   });

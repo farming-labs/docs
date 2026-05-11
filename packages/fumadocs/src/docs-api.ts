@@ -135,6 +135,8 @@ interface DocsAPIOptions {
   feedback?: boolean | FeedbackConfig;
   /** MCP configuration used for the agent discovery spec. */
   mcp?: boolean | DocsMcpConfig;
+  /** llms.txt configuration. Enabled by default; set false to opt out. */
+  llmsTxt?: boolean | LlmsTxtOptions;
   /** Sitemap configuration used for sitemap.xml and sitemap.md. */
   sitemap?: boolean | DocsSitemapConfig;
   /** Robots.txt generation policy used for the agent discovery spec. */
@@ -2272,6 +2274,7 @@ async function handleAskAI(
 // ─── llms.txt generation ────────────────────────────────────────────
 
 interface LlmsTxtOptions {
+  enabled?: boolean;
   siteTitle?: string;
   siteDescription?: string;
   baseUrl?: string;
@@ -2283,11 +2286,25 @@ function readLlmsTxtConfig(root: string): LlmsTxtOptions & { enabled: boolean } 
     if (fs.existsSync(configPath)) {
       try {
         const content = fs.readFileSync(configPath, "utf-8");
+        const navTitleMatch = content.match(/nav\s*:\s*\{[^}]*title\s*:\s*["']([^"']+)["']/s);
 
-        if (!content.includes("llmsTxt")) return { enabled: false };
+        if (!content.includes("llmsTxt")) {
+          return {
+            enabled: true,
+            siteTitle: navTitleMatch?.[1],
+          };
+        }
 
         const isBoolTrue = /llmsTxt\s*:\s*true/.test(content);
-        if (isBoolTrue) return { enabled: true };
+        if (isBoolTrue) {
+          return {
+            enabled: true,
+            siteTitle: navTitleMatch?.[1],
+          };
+        }
+
+        const isBoolFalse = /llmsTxt\s*:\s*false/.test(content);
+        if (isBoolFalse) return { enabled: false };
 
         const enabledMatch = content.match(/llmsTxt\s*:\s*\{[^}]*enabled\s*:\s*(true|false)/s);
         if (enabledMatch && enabledMatch[1] === "false") return { enabled: false };
@@ -2300,8 +2317,6 @@ function readLlmsTxtConfig(root: string): LlmsTxtOptions & { enabled: boolean } 
           /llmsTxt\s*:\s*\{[^}]*siteDescription\s*:\s*["']([^"']+)["']/s,
         );
 
-        const navTitleMatch = content.match(/nav\s*:\s*\{[^}]*title\s*:\s*["']([^"']+)["']/s);
-
         return {
           enabled: true,
           baseUrl: baseUrlMatch?.[1],
@@ -2313,7 +2328,23 @@ function readLlmsTxtConfig(root: string): LlmsTxtOptions & { enabled: boolean } 
       }
     }
   }
-  return { enabled: false };
+  return { enabled: true };
+}
+
+function resolveLlmsTxtConfig(
+  input: boolean | LlmsTxtOptions | undefined,
+  fallback: LlmsTxtOptions & { enabled: boolean },
+): LlmsTxtOptions & { enabled: boolean } {
+  if (input === undefined) return fallback;
+  if (typeof input === "boolean") {
+    return input ? { ...fallback, enabled: true } : { enabled: false };
+  }
+
+  return {
+    ...fallback,
+    ...input,
+    enabled: input.enabled ?? true,
+  };
 }
 
 function readSitemapConfig(root: string): boolean | DocsSitemapConfig | undefined {
@@ -2449,7 +2480,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const searchConfig = options?.search;
 
   // Read llms.txt config
-  const llmsConfig = readLlmsTxtConfig(root);
+  const llmsConfig = resolveLlmsTxtConfig(options?.llmsTxt, readLlmsTxtConfig(root));
   const sitemapConfig = options?.sitemap ?? readSitemapConfig(root);
   const robotsConfig = options?.robots ?? readRobotsConfig(root);
   const mcpConfig = resolveDocsMcpConfig(options?.mcp ?? readMcpConfig(root), {
@@ -2850,6 +2881,18 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       }
 
       const llmsFormat = resolveLlmsTxtFormat(url);
+      if (llmsFormat === "llms" || llmsFormat === "llms-full") {
+        if (!llmsConfig.enabled) {
+          return new Response("Not Found", {
+            status: 404,
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
+      }
+
       if (llmsFormat === "llms") {
         await emitDocsAnalyticsEvent(analytics, {
           type: "llms_request",

@@ -2456,7 +2456,6 @@ export interface DocsConfig {
    * @example
    * ```ts
    * llmsTxt: {
-   *   enabled: true,
    *   baseUrl: "https://docs.example.com",
    * }
    * ```
