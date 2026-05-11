@@ -499,6 +499,71 @@ Install the package.
     }
   });
 
+  it("serves llms.txt by default when llmsTxt is omitted", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-llms-default-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "getting-started"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "getting-started", "page.mdx"),
+      `---
+title: "Getting Started"
+description: "First steps"
+---
+
+# Getting Started
+
+Start here.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  nav: {
+    title: "Default Docs",
+  },
+};`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+    });
+
+    const response = await GET(new Request("http://localhost/llms.txt"));
+    const text = await response.text();
+    expect(response.status).toBe(200);
+    expect(text).toContain("# Default Docs");
+    expect(text).toContain("- [Getting Started](/docs/getting-started.md): First steps");
+  });
+
+  it("honors llmsTxt opt-out in the shared docs api handler", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-llms-disabled-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  llmsTxt: false,
+};`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+    });
+
+    const response = await GET(new Request("http://localhost/llms.txt"));
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("Not Found");
+  });
+
   it("serves a root skill.md file before falling back to generated skill content", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-root-skill-route-"));
     tempDirs.push(rootDir);
@@ -1630,7 +1695,7 @@ title: "Home"
       markdownRoutes: true,
       agentMdOverrides: true,
       agentBlocks: true,
-      llms: false,
+      llms: true,
       skills: true,
       mcp: false,
       search: false,
@@ -1646,7 +1711,7 @@ title: "Home"
       rootPage: "/guides.md",
     });
     expect(spec.llms).toEqual({
-      enabled: false,
+      enabled: true,
       defaultTxt: "/llms.txt",
       defaultFull: "/llms-full.txt",
       txt: "/api/docs?format=llms",

@@ -7,7 +7,7 @@ order: 5.8
 
 # llms.txt
 
-Serve <HoverLink href="https://llmstxt.org" title="llms.txt" description="An open convention for exposing website content to language models in a predictable, crawlable text format." linkLabel="Read the llms.txt spec" external><code>llms.txt</code></HoverLink> content through your existing docs API and the default public aliases. Just enable it in your config.
+Serve <HoverLink href="https://llmstxt.org" title="llms.txt" description="An open convention for exposing website content to language models in a predictable, crawlable text format." linkLabel="Read the llms.txt spec" external><code>llms.txt</code></HoverLink> content through your existing docs API and the default public aliases. It is enabled by default.
 
 ## What is llms.txt?
 
@@ -27,9 +27,11 @@ The shared API handler remains the source of truth:
 
 ## Quick Start
 
+No config is required for the default routes. Add `llmsTxt` only when you want to customize the
+public base URL, title, description, or explicitly opt out.
+
 ```ts title="docs.config.ts"
 llmsTxt: {
-  enabled: true,
   baseUrl: "https://docs.example.com",
 }
 ```
@@ -42,7 +44,7 @@ aliases do not need one route file per URL.
 
 ## Configuration Reference
 
-All options go inside the `llmsTxt` object in `docs.config.ts`:
+All options go inside the optional `llmsTxt` object in `docs.config.ts`:
 
 ```ts title="docs.config.ts"
 export default defineDocs({
@@ -58,7 +60,7 @@ Enable or disable llms.txt generation.
 
 | Type      | Default |
 | --------- | ------- |
-| `boolean` | `false` |
+| `boolean` | `true`  |
 
 ### `llmsTxt.baseUrl`
 
@@ -70,7 +72,6 @@ Base URL prepended to all page links in the generated files.
 
 ```ts title="llmstxt-baseurl.ts"
 llmsTxt: {
-  enabled: true,
   baseUrl: "https://docs.example.com",
 }
 ```
@@ -174,7 +175,7 @@ Full page content here...
 
 ## Footer Links
 
-When enabled, `llms.txt` and `llms-full.txt` links automatically appear in the page footer next to "Edit on GitHub", pointing to the public `/llms.txt` and `/llms-full.txt` routes.
+Because `llms.txt` is enabled by default, `llms.txt` and `llms-full.txt` links automatically appear in the page footer next to "Edit on GitHub", pointing to the public `/llms.txt` and `/llms-full.txt` routes.
 
 ## Full Example
 
@@ -182,7 +183,6 @@ When enabled, `llms.txt` and `llms-full.txt` links automatically appear in the p
 export default defineDocs({
   entry: "docs",
   llmsTxt: {
-    enabled: true,
     baseUrl: "https://docs.example.com",
     siteTitle: "My Project Docs",
     siteDescription: "Comprehensive documentation for My Project",
