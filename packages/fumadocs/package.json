@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/theme",
-  "version": "0.1.84",
+  "version": "0.1.85",
   "description": "Theme package for @farming-labs/docs — layout, provider, MDX components, and styles",
   "keywords": [
     "docs",
