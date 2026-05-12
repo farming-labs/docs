@@ -23,6 +23,15 @@ function isPrismaSchemaMissing(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientValidationError;
 }
 
+function isPrismaUnavailable(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientInitializationError) return true;
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    // P1001/P1002/P1008 = connection failures/timeouts, P2024 = pool timeout.
+    return ["P1001", "P1002", "P1008", "P2024"].includes(error.code);
+  }
+  return false;
+}
+
 export async function GET(request: Request) {
   if (!process.env.DATABASE_URL) {
     return NextResponse.json({ entries: [], notConfigured: true }, { status: 200 });
@@ -42,7 +51,9 @@ export async function GET(request: Request) {
         name: true,
         score: true,
         grade: true,
+        framework: true,
         checks: true,
+        recommendations: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -50,7 +61,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ entries });
   } catch (error) {
-    if (isPrismaSchemaMissing(error) || error instanceof Prisma.PrismaClientInitializationError) {
+    if (isPrismaSchemaMissing(error) || isPrismaUnavailable(error)) {
       // Surface as "not configured" so the page can show a friendly empty state
       // instead of breaking the leaderboard render in dev / pre-migrated deploys.
       return NextResponse.json({ entries: [], notConfigured: true }, { status: 200 });
@@ -128,6 +139,11 @@ export async function POST(request: Request) {
   const name = customName ?? deriveAgentScoreSiteName(report.baseUrl);
 
   try {
+    const existingEntry = await prisma.agentScoreEntry.findUnique({
+      where: { url: report.baseUrl },
+      select: { id: true, score: true },
+    });
+
     const entry = await prisma.agentScoreEntry.upsert({
       where: { url: report.baseUrl },
       update: {
@@ -139,6 +155,7 @@ export async function POST(request: Request) {
         recommendations: report.recommendations as unknown as Prisma.InputJsonValue,
         submitterName,
         submitterUrl,
+        approvalStatus: "APPROVED",
       },
       create: {
         url: report.baseUrl,
@@ -152,15 +169,18 @@ export async function POST(request: Request) {
         submitterUrl,
       },
     });
+    const action = existingEntry ? "updated" : "created";
 
     return NextResponse.json(
       {
         ok: true,
         stored: true,
+        action,
         id: entry.id,
+        previousScore: existingEntry?.score,
         report,
       },
-      { status: 201 },
+      { status: existingEntry ? 200 : 201 },
     );
   } catch (error) {
     if (isPrismaSchemaMissing(error)) {
@@ -176,7 +196,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (error instanceof Prisma.PrismaClientInitializationError) {
+    if (isPrismaUnavailable(error)) {
       return NextResponse.json(
         {
           ok: true,

@@ -14,7 +14,6 @@ import {
   GithubIcon,
   Globe,
   Link2,
-  ListChecks,
   ListOrdered,
   Loader2,
   Search,
@@ -24,28 +23,84 @@ import PixelCard from "@/components/ui/pixel-card";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 import { cn } from "@/lib/utils";
 import type { AgentScoreCheck, AgentScoreReport } from "@/lib/agent-score";
+import leaderboardTableStyles from "./leaderboard-table.module.css";
 
 type LeaderboardEntry = {
   id: string;
   url: string;
   name: string;
   score: number;
-  grade: string;
+  grade: AgentScoreReport["grade"];
+  framework?: string | null;
   checks?: AgentScoreCheck[] | null;
+  recommendations?: string[] | null;
   createdAt: string;
   updatedAt: string;
 };
 
-/** PASS-only count vs total probes stored with each leaderboard row. */
-function leaderboardChecksPassTotal(checks: LeaderboardEntry["checks"]): {
-  pass: number;
-  total: number;
-} {
-  if (!Array.isArray(checks)) return { pass: 0, total: 0 };
-  const total = checks.length;
-  const pass = checks.filter((c) => c?.status === "pass").length;
-  return { pass, total };
-}
+type ScoreStatus = AgentScoreCheck["status"];
+
+type BreakdownItem = {
+  id: string;
+  title: string;
+  detail: string;
+  status: ScoreStatus;
+  score: number;
+  maxScore: number;
+};
+
+type CheckGroup = {
+  id: string;
+  title: string;
+  checks: AgentScoreCheck[];
+};
+
+type StandardBreakdownDefinition = {
+  id: string;
+  title: string;
+  sourceTitle: string;
+};
+
+const FAIL_SCORE_RATIO = 0.5;
+const PASS_SCORE_RATIO = 0.9;
+
+const STANDARD_BREAKDOWN_DEFINITIONS: StandardBreakdownDefinition[] = [
+  {
+    id: "content-discoverability",
+    title: "Discovery",
+    sourceTitle: "Content Discoverability",
+  },
+  {
+    id: "markdown-availability",
+    title: "Markdown",
+    sourceTitle: "Markdown Availability",
+  },
+  {
+    id: "page-size",
+    title: "Page Size",
+    sourceTitle: "Page Size and Truncation Risk",
+  },
+  {
+    id: "content-structure",
+    title: "Structure",
+    sourceTitle: "Content Structure",
+  },
+  {
+    id: "url-stability",
+    title: "URL Stability",
+    sourceTitle: "URL Stability and Redirects",
+  },
+  {
+    id: "observability",
+    title: "Observability",
+    sourceTitle: "Observability and Content Health",
+  },
+  {
+    id: "authentication",
+    title: "Public Access",
+    sourceTitle: "Authentication and Access",
+  },
+];
 
 type FetchState =
   | { status: "idle" }
@@ -60,24 +115,32 @@ type SubmitState =
   | { status: "warning"; message: string }
   | { status: "error"; message: string };
 
-const EXAMPLE_URLS = [
-  "https://docs.farming-labs.dev",
-  "https://better-auth.com/docs",
-  "https://shadcn-svelte.com",
+const EXAMPLE_URLS = ["https://docs.farming-labs.dev", "https://orm.farming-labs.dev"] as const;
+const SCORE_PAGE_ROUTE = "/score";
+const SCORE_SECTION_ID = "score";
+const LEADERBOARD_SECTION_ID = "leaderboard";
+const SELECTED_SITE_PARAM = "site";
+const SCORE_INPUT_PARAM = "url";
+
+const SCORE_LOADING_STEPS = [
+  "Resolving docs site",
+  "Reading agent discovery",
+  "Checking context files",
+  "Reviewing agent access",
+  "Discovering MCP tools",
+  "Testing search and feedback",
+  "Calculating final score",
 ] as const;
 
 function leaderboardEntryMatchesQuery(entry: LeaderboardEntry, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  const { pass, total } = leaderboardChecksPassTotal(entry.checks);
-  const checksFraction = total > 0 ? `${pass}/${total}` : "";
   const hay = [
     entry.name,
     entry.url,
     entry.grade,
     String(entry.score),
     `${entry.score}/100`,
-    checksFraction,
     shortenUrl(entry.url),
   ]
     .join(" ")
@@ -85,10 +148,211 @@ function leaderboardEntryMatchesQuery(entry: LeaderboardEntry, query: string): b
   return hay.includes(q);
 }
 
-function statusLabel(status: AgentScoreCheck["status"]): string {
+function siteLookupKeys(value: string): Set<string> {
+  const keys = new Set<string>();
+  const trimmed = value.trim();
+  if (!trimmed) return keys;
+
+  keys.add(trimmed.toLowerCase().replace(/\/+$/, ""));
+
+  for (const candidate of [trimmed, `https://${trimmed}`]) {
+    try {
+      const url = new URL(candidate);
+      const path = url.pathname.replace(/\/+$/, "");
+      keys.add(`${url.origin}${path}`.toLowerCase());
+      keys.add(`${url.hostname.replace(/^www\./i, "")}${path}`.toLowerCase());
+    } catch {
+      // Keep the raw key above for non-URL values such as entry ids.
+    }
+  }
+
+  return keys;
+}
+
+function cleanScoreUrlValue(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  for (const candidate of [trimmed, `https://${trimmed}`]) {
+    try {
+      const url = new URL(candidate);
+      const path = url.pathname.replace(/\/+$/, "");
+      return `${url.hostname.replace(/^www\./i, "")}${path && path !== "/" ? path : ""}`;
+    } catch {
+      // Fall back below for values that are intentionally not URLs.
+    }
+  }
+
+  return trimmed
+    .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
+    .replace(/[?#].*$/, "")
+    .replace(/\/+$/, "");
+}
+
+function findLeaderboardEntryBySelection(
+  entries: LeaderboardEntry[],
+  selection: string,
+): LeaderboardEntry | undefined {
+  const selectionKeys = siteLookupKeys(selection);
+  return entries.find((entry) => {
+    if (entry.id === selection) return true;
+    const entryKeys = new Set([
+      ...siteLookupKeys(entry.url),
+      ...siteLookupKeys(entry.name),
+      ...siteLookupKeys(shortenUrl(entry.url)),
+    ]);
+    return [...selectionKeys].some((key) => entryKeys.has(key));
+  });
+}
+
+function statusFromScore(score: number, maxScore: number): ScoreStatus {
+  if (maxScore <= 0) return "fail";
+  const ratio = Math.max(0, Math.min(1, score / maxScore));
+  if (ratio < FAIL_SCORE_RATIO) return "fail";
+  if (ratio < PASS_SCORE_RATIO) return "warn";
+  return "pass";
+}
+
+function statusLabel(status: ScoreStatus): string {
   if (status === "pass") return "PASS";
   if (status === "warn") return "WARN";
   return "FAIL";
+}
+
+function scorePercent(score: number, maxScore: number): number {
+  if (maxScore <= 0) return 0;
+  return Math.round(Math.max(0, Math.min(1, score / maxScore)) * 100);
+}
+
+function displayStatusForCheck(check: AgentScoreCheck): ScoreStatus {
+  return statusFromScore(check.score, check.maxScore);
+}
+
+function scoreTargetForPrompt(report: AgentScoreReport): number {
+  if (report.score >= 90) return 100;
+  if (report.score >= 75) return 90;
+  return 80;
+}
+
+function categoryTitleFromCheck(check: AgentScoreCheck): string | undefined {
+  if (!check.id.startsWith("afdocs:")) return undefined;
+  return check.detail.split(":").at(0)?.trim();
+}
+
+function buildPinnedStandardBreakdownItem(
+  definition: StandardBreakdownDefinition,
+  report: AgentScoreReport,
+): BreakdownItem {
+  const scoredCategory = report.standard.categories.find(
+    (category) => category.id === definition.id,
+  );
+
+  if (scoredCategory) {
+    const score = scoredCategory.score ?? 0;
+    return {
+      id: `standard:${definition.id}`,
+      title: definition.title,
+      detail: scoredCategory.grade
+        ? `${definition.sourceTitle}: AFDocs category grade ${scoredCategory.grade}.`
+        : `${definition.sourceTitle}: AFDocs did not score this category on this run.`,
+      status: statusFromScore(score, 100),
+      score,
+      maxScore: 100,
+    };
+  }
+
+  const checks = report.checks.filter(
+    (check) => categoryTitleFromCheck(check) === definition.sourceTitle,
+  );
+  const rawScore = checks.reduce((total, check) => total + check.score, 0);
+  const rawMaxScore = checks.reduce((total, check) => total + check.maxScore, 0);
+  const score = rawMaxScore > 0 ? scorePercent(rawScore, rawMaxScore) : 0;
+
+  return {
+    id: `standard:${definition.id}`,
+    title: definition.title,
+    detail:
+      checks.length > 0
+        ? `${definition.sourceTitle}: ${checks.length} stored check${
+            checks.length === 1 ? "" : "s"
+          } in this category.`
+        : `${definition.sourceTitle}: no stored check data for this category.`,
+    status: rawMaxScore > 0 ? statusFromScore(rawScore, rawMaxScore) : "warn",
+    score,
+    maxScore: 100,
+  };
+}
+
+function buildMcpBreakdownItem(report: AgentScoreReport): BreakdownItem | null {
+  const check = report.checks.find((item) => item.id === "framework:mcp");
+  if (!check) return null;
+
+  return {
+    id: check.id,
+    title: "MCP",
+    detail: "Tool-enabled docs access through Model Context Protocol.",
+    status: displayStatusForCheck(check),
+    score: check.score,
+    maxScore: check.maxScore,
+  };
+}
+
+function buildPrimaryBreakdownItems(report: AgentScoreReport): BreakdownItem[] {
+  const mcpItem = buildMcpBreakdownItem(report);
+  return [
+    ...STANDARD_BREAKDOWN_DEFINITIONS.map((definition) =>
+      buildPinnedStandardBreakdownItem(definition, report),
+    ),
+    ...(mcpItem ? [mcpItem] : []),
+  ];
+}
+
+function groupTitleForCheck(check: AgentScoreCheck): string {
+  if (check.id === "framework:mcp") return "MCP";
+  if (check.id.startsWith("framework:")) return "Framework surfaces";
+  if (check.id.startsWith("afdocs:")) {
+    const category = categoryTitleFromCheck(check);
+    const definition = STANDARD_BREAKDOWN_DEFINITIONS.find((item) => item.sourceTitle === category);
+    if (definition) return definition.title;
+    if (category) return category;
+    return "AFDocs standard";
+  }
+  return "Agent probes";
+}
+
+function groupIdFromTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function groupCalloutForId(id: string): string | null {
+  if (id !== "framework-surfaces") return null;
+  return "@farming-labs/docs extras on top of the AFDocs standard. These checks validate the framework discovery layer, full-context files, search, feedback, and structured metadata when the site advertises them.";
+}
+
+function groupChecksForDetails(checks: AgentScoreCheck[]): CheckGroup[] {
+  const groups: CheckGroup[] = [];
+  const byId = new Map<string, CheckGroup>();
+
+  for (const check of checks) {
+    const title = groupTitleForCheck(check);
+    const id = groupIdFromTitle(title) || "agent-probes";
+    const existing = byId.get(id);
+
+    if (existing) {
+      existing.checks.push(check);
+      continue;
+    }
+
+    const group = { id, title, checks: [check] };
+    byId.set(id, group);
+    groups.push(group);
+  }
+
+  return groups;
 }
 
 function formatImprovementsClipboardText(report: AgentScoreReport): string {
@@ -97,16 +361,42 @@ function formatImprovementsClipboardText(report: AgentScoreReport): string {
   lines.push(`Agent readiness: ${report.score}/100 — ${report.grade}`);
   lines.push("");
 
-  const weak = report.checks.filter((c) => c.status !== "pass");
+  const weak = report.checks.filter((c) => displayStatusForCheck(c) !== "pass");
   if (weak.length === 0) {
     lines.push("Hosted checks all passed on this run.");
     return lines.join("\n");
   }
 
+  const target = scoreTargetForPrompt(report);
+  lines.push("Implementation prompt:");
+  lines.push(
+    `Improve this docs site for agent readiness. Target at least ${target}/100 on the hosted scorer, then rerun the score and update the leaderboard entry.`,
+  );
+  lines.push("");
+  lines.push("Use @farming-labs/docs as the source of truth:");
+  lines.push("- Upgrade packages first: https://docs.farming-labs.dev/docs/cli#upgrade");
+  lines.push(
+    "- Follow the agent-friendly guide: https://docs.farming-labs.dev/docs/guides/agent-friendly-docs",
+  );
+  lines.push("- Validate with doctor: https://docs.farming-labs.dev/docs/cli#doctor");
+  lines.push("- Configure discovery surfaces: https://docs.farming-labs.dev/docs/configuration");
+  lines.push("- MCP setup: https://docs.farming-labs.dev/docs/customization/mcp");
+  lines.push("");
+  lines.push("Start from the project root:");
+  lines.push("```bash");
+  lines.push("npx @farming-labs/docs upgrade --latest");
+  lines.push(`pnpm exec docs doctor --agent --url ${report.baseUrl} --json`);
+  lines.push("```");
+  lines.push("");
+  lines.push(
+    "Do not call this done until the hosted score reaches the target or every remaining blocker is documented with the exact failing check.",
+  );
+  lines.push("");
+
   lines.push("Checks that still need attention:");
   for (const c of weak) {
     const note = (c.recommendation ?? c.detail).trim();
-    lines.push(`• ${c.title} (${statusLabel(c.status)})`);
+    lines.push(`• ${c.title} (${statusLabel(displayStatusForCheck(c))})`);
     if (note) {
       lines.push(`  ${note}`);
     }
@@ -171,6 +461,117 @@ function formatDate(iso: string): string {
   }
 }
 
+function checksFromLeaderboardEntry(entry: LeaderboardEntry): AgentScoreCheck[] {
+  if (!Array.isArray(entry.checks)) return [];
+  return entry.checks
+    .filter(
+      (check): check is AgentScoreCheck =>
+        typeof check?.id === "string" &&
+        typeof check.title === "string" &&
+        typeof check.detail === "string" &&
+        typeof check.score === "number" &&
+        typeof check.maxScore === "number",
+    )
+    .map((check) => ({
+      ...check,
+      status: statusFromScore(check.score, check.maxScore),
+    }));
+}
+
+function recommendationsFromLeaderboardEntry(
+  entry: LeaderboardEntry,
+  checks: AgentScoreCheck[],
+): string[] {
+  if (Array.isArray(entry.recommendations)) {
+    return entry.recommendations.filter((item): item is string => typeof item === "string");
+  }
+
+  return Array.from(
+    new Set(
+      checks
+        .filter((check) => displayStatusForCheck(check) !== "pass")
+        .map((check) => check.recommendation)
+        .filter((item): item is string => Boolean(item)),
+    ),
+  );
+}
+
+function reportFromLeaderboardEntry(entry: LeaderboardEntry): AgentScoreReport {
+  const checks = checksFromLeaderboardEntry(entry);
+  const rawScore = checks.reduce((total, check) => total + check.score, 0);
+  const rawMaxScore = checks.reduce((total, check) => total + check.maxScore, 0);
+  const summary = checks.reduce(
+    (counts, check) => {
+      counts[displayStatusForCheck(check)] += 1;
+      return counts;
+    },
+    { pass: 0, warn: 0, fail: 0 } satisfies Record<ScoreStatus, number>,
+  );
+
+  return {
+    url: entry.url,
+    baseUrl: entry.url,
+    name: entry.name,
+    framework: entry.framework ?? undefined,
+    score: entry.score,
+    maxScore: 100,
+    rawScore: rawMaxScore > 0 ? rawScore : entry.score,
+    rawMaxScore: rawMaxScore > 0 ? rawMaxScore : 100,
+    grade: entry.grade,
+    standard: {
+      score: entry.score,
+      grade: entry.grade,
+      pass: summary.pass,
+      warn: summary.warn,
+      fail: summary.fail,
+      skip: 0,
+      categories: [],
+      diagnostics: [],
+    },
+    checks,
+    recommendations: recommendationsFromLeaderboardEntry(entry, checks),
+    generatedAt: entry.updatedAt,
+  };
+}
+
+function readCurrentScoreParams(): { selectedSite: string | null; inputUrl: string | null } {
+  if (typeof window === "undefined") return { selectedSite: null, inputUrl: null };
+  const params = new URL(window.location.href).searchParams;
+  return {
+    selectedSite: params.get(SELECTED_SITE_PARAM),
+    inputUrl: params.get(SCORE_INPUT_PARAM),
+  };
+}
+
+function writeScoreUrl(
+  value: string,
+  options: { source: "leaderboard" | "input"; mode?: "push" | "replace" },
+): void {
+  if (typeof window === "undefined") return;
+
+  const next = new URL(window.location.href);
+  const cleanValue = cleanScoreUrlValue(value);
+  const activeParam = options.source === "leaderboard" ? SELECTED_SITE_PARAM : SCORE_INPUT_PARAM;
+
+  next.pathname = SCORE_PAGE_ROUTE;
+  next.search = cleanValue ? `?${activeParam}=${cleanValue}` : "";
+  next.hash = "";
+
+  const state = { agentScoreUrl: cleanValue, agentScoreSource: options.source };
+  const href = `${next.pathname}${next.search}`;
+
+  if (options.mode === "replace") {
+    window.history.replaceState(state, "", href);
+    return;
+  }
+
+  window.history.pushState(state, "", href);
+}
+
+function replaceCleanScoreUrl(value: string, options: { source: "leaderboard" | "input" }): void {
+  writeScoreUrl(value, { ...options, mode: "replace" });
+}
+
 export function AgentScorePage() {
   const [url, setUrl] = useState("");
   const [fetchState, setFetchState] = useState<FetchState>({ status: "idle" });
@@ -178,7 +579,20 @@ export function AgentScorePage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const [leaderboardNotConfigured, setLeaderboardNotConfigured] = useState(false);
+  const [locationVersion, setLocationVersion] = useState(0);
   const resultsRef = useRef<HTMLDivElement | null>(null);
+  const leaderboardRef = useRef<HTMLElement | null>(null);
+  const hydratedSelectionRef = useRef<string | null>(null);
+
+  const scrollToResults = useCallback(() => {
+    window.setTimeout(() => {
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  }, []);
+
+  const scrollToLeaderboard = useCallback(() => {
+    leaderboardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   const loadLeaderboard = useCallback(async () => {
     setLeaderboardLoading(true);
@@ -203,6 +617,47 @@ export function AgentScorePage() {
     loadLeaderboard();
   }, [loadLeaderboard]);
 
+  useEffect(() => {
+    const { selectedSite, inputUrl } = readCurrentScoreParams();
+    if (inputUrl) {
+      setUrl(inputUrl);
+      replaceCleanScoreUrl(inputUrl, { source: "input" });
+    } else if (!selectedSite && window.location.pathname !== SCORE_PAGE_ROUTE) {
+      window.history.replaceState({}, "", SCORE_PAGE_ROUTE);
+    }
+
+    function handlePopState(): void {
+      hydratedSelectionRef.current = null;
+      setLocationVersion((version) => version + 1);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (leaderboardLoading || entries.length === 0) return;
+
+    const { selectedSite, inputUrl } = readCurrentScoreParams();
+    if (inputUrl && !selectedSite && fetchState.status === "idle") {
+      setUrl(inputUrl);
+    }
+    if (!selectedSite || hydratedSelectionRef.current === selectedSite) return;
+
+    const entry = findLeaderboardEntryBySelection(entries, selectedSite);
+    if (!entry) {
+      setUrl(selectedSite);
+      return;
+    }
+
+    hydratedSelectionRef.current = cleanScoreUrlValue(entry.url);
+    setUrl(entry.url);
+    setSubmitState({ status: "idle" });
+    setFetchState({ status: "success", report: reportFromLeaderboardEntry(entry) });
+    replaceCleanScoreUrl(entry.url, { source: "leaderboard" });
+    scrollToResults();
+  }, [entries, fetchState.status, leaderboardLoading, locationVersion, scrollToResults]);
+
   async function handleCalculate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = url.trim();
@@ -226,9 +681,9 @@ export function AgentScorePage() {
         return;
       }
       setFetchState({ status: "success", report: data });
-      setTimeout(() => {
-        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 50);
+      hydratedSelectionRef.current = null;
+      writeScoreUrl(data.baseUrl, { source: "input" });
+      scrollToResults();
     } catch (error) {
       setFetchState({
         status: "error",
@@ -255,6 +710,8 @@ export function AgentScorePage() {
         error?: string;
         warning?: string;
         stored?: boolean;
+        action?: "created" | "updated";
+        previousScore?: number;
         report?: AgentScoreReport;
       };
 
@@ -280,7 +737,12 @@ export function AgentScorePage() {
 
       setSubmitState({
         status: "success",
-        message: "Submitted to the leaderboard.",
+        message:
+          data.action === "updated"
+            ? data.previousScore !== undefined
+              ? `Leaderboard score updated from ${data.previousScore}/100 to ${data.report?.score ?? fetchState.report.score}/100.`
+              : "Leaderboard score updated."
+            : "Submitted to the leaderboard.",
       });
       loadLeaderboard();
     } catch (error) {
@@ -292,6 +754,15 @@ export function AgentScorePage() {
             : "Request failed before reaching the leaderboard.",
       });
     }
+  }
+
+  function showLeaderboardEntry(entry: LeaderboardEntry): void {
+    hydratedSelectionRef.current = cleanScoreUrlValue(entry.url);
+    setUrl(entry.url);
+    setSubmitState({ status: "idle" });
+    setFetchState({ status: "success", report: reportFromLeaderboardEntry(entry) });
+    writeScoreUrl(entry.url, { source: "leaderboard" });
+    scrollToResults();
   }
 
   const currentReport = fetchState.status === "success" ? fetchState.report : null;
@@ -335,6 +806,7 @@ export function AgentScorePage() {
           url={url}
           onUrlChange={setUrl}
           onSubmit={handleCalculate}
+          onLeaderboardClick={scrollToLeaderboard}
           loading={fetchState.status === "loading"}
         />
 
@@ -347,7 +819,7 @@ export function AgentScorePage() {
         ) : null}
 
         {currentReport ? (
-          <section ref={resultsRef} className="relative space-y-6">
+          <section id={SCORE_SECTION_ID} ref={resultsRef} className="relative space-y-6">
             <ScoreOverview
               report={currentReport}
               submitBusy={submitState.status === "loading"}
@@ -380,9 +852,11 @@ export function AgentScorePage() {
         ) : null}
 
         <LeaderboardSection
+          sectionRef={leaderboardRef}
           entries={entries}
           loading={leaderboardLoading}
           notConfigured={leaderboardNotConfigured}
+          onSelectEntry={showLeaderboardEntry}
         />
 
         <CtaSection />
@@ -397,17 +871,35 @@ function HeroSection({
   url,
   onUrlChange,
   onSubmit,
+  onLeaderboardClick,
   loading,
 }: {
   url: string;
   onUrlChange: (value: string) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onLeaderboardClick: () => void;
   loading: boolean;
 }) {
+  const [activeLoadingStep, setActiveLoadingStep] = useState(0);
+  const loadingLabel = SCORE_LOADING_STEPS[activeLoadingStep] ?? SCORE_LOADING_STEPS[0];
+
+  useEffect(() => {
+    if (!loading) {
+      setActiveLoadingStep(0);
+      return;
+    }
+
+    setActiveLoadingStep(0);
+    const interval = window.setInterval(() => {
+      setActiveLoadingStep((current) => Math.min(current + 1, SCORE_LOADING_STEPS.length - 1));
+    }, 1150);
+
+    return () => window.clearInterval(interval);
+  }, [loading]);
+
   return (
     <section className="relative grid gap-10 pb-10 lg:grid-cols-[minmax(0,6fr)_minmax(360px,3fr)] lg:items-stretch lg:gap-0 lg:pb-0">
       <div className="pointer-events-none absolute bottom-0 left-[calc(50%-50vw)] right-[calc(50%-50vw)] h-px bg-black/10 dark:bg-white/10" />
-
       <div className="relative min-w-0 overflow-hidden lg:flex">
         <div className="pointer-events-none absolute -top-6 bottom-0 left-0 z-20 hidden w-px bg-black/10 dark:bg-white/5 sm:block md:-top-24" />
         <div className="absolute inset-0 hidden overflow-hidden opacity-45 sm:block" aria-hidden>
@@ -432,7 +924,7 @@ function HeroSection({
             routes, and MCP, then give you a score and a breakdown.
           </p>
 
-          <div className="mt-6 flex flex-wrap gap-1.5 sm:gap-2">
+          <div className="mt-6 flex font-pixel flex-wrap gap-1.5 sm:gap-2">
             {["Discovery", "llms.txt", "Sitemap", "Robots", "Skill", "Markdown", "MCP"].map(
               (signal) => (
                 <span
@@ -448,11 +940,19 @@ function HeroSection({
           <div className="-mb-px mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:items-center">
             <Link
               href="/docs/cli"
-              className="group inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.24em] text-black/45 transition-colors hover:text-black hover:no-underline dark:text-white/45 dark:hover:text-white"
+              className="group inline-flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3 font-mono text-[11px] uppercase tracking-wide text-white transition-all hover:bg-black/90 hover:no-underline dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90 sm:w-auto"
             >
-              Read the doctor docs
+              Read CLI docs
               <ArrowUpRight className="size-3.5 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </Link>
+            <button
+              type="button"
+              onClick={onLeaderboardClick}
+              className="group inline-flex mb-[2px] md:border-b-0 w-full items-center justify-center gap-2 border border-black/15 bg-white px-4 py-3 font-mono text-[11px] uppercase tracking-wide text-black transition-colors hover:border-black/30 hover:bg-black/[0.03] dark:border-white/10 dark:bg-black/50 dark:text-white dark:hover:border-white/30 dark:hover:bg-white/[0.05] sm:w-auto"
+            >
+              <ListOrdered className="size-3.5" aria-hidden />
+              Leaderboard
+            </button>
           </div>
         </div>
       </div>
@@ -520,7 +1020,9 @@ function HeroSection({
               {loading ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  Probing endpoints
+                  <span aria-live="polite" className="truncate">
+                    {loadingLabel}
+                  </span>
                 </>
               ) : (
                 <>
@@ -555,12 +1057,18 @@ function HeroSection({
   );
 }
 
-function BreakdownImprovementStrip({ report }: { report: AgentScoreReport }) {
+function BreakdownImprovementStrip({
+  report,
+  itemCount,
+}: {
+  report: AgentScoreReport;
+  itemCount: number;
+}) {
   const payload = useMemo(() => formatImprovementsClipboardText(report), [report]);
   const [copied, setCopied] = useState(false);
 
   const smCols = 3;
-  const remainderSm = report.checks.length % smCols;
+  const remainderSm = itemCount % smCols;
   const spanSm = remainderSm === 0 ? smCols : smCols - remainderSm;
 
   const smColSpanClass =
@@ -569,7 +1077,7 @@ function BreakdownImprovementStrip({ report }: { report: AgentScoreReport }) {
   return (
     <div
       className={cn(
-        "col-span-2 flex h-full flex-col justify-end gap-3 bg-white px-3 py-3 dark:bg-black sm:min-h-0 sm:justify-between sm:px-4 sm:py-2",
+        "col-span-1 flex h-full flex-col justify-end gap-3 bg-white px-3 py-3 dark:bg-black sm:min-h-0 sm:justify-between sm:px-4 sm:py-2",
         smColSpanClass,
       )}
     >
@@ -616,6 +1124,8 @@ function ScoreOverview({
   submitBusy: boolean;
   onSubmitLeaderboard: () => void;
 }) {
+  const breakdownItems = useMemo(() => buildPrimaryBreakdownItems(report), [report]);
+
   return (
     <PixelCard className="border-black/10 p-0 bg-white/95 dark:border-white/10 dark:bg-black/35">
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:items-stretch lg:gap-0">
@@ -650,10 +1160,8 @@ function ScoreOverview({
               </a>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-black/40 dark:text-white/40">Raw</span>
-              <span className="text-black dark:text-white">
-                {report.rawScore} / {report.rawMaxScore}
-              </span>
+              <span className="text-black/40 dark:text-white/40">Result</span>
+              <span className="text-black dark:text-white">{report.score} / 100%</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-black/40 dark:text-white/40">Generated</span>
@@ -672,12 +1180,12 @@ function ScoreOverview({
           </button>
         </div>
 
-        <div className="min-w-0 px-0 py-0 border-t border-black/10 pt-8 dark:border-white/10 lg:flex lg:flex-col lg:border-l lg:border-black/10 lg:border-t-0 lg:pl-0 lg:pt-0 lg:dark:border-white/10">
-          <div className="grid min-h-0 flex-1 grid-cols-2 gap-px bg-black/10 dark:bg-white/10 sm:grid-cols-3">
-            {report.checks.map((check) => (
-              <ScoreCheckCard key={check.id} check={check} />
+        <div className="min-w-0 px-0 py-0 border-t border-black/10 pt-0 dark:border-white/10 lg:flex lg:flex-col lg:border-l lg:border-black/10 lg:border-t-0 lg:pl-0 lg:pt-0 lg:dark:border-white/10">
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-px bg-black/10 dark:bg-white/10 sm:grid-cols-3">
+            {breakdownItems.map((item) => (
+              <ScoreCheckCard key={item.id} item={item} />
             ))}
-            <BreakdownImprovementStrip report={report} />
+            <BreakdownImprovementStrip report={report} itemCount={breakdownItems.length} />
           </div>
         </div>
       </div>
@@ -685,33 +1193,32 @@ function ScoreOverview({
   );
 }
 
-function ScoreCheckCard({ check }: { check: AgentScoreCheck }) {
-  const ratio = check.maxScore > 0 ? check.score / check.maxScore : 0;
-  const percent = Math.round(ratio * 100);
+function ScoreCheckCard({ item }: { item: BreakdownItem }) {
+  const percent = scorePercent(item.score, item.maxScore);
 
   return (
-    <div className="relative flex min-h-0 flex-col gap-1.5 bg-white px-2 py-2 dark:bg-black sm:px-2.5 sm:py-2">
+    <div className="relative flex min-h-[5rem] flex-col gap-1.5 bg-white px-3 py-2.5 dark:bg-black sm:min-h-0 sm:px-2.5 sm:py-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="truncate font-mono text-[10px] uppercase tracking-[0.18em] text-black/55 dark:text-white/55">
-          {check.title}
+        <p
+          title={item.detail}
+          className="min-w-0 truncate font-mono text-[9.5px] uppercase tracking-wide text-black/55 dark:text-white/55"
+        >
+          # {item.title}
         </p>
         <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.22em] tabular-nums text-black/60 dark:text-white/60">
-          {statusLabel(check.status)}
+          {statusLabel(item.status)}
         </span>
       </div>
 
-      <div className="flex items-baseline justify-between gap-2 mt-4">
+      <div className="flex items-baseline gap-2 mt-4">
         <div className="flex items-baseline gap-1">
           <span className="text-xl font-semibold tabular-nums tracking-[-0.03em] text-black dark:text-white">
-            {check.score}
+            {percent}%
           </span>
           <span className="font-mono text-[10px] tabular-nums tracking-[0.16em] text-black/35 dark:text-white/35">
-            /{check.maxScore}
+            /100%
           </span>
         </div>
-        <span className="font-mono text-[10px] tabular-nums tracking-[0.18em] text-black/40 dark:text-white/40">
-          {percent}%
-        </span>
       </div>
 
       <div className="relative mt-auto h-px w-full bg-black/10 dark:bg-white/10" aria-hidden>
@@ -725,6 +1232,8 @@ function ScoreCheckCard({ check }: { check: AgentScoreCheck }) {
 }
 
 function ChecksBreakdown({ checks }: { checks: AgentScoreCheck[] }) {
+  const groups = useMemo(() => groupChecksForDetails(checks), [checks]);
+
   return (
     <div className="border border-black/10 dark:border-white/10">
       <div className="border-b border-black/10 px-5 py-3 dark:border-white/10">
@@ -732,7 +1241,7 @@ function ChecksBreakdown({ checks }: { checks: AgentScoreCheck[] }) {
           Per-check details
         </p>
         <h2 className="mt-1 text-xl font-normal font-pixel tracking-normal text-black dark:text-white">
-          What was probed.
+          All probes, grouped by breakdown.
         </h2>
       </div>
 
@@ -751,53 +1260,104 @@ function ChecksBreakdown({ checks }: { checks: AgentScoreCheck[] }) {
       </div>
 
       <ul className="divide-y divide-black/10 dark:divide-white/10">
-        {checks.map((check) => (
-          <li
-            key={check.id}
-            className={cn(
-              "relative grid gap-y-2 border-l-2 border-l-transparent px-5 py-4 sm:grid-cols-[88px_minmax(180px,1.2fr)_minmax(0,3fr)] sm:items-start sm:gap-x-8",
-              check.status === "warn" && "border-l-orange-500 dark:border-l-orange-400",
-              check.status === "fail" && "border-l-red-500 dark:border-l-red-400",
-            )}
-          >
-            <div className="flex items-start sm:items-center">
-              <span
-                className={cn(
-                  "inline-flex items-center justify-center border bg-white px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.22em] tabular-nums dark:bg-black",
-                  check.status === "pass" &&
-                    "border-black/20 text-black/70 dark:border-white/20 dark:text-white/70",
-                  check.status === "warn" &&
-                    "border-orange-500/60 text-orange-600 dark:border-orange-400/60 dark:text-orange-400",
-                  check.status === "fail" &&
-                    "border-red-500/60 text-red-600 dark:border-red-400/60 dark:text-red-400",
-                )}
-              >
-                {statusLabel(check.status)}
-              </span>
-            </div>
+        {groups.map((group) => {
+          const groupScore = group.checks.reduce((total, check) => total + check.score, 0);
+          const groupMaxScore = group.checks.reduce((total, check) => total + check.maxScore, 0);
+          const groupPercent = scorePercent(groupScore, groupMaxScore);
+          const groupStatus = statusFromScore(groupScore, groupMaxScore);
+          const groupCallout = groupCalloutForId(group.id);
 
-            <div className="flex flex-col gap-1 sm:gap-1.5">
-              <span className="font-mono text-[11px] uppercase leading-snug tracking-[0.2em] text-black/80 dark:text-white/80">
-                {check.title}
-              </span>
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] tabular-nums text-black/35 dark:text-white/35">
-                {check.score} / {check.maxScore} pts
-              </span>
-            </div>
-
-            <div className="min-w-0 space-y-1.5">
-              <p className="text-sm leading-relaxed text-black/65 dark:text-white/55">
-                {check.detail}
-              </p>
-              {check.recommendation ? (
-                <p className="inline-flex items-start gap-1.5 text-[12px] leading-snug text-black/45 dark:text-white/40">
-                  <ChevronRight className="mt-0.5 size-3 shrink-0 text-black/35 dark:text-white/35" />
-                  {check.recommendation}
+          return (
+            <li key={group.id}>
+              <div className="grid gap-y-2 border-l-2 border-l-transparent bg-black/[0.025] px-5 py-3 dark:bg-white/[0.025] sm:grid-cols-[88px_minmax(180px,1.2fr)_minmax(0,3fr)] sm:items-center sm:gap-x-8">
+                <span
+                  className={cn(
+                    "inline-flex w-fit items-center justify-center border bg-white px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.22em] tabular-nums dark:bg-black",
+                    groupStatus === "pass" &&
+                      "border-black/20 text-black/70 dark:border-white/20 dark:text-white/70",
+                    groupStatus === "warn" &&
+                      "border-orange-500/60 text-orange-600 dark:border-orange-400/60 dark:text-orange-400",
+                    groupStatus === "fail" &&
+                      "border-red-500/60 text-red-600 dark:border-red-400/60 dark:text-red-400",
+                  )}
+                >
+                  {statusLabel(groupStatus)}
+                </span>
+                <div className="flex flex-col gap-1">
+                  <span className="font-mono text-[11px] uppercase leading-snug tracking-[0.2em] text-black/80 dark:text-white/80">
+                    {group.title}
+                  </span>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] tabular-nums text-black/35 dark:text-white/35">
+                    {groupPercent}% / 100%
+                  </span>
+                </div>
+                <p className="text-sm leading-relaxed text-black/55 dark:text-white/45">
+                  {group.checks.length} check{group.checks.length === 1 ? "" : "s"} in this section.
                 </p>
+              </div>
+
+              {groupCallout ? (
+                <div className="border-l-2 border-l-black/20 bg-black/[0.015] px-5 py-3 text-sm leading-relaxed text-black/55 dark:border-l-white/20 dark:bg-white/[0.015] dark:text-white/45">
+                  {groupCallout}
+                </div>
               ) : null}
-            </div>
-          </li>
-        ))}
+
+              <ul className="divide-y divide-black/10 dark:divide-white/10">
+                {group.checks.map((check) => {
+                  const status = displayStatusForCheck(check);
+
+                  return (
+                    <li
+                      key={check.id}
+                      className={cn(
+                        "relative grid gap-y-2 border-l-2 border-l-transparent px-5 py-4 sm:grid-cols-[88px_minmax(180px,1.2fr)_minmax(0,3fr)] sm:items-start sm:gap-x-8",
+                        status === "warn" && "border-l-orange-500 dark:border-l-orange-400",
+                        status === "fail" && "border-l-red-500 dark:border-l-red-400",
+                      )}
+                    >
+                      <div className="flex items-start sm:items-center">
+                        <span
+                          className={cn(
+                            "inline-flex items-center justify-center border bg-white px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.22em] tabular-nums dark:bg-black",
+                            status === "pass" &&
+                              "border-black/20 text-black/70 dark:border-white/20 dark:text-white/70",
+                            status === "warn" &&
+                              "border-orange-500/60 text-orange-600 dark:border-orange-400/60 dark:text-orange-400",
+                            status === "fail" &&
+                              "border-red-500/60 text-red-600 dark:border-red-400/60 dark:text-red-400",
+                          )}
+                        >
+                          {statusLabel(status)}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-1 sm:gap-1.5">
+                        <span className="font-mono text-[11px] uppercase leading-snug tracking-[0.2em] text-black/80 dark:text-white/80">
+                          {check.title}
+                        </span>
+                        <span className="font-mono text-[10px] uppercase tracking-[0.18em] tabular-nums text-black/35 dark:text-white/35">
+                          {scorePercent(check.score, check.maxScore)}% / 100%
+                        </span>
+                      </div>
+
+                      <div className="min-w-0 space-y-1.5">
+                        <p className="text-sm leading-relaxed text-black/65 dark:text-white/55">
+                          {check.detail}
+                        </p>
+                        {check.recommendation ? (
+                          <p className="inline-flex items-start gap-1.5 text-[12px] leading-snug text-black/45 dark:text-white/40">
+                            <ChevronRight className="mt-0.5 size-3 shrink-0 text-black/35 dark:text-white/35" />
+                            {check.recommendation}
+                          </p>
+                        ) : null}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -825,13 +1385,17 @@ function Recommendations({ items }: { items: string[] }) {
 }
 
 function LeaderboardSection({
+  sectionRef,
   entries,
   loading,
   notConfigured,
+  onSelectEntry,
 }: {
+  sectionRef: React.RefObject<HTMLElement | null>;
   entries: LeaderboardEntry[];
   loading: boolean;
   notConfigured: boolean;
+  onSelectEntry: (entry: LeaderboardEntry) => void;
 }) {
   const [query, setQuery] = useState("");
   const ranked = useMemo(() => entries.slice(0, 100), [entries]);
@@ -842,7 +1406,7 @@ function LeaderboardSection({
   const queryActive = query.trim().length > 0;
 
   return (
-    <section id="leaderboard" className="space-y-6">
+    <section id={LEADERBOARD_SECTION_ID} ref={sectionRef} className="space-y-6">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl flex-1">
           <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
@@ -856,10 +1420,9 @@ function LeaderboardSection({
             above.
           </p>
         </div>
-
         <div className="flex w-full flex-col gap-2 sm:max-w-md lg:w-72 lg:max-w-none lg:shrink-0">
           <label htmlFor="leaderboard-search" className="sr-only">
-            Search leaderboard by site, URL, score, grade, or check counts
+            Search leaderboard by site, URL, score, or grade
           </label>
           <div className="relative w-full">
             <Search
@@ -873,13 +1436,13 @@ function LeaderboardSection({
               autoComplete="off"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search site, URL, score, checks…"
+              placeholder="Search site, URL, score…"
               className="w-full border border-black/10 bg-black/2 py-2 pl-9 pr-3 font-mono text-xs text-black outline-none placeholder:text-black/35 focus:border-black/25 dark:border-white/10 dark:bg-white/3 dark:text-white dark:placeholder:text-white/35 dark:focus:border-white/25"
             />
           </div>
         </div>
       </div>
-
+      <div className="h-px bg-black/10 -mt-6 dark:bg-white/10 w-full" />
       {notConfigured ? (
         <div className="border border-black/10 bg-black/[0.02] px-4 py-4 font-mono text-[11px] uppercase tracking-[0.16em] text-black/50 dark:border-white/10 dark:bg-white/[0.02] dark:text-white/50">
           Leaderboard database is not configured yet. Hosting deploys with{" "}
@@ -900,79 +1463,130 @@ function LeaderboardSection({
           No entries match &ldquo;{query.trim()}&rdquo;. Try another URL, site name, or score.
         </div>
       ) : (
-        <div className="overflow-x-auto border border-black/10 dark:border-white/10">
-          <table className="w-full min-w-[36rem] border-collapse">
-            <thead className="bg-transparent">
-              <tr className="border-b border-black/10 bg-transparent dark:border-white/10">
-                {(
-                  [
-                    {
-                      label: "Rank",
-                      Icon: ListOrdered,
-                      align: "left" as const,
-                      extra: "w-[4rem]",
-                    },
-                    {
-                      label: "Site",
-                      Icon: Globe,
-                      align: "left" as const,
-                      extra: "min-w-[10rem]",
-                    },
-                    {
-                      label: "URL",
-                      Icon: Link2,
-                      align: "left" as const,
-                      extra: "min-w-[12rem]",
-                    },
-                    {
-                      label: "Checks",
-                      Icon: ListChecks,
-                      align: "right" as const,
-                      extra: "w-[5.5rem] whitespace-nowrap px-6",
-                    },
-                    {
-                      label: "Score",
-                      Icon: Gauge,
-                      align: "right" as const,
-                      extra: "w-[6.5rem] whitespace-nowrap pl-10 pr-5",
-                    },
-                  ] as const
-                ).map(({ label, Icon, align, extra }) => (
-                  <th key={label} scope="col" className={cn("px-4 py-3", extra)}>
-                    <div
-                      className={cn(
-                        "flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45",
-                        align === "right" ? "justify-end" : "justify-start",
-                      )}
-                    >
-                      <Icon className="size-3 shrink-0 opacity-80" aria-hidden />
-                      <span>{label}</span>
-                    </div>
-                  </th>
+        <div className="space-y-2">
+          <p className="font-mono text-[11px] leading-relaxed text-black/45 dark:text-white/45">
+            {queryActive ? (
+              <>
+                Showing{" "}
+                <span className="tabular-nums text-black/70 dark:text-white/70">
+                  {filtered.length}
+                </span>{" "}
+                {filtered.length === 1 ? "site" : "sites"}
+                {ranked.length > filtered.length ? (
+                  <>
+                    {" "}
+                    <span className="text-black/35 dark:text-white/35">
+                      (of <span className="tabular-nums">{ranked.length}</span> total)
+                    </span>
+                  </>
+                ) : null}
+              </>
+            ) : (
+              <></>
+            )}
+          </p>
+          <div className="border md:border-l-0 md:border-r-0 border-black/10 dark:border-white/10">
+            <table
+              className={cn(
+                "w-full table-fixed border-collapse",
+                leaderboardTableStyles.leaderboardTable,
+              )}
+            >
+              <thead>
+                <tr className="border-b border-black/10 dark:border-white/10">
+                  {(
+                    [
+                      {
+                        label: "Rank",
+                        Icon: ListOrdered,
+                        align: "left" as const,
+                        extra: "w-[3.25rem] sm:w-[4rem]",
+                      },
+                      {
+                        label: "Site",
+                        Icon: Globe,
+                        align: "left" as const,
+                        extra: "w-[44%] sm:w-[36%]",
+                      },
+                      {
+                        label: "URL",
+                        Icon: Link2,
+                        align: "left" as const,
+                        extra: "hidden w-[42%] md:table-cell",
+                      },
+                      {
+                        label: "Score",
+                        Icon: Gauge,
+                        align: "right" as const,
+                        extra: "w-[5.25rem] whitespace-nowrap px-3 sm:w-[6.5rem] sm:px-5",
+                      },
+                    ] as const
+                  ).map(({ label, Icon, align, extra }) => (
+                    <th key={label} scope="col" className={cn("px-4 py-3", extra)}>
+                      <div
+                        className={cn(
+                          "flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45",
+                          align === "right" ? "justify-end" : "justify-start",
+                        )}
+                      >
+                        <Icon className="size-3 shrink-0 opacity-80" aria-hidden />
+                        <span>{label}</span>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="[&_tr:nth-child(even)]:bg-black/[0.025] dark:[&_tr:nth-child(even)]:bg-white/[0.025]">
+                {filtered.map((entry) => (
+                  <LeaderboardRow
+                    key={entry.id}
+                    entry={entry}
+                    rank={ranked.findIndex((e) => e.id === entry.id) + 1}
+                    onSelect={() => onSelectEntry(entry)}
+                  />
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((entry) => (
-                <LeaderboardRow
-                  key={entry.id}
-                  entry={entry}
-                  rank={ranked.findIndex((e) => e.id === entry.id) + 1}
-                />
-              ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </section>
   );
 }
 
-function LeaderboardRow({ entry, rank }: { entry: LeaderboardEntry; rank: number }) {
-  const { pass, total } = leaderboardChecksPassTotal(entry.checks);
+function LeaderboardRow({
+  entry,
+  rank,
+  onSelect,
+}: {
+  entry: LeaderboardEntry;
+  rank: number;
+  onSelect: () => void;
+}) {
+  const handleUrlClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      event.stopPropagation();
+      return;
+    }
+
+    event.preventDefault();
+    onSelect();
+  };
 
   return (
-    <tr className="border-b border-black/10 transition-colors last:border-b-0 hover:bg-black/[0.02] dark:border-white/10 dark:hover:bg-white/[0.02]">
+    <tr
+      role="button"
+      tabIndex={0}
+      aria-label={`Show saved agent score report for ${entry.name}`}
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+      className="cursor-pointer border-b border-black/10 transition-colors last:border-b-0 hover:bg-black/[0.05] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-black/40 dark:border-white/10 dark:hover:bg-white/[0.05] dark:focus-visible:outline-white/40"
+    >
       <td className="align-middle px-4 py-3 font-mono text-[12px] uppercase tracking-[0.16em] tabular-nums text-black/70 dark:text-white/70">
         {String(rank).padStart(2, "0")}
       </td>
@@ -981,24 +1595,28 @@ function LeaderboardRow({ entry, rank }: { entry: LeaderboardEntry; rank: number
         <p className="mt-0.5 font-mono text-[11px] text-black/45 dark:text-white/45">
           <span className="uppercase tracking-[0.14em]">{entry.grade}</span>
         </p>
-      </td>
-      <td className="max-w-[18rem] align-middle px-4 py-3">
         <a
           href={entry.url}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={handleUrlClick}
+          className="mt-1 block truncate font-mono text-[10px] text-black/45 underline-offset-2 hover:underline md:hidden dark:text-white/45"
+        >
+          {shortenUrl(entry.url)}
+        </a>
+      </td>
+      <td className="hidden max-w-[18rem] align-middle px-4 py-3 md:table-cell">
+        <a
+          href={entry.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={handleUrlClick}
           className="block truncate font-mono text-[11px] text-black/55 underline-offset-2 hover:underline dark:text-white/55"
         >
           {shortenUrl(entry.url)}
         </a>
       </td>
-      <td
-        className="whitespace-nowrap px-6 py-3 text-right align-middle font-mono text-sm tabular-nums text-black/75 dark:text-white/75"
-        title={total > 0 ? `${pass} of ${total} checks passed` : "No check breakdown stored"}
-      >
-        {total > 0 ? `${pass}/${total}` : "—"}
-      </td>
-      <td className="whitespace-nowrap py-3 pl-10 pr-5 text-right align-middle font-mono text-sm font-semibold tabular-nums tracking-tight text-black dark:text-white">
+      <td className="whitespace-nowrap px-3 py-3 text-right align-middle font-mono text-sm font-semibold tabular-nums tracking-tight text-black sm:px-5 dark:text-white">
         {entry.score}/100
       </td>
     </tr>

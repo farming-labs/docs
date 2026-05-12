@@ -294,9 +294,10 @@ export default defineDocs({
 });
 ```
 
-The custom MCP endpoint must support Streamable HTTP MCP, return an `mcp-session-id` on
-`initialize`, and expose a search tool that returns docs results. The default tool name is
-`search_docs`; override `toolName` only if your server uses a different name.
+The custom MCP endpoint must support Streamable HTTP MCP and expose a search tool that returns docs
+results. The default tool name is `search_docs`; override `toolName` only if your server uses a
+different name. Stateful MCP servers may return an `mcp-session-id` on `initialize`; stateless
+servers can omit it, and the docs client will only send the session header when one is provided.
 
 For local self-hosted setups, relative MCP endpoints like `/mcp` and `/.well-known/mcp` are
 supported. The canonical `/api/docs/mcp` route remains available too. The built-in `search_docs`

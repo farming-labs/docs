@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
@@ -740,26 +739,10 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
     };
   }
 
-  const sessions = new Map<
-    string,
-    {
-      server: McpServer;
-      transport: WebStandardStreamableHTTPServerTransport;
-    }
-  >();
-
-  async function createSession() {
+  async function createStatelessTransport() {
     const server = await createDocsMcpServer(options);
     const transport = new WebStandardStreamableHTTPServerTransport({
-      sessionIdGenerator: () => randomUUID(),
-      onsessioninitialized(sessionId) {
-        sessions.set(sessionId, { server, transport });
-      },
-      async onsessionclosed(sessionId) {
-        const session = sessions.get(sessionId);
-        sessions.delete(sessionId);
-        await session?.server.close().catch(() => undefined);
-      },
+      sessionIdGenerator: undefined,
     });
 
     await server.connect(transport);
@@ -771,7 +754,6 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
     const method = request.method.toUpperCase();
     const sessionId =
       request.headers.get("mcp-session-id") ?? request.headers.get("Mcp-Session-Id");
-    const existing = sessionId ? sessions.get(sessionId) : undefined;
 
     let parsedBody: unknown;
     let bodyParseFailed = false;
@@ -793,43 +775,22 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
       path: url.pathname,
       properties: {
         method,
-        hasSession: Boolean(existing),
+        hasSession: Boolean(sessionId),
+        stateless: true,
         initialize: Boolean(initializeRequest),
       },
     });
 
-    if (!existing) {
-      if (method === "POST" && bodyParseFailed) {
-        return createJsonRpcErrorResponse({
-          status: 400,
-          code: -32700,
-          message: "Parse error: Invalid JSON",
-        });
-      }
-
-      if (!initializeRequest) {
-        const status = sessionId || method === "DELETE" ? 404 : 400;
-        return createJsonRpcErrorResponse({
-          status,
-          code: sessionId ? -32001 : -32000,
-          message: sessionId
-            ? "Session not found. Reinitialize the MCP client before calling docs tools."
-            : "MCP session not initialized. Start with an initialize request against this endpoint.",
-          id: readJsonRpcId(parsedBody),
-          data: {
-            reason: sessionId ? "session_not_found" : "session_not_initialized",
-          },
-        });
-      }
-
-      const created = await createSession();
-      return created.transport.handleRequest(
-        request,
-        parsedBody === undefined ? undefined : { parsedBody },
-      );
+    if (method === "POST" && bodyParseFailed) {
+      return createJsonRpcErrorResponse({
+        status: 400,
+        code: -32700,
+        message: "Parse error: Invalid JSON",
+      });
     }
 
-    return existing.transport.handleRequest(
+    const created = await createStatelessTransport();
+    return created.transport.handleRequest(
       request,
       parsedBody === undefined ? undefined : { parsedBody },
     );

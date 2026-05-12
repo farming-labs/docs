@@ -1165,10 +1165,7 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
       ensureOk(initializeResponse, "MCP search initialization failed");
       ensureJsonRpcOk(initializePayload, "MCP search initialization failed");
 
-      const sessionId = initializeResponse.headers.get("mcp-session-id");
-      if (!sessionId) {
-        throw new Error("MCP search endpoint did not return an mcp-session-id header.");
-      }
+      const sessionId = initializeResponse.headers.get("mcp-session-id") ?? undefined;
 
       try {
         const searchResponse = await fetch(endpoint, {
@@ -1178,7 +1175,7 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
             "Content-Type": "application/json",
             accept: "application/json, text/event-stream",
             "mcp-protocol-version": protocolVersion,
-            "mcp-session-id": sessionId,
+            ...(sessionId ? { "mcp-session-id": sessionId } : {}),
           },
           body: JSON.stringify({
             jsonrpc: "2.0",
@@ -1229,14 +1226,16 @@ export function createMcpSearchAdapter(config: McpDocsSearchConfig): DocsSearchA
           .map(mapMcpSearchResult)
           .filter((result): result is DocsSearchResult => Boolean(result));
       } finally {
-        await fetch(endpoint, {
-          method: "DELETE",
-          headers: {
-            ...baseHeaders,
-            "mcp-protocol-version": protocolVersion,
-            "mcp-session-id": sessionId,
-          },
-        }).catch(() => undefined);
+        if (sessionId) {
+          await fetch(endpoint, {
+            method: "DELETE",
+            headers: {
+              ...baseHeaders,
+              "mcp-protocol-version": protocolVersion,
+              "mcp-session-id": sessionId,
+            },
+          }).catch(() => undefined);
+        }
       }
     },
   };

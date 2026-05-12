@@ -1339,24 +1339,20 @@ async function probeMcpRoute(
       };
     }
 
-    const sessionId = initializeResponse.headers.get("mcp-session-id");
-    if (!sessionId) {
-      return {
-        ok: false,
-        detail: `${route} initialize did not return mcp-session-id.`,
-      };
-    }
+    const sessionId = initializeResponse.headers.get("mcp-session-id") ?? undefined;
 
-    await postMcpJson(
-      baseUrl,
-      route,
-      {
-        jsonrpc: "2.0",
-        method: "notifications/initialized",
-        params: {},
-      },
-      sessionId,
-    ).catch(() => undefined);
+    if (sessionId) {
+      await postMcpJson(
+        baseUrl,
+        route,
+        {
+          jsonrpc: "2.0",
+          method: "notifications/initialized",
+          params: {},
+        },
+        sessionId,
+      ).catch(() => undefined);
+    }
 
     const toolsResponse = await postMcpJson(
       baseUrl,
@@ -1371,13 +1367,15 @@ async function probeMcpRoute(
     );
     const toolsPayload = await parseMcpResponse(toolsResponse);
 
-    await fetchWithTimeout(joinDoctorUrl(baseUrl, route), {
-      method: "DELETE",
-      headers: {
-        "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
-        "mcp-session-id": sessionId,
-      },
-    }).catch(() => undefined);
+    if (sessionId) {
+      await fetchWithTimeout(joinDoctorUrl(baseUrl, route), {
+        method: "DELETE",
+        headers: {
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": sessionId,
+        },
+      }).catch(() => undefined);
+    }
 
     if (!toolsResponse.ok || toolsPayload.error) {
       return {
@@ -1402,7 +1400,7 @@ async function probeMcpRoute(
 
     return {
       ok: true,
-      detail: `${route} initialized and exposed ${toolNames.length} MCP tool${toolNames.length === 1 ? "" : "s"}.`,
+      detail: `${route} initialized ${sessionId ? "with a session" : "statelessly"} and exposed ${toolNames.length} MCP tool${toolNames.length === 1 ? "" : "s"}.`,
     };
   } catch (error) {
     return {

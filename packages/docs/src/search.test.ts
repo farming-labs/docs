@@ -201,7 +201,6 @@ describe("performDocsSearch", () => {
             status: 200,
             headers: {
               "Content-Type": "application/json",
-              "mcp-session-id": "session-1",
             },
           },
         ),
@@ -238,11 +237,6 @@ describe("performDocsSearch", () => {
             },
           },
         ),
-      )
-      .mockResolvedValueOnce(
-        new Response(null, {
-          status: 200,
-        }),
       ) as typeof fetch;
 
     try {
@@ -269,6 +263,10 @@ describe("performDocsSearch", () => {
           section: "Quickstart",
         },
       ]);
+      expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(2);
+      const searchCall = vi.mocked(globalThis.fetch).mock.calls[1]?.[1];
+      expect(searchCall?.headers).toBeDefined();
+      expect(searchCall?.headers).not.toHaveProperty("mcp-session-id");
     } finally {
       globalThis.fetch = originalFetch;
       vi.restoreAllMocks();
