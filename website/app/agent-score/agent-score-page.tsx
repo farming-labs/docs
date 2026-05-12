@@ -9,8 +9,13 @@ import {
   Check,
   ChevronRight,
   Copy,
+  Gauge,
   Github,
   GithubIcon,
+  Globe,
+  Link2,
+  ListChecks,
+  ListOrdered,
   Loader2,
   Search,
 } from "lucide-react";
@@ -897,35 +902,52 @@ function LeaderboardSection({
       ) : (
         <div className="overflow-x-auto border border-black/10 dark:border-white/10">
           <table className="w-full min-w-[36rem] border-collapse">
-            <thead>
-              <tr className="border-b border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.02]">
+            <thead className="bg-transparent">
+              <tr className="border-b border-black/10 bg-transparent dark:border-white/10">
                 {(
                   [
-                    { label: "Rank", align: "left" as const, extra: "w-[4rem]" },
-                    { label: "Site", align: "left" as const, extra: "min-w-[10rem]" },
-                    { label: "URL", align: "left" as const, extra: "min-w-[12rem]" },
+                    {
+                      label: "Rank",
+                      Icon: ListOrdered,
+                      align: "left" as const,
+                      extra: "w-[4rem]",
+                    },
+                    {
+                      label: "Site",
+                      Icon: Globe,
+                      align: "left" as const,
+                      extra: "min-w-[10rem]",
+                    },
+                    {
+                      label: "URL",
+                      Icon: Link2,
+                      align: "left" as const,
+                      extra: "min-w-[12rem]",
+                    },
                     {
                       label: "Checks",
+                      Icon: ListChecks,
                       align: "right" as const,
                       extra: "w-[5.5rem] whitespace-nowrap px-6",
                     },
                     {
                       label: "Score",
+                      Icon: Gauge,
                       align: "right" as const,
                       extra: "w-[6.5rem] whitespace-nowrap pl-10 pr-5",
                     },
                   ] as const
-                ).map(({ label, align, extra }) => (
-                  <th
-                    key={label}
-                    scope="col"
-                    className={cn(
-                      "px-4 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-black/40 dark:text-white/40",
-                      align === "right" ? "text-right" : "text-left",
-                      extra,
-                    )}
-                  >
-                    {label}
+                ).map(({ label, Icon, align, extra }) => (
+                  <th key={label} scope="col" className={cn("px-4 py-3", extra)}>
+                    <div
+                      className={cn(
+                        "flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-black/45 dark:text-white/45",
+                        align === "right" ? "justify-end" : "justify-start",
+                      )}
+                    >
+                      <Icon className="size-3 shrink-0 opacity-80" aria-hidden />
+                      <span>{label}</span>
+                    </div>
                   </th>
                 ))}
               </tr>
@@ -950,34 +972,36 @@ function LeaderboardRow({ entry, rank }: { entry: LeaderboardEntry; rank: number
   const { pass, total } = leaderboardChecksPassTotal(entry.checks);
 
   return (
-    <li className="grid grid-cols-1 gap-2 px-4 py-3 transition-colors hover:bg-black/2 sm:grid-cols-[52px_minmax(0,1.45fr)_minmax(0,1fr)_minmax(3.25rem,auto)_minmax(4.25rem,auto)] sm:items-center sm:gap-4 dark:hover:bg-white/2">
-      <div className="font-mono text-[12px] uppercase tracking-[0.16em] tabular-nums text-black/70 dark:text-white/70">
+    <tr className="border-b border-black/10 transition-colors last:border-b-0 hover:bg-black/[0.02] dark:border-white/10 dark:hover:bg-white/[0.02]">
+      <td className="align-middle px-4 py-3 font-mono text-[12px] uppercase tracking-[0.16em] tabular-nums text-black/70 dark:text-white/70">
         {String(rank).padStart(2, "0")}
-      </div>
-      <div className="min-w-0">
+      </td>
+      <td className="max-w-[14rem] align-middle px-4 py-3">
         <p className="truncate font-mono text-[13px] text-black dark:text-white">{entry.name}</p>
         <p className="mt-0.5 font-mono text-[11px] text-black/45 dark:text-white/45">
           <span className="uppercase tracking-[0.14em]">{entry.grade}</span>
         </p>
-      </div>
-      <a
-        href={entry.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="truncate font-mono text-[11px] text-black/55 underline-offset-2 hover:underline dark:text-white/55"
-      >
-        {shortenUrl(entry.url)}
-      </a>
-      <div
-        className="font-mono text-xs tabular-nums text-black/75 dark:text-white/75 sm:text-right sm:text-sm"
+      </td>
+      <td className="max-w-[18rem] align-middle px-4 py-3">
+        <a
+          href={entry.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block truncate font-mono text-[11px] text-black/55 underline-offset-2 hover:underline dark:text-white/55"
+        >
+          {shortenUrl(entry.url)}
+        </a>
+      </td>
+      <td
+        className="whitespace-nowrap px-6 py-3 text-right align-middle font-mono text-sm tabular-nums text-black/75 dark:text-white/75"
         title={total > 0 ? `${pass} of ${total} checks passed` : "No check breakdown stored"}
       >
         {total > 0 ? `${pass}/${total}` : "—"}
-      </div>
-      <div className="font-mono text-xs font-semibold tabular-nums tracking-tight text-black dark:text-white sm:text-right sm:text-sm">
+      </td>
+      <td className="whitespace-nowrap py-3 pl-10 pr-5 text-right align-middle font-mono text-sm font-semibold tabular-nums tracking-tight text-black dark:text-white">
         {entry.score}/100
-      </div>
-    </li>
+      </td>
+    </tr>
   );
 }
 
