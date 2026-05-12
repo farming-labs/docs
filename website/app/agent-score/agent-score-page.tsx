@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   Check,
   ChevronRight,
+  CircleHelp,
   Copy,
   Gauge,
   Github,
@@ -132,6 +133,45 @@ const SCORE_LOADING_STEPS = [
   "Calculating final score",
 ] as const;
 
+const BREAKDOWN_HELP_ITEMS = [
+  {
+    title: "Discovery",
+    detail: "Checks whether agents can find the machine entrypoints before reading full pages.",
+  },
+  {
+    title: "Markdown",
+    detail:
+      "Checks whether each docs page is available as clean markdown through .md routes or negotiation.",
+  },
+  {
+    title: "Page Size",
+    detail: "Checks whether HTML and markdown stay small enough for agent context windows.",
+  },
+  {
+    title: "Structure",
+    detail:
+      "Checks headings, code fences, and serialized content so agents can parse the page reliably.",
+  },
+  {
+    title: "URL Stability",
+    detail: "Checks status codes and redirects so agents do not cache or cite unstable URLs.",
+  },
+  {
+    title: "Observability",
+    detail: "Checks parity, cache headers, and freshness signals between HTML and markdown.",
+  },
+  {
+    title: "Public Access",
+    detail:
+      "Checks that sampled docs pages are readable without auth gates. Percentages are point-weighted, so a PASS can be just below 100.",
+  },
+  {
+    title: "MCP",
+    detail:
+      "Checks whether MCP clients can initialize and list docs tools instead of scraping pages.",
+  },
+] as const;
+
 function leaderboardEntryMatchesQuery(entry: LeaderboardEntry, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
@@ -244,6 +284,9 @@ function buildPinnedStandardBreakdownItem(
   definition: StandardBreakdownDefinition,
   report: AgentScoreReport,
 ): BreakdownItem {
+  const checks = report.checks.filter(
+    (check) => categoryTitleFromCheck(check) === definition.sourceTitle,
+  );
   const scoredCategory = report.standard.categories.find(
     (category) => category.id === definition.id,
   );
@@ -262,9 +305,6 @@ function buildPinnedStandardBreakdownItem(
     };
   }
 
-  const checks = report.checks.filter(
-    (check) => categoryTitleFromCheck(check) === definition.sourceTitle,
-  );
   const rawScore = checks.reduce((total, check) => total + check.score, 0);
   const rawMaxScore = checks.reduce((total, check) => total + check.maxScore, 0);
   const score = rawMaxScore > 0 ? scorePercent(rawScore, rawMaxScore) : 0;
@@ -284,9 +324,18 @@ function buildPinnedStandardBreakdownItem(
   };
 }
 
-function buildMcpBreakdownItem(report: AgentScoreReport): BreakdownItem | null {
+function buildMcpBreakdownItem(report: AgentScoreReport): BreakdownItem {
   const check = report.checks.find((item) => item.id === "framework:mcp");
-  if (!check) return null;
+  if (!check) {
+    return {
+      id: "framework:mcp",
+      title: "MCP",
+      detail: "MCP was not stored on this saved score. Recalculate to include MCP weighting.",
+      status: "warn",
+      score: 0,
+      maxScore: 6,
+    };
+  }
 
   return {
     id: check.id,
@@ -304,7 +353,7 @@ function buildPrimaryBreakdownItems(report: AgentScoreReport): BreakdownItem[] {
     ...STANDARD_BREAKDOWN_DEFINITIONS.map((definition) =>
       buildPinnedStandardBreakdownItem(definition, report),
     ),
-    ...(mcpItem ? [mcpItem] : []),
+    mcpItem,
   ];
 }
 
@@ -583,6 +632,7 @@ export function AgentScorePage() {
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const leaderboardRef = useRef<HTMLElement | null>(null);
   const hydratedSelectionRef = useRef<string | null>(null);
+  const autoScoredInputRef = useRef<string | null>(null);
 
   const scrollToResults = useCallback(() => {
     window.setTimeout(() => {
@@ -613,6 +663,56 @@ export function AgentScorePage() {
     }
   }, []);
 
+  const calculateScore = useCallback(
+    async (
+      target: string,
+      options: { historyMode?: "push" | "replace" | "none"; scroll?: boolean } = {},
+    ) => {
+      const trimmed = target.trim();
+      if (!trimmed) return;
+
+      setSubmitState({ status: "idle" });
+      setFetchState({ status: "loading" });
+
+      try {
+        const response = await fetch("/api/agent-score", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: trimmed }),
+        });
+        const data = (await response.json()) as { error?: string } & AgentScoreReport;
+        if (!response.ok) {
+          setFetchState({
+            status: "error",
+            message: data.error ?? "Failed to score the URL. Make sure it is publicly reachable.",
+          });
+          return;
+        }
+
+        setFetchState({ status: "success", report: data });
+        hydratedSelectionRef.current = null;
+
+        if (options.historyMode !== "none") {
+          writeScoreUrl(data.baseUrl, {
+            source: "input",
+            ...(options.historyMode === "replace" ? { mode: "replace" as const } : {}),
+          });
+        }
+
+        if (options.scroll !== false) {
+          scrollToResults();
+        }
+      } catch (error) {
+        setFetchState({
+          status: "error",
+          message:
+            error instanceof Error ? error.message : "Request failed before reaching the scorer.",
+        });
+      }
+    },
+    [scrollToResults],
+  );
+
   useEffect(() => {
     loadLeaderboard();
   }, [loadLeaderboard]);
@@ -634,6 +734,22 @@ export function AgentScorePage() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  useEffect(() => {
+    const { selectedSite, inputUrl } = readCurrentScoreParams();
+    if (!inputUrl || selectedSite) return;
+
+    const cleanInput = cleanScoreUrlValue(inputUrl);
+    if (!cleanInput || autoScoredInputRef.current === cleanInput) return;
+
+    const currentClean =
+      fetchState.status === "success" ? cleanScoreUrlValue(fetchState.report.baseUrl) : "";
+    if (currentClean === cleanInput) return;
+
+    autoScoredInputRef.current = cleanInput;
+    setUrl(inputUrl);
+    void calculateScore(inputUrl, { historyMode: "replace", scroll: false });
+  }, [calculateScore, fetchState, locationVersion]);
 
   useEffect(() => {
     if (leaderboardLoading || entries.length === 0) return;
@@ -660,37 +776,7 @@ export function AgentScorePage() {
 
   async function handleCalculate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const trimmed = url.trim();
-    if (!trimmed) return;
-
-    setSubmitState({ status: "idle" });
-    setFetchState({ status: "loading" });
-
-    try {
-      const response = await fetch("/api/agent-score", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: trimmed }),
-      });
-      const data = (await response.json()) as { error?: string } & AgentScoreReport;
-      if (!response.ok) {
-        setFetchState({
-          status: "error",
-          message: data.error ?? "Failed to score the URL. Make sure it is publicly reachable.",
-        });
-        return;
-      }
-      setFetchState({ status: "success", report: data });
-      hydratedSelectionRef.current = null;
-      writeScoreUrl(data.baseUrl, { source: "input" });
-      scrollToResults();
-    } catch (error) {
-      setFetchState({
-        status: "error",
-        message:
-          error instanceof Error ? error.message : "Request failed before reaching the scorer.",
-      });
-    }
+    await calculateScore(url);
   }
 
   async function submitLeaderboardEntry(): Promise<void> {
@@ -867,6 +953,83 @@ export function AgentScorePage() {
   );
 }
 
+function SpiralLoadingIcon({ className }: { className?: string }) {
+  const dots = [
+    [6, 6],
+    [17, 6],
+    [28, 6],
+    [39, 6],
+    [50, 6],
+    [6, 17],
+    [17, 17],
+    [28, 17],
+    [39, 17],
+    [50, 17],
+    [6, 28],
+    [17, 28],
+    [28, 28],
+    [39, 28],
+    [50, 28],
+    [6, 39],
+    [17, 39],
+    [28, 39],
+    [39, 39],
+    [50, 39],
+    [6, 50],
+    [17, 50],
+    [28, 50],
+    [39, 50],
+    [50, 50],
+  ] as const;
+  const delays = [
+    2221, 2317, 869, 966, 1062, 2124, 772, 97, 193, 1159, 2028, 676, 0, 290, 1255, 1931, 579, 483,
+    386, 1352, 1834, 1738, 1641, 1545, 1448,
+  ] as const;
+
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 56 56"
+      className={className}
+      aria-hidden="true"
+    >
+      <defs>
+        <circle id="agent-score-spiral-base" r="2.4" fill="currentColor" opacity="0.12" />
+        <circle id="agent-score-spiral-light" r="3.1" />
+      </defs>
+      <style>{`
+        .agent-score-spiral-light {
+          fill: currentColor;
+          opacity: 0;
+          animation: agent-score-spiral 2800ms cubic-bezier(0.25, 1, 0.5, 1) infinite both;
+        }
+        @keyframes agent-score-spiral {
+          0% { opacity: 0; }
+          4% { opacity: 1; }
+          26% { opacity: 0.08; }
+          100% { opacity: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .agent-score-spiral-light { animation: none; opacity: 0.45; }
+        }
+      `}</style>
+      {dots.map(([x, y]) => (
+        <use key={`base-${x}-${y}`} href="#agent-score-spiral-base" x={x} y={y} />
+      ))}
+      {dots.map(([x, y], index) => (
+        <use
+          key={`light-${x}-${y}`}
+          className="agent-score-spiral-light"
+          href="#agent-score-spiral-light"
+          x={x}
+          y={y}
+          style={{ animationDelay: `${delays[index]}ms` }}
+        />
+      ))}
+    </svg>
+  );
+}
+
 function HeroSection({
   url,
   onUrlChange,
@@ -986,11 +1149,12 @@ function HeroSection({
                 </div>
                 <input
                   id="agent-score-url"
-                  type="url"
+                  type="text"
+                  inputMode="url"
                   required
                   value={url}
                   onChange={(event) => onUrlChange(event.target.value)}
-                  placeholder="https://docs.example.com"
+                  placeholder="docs.example.com or example.com/docs"
                   className="w-full min-w-0 rounded-none border border-black/10 bg-transparent px-3 py-2 font-mono text-sm text-black outline-none transition-colors focus:border-black/30 dark:border-white/10 dark:text-white dark:focus:border-white/25"
                 />
               </div>
@@ -1015,21 +1179,19 @@ function HeroSection({
             <button
               type="submit"
               disabled={loading}
-              className="group inline-flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3 font-mono text-[11px] uppercase tracking-wide text-white transition-all hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
+              aria-label={loading ? loadingLabel : "Calculate score"}
+              className="group inline-flex min-h-11 w-full items-center justify-between gap-3 border border-black bg-black px-4 py-3 font-mono text-[11px] uppercase tracking-wide text-white transition-all hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="size-3.5 animate-spin" />
-                  <span aria-live="polite" className="truncate">
-                    {loadingLabel}
-                  </span>
-                </>
-              ) : (
-                <>
-                  Calculate score
-                  <ArrowRight className="size-3.5 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
-                </>
-              )}
+              <span aria-live="polite" className="min-w-0 truncate text-left">
+                {loading ? loadingLabel : "Calculate score"}
+              </span>
+              <span className="inline-flex size-5 shrink-0 items-center justify-center" aria-hidden>
+                {loading ? (
+                  <SpiralLoadingIcon className="size-4 shrink-0" />
+                ) : (
+                  <Gauge className="size-3.5 transition-transform duration-300 group-hover:rotate-12" />
+                )}
+              </span>
             </button>
 
             <p className="text-[11px] leading-relaxed text-black/45 dark:text-white/40">
@@ -1173,10 +1335,19 @@ function ScoreOverview({
             type="button"
             onClick={onSubmitLeaderboard}
             disabled={submitBusy}
-            className="group inline-flex items-center justify-center gap-2 border border-black bg-black px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white transition-all hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
+            aria-label={submitBusy ? "Submitting score" : "Submit to leaderboard"}
+            className="group inline-flex min-h-10 w-full items-center justify-between gap-3 border border-black bg-black px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white transition-all hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
           >
-            {submitBusy ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null}
-            Submit to leaderboard
+            <span aria-live="polite" className="min-w-0 truncate text-left">
+              {submitBusy ? "Submitting score" : "Submit to leaderboard"}
+            </span>
+            <span className="inline-flex size-5 shrink-0 items-center justify-center" aria-hidden>
+              {submitBusy ? (
+                <SpiralLoadingIcon className="size-4 shrink-0" />
+              ) : (
+                <ArrowUpRight className="size-3.5 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              )}
+            </span>
           </button>
         </div>
 
@@ -1244,6 +1415,31 @@ function ChecksBreakdown({ checks }: { checks: AgentScoreCheck[] }) {
           All probes, grouped by breakdown.
         </h2>
       </div>
+
+      <details className="group border-b border-black/10 dark:border-white/10">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-3 text-left marker:hidden">
+          <span className="inline-flex min-w-0 items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-black/55 dark:text-white/55">
+            <CircleHelp className="size-3.5 shrink-0" aria-hidden />
+            What do these checks mean?
+          </span>
+          <ChevronRight
+            className="size-4 shrink-0 text-black/35 transition-transform group-open:rotate-90 dark:text-white/35"
+            aria-hidden
+          />
+        </summary>
+        <div className="grid gap-px bg-black/10 dark:bg-white/10 sm:grid-cols-2 lg:grid-cols-4 border-t border-black/10 dark:border-white/[0.02]">
+          {BREAKDOWN_HELP_ITEMS.map((item) => (
+            <div key={item.title} className="bg-white px-4 py-3 dark:bg-black">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-black/65 dark:text-white/65">
+                {item.title}
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-black/55 dark:text-white/45">
+                {item.detail}
+              </p>
+            </div>
+          ))}
+        </div>
+      </details>
 
       <div
         className="hidden border-b border-l-2 border-l-transparent border-black/10 px-5 py-2 sm:grid sm:grid-cols-[88px_minmax(180px,1.2fr)_minmax(0,3fr)] sm:gap-x-8 dark:border-white/10"

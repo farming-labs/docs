@@ -821,6 +821,7 @@ Config content.
     expect(fallbackResponse.headers.get("vary")).toBeNull();
     const fallbackDocument = await fallbackResponse.text();
     expect(fallbackDocument).toContain("# Quickstart\nURL: /docs/getting-started/quickstart");
+    expect(fallbackDocument).toContain("LLM index: /llms.txt");
     expect(fallbackDocument).toContain(
       ["Description: Start fast", "Related: /docs/overview, /docs/configuration"].join("\n"),
     );

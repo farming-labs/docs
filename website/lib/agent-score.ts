@@ -92,7 +92,10 @@ export interface AgentScoreReport {
 }
 
 export function normalizeAgentScoreBaseUrl(value: string): string {
-  const url = new URL(value);
+  const trimmed = value.trim();
+  if (!trimmed) throw new Error("URL is required.");
+
+  const url = new URL(/^[a-z][a-z\d+\-.]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error("URL must use http or https.");
   }
@@ -271,7 +274,11 @@ async function parseMcpResponse(response: Response): Promise<McpResponseEnvelope
     .at(-1);
 
   if (!lastData) {
-    throw new Error(`Expected MCP JSON-RPC payload, got ${body.slice(0, 120) || "empty body"}.`);
+    throw new Error(
+      `Expected MCP JSON-RPC payload, got ${
+        contentType.trim() || (body.trim() ? "non-JSON response" : "empty body")
+      }.`,
+    );
   }
 
   return JSON.parse(lastData) as McpResponseEnvelope;
@@ -281,6 +288,11 @@ interface McpProbe {
   ok: boolean;
   detail: string;
   tools?: string[];
+}
+
+interface McpProbeResult {
+  labels: string[];
+  probes: McpProbe[];
 }
 
 function shouldRetryMcpProbe(probe: McpProbe): boolean {
@@ -298,6 +310,51 @@ async function probeMcpRoute(baseUrl: string, route: string): Promise<McpProbe> 
   }
 
   return lastProbe ?? { ok: false, detail: "MCP endpoint failed before returning a result." };
+}
+
+async function probeMcpRouteCandidates(
+  baseUrl: string,
+  routes: string[],
+  options: { includeOriginFallback?: boolean } = {},
+): Promise<McpProbeResult> {
+  const bases = [baseUrl];
+  const origin = originBaseUrl(baseUrl);
+  if (options.includeOriginFallback !== false && origin !== baseUrl) {
+    bases.push(origin);
+  }
+
+  const seen = new Set<string>();
+  const candidates: Array<{ baseUrl: string; route: string; url: string; label: string }> = [];
+
+  for (const candidateBaseUrl of bases) {
+    for (const route of routes) {
+      const url = joinUrl(candidateBaseUrl, route);
+      if (seen.has(url)) continue;
+      seen.add(url);
+      const parsed = new URL(url);
+      candidates.push({
+        baseUrl: candidateBaseUrl,
+        route,
+        url,
+        label: parsed.origin === origin ? parsed.pathname : `${parsed.origin}${parsed.pathname}`,
+      });
+    }
+  }
+
+  const probes = await Promise.all(
+    candidates.map(async (candidate) => {
+      const probe = await probeMcpRoute(candidate.baseUrl, candidate.route);
+      return {
+        ...probe,
+        detail: `${candidate.label}: ${probe.detail}`,
+      };
+    }),
+  );
+
+  return {
+    labels: candidates.map((candidate) => candidate.label),
+    probes,
+  };
 }
 
 async function probeMcpRouteOnce(baseUrl: string, route: string): Promise<McpProbe> {
@@ -720,11 +777,44 @@ function scoreRouteProbes(
   return { status: "fail", score: 0, passed };
 }
 
+function buildMcpReadinessCheck(result: McpProbeResult): AgentScoreCheck {
+  if (result.probes.length === 0) {
+    return makeCheck(
+      "framework:mcp",
+      "MCP handshake",
+      "fail",
+      0,
+      6,
+      "No MCP routes were available to probe.",
+      `Expose ${DEFAULT_MCP_PUBLIC_ROUTE} or ${DEFAULT_MCP_WELL_KNOWN_ROUTE} so agents can use docs tools instead of scraping.`,
+    );
+  }
+
+  const passed = result.probes.filter((probe) => probe.ok).length;
+  return makeCheck(
+    "framework:mcp",
+    "MCP handshake",
+    passed === result.probes.length ? "pass" : passed > 0 ? "warn" : "fail",
+    passed === result.probes.length ? 6 : passed > 0 ? 3 : 0,
+    6,
+    result.probes.map((probe) => probe.detail).join(" "),
+    passed === result.probes.length
+      ? undefined
+      : `Verify ${result.labels.join(" and ")} support MCP initialize and tools/list.`,
+  );
+}
+
 async function buildFrameworkChecks(
   baseUrl: string,
 ): Promise<{ framework?: string; checks: AgentScoreCheck[] }> {
   const frameworkDiscovery = await probeFrameworkDiscovery(baseUrl);
-  if (!frameworkDiscovery) return { checks: [] };
+  if (!frameworkDiscovery) {
+    const mcpResult = await probeMcpRouteCandidates(baseUrl, [
+      DEFAULT_MCP_PUBLIC_ROUTE,
+      DEFAULT_MCP_WELL_KNOWN_ROUTE,
+    ]);
+    return { checks: [buildMcpReadinessCheck(mcpResult)] };
+  }
 
   const frameworkBaseUrl = frameworkDiscovery.baseUrl;
   const view = buildDiscoveryView(frameworkDiscovery.discovery.body);
@@ -762,8 +852,10 @@ async function buildFrameworkChecks(
       ),
     ),
     view.capabilities.mcp === false
-      ? Promise.resolve([])
-      : Promise.all(view.mcpRoutes.map((route) => probeMcpRoute(frameworkBaseUrl, route))),
+      ? Promise.resolve({ labels: [], probes: [] })
+      : probeMcpRouteCandidates(frameworkBaseUrl, view.mcpRoutes, {
+          includeOriginFallback: false,
+        }),
     view.capabilities.search === false || !view.searchEndpoint
       ? Promise.resolve(undefined)
       : probeJsonRoute(frameworkBaseUrl, fillSearchEndpoint(view.searchEndpoint, "installation")),
@@ -918,7 +1010,7 @@ async function buildFrameworkChecks(
         "Enable mcp so agents can list, search, and read docs through tools instead of scraping.",
       ),
     );
-  } else if (mcpProbes.length === 0) {
+  } else if (mcpProbes.probes.length === 0) {
     checks.push(
       makeCheck(
         "framework:mcp",
@@ -931,20 +1023,7 @@ async function buildFrameworkChecks(
       ),
     );
   } else {
-    const passed = mcpProbes.filter((probe) => probe.ok).length;
-    checks.push(
-      makeCheck(
-        "framework:mcp",
-        "MCP handshake",
-        passed === mcpProbes.length ? "pass" : passed > 0 ? "warn" : "fail",
-        passed === mcpProbes.length ? 6 : passed > 0 ? 3 : 0,
-        6,
-        mcpProbes.map((probe) => probe.detail).join(" "),
-        passed === mcpProbes.length
-          ? undefined
-          : `Verify ${view.mcpRoutes.join(" and ")} support MCP initialize and tools/list.`,
-      ),
-    );
+    checks.push(buildMcpReadinessCheck(mcpProbes));
   }
 
   checks.push(

@@ -1496,7 +1496,7 @@ function renderMarkdownDocument(page: DocsMcpPage | DocsSearchSourcePage): strin
   }
 
   const relatedLines = renderDocsRelatedMarkdownLines(page.related);
-  const lines = [`# ${page.title}`, `URL: ${page.url}`];
+  const lines = [`# ${page.title}`, `URL: ${page.url}`, "LLM index: /llms.txt"];
   if (page.description) lines.push(`Description: ${page.description}`);
   lines.push(...relatedLines);
   lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);

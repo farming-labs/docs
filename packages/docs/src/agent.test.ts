@@ -358,6 +358,7 @@ describe("agent route helpers", () => {
     );
 
     expect(page).not.toBeNull();
+    expect(renderDocsMarkdownDocument(page!)).toContain("LLM index: /llms.txt");
     expect(renderDocsMarkdownDocument(page!)).toContain("Related: /docs/configuration");
     expect(renderDocsMarkdownDocument(page!)).toContain("Hidden");
   });
