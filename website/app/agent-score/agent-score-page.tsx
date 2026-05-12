@@ -32,7 +32,10 @@ type LeaderboardEntry = {
 };
 
 /** PASS-only count vs total probes stored with each leaderboard row. */
-function leaderboardChecksPassTotal(checks: LeaderboardEntry["checks"]): { pass: number; total: number } {
+function leaderboardChecksPassTotal(checks: LeaderboardEntry["checks"]): {
+  pass: number;
+  total: number;
+} {
   if (!Array.isArray(checks)) return { pass: 0, total: 0 };
   const total = checks.length;
   const pass = checks.filter((c) => c?.status === "pass").length;
@@ -224,7 +227,8 @@ export function AgentScorePage() {
     } catch (error) {
       setFetchState({
         status: "error",
-        message: error instanceof Error ? error.message : "Request failed before reaching the scorer.",
+        message:
+          error instanceof Error ? error.message : "Request failed before reaching the scorer.",
       });
     }
   }
@@ -278,7 +282,9 @@ export function AgentScorePage() {
       setSubmitState({
         status: "error",
         message:
-          error instanceof Error ? error.message : "Request failed before reaching the leaderboard.",
+          error instanceof Error
+            ? error.message
+            : "Request failed before reaching the leaderboard.",
       });
     }
   }
@@ -584,7 +590,11 @@ function BreakdownImprovementStrip({ report }: { report: AgentScoreReport }) {
           }
           className="inline-flex shrink-0 w-[200px] items-center justify-center gap-2 border border-black/15 bg-black/2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-black transition-colors hover:bg-black/5 dark:border-white/15 dark:bg-white/3 dark:text-white dark:hover:bg-white/6 sm:px-4 sm:py-2.5"
         >
-          {copied ? <Check className="size-3.5 shrink-0" aria-hidden /> : <Copy className="size-3.5 shrink-0" aria-hidden />}
+          {copied ? (
+            <Check className="size-3.5 shrink-0" aria-hidden />
+          ) : (
+            <Copy className="size-3.5 shrink-0" aria-hidden />
+          )}
           {copied ? "Copied" : "Copy improvements"}
         </button>
       </div>
@@ -750,11 +760,11 @@ function ChecksBreakdown({ checks }: { checks: AgentScoreCheck[] }) {
                 className={cn(
                   "inline-flex items-center justify-center border bg-white px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.22em] tabular-nums dark:bg-black",
                   check.status === "pass" &&
-                  "border-black/20 text-black/70 dark:border-white/20 dark:text-white/70",
+                    "border-black/20 text-black/70 dark:border-white/20 dark:text-white/70",
                   check.status === "warn" &&
-                  "border-orange-500/60 text-orange-600 dark:border-orange-400/60 dark:text-orange-400",
+                    "border-orange-500/60 text-orange-600 dark:border-orange-400/60 dark:text-orange-400",
                   check.status === "fail" &&
-                  "border-red-500/60 text-red-600 dark:border-red-400/60 dark:text-red-400",
+                    "border-red-500/60 text-red-600 dark:border-red-400/60 dark:text-red-400",
                 )}
               >
                 {statusLabel(check.status)}
@@ -885,26 +895,51 @@ function LeaderboardSection({
           No entries match &ldquo;{query.trim()}&rdquo;. Try another URL, site name, or score.
         </div>
       ) : (
-        <div className="border border-black/10 dark:border-white/10">
-          <div className="hidden border-b border-black/10 px-4 py-2 dark:border-white/10 sm:grid sm:grid-cols-[52px_minmax(0,1.45fr)_minmax(0,1fr)_minmax(3.25rem,auto)_minmax(4.25rem,auto)] sm:items-center sm:gap-4">
-            {["Rank", "Site", "URL", "Checks", "Score"].map((label) => (
-              <span
-                key={label}
-                className="font-mono text-[10px] uppercase tracking-[0.18em] text-black/40 dark:text-white/40"
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-          <ul className="divide-y divide-black/10 dark:divide-white/10">
-            {filtered.map((entry) => (
-              <LeaderboardRow
-                key={entry.id}
-                entry={entry}
-                rank={ranked.findIndex((e) => e.id === entry.id) + 1}
-              />
-            ))}
-          </ul>
+        <div className="overflow-x-auto border border-black/10 dark:border-white/10">
+          <table className="w-full min-w-[36rem] border-collapse">
+            <thead>
+              <tr className="border-b border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.02]">
+                {(
+                  [
+                    { label: "Rank", align: "left" as const, extra: "w-[4rem]" },
+                    { label: "Site", align: "left" as const, extra: "min-w-[10rem]" },
+                    { label: "URL", align: "left" as const, extra: "min-w-[12rem]" },
+                    {
+                      label: "Checks",
+                      align: "right" as const,
+                      extra: "w-[5.5rem] whitespace-nowrap px-6",
+                    },
+                    {
+                      label: "Score",
+                      align: "right" as const,
+                      extra: "w-[6.5rem] whitespace-nowrap pl-10 pr-5",
+                    },
+                  ] as const
+                ).map(({ label, align, extra }) => (
+                  <th
+                    key={label}
+                    scope="col"
+                    className={cn(
+                      "px-4 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-black/40 dark:text-white/40",
+                      align === "right" ? "text-right" : "text-left",
+                      extra,
+                    )}
+                  >
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((entry) => (
+                <LeaderboardRow
+                  key={entry.id}
+                  entry={entry}
+                  rank={ranked.findIndex((e) => e.id === entry.id) + 1}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </section>

@@ -1,13 +1,5 @@
 import Link from "next/link";
-import {
-  Activity,
-  ArrowRight,
-  ArrowUpRight,
-  Bot,
-  FileText,
-  Github,
-  Search,
-} from "lucide-react";
+import { Activity, ArrowRight, ArrowUpRight, Bot, FileText, Github, Search } from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import CodeBlock from "@/components/ui/code-block";
 import { FeatureGridCard } from "@/components/ui/feature-grid-card";
