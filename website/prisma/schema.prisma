@@ -60,3 +60,22 @@ model CloudWaitlistEntry {
 
   @@index([createdAt])
 }
+
+model AgentScoreEntry {
+  id              String         @id @default(cuid())
+  url             String         @unique
+  name            String
+  score           Int
+  grade           String
+  framework       String?
+  checks          Json
+  recommendations Json?
+  submitterName   String?
+  submitterUrl    String?
+  approvalStatus  ApprovalStatus @default(APPROVED)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([score])
+  @@index([createdAt])
+}
