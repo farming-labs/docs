@@ -1111,7 +1111,7 @@ function HeroSection({
             <button
               type="button"
               onClick={onLeaderboardClick}
-              className="group inline-flex mb-[2px] md:border-b-0 w-full items-center justify-center gap-2 border border-black/15 bg-white px-4 py-3 font-mono text-[11px] uppercase tracking-wide text-black transition-colors hover:border-black/30 hover:bg-black/[0.03] dark:border-white/10 dark:bg-black/50 dark:text-white dark:hover:border-white/30 dark:hover:bg-white/[0.05] sm:w-auto"
+              className="group inline-flex mb-[2px] md:border-b-0 w-full items-center justify-center gap-2 border border-black/15 bg-white px-4 py-3 font-mono text-[11px] uppercase tracking-wide text-black transition-colors hover:bg-black/[0.03] dark:border-white/10 dark:bg-black/50 dark:text-white dark:hover:bg-white/[0.05] sm:w-auto"
             >
               <ListOrdered className="size-3.5" aria-hidden />
               Leaderboard
