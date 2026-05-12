@@ -143,7 +143,7 @@ async function fetchWithTimeout(
       redirect: "follow",
       headers: {
         "user-agent": "@farming-labs/docs agent-score probe",
-        ...(init.headers ?? {}),
+        ...init.headers,
       },
     });
   } finally {
