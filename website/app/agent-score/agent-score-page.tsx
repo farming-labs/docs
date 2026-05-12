@@ -6,17 +6,13 @@ import {
   Activity,
   ArrowRight,
   ArrowUpRight,
-  Award,
   Check,
   ChevronRight,
   Copy,
-  Crown,
   Github,
   GithubIcon,
   Loader2,
   Search,
-  Trophy,
-  X,
 } from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import PixelCard from "@/components/ui/pixel-card";
@@ -30,12 +26,18 @@ type LeaderboardEntry = {
   name: string;
   score: number;
   grade: string;
-  framework: string | null;
-  submitterName: string | null;
-  submitterUrl: string | null;
+  checks?: AgentScoreCheck[] | null;
   createdAt: string;
   updatedAt: string;
 };
+
+/** PASS-only count vs total probes stored with each leaderboard row. */
+function leaderboardChecksPassTotal(checks: LeaderboardEntry["checks"]): { pass: number; total: number } {
+  if (!Array.isArray(checks)) return { pass: 0, total: 0 };
+  const total = checks.length;
+  const pass = checks.filter((c) => c?.status === "pass").length;
+  return { pass, total };
+}
 
 type FetchState =
   | { status: "idle" }
@@ -56,11 +58,24 @@ const EXAMPLE_URLS = [
   "https://shadcn-svelte.com",
 ] as const;
 
-const RANK_BADGES: Record<number, { icon: typeof Crown; tint: string }> = {
-  0: { icon: Crown, tint: "text-yellow-500 dark:text-yellow-300" },
-  1: { icon: Trophy, tint: "text-zinc-500 dark:text-zinc-300" },
-  2: { icon: Award, tint: "text-amber-700 dark:text-amber-400" },
-};
+function leaderboardEntryMatchesQuery(entry: LeaderboardEntry, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const { pass, total } = leaderboardChecksPassTotal(entry.checks);
+  const checksFraction = total > 0 ? `${pass}/${total}` : "";
+  const hay = [
+    entry.name,
+    entry.url,
+    entry.grade,
+    String(entry.score),
+    `${entry.score}/100`,
+    checksFraction,
+    shortenUrl(entry.url),
+  ]
+    .join(" ")
+    .toLowerCase();
+  return hay.includes(q);
+}
 
 function statusLabel(status: AgentScoreCheck["status"]): string {
   if (status === "pass") return "PASS";
@@ -152,10 +167,6 @@ export function AgentScorePage() {
   const [url, setUrl] = useState("");
   const [fetchState, setFetchState] = useState<FetchState>({ status: "idle" });
   const [submitState, setSubmitState] = useState<SubmitState>({ status: "idle" });
-  const [showSubmit, setShowSubmit] = useState(false);
-  const [submitterName, setSubmitterName] = useState("");
-  const [submitterUrl, setSubmitterUrl] = useState("");
-  const [overrideName, setOverrideName] = useState("");
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const [leaderboardNotConfigured, setLeaderboardNotConfigured] = useState(false);
@@ -164,7 +175,7 @@ export function AgentScorePage() {
   const loadLeaderboard = useCallback(async () => {
     setLeaderboardLoading(true);
     try {
-      const response = await fetch("/api/agent-score/leaderboard?limit=25", {
+      const response = await fetch("/api/agent-score/leaderboard?limit=100", {
         cache: "no-store",
       });
       const data = (await response.json()) as {
@@ -190,7 +201,6 @@ export function AgentScorePage() {
     if (!trimmed) return;
 
     setSubmitState({ status: "idle" });
-    setShowSubmit(false);
     setFetchState({ status: "loading" });
 
     try {
@@ -208,7 +218,6 @@ export function AgentScorePage() {
         return;
       }
       setFetchState({ status: "success", report: data });
-      setOverrideName("");
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 50);
@@ -220,8 +229,7 @@ export function AgentScorePage() {
     }
   }
 
-  async function handleSubmitToLeaderboard(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submitLeaderboardEntry(): Promise<void> {
     if (fetchState.status !== "success") return;
 
     setSubmitState({ status: "loading" });
@@ -232,9 +240,6 @@ export function AgentScorePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           url: fetchState.report.baseUrl,
-          name: overrideName.trim() || undefined,
-          submitterName: submitterName.trim() || undefined,
-          submitterUrl: submitterUrl.trim() || undefined,
         }),
       });
       const data = (await response.json()) as {
@@ -266,12 +271,8 @@ export function AgentScorePage() {
 
       setSubmitState({
         status: "success",
-        message: "Submitted! Refreshing the leaderboard now.",
+        message: "Submitted to the leaderboard.",
       });
-      setShowSubmit(false);
-      setSubmitterName("");
-      setSubmitterUrl("");
-      setOverrideName("");
       loadLeaderboard();
     } catch (error) {
       setSubmitState({
@@ -338,11 +339,8 @@ export function AgentScorePage() {
           <section ref={resultsRef} className="relative space-y-6">
             <ScoreOverview
               report={currentReport}
-              onSubmitClick={() => {
-                setShowSubmit(true);
-                setSubmitState({ status: "idle" });
-              }}
-              submitOpen={showSubmit}
+              submitBusy={submitState.status === "loading"}
+              onSubmitLeaderboard={() => void submitLeaderboardEntry()}
             />
 
             <ChecksBreakdown checks={currentReport.checks} />
@@ -351,23 +349,19 @@ export function AgentScorePage() {
               <Recommendations items={currentReport.recommendations} />
             ) : null}
 
-            {showSubmit ? (
-              <SubmitForm
-                onSubmit={handleSubmitToLeaderboard}
-                state={submitState}
-                submitterName={submitterName}
-                onSubmitterName={setSubmitterName}
-                submitterUrl={submitterUrl}
-                onSubmitterUrl={setSubmitterUrl}
-                overrideName={overrideName}
-                onOverrideName={setOverrideName}
-                defaultName={currentReport.name}
-                onClose={() => setShowSubmit(false)}
-              />
+            {submitState.status === "error" ? (
+              <div className="border border-red-500/30 bg-red-500/5 px-5 py-3 font-mono text-[12px] uppercase tracking-[0.16em] text-red-600 dark:text-red-400">
+                {submitState.message}
+              </div>
+            ) : null}
+            {submitState.status === "warning" ? (
+              <div className="border border-amber-500/30 bg-amber-500/5 px-5 py-3 font-mono text-[12px] uppercase tracking-[0.16em] text-amber-700 dark:text-amber-400">
+                {submitState.message}
+              </div>
             ) : null}
 
             {submitState.status === "success" ? (
-              <div className="border border-emerald-500/30 bg-emerald-500/5 px-5 py-3 font-mono text-[12px] uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-400">
+              <div className="border border-black/15 bg-black/2 px-5 py-3 font-mono text-[12px] uppercase tracking-[0.16em] text-black/75 dark:border-white/15 dark:bg-white/3 dark:text-white/75">
                 {submitState.message}
               </div>
             ) : null}
@@ -600,12 +594,12 @@ function BreakdownImprovementStrip({ report }: { report: AgentScoreReport }) {
 
 function ScoreOverview({
   report,
-  onSubmitClick,
-  submitOpen,
+  submitBusy,
+  onSubmitLeaderboard,
 }: {
   report: AgentScoreReport;
-  onSubmitClick: () => void;
-  submitOpen: boolean;
+  submitBusy: boolean;
+  onSubmitLeaderboard: () => void;
 }) {
   return (
     <PixelCard className="border-black/10 p-0 bg-white/95 dark:border-white/10 dark:bg-black/35">
@@ -640,12 +634,6 @@ function ScoreOverview({
                 {report.baseUrl.replace(/^https?:\/\//, "")}
               </a>
             </div>
-            {report.framework ? (
-              <div className="flex items-center justify-between">
-                <span className="text-black/40 dark:text-white/40">Framework</span>
-                <span className="text-black dark:text-white">{report.framework}</span>
-              </div>
-            ) : null}
             <div className="flex items-center justify-between">
               <span className="text-black/40 dark:text-white/40">Raw</span>
               <span className="text-black dark:text-white">
@@ -660,13 +648,12 @@ function ScoreOverview({
 
           <button
             type="button"
-            onClick={onSubmitClick}
-            disabled={submitOpen}
+            onClick={onSubmitLeaderboard}
+            disabled={submitBusy}
             className="group inline-flex items-center justify-center gap-2 border border-black bg-black px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white transition-all hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
           >
-            <Trophy className="size-3.5" />
+            {submitBusy ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null}
             Submit to leaderboard
-            <ArrowRight className="size-3.5 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
           </button>
         </div>
 
@@ -822,141 +809,6 @@ function Recommendations({ items }: { items: string[] }) {
   );
 }
 
-function SubmitForm({
-  onSubmit,
-  state,
-  submitterName,
-  onSubmitterName,
-  submitterUrl,
-  onSubmitterUrl,
-  overrideName,
-  onOverrideName,
-  defaultName,
-  onClose,
-}: {
-  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
-  state: SubmitState;
-  submitterName: string;
-  onSubmitterName: (value: string) => void;
-  submitterUrl: string;
-  onSubmitterUrl: (value: string) => void;
-  overrideName: string;
-  onOverrideName: (value: string) => void;
-  defaultName: string;
-  onClose: () => void;
-}) {
-  const loading = state.status === "loading";
-  return (
-    <PixelCard className="border-black/10 bg-white/95 dark:border-white/10 dark:bg-black/35">
-      <div className="flex items-start justify-between gap-3 border-b border-black/10 pb-4 dark:border-white/10">
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
-            Submit to leaderboard
-          </p>
-          <h3 className="mt-1 text-lg font-normal font-pixel tracking-normal text-black dark:text-white">
-            Share your score with everyone.
-          </h3>
-          <p className="mt-2 max-w-md text-sm leading-relaxed text-black/55 dark:text-white/45">
-            We re-run the same checks server-side and store the verified result. Name fields are
-            opt-in; leave them blank to submit anonymously.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close submit form"
-          className="border border-black/10 p-1.5 text-black/45 transition-colors hover:border-black/30 hover:text-black dark:border-white/10 dark:text-white/45 dark:hover:border-white/30 dark:hover:text-white"
-        >
-          <X className="size-3.5" />
-        </button>
-      </div>
-
-      <form onSubmit={onSubmit} className="mt-5 space-y-4">
-        <div>
-          <label
-            htmlFor="leaderboard-display-name"
-            className="mb-1 block font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45"
-          >
-            Display name <span className="normal-case opacity-60">(optional)</span>
-          </label>
-          <input
-            id="leaderboard-display-name"
-            type="text"
-            value={overrideName}
-            onChange={(event) => onOverrideName(event.target.value)}
-            placeholder={defaultName}
-            className="w-full rounded-none border border-black/10 bg-transparent px-3 py-2 text-sm text-black outline-none transition-colors focus:border-black/30 dark:border-white/10 dark:text-white dark:focus:border-white/25"
-          />
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label
-              htmlFor="leaderboard-submitter-name"
-              className="mb-1 block font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45"
-            >
-              Your name <span className="normal-case opacity-60">(optional)</span>
-            </label>
-            <input
-              id="leaderboard-submitter-name"
-              type="text"
-              value={submitterName}
-              onChange={(event) => onSubmitterName(event.target.value)}
-              placeholder="Ada Lovelace"
-              className="w-full rounded-none border border-black/10 bg-transparent px-3 py-2 text-sm text-black outline-none transition-colors focus:border-black/30 dark:border-white/10 dark:text-white dark:focus:border-white/25"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="leaderboard-submitter-url"
-              className="mb-1 block font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45"
-            >
-              Profile URL <span className="normal-case opacity-60">(optional)</span>
-            </label>
-            <input
-              id="leaderboard-submitter-url"
-              type="url"
-              value={submitterUrl}
-              onChange={(event) => onSubmitterUrl(event.target.value)}
-              placeholder="https://github.com/you"
-              className="w-full rounded-none border border-black/10 bg-transparent px-3 py-2 text-sm text-black outline-none transition-colors focus:border-black/30 dark:border-white/10 dark:text-white dark:focus:border-white/25"
-            />
-          </div>
-        </div>
-
-        {state.status === "error" ? (
-          <p className="border border-red-500/30 bg-red-500/5 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.16em] text-red-600 dark:text-red-400">
-            {state.message}
-          </p>
-        ) : null}
-        {state.status === "warning" ? (
-          <p className="border border-amber-500/30 bg-amber-500/5 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.16em] text-amber-700 dark:text-amber-400">
-            {state.message}
-          </p>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="group inline-flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3 font-mono text-[11px] uppercase tracking-wide text-white transition-all hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="size-3.5 animate-spin" />
-              Verifying score
-            </>
-          ) : (
-            <>
-              <Check className="size-3.5" />
-              Submit verified score
-            </>
-          )}
-        </button>
-      </form>
-    </PixelCard>
-  );
-}
-
 function LeaderboardSection({
   entries,
   loading,
@@ -966,12 +818,18 @@ function LeaderboardSection({
   loading: boolean;
   notConfigured: boolean;
 }) {
+  const [query, setQuery] = useState("");
   const ranked = useMemo(() => entries.slice(0, 100), [entries]);
+  const filtered = useMemo(
+    () => ranked.filter((e) => leaderboardEntryMatchesQuery(e, query)),
+    [ranked, query],
+  );
+  const queryActive = query.trim().length > 0;
 
   return (
     <section id="leaderboard" className="space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div className="max-w-2xl">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-2xl flex-1">
           <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
             Leaderboard
           </p>
@@ -979,12 +837,31 @@ function LeaderboardSection({
             Most agent-ready docs sites.
           </h2>
           <p className="mt-2 max-w-xl text-sm leading-relaxed text-black/55 dark:text-white/45">
-            Ranked by the verified score returned by the doctor probes. Submit your own to land on
-            the board.
+            Ranked by verified scores from the hosted probes. Submit yours from the results card
+            above.
           </p>
         </div>
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-black/35 dark:text-white/35">
-          {entries.length} {entries.length === 1 ? "entry" : "entries"}
+
+        <div className="flex w-full flex-col gap-2 sm:max-w-md lg:w-72 lg:max-w-none lg:shrink-0">
+          <label htmlFor="leaderboard-search" className="sr-only">
+            Search leaderboard by site, URL, score, grade, or check counts
+          </label>
+          <div className="relative w-full">
+            <Search
+              className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-black/35 dark:text-white/35"
+              aria-hidden
+            />
+            <input
+              id="leaderboard-search"
+              type="search"
+              inputMode="search"
+              autoComplete="off"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search site, URL, score, checks…"
+              className="w-full border border-black/10 bg-black/2 py-2 pl-9 pr-3 font-mono text-xs text-black outline-none placeholder:text-black/35 focus:border-black/25 dark:border-white/10 dark:bg-white/3 dark:text-white dark:placeholder:text-white/35 dark:focus:border-white/25"
+            />
+          </div>
         </div>
       </div>
 
@@ -1003,17 +880,14 @@ function LeaderboardSection({
         <div className="border border-black/10 px-4 py-10 text-center font-mono text-[11px] uppercase tracking-[0.18em] text-black/45 dark:border-white/10 dark:text-white/45">
           No entries yet. Calculate your score above and submit to claim the first spot.
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="border border-black/10 px-4 py-10 text-center font-mono text-[11px] uppercase tracking-[0.18em] text-black/45 dark:border-white/10 dark:text-white/45">
+          No entries match &ldquo;{query.trim()}&rdquo;. Try another URL, site name, or score.
+        </div>
       ) : (
         <div className="border border-black/10 dark:border-white/10">
-          <div className="hidden border-b border-black/10 px-4 py-2 dark:border-white/10 sm:grid sm:grid-cols-[60px_minmax(0,1.6fr)_minmax(0,1fr)_90px_120px_140px] sm:items-center sm:gap-4">
-            {[
-              "Rank",
-              "Site",
-              "URL",
-              "Grade",
-              "Framework",
-              "Submitter",
-            ].map((label) => (
+          <div className="hidden border-b border-black/10 px-4 py-2 dark:border-white/10 sm:grid sm:grid-cols-[52px_minmax(0,1.45fr)_minmax(0,1fr)_minmax(3.25rem,auto)_minmax(4.25rem,auto)] sm:items-center sm:gap-4">
+            {["Rank", "Site", "URL", "Checks", "Score"].map((label) => (
               <span
                 key={label}
                 className="font-mono text-[10px] uppercase tracking-[0.18em] text-black/40 dark:text-white/40"
@@ -1023,8 +897,12 @@ function LeaderboardSection({
             ))}
           </div>
           <ul className="divide-y divide-black/10 dark:divide-white/10">
-            {ranked.map((entry, index) => (
-              <LeaderboardRow key={entry.id} entry={entry} rank={index} />
+            {filtered.map((entry) => (
+              <LeaderboardRow
+                key={entry.id}
+                entry={entry}
+                rank={ranked.findIndex((e) => e.id === entry.id) + 1}
+              />
             ))}
           </ul>
         </div>
@@ -1034,53 +912,36 @@ function LeaderboardSection({
 }
 
 function LeaderboardRow({ entry, rank }: { entry: LeaderboardEntry; rank: number }) {
-  const Badge = RANK_BADGES[rank];
-  const tint = Badge?.tint ?? "text-black/45 dark:text-white/45";
-  const Icon = Badge?.icon;
+  const { pass, total } = leaderboardChecksPassTotal(entry.checks);
+
   return (
-    <li className="group grid items-center gap-2 px-4 py-3 transition-colors hover:bg-black/[0.02] sm:grid-cols-[60px_minmax(0,1.6fr)_minmax(0,1fr)_90px_120px_140px] sm:gap-4 dark:hover:bg-white/[0.02]">
-      <div className="flex items-center gap-2 font-mono text-[12px] uppercase tracking-[0.16em] text-black/70 dark:text-white/70">
-        {Icon ? <Icon className={cn("size-3.5", tint)} /> : null}
-        <span className="tabular-nums">{String(rank + 1).padStart(2, "0")}</span>
+    <li className="grid grid-cols-1 gap-2 px-4 py-3 transition-colors hover:bg-black/2 sm:grid-cols-[52px_minmax(0,1.45fr)_minmax(0,1fr)_minmax(3.25rem,auto)_minmax(4.25rem,auto)] sm:items-center sm:gap-4 dark:hover:bg-white/2">
+      <div className="font-mono text-[12px] uppercase tracking-[0.16em] tabular-nums text-black/70 dark:text-white/70">
+        {String(rank).padStart(2, "0")}
       </div>
       <div className="min-w-0">
         <p className="truncate font-mono text-[13px] text-black dark:text-white">{entry.name}</p>
-        <p className="mt-0.5 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-black/35 dark:text-white/35">
-          <span className="text-base font-semibold normal-case tracking-tight text-black dark:text-white">
-            {entry.score}
-          </span>
-          <span className="hidden sm:inline">·</span>
-          <span className="hidden sm:inline">{entry.grade}</span>
+        <p className="mt-0.5 font-mono text-[11px] text-black/45 dark:text-white/45">
+          <span className="uppercase tracking-[0.14em]">{entry.grade}</span>
         </p>
       </div>
       <a
         href={entry.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="truncate font-mono text-[11px] text-black/55 hover:underline dark:text-white/55"
+        className="truncate font-mono text-[11px] text-black/55 underline-offset-2 hover:underline dark:text-white/55"
       >
         {shortenUrl(entry.url)}
       </a>
-      <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-black/55 dark:text-white/55 sm:inline">
-        {entry.grade}
-      </span>
-      <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-black/55 dark:text-white/55 sm:inline">
-        {entry.framework ?? "—"}
-      </span>
-      <span className="hidden truncate font-mono text-[10px] uppercase tracking-[0.18em] text-black/55 dark:text-white/55 sm:inline">
-        {entry.submitterUrl ? (
-          <a
-            href={entry.submitterUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-black hover:underline dark:text-white"
-          >
-            {entry.submitterName ?? shortenUrl(entry.submitterUrl)}
-          </a>
-        ) : (
-          (entry.submitterName ?? "anonymous")
-        )}
-      </span>
+      <div
+        className="font-mono text-xs tabular-nums text-black/75 dark:text-white/75 sm:text-right sm:text-sm"
+        title={total > 0 ? `${pass} of ${total} checks passed` : "No check breakdown stored"}
+      >
+        {total > 0 ? `${pass}/${total}` : "—"}
+      </div>
+      <div className="font-mono text-xs font-semibold tabular-nums tracking-tight text-black dark:text-white sm:text-right sm:text-sm">
+        {entry.score}/100
+      </div>
     </li>
   );
 }
