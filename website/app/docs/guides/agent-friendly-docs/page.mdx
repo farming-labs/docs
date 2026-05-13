@@ -415,6 +415,24 @@ pnpm exec docs doctor --agent --url https://docs.example.com
 That hosted pass checks discovery, `llms.txt`, sitemap routes, `skill.md`, representative `.md`
 pages, `robots.txt`, and MCP at both `/mcp` and `/.well-known/mcp`.
 
+If you want the same public check without leaving the browser, use the hosted
+[Agent readiness score](/score) page:
+
+```txt title="score page"
+https://docs.farming-labs.dev/score?url=docs.example.com
+```
+
+The score page runs AFDocs-style checks for any public docs site, then adds `@farming-labs/docs`
+framework probes when the site exposes `/.well-known/agent.json`. Those framework probes cover the
+discovery spec, full-context files, sitemap routes, `robots.txt`, `skill.md`, MCP, search,
+feedback, and JSON-LD structured data. Existing leaderboard entries hydrate from the saved report,
+so a shared score URL can be reviewed without triggering a new calculation unless no saved result
+exists.
+
+Use the web score for demos, public comparisons, and quick regression checks. Use
+`docs doctor --agent --url` when you need CI-friendly JSON, local project context, or a command an
+agent can run while changing the repo.
+
 For static sites or projects that already own their public files, generate the crawl policy as part
 of release prep:
 
@@ -525,6 +543,8 @@ Before calling a page agent-friendly, ask:
 - if the adapter preloads content, is the sitemap manifest bundled so JSON-LD freshness stays stable?
 - if the site is static, does the build generate `sitemap.xml`, `sitemap.md`, `/.well-known/sitemap.md`, and `robots.txt`?
 - does `docs doctor --agent` agree with the state of the site?
+- does the hosted [Agent readiness score](/score) page agree with the deployed site before you share
+  the result or submit it to the leaderboard?
 
 <Callout type="warning" title="Keep evaluation input out of prompt context">
   Agent feedback, analytics, logs, and other submitted data can help you improve docs quality, but
@@ -540,6 +560,7 @@ can technically crawl. You are publishing docs they can actually work with.
 - [Agent Primitive](/docs/customization/agent-primitive) for `Agent` blocks and sibling `agent.md`
 - [llms.txt](/docs/customization/llms-txt), [Sitemaps](/docs/customization/sitemaps), and [CLI](/docs/cli) for the discovery layer
 - [MCP Server](/docs/customization/mcp) for tool-enabled retrieval
+- [Agent readiness score](/score) for the hosted public benchmark and leaderboard
 - [CLI](/docs/cli#agent-compact) for `docs agent compact`
 - [CLI](/docs/cli#doctor) for `docs doctor --agent`
 - [Configuration](/docs/configuration) for the full config surface
