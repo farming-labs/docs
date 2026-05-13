@@ -1109,6 +1109,16 @@ function markdownAlternateHref(html: string): string | undefined {
   return undefined;
 }
 
+function resolveMarkdownAlternateUrl(href: string | undefined, pageUrl: string): URL | undefined {
+  if (!href) return undefined;
+  try {
+    const url = new URL(href, pageUrl);
+    return url.pathname.endsWith(".md") ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function isDocsHtmlPagePath(pathname: string, rootDocsRoute: string): boolean {
   const root = `/${rootDocsRoute.replace(/^\/+|\/+$/g, "") || "docs"}`;
   if (pathname.endsWith(".md")) return false;
@@ -1130,6 +1140,7 @@ function normalizeDiscoveredPageUrl(
     const url = new URL(trimmed, trimmed.startsWith("/") ? base.origin : baseUrl);
     url.hash = "";
     url.search = "";
+    if (url.origin !== base.origin) return undefined;
     if (!isDocsHtmlPagePath(url.pathname, rootDocsRoute)) return undefined;
     return url.toString().replace(/\/+$/, "");
   } catch {
@@ -1197,8 +1208,8 @@ async function probeHtmlPageSurface(url: string): Promise<HtmlPageSurfaceProbe> 
     }
 
     const alternateHref = markdownAlternateHref(body);
-    const alternateUrl = alternateHref ? new URL(alternateHref, url) : undefined;
-    const hasMarkdownAlternate = Boolean(alternateUrl?.pathname.endsWith(".md"));
+    const alternateUrl = resolveMarkdownAlternateUrl(alternateHref, url);
+    const hasMarkdownAlternate = Boolean(alternateUrl);
 
     return {
       url,
@@ -1207,7 +1218,7 @@ async function probeHtmlPageSurface(url: string): Promise<HtmlPageSurfaceProbe> 
       detail: `${new URL(url).pathname} returned HTML with ${body.length} characters.`,
       hasJsonLd: hasJsonLdScript(body),
       hasMarkdownAlternate,
-      ...(alternateHref ? { markdownAlternateHref: alternateUrl?.toString() } : {}),
+      ...(alternateUrl ? { markdownAlternateHref: alternateUrl.toString() } : {}),
     };
   } catch (error) {
     return {
