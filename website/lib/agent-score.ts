@@ -34,6 +34,8 @@ const AF_DOCS_MAX_LINKS_TO_TEST = 10;
 const AF_DOCS_REQUEST_DELAY_MS = 50;
 const AF_DOCS_MAX_CONCURRENCY = 6;
 const MAX_SAFE_REDIRECTS = 5;
+const FARMING_LABS_DOCS_UPGRADE_RECOMMENDATION =
+  "Because this site uses @farming-labs/docs, upgrade to the latest version with `npx @farming-labs/docs upgrade --latest`, redeploy, then rescore before working through the remaining checks.";
 
 export type ScoreStatus = "pass" | "warn" | "fail";
 
@@ -732,6 +734,9 @@ function readDiscoveryFramework(body: unknown): string | undefined {
   if (typeof candidate === "string" && candidate.trim()) {
     return candidate.trim().toLowerCase();
   }
+  if (typeof root.name === "string" && /@farming-labs\/docs/i.test(root.name)) {
+    return "@farming-labs/docs";
+  }
   return undefined;
 }
 
@@ -874,13 +879,25 @@ function gradeForAgentScore(score: number): AgentScoreGrade {
   return "Needs work";
 }
 
-function scoreRecoveryRecommendations(score: number): string[] {
+function isFarmingLabsDocsFramework(framework: string | undefined): boolean {
+  return /(^|[/@\s-])farming-labs[/\s-]docs\b|@farming-labs\/docs/i.test(framework ?? "");
+}
+
+function scoreRecoveryRecommendations(
+  score: number,
+  options: { usesFarmingLabsDocs?: boolean } = {},
+): string[] {
   if (score >= 90) return [];
 
-  return [
-    "Upgrade to the latest @farming-labs/docs packages with `npx @farming-labs/docs upgrade --latest`, then redeploy before rescoring.",
+  const recommendations = [
     "Use the agent-friendly docs guide, MCP guide, configuration reference, and `docs doctor --agent --url` output to close the failing checks.",
   ];
+
+  if (options.usesFarmingLabsDocs) {
+    recommendations.unshift(FARMING_LABS_DOCS_UPGRADE_RECOMMENDATION);
+  }
+
+  return recommendations;
 }
 
 const AF_DOCS_CHECK_TITLES: Record<string, string> = {
@@ -1055,14 +1072,14 @@ function buildMcpReadinessCheck(result: McpProbeResult): AgentScoreCheck {
 
 async function buildFrameworkChecks(
   baseUrl: string,
-): Promise<{ framework?: string; checks: AgentScoreCheck[] }> {
+): Promise<{ framework?: string; usesFarmingLabsDocs: boolean; checks: AgentScoreCheck[] }> {
   const frameworkDiscovery = await probeFrameworkDiscovery(baseUrl);
   if (!frameworkDiscovery) {
     const mcpResult = await probeMcpRouteCandidates(baseUrl, [
       DEFAULT_MCP_PUBLIC_ROUTE,
       DEFAULT_MCP_WELL_KNOWN_ROUTE,
     ]);
-    return { checks: [buildMcpReadinessCheck(mcpResult)] };
+    return { usesFarmingLabsDocs: false, checks: [buildMcpReadinessCheck(mcpResult)] };
   }
 
   const frameworkBaseUrl = frameworkDiscovery.baseUrl;
@@ -1335,7 +1352,11 @@ async function buildFrameworkChecks(
     ),
   );
 
-  return { framework: view.framework, checks };
+  return {
+    framework: view.framework,
+    usesFarmingLabsDocs: true,
+    checks,
+  };
 }
 
 /**
@@ -1370,14 +1391,18 @@ export async function inspectHostedAgentReadiness(rawUrl: string): Promise<Agent
   const rawMaxScore = roundScore(100 + frameworkRawMaxScore);
   const score = rawMaxScore <= 0 ? 0 : Math.round((rawScore / rawMaxScore) * 100);
   const name = deriveAgentScoreSiteName(baseUrl);
+  const recoveryRecommendations = scoreRecoveryRecommendations(score, {
+    usesFarmingLabsDocs:
+      framework.usesFarmingLabsDocs || isFarmingLabsDocsFramework(framework.framework),
+  });
   const recommendations = Array.from(
     new Set(
       [
+        ...recoveryRecommendations,
         ...afdocsScore.diagnostics.map((diagnostic) => diagnostic.resolution),
         ...checks
           .map((check) => check.recommendation)
           .filter((value): value is string => Boolean(value)),
-        ...scoreRecoveryRecommendations(score),
       ].filter(Boolean),
     ),
   ).slice(0, 6);

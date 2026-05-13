@@ -65,6 +65,8 @@ type StandardBreakdownDefinition = {
 
 const FAIL_SCORE_RATIO = 0.5;
 const PASS_SCORE_RATIO = 0.9;
+const FARMING_LABS_DOCS_UPGRADE_RECOMMENDATION =
+  "Because this site uses @farming-labs/docs, upgrade to the latest version with `npx @farming-labs/docs upgrade --latest`, redeploy, then rescore before working through the remaining checks.";
 
 const STANDARD_BREAKDOWN_DEFINITIONS: StandardBreakdownDefinition[] = [
   {
@@ -472,6 +474,34 @@ function groupChecksForDetails(checks: AgentScoreCheck[]): CheckGroup[] {
   return groups;
 }
 
+function usesFarmingLabsDocsFramework(
+  framework: string | null | undefined,
+  checks: AgentScoreCheck[],
+): boolean {
+  return (
+    /@farming-labs\/docs|(^|[/@\s-])farming-labs[/\s-]docs\b/i.test(framework ?? "") ||
+    checks.some((check) => check.id === "framework:agent-discovery")
+  );
+}
+
+function shouldRecommendFarmingLabsDocsUpgrade(
+  score: number,
+  framework: string | null | undefined,
+  checks: AgentScoreCheck[],
+): boolean {
+  return score < 90 && usesFarmingLabsDocsFramework(framework, checks);
+}
+
+function withFarmingLabsDocsUpgradeRecommendation(
+  score: number,
+  framework: string | null | undefined,
+  checks: AgentScoreCheck[],
+  recommendations: string[],
+): string[] {
+  if (!shouldRecommendFarmingLabsDocsUpgrade(score, framework, checks)) return recommendations;
+  return Array.from(new Set([FARMING_LABS_DOCS_UPGRADE_RECOMMENDATION, ...recommendations]));
+}
+
 function formatImprovementsClipboardText(report: AgentScoreReport): string {
   const lines: string[] = [];
   lines.push(`Docs: ${report.baseUrl}`);
@@ -490,8 +520,16 @@ function formatImprovementsClipboardText(report: AgentScoreReport): string {
     `Improve this docs site for agent readiness. Target at least ${target}/100 on the hosted scorer, then rerun the score and update the leaderboard entry.`,
   );
   lines.push("");
+  const usesFarmingLabsDocs = usesFarmingLabsDocsFramework(report.framework, report.checks);
+  const shouldUpgradeFarmingLabsDocs = shouldRecommendFarmingLabsDocsUpgrade(
+    report.score,
+    report.framework,
+    report.checks,
+  );
   lines.push("Use @farming-labs/docs as the source of truth:");
-  lines.push("- Upgrade packages first: https://docs.farming-labs.dev/docs/cli#upgrade");
+  if (shouldUpgradeFarmingLabsDocs) {
+    lines.push("- Upgrade packages first: https://docs.farming-labs.dev/docs/cli#upgrade");
+  }
   lines.push(
     "- Follow the agent-friendly guide: https://docs.farming-labs.dev/docs/guides/agent-friendly-docs",
   );
@@ -501,8 +539,14 @@ function formatImprovementsClipboardText(report: AgentScoreReport): string {
   lines.push("");
   lines.push("Start from the project root:");
   lines.push("```bash");
-  lines.push("npx @farming-labs/docs upgrade --latest");
-  lines.push(`pnpm exec docs doctor --agent --url ${report.baseUrl} --json`);
+  if (shouldUpgradeFarmingLabsDocs) {
+    lines.push("npx @farming-labs/docs upgrade --latest");
+  }
+  if (usesFarmingLabsDocs) {
+    lines.push(`pnpm exec docs doctor --agent --url ${report.baseUrl} --json`);
+  } else {
+    lines.push(`npx afdocs check ${report.baseUrl}`);
+  }
   lines.push("```");
   lines.push("");
   lines.push(
@@ -600,16 +644,27 @@ function recommendationsFromLeaderboardEntry(
   checks: AgentScoreCheck[],
 ): string[] {
   if (Array.isArray(entry.recommendations)) {
-    return entry.recommendations.filter((item): item is string => typeof item === "string");
+    return withFarmingLabsDocsUpgradeRecommendation(
+      entry.score,
+      entry.framework,
+      checks,
+      entry.recommendations.filter((item): item is string => typeof item === "string"),
+    );
   }
 
-  return Array.from(
+  const recommendations = Array.from(
     new Set(
       checks
         .filter((check) => displayStatusForCheck(check) !== "pass")
         .map((check) => check.recommendation)
         .filter((item): item is string => Boolean(item)),
     ),
+  );
+  return withFarmingLabsDocsUpgradeRecommendation(
+    entry.score,
+    entry.framework,
+    checks,
+    recommendations,
   );
 }
 
