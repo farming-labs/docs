@@ -425,9 +425,10 @@ https://docs.farming-labs.dev/score?url=docs.example.com
 The score page runs AFDocs-style checks for any public docs site, then adds `@farming-labs/docs`
 framework probes when the site exposes `/.well-known/agent.json`. Those framework probes cover the
 discovery spec, full-context files, sitemap routes, `robots.txt`, `skill.md`, MCP, search,
-feedback, and JSON-LD structured data. Existing leaderboard entries hydrate from the saved report,
-so a shared score URL can be reviewed without triggering a new calculation unless no saved result
-exists.
+feedback, JSON-LD structured data on sampled pages, and the
+`<link rel="alternate" type="text/markdown">` head links that point agents to each page's `.md`
+route. Existing leaderboard entries hydrate from the saved report, so a shared score URL can be
+reviewed without triggering a new calculation unless no saved result exists.
 
 Use the web score for demos, public comparisons, and quick regression checks. Use
 `docs doctor --agent --url` when you need CI-friendly JSON, local project context, or a command an

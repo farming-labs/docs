@@ -1043,6 +1043,218 @@ function scoreRouteProbes(
   return { status: "fail", score: 0, passed };
 }
 
+interface HtmlPageSurfaceProbe {
+  url: string;
+  ok: boolean;
+  status?: number;
+  detail: string;
+  hasJsonLd: boolean;
+  hasMarkdownAlternate: boolean;
+  markdownAlternateHref?: string;
+}
+
+function decodeHtmlEntity(value: string): string {
+  const named: Record<string, string> = {
+    amp: "&",
+    apos: "'",
+    gt: ">",
+    lt: "<",
+    quot: '"',
+  };
+
+  return value.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (entity, raw: string) => {
+    const lower = raw.toLowerCase();
+    if (lower.startsWith("#x")) {
+      const codePoint = Number.parseInt(lower.slice(2), 16);
+      return Number.isFinite(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff
+        ? String.fromCodePoint(codePoint)
+        : entity;
+    }
+    if (lower.startsWith("#")) {
+      const codePoint = Number.parseInt(lower.slice(1), 10);
+      return Number.isFinite(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff
+        ? String.fromCodePoint(codePoint)
+        : entity;
+    }
+    return named[lower] ?? entity;
+  });
+}
+
+function htmlAttribute(tag: string, name: string): string | undefined {
+  const pattern = /([^\s"'<>/=]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+  for (const match of tag.matchAll(pattern)) {
+    if (match[1]?.toLowerCase() !== name.toLowerCase()) continue;
+    return decodeHtmlEntity(match[2] ?? match[3] ?? match[4] ?? "");
+  }
+  return undefined;
+}
+
+function hasJsonLdScript(html: string): boolean {
+  return /<script\b(?=[^>]*\btype\s*=\s*["']application\/ld\+json["'])[^>]*>/i.test(html);
+}
+
+function markdownAlternateHref(html: string): string | undefined {
+  for (const match of html.matchAll(/<link\b[^>]*>/gi)) {
+    const tag = match[0];
+    const rel = htmlAttribute(tag, "rel") ?? "";
+    const type = htmlAttribute(tag, "type") ?? "";
+    const href = htmlAttribute(tag, "href");
+    const relTokens = rel.toLowerCase().split(/\s+/).filter(Boolean);
+
+    if (href && relTokens.includes("alternate") && /^text\/markdown(?:\s*;|$)/i.test(type.trim())) {
+      return href;
+    }
+  }
+
+  return undefined;
+}
+
+function resolveMarkdownAlternateUrl(href: string | undefined, pageUrl: string): URL | undefined {
+  if (!href) return undefined;
+  try {
+    const url = new URL(href, pageUrl);
+    return url.pathname.endsWith(".md") ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isDocsHtmlPagePath(pathname: string, rootDocsRoute: string): boolean {
+  const root = `/${rootDocsRoute.replace(/^\/+|\/+$/g, "") || "docs"}`;
+  if (pathname.endsWith(".md")) return false;
+  return pathname === root || pathname.startsWith(`${root}/`);
+}
+
+function normalizeDiscoveredPageUrl(
+  rawUrl: string,
+  baseUrl: string,
+  rootDocsRoute: string,
+): string | undefined {
+  const trimmed = decodeHtmlEntity(rawUrl).trim();
+  if (!trimmed || trimmed.startsWith("#") || /^(mailto|tel|javascript):/i.test(trimmed)) {
+    return undefined;
+  }
+
+  try {
+    const base = new URL(baseUrl);
+    const url = new URL(trimmed, trimmed.startsWith("/") ? base.origin : baseUrl);
+    url.hash = "";
+    url.search = "";
+    if (url.origin !== base.origin) return undefined;
+    if (!isDocsHtmlPagePath(url.pathname, rootDocsRoute)) return undefined;
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return undefined;
+  }
+}
+
+function sitemapPageUrlsFromProbe(
+  probe: TextProbe,
+  baseUrl: string,
+  rootDocsRoute: string,
+): string[] {
+  if (!probe.ok || !probe.body) return [];
+
+  const urls: string[] = [];
+  for (const match of probe.body.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/gi)) {
+    const normalized = normalizeDiscoveredPageUrl(match[1] ?? "", baseUrl, rootDocsRoute);
+    if (normalized) urls.push(normalized);
+  }
+
+  for (const match of probe.body.matchAll(/\[[^\]]+\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g)) {
+    const normalized = normalizeDiscoveredPageUrl(match[1] ?? "", baseUrl, rootDocsRoute);
+    if (normalized) urls.push(normalized);
+  }
+
+  return urls;
+}
+
+function samplePageUrls(urls: string[], limit: number): string[] {
+  const unique = Array.from(new Set(urls));
+  if (unique.length <= limit) return unique;
+
+  unique.sort();
+  const stride = unique.length / limit;
+  return Array.from({ length: limit }, (_, index) => unique[Math.floor(index * stride)]!).filter(
+    Boolean,
+  );
+}
+
+function discoverHtmlSurfacePageUrls(
+  baseUrl: string,
+  view: DiscoveryView,
+  sitemapProbes: TextProbe[],
+): string[] {
+  const sitemapUrls = sitemapProbes.flatMap((probe) =>
+    sitemapPageUrlsFromProbe(probe, baseUrl, view.rootDocsRoute),
+  );
+  const fallback = normalizeDiscoveredPageUrl(view.rootDocsRoute, baseUrl, view.rootDocsRoute);
+  return samplePageUrls(sitemapUrls.length > 0 ? sitemapUrls : fallback ? [fallback] : [], 10);
+}
+
+async function probeHtmlPageSurface(url: string): Promise<HtmlPageSurfaceProbe> {
+  try {
+    const response = await fetchWithTimeout(url, { headers: { Accept: "text/html, */*" } });
+    const body = await response.text().catch(() => "");
+    if (!response.ok) {
+      return {
+        url,
+        ok: false,
+        status: response.status,
+        detail: `${new URL(url).pathname} returned HTTP ${response.status}.`,
+        hasJsonLd: false,
+        hasMarkdownAlternate: false,
+      };
+    }
+
+    const alternateHref = markdownAlternateHref(body);
+    const alternateUrl = resolveMarkdownAlternateUrl(alternateHref, url);
+    const hasMarkdownAlternate = Boolean(alternateUrl);
+
+    return {
+      url,
+      ok: true,
+      status: response.status,
+      detail: `${new URL(url).pathname} returned HTML with ${body.length} characters.`,
+      hasJsonLd: hasJsonLdScript(body),
+      hasMarkdownAlternate,
+      ...(alternateUrl ? { markdownAlternateHref: alternateUrl.toString() } : {}),
+    };
+  } catch (error) {
+    return {
+      url,
+      ok: false,
+      detail: `${url} failed: ${error instanceof Error ? error.message : String(error)}.`,
+      hasJsonLd: false,
+      hasMarkdownAlternate: false,
+    };
+  }
+}
+
+async function probeHtmlPageSurfaces(
+  baseUrl: string,
+  view: DiscoveryView,
+  sitemapProbes: TextProbe[],
+): Promise<HtmlPageSurfaceProbe[]> {
+  const urls = discoverHtmlSurfacePageUrls(baseUrl, view, sitemapProbes);
+  return Promise.all(urls.map((url) => probeHtmlPageSurface(url)));
+}
+
+function scoreSurfaceCoverage(
+  probes: HtmlPageSurfaceProbe[],
+  predicate: (probe: HtmlPageSurfaceProbe) => boolean,
+  maxScore: number,
+): { status: ScoreStatus; score: number; passed: number; total: number } {
+  const total = probes.length;
+  const passed = probes.filter((probe) => probe.ok && predicate(probe)).length;
+  if (total === 0) return { status: "fail", score: 0, passed: 0, total };
+  if (passed === total) return { status: "pass", score: maxScore, passed, total };
+  if (passed > 0) {
+    return { status: "warn", score: roundScore((passed / total) * maxScore), passed, total };
+  }
+  return { status: "fail", score: 0, passed, total };
+}
+
 function buildMcpReadinessCheck(result: McpProbeResult): AgentScoreCheck {
   if (result.probes.length === 0) {
     return makeCheck(
@@ -1103,7 +1315,6 @@ async function buildFrameworkChecks(
     mcpProbes,
     searchProbe,
     feedbackSchemaProbe,
-    structuredDataProbe,
   ] = await Promise.all([
     Promise.all(view.llmsFullRoutes.map((route) => probeTextRoute(frameworkBaseUrl, route))),
     view.sitemapEnabled
@@ -1128,10 +1339,8 @@ async function buildFrameworkChecks(
     view.capabilities.agentFeedback === false || !view.feedbackSchemaRoute
       ? Promise.resolve(undefined)
       : probeJsonRoute(frameworkBaseUrl, view.feedbackSchemaRoute),
-    view.capabilities.structuredData === false
-      ? Promise.resolve(undefined)
-      : probeTextRoute(frameworkBaseUrl, view.rootDocsRoute, "text/html, */*"),
   ]);
+  const htmlSurfaceProbes = await probeHtmlPageSurfaces(frameworkBaseUrl, view, sitemapProbes);
 
   if (view.capabilities.llms === false) {
     checks.push(
@@ -1332,23 +1541,45 @@ async function buildFrameworkChecks(
     ),
   );
 
-  const structuredBody = structuredDataProbe?.body ?? "";
-  const hasStructuredData = /type=["']application\/ld\+json["']/i.test(structuredBody);
+  const structuredScore = scoreSurfaceCoverage(htmlSurfaceProbes, (probe) => probe.hasJsonLd, 3);
   checks.push(
     makeCheck(
       "framework:structured-data",
       "Structured data",
-      hasStructuredData ? "pass" : view.capabilities.structuredData === false ? "warn" : "fail",
-      hasStructuredData ? 3 : 0,
+      view.capabilities.structuredData === false ? "warn" : structuredScore.status,
+      view.capabilities.structuredData === false ? 0 : structuredScore.score,
       3,
-      hasStructuredData
-        ? `${view.rootDocsRoute} includes application/ld+json structured data.`
-        : view.capabilities.structuredData === false
-          ? "Discovery spec reports structured data as disabled."
-          : `${view.rootDocsRoute} did not include application/ld+json structured data in the HTML response.`,
-      hasStructuredData
+      view.capabilities.structuredData === false
+        ? "Discovery spec reports structured data as disabled."
+        : structuredScore.total > 0
+          ? `${structuredScore.passed}/${structuredScore.total} sampled pages include application/ld+json structured data.`
+          : "No docs pages were available to verify application/ld+json structured data.",
+      view.capabilities.structuredData === false || structuredScore.status === "pass"
         ? undefined
-        : "Keep JSON-LD enabled so agents can read canonical title, description, URL, and breadcrumbs.",
+        : "Keep JSON-LD enabled on every docs page so agents can read canonical title, description, URL, breadcrumbs, and freshness hints.",
+    ),
+  );
+
+  const markdownAlternateScore = scoreSurfaceCoverage(
+    htmlSurfaceProbes,
+    (probe) => probe.hasMarkdownAlternate,
+    3,
+  );
+  checks.push(
+    makeCheck(
+      "framework:markdown-alternate",
+      "Markdown alternate links",
+      view.capabilities.markdownRoutes === false ? "warn" : markdownAlternateScore.status,
+      view.capabilities.markdownRoutes === false ? 0 : markdownAlternateScore.score,
+      3,
+      view.capabilities.markdownRoutes === false
+        ? "Discovery spec reports markdown routes as disabled."
+        : markdownAlternateScore.total > 0
+          ? `${markdownAlternateScore.passed}/${markdownAlternateScore.total} sampled pages include <link rel="alternate" type="text/markdown"> pointing to .md routes.`
+          : "No docs pages were available to verify markdown alternate links.",
+      view.capabilities.markdownRoutes === false || markdownAlternateScore.status === "pass"
+        ? undefined
+        : "Add a text/markdown alternate link in each docs page head, usually through `alternates.types['text/markdown']`, so agents can discover the page markdown URL from HTML.",
     ),
   );
 
