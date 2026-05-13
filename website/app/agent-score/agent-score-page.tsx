@@ -279,6 +279,10 @@ function siteLookupKeys(value: string): Set<string> {
   return keys;
 }
 
+function siteDomainLookupKey(value: string): string | undefined {
+  return deriveLeaderboardSiteDomain(value)?.toLowerCase();
+}
+
 function cleanScoreUrlValue(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return "";
@@ -305,7 +309,7 @@ function findLeaderboardEntryBySelection(
   selection: string,
 ): LeaderboardEntry | undefined {
   const selectionKeys = siteLookupKeys(selection);
-  return entries.find((entry) => {
+  const exactEntry = entries.find((entry) => {
     if (entry.id === selection) return true;
     const entryKeys = new Set([
       ...siteLookupKeys(entry.url),
@@ -314,6 +318,17 @@ function findLeaderboardEntryBySelection(
     ]);
     return [...selectionKeys].some((key) => entryKeys.has(key));
   });
+
+  if (exactEntry) return exactEntry;
+
+  const selectionDomain = siteDomainLookupKey(selection);
+  if (!selectionDomain) return undefined;
+
+  return entries.find((entry) =>
+    [entry.url, entry.name, shortenUrl(entry.url)]
+      .map(siteDomainLookupKey)
+      .some((key) => key === selectionDomain),
+  );
 }
 
 function statusFromScore(score: number, maxScore: number): ScoreStatus {
@@ -722,7 +737,10 @@ function writeScoreUrl(
   if (typeof window === "undefined") return;
 
   const next = new URL(window.location.href);
-  const cleanValue = cleanScoreUrlValue(value);
+  const cleanValue =
+    options.source === "leaderboard"
+      ? (deriveLeaderboardSiteDomain(value) ?? cleanScoreUrlValue(value))
+      : cleanScoreUrlValue(value);
   const activeParam = options.source === "leaderboard" ? SELECTED_SITE_PARAM : SCORE_INPUT_PARAM;
 
   next.pathname = SCORE_PAGE_ROUTE;
@@ -864,6 +882,31 @@ export function AgentScorePage() {
 
     const cleanInput = cleanScoreUrlValue(inputUrl);
     if (!cleanInput) return;
+    if (leaderboardLoading) return;
+
+    const savedEntry = findLeaderboardEntryBySelection(entries, inputUrl);
+    if (savedEntry) {
+      const cleanEntryUrl = cleanScoreUrlValue(savedEntry.url);
+      const currentClean =
+        fetchState.status === "success" ? cleanScoreUrlValue(fetchState.report.baseUrl) : "";
+      if (currentClean === cleanEntryUrl) {
+        autoScoredInputRef.current = cleanInput;
+        hydratedSelectionRef.current = cleanEntryUrl;
+        setUrl(savedEntry.url);
+        replaceCleanScoreUrl(savedEntry.url, { source: "leaderboard" });
+        scrollToResults();
+        return;
+      }
+
+      autoScoredInputRef.current = cleanInput;
+      hydratedSelectionRef.current = cleanEntryUrl;
+      setUrl(savedEntry.url);
+      setSubmitState({ status: "idle" });
+      setFetchState({ status: "success", report: reportFromLeaderboardEntry(savedEntry) });
+      replaceCleanScoreUrl(savedEntry.url, { source: "leaderboard" });
+      scrollToResults();
+      return;
+    }
 
     const currentClean =
       fetchState.status === "success" ? cleanScoreUrlValue(fetchState.report.baseUrl) : "";
@@ -876,7 +919,7 @@ export function AgentScorePage() {
     autoScoredInputRef.current = cleanInput;
     setUrl(inputUrl);
     void calculateScore(inputUrl, { historyMode: "replace", scroll: false });
-  }, [calculateScore, fetchState, locationVersion]);
+  }, [calculateScore, entries, fetchState, leaderboardLoading, locationVersion, scrollToResults]);
 
   useEffect(() => {
     if (leaderboardLoading || entries.length === 0) return;
