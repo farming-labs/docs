@@ -1132,7 +1132,7 @@ async function fetchWithTimeout(
 async function probeTextRoute(
   baseUrl: string,
   route: string,
-): Promise<{ ok: boolean; status?: number; detail: string }> {
+): Promise<{ ok: boolean; status?: number; detail: string; body?: string }> {
   const url = joinDoctorUrl(baseUrl, route);
 
   try {
@@ -1163,12 +1163,80 @@ async function probeTextRoute(
       ok: true,
       status: response.status,
       detail: `${route} returned HTTP ${response.status} with ${body.length} characters.`,
+      body,
     };
   } catch (error) {
     return {
       ok: false,
       detail: `${route} failed: ${error instanceof Error ? error.message : String(error)}.`,
     };
+  }
+}
+
+function decodeHtmlEntity(value: string): string {
+  const named: Record<string, string> = {
+    amp: "&",
+    apos: "'",
+    gt: ">",
+    lt: "<",
+    quot: '"',
+  };
+
+  return value.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (entity, raw: string) => {
+    const lower = raw.toLowerCase();
+    if (lower.startsWith("#x")) {
+      const codePoint = Number.parseInt(lower.slice(2), 16);
+      return Number.isFinite(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff
+        ? String.fromCodePoint(codePoint)
+        : entity;
+    }
+    if (lower.startsWith("#")) {
+      const codePoint = Number.parseInt(lower.slice(1), 10);
+      return Number.isFinite(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff
+        ? String.fromCodePoint(codePoint)
+        : entity;
+    }
+    return named[lower] ?? entity;
+  });
+}
+
+function htmlAttribute(tag: string, name: string): string | undefined {
+  const pattern = /([^\s"'<>/=]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+  for (const match of tag.matchAll(pattern)) {
+    if (match[1]?.toLowerCase() !== name.toLowerCase()) continue;
+    return decodeHtmlEntity(match[2] ?? match[3] ?? match[4] ?? "");
+  }
+  return undefined;
+}
+
+function hasJsonLdScript(html: string): boolean {
+  return /<script\b(?=[^>]*\btype\s*=\s*["']application\/ld\+json["'])[^>]*>/i.test(html);
+}
+
+function markdownAlternateHref(html: string): string | undefined {
+  for (const match of html.matchAll(/<link\b[^>]*>/gi)) {
+    const tag = match[0];
+    const rel = htmlAttribute(tag, "rel") ?? "";
+    const type = htmlAttribute(tag, "type") ?? "";
+    const href = htmlAttribute(tag, "href");
+    const relTokens = rel.toLowerCase().split(/\s+/).filter(Boolean);
+
+    if (href && relTokens.includes("alternate") && /^text\/markdown(?:\s*;|$)/i.test(type.trim())) {
+      return href;
+    }
+  }
+
+  return undefined;
+}
+
+function resolveMarkdownAlternateUrl(href: string | undefined, pageUrl: string): URL | undefined {
+  if (!href) return undefined;
+  try {
+    const url = new URL(href, pageUrl);
+    const page = new URL(pageUrl);
+    return url.origin === page.origin && url.pathname.endsWith(".md") ? url : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -1453,6 +1521,120 @@ function hostedRobotsRoute(discoveryBody: unknown): { enabled: boolean; route: s
   };
 }
 
+function hostedCapability(discoveryBody: unknown, key: string): boolean | undefined {
+  const root = asRecord(discoveryBody);
+  const capabilities = asRecord(root?.capabilities);
+  const capability = capabilities?.[key];
+  if (typeof capability === "boolean") return capability;
+
+  const block = asRecord(root?.[key]);
+  const enabled = block?.enabled;
+  return typeof enabled === "boolean" ? enabled : undefined;
+}
+
+function hostedRootDocsRoute(discoveryBody: unknown): string {
+  const site = asRecord(asRecord(discoveryBody)?.site);
+  const entry = typeof site?.entry === "string" && site.entry.trim() ? site.entry.trim() : "docs";
+  return `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
+}
+
+function hostedPageUrl(baseUrl: string, pageRoute: string): string | undefined {
+  try {
+    const base = new URL(baseUrl);
+    const parsed = new URL(pageRoute, base.origin);
+    if (parsed.origin !== base.origin) return undefined;
+
+    parsed.hash = "";
+    parsed.search = "";
+
+    const basePath = base.pathname.replace(/\/+$/, "");
+    const pagePath = parsed.pathname.replace(/\/+$/, "") || "/";
+    const shouldUsePagePath =
+      !basePath || pagePath === basePath || pagePath.startsWith(`${basePath}/`);
+    const pathname = shouldUsePagePath ? pagePath : `${basePath}${pagePath}`;
+    return new URL(pathname || "/", base.origin).toString().replace(/\/+$/, "");
+  } catch {
+    return undefined;
+  }
+}
+
+function sampleHostedPageUrls(
+  baseUrl: string,
+  discoveryBody: unknown,
+  pages: Array<{ url: string }>,
+  limit = 10,
+): string[] {
+  const pageRoutes = pages
+    .map((page) => page.url)
+    .filter((route) => route.startsWith("/") && !route.endsWith(".md"));
+  const fallback = hostedRootDocsRoute(discoveryBody);
+  const unique = Array.from(new Set(pageRoutes.length > 0 ? pageRoutes : [fallback])).sort();
+  const sampled =
+    unique.length <= limit
+      ? unique
+      : Array.from(
+          { length: limit },
+          (_, index) => unique[Math.floor(index * (unique.length / limit))]!,
+        );
+
+  return sampled
+    .map((route) => hostedPageUrl(baseUrl, route))
+    .filter((url): url is string => typeof url === "string");
+}
+
+interface HostedHtmlPageProbe {
+  ok: boolean;
+  detail: string;
+  hasJsonLd: boolean;
+  hasMarkdownAlternate: boolean;
+}
+
+async function probeHostedHtmlPage(url: string): Promise<HostedHtmlPageProbe> {
+  try {
+    const response = await fetchWithTimeout(url, {
+      headers: { Accept: "text/html, */*" },
+    });
+    const body = await response.text().catch(() => "");
+    const pathname = new URL(url).pathname;
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        detail: `${pathname} returned HTTP ${response.status}.`,
+        hasJsonLd: false,
+        hasMarkdownAlternate: false,
+      };
+    }
+
+    const alternateUrl = resolveMarkdownAlternateUrl(markdownAlternateHref(body), url);
+    return {
+      ok: true,
+      detail: `${pathname} returned HTML with ${body.length} characters.`,
+      hasJsonLd: hasJsonLdScript(body),
+      hasMarkdownAlternate: Boolean(alternateUrl),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      detail: `${url} failed: ${error instanceof Error ? error.message : String(error)}.`,
+      hasJsonLd: false,
+      hasMarkdownAlternate: false,
+    };
+  }
+}
+
+function hostedSurfaceScore(
+  probes: HostedHtmlPageProbe[],
+  predicate: (probe: HostedHtmlPageProbe) => boolean,
+): { status: DoctorStatus; score: number; passed: number; total: number } {
+  const total = probes.length;
+  const passed = probes.filter((probe) => probe.ok && predicate(probe)).length;
+  if (total === 0) return { status: "warn", score: 0, passed: 0, total };
+  if (passed === total) return { status: "pass", score: 5, passed, total };
+  if (passed > 0) return { status: "warn", score: Math.round((passed / total) * 5), passed, total };
+  return { status: "fail", score: 0, passed, total };
+}
+
 async function buildHostedAgentChecks(
   url: string,
   pages: Array<{ url: string }>,
@@ -1648,6 +1830,53 @@ async function buildHostedAgentChecks(
       ),
     );
   }
+
+  const htmlPageUrls = sampleHostedPageUrls(baseUrl, discovery.body, pages);
+  const htmlPageProbes = await Promise.all(
+    htmlPageUrls.map((pageUrl) => probeHostedHtmlPage(pageUrl)),
+  );
+  const structuredDataScore = hostedSurfaceScore(htmlPageProbes, (probe) => probe.hasJsonLd);
+  const structuredDataEnabled = hostedCapability(discovery.body, "structuredData");
+  checks.push(
+    makeCheck(
+      "hosted-structured-data",
+      "Hosted structured data",
+      structuredDataEnabled === false ? "warn" : structuredDataScore.status,
+      structuredDataEnabled === false ? 0 : structuredDataScore.score,
+      5,
+      structuredDataEnabled === false
+        ? "The hosted discovery spec reports structured data as disabled."
+        : structuredDataScore.total > 0
+          ? `${structuredDataScore.passed}/${structuredDataScore.total} sampled hosted docs pages include application/ld+json structured data.`
+          : "No hosted docs pages were available to verify application/ld+json structured data.",
+      structuredDataEnabled === false || structuredDataScore.status === "pass"
+        ? undefined
+        : "Keep JSON-LD enabled on every docs page so agents can read canonical title, description, URL, breadcrumbs, and freshness hints.",
+    ),
+  );
+
+  const markdownAlternateScore = hostedSurfaceScore(
+    htmlPageProbes,
+    (probe) => probe.hasMarkdownAlternate,
+  );
+  const markdownRoutesEnabled = hostedCapability(discovery.body, "markdownRoutes");
+  checks.push(
+    makeCheck(
+      "hosted-markdown-alternate",
+      "Hosted markdown alternate links",
+      markdownRoutesEnabled === false ? "warn" : markdownAlternateScore.status,
+      markdownRoutesEnabled === false ? 0 : markdownAlternateScore.score,
+      5,
+      markdownRoutesEnabled === false
+        ? "The hosted discovery spec reports markdown routes as disabled."
+        : markdownAlternateScore.total > 0
+          ? `${markdownAlternateScore.passed}/${markdownAlternateScore.total} sampled hosted docs pages include <link rel="alternate" type="text/markdown"> pointing to .md routes.`
+          : "No hosted docs pages were available to verify markdown alternate links.",
+      markdownRoutesEnabled === false || markdownAlternateScore.status === "pass"
+        ? undefined
+        : "Add a text/markdown alternate link in each docs page head, usually through `alternates.types['text/markdown']`, so agents can discover the page markdown URL from HTML.",
+    ),
+  );
 
   const mcp = await Promise.all([
     probeMcpRoute(baseUrl, DEFAULT_MCP_PUBLIC_ROUTE),
