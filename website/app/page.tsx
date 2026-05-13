@@ -160,6 +160,47 @@ function AgentFeaturesSection() {
   );
 }
 
+function AgentScoreCalloutSection() {
+  return (
+    <section className="relative z-10 border-t border-black/[8%] bg-white dark:border-white/[8%] dark:bg-black">
+      <div className="w-full py-10 sm:py-12">
+        <div className="grid gap-7 border-y border-black/10 px-4 py-8 dark:border-white/10 sm:px-0 sm:py-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-8 lg:pb-0 lg:pt-8">
+          <div className="max-w-2xl lg:pb-8">
+            <span className="mb-3 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-black/30 dark:text-white/30">
+              <Activity className="h-3.5 w-3.5" strokeWidth={1.8} />
+              Agent score
+            </span>
+            <h2 className="text-2xl font-semibold tracking-tighter text-black dark:text-white sm:text-4xl">
+              How agent-ready are your docs?
+            </h2>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-black/45 dark:text-white/40 sm:text-base">
+              Run a public readiness check for llms.txt, markdown routes, MCP, sitemap, robots,
+              structure, access, and cache hygiene, then compare your docs on the leaderboard.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
+            <Link
+              href="/score"
+              className="group inline-flex w-full items-center justify-center gap-2 bg-black px-5 py-3 font-mono text-xs uppercase tracking-wider text-white transition-all hover:bg-black/90 hover:no-underline sm:w-auto dark:bg-white dark:text-black dark:hover:bg-white/90"
+            >
+              Score your docs
+              <ArrowRight className="h-3.5 w-3.5 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
+            </Link>
+            <Link
+              href="/score#leaderboard"
+              className="group inline-flex w-full items-center justify-center gap-2 border border-black/10 bg-black/[3%] px-5 py-3 font-mono text-xs uppercase tracking-wider text-black/70 transition-all hover:border-black/20 hover:bg-black/[5%] hover:text-black hover:no-underline sm:w-auto dark:border-white/10 dark:bg-white/[3%] dark:text-white/70 dark:hover:border-white/20 dark:hover:bg-white/[5%] dark:hover:text-white"
+            >
+              Leaderboard
+              <ArrowRight className="h-3.5 w-3.5 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function NextJsSteps() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1137,6 +1178,7 @@ export default function Home() {
       <div className="max-w-[90%] mx-auto">
         <HeroSection />
         <AgentFeaturesSection />
+        <AgentScoreCalloutSection />
         <InstallSection />
         <ThemesSection />
         <ConfigSection />
