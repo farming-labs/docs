@@ -561,6 +561,8 @@ The hosted pass probes:
 - `/skill.md`
 - `/.well-known/skill.md`
 - one representative page markdown route, such as `/docs.md`
+- sampled docs page HTML for `application/ld+json` structured data
+- sampled docs page HTML for `<link rel="alternate" type="text/markdown">`
 - `/mcp`
 - `/.well-known/mcp`
 
@@ -575,7 +577,7 @@ the server returns one, sends `tools/list`, and expects the built-in docs tools:
 Hosted checks add extra weighted checks, but the top-level score stays normalized to `100%`. The
 JSON report also includes the normalized `url` field and hosted check IDs such as
 `hosted-agent-discovery`, `hosted-llms`, `hosted-sitemap`, `hosted-robots`, `hosted-skill`,
-`hosted-markdown`, and `hosted-mcp`.
+`hosted-markdown`, `hosted-structured-data`, `hosted-markdown-alternate`, and `hosted-mcp`.
 
 Use this form after deploying, in preview-deployment CI, or any time a site looks healthy locally
 but an agent cannot discover the public routes. A hosted failure usually means the deployment is

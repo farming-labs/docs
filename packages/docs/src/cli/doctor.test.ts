@@ -408,6 +408,10 @@ export const { GET, POST } = createDocsAPI({});
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(
             JSON.stringify({
+              capabilities: {
+                markdownRoutes: true,
+                structuredData: true,
+              },
               mcp: { enabled: true },
               llms: { enabled: true },
               robots: { enabled: true, route: "/robots.txt" },
@@ -467,6 +471,19 @@ Allow: /
         if (url.pathname === "/docs.md") {
           res.writeHead(200, { "Content-Type": "text/markdown" });
           res.end("# Overview\n\nMarkdown route content.");
+          return;
+        }
+
+        if (url.pathname === "/docs") {
+          res.writeHead(200, { "Content-Type": "text/html" });
+          res.end(`<!doctype html>
+<html>
+  <head>
+    <link rel="alternate" type="text/markdown" href="/docs.md" />
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Overview"}</script>
+  </head>
+  <body><main><h1>Overview</h1></main></body>
+</html>`);
           return;
         }
       }
@@ -570,6 +587,12 @@ Allow: /
       expect(report.checks.find((check) => check.id === "hosted-robots")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-skill")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-markdown")?.status).toBe("pass");
+      expect(report.checks.find((check) => check.id === "hosted-structured-data")?.status).toBe(
+        "pass",
+      );
+      expect(report.checks.find((check) => check.id === "hosted-markdown-alternate")?.status).toBe(
+        "pass",
+      );
       expect(report.checks.find((check) => check.id === "hosted-mcp")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-mcp")?.detail).toContain(
         "/.well-known/mcp initialized statelessly",
