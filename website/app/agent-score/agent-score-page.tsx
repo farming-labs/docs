@@ -464,7 +464,7 @@ function groupIdFromTitle(title: string): string {
 
 function groupCalloutForId(id: string): string | null {
   if (id !== "framework-surfaces") return null;
-  return "@farming-labs/docs extras on top of the AFDocs standard. These checks validate the framework discovery layer, full-context files, search, feedback, and structured metadata when the site advertises them.";
+  return "@farming-labs/docs extras on top of the AFDocs standard. These checks validate the discovery spec, full-context files, sitemap routes, robots.txt policy, skill.md, MCP, search, feedback, and structured metadata when the site advertises them.";
 }
 
 function groupChecksForDetails(checks: AgentScoreCheck[]): CheckGroup[] {
