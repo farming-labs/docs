@@ -830,6 +830,16 @@ Config content.
     );
     expect(fallbackDocument).not.toContain("<Agent>");
 
+    const { GET: getWithLlmsDisabled } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      llmsTxt: false,
+    });
+    const disabledFallbackResponse = await getWithLlmsDisabled(
+      new Request("http://localhost/api/docs?format=markdown&path=getting-started/quickstart"),
+    );
+    expect(await disabledFallbackResponse.text()).not.toContain("LLM index: /llms.txt");
+
     const agentResponse = await GET(
       new Request("http://localhost/api/docs?format=markdown&path=overview"),
     );

@@ -78,6 +78,10 @@ type SubmitBody = {
   submitterUrl?: string;
 };
 
+function readBodyRecord(value: unknown): SubmitBody {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
 function readText(value: unknown, max: number): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
@@ -111,7 +115,7 @@ export async function POST(request: Request) {
 
   let body: SubmitBody;
   try {
-    body = (await request.json()) as SubmitBody;
+    body = readBodyRecord(await request.json());
   } catch {
     return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
   }
@@ -139,37 +143,41 @@ export async function POST(request: Request) {
   const name = customName ?? deriveAgentScoreSiteName(report.baseUrl);
 
   try {
-    const existingEntry = await prisma.agentScoreEntry.findUnique({
-      where: { url: report.baseUrl },
-      select: { id: true, score: true },
-    });
+    const data = {
+      name,
+      score: report.score,
+      grade: report.grade,
+      framework: report.framework,
+      checks: report.checks as unknown as Prisma.InputJsonValue,
+      recommendations: report.recommendations as unknown as Prisma.InputJsonValue,
+      submitterName,
+      submitterUrl,
+      approvalStatus: "APPROVED" as const,
+    };
 
-    const entry = await prisma.agentScoreEntry.upsert({
-      where: { url: report.baseUrl },
-      update: {
-        name,
-        score: report.score,
-        grade: report.grade,
-        framework: report.framework,
-        checks: report.checks as unknown as Prisma.InputJsonValue,
-        recommendations: report.recommendations as unknown as Prisma.InputJsonValue,
-        submitterName,
-        submitterUrl,
-        approvalStatus: "APPROVED",
-      },
-      create: {
-        url: report.baseUrl,
-        name,
-        score: report.score,
-        grade: report.grade,
-        framework: report.framework,
-        checks: report.checks as unknown as Prisma.InputJsonValue,
-        recommendations: report.recommendations as unknown as Prisma.InputJsonValue,
-        submitterName,
-        submitterUrl,
-      },
-    });
-    const action = existingEntry ? "updated" : "created";
+    let action: "created" | "updated" = "created";
+    let status = 201;
+    let entry;
+
+    try {
+      entry = await prisma.agentScoreEntry.create({
+        data: {
+          ...data,
+          url: report.baseUrl,
+        },
+      });
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
+        throw error;
+      }
+
+      action = "updated";
+      status = 200;
+      entry = await prisma.agentScoreEntry.update({
+        where: { url: report.baseUrl },
+        data,
+      });
+    }
 
     return NextResponse.json(
       {
@@ -177,10 +185,9 @@ export async function POST(request: Request) {
         stored: true,
         action,
         id: entry.id,
-        previousScore: existingEntry?.score,
         report,
       },
-      { status: existingEntry ? 200 : 201 },
+      { status },
     );
   } catch (error) {
     if (isPrismaSchemaMissing(error)) {

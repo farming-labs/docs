@@ -1490,13 +1490,17 @@ function resolveMarkdownRequest(entry: string, url: URL, request: Request): Mark
   return null;
 }
 
-function renderMarkdownDocument(page: DocsMcpPage | DocsSearchSourcePage): string {
+function renderMarkdownDocument(
+  page: DocsMcpPage | DocsSearchSourcePage,
+  options: { llmsEnabled?: boolean } = {},
+): string {
   if ("agentRawContent" in page && page.agentRawContent !== undefined) {
     return page.agentRawContent;
   }
 
   const relatedLines = renderDocsRelatedMarkdownLines(page.related);
-  const lines = [`# ${page.title}`, `URL: ${page.url}`, "LLM index: /llms.txt"];
+  const lines = [`# ${page.title}`, `URL: ${page.url}`];
+  if (options.llmsEnabled !== false) lines.push("LLM index: /llms.txt");
   if (page.description) lines.push(`Description: ${page.description}`);
   lines.push(...relatedLines);
   lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);
@@ -2626,13 +2630,14 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
     for (const source of getMarkdownSources(ctx)) {
       const page = findDocsMcpPage(ctx.entryPath, await source.getPages(), requestedPath);
-      if (page) return renderMarkdownDocument(page);
+      if (page) return renderMarkdownDocument(page, { llmsEnabled: llmsConfig.enabled });
     }
 
     const fallbackPage = getIndexes(ctx).find(
       (page) => normalizeUrlPath(page.url) === normalizedRequest,
     );
-    if (fallbackPage) return renderMarkdownDocument(fallbackPage);
+    if (fallbackPage)
+      return renderMarkdownDocument(fallbackPage, { llmsEnabled: llmsConfig.enabled });
 
     for (const page of getIndexes(ctx)) {
       const slug = normalizePathSegment(
@@ -2641,7 +2646,8 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       const requestedSlug = normalizePathSegment(
         requestedPath.replace(/^\/+/, "").replace(/\.md$/i, ""),
       );
-      if (slug === requestedSlug) return renderMarkdownDocument(page);
+      if (slug === requestedSlug)
+        return renderMarkdownDocument(page, { llmsEnabled: llmsConfig.enabled });
     }
 
     return null;

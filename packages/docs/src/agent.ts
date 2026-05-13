@@ -151,6 +151,10 @@ export interface DocsMarkdownPage {
   agentFallbackRawContent?: string;
 }
 
+export interface DocsMarkdownDocumentOptions {
+  llms?: boolean | DocsLlmsDiscoveryConfig | LlmsTxtConfig;
+}
+
 export interface DocsMarkdownNotFoundOptions {
   entry?: string;
   requestedPath: string;
@@ -635,13 +639,31 @@ export function findDocsMarkdownPage<T extends DocsMarkdownPage>(
   return null;
 }
 
-export function renderDocsMarkdownDocument(page: DocsMcpPage | DocsSearchSourcePage): string;
-export function renderDocsMarkdownDocument(page: DocsMarkdownPage): string;
-export function renderDocsMarkdownDocument(page: DocsMarkdownPage): string {
+function shouldRenderLlmsDirective(options?: DocsMarkdownDocumentOptions): boolean {
+  if (options?.llms === false) return false;
+  if (options?.llms && typeof options.llms === "object" && options.llms.enabled === false) {
+    return false;
+  }
+  return true;
+}
+
+export function renderDocsMarkdownDocument(
+  page: DocsMcpPage | DocsSearchSourcePage,
+  options?: DocsMarkdownDocumentOptions,
+): string;
+export function renderDocsMarkdownDocument(
+  page: DocsMarkdownPage,
+  options?: DocsMarkdownDocumentOptions,
+): string;
+export function renderDocsMarkdownDocument(
+  page: DocsMarkdownPage,
+  options?: DocsMarkdownDocumentOptions,
+): string {
   if (page.agentRawContent !== undefined) return page.agentRawContent;
 
   const relatedLines = renderDocsRelatedMarkdownLines(page.related);
-  const lines = [`# ${page.title}`, `URL: ${page.url}`, DOCS_LLMS_TXT_DIRECTIVE_LINE];
+  const lines = [`# ${page.title}`, `URL: ${page.url}`];
+  if (shouldRenderLlmsDirective(options)) lines.push(DOCS_LLMS_TXT_DIRECTIVE_LINE);
   if (page.description) lines.push(`Description: ${page.description}`);
   lines.push(...relatedLines);
   lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);

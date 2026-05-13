@@ -9,11 +9,15 @@ type AgentScoreBody = {
   url?: string;
 };
 
+function readBodyRecord(value: unknown): AgentScoreBody {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
 export async function POST(request: Request) {
   let body: AgentScoreBody;
 
   try {
-    body = (await request.json()) as AgentScoreBody;
+    body = readBodyRecord(await request.json());
   } catch {
     return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
   }

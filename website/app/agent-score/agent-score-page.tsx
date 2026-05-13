@@ -18,6 +18,7 @@ import {
   ListOrdered,
   Loader2,
   Search,
+  Type,
 } from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import PixelCard from "@/components/ui/pixel-card";
@@ -176,6 +177,8 @@ function leaderboardEntryMatchesQuery(entry: LeaderboardEntry, query: string): b
   const q = query.trim().toLowerCase();
   if (!q) return true;
   const hay = [
+    deriveLeaderboardDisplayName(entry),
+    deriveLeaderboardSiteDomain(entry.url),
     entry.name,
     entry.url,
     entry.grade,
@@ -186,6 +189,71 @@ function leaderboardEntryMatchesQuery(entry: LeaderboardEntry, query: string): b
     .join(" ")
     .toLowerCase();
   return hay.includes(q);
+}
+
+const DOCS_HOST_PREFIXES = new Set(["dev", "developer", "developers", "doc", "docs"]);
+const SECOND_LEVEL_TLDS = new Set(["ac", "co", "com", "edu", "gov", "net", "org"]);
+const COMPOUND_DOMAIN_SUFFIXES = ["domain", "docs", "auth", "api", "ai", "cloud", "labs"];
+
+function deriveLeaderboardDisplayName(entry: Pick<LeaderboardEntry, "name" | "url">): string {
+  const hostLabel = domainLabelFromUrl(entry.url);
+  const source = hostLabel || entry.name;
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(source)) return source;
+
+  const words = source
+    .replace(/[_-]+/g, " ")
+    .split(/\s+/)
+    .flatMap(splitCompoundDomainWord)
+    .map((part) => part.replace(/[^a-z\d]+/gi, ""))
+    .filter(Boolean);
+
+  return (words.length > 0 ? words.join(" ") : source).toUpperCase();
+}
+
+function domainLabelFromUrl(value: string): string | undefined {
+  const baseDomain = deriveLeaderboardSiteDomain(value);
+  if (!baseDomain) return undefined;
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(baseDomain)) return baseDomain;
+  return baseDomain.split(".")[0];
+}
+
+function deriveLeaderboardSiteDomain(value: string): string | undefined {
+  for (const candidate of [value, `https://${value}`]) {
+    try {
+      const url = new URL(candidate);
+      const host = url.hostname.toLowerCase().replace(/^www\./, "");
+      if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) return host;
+
+      let labels = host.split(".").filter(Boolean);
+      if (labels.length > 2 && DOCS_HOST_PREFIXES.has(labels[0] ?? "")) {
+        labels = labels.slice(1);
+      }
+
+      if (labels.length >= 3) {
+        const secondLevel = labels[labels.length - 2];
+        const tld = labels[labels.length - 1];
+        if (tld && tld.length === 2 && SECOND_LEVEL_TLDS.has(secondLevel ?? "")) {
+          return labels.slice(-3).join(".");
+        }
+      }
+
+      return labels.length > 1 ? labels.slice(-2).join(".") : labels[0];
+    } catch {
+      // Try the protocol-prefixed candidate next.
+    }
+  }
+
+  return undefined;
+}
+
+function splitCompoundDomainWord(value: string): string[] {
+  const lower = value.toLowerCase();
+  const suffix = COMPOUND_DOMAIN_SUFFIXES.find(
+    (candidate) => lower.endsWith(candidate) && lower.length > candidate.length + 1,
+  );
+
+  if (!suffix) return [value];
+  return [value.slice(0, -suffix.length), suffix].filter(Boolean);
 }
 
 function siteLookupKeys(value: string): Set<string> {
@@ -740,11 +808,15 @@ export function AgentScorePage() {
     if (!inputUrl || selectedSite) return;
 
     const cleanInput = cleanScoreUrlValue(inputUrl);
-    if (!cleanInput || autoScoredInputRef.current === cleanInput) return;
+    if (!cleanInput) return;
 
     const currentClean =
       fetchState.status === "success" ? cleanScoreUrlValue(fetchState.report.baseUrl) : "";
-    if (currentClean === cleanInput) return;
+    if (currentClean === cleanInput) {
+      autoScoredInputRef.current = cleanInput;
+      return;
+    }
+    if (fetchState.status === "loading" && autoScoredInputRef.current === cleanInput) return;
 
     autoScoredInputRef.current = cleanInput;
     setUrl(inputUrl);
@@ -1618,7 +1690,7 @@ function LeaderboardSection({
         </div>
         <div className="flex w-full flex-col gap-2 sm:max-w-md lg:w-72 lg:max-w-none lg:shrink-0">
           <label htmlFor="leaderboard-search" className="sr-only">
-            Search leaderboard by site, URL, score, or grade
+            Search leaderboard by name, site, URL, score, or grade
           </label>
           <div className="relative w-full">
             <Search
@@ -1632,7 +1704,7 @@ function LeaderboardSection({
               autoComplete="off"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search site, URL, score…"
+              placeholder="Search name, URL, score…"
               className="w-full border border-black/10 bg-black/2 py-2 pl-9 pr-3 font-mono text-xs text-black outline-none placeholder:text-black/35 focus:border-black/25 dark:border-white/10 dark:bg-white/3 dark:text-white dark:placeholder:text-white/35 dark:focus:border-white/25"
             />
           </div>
@@ -1699,16 +1771,22 @@ function LeaderboardSection({
                         extra: "w-[3.25rem] sm:w-[4rem]",
                       },
                       {
+                        label: "Name",
+                        Icon: Type,
+                        align: "left" as const,
+                        extra: "w-[46%] md:w-[24%]",
+                      },
+                      {
                         label: "Site",
                         Icon: Globe,
                         align: "left" as const,
-                        extra: "w-[44%] sm:w-[36%]",
+                        extra: "hidden w-[26%] md:table-cell",
                       },
                       {
                         label: "URL",
                         Icon: Link2,
                         align: "left" as const,
-                        extra: "hidden w-[42%] md:table-cell",
+                        extra: "hidden w-[30%] lg:table-cell",
                       },
                       {
                         label: "Score",
@@ -1768,14 +1846,17 @@ function LeaderboardRow({
     event.preventDefault();
     onSelect();
   };
+  const displayName = deriveLeaderboardDisplayName(entry);
+  const siteDomain = deriveLeaderboardSiteDomain(entry.url) ?? shortenUrl(entry.url);
 
   return (
     <tr
       role="button"
       tabIndex={0}
-      aria-label={`Show saved agent score report for ${entry.name}`}
+      aria-label={`Show saved agent score report for ${displayName}`}
       onClick={onSelect}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           onSelect();
@@ -1787,7 +1868,9 @@ function LeaderboardRow({
         {String(rank).padStart(2, "0")}
       </td>
       <td className="max-w-[14rem] align-middle px-4 py-3">
-        <p className="truncate font-mono text-[13px] text-black dark:text-white">{entry.name}</p>
+        <p className="truncate font-mono text-[13px] font-semibold tracking-[0.12em] text-black dark:text-white">
+          {displayName}
+        </p>
         <p className="mt-0.5 font-mono text-[11px] text-black/45 dark:text-white/45">
           <span className="uppercase tracking-[0.14em]">{entry.grade}</span>
         </p>
@@ -1801,7 +1884,12 @@ function LeaderboardRow({
           {shortenUrl(entry.url)}
         </a>
       </td>
-      <td className="hidden max-w-[18rem] align-middle px-4 py-3 md:table-cell">
+      <td className="hidden max-w-[14rem] align-middle px-4 py-3 md:table-cell">
+        <p className="truncate font-mono text-[12px] text-black/65 dark:text-white/65">
+          {siteDomain}
+        </p>
+      </td>
+      <td className="hidden max-w-[18rem] align-middle px-4 py-3 lg:table-cell">
         <a
           href={entry.url}
           target="_blank"
@@ -1812,8 +1900,8 @@ function LeaderboardRow({
           {shortenUrl(entry.url)}
         </a>
       </td>
-      <td className="whitespace-nowrap px-3 py-3 text-right align-middle font-mono text-sm font-semibold tabular-nums tracking-tight text-black sm:px-5 dark:text-white">
-        {entry.score}/100
+      <td className="whitespace-nowrap px-3 py-3 text-right align-middle text-[14px] font-pixel font-semibold tabular-nums tracking-wide text-black/80 sm:px-5 dark:text-white/70">
+        {entry.score} / 100
       </td>
     </tr>
   );

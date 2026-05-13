@@ -7,6 +7,8 @@
  * sites scored by the public standard while dogfooding the extra agent
  * surfaces that `docs doctor --agent --url` verifies for our framework.
  */
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import { CATEGORIES, computeScore, runChecks } from "afdocs";
 import type { CheckResult, ReportResult, ScoreResult } from "afdocs";
 import {
@@ -31,6 +33,7 @@ const PROBE_TIMEOUT_MS = 9000;
 const AF_DOCS_MAX_LINKS_TO_TEST = 10;
 const AF_DOCS_REQUEST_DELAY_MS = 50;
 const AF_DOCS_MAX_CONCURRENCY = 6;
+const MAX_SAFE_REDIRECTS = 5;
 
 export type ScoreStatus = "pass" | "warn" | "fail";
 
@@ -103,6 +106,252 @@ export function normalizeAgentScoreBaseUrl(value: string): string {
   url.search = "";
   url.pathname = url.pathname.replace(/\/+$/, "");
   return url.toString().replace(/\/+$/, "");
+}
+
+function parseIpv4(address: string): [number, number, number, number] | undefined {
+  const parts = address.split(".");
+  if (parts.length !== 4) return undefined;
+  const octets = parts.map((part) => Number.parseInt(part, 10));
+  if (octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return undefined;
+  return octets as [number, number, number, number];
+}
+
+function isBlockedIpv4Address(address: string): boolean {
+  const octets = parseIpv4(address);
+  if (!octets) return true;
+  const [a, b, c] = octets;
+
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    a >= 224 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 192 && b === 0 && c === 0) ||
+    (a === 192 && b === 0 && c === 2) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    (a === 198 && b === 51 && c === 100) ||
+    (a === 203 && b === 0 && c === 113)
+  );
+}
+
+function ipv6ToHextets(address: string): number[] | undefined {
+  const withoutZone = address.split("%", 1)[0]?.toLowerCase();
+  if (!withoutZone) return undefined;
+  const ipv4Match = withoutZone.match(/^(.*:)(\d{1,3}(?:\.\d{1,3}){3})$/);
+  let normalized = withoutZone;
+
+  if (ipv4Match) {
+    const octets = parseIpv4(ipv4Match[2] ?? "");
+    if (!octets) return undefined;
+    normalized = `${ipv4Match[1]}${((octets[0] << 8) | octets[1]).toString(16)}:${(
+      (octets[2] << 8) |
+      octets[3]
+    ).toString(16)}`;
+  }
+
+  const pieces = normalized.split("::");
+  if (pieces.length > 2) return undefined;
+
+  const head = pieces[0] ? pieces[0].split(":").filter(Boolean) : [];
+  const tail = pieces.length === 2 && pieces[1] ? pieces[1].split(":").filter(Boolean) : [];
+  const missing = 8 - head.length - tail.length;
+  if (missing < 0 || (pieces.length === 1 && missing !== 0)) return undefined;
+
+  const hextets = [...head, ...Array.from({ length: missing }, () => "0"), ...tail];
+  if (hextets.length !== 8) return undefined;
+
+  const parsed = hextets.map((hextet) =>
+    /^[\da-f]{1,4}$/i.test(hextet) ? Number.parseInt(hextet, 16) : -1,
+  );
+  return parsed.every((value) => value >= 0 && value <= 0xffff) ? parsed : undefined;
+}
+
+function ipv6InCidr(value: number[], base: string, bits: number): boolean {
+  const baseValue = ipv6ToHextets(base);
+  if (!baseValue) return false;
+
+  let remaining = bits;
+  for (let index = 0; index < 8; index++) {
+    if (remaining <= 0) return true;
+    if (remaining >= 16) {
+      if (value[index] !== baseValue[index]) return false;
+      remaining -= 16;
+      continue;
+    }
+
+    const mask = (0xffff << (16 - remaining)) & 0xffff;
+    return (value[index]! & mask) === (baseValue[index]! & mask);
+  }
+
+  return true;
+}
+
+function isBlockedIpv6Address(address: string): boolean {
+  const mappedIpv4 = address.toLowerCase().match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
+  if (mappedIpv4) return isBlockedIpv4Address(mappedIpv4[1] ?? "");
+
+  const value = ipv6ToHextets(address);
+  if (!value) return true;
+
+  return (
+    ipv6InCidr(value, "::", 128) ||
+    ipv6InCidr(value, "::1", 128) ||
+    ipv6InCidr(value, "fc00::", 7) ||
+    ipv6InCidr(value, "fe80::", 10) ||
+    ipv6InCidr(value, "2001:db8::", 32) ||
+    ipv6InCidr(value, "ff00::", 8)
+  );
+}
+
+function isBlockedHostName(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local") ||
+    !hostname.includes(".")
+  );
+}
+
+async function assertPublicAgentScoreHostname(hostname: string): Promise<void> {
+  const normalizedHost = hostname
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/, "");
+  if (!normalizedHost) throw new Error("URL must include a hostname.");
+
+  const ipVersion = isIP(normalizedHost);
+  if (ipVersion === 4) {
+    if (isBlockedIpv4Address(normalizedHost)) {
+      throw new Error("Only public internet URLs can be scored.");
+    }
+    return;
+  }
+  if (ipVersion === 6) {
+    if (isBlockedIpv6Address(normalizedHost)) {
+      throw new Error("Only public internet URLs can be scored.");
+    }
+    return;
+  }
+
+  if (isBlockedHostName(normalizedHost)) {
+    throw new Error("Only public internet URLs can be scored.");
+  }
+
+  let records;
+  try {
+    records = await lookup(normalizedHost, { all: true, verbatim: true });
+  } catch {
+    throw new Error("URL hostname could not be resolved.");
+  }
+
+  if (records.length === 0) throw new Error("URL hostname could not be resolved.");
+
+  for (const record of records) {
+    if (
+      (record.family === 4 && isBlockedIpv4Address(record.address)) ||
+      (record.family === 6 && isBlockedIpv6Address(record.address))
+    ) {
+      throw new Error("Only public internet URLs can be scored.");
+    }
+  }
+}
+
+async function assertPublicAgentScoreUrl(url: string): Promise<void> {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error("URL must be a valid http(s) URL.");
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("URL must use http or https.");
+  }
+  if (parsed.username || parsed.password) {
+    throw new Error("URL credentials are not allowed.");
+  }
+
+  await assertPublicAgentScoreHostname(parsed.hostname);
+}
+
+function fetchInputUrl(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.toString();
+  return input.url;
+}
+
+async function fetchPublicAgentScoreUrl(
+  fetcher: typeof fetch,
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+): Promise<Response> {
+  let currentUrl = fetchInputUrl(input);
+  let currentInit = init;
+  const request = input instanceof Request ? input : undefined;
+  const redirectMode = currentInit.redirect ?? request?.redirect ?? "follow";
+
+  await assertPublicAgentScoreUrl(currentUrl);
+
+  if (redirectMode === "manual") {
+    return fetcher(input, currentInit);
+  }
+  if (redirectMode === "error") {
+    return fetcher(input, { ...currentInit, redirect: "error" });
+  }
+
+  for (let redirectCount = 0; redirectCount <= MAX_SAFE_REDIRECTS; redirectCount++) {
+    await assertPublicAgentScoreUrl(currentUrl);
+    const response = await fetcher(currentUrl, { ...currentInit, redirect: "manual" });
+    const location = response.headers.get("location");
+
+    if (!location || response.status < 300 || response.status >= 400) return response;
+
+    if (redirectCount === MAX_SAFE_REDIRECTS) {
+      throw new Error("Too many redirects while scoring URL.");
+    }
+
+    const method = (currentInit.method ?? request?.method ?? "GET").toUpperCase();
+    currentUrl = new URL(location, currentUrl).toString();
+    if (
+      response.status === 303 ||
+      ((response.status === 301 || response.status === 302) && method === "POST")
+    ) {
+      currentInit = { ...currentInit, method: "GET", body: undefined };
+    }
+  }
+
+  throw new Error("Too many redirects while scoring URL.");
+}
+
+let fetchGuardDepth = 0;
+let fetchBeforeGuard: typeof fetch | undefined;
+
+async function withPublicAgentScoreFetch<T>(callback: () => Promise<T>): Promise<T> {
+  if (fetchGuardDepth === 0) {
+    fetchBeforeGuard = globalThis.fetch.bind(globalThis);
+    const guardedFetch = ((input: RequestInfo | URL, init?: RequestInit) =>
+      fetchPublicAgentScoreUrl(
+        fetchBeforeGuard ?? globalThis.fetch.bind(globalThis),
+        input,
+        init,
+      )) as typeof fetch;
+    globalThis.fetch = guardedFetch;
+  }
+
+  fetchGuardDepth++;
+  try {
+    return await callback();
+  } finally {
+    fetchGuardDepth--;
+    if (fetchGuardDepth === 0 && fetchBeforeGuard) {
+      globalThis.fetch = fetchBeforeGuard;
+      fetchBeforeGuard = undefined;
+    }
+  }
 }
 
 export function deriveAgentScoreSiteName(baseUrl: string): string {
@@ -794,11 +1043,11 @@ function buildMcpReadinessCheck(result: McpProbeResult): AgentScoreCheck {
   return makeCheck(
     "framework:mcp",
     "MCP handshake",
-    passed === result.probes.length ? "pass" : passed > 0 ? "warn" : "fail",
-    passed === result.probes.length ? 6 : passed > 0 ? 3 : 0,
+    passed > 0 ? "pass" : "fail",
+    passed > 0 ? 6 : 0,
     6,
     result.probes.map((probe) => probe.detail).join(" "),
-    passed === result.probes.length
+    passed > 0
       ? undefined
       : `Verify ${result.labels.join(" and ")} support MCP initialize and tools/list.`,
   );
@@ -1097,15 +1346,22 @@ async function buildFrameworkChecks(
  */
 export async function inspectHostedAgentReadiness(rawUrl: string): Promise<AgentScoreReport> {
   const baseUrl = normalizeAgentScoreBaseUrl(rawUrl);
-  const afdocsReport = await runChecks(baseUrl, {
-    samplingStrategy: "deterministic",
-    maxLinksToTest: AF_DOCS_MAX_LINKS_TO_TEST,
-    maxConcurrency: AF_DOCS_MAX_CONCURRENCY,
-    requestDelay: AF_DOCS_REQUEST_DELAY_MS,
-    requestTimeout: PROBE_TIMEOUT_MS,
+  await assertPublicAgentScoreUrl(baseUrl);
+
+  const { afdocsReport, framework } = await withPublicAgentScoreFetch(async () => {
+    const report = await runChecks(baseUrl, {
+      samplingStrategy: "deterministic",
+      maxLinksToTest: AF_DOCS_MAX_LINKS_TO_TEST,
+      maxConcurrency: AF_DOCS_MAX_CONCURRENCY,
+      requestDelay: AF_DOCS_REQUEST_DELAY_MS,
+      requestTimeout: PROBE_TIMEOUT_MS,
+    });
+    return {
+      afdocsReport: report,
+      framework: await buildFrameworkChecks(baseUrl),
+    };
   });
   const afdocsScore = computeScore(afdocsReport);
-  const framework = await buildFrameworkChecks(baseUrl);
 
   const checks = [...buildAfDocsChecks(afdocsReport, afdocsScore), ...framework.checks];
   const frameworkRawScore = framework.checks.reduce((total, check) => total + check.score, 0);
