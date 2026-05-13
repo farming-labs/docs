@@ -564,8 +564,8 @@ The hosted pass probes:
 - `/mcp`
 - `/.well-known/mcp`
 
-For MCP, the doctor performs a Streamable HTTP `initialize` request, checks for an
-`mcp-session-id`, sends `tools/list`, and expects the built-in docs tools:
+For MCP, the doctor performs a Streamable HTTP `initialize` request, reuses `mcp-session-id` when
+the server returns one, sends `tools/list`, and expects the built-in docs tools:
 
 - `list_pages`
 - `get_navigation`

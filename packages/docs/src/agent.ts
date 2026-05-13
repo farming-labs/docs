@@ -37,6 +37,7 @@ export const DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE = "/.well-known/skill.md";
 const DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE = "/robots.txt";
 export const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
 export const DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER = "Signature-Agent";
+const DOCS_LLMS_TXT_DIRECTIVE_LINE = "LLM index: /llms.txt";
 
 export interface DocsAgentFeedbackDiscoveryConfig {
   enabled?: boolean;
@@ -148,6 +149,10 @@ export interface DocsMarkdownPage {
   agentRawContent?: string;
   agentFallbackContent?: string;
   agentFallbackRawContent?: string;
+}
+
+export interface DocsMarkdownDocumentOptions {
+  llms?: boolean | DocsLlmsDiscoveryConfig | LlmsTxtConfig;
 }
 
 export interface DocsMarkdownNotFoundOptions {
@@ -634,13 +639,31 @@ export function findDocsMarkdownPage<T extends DocsMarkdownPage>(
   return null;
 }
 
-export function renderDocsMarkdownDocument(page: DocsMcpPage | DocsSearchSourcePage): string;
-export function renderDocsMarkdownDocument(page: DocsMarkdownPage): string;
-export function renderDocsMarkdownDocument(page: DocsMarkdownPage): string {
+function shouldRenderLlmsDirective(options?: DocsMarkdownDocumentOptions): boolean {
+  if (options?.llms === false) return false;
+  if (options?.llms && typeof options.llms === "object" && options.llms.enabled === false) {
+    return false;
+  }
+  return true;
+}
+
+export function renderDocsMarkdownDocument(
+  page: DocsMcpPage | DocsSearchSourcePage,
+  options?: DocsMarkdownDocumentOptions,
+): string;
+export function renderDocsMarkdownDocument(
+  page: DocsMarkdownPage,
+  options?: DocsMarkdownDocumentOptions,
+): string;
+export function renderDocsMarkdownDocument(
+  page: DocsMarkdownPage,
+  options?: DocsMarkdownDocumentOptions,
+): string {
   if (page.agentRawContent !== undefined) return page.agentRawContent;
 
   const relatedLines = renderDocsRelatedMarkdownLines(page.related);
   const lines = [`# ${page.title}`, `URL: ${page.url}`];
+  if (shouldRenderLlmsDirective(options)) lines.push(DOCS_LLMS_TXT_DIRECTIVE_LINE);
   if (page.description) lines.push(`Description: ${page.description}`);
   lines.push(...relatedLines);
   lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);

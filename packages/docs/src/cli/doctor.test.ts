@@ -512,20 +512,15 @@ Allow: /
         };
 
         if (payload.method === "initialize") {
-          writeMcpPayload(
-            {
-              jsonrpc: "2.0",
-              id: payload.id,
-              result: {
-                protocolVersion: "2025-11-25",
-                capabilities: {},
-                serverInfo: { name: "doctor-test", version: "1.0.0" },
-              },
+          writeMcpPayload({
+            jsonrpc: "2.0",
+            id: payload.id,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              serverInfo: { name: "doctor-test", version: "1.0.0" },
             },
-            {
-              "mcp-session-id": `session-${url.pathname.replace(/\W+/g, "-")}`,
-            },
-          );
+          });
           return;
         }
 
@@ -577,7 +572,7 @@ Allow: /
       expect(report.checks.find((check) => check.id === "hosted-markdown")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-mcp")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-mcp")?.detail).toContain(
-        "/.well-known/mcp initialized",
+        "/.well-known/mcp initialized statelessly",
       );
     } finally {
       await new Promise<void>((resolve, reject) =>

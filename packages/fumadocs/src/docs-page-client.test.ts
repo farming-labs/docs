@@ -40,6 +40,7 @@ describe("DocsPageClient llms.txt footer links", () => {
 
     expect(html).toContain('href="/llms.txt?lang=en"');
     expect(html).toContain('href="/llms-full.txt?lang=en"');
+    expect(html).toContain('class="fd-agent-llms-directive"');
     expect(html).not.toContain("/api/docs?format=llms");
   });
 });

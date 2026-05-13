@@ -380,6 +380,16 @@ export default defineDocs({
           <LayoutGrid size={12} className="shrink-0" />
           Showcase your docs
         </a>
+        <a
+          href="/agent-score"
+          className="flex items-center gap-1.5 mt-1.5 font-mono text-[11px] uppercase tracking-wider text-[var(--color-fd-foreground)] hover:underline underline-offset-2 decoration-dotted"
+          style={{
+            textDecorationColor: "color-mix(in srgb, var(--color-fd-foreground) 40%, transparent)",
+          }}
+        >
+          <Activity size={12} className="shrink-0" />
+          Score your agent-readiness
+        </a>
       </div>
     ),
     footer: (

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Bot, FileText, Github, Search } from "lucide-react";
+import { Activity, ArrowRight, ArrowUpRight, Bot, FileText, Github, Search } from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import CodeBlock from "@/components/ui/code-block";
 import { FeatureGridCard } from "@/components/ui/feature-grid-card";
@@ -938,6 +938,13 @@ function ThemesSection() {
           <a className="group" href="/showcase">
             <span className="inline-flex group items-center gap-2 rounded-none uppercase font-mono text-xs border border-black/10 dark:border-white/10 bg-black/[3%] dark:bg-white/[3%] px-5 py-2.5 cursor-pointer text-black/80 dark:text-white/80 transition-all hover:bg-black/[4%] dark:hover:bg-white/[4%] hover:text-black dark:hover:text-white hover:border-black/10 dark:hover:border-white/10 hover:no-underline">
               Showcase
+              <ArrowRight className="w-3.5 h-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
+            </span>
+          </a>
+          <a className="group" href="/score">
+            <span className="inline-flex group items-center gap-2 rounded-none uppercase font-mono text-xs border border-black/10 dark:border-white/10 bg-black/[3%] dark:bg-white/[3%] px-5 py-2.5 cursor-pointer text-black/80 dark:text-white/80 transition-all hover:bg-black/[4%] dark:hover:bg-white/[4%] hover:text-black dark:hover:text-white hover:border-black/10 dark:hover:border-white/10 hover:no-underline">
+              <Activity className="w-3.5 h-3.5" strokeWidth={1.8} />
+              Agent Score
               <ArrowRight className="w-3.5 h-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
             </span>
           </a>

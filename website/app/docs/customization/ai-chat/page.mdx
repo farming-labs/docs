@@ -424,9 +424,9 @@ End-to-end, Ask AI does two server-side calls:
 1. Retrieve docs context from `search_docs` on the configured MCP endpoint.
 2. Send the prompt plus retrieved context to the configured OpenAI-compatible model endpoint.
 
-So a custom MCP endpoint must support Streamable HTTP MCP, return an `mcp-session-id` on
-`initialize`, expose a search tool (default `search_docs`), and return results with `url`,
-`content`, optional `description`, and optional `section`.
+So a custom MCP endpoint must support Streamable HTTP MCP, expose a search tool (default
+`search_docs`), and return results with `url`, `content`, optional `description`, and optional
+`section`. Stateful endpoints may return an `mcp-session-id`; stateless endpoints can omit it.
 
 ### Retrieval Quality
 

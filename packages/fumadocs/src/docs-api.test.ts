@@ -821,6 +821,7 @@ Config content.
     expect(fallbackResponse.headers.get("vary")).toBeNull();
     const fallbackDocument = await fallbackResponse.text();
     expect(fallbackDocument).toContain("# Quickstart\nURL: /docs/getting-started/quickstart");
+    expect(fallbackDocument).toContain("LLM index: /llms.txt");
     expect(fallbackDocument).toContain(
       ["Description: Start fast", "Related: /docs/overview, /docs/configuration"].join("\n"),
     );
@@ -828,6 +829,16 @@ Config content.
       "Verify the onboarding command examples before changing this page.",
     );
     expect(fallbackDocument).not.toContain("<Agent>");
+
+    const { GET: getWithLlmsDisabled } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      llmsTxt: false,
+    });
+    const disabledFallbackResponse = await getWithLlmsDisabled(
+      new Request("http://localhost/api/docs?format=markdown&path=getting-started/quickstart"),
+    );
+    expect(await disabledFallbackResponse.text()).not.toContain("LLM index: /llms.txt");
 
     const agentResponse = await GET(
       new Request("http://localhost/api/docs?format=markdown&path=overview"),

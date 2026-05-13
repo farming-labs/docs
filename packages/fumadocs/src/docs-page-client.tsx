@@ -8,6 +8,7 @@ import {
   isValidElement,
   useEffect,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
@@ -19,6 +20,18 @@ import { DocsFeedback } from "./docs-feedback.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
 import { escapeJsonLdForScript } from "./json-ld.js";
+
+const agentLlmsDirectiveStyle: CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clip: "rect(0, 0, 0, 0)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
 
 interface TOCItem {
   title: string;
@@ -624,6 +637,17 @@ export function DocsPageClient({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: escapeJsonLdForScript(structuredDataJson) }}
         />
+      )}
+      {llmsTxtEnabled && (
+        <a
+          href={`/llms.txt${llmsLangQuery}`}
+          className="fd-agent-llms-directive"
+          style={agentLlmsDirectiveStyle}
+          tabIndex={-1}
+          aria-hidden="true"
+        >
+          llms.txt
+        </a>
       )}
       <DocsPage
         full={false}

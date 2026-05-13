@@ -1,0 +1,24 @@
+/**
+ * Agent Score leaderboard table — overrides docs theme globals:
+ * `pixel-border.css` sets `th { background: var(--color-fd-muted) !important }`
+ * and `table { overflow: hidden !important }`, which breaks transparent headers.
+ */
+.leaderboardTable {
+  overflow: visible !important;
+}
+
+.leaderboardTable thead th {
+  background-color: transparent !important;
+  background-image: none !important;
+  color: inherit !important;
+  font-weight: 400 !important;
+  border-bottom-color: rgb(0 0 0 / 0.1) !important;
+  box-shadow: inset 0 -1px 0 0 rgb(0 0 0 / 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+:global(.dark) .leaderboardTable thead th {
+  border-bottom-color: rgb(255 255 255 / 0.1) !important;
+  box-shadow: inset 0 -1px 0 0 rgb(255 255 255 / 0.08);
+}
