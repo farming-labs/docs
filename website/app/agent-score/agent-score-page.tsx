@@ -144,7 +144,7 @@ const BREAKDOWN_HELP_ITEMS = [
   {
     title: "Markdown",
     detail:
-      "Checks whether each docs page is available as clean markdown through .md routes or negotiation.",
+      "Checks whether agents can read clean markdown through adjacent .md routes, markdown mirrors, or negotiation.",
   },
   {
     title: "Page Size",
@@ -365,6 +365,16 @@ function categoryTitleFromCheck(check: AgentScoreCheck): string | undefined {
   return check.detail.split(":").at(0)?.trim();
 }
 
+function extraChecksForStandardCategory(
+  categoryId: string,
+  checks: AgentScoreCheck[],
+): AgentScoreCheck[] {
+  if (categoryId === "markdown-availability") {
+    return checks.filter((check) => check.id === "agent:adjacent-markdown-routes");
+  }
+  return [];
+}
+
 function buildPinnedStandardBreakdownItem(
   definition: StandardBreakdownDefinition,
   report: AgentScoreReport,
@@ -372,17 +382,26 @@ function buildPinnedStandardBreakdownItem(
   const checks = report.checks.filter(
     (check) => categoryTitleFromCheck(check) === definition.sourceTitle,
   );
+  const extraChecks = extraChecksForStandardCategory(definition.id, report.checks);
   const scoredCategory = report.standard.categories.find(
     (category) => category.id === definition.id,
   );
 
   if (scoredCategory) {
-    const score = scoredCategory.score ?? 0;
+    const categoryScore = scoredCategory.score ?? 0;
+    const extraScore = extraChecks.reduce((total, check) => total + check.score, 0);
+    const extraMaxScore = extraChecks.reduce((total, check) => total + check.maxScore, 0);
+    const score =
+      extraMaxScore > 0
+        ? scorePercent(categoryScore + extraScore, 100 + extraMaxScore)
+        : categoryScore;
     return {
       id: `standard:${definition.id}`,
       title: definition.title,
       detail: scoredCategory.grade
-        ? `${definition.sourceTitle}: AFDocs category grade ${scoredCategory.grade}.`
+        ? `${definition.sourceTitle}: AFDocs category grade ${scoredCategory.grade}${
+            extraChecks.length > 0 ? ", plus hosted route probes." : "."
+          }`
         : `${definition.sourceTitle}: AFDocs did not score this category on this run.`,
       status: statusFromScore(score, 100),
       score,
@@ -444,6 +463,7 @@ function buildPrimaryBreakdownItems(report: AgentScoreReport): BreakdownItem[] {
 
 function groupTitleForCheck(check: AgentScoreCheck): string {
   if (check.id === "framework:mcp") return "MCP";
+  if (check.id === "agent:adjacent-markdown-routes") return "Markdown";
   if (check.id.startsWith("framework:")) return "Framework surfaces";
   if (check.id.startsWith("afdocs:")) {
     const category = categoryTitleFromCheck(check);
@@ -1253,8 +1273,8 @@ function HeroSection({
             <code className="font-mono text-black/70 dark:text-white/70">
               docs doctor --agent --url
             </code>{" "}
-            CLI runs, in one click. We probe discovery, llms.txt, sitemap, robots, skill.md, .md
-            routes, and MCP, then give you a score and a breakdown.
+            CLI runs, in one click. We probe discovery, llms.txt, sitemap, robots, skill.md,
+            adjacent .md routes, and MCP, then give you a score and a breakdown.
           </p>
 
           <div className="mt-6 flex font-pixel flex-wrap gap-1.5 sm:gap-2">

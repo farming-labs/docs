@@ -33,6 +33,7 @@ const PROBE_TIMEOUT_MS = 9000;
 const AF_DOCS_MAX_LINKS_TO_TEST = 10;
 const AF_DOCS_REQUEST_DELAY_MS = 50;
 const AF_DOCS_MAX_CONCURRENCY = 6;
+const ADJACENT_MARKDOWN_MAX_SCORE = 3;
 const MAX_SAFE_REDIRECTS = 5;
 const FARMING_LABS_DOCS_UPGRADE_RECOMMENDATION =
   "Because this site uses @farming-labs/docs, upgrade to the latest version with `npx @farming-labs/docs upgrade --latest`, redeploy, then rescore before working through the remaining checks.";
@@ -908,7 +909,7 @@ const AF_DOCS_CHECK_TITLES: Record<string, string> = {
   "llms-txt-links-markdown": "llms.txt markdown links",
   "llms-txt-directive-html": "HTML llms.txt directive",
   "llms-txt-directive-md": "Markdown llms.txt directive",
-  "markdown-url-support": ".md URL support",
+  "markdown-url-support": "Markdown URL availability",
   "content-negotiation": "Markdown negotiation",
   "rendering-strategy": "Server-rendered content",
   "page-size-markdown": "Markdown page size",
@@ -1062,6 +1063,14 @@ interface MarkdownCanonicalProbe {
   hasCanonicalLink: boolean;
 }
 
+interface AdjacentMarkdownRouteProbe {
+  pageUrl: string;
+  markdownUrl: string;
+  ok: boolean;
+  status?: number;
+  detail: string;
+}
+
 function decodeHtmlEntity(value: string): string {
   const named: Record<string, string> = {
     amp: "&",
@@ -1139,6 +1148,42 @@ function markdownUrlForHtmlPage(pageUrl: string, alternateHref?: string): string
   url.search = "";
   url.hash = "";
   return url.toString();
+}
+
+function adjacentMarkdownUrlForHtmlPage(pageUrl: string): string {
+  const url = new URL(pageUrl);
+  const pathname = url.pathname.replace(/\/+$/, "") || url.pathname;
+  url.pathname = `${pathname.replace(/\.html?$/i, "")}.md`;
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
+function looksLikeHtmlContent(body: string): boolean {
+  const sample = body
+    .replace(/^(`{3,}|~{3,})[^\n]*\n[\s\S]*?\n\1[ \t]*$/gm, "")
+    .replace(/`[^`\n]+`/g, "``")
+    .slice(0, 2000);
+  return /<!doctype\s/i.test(sample) || /<html[\s>]/i.test(sample) || /<body[\s>]/i.test(sample);
+}
+
+function looksLikeMarkdownContent(body: string): boolean {
+  if (!body.trim() || looksLikeHtmlContent(body)) return false;
+  const sample = body.slice(0, 5000);
+  let signals = 0;
+  if (/^#{1,6}\s+\S/m.test(sample)) signals++;
+  if (/\[[^\]]+\]\([^)]+\)/.test(sample)) signals++;
+  if (/^```/m.test(sample)) signals++;
+  return signals > 0;
+}
+
+function isMarkdownResponse(response: Response, body: string): boolean {
+  const contentType = response.headers.get("content-type") ?? "";
+  return (
+    response.ok &&
+    body.trim().length > 0 &&
+    (contentType.includes("text/markdown") || looksLikeMarkdownContent(body))
+  );
 }
 
 function canonicalLinkFromHeader(header: string | null): string | undefined {
@@ -1234,6 +1279,117 @@ function samplePageUrls(urls: string[], limit: number): string[] {
   return Array.from({ length: limit }, (_, index) => unique[Math.floor(index * stride)]!).filter(
     Boolean,
   );
+}
+
+function isNonHtmlPagePath(pathname: string): boolean {
+  const lastSegment = pathname.split("/").pop() ?? "";
+  return /\.[a-z0-9]+$/i.test(lastSegment) && !/\.html?$/i.test(lastSegment);
+}
+
+function normalizeAdjacentMarkdownPageUrl(rawUrl: string, baseUrl: string): string | undefined {
+  try {
+    const base = new URL(baseUrl);
+    const url = new URL(rawUrl, baseUrl);
+    if (url.origin !== base.origin) return undefined;
+
+    url.hash = "";
+    url.search = "";
+
+    let pathname = url.pathname;
+    if (pathname.startsWith("/llms.txt/")) {
+      pathname = pathname.slice("/llms.txt".length) || "/";
+    }
+    if (pathname.endsWith("/index.md") || pathname.endsWith("/index.mdx")) {
+      pathname = pathname.replace(/\/index\.mdx?$/i, "");
+    } else {
+      pathname = pathname.replace(/\.mdx?$/i, "");
+    }
+    pathname = pathname.replace(/\/+$/, "") || "/";
+
+    if (pathname === "/" || pathname === "/llms.txt") return undefined;
+    if (pathname.startsWith("/.well-known/")) return undefined;
+    if (isNonHtmlPagePath(pathname)) return undefined;
+
+    url.pathname = pathname;
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return undefined;
+  }
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function adjacentMarkdownPageUrlsFromAfDocsReport(
+  baseUrl: string,
+  report: ReportResult,
+): string[] {
+  const urls: string[] = [];
+  const base = new URL(baseUrl);
+  if (base.pathname !== "/") {
+    const normalized = normalizeAdjacentMarkdownPageUrl(baseUrl, baseUrl);
+    if (normalized) urls.push(normalized);
+  }
+
+  const markdownUrlResult = report.results.find((result) => result.id === "markdown-url-support");
+  const pageResults = Array.isArray(markdownUrlResult?.details?.pageResults)
+    ? markdownUrlResult.details.pageResults
+    : [];
+
+  for (const pageResult of pageResults) {
+    const record = asRecord(pageResult);
+    const pageUrl = readString(record?.url);
+    const markdownUrl = readString(record?.mdUrl);
+    for (const candidate of [pageUrl, markdownUrl]) {
+      if (!candidate) continue;
+      const normalized = normalizeAdjacentMarkdownPageUrl(candidate, baseUrl);
+      if (normalized) urls.push(normalized);
+    }
+  }
+
+  return samplePageUrls(urls, AF_DOCS_MAX_LINKS_TO_TEST);
+}
+
+async function probeAdjacentMarkdownRoute(pageUrl: string): Promise<AdjacentMarkdownRouteProbe> {
+  const markdownUrl = adjacentMarkdownUrlForHtmlPage(pageUrl);
+
+  try {
+    const response = await fetchWithTimeout(markdownUrl, {
+      headers: { Accept: "text/markdown, */*" },
+    });
+    const body = await response.text().catch(() => "");
+    const ok = isMarkdownResponse(response, body);
+    const pathname = new URL(markdownUrl).pathname;
+    const contentType = response.headers.get("content-type")?.split(";")[0]?.trim();
+
+    return {
+      pageUrl,
+      markdownUrl,
+      ok,
+      status: response.status,
+      detail: ok
+        ? `${pathname} returned markdown${contentType ? ` (${contentType})` : ""}.`
+        : response.ok
+          ? `${pathname} returned HTTP ${response.status} but did not look like markdown.`
+          : `${pathname} returned HTTP ${response.status}.`,
+    };
+  } catch (error) {
+    return {
+      pageUrl,
+      markdownUrl,
+      ok: false,
+      detail: `${markdownUrl} failed: ${error instanceof Error ? error.message : String(error)}.`,
+    };
+  }
+}
+
+async function probeAdjacentMarkdownRoutes(
+  baseUrl: string,
+  report: ReportResult,
+): Promise<AdjacentMarkdownRouteProbe[]> {
+  const urls = adjacentMarkdownPageUrlsFromAfDocsReport(baseUrl, report);
+  return Promise.all(urls.map((url) => probeAdjacentMarkdownRoute(url)));
 }
 
 function discoverHtmlSurfacePageUrls(
@@ -1378,6 +1534,43 @@ function scoreMarkdownCanonicalCoverage(
     return { status: "warn", score: roundScore((passed / total) * maxScore), passed, total };
   }
   return { status: "fail", score: 0, passed, total };
+}
+
+function scoreAdjacentMarkdownRoutes(
+  probes: AdjacentMarkdownRouteProbe[],
+  maxScore: number,
+): { status: ScoreStatus; score: number; passed: number; total: number } {
+  const total = probes.length;
+  const passed = probes.filter((probe) => probe.ok).length;
+  if (total === 0) return { status: "fail", score: 0, passed: 0, total };
+  if (passed === total) return { status: "pass", score: maxScore, passed, total };
+  if (passed > 0) {
+    return { status: "warn", score: roundScore((passed / total) * maxScore), passed, total };
+  }
+  return { status: "fail", score: 0, passed, total };
+}
+
+function buildAdjacentMarkdownRouteCheck(probes: AdjacentMarkdownRouteProbe[]): AgentScoreCheck {
+  const score = scoreAdjacentMarkdownRoutes(probes, ADJACENT_MARKDOWN_MAX_SCORE);
+  const failures = probes
+    .filter((probe) => !probe.ok)
+    .slice(0, 3)
+    .map((probe) => probe.detail)
+    .join(" ");
+
+  return makeCheck(
+    "agent:adjacent-markdown-routes",
+    "Adjacent .md routes",
+    score.status,
+    score.score,
+    ADJACENT_MARKDOWN_MAX_SCORE,
+    score.total > 0
+      ? `${score.passed}/${score.total} sampled docs page routes returned markdown when .md was appended.${failures ? ` ${failures}` : ""}`
+      : "No docs page routes were available to verify adjacent .md support.",
+    score.status === "pass"
+      ? undefined
+      : "Serve each docs page at the same route with .md appended, for example /docs/installation -> /docs/installation.md.",
+  );
 }
 
 function buildMcpReadinessCheck(result: McpProbeResult): AgentScoreCheck {
@@ -1752,26 +1945,39 @@ export async function inspectHostedAgentReadiness(rawUrl: string): Promise<Agent
   const baseUrl = normalizeAgentScoreBaseUrl(rawUrl);
   await assertPublicAgentScoreUrl(baseUrl);
 
-  const { afdocsReport, framework } = await withPublicAgentScoreFetch(async () => {
-    const report = await runChecks(baseUrl, {
-      samplingStrategy: "deterministic",
-      maxLinksToTest: AF_DOCS_MAX_LINKS_TO_TEST,
-      maxConcurrency: AF_DOCS_MAX_CONCURRENCY,
-      requestDelay: AF_DOCS_REQUEST_DELAY_MS,
-      requestTimeout: PROBE_TIMEOUT_MS,
-    });
-    return {
-      afdocsReport: report,
-      framework: await buildFrameworkChecks(baseUrl),
-    };
-  });
+  const { afdocsReport, adjacentMarkdownChecks, framework } = await withPublicAgentScoreFetch(
+    async () => {
+      const report = await runChecks(baseUrl, {
+        samplingStrategy: "deterministic",
+        maxLinksToTest: AF_DOCS_MAX_LINKS_TO_TEST,
+        maxConcurrency: AF_DOCS_MAX_CONCURRENCY,
+        requestDelay: AF_DOCS_REQUEST_DELAY_MS,
+        requestTimeout: PROBE_TIMEOUT_MS,
+      });
+      const adjacentMarkdownProbes = await probeAdjacentMarkdownRoutes(baseUrl, report);
+      return {
+        afdocsReport: report,
+        adjacentMarkdownChecks: [buildAdjacentMarkdownRouteCheck(adjacentMarkdownProbes)],
+        framework: await buildFrameworkChecks(baseUrl),
+      };
+    },
+  );
   const afdocsScore = computeScore(afdocsReport);
 
-  const checks = [...buildAfDocsChecks(afdocsReport, afdocsScore), ...framework.checks];
+  const checks = [
+    ...buildAfDocsChecks(afdocsReport, afdocsScore),
+    ...adjacentMarkdownChecks,
+    ...framework.checks,
+  ];
+  const genericRawScore = adjacentMarkdownChecks.reduce((total, check) => total + check.score, 0);
+  const genericRawMaxScore = adjacentMarkdownChecks.reduce(
+    (total, check) => total + check.maxScore,
+    0,
+  );
   const frameworkRawScore = framework.checks.reduce((total, check) => total + check.score, 0);
   const frameworkRawMaxScore = framework.checks.reduce((total, check) => total + check.maxScore, 0);
-  const rawScore = roundScore(afdocsScore.overall + frameworkRawScore);
-  const rawMaxScore = roundScore(100 + frameworkRawMaxScore);
+  const rawScore = roundScore(afdocsScore.overall + genericRawScore + frameworkRawScore);
+  const rawMaxScore = roundScore(100 + genericRawMaxScore + frameworkRawMaxScore);
   const score = rawMaxScore <= 0 ? 0 : Math.round((rawScore / rawMaxScore) * 100);
   const name = deriveAgentScoreSiteName(baseUrl);
   const recoveryRecommendations = scoreRecoveryRecommendations(score, {
