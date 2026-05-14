@@ -137,14 +137,24 @@ const DOCS_CONFIG_WITH_SITEMAP = `export default {
 };
 `;
 
-const DOCS_CONFIG_WITH_AGENT_FEEDBACK = `export default {
+const DOCS_CONFIG_WITH_AGENT_FEEDBACK_DISABLED = `export default {
   entry: "docs",
   feedback: {
-    agent: {
-      enabled: true,
-      route: "/api/docs/agent/feedback",
-      schemaRoute: "/api/docs/agent/feedback/schema",
-    },
+    agent: false,
+  },
+};
+`;
+
+const DOCS_CONFIG_WITH_TOP_LEVEL_FEEDBACK_DISABLED = `export default {
+  entry: "docs",
+  feedback: false,
+};
+`;
+
+const DOCS_CONFIG_WITH_AI_FEEDBACK_DISABLED = `export default {
+  entry: "docs",
+  ai: {
+    feedback: false,
   },
 };
 `;
@@ -189,10 +199,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "src/app/docs/layout.tsx"))).toBe(true);
     expect(existsSync(join(tmpDir, "src/app/api/docs/route.ts"))).toBe(true);
     expect(readFileSync(join(tmpDir, "src/app/api/docs/route.ts"), "utf-8")).toContain(
-      "feedback: docsConfig.feedback",
-    );
-    expect(readFileSync(join(tmpDir, "src/app/api/docs/route.ts"), "utf-8")).toContain(
-      "mcp: docsConfig.mcp",
+      "createDocsAPI(docsConfig)",
     );
     expect(existsSync(join(tmpDir, "app/docs/layout.tsx"))).toBe(false);
     expect(existsSync(join(tmpDir, "app/api/docs/route.ts"))).toBe(false);
@@ -260,7 +267,8 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const route = readFileSync(join(tmpDir, "app/api/docs/mcp/route.ts"), "utf-8");
     expect(route).toContain('import { createDocsMCPAPI } from "@farming-labs/next/api";');
     expect(route).not.toContain("resolveNextProjectRoot");
-    expect(route).toContain("search: docsConfig.search");
+    expect(route).toContain("createDocsMCPAPI(docsConfig)");
+    expect(route).not.toContain("search: docsConfig.search");
   });
 
   it("generates the default MCP route when mcp config is omitted", () => {
@@ -338,6 +346,30 @@ describe("withDocs (app dir: src/app vs app)", () => {
           destination: "/api/docs?format=skill",
         }),
         expect.objectContaining({
+          source: "/sitemap.xml",
+          destination: "/api/docs?format=sitemap-xml",
+        }),
+        expect.objectContaining({
+          source: "/sitemap.md",
+          destination: "/api/docs?format=sitemap-md",
+        }),
+        expect.objectContaining({
+          source: "/.well-known/sitemap.md",
+          destination: "/api/docs?format=sitemap-md",
+        }),
+        expect.objectContaining({
+          source: "/robots.txt",
+          destination: "/api/docs?format=robots",
+        }),
+        expect.objectContaining({
+          source: "/api/docs/agent/feedback",
+          destination: "/api/docs?feedback=agent",
+        }),
+        expect.objectContaining({
+          source: "/api/docs/agent/feedback/schema",
+          destination: "/api/docs?feedback=agent&schema=1",
+        }),
+        expect.objectContaining({
           source: "/docs.md",
           destination: "/api/docs?format=markdown",
         }),
@@ -403,6 +435,25 @@ describe("withDocs (app dir: src/app vs app)", () => {
     );
   });
 
+  it("keeps an existing public robots.txt file in control", async () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    mkdirSync(join(tmpDir, "public"), { recursive: true });
+    writeFileSync(join(tmpDir, "public", "robots.txt"), "User-agent: *\nAllow: /\n", "utf-8");
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
+
+    expect(rewrites).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/robots.txt",
+          destination: "/api/docs?format=robots",
+        }),
+      ]),
+    );
+  });
+
   it("redirects hidden folder parents to their first visible child", async () => {
     mkdirSync(join(tmpDir, "app", "docs", "overview", "what-is-surge"), { recursive: true });
     mkdirSync(join(tmpDir, "app", "docs", "sending", "send-one"), { recursive: true });
@@ -444,8 +495,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
     );
   });
 
-  it("adds agent feedback rewrites through the shared docs api handler when configured", async () => {
-    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_AGENT_FEEDBACK, "utf-8");
+  it("adds agent feedback rewrites through the shared docs api handler by default", async () => {
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);
 
@@ -461,6 +511,64 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/api/docs/agent/feedback/schema",
           destination: "/api/docs?feedback=agent&schema=1",
+        }),
+      ]),
+    );
+  });
+
+  it("skips agent feedback rewrites when explicitly disabled", async () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_AGENT_FEEDBACK_DISABLED, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
+
+    expect(rewrites).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/api/docs/agent/feedback",
+          destination: "/api/docs?feedback=agent",
+        }),
+      ]),
+    );
+  });
+
+  it("skips agent feedback rewrites when top-level feedback is false", async () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      DOCS_CONFIG_WITH_TOP_LEVEL_FEEDBACK_DISABLED,
+      "utf-8",
+    );
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
+
+    expect(rewrites).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/api/docs/agent/feedback",
+          destination: "/api/docs?feedback=agent",
+        }),
+      ]),
+    );
+  });
+
+  it("keeps agent feedback rewrites when only Ask AI feedback is disabled", async () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_AI_FEEDBACK_DISABLED, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
+
+    expect(rewrites).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/api/docs/agent/feedback",
+          destination: "/api/docs?feedback=agent",
         }),
       ]),
     );
@@ -625,10 +733,13 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(route).toContain('import { createDocsAPI } from "@farming-labs/next/api";');
     expect(route).not.toContain("resolveNextProjectRoot");
     expect(route).not.toContain("rootDir,");
-    expect(route).toContain("changelog: docsConfig.changelog");
-    expect(route).toContain("llmsTxt: docsConfig.llmsTxt");
-    expect(route).toContain("search: docsConfig.search");
-    expect(route).toContain("ai: docsConfig.ai");
+    expect(route).toContain("createDocsAPI(docsConfig)");
+    expect(route).not.toContain("changelog: docsConfig.changelog");
+    expect(route).not.toContain("llmsTxt: docsConfig.llmsTxt");
+    expect(route).not.toContain("sitemap: docsConfig.sitemap");
+    expect(route).not.toContain("robots: docsConfig.robots");
+    expect(route).not.toContain("search: docsConfig.search");
+    expect(route).not.toContain("ai: docsConfig.ai");
   });
 
   it("adds docs content to output file tracing for docs api routes", () => {

@@ -5,6 +5,7 @@ import {
   applySidebarFolderIndexBehavior,
   buildDocsAskAIContext,
   buildDocsAgentDiscoverySpec,
+  createDocsRobotsResponse,
   createDocsSitemapResponse,
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
@@ -18,6 +19,7 @@ import {
   isDocsAgentDiscoveryRequest,
   isDocsSkillRequest,
   normalizeDocsRelated,
+  parseDocsAgentFeedbackData,
   performDocsSearch,
   renderDocsMarkdownDocument,
   renderDocsMarkdownNotFound,
@@ -26,6 +28,8 @@ import {
   readDocsSitemapManifestFromContentMap,
   stripGeneratedAgentProvenance,
   resolveDocsAgentMdxContent,
+  resolveDocsAgentFeedbackConfig,
+  resolveDocsAgentFeedbackRequest,
   resolvePageSidebarFolderIndexBehavior,
   resolveAskAISearchRequestConfig,
   resolveSearchRequestConfig,
@@ -41,6 +45,7 @@ import {
   resolveDocsSkillFormat,
   renderDocsPageStructuredDataJson,
   selectDocsLlmsTxtContent,
+  validateDocsAgentFeedbackPayload,
 } from "@farming-labs/docs";
 import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig } from "@farming-labs/docs";
 import {
@@ -781,6 +786,12 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
   const mcpConfig = resolveDocsMcpConfig(config.mcp, {
     defaultName: llmsTitle,
   });
+  const agentFeedbackConfig = resolveDocsAgentFeedbackConfig(config.feedback);
+  const agentFeedbackDiscovery = {
+    enabled: agentFeedbackConfig.enabled,
+    route: "/api/docs?feedback=agent",
+    schemaRoute: "/api/docs?feedback=agent&schema=1",
+  };
 
   const llmsCache = new Map<string, ReturnType<typeof renderDocsLlmsTxt>>();
 
@@ -827,6 +838,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
             i18n,
             search: config.search,
             mcp: mcpConfig,
+            feedback: agentFeedbackDiscovery,
             llms: {
               enabled: llmsEnabled,
               baseUrl: llmsBaseUrl || undefined,
@@ -854,6 +866,27 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       );
     }
 
+    const agentFeedbackRequest = resolveDocsAgentFeedbackRequest(url, agentFeedbackConfig);
+    if (agentFeedbackRequest) {
+      if (agentFeedbackRequest.kind === "submit") {
+        return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
+          status: 405,
+          headers: {
+            Allow: "POST",
+            "Content-Type": "application/json; charset=utf-8",
+          },
+        });
+      }
+
+      return new Response(JSON.stringify(agentFeedbackConfig.schema, null, 2), {
+        headers: {
+          "Content-Type": "application/schema+json; charset=utf-8",
+          "Cache-Control": "public, max-age=0, s-maxage=3600",
+          "X-Robots-Tag": "noindex",
+        },
+      });
+    }
+
     if (isDocsSkillRequest(url) || resolveDocsSkillFormat(url) === "skill") {
       return new Response(
         readRootSkillDocument(preloaded, rootDir) ??
@@ -862,6 +895,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
             entry,
             search: config.search,
             mcp: mcpConfig,
+            feedback: agentFeedbackDiscovery,
             llms: {
               enabled: llmsEnabled,
               baseUrl: llmsBaseUrl || undefined,
@@ -896,6 +930,15 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       manifest: preloadedSitemapManifest ?? readDocsSitemapManifest(rootDir, config.sitemap),
     });
     if (sitemapResponse) return sitemapResponse;
+
+    const robotsResponse = createDocsRobotsResponse({
+      request: event.request,
+      entry,
+      sitemap: config.sitemap,
+      baseUrl: llmsBaseUrl || url.origin,
+      robots: config.robots,
+    });
+    if (robotsResponse) return robotsResponse;
 
     const markdownRequest = resolveDocsMarkdownRequest(entry, url, event.request);
     if (markdownRequest) {
@@ -1059,6 +1102,35 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
 
   async function POST(event: { request: Request }): Promise<Response> {
     const requestUrl = new URL(event.request.url);
+    const agentFeedbackRequest = resolveDocsAgentFeedbackRequest(requestUrl, agentFeedbackConfig);
+    if (agentFeedbackRequest) {
+      if (agentFeedbackRequest.kind === "schema") {
+        return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
+          status: 405,
+          headers: {
+            Allow: "GET",
+            "Content-Type": "application/json; charset=utf-8",
+          },
+        });
+      }
+
+      const parsed = await parseDocsAgentFeedbackData(event.request);
+      if (!parsed.ok) return parsed.response;
+
+      const payloadError = validateDocsAgentFeedbackPayload(
+        parsed.data.payload,
+        agentFeedbackConfig.payloadSchema,
+      );
+      if (payloadError) return Response.json({ error: payloadError }, { status: 400 });
+
+      if (!agentFeedbackConfig.onFeedback) {
+        return Response.json({ ok: true, handled: false }, { status: 202 });
+      }
+
+      await agentFeedbackConfig.onFeedback(parsed.data);
+      return Response.json({ ok: true, handled: true }, { status: 201 });
+    }
+
     const requestStartedAt = Date.now();
     const trace = createDocsAgentTraceContext("ask-ai");
     const runSpanId = createDocsAgentTraceId("span");

@@ -3,15 +3,6 @@
 import docsConfig from "@/docs.config";
 import { createDocsMCPAPI } from "@farming-labs/next/api";
 
-export const { GET, POST, DELETE } = createDocsMCPAPI({
-  entry: docsConfig.entry,
-  contentDir: docsConfig.contentDir,
-  nav: docsConfig.nav,
-  ordering: docsConfig.ordering,
-  search: docsConfig.search,
-  mcp: docsConfig.mcp,
-  analytics: docsConfig.analytics,
-  observability: docsConfig.observability,
-});
+export const { GET, POST, DELETE } = createDocsMCPAPI(docsConfig);
 
 export const revalidate = false;

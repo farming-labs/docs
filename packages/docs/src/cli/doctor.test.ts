@@ -325,6 +325,8 @@ Allow: /
     expect(report.checks.find((check) => check.id === "robots")?.detail).toContain(
       "public/robots.txt",
     );
+    expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "skill")?.status).toBe("pass");
   });
 
   it("detects agent.compact in static config parsing when feedback.agent appears first", async () => {

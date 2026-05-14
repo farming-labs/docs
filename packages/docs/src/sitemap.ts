@@ -105,7 +105,8 @@ function normalizeBaseUrl(value?: string): string | undefined {
 }
 
 function isEnabledObject(config: boolean | DocsSitemapConfig | undefined): boolean {
-  if (config === false || config === undefined) return false;
+  if (config === false) return false;
+  if (config === undefined) return true;
   if (config === true) return true;
   return config.enabled !== false;
 }

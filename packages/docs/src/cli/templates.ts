@@ -1131,7 +1131,7 @@ export const Route = createFileRoute("${entryUrl}/$")({
     handlers: {
       GET: async ({ request }) => {
         const url = new URL(request.url);
-        if (isDocsPublicGetRequest(${JSON.stringify(opts.entry)}, url, request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt })) {
+        if (isDocsPublicGetRequest(${JSON.stringify(opts.entry)}, url, request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
           return docsServer.GET({ request });
         }
         return undefined;
@@ -1224,7 +1224,7 @@ async function handlePublicDocsRequest(request: Request) {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, url, request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt })) {
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, url, request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
     return docsServer.GET({ request });
   }
 
@@ -1700,7 +1700,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: config.sitemap, llms: config.llmsTxt })) {
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
     return GET({ url: event.url, request: event.request });
   }
 
@@ -1765,7 +1765,7 @@ const docsPublicHandle: Handle = async ({ event, resolve }) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: config.sitemap, llms: config.llmsTxt })) {
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
     return docsGET({ url: event.url, request: event.request });
   }
 
@@ -2243,7 +2243,7 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: config.sitemap, llms: config.llmsTxt })) {
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
     return GET({ request: context.request });
   }
 
@@ -2310,7 +2310,7 @@ const docsPublicMiddleware: MiddlewareHandler = async (context, next) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: config.sitemap, llms: config.llmsTxt })) {
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
     return docsGET({ request: context.request });
   }
 

@@ -205,6 +205,8 @@ So use it when that stronger machine contract is genuinely worth owning.
 
 Great page writing helps, but agents still need the routes that tell them how to use your site.
 With `@farming-labs/docs`, the goal is to expose a compact discovery layer around the docs tree.
+Most agent surfaces are enabled by default; the config below only adds site-specific details such as
+the public base URL and section-level `llms.txt`.
 
 ```ts title="docs.config.ts"
 import { defineDocs } from "@farming-labs/docs";
@@ -226,16 +228,7 @@ export default defineDocs({
     ],
   },
   sitemap: {
-    enabled: true,
     baseUrl: "https://docs.example.com",
-  },
-  mcp: {
-    enabled: true,
-  },
-  feedback: {
-    agent: {
-      enabled: true,
-    },
   },
 });
 ```
@@ -252,6 +245,7 @@ That gives agents a much better workflow:
 - `{page}.md` gives them clean page markdown
 - canonical `{page}` URLs with `Signature-Agent` give agents the same markdown without appending `.md`
 - MCP lets tool-enabled agents search and read docs semantically
+- `/api/docs/agent/feedback/schema` and `/api/docs/agent/feedback` let agents report missing context without enabling the human feedback UI
 
 The big win is that the discovery layer comes from the same docs runtime instead of a parallel
 system you have to keep in sync by hand.
@@ -292,9 +286,9 @@ end.
 
 ## Keep The Sitemap In The Build
 
-If the site is server-rendered, the shared docs handler can serve sitemap routes at runtime. The
-generator is still useful because it writes `.farming-labs/sitemap-manifest.json`, which gives the
-runtime stable `lastmod` values based on each page source file's last git commit date.
+If the site is server-rendered, the shared docs handler serves sitemap routes at runtime by default.
+The generator is still useful because it writes `.farming-labs/sitemap-manifest.json`, which gives
+the runtime stable `lastmod` values based on each page source file's last git commit date.
 
 For static export, the generator is required because there is no server handler to answer
 `/sitemap.xml` or `/sitemap.md`:

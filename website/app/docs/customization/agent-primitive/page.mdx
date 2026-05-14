@@ -109,7 +109,7 @@ Recommended bootstrap flow:
 5. Use `spec.sitemap.markdown.route` for the semantic docs map and `spec.sitemap.xml.route` for canonical freshness when sitemap is enabled.
 6. Fetch `spec.robots.route` when you need to confirm crawler and AI-agent access policy.
 7. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and your environment supports MCP.
-8. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
+8. If `spec.feedback.enabled` is true, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
 
 Do not scrape the HTML page when markdown, search, sitemap, robots, MCP, or `llms.txt` routes are
 available in the spec.
@@ -185,8 +185,8 @@ coverage instead of only looking correct in the UI.
 Page primitives are also a good place to tell agents how to report whether the docs were enough to
 complete a task.
 
-If `feedback.agent` is enabled in `docs.config`, agents can read the schema first and then post
-structured feedback back into the shared docs API:
+Agent feedback is enabled by default unless the site opts out. Agents can read the schema first and
+then post structured feedback back into the shared docs API:
 
 - schema: `/api/docs/agent/feedback/schema`
 - submit: `/api/docs/agent/feedback`

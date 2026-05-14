@@ -448,21 +448,27 @@ function resolveStaticExport(config: DocsConfig | undefined, content: string): b
 
 function resolveAgentFeedbackEnabled(config: DocsConfig | undefined, content: string): boolean {
   const feedback = config?.feedback;
+  if (feedback === false) return false;
+  if (feedback === true) return true;
   if (feedback && typeof feedback === "object") {
     const agent = feedback.agent;
     if (typeof agent === "boolean") return agent;
     if (agent && typeof agent === "object") return agent.enabled ?? true;
+    return true;
   }
 
+  const topLevelBoolean = readTopLevelBooleanProperty(content, "feedback");
+  if (typeof topLevelBoolean === "boolean") return topLevelBoolean;
+
   const feedbackBlock = extractNestedObjectLiteral(content, ["feedback"]);
-  if (!feedbackBlock) return false;
+  if (!feedbackBlock) return true;
 
   const nestedAgentBlock = extractNestedObjectLiteral(content, ["feedback", "agent"]);
   if (nestedAgentBlock) {
     return readBooleanProperty(nestedAgentBlock, "enabled") ?? true;
   }
 
-  return readBooleanProperty(feedbackBlock, "agent") ?? false;
+  return readBooleanProperty(feedbackBlock, "agent") ?? true;
 }
 
 function resolveHumanFeedbackEnabled(config: DocsConfig | undefined, content: string): boolean {
@@ -2108,7 +2114,7 @@ export async function inspectAgentReadiness(
     },
   );
   const sitemapConfig = resolveDocsSitemapConfig(
-    config?.sitemap ?? readSitemapConfigFromStatic(configContent) ?? false,
+    config?.sitemap ?? readSitemapConfigFromStatic(configContent) ?? true,
   );
   const robotsInput = config?.robots ?? readRobotsConfigFromStatic(configContent) ?? true;
   const robotsConfig =
@@ -2264,17 +2270,30 @@ export async function inspectAgentReadiness(
       ),
     );
   } else if (!existsSync(robotsPath)) {
-    checks.push(
-      makeCheck(
-        "robots",
-        "Robots agent policy",
-        "warn",
-        0,
-        5,
-        `No robots.txt found at ${relativeRobotsPath}.`,
-        `Run docs robots generate --path ${relativeRobotsPath} to publish an agent-friendly crawl policy.`,
-      ),
-    );
+    if (routeSurface.apiMounted && routeSurface.publicMounted && !staticExport) {
+      checks.push(
+        makeCheck(
+          "robots",
+          "Robots agent policy",
+          "pass",
+          5,
+          5,
+          "Runtime /robots.txt is served by the shared docs handler.",
+        ),
+      );
+    } else {
+      checks.push(
+        makeCheck(
+          "robots",
+          "Robots agent policy",
+          "warn",
+          0,
+          5,
+          `No robots.txt found at ${relativeRobotsPath}.`,
+          `Run docs robots generate --path ${relativeRobotsPath} to publish an agent-friendly crawl policy.`,
+        ),
+      );
+    }
   } else {
     const robots = readFileSync(robotsPath, "utf-8");
     const analysis = analyzeDocsRobotsTxt(robots, {
@@ -2318,11 +2337,10 @@ export async function inspectAgentReadiness(
       : makeCheck(
           "skill",
           "Skill document",
-          "warn",
-          3,
+          "pass",
+          5,
           5,
           `No root skill.md found; the framework will serve the generated fallback at ${DEFAULT_SKILL_MD_ROUTE}.`,
-          "Add a root skill.md if you want a custom site-specific bootstrap document instead of the generated fallback.",
         ),
   );
 

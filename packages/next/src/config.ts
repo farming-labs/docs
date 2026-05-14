@@ -97,20 +97,7 @@ ${GENERATED_BANNER}
 import docsConfig from "@/docs.config";
 import { createDocsAPI } from "@farming-labs/next/api";
 
-export const { GET, POST } = createDocsAPI({
-  entry: docsConfig.entry,
-  contentDir: docsConfig.contentDir,
-  i18n: docsConfig.i18n,
-  changelog: docsConfig.changelog,
-  feedback: docsConfig.feedback,
-  mcp: docsConfig.mcp,
-  llmsTxt: docsConfig.llmsTxt,
-  sitemap: docsConfig.sitemap,
-  search: docsConfig.search,
-  analytics: docsConfig.analytics,
-  observability: docsConfig.observability,
-  ai: docsConfig.ai,
-});
+export const { GET, POST } = createDocsAPI(docsConfig);
 
 export const revalidate = false;
 `;
@@ -120,16 +107,7 @@ ${GENERATED_BANNER}
 import docsConfig from "@/docs.config";
 import { createDocsMCPAPI } from "@farming-labs/next/api";
 
-export const { GET, POST, DELETE } = createDocsMCPAPI({
-  entry: docsConfig.entry,
-  contentDir: docsConfig.contentDir,
-  nav: docsConfig.nav,
-  ordering: docsConfig.ordering,
-  search: docsConfig.search,
-  analytics: docsConfig.analytics,
-  observability: docsConfig.observability,
-  mcp: docsConfig.mcp,
-});
+export const { GET, POST, DELETE } = createDocsMCPAPI(docsConfig);
 
 export const revalidate = false;
 `;
@@ -195,6 +173,7 @@ const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms-full.txt";
 const DEFAULT_SKILL_MD_ROUTE = "/skill.md";
 const DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE = "/.well-known/skill.md";
+const DEFAULT_ROBOTS_TXT_ROUTE = "/robots.txt";
 const DEFAULT_SITEMAP_XML_ROUTE = "/sitemap.xml";
 const DEFAULT_SITEMAP_MD_ROUTE = "/sitemap.md";
 const DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE = "/.well-known/sitemap.md";
@@ -593,10 +572,7 @@ function extractRootObjectLiteral(content: string): string | undefined {
   return undefined;
 }
 
-function readTopLevelStringProperty(content: string, key: string): string | undefined {
-  const block = extractRootObjectLiteral(content);
-  if (!block) return undefined;
-
+function findTopLevelPropertyValueIndex(block: string, key: string): number | undefined {
   let objectDepth = 0;
   let arrayDepth = 0;
   let parenDepth = 0;
@@ -701,31 +677,133 @@ function readTopLevelStringProperty(content: string, key: string): string | unde
     cursor += 1;
     while (/\s/.test(block[cursor] ?? "")) cursor += 1;
 
-    const quote = block[cursor];
-    if (quote !== '"' && quote !== "'") continue;
-
-    cursor += 1;
-    let value = "";
-
-    for (; cursor < block.length; cursor += 1) {
-      const valueChar = block[cursor];
-      if (valueChar === "\\") {
-        const escapedChar = block[cursor + 1];
-        if (escapedChar) {
-          value += escapedChar;
-          cursor += 1;
-        }
-        continue;
-      }
-
-      if (valueChar === quote) return value;
-      value += valueChar;
-    }
-
-    return undefined;
+    return cursor;
   }
 
   return undefined;
+}
+
+function findMatchingObjectEnd(block: string, start: number): number | undefined {
+  let depth = 0;
+  let inString: '"' | "'" | "`" | null = null;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let escaped = false;
+
+  for (let index = start; index < block.length; index += 1) {
+    const char = block[index];
+    const next = block[index + 1];
+
+    if (inLineComment) {
+      if (char === "\n") inLineComment = false;
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (char === "*" && next === "/") {
+        inBlockComment = false;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+
+      if (char === inString) inString = null;
+      continue;
+    }
+
+    if (char === "/" && next === "/") {
+      inLineComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      inBlockComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === "`") {
+      inString = char;
+      continue;
+    }
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char !== "}") continue;
+
+    depth -= 1;
+    if (depth === 0) return index;
+  }
+
+  return undefined;
+}
+
+function readTopLevelStringProperty(content: string, key: string): string | undefined {
+  const block = extractRootObjectLiteral(content);
+  if (!block) return undefined;
+
+  const cursor = findTopLevelPropertyValueIndex(block, key);
+  if (cursor === undefined) return undefined;
+
+  const quote = block[cursor];
+  if (quote !== '"' && quote !== "'") return undefined;
+
+  let value = "";
+
+  for (let index = cursor + 1; index < block.length; index += 1) {
+    const valueChar = block[index];
+    if (valueChar === "\\") {
+      const escapedChar = block[index + 1];
+      if (escapedChar) {
+        value += escapedChar;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (valueChar === quote) return value;
+    value += valueChar;
+  }
+
+  return undefined;
+}
+
+function readTopLevelBooleanProperty(content: string, key: string): boolean | undefined {
+  const block = extractRootObjectLiteral(content);
+  if (!block) return undefined;
+
+  const cursor = findTopLevelPropertyValueIndex(block, key);
+  if (cursor === undefined) return undefined;
+
+  if (block.startsWith("true", cursor)) return true;
+  if (block.startsWith("false", cursor)) return false;
+  return undefined;
+}
+
+function extractTopLevelObjectLiteral(content: string, key: string): string | undefined {
+  const block = extractRootObjectLiteral(content);
+  if (!block) return undefined;
+
+  const cursor = findTopLevelPropertyValueIndex(block, key);
+  if (cursor === undefined || block[cursor] !== "{") return undefined;
+
+  const end = findMatchingObjectEnd(block, cursor);
+  return end === undefined ? undefined : block.slice(cursor + 1, end);
 }
 
 function extractObjectLiteral(content: string, key: string): string | undefined {
@@ -1028,11 +1106,50 @@ function readSitemapConfig(root: string): {
         routePrefix: normalizeRoutePrefix(routePrefixMatch?.[1]),
       };
     } catch {
-      return { enabled: false, routePrefix: "" };
+      return { enabled: true, routePrefix: "" };
     }
   }
 
-  return { enabled: false, routePrefix: "" };
+  return { enabled: true, routePrefix: "" };
+}
+
+function readRobotsConfig(root: string): {
+  enabled: boolean;
+  hasStaticFile: boolean;
+} {
+  const staticPath = join(root, "public", "robots.txt");
+  const hasStaticFile = existsSync(staticPath);
+
+  for (const ext of FILE_EXTS) {
+    const configPath = join(root, `docs.config.${ext}`);
+    if (!existsSync(configPath)) continue;
+
+    try {
+      const content = readFileSync(configPath, "utf-8");
+
+      if (content.match(/robots\s*:\s*false/)) {
+        return { enabled: false, hasStaticFile };
+      }
+
+      if (content.match(/robots\s*:\s*true/)) {
+        return { enabled: true, hasStaticFile };
+      }
+
+      const block = extractObjectLiteral(content, "robots");
+      if (!block) continue;
+
+      const enabledMatch = block.match(/enabled\s*:\s*(true|false)/);
+
+      return {
+        enabled: enabledMatch ? enabledMatch[1] !== "false" : true,
+        hasStaticFile,
+      };
+    } catch {
+      return { enabled: true, hasStaticFile };
+    }
+  }
+
+  return { enabled: true, hasStaticFile };
 }
 
 function normalizeAgentFeedbackRoute(
@@ -1051,6 +1168,11 @@ function readAgentFeedbackConfig(root: string): {
   schemaRoute: string;
 } {
   const defaultRoute = normalizeAgentFeedbackRoute();
+  const enabled = {
+    enabled: true,
+    route: defaultRoute,
+    schemaRoute: `${defaultRoute}/schema`,
+  };
   const disabled = {
     enabled: false,
     route: defaultRoute,
@@ -1063,20 +1185,18 @@ function readAgentFeedbackConfig(root: string): {
 
     try {
       const content = readFileSync(configPath, "utf-8");
-      const feedbackBlock = extractObjectLiteral(content, "feedback");
-      if (!feedbackBlock) continue;
+      const feedbackBoolean = readTopLevelBooleanProperty(content, "feedback");
+      if (feedbackBoolean === false) return disabled;
+      if (feedbackBoolean === true) return enabled;
+
+      const feedbackBlock = extractTopLevelObjectLiteral(content, "feedback");
+      if (!feedbackBlock) return enabled;
 
       if (feedbackBlock.match(/agent\s*:\s*false/)) return disabled;
-      if (feedbackBlock.match(/agent\s*:\s*true/)) {
-        return {
-          enabled: true,
-          route: defaultRoute,
-          schemaRoute: `${defaultRoute}/schema`,
-        };
-      }
+      if (feedbackBlock.match(/agent\s*:\s*true/)) return enabled;
 
       const agentBlock = extractObjectLiteral(feedbackBlock, "agent");
-      if (!agentBlock) continue;
+      if (!agentBlock) return enabled;
 
       const enabledMatch = agentBlock.match(/enabled\s*:\s*(true|false)/);
       const routeMatch = agentBlock.match(/route\s*:\s*["']([^"']+)["']/);
@@ -1093,7 +1213,7 @@ function readAgentFeedbackConfig(root: string): {
     }
   }
 
-  return disabled;
+  return enabled;
 }
 
 type NextRewrite = {
@@ -1240,6 +1360,17 @@ function buildSitemapRewrites(config: { enabled: boolean; routePrefix: string })
     {
       source: joinPublicRoute(prefix, DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE),
       destination: "/api/docs?format=sitemap-md",
+    },
+  ];
+}
+
+function buildRobotsRewrites(config: { enabled: boolean; hasStaticFile: boolean }): NextRewrite[] {
+  if (!config.enabled || config.hasStaticFile) return [];
+
+  return [
+    {
+      source: DEFAULT_ROBOTS_TXT_ROUTE,
+      destination: "/api/docs?format=robots",
     },
   ];
 }
@@ -1438,6 +1569,10 @@ function mergeDocsMarkdownRewrites(
     route: string;
     schemaRoute: string;
   },
+  robots: {
+    enabled: boolean;
+    hasStaticFile: boolean;
+  },
   result?: NextRewriteResult,
 ): NextRewriteResult {
   const autoRewrites = [
@@ -1446,6 +1581,7 @@ function mergeDocsMarkdownRewrites(
     ...buildLlmsTxtRewrites(entry),
     ...buildSkillMdRewrites(),
     ...buildSitemapRewrites(sitemap),
+    ...buildRobotsRewrites(robots),
     ...buildDocsMarkdownRewrites(entry),
     ...buildAgentFeedbackRewrites(agentFeedback),
   ];
@@ -1521,6 +1657,7 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
 
   const mcp = readMcpConfig(root);
   const sitemap = readSitemapConfig(root);
+  const robots = readRobotsConfig(root);
   const docsMcpRouteDir = join(root, appDir, "api", "docs", "mcp");
   if (
     mcp.enabled &&
@@ -1808,7 +1945,7 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
     nextConfig.rewrites = async () => {
       const rewrites =
         typeof existingRewrites === "function" ? await existingRewrites() : existingRewrites;
-      return mergeDocsMarkdownRewrites(entry, mcp, sitemap, agentFeedback, rewrites);
+      return mergeDocsMarkdownRewrites(entry, mcp, sitemap, agentFeedback, robots, rewrites);
     };
 
     const autoRedirects = buildHiddenFolderRedirects(docsContentRoot, entry);

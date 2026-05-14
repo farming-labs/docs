@@ -974,7 +974,7 @@ export interface SitemapMarkdownConfig {
 export interface DocsSitemapConfig {
   /**
    * Whether to enable sitemap routes.
-   * @default true when `sitemap` is an object
+   * @default true
    */
   enabled?: boolean;
   /**
@@ -1919,7 +1919,7 @@ export interface DocsAgentFeedbackData {
  * route wrapper.
  */
 export interface AgentFeedbackConfig {
-  /** Enable the agent feedback endpoints. Defaults to `true` when provided. */
+  /** Enable the agent feedback endpoints. Defaults to `true`; set to `false` to opt out. */
   enabled?: boolean;
   /**
    * Public HTTP route for posting agent feedback.
@@ -1978,7 +1978,8 @@ export interface FeedbackConfig {
   onFeedback?: (data: DocsFeedbackData) => void | Promise<void>;
   /**
    * Machine-oriented feedback endpoints exposed through the shared `/api/docs`
-   * route when configured.
+   * route. The shared docs API exposes the default no-op schema/submit routes
+   * unless this is set to `false`.
    *
    * This does not enable the human page feedback UI by itself. To show the
    * built-in footer prompt, keep using `feedback: true` or `feedback.enabled`.
@@ -2524,6 +2525,8 @@ export interface DocsConfig {
   /**
    * Generated XML and Markdown sitemaps for crawlers, agents, and static export.
    *
+   * Enabled by default. Set `sitemap: false` to opt out.
+   *
    * @example
    * ```ts
    * sitemap: true
@@ -2537,6 +2540,10 @@ export interface DocsConfig {
   sitemap?: boolean | DocsSitemapConfig;
   /**
    * Generated robots.txt policy for docs and agent-readable routes.
+   *
+   * Served by the runtime by default when no static `robots.txt` exists. Use
+   * `docs robots generate` for static export or when you want to append to an
+   * existing file.
    *
    * @example
    * ```ts

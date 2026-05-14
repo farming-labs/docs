@@ -11,6 +11,8 @@ import {
 
 describe("docs sitemap helpers", () => {
   it("resolves default and prefixed sitemap routes", () => {
+    expect(resolveDocsSitemapConfig().enabled).toBe(true);
+    expect(resolveDocsSitemapConfig().xml.route).toBe("/sitemap.xml");
     expect(resolveDocsSitemapConfig(true).xml.route).toBe("/sitemap.xml");
     expect(resolveDocsSitemapConfig(true).markdown.wellKnownRoute).toBe("/.well-known/sitemap.md");
 
@@ -21,6 +23,7 @@ describe("docs sitemap helpers", () => {
   });
 
   it("detects public and API sitemap requests", () => {
+    expect(resolveDocsSitemapRequest(new URL("https://example.com/sitemap.xml"))).toBe("xml");
     expect(resolveDocsSitemapRequest(new URL("https://example.com/sitemap.xml"), true)).toBe("xml");
     expect(resolveDocsSitemapRequest(new URL("https://example.com/sitemap.md"), true)).toBe(
       "markdown",

@@ -29,6 +29,7 @@ import {
   resolveChangelogConfig,
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
+  createDocsRobotsResponse,
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
   getDocsMarkdownCanonicalLinkHeader,
@@ -286,6 +287,13 @@ function resolveAgentFeedbackConfig(
   feedback?: boolean | FeedbackConfig,
 ): ResolvedAgentFeedbackConfig {
   const route = normalizeAgentFeedbackRoute();
+  const enabled = {
+    enabled: true,
+    route,
+    schemaRoute: `${route}/schema`,
+    payloadSchema: DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA,
+    schema: buildAgentFeedbackSchema(DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA),
+  } satisfies ResolvedAgentFeedbackConfig;
   const disabled = {
     enabled: false,
     route,
@@ -294,19 +302,15 @@ function resolveAgentFeedbackConfig(
     schema: buildAgentFeedbackSchema(DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA),
   } satisfies ResolvedAgentFeedbackConfig;
 
-  if (!feedback || typeof feedback !== "object") return disabled;
+  if (feedback === false) return disabled;
+  if (!feedback || feedback === true || typeof feedback !== "object") return enabled;
 
   const agent = feedback.agent;
-  if (!agent) return disabled;
+  if (agent === false) return disabled;
+  if (!agent) return enabled;
 
   if (agent === true) {
-    return {
-      enabled: true,
-      route,
-      schemaRoute: `${route}/schema`,
-      payloadSchema: DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA,
-      schema: buildAgentFeedbackSchema(DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA),
-    };
+    return enabled;
   }
 
   const resolvedRoute = normalizeAgentFeedbackRoute(agent.route, route);
@@ -2775,6 +2779,15 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           },
         );
       }
+
+      const robotsResponse = createDocsRobotsResponse({
+        request,
+        entry,
+        sitemap: sitemapConfig,
+        baseUrl: llmsConfig.baseUrl ?? url.origin,
+        robots: robotsConfig,
+      });
+      if (robotsResponse) return robotsResponse;
 
       const sitemapResponse = createDocsSitemapResponse({
         request,
