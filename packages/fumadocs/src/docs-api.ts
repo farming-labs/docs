@@ -31,6 +31,7 @@ import {
   createDocsAgentTraceId,
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
+  getDocsMarkdownCanonicalLinkHeader,
   getDocsMarkdownVaryHeader,
   hasDocsMarkdownSignatureAgent,
   getDocsLlmsTxtMaxCharsIssue,
@@ -2791,6 +2792,12 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       if (markdownRequest) {
         const document = await getMarkdownDocument(ctx, markdownRequest.requestedPath);
         const varyHeader = getDocsMarkdownVaryHeader(request);
+        const canonicalLinkHeader = getDocsMarkdownCanonicalLinkHeader({
+          origin: url.origin,
+          entry: ctx.entryPath,
+          requestedPath: markdownRequest.requestedPath,
+          locale: ctx.locale,
+        });
 
         if (!document) {
           await emitDocsAnalyticsEvent(analytics, {
@@ -2864,6 +2871,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           headers: {
             "Content-Type": "text/markdown; charset=utf-8",
             "Cache-Control": "public, max-age=0, s-maxage=3600",
+            Link: canonicalLinkHeader,
             ...(varyHeader ? { Vary: varyHeader } : {}),
             "X-Robots-Tag": "noindex",
           },

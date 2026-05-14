@@ -37,6 +37,9 @@ The same page model also powers the built-in machine-readable routes:
   markdown representations for the same URL. A browser can keep receiving cached HTML while an
   agent receives cached markdown for `/docs/installation`.
 
+  Successful markdown responses include a canonical `Link` response header pointing to the normal
+  docs page, so agents can read `/docs/installation.md` while still citing `/docs/installation`.
+
   Missing markdown pages return a markdown 404 with recovery links to the agent discovery spec,
   search endpoint, and sitemap routes.
 </Callout>

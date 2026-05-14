@@ -43,6 +43,7 @@ import {
   formatDocsAskAIPackageHints,
   findDocsMarkdownPage,
   getDocsLlmsTxtMaxCharsIssue,
+  getDocsMarkdownCanonicalLinkHeader,
   getDocsMarkdownVaryHeader,
   isDocsAgentDiscoveryRequest,
   isDocsSkillRequest,
@@ -927,6 +928,12 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     if (markdownRequest) {
       const document = getMarkdownDocument(ctx, markdownRequest.requestedPath);
       const varyHeader = getDocsMarkdownVaryHeader(context.request);
+      const canonicalLinkHeader = getDocsMarkdownCanonicalLinkHeader({
+        origin: url.origin,
+        entry,
+        requestedPath: markdownRequest.requestedPath,
+        locale: ctx.locale,
+      });
 
       if (!document) {
         return new Response(
@@ -950,6 +957,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         headers: {
           "Content-Type": "text/markdown; charset=utf-8",
           "Cache-Control": "public, max-age=0, s-maxage=3600",
+          Link: canonicalLinkHeader,
           ...(varyHeader ? { Vary: varyHeader } : {}),
           "X-Robots-Tag": "noindex",
         },

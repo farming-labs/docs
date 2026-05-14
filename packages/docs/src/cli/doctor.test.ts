@@ -469,7 +469,11 @@ Allow: /
         }
 
         if (url.pathname === "/docs.md") {
-          res.writeHead(200, { "Content-Type": "text/markdown" });
+          const host = req.headers.host ?? "127.0.0.1";
+          res.writeHead(200, {
+            "Content-Type": "text/markdown",
+            Link: `<http://${host}/docs>; rel="canonical"`,
+          });
           res.end("# Overview\n\nMarkdown route content.");
           return;
         }
@@ -587,6 +591,9 @@ Allow: /
       expect(report.checks.find((check) => check.id === "hosted-robots")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-skill")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-markdown")?.status).toBe("pass");
+      expect(report.checks.find((check) => check.id === "hosted-markdown-canonical")?.status).toBe(
+        "pass",
+      );
       expect(report.checks.find((check) => check.id === "hosted-structured-data")?.status).toBe(
         "pass",
       );

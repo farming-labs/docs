@@ -281,6 +281,10 @@ That detail matters for agent-friendly docs because there is only one page resol
 - `/docs/installation` with `Signature-Agent` returns the same markdown and varies by `Accept, Signature-Agent`
 - `/docs/installation` without those headers remains the normal HTML page
 
+All successful markdown page responses include a canonical `Link` response header pointing back to
+the normal HTML page. Agents still receive the full markdown body, but the header tells citation and
+deduplication systems that `/docs/installation` is the canonical URL for the content.
+
 If a markdown request misses, the response is still markdown. The 404 points the agent to
 `/.well-known/agent.json`, `/.well-known/agent`, `/api/docs/agent/spec`, search, the requested API
 markdown route, and sitemap routes so the agent can recover instead of treating the site as a dead
@@ -358,6 +362,7 @@ Example:
 - Fetch `http://localhost:3000/docs.md`
 - Fetch `http://localhost:3000/docs` with `Signature-Agent: https://chatgpt.com`
 - Confirm the `Signature-Agent` response is `text/markdown` and includes `Vary: Accept, Signature-Agent`
+- Confirm successful markdown responses include `Link: <http://localhost:3000/docs>; rel="canonical"`
 - Fetch `http://localhost:3000/.well-known/agent.json`
 - Fetch `http://localhost:3000/sitemap.md`
 - View the page HTML and confirm it includes `application/ld+json`
@@ -413,8 +418,8 @@ pnpm exec docs doctor --agent --url https://docs.example.com
 ```
 
 That hosted pass checks discovery, `llms.txt`, sitemap routes, `skill.md`, representative `.md`
-pages, `robots.txt`, JSON-LD structured data, markdown alternate head links, and MCP at both
-`/mcp` and `/.well-known/mcp`.
+pages, canonical markdown response headers, `robots.txt`, JSON-LD structured data, markdown
+alternate head links, and MCP at both `/mcp` and `/.well-known/mcp`.
 
 If you want the same public check without leaving the browser, use the hosted
 [Agent readiness score](/score) page:
@@ -426,10 +431,10 @@ https://docs.farming-labs.dev/score?url=docs.example.com
 The score page runs AFDocs-style checks for any public docs site, then adds `@farming-labs/docs`
 framework probes when the site exposes `/.well-known/agent.json`. Those framework probes cover the
 discovery spec, full-context files, sitemap routes, `robots.txt`, `skill.md`, MCP, search,
-feedback, JSON-LD structured data on sampled pages, and the
-`<link rel="alternate" type="text/markdown">` head links that point agents to each page's `.md`
-route. Existing leaderboard entries hydrate from the saved report, so a shared score URL can be
-reviewed without triggering a new calculation unless no saved result exists.
+feedback, JSON-LD structured data on sampled pages, canonical `Link` headers on markdown
+responses, and the `<link rel="alternate" type="text/markdown">` head links that point agents to
+each page's `.md` route. Existing leaderboard entries hydrate from the saved report, so a shared
+score URL can be reviewed without triggering a new calculation unless no saved result exists.
 
 Use the web score for demos, public comparisons, and quick regression checks. Use
 `docs doctor --agent --url` when you need CI-friendly JSON, local project context, or a command an

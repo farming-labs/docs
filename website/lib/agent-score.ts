@@ -1053,6 +1053,15 @@ interface HtmlPageSurfaceProbe {
   markdownAlternateHref?: string;
 }
 
+interface MarkdownCanonicalProbe {
+  pageUrl: string;
+  markdownUrl: string;
+  ok: boolean;
+  status?: number;
+  detail: string;
+  hasCanonicalLink: boolean;
+}
+
 function decodeHtmlEntity(value: string): string {
   const named: Record<string, string> = {
     amp: "&",
@@ -1113,10 +1122,57 @@ function resolveMarkdownAlternateUrl(href: string | undefined, pageUrl: string):
   if (!href) return undefined;
   try {
     const url = new URL(href, pageUrl);
-    return url.pathname.endsWith(".md") ? url : undefined;
+    const page = new URL(pageUrl);
+    return url.origin === page.origin && url.pathname.endsWith(".md") ? url : undefined;
   } catch {
     return undefined;
   }
+}
+
+function markdownUrlForHtmlPage(pageUrl: string, alternateHref?: string): string {
+  const alternateUrl = resolveMarkdownAlternateUrl(alternateHref, pageUrl);
+  if (alternateUrl) return alternateUrl.toString();
+
+  const url = new URL(pageUrl);
+  const pathname = url.pathname.replace(/\/+$/, "") || url.pathname;
+  url.pathname = pathname.endsWith(".md") ? pathname : `${pathname}.md`;
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
+function canonicalLinkFromHeader(header: string | null): string | undefined {
+  if (!header) return undefined;
+
+  for (const match of header.matchAll(/<([^>]+)>\s*((?:;\s*[^,]+)*)/g)) {
+    const params = match[2] ?? "";
+    const rel = params.match(/(?:^|;)\s*rel\s*=\s*(?:"([^"]*)"|([^;\s,]+))/i);
+    const relValue = rel?.[1] ?? rel?.[2] ?? "";
+    if (relValue.toLowerCase().split(/\s+/).includes("canonical")) return match[1];
+  }
+
+  return undefined;
+}
+
+function normalizeCanonicalUrl(value: string, baseUrl: string): string | undefined {
+  try {
+    const url = new URL(value, baseUrl);
+    url.hash = "";
+    url.search = "";
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return undefined;
+  }
+}
+
+function hasCanonicalLinkHeader(
+  header: string | null,
+  pageUrl: string,
+  responseUrl: string,
+): boolean {
+  const canonical = canonicalLinkFromHeader(header);
+  if (!canonical) return false;
+  return normalizeCanonicalUrl(canonical, responseUrl) === normalizeCanonicalUrl(pageUrl, pageUrl);
 }
 
 function isDocsHtmlPagePath(pathname: string, rootDocsRoute: string): boolean {
@@ -1240,6 +1296,61 @@ async function probeHtmlPageSurfaces(
   return Promise.all(urls.map((url) => probeHtmlPageSurface(url)));
 }
 
+async function probeMarkdownCanonicalHeader(
+  probe: HtmlPageSurfaceProbe,
+): Promise<MarkdownCanonicalProbe> {
+  const markdownUrl = markdownUrlForHtmlPage(probe.url, probe.markdownAlternateHref);
+
+  if (!probe.ok) {
+    return {
+      pageUrl: probe.url,
+      markdownUrl,
+      ok: false,
+      detail: `${new URL(probe.url).pathname} was not available for markdown canonical probing.`,
+      hasCanonicalLink: false,
+    };
+  }
+
+  try {
+    const response = await fetchWithTimeout(markdownUrl, {
+      headers: { Accept: "text/markdown, */*" },
+    });
+    const body = await response.text().catch(() => "");
+    const hasCanonicalLink = hasCanonicalLinkHeader(
+      response.headers.get("link"),
+      probe.url,
+      markdownUrl,
+    );
+
+    return {
+      pageUrl: probe.url,
+      markdownUrl,
+      ok: response.ok,
+      status: response.status,
+      detail: response.ok
+        ? `${new URL(markdownUrl).pathname} returned markdown with ${body.length} characters${
+            hasCanonicalLink ? " and a canonical Link header" : " but no canonical Link header"
+          }.`
+        : `${new URL(markdownUrl).pathname} returned HTTP ${response.status}.`,
+      hasCanonicalLink,
+    };
+  } catch (error) {
+    return {
+      pageUrl: probe.url,
+      markdownUrl,
+      ok: false,
+      detail: `${markdownUrl} failed: ${error instanceof Error ? error.message : String(error)}.`,
+      hasCanonicalLink: false,
+    };
+  }
+}
+
+async function probeMarkdownCanonicalHeaders(
+  probes: HtmlPageSurfaceProbe[],
+): Promise<MarkdownCanonicalProbe[]> {
+  return Promise.all(probes.map((probe) => probeMarkdownCanonicalHeader(probe)));
+}
+
 function scoreSurfaceCoverage(
   probes: HtmlPageSurfaceProbe[],
   predicate: (probe: HtmlPageSurfaceProbe) => boolean,
@@ -1247,6 +1358,20 @@ function scoreSurfaceCoverage(
 ): { status: ScoreStatus; score: number; passed: number; total: number } {
   const total = probes.length;
   const passed = probes.filter((probe) => probe.ok && predicate(probe)).length;
+  if (total === 0) return { status: "fail", score: 0, passed: 0, total };
+  if (passed === total) return { status: "pass", score: maxScore, passed, total };
+  if (passed > 0) {
+    return { status: "warn", score: roundScore((passed / total) * maxScore), passed, total };
+  }
+  return { status: "fail", score: 0, passed, total };
+}
+
+function scoreMarkdownCanonicalCoverage(
+  probes: MarkdownCanonicalProbe[],
+  maxScore: number,
+): { status: ScoreStatus; score: number; passed: number; total: number } {
+  const total = probes.length;
+  const passed = probes.filter((probe) => probe.ok && probe.hasCanonicalLink).length;
   if (total === 0) return { status: "fail", score: 0, passed: 0, total };
   if (passed === total) return { status: "pass", score: maxScore, passed, total };
   if (passed > 0) {
@@ -1341,6 +1466,10 @@ async function buildFrameworkChecks(
       : probeJsonRoute(frameworkBaseUrl, view.feedbackSchemaRoute),
   ]);
   const htmlSurfaceProbes = await probeHtmlPageSurfaces(frameworkBaseUrl, view, sitemapProbes);
+  const markdownCanonicalProbes =
+    view.capabilities.markdownRoutes === false
+      ? []
+      : await probeMarkdownCanonicalHeaders(htmlSurfaceProbes);
 
   if (view.capabilities.llms === false) {
     checks.push(
@@ -1580,6 +1709,25 @@ async function buildFrameworkChecks(
       view.capabilities.markdownRoutes === false || markdownAlternateScore.status === "pass"
         ? undefined
         : "Add a text/markdown alternate link in each docs page head, usually through `alternates.types['text/markdown']`, so agents can discover the page markdown URL from HTML.",
+    ),
+  );
+
+  const markdownCanonicalScore = scoreMarkdownCanonicalCoverage(markdownCanonicalProbes, 2);
+  checks.push(
+    makeCheck(
+      "framework:markdown-canonical",
+      "Markdown canonical headers",
+      view.capabilities.markdownRoutes === false ? "warn" : markdownCanonicalScore.status,
+      view.capabilities.markdownRoutes === false ? 0 : markdownCanonicalScore.score,
+      2,
+      view.capabilities.markdownRoutes === false
+        ? "Discovery spec reports markdown routes as disabled."
+        : markdownCanonicalScore.total > 0
+          ? `${markdownCanonicalScore.passed}/${markdownCanonicalScore.total} sampled markdown routes include a canonical Link response header.`
+          : "No docs pages were available to verify markdown canonical headers.",
+      view.capabilities.markdownRoutes === false || markdownCanonicalScore.status === "pass"
+        ? undefined
+        : 'Return `Link: <canonical-page-url>; rel="canonical"` on successful markdown page responses so agents can cite the normal docs URL.',
     ),
   );
 

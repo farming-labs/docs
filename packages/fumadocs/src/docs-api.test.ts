@@ -101,8 +101,11 @@ Welcome to the docs.
     );
 
     expect(response.status).toBe(200);
-    const sessionId = response.headers.get("mcp-session-id");
-    expect(sessionId).toBeTruthy();
+    expect(response.headers.get("mcp-session-id")).toBeNull();
+    const initializePayload = await parseMcpPayload<{
+      result?: { serverInfo?: { name?: string } };
+    }>(response);
+    expect(initializePayload.result?.serverInfo?.name).toBe("Example Docs");
 
     const listPagesResponse = await POST(
       new Request("http://localhost/api/docs/mcp", {
@@ -111,7 +114,6 @@ Welcome to the docs.
           "content-type": "application/json",
           accept: "application/json, text/event-stream",
           "mcp-protocol-version": "2025-11-25",
-          "mcp-session-id": sessionId!,
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
@@ -190,7 +192,11 @@ title: "Introduction"
     );
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("mcp-session-id")).toBeTruthy();
+    expect(response.headers.get("mcp-session-id")).toBeNull();
+    const payload = await parseMcpPayload<{
+      result?: { serverInfo?: { name?: string } };
+    }>(response);
+    expect(payload.result?.serverInfo?.name).toBe("Example Docs");
   });
 
   it("ignores nested mcp booleans outside the root config property", async () => {
@@ -252,7 +258,11 @@ export default defineDocs({
     );
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("mcp-session-id")).toBeTruthy();
+    expect(response.headers.get("mcp-session-id")).toBeNull();
+    const payload = await parseMcpPayload<{
+      result?: { serverInfo?: { name?: string } };
+    }>(response);
+    expect(payload.result?.serverInfo?.name).toBe("Example Docs");
   });
 
   it("uses the provided custom search adapter for GET search requests", async () => {
@@ -818,6 +828,9 @@ Config content.
     );
     expect(fallbackResponse.status).toBe(200);
     expect(fallbackResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(fallbackResponse.headers.get("link")).toBe(
+      '<http://localhost/docs/getting-started/quickstart>; rel="canonical"',
+    );
     expect(fallbackResponse.headers.get("vary")).toBeNull();
     const fallbackDocument = await fallbackResponse.text();
     expect(fallbackDocument).toContain("# Quickstart\nURL: /docs/getting-started/quickstart");
@@ -851,6 +864,9 @@ Config content.
     );
     expect(rewrittenFallbackResponse.status).toBe(200);
     expect(rewrittenFallbackResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(rewrittenFallbackResponse.headers.get("link")).toBe(
+      '<http://localhost/docs/getting-started/quickstart>; rel="canonical"',
+    );
     expect(rewrittenFallbackResponse.headers.get("vary")).toBeNull();
     expect(await rewrittenFallbackResponse.text()).toContain(
       "Verify the onboarding command examples before changing this page.",
@@ -867,6 +883,9 @@ Config content.
     );
     expect(acceptFallbackResponse.status).toBe(200);
     expect(acceptFallbackResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(acceptFallbackResponse.headers.get("link")).toBe(
+      '<http://localhost/docs/getting-started/quickstart>; rel="canonical"',
+    );
     expect(acceptFallbackResponse.headers.get("vary")).toBe("Accept");
     expect(await acceptFallbackResponse.text()).toContain(
       "Verify the onboarding command examples before changing this page.",
@@ -909,6 +928,9 @@ Config content.
     );
     expect(signatureAgentPageResponse.status).toBe(200);
     expect(signatureAgentPageResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(signatureAgentPageResponse.headers.get("link")).toBe(
+      '<http://localhost/docs/overview>; rel="canonical"',
+    );
     expect(signatureAgentPageResponse.headers.get("vary")).toBe("Accept, Signature-Agent");
     expect(await signatureAgentPageResponse.text()).toBe(
       "Use this page as the implementation map.\n",
@@ -2899,13 +2921,11 @@ Ask AI should retrieve this exact MCP Actual Retrieval Token from the real MCP h
       const mcpCalls = calls.filter(
         ({ request }) => request.url === "https://docs.example.com/mcp",
       );
-      expect(mcpCalls.map(({ request }) => request.method)).toEqual(["POST", "POST", "DELETE"]);
+      expect(mcpCalls.map(({ request }) => request.method)).toEqual(["POST", "POST"]);
       expect(new Headers(mcpCalls[0]?.init?.headers).get("authorization")).toBe(
         "Bearer docs-mcp-token",
       );
-      expect(new Headers(mcpCalls[1]?.init?.headers).get("mcp-session-id")).toEqual(
-        expect.any(String),
-      );
+      expect(new Headers(mcpCalls[1]?.init?.headers).get("mcp-session-id")).toBeNull();
       expect(JSON.parse(String(mcpCalls[1]?.init?.body))).toMatchObject({
         method: "tools/call",
         params: {

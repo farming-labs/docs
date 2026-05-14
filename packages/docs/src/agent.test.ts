@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDocsAgentDiscoverySpec,
   findDocsMarkdownPage,
+  getDocsMarkdownCanonicalLinkHeader,
   getDocsMarkdownVaryHeader,
   hasDocsMarkdownSignatureAgent,
   isDocsAgentDiscoveryRequest,
@@ -18,6 +19,7 @@ import {
   resolveDocsLlmsTxtFormat,
   resolveDocsLlmsTxtRequest,
   resolveDocsLlmsTxtSections,
+  resolveDocsMarkdownCanonicalUrl,
   resolveDocsSkillFormat,
   resolveDocsMarkdownRequest,
   selectDocsLlmsTxtContent,
@@ -312,6 +314,33 @@ describe("agent route helpers", () => {
     expect(toDocsMarkdownUrl("/docs/install?lang=es", { locale: "fr" })).toBe(
       "/docs/install.md?lang=es",
     );
+  });
+
+  it("builds canonical Link headers for markdown mirrors", () => {
+    expect(
+      resolveDocsMarkdownCanonicalUrl({
+        origin: "https://docs.example.com",
+        entry: "docs",
+        requestedPath: "install",
+      }),
+    ).toBe("https://docs.example.com/docs/install");
+
+    expect(
+      resolveDocsMarkdownCanonicalUrl({
+        origin: "https://docs.example.com",
+        entry: "docs",
+        requestedPath: "",
+        locale: "fr",
+      }),
+    ).toBe("https://docs.example.com/docs?lang=fr");
+
+    expect(
+      getDocsMarkdownCanonicalLinkHeader({
+        origin: "https://docs.example.com",
+        entry: "docs",
+        requestedPath: "/docs/install.md",
+      }),
+    ).toBe('<https://docs.example.com/docs/install>; rel="canonical"');
   });
 
   it("renders recovery links for markdown 404 responses", () => {

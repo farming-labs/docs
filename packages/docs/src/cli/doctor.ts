@@ -1132,7 +1132,7 @@ async function fetchWithTimeout(
 async function probeTextRoute(
   baseUrl: string,
   route: string,
-): Promise<{ ok: boolean; status?: number; detail: string; body?: string }> {
+): Promise<{ ok: boolean; status?: number; detail: string; body?: string; linkHeader?: string }> {
   const url = joinDoctorUrl(baseUrl, route);
 
   try {
@@ -1164,6 +1164,7 @@ async function probeTextRoute(
       status: response.status,
       detail: `${route} returned HTTP ${response.status} with ${body.length} characters.`,
       body,
+      linkHeader: response.headers.get("link") ?? undefined,
     };
   } catch (error) {
     return {
@@ -1238,6 +1239,40 @@ function resolveMarkdownAlternateUrl(href: string | undefined, pageUrl: string):
   } catch {
     return undefined;
   }
+}
+
+function canonicalLinkFromHeader(header: string | undefined): string | undefined {
+  if (!header) return undefined;
+
+  for (const match of header.matchAll(/<([^>]+)>\s*((?:;\s*[^,]+)*)/g)) {
+    const params = match[2] ?? "";
+    const rel = params.match(/(?:^|;)\s*rel\s*=\s*(?:"([^"]*)"|([^;\s,]+))/i);
+    const relValue = rel?.[1] ?? rel?.[2] ?? "";
+    if (relValue.toLowerCase().split(/\s+/).includes("canonical")) return match[1];
+  }
+
+  return undefined;
+}
+
+function normalizeCanonicalUrl(value: string, baseUrl: string): string | undefined {
+  try {
+    const url = new URL(value, baseUrl);
+    url.hash = "";
+    url.search = "";
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return undefined;
+  }
+}
+
+function hasCanonicalLinkHeader(
+  header: string | undefined,
+  pageUrl: string,
+  responseUrl: string,
+): boolean {
+  const canonical = canonicalLinkFromHeader(header);
+  if (!canonical) return false;
+  return normalizeCanonicalUrl(canonical, responseUrl) === normalizeCanonicalUrl(pageUrl, pageUrl);
 }
 
 async function probeRobotsRoute(
@@ -1803,6 +1838,8 @@ async function buildHostedAgentChecks(
 
   const markdownRoute = toMarkdownRoute(pages[0]?.url);
   if (markdownRoute) {
+    const markdownPageUrl = pages[0]?.url ? joinDoctorUrl(baseUrl, pages[0].url) : undefined;
+    const markdownResponseUrl = joinDoctorUrl(baseUrl, markdownRoute);
     const markdown = await probeTextRoute(baseUrl, markdownRoute);
     checks.push(
       makeCheck(
@@ -1817,6 +1854,28 @@ async function buildHostedAgentChecks(
           : `Verify deployed markdown routes are forwarded, starting with ${markdownRoute}.`,
       ),
     );
+
+    const hasCanonicalHeader =
+      markdown.ok && markdownPageUrl
+        ? hasCanonicalLinkHeader(markdown.linkHeader, markdownPageUrl, markdownResponseUrl)
+        : false;
+    checks.push(
+      makeCheck(
+        "hosted-markdown-canonical",
+        "Hosted markdown canonical header",
+        hasCanonicalHeader ? "pass" : "fail",
+        hasCanonicalHeader ? 3 : 0,
+        3,
+        markdown.ok
+          ? hasCanonicalHeader
+            ? `${markdownRoute} includes a canonical Link header pointing to ${pages[0]?.url}.`
+            : `${markdownRoute} is reachable but is missing a canonical Link response header.`
+          : markdown.detail,
+        hasCanonicalHeader
+          ? undefined
+          : 'Return `Link: <canonical-page-url>; rel="canonical"` on successful markdown page responses so agents can cite the normal docs URL.',
+      ),
+    );
   } else {
     checks.push(
       makeCheck(
@@ -1827,6 +1886,17 @@ async function buildHostedAgentChecks(
         5,
         "No local docs page was available to choose a sample .md route.",
         "Add docs pages so the hosted doctor can probe a representative .md route.",
+      ),
+    );
+    checks.push(
+      makeCheck(
+        "hosted-markdown-canonical",
+        "Hosted markdown canonical header",
+        "warn",
+        0,
+        3,
+        "No local docs page was available to choose a sample .md route.",
+        "Add docs pages so the hosted doctor can probe a markdown canonical Link header.",
       ),
     );
   }
