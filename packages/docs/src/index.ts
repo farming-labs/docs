@@ -59,6 +59,7 @@ export {
 } from "./agent-provenance.js";
 export {
   DEFAULT_AGENT_FEEDBACK_ROUTE,
+  DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA,
   DEFAULT_AGENT_SPEC_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
@@ -75,6 +76,7 @@ export {
   DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
   DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER,
   buildDocsAgentDiscoverySpec,
+  buildDocsAgentFeedbackSchema,
   findDocsMarkdownPage,
   getDocsMarkdownCanonicalLinkHeader,
   getDocsMarkdownVaryHeader,
@@ -91,6 +93,9 @@ export {
   renderDocsMarkdownNotFound,
   renderDocsLlmsTxt,
   renderDocsSkillDocument,
+  parseDocsAgentFeedbackData,
+  resolveDocsAgentFeedbackConfig,
+  resolveDocsAgentFeedbackRequest,
   resolveDocsMarkdownCanonicalUrl,
   resolveDocsAgentMdxContent,
   resolveDocsLlmsTxtRequest,
@@ -100,8 +105,11 @@ export {
   resolveDocsSkillFormat,
   resolveDocsMarkdownRequest,
   toDocsMarkdownUrl,
+  validateDocsAgentFeedbackPayload,
 } from "./agent.js";
 export type {
+  DocsAgentFeedbackRequest,
+  DocsAgentFeedbackResolvedConfig,
   DocsLlmsTxtGeneratedContent,
   DocsLlmsTxtGeneratedSection,
   DocsLlmsTxtMaxCharsIssue,
@@ -132,10 +140,12 @@ export {
   DOCS_ROBOTS_GENERATED_BLOCK_END,
   DOCS_ROBOTS_GENERATED_BLOCK_START,
   analyzeDocsRobotsTxt,
+  createDocsRobotsResponse,
   getDocsRobotsAllowRoutes,
   renderDocsRobotsGeneratedBlock,
   renderDocsRobotsTxt,
   resolveDocsRobotsConfig,
+  resolveDocsRobotsRequest,
   upsertDocsRobotsGeneratedBlock,
 } from "./robots.js";
 export type {

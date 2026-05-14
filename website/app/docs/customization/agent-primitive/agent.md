@@ -99,7 +99,7 @@ Recommended bootstrap flow:
 5. Use `spec.sitemap.markdown.route` for the semantic docs map and `spec.sitemap.xml.route` for canonical freshness when sitemap is enabled.
 6. Fetch `spec.robots.route` when you need to confirm crawler and AI-agent access policy.
 7. Use `spec.mcp.wellKnownEndpoint`, `spec.mcp.publicEndpoint`, or `spec.mcp.endpoint` when MCP is enabled and your environment supports MCP.
-8. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
+8. If `spec.feedback.enabled` is true, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
 
 Do not scrape the HTML page when markdown, search, sitemap, robots, MCP, or `llms.txt` routes are
 available in the spec.
@@ -108,7 +108,7 @@ available in the spec.
 
 ## Feedback Contract
 
-If agent feedback is enabled for the site, use these default endpoints:
+Agent feedback is enabled by default unless the site opts out. Use these default endpoints:
 
 - schema: `/api/docs/agent/feedback/schema`
 - submit: `/api/docs/agent/feedback`

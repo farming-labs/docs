@@ -52,7 +52,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `analytics`    | `boolean \| DocsAnalyticsConfig`              | `false`          | Product/usage event stream for docs UI, search, AI, feedback, agent reads, and MCP usage |
 | `observability` | `boolean \| DocsObservabilityConfig`          | `false`          | Trace event stream for Ask AI and MCP runs, including spans, timing, status, and errors |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void`              | —                | Callback when the user clicks the copy button on a code block (runs in addition to copy) |
-| `feedback`    | `boolean \| FeedbackConfig`                     | `false`          | Human page feedback UI plus optional agent feedback endpoints                        |
+| `feedback`    | `boolean \| FeedbackConfig`                     | `false` for UI   | Human page feedback UI; agent feedback endpoints are default-on unless opted out     |
 | `agent`       | `DocsAgentConfig`                               | —                | Defaults for `docs agent compact` and related machine-docs workflows                 |
 | `readingTime` | `boolean \| ReadingTimeConfig`                  | `false`          | Opt-in estimated reading-time label with per-page overrides                          |
 | `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
@@ -60,8 +60,8 @@ Top-level configuration object passed to `defineDocs()`.
 | `search`      | `boolean \| DocsSearchConfig`                   | `true`           | Built-in simple search, Typesense, Algolia, or a custom adapter                     |
 | `mcp`         | `boolean \| DocsMcpConfig`                      | enabled          | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp`                       |
 | `apiReference` | `boolean \| ApiReferenceConfig`               | `false`          | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON |
-| `sitemap`    | `boolean \| DocsSitemapConfig`                  | `false`          | Generated `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md`                 |
-| `robots`     | `boolean \| DocsRobotsConfig`                   | enabled when configured | Generated `robots.txt` policy for docs and agent-readable routes                     |
+| `sitemap`    | `boolean \| DocsSitemapConfig`                  | `true`           | Generated `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md`                 |
+| `robots`     | `boolean \| DocsRobotsConfig`                   | `true`           | Runtime/generated `robots.txt` policy for docs and agent-readable routes             |
 | `changelog`   | `boolean \| ChangelogConfig`                    | `false`          | Generated changelog feed and entry pages from dated MDX entries                      |
 | `ordering`    | `"alphabetical" \| "numeric" \| OrderingItem[]` | `"alphabetical"` | Sidebar page ordering strategy                                                       |
 | `metadata`    | `DocsMetadata`                                  | —                | SEO metadata                                                                         |
@@ -344,12 +344,13 @@ See [MCP Server](/docs/customization/mcp) for the route snippets and examples.
 
 ## `DocsRobotsConfig`
 
-Generated `robots.txt` policy for docs and agent-readable routes. The CLI writes a static file; it
-does not add a runtime route or another server wrapper.
+Runtime and generated `robots.txt` policy for docs and agent-readable routes. Server-rendered apps
+serve `/robots.txt` through the shared docs handler when no static file already owns that path; the
+CLI writes or appends a static file for static export and committed policies.
 
 | Property       | Type                              | Default                          | Description |
 | -------------- | --------------------------------- | -------------------------------- | ----------- |
-| `enabled`      | `boolean`                         | `true` when object is passed     | Enable or disable robots generation |
+| `enabled`      | `boolean`                         | `true`                           | Enable or disable the robots policy |
 | `path`         | `string`                          | `public/robots.txt`, or `static/robots.txt` for SvelteKit | File path used by `docs robots generate` |
 | `baseUrl`      | `string`                          | `sitemap.baseUrl` or `llmsTxt.baseUrl` in the CLI | Public site URL used for the `Sitemap:` line |
 | `ai`           | `boolean \| "allow" \| "disallow"` | `"allow"`                        | Explicitly allow or disallow common AI crawler user agents |
@@ -373,8 +374,7 @@ default; use `docs robots generate --append` to add or update the managed block,
 replace the file.
 
 The agent discovery JSON advertises this surface as `robots.enabled`, `robots.route`, and
-`robots.defaultRoute`, so agents can find the policy without guessing. The JSON points to the route;
-the actual policy contents still live in the generated static `robots.txt` file.
+`robots.defaultRoute`, so agents can find the policy without guessing.
 
 ### `DocsRobotsRule`
 
@@ -588,10 +588,10 @@ Notes:
 
 - `search: false` disables search entirely
 - Search requires the docs API route; static export hides the UI because there is no server route
-- On Next.js, generated routes from `withDocs()` already forward `docsConfig.search`
+- On Next.js, generated routes from `withDocs()` pass `docsConfig` directly into `createDocsAPI`
 - MCP-backed search works with relative endpoints like `/mcp` or `/.well-known/mcp` and absolute remote endpoints like `https://docs.example.com/mcp`
 - If MCP-backed search points at the same relative MCP route, the built-in `search_docs` tool falls back to simple search internally to avoid recursive loops
-- On custom/manual Next routes, import `createDocsAPI` from `@farming-labs/next/api` and pass `search: docsConfig.search`
+- On custom/manual Next routes, import `createDocsAPI` from `@farming-labs/next/api` and pass the whole config: `createDocsAPI(docsConfig)`
 
 <Callout type="warning" title="@farming-labs/theme/api still works for now">
   `@farming-labs/theme/api` remains supported as a compatibility import path today, but prefer
@@ -851,7 +851,7 @@ Optional docs page feedback UI. When enabled, a built-in "Good / Bad" prompt is 
 | `positiveLabel` | `string`                                 | `"Good"`          | Label for the positive button                |
 | `negativeLabel` | `string`                                 | `"Bad"`           | Label for the negative button                |
 | `onFeedback`    | `(data: DocsFeedbackData) => void`       | —                 | Callback fired when the user clicks a button |
-| `agent`         | `boolean \| AgentFeedbackConfig`         | —                 | Agent feedback routes served through `/api/docs` |
+| `agent`         | `boolean \| AgentFeedbackConfig`         | `true`            | Agent feedback routes served through `/api/docs` |
 
 ### `DocsFeedbackData`
 
@@ -895,7 +895,7 @@ Optional machine-facing feedback routes for agents, scripts, or evaluation flows
 
 | Property      | Type                                                | Default                            | Description |
 | ------------- | --------------------------------------------------- | ---------------------------------- | ----------- |
-| `enabled`     | `boolean`                                           | `true` when `agent` is provided    | Enable or disable the agent feedback endpoints |
+| `enabled`     | `boolean`                                           | `true`                             | Enable or disable the agent feedback endpoints |
 | `route`       | `string`                                            | `"/api/docs/agent/feedback"`       | Public HTTP route for feedback submission |
 | `schemaRoute` | `string`                                            | `${route}/schema`                  | Public HTTP route for the machine-readable schema |
 | `schema`      | `Record<string, unknown>`                           | built-in payload schema            | Schema used to validate the `payload` object |
@@ -903,10 +903,13 @@ Optional machine-facing feedback routes for agents, scripts, or evaluation flows
 
 Notes:
 
+- agent feedback routes are enabled by default; set `feedback: false` or `feedback: { agent: false }` to opt out
 - `feedback.agent` does not enable the human footer UI by itself
 - the request body always uses `{ context?, payload }`
+- without `feedback.agent.onFeedback`, valid submissions return `{ ok: true, handled: false }`
 - submitted feedback is not added to Ask AI prompts or docs search context by the framework
 - in Next.js, `withDocs()` adds the public route rewrites automatically
+- Astro, SvelteKit, TanStack Start, and Nuxt expose the same feedback contract through the shared `/api/docs?feedback=agent` query route
 - the shared `/api/docs` handler is still the source of truth, so `?feedback=agent` also works
 - agents should discover site identity, locale config, capability flags, search, active markdown routes, `Accept: text/markdown`, `Signature-Agent` support, JSON-LD structured data, `llms.txt`, sitemap routes, `robots.txt`, `skill.md`, skills, MCP, and feedback routes with `GET /.well-known/agent.json`; `GET /.well-known/agent` is the public fallback and `GET /api/docs/agent/spec` is the canonical framework route
 

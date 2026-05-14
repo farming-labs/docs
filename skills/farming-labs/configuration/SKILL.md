@@ -41,7 +41,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `icons` | `Record<string, Component>` | — | Shared icon registry for frontmatter `icon` fields and built-ins like `Prompt` |
 | `components` | `Record<string, Component>` | — | Custom MDX components and built-in overrides like `HoverLink` and `Prompt` |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | — | Callback when user copies a code block (title, content, url, language) |
-| `feedback` | `boolean \| FeedbackConfig` | `false` | Human page feedback UI plus optional agent feedback endpoints |
+| `feedback` | `boolean \| FeedbackConfig` | `false` for UI | Human page feedback UI; agent feedback endpoints are default-on unless opted out |
 | `readingTime` | `boolean \| ReadingTimeConfig` | `false` | Opt-in estimated read-time label with per-page overrides |
 | `agent` | `DocsAgentConfig` | — | Defaults for `docs agent compact` |
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
@@ -51,8 +51,8 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `changelog` | `boolean \| ChangelogConfig` | `false` | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
 | `mcp` | `boolean \| DocsMcpConfig` | enabled | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON document |
-| `sitemap` | `boolean \| DocsSitemapConfig` | `false` | Generated `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` |
-| `robots` | `boolean \| DocsRobotsConfig` | enabled for generation when configured | Generated `robots.txt` policy for docs routes, agent-readable files, and common AI crawler user agents |
+| `sitemap` | `boolean \| DocsSitemapConfig` | `true` | Generated `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` |
+| `robots` | `boolean \| DocsRobotsConfig` | `true` | Runtime/generated `robots.txt` policy for docs routes, agent-readable files, and common AI crawler user agents |
 | `metadata` | `DocsMetadata` | — | SEO and JSON-LD inputs: titleTemplate, description, etc. |
 | `og` | `OGConfig` | — | Dynamic Open Graph images |
 
@@ -199,8 +199,8 @@ Use `/docs/customization/llms-txt` for output examples.
 
 ## Sitemaps
 
-Use `sitemap` when the project should expose crawler-friendly XML and agent-friendly Markdown maps
-of the docs tree.
+Sitemaps are exposed by default. Use `sitemap` when the project should customize crawler-friendly
+XML and agent-friendly Markdown maps of the docs tree.
 
 ```ts
 sitemap: {
@@ -259,8 +259,9 @@ Use the `cli` skill when they ask about command syntax.
 
 ## Robots.txt
 
-Use `robots` when the project should generate a static `robots.txt` policy for docs and
-agent-readable routes.
+`robots` is served by the runtime by default when no static `robots.txt` exists. Use it when the
+project should customize or generate a static `robots.txt` policy for docs and agent-readable
+routes.
 
 ```ts
 robots: {
@@ -273,7 +274,8 @@ robots: {
 
 Behavior:
 
-- `docs robots generate` writes the generated policy
+- runtime adapters serve `/robots.txt` by default when no static file already owns that route
+- `docs robots generate` writes the generated policy for static export or committed files
 - default output is `public/robots.txt`, or `static/robots.txt` for SvelteKit
 - `path` changes where the CLI reads and writes the file
 - existing files are preserved unless the user passes `--append` or `--force`
@@ -491,7 +493,7 @@ Important notes:
 - Typesense and Algolia can sync the index on first request when `adminApiKey` is present
 - `provider: "mcp"` supports relative endpoints like `/mcp` or `/.well-known/mcp` and absolute remote endpoints
 - if `provider: "mcp"` points at the same relative MCP route, the built-in `search_docs` tool falls back to simple search internally so the route does not recurse forever
-- On custom/manual Next routes, forward `search: docsConfig.search` into `createDocsAPI(...)`
+- On custom/manual Next routes, pass the full config into `createDocsAPI(docsConfig)`
 - Use `pnpm dlx @farming-labs/docs search sync --typesense` or `--algolia` when you want to push external indexes from the CLI instead of waiting for the first request
 - Search is hidden when `staticExport: true` because there is no docs API route
 
@@ -556,13 +558,13 @@ feedback: {
 
 ## Agent feedback endpoints
 
-Use `feedback.agent` when agents or automation should be able to report docs understanding or
-implementation outcomes back through the shared docs API.
+Agent feedback endpoints are enabled by default so agents or automation can report docs
+understanding or implementation outcomes back through the shared docs API. Use `feedback.agent` to
+customize the callback, route, or payload schema.
 
 ```ts
 feedback: {
   agent: {
-    enabled: true,
     async onFeedback(data) {
       console.log(data.context?.page, data.payload);
     },
@@ -576,14 +578,16 @@ Default behavior:
 - the discovery document includes site identity, locale config, capability flags, search, markdown routes, root and section `llms.txt` routes, sitemap routes, `robots.route`, root `skill.md` metadata, Skills CLI install metadata, MCP, and feedback routes
 - `GET /skill.md` serves the root `skill.md` file when present, `GET /.well-known/skill.md` is the fallback alias, and `GET /api/docs?format=skill` is the shared API format
 - `GET /api/docs/agent/feedback/schema` returns the machine-readable schema
-- `POST /api/docs/agent/feedback` accepts `{ context?, payload }`
+- `POST /api/docs/agent/feedback` accepts `{ context?, payload }`; without `onFeedback` it returns `{ ok: true, handled: false }`
 - the shared `/api/docs` handler remains the source of truth
 - **Next.js:** `withDocs()` adds the public rewrites automatically
+- **TanStack Start / SvelteKit / Astro / Nuxt:** the shared `/api/docs?feedback=agent` query route is advertised and handled by the existing server wrapper
 - **TanStack Start:** current `init` scaffolds one `src/routes/$.ts` public forwarder for well-known routes and `/skill.md`
 - **SvelteKit:** current `init` scaffolds one `src/hooks.server.ts` public forwarder for well-known routes and `/skill.md`
 - **Astro:** current `init` scaffolds one `src/middleware.ts` public forwarder for well-known routes and `/skill.md`
 - **Nuxt:** current `init` scaffolds one `server/middleware/docs-public.ts` public forwarder for well-known routes and `/skill.md`
 - `feedback.agent` alone does not enable the human footer UI
+- set `feedback: false` or `feedback: { agent: false }` to opt out of the agent feedback routes
 
 Default payload shape:
 

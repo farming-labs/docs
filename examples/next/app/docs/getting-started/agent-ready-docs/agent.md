@@ -49,7 +49,7 @@ For this page:
 ## Markdown Route Shape
 
 ```ts
-const handlers = createDocsAPI({ ... });
+const handlers = createDocsAPI(docsConfig);
 
 export async function GET(request, { params }) {
   const { slug = [] } = await params;
@@ -96,14 +96,7 @@ Implementation contract:
 The Next example exposes MCP through:
 
 ```ts
-createDocsMCPAPI({
-  entry: docsConfig.entry,
-  contentDir: docsConfig.contentDir,
-  nav: docsConfig.nav,
-  ordering: docsConfig.ordering,
-  search: docsConfig.search,
-  mcp: docsConfig.mcp,
-});
+createDocsMCPAPI(docsConfig);
 ```
 
 Use MCP for tool-based reads and parity checks, but keep the `.md` route as the simple public HTTP

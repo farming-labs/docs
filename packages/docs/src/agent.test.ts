@@ -15,6 +15,8 @@ import {
   renderDocsMarkdownNotFound,
   renderDocsLlmsTxt,
   renderDocsSkillDocument,
+  resolveDocsAgentFeedbackConfig,
+  resolveDocsAgentFeedbackRequest,
   resolveDocsAgentMdxContent,
   resolveDocsLlmsTxtFormat,
   resolveDocsLlmsTxtRequest,
@@ -202,9 +204,23 @@ describe("agent route helpers", () => {
         "docs",
         new URL("https://example.com/sitemap.xml"),
         new Request("https://example.com/sitemap.xml"),
-        { sitemap: true },
       ),
     ).toBe(true);
+    expect(
+      isDocsPublicGetRequest(
+        "docs",
+        new URL("https://example.com/robots.txt"),
+        new Request("https://example.com/robots.txt"),
+      ),
+    ).toBe(true);
+    expect(
+      isDocsPublicGetRequest(
+        "docs",
+        new URL("https://example.com/robots.txt"),
+        new Request("https://example.com/robots.txt"),
+        { robots: false },
+      ),
+    ).toBe(false);
     expect(
       isDocsPublicGetRequest(
         "docs",
@@ -477,5 +493,28 @@ describe("agent route helpers", () => {
       canonicalUrlField: "url",
       breadcrumbType: "BreadcrumbList",
     });
+  });
+
+  it("resolves agent feedback endpoints as default-on with explicit opt-out", () => {
+    const enabled = resolveDocsAgentFeedbackConfig();
+
+    expect(enabled.enabled).toBe(true);
+    expect(enabled.route).toBe("/api/docs/agent/feedback");
+    expect(enabled.schemaRoute).toBe("/api/docs/agent/feedback/schema");
+    expect(
+      resolveDocsAgentFeedbackRequest(
+        new URL("https://example.com/api/docs/agent/feedback/schema"),
+        enabled,
+      ),
+    ).toEqual({ kind: "schema" });
+    expect(
+      resolveDocsAgentFeedbackRequest(
+        new URL("https://example.com/api/docs?feedback=agent"),
+        enabled,
+      ),
+    ).toEqual({ kind: "submit" });
+
+    expect(resolveDocsAgentFeedbackConfig(false).enabled).toBe(false);
+    expect(resolveDocsAgentFeedbackConfig({ agent: false }).enabled).toBe(false);
   });
 });

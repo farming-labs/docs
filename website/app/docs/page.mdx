@@ -35,7 +35,7 @@ Recommended bootstrap flow:
 5. Use `spec.sitemap.markdown.route` for the semantic page map and `spec.sitemap.xml.route` for canonical URL freshness when sitemap is enabled.
 6. Fetch `spec.robots.route` when you need to confirm crawler and AI-agent access policy for the public docs surface.
 7. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and the environment supports MCP.
-8. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
+8. If `spec.feedback.enabled` is true, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
 
 Do not scrape the HTML page when markdown, search, sitemap, robots, MCP, or `llms.txt` routes are
 available in the spec.
@@ -92,8 +92,8 @@ Modern docs features are built in; you turn them on in [configuration](/docs/con
 - **[Sidebar](/docs/customization/sidebar)** — Collapsible, flat or nested, banner, footer. [Customize](/docs/customization/sidebar) structure, style, and content (banner, footer, nav title).
 - **[Components](/docs/customization/components)** — Built-in MDX components like `Callout`, `Tabs`, and `HoverLink`, plus your own custom React components.
 - **[llms.txt](/docs/customization/llms-txt)** — LLM-friendly index whose page links point directly to markdown routes. Options described in the [llms.txt docs](/docs/customization/llms-txt).
-- **[Sitemaps](/docs/customization/sitemaps)** — XML and Markdown maps of canonical docs URLs, descriptions, related pages, and freshness metadata.
-- **Robots.txt** — Generate an agent-friendly crawl policy with `docs robots generate`. Configure defaults from [Configuration](/docs/configuration) and see the command in [CLI](/docs/cli).
+- **[Sitemaps](/docs/customization/sitemaps)** — XML and Markdown maps of canonical docs URLs, descriptions, related pages, and freshness metadata. Runtime routes are enabled by default.
+- **Robots.txt** — Runtime agent-friendly crawl policy at `/robots.txt` when no static file already exists; use `docs robots generate` for static export or committed policies.
 
 Theme-level customization (colors, typography, components) is covered in [Configuration](/docs/configuration) and [Customization](/docs/customization) (including [Colors](/docs/customization/colors) and [Typography](/docs/customization/typography)). No custom components or routes required — enable and tweak what you need in `docs.config`.
 

@@ -432,7 +432,7 @@ What it checks:
 - `skill.md`
 - MCP
 - search
-- agent feedback
+- agent feedback, which is enabled by default and can be explicitly opted out
 - page metadata
 - explicit agent-friendly pages
 - generated `agent.md` freshness and `agent.compact` defaults

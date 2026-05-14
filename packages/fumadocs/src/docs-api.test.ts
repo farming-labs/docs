@@ -642,6 +642,30 @@ Start here.
     expect(text).toContain("- [Getting Started](/docs/getting-started.md): First steps");
   });
 
+  it("serves robots.txt by default through the shared docs api handler", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-robots-default-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+    });
+
+    for (const path of ["/robots.txt", "/api/docs?format=robots"]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("text/plain");
+      const content = await response.text();
+      expect(content).toContain("Allow: /llms.txt");
+      expect(content).toContain("Allow: /sitemap.xml");
+      expect(content).toContain("User-agent: GPTBot");
+    }
+  });
+
   it("honors llmsTxt opt-out in the shared docs api handler", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-llms-disabled-route-"));
     tempDirs.push(rootDir);
@@ -1640,7 +1664,7 @@ title: "Home"
       skills: true,
       mcp: true,
       search: true,
-      sitemap: false,
+      sitemap: true,
       robots: true,
       structuredData: true,
       agentFeedback: true,
@@ -1825,7 +1849,7 @@ title: "Home"
       skills: true,
       mcp: false,
       search: false,
-      sitemap: false,
+      sitemap: true,
       robots: true,
       structuredData: true,
       agentFeedback: false,
@@ -1900,11 +1924,6 @@ title: "Home"
     const { GET } = createDocsAPI({
       rootDir,
       entry: "docs",
-      feedback: {
-        agent: {
-          enabled: true,
-        },
-      },
     });
 
     const response = await GET(new Request("http://localhost/api/docs/agent/feedback/schema"));
@@ -2026,11 +2045,6 @@ title: "Home"
     const { POST } = createDocsAPI({
       rootDir,
       entry: "docs",
-      feedback: {
-        agent: {
-          enabled: true,
-        },
-      },
     });
 
     const response = await POST(

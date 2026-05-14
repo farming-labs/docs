@@ -400,10 +400,10 @@ Notes:
 
 - `search: false` disables search entirely
 - Search requires the docs API route; static export hides the UI because there is no server route
-- On Next.js, generated routes from `withDocs()` already forward `docsConfig.search`
+- On Next.js, generated routes from `withDocs()` pass `docsConfig` directly into `createDocsAPI`
 - MCP-backed search works with relative endpoints like `/api/docs/mcp` and absolute remote endpoints like `https://docs.example.com/api/docs/mcp`
 - If MCP-backed search points at the same relative MCP route, the built-in `search_docs` tool falls back to simple search internally to avoid recursive loops
-- On custom/manual Next routes, import `createDocsAPI` from `@farming-labs/next/api` and pass `search: docsConfig.search`
+- On custom/manual Next routes, import `createDocsAPI` from `@farming-labs/next/api` and pass the whole config: `createDocsAPI(docsConfig)`
 
 <Callout type="warning" title="@farming-labs/theme/api still works for now">
   `@farming-labs/theme/api` remains supported as a compatibility import path today, but prefer

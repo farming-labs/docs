@@ -19,7 +19,8 @@ agents, contributors, and automation a readable map of the docs tree with titles
 markdown URLs, last-updated dates, and related pages.
 
 <Agent>
-Use this page when the task is to enable or troubleshoot generated sitemaps.
+Use this page when the task is to customize or troubleshoot generated sitemaps. Runtime sitemap
+routes are enabled by default; use `sitemap: false` only when a project must opt out.
 
 Default public routes:
 - `/sitemap.xml`
@@ -40,7 +41,8 @@ for JSON-LD `dateModified`.
 
 ## Quick Start
 
-Enable sitemaps in `docs.config.ts`:
+No config is required for the default runtime routes. Add `sitemap` only when you want to customize
+the public base URL or route prefix:
 
 ```ts title="docs.config.ts"
 import { defineDocs } from "@farming-labs/docs";
@@ -260,8 +262,8 @@ export default defineDocs({
 
 | Option | Type | Default | Description |
 | ------ | ---- | ------- | ----------- |
-| `sitemap` | `boolean \| DocsSitemapConfig` | `false` | Enable or configure sitemap routes. |
-| `sitemap.enabled` | `boolean` | `true` when `sitemap` is an object | Disable without removing the object. |
+| `sitemap` | `boolean \| DocsSitemapConfig` | `true` | Enable or configure sitemap routes. Set `false` to opt out. |
+| `sitemap.enabled` | `boolean` | `true` | Disable without removing the object. |
 | `sitemap.routePrefix` | `string` | `""` | Prefix all public sitemap routes. |
 | `sitemap.baseUrl` | `string` | request origin at runtime, `llmsTxt.baseUrl` in the CLI | Absolute base URL for XML `<loc>` values. |
 | `sitemap.manifestPath` | `string` | `.farming-labs/sitemap-manifest.json` | Internal generated manifest path. |
@@ -342,7 +344,7 @@ Generated: 2026-05-08
 
 ## Verification
 
-After enabling the feature, check the public routes:
+Check the public routes:
 
 ```bash title="terminal"
 curl "http://127.0.0.1:3000/sitemap.xml"
