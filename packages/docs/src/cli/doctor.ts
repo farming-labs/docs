@@ -1265,10 +1265,14 @@ function normalizeCanonicalUrl(value: string, baseUrl: string): string | undefin
   }
 }
 
-function hasCanonicalLinkHeader(header: string | undefined, pageUrl: string): boolean {
+function hasCanonicalLinkHeader(
+  header: string | undefined,
+  pageUrl: string,
+  responseUrl: string,
+): boolean {
   const canonical = canonicalLinkFromHeader(header);
   if (!canonical) return false;
-  return normalizeCanonicalUrl(canonical, pageUrl) === normalizeCanonicalUrl(pageUrl, pageUrl);
+  return normalizeCanonicalUrl(canonical, responseUrl) === normalizeCanonicalUrl(pageUrl, pageUrl);
 }
 
 async function probeRobotsRoute(
@@ -1835,6 +1839,7 @@ async function buildHostedAgentChecks(
   const markdownRoute = toMarkdownRoute(pages[0]?.url);
   if (markdownRoute) {
     const markdownPageUrl = pages[0]?.url ? joinDoctorUrl(baseUrl, pages[0].url) : undefined;
+    const markdownResponseUrl = joinDoctorUrl(baseUrl, markdownRoute);
     const markdown = await probeTextRoute(baseUrl, markdownRoute);
     checks.push(
       makeCheck(
@@ -1852,7 +1857,7 @@ async function buildHostedAgentChecks(
 
     const hasCanonicalHeader =
       markdown.ok && markdownPageUrl
-        ? hasCanonicalLinkHeader(markdown.linkHeader, markdownPageUrl)
+        ? hasCanonicalLinkHeader(markdown.linkHeader, markdownPageUrl, markdownResponseUrl)
         : false;
     checks.push(
       makeCheck(

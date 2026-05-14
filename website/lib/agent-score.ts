@@ -1165,10 +1165,14 @@ function normalizeCanonicalUrl(value: string, baseUrl: string): string | undefin
   }
 }
 
-function hasCanonicalLinkHeader(header: string | null, pageUrl: string): boolean {
+function hasCanonicalLinkHeader(
+  header: string | null,
+  pageUrl: string,
+  responseUrl: string,
+): boolean {
   const canonical = canonicalLinkFromHeader(header);
   if (!canonical) return false;
-  return normalizeCanonicalUrl(canonical, pageUrl) === normalizeCanonicalUrl(pageUrl, pageUrl);
+  return normalizeCanonicalUrl(canonical, responseUrl) === normalizeCanonicalUrl(pageUrl, pageUrl);
 }
 
 function isDocsHtmlPagePath(pathname: string, rootDocsRoute: string): boolean {
@@ -1312,7 +1316,11 @@ async function probeMarkdownCanonicalHeader(
       headers: { Accept: "text/markdown, */*" },
     });
     const body = await response.text().catch(() => "");
-    const hasCanonicalLink = hasCanonicalLinkHeader(response.headers.get("link"), probe.url);
+    const hasCanonicalLink = hasCanonicalLinkHeader(
+      response.headers.get("link"),
+      probe.url,
+      markdownUrl,
+    );
 
     return {
       pageUrl: probe.url,
