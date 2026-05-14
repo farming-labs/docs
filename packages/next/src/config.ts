@@ -1117,8 +1117,12 @@ function readRobotsConfig(root: string): {
   enabled: boolean;
   hasStaticFile: boolean;
 } {
-  const staticPath = join(root, "public", "robots.txt");
-  const hasStaticFile = existsSync(staticPath);
+  const publicStaticPath = join(root, "public", "robots.txt");
+  const appDir = getNextAppDir(root);
+  const appStaticPath = join(root, appDir, "robots.txt");
+  const appRouteExists = FILE_EXTS.some((ext) => existsSync(join(root, appDir, `robots.${ext}`)));
+  const hasStaticFile =
+    existsSync(publicStaticPath) || existsSync(appStaticPath) || appRouteExists;
 
   for (const ext of FILE_EXTS) {
     const configPath = join(root, `docs.config.${ext}`);

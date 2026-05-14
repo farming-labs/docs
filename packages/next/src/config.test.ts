@@ -8,7 +8,7 @@ import {
   readFileSync,
   realpathSync,
 } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { withDocs } from "./config.js";
 
@@ -439,6 +439,34 @@ describe("withDocs (app dir: src/app vs app)", () => {
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     mkdirSync(join(tmpDir, "public"), { recursive: true });
     writeFileSync(join(tmpDir, "public", "robots.txt"), "User-agent: *\nAllow: /\n", "utf-8");
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
+
+    expect(rewrites).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/robots.txt",
+          destination: "/api/docs?format=robots",
+        }),
+      ]),
+    );
+  });
+
+  it.each([
+    [
+      "app/robots.ts",
+      "export default function robots() { return { rules: [{ userAgent: '*', allow: '/' }] }; }\n",
+    ],
+    ["app/robots.txt", "User-agent: *\nAllow: /\n"],
+    [
+      "src/app/robots.ts",
+      "export default function robots() { return { rules: [{ userAgent: '*', allow: '/' }] }; }\n",
+    ],
+  ])("keeps an existing %s file in control", async (robotsPath, source) => {
+    mkdirSync(dirname(join(tmpDir, robotsPath)), { recursive: true });
+    writeFileSync(join(tmpDir, robotsPath), source, "utf-8");
     process.chdir(tmpDir);
 
     const nextConfig = withDocs({});

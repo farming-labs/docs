@@ -1765,7 +1765,7 @@ const docsPublicHandle: Handle = async ({ event, resolve }) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
     return docsGET({ url: event.url, request: event.request });
   }
 
@@ -2310,7 +2310,7 @@ const docsPublicMiddleware: MiddlewareHandler = async (context, next) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
     return docsGET({ request: context.request });
   }
 
