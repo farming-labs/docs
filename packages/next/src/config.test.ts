@@ -517,7 +517,11 @@ describe("withDocs (app dir: src/app vs app)", () => {
   });
 
   it("skips agent feedback rewrites when explicitly disabled", async () => {
-    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_AGENT_FEEDBACK_DISABLED, "utf-8");
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      DOCS_CONFIG_WITH_AGENT_FEEDBACK_DISABLED,
+      "utf-8",
+    );
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);
 
