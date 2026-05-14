@@ -591,9 +591,12 @@ Allow: /
       expect(report.checks.find((check) => check.id === "hosted-robots")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-skill")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-markdown")?.status).toBe("pass");
-      expect(report.checks.find((check) => check.id === "hosted-markdown-canonical")?.status).toBe(
-        "pass",
+      const markdownCanonicalCheck = report.checks.find(
+        (check) => check.id === "hosted-markdown-canonical",
       );
+      expect(markdownCanonicalCheck?.status).toBe("pass");
+      expect(markdownCanonicalCheck?.score).toBe(1);
+      expect(markdownCanonicalCheck?.maxScore).toBe(1);
       expect(report.checks.find((check) => check.id === "hosted-structured-data")?.status).toBe(
         "pass",
       );

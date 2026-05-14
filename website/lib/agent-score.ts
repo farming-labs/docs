@@ -1712,14 +1712,18 @@ async function buildFrameworkChecks(
     ),
   );
 
-  const markdownCanonicalScore = scoreMarkdownCanonicalCoverage(markdownCanonicalProbes, 2);
+  const markdownCanonicalScore = scoreMarkdownCanonicalCoverage(markdownCanonicalProbes, 1);
   checks.push(
     makeCheck(
       "framework:markdown-canonical",
       "Markdown canonical headers",
-      view.capabilities.markdownRoutes === false ? "warn" : markdownCanonicalScore.status,
+      view.capabilities.markdownRoutes === false
+        ? "warn"
+        : markdownCanonicalScore.status === "pass"
+          ? "pass"
+          : "warn",
       view.capabilities.markdownRoutes === false ? 0 : markdownCanonicalScore.score,
-      2,
+      1,
       view.capabilities.markdownRoutes === false
         ? "Discovery spec reports markdown routes as disabled."
         : markdownCanonicalScore.total > 0

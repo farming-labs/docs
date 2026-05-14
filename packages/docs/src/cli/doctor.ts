@@ -1863,9 +1863,9 @@ async function buildHostedAgentChecks(
       makeCheck(
         "hosted-markdown-canonical",
         "Hosted markdown canonical header",
-        hasCanonicalHeader ? "pass" : "fail",
-        hasCanonicalHeader ? 3 : 0,
-        3,
+        hasCanonicalHeader ? "pass" : "warn",
+        hasCanonicalHeader ? 1 : 0,
+        1,
         markdown.ok
           ? hasCanonicalHeader
             ? `${markdownRoute} includes a canonical Link header pointing to ${pages[0]?.url}.`
@@ -1894,7 +1894,7 @@ async function buildHostedAgentChecks(
         "Hosted markdown canonical header",
         "warn",
         0,
-        3,
+        1,
         "No local docs page was available to choose a sample .md route.",
         "Add docs pages so the hosted doctor can probe a markdown canonical Link header.",
       ),
