@@ -161,6 +161,13 @@ export interface DocsMarkdownNotFoundOptions {
   sitemap?: boolean | DocsSitemapConfig;
 }
 
+export interface DocsMarkdownCanonicalUrlOptions {
+  origin: string;
+  entry?: string;
+  requestedPath: string;
+  locale?: string | null;
+}
+
 export function normalizeDocsPathSegment(value: string): string {
   return value.replace(/^\/+|\/+$/g, "");
 }
@@ -180,6 +187,25 @@ export function toDocsMarkdownUrl(url: string, options: { locale?: string } = {}
   if (options.locale && !params.has("lang")) params.set("lang", options.locale);
   const search = params.toString();
   return `${markdownPath}${search ? `?${search}` : ""}${hash ? `#${hash}` : ""}`;
+}
+
+export function resolveDocsMarkdownCanonicalUrl({
+  origin,
+  entry = "docs",
+  requestedPath,
+  locale,
+}: DocsMarkdownCanonicalUrlOptions): string {
+  const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
+  const pathname = normalizeRequestedMarkdownPath(normalizedEntry, requestedPath);
+  const canonicalUrl = new URL(pathname, origin);
+  if (locale) canonicalUrl.searchParams.set("lang", locale);
+  return canonicalUrl.toString();
+}
+
+export function getDocsMarkdownCanonicalLinkHeader(
+  options: DocsMarkdownCanonicalUrlOptions,
+): string {
+  return `<${resolveDocsMarkdownCanonicalUrl(options)}>; rel="canonical"`;
 }
 
 function joinDocsPublicRoute(prefix: string, suffix: string): string {
