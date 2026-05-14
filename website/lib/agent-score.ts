@@ -1560,13 +1560,13 @@ function buildAdjacentMarkdownRouteCheck(probes: AdjacentMarkdownRouteProbe[]): 
 
   return makeCheck(
     "agent:adjacent-markdown-routes",
-    "Adjacent .md routes",
+    ".md routes",
     score.status,
     score.score,
     ADJACENT_MARKDOWN_MAX_SCORE,
     score.total > 0
       ? `${score.passed}/${score.total} sampled docs page routes returned markdown when .md was appended.${failures ? ` ${failures}` : ""}`
-      : "No docs page routes were available to verify adjacent .md support.",
+      : "No docs page routes were available to verify .md route support.",
     score.status === "pass"
       ? undefined
       : "Serve each docs page at the same route with .md appended, for example /docs/installation -> /docs/installation.md.",

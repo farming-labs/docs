@@ -125,6 +125,9 @@ const SCORE_SECTION_ID = "score";
 const LEADERBOARD_SECTION_ID = "leaderboard";
 const SELECTED_SITE_PARAM = "site";
 const SCORE_INPUT_PARAM = "url";
+const AF_DOCS_MARKDOWN_URL_CHECK_ID = "afdocs:markdown-url-support";
+const STRICT_MARKDOWN_ROUTE_CHECK_ID = "agent:adjacent-markdown-routes";
+const COMBINED_MARKDOWN_ROUTE_CHECK_ID = "agent:md-routes";
 
 const SCORE_LOADING_STEPS = [
   "Resolving docs site",
@@ -144,7 +147,7 @@ const BREAKDOWN_HELP_ITEMS = [
   {
     title: "Markdown",
     detail:
-      "Checks whether agents can read clean markdown through adjacent .md routes, markdown mirrors, or negotiation.",
+      "Checks whether agents can read clean markdown through .md routes, markdown mirrors, or negotiation.",
   },
   {
     title: "Page Size",
@@ -350,6 +353,17 @@ function scorePercent(score: number, maxScore: number): number {
   return Math.round(Math.max(0, Math.min(1, score / maxScore)) * 100);
 }
 
+function averageScorePercent(values: number[]): number {
+  const valid = values.filter((value) => Number.isFinite(value));
+  if (valid.length === 0) return 0;
+  return Math.round(valid.reduce((total, value) => total + value, 0) / valid.length);
+}
+
+function averageCheckPercent(checks: AgentScoreCheck[]): number | undefined {
+  if (checks.length === 0) return undefined;
+  return averageScorePercent(checks.map((check) => scorePercent(check.score, check.maxScore)));
+}
+
 function displayStatusForCheck(check: AgentScoreCheck): ScoreStatus {
   return statusFromScore(check.score, check.maxScore);
 }
@@ -370,9 +384,19 @@ function extraChecksForStandardCategory(
   checks: AgentScoreCheck[],
 ): AgentScoreCheck[] {
   if (categoryId === "markdown-availability") {
-    return checks.filter((check) => check.id === "agent:adjacent-markdown-routes");
+    return checks.filter((check) => check.id === STRICT_MARKDOWN_ROUTE_CHECK_ID);
   }
   return [];
+}
+
+function averageCategoryWithExtraChecks(
+  categoryScore: number,
+  extraChecks: AgentScoreCheck[],
+): number {
+  const extraPercent = averageCheckPercent(extraChecks);
+  return typeof extraPercent === "number"
+    ? averageScorePercent([categoryScore, extraPercent])
+    : categoryScore;
 }
 
 function buildPinnedStandardBreakdownItem(
@@ -389,12 +413,7 @@ function buildPinnedStandardBreakdownItem(
 
   if (scoredCategory) {
     const categoryScore = scoredCategory.score ?? 0;
-    const extraScore = extraChecks.reduce((total, check) => total + check.score, 0);
-    const extraMaxScore = extraChecks.reduce((total, check) => total + check.maxScore, 0);
-    const score =
-      extraMaxScore > 0
-        ? scorePercent(categoryScore + extraScore, 100 + extraMaxScore)
-        : categoryScore;
+    const score = averageCategoryWithExtraChecks(categoryScore, extraChecks);
     return {
       id: `standard:${definition.id}`,
       title: definition.title,
@@ -463,7 +482,12 @@ function buildPrimaryBreakdownItems(report: AgentScoreReport): BreakdownItem[] {
 
 function groupTitleForCheck(check: AgentScoreCheck): string {
   if (check.id === "framework:mcp") return "MCP";
-  if (check.id === "agent:adjacent-markdown-routes") return "Markdown";
+  if (
+    check.id === STRICT_MARKDOWN_ROUTE_CHECK_ID ||
+    check.id === COMBINED_MARKDOWN_ROUTE_CHECK_ID
+  ) {
+    return "Markdown";
+  }
   if (check.id.startsWith("framework:")) return "Framework surfaces";
   if (check.id.startsWith("afdocs:")) {
     const category = categoryTitleFromCheck(check);
@@ -491,7 +515,7 @@ function groupChecksForDetails(checks: AgentScoreCheck[]): CheckGroup[] {
   const groups: CheckGroup[] = [];
   const byId = new Map<string, CheckGroup>();
 
-  for (const check of checks) {
+  for (const check of checksForDetails(checks)) {
     const title = groupTitleForCheck(check);
     const id = groupIdFromTitle(title) || "agent-probes";
     const existing = byId.get(id);
@@ -507,6 +531,77 @@ function groupChecksForDetails(checks: AgentScoreCheck[]): CheckGroup[] {
   }
 
   return groups;
+}
+
+function stripAfDocsCategoryPrefix(detail: string): string {
+  return detail.replace(/^[^:]+:\s*/, "");
+}
+
+function combinedMarkdownRouteCheck(checks: AgentScoreCheck[]): AgentScoreCheck | undefined {
+  const afDocsCheck = checks.find((check) => check.id === AF_DOCS_MARKDOWN_URL_CHECK_ID);
+  const strictCheck = checks.find((check) => check.id === STRICT_MARKDOWN_ROUTE_CHECK_ID);
+  if (!afDocsCheck && !strictCheck) return undefined;
+
+  const afDocsPercent = afDocsCheck ? scorePercent(afDocsCheck.score, afDocsCheck.maxScore) : undefined;
+  const strictPercent = strictCheck ? scorePercent(strictCheck.score, strictCheck.maxScore) : undefined;
+  const values = [afDocsPercent, strictPercent].filter(
+    (value): value is number => typeof value === "number",
+  );
+  const score = averageScorePercent(values);
+
+  return {
+    id: COMBINED_MARKDOWN_ROUTE_CHECK_ID,
+    title: ".md routes",
+    detail: [
+      afDocsCheck
+        ? `Published markdown URLs: ${stripAfDocsCategoryPrefix(afDocsCheck.detail)}`
+        : undefined,
+      strictCheck ? `Same-path .md routes: ${strictCheck.detail}` : undefined,
+    ]
+      .filter(Boolean)
+      .join(" "),
+    status: statusFromScore(score, 100),
+    score,
+    maxScore: 100,
+    recommendation:
+      score >= PASS_SCORE_RATIO * 100
+        ? undefined
+        : "Serve clean markdown through discoverable .md URLs, preferably matching each docs page route.",
+  };
+}
+
+function checksForDetails(checks: AgentScoreCheck[]): AgentScoreCheck[] {
+  const combined = combinedMarkdownRouteCheck(checks);
+  return [
+    ...checks.filter(
+      (check) =>
+        check.id !== AF_DOCS_MARKDOWN_URL_CHECK_ID &&
+        check.id !== STRICT_MARKDOWN_ROUTE_CHECK_ID,
+    ),
+    ...(combined ? [combined] : []),
+  ];
+}
+
+function groupScorePercent(group: CheckGroup): number {
+  if (group.id === "markdown") {
+    const combined = group.checks.find((check) => check.id === COMBINED_MARKDOWN_ROUTE_CHECK_ID);
+    if (combined) return scorePercent(combined.score, combined.maxScore);
+
+    const afDocsChecks = group.checks.filter((check) => check.id.startsWith("afdocs:"));
+    const adjacentChecks = group.checks.filter(
+      (check) => check.id === STRICT_MARKDOWN_ROUTE_CHECK_ID,
+    );
+    const afDocsPercent = averageCheckPercent(afDocsChecks);
+    const adjacentPercent = averageCheckPercent(adjacentChecks);
+    const values = [afDocsPercent, adjacentPercent].filter(
+      (value): value is number => typeof value === "number",
+    );
+    if (values.length > 0) return averageScorePercent(values);
+  }
+
+  const groupScore = group.checks.reduce((total, check) => total + check.score, 0);
+  const groupMaxScore = group.checks.reduce((total, check) => total + check.maxScore, 0);
+  return scorePercent(groupScore, groupMaxScore);
 }
 
 function usesFarmingLabsDocsFramework(
@@ -1273,8 +1368,8 @@ function HeroSection({
             <code className="font-mono text-black/70 dark:text-white/70">
               docs doctor --agent --url
             </code>{" "}
-            CLI runs, in one click. We probe discovery, llms.txt, sitemap, robots, skill.md,
-            adjacent .md routes, and MCP, then give you a score and a breakdown.
+            CLI runs, in one click. We probe discovery, llms.txt, sitemap, robots, skill.md, .md
+            routes, and MCP, then give you a score and a breakdown.
           </p>
 
           <div className="mt-6 flex font-pixel flex-wrap gap-1.5 sm:gap-2">
@@ -1647,10 +1742,8 @@ function ChecksBreakdown({ checks }: { checks: AgentScoreCheck[] }) {
 
       <ul className="divide-y divide-black/10 dark:divide-white/10">
         {groups.map((group) => {
-          const groupScore = group.checks.reduce((total, check) => total + check.score, 0);
-          const groupMaxScore = group.checks.reduce((total, check) => total + check.maxScore, 0);
-          const groupPercent = scorePercent(groupScore, groupMaxScore);
-          const groupStatus = statusFromScore(groupScore, groupMaxScore);
+          const groupPercent = groupScorePercent(group);
+          const groupStatus = statusFromScore(groupPercent, 100);
           const groupCallout = groupCalloutForId(group.id);
 
           return (
