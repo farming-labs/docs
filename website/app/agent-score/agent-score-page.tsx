@@ -542,8 +542,12 @@ function combinedMarkdownRouteCheck(checks: AgentScoreCheck[]): AgentScoreCheck 
   const strictCheck = checks.find((check) => check.id === STRICT_MARKDOWN_ROUTE_CHECK_ID);
   if (!afDocsCheck && !strictCheck) return undefined;
 
-  const afDocsPercent = afDocsCheck ? scorePercent(afDocsCheck.score, afDocsCheck.maxScore) : undefined;
-  const strictPercent = strictCheck ? scorePercent(strictCheck.score, strictCheck.maxScore) : undefined;
+  const afDocsPercent = afDocsCheck
+    ? scorePercent(afDocsCheck.score, afDocsCheck.maxScore)
+    : undefined;
+  const strictPercent = strictCheck
+    ? scorePercent(strictCheck.score, strictCheck.maxScore)
+    : undefined;
   const values = [afDocsPercent, strictPercent].filter(
     (value): value is number => typeof value === "number",
   );
@@ -575,8 +579,7 @@ function checksForDetails(checks: AgentScoreCheck[]): AgentScoreCheck[] {
   return [
     ...checks.filter(
       (check) =>
-        check.id !== AF_DOCS_MARKDOWN_URL_CHECK_ID &&
-        check.id !== STRICT_MARKDOWN_ROUTE_CHECK_ID,
+        check.id !== AF_DOCS_MARKDOWN_URL_CHECK_ID && check.id !== STRICT_MARKDOWN_ROUTE_CHECK_ID,
     ),
     ...(combined ? [combined] : []),
   ];

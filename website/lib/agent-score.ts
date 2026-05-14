@@ -1321,10 +1321,7 @@ function readString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-function adjacentMarkdownPageUrlsFromAfDocsReport(
-  baseUrl: string,
-  report: ReportResult,
-): string[] {
+function adjacentMarkdownPageUrlsFromAfDocsReport(baseUrl: string, report: ReportResult): string[] {
   const urls: string[] = [];
   const base = new URL(baseUrl);
   if (base.pathname !== "/") {
