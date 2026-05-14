@@ -429,12 +429,15 @@ https://docs.farming-labs.dev/score?url=docs.example.com
 ```
 
 The score page runs AFDocs-style checks for any public docs site, then adds `@farming-labs/docs`
-framework probes when the site exposes `/.well-known/agent.json`. Those framework probes cover the
-discovery spec, full-context files, sitemap routes, `robots.txt`, `skill.md`, MCP, search,
-feedback, JSON-LD structured data on sampled pages, canonical `Link` headers on markdown
-responses, and the `<link rel="alternate" type="text/markdown">` head links that point agents to
-each page's `.md` route. Existing leaderboard entries hydrate from the saved report, so a shared
-score URL can be reviewed without triggering a new calculation unless no saved result exists.
+framework probes when the site exposes `/.well-known/agent.json`. The public score also adds a
+strict `.md` route probe that samples docs page routes and verifies that appending `.md` returns
+markdown, so `llms.txt` markdown mirrors do not hide missing `/docs/foo.md` routes. The
+framework probes cover the discovery spec, full-context files, sitemap routes, `robots.txt`,
+`skill.md`, MCP, search, feedback, JSON-LD structured data on sampled pages, canonical `Link`
+headers on markdown responses, and the `<link rel="alternate" type="text/markdown">` head links
+that point agents to each page's `.md` route. Existing leaderboard entries hydrate from the saved
+report, so a shared score URL can be reviewed without triggering a new calculation unless no saved
+result exists.
 
 Use the web score for demos, public comparisons, and quick regression checks. Use
 `docs doctor --agent --url` when you need CI-friendly JSON, local project context, or a command an
