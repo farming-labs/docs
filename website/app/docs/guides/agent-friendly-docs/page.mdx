@@ -238,6 +238,7 @@ That gives agents a much better workflow:
 - `/.well-known/agent.json` tells them which routes exist
 - `/llms.txt` links directly to page markdown routes, while `/llms-full.txt` exposes full machine-readable context
 - section-level files like [`/docs/guides/llms.txt`](/docs/guides/llms.txt) give larger docs progressive disclosure without adding UI
+- custom static `llms.txt` files still win when present, so `public/llms.txt` or SvelteKit `static/llms.txt` can replace the generated index without extra config
 - `/sitemap.xml` exposes canonical URLs and `lastmod` freshness for crawlers and monitors
 - `/sitemap.md` exposes the same docs tree as a semantic, sectioned map for agents and contributors
 - `spec.robots.route` points agents to the static crawl policy, usually `/robots.txt`
