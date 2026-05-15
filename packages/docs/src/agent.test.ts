@@ -157,6 +157,12 @@ describe("agent route helpers", () => {
         siteTitle: "Example Docs",
         baseUrl: "https://docs.example.com",
         maxChars: { mode: "warn", chars: 80 },
+        openapi: {
+          enabled: true,
+          url: "/api/docs?format=openapi",
+          apiReferencePath: "/api-reference",
+          source: "generated",
+        },
         sections: [
           {
             title: "API",
@@ -172,6 +178,10 @@ describe("agent route helpers", () => {
       "- [API](https://docs.example.com/docs/api/llms.txt): Endpoint reference",
     );
     expect(content.llmsTxt).toContain("- [Overview](https://docs.example.com/docs.md): Start here");
+    expect(content.llmsTxt).toContain("## API Schemas");
+    expect(content.llmsTxt).toContain(
+      "- [OpenAPI schema](https://docs.example.com/api/docs?format=openapi): Machine-readable API schema for tool use and API clients; rendered API reference at https://docs.example.com/api-reference",
+    );
     expect(content.llmsTxt).not.toContain("Users API");
 
     const request = resolveDocsLlmsTxtRequest(
@@ -444,6 +454,12 @@ describe("agent route helpers", () => {
         siteTitle: "Guides",
         siteDescription: "Machine-readable guides",
       },
+      openapi: {
+        enabled: true,
+        url: "/api/docs?format=openapi",
+        apiReferencePath: "/api-reference",
+        source: "generated",
+      },
     });
 
     expect(document).toContain("name: docs");
@@ -453,6 +469,8 @@ describe("agent route helpers", () => {
     expect(document).toContain("/.well-known/agent.json");
     expect(document).toContain("/robots.txt");
     expect(document).toContain("/api/docs?format=skill");
+    expect(document).toContain("OpenAPI schema: /api/docs?format=openapi");
+    expect(document).toContain("API reference: /api-reference");
     expect(document).toContain("npx skills add farming-labs/docs");
   });
 
@@ -475,9 +493,16 @@ describe("agent route helpers", () => {
       llms: { enabled: true, siteTitle: "Docs" },
       sitemap: true,
       robots: true,
+      openapi: {
+        enabled: true,
+        url: "/api/docs?format=openapi",
+        apiReferencePath: "/api-reference",
+        source: "generated",
+      },
     });
 
     expect(spec.api.agentSpecDefault).toBe("/.well-known/agent.json");
+    expect(spec.api.openapi).toBe("/api/docs?format=openapi");
     expect(spec.markdown.rootPage).toBe("/docs.md");
     expect(spec.markdown.signatureAgentHeader).toBe("Signature-Agent");
     expect(spec.llms.publicTxt).toBe("/llms.txt");
@@ -491,6 +516,16 @@ describe("agent route helpers", () => {
     expect(spec.sitemap.markdown.wellKnownRoute).toBe("/.well-known/sitemap.md");
     expect(spec.capabilities.robots).toBe(true);
     expect(spec.capabilities.structuredData).toBe(true);
+    expect(spec.capabilities.apiReference).toBe(true);
+    expect(spec.capabilities.openapi).toBe(true);
+    expect(spec.openapi).toEqual({
+      enabled: true,
+      url: "/api/docs?format=openapi",
+      source: "generated",
+      specUrl: null,
+      apiReferencePath: "/api-reference",
+      format: "OpenAPI 3.1",
+    });
     expect(spec.robots).toEqual({
       enabled: true,
       route: "/robots.txt",

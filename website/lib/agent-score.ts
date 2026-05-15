@@ -725,6 +725,7 @@ interface DiscoveryView {
   markdownRoute?: string;
   searchEndpoint?: string;
   feedbackSchemaRoute?: string;
+  openapiRoute?: string;
 }
 
 function readDiscoveryFramework(body: unknown): string | undefined {
@@ -778,6 +779,8 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
     mcp: readCapability(root, capabilities, "mcp"),
     search: readCapability(root, capabilities, "search"),
     agentFeedback: readCapability(root, capabilities, "agentFeedback"),
+    apiReference: readCapability(root, capabilities, "apiReference"),
+    openapi: readCapability(root, capabilities, "openapi"),
     structuredData: readBool(capabilities.structuredData),
     agentBlocks: readBool(capabilities.agentBlocks),
     agentMdOverrides: readBool(capabilities.agentMdOverrides),
@@ -843,6 +846,8 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
   const markdownRoute = readDiscoveryRoute(markdownRoot?.rootPage);
   const searchRoot = asRecord(root.search);
   const feedbackRoot = asRecord(root.feedback);
+  const openapiRoot = asRecord(root.openapi);
+  const apiRoot = asRecord(root.api);
 
   return {
     available: true,
@@ -858,6 +863,7 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
     markdownRoute,
     searchEndpoint: readDiscoveryRoute(searchRoot?.endpoint),
     feedbackSchemaRoute: readDiscoveryRoute(feedbackRoot?.schema),
+    openapiRoute: readDiscoveryRoute(openapiRoot?.url) ?? readDiscoveryRoute(apiRoot?.openapi),
   };
 }
 
@@ -1630,6 +1636,7 @@ async function buildFrameworkChecks(
     mcpProbes,
     searchProbe,
     feedbackSchemaProbe,
+    openapiProbe,
   ] = await Promise.all([
     Promise.all(view.llmsFullRoutes.map((route) => probeTextRoute(frameworkBaseUrl, route))),
     view.sitemapEnabled
@@ -1654,6 +1661,9 @@ async function buildFrameworkChecks(
     view.capabilities.agentFeedback === false || !view.feedbackSchemaRoute
       ? Promise.resolve(undefined)
       : probeJsonRoute(frameworkBaseUrl, view.feedbackSchemaRoute),
+    view.openapiRoute
+      ? probeJsonRoute(frameworkBaseUrl, view.openapiRoute)
+      : Promise.resolve(undefined),
   ]);
   const htmlSurfaceProbes = await probeHtmlPageSurfaces(frameworkBaseUrl, view, sitemapProbes);
   const markdownCanonicalProbes =
@@ -1837,6 +1847,34 @@ async function buildFrameworkChecks(
         : "Expose the search endpoint through agent discovery so agents can narrow retrieval.",
     ),
   );
+
+  if (
+    view.capabilities.openapi === true ||
+    view.capabilities.apiReference === true ||
+    view.openapiRoute
+  ) {
+    const openapiBody = asRecord(openapiProbe?.body);
+    const openapiLooksValid =
+      openapiProbe?.ok &&
+      (typeof openapiBody?.openapi === "string" || typeof openapiBody?.swagger === "string");
+    checks.push(
+      makeCheck(
+        "framework:openapi",
+        "OpenAPI schema",
+        openapiLooksValid ? "pass" : "warn",
+        openapiLooksValid ? 2 : 0,
+        2,
+        openapiLooksValid
+          ? "OpenAPI schema route returned a machine-readable OpenAPI document."
+          : openapiProbe
+            ? openapiProbe.detail
+            : "Discovery spec did not advertise an OpenAPI schema route.",
+        openapiLooksValid
+          ? undefined
+          : "When apiReference is enabled, expose /api/docs?format=openapi through agent discovery so agents can use schemas before scraping API docs.",
+      ),
+    );
+  }
 
   checks.push(
     makeCheck(

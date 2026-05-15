@@ -69,8 +69,10 @@ import {
 } from "@farming-labs/docs";
 import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig } from "@farming-labs/docs";
 import {
+  buildApiReferenceOpenApiDocumentAsync,
   createDocsMcpHttpHandler,
   readDocsSitemapManifest,
+  resolveApiReferenceConfig,
   resolveDocsMcpConfig,
   serializeDocsIconRegistry,
   serializeOpenDocsProviders,
@@ -80,6 +82,23 @@ import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
 import { renderMarkdown } from "./markdown.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
 export { defineApiReferenceHandler } from "./api-reference.js";
+
+function isApiReferenceOpenApiRequest(url: URL): boolean {
+  return url.searchParams.get("format")?.trim() === "openapi";
+}
+
+function resolveApiReferenceOpenApiDiscovery(value: unknown) {
+  const apiReference = resolveApiReferenceConfig(value as any);
+  if (!apiReference.enabled) return { enabled: false };
+
+  return {
+    enabled: true,
+    url: "/api/docs?format=openapi",
+    source: apiReference.specUrl ? ("configured" as const) : ("generated" as const),
+    specUrl: apiReference.specUrl,
+    apiReferencePath: `/${apiReference.path}`,
+  };
+}
 
 interface GithubConfigObj {
   url: string;
@@ -796,6 +815,9 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   const llmsEnabled =
     llmsTxtConfig !== false &&
     !(llmsTxtConfig && typeof llmsTxtConfig === "object" && llmsTxtConfig.enabled === false);
+  const openapiDiscovery = resolveApiReferenceOpenApiDiscovery(
+    (config as Record<string, unknown>).apiReference as any,
+  );
   const mcpConfig = resolveDocsMcpConfig(
     (config as Record<string, unknown>).mcp as Record<string, unknown> | boolean | undefined,
     {
@@ -824,7 +846,8 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       baseUrl: llmsBaseUrl,
       maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
       sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
-    });
+      openapi: openapiDiscovery,
+    } as any);
     llmsCache.set(key, next);
     return next;
   }
@@ -868,10 +891,11 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
             },
             sitemap: config.sitemap,
             robots: config.robots,
+            openapi: openapiDiscovery,
             markdown: {
               acceptHeader: false,
             },
-          }),
+          } as any),
           null,
           2,
         ),
@@ -883,6 +907,32 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
           },
         },
       );
+    }
+
+    if (isApiReferenceOpenApiRequest(url)) {
+      if (!openapiDiscovery.enabled) {
+        return new Response("Not Found", {
+          status: 404,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "X-Robots-Tag": "noindex",
+          },
+        });
+      }
+
+      const document = await buildApiReferenceOpenApiDocumentAsync(config as any, {
+        framework: "nuxt",
+        rootDir,
+        baseUrl: url.origin,
+      });
+
+      return new Response(JSON.stringify(document, null, 2), {
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "public, max-age=0, s-maxage=3600",
+          "X-Robots-Tag": "noindex",
+        },
+      });
     }
 
     const agentFeedbackRequest = resolveDocsAgentFeedbackRequest(url, agentFeedbackConfig);
@@ -925,10 +975,11 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
             },
             sitemap: config.sitemap,
             robots: config.robots,
+            openapi: openapiDiscovery,
             markdown: {
               acceptHeader: false,
             },
-          }),
+          } as any),
         {
           headers: {
             "Content-Type": "text/markdown; charset=utf-8",

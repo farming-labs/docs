@@ -202,6 +202,9 @@ machine-readable page and keeps the root index aligned with AFDocs-style checks.
 still includes the canonical page URL in its `URL:` line because the content is already embedded in
 that file.
 
+If `apiReference` is enabled, root `llms.txt` also includes an `API Schemas` section that links to
+`/api/docs?format=openapi`. Agents can fetch the schema before reading rendered endpoint docs.
+
 When `llmsTxt.sections` is configured, root `/llms.txt` lists those section files first and only
 keeps unmatched pages in the root page list. Each section route serves the matching pages, and its
 `llms-full.txt` sibling serves the full matching content. No UI is added; this only changes the
@@ -221,6 +224,10 @@ aliases along with docs, markdown, sitemap, skill, MCP, and agent discovery rout
 # My Documentation
 
 > A modern docs framework
+
+## API Schemas
+
+- [OpenAPI schema](https://docs.example.com/api/docs?format=openapi): Machine-readable API schema for tool use and API clients; rendered API reference at https://docs.example.com/api-reference
 
 ## Pages
 

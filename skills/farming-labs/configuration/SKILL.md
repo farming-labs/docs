@@ -577,7 +577,7 @@ feedback: {
 Default behavior:
 
 - `GET /.well-known/agent.json` is the preferred public agent discovery document, with `/.well-known/agent` as fallback and `/api/docs/agent/spec` as the canonical framework route
-- the discovery document includes site identity, locale config, capability flags, search, markdown routes, root and section `llms.txt` routes, sitemap routes, `robots.route`, root `skill.md` metadata, Skills CLI install metadata, MCP, and feedback routes
+- the discovery document includes site identity, locale config, capability flags, search, markdown routes, root and section `llms.txt` routes, OpenAPI schema discovery when `apiReference` is enabled, sitemap routes, `robots.route`, root `skill.md` metadata, Skills CLI install metadata, MCP, and feedback routes
 - `GET /skill.md` serves the root `skill.md` file when present, `GET /.well-known/skill.md` is the fallback alias, and `GET /api/docs?format=skill` is the shared API format
 - `GET /api/docs/agent/feedback/schema` returns the machine-readable schema
 - `POST /api/docs/agent/feedback` accepts `{ context?, payload }`; without `onFeedback` it returns `{ ok: true, handled: false }`
@@ -728,6 +728,8 @@ Notes:
 - **TanStack Start / SvelteKit / Astro / Nuxt:** `docs.config` controls scanning, remote spec rendering, and styling, but the app must still add the framework route handler for `/{path}`
 - **CLI:** `init --api-reference` writes the `apiReference` block and scaffolds the non-Next route handler files automatically
 - `path` controls the public URL for the generated reference
+- `GET /api/docs?format=openapi` returns the machine-readable OpenAPI schema when `apiReference` is enabled
+- agent discovery, generated `llms.txt`, and generated `skill.md` advertise the OpenAPI schema route so agents can fetch schemas before scraping API pages
 - `specUrl` points to a hosted OpenAPI JSON document; when set, local route scanning is skipped
 - `routeRoot` controls the filesystem route root to scan
 - `exclude` accepts either URL-style paths (`"/api/hello"`) or route-root-relative entries (`"hello"` / `"hello/route.ts"`)

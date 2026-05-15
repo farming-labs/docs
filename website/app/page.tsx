@@ -174,8 +174,9 @@ function AgentScoreCalloutSection() {
               How agent-ready are your docs?
             </h2>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-black/45 dark:text-white/40 sm:text-base">
-              Run a public readiness check for llms.txt, markdown routes, MCP, sitemap, robots,
-              structure, access, and cache hygiene, then compare your docs on the leaderboard.
+              Run a public readiness check for llms.txt, markdown routes, OpenAPI discovery, MCP,
+              sitemap, robots, structure, access, and cache hygiene, then compare your docs on the
+              leaderboard.
             </p>
           </div>
 

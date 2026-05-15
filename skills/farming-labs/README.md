@@ -39,9 +39,10 @@ pnpm --dir examples/next exec docs robots generate --config docs.config.tsx
 pnpm --dir examples/next exec docs agent compact installation --config docs.config.tsx
 ```
 
-The agent discovery spec also advertises structured data support, the sitemap routes, `robots.route`, the root `skill.md`
-route, this Skills pack through `npx skills add farming-labs/docs`, and recommends the
-`getting-started` skill for first-run setup.
+The agent discovery spec also advertises structured data support, OpenAPI schema discovery when
+`apiReference` is enabled, the sitemap routes, `robots.route`, the root `skill.md` route, this Skills
+pack through `npx skills add farming-labs/docs`, and recommends the `getting-started` skill for
+first-run setup.
 
 ---
 
