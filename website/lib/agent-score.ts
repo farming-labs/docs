@@ -863,8 +863,7 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
     markdownRoute,
     searchEndpoint: readDiscoveryRoute(searchRoot?.endpoint),
     feedbackSchemaRoute: readDiscoveryRoute(feedbackRoot?.schema),
-    openapiRoute:
-      readDiscoveryRoute(openapiRoot?.url) ?? readDiscoveryRoute(apiRoot?.openapi),
+    openapiRoute: readDiscoveryRoute(openapiRoot?.url) ?? readDiscoveryRoute(apiRoot?.openapi),
   };
 }
 
@@ -1662,7 +1661,9 @@ async function buildFrameworkChecks(
     view.capabilities.agentFeedback === false || !view.feedbackSchemaRoute
       ? Promise.resolve(undefined)
       : probeJsonRoute(frameworkBaseUrl, view.feedbackSchemaRoute),
-    view.openapiRoute ? probeJsonRoute(frameworkBaseUrl, view.openapiRoute) : Promise.resolve(undefined),
+    view.openapiRoute
+      ? probeJsonRoute(frameworkBaseUrl, view.openapiRoute)
+      : Promise.resolve(undefined),
   ]);
   const htmlSurfaceProbes = await probeHtmlPageSurfaces(frameworkBaseUrl, view, sitemapProbes);
   const markdownCanonicalProbes =
@@ -1847,7 +1848,11 @@ async function buildFrameworkChecks(
     ),
   );
 
-  if (view.capabilities.openapi === true || view.capabilities.apiReference === true || view.openapiRoute) {
+  if (
+    view.capabilities.openapi === true ||
+    view.capabilities.apiReference === true ||
+    view.openapiRoute
+  ) {
     const openapiBody = asRecord(openapiProbe?.body);
     const openapiLooksValid =
       openapiProbe?.ok &&

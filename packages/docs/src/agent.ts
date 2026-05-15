@@ -1132,7 +1132,9 @@ export function renderDocsSkillDocument({
   }
 
   if (openapiConfig.enabled && openapiConfig.url) {
-    lines.push(`- Fetch ${openapiConfig.url} for the machine-readable OpenAPI schema before scraping API reference pages.`);
+    lines.push(
+      `- Fetch ${openapiConfig.url} for the machine-readable OpenAPI schema before scraping API reference pages.`,
+    );
   }
 
   if (llmsEnabled) {

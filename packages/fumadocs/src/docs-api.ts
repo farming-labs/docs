@@ -395,9 +395,7 @@ function isApiReferenceOpenApiRequest(url: URL): boolean {
   return url.searchParams.get("format")?.trim() === "openapi";
 }
 
-function resolveApiReferenceOpenApiDiscovery(
-  value: DocsConfig["apiReference"],
-): {
+function resolveApiReferenceOpenApiDiscovery(value: DocsConfig["apiReference"]): {
   enabled: boolean;
   url?: string;
   source?: "generated" | "configured";
