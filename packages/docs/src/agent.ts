@@ -980,7 +980,10 @@ function toDocsRootDomainBaseUrl(base: URL): string | undefined {
 }
 
 function getDocsMcpRegistrableDomain(hostname: string): string | undefined {
-  const normalized = hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
+  const normalized = hostname
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/, "");
   if (!normalized || !normalized.includes(".") || isDocsIpHostname(normalized)) return undefined;
 
   const labels = normalized.split(".").filter(Boolean);
