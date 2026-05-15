@@ -829,6 +829,11 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
   const feedbackRoot = asRecord(root.feedback);
   const openapiRoot = asRecord(root.openapi);
   const apiRoot = asRecord(root.api);
+  const openapiRouteFromSpec = readDiscoveryRoute(openapiRoot?.url);
+  const openapiEnabled =
+    openapiRoot?.enabled === false
+      ? false
+      : cap.openapi === true || cap.apiReference === true || Boolean(openapiRouteFromSpec);
 
   return {
     available: true,
@@ -844,7 +849,12 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
     markdownRoute,
     searchEndpoint: readDiscoveryRoute(searchRoot?.endpoint),
     feedbackSchemaRoute: readDiscoveryRoute(feedbackRoot?.schema),
-    openapiRoute: readDiscoveryRoute(openapiRoot?.url) ?? readDiscoveryRoute(apiRoot?.openapi),
+    openapiRoute: openapiEnabled
+      ? (openapiRouteFromSpec ??
+        (cap.openapi === true || cap.apiReference === true
+          ? readDiscoveryRoute(apiRoot?.openapi)
+          : undefined))
+      : undefined,
   };
 }
 

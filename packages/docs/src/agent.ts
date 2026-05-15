@@ -86,29 +86,28 @@ export const DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA: Record<string, unknown> = {
 export const DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER = "Signature-Agent";
 const DOCS_LLMS_TXT_DIRECTIVE_LINE = "LLM index: /llms.txt";
 
-const COMMON_MULTI_PART_PUBLIC_SUFFIXES = new Set([
-  "ac.uk",
-  "co.in",
-  "co.jp",
-  "co.nz",
-  "co.uk",
-  "com.au",
-  "com.br",
-  "com.cn",
-  "com.mx",
-  "com.sg",
-  "com.tr",
-  "com.tw",
-  "gov.uk",
-  "net.au",
-  "net.br",
-  "net.cn",
-  "net.nz",
-  "org.au",
-  "org.br",
-  "org.cn",
-  "org.nz",
-  "org.uk",
+const DOCS_MCP_SERVICE_SUBDOMAIN_LABELS = new Set([
+  "api",
+  "developer",
+  "developers",
+  "dev",
+  "docs",
+  "help",
+  "mcp",
+  "reference",
+]);
+const COMMON_SECOND_LEVEL_PUBLIC_SUFFIX_LABELS = new Set([
+  "ac",
+  "co",
+  "com",
+  "edu",
+  "go",
+  "gov",
+  "mil",
+  "ne",
+  "net",
+  "or",
+  "org",
 ]);
 
 export interface DocsMcpEndpointCandidate {
@@ -917,16 +916,16 @@ export function buildDocsMcpEndpointCandidates(
     }
   }
 
-  const rootDomainBaseUrl = toDocsRootDomainBaseUrl(base);
-  if (includeRootDomainFallback && rootDomainBaseUrl) {
-    for (const route of routes) {
-      addCandidate(rootDomainBaseUrl, route);
+  if (includeRootDomainFallback) {
+    for (const rootDomainBaseUrl of toDocsRootDomainBaseUrls(base)) {
+      for (const route of routes) {
+        addCandidate(rootDomainBaseUrl, route);
+      }
     }
   }
 
   if (includeMcpSubdomainFallback) {
-    const mcpBaseUrl = toDocsMcpSubdomainBaseUrl(base);
-    if (mcpBaseUrl) {
+    for (const mcpBaseUrl of toDocsMcpSubdomainBaseUrls(base)) {
       addCandidate(mcpBaseUrl, DEFAULT_MCP_PUBLIC_ROUTE);
       addCandidate(mcpBaseUrl, "/");
     }
@@ -967,34 +966,52 @@ function formatDocsMcpCandidateLabel(url: string, primaryOrigin: string): string
   return parsed.origin === primaryOrigin ? path : `${parsed.origin}${path}`;
 }
 
-function toDocsMcpSubdomainBaseUrl(base: URL): string | undefined {
-  const rootDomain = getDocsMcpRegistrableDomain(base.hostname);
-  if (!rootDomain) return undefined;
-  return `${base.protocol}//mcp.${rootDomain}${base.port ? `:${base.port}` : ""}`;
+function toDocsMcpSubdomainBaseUrls(base: URL): string[] {
+  return getDocsMcpRootDomainCandidates(base.hostname).map(
+    (rootDomain) => `${base.protocol}//mcp.${rootDomain}${base.port ? `:${base.port}` : ""}`,
+  );
 }
 
-function toDocsRootDomainBaseUrl(base: URL): string | undefined {
-  const rootDomain = getDocsMcpRegistrableDomain(base.hostname);
-  if (!rootDomain) return undefined;
-  return `${base.protocol}//${rootDomain}${base.port ? `:${base.port}` : ""}`;
+function toDocsRootDomainBaseUrls(base: URL): string[] {
+  return getDocsMcpRootDomainCandidates(base.hostname).map(
+    (rootDomain) => `${base.protocol}//${rootDomain}${base.port ? `:${base.port}` : ""}`,
+  );
 }
 
-function getDocsMcpRegistrableDomain(hostname: string): string | undefined {
+function getDocsMcpRootDomainCandidates(hostname: string): string[] {
   const normalized = hostname
     .toLowerCase()
     .replace(/^\[|\]$/g, "")
     .replace(/\.$/, "");
-  if (!normalized || !normalized.includes(".") || isDocsIpHostname(normalized)) return undefined;
+  if (!normalized || !normalized.includes(".") || isDocsIpHostname(normalized)) return [];
 
   const labels = normalized.split(".").filter(Boolean);
-  if (labels.length < 2) return undefined;
+  if (labels.length < 2) return [];
 
-  const publicSuffix = labels.slice(-2).join(".");
-  if (COMMON_MULTI_PART_PUBLIC_SUFFIXES.has(publicSuffix) && labels.length >= 3) {
-    return labels.slice(-3).join(".");
+  const candidates: string[] = [];
+  const addCandidate = (candidateLabels: string[]) => {
+    if (candidateLabels.length < 2) return;
+    const candidate = candidateLabels.join(".");
+    if (!candidates.includes(candidate)) candidates.push(candidate);
+  };
+
+  if (labels.length >= 3 && DOCS_MCP_SERVICE_SUBDOMAIN_LABELS.has(labels[0] ?? "")) {
+    addCandidate(labels.slice(1));
   }
 
-  return labels.slice(-2).join(".");
+  const tld = labels.at(-1) ?? "";
+  const secondLevel = labels.at(-2) ?? "";
+  const shouldPreserveSecondLevelSuffix =
+    labels.length >= 3 &&
+    tld.length === 2 &&
+    COMMON_SECOND_LEVEL_PUBLIC_SUFFIX_LABELS.has(secondLevel);
+
+  if (shouldPreserveSecondLevelSuffix) {
+    addCandidate(labels.slice(-3));
+  } else {
+    addCandidate(labels.slice(-2));
+  }
+  return candidates;
 }
 
 function isDocsIpHostname(hostname: string): boolean {

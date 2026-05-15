@@ -311,6 +311,12 @@ describe("agent route helpers", () => {
         (candidate) => candidate.url,
       ),
     ).toContain("https://mcp.example.co.uk/mcp");
+
+    const koreaCandidates = buildDocsMcpEndpointCandidates("https://docs.example.co.kr").map(
+      (candidate) => candidate.url,
+    );
+    expect(koreaCandidates).toContain("https://mcp.example.co.kr/mcp");
+    expect(koreaCandidates).not.toContain("https://mcp.co.kr/mcp");
   });
 
   it("resolves markdown route and Accept-header requests", () => {
