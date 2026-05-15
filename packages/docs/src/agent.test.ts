@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDocsAgentDiscoverySpec,
+  buildDocsMcpEndpointCandidates,
   findDocsMarkdownPage,
   getDocsMarkdownCanonicalLinkHeader,
   getDocsMarkdownVaryHeader,
@@ -266,6 +267,56 @@ describe("agent route helpers", () => {
         new Request("https://example.com/api/docs?format=llms"),
       ),
     ).toBe(false);
+  });
+
+  it("builds MCP endpoint probes for default routes, origin fallback, and MCP subdomains", () => {
+    expect(
+      buildDocsMcpEndpointCandidates("https://docs.example.com/docs").map(
+        (candidate) => candidate.url,
+      ),
+    ).toEqual([
+      "https://docs.example.com/docs/mcp",
+      "https://docs.example.com/docs/.well-known/mcp",
+      "https://docs.example.com/mcp",
+      "https://docs.example.com/.well-known/mcp",
+      "https://example.com/mcp",
+      "https://example.com/.well-known/mcp",
+      "https://mcp.example.com/mcp",
+      "https://mcp.example.com/",
+    ]);
+
+    expect(
+      buildDocsMcpEndpointCandidates("https://example.com/docs").map((candidate) => candidate.url),
+    ).toEqual([
+      "https://example.com/docs/mcp",
+      "https://example.com/docs/.well-known/mcp",
+      "https://example.com/mcp",
+      "https://example.com/.well-known/mcp",
+      "https://mcp.example.com/mcp",
+      "https://mcp.example.com/",
+    ]);
+
+    expect(
+      buildDocsMcpEndpointCandidates("https://mcp.example.com").map((candidate) => candidate.url),
+    ).toEqual([
+      "https://mcp.example.com/mcp",
+      "https://mcp.example.com/.well-known/mcp",
+      "https://example.com/mcp",
+      "https://example.com/.well-known/mcp",
+      "https://mcp.example.com/",
+    ]);
+
+    expect(
+      buildDocsMcpEndpointCandidates("https://docs.example.co.uk").map(
+        (candidate) => candidate.url,
+      ),
+    ).toContain("https://mcp.example.co.uk/mcp");
+
+    const koreaCandidates = buildDocsMcpEndpointCandidates("https://docs.example.co.kr").map(
+      (candidate) => candidate.url,
+    );
+    expect(koreaCandidates).toContain("https://mcp.example.co.kr/mcp");
+    expect(koreaCandidates).not.toContain("https://mcp.co.kr/mcp");
   });
 
   it("resolves markdown route and Accept-header requests", () => {

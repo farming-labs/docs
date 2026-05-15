@@ -24,6 +24,7 @@ import {
   DEFAULT_SKILL_MD_ROUTE,
   DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
   analyzeDocsRobotsTxt,
+  buildDocsMcpEndpointCandidates,
 } from "@farming-labs/docs";
 
 // Kept in sync with @modelcontextprotocol/sdk; the deployed MCP server
@@ -569,29 +570,9 @@ async function probeMcpRouteCandidates(
   routes: string[],
   options: { includeOriginFallback?: boolean } = {},
 ): Promise<McpProbeResult> {
-  const bases = [baseUrl];
-  const origin = originBaseUrl(baseUrl);
-  if (options.includeOriginFallback !== false && origin !== baseUrl) {
-    bases.push(origin);
-  }
-
-  const seen = new Set<string>();
-  const candidates: Array<{ baseUrl: string; route: string; url: string; label: string }> = [];
-
-  for (const candidateBaseUrl of bases) {
-    for (const route of routes) {
-      const url = joinUrl(candidateBaseUrl, route);
-      if (seen.has(url)) continue;
-      seen.add(url);
-      const parsed = new URL(url);
-      candidates.push({
-        baseUrl: candidateBaseUrl,
-        route,
-        url,
-        label: parsed.origin === origin ? parsed.pathname : `${parsed.origin}${parsed.pathname}`,
-      });
-    }
-  }
+  const candidates = buildDocsMcpEndpointCandidates(baseUrl, routes, {
+    includeOriginFallback: options.includeOriginFallback,
+  });
 
   const probes = await Promise.all(
     candidates.map(async (candidate) => {
@@ -848,6 +829,11 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
   const feedbackRoot = asRecord(root.feedback);
   const openapiRoot = asRecord(root.openapi);
   const apiRoot = asRecord(root.api);
+  const openapiRouteFromSpec = readDiscoveryRoute(openapiRoot?.url);
+  const openapiEnabled =
+    openapiRoot?.enabled === false
+      ? false
+      : cap.openapi === true || cap.apiReference === true || Boolean(openapiRouteFromSpec);
 
   return {
     available: true,
@@ -863,7 +849,12 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
     markdownRoute,
     searchEndpoint: readDiscoveryRoute(searchRoot?.endpoint),
     feedbackSchemaRoute: readDiscoveryRoute(feedbackRoot?.schema),
-    openapiRoute: readDiscoveryRoute(openapiRoot?.url) ?? readDiscoveryRoute(apiRoot?.openapi),
+    openapiRoute: openapiEnabled
+      ? (openapiRouteFromSpec ??
+        (cap.openapi === true || cap.apiReference === true
+          ? readDiscoveryRoute(apiRoot?.openapi)
+          : undefined))
+      : undefined,
   };
 }
 
@@ -1590,13 +1581,14 @@ function buildMcpReadinessCheck(result: McpProbeResult): AgentScoreCheck {
   }
 
   const passed = result.probes.filter((probe) => probe.ok).length;
+  const detailProbes = passed > 0 ? result.probes.filter((probe) => probe.ok) : result.probes;
   return makeCheck(
     "framework:mcp",
     "MCP handshake",
     passed > 0 ? "pass" : "fail",
     passed > 0 ? 6 : 0,
     6,
-    result.probes.map((probe) => probe.detail).join(" "),
+    detailProbes.map((probe) => probe.detail).join(" "),
     passed > 0
       ? undefined
       : `Verify ${result.labels.join(" and ")} support MCP initialize and tools/list.`,

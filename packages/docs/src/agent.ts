@@ -86,6 +86,43 @@ export const DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA: Record<string, unknown> = {
 export const DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER = "Signature-Agent";
 const DOCS_LLMS_TXT_DIRECTIVE_LINE = "LLM index: /llms.txt";
 
+const DOCS_MCP_SERVICE_SUBDOMAIN_LABELS = new Set([
+  "api",
+  "developer",
+  "developers",
+  "dev",
+  "docs",
+  "help",
+  "mcp",
+  "reference",
+]);
+const COMMON_SECOND_LEVEL_PUBLIC_SUFFIX_LABELS = new Set([
+  "ac",
+  "co",
+  "com",
+  "edu",
+  "go",
+  "gov",
+  "mil",
+  "ne",
+  "net",
+  "or",
+  "org",
+]);
+
+export interface DocsMcpEndpointCandidate {
+  baseUrl: string;
+  route: string;
+  url: string;
+  label: string;
+}
+
+export interface DocsMcpEndpointCandidateOptions {
+  includeOriginFallback?: boolean;
+  includeRootDomainFallback?: boolean;
+  includeMcpSubdomainFallback?: boolean;
+}
+
 export interface DocsAgentFeedbackResolvedConfig {
   enabled: boolean;
   route: string;
@@ -843,6 +880,142 @@ export function isDocsMcpRequest(url: URL): boolean {
     pathname === DEFAULT_MCP_PUBLIC_ROUTE ||
     pathname === DEFAULT_MCP_WELL_KNOWN_ROUTE
   );
+}
+
+export function buildDocsMcpEndpointCandidates(
+  baseUrl: string,
+  routes: readonly string[] = [DEFAULT_MCP_PUBLIC_ROUTE, DEFAULT_MCP_WELL_KNOWN_ROUTE],
+  options: DocsMcpEndpointCandidateOptions = {},
+): DocsMcpEndpointCandidate[] {
+  const includeOriginFallback = options.includeOriginFallback !== false;
+  const includeRootDomainFallback = options.includeRootDomainFallback !== false;
+  const includeMcpSubdomainFallback = options.includeMcpSubdomainFallback !== false;
+  const base = new URL(baseUrl);
+  const primaryOrigin = base.origin;
+  const seen = new Set<string>();
+  const candidates: DocsMcpEndpointCandidate[] = [];
+
+  const addCandidate = (candidateBaseUrl: string, route: string) => {
+    const resolved = resolveDocsMcpCandidateUrl(candidateBaseUrl, route);
+    if (seen.has(resolved.url)) return;
+    seen.add(resolved.url);
+    candidates.push({
+      ...resolved,
+      label: formatDocsMcpCandidateLabel(resolved.url, primaryOrigin),
+    });
+  };
+
+  for (const route of routes) {
+    addCandidate(baseUrl, route);
+  }
+
+  const originBaseUrl = primaryOrigin;
+  if (includeOriginFallback && originBaseUrl !== baseUrl.replace(/\/+$/, "")) {
+    for (const route of routes) {
+      addCandidate(originBaseUrl, route);
+    }
+  }
+
+  if (includeRootDomainFallback) {
+    for (const rootDomainBaseUrl of toDocsRootDomainBaseUrls(base)) {
+      for (const route of routes) {
+        addCandidate(rootDomainBaseUrl, route);
+      }
+    }
+  }
+
+  if (includeMcpSubdomainFallback) {
+    for (const mcpBaseUrl of toDocsMcpSubdomainBaseUrls(base)) {
+      addCandidate(mcpBaseUrl, DEFAULT_MCP_PUBLIC_ROUTE);
+      addCandidate(mcpBaseUrl, "/");
+    }
+  }
+
+  return candidates;
+}
+
+function resolveDocsMcpCandidateUrl(
+  baseUrl: string,
+  route: string,
+): { baseUrl: string; route: string; url: string } {
+  if (/^https?:\/\//i.test(route)) {
+    const parsed = new URL(route);
+    const path = `${parsed.pathname || "/"}${parsed.search}`;
+    return {
+      baseUrl: parsed.origin,
+      route: path,
+      url: parsed.toString(),
+    };
+  }
+
+  const base = new URL(baseUrl);
+  const basePath = base.pathname.replace(/\/+$/, "");
+  const routePath = route.startsWith("/") ? route : `/${route}`;
+  const parsed = new URL(`${basePath}${routePath}`, base.origin);
+
+  return {
+    baseUrl: parsed.origin,
+    route: `${parsed.pathname}${parsed.search}`,
+    url: parsed.toString(),
+  };
+}
+
+function formatDocsMcpCandidateLabel(url: string, primaryOrigin: string): string {
+  const parsed = new URL(url);
+  const path = `${parsed.pathname}${parsed.search}`;
+  return parsed.origin === primaryOrigin ? path : `${parsed.origin}${path}`;
+}
+
+function toDocsMcpSubdomainBaseUrls(base: URL): string[] {
+  return getDocsMcpRootDomainCandidates(base.hostname).map(
+    (rootDomain) => `${base.protocol}//mcp.${rootDomain}${base.port ? `:${base.port}` : ""}`,
+  );
+}
+
+function toDocsRootDomainBaseUrls(base: URL): string[] {
+  return getDocsMcpRootDomainCandidates(base.hostname).map(
+    (rootDomain) => `${base.protocol}//${rootDomain}${base.port ? `:${base.port}` : ""}`,
+  );
+}
+
+function getDocsMcpRootDomainCandidates(hostname: string): string[] {
+  const normalized = hostname
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/, "");
+  if (!normalized || !normalized.includes(".") || isDocsIpHostname(normalized)) return [];
+
+  const labels = normalized.split(".").filter(Boolean);
+  if (labels.length < 2) return [];
+
+  const candidates: string[] = [];
+  const addCandidate = (candidateLabels: string[]) => {
+    if (candidateLabels.length < 2) return;
+    const candidate = candidateLabels.join(".");
+    if (!candidates.includes(candidate)) candidates.push(candidate);
+  };
+
+  if (labels.length >= 3 && DOCS_MCP_SERVICE_SUBDOMAIN_LABELS.has(labels[0] ?? "")) {
+    addCandidate(labels.slice(1));
+  }
+
+  const tld = labels.at(-1) ?? "";
+  const secondLevel = labels.at(-2) ?? "";
+  const shouldPreserveSecondLevelSuffix =
+    labels.length >= 3 &&
+    tld.length === 2 &&
+    COMMON_SECOND_LEVEL_PUBLIC_SUFFIX_LABELS.has(secondLevel);
+
+  if (shouldPreserveSecondLevelSuffix) {
+    addCandidate(labels.slice(-3));
+  } else {
+    addCandidate(labels.slice(-2));
+  }
+  return candidates;
+}
+
+function isDocsIpHostname(hostname: string): boolean {
+  return /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(":");
 }
 
 export function isDocsSkillRequest(url: URL): boolean {

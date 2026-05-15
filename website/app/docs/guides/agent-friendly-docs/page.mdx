@@ -431,7 +431,8 @@ pnpm exec docs doctor --agent --url https://docs.example.com
 
 That hosted pass checks discovery, `llms.txt`, sitemap routes, `skill.md`, representative `.md`
 pages, canonical markdown response headers, `robots.txt`, JSON-LD structured data, markdown
-alternate head links, and MCP at both `/mcp` and `/.well-known/mcp`.
+alternate head links, and MCP at `/mcp`, `/.well-known/mcp`,
+`https://mcp.<your-domain>/mcp`, or `https://mcp.<your-domain>/`.
 
 If you want the same public check without leaving the browser, use the hosted
 [Agent readiness score](/score) page:
@@ -445,7 +446,7 @@ framework probes when the site exposes `/.well-known/agent.json`. The public sco
 strict `.md` route probe that samples docs page routes and verifies that appending `.md` returns
 markdown, so `llms.txt` markdown mirrors do not hide missing `/docs/foo.md` routes. The
 framework probes cover the discovery spec, full-context files, sitemap routes, `robots.txt`,
-`skill.md`, MCP, search, feedback, JSON-LD structured data on sampled pages, canonical `Link`
+`skill.md`, same-domain or MCP-subdomain MCP, search, feedback, JSON-LD structured data on sampled pages, canonical `Link`
 headers on markdown responses, and the `<link rel="alternate" type="text/markdown">` head links
 that point agents to each page's `.md` route. Existing leaderboard entries hydrate from the saved
 report, so a shared score URL can be reviewed without triggering a new calculation unless no saved

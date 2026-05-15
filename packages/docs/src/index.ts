@@ -78,6 +78,7 @@ export {
   DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER,
   buildDocsAgentDiscoverySpec,
   buildDocsAgentFeedbackSchema,
+  buildDocsMcpEndpointCandidates,
   findDocsMarkdownPage,
   getDocsMarkdownCanonicalLinkHeader,
   getDocsMarkdownVaryHeader,
@@ -121,6 +122,8 @@ export type {
   DocsLlmsTxtResolvedMaxChars,
   DocsLlmsTxtResolvedSection,
   DocsLlmsTxtSelectedContent,
+  DocsMcpEndpointCandidate,
+  DocsMcpEndpointCandidateOptions,
   DocsOpenApiDiscoveryConfig,
   DocsOpenApiResolvedDiscoveryConfig,
 } from "./agent.js";
