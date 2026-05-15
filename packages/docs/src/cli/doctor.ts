@@ -12,6 +12,7 @@ import {
   DEFAULT_MCP_WELL_KNOWN_ROUTE,
   DEFAULT_SKILL_MD_ROUTE,
   DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
+  buildDocsMcpEndpointCandidates,
 } from "../agent.js";
 import { createFilesystemDocsMcpSource, resolveDocsMcpConfig } from "../server.js";
 import {
@@ -1519,6 +1520,27 @@ async function probeMcpRoute(
   }
 }
 
+async function probeMcpRouteCandidates(
+  baseUrl: string,
+  routes: string[],
+): Promise<{ labels: string[]; probes: Array<{ ok: boolean; detail: string }> }> {
+  const candidates = buildDocsMcpEndpointCandidates(baseUrl, routes);
+  const probes = await Promise.all(
+    candidates.map(async (candidate) => {
+      const probe = await probeMcpRoute(candidate.baseUrl, candidate.route);
+      return {
+        ...probe,
+        detail: `${candidate.label}: ${probe.detail}`,
+      };
+    }),
+  );
+
+  return {
+    labels: candidates.map((candidate) => candidate.label),
+    probes,
+  };
+}
+
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
 }
@@ -1560,6 +1582,25 @@ function hostedRobotsRoute(discoveryBody: unknown): { enabled: boolean; route: s
     enabled: robots?.enabled === false ? false : true,
     route: readDiscoveryRoute(robots?.route) ?? DEFAULT_ROBOTS_TXT_ROUTE,
   };
+}
+
+function hostedMcpRoutes(discoveryBody: unknown): string[] {
+  const mcp = asRecord(asRecord(discoveryBody)?.mcp);
+  const publicEndpoints = (mcp?.publicEndpoints ?? mcp?.endpoints) as unknown;
+  const declaredRoutes = Array.isArray(publicEndpoints)
+    ? publicEndpoints.filter(
+        (value): value is string => typeof value === "string" && value.startsWith("/"),
+      )
+    : [];
+
+  if (declaredRoutes.length > 0) return Array.from(new Set(declaredRoutes));
+
+  return Array.from(
+    new Set([
+      readDiscoveryRoute(mcp?.publicEndpoint) ?? DEFAULT_MCP_PUBLIC_ROUTE,
+      readDiscoveryRoute(mcp?.wellKnownEndpoint) ?? DEFAULT_MCP_WELL_KNOWN_ROUTE,
+    ]),
+  );
 }
 
 function hostedCapability(discoveryBody: unknown, key: string): boolean | undefined {
@@ -1954,22 +1995,20 @@ async function buildHostedAgentChecks(
     ),
   );
 
-  const mcp = await Promise.all([
-    probeMcpRoute(baseUrl, DEFAULT_MCP_PUBLIC_ROUTE),
-    probeMcpRoute(baseUrl, DEFAULT_MCP_WELL_KNOWN_ROUTE),
-  ]);
-  const mcpPassed = mcp.filter((result) => result.ok).length;
+  const mcp = await probeMcpRouteCandidates(baseUrl, hostedMcpRoutes(discovery.body));
+  const mcpPassed = mcp.probes.filter((result) => result.ok).length;
+  const mcpDetailProbes = mcpPassed > 0 ? mcp.probes.filter((result) => result.ok) : mcp.probes;
   checks.push(
     makeCheck(
       "hosted-mcp",
       "Hosted MCP handshake",
-      mcpPassed === mcp.length ? "pass" : mcpPassed > 0 ? "warn" : "fail",
-      mcpPassed === mcp.length ? 10 : mcpPassed > 0 ? 5 : 0,
+      mcpPassed > 0 ? "pass" : "fail",
+      mcpPassed > 0 ? 10 : 0,
       10,
-      mcp.map((result) => result.detail).join(" "),
-      mcpPassed === mcp.length
+      mcpDetailProbes.map((result) => result.detail).join(" "),
+      mcpPassed > 0
         ? undefined
-        : `Verify deployed ${DEFAULT_MCP_PUBLIC_ROUTE} and ${DEFAULT_MCP_WELL_KNOWN_ROUTE} support Streamable HTTP initialize and tools/list.`,
+        : `Verify one of ${mcp.labels.join(" or ")} supports Streamable HTTP initialize and tools/list.`,
     ),
   );
 

@@ -566,6 +566,8 @@ The hosted pass probes:
 - sampled docs page HTML for `<link rel="alternate" type="text/markdown">`
 - `/mcp`
 - `/.well-known/mcp`
+- `mcp.<your-domain>/mcp`
+- `mcp.<your-domain>/`
 
 For MCP, the doctor performs a Streamable HTTP `initialize` request, reuses `mcp-session-id` when
 the server returns one, sends `tools/list`, and expects the built-in docs tools:

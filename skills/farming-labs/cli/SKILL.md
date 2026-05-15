@@ -449,6 +449,8 @@ With `--url`, `docs doctor --agent` also probes the deployed public agent surfac
 - one representative `.md` page route, such as `/docs.md`
 - `/mcp`
 - `/.well-known/mcp`
+- `mcp.<your-domain>/mcp`
+- `mcp.<your-domain>/`
 
 For hosted MCP, the command performs a Streamable HTTP initialize handshake, checks for
 `mcp-session-id`, calls `tools/list`, and expects `list_pages`, `get_navigation`, `search_docs`,
