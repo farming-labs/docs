@@ -6,6 +6,7 @@ import {
   getDocsMarkdownVaryHeader,
   hasDocsMarkdownSignatureAgent,
   isDocsAgentDiscoveryRequest,
+  isDocsLlmsTxtPublicRequest,
   isDocsMcpRequest,
   isDocsPublicGetRequest,
   isDocsSkillRequest,
@@ -46,6 +47,13 @@ describe("agent route helpers", () => {
     expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/.well-known/llms-full.txt"))).toBe(
       "llms-full",
     );
+    expect(isDocsLlmsTxtPublicRequest(new URL("https://example.com/llms.txt"))).toBe(true);
+    expect(isDocsLlmsTxtPublicRequest(new URL("https://example.com/.well-known/llms.txt"))).toBe(
+      true,
+    );
+    expect(
+      isDocsLlmsTxtPublicRequest(new URL("https://example.com/api/docs?format=llms")),
+    ).toBe(false);
 
     expect(isDocsSkillRequest(new URL("https://example.com/skill.md"))).toBe(true);
     expect(isDocsSkillRequest(new URL("https://example.com/.well-known/skill.md"))).toBe(true);
@@ -97,6 +105,9 @@ describe("agent route helpers", () => {
       format: "llms-full",
       section: { title: "API", route: "/docs/api/llms.txt" },
     });
+    expect(
+      isDocsLlmsTxtPublicRequest(new URL("https://example.com/docs/api/llms.txt"), config),
+    ).toBe(true);
     expect(
       isDocsPublicGetRequest(
         "docs",

@@ -82,6 +82,7 @@ export {
   getDocsMarkdownVaryHeader,
   hasDocsMarkdownSignatureAgent,
   isDocsAgentDiscoveryRequest,
+  isDocsLlmsTxtPublicRequest,
   isDocsMcpRequest,
   isDocsPublicGetRequest,
   isDocsSkillRequest,

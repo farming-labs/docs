@@ -225,6 +225,9 @@ nav: {
 
 Generated `llms.txt` files for agent-readable docs indexes. The root files are enabled by default;
 section files are opt-in and only add route handling plus discovery metadata.
+If a native static file already exists at the same public route, such as `public/llms.txt` or
+SvelteKit `static/llms.txt`, that file takes precedence and the generated output remains the
+fallback.
 
 | Property          | Type                     | Default                          | Description |
 | ----------------- | ------------------------ | -------------------------------- | ----------- |

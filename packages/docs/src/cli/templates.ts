@@ -1680,7 +1680,7 @@ export function svelteDocsPublicHookTemplate(filePath: string, useAlias: boolean
   const configImport = svelteRouteConfigImport(filePath, useAlias);
 
   return `\
-import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
 import type { Handle } from "@sveltejs/kit";
 import config from "${configImport}";
 import { GET, MCP } from "${serverImport}";
@@ -1698,6 +1698,11 @@ export const handle: Handle = async ({ event, resolve }) => {
       status: 405,
       headers: { Allow: "GET, HEAD, POST, DELETE" },
     });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(event.url, config.llmsTxt)) {
+    const nativeResponse = await resolve(event);
+    if (nativeResponse.status !== 404) return nativeResponse;
   }
 
   if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
@@ -1740,7 +1745,7 @@ export function injectSvelteDocsPublicHook(
   }
 
   const imports = [
-    'import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";',
+    'import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";',
     ...(next.includes("Handle") ? [] : ['import type { Handle } from "@sveltejs/kit";']),
     ...(hasExistingHandle && !next.includes("sequence")
       ? ['import { sequence } from "@sveltejs/kit/hooks";']
@@ -1763,6 +1768,11 @@ const docsPublicHandle: Handle = async ({ event, resolve }) => {
       status: 405,
       headers: { Allow: "GET, HEAD, POST, DELETE" },
     });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(event.url, docsConfig.llmsTxt)) {
+    const nativeResponse = await resolve(event);
+    if (nativeResponse.status !== 404) return nativeResponse;
   }
 
   if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
@@ -2223,7 +2233,7 @@ export function astroDocsMiddlewareTemplate(filePath: string, useAlias: boolean)
   const configImport = astroRouteConfigImport(filePath, useAlias);
 
   return `\
-import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
 import type { MiddlewareHandler } from "astro";
 import config from "${configImport}";
 import { GET, MCP } from "${serverImport}";
@@ -2241,6 +2251,11 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
       status: 405,
       headers: { Allow: "GET, HEAD, POST, DELETE" },
     });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(context.url, config.llmsTxt)) {
+    const nativeResponse = await next();
+    if (nativeResponse.status !== 404) return nativeResponse;
   }
 
   if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
@@ -2283,7 +2298,7 @@ export function injectAstroDocsMiddleware(
   }
 
   const imports = [
-    'import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";',
+    'import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";',
     ...(next.includes("MiddlewareHandler")
       ? []
       : ['import type { MiddlewareHandler } from "astro";']),
@@ -2308,6 +2323,11 @@ const docsPublicMiddleware: MiddlewareHandler = async (context, next) => {
       status: 405,
       headers: { Allow: "GET, HEAD, POST, DELETE" },
     });
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(context.url, docsConfig.llmsTxt)) {
+    const nativeResponse = await next();
+    if (nativeResponse.status !== 404) return nativeResponse;
   }
 
   if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {

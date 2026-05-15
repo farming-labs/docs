@@ -1,4 +1,8 @@
-import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import {
+  isDocsLlmsTxtPublicRequest,
+  isDocsMcpRequest,
+  isDocsPublicGetRequest,
+} from "@farming-labs/docs";
 import config from "$lib/docs.config";
 import { GET, MCP } from "$lib/docs.server.js";
 
@@ -15,6 +19,14 @@ export async function handle({ event, resolve }) {
       status: 405,
       headers: { Allow: "GET, HEAD, POST, DELETE" },
     });
+  }
+
+  if (
+    (method === "GET" || method === "HEAD") &&
+    isDocsLlmsTxtPublicRequest(event.url, config.llmsTxt)
+  ) {
+    const nativeResponse = await resolve(event);
+    if (nativeResponse.status !== 404) return nativeResponse;
   }
 
   if (

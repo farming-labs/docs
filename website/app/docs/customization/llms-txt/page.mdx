@@ -46,6 +46,21 @@ That's it. The existing API handler serves the content automatically. Next.js ad
 `withDocs()`; TanStack Start, SvelteKit, Astro, and Nuxt add one public forwarder each so the public
 aliases do not need one route file per URL.
 
+## Custom Static Files
+
+You do not need a config flag to replace the generated files. If your app already ships a native
+static file at the same public route, that file wins and the generated route is only used as the
+fallback.
+
+| Framework | Static file location |
+| --------- | -------------------- |
+| Next.js, Astro, Nuxt, TanStack Start | `public/llms.txt`, `public/llms-full.txt` |
+| SvelteKit | `static/llms.txt`, `static/llms-full.txt` |
+
+The same convention applies to `/.well-known/llms.txt` and `/.well-known/llms-full.txt` when you
+publish those files in the framework's static directory. Keep `llmsTxt` configured only when you
+want generated fallback metadata such as `baseUrl`, `siteTitle`, sections, or a size budget.
+
 ---
 
 ## Configuration Reference

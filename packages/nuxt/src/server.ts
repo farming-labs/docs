@@ -34,6 +34,7 @@ import {
   getDocsMarkdownCanonicalLinkHeader,
   getDocsMarkdownVaryHeader,
   isDocsAgentDiscoveryRequest,
+  isDocsLlmsTxtPublicRequest,
   isDocsMcpRequest,
   isDocsPublicGetRequest,
   isDocsSkillRequest,
@@ -1858,6 +1859,13 @@ export function defineDocsPublicHandler(config: Record<string, any>, storage: Do
     if (method === "GET" || method === "HEAD") {
       const request = new Request(url.href, { method, headers });
       if (
+        isDocsLlmsTxtPublicRequest(url, config.llmsTxt) &&
+        hasNativeNuxtPublicFile(url.pathname)
+      ) {
+        return undefined;
+      }
+
+      if (
         !isDocsPublicGetRequest(entry, url, request, {
           sitemap: config.sitemap,
           llms: config.llmsTxt,
@@ -1871,6 +1879,27 @@ export function defineDocsPublicHandler(config: Record<string, any>, storage: Do
       return server.GET({
         request,
       });
+    }
+  });
+}
+
+function hasNativeNuxtPublicFile(pathname: string): boolean {
+  const relativePath = pathname.replace(/^\/+/, "");
+  if (!relativePath || relativePath.split("/").some((part) => part === ".." || part === "")) {
+    return false;
+  }
+
+  const candidates = [
+    path.join(process.cwd(), "public", relativePath),
+    path.join(process.cwd(), ".output", "public", relativePath),
+    path.join(process.cwd(), "..", "public", relativePath),
+  ];
+
+  return candidates.some((candidate) => {
+    try {
+      return fs.statSync(candidate).isFile();
+    } catch {
+      return false;
     }
   });
 }

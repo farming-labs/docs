@@ -1578,32 +1578,34 @@ function mergeDocsMarkdownRewrites(
   },
   result?: NextRewriteResult,
 ): NextRewriteResult {
-  const autoRewrites = [
+  const autoBeforeFilesRewrites = [
     ...buildAgentSpecRewrites(),
     ...buildMcpRewrites(mcp),
-    ...buildLlmsTxtRewrites(entry),
     ...buildSkillMdRewrites(),
     ...buildSitemapRewrites(sitemap),
     ...buildRobotsRewrites(robots),
     ...buildDocsMarkdownRewrites(entry),
     ...buildAgentFeedbackRewrites(agentFeedback),
   ];
+  const autoAfterFilesRewrites = buildLlmsTxtRewrites(entry);
+
   if (!result) {
     return {
-      beforeFiles: dedupeRewrites(autoRewrites),
+      beforeFiles: dedupeRewrites(autoBeforeFilesRewrites),
+      afterFiles: dedupeRewrites(autoAfterFilesRewrites),
     };
   }
 
   if (Array.isArray(result)) {
     return {
-      beforeFiles: dedupeRewrites(autoRewrites),
-      afterFiles: result,
+      beforeFiles: dedupeRewrites(autoBeforeFilesRewrites),
+      afterFiles: dedupeRewrites([...result, ...autoAfterFilesRewrites]),
     };
   }
 
   return {
-    beforeFiles: dedupeRewrites([...autoRewrites, ...(result.beforeFiles ?? [])]),
-    afterFiles: result.afterFiles ?? [],
+    beforeFiles: dedupeRewrites([...autoBeforeFilesRewrites, ...(result.beforeFiles ?? [])]),
+    afterFiles: dedupeRewrites([...(result.afterFiles ?? []), ...autoAfterFilesRewrites]),
     fallback: result.fallback ?? [],
   };
 }

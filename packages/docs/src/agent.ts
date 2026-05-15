@@ -841,6 +841,14 @@ export function isDocsPublicGetRequest(
   );
 }
 
+export function isDocsLlmsTxtPublicRequest(
+  url: URL,
+  llms?: boolean | DocsLlmsDiscoveryConfig | LlmsTxtConfig,
+): boolean {
+  const pathname = normalizeDocsUrlPath(url.pathname);
+  return pathname !== DEFAULT_DOCS_API_ROUTE && resolveDocsLlmsTxtRequest(url, llms) !== null;
+}
+
 export function resolveDocsLlmsTxtFormat(url: URL): "llms" | "llms-full" | null {
   return resolveDocsLlmsTxtRequest(url)?.format ?? null;
 }

@@ -184,6 +184,8 @@ Behavior:
 
 - default routes are `/llms.txt`, `/llms-full.txt`, `/.well-known/llms.txt`, and
   `/.well-known/llms-full.txt`
+- native static files at those same routes win automatically (`public/llms.txt` for most
+  frameworks, `static/llms.txt` for SvelteKit)
 - compact `llms.txt` links point to page markdown routes such as `/docs/install.md`
 - `maxChars` defaults to `{ mode: "warn", chars: 50000 }`; `mode: "error"` returns an error for
   an over-budget compact file, and `mode: "off"` disables the check

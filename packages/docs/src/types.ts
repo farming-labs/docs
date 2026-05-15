@@ -848,6 +848,7 @@ export interface DocsObservabilityConfig {
  */
 /**
  * Configuration for auto-generated `/llms.txt` and `/llms-full.txt` routes.
+ * Native static files at the same public routes take precedence.
  *
  * @see https://llmstxt.org
  */
@@ -2510,7 +2511,9 @@ export interface DocsConfig {
   ordering?: "alphabetical" | "numeric" | OrderingItem[];
   /**
    * Auto-generate `/llms.txt` and `/llms-full.txt` routes for LLM-friendly
-   * documentation. These files let AI tools quickly understand your docs.
+   * documentation. Native static files at those routes take precedence, so
+   * `public/llms.txt` or SvelteKit `static/llms.txt` can override the
+   * generated output without extra config.
    *
    * @example
    * ```ts

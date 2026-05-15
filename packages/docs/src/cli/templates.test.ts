@@ -404,6 +404,8 @@ describe("api reference route templates", () => {
   it("creates a SvelteKit public docs hook", () => {
     const out = svelteDocsPublicHookTemplate("src/hooks.server.ts", false);
     expect(out).toContain("export const handle");
+    expect(out).toContain("isDocsLlmsTxtPublicRequest");
+    expect(out).toContain("const nativeResponse = await resolve(event)");
     expect(out).toContain("isDocsPublicGetRequest");
     expect(out).toContain("sitemap: config.sitemap");
     expect(out).toContain('from "./lib/docs.server"');
@@ -426,6 +428,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     expect(out).not.toBeNull();
     expect(out).toContain("const existingHandle: Handle =");
     expect(out).toContain("const docsPublicHandle: Handle =");
+    expect(out).toContain("isDocsLlmsTxtPublicRequest(event.url, docsConfig.llmsTxt)");
     expect(out).toContain("sitemap: docsConfig.sitemap");
     expect(out).not.toContain("sitemap: config.sitemap");
     expect(out).toContain("export const handle = sequence(docsPublicHandle, existingHandle);");
@@ -440,6 +443,8 @@ export const handle: Handle = async ({ event, resolve }) => {
   it("creates an Astro public docs middleware", () => {
     const out = astroDocsMiddlewareTemplate("src/middleware.ts", false);
     expect(out).toContain("export const onRequest");
+    expect(out).toContain("isDocsLlmsTxtPublicRequest");
+    expect(out).toContain("const nativeResponse = await next()");
     expect(out).toContain("isDocsPublicGetRequest");
     expect(out).toContain("sitemap: config.sitemap");
     expect(out).toContain('from "./lib/docs.server"');
@@ -462,6 +467,7 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
     expect(out).not.toBeNull();
     expect(out).toContain("const existingOnRequest: MiddlewareHandler =");
     expect(out).toContain("const docsPublicMiddleware: MiddlewareHandler =");
+    expect(out).toContain("isDocsLlmsTxtPublicRequest(context.url, docsConfig.llmsTxt)");
     expect(out).toContain("sitemap: docsConfig.sitemap");
     expect(out).not.toContain("sitemap: config.sitemap");
     expect(out).toContain(
