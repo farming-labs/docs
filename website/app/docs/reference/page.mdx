@@ -629,6 +629,12 @@ deployed elsewhere and already exposes an `openapi.json`.
   Point it at a hosted `openapi.json` and keep the same themed API reference UI.
 </Callout>
 
+<Callout type="info" title="Agent schema discovery">
+  When `apiReference` is enabled, the shared docs API also serves
+  `GET /api/docs?format=openapi`. The agent discovery spec advertises that OpenAPI schema URL, and
+  generated `llms.txt` / `skill.md` output points agents there before they scrape API reference pages.
+</Callout>
+
 | Property    | Type       | Default           | Description |
 | ----------- | ---------- | ----------------- | ----------- |
 | `enabled`   | `boolean`  | `true` inside the object | Enable generated API reference pages |
@@ -914,7 +920,7 @@ Notes:
 - in Next.js, `withDocs()` adds the public route rewrites automatically
 - Astro, SvelteKit, TanStack Start, and Nuxt expose the same feedback contract through the shared `/api/docs?feedback=agent` query route
 - the shared `/api/docs` handler is still the source of truth, so `?feedback=agent` also works
-- agents should discover site identity, locale config, capability flags, search, active markdown routes, `Accept: text/markdown`, `Signature-Agent` support, JSON-LD structured data, `llms.txt`, sitemap routes, `robots.txt`, `skill.md`, skills, MCP, and feedback routes with `GET /.well-known/agent.json`; `GET /.well-known/agent` is the public fallback and `GET /api/docs/agent/spec` is the canonical framework route
+- agents should discover site identity, locale config, capability flags, search, active markdown routes, `Accept: text/markdown`, `Signature-Agent` support, JSON-LD structured data, `llms.txt`, OpenAPI schema routes, sitemap routes, `robots.txt`, `skill.md`, skills, MCP, and feedback routes with `GET /.well-known/agent.json`; `GET /.well-known/agent` is the public fallback and `GET /api/docs/agent/spec` is the canonical framework route
 
 ### `DocsAgentFeedbackContext`
 
@@ -1680,7 +1686,7 @@ import { createDocsServer } from "@farming-labs/tanstack-start/server";
 | Property | Type                                                       | Description |
 | -------- | ---------------------------------------------------------- | ----------- |
 | `load`   | `({ pathname, locale? }) => Promise<DocsServerLoadResult>` | Loads docs page data and the sidebar tree for a pathname |
-| `GET`    | `({ request }) => Response`                                | Search / markdown / `llms.txt` / sitemap / `skill.md` endpoint handler |
+| `GET`    | `({ request }) => Response`                                | Search / markdown / `llms.txt` / OpenAPI / sitemap / `skill.md` endpoint handler |
 | `POST`   | `({ request }) => Promise<Response>`                       | AI chat endpoint handler |
 
 ```ts title="src/lib/docs.server.ts"

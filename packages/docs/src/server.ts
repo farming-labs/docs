@@ -10,8 +10,11 @@ export {
   resolveDocsObservabilityConfig,
 } from "./analytics.js";
 export {
+  DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
   resolveApiReferenceConfig,
   resolveApiReferenceRenderer,
+  resolveApiReferenceOpenApiDiscovery,
+  isApiReferenceOpenApiRequest,
   buildApiReferenceOpenApiDocument,
   buildApiReferenceOpenApiDocumentAsync,
   buildApiReferenceHtmlDocument,
@@ -21,6 +24,7 @@ export {
 } from "./api-reference.js";
 export type {
   ApiReferenceFramework,
+  ApiReferenceOpenApiDiscovery,
   ApiReferenceRenderer,
   ApiReferenceRoute,
   ResolvedApiReferenceConfig,

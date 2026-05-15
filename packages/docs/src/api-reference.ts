@@ -29,6 +29,14 @@ export interface ResolvedApiReferenceConfig {
   exclude: string[];
 }
 
+export interface ApiReferenceOpenApiDiscovery {
+  enabled: boolean;
+  url?: string;
+  source?: "generated" | "configured";
+  specUrl?: string;
+  apiReferencePath?: string;
+}
+
 interface BuildApiReferenceOptions {
   framework: ApiReferenceFramework;
   rootDir?: string;
@@ -47,6 +55,7 @@ const TANSTACK_ROUTE_FILE_RE = /\.(ts|tsx|js|jsx)$/;
 const METHOD_RE =
   /export\s+(?:async\s+function|function|const)\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD|ALL)\b/g;
 const METHOD_NAMES: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"];
+export const DEFAULT_API_REFERENCE_OPENAPI_ROUTE = "/api/docs?format=openapi";
 
 function normalizePathSegment(value: string): string {
   return value.replace(/^\/+|\/+$/g, "");
@@ -99,6 +108,26 @@ export function resolveApiReferenceRenderer(
   const config = resolveApiReferenceConfig(value);
   if (config.renderer) return config.renderer;
   return framework === "next" ? "fumadocs" : "scalar";
+}
+
+export function resolveApiReferenceOpenApiDiscovery(
+  value: DocsConfig["apiReference"],
+  options: { route?: string } = {},
+): ApiReferenceOpenApiDiscovery {
+  const config = resolveApiReferenceConfig(value);
+  if (!config.enabled) return { enabled: false };
+
+  return {
+    enabled: true,
+    url: options.route ?? DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
+    source: config.specUrl ? "configured" : "generated",
+    specUrl: config.specUrl,
+    apiReferencePath: `/${config.path}`,
+  };
+}
+
+export function isApiReferenceOpenApiRequest(url: URL): boolean {
+  return url.searchParams.get("format")?.trim() === "openapi";
 }
 
 function normalizeRemoteSpecUrl(value?: string): string | undefined {

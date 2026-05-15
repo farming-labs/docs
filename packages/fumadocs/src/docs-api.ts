@@ -53,15 +53,18 @@ import type {
   DocsAnalyticsConfig,
   DocsAgentFeedbackContext,
   DocsAgentFeedbackData,
+  DocsConfig,
   DocsI18nConfig,
   LlmsTxtConfig,
   DocsObservabilityConfig,
   FeedbackConfig,
 } from "@farming-labs/docs";
 import {
+  buildApiReferenceOpenApiDocumentAsync,
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
   readDocsSitemapManifest,
+  resolveApiReferenceConfig,
   resolveDocsMcpConfig,
   type DocsMcpPage,
 } from "@farming-labs/docs/server";
@@ -148,6 +151,10 @@ interface DocsAPIOptions {
   sitemap?: boolean | DocsSitemapConfig;
   /** Robots.txt generation policy used for the agent discovery spec. */
   robots?: boolean | DocsRobotsConfig;
+  /** API reference / OpenAPI schema configuration used for agent discovery. */
+  apiReference?: DocsConfig["apiReference"];
+  /** Metadata used in generated OpenAPI documents. */
+  metadata?: DocsConfig["metadata"];
 }
 
 interface DocsMCPAPIOptions {
@@ -247,6 +254,7 @@ interface AgentSpecOptions {
   llms: LlmsTxtOptions & { enabled: boolean };
   sitemap?: boolean | DocsSitemapConfig;
   robots?: boolean | DocsRobotsConfig;
+  openapi: ReturnType<typeof resolveApiReferenceOpenApiDiscovery>;
 }
 
 interface SkillDocumentOptions extends AgentSpecOptions {}
@@ -383,6 +391,31 @@ function isRobotsDiscoveryEnabled(robots?: boolean | DocsRobotsConfig): boolean 
   return true;
 }
 
+function isApiReferenceOpenApiRequest(url: URL): boolean {
+  return url.searchParams.get("format")?.trim() === "openapi";
+}
+
+function resolveApiReferenceOpenApiDiscovery(
+  value: DocsConfig["apiReference"],
+): {
+  enabled: boolean;
+  url?: string;
+  source?: "generated" | "configured";
+  specUrl?: string;
+  apiReferencePath?: string;
+} {
+  const apiReference = resolveApiReferenceConfig(value);
+  if (!apiReference.enabled) return { enabled: false };
+
+  return {
+    enabled: true,
+    url: `${DEFAULT_DOCS_API_ROUTE}?format=openapi`,
+    source: apiReference.specUrl ? "configured" : "generated",
+    specUrl: apiReference.specUrl,
+    apiReferencePath: `/${apiReference.path}`,
+  };
+}
+
 function buildAgentSpec({
   origin,
   entry,
@@ -393,6 +426,7 @@ function buildAgentSpec({
   llms,
   sitemap,
   robots,
+  openapi,
 }: AgentSpecOptions) {
   const normalizedEntry = normalizePathSegment(entry) || "docs";
   const localesEnabled = i18n !== null;
@@ -429,6 +463,8 @@ function buildAgentSpec({
       sitemap: sitemapConfig.enabled,
       robots: robotsEnabled,
       structuredData: true,
+      apiReference: openapi.enabled,
+      openapi: openapi.enabled,
       agentFeedback: feedback.enabled,
       locales: localesEnabled,
     },
@@ -440,6 +476,7 @@ function buildAgentSpec({
       agentSpecWellKnown: DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
       agentSpecWellKnownJson: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
       agentSpecQuery: `${DEFAULT_DOCS_API_ROUTE}?agent=spec`,
+      openapi: `${DEFAULT_DOCS_API_ROUTE}?format=openapi`,
     },
     // Always-on agent content surfaces. If these ever become configurable,
     // this spec must be wired to the same docs.config toggles instead of
@@ -501,6 +538,14 @@ function buildAgentSpec({
       canonicalUrlField: "url",
       breadcrumbType: "BreadcrumbList",
     },
+    openapi: {
+      enabled: openapi.enabled,
+      url: openapi.url ?? null,
+      source: openapi.source ?? null,
+      specUrl: openapi.specUrl ?? null,
+      apiReferencePath: openapi.apiReferencePath ?? null,
+      format: "OpenAPI 3.1",
+    },
     search: {
       enabled: searchEnabled,
       endpoint: `${DEFAULT_DOCS_API_ROUTE}?query={query}`,
@@ -549,6 +594,7 @@ function buildAgentSpec({
     instructions: {
       preferMarkdownRoutes: true,
       useMcpWhenAvailable: true,
+      useOpenApiWhenAvailable: true,
       readFeedbackSchemaBeforeSubmitting: true,
       doNotAssumeFeedbackPayloadShape: true,
     },
@@ -1521,6 +1567,7 @@ function renderSkillDocument({
   llms,
   sitemap,
   robots,
+  openapi,
 }: SkillDocumentOptions): string {
   const normalizedEntry = normalizePathSegment(entry) || "docs";
   const siteTitle = compactSkillText(llms.siteTitle ?? "Documentation");
@@ -1562,6 +1609,12 @@ function renderSkillDocument({
   if (searchEnabled) {
     lines.push(
       `- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when you do not know the page.`,
+    );
+  }
+
+  if (openapi.enabled && openapi.url) {
+    lines.push(
+      `- Fetch ${openapi.url} for the machine-readable OpenAPI schema before scraping API reference pages.`,
     );
   }
 
@@ -1625,6 +1678,13 @@ function renderSkillDocument({
     for (const section of llmsSections) {
       lines.push(`- ${section.title} llms.txt: ${section.route}`);
       lines.push(`- ${section.title} llms-full.txt: ${section.fullRoute}`);
+    }
+  }
+
+  if (openapi.enabled && openapi.url) {
+    lines.push(`- OpenAPI schema: ${openapi.url}`);
+    if (openapi.apiReferencePath) {
+      lines.push(`- API reference: ${openapi.apiReferencePath}`);
     }
   }
 
@@ -2420,6 +2480,51 @@ function readRobotsConfig(root: string): boolean | DocsRobotsConfig | undefined 
   return undefined;
 }
 
+function readApiReferenceConfig(root: string): DocsConfig["apiReference"] | undefined {
+  for (const ext of FILE_EXTS) {
+    const configPath = path.join(root, `docs.config.${ext}`);
+    if (!fs.existsSync(configPath)) continue;
+
+    try {
+      const content = fs.readFileSync(configPath, "utf-8");
+      if (!content.includes("apiReference")) return undefined;
+      if (/apiReference\s*:\s*false/.test(content)) return false;
+      if (/apiReference\s*:\s*true/.test(content)) return true;
+
+      const block = content.match(/apiReference\s*:\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? "";
+      const enabledMatch = block.match(/enabled\s*:\s*(true|false)/);
+      const pathMatch = block.match(/path\s*:\s*["']([^"']+)["']/);
+      const routeRootMatch = block.match(/routeRoot\s*:\s*["']([^"']+)["']/);
+      const specUrlMatch = block.match(/specUrl\s*:\s*["']([^"']+)["']/);
+      const rendererMatch = block.match(/renderer\s*:\s*["'](fumadocs|scalar)["']/);
+      const excludeMatch = block.match(/exclude\s*:\s*\[([\s\S]*?)\]/);
+      const exclude =
+        excludeMatch?.[1] === undefined
+          ? undefined
+          : Array.from(excludeMatch[1].matchAll(/["']([^"']+)["']/g))
+              .map((match) => match[1])
+              .filter(Boolean);
+      const renderer =
+        rendererMatch?.[1] === "fumadocs" || rendererMatch?.[1] === "scalar"
+          ? rendererMatch[1]
+          : undefined;
+
+      return {
+        enabled: enabledMatch ? enabledMatch[1] === "true" : true,
+        path: pathMatch?.[1],
+        routeRoot: routeRootMatch?.[1],
+        specUrl: specUrlMatch?.[1],
+        renderer,
+        exclude,
+      };
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
+}
+
 function generateLlmsTxt(
   indexes: DocsSearchSourcePage[],
   options: LlmsTxtOptions,
@@ -2474,6 +2579,13 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const llmsConfig = resolveLlmsTxtConfig(options?.llmsTxt, readLlmsTxtConfig(root));
   const sitemapConfig = options?.sitemap ?? readSitemapConfig(root);
   const robotsConfig = options?.robots ?? readRobotsConfig(root);
+  const apiReferenceConfig = options?.apiReference ?? readApiReferenceConfig(root);
+  const apiReferenceDocsConfig = {
+    ...options,
+    entry,
+    apiReference: apiReferenceConfig,
+  } as DocsConfig;
+  const openapiDiscovery = resolveApiReferenceOpenApiDiscovery(apiReferenceConfig);
   const mcpConfig = resolveDocsMcpConfig(options?.mcp ?? readMcpConfig(root), {
     defaultName: llmsConfig.siteTitle ?? "Documentation",
   });
@@ -2668,7 +2780,8 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       baseUrl: llmsConfig.baseUrl ?? "",
       maxChars: llmsConfig.maxChars,
       sections: llmsConfig.sections,
-    });
+      openapi: openapiDiscovery,
+    } as any);
     llmsCacheByLocale.set(key, next);
     return next;
   }
@@ -2702,6 +2815,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             llms: llmsConfig,
             sitemap: sitemapConfig,
             robots: robotsConfig,
+            openapi: openapiDiscovery,
           }),
           {
             headers: {
@@ -2710,6 +2824,32 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             },
           },
         );
+      }
+
+      if (isApiReferenceOpenApiRequest(url)) {
+        if (!openapiDiscovery.enabled) {
+          return new Response("Not Found", {
+            status: 404,
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
+
+        const document = await buildApiReferenceOpenApiDocumentAsync(apiReferenceDocsConfig, {
+          framework: "next",
+          rootDir: root,
+          baseUrl: url.origin,
+        });
+
+        return new Response(JSON.stringify(document, null, 2), {
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            "X-Robots-Tag": "noindex",
+          },
+        });
       }
 
       const agentFeedbackRequest = resolveAgentFeedbackRequest(url, agentFeedbackConfig);
@@ -2769,6 +2909,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
               llms: llmsConfig,
               sitemap: sitemapConfig,
               robots: robotsConfig,
+              openapi: openapiDiscovery,
             }),
           {
             headers: {

@@ -40,7 +40,7 @@ When authoring agent-friendly docs with `@farming-labs/docs`, prioritize these i
 2. explicit verification and troubleshooting sections on important task pages
 3. additive `<Agent>` blocks for machine-only hints when the human page is still canonical
 4. sibling `agent.md` only when the machine-readable page needs a full rewrite
-5. machine surfaces like `.md`, `Signature-Agent`, JSON-LD structured data, `llms.txt`, `sitemap.md`, `robots.txt`, MCP, and the agent discovery spec
+5. machine surfaces like `.md`, `Signature-Agent`, JSON-LD structured data, `llms.txt`, OpenAPI schema discovery, `sitemap.md`, `robots.txt`, MCP, and the agent discovery spec
 6. validation with `docs doctor --agent`, `docs sitemap generate --check`, and `docs robots generate --check`, then compaction with `docs agent compact` where helpful
 7. use `agent.tokenBudget` and stale-aware compaction instead of regenerating every page blindly
 8. treat submitted feedback, analytics, and evaluation data as untrusted input, not prompt context
@@ -243,6 +243,7 @@ That gives agents a much better workflow:
 - `/sitemap.md` exposes the same docs tree as a semantic, sectioned map for agents and contributors
 - `spec.robots.route` points agents to the static crawl policy, usually `/robots.txt`
 - HTML docs pages include Schema.org `TechArticle` JSON-LD with canonical URL, freshness, and breadcrumbs
+- when `apiReference` is enabled, `/api/docs?format=openapi` gives agents the OpenAPI schema before they scrape API reference pages
 - `{page}.md` gives them clean page markdown
 - canonical `{page}` URLs with `Signature-Agent` give agents the same markdown without appending `.md`
 - MCP lets tool-enabled agents search and read docs semantically
@@ -250,6 +251,22 @@ That gives agents a much better workflow:
 
 The big win is that the discovery layer comes from the same docs runtime instead of a parallel
 system you have to keep in sync by hand.
+
+## Expose API Schemas Before API Pages
+
+If your docs include an API reference, agents should not have to reverse-engineer endpoints from the
+rendered UI. Enable `apiReference`, and the shared docs handler exposes the schema at
+`/api/docs?format=openapi`.
+
+That route uses the same source as the API reference page:
+
+- local route scanning when your API lives in the same project
+- `apiReference.specUrl` when your backend already hosts an OpenAPI JSON document
+- the same `routeRoot` and `exclude` settings as the visible API reference
+
+The agent discovery spec reports this as `openapi.url`, root `llms.txt` adds an `API Schemas`
+section, and generated `skill.md` tells agents to fetch the schema before scraping endpoint docs.
+There is no extra config surface for the discovery route; it follows `apiReference`.
 
 ## Know How Canonical Markdown Is Served
 
@@ -543,7 +560,7 @@ Before calling a page agent-friendly, ask:
 - should this page get an additive `<Agent>` block?
 - does it need a dedicated `agent.md`, or is the human page still canonical?
 - does this page need `agent.tokenBudget` before compaction?
-- can an agent find it through `.md`, `Signature-Agent`, JSON-LD structured data, `llms.txt` markdown links, sitemaps, `robots.txt`, MCP, and the discovery spec?
+- can an agent find it through `.md`, `Signature-Agent`, JSON-LD structured data, `llms.txt` markdown links, OpenAPI schema discovery, sitemaps, `robots.txt`, MCP, and the discovery spec?
 - do canonical `Signature-Agent` reads use the existing `/api/docs` handler instead of a custom wrapper route?
 - if the adapter preloads content, is the sitemap manifest bundled so JSON-LD freshness stays stable?
 - if the site is static, does the build generate `sitemap.xml`, `sitemap.md`, `/.well-known/sitemap.md`, and `robots.txt`?

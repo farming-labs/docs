@@ -24,6 +24,7 @@ import {
 import type { DocsSitemapConfig } from "./types.js";
 
 export const DEFAULT_DOCS_API_ROUTE = "/api/docs";
+export const DEFAULT_OPENAPI_SCHEMA_ROUTE = `${DEFAULT_DOCS_API_ROUTE}?format=openapi`;
 export const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 export const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
 export const DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE = "/.well-known/agent.json";
@@ -111,6 +112,23 @@ export interface DocsLlmsDiscoveryConfig {
   siteDescription?: string;
   maxChars?: LlmsTxtMaxCharsConfig;
   sections?: LlmsTxtSectionConfig[];
+  openapi?: boolean | DocsOpenApiDiscoveryConfig;
+}
+
+export interface DocsOpenApiDiscoveryConfig {
+  enabled?: boolean;
+  url?: string;
+  source?: "generated" | "configured";
+  specUrl?: string;
+  apiReferencePath?: string;
+}
+
+export interface DocsOpenApiResolvedDiscoveryConfig {
+  enabled: boolean;
+  url?: string;
+  source?: "generated" | "configured";
+  specUrl?: string;
+  apiReferencePath?: string;
 }
 
 export interface DocsLlmsTxtResolvedMaxChars {
@@ -175,6 +193,7 @@ export interface DocsAgentDiscoverySpecOptions {
   llms?: DocsLlmsDiscoveryConfig;
   sitemap?: boolean | DocsSitemapConfig;
   robots?: boolean | DocsRobotsConfig;
+  openapi?: boolean | DocsOpenApiDiscoveryConfig;
   markdown?: {
     acceptHeader?: boolean;
     signatureAgentHeader?: boolean;
@@ -190,6 +209,7 @@ export interface DocsSkillDocumentOptions {
   llms?: DocsLlmsDiscoveryConfig;
   sitemap?: boolean | DocsSitemapConfig;
   robots?: boolean | DocsRobotsConfig;
+  openapi?: boolean | DocsOpenApiDiscoveryConfig;
   markdown?: {
     acceptHeader?: boolean;
     signatureAgentHeader?: boolean;
@@ -665,6 +685,12 @@ function renderLlmsTxtPageList(pages: DocsLlmsTxtPageInput[], baseUrl: string): 
   return content;
 }
 
+function resolveDocsResourceUrl(baseUrl: string, url: string): string {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return url;
+  const normalized = url.startsWith("/") ? url : `/${url}`;
+  return `${baseUrl}${normalized}`;
+}
+
 function renderLlmsFullTxtPages(pages: DocsLlmsTxtPageInput[], baseUrl: string): string {
   let content = "";
   for (const page of pages) {
@@ -685,6 +711,7 @@ export function renderDocsLlmsTxt(
   const baseUrl = options.baseUrl ?? "";
   const maxChars = normalizeLlmsTxtMaxChars(options.maxChars);
   const sections = resolveDocsLlmsTxtSections(options);
+  const openapi = resolveDocsOpenApiDiscoveryConfig(options.openapi);
   const matchedPageUrls = new Set<string>();
 
   const generatedSections = sections.map((section) => {
@@ -724,6 +751,20 @@ export function renderDocsLlmsTxt(
       llmsTxt += "\n";
     }
     llmsTxt += "\n";
+  }
+  if (openapi.enabled && openapi.url) {
+    llmsTxt += "## API Schemas\n\n";
+    llmsTxt += `- [OpenAPI schema](${resolveDocsResourceUrl(
+      baseUrl,
+      openapi.url,
+    )}): Machine-readable API schema for tool use and API clients`;
+    if (openapi.apiReferencePath) {
+      llmsTxt += `; rendered API reference at ${resolveDocsResourceUrl(
+        baseUrl,
+        openapi.apiReferencePath,
+      )}`;
+    }
+    llmsTxt += "\n\n";
   }
   if (rootPages.length > 0 || generatedSections.length === 0) {
     llmsTxt += "## Pages\n\n";
@@ -1025,6 +1066,7 @@ export function renderDocsSkillDocument({
   llms,
   sitemap,
   robots,
+  openapi,
   markdown,
 }: DocsSkillDocumentOptions): string {
   const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
@@ -1037,6 +1079,7 @@ export function renderDocsSkillDocument({
   const feedbackEnabled = feedback?.enabled ?? false;
   const sitemapConfig = resolveDocsSitemapConfig(sitemap);
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
+  const openapiConfig = resolveDocsOpenApiDiscoveryConfig(openapi);
   const feedbackRoute = feedback?.route ?? DEFAULT_AGENT_FEEDBACK_ROUTE;
   const feedbackSchemaRoute = feedback?.schemaRoute ?? `${feedbackRoute}/schema`;
   const llmsSections = resolveDocsLlmsTxtSections(llms);
@@ -1086,6 +1129,10 @@ export function renderDocsSkillDocument({
     lines.push(
       `- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when you do not know the page.`,
     );
+  }
+
+  if (openapiConfig.enabled && openapiConfig.url) {
+    lines.push(`- Fetch ${openapiConfig.url} for the machine-readable OpenAPI schema before scraping API reference pages.`);
   }
 
   if (llmsEnabled) {
@@ -1148,6 +1195,13 @@ export function renderDocsSkillDocument({
     for (const section of llmsSections) {
       lines.push(`- ${section.title} llms.txt: ${section.route}`);
       lines.push(`- ${section.title} llms-full.txt: ${section.fullRoute}`);
+    }
+  }
+
+  if (openapiConfig.enabled && openapiConfig.url) {
+    lines.push(`- OpenAPI schema: ${openapiConfig.url}`);
+    if (openapiConfig.apiReferencePath) {
+      lines.push(`- API reference: ${openapiConfig.apiReferencePath}`);
     }
   }
 
@@ -1267,6 +1321,7 @@ export function buildDocsAgentDiscoverySpec({
   llms,
   sitemap,
   robots,
+  openapi,
   markdown,
 }: DocsAgentDiscoverySpecOptions) {
   const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
@@ -1278,6 +1333,7 @@ export function buildDocsAgentDiscoverySpec({
   const llmsSections = resolveDocsLlmsTxtSections(llms);
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms?.baseUrl });
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
+  const openapiConfig = resolveDocsOpenApiDiscoveryConfig(openapi);
 
   return {
     version: "1",
@@ -1307,6 +1363,8 @@ export function buildDocsAgentDiscoverySpec({
       sitemap: sitemapConfig.enabled,
       robots: robotsEnabled,
       structuredData: true,
+      apiReference: openapiConfig.enabled,
+      openapi: openapiConfig.enabled,
       agentFeedback: feedback?.enabled ?? false,
       locales: localesEnabled,
     },
@@ -1318,6 +1376,7 @@ export function buildDocsAgentDiscoverySpec({
       agentSpecWellKnown: DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
       agentSpecWellKnownJson: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
       agentSpecQuery: `${DEFAULT_DOCS_API_ROUTE}?agent=spec`,
+      openapi: DEFAULT_OPENAPI_SCHEMA_ROUTE,
     },
     markdown: {
       enabled: true,
@@ -1381,6 +1440,14 @@ export function buildDocsAgentDiscoverySpec({
       canonicalUrlField: "url",
       breadcrumbType: "BreadcrumbList",
     },
+    openapi: {
+      enabled: openapiConfig.enabled,
+      url: openapiConfig.url ?? null,
+      source: openapiConfig.source ?? null,
+      specUrl: openapiConfig.specUrl ?? null,
+      apiReferencePath: openapiConfig.apiReferencePath ?? null,
+      format: "OpenAPI 3.1",
+    },
     search: {
       enabled: searchEnabled,
       endpoint: `${DEFAULT_DOCS_API_ROUTE}?query={query}`,
@@ -1427,6 +1494,7 @@ export function buildDocsAgentDiscoverySpec({
     instructions: {
       preferMarkdownRoutes: true,
       useMcpWhenAvailable: true,
+      useOpenApiWhenAvailable: true,
       readFeedbackSchemaBeforeSubmitting: true,
       doNotAssumeFeedbackPayloadShape: true,
     },
@@ -1476,6 +1544,29 @@ function isRobotsDiscoveryEnabled(robots?: boolean | DocsRobotsConfig): boolean 
   if (robots === false) return false;
   if (robots && typeof robots === "object" && robots.enabled === false) return false;
   return true;
+}
+
+export function resolveDocsOpenApiDiscoveryConfig(
+  openapi?: boolean | DocsOpenApiDiscoveryConfig,
+): DocsOpenApiResolvedDiscoveryConfig {
+  if (openapi === false || openapi === undefined) return { enabled: false };
+  if (openapi === true) {
+    return {
+      enabled: true,
+      url: DEFAULT_OPENAPI_SCHEMA_ROUTE,
+      source: "generated",
+    };
+  }
+
+  if (openapi.enabled === false) return { enabled: false };
+
+  return {
+    enabled: true,
+    url: openapi.url ?? DEFAULT_OPENAPI_SCHEMA_ROUTE,
+    source: openapi.source ?? "generated",
+    specUrl: openapi.specUrl,
+    apiReferencePath: openapi.apiReferencePath,
+  };
 }
 
 function compactSkillText(value: string): string {

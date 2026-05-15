@@ -642,6 +642,52 @@ Start here.
     expect(text).toContain("- [Getting Started](/docs/getting-started.md): First steps");
   });
 
+  it("serves an OpenAPI schema through the shared docs api handler", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-openapi-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+    mkdirSync(join(rootDir, "app", "api", "hello"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "api", "hello", "route.ts"),
+      `/** Hello endpoint */
+export async function GET() {
+  return Response.json({ ok: true });
+}
+`,
+      "utf-8",
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      apiReference: {
+        enabled: true,
+        path: "api-reference",
+      },
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs?format=openapi"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/json");
+
+    const document = (await response.json()) as {
+      openapi: string;
+      paths: Record<string, Record<string, unknown>>;
+    };
+    expect(document.openapi).toBe("3.1.0");
+    expect(document.paths).toMatchObject({
+      "/api/hello": {
+        get: {
+          summary: "Hello endpoint",
+        },
+      },
+    });
+  });
+
   it("serves robots.txt by default through the shared docs api handler", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-robots-default-route-"));
     tempDirs.push(rootDir);
@@ -1586,6 +1632,10 @@ title: "Home"
           getNavigation: true,
         },
       },
+      apiReference: {
+        enabled: true,
+        path: "api-reference",
+      },
     });
 
     const response = await GET(new Request("http://localhost/api/docs/agent/spec"));
@@ -1604,6 +1654,7 @@ title: "Home"
       };
       capabilities: Record<string, boolean>;
       api: Record<string, string>;
+      openapi: Record<string, unknown>;
       markdown: Record<string, unknown>;
       llms: Record<string, string | boolean>;
       search: {
@@ -1667,6 +1718,8 @@ title: "Home"
       sitemap: true,
       robots: true,
       structuredData: true,
+      apiReference: true,
+      openapi: true,
       agentFeedback: true,
       locales: true,
     });
@@ -1678,6 +1731,15 @@ title: "Home"
       agentSpecWellKnown: "/.well-known/agent",
       agentSpecWellKnownJson: "/.well-known/agent.json",
       agentSpecQuery: "/api/docs?agent=spec",
+      openapi: "/api/docs?format=openapi",
+    });
+    expect(spec.openapi).toEqual({
+      enabled: true,
+      url: "/api/docs?format=openapi",
+      source: "generated",
+      specUrl: null,
+      apiReferencePath: "/api-reference",
+      format: "OpenAPI 3.1",
     });
     expect(spec.markdown).toMatchObject({
       enabled: true,
@@ -1804,6 +1866,7 @@ title: "Home"
       capabilities: Record<string, boolean>;
       markdown: { acceptHeader: string; pagePattern: string; rootPage: string };
       llms: Record<string, string | boolean>;
+      openapi: Record<string, unknown>;
       search: { enabled: boolean; endpoint: string; method: string };
       robots: { enabled: boolean; route: string; defaultRoute: string };
       structuredData: Record<string, unknown>;
@@ -1852,8 +1915,15 @@ title: "Home"
       sitemap: true,
       robots: true,
       structuredData: true,
+      apiReference: false,
+      openapi: false,
       agentFeedback: false,
       locales: false,
+    });
+    expect(spec.openapi).toMatchObject({
+      enabled: false,
+      url: null,
+      apiReferencePath: null,
     });
     expect(spec.markdown).toMatchObject({
       acceptHeader: "text/markdown",

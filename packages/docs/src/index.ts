@@ -64,6 +64,7 @@ export {
   DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
   DEFAULT_DOCS_API_ROUTE,
+  DEFAULT_OPENAPI_SCHEMA_ROUTE,
   DEFAULT_LLMS_FULL_TXT_ROUTE,
   DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
   DEFAULT_LLMS_TXT_MAX_CHARS,
@@ -102,6 +103,7 @@ export {
   resolveDocsLlmsTxtRequest,
   resolveDocsLlmsTxtSections,
   resolveDocsLlmsTxtFormat,
+  resolveDocsOpenApiDiscoveryConfig,
   selectDocsLlmsTxtContent,
   resolveDocsSkillFormat,
   resolveDocsMarkdownRequest,
@@ -119,6 +121,8 @@ export type {
   DocsLlmsTxtResolvedMaxChars,
   DocsLlmsTxtResolvedSection,
   DocsLlmsTxtSelectedContent,
+  DocsOpenApiDiscoveryConfig,
+  DocsOpenApiResolvedDiscoveryConfig,
 } from "./agent.js";
 export {
   DEFAULT_SITEMAP_MANIFEST_PATH,
