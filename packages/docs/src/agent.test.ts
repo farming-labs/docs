@@ -51,9 +51,9 @@ describe("agent route helpers", () => {
     expect(isDocsLlmsTxtPublicRequest(new URL("https://example.com/.well-known/llms.txt"))).toBe(
       true,
     );
-    expect(
-      isDocsLlmsTxtPublicRequest(new URL("https://example.com/api/docs?format=llms")),
-    ).toBe(false);
+    expect(isDocsLlmsTxtPublicRequest(new URL("https://example.com/api/docs?format=llms"))).toBe(
+      false,
+    );
 
     expect(isDocsSkillRequest(new URL("https://example.com/skill.md"))).toBe(true);
     expect(isDocsSkillRequest(new URL("https://example.com/.well-known/skill.md"))).toBe(true);
