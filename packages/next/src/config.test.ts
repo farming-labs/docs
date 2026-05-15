@@ -289,9 +289,11 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(existsSync(join(tmpDir, "app/api/docs/markdown/[[...slug]]/route.ts"))).toBe(false);
 
-    const rewrites = getBeforeFilesRewrites(await readRewrites(nextConfig));
+    const rewritesResult = await readRewrites(nextConfig);
+    const beforeFiles = getBeforeFilesRewrites(rewritesResult);
+    const afterFiles = getAfterFilesRewrites(rewritesResult);
 
-    expect(rewrites).toEqual(
+    expect(beforeFiles).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           source: "/api/docs/agent/spec",
@@ -312,30 +314,6 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/.well-known/mcp",
           destination: "/api/docs/mcp",
-        }),
-        expect.objectContaining({
-          source: "/llms.txt",
-          destination: "/api/docs?format=llms",
-        }),
-        expect.objectContaining({
-          source: "/llms-full.txt",
-          destination: "/api/docs?format=llms-full",
-        }),
-        expect.objectContaining({
-          source: "/.well-known/llms.txt",
-          destination: "/api/docs?format=llms",
-        }),
-        expect.objectContaining({
-          source: "/.well-known/llms-full.txt",
-          destination: "/api/docs?format=llms-full",
-        }),
-        expect.objectContaining({
-          source: "/docs/:section*/llms.txt",
-          destination: "/api/docs?format=llms&section=/docs/:section*/llms.txt",
-        }),
-        expect.objectContaining({
-          source: "/docs/:section*/llms-full.txt",
-          destination: "/api/docs?format=llms-full&section=/docs/:section*/llms-full.txt",
         }),
         expect.objectContaining({
           source: "/skill.md",
@@ -399,6 +377,34 @@ describe("withDocs (app dir: src/app vs app)", () => {
         }),
       ]),
     );
+    expect(afterFiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/llms.txt",
+          destination: "/api/docs?format=llms",
+        }),
+        expect.objectContaining({
+          source: "/llms-full.txt",
+          destination: "/api/docs?format=llms-full",
+        }),
+        expect.objectContaining({
+          source: "/.well-known/llms.txt",
+          destination: "/api/docs?format=llms",
+        }),
+        expect.objectContaining({
+          source: "/.well-known/llms-full.txt",
+          destination: "/api/docs?format=llms-full",
+        }),
+        expect.objectContaining({
+          source: "/docs/:section*/llms.txt",
+          destination: "/api/docs?format=llms&section=/docs/:section*/llms.txt",
+        }),
+        expect.objectContaining({
+          source: "/docs/:section*/llms-full.txt",
+          destination: "/api/docs?format=llms-full&section=/docs/:section*/llms-full.txt",
+        }),
+      ]),
+    );
 
     const acceptPattern = new RegExp(MARKDOWN_ACCEPT_HEADER.value);
     expect(acceptPattern.test("text/markdown")).toBe(true);
@@ -449,6 +455,44 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/robots.txt",
           destination: "/api/docs?format=robots",
+        }),
+      ]),
+    );
+  });
+
+  it("lets native static llms.txt files win before generated llms rewrites", async () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    mkdirSync(join(tmpDir, "public"), { recursive: true });
+    writeFileSync(join(tmpDir, "public", "llms.txt"), "# Custom llms\n", "utf-8");
+    writeFileSync(join(tmpDir, "public", "llms-full.txt"), "# Custom full llms\n", "utf-8");
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+    const rewritesResult = await readRewrites(nextConfig);
+    const beforeFiles = getBeforeFilesRewrites(rewritesResult);
+    const afterFiles = getAfterFilesRewrites(rewritesResult);
+
+    expect(beforeFiles).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/llms.txt",
+          destination: "/api/docs?format=llms",
+        }),
+        expect.objectContaining({
+          source: "/llms-full.txt",
+          destination: "/api/docs?format=llms-full",
+        }),
+      ]),
+    );
+    expect(afterFiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/llms.txt",
+          destination: "/api/docs?format=llms",
+        }),
+        expect.objectContaining({
+          source: "/llms-full.txt",
+          destination: "/api/docs?format=llms-full",
         }),
       ]),
     );
@@ -839,30 +883,6 @@ describe("withDocs (app dir: src/app vs app)", () => {
           destination: "/api/docs/mcp",
         }),
         expect.objectContaining({
-          source: "/llms.txt",
-          destination: "/api/docs?format=llms",
-        }),
-        expect.objectContaining({
-          source: "/llms-full.txt",
-          destination: "/api/docs?format=llms-full",
-        }),
-        expect.objectContaining({
-          source: "/.well-known/llms.txt",
-          destination: "/api/docs?format=llms",
-        }),
-        expect.objectContaining({
-          source: "/.well-known/llms-full.txt",
-          destination: "/api/docs?format=llms-full",
-        }),
-        expect.objectContaining({
-          source: "/docs/:section*/llms.txt",
-          destination: "/api/docs?format=llms&section=/docs/:section*/llms.txt",
-        }),
-        expect.objectContaining({
-          source: "/docs/:section*/llms-full.txt",
-          destination: "/api/docs?format=llms-full&section=/docs/:section*/llms-full.txt",
-        }),
-        expect.objectContaining({
           source: "/skill.md",
           destination: "/api/docs?format=skill",
         }),
@@ -895,6 +915,30 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/legacy",
           destination: "/docs/getting-started/quickstart",
+        }),
+        expect.objectContaining({
+          source: "/llms.txt",
+          destination: "/api/docs?format=llms",
+        }),
+        expect.objectContaining({
+          source: "/llms-full.txt",
+          destination: "/api/docs?format=llms-full",
+        }),
+        expect.objectContaining({
+          source: "/.well-known/llms.txt",
+          destination: "/api/docs?format=llms",
+        }),
+        expect.objectContaining({
+          source: "/.well-known/llms-full.txt",
+          destination: "/api/docs?format=llms-full",
+        }),
+        expect.objectContaining({
+          source: "/docs/:section*/llms.txt",
+          destination: "/api/docs?format=llms&section=/docs/:section*/llms.txt",
+        }),
+        expect.objectContaining({
+          source: "/docs/:section*/llms-full.txt",
+          destination: "/api/docs?format=llms-full&section=/docs/:section*/llms-full.txt",
         }),
       ]),
     );

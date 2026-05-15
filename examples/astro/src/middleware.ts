@@ -1,4 +1,8 @@
-import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import {
+  isDocsLlmsTxtPublicRequest,
+  isDocsMcpRequest,
+  isDocsPublicGetRequest,
+} from "@farming-labs/docs";
 import type { MiddlewareHandler } from "astro";
 import config from "./lib/docs.config";
 import { GET, MCP } from "./lib/docs.server";
@@ -16,6 +20,14 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
       status: 405,
       headers: { Allow: "GET, HEAD, POST, DELETE" },
     });
+  }
+
+  if (
+    (method === "GET" || method === "HEAD") &&
+    isDocsLlmsTxtPublicRequest(context.url, config.llmsTxt)
+  ) {
+    const nativeResponse = await next();
+    if (nativeResponse.status !== 404) return nativeResponse;
   }
 
   if (
