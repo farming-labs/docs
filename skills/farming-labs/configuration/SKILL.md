@@ -282,7 +282,7 @@ Behavior:
 - `path` changes where the CLI reads and writes the file
 - existing files are preserved unless the user passes `--append` or `--force`
 - generated policy includes docs entry routes, `.md` routes, `llms.txt`, sitemap routes,
-  `skill.md`, MCP aliases, agent discovery routes, and common AI crawler user agents
+  `AGENTS.md`, `skill.md`, MCP aliases, agent discovery routes, and common AI crawler user agents
 - the agent discovery JSON advertises `robots.enabled`, `robots.route`, and `robots.defaultRoute`
   as a pointer to the static policy file
 - `baseUrl` lets the generator include an absolute `Sitemap:` line
@@ -577,17 +577,18 @@ feedback: {
 Default behavior:
 
 - `GET /.well-known/agent.json` is the preferred public agent discovery document, with `/.well-known/agent` as fallback and `/api/docs/agent/spec` as the canonical framework route
-- the discovery document includes site identity, locale config, capability flags, search, markdown routes, root and section `llms.txt` routes, OpenAPI schema discovery when `apiReference` is enabled, sitemap routes, `robots.route`, root `skill.md` metadata, Skills CLI install metadata, MCP, and feedback routes
+- the discovery document includes site identity, locale config, capability flags, search, markdown routes, root and section `llms.txt` routes, OpenAPI schema discovery when `apiReference` is enabled, sitemap routes, `robots.route`, generated/root `AGENTS.md` metadata, root `skill.md` metadata, Skills CLI install metadata, MCP, and feedback routes
+- `GET /AGENTS.md` serves the root `AGENTS.md` or `AGENT.md` file when present, `GET /.well-known/AGENTS.md` is the fallback alias, and `GET /api/docs?format=agents` is the shared API format
 - `GET /skill.md` serves the root `skill.md` file when present, `GET /.well-known/skill.md` is the fallback alias, and `GET /api/docs?format=skill` is the shared API format
 - `GET /api/docs/agent/feedback/schema` returns the machine-readable schema
 - `POST /api/docs/agent/feedback` accepts `{ context?, payload }`; without `onFeedback` it returns `{ ok: true, handled: false }`
 - the shared `/api/docs` handler remains the source of truth
 - **Next.js:** `withDocs()` adds the public rewrites automatically
 - **TanStack Start / SvelteKit / Astro / Nuxt:** the shared `/api/docs?feedback=agent` query route is advertised and handled by the existing server wrapper
-- **TanStack Start:** current `init` scaffolds one `src/routes/$.ts` public forwarder for well-known routes and `/skill.md`
-- **SvelteKit:** current `init` scaffolds one `src/hooks.server.ts` public forwarder for well-known routes and `/skill.md`
-- **Astro:** current `init` scaffolds one `src/middleware.ts` public forwarder for well-known routes and `/skill.md`
-- **Nuxt:** current `init` scaffolds one `server/middleware/docs-public.ts` public forwarder for well-known routes and `/skill.md`
+- **TanStack Start:** current `init` scaffolds one `src/routes/$.ts` public forwarder for well-known routes, `/AGENTS.md`, and `/skill.md`
+- **SvelteKit:** current `init` scaffolds one `src/hooks.server.ts` public forwarder for well-known routes, `/AGENTS.md`, and `/skill.md`
+- **Astro:** current `init` scaffolds one `src/middleware.ts` public forwarder for well-known routes, `/AGENTS.md`, and `/skill.md`
+- **Nuxt:** current `init` scaffolds one `server/middleware/docs-public.ts` public forwarder for well-known routes, `/AGENTS.md`, and `/skill.md`
 - `feedback.agent` alone does not enable the human footer UI
 - set `feedback: false` or `feedback: { agent: false }` to opt out of the agent feedback routes
 
@@ -729,7 +730,7 @@ Notes:
 - **CLI:** `init --api-reference` writes the `apiReference` block and scaffolds the non-Next route handler files automatically
 - `path` controls the public URL for the generated reference
 - `GET /api/docs?format=openapi` returns the machine-readable OpenAPI schema when `apiReference` is enabled
-- agent discovery, generated `llms.txt`, and generated `skill.md` advertise the OpenAPI schema route so agents can fetch schemas before scraping API pages
+- agent discovery, generated `llms.txt`, generated `AGENTS.md`, and generated `skill.md` advertise the OpenAPI schema route so agents can fetch schemas before scraping API pages
 - `specUrl` points to a hosted OpenAPI JSON document; when set, local route scanning is skipped
 - `routeRoot` controls the filesystem route root to scan
 - `exclude` accepts either URL-style paths (`"/api/hello"`) or route-root-relative entries (`"hello"` / `"hello/route.ts"`)

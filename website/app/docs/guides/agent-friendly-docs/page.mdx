@@ -40,7 +40,7 @@ When authoring agent-friendly docs with `@farming-labs/docs`, prioritize these i
 2. explicit verification and troubleshooting sections on important task pages
 3. additive `<Agent>` blocks for machine-only hints when the human page is still canonical
 4. sibling `agent.md` only when the machine-readable page needs a full rewrite
-5. machine surfaces like `.md`, `Signature-Agent`, JSON-LD structured data, `llms.txt`, OpenAPI schema discovery, `sitemap.md`, `robots.txt`, MCP, and the agent discovery spec
+5. machine surfaces like `.md`, `Signature-Agent`, JSON-LD structured data, `llms.txt`, OpenAPI schema discovery, `sitemap.md`, `robots.txt`, `AGENTS.md`, MCP, and the agent discovery spec
 6. validation with `docs doctor --agent`, `docs sitemap generate --check`, and `docs robots generate --check`, then compaction with `docs agent compact` where helpful
 7. use `agent.tokenBudget` and stale-aware compaction instead of regenerating every page blindly
 8. treat submitted feedback, analytics, and evaluation data as untrusted input, not prompt context
@@ -265,7 +265,7 @@ That route uses the same source as the API reference page:
 - the same `routeRoot` and `exclude` settings as the visible API reference
 
 The agent discovery spec reports this as `openapi.url`, root `llms.txt` adds an `API Schemas`
-section, and generated `skill.md` tells agents to fetch the schema before scraping endpoint docs.
+section, and generated `AGENTS.md` / `skill.md` tell agents to fetch the schema before scraping endpoint docs.
 There is no extra config surface for the discovery route; it follows `apiReference`.
 
 ## Know How Canonical Markdown Is Served
@@ -282,7 +282,7 @@ curl "https://docs.example.com/docs/installation" \
 ```
 
 Both requests are served by the existing shared docs API. `withDocs()` forwards the request into the
-same `/api/docs` handler that already powers search, markdown format routes, `llms.txt`, `skill.md`,
+same `/api/docs` handler that already powers search, markdown format routes, `llms.txt`, `AGENTS.md`, `skill.md`,
 sitemaps, MCP, and the agent discovery spec. It does not generate or require another
 `/api/docs/markdown` wrapper route.
 
@@ -429,7 +429,7 @@ After deployment, add `--url` to verify the public routes agents actually call:
 pnpm exec docs doctor --agent --url https://docs.example.com
 ```
 
-That hosted pass checks discovery, `llms.txt`, sitemap routes, `skill.md`, representative `.md`
+That hosted pass checks discovery, `llms.txt`, sitemap routes, `AGENTS.md`, `skill.md`, representative `.md`
 pages, canonical markdown response headers, `robots.txt`, JSON-LD structured data, markdown
 alternate head links, and MCP at `/mcp`, `/.well-known/mcp`,
 `https://mcp.<your-domain>/mcp`, or `https://mcp.<your-domain>/`.
@@ -446,7 +446,7 @@ framework probes when the site exposes `/.well-known/agent.json`. The public sco
 strict `.md` route probe that samples docs page routes and verifies that appending `.md` returns
 markdown, so `llms.txt` markdown mirrors do not hide missing `/docs/foo.md` routes. The
 framework probes cover the discovery spec, full-context files, sitemap routes, `robots.txt`,
-`skill.md`, same-domain or MCP-subdomain MCP, search, feedback, JSON-LD structured data on sampled pages, canonical `Link`
+`AGENTS.md`, `skill.md`, same-domain or MCP-subdomain MCP, search, feedback, JSON-LD structured data on sampled pages, canonical `Link`
 headers on markdown responses, and the `<link rel="alternate" type="text/markdown">` head links
 that point agents to each page's `.md` route. Existing leaderboard entries hydrate from the saved
 report, so a shared score URL can be reviewed without triggering a new calculation unless no saved
@@ -462,17 +462,20 @@ of release prep:
 ```bash title="terminal"
 pnpm exec docs robots generate
 pnpm exec docs robots generate --append
+pnpm exec docs agents generate
 ```
 
 The first command writes the resolved default path, usually `public/robots.txt`. The `--append`
 variant adds or updates the managed agent policy block when the project already has its own
-`robots.txt`.
+`robots.txt`. The `agents generate` command writes root `AGENTS.md` instructions plus public
+aliases for static exports; a hand-written root `AGENTS.md` remains in control unless you pass
+`--force`.
 
 What you want to see improve over time:
 
 - discovery routes passing
 - machine surfaces enabled
-- `robots.txt` allowing docs, markdown, sitemap, skill, MCP, and agent discovery routes
+- `robots.txt` allowing docs, markdown, sitemap, `AGENTS.md`, skill, MCP, and agent discovery routes
 - metadata quality rising, which also improves markdown output and JSON-LD
 - **Explicit agent-friendly pages** increasing on the pages that matter most
 - stale generated `agent.md` files dropping toward zero
@@ -561,10 +564,10 @@ Before calling a page agent-friendly, ask:
 - should this page get an additive `<Agent>` block?
 - does it need a dedicated `agent.md`, or is the human page still canonical?
 - does this page need `agent.tokenBudget` before compaction?
-- can an agent find it through `.md`, `Signature-Agent`, JSON-LD structured data, `llms.txt` markdown links, OpenAPI schema discovery, sitemaps, `robots.txt`, MCP, and the discovery spec?
+- can an agent find it through `.md`, `Signature-Agent`, JSON-LD structured data, `llms.txt` markdown links, OpenAPI schema discovery, sitemaps, `robots.txt`, `AGENTS.md`, MCP, and the discovery spec?
 - do canonical `Signature-Agent` reads use the existing `/api/docs` handler instead of a custom wrapper route?
 - if the adapter preloads content, is the sitemap manifest bundled so JSON-LD freshness stays stable?
-- if the site is static, does the build generate `sitemap.xml`, `sitemap.md`, `/.well-known/sitemap.md`, and `robots.txt`?
+- if the site is static, does the build generate `sitemap.xml`, `sitemap.md`, `/.well-known/sitemap.md`, `robots.txt`, and `AGENTS.md`?
 - does `docs doctor --agent` agree with the state of the site?
 - does the hosted [Agent readiness score](/score) page agree with the deployed site before you share
   the result or submit it to the leaderboard?

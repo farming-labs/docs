@@ -41,8 +41,9 @@ Eleven built-in theme entrypoints: `fumadocs` (default), `darksharp`, `pixel-bor
 
 - **MDX components** — built-ins like `Callout`, `Tabs`, and `HoverLink` are available without imports.
 - **Page feedback** — enable with `feedback: true` or `feedback: { enabled: true, onFeedback() {} }`.
-- **Agent discovery spec** — agents should call `/.well-known/agent.json`, fall back to `/.well-known/agent`, and use `/api/docs/agent/spec` as the canonical framework route. The spec discovers site identity, locale config, capability flags, search, markdown routes, JSON-LD structured data support, `llms.txt` routes, OpenAPI schema discovery when `apiReference` is enabled, sitemap routes, `robots.route`, root `skill.md` route, Skills CLI install metadata, MCP config, and feedback endpoints generated from `docs.config`.
-- **Generated robots.txt** — use `docs robots generate` to write a static policy that allows docs routes, `.md` routes, `llms.txt`, sitemaps, `skill.md`, MCP aliases, agent discovery routes, and common AI crawler user agents. Existing files are preserved by default; use `--append` to add the managed block or `--force` to replace the file.
+- **Agent discovery spec** — agents should call `/.well-known/agent.json`, fall back to `/.well-known/agent`, and use `/api/docs/agent/spec` as the canonical framework route. The spec discovers site identity, locale config, capability flags, search, markdown routes, JSON-LD structured data support, `llms.txt` routes, OpenAPI schema discovery when `apiReference` is enabled, sitemap routes, `robots.route`, generated/root `AGENTS.md`, root `skill.md` route, Skills CLI install metadata, MCP config, and feedback endpoints generated from `docs.config`.
+- **Generated AGENTS.md** — `GET /AGENTS.md`, `GET /.well-known/AGENTS.md`, and `GET /api/docs?format=agents` return coding-agent instructions by default. A root `AGENTS.md` or `AGENT.md` overrides the generated fallback; use `docs agents generate` for static exports.
+- **Generated robots.txt** — use `docs robots generate` to write a static policy that allows docs routes, `.md` routes, `llms.txt`, sitemaps, `AGENTS.md`, `skill.md`, MCP aliases, agent discovery routes, and common AI crawler user agents. Existing files are preserved by default; use `--append` to add the managed block or `--force` to replace the file.
 - **Structured data** — every docs page emits Schema.org `TechArticle` JSON-LD with title, description, canonical URL, freshness, and breadcrumbs. It reuses `sitemap.baseUrl`, `llmsTxt.baseUrl`, `robots.baseUrl`, or `ai.docsUrl`; no separate config flag is required.
 - **Agent feedback endpoints** — add `feedback.agent` when agents should report structured `{ context?, payload }` feedback through `/api/docs/agent/feedback` and `/api/docs/agent/feedback/schema`.
 - **Page actions** — enable with `pageActions.copyMarkdown` and `pageActions.openDocs`.
@@ -127,7 +128,7 @@ Important framework behavior:
 - **Next.js**: `withDocs()` auto-generates the `/{path}` route when `apiReference` is enabled.
 - **TanStack Start, SvelteKit, Astro, Nuxt**: `docs.config` controls scanning and theming, but the app still needs the `/{path}` route handler.
 - **CLI**: `init --api-reference` writes the config and scaffolds those handler files for you.
-- **Agents**: `GET /api/docs?format=openapi` serves the machine-readable schema and is advertised through agent discovery, generated `llms.txt`, and generated `skill.md`.
+- **Agents**: `GET /api/docs?format=openapi` serves the machine-readable schema and is advertised through agent discovery, generated `llms.txt`, generated `AGENTS.md`, and generated `skill.md`.
 
 Remote OpenAPI JSON example:
 

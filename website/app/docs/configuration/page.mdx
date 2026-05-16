@@ -306,7 +306,7 @@ export default defineDocs({
 ```
 
 The generated policy explicitly allows the docs entry, `.md` routes, `llms.txt`, sitemap routes,
-`skill.md`, MCP aliases, and agent discovery routes. It also includes common AI crawler user agents
+`AGENTS.md`, `skill.md`, MCP aliases, and agent discovery routes. It also includes common AI crawler user agents
 such as `GPTBot`, `ChatGPT-User`, `ClaudeBot`, `CCBot`, and `Google-Extended`.
 
 Generate the file with:
@@ -1290,9 +1290,9 @@ Agents should discover the configured routes first with `GET /.well-known/agent.
 canonical framework route. Generated projects wire all three to the same JSON. The spec includes
 site identity, locale config, capability flags, the search endpoint, markdown route pattern,
 `Accept: text/markdown` contract, `Signature-Agent` support, API, public, and section-level
-`llms.txt` routes, sitemap routes, the `robots.txt` route, root `skill.md` metadata, Skills CLI
-install metadata, MCP public/well-known endpoints and enabled tools, and the active agent feedback
-schema and submit endpoints. Use `docs robots generate` when a static export or committed policy
+`llms.txt` routes, sitemap routes, the `robots.txt` route, generated `AGENTS.md` metadata, root
+`skill.md` metadata, Skills CLI install metadata, MCP public/well-known endpoints and enabled tools,
+and the active agent feedback schema and submit endpoints. Use `docs robots generate` when a static export or committed policy
 file should own the advertised route.
 
 ```ts title="docs.config.ts"
@@ -1313,9 +1313,11 @@ Default behavior:
 - `GET /.well-known/agent.json` is the preferred public agent discovery URL
 - `GET /.well-known/agent` is the public fallback discovery URL
 - `GET /api/docs/agent/spec` returns the canonical framework discovery document
+- `GET /AGENTS.md` serves a root `AGENTS.md` or `AGENT.md` file when present, and otherwise returns a generated fallback
+- `GET /.well-known/AGENTS.md` and `GET /api/docs?format=agents` return the same agent instructions
 - `GET /skill.md` serves a root `skill.md` file when present, and otherwise returns a generated fallback
 - `GET /.well-known/skill.md` and `GET /api/docs?format=skill` return the same skill document
-- the discovery JSON advertises `agentSpecDefault`, `agentSpecFallback`, `skills.file`, `skills.route`, the root and section `llms.txt` routes, `robots.route`, and sitemap routes when enabled
+- the discovery JSON advertises `agentSpecDefault`, `agentSpecFallback`, `agents.file`, `agents.route`, `skills.file`, `skills.route`, the root and section `llms.txt` routes, `robots.route`, and sitemap routes when enabled
 - `GET /api/docs/agent/feedback/schema` returns the feedback schema
 - `POST /api/docs/agent/feedback` accepts `{ context?, payload }`; without `onFeedback` it returns `{ ok: true, handled: false }`
 - non-Next server adapters also expose the same contract through `GET /api/docs?feedback=agent&schema=1` and `POST /api/docs?feedback=agent`

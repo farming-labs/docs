@@ -507,6 +507,28 @@ Install the package.
       expect(response.headers.get("content-type")).toContain("text/markdown");
       expect(await response.text()).toBe(skillApiText);
     }
+
+    const agentsApi = await GET(new Request("http://localhost/api/docs?format=agents"));
+    const agentsApiText = await agentsApi.text();
+    expect(agentsApi.status).toBe(200);
+    expect(agentsApi.headers.get("content-type")).toContain("text/markdown");
+    expect(agentsApiText).toContain("# Agent Instructions");
+    expect(agentsApiText).toContain("Site: Alias Docs");
+    expect(agentsApiText).toContain("/AGENTS.md");
+    expect(agentsApiText).toContain("/api/docs?format=agents");
+
+    for (const path of [
+      "/AGENTS.md",
+      "/.well-known/AGENTS.md",
+      "/AGENT.md",
+      "/.well-known/AGENT.md",
+      "/api/internal/docs?format=agents",
+    ]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("text/markdown");
+      expect(await response.text()).toBe(agentsApiText);
+    }
   });
 
   it("serves opt-in section-level llms.txt routes", async () => {
@@ -784,6 +806,57 @@ Use the product-specific workflow first.
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("text/markdown");
       expect(await response.text()).toBe(skillApiText);
+    }
+  });
+
+  it("serves a root AGENTS.md file before falling back to generated agent instructions", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-root-agents-route-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+---
+
+# Introduction
+`,
+    );
+    writeFileSync(
+      join(rootDir, "AGENTS.md"),
+      `# Custom Agent Instructions
+
+Use the product-specific coding workflow first.
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+    });
+
+    const agentsApi = await GET(new Request("http://localhost/api/docs?format=agents"));
+    const agentsApiText = await agentsApi.text();
+    expect(agentsApi.status).toBe(200);
+    expect(agentsApi.headers.get("content-type")).toContain("text/markdown");
+    expect(agentsApiText).toContain("# Custom Agent Instructions");
+    expect(agentsApiText).toContain("product-specific coding workflow");
+    expect(agentsApiText).not.toContain("# Agent Instructions");
+
+    for (const path of [
+      "/AGENTS.md",
+      "/.well-known/AGENTS.md",
+      "/AGENT.md",
+      "/.well-known/AGENT.md",
+      "/api/internal/docs?format=agents",
+    ]) {
+      const response = await GET(new Request(`http://localhost${path}`));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("text/markdown");
+      expect(await response.text()).toBe(agentsApiText);
     }
   });
 
@@ -1165,6 +1238,7 @@ Install the package.
 
     await GET(new Request("http://localhost/api/docs/agent/spec"));
     await GET(new Request("http://localhost/api/docs/agent/feedback/schema"));
+    await GET(new Request("http://localhost/api/docs?format=agents"));
     await GET(new Request("http://localhost/api/docs?format=skill"));
     await GET(new Request("http://localhost/api/docs?format=markdown&path=guides/setup"));
     await GET(new Request("http://localhost/docs/guides/setup.md"));
@@ -1227,6 +1301,7 @@ Install the package.
     expect(events.map((event) => event.type)).toEqual(
       expect.arrayContaining([
         "agent_spec_request",
+        "agents_request",
         "agent_feedback_schema",
         "skill_request",
         "agent_read",
@@ -1657,6 +1732,7 @@ title: "Home"
       openapi: Record<string, unknown>;
       markdown: Record<string, unknown>;
       llms: Record<string, string | boolean>;
+      agents: Record<string, unknown>;
       search: {
         enabled: boolean;
         endpoint: string;
@@ -1711,6 +1787,7 @@ title: "Home"
       markdownRoutes: true,
       agentMdOverrides: true,
       agentBlocks: true,
+      agents: true,
       llms: true,
       skills: true,
       mcp: true,
@@ -1731,6 +1808,7 @@ title: "Home"
       agentSpecWellKnown: "/.well-known/agent",
       agentSpecWellKnownJson: "/.well-known/agent.json",
       agentSpecQuery: "/api/docs?agent=spec",
+      agents: "/api/docs?format=agents",
       openapi: "/api/docs?format=openapi",
     });
     expect(spec.openapi).toEqual({
@@ -1758,6 +1836,15 @@ title: "Home"
       publicFull: "/llms-full.txt",
       wellKnownTxt: "/.well-known/llms.txt",
       wellKnownFull: "/.well-known/llms-full.txt",
+    });
+    expect(spec.agents).toEqual({
+      enabled: true,
+      file: "AGENTS.md",
+      route: "/AGENTS.md",
+      wellKnown: "/.well-known/AGENTS.md",
+      api: "/api/docs?format=agents",
+      generatedFallback: true,
+      aliases: ["/AGENT.md", "/.well-known/AGENT.md"],
     });
     expect(spec.search).toEqual({
       enabled: true,
@@ -1866,6 +1953,7 @@ title: "Home"
       capabilities: Record<string, boolean>;
       markdown: { acceptHeader: string; pagePattern: string; rootPage: string };
       llms: Record<string, string | boolean>;
+      agents: Record<string, unknown>;
       openapi: Record<string, unknown>;
       search: { enabled: boolean; endpoint: string; method: string };
       robots: { enabled: boolean; route: string; defaultRoute: string };
@@ -1908,6 +1996,7 @@ title: "Home"
       markdownRoutes: true,
       agentMdOverrides: true,
       agentBlocks: true,
+      agents: true,
       llms: true,
       skills: true,
       mcp: false,
@@ -1940,6 +2029,14 @@ title: "Home"
       publicFull: "/llms-full.txt",
       wellKnownTxt: "/.well-known/llms.txt",
       wellKnownFull: "/.well-known/llms-full.txt",
+    });
+    expect(spec.agents).toMatchObject({
+      enabled: true,
+      file: "AGENTS.md",
+      route: "/AGENTS.md",
+      wellKnown: "/.well-known/AGENTS.md",
+      api: "/api/docs?format=agents",
+      generatedFallback: true,
     });
     expect(spec.search).toMatchObject({
       enabled: false,

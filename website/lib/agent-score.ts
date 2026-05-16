@@ -12,6 +12,8 @@ import { isIP } from "node:net";
 import { CATEGORIES, computeScore, runChecks } from "afdocs";
 import type { CheckResult, ReportResult, ScoreResult } from "afdocs";
 import {
+  DEFAULT_AGENTS_MD_ROUTE,
+  DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
   DEFAULT_LLMS_FULL_TXT_ROUTE,
   DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
@@ -702,6 +704,7 @@ interface DiscoveryView {
   sitemapRoutes: string[];
   robotsEnabled: boolean;
   robotsRoute: string;
+  agentsRoutes: string[];
   mcpRoutes: string[];
   markdownRoute?: string;
   searchEndpoint?: string;
@@ -746,6 +749,7 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
       sitemapRoutes: [DEFAULT_SITEMAP_XML_ROUTE, DEFAULT_SITEMAP_MD_ROUTE],
       robotsEnabled: true,
       robotsRoute: DEFAULT_ROBOTS_TXT_ROUTE,
+      agentsRoutes: [DEFAULT_AGENTS_MD_ROUTE, DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE],
       mcpRoutes: [DEFAULT_MCP_PUBLIC_ROUTE, DEFAULT_MCP_WELL_KNOWN_ROUTE],
     };
   }
@@ -755,6 +759,7 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
     llms: readCapability(root, capabilities, "llms"),
     sitemap: readCapability(root, capabilities, "sitemap"),
     robots: readCapability(root, capabilities, "robots"),
+    agents: readCapability(root, capabilities, "agents"),
     skills: readCapability(root, capabilities, "skills"),
     markdownRoutes: readCapability(root, capabilities, "markdownRoutes"),
     mcp: readCapability(root, capabilities, "mcp"),
@@ -807,6 +812,15 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
   const robotsRoot = asRecord(root.robots);
   const robotsEnabled = robotsRoot?.enabled === false ? false : (cap.robots ?? true);
   const robotsRoute = readDiscoveryRoute(robotsRoot?.route) ?? DEFAULT_ROBOTS_TXT_ROUTE;
+  const agentsRoot = asRecord(root.agents);
+  const agentsRoutes = Array.from(
+    new Set(
+      [
+        readDiscoveryRoute(agentsRoot?.route) ?? DEFAULT_AGENTS_MD_ROUTE,
+        readDiscoveryRoute(agentsRoot?.wellKnown) ?? DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
+      ].filter((value): value is string => typeof value === "string"),
+    ),
+  );
 
   const mcpRoot = asRecord(root.mcp);
   const advertisedMcpEndpoints = (mcpRoot?.publicEndpoints ?? mcpRoot?.endpoints) as unknown;
@@ -845,6 +859,7 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
     sitemapRoutes,
     robotsEnabled,
     robotsRoute,
+    agentsRoutes,
     mcpRoutes,
     markdownRoute,
     searchEndpoint: readDiscoveryRoute(searchRoot?.endpoint),
@@ -1624,6 +1639,7 @@ async function buildFrameworkChecks(
     fullContextProbes,
     sitemapProbes,
     robotsProbe,
+    agentsProbes,
     skillProbes,
     mcpProbes,
     searchProbe,
@@ -1637,6 +1653,9 @@ async function buildFrameworkChecks(
     view.robotsEnabled
       ? probeTextRoute(frameworkBaseUrl, view.robotsRoute, "text/plain, */*")
       : Promise.resolve(undefined),
+    view.capabilities.agents === false
+      ? Promise.resolve([])
+      : Promise.all(view.agentsRoutes.map((route) => probeTextRoute(frameworkBaseUrl, route))),
     Promise.all(
       [DEFAULT_SKILL_MD_ROUTE, DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE].map((route) =>
         probeTextRoute(frameworkBaseUrl, route),
@@ -1761,6 +1780,35 @@ async function buildFrameworkChecks(
         passing
           ? undefined
           : "Publish an agent-friendly robots.txt with `docs robots generate --append`.",
+      ),
+    );
+  }
+
+  if (view.capabilities.agents === false) {
+    checks.push(
+      makeCheck(
+        "framework:agents",
+        "Agent instructions",
+        "warn",
+        0,
+        3,
+        "Discovery spec reports AGENTS.md as disabled.",
+        "Expose AGENTS.md routes so coding agents can bootstrap from site-level instructions.",
+      ),
+    );
+  } else {
+    const agentsScore = scoreRouteProbes(agentsProbes, 3);
+    checks.push(
+      makeCheck(
+        "framework:agents",
+        "Agent instructions",
+        agentsScore.status,
+        agentsScore.score,
+        3,
+        agentsProbes.map((probe) => probe.detail).join(" "),
+        agentsScore.status === "pass"
+          ? undefined
+          : `Verify ${view.agentsRoutes.join(" and ")} return agent instruction markdown.`,
       ),
     );
   }

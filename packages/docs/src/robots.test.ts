@@ -18,6 +18,7 @@ describe("docs robots helpers", () => {
 
     const content = await response?.text();
     expect(content).toContain("Allow: /llms.txt");
+    expect(content).toContain("Allow: /AGENTS.md");
     expect(content).toContain("Allow: /sitemap.xml");
     expect(content).toContain("Allow: /.well-known/agent.json");
     expect(content).toContain("User-agent: GPTBot");

@@ -728,6 +728,7 @@ export type DocsAnalyticsEventType =
   | "feedback_error"
   | "agent_read"
   | "agent_spec_request"
+  | "agents_request"
   | "agent_feedback_schema"
   | "agent_feedback_submit"
   | "agent_feedback_error"

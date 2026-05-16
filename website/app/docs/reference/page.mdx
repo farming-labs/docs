@@ -371,7 +371,7 @@ export default defineDocs({
 });
 ```
 
-Generated policy covers the docs entry, `.md` routes, `llms.txt`, sitemap routes, `skill.md`, MCP
+Generated policy covers the docs entry, `.md` routes, `llms.txt`, sitemap routes, `AGENTS.md`, `skill.md`, MCP
 aliases, agent discovery routes, and common AI crawler user agents. Existing files are preserved by
 default; use `docs robots generate --append` to add or update the managed block, or `--force` to
 replace the file.
@@ -632,7 +632,7 @@ deployed elsewhere and already exposes an `openapi.json`.
 <Callout type="info" title="Agent schema discovery">
   When `apiReference` is enabled, the shared docs API also serves
   `GET /api/docs?format=openapi`. The agent discovery spec advertises that OpenAPI schema URL, and
-  generated `llms.txt` / `skill.md` output points agents there before they scrape API reference pages.
+  generated `llms.txt` / `AGENTS.md` / `skill.md` output points agents there before they scrape API reference pages.
 </Callout>
 
 | Property    | Type       | Default           | Description |
@@ -920,7 +920,7 @@ Notes:
 - in Next.js, `withDocs()` adds the public route rewrites automatically
 - Astro, SvelteKit, TanStack Start, and Nuxt expose the same feedback contract through the shared `/api/docs?feedback=agent` query route
 - the shared `/api/docs` handler is still the source of truth, so `?feedback=agent` also works
-- agents should discover site identity, locale config, capability flags, search, active markdown routes, `Accept: text/markdown`, `Signature-Agent` support, JSON-LD structured data, `llms.txt`, OpenAPI schema routes, sitemap routes, `robots.txt`, `skill.md`, skills, MCP, and feedback routes with `GET /.well-known/agent.json`; `GET /.well-known/agent` is the public fallback and `GET /api/docs/agent/spec` is the canonical framework route
+- agents should discover site identity, locale config, capability flags, search, active markdown routes, `Accept: text/markdown`, `Signature-Agent` support, JSON-LD structured data, `llms.txt`, OpenAPI schema routes, sitemap routes, `robots.txt`, `AGENTS.md`, `skill.md`, skills, MCP, and feedback routes with `GET /.well-known/agent.json`; `GET /.well-known/agent` is the public fallback and `GET /api/docs/agent/spec` is the canonical framework route
 
 ### `DocsAgentFeedbackContext`
 
@@ -975,6 +975,8 @@ Quick checks:
 
 ```bash
 curl "http://127.0.0.1:3000/.well-known/agent.json"
+
+curl "http://127.0.0.1:3000/AGENTS.md"
 
 curl "http://127.0.0.1:3000/skill.md"
 
@@ -1686,7 +1688,7 @@ import { createDocsServer } from "@farming-labs/tanstack-start/server";
 | Property | Type                                                       | Description |
 | -------- | ---------------------------------------------------------- | ----------- |
 | `load`   | `({ pathname, locale? }) => Promise<DocsServerLoadResult>` | Loads docs page data and the sidebar tree for a pathname |
-| `GET`    | `({ request }) => Response`                                | Search / markdown / `llms.txt` / OpenAPI / sitemap / `skill.md` endpoint handler |
+| `GET`    | `({ request }) => Response`                                | Search / markdown / `llms.txt` / OpenAPI / sitemap / `AGENTS.md` / `skill.md` endpoint handler |
 | `POST`   | `({ request }) => Promise<Response>`                       | AI chat endpoint handler |
 
 ```ts title="src/lib/docs.server.ts"
@@ -1771,7 +1773,7 @@ import { createDocsServer } from "@farming-labs/svelte/server";
 import config from "./docs.config";
 
 const contentFiles = import.meta.glob(
-  ["/docs/**/*.{md,mdx,svx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"],
+  ["/docs/**/*.{md,mdx,svx}", "/AGENTS.md", "/AGENT.md", "/skill.md", "/.farming-labs/sitemap-manifest.json"],
   {
     query: "?raw",
     import: "default",
@@ -1827,7 +1829,7 @@ import { createDocsServer } from "@farming-labs/astro/server";
 import config from "./docs.config";
 
 const contentFiles = import.meta.glob(
-  ["/docs/**/*.{md,mdx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"],
+  ["/docs/**/*.{md,mdx}", "/AGENTS.md", "/AGENT.md", "/skill.md", "/.farming-labs/sitemap-manifest.json"],
   {
     query: "?raw",
     import: "default",

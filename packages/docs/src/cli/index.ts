@@ -117,6 +117,21 @@ async function main() {
     const { printAgentCompactHelp } = await import("./agent.js");
     printAgentCompactHelp();
     process.exit(1);
+  } else if (parsedCommand.command === "agents" && subcommand === "generate") {
+    const { generateAgents, parseAgentsGenerateArgs, printAgentsGenerateHelp } =
+      await import("./agents.js");
+    const agentsOptions = parseAgentsGenerateArgs(args.slice(2));
+    if (agentsOptions.help) {
+      printAgentsGenerateHelp();
+      return;
+    }
+    await generateAgents(agentsOptions);
+  } else if (parsedCommand.command === "agents") {
+    console.error(pc.red(`Unknown agents subcommand: ${subcommand ?? "(missing)"}`));
+    console.error();
+    const { printAgentsGenerateHelp } = await import("./agents.js");
+    printAgentsGenerateHelp();
+    process.exit(1);
   } else if (parsedCommand.command === "doctor") {
     const { parseDoctorArgs, printDoctorHelp, runDoctor } = await import("./doctor.js");
     const doctorOptions = parseDoctorArgs(args.slice(1));
@@ -197,6 +212,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("init")}     Scaffold docs in your project (default)
   ${pc.cyan("dev")}      Run frameworkless docs locally from ${pc.dim("docs.json")}
   ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} to generate sibling agent.md files)
+  ${pc.cyan("agents")}   AGENTS.md utilities (${pc.dim("generate")} for static agent instructions)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
   ${pc.cyan("mcp")}      Run the built-in docs MCP server over stdio
   ${pc.cyan("robots")}   Robots.txt utilities (${pc.dim("generate")} for agent access policy)

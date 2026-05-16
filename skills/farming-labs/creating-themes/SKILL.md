@@ -67,7 +67,7 @@ Then implement the docs theme:
 - add or update the theme CSS import in the app's global stylesheet
 - add CSS overrides only where config tokens are not enough
 - keep the docs readable, scannable, and documentation-first; do not copy marketing hero sections into docs pages
-- preserve agent-ready docs features such as .md routes, llms.txt, skill.md, sitemap, robots.txt, MCP, JSON-LD, and markdown alternate links
+- preserve agent-ready docs features such as .md routes, llms.txt, AGENTS.md, skill.md, sitemap, robots.txt, MCP, JSON-LD, and markdown alternate links
 
 Verification:
 - run the docs dev server

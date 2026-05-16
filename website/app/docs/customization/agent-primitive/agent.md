@@ -62,13 +62,14 @@ The spec is generated from `docs.config` and includes:
 
 - site title, description, docs entry, and base URL
 - configured locales and the `lang`/`locale` query parameters
-- capability flags for markdown, structured data, MCP, search, feedback, skills, `llms.txt`, and sitemap
+- capability flags for markdown, structured data, MCP, search, feedback, `AGENTS.md`, skills, `llms.txt`, and sitemap
 - shared docs API route
 - search endpoint and query parameter
 - markdown route patterns, `Accept: text/markdown`, and `Signature-Agent` support
 - JSON-LD structured data schema and fields
 - `llms.txt` and `llms-full.txt` routes
 - `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` routes when enabled
+- `AGENTS.md` route, well-known alias, API format, compatibility aliases, and root file convention
 - `skill.md` route, well-known alias, API format, and root file convention
 - Skills CLI install command and recommended skill metadata
 - MCP enabled state, endpoint, server name, version, and tool toggles
@@ -87,7 +88,7 @@ You are reading this docs site as an implementation agent.
 Before implementing from these docs, fetch `/.well-known/agent.json` from the same origin. If that
 is unavailable, fall back to `/.well-known/agent`, then `/api/docs/agent/spec`. Use that JSON as the
 source of truth for the docs entry path, markdown route pattern, search endpoint, MCP endpoint,
-`llms.txt` routes, `sitemap.xml` / `sitemap.md` routes, `skill.md`, skills install command, locale
+`llms.txt` routes, `sitemap.xml` / `sitemap.md` routes, `AGENTS.md`, `skill.md`, skills install command, locale
 handling, and feedback endpoints.
 
 Recommended bootstrap flow:
@@ -143,6 +144,10 @@ configured paths instead of the defaults.
 ## Skills
 
 This repo also ships reusable Agent Skills for broader workflows that are larger than one page.
+The hosted site serves `/AGENTS.md`, `/.well-known/AGENTS.md`, and `/api/docs?format=agents` as
+coding-agent instructions. If a root `AGENTS.md` or `AGENT.md` exists beside `docs.config.ts`, that
+file is served. Otherwise the framework generates a fallback from config.
+
 The hosted site serves `/skill.md`, `/.well-known/skill.md`, and `/api/docs?format=skill` as a
 concise route discovery skill. If a root `skill.md` exists beside `docs.config.ts`, that file is
 served. Otherwise the framework generates a fallback from config.
