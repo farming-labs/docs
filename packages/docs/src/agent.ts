@@ -1235,6 +1235,328 @@ function shouldRenderLlmsDirective(options?: DocsMarkdownDocumentOptions): boole
   return true;
 }
 
+interface DocsAgentDocumentContext {
+  normalizedEntry: string;
+  siteTitle: string;
+  siteDescription?: string;
+  llmsEnabled: boolean;
+  searchEnabled: boolean;
+  mcpEnabled: boolean;
+  feedbackEnabled: boolean;
+  sitemapConfig: ReturnType<typeof resolveDocsSitemapConfig>;
+  robotsEnabled: boolean;
+  openapiConfig: DocsOpenApiResolvedDiscoveryConfig;
+  feedbackRoute: string;
+  feedbackSchemaRoute: string;
+  llmsSections: DocsLlmsTxtResolvedSection[];
+  markdownAcceptHeader: string | null;
+  markdownSignatureAgentHeader: string | null;
+}
+
+type DocsAgentDocumentVariant = "skill" | "agents";
+
+function resolveDocsAgentDocumentContext({
+  entry = "docs",
+  search,
+  mcp,
+  feedback,
+  llms,
+  sitemap,
+  robots,
+  openapi,
+  markdown,
+}: DocsSkillDocumentOptions): DocsAgentDocumentContext {
+  const feedbackRoute = feedback?.route ?? DEFAULT_AGENT_FEEDBACK_ROUTE;
+
+  return {
+    normalizedEntry: normalizeDocsPathSegment(entry) || "docs",
+    siteTitle: compactSkillText(llms?.siteTitle ?? "Documentation"),
+    siteDescription: llms?.siteDescription ? compactSkillText(llms.siteDescription) : undefined,
+    llmsEnabled: llms?.enabled ?? true,
+    searchEnabled: isSearchEnabled(search),
+    mcpEnabled: mcp.enabled,
+    feedbackEnabled: feedback?.enabled ?? false,
+    sitemapConfig: resolveDocsSitemapConfig(sitemap),
+    robotsEnabled: isRobotsDiscoveryEnabled(robots),
+    openapiConfig: resolveDocsOpenApiDiscoveryConfig(openapi),
+    feedbackRoute,
+    feedbackSchemaRoute: feedback?.schemaRoute ?? `${feedbackRoute}/schema`,
+    llmsSections: resolveDocsLlmsTxtSections(llms),
+    markdownAcceptHeader: markdown?.acceptHeader === false ? null : "text/markdown",
+    markdownSignatureAgentHeader:
+      markdown?.signatureAgentHeader === false ? null : DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER,
+  };
+}
+
+function appendDocsMarkdownNegotiationStartLines(
+  lines: string[],
+  context: DocsAgentDocumentContext,
+  variant: DocsAgentDocumentVariant,
+): void {
+  if (context.markdownAcceptHeader) {
+    lines.push(
+      variant === "skill"
+        ? `- You can also request ${context.markdownAcceptHeader} from normal page URLs.`
+        : `- Normal docs pages can return markdown with Accept: ${context.markdownAcceptHeader}.`,
+    );
+  }
+
+  if (context.markdownSignatureAgentHeader) {
+    lines.push(
+      variant === "skill"
+        ? `- Requests with ${context.markdownSignatureAgentHeader} on normal page URLs receive markdown automatically.`
+        : `- Normal docs pages can also return markdown when ${context.markdownSignatureAgentHeader} is present.`,
+    );
+  }
+}
+
+function appendDocsSearchStartLine(
+  lines: string[],
+  context: DocsAgentDocumentContext,
+  variant: DocsAgentDocumentVariant,
+): void {
+  if (!context.searchEnabled) return;
+  lines.push(
+    variant === "skill"
+      ? `- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when you do not know the page.`
+      : `- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when the route is unknown.`,
+  );
+}
+
+function appendDocsOpenApiStartLine(
+  lines: string[],
+  context: DocsAgentDocumentContext,
+  variant: DocsAgentDocumentVariant,
+): void {
+  if (!context.openapiConfig.enabled || !context.openapiConfig.url) return;
+  lines.push(
+    variant === "skill"
+      ? `- Fetch ${context.openapiConfig.url} for the machine-readable OpenAPI schema before scraping API reference pages.`
+      : `- Fetch ${context.openapiConfig.url} before scraping API reference pages; prefer schemas over prose.`,
+  );
+}
+
+function appendDocsLlmsStartLines(
+  lines: string[],
+  context: DocsAgentDocumentContext,
+  variant: DocsAgentDocumentVariant,
+): void {
+  if (!context.llmsEnabled) return;
+  lines.push(
+    variant === "skill"
+      ? `- Use ${DEFAULT_LLMS_TXT_ROUTE} for a compact docs index.`
+      : `- Use ${DEFAULT_LLMS_TXT_ROUTE} as the compact docs map.`,
+    variant === "skill"
+      ? `- Use ${DEFAULT_LLMS_FULL_TXT_ROUTE} for full markdown context.`
+      : `- Use ${DEFAULT_LLMS_FULL_TXT_ROUTE} when you need the full markdown bundle.`,
+  );
+
+  for (const section of context.llmsSections) {
+    lines.push(
+      variant === "skill"
+        ? `- Use ${section.route} for the ${section.title} llms.txt section.`
+        : `- Use ${section.route} for the ${section.title} section map.`,
+    );
+  }
+}
+
+function appendDocsSitemapStartLines(
+  lines: string[],
+  context: DocsAgentDocumentContext,
+  variant: DocsAgentDocumentVariant,
+): void {
+  if (!context.sitemapConfig.enabled) return;
+
+  if (variant === "skill") {
+    if (context.sitemapConfig.xml.enabled) {
+      lines.push(`- Use ${context.sitemapConfig.xml.route} to check canonical page freshness.`);
+    }
+    if (context.sitemapConfig.markdown.enabled) {
+      lines.push(`- Use ${context.sitemapConfig.markdown.route} for a semantic docs map.`);
+    }
+    return;
+  }
+
+  if (context.sitemapConfig.markdown.enabled) {
+    lines.push(
+      `- Use ${context.sitemapConfig.markdown.route} for a semantic sitemap with sections.`,
+    );
+  }
+  if (context.sitemapConfig.xml.enabled) {
+    lines.push(
+      `- Use ${context.sitemapConfig.xml.route} for canonical URLs and freshness metadata.`,
+    );
+  }
+}
+
+function appendDocsRobotsStartLine(
+  lines: string[],
+  context: DocsAgentDocumentContext,
+  variant: DocsAgentDocumentVariant,
+): void {
+  if (!context.robotsEnabled) return;
+  lines.push(
+    variant === "skill"
+      ? `- Check ${DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE} for crawler and AI-agent access policy.`
+      : `- Check ${DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE} before crawling broadly.`,
+  );
+}
+
+function appendDocsMcpStartLine(
+  lines: string[],
+  context: DocsAgentDocumentContext,
+  variant: DocsAgentDocumentVariant,
+): void {
+  if (!context.mcpEnabled) return;
+  lines.push(
+    variant === "skill"
+      ? `- Use ${DEFAULT_MCP_WELL_KNOWN_ROUTE} or ${DEFAULT_MCP_PUBLIC_ROUTE} for MCP tools when your environment supports MCP.`
+      : `- Use MCP at ${DEFAULT_MCP_PUBLIC_ROUTE} or ${DEFAULT_MCP_WELL_KNOWN_ROUTE} when your environment supports MCP tools.`,
+  );
+}
+
+function appendDocsFeedbackStartLine(
+  lines: string[],
+  context: DocsAgentDocumentContext,
+  variant: DocsAgentDocumentVariant,
+): void {
+  if (!context.feedbackEnabled) return;
+  lines.push(
+    variant === "skill"
+      ? `- Read ${context.feedbackSchemaRoute} before posting agent feedback to ${context.feedbackRoute}.`
+      : `- Read ${context.feedbackSchemaRoute} before posting feedback to ${context.feedbackRoute}.`,
+  );
+}
+
+function appendDocsAgentStartHereLines(
+  lines: string[],
+  context: DocsAgentDocumentContext,
+  variant: DocsAgentDocumentVariant,
+): void {
+  lines.push(
+    variant === "skill"
+      ? `- Fetch ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${DEFAULT_AGENT_SPEC_ROUTE}.`
+      : `- Read ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE} first; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${DEFAULT_AGENT_SPEC_ROUTE}.`,
+    variant === "skill"
+      ? `- Fetch /${context.normalizedEntry}.md for the root docs page.`
+      : `- Read /${context.normalizedEntry}.md for the root docs page.`,
+    variant === "skill"
+      ? `- Fetch /${context.normalizedEntry}/{slug}.md for page-specific context.`
+      : `- Read /${context.normalizedEntry}/{slug}.md for page-specific context.`,
+  );
+
+  if (variant === "skill") {
+    appendDocsMarkdownNegotiationStartLines(lines, context, variant);
+    appendDocsSearchStartLine(lines, context, variant);
+    appendDocsOpenApiStartLine(lines, context, variant);
+    appendDocsLlmsStartLines(lines, context, variant);
+    appendDocsSitemapStartLines(lines, context, variant);
+    appendDocsRobotsStartLine(lines, context, variant);
+    appendDocsMcpStartLine(lines, context, variant);
+    appendDocsFeedbackStartLine(lines, context, variant);
+    return;
+  }
+
+  appendDocsLlmsStartLines(lines, context, variant);
+  appendDocsSitemapStartLines(lines, context, variant);
+  appendDocsRobotsStartLine(lines, context, variant);
+  appendDocsSearchStartLine(lines, context, variant);
+  appendDocsOpenApiStartLine(lines, context, variant);
+  appendDocsMcpStartLine(lines, context, variant);
+  appendDocsFeedbackStartLine(lines, context, variant);
+  appendDocsMarkdownNegotiationStartLines(lines, context, variant);
+}
+
+function appendDocsLlmsRouteLines(lines: string[], context: DocsAgentDocumentContext): void {
+  if (!context.llmsEnabled) return;
+  lines.push(
+    `- llms.txt: ${DEFAULT_LLMS_TXT_ROUTE}`,
+    `- llms-full.txt: ${DEFAULT_LLMS_FULL_TXT_ROUTE}`,
+    `- llms well-known aliases: ${DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE}, ${DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE}`,
+  );
+  for (const section of context.llmsSections) {
+    lines.push(`- ${section.title} llms.txt: ${section.route}`);
+    lines.push(`- ${section.title} llms-full.txt: ${section.fullRoute}`);
+  }
+}
+
+function appendDocsOpenApiRouteLines(lines: string[], context: DocsAgentDocumentContext): void {
+  if (!context.openapiConfig.enabled || !context.openapiConfig.url) return;
+  lines.push(`- OpenAPI schema: ${context.openapiConfig.url}`);
+  if (context.openapiConfig.apiReferencePath) {
+    lines.push(`- API reference: ${context.openapiConfig.apiReferencePath}`);
+  }
+}
+
+function appendDocsSitemapRouteLines(lines: string[], context: DocsAgentDocumentContext): void {
+  if (!context.sitemapConfig.enabled) return;
+  if (context.sitemapConfig.xml.enabled)
+    lines.push(`- Sitemap XML: ${context.sitemapConfig.xml.route}`);
+  if (context.sitemapConfig.markdown.enabled) {
+    lines.push(
+      `- Sitemap Markdown: ${context.sitemapConfig.markdown.route}`,
+      `- Sitemap well-known alias: ${context.sitemapConfig.markdown.wellKnownRoute}`,
+    );
+  }
+}
+
+function appendDocsMcpRouteLines(lines: string[], context: DocsAgentDocumentContext): void {
+  if (!context.mcpEnabled) return;
+  lines.push(`- MCP: ${DEFAULT_MCP_PUBLIC_ROUTE}, ${DEFAULT_MCP_WELL_KNOWN_ROUTE}`);
+}
+
+function appendDocsAgentPublicRouteLines(
+  lines: string[],
+  context: DocsAgentDocumentContext,
+  variant: DocsAgentDocumentVariant,
+): void {
+  if (variant === "skill") {
+    lines.push(
+      `- Agent instructions: ${DEFAULT_AGENTS_MD_ROUTE}`,
+      `- Agent instructions well-known alias: ${DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE}`,
+      `- Agent instructions API format: ${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+      `- Skill document: ${DEFAULT_SKILL_MD_ROUTE}`,
+      `- Skill well-known alias: ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}`,
+      `- Skill API format: ${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+      `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
+      `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
+      `- Markdown root: /${context.normalizedEntry}.md`,
+      `- Markdown pages: /${context.normalizedEntry}/{slug}.md`,
+    );
+
+    if (context.robotsEnabled) {
+      lines.push(`- Robots policy: ${DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE}`);
+    }
+    appendDocsLlmsRouteLines(lines, context);
+    appendDocsOpenApiRouteLines(lines, context);
+    appendDocsSitemapRouteLines(lines, context);
+    appendDocsMcpRouteLines(lines, context);
+    return;
+  }
+
+  lines.push(
+    `- Agent instructions: ${DEFAULT_AGENTS_MD_ROUTE}`,
+    `- Agent instructions well-known alias: ${DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE}`,
+    `- Agent instructions API format: ${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+    `- Agent instructions aliases: ${DEFAULT_AGENT_MD_ROUTE}, ${DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE}`,
+    `- Site skill: ${DEFAULT_SKILL_MD_ROUTE}`,
+    `- Site skill well-known alias: ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}`,
+    `- Site skill API format: ${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+    `- Markdown root: /${context.normalizedEntry}.md`,
+    `- Markdown pages: /${context.normalizedEntry}/{slug}.md`,
+    `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
+    `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
+  );
+
+  appendDocsLlmsRouteLines(lines, context);
+  if (context.robotsEnabled) {
+    lines.push(`- Robots policy: ${DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE}`);
+  }
+  appendDocsSitemapRouteLines(lines, context);
+  appendDocsOpenApiRouteLines(lines, context);
+  appendDocsMcpRouteLines(lines, context);
+}
+
 export function renderDocsMarkdownDocument(
   page: DocsMcpPage | DocsSearchSourcePage,
   options?: DocsMarkdownDocumentOptions,
@@ -1258,51 +1580,25 @@ export function renderDocsMarkdownDocument(
   return lines.join("\n");
 }
 
-export function renderDocsSkillDocument({
-  origin,
-  entry = "docs",
-  search,
-  mcp,
-  feedback,
-  llms,
-  sitemap,
-  robots,
-  openapi,
-  markdown,
-}: DocsSkillDocumentOptions): string {
-  const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
-  const siteTitle = compactSkillText(llms?.siteTitle ?? "Documentation");
-  const siteDescription = llms?.siteDescription
-    ? compactSkillText(llms.siteDescription)
-    : undefined;
-  const llmsEnabled = llms?.enabled ?? true;
-  const searchEnabled = isSearchEnabled(search);
-  const feedbackEnabled = feedback?.enabled ?? false;
-  const sitemapConfig = resolveDocsSitemapConfig(sitemap);
-  const robotsEnabled = isRobotsDiscoveryEnabled(robots);
-  const openapiConfig = resolveDocsOpenApiDiscoveryConfig(openapi);
-  const feedbackRoute = feedback?.route ?? DEFAULT_AGENT_FEEDBACK_ROUTE;
-  const feedbackSchemaRoute = feedback?.schemaRoute ?? `${feedbackRoute}/schema`;
-  const llmsSections = resolveDocsLlmsTxtSections(llms);
+export function renderDocsSkillDocument(options: DocsSkillDocumentOptions): string {
+  const { origin } = options;
+  const context = resolveDocsAgentDocumentContext(options);
   const description = truncateSkillDescription(
-    `Use ${siteTitle} through markdown routes, llms.txt, robots.txt, agent discovery, search, and MCP when available.`,
+    `Use ${context.siteTitle} through markdown routes, llms.txt, robots.txt, agent discovery, search, and MCP when available.`,
   );
-  const markdownAcceptHeader = markdown?.acceptHeader === false ? null : "text/markdown";
-  const markdownSignatureAgentHeader =
-    markdown?.signatureAgentHeader === false ? null : DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER;
   const lines = [
     "---",
     "name: docs",
     `description: ${toYamlString(description)}`,
     "---",
     "",
-    `# ${siteTitle} Skill`,
+    `# ${context.siteTitle} Skill`,
     "",
     `Base URL: ${origin}`,
   ];
 
-  if (siteDescription) {
-    lines.push(`Description: ${siteDescription}`);
+  if (context.siteDescription) {
+    lines.push(`Description: ${context.siteDescription}`);
   }
 
   lines.push(
@@ -1311,119 +1607,11 @@ export function renderDocsSkillDocument({
     "Use this skill when you need to read or implement against this documentation site.",
     "",
     "## Start Here",
-    `- Fetch ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${DEFAULT_AGENT_SPEC_ROUTE}.`,
-    `- Fetch /${normalizedEntry}.md for the root docs page.`,
-    `- Fetch /${normalizedEntry}/{slug}.md for page-specific context.`,
   );
+  appendDocsAgentStartHereLines(lines, context, "skill");
 
-  if (markdownAcceptHeader) {
-    lines.push(`- You can also request ${markdownAcceptHeader} from normal page URLs.`);
-  }
-
-  if (markdownSignatureAgentHeader) {
-    lines.push(
-      `- Requests with ${markdownSignatureAgentHeader} on normal page URLs receive markdown automatically.`,
-    );
-  }
-
-  if (searchEnabled) {
-    lines.push(
-      `- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when you do not know the page.`,
-    );
-  }
-
-  if (openapiConfig.enabled && openapiConfig.url) {
-    lines.push(
-      `- Fetch ${openapiConfig.url} for the machine-readable OpenAPI schema before scraping API reference pages.`,
-    );
-  }
-
-  if (llmsEnabled) {
-    lines.push(
-      `- Use ${DEFAULT_LLMS_TXT_ROUTE} for a compact docs index.`,
-      `- Use ${DEFAULT_LLMS_FULL_TXT_ROUTE} for full markdown context.`,
-    );
-    for (const section of llmsSections) {
-      lines.push(`- Use ${section.route} for the ${section.title} llms.txt section.`);
-    }
-  }
-
-  if (sitemapConfig.enabled) {
-    if (sitemapConfig.xml.enabled) {
-      lines.push(`- Use ${sitemapConfig.xml.route} to check canonical page freshness.`);
-    }
-    if (sitemapConfig.markdown.enabled) {
-      lines.push(`- Use ${sitemapConfig.markdown.route} for a semantic docs map.`);
-    }
-  }
-
-  if (robotsEnabled) {
-    lines.push(
-      `- Check ${DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE} for crawler and AI-agent access policy.`,
-    );
-  }
-
-  if (mcp.enabled) {
-    lines.push(
-      `- Use ${DEFAULT_MCP_WELL_KNOWN_ROUTE} or ${DEFAULT_MCP_PUBLIC_ROUTE} for MCP tools when your environment supports MCP.`,
-    );
-  }
-
-  if (feedbackEnabled) {
-    lines.push(`- Read ${feedbackSchemaRoute} before posting agent feedback to ${feedbackRoute}.`);
-  }
-
-  lines.push(
-    "",
-    "## Routes",
-    `- Agent instructions: ${DEFAULT_AGENTS_MD_ROUTE}`,
-    `- Agent instructions well-known alias: ${DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE}`,
-    `- Agent instructions API format: ${DEFAULT_DOCS_API_ROUTE}?format=agents`,
-    `- Skill document: ${DEFAULT_SKILL_MD_ROUTE}`,
-    `- Skill well-known alias: ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}`,
-    `- Skill API format: ${DEFAULT_DOCS_API_ROUTE}?format=skill`,
-    `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
-    `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
-    `- Markdown root: /${normalizedEntry}.md`,
-    `- Markdown pages: /${normalizedEntry}/{slug}.md`,
-  );
-
-  if (robotsEnabled) {
-    lines.push(`- Robots policy: ${DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE}`);
-  }
-
-  if (llmsEnabled) {
-    lines.push(
-      `- llms.txt: ${DEFAULT_LLMS_TXT_ROUTE}`,
-      `- llms-full.txt: ${DEFAULT_LLMS_FULL_TXT_ROUTE}`,
-      `- llms well-known aliases: ${DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE}, ${DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE}`,
-    );
-    for (const section of llmsSections) {
-      lines.push(`- ${section.title} llms.txt: ${section.route}`);
-      lines.push(`- ${section.title} llms-full.txt: ${section.fullRoute}`);
-    }
-  }
-
-  if (openapiConfig.enabled && openapiConfig.url) {
-    lines.push(`- OpenAPI schema: ${openapiConfig.url}`);
-    if (openapiConfig.apiReferencePath) {
-      lines.push(`- API reference: ${openapiConfig.apiReferencePath}`);
-    }
-  }
-
-  if (sitemapConfig.enabled) {
-    if (sitemapConfig.xml.enabled) lines.push(`- Sitemap XML: ${sitemapConfig.xml.route}`);
-    if (sitemapConfig.markdown.enabled) {
-      lines.push(
-        `- Sitemap Markdown: ${sitemapConfig.markdown.route}`,
-        `- Sitemap well-known alias: ${sitemapConfig.markdown.wellKnownRoute}`,
-      );
-    }
-  }
-
-  if (mcp.enabled) {
-    lines.push(`- MCP: ${DEFAULT_MCP_PUBLIC_ROUTE}, ${DEFAULT_MCP_WELL_KNOWN_ROUTE}`);
-  }
+  lines.push("", "## Routes");
+  appendDocsAgentPublicRouteLines(lines, context, "skill");
 
   lines.push(
     "",
@@ -1438,102 +1626,18 @@ export function renderDocsSkillDocument({
   return lines.join("\n");
 }
 
-export function renderDocsAgentsDocument({
-  origin,
-  entry = "docs",
-  search,
-  mcp,
-  feedback,
-  llms,
-  sitemap,
-  robots,
-  openapi,
-  markdown,
-}: DocsAgentsDocumentOptions): string {
-  const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
-  const siteTitle = compactSkillText(llms?.siteTitle ?? "Documentation");
-  const siteDescription = llms?.siteDescription
-    ? compactSkillText(llms.siteDescription)
-    : undefined;
-  const llmsEnabled = llms?.enabled ?? true;
-  const searchEnabled = isSearchEnabled(search);
-  const feedbackEnabled = feedback?.enabled ?? false;
-  const sitemapConfig = resolveDocsSitemapConfig(sitemap);
-  const robotsEnabled = isRobotsDiscoveryEnabled(robots);
-  const openapiConfig = resolveDocsOpenApiDiscoveryConfig(openapi);
-  const feedbackRoute = feedback?.route ?? DEFAULT_AGENT_FEEDBACK_ROUTE;
-  const feedbackSchemaRoute = feedback?.schemaRoute ?? `${feedbackRoute}/schema`;
-  const llmsSections = resolveDocsLlmsTxtSections(llms);
-  const markdownAcceptHeader = markdown?.acceptHeader === false ? null : "text/markdown";
-  const markdownSignatureAgentHeader =
-    markdown?.signatureAgentHeader === false ? null : DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER;
+export function renderDocsAgentsDocument(options: DocsAgentsDocumentOptions): string {
+  const { origin } = options;
+  const context = resolveDocsAgentDocumentContext(options);
 
-  const lines = ["# Agent Instructions", "", `Site: ${siteTitle}`, `Base URL: ${origin}`];
+  const lines = ["# Agent Instructions", "", `Site: ${context.siteTitle}`, `Base URL: ${origin}`];
 
-  if (siteDescription) {
-    lines.push(`Description: ${siteDescription}`);
+  if (context.siteDescription) {
+    lines.push(`Description: ${context.siteDescription}`);
   }
 
-  lines.push(
-    "",
-    "## Start Here",
-    `- Read ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE} first; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${DEFAULT_AGENT_SPEC_ROUTE}.`,
-    `- Read /${normalizedEntry}.md for the root docs page.`,
-    `- Read /${normalizedEntry}/{slug}.md for page-specific context.`,
-  );
-
-  if (llmsEnabled) {
-    lines.push(
-      `- Use ${DEFAULT_LLMS_TXT_ROUTE} as the compact docs map.`,
-      `- Use ${DEFAULT_LLMS_FULL_TXT_ROUTE} when you need the full markdown bundle.`,
-    );
-    for (const section of llmsSections) {
-      lines.push(`- Use ${section.route} for the ${section.title} section map.`);
-    }
-  }
-
-  if (sitemapConfig.enabled) {
-    if (sitemapConfig.markdown.enabled) {
-      lines.push(`- Use ${sitemapConfig.markdown.route} for a semantic sitemap with sections.`);
-    }
-    if (sitemapConfig.xml.enabled) {
-      lines.push(`- Use ${sitemapConfig.xml.route} for canonical URLs and freshness metadata.`);
-    }
-  }
-
-  if (robotsEnabled) {
-    lines.push(`- Check ${DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE} before crawling broadly.`);
-  }
-
-  if (searchEnabled) {
-    lines.push(`- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when the route is unknown.`);
-  }
-
-  if (openapiConfig.enabled && openapiConfig.url) {
-    lines.push(
-      `- Fetch ${openapiConfig.url} before scraping API reference pages; prefer schemas over prose.`,
-    );
-  }
-
-  if (mcp.enabled) {
-    lines.push(
-      `- Use MCP at ${DEFAULT_MCP_PUBLIC_ROUTE} or ${DEFAULT_MCP_WELL_KNOWN_ROUTE} when your environment supports MCP tools.`,
-    );
-  }
-
-  if (feedbackEnabled) {
-    lines.push(`- Read ${feedbackSchemaRoute} before posting feedback to ${feedbackRoute}.`);
-  }
-
-  if (markdownAcceptHeader) {
-    lines.push(`- Normal docs pages can return markdown with Accept: ${markdownAcceptHeader}.`);
-  }
-
-  if (markdownSignatureAgentHeader) {
-    lines.push(
-      `- Normal docs pages can also return markdown when ${markdownSignatureAgentHeader} is present.`,
-    );
-  }
+  lines.push("", "## Start Here");
+  appendDocsAgentStartHereLines(lines, context, "agents");
 
   lines.push(
     "",
@@ -1544,54 +1648,8 @@ export function renderDocsAgentsDocument({
     "- If a route returns a markdown 404, use the sitemap and discovery spec before guessing a slug.",
     "",
     "## Public Routes",
-    `- Agent instructions: ${DEFAULT_AGENTS_MD_ROUTE}`,
-    `- Agent instructions well-known alias: ${DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE}`,
-    `- Agent instructions API format: ${DEFAULT_DOCS_API_ROUTE}?format=agents`,
-    `- Agent instructions aliases: ${DEFAULT_AGENT_MD_ROUTE}, ${DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE}`,
-    `- Site skill: ${DEFAULT_SKILL_MD_ROUTE}`,
-    `- Site skill well-known alias: ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}`,
-    `- Site skill API format: ${DEFAULT_DOCS_API_ROUTE}?format=skill`,
-    `- Markdown root: /${normalizedEntry}.md`,
-    `- Markdown pages: /${normalizedEntry}/{slug}.md`,
-    `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
-    `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
   );
-
-  if (llmsEnabled) {
-    lines.push(
-      `- llms.txt: ${DEFAULT_LLMS_TXT_ROUTE}`,
-      `- llms-full.txt: ${DEFAULT_LLMS_FULL_TXT_ROUTE}`,
-      `- llms well-known aliases: ${DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE}, ${DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE}`,
-    );
-    for (const section of llmsSections) {
-      lines.push(`- ${section.title} llms.txt: ${section.route}`);
-      lines.push(`- ${section.title} llms-full.txt: ${section.fullRoute}`);
-    }
-  }
-
-  if (robotsEnabled) {
-    lines.push(`- Robots policy: ${DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE}`);
-  }
-
-  if (sitemapConfig.enabled) {
-    if (sitemapConfig.xml.enabled) lines.push(`- Sitemap XML: ${sitemapConfig.xml.route}`);
-    if (sitemapConfig.markdown.enabled) {
-      lines.push(
-        `- Sitemap Markdown: ${sitemapConfig.markdown.route}`,
-        `- Sitemap well-known alias: ${sitemapConfig.markdown.wellKnownRoute}`,
-      );
-    }
-  }
-
-  if (openapiConfig.enabled && openapiConfig.url) {
-    lines.push(`- OpenAPI schema: ${openapiConfig.url}`);
-    if (openapiConfig.apiReferencePath)
-      lines.push(`- API reference: ${openapiConfig.apiReferencePath}`);
-  }
-
-  if (mcp.enabled) {
-    lines.push(`- MCP: ${DEFAULT_MCP_PUBLIC_ROUTE}, ${DEFAULT_MCP_WELL_KNOWN_ROUTE}`);
-  }
+  appendDocsAgentPublicRouteLines(lines, context, "agents");
 
   lines.push(
     "",

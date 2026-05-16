@@ -289,7 +289,7 @@ function readRootAgentsDocument(
         return fs.readFileSync(candidate, "utf-8");
       }
     } catch {
-      return null;
+      continue;
     }
   }
 

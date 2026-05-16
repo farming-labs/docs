@@ -552,7 +552,7 @@ function readRootAgentsDocument(contentMap: ContentFileMap | null, rootDir: stri
         return fs.readFileSync(candidate, "utf-8");
       }
     } catch {
-      return null;
+      continue;
     }
   }
 

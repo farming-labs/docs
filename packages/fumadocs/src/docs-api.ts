@@ -1919,7 +1919,7 @@ function readRootAgentsDocument(rootDir: string): string | null {
         return fs.readFileSync(candidate, "utf-8");
       }
     } catch {
-      return null;
+      continue;
     }
   }
 
