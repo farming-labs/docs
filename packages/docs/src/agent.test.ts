@@ -7,6 +7,7 @@ import {
   getDocsMarkdownVaryHeader,
   hasDocsMarkdownSignatureAgent,
   isDocsAgentDiscoveryRequest,
+  isDocsAgentsRequest,
   isDocsLlmsTxtPublicRequest,
   isDocsMcpRequest,
   isDocsPublicGetRequest,
@@ -16,10 +17,12 @@ import {
   renderDocsMarkdownDocument,
   renderDocsMarkdownNotFound,
   renderDocsLlmsTxt,
+  renderDocsAgentsDocument,
   renderDocsSkillDocument,
   resolveDocsAgentFeedbackConfig,
   resolveDocsAgentFeedbackRequest,
   resolveDocsAgentMdxContent,
+  resolveDocsAgentsFormat,
   resolveDocsLlmsTxtFormat,
   resolveDocsLlmsTxtRequest,
   resolveDocsLlmsTxtSections,
@@ -69,6 +72,15 @@ describe("agent route helpers", () => {
     expect(
       resolveDocsSkillFormat(new URL("https://example.com/internal/docs?format=llms")),
     ).toBeNull();
+
+    expect(isDocsAgentsRequest(new URL("https://example.com/AGENTS.md"))).toBe(true);
+    expect(isDocsAgentsRequest(new URL("https://example.com/.well-known/AGENTS.md"))).toBe(true);
+    expect(isDocsAgentsRequest(new URL("https://example.com/AGENT.md"))).toBe(true);
+    expect(isDocsAgentsRequest(new URL("https://example.com/api/docs?format=agents"))).toBe(true);
+    expect(isDocsAgentsRequest(new URL("https://example.com/blog?format=agents"))).toBe(false);
+    expect(resolveDocsAgentsFormat(new URL("https://example.com/api/docs?format=agents"))).toBe(
+      "agents",
+    );
   });
 
   it("derives section-level llms.txt routes from URL matchers", () => {
@@ -525,6 +537,53 @@ describe("agent route helpers", () => {
     expect(document).toContain("npx skills add farming-labs/docs");
   });
 
+  it("renders the generated AGENTS.md document", () => {
+    const document = renderDocsAgentsDocument({
+      origin: "https://docs.example.com",
+      entry: "guides",
+      search: true,
+      mcp: {
+        enabled: true,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: {
+          listPages: true,
+          readPage: true,
+          searchDocs: true,
+          getNavigation: true,
+        },
+      },
+      feedback: {
+        enabled: true,
+        route: "/api/docs/agent/feedback",
+        schemaRoute: "/api/docs/agent/feedback/schema",
+      },
+      llms: {
+        enabled: true,
+        siteTitle: "Guides",
+        siteDescription: "Machine-readable guides",
+      },
+      openapi: {
+        enabled: true,
+        url: "/api/docs?format=openapi",
+        apiReferencePath: "/api-reference",
+        source: "generated",
+      },
+    });
+
+    expect(document).toContain("# Agent Instructions");
+    expect(document).toContain("Site: Guides");
+    expect(document).toContain("Base URL: https://docs.example.com");
+    expect(document).toContain("/guides.md");
+    expect(document).toContain("/AGENTS.md");
+    expect(document).toContain("/.well-known/AGENTS.md");
+    expect(document).toContain("/api/docs?format=agents");
+    expect(document).toContain("/api/docs?format=openapi");
+    expect(document).toContain("npx @farming-labs/docs@latest upgrade --latest");
+    expect(document).toContain("npx skills add farming-labs/docs");
+  });
+
   it("builds the shared discovery spec with public endpoints", () => {
     const spec = buildDocsAgentDiscoverySpec({
       origin: "https://docs.example.com",
@@ -553,10 +612,20 @@ describe("agent route helpers", () => {
     });
 
     expect(spec.api.agentSpecDefault).toBe("/.well-known/agent.json");
+    expect(spec.api.agents).toBe("/api/docs?format=agents");
     expect(spec.api.openapi).toBe("/api/docs?format=openapi");
     expect(spec.markdown.rootPage).toBe("/docs.md");
     expect(spec.markdown.signatureAgentHeader).toBe("Signature-Agent");
     expect(spec.llms.publicTxt).toBe("/llms.txt");
+    expect(spec.agents).toEqual({
+      enabled: true,
+      file: "AGENTS.md",
+      route: "/AGENTS.md",
+      wellKnown: "/.well-known/AGENTS.md",
+      api: "/api/docs?format=agents",
+      generatedFallback: true,
+      aliases: ["/AGENT.md", "/.well-known/AGENT.md"],
+    });
     expect(spec.skills.file).toBe("skill.md");
     expect(spec.skills.route).toBe("/skill.md");
     expect(spec.skills.wellKnown).toBe("/.well-known/skill.md");
@@ -566,6 +635,7 @@ describe("agent route helpers", () => {
     expect(spec.sitemap.xml.route).toBe("/sitemap.xml");
     expect(spec.sitemap.markdown.wellKnownRoute).toBe("/.well-known/sitemap.md");
     expect(spec.capabilities.robots).toBe(true);
+    expect(spec.capabilities.agents).toBe(true);
     expect(spec.capabilities.structuredData).toBe(true);
     expect(spec.capabilities.apiReference).toBe(true);
     expect(spec.capabilities.openapi).toBe(true);

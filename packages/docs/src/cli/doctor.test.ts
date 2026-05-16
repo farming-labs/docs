@@ -302,6 +302,7 @@ Allow: /sitemap.md
 Allow: /.well-known/sitemap.md
 Allow: /.well-known/agent.json
 Allow: /.well-known/agent
+Allow: /AGENTS.md
 Allow: /skill.md
 Allow: /mcp
 
@@ -449,6 +450,7 @@ Allow: /sitemap.md
 Allow: /.well-known/sitemap.md
 Allow: /.well-known/agent.json
 Allow: /.well-known/agent
+Allow: /AGENTS.md
 Allow: /skill.md
 Allow: /mcp
 
@@ -467,6 +469,12 @@ Allow: /
         if (url.pathname === "/skill.md" || url.pathname === "/.well-known/skill.md") {
           res.writeHead(200, { "Content-Type": "text/markdown" });
           res.end("# Skill\n\nUse MCP and markdown routes.");
+          return;
+        }
+
+        if (url.pathname === "/AGENTS.md" || url.pathname === "/.well-known/AGENTS.md") {
+          res.writeHead(200, { "Content-Type": "text/markdown" });
+          res.end("# Agent Instructions\n\nUse markdown routes.");
           return;
         }
 

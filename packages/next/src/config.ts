@@ -173,6 +173,10 @@ const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms-full.txt";
 const DEFAULT_SKILL_MD_ROUTE = "/skill.md";
 const DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE = "/.well-known/skill.md";
+const DEFAULT_AGENTS_MD_ROUTE = "/AGENTS.md";
+const DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE = "/.well-known/AGENTS.md";
+const DEFAULT_AGENT_MD_ROUTE = "/AGENT.md";
+const DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE = "/.well-known/AGENT.md";
 const DEFAULT_ROBOTS_TXT_ROUTE = "/robots.txt";
 const DEFAULT_SITEMAP_XML_ROUTE = "/sitemap.xml";
 const DEFAULT_SITEMAP_MD_ROUTE = "/sitemap.md";
@@ -1347,6 +1351,27 @@ function buildSkillMdRewrites(): NextRewrite[] {
   ];
 }
 
+function buildAgentsMdRewrites(): NextRewrite[] {
+  return [
+    {
+      source: DEFAULT_AGENTS_MD_ROUTE,
+      destination: "/api/docs?format=agents",
+    },
+    {
+      source: DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
+      destination: "/api/docs?format=agents",
+    },
+    {
+      source: DEFAULT_AGENT_MD_ROUTE,
+      destination: "/api/docs?format=agents",
+    },
+    {
+      source: DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE,
+      destination: "/api/docs?format=agents",
+    },
+  ];
+}
+
 function buildSitemapRewrites(config: { enabled: boolean; routePrefix: string }): NextRewrite[] {
   if (!config.enabled) return [];
   const prefix = config.routePrefix;
@@ -1581,6 +1606,7 @@ function mergeDocsMarkdownRewrites(
   const autoBeforeFilesRewrites = [
     ...buildAgentSpecRewrites(),
     ...buildMcpRewrites(mcp),
+    ...buildAgentsMdRewrites(),
     ...buildSkillMdRewrites(),
     ...buildSitemapRewrites(sitemap),
     ...buildRobotsRewrites(robots),
@@ -1939,6 +1965,8 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
     {};
   const docsTraceGlob = docsContentDir.replace(/\\/g, "/").replace(/^\.?\//, "") + "/**/*";
   const skillTraceFile = "skill.md";
+  const agentsTraceFile = "AGENTS.md";
+  const agentTraceFile = "AGENT.md";
   const sitemapManifestTraceFile = DEFAULT_SITEMAP_MANIFEST_PATH;
   const docsContentRoot = isAbsolute(docsContentDir) ? docsContentDir : join(root, docsContentDir);
 
@@ -1975,6 +2003,8 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
         ...(existingTracingIncludes["/api/docs"] ?? []),
         docsTraceGlob,
         skillTraceFile,
+        agentsTraceFile,
+        agentTraceFile,
         sitemapManifestTraceFile,
       ]),
     ],

@@ -17,6 +17,7 @@ import {
   getDocsMarkdownCanonicalLinkHeader,
   getDocsMarkdownVaryHeader,
   isDocsAgentDiscoveryRequest,
+  isDocsAgentsRequest,
   isDocsSkillRequest,
   normalizeDocsRelated,
   parseDocsAgentFeedbackData,
@@ -24,6 +25,7 @@ import {
   renderDocsMarkdownDocument,
   renderDocsMarkdownNotFound,
   renderDocsLlmsTxt,
+  renderDocsAgentsDocument,
   renderDocsSkillDocument,
   readDocsSitemapManifestFromContentMap,
   stripGeneratedAgentProvenance,
@@ -42,6 +44,7 @@ import {
   resolvePageReadingTime,
   resolveReadingTimeOptions,
   resolveDocsSitemapPageLastmod,
+  resolveDocsAgentsFormat,
   resolveDocsSkillFormat,
   renderDocsPageStructuredDataJson,
   selectDocsLlmsTxtContent,
@@ -527,6 +530,35 @@ function readRootSkillDocument(contentMap: ContentFileMap | null, rootDir: strin
   return null;
 }
 
+function readRootAgentsDocument(contentMap: ContentFileMap | null, rootDir: string): string | null {
+  if (contentMap) {
+    for (const key of [
+      "/AGENTS.md",
+      "AGENTS.md",
+      "./AGENTS.md",
+      "/AGENT.md",
+      "AGENT.md",
+      "./AGENT.md",
+    ]) {
+      const raw = contentMap[key];
+      if (typeof raw === "string") return raw;
+    }
+  }
+
+  for (const fileName of ["AGENTS.md", "AGENT.md"]) {
+    const candidate = path.join(rootDir, fileName);
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        return fs.readFileSync(candidate, "utf-8");
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
 export function createDocsServer(config: Record<string, any>): DocsServer {
   const entry = config.entry ?? "docs";
   const analytics = config.analytics;
@@ -933,6 +965,40 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
           "X-Robots-Tag": "noindex",
         },
       });
+    }
+
+    if (isDocsAgentsRequest(url) || resolveDocsAgentsFormat(url) === "agents") {
+      return new Response(
+        readRootAgentsDocument(preloaded, rootDir) ??
+          renderDocsAgentsDocument({
+            origin: url.origin,
+            entry,
+            search: config.search,
+            mcp: mcpConfig,
+            feedback: agentFeedbackDiscovery,
+            llms: {
+              enabled: llmsEnabled,
+              baseUrl: llmsBaseUrl || undefined,
+              siteTitle: llmsTitle,
+              siteDescription: llmsDesc,
+              maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
+              sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
+            },
+            sitemap: config.sitemap,
+            robots: config.robots,
+            openapi: openapiDiscovery,
+            markdown: {
+              acceptHeader: false,
+            },
+          } as any),
+        {
+          headers: {
+            "Content-Type": "text/markdown; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            "X-Robots-Tag": "noindex",
+          },
+        },
+      );
     }
 
     if (isDocsSkillRequest(url) || resolveDocsSkillFormat(url) === "skill") {

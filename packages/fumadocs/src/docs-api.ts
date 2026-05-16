@@ -4,6 +4,7 @@
  * A single route handler that serves **both** search and AI chat:
  *
  * - `GET  /api/docs?query=…` → full-text search over indexed MDX pages
+ * - `GET  /api/docs?format=agents` → AGENTS.md for coding-agent instructions
  * - `GET  /api/docs?format=skill` → skill.md for agent discovery
  * - `POST /api/docs` → RAG-powered "Ask AI" (searches relevant docs,
  *   then streams an LLM response using the docs as context)
@@ -185,6 +186,10 @@ const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms-full.txt";
 const DEFAULT_SKILL_MD_ROUTE = "/skill.md";
 const DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE = "/.well-known/skill.md";
+const DEFAULT_AGENTS_MD_ROUTE = "/AGENTS.md";
+const DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE = "/.well-known/AGENTS.md";
+const DEFAULT_AGENT_MD_ROUTE = "/AGENT.md";
+const DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE = "/.well-known/AGENT.md";
 const DEFAULT_ROBOTS_TXT_ROUTE = "/robots.txt";
 const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
 const DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA: Record<string, unknown> = {
@@ -258,6 +263,7 @@ interface AgentSpecOptions {
 }
 
 interface SkillDocumentOptions extends AgentSpecOptions {}
+interface AgentsDocumentOptions extends Omit<AgentSpecOptions, "i18n"> {}
 
 function normalizeAgentFeedbackRoute(
   route?: string,
@@ -379,6 +385,20 @@ function resolveSkillRequest(url: URL): boolean {
   return url.searchParams.get("format")?.trim() === "skill";
 }
 
+function resolveAgentsRequest(url: URL): boolean {
+  const pathname = normalizeUrlPath(url.pathname);
+  if (
+    pathname === DEFAULT_AGENTS_MD_ROUTE ||
+    pathname === DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE ||
+    pathname === DEFAULT_AGENT_MD_ROUTE ||
+    pathname === DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE
+  ) {
+    return true;
+  }
+
+  return url.searchParams.get("format")?.trim() === "agents";
+}
+
 function isSearchEnabled(search?: boolean | DocsSearchConfig): boolean {
   if (search === false) return false;
   if (search && typeof search === "object" && search.enabled === false) return false;
@@ -454,6 +474,7 @@ function buildAgentSpec({
       markdownRoutes: true,
       agentMdOverrides: true,
       agentBlocks: true,
+      agents: true,
       llms: llms.enabled,
       skills: true,
       mcp: mcp.enabled,
@@ -474,6 +495,7 @@ function buildAgentSpec({
       agentSpecWellKnown: DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
       agentSpecWellKnownJson: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
       agentSpecQuery: `${DEFAULT_DOCS_API_ROUTE}?agent=spec`,
+      agents: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
       openapi: `${DEFAULT_DOCS_API_ROUTE}?format=openapi`,
     },
     // Always-on agent content surfaces. If these ever become configurable,
@@ -550,6 +572,15 @@ function buildAgentSpec({
       method: "GET",
       queryParam: "query",
       localeParam: "lang",
+    },
+    agents: {
+      enabled: true,
+      file: "AGENTS.md",
+      route: DEFAULT_AGENTS_MD_ROUTE,
+      wellKnown: DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
+      api: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+      generatedFallback: true,
+      aliases: [DEFAULT_AGENT_MD_ROUTE, DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE],
     },
     // Skills metadata is bundled with this package today; there is no runtime
     // config switch for disabling it from the discovery spec.
@@ -1654,6 +1685,9 @@ function renderSkillDocument({
   lines.push(
     "",
     "## Routes",
+    `- Agent instructions: ${DEFAULT_AGENTS_MD_ROUTE}`,
+    `- Agent instructions well-known alias: ${DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE}`,
+    `- Agent instructions API format: ${DEFAULT_DOCS_API_ROUTE}?format=agents`,
     `- Skill document: ${DEFAULT_SKILL_MD_ROUTE}`,
     `- Skill well-known alias: ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}`,
     `- Skill API format: ${DEFAULT_DOCS_API_ROUTE}?format=skill`,
@@ -1713,6 +1747,157 @@ function renderSkillDocument({
   return lines.join("\n");
 }
 
+function renderAgentsDocument({
+  origin,
+  entry,
+  search,
+  mcp,
+  feedback,
+  llms,
+  sitemap,
+  robots,
+  openapi,
+}: AgentsDocumentOptions): string {
+  const normalizedEntry = normalizePathSegment(entry) || "docs";
+  const siteTitle = compactSkillText(llms.siteTitle ?? "Documentation");
+  const siteDescription = llms.siteDescription ? compactSkillText(llms.siteDescription) : undefined;
+  const searchEnabled = isSearchEnabled(search);
+  const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms.baseUrl });
+  const robotsEnabled = isRobotsDiscoveryEnabled(robots);
+  const llmsSections = resolveDocsLlmsTxtSections(llms);
+  const lines = ["# Agent Instructions", "", `Site: ${siteTitle}`, `Base URL: ${origin}`];
+
+  if (siteDescription) {
+    lines.push(`Description: ${siteDescription}`);
+  }
+
+  lines.push(
+    "",
+    "## Start Here",
+    `- Read ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE} first; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${DEFAULT_AGENT_SPEC_ROUTE}.`,
+    `- Read /${normalizedEntry}.md for the root docs page.`,
+    `- Read /${normalizedEntry}/{slug}.md for page-specific context.`,
+  );
+
+  if (llms.enabled) {
+    lines.push(
+      `- Use ${DEFAULT_LLMS_TXT_ROUTE} as the compact docs map.`,
+      `- Use ${DEFAULT_LLMS_FULL_TXT_ROUTE} when you need the full markdown bundle.`,
+    );
+    for (const section of llmsSections) {
+      lines.push(`- Use ${section.route} for the ${section.title} section map.`);
+    }
+  }
+
+  if (sitemapConfig.enabled) {
+    if (sitemapConfig.markdown.enabled) {
+      lines.push(`- Use ${sitemapConfig.markdown.route} for a semantic sitemap with sections.`);
+    }
+    if (sitemapConfig.xml.enabled) {
+      lines.push(`- Use ${sitemapConfig.xml.route} for canonical URLs and freshness metadata.`);
+    }
+  }
+
+  if (robotsEnabled) {
+    lines.push(`- Check ${DEFAULT_ROBOTS_TXT_ROUTE} before crawling broadly.`);
+  }
+
+  if (searchEnabled) {
+    lines.push(`- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when the route is unknown.`);
+  }
+
+  if (openapi.enabled && openapi.url) {
+    lines.push(
+      `- Fetch ${openapi.url} before scraping API reference pages; prefer schemas over prose.`,
+    );
+  }
+
+  if (mcp.enabled) {
+    lines.push(
+      `- Use MCP at ${DEFAULT_MCP_PUBLIC_ROUTE} or ${DEFAULT_MCP_WELL_KNOWN_ROUTE} when your environment supports MCP tools.`,
+    );
+  }
+
+  if (feedback.enabled) {
+    lines.push(`- Read ${feedback.schemaRoute} before posting feedback to ${feedback.route}.`);
+  }
+
+  lines.push(
+    "",
+    "## Working Rules",
+    "- Prefer markdown routes, llms.txt, sitemap.md, OpenAPI schemas, and MCP tools over scraping rendered HTML.",
+    "- Treat generated context files as discovery aids, then fetch the smallest page or section that answers the task.",
+    "- Preserve canonical docs URLs when citing pages back to humans.",
+    "- If a route returns a markdown 404, use the sitemap and discovery spec before guessing a slug.",
+    "",
+    "## Public Routes",
+    `- Agent instructions: ${DEFAULT_AGENTS_MD_ROUTE}`,
+    `- Agent instructions well-known alias: ${DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE}`,
+    `- Agent instructions API format: ${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+    `- Agent instructions aliases: ${DEFAULT_AGENT_MD_ROUTE}, ${DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE}`,
+    `- Site skill: ${DEFAULT_SKILL_MD_ROUTE}`,
+    `- Site skill well-known alias: ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}`,
+    `- Site skill API format: ${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+    `- Markdown root: /${normalizedEntry}.md`,
+    `- Markdown pages: /${normalizedEntry}/{slug}.md`,
+    `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
+    `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
+  );
+
+  if (llms.enabled) {
+    lines.push(
+      `- llms.txt: ${DEFAULT_LLMS_TXT_ROUTE}`,
+      `- llms-full.txt: ${DEFAULT_LLMS_FULL_TXT_ROUTE}`,
+      `- llms well-known aliases: ${DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE}, ${DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE}`,
+    );
+    for (const section of llmsSections) {
+      lines.push(`- ${section.title} llms.txt: ${section.route}`);
+      lines.push(`- ${section.title} llms-full.txt: ${section.fullRoute}`);
+    }
+  }
+
+  if (robotsEnabled) {
+    lines.push(`- Robots policy: ${DEFAULT_ROBOTS_TXT_ROUTE}`);
+  }
+
+  if (sitemapConfig.enabled) {
+    if (sitemapConfig.xml.enabled) lines.push(`- Sitemap XML: ${sitemapConfig.xml.route}`);
+    if (sitemapConfig.markdown.enabled) {
+      lines.push(
+        `- Sitemap Markdown: ${sitemapConfig.markdown.route}`,
+        `- Sitemap well-known alias: ${sitemapConfig.markdown.wellKnownRoute}`,
+      );
+    }
+  }
+
+  if (openapi.enabled && openapi.url) {
+    lines.push(`- OpenAPI schema: ${openapi.url}`);
+    if (openapi.apiReferencePath) lines.push(`- API reference: ${openapi.apiReferencePath}`);
+  }
+
+  if (mcp.enabled) {
+    lines.push(`- MCP: ${DEFAULT_MCP_PUBLIC_ROUTE}, ${DEFAULT_MCP_WELL_KNOWN_ROUTE}`);
+  }
+
+  lines.push(
+    "",
+    "## Framework Maintenance",
+    "- For @farming-labs/docs projects, keep the framework package current before debugging missing agent surfaces.",
+    "",
+    "```sh",
+    "npx @farming-labs/docs@latest upgrade --latest",
+    "```",
+    "",
+    "- For framework setup, configuration, CLI, Ask AI, page actions, or theme work, install the reusable Skills pack:",
+    "",
+    "```sh",
+    "npx skills add farming-labs/docs",
+    "```",
+  );
+
+  return lines.join("\n");
+}
+
 function readRootSkillDocument(rootDir: string): string | null {
   const candidate = path.join(rootDir, "skill.md");
   try {
@@ -1721,6 +1906,21 @@ function readRootSkillDocument(rootDir: string): string | null {
     }
   } catch {
     return null;
+  }
+
+  return null;
+}
+
+function readRootAgentsDocument(rootDir: string): string | null {
+  for (const fileName of ["AGENTS.md", "AGENT.md"]) {
+    const candidate = path.join(rootDir, fileName);
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        return fs.readFileSync(candidate, "utf-8");
+      }
+    } catch {
+      continue;
+    }
   }
 
   return null;
@@ -2882,6 +3082,40 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             "X-Robots-Tag": "noindex",
           },
         });
+      }
+
+      if (resolveAgentsRequest(url)) {
+        await emitDocsAnalyticsEvent(analytics, {
+          type: "agents_request",
+          source: "server",
+          url: request.url,
+          path: url.pathname,
+          locale: ctx.locale,
+          properties: {
+            method: "GET",
+          },
+        });
+        return new Response(
+          readRootAgentsDocument(root) ??
+            renderAgentsDocument({
+              origin: url.origin,
+              entry,
+              search: searchConfig,
+              mcp: mcpConfig,
+              feedback: agentFeedbackConfig,
+              llms: llmsConfig,
+              sitemap: sitemapConfig,
+              robots: robotsConfig,
+              openapi: openapiDiscovery,
+            }),
+          {
+            headers: {
+              "Content-Type": "text/markdown; charset=utf-8",
+              "Cache-Control": "public, max-age=0, s-maxage=3600",
+              "X-Robots-Tag": "noindex",
+            },
+          },
+        );
       }
 
       if (resolveSkillRequest(url)) {

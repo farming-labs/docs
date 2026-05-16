@@ -508,7 +508,7 @@ function groupIdFromTitle(title: string): string {
 
 function groupCalloutForId(id: string): string | null {
   if (id !== "framework-surfaces") return null;
-  return "@farming-labs/docs extras on top of the AFDocs standard. These checks validate the discovery spec, full-context files, sitemap routes, robots.txt policy, skill.md, MCP, search, feedback, JSON-LD, and markdown alternate links when the site advertises them.";
+  return "@farming-labs/docs extras on top of the AFDocs standard. These checks validate the discovery spec, full-context files, sitemap routes, robots.txt policy, AGENTS.md, skill.md, MCP, search, feedback, JSON-LD, and markdown alternate links when the site advertises them.";
 }
 
 function groupChecksForDetails(checks: AgentScoreCheck[]): CheckGroup[] {
@@ -1371,21 +1371,28 @@ function HeroSection({
             <code className="font-mono text-black/70 dark:text-white/70">
               docs doctor --agent --url
             </code>{" "}
-            CLI runs, in one click. We probe discovery, llms.txt, sitemap, robots, skill.md, .md
-            routes, and MCP, then give you a score and a breakdown.
+            CLI runs, in one click. We probe discovery, llms.txt, sitemap, robots, AGENTS.md,
+            skill.md, .md routes, and MCP, then give you a score and a breakdown.
           </p>
 
           <div className="mt-6 flex font-pixel flex-wrap gap-1.5 sm:gap-2">
-            {["Discovery", "llms.txt", "Sitemap", "Robots", "Skill", "Markdown", "MCP"].map(
-              (signal) => (
-                <span
-                  key={signal}
-                  className="inline-flex items-center border border-black/10 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-black/45 dark:border-white/10 dark:text-white/45 sm:px-2.5 sm:text-[10px] sm:tracking-[0.2em]"
-                >
-                  {signal}
-                </span>
-              ),
-            )}
+            {[
+              "Discovery",
+              "llms.txt",
+              "Sitemap",
+              "Robots",
+              "AGENTS.md",
+              "Skill",
+              "Markdown",
+              "MCP",
+            ].map((signal) => (
+              <span
+                key={signal}
+                className="inline-flex items-center border border-black/10 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-black/45 dark:border-white/10 dark:text-white/45 sm:px-2.5 sm:text-[10px] sm:tracking-[0.2em]"
+              >
+                {signal}
+              </span>
+            ))}
           </div>
 
           <div className="-mb-px mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:items-center">

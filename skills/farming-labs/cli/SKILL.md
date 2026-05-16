@@ -1,14 +1,14 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold, upgrade, run doctor audits, compact agent docs, generate sitemaps, generate robots.txt, sync external search indexes, and run MCP for docs. Use when running init, upgrade, doctor, agent compact, sitemap generate, robots generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
+description: @farming-labs/docs CLI — scaffold, upgrade, run doctor audits, compact agent docs, generate AGENTS.md, generate sitemaps, generate robots.txt, sync external search indexes, and run MCP for docs. Use when running init, upgrade, doctor, agent compact, agents generate, sitemap generate, robots generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
 ---
 
 # @farming-labs/docs — CLI
 
 The `@farming-labs/docs` CLI scaffolds, upgrades, audits agent and reader readiness, compacts
-page-level agent docs, syncs external search indexes, generates robots.txt policy files, and can
+page-level agent docs, generates `AGENTS.md`, syncs external search indexes, generates robots.txt policy files, and can
 run the built-in MCP server for documentation projects. Use this skill when the user asks about CLI
-commands, init, upgrade, `doctor`, `agent compact`, `sitemap generate`, `robots generate`, search
+commands, init, upgrade, `doctor`, `agent compact`, `agents generate`, `sitemap generate`, `robots generate`, search
 sync, mcp, or scaffolding.
 
 ---
@@ -369,11 +369,34 @@ agent:
 
 ---
 
+## Agents generate
+
+Use `agents generate` when the user wants root and static `AGENTS.md` files for coding agents.
+Server-rendered apps get generated `/AGENTS.md` dynamically by default, but static exports can
+commit the generated files.
+
+```bash
+pnpm exec docs agents generate
+pnpm exec docs agents generate --check
+pnpm exec docs agents generate --force
+pnpm exec docs agents generate --path AGENTS.md
+```
+
+Behavior:
+
+- writes a managed root `AGENTS.md`
+- writes public aliases at `/AGENTS.md`, `/.well-known/AGENTS.md`, `/AGENT.md`, and `/.well-known/AGENT.md`
+- uses `public/` by default, or `static/` for SvelteKit
+- keeps a hand-written root `AGENTS.md` or `AGENT.md` unless `--force` is passed
+- copies a hand-written root file to missing public aliases for static hosting
+
+---
+
 ## Robots generate
 
 Use `robots generate` when the user wants a static `robots.txt` policy that advertises docs routes,
-agent-readable markdown routes, `llms.txt`, sitemap routes, `skill.md`, MCP aliases, and common AI
-crawler user agents.
+agent-readable markdown routes, `llms.txt`, sitemap routes, `AGENTS.md`, `skill.md`, MCP aliases,
+and common AI crawler user agents.
 
 ```bash
 pnpm exec docs robots generate
@@ -429,6 +452,7 @@ What it checks:
 - `llms.txt`
 - `sitemap.xml` and `sitemap.md`
 - `robots.txt`
+- `AGENTS.md`
 - `skill.md`
 - MCP
 - search
@@ -444,6 +468,8 @@ With `--url`, `docs doctor --agent` also probes the deployed public agent surfac
 - `/llms-full.txt`
 - sitemap routes from the discovery spec, usually `/sitemap.xml`, `/sitemap.md`, and `/.well-known/sitemap.md`
 - the robots route from the discovery spec, usually `/robots.txt`
+- `/AGENTS.md`
+- `/.well-known/AGENTS.md`
 - `/skill.md`
 - `/.well-known/skill.md`
 - one representative `.md` page route, such as `/docs.md`

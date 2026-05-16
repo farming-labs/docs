@@ -316,6 +316,18 @@ describe("withDocs (app dir: src/app vs app)", () => {
           destination: "/api/docs/mcp",
         }),
         expect.objectContaining({
+          source: "/AGENTS.md",
+          destination: "/api/docs?format=agents",
+        }),
+        expect.objectContaining({
+          source: "/.well-known/AGENTS.md",
+          destination: "/api/docs?format=agents",
+        }),
+        expect.objectContaining({
+          source: "/AGENT.md",
+          destination: "/api/docs?format=agents",
+        }),
+        expect.objectContaining({
           source: "/skill.md",
           destination: "/api/docs?format=skill",
         }),
@@ -825,7 +837,13 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const nextConfig = withDocs({});
 
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
-      "/api/docs": ["app/docs/**/*", "skill.md", ".farming-labs/sitemap-manifest.json"],
+      "/api/docs": [
+        "app/docs/**/*",
+        "skill.md",
+        "AGENTS.md",
+        "AGENT.md",
+        ".farming-labs/sitemap-manifest.json",
+      ],
       "/api/docs/mcp": ["app/docs/**/*"],
     });
   });
@@ -838,7 +856,13 @@ describe("withDocs (app dir: src/app vs app)", () => {
     const nextConfig = withDocs({});
 
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
-      "/api/docs": ["website/app/docs/**/*", "skill.md", ".farming-labs/sitemap-manifest.json"],
+      "/api/docs": [
+        "website/app/docs/**/*",
+        "skill.md",
+        "AGENTS.md",
+        "AGENT.md",
+        ".farming-labs/sitemap-manifest.json",
+      ],
       "/api/docs/mcp": ["website/app/docs/**/*"],
     });
   });
@@ -881,6 +905,18 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/.well-known/mcp",
           destination: "/api/docs/mcp",
+        }),
+        expect.objectContaining({
+          source: "/AGENTS.md",
+          destination: "/api/docs?format=agents",
+        }),
+        expect.objectContaining({
+          source: "/.well-known/AGENTS.md",
+          destination: "/api/docs?format=agents",
+        }),
+        expect.objectContaining({
+          source: "/AGENT.md",
+          destination: "/api/docs?format=agents",
         }),
         expect.objectContaining({
           source: "/skill.md",

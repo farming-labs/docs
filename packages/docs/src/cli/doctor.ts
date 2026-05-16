@@ -3,6 +3,8 @@ import path from "node:path";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 import pc from "picocolors";
 import {
+  DEFAULT_AGENTS_MD_ROUTE,
+  DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
   DEFAULT_AGENT_FEEDBACK_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
@@ -627,7 +629,7 @@ function detectRouteSurface(
         apiDetail: "Next static export disables /api/docs and the shared agent endpoints.",
         publicMounted: false,
         publicDetail:
-          "Public .md, llms.txt, sitemap, skill.md, and agent discovery routes depend on /api/docs.",
+          "Public .md, llms.txt, sitemap, AGENTS.md, skill.md, and agent discovery routes depend on /api/docs.",
       };
     }
 
@@ -1883,6 +1885,25 @@ async function buildHostedAgentChecks(
     ),
   );
 
+  const agents = await Promise.all([
+    probeTextRoute(baseUrl, DEFAULT_AGENTS_MD_ROUTE),
+    probeTextRoute(baseUrl, DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE),
+  ]);
+  const agentsPassed = agents.filter((result) => result.ok).length;
+  checks.push(
+    makeCheck(
+      "hosted-agents",
+      "Hosted AGENTS.md",
+      agentsPassed === agents.length ? "pass" : agentsPassed > 0 ? "warn" : "fail",
+      agentsPassed === agents.length ? 5 : agentsPassed > 0 ? 3 : 0,
+      5,
+      agents.map((result) => result.detail).join(" "),
+      agentsPassed === agents.length
+        ? undefined
+        : "Verify deployed /AGENTS.md and /.well-known/AGENTS.md routes return non-empty markdown.",
+    ),
+  );
+
   const markdownRoute = toMarkdownRoute(pages[0]?.url);
   if (markdownRoute) {
     const markdownPageUrl = pages[0]?.url ? joinDoctorUrl(baseUrl, pages[0].url) : undefined;
@@ -2121,6 +2142,8 @@ export async function inspectAgentReadiness(
   const agentFeedbackEnabled = resolveAgentFeedbackEnabled(config, configContent);
   const compactConfigured = hasAgentCompactDefaults(config, configContent);
   const skillFileExists = existsSync(path.join(rootDir, "skill.md"));
+  const agentsFileExists =
+    existsSync(path.join(rootDir, "AGENTS.md")) || existsSync(path.join(rootDir, "AGENT.md"));
 
   const source = createFilesystemDocsMcpSource({
     rootDir,
@@ -2219,7 +2242,7 @@ export async function inspectAgentReadiness(
       routeSurface.apiDetail,
       routeSurface.apiMounted
         ? undefined
-        : "Wire the framework docs API route so /api/docs can serve markdown, llms.txt, sitemap, skill.md, and discovery responses.",
+        : "Wire the framework docs API route so /api/docs can serve markdown, llms.txt, sitemap, AGENTS.md, skill.md, and discovery responses.",
     ),
   );
 
@@ -2233,7 +2256,7 @@ export async function inspectAgentReadiness(
       routeSurface.publicDetail,
       routeSurface.publicMounted
         ? undefined
-        : "Add the framework public forwarder so /.well-known/*, /llms.txt, /sitemap.xml, /sitemap.md, /skill.md, /mcp, and .md routes resolve from the shared docs API.",
+        : "Add the framework public forwarder so /.well-known/*, /llms.txt, /sitemap.xml, /sitemap.md, /AGENTS.md, /skill.md, /mcp, and .md routes resolve from the shared docs API.",
     ),
   );
 
@@ -2380,6 +2403,26 @@ export async function inspectAgentReadiness(
           5,
           5,
           `No root skill.md found; the framework will serve the generated fallback at ${DEFAULT_SKILL_MD_ROUTE}.`,
+        ),
+  );
+
+  checks.push(
+    agentsFileExists
+      ? makeCheck(
+          "agents",
+          "Agent instructions",
+          "pass",
+          5,
+          5,
+          `Found root AGENTS.md/AGENT.md for ${DEFAULT_AGENTS_MD_ROUTE} and ${DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE}.`,
+        )
+      : makeCheck(
+          "agents",
+          "Agent instructions",
+          "pass",
+          5,
+          5,
+          `No root AGENTS.md found; the framework will serve the generated fallback at ${DEFAULT_AGENTS_MD_ROUTE}.`,
         ),
   );
 
@@ -2834,7 +2877,7 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
   console.log();
   console.log(
     pc.dim(
-      `Expected public surfaces: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}, ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}, ${DEFAULT_LLMS_TXT_ROUTE}, ${DEFAULT_LLMS_FULL_TXT_ROUTE}, ${DEFAULT_SKILL_MD_ROUTE}, ${DEFAULT_MCP_PUBLIC_ROUTE}`,
+      `Expected public surfaces: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}, ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}, ${DEFAULT_LLMS_TXT_ROUTE}, ${DEFAULT_LLMS_FULL_TXT_ROUTE}, ${DEFAULT_AGENTS_MD_ROUTE}, ${DEFAULT_SKILL_MD_ROUTE}, ${DEFAULT_MCP_PUBLIC_ROUTE}`,
     ),
   );
 }

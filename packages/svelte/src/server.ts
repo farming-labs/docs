@@ -12,7 +12,7 @@
  * import config from "./docs.config";
  *
  * // Bundle content at build time for serverless deployments
- * const contentFiles = import.meta.glob(["/docs/**\/*.{md,mdx,svx}", "/skill.md"], {
+ * const contentFiles = import.meta.glob(["/docs/**\/*.{md,mdx,svx}", "/AGENTS.md", "/skill.md"], {
  *   query: "?raw", import: "default", eager: true,
  * }) as Record<string, string>;
  *
@@ -47,6 +47,7 @@ import {
   getDocsMarkdownCanonicalLinkHeader,
   getDocsMarkdownVaryHeader,
   isDocsAgentDiscoveryRequest,
+  isDocsAgentsRequest,
   isDocsSkillRequest,
   normalizeDocsRelated,
   parseDocsAgentFeedbackData,
@@ -54,6 +55,7 @@ import {
   renderDocsMarkdownDocument,
   renderDocsMarkdownNotFound,
   renderDocsLlmsTxt,
+  renderDocsAgentsDocument,
   renderDocsSkillDocument,
   readDocsSitemapManifestFromContentMap,
   stripGeneratedAgentProvenance,
@@ -72,6 +74,7 @@ import {
   resolvePageReadingTime,
   resolveReadingTimeOptions,
   resolveDocsSitemapPageLastmod,
+  resolveDocsAgentsFormat,
   resolveDocsSkillFormat,
   renderDocsPageStructuredDataJson,
   selectDocsLlmsTxtContent,
@@ -276,6 +279,38 @@ function readRootSkillDocument(
     }
   } catch {
     return null;
+  }
+
+  return null;
+}
+
+function readRootAgentsDocument(
+  contentMap: ContentFileMap | undefined,
+  rootDir: string,
+): string | null {
+  if (contentMap) {
+    for (const key of [
+      "/AGENTS.md",
+      "AGENTS.md",
+      "./AGENTS.md",
+      "/AGENT.md",
+      "AGENT.md",
+      "./AGENT.md",
+    ]) {
+      const raw = contentMap[key];
+      if (typeof raw === "string") return raw;
+    }
+  }
+
+  for (const fileName of ["AGENTS.md", "AGENT.md"]) {
+    const candidate = path.join(rootDir, fileName);
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        return fs.readFileSync(candidate, "utf-8");
+      }
+    } catch {
+      continue;
+    }
   }
 
   return null;
@@ -972,6 +1007,40 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
           "X-Robots-Tag": "noindex",
         },
       });
+    }
+
+    if (isDocsAgentsRequest(event.url) || resolveDocsAgentsFormat(event.url) === "agents") {
+      return new Response(
+        readRootAgentsDocument(preloaded, rootDir) ??
+          renderDocsAgentsDocument({
+            origin: event.url.origin,
+            entry,
+            search: config.search,
+            mcp: mcpConfig,
+            feedback: agentFeedbackDiscovery,
+            llms: {
+              enabled: llmsEnabled,
+              baseUrl: llmsBaseUrl || undefined,
+              siteTitle: llmsTitle,
+              siteDescription: llmsDesc,
+              maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
+              sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
+            },
+            sitemap: config.sitemap,
+            robots: config.robots,
+            openapi: openapiDiscovery,
+            markdown: {
+              acceptHeader: false,
+            },
+          } as any),
+        {
+          headers: {
+            "Content-Type": "text/markdown; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            "X-Robots-Tag": "noindex",
+          },
+        },
+      );
     }
 
     if (isDocsSkillRequest(event.url) || resolveDocsSkillFormat(event.url) === "skill") {

@@ -23,6 +23,7 @@ The `@farming-labs/docs` CLI has a few main jobs:
 - **`init`** — create a new docs app or add docs to an existing app
 - **`upgrade`** — bump the docs packages in an existing project
 - **`agent compact`** — generate sibling `agent.md` files from resolved docs pages
+- **`agents generate`** — write root and static `AGENTS.md` instructions for coding agents
 - **`doctor`** — audit local docs readiness and optional hosted agent routes
 - **`mcp`** — run the built-in docs MCP server over stdio for local clients and IDE agents
 - **`search sync`** — push docs content into an external search index like Typesense or Algolia
@@ -256,7 +257,7 @@ export setup, and output examples.
 ### Generate robots.txt
 
 Use `robots generate` when you want a static `robots.txt` file that explicitly allows docs,
-markdown, `llms.txt`, sitemap, skill, MCP, and agent discovery routes.
+markdown, `llms.txt`, sitemap, `AGENTS.md`, skill, MCP, and agent discovery routes.
 
 ```bash title="terminal"
 pnpm exec docs robots generate
@@ -416,6 +417,22 @@ curl "http://127.0.0.1:3000/docs/installation.md"
 See [Configuration](/docs/configuration) for `agent.compact`, and [Token Efficiency](/docs/token-efficiency)
 for when you should use compaction instead of writing `agent.md` by hand.
 
+## Agents Generate
+
+Generate committed `AGENTS.md` files for coding agents and static exports:
+
+```bash title="terminal"
+pnpm exec docs agents generate
+pnpm exec docs agents generate --check
+pnpm exec docs agents generate --force
+pnpm exec docs agents generate --path AGENTS.md
+```
+
+By default the command writes a managed root `AGENTS.md` plus public copies at `/AGENTS.md`,
+`/.well-known/AGENTS.md`, `/AGENT.md`, and `/.well-known/AGENT.md` (`static/` instead of `public/`
+for SvelteKit). If a hand-written root `AGENTS.md` or `AGENT.md` already exists, the command keeps
+it and uses that content for missing static aliases unless `--force` is passed.
+
 ## Doctor
 
 Use `docs doctor --agent` when you want a quick health check for the machine-facing side of the
@@ -437,6 +454,7 @@ What it checks:
 - `llms.txt`
 - `sitemap.xml` and `sitemap.md`
 - `robots.txt`
+- `AGENTS.md`
 - `skill.md`
 - MCP
 - search
@@ -558,6 +576,8 @@ The hosted pass probes:
 - `/llms-full.txt`
 - sitemap routes from the discovery spec, usually `/sitemap.xml`, `/sitemap.md`, and `/.well-known/sitemap.md`
 - the robots route from the discovery spec, usually `/robots.txt`
+- `/AGENTS.md`
+- `/.well-known/AGENTS.md`
 - `/skill.md`
 - `/.well-known/skill.md`
 - one representative page markdown route, such as `/docs.md`
@@ -1598,7 +1618,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
 
     // preloading for production
     const contentFiles = import.meta.glob(
-      ["/docs/**/*.{md,mdx,svx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"],
+      ["/docs/**/*.{md,mdx,svx}", "/AGENTS.md", "/AGENT.md", "/skill.md", "/.farming-labs/sitemap-manifest.json"],
       {
         query: "?raw",
         import: "default",
@@ -1707,7 +1727,7 @@ Here is every file the CLI generates, ready to copy-paste if you prefer manual s
     import config from "./docs.config";
 
     const contentFiles = import.meta.glob(
-      ["/docs/**/*.{md,mdx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"],
+      ["/docs/**/*.{md,mdx}", "/AGENTS.md", "/AGENT.md", "/skill.md", "/.farming-labs/sitemap-manifest.json"],
       {
         query: "?raw",
         import: "default",

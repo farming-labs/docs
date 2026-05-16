@@ -1,6 +1,6 @@
 ---
 name: docs
-description: Use the Farming Labs docs website through agent discovery, markdown routes, search, llms.txt, OpenAPI schema discovery, and MCP.
+description: Use the Farming Labs docs website through agent discovery, AGENTS.md, markdown routes, search, llms.txt, OpenAPI schema discovery, and MCP.
 ---
 
 # Farming Labs Docs Website Skill
@@ -10,6 +10,7 @@ Use this skill when reading or implementing from the hosted Farming Labs docs we
 ## Start Here
 
 - Fetch `/.well-known/agent.json` first.
+- Fetch `/AGENTS.md` for coding-agent operating instructions.
 - Read `/docs.md` for the root docs page.
 - Read `/docs/{slug}.md` for page-specific markdown.
 - On Next.js docs routes, you can also read `/docs/{slug}` with `Signature-Agent` for the same markdown.

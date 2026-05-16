@@ -4,7 +4,13 @@ import config from "./docs.config";
 
 // preload for production
 const contentFiles = import.meta.glob(
-  ["/docs/**/*.{md,mdx,svx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"],
+  [
+    "/docs/**/*.{md,mdx,svx}",
+    "/AGENTS.md",
+    "/AGENT.md",
+    "/skill.md",
+    "/.farming-labs/sitemap-manifest.json",
+  ],
   {
     query: "?raw",
     import: "default",

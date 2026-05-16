@@ -1604,7 +1604,7 @@ import { createDocsServer } from "@farming-labs/svelte/server";
 import config from "${configImport}";
 
 // preload for production
-const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx,svx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"], {
+const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx,svx}", "/AGENTS.md", "/AGENT.md", "/skill.md", "/.farming-labs/sitemap-manifest.json"], {
   query: "?raw",
   import: "default",
   eager: true,
@@ -2107,7 +2107,7 @@ export function astroDocsServerTemplate(cfg: TemplateConfig): string {
 import { createDocsServer } from "@farming-labs/astro/server";
 import config from "${configImport}";
 
-const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"], {
+const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx}", "/AGENTS.md", "/AGENT.md", "/skill.md", "/.farming-labs/sitemap-manifest.json"], {
   query: "?raw",
   import: "default",
   eager: true,
