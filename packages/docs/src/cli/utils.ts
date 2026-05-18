@@ -151,6 +151,17 @@ export function exec(command: string, cwd: string): void {
 }
 
 /**
+ * Run a shell command synchronously and return stdout.
+ */
+export function execOutput(command: string, cwd: string): string {
+  return execSync(command, {
+    cwd,
+    encoding: "utf-8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
+/**
  * Spawn a process and wait for a specific string in stdout,
  * then resolve with the child process (still running).
  */

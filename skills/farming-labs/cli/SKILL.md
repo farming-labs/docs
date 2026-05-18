@@ -1,14 +1,14 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold, upgrade, run doctor audits, compact agent docs, generate AGENTS.md, generate sitemaps, generate robots.txt, sync external search indexes, and run MCP for docs. Use when running init, upgrade, doctor, agent compact, agents generate, sitemap generate, robots generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --version, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
+description: @farming-labs/docs CLI — scaffold, upgrade, downgrade, run doctor audits, compact agent docs, generate AGENTS.md, generate sitemaps, generate robots.txt, sync external search indexes, and run MCP for docs. Use when running init, upgrade, downgrade, doctor, agent compact, agents generate, sitemap generate, robots generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --version, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
 ---
 
 # @farming-labs/docs — CLI
 
-The `@farming-labs/docs` CLI scaffolds, upgrades, audits agent and reader readiness, compacts
+The `@farming-labs/docs` CLI scaffolds, upgrades, downgrades, audits agent and reader readiness, compacts
 page-level agent docs, generates `AGENTS.md`, syncs external search indexes, generates robots.txt policy files, and can
 run the built-in MCP server for documentation projects. Use this skill when the user asks about CLI
-commands, init, upgrade, `doctor`, `agent compact`, `agents generate`, `sitemap generate`, `robots generate`, search
+commands, init, upgrade, downgrade, `doctor`, `agent compact`, `agents generate`, `sitemap generate`, `robots generate`, search
 sync, mcp, or scaffolding.
 
 ---
@@ -130,6 +130,25 @@ npx @farming-labs/docs@latest upgrade@latest       # shorthand for --latest
 ```
 
 Use `--version <version>` when the user needs an exact release instead of an npm dist-tag. If someone uses `pnpx @farming-labs/docs upgrade@beta`, treat it as the supported shorthand for upgrading to the latest beta dist-tag.
+
+## Downgrade
+
+Downgrade all `@farming-labs/*` docs packages to a lower version. Run from the **project root**. The CLI auto-detects the framework and package manager like `upgrade`.
+
+Without `--version`, `downgrade` fetches published `@farming-labs/docs` versions and installs the highest version lower than the current installed version.
+
+```bash
+npx @farming-labs/docs@latest downgrade
+pnpm dlx @farming-labs/docs@latest downgrade
+```
+
+Use `--version <version>` to choose an exact lower version:
+
+```bash
+npx @farming-labs/docs@latest downgrade --version 0.1.103
+```
+
+If the requested version is equal to or newer than the current installed version, `downgrade` stops and tells the user to use `upgrade --version <version>` for newer versions.
 
 ---
 
