@@ -22,9 +22,7 @@ describe("downgrade", () => {
 
   describe("getPreviousVersion", () => {
     it("returns the highest published version below the current version", () => {
-      expect(getPreviousVersion(["0.1.102", "0.1.103", "0.1.104"], "0.1.104")).toBe(
-        "0.1.103",
-      );
+      expect(getPreviousVersion(["0.1.102", "0.1.103", "0.1.104"], "0.1.104")).toBe("0.1.103");
     });
 
     it("returns null when there is no lower published version", () => {

@@ -165,10 +165,12 @@ export function parsePublishedVersions(raw: string): string[] {
 export function getPreviousVersion(versions: string[], currentVersion: string): string | null {
   const current = validateUpgradeVersion(currentVersion);
 
-  return versions
-    .filter((version) => compareSemver(version, current) < 0)
-    .sort(compareSemver)
-    .at(-1) ?? null;
+  return (
+    versions
+      .filter((version) => compareSemver(version, current) < 0)
+      .sort(compareSemver)
+      .at(-1) ?? null
+  );
 }
 
 export function fetchPublishedVersions(cwd: string): string[] {
@@ -183,7 +185,10 @@ export function buildDowngradeCommand(
   return buildUpgradeCommand(framework, validateUpgradeVersion(version), pm);
 }
 
-function resolveFramework(cwd: string, rawFramework?: string): {
+function resolveFramework(
+  cwd: string,
+  rawFramework?: string,
+): {
   framework: UpgradeFramework;
   preset: PresetName;
 } {
@@ -318,9 +323,7 @@ export async function downgrade(options: DowngradeOptions = {}) {
   const pm = await resolvePackageManager(cwd);
   const cmd = buildDowngradeCommand(framework, targetVersion, pm);
 
-  p.log.step(
-    `Downgrading ${preset} docs packages from ${currentVersion} to ${targetVersion}...`,
-  );
+  p.log.step(`Downgrading ${preset} docs packages from ${currentVersion} to ${targetVersion}...`);
   p.log.message(pc.dim(packages.join(", ")));
 
   try {
