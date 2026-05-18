@@ -6,24 +6,15 @@ import fs from "node:fs";
 import path from "node:path";
 import * as p from "@clack/prompts";
 import pc from "picocolors";
+import { type PackageManager, exec, execOutput, fileExists } from "./utils.js";
 import {
-  type PackageManager,
-  detectFramework,
-  detectPackageManagerFromLockfile,
-  exec,
-  execOutput,
-  fileExists,
-} from "./utils.js";
-import {
-  PRESETS,
-  buildUpgradeCommand,
-  frameworkFromPreset,
+  buildDocsPackageInstallCommand,
   getPackagesForFramework,
-  presetFromFramework,
+  resolveDocsPackageFramework,
+  resolveDocsPackageManager,
   validateUpgradeVersion,
-  type PresetName,
   type UpgradeFramework,
-} from "./upgrade.js";
+} from "./package-version.js";
 
 export interface DowngradeOptions {
   /** Explicit framework: next, tanstack-start, nuxt, sveltekit, astro. If not set, framework is auto-detected. */
@@ -182,74 +173,7 @@ export function buildDowngradeCommand(
   version: string,
   pm: PackageManager,
 ): string {
-  return buildUpgradeCommand(framework, validateUpgradeVersion(version), pm);
-}
-
-function resolveFramework(
-  cwd: string,
-  rawFramework?: string,
-): {
-  framework: UpgradeFramework;
-  preset: PresetName;
-} {
-  if (rawFramework) {
-    const raw = rawFramework.toLowerCase().trim();
-    const normalized = raw === "nextjs" ? "next" : raw;
-    if (!PRESETS.includes(normalized as PresetName)) {
-      p.log.error(
-        `Invalid framework ${pc.cyan(rawFramework)}. Use one of: ${PRESETS.map((t) => pc.cyan(t)).join(", ")}`,
-      );
-      process.exit(1);
-    }
-
-    const preset = normalized as PresetName;
-    return {
-      framework: frameworkFromPreset(preset),
-      preset,
-    };
-  }
-
-  const detected = detectFramework(cwd);
-  if (!detected) {
-    p.log.error(
-      "Could not detect a supported framework (Next.js, TanStack Start, Nuxt, SvelteKit, Astro). Use " +
-        pc.cyan("--framework <next|tanstack-start|nuxt|sveltekit|astro>") +
-        " to specify.",
-    );
-    process.exit(1);
-  }
-
-  return {
-    framework: detected,
-    preset: presetFromFramework(detected),
-  };
-}
-
-async function resolvePackageManager(cwd: string): Promise<PackageManager> {
-  const detected = detectPackageManagerFromLockfile(cwd);
-  if (detected) {
-    p.log.info(`Detected ${pc.cyan(detected)} from lockfile`);
-    return detected;
-  }
-
-  const pmAnswer = await p.select({
-    message: "Which package manager do you want to use for this downgrade?",
-    options: [
-      { value: "pnpm", label: "pnpm", hint: "Use pnpm add" },
-      { value: "npm", label: "npm", hint: "Use npm add" },
-      { value: "yarn", label: "yarn", hint: "Use yarn add" },
-      { value: "bun", label: "bun", hint: "Use bun add" },
-    ] as const,
-  });
-
-  if (p.isCancel(pmAnswer)) {
-    p.outro(pc.red("Downgrade cancelled."));
-    process.exit(0);
-  }
-
-  const pm = pmAnswer as PackageManager;
-  p.log.info(`Using ${pc.cyan(pm)} as package manager`);
-  return pm;
+  return buildDocsPackageInstallCommand(framework, validateUpgradeVersion(version), pm);
 }
 
 export async function downgrade(options: DowngradeOptions = {}) {
@@ -263,7 +187,7 @@ export async function downgrade(options: DowngradeOptions = {}) {
     process.exit(1);
   }
 
-  const { framework, preset } = resolveFramework(cwd, options.framework);
+  const { framework, preset } = resolveDocsPackageFramework(cwd, options.framework);
   const packages = getPackagesForFramework(framework);
   const currentVersion = readCurrentPackageVersion(cwd, packages);
 
@@ -320,7 +244,7 @@ export async function downgrade(options: DowngradeOptions = {}) {
     targetVersion = previousVersion;
   }
 
-  const pm = await resolvePackageManager(cwd);
+  const pm = await resolveDocsPackageManager(cwd, "downgrade");
   const cmd = buildDowngradeCommand(framework, targetVersion, pm);
 
   p.log.step(`Downgrading ${preset} docs packages from ${currentVersion} to ${targetVersion}...`);

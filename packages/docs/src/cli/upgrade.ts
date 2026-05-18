@@ -5,54 +5,29 @@
 import path from "node:path";
 import * as p from "@clack/prompts";
 import pc from "picocolors";
+import { type PackageManager, exec, fileExists } from "./utils.js";
 import {
-  type Framework,
-  type PackageManager,
-  detectFramework,
-  detectPackageManagerFromLockfile,
-  installCommand,
-  exec,
-  fileExists,
-} from "./utils.js";
+  buildDocsPackageInstallCommand,
+  getPackagesForFramework,
+  resolveDocsPackageFramework,
+  resolveDocsPackageManager,
+  validateUpgradeVersion,
+  type UpgradeFramework,
+} from "./package-version.js";
 
-export const PRESETS = ["next", "tanstack-start", "nuxt", "sveltekit", "astro"] as const;
-export type PresetName = (typeof PRESETS)[number];
-export type UpgradeFramework = Framework;
-
-export const PACKAGES_BY_FRAMEWORK: Record<UpgradeFramework, string[]> = {
-  nextjs: ["@farming-labs/docs", "@farming-labs/theme", "@farming-labs/next"],
-  "tanstack-start": ["@farming-labs/docs", "@farming-labs/theme", "@farming-labs/tanstack-start"],
-  nuxt: ["@farming-labs/docs", "@farming-labs/nuxt", "@farming-labs/nuxt-theme"],
-  sveltekit: ["@farming-labs/docs", "@farming-labs/svelte", "@farming-labs/svelte-theme"],
-  astro: ["@farming-labs/docs", "@farming-labs/astro", "@farming-labs/astro-theme"],
-};
-
-export function presetFromFramework(fw: UpgradeFramework): PresetName {
-  return fw === "nextjs" ? "next" : fw;
-}
-
-export function frameworkFromPreset(preset: PresetName): UpgradeFramework {
-  return preset === "next" ? "nextjs" : preset;
-}
-
-/** Return package list for a framework (for testing and CLI). */
-export function getPackagesForFramework(framework: UpgradeFramework): string[] {
-  return PACKAGES_BY_FRAMEWORK[framework];
-}
-
-const exactSemverPattern =
-  /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
+export {
+  PACKAGES_BY_FRAMEWORK,
+  PRESETS,
+  frameworkFromPreset,
+  getPackagesForFramework,
+  presetFromFramework,
+  validateUpgradeVersion,
+  type PresetName,
+  type UpgradeFramework,
+} from "./package-version.js";
 
 export type UpgradeTag = "latest" | "beta";
 export type UpgradeTarget = UpgradeTag | (string & {});
-
-export function validateUpgradeVersion(version: string): string {
-  const normalized = version.trim();
-  if (!exactSemverPattern.test(normalized)) {
-    throw new Error(`Invalid version "${version}". Use an exact semver version like 0.1.104.`);
-  }
-  return normalized;
-}
 
 export function resolveUpgradeTarget(options: Pick<UpgradeOptions, "tag" | "version">): string {
   if (options.version !== undefined) {
@@ -68,9 +43,7 @@ export function buildUpgradeCommand(
   target: UpgradeTarget,
   pm: PackageManager,
 ): string {
-  const packages = PACKAGES_BY_FRAMEWORK[framework];
-  const packagesWithTarget = packages.map((name) => `${name}@${target}`);
-  return `${installCommand(pm)} ${packagesWithTarget.join(" ")}`;
+  return buildDocsPackageInstallCommand(framework, target, pm);
 }
 
 export interface UpgradeOptions {
@@ -101,56 +74,8 @@ export async function upgrade(options: UpgradeOptions = {}) {
     process.exit(1);
   }
 
-  let framework: UpgradeFramework | null = null;
-  let preset: PresetName;
-
-  if (options.framework) {
-    const raw = options.framework.toLowerCase().trim();
-    const normalized = raw === "nextjs" ? "next" : raw;
-    if (!PRESETS.includes(normalized as PresetName)) {
-      p.log.error(
-        `Invalid framework ${pc.cyan(options.framework)}. Use one of: ${PRESETS.map((t) => pc.cyan(t)).join(", ")}`,
-      );
-      process.exit(1);
-    }
-    preset = normalized as PresetName;
-    framework = frameworkFromPreset(preset);
-  } else {
-    const detected = detectFramework(cwd);
-    if (!detected) {
-      p.log.error(
-        "Could not detect a supported framework (Next.js, TanStack Start, Nuxt, SvelteKit, Astro). Use " +
-          pc.cyan("--framework <next|tanstack-start|nuxt|sveltekit|astro>") +
-          " to specify.",
-      );
-      process.exit(1);
-    }
-    framework = detected;
-    preset = presetFromFramework(framework);
-  }
-
-  let pm = detectPackageManagerFromLockfile(cwd);
-  if (pm) {
-    p.log.info(`Detected ${pc.cyan(pm)} from lockfile`);
-  } else {
-    const pmAnswer = await p.select({
-      message: "Which package manager do you want to use for this upgrade?",
-      options: [
-        { value: "pnpm", label: "pnpm", hint: "Use pnpm add" },
-        { value: "npm", label: "npm", hint: "Use npm add" },
-        { value: "yarn", label: "yarn", hint: "Use yarn add" },
-        { value: "bun", label: "bun", hint: "Use bun add" },
-      ] as const,
-    });
-
-    if (p.isCancel(pmAnswer)) {
-      p.outro(pc.red("Upgrade cancelled."));
-      process.exit(0);
-    }
-
-    pm = pmAnswer as PackageManager;
-    p.log.info(`Using ${pc.cyan(pm)} as package manager`);
-  }
+  const { framework, preset } = resolveDocsPackageFramework(cwd, options.framework);
+  const pm = await resolveDocsPackageManager(cwd, "upgrade");
 
   const cmd = buildUpgradeCommand(framework, target, pm);
   const packages = getPackagesForFramework(framework);
