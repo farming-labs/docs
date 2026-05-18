@@ -5,11 +5,7 @@
 import path from "node:path";
 import * as p from "@clack/prompts";
 import pc from "picocolors";
-import {
-  type PackageManager,
-  exec,
-  fileExists,
-} from "./utils.js";
+import { type PackageManager, exec, fileExists } from "./utils.js";
 import {
   buildDocsPackageInstallCommand,
   getPackagesForFramework,
