@@ -762,7 +762,7 @@ The generated project gets:
 
 ## Upgrade
 
-Upgrade all `@farming-labs/*` docs packages to the latest version. Run from your project root; the CLI **auto-detects** your framework from `package.json` and upgrades the right packages for Next.js, TanStack Start, Nuxt, SvelteKit, and Astro.
+Upgrade all `@farming-labs/*` docs packages to the latest version, beta channel, or an exact version. Run from your project root; the CLI **auto-detects** your framework from `package.json` and upgrades the right packages for Next.js, TanStack Start, Nuxt, SvelteKit, and Astro.
 
 The CLI also detects your package manager from the lockfile in the current directory (`pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, or `package-lock.json`). If no lockfile is found, it asks which package manager you want to use instead of defaulting to npm.
 
@@ -789,7 +789,7 @@ The CLI also detects your package manager from the lockfile in the current direc
   </Tab>
 </Tabs>
 
-| Framework | Packages upgraded to `@latest` |
+| Framework | Packages upgraded |
 | --------- | ------------------------------ |
 | Next.js   | `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/next` |
 | TanStack Start | `@farming-labs/docs`, `@farming-labs/theme`, `@farming-labs/tanstack-start` |
@@ -832,7 +832,7 @@ To specify the framework explicitly (e.g. in a monorepo or when auto-detect fail
 
 Valid values: `next`, `tanstack-start`, `nuxt`, `sveltekit`, `astro`.
 
-Use **`--latest`** (default) to install the latest stable release, or **`--beta`** to install beta versions:
+Use **`--latest`** (default) to install the latest stable release, **`--beta`** to install beta versions, or **`--version <version>`** to install a specific release:
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
@@ -840,6 +840,7 @@ Use **`--latest`** (default) to install the latest stable release, or **`--beta`
     npx @farming-labs/docs upgrade              # latest stable (default)
     npx @farming-labs/docs upgrade --latest     # same
     npx @farming-labs/docs upgrade --beta       # beta versions
+    npx @farming-labs/docs upgrade --version 0.1.104
     ```
   </Tab>
   <Tab value="pnpm">
@@ -847,6 +848,7 @@ Use **`--latest`** (default) to install the latest stable release, or **`--beta`
     pnpm dlx @farming-labs/docs upgrade              # latest stable (default)
     pnpm dlx @farming-labs/docs upgrade --latest     # same
     pnpm dlx @farming-labs/docs upgrade --beta       # beta versions
+    pnpm dlx @farming-labs/docs upgrade --version 0.1.104
     ```
   </Tab>
   <Tab value="yarn">
@@ -854,6 +856,7 @@ Use **`--latest`** (default) to install the latest stable release, or **`--beta`
     yarn dlx @farming-labs/docs upgrade              # latest stable (default)
     yarn dlx @farming-labs/docs upgrade --latest     # same
     yarn dlx @farming-labs/docs upgrade --beta       # beta versions
+    yarn dlx @farming-labs/docs upgrade --version 0.1.104
     ```
   </Tab>
   <Tab value="bun">
@@ -861,6 +864,7 @@ Use **`--latest`** (default) to install the latest stable release, or **`--beta`
     bunx @farming-labs/docs upgrade              # latest stable (default)
     bunx @farming-labs/docs upgrade --latest     # same
     bunx @farming-labs/docs upgrade --beta       # beta versions
+    bunx @farming-labs/docs upgrade --version 0.1.104
     ```
   </Tab>
 </Tabs>

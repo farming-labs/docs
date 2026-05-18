@@ -119,6 +119,29 @@ describe("upgrade package manager selection", () => {
     );
   });
 
+  it("upgrades to an exact version when requested", async () => {
+    const utils = await import("./utils.js");
+
+    vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+
+    await upgrade({ version: "0.1.104" });
+
+    expect(utils.exec).toHaveBeenCalledWith(
+      "pnpm add @farming-labs/docs@0.1.104 @farming-labs/theme@0.1.104 @farming-labs/next@0.1.104",
+      process.cwd(),
+    );
+  });
+
+  it("rejects invalid exact versions", async () => {
+    const utils = await import("./utils.js");
+
+    vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+
+    await expect(upgrade({ version: "latest" })).rejects.toThrow("process.exit");
+
+    expect(utils.exec).not.toHaveBeenCalled();
+  });
+
   it("does not scaffold or rewrite docs files during upgrade", async () => {
     const utils = await import("./utils.js");
 

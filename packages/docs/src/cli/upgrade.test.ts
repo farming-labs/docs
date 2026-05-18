@@ -7,6 +7,8 @@ import {
   frameworkFromPreset,
   getPackagesForFramework,
   buildUpgradeCommand,
+  resolveUpgradeTarget,
+  validateUpgradeVersion,
 } from "./upgrade.js";
 
 describe("upgrade", () => {
@@ -130,6 +132,13 @@ describe("upgrade", () => {
       expect(cmd).toContain("@farming-labs/next@beta");
     });
 
+    it("builds command with an exact version", () => {
+      const cmd = buildUpgradeCommand("nextjs", "0.1.104", "pnpm");
+      expect(cmd).toContain("@farming-labs/docs@0.1.104");
+      expect(cmd).toContain("@farming-labs/theme@0.1.104");
+      expect(cmd).toContain("@farming-labs/next@0.1.104");
+    });
+
     it("uses yarn add for yarn package manager", () => {
       const cmd = buildUpgradeCommand("nextjs", "latest", "yarn");
       expect(cmd).toContain("yarn add");
@@ -139,6 +148,21 @@ describe("upgrade", () => {
       const cmd = buildUpgradeCommand("nuxt", "latest", "npm");
       expect(cmd).toContain("npm add");
       expect(cmd).toContain("@farming-labs/nuxt@latest");
+    });
+  });
+
+  describe("resolveUpgradeTarget", () => {
+    it("uses exact version before dist-tag", () => {
+      expect(resolveUpgradeTarget({ tag: "beta", version: "0.1.104" })).toBe("0.1.104");
+    });
+
+    it("accepts prerelease exact versions", () => {
+      expect(validateUpgradeVersion("0.1.104-beta.1")).toBe("0.1.104-beta.1");
+    });
+
+    it("rejects non-version values", () => {
+      expect(() => validateUpgradeVersion("latest")).toThrow("Invalid version");
+      expect(() => validateUpgradeVersion("0.1")).toThrow("Invalid version");
     });
   });
 });

@@ -1,5 +1,5 @@
 /**
- * Upgrade @farming-labs/* packages to latest.
+ * Upgrade @farming-labs/* packages to a dist-tag or exact version.
  * Detects framework from package.json by default, or use --framework (next, tanstack-start, nuxt, sveltekit, astro).
  */
 import path from "node:path";
@@ -40,31 +40,60 @@ export function getPackagesForFramework(framework: UpgradeFramework): string[] {
   return PACKAGES_BY_FRAMEWORK[framework];
 }
 
+const exactSemverPattern =
+  /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
+
+export type UpgradeTag = "latest" | "beta";
+export type UpgradeTarget = UpgradeTag | (string & {});
+
+export function validateUpgradeVersion(version: string): string {
+  const normalized = version.trim();
+  if (!exactSemverPattern.test(normalized)) {
+    throw new Error(`Invalid version "${version}". Use an exact semver version like 0.1.104.`);
+  }
+  return normalized;
+}
+
+export function resolveUpgradeTarget(options: Pick<UpgradeOptions, "tag" | "version">): string {
+  if (options.version !== undefined) {
+    return validateUpgradeVersion(options.version);
+  }
+
+  return options.tag ?? "latest";
+}
+
 /** Build the install command for upgrade (for testing). */
 export function buildUpgradeCommand(
   framework: UpgradeFramework,
-  tag: UpgradeTag,
+  target: UpgradeTarget,
   pm: PackageManager,
 ): string {
   const packages = PACKAGES_BY_FRAMEWORK[framework];
-  const packagesWithTag = packages.map((name) => `${name}@${tag}`);
-  return `${installCommand(pm)} ${packagesWithTag.join(" ")}`;
+  const packagesWithTarget = packages.map((name) => `${name}@${target}`);
+  return `${installCommand(pm)} ${packagesWithTarget.join(" ")}`;
 }
-
-export type UpgradeTag = "latest" | "beta";
 
 export interface UpgradeOptions {
   /** Explicit framework: next, tanstack-start, nuxt, sveltekit, astro. If not set, framework is auto-detected. */
   framework?: string;
   /** npm dist-tag to install: "latest" (default) or "beta". */
   tag?: UpgradeTag;
+  /** Exact package version to install, e.g. 0.1.104. Overrides tag when provided. */
+  version?: string;
 }
 
 export async function upgrade(options: UpgradeOptions = {}) {
   const cwd = process.cwd();
-  const tag = options.tag ?? "latest";
 
   p.intro(pc.bgCyan(pc.black(" @farming-labs/docs upgrade ")));
+
+  let target: string;
+  try {
+    target = resolveUpgradeTarget(options);
+  } catch (error) {
+    p.log.error(error instanceof Error ? error.message : "Invalid upgrade version.");
+    process.exit(1);
+  }
 
   const packageJsonPath = path.join(cwd, "package.json");
   if (!fileExists(packageJsonPath)) {
@@ -123,15 +152,15 @@ export async function upgrade(options: UpgradeOptions = {}) {
     p.log.info(`Using ${pc.cyan(pm)} as package manager`);
   }
 
-  const cmd = buildUpgradeCommand(framework, tag, pm);
+  const cmd = buildUpgradeCommand(framework, target, pm);
   const packages = getPackagesForFramework(framework);
 
-  p.log.step(`Upgrading ${preset} docs packages to ${tag}...`);
+  p.log.step(`Upgrading ${preset} docs packages to ${target}...`);
   p.log.message(pc.dim(packages.join(", ")));
 
   try {
     exec(cmd, cwd);
-    p.log.success(`Packages upgraded to ${tag}.`);
+    p.log.success(`Packages upgraded to ${target}.`);
     p.outro(pc.green("Done. Run your dev server to confirm everything works."));
   } catch {
     p.log.error("Upgrade failed. Try running manually:\n  " + pc.cyan(cmd));
