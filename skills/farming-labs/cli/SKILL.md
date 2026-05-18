@@ -1,6 +1,6 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold, upgrade, run doctor audits, compact agent docs, generate AGENTS.md, generate sitemaps, generate robots.txt, sync external search indexes, and run MCP for docs. Use when running init, upgrade, doctor, agent compact, agents generate, sitemap generate, robots generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
+description: @farming-labs/docs CLI — scaffold, upgrade, run doctor audits, compact agent docs, generate AGENTS.md, generate sitemaps, generate robots.txt, sync external search indexes, and run MCP for docs. Use when running init, upgrade, doctor, agent compact, agents generate, sitemap generate, robots generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --version, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
 ---
 
 # @farming-labs/docs — CLI
@@ -118,17 +118,18 @@ npx @farming-labs/docs@latest upgrade tanstack-start
 
 Valid values: `next`, `tanstack-start`, `nuxt`, `sveltekit`, `astro`.
 
-**Version channel:**
+**Version target:**
 
 ```bash
 npx @farming-labs/docs@latest upgrade              # latest stable (default)
 npx @farming-labs/docs@latest upgrade --latest     # same
 npx @farming-labs/docs@latest upgrade --beta       # beta versions
+npx @farming-labs/docs@latest upgrade --version 0.1.104
 npx @farming-labs/docs@latest upgrade@beta         # shorthand for --beta
 npx @farming-labs/docs@latest upgrade@latest       # shorthand for --latest
 ```
 
-If someone uses `pnpx @farming-labs/docs upgrade@beta`, treat it as the supported shorthand for upgrading to the latest beta dist-tag.
+Use `--version <version>` when the user needs an exact release instead of an npm dist-tag. If someone uses `pnpx @farming-labs/docs upgrade@beta`, treat it as the supported shorthand for upgrading to the latest beta dist-tag.
 
 ---
 

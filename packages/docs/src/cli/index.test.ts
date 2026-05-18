@@ -80,6 +80,11 @@ describe("parseFlags", () => {
     expect(parseFlags(["--framework=sveltekit"]).framework).toBe("sveltekit");
   });
 
+  it("parses upgrade option: version", () => {
+    expect(parseFlags(["upgrade", "--version", "0.1.104"]).version).toBe("0.1.104");
+    expect(parseFlags(["upgrade", "--version=0.1.104-beta.1"]).version).toBe("0.1.104-beta.1");
+  });
+
   it("returns empty object for empty argv", () => {
     expect(parseFlags([])).toEqual({});
   });

@@ -183,12 +183,19 @@ async function main() {
     const framework =
       (typeof flags.framework === "string" ? flags.framework : undefined) ??
       (args[1] && !args[1].startsWith("--") ? args[1] : undefined);
-    const tag = args.includes("--beta")
-      ? "beta"
-      : args.includes("--latest")
-        ? "latest"
-        : (parsedCommand.tag ?? "latest");
-    await upgrade({ framework, tag });
+    const hasVersionFlag =
+      args.includes("--version") || args.some((arg) => arg.startsWith("--version="));
+    const version =
+      typeof flags.version === "string" ? flags.version : hasVersionFlag ? "" : undefined;
+    const tag =
+      version !== undefined
+        ? undefined
+        : args.includes("--beta")
+          ? "beta"
+          : args.includes("--latest")
+            ? "latest"
+            : (parsedCommand.tag ?? "latest");
+    await upgrade({ framework, tag, version });
   } else if (parsedCommand.command === "--help" || parsedCommand.command === "-h") {
     printHelp();
   } else if (parsedCommand.command === "--version" || parsedCommand.command === "-v") {
@@ -218,7 +225,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("robots")}   Robots.txt utilities (${pc.dim("generate")} for agent access policy)
   ${pc.cyan("search")}   Search utilities (${pc.dim("sync")} for external indexes)
   ${pc.cyan("sitemap")}  Sitemap utilities (${pc.dim("generate")} for sitemap XML/Markdown data)
-  ${pc.cyan("upgrade")}  Upgrade @farming-labs/* packages to latest (auto-detect or use --framework)
+  ${pc.cyan("upgrade")}  Upgrade @farming-labs/* packages (auto-detect or use --framework)
 
 ${pc.dim("Supported frameworks:")}
   Next.js, TanStack Start, SvelteKit, Astro, Nuxt
@@ -300,6 +307,7 @@ ${pc.dim("Options for robots generate:")}
 
 ${pc.dim("Options for upgrade:")}
   ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
+  ${pc.cyan("--version <version>")} Install an exact version (e.g. ${pc.dim("0.1.104")})
   ${pc.cyan("--latest")}            Install latest stable (default)
   ${pc.cyan("--beta")}             Install beta versions
   ${pc.cyan("upgrade@beta")}       Shortcut for ${pc.cyan("upgrade --beta")}
