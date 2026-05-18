@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/svelte",
-  "version": "0.1.105",
+  "version": "0.1.106",
   "description": "SvelteKit adapter for @farming-labs/docs — content loading and navigation utilities",
   "keywords": [
     "docs",
