@@ -178,6 +178,16 @@ async function main() {
     const { printRobotsGenerateHelp } = await import("./robots.js");
     printRobotsGenerateHelp();
     process.exit(1);
+  } else if (parsedCommand.command === "downgrade") {
+    const { downgrade } = await import("./downgrade.js");
+    const framework =
+      (typeof flags.framework === "string" ? flags.framework : undefined) ??
+      (args[1] && !args[1].startsWith("--") ? args[1] : undefined);
+    const hasVersionFlag =
+      args.includes("--version") || args.some((arg) => arg.startsWith("--version="));
+    const version =
+      typeof flags.version === "string" ? flags.version : hasVersionFlag ? "" : undefined;
+    await downgrade({ framework, version });
   } else if (parsedCommand.command === "upgrade") {
     const { upgrade } = await import("./upgrade.js");
     const framework =
@@ -226,6 +236,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("search")}   Search utilities (${pc.dim("sync")} for external indexes)
   ${pc.cyan("sitemap")}  Sitemap utilities (${pc.dim("generate")} for sitemap XML/Markdown data)
   ${pc.cyan("upgrade")}  Upgrade @farming-labs/* packages (auto-detect or use --framework)
+  ${pc.cyan("downgrade")} Downgrade @farming-labs/* packages (auto-detect or use --framework)
 
 ${pc.dim("Supported frameworks:")}
   Next.js, TanStack Start, SvelteKit, Astro, Nuxt
@@ -312,6 +323,11 @@ ${pc.dim("Options for upgrade:")}
   ${pc.cyan("--beta")}             Install beta versions
   ${pc.cyan("upgrade@beta")}       Shortcut for ${pc.cyan("upgrade --beta")}
   ${pc.cyan("upgrade@latest")}     Shortcut for ${pc.cyan("upgrade --latest")}
+
+${pc.dim("Options for downgrade:")}
+  ${pc.cyan("downgrade")}           Install the published version immediately below the current installed version
+  ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
+  ${pc.cyan("--version <version>")} Install an exact lower version (e.g. ${pc.dim("0.1.103")})
 
   ${pc.cyan("-h, --help")}         Show this help message
   ${pc.cyan("-v, --version")}     Show version

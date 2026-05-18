@@ -871,6 +871,43 @@ Use **`--latest`** (default) to install the latest stable release, **`--beta`** 
 
 If you prefer the shorter command form, the CLI also accepts `upgrade@beta` and `upgrade@latest`. For example, `pnpx @farming-labs/docs upgrade@beta` behaves like `pnpx @farming-labs/docs upgrade --beta`.
 
+## Downgrade
+
+Use `downgrade` when you need to move the docs packages back to a lower published version. The CLI auto-detects your framework and package manager the same way `upgrade` does.
+
+Without `--version`, it installs the published version immediately below your current installed `@farming-labs/docs` version:
+
+<Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+  <Tab value="npm">
+    ```bash title="terminal"
+    npx @farming-labs/docs downgrade
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash title="terminal"
+    pnpm dlx @farming-labs/docs downgrade
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash title="terminal"
+    yarn dlx @farming-labs/docs downgrade
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash title="terminal"
+    bunx @farming-labs/docs downgrade
+    ```
+  </Tab>
+</Tabs>
+
+Pass `--version` to choose an exact lower version:
+
+```bash title="terminal"
+npx @farming-labs/docs downgrade --version 0.1.103
+```
+
+If the requested version is newer than the current installed version, the command stops and points you to `upgrade --version <version>` instead.
+
 ## MCP
 
 Run the built-in docs MCP server over stdio from the current project.
