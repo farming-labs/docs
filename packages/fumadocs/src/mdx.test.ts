@@ -121,4 +121,34 @@ describe("getMDXComponents", () => {
 
     expect(html).toContain("Open in Internal");
   });
+
+  it("renders leading Shiki flag spaces as explicit code spacers", () => {
+    const components = getMDXComponents({
+      pre: (props: React.ComponentPropsWithoutRef<"pre">) => React.createElement("pre", props),
+    });
+    const Pre = components.pre as React.ComponentType<React.ComponentPropsWithoutRef<"pre">>;
+
+    const html = renderToStaticMarkup(
+      React.createElement(
+        Pre,
+        null,
+        React.createElement(
+          "code",
+          null,
+          React.createElement(
+            "span",
+            { className: "line" },
+            React.createElement("span", null, "lim"),
+            React.createElement("span", null, " xcode"),
+            React.createElement("span", null, " --upload"),
+          ),
+        ),
+      ),
+    );
+
+    expect(html).toContain('data-fd-code-space="gap"');
+    expect(html).toContain("--upload");
+    expect(html).not.toContain("> --upload</span>");
+    expect(html).toContain("> xcode</span>");
+  });
 });

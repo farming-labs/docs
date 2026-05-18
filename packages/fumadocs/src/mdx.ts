@@ -21,6 +21,7 @@ import React from "react";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { MDXImg } from "./mdx-img.js";
+import { createPreWithCodeSpacing } from "./code-block-spacing.js";
 import { createPreWithCopyCallback } from "./code-block-copy-wrapper.js";
 import { HoverLink, type HoverLinkProps } from "./hover-link.js";
 import {
@@ -134,6 +135,14 @@ export function getMDXComponents<T extends Record<string, unknown> = Record<stri
   const builtIns = applyBuiltInComponentDefaults<T>(options);
   const base = { ...builtIns, ...overrides } as typeof extendedMdxComponents & T;
 
+  const DefaultPre = (base as Record<string, unknown>).pre as
+    | React.ComponentType<React.ComponentPropsWithoutRef<"pre">>
+    | "pre"
+    | undefined;
+  if (DefaultPre) {
+    (base as Record<string, unknown>).pre = createPreWithCodeSpacing(DefaultPre);
+  }
+
   if ((base as Record<string, unknown>).Prompt) {
     const DefaultPrompt = (base as Record<string, unknown>).Prompt as React.ComponentType<
       React.PropsWithChildren<PromptProps>
@@ -154,13 +163,13 @@ export function getMDXComponents<T extends Record<string, unknown> = Record<stri
   }
 
   if (options?.onCopyClick) {
-    const DefaultPre = (base as Record<string, unknown>).pre as
+    const CopyPre = (base as Record<string, unknown>).pre as
       | React.ComponentType<React.ComponentPropsWithoutRef<"pre">>
       | "pre"
       | undefined;
-    if (DefaultPre) {
+    if (CopyPre) {
       (base as Record<string, unknown>).pre = createPreWithCopyCallback(
-        DefaultPre,
+        CopyPre,
         options.onCopyClick,
       );
     }
