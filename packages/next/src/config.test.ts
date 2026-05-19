@@ -57,6 +57,12 @@ const DOCS_CONFIG_WITH_ROOT_DOCS_PATH = `export default {
 };
 `;
 
+const DOCS_CONFIG_WITH_SLASH_DOCS_PATH = `export default {
+  entry: "docs",
+  docsPath: "/",
+};
+`;
+
 const MARKDOWN_ACCEPT_HEADER = {
   type: "header",
   key: "accept",
@@ -679,6 +685,118 @@ describe("withDocs (app dir: src/app vs app)", () => {
           source: "/overview",
           destination: "/overview/what-is-surge",
           permanent: false,
+        }),
+      ]),
+    );
+  });
+
+  it.each([DOCS_CONFIG_WITH_ROOT_DOCS_PATH, DOCS_CONFIG_WITH_SLASH_DOCS_PATH])(
+    "treats root docsPath values as the site root",
+    async (configSource) => {
+      writeFileSync(join(tmpDir, "docs.config.ts"), configSource, "utf-8");
+      mkdirSync(join(tmpDir, "app"), { recursive: true });
+      process.chdir(tmpDir);
+
+      const nextConfig = withDocs({});
+      const beforeFiles = getBeforeFilesRewrites(await readRewrites(nextConfig));
+
+      expect(beforeFiles).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            source: "/",
+            destination: "/docs/",
+          }),
+          expect.objectContaining({
+            source: expect.stringContaining(":slug((?!"),
+            destination: "/docs/:slug",
+          }),
+          expect.objectContaining({
+            source: "/",
+            has: [MARKDOWN_ACCEPT_HEADER],
+            destination: "/api/docs?format=markdown",
+          }),
+        ]),
+      );
+    },
+  );
+
+  it.each(["docs", "/docs", "docs/", "/docs/"])(
+    "treats %s as the default docsPath",
+    async (docsPath) => {
+      writeFileSync(
+        join(tmpDir, "docs.config.ts"),
+        `export default {
+  entry: "docs",
+  docsPath: ${JSON.stringify(docsPath)},
+};
+`,
+        "utf-8",
+      );
+      mkdirSync(join(tmpDir, "app"), { recursive: true });
+      process.chdir(tmpDir);
+
+      const nextConfig = withDocs({});
+      const beforeFiles = getBeforeFilesRewrites(await readRewrites(nextConfig));
+
+      expect(beforeFiles).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            source: "/docs",
+            has: [MARKDOWN_ACCEPT_HEADER],
+            destination: "/api/docs?format=markdown",
+          }),
+          expect.objectContaining({
+            source: "/docs/:slug*",
+            has: [MARKDOWN_ACCEPT_HEADER],
+            destination: "/api/docs?format=markdown&path=:slug*",
+          }),
+        ]),
+      );
+      expect(beforeFiles).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            source: "/docs",
+            destination: "/docs",
+          }),
+          expect.objectContaining({
+            source: "/docs/:slug*",
+            destination: "/docs/:slug*",
+          }),
+        ]),
+      );
+    },
+  );
+
+  it("normalizes duplicate slashes inside docsPath", async () => {
+    writeFileSync(
+      join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  docsPath: "/guides//docs/",
+};
+`,
+      "utf-8",
+    );
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+    const beforeFiles = getBeforeFilesRewrites(await readRewrites(nextConfig));
+
+    expect(beforeFiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/guides/docs",
+          destination: "/docs",
+        }),
+        expect.objectContaining({
+          source: "/guides/docs/:slug*",
+          destination: "/docs/:slug*",
+        }),
+        expect.objectContaining({
+          source: "/guides/docs",
+          has: [MARKDOWN_ACCEPT_HEADER],
+          destination: "/api/docs?format=markdown",
         }),
       ]),
     );

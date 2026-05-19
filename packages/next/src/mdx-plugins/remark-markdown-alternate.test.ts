@@ -55,6 +55,39 @@ describe("remarkMarkdownAlternate", () => {
     expect(tree.children[0]?.value).toContain('text/markdown: "/docs.md"');
   });
 
+  it.each(["", "/", "///"])("treats docsPath %s as root-mounted docs", (docsPath) => {
+    const tree = {
+      children: [{ type: "yaml", value: 'title: "Install"' }],
+    };
+    const transform = remarkMarkdownAlternate({
+      entry: "docs",
+      contentDir: "app/docs",
+      docsPath,
+    });
+
+    transform(tree, { path: "/repo/app/docs/install/page.mdx" });
+
+    expect(tree.children[0]?.value).toContain('text/markdown: "/install.md"');
+  });
+
+  it.each(["docs", "/docs", "docs/", "/docs/"])(
+    "normalizes docsPath %s to the default docs route",
+    (docsPath) => {
+      const tree = {
+        children: [{ type: "yaml", value: 'title: "Install"' }],
+      };
+      const transform = remarkMarkdownAlternate({
+        entry: "docs",
+        contentDir: "app/docs",
+        docsPath,
+      });
+
+      transform(tree, { path: "/repo/app/docs/install/page.mdx" });
+
+      expect(tree.children[0]?.value).toContain('text/markdown: "/docs/install.md"');
+    },
+  );
+
   it("handles relative source paths", () => {
     const tree = {
       children: [{ type: "yaml", value: 'title: "Quickstart"' }],
