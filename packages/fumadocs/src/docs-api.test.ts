@@ -2514,6 +2514,78 @@ The changelog now has its own dedicated route.
     );
   });
 
+  it.each(["", "/", "///"])(
+    "serves markdown from root-mounted docsPath value %s",
+    async (docsPath) => {
+      const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-root-docspath-markdown-"));
+      tempDirs.push(rootDir);
+
+      mkdirSync(join(rootDir, "app", "docs", "quickstart"), { recursive: true });
+      writeFileSync(
+        join(rootDir, "app", "docs", "quickstart", "page.mdx"),
+        `---
+title: "Quickstart"
+description: "Start here"
+---
+
+# Quickstart
+
+Welcome to the docs.
+`,
+      );
+
+      process.chdir(rootDir);
+
+      const { GET } = createDocsAPI({
+        rootDir,
+        entry: "docs",
+        docsPath,
+      });
+
+      const response = await GET(new Request("http://localhost/quickstart.md"));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("link")).toBe('<http://localhost/quickstart>; rel="canonical"');
+      expect(await response.text()).toContain("# Quickstart\nURL: /quickstart");
+    },
+  );
+
+  it.each(["docs", "/docs", "docs/", "/docs/"])(
+    "serves markdown from default docsPath value %s",
+    async (docsPath) => {
+      const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-default-docspath-markdown-"));
+      tempDirs.push(rootDir);
+
+      mkdirSync(join(rootDir, "app", "docs", "quickstart"), { recursive: true });
+      writeFileSync(
+        join(rootDir, "app", "docs", "quickstart", "page.mdx"),
+        `---
+title: "Quickstart"
+description: "Start here"
+---
+
+# Quickstart
+
+Welcome to the docs.
+`,
+      );
+
+      process.chdir(rootDir);
+
+      const { GET } = createDocsAPI({
+        rootDir,
+        entry: "docs",
+        docsPath,
+      });
+
+      const response = await GET(new Request("http://localhost/docs/quickstart.md"));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("link")).toBe(
+        '<http://localhost/docs/quickstart>; rel="canonical"',
+      );
+      expect(await response.text()).toContain("# Quickstart\nURL: /docs/quickstart");
+    },
+  );
+
   it("skips changelog indexing when reading the changelog directory fails", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-changelog-search-read-failure-"));
     tempDirs.push(rootDir);

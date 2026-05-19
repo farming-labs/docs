@@ -29,10 +29,13 @@ function normalizeSegment(value: string | undefined, fallback: string): string {
 function normalizeDocsPath(value: string | undefined, entry: string): string {
   if (typeof value !== "string") return `/${entry}`;
 
-  const cleaned = value.trim();
-  if (cleaned === "" || cleaned === "/") return "";
+  const cleaned = value
+    .trim()
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\/+/g, "/");
+  if (cleaned === "") return "";
 
-  return `/${cleaned.replace(/^\/+|\/+$/g, "")}`;
+  return `/${cleaned}`;
 }
 
 function joinDocsPath(docsPath: string, slug: string): string {

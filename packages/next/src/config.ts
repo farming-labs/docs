@@ -1267,10 +1267,13 @@ function normalizeRouteSegment(value: string | undefined, fallback = "docs"): st
 function normalizeDocsPath(value: string | undefined, entry: string): string {
   if (typeof value !== "string") return `/${normalizeRouteSegment(entry)}`;
 
-  const cleaned = value.trim();
-  if (cleaned === "" || cleaned === "/") return "";
+  const cleaned = value
+    .trim()
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\/+/g, "/");
+  if (cleaned === "") return "";
 
-  return `/${cleaned.replace(/^\/+|\/+$/g, "")}`;
+  return `/${cleaned}`;
 }
 
 function docsRootSource(entry: string): string {

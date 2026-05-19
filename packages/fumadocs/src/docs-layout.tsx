@@ -189,10 +189,13 @@ function resolveDocsLocaleContext(config: DocsConfig, locale?: string): DocsLoca
 function normalizeDocsPublicPath(value: string | undefined, entry: string): string {
   if (typeof value !== "string") return `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
 
-  const cleaned = value.trim();
-  if (cleaned === "" || cleaned === "/") return "";
+  const cleaned = value
+    .trim()
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\/+/g, "/");
+  if (cleaned === "") return "";
 
-  return `/${cleaned.replace(/^\/+|\/+$/g, "")}`;
+  return `/${cleaned}`;
 }
 
 function publicDocsRoute(ctx: DocsLocaleContext, slugParts: string[] = []): string {

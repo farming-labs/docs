@@ -1644,10 +1644,13 @@ function resolveMarkdownRequest(entry: string, url: URL, request: Request): Mark
 function normalizeDocsPublicPath(value: string | undefined, entry: string): string {
   if (typeof value !== "string") return `/${normalizePathSegment(entry)}`;
 
-  const cleaned = value.trim();
-  if (cleaned === "" || cleaned === "/") return "";
+  const cleaned = value
+    .trim()
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\/+/g, "/");
+  if (cleaned === "") return "";
 
-  return `/${cleaned.replace(/^\/+|\/+$/g, "")}`;
+  return `/${cleaned}`;
 }
 
 function publicDocsRoute(publicPath: string, slugParts: string[] = []): string {
