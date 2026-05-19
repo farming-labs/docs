@@ -5,6 +5,8 @@ icon: "lightbulb"
 order: 4.95
 ---
 
+import { WebsiteThemePrompt } from "@/components/website-theme-prompt";
+
 # Creating Your Own Theme
 
 <Agent>
@@ -58,20 +60,25 @@ theme: myTheme({
 Use this prompt when you already have a product or marketing website and want the docs to feel like
 the same brand.
 
-<Prompt
-  title="Create a docs theme from my website"
-  description="Copy this into your coding agent when you want docs that match an existing site."
-  showPrompt
->
+<WebsiteThemePrompt>
 Create or update an `@farming-labs/docs` theme so the documentation feels visually consistent with
 my existing website.
 
 Inputs:
 - Website URL: [WEBSITE_URL]
-- Docs route or app folder: [DOCS_LOCATION]
-- Framework: [Next.js, TanStack Start, SvelteKit, Astro, or Nuxt]
+- Docs entry folder: [DOCS_ENTRY]
+- Framework: [FRAMEWORK]
+- Brandfetch brand context:
+[BRAND_CONTEXT]
 
-First inspect the existing website and extract its design system:
+Use the @farming-labs/docs website as implementation context before coding:
+- Framework docs: https://docs.farming-labs.dev
+- Theme guide: https://docs.farming-labs.dev/docs/themes/creating-themes
+- Components guide: https://docs.farming-labs.dev/docs/customization/components
+- CLI guide: https://docs.farming-labs.dev/docs/cli
+
+Use the Brandfetch brand context as brand hints, then inspect the existing website directly and
+extract its design system:
 - brand colors, accent colors, background colors, border colors, and focus states
 - typography, font families, heading scale, body size, line height, and code font
 - border radius, shadows, dividers, spacing rhythm, and card/button treatment
@@ -95,12 +102,13 @@ Verification:
 - confirm text does not overflow buttons, cards, sidebars, or code blocks
 - confirm search, sidebar navigation, code blocks, callouts, tabs, and page actions still work
 - list the files changed and explain which website design tokens were mapped into the docs theme
-</Prompt>
+</WebsiteThemePrompt>
 
-When asking an agent to use this prompt, replace the placeholders before sending it. If the website
-uses a very expressive landing page, ask for a docs interpretation of the brand instead of a literal
-copy. Documentation should feel connected to the product while staying calmer, denser, and easier to
-scan.
+The copy button asks for the website URL, fetches Brandfetch brand details, defaults the docs entry
+folder to `docs`, defaults the framework to `Next.js`, and fills those placeholders before copying.
+If the website uses a very expressive landing page, ask for a docs interpretation of the brand
+instead of a literal copy. Documentation should feel connected to the product while staying calmer,
+denser, and easier to scan.
 
 ---
 

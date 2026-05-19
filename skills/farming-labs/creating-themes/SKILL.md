@@ -56,10 +56,17 @@ Create or update an @farming-labs/docs theme so the documentation feels visually
 
 Inputs:
 - Website URL: [WEBSITE_URL]
-- Docs route or app folder: [DOCS_LOCATION]
-- Framework: [Next.js, TanStack Start, SvelteKit, Astro, or Nuxt]
+- Docs entry folder: [DOCS_ENTRY]
+- Framework: [FRAMEWORK, defaults to Next.js]
+- Brandfetch brand context: [BRAND_CONTEXT]
 
-First inspect the existing website and extract its design system: brand colors, typography, spacing, border radius, shadows, navigation style, cards, buttons, callouts, code blocks, tables, and light/dark mode behavior.
+Use the @farming-labs/docs website as implementation context before coding:
+- Framework docs: https://docs.farming-labs.dev
+- Theme guide: https://docs.farming-labs.dev/docs/themes/creating-themes
+- Components guide: https://docs.farming-labs.dev/docs/customization/components
+- CLI guide: https://docs.farming-labs.dev/docs/cli
+
+Use the Brandfetch brand context as brand hints, then inspect the existing website and extract its design system: brand colors, typography, spacing, border radius, shadows, navigation style, cards, buttons, callouts, code blocks, tables, and light/dark mode behavior.
 
 Then implement the docs theme:
 - choose the closest built-in theme as the base, or create a custom theme with createTheme() / extendTheme()
