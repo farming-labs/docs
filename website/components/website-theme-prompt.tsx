@@ -14,8 +14,19 @@ import {
 interface WebsiteThemePromptProps {
   title?: string;
   description?: string;
+  dialogTitle?: string;
+  dialogDescription?: string;
   children?: React.ReactNode;
 }
+
+type BrandfetchRouteResponse = {
+  source?: string;
+  domain?: string;
+  brand?: unknown;
+  error?: string;
+};
+
+type SubmitState = "idle" | "bootstrapping" | "done";
 
 const FRAMEWORK_OPTIONS = ["Next.js", "TanStack Start", "SvelteKit", "Astro", "Nuxt"] as const;
 
@@ -117,39 +128,89 @@ async function copyText(text: string): Promise<boolean> {
   return fallbackCopyText(text);
 }
 
+async function fetchBrandContext(websiteUrl: string): Promise<string> {
+  const response = await fetch("/api/brandfetch", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ url: websiteUrl }),
+  });
+  const result = (await response.json().catch(() => ({}))) as BrandfetchRouteResponse;
+
+  if (!response.ok) {
+    throw new Error(result.error ?? "Brandfetch lookup failed.");
+  }
+
+  return JSON.stringify(
+    {
+      source: result.source ?? "brandfetch",
+      domain: result.domain,
+      brand: result.brand,
+    },
+    null,
+    2,
+  );
+}
+
 export function WebsiteThemePrompt({
   title = "Create a docs theme from my website",
   description = "Copy this into your coding agent when you want docs that match an existing site.",
+  dialogTitle = "Create a website-matching docs prompt",
+  dialogDescription = "Add your website URL and we will fetch Brandfetch details before copying it.",
   children,
 }: WebsiteThemePromptProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState("");
-  const [docsLocation, setDocsLocation] = useState("app/docs");
+  const [docsEntry, setDocsEntry] = useState("docs");
   const [framework, setFramework] = useState<(typeof FRAMEWORK_OPTIONS)[number]>("Next.js");
+  const [submitState, setSubmitState] = useState<SubmitState>("idle");
+  const [brandError, setBrandError] = useState<string | null>(null);
   const promptSourceRef = useRef<HTMLDivElement>(null);
+  const isSubmitting = submitState !== "idle";
+  const submitLabel =
+    submitState === "bootstrapping"
+      ? "Bootstrapping..."
+      : submitState === "done"
+        ? "Done"
+        : "Copy filled prompt";
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
+      setBrandError(null);
+      setSubmitState("bootstrapping");
 
-      const promptText = extractPromptTextFromElement(promptSourceRef.current);
-      if (!promptText) return;
+      try {
+        const promptText = extractPromptTextFromElement(promptSourceRef.current);
+        if (!promptText) {
+          setSubmitState("idle");
+          return;
+        }
 
-      const filledPrompt = fillPromptTemplate(promptText, {
-        WEBSITE_URL: websiteUrl,
-        DOCS_LOCATION: docsLocation,
-        FRAMEWORK: framework,
-      });
-      const didCopy = await copyText(filledPrompt);
+        const brandContext = await fetchBrandContext(websiteUrl);
+        const filledPrompt = fillPromptTemplate(promptText, {
+          WEBSITE_URL: websiteUrl,
+          DOCS_ENTRY: docsEntry,
+          FRAMEWORK: framework,
+          BRAND_CONTEXT: brandContext,
+        });
+        const didCopy = await copyText(filledPrompt);
 
-      if (!didCopy) return;
+        if (!didCopy) return;
 
-      setCopied(true);
-      setOpen(false);
-      window.setTimeout(() => setCopied(false), 2000);
+        setCopied(true);
+        setSubmitState("done");
+        window.setTimeout(() => {
+          setCopied(false);
+          setSubmitState("idle");
+          setOpen(false);
+        }, 900);
+      } catch (error) {
+        setBrandError(error instanceof Error ? error.message : "Brandfetch lookup failed.");
+        setSubmitState("idle");
+      }
     },
-    [docsLocation, framework, websiteUrl],
+    [docsEntry, framework, websiteUrl],
   );
 
   return (
@@ -187,11 +248,9 @@ export function WebsiteThemePrompt({
         <DialogContent className="max-w-[30rem] rounded-none border-[var(--color-fd-border)] bg-[var(--color-fd-popover)] text-[var(--color-fd-popover-foreground)] shadow-[3px_3px_0_color-mix(in_srgb,var(--color-fd-border)_65%,transparent)] sm:rounded-none">
           <form onSubmit={handleSubmit}>
             <DialogHeader>
-              <DialogTitle className="text-[var(--color-fd-foreground)]">
-                Create a website-matching docs prompt
-              </DialogTitle>
+              <DialogTitle className="text-[var(--color-fd-foreground)]">{dialogTitle}</DialogTitle>
               <DialogDescription className="text-[var(--color-fd-muted-foreground)]">
-                Add your website URL and we will fill the prompt before copying it.
+                {dialogDescription}
               </DialogDescription>
             </DialogHeader>
 
@@ -207,17 +266,17 @@ export function WebsiteThemePrompt({
                   className={fieldControlClassName}
                 />
                 <span className="text-xs font-normal leading-5 text-[var(--color-fd-muted-foreground)]">
-                  Used to inspect the site with Context.dev and direct website review.
+                  Used to fetch logos, colors, fonts, and brand metadata from Brandfetch.
                 </span>
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-[var(--color-fd-foreground)]">
-                Docs route or app folder
+                Docs entry folder
                 <input
                   type="text"
                   required
-                  value={docsLocation}
-                  onChange={(event) => setDocsLocation(event.target.value)}
+                  value={docsEntry}
+                  onChange={(event) => setDocsEntry(event.target.value)}
                   className={fieldControlClassName}
                 />
               </label>
@@ -245,6 +304,12 @@ export function WebsiteThemePrompt({
                   />
                 </span>
               </label>
+
+              {brandError ? (
+                <p className="border border-[var(--color-fd-border)] bg-[var(--color-fd-secondary)] px-3 py-2 text-xs leading-5 text-[var(--color-fd-muted-foreground)]">
+                  {brandError}
+                </p>
+              ) : null}
             </div>
 
             <DialogFooter className="mt-5 gap-2 sm:space-x-0">
@@ -257,9 +322,11 @@ export function WebsiteThemePrompt({
               </button>
               <button
                 type="submit"
-                className="inline-flex h-9 items-center justify-center rounded-none border border-[var(--color-fd-primary)] bg-[var(--color-fd-primary)] px-3 text-sm font-medium text-[var(--color-fd-primary-foreground)] transition-opacity hover:opacity-90"
+                disabled={isSubmitting}
+                className="inline-flex h-9 items-center justify-center rounded-none border border-[var(--color-fd-primary)] bg-[var(--color-fd-primary)] px-3 text-sm font-medium text-[var(--color-fd-primary-foreground)] transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-70"
               >
-                Copy filled prompt
+                {submitState === "done" ? <Check className="mr-1.5 size-3.5" /> : null}
+                {submitLabel}
               </button>
             </DialogFooter>
           </form>

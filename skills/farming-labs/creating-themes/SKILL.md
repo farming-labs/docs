@@ -56,8 +56,9 @@ Create or update an @farming-labs/docs theme so the documentation feels visually
 
 Inputs:
 - Website URL: [WEBSITE_URL]
-- Docs route or app folder: [DOCS_LOCATION]
+- Docs entry folder: [DOCS_ENTRY]
 - Framework: [FRAMEWORK, defaults to Next.js]
+- Brandfetch brand context: [BRAND_CONTEXT]
 
 Use the @farming-labs/docs website as implementation context before coding:
 - Framework docs: https://docs.farming-labs.dev
@@ -65,13 +66,7 @@ Use the @farming-labs/docs website as implementation context before coding:
 - Components guide: https://docs.farming-labs.dev/docs/customization/components
 - CLI guide: https://docs.farming-labs.dev/docs/cli
 
-When a website URL is available, derive the brand domain from the hostname and gather brand details from Context.dev first. Example endpoint shape for `better-auth.studio`: https://www.context.dev/api/trpc/demo.brandData?batch=1&input=%7B%220%22%3A%7B%22json%22%3A%7B%22domain%22%3A%22better-auth.studio%22%7D%7D%7D
-
-Decoded input payload: {"0":{"json":{"domain":"better-auth.studio"}}}
-
-Use Context.dev `brandData.brand` fields such as title, description, slogan, logos, backdrops, colors, socials, industries, and language as brand hints. If the response has no colors, infer colors from the logo, backdrop, and website inspection.
-
-Then inspect the existing website and extract its design system: brand colors, typography, spacing, border radius, shadows, navigation style, cards, buttons, callouts, code blocks, tables, and light/dark mode behavior.
+Use the Brandfetch brand context as brand hints, then inspect the existing website and extract its design system: brand colors, typography, spacing, border radius, shadows, navigation style, cards, buttons, callouts, code blocks, tables, and light/dark mode behavior.
 
 Then implement the docs theme:
 - choose the closest built-in theme as the base, or create a custom theme with createTheme() / extendTheme()
