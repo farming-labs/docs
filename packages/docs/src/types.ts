@@ -2177,6 +2177,12 @@ export interface DocsAgentConfig {
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
+  /**
+   * Public route prefix for docs pages. Defaults to the `entry` path.
+   * Set to "" or "/" to serve docs from the site root while keeping the
+   * source files and generated app route under `entry`.
+   */
+  docsPath?: string;
   /** Path to the content directory. Defaults to `entry` value. */
   contentDir?: string;
   /**

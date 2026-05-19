@@ -6,6 +6,7 @@ import type { DocsConfig } from "./types.js";
 export function defineDocs(config: DocsConfig): DocsConfig {
   return {
     entry: config.entry ?? "docs",
+    docsPath: config.docsPath,
     contentDir: config.contentDir,
     i18n: config.i18n,
     theme: config.theme,
