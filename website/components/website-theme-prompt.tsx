@@ -171,7 +171,7 @@ export function WebsiteThemePrompt({
     submitState === "bootstrapping"
       ? "Bootstrapping..."
       : submitState === "done"
-        ? "Done"
+        ? "Done & copied"
         : "Copy filled prompt";
 
   const handleSubmit = useCallback(
