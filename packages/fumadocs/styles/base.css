@@ -546,7 +546,7 @@ figure.shiki:has(figcaption) figcaption {
 }
 
 .fd-prompt-description {
-  margin: 0.25rem 0 0;
+  margin: -0.05rem 0 0;
   color: var(--color-fd-muted-foreground);
   font-size: 0.875rem;
   line-height: 1.55;
