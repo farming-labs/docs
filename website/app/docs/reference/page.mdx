@@ -38,7 +38,8 @@ Top-level configuration object passed to `defineDocs()`.
 
 | Property       | Type                                            | Default          | Description                                                                          |
 | -------------- | ----------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------ |
-| `entry`        | `string`                                        | **required**     | URL path prefix for docs (e.g. `"docs"` → `/docs`)                                   |
+| `entry`        | `string`                                        | **required**     | Docs source route and folder (e.g. `"docs"` -> `app/docs`)                           |
+| `docsPath`     | `string`                                        | same as `entry`  | Public docs route prefix in Next.js. Use `""` to serve docs from `/`                 |
 | `contentDir`   | `string`                                        | same as `entry`  | Path to content files. TanStack Start, SvelteKit, Astro, and Nuxt use it; Next.js uses `app/{entry}/` |
 | `staticExport` | `boolean`                                       | `false`          | Set `true` for full static builds; hides search and AI (see [Configuration](/docs/configuration#static-export)) |
 | `theme`        | `DocsTheme`                                     | —                | Theme preset from a factory (`fumadocs()`, `darksharp()`, `pixelBorder()`, etc.)    |
@@ -66,6 +67,45 @@ Top-level configuration object passed to `defineDocs()`.
 | `ordering`    | `"alphabetical" \| "numeric" \| OrderingItem[]` | `"alphabetical"` | Sidebar page ordering strategy                                                       |
 | `metadata`    | `DocsMetadata`                                  | —                | SEO metadata                                                                         |
 | `og`          | `OGConfig`                                      | —                | Open Graph image config                                                              |
+
+---
+
+## `entry` and `docsPath`
+
+`entry` is the source route and app folder. In a Next.js app with `entry: "docs"`, the framework
+expects docs pages under `app/docs`.
+
+`docsPath` changes the public route where those pages are exposed. It defaults to the same path as
+`entry`, so `app/docs/quickstart/page.mdx` is served at `/docs/quickstart`.
+
+For a docs-only deployment or a docs subdomain, set `docsPath: ""`:
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/theme";
+
+export default defineDocs({
+  entry: "docs",
+  docsPath: "",
+  theme: fumadocs(),
+});
+```
+
+That keeps the files under `app/docs` and serves them from the public root:
+
+| Source file                    | Public URL    |
+| ------------------------------ | ------------- |
+| `app/docs/page.mdx`            | `/`           |
+| `app/docs/quickstart/page.mdx` | `/quickstart` |
+
+`withDocs({})` reads `docsPath` from `docs.config.tsx`. You do not need host-specific rewrites in
+`next.config.ts` for a docs-only deployment. Attach the docs deployment to a subdomain like
+`docs.example.com`, then root URLs resolve on that subdomain.
+
+<Callout type="warning" title="Root docs own root routes">
+  Use `docsPath: ""` when the deployment is dedicated to docs. If the same app needs a marketing
+  homepage at `/`, keep `docsPath` unset so docs stay under `/docs`.
+</Callout>
 
 ---
 
