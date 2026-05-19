@@ -2448,6 +2448,72 @@ The changelog now has its own dedicated route.
     expect(payload.some((result) => result.url.startsWith("/docs/changelog/"))).toBe(false);
   });
 
+  it("serves changelog markdown with the public docsPath in lookups and canonical links", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-changelog-docspath-markdown-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "changelog", "2026-04-15"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Introduction"
+description: "Start here"
+---
+
+# Introduction
+
+Welcome to the docs.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "changelog", "2026-04-15", "page.mdx"),
+      `---
+title: "OpenAPI mode is now default"
+description: "A changelog entry"
+---
+
+# OpenAPI mode is now default
+
+The changelog now has its own dedicated route.
+`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      docsPath: "learn",
+      changelog: {
+        enabled: true,
+        path: "changelogs",
+        contentDir: "changelog",
+      },
+    });
+
+    const mdRouteResponse = await GET(
+      new Request("http://localhost/learn/changelogs/2026-04-15.md"),
+    );
+    expect(mdRouteResponse.status).toBe(200);
+    expect(mdRouteResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(mdRouteResponse.headers.get("link")).toBe(
+      '<http://localhost/learn/changelogs/2026-04-15>; rel="canonical"',
+    );
+    expect(await mdRouteResponse.text()).toContain(
+      "# OpenAPI mode is now default\nURL: /learn/changelogs/2026-04-15",
+    );
+
+    const acceptResponse = await GET(
+      new Request("http://localhost/learn/changelogs/2026-04-15", {
+        headers: { accept: "text/markdown" },
+      }),
+    );
+    expect(acceptResponse.status).toBe(200);
+    expect(acceptResponse.headers.get("link")).toBe(
+      '<http://localhost/learn/changelogs/2026-04-15>; rel="canonical"',
+    );
+  });
+
   it("skips changelog indexing when reading the changelog directory fails", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-changelog-search-read-failure-"));
     tempDirs.push(rootDir);

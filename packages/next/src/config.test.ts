@@ -51,6 +51,12 @@ function getAfterFilesRewrites(result: TestRewriteResult): TestRewrite[] {
 const DOCS_CONFIG = `export default { entry: "docs" };
 `;
 
+const DOCS_CONFIG_WITH_ROOT_DOCS_PATH = `export default {
+  entry: "docs",
+  docsPath: "",
+};
+`;
+
 const MARKDOWN_ACCEPT_HEADER = {
   type: "header",
   key: "accept",
@@ -417,6 +423,18 @@ describe("withDocs (app dir: src/app vs app)", () => {
         }),
       ]),
     );
+    expect(beforeFiles).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/",
+          destination: "/docs/",
+        }),
+        expect.objectContaining({
+          source: expect.stringContaining(":slug((?!"),
+          destination: "/docs/:slug",
+        }),
+      ]),
+    );
 
     const acceptPattern = new RegExp(MARKDOWN_ACCEPT_HEADER.value);
     expect(acceptPattern.test("text/markdown")).toBe(true);
@@ -425,6 +443,63 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(acceptPattern.test("application/json, text/markdown;profile=agent;q=0")).toBe(false);
     expect(acceptPattern.test("text/markdown-v2")).toBe(false);
     expect(acceptPattern.test("application/not-text/markdownish")).toBe(false);
+  });
+
+  it("exposes docs from the site root when docsPath is empty", async () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_ROOT_DOCS_PATH, "utf-8");
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+
+    const rewritesResult = await readRewrites(nextConfig);
+    const beforeFiles = getBeforeFilesRewrites(rewritesResult);
+
+    expect(beforeFiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/docs.md",
+          destination: "/api/docs?format=markdown",
+        }),
+        expect.objectContaining({
+          source: expect.stringContaining("\\.md"),
+          destination: "/api/docs?format=markdown&path=:slug",
+        }),
+        expect.objectContaining({
+          source: "/",
+          has: [MARKDOWN_ACCEPT_HEADER],
+          destination: "/api/docs?format=markdown",
+        }),
+        expect.objectContaining({
+          source: "/",
+          destination: "/docs/",
+        }),
+        expect.objectContaining({
+          source: expect.stringContaining(":slug((?!"),
+          destination: "/docs/:slug",
+        }),
+      ]),
+    );
+
+    const docsRootRewrite = beforeFiles.find((rewrite) => rewrite.destination === "/docs/:slug");
+    expect(docsRootRewrite?.source).toContain("docs(?:/|$)");
+
+    expect(beforeFiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/AGENTS.md",
+          destination: "/api/docs?format=agents",
+        }),
+        expect.objectContaining({
+          source: "/sitemap.md",
+          destination: "/api/docs?format=sitemap-md",
+        }),
+        expect.objectContaining({
+          source: "/mcp",
+          destination: "/api/docs/mcp",
+        }),
+      ]),
+    );
   });
 
   it("routes sitemap rewrites through the shared docs api handler when enabled", async () => {
@@ -573,6 +648,36 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/docs/sending",
           destination: "/docs/sending/send-one",
+          permanent: false,
+        }),
+      ]),
+    );
+  });
+
+  it("redirects hidden folder parents through the public docsPath", async () => {
+    writeFileSync(join(tmpDir, "docs.config.ts"), DOCS_CONFIG_WITH_ROOT_DOCS_PATH, "utf-8");
+    mkdirSync(join(tmpDir, "app", "docs", "overview", "what-is-surge"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "overview", "page.mdx"),
+      "---\ntitle: Overview\nsidebar:\n  folderIndexBehavior: hidden\n---\n",
+      "utf-8",
+    );
+    writeFileSync(
+      join(tmpDir, "app", "docs", "overview", "what-is-surge", "page.mdx"),
+      "# What is Surge\n",
+      "utf-8",
+    );
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+    const redirects = await readRedirects(nextConfig);
+
+    expect(redirects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/overview",
+          destination: "/overview/what-is-surge",
           permanent: false,
         }),
       ]),

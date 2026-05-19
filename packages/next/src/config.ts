@@ -346,6 +346,22 @@ function readDocsContentDir(root: string): string | undefined {
   return undefined;
 }
 
+function readDocsPath(root: string): string | undefined {
+  for (const ext of FILE_EXTS) {
+    const configPath = join(root, `docs.config.${ext}`);
+    if (!existsSync(configPath)) continue;
+
+    try {
+      const content = readFileSync(configPath, "utf-8");
+      return readTopLevelStringProperty(content, "docsPath");
+    } catch {
+      // fall through
+    }
+  }
+
+  return undefined;
+}
+
 function readDocsConfigPath(root: string): string {
   for (const ext of FILE_EXTS) {
     const relativePath = `docs.config.${ext}`;
@@ -1244,8 +1260,94 @@ type NextRewriteResult =
       fallback?: NextRewrite[];
     };
 
-function buildDocsMarkdownRewrites(entry: string): NextRewrite[] {
-  const normalizedEntry = entry.replace(/^\/+|\/+$/g, "") || "docs";
+function normalizeRouteSegment(value: string | undefined, fallback = "docs"): string {
+  return (value ?? fallback).replace(/^\/+|\/+$/g, "") || fallback;
+}
+
+function normalizeDocsPath(value: string | undefined, entry: string): string {
+  if (typeof value !== "string") return `/${normalizeRouteSegment(entry)}`;
+
+  const cleaned = value.trim();
+  if (cleaned === "" || cleaned === "/") return "";
+
+  return `/${cleaned.replace(/^\/+|\/+$/g, "")}`;
+}
+
+function docsRootSource(entry: string): string {
+  const normalizedEntry = normalizeRouteSegment(entry);
+  return [
+    "/:slug((?!",
+    "_next/",
+    "|api/",
+    `|${normalizedEntry}(?:/|$)`,
+    "|favicon\\.ico",
+    "|robots\\.txt",
+    "|sitemap\\.xml",
+    "|sitemap\\.md",
+    "|docs\\.md",
+    "|llms\\.txt",
+    "|llms-full\\.txt",
+    "|mcp(?:/|$)",
+    "|AGENTS\\.md",
+    "|AGENT\\.md",
+    "|skill\\.md",
+    "|\\.well-known/",
+    "|.*\\..*",
+    ").*)",
+  ].join("");
+}
+
+function docsRootMarkdownSource(entry: string): string {
+  const normalizedEntry = normalizeRouteSegment(entry);
+  return [
+    "/:slug((?!",
+    "_next/",
+    "|api/",
+    `|${normalizedEntry}/`,
+    "|docs\\.md",
+    "|sitemap\\.md",
+    "|AGENTS\\.md",
+    "|AGENT\\.md",
+    "|skill\\.md",
+    "|\\.well-known/",
+    ").*)\\.md",
+  ].join("");
+}
+
+function buildDocsPathRewrites(entry: string, docsPath: string): NextRewrite[] {
+  const normalizedEntry = normalizeRouteSegment(entry);
+  const internalBase = `/${normalizedEntry}`;
+
+  if (docsPath === internalBase) return [];
+
+  if (docsPath === "") {
+    return [
+      {
+        source: "/",
+        destination: `${internalBase}/`,
+      },
+      {
+        source: docsRootSource(normalizedEntry),
+        destination: `${internalBase}/:slug`,
+      },
+    ];
+  }
+
+  return [
+    {
+      source: docsPath,
+      destination: internalBase,
+    },
+    {
+      source: `${docsPath}/:slug*`,
+      destination: `${internalBase}/:slug*`,
+    },
+  ];
+}
+
+function buildDocsMarkdownRewrites(entry: string, docsPath: string): NextRewrite[] {
+  const normalizedEntry = normalizeRouteSegment(entry);
+  const publicBase = docsPath || "";
   const markdownAcceptHeader = {
     type: "header",
     key: "accept",
@@ -1258,32 +1360,67 @@ function buildDocsMarkdownRewrites(entry: string): NextRewrite[] {
     value: ".+",
   };
 
+  if (publicBase === "") {
+    const rootPageSource = docsRootSource(normalizedEntry);
+
+    return [
+      {
+        source: `/${normalizedEntry}.md`,
+        destination: "/api/docs?format=markdown",
+      },
+      {
+        source: docsRootMarkdownSource(normalizedEntry),
+        destination: "/api/docs?format=markdown&path=:slug",
+      },
+      {
+        source: "/",
+        has: [markdownAcceptHeader],
+        destination: "/api/docs?format=markdown",
+      },
+      {
+        source: rootPageSource,
+        has: [markdownAcceptHeader],
+        destination: "/api/docs?format=markdown&path=:slug",
+      },
+      {
+        source: "/",
+        has: [markdownSignatureAgentHeader],
+        destination: "/api/docs?format=markdown",
+      },
+      {
+        source: rootPageSource,
+        has: [markdownSignatureAgentHeader],
+        destination: "/api/docs?format=markdown&path=:slug",
+      },
+    ];
+  }
+
   return [
     {
-      source: `/${normalizedEntry}.md`,
+      source: `${publicBase}.md`,
       destination: "/api/docs?format=markdown",
     },
     {
-      source: `/${normalizedEntry}/:slug*.md`,
+      source: `${publicBase}/:slug*.md`,
       destination: "/api/docs?format=markdown&path=:slug*",
     },
     {
-      source: `/${normalizedEntry}`,
+      source: publicBase,
       has: [markdownAcceptHeader],
       destination: "/api/docs?format=markdown",
     },
     {
-      source: `/${normalizedEntry}/:slug*`,
+      source: `${publicBase}/:slug*`,
       has: [markdownAcceptHeader],
       destination: "/api/docs?format=markdown&path=:slug*",
     },
     {
-      source: `/${normalizedEntry}`,
+      source: publicBase,
       has: [markdownSignatureAgentHeader],
       destination: "/api/docs?format=markdown",
     },
     {
-      source: `/${normalizedEntry}/:slug*`,
+      source: `${publicBase}/:slug*`,
       has: [markdownSignatureAgentHeader],
       destination: "/api/docs?format=markdown&path=:slug*",
     },
@@ -1308,7 +1445,7 @@ function buildAgentSpecRewrites(): NextRewrite[] {
 }
 
 function buildLlmsTxtRewrites(entry: string): NextRewrite[] {
-  const normalizedEntry = entry.replace(/^\/+|\/+$/g, "") || "docs";
+  const normalizedEntry = normalizeRouteSegment(entry);
 
   return [
     {
@@ -1548,7 +1685,13 @@ function findFirstVisibleDocsChildSlug(dir: string, slugParts: string[]): string
   return undefined;
 }
 
-function buildHiddenFolderRedirects(docsDir: string, entry: string): NextRedirect[] {
+function publicDocsRoute(docsPath: string, slugParts: string[] = []): string {
+  const slug = slugParts.join("/");
+  if (!slug) return docsPath || "/";
+  return docsPath ? `${docsPath}/${slug}` : `/${slug}`;
+}
+
+function buildHiddenFolderRedirects(docsDir: string, docsPath: string): NextRedirect[] {
   const redirects: NextRedirect[] = [];
 
   function scan(dir: string, slugParts: string[]) {
@@ -1560,9 +1703,8 @@ function buildHiddenFolderRedirects(docsDir: string, entry: string): NextRedirec
       if (resolveDocsPageFolderIndexBehavior(data) === "hidden") {
         const destinationSlug = findFirstVisibleDocsChildSlug(dir, slugParts);
         if (destinationSlug && destinationSlug.join("/") !== slugParts.join("/")) {
-          const source = slugParts.length > 0 ? `/${entry}/${slugParts.join("/")}` : `/${entry}`;
-          const destination =
-            destinationSlug.length > 0 ? `/${entry}/${destinationSlug.join("/")}` : `/${entry}`;
+          const source = publicDocsRoute(docsPath, slugParts);
+          const destination = publicDocsRoute(docsPath, destinationSlug);
 
           redirects.push({
             source,
@@ -1584,6 +1726,7 @@ function buildHiddenFolderRedirects(docsDir: string, entry: string): NextRedirec
 
 function mergeDocsMarkdownRewrites(
   entry: string,
+  docsPath: string,
   mcp: {
     enabled: boolean;
     route: string;
@@ -1610,7 +1753,8 @@ function mergeDocsMarkdownRewrites(
     ...buildSkillMdRewrites(),
     ...buildSitemapRewrites(sitemap),
     ...buildRobotsRewrites(robots),
-    ...buildDocsMarkdownRewrites(entry),
+    ...buildDocsMarkdownRewrites(entry, docsPath),
+    ...buildDocsPathRewrites(entry, docsPath),
     ...buildAgentFeedbackRewrites(agentFeedback),
   ];
   const autoAfterFilesRewrites = buildLlmsTxtRewrites(entry);
@@ -1663,6 +1807,7 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
 
   // ── 2. Auto-generate app/{entry}/layout.tsx if missing (or src/app when using src dir) ──
   const entry = readDocsEntry(root);
+  const docsPath = normalizeDocsPath(readDocsPath(root), entry);
   const configuredContentDir = readDocsContentDir(root);
   const appDir = getNextAppDir(root);
   const docsContentDir = configuredContentDir ?? join(appDir, entry);
@@ -1831,7 +1976,7 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
   }
   remarkPlugins.push([
     "@farming-labs/next/mdx-plugins/remark-markdown-alternate",
-    { entry, appDir, contentDir: docsContentDir, enabled: !isStaticExport },
+    { entry, appDir, contentDir: docsContentDir, docsPath, enabled: !isStaticExport },
   ]);
   remarkPlugins.push(
     ["remark-mdx-frontmatter", { name: "metadata" }],
@@ -1978,10 +2123,18 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
     nextConfig.rewrites = async () => {
       const rewrites =
         typeof existingRewrites === "function" ? await existingRewrites() : existingRewrites;
-      return mergeDocsMarkdownRewrites(entry, mcp, sitemap, agentFeedback, robots, rewrites);
+      return mergeDocsMarkdownRewrites(
+        entry,
+        docsPath,
+        mcp,
+        sitemap,
+        agentFeedback,
+        robots,
+        rewrites,
+      );
     };
 
-    const autoRedirects = buildHiddenFolderRedirects(docsContentRoot, entry);
+    const autoRedirects = buildHiddenFolderRedirects(docsContentRoot, docsPath);
     if (autoRedirects.length > 0) {
       const existingRedirects = nextConfig.redirects as
         | NextRedirect[]

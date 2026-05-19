@@ -33,7 +33,6 @@ import {
   createDocsRobotsResponse,
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
-  getDocsMarkdownCanonicalLinkHeader,
   getDocsMarkdownVaryHeader,
   hasDocsMarkdownSignatureAgent,
   getDocsLlmsTxtMaxCharsIssue,
@@ -126,6 +125,8 @@ interface DocsAPIOptions {
   rootDir?: string;
   /** Docs entry folder (default: read from docs.config) */
   entry?: string;
+  /** Public docs route prefix. Defaults to the docs entry path. */
+  docsPath?: string;
   /** Override the docs content directory when it does not live in app/<entry>. */
   contentDir?: string;
   /** Changelog configuration. */
@@ -1300,6 +1301,7 @@ function scanDocsDir(
   entry: string,
   locale?: string,
   excludedDirs: string[] = [],
+  publicPath = `/${normalizePathSegment(entry) || "docs"}`,
 ): DocsSearchSourcePage[] {
   const indexes: Array<DocsSearchSourcePage & { relatedInput?: unknown }> = [];
 
@@ -1336,7 +1338,7 @@ function scanDocsDir(
           const rawContent = resolveAgentMdxContent(fileContent, "human");
           const agentRawContent = resolveAgentMdxContent(fileContent, "agent");
           const content = stripMdx(rawContent);
-          const baseUrl = slugParts.length === 0 ? `/${entry}` : `/${entry}/${slugParts.join("/")}`;
+          const baseUrl = publicDocsRoute(publicPath, slugParts);
           const url = withLangInUrl(baseUrl, locale);
 
           indexes.push({
@@ -1385,6 +1387,7 @@ function scanChangelogDir(
   entryPath: string,
   changelogPath: string,
   locale?: string,
+  publicPath = `/${normalizePathSegment(entryPath) || "docs"}`,
 ): DocsSearchSourcePage[] {
   if (!fs.existsSync(changelogDir)) return [];
 
@@ -1423,7 +1426,7 @@ function scanChangelogDir(
       const rawContent = resolveAgentMdxContent(fileContent, "human");
       const agentRawContent = resolveAgentMdxContent(fileContent, "agent");
       const content = stripMdx(rawContent);
-      const url = withLangInUrl(`/${entryPath}/${changelogPath}/${name}`, locale);
+      const url = withLangInUrl(publicDocsRoute(publicPath, [changelogPath, name]), locale);
       const tags = Array.isArray(data.tags)
         ? data.tags.filter((value): value is string => typeof value === "string")
         : undefined;
@@ -1482,6 +1485,66 @@ function normalizeRequestedMarkdownPath(entry: string, requestedPath: string): s
   return slug ? normalizeUrlPath(`${normalizedEntry}/${slug}`) : normalizedEntry;
 }
 
+function normalizePublicRequestedMarkdownPath(ctx: DocsContext, requestedPath: string): string {
+  const trimmed = requestedPath.trim().replace(/\.md$/i, "");
+  if (!trimmed) return ctx.publicPath || "/";
+
+  const normalized = normalizeUrlPath(trimmed.startsWith("/") ? trimmed : `/${trimmed}`);
+  const normalizedEntry = `/${normalizePathSegment(ctx.entryPath)}`;
+  if (normalized === normalizedEntry) return ctx.publicPath || "/";
+
+  if (normalized.startsWith(`${normalizedEntry}/`)) {
+    const suffix = normalized.slice(normalizedEntry.length + 1);
+    return publicDocsRoute(ctx.publicPath, suffix.split("/").filter(Boolean));
+  }
+
+  if (ctx.publicPath) {
+    if (normalized === ctx.publicPath || normalized.startsWith(`${ctx.publicPath}/`)) {
+      return normalized;
+    }
+  } else if (normalized === "/") {
+    return "/";
+  }
+
+  const slug = normalizePathSegment(trimmed);
+  return publicDocsRoute(ctx.publicPath, slug ? slug.split("/").filter(Boolean) : []);
+}
+
+function normalizePublicDocsSlug(ctx: DocsContext, value: string): string {
+  const pathname = normalizeUrlPath(value);
+  const normalizedEntry = `/${normalizePathSegment(ctx.entryPath)}`;
+
+  if (ctx.publicPath) {
+    if (pathname === ctx.publicPath) return "";
+    if (pathname.startsWith(`${ctx.publicPath}/`)) {
+      return normalizePathSegment(pathname.slice(ctx.publicPath.length + 1));
+    }
+  } else if (pathname === "/") {
+    return "";
+  }
+
+  if (pathname === normalizedEntry) return "";
+  if (pathname.startsWith(`${normalizedEntry}/`)) {
+    return normalizePathSegment(pathname.slice(normalizedEntry.length + 1));
+  }
+
+  return normalizePathSegment(pathname);
+}
+
+function getPublicMarkdownCanonicalLinkHeader({
+  origin,
+  ctx,
+  requestedPath,
+}: {
+  origin: string;
+  ctx: DocsContext;
+  requestedPath: string;
+}): string {
+  const canonicalUrl = new URL(normalizePublicRequestedMarkdownPath(ctx, requestedPath), origin);
+  if (ctx.locale) canonicalUrl.searchParams.set("lang", ctx.locale);
+  return `<${canonicalUrl.toString()}>; rel="canonical"`;
+}
+
 function findDocsMcpPage(
   entry: string,
   pages: DocsMcpPage[],
@@ -1527,6 +1590,14 @@ type MarkdownRequest = {
   delivery: "api_format" | "md_route" | "accept_header" | "signature_agent";
 };
 
+type DocsContext = {
+  entryPath: string;
+  publicPath: string;
+  docsDirs: string[];
+  changelogDirs: string[];
+  locale?: string;
+};
+
 function resolveMarkdownRequest(entry: string, url: URL, request: Request): MarkdownRequest | null {
   const format = url.searchParams.get("format")?.trim();
   if (format === "markdown") {
@@ -1556,6 +1627,130 @@ function resolveMarkdownRequest(entry: string, url: URL, request: Request): Mark
     const delivery = hasSignatureAgent ? "signature_agent" : "accept_header";
 
     if (pathname === normalizedEntry) {
+      return { requestedPath: "", delivery };
+    }
+
+    if (pathname.startsWith(slugPrefix)) {
+      return {
+        requestedPath: pathname.slice(slugPrefix.length),
+        delivery,
+      };
+    }
+  }
+
+  return null;
+}
+
+function normalizeDocsPublicPath(value: string | undefined, entry: string): string {
+  if (typeof value !== "string") return `/${normalizePathSegment(entry)}`;
+
+  const cleaned = value.trim();
+  if (cleaned === "" || cleaned === "/") return "";
+
+  return `/${cleaned.replace(/^\/+|\/+$/g, "")}`;
+}
+
+function publicDocsRoute(publicPath: string, slugParts: string[] = []): string {
+  const slug = slugParts.join("/");
+  if (!slug) return publicPath || "/";
+  return publicPath ? `${publicPath}/${slug}` : `/${slug}`;
+}
+
+function toPublicDocsUrl(value: string, entry: string, publicPath: string): string {
+  const normalizedEntry = `/${normalizePathSegment(entry)}`;
+  const hashIndex = value.indexOf("#");
+  const hash = hashIndex >= 0 ? value.slice(hashIndex) : "";
+  const withoutHash = hashIndex >= 0 ? value.slice(0, hashIndex) : value;
+  const queryIndex = withoutHash.indexOf("?");
+  const query = queryIndex >= 0 ? withoutHash.slice(queryIndex) : "";
+  const pathname = normalizeUrlPath(
+    queryIndex >= 0 ? withoutHash.slice(0, queryIndex) : withoutHash,
+  );
+
+  if (publicPath === normalizedEntry) return value;
+  if (pathname === normalizedEntry) return `${publicPath || "/"}${query}${hash}`;
+  if (pathname.startsWith(`${normalizedEntry}/`)) {
+    const suffix = pathname.slice(normalizedEntry.length + 1);
+    const publicPathname = publicPath ? `${publicPath}/${suffix}` : `/${suffix}`;
+    return `${publicPathname}${query}${hash}`;
+  }
+
+  return value;
+}
+
+function withPublicDocsUrl<T extends { url: string }>(page: T, ctx: DocsContext): T {
+  const url = toPublicDocsUrl(page.url, ctx.entryPath, ctx.publicPath);
+  return url === page.url ? page : { ...page, url };
+}
+
+function readDocsPath(root: string): string | undefined {
+  for (const ext of FILE_EXTS) {
+    const configPath = path.join(root, `docs.config.${ext}`);
+    if (!fs.existsSync(configPath)) continue;
+
+    try {
+      const content = fs.readFileSync(configPath, "utf-8");
+      const match = content.match(/docsPath\s*:\s*["']([^"']*)["']/);
+      if (match) return match[1];
+    } catch {
+      // fall through
+    }
+  }
+
+  return undefined;
+}
+
+function resolvePublicMarkdownRequest(
+  entry: string,
+  docsPath: string,
+  url: URL,
+  request: Request,
+): MarkdownRequest | null {
+  if (docsPath === `/${normalizePathSegment(entry)}`) return null;
+
+  const pathname = normalizeUrlPath(url.pathname);
+
+  if (docsPath === "") {
+    if (pathname === `/${normalizePathSegment(entry)}.md`) {
+      return { requestedPath: "", delivery: "md_route" };
+    }
+
+    if (pathname !== "/docs.md" && pathname.endsWith(".md")) {
+      return {
+        requestedPath: pathname.slice(1, -3),
+        delivery: "md_route",
+      };
+    }
+
+    const hasSignatureAgent = hasDocsMarkdownSignatureAgent(request);
+    if (acceptsMarkdown(request) || hasSignatureAgent) {
+      const delivery = hasSignatureAgent ? "signature_agent" : "accept_header";
+      return {
+        requestedPath: pathname === "/" ? "" : pathname.slice(1),
+        delivery,
+      };
+    }
+
+    return null;
+  }
+
+  if (pathname === `${docsPath}.md`) {
+    return { requestedPath: "", delivery: "md_route" };
+  }
+
+  const slugPrefix = `${docsPath}/`;
+  if (pathname.startsWith(slugPrefix) && pathname.endsWith(".md")) {
+    return {
+      requestedPath: pathname.slice(slugPrefix.length, -3),
+      delivery: "md_route",
+    };
+  }
+
+  const hasSignatureAgent = hasDocsMarkdownSignatureAgent(request);
+  if (acceptsMarkdown(request) || hasSignatureAgent) {
+    const delivery = hasSignatureAgent ? "signature_agent" : "accept_header";
+
+    if (pathname === docsPath) {
       return { requestedPath: "", delivery };
     }
 
@@ -2759,6 +2954,7 @@ function generateLlmsTxt(
 export function createDocsAPI(options?: DocsAPIOptions) {
   const root = options?.rootDir ?? process.cwd();
   const entry = options?.entry ?? readEntry(root);
+  const docsPath = normalizeDocsPublicPath(options?.docsPath ?? readDocsPath(root), entry);
   const analytics = options?.analytics;
   const observability = options?.observability;
   const appDir = getNextAppDir(root);
@@ -2787,13 +2983,6 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const mcpConfig = resolveDocsMcpConfig(options?.mcp ?? readMcpConfig(root), {
     defaultName: llmsConfig.siteTitle ?? "Documentation",
   });
-
-  type DocsContext = {
-    entryPath: string;
-    docsDirs: string[];
-    changelogDirs: string[];
-    locale?: string;
-  };
 
   function resolveDocsDirCandidates(locale?: string): string[] {
     const relativeCandidates = new Set<string>();
@@ -2866,6 +3055,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       const docsDirs = resolveDocsDirCandidates();
       return {
         entryPath: entry,
+        publicPath: docsPath,
         docsDirs,
         changelogDirs: resolveChangelogDirCandidates(docsDirs),
       };
@@ -2875,6 +3065,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     const docsDirs = resolveDocsDirCandidates(locale);
     return {
       entryPath: entry,
+      publicPath: docsPath,
       locale,
       docsDirs,
       changelogDirs: resolveChangelogDirCandidates(docsDirs),
@@ -2896,7 +3087,13 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     let next: DocsSearchSourcePage[] = [];
     for (const docsDir of ctx.docsDirs) {
       const excludedDirs = ctx.changelogDirs.filter((dir) => isWithinDir(dir, docsDir));
-      const docsPages = scanDocsDir(docsDir, ctx.entryPath, ctx.locale, excludedDirs);
+      const docsPages = scanDocsDir(
+        docsDir,
+        ctx.entryPath,
+        ctx.locale,
+        excludedDirs,
+        ctx.publicPath,
+      );
       if (docsPages.length === 0) continue;
 
       next = docsPages;
@@ -2905,7 +3102,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
     if (changelogConfig.enabled) {
       const changelogPages = ctx.changelogDirs.flatMap((dir) =>
-        scanChangelogDir(dir, ctx.entryPath, changelogConfig.path, ctx.locale),
+        scanChangelogDir(dir, ctx.entryPath, changelogConfig.path, ctx.locale, ctx.publicPath),
       );
       next = [...next, ...changelogPages];
     }
@@ -2932,6 +3129,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
   async function getMarkdownDocument(ctx: DocsContext, requestedPath: string) {
     const normalizedRequest = normalizeRequestedMarkdownPath(ctx.entryPath, requestedPath);
+    const normalizedPublicRequest = normalizePublicRequestedMarkdownPath(ctx, requestedPath);
     const normalizedEntry = `/${normalizePathSegment(ctx.entryPath)}`;
     const relativeSlug =
       normalizedRequest === normalizedEntry
@@ -2945,24 +3143,28 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
     for (const source of getMarkdownSources(ctx)) {
       const page = findDocsMcpPage(ctx.entryPath, await source.getPages(), requestedPath);
-      if (page) return renderMarkdownDocument(page, { llmsEnabled: llmsConfig.enabled });
+      if (page)
+        return renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
+          llmsEnabled: llmsConfig.enabled,
+        });
     }
 
-    const fallbackPage = getIndexes(ctx).find(
-      (page) => normalizeUrlPath(page.url) === normalizedRequest,
-    );
+    const fallbackPage = getIndexes(ctx).find((page) => {
+      const pageUrl = normalizeUrlPath(page.url);
+      return pageUrl === normalizedRequest || pageUrl === normalizedPublicRequest;
+    });
     if (fallbackPage)
-      return renderMarkdownDocument(fallbackPage, { llmsEnabled: llmsConfig.enabled });
+      return renderMarkdownDocument(withPublicDocsUrl(fallbackPage, ctx), {
+        llmsEnabled: llmsConfig.enabled,
+      });
 
+    const requestedSlug = normalizePublicDocsSlug(ctx, normalizedPublicRequest);
     for (const page of getIndexes(ctx)) {
-      const slug = normalizePathSegment(
-        page.url.replace(/^\/+/, "").replace(`${ctx.entryPath}/`, ""),
-      );
-      const requestedSlug = normalizePathSegment(
-        requestedPath.replace(/^\/+/, "").replace(/\.md$/i, ""),
-      );
+      const slug = normalizePublicDocsSlug(ctx, page.url);
       if (slug === requestedSlug)
-        return renderMarkdownDocument(page, { llmsEnabled: llmsConfig.enabled });
+        return renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
+          llmsEnabled: llmsConfig.enabled,
+        });
     }
 
     return null;
@@ -3173,16 +3375,17 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       });
       if (sitemapResponse) return sitemapResponse;
 
-      const markdownRequest = resolveMarkdownRequest(entry, url, request);
+      const markdownRequest =
+        resolveMarkdownRequest(entry, url, request) ??
+        resolvePublicMarkdownRequest(entry, docsPath, url, request);
 
       if (markdownRequest) {
         const document = await getMarkdownDocument(ctx, markdownRequest.requestedPath);
         const varyHeader = getDocsMarkdownVaryHeader(request);
-        const canonicalLinkHeader = getDocsMarkdownCanonicalLinkHeader({
+        const canonicalLinkHeader = getPublicMarkdownCanonicalLinkHeader({
           origin: url.origin,
-          entry: ctx.entryPath,
+          ctx,
           requestedPath: markdownRequest.requestedPath,
-          locale: ctx.locale,
         });
 
         if (!document) {
