@@ -58,6 +58,8 @@ interface DocsPageClientProps {
   changelogBasePath?: string;
   /** The docs entry folder name (e.g. "docs") — used to strip from breadcrumb */
   entry?: string;
+  /** Public docs route prefix. Empty string means docs render from the site root. */
+  publicPath?: string;
   /** Active locale (used for llms.txt links) */
   locale?: string;
   copyMarkdown?: boolean;
@@ -122,17 +124,20 @@ interface DocsPageClientProps {
  */
 function PathBreadcrumb({
   pathname,
-  entry,
+  publicPath,
   locale,
 }: {
   pathname: string;
-  entry: string;
+  publicPath: string;
   locale?: string;
 }) {
   const router = useRouter();
   const segments = pathname.split("/").filter(Boolean);
-  const entryParts = entry.split("/").filter(Boolean);
-  const contentSegments = segments.slice(entryParts.length);
+  const publicParts = publicPath.split("/").filter(Boolean);
+  const hasPublicPrefix =
+    publicParts.length > 0 &&
+    segments.slice(0, publicParts.length).join("/") === publicParts.join("/");
+  const contentSegments = hasPublicPrefix ? segments.slice(publicParts.length) : segments;
 
   if (contentSegments.length < 2) return null;
 
@@ -144,7 +149,7 @@ function PathBreadcrumb({
   const currentLabel = currentSegment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   const parentUrl =
-    "/" + [...segments.slice(0, entryParts.length), ...contentSegments.slice(0, -1)].join("/");
+    "/" + [...publicParts, ...contentSegments.slice(0, -1)].filter(Boolean).join("/");
   const localizedParentUrl = withLangInUrl(parentUrl, locale);
 
   return (
@@ -228,6 +233,154 @@ function localizeInternalLinks(root: ParentNode, locale?: string) {
       // Ignore malformed links and leave them untouched.
     }
   }
+}
+
+function normalizePublicDocsPath(value: string | undefined, entry: string): string {
+  if (typeof value !== "string") return `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
+  const cleaned = value.trim();
+  if (cleaned === "" || cleaned === "/") return "";
+  return `/${cleaned.replace(/^\/+|\/+$/g, "")}`;
+}
+
+function toPublicDocsPath(pathname: string, entry: string, publicPath: string): string {
+  const normalizedEntry = `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
+  const normalizedPath = pathname.replace(/\/+$/, "") || "/";
+
+  if (publicPath === normalizedEntry) return normalizedPath;
+  if (normalizedPath === normalizedEntry) return publicPath || "/";
+  if (normalizedPath.startsWith(`${normalizedEntry}/`)) {
+    const suffix = normalizedPath.slice(normalizedEntry.length + 1);
+    return publicPath ? `${publicPath}/${suffix}` : `/${suffix}`;
+  }
+
+  return normalizedPath;
+}
+
+function rewriteDocsPathLinks(root: ParentNode, entry: string, publicPath: string) {
+  const anchors = root.querySelectorAll<HTMLAnchorElement>(
+    'a[href]:not([data-fd-docspath="true"])',
+  );
+
+  for (const anchor of anchors) {
+    const href = anchor.getAttribute("href");
+    if (!href || href.startsWith("#")) continue;
+    if (/^(mailto:|tel:|javascript:)/i.test(href)) continue;
+
+    try {
+      const url = new URL(href, window.location.origin);
+      if (url.origin !== window.location.origin) continue;
+
+      const nextPath = toPublicDocsPath(url.pathname, entry, publicPath);
+      if (nextPath === url.pathname) continue;
+
+      anchor.href = `${nextPath}${url.search}${url.hash}`;
+      anchor.dataset.fdDocspath = "true";
+    } catch {
+      // Ignore malformed links and leave them untouched.
+    }
+  }
+}
+
+function normalizeCurrentPath(pathname: string): string {
+  return pathname.replace(/\/+$/, "") || "/";
+}
+
+function syncDocsPathActiveLinks(root: ParentNode, entry: string, publicPath: string) {
+  const currentPath = normalizeCurrentPath(window.location.pathname);
+  const anchors = root.querySelectorAll<HTMLAnchorElement>("a[data-active][href]");
+
+  for (const anchor of anchors) {
+    const href = anchor.getAttribute("href");
+    if (!href || href.startsWith("#")) continue;
+
+    try {
+      const url = new URL(href, window.location.origin);
+      if (url.origin !== window.location.origin) continue;
+      if (!isDocsNavigationPath(url.pathname, entry, publicPath)) continue;
+
+      const publicHrefPath = normalizeCurrentPath(
+        toPublicDocsPath(url.pathname, entry, publicPath),
+      );
+      anchor.dataset.active = publicHrefPath === currentPath ? "true" : "false";
+    } catch {
+      // Ignore malformed links and leave them untouched.
+    }
+  }
+}
+
+function isFrameworkPath(pathname: string): boolean {
+  return (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/.well-known") ||
+    pathname === "/mcp" ||
+    pathname === "/llms.txt" ||
+    pathname === "/llms-full.txt" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    pathname === "/sitemap.md" ||
+    pathname === "/AGENTS.md" ||
+    pathname === "/AGENT.md" ||
+    pathname === "/skill.md" ||
+    /\/[^/]+\.[^/]+$/.test(pathname)
+  );
+}
+
+function isDocsNavigationPath(pathname: string, entry: string, publicPath: string): boolean {
+  if (isFrameworkPath(pathname)) return false;
+
+  const normalizedEntry = `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
+  if (pathname === normalizedEntry || pathname.startsWith(`${normalizedEntry}/`)) return true;
+
+  if (publicPath === "") return pathname.startsWith("/");
+  return pathname === publicPath || pathname.startsWith(`${publicPath}/`);
+}
+
+function installDocsPathNavigationGuard(entry: string, publicPath: string) {
+  const normalizedEntry = `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
+  if (publicPath === normalizedEntry) return undefined;
+
+  function onClick(event: MouseEvent) {
+    if (event.defaultPrevented) return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+
+    const target = event.target instanceof Element ? event.target : null;
+    const anchor = target?.closest<HTMLAnchorElement>("a[href]");
+    if (!anchor) return;
+    if (anchor.target && anchor.target !== "_self") return;
+    if (anchor.hasAttribute("download")) return;
+
+    const href = anchor.getAttribute("href");
+    if (!href || href.startsWith("#")) return;
+    if (/^(mailto:|tel:|javascript:)/i.test(href)) return;
+
+    try {
+      const url = new URL(href, window.location.origin);
+      if (url.origin !== window.location.origin) return;
+      if (!isDocsNavigationPath(url.pathname, entry, publicPath)) return;
+
+      const nextPath = toPublicDocsPath(url.pathname, entry, publicPath);
+      if (nextPath === url.pathname) return;
+
+      const nextHref = `${nextPath}${url.search}${url.hash}`;
+
+      if (
+        nextHref === `${window.location.pathname}${window.location.search}${window.location.hash}`
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      window.location.assign(nextHref);
+    } catch {
+      // Ignore malformed links and leave them untouched.
+    }
+  }
+
+  document.addEventListener("click", onClick, true);
+  return () => document.removeEventListener("click", onClick, true);
 }
 
 function decodeHashTarget(hash: string): string {
@@ -352,6 +505,7 @@ export function DocsPageClient({
   breadcrumbEnabled = true,
   changelogBasePath,
   entry = "docs",
+  publicPath,
   locale,
   copyMarkdown = false,
   openDocs = false,
@@ -392,6 +546,7 @@ export function DocsPageClient({
   const pathname = usePathname();
   const searchParams = useWindowSearchParams();
   const activeLocale = resolveClientLocale(searchParams, locale);
+  const resolvedPublicPath = normalizePublicDocsPath(publicPath, entry);
   const llmsLangQuery = activeLocale ? `?lang=${encodeURIComponent(activeLocale)}` : "";
 
   const pageDescription = description ?? descriptionMap?.[pathname.replace(/\/$/, "") || "/"];
@@ -418,6 +573,11 @@ export function DocsPageClient({
       },
     });
   }, [analytics, activeLocale, entry, isChangelogRoute, normalizedPath]);
+
+  useEffect(() => {
+    return installDocsPathNavigationGuard(entry, resolvedPublicPath);
+  }, [entry, resolvedPublicPath]);
+
   const resolvedReadingTime = !isChangelogRoute
     ? readingTimeProp !== undefined
       ? readingTimeProp
@@ -449,16 +609,17 @@ export function DocsPageClient({
   }, [effectiveTocEnabled, pathname]);
 
   useEffect(() => {
-    if (!activeLocale) return;
-
     const timer = requestAnimationFrame(() => {
-      const container = document.getElementById("nd-page");
-      if (!container) return;
-      localizeInternalLinks(container, activeLocale);
+      const root = document.body;
+      if (!root) return;
+      rewriteDocsPathLinks(root, entry, resolvedPublicPath);
+      syncDocsPathActiveLinks(root, entry, resolvedPublicPath);
+      if (!activeLocale) return;
+      localizeInternalLinks(root, activeLocale);
     });
 
     return () => cancelAnimationFrame(timer);
-  }, [activeLocale, children, pathname]);
+  }, [activeLocale, browserPath, children, entry, pathname, resolvedPublicPath]);
 
   useEffect(() => {
     setBrowserPath(window.location.pathname);
@@ -658,7 +819,11 @@ export function DocsPageClient({
         footer={{ enabled: !isChangelogRoute }}
       >
         {effectiveBreadcrumbEnabled && (
-          <PathBreadcrumb pathname={pathname} entry={entry} locale={activeLocale} />
+          <PathBreadcrumb
+            pathname={pathname}
+            publicPath={resolvedPublicPath}
+            locale={activeLocale}
+          />
         )}
         {showActionsAboveTitle && (
           <div className="fd-below-title-block not-prose">

@@ -120,7 +120,8 @@ All configuration lives in a single `docs.config.ts` file.
 
 | Option         | Type                           | Default         | Description                                        |
 | -------------- | ------------------------------ | --------------- | -------------------------------------------------- |
-| `entry`        | `string`                       | `"docs"`        | The docs URL path prefix (e.g. `"docs"` → `/docs`) |
+| `entry`        | `string`                       | `"docs"`        | Docs source route and folder (e.g. `"docs"` -> `app/docs`) |
+| `docsPath`     | `string`                       | same as `entry` | Public docs route prefix in Next.js. Use `""` for root-mounted docs |
 | `contentDir`   | `string`                       | same as `entry` | Path to content files (TanStack Start, SvelteKit, Astro, Nuxt) |
 | `staticExport` | `boolean`                      | `false`         | Set `true` for full static builds (see [Static export](#static-export)) |
 | `theme`        | `DocsTheme`                    | —               | Theme preset from a theme factory                  |
@@ -147,6 +148,60 @@ All configuration lives in a single `docs.config.ts` file.
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template and JSON-LD page inputs      |
 | `og`          | `OGConfig`                     | —               | Dynamic Open Graph images (see [API Reference](/docs/reference#ogconfig)) |
+
+## Public docs path
+
+In Next.js, `entry` controls where the docs live in your app directory. `docsPath` controls the
+public URL where readers see those pages.
+
+The default keeps both values aligned:
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/theme";
+
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+});
+```
+
+With the default config, `app/docs/quickstart/page.mdx` is available at `/docs/quickstart`.
+
+Set `docsPath: ""` when the whole deployment is docs-only and should publish pages from the site
+root:
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/theme";
+
+export default defineDocs({
+  entry: "docs",
+  docsPath: "",
+  theme: fumadocs(),
+});
+```
+
+The files still live under `app/docs`, but readers see root URLs:
+
+| Source file                        | Public URL    |
+| ---------------------------------- | ------------- |
+| `app/docs/page.mdx`                | `/`           |
+| `app/docs/quickstart/page.mdx`     | `/quickstart` |
+| `app/docs/reference/auth/page.mdx` | `/reference/auth` |
+
+This is useful for a docs subdomain. Attach `docs.example.com` to the docs deployment, then set
+`docsPath: ""` so the subdomain serves clean URLs like `https://docs.example.com/quickstart`
+instead of `https://docs.example.com/docs/quickstart`.
+
+`withDocs({})` reads this from `docs.config.tsx`, so you do not need to add custom rewrites to
+`next.config.ts`.
+
+<Callout type="warning" title="Use root docs only for docs-first deployments">
+  `docsPath: ""` makes the docs own `/` and other root-level page paths on that deployment. If the
+  same Next.js app also serves a marketing site at `/`, keep the default `/docs` path or use a
+  separate docs deployment for your subdomain.
+</Callout>
 
 For sidebar folder parents that have their own landing page, use
 `sidebar.folderIndexBehavior: "toggle"` if you want parent rows to only open and close their
