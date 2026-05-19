@@ -32,6 +32,7 @@ import {
   Check,
   ArrowUpRight,
   ChartNoAxesColumn,
+  DollarSign,
   Activity,
 } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
@@ -140,6 +141,7 @@ export default defineDocs({
     arrowUpRight: <ArrowUpRight size={16} />,
     "chart-no-axes-column": <ChartNoAxesColumn size={16} />,
     activity: <Activity size={16} />,
+    dollarSign: <DollarSign size={16} />,
   },
   github: {
     url: "https://github.com/farming-labs/docs",
