@@ -5,14 +5,14 @@ Before coding:
 - inspect the current project structure, package manager, framework, docs source folder, and
   \`docs.config.ts[x]\`
 - preserve the existing product voice, page hierarchy, component conventions, and framework routing
-- use the @farming-labs/docs website as implementation context:
-- Framework docs: https://docs.farming-labs.dev
-- Agent-friendly docs guide: https://docs.farming-labs.dev/docs/guides/agent-friendly-docs
-- Agent primitive guide: https://docs.farming-labs.dev/docs/customization/agent-primitive
-- llms.txt guide: https://docs.farming-labs.dev/docs/customization/llms-txt
-- Sitemaps guide: https://docs.farming-labs.dev/docs/customization/sitemaps
-- MCP guide: https://docs.farming-labs.dev/docs/customization/mcp
-- CLI guide: https://docs.farming-labs.dev/docs/cli
+- use the @farming-labs/docs markdown routes as implementation context:
+- Framework docs: https://docs.farming-labs.dev/docs.md
+- Agent-friendly docs guide: https://docs.farming-labs.dev/docs/guides/agent-friendly-docs.md
+- Agent primitive guide: https://docs.farming-labs.dev/docs/customization/agent-primitive.md
+- llms.txt guide: https://docs.farming-labs.dev/docs/customization/llms-txt.md
+- Sitemaps guide: https://docs.farming-labs.dev/docs/customization/sitemaps.md
+- MCP guide: https://docs.farming-labs.dev/docs/customization/mcp.md
+- CLI guide: https://docs.farming-labs.dev/docs/cli.md
 
 Then build or update the docs:
 - configure or preserve the docs \`entry\` in \`docs.config.ts[x]\`
