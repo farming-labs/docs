@@ -137,6 +137,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `agent`       | `DocsAgentConfig`              | —               | Defaults for `docs agent compact`                  |
 | `readingTime` | `boolean \| ReadingTimeConfig` | `false`         | Opt-in estimated read-time label with optional per-page overrides |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
+| `devTools`    | `boolean \| DevToolsConfig`    | `false`         | Local visual MDX editor with Apply Changes and Publish Preview actions |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
 | `search`      | `boolean \| DocsSearchConfig`  | `true`          | Built-in simple search, Typesense, Algolia, or a custom adapter |
 | `llmsTxt`     | `boolean \| LlmsTxtConfig`     | `true`          | Generated root and optional section-level `llms.txt` files with markdown page links |
@@ -415,6 +416,28 @@ export default defineDocs({
 ```
 
 Use this when you deploy to a static host and don’t run a server. Search and AI require a server; with `staticExport: true` they are hidden so the site works without one.
+
+## DevTools
+
+Set `devTools: true` while developing locally to render the built-in visual MDX editor. It adds a
+floating DevTools button on docs pages, loads the current page source from the docs API, replaces the
+page body with an inline editing canvas, lets you edit/reorder MDX blocks, and writes the result back
+to the source file when you click Apply Changes.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  devTools: true,
+  theme: fumadocs(),
+});
+```
+
+DevTools are local-development only. The docs API refuses DevTools requests unless the feature is
+enabled and the request is local or the app is running outside production. With `staticExport: true`,
+the floating editor is hidden because there is no server route to write files.
+
+Publish Preview uses the same local DevTools toolbar and forwards to Farming Cloud with
+`FARMING_CLOUD_API_KEY` or `FARMING_API_KEY`.
 
 ## Search
 

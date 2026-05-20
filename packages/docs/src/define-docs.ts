@@ -32,6 +32,7 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     ai: config.ai,
     ordering: config.ordering,
     metadata: config.metadata,
+    devTools: config.devTools,
     og: config.og,
     changelog: config.changelog,
     apiReference: config.apiReference,

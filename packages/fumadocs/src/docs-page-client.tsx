@@ -20,6 +20,7 @@ import { DocsFeedback } from "./docs-feedback.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
 import { escapeJsonLdForScript } from "./json-ld.js";
+import { DocsDevTools } from "./devtools.js";
 
 const agentLlmsDirectiveStyle: CSSProperties = {
   position: "absolute",
@@ -102,6 +103,10 @@ interface DocsPageClientProps {
   lastUpdatedPosition?: "footer" | "below-title";
   /** Whether llms.txt is enabled — shows links in footer */
   llmsTxtEnabled?: boolean;
+  /** Whether to show the local visual MDX editor. */
+  devToolsEnabled?: boolean;
+  /** Unified docs API route used by the visual MDX editor. */
+  docsApiUrl?: string;
   /** Map of pathname → frontmatter description */
   descriptionMap?: Record<string, string>;
   /** Frontmatter description to display below the page title (overrides descriptionMap) */
@@ -527,6 +532,8 @@ export function DocsPageClient({
   lastUpdatedEnabled = true,
   lastUpdatedPosition = "footer",
   llmsTxtEnabled = false,
+  devToolsEnabled = false,
+  docsApiUrl = "/api/docs",
   descriptionMap,
   description,
   feedbackEnabled = false,
@@ -842,7 +849,7 @@ export function DocsPageClient({
         )}
         {!showReadingTimeAboveTitle && !showReadingTimeBelowTitle ? readingTimeBlock : null}
         <DocsBody style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ flex: 1 }}>{renderedChildren}</div>
+          <div style={{ flex: 1 }} data-dt-content="">{renderedChildren}</div>
           {titleDecorationsPortal}
           {!isChangelogRoute && feedbackEnabled && (
             <DocsFeedback
@@ -888,6 +895,7 @@ export function DocsPageClient({
           )}
         </DocsBody>
       </DocsPage>
+      {devToolsEnabled && <DocsDevTools api={docsApiUrl} pathname={normalizedPath} />}
     </>
   );
 }

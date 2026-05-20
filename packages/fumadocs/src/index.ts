@@ -85,6 +85,7 @@ export { DocsLayout } from "fumadocs-ui/layouts/docs";
 export { DocsPageClient } from "./docs-page-client.js";
 export { DocsClientHooks } from "./docs-client-hooks.js";
 export { DocsFeedback } from "./docs-feedback.js";
+export { DocsDevTools } from "./devtools.js";
 
 // ─── Page action buttons (Copy Markdown, Open in LLM) ─────────────────
 export { PageActions } from "./page-actions.js";
@@ -104,6 +105,7 @@ export type {
   TypographyConfig,
   DocsNav,
   DocsMetadata,
+  DevToolsConfig,
   OGConfig,
   PageFrontmatter,
   ThemeToggleConfig,

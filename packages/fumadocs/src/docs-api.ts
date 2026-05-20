@@ -54,6 +54,7 @@ import type {
   DocsAgentFeedbackContext,
   DocsAgentFeedbackData,
   DocsConfig,
+  DevToolsConfig,
   DocsI18nConfig,
   LlmsTxtConfig,
   DocsObservabilityConfig,
@@ -157,6 +158,8 @@ interface DocsAPIOptions {
   apiReference?: DocsConfig["apiReference"];
   /** Metadata used in generated OpenAPI documents. */
   metadata?: DocsConfig["metadata"];
+  /** Visual docs editor configuration. */
+  devTools?: boolean | DevToolsConfig;
 }
 
 interface DocsMCPAPIOptions {
@@ -1765,6 +1768,302 @@ function resolvePublicMarkdownRequest(
   return null;
 }
 
+type DevToolsRequest = "page" | "publish" | "theme" | "nav-item";
+
+interface EditableDocsPage {
+  requestedPath: string;
+  filePath: string;
+  relativePath: string;
+  content: string;
+  lastModified: string;
+}
+
+function resolveDevToolsEnabled(devTools?: boolean | DevToolsConfig): boolean {
+  if (devTools === undefined) return false;
+  if (typeof devTools === "boolean") return devTools;
+  return devTools.enabled !== false;
+}
+
+function resolveDevToolsRequest(url: URL): DevToolsRequest | null {
+  const value = url.searchParams.get("devtools")?.trim().toLowerCase();
+  if (value === "page" || value === "publish" || value === "theme" || value === "nav-item") return value;
+  return null;
+}
+
+function isLocalDevToolsRequest(request: Request): boolean {
+  const url = new URL(request.url);
+  const host = url.hostname.toLowerCase();
+
+  return (
+    process.env.NODE_ENV !== "production" ||
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host === "::1" ||
+    host === "[::1]"
+  );
+}
+
+function createDevToolsUnavailableResponse(status = 404): Response {
+  return Response.json(
+    {
+      error:
+        "Docs DevTools are not available. Set `devTools: true` and use a local development server.",
+    },
+    { status },
+  );
+}
+
+function getDevToolsRequestedPath(url: URL, request: Request): string {
+  const explicit = url.searchParams.get("path")?.trim();
+  if (explicit) return explicit;
+
+  const referrer = request.headers.get("referer") ?? request.headers.get("referrer");
+  if (referrer) {
+    try {
+      return new URL(referrer).pathname;
+    } catch {
+      // fall through
+    }
+  }
+
+  return "";
+}
+
+function isPathWithinDir(candidate: string, target: string): boolean {
+  const relative = path.relative(target, candidate);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+function getEditableDocsPage(
+  ctx: {
+    entryPath: string;
+    publicPath: string;
+    docsDirs: string[];
+  },
+  requestedPath: string,
+  rootDir: string,
+): EditableDocsPage | null {
+  const normalizedEntry = `/${normalizePathSegment(ctx.entryPath)}`;
+  const normalizedPublicPath = ctx.publicPath ? normalizeUrlPath(ctx.publicPath) : "";
+  const normalizedRequestedPath = normalizeRequestedMarkdownPath(ctx.entryPath, requestedPath);
+  let normalizedRequest = normalizedRequestedPath;
+
+  if (normalizedPublicPath && normalizedPublicPath !== normalizedEntry) {
+    const normalizedPublicRequest = normalizeUrlPath(
+      requestedPath.trim().replace(/\.md$/i, "").startsWith("/")
+        ? requestedPath.trim().replace(/\.md$/i, "")
+        : `/${requestedPath.trim().replace(/\.md$/i, "")}`,
+    );
+
+    if (normalizedPublicRequest === normalizedPublicPath) {
+      normalizedRequest = normalizedEntry;
+    } else if (normalizedPublicRequest.startsWith(`${normalizedPublicPath}/`)) {
+      normalizedRequest = publicDocsRoute(
+        normalizedEntry,
+        normalizedPublicRequest
+          .slice(normalizedPublicPath.length + 1)
+          .split("/")
+          .filter(Boolean),
+      );
+    }
+  }
+
+  const relativeSlug =
+    normalizedRequest === normalizedEntry
+      ? ""
+      : normalizedRequest.slice(normalizedEntry.length).replace(/^\/+/, "");
+  const slugParts = relativeSlug.split("/").filter(Boolean);
+
+  for (const docsDir of ctx.docsDirs) {
+    const resolvedDocsDir = path.resolve(docsDir);
+    const candidateDir =
+      slugParts.length > 0 ? path.join(resolvedDocsDir, ...slugParts) : resolvedDocsDir;
+    const source = resolveDocsSearchPageSource(candidateDir);
+    if (!source) continue;
+
+    const resolvedSource = path.resolve(source);
+    if (!isPathWithinDir(resolvedSource, resolvedDocsDir)) continue;
+
+    try {
+      const stat = fs.statSync(resolvedSource);
+      if (!stat.isFile()) continue;
+
+      return {
+        requestedPath: normalizedRequest,
+        filePath: resolvedSource,
+        relativePath: path.relative(rootDir, resolvedSource).replace(/\\/g, "/"),
+        content: fs.readFileSync(resolvedSource, "utf-8"),
+        lastModified: stat.mtime.toISOString(),
+      };
+    } catch {
+      // try the next candidate
+    }
+  }
+
+  return null;
+}
+
+async function parseDevToolsWriteBody(
+  request: Request,
+): Promise<{ ok: true; content: string } | { ok: false; response: Response }> {
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return {
+      ok: false,
+      response: Response.json({ error: "DevTools write body must be valid JSON" }, { status: 400 }),
+    };
+  }
+
+  if (!isPlainObject(body) || typeof body.content !== "string") {
+    return {
+      ok: false,
+      response: Response.json(
+        { error: "DevTools write body must include a string `content` field" },
+        { status: 400 },
+      ),
+    };
+  }
+
+  if (body.content.length > 5_000_000) {
+    return {
+      ok: false,
+      response: Response.json({ error: "DevTools content is too large to write" }, { status: 413 }),
+    };
+  }
+
+  return { ok: true, content: body.content };
+}
+
+function toCamelCase(id: string): string {
+  return id.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+}
+
+async function handleDevToolsThemeRequest(request: Request, rootDir: string): Promise<Response> {
+  let body: unknown;
+  try { body = await request.json(); } catch {
+    return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  if (!body || typeof body !== "object" || typeof (body as Record<string, unknown>).themeId !== "string") {
+    return Response.json({ error: "Body must include a string `themeId` field" }, { status: 400 });
+  }
+  const themeId = ((body as Record<string, unknown>).themeId as string).trim();
+  const themeFn = toCamelCase(themeId);
+
+  // Update app/global.css
+  const cssPath = path.join(rootDir, "app", "global.css");
+  try {
+    const cssContent = fs.readFileSync(cssPath, "utf-8");
+    const updatedCss = cssContent.replace(
+      /@import\s+"@farming-labs\/theme\/[^/]+\/css";/,
+      `@import "@farming-labs/theme/${themeId}/css";`,
+    );
+    fs.writeFileSync(cssPath, updatedCss);
+  } catch {
+    return Response.json({ error: `Could not update ${path.relative(rootDir, cssPath)}` }, { status: 500 });
+  }
+
+  // Update docs.config.tsx
+  const configPath = path.join(rootDir, "docs.config.tsx");
+  try {
+    const configContent = fs.readFileSync(configPath, "utf-8");
+    // Replace: import { anyName } from "@farming-labs/theme/anyTheme"
+    const updatedImport = configContent.replace(
+      /import\s*\{\s*\w+\s*\}\s*from\s*"@farming-labs\/theme\/\w[\w-]*"/,
+      `import { ${themeFn} } from "@farming-labs/theme/${themeId}"`,
+    );
+    // Replace: theme: someName({...}) — update the function name
+    const updatedConfig = updatedImport.replace(
+      /\btheme\s*:\s*\w+\s*\(/,
+      `theme: ${themeFn}(`,
+    );
+    fs.writeFileSync(configPath, updatedConfig);
+  } catch {
+    return Response.json({ error: `Could not update ${path.relative(rootDir, configPath)}` }, { status: 500 });
+  }
+
+  return Response.json({ ok: true, themeId }, { headers: { "Cache-Control": "no-store" } });
+}
+
+async function handleDevToolsNavItemRequest(
+  request: Request,
+  ctx: { entryPath: string; publicPath: string; docsDirs: string[] },
+  rootDir: string,
+): Promise<Response> {
+  let body: unknown;
+  try { body = await request.json(); } catch {
+    return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  if (!body || typeof body !== "object") {
+    return Response.json({ error: "Invalid body" }, { status: 400 });
+  }
+  const b = body as Record<string, unknown>;
+  if (typeof b.href !== "string" || typeof b.title !== "string") {
+    return Response.json({ error: "Body must include string `href` and `title` fields" }, { status: 400 });
+  }
+
+  const href = b.href.trim();
+  const title = b.title.trim();
+
+  const page = getEditableDocsPage(ctx, href, rootDir);
+  if (!page) {
+    return Response.json({ error: "Could not find an MDX page for that path." }, { status: 404 });
+  }
+
+  // Update the frontmatter title
+  const parsed = matter(page.content);
+  parsed.data.title = title;
+  const updated = matter.stringify(parsed.content, parsed.data);
+  fs.writeFileSync(page.filePath, updated);
+
+  return Response.json({ ok: true, relativePath: page.relativePath }, { headers: { "Cache-Control": "no-store" } });
+}
+
+async function handleDevToolsPublishRequest(request: Request): Promise<Response> {
+  const apiKey = process.env.FARMING_CLOUD_API_KEY ?? process.env.FARMING_API_KEY;
+  const endpoint =
+    process.env.FARMING_CLOUD_API_URL ?? "https://api.farming-labs.dev/v1/docs/previews";
+
+  if (!apiKey) {
+    return Response.json(
+      {
+        error:
+          "Cloud publishing is not logged in. Set FARMING_CLOUD_API_KEY or run the Farming Cloud login flow before publishing a preview.",
+      },
+      { status: 401 },
+    );
+  }
+
+  let body: unknown = {};
+  try {
+    body = await request.json();
+  } catch {
+    body = {};
+  }
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(isPlainObject(body) ? body : {}),
+  });
+
+  const text = await response.text();
+  const contentType = response.headers.get("content-type") ?? "application/json; charset=utf-8";
+
+  return new Response(text, {
+    status: response.status,
+    headers: {
+      "Content-Type": contentType,
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 function renderMarkdownDocument(
   page: DocsMcpPage | DocsSearchSourcePage,
   options: { llmsEnabled?: boolean } = {},
@@ -2974,6 +3273,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const sitemapConfig = options?.sitemap ?? readSitemapConfig(root);
   const robotsConfig = options?.robots ?? readRobotsConfig(root);
   const apiReferenceConfig = options?.apiReference ?? readApiReferenceConfig(root);
+  const devToolsEnabled = resolveDevToolsEnabled(options?.devTools);
   const apiReferenceDocsConfig = {
     ...options,
     entry,
@@ -3193,6 +3493,39 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     async GET(request: Request) {
       const ctx = resolveContextFromRequest(request);
       const url = new URL(request.url);
+      const devToolsRequest = resolveDevToolsRequest(url);
+      if (devToolsRequest) {
+        if (!devToolsEnabled || !isLocalDevToolsRequest(request)) {
+          return createDevToolsUnavailableResponse();
+        }
+
+        if (devToolsRequest !== "page") {
+          return Response.json(
+            { error: "Method Not Allowed" },
+            {
+              status: 405,
+              headers: { Allow: "POST" },
+            },
+          );
+        }
+
+        const requestedPath = getDevToolsRequestedPath(url, request);
+        const page = getEditableDocsPage(ctx, requestedPath, root);
+        if (!page) {
+          return Response.json(
+            { error: "Could not find an editable MDX page for this route." },
+            { status: 404 },
+          );
+        }
+
+        return Response.json(page, {
+          headers: {
+            "Cache-Control": "no-store",
+            "X-Robots-Tag": "noindex",
+          },
+        });
+      }
+
       if (resolveAgentSpecRequest(url)) {
         await emitDocsAnalyticsEvent(analytics, {
           type: "agent_spec_request",
@@ -3571,6 +3904,61 @@ export function createDocsAPI(options?: DocsAPIOptions) {
      */
     async POST(request: Request): Promise<Response> {
       const url = new URL(request.url);
+      const devToolsRequest = resolveDevToolsRequest(url);
+      if (devToolsRequest) {
+        if (!devToolsEnabled || !isLocalDevToolsRequest(request)) {
+          return createDevToolsUnavailableResponse();
+        }
+
+        if (devToolsRequest === "publish") {
+          return handleDevToolsPublishRequest(request);
+        }
+
+        if (devToolsRequest === "theme") {
+          return handleDevToolsThemeRequest(request, root);
+        }
+
+        const ctx = resolveContextFromRequest(request);
+
+        if (devToolsRequest === "nav-item") {
+          return handleDevToolsNavItemRequest(request, ctx, root);
+        }
+
+        const requestedPath = getDevToolsRequestedPath(url, request);
+        const page = getEditableDocsPage(ctx, requestedPath, root);
+        if (!page) {
+          return Response.json(
+            { error: "Could not find an editable MDX page for this route." },
+            { status: 404 },
+          );
+        }
+
+        const parsed = await parseDevToolsWriteBody(request);
+        if (!parsed.ok) return parsed.response;
+
+        const content = parsed.content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+        fs.writeFileSync(page.filePath, content.endsWith("\n") ? content : `${content}\n`);
+        indexesByLocale.clear();
+        llmsCacheByLocale.clear();
+        markdownSourcesByLocale.clear();
+
+        const stat = fs.statSync(page.filePath);
+        return Response.json(
+          {
+            ok: true,
+            requestedPath: page.requestedPath,
+            relativePath: page.relativePath,
+            lastModified: stat.mtime.toISOString(),
+          },
+          {
+            headers: {
+              "Cache-Control": "no-store",
+              "X-Robots-Tag": "noindex",
+            },
+          },
+        );
+      }
+
       const agentFeedbackRequest = resolveAgentFeedbackRequest(url, agentFeedbackConfig);
 
       if (agentFeedbackRequest) {

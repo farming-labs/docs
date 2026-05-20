@@ -76,6 +76,7 @@ const searchConfig: DocsSearchConfig | undefined =
 
 export default defineDocs({
   entry: "docs",
+  devTools: true,
   ...(searchConfig ? { search: searchConfig } : {}),
   observability: {
     console: "debug",
