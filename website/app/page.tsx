@@ -774,7 +774,7 @@ function InstallSection() {
   return (
     <section className="relative z-10 bg-white dark:bg-black border-t border-black/[8%] dark:border-white/[8%]">
       <div className="w-full px-4 py-16 sm:px-0 sm:py-24">
-        <div className="mb-10 sm:mb-16">
+        <div className="mb-6 sm:mb-8">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-black/30 dark:text-white/30 mb-4 block">
             Quick Start
           </span>
@@ -1178,9 +1178,9 @@ export default function Home() {
       </div>
       <div className="max-w-[90%] mx-auto">
         <HeroSection />
+        <InstallSection />
         <AgentFeaturesSection />
         <AgentScoreCalloutSection />
-        <InstallSection />
         <ThemesSection />
         <ConfigSection />
         <FooterSection />
