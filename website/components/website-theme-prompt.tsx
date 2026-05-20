@@ -16,6 +16,7 @@ interface WebsiteThemePromptProps {
   description?: string;
   dialogTitle?: string;
   dialogDescription?: string;
+  copyMode?: "filled" | "raw";
   children?: React.ReactNode;
 }
 
@@ -156,6 +157,7 @@ export function WebsiteThemePrompt({
   description = "Copy this into your coding agent when you want docs that match an existing site.",
   dialogTitle = "Create a website-matching docs prompt",
   dialogDescription = "Add your website URL and we will fetch Brandfetch details before copying it.",
+  copyMode = "filled",
   children,
 }: WebsiteThemePromptProps) {
   const [open, setOpen] = useState(false);
@@ -166,6 +168,7 @@ export function WebsiteThemePrompt({
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [brandError, setBrandError] = useState<string | null>(null);
   const promptSourceRef = useRef<HTMLDivElement>(null);
+  const isRawCopy = copyMode === "raw";
   const isSubmitting = submitState !== "idle";
   const submitLabel =
     submitState === "bootstrapping"
@@ -213,6 +216,17 @@ export function WebsiteThemePrompt({
     [docsEntry, framework, websiteUrl],
   );
 
+  const handleRawCopy = useCallback(async () => {
+    const promptText = extractPromptTextFromElement(promptSourceRef.current);
+    if (!promptText) return;
+
+    const didCopy = await copyText(promptText);
+    if (!didCopy) return;
+
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  }, []);
+
   return (
     <>
       <div className="fd-prompt" data-prompt-card style={{ borderRadius: 0 }}>
@@ -231,7 +245,7 @@ export function WebsiteThemePrompt({
             type="button"
             className="fd-prompt-action-btn"
             data-copied={copied}
-            onClick={() => setOpen(true)}
+            onClick={isRawCopy ? handleRawCopy : () => setOpen(true)}
             style={{ borderRadius: 0 }}
           >
             {copied ? <Check size={14} /> : <Copy size={14} />}
@@ -244,94 +258,98 @@ export function WebsiteThemePrompt({
         {children}
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-[30rem] rounded-none border-[var(--color-fd-border)] bg-[var(--color-fd-popover)] text-[var(--color-fd-popover-foreground)] shadow-[3px_3px_0_color-mix(in_srgb,var(--color-fd-border)_65%,transparent)] sm:rounded-none">
-          <form onSubmit={handleSubmit}>
-            <DialogHeader>
-              <DialogTitle className="text-[var(--color-fd-foreground)]">{dialogTitle}</DialogTitle>
-              <DialogDescription className="text-[var(--color-fd-muted-foreground)]">
-                {dialogDescription}
-              </DialogDescription>
-            </DialogHeader>
+      {!isRawCopy ? (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="max-w-[30rem] rounded-none border-[var(--color-fd-border)] bg-[var(--color-fd-popover)] text-[var(--color-fd-popover-foreground)] shadow-[3px_3px_0_color-mix(in_srgb,var(--color-fd-border)_65%,transparent)] sm:rounded-none">
+            <form onSubmit={handleSubmit}>
+              <DialogHeader>
+                <DialogTitle className="text-[var(--color-fd-foreground)]">
+                  {dialogTitle}
+                </DialogTitle>
+                <DialogDescription className="text-[var(--color-fd-muted-foreground)]">
+                  {dialogDescription}
+                </DialogDescription>
+              </DialogHeader>
 
-            <div className="mt-5 grid gap-4">
-              <label className="grid gap-2 text-sm font-medium text-[var(--color-fd-foreground)]">
-                Website URL
-                <input
-                  type="url"
-                  required
-                  placeholder="https://example.com"
-                  value={websiteUrl}
-                  onChange={(event) => setWebsiteUrl(event.target.value)}
-                  className={fieldControlClassName}
-                />
-                <span className="text-xs font-normal leading-5 text-[var(--color-fd-muted-foreground)]">
-                  Used to fetch logos, colors, fonts, and brand metadata from Brandfetch.
-                </span>
-              </label>
-
-              <label className="grid gap-2 text-sm font-medium text-[var(--color-fd-foreground)]">
-                Docs entry folder
-                <input
-                  type="text"
-                  required
-                  value={docsEntry}
-                  onChange={(event) => setDocsEntry(event.target.value)}
-                  className={fieldControlClassName}
-                />
-              </label>
-
-              <label className="grid gap-2 text-sm font-medium text-[var(--color-fd-foreground)]">
-                Framework
-                <span className="relative">
-                  <select
+              <div className="mt-5 grid gap-4">
+                <label className="grid gap-2 text-sm font-medium text-[var(--color-fd-foreground)]">
+                  Website URL
+                  <input
+                    type="url"
                     required
-                    value={framework}
-                    onChange={(event) =>
-                      setFramework(event.target.value as (typeof FRAMEWORK_OPTIONS)[number])
-                    }
-                    className={`${fieldControlClassName} w-full appearance-none pr-9`}
-                  >
-                    {FRAMEWORK_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    aria-hidden="true"
-                    className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[var(--color-fd-muted-foreground)]"
+                    placeholder="https://example.com"
+                    value={websiteUrl}
+                    onChange={(event) => setWebsiteUrl(event.target.value)}
+                    className={fieldControlClassName}
                   />
-                </span>
-              </label>
+                  <span className="text-xs font-normal leading-5 text-[var(--color-fd-muted-foreground)]">
+                    Used to fetch logos, colors, fonts, and brand metadata from Brandfetch.
+                  </span>
+                </label>
 
-              {brandError ? (
-                <p className="border border-[var(--color-fd-border)] bg-[var(--color-fd-secondary)] px-3 py-2 text-xs leading-5 text-[var(--color-fd-muted-foreground)]">
-                  {brandError}
-                </p>
-              ) : null}
-            </div>
+                <label className="grid gap-2 text-sm font-medium text-[var(--color-fd-foreground)]">
+                  Docs entry folder
+                  <input
+                    type="text"
+                    required
+                    value={docsEntry}
+                    onChange={(event) => setDocsEntry(event.target.value)}
+                    className={fieldControlClassName}
+                  />
+                </label>
 
-            <DialogFooter className="mt-5 gap-2 sm:space-x-0">
-              <button
-                type="button"
-                className="inline-flex h-9 items-center justify-center rounded-none border border-[var(--color-fd-border)] bg-[var(--color-fd-secondary)] px-3 text-sm font-medium text-[var(--color-fd-muted-foreground)] transition-colors hover:bg-[var(--color-fd-accent)] hover:text-[var(--color-fd-accent-foreground)]"
-                onClick={() => setOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="inline-flex h-9 items-center justify-center rounded-none border border-[var(--color-fd-primary)] bg-[var(--color-fd-primary)] px-3 text-sm font-medium text-[var(--color-fd-primary-foreground)] transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-70"
-              >
-                {submitState === "done" ? <Check className="mr-1.5 size-3.5" /> : null}
-                {submitLabel}
-              </button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+                <label className="grid gap-2 text-sm font-medium text-[var(--color-fd-foreground)]">
+                  Framework
+                  <span className="relative">
+                    <select
+                      required
+                      value={framework}
+                      onChange={(event) =>
+                        setFramework(event.target.value as (typeof FRAMEWORK_OPTIONS)[number])
+                      }
+                      className={`${fieldControlClassName} w-full appearance-none pr-9`}
+                    >
+                      {FRAMEWORK_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      aria-hidden="true"
+                      className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[var(--color-fd-muted-foreground)]"
+                    />
+                  </span>
+                </label>
+
+                {brandError ? (
+                  <p className="border border-[var(--color-fd-border)] bg-[var(--color-fd-secondary)] px-3 py-2 text-xs leading-5 text-[var(--color-fd-muted-foreground)]">
+                    {brandError}
+                  </p>
+                ) : null}
+              </div>
+
+              <DialogFooter className="mt-5 gap-2 sm:space-x-0">
+                <button
+                  type="button"
+                  className="inline-flex h-9 items-center justify-center rounded-none border border-[var(--color-fd-border)] bg-[var(--color-fd-secondary)] px-3 text-sm font-medium text-[var(--color-fd-muted-foreground)] transition-colors hover:bg-[var(--color-fd-accent)] hover:text-[var(--color-fd-accent-foreground)]"
+                  onClick={() => setOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="inline-flex h-9 items-center justify-center rounded-none border border-[var(--color-fd-primary)] bg-[var(--color-fd-primary)] px-3 text-sm font-medium text-[var(--color-fd-primary-foreground)] transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-70"
+                >
+                  {submitState === "done" ? <Check className="mr-1.5 size-3.5" /> : null}
+                  {submitLabel}
+                </button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </>
   );
 }
