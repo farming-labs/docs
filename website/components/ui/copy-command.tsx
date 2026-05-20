@@ -1,20 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { Terminal, Copy, Check } from "lucide-react";
+import { Terminal, Copy, Check, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CopyCommandProps {
   command: string;
   className?: string;
+  copyText?: string;
+  icon?: "terminal" | "sparkles";
 }
 
-export default function CopyCommand({ command, className = "" }: CopyCommandProps) {
+export default function CopyCommand({
+  command,
+  className = "",
+  copyText,
+  icon = "terminal",
+}: CopyCommandProps) {
   const [copied, setCopied] = useState(false);
   const parts = command.split(" ");
+  const textToCopy = copyText ?? command;
+  const LeadingIcon = icon === "sparkles" ? Sparkles : Terminal;
+
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(command);
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {}
@@ -29,7 +39,7 @@ export default function CopyCommand({ command, className = "" }: CopyCommandProp
       )}
       title={copied ? "Copied!" : "Copy to clipboard"}
     >
-      <Terminal className="h-3.5 w-3.5 shrink-0 text-black/40 dark:text-white/40" />
+      <LeadingIcon className="h-3.5 w-3.5 shrink-0 text-black/40 dark:text-white/40" />
       <span className="min-w-0 flex-1 select-all truncate flex items-center gap-2">
         {parts.map((item, index) => (
           <span
