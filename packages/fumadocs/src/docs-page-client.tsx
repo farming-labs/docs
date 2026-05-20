@@ -849,7 +849,9 @@ export function DocsPageClient({
         )}
         {!showReadingTimeAboveTitle && !showReadingTimeBelowTitle ? readingTimeBlock : null}
         <DocsBody style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ flex: 1 }} data-dt-content="">{renderedChildren}</div>
+          <div style={{ flex: 1 }} data-dt-content="">
+            {renderedChildren}
+          </div>
           {titleDecorationsPortal}
           {!isChangelogRoute && feedbackEnabled && (
             <DocsFeedback

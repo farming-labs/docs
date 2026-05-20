@@ -1786,7 +1786,8 @@ function resolveDevToolsEnabled(devTools?: boolean | DevToolsConfig): boolean {
 
 function resolveDevToolsRequest(url: URL): DevToolsRequest | null {
   const value = url.searchParams.get("devtools")?.trim().toLowerCase();
-  if (value === "page" || value === "publish" || value === "theme" || value === "nav-item") return value;
+  if (value === "page" || value === "publish" || value === "theme" || value === "nav-item")
+    return value;
   return null;
 }
 
@@ -1943,10 +1944,16 @@ function toCamelCase(id: string): string {
 
 async function handleDevToolsThemeRequest(request: Request, rootDir: string): Promise<Response> {
   let body: unknown;
-  try { body = await request.json(); } catch {
+  try {
+    body = await request.json();
+  } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-  if (!body || typeof body !== "object" || typeof (body as Record<string, unknown>).themeId !== "string") {
+  if (
+    !body ||
+    typeof body !== "object" ||
+    typeof (body as Record<string, unknown>).themeId !== "string"
+  ) {
     return Response.json({ error: "Body must include a string `themeId` field" }, { status: 400 });
   }
   const themeId = ((body as Record<string, unknown>).themeId as string).trim();
@@ -1962,7 +1969,10 @@ async function handleDevToolsThemeRequest(request: Request, rootDir: string): Pr
     );
     fs.writeFileSync(cssPath, updatedCss);
   } catch {
-    return Response.json({ error: `Could not update ${path.relative(rootDir, cssPath)}` }, { status: 500 });
+    return Response.json(
+      { error: `Could not update ${path.relative(rootDir, cssPath)}` },
+      { status: 500 },
+    );
   }
 
   // Update docs.config.tsx
@@ -1975,13 +1985,13 @@ async function handleDevToolsThemeRequest(request: Request, rootDir: string): Pr
       `import { ${themeFn} } from "@farming-labs/theme/${themeId}"`,
     );
     // Replace: theme: someName({...}) — update the function name
-    const updatedConfig = updatedImport.replace(
-      /\btheme\s*:\s*\w+\s*\(/,
-      `theme: ${themeFn}(`,
-    );
+    const updatedConfig = updatedImport.replace(/\btheme\s*:\s*\w+\s*\(/, `theme: ${themeFn}(`);
     fs.writeFileSync(configPath, updatedConfig);
   } catch {
-    return Response.json({ error: `Could not update ${path.relative(rootDir, configPath)}` }, { status: 500 });
+    return Response.json(
+      { error: `Could not update ${path.relative(rootDir, configPath)}` },
+      { status: 500 },
+    );
   }
 
   return Response.json({ ok: true, themeId }, { headers: { "Cache-Control": "no-store" } });
@@ -1993,7 +2003,9 @@ async function handleDevToolsNavItemRequest(
   rootDir: string,
 ): Promise<Response> {
   let body: unknown;
-  try { body = await request.json(); } catch {
+  try {
+    body = await request.json();
+  } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
   if (!body || typeof body !== "object") {
@@ -2001,7 +2013,10 @@ async function handleDevToolsNavItemRequest(
   }
   const b = body as Record<string, unknown>;
   if (typeof b.href !== "string" || typeof b.title !== "string") {
-    return Response.json({ error: "Body must include string `href` and `title` fields" }, { status: 400 });
+    return Response.json(
+      { error: "Body must include string `href` and `title` fields" },
+      { status: 400 },
+    );
   }
 
   const href = b.href.trim();
@@ -2018,7 +2033,10 @@ async function handleDevToolsNavItemRequest(
   const updated = matter.stringify(parsed.content, parsed.data);
   fs.writeFileSync(page.filePath, updated);
 
-  return Response.json({ ok: true, relativePath: page.relativePath }, { headers: { "Cache-Control": "no-store" } });
+  return Response.json(
+    { ok: true, relativePath: page.relativePath },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 async function handleDevToolsPublishRequest(request: Request): Promise<Response> {

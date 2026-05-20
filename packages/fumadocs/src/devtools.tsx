@@ -49,28 +49,42 @@ function createId(prefix = "block"): string {
 
 // ─── Parse utilities ──────────────────────────────────────────────────────────
 
-function normalizeSource(s: string) { return s.replace(/\r\n/g, "\n").replace(/\r/g, "\n"); }
+function normalizeSource(s: string) {
+  return s.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
 
 function splitPrefix(source: string): { prefix: string; body: string } {
   const lines = normalizeSource(source).split("\n");
   const pre: string[] = [];
   let i = 0;
   if (lines[i]?.trim() === "---") {
-    pre.push(lines[i]); i++;
+    pre.push(lines[i]);
+    i++;
     while (i < lines.length) {
       pre.push(lines[i]);
-      const done = lines[i]?.trim() === "---"; i++;
+      const done = lines[i]?.trim() === "---";
+      i++;
       if (done) break;
     }
   }
   while (i < lines.length) {
     const line = lines[i] ?? "";
     const t = line.trim();
-    if (t === "") { pre.push(line); i++; continue; }
+    if (t === "") {
+      pre.push(line);
+      i++;
+      continue;
+    }
     if (/^(import|export)\b/.test(t)) {
-      pre.push(line); i++;
-      while (i < lines.length && lines[i]?.trim() !== "" && !/[;}]$/.test(lines[i-1]?.trim() ?? "")) {
-        pre.push(lines[i] ?? ""); i++;
+      pre.push(line);
+      i++;
+      while (
+        i < lines.length &&
+        lines[i]?.trim() !== "" &&
+        !/[;}]$/.test(lines[i - 1]?.trim() ?? "")
+      ) {
+        pre.push(lines[i] ?? "");
+        i++;
       }
       continue;
     }
@@ -85,7 +99,10 @@ function getAttribute(src: string, name: string): string {
 }
 
 function parseStringArray(src: string) {
-  return src.split(",").map(v => v.trim().replace(/^["']|["']$/g, "")).filter(Boolean);
+  return src
+    .split(",")
+    .map((v) => v.trim().replace(/^["']|["']$/g, ""))
+    .filter(Boolean);
 }
 
 function captureUntil(lines: string[], start: number, closing: RegExp) {
@@ -110,28 +127,61 @@ function parseCodeBlock(lines: string[], start: number): { block: MdxBlock; end:
   const content: string[] = [];
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    if ((lines[i] ?? "").trim().startsWith("```")) { end = i + 1; break; }
+    if ((lines[i] ?? "").trim().startsWith("```")) {
+      end = i + 1;
+      break;
+    }
     content.push(lines[i] ?? "");
   }
-  return { block: { id: createId("code"), type: "code", language, title, code: content.join("\n") }, end };
+  return {
+    block: { id: createId("code"), type: "code", language, title, code: content.join("\n") },
+    end,
+  };
 }
 
 function parseCalloutBlock(raw: string): MdxBlock {
   const op = raw.split("\n", 1)[0] ?? "";
-  const inner = raw.replace(/^<Callout\b[^>]*>\s*/s, "").replace(/\s*<\/Callout>\s*$/s, "").trim();
-  return { id: createId("callout"), type: "callout", variant: getAttribute(op, "type") || "info", title: getAttribute(op, "title"), content: inner || "Write the callout content here." };
+  const inner = raw
+    .replace(/^<Callout\b[^>]*>\s*/s, "")
+    .replace(/\s*<\/Callout>\s*$/s, "")
+    .trim();
+  return {
+    id: createId("callout"),
+    type: "callout",
+    variant: getAttribute(op, "type") || "info",
+    title: getAttribute(op, "title"),
+    content: inner || "Write the callout content here.",
+  };
 }
 
 function parsePromptBlock(raw: string): MdxBlock {
   const op = raw.split("\n", 1)[0] ?? "";
-  const inner = raw.replace(/^<Prompt\b[^>]*>\s*/s, "").replace(/\s*<\/Prompt>\s*$/s, "").trim();
-  return { id: createId("prompt"), type: "prompt", title: getAttribute(op, "title") || "Prompt", content: inner || getAttribute(op, "prompt") || "Write the prompt here." };
+  const inner = raw
+    .replace(/^<Prompt\b[^>]*>\s*/s, "")
+    .replace(/\s*<\/Prompt>\s*$/s, "")
+    .trim();
+  return {
+    id: createId("prompt"),
+    type: "prompt",
+    title: getAttribute(op, "title") || "Prompt",
+    content: inner || getAttribute(op, "prompt") || "Write the prompt here.",
+  };
 }
 
 function parseHoverLinkBlock(raw: string): MdxBlock {
   const op = raw.split("\n", 1)[0] ?? "";
-  const label = raw.replace(/^<HoverLink\b[^>]*>\s*/s, "").replace(/\s*<\/HoverLink>\s*$/s, "").trim();
-  return { id: createId("hoverlink"), type: "hoverlink", href: getAttribute(op, "href") || "#", title: getAttribute(op, "title") || "Linked page", description: getAttribute(op, "description") || "Describe the linked page.", label: label || "Open the linked page" };
+  const label = raw
+    .replace(/^<HoverLink\b[^>]*>\s*/s, "")
+    .replace(/\s*<\/HoverLink>\s*$/s, "")
+    .trim();
+  return {
+    id: createId("hoverlink"),
+    type: "hoverlink",
+    href: getAttribute(op, "href") || "#",
+    title: getAttribute(op, "title") || "Linked page",
+    description: getAttribute(op, "description") || "Describe the linked page.",
+    label: label || "Open the linked page",
+  };
 }
 
 function parseTabsBlock(raw: string): MdxBlock {
@@ -141,14 +191,18 @@ function parseTabsBlock(raw: string): MdxBlock {
   const tabs: Array<{ label: string; content: string }> = [];
   const tp = /<Tab\s+value=["']([^"']+)["'][^>]*>([\s\S]*?)<\/Tab>/g;
   let m: RegExpExecArray | null;
-  while ((m = tp.exec(raw)) !== null) tabs.push({ label: m[1] ?? "Tab", content: (m[2] ?? "").trim() || "Tab content" });
-  if (tabs.length === 0) for (const item of items.length > 0 ? items : ["First", "Second"]) tabs.push({ label: item, content: "Tab content" });
+  while ((m = tp.exec(raw)) !== null)
+    tabs.push({ label: m[1] ?? "Tab", content: (m[2] ?? "").trim() || "Tab content" });
+  if (tabs.length === 0)
+    for (const item of items.length > 0 ? items : ["First", "Second"])
+      tabs.push({ label: item, content: "Tab content" });
   return { id: createId("tabs"), type: "tabs", tabs };
 }
 
 function parseRawJsxBlock(lines: string[], start: number): { block: MdxBlock; end: number } {
   const firstLine = lines[start] ?? "";
-  if (firstLine.trim().endsWith("/>")) return { block: { id: createId("raw"), type: "raw", content: firstLine }, end: start + 1 };
+  if (firstLine.trim().endsWith("/>"))
+    return { block: { id: createId("raw"), type: "raw", content: firstLine }, end: start + 1 };
   const tag = firstLine.trim().match(/^<([A-Z][\w.:-]*)\b/)?.[1];
   if (tag) {
     const closing = new RegExp(`</${tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}>`);
@@ -166,41 +220,114 @@ function parseMdxDocument(source: string): ParsedMdxDocument {
   while (i < lines.length) {
     const line = lines[i] ?? "";
     const t = line.trim();
-    if (t === "") { i++; continue; }
+    if (t === "") {
+      i++;
+      continue;
+    }
     const h = t.match(/^(#{1,6})\s+(.+)$/);
-    if (h) { blocks.push({ id: createId("heading"), type: "heading", level: h[1]?.length ?? 2, text: h[2] ?? "Heading" }); i++; continue; }
-    if (t.startsWith("```")) { const p = parseCodeBlock(lines, i); blocks.push(p.block); i = p.end; continue; }
-    if (t.startsWith("<Callout")) { const c = captureUntil(lines, i, /<\/Callout>/); blocks.push(parseCalloutBlock(c.content)); i = c.end; continue; }
-    if (t.startsWith("<Tabs")) { const c = captureUntil(lines, i, /<\/Tabs>/); blocks.push(parseTabsBlock(c.content)); i = c.end; continue; }
-    if (t.startsWith("<Prompt")) { const c = captureUntil(lines, i, /<\/Prompt>/); blocks.push(parsePromptBlock(c.content)); i = c.end; continue; }
-    if (t.startsWith("<HoverLink")) { const c = captureUntil(lines, i, /<\/HoverLink>/); blocks.push(parseHoverLinkBlock(c.content)); i = c.end; continue; }
-    if (/^<[A-Z][\w.:-]*(\s|>|\/>)/.test(t)) { const p = parseRawJsxBlock(lines, i); blocks.push(p.block); i = p.end; continue; }
-    const para: string[] = [line]; i++;
-    while (i < lines.length) { const next = lines[i] ?? ""; if (next.trim() === "" || isSpecialStart(next)) break; para.push(next); i++; }
+    if (h) {
+      blocks.push({
+        id: createId("heading"),
+        type: "heading",
+        level: h[1]?.length ?? 2,
+        text: h[2] ?? "Heading",
+      });
+      i++;
+      continue;
+    }
+    if (t.startsWith("```")) {
+      const p = parseCodeBlock(lines, i);
+      blocks.push(p.block);
+      i = p.end;
+      continue;
+    }
+    if (t.startsWith("<Callout")) {
+      const c = captureUntil(lines, i, /<\/Callout>/);
+      blocks.push(parseCalloutBlock(c.content));
+      i = c.end;
+      continue;
+    }
+    if (t.startsWith("<Tabs")) {
+      const c = captureUntil(lines, i, /<\/Tabs>/);
+      blocks.push(parseTabsBlock(c.content));
+      i = c.end;
+      continue;
+    }
+    if (t.startsWith("<Prompt")) {
+      const c = captureUntil(lines, i, /<\/Prompt>/);
+      blocks.push(parsePromptBlock(c.content));
+      i = c.end;
+      continue;
+    }
+    if (t.startsWith("<HoverLink")) {
+      const c = captureUntil(lines, i, /<\/HoverLink>/);
+      blocks.push(parseHoverLinkBlock(c.content));
+      i = c.end;
+      continue;
+    }
+    if (/^<[A-Z][\w.:-]*(\s|>|\/>)/.test(t)) {
+      const p = parseRawJsxBlock(lines, i);
+      blocks.push(p.block);
+      i = p.end;
+      continue;
+    }
+    const para: string[] = [line];
+    i++;
+    while (i < lines.length) {
+      const next = lines[i] ?? "";
+      if (next.trim() === "" || isSpecialStart(next)) break;
+      para.push(next);
+      i++;
+    }
     blocks.push({ id: createId("paragraph"), type: "paragraph", content: para.join("\n").trim() });
   }
-  if (blocks.length === 0) blocks.push({ id: createId("paragraph"), type: "paragraph", content: "Start writing…" });
+  if (blocks.length === 0)
+    blocks.push({ id: createId("paragraph"), type: "paragraph", content: "Start writing…" });
   return { prefix, blocks };
 }
 
 // ─── Serialize ────────────────────────────────────────────────────────────────
 
-function q(v: string) { return v.replace(/\\/g, "\\\\").replace(/"/g, '\\"'); }
-function ind(v: string, n = 2) { const p = " ".repeat(n); return v.split("\n").map(l => l.trim() ? `${p}${l}` : l).join("\n"); }
+function q(v: string) {
+  return v.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+function ind(v: string, n = 2) {
+  const p = " ".repeat(n);
+  return v
+    .split("\n")
+    .map((l) => (l.trim() ? `${p}${l}` : l))
+    .join("\n");
+}
 
 function serializeBlock(block: MdxBlock): string {
-  if (block.type === "heading") return `${"#".repeat(Math.min(6, Math.max(1, block.level)))} ${block.text.trim() || "Heading"}`;
+  if (block.type === "heading")
+    return `${"#".repeat(Math.min(6, Math.max(1, block.level)))} ${block.text.trim() || "Heading"}`;
   if (block.type === "paragraph") return block.content.trim();
-  if (block.type === "callout") { const t = block.title.trim() ? ` title="${q(block.title.trim())}"` : ""; return `<Callout type="${q(block.variant || "info")}"${t}>\n${block.content.trim()}\n</Callout>`; }
-  if (block.type === "code") { const t = block.title.trim() ? ` title="${q(block.title.trim())}"` : ""; return `\`\`\`${block.language.trim()}${t}\n${block.code.replace(/\s+$/g, "")}\n\`\`\``; }
+  if (block.type === "callout") {
+    const t = block.title.trim() ? ` title="${q(block.title.trim())}"` : "";
+    return `<Callout type="${q(block.variant || "info")}"${t}>\n${block.content.trim()}\n</Callout>`;
+  }
+  if (block.type === "code") {
+    const t = block.title.trim() ? ` title="${q(block.title.trim())}"` : "";
+    return `\`\`\`${block.language.trim()}${t}\n${block.code.replace(/\s+$/g, "")}\n\`\`\``;
+  }
   if (block.type === "tabs") {
     const tabs = block.tabs.length > 0 ? block.tabs : [{ label: "First", content: "Tab content" }];
-    const items = tabs.map(t => `"${q(t.label || "Tab")}"`).join(", ");
-    const rendered = tabs.map(t => `  <Tab value="${q(t.label || "Tab")}">\n${ind(t.content.trim() || "Tab content", 4)}\n  </Tab>`).join("\n\n");
+    const items = tabs.map((t) => `"${q(t.label || "Tab")}"`).join(", ");
+    const rendered = tabs
+      .map(
+        (t) =>
+          `  <Tab value="${q(t.label || "Tab")}">\n${ind(t.content.trim() || "Tab content", 4)}\n  </Tab>`,
+      )
+      .join("\n\n");
     return `<Tabs items={[${items}]}>\n${rendered}\n</Tabs>`;
   }
-  if (block.type === "hoverlink") return `<HoverLink href="${q(block.href || "#")}" title="${q(block.title || "Linked page")}" description="${q(block.description || "")}">\n${ind(block.label || "Open the linked page", 2)}\n</HoverLink>`;
-  if (block.type === "prompt") { const t = block.title.trim() ? ` title="${q(block.title.trim())}"` : ""; return `<Prompt${t}>\n${block.content.trim() || "Write the prompt here."}\n</Prompt>`; }
+  if (block.type === "hoverlink")
+    return `<HoverLink href="${q(block.href || "#")}" title="${q(block.title || "Linked page")}" description="${q(block.description || "")}">\n${ind(block.label || "Open the linked page", 2)}\n</HoverLink>`;
+  if (block.type === "prompt") {
+    const t = block.title.trim() ? ` title="${q(block.title.trim())}"` : "";
+    return `<Prompt${t}>\n${block.content.trim() || "Write the prompt here."}\n</Prompt>`;
+  }
   return block.content.trim();
 }
 
@@ -211,16 +338,56 @@ function serializeMdxDocument(doc: ParsedMdxDocument): string {
 
 function createBlock(type: MdxBlock["type"]): MdxBlock {
   if (type === "heading") return { id: createId("heading"), type, level: 2, text: "New heading" };
-  if (type === "callout") return { id: createId("callout"), type, variant: "note", title: "", content: "Write a helpful callout." };
-  if (type === "code") return { id: createId("code"), type, language: "ts", title: "example.ts", code: "export const value = true;" };
-  if (type === "tabs") return { id: createId("tabs"), type, tabs: [{ label: "npm", content: "```bash\nnpm install my-package\n```" }, { label: "pnpm", content: "```bash\npnpm add my-package\n```" }] };
-  if (type === "hoverlink") return { id: createId("hoverlink"), type, href: "/docs", title: "Related guide", description: "A useful related documentation page.", label: "Read the related guide" };
-  if (type === "prompt") return { id: createId("prompt"), type, title: "Try this prompt", content: "Use this docs page to implement the feature." };
+  if (type === "callout")
+    return {
+      id: createId("callout"),
+      type,
+      variant: "note",
+      title: "",
+      content: "Write a helpful callout.",
+    };
+  if (type === "code")
+    return {
+      id: createId("code"),
+      type,
+      language: "ts",
+      title: "example.ts",
+      code: "export const value = true;",
+    };
+  if (type === "tabs")
+    return {
+      id: createId("tabs"),
+      type,
+      tabs: [
+        { label: "npm", content: "```bash\nnpm install my-package\n```" },
+        { label: "pnpm", content: "```bash\npnpm add my-package\n```" },
+      ],
+    };
+  if (type === "hoverlink")
+    return {
+      id: createId("hoverlink"),
+      type,
+      href: "/docs",
+      title: "Related guide",
+      description: "A useful related documentation page.",
+      label: "Read the related guide",
+    };
+  if (type === "prompt")
+    return {
+      id: createId("prompt"),
+      type,
+      title: "Try this prompt",
+      content: "Use this docs page to implement the feature.",
+    };
   if (type === "raw") return { id: createId("raw"), type, content: "<CustomComponent />" };
   return { id: createId("paragraph"), type: "paragraph", content: "Write a paragraph." };
 }
 
-function createDevToolsUrl(api: string, mode: "page" | "publish" | "theme" | "nav-item", pathname: string) {
+function createDevToolsUrl(
+  api: string,
+  mode: "page" | "publish" | "theme" | "nav-item",
+  pathname: string,
+) {
   const url = new URL(api, window.location.origin);
   url.searchParams.set("devtools", mode);
   if (mode === "page") url.searchParams.set("path", pathname);
@@ -237,10 +404,7 @@ function createDevToolsUrl(api: string, mode: "page" | "publish" | "theme" | "na
 //   • div/aside/section → callout / tabs / prompt / hoverlink / raw
 //     identified by DOM attributes/classes, never by position alone
 
-function buildDomBlockMap(
-  contentEl: HTMLElement,
-  blocks: MdxBlock[],
-): Map<HTMLElement, number> {
+function buildDomBlockMap(contentEl: HTMLElement, blocks: MdxBlock[]): Map<HTMLElement, number> {
   const children = Array.from(contentEl.children) as HTMLElement[];
   const map = new Map<HTMLElement, number>();
 
@@ -271,7 +435,7 @@ function buildDomBlockMap(
       const elText = (el.textContent ?? "").trim();
       const ahead = headings?.slice(c) ?? [];
       const matchOff = ahead.findIndex(
-        ({ block }) => (block as Extract<MdxBlock, { type: "heading" }>).text.trim() === elText
+        ({ block }) => (block as Extract<MdxBlock, { type: "heading" }>).text.trim() === elText,
       );
       if (matchOff >= 0) {
         blockIdx = ahead[matchOff]!.idx;
@@ -279,18 +443,21 @@ function buildDomBlockMap(
       } else {
         blockIdx = next("heading");
       }
-
-    } else if (tag === "p" || tag === "ul" || tag === "ol" || tag === "hr" || tag === "blockquote") {
+    } else if (
+      tag === "p" ||
+      tag === "ul" ||
+      tag === "ol" ||
+      tag === "hr" ||
+      tag === "blockquote"
+    ) {
       // All rendered as paragraph blocks by our parser
       blockIdx = next("paragraph");
-
     } else if (tag === "figure") {
       blockIdx = next("code");
-
     } else if (tag === "div" || tag === "aside" || tag === "section" || tag === "nav") {
       // Detect component type from DOM shape
       const role = el.getAttribute("role") ?? "";
-      const cls  = el.className ?? "";
+      const cls = el.className ?? "";
       if (role === "note" || cls.includes("callout")) {
         blockIdx = next("callout");
       } else if (el.querySelector("[role=tablist], [data-radix-collection-item]")) {
@@ -315,43 +482,333 @@ function buildDomBlockMap(
 
 // ─── Catalogues ───────────────────────────────────────────────────────────────
 
-const BLOCK_CATALOGUE: Array<{ type: MdxBlock["type"]; label: string; icon: string; accent: string; desc: string }> = [
-  { type: "paragraph",  label: "Paragraph",  icon: "¶",  accent: "#6366f1", desc: "Plain text"       },
-  { type: "heading",    label: "Heading",    icon: "H",  accent: "#7c3aed", desc: "H1 – H6"           },
-  { type: "callout",    label: "Callout",    icon: "◈",  accent: "#f59e0b", desc: "Note / warning"    },
-  { type: "code",       label: "Code",       icon: "</>", accent: "#10b981", desc: "Fenced block"     },
-  { type: "tabs",       label: "Tabs",       icon: "⊟",  accent: "#3b82f6", desc: "Tabbed content"    },
-  { type: "hoverlink",  label: "HoverLink",  icon: "↗",  accent: "#ec4899", desc: "Card link"         },
-  { type: "prompt",     label: "Prompt",     icon: "◉",  accent: "#06b6d4", desc: "Copyable prompt"   },
-  { type: "raw",        label: "Raw MDX",    icon: "{}",  accent: "#64748b", desc: "Custom component" },
+const BLOCK_CATALOGUE: Array<{
+  type: MdxBlock["type"];
+  label: string;
+  icon: string;
+  accent: string;
+  desc: string;
+}> = [
+  { type: "paragraph", label: "Paragraph", icon: "¶", accent: "#6366f1", desc: "Plain text" },
+  { type: "heading", label: "Heading", icon: "H", accent: "#7c3aed", desc: "H1 – H6" },
+  { type: "callout", label: "Callout", icon: "◈", accent: "#f59e0b", desc: "Note / warning" },
+  { type: "code", label: "Code", icon: "</>", accent: "#10b981", desc: "Fenced block" },
+  { type: "tabs", label: "Tabs", icon: "⊟", accent: "#3b82f6", desc: "Tabbed content" },
+  { type: "hoverlink", label: "HoverLink", icon: "↗", accent: "#ec4899", desc: "Card link" },
+  { type: "prompt", label: "Prompt", icon: "◉", accent: "#06b6d4", desc: "Copyable prompt" },
+  { type: "raw", label: "Raw MDX", icon: "{}", accent: "#64748b", desc: "Custom component" },
 ];
 
-interface ThemeDef { id: string; label: string; accent: string; bg: string; fg: string; border: string; muted: string; dark: boolean }
+interface ThemeDef {
+  id: string;
+  label: string;
+  accent: string;
+  bg: string;
+  fg: string;
+  border: string;
+  muted: string;
+  dark: boolean;
+}
 
 const THEMES: ThemeDef[] = [
-  { id: "default",       label: "Default",       accent: "#6366f1", bg: "#ffffff", fg: "#0f172a", border: "#e2e8f0", muted: "#f1f5f9", dark: false },
-  { id: "darksharp",     label: "Dark Sharp",    accent: "#e2e8f0", bg: "#0a0a0a", fg: "#f8fafc", border: "#1e293b", muted: "#111827", dark: true  },
-  { id: "ledger",        label: "Ledger",        accent: "#5f6cf6", bg: "#f6f8fb", fg: "#30364a", border: "#dbe3ef", muted: "#eef3fb", dark: false },
-  { id: "concrete",      label: "Concrete",      accent: "#171717", bg: "#f5f5f4", fg: "#171717", border: "#d4d0cb", muted: "#e7e5e4", dark: false },
-  { id: "hardline",      label: "Hardline",      accent: "#ef4444", bg: "#fafaf9", fg: "#0c0a09", border: "#e7e5e4", muted: "#f5f5f4", dark: false },
-  { id: "greentree",     label: "Green Tree",    accent: "#22c55e", bg: "#f0fdf4", fg: "#052e16", border: "#bbf7d0", muted: "#dcfce7", dark: false },
-  { id: "shiny",         label: "Shiny",         accent: "#ec4899", bg: "#0f0a1a", fg: "#f0e6ff", border: "#3b1f5e", muted: "#1a0e30", dark: true  },
-  { id: "colorful",      label: "Colorful",      accent: "#f59e0b", bg: "#fffbeb", fg: "#1c1917", border: "#fde68a", muted: "#fef3c7", dark: false },
-  { id: "pixel-border",  label: "Pixel Border",  accent: "#3b82f6", bg: "#0f172a", fg: "#f1f5f9", border: "#1e3a5f", muted: "#1e293b", dark: true  },
-  { id: "command-grid",  label: "Command Grid",  accent: "#8b5cf6", bg: "#fafafa", fg: "#18181b", border: "#e4e4e7", muted: "#f4f4f5", dark: false },
-  { id: "darkbold",      label: "Dark Bold",     accent: "#ffffff", bg: "#0a0a0a", fg: "#ededed", border: "#333333", muted: "#1a1a1a", dark: true  },
+  {
+    id: "default",
+    label: "Default",
+    accent: "#6366f1",
+    bg: "#ffffff",
+    fg: "#0f172a",
+    border: "#e2e8f0",
+    muted: "#f1f5f9",
+    dark: false,
+  },
+  {
+    id: "darksharp",
+    label: "Dark Sharp",
+    accent: "#e2e8f0",
+    bg: "#0a0a0a",
+    fg: "#f8fafc",
+    border: "#1e293b",
+    muted: "#111827",
+    dark: true,
+  },
+  {
+    id: "ledger",
+    label: "Ledger",
+    accent: "#5f6cf6",
+    bg: "#f6f8fb",
+    fg: "#30364a",
+    border: "#dbe3ef",
+    muted: "#eef3fb",
+    dark: false,
+  },
+  {
+    id: "concrete",
+    label: "Concrete",
+    accent: "#171717",
+    bg: "#f5f5f4",
+    fg: "#171717",
+    border: "#d4d0cb",
+    muted: "#e7e5e4",
+    dark: false,
+  },
+  {
+    id: "hardline",
+    label: "Hardline",
+    accent: "#ef4444",
+    bg: "#fafaf9",
+    fg: "#0c0a09",
+    border: "#e7e5e4",
+    muted: "#f5f5f4",
+    dark: false,
+  },
+  {
+    id: "greentree",
+    label: "Green Tree",
+    accent: "#22c55e",
+    bg: "#f0fdf4",
+    fg: "#052e16",
+    border: "#bbf7d0",
+    muted: "#dcfce7",
+    dark: false,
+  },
+  {
+    id: "shiny",
+    label: "Shiny",
+    accent: "#ec4899",
+    bg: "#0f0a1a",
+    fg: "#f0e6ff",
+    border: "#3b1f5e",
+    muted: "#1a0e30",
+    dark: true,
+  },
+  {
+    id: "colorful",
+    label: "Colorful",
+    accent: "#f59e0b",
+    bg: "#fffbeb",
+    fg: "#1c1917",
+    border: "#fde68a",
+    muted: "#fef3c7",
+    dark: false,
+  },
+  {
+    id: "pixel-border",
+    label: "Pixel Border",
+    accent: "#3b82f6",
+    bg: "#0f172a",
+    fg: "#f1f5f9",
+    border: "#1e3a5f",
+    muted: "#1e293b",
+    dark: true,
+  },
+  {
+    id: "command-grid",
+    label: "Command Grid",
+    accent: "#8b5cf6",
+    bg: "#fafafa",
+    fg: "#18181b",
+    border: "#e4e4e7",
+    muted: "#f4f4f5",
+    dark: false,
+  },
+  {
+    id: "darkbold",
+    label: "Dark Bold",
+    accent: "#ffffff",
+    bg: "#0a0a0a",
+    fg: "#ededed",
+    border: "#333333",
+    muted: "#1a1a1a",
+    dark: true,
+  },
 ];
 
 // Matches the actual Callout component variant styles exactly
-const CALLOUT_VARIANTS: Record<string, { iconEl: () => React.ReactElement; iconClass: string; titleClass: string; border: string; bg: string; label: string }> = {
-  note:      { iconEl: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>,      iconClass: "text-black/50 dark:text-white/50",    titleClass: "text-black/70 dark:text-white/70",    border: "border-black/10 dark:border-white/10 border-l-4 border-l-black/25 dark:border-l-white/25",    bg: "bg-black/[0.03] dark:bg-white/[0.025]",  label: "Note"      },
-  warning:   { iconEl: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>,  iconClass: "text-black/55 dark:text-white/55",    titleClass: "text-black/75 dark:text-white/75",    border: "border-black/10 dark:border-white/10 border-l-4 border-l-black/35 dark:border-l-white/35",    bg: "bg-black/[0.04] dark:bg-white/[0.035]",  label: "Warning"   },
-  tip:       { iconEl: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>,         iconClass: "text-black/50 dark:text-white/50",    titleClass: "text-black/70 dark:text-white/70",    border: "border-black/10 dark:border-white/10 border-l-4 border-l-black/30 dark:border-l-white/30",    bg: "bg-black/[0.03] dark:bg-white/[0.025]",  label: "Tip"       },
-  important: { iconEl: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,                iconClass: "text-black/55 dark:text-white/55",    titleClass: "text-black/75 dark:text-white/75",    border: "border-black/10 dark:border-white/10 border-l-4 border-l-black/35 dark:border-l-white/35",    bg: "bg-black/[0.04] dark:bg-white/[0.035]",  label: "Important" },
-  caution:   { iconEl: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,   iconClass: "text-black/60 dark:text-white/60",    titleClass: "text-black/80 dark:text-white/80",    border: "border-black/15 dark:border-white/15 border-l-4 border-l-black/40 dark:border-l-white/40",    bg: "bg-black/[0.05] dark:bg-white/[0.045]",  label: "Caution"   },
+const CALLOUT_VARIANTS: Record<
+  string,
+  {
+    iconEl: () => React.ReactElement;
+    iconClass: string;
+    titleClass: string;
+    border: string;
+    bg: string;
+    label: string;
+  }
+> = {
+  note: {
+    iconEl: () => (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 16v-4" />
+        <path d="M12 8h.01" />
+      </svg>
+    ),
+    iconClass: "text-black/50 dark:text-white/50",
+    titleClass: "text-black/70 dark:text-white/70",
+    border:
+      "border-black/10 dark:border-white/10 border-l-4 border-l-black/25 dark:border-l-white/25",
+    bg: "bg-black/[0.03] dark:bg-white/[0.025]",
+    label: "Note",
+  },
+  warning: {
+    iconEl: () => (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+        <path d="M12 9v4" />
+        <path d="M12 17h.01" />
+      </svg>
+    ),
+    iconClass: "text-black/55 dark:text-white/55",
+    titleClass: "text-black/75 dark:text-white/75",
+    border:
+      "border-black/10 dark:border-white/10 border-l-4 border-l-black/35 dark:border-l-white/35",
+    bg: "bg-black/[0.04] dark:bg-white/[0.035]",
+    label: "Warning",
+  },
+  tip: {
+    iconEl: () => (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+        <path d="M9 18h6" />
+        <path d="M10 22h4" />
+      </svg>
+    ),
+    iconClass: "text-black/50 dark:text-white/50",
+    titleClass: "text-black/70 dark:text-white/70",
+    border:
+      "border-black/10 dark:border-white/10 border-l-4 border-l-black/30 dark:border-l-white/30",
+    bg: "bg-black/[0.03] dark:bg-white/[0.025]",
+    label: "Tip",
+  },
+  important: {
+    iconEl: () => (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    ),
+    iconClass: "text-black/55 dark:text-white/55",
+    titleClass: "text-black/75 dark:text-white/75",
+    border:
+      "border-black/10 dark:border-white/10 border-l-4 border-l-black/35 dark:border-l-white/35",
+    bg: "bg-black/[0.04] dark:bg-white/[0.035]",
+    label: "Important",
+  },
+  caution: {
+    iconEl: () => (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+    ),
+    iconClass: "text-black/60 dark:text-white/60",
+    titleClass: "text-black/80 dark:text-white/80",
+    border:
+      "border-black/15 dark:border-white/15 border-l-4 border-l-black/40 dark:border-l-white/40",
+    bg: "bg-black/[0.05] dark:bg-white/[0.045]",
+    label: "Caution",
+  },
   // parser aliases
-  info:    { iconEl: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>,                                                    iconClass: "text-black/50 dark:text-white/50",    titleClass: "text-black/70 dark:text-white/70",    border: "border-black/10 dark:border-white/10 border-l-4 border-l-black/25 dark:border-l-white/25",    bg: "bg-black/[0.03] dark:bg-white/[0.025]",  label: "Info"      },
-  error:   { iconEl: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,            iconClass: "text-black/60 dark:text-white/60",    titleClass: "text-black/80 dark:text-white/80",    border: "border-black/15 dark:border-white/15 border-l-4 border-l-black/40 dark:border-l-white/40",    bg: "bg-black/[0.05] dark:bg-white/[0.045]",  label: "Error"     },
+  info: {
+    iconEl: () => (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 16v-4" />
+        <path d="M12 8h.01" />
+      </svg>
+    ),
+    iconClass: "text-black/50 dark:text-white/50",
+    titleClass: "text-black/70 dark:text-white/70",
+    border:
+      "border-black/10 dark:border-white/10 border-l-4 border-l-black/25 dark:border-l-white/25",
+    bg: "bg-black/[0.03] dark:bg-white/[0.025]",
+    label: "Info",
+  },
+  error: {
+    iconEl: () => (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+    ),
+    iconClass: "text-black/60 dark:text-white/60",
+    titleClass: "text-black/80 dark:text-white/80",
+    border:
+      "border-black/15 dark:border-white/15 border-l-4 border-l-black/40 dark:border-l-white/40",
+    bg: "bg-black/[0.05] dark:bg-white/[0.045]",
+    label: "Error",
+  },
 };
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
@@ -825,40 +1282,67 @@ html[data-docs-devtools-open="true"] #nd-sidebar a:hover::after{
 .dt-sel-sep{width:1px;height:15px;background:rgba(255,255,255,0.14);margin:0 3px;flex-shrink:0}
 `;
 
-
 // ─── ContentEditable helper ───────────────────────────────────────────────────
 
-function getEditText(el: HTMLElement) { return el.innerText.replace(/\n\n$/g, "").replace(/ /g, " "); }
+function getEditText(el: HTMLElement) {
+  return el.innerText.replace(/\n\n$/g, "").replace(/ /g, " ");
+}
 
 function getEditSel(el: HTMLElement, fallback: number): { start: number; end: number } {
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return { start: fallback, end: fallback };
-  if (!el.contains(sel.anchorNode) || !el.contains(sel.focusNode)) return { start: fallback, end: fallback };
+  if (!el.contains(sel.anchorNode) || !el.contains(sel.focusNode))
+    return { start: fallback, end: fallback };
   const range = sel.getRangeAt(0);
-  const before = range.cloneRange(); before.selectNodeContents(el); before.setEnd(range.startContainer, range.startOffset);
+  const before = range.cloneRange();
+  before.selectNodeContents(el);
+  before.setEnd(range.startContainer, range.startOffset);
   const start = before.toString().length;
   return { start, end: start + range.toString().length };
 }
 
 function setEditSel(el: HTMLElement, start: number, end: number) {
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-  let offset = 0; let sn: Text | null = null; let en: Text | null = null; let so = 0; let eo = 0;
+  let offset = 0;
+  let sn: Text | null = null;
+  let en: Text | null = null;
+  let so = 0;
+  let eo = 0;
   let node = walker.nextNode() as Text | null;
   while (node) {
-    const len = (node.textContent ?? "").length; const next = offset + len;
-    if (!sn && start <= next) { sn = node; so = Math.max(0, start - offset); }
-    if (!en && end <= next) { en = node; eo = Math.max(0, end - offset); break; }
-    offset = next; node = walker.nextNode() as Text | null;
+    const len = (node.textContent ?? "").length;
+    const next = offset + len;
+    if (!sn && start <= next) {
+      sn = node;
+      so = Math.max(0, start - offset);
+    }
+    if (!en && end <= next) {
+      en = node;
+      eo = Math.max(0, end - offset);
+      break;
+    }
+    offset = next;
+    node = walker.nextNode() as Text | null;
   }
   if (!sn || !en) return;
-  const range = document.createRange(); range.setStart(sn, so); range.setEnd(en, eo);
-  const sel = window.getSelection(); sel?.removeAllRanges(); sel?.addRange(range);
+  const range = document.createRange();
+  range.setStart(sn, so);
+  range.setEnd(en, eo);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
 }
 
 // ─── ProseEditor (contentEditable with formatting) ────────────────────────────
 
-function ProseEditor({ value, onChange, placeholder }: {
-  value: string; onChange: (v: string) => void; placeholder: string;
+function ProseEditor({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
 }) {
   const ref = useRef<HTMLParagraphElement | null>(null);
 
@@ -869,28 +1353,57 @@ function ProseEditor({ value, onChange, placeholder }: {
   }, [value]);
 
   function fmt(before: string, after: string, fallback: string) {
-    const el = ref.current; if (!el) return;
-    const cur = getEditText(el); const sel = getEditSel(el, cur.length);
+    const el = ref.current;
+    if (!el) return;
+    const cur = getEditText(el);
+    const sel = getEditSel(el, cur.length);
     const selected = cur.slice(sel.start, sel.end) || fallback;
     onChange(`${cur.slice(0, sel.start)}${before}${selected}${after}${cur.slice(sel.end)}`);
-    requestAnimationFrame(() => { el.focus(); setEditSel(el, sel.start + before.length, sel.start + before.length + selected.length); });
+    requestAnimationFrame(() => {
+      el.focus();
+      setEditSel(el, sel.start + before.length, sel.start + before.length + selected.length);
+    });
   }
 
   return (
     <div>
       <div className="dt-fmt-bar" aria-label="Markdown formatting">
-        {([["B","**","**","bold"],["I","_","_","italic"],["`","`","`","code"],["↗","[","](url)","link"],["—","- ","","item"]] as const).map(([label, b, a, f]) => (
-          <button key={label} type="button" className="dt-fmt-btn" onMouseDown={e => { e.preventDefault(); fmt(b, a, f); }}>{label}</button>
+        {(
+          [
+            ["B", "**", "**", "bold"],
+            ["I", "_", "_", "italic"],
+            ["`", "`", "`", "code"],
+            ["↗", "[", "](url)", "link"],
+            ["—", "- ", "", "item"],
+          ] as const
+        ).map(([label, b, a, f]) => (
+          <button
+            key={label}
+            type="button"
+            className="dt-fmt-btn"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              fmt(b, a, f);
+            }}
+          >
+            {label}
+          </button>
         ))}
       </div>
       <p
         ref={ref}
         className="dt-editable"
-        contentEditable suppressContentEditableWarning
+        contentEditable
+        suppressContentEditableWarning
         data-ph={placeholder}
-        onInput={e => onChange(getEditText(e.currentTarget))}
-        onPaste={e => { e.preventDefault(); document.execCommand("insertText", false, e.clipboardData.getData("text/plain")); }}
-      >{value}</p>
+        onInput={(e) => onChange(getEditText(e.currentTarget))}
+        onPaste={(e) => {
+          e.preventDefault();
+          document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
+        }}
+      >
+        {value}
+      </p>
     </div>
   );
 }
@@ -903,10 +1416,10 @@ function md2html(md: string): string {
   // 2. Inline markdown patterns → HTML
   s = s
     .replace(/\*\*(.+?)\*\*/gs, "<strong>$1</strong>")
-    .replace(/__(.+?)__/gs,     "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/gs,     "<em>$1</em>")
-    .replace(/_(.+?)_/gs,       "<em>$1</em>")
-    .replace(/`(.+?)`/g,        "<code>$1</code>")
+    .replace(/__(.+?)__/gs, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/gs, "<em>$1</em>")
+    .replace(/_(.+?)_/gs, "<em>$1</em>")
+    .replace(/`(.+?)`/g, "<code>$1</code>")
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
   // 3. Newlines → <br> so the contentEditable shows line breaks
   s = s.replace(/\n/g, "<br>");
@@ -916,22 +1429,32 @@ function md2html(md: string): string {
 function html2md(html: string): string {
   return html
     .replace(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, "**$1**")
-    .replace(/<b[^>]*>([\s\S]*?)<\/b>/gi,           "**$1**")
-    .replace(/<em[^>]*>([\s\S]*?)<\/em>/gi,         "_$1_")
-    .replace(/<i[^>]*>([\s\S]*?)<\/i>/gi,           "_$1_")
-    .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi,     "`$1`")
+    .replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, "**$1**")
+    .replace(/<em[^>]*>([\s\S]*?)<\/em>/gi, "_$1_")
+    .replace(/<i[^>]*>([\s\S]*?)<\/i>/gi, "_$1_")
+    .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, "`$1`")
     .replace(/<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, "[$2]($1)")
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<div>/gi, "\n").replace(/<\/div>/gi, "")
-    .replace(/<p>/gi,   "").replace(/<\/p>/gi,   "\n")
+    .replace(/<div>/gi, "\n")
+    .replace(/<\/div>/gi, "")
+    .replace(/<p>/gi, "")
+    .replace(/<\/p>/gi, "\n")
     .replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
     .trim();
 }
 
 // ─── WYSIWYG Paragraph Editor (contentEditable, renders bold/italic/code) ────
 
-function WysiwygParagraphEditor({ initialContent, style, onChange, onClose }: {
+function WysiwygParagraphEditor({
+  initialContent,
+  style,
+  onChange,
+  onClose,
+}: {
   initialContent: string;
   style: React.CSSProperties;
   onChange: (md: string) => void;
@@ -959,29 +1482,49 @@ function WysiwygParagraphEditor({ initialContent, style, onChange, onClose }: {
       ref={ref}
       contentEditable
       suppressContentEditableWarning
-      style={{ ...style, outline: "none", minHeight: "1em", whiteSpace: "pre-wrap", wordBreak: "break-word" }}
-      onInput={e => onChange(html2md(e.currentTarget.innerHTML))}
-      onPaste={e => {
+      style={{
+        ...style,
+        outline: "none",
+        minHeight: "1em",
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-word",
+      }}
+      onInput={(e) => onChange(html2md(e.currentTarget.innerHTML))}
+      onPaste={(e) => {
         e.preventDefault();
         // Paste as plain text to avoid pasting HTML tags
         document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
       }}
-      onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); onClose(); } }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          onClose();
+        }
+      }}
     />
   );
 }
 
 // ─── Inline-editable input ────────────────────────────────────────────────────
 
-function InlineInput({ value, onChange, className, placeholder, style }: {
-  value: string; onChange: (v: string) => void; className?: string; placeholder?: string;
+function InlineInput({
+  value,
+  onChange,
+  className,
+  placeholder,
+  style,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+  placeholder?: string;
   style?: React.CSSProperties;
 }) {
   return (
     <input
       className={className}
       value={value}
-      onChange={e => onChange(e.currentTarget.value)}
+      onChange={(e) => onChange(e.currentTarget.value)}
       placeholder={placeholder}
       style={style}
     />
@@ -990,22 +1533,41 @@ function InlineInput({ value, onChange, className, placeholder, style }: {
 
 // ─── Block renderer components ────────────────────────────────────────────────
 
-function HeadingRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: "heading" }>; onChange: (b: MdxBlock) => void }) {
+function HeadingRenderer({
+  block,
+  onChange,
+}: {
+  block: Extract<MdxBlock, { type: "heading" }>;
+  onChange: (b: MdxBlock) => void;
+}) {
   const level = Math.min(6, Math.max(1, block.level));
-  const hRef = (el: HTMLHeadingElement | null) => { if (el && document.activeElement !== el && el.innerText !== block.text) el.innerText = block.text; };
+  const hRef = (el: HTMLHeadingElement | null) => {
+    if (el && document.activeElement !== el && el.innerText !== block.text)
+      el.innerText = block.text;
+  };
   const hProps = {
     className: "dt-editable",
     contentEditable: true as const,
     suppressContentEditableWarning: true,
     "data-ph": `Heading ${level}`,
-    onInput: (e: React.FormEvent<HTMLHeadingElement>) => onChange({ ...block, text: getEditText(e.currentTarget) }),
-    onPaste: (e: React.ClipboardEvent<HTMLHeadingElement>) => { e.preventDefault(); document.execCommand("insertText", false, e.clipboardData.getData("text/plain")); },
+    onInput: (e: React.FormEvent<HTMLHeadingElement>) =>
+      onChange({ ...block, text: getEditText(e.currentTarget) }),
+    onPaste: (e: React.ClipboardEvent<HTMLHeadingElement>) => {
+      e.preventDefault();
+      document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
+    },
   };
   return (
     <div>
       <div className="dt-level-row" aria-label="Heading level">
-        {[1,2,3,4,5,6].map(l => (
-          <button key={l} type="button" className="dt-level-btn" data-active={level === l ? "" : undefined} onClick={() => onChange({ ...block, level: l })}>
+        {[1, 2, 3, 4, 5, 6].map((l) => (
+          <button
+            key={l}
+            type="button"
+            className="dt-level-btn"
+            data-active={level === l ? "" : undefined}
+            onClick={() => onChange({ ...block, level: l })}
+          >
             H{l}
           </button>
         ))}
@@ -1020,11 +1582,29 @@ function HeadingRenderer({ block, onChange }: { block: Extract<MdxBlock, { type:
   );
 }
 
-function ParagraphRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: "paragraph" }>; onChange: (b: MdxBlock) => void }) {
-  return <ProseEditor value={block.content} onChange={content => onChange({ ...block, content })} placeholder="Write a paragraph…" />;
+function ParagraphRenderer({
+  block,
+  onChange,
+}: {
+  block: Extract<MdxBlock, { type: "paragraph" }>;
+  onChange: (b: MdxBlock) => void;
+}) {
+  return (
+    <ProseEditor
+      value={block.content}
+      onChange={(content) => onChange({ ...block, content })}
+      placeholder="Write a paragraph…"
+    />
+  );
 }
 
-function CalloutRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: "callout" }>; onChange: (b: MdxBlock) => void }) {
+function CalloutRenderer({
+  block,
+  onChange,
+}: {
+  block: Extract<MdxBlock, { type: "callout" }>;
+  onChange: (b: MdxBlock) => void;
+}) {
   const v = CALLOUT_VARIANTS[block.variant] ?? CALLOUT_VARIANTS.note!;
   const Icon = v.iconEl;
   const primaryVariants = ["note", "warning", "tip", "important", "caution"] as const;
@@ -1032,12 +1612,16 @@ function CalloutRenderer({ block, onChange }: { block: Extract<MdxBlock, { type:
     <div>
       {/* Variant selector — hidden by default, shows on block hover */}
       <div className="dt-variant-row" aria-label="Callout variant">
-        {primaryVariants.map(k => {
+        {primaryVariants.map((k) => {
           const cv = CALLOUT_VARIANTS[k]!;
           return (
-            <button key={k} type="button" className="dt-variant-btn"
+            <button
+              key={k}
+              type="button"
+              className="dt-variant-btn"
               data-active={block.variant === k ? "" : undefined}
-              onClick={() => onChange({ ...block, variant: k })}>
+              onClick={() => onChange({ ...block, variant: k })}
+            >
               {cv.label}
             </button>
           );
@@ -1058,12 +1642,16 @@ function CalloutRenderer({ block, onChange }: { block: Extract<MdxBlock, { type:
             className={`font-mono uppercase tracking-tight bg-transparent border-none outline-none w-full p-0 ${v.titleClass}`}
             style={{ fontSize: "9px" }}
             value={block.title}
-            onChange={e => onChange({ ...block, title: e.currentTarget.value })}
+            onChange={(e) => onChange({ ...block, title: e.currentTarget.value })}
             placeholder="Optional title…"
           />
           <div className="h-px w-[calc(100%+10rem)] -mt-2 mx-auto ml-[-5rem] bg-black/10 dark:bg-white/10" />
           <div className="text-black/80 pt-2 font-sans dark:text-white/80 [&>p:last-child]:mb-0 [&>p]:my-0">
-            <ProseEditor value={block.content} onChange={content => onChange({ ...block, content })} placeholder="Callout body…" />
+            <ProseEditor
+              value={block.content}
+              onChange={(content) => onChange({ ...block, content })}
+              placeholder="Callout body…"
+            />
           </div>
         </div>
       </div>
@@ -1071,14 +1659,20 @@ function CalloutRenderer({ block, onChange }: { block: Extract<MdxBlock, { type:
   );
 }
 
-function CodeRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: "code" }>; onChange: (b: MdxBlock) => void }) {
+function CodeRenderer({
+  block,
+  onChange,
+}: {
+  block: Extract<MdxBlock, { type: "code" }>;
+  onChange: (b: MdxBlock) => void;
+}) {
   return (
     <figure className="dt-code-fig not-prose">
       <div className="dt-code-hdr">
         <input
           className="dt-code-lang"
           value={block.language}
-          onChange={e => onChange({ ...block, language: e.currentTarget.value })}
+          onChange={(e) => onChange({ ...block, language: e.currentTarget.value })}
           placeholder="ts"
         />
         <div className="dt-code-sep-v" />
@@ -1086,7 +1680,7 @@ function CodeRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: "c
           <input
             className="dt-code-file"
             value={block.title}
-            onChange={e => onChange({ ...block, title: e.currentTarget.value })}
+            onChange={(e) => onChange({ ...block, title: e.currentTarget.value })}
             placeholder="filename.ts"
           />
         </figcaption>
@@ -1095,7 +1689,7 @@ function CodeRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: "c
         <textarea
           className="dt-code-ta"
           value={block.code}
-          onChange={e => onChange({ ...block, code: e.currentTarget.value })}
+          onChange={(e) => onChange({ ...block, code: e.currentTarget.value })}
           spellCheck={false}
           rows={Math.max(4, block.code.split("\n").length + 1)}
         />
@@ -1104,7 +1698,13 @@ function CodeRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: "c
   );
 }
 
-function TabsRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: "tabs" }>; onChange: (b: MdxBlock) => void }) {
+function TabsRenderer({
+  block,
+  onChange,
+}: {
+  block: Extract<MdxBlock, { type: "tabs" }>;
+  onChange: (b: MdxBlock) => void;
+}) {
   const [activeTab, setActiveTab] = useState(0);
   const tab = block.tabs[activeTab] ?? block.tabs[0];
 
@@ -1121,8 +1721,11 @@ function TabsRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: "t
             <input
               className="bg-transparent border-none outline-none text-xs font-medium cursor-text"
               value={t.label}
-              onClick={e => { e.stopPropagation(); setActiveTab(i); }}
-              onChange={e => {
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveTab(i);
+              }}
+              onChange={(e) => {
                 const tabs = [...block.tabs];
                 tabs[i] = { ...t, label: e.currentTarget.value };
                 onChange({ ...block, tabs });
@@ -1132,22 +1735,39 @@ function TabsRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: "t
             <button
               type="button"
               className="w-4 h-4 rounded flex items-center justify-center text-xs text-fd-muted-foreground hover:text-red-500"
-              onClick={e => { e.stopPropagation(); const tabs = block.tabs.filter((_, idx) => idx !== i); onChange({ ...block, tabs }); if (activeTab >= tabs.length) setActiveTab(Math.max(0, tabs.length - 1)); }}
-            >×</button>
+              onClick={(e) => {
+                e.stopPropagation();
+                const tabs = block.tabs.filter((_, idx) => idx !== i);
+                onChange({ ...block, tabs });
+                if (activeTab >= tabs.length) setActiveTab(Math.max(0, tabs.length - 1));
+              }}
+            >
+              ×
+            </button>
           </div>
         ))}
         <button
           type="button"
           className="h-7 px-2 mx-1 my-1 text-xs text-fd-muted-foreground border border-dashed border-fd-border rounded shrink-0 hover:border-fd-primary hover:text-fd-primary transition-colors"
-          onClick={() => { const tabs = [...block.tabs, { label: "New", content: "Content" }]; onChange({ ...block, tabs }); setActiveTab(tabs.length - 1); }}
-        >+ Add</button>
+          onClick={() => {
+            const tabs = [...block.tabs, { label: "New", content: "Content" }];
+            onChange({ ...block, tabs });
+            setActiveTab(tabs.length - 1);
+          }}
+        >
+          + Add
+        </button>
       </div>
       {tab && (
         <div className="p-4 prose">
           <ProseEditor
             key={activeTab}
             value={tab.content}
-            onChange={content => { const tabs = [...block.tabs]; tabs[activeTab] = { ...tab, content }; onChange({ ...block, tabs }); }}
+            onChange={(content) => {
+              const tabs = [...block.tabs];
+              tabs[activeTab] = { ...tab, content };
+              onChange({ ...block, tabs });
+            }}
             placeholder="Tab content…"
           />
         </div>
@@ -1156,7 +1776,13 @@ function TabsRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: "t
   );
 }
 
-function HoverLinkRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: "hoverlink" }>; onChange: (b: MdxBlock) => void }) {
+function HoverLinkRenderer({
+  block,
+  onChange,
+}: {
+  block: Extract<MdxBlock, { type: "hoverlink" }>;
+  onChange: (b: MdxBlock) => void;
+}) {
   return (
     <div>
       {/* Looks like the actual rendered HoverLink — an inline dashed-underline link */}
@@ -1164,7 +1790,7 @@ function HoverLinkRenderer({ block, onChange }: { block: Extract<MdxBlock, { typ
         <input
           className="dt-hl-trigger"
           value={block.label}
-          onChange={e => onChange({ ...block, label: e.currentTarget.value })}
+          onChange={(e) => onChange({ ...block, label: e.currentTarget.value })}
           placeholder="Link label text…"
           style={{ width: `${Math.max(120, block.label.length * 8)}px` }}
         />
@@ -1173,22 +1799,43 @@ function HoverLinkRenderer({ block, onChange }: { block: Extract<MdxBlock, { typ
       <div className="dt-hl-meta">
         <div className="dt-hl-row">
           <span className="dt-hl-lbl">href</span>
-          <input className="dt-hl-inp" value={block.href} onChange={e => onChange({ ...block, href: e.currentTarget.value })} placeholder="/docs/page" />
+          <input
+            className="dt-hl-inp"
+            value={block.href}
+            onChange={(e) => onChange({ ...block, href: e.currentTarget.value })}
+            placeholder="/docs/page"
+          />
         </div>
         <div className="dt-hl-row">
           <span className="dt-hl-lbl">title</span>
-          <input className="dt-hl-inp" value={block.title} onChange={e => onChange({ ...block, title: e.currentTarget.value })} placeholder="Hover card title" />
+          <input
+            className="dt-hl-inp"
+            value={block.title}
+            onChange={(e) => onChange({ ...block, title: e.currentTarget.value })}
+            placeholder="Hover card title"
+          />
         </div>
         <div className="dt-hl-row">
           <span className="dt-hl-lbl">desc</span>
-          <input className="dt-hl-inp" value={block.description} onChange={e => onChange({ ...block, description: e.currentTarget.value })} placeholder="Hover card description" />
+          <input
+            className="dt-hl-inp"
+            value={block.description}
+            onChange={(e) => onChange({ ...block, description: e.currentTarget.value })}
+            placeholder="Hover card description"
+          />
         </div>
       </div>
     </div>
   );
 }
 
-function PromptRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: "prompt" }>; onChange: (b: MdxBlock) => void }) {
+function PromptRenderer({
+  block,
+  onChange,
+}: {
+  block: Extract<MdxBlock, { type: "prompt" }>;
+  onChange: (b: MdxBlock) => void;
+}) {
   return (
     // Uses the real fd-prompt CSS classes from packages/fumadocs/styles/base.css
     <div className="fd-prompt not-prose">
@@ -1196,9 +1843,18 @@ function PromptRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: 
         <div className="fd-prompt-copy">
           <input
             className="fd-prompt-title"
-            style={{ background: "transparent", border: "none", outline: "none", width: "100%", padding: 0, margin: 0, font: "inherit", color: "inherit" }}
+            style={{
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              width: "100%",
+              padding: 0,
+              margin: 0,
+              font: "inherit",
+              color: "inherit",
+            }}
             value={block.title}
-            onChange={e => onChange({ ...block, title: e.currentTarget.value })}
+            onChange={(e) => onChange({ ...block, title: e.currentTarget.value })}
             placeholder="Prompt title…"
           />
         </div>
@@ -1206,17 +1862,43 @@ function PromptRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: 
       <div className="fd-prompt-body">
         <textarea
           className="fd-prompt-code"
-          style={{ width: "100%", resize: "vertical", background: "transparent", border: "none", outline: "none", font: "inherit", color: "inherit", padding: 0 }}
+          style={{
+            width: "100%",
+            resize: "vertical",
+            background: "transparent",
+            border: "none",
+            outline: "none",
+            font: "inherit",
+            color: "inherit",
+            padding: 0,
+          }}
           value={block.content}
-          onChange={e => onChange({ ...block, content: e.currentTarget.value })}
+          onChange={(e) => onChange({ ...block, content: e.currentTarget.value })}
           rows={Math.max(3, block.content.split("\n").length + 1)}
           placeholder="Prompt text…"
           spellCheck={false}
         />
       </div>
       <div className="fd-prompt-actions" style={{ justifyContent: "flex-start" }}>
-        <button type="button" className="fd-prompt-action-btn" style={{ pointerEvents: "none", opacity: 0.5 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <button
+          type="button"
+          className="fd-prompt-action-btn"
+          style={{ pointerEvents: "none", opacity: 0.5 }}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="9" y="9" width="13" height="13" rx="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
           <span>Copy prompt</span>
         </button>
       </div>
@@ -1224,13 +1906,19 @@ function PromptRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: 
   );
 }
 
-function RawRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: "raw" }>; onChange: (b: MdxBlock) => void }) {
+function RawRenderer({
+  block,
+  onChange,
+}: {
+  block: Extract<MdxBlock, { type: "raw" }>;
+  onChange: (b: MdxBlock) => void;
+}) {
   return (
     <div className="dt-raw-shell">
       <textarea
         className="dt-code-ta"
         value={block.content}
-        onChange={e => onChange({ ...block, content: e.currentTarget.value })}
+        onChange={(e) => onChange({ ...block, content: e.currentTarget.value })}
         spellCheck={false}
         rows={Math.max(2, block.content.split("\n").length)}
         placeholder="<CustomComponent />"
@@ -1240,36 +1928,132 @@ function RawRenderer({ block, onChange }: { block: Extract<MdxBlock, { type: "ra
 }
 
 function BlockContent({ block, onChange }: { block: MdxBlock; onChange: (b: MdxBlock) => void }) {
-  if (block.type === "heading")   return <HeadingRenderer   block={block} onChange={onChange} />;
+  if (block.type === "heading") return <HeadingRenderer block={block} onChange={onChange} />;
   if (block.type === "paragraph") return <ParagraphRenderer block={block} onChange={onChange} />;
-  if (block.type === "callout")   return <CalloutRenderer   block={block} onChange={onChange} />;
-  if (block.type === "code")      return <CodeRenderer      block={block} onChange={onChange} />;
-  if (block.type === "tabs")      return <TabsRenderer      block={block} onChange={onChange} />;
+  if (block.type === "callout") return <CalloutRenderer block={block} onChange={onChange} />;
+  if (block.type === "code") return <CodeRenderer block={block} onChange={onChange} />;
+  if (block.type === "tabs") return <TabsRenderer block={block} onChange={onChange} />;
   if (block.type === "hoverlink") return <HoverLinkRenderer block={block} onChange={onChange} />;
-  if (block.type === "prompt")    return <PromptRenderer    block={block} onChange={onChange} />;
-  if (block.type === "raw")       return <RawRenderer       block={block} onChange={onChange} />;
+  if (block.type === "prompt") return <PromptRenderer block={block} onChange={onChange} />;
+  if (block.type === "raw") return <RawRenderer block={block} onChange={onChange} />;
   return null;
 }
 
 // ─── SVG icons ────────────────────────────────────────────────────────────────
 
-function ChevUp() { return <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>; }
-function ChevDown() { return <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>; }
-function Trash() { return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>; }
-function Copy() { return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>; }
-function Plus() { return <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>; }
+function ChevUp() {
+  return (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <polyline points="18 15 12 9 6 15" />
+    </svg>
+  );
+}
+function ChevDown() {
+  return (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+function Trash() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+function Copy() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+function Plus() {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
 
 // ─── Insert palette ───────────────────────────────────────────────────────────
 
-function InsertPalette({ x, y, onInsert, onClose }: { x: number; y: number; onInsert: (t: MdxBlock["type"]) => void; onClose: () => void }) {
+function InsertPalette({
+  x,
+  y,
+  onInsert,
+  onClose,
+}: {
+  x: number;
+  y: number;
+  onInsert: (t: MdxBlock["type"]) => void;
+  onClose: () => void;
+}) {
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    function handler(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); }
-    function keyHandler(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
+    function keyHandler(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
     document.addEventListener("mousedown", handler);
     document.addEventListener("keydown", keyHandler);
-    return () => { document.removeEventListener("mousedown", handler); document.removeEventListener("keydown", keyHandler); };
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", keyHandler);
+    };
   }, [onClose]);
 
   const style: React.CSSProperties = {
@@ -1282,9 +2066,19 @@ function InsertPalette({ x, y, onInsert, onClose }: { x: number; y: number; onIn
       <div className="dt-palette-title">Insert block</div>
       <div className="dt-palette-grid">
         {BLOCK_CATALOGUE.map(({ type, label, icon, accent, desc }) => (
-          <button key={type} type="button" className="dt-palette-item" role="menuitem"
-            onClick={() => { onInsert(type); onClose(); }}>
-            <div className="dt-palette-icon" style={{ background: `${accent}20`, color: accent }}>{icon}</div>
+          <button
+            key={type}
+            type="button"
+            className="dt-palette-item"
+            role="menuitem"
+            onClick={() => {
+              onInsert(type);
+              onClose();
+            }}
+          >
+            <div className="dt-palette-icon" style={{ background: `${accent}20`, color: accent }}>
+              {icon}
+            </div>
             <div>
               <div className="dt-palette-label">{label}</div>
               <div className="dt-palette-desc">{desc}</div>
@@ -1298,7 +2092,18 @@ function InsertPalette({ x, y, onInsert, onClose }: { x: number; y: number; onIn
 
 // ─── Inline block editor (overlays directly on heading / paragraph blocks) ────
 
-function InlineBlockEditor({ block, rect, el, onChange, onClose, onMove, onDuplicate, onDelete, index, total }: {
+function InlineBlockEditor({
+  block,
+  rect,
+  el,
+  onChange,
+  onClose,
+  onMove,
+  onDuplicate,
+  onDelete,
+  index,
+  total,
+}: {
   block: Extract<MdxBlock, { type: "heading" | "paragraph" }>;
   rect: DOMRect;
   el: HTMLElement;
@@ -1314,26 +2119,26 @@ function InlineBlockEditor({ block, rect, el, onChange, onClose, onMove, onDupli
 
   // Cover style: fixed, same bounding box, opaque background so original is hidden
   const cover: React.CSSProperties = {
-    top:    rect.top,
-    left:   rect.left,
-    width:  rect.width,
+    top: rect.top,
+    left: rect.left,
+    width: rect.width,
     // grow with content, start at the element's natural height
     minHeight: rect.height,
     // Copy padding so text sits in the same position
-    paddingTop:    cs.paddingTop    || 0,
+    paddingTop: cs.paddingTop || 0,
     paddingBottom: cs.paddingBottom || 0,
-    paddingLeft:   cs.paddingLeft   || 0,
-    paddingRight:  cs.paddingRight  || 0,
+    paddingLeft: cs.paddingLeft || 0,
+    paddingRight: cs.paddingRight || 0,
   };
 
   // Shared text style cloned from the real element
   const text: React.CSSProperties = {
-    fontSize:      cs.fontSize,
-    fontWeight:    cs.fontWeight,
-    lineHeight:    cs.lineHeight,
+    fontSize: cs.fontSize,
+    fontWeight: cs.fontWeight,
+    lineHeight: cs.lineHeight,
     letterSpacing: cs.letterSpacing,
-    fontFamily:    cs.fontFamily,
-    color:         cs.color,
+    fontFamily: cs.fontFamily,
+    color: cs.color,
     textDecoration: "none",
     margin: 0,
     padding: 0,
@@ -1352,17 +2157,20 @@ function InlineBlockEditor({ block, rect, el, onChange, onClose, onMove, onDupli
             className="dt-inline-input"
             style={text}
             value={block.text}
-            onChange={e => onChange({ ...block, text: e.target.value })}
-            onKeyDown={e => {
+            onChange={(e) => onChange({ ...block, text: e.target.value })}
+            onKeyDown={(e) => {
               if (e.key === "Escape") onClose();
-              if (e.key === "Enter") { e.preventDefault(); onClose(); }
+              if (e.key === "Enter") {
+                e.preventDefault();
+                onClose();
+              }
             }}
           />
         ) : (
           <WysiwygParagraphEditor
             initialContent={block.content}
             style={{ ...text, minHeight: Math.max(rect.height, 48) }}
-            onChange={content => onChange({ ...block, content } as MdxBlock)}
+            onChange={(content) => onChange({ ...block, content } as MdxBlock)}
             onClose={onClose}
           />
         )}
@@ -1372,10 +2180,14 @@ function InlineBlockEditor({ block, rect, el, onChange, onClose, onMove, onDupli
       <div className="dt dt-inline-toolbar" style={{ top: toolbarTop, left: rect.left }}>
         {block.type === "heading" && (
           <span className="dt-inline-toolbar-group">
-            {([1,2,3,4,5,6] as const).map(l => (
-              <button key={l} type="button" className="dt-inline-tb-btn"
+            {([1, 2, 3, 4, 5, 6] as const).map((l) => (
+              <button
+                key={l}
+                type="button"
+                className="dt-inline-tb-btn"
                 data-active={block.level === l ? "" : undefined}
-                onClick={() => onChange({ ...block, level: l })}>
+                onClick={() => onChange({ ...block, level: l })}
+              >
                 H{l}
               </button>
             ))}
@@ -1384,51 +2196,116 @@ function InlineBlockEditor({ block, rect, el, onChange, onClose, onMove, onDupli
         )}
         {block.type === "paragraph" && (
           <span className="dt-inline-toolbar-group">
-            {([
-              ["B", "bold",   () => document.execCommand("bold")],
-              ["I", "italic", () => document.execCommand("italic")],
-              ["`", "code",   () => {
-                // Wrap selection in <code> via execCommand insertHTML, or surroundContents
-                const sel = window.getSelection();
-                if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
-                const range = sel.getRangeAt(0);
-                const code = document.createElement("code");
-                try { range.surroundContents(code); } catch { document.execCommand("insertText", false, `\`${sel.toString()}\``); }
-              }],
-            ] as const).map(([lbl, title, fn]) => (
-              <button key={lbl} type="button" className="dt-inline-tb-btn"
+            {(
+              [
+                ["B", "bold", () => document.execCommand("bold")],
+                ["I", "italic", () => document.execCommand("italic")],
+                [
+                  "`",
+                  "code",
+                  () => {
+                    // Wrap selection in <code> via execCommand insertHTML, or surroundContents
+                    const sel = window.getSelection();
+                    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+                    const range = sel.getRangeAt(0);
+                    const code = document.createElement("code");
+                    try {
+                      range.surroundContents(code);
+                    } catch {
+                      document.execCommand("insertText", false, `\`${sel.toString()}\``);
+                    }
+                  },
+                ],
+              ] as const
+            ).map(([lbl, title, fn]) => (
+              <button
+                key={lbl}
+                type="button"
+                className="dt-inline-tb-btn"
                 title={title}
-                onMouseDown={e => { e.preventDefault(); fn(); }}>
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  fn();
+                }}
+              >
                 {lbl}
               </button>
             ))}
             <span className="dt-inline-tb-sep" />
           </span>
         )}
-        <button type="button" className="dt-inline-tb-btn" disabled={index === 0} onClick={() => onMove(-1)} title="Move up"><ChevUp /></button>
-        <button type="button" className="dt-inline-tb-btn" disabled={index === total - 1} onClick={() => onMove(1)} title="Move down"><ChevDown /></button>
+        <button
+          type="button"
+          className="dt-inline-tb-btn"
+          disabled={index === 0}
+          onClick={() => onMove(-1)}
+          title="Move up"
+        >
+          <ChevUp />
+        </button>
+        <button
+          type="button"
+          className="dt-inline-tb-btn"
+          disabled={index === total - 1}
+          onClick={() => onMove(1)}
+          title="Move down"
+        >
+          <ChevDown />
+        </button>
         <span className="dt-inline-tb-sep" />
-        <button type="button" className="dt-inline-tb-btn" onClick={onDuplicate} title="Duplicate"><Copy /></button>
-        <button type="button" className="dt-inline-tb-btn" data-danger="" onClick={() => { onDelete(); onClose(); }} title="Delete"><Trash /></button>
+        <button type="button" className="dt-inline-tb-btn" onClick={onDuplicate} title="Duplicate">
+          <Copy />
+        </button>
+        <button
+          type="button"
+          className="dt-inline-tb-btn"
+          data-danger=""
+          onClick={() => {
+            onDelete();
+            onClose();
+          }}
+          title="Delete"
+        >
+          <Trash />
+        </button>
         <span className="dt-inline-tb-sep" />
-        <button type="button" className="dt-inline-tb-btn" onClick={onClose} title="Done">✓</button>
+        <button type="button" className="dt-inline-tb-btn" onClick={onClose} title="Done">
+          ✓
+        </button>
       </div>
     </>,
-    document.body
+    document.body,
   );
 }
 
 // ─── Floating block editor (appears near the clicked block) ───────────────────
 
-function FloatingBlockEditor({ block, rect, index, total, onClose, onChange, onMove, onDuplicate, onDelete, onInsertAfter }: {
-  block: MdxBlock; rect: DOMRect; index: number; total: number;
-  onClose: () => void; onChange: (b: MdxBlock) => void;
-  onMove: (dir: -1 | 1) => void; onDuplicate: () => void; onDelete: () => void;
+function FloatingBlockEditor({
+  block,
+  rect,
+  index,
+  total,
+  onClose,
+  onChange,
+  onMove,
+  onDuplicate,
+  onDelete,
+  onInsertAfter,
+}: {
+  block: MdxBlock;
+  rect: DOMRect;
+  index: number;
+  total: number;
+  onClose: () => void;
+  onChange: (b: MdxBlock) => void;
+  onMove: (dir: -1 | 1) => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
   onInsertAfter: (type: MdxBlock["type"]) => void;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [palette, setPalette] = useState<{ x: number; y: number } | null>(null);
-  const meta = BLOCK_CATALOGUE.find(b => b.type === block.type);
+  const meta = BLOCK_CATALOGUE.find((b) => b.type === block.type);
 
   // Position: prefer below the block, fall back to above
   const editorH = 420;
@@ -1436,7 +2313,8 @@ function FloatingBlockEditor({ block, rect, index, total, onClose, onChange, onM
   let top = rect.bottom + 10;
   if (top + editorH > window.innerHeight - 16) top = Math.max(16, rect.top - editorH - 10);
   let left = rect.left;
-  if (left + editorW > window.innerWidth - 10) left = Math.max(10, window.innerWidth - editorW - 10);
+  if (left + editorW > window.innerWidth - 10)
+    left = Math.max(10, window.innerWidth - editorW - 10);
 
   useEffect(() => {
     // Delay attaching the outside-click listener so the very click that opened
@@ -1448,10 +2326,15 @@ function FloatingBlockEditor({ block, rect, index, total, onClose, onChange, onM
         if (t.closest(".dt-palette")) return;
         onClose();
       }
-      function key(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+      function key(e: KeyboardEvent) {
+        if (e.key === "Escape") onClose();
+      }
       document.addEventListener("mousedown", outside);
       document.addEventListener("keydown", key);
-      return () => { document.removeEventListener("mousedown", outside); document.removeEventListener("keydown", key); };
+      return () => {
+        document.removeEventListener("mousedown", outside);
+        document.removeEventListener("keydown", key);
+      };
     }, 120);
     return () => window.clearTimeout(tid);
   }, [onClose]);
@@ -1459,29 +2342,85 @@ function FloatingBlockEditor({ block, rect, index, total, onClose, onChange, onM
   return createPortal(
     <div ref={ref} className="dt-float-editor dt" style={{ top, left }}>
       <div className="dt-float-editor-hdr">
-        <span className="dt-float-editor-type" style={{ color: meta?.accent }}>{meta?.icon} {meta?.label ?? block.type}</span>
+        <span className="dt-float-editor-type" style={{ color: meta?.accent }}>
+          {meta?.icon} {meta?.label ?? block.type}
+        </span>
         <div style={{ flex: 1 }} />
-        <button type="button" className="dt-float-btn" disabled={index === 0} onClick={() => onMove(-1)} title="Move up"><ChevUp /></button>
-        <button type="button" className="dt-float-btn" disabled={index === total - 1} onClick={() => onMove(1)} title="Move down"><ChevDown /></button>
+        <button
+          type="button"
+          className="dt-float-btn"
+          disabled={index === 0}
+          onClick={() => onMove(-1)}
+          title="Move up"
+        >
+          <ChevUp />
+        </button>
+        <button
+          type="button"
+          className="dt-float-btn"
+          disabled={index === total - 1}
+          onClick={() => onMove(1)}
+          title="Move down"
+        >
+          <ChevDown />
+        </button>
         <span className="dt-float-sep" />
-        <button type="button" className="dt-float-btn" onClick={onDuplicate} title="Duplicate"><Copy /></button>
-        <button type="button" className="dt-float-btn" data-danger="" onClick={() => { onDelete(); onClose(); }} title="Delete"><Trash /></button>
-        <button type="button" className="dt-float-btn" title="Insert block after"
-          onClick={() => { const r = ref.current?.getBoundingClientRect(); if (r) setPalette({ x: r.left, y: r.bottom + 4 }); }}>
+        <button type="button" className="dt-float-btn" onClick={onDuplicate} title="Duplicate">
+          <Copy />
+        </button>
+        <button
+          type="button"
+          className="dt-float-btn"
+          data-danger=""
+          onClick={() => {
+            onDelete();
+            onClose();
+          }}
+          title="Delete"
+        >
+          <Trash />
+        </button>
+        <button
+          type="button"
+          className="dt-float-btn"
+          title="Insert block after"
+          onClick={() => {
+            const r = ref.current?.getBoundingClientRect();
+            if (r) setPalette({ x: r.left, y: r.bottom + 4 });
+          }}
+        >
           <Plus />
         </button>
         <span className="dt-float-sep" />
-        <button type="button" className="dt-float-btn" onClick={onClose} title="Close" style={{ fontSize: 13 }}>✕</button>
+        <button
+          type="button"
+          className="dt-float-btn"
+          onClick={onClose}
+          title="Close"
+          style={{ fontSize: 13 }}
+        >
+          ✕
+        </button>
       </div>
       <div className="dt-float-editor-body">
         <BlockContent block={block} onChange={onChange} />
       </div>
-      {palette && createPortal(
-        <InsertPalette x={palette.x} y={palette.y} onInsert={type => { onInsertAfter(type); setPalette(null); onClose(); }} onClose={() => setPalette(null)} />,
-        document.body
-      )}
+      {palette &&
+        createPortal(
+          <InsertPalette
+            x={palette.x}
+            y={palette.y}
+            onInsert={(type) => {
+              onInsertAfter(type);
+              setPalette(null);
+              onClose();
+            }}
+            onClose={() => setPalette(null)}
+          />,
+          document.body,
+        )}
     </div>,
-    document.body
+    document.body,
   );
 }
 
@@ -1495,15 +2434,24 @@ function SelectionToolbar() {
   useEffect(() => {
     function onSel() {
       const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || sel.rangeCount === 0) { setPos(null); return; }
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+        setPos(null);
+        return;
+      }
       // Only activate when the selection is anchored inside a contentEditable
       const anchor = sel.anchorNode;
       const host = (
-        anchor?.nodeType === Node.TEXT_NODE ? anchor.parentElement : anchor as Element | null
+        anchor?.nodeType === Node.TEXT_NODE ? anchor.parentElement : (anchor as Element | null)
       )?.closest("[contenteditable]");
-      if (!host) { setPos(null); return; }
+      if (!host) {
+        setPos(null);
+        return;
+      }
       const r = sel.getRangeAt(0).getBoundingClientRect();
-      if (!r.width && !r.height) { setPos(null); return; }
+      if (!r.width && !r.height) {
+        setPos(null);
+        return;
+      }
       setPos({ top: r.top - 48, centerX: r.left + r.width / 2 });
     }
     document.addEventListener("selectionchange", onSel);
@@ -1512,62 +2460,115 @@ function SelectionToolbar() {
 
   if (!pos) return null;
 
-  const top  = Math.max(58, pos.top);
-  const left = Math.max(60, Math.min((typeof window !== "undefined" ? window.innerWidth : 1200) - 200, pos.centerX));
+  const top = Math.max(58, pos.top);
+  const left = Math.max(
+    60,
+    Math.min((typeof window !== "undefined" ? window.innerWidth : 1200) - 200, pos.centerX),
+  );
 
-  function fmt(cmd: string) { document.execCommand(cmd); }
+  function fmt(cmd: string) {
+    document.execCommand(cmd);
+  }
 
   function wrapCode() {
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || !sel.rangeCount) return;
     const range = sel.getRangeAt(0);
-    const code  = document.createElement("code");
-    try { range.surroundContents(code); }
-    catch { document.execCommand("insertText", false, `\`${sel.toString()}\``); }
+    const code = document.createElement("code");
+    try {
+      range.surroundContents(code);
+    } catch {
+      document.execCommand("insertText", false, `\`${sel.toString()}\``);
+    }
   }
 
   function wrapLink() {
-    const sel  = window.getSelection();
+    const sel = window.getSelection();
     const text = sel?.toString() ?? "";
     // eslint-disable-next-line no-alert
-    const url  = window.prompt("Link URL:", "https://");
+    const url = window.prompt("Link URL:", "https://");
     if (!url) return;
     document.execCommand("insertHTML", false, `<a href="${url}">${text || url}</a>`);
   }
 
   return createPortal(
     <div className="dt dt-sel-toolbar" style={{ top, left }}>
-      <button type="button" className="dt-sel-btn" title="Bold"
-        onMouseDown={e => { e.preventDefault(); fmt("bold"); }}>
+      <button
+        type="button"
+        className="dt-sel-btn"
+        title="Bold"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          fmt("bold");
+        }}
+      >
         <strong>B</strong>
       </button>
-      <button type="button" className="dt-sel-btn" title="Italic"
-        onMouseDown={e => { e.preventDefault(); fmt("italic"); }}>
+      <button
+        type="button"
+        className="dt-sel-btn"
+        title="Italic"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          fmt("italic");
+        }}
+      >
         <em style={{ fontStyle: "italic" }}>I</em>
       </button>
-      <button type="button" className="dt-sel-btn" title="Strikethrough"
-        onMouseDown={e => { e.preventDefault(); fmt("strikeThrough"); }}>
+      <button
+        type="button"
+        className="dt-sel-btn"
+        title="Strikethrough"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          fmt("strikeThrough");
+        }}
+      >
         <s>S</s>
       </button>
       <div className="dt-sel-sep" />
-      <button type="button" className="dt-sel-btn" title="Inline code"
-        onMouseDown={e => { e.preventDefault(); wrapCode(); }}
-        style={{ fontFamily: "ui-monospace,monospace", letterSpacing: 0 }}>
+      <button
+        type="button"
+        className="dt-sel-btn"
+        title="Inline code"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          wrapCode();
+        }}
+        style={{ fontFamily: "ui-monospace,monospace", letterSpacing: 0 }}
+      >
         {"</>"}
       </button>
-      <button type="button" className="dt-sel-btn" title="Link"
-        onMouseDown={e => { e.preventDefault(); wrapLink(); }}>
+      <button
+        type="button"
+        className="dt-sel-btn"
+        title="Link"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          wrapLink();
+        }}
+      >
         ↗
       </button>
     </div>,
-    document.body
+    document.body,
   );
 }
 
 // ─── InlineCodeEditor ─────────────────────────────────────────────────────────
 // Covers the clicked code block with an editable version of the same UI.
 
-function InlineCodeEditor({ block, rect, onChange, onClose, onMove, onDuplicate, onDelete, index, total }: {
+function InlineCodeEditor({
+  block,
+  rect,
+  onChange,
+  onClose,
+  onMove,
+  onDuplicate,
+  onDelete,
+  index,
+  total,
+}: {
   block: Extract<MdxBlock, { type: "code" }>;
   rect: DOMRect;
   onChange: (b: MdxBlock) => void;
@@ -1581,9 +2582,9 @@ function InlineCodeEditor({ block, rect, onChange, onClose, onMove, onDuplicate,
   const toolbarTop = Math.max(54, rect.top - 36);
 
   const cover: React.CSSProperties = {
-    top:       rect.top,
-    left:      rect.left,
-    width:     rect.width,
+    top: rect.top,
+    left: rect.left,
+    width: rect.width,
     minHeight: rect.height,
   };
 
@@ -1599,46 +2600,101 @@ function InlineCodeEditor({ block, rect, onChange, onClose, onMove, onDuplicate,
 
       {/* Mini toolbar floating above */}
       <div className="dt dt-inline-toolbar" style={{ top: toolbarTop, left: rect.left }}>
-        <button type="button" className="dt-inline-tb-btn" disabled={index === 0}
-          onClick={() => onMove(-1)} title="Move up"><ChevUp /></button>
-        <button type="button" className="dt-inline-tb-btn" disabled={index === total - 1}
-          onClick={() => onMove(1)} title="Move down"><ChevDown /></button>
+        <button
+          type="button"
+          className="dt-inline-tb-btn"
+          disabled={index === 0}
+          onClick={() => onMove(-1)}
+          title="Move up"
+        >
+          <ChevUp />
+        </button>
+        <button
+          type="button"
+          className="dt-inline-tb-btn"
+          disabled={index === total - 1}
+          onClick={() => onMove(1)}
+          title="Move down"
+        >
+          <ChevDown />
+        </button>
         <span className="dt-inline-tb-sep" />
-        <button type="button" className="dt-inline-tb-btn" onClick={onDuplicate} title="Duplicate"><Copy /></button>
-        <button type="button" className="dt-inline-tb-btn" data-danger=""
-          onClick={() => { onDelete(); onClose(); }} title="Delete"><Trash /></button>
+        <button type="button" className="dt-inline-tb-btn" onClick={onDuplicate} title="Duplicate">
+          <Copy />
+        </button>
+        <button
+          type="button"
+          className="dt-inline-tb-btn"
+          data-danger=""
+          onClick={() => {
+            onDelete();
+            onClose();
+          }}
+          title="Delete"
+        >
+          <Trash />
+        </button>
         <span className="dt-inline-tb-sep" />
-        <button type="button" className="dt-inline-tb-btn" onClick={onClose} title="Done">✓</button>
+        <button type="button" className="dt-inline-tb-btn" onClick={onClose} title="Done">
+          ✓
+        </button>
       </div>
     </>,
-    document.body
+    document.body,
   );
 }
 
 // ─── Theme popover ────────────────────────────────────────────────────────────
 
-function ThemePopover({ active, onSelect, onClose }: {
-  active: string; onSelect: (t: ThemeDef) => void; onClose: () => void;
+function ThemePopover({
+  active,
+  onSelect,
+  onClose,
+}: {
+  active: string;
+  onSelect: (t: ThemeDef) => void;
+  onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); }
-    function k(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
-    document.addEventListener("mousedown", h); document.addEventListener("keydown", k);
-    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("keydown", k); };
+    function h(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
+    function k(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("mousedown", h);
+    document.addEventListener("keydown", k);
+    return () => {
+      document.removeEventListener("mousedown", h);
+      document.removeEventListener("keydown", k);
+    };
   }, [onClose]);
 
   return (
     <div ref={ref} className="dt-theme-pop dt" role="menu" aria-label="Choose theme">
-      {THEMES.map(t => (
-        <div key={t.id} className="dt-theme-item" data-active={active === t.id ? "" : undefined}
-          role="menuitem" tabIndex={0}
+      {THEMES.map((t) => (
+        <div
+          key={t.id}
+          className="dt-theme-item"
+          data-active={active === t.id ? "" : undefined}
+          role="menuitem"
+          tabIndex={0}
           onClick={() => onSelect(t)}
-          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onSelect(t); }}>
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") onSelect(t);
+          }}
+        >
           <div className="dt-theme-dots">
-            <div className="dt-theme-dot" style={{ background: t.bg, border: `1px solid ${t.border}` }} />
+            <div
+              className="dt-theme-dot"
+              style={{ background: t.bg, border: `1px solid ${t.border}` }}
+            />
             <div className="dt-theme-dot" style={{ background: t.accent }} />
-            <div className="dt-theme-dot" style={{ background: t.muted, border: `1px solid ${t.border}` }} />
+            <div
+              className="dt-theme-dot"
+              style={{ background: t.muted, border: `1px solid ${t.border}` }}
+            />
           </div>
           <span className="dt-theme-name">{t.label}</span>
           {active === t.id && <span className="dt-theme-tick">✓</span>}
@@ -1650,7 +2706,11 @@ function ThemePopover({ active, onSelect, onClose }: {
 
 // ─── Floating sidebar editor ──────────────────────────────────────────────────
 
-function FloatingSidebarEditor({ item, api, onClose }: {
+function FloatingSidebarEditor({
+  item,
+  api,
+  onClose,
+}: {
   item: { href: string; label: string; rect: DOMRect };
   api: string;
   onClose: () => void;
@@ -1671,16 +2731,22 @@ function FloatingSidebarEditor({ item, api, onClose }: {
         if (ref.current?.contains(e.target as Node)) return;
         onClose();
       }
-      function key(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+      function key(e: KeyboardEvent) {
+        if (e.key === "Escape") onClose();
+      }
       document.addEventListener("mousedown", outside);
       document.addEventListener("keydown", key);
-      return () => { document.removeEventListener("mousedown", outside); document.removeEventListener("keydown", key); };
+      return () => {
+        document.removeEventListener("mousedown", outside);
+        document.removeEventListener("keydown", key);
+      };
     }, 120);
     return () => window.clearTimeout(tid);
   }, [onClose]);
 
   async function save() {
-    setSaving(true); setStatus("Saving…");
+    setSaving(true);
+    setStatus("Saving…");
     try {
       const res = await fetch(createDevToolsUrl(api, "nav-item", item.href), {
         method: "POST",
@@ -1688,64 +2754,140 @@ function FloatingSidebarEditor({ item, api, onClose }: {
         body: JSON.stringify({ href: item.href, title }),
       });
       const payload = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-      if (!res.ok || !payload.ok) throw new Error(("error" in payload && payload.error) ? payload.error : "Could not save.");
+      if (!res.ok || !payload.ok)
+        throw new Error("error" in payload && payload.error ? payload.error : "Could not save.");
       setStatus("Saved!");
       setTimeout(() => onClose(), 700);
-    } catch (e) { setStatus(e instanceof Error ? e.message : "Could not save."); }
-    finally { setSaving(false); }
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Could not save.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return createPortal(
-    <div ref={ref} className="dt-float-editor dt" style={{ top: adjustedLeft === left ? item.rect.top : top, left: adjustedLeft, width: 300, maxHeight: "auto" }}>
+    <div
+      ref={ref}
+      className="dt-float-editor dt"
+      style={{
+        top: adjustedLeft === left ? item.rect.top : top,
+        left: adjustedLeft,
+        width: 300,
+        maxHeight: "auto",
+      }}
+    >
       <div className="dt-float-editor-hdr">
-        <span className="dt-float-editor-type" style={{ color: "#6366f1" }}>≡ Sidebar item</span>
+        <span className="dt-float-editor-type" style={{ color: "#6366f1" }}>
+          ≡ Sidebar item
+        </span>
         <div style={{ flex: 1 }} />
-        <a href={item.href} style={{ fontSize: 11, color: "var(--color-fd-muted-foreground,#64748b)", textDecoration: "none", marginRight: 6 }}>Go to page ↗</a>
-        <button type="button" className="dt-float-btn" onClick={onClose} style={{ fontSize: 13 }}>✕</button>
+        <a
+          href={item.href}
+          style={{
+            fontSize: 11,
+            color: "var(--color-fd-muted-foreground,#64748b)",
+            textDecoration: "none",
+            marginRight: 6,
+          }}
+        >
+          Go to page ↗
+        </a>
+        <button type="button" className="dt-float-btn" onClick={onClose} style={{ fontSize: 13 }}>
+          ✕
+        </button>
       </div>
       <div className="dt-float-editor-body">
         <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", color: "var(--color-fd-muted-foreground,#64748b)", marginBottom: 4 }}>Title</div>
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: ".06em",
+              color: "var(--color-fd-muted-foreground,#64748b)",
+              marginBottom: 4,
+            }}
+          >
+            Title
+          </div>
           <input
-            style={{ width: "100%", padding: "6px 8px", border: "1px solid var(--color-fd-border,#e2e8f0)", borderRadius: 6, fontSize: 13, background: "var(--color-fd-background,#fff)", color: "var(--color-fd-foreground,#0f172a)", outline: "none", fontFamily: "inherit" }}
+            style={{
+              width: "100%",
+              padding: "6px 8px",
+              border: "1px solid var(--color-fd-border,#e2e8f0)",
+              borderRadius: 6,
+              fontSize: 13,
+              background: "var(--color-fd-background,#fff)",
+              color: "var(--color-fd-foreground,#0f172a)",
+              outline: "none",
+              fontFamily: "inherit",
+            }}
             value={title}
-            onChange={e => setTitle(e.currentTarget.value)}
+            onChange={(e) => setTitle(e.currentTarget.value)}
             placeholder="Page title"
             autoFocus
-            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void save(); } }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void save();
+              }
+            }}
           />
         </div>
-        {status && <div style={{ fontSize: 11, color: status.startsWith("Could") ? "#ef4444" : "var(--color-fd-muted-foreground,#64748b)", marginBottom: 6 }}>{status}</div>}
-        <button type="button" className="dt-btn" data-primary="" style={{ width: "100%", justifyContent: "center" }} onClick={save} disabled={saving}>
+        {status && (
+          <div
+            style={{
+              fontSize: 11,
+              color: status.startsWith("Could")
+                ? "#ef4444"
+                : "var(--color-fd-muted-foreground,#64748b)",
+              marginBottom: 6,
+            }}
+          >
+            {status}
+          </div>
+        )}
+        <button
+          type="button"
+          className="dt-btn"
+          data-primary=""
+          style={{ width: "100%", justifyContent: "center" }}
+          onClick={save}
+          disabled={saving}
+        >
           {saving ? "Saving…" : "Save title"}
         </button>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
-  const [open, setOpen]             = useState(false);
-  const [loading, setLoading]       = useState(false);
-  const [saving, setSaving]         = useState(false);
-  const [page, setPage]             = useState<DevToolsPagePayload | null>(null);
-  const [doc, setDoc]               = useState<ParsedMdxDocument | null>(null);
-  const [draft, setDraft]           = useState("");
-  const [status, setStatus]         = useState("");
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState<DevToolsPagePayload | null>(null);
+  const [doc, setDoc] = useState<ParsedMdxDocument | null>(null);
+  const [draft, setDraft] = useState("");
+  const [status, setStatus] = useState("");
   // Which block is currently selected for editing, and where the editor floats
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [activeRect,  setActiveRect]  = useState<DOMRect | null>(null);
-  const [themeId, setThemeId]       = useState("default");
+  const [activeRect, setActiveRect] = useState<DOMRect | null>(null);
+  const [themeId, setThemeId] = useState("default");
   const [savedThemeId, setSavedThemeId] = useState("default");
-  const [themeVars, setThemeVars]   = useState<Record<string, string>>({});
+  const [themeVars, setThemeVars] = useState<Record<string, string>>({});
   const [showThemes, setShowThemes] = useState(false);
   const [showSource, setShowSource] = useState(false);
   const [addPalette, setAddPalette] = useState<{ x: number; y: number } | null>(null);
-  const [sidebarItem, setSidebarItem] = useState<{ href: string; label: string; rect: DOMRect } | null>(null);
-  const addBtnRef     = useRef<HTMLButtonElement | null>(null);
+  const [sidebarItem, setSidebarItem] = useState<{
+    href: string;
+    label: string;
+    rect: DOMRect;
+  } | null>(null);
+  const addBtnRef = useRef<HTMLButtonElement | null>(null);
   const themeStyleRef = useRef<HTMLStyleElement | null>(null);
   // Always-fresh reference to doc so article click handler never captures stale closure
   const docRef = useRef<ParsedMdxDocument | null>(null);
@@ -1756,21 +2898,35 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
   const domBlockMapRef = useRef<Map<HTMLElement, number>>(new Map());
 
   // serialized is always derived from the visual doc state
-  const serialized = useMemo(() => doc ? serializeMdxDocument(doc) : draft, [doc, draft]);
+  const serialized = useMemo(() => (doc ? serializeMdxDocument(doc) : draft), [doc, draft]);
 
   async function loadPage() {
-    setLoading(true); setStatus("");
+    setLoading(true);
+    setStatus("");
     try {
-      const res = await fetch(createDevToolsUrl(api, "page", pathname), { headers: { Accept: "application/json" } });
+      const res = await fetch(createDevToolsUrl(api, "page", pathname), {
+        headers: { Accept: "application/json" },
+      });
       const payload = (await res.json()) as DevToolsPagePayload | { error?: string };
-      if (!res.ok || !("content" in payload)) throw new Error("error" in payload && payload.error ? payload.error : "Could not load page.");
-      setPage(payload); setDoc(parseMdxDocument(payload.content)); setDraft(payload.content);
+      if (!res.ok || !("content" in payload))
+        throw new Error(
+          "error" in payload && payload.error ? payload.error : "Could not load page.",
+        );
+      setPage(payload);
+      setDoc(parseMdxDocument(payload.content));
+      setDraft(payload.content);
       setStatus(`Loaded ${payload.relativePath}`);
-    } catch (e) { setStatus(e instanceof Error ? e.message : "Could not load page."); }
-    finally { setLoading(false); }
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Could not load page.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  useEffect(() => { if (!open) return; void loadPage(); }, [open, pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!open) return;
+    void loadPage();
+  }, [open, pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Rebuild DOM→block map whenever doc reloads ──
   useEffect(() => {
@@ -1810,7 +2966,8 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
         const mapped = domBlockMapRef.current.get(el);
         const d = docRef.current;
         const domIdx = Array.from(contentEl!.children).indexOf(el);
-        const blockIdx = mapped ?? (d ? Math.min(Math.max(0, domIdx), d.blocks.length - 1) : domIdx);
+        const blockIdx =
+          mapped ?? (d ? Math.min(Math.max(0, domIdx), d.blocks.length - 1) : domIdx);
 
         activeElRef.current = el;
         setActiveIndex(blockIdx);
@@ -1874,28 +3031,48 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
   // ── block mutations ──
 
   function mutateDoc(fn: (blocks: MdxBlock[]) => MdxBlock[]) {
-    setDoc(cur => cur ? { ...cur, blocks: fn(cur.blocks) } : cur);
+    setDoc((cur) => (cur ? { ...cur, blocks: fn(cur.blocks) } : cur));
   }
 
-  function updateBlock(id: string, next: MdxBlock) { mutateDoc(bs => bs.map(b => b.id === id ? next : b)); }
-  function deleteBlock(id: string)                   { mutateDoc(bs => bs.filter(b => b.id !== id)); }
-  function duplicateBlock(block: MdxBlock)           { mutateDoc(bs => { const i = bs.findIndex(b => b.id === block.id); if (i < 0) return bs; const next = [...bs]; next.splice(i + 1, 0, { ...block, id: createId(block.type) } as MdxBlock); return next; }); }
+  function updateBlock(id: string, next: MdxBlock) {
+    mutateDoc((bs) => bs.map((b) => (b.id === id ? next : b)));
+  }
+  function deleteBlock(id: string) {
+    mutateDoc((bs) => bs.filter((b) => b.id !== id));
+  }
+  function duplicateBlock(block: MdxBlock) {
+    mutateDoc((bs) => {
+      const i = bs.findIndex((b) => b.id === block.id);
+      if (i < 0) return bs;
+      const next = [...bs];
+      next.splice(i + 1, 0, { ...block, id: createId(block.type) } as MdxBlock);
+      return next;
+    });
+  }
 
   function moveBlock(id: string, dir: -1 | 1) {
-    mutateDoc(bs => {
-      const i = bs.findIndex(b => b.id === id); const ni = i + dir;
+    mutateDoc((bs) => {
+      const i = bs.findIndex((b) => b.id === id);
+      const ni = i + dir;
       if (i < 0 || ni < 0 || ni >= bs.length) return bs;
-      const next = [...bs]; const [b] = next.splice(i, 1); if (!b) return bs;
-      next.splice(ni, 0, b); return next;
+      const next = [...bs];
+      const [b] = next.splice(i, 1);
+      if (!b) return bs;
+      next.splice(ni, 0, b);
+      return next;
     });
   }
 
   function addBlockAt(type: MdxBlock["type"], atIndex: number) {
-    mutateDoc(bs => { const next = [...bs]; next.splice(atIndex, 0, createBlock(type)); return next; });
+    mutateDoc((bs) => {
+      const next = [...bs];
+      next.splice(atIndex, 0, createBlock(type));
+      return next;
+    });
   }
 
   function appendBlock(type: MdxBlock["type"]) {
-    mutateDoc(bs => [...bs, createBlock(type)]);
+    mutateDoc((bs) => [...bs, createBlock(type)]);
   }
 
   function closeEditor() {
@@ -1915,10 +3092,12 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
   }
 
   async function applyChanges() {
-    setSaving(true); setStatus("Saving…");
+    setSaving(true);
+    setStatus("Saving…");
     try {
       const res = await fetch(createDevToolsUrl(api, "page", pathname), {
-        method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" },
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ content: serialized }),
       });
       const payload = (await res.json()) as { ok?: boolean; error?: string; relativePath?: string };
@@ -1929,34 +3108,47 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
         setSavedThemeId(themeId);
       }
       setStatus(`Saved ${payload.relativePath ?? page?.relativePath ?? "page.mdx"}`);
-    } catch (e) { setStatus(e instanceof Error ? e.message : "Could not save."); }
-    finally { setSaving(false); }
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Could not save.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function publishPreview() {
     setStatus("Publishing…");
     try {
       const res = await fetch(createDevToolsUrl(api, "publish", pathname), {
-        method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" },
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ path: pathname, file: page?.relativePath, content: serialized }),
       });
       const payload = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
       if (!res.ok) throw new Error(payload.error || "Could not publish.");
       setStatus(payload.url ? `Preview: ${payload.url}` : "Preview published.");
-    } catch (e) { setStatus(e instanceof Error ? e.message : "Could not publish."); }
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Could not publish.");
+    }
   }
 
   // ── theme ──
 
   function applyTheme(t: ThemeDef) {
     setThemeId(t.id);
-    setThemeVars({ "--color-fd-primary": t.accent, "--color-fd-background": t.bg, "--color-fd-foreground": t.fg, "--color-fd-border": t.border, "--color-fd-muted": t.muted, "--color-fd-muted-foreground": t.dark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" });
+    setThemeVars({
+      "--color-fd-primary": t.accent,
+      "--color-fd-background": t.bg,
+      "--color-fd-foreground": t.fg,
+      "--color-fd-border": t.border,
+      "--color-fd-muted": t.muted,
+      "--color-fd-muted-foreground": t.dark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)",
+    });
     setShowThemes(false);
     themeStyleRef.current?.remove();
     themeStyleRef.current = null;
     fetch(`/themes/${t.id}.css`)
-      .then(r => r.ok ? r.text() : Promise.reject())
-      .then(css => {
+      .then((r) => (r.ok ? r.text() : Promise.reject()))
+      .then((css) => {
         const el = document.createElement("style");
         el.dataset.dtTheme = t.id;
         el.textContent = css;
@@ -1975,7 +3167,7 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
       prev[key] = html.style.getPropertyValue(key);
       html.style.setProperty(key, value);
     }
-    const theme = THEMES.find(t => t.id === themeId);
+    const theme = THEMES.find((t) => t.id === themeId);
     if (theme?.dark) html.classList.add("dark");
     else html.classList.remove("dark");
     return () => {
@@ -1989,16 +3181,16 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
   }, [open, themeVars, themeId]);
 
   // ── active block ──
-  const activeBlock = doc && activeIndex !== null ? doc.blocks[activeIndex] ?? null : null;
+  const activeBlock = doc && activeIndex !== null ? (doc.blocks[activeIndex] ?? null) : null;
 
   // Classify the clicked DOM element so we route to the right editor:
   //   h1-h6 / p → InlineBlockEditor  (opaque text overlay)
   //   figure    → InlineCodeEditor   (opaque code overlay with editable fields)
   //   anything else → FloatingBlockEditor (floating panel beside the block)
-  const domTag         = (activeElRef.current?.tagName ?? "").toLowerCase();
+  const domTag = (activeElRef.current?.tagName ?? "").toLowerCase();
   const domIsTextBlock = /^h[1-6]$|^p$/.test(domTag);
   const domIsCodeBlock = domTag === "figure";
-  const domIsInline    = domIsTextBlock || domIsCodeBlock;
+  const domIsInline = domIsTextBlock || domIsCodeBlock;
 
   // ── render ──
 
@@ -2007,7 +3199,12 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
       <style>{CSS}</style>
 
       {!open && (
-        <button type="button" className="dt-trigger dt" aria-label="Open Docs DevTools" onClick={() => setOpen(true)}>
+        <button
+          type="button"
+          className="dt-trigger dt"
+          aria-label="Open Docs DevTools"
+          onClick={() => setOpen(true)}
+        >
           <span className="dt-dot" aria-hidden="true" />
           Edit page
         </button>
@@ -2018,7 +3215,9 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
           {/* ── Top toolbar ── */}
           <div role="banner" aria-label="Docs DevTools" className="dt-bar dt">
             <div className="dt-bar-logo">
-              <div className="dt-bar-emblem" aria-hidden="true">DT</div>
+              <div className="dt-bar-emblem" aria-hidden="true">
+                DT
+              </div>
               <span className="dt-bar-wordmark">DevTools</span>
             </div>
             <div className="dt-bar-file">
@@ -2028,37 +3227,110 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
             <div className="dt-bar-actions">
               {/* Theme switcher */}
               <div style={{ position: "relative" }}>
-                <button type="button" className="dt-btn" data-active={showThemes ? "" : undefined} onClick={() => setShowThemes(s => !s)}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                <button
+                  type="button"
+                  className="dt-btn"
+                  data-active={showThemes ? "" : undefined}
+                  onClick={() => setShowThemes((s) => !s)}
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    aria-hidden="true"
+                  >
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                  </svg>
                   <span>Theme</span>
                 </button>
-                {showThemes && <ThemePopover active={themeId} onSelect={applyTheme} onClose={() => setShowThemes(false)} />}
+                {showThemes && (
+                  <ThemePopover
+                    active={themeId}
+                    onSelect={applyTheme}
+                    onClose={() => setShowThemes(false)}
+                  />
+                )}
               </div>
 
               <div className="dt-btn-sep" />
 
               {/* Source editor button */}
-              <button type="button" className="dt-btn" onClick={() => { setDraft(serialized); setShowSource(s => !s); }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              <button
+                type="button"
+                className="dt-btn"
+                onClick={() => {
+                  setDraft(serialized);
+                  setShowSource((s) => !s);
+                }}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                >
+                  <polyline points="16 18 22 12 16 6" />
+                  <polyline points="8 6 2 12 8 18" />
+                </svg>
                 <span>Source</span>
               </button>
 
               {/* Add block */}
-              <button ref={addBtnRef} type="button" className="dt-btn" disabled={!doc || loading} onClick={() => {
-                const rect = addBtnRef.current?.getBoundingClientRect();
-                if (rect) setAddPalette({ x: Math.max(6, rect.left - 130), y: rect.bottom + 6 });
-              }}>
-                <Plus /><span>Add</span>
+              <button
+                ref={addBtnRef}
+                type="button"
+                className="dt-btn"
+                disabled={!doc || loading}
+                onClick={() => {
+                  const rect = addBtnRef.current?.getBoundingClientRect();
+                  if (rect) setAddPalette({ x: Math.max(6, rect.left - 130), y: rect.bottom + 6 });
+                }}
+              >
+                <Plus />
+                <span>Add</span>
               </button>
 
               <div className="dt-btn-sep" />
-              <button type="button" className="dt-btn" onClick={loadPage} disabled={loading}>{loading ? "Loading…" : "Reload"}</button>
-              <button type="button" className="dt-btn" onClick={publishPreview} disabled={saving || loading}>Preview</button>
-              <button type="button" className="dt-btn" data-primary="" onClick={applyChanges} disabled={saving || loading || (!doc && !draft)}>
+              <button type="button" className="dt-btn" onClick={loadPage} disabled={loading}>
+                {loading ? "Loading…" : "Reload"}
+              </button>
+              <button
+                type="button"
+                className="dt-btn"
+                onClick={publishPreview}
+                disabled={saving || loading}
+              >
+                Preview
+              </button>
+              <button
+                type="button"
+                className="dt-btn"
+                data-primary=""
+                onClick={applyChanges}
+                disabled={saving || loading || (!doc && !draft)}
+              >
                 {saving ? "Saving…" : "Save"}
               </button>
               <div className="dt-btn-sep" />
-              <button type="button" className="dt-btn" onClick={() => { closeEditor(); setOpen(false); }}>✕</button>
+              <button
+                type="button"
+                className="dt-btn"
+                onClick={() => {
+                  closeEditor();
+                  setOpen(false);
+                }}
+              >
+                ✕
+              </button>
             </div>
           </div>
 
@@ -2069,47 +3341,61 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
                Hidden only when an inline opaque cover is showing (InlineBlockEditor
                or InlineCodeEditor), since those already visually replace the block. ── */}
           {activeRect && !domIsInline && (
-            <div className="dt-active-highlight dt" style={{
-              top:    activeRect.top    - 5,
-              left:   activeRect.left   - 5,
-              width:  activeRect.width  + 10,
-              height: activeRect.height + 10,
-            }} />
+            <div
+              className="dt-active-highlight dt"
+              style={{
+                top: activeRect.top - 5,
+                left: activeRect.left - 5,
+                width: activeRect.width + 10,
+                height: activeRect.height + 10,
+              }}
+            />
           )}
 
           {/* ── InlineBlockEditor — opaque overlay for heading / paragraph ── */}
-          {activeBlock && activeRect && activeElRef.current &&
+          {activeBlock &&
+            activeRect &&
+            activeElRef.current &&
             domIsTextBlock &&
             (activeBlock.type === "heading" || activeBlock.type === "paragraph") && (
-            <InlineBlockEditor
-              block={activeBlock as Extract<MdxBlock, { type: "heading" | "paragraph" }>}
-              rect={activeRect}
-              el={activeElRef.current}
-              index={activeIndex!}
-              total={doc!.blocks.length}
-              onChange={next => updateBlock(activeBlock.id, next)}
-              onClose={closeEditor}
-              onMove={dir => moveBlock(activeBlock.id, dir)}
-              onDuplicate={() => duplicateBlock(activeBlock)}
-              onDelete={() => { deleteBlock(activeBlock.id); closeEditor(); }}
-            />
-          )}
+              <InlineBlockEditor
+                block={activeBlock as Extract<MdxBlock, { type: "heading" | "paragraph" }>}
+                rect={activeRect}
+                el={activeElRef.current}
+                index={activeIndex!}
+                total={doc!.blocks.length}
+                onChange={(next) => updateBlock(activeBlock.id, next)}
+                onClose={closeEditor}
+                onMove={(dir) => moveBlock(activeBlock.id, dir)}
+                onDuplicate={() => duplicateBlock(activeBlock)}
+                onDelete={() => {
+                  deleteBlock(activeBlock.id);
+                  closeEditor();
+                }}
+              />
+            )}
 
           {/* ── InlineCodeEditor — opaque overlay for code blocks (figure) ── */}
-          {activeBlock && activeRect && activeElRef.current &&
-            domIsCodeBlock && activeBlock.type === "code" && (
-            <InlineCodeEditor
-              block={activeBlock as Extract<MdxBlock, { type: "code" }>}
-              rect={activeRect}
-              index={activeIndex!}
-              total={doc!.blocks.length}
-              onChange={next => updateBlock(activeBlock.id, next)}
-              onClose={closeEditor}
-              onMove={dir => moveBlock(activeBlock.id, dir)}
-              onDuplicate={() => duplicateBlock(activeBlock)}
-              onDelete={() => { deleteBlock(activeBlock.id); closeEditor(); }}
-            />
-          )}
+          {activeBlock &&
+            activeRect &&
+            activeElRef.current &&
+            domIsCodeBlock &&
+            activeBlock.type === "code" && (
+              <InlineCodeEditor
+                block={activeBlock as Extract<MdxBlock, { type: "code" }>}
+                rect={activeRect}
+                index={activeIndex!}
+                total={doc!.blocks.length}
+                onChange={(next) => updateBlock(activeBlock.id, next)}
+                onClose={closeEditor}
+                onMove={(dir) => moveBlock(activeBlock.id, dir)}
+                onDuplicate={() => duplicateBlock(activeBlock)}
+                onDelete={() => {
+                  deleteBlock(activeBlock.id);
+                  closeEditor();
+                }}
+              />
+            )}
 
           {/* ── FloatingBlockEditor — for callout / tabs / hoverlink / prompt / raw
                and any DOM element we couldn't classify as inline               ── */}
@@ -2120,54 +3406,109 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
               index={activeIndex!}
               total={doc!.blocks.length}
               onClose={closeEditor}
-              onChange={next => updateBlock(activeBlock.id, next)}
-              onMove={dir => moveBlock(activeBlock.id, dir)}
+              onChange={(next) => updateBlock(activeBlock.id, next)}
+              onMove={(dir) => moveBlock(activeBlock.id, dir)}
               onDuplicate={() => duplicateBlock(activeBlock)}
-              onDelete={() => { deleteBlock(activeBlock.id); closeEditor(); }}
-              onInsertAfter={type => { addBlockAt(type, activeIndex! + 1); closeEditor(); }}
+              onDelete={() => {
+                deleteBlock(activeBlock.id);
+                closeEditor();
+              }}
+              onInsertAfter={(type) => {
+                addBlockAt(type, activeIndex! + 1);
+                closeEditor();
+              }}
             />
           )}
 
           {/* ── Source modal ── */}
-          {showSource && createPortal(
-            <div className="dt-float-editor dt" style={{ top: 70, left: "50%", transform: "translateX(-50%)", width: "min(720px,95vw)", maxHeight: "80vh" }}>
-              <div className="dt-float-editor-hdr">
-                <span className="dt-float-editor-type">Source MDX</span>
-                <div style={{ flex: 1 }} />
-                <button type="button" className="dt-btn" data-primary="" onClick={() => { setDoc(parseMdxDocument(draft)); setStatus("Applied source"); setShowSource(false); }}>Apply</button>
-                <button type="button" className="dt-float-btn" onClick={() => setShowSource(false)} style={{ fontSize: 13 }}>✕</button>
-              </div>
-              <div className="dt-float-editor-body" style={{ padding: "10px" }}>
-                <textarea
-                  className="dt-source-ta"
-                  style={{ minHeight: "60vh" }}
-                  value={draft}
-                  onChange={e => setDraft(e.currentTarget.value)}
-                  spellCheck={false}
-                />
-              </div>
-            </div>,
-            document.body
-          )}
+          {showSource &&
+            createPortal(
+              <div
+                className="dt-float-editor dt"
+                style={{
+                  top: 70,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: "min(720px,95vw)",
+                  maxHeight: "80vh",
+                }}
+              >
+                <div className="dt-float-editor-hdr">
+                  <span className="dt-float-editor-type">Source MDX</span>
+                  <div style={{ flex: 1 }} />
+                  <button
+                    type="button"
+                    className="dt-btn"
+                    data-primary=""
+                    onClick={() => {
+                      setDoc(parseMdxDocument(draft));
+                      setStatus("Applied source");
+                      setShowSource(false);
+                    }}
+                  >
+                    Apply
+                  </button>
+                  <button
+                    type="button"
+                    className="dt-float-btn"
+                    onClick={() => setShowSource(false)}
+                    style={{ fontSize: 13 }}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="dt-float-editor-body" style={{ padding: "10px" }}>
+                  <textarea
+                    className="dt-source-ta"
+                    style={{ minHeight: "60vh" }}
+                    value={draft}
+                    onChange={(e) => setDraft(e.currentTarget.value)}
+                    spellCheck={false}
+                  />
+                </div>
+              </div>,
+              document.body,
+            )}
 
           {/* ── Add block palette ── */}
-          {addPalette && createPortal(
-            <InsertPalette
-              x={addPalette.x}
-              y={addPalette.y}
-              onInsert={type => { appendBlock(type); setAddPalette(null); }}
-              onClose={() => setAddPalette(null)}
-            />,
-            document.body
-          )}
+          {addPalette &&
+            createPortal(
+              <InsertPalette
+                x={addPalette.x}
+                y={addPalette.y}
+                onInsert={(type) => {
+                  appendBlock(type);
+                  setAddPalette(null);
+                }}
+                onClose={() => setAddPalette(null)}
+              />,
+              document.body,
+            )}
 
           {/* Loading indicator when no blocks yet */}
-          {loading && createPortal(
-            <div className="dt" style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", background: "rgba(9,9,13,0.92)", color: "#fff", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 600, zIndex: 2147483003, backdropFilter: "blur(12px)" }}>
-              Loading editor…
-            </div>,
-            document.body
-          )}
+          {loading &&
+            createPortal(
+              <div
+                className="dt"
+                style={{
+                  position: "fixed",
+                  bottom: 16,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  background: "rgba(9,9,13,0.92)",
+                  color: "#fff",
+                  borderRadius: 8,
+                  padding: "8px 16px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  zIndex: 2147483003,
+                  backdropFilter: "blur(12px)",
+                }}
+              >
+                Loading editor…
+              </div>,
+              document.body,
+            )}
 
           {/* ── Sidebar item editor ── */}
           {sidebarItem && (
