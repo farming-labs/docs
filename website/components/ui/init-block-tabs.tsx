@@ -71,7 +71,7 @@ export default function InitBlockTabs() {
                 </div>
               </div>
             </div>
-            <div className="relative z-[999] mt-auto flex justify-end">
+            <div className="relative z-[999] -mb-px mt-auto flex justify-end">
               <CopyCommand
                 className="backdrop-blur-sm md:backdrop-blur-none border-r-0 border-b-0 sm:border-b"
                 command="pnpx @farming-labs/docs init"
@@ -96,7 +96,7 @@ export default function InitBlockTabs() {
                 </div>
               </div>
             </div>
-            <div className="relative z-[999] mt-auto flex justify-end">
+            <div className="relative z-[999] -mb-px mt-auto flex justify-end">
               <CopyCommandTemplate className="backdrop-blur-sm md:backdrop-blur-none border-r-0 border-b-0 sm:border-b" />
             </div>
           </>
@@ -116,7 +116,7 @@ export default function InitBlockTabs() {
                 </div>
               </div>
             </div>
-            <div className="relative z-[999] mt-auto flex justify-end">
+            <div className="relative z-[999] -mb-px mt-auto flex justify-end">
               <CopyCommand
                 className="backdrop-blur-sm md:backdrop-blur-none border-r-0 border-b-0 sm:border-b"
                 command="Copy agent-friendly docs prompt"
