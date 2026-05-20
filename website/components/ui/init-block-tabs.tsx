@@ -111,7 +111,7 @@ export default function InitBlockTabs() {
                     expose the right machine-readable surfaces.
                   </p>
                   <p className="text-[11px] font-mono text-black/30 dark:text-white/30 uppercase tracking-wider">
-                    Raw prompt, no website or brand inputs
+                    Project-aware instructions for cleaner agent handoffs
                   </p>
                 </div>
               </div>
@@ -119,7 +119,7 @@ export default function InitBlockTabs() {
             <div className="relative z-[999] -mb-px mt-auto flex justify-end">
               <CopyCommand
                 className="backdrop-blur-sm md:backdrop-blur-none border-r-0 border-b-0 sm:border-b"
-                command="copy prompt"
+                command="copy agent prompt"
                 copyText={AGENT_FRIENDLY_DOCS_PROMPT}
                 icon="sparkles"
               />
