@@ -170,7 +170,8 @@ export function PageActions({
   const handleOpen = useCallback(
     (provider: SerializedProvider) => {
       const template = provider.urlTemplate;
-      if (/\{githubUrl\}/.test(template) && !githubFileUrl) {
+      const githubUrl = githubFileUrl ?? "";
+      if (/\{githubUrl\}/.test(template) && !githubUrl) {
         setDropdownOpen(false);
         return;
       }
@@ -178,20 +179,24 @@ export function PageActions({
       const sourceUrl = `${window.location.origin}${pathname}.mdx`;
       const markdownUrl = pageUrlToMarkdownUrl(pageUrl);
       const target = provider.target ?? openDocsTarget;
+      if (target === "github" && !githubUrl) {
+        setDropdownOpen(false);
+        return;
+      }
       const targetUrl =
         target === "markdown"
           ? markdownUrl
           : target === "source"
             ? sourceUrl
             : target === "github"
-              ? (githubFileUrl ?? pageUrl)
+              ? githubUrl
               : pageUrl;
       const prompt = fillPromptTemplate(provider.prompt ?? openDocsPrompt, {
         url: targetUrl,
         pageUrl,
         markdownUrl,
         sourceUrl,
-        githubUrl: githubFileUrl ?? "",
+        githubUrl,
       });
       let url = template
         .replace(/\{prompt\}/g, encodeURIComponent(prompt))
@@ -200,7 +205,7 @@ export function PageActions({
         .replace(/\{markdownUrl\}/g, encodeURIComponent(markdownUrl))
         .replace(/\{sourceUrl\}/g, encodeURIComponent(sourceUrl))
         .replace(/\{mdxUrl\}/g, encodeURIComponent(sourceUrl))
-        .replace(/\{githubUrl\}/g, githubFileUrl ?? "");
+        .replace(/\{githubUrl\}/g, githubUrl);
       if (analytics) {
         emitClientAnalyticsEvent({
           type: "page_action_open_docs",
