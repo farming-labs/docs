@@ -13,7 +13,7 @@ order: 1
 ---
 
 import { WebsiteThemePrompt } from "@/components/website-theme-prompt";
-import { AGENT_FRIENDLY_DOCS_PROMPT } from "@/lib/agent-friendly-docs-prompt";
+import { AGENT_FRIENDLY_DOCS_WEBSITE_PROMPT } from "@/lib/agent-friendly-docs-prompt";
 
 # How to Write Agent-Friendly Docs
 
@@ -50,12 +50,16 @@ When authoring agent-friendly docs with `@farming-labs/docs`, prioritize these i
 </Agent>
 
 <WebsiteThemePrompt
-  copyMode="raw"
-  title="Copy the agent-friendly docs prompt"
-  description="Paste this into your coding agent when you want docs that are structured for humans and agents."
+  title="Bootstrap agent-friendly docs from my website"
+  description="Copy this into your coding agent when you want docs that are structured for humans and agents."
+  dialogTitle="Create an agent-friendly docs prompt"
+  dialogDescription="Add your website URL and we will fetch Brandfetch details before copying it."
 >
-{AGENT_FRIENDLY_DOCS_PROMPT}
+{AGENT_FRIENDLY_DOCS_WEBSITE_PROMPT}
 </WebsiteThemePrompt>
+
+The copy button asks for the website URL, docs entry folder, and framework, then fills those
+details into the prompt before copying.
 
 ## Start With The Human Page
 
