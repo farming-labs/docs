@@ -777,6 +777,12 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         config.pageActions?.openDocs && typeof config.pageActions.openDocs === "object"
           ? config.pageActions.openDocs.providers
           : undefined,
+        config.pageActions?.openDocs && typeof config.pageActions.openDocs === "object"
+          ? {
+              target: config.pageActions.openDocs.target,
+              prompt: config.pageActions.openDocs.prompt,
+            }
+          : undefined,
       ),
     });
 

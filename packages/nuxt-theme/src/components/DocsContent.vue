@@ -6,9 +6,20 @@ import { toDocsMarkdownUrl } from "@farming-labs/docs";
 import DocsPage from "./DocsPage.vue";
 
 const DEFAULT_OPEN_PROVIDERS = [
-  { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?hints=search&q=Read+{url}.md,+I+want+to+ask+questions+about+it." },
-  { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+{url}.md,+I+want+to+ask+questions+about+it." },
+  { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={prompt}" },
+  { name: "Claude", urlTemplate: "https://claude.ai/new?q={prompt}" },
 ];
+
+const DEFAULT_OPEN_PROMPT = "Read this documentation: {url}";
+const DEFAULT_OPEN_TARGET = "markdown";
+const OPEN_PROVIDER_PRESETS: Record<string, { name: string; urlTemplate: string; target?: string }> = {
+  chatgpt: { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={prompt}" },
+  claude: { name: "Claude", urlTemplate: "https://claude.ai/new?q={prompt}" },
+  cursor: { name: "Cursor", urlTemplate: "https://cursor.com/link/prompt?text={prompt}" },
+  gemini: { name: "Gemini", urlTemplate: "https://gemini.google.com/app?q={prompt}" },
+  copilot: { name: "Copilot", urlTemplate: "https://github.com/copilot?prompt={prompt}" },
+  github: { name: "GitHub", urlTemplate: "{githubUrl}", target: "github" },
+};
 
 const props = defineProps<{
   data: {
@@ -100,6 +111,30 @@ const markdownAlternateHref = computed(() =>
   props.config?.staticExport ? null : toDocsMarkdownUrl(pageUrl.value, { locale: props.data.locale }),
 );
 
+function resolveMarkdownUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    const pathname = parsed.pathname.replace(/\/+$/, "") || parsed.pathname;
+    parsed.pathname = pathname.endsWith(".md") ? pathname : `${pathname}.md`;
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    const clean = url.replace(/[?#].*$/, "").replace(/\/+$/, "") || url;
+    return clean.endsWith(".md") ? clean : `${clean}.md`;
+  }
+}
+
+function fillOpenPrompt(template: string, values: Record<string, string>) {
+  return template
+    .replace(/\{pageUrl\}/g, values.pageUrl)
+    .replace(/\{markdownUrl\}/g, values.markdownUrl)
+    .replace(/\{sourceUrl\}/g, values.sourceUrl)
+    .replace(/\{mdxUrl\}/g, values.sourceUrl)
+    .replace(/\{githubUrl\}/g, values.githubUrl)
+    .replace(/\{url\}/g, values.url);
+}
+
 const copyMarkdownEnabled = computed(() => {
   const pa = props.config?.pageActions as Record<string, unknown> | undefined;
   if (!pa) return false;
@@ -121,19 +156,38 @@ const openDocsEnabled = computed(() => {
 const openDocsProviders = computed(() => {
   const pa = props.config?.pageActions as Record<string, unknown> | undefined;
   const od = pa && typeof pa === "object" && pa.openDocs != null ? pa.openDocs : null;
+  const target = od && typeof od === "object" ? (od as { target?: string }).target : undefined;
+  const prompt = od && typeof od === "object" ? (od as { prompt?: string }).prompt : undefined;
   const list = od && typeof od === "object" && "providers" in od
-    ? (od as { providers?: Array<{ name?: string; urlTemplate?: string }> }).providers
+    ? (od as { providers?: Array<string | { id?: string; name?: string; label?: string; urlTemplate?: string; prompt?: string; target?: string; mode?: string }> }).providers
     : undefined;
   if (Array.isArray(list) && list.length > 0) {
     const mapped = list
-      .map((p) => ({
-        name: typeof p?.name === "string" ? p.name : "Open",
-        urlTemplate: typeof p?.urlTemplate === "string" ? p.urlTemplate : "",
-      }))
+      .map((p) => {
+        const id =
+          typeof p === "string" ? p.toLowerCase() : (p.id ?? p.name ?? p.label)?.toLowerCase();
+        const preset = id ? OPEN_PROVIDER_PRESETS[id] : undefined;
+        const cursorApp = id === "cursor" && typeof p === "object" && p.mode === "app";
+        const hasCustomUrlTemplate = typeof p === "object" && typeof p.urlTemplate === "string";
+        return {
+          name: typeof p === "object" ? (p.name ?? p.label ?? preset?.name ?? "Open") : (preset?.name ?? p),
+          urlTemplate:
+            hasCustomUrlTemplate
+              ? p.urlTemplate
+              : cursorApp
+                ? "cursor://anysphere.cursor-deeplink/prompt?text={prompt}"
+                : (preset?.urlTemplate ?? ""),
+          target:
+            typeof p === "object"
+              ? (p.target ?? target ?? preset?.target ?? (hasCustomUrlTemplate ? "page" : undefined))
+              : (preset?.target ?? target),
+          prompt: typeof p === "object" ? (p.prompt ?? prompt) : prompt,
+        };
+      })
       .filter((p) => p.urlTemplate.length > 0);
     if (mapped.length > 0) return mapped;
   }
-  return DEFAULT_OPEN_PROVIDERS;
+  return DEFAULT_OPEN_PROVIDERS.map((provider) => ({ ...provider, target, prompt }));
 });
 
 const pageActionsPosition = computed(() => {
@@ -282,16 +336,37 @@ function closeDropdown() {
   openDropdownMenu.value = false;
 }
 
-function openInProvider(provider: { name: string; urlTemplate: string }) {
+function openInProvider(provider: { name: string; urlTemplate: string; target?: string; prompt?: string }) {
   const pathname = route.path;
   const pageUrl = typeof window !== "undefined" ? window.location.href : "";
-  const mdxUrl = typeof window !== "undefined"
+  const sourceUrl = typeof window !== "undefined"
     ? window.location.origin + pathname + (pathname.endsWith("/") ? "page.mdx" : ".mdx")
     : "";
+  const markdownUrl = resolveMarkdownUrl(pageUrl);
   const githubUrl = props.data.editOnGithub || "";
+  const target = provider.target ?? DEFAULT_OPEN_TARGET;
+  const targetUrl =
+    target === "markdown"
+      ? markdownUrl
+      : target === "source"
+        ? sourceUrl
+        : target === "github"
+          ? githubUrl
+          : pageUrl;
+  const prompt = fillOpenPrompt(provider.prompt ?? DEFAULT_OPEN_PROMPT, {
+    url: targetUrl,
+    pageUrl,
+    markdownUrl,
+    sourceUrl,
+    githubUrl,
+  });
   const url = provider.urlTemplate
-    .replace(/\{url\}/g, encodeURIComponent(pageUrl))
-    .replace(/\{mdxUrl\}/g, encodeURIComponent(mdxUrl))
+    .replace(/\{prompt\}/g, encodeURIComponent(prompt))
+    .replace(/\{url\}/g, encodeURIComponent(targetUrl))
+    .replace(/\{pageUrl\}/g, encodeURIComponent(pageUrl))
+    .replace(/\{markdownUrl\}/g, encodeURIComponent(markdownUrl))
+    .replace(/\{sourceUrl\}/g, encodeURIComponent(sourceUrl))
+    .replace(/\{mdxUrl\}/g, encodeURIComponent(sourceUrl))
     .replace(/\{githubUrl\}/g, githubUrl);
   if (typeof window !== "undefined") window.open(url, "_blank", "noopener,noreferrer");
   closeDropdown();

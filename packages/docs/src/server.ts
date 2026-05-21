@@ -52,6 +52,9 @@ export {
   resolveSearchRequestConfig,
 } from "./search.js";
 export {
+  DEFAULT_OPEN_DOCS_PROMPT,
+  DEFAULT_OPEN_DOCS_PROVIDER_IDS,
+  DEFAULT_OPEN_DOCS_TARGET,
   DEFAULT_PROMPT_PROVIDER_TEMPLATES,
   normalizePromptProviderName,
   parsePromptStringArray,
@@ -59,6 +62,7 @@ export {
   sanitizePromptText,
   serializeDocsIcon,
   serializeDocsIconRegistry,
+  serializeOpenDocsProvider,
   serializeOpenDocsProviders,
 } from "./prompt-utils.js";
 export {
@@ -95,6 +99,7 @@ export type {
 export type {
   PromptAction,
   PromptProviderChoice,
+  SerializeOpenDocsProviderOptions,
   SerializedOpenDocsProvider,
 } from "./prompt-utils.js";
 export type {

@@ -16,6 +16,7 @@ import {
   resolvePageSidebarFolderIndexBehavior,
   toDocsMarkdownUrl,
 } from "@farming-labs/docs";
+import { serializeOpenDocsProviders } from "@farming-labs/docs/server";
 import type {
   DocsConfig,
   ThemeToggleConfig,
@@ -25,6 +26,7 @@ import type {
   AIConfig,
   OrderingItem,
   PageFrontmatter,
+  OpenDocsConfig,
 } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
@@ -969,22 +971,14 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
 
   // Serialize provider icons to HTML strings so they survive the
   // server → client component boundary.
-  const rawProviders =
-    pageActions?.openDocs &&
-    typeof pageActions.openDocs === "object" &&
-    pageActions.openDocs.providers
-      ? (pageActions.openDocs.providers as Array<{
-          name: string;
-          icon?: unknown;
-          urlTemplate: string;
-        }>)
+  const openDocsConfig =
+    pageActions?.openDocs && typeof pageActions.openDocs === "object"
+      ? (pageActions.openDocs as OpenDocsConfig)
       : undefined;
-
-  const openDocsProviders = rawProviders?.map((p) => ({
-    name: p.name,
-    urlTemplate: p.urlTemplate,
-    iconHtml: p.icon ? serializeIcon(p.icon) : undefined,
-  }));
+  const openDocsProviders = serializeOpenDocsProviders(openDocsConfig?.providers, {
+    target: openDocsConfig?.target,
+    prompt: openDocsConfig?.prompt,
+  });
 
   // GitHub config — normalize string shorthand to object
   const githubRaw = config.github;
@@ -1144,6 +1138,8 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             copyMarkdown={copyMarkdownEnabled}
             openDocs={openDocsEnabled}
             openDocsProviders={openDocsProviders as any}
+            openDocsTarget={openDocsConfig?.target}
+            openDocsPrompt={openDocsConfig?.prompt}
             pageActionsPosition={pageActionsPosition}
             pageActionsAlignment={pageActionsAlignment}
             githubUrl={githubUrl}

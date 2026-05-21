@@ -1051,17 +1051,17 @@ Action buttons shown on each docs page. See [Page Actions](/docs/customization/p
 | ------------- | ----------- | --------------------------------------------------------------------------------- |
 | `name`        | `string`    | Display name (e.g. `"ChatGPT"`, `"Claude"`)                                       |
 | `icon`        | `ReactNode` | Icon rendered next to the name                                                    |
-| `urlTemplate` | `string`    | URL template. `{url}` is replaced with the page URL, `{mdxUrl}` with the MDX URL, and `{githubUrl}` with the GitHub edit URL when `github` is configured. |
+| `target` | `"markdown" \| "page" \| "source" \| "github"` | URL inserted into `{url}` for built-in provider prompts. |
+| `prompt` | `string` | Prompt text for built-in providers. Defaults to `"Read this documentation: {url}"`. |
+| `urlTemplate` | `string` | Custom URL template. Supports `{prompt}`, `{url}`, `{pageUrl}`, `{markdownUrl}`, `{sourceUrl}`, `{mdxUrl}`, and `{githubUrl}`. |
 
 ```ts
 pageActions: {
   copyMarkdown: { enabled: true },
   openDocs: {
     enabled: true,
-    providers: [
-      { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}.md" },
-      { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+this:+{url}.md" },
-    ],
+    target: "markdown",
+    providers: ["chatgpt", "claude", "cursor"],
   },
 },
 ```

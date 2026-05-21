@@ -1520,30 +1520,25 @@ pageActions: {
   copyMarkdown: { enabled: true },
   openDocs: {
     enabled: true,
-    providers: [
-      {
-        name: "ChatGPT",
-        urlTemplate: "https://chatgpt.com/?q=Read+this:+{url}.md",
-      },
-    ],
+    target: "markdown",
+    providers: ["chatgpt", "claude", "cursor"],
   },
 },
 ```
 
-Use `openDocs: true` for the built-in ChatGPT + Claude provider list, or pass `providers` to fully customize it.
+Use `openDocs: true` for the built-in ChatGPT + Claude provider list, or pass provider strings and `target: "markdown"` to send tools directly to the public `.md` route for the page.
 
-If you use the built-in `Prompt` component, you can also add `promptUrlTemplate` to a provider so the same provider name and icon can open prompt text directly:
+For deeper customization, use provider objects. This keeps the built-in preset but opens Cursor through the app deeplink:
 
 ```ts
 pageActions: {
   openDocs: {
     enabled: true,
+    target: "markdown",
     providers: [
-      {
-        name: "Cursor",
-        urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}.md",
-        promptUrlTemplate: "https://cursor.com/link/prompt?text={prompt}",
-      },
+      "chatgpt",
+      "claude",
+      { id: "cursor", mode: "app" },
     ],
   },
 },

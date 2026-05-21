@@ -6,16 +6,34 @@ type PromptAction = "copy" | "open";
 
 export type PromptIconValue = React.ReactNode | string;
 
-export interface PromptOpenDocsProvider {
+export type PromptOpenDocsProvider =
+  | string
+  | {
+      id?: string;
+      name?: string;
+      label?: string;
+      icon?: PromptIconValue;
+      iconHtml?: string;
+      urlTemplate?: string;
+      promptUrlTemplate?: string;
+      mode?: "web" | "app";
+    };
+
+interface PromptOpenDocsProviderConfig {
+  id?: string;
   name: string;
+  label?: string;
   icon?: PromptIconValue;
-  urlTemplate: string;
+  iconHtml?: string;
+  urlTemplate?: string;
   promptUrlTemplate?: string;
+  mode?: "web" | "app";
 }
 
 interface PromptProviderChoice {
   name: string;
   icon?: PromptIconValue;
+  iconHtml?: string;
   urlTemplate: string;
 }
 
@@ -111,6 +129,14 @@ const defaultPromptProviderTemplates: Record<string, string> = {
   copilot: "https://github.com/copilot?prompt={prompt}",
 };
 
+const defaultPromptProviderLabels: Record<string, string> = {
+  chatgpt: "ChatGPT",
+  claude: "Claude",
+  cursor: "Cursor",
+  gemini: "Gemini",
+  copilot: "Copilot",
+};
+
 function normalizeProviderName(name: string): string {
   return name.trim().toLowerCase();
 }
@@ -149,14 +175,43 @@ function resolveProviderChoices(
   availableProviders?: PromptOpenDocsProvider[],
   preferredNames?: string[],
 ): PromptProviderChoice[] {
+  const configuredProviders = (availableProviders ?? [])
+    .map((provider) => {
+      if (typeof provider === "string") {
+        const normalized = normalizeProviderName(provider);
+        return {
+          normalized,
+          name: defaultPromptProviderLabels[normalized] ?? provider,
+          provider: {
+            id: provider,
+            name: defaultPromptProviderLabels[normalized] ?? provider,
+          } satisfies PromptOpenDocsProviderConfig,
+        };
+      }
+
+      const rawName = provider.name ?? provider.label ?? provider.id;
+      if (!rawName) return null;
+      const normalized = normalizeProviderName(rawName);
+      return {
+        normalized,
+        name: provider.name ?? provider.label ?? defaultPromptProviderLabels[normalized] ?? rawName,
+        provider: {
+          ...provider,
+          name:
+            provider.name ?? provider.label ?? defaultPromptProviderLabels[normalized] ?? rawName,
+        } satisfies PromptOpenDocsProviderConfig,
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
   const configuredByName = new Map(
-    (availableProviders ?? []).map((provider) => [normalizeProviderName(provider.name), provider]),
+    configuredProviders.map((entry) => [entry.normalized, entry.provider]),
   );
 
   const names =
     preferredNames && preferredNames.length > 0
       ? preferredNames
-      : (availableProviders ?? []).map((provider) => provider.name);
+      : configuredProviders.map((entry) => entry.name);
 
   const seen = new Set<string>();
   const resolved: PromptProviderChoice[] = [];
@@ -170,15 +225,21 @@ function resolveProviderChoices(
     seen.add(normalized);
 
     const configured = configuredByName.get(normalized);
+    const cursorAppTemplate =
+      normalized === "cursor" && configured?.mode === "app"
+        ? "cursor://anysphere.cursor-deeplink/prompt?text={prompt}"
+        : undefined;
     const template =
       configured?.promptUrlTemplate ??
+      cursorAppTemplate ??
       configured?.urlTemplate ??
       defaultPromptProviderTemplates[normalized];
     if (!template) continue;
 
     resolved.push({
-      name: configured?.name ?? name,
+      name: configured?.name ?? defaultPromptProviderLabels[normalized] ?? name,
       icon: configured?.icon,
+      iconHtml: configured?.iconHtml,
       urlTemplate: template,
     });
   }
@@ -398,6 +459,11 @@ export function Prompt({
                     >
                       {provider.icon && typeof provider.icon !== "string" ? (
                         <span className="fd-prompt-menu-icon">{provider.icon}</span>
+                      ) : provider.iconHtml ? (
+                        <span
+                          className="fd-prompt-menu-icon"
+                          dangerouslySetInnerHTML={{ __html: provider.iconHtml }}
+                        />
                       ) : null}
                       <span className="fd-prompt-menu-label">
                         {openLabel} {provider.name}

@@ -9,12 +9,16 @@ interface SerializedProvider {
   name: string;
   iconHtml?: string;
   urlTemplate: string;
+  target?: "markdown" | "page" | "source" | "github";
+  prompt?: string;
 }
 
 interface PageActionsProps {
   copyMarkdown?: boolean;
   openDocs?: boolean;
   providers?: SerializedProvider[];
+  openDocsTarget?: "markdown" | "page" | "source" | "github";
+  openDocsPrompt?: string;
   alignment?: "left" | "right";
   /** GitHub file URL (edit view) for the current page. Used when urlTemplate contains {githubUrl}. */
   githubFileUrl?: string | null;
@@ -87,19 +91,47 @@ const ExternalLinkIcon = () => (
 const DEFAULT_PROVIDERS: SerializedProvider[] = [
   {
     name: "ChatGPT",
-    urlTemplate:
-      "https://chatgpt.com/?hints=search&q=Read+{url}.md,+I+want+to+ask+questions+about+it.",
+    urlTemplate: "https://chatgpt.com/?q={prompt}",
   },
   {
     name: "Claude",
-    urlTemplate: "https://claude.ai/new?q=Read+{url}.md,+I+want+to+ask+questions+about+it.",
+    urlTemplate: "https://claude.ai/new?q={prompt}",
   },
 ];
+
+const DEFAULT_OPEN_DOCS_TARGET = "markdown";
+const DEFAULT_OPEN_DOCS_PROMPT = "Read this documentation: {url}";
+
+function pageUrlToMarkdownUrl(pageUrl: string): string {
+  try {
+    const url = new URL(pageUrl);
+    const pathname = url.pathname.replace(/\/+$/, "") || url.pathname;
+    url.pathname = pathname.endsWith(".md") ? pathname : `${pathname}.md`;
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    const clean = pageUrl.replace(/[?#].*$/, "").replace(/\/+$/, "") || pageUrl;
+    return clean.endsWith(".md") ? clean : `${clean}.md`;
+  }
+}
+
+function fillPromptTemplate(template: string, values: Record<string, string>): string {
+  return template
+    .replace(/\{pageUrl\}/g, values.pageUrl)
+    .replace(/\{markdownUrl\}/g, values.markdownUrl)
+    .replace(/\{sourceUrl\}/g, values.sourceUrl)
+    .replace(/\{mdxUrl\}/g, values.sourceUrl)
+    .replace(/\{githubUrl\}/g, values.githubUrl)
+    .replace(/\{url\}/g, values.url);
+}
 
 export function PageActions({
   copyMarkdown,
   openDocs,
   providers,
+  openDocsTarget = DEFAULT_OPEN_DOCS_TARGET,
+  openDocsPrompt = DEFAULT_OPEN_DOCS_PROMPT,
   alignment = "left",
   githubFileUrl,
   analytics = false,
@@ -142,10 +174,31 @@ export function PageActions({
         return;
       }
       const pageUrl = window.location.href;
-      const mdxUrl = `${window.location.origin}${pathname}.mdx`;
+      const sourceUrl = `${window.location.origin}${pathname}.mdx`;
+      const markdownUrl = pageUrlToMarkdownUrl(pageUrl);
+      const target = provider.target ?? openDocsTarget;
+      const targetUrl =
+        target === "markdown"
+          ? markdownUrl
+          : target === "source"
+            ? sourceUrl
+            : target === "github"
+              ? (githubFileUrl ?? "")
+              : pageUrl;
+      const prompt = fillPromptTemplate(provider.prompt ?? openDocsPrompt, {
+        url: targetUrl,
+        pageUrl,
+        markdownUrl,
+        sourceUrl,
+        githubUrl: githubFileUrl ?? "",
+      });
       let url = template
-        .replace(/\{url\}/g, encodeURIComponent(pageUrl))
-        .replace(/\{mdxUrl\}/g, encodeURIComponent(mdxUrl))
+        .replace(/\{prompt\}/g, encodeURIComponent(prompt))
+        .replace(/\{url\}/g, encodeURIComponent(targetUrl))
+        .replace(/\{pageUrl\}/g, encodeURIComponent(pageUrl))
+        .replace(/\{markdownUrl\}/g, encodeURIComponent(markdownUrl))
+        .replace(/\{sourceUrl\}/g, encodeURIComponent(sourceUrl))
+        .replace(/\{mdxUrl\}/g, encodeURIComponent(sourceUrl))
         .replace(/\{githubUrl\}/g, githubFileUrl ?? "");
       if (analytics) {
         emitClientAnalyticsEvent({
@@ -160,7 +213,7 @@ export function PageActions({
       window.open(url, "_blank", "noopener,noreferrer");
       setDropdownOpen(false);
     },
-    [analytics, pathname, githubFileUrl],
+    [analytics, pathname, githubFileUrl, openDocsPrompt, openDocsTarget],
   );
 
   // Close dropdown on click outside

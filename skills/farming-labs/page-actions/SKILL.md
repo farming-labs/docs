@@ -1,6 +1,6 @@
 ---
 name: page-actions
-description: Configure page actions in @farming-labs/docs — Copy Markdown and Open in LLM buttons. Use when enabling copyMarkdown, openDocs, custom providers, urlTemplate placeholders ({url}, {mdxUrl}, {githubUrl}), `{url}.md` markdown route patterns, alignment, or position (above-title, below-title).
+description: Configure page actions in @farming-labs/docs — Copy Markdown and Open in LLM buttons. Use when enabling copyMarkdown, openDocs, provider presets, target markdown/page/source/github, prompts, custom urlTemplate placeholders, alignment, or position (above-title, below-title).
 ---
 
 # @farming-labs/docs — Page Actions
@@ -86,7 +86,7 @@ pageActions: {
 
 ## Open in LLM (Open in...)
 
-The **Open in...** dropdown lets users send the current page to an LLM or tool. Each provider has a link that can include the page URL (and optionally GitHub edit URL) as context.
+The **Open in...** dropdown lets users send the current page to an LLM or tool. Prefer provider strings plus `target: "markdown"` for agent-ready links.
 
 ### pageActions.openDocs
 
@@ -106,23 +106,49 @@ When `true`, the built-in provider list is **ChatGPT** and **Claude**.
 
 ### pageActions.openDocs.providers
 
-Custom list of providers. Overrides the default list. Each provider has:
+Custom list of providers. Overrides the default list. Built-in ids are `"chatgpt"`, `"claude"`, `"cursor"`, `"gemini"`, `"copilot"`, and `"github"`.
 
 ```ts
-interface OpenDocsProvider {
-  name: string;      // Display name (e.g. "ChatGPT", "Claude")
-  icon?: ReactNode;  // Optional icon element
-  urlTemplate: string; // URL template; placeholders are replaced
-  promptUrlTemplate?: string; // Optional built-in Prompt target; `{prompt}` is replaced
+pageActions: {
+  openDocs: {
+    enabled: true,
+    target: "markdown",
+    providers: ["chatgpt", "claude", "cursor"],
+  },
 }
+```
+
+### pageActions.openDocs.target
+
+Controls which URL goes into `{url}` for built-in provider prompts:
+
+| Value | Meaning |
+| ----- | ------- |
+| `"markdown"` | Public `.md` route for the page (default) |
+| `"page"` | Rendered docs page URL |
+| `"source"` | Source-style `.mdx` URL |
+| `"github"` | GitHub edit URL when `github` config exists |
+
+### pageActions.openDocs.prompt
+
+Prompt text sent to built-in providers. Default:
+
+```ts
+"Read this documentation: {url}"
 ```
 
 ### URL template placeholders
 
+Use `urlTemplate` only for custom providers or legacy configs.
+
 | Placeholder | Replaced with |
 | ----------- | -------------- |
-| `{url}` | Current page URL (e.g. `https://docs.example.com/docs/installation`) |
-| `{mdxUrl}` | Raw `.mdx` source URL for the page |
+| `{prompt}` | Resolved prompt text |
+| `{url}` | Selected target URL |
+| `{pageUrl}` | Rendered docs page URL |
+| `{markdownUrl}` | Public `.md` route for the page |
+| `{sourceUrl}` | Source-style `.mdx` URL |
+| `{mdxUrl}` | Alias for `{sourceUrl}` |
 | `{githubUrl}` | GitHub **edit** URL for the current page. Requires `github` in config. Use `urlTemplate: "{githubUrl}"` for "Open in GitHub". |
 
 For the built-in `Prompt` MDX component, `promptUrlTemplate` can use:
@@ -131,8 +157,7 @@ For the built-in `Prompt` MDX component, `promptUrlTemplate` can use:
 | ----------- | -------------- |
 | `{prompt}` | Prompt text from the Prompt card |
 
-If the project exposes machine-readable markdown routes, use `{url}.md` when you want a link to the
-public page markdown instead of the raw source file. In Next.js, that route can return a sibling
+`target: "markdown"` uses the public page markdown route. In Next.js, that route can return a sibling
 `agent.md` when the page has one. HTTP clients that can send custom headers can also request the
 normal page URL with `Accept: text/markdown` for the same markdown response.
 
@@ -142,23 +167,18 @@ normal page URL with `Accept: text/markdown` for the same markdown response.
 pageActions: {
   openDocs: {
     enabled: true,
+    target: "markdown",
+    prompt: "Use this documentation while editing the codebase: {url}",
     providers: [
+      "chatgpt",
+      "claude",
+      { id: "cursor", mode: "app" },
       {
-        name: "ChatGPT",
-        urlTemplate: "https://chatgpt.com/?q=Read+this+documentation:+{url}.md",
+        name: "Internal AI",
+        urlTemplate: "https://internal.example/new?prompt={prompt}",
+        prompt: "Read this documentation: {markdownUrl}",
       },
-      {
-        name: "Claude",
-        urlTemplate: "https://claude.ai/new?q=Read+this+documentation:+{url}.md",
-      },
-      {
-        name: "Cursor",
-        urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}.md",
-      },
-      {
-        name: "GitHub",
-        urlTemplate: "{githubUrl}",
-      },
+      { id: "github" },
     ],
   },
 }
@@ -166,23 +186,7 @@ pageActions: {
 
 For `{githubUrl}` to work, the top-level `github` config must be set (e.g. `github: { url: "https://github.com/owner/repo", directory: "website" }`).
 
-**Cursor deeplink:** The web example uses `https://cursor.com/link/prompt?text=...`. To open the Cursor app directly instead, use `cursor://anysphere.cursor-deeplink/prompt?text=Read+this+documentation:+{url}.md`.
-
-Example using the public markdown route:
-
-```ts
-pageActions: {
-  openDocs: {
-    enabled: true,
-    providers: [
-      {
-        name: "ChatGPT",
-        urlTemplate: "https://chatgpt.com/?q=Read+this+page:+{url}.md",
-      },
-    ],
-  },
-}
-```
+Legacy providers with `name` and `urlTemplate` still work. For those custom URL templates, `{url}` keeps the previous page-URL behavior unless `target` is explicitly set.
 
 ---
 

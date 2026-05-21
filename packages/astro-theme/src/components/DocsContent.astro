@@ -50,27 +50,57 @@ const openDocsEnabled = (() => {
 })();
 
 const DEFAULT_OPEN_PROVIDERS = [
-  { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?hints=search&q=Read+{url}.md,+I+want+to+ask+questions+about+it." },
-  { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+{url}.md,+I+want+to+ask+questions+about+it." },
+  { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={prompt}" },
+  { name: "Claude", urlTemplate: "https://claude.ai/new?q={prompt}" },
 ];
+
+const DEFAULT_OPEN_PROMPT = "Read this documentation: {url}";
+const DEFAULT_OPEN_TARGET = "markdown";
+const OPEN_PROVIDER_PRESETS: Record<string, { name: string; urlTemplate: string; target?: string }> = {
+  chatgpt: { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={prompt}" },
+  claude: { name: "Claude", urlTemplate: "https://claude.ai/new?q={prompt}" },
+  cursor: { name: "Cursor", urlTemplate: "https://cursor.com/link/prompt?text={prompt}" },
+  gemini: { name: "Gemini", urlTemplate: "https://gemini.google.com/app?q={prompt}" },
+  copilot: { name: "Copilot", urlTemplate: "https://github.com/copilot?prompt={prompt}" },
+  github: { name: "GitHub", urlTemplate: "{githubUrl}", target: "github" },
+};
 
 const openDocsProviders = (() => {
   const pa = config?.pageActions;
   const od = pa && typeof pa === "object" && pa.openDocs != null ? pa.openDocs : null;
+  const target = od && typeof od === "object" ? (od as { target?: string }).target : undefined;
+  const prompt = od && typeof od === "object" ? (od as { prompt?: string }).prompt : undefined;
   const list =
     od && typeof od === "object" && "providers" in od
-      ? (od as { providers?: Array<{ name?: string; urlTemplate?: string }> }).providers
+      ? (od as { providers?: Array<string | { id?: string; name?: string; label?: string; urlTemplate?: string; prompt?: string; target?: string; mode?: string }> }).providers
       : undefined;
   if (Array.isArray(list) && list.length > 0) {
     const mapped = list
-      .map((p) => ({
-        name: typeof p?.name === "string" ? p.name : "Open",
-        urlTemplate: typeof (p as { urlTemplate?: string })?.urlTemplate === "string" ? (p as { urlTemplate: string }).urlTemplate : "",
-      }))
+      .map((p) => {
+        const id =
+          typeof p === "string" ? p.toLowerCase() : (p.id ?? p.name ?? p.label)?.toLowerCase();
+        const preset = id ? OPEN_PROVIDER_PRESETS[id] : undefined;
+        const cursorApp = id === "cursor" && typeof p === "object" && p.mode === "app";
+        const hasCustomUrlTemplate = typeof p === "object" && typeof p.urlTemplate === "string";
+        return {
+          name: typeof p === "object" ? (p.name ?? p.label ?? preset?.name ?? "Open") : (preset?.name ?? p),
+          urlTemplate:
+            hasCustomUrlTemplate
+              ? p.urlTemplate
+              : cursorApp
+                ? "cursor://anysphere.cursor-deeplink/prompt?text={prompt}"
+                : (preset?.urlTemplate ?? ""),
+          target:
+            typeof p === "object"
+              ? (p.target ?? target ?? preset?.target ?? (hasCustomUrlTemplate ? "page" : undefined))
+              : (preset?.target ?? target),
+          prompt: typeof p === "object" ? (p.prompt ?? prompt) : prompt,
+        };
+      })
       .filter((p) => p.urlTemplate.length > 0);
     if (mapped.length > 0) return mapped;
   }
-  return DEFAULT_OPEN_PROVIDERS;
+  return DEFAULT_OPEN_PROVIDERS.map((provider) => ({ ...provider, target, prompt }));
 })();
 
 const pathname = Astro.url.pathname;
@@ -197,6 +227,8 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
                 data-open-provider
                 data-name={provider.name}
                 data-url-template={provider.urlTemplate}
+                data-target={provider.target}
+                data-prompt={provider.prompt}
               >
                 <span class="fd-page-action-menu-label">Open in {provider.name}</span>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -269,6 +301,8 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
                   data-open-provider
                   data-name={provider.name}
                   data-url-template={provider.urlTemplate}
+                  data-target={provider.target}
+                  data-prompt={provider.prompt}
                 >
                   <span class="fd-page-action-menu-label">Open in {provider.name}</span>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -416,6 +450,32 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
       var feedbackSlugVal = typeof feedbackSlug === "string" ? feedbackSlug : "";
       var feedbackTitleVal = typeof feedbackTitle === "string" ? feedbackTitle : undefined;
       var feedbackDescriptionVal = typeof feedbackDescription === "string" ? feedbackDescription : undefined;
+      var defaultOpenPrompt = "Read this documentation: {url}";
+      var defaultOpenTarget = "markdown";
+
+      function resolveMarkdownUrl(url) {
+        try {
+          var parsed = new URL(url);
+          var cleanPathname = parsed.pathname.replace(/\/+$/, "") || parsed.pathname;
+          parsed.pathname = cleanPathname.endsWith(".md") ? cleanPathname : cleanPathname + ".md";
+          parsed.search = "";
+          parsed.hash = "";
+          return parsed.toString();
+        } catch (error) {
+          var clean = url.replace(/[?#].*$/, "").replace(/\/+$/, "") || url;
+          return clean.endsWith(".md") ? clean : clean + ".md";
+        }
+      }
+
+      function fillOpenPrompt(template, values) {
+        return template
+          .replace(/\{pageUrl\}/g, values.pageUrl)
+          .replace(/\{markdownUrl\}/g, values.markdownUrl)
+          .replace(/\{sourceUrl\}/g, values.sourceUrl)
+          .replace(/\{mdxUrl\}/g, values.sourceUrl)
+          .replace(/\{githubUrl\}/g, values.githubUrl)
+          .replace(/\{url\}/g, values.url);
+      }
 
       function emitFeedback(data) {
         var firstError = null;
@@ -493,11 +553,33 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
           el.addEventListener("click", function (e) {
             e.preventDefault();
             var urlTemplate = el.getAttribute("data-url-template") || "";
+            var target = el.getAttribute("data-target") || defaultOpenTarget;
+            var promptTemplate = el.getAttribute("data-prompt") || defaultOpenPrompt;
             var pageUrl = window.location.href;
-            var mdxUrl = window.location.origin + pathnameVal + (pathnameVal.endsWith("/") ? "page.mdx" : ".mdx");
+            var sourceUrl = window.location.origin + pathnameVal + (pathnameVal.endsWith("/") ? "page.mdx" : ".mdx");
+            var markdownUrl = resolveMarkdownUrl(pageUrl);
+            var targetUrl =
+              target === "markdown"
+                ? markdownUrl
+                : target === "source"
+                  ? sourceUrl
+                  : target === "github"
+                    ? githubFileUrlVal
+                    : pageUrl;
+            var prompt = fillOpenPrompt(promptTemplate, {
+              url: targetUrl,
+              pageUrl: pageUrl,
+              markdownUrl: markdownUrl,
+              sourceUrl: sourceUrl,
+              githubUrl: githubFileUrlVal,
+            });
             var url = urlTemplate
-              .replace(/\{url\}/g, encodeURIComponent(pageUrl))
-              .replace(/\{mdxUrl\}/g, encodeURIComponent(mdxUrl))
+              .replace(/\{prompt\}/g, encodeURIComponent(prompt))
+              .replace(/\{url\}/g, encodeURIComponent(targetUrl))
+              .replace(/\{pageUrl\}/g, encodeURIComponent(pageUrl))
+              .replace(/\{markdownUrl\}/g, encodeURIComponent(markdownUrl))
+              .replace(/\{sourceUrl\}/g, encodeURIComponent(sourceUrl))
+              .replace(/\{mdxUrl\}/g, encodeURIComponent(sourceUrl))
               .replace(/\{githubUrl\}/g, githubFileUrlVal);
             window.open(url, "_blank", "noopener,noreferrer");
             var menu = el.closest("[data-dropdown-menu]");

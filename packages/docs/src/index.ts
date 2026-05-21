@@ -135,6 +135,12 @@ export type {
   DocsOpenApiDiscoveryConfig,
   DocsOpenApiResolvedDiscoveryConfig,
 } from "./agent.js";
+export type {
+  PromptAction,
+  PromptProviderChoice,
+  SerializeOpenDocsProviderOptions,
+  SerializedOpenDocsProvider,
+} from "./prompt-utils.js";
 export {
   DEFAULT_SITEMAP_MANIFEST_PATH,
   DEFAULT_SITEMAP_MD_ROUTE,
@@ -230,6 +236,9 @@ export type {
   CopyMarkdownConfig,
   OpenDocsConfig,
   OpenDocsProvider,
+  OpenDocsProviderConfig,
+  OpenDocsProviderId,
+  OpenDocsTarget,
   GithubConfig,
   AIConfig,
   DocsAskAIActionData,

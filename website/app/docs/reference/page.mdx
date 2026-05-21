@@ -1386,29 +1386,33 @@ Action buttons shown on each docs page. See [Page Actions](/docs/customization/p
 
 ### `OpenDocsConfig`
 
-| Property    | Type                 | Default           | Description        |
-| ----------- | -------------------- | ----------------- | ------------------ |
-| `enabled`   | `boolean`            | `false`           | Show the dropdown  |
-| `providers` | `OpenDocsProvider[]` | ChatGPT, Claude   | LLM/tool providers |
+| Property    | Type                 | Default                            | Description                                              |
+| ----------- | -------------------- | ---------------------------------- | -------------------------------------------------------- |
+| `enabled`   | `boolean`            | `false`                            | Show the dropdown                                        |
+| `target`    | `"markdown" \| "page" \| "source" \| "github"` | `"markdown"` | URL inserted into `{url}` for built-in provider prompts |
+| `prompt`    | `string`             | `"Read this documentation: {url}"` | Prompt text for built-in providers                       |
+| `providers` | `OpenDocsProvider[]` | ChatGPT, Claude                    | LLM/tool providers                                       |
 
 ### `OpenDocsProvider`
 
-| Property      | Type        | Description                                                                       |
-| ------------- | ----------- | --------------------------------------------------------------------------------- |
-| `name`        | `string`    | Display name (e.g. `"ChatGPT"`, `"Claude"`)                                       |
-| `icon`        | `ReactNode` | Icon rendered next to the name                                                    |
-| `urlTemplate` | `string`    | URL template. `{url}` is replaced with the page URL, `{mdxUrl}` with the raw MDX source URL, and `{githubUrl}` with the GitHub edit URL when `github` is configured. Use `{url}.md` when you want the public machine-readable page route. |
-| `promptUrlTemplate` | `string` | Optional URL template used by the built-in `Prompt` component. `{prompt}` is replaced with the prompt text. Known providers like ChatGPT, Claude, Cursor, Gemini, and Copilot fall back to built-in prompt templates by name when this is omitted. |
+| Property            | Type        | Description                                                                       |
+| ------------------- | ----------- | --------------------------------------------------------------------------------- |
+| `id`                | `string`    | Built-in provider preset (`"chatgpt"`, `"claude"`, `"cursor"`, `"gemini"`, `"copilot"`, `"github"`) |
+| `name`              | `string`    | Display name override                                                            |
+| `icon`              | `ReactNode` | Icon rendered next to the name                                                    |
+| `target`            | `string`    | Per-provider target override                                                      |
+| `prompt`            | `string`    | Per-provider prompt override                                                      |
+| `mode`              | `"web" \| "app"` | Cursor-only option. `"app"` uses the Cursor app deeplink                    |
+| `urlTemplate`       | `string`    | Custom URL template. Supports `{prompt}`, `{url}`, `{pageUrl}`, `{markdownUrl}`, `{sourceUrl}`, `{mdxUrl}`, and `{githubUrl}`. |
+| `promptUrlTemplate` | `string`    | Optional URL template used by the built-in `Prompt` component. `{prompt}` is replaced with the prompt text. |
 
 ```ts
 pageActions: {
   copyMarkdown: { enabled: true },
   openDocs: {
     enabled: true,
-    providers: [
-      { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}.md" },
-      { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+this:+{url}.md" },
-    ],
+    target: "markdown",
+    providers: ["chatgpt", "claude", "cursor"],
   },
 },
 ```

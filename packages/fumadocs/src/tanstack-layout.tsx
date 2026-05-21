@@ -7,9 +7,10 @@ import type {
   TypographyConfig,
   FontStyle,
   AIConfig,
-  OpenDocsProvider,
+  OpenDocsConfig,
 } from "@farming-labs/docs";
 import { applySidebarFolderIndexBehavior, resolveDocsAnalyticsConfig } from "@farming-labs/docs";
+import { serializeOpenDocsProviders } from "@farming-labs/docs/server";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
@@ -383,16 +384,14 @@ export function TanstackDocsLayout({
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
   const staticExport = !!(config as { staticExport?: boolean }).staticExport;
 
-  const rawProviders =
-    pageActions?.openDocs &&
-    typeof pageActions.openDocs === "object" &&
-    pageActions.openDocs.providers
-      ? pageActions.openDocs.providers
+  const openDocsConfig =
+    pageActions?.openDocs && typeof pageActions.openDocs === "object"
+      ? (pageActions.openDocs as OpenDocsConfig)
       : undefined;
-  const openDocsProviders = rawProviders?.map((provider: OpenDocsProvider) => ({
-    name: provider.name,
-    urlTemplate: provider.urlTemplate,
-  }));
+  const openDocsProviders = serializeOpenDocsProviders(openDocsConfig?.providers, {
+    target: openDocsConfig?.target,
+    prompt: openDocsConfig?.prompt,
+  });
 
   const aiConfig = config.ai as AIConfig | undefined;
   const aiEnabled = !staticExport && !!aiConfig?.enabled;
@@ -513,6 +512,8 @@ export function TanstackDocsLayout({
           copyMarkdown={copyMarkdownEnabled}
           openDocs={openDocsEnabled}
           openDocsProviders={openDocsProviders}
+          openDocsTarget={openDocsConfig?.target}
+          openDocsPrompt={openDocsConfig?.prompt}
           pageActionsPosition={pageActionsPosition}
           pageActionsAlignment={pageActionsAlignment}
           editOnGithubUrl={editOnGithubUrl}
