@@ -1059,8 +1059,8 @@ pageActions: {
   openDocs: {
     enabled: true,
     providers: [
-      { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}" },
-      { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+this:+{url}" },
+      { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}.md" },
+      { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+this:+{url}.md" },
     ],
   },
 },

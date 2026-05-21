@@ -1087,7 +1087,7 @@ export default defineDocs({
     openDocs: {
       enabled: true,
       providers: [
-        { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}" },
+        { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}.md" },
       ],
     },
   },

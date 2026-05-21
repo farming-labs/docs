@@ -74,11 +74,11 @@ export default defineDocs({
         {
           name: "ChatGPT",
           urlTemplate:
-            "https://chatgpt.com/?hints=search&q=Read+{mdxUrl},+I+want+to+ask+questions+about+it.",
+            "https://chatgpt.com/?hints=search&q=Read+{url}.md,+I+want+to+ask+questions+about+it.",
         },
         {
           name: "Claude",
-          urlTemplate: "https://claude.ai/new?q=Read+{mdxUrl},+I+want+to+ask+questions+about+it.",
+          urlTemplate: "https://claude.ai/new?q=Read+{url}.md,+I+want+to+ask+questions+about+it.",
         },
       ],
     },
