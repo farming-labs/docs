@@ -139,7 +139,7 @@
                   : (preset?.urlTemplate ?? ""),
             target:
               typeof p === "object"
-                ? (p.target ?? target ?? preset?.target ?? (hasCustomUrlTemplate ? "page" : undefined))
+                ? (p.target ?? preset?.target ?? target ?? (hasCustomUrlTemplate ? "page" : undefined))
                 : (preset?.target ?? target),
             prompt: typeof p === "object" ? (p.prompt ?? prompt) : prompt,
           };
@@ -282,6 +282,10 @@
       : "";
     const markdownUrl = resolveMarkdownUrl(pageUrl);
     const githubUrl = data.editOnGithub || "";
+    if (/\{githubUrl\}/.test(provider.urlTemplate) && !githubUrl) {
+      closeDropdown();
+      return;
+    }
     const target = provider.target ?? DEFAULT_OPEN_TARGET;
     const targetUrl =
       target === "markdown"
@@ -289,7 +293,7 @@
         : target === "source"
           ? sourceUrl
           : target === "github"
-            ? githubUrl
+            ? (githubUrl || pageUrl)
             : pageUrl;
     const prompt = fillOpenPrompt(provider.prompt ?? DEFAULT_OPEN_PROMPT, {
       url: targetUrl,

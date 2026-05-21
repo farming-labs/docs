@@ -92,7 +92,7 @@ const openDocsProviders = (() => {
                 : (preset?.urlTemplate ?? ""),
           target:
             typeof p === "object"
-              ? (p.target ?? target ?? preset?.target ?? (hasCustomUrlTemplate ? "page" : undefined))
+              ? (p.target ?? preset?.target ?? target ?? (hasCustomUrlTemplate ? "page" : undefined))
               : (preset?.target ?? target),
           prompt: typeof p === "object" ? (p.prompt ?? prompt) : prompt,
         };
@@ -555,6 +555,13 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
             var urlTemplate = el.getAttribute("data-url-template") || "";
             var target = el.getAttribute("data-target") || defaultOpenTarget;
             var promptTemplate = el.getAttribute("data-prompt") || defaultOpenPrompt;
+            if (/\{githubUrl\}/.test(urlTemplate) && !githubFileUrlVal) {
+              var menu = el.closest("[data-dropdown-menu]");
+              var triggerEl = document.querySelector("[data-dropdown-trigger]");
+              if (menu) menu.hidden = true;
+              if (triggerEl) triggerEl.setAttribute("aria-expanded", "false");
+              return;
+            }
             var pageUrl = window.location.href;
             var sourceUrl = window.location.origin + pathnameVal + (pathnameVal.endsWith("/") ? "page.mdx" : ".mdx");
             var markdownUrl = resolveMarkdownUrl(pageUrl);
@@ -564,7 +571,7 @@ const htmlWithoutFirstH1 = (data.html || "").replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*
                 : target === "source"
                   ? sourceUrl
                   : target === "github"
-                    ? githubFileUrlVal
+                    ? (githubFileUrlVal || pageUrl)
                     : pageUrl;
             var prompt = fillOpenPrompt(promptTemplate, {
               url: targetUrl,

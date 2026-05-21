@@ -132,6 +132,21 @@ describe("serializeOpenDocsProviders", () => {
     });
   });
 
+  it("keeps preset targets ahead of global targets for provider objects", () => {
+    expect(
+      serializeOpenDocsProvider(
+        {
+          id: "github",
+        },
+        { target: "markdown" },
+      ),
+    ).toMatchObject({
+      name: "GitHub",
+      urlTemplate: "{githubUrl}",
+      target: "github",
+    });
+  });
+
   it("uses label as a preset alias for provider objects", () => {
     expect(serializeOpenDocsProvider({ label: "Gemini" })).toEqual({
       name: "Gemini",

@@ -170,8 +170,8 @@ export function serializeOpenDocsProvider(
     iconHtml: serializeDocsIcon(provider.icon),
     target:
       provider.target ??
-      options.target ??
       preset?.target ??
+      options.target ??
       (hasCustomUrlTemplate ? "page" : undefined),
     prompt: provider.prompt ?? options.prompt,
   };

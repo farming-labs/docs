@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { usePathname } from "fumadocs-core/framework";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
+import { sanitizeIconHtml } from "./safe-icon-html.js";
 
 /** Serializable provider — icon is an HTML string, not JSX. */
 interface SerializedProvider {
@@ -183,7 +184,7 @@ export function PageActions({
           : target === "source"
             ? sourceUrl
             : target === "github"
-              ? (githubFileUrl ?? "")
+              ? (githubFileUrl ?? pageUrl)
               : pageUrl;
       const prompt = fillPromptTemplate(provider.prompt ?? openDocsPrompt, {
         url: targetUrl,
@@ -276,24 +277,28 @@ export function PageActions({
 
           {dropdownOpen && (
             <div className="fd-page-action-menu" role="menu">
-              {resolvedProviders.map((provider) => (
-                <button
-                  key={provider.name}
-                  type="button"
-                  role="menuitem"
-                  className="fd-page-action-menu-item"
-                  onClick={() => handleOpen(provider)}
-                >
-                  {provider.iconHtml && (
-                    <span
-                      className="fd-page-action-menu-icon"
-                      dangerouslySetInnerHTML={{ __html: provider.iconHtml }}
-                    />
-                  )}
-                  <span className="fd-page-action-menu-label">Open in {provider.name}</span>
-                  <ExternalLinkIcon />
-                </button>
-              ))}
+              {resolvedProviders.map((provider) => {
+                const iconHtml = sanitizeIconHtml(provider.iconHtml);
+
+                return (
+                  <button
+                    key={provider.name}
+                    type="button"
+                    role="menuitem"
+                    className="fd-page-action-menu-item"
+                    onClick={() => handleOpen(provider)}
+                  >
+                    {iconHtml && (
+                      <span
+                        className="fd-page-action-menu-icon"
+                        dangerouslySetInnerHTML={{ __html: iconHtml }}
+                      />
+                    )}
+                    <span className="fd-page-action-menu-label">Open in {provider.name}</span>
+                    <ExternalLinkIcon />
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

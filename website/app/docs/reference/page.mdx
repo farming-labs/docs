@@ -1400,7 +1400,7 @@ Action buttons shown on each docs page. See [Page Actions](/docs/customization/p
 | `id`                | `string`    | Built-in provider preset (`"chatgpt"`, `"claude"`, `"cursor"`, `"gemini"`, `"copilot"`, `"github"`) |
 | `name`              | `string`    | Display name override                                                            |
 | `icon`              | `ReactNode` | Icon rendered next to the name                                                    |
-| `target`            | `string`    | Per-provider target override                                                      |
+| `target`            | `"markdown" \| "page" \| "source" \| "github"` | Per-provider target override                                                      |
 | `prompt`            | `string`    | Per-provider prompt override                                                      |
 | `mode`              | `"web" \| "app"` | Cursor-only option. `"app"` uses the Cursor app deeplink                    |
 | `urlTemplate`       | `string`    | Custom URL template. Supports `{prompt}`, `{url}`, `{pageUrl}`, `{markdownUrl}`, `{sourceUrl}`, `{mdxUrl}`, and `{githubUrl}`. |
