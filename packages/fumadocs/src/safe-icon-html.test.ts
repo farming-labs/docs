@@ -11,7 +11,9 @@ describe("sanitizeIconHtml", () => {
 
   it("rejects event handlers, unsafe urls, and non-icon tags", () => {
     expect(sanitizeIconHtml('<svg onload="alert(1)"></svg>')).toBeUndefined();
+    expect(sanitizeIconHtml('<svg/onload="alert(1)"></svg>')).toBeUndefined();
     expect(sanitizeIconHtml('<svg><a href="javascript:alert(1)">x</a></svg>')).toBeUndefined();
+    expect(sanitizeIconHtml('<svg><use/href="javascript:alert(1)" /></svg>')).toBeUndefined();
     expect(sanitizeIconHtml("<script>alert(1)</script>")).toBeUndefined();
   });
 });

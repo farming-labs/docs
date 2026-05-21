@@ -23,8 +23,9 @@ const SAFE_ICON_TAGS = new Set([
 
 const TAG_PATTERN = /<\/?\s*([a-zA-Z][\w:-]*)\b/g;
 const BLOCKED_MARKUP_PATTERN = /<\s*!/;
-const BLOCKED_ATTRIBUTE_PATTERN = /\s(?:on[a-z][\w:-]*|srcdoc|style)\s*=/i;
-const URL_ATTRIBUTE_PATTERN = /\s(?:href|xlink:href|src)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi;
+const BLOCKED_ATTRIBUTE_PATTERN = /(?:^|[\s/])(?:on[a-z][\w:-]*|srcdoc|style)\s*=/i;
+const URL_ATTRIBUTE_PATTERN =
+  /(?:^|[\s/])(?:href|xlink:href|src)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi;
 
 export function sanitizeIconHtml(html?: string): string | undefined {
   const trimmed = html?.trim();
