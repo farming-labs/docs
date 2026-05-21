@@ -3,18 +3,23 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { usePathname } from "fumadocs-core/framework";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
+import { sanitizeIconHtml } from "./safe-icon-html.js";
 
 /** Serializable provider — icon is an HTML string, not JSX. */
 interface SerializedProvider {
   name: string;
   iconHtml?: string;
   urlTemplate: string;
+  target?: "markdown" | "page" | "source" | "github";
+  prompt?: string;
 }
 
 interface PageActionsProps {
   copyMarkdown?: boolean;
   openDocs?: boolean;
   providers?: SerializedProvider[];
+  openDocsTarget?: "markdown" | "page" | "source" | "github";
+  openDocsPrompt?: string;
   alignment?: "left" | "right";
   /** GitHub file URL (edit view) for the current page. Used when urlTemplate contains {githubUrl}. */
   githubFileUrl?: string | null;
@@ -87,19 +92,47 @@ const ExternalLinkIcon = () => (
 const DEFAULT_PROVIDERS: SerializedProvider[] = [
   {
     name: "ChatGPT",
-    urlTemplate:
-      "https://chatgpt.com/?hints=search&q=Read+{url}.md,+I+want+to+ask+questions+about+it.",
+    urlTemplate: "https://chatgpt.com/?q={prompt}",
   },
   {
     name: "Claude",
-    urlTemplate: "https://claude.ai/new?q=Read+{url}.md,+I+want+to+ask+questions+about+it.",
+    urlTemplate: "https://claude.ai/new?q={prompt}",
   },
 ];
+
+const DEFAULT_OPEN_DOCS_TARGET = "markdown";
+const DEFAULT_OPEN_DOCS_PROMPT = "Read this documentation: {url}";
+
+function pageUrlToMarkdownUrl(pageUrl: string): string {
+  try {
+    const url = new URL(pageUrl);
+    const pathname = url.pathname.replace(/\/+$/, "") || url.pathname;
+    url.pathname = pathname.endsWith(".md") ? pathname : `${pathname}.md`;
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    const clean = pageUrl.replace(/[?#].*$/, "").replace(/\/+$/, "") || pageUrl;
+    return clean.endsWith(".md") ? clean : `${clean}.md`;
+  }
+}
+
+function fillPromptTemplate(template: string, values: Record<string, string>): string {
+  return template
+    .replace(/\{pageUrl\}/g, values.pageUrl)
+    .replace(/\{markdownUrl\}/g, values.markdownUrl)
+    .replace(/\{sourceUrl\}/g, values.sourceUrl)
+    .replace(/\{mdxUrl\}/g, values.sourceUrl)
+    .replace(/\{githubUrl\}/g, values.githubUrl)
+    .replace(/\{url\}/g, values.url);
+}
 
 export function PageActions({
   copyMarkdown,
   openDocs,
   providers,
+  openDocsTarget = DEFAULT_OPEN_DOCS_TARGET,
+  openDocsPrompt = DEFAULT_OPEN_DOCS_PROMPT,
   alignment = "left",
   githubFileUrl,
   analytics = false,
@@ -137,16 +170,42 @@ export function PageActions({
   const handleOpen = useCallback(
     (provider: SerializedProvider) => {
       const template = provider.urlTemplate;
-      if (/\{githubUrl\}/.test(template) && !githubFileUrl) {
+      const githubUrl = githubFileUrl ?? "";
+      if (/\{githubUrl\}/.test(template) && !githubUrl) {
         setDropdownOpen(false);
         return;
       }
       const pageUrl = window.location.href;
-      const mdxUrl = `${window.location.origin}${pathname}.mdx`;
+      const sourceUrl = `${window.location.origin}${pathname}.mdx`;
+      const markdownUrl = pageUrlToMarkdownUrl(pageUrl);
+      const target = provider.target ?? openDocsTarget;
+      if (target === "github" && !githubUrl) {
+        setDropdownOpen(false);
+        return;
+      }
+      const targetUrl =
+        target === "markdown"
+          ? markdownUrl
+          : target === "source"
+            ? sourceUrl
+            : target === "github"
+              ? githubUrl
+              : pageUrl;
+      const prompt = fillPromptTemplate(provider.prompt ?? openDocsPrompt, {
+        url: targetUrl,
+        pageUrl,
+        markdownUrl,
+        sourceUrl,
+        githubUrl,
+      });
       let url = template
-        .replace(/\{url\}/g, encodeURIComponent(pageUrl))
-        .replace(/\{mdxUrl\}/g, encodeURIComponent(mdxUrl))
-        .replace(/\{githubUrl\}/g, githubFileUrl ?? "");
+        .replace(/\{prompt\}/g, encodeURIComponent(prompt))
+        .replace(/\{url\}/g, encodeURIComponent(targetUrl))
+        .replace(/\{pageUrl\}/g, encodeURIComponent(pageUrl))
+        .replace(/\{markdownUrl\}/g, encodeURIComponent(markdownUrl))
+        .replace(/\{sourceUrl\}/g, encodeURIComponent(sourceUrl))
+        .replace(/\{mdxUrl\}/g, encodeURIComponent(sourceUrl))
+        .replace(/\{githubUrl\}/g, githubUrl);
       if (analytics) {
         emitClientAnalyticsEvent({
           type: "page_action_open_docs",
@@ -160,7 +219,7 @@ export function PageActions({
       window.open(url, "_blank", "noopener,noreferrer");
       setDropdownOpen(false);
     },
-    [analytics, pathname, githubFileUrl],
+    [analytics, pathname, githubFileUrl, openDocsPrompt, openDocsTarget],
   );
 
   // Close dropdown on click outside
@@ -223,24 +282,28 @@ export function PageActions({
 
           {dropdownOpen && (
             <div className="fd-page-action-menu" role="menu">
-              {resolvedProviders.map((provider) => (
-                <button
-                  key={provider.name}
-                  type="button"
-                  role="menuitem"
-                  className="fd-page-action-menu-item"
-                  onClick={() => handleOpen(provider)}
-                >
-                  {provider.iconHtml && (
-                    <span
-                      className="fd-page-action-menu-icon"
-                      dangerouslySetInnerHTML={{ __html: provider.iconHtml }}
-                    />
-                  )}
-                  <span className="fd-page-action-menu-label">Open in {provider.name}</span>
-                  <ExternalLinkIcon />
-                </button>
-              ))}
+              {resolvedProviders.map((provider) => {
+                const iconHtml = sanitizeIconHtml(provider.iconHtml);
+
+                return (
+                  <button
+                    key={provider.name}
+                    type="button"
+                    role="menuitem"
+                    className="fd-page-action-menu-item"
+                    onClick={() => handleOpen(provider)}
+                  >
+                    {iconHtml && (
+                      <span
+                        className="fd-page-action-menu-icon"
+                        dangerouslySetInnerHTML={{ __html: iconHtml }}
+                      />
+                    )}
+                    <span className="fd-page-action-menu-label">Open in {provider.name}</span>
+                    <ExternalLinkIcon />
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

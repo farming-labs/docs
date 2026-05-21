@@ -49,6 +49,8 @@ interface SerializedProvider {
   name: string;
   iconHtml?: string;
   urlTemplate: string;
+  target?: "markdown" | "page" | "source" | "github";
+  prompt?: string;
 }
 
 interface DocsPageClientProps {
@@ -65,6 +67,8 @@ interface DocsPageClientProps {
   copyMarkdown?: boolean;
   openDocs?: boolean;
   openDocsProviders?: SerializedProvider[];
+  openDocsTarget?: "markdown" | "page" | "source" | "github";
+  openDocsPrompt?: string;
   /** Where to render page actions relative to the title */
   pageActionsPosition?: "above-title" | "below-title";
   /** Horizontal alignment of page action buttons */
@@ -510,6 +514,8 @@ export function DocsPageClient({
   copyMarkdown = false,
   openDocs = false,
   openDocsProviders,
+  openDocsTarget,
+  openDocsPrompt,
   pageActionsPosition = "below-title",
   pageActionsAlignment = "left",
   githubUrl,
@@ -738,6 +744,8 @@ export function DocsPageClient({
               copyMarkdown={copyMarkdown}
               openDocs={openDocs}
               providers={openDocsProviders}
+              openDocsTarget={openDocsTarget}
+              openDocsPrompt={openDocsPrompt}
               alignment={pageActionsAlignment}
               githubFileUrl={githubFileUrl}
               analytics={analytics}
@@ -832,6 +840,8 @@ export function DocsPageClient({
                 copyMarkdown={copyMarkdown}
                 openDocs={openDocs}
                 providers={openDocsProviders}
+                openDocsTarget={openDocsTarget}
+                openDocsPrompt={openDocsPrompt}
                 alignment={pageActionsAlignment}
                 githubFileUrl={githubFileUrl}
                 analytics={analytics}

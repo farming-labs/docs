@@ -1086,9 +1086,8 @@ export default defineDocs({
     copyMarkdown: { enabled: true },
     openDocs: {
       enabled: true,
-      providers: [
-        { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}.md" },
-      ],
+      target: "markdown",
+      providers: ["chatgpt", "claude", "cursor"],
     },
   },
 

@@ -25,10 +25,12 @@ import type {
   AIConfig,
   OrderingItem,
   PageFrontmatter,
+  OpenDocsConfig,
 } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
+import { resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { resolvePageReadingTime, resolveReadingTimeOptions } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
@@ -969,22 +971,15 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
 
   // Serialize provider icons to HTML strings so they survive the
   // server → client component boundary.
-  const rawProviders =
-    pageActions?.openDocs &&
-    typeof pageActions.openDocs === "object" &&
-    pageActions.openDocs.providers
-      ? (pageActions.openDocs.providers as Array<{
-          name: string;
-          icon?: unknown;
-          urlTemplate: string;
-        }>)
+  const openDocsConfig =
+    pageActions?.openDocs && typeof pageActions.openDocs === "object"
+      ? (pageActions.openDocs as OpenDocsConfig)
       : undefined;
-
-  const openDocsProviders = rawProviders?.map((p) => ({
-    name: p.name,
-    urlTemplate: p.urlTemplate,
-    iconHtml: p.icon ? serializeIcon(p.icon) : undefined,
-  }));
+  const openDocsProviders = resolveOpenDocsProviders(openDocsConfig?.providers, {
+    target: openDocsConfig?.target,
+    prompt: openDocsConfig?.prompt,
+    serializeIcon,
+  });
 
   // GitHub config — normalize string shorthand to object
   const githubRaw = config.github;
@@ -1144,6 +1139,8 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             copyMarkdown={copyMarkdownEnabled}
             openDocs={openDocsEnabled}
             openDocsProviders={openDocsProviders as any}
+            openDocsTarget={openDocsConfig?.target}
+            openDocsPrompt={openDocsConfig?.prompt}
             pageActionsPosition={pageActionsPosition}
             pageActionsAlignment={pageActionsAlignment}
             githubUrl={githubUrl}

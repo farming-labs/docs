@@ -62,17 +62,8 @@ export default defineDocs({
     copyMarkdown: { enabled: true },
     openDocs: {
       enabled: true,
-      providers: [
-        {
-          name: "ChatGPT",
-          urlTemplate:
-            "https://chatgpt.com/?hints=search&q=Read+{url}.md,+I+want+to+ask+questions+about+it.",
-        },
-        {
-          name: "Claude",
-          urlTemplate: "https://claude.ai/new?q=Read+{url}.md,+I+want+to+ask+questions+about+it.",
-        },
-      ],
+      target: "markdown",
+      providers: ["chatgpt", "claude", "cursor"],
     },
   },
   llmsTxt: { enabled: true, baseUrl: "https://docs.farming-labs.dev" },

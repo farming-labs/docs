@@ -196,23 +196,8 @@ export default defineDocs({
   pageActions: {
     openDocs: {
       enabled: true,
-      providers: [
-        {
-          name: "ChatGPT",
-          urlTemplate: "https://chatgpt.com/?q=Read+this+documentation:+{url}.md",
-          promptUrlTemplate: "https://chatgpt.com/?q={prompt}",
-        },
-        {
-          name: "Claude",
-          urlTemplate: "https://claude.ai/new?q=Read+this+documentation:+{url}.md",
-          promptUrlTemplate: "https://claude.ai/new?q={prompt}",
-        },
-        {
-          name: "Cursor",
-          urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}.md",
-          promptUrlTemplate: "https://cursor.com/link/prompt?text={prompt}",
-        },
-      ],
+      target: "markdown",
+      providers: ["chatgpt", "claude", "cursor"],
     },
   },
 });

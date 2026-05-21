@@ -563,34 +563,69 @@ export interface SidebarConfig {
   folderIndexBehaviorOverrides?: SidebarFolderIndexBehaviorOverrides;
 }
 
+export type OpenDocsTarget = "markdown" | "page" | "source" | "github";
+
+export type OpenDocsProviderId = "chatgpt" | "claude" | "cursor" | "gemini" | "copilot" | "github";
+
 /**
  * A single "Open in …" provider shown in the Open dropdown.
+ *
+ * Pass a string for a built-in provider preset, or pass an object to customize a known provider
+ * or keep using a custom `urlTemplate`.
+ *
+ * @example
+ * ```ts
+ * "cursor"
+ * ```
+ *
+ * @example
+ * ```ts
+ * {
+ *   id: "cursor",
+ *   prompt: "Use this docs page while editing the codebase: {url}",
+ * }
+ * ```
  *
  * @example
  * ```ts
  * {
  *   name: "Claude",
  *   icon: <ClaudeIcon />,
- *   urlTemplate: "https://claude.ai?url={url}",
+ *   urlTemplate: "https://claude.ai?url={url}.md",
  *   promptUrlTemplate: "https://claude.ai/new?q={prompt}",
  * }
  * ```
  */
-export interface OpenDocsProvider {
+export type OpenDocsProvider = OpenDocsProviderId | OpenDocsProviderConfig;
+
+export interface OpenDocsProviderConfig {
+  /** Built-in provider preset to use as the base. */
+  id?: OpenDocsProviderId | string;
   /** Display name (e.g. "ChatGPT", "Claude", "Cursor") */
-  name: string;
+  name?: string;
+  /** Alias for `name` when configuring a preset provider. */
+  label?: string;
   /** Icon element rendered next to the name */
   icon?: unknown; // ReactNode
+  /** Override the target URL inserted into `{url}` for this provider. */
+  target?: OpenDocsTarget;
+  /** Prompt text used by known provider presets. Supports `{url}`, `{pageUrl}`, `{markdownUrl}`, `{sourceUrl}`, `{mdxUrl}`, and `{githubUrl}`. */
+  prompt?: string;
+  /** Cursor-specific mode. `"web"` opens cursor.com; `"app"` opens the Cursor app deeplink. */
+  mode?: "web" | "app";
   /**
    * URL template. Placeholders:
-   * - `{url}` — current page URL (encoded).
-   * - `{mdxUrl}` — page URL with `.mdx` suffix (encoded).
+   * - `{url}` — selected target URL, controlled by `openDocs.target` or provider `target` (encoded).
+   * - `{pageUrl}` — rendered docs page URL (encoded).
+   * - `{markdownUrl}` — public `.md` route for the page (encoded).
+   * - `{sourceUrl}` / `{mdxUrl}` — page URL with `.mdx` suffix (encoded).
    * - `{githubUrl}` — GitHub edit URL for the current page (same as "Edit on GitHub"). Requires `github` in config.
+   * - `{prompt}` — prompt text after resolving the target URL placeholders (encoded).
    *
    * @example "https://claude.ai/new?q=Read+this+doc:+{url}.md"
    * @example "{githubUrl}" — open current page file on GitHub (edit view)
    */
-  urlTemplate: string;
+  urlTemplate?: string;
   /**
    * Optional URL template used by the built-in `Prompt` MDX component.
    * When omitted, known providers such as ChatGPT, Claude, Cursor, Gemini,
@@ -612,9 +647,11 @@ export interface OpenDocsProvider {
  * ```ts
  * openDocs: {
  *   enabled: true,
+ *   target: "markdown",
  *   providers: [
- *     { name: "ChatGPT", icon: <ChatGPTIcon />, urlTemplate: "https://chatgpt.com/?q={url}.md" },
- *     { name: "Claude", icon: <ClaudeIcon />, urlTemplate: "https://claude.ai/new?q={url}.md" },
+ *     "chatgpt",
+ *     "claude",
+ *     "cursor",
  *   ],
  * }
  * ```
@@ -622,6 +659,19 @@ export interface OpenDocsProvider {
 export interface OpenDocsConfig {
   /** Whether to show the "Open" dropdown. @default false */
   enabled?: boolean;
+  /**
+   * Which URL should be inserted into `{url}` for preset providers and provider templates.
+   * @default "markdown"
+   */
+  target?: OpenDocsTarget;
+  /**
+   * Prompt text used by built-in provider presets.
+   * Supports `{url}`, `{pageUrl}`, `{markdownUrl}`, `{sourceUrl}`, `{mdxUrl}`,
+   * and `{githubUrl}`.
+   *
+   * @default "Read this documentation: {url}"
+   */
+  prompt?: string;
   /**
    * List of LLM / tool providers to show in the dropdown.
    * If not provided, a sensible default list is used.
@@ -648,8 +698,11 @@ export interface CopyMarkdownConfig {
  *   copyMarkdown: { enabled: true },
  *   openDocs: {
  *     enabled: true,
+ *     target: "markdown",
  *     providers: [
- *       { name: "Claude", urlTemplate: "https://claude.ai/new?q={url}.md" },
+ *       "chatgpt",
+ *       "claude",
+ *       { id: "cursor", mode: "app" },
  *     ],
  *   },
  * }
@@ -2399,9 +2452,11 @@ export interface DocsConfig {
    *   copyMarkdown: { enabled: true },
    *   openDocs: {
    *     enabled: true,
+   *     target: "markdown",
    *     providers: [
-   *       { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}.md" },
-   *       { name: "Claude", urlTemplate: "https://claude.ai/new?q={url}.md" },
+   *       "chatgpt",
+   *       "claude",
+   *       "cursor",
    *     ],
    *   },
    * }
