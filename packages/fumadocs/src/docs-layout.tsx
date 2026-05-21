@@ -16,7 +16,6 @@ import {
   resolvePageSidebarFolderIndexBehavior,
   toDocsMarkdownUrl,
 } from "@farming-labs/docs";
-import { serializeOpenDocsProviders } from "@farming-labs/docs/server";
 import type {
   DocsConfig,
   ThemeToggleConfig,
@@ -31,6 +30,7 @@ import type {
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
+import { resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { resolvePageReadingTime, resolveReadingTimeOptions } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
@@ -975,9 +975,10 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
     pageActions?.openDocs && typeof pageActions.openDocs === "object"
       ? (pageActions.openDocs as OpenDocsConfig)
       : undefined;
-  const openDocsProviders = serializeOpenDocsProviders(openDocsConfig?.providers, {
+  const openDocsProviders = resolveOpenDocsProviders(openDocsConfig?.providers, {
     target: openDocsConfig?.target,
     prompt: openDocsConfig?.prompt,
+    serializeIcon,
   });
 
   // GitHub config — normalize string shorthand to object
