@@ -174,15 +174,15 @@ pageActions: {
     providers: [
       {
         name: "ChatGPT",
-        urlTemplate: "https://chatgpt.com/?q=Read+this+doc:+{url}",
+        urlTemplate: "https://chatgpt.com/?q=Read+this+doc:+{url}.md",
       },
       {
         name: "Claude",
-        urlTemplate: "https://claude.ai/new?q=Read+this+doc:+{url}",
+        urlTemplate: "https://claude.ai/new?q=Read+this+doc:+{url}.md",
       },
       {
         name: "Cursor",
-        urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}",
+        urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}.md",
       },
     ],
   },
@@ -205,7 +205,7 @@ pageActions: {
 }
 ```
 
-**Cursor deeplink:** The example uses the web format (`https://cursor.com/link/prompt?text=...`). To open the Cursor app directly instead, use the app scheme: `cursor://anysphere.cursor-deeplink/prompt?text=Read+this+documentation:+{url}`.
+**Cursor deeplink:** The example uses the web format (`https://cursor.com/link/prompt?text=...`). To open the Cursor app directly instead, use the app scheme: `cursor://anysphere.cursor-deeplink/prompt?text=Read+this+documentation:+{url}.md`.
 
 ### With Icons (Next.js)
 
@@ -221,12 +221,12 @@ pageActions: {
       {
         name: "ChatGPT",
         icon: <SiOpenai className="size-4" />,
-        urlTemplate: "https://chatgpt.com/?q={url}",
+        urlTemplate: "https://chatgpt.com/?q={url}.md",
       },
       {
         name: "Claude",
         icon: <SiClaude className="size-4" />,
-        urlTemplate: "https://claude.ai/new?q={url}",
+        urlTemplate: "https://claude.ai/new?q={url}.md",
       },
     ],
   },
@@ -245,15 +245,15 @@ export default defineDocs({
       providers: [
         {
           name: "ChatGPT",
-          urlTemplate: "https://chatgpt.com/?q=Read+this+documentation:+{url}",
+          urlTemplate: "https://chatgpt.com/?q=Read+this+documentation:+{url}.md",
         },
         {
           name: "Claude",
-          urlTemplate: "https://claude.ai/new?q=Read+this+documentation:+{url}",
+          urlTemplate: "https://claude.ai/new?q=Read+this+documentation:+{url}.md",
         },
         {
           name: "Gemini",
-          urlTemplate: "https://gemini.google.com/?q=Read+this+documentation:+{url}",
+          urlTemplate: "https://gemini.google.com/?q=Read+this+documentation:+{url}.md",
         },
       ],
     },

@@ -145,15 +145,15 @@ pageActions: {
     providers: [
       {
         name: "ChatGPT",
-        urlTemplate: "https://chatgpt.com/?q=Read+this+documentation:+{url}",
+        urlTemplate: "https://chatgpt.com/?q=Read+this+documentation:+{url}.md",
       },
       {
         name: "Claude",
-        urlTemplate: "https://claude.ai/new?q=Read+this+documentation:+{url}",
+        urlTemplate: "https://claude.ai/new?q=Read+this+documentation:+{url}.md",
       },
       {
         name: "Cursor",
-        urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}",
+        urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}.md",
       },
       {
         name: "GitHub",
@@ -166,7 +166,7 @@ pageActions: {
 
 For `{githubUrl}` to work, the top-level `github` config must be set (e.g. `github: { url: "https://github.com/owner/repo", directory: "website" }`).
 
-**Cursor deeplink:** The web example uses `https://cursor.com/link/prompt?text=...`. To open the Cursor app directly instead, use `cursor://anysphere.cursor-deeplink/prompt?text=...`.
+**Cursor deeplink:** The web example uses `https://cursor.com/link/prompt?text=...`. To open the Cursor app directly instead, use `cursor://anysphere.cursor-deeplink/prompt?text=Read+this+documentation:+{url}.md`.
 
 Example using the public markdown route:
 

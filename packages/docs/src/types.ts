@@ -587,7 +587,7 @@ export interface OpenDocsProvider {
    * - `{mdxUrl}` — page URL with `.mdx` suffix (encoded).
    * - `{githubUrl}` — GitHub edit URL for the current page (same as "Edit on GitHub"). Requires `github` in config.
    *
-   * @example "https://claude.ai/new?q=Read+this+doc:+{url}"
+   * @example "https://claude.ai/new?q=Read+this+doc:+{url}.md"
    * @example "{githubUrl}" — open current page file on GitHub (edit view)
    */
   urlTemplate: string;
@@ -613,8 +613,8 @@ export interface OpenDocsProvider {
  * openDocs: {
  *   enabled: true,
  *   providers: [
- *     { name: "ChatGPT", icon: <ChatGPTIcon />, urlTemplate: "https://chatgpt.com/?q={url}" },
- *     { name: "Claude", icon: <ClaudeIcon />, urlTemplate: "https://claude.ai/new?q={url}" },
+ *     { name: "ChatGPT", icon: <ChatGPTIcon />, urlTemplate: "https://chatgpt.com/?q={url}.md" },
+ *     { name: "Claude", icon: <ClaudeIcon />, urlTemplate: "https://claude.ai/new?q={url}.md" },
  *   ],
  * }
  * ```
@@ -649,7 +649,7 @@ export interface CopyMarkdownConfig {
  *   openDocs: {
  *     enabled: true,
  *     providers: [
- *       { name: "Claude", urlTemplate: "https://claude.ai/new?q={url}" },
+ *       { name: "Claude", urlTemplate: "https://claude.ai/new?q={url}.md" },
  *     ],
  *   },
  * }
@@ -2400,8 +2400,8 @@ export interface DocsConfig {
    *   openDocs: {
    *     enabled: true,
    *     providers: [
-   *       { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}" },
-   *       { name: "Claude", urlTemplate: "https://claude.ai/new?q={url}" },
+   *       { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}.md" },
+   *       { name: "Claude", urlTemplate: "https://claude.ai/new?q={url}.md" },
    *     ],
    *   },
    * }

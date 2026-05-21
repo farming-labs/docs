@@ -6,8 +6,8 @@ import { toDocsMarkdownUrl } from "@farming-labs/docs";
 import DocsPage from "./DocsPage.vue";
 
 const DEFAULT_OPEN_PROVIDERS = [
-  { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?hints=search&q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." },
-  { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+{mdxUrl},+I+want+to+ask+questions+about+it." },
+  { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?hints=search&q=Read+{url}.md,+I+want+to+ask+questions+about+it." },
+  { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+{url}.md,+I+want+to+ask+questions+about+it." },
 ];
 
 const props = defineProps<{
