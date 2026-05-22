@@ -181,6 +181,17 @@ The built-in MCP surface currently includes:
 - `read_page`
 - `get_code_examples`
 
+`get_code_examples` parses fenced code block metadata from raw markdown/MDX and returns structured
+examples for agents. Use metadata like
+
+````md
+```ts title="docs.config.ts" framework="nextjs" packageManager="pnpm" runnable
+```
+````
+
+when a snippet has a target file, framework, package manager, or is safe to copy as a complete
+example. This metadata is for markdown/MCP consumers and does not require a UI change.
+
 Use the docs config `mcp` block when you also want the HTTP route version at `/mcp` or `/.well-known/mcp`.
 
 ## Search Sync

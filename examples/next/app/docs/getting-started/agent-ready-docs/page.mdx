@@ -153,6 +153,57 @@ export const { GET, POST, DELETE } = createDocsMCPAPI(docsConfig);
 When `agent.md` exists, the `.md` route returns that file. MCP remains available for tool-based
 access and parity checks, but the HTTP `.md` route is the simple public contract.
 
+## MCP Code Examples
+
+The MCP server also exposes `get_code_examples`. It scans fenced code blocks from the raw markdown
+source and returns parsed metadata without changing the rendered code block UI.
+
+Use metadata on examples that agents should treat as implementation-ready:
+
+````md
+```ts title="docs.config.ts" framework="nextjs" packageManager="pnpm" runnable
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+});
+```
+````
+
+An MCP client can request only matching examples:
+
+```json
+{
+  "name": "get_code_examples",
+  "arguments": {
+    "path": "getting-started/quickstart",
+    "framework": "nextjs",
+    "packageManager": "pnpm",
+    "runnable": true
+  }
+}
+```
+
+The response is JSON, so agents do not need to scrape rendered HTML:
+
+```json
+{
+  "examples": [
+    {
+      "language": "ts",
+      "title": "docs.config.ts",
+      "framework": "nextjs",
+      "packageManager": "pnpm",
+      "runnable": true,
+      "page": {
+        "url": "/docs/getting-started/quickstart"
+      },
+      "code": "import { defineDocs } from \"@farming-labs/docs\";\\n..."
+    }
+  ]
+}
+```
+
 ## Docs Config
 
 The example app does not need any MCP flag. `withDocs()` picks up the default MCP surface
