@@ -179,6 +179,7 @@ The built-in MCP surface currently includes:
 - `get_navigation`
 - `search_docs`
 - `read_page`
+- `get_code_examples`
 
 Use the docs config `mcp` block when you also want the HTTP route version at `/mcp` or `/.well-known/mcp`.
 
@@ -500,7 +501,7 @@ With `--url`, `docs doctor --agent` also probes the deployed public agent surfac
 
 For hosted MCP, the command performs a Streamable HTTP initialize handshake, checks for
 `mcp-session-id`, calls `tools/list`, and expects `list_pages`, `get_navigation`, `search_docs`,
-and `read_page`. Hosted checks raise the agent max score from `105` to `145`.
+`read_page`, and `get_code_examples`. Hosted checks raise the agent max score from `105` to `145`.
 
 Hosted JSON check IDs include `hosted-agent-discovery`, `hosted-llms`, `hosted-sitemap`,
 `hosted-robots`, `hosted-skill`, `hosted-markdown`, and `hosted-mcp`.

@@ -660,7 +660,7 @@ Default behavior:
 - **Well-known HTTP route:** `/.well-known/mcp`
 - **Canonical HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
-- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`
+- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`
 
 Framework notes:
 - **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route and public `/mcp` plus `/.well-known/mcp` rewrites

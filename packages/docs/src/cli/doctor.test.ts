@@ -571,6 +571,7 @@ Allow: /
                 { name: "get_navigation" },
                 { name: "search_docs" },
                 { name: "read_page" },
+                { name: "get_code_examples" },
               ],
             },
           });

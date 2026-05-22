@@ -1114,6 +1114,8 @@ export interface DocsMcpToolsConfig {
   searchDocs?: boolean;
   /** Expose a `get_navigation` tool for the docs tree. */
   getNavigation?: boolean;
+  /** Expose a `get_code_examples` tool for fenced code blocks and their metadata. */
+  getCodeExamples?: boolean;
 }
 
 /**
