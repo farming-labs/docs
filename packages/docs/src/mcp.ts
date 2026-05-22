@@ -43,6 +43,25 @@ export interface DocsMcpPage {
   agentFallbackRawContent?: string;
 }
 
+export interface DocsMcpCodeExample {
+  id: string;
+  page: {
+    slug: string;
+    url: string;
+    title: string;
+    description?: string;
+    sourcePath?: string;
+    lastModified?: string;
+  };
+  language?: string;
+  title?: string;
+  framework?: string;
+  packageManager?: string;
+  runnable: boolean;
+  meta: Record<string, string | boolean>;
+  code: string;
+}
+
 export interface DocsMcpPageNode {
   type: "page";
   name: string;
@@ -83,6 +102,7 @@ export interface DocsMcpResolvedConfig {
     readPage: boolean;
     searchDocs: boolean;
     getNavigation: boolean;
+    getCodeExamples: boolean;
   };
 }
 
@@ -137,6 +157,17 @@ const getNavigationInputSchema = z.object({
   locale: z.string().min(1).optional(),
 });
 
+const getCodeExamplesInputSchema = z.object({
+  query: z.string().trim().min(1).optional(),
+  path: z.string().min(1).optional(),
+  framework: z.string().trim().min(1).optional(),
+  packageManager: z.string().trim().min(1).optional(),
+  language: z.string().trim().min(1).optional(),
+  runnable: z.boolean().optional(),
+  limit: z.number().int().min(1).max(50).optional(),
+  locale: z.string().min(1).optional(),
+});
+
 export function normalizeDocsMcpRoute(route?: string): string {
   if (!route || route.trim().length === 0) return DEFAULT_MCP_ROUTE;
 
@@ -163,6 +194,7 @@ export function resolveDocsMcpConfig(
         readPage: true,
         searchDocs: true,
         getNavigation: true,
+        getCodeExamples: true,
       },
     };
   }
@@ -179,6 +211,7 @@ export function resolveDocsMcpConfig(
       readPage: config.tools?.readPage ?? true,
       searchDocs: config.tools?.searchDocs ?? true,
       getNavigation: config.tools?.getNavigation ?? true,
+      getCodeExamples: config.tools?.getCodeExamples ?? true,
     },
   };
 }
@@ -541,6 +574,131 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             locale,
             outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
             metadata: { tool: "search_docs" },
+          });
+          throw error;
+        }
+      },
+    );
+  }
+
+  if (resolved.tools.getCodeExamples) {
+    server.registerTool(
+      "get_code_examples",
+      {
+        title: "Get docs code examples",
+        description:
+          "Return fenced code examples from the docs with parsed metadata such as title, framework, packageManager, and runnable.",
+        inputSchema: getCodeExamplesInputSchema,
+        annotations: { readOnlyHint: true },
+      },
+      async ({
+        query,
+        path: requestedPath,
+        framework,
+        packageManager,
+        language,
+        runnable,
+        limit,
+        locale,
+      }) => {
+        const startedAt = nowMs();
+        const resolvedLimit = limit ?? 25;
+        const trace = createDocsAgentTraceContext("mcp.tool.get_code_examples");
+        const callSpanId = createDocsAgentTraceId("span");
+        await emitDocsAgentTraceEvent(options.observability, {
+          type: "tool.call",
+          source: "mcp",
+          traceId: trace.traceId,
+          spanId: callSpanId,
+          name: "get_code_examples",
+          startedAt: trace.startedAt,
+          status: "started",
+          locale,
+          inputPreview: {
+            queryLength: query?.length,
+            path: requestedPath,
+            framework,
+            packageManager,
+            language,
+            runnable,
+            limit: resolvedLimit,
+          },
+          metadata: { tool: "get_code_examples" },
+        });
+
+        try {
+          const pages = dedupePages(await options.source.getPages(locale));
+          const matchedPage = requestedPath
+            ? findDocsPage(pages, requestedPath, options.source.entry)
+            : null;
+          const scopedPages = requestedPath ? (matchedPage ? [matchedPage] : []) : pages;
+          const examples = filterDocsCodeExamples(
+            scopedPages.flatMap((page) => extractDocsMcpCodeExamples(page)),
+            {
+              query,
+              framework,
+              packageManager,
+              language,
+              runnable,
+              limit: resolvedLimit,
+            },
+          );
+          const elapsed = durationMs(startedAt);
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "mcp_tool",
+            source: "mcp",
+            locale,
+            input: query ? { query } : undefined,
+            properties: {
+              tool: "get_code_examples",
+              queryLength: query?.length,
+              path: requestedPath,
+              framework,
+              packageManager,
+              language,
+              runnable,
+              limit: resolvedLimit,
+              resultCount: examples.length,
+              durationMs: elapsed,
+            },
+          });
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.result",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "get_code_examples",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "success",
+            locale,
+            outputPreview: { resultCount: examples.length },
+            metadata: { tool: "get_code_examples" },
+          });
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({ examples }, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          const elapsed = durationMs(startedAt);
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.error",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "get_code_examples",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "error",
+            locale,
+            outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
+            metadata: { tool: "get_code_examples" },
           });
           throw error;
         }
@@ -1284,6 +1442,161 @@ function toPageSummaries(pages: DocsMcpPage[]) {
     description: page.description,
     icon: page.icon,
   }));
+}
+
+function extractDocsMcpCodeExamples(page: DocsMcpPage): DocsMcpCodeExample[] {
+  const source = page.agentRawContent ?? page.agentFallbackRawContent ?? page.rawContent;
+  if (!source) return [];
+
+  const examples: DocsMcpCodeExample[] = [];
+  const lines = source.split("\n");
+  let index = 0;
+  let openFence: { marker: string; info: string; code: string[] } | null = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (!openFence) {
+      const openMatch = trimmed.match(/^(`{3,}|~{3,})(.*)$/);
+      if (!openMatch) continue;
+
+      openFence = {
+        marker: openMatch[1],
+        info: openMatch[2]?.trim() ?? "",
+        code: [],
+      };
+      continue;
+    }
+
+    if (isClosingFence(trimmed, openFence.marker)) {
+      const parsed = parseCodeFenceInfo(openFence.info);
+      const meta = parsed.meta;
+      const title = readStringMeta(meta, "title");
+      const framework = readStringMeta(meta, "framework");
+      const packageManager = readStringMeta(meta, "packageManager");
+      const runnable = readBooleanMeta(meta, "runnable") ?? false;
+
+      index += 1;
+      examples.push({
+        id: `${page.url}#code-${index}`,
+        page: {
+          slug: page.slug,
+          url: page.url,
+          title: page.title,
+          description: page.description,
+          sourcePath: page.sourcePath,
+          lastModified: page.lastModified,
+        },
+        language: parsed.language,
+        title,
+        framework,
+        packageManager,
+        runnable,
+        meta,
+        code: openFence.code.join("\n"),
+      });
+      openFence = null;
+      continue;
+    }
+
+    openFence.code.push(line);
+  }
+
+  return examples;
+}
+
+function filterDocsCodeExamples(
+  examples: DocsMcpCodeExample[],
+  filters: {
+    query?: string;
+    framework?: string;
+    packageManager?: string;
+    language?: string;
+    runnable?: boolean;
+    limit: number;
+  },
+): DocsMcpCodeExample[] {
+  const query = filters.query?.toLowerCase();
+  const framework = filters.framework?.toLowerCase();
+  const packageManager = filters.packageManager?.toLowerCase();
+  const language = filters.language?.toLowerCase();
+
+  return examples
+    .filter((example) => {
+      if (framework && example.framework?.toLowerCase() !== framework) return false;
+      if (packageManager && example.packageManager?.toLowerCase() !== packageManager) return false;
+      if (language && example.language?.toLowerCase() !== language) return false;
+      if (filters.runnable !== undefined && example.runnable !== filters.runnable) return false;
+      if (!query) return true;
+      return getCodeExampleSearchText(example).toLowerCase().includes(query);
+    })
+    .slice(0, filters.limit);
+}
+
+function isClosingFence(trimmedLine: string, marker: string): boolean {
+  if (!trimmedLine.startsWith(marker)) return false;
+  return trimmedLine.slice(marker.length).trim().length === 0;
+}
+
+function parseCodeFenceInfo(info: string): {
+  language?: string;
+  meta: Record<string, string | boolean>;
+} {
+  const trimmed = info.trim();
+  if (!trimmed) return { meta: {} };
+
+  const firstTokenMatch = trimmed.match(/^(\S+)/);
+  const firstToken = firstTokenMatch?.[1] ?? "";
+  const language = firstToken && !firstToken.includes("=") ? firstToken : undefined;
+  const attributeSource = language ? trimmed.slice(firstToken.length).trim() : trimmed;
+  const meta: Record<string, string | boolean> = {};
+  const attributePattern = /([A-Za-z_:][\w:.-]*)(?:=(?:"([^"]*)"|'([^']*)'|([^\s"']+)))?/g;
+
+  let match: RegExpExecArray | null;
+  while ((match = attributePattern.exec(attributeSource))) {
+    const key = match[1];
+    const value = match[2] ?? match[3] ?? match[4];
+    meta[key] = value ?? true;
+  }
+
+  return { language, meta };
+}
+
+function readStringMeta(meta: Record<string, string | boolean>, key: string): string | undefined {
+  const value = meta[key];
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function readBooleanMeta(meta: Record<string, string | boolean>, key: string): boolean | undefined {
+  const value = meta[key];
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return undefined;
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized || normalized === "true" || normalized === "1" || normalized === "yes") {
+    return true;
+  }
+  if (normalized === "false" || normalized === "0" || normalized === "no") return false;
+  return true;
+}
+
+function getCodeExampleSearchText(example: DocsMcpCodeExample): string {
+  return [
+    example.id,
+    example.page.slug,
+    example.page.url,
+    example.page.title,
+    example.page.description,
+    example.page.sourcePath,
+    example.language,
+    example.title,
+    example.framework,
+    example.packageManager,
+    ...Object.entries(example.meta).map(([key, value]) => `${key} ${String(value)}`),
+    example.code,
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .join("\n");
 }
 
 function findDocsPage(

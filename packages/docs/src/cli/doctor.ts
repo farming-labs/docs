@@ -1500,7 +1500,13 @@ async function probeMcpRoute(
     const toolNames = Array.isArray(tools)
       ? tools.map((tool) => tool.name).filter((name): name is string => typeof name === "string")
       : [];
-    const expectedTools = ["list_pages", "get_navigation", "search_docs", "read_page"];
+    const expectedTools = [
+      "list_pages",
+      "get_navigation",
+      "search_docs",
+      "read_page",
+      "get_code_examples",
+    ];
     const missingTools = expectedTools.filter((tool) => !toolNames.includes(tool));
 
     if (missingTools.length > 0) {

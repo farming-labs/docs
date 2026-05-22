@@ -104,6 +104,16 @@ surface for both cases:
 - `agent.md` when present
 - normal page markdown when `agent.md` is missing
 
+MCP also exposes `get_code_examples` for fenced code blocks with metadata:
+
+````md
+```ts title="docs.config.ts" framework="nextjs" packageManager="pnpm" runnable
+```
+````
+
+Call it with filters such as `path`, `framework`, `packageManager`, `language`, `runnable`, `query`,
+`limit`, and `locale`. The tool returns structured JSON and does not change the rendered docs UI.
+
 ## Test Commands
 
 ```bash

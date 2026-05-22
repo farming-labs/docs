@@ -45,6 +45,7 @@ describe("resolveDocsMcpConfig", () => {
         readPage: true,
         searchDocs: true,
         getNavigation: true,
+        getCodeExamples: true,
       },
     });
   });
@@ -60,6 +61,7 @@ describe("resolveDocsMcpConfig", () => {
         readPage: true,
         searchDocs: true,
         getNavigation: true,
+        getCodeExamples: true,
       },
     });
   });
@@ -79,6 +81,7 @@ describe("resolveDocsMcpConfig", () => {
         readPage: true,
         searchDocs: true,
         getNavigation: true,
+        getCodeExamples: true,
       },
     });
   });
@@ -151,6 +154,14 @@ related:
 # Quickstart
 
 Build your first app.
+
+\`\`\`ts title="docs.config.ts" framework="nextjs" packageManager="pnpm" runnable
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+});
+\`\`\`
 
 <Agent>
 Validate the generated example paths before editing this guide.
@@ -329,7 +340,13 @@ sidebar:
     }>(toolsListResponse);
 
     expect(toolsList.result?.tools?.map((tool) => tool.name)).toEqual(
-      expect.arrayContaining(["list_pages", "get_navigation", "search_docs", "read_page"]),
+      expect.arrayContaining([
+        "list_pages",
+        "get_navigation",
+        "search_docs",
+        "read_page",
+        "get_code_examples",
+      ]),
     );
 
     const searchResponse = await handlers.POST({
@@ -429,6 +446,67 @@ sidebar:
     );
     expect(quickstartPayload.result?.content?.[0]?.text).not.toContain("<Agent>");
 
+    const codeExamplesResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": "stale-session",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 6,
+          method: "tools/call",
+          params: {
+            name: "get_code_examples",
+            arguments: {
+              path: "guides/quickstart",
+              framework: "nextjs",
+              packageManager: "pnpm",
+              runnable: true,
+            },
+          },
+        }),
+      }),
+    });
+
+    const codeExamplesPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(codeExamplesResponse);
+    const codeExamplesText = codeExamplesPayload.result?.content?.[0]?.text ?? "{}";
+    const codeExamples = JSON.parse(codeExamplesText) as {
+      examples?: Array<{
+        language?: string;
+        title?: string;
+        framework?: string;
+        packageManager?: string;
+        runnable?: boolean;
+        meta?: Record<string, unknown>;
+        code?: string;
+        page?: { url?: string };
+      }>;
+    };
+
+    expect(codeExamples.examples).toEqual([
+      expect.objectContaining({
+        language: "ts",
+        title: "docs.config.ts",
+        framework: "nextjs",
+        packageManager: "pnpm",
+        runnable: true,
+        page: expect.objectContaining({ url: "/docs/guides/quickstart" }),
+        meta: expect.objectContaining({
+          title: "docs.config.ts",
+          framework: "nextjs",
+          packageManager: "pnpm",
+          runnable: true,
+        }),
+        code: expect.stringContaining("defineDocs"),
+      }),
+    ]);
+
     const deleteResponse = await handlers.DELETE({
       request: new Request("http://localhost/api/docs/mcp", {
         method: "DELETE",
@@ -478,7 +556,13 @@ sidebar:
       result?: { tools?: Array<{ name: string }> };
     }>(missingSessionResponse);
     expect(missingSessionPayload.result?.tools?.map((tool) => tool.name)).toEqual(
-      expect.arrayContaining(["list_pages", "get_navigation", "search_docs", "read_page"]),
+      expect.arrayContaining([
+        "list_pages",
+        "get_navigation",
+        "search_docs",
+        "read_page",
+        "get_code_examples",
+      ]),
     );
 
     const expiredSessionResponse = await handlers.POST({
@@ -504,7 +588,13 @@ sidebar:
       result?: { tools?: Array<{ name: string }> };
     }>(expiredSessionResponse);
     expect(expiredSessionPayload.result?.tools?.map((tool) => tool.name)).toEqual(
-      expect.arrayContaining(["list_pages", "get_navigation", "search_docs", "read_page"]),
+      expect.arrayContaining([
+        "list_pages",
+        "get_navigation",
+        "search_docs",
+        "read_page",
+        "get_code_examples",
+      ]),
     );
   });
 
@@ -944,7 +1034,7 @@ sidebar:
     }>(toolsListResponse);
 
     expect(toolsList.result?.tools?.map((tool) => tool.name)).toEqual(
-      expect.arrayContaining(["list_pages", "get_navigation"]),
+      expect.arrayContaining(["list_pages", "get_navigation", "get_code_examples"]),
     );
     expect(toolsList.result?.tools?.map((tool) => tool.name)).not.toEqual(
       expect.arrayContaining(["search_docs", "read_page"]),

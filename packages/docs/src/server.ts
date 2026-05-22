@@ -89,6 +89,7 @@ export type {
   DocsSitemapResolvedConfig,
 } from "./sitemap.js";
 export type {
+  DocsMcpCodeExample,
   DocsMcpHttpHandlers,
   DocsMcpNavigationNode,
   DocsMcpNavigationTree,

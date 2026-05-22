@@ -59,6 +59,7 @@ function readMcpConfig(content: string): boolean | DocsMcpConfig | undefined {
       readPage: readBooleanProperty(block, "readPage"),
       searchDocs: readBooleanProperty(block, "searchDocs"),
       getNavigation: readBooleanProperty(block, "getNavigation"),
+      getCodeExamples: readBooleanProperty(block, "getCodeExamples"),
     },
   };
 }

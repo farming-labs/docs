@@ -172,6 +172,7 @@ export default defineDocs({
       getNavigation: true,
       searchDocs: true,
       readPage: true,
+      getCodeExamples: true,
     },
   },
 });
@@ -185,12 +186,13 @@ export default defineDocs({
 | `getNavigation` | `boolean` | Expose the `get_navigation` tool |
 | `searchDocs`    | `boolean` | Expose the `search_docs` tool |
 | `readPage`      | `boolean` | Expose the `read_page` tool |
+| `getCodeExamples` | `boolean` | Expose the `get_code_examples` tool |
 
 Default MCP surface:
 
 - **HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
-- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`
+- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`
 
 Framework notes:
 

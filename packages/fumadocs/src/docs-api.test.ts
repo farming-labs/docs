@@ -1944,6 +1944,7 @@ title: "Home"
         readPage: true,
         searchDocs: false,
         getNavigation: true,
+        getCodeExamples: true,
       },
     });
     expect(spec.feedback).toMatchObject({

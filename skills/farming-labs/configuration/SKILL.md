@@ -660,7 +660,37 @@ Default behavior:
 - **Well-known HTTP route:** `/.well-known/mcp`
 - **Canonical HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
-- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`
+- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`
+
+`get_code_examples` returns fenced code blocks as structured JSON. It parses code-fence metadata
+such as `title`, `framework`, `packageManager`, and `runnable` from raw markdown/MDX and does not
+change the rendered code block UI.
+
+Authoring example:
+
+````md
+```ts title="docs.config.ts" framework="nextjs" packageManager="pnpm" runnable
+export default defineDocs({
+  entry: "docs",
+});
+```
+````
+
+MCP call example:
+
+```json
+{
+  "name": "get_code_examples",
+  "arguments": {
+    "path": "getting-started/quickstart",
+    "framework": "nextjs",
+    "packageManager": "pnpm",
+    "runnable": true
+  }
+}
+```
+
+Supported filters: `query`, `path`, `framework`, `packageManager`, `language`, `runnable`, `limit`, and `locale`.
 
 Framework notes:
 - **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route and public `/mcp` plus `/.well-known/mcp` rewrites
