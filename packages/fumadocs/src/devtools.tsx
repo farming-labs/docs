@@ -394,9 +394,9 @@ function createDevToolsUrl(
   return `${url.pathname}${url.search}`;
 }
 
-// ─── DOM → block-index map ───────────────────────────────────────────────────
+// ─── DOM → block-id map ──────────────────────────────────────────────────────
 // Built once after the MDX doc is loaded. Each direct child of [data-dt-content]
-// is assigned to exactly one parsed block. We use per-type cursors so that:
+// is assigned to exactly one parsed block id. We use per-type cursors so that:
 //   • h1-h6 elements → heading blocks (text match preferred, cursor fallback)
 //   • p / ul / ol / hr / blockquote → paragraph blocks  (our parser treats all
 //     of these as paragraphs — lists, HR, blockquotes are all parsed as paragraph)
@@ -404,29 +404,29 @@ function createDevToolsUrl(
 //   • div/aside/section → callout / tabs / prompt / hoverlink / raw
 //     identified by DOM attributes/classes, never by position alone
 
-function buildDomBlockMap(contentEl: HTMLElement, blocks: MdxBlock[]): Map<HTMLElement, number> {
+function buildDomBlockMap(contentEl: HTMLElement, blocks: MdxBlock[]): Map<HTMLElement, string> {
   const children = Array.from(contentEl.children) as HTMLElement[];
-  const map = new Map<HTMLElement, number>();
+  const map = new Map<HTMLElement, string>();
 
-  // Group parser blocks by type, keeping their original index
-  const byType: Record<string, Array<{ idx: number; block: MdxBlock }>> = {};
-  blocks.forEach((block, idx) => {
-    (byType[block.type] ??= []).push({ idx, block });
+  // Group parser blocks by type, keeping their parsed order.
+  const byType: Record<string, MdxBlock[]> = {};
+  blocks.forEach((block) => {
+    (byType[block.type] ??= []).push(block);
   });
 
   const cursors: Record<string, number> = {};
-  function next(type: string): number | null {
+  function next(type: string): string | null {
     const list = byType[type];
     if (!list) return null;
     const c = cursors[type] ?? 0;
     if (c >= list.length) return null;
     cursors[type] = c + 1;
-    return list[c]!.idx;
+    return list[c]!.id;
   }
 
   for (const el of children) {
     const tag = el.tagName.toLowerCase();
-    let blockIdx: number | null = null;
+    let blockId: string | null = null;
 
     if (/^h[1-6]$/.test(tag)) {
       // Prefer text match so invisible-render components (Agent etc.) don't shift indices
@@ -435,13 +435,13 @@ function buildDomBlockMap(contentEl: HTMLElement, blocks: MdxBlock[]): Map<HTMLE
       const elText = (el.textContent ?? "").trim();
       const ahead = headings?.slice(c) ?? [];
       const matchOff = ahead.findIndex(
-        ({ block }) => (block as Extract<MdxBlock, { type: "heading" }>).text.trim() === elText,
+        (block) => (block as Extract<MdxBlock, { type: "heading" }>).text.trim() === elText,
       );
       if (matchOff >= 0) {
-        blockIdx = ahead[matchOff]!.idx;
+        blockId = ahead[matchOff]!.id;
         cursors["heading"] = c + matchOff + 1;
       } else {
-        blockIdx = next("heading");
+        blockId = next("heading");
       }
     } else if (
       tag === "p" ||
@@ -451,30 +451,30 @@ function buildDomBlockMap(contentEl: HTMLElement, blocks: MdxBlock[]): Map<HTMLE
       tag === "blockquote"
     ) {
       // All rendered as paragraph blocks by our parser
-      blockIdx = next("paragraph");
+      blockId = next("paragraph");
     } else if (tag === "figure") {
-      blockIdx = next("code");
+      blockId = next("code");
     } else if (tag === "div" || tag === "aside" || tag === "section" || tag === "nav") {
       // Detect component type from DOM shape
       const role = el.getAttribute("role") ?? "";
       const cls = el.className ?? "";
       if (role === "note" || cls.includes("callout")) {
-        blockIdx = next("callout");
+        blockId = next("callout");
       } else if (el.querySelector("[role=tablist], [data-radix-collection-item]")) {
-        blockIdx = next("tabs");
+        blockId = next("tabs");
       } else if (el.querySelector(".fd-prompt-header") || cls.includes("fd-prompt")) {
-        blockIdx = next("prompt");
+        blockId = next("prompt");
       } else if (
         el.querySelector("a[href]") &&
         (byType["hoverlink"]?.length ?? 0) > (cursors["hoverlink"] ?? 0)
       ) {
-        blockIdx = next("hoverlink");
+        blockId = next("hoverlink");
       } else {
-        blockIdx = next("raw");
+        blockId = next("raw");
       }
     }
 
-    if (blockIdx !== null) map.set(el, blockIdx);
+    if (blockId !== null) map.set(el, blockId);
   }
 
   return map;
@@ -918,28 +918,55 @@ html[data-docs-devtools-open="true"] [data-dt-content] > *:not([data-dt-ui]){
 html[data-docs-devtools-open="true"] [data-dt-content] > *:not([data-dt-ui]):hover{
   outline-color:color-mix(in srgb,var(--color-fd-primary,#6366f1) 38%,transparent);
 }
+html[data-docs-devtools-open="true"] [data-dt-content] > [data-dt-deleted="true"]{
+  display:none!important;
+}
 
 /* ─ inline mini toolbar (appears above heading / paragraph editors) ─ */
 .dt-inline-toolbar{
   position:fixed;z-index:2147483002;
-  display:inline-flex;align-items:center;gap:2px;
-  background:rgba(9,9,13,0.94);backdrop-filter:blur(14px);
-  border:1px solid rgba(255,255,255,0.1);border-radius:8px;
-  padding:3px 5px;box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  display:inline-flex;align-items:center;gap:4px;
+  background:color-mix(in srgb,var(--color-fd-background,#fff) 94%,#0f172a 6%);
+  color:var(--color-fd-foreground,#0f172a);
+  backdrop-filter:blur(16px);
+  border:1px solid color-mix(in srgb,var(--color-fd-border,#e2e8f0) 75%,transparent);
+  border-radius:10px;
+  padding:4px;
+  box-shadow:0 18px 42px rgba(15,23,42,0.18),0 1px 0 rgba(255,255,255,0.55) inset;
 }
-.dt-inline-toolbar-group{display:inline-flex;align-items:center;gap:2px}
+.dark .dt-inline-toolbar{
+  background:rgba(9,9,13,0.94);
+  color:#fff;
+  border-color:rgba(255,255,255,0.12);
+  box-shadow:0 18px 42px rgba(0,0,0,0.42),0 1px 0 rgba(255,255,255,0.08) inset;
+}
+.dt-inline-toolbar-group{display:inline-flex;align-items:center;gap:3px}
 .dt-inline-tb-btn{
-  min-width:22px;height:22px;padding:0 5px;
-  border:none;background:transparent;color:rgba(255,255,255,0.75);
-  font-size:11px;font-weight:700;cursor:pointer;
-  display:grid;place-items:center;border-radius:5px;
-  transition:color .1s,background .1s;
+  min-width:28px;height:26px;padding:0 7px;
+  border:1px solid transparent;
+  background:transparent;
+  color:var(--color-fd-muted-foreground,#64748b);
+  font-size:11px;font-weight:750;cursor:pointer;
+  display:grid;place-items:center;border-radius:7px;
+  transition:color .1s,background .1s,border-color .1s,transform .1s;
 }
-.dt-inline-tb-btn:hover{color:#fff;background:rgba(255,255,255,0.1)}
+.dt-inline-tb-btn:hover{
+  color:var(--color-fd-foreground,#0f172a);
+  background:color-mix(in srgb,var(--color-fd-primary,#6366f1) 9%,transparent);
+  border-color:color-mix(in srgb,var(--color-fd-primary,#6366f1) 28%,transparent);
+}
+.dark .dt-inline-tb-btn{color:rgba(255,255,255,0.76)}
+.dark .dt-inline-tb-btn:hover{color:#fff;background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.12)}
 .dt-inline-tb-btn:disabled{opacity:.25;cursor:not-allowed}
 .dt-inline-tb-btn[data-active]{background:var(--color-fd-primary,#6366f1);color:#fff}
 .dt-inline-tb-btn[data-danger]:hover{color:#ef4444;background:rgba(239,68,68,0.12)}
-.dt-inline-tb-sep{width:1px;height:14px;background:rgba(255,255,255,0.1);margin:0 2px;flex-shrink:0}
+.dt-inline-tb-sep{width:1px;height:18px;background:var(--color-fd-border,#e2e8f0);margin:0 2px;flex-shrink:0}
+.dark .dt-inline-tb-sep{background:rgba(255,255,255,0.12)}
+.dt-inline-save-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  height:26px;padding:0 9px;
+}
+.dt-inline-save-btn span{font-size:11px;font-weight:750}
 
 /* ─ sidebar editing mode ─ */
 html[data-docs-devtools-open="true"] #nd-sidebar a{
@@ -972,6 +999,8 @@ html[data-docs-devtools-open="true"] #nd-sidebar a:hover::after{
   position:fixed;z-index:2147483001;
   background:var(--color-fd-background,#fff);
   box-sizing:border-box;
+  border-radius:6px;
+  box-shadow:0 0 0 6px var(--color-fd-background,#fff);
 }
 .dt-inline-input,.dt-inline-ta{
   display:block;width:100%;background:transparent;
@@ -995,17 +1024,17 @@ html[data-docs-devtools-open="true"] #nd-sidebar a:hover::after{
 .dt-float-editor{
   position:fixed;z-index:2147483003;
   background:var(--color-fd-background,#fff);
-  border:1.5px solid var(--color-fd-border,#e2e8f0);
-  border-radius:12px;
-  box-shadow:0 16px 48px rgba(0,0,0,0.18),0 2px 8px rgba(0,0,0,0.06);
+  border:1px solid color-mix(in srgb,var(--color-fd-border,#e2e8f0) 86%,transparent);
+  border-radius:10px;
+  box-shadow:0 22px 60px rgba(15,23,42,0.18),0 2px 10px rgba(15,23,42,0.08);
   width:min(480px,90vw);
   max-height:72vh;
   overflow-y:auto;
   display:flex;flex-direction:column;
 }
 .dt-float-editor-hdr{
-  display:flex;align-items:center;gap:3px;
-  padding:8px 10px 6px;
+  display:flex;align-items:center;gap:4px;
+  padding:9px 10px 7px;
   border-bottom:1px solid var(--color-fd-border,#e2e8f0);
   flex-shrink:0;
   position:sticky;top:0;
@@ -1013,7 +1042,7 @@ html[data-docs-devtools-open="true"] #nd-sidebar a:hover::after{
   z-index:1;
 }
 .dt-float-editor-type{
-  font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+  font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:0;
   display:inline-flex;align-items:center;gap:3px;flex-shrink:0;
 }
 .dt-float-editor-body{padding:12px 14px}
@@ -1023,14 +1052,29 @@ html[data-docs-devtools-open="true"] #nd-sidebar a:hover::after{
 
 /* ─ float action button ─ */
 .dt-float-btn{
-  width:24px;height:22px;border:none;background:transparent;
+  width:26px;height:24px;border:1px solid transparent;background:transparent;
   color:var(--color-fd-muted-foreground,#64748b);cursor:pointer;
-  display:grid;place-items:center;border-radius:5px;
-  transition:color .1s,background .1s;
+  display:grid;place-items:center;border-radius:7px;
+  transition:color .1s,background .1s,border-color .1s;
 }
-.dt-float-btn:hover{color:var(--color-fd-foreground,#0f172a);background:var(--color-fd-muted,#f1f5f9)}
+.dt-float-btn:hover{
+  color:var(--color-fd-foreground,#0f172a);
+  background:var(--color-fd-muted,#f1f5f9);
+  border-color:var(--color-fd-border,#e2e8f0);
+}
 .dt-float-btn:disabled{opacity:.25;cursor:not-allowed}
 .dt-float-btn[data-danger]:hover{color:#ef4444;background:rgba(239,68,68,0.08)}
+.dt-float-save-btn{
+  height:24px;padding:0 10px;
+  border:1px solid var(--color-fd-primary,#6366f1);
+  background:var(--color-fd-primary,#6366f1);
+  color:#fff;border-radius:7px;
+  font-size:11px;font-weight:750;
+  display:inline-flex;align-items:center;gap:5px;cursor:pointer;
+  transition:filter .1s,opacity .1s;
+}
+.dt-float-save-btn:hover{filter:brightness(1.06)}
+.dt-float-save-btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
 
 /* ─ insert (+) button ─ */
 .dt-insert-btn{
@@ -1095,16 +1139,22 @@ html[data-docs-devtools-open="true"] #nd-sidebar a:hover::after{
 
 /* ─ formatting mini-bar ─ */
 .dt-fmt-bar{
-  display:flex;gap:2px;margin-bottom:5px;
-  opacity:0;transition:opacity .13s;height:0;overflow:hidden;
+  display:flex;gap:3px;margin-bottom:8px;
+  opacity:0;transition:opacity .13s,height .13s;padding:0;height:0;overflow:hidden;
   pointer-events:none;
 }
-.dt-float-editor-body .dt-fmt-bar{opacity:1;height:auto;pointer-events:auto}
+.dt-float-editor-body .dt-fmt-bar{
+  opacity:1;height:auto;pointer-events:auto;
+  border:1px solid var(--color-fd-border,#e2e8f0);
+  border-radius:8px;
+  padding:4px;
+  background:color-mix(in srgb,var(--color-fd-muted,#f1f5f9) 58%,transparent);
+}
 .dt-fmt-btn{
-  height:21px;padding:0 7px;
-  border:1px solid var(--color-fd-border,#e2e8f0);border-radius:4px;
+  height:26px;min-width:28px;padding:0 8px;
+  border:1px solid transparent;border-radius:6px;
   background:transparent;color:var(--color-fd-muted-foreground,#64748b);
-  font-size:11px;font-weight:700;cursor:pointer;
+  font-size:11px;font-weight:780;cursor:pointer;
   transition:color .1s,border-color .1s,background .1s;
 }
 .dt-fmt-btn:hover{
@@ -1280,6 +1330,40 @@ html[data-docs-devtools-open="true"] #nd-sidebar a:hover::after{
 .dt-sel-btn:hover{color:#fff;background:rgba(255,255,255,0.13)}
 .dt-sel-btn[data-active]{background:var(--color-fd-primary,#6366f1);color:#fff}
 .dt-sel-sep{width:1px;height:15px;background:rgba(255,255,255,0.14);margin:0 3px;flex-shrink:0}
+
+/* ─ link editor popover ─ */
+.dt-link-pop{
+  position:fixed;z-index:2147483011;
+  width:min(320px,calc(100vw - 24px));
+  border:1px solid color-mix(in srgb,var(--color-fd-border,#e2e8f0) 86%,transparent);
+  border-radius:10px;
+  background:var(--color-fd-background,#fff);
+  box-shadow:0 20px 54px rgba(15,23,42,0.22),0 2px 10px rgba(15,23,42,0.08);
+  padding:10px;
+}
+.dt-link-pop-row{display:grid;gap:4px;margin-bottom:8px}
+.dt-link-pop-label{font-size:10px;font-weight:750;color:var(--color-fd-muted-foreground,#64748b)}
+.dt-link-pop-input{
+  height:30px;width:100%;
+  border:1px solid var(--color-fd-border,#e2e8f0);
+  border-radius:7px;
+  background:var(--color-fd-background,#fff);
+  color:var(--color-fd-foreground,#0f172a);
+  padding:0 9px;font:inherit;font-size:12px;outline:none;
+}
+.dt-link-pop-input:focus{
+  border-color:var(--color-fd-primary,#6366f1);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--color-fd-primary,#6366f1) 14%,transparent);
+}
+.dt-link-pop-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.dt-link-pop-btn{
+  height:28px;padding:0 10px;border-radius:7px;
+  border:1px solid var(--color-fd-border,#e2e8f0);
+  background:transparent;color:var(--color-fd-foreground,#0f172a);
+  font-size:12px;font-weight:700;cursor:pointer;
+}
+.dt-link-pop-btn:hover{background:var(--color-fd-muted,#f1f5f9)}
+.dt-link-pop-btn[data-primary]{background:var(--color-fd-primary,#6366f1);border-color:var(--color-fd-primary,#6366f1);color:#fff}
 `;
 
 // ─── ContentEditable helper ───────────────────────────────────────────────────
@@ -1333,6 +1417,210 @@ function setEditSel(el: HTMLElement, start: number, end: number) {
   sel?.addRange(range);
 }
 
+function syncEditable(el: HTMLElement) {
+  el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "formatSetBlockText" }));
+}
+
+function syncActiveEditable() {
+  const active = document.activeElement;
+  if (active instanceof HTMLElement && active.isContentEditable) {
+    syncEditable(active);
+  }
+}
+
+function execRichTextCommand(command: string, value?: string) {
+  document.execCommand(command, false, value);
+  syncActiveEditable();
+}
+
+type LinkEditorRequest = {
+  host: HTMLElement;
+  range: Range;
+  anchor: HTMLAnchorElement | null;
+  label: string;
+  url: string;
+  rect: DOMRect;
+};
+
+let closeActiveLinkEditor: (() => void) | null = null;
+
+function getContentEditableHost(node: Node | null): HTMLElement | null {
+  const el = node instanceof Element ? node : node?.parentElement;
+  const host = el?.closest("[contenteditable]");
+  return host instanceof HTMLElement ? host : null;
+}
+
+function getClosestAnchor(node: Node | null): HTMLAnchorElement | null {
+  const el = node instanceof Element ? node : node?.parentElement;
+  const anchor = el?.closest("a[href]");
+  return anchor instanceof HTMLAnchorElement ? anchor : null;
+}
+
+function fallbackRectFor(el: HTMLElement): DOMRect {
+  const rect = el.getBoundingClientRect();
+  if (rect.width || rect.height) return rect;
+  return new DOMRect(16, 72, 280, 32);
+}
+
+function requestRichTextLink(anchorRect?: DOMRect, fallbackHost?: HTMLElement | null) {
+  const sel = window.getSelection();
+  const active = document.activeElement;
+  const activeHost = active instanceof HTMLElement && active.isContentEditable ? active : null;
+  const host =
+    getContentEditableHost(sel?.anchorNode ?? null) ??
+    getContentEditableHost(sel?.focusNode ?? null) ??
+    fallbackHost ??
+    activeHost;
+  if (!host) return;
+
+  const range =
+    sel && sel.rangeCount > 0
+      ? sel.getRangeAt(0).cloneRange()
+      : (() => {
+          const fallback = document.createRange();
+          fallback.selectNodeContents(host);
+          fallback.collapse(false);
+          return fallback;
+        })();
+
+  const anchor =
+    getClosestAnchor(sel?.anchorNode ?? null) ?? getClosestAnchor(sel?.focusNode ?? null);
+  const label = anchor?.textContent ?? sel?.toString() ?? "";
+  const url = anchor?.getAttribute("href") ?? "";
+  const selectionRect = range.getBoundingClientRect();
+  const rect =
+    anchorRect ??
+    (selectionRect.width || selectionRect.height
+      ? selectionRect
+      : anchor
+        ? fallbackRectFor(anchor)
+        : fallbackRectFor(host));
+
+  const request = { host, range, anchor, label, url, rect };
+  showLinkEditorPopover(request);
+}
+
+function insertRichTextLink(host: HTMLElement, range: Range, url: string, selectedText: string) {
+  const href = url.trim();
+  if (!href) return;
+  const label = selectedText.trim() || href;
+
+  host.focus();
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+  const anchor = document.createElement("a");
+  anchor.href = href;
+  anchor.textContent = label;
+  range.deleteContents();
+  range.insertNode(anchor);
+  range.setStartAfter(anchor);
+  range.setEndAfter(anchor);
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+  syncActiveEditable();
+}
+
+function closeLinkEditorPopover() {
+  closeActiveLinkEditor?.();
+  closeActiveLinkEditor = null;
+}
+
+function showLinkEditorPopover(request: LinkEditorRequest) {
+  closeLinkEditorPopover();
+
+  const pop = document.createElement("div");
+  pop.className = "dt dt-link-pop";
+  const top = Math.max(58, request.rect.top - 134);
+  const left = Math.max(
+    12,
+    Math.min(window.innerWidth - 332, request.rect.left + request.rect.width / 2 - 160),
+  );
+  pop.style.top = `${top}px`;
+  pop.style.left = `${left}px`;
+
+  const labelRow = document.createElement("label");
+  labelRow.className = "dt-link-pop-row";
+  const labelText = document.createElement("span");
+  labelText.className = "dt-link-pop-label";
+  labelText.textContent = "Label";
+  const labelInput = document.createElement("input");
+  labelInput.className = "dt-link-pop-input";
+  labelInput.placeholder = "Link text";
+  labelInput.value = request.label;
+  labelRow.append(labelText, labelInput);
+
+  const urlRow = document.createElement("label");
+  urlRow.className = "dt-link-pop-row";
+  const urlText = document.createElement("span");
+  urlText.className = "dt-link-pop-label";
+  urlText.textContent = "URL";
+  const urlInput = document.createElement("input");
+  urlInput.className = "dt-link-pop-input";
+  urlInput.placeholder = "https://example.com";
+  urlInput.value = request.url;
+  urlRow.append(urlText, urlInput);
+
+  const actions = document.createElement("div");
+  actions.className = "dt-link-pop-actions";
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "dt-link-pop-btn";
+  cancel.textContent = "Cancel";
+  const apply = document.createElement("button");
+  apply.type = "button";
+  apply.className = "dt-link-pop-btn";
+  apply.dataset.primary = "";
+  apply.textContent = "Apply";
+  actions.append(cancel, apply);
+  pop.append(labelRow, urlRow, actions);
+
+  function cleanup() {
+    pop.remove();
+    document.removeEventListener("mousedown", outside);
+    document.removeEventListener("keydown", key);
+    closeActiveLinkEditor = null;
+  }
+
+  function save() {
+    const href = urlInput.value.trim();
+    if (!href) return;
+
+    if (request.anchor && request.host.contains(request.anchor)) {
+      request.anchor.href = href;
+      request.anchor.textContent = labelInput.value.trim() || href;
+      syncEditable(request.host);
+    } else {
+      insertRichTextLink(request.host, request.range, href, labelInput.value || request.label);
+    }
+    cleanup();
+  }
+
+  function outside(e: MouseEvent) {
+    if (pop.contains(e.target as Node)) return;
+    cleanup();
+  }
+
+  function key(e: KeyboardEvent) {
+    if (e.key === "Escape") cleanup();
+    if (e.key === "Enter" && document.activeElement === urlInput) {
+      e.preventDefault();
+      save();
+    }
+  }
+
+  cancel.addEventListener("click", cleanup);
+  apply.addEventListener("click", save);
+  document.body.appendChild(pop);
+  closeActiveLinkEditor = cleanup;
+  window.setTimeout(() => {
+    document.addEventListener("mousedown", outside);
+    document.addEventListener("keydown", key);
+    labelInput.focus();
+    labelInput.select();
+  }, 0);
+}
+
 // ─── ProseEditor (contentEditable with formatting) ────────────────────────────
 
 function ProseEditor({
@@ -1349,20 +1637,27 @@ function ProseEditor({
   useEffect(() => {
     const el = ref.current;
     if (!el || document.activeElement === el) return;
-    if (getEditText(el) !== value) el.innerText = value;
+    if (html2md(el.innerHTML) !== value) el.innerHTML = md2html(value);
   }, [value]);
 
-  function fmt(before: string, after: string, fallback: string) {
+  function focusEditor() {
     const el = ref.current;
     if (!el) return;
-    const cur = getEditText(el);
-    const sel = getEditSel(el, cur.length);
-    const selected = cur.slice(sel.start, sel.end) || fallback;
-    onChange(`${cur.slice(0, sel.start)}${before}${selected}${after}${cur.slice(sel.end)}`);
-    requestAnimationFrame(() => {
-      el.focus();
-      setEditSel(el, sel.start + before.length, sel.start + before.length + selected.length);
-    });
+    el.focus();
+  }
+
+  function wrapCode() {
+    focusEditor();
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const code = document.createElement("code");
+    try {
+      range.surroundContents(code);
+      syncActiveEditable();
+    } catch {
+      execRichTextCommand("insertText", `\`${sel.toString()}\``);
+    }
   }
 
   return (
@@ -1370,20 +1665,26 @@ function ProseEditor({
       <div className="dt-fmt-bar" aria-label="Markdown formatting">
         {(
           [
-            ["B", "**", "**", "bold"],
-            ["I", "_", "_", "italic"],
-            ["`", "`", "`", "code"],
-            ["↗", "[", "](url)", "link"],
-            ["—", "- ", "", "item"],
+            ["B", "bold", () => execRichTextCommand("bold")],
+            ["I", "italic", () => execRichTextCommand("italic")],
+            ["`", "code", wrapCode],
+            [
+              "↗",
+              "link",
+              () => requestRichTextLink(ref.current?.getBoundingClientRect(), ref.current),
+            ],
+            ["—", "item", () => execRichTextCommand("insertText", "- ")],
           ] as const
-        ).map(([label, b, a, f]) => (
+        ).map(([label, title, action]) => (
           <button
             key={label}
             type="button"
             className="dt-fmt-btn"
+            title={title}
             onMouseDown={(e) => {
               e.preventDefault();
-              fmt(b, a, f);
+              focusEditor();
+              action();
             }}
           >
             {label}
@@ -1396,14 +1697,13 @@ function ProseEditor({
         contentEditable
         suppressContentEditableWarning
         data-ph={placeholder}
-        onInput={(e) => onChange(getEditText(e.currentTarget))}
+        dangerouslySetInnerHTML={{ __html: md2html(value) }}
+        onInput={(e) => onChange(html2md(e.currentTarget.innerHTML))}
         onPaste={(e) => {
           e.preventDefault();
           document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
         }}
-      >
-        {value}
-      </p>
+      />
     </div>
   );
 }
@@ -1662,10 +1962,22 @@ function CalloutRenderer({
 function CodeRenderer({
   block,
   onChange,
+  autoFocusCode = false,
 }: {
   block: Extract<MdxBlock, { type: "code" }>;
   onChange: (b: MdxBlock) => void;
+  autoFocusCode?: boolean;
 }) {
+  const codeRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (!autoFocusCode) return;
+    const el = codeRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [autoFocusCode]);
+
   return (
     <figure className="dt-code-fig not-prose">
       <div className="dt-code-hdr">
@@ -1687,6 +1999,7 @@ function CodeRenderer({
       </div>
       <div className="dt-code-body">
         <textarea
+          ref={codeRef}
           className="dt-code-ta"
           value={block.code}
           onChange={(e) => onChange({ ...block, code: e.currentTarget.value })}
@@ -2008,6 +2321,25 @@ function Copy() {
     </svg>
   );
 }
+function SaveIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+      <path d="M7 3v6h10" />
+      <path d="M7 21v-7h10v7" />
+    </svg>
+  );
+}
 function Plus() {
   return (
     <svg
@@ -2101,6 +2433,8 @@ function InlineBlockEditor({
   onMove,
   onDuplicate,
   onDelete,
+  onSave,
+  saving,
   index,
   total,
 }: {
@@ -2112,6 +2446,8 @@ function InlineBlockEditor({
   onMove: (dir: -1 | 1) => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onSave: () => void;
+  saving: boolean;
   index: number;
   total: number;
 }) {
@@ -2198,8 +2534,8 @@ function InlineBlockEditor({
           <span className="dt-inline-toolbar-group">
             {(
               [
-                ["B", "bold", () => document.execCommand("bold")],
-                ["I", "italic", () => document.execCommand("italic")],
+                ["B", "bold", () => execRichTextCommand("bold")],
+                ["I", "italic", () => execRichTextCommand("italic")],
                 [
                   "`",
                   "code",
@@ -2211,9 +2547,24 @@ function InlineBlockEditor({
                     const code = document.createElement("code");
                     try {
                       range.surroundContents(code);
+                      syncActiveEditable();
                     } catch {
-                      document.execCommand("insertText", false, `\`${sel.toString()}\``);
+                      execRichTextCommand("insertText", `\`${sel.toString()}\``);
                     }
+                  },
+                ],
+                [
+                  "↗",
+                  "link",
+                  () => {
+                    const active = document.activeElement;
+                    const host =
+                      active instanceof HTMLElement && active.isContentEditable
+                        ? active
+                        : document.querySelector<HTMLElement>(
+                            ".dt-inline-cover [contenteditable='true']",
+                          );
+                    requestRichTextLink(rect, host);
                   },
                 ],
               ] as const
@@ -2258,6 +2609,19 @@ function InlineBlockEditor({
         </button>
         <button
           type="button"
+          className="dt-inline-tb-btn dt-inline-save-btn"
+          onClick={() => {
+            syncActiveEditable();
+            onSave();
+          }}
+          disabled={saving}
+          title="Save block"
+        >
+          <SaveIcon />
+          <span>{saving ? "Saving" : "Save"}</span>
+        </button>
+        <button
+          type="button"
           className="dt-inline-tb-btn"
           data-danger=""
           onClick={() => {
@@ -2290,6 +2654,8 @@ function FloatingBlockEditor({
   onMove,
   onDuplicate,
   onDelete,
+  onSave,
+  saving,
   onInsertAfter,
 }: {
   block: MdxBlock;
@@ -2301,6 +2667,8 @@ function FloatingBlockEditor({
   onMove: (dir: -1 | 1) => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onSave: () => void;
+  saving: boolean;
   onInsertAfter: (type: MdxBlock["type"]) => void;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -2319,6 +2687,7 @@ function FloatingBlockEditor({
   useEffect(() => {
     // Delay attaching the outside-click listener so the very click that opened
     // this editor doesn't immediately close it.
+    let cleanup: (() => void) | undefined;
     const tid = window.setTimeout(() => {
       function outside(e: MouseEvent) {
         const t = e.target as HTMLElement;
@@ -2331,12 +2700,15 @@ function FloatingBlockEditor({
       }
       document.addEventListener("mousedown", outside);
       document.addEventListener("keydown", key);
-      return () => {
+      cleanup = () => {
         document.removeEventListener("mousedown", outside);
         document.removeEventListener("keydown", key);
       };
     }, 120);
-    return () => window.clearTimeout(tid);
+    return () => {
+      window.clearTimeout(tid);
+      cleanup?.();
+    };
   }, [onClose]);
 
   return createPortal(
@@ -2363,6 +2735,20 @@ function FloatingBlockEditor({
           title="Move down"
         >
           <ChevDown />
+        </button>
+        <span className="dt-float-sep" />
+        <button
+          type="button"
+          className="dt-float-save-btn"
+          onClick={() => {
+            syncActiveEditable();
+            onSave();
+          }}
+          disabled={saving}
+          title="Save block"
+        >
+          <SaveIcon />
+          {saving ? "Saving" : "Save"}
         </button>
         <span className="dt-float-sep" />
         <button type="button" className="dt-float-btn" onClick={onDuplicate} title="Duplicate">
@@ -2413,7 +2799,6 @@ function FloatingBlockEditor({
             onInsert={(type) => {
               onInsertAfter(type);
               setPalette(null);
-              onClose();
             }}
             onClose={() => setPalette(null)}
           />,
@@ -2447,6 +2832,12 @@ function SelectionToolbar() {
         setPos(null);
         return;
       }
+      // Inline page-block editors have their own fixed toolbar. Showing the
+      // global selection bubble there can sit over B/I controls and eat clicks.
+      if (host.closest(".dt-inline-cover")) {
+        setPos(null);
+        return;
+      }
       const r = sel.getRangeAt(0).getBoundingClientRect();
       if (!r.width && !r.height) {
         setPos(null);
@@ -2467,7 +2858,7 @@ function SelectionToolbar() {
   );
 
   function fmt(cmd: string) {
-    document.execCommand(cmd);
+    execRichTextCommand(cmd);
   }
 
   function wrapCode() {
@@ -2477,18 +2868,14 @@ function SelectionToolbar() {
     const code = document.createElement("code");
     try {
       range.surroundContents(code);
+      syncActiveEditable();
     } catch {
-      document.execCommand("insertText", false, `\`${sel.toString()}\``);
+      execRichTextCommand("insertText", `\`${sel.toString()}\``);
     }
   }
 
   function wrapLink() {
-    const sel = window.getSelection();
-    const text = sel?.toString() ?? "";
-    // eslint-disable-next-line no-alert
-    const url = window.prompt("Link URL:", "https://");
-    if (!url) return;
-    document.execCommand("insertHTML", false, `<a href="${url}">${text || url}</a>`);
+    requestRichTextLink();
   }
 
   return createPortal(
@@ -2566,6 +2953,8 @@ function InlineCodeEditor({
   onMove,
   onDuplicate,
   onDelete,
+  onSave,
+  saving,
   index,
   total,
 }: {
@@ -2576,6 +2965,8 @@ function InlineCodeEditor({
   onMove: (dir: -1 | 1) => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onSave: () => void;
+  saving: boolean;
   index: number;
   total: number;
 }) {
@@ -2594,7 +2985,7 @@ function InlineCodeEditor({
       <div className="dt-inline-cover dt" style={cover}>
         {/* Re-use the existing CodeRenderer — it renders an editable figure */}
         <div style={{ margin: 0 }}>
-          <CodeRenderer block={block} onChange={onChange} />
+          <CodeRenderer block={block} onChange={onChange} autoFocusCode />
         </div>
       </div>
 
@@ -2621,6 +3012,16 @@ function InlineCodeEditor({
         <span className="dt-inline-tb-sep" />
         <button type="button" className="dt-inline-tb-btn" onClick={onDuplicate} title="Duplicate">
           <Copy />
+        </button>
+        <button
+          type="button"
+          className="dt-inline-tb-btn dt-inline-save-btn"
+          onClick={() => onSave()}
+          disabled={saving}
+          title="Save block"
+        >
+          <SaveIcon />
+          <span>{saving ? "Saving" : "Save"}</span>
         </button>
         <button
           type="button"
@@ -2726,6 +3127,7 @@ function FloatingSidebarEditor({
   const adjustedLeft = left + 300 > window.innerWidth ? Math.max(8, item.rect.left - 316) : left;
 
   useEffect(() => {
+    let cleanup: (() => void) | undefined;
     const tid = window.setTimeout(() => {
       function outside(e: MouseEvent) {
         if (ref.current?.contains(e.target as Node)) return;
@@ -2736,12 +3138,15 @@ function FloatingSidebarEditor({
       }
       document.addEventListener("mousedown", outside);
       document.addEventListener("keydown", key);
-      return () => {
+      cleanup = () => {
         document.removeEventListener("mousedown", outside);
         document.removeEventListener("keydown", key);
       };
     }, 120);
-    return () => window.clearTimeout(tid);
+    return () => {
+      window.clearTimeout(tid);
+      cleanup?.();
+    };
   }, [onClose]);
 
   async function save() {
@@ -2874,7 +3279,7 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
   const [draft, setDraft] = useState("");
   const [status, setStatus] = useState("");
   // Which block is currently selected for editing, and where the editor floats
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const [activeRect, setActiveRect] = useState<DOMRect | null>(null);
   const [themeId, setThemeId] = useState("default");
   const [savedThemeId, setSavedThemeId] = useState("default");
@@ -2892,10 +3297,12 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
   // Always-fresh reference to doc so article click handler never captures stale closure
   const docRef = useRef<ParsedMdxDocument | null>(null);
   docRef.current = doc;
+  const mappedDocRef = useRef<ParsedMdxDocument | null>(null);
   // Reference to the active DOM element — used for scroll-tracking rect updates
   const activeElRef = useRef<HTMLElement | null>(null);
-  // Pre-built DOM element → block index map (rebuilt whenever doc loads)
-  const domBlockMapRef = useRef<Map<HTMLElement, number>>(new Map());
+  // Pre-built DOM element → loaded block id map.
+  const domBlockMapRef = useRef<Map<HTMLElement, string>>(new Map());
+  const hiddenDraftBlockElsRef = useRef<Set<HTMLElement>>(new Set());
 
   // serialized is always derived from the visual doc state
   const serialized = useMemo(() => (doc ? serializeMdxDocument(doc) : draft), [doc, draft]);
@@ -2912,9 +3319,15 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
         throw new Error(
           "error" in payload && payload.error ? payload.error : "Could not load page.",
         );
+      const parsed = parseMdxDocument(payload.content);
       setPage(payload);
-      setDoc(parseMdxDocument(payload.content));
+      setDoc(parsed);
+      docRef.current = parsed;
       setDraft(payload.content);
+      mappedDocRef.current = parsed;
+      domBlockMapRef.current = new Map();
+      clearHiddenDraftBlocks();
+      closeEditor();
       setStatus(`Loaded ${payload.relativePath}`);
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Could not load page.");
@@ -2928,16 +3341,18 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
     void loadPage();
   }, [open, pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Rebuild DOM→block map whenever doc reloads ──
+  // ── Rebuild DOM→block map only when a page is loaded ──
   useEffect(() => {
-    if (!doc || !open) return;
+    if (!page || !open) return;
     // Small delay so React can flush and the DOM matches the newly loaded page
     const tid = window.setTimeout(() => {
       const contentEl = document.querySelector<HTMLElement>("[data-dt-content]");
-      if (contentEl) domBlockMapRef.current = buildDomBlockMap(contentEl, doc.blocks);
+      const mappedDoc = mappedDocRef.current;
+      if (contentEl && mappedDoc)
+        domBlockMapRef.current = buildDomBlockMap(contentEl, mappedDoc.blocks);
     }, 50);
     return () => window.clearTimeout(tid);
-  }, [doc, open]);
+  }, [open, page?.lastModified, page?.relativePath]);
 
   // ── Set html attribute + wire up content click overlay ──
   useEffect(() => {
@@ -2947,37 +3362,77 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
 
     const contentEl = document.querySelector<HTMLElement>("[data-dt-content]");
     if (contentEl) {
-      // Single delegated click handler.
-      // Block index is read directly from the pre-built map — no heuristics here.
-      function handleContentClick(e: MouseEvent) {
-        let el = e.target as HTMLElement | null;
-        // Walk up to the direct child of the content container
-        while (el && el.parentElement !== contentEl) el = el.parentElement;
-        if (!el || el.dataset.dtUi) return;
+      const contentRoot = contentEl;
+
+      function findContentBlock(target: EventTarget | null): HTMLElement | null {
+        const node = target instanceof Node ? target : null;
+        let el = node instanceof Element ? node : node?.parentElement;
+        if (!el || el.closest(".dt,[data-dt-ui]")) return null;
+
+        while (el && el.parentElement !== contentRoot) el = el.parentElement;
+        return el instanceof HTMLElement ? el : null;
+      }
+
+      function selectContentBlock(el: HTMLElement) {
+        if (el.dataset.dtUi) return false;
 
         // Lazily build the map the first time (doc might not have loaded yet
         // when the click effect fires, so we rebuild defensively).
-        if (domBlockMapRef.current.size === 0 && docRef.current) {
-          domBlockMapRef.current = buildDomBlockMap(contentEl!, docRef.current.blocks);
+        if (domBlockMapRef.current.size === 0 && mappedDocRef.current) {
+          domBlockMapRef.current = buildDomBlockMap(contentRoot, mappedDocRef.current.blocks);
         }
 
-        // Look up the block index from the map.
+        // Look up the block id from the map.
         // Fall back to positional if the element isn't mapped (e.g. doc not loaded).
-        const mapped = domBlockMapRef.current.get(el);
+        const mappedId = domBlockMapRef.current.get(el);
         const d = docRef.current;
-        const domIdx = Array.from(contentEl!.children).indexOf(el);
-        const blockIdx =
-          mapped ?? (d ? Math.min(Math.max(0, domIdx), d.blocks.length - 1) : domIdx);
+        if (!d) return false;
+        let blockIdx = mappedId ? d.blocks.findIndex((block) => block.id === mappedId) : -1;
+
+        if (mappedId && blockIdx < 0) {
+          closeEditor();
+          setStatus(
+            "That rendered block was removed from the draft. Save or reload to refresh it.",
+          );
+          return true;
+        }
+
+        if (!mappedId) {
+          const domIdx = Array.from(contentRoot.children).indexOf(el);
+          blockIdx = Math.min(Math.max(0, domIdx), d.blocks.length - 1);
+        }
+
+        const block = d.blocks[blockIdx];
+        if (!block) return false;
 
         activeElRef.current = el;
-        setActiveIndex(blockIdx);
+        setActiveBlockId(block.id);
         setActiveRect(el.getBoundingClientRect());
+        return true;
       }
 
-      contentEl.addEventListener("click", handleContentClick);
+      // Single delegated handler.
+      // Block id is read directly from the pre-built map so selection survives edits.
+      function handleContentPointerDown(e: PointerEvent) {
+        const el = findContentBlock(e.target);
+        if (!el || !selectContentBlock(el)) return;
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      function handleContentClick(e: MouseEvent) {
+        const el = findContentBlock(e.target);
+        if (!el) return;
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      contentEl.addEventListener("pointerdown", handleContentPointerDown, true);
+      contentEl.addEventListener("click", handleContentClick, true);
 
       return () => {
-        contentEl.removeEventListener("click", handleContentClick);
+        contentEl.removeEventListener("pointerdown", handleContentPointerDown, true);
+        contentEl.removeEventListener("click", handleContentClick, true);
         delete window.document.documentElement.dataset.docsDevtoolsOpen;
         themeStyleRef.current?.remove();
         themeStyleRef.current = null;
@@ -3015,7 +3470,7 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
 
   // ── Scroll / resize → keep active highlight rect in sync with the block ──
   useEffect(() => {
-    if (activeIndex === null) return;
+    if (!activeBlockId) return;
     function refresh() {
       if (activeElRef.current) setActiveRect(activeElRef.current.getBoundingClientRect());
     }
@@ -3026,28 +3481,79 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
       window.removeEventListener("scroll", refresh, true);
       window.removeEventListener("resize", refresh);
     };
-  }, [activeIndex]);
+  }, [activeBlockId]);
 
   // ── block mutations ──
 
-  function mutateDoc(fn: (blocks: MdxBlock[]) => MdxBlock[]) {
-    setDoc((cur) => (cur ? { ...cur, blocks: fn(cur.blocks) } : cur));
+  function virtualBlockRect(anchor?: DOMRect | null): DOMRect {
+    if (anchor)
+      return new DOMRect(anchor.left, anchor.top, anchor.width || 360, anchor.height || 56);
+
+    const width = Math.min(420, Math.max(280, window.innerWidth - 24));
+    const height = 72;
+    return new DOMRect(
+      Math.max(12, window.innerWidth - width - 16),
+      Math.min(92, Math.max(58, window.innerHeight - height - 16)),
+      width,
+      height,
+    );
+  }
+
+  function selectVirtualBlock(id: string, anchor?: DOMRect | null) {
+    activeElRef.current = null;
+    setActiveBlockId(id);
+    setActiveRect(virtualBlockRect(anchor));
+  }
+
+  function clearHiddenDraftBlocks() {
+    hiddenDraftBlockElsRef.current.forEach((el) => {
+      delete el.dataset.dtDeleted;
+    });
+    hiddenDraftBlockElsRef.current.clear();
+  }
+
+  function hideRenderedBlock(id: string) {
+    const directEl = activeBlockId === id && activeElRef.current ? activeElRef.current : null;
+    const mappedEl =
+      directEl ??
+      Array.from(domBlockMapRef.current.entries()).find(([, blockId]) => blockId === id)?.[0] ??
+      null;
+
+    if (!mappedEl) return;
+    mappedEl.dataset.dtDeleted = "true";
+    hiddenDraftBlockElsRef.current.add(mappedEl);
+  }
+
+  function mutateDoc(fn: (blocks: MdxBlock[]) => MdxBlock[]): ParsedMdxDocument | null {
+    const cur = docRef.current;
+    if (!cur) return null;
+    const next = { ...cur, blocks: fn(cur.blocks) };
+    docRef.current = next;
+    setDoc(next);
+    return next;
   }
 
   function updateBlock(id: string, next: MdxBlock) {
     mutateDoc((bs) => bs.map((b) => (b.id === id ? next : b)));
   }
-  function deleteBlock(id: string) {
-    mutateDoc((bs) => bs.filter((b) => b.id !== id));
+  function deleteBlock(id: string, options?: { persist?: boolean }) {
+    hideRenderedBlock(id);
+    const nextDoc = mutateDoc((bs) => bs.filter((b) => b.id !== id));
+    if (activeBlockId === id) closeEditor();
+    setStatus(options?.persist ? "Deleting block…" : "Removed block from draft");
+    if (options?.persist && nextDoc) void applyChanges(nextDoc);
   }
   function duplicateBlock(block: MdxBlock) {
+    const copy = { ...block, id: createId(block.type) } as MdxBlock;
     mutateDoc((bs) => {
       const i = bs.findIndex((b) => b.id === block.id);
       if (i < 0) return bs;
       const next = [...bs];
-      next.splice(i + 1, 0, { ...block, id: createId(block.type) } as MdxBlock);
+      next.splice(i + 1, 0, copy);
       return next;
     });
+    selectVirtualBlock(copy.id, activeRect);
+    setStatus("Duplicated block in draft");
   }
 
   function moveBlock(id: string, dir: -1 | 1) {
@@ -3061,24 +3567,32 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
       next.splice(ni, 0, b);
       return next;
     });
+    setStatus("Moved block in draft");
   }
 
   function addBlockAt(type: MdxBlock["type"], atIndex: number) {
+    const block = createBlock(type);
     mutateDoc((bs) => {
       const next = [...bs];
-      next.splice(atIndex, 0, createBlock(type));
+      next.splice(Math.min(Math.max(0, atIndex), next.length), 0, block);
       return next;
     });
+    selectVirtualBlock(block.id, activeRect);
+    setStatus("Added block in draft");
   }
 
-  function appendBlock(type: MdxBlock["type"]) {
-    mutateDoc((bs) => [...bs, createBlock(type)]);
+  function appendBlock(type: MdxBlock["type"], anchor?: DOMRect | null) {
+    const block = createBlock(type);
+    mutateDoc((bs) => [...bs, block]);
+    selectVirtualBlock(block.id, anchor);
+    setStatus("Added block in draft");
   }
 
   function closeEditor() {
     activeElRef.current = null;
-    setActiveIndex(null);
+    setActiveBlockId(null);
     setActiveRect(null);
+    closeLinkEditorPopover();
   }
 
   // ── persist ──
@@ -3091,14 +3605,19 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
     });
   }
 
-  async function applyChanges() {
+  async function applyChanges(docOverride?: ParsedMdxDocument | null) {
     setSaving(true);
     setStatus("Saving…");
     try {
+      const content = docOverride
+        ? serializeMdxDocument(docOverride)
+        : docRef.current
+          ? serializeMdxDocument(docRef.current)
+          : draft;
       const res = await fetch(createDevToolsUrl(api, "page", pathname), {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ content: serialized }),
+        body: JSON.stringify({ content }),
       });
       const payload = (await res.json()) as { ok?: boolean; error?: string; relativePath?: string };
       if (!res.ok || !payload.ok) throw new Error(payload.error || "Could not save.");
@@ -3181,7 +3700,11 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
   }, [open, themeVars, themeId]);
 
   // ── active block ──
-  const activeBlock = doc && activeIndex !== null ? (doc.blocks[activeIndex] ?? null) : null;
+  const activeIndex = useMemo(
+    () => (doc && activeBlockId ? doc.blocks.findIndex((block) => block.id === activeBlockId) : -1),
+    [doc, activeBlockId],
+  );
+  const activeBlock = doc && activeIndex >= 0 ? (doc.blocks[activeIndex] ?? null) : null;
 
   // Classify the clicked DOM element so we route to the right editor:
   //   h1-h6 / p → InlineBlockEditor  (opaque text overlay)
@@ -3315,7 +3838,7 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
                 type="button"
                 className="dt-btn"
                 data-primary=""
-                onClick={applyChanges}
+                onClick={() => void applyChanges()}
                 disabled={saving || loading || (!doc && !draft)}
               >
                 {saving ? "Saving…" : "Save"}
@@ -3359,6 +3882,7 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
             domIsTextBlock &&
             (activeBlock.type === "heading" || activeBlock.type === "paragraph") && (
               <InlineBlockEditor
+                key={activeBlock.id}
                 block={activeBlock as Extract<MdxBlock, { type: "heading" | "paragraph" }>}
                 rect={activeRect}
                 el={activeElRef.current}
@@ -3368,8 +3892,10 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
                 onClose={closeEditor}
                 onMove={(dir) => moveBlock(activeBlock.id, dir)}
                 onDuplicate={() => duplicateBlock(activeBlock)}
+                onSave={() => void applyChanges()}
+                saving={saving}
                 onDelete={() => {
-                  deleteBlock(activeBlock.id);
+                  deleteBlock(activeBlock.id, { persist: true });
                   closeEditor();
                 }}
               />
@@ -3382,6 +3908,7 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
             domIsCodeBlock &&
             activeBlock.type === "code" && (
               <InlineCodeEditor
+                key={activeBlock.id}
                 block={activeBlock as Extract<MdxBlock, { type: "code" }>}
                 rect={activeRect}
                 index={activeIndex!}
@@ -3390,8 +3917,10 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
                 onClose={closeEditor}
                 onMove={(dir) => moveBlock(activeBlock.id, dir)}
                 onDuplicate={() => duplicateBlock(activeBlock)}
+                onSave={() => void applyChanges()}
+                saving={saving}
                 onDelete={() => {
-                  deleteBlock(activeBlock.id);
+                  deleteBlock(activeBlock.id, { persist: true });
                   closeEditor();
                 }}
               />
@@ -3401,6 +3930,7 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
                and any DOM element we couldn't classify as inline               ── */}
           {activeBlock && activeRect && !domIsInline && (
             <FloatingBlockEditor
+              key={activeBlock.id}
               block={activeBlock}
               rect={activeRect}
               index={activeIndex!}
@@ -3409,13 +3939,14 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
               onChange={(next) => updateBlock(activeBlock.id, next)}
               onMove={(dir) => moveBlock(activeBlock.id, dir)}
               onDuplicate={() => duplicateBlock(activeBlock)}
+              onSave={() => void applyChanges()}
+              saving={saving}
               onDelete={() => {
-                deleteBlock(activeBlock.id);
+                deleteBlock(activeBlock.id, { persist: true });
                 closeEditor();
               }}
               onInsertAfter={(type) => {
                 addBlockAt(type, activeIndex! + 1);
-                closeEditor();
               }}
             />
           )}
@@ -3441,7 +3972,13 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
                     className="dt-btn"
                     data-primary=""
                     onClick={() => {
-                      setDoc(parseMdxDocument(draft));
+                      const parsed = parseMdxDocument(draft);
+                      setDoc(parsed);
+                      docRef.current = parsed;
+                      mappedDocRef.current = parsed;
+                      domBlockMapRef.current = new Map();
+                      clearHiddenDraftBlocks();
+                      closeEditor();
                       setStatus("Applied source");
                       setShowSource(false);
                     }}
@@ -3477,7 +4014,7 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
                 x={addPalette.x}
                 y={addPalette.y}
                 onInsert={(type) => {
-                  appendBlock(type);
+                  appendBlock(type, addBtnRef.current?.getBoundingClientRect());
                   setAddPalette(null);
                 }}
                 onClose={() => setAddPalette(null)}
