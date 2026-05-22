@@ -404,6 +404,32 @@ function createDevToolsUrl(
 //   • div/aside/section → callout / tabs / prompt / hoverlink / raw
 //     identified by DOM attributes/classes, never by position alone
 
+function paragraphRenderedElementCount(content: string): number {
+  const lines = content
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  let count = 0;
+  let prev: "normal" | "ul" | "ol" | "blockquote" | "hr" | null = null;
+
+  for (const line of lines) {
+    const kind = /^[-*+]\s+/.test(line)
+      ? "ul"
+      : /^\d+[.)]\s+/.test(line)
+        ? "ol"
+        : /^>\s?/.test(line)
+          ? "blockquote"
+          : /^\s{0,3}([-*_])(?:\s*\1){2,}\s*$/.test(line)
+            ? "hr"
+            : "normal";
+
+    if (kind !== prev || kind === "hr") count += 1;
+    prev = kind;
+  }
+
+  return Math.max(1, count);
+}
+
 function buildDomBlockMap(contentEl: HTMLElement, blocks: MdxBlock[]): Map<HTMLElement, string> {
   const children = Array.from(contentEl.children) as HTMLElement[];
   const map = new Map<HTMLElement, string>();
@@ -415,6 +441,19 @@ function buildDomBlockMap(contentEl: HTMLElement, blocks: MdxBlock[]): Map<HTMLE
   });
 
   const cursors: Record<string, number> = {};
+  const paragraphDomIds = blocks.flatMap((block) =>
+    block.type === "paragraph"
+      ? Array.from({ length: paragraphRenderedElementCount(block.content) }, () => block.id)
+      : [],
+  );
+  let paragraphDomCursor = 0;
+
+  function nextParagraph(): string | null {
+    const id = paragraphDomIds[paragraphDomCursor];
+    paragraphDomCursor += 1;
+    return id ?? null;
+  }
+
   function next(type: string): string | null {
     const list = byType[type];
     if (!list) return null;
@@ -451,7 +490,7 @@ function buildDomBlockMap(contentEl: HTMLElement, blocks: MdxBlock[]): Map<HTMLE
       tag === "blockquote"
     ) {
       // All rendered as paragraph blocks by our parser
-      blockId = next("paragraph");
+      blockId = nextParagraph();
     } else if (tag === "figure") {
       blockId = next("code");
     } else if (tag === "div" || tag === "aside" || tag === "section" || tag === "nav") {
@@ -1017,6 +1056,18 @@ html[data-docs-devtools-open="true"] #nd-sidebar a:hover::after{
   background:rgba(0,0,0,0.07);
   padding:0.1em 0.3em;border-radius:3px;
 }
+.dt-inline-cover a,.dt-editable a{
+  color:var(--color-fd-primary,#6366f1);
+  text-decoration:underline;
+  text-underline-offset:2px;
+  cursor:pointer;
+}
+.dt-inline-cover p,.dt-editable p{margin:0}
+.dt-inline-cover ul,.dt-inline-cover ol,.dt-editable ul,.dt-editable ol{
+  margin:.35em 0 0;
+  padding-left:1.35em;
+}
+.dt-inline-cover li,.dt-editable li{margin:.15em 0}
 /* Remove figure margin when CodeRenderer is placed inside the inline cover */
 .dt-inline-cover .dt-code-fig{margin:0!important}
 
@@ -1462,6 +1513,17 @@ function fallbackRectFor(el: HTMLElement): DOMRect {
   return new DOMRect(16, 72, 280, 32);
 }
 
+function rangeBelongsToHost(range: Range, host: HTMLElement) {
+  return host.contains(range.startContainer) && host.contains(range.endContainer);
+}
+
+function fallbackRangeFor(host: HTMLElement) {
+  const fallback = document.createRange();
+  fallback.selectNodeContents(host);
+  fallback.collapse(false);
+  return fallback;
+}
+
 function requestRichTextLink(anchorRect?: DOMRect, fallbackHost?: HTMLElement | null) {
   const sel = window.getSelection();
   const active = document.activeElement;
@@ -1473,30 +1535,24 @@ function requestRichTextLink(anchorRect?: DOMRect, fallbackHost?: HTMLElement | 
     activeHost;
   if (!host) return;
 
+  const selectedRange = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
   const range =
-    sel && sel.rangeCount > 0
-      ? sel.getRangeAt(0).cloneRange()
-      : (() => {
-          const fallback = document.createRange();
-          fallback.selectNodeContents(host);
-          fallback.collapse(false);
-          return fallback;
-        })();
+    selectedRange && rangeBelongsToHost(selectedRange, host)
+      ? selectedRange
+      : fallbackRangeFor(host);
 
   const anchor =
     getClosestAnchor(sel?.anchorNode ?? null) ?? getClosestAnchor(sel?.focusNode ?? null);
-  const label = anchor?.textContent ?? sel?.toString() ?? "";
-  const url = anchor?.getAttribute("href") ?? "";
+  const hostAnchor = anchor && host.contains(anchor) ? anchor : null;
+  const label = hostAnchor?.textContent ?? sel?.toString() ?? "";
+  const url = hostAnchor?.getAttribute("href") ?? "";
   const selectionRect = range.getBoundingClientRect();
   const rect =
     anchorRect ??
-    (selectionRect.width || selectionRect.height
-      ? selectionRect
-      : anchor
-        ? fallbackRectFor(anchor)
-        : fallbackRectFor(host));
+    (hostAnchor ? fallbackRectFor(hostAnchor) : null) ??
+    (selectionRect.width || selectionRect.height ? selectionRect : fallbackRectFor(host));
 
-  const request = { host, range, anchor, label, url, rect };
+  const request = { host, range, anchor: hostAnchor, label, url, rect };
   showLinkEditorPopover(request);
 }
 
@@ -1526,18 +1582,29 @@ function closeLinkEditorPopover() {
   closeActiveLinkEditor = null;
 }
 
+function placeLinkEditorPopover(pop: HTMLElement, rect: DOMRect) {
+  const gap = 8;
+  const width = pop.offsetWidth || 320;
+  const height = pop.offsetHeight || 132;
+  const left = Math.max(
+    12,
+    Math.min(window.innerWidth - width - 12, rect.left + rect.width / 2 - width / 2),
+  );
+  const aboveTop = rect.top - height - gap;
+  const belowTop = rect.bottom + gap;
+  const top =
+    aboveTop >= 12 ? aboveTop : Math.min(Math.max(12, belowTop), window.innerHeight - height - 12);
+
+  pop.style.top = `${top}px`;
+  pop.style.left = `${left}px`;
+}
+
 function showLinkEditorPopover(request: LinkEditorRequest) {
   closeLinkEditorPopover();
 
   const pop = document.createElement("div");
   pop.className = "dt dt-link-pop";
-  const top = Math.max(58, request.rect.top - 134);
-  const left = Math.max(
-    12,
-    Math.min(window.innerWidth - 332, request.rect.left + request.rect.width / 2 - 160),
-  );
-  pop.style.top = `${top}px`;
-  pop.style.left = `${left}px`;
+  pop.style.visibility = "hidden";
 
   const labelRow = document.createElement("label");
   labelRow.className = "dt-link-pop-row";
@@ -1612,6 +1679,8 @@ function showLinkEditorPopover(request: LinkEditorRequest) {
   cancel.addEventListener("click", cleanup);
   apply.addEventListener("click", save);
   document.body.appendChild(pop);
+  placeLinkEditorPopover(pop, request.rect);
+  pop.style.visibility = "";
   closeActiveLinkEditor = cleanup;
   window.setTimeout(() => {
     document.addEventListener("mousedown", outside);
@@ -1632,7 +1701,7 @@ function ProseEditor({
   onChange: (v: string) => void;
   placeholder: string;
 }) {
-  const ref = useRef<HTMLParagraphElement | null>(null);
+  const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const el = ref.current;
@@ -1668,11 +1737,7 @@ function ProseEditor({
             ["B", "bold", () => execRichTextCommand("bold")],
             ["I", "italic", () => execRichTextCommand("italic")],
             ["`", "code", wrapCode],
-            [
-              "↗",
-              "link",
-              () => requestRichTextLink(ref.current?.getBoundingClientRect(), ref.current),
-            ],
+            ["↗", "link", () => requestRichTextLink(undefined, ref.current)],
             ["—", "item", () => execRichTextCommand("insertText", "- ")],
           ] as const
         ).map(([label, title, action]) => (
@@ -1691,7 +1756,7 @@ function ProseEditor({
           </button>
         ))}
       </div>
-      <p
+      <div
         ref={ref}
         className="dt-editable"
         contentEditable
@@ -1699,6 +1764,18 @@ function ProseEditor({
         data-ph={placeholder}
         dangerouslySetInnerHTML={{ __html: md2html(value) }}
         onInput={(e) => onChange(html2md(e.currentTarget.innerHTML))}
+        onClick={(e) => {
+          const anchor = (e.target as HTMLElement).closest("a[href]");
+          if (!anchor || !ref.current?.contains(anchor)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const range = document.createRange();
+          range.selectNodeContents(anchor);
+          const sel = window.getSelection();
+          sel?.removeAllRanges();
+          sel?.addRange(range);
+          requestRichTextLink(anchor.getBoundingClientRect(), ref.current);
+        }}
         onPaste={(e) => {
           e.preventDefault();
           document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
@@ -1710,40 +1787,143 @@ function ProseEditor({
 
 // ─── md2html / html2md (minimal inline markdown → HTML conversion) ───────────
 
-function md2html(md: string): string {
-  // 1. Escape bare HTML entities so literal < > don't become tags
-  let s = md.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  // 2. Inline markdown patterns → HTML
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function escapeAttr(value: string): string {
+  return escapeHtml(value).replace(/'/g, "&#39;");
+}
+
+function inlineMdToHtml(md: string): string {
+  const links: string[] = [];
+  const withLinkTokens = md.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    (_m, label: string, href: string) => {
+      const token = `\uE000${links.length}\uE001`;
+      links.push(`<a href="${escapeAttr(href)}">${inlineMdToHtml(label)}</a>`);
+      return token;
+    },
+  );
+
+  let s = escapeHtml(withLinkTokens);
   s = s
     .replace(/\*\*(.+?)\*\*/gs, "<strong>$1</strong>")
     .replace(/__(.+?)__/gs, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/gs, "<em>$1</em>")
     .replace(/_(.+?)_/gs, "<em>$1</em>")
-    .replace(/`(.+?)`/g, "<code>$1</code>")
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-  // 3. Newlines → <br> so the contentEditable shows line breaks
-  s = s.replace(/\n/g, "<br>");
+    .replace(/`(.+?)`/g, "<code>$1</code>");
+  links.forEach((html, index) => {
+    s = s.replace(`\uE000${index}\uE001`, html);
+  });
   return s;
 }
 
+function md2html(md: string): string {
+  const lines = md.split("\n");
+  const out: string[] = [];
+  let normal: string[] = [];
+  let list: Array<{ ordered: boolean; text: string }> = [];
+
+  function flushNormal() {
+    if (normal.length === 0) return;
+    out.push(`<p>${inlineMdToHtml(normal.join("\n")).replace(/\n/g, "<br>")}</p>`);
+    normal = [];
+  }
+
+  function flushList() {
+    if (list.length === 0) return;
+    const ordered = list[0]?.ordered ?? false;
+    const tag = ordered ? "ol" : "ul";
+    out.push(
+      `<${tag}>${list.map((item) => `<li>${inlineMdToHtml(item.text)}</li>`).join("")}</${tag}>`,
+    );
+    list = [];
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    const unordered = line.match(/^[-*+]\s+(.+)$/);
+    const ordered = line.match(/^\d+[.)]\s+(.+)$/);
+
+    if (unordered || ordered) {
+      flushNormal();
+      const isOrdered = Boolean(ordered);
+      if (list.length > 0 && list[0]?.ordered !== isOrdered) flushList();
+      list.push({ ordered: isOrdered, text: unordered?.[1] ?? ordered?.[1] ?? "" });
+      continue;
+    }
+
+    flushList();
+    normal.push(rawLine);
+  }
+
+  flushNormal();
+  flushList();
+  return out.join("") || "<p><br></p>";
+}
+
 function html2md(html: string): string {
-  return html
-    .replace(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, "**$1**")
-    .replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, "**$1**")
-    .replace(/<em[^>]*>([\s\S]*?)<\/em>/gi, "_$1_")
-    .replace(/<i[^>]*>([\s\S]*?)<\/i>/gi, "_$1_")
-    .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, "`$1`")
-    .replace(/<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, "[$2]($1)")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<div>/gi, "\n")
-    .replace(/<\/div>/gi, "")
-    .replace(/<p>/gi, "")
-    .replace(/<\/p>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&nbsp;/g, " ")
+  if (typeof document === "undefined") return html;
+
+  const root = document.createElement("div");
+  root.innerHTML = html;
+
+  function inline(nodes: NodeListOf<ChildNode> | ChildNode[]): string {
+    return Array.from(nodes)
+      .map((node) => {
+        if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
+        if (!(node instanceof HTMLElement)) return "";
+
+        const tag = node.tagName.toLowerCase();
+        if (tag === "br") return "\n";
+        if (tag === "strong" || tag === "b") return `**${inline(node.childNodes)}**`;
+        if (tag === "em" || tag === "i") return `_${inline(node.childNodes)}_`;
+        if (tag === "code") return `\`${node.textContent ?? ""}\``;
+        if (tag === "a") {
+          const href = node.getAttribute("href") ?? "";
+          const label = inline(node.childNodes).trim() || href;
+          return href ? `[${label}](${href})` : label;
+        }
+        if (tag === "li") return inline(node.childNodes);
+        return inline(node.childNodes);
+      })
+      .join("");
+  }
+
+  function block(node: ChildNode): string {
+    if (node.nodeType === Node.TEXT_NODE) return (node.textContent ?? "").trim();
+    if (!(node instanceof HTMLElement)) return "";
+
+    const tag = node.tagName.toLowerCase();
+    if (tag === "ul" || tag === "ol") {
+      return Array.from(node.children)
+        .filter((child): child is HTMLElement => child instanceof HTMLElement)
+        .map((li, index) => {
+          const prefix = tag === "ol" ? `${index + 1}. ` : "- ";
+          return `${prefix}${inline(li.childNodes).trim()}`;
+        })
+        .join("\n");
+    }
+    if (tag === "blockquote") {
+      return inline(node.childNodes)
+        .split("\n")
+        .map((line) => `> ${line}`)
+        .join("\n");
+    }
+    if (tag === "hr") return "---";
+    return inline(node.childNodes).trim();
+  }
+
+  return Array.from(root.childNodes)
+    .map(block)
+    .filter(Boolean)
+    .join("\n")
+    .replace(/\u00a0/g, " ")
     .trim();
 }
 
@@ -1760,7 +1940,7 @@ function WysiwygParagraphEditor({
   onChange: (md: string) => void;
   onClose: () => void;
 }) {
-  const ref = useRef<HTMLParagraphElement | null>(null);
+  const ref = useRef<HTMLDivElement | null>(null);
 
   // Set innerHTML only on mount — never overwrite while the user types
   useEffect(() => {
@@ -1778,7 +1958,7 @@ function WysiwygParagraphEditor({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <p
+    <div
       ref={ref}
       contentEditable
       suppressContentEditableWarning
@@ -1790,6 +1970,18 @@ function WysiwygParagraphEditor({
         wordBreak: "break-word",
       }}
       onInput={(e) => onChange(html2md(e.currentTarget.innerHTML))}
+      onClick={(e) => {
+        const anchor = (e.target as HTMLElement).closest("a[href]");
+        if (!anchor || !ref.current?.contains(anchor)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const range = document.createRange();
+        range.selectNodeContents(anchor);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+        requestRichTextLink(anchor.getBoundingClientRect(), ref.current);
+      }}
       onPaste={(e) => {
         e.preventDefault();
         // Paste as plain text to avoid pasting HTML tags
@@ -2564,7 +2756,7 @@ function InlineBlockEditor({
                         : document.querySelector<HTMLElement>(
                             ".dt-inline-cover [contenteditable='true']",
                           );
-                    requestRichTextLink(rect, host);
+                    requestRichTextLink(undefined, host);
                   },
                 ],
               ] as const
@@ -3307,6 +3499,38 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
   // serialized is always derived from the visual doc state
   const serialized = useMemo(() => (doc ? serializeMdxDocument(doc) : draft), [doc, draft]);
 
+  function renderedBlockElements(id: string): HTMLElement[] {
+    return Array.from(domBlockMapRef.current.entries())
+      .filter(([el, blockId]) => blockId === id && el.dataset.dtDeleted !== "true")
+      .map(([el]) => el);
+  }
+
+  function rectFromElements(elements: HTMLElement[]): DOMRect | null {
+    const rects = elements
+      .map((el) => el.getBoundingClientRect())
+      .filter((rect) => rect.width > 0 || rect.height > 0);
+    const first = rects[0];
+    if (!first) return null;
+
+    let top = first.top;
+    let left = first.left;
+    let right = first.right;
+    let bottom = first.bottom;
+
+    for (const rect of rects.slice(1)) {
+      top = Math.min(top, rect.top);
+      left = Math.min(left, rect.left);
+      right = Math.max(right, rect.right);
+      bottom = Math.max(bottom, rect.bottom);
+    }
+
+    return new DOMRect(left, top, right - left, bottom - top);
+  }
+
+  function renderedBlockRect(id: string, fallback?: HTMLElement | null): DOMRect | null {
+    return rectFromElements(renderedBlockElements(id)) ?? fallback?.getBoundingClientRect() ?? null;
+  }
+
   async function loadPage() {
     setLoading(true);
     setStatus("");
@@ -3405,9 +3629,10 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
         const block = d.blocks[blockIdx];
         if (!block) return false;
 
-        activeElRef.current = el;
+        const blockEls = mappedId ? renderedBlockElements(block.id) : [];
+        activeElRef.current = blockEls[0] ?? el;
         setActiveBlockId(block.id);
-        setActiveRect(el.getBoundingClientRect());
+        setActiveRect(rectFromElements(blockEls) ?? el.getBoundingClientRect());
         return true;
       }
 
@@ -3471,8 +3696,9 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
   // ── Scroll / resize → keep active highlight rect in sync with the block ──
   useEffect(() => {
     if (!activeBlockId) return;
+    const selectedBlockId = activeBlockId;
     function refresh() {
-      if (activeElRef.current) setActiveRect(activeElRef.current.getBoundingClientRect());
+      setActiveRect(renderedBlockRect(selectedBlockId, activeElRef.current));
     }
     // capture:true catches scroll events on any ancestor, not just window
     window.addEventListener("scroll", refresh, { passive: true, capture: true });
@@ -3514,14 +3740,13 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
 
   function hideRenderedBlock(id: string) {
     const directEl = activeBlockId === id && activeElRef.current ? activeElRef.current : null;
-    const mappedEl =
-      directEl ??
-      Array.from(domBlockMapRef.current.entries()).find(([, blockId]) => blockId === id)?.[0] ??
-      null;
+    const mappedEls = renderedBlockElements(id);
+    const targets = mappedEls.length > 0 ? mappedEls : directEl ? [directEl] : [];
 
-    if (!mappedEl) return;
-    mappedEl.dataset.dtDeleted = "true";
-    hiddenDraftBlockElsRef.current.add(mappedEl);
+    targets.forEach((el) => {
+      el.dataset.dtDeleted = "true";
+      hiddenDraftBlockElsRef.current.add(el);
+    });
   }
 
   function mutateDoc(fn: (blocks: MdxBlock[]) => MdxBlock[]): ParsedMdxDocument | null {
@@ -3711,7 +3936,9 @@ export function DocsDevTools({ api, pathname }: DocsDevToolsProps) {
   //   figure    → InlineCodeEditor   (opaque code overlay with editable fields)
   //   anything else → FloatingBlockEditor (floating panel beside the block)
   const domTag = (activeElRef.current?.tagName ?? "").toLowerCase();
-  const domIsTextBlock = /^h[1-6]$|^p$/.test(domTag);
+  const domIsTextBlock =
+    activeBlock?.type === "paragraph" ||
+    (activeBlock?.type === "heading" && /^h[1-6]$/.test(domTag));
   const domIsCodeBlock = domTag === "figure";
   const domIsInline = domIsTextBlock || domIsCodeBlock;
 
