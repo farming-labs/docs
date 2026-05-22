@@ -613,6 +613,16 @@ function deriveLlmsTxtSectionFullRoute(route: string): string {
   return joinDocsPublicRoute(normalized, "llms-full.txt");
 }
 
+function resolveDocsBaseLlmsTxtRoute(basePath?: string): string | null {
+  if (!basePath) return null;
+  return joinDocsPublicRoute(normalizeDocsPathSegment(basePath) || "docs", "llms.txt");
+}
+
+function resolveDocsBaseLlmsFullTxtRoute(basePath?: string): string | null {
+  const route = resolveDocsBaseLlmsTxtRoute(basePath);
+  return route ? deriveLlmsTxtSectionFullRoute(route) : null;
+}
+
 function normalizeLlmsTxtMaxChars(
   value: LlmsTxtMaxCharsConfig | undefined,
   fallback?: DocsLlmsTxtResolvedMaxChars,
@@ -675,6 +685,7 @@ export function matchesDocsLlmsTxtSection(pageUrl: string, section: DocsLlmsTxtR
 export function resolveDocsLlmsTxtRequest(
   url: URL,
   llms?: boolean | DocsLlmsDiscoveryConfig | LlmsTxtConfig,
+  basePath?: string,
 ): DocsLlmsTxtRequest | null {
   const pathname = normalizeDocsUrlPath(url.pathname);
   const sections = resolveDocsLlmsTxtSections(llms);
@@ -708,10 +719,18 @@ export function resolveDocsLlmsTxtRequest(
     return { format: "llms" };
   }
 
+  if (pathname === resolveDocsBaseLlmsTxtRoute(basePath)) {
+    return { format: "llms" };
+  }
+
   if (
     pathname === DEFAULT_LLMS_FULL_TXT_ROUTE ||
     pathname === DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE
   ) {
+    return { format: "llms-full" };
+  }
+
+  if (pathname === resolveDocsBaseLlmsFullTxtRoute(basePath)) {
     return { format: "llms-full" };
   }
 
@@ -1076,7 +1095,7 @@ export function isDocsPublicGetRequest(
     isDocsSkillRequest(url) ||
     (pathname === DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE &&
       isRobotsDiscoveryEnabled(options.robots)) ||
-    resolveDocsLlmsTxtRequest(url, options.llms) !== null ||
+    resolveDocsLlmsTxtRequest(url, options.llms, entry) !== null ||
     resolveDocsSitemapRequest(url, options.sitemap) !== null ||
     resolveDocsMarkdownRequest(entry, url, request) !== null
   );
@@ -1085,13 +1104,16 @@ export function isDocsPublicGetRequest(
 export function isDocsLlmsTxtPublicRequest(
   url: URL,
   llms?: boolean | DocsLlmsDiscoveryConfig | LlmsTxtConfig,
+  basePath?: string,
 ): boolean {
   const pathname = normalizeDocsUrlPath(url.pathname);
-  return pathname !== DEFAULT_DOCS_API_ROUTE && resolveDocsLlmsTxtRequest(url, llms) !== null;
+  return (
+    pathname !== DEFAULT_DOCS_API_ROUTE && resolveDocsLlmsTxtRequest(url, llms, basePath) !== null
+  );
 }
 
-export function resolveDocsLlmsTxtFormat(url: URL): "llms" | "llms-full" | null {
-  return resolveDocsLlmsTxtRequest(url)?.format ?? null;
+export function resolveDocsLlmsTxtFormat(url: URL, basePath?: string): "llms" | "llms-full" | null {
+  return resolveDocsLlmsTxtRequest(url, undefined, basePath)?.format ?? null;
 }
 
 export function resolveDocsMarkdownRequest(

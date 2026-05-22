@@ -3470,7 +3470,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         });
       }
 
-      const llmsRequest = resolveDocsLlmsTxtRequest(url, llmsConfig);
+      const llmsRequest = resolveDocsLlmsTxtRequest(url, llmsConfig, docsPath);
       if (llmsRequest) {
         if (!llmsConfig.enabled) {
           return new Response("Not Found", {

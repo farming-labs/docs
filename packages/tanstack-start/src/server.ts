@@ -1095,7 +1095,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       });
     }
 
-    const llmsRequest = resolveDocsLlmsTxtRequest(url, llmsTxtConfig);
+    const llmsRequest = resolveDocsLlmsTxtRequest(url, llmsTxtConfig, entry);
     if (llmsRequest) {
       if (!llmsEnabled) {
         return new Response("Not Found", {

@@ -24,7 +24,7 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
 
   if (
     (method === "GET" || method === "HEAD") &&
-    isDocsLlmsTxtPublicRequest(context.url, config.llmsTxt)
+    isDocsLlmsTxtPublicRequest(context.url, config.llmsTxt, docsEntry)
   ) {
     const nativeResponse = await next();
     if (nativeResponse.status !== 404) return nativeResponse;

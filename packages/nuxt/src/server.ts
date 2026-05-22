@@ -1125,7 +1125,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       });
     }
 
-    const llmsRequest = resolveDocsLlmsTxtRequest(url, llmsTxtConfig);
+    const llmsRequest = resolveDocsLlmsTxtRequest(url, llmsTxtConfig, entry);
     if (llmsRequest) {
       if (!llmsEnabled) {
         return new Response("Not Found", {
@@ -1985,7 +1985,7 @@ export function defineDocsPublicHandler(config: Record<string, any>, storage: Do
     if (method === "GET" || method === "HEAD") {
       const request = new Request(url.href, { method, headers });
       if (
-        isDocsLlmsTxtPublicRequest(url, config.llmsTxt) &&
+        isDocsLlmsTxtPublicRequest(url, config.llmsTxt, entry) &&
         hasNativeNuxtPublicFile(url.pathname)
       ) {
         return undefined;
