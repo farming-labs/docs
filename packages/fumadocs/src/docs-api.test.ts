@@ -473,7 +473,7 @@ Install the package.
     );
     expect(llmsApiText).not.toContain("(https://docs.example.com/docs/installation):");
 
-    for (const path of ["/llms.txt", "/.well-known/llms.txt"]) {
+    for (const path of ["/llms.txt", "/.well-known/llms.txt", "/docs/llms.txt"]) {
       const response = await GET(new Request(`http://localhost${path}`));
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("text/plain");
@@ -485,7 +485,7 @@ Install the package.
     expect(llmsFullApi.status).toBe(200);
     expect(llmsFullApiText).toContain("Welcome to the docs.");
 
-    for (const path of ["/llms-full.txt", "/.well-known/llms-full.txt"]) {
+    for (const path of ["/llms-full.txt", "/.well-known/llms-full.txt", "/docs/llms-full.txt"]) {
       const response = await GET(new Request(`http://localhost${path}`));
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("text/plain");
@@ -657,11 +657,57 @@ Start here.
       entry: "docs",
     });
 
-    const response = await GET(new Request("http://localhost/llms.txt"));
+    const response = await GET(new Request("http://localhost/docs/llms.txt"));
     const text = await response.text();
     expect(response.status).toBe(200);
     expect(text).toContain("# Default Docs");
     expect(text).toContain("- [Getting Started](/docs/getting-started.md): First steps");
+  });
+
+  it("serves llms.txt through a custom public docsPath", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-llms-docspath-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs", "api"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "api", "page.mdx"),
+      `---
+title: "API"
+description: "Endpoint docs"
+---
+
+# API
+
+Use the API.
+`,
+    );
+    writeFileSync(
+      join(rootDir, "docs.config.ts"),
+      `export default {
+  docsPath: "/guides",
+  llmsTxt: {
+    enabled: true,
+    siteTitle: "Guide Docs",
+  },
+};`,
+    );
+
+    process.chdir(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+    });
+
+    const response = await GET(new Request("http://localhost/guides/llms.txt"));
+    const text = await response.text();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/plain");
+    expect(text).toContain("# Guide Docs");
+    expect(text).toContain("- [API](/guides/api.md): Endpoint docs");
+
+    const rootResponse = await GET(new Request("http://localhost/llms.txt"));
+    expect(await rootResponse.text()).toBe(text);
   });
 
   it("serves an OpenAPI schema through the shared docs api handler", async () => {

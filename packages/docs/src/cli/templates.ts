@@ -1700,7 +1700,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(event.url, config.llmsTxt)) {
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(event.url, config.llmsTxt, docsEntry)) {
     const nativeResponse = await resolve(event);
     if (nativeResponse.status !== 404) return nativeResponse;
   }
@@ -1770,7 +1770,7 @@ const docsPublicHandle: Handle = async ({ event, resolve }) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(event.url, docsConfig.llmsTxt)) {
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(event.url, docsConfig.llmsTxt, docsEntry)) {
     const nativeResponse = await resolve(event);
     if (nativeResponse.status !== 404) return nativeResponse;
   }
@@ -2253,7 +2253,7 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(context.url, config.llmsTxt)) {
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(context.url, config.llmsTxt, docsEntry)) {
     const nativeResponse = await next();
     if (nativeResponse.status !== 404) return nativeResponse;
   }
@@ -2325,7 +2325,7 @@ const docsPublicMiddleware: MiddlewareHandler = async (context, next) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(context.url, docsConfig.llmsTxt)) {
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(context.url, docsConfig.llmsTxt, docsEntry)) {
     const nativeResponse = await next();
     if (nativeResponse.status !== 404) return nativeResponse;
   }

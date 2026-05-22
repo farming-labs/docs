@@ -1447,8 +1447,11 @@ function buildAgentSpecRewrites(): NextRewrite[] {
   ];
 }
 
-function buildLlmsTxtRewrites(entry: string): NextRewrite[] {
+function buildLlmsTxtRewrites(entry: string, docsPath: string): NextRewrite[] {
   const normalizedEntry = normalizeRouteSegment(entry);
+  const internalBase = `/${normalizedEntry}`;
+  const publicBase = docsPath;
+  const baseRoutes = Array.from(new Set([internalBase, publicBase].filter(Boolean)));
 
   return [
     {
@@ -1467,14 +1470,24 @@ function buildLlmsTxtRewrites(entry: string): NextRewrite[] {
       source: DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
       destination: "/api/docs?format=llms-full",
     },
-    {
-      source: `/${normalizedEntry}/:section*/llms.txt`,
-      destination: `/api/docs?format=llms&section=/${normalizedEntry}/:section*/llms.txt`,
-    },
-    {
-      source: `/${normalizedEntry}/:section*/llms-full.txt`,
-      destination: `/api/docs?format=llms-full&section=/${normalizedEntry}/:section*/llms-full.txt`,
-    },
+    ...baseRoutes.flatMap((baseRoute) => [
+      {
+        source: `${baseRoute}/llms.txt`,
+        destination: "/api/docs?format=llms",
+      },
+      {
+        source: `${baseRoute}/llms-full.txt`,
+        destination: "/api/docs?format=llms-full",
+      },
+      {
+        source: `${baseRoute}/:section*/llms.txt`,
+        destination: `/api/docs?format=llms&section=${baseRoute}/:section*/llms.txt`,
+      },
+      {
+        source: `${baseRoute}/:section*/llms-full.txt`,
+        destination: `/api/docs?format=llms-full&section=${baseRoute}/:section*/llms-full.txt`,
+      },
+    ]),
   ];
 }
 
@@ -1760,7 +1773,7 @@ function mergeDocsMarkdownRewrites(
     ...buildDocsPathRewrites(entry, docsPath),
     ...buildAgentFeedbackRewrites(agentFeedback),
   ];
-  const autoAfterFilesRewrites = buildLlmsTxtRewrites(entry);
+  const autoAfterFilesRewrites = buildLlmsTxtRewrites(entry, docsPath);
 
   if (!result) {
     return {

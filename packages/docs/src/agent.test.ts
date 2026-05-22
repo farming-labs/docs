@@ -51,10 +51,27 @@ describe("agent route helpers", () => {
     expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/.well-known/llms-full.txt"))).toBe(
       "llms-full",
     );
+    expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/docs/llms.txt"), "docs")).toBe(
+      "llms",
+    );
+    expect(
+      resolveDocsLlmsTxtFormat(new URL("https://example.com/docs/llms-full.txt"), "docs"),
+    ).toBe("llms-full");
     expect(isDocsLlmsTxtPublicRequest(new URL("https://example.com/llms.txt"))).toBe(true);
     expect(isDocsLlmsTxtPublicRequest(new URL("https://example.com/.well-known/llms.txt"))).toBe(
       true,
     );
+    expect(
+      isDocsLlmsTxtPublicRequest(new URL("https://example.com/docs/llms.txt"), undefined, "docs"),
+    ).toBe(true);
+    expect(
+      isDocsPublicGetRequest(
+        "docs",
+        new URL("https://example.com/docs/llms.txt"),
+        new Request("https://example.com/docs/llms.txt"),
+        {},
+      ),
+    ).toBe(true);
     expect(isDocsLlmsTxtPublicRequest(new URL("https://example.com/api/docs?format=llms"))).toBe(
       false,
     );

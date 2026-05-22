@@ -1143,7 +1143,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       });
     }
 
-    const llmsRequest = resolveDocsLlmsTxtRequest(event.url, llmsTxtConfig);
+    const llmsRequest = resolveDocsLlmsTxtRequest(event.url, llmsTxtConfig, entry);
     if (llmsRequest) {
       if (!llmsEnabled) {
         return new Response("Not Found", {

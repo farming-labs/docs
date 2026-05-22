@@ -420,6 +420,14 @@ describe("withDocs (app dir: src/app vs app)", () => {
           destination: "/api/docs?format=llms-full",
         }),
         expect.objectContaining({
+          source: "/docs/llms.txt",
+          destination: "/api/docs?format=llms",
+        }),
+        expect.objectContaining({
+          source: "/docs/llms-full.txt",
+          destination: "/api/docs?format=llms-full",
+        }),
+        expect.objectContaining({
           source: "/docs/:section*/llms.txt",
           destination: "/api/docs?format=llms&section=/docs/:section*/llms.txt",
         }),
@@ -781,7 +789,9 @@ describe("withDocs (app dir: src/app vs app)", () => {
     process.chdir(tmpDir);
 
     const nextConfig = withDocs({});
-    const beforeFiles = getBeforeFilesRewrites(await readRewrites(nextConfig));
+    const rewrites = await readRewrites(nextConfig);
+    const beforeFiles = getBeforeFilesRewrites(rewrites);
+    const afterFiles = getAfterFilesRewrites(rewrites);
 
     expect(beforeFiles).toEqual(
       expect.arrayContaining([
@@ -797,6 +807,26 @@ describe("withDocs (app dir: src/app vs app)", () => {
           source: "/guides/docs",
           has: [MARKDOWN_ACCEPT_HEADER],
           destination: "/api/docs?format=markdown",
+        }),
+      ]),
+    );
+    expect(afterFiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/guides/docs/llms.txt",
+          destination: "/api/docs?format=llms",
+        }),
+        expect.objectContaining({
+          source: "/guides/docs/llms-full.txt",
+          destination: "/api/docs?format=llms-full",
+        }),
+        expect.objectContaining({
+          source: "/guides/docs/:section*/llms.txt",
+          destination: "/api/docs?format=llms&section=/guides/docs/:section*/llms.txt",
+        }),
+        expect.objectContaining({
+          source: "/docs/llms.txt",
+          destination: "/api/docs?format=llms",
         }),
       ]),
     );
@@ -1189,6 +1219,14 @@ describe("withDocs (app dir: src/app vs app)", () => {
         }),
         expect.objectContaining({
           source: "/.well-known/llms-full.txt",
+          destination: "/api/docs?format=llms-full",
+        }),
+        expect.objectContaining({
+          source: "/docs/llms.txt",
+          destination: "/api/docs?format=llms",
+        }),
+        expect.objectContaining({
+          source: "/docs/llms-full.txt",
           destination: "/api/docs?format=llms-full",
         }),
         expect.objectContaining({

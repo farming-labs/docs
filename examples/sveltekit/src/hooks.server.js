@@ -23,7 +23,7 @@ export async function handle({ event, resolve }) {
 
   if (
     (method === "GET" || method === "HEAD") &&
-    isDocsLlmsTxtPublicRequest(event.url, config.llmsTxt)
+    isDocsLlmsTxtPublicRequest(event.url, config.llmsTxt, docsEntry)
   ) {
     const nativeResponse = await resolve(event);
     if (nativeResponse.status !== 404) return nativeResponse;
