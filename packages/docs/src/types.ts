@@ -2233,6 +2233,94 @@ export interface DocsAgentConfig {
   compact?: DocsAgentCompactConfig;
 }
 
+export type DocsReviewSeverity = "off" | "suggestion" | "warn" | "error";
+
+export type DocsReviewCiMode = "off" | "warn" | "block";
+
+export interface DocsReviewRulesConfig {
+  /** Check internal markdown/docs links. */
+  brokenLinks?: DocsReviewSeverity;
+  /** Check required page frontmatter such as title and description. */
+  frontmatter?: DocsReviewSeverity;
+  /** Check duplicate docs slugs in the resolved docs tree. */
+  duplicateSlugs?: DocsReviewSeverity;
+  /** Check whether changed markdown/MDX files can be parsed. */
+  invalidMdx?: DocsReviewSeverity;
+  /** Check docs.config examples against known config options when possible. */
+  configExamples?: DocsReviewSeverity;
+  /** Check code fences for useful metadata such as title and framework. */
+  codeFenceMetadata?: DocsReviewSeverity;
+  /** Check runnable command/code fences for package manager context. */
+  runnableMetadata?: DocsReviewSeverity;
+  /** Suggest machine-facing context for implementation-heavy pages. */
+  agentContext?: DocsReviewSeverity;
+}
+
+export interface DocsReviewScoreConfig {
+  /**
+   * Minimum healthy score.
+   * CI reports the threshold in warn mode and blocks below it only when `ci.mode` is `"block"`.
+   *
+   * @default 80
+   */
+  threshold?: number;
+  /**
+   * Point deductions by finding severity.
+   *
+   * @default { error: 20, warn: 8, suggestion: 2 }
+   */
+  weights?: Partial<Record<"error" | "warn" | "suggestion", number>>;
+}
+
+export interface DocsReviewCiConfig {
+  /**
+   * Enable Docs Review CI workflow generation.
+   *
+   * @default true
+   */
+  enabled?: boolean;
+  /**
+   * How CI should treat unhealthy review results.
+   *
+   * - `"off"`: do not create/report CI output
+   * - `"warn"`: report annotations but pass CI
+   * - `"block"`: fail CI when errors exist or the score is below threshold
+   *
+   * @default "warn"
+   */
+  mode?: DocsReviewCiMode;
+  /**
+   * Emit GitHub workflow command annotations in CI.
+   *
+   * @default true
+   */
+  annotations?: boolean;
+  /**
+   * Reserved for GitHub PR comments from the official action/bot.
+   *
+   * @default true
+   */
+  comment?: boolean;
+}
+
+export interface DocsReviewConfig {
+  /**
+   * Enable Docs Review.
+   *
+   * Omitted review config is treated as enabled so docs sites get PR review CI by default.
+   * Set `review: false` to opt out.
+   *
+   * @default true
+   */
+  enabled?: boolean;
+  /** Score threshold and severity weights. */
+  score?: DocsReviewScoreConfig;
+  /** GitHub Actions behavior. */
+  ci?: boolean | DocsReviewCiConfig;
+  /** Optional rule severity overrides. */
+  rules?: DocsReviewRulesConfig;
+}
+
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
@@ -2677,6 +2765,22 @@ export interface DocsConfig {
    * Agent-oriented configuration, including defaults for `docs agent compact`.
    */
   agent?: DocsAgentConfig;
+  /**
+   * Docs Review checks changed docs files in CI/local runs and can auto-create
+   * a GitHub Actions workflow during dev/build startup.
+   *
+   * - omitted or `true` → enabled with warn-mode CI and an 80 score threshold
+   * - `false` → disable review and workflow generation
+   *
+   * @example
+   * ```ts
+   * review: {
+   *   ci: { mode: "block" },
+   *   score: { threshold: 90 },
+   * }
+   * ```
+   */
+  review?: boolean | DocsReviewConfig;
   /** SEO metadata - separate from theme */
   metadata?: DocsMetadata;
   /** Open Graph image handling */

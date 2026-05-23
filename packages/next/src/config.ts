@@ -32,6 +32,7 @@ import {
 } from "node:fs";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ensureDocsReviewWorkflow } from "@farming-labs/docs/server";
 import matter from "gray-matter";
 import type { NextConfig } from "next";
 
@@ -1815,6 +1816,15 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
     docsConfigPath.startsWith("./") || docsConfigPath.startsWith("../")
       ? docsConfigPath
       : `./${docsConfigPath}`;
+
+  ensureDocsReviewWorkflow({
+    rootDir: root,
+    configPath: docsConfigPath,
+    configContent: existsSync(docsConfigAbsolutePath)
+      ? readFileSync(docsConfigAbsolutePath, "utf-8")
+      : undefined,
+    log: process.env.NODE_ENV === "test" ? undefined : (message) => console.log(message),
+  });
 
   // ── 1. Auto-generate mdx-components.tsx if missing ──────────────
   if (!hasFile(root, "mdx-components")) {

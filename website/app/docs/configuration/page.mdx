@@ -135,6 +135,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
 | `feedback`    | `boolean \| FeedbackConfig`    | `false` for UI  | Human page feedback UI; agent feedback endpoints are default-on unless opted out |
 | `agent`       | `DocsAgentConfig`              | —               | Defaults for `docs agent compact`                  |
+| `review`      | `boolean \| DocsReviewConfig`  | `true`          | Docs Review CI workflow generation, scoring, and rule severity |
 | `readingTime` | `boolean \| ReadingTimeConfig` | `false`         | Opt-in estimated read-time label with optional per-page overrides |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
@@ -616,6 +617,46 @@ Framework notes:
 - **Custom routes:** set `mcp.route` in `docs.config` and update the framework public forwarder so the configured path and the actual endpoint stay aligned
 
 See the full [MCP Server guide](/docs/customization/mcp) for the route snippets and stdio usage.
+
+## Docs Review CI
+
+Docs Review is enabled by default. During `next dev` or `next build`, `withDocs()` creates
+`.github/workflows/docs-review.yml` when the workflow does not already exist. In monorepos, the
+file is written at the repository root and the job runs from the docs app directory.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  review: true,
+  theme: fumadocs(),
+});
+```
+
+The generated workflow only triggers on docs-related PR changes such as `docs.config.*`,
+`app/docs/**`, `src/app/docs/**`, `content/docs/**`, and the workflow file itself. By default it
+runs in `warn` mode, posts GitHub annotations, and keeps CI green.
+
+Use `block` mode when the team wants docs PRs to fail below the configured score threshold or when
+error-level findings exist:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  review: {
+    ci: { mode: "block" },
+    score: { threshold: 90 },
+    rules: {
+      brokenLinks: "error",
+      frontmatter: "error",
+      codeFenceMetadata: "warn",
+      agentContext: "suggestion",
+    },
+  },
+  theme: fumadocs(),
+});
+```
+
+Set `review: false` to opt out of review and workflow generation.
 
 ## API Reference
 
