@@ -2280,6 +2280,12 @@ export interface DocsReviewCiConfig {
    */
   enabled?: boolean;
   /**
+   * GitHub Actions job/check name for the generated workflow.
+   *
+   * @default "docs-review"
+   */
+  name?: string;
+  /**
    * How CI should treat unhealthy review results.
    *
    * - `"off"`: do not create/report CI output

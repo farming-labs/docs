@@ -634,7 +634,8 @@ export default defineDocs({
 
 The generated workflow only triggers on docs-related PR changes such as `docs.config.*`,
 `app/docs/**`, `src/app/docs/**`, `content/docs/**`, and the workflow file itself. By default it
-runs in `warn` mode, posts GitHub annotations, and keeps CI green.
+runs in `warn` mode, posts GitHub annotations, uses `docs-review` as the GitHub check name, and
+keeps CI green.
 
 Use `block` mode when the team wants docs PRs to fail below the configured score threshold or when
 error-level findings exist:
@@ -643,7 +644,10 @@ error-level findings exist:
 export default defineDocs({
   entry: "docs",
   review: {
-    ci: { mode: "block" },
+    ci: {
+      name: "agent-docs-review",
+      mode: "block",
+    },
     score: { threshold: 90 },
     rules: {
       brokenLinks: "error",

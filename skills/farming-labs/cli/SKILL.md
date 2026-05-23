@@ -218,7 +218,8 @@ pnpm exec docs review setup
 `review` config is enabled by default; use `review: false` to opt out.
 
 Use `review.ci.mode: "block"` and `review.score.threshold` when the team wants CI to fail below a
-score threshold.
+score threshold. Use `review.ci.name` to customize the GitHub Actions job/check name; it defaults
+to `docs-review`.
 
 ## Search Sync
 
