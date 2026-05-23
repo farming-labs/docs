@@ -89,6 +89,34 @@ describe("docs review helpers", () => {
     expect(workflow).toContain("working-directory: website");
   });
 
+  it("builds the local docs CLI before review when the repo contains the workspace package", () => {
+    mkdirSync(join(tmpDir, ".git"), { recursive: true });
+    mkdirSync(join(tmpDir, "website", "app", "docs"), { recursive: true });
+    mkdirSync(join(tmpDir, "packages", "docs"), { recursive: true });
+    writeFileSync(join(tmpDir, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n", "utf-8");
+    writeFileSync(
+      join(tmpDir, "packages", "docs", "package.json"),
+      JSON.stringify({
+        name: "@farming-labs/docs",
+        scripts: { build: "tsdown" },
+      }),
+      "utf-8",
+    );
+    writeFileSync(join(tmpDir, "website", "docs.config.ts"), "export default { entry: 'docs' };\n");
+
+    ensureDocsReviewWorkflow({
+      rootDir: join(tmpDir, "website"),
+      configPath: "docs.config.ts",
+    });
+
+    const workflow = readFileSync(join(tmpDir, DEFAULT_DOCS_REVIEW_WORKFLOW_PATH), "utf-8");
+    expect(workflow).toContain("pnpm --filter @farming-labs/docs run build");
+    expect(workflow).toContain(
+      "node ../packages/docs/dist/cli/index.mjs review --ci --config docs.config.ts",
+    );
+    expect(workflow.indexOf("Build docs CLI")).toBeLessThan(workflow.indexOf("Review docs"));
+  });
+
   it("does not create a workflow when review is disabled", () => {
     mkdirSync(join(tmpDir, ".git"), { recursive: true });
     writeFileSync(join(tmpDir, "docs.config.ts"), "export default { review: false };\n", "utf-8");

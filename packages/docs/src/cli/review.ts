@@ -580,14 +580,13 @@ function selectReviewFiles(options: {
   contentDir: string;
 }): string[] {
   const pageFiles = new Set(options.pages.map((page) => page.relativePath));
-  const changed = options.changedFiles.length > 0 ? options.changedFiles : Array.from(pageFiles);
   const normalizedConfigPath = toPosixPath(options.configPath);
 
-  if (changed.includes(normalizedConfigPath)) {
+  if (options.changedFiles.includes(normalizedConfigPath)) {
     return Array.from(pageFiles).sort();
   }
 
-  return changed
+  return options.changedFiles
     .map(toPosixPath)
     .filter((file) => pageFiles.has(file))
     .sort();
@@ -599,7 +598,10 @@ function getChangedFiles(rootDir: string, options: ReviewOptions): string[] {
   const githubRange = process.env.GITHUB_BASE_REF
     ? `origin/${process.env.GITHUB_BASE_REF}...HEAD`
     : undefined;
-  const ranges = [explicitRange, githubRange, "HEAD~1...HEAD", undefined];
+  const ranges = [explicitRange, githubRange, "HEAD~1...HEAD", undefined].filter(
+    (range, index, allRanges): range is string | undefined =>
+      range !== undefined || index === allRanges.length - 1,
+  );
 
   for (const range of ranges) {
     try {

@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build docs CLI
+        run: pnpm --filter @farming-labs/docs run build
+
       - name: Review docs
-        run: pnpm exec docs review --ci --config docs.config.tsx
+        run: node ../packages/docs/dist/cli/index.mjs review --ci --config docs.config.tsx
         working-directory: website

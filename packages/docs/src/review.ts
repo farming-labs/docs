@@ -35,6 +35,8 @@ export interface DocsReviewWorkflowOptions {
   packageManager?: "npm" | "pnpm" | "yarn" | "bun";
   projectDir?: string;
   configPath?: string;
+  buildCommand?: string;
+  reviewCommand?: string;
   pathFilters?: string[];
 }
 
@@ -124,9 +126,12 @@ export function buildDocsReviewWorkflow(options: DocsReviewWorkflowOptions = {})
   const packageManager = options.packageManager ?? "npm";
   const projectDir = normalizeProjectDir(options.projectDir);
   const configArg = options.configPath ? ` --config ${shellQuote(options.configPath)}` : "";
-  const reviewCommand = `${reviewCommandForPackageManager(packageManager)} review --ci${configArg}`;
+  const reviewCommand = `${options.reviewCommand ?? reviewCommandForPackageManager(packageManager)} review --ci${configArg}`;
   const filters = normalizePathFilters(options.pathFilters);
   const installSteps = buildInstallSteps(packageManager);
+  const buildStep = options.buildCommand
+    ? `\n      - name: Build docs CLI\n        run: ${options.buildCommand}\n`
+    : "";
   const workingDirectoryLine =
     projectDir === "." ? "" : `\n        working-directory: ${projectDir}`;
 
@@ -152,6 +157,7 @@ jobs:
           fetch-depth: 0
 
 ${installSteps}
+${buildStep}
 
       - name: Review docs
         run: ${reviewCommand}${workingDirectoryLine}
@@ -184,10 +190,13 @@ export function ensureDocsReviewWorkflow(
   const configPath = options.configPath ?? findDocsConfigPath(rootDir);
   const configContent = options.configContent ?? readConfig(rootDir, configPath);
   const projectDir = toPosixPath(relative(repoRoot, rootDir)) || ".";
+  const packageManager = detectPackageManager(repoRoot);
   const workflow = buildDocsReviewWorkflow({
-    packageManager: detectPackageManager(repoRoot),
+    packageManager,
     projectDir,
     configPath,
+    buildCommand: detectLocalDocsCliBuildCommand(repoRoot, packageManager),
+    reviewCommand: detectLocalDocsCliReviewCommand(repoRoot, rootDir),
     pathFilters: buildDocsReviewWorkflowPathFilters({
       rootDir,
       repoRoot,
@@ -346,6 +355,42 @@ function detectPackageManager(rootDir: string): "npm" | "pnpm" | "yarn" | "bun" 
   if (existsSync(join(rootDir, "yarn.lock"))) return "yarn";
   if (existsSync(join(rootDir, "bun.lock")) || existsSync(join(rootDir, "bun.lockb"))) return "bun";
   return "npm";
+}
+
+function detectLocalDocsCliBuildCommand(
+  repoRoot: string,
+  packageManager: "npm" | "pnpm" | "yarn" | "bun",
+): string | undefined {
+  if (!hasLocalDocsWorkspacePackage(repoRoot)) return undefined;
+
+  if (packageManager === "pnpm") return "pnpm --filter @farming-labs/docs run build";
+  if (packageManager === "yarn") return "yarn workspace @farming-labs/docs build";
+  if (packageManager === "bun") return "bun run --filter @farming-labs/docs build";
+  return "npm run build --workspace=@farming-labs/docs";
+}
+
+function detectLocalDocsCliReviewCommand(repoRoot: string, rootDir: string): string | undefined {
+  if (!hasLocalDocsWorkspacePackage(repoRoot)) return undefined;
+
+  const cliPath = toPosixPath(
+    relative(rootDir, join(repoRoot, "packages", "docs", "dist", "cli", "index.mjs")),
+  );
+  return `node ${shellQuote(cliPath || "./packages/docs/dist/cli/index.mjs")}`;
+}
+
+function hasLocalDocsWorkspacePackage(repoRoot: string): boolean {
+  const packageJsonPath = join(repoRoot, "packages", "docs", "package.json");
+  if (!existsSync(packageJsonPath)) return false;
+
+  try {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8")) as {
+      name?: string;
+      scripts?: Record<string, string>;
+    };
+    return packageJson.name === "@farming-labs/docs" && Boolean(packageJson.scripts?.build);
+  } catch {
+    return false;
+  }
 }
 
 function buildInstallSteps(packageManager: "npm" | "pnpm" | "yarn" | "bun"): string {
