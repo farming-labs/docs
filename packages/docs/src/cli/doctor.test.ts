@@ -572,6 +572,7 @@ Allow: /
                 { name: "search_docs" },
                 { name: "read_page" },
                 { name: "get_code_examples" },
+                { name: "get_config_schema" },
               ],
             },
           });

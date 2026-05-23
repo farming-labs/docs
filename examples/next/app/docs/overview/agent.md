@@ -173,6 +173,7 @@ export default defineDocs({
       searchDocs: true,
       readPage: true,
       getCodeExamples: true,
+      getConfigSchema: true,
     },
   },
 });
@@ -187,12 +188,16 @@ export default defineDocs({
 | `searchDocs`    | `boolean` | Expose the `search_docs` tool |
 | `readPage`      | `boolean` | Expose the `read_page` tool |
 | `getCodeExamples` | `boolean` | Expose the `get_code_examples` tool |
+| `getConfigSchema` | `boolean` | Expose the `get_config_schema` tool |
 
 Default MCP surface:
 
 - **HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
-- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`
+- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`
+
+`get_config_schema` returns structured `docs.config.ts` option metadata. Agents can call it with
+`option`, such as `mcp.tools.getConfigSchema`, or with `query` for keyword filtering.
 
 Framework notes:
 

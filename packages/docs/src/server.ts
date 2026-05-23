@@ -90,6 +90,8 @@ export type {
 } from "./sitemap.js";
 export type {
   DocsMcpCodeExample,
+  DocsMcpConfigSchema,
+  DocsMcpConfigSchemaOption,
   DocsMcpHttpHandlers,
   DocsMcpNavigationNode,
   DocsMcpNavigationTree,

@@ -46,6 +46,7 @@ describe("resolveDocsMcpConfig", () => {
         searchDocs: true,
         getNavigation: true,
         getCodeExamples: true,
+        getConfigSchema: true,
       },
     });
   });
@@ -62,6 +63,7 @@ describe("resolveDocsMcpConfig", () => {
         searchDocs: true,
         getNavigation: true,
         getCodeExamples: true,
+        getConfigSchema: true,
       },
     });
   });
@@ -82,6 +84,7 @@ describe("resolveDocsMcpConfig", () => {
         searchDocs: true,
         getNavigation: true,
         getCodeExamples: true,
+        getConfigSchema: true,
       },
     });
   });
@@ -346,6 +349,7 @@ sidebar:
         "search_docs",
         "read_page",
         "get_code_examples",
+        "get_config_schema",
       ]),
     );
 
@@ -507,6 +511,91 @@ sidebar:
       }),
     ]);
 
+    const configSchemaResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": "stale-session",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 7,
+          method: "tools/call",
+          params: {
+            name: "get_config_schema",
+            arguments: {
+              option: "mcp.tools.getConfigSchema",
+            },
+          },
+        }),
+      }),
+    });
+
+    const configSchemaPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(configSchemaResponse);
+    const configSchemaText = configSchemaPayload.result?.content?.[0]?.text ?? "{}";
+    const configSchema = JSON.parse(configSchemaText) as {
+      resultCount?: number;
+      options?: Array<{
+        path?: string;
+        name?: string;
+        type?: string;
+        default?: boolean;
+        description?: string;
+      }>;
+    };
+
+    expect(configSchema.resultCount).toBe(1);
+    expect(configSchema.options).toEqual([
+      expect.objectContaining({
+        path: "mcp.tools.getConfigSchema",
+        name: "getConfigSchema",
+        type: "boolean",
+        default: true,
+        description: expect.stringContaining("get_config_schema"),
+      }),
+    ]);
+
+    const ambiguousConfigSchemaResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": "stale-session",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 8,
+          method: "tools/call",
+          params: {
+            name: "get_config_schema",
+            arguments: {
+              option: "enabled",
+            },
+          },
+        }),
+      }),
+    });
+
+    const ambiguousConfigSchemaPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(ambiguousConfigSchemaResponse);
+    const ambiguousConfigSchemaText =
+      ambiguousConfigSchemaPayload.result?.content?.[0]?.text ?? "{}";
+    const ambiguousConfigSchema = JSON.parse(ambiguousConfigSchemaText) as {
+      resultCount?: number;
+      options?: unknown[];
+    };
+
+    expect(ambiguousConfigSchema.resultCount).toBe(0);
+    expect(ambiguousConfigSchema.options).toEqual([]);
+
     const deleteResponse = await handlers.DELETE({
       request: new Request("http://localhost/api/docs/mcp", {
         method: "DELETE",
@@ -562,6 +651,7 @@ sidebar:
         "search_docs",
         "read_page",
         "get_code_examples",
+        "get_config_schema",
       ]),
     );
 
@@ -594,6 +684,7 @@ sidebar:
         "search_docs",
         "read_page",
         "get_code_examples",
+        "get_config_schema",
       ]),
     );
   });
@@ -980,6 +1071,7 @@ sidebar:
         tools: {
           searchDocs: false,
           readPage: false,
+          getConfigSchema: false,
         },
       },
     });
@@ -1037,7 +1129,7 @@ sidebar:
       expect.arrayContaining(["list_pages", "get_navigation", "get_code_examples"]),
     );
     expect(toolsList.result?.tools?.map((tool) => tool.name)).not.toEqual(
-      expect.arrayContaining(["search_docs", "read_page"]),
+      expect.arrayContaining(["search_docs", "read_page", "get_config_schema"]),
     );
   });
 

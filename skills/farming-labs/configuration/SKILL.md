@@ -660,7 +660,7 @@ Default behavior:
 - **Well-known HTTP route:** `/.well-known/mcp`
 - **Canonical HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
-- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`
+- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`
 
 `get_code_examples` returns fenced code blocks as structured JSON. It parses code-fence metadata
 such as `title`, `framework`, `packageManager`, and `runnable` from raw markdown/MDX and does not
@@ -691,6 +691,19 @@ MCP call example:
 ```
 
 Supported filters: `query`, `path`, `framework`, `packageManager`, `language`, `runnable`, `limit`, and `locale`.
+
+`get_config_schema` returns structured `docs.config.ts` option metadata for agents that need to
+write or update config safely. Call it with no arguments for the full schema, `option` for a
+specific top-level or nested path, or `query` for keyword filtering.
+
+```json
+{
+  "name": "get_config_schema",
+  "arguments": {
+    "option": "mcp.tools.getConfigSchema"
+  }
+}
+```
 
 Framework notes:
 - **Next.js:** `withDocs()` auto-generates the default `/api/docs/mcp` route and public `/mcp` plus `/.well-known/mcp` rewrites

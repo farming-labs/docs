@@ -184,7 +184,7 @@ An MCP client can request only matching examples:
 }
 ```
 
-The response is JSON, so agents do not need to scrape rendered HTML:
+The `get_code_examples` response is JSON, so agents do not need to scrape rendered HTML:
 
 ```json
 {
@@ -199,6 +199,43 @@ The response is JSON, so agents do not need to scrape rendered HTML:
         "url": "/docs/getting-started/quickstart"
       },
       "code": "import { defineDocs } from \"@farming-labs/docs\";\\n..."
+    }
+  ]
+}
+```
+
+The MCP server also exposes `get_config_schema` for agents that need to edit `docs.config.ts`
+without guessing option names or defaults:
+
+```json
+{
+  "name": "get_config_schema",
+  "arguments": {
+    "option": "mcp.tools.getConfigSchema"
+  }
+}
+```
+
+Use `query` instead of `option` when the agent only knows the feature area, such as `llms` or
+`page actions`.
+
+A filtered `get_config_schema` response includes the matching option metadata:
+
+```json
+{
+  "schemaVersion": 1,
+  "configFile": "docs.config.ts",
+  "filters": {
+    "option": "mcp.tools.getConfigSchema"
+  },
+  "resultCount": 1,
+  "options": [
+    {
+      "path": "mcp.tools.getConfigSchema",
+      "name": "getConfigSchema",
+      "type": "boolean",
+      "default": true,
+      "description": "Expose the get_config_schema tool."
     }
   ]
 }

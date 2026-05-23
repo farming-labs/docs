@@ -1116,6 +1116,8 @@ export interface DocsMcpToolsConfig {
   getNavigation?: boolean;
   /** Expose a `get_code_examples` tool for fenced code blocks and their metadata. */
   getCodeExamples?: boolean;
+  /** Expose a `get_config_schema` tool for docs.config option metadata. */
+  getConfigSchema?: boolean;
 }
 
 /**
