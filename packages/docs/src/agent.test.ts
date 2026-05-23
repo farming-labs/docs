@@ -523,6 +523,7 @@ describe("agent route helpers", () => {
         name: "docs",
         version: "1.0.0",
         tools: {
+          listDocs: true,
           listPages: true,
           readPage: true,
           searchDocs: true,
@@ -567,6 +568,7 @@ describe("agent route helpers", () => {
         name: "docs",
         version: "1.0.0",
         tools: {
+          listDocs: true,
           listPages: true,
           readPage: true,
           searchDocs: true,
@@ -615,6 +617,7 @@ describe("agent route helpers", () => {
         name: "docs",
         version: "1.0.0",
         tools: {
+          listDocs: true,
           listPages: true,
           readPage: true,
           searchDocs: true,

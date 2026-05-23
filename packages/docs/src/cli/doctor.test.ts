@@ -567,6 +567,7 @@ Allow: /
             id: payload.id,
             result: {
               tools: [
+                { name: "list_docs" },
                 { name: "list_pages" },
                 { name: "get_navigation" },
                 { name: "search_docs" },

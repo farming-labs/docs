@@ -41,6 +41,7 @@ describe("resolveDocsMcpConfig", () => {
       name: "@farming-labs/docs",
       version: "0.0.0",
       tools: {
+        listDocs: true,
         listPages: true,
         readPage: true,
         searchDocs: true,
@@ -58,6 +59,7 @@ describe("resolveDocsMcpConfig", () => {
       name: "@farming-labs/docs",
       version: "0.0.0",
       tools: {
+        listDocs: true,
         listPages: true,
         readPage: true,
         searchDocs: true,
@@ -79,6 +81,7 @@ describe("resolveDocsMcpConfig", () => {
       name: "@farming-labs/docs",
       version: "0.0.0",
       tools: {
+        listDocs: true,
         listPages: true,
         readPage: true,
         searchDocs: true,
@@ -344,6 +347,7 @@ sidebar:
 
     expect(toolsList.result?.tools?.map((tool) => tool.name)).toEqual(
       expect.arrayContaining([
+        "list_docs",
         "list_pages",
         "get_navigation",
         "search_docs",
@@ -352,6 +356,72 @@ sidebar:
         "get_config_schema",
       ]),
     );
+
+    const listDocsResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": "stale-session",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "list-docs",
+          method: "tools/call",
+          params: {
+            name: "list_docs",
+            arguments: {
+              section: "guides",
+            },
+          },
+        }),
+      }),
+    });
+
+    const listDocsPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(listDocsResponse);
+    const listDocsText = listDocsPayload.result?.content?.[0]?.text ?? "{}";
+    const docsList = JSON.parse(listDocsText) as {
+      section?: string;
+      resultCount?: number;
+      sectionCount?: number;
+      pages?: Array<{ slug?: string; url?: string; sourcePath?: string }>;
+      sections?: Array<{
+        slug?: string;
+        title?: string;
+        pageCount?: number;
+        pages?: Array<{ slug?: string; url?: string }>;
+      }>;
+    };
+
+    expect(docsList).toMatchObject({
+      section: "guides",
+      resultCount: 1,
+      sectionCount: 1,
+      pages: [
+        expect.objectContaining({
+          slug: "guides/quickstart",
+          url: "/docs/guides/quickstart",
+          sourcePath: "docs/guides/quickstart.mdx",
+        }),
+      ],
+      sections: [
+        expect.objectContaining({
+          slug: "guides",
+          title: "Guides",
+          pageCount: 1,
+          pages: [
+            expect.objectContaining({
+              slug: "guides/quickstart",
+              url: "/docs/guides/quickstart",
+            }),
+          ],
+        }),
+      ],
+    });
 
     const searchResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -646,6 +716,7 @@ sidebar:
     }>(missingSessionResponse);
     expect(missingSessionPayload.result?.tools?.map((tool) => tool.name)).toEqual(
       expect.arrayContaining([
+        "list_docs",
         "list_pages",
         "get_navigation",
         "search_docs",
@@ -679,6 +750,7 @@ sidebar:
     }>(expiredSessionResponse);
     expect(expiredSessionPayload.result?.tools?.map((tool) => tool.name)).toEqual(
       expect.arrayContaining([
+        "list_docs",
         "list_pages",
         "get_navigation",
         "search_docs",
@@ -1069,6 +1141,7 @@ sidebar:
       mcp: {
         enabled: true,
         tools: {
+          listDocs: false,
           searchDocs: false,
           readPage: false,
           getConfigSchema: false,
@@ -1129,7 +1202,7 @@ sidebar:
       expect.arrayContaining(["list_pages", "get_navigation", "get_code_examples"]),
     );
     expect(toolsList.result?.tools?.map((tool) => tool.name)).not.toEqual(
-      expect.arrayContaining(["search_docs", "read_page", "get_config_schema"]),
+      expect.arrayContaining(["list_docs", "search_docs", "read_page", "get_config_schema"]),
     );
   });
 

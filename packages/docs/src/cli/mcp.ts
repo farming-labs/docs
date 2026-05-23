@@ -55,6 +55,7 @@ function readMcpConfig(content: string): boolean | DocsMcpConfig | undefined {
     name: readStringProperty(block, "name"),
     version: readStringProperty(block, "version"),
     tools: {
+      listDocs: readBooleanProperty(block, "listDocs"),
       listPages: readBooleanProperty(block, "listPages"),
       readPage: readBooleanProperty(block, "readPage"),
       searchDocs: readBooleanProperty(block, "searchDocs"),

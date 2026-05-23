@@ -1106,6 +1106,8 @@ export interface DocsRobotsConfig {
  * All tools default to `true` when omitted.
  */
 export interface DocsMcpToolsConfig {
+  /** Expose a `list_docs` tool that returns docs pages grouped by section. */
+  listDocs?: boolean;
   /** Expose a `list_pages` tool that returns the known docs pages. */
   listPages?: boolean;
   /** Expose a `read_page` tool that returns a page by slug or URL path. */

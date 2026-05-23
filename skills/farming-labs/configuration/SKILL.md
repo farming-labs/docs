@@ -660,7 +660,19 @@ Default behavior:
 - **Well-known HTTP route:** `/.well-known/mcp`
 - **Canonical HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
-- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`
+- **Built-in tools:** `list_docs`, `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`
+
+`list_docs` returns docs page summaries grouped by section. Call it with no arguments for the whole
+docs tree, or pass `section` to narrow results before calling `read_page`.
+
+```json
+{
+  "name": "list_docs",
+  "arguments": {
+    "section": "getting-started"
+  }
+}
+```
 
 `get_code_examples` returns fenced code blocks as structured JSON. It parses code-fence metadata
 such as `title`, `framework`, `packageManager`, and `runnable` from raw markdown/MDX and does not

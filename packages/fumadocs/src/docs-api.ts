@@ -901,6 +901,7 @@ function readMcpConfig(root: string): boolean | DocsMcpConfig | undefined {
         name: readStringFromBlock(block, "name"),
         version: readStringFromBlock(block, "version"),
         tools: {
+          listDocs: readBooleanFromBlock(block, "listDocs"),
           listPages: readBooleanFromBlock(block, "listPages"),
           readPage: readBooleanFromBlock(block, "readPage"),
           searchDocs: readBooleanFromBlock(block, "searchDocs"),

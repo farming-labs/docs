@@ -1940,6 +1940,7 @@ title: "Home"
       name: "Agent Docs",
       version: "0.0.0",
       tools: {
+        listDocs: true,
         listPages: true,
         readPage: true,
         searchDocs: false,

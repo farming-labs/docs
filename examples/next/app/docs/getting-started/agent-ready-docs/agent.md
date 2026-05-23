@@ -114,6 +114,9 @@ MCP also exposes `get_code_examples` for fenced code blocks with metadata:
 Call it with filters such as `path`, `framework`, `packageManager`, `language`, `runnable`, `query`,
 `limit`, and `locale`. The tool returns structured JSON and does not change the rendered docs UI.
 
+MCP also exposes `list_docs` for section-aware discovery. Call it with no arguments for all docs, or
+with `section` such as `getting-started` to get matching page summaries before calling `read_page`.
+
 MCP also exposes `get_config_schema` for `docs.config.ts` metadata. Call it with no arguments for
 the full schema, `option` for paths such as `mcp.tools.getConfigSchema`, or `query` for feature
 areas such as `llms` or `page actions`.
