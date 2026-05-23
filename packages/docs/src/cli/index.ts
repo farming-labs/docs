@@ -296,6 +296,7 @@ ${pc.dim("Options for review:")}
   ${pc.cyan("review")}                              Review docs changed in git
   ${pc.cyan("review setup")}                        Create ${pc.dim(".github/workflows/docs-review.yml")} when enabled
   ${pc.cyan("--ci")}                                Use docs.config review.ci behavior and GitHub annotations
+  ${pc.cyan("--json")}                              Print the review report as JSON
   ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
   ${pc.cyan("--mode <off|warn|block>")}             Override ${pc.dim("review.ci.mode")}
   ${pc.cyan("--score-threshold <0-100>")}           Override ${pc.dim("review.score.threshold")}

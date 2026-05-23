@@ -390,6 +390,8 @@ function checkBrokenLinks(
   let match: RegExpExecArray | null;
 
   while ((match = linkPattern.exec(options.source))) {
+    if (match[1] && options.source[match.index - 1] === "!") continue;
+
     const href = match[1] ?? match[2];
     if (!href || !href.startsWith("/")) continue;
 
