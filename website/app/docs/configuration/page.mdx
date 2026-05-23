@@ -621,8 +621,11 @@ See the full [MCP Server guide](/docs/customization/mcp) for the route snippets 
 ## Docs Review CI
 
 Docs Review is enabled by default. During `next dev` or `next build`, `withDocs()` creates
-`.github/workflows/docs-review.yml` when the workflow does not already exist. In monorepos, the
-file is written at the repository root and the job runs from the docs app directory.
+`.github/workflows/docs-review.yml` when the workflow does not already exist. The generated workflow
+is intentionally tiny: it calls the hosted reusable workflow at
+`farming-labs/docs/.github/workflows/docs-review-reusable.yml@main` and passes the docs config path,
+package manager, check name, and working directory as inputs. In monorepos, the file is written at
+the repository root and the job runs from the docs app directory.
 
 ```ts title="docs.config.ts"
 export default defineDocs({
@@ -632,9 +635,9 @@ export default defineDocs({
 });
 ```
 
-The generated workflow only triggers on docs-related PR changes such as `docs.config.*`,
-`app/docs/**`, `src/app/docs/**`, `content/docs/**`, and the workflow file itself. By default it
-runs in `warn` mode, posts GitHub annotations, uses `docs-review` as the GitHub check name, and
+The generated wrapper only triggers on docs-related PR changes such as `docs.config.*`,
+`app/docs/**`, `src/app/docs/**`, `content/docs/**`, and the workflow files themselves. By default
+it runs in `warn` mode, posts GitHub annotations, uses `docs-review` as the GitHub check name, and
 keeps CI green.
 
 Use `block` mode when the team wants docs PRs to fail below the configured score threshold or when

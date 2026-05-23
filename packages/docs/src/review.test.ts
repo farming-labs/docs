@@ -3,7 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  DEFAULT_DOCS_REVIEW_REUSABLE_WORKFLOW,
+  DEFAULT_DOCS_REVIEW_REUSABLE_WORKFLOW_PATH,
   DEFAULT_DOCS_REVIEW_WORKFLOW_PATH,
+  LOCAL_DOCS_REVIEW_REUSABLE_WORKFLOW,
   ensureDocsReviewWorkflow,
   readDocsReviewConfigFromSource,
   resolveDocsReviewConfig,
@@ -87,8 +90,12 @@ describe("docs review helpers", () => {
     expect(workflow).toContain('    name: "docs-review"');
     expect(workflow).toContain('      - "website/docs.config.ts"');
     expect(workflow).toContain('      - "website/app/docs/**"');
-    expect(workflow).toContain("pnpm exec docs review --ci --config docs.config.ts");
-    expect(workflow).toContain("working-directory: website");
+    expect(workflow).toContain(`      - "${DEFAULT_DOCS_REVIEW_REUSABLE_WORKFLOW_PATH}"`);
+    expect(workflow).toContain(`    uses: ${DEFAULT_DOCS_REVIEW_REUSABLE_WORKFLOW}`);
+    expect(workflow).toContain('      check-name: "docs-review"');
+    expect(workflow).toContain('      config: "docs.config.ts"');
+    expect(workflow).toContain('      working-directory: "website"');
+    expect(workflow).toContain('      package-manager: "pnpm"');
   });
 
   it("builds the local docs CLI before review when the repo contains the workspace package", () => {
@@ -112,11 +119,9 @@ describe("docs review helpers", () => {
     });
 
     const workflow = readFileSync(join(tmpDir, DEFAULT_DOCS_REVIEW_WORKFLOW_PATH), "utf-8");
-    expect(workflow).toContain("pnpm --filter @farming-labs/docs run build");
-    expect(workflow).toContain(
-      "node ../packages/docs/dist/cli/index.mjs review --ci --config docs.config.ts",
-    );
-    expect(workflow.indexOf("Build docs CLI")).toBeLessThan(workflow.indexOf("Review docs"));
+    expect(workflow).toContain(`    uses: ${LOCAL_DOCS_REVIEW_REUSABLE_WORKFLOW}`);
+    expect(workflow).toContain('      build-command: "pnpm --filter @farming-labs/docs run build"');
+    expect(workflow).toContain('      review-command: "node ../packages/docs/dist/cli/index.mjs"');
   });
 
   it("uses the configured docs review CI check name", () => {
@@ -144,6 +149,7 @@ describe("docs review helpers", () => {
 
     const workflow = readFileSync(join(tmpDir, DEFAULT_DOCS_REVIEW_WORKFLOW_PATH), "utf-8");
     expect(workflow).toContain('    name: "agent-docs-review"');
+    expect(workflow).toContain('      check-name: "agent-docs-review"');
   });
 
   it("does not create a workflow when review is disabled", () => {

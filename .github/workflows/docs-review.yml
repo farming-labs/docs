@@ -12,6 +12,7 @@ on:
       - "website/src/content/docs/**"
       - "website/src/lib/docs.config.*"
       - ".github/workflows/docs-review.yml"
+      - ".github/workflows/docs-review-reusable.yml"
 
 permissions:
   contents: read
@@ -21,25 +22,15 @@ permissions:
 jobs:
   docs-review:
     name: "docs-review"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build docs CLI
-        run: pnpm --filter @farming-labs/docs run build
-
-      - name: Review docs
-        run: node ../packages/docs/dist/cli/index.mjs review --ci --config docs.config.tsx
-        working-directory: website
+    uses: ./.github/workflows/docs-review-reusable.yml
+    with:
+      check-name: "docs-review"
+      config: "docs.config.tsx"
+      working-directory: "website"
+      package-manager: "pnpm"
+      build-command: "pnpm --filter @farming-labs/docs run build"
+      review-command: "node ../packages/docs/dist/cli/index.mjs"
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write

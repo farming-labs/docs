@@ -61,8 +61,9 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 
 ## Docs Review CI
 
-`review` is enabled by default. Use `review.ci.name` to customize the generated GitHub Actions
-job/check name; it defaults to `docs-review`.
+`review` is enabled by default. The generated GitHub Actions workflow is a tiny wrapper around
+`farming-labs/docs/.github/workflows/docs-review-reusable.yml@main`. Use `review.ci.name` to customize
+the job/check name; it defaults to `docs-review`.
 
 ```ts
 review: {

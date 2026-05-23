@@ -1,0 +1,129 @@
+name: Docs Review Reusable
+
+on:
+  workflow_call:
+    inputs:
+      check-name:
+        description: GitHub Actions job/check name.
+        required: false
+        type: string
+        default: docs-review
+      config:
+        description: Path to docs.config from the working directory.
+        required: false
+        type: string
+        default: docs.config.ts
+      working-directory:
+        description: Directory where the docs app lives.
+        required: false
+        type: string
+        default: "."
+      package-manager:
+        description: Package manager used to install and run the docs CLI.
+        required: false
+        type: string
+        default: pnpm
+      node-version:
+        description: Node.js version for npm, pnpm, and yarn projects.
+        required: false
+        type: string
+        default: "20"
+      pnpm-version:
+        description: pnpm version used when package-manager is pnpm.
+        required: false
+        type: string
+        default: "10"
+      build-command:
+        description: Optional command to build a local docs CLI before review.
+        required: false
+        type: string
+        default: ""
+      review-command:
+        description: Optional base command used before `review --ci`.
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  docs-review:
+    name: ${{ inputs.check-name }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        if: ${{ inputs.package-manager == 'pnpm' }}
+        with:
+          version: ${{ inputs.pnpm-version }}
+
+      - uses: oven-sh/setup-bun@v2
+        if: ${{ inputs.package-manager == 'bun' }}
+
+      - uses: actions/setup-node@v4
+        if: ${{ inputs.package-manager != 'bun' }}
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ inputs.package-manager }}
+
+      - name: Install dependencies
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            pnpm)
+              pnpm install --frozen-lockfile
+              ;;
+            yarn)
+              corepack enable
+              yarn install --immutable || yarn install --frozen-lockfile
+              ;;
+            bun)
+              bun install --frozen-lockfile
+              ;;
+            npm)
+              npm ci
+              ;;
+            *)
+              echo "Unsupported package manager: $PACKAGE_MANAGER"
+              exit 1
+              ;;
+          esac
+
+      - name: Build docs CLI
+        if: ${{ inputs.build-command != '' }}
+        env:
+          BUILD_COMMAND: ${{ inputs.build-command }}
+        run: bash -lc "$BUILD_COMMAND"
+
+      - name: Review docs
+        working-directory: ${{ inputs.working-directory }}
+        env:
+          DOCS_CONFIG: ${{ inputs.config }}
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+          REVIEW_COMMAND: ${{ inputs.review-command }}
+        run: |
+          if [ -z "$REVIEW_COMMAND" ]; then
+            case "$PACKAGE_MANAGER" in
+              pnpm)
+                REVIEW_COMMAND="pnpm exec docs"
+                ;;
+              yarn)
+                REVIEW_COMMAND="yarn exec docs"
+                ;;
+              bun)
+                REVIEW_COMMAND="bunx docs"
+                ;;
+              npm)
+                REVIEW_COMMAND="npx --no-install docs"
+                ;;
+            esac
+          fi
+
+          $REVIEW_COMMAND review --ci --config "$DOCS_CONFIG"
