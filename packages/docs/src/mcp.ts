@@ -62,6 +62,36 @@ export interface DocsMcpCodeExample {
   code: string;
 }
 
+export interface DocsMcpDocsPageSummary {
+  slug: string;
+  url: string;
+  title: string;
+  description?: string;
+  icon?: string;
+  sourcePath?: string;
+  lastModified?: string;
+}
+
+export interface DocsMcpDocsSection {
+  slug: string;
+  title: string;
+  url?: string;
+  description?: string;
+  icon?: string;
+  pageCount: number;
+  pages: DocsMcpDocsPageSummary[];
+  sections: DocsMcpDocsSection[];
+}
+
+export interface DocsMcpDocsList {
+  section?: string;
+  resultCount: number;
+  sectionCount: number;
+  pages: DocsMcpDocsPageSummary[];
+  rootPages: DocsMcpDocsPageSummary[];
+  sections: DocsMcpDocsSection[];
+}
+
 export interface DocsMcpConfigSchemaOption {
   path: string;
   name: string;
@@ -125,6 +155,7 @@ export interface DocsMcpResolvedConfig {
   name: string;
   version: string;
   tools: {
+    listDocs: boolean;
     listPages: boolean;
     readPage: boolean;
     searchDocs: boolean;
@@ -473,6 +504,13 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
         description: "Fine-grained built-in MCP tool toggles.",
         children: [
           {
+            path: "mcp.tools.listDocs",
+            name: "listDocs",
+            type: "boolean",
+            default: true,
+            description: "Expose the list_docs tool.",
+          },
+          {
             path: "mcp.tools.listPages",
             name: "listPages",
             type: "boolean",
@@ -587,6 +625,7 @@ export default defineDocs({
   entry: "docs",
   mcp: {
     tools: {
+      listDocs: true,
       getConfigSchema: true,
       getCodeExamples: true,
     },
@@ -607,6 +646,11 @@ const readPageInputSchema = z.object({
 });
 
 const listPagesInputSchema = z.object({
+  locale: z.string().min(1).optional(),
+});
+
+const listDocsInputSchema = z.object({
+  section: z.string().trim().min(1).optional(),
   locale: z.string().min(1).optional(),
 });
 
@@ -652,6 +696,7 @@ export function resolveDocsMcpConfig(
       name: defaults.defaultName ?? DEFAULT_MCP_NAME,
       version: defaults.defaultVersion ?? DEFAULT_MCP_VERSION,
       tools: {
+        listDocs: true,
         listPages: true,
         readPage: true,
         searchDocs: true,
@@ -670,6 +715,7 @@ export function resolveDocsMcpConfig(
     name: config.name ?? defaults.defaultName ?? DEFAULT_MCP_NAME,
     version: config.version ?? defaults.defaultVersion ?? DEFAULT_MCP_VERSION,
     tools: {
+      listDocs: config.tools?.listDocs ?? true,
       listPages: config.tools?.listPages ?? true,
       readPage: config.tools?.readPage ?? true,
       searchDocs: config.tools?.searchDocs ?? true,
@@ -860,6 +906,95 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             locale,
             outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
             metadata: { tool: "list_pages" },
+          });
+          throw error;
+        }
+      },
+    );
+  }
+
+  if (resolved.tools.listDocs) {
+    server.registerTool(
+      "list_docs",
+      {
+        title: "List docs by section",
+        description:
+          "List documentation pages grouped by section, optionally narrowed to one section.",
+        inputSchema: listDocsInputSchema,
+        annotations: { readOnlyHint: true },
+      },
+      async ({ section, locale }) => {
+        const startedAt = nowMs();
+        const trace = createDocsAgentTraceContext("mcp.tool.list_docs");
+        const callSpanId = createDocsAgentTraceId("span");
+        await emitDocsAgentTraceEvent(options.observability, {
+          type: "tool.call",
+          source: "mcp",
+          traceId: trace.traceId,
+          spanId: callSpanId,
+          name: "list_docs",
+          startedAt: trace.startedAt,
+          status: "started",
+          locale,
+          inputPreview: { section, locale },
+          metadata: { tool: "list_docs" },
+        });
+
+        try {
+          const docs = listDocsBySection(dedupePages(await options.source.getPages(locale)), {
+            section,
+            entry: options.source.entry,
+          });
+          const elapsed = durationMs(startedAt);
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "mcp_tool",
+            source: "mcp",
+            locale,
+            properties: {
+              tool: "list_docs",
+              section,
+              resultCount: docs.resultCount,
+              sectionCount: docs.sectionCount,
+              durationMs: elapsed,
+            },
+          });
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.result",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "list_docs",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "success",
+            locale,
+            outputPreview: { resultCount: docs.resultCount, sectionCount: docs.sectionCount },
+            metadata: { tool: "list_docs" },
+          });
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(docs, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          const elapsed = durationMs(startedAt);
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.error",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "list_docs",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "error",
+            locale,
+            outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
+            metadata: { tool: "list_docs" },
           });
           throw error;
         }
@@ -2102,6 +2237,266 @@ function toPageSummaries(pages: DocsMcpPage[]) {
     description: page.description,
     icon: page.icon,
   }));
+}
+
+function toDocsListPageSummary(page: DocsMcpPage): DocsMcpDocsPageSummary {
+  return {
+    slug: page.slug,
+    url: page.url,
+    title: page.title,
+    description: page.description,
+    icon: page.icon,
+    sourcePath: page.sourcePath,
+    lastModified: page.lastModified,
+  };
+}
+
+function listDocsBySection(
+  pages: DocsMcpPage[],
+  filters: { section?: string; entry?: string },
+): DocsMcpDocsList {
+  const allPages = pages.map(toDocsListPageSummary);
+  const tree = buildDocsSectionTree(pages);
+  const requestedSection = filters.section?.trim();
+
+  if (!requestedSection) {
+    return {
+      resultCount: allPages.length,
+      sectionCount: countDocsSections(tree.sections),
+      pages: allPages,
+      rootPages: tree.rootPages,
+      sections: tree.sections,
+    };
+  }
+
+  const section = findDocsSection(tree.sections, requestedSection, filters.entry);
+  if (section) {
+    const sections = [cloneDocsSection(section)];
+    const matchedPages = flattenDocsSectionPages(sections[0]);
+    return {
+      section: requestedSection,
+      resultCount: matchedPages.length,
+      sectionCount: countDocsSections(sections),
+      pages: matchedPages,
+      rootPages: [],
+      sections,
+    };
+  }
+
+  const page = allPages.find((candidate) =>
+    docsListPageMatches(candidate, requestedSection, filters.entry),
+  );
+  if (page) {
+    return {
+      section: requestedSection,
+      resultCount: 1,
+      sectionCount: 0,
+      pages: [page],
+      rootPages: [page],
+      sections: [],
+    };
+  }
+
+  return {
+    section: requestedSection,
+    resultCount: 0,
+    sectionCount: 0,
+    pages: [],
+    rootPages: [],
+    sections: [],
+  };
+}
+
+function buildDocsSectionTree(pages: DocsMcpPage[]): {
+  rootPages: DocsMcpDocsPageSummary[];
+  sections: DocsMcpDocsSection[];
+} {
+  const sectionSlugs = new Set<string>();
+  for (const page of pages) {
+    const parts = page.slug.split("/").filter(Boolean);
+    for (let index = 1; index < parts.length; index += 1) {
+      sectionSlugs.add(parts.slice(0, index).join("/"));
+    }
+  }
+
+  const rootPages: DocsMcpDocsPageSummary[] = [];
+  const sections: DocsMcpDocsSection[] = [];
+  const sectionBySlug = new Map<string, DocsMcpDocsSection>();
+
+  function getOrCreateSection(slug: string): DocsMcpDocsSection {
+    const existing = sectionBySlug.get(slug);
+    if (existing) return existing;
+
+    const parts = slug.split("/").filter(Boolean);
+    const section: DocsMcpDocsSection = {
+      slug,
+      title: titleize(parts.at(-1) ?? slug),
+      pageCount: 0,
+      pages: [],
+      sections: [],
+    };
+    sectionBySlug.set(slug, section);
+
+    if (parts.length <= 1) {
+      sections.push(section);
+    } else {
+      getOrCreateSection(parts.slice(0, -1).join("/")).sections.push(section);
+    }
+
+    return section;
+  }
+
+  for (const page of pages) {
+    const summary = toDocsListPageSummary(page);
+    const parts = page.slug.split("/").filter(Boolean);
+
+    if (parts.length === 0) {
+      rootPages.push(summary);
+      continue;
+    }
+
+    const isSectionIndex = sectionSlugs.has(page.slug);
+    if (parts.length === 1 && !isSectionIndex) {
+      rootPages.push(summary);
+      continue;
+    }
+
+    if (isSectionIndex) {
+      const section = getOrCreateSection(page.slug);
+      hydrateDocsSection(section, summary);
+      pushUniqueDocsPage(section.pages, summary, "start");
+      continue;
+    }
+
+    const parentSlug = parts.slice(0, -1).join("/");
+    const parent = getOrCreateSection(parentSlug);
+    pushUniqueDocsPage(parent.pages, summary, "end");
+  }
+
+  updateDocsSectionPageCounts(sections);
+  return { rootPages, sections };
+}
+
+function hydrateDocsSection(section: DocsMcpDocsSection, page: DocsMcpDocsPageSummary): void {
+  section.title = page.title;
+  section.url = page.url;
+  section.description = page.description;
+  section.icon = page.icon;
+}
+
+function pushUniqueDocsPage(
+  pages: DocsMcpDocsPageSummary[],
+  page: DocsMcpDocsPageSummary,
+  position: "start" | "end",
+): void {
+  if (pages.some((candidate) => candidate.url === page.url)) return;
+  if (position === "start") {
+    pages.unshift(page);
+    return;
+  }
+  pages.push(page);
+}
+
+function updateDocsSectionPageCounts(sections: DocsMcpDocsSection[]): number {
+  let total = 0;
+  for (const section of sections) {
+    section.pageCount = section.pages.length + updateDocsSectionPageCounts(section.sections);
+    total += section.pageCount;
+  }
+  return total;
+}
+
+function findDocsSection(
+  sections: DocsMcpDocsSection[],
+  section: string,
+  entry?: string,
+): DocsMcpDocsSection | undefined {
+  for (const candidate of sections) {
+    if (docsListSectionMatches(candidate, section, entry)) return candidate;
+    const child = findDocsSection(candidate.sections, section, entry);
+    if (child) return child;
+  }
+  return undefined;
+}
+
+function docsListSectionMatches(
+  section: DocsMcpDocsSection,
+  value: string,
+  entry?: string,
+): boolean {
+  return docsListCandidates(section, entry).includes(normalizeDocsListMatchValue(value));
+}
+
+function docsListPageMatches(page: DocsMcpDocsPageSummary, value: string, entry?: string): boolean {
+  return docsListCandidates(page, entry).includes(normalizeDocsListMatchValue(value));
+}
+
+function docsListCandidates(
+  value: { slug: string; title: string; url?: string },
+  entry?: string,
+): string[] {
+  return [
+    value.slug,
+    value.url,
+    value.title,
+    value.url ? stripDocsEntryFromPath(value.url, entry) : undefined,
+    stripDocsEntryFromPath(value.slug, entry),
+  ]
+    .filter((candidate): candidate is string => Boolean(candidate))
+    .map(normalizeDocsListMatchValue);
+}
+
+function stripDocsEntryFromPath(value: string, entry?: string): string {
+  const normalized = normalizePathSegment(value.replace(/\.md$/i, ""));
+  const normalizedEntry = normalizePathSegment(entry ?? "");
+  if (!normalizedEntry) return normalized;
+  if (normalized === normalizedEntry) return "";
+  if (normalized.startsWith(`${normalizedEntry}/`)) {
+    return normalized.slice(normalizedEntry.length + 1);
+  }
+  return normalized;
+}
+
+function normalizeDocsListMatchValue(value: string): string {
+  const withoutOrigin = value.replace(/^https?:\/\/[^/]+/i, "");
+  return normalizePathSegment(withoutOrigin.replace(/\.md$/i, ""))
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/_+/g, "-")
+    .replace(/\/+/g, "/")
+    .replace(/^\/+|\/+$/g, "");
+}
+
+function cloneDocsSection(section: DocsMcpDocsSection): DocsMcpDocsSection {
+  return {
+    ...section,
+    pages: section.pages.map((page) => ({ ...page })),
+    sections: section.sections.map(cloneDocsSection),
+  };
+}
+
+function flattenDocsSectionPages(section: DocsMcpDocsSection): DocsMcpDocsPageSummary[] {
+  const seen = new Set<string>();
+  const pages: DocsMcpDocsPageSummary[] = [];
+
+  function add(page: DocsMcpDocsPageSummary) {
+    if (seen.has(page.url)) return;
+    seen.add(page.url);
+    pages.push({ ...page });
+  }
+
+  function visit(current: DocsMcpDocsSection) {
+    current.pages.forEach(add);
+    current.sections.forEach(visit);
+  }
+
+  visit(section);
+  return pages;
+}
+
+function countDocsSections(sections: DocsMcpDocsSection[]): number {
+  return sections.reduce((total, section) => total + 1 + countDocsSections(section.sections), 0);
 }
 
 function extractDocsMcpCodeExamples(page: DocsMcpPage): DocsMcpCodeExample[] {

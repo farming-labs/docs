@@ -175,12 +175,16 @@ pnpm exec docs mcp --config src/lib/docs.config.ts
 
 The built-in MCP surface currently includes:
 
+- `list_docs`
 - `list_pages`
 - `get_navigation`
 - `search_docs`
 - `read_page`
 - `get_code_examples`
 - `get_config_schema`
+
+`list_docs` returns page summaries grouped by docs section. Call it with no arguments for the full
+section tree, or with `section` such as `getting-started` to narrow the result before `read_page`.
 
 `get_code_examples` parses fenced code block metadata from raw markdown/MDX and returns structured
 examples for agents. Use metadata like
@@ -515,9 +519,9 @@ With `--url`, `docs doctor --agent` also probes the deployed public agent surfac
 - `https://mcp.<your-domain>/`
 
 For hosted MCP, the command performs a Streamable HTTP initialize handshake, checks for
-`mcp-session-id`, calls `tools/list`, and expects `list_pages`, `get_navigation`, `search_docs`,
-`read_page`, `get_code_examples`, and `get_config_schema`. Hosted checks raise the agent max score
-from `105` to `145`.
+`mcp-session-id`, calls `tools/list`, and expects `list_docs`, `list_pages`, `get_navigation`,
+`search_docs`, `read_page`, `get_code_examples`, and `get_config_schema`. Hosted checks raise the
+agent max score from `105` to `145`.
 
 Hosted JSON check IDs include `hosted-agent-discovery`, `hosted-llms`, `hosted-sitemap`,
 `hosted-robots`, `hosted-skill`, `hosted-markdown`, and `hosted-mcp`.

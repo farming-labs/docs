@@ -168,6 +168,7 @@ export default defineDocs({
     route: "/api/docs/mcp",
     name: "My Docs MCP",
     tools: {
+      listDocs: true,
       listPages: true,
       getNavigation: true,
       searchDocs: true,
@@ -183,6 +184,7 @@ export default defineDocs({
 
 | Property        | Type      | Description |
 | --------------- | --------- | ----------- |
+| `listDocs`      | `boolean` | Expose the `list_docs` tool |
 | `listPages`     | `boolean` | Expose the `list_pages` tool |
 | `getNavigation` | `boolean` | Expose the `get_navigation` tool |
 | `searchDocs`    | `boolean` | Expose the `search_docs` tool |
@@ -194,7 +196,10 @@ Default MCP surface:
 
 - **HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
-- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`
+- **Built-in tools:** `list_docs`, `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`
+
+`list_docs` returns docs page summaries grouped by section. Agents can call it with no arguments
+to see the whole docs tree, or pass `section`, such as `getting-started`, before reading a page.
 
 `get_config_schema` returns structured `docs.config.ts` option metadata. Agents can call it with
 `option`, such as `mcp.tools.getConfigSchema`, or with `query` for keyword filtering.

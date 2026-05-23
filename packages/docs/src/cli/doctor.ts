@@ -1501,6 +1501,7 @@ async function probeMcpRoute(
       ? tools.map((tool) => tool.name).filter((name): name is string => typeof name === "string")
       : [];
     const expectedTools = [
+      "list_docs",
       "list_pages",
       "get_navigation",
       "search_docs",

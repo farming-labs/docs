@@ -204,6 +204,41 @@ The `get_code_examples` response is JSON, so agents do not need to scrape render
 }
 ```
 
+The MCP server also exposes `list_docs` for structured discovery before reading page bodies:
+
+```json
+{
+  "name": "list_docs",
+  "arguments": {
+    "section": "getting-started"
+  }
+}
+```
+
+The response includes matching page summaries plus a section tree:
+
+```json
+{
+  "section": "getting-started",
+  "resultCount": 1,
+  "sectionCount": 1,
+  "pages": [
+    {
+      "slug": "getting-started/quickstart",
+      "url": "/docs/getting-started/quickstart",
+      "title": "Quickstart"
+    }
+  ],
+  "sections": [
+    {
+      "slug": "getting-started",
+      "title": "Getting Started",
+      "pageCount": 1
+    }
+  ]
+}
+```
+
 The MCP server also exposes `get_config_schema` for agents that need to edit `docs.config.ts`
 without guessing option names or defaults:
 
