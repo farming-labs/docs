@@ -184,6 +184,21 @@ An MCP client can request only matching examples:
 }
 ```
 
+The MCP server also exposes `get_config_schema` for agents that need to edit `docs.config.ts`
+without guessing option names or defaults:
+
+```json
+{
+  "name": "get_config_schema",
+  "arguments": {
+    "option": "mcp.tools.getConfigSchema"
+  }
+}
+```
+
+Use `query` instead of `option` when the agent only knows the feature area, such as `llms` or
+`page actions`.
+
 The response is JSON, so agents do not need to scrape rendered HTML:
 
 ```json

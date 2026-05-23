@@ -528,6 +528,7 @@ describe("agent route helpers", () => {
           searchDocs: true,
           getNavigation: true,
           getCodeExamples: true,
+          getConfigSchema: true,
         },
       },
       llms: {
@@ -571,6 +572,7 @@ describe("agent route helpers", () => {
           searchDocs: true,
           getNavigation: true,
           getCodeExamples: true,
+          getConfigSchema: true,
         },
       },
       feedback: {
@@ -618,6 +620,7 @@ describe("agent route helpers", () => {
           searchDocs: true,
           getNavigation: true,
           getCodeExamples: true,
+          getConfigSchema: true,
         },
       },
       llms: { enabled: true, siteTitle: "Docs" },

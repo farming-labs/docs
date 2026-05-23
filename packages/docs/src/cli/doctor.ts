@@ -1506,6 +1506,7 @@ async function probeMcpRoute(
       "search_docs",
       "read_page",
       "get_code_examples",
+      "get_config_schema",
     ];
     const missingTools = expectedTools.filter((tool) => !toolNames.includes(tool));
 

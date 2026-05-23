@@ -180,6 +180,7 @@ The built-in MCP surface currently includes:
 - `search_docs`
 - `read_page`
 - `get_code_examples`
+- `get_config_schema`
 
 `get_code_examples` parses fenced code block metadata from raw markdown/MDX and returns structured
 examples for agents. Use metadata like
@@ -188,6 +189,9 @@ examples for agents. Use metadata like
 ```ts title="docs.config.ts" framework="nextjs" packageManager="pnpm" runnable
 ```
 ````
+
+`get_config_schema` returns structured `docs.config.ts` option metadata. Use `option` for an exact
+path such as `mcp.tools.getConfigSchema`, or `query` for keyword filtering.
 
 when a snippet has a target file, framework, package manager, or is safe to copy as a complete
 example. This metadata is for markdown/MCP consumers and does not require a UI change.
@@ -512,7 +516,8 @@ With `--url`, `docs doctor --agent` also probes the deployed public agent surfac
 
 For hosted MCP, the command performs a Streamable HTTP initialize handshake, checks for
 `mcp-session-id`, calls `tools/list`, and expects `list_pages`, `get_navigation`, `search_docs`,
-`read_page`, and `get_code_examples`. Hosted checks raise the agent max score from `105` to `145`.
+`read_page`, `get_code_examples`, and `get_config_schema`. Hosted checks raise the agent max score
+from `105` to `145`.
 
 Hosted JSON check IDs include `hosted-agent-discovery`, `hosted-llms`, `hosted-sitemap`,
 `hosted-robots`, `hosted-skill`, `hosted-markdown`, and `hosted-mcp`.

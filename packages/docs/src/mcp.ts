@@ -62,6 +62,33 @@ export interface DocsMcpCodeExample {
   code: string;
 }
 
+export interface DocsMcpConfigSchemaOption {
+  path: string;
+  name: string;
+  type: string;
+  default?: string | boolean | number | null;
+  description: string;
+  docs?: string;
+  values?: string[];
+  children?: DocsMcpConfigSchemaOption[];
+}
+
+export interface DocsMcpConfigSchema {
+  schemaVersion: 1;
+  configFile: "docs.config.ts";
+  description: string;
+  filters?: {
+    option?: string;
+    query?: string;
+  };
+  resultCount: number;
+  options: DocsMcpConfigSchemaOption[];
+  examples: Array<{
+    title: string;
+    code: string;
+  }>;
+}
+
 export interface DocsMcpPageNode {
   type: "page";
   name: string;
@@ -103,6 +130,7 @@ export interface DocsMcpResolvedConfig {
     searchDocs: boolean;
     getNavigation: boolean;
     getCodeExamples: boolean;
+    getConfigSchema: boolean;
   };
 }
 
@@ -138,6 +166,435 @@ const DEFAULT_MCP_ROUTE = "/api/docs/mcp";
 const DEFAULT_MCP_VERSION = "0.0.0";
 const DEFAULT_MCP_NAME = "@farming-labs/docs";
 
+const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
+  {
+    path: "entry",
+    name: "entry",
+    type: "string",
+    default: "docs",
+    description: 'URL path prefix for documentation routes, for example "docs" creates /docs.',
+    docs: "/docs/overview",
+  },
+  {
+    path: "contentDir",
+    name: "contentDir",
+    type: "string",
+    default: "same as entry",
+    description:
+      "Path to markdown content files. Adapters outside Next.js usually need this when content does not live under the route prefix.",
+    docs: "/docs/overview",
+  },
+  {
+    path: "staticExport",
+    name: "staticExport",
+    type: "boolean",
+    default: false,
+    description: "Enable full static builds. Search, AI, and runtime API routes are hidden.",
+    docs: "/docs/overview",
+  },
+  {
+    path: "theme",
+    name: "theme",
+    type: "DocsTheme",
+    description: "Theme instance from a theme factory such as fumadocs() or pixelBorder().",
+    docs: "/docs/customization/themes",
+  },
+  {
+    path: "nav",
+    name: "nav",
+    type: "{ title?: string; url?: string }",
+    description:
+      "Sidebar and discovery metadata for the docs site. Non-Next.js adapters usually require it.",
+    children: [
+      {
+        path: "nav.title",
+        name: "title",
+        type: "string",
+        description: "Human-readable docs site title.",
+      },
+      {
+        path: "nav.url",
+        name: "url",
+        type: "string",
+        description: "Public base URL for generated absolute links and metadata.",
+      },
+    ],
+  },
+  {
+    path: "github",
+    name: "github",
+    type: "string | GithubConfig",
+    description:
+      'GitHub repository metadata for "Edit on GitHub" links and page action prompt templates.',
+    docs: "/docs/customization/page-actions",
+  },
+  {
+    path: "themeToggle",
+    name: "themeToggle",
+    type: "boolean | ThemeToggleConfig",
+    default: true,
+    description: "Enable or customize the light/dark mode toggle.",
+  },
+  {
+    path: "breadcrumb",
+    name: "breadcrumb",
+    type: "boolean | BreadcrumbConfig",
+    default: true,
+    description: "Enable or customize breadcrumb navigation.",
+  },
+  {
+    path: "sidebar",
+    name: "sidebar",
+    type: "boolean | SidebarConfig",
+    default: true,
+    description: "Enable or customize the docs sidebar.",
+    children: [
+      {
+        path: "sidebar.style",
+        name: "style",
+        type: "string",
+        description: "Theme-specific sidebar style variant when supported.",
+      },
+      {
+        path: "sidebar.defaultOpen",
+        name: "defaultOpen",
+        type: "boolean",
+        description: "Whether collapsible sidebar groups start open by default.",
+      },
+    ],
+  },
+  {
+    path: "icons",
+    name: "icons",
+    type: "Record<string, Component>",
+    description: "Shared icon registry for frontmatter icon fields and built-in MDX components.",
+  },
+  {
+    path: "components",
+    name: "components",
+    type: "Record<string, Component>",
+    description: "Custom MDX component registry and built-in component overrides.",
+  },
+  {
+    path: "onCopyClick",
+    name: "onCopyClick",
+    type: "(data: CodeBlockCopyData) => void",
+    description:
+      "Callback fired when a visitor copies a code block, including title, content, url, and language.",
+  },
+  {
+    path: "feedback",
+    name: "feedback",
+    type: "boolean | FeedbackConfig",
+    default: false,
+    description:
+      "Human page feedback UI. Agent feedback endpoints remain default-on unless opted out.",
+    docs: "/docs/customization/feedback",
+  },
+  {
+    path: "readingTime",
+    name: "readingTime",
+    type: "boolean | ReadingTimeConfig",
+    default: false,
+    description: "Opt-in estimated reading time label with per-page overrides.",
+  },
+  {
+    path: "agent",
+    name: "agent",
+    type: "DocsAgentConfig",
+    description: "Defaults for docs agent compact and generated agent-facing files.",
+    docs: "/docs/getting-started/agent-ready-docs",
+  },
+  {
+    path: "pageActions",
+    name: "pageActions",
+    type: "PageActionsConfig",
+    description: "Copy Markdown and Open in LLM actions for docs pages.",
+    docs: "/docs/customization/page-actions",
+    children: [
+      {
+        path: "pageActions.copyMarkdown",
+        name: "copyMarkdown",
+        type: "boolean | PageActionConfig",
+        description: "Show a Copy Markdown action for the current page.",
+      },
+      {
+        path: "pageActions.openDocs",
+        name: "openDocs",
+        type: "boolean | OpenDocsActionConfig",
+        description: "Show provider actions that open the current docs page in an LLM.",
+        children: [
+          {
+            path: "pageActions.openDocs.target",
+            name: "target",
+            type: '"page" | "markdown"',
+            default: "page",
+            description:
+              "Whether provider URLs receive the rendered page URL or the .md markdown route.",
+          },
+          {
+            path: "pageActions.openDocs.providers",
+            name: "providers",
+            type: "Array<string | PromptProviderConfig>",
+            description:
+              "Provider IDs or provider objects. Built-ins include chatgpt, claude, cursor, and t3.",
+          },
+          {
+            path: "pageActions.openDocs.prompt",
+            name: "prompt",
+            type: "string",
+            description: "Prompt text prepended to the provider URL when opening docs.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    path: "ai",
+    name: "ai",
+    type: "AIConfig",
+    description: "RAG-powered Ask AI configuration.",
+    docs: "/docs/customization/ask-ai",
+    children: [
+      {
+        path: "ai.enabled",
+        name: "enabled",
+        type: "boolean",
+        description: "Enable or disable Ask AI.",
+      },
+      {
+        path: "ai.model",
+        name: "model",
+        type: "string | AIModelConfig",
+        description: "Model ID or model routing config.",
+      },
+      {
+        path: "ai.providers",
+        name: "providers",
+        type: "Record<string, AIProviderConfig>",
+        description: "Provider base URLs and optional API keys.",
+      },
+      {
+        path: "ai.systemPrompt",
+        name: "systemPrompt",
+        type: "string",
+        description: "Additional instruction text for generated answers.",
+      },
+      {
+        path: "ai.useMcp",
+        name: "useMcp",
+        type: "boolean | DocsAskAIMcpConfig",
+        description: "Use the built-in MCP search tool as Ask AI's retrieval provider.",
+      },
+    ],
+  },
+  {
+    path: "search",
+    name: "search",
+    type: "boolean | DocsSearchConfig",
+    default: true,
+    description: "Built-in simple search, Typesense, Algolia, MCP, or a custom adapter.",
+    docs: "/docs/customization/search",
+    children: [
+      {
+        path: "search.provider",
+        name: "provider",
+        type: '"simple" | "typesense" | "algolia" | "mcp" | "custom"',
+        default: "simple",
+        description: "Search backend used by the docs UI and MCP search tool.",
+      },
+      {
+        path: "search.maxResults",
+        name: "maxResults",
+        type: "number",
+        description: "Maximum result count returned by search requests.",
+      },
+    ],
+  },
+  {
+    path: "llmsTxt",
+    name: "llmsTxt",
+    type: "boolean | LlmsTxtConfig",
+    default: true,
+    description:
+      "Generated /llms.txt, /llms-full.txt, optional section files, and basePath-aware aliases.",
+    docs: "/docs/getting-started/agent-ready-docs",
+  },
+  {
+    path: "changelog",
+    name: "changelog",
+    type: "boolean | ChangelogConfig",
+    default: false,
+    description: "Generate changelog feed and entry pages from dated MDX entries.",
+    docs: "/docs/customization/changelog",
+  },
+  {
+    path: "mcp",
+    name: "mcp",
+    type: "boolean | DocsMcpConfig",
+    default: true,
+    description:
+      "Built-in MCP server over stdio plus HTTP routes at /mcp and /.well-known/mcp, backed by /api/docs/mcp.",
+    docs: "/docs/customization/mcp",
+    children: [
+      {
+        path: "mcp.enabled",
+        name: "enabled",
+        type: "boolean",
+        default: true,
+        description: "Enable the built-in MCP server.",
+      },
+      {
+        path: "mcp.route",
+        name: "route",
+        type: "string",
+        default: "/api/docs/mcp",
+        description: "Canonical Streamable HTTP route used by the MCP endpoint.",
+      },
+      {
+        path: "mcp.name",
+        name: "name",
+        type: "string",
+        default: "nav.title or @farming-labs/docs",
+        description: "Human-readable MCP server name reported to clients.",
+      },
+      {
+        path: "mcp.version",
+        name: "version",
+        type: "string",
+        default: "0.0.0",
+        description: "Version string reported to MCP clients.",
+      },
+      {
+        path: "mcp.tools",
+        name: "tools",
+        type: "DocsMcpToolsConfig",
+        default: "all enabled",
+        description: "Fine-grained built-in MCP tool toggles.",
+        children: [
+          {
+            path: "mcp.tools.listPages",
+            name: "listPages",
+            type: "boolean",
+            default: true,
+            description: "Expose the list_pages tool.",
+          },
+          {
+            path: "mcp.tools.getNavigation",
+            name: "getNavigation",
+            type: "boolean",
+            default: true,
+            description: "Expose the get_navigation tool.",
+          },
+          {
+            path: "mcp.tools.searchDocs",
+            name: "searchDocs",
+            type: "boolean",
+            default: true,
+            description: "Expose the search_docs tool.",
+          },
+          {
+            path: "mcp.tools.readPage",
+            name: "readPage",
+            type: "boolean",
+            default: true,
+            description: "Expose the read_page tool.",
+          },
+          {
+            path: "mcp.tools.getCodeExamples",
+            name: "getCodeExamples",
+            type: "boolean",
+            default: true,
+            description: "Expose the get_code_examples tool.",
+          },
+          {
+            path: "mcp.tools.getConfigSchema",
+            name: "getConfigSchema",
+            type: "boolean",
+            default: true,
+            description: "Expose the get_config_schema tool.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    path: "apiReference",
+    name: "apiReference",
+    type: "boolean | ApiReferenceConfig",
+    default: false,
+    description:
+      "Generated API reference pages from framework route conventions or a hosted OpenAPI document.",
+    docs: "/docs/customization/api-reference",
+    children: [
+      {
+        path: "apiReference.specUrl",
+        name: "specUrl",
+        type: "string",
+        description: "Remote OpenAPI JSON URL when the backend owns the schema.",
+      },
+      {
+        path: "apiReference.path",
+        name: "path",
+        type: "string",
+        description: "Docs route where the API reference is rendered.",
+      },
+    ],
+  },
+  {
+    path: "sitemap",
+    name: "sitemap",
+    type: "boolean | DocsSitemapConfig",
+    default: true,
+    description: "Generated sitemap.xml, sitemap.md, and /.well-known/sitemap.md.",
+  },
+  {
+    path: "robots",
+    name: "robots",
+    type: "boolean | DocsRobotsConfig",
+    default: true,
+    description:
+      "Runtime or generated robots.txt policy for docs routes, agent-readable files, and AI crawler user agents.",
+  },
+  {
+    path: "metadata",
+    name: "metadata",
+    type: "DocsMetadata",
+    description: "SEO and JSON-LD inputs such as titleTemplate and description.",
+  },
+  {
+    path: "og",
+    name: "og",
+    type: "OGConfig",
+    description: "Dynamic Open Graph image configuration.",
+  },
+];
+
+const DOCS_CONFIG_SCHEMA_EXAMPLES: DocsMcpConfigSchema["examples"] = [
+  {
+    title: "Minimal config",
+    code: `import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/theme";
+
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+});`,
+  },
+  {
+    title: "MCP tool toggles",
+    code: `export default defineDocs({
+  entry: "docs",
+  mcp: {
+    tools: {
+      getConfigSchema: true,
+      getCodeExamples: true,
+    },
+  },
+});`,
+  },
+];
+
 const searchDocsInputSchema = z.object({
   query: z.string().trim().min(1),
   limit: z.number().int().min(1).max(25).optional(),
@@ -155,6 +612,11 @@ const listPagesInputSchema = z.object({
 
 const getNavigationInputSchema = z.object({
   locale: z.string().min(1).optional(),
+});
+
+const getConfigSchemaInputSchema = z.object({
+  option: z.string().trim().min(1).optional(),
+  query: z.string().trim().min(1).optional(),
 });
 
 const getCodeExamplesInputSchema = z.object({
@@ -195,6 +657,7 @@ export function resolveDocsMcpConfig(
         searchDocs: true,
         getNavigation: true,
         getCodeExamples: true,
+        getConfigSchema: true,
       },
     };
   }
@@ -212,6 +675,7 @@ export function resolveDocsMcpConfig(
       searchDocs: config.tools?.searchDocs ?? true,
       getNavigation: config.tools?.getNavigation ?? true,
       getCodeExamples: config.tools?.getCodeExamples ?? true,
+      getConfigSchema: config.tools?.getConfigSchema ?? true,
     },
   };
 }
@@ -479,6 +943,89 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             locale,
             outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
             metadata: { tool: "get_navigation" },
+          });
+          throw error;
+        }
+      },
+    );
+  }
+
+  if (resolved.tools.getConfigSchema) {
+    server.registerTool(
+      "get_config_schema",
+      {
+        title: "Get docs config schema",
+        description:
+          "Return structured docs.config.ts option metadata, optionally filtered by option path or query.",
+        inputSchema: getConfigSchemaInputSchema,
+        annotations: { readOnlyHint: true },
+      },
+      async ({ option, query }) => {
+        const startedAt = nowMs();
+        const trace = createDocsAgentTraceContext("mcp.tool.get_config_schema");
+        const callSpanId = createDocsAgentTraceId("span");
+        await emitDocsAgentTraceEvent(options.observability, {
+          type: "tool.call",
+          source: "mcp",
+          traceId: trace.traceId,
+          spanId: callSpanId,
+          name: "get_config_schema",
+          startedAt: trace.startedAt,
+          status: "started",
+          inputPreview: { option, queryLength: query?.length },
+          metadata: { tool: "get_config_schema" },
+        });
+
+        try {
+          const schema = getDocsConfigSchema({ option, query });
+          const elapsed = durationMs(startedAt);
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "mcp_tool",
+            source: "mcp",
+            input: query ? { query } : undefined,
+            properties: {
+              tool: "get_config_schema",
+              option,
+              queryLength: query?.length,
+              resultCount: schema.resultCount,
+              durationMs: elapsed,
+            },
+          });
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.result",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "get_config_schema",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "success",
+            outputPreview: { resultCount: schema.resultCount },
+            metadata: { tool: "get_config_schema" },
+          });
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(schema, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          const elapsed = durationMs(startedAt);
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.error",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "get_config_schema",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "error",
+            outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
+            metadata: { tool: "get_config_schema" },
           });
           throw error;
         }
@@ -1406,6 +1953,124 @@ function toSearchSourcePages(pages: DocsMcpPage[]): DocsSearchSourcePage[] {
     description: page.description,
     related: page.related,
   }));
+}
+
+function getDocsConfigSchema(filters: { option?: string; query?: string }): DocsMcpConfigSchema {
+  const option = filters.option?.trim();
+  const query = filters.query?.trim();
+  let options = DOCS_CONFIG_SCHEMA_OPTIONS.map(cloneConfigSchemaOption);
+
+  if (option) {
+    options = selectConfigSchemaOptions(option);
+  }
+
+  if (query) {
+    options = filterConfigSchemaOptionsByQuery(options, query);
+  }
+
+  return {
+    schemaVersion: 1,
+    configFile: "docs.config.ts",
+    description:
+      "Configuration schema for @farming-labs/docs defineDocs(). Use option for an exact top-level or nested path, or query for keyword filtering.",
+    filters:
+      option || query
+        ? {
+            ...(option ? { option } : {}),
+            ...(query ? { query } : {}),
+          }
+        : undefined,
+    resultCount: countConfigSchemaOptions(options),
+    options,
+    examples: DOCS_CONFIG_SCHEMA_EXAMPLES,
+  };
+}
+
+function cloneConfigSchemaOption(option: DocsMcpConfigSchemaOption): DocsMcpConfigSchemaOption {
+  return {
+    ...option,
+    children: option.children?.map(cloneConfigSchemaOption),
+  };
+}
+
+function selectConfigSchemaOptions(optionPath: string): DocsMcpConfigSchemaOption[] {
+  const needle = normalizeConfigSchemaToken(optionPath);
+  return flattenConfigSchemaOptions(DOCS_CONFIG_SCHEMA_OPTIONS)
+    .filter((option) => {
+      const normalizedPath = normalizeConfigSchemaToken(option.path);
+      const normalizedName = normalizeConfigSchemaToken(option.name);
+      return (
+        normalizedPath === needle ||
+        normalizedName === needle ||
+        normalizedPath.split(".").includes(needle)
+      );
+    })
+    .map(cloneConfigSchemaOption);
+}
+
+function filterConfigSchemaOptionsByQuery(
+  options: DocsMcpConfigSchemaOption[],
+  query: string,
+): DocsMcpConfigSchemaOption[] {
+  return options.flatMap((option) => {
+    if (configSchemaOptionMatchesQuery(option, query)) {
+      return [cloneConfigSchemaOption(option)];
+    }
+
+    const children = option.children
+      ? filterConfigSchemaOptionsByQuery(option.children, query)
+      : [];
+    if (children.length === 0) return [];
+
+    return [
+      {
+        ...cloneConfigSchemaOption(option),
+        children,
+      },
+    ];
+  });
+}
+
+function configSchemaOptionMatchesQuery(option: DocsMcpConfigSchemaOption, query: string): boolean {
+  const searchText = [
+    option.path,
+    option.name,
+    option.type,
+    option.default,
+    option.description,
+    option.docs,
+    option.values?.join(" "),
+  ]
+    .filter((value) => value !== undefined && value !== null)
+    .join(" ");
+  const lowerSearchText = searchText.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  return (
+    lowerSearchText.includes(lowerQuery) ||
+    normalizeConfigSchemaToken(searchText).includes(normalizeConfigSchemaToken(query))
+  );
+}
+
+function flattenConfigSchemaOptions(
+  options: DocsMcpConfigSchemaOption[],
+): DocsMcpConfigSchemaOption[] {
+  return options.flatMap((option) => [
+    option,
+    ...(option.children ? flattenConfigSchemaOptions(option.children) : []),
+  ]);
+}
+
+function countConfigSchemaOptions(options: DocsMcpConfigSchemaOption[]): number {
+  return flattenConfigSchemaOptions(options).length;
+}
+
+function normalizeConfigSchemaToken(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^docs\.config\.?/, "")
+    .replace(/[`'"]/g, "")
+    .replace(/[_\-\s]+/g, "");
 }
 
 function isSelfMcpSearchEndpoint(search?: boolean | DocsSearchConfig, route?: string): boolean {

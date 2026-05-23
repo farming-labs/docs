@@ -1945,6 +1945,7 @@ title: "Home"
         searchDocs: false,
         getNavigation: true,
         getCodeExamples: true,
+        getConfigSchema: true,
       },
     });
     expect(spec.feedback).toMatchObject({

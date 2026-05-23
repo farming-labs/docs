@@ -906,6 +906,7 @@ function readMcpConfig(root: string): boolean | DocsMcpConfig | undefined {
           searchDocs: readBooleanFromBlock(block, "searchDocs"),
           getNavigation: readBooleanFromBlock(block, "getNavigation"),
           getCodeExamples: readBooleanFromBlock(block, "getCodeExamples"),
+          getConfigSchema: readBooleanFromBlock(block, "getConfigSchema"),
         },
       };
     } catch {
