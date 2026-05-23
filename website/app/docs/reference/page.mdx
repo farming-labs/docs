@@ -411,6 +411,7 @@ export default defineDocs({
   entry: "docs",
   review: {
     ci: {
+      name: "agent-docs-review",
       mode: "warn",
       annotations: true,
       comment: true,
@@ -427,6 +428,7 @@ export default defineDocs({
 | Property | Type | Default | Description |
 | -------- | ---- | ------- | ----------- |
 | `enabled` | `boolean` | `true` | Enable review CI workflow generation |
+| `name` | `string` | `"docs-review"` | GitHub Actions job/check name for the generated workflow |
 | `mode` | `"off" \| "warn" \| "block"` | `"warn"` | Report only, warn without failing, or block unhealthy PRs |
 | `annotations` | `boolean` | `true` | Emit GitHub workflow annotations |
 | `comment` | `boolean` | `true` | Reserved for PR comments from the official action/bot |

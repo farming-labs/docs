@@ -11,11 +11,13 @@ import type {
 
 export const DEFAULT_DOCS_REVIEW_WORKFLOW_PATH = ".github/workflows/docs-review.yml";
 export const DEFAULT_DOCS_REVIEW_SCORE_THRESHOLD = 80;
+export const DEFAULT_DOCS_REVIEW_CI_NAME = "docs-review";
 
 export interface ResolvedDocsReviewConfig {
   enabled: boolean;
   ci: {
     enabled: boolean;
+    name: string;
     mode: DocsReviewCiMode;
     annotations: boolean;
     comment: boolean;
@@ -33,6 +35,7 @@ export interface ResolvedDocsReviewConfig {
 
 export interface DocsReviewWorkflowOptions {
   packageManager?: "npm" | "pnpm" | "yarn" | "bun";
+  ciName?: string;
   projectDir?: string;
   configPath?: string;
   buildCommand?: string;
@@ -81,7 +84,13 @@ export function resolveDocsReviewConfig(
   if (review === false) {
     return {
       enabled: false,
-      ci: { enabled: false, mode: "off", annotations: false, comment: false },
+      ci: {
+        enabled: false,
+        name: DEFAULT_DOCS_REVIEW_CI_NAME,
+        mode: "off",
+        annotations: false,
+        comment: false,
+      },
       score: { threshold: DEFAULT_DOCS_REVIEW_SCORE_THRESHOLD, weights: DEFAULT_REVIEW_WEIGHTS },
       rules: DEFAULT_REVIEW_RULES,
     };
@@ -100,6 +109,7 @@ export function resolveDocsReviewConfig(
     enabled,
     ci: {
       enabled: ciEnabled,
+      name: normalizeCiName(ciObject.name),
       mode: ciEnabled ? mode : "off",
       annotations: ciObject.annotations !== false,
       comment: ciObject.comment !== false,
@@ -124,6 +134,7 @@ export function resolveDocsReviewConfig(
 
 export function buildDocsReviewWorkflow(options: DocsReviewWorkflowOptions = {}): string {
   const packageManager = options.packageManager ?? "npm";
+  const ciName = normalizeCiName(options.ciName);
   const projectDir = normalizeProjectDir(options.projectDir);
   const configArg = options.configPath ? ` --config ${shellQuote(options.configPath)}` : "";
   const reviewCommand = `${options.reviewCommand ?? reviewCommandForPackageManager(packageManager)} review --ci${configArg}`;
@@ -150,6 +161,7 @@ permissions:
 
 jobs:
   docs-review:
+    name: ${JSON.stringify(ciName)}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -193,6 +205,7 @@ export function ensureDocsReviewWorkflow(
   const packageManager = detectPackageManager(repoRoot);
   const workflow = buildDocsReviewWorkflow({
     packageManager,
+    ciName: review.ci.name,
     projectDir,
     configPath,
     buildCommand: detectLocalDocsCliBuildCommand(repoRoot, packageManager),
@@ -303,6 +316,11 @@ function normalizeWeight(value: number | undefined, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
+function normalizeCiName(value: string | undefined): string {
+  const trimmed = value?.trim();
+  return trimmed || DEFAULT_DOCS_REVIEW_CI_NAME;
+}
+
 function clampScoreThreshold(value: number | undefined): number {
   if (typeof value !== "number" || !Number.isFinite(value))
     return DEFAULT_DOCS_REVIEW_SCORE_THRESHOLD;
@@ -317,6 +335,7 @@ function readReviewCiObject(source: string, cursor: number): DocsReviewConfig["c
   const mode = readTopLevelString(block, "mode");
   return {
     enabled: readTopLevelBoolean(block, "enabled"),
+    name: readTopLevelString(block, "name"),
     mode:
       mode && REVIEW_CI_MODES.has(mode as DocsReviewCiMode)
         ? (mode as DocsReviewCiMode)

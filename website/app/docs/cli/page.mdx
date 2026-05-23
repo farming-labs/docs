@@ -965,7 +965,8 @@ pnpm exec docs review setup
 ```
 
 The workflow is repository-root aware. If your docs app lives in `website/`, the workflow still
-lives at `.github/workflows/docs-review.yml` and runs the review command from `website/`.
+lives at `.github/workflows/docs-review.yml` and runs the review command from `website/`. Set
+`review.ci.name` when the GitHub check should use a name other than `docs-review`.
 
 ## Supported Frameworks
 

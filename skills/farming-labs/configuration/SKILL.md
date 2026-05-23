@@ -59,6 +59,22 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 
 ---
 
+## Docs Review CI
+
+`review` is enabled by default. Use `review.ci.name` to customize the generated GitHub Actions
+job/check name; it defaults to `docs-review`.
+
+```ts
+review: {
+  ci: {
+    name: "agent-docs-review",
+    mode: "warn",
+  },
+}
+```
+
+---
+
 ## Static export
 
 For fully static builds (e.g. Cloudflare Pages, no server):

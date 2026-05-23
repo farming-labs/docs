@@ -26,6 +26,7 @@ describe("docs review helpers", () => {
     expect(review.enabled).toBe(true);
     expect(review.ci).toMatchObject({
       enabled: true,
+      name: "docs-review",
       mode: "warn",
       annotations: true,
       comment: true,
@@ -42,7 +43,7 @@ describe("docs review helpers", () => {
           logo: <Logo />,
         },
         review: {
-          ci: { mode: "block" },
+          ci: { name: "agent-docs-review", mode: "block" },
           score: { threshold: 90 },
           rules: {
             agentContext: "warn",
@@ -53,7 +54,7 @@ describe("docs review helpers", () => {
 
     expect(resolveDocsReviewConfig(review)).toMatchObject({
       enabled: true,
-      ci: { mode: "block", enabled: true },
+      ci: { name: "agent-docs-review", mode: "block", enabled: true },
       score: { threshold: 90 },
       rules: { agentContext: "warn" },
     });
@@ -83,6 +84,7 @@ describe("docs review helpers", () => {
 
     const workflow = readFileSync(workflowPath, "utf-8");
     expect(workflow).toContain("name: Docs Review");
+    expect(workflow).toContain('    name: "docs-review"');
     expect(workflow).toContain('      - "website/docs.config.ts"');
     expect(workflow).toContain('      - "website/app/docs/**"');
     expect(workflow).toContain("pnpm exec docs review --ci --config docs.config.ts");
@@ -115,6 +117,33 @@ describe("docs review helpers", () => {
       "node ../packages/docs/dist/cli/index.mjs review --ci --config docs.config.ts",
     );
     expect(workflow.indexOf("Build docs CLI")).toBeLessThan(workflow.indexOf("Review docs"));
+  });
+
+  it("uses the configured docs review CI check name", () => {
+    mkdirSync(join(tmpDir, ".git"), { recursive: true });
+    mkdirSync(join(tmpDir, "website", "app", "docs"), { recursive: true });
+    writeFileSync(join(tmpDir, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n", "utf-8");
+    writeFileSync(
+      join(tmpDir, "website", "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  review: {
+    ci: {
+      name: "agent-docs-review",
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+
+    ensureDocsReviewWorkflow({
+      rootDir: join(tmpDir, "website"),
+      configPath: "docs.config.ts",
+    });
+
+    const workflow = readFileSync(join(tmpDir, DEFAULT_DOCS_REVIEW_WORKFLOW_PATH), "utf-8");
+    expect(workflow).toContain('    name: "agent-docs-review"');
   });
 
   it("does not create a workflow when review is disabled", () => {
