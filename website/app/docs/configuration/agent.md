@@ -35,13 +35,16 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - When they want AI-facing behavior, distinguish between:
   - `ai` for Ask AI / chat
   - `agent.compact` for defaults used by `docs agent compact`
-  - `mcp` for the built-in MCP server
+  - `mcp` for the built-in MCP server, including default tools like `list_docs`, `search_docs`,
+    `read_page`, `get_code_examples`, and `get_config_schema`
   - `llmsTxt` for crawler-friendly site summaries
   - `sitemap` for XML and Markdown maps with canonical URLs and freshness dates
   - `robots` plus `docs robots generate` for a static crawler and AI-agent access policy
   - markdown routes for page-level machine-readable content
 - When they ask about generated API docs, use `apiReference`.
 - When they ask about static hosting, mention `staticExport: true`.
+- When they need to edit `docs.config.ts` through MCP, prefer `get_config_schema` before suggesting
+  config changes.
 
 ## Framework notes
 
