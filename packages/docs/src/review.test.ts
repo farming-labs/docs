@@ -96,6 +96,7 @@ describe("docs review helpers", () => {
     expect(workflow).toContain('      config: "docs.config.ts"');
     expect(workflow).toContain('      working-directory: "website"');
     expect(workflow).toContain('      package-manager: "pnpm"');
+    expect(workflow).toContain('      pnpm-version: "10"');
   });
 
   it("builds the local docs CLI before review when the repo contains the workspace package", () => {
@@ -120,8 +121,30 @@ describe("docs review helpers", () => {
 
     const workflow = readFileSync(join(tmpDir, DEFAULT_DOCS_REVIEW_WORKFLOW_PATH), "utf-8");
     expect(workflow).toContain(`    uses: ${LOCAL_DOCS_REVIEW_REUSABLE_WORKFLOW}`);
+    expect(workflow).toContain('      pnpm-version: "10"');
     expect(workflow).toContain('      build-command: "pnpm --filter @farming-labs/docs run build"');
     expect(workflow).toContain('      review-command: "node ../packages/docs/dist/cli/index.mjs"');
+  });
+
+  it("lets pnpm/action-setup read packageManager when the repo declares a pnpm version", () => {
+    mkdirSync(join(tmpDir, ".git"), { recursive: true });
+    mkdirSync(join(tmpDir, "website", "app", "docs"), { recursive: true });
+    writeFileSync(join(tmpDir, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n", "utf-8");
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({ private: true, packageManager: "pnpm@10.9.0" }),
+      "utf-8",
+    );
+    writeFileSync(join(tmpDir, "website", "docs.config.ts"), "export default { entry: 'docs' };\n");
+
+    ensureDocsReviewWorkflow({
+      rootDir: join(tmpDir, "website"),
+      configPath: "docs.config.ts",
+    });
+
+    const workflow = readFileSync(join(tmpDir, DEFAULT_DOCS_REVIEW_WORKFLOW_PATH), "utf-8");
+    expect(workflow).toContain('      package-manager: "pnpm"');
+    expect(workflow).not.toContain("pnpm-version");
   });
 
   it("uses the configured docs review CI check name", () => {

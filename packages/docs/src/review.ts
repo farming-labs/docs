@@ -15,6 +15,7 @@ export const DEFAULT_DOCS_REVIEW_REUSABLE_WORKFLOW_PATH =
 export const DEFAULT_DOCS_REVIEW_REUSABLE_WORKFLOW =
   "farming-labs/docs/.github/workflows/docs-review-reusable.yml@main";
 export const LOCAL_DOCS_REVIEW_REUSABLE_WORKFLOW = "./.github/workflows/docs-review-reusable.yml";
+export const DEFAULT_DOCS_REVIEW_PNPM_VERSION = "10";
 export const DEFAULT_DOCS_REVIEW_SCORE_THRESHOLD = 80;
 export const DEFAULT_DOCS_REVIEW_CI_NAME = "docs-review";
 
@@ -42,6 +43,7 @@ export interface DocsReviewWorkflowOptions {
   packageManager?: "npm" | "pnpm" | "yarn" | "bun";
   ciName?: string;
   reusableWorkflow?: string;
+  pnpmVersion?: string;
   projectDir?: string;
   configPath?: string;
   buildCommand?: string;
@@ -146,6 +148,7 @@ export function buildDocsReviewWorkflow(options: DocsReviewWorkflowOptions = {})
   const reusableWorkflow = options.reusableWorkflow ?? DEFAULT_DOCS_REVIEW_REUSABLE_WORKFLOW;
   const filters = normalizePathFilters(options.pathFilters);
   const optionalInputs = [
+    options.pnpmVersion ? ["pnpm-version", options.pnpmVersion] : undefined,
     options.buildCommand ? ["build-command", options.buildCommand] : undefined,
     options.reviewCommand ? ["review-command", options.reviewCommand] : undefined,
   ]
@@ -215,6 +218,7 @@ export function ensureDocsReviewWorkflow(
     reusableWorkflow: hasLocalDocsWorkspacePackage(repoRoot)
       ? LOCAL_DOCS_REVIEW_REUSABLE_WORKFLOW
       : DEFAULT_DOCS_REVIEW_REUSABLE_WORKFLOW,
+    pnpmVersion: detectPnpmVersionFallback(repoRoot, packageManager),
     projectDir,
     configPath,
     buildCommand: detectLocalDocsCliBuildCommand(repoRoot, packageManager),
@@ -396,6 +400,24 @@ function detectLocalDocsCliBuildCommand(
   if (packageManager === "yarn") return "yarn workspace @farming-labs/docs build";
   if (packageManager === "bun") return "bun run --filter @farming-labs/docs build";
   return "npm run build --workspace=@farming-labs/docs";
+}
+
+function detectPnpmVersionFallback(
+  repoRoot: string,
+  packageManager: "npm" | "pnpm" | "yarn" | "bun",
+): string | undefined {
+  if (packageManager !== "pnpm") return undefined;
+
+  try {
+    const packageJson = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf-8")) as {
+      packageManager?: string;
+    };
+    if (packageJson.packageManager?.startsWith("pnpm@")) return undefined;
+  } catch {
+    // Fall back to a pinned pnpm version when package.json is missing or unreadable.
+  }
+
+  return DEFAULT_DOCS_REVIEW_PNPM_VERSION;
 }
 
 function detectLocalDocsCliReviewCommand(repoRoot: string, rootDir: string): string | undefined {

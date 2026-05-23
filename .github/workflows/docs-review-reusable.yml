@@ -29,10 +29,10 @@ on:
         type: string
         default: "20"
       pnpm-version:
-        description: pnpm version used when package-manager is pnpm.
+        description: Optional pnpm version used when package.json does not declare packageManager.
         required: false
         type: string
-        default: "10"
+        default: ""
       build-command:
         description: Optional command to build a local docs CLI before review.
         required: false
@@ -59,7 +59,10 @@ jobs:
           fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
-        if: ${{ inputs.package-manager == 'pnpm' }}
+        if: ${{ inputs.package-manager == 'pnpm' && inputs.pnpm-version == '' }}
+
+      - uses: pnpm/action-setup@v4
+        if: ${{ inputs.package-manager == 'pnpm' && inputs.pnpm-version != '' }}
         with:
           version: ${{ inputs.pnpm-version }}
 
