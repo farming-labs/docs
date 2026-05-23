@@ -560,6 +560,42 @@ sidebar:
       }),
     ]);
 
+    const ambiguousConfigSchemaResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": "stale-session",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 8,
+          method: "tools/call",
+          params: {
+            name: "get_config_schema",
+            arguments: {
+              option: "enabled",
+            },
+          },
+        }),
+      }),
+    });
+
+    const ambiguousConfigSchemaPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(ambiguousConfigSchemaResponse);
+    const ambiguousConfigSchemaText =
+      ambiguousConfigSchemaPayload.result?.content?.[0]?.text ?? "{}";
+    const ambiguousConfigSchema = JSON.parse(ambiguousConfigSchemaText) as {
+      resultCount?: number;
+      options?: unknown[];
+    };
+
+    expect(ambiguousConfigSchema.resultCount).toBe(0);
+    expect(ambiguousConfigSchema.options).toEqual([]);
+
     const deleteResponse = await handlers.DELETE({
       request: new Request("http://localhost/api/docs/mcp", {
         method: "DELETE",

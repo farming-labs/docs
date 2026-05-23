@@ -184,6 +184,26 @@ An MCP client can request only matching examples:
 }
 ```
 
+The `get_code_examples` response is JSON, so agents do not need to scrape rendered HTML:
+
+```json
+{
+  "examples": [
+    {
+      "language": "ts",
+      "title": "docs.config.ts",
+      "framework": "nextjs",
+      "packageManager": "pnpm",
+      "runnable": true,
+      "page": {
+        "url": "/docs/getting-started/quickstart"
+      },
+      "code": "import { defineDocs } from \"@farming-labs/docs\";\\n..."
+    }
+  ]
+}
+```
+
 The MCP server also exposes `get_config_schema` for agents that need to edit `docs.config.ts`
 without guessing option names or defaults:
 
@@ -199,21 +219,23 @@ without guessing option names or defaults:
 Use `query` instead of `option` when the agent only knows the feature area, such as `llms` or
 `page actions`.
 
-The response is JSON, so agents do not need to scrape rendered HTML:
+A filtered `get_config_schema` response includes the matching option metadata:
 
 ```json
 {
-  "examples": [
+  "schemaVersion": 1,
+  "configFile": "docs.config.ts",
+  "filters": {
+    "option": "mcp.tools.getConfigSchema"
+  },
+  "resultCount": 1,
+  "options": [
     {
-      "language": "ts",
-      "title": "docs.config.ts",
-      "framework": "nextjs",
-      "packageManager": "pnpm",
-      "runnable": true,
-      "page": {
-        "url": "/docs/getting-started/quickstart"
-      },
-      "code": "import { defineDocs } from \"@farming-labs/docs\";\\n..."
+      "path": "mcp.tools.getConfigSchema",
+      "name": "getConfigSchema",
+      "type": "boolean",
+      "default": true,
+      "description": "Expose the get_config_schema tool."
     }
   ]
 }

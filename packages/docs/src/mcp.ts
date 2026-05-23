@@ -1998,12 +1998,7 @@ function selectConfigSchemaOptions(optionPath: string): DocsMcpConfigSchemaOptio
   return flattenConfigSchemaOptions(DOCS_CONFIG_SCHEMA_OPTIONS)
     .filter((option) => {
       const normalizedPath = normalizeConfigSchemaToken(option.path);
-      const normalizedName = normalizeConfigSchemaToken(option.name);
-      return (
-        normalizedPath === needle ||
-        normalizedName === needle ||
-        normalizedPath.split(".").includes(needle)
-      );
+      return normalizedPath === needle;
     })
     .map(cloneConfigSchemaOption);
 }
