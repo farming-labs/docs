@@ -147,7 +147,11 @@ export function buildDocsReviewWorkflow(options: DocsReviewWorkflowOptions = {})
   const configPath = options.configPath ?? "docs.config.ts";
   const reusableWorkflow = options.reusableWorkflow ?? DEFAULT_DOCS_REVIEW_REUSABLE_WORKFLOW;
   const filters = normalizePathFilters(options.pathFilters);
-  const optionalInputs = [
+  const workflowInputs = [
+    ["check-name", ciName],
+    ["config", configPath],
+    ["working-directory", projectDir],
+    ["package-manager", packageManager],
     options.pnpmVersion ? ["pnpm-version", options.pnpmVersion] : undefined,
     options.buildCommand ? ["build-command", options.buildCommand] : undefined,
     options.reviewCommand ? ["review-command", options.reviewCommand] : undefined,
@@ -174,11 +178,8 @@ jobs:
     name: ${JSON.stringify(ciName)}
     uses: ${reusableWorkflow}
     with:
-      check-name: ${JSON.stringify(ciName)}
-      config: ${JSON.stringify(configPath)}
-      working-directory: ${JSON.stringify(projectDir)}
-      package-manager: ${JSON.stringify(packageManager)}
-${optionalInputs ? `${optionalInputs}\n` : ""}    permissions:
+${workflowInputs}
+    permissions:
       contents: read
       checks: write
       pull-requests: write

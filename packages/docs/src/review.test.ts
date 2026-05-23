@@ -97,6 +97,8 @@ describe("docs review helpers", () => {
     expect(workflow).toContain('      working-directory: "website"');
     expect(workflow).toContain('      package-manager: "pnpm"');
     expect(workflow).toContain('      pnpm-version: "10"');
+    expect(workflow).toContain("\n    permissions:\n      contents: read");
+    expect(workflow).not.toContain("\n      permissions:");
   });
 
   it("builds the local docs CLI before review when the repo contains the workspace package", () => {
