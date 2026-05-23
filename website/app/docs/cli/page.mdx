@@ -25,6 +25,7 @@ The `@farming-labs/docs` CLI has a few main jobs:
 - **`agent compact`** — generate sibling `agent.md` files from resolved docs pages
 - **`agents generate`** — write root and static `AGENTS.md` instructions for coding agents
 - **`doctor`** — audit local docs readiness and optional hosted agent routes
+- **`review`** — review docs changes locally or in GitHub Actions
 - **`mcp`** — run the built-in docs MCP server over stdio for local clients and IDE agents
 - **`search sync`** — push docs content into an external search index like Typesense or Algolia
 - **`sitemap generate`** — write sitemap metadata plus static `sitemap.xml` and `sitemap.md` files
@@ -942,6 +943,29 @@ The current built-in MCP surface includes:
 returns structured `docs.config.ts` option metadata.
 
 For the HTTP endpoint version, see [MCP Server](/docs/customization/mcp).
+
+## Docs Review
+
+Use `docs review` to check changed docs files before a PR is merged. It scores the changed docs,
+checks default rules such as broken links and frontmatter, and prints GitHub annotations when run
+with `--ci`.
+
+```bash title="terminal"
+pnpm exec docs review
+pnpm exec docs review --ci
+pnpm exec docs review --ci --mode block --score-threshold 90
+```
+
+`withDocs()` creates `.github/workflows/docs-review.yml` automatically during `next dev` or
+`next build` when review CI is enabled and the workflow does not already exist. You can also create
+it explicitly:
+
+```bash title="terminal"
+pnpm exec docs review setup
+```
+
+The workflow is repository-root aware. If your docs app lives in `website/`, the workflow still
+lives at `.github/workflows/docs-review.yml` and runs the review command from `website/`.
 
 ## Supported Frameworks
 

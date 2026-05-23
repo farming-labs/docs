@@ -140,6 +140,14 @@ async function main() {
       return;
     }
     await runDoctor(doctorOptions);
+  } else if (parsedCommand.command === "review") {
+    const { parseReviewArgs, printReviewHelp, runReview } = await import("./review.js");
+    const reviewOptions = parseReviewArgs(args.slice(1));
+    if (reviewOptions.help) {
+      printReviewHelp();
+      return;
+    }
+    await runReview(reviewOptions);
   } else if (parsedCommand.command === "search" && subcommand === "sync") {
     const { syncSearch } = await import("./search.js");
     await syncSearch(searchSyncOptions);
@@ -231,6 +239,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} to generate sibling agent.md files)
   ${pc.cyan("agents")}   AGENTS.md utilities (${pc.dim("generate")} for static agent instructions)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
+  ${pc.cyan("review")}   Review changed docs files and wire Docs Review CI
   ${pc.cyan("mcp")}      Run the built-in docs MCP server over stdio
   ${pc.cyan("robots")}   Robots.txt utilities (${pc.dim("generate")} for agent access policy)
   ${pc.cyan("search")}   Search utilities (${pc.dim("sync")} for external indexes)
@@ -282,6 +291,14 @@ ${pc.dim("Options for doctor:")}
   ${pc.cyan("doctor site")}                         Subcommand alias for reader-facing scoring
   ${pc.cyan("doctor human")}                        Legacy alias for reader-facing scoring
   ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
+
+${pc.dim("Options for review:")}
+  ${pc.cyan("review")}                              Review docs changed in git
+  ${pc.cyan("review setup")}                        Create ${pc.dim(".github/workflows/docs-review.yml")} when enabled
+  ${pc.cyan("--ci")}                                Use docs.config review.ci behavior and GitHub annotations
+  ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
+  ${pc.cyan("--mode <off|warn|block>")}             Override ${pc.dim("review.ci.mode")}
+  ${pc.cyan("--score-threshold <0-100>")}           Override ${pc.dim("review.score.threshold")}
 
 ${pc.dim("Options for search sync:")}
   ${pc.cyan("search sync --typesense")}             Sync docs content to Typesense using env/flags

@@ -30,6 +30,16 @@ export type {
   ResolvedApiReferenceConfig,
 } from "./api-reference.js";
 export {
+  buildDocsReviewWorkflow,
+  buildDocsReviewWorkflowPathFilters,
+  DEFAULT_DOCS_REVIEW_SCORE_THRESHOLD,
+  DEFAULT_DOCS_REVIEW_WORKFLOW_PATH,
+  ensureDocsReviewWorkflow,
+  readDocsReviewConfigFromSource,
+  resolveDocsReviewConfig,
+} from "./review.js";
+export type { ResolvedDocsReviewConfig } from "./review.js";
+export {
   createDocsMcpHttpHandler,
   createDocsMcpServer,
   createFilesystemDocsMcpSource,

@@ -36,5 +36,6 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     changelog: config.changelog,
     apiReference: config.apiReference,
     agent: config.agent,
+    review: config.review,
   };
 }

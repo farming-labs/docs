@@ -6,10 +6,10 @@ description: @farming-labs/docs CLI — scaffold, upgrade, downgrade, run doctor
 # @farming-labs/docs — CLI
 
 The `@farming-labs/docs` CLI scaffolds, upgrades, downgrades, audits agent and reader readiness, compacts
-page-level agent docs, generates `AGENTS.md`, syncs external search indexes, generates robots.txt policy files, and can
+page-level agent docs, reviews docs PR changes, generates `AGENTS.md`, syncs external search indexes, generates robots.txt policy files, and can
 run the built-in MCP server for documentation projects. Use this skill when the user asks about CLI
 commands, init, upgrade, downgrade, `doctor`, `agent compact`, `agents generate`, `sitemap generate`, `robots generate`, search
-sync, mcp, or scaffolding.
+sync, mcp, review, or scaffolding.
 
 ---
 
@@ -201,6 +201,24 @@ when a snippet has a target file, framework, package manager, or is safe to copy
 example. This metadata is for markdown/MCP consumers and does not require a UI change.
 
 Use the docs config `mcp` block when you also want the HTTP route version at `/mcp` or `/.well-known/mcp`.
+
+## Docs Review
+
+Use `docs review` to score changed docs files, check broken internal links, required frontmatter,
+code fence metadata, runnable snippet metadata, and agent-context suggestions.
+
+```bash
+pnpm exec docs review
+pnpm exec docs review --ci
+pnpm exec docs review setup
+```
+
+`withDocs()` creates `.github/workflows/docs-review.yml` automatically during `next dev` or
+`next build` when `review` CI is enabled and the workflow does not already exist. Omitted
+`review` config is enabled by default; use `review: false` to opt out.
+
+Use `review.ci.mode: "block"` and `review.score.threshold` when the team wants CI to fail below a
+score threshold.
 
 ## Search Sync
 
