@@ -9,9 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@farming-labs/docs": "0.1.116",
-    "@farming-labs/svelte": "0.1.116",
-    "@farming-labs/svelte-theme": "0.1.116",
+    "@farming-labs/docs": "0.1.117",
+    "@farming-labs/svelte": "0.1.117",
+    "@farming-labs/svelte-theme": "0.1.117",
     "three": "^0.180.0"
   },
   "devDependencies": {
