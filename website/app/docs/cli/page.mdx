@@ -957,16 +957,19 @@ pnpm exec docs review --ci --mode block --score-threshold 90
 ```
 
 `withDocs()` creates `.github/workflows/docs-review.yml` automatically during `next dev` or
-`next build` when review CI is enabled and the workflow does not already exist. You can also create
-it explicitly:
+`next build` when review CI is enabled and the workflow does not already exist. The generated file
+is a small wrapper around the hosted reusable workflow at
+`farming-labs/docs/.github/workflows/docs-review-reusable.yml@main`, so existing projects get fixes to
+the review job without copying a large workflow into every repo. You can also create the wrapper
+explicitly:
 
 ```bash title="terminal"
 pnpm exec docs review setup
 ```
 
-The workflow is repository-root aware. If your docs app lives in `website/`, the workflow still
-lives at `.github/workflows/docs-review.yml` and runs the review command from `website/`. Set
-`review.ci.name` when the GitHub check should use a name other than `docs-review`.
+The workflow is repository-root aware. If your docs app lives in `website/`, the wrapper still
+lives at `.github/workflows/docs-review.yml` and passes `working-directory: "website"` to the hosted
+workflow. Set `review.ci.name` when the GitHub check should use a name other than `docs-review`.
 
 ## Supported Frameworks
 

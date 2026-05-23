@@ -214,7 +214,8 @@ pnpm exec docs review setup
 ```
 
 `withDocs()` creates `.github/workflows/docs-review.yml` automatically during `next dev` or
-`next build` when `review` CI is enabled and the workflow does not already exist. Omitted
+`next build` when `review` CI is enabled and the workflow does not already exist. The generated file
+is a tiny wrapper around `farming-labs/docs/.github/workflows/docs-review-reusable.yml@main`. Omitted
 `review` config is enabled by default; use `review: false` to opt out.
 
 Use `review.ci.mode: "block"` and `review.score.threshold` when the team wants CI to fail below a

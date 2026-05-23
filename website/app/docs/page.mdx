@@ -55,9 +55,9 @@ routes are available in the spec.
 
 <Callout type="tip" title="Docs Review CI is built in">
 Every docs site gets PR review automation by default. During `next dev` or `next build`, `withDocs()`
-can create a repo-root GitHub Actions workflow that reviews changed docs files, checks frontmatter
-and internal links, scores agent-readiness, and reports GitHub annotations. Keep it as warn-only, or
-set `review.ci.mode: "block"` when docs quality should gate merges. See [Docs Review CI](/docs/configuration#docs-review-ci) and the [`docs review` CLI](/docs/cli#docs-review).
+can create a repo-root GitHub Actions wrapper that calls the hosted review workflow, checks changed
+docs files, scores agent-readiness, and reports GitHub annotations. Keep it as warn-only, or set
+`review.ci.mode: "block"` when docs quality should gate merges. See [Docs Review CI](/docs/configuration#docs-review-ci) and the [`docs review` CLI](/docs/cli#docs-review).
 </Callout>
 
 ## Looking Ahead: Cloud
@@ -103,7 +103,7 @@ Modern docs features are built in; you turn them on in [configuration](/docs/con
 - **[llms.txt](/docs/customization/llms-txt)** — LLM-friendly index whose page links point directly to markdown routes. Options described in the [llms.txt docs](/docs/customization/llms-txt).
 - **[Sitemaps](/docs/customization/sitemaps)** — XML and Markdown maps of canonical docs URLs, descriptions, related pages, and freshness metadata. Runtime routes are enabled by default.
 - **Robots.txt** — Runtime agent-friendly crawl policy at `/robots.txt` when no static file already exists; use `docs robots generate` for static export or committed policies.
-- **[Docs Review CI](/docs/configuration#docs-review-ci)** — Generated GitHub Actions workflow plus `docs review` scoring for changed MDX, broken internal links, frontmatter, code fence metadata, and agent context.
+- **[Docs Review CI](/docs/configuration#docs-review-ci)** — Generated GitHub Actions wrapper plus hosted `docs review` workflow scoring for changed MDX, broken internal links, frontmatter, code fence metadata, and agent context.
 
 Theme-level customization (colors, typography, components) is covered in [Configuration](/docs/configuration) and [Customization](/docs/customization) (including [Colors](/docs/customization/colors) and [Typography](/docs/customization/typography)). No custom components or routes required — enable and tweak what you need in `docs.config`.
 

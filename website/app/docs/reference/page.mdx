@@ -397,7 +397,8 @@ See [MCP Server](/docs/customization/mcp) for the route snippets and examples.
 Docs Review configuration for changed docs files, score thresholds, and GitHub Actions behavior.
 
 Omitted `review` config is enabled by default. Set `review: false` to opt out of the review command
-and generated workflow.
+and generated workflow. The generated CI file is a small repository-root wrapper around the hosted
+reusable workflow at `farming-labs/docs/.github/workflows/docs-review-reusable.yml@main`.
 
 | Property | Type | Default | Description |
 | -------- | ---- | ------- | ----------- |
