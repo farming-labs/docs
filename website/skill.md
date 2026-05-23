@@ -17,4 +17,4 @@ Use this skill when reading or implementing from the hosted Farming Labs docs we
 - Search with `/api/docs?query={query}` when the right page is unknown.
 - Use `/llms.txt` for a compact index and `/llms-full.txt` for full markdown context.
 - Use `/api/docs?format=openapi` for the machine-readable API schema when API routes matter.
-- Use `/mcp` or `/.well-known/mcp` when MCP is available.
+- Use `/mcp` or `/.well-known/mcp` when MCP is available. Prefer `list_docs` to inspect sections, `search_docs` to find a topic, `read_page` to fetch a page, `get_code_examples` to extract runnable snippets, and `get_config_schema` before editing `docs.config.ts`.
