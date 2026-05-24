@@ -2368,6 +2368,19 @@ export interface DocsCodeBlocksRunnerConfig {
   provider?: DocsCodeBlocksRunnerProvider;
   /** Environment variable containing the Vercel token for `provider: "vercel-sandbox"`. */
   tokenEnv?: string;
+  /** Advanced override for the Vercel project id env var used by `provider: "vercel-sandbox"`. */
+  projectIdEnv?: string;
+  /** Advanced override for the Vercel team/org id env var used by `provider: "vercel-sandbox"`. */
+  teamIdEnv?: string;
+  /**
+   * Path to a Vercel project metadata file. When enabled, the runner reads
+   * `projectId` and `orgId` from `.vercel/project.json`. If those are not
+   * available, the runner can auto-discover an accessible project from
+   * `VERCEL_TOKEN`.
+   *
+   * @default ".vercel/project.json"
+   */
+  projectJson?: string | false;
   /** Vercel Sandbox runtime. */
   runtime?: "node24" | "node22" | "python3.13";
   /** Per-command timeout in milliseconds. */

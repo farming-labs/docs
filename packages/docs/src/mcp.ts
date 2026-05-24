@@ -607,7 +607,8 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
         name: "runner",
         type: '"local" | "vercel-sandbox" | "cloud" | DocsCodeBlocksRunnerConfig',
         default: "local",
-        description: "Runner used to execute planned snippets.",
+        description:
+          "Runner used to execute planned snippets. The Vercel Sandbox runner can work from `VERCEL_TOKEN` alone by auto-discovering an accessible project.",
       },
       {
         path: "codeBlocks.validate.env",

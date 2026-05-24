@@ -59,6 +59,9 @@ export interface DocsCodeBlocksResolvedPlannerConfig {
 export interface DocsCodeBlocksResolvedRunnerConfig {
   provider: DocsCodeBlocksRunnerProvider;
   tokenEnv: string;
+  projectIdEnv: string;
+  teamIdEnv: string;
+  projectJson: string | false;
   runtime: "node24" | "node22" | "python3.13";
   timeoutMs: number;
 }
@@ -129,6 +132,13 @@ interface LoadedValidationEnv {
   missing: string[];
 }
 
+interface VercelSandboxCredentials {
+  token?: string;
+  projectId?: string;
+  teamId?: string;
+  missing: string[];
+}
+
 export function resolveDocsCodeBlocksValidateConfig(
   input?: boolean | DocsCodeBlocksValidateConfig,
 ): DocsCodeBlocksResolvedValidateConfig {
@@ -139,6 +149,9 @@ export function resolveDocsCodeBlocksValidateConfig(
       runner: {
         provider: "local",
         tokenEnv: "VERCEL_TOKEN",
+        projectIdEnv: "VERCEL_PROJECT_ID",
+        teamIdEnv: "VERCEL_TEAM_ID",
+        projectJson: ".vercel/project.json",
         runtime: "node24",
         timeoutMs: DEFAULT_COMMAND_TIMEOUT_MS,
       },
@@ -309,7 +322,7 @@ export async function validateCodeBlockPlans(input: {
 
   const runResults =
     input.config.runner.provider === "vercel-sandbox"
-      ? await runPlansInVercelSandbox(plansToRun, input.config, validationEnv.env)
+      ? await runPlansInVercelSandbox(plansToRun, input.rootDir, input.config, validationEnv.env)
       : await runPlansLocally(plansToRun, input.config, validationEnv.env);
 
   return [...skippedOrFailed, ...runResults].sort((a, b) => a.id.localeCompare(b.id));
@@ -332,7 +345,7 @@ export async function validateCodeBlocks(input: {
           id: plan.id,
           target: plan.target,
           plan,
-          status: "PLAN" as const,
+          status: plan.action === "skip" ? ("SKIP" as const) : ("PLAN" as const),
           reason: plan.reason ?? (plan.action === "skip" ? "planned skip" : "planned"),
         }))
       : await validateCodeBlockPlans({
@@ -377,6 +390,9 @@ function normalizeRunnerConfig(
   return {
     provider: config.provider ?? "local",
     tokenEnv: config.tokenEnv ?? "VERCEL_TOKEN",
+    projectIdEnv: config.projectIdEnv ?? "VERCEL_PROJECT_ID",
+    teamIdEnv: config.teamIdEnv ?? "VERCEL_TEAM_ID",
+    projectJson: config.projectJson === undefined ? ".vercel/project.json" : config.projectJson,
     runtime: config.runtime ?? "node24",
     timeoutMs: config.timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS,
   };
@@ -395,6 +411,15 @@ function buildMetadataExecutionPlan(
   }
 
   if (!language) {
+    if (!target.runnable) {
+      return skipPlan(
+        target,
+        "unknown",
+        requiredEnv,
+        "code block is not marked runnable",
+        config.planner.provider,
+      );
+    }
     if (looksLikeShellCommand(target.code)) {
       return shellPlan(target, "shell", requiredEnv, config.planner.provider);
     }
@@ -403,6 +428,16 @@ function buildMetadataExecutionPlan(
       "unknown",
       requiredEnv,
       "missing language and not obviously runnable",
+      config.planner.provider,
+    );
+  }
+
+  if (!target.runnable) {
+    return skipPlan(
+      target,
+      template,
+      requiredEnv,
+      "code block is not marked runnable",
       config.planner.provider,
     );
   }
@@ -792,16 +827,14 @@ async function runPlansLocally(
 
 async function runPlansInVercelSandbox(
   plans: DocsCodeBlockExecutionPlan[],
+  rootDir: string,
   config: DocsCodeBlocksResolvedValidateConfig,
   env: Record<string, string>,
 ): Promise<DocsCodeBlockValidationResult[]> {
-  const token = process.env[config.runner.tokenEnv];
-  if (!token) {
-    return plans.map((plan) => skippedResult(plan, `missing ${config.runner.tokenEnv}`));
+  const credentials = await resolveVercelSandboxCredentials(rootDir, config);
+  if (credentials.missing.length > 0) {
+    return plans.map((plan) => skippedResult(plan, `missing ${credentials.missing.join(", ")}`));
   }
-
-  const previousToken = process.env.VERCEL_TOKEN;
-  process.env.VERCEL_TOKEN = token;
 
   try {
     const { Sandbox } = (await import("@vercel/sandbox")) as unknown as {
@@ -810,6 +843,9 @@ async function runPlansInVercelSandbox(
           runtime?: string;
           timeout?: number;
           env?: Record<string, string>;
+          token?: string;
+          projectId?: string;
+          teamId?: string;
         }): Promise<{
           writeFiles(files: Array<{ path: string; content: Buffer }>): Promise<void>;
           runCommand(input: {
@@ -834,6 +870,9 @@ async function runPlansInVercelSandbox(
         config.runner.timeoutMs,
       ),
       env,
+      token: credentials.token,
+      projectId: credentials.projectId,
+      teamId: credentials.teamId,
     });
 
     try {
@@ -876,12 +915,84 @@ async function runPlansInVercelSandbox(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return plans.map((plan) => skippedResult(plan, `vercel-sandbox unavailable: ${message}`));
-  } finally {
-    if (previousToken === undefined) {
-      delete process.env.VERCEL_TOKEN;
-    } else {
-      process.env.VERCEL_TOKEN = previousToken;
-    }
+  }
+}
+
+async function resolveVercelSandboxCredentials(
+  rootDir: string,
+  config: DocsCodeBlocksResolvedValidateConfig,
+): Promise<VercelSandboxCredentials> {
+  const projectJson = readVercelProjectJson(rootDir, config.runner.projectJson);
+  const token = process.env[config.runner.tokenEnv];
+
+  if (!token && process.env.VERCEL_OIDC_TOKEN) {
+    return { missing: [] };
+  }
+
+  if (!token) {
+    return { missing: [config.runner.tokenEnv] };
+  }
+
+  const envProjectId = process.env[config.runner.projectIdEnv];
+  const envTeamId = process.env[config.runner.teamIdEnv];
+  const needsDiscovery =
+    !(envProjectId && envTeamId) && !(projectJson?.projectId && projectJson?.orgId);
+  const discoveredProject = needsDiscovery ? await discoverVercelSandboxProject(token) : undefined;
+  const projectId = envProjectId ?? projectJson?.projectId ?? discoveredProject?.projectId;
+  const teamId = envTeamId ?? projectJson?.orgId ?? discoveredProject?.teamId;
+  const missing = [
+    projectId ? undefined : "Vercel project id",
+    teamId ? undefined : "Vercel team id",
+  ].filter((value): value is string => Boolean(value));
+
+  return { token, projectId, teamId, missing };
+}
+
+async function discoverVercelSandboxProject(
+  token: string,
+): Promise<{ projectId?: string; teamId?: string } | undefined> {
+  try {
+    const response = await fetch("https://api.vercel.com/v9/projects?limit=1", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) return undefined;
+
+    const payload = (await response.json()) as {
+      projects?: Array<{ id?: unknown; accountId?: unknown }>;
+    };
+    const project = payload.projects?.[0];
+    if (!project) return undefined;
+
+    return {
+      projectId: typeof project.id === "string" ? project.id : undefined,
+      teamId: typeof project.accountId === "string" ? project.accountId : undefined,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function readVercelProjectJson(
+  rootDir: string,
+  projectJson: string | false,
+): { projectId?: string; orgId?: string } | undefined {
+  if (projectJson === false) return undefined;
+  const fullPath = path.resolve(rootDir, projectJson);
+  if (!existsSync(fullPath)) return undefined;
+
+  try {
+    const parsed = JSON.parse(readFileSync(fullPath, "utf-8")) as {
+      projectId?: unknown;
+      orgId?: unknown;
+    };
+    return {
+      projectId: typeof parsed.projectId === "string" ? parsed.projectId : undefined,
+      orgId: typeof parsed.orgId === "string" ? parsed.orgId : undefined,
+    };
+  } catch {
+    return undefined;
   }
 }
 

@@ -1,14 +1,32 @@
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   extractCodeBlocksFromMarkdown,
   resolveDocsCodeBlocksValidateConfig,
   validateCodeBlocks,
 } from "./code-blocks.js";
 
+const sandboxMock = vi.hoisted(() => ({
+  create: vi.fn(),
+}));
+
+vi.mock("@vercel/sandbox", () => ({
+  Sandbox: {
+    create: sandboxMock.create,
+  },
+}));
+
 describe("code block validation", () => {
+  afterEach(() => {
+    sandboxMock.create.mockReset();
+    vi.unstubAllGlobals();
+    delete process.env.VERCEL_TOKEN;
+    delete process.env.VERCEL_PROJECT_ID;
+    delete process.env.VERCEL_TEAM_ID;
+  });
+
   it("resolves disabled and enabled validate config", () => {
     expect(resolveDocsCodeBlocksValidateConfig().enabled).toBe(false);
 
@@ -36,10 +54,36 @@ describe("code block validation", () => {
     expect(config.runner).toMatchObject({
       provider: "vercel-sandbox",
       tokenEnv: "VERCEL_TOKEN",
+      projectIdEnv: "VERCEL_PROJECT_ID",
+      teamIdEnv: "VERCEL_TEAM_ID",
+      projectJson: ".vercel/project.json",
     });
     expect(config.env).toEqual({
       OPENAI_API_KEY: "OPENAI_TEST_API_KEY",
     });
+  });
+
+  it("does not execute code blocks unless they are marked runnable", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "docs-codeblocks-not-runnable-"));
+    writeFileSync(
+      path.join(rootDir, "page.mdx"),
+      ['```js title="example.js"', "throw new Error('should not run')", "```"].join("\n"),
+      "utf-8",
+    );
+
+    const report = await validateCodeBlocks({
+      rootDir,
+      contentDir: ".",
+      config: resolveDocsCodeBlocksValidateConfig(true),
+    });
+
+    expect(report.summary).toMatchObject({
+      total: 1,
+      pass: 0,
+      skip: 1,
+      fail: 0,
+    });
+    expect(report.results[0]?.reason).toBe("code block is not marked runnable");
   });
 
   it("extracts code fence metadata used by agents and validators", () => {
@@ -168,5 +212,67 @@ describe("code block validation", () => {
       fail: 0,
     });
     expect(report.results[0]?.reason).toBe("missing env: OPENAI_API_KEY");
+  });
+
+  it("auto-discovers Vercel Sandbox project credentials from the token", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "docs-codeblocks-vercel-"));
+    writeFileSync(
+      path.join(rootDir, "page.mdx"),
+      ['```js title="sandbox.js" runnable', 'console.log("sandbox")', "```"].join("\n"),
+      "utf-8",
+    );
+
+    process.env.VERCEL_TOKEN = "test-token";
+    const runCommand = vi.fn(async () => ({
+      exitCode: 0,
+      stdout: async () => "sandbox\n",
+      stderr: async () => "",
+    }));
+    sandboxMock.create.mockImplementation(async () => ({
+      writeFiles: vi.fn(async () => {}),
+      runCommand,
+      stop: vi.fn(async () => {}),
+    }));
+    const fetchMock = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          projects: [{ id: "prj_test", accountId: "team_test" }],
+        }),
+        { status: 200 },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const report = await validateCodeBlocks({
+      rootDir,
+      contentDir: ".",
+      config: resolveDocsCodeBlocksValidateConfig({
+        runner: {
+          provider: "vercel-sandbox",
+        },
+      }),
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.vercel.com/v9/projects?limit=1",
+      expect.objectContaining({
+        headers: {
+          Authorization: "Bearer test-token",
+        },
+      }),
+    );
+    expect(sandboxMock.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        token: "test-token",
+        projectId: "prj_test",
+        teamId: "team_test",
+      }),
+    );
+    expect(report.summary).toMatchObject({
+      pass: 1,
+      skip: 0,
+      fail: 0,
+    });
+    expect(report.results[0]?.stdout).toBe("sandbox\n");
   });
 });

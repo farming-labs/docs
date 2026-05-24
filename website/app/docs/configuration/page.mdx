@@ -190,6 +190,31 @@ const apiKey = process.env.OPENAI_API_KEY;
 ```
 ````
 
+Small runnable blocks make the check easy to dogfood:
+
+```json title="agent-context.json" runnable
+{
+  "framework": "nextjs",
+  "packageManager": "pnpm",
+  "agentReady": true
+}
+```
+
+```js title="codeblocks-smoke.js" runnable
+const metadata = { framework: "nextjs", runnable: true };
+
+if (!metadata.runnable) {
+  throw new Error("Expected runnable metadata");
+}
+
+console.log("metadata ok");
+```
+
+```bash title="codeblocks-smoke.sh" runnable
+test "docs" = "docs"
+echo "shell ok"
+```
+
 Run the validator locally:
 
 ```bash
@@ -199,7 +224,9 @@ pnpm exec docs codeblocks validate
 
 The planner never writes secrets into docs. The `env` map means the snippet can keep using
 `process.env.OPENAI_API_KEY`, while validation injects that runtime variable from
-`OPENAI_TEST_API_KEY`.
+`OPENAI_TEST_API_KEY`. For Vercel Sandbox, `VERCEL_TOKEN` is enough in most projects; the runner
+uses `.vercel/project.json` when present and can auto-discover an accessible Vercel project from
+the token.
 
 ## Public docs path
 

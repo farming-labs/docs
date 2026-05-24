@@ -10,6 +10,9 @@ import type { DocsCodeBlocksValidateConfig } from "../types.js";
 import {
   extractNestedObjectLiteral,
   loadDocsConfigModule,
+  readBooleanProperty,
+  readNumberProperty,
+  readStringProperty,
   readTopLevelStringProperty,
   resolveDocsConfigPath,
   resolveDocsContentDir,
@@ -99,7 +102,9 @@ ${pc.dim("Options:")}
 
 export async function runCodeBlocksValidate(options: CodeBlocksValidateOptions = {}) {
   const rootDir = process.cwd();
-  const loaded = await loadDocsConfigModule(rootDir, options.configPath);
+  const loaded = await loadDocsConfigModule(rootDir, options.configPath, {
+    silent: options.json,
+  });
   const configPath = loaded?.path ?? resolveDocsConfigPath(rootDir, options.configPath);
   const configContent = existsSync(configPath) ? readFileSync(configPath, "utf-8") : "";
   const entry =
@@ -160,10 +165,134 @@ function readStaticCodeBlocksValidateConfig(
   if (!block) return undefined;
   if (/\bvalidate\s*:\s*true\b/.test(block)) return true;
   if (/\bvalidate\s*:\s*false\b/.test(block)) return false;
-  if (/\bvalidate\s*:\s*\{/.test(block)) {
-    return true;
+
+  const validateBlock = extractNestedObjectLiteral(content, ["codeBlocks", "validate"]);
+  if (validateBlock) {
+    const config: DocsCodeBlocksValidateConfig = {};
+    const enabled = readBooleanProperty(validateBlock, "enabled");
+    const mode = readStringProperty(validateBlock, "mode");
+    const missingEnv = readStringProperty(validateBlock, "missingEnv");
+    const unsupportedLanguage = readStringProperty(validateBlock, "unsupportedLanguage");
+    const envFile = readStringArrayProperty(validateBlock, "envFile");
+
+    if (enabled !== undefined) config.enabled = enabled;
+    if (mode === "plan" || mode === "report") config.mode = mode;
+    if (missingEnv === "skip" || missingEnv === "warn" || missingEnv === "error") {
+      config.missingEnv = missingEnv;
+    }
+    if (
+      unsupportedLanguage === "skip" ||
+      unsupportedLanguage === "warn" ||
+      unsupportedLanguage === "error"
+    ) {
+      config.unsupportedLanguage = unsupportedLanguage;
+    }
+    if (envFile) config.envFile = envFile;
+
+    const plannerBlock = extractNestedObjectLiteral(content, ["codeBlocks", "validate", "planner"]);
+    const planner = readStaticPlannerConfig(plannerBlock);
+    if (planner) config.planner = planner;
+
+    const runnerBlock = extractNestedObjectLiteral(content, ["codeBlocks", "validate", "runner"]);
+    const runner = readStaticRunnerConfig(runnerBlock);
+    if (runner) config.runner = runner;
+
+    const envBlock = extractNestedObjectLiteral(content, ["codeBlocks", "validate", "env"]);
+    const env = readStringRecord(envBlock);
+    if (env && Object.keys(env).length > 0) config.env = env;
+
+    return config;
   }
+
+  if (/\bvalidate\s*:\s*\{/.test(block)) return true;
   return undefined;
+}
+
+function readStaticPlannerConfig(
+  block?: string,
+): DocsCodeBlocksValidateConfig["planner"] | undefined {
+  if (!block) return undefined;
+  const provider = readStringProperty(block, "provider");
+  const model = readStringProperty(block, "model");
+  const baseUrl = readStringProperty(block, "baseUrl");
+  const baseUrlEnv = readStringProperty(block, "baseUrlEnv");
+  const apiKeyEnv = readStringProperty(block, "apiKeyEnv");
+
+  if (
+    provider !== "metadata" &&
+    provider !== "openai" &&
+    provider !== "openai-compatible" &&
+    provider !== "cloud"
+  ) {
+    return undefined;
+  }
+
+  return {
+    provider,
+    ...(model ? { model } : {}),
+    ...(baseUrl ? { baseUrl } : {}),
+    ...(baseUrlEnv ? { baseUrlEnv } : {}),
+    ...(apiKeyEnv ? { apiKeyEnv } : {}),
+  };
+}
+
+function readStaticRunnerConfig(
+  block?: string,
+): DocsCodeBlocksValidateConfig["runner"] | undefined {
+  if (!block) return undefined;
+  const provider = readStringProperty(block, "provider");
+  const tokenEnv = readStringProperty(block, "tokenEnv");
+  const projectIdEnv = readStringProperty(block, "projectIdEnv");
+  const teamIdEnv = readStringProperty(block, "teamIdEnv");
+  const projectJson = readStringProperty(block, "projectJson");
+  const runtime = readStringProperty(block, "runtime");
+  const timeoutMs = readNumberProperty(block, "timeoutMs");
+
+  if (provider !== "local" && provider !== "vercel-sandbox" && provider !== "cloud") {
+    return undefined;
+  }
+
+  return {
+    provider,
+    ...(tokenEnv ? { tokenEnv } : {}),
+    ...(projectIdEnv ? { projectIdEnv } : {}),
+    ...(teamIdEnv ? { teamIdEnv } : {}),
+    ...(projectJson ? { projectJson } : {}),
+    ...(runtime === "node24" || runtime === "node22" || runtime === "python3.13"
+      ? { runtime }
+      : {}),
+    ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+  };
+}
+
+function readStringArrayProperty(content: string, key: string): string[] | undefined {
+  const single = readStringProperty(content, key);
+  if (single) return [single];
+
+  const match = content.match(new RegExp(`\\b${key}\\b\\s*:\\s*\\[([\\s\\S]*?)\\]`));
+  if (!match) return undefined;
+
+  const values = [...match[1].matchAll(/["']([^"']+)["']/g)].map((item) => item[1]);
+  return values.length > 0 ? values : undefined;
+}
+
+function readStringRecord(block?: string): Record<string, string> | undefined {
+  if (!block) return undefined;
+
+  const record: Record<string, string> = {};
+  const patterns = [
+    /(?:^|,)\s*([A-Za-z_$][\w$]*)\s*:\s*["']([^"']+)["']/g,
+    /(?:^|,)\s*["']([^"']+)["']\s*:\s*["']([^"']+)["']/g,
+  ];
+
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(block))) {
+      record[match[1]] = match[2];
+    }
+  }
+
+  return record;
 }
 
 function printCodeBlocksReport(report: DocsCodeBlocksValidationReport, planOnly: boolean) {

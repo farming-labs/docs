@@ -367,6 +367,7 @@ export function loadProjectEnv(rootDir: string): Record<string, string> {
 export async function loadDocsConfigModule(
   rootDir: string,
   explicitPath?: string,
+  options: { silent?: boolean } = {},
 ): Promise<{ path: string; config: DocsConfig } | null> {
   const configPath = resolveDocsConfigPath(rootDir, explicitPath);
 
@@ -384,7 +385,7 @@ export async function loadDocsConfigModule(
 
     return { path: configPath, config };
   } catch (error) {
-    if (process.env.NODE_ENV !== "test") {
+    if (!options.silent && process.env.NODE_ENV !== "test") {
       const message = error instanceof Error ? error.message : String(error);
       console.warn(
         `[docs] Could not evaluate ${configPath} as a module; falling back to static parsing. ${message}`,
