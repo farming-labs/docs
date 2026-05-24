@@ -800,6 +800,7 @@ function buildDiscoveryView(body: unknown): DiscoveryView {
             sitemapMd?.enabled === false
               ? undefined
               : (readDiscoveryRoute(sitemapMd?.route) ?? DEFAULT_SITEMAP_MD_ROUTE),
+            sitemapMd?.enabled === false ? undefined : readDiscoveryRoute(sitemapMd?.docsRoute),
             sitemapMd?.enabled === false
               ? undefined
               : (readDiscoveryRoute(sitemapMd?.wellKnownRoute) ??
@@ -1720,7 +1721,7 @@ async function buildFrameworkChecks(
         0,
         4,
         "Discovery spec reports sitemap routes as disabled.",
-        "Enable sitemap generation so agents can discover sitemap.xml and sitemap.md.",
+        "Enable sitemap generation so agents can discover sitemap.xml, sitemap.md, and docs/sitemap.md.",
       ),
     );
   } else {

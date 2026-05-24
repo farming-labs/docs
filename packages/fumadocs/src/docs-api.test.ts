@@ -776,6 +776,7 @@ export async function GET() {
       const content = await response.text();
       expect(content).toContain("Allow: /llms.txt");
       expect(content).toContain("Allow: /sitemap.xml");
+      expect(content).toContain("Allow: /docs/sitemap.md");
       expect(content).toContain("User-agent: GPTBot");
     }
   });

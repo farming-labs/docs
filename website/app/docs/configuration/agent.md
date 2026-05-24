@@ -63,7 +63,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - Use [/docs/customization/agent-primitive](/docs/customization/agent-primitive) when the user wants `.md` routes, hidden `<Agent>` content, or sibling `agent.md` overrides.
 - Use [/docs/customization/mcp](/docs/customization/mcp) when they want machine-readable access through the built-in MCP server.
 - Use [/docs/customization/llms-txt](/docs/customization/llms-txt) when they need crawler-friendly summaries for AI systems.
-- Use [/docs/customization/sitemaps](/docs/customization/sitemaps) when they need `sitemap.xml`, `sitemap.md`, static export files, or `lastmod` behavior.
+- Use [/docs/customization/sitemaps](/docs/customization/sitemaps) when they need `sitemap.xml`, `sitemap.md`, `/docs/sitemap.md`, static export files, or `lastmod` behavior.
 - Use [/docs/customization/ai-chat](/docs/customization/ai-chat) when they are configuring Ask AI or retrieval-backed chat.
 - Use [/docs/customization/page-actions](/docs/customization/page-actions) when they want Copy Markdown or Open in LLM actions.
 - Use [/docs/token-efficiency](/docs/token-efficiency) when they care about retrieval quality, context size, or agent cost.

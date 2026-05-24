@@ -1,6 +1,6 @@
 ---
 title: "Sitemaps"
-description: "Generate sitemap.xml and sitemap.md for crawlers, agents, and static exports"
+description: "Generate sitemap.xml, sitemap.md, and docs/sitemap.md for crawlers, agents, and static exports"
 icon: "file"
 order: 5.85
 related:
@@ -13,10 +13,10 @@ related:
 
 # Sitemaps
 
-Generate both a standard `sitemap.xml` and a semantic `sitemap.md` from the same docs source. The
-XML file gives search crawlers a canonical URL list with freshness dates. The Markdown file gives
-agents, contributors, and automation a readable map of the docs tree with titles, descriptions,
-markdown URLs, last-updated dates, and related pages.
+Generate a standard `sitemap.xml`, semantic `sitemap.md`, and docs-scoped `/docs/sitemap.md` from
+the same docs source. The XML file gives search crawlers a canonical URL list with freshness dates.
+The Markdown file gives agents, contributors, and automation a readable map of the docs tree with
+titles, descriptions, markdown URLs, last-updated dates, and related pages.
 
 <Agent>
 Use this page when the task is to customize or troubleshoot generated sitemaps. Runtime sitemap
@@ -25,6 +25,7 @@ routes are enabled by default; use `sitemap: false` only when a project must opt
 Default public routes:
 - `/sitemap.xml`
 - `/sitemap.md`
+- `/docs/sitemap.md`
 - `/.well-known/sitemap.md`
 
 Static export command:
@@ -60,6 +61,7 @@ That exposes these routes through the same docs server wrapper and public forwar
 
 - `GET /sitemap.xml`
 - `GET /sitemap.md`
+- `GET /docs/sitemap.md`
 - `GET /.well-known/sitemap.md`
 - `GET /api/docs?format=sitemap-xml`
 - `GET /api/docs?format=sitemap-md`
@@ -82,6 +84,7 @@ The command writes:
 - `.farming-labs/sitemap-manifest.json`
 - `public/sitemap.xml`
 - `public/sitemap.md`
+- `public/docs/sitemap.md`
 - `public/.well-known/sitemap.md`
 
 SvelteKit uses `static/` instead of `public/`.
@@ -131,8 +134,8 @@ Common build scripts:
     }
     ```
 
-    For `output: "export"`, drop `--manifest-only` so `public/sitemap.xml` and `public/sitemap.md`
-    are written before `next build`.
+    For `output: "export"`, drop `--manifest-only` so `public/sitemap.xml`, `public/sitemap.md`,
+    and `public/docs/sitemap.md` are written before `next build`.
   </Tab>
   <Tab value="Astro">
     ```json title="package.json"
@@ -234,8 +237,9 @@ This generates:
 - `/docs-map/sitemap.md`
 - `/docs-map/.well-known/sitemap.md`
 
-There is no separate well-known route setting. The prefix applies to all sitemap routes together so
-adapters only need one forwarding rule.
+The default `/docs/sitemap.md` alias is emitted only when `routePrefix` is empty. There is no
+separate well-known route setting. The prefix applies to custom sitemap routes together so adapters
+only need one forwarding rule.
 
 ## Configuration Reference
 
@@ -349,6 +353,7 @@ Check the public routes:
 ```bash title="terminal"
 curl "http://127.0.0.1:3000/sitemap.xml"
 curl "http://127.0.0.1:3000/sitemap.md"
+curl "http://127.0.0.1:3000/docs/sitemap.md"
 curl "http://127.0.0.1:3000/.well-known/sitemap.md"
 curl "http://127.0.0.1:3000/robots.txt"
 ```

@@ -150,6 +150,7 @@ export function getDocsRobotsAllowRoutes(options: DocsRobotsRenderOptions = {}):
     if (sitemapConfig.xml.enabled) routes.push(sitemapConfig.xml.route);
     if (sitemapConfig.markdown.enabled) {
       routes.push(sitemapConfig.markdown.route, sitemapConfig.markdown.wellKnownRoute);
+      if (sitemapConfig.markdown.docsRoute) routes.push(sitemapConfig.markdown.docsRoute);
     }
   }
 

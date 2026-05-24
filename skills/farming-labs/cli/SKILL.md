@@ -304,7 +304,7 @@ Behavior:
 - reads `docs.config.ts[x]` by default, or the path passed with `--config`
 - scans docs content using `entry` and `contentDir`
 - writes `.farming-labs/sitemap-manifest.json`
-- writes public sitemap files by default: `sitemap.xml`, `sitemap.md`, and `.well-known/sitemap.md`
+- writes public sitemap files by default: `sitemap.xml`, `sitemap.md`, `docs/sitemap.md`, and `.well-known/sitemap.md`
 - writes to `static/` for SvelteKit and `public/` for other frameworks
 - resolves `lastmod` from `git log -1` for each page source path, falling back to filesystem mtime
 - preserves `generatedAt` when the comparable manifest content has not changed
@@ -510,7 +510,7 @@ What it checks:
 - public agent routes
 - agent discovery spec
 - `llms.txt`
-- `sitemap.xml` and `sitemap.md`
+- `sitemap.xml`, `sitemap.md`, and `docs/sitemap.md`
 - `robots.txt`
 - `AGENTS.md`
 - `skill.md`
@@ -526,7 +526,7 @@ With `--url`, `docs doctor --agent` also probes the deployed public agent surfac
 - `/.well-known/agent.json`
 - `/llms.txt`
 - `/llms-full.txt`
-- sitemap routes from the discovery spec, usually `/sitemap.xml`, `/sitemap.md`, and `/.well-known/sitemap.md`
+- sitemap routes from the discovery spec, usually `/sitemap.xml`, `/sitemap.md`, `/docs/sitemap.md`, and `/.well-known/sitemap.md`
 - the robots route from the discovery spec, usually `/robots.txt`
 - `/AGENTS.md`
 - `/.well-known/AGENTS.md`

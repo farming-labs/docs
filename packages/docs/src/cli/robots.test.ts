@@ -72,6 +72,7 @@ describe("robots cli", () => {
     expect(robots).toContain("Allow: /docs.md");
     expect(robots).toContain("Allow: /llms.txt");
     expect(robots).toContain("Allow: /sitemap.md");
+    expect(robots).toContain("Allow: /docs/sitemap.md");
     expect(robots).toContain("User-agent: GPTBot");
     expect(robots).toContain("Allow: /");
     expect(robots).toContain("Sitemap: https://docs.example.com/sitemap.xml");

@@ -320,8 +320,8 @@ ${pc.dim("Options for search sync:")}
   ${pc.cyan("--search-api-key <key>")}             Algolia search key (or use ${pc.dim("ALGOLIA_SEARCH_API_KEY")})
 
 ${pc.dim("Options for sitemap generate:")}
-  ${pc.cyan("sitemap generate")}                   Generate sitemap manifest and public ${pc.dim("sitemap.xml")}/${pc.dim("sitemap.md")}
-  ${pc.cyan("--public")}                           Explicitly write public ${pc.dim("sitemap.xml")} and ${pc.dim("sitemap.md")} files
+  ${pc.cyan("sitemap generate")}                   Generate sitemap manifest and public ${pc.dim("sitemap.xml")}/${pc.dim("sitemap.md")}/${pc.dim("docs/sitemap.md")}
+  ${pc.cyan("--public")}                           Explicitly write public ${pc.dim("sitemap.xml")}, ${pc.dim("sitemap.md")}, and ${pc.dim("docs/sitemap.md")} files
   ${pc.cyan("--manifest-only")}                    Only write the internal sitemap manifest
   ${pc.cyan("--check")}                            Fail if generated sitemap output is stale
   ${pc.cyan("--config <path>")}                    Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}

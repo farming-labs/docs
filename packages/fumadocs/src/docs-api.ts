@@ -45,6 +45,7 @@ import {
   resolvePageSidebarFolderIndexBehavior,
   selectDocsLlmsTxtContent,
   createDocsSitemapResponse,
+  DEFAULT_SITEMAP_MD_DOCS_ROUTE,
   resolveDocsSitemapConfig,
 } from "@farming-labs/docs";
 import type {
@@ -149,7 +150,7 @@ interface DocsAPIOptions {
   mcp?: boolean | DocsMcpConfig;
   /** llms.txt configuration. Enabled by default; set false to opt out. */
   llmsTxt?: boolean | LlmsTxtOptions;
-  /** Sitemap configuration used for sitemap.xml and sitemap.md. */
+  /** Sitemap configuration used for sitemap.xml, sitemap.md, and docs/sitemap.md. */
   sitemap?: boolean | DocsSitemapConfig;
   /** Robots.txt generation policy used for the agent discovery spec. */
   robots?: boolean | DocsRobotsConfig;
@@ -542,8 +543,10 @@ function buildAgentSpec({
       markdown: {
         enabled: sitemapConfig.markdown.enabled,
         route: sitemapConfig.markdown.route,
+        docsRoute: sitemapConfig.markdown.docsRoute,
         wellKnownRoute: sitemapConfig.markdown.wellKnownRoute,
         api: `${DEFAULT_DOCS_API_ROUTE}?format=sitemap-md`,
+        defaultDocsRoute: DEFAULT_SITEMAP_MD_DOCS_ROUTE,
       },
     },
     robots: {
@@ -1926,6 +1929,9 @@ function renderSkillDocument({
     if (sitemapConfig.markdown.enabled) {
       lines.push(
         `- Sitemap Markdown: ${sitemapConfig.markdown.route}`,
+        ...(sitemapConfig.markdown.docsRoute
+          ? [`- Sitemap docs alias: ${sitemapConfig.markdown.docsRoute}`]
+          : []),
         `- Sitemap well-known alias: ${sitemapConfig.markdown.wellKnownRoute}`,
       );
     }
@@ -2066,6 +2072,9 @@ function renderAgentsDocument({
     if (sitemapConfig.markdown.enabled) {
       lines.push(
         `- Sitemap Markdown: ${sitemapConfig.markdown.route}`,
+        ...(sitemapConfig.markdown.docsRoute
+          ? [`- Sitemap docs alias: ${sitemapConfig.markdown.docsRoute}`]
+          : []),
         `- Sitemap well-known alias: ${sitemapConfig.markdown.wellKnownRoute}`,
       );
     }

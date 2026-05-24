@@ -15,6 +15,7 @@ import type { ResolvedDocsI18n } from "./i18n.js";
 import type { DocsMcpPage, DocsMcpResolvedConfig } from "./mcp.js";
 import { renderDocsRelatedMarkdownLines } from "./related.js";
 import {
+  DEFAULT_SITEMAP_MD_DOCS_ROUTE,
   DEFAULT_SITEMAP_MD_ROUTE,
   DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE,
   DEFAULT_SITEMAP_XML_ROUTE,
@@ -1204,6 +1205,9 @@ export function renderDocsMarkdownNotFound({
   if (sitemapConfig.enabled) {
     if (sitemapConfig.markdown.enabled) {
       lines.push(`- Semantic sitemap: \`${sitemapConfig.markdown.route}\``);
+      if (sitemapConfig.markdown.docsRoute) {
+        lines.push(`- Docs-scoped sitemap alias: \`${sitemapConfig.markdown.docsRoute}\``);
+      }
       lines.push(
         `- Semantic sitemap well-known alias: \`${sitemapConfig.markdown.wellKnownRoute}\``,
       );
@@ -1214,7 +1218,7 @@ export function renderDocsMarkdownNotFound({
     }
   } else {
     lines.push(
-      `- Sitemap discovery, if enabled: \`${DEFAULT_SITEMAP_MD_ROUTE}\`, \`${DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE}\`, or \`${DEFAULT_SITEMAP_XML_ROUTE}\``,
+      `- Sitemap discovery, if enabled: \`${DEFAULT_SITEMAP_MD_ROUTE}\`, \`${DEFAULT_SITEMAP_MD_DOCS_ROUTE}\`, \`${DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE}\`, or \`${DEFAULT_SITEMAP_XML_ROUTE}\``,
     );
   }
 
@@ -1517,6 +1521,9 @@ function appendDocsSitemapRouteLines(lines: string[], context: DocsAgentDocument
   if (context.sitemapConfig.markdown.enabled) {
     lines.push(
       `- Sitemap Markdown: ${context.sitemapConfig.markdown.route}`,
+      ...(context.sitemapConfig.markdown.docsRoute
+        ? [`- Sitemap docs alias: ${context.sitemapConfig.markdown.docsRoute}`]
+        : []),
       `- Sitemap well-known alias: ${context.sitemapConfig.markdown.wellKnownRoute}`,
     );
   }
@@ -1883,9 +1890,11 @@ export function buildDocsAgentDiscoverySpec({
       markdown: {
         enabled: sitemapConfig.markdown.enabled,
         route: sitemapConfig.markdown.route,
+        docsRoute: sitemapConfig.markdown.docsRoute,
         wellKnownRoute: sitemapConfig.markdown.wellKnownRoute,
         api: `${DEFAULT_DOCS_API_ROUTE}?format=sitemap-md`,
         defaultRoute: DEFAULT_SITEMAP_MD_ROUTE,
+        defaultDocsRoute: DEFAULT_SITEMAP_MD_DOCS_ROUTE,
         defaultWellKnownRoute: DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE,
       },
     },

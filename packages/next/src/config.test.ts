@@ -356,6 +356,10 @@ describe("withDocs (app dir: src/app vs app)", () => {
           destination: "/api/docs?format=sitemap-md",
         }),
         expect.objectContaining({
+          source: "/docs/sitemap.md",
+          destination: "/api/docs?format=sitemap-md",
+        }),
+        expect.objectContaining({
           source: "/.well-known/sitemap.md",
           destination: "/api/docs?format=sitemap-md",
         }),
@@ -536,6 +540,14 @@ describe("withDocs (app dir: src/app vs app)", () => {
         }),
         expect.objectContaining({
           source: "/docs-map/.well-known/sitemap.md",
+          destination: "/api/docs?format=sitemap-md",
+        }),
+      ]),
+    );
+    expect(rewrites).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/docs/sitemap.md",
           destination: "/api/docs?format=sitemap-md",
         }),
       ]),

@@ -1578,6 +1578,7 @@ function hostedSitemapRoutes(discoveryBody: unknown): {
     markdown?.enabled === false
       ? undefined
       : (readDiscoveryRoute(markdown?.route) ?? DEFAULT_SITEMAP_MD_ROUTE),
+    markdown?.enabled === false ? undefined : readDiscoveryRoute(markdown?.docsRoute),
     markdown?.enabled === false
       ? undefined
       : (readDiscoveryRoute(markdown?.wellKnownRoute) ?? DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE),
@@ -2264,7 +2265,7 @@ export async function inspectAgentReadiness(
       routeSurface.publicDetail,
       routeSurface.publicMounted
         ? undefined
-        : "Add the framework public forwarder so /.well-known/*, /llms.txt, /sitemap.xml, /sitemap.md, /AGENTS.md, /skill.md, /mcp, and .md routes resolve from the shared docs API.",
+        : "Add the framework public forwarder so /.well-known/*, /llms.txt, /sitemap.xml, /sitemap.md, /docs/sitemap.md, /AGENTS.md, /skill.md, /mcp, and .md routes resolve from the shared docs API.",
     ),
   );
 
@@ -2313,7 +2314,14 @@ export async function inspectAgentReadiness(
           "pass",
           5,
           5,
-          `Enabled via ${sitemapConfig.xml.route}, ${sitemapConfig.markdown.route}, and ${sitemapConfig.markdown.wellKnownRoute}.`,
+          `Enabled via ${[
+            sitemapConfig.xml.route,
+            sitemapConfig.markdown.route,
+            sitemapConfig.markdown.docsRoute,
+            sitemapConfig.markdown.wellKnownRoute,
+          ]
+            .filter(Boolean)
+            .join(", ")}.`,
         )
       : makeCheck(
           "sitemap",

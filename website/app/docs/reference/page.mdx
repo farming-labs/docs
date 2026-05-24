@@ -62,7 +62,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `search`      | `boolean \| DocsSearchConfig`                   | `true`           | Built-in simple search, Typesense, Algolia, or a custom adapter                     |
 | `mcp`         | `boolean \| DocsMcpConfig`                      | enabled          | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp`                       |
 | `apiReference` | `boolean \| ApiReferenceConfig`               | `false`          | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON |
-| `sitemap`    | `boolean \| DocsSitemapConfig`                  | `true`           | Generated `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md`                 |
+| `sitemap`    | `boolean \| DocsSitemapConfig`                  | `true`           | Generated `sitemap.xml`, `sitemap.md`, `/docs/sitemap.md`, and `/.well-known/sitemap.md` |
 | `robots`     | `boolean \| DocsRobotsConfig`                   | `true`           | Runtime/generated `robots.txt` policy for docs and agent-readable routes             |
 | `changelog`   | `boolean \| ChangelogConfig`                    | `false`          | Generated changelog feed and entry pages from dated MDX entries                      |
 | `ordering`    | `"alphabetical" \| "numeric" \| OrderingItem[]` | `"alphabetical"` | Sidebar page ordering strategy                                                       |

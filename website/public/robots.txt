@@ -24,6 +24,7 @@ Allow: /mcp
 Allow: /.well-known/mcp
 Allow: /sitemap.xml
 Allow: /sitemap.md
+Allow: /docs/sitemap.md
 Allow: /.well-known/sitemap.md
 
 User-agent: GPTBot

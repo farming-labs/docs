@@ -13,12 +13,14 @@ describe("docs sitemap helpers", () => {
   it("resolves default and prefixed sitemap routes", () => {
     expect(resolveDocsSitemapConfig().enabled).toBe(true);
     expect(resolveDocsSitemapConfig().xml.route).toBe("/sitemap.xml");
+    expect(resolveDocsSitemapConfig().markdown.docsRoute).toBe("/docs/sitemap.md");
     expect(resolveDocsSitemapConfig(true).xml.route).toBe("/sitemap.xml");
     expect(resolveDocsSitemapConfig(true).markdown.wellKnownRoute).toBe("/.well-known/sitemap.md");
 
     const prefixed = resolveDocsSitemapConfig({ routePrefix: "/docs" });
     expect(prefixed.xml.route).toBe("/docs/sitemap.xml");
     expect(prefixed.markdown.route).toBe("/docs/sitemap.md");
+    expect(prefixed.markdown.docsRoute).toBeUndefined();
     expect(prefixed.markdown.wellKnownRoute).toBe("/docs/.well-known/sitemap.md");
   });
 
@@ -26,6 +28,9 @@ describe("docs sitemap helpers", () => {
     expect(resolveDocsSitemapRequest(new URL("https://example.com/sitemap.xml"))).toBe("xml");
     expect(resolveDocsSitemapRequest(new URL("https://example.com/sitemap.xml"), true)).toBe("xml");
     expect(resolveDocsSitemapRequest(new URL("https://example.com/sitemap.md"), true)).toBe(
+      "markdown",
+    );
+    expect(resolveDocsSitemapRequest(new URL("https://example.com/docs/sitemap.md"), true)).toBe(
       "markdown",
     );
     expect(

@@ -256,6 +256,8 @@ That gives agents a much better workflow:
 - custom static `llms.txt` files still win when present, so `public/llms.txt` or SvelteKit `static/llms.txt` can replace the generated index without extra config
 - `/sitemap.xml` exposes canonical URLs and `lastmod` freshness for crawlers and monitors
 - `/sitemap.md` exposes the same docs tree as a semantic, sectioned map for agents and contributors
+- `/docs/sitemap.md` exposes the same Markdown sitemap under the docs section for agents that
+  probe docs-scoped routes first
 - `spec.robots.route` points agents to the static crawl policy, usually `/robots.txt`
 - HTML docs pages include Schema.org `TechArticle` JSON-LD with canonical URL, freshness, and breadcrumbs
 - when `apiReference` is enabled, `/api/docs?format=openapi` gives agents the OpenAPI schema before they scrape API reference pages
@@ -324,7 +326,7 @@ The generator is still useful because it writes `.farming-labs/sitemap-manifest.
 the runtime stable `lastmod` values based on each page source file's last git commit date.
 
 For static export, the generator is required because there is no server handler to answer
-`/sitemap.xml` or `/sitemap.md`:
+`/sitemap.xml`, `/sitemap.md`, or `/docs/sitemap.md`:
 
 ```json title="package.json"
 {
@@ -582,7 +584,7 @@ Before calling a page agent-friendly, ask:
 - can an agent find it through `.md`, `Signature-Agent`, JSON-LD structured data, `llms.txt` markdown links, OpenAPI schema discovery, sitemaps, `robots.txt`, `AGENTS.md`, MCP, and the discovery spec?
 - do canonical `Signature-Agent` reads use the existing `/api/docs` handler instead of a custom wrapper route?
 - if the adapter preloads content, is the sitemap manifest bundled so JSON-LD freshness stays stable?
-- if the site is static, does the build generate `sitemap.xml`, `sitemap.md`, `/.well-known/sitemap.md`, `robots.txt`, and `AGENTS.md`?
+- if the site is static, does the build generate `sitemap.xml`, `sitemap.md`, `docs/sitemap.md`, `/.well-known/sitemap.md`, `robots.txt`, and `AGENTS.md`?
 - does `docs doctor --agent` agree with the state of the site?
 - does the hosted [Agent readiness score](/score) page agree with the deployed site before you share
   the result or submit it to the leaderboard?

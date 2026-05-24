@@ -299,6 +299,7 @@ Allow: /llms.txt
 Allow: /llms-full.txt
 Allow: /sitemap.xml
 Allow: /sitemap.md
+Allow: /docs/sitemap.md
 Allow: /.well-known/sitemap.md
 Allow: /.well-known/agent.json
 Allow: /.well-known/agent
@@ -417,6 +418,16 @@ export const { GET, POST } = createDocsAPI({});
               },
               mcp: { enabled: true },
               llms: { enabled: true },
+              sitemap: {
+                enabled: true,
+                xml: { enabled: true, route: "/sitemap.xml" },
+                markdown: {
+                  enabled: true,
+                  route: "/sitemap.md",
+                  docsRoute: "/docs/sitemap.md",
+                  wellKnownRoute: "/.well-known/sitemap.md",
+                },
+              },
               robots: { enabled: true, route: "/robots.txt" },
             }),
           );
@@ -432,6 +443,7 @@ export const { GET, POST } = createDocsAPI({});
         if (
           url.pathname === "/sitemap.xml" ||
           url.pathname === "/sitemap.md" ||
+          url.pathname === "/docs/sitemap.md" ||
           url.pathname === "/.well-known/sitemap.md"
         ) {
           res.writeHead(200, { "Content-Type": "text/plain" });
@@ -447,6 +459,7 @@ Allow: /llms.txt
 Allow: /llms-full.txt
 Allow: /sitemap.xml
 Allow: /sitemap.md
+Allow: /docs/sitemap.md
 Allow: /.well-known/sitemap.md
 Allow: /.well-known/agent.json
 Allow: /.well-known/agent
