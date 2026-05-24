@@ -144,7 +144,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `changelog`   | `boolean \| ChangelogConfig`   | `false`         | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
 | `mcp`         | `boolean \| DocsMcpConfig`     | enabled         | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions or a hosted OpenAPI JSON |
-| `sitemap`     | `boolean \| DocsSitemapConfig` | `true`          | Generated `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` |
+| `sitemap`     | `boolean \| DocsSitemapConfig` | `true`          | Generated `sitemap.xml`, `sitemap.md`, `/docs/sitemap.md`, and `/.well-known/sitemap.md` |
 | `robots`     | `boolean \| DocsRobotsConfig`  | `true`          | Runtime/generated `robots.txt` policy for docs and agent-readable routes |
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template and JSON-LD page inputs      |
@@ -319,6 +319,7 @@ Default routes:
 
 - `/sitemap.xml`
 - `/sitemap.md`
+- `/docs/sitemap.md`
 - `/.well-known/sitemap.md`
 - `/api/docs?format=sitemap-xml`
 - `/api/docs?format=sitemap-md`
@@ -344,8 +345,9 @@ export default defineDocs({
 ```
 
 That generates `/docs-map/sitemap.xml`, `/docs-map/sitemap.md`, and
-`/docs-map/.well-known/sitemap.md`. See [Sitemaps](/docs/customization/sitemaps) for static export,
-manifest, `lastmod`, and output examples.
+`/docs-map/.well-known/sitemap.md`. The default `/docs/sitemap.md` alias is emitted only when
+`routePrefix` is empty. See [Sitemaps](/docs/customization/sitemaps) for static export, manifest,
+`lastmod`, and output examples.
 
 ## Robots.txt
 

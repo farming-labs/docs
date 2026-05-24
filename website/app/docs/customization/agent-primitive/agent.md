@@ -68,7 +68,7 @@ The spec is generated from `docs.config` and includes:
 - markdown route patterns, `Accept: text/markdown`, and `Signature-Agent` support
 - JSON-LD structured data schema and fields
 - `llms.txt` and `llms-full.txt` routes
-- `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` routes when enabled
+- `sitemap.xml`, `sitemap.md`, `/docs/sitemap.md`, and `/.well-known/sitemap.md` routes when enabled
 - `AGENTS.md` route, well-known alias, API format, compatibility aliases, and root file convention
 - `skill.md` route, well-known alias, API format, and root file convention
 - Skills CLI install command and recommended skill metadata
@@ -88,7 +88,7 @@ You are reading this docs site as an implementation agent.
 Before implementing from these docs, fetch `/.well-known/agent.json` from the same origin. If that
 is unavailable, fall back to `/.well-known/agent`, then `/api/docs/agent/spec`. Use that JSON as the
 source of truth for the docs entry path, markdown route pattern, search endpoint, MCP endpoint,
-`llms.txt` routes, `sitemap.xml` / `sitemap.md` routes, `AGENTS.md`, `skill.md`, skills install command, locale
+`llms.txt` routes, `sitemap.xml` / `sitemap.md` / `/docs/sitemap.md` routes, `AGENTS.md`, `skill.md`, skills install command, locale
 handling, and feedback endpoints.
 
 Recommended bootstrap flow:

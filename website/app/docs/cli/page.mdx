@@ -28,7 +28,7 @@ The `@farming-labs/docs` CLI has a few main jobs:
 - **`review`** — review docs changes locally or in GitHub Actions
 - **`mcp`** — run the built-in docs MCP server over stdio for local clients and IDE agents
 - **`search sync`** — push docs content into an external search index like Typesense or Algolia
-- **`sitemap generate`** — write sitemap metadata plus static `sitemap.xml` and `sitemap.md` files
+- **`sitemap generate`** — write sitemap metadata plus static `sitemap.xml`, `sitemap.md`, and `docs/sitemap.md` files
 - **`robots generate`** — write or append an agent-friendly `robots.txt` policy
 
 If you only need the common commands, start here. The framework-specific output and generated file lists are further down this page.
@@ -221,8 +221,9 @@ ALGOLIA_SEARCH_API_KEY=your-search-key
 
 ### Generate sitemaps
 
-Use `sitemap generate` when you want static `sitemap.xml` and `sitemap.md` files, or when a
-server-rendered deployment needs a generated manifest with reliable `lastmod` dates.
+Use `sitemap generate` when you want static `sitemap.xml`, `sitemap.md`, and `docs/sitemap.md`
+files, or when a server-rendered deployment needs a generated manifest with reliable `lastmod`
+dates.
 
 ```bash title="terminal"
 pnpm exec docs sitemap generate
@@ -233,6 +234,7 @@ By default the command writes:
 - `.farming-labs/sitemap-manifest.json`
 - `public/sitemap.xml`
 - `public/sitemap.md`
+- `public/docs/sitemap.md`
 - `public/.well-known/sitemap.md`
 
 SvelteKit writes the public files under `static/` instead of `public/`. Use `--config` when your
@@ -453,7 +455,7 @@ What it checks:
 - public agent route wiring
 - agent discovery spec
 - `llms.txt`
-- `sitemap.xml` and `sitemap.md`
+- `sitemap.xml`, `sitemap.md`, and `docs/sitemap.md`
 - `robots.txt`
 - `AGENTS.md`
 - `skill.md`
@@ -575,7 +577,7 @@ The hosted pass probes:
 - `/.well-known/agent.json`
 - `/llms.txt`
 - `/llms-full.txt`
-- sitemap routes from the discovery spec, usually `/sitemap.xml`, `/sitemap.md`, and `/.well-known/sitemap.md`
+- sitemap routes from the discovery spec, usually `/sitemap.xml`, `/sitemap.md`, `/docs/sitemap.md`, and `/.well-known/sitemap.md`
 - the robots route from the discovery spec, usually `/robots.txt`
 - `/AGENTS.md`
 - `/.well-known/AGENTS.md`

@@ -52,7 +52,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `changelog` | `boolean \| ChangelogConfig` | `false` | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
 | `mcp` | `boolean \| DocsMcpConfig` | enabled | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false` | Generated API reference pages from supported framework route conventions or a hosted OpenAPI JSON document |
-| `sitemap` | `boolean \| DocsSitemapConfig` | `true` | Generated `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` |
+| `sitemap` | `boolean \| DocsSitemapConfig` | `true` | Generated `sitemap.xml`, `sitemap.md`, `/docs/sitemap.md`, and `/.well-known/sitemap.md` |
 | `robots` | `boolean \| DocsRobotsConfig` | `true` | Runtime/generated `robots.txt` policy for docs routes, agent-readable files, and common AI crawler user agents |
 | `metadata` | `DocsMetadata` | — | SEO and JSON-LD inputs: titleTemplate, description, etc. |
 | `og` | `OGConfig` | — | Dynamic Open Graph images |
@@ -233,6 +233,7 @@ Default routes:
 
 - `/sitemap.xml`
 - `/sitemap.md`
+- `/docs/sitemap.md`
 - `/.well-known/sitemap.md`
 - `/api/docs?format=sitemap-xml`
 - `/api/docs?format=sitemap-md`
@@ -254,7 +255,7 @@ Behavior:
 - `--public` is an explicit spelling of the default public-file behavior
 - `--check` fails when generated sitemap output is stale
 - `lastmod` uses each page source file's last git commit date first, then filesystem mtime
-- `routePrefix: "/docs-map"` moves all sitemap routes to `/docs-map/sitemap.xml`, `/docs-map/sitemap.md`, and `/docs-map/.well-known/sitemap.md`
+- `routePrefix: "/docs-map"` moves sitemap routes to `/docs-map/sitemap.xml`, `/docs-map/sitemap.md`, and `/docs-map/.well-known/sitemap.md`; the default `/docs/sitemap.md` alias is only emitted when no route prefix is set
 - there is no separate well-known route config; the route prefix applies to all sitemap routes together
 
 Useful config:

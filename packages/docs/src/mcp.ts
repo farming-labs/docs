@@ -584,7 +584,8 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
     name: "sitemap",
     type: "boolean | DocsSitemapConfig",
     default: true,
-    description: "Generated sitemap.xml, sitemap.md, and /.well-known/sitemap.md.",
+    description:
+      "Generated sitemap.xml, sitemap.md, /docs/sitemap.md, and /.well-known/sitemap.md.",
   },
   {
     path: "robots",

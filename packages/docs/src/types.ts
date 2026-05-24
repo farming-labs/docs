@@ -1023,7 +1023,7 @@ export interface SitemapMarkdownConfig {
 }
 
 /**
- * Configuration for generated `/sitemap.xml`, `/sitemap.md`, and
+ * Configuration for generated `/sitemap.xml`, `/sitemap.md`, `/docs/sitemap.md`, and
  * `/.well-known/sitemap.md` routes.
  */
 export interface DocsSitemapConfig {

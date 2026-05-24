@@ -659,6 +659,7 @@ describe("agent route helpers", () => {
     expect(spec.skills.generatedFallback).toBe(true);
     expect(spec.mcp.publicEndpoints).toEqual(["/mcp", "/.well-known/mcp"]);
     expect(spec.sitemap.xml.route).toBe("/sitemap.xml");
+    expect(spec.sitemap.markdown.docsRoute).toBe("/docs/sitemap.md");
     expect(spec.sitemap.markdown.wellKnownRoute).toBe("/.well-known/sitemap.md");
     expect(spec.capabilities.robots).toBe(true);
     expect(spec.capabilities.agents).toBe(true);

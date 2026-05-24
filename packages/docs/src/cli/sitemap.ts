@@ -285,7 +285,12 @@ export async function generateSitemap(options: SitemapGenerateOptions = {}): Pro
     }
 
     if (sitemap.markdown.enabled) {
-      for (const route of [sitemap.markdown.route, sitemap.markdown.wellKnownRoute]) {
+      for (const route of [
+        sitemap.markdown.route,
+        sitemap.markdown.docsRoute,
+        sitemap.markdown.wellKnownRoute,
+      ]) {
+        if (!route) continue;
         const filePath = publicFilePath(rootDir, route);
         if (writeIfChanged(filePath, markdown, options.check === true)) publicWrites.push(filePath);
       }
@@ -312,7 +317,7 @@ ${pc.dim("Usage:")}
 
 ${pc.dim("Options:")}
   ${pc.cyan("--config <path>")}     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
-  ${pc.cyan("--public")}            Explicitly write public sitemap.xml and sitemap.md files
+  ${pc.cyan("--public")}            Explicitly write public sitemap.xml, sitemap.md, and docs/sitemap.md files
   ${pc.cyan("--manifest-only")}     Only write the internal sitemap manifest
   ${pc.cyan("--check")}             Fail if generated output is stale
   ${pc.cyan("-h, --help")}          Show this help message

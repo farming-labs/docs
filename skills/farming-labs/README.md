@@ -22,7 +22,7 @@ Useful routes:
 - Agent discovery spec: `http://127.0.0.1:3000/api/docs/agent/spec`
 - Agent instructions: `http://127.0.0.1:3000/AGENTS.md` or `http://127.0.0.1:3000/.well-known/AGENTS.md`
 - Site skill: `http://127.0.0.1:3000/skill.md` or `http://127.0.0.1:3000/.well-known/skill.md`
-- Sitemaps: `http://127.0.0.1:3000/sitemap.xml`, `http://127.0.0.1:3000/sitemap.md`, or `http://127.0.0.1:3000/.well-known/sitemap.md`
+- Sitemaps: `http://127.0.0.1:3000/sitemap.xml`, `http://127.0.0.1:3000/sitemap.md`, `http://127.0.0.1:3000/docs/sitemap.md`, or `http://127.0.0.1:3000/.well-known/sitemap.md`
 - Robots: `http://127.0.0.1:3000/robots.txt` after running `docs robots generate`
 - MCP: `http://127.0.0.1:3000/mcp` or `http://127.0.0.1:3000/.well-known/mcp`
 - Search API: `http://127.0.0.1:3000/api/docs?query=session`

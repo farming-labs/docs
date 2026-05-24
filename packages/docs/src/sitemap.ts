@@ -2,6 +2,7 @@ import type { DocsSitemapConfig, ResolvedDocsRelatedLink } from "./types.js";
 
 export const DEFAULT_SITEMAP_XML_ROUTE = "/sitemap.xml";
 export const DEFAULT_SITEMAP_MD_ROUTE = "/sitemap.md";
+export const DEFAULT_SITEMAP_MD_DOCS_ROUTE = "/docs/sitemap.md";
 export const DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE = "/.well-known/sitemap.md";
 export const DEFAULT_SITEMAP_MANIFEST_PATH = ".farming-labs/sitemap-manifest.json";
 
@@ -55,6 +56,7 @@ export interface DocsSitemapResolvedConfig {
     includeLastmod: boolean;
     linkTarget: "html" | "markdown" | "both";
     route: string;
+    docsRoute?: string;
     wellKnownRoute: string;
   };
 }
@@ -152,6 +154,7 @@ export function resolveDocsSitemapConfig(
       linkTarget:
         typeof markdownConfig === "object" ? (markdownConfig.linkTarget ?? "both") : "both",
       route: joinRoute(routePrefix, DEFAULT_SITEMAP_MD_ROUTE),
+      docsRoute: routePrefix ? undefined : DEFAULT_SITEMAP_MD_DOCS_ROUTE,
       wellKnownRoute: joinRoute(routePrefix, DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE),
     },
   };
@@ -175,7 +178,9 @@ export function resolveDocsSitemapRequest(
   if (resolved.xml.enabled && pathname === resolved.xml.route) return "xml";
   if (
     resolved.markdown.enabled &&
-    (pathname === resolved.markdown.route || pathname === resolved.markdown.wellKnownRoute)
+    (pathname === resolved.markdown.route ||
+      pathname === resolved.markdown.docsRoute ||
+      pathname === resolved.markdown.wellKnownRoute)
   ) {
     return "markdown";
   }

@@ -181,6 +181,7 @@ const DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE = "/.well-known/AGENT.md";
 const DEFAULT_ROBOTS_TXT_ROUTE = "/robots.txt";
 const DEFAULT_SITEMAP_XML_ROUTE = "/sitemap.xml";
 const DEFAULT_SITEMAP_MD_ROUTE = "/sitemap.md";
+const DEFAULT_SITEMAP_MD_DOCS_ROUTE = "/docs/sitemap.md";
 const DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE = "/.well-known/sitemap.md";
 const DEFAULT_SITEMAP_MANIFEST_PATH = ".farming-labs/sitemap-manifest.json";
 const MARKDOWN_ACCEPT_HEADER_VALUE = [
@@ -1539,6 +1540,14 @@ function buildSitemapRewrites(config: { enabled: boolean; routePrefix: string })
       source: joinPublicRoute(prefix, DEFAULT_SITEMAP_MD_ROUTE),
       destination: "/api/docs?format=sitemap-md",
     },
+    ...(prefix
+      ? []
+      : [
+          {
+            source: DEFAULT_SITEMAP_MD_DOCS_ROUTE,
+            destination: "/api/docs?format=sitemap-md",
+          },
+        ]),
     {
       source: joinPublicRoute(prefix, DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE),
       destination: "/api/docs?format=sitemap-md",
