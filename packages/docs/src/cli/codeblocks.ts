@@ -124,7 +124,7 @@ export async function runCodeBlocksValidate(options: CodeBlocksValidateOptions =
       results: [],
     };
     if (options.json) {
-      console.log(JSON.stringify(disabledReport, null, 2));
+      console.log(JSON.stringify(redactReport(disabledReport), null, 2));
     } else {
       console.log(
         pc.yellow(
@@ -135,20 +135,22 @@ export async function runCodeBlocksValidate(options: CodeBlocksValidateOptions =
     return disabledReport;
   }
 
+  const effectiveConfig = {
+    ...config,
+    mode: options.run ? ("report" as const) : config.mode,
+  };
+  const planOnly = options.plan === true || effectiveConfig.mode === "plan";
   const report = await validateCodeBlocks({
     rootDir,
     contentDir,
-    config: {
-      ...config,
-      mode: options.run ? "report" : config.mode,
-    },
+    config: effectiveConfig,
     planOnly: options.plan,
   });
 
   if (options.json) {
     console.log(JSON.stringify(redactReport(report), null, 2));
   } else {
-    printCodeBlocksReport(report, options.plan === true || config.mode === "plan");
+    printCodeBlocksReport(report, planOnly);
   }
 
   if (!options.plan && report.summary.fail > 0) {

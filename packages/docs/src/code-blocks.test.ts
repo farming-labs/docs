@@ -214,6 +214,86 @@ describe("code block validation", () => {
     expect(report.results[0]?.reason).toBe("missing env: OPENAI_API_KEY");
   });
 
+  it("does not convert non-env skips to failures when missingEnv is error", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "docs-codeblocks-non-env-skip-"));
+    writeFileSync(
+      path.join(rootDir, "page.mdx"),
+      ['```mermaid title="flow.mmd" runnable', "graph TD; A-->B;", "```"].join("\n"),
+      "utf-8",
+    );
+
+    const report = await validateCodeBlocks({
+      rootDir,
+      contentDir: ".",
+      config: resolveDocsCodeBlocksValidateConfig({
+        missingEnv: "error",
+      }),
+    });
+
+    expect(report.summary).toMatchObject({
+      pass: 0,
+      skip: 1,
+      fail: 0,
+    });
+    expect(report.results[0]).toMatchObject({
+      status: "SKIP",
+      reason: "unsupported language: mermaid",
+    });
+  });
+
+  it("keeps missing env failures when missingEnv is error", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "docs-codeblocks-env-error-"));
+    writeFileSync(
+      path.join(rootDir, "page.mdx"),
+      [
+        '```js title="needs-env.js" env="OPENAI_API_KEY" runnable',
+        "console.log(Boolean(process.env.OPENAI_API_KEY))",
+        "```",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    const report = await validateCodeBlocks({
+      rootDir,
+      contentDir: ".",
+      config: resolveDocsCodeBlocksValidateConfig({
+        env: {
+          OPENAI_API_KEY: "OPENAI_TEST_API_KEY",
+        },
+        missingEnv: "error",
+      }),
+    });
+
+    expect(report.summary).toMatchObject({
+      pass: 0,
+      skip: 0,
+      fail: 1,
+    });
+    expect(report.results[0]).toMatchObject({
+      status: "FAIL",
+      reason: "missing env: OPENAI_API_KEY",
+    });
+  });
+
+  it("accepts closing fences longer than the opening fence", () => {
+    const blocks = extractCodeBlocksFromMarkdown({
+      filePath: "/repo/docs/page.mdx",
+      relativePath: "docs/page.mdx",
+      source: [
+        '```js title="longer-close.js" runnable',
+        'console.log("ok")',
+        "````",
+        "",
+        '~~~json title="tilde.json" runnable',
+        '{"ok":true}',
+        "~~~~",
+      ].join("\n"),
+    });
+
+    expect(blocks).toHaveLength(2);
+    expect(blocks.map((block) => block.code)).toEqual(['console.log("ok")', '{"ok":true}']);
+  });
+
   it("auto-discovers Vercel Sandbox project credentials from the token", async () => {
     const rootDir = mkdtempSync(path.join(tmpdir(), "docs-codeblocks-vercel-"));
     writeFileSync(

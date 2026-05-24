@@ -310,14 +310,7 @@ export async function validateCodeBlockPlans(input: {
   const plansToRun = runnable.map((result) => result.plan);
 
   if (plansToRun.length === 0) {
-    return skippedOrFailed.map((result) =>
-      result.reason
-        ? {
-            ...result,
-            status: input.config.missingEnv === "error" ? "FAIL" : result.status,
-          }
-        : result,
-    );
+    return skippedOrFailed;
   }
 
   const runResults =
@@ -1100,8 +1093,7 @@ function normalizeLanguage(language?: string): string | undefined {
 }
 
 function isClosingFence(trimmedLine: string, marker: string): boolean {
-  if (!trimmedLine.startsWith(marker)) return false;
-  return trimmedLine.slice(marker.length).trim().length === 0;
+  return new RegExp(`^${marker[0]}{${marker.length},}[ \\t]*$`).test(trimmedLine);
 }
 
 function isShellLanguage(language: string): boolean {
