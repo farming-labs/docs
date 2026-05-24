@@ -148,6 +148,24 @@ async function main() {
       return;
     }
     await runReview(reviewOptions);
+  } else if (
+    (parsedCommand.command === "codeblocks" || parsedCommand.command === "code-blocks") &&
+    subcommand === "validate"
+  ) {
+    const { parseCodeBlocksValidateArgs, printCodeBlocksValidateHelp, runCodeBlocksValidate } =
+      await import("./codeblocks.js");
+    const codeBlocksOptions = parseCodeBlocksValidateArgs(args.slice(2));
+    if (codeBlocksOptions.help) {
+      printCodeBlocksValidateHelp();
+      return;
+    }
+    await runCodeBlocksValidate(codeBlocksOptions);
+  } else if (parsedCommand.command === "codeblocks" || parsedCommand.command === "code-blocks") {
+    console.error(pc.red(`Unknown codeblocks subcommand: ${subcommand ?? "(missing)"}`));
+    console.error();
+    const { printCodeBlocksValidateHelp } = await import("./codeblocks.js");
+    printCodeBlocksValidateHelp();
+    process.exit(1);
   } else if (parsedCommand.command === "search" && subcommand === "sync") {
     const { syncSearch } = await import("./search.js");
     await syncSearch(searchSyncOptions);
@@ -240,6 +258,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("agents")}   AGENTS.md utilities (${pc.dim("generate")} for static agent instructions)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
   ${pc.cyan("review")}   Review changed docs files and wire Docs Review CI
+  ${pc.cyan("codeblocks")} Validate fenced MDX code blocks (${pc.dim("validate")})
   ${pc.cyan("mcp")}      Run the built-in docs MCP server over stdio
   ${pc.cyan("robots")}   Robots.txt utilities (${pc.dim("generate")} for agent access policy)
   ${pc.cyan("search")}   Search utilities (${pc.dim("sync")} for external indexes)

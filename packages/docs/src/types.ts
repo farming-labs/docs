@@ -2327,6 +2327,128 @@ export interface DocsReviewConfig {
   rules?: DocsReviewRulesConfig;
 }
 
+export type DocsCodeBlocksPlannerProvider = "metadata" | "openai" | "openai-compatible" | "cloud";
+
+export type DocsCodeBlocksRunnerProvider = "local" | "vercel-sandbox" | "cloud";
+
+export type DocsCodeBlocksValidationMode = "plan" | "report";
+
+export type DocsCodeBlocksValidationPolicy = "skip" | "warn" | "error";
+
+export interface DocsCodeBlocksPlannerConfig {
+  /**
+   * Planner used to turn code fence metadata into an execution plan.
+   *
+   * - `"metadata"` reads the fence language and metadata locally.
+   * - `"openai"` calls OpenAI's chat completions API.
+   * - `"openai-compatible"` calls an OpenAI-compatible chat completions endpoint.
+   * - `"cloud"` is reserved for the hosted Farming Labs planner.
+   *
+   * @default "metadata"
+   */
+  provider?: DocsCodeBlocksPlannerProvider;
+  /** Model name for LLM-backed planners. */
+  model?: string;
+  /** OpenAI-compatible base URL. Defaults to `https://api.openai.com/v1` for `provider: "openai"`. */
+  baseUrl?: string;
+  /** Environment variable containing the OpenAI-compatible base URL. */
+  baseUrlEnv?: string;
+  /** API key value. Prefer `apiKeyEnv` so secrets stay out of docs.config. */
+  apiKey?: string;
+  /** Environment variable containing the planner API key. */
+  apiKeyEnv?: string;
+}
+
+export interface DocsCodeBlocksRunnerConfig {
+  /**
+   * Runner used to execute planned code blocks.
+   *
+   * @default "local"
+   */
+  provider?: DocsCodeBlocksRunnerProvider;
+  /** Environment variable containing the Vercel token for `provider: "vercel-sandbox"`. */
+  tokenEnv?: string;
+  /** Vercel Sandbox runtime. */
+  runtime?: "node24" | "node22" | "python3.13";
+  /** Per-command timeout in milliseconds. */
+  timeoutMs?: number;
+}
+
+export interface DocsCodeBlocksValidateConfig {
+  /**
+   * Enable code block validation.
+   *
+   * @default true when `codeBlocks.validate` is an object or `true`
+   */
+  enabled?: boolean;
+  /** Planner config. Use `"metadata"` for local deterministic planning. */
+  planner?: DocsCodeBlocksPlannerProvider | DocsCodeBlocksPlannerConfig;
+  /** Runner config. Use `"vercel-sandbox"` for isolated runtime checks. */
+  runner?: DocsCodeBlocksRunnerProvider | DocsCodeBlocksRunnerConfig;
+  /**
+   * Env files loaded for validation. These are read locally and never committed.
+   *
+   * @default [".env.local", ".env.test", ".env"]
+   */
+  envFile?: string | string[];
+  /**
+   * Runtime env mapping.
+   *
+   * The key is the env var used by the docs code block. The value is the local
+   * env var to read from. For example, `{ OPENAI_API_KEY: "OPENAI_TEST_API_KEY" }`
+   * injects `OPENAI_API_KEY` into the runner from `OPENAI_TEST_API_KEY`.
+   */
+  env?: Record<string, string>;
+  /**
+   * Behavior when a runnable block declares an env var that cannot be resolved.
+   *
+   * @default "skip"
+   */
+  missingEnv?: DocsCodeBlocksValidationPolicy;
+  /**
+   * Behavior when a language cannot be executed by the selected runner.
+   *
+   * @default "skip"
+   */
+  unsupportedLanguage?: DocsCodeBlocksValidationPolicy;
+  /**
+   * Default command mode.
+   *
+   * - `"plan"` builds execution plans without running them.
+   * - `"report"` runs executable plans and reports pass/skip/fail.
+   *
+   * @default "report"
+   */
+  mode?: DocsCodeBlocksValidationMode;
+}
+
+export interface DocsCodeBlocksConfig {
+  /**
+   * Validate fenced code blocks from MD/MDX docs.
+   *
+   * @example
+   * ```ts
+   * codeBlocks: {
+   *   validate: {
+   *     planner: {
+   *       provider: "openai",
+   *       model: "gpt-4.1-mini",
+   *       apiKeyEnv: "OPENAI_API_KEY",
+   *     },
+   *     runner: {
+   *       provider: "vercel-sandbox",
+   *       tokenEnv: "VERCEL_TOKEN",
+   *     },
+   *     env: {
+   *       OPENAI_API_KEY: "OPENAI_TEST_API_KEY",
+   *     },
+   *   },
+   * }
+   * ```
+   */
+  validate?: boolean | DocsCodeBlocksValidateConfig;
+}
+
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
@@ -2478,6 +2600,11 @@ export interface DocsConfig {
    * ```
    */
   onCopyClick?: (data: CodeBlockCopyData) => void;
+  /**
+   * Code block intelligence for MD/MDX fences, including validation planning
+   * and optional sandboxed execution.
+   */
+  codeBlocks?: DocsCodeBlocksConfig;
   /**
    * Built-in page feedback prompt shown at the end of a docs page.
    *

@@ -580,6 +580,45 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
     ],
   },
   {
+    path: "codeBlocks",
+    name: "codeBlocks",
+    type: "{ validate?: boolean | DocsCodeBlocksValidateConfig }",
+    default: false,
+    description:
+      "Code block intelligence for MD/MDX fences, including execution planning and optional sandboxed validation.",
+    docs: "/docs/configuration#code-block-validation",
+    children: [
+      {
+        path: "codeBlocks.validate",
+        name: "validate",
+        type: "boolean | DocsCodeBlocksValidateConfig",
+        description: "Enable `docs codeblocks validate` for fenced code examples.",
+      },
+      {
+        path: "codeBlocks.validate.planner",
+        name: "planner",
+        type: '"metadata" | "openai" | "openai-compatible" | "cloud" | DocsCodeBlocksPlannerConfig',
+        default: "metadata",
+        description:
+          "Planner that turns code fence metadata into an execution plan. Use OpenAI-compatible providers when metadata alone is not enough.",
+      },
+      {
+        path: "codeBlocks.validate.runner",
+        name: "runner",
+        type: '"local" | "vercel-sandbox" | "cloud" | DocsCodeBlocksRunnerConfig',
+        default: "local",
+        description: "Runner used to execute planned snippets.",
+      },
+      {
+        path: "codeBlocks.validate.env",
+        name: "env",
+        type: "Record<string, string>",
+        description:
+          'Runtime env mapping, for example `{ OPENAI_API_KEY: "OPENAI_TEST_API_KEY" }`.',
+      },
+    ],
+  },
+  {
     path: "sitemap",
     name: "sitemap",
     type: "boolean | DocsSitemapConfig",
@@ -629,6 +668,28 @@ export default defineDocs({
       listDocs: true,
       getConfigSchema: true,
       getCodeExamples: true,
+    },
+  },
+});`,
+  },
+  {
+    title: "Code block validation",
+    code: `export default defineDocs({
+  entry: "docs",
+  codeBlocks: {
+    validate: {
+      planner: {
+        provider: "openai",
+        model: "gpt-4.1-mini",
+        apiKeyEnv: "OPENAI_API_KEY",
+      },
+      runner: {
+        provider: "vercel-sandbox",
+        tokenEnv: "VERCEL_TOKEN",
+      },
+      env: {
+        OPENAI_API_KEY: "OPENAI_TEST_API_KEY",
+      },
     },
   },
 });`,
