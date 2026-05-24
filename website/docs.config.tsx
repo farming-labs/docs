@@ -68,6 +68,19 @@ export default defineDocs({
   observability: {
     console: "info",
   },
+  codeBlocks: {
+    validate: {
+      planner: {
+        provider: "metadata",
+      },
+      runner: {
+        provider: "vercel-sandbox",
+        tokenEnv: "VERCEL_TOKEN",
+      },
+      missingEnv: "skip",
+      unsupportedLanguage: "skip",
+    },
+  },
   theme: pixelBorder({
     ui: {
       layout: { toc: { enabled: true, depth: 3, style: "directional" }, sidebarWidth: 320 },

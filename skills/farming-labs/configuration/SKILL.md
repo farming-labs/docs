@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, readingTime, agent.compact, metadata, og, apiReference, MCP, llmsTxt, sitemap, robots, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, readingTime, agent.compact, metadata, og, apiReference, MCP, llmsTxt, sitemap, robots, codeBlocks.validate, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration
@@ -41,6 +41,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `icons` | `Record<string, Component>` | — | Shared icon registry for frontmatter `icon` fields and built-ins like `Prompt` |
 | `components` | `Record<string, Component>` | — | Custom MDX components and built-in overrides like `HoverLink` and `Prompt` |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | — | Callback when user copies a code block (title, content, url, language) |
+| `codeBlocks` | `DocsCodeBlocksConfig` | — | Validate fenced MDX code blocks with metadata planning and optional sandbox execution |
 | `feedback` | `boolean \| FeedbackConfig` | `false` for UI | Human page feedback UI; agent feedback endpoints are default-on unless opted out |
 | `readingTime` | `boolean \| ReadingTimeConfig` | `false` | Opt-in estimated read-time label with per-page overrides |
 | `agent` | `DocsAgentConfig` | — | Defaults for `docs agent compact` |
@@ -73,6 +74,50 @@ review: {
   },
 }
 ```
+
+---
+
+## Code block validation
+
+Use `codeBlocks.validate` when docs code fences should be planned and checked by the CLI.
+
+```ts
+codeBlocks: {
+  validate: {
+    planner: {
+      provider: "openai",
+      model: "gpt-4.1-mini",
+      apiKeyEnv: "OPENAI_API_KEY",
+    },
+    runner: {
+      provider: "vercel-sandbox",
+      tokenEnv: "VERCEL_TOKEN",
+    },
+    envFile: [".env.local", ".env.test", ".env"],
+    env: {
+      OPENAI_API_KEY: "OPENAI_TEST_API_KEY",
+    },
+    missingEnv: "skip",
+  },
+}
+```
+
+Fence metadata example:
+
+````md
+```ts title="app/api/chat/route.ts" framework="nextjs" packageManager="pnpm" env="OPENAI_API_KEY" runnable
+const apiKey = process.env.OPENAI_API_KEY;
+```
+````
+
+Useful commands:
+
+```bash
+pnpm exec docs codeblocks validate --plan
+pnpm exec docs codeblocks validate
+```
+
+Do not put actual API keys in `docs.config.ts`. Use env variable names and map runtime names to test keys with `env`.
 
 ---
 

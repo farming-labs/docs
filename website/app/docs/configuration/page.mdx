@@ -133,6 +133,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `icons`       | `Record<string, Component>`    | —               | Shared icon registry for frontmatter `icon` fields and built-ins like `Prompt` |
 | `components`  | `Record<string, Component>`    | —               | Custom MDX components and built-in overrides like `HoverLink` and `Prompt` |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
+| `codeBlocks`  | `DocsCodeBlocksConfig`         | —               | Validate fenced MDX code blocks with metadata planning and optional sandbox execution |
 | `feedback`    | `boolean \| FeedbackConfig`    | `false` for UI  | Human page feedback UI; agent feedback endpoints are default-on unless opted out |
 | `agent`       | `DocsAgentConfig`              | —               | Defaults for `docs agent compact`                  |
 | `review`      | `boolean \| DocsReviewConfig`  | `true`          | Docs Review CI workflow generation, scoring, and rule severity |
@@ -149,6 +150,83 @@ All configuration lives in a single `docs.config.ts` file.
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
 | `metadata`    | `DocsMetadata`                 | —               | SEO metadata template and JSON-LD page inputs      |
 | `og`          | `OGConfig`                     | —               | Dynamic Open Graph images (see [API Reference](/docs/reference#ogconfig)) |
+
+## Code block validation
+
+`codeBlocks.validate` lets the CLI inspect fenced MDX code blocks, build an execution plan from
+metadata, and optionally run executable snippets in a sandbox.
+
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  codeBlocks: {
+    validate: {
+      planner: {
+        provider: "openai",
+        model: "gpt-4.1-mini",
+        apiKeyEnv: "OPENAI_API_KEY",
+      },
+      runner: {
+        provider: "vercel-sandbox",
+        tokenEnv: "VERCEL_TOKEN",
+      },
+      envFile: [".env.local", ".env.test", ".env"],
+      env: {
+        OPENAI_API_KEY: "OPENAI_TEST_API_KEY",
+      },
+      missingEnv: "skip",
+    },
+  },
+});
+```
+
+Use metadata on the code fence to tell agents and validators how a snippet should be treated:
+
+````md title="page.mdx"
+```ts title="app/api/chat/route.ts" framework="nextjs" packageManager="pnpm" env="OPENAI_API_KEY" runnable
+const apiKey = process.env.OPENAI_API_KEY;
+```
+````
+
+Small runnable blocks make the check easy to dogfood:
+
+```json title="agent-context.json" runnable
+{
+  "framework": "nextjs",
+  "packageManager": "pnpm",
+  "agentReady": true
+}
+```
+
+```js title="codeblocks-smoke.js" runnable
+const metadata = { framework: "nextjs", runnable: true };
+
+if (!metadata.runnable) {
+  throw new Error("Expected runnable metadata");
+}
+
+console.log("metadata ok");
+```
+
+```bash title="codeblocks-smoke.sh" runnable
+test "docs" = "docs"
+echo "shell ok"
+```
+
+Run the validator locally:
+
+```bash
+pnpm exec docs codeblocks validate --plan
+pnpm exec docs codeblocks validate
+```
+
+The planner never writes secrets into docs. The `env` map means the snippet can keep using
+`process.env.OPENAI_API_KEY`, while validation injects that runtime variable from
+`OPENAI_TEST_API_KEY`. For Vercel Sandbox, `VERCEL_TOKEN` is enough in most projects; the runner
+uses `.vercel/project.json` when present and can auto-discover an accessible Vercel project from
+the token.
 
 ## Public docs path
 

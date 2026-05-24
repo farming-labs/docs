@@ -13,6 +13,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
    - `components`
    - `pageActions`
    - `agent`
+   - `codeBlocks`
    - `search`
    - `ai`
    - `mcp`
@@ -35,6 +36,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - When they want AI-facing behavior, distinguish between:
   - `ai` for Ask AI / chat
   - `agent.compact` for defaults used by `docs agent compact`
+  - `codeBlocks.validate` for planning and validating fenced MDX code blocks
   - `mcp` for the built-in MCP server, including default tools like `list_docs`, `search_docs`,
     `read_page`, `get_code_examples`, and `get_config_schema`
   - `llmsTxt` for crawler-friendly site summaries
@@ -55,7 +57,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
 ## Follow-up pages
 
 - Use [/docs/installation](/docs/installation) when the user is still wiring the framework into an app or has not created the docs route yet.
-- Use [/docs/cli](/docs/cli) when they want scaffolding, upgrades, sitemap generation, robots generation, search sync, or MCP commands instead of manual setup.
+- Use [/docs/cli](/docs/cli) when they want scaffolding, upgrades, code block validation, sitemap generation, robots generation, search sync, or MCP commands instead of manual setup.
 - Use [/docs/reference](/docs/reference) when they need the full typed `defineDocs()` surface or nested option details.
 - Use [/docs/customization](/docs/customization) when the question moves from config into layout, sidebar, colors, or page-level polish.
 - Use [/docs/themes](/docs/themes) when they are choosing a preset theme or building their own.

@@ -1,14 +1,14 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold, upgrade, downgrade, run doctor audits, compact agent docs, generate AGENTS.md, generate sitemaps, generate robots.txt, sync external search indexes, and run MCP for docs. Use when running init, upgrade, downgrade, doctor, agent compact, agents generate, sitemap generate, robots generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --version, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
+description: @farming-labs/docs CLI — scaffold, upgrade, downgrade, run doctor audits, compact agent docs, validate code blocks, generate AGENTS.md, generate sitemaps, generate robots.txt, sync external search indexes, and run MCP for docs. Use when running init, upgrade, downgrade, doctor, agent compact, codeblocks validate, agents generate, sitemap generate, robots generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --version, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
 ---
 
 # @farming-labs/docs — CLI
 
 The `@farming-labs/docs` CLI scaffolds, upgrades, downgrades, audits agent and reader readiness, compacts
-page-level agent docs, reviews docs PR changes, generates `AGENTS.md`, syncs external search indexes, generates robots.txt policy files, and can
+page-level agent docs, validates fenced code blocks, reviews docs PR changes, generates `AGENTS.md`, syncs external search indexes, generates robots.txt policy files, and can
 run the built-in MCP server for documentation projects. Use this skill when the user asks about CLI
-commands, init, upgrade, downgrade, `doctor`, `agent compact`, `agents generate`, `sitemap generate`, `robots generate`, search
+commands, init, upgrade, downgrade, `doctor`, `agent compact`, `codeblocks validate`, `agents generate`, `sitemap generate`, `robots generate`, search
 sync, mcp, review, or scaffolding.
 
 ---
@@ -201,6 +201,50 @@ when a snippet has a target file, framework, package manager, or is safe to copy
 example. This metadata is for markdown/MCP consumers and does not require a UI change.
 
 Use the docs config `mcp` block when you also want the HTTP route version at `/mcp` or `/.well-known/mcp`.
+
+## Code block validation
+
+Use `docs codeblocks validate` to scan MD/MDX fences, build execution plans from code fence metadata,
+and run executable snippets when `codeBlocks.validate` is enabled in `docs.config.ts`.
+
+```bash
+pnpm exec docs codeblocks validate --plan
+pnpm exec docs codeblocks validate
+pnpm exec docs codeblocks validate --json
+```
+
+Config example:
+
+```ts
+codeBlocks: {
+  validate: {
+    planner: {
+      provider: "openai",
+      model: "gpt-4.1-mini",
+      apiKeyEnv: "OPENAI_API_KEY",
+    },
+    runner: {
+      provider: "vercel-sandbox",
+      tokenEnv: "VERCEL_TOKEN",
+    },
+    envFile: [".env.local", ".env.test", ".env"],
+    env: {
+      OPENAI_API_KEY: "OPENAI_TEST_API_KEY",
+    },
+  },
+}
+```
+
+Fence metadata example:
+
+````md
+```ts title="app/api/chat/route.ts" framework="nextjs" packageManager="pnpm" env="OPENAI_API_KEY" runnable
+const apiKey = process.env.OPENAI_API_KEY;
+```
+````
+
+The `env` map injects runtime env names from local test env vars. Do not put actual secrets in
+`docs.config.ts`.
 
 ## Docs Review
 

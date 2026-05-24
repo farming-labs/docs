@@ -1,6 +1,6 @@
 ---
 title: "CLI"
-description: "Scaffold, upgrade, compact agent docs, generate sitemaps and robots.txt, sync search, and run MCP"
+description: "Scaffold, upgrade, compact agent docs, validate code blocks, generate sitemaps and robots.txt, sync search, and run MCP"
 icon: "terminal"
 order: 2
 related:
@@ -13,7 +13,7 @@ related:
 # CLI
 
 <Agent>
-Use this page when the user asks about this topic: Scaffold, upgrade, compact agent docs, generate sitemaps and robots.txt, sync search, and run MCP.
+Use this page when the user asks about this topic: Scaffold, upgrade, compact agent docs, validate code blocks, generate sitemaps and robots.txt, sync search, and run MCP.
 Keep answers grounded in the exact options, routes, commands, and examples documented here.
 If the request moves beyond this page, point to the closest related docs instead of inventing config.
 </Agent>
@@ -26,6 +26,7 @@ The `@farming-labs/docs` CLI has a few main jobs:
 - **`agents generate`** — write root and static `AGENTS.md` instructions for coding agents
 - **`doctor`** — audit local docs readiness and optional hosted agent routes
 - **`review`** — review docs changes locally or in GitHub Actions
+- **`codeblocks validate`** — plan and validate runnable MDX code fences
 - **`mcp`** — run the built-in docs MCP server over stdio for local clients and IDE agents
 - **`search sync`** — push docs content into an external search index like Typesense or Algolia
 - **`sitemap generate`** — write sitemap metadata plus static `sitemap.xml`, `sitemap.md`, and `docs/sitemap.md` files
@@ -945,6 +946,48 @@ The current built-in MCP surface includes:
 returns structured `docs.config.ts` option metadata.
 
 For the HTTP endpoint version, see [MCP Server](/docs/customization/mcp).
+
+## Code Blocks
+
+Use `docs codeblocks validate` to plan and validate fenced code blocks from your docs content.
+
+```bash title="terminal"
+pnpm exec docs codeblocks validate --plan
+pnpm exec docs codeblocks validate
+pnpm exec docs codeblocks validate --json
+```
+
+The command reads `codeBlocks.validate` from `docs.config.ts[x]`. `--plan` shows what would run
+without executing snippets.
+
+```ts title="docs.config.ts"
+codeBlocks: {
+  validate: {
+    planner: {
+      provider: "openai",
+      model: "gpt-4.1-mini",
+      apiKeyEnv: "OPENAI_API_KEY",
+    },
+    runner: {
+      provider: "vercel-sandbox",
+      tokenEnv: "VERCEL_TOKEN",
+    },
+    env: {
+      OPENAI_API_KEY: "OPENAI_TEST_API_KEY",
+    },
+  },
+}
+```
+
+Code fence metadata gives the planner enough context:
+
+````md title="page.mdx"
+```ts title="app/api/chat/route.ts" framework="nextjs" packageManager="pnpm" env="OPENAI_API_KEY" runnable
+const apiKey = process.env.OPENAI_API_KEY;
+```
+````
+
+See [Configuration](/docs/configuration#code-block-validation) for the config fields.
 
 ## Docs Review
 
