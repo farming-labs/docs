@@ -4,6 +4,10 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runCodeBlocksValidate } from "./codeblocks.js";
 
+function stripAnsi(value: string): string {
+  return value.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "");
+}
+
 describe("codeblocks validate cli", () => {
   let tmpDir: string;
   let previousCwd: string;
@@ -74,7 +78,7 @@ describe("codeblocks validate cli", () => {
 
     await runCodeBlocksValidate({ run: true });
 
-    expect(logs[0]).toBe("Code block validation");
+    expect(stripAnsi(logs[0] ?? "")).toBe("Code block validation");
     expect(logs.join("\n")).toContain("1 pass");
   });
 });
