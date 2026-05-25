@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -166,6 +167,12 @@ void missing;
 
   it("validates the configured API key and prints the preview URL", async () => {
     writePackageJson();
+    execFileSync("git", ["init"], { cwd: tmpDir, stdio: "ignore" });
+    execFileSync("git", ["checkout", "-b", "preview-branch"], { cwd: tmpDir, stdio: "ignore" });
+    execFileSync("git", ["remote", "add", "origin", "git@github.com:acme/docs-app.git"], {
+      cwd: tmpDir,
+      stdio: "ignore",
+    });
     writeFileSync(
       path.join(tmpDir, ".env.local"),
       "CUSTOM_DOCS_KEY=docs_cloud_test_key\n",
@@ -199,6 +206,21 @@ void missing;
       }
 
       if (url === "https://cloud.example.com/api/cloud/preview") {
+        const requestBody = JSON.parse(String(init?.body)) as {
+          repository?: {
+            owner?: string;
+            name?: string;
+            branch?: string;
+            rootDirectory?: string;
+          };
+        };
+        expect(requestBody.repository).toMatchObject({
+          owner: "acme",
+          name: "docs-app",
+          branch: "preview-branch",
+          rootDirectory: ".",
+        });
+
         return new Response(JSON.stringify({ url: "https://docs-cloud-acme.preview.test" }), {
           status: 200,
           headers: { "content-type": "application/json" },

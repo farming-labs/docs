@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import pc from "picocolors";
 import type { DocsCloudConfig, DocsConfig } from "../types.js";
 import {
@@ -54,6 +55,14 @@ type ManagedDocsJson = {
     description?: string;
   };
   cloud?: DocsCloudConfig;
+};
+
+type GitRepositoryMetadata = {
+  owner: string;
+  name: string;
+  branch?: string;
+  rootDirectory: string;
+  remoteUrl?: string;
 };
 
 export interface CloudCommandOptions {
@@ -111,6 +120,64 @@ function readPackageName(rootDir: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+function runGit(rootDir: string, args: string[]): string | undefined {
+  try {
+    return execFileSync("git", ["-C", rootDir, ...args], {
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return undefined;
+  }
+}
+
+function parseGitHubRemote(remoteUrl: string): { owner: string; name: string } | null {
+  const trimmed = remoteUrl.trim();
+  const match =
+    trimmed.match(/^git@github\.com:([^/]+)\/(.+?)(?:\.git)?$/) ??
+    trimmed.match(/^https:\/\/github\.com\/([^/]+)\/(.+?)(?:\.git)?(?:\/)?$/);
+
+  if (!match?.[1] || !match[2]) {
+    return null;
+  }
+
+  return {
+    owner: match[1],
+    name: match[2].replace(/\.git$/i, ""),
+  };
+}
+
+function resolveGitRepositoryMetadata(rootDir: string): GitRepositoryMetadata | undefined {
+  const gitRoot = runGit(rootDir, ["rev-parse", "--show-toplevel"]);
+  const remoteUrl = runGit(rootDir, ["remote", "get-url", "origin"]);
+  if (!gitRoot || !remoteUrl) {
+    return undefined;
+  }
+
+  const parsedRemote = parseGitHubRemote(remoteUrl);
+  if (!parsedRemote) {
+    return undefined;
+  }
+
+  const branch =
+    runGit(rootDir, ["branch", "--show-current"]) ??
+    runGit(rootDir, ["rev-parse", "--abbrev-ref", "HEAD"]);
+  const resolvedGitRoot = fs.realpathSync(gitRoot);
+  const resolvedRootDir = fs.realpathSync(rootDir);
+  const rootDirectory = path
+    .relative(resolvedGitRoot, resolvedRootDir)
+    .split(path.sep)
+    .filter(Boolean)
+    .join("/");
+
+  return {
+    ...parsedRemote,
+    branch: branch && branch !== "HEAD" ? branch : undefined,
+    rootDirectory: rootDirectory || ".",
+    remoteUrl,
+  };
 }
 
 function titleFromPackageName(name: string | undefined): string | undefined {
@@ -579,6 +646,7 @@ async function requestPreview(params: {
       body: JSON.stringify({
         config: params.config,
         configPath: path.relative(params.rootDir, params.configPath) || DOCS_JSON_FILE,
+        repository: resolveGitRepositoryMetadata(params.rootDir),
       }),
     },
   });
