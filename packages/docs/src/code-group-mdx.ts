@@ -36,9 +36,7 @@ function readBareCodeGroupTitle(meta: string): string | undefined {
   const token = meta
     .replace(/\{[^}]*\}/g, " ")
     .split(/\s+/)
-    .find(
-      (part) => part && !part.includes("=") && !ignoredBareMetaTokens.has(part.toLowerCase()),
-    );
+    .find((part) => part && !part.includes("=") && !ignoredBareMetaTokens.has(part.toLowerCase()));
 
   return token?.replace(/^["']|["']$/g, "");
 }

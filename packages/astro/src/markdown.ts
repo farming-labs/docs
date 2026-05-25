@@ -450,9 +450,7 @@ function parseCodeGroupMeta(meta: string): { lang: string; title: string | null 
     .split(/\s+/)
     .find(
       (part) =>
-        part &&
-        !part.includes("=") &&
-        !ignoredCodeGroupBareTitleTokens.has(part.toLowerCase()),
+        part && !part.includes("=") && !ignoredCodeGroupBareTitleTokens.has(part.toLowerCase()),
     );
 
   return {
