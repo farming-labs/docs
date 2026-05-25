@@ -80,6 +80,8 @@ review: {
 ## Code block validation
 
 Use `codeBlocks.validate` when docs code fences should be planned and checked by the CLI.
+Runner providers can be `local`, `vercel-sandbox`, `e2b`, `daytona`, or reserved `cloud`.
+E2B expects the `e2b` package, and Daytona expects `@daytona/sdk`, to be available to the CLI.
 
 ```ts
 codeBlocks: {

@@ -248,9 +248,17 @@ function readStaticRunnerConfig(
   const teamIdEnv = readStringProperty(block, "teamIdEnv");
   const projectJson = readStringProperty(block, "projectJson");
   const runtime = readStringProperty(block, "runtime");
+  const apiUrlEnv = readStringProperty(block, "apiUrlEnv");
+  const targetEnv = readStringProperty(block, "targetEnv");
   const timeoutMs = readNumberProperty(block, "timeoutMs");
 
-  if (provider !== "local" && provider !== "vercel-sandbox" && provider !== "cloud") {
+  if (
+    provider !== "local" &&
+    provider !== "vercel-sandbox" &&
+    provider !== "e2b" &&
+    provider !== "daytona" &&
+    provider !== "cloud"
+  ) {
     return undefined;
   }
 
@@ -263,6 +271,8 @@ function readStaticRunnerConfig(
     ...(runtime === "node24" || runtime === "node22" || runtime === "python3.13"
       ? { runtime }
       : {}),
+    ...(apiUrlEnv ? { apiUrlEnv } : {}),
+    ...(targetEnv ? { targetEnv } : {}),
     ...(timeoutMs !== undefined ? { timeoutMs } : {}),
   };
 }

@@ -154,7 +154,7 @@ All configuration lives in a single `docs.config.ts` file.
 ## Code block validation
 
 `codeBlocks.validate` lets the CLI inspect fenced MDX code blocks, build an execution plan from
-metadata, and optionally run executable snippets in a sandbox.
+metadata, and optionally run executable snippets with a local or sandbox runner.
 
 ```ts title="docs.config.ts"
 import { defineDocs } from "@farming-labs/docs";
@@ -227,6 +227,40 @@ The planner never writes secrets into docs. The `env` map means the snippet can 
 `OPENAI_TEST_API_KEY`. For Vercel Sandbox, `VERCEL_TOKEN` is enough in most projects; the runner
 uses `.vercel/project.json` when present and can auto-discover an accessible Vercel project from
 the token.
+
+Runner providers are explicit, so a remote sandbox never silently falls back to local execution:
+
+```ts title="docs.config.ts"
+codeBlocks: {
+  validate: {
+    runner: { provider: "vercel-sandbox", tokenEnv: "VERCEL_TOKEN" },
+  },
+}
+```
+
+```ts title="docs.config.ts"
+codeBlocks: {
+  validate: {
+    runner: { provider: "e2b", tokenEnv: "E2B_API_KEY" },
+  },
+}
+```
+
+```ts title="docs.config.ts"
+codeBlocks: {
+  validate: {
+    runner: {
+      provider: "daytona",
+      tokenEnv: "DAYTONA_API_KEY",
+      targetEnv: "DAYTONA_TARGET",
+      apiUrlEnv: "DAYTONA_API_URL",
+    },
+  },
+}
+```
+
+E2B uses the `e2b` package and Daytona uses `@daytona/sdk`. Install the provider SDK in the
+project that runs the CLI when you choose one of those runners.
 
 ## Public docs path
 
