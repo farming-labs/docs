@@ -966,9 +966,7 @@ async function runPlansInE2B(
 
   const module = await importOptionalModule("e2b");
   if (!module) {
-    return plans.map((plan) =>
-      skippedResult(plan, 'e2b unavailable: install the "e2b" package'),
-    );
+    return plans.map((plan) => skippedResult(plan, 'e2b unavailable: install the "e2b" package'));
   }
 
   try {
@@ -1178,16 +1176,7 @@ function buildSandboxShellCommand(plan: DocsCodeBlockExecutionPlan): string {
 
   const sandboxDir = "/tmp/docs-codeblocks";
   const encodedCode = Buffer.from(plan.target.code, "utf-8").toString("base64");
-  const writeFileCommand = [
-    "printf",
-    "%s",
-    encodedCode,
-    "|",
-    "base64",
-    "-d",
-    ">",
-    filePath,
-  ]
+  const writeFileCommand = ["printf", "%s", encodedCode, "|", "base64", "-d", ">", filePath]
     .map((part) => (part === "|" || part === ">" ? part : shellEscape(part)))
     .join(" ");
 

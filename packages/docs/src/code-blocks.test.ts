@@ -401,9 +401,7 @@ describe("code block validation", () => {
       skip: 1,
       fail: 0,
     });
-    expect(report.results[0]?.reason).toBe(
-      "cloud runner is not available in this package yet",
-    );
+    expect(report.results[0]?.reason).toBe("cloud runner is not available in this package yet");
   });
 
   it("skips E2B when its token is missing", async () => {

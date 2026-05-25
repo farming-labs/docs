@@ -2329,12 +2329,7 @@ export interface DocsReviewConfig {
 
 export type DocsCodeBlocksPlannerProvider = "metadata" | "openai" | "openai-compatible" | "cloud";
 
-export type DocsCodeBlocksRunnerProvider =
-  | "local"
-  | "vercel-sandbox"
-  | "e2b"
-  | "daytona"
-  | "cloud";
+export type DocsCodeBlocksRunnerProvider = "local" | "vercel-sandbox" | "e2b" | "daytona" | "cloud";
 
 export type DocsCodeBlocksValidationMode = "plan" | "report";
 
