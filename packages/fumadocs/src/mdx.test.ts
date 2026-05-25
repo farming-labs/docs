@@ -45,7 +45,7 @@ describe("getMDXComponents", () => {
 
     expect(html).toContain("data-fd-code-group");
     expect(html).toContain("data-dropdown");
-    expect(html).toContain("hidden data-[state=active]:block");
+    expect(html).toContain("fd-code-group-panel");
     expect(html).toContain(">npm</button>");
     expect(html).toContain(">pnpm</button>");
     expect(html).toContain("npm install @farming-labs/docs");

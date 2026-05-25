@@ -258,7 +258,7 @@ function CodeGroup({
           key: item.value,
           value: item.value,
           forceMount: true,
-          className: "hidden data-[state=active]:block",
+          className: "fd-code-group-panel",
         },
         item.child,
       ),
