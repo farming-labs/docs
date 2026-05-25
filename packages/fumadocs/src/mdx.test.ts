@@ -13,7 +13,7 @@ describe("getMDXComponents", () => {
     expect(AgentComponent({ children: "hidden agent-only context" })).toBeNull();
   });
 
-  it("includes a Mintlify-compatible CodeGroup primitive", () => {
+  it("includes a Mintlify-compatible CodeGroup primitive by default without user registration", () => {
     const components = getMDXComponents();
 
     expect(typeof components.CodeGroup).toBe("function");

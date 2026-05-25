@@ -50,6 +50,30 @@ describe("remarkCodeGroup", () => {
     expect(tree.children[0].children[0].meta).toBe('title="pnpm" filename="pnpm"');
   });
 
+  it("does not treat code fence option flags as bare CodeGroup titles", () => {
+    const tree = {
+      type: "root",
+      children: [
+        {
+          type: "mdxJsxFlowElement",
+          name: "CodeGroup",
+          children: [
+            {
+              type: "code",
+              lang: "ts",
+              meta: "copy lineNumbers runnable",
+              value: "console.log('Hello World')",
+            },
+          ],
+        },
+      ],
+    };
+
+    remarkCodeGroup()(tree);
+
+    expect(tree.children[0].children[0].meta).toBe("copy lineNumbers runnable");
+  });
+
   it("leaves regular code blocks and existing titles alone", () => {
     const tree = {
       type: "root",

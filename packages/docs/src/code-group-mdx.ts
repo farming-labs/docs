@@ -10,9 +10,13 @@ const codeGroupTitleAttributes = ["title", "filename", "file", "name", "label"] 
 const ignoredBareMetaTokens = new Set([
   "copy",
   "no-copy",
-  "lineNumbers",
+  "nocopy",
+  "line-numbers",
+  "linenumbers",
   "runnable",
-  "showLineNumbers",
+  "show-line-numbers",
+  "showlinenumbers",
+  "wrap",
 ]);
 
 function escapeMetaAttribute(value: string): string {
@@ -32,7 +36,9 @@ function readBareCodeGroupTitle(meta: string): string | undefined {
   const token = meta
     .replace(/\{[^}]*\}/g, " ")
     .split(/\s+/)
-    .find((part) => part && !part.includes("=") && !ignoredBareMetaTokens.has(part));
+    .find(
+      (part) => part && !part.includes("=") && !ignoredBareMetaTokens.has(part.toLowerCase()),
+    );
 
   return token?.replace(/^["']|["']$/g, "");
 }

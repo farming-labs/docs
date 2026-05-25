@@ -89,7 +89,8 @@ You can replace any built-in MDX component by registering one with the **same na
 
 ### Available built-in components
 
-The following components are available by default (from `fumadocs-ui`):
+The following components are available by default through `getMDXComponents()`. You can use them in
+MDX without imports or `docs.config.ts` registration:
 
 - `h1`, `h2`, `h3`, `h4`, `h5`, `h6` — heading elements
 - `p`, `a`, `ul`, `ol`, `li` — text and list elements
@@ -108,7 +109,7 @@ The following components are available by default (from `fumadocs-ui`):
 
 `CodeGroup` lets you wrap multiple fenced code blocks in one tabbed block. The tab label comes from
 `title`, `filename`, or the bare filename after the language, so Mintlify-style docs can move over
-without custom components.
+without custom components or MDX component registration.
 
 ````mdx title="page.mdx"
 <CodeGroup>

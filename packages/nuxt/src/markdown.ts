@@ -425,6 +425,18 @@ function parseMeta(meta: string): { lang: string; title: string | null } {
   return { lang, title: titleMatch ? titleMatch[1] : null };
 }
 
+const ignoredCodeGroupBareTitleTokens = new Set([
+  "copy",
+  "no-copy",
+  "nocopy",
+  "line-numbers",
+  "linenumbers",
+  "runnable",
+  "show-line-numbers",
+  "showlinenumbers",
+  "wrap",
+]);
+
 function parseCodeGroupMeta(meta: string): { lang: string; title: string | null } {
   const parsed = parseMeta(meta);
   if (parsed.title) return parsed;
@@ -436,7 +448,12 @@ function parseCodeGroupMeta(meta: string): { lang: string; title: string | null 
     .trim()
     .replace(/\{[^}]*\}/g, " ")
     .split(/\s+/)
-    .find((part) => part && !part.includes("="));
+    .find(
+      (part) =>
+        part &&
+        !part.includes("=") &&
+        !ignoredCodeGroupBareTitleTokens.has(part.toLowerCase()),
+    );
 
   return {
     ...parsed,
@@ -469,10 +486,10 @@ function wrapCodeWithCopy(
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-  const dataLang = language ? ` data-language="${String(language).replace(/"/g, "&quot;")}"` : "";
+  const dataLang = language ? ` data-language="${escapeHtml(String(language))}"` : "";
   const copyBtn = `<button class="fd-copy-btn" data-code="${escapedRaw}" title="Copy code"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>`;
   if (title) {
-    return `<div class="fd-codeblock fd-codeblock--titled"${dataLang}><div class="fd-codeblock-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg><span class="fd-codeblock-title-text">${title}</span>${copyBtn}</div><div class="fd-codeblock-content">${html}</div></div>`;
+    return `<div class="fd-codeblock fd-codeblock--titled"${dataLang}><div class="fd-codeblock-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg><span class="fd-codeblock-title-text">${escapeHtml(title)}</span>${copyBtn}</div><div class="fd-codeblock-content">${html}</div></div>`;
   }
   return `<div class="fd-codeblock"${dataLang}>${copyBtn}<div class="fd-codeblock-content">${html}</div></div>`;
 }
