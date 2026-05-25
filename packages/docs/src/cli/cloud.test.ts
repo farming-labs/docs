@@ -102,6 +102,68 @@ describe("cloud cli", () => {
     expect(docsJson.cloud.apiKey.env).toBe("DOCS_CLOUD_API_KEY");
   });
 
+  it("preserves boolean analytics.console values when static config parsing is used", async () => {
+    writePackageJson();
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `import missing from "missing-cloud-test-package";
+
+export default {
+  entry: "docs",
+  cloud: {
+    analytics: {
+      enabled: true,
+      console: false,
+      includeInputs: true,
+    },
+  },
+};
+
+void missing;
+`,
+      "utf-8",
+    );
+
+    await materializeCloudConfig({ rootDir: tmpDir });
+
+    const docsJson = JSON.parse(readFileSync(path.join(tmpDir, "docs.json"), "utf-8"));
+    expect(docsJson.cloud.analytics).toEqual({
+      enabled: true,
+      console: false,
+      includeInputs: true,
+    });
+  });
+
+  it("preserves true analytics.console values when static config parsing is used", async () => {
+    writePackageJson();
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `import missing from "missing-cloud-test-package";
+
+export default {
+  entry: "docs",
+  cloud: {
+    analytics: {
+      console: true,
+    },
+  },
+};
+
+void missing;
+`,
+      "utf-8",
+    );
+
+    await materializeCloudConfig({ rootDir: tmpDir });
+
+    const docsJson = JSON.parse(readFileSync(path.join(tmpDir, "docs.json"), "utf-8"));
+    expect(docsJson.cloud.analytics).toEqual({
+      enabled: true,
+      console: true,
+      includeInputs: false,
+    });
+  });
+
   it("validates the configured API key and prints the preview URL", async () => {
     writePackageJson();
     writeFileSync(

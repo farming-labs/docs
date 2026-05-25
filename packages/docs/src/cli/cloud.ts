@@ -281,10 +281,13 @@ function readStaticCloudConfig(content: string | undefined): DocsCloudConfig | u
   } else if (analyticsBlock) {
     const analytics: Exclude<CloudAnalyticsConfig, boolean> = {};
     const enabledValue = readTopLevelBooleanProperty(analyticsBlock, "enabled");
+    const consoleBoolean = readTopLevelBooleanProperty(analyticsBlock, "console");
     const consoleMode = readStringProperty(analyticsBlock, "console");
     const includeInputs = readTopLevelBooleanProperty(analyticsBlock, "includeInputs");
     if (typeof enabledValue === "boolean") analytics.enabled = enabledValue;
-    if (consoleMode === "log" || consoleMode === "info" || consoleMode === "debug") {
+    if (typeof consoleBoolean === "boolean") {
+      analytics.console = consoleBoolean;
+    } else if (consoleMode === "log" || consoleMode === "info" || consoleMode === "debug") {
       analytics.console = consoleMode;
     }
     if (typeof includeInputs === "boolean") analytics.includeInputs = includeInputs;
