@@ -59,6 +59,11 @@
       "import": "./dist/mdx-plugins/remark-heading.mjs",
       "default": "./dist/mdx-plugins/remark-heading.mjs"
     },
+    "./mdx-plugins/remark-code-group": {
+      "types": "./dist/mdx-plugins/remark-code-group.d.mts",
+      "import": "./dist/mdx-plugins/remark-code-group.mjs",
+      "default": "./dist/mdx-plugins/remark-code-group.mjs"
+    },
     "./mdx-plugins/rehype-toc": {
       "types": "./dist/mdx-plugins/rehype-toc.d.mts",
       "import": "./dist/mdx-plugins/rehype-toc.mjs",

@@ -284,6 +284,8 @@ function createDocsWorkspaceAliases(): Record<string, string> {
     "@farming-labs/next/layout": "./packages/next/src/layout.tsx",
     "@farming-labs/next/mdx-plugins/rehype-code": "./packages/next/src/mdx-plugins/rehype-code.ts",
     "@farming-labs/next/mdx-plugins/rehype-toc": "./packages/next/src/mdx-plugins/rehype-toc.ts",
+    "@farming-labs/next/mdx-plugins/remark-code-group":
+      "./packages/next/src/mdx-plugins/remark-code-group.ts",
     "@farming-labs/next/mdx-plugins/remark-heading":
       "./packages/next/src/mdx-plugins/remark-heading.ts",
     "@farming-labs/next/mdx-plugins/remark-og": "./packages/next/src/mdx-plugins/remark-og.ts",
@@ -2015,6 +2017,7 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
   ]);
   remarkPlugins.push(
     ["remark-mdx-frontmatter", { name: "metadata" }],
+    "@farming-labs/next/mdx-plugins/remark-code-group",
     "@farming-labs/next/mdx-plugins/remark-heading",
   );
   const rehypePlugins: MdxPluginEntry[] = [

@@ -1,4 +1,5 @@
 export { createDocsCloudAnalytics } from "./cloud-analytics.js";
+export { remarkCodeGroup } from "./code-group-mdx.js";
 export {
   DOCS_AGENT_TRACE_EVENT_TYPES,
   createDocsAgentTraceContext,

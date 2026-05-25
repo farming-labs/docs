@@ -175,6 +175,14 @@ figure.shiki pre > code > [data-line] {
   padding: 0 0.25rem;
 }
 
+.fd-code-group-panel[data-state="inactive"] {
+  display: none;
+}
+
+.fd-code-group-panel[data-state="active"] {
+  display: block;
+}
+
 /* Titled code blocks: diagonal stripe background on the title bar */
 figure.shiki:has(figcaption) > div:first-child {
   position: relative;

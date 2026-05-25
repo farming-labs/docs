@@ -20,6 +20,12 @@
 import React from "react";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+import {
+  CodeBlockTab,
+  CodeBlockTabs,
+  CodeBlockTabsList,
+  CodeBlockTabsTrigger,
+} from "fumadocs-ui/components/codeblock";
 import { MDXImg } from "./mdx-img.js";
 import { createPreWithCodeSpacing } from "./code-block-spacing.js";
 import { createPreWithCopyCallback } from "./code-block-copy-wrapper.js";
@@ -47,11 +53,225 @@ function Agent(_props: { children?: React.ReactNode }) {
   return null;
 }
 
+type ReactElementProps = Record<string, unknown> & {
+  children?: React.ReactNode;
+};
+
+export interface CodeGroupProps extends Omit<
+  React.ComponentPropsWithoutRef<typeof CodeBlockTabs>,
+  "children"
+> {
+  children?: React.ReactNode;
+  /**
+   * Mintlify-compatible prop. The current renderer keeps the same code tab UI
+   * and exposes this as a data attribute for theme overrides.
+   */
+  dropdown?: boolean;
+}
+
+const codeGroupLabelProps = [
+  "title",
+  "filename",
+  "file",
+  "name",
+  "label",
+  "value",
+  "data-title",
+  "data-filename",
+  "data-file",
+] as const;
+
+function cx(...values: Array<string | false | null | undefined>) {
+  const className = values.filter(Boolean).join(" ");
+  return className || undefined;
+}
+
+function getElementProps(node: React.ReactNode): ReactElementProps | undefined {
+  if (!React.isValidElement(node)) return undefined;
+  return node.props && typeof node.props === "object"
+    ? (node.props as ReactElementProps)
+    : undefined;
+}
+
+function readStringProp(props: ReactElementProps | undefined, key: string): string | undefined {
+  const value = props?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function parseCodeMetaLabel(meta: string | undefined): string | undefined {
+  if (!meta) return undefined;
+  const trimmed = meta.trim();
+  if (!trimmed) return undefined;
+
+  const namedMatch = trimmed.match(/\b(?:title|filename|file|name|label)=["']([^"']+)["']/);
+  if (namedMatch?.[1]?.trim()) return namedMatch[1].trim();
+
+  const language = trimmed.split(/\s+/, 1)[0] ?? "";
+  const rest = trimmed.slice(language.length).trim();
+  if (!rest) return undefined;
+
+  const bareLabel = rest
+    .replace(/\{[^}]*\}/g, " ")
+    .split(/\s+/)
+    .find((part) => part && !part.includes("="));
+
+  return bareLabel?.replace(/^["']|["']$/g, "");
+}
+
+function parseLanguageFromProps(props: ReactElementProps | undefined): string | undefined {
+  const language = readStringProp(props, "language");
+  if (language) return language;
+
+  const className = readStringProp(props, "className");
+  const match = className?.match(/language-([^\s]+)/);
+  return match?.[1];
+}
+
+function getCodeGroupLabelFromNode(node: React.ReactNode): string | undefined {
+  const props = getElementProps(node);
+  if (!props) return undefined;
+
+  for (const key of codeGroupLabelProps) {
+    const value = readStringProp(props, key);
+    if (value) return value;
+  }
+
+  const meta =
+    readStringProp(props, "metastring") ??
+    readStringProp(props, "meta") ??
+    readStringProp(props, "data-meta");
+  const metaLabel = parseCodeMetaLabel(meta);
+  if (metaLabel) return metaLabel;
+
+  const nested = React.Children.toArray(props.children).find((child) => {
+    return getCodeGroupLabelFromNode(child) !== undefined;
+  });
+  const nestedLabel = getCodeGroupLabelFromNode(nested);
+  if (nestedLabel) return nestedLabel;
+
+  return parseLanguageFromProps(props);
+}
+
+function getCodeGroupItems(children: React.ReactNode): React.ReactNode[] {
+  const items: React.ReactNode[] = [];
+
+  React.Children.forEach(children, (child) => {
+    if (child === null || child === undefined || typeof child === "boolean") return;
+    if (typeof child === "string" && child.trim() === "") return;
+
+    const props = getElementProps(child);
+    if (props && React.isValidElement(child) && child.type === React.Fragment) {
+      items.push(...getCodeGroupItems(props.children));
+      return;
+    }
+
+    items.push(child);
+  });
+
+  return items;
+}
+
+function toTabValue(label: string, index: number, used: Set<string>): string {
+  const slug =
+    label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || `code-${index + 1}`;
+  let value = slug;
+  let suffix = 2;
+
+  while (used.has(value)) {
+    value = `${slug}-${suffix}`;
+    suffix += 1;
+  }
+
+  used.add(value);
+  return value;
+}
+
+function stripCodeGroupLabelProps(child: React.ReactNode): React.ReactNode {
+  if (!React.isValidElement(child)) return child;
+
+  return React.cloneElement(child as React.ReactElement<ReactElementProps>, {
+    title: undefined,
+    filename: undefined,
+    file: undefined,
+    name: undefined,
+    label: undefined,
+    value: undefined,
+    "data-title": undefined,
+    "data-filename": undefined,
+    "data-file": undefined,
+  });
+}
+
+function CodeGroup({
+  children,
+  defaultValue,
+  dropdown = false,
+  className,
+  ...props
+}: CodeGroupProps) {
+  const usedValues = new Set<string>();
+  const items = getCodeGroupItems(children).map((child, index) => {
+    const label = getCodeGroupLabelFromNode(child) ?? `Code ${index + 1}`;
+    return {
+      child: stripCodeGroupLabelProps(child),
+      label,
+      value: toTabValue(label, index, usedValues),
+    };
+  });
+
+  if (items.length === 0) return null;
+
+  const CodeBlockTabsComponent = CodeBlockTabs as React.ComponentType<
+    React.ComponentPropsWithoutRef<typeof CodeBlockTabs> & {
+      "data-dropdown"?: string;
+      "data-fd-code-group"?: string;
+    }
+  >;
+
+  return React.createElement(
+    CodeBlockTabsComponent,
+    {
+      ...props,
+      "data-fd-code-group": "",
+      "data-dropdown": dropdown ? "" : undefined,
+      className: cx("fd-code-group", dropdown && "fd-code-group-dropdown", className),
+      defaultValue: defaultValue ?? items[0]?.value,
+    },
+    React.createElement(
+      CodeBlockTabsList,
+      null,
+      items.map((item) =>
+        React.createElement(
+          CodeBlockTabsTrigger,
+          { key: item.value, value: item.value },
+          item.label,
+        ),
+      ),
+    ),
+    items.map((item) =>
+      React.createElement(
+        CodeBlockTab,
+        {
+          key: item.value,
+          value: item.value,
+          forceMount: true,
+          className: "fd-code-group-panel",
+        },
+        item.child,
+      ),
+    ),
+  );
+}
+
 const extendedMdxComponents = {
   ...defaultMdxComponents,
   img: MDXImg,
   table: Table,
   Agent,
+  CodeGroup,
   HoverLink,
   Prompt,
   Tab,
@@ -177,4 +397,13 @@ export function getMDXComponents<T extends Record<string, unknown> = Record<stri
   return base;
 }
 
-export { Agent, defaultMdxComponents, extendedMdxComponents, HoverLink, Prompt, Tab, Tabs };
+export {
+  Agent,
+  CodeGroup,
+  defaultMdxComponents,
+  extendedMdxComponents,
+  HoverLink,
+  Prompt,
+  Tab,
+  Tabs,
+};
