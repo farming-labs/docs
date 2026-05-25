@@ -49,6 +49,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
 | `search` | `boolean \| DocsSearchConfig` | `true` | Built-in simple search, Typesense, Algolia, or a custom adapter |
+| `cloud` | `DocsCloudConfig` | — | Docs Cloud API key env, preview, and publish defaults mirrored into `docs.json` by cloud CLI commands |
 | `llmsTxt` | `boolean \| LlmsTxtConfig` | `true` | Generated `/llms.txt`, `/llms-full.txt`, and optional section-level llms files |
 | `changelog` | `boolean \| ChangelogConfig` | `false` | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
 | `mcp` | `boolean \| DocsMcpConfig` | enabled | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp` |
@@ -120,6 +121,25 @@ pnpm exec docs codeblocks validate
 ```
 
 Do not put actual API keys in `docs.config.ts`. Use env variable names and map runtime names to test keys with `env`.
+
+---
+
+## Docs Cloud
+
+Cloud-aware CLI commands read a serializable `cloud` block from `docs.config.ts` and mirror it into
+`docs.json` automatically.
+
+```ts
+cloud: {
+  apiKey: { env: "DOCS_CLOUD_API_KEY" },
+  preview: { enabled: true },
+  publish: { mode: "draft-pr", baseBranch: "main" },
+}
+```
+
+Run `docs cloud sync` to only update `docs.json`, or `docs preview` to sync, validate the API key,
+and request a hosted preview. The API key value belongs in `.env.local`, CI secrets, or the shell,
+never directly in `docs.config.ts` or `docs.json`.
 
 ---
 

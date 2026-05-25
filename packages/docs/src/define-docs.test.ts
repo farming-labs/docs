@@ -92,4 +92,35 @@ describe("defineDocs", () => {
     });
     expect(config.analytics).not.toBe(config.observability);
   });
+
+  it("preserves cloud settings for CLI docs.json materialization", () => {
+    const config = defineDocs({
+      entry: "docs",
+      cloud: {
+        apiKey: {
+          env: "CUSTOM_DOCS_CLOUD_KEY",
+        },
+        preview: {
+          enabled: true,
+        },
+        publish: {
+          mode: "draft-pr",
+          baseBranch: "main",
+        },
+      },
+    });
+
+    expect(config.cloud).toEqual({
+      apiKey: {
+        env: "CUSTOM_DOCS_CLOUD_KEY",
+      },
+      preview: {
+        enabled: true,
+      },
+      publish: {
+        mode: "draft-pr",
+        baseBranch: "main",
+      },
+    });
+  });
 });

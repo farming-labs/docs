@@ -85,6 +85,18 @@ export default defineDocs({
     branch: "main",
     directory: "examples/next",
   },
+  cloud: {
+    apiKey: {
+      env: "DOCS_CLOUD_API_KEY",
+    },
+    preview: {
+      enabled: true,
+    },
+    publish: {
+      mode: "draft-pr",
+      baseBranch: "main",
+    },
+  },
   theme: colorful({
     ui: {
       layout: {

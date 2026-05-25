@@ -306,6 +306,19 @@ export function readTopLevelStringProperty(content: string, key: string): string
   return undefined;
 }
 
+export function readTopLevelBooleanProperty(content: string, key: string): boolean | undefined {
+  const rootObject = extractTopLevelConfigObject(content);
+  const source = rootObject ?? content;
+  const propertyPattern = new RegExp(`^\\s*${escapeRegExp(key)}\\s*:\\s*(true|false)\\b`);
+
+  for (const property of splitTopLevelProperties(source)) {
+    const match = property.trim().match(propertyPattern);
+    if (match) return match[1] === "true";
+  }
+
+  return undefined;
+}
+
 export function readNavTitle(content: string): string | undefined {
   const rootObject = extractTopLevelConfigObject(content) ?? content;
   const block = extractObjectLiteral(rootObject, "nav");

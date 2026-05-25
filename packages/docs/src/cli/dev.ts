@@ -295,6 +295,25 @@ const managedConfigSchema = z
     cloud: z
       .object({
         enabled: z.boolean().optional(),
+        apiKey: z
+          .object({
+            env: z.string().min(1).optional(),
+          })
+          .passthrough()
+          .optional(),
+        preview: z
+          .object({
+            enabled: z.boolean().optional(),
+          })
+          .passthrough()
+          .optional(),
+        publish: z
+          .object({
+            mode: z.enum(["draft-pr", "direct-commit"]).optional(),
+            baseBranch: z.string().min(1).optional(),
+          })
+          .passthrough()
+          .optional(),
         analytics: z
           .union([
             z.boolean(),

@@ -443,6 +443,43 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
     ],
   },
   {
+    path: "cloud",
+    name: "cloud",
+    type: "DocsCloudConfig",
+    description: "Docs Cloud integration settings mirrored into docs.json by cloud CLI commands.",
+    children: [
+      {
+        path: "cloud.apiKey.env",
+        name: "env",
+        type: "string",
+        default: "DOCS_CLOUD_API_KEY",
+        description:
+          "Environment variable that stores the Docs Cloud API key. The key value is never written to docs.json.",
+      },
+      {
+        path: "cloud.preview.enabled",
+        name: "enabled",
+        type: "boolean",
+        default: true,
+        description: "Request hosted preview deployments when running docs preview.",
+      },
+      {
+        path: "cloud.publish.mode",
+        name: "mode",
+        type: '"draft-pr" | "direct-commit"',
+        default: "draft-pr",
+        description: "How Docs Cloud publishes generated docs changes.",
+      },
+      {
+        path: "cloud.publish.baseBranch",
+        name: "baseBranch",
+        type: "string",
+        default: "main",
+        description: "Branch generated docs work should target.",
+      },
+    ],
+  },
+  {
     path: "llmsTxt",
     name: "llmsTxt",
     type: "boolean | LlmsTxtConfig",
