@@ -987,6 +987,10 @@ const apiKey = process.env.OPENAI_API_KEY;
 ```
 ````
 
+Runner providers can be `local`, `vercel-sandbox`, `e2b`, `daytona`, or the reserved `cloud`
+runner. Remote runners skip with a clear reason when their token or optional SDK is missing instead
+of running the snippet locally.
+
 See [Configuration](/docs/configuration#code-block-validation) for the config fields.
 
 ## Docs Review

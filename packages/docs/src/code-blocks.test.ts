@@ -25,6 +25,10 @@ describe("code block validation", () => {
     delete process.env.VERCEL_TOKEN;
     delete process.env.VERCEL_PROJECT_ID;
     delete process.env.VERCEL_TEAM_ID;
+    delete process.env.E2B_API_KEY;
+    delete process.env.DAYTONA_API_KEY;
+    delete process.env.DAYTONA_API_URL;
+    delete process.env.DAYTONA_TARGET;
   });
 
   it("resolves disabled and enabled validate config", () => {
@@ -60,6 +64,22 @@ describe("code block validation", () => {
     });
     expect(config.env).toEqual({
       OPENAI_API_KEY: "OPENAI_TEST_API_KEY",
+    });
+
+    expect(
+      resolveDocsCodeBlocksValidateConfig({
+        runner: { provider: "e2b" },
+      }).runner.tokenEnv,
+    ).toBe("E2B_API_KEY");
+    expect(
+      resolveDocsCodeBlocksValidateConfig({
+        runner: { provider: "daytona" },
+      }).runner,
+    ).toMatchObject({
+      provider: "daytona",
+      tokenEnv: "DAYTONA_API_KEY",
+      apiUrlEnv: "DAYTONA_API_URL",
+      targetEnv: "DAYTONA_TARGET",
     });
   });
 
@@ -354,5 +374,173 @@ describe("code block validation", () => {
       fail: 0,
     });
     expect(report.results[0]?.stdout).toBe("sandbox\n");
+  });
+
+  it("does not fall back to local execution for unavailable cloud runner", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "docs-codeblocks-cloud-"));
+    writeFileSync(
+      path.join(rootDir, "page.mdx"),
+      ['```js title="cloud.js" runnable', 'throw new Error("should not run locally")', "```"].join(
+        "\n",
+      ),
+      "utf-8",
+    );
+
+    const report = await validateCodeBlocks({
+      rootDir,
+      contentDir: ".",
+      config: resolveDocsCodeBlocksValidateConfig({
+        runner: {
+          provider: "cloud",
+        },
+      }),
+    });
+
+    expect(report.summary).toMatchObject({
+      pass: 0,
+      skip: 1,
+      fail: 0,
+    });
+    expect(report.results[0]?.reason).toBe(
+      "cloud runner is not available in this package yet",
+    );
+  });
+
+  it("skips E2B when its token is missing", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "docs-codeblocks-e2b-missing-"));
+    writeFileSync(
+      path.join(rootDir, "page.mdx"),
+      ['```js title="e2b.js" runnable', 'console.log("e2b")', "```"].join("\n"),
+      "utf-8",
+    );
+
+    const report = await validateCodeBlocks({
+      rootDir,
+      contentDir: ".",
+      config: resolveDocsCodeBlocksValidateConfig({
+        runner: {
+          provider: "e2b",
+        },
+      }),
+    });
+
+    expect(report.summary).toMatchObject({
+      pass: 0,
+      skip: 1,
+      fail: 0,
+    });
+    expect(report.results[0]?.reason).toBe("missing E2B_API_KEY");
+  });
+
+  it("runs executable plans through the E2B adapter", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "docs-codeblocks-e2b-"));
+    writeFileSync(
+      path.join(rootDir, "page.mdx"),
+      ['```js title="e2b.js" runnable', 'console.log("e2b")', "```"].join("\n"),
+      "utf-8",
+    );
+
+    process.env.E2B_API_KEY = "test-e2b-token";
+    const run = vi.fn(async () => ({
+      stdout: "e2b ok\n",
+      stderr: "",
+      exitCode: 0,
+    }));
+    const kill = vi.fn(async () => {});
+    const create = vi.fn(async () => {
+      expect(process.env.E2B_API_KEY).toBe("test-e2b-token");
+      return {
+        commands: { run },
+        kill,
+      };
+    });
+    vi.stubGlobal("__DOCS_CODE_BLOCKS_MODULE_IMPORTER__", async (specifier: string) => {
+      expect(specifier).toBe("e2b");
+      return {
+        default: { create },
+      };
+    });
+
+    const report = await validateCodeBlocks({
+      rootDir,
+      contentDir: ".",
+      config: resolveDocsCodeBlocksValidateConfig({
+        runner: {
+          provider: "e2b",
+        },
+      }),
+    });
+
+    expect(create).toHaveBeenCalledOnce();
+    expect(run).toHaveBeenCalledWith(expect.stringContaining("'node'"), {
+      envs: {},
+      timeoutMs: 60000,
+    });
+    expect(run).toHaveBeenCalledWith(
+      expect.stringContaining("'snippet-page-mdx-code-1.js'"),
+      expect.any(Object),
+    );
+    expect(kill).toHaveBeenCalledOnce();
+    expect(report.summary).toMatchObject({
+      pass: 1,
+      skip: 0,
+      fail: 0,
+    });
+    expect(report.results[0]?.stdout).toBe("e2b ok\n");
+  });
+
+  it("runs executable plans through the Daytona adapter", async () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "docs-codeblocks-daytona-"));
+    writeFileSync(
+      path.join(rootDir, "page.mdx"),
+      ['```js title="daytona.js" runnable', 'console.log("daytona")', "```"].join("\n"),
+      "utf-8",
+    );
+
+    process.env.DAYTONA_API_KEY = "test-daytona-token";
+    process.env.DAYTONA_TARGET = "us";
+    const executeCommand = vi.fn(async () => ({
+      result: "daytona ok\n",
+      exitCode: 0,
+    }));
+    const stop = vi.fn(async () => {});
+    const create = vi.fn(async () => ({
+      process: { executeCommand },
+      stop,
+    }));
+    const Daytona = vi.fn().mockImplementation((input) => {
+      expect(input).toMatchObject({
+        apiKey: "test-daytona-token",
+        target: "us",
+      });
+      return { create };
+    });
+    vi.stubGlobal("__DOCS_CODE_BLOCKS_MODULE_IMPORTER__", async (specifier: string) => {
+      expect(specifier).toBe("@daytona/sdk");
+      return { Daytona };
+    });
+
+    const report = await validateCodeBlocks({
+      rootDir,
+      contentDir: ".",
+      config: resolveDocsCodeBlocksValidateConfig({
+        runner: {
+          provider: "daytona",
+        },
+      }),
+    });
+
+    expect(create).toHaveBeenCalledWith({
+      ephemeral: true,
+      language: "typescript",
+    });
+    expect(executeCommand).toHaveBeenCalledWith(expect.stringContaining("'node'"));
+    expect(stop).toHaveBeenCalledOnce();
+    expect(report.summary).toMatchObject({
+      pass: 1,
+      skip: 0,
+      fail: 0,
+    });
+    expect(report.results[0]?.stdout).toBe("daytona ok\n");
   });
 });

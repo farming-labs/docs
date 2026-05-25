@@ -63,6 +63,8 @@ export interface DocsCodeBlocksResolvedRunnerConfig {
   teamIdEnv: string;
   projectJson: string | false;
   runtime: "node24" | "node22" | "python3.13";
+  apiUrlEnv: string;
+  targetEnv: string;
   timeoutMs: number;
 }
 
@@ -139,6 +141,12 @@ interface VercelSandboxCredentials {
   missing: string[];
 }
 
+type OptionalModuleImporter = (specifier: string) => Promise<unknown>;
+
+declare global {
+  var __DOCS_CODE_BLOCKS_MODULE_IMPORTER__: OptionalModuleImporter | undefined;
+}
+
 export function resolveDocsCodeBlocksValidateConfig(
   input?: boolean | DocsCodeBlocksValidateConfig,
 ): DocsCodeBlocksResolvedValidateConfig {
@@ -153,6 +161,8 @@ export function resolveDocsCodeBlocksValidateConfig(
         teamIdEnv: "VERCEL_TEAM_ID",
         projectJson: ".vercel/project.json",
         runtime: "node24",
+        apiUrlEnv: "DAYTONA_API_URL",
+        targetEnv: "DAYTONA_TARGET",
         timeoutMs: DEFAULT_COMMAND_TIMEOUT_MS,
       },
       envFile: DEFAULT_ENV_FILES,
@@ -313,10 +323,12 @@ export async function validateCodeBlockPlans(input: {
     return skippedOrFailed;
   }
 
-  const runResults =
-    input.config.runner.provider === "vercel-sandbox"
-      ? await runPlansInVercelSandbox(plansToRun, input.rootDir, input.config, validationEnv.env)
-      : await runPlansLocally(plansToRun, input.config, validationEnv.env);
+  const runResults = await runPlansWithConfiguredRunner(
+    plansToRun,
+    input.rootDir,
+    input.config,
+    validationEnv.env,
+  );
 
   return [...skippedOrFailed, ...runResults].sort((a, b) => a.id.localeCompare(b.id));
 }
@@ -380,15 +392,24 @@ function normalizeRunnerConfig(
   input?: DocsCodeBlocksRunnerProvider | DocsCodeBlocksRunnerConfig,
 ): DocsCodeBlocksResolvedRunnerConfig {
   const config = typeof input === "string" ? { provider: input } : (input ?? {});
+  const provider = config.provider ?? "local";
   return {
-    provider: config.provider ?? "local",
-    tokenEnv: config.tokenEnv ?? "VERCEL_TOKEN",
+    provider,
+    tokenEnv: config.tokenEnv ?? defaultRunnerTokenEnv(provider),
     projectIdEnv: config.projectIdEnv ?? "VERCEL_PROJECT_ID",
     teamIdEnv: config.teamIdEnv ?? "VERCEL_TEAM_ID",
     projectJson: config.projectJson === undefined ? ".vercel/project.json" : config.projectJson,
     runtime: config.runtime ?? "node24",
+    apiUrlEnv: config.apiUrlEnv ?? "DAYTONA_API_URL",
+    targetEnv: config.targetEnv ?? "DAYTONA_TARGET",
     timeoutMs: config.timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS,
   };
+}
+
+function defaultRunnerTokenEnv(provider: DocsCodeBlocksRunnerProvider): string {
+  if (provider === "e2b") return "E2B_API_KEY";
+  if (provider === "daytona") return "DAYTONA_API_KEY";
+  return "VERCEL_TOKEN";
 }
 
 function buildMetadataExecutionPlan(
@@ -818,6 +839,28 @@ async function runPlansLocally(
   }
 }
 
+async function runPlansWithConfiguredRunner(
+  plans: DocsCodeBlockExecutionPlan[],
+  rootDir: string,
+  config: DocsCodeBlocksResolvedValidateConfig,
+  env: Record<string, string>,
+): Promise<DocsCodeBlockValidationResult[]> {
+  switch (config.runner.provider) {
+    case "local":
+      return runPlansLocally(plans, config, env);
+    case "vercel-sandbox":
+      return runPlansInVercelSandbox(plans, rootDir, config, env);
+    case "e2b":
+      return runPlansInE2B(plans, config, env);
+    case "daytona":
+      return runPlansInDaytona(plans, config, env);
+    case "cloud":
+      return plans.map((plan) =>
+        skippedResult(plan, "cloud runner is not available in this package yet"),
+      );
+  }
+}
+
 async function runPlansInVercelSandbox(
   plans: DocsCodeBlockExecutionPlan[],
   rootDir: string,
@@ -911,6 +954,133 @@ async function runPlansInVercelSandbox(
   }
 }
 
+async function runPlansInE2B(
+  plans: DocsCodeBlockExecutionPlan[],
+  config: DocsCodeBlocksResolvedValidateConfig,
+  env: Record<string, string>,
+): Promise<DocsCodeBlockValidationResult[]> {
+  const token = process.env[config.runner.tokenEnv];
+  if (!token) {
+    return plans.map((plan) => skippedResult(plan, `missing ${config.runner.tokenEnv}`));
+  }
+
+  const module = await importOptionalModule("e2b");
+  if (!module) {
+    return plans.map((plan) =>
+      skippedResult(plan, 'e2b unavailable: install the "e2b" package'),
+    );
+  }
+
+  try {
+    const E2BSandbox =
+      readProviderExport(module, "default") ?? readProviderExport(module, "Sandbox");
+    if (!hasCreateMethod(E2BSandbox)) {
+      return plans.map((plan) => skippedResult(plan, "e2b unavailable: missing Sandbox.create"));
+    }
+
+    const sandbox = await withTemporaryEnv("E2B_API_KEY", token, () => E2BSandbox.create());
+    try {
+      return await Promise.all(
+        plans.map(async (plan) => {
+          if (!plan.command || !plan.filePath) {
+            return skippedResult(plan, "no executable command in plan");
+          }
+
+          const command = buildSandboxShellCommand(plan);
+          const runner = readObject(sandbox).commands;
+          if (!hasRunMethod(runner)) {
+            return skippedResult(plan, "e2b unavailable: missing commands.run");
+          }
+
+          try {
+            const result = await runner.run(command, {
+              envs: env,
+              timeoutMs: config.runner.timeoutMs,
+            });
+            return sandboxCommandResult(plan, result);
+          } catch (error) {
+            return failedSandboxResult(plan, error);
+          }
+        }),
+      );
+    } finally {
+      await cleanupProviderSandbox(sandbox);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return plans.map((plan) => skippedResult(plan, `e2b unavailable: ${message}`));
+  }
+}
+
+async function runPlansInDaytona(
+  plans: DocsCodeBlockExecutionPlan[],
+  config: DocsCodeBlocksResolvedValidateConfig,
+  env: Record<string, string>,
+): Promise<DocsCodeBlockValidationResult[]> {
+  const token = process.env[config.runner.tokenEnv];
+  if (!token) {
+    return plans.map((plan) => skippedResult(plan, `missing ${config.runner.tokenEnv}`));
+  }
+
+  const module = await importOptionalModule("@daytona/sdk");
+  if (!module) {
+    return plans.map((plan) =>
+      skippedResult(plan, 'daytona unavailable: install the "@daytona/sdk" package'),
+    );
+  }
+
+  try {
+    const Daytona = readProviderExport(module, "Daytona");
+    if (!hasConstructor(Daytona)) {
+      return plans.map((plan) => skippedResult(plan, "daytona unavailable: missing Daytona SDK"));
+    }
+
+    const apiUrl = process.env[config.runner.apiUrlEnv];
+    const target = process.env[config.runner.targetEnv];
+    const daytona = new Daytona({
+      apiKey: token,
+      ...(apiUrl ? { apiUrl } : {}),
+      ...(target ? { target } : {}),
+    });
+    if (!hasCreateMethod(daytona)) {
+      return plans.map((plan) => skippedResult(plan, "daytona unavailable: missing create"));
+    }
+
+    const sandbox = await daytona.create({
+      ephemeral: true,
+      language: "typescript",
+      ...(Object.keys(env).length > 0 ? { envVars: env } : {}),
+    });
+    try {
+      return await Promise.all(
+        plans.map(async (plan) => {
+          if (!plan.command || !plan.filePath) {
+            return skippedResult(plan, "no executable command in plan");
+          }
+
+          const processApi = readObject(sandbox).process;
+          if (!hasExecuteCommandMethod(processApi)) {
+            return skippedResult(plan, "daytona unavailable: missing process.executeCommand");
+          }
+
+          try {
+            const result = await processApi.executeCommand(buildSandboxShellCommand(plan));
+            return sandboxCommandResult(plan, result);
+          } catch (error) {
+            return failedSandboxResult(plan, error);
+          }
+        }),
+      );
+    } finally {
+      await cleanupProviderSandbox(sandbox);
+      await cleanupProviderSandbox(daytona);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return plans.map((plan) => skippedResult(plan, `daytona unavailable: ${message}`));
+  }
+}
+
 async function resolveVercelSandboxCredentials(
   rootDir: string,
   config: DocsCodeBlocksResolvedValidateConfig,
@@ -987,6 +1157,171 @@ function readVercelProjectJson(
   } catch {
     return undefined;
   }
+}
+
+async function importOptionalModule(specifier: string): Promise<unknown | undefined> {
+  const importer =
+    globalThis.__DOCS_CODE_BLOCKS_MODULE_IMPORTER__ ??
+    ((id: string) => import(id) as Promise<unknown>);
+
+  try {
+    return await importer(specifier);
+  } catch {
+    return undefined;
+  }
+}
+
+function buildSandboxShellCommand(plan: DocsCodeBlockExecutionPlan): string {
+  const command = plan.command;
+  const filePath = plan.filePath;
+  if (!command || !filePath) return "";
+
+  const sandboxDir = "/tmp/docs-codeblocks";
+  const encodedCode = Buffer.from(plan.target.code, "utf-8").toString("base64");
+  const writeFileCommand = [
+    "printf",
+    "%s",
+    encodedCode,
+    "|",
+    "base64",
+    "-d",
+    ">",
+    filePath,
+  ]
+    .map((part) => (part === "|" || part === ">" ? part : shellEscape(part)))
+    .join(" ");
+
+  return [
+    `mkdir -p ${shellEscape(sandboxDir)}`,
+    `cd ${shellEscape(sandboxDir)}`,
+    writeFileCommand,
+    shellJoin([command.cmd, ...command.args]),
+  ].join(" && ");
+}
+
+function shellJoin(parts: string[]): string {
+  return parts.map(shellEscape).join(" ");
+}
+
+function shellEscape(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+async function withTemporaryEnv<T>(
+  key: string,
+  value: string,
+  callback: () => Promise<T>,
+): Promise<T> {
+  const previous = process.env[key];
+  process.env[key] = value;
+  try {
+    return await callback();
+  } finally {
+    if (previous === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = previous;
+    }
+  }
+}
+
+function sandboxCommandResult(
+  plan: DocsCodeBlockExecutionPlan,
+  result: unknown,
+): DocsCodeBlockValidationResult {
+  const record = readObject(result);
+  const error = readStringValue(record.error);
+  const exitCode =
+    readNumberValue(record.exitCode) ??
+    readNumberValue(record.code) ??
+    readNumberValue(record.exit_code) ??
+    (error ? 1 : 0);
+  const stdout =
+    readStringValue(record.stdout) ??
+    readStringValue(record.result) ??
+    readStringValue(record.text) ??
+    "";
+  const stderr = readStringValue(record.stderr) ?? error ?? "";
+
+  return {
+    id: plan.id,
+    target: plan.target,
+    plan,
+    status: exitCode === 0 ? ("PASS" as const) : ("FAIL" as const),
+    stdout,
+    stderr,
+    exitCode,
+    reason: exitCode === 0 ? undefined : `exit code ${exitCode}`,
+  };
+}
+
+function failedSandboxResult(
+  plan: DocsCodeBlockExecutionPlan,
+  error: unknown,
+): DocsCodeBlockValidationResult {
+  const record = readObject(error);
+  return {
+    id: plan.id,
+    target: plan.target,
+    plan,
+    status: "FAIL",
+    stdout: readStringValue(record.stdout),
+    stderr: readStringValue(record.stderr),
+    exitCode: readNumberValue(record.exitCode) ?? readNumberValue(record.code) ?? null,
+    reason: error instanceof Error ? error.message : String(error),
+  };
+}
+
+async function cleanupProviderSandbox(value: unknown): Promise<void> {
+  const record = readObject(value);
+  for (const methodName of ["kill", "close", "stop", "delete", "remove", "destroy"]) {
+    const method = record[methodName];
+    if (typeof method !== "function") continue;
+    await Promise.resolve(method.call(value)).catch(() => {});
+    return;
+  }
+}
+
+function readProviderExport(module: unknown, name: string): unknown {
+  return readObject(module)[name];
+}
+
+function readObject(value: unknown): Record<string, unknown> {
+  return value !== null && (typeof value === "object" || typeof value === "function")
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function readStringValue(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function readNumberValue(value: unknown): number | undefined {
+  return typeof value === "number" ? value : undefined;
+}
+
+function hasCreateMethod(value: unknown): value is {
+  create(input?: unknown): Promise<unknown>;
+} {
+  return typeof readObject(value).create === "function";
+}
+
+function hasRunMethod(value: unknown): value is {
+  run(command: string, options?: unknown): Promise<unknown>;
+} {
+  return typeof readObject(value).run === "function";
+}
+
+function hasExecuteCommandMethod(value: unknown): value is {
+  executeCommand(command: string): Promise<unknown>;
+} {
+  return typeof readObject(value).executeCommand === "function";
+}
+
+function hasConstructor(value: unknown): value is new (input?: unknown) => {
+  create(input?: unknown): Promise<unknown>;
+} {
+  return typeof value === "function";
 }
 
 function loadValidationEnv(

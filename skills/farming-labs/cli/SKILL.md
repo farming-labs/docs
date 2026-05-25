@@ -206,6 +206,8 @@ Use the docs config `mcp` block when you also want the HTTP route version at `/m
 
 Use `docs codeblocks validate` to scan MD/MDX fences, build execution plans from code fence metadata,
 and run executable snippets when `codeBlocks.validate` is enabled in `docs.config.ts`.
+Supported runners are `local`, `vercel-sandbox`, `e2b`, `daytona`, and the reserved `cloud` runner.
+E2B requires `e2b`; Daytona requires `@daytona/sdk`.
 
 ```bash
 pnpm exec docs codeblocks validate --plan

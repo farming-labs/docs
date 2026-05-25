@@ -605,10 +605,10 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
       {
         path: "codeBlocks.validate.runner",
         name: "runner",
-        type: '"local" | "vercel-sandbox" | "cloud" | DocsCodeBlocksRunnerConfig',
+        type: '"local" | "vercel-sandbox" | "e2b" | "daytona" | "cloud" | DocsCodeBlocksRunnerConfig',
         default: "local",
         description:
-          "Runner used to execute planned snippets. The Vercel Sandbox runner can work from `VERCEL_TOKEN` alone by auto-discovering an accessible project.",
+          "Runner used to execute planned snippets. Vercel Sandbox, E2B, and Daytona use provider tokens from env vars.",
       },
       {
         path: "codeBlocks.validate.env",

@@ -2329,7 +2329,12 @@ export interface DocsReviewConfig {
 
 export type DocsCodeBlocksPlannerProvider = "metadata" | "openai" | "openai-compatible" | "cloud";
 
-export type DocsCodeBlocksRunnerProvider = "local" | "vercel-sandbox" | "cloud";
+export type DocsCodeBlocksRunnerProvider =
+  | "local"
+  | "vercel-sandbox"
+  | "e2b"
+  | "daytona"
+  | "cloud";
 
 export type DocsCodeBlocksValidationMode = "plan" | "report";
 
@@ -2366,7 +2371,7 @@ export interface DocsCodeBlocksRunnerConfig {
    * @default "local"
    */
   provider?: DocsCodeBlocksRunnerProvider;
-  /** Environment variable containing the Vercel token for `provider: "vercel-sandbox"`. */
+  /** Environment variable containing the sandbox provider token. */
   tokenEnv?: string;
   /** Advanced override for the Vercel project id env var used by `provider: "vercel-sandbox"`. */
   projectIdEnv?: string;
@@ -2383,6 +2388,10 @@ export interface DocsCodeBlocksRunnerConfig {
   projectJson?: string | false;
   /** Vercel Sandbox runtime. */
   runtime?: "node24" | "node22" | "python3.13";
+  /** Daytona API URL env var used by `provider: "daytona"`. */
+  apiUrlEnv?: string;
+  /** Daytona target/region env var used by `provider: "daytona"`. */
+  targetEnv?: string;
   /** Per-command timeout in milliseconds. */
   timeoutMs?: number;
 }
