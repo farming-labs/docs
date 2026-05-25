@@ -28,7 +28,7 @@ export function parseCommandAlias(rawCommand?: string): {
 /** Parse flags like --template next, --name my-docs, --theme concrete, --entry docs, --framework astro (exported for tests). */
 export function parseFlags(argv: string[]): Record<string, string | boolean | undefined> {
   const flags: Record<string, string | boolean | undefined> = {};
-  const booleanFlags = new Set(["api-reference", "typesense", "algolia", "verbose", "host"]);
+  const booleanFlags = new Set(["api-reference", "typesense", "algolia", "verbose", "host", "json"]);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg.startsWith("--") && arg.includes("=")) {
@@ -92,6 +92,17 @@ async function main() {
     indexName: typeof flags["index-name"] === "string" ? flags["index-name"] : undefined,
     searchApiKey: typeof flags["search-api-key"] === "string" ? flags["search-api-key"] : undefined,
   };
+  const cloudOptions = {
+    configPath: typeof flags.config === "string" ? flags.config : undefined,
+    apiBaseUrl:
+      typeof flags["api-base-url"] === "string"
+        ? flags["api-base-url"]
+        : typeof flags.url === "string"
+          ? flags.url
+          : undefined,
+    apiKey: typeof flags["api-key"] === "string" ? flags["api-key"] : undefined,
+    json: typeof flags.json === "boolean" ? flags.json : undefined,
+  };
 
   if (!parsedCommand.command || parsedCommand.command === "init") {
     const { init } = await import("./init.js");
@@ -99,6 +110,21 @@ async function main() {
   } else if (parsedCommand.command === "dev") {
     const { dev } = await import("./dev.js");
     await dev(devOptions);
+  } else if (parsedCommand.command === "preview") {
+    const { runCloudPreview } = await import("./cloud.js");
+    await runCloudPreview(cloudOptions);
+  } else if (parsedCommand.command === "cloud" && subcommand === "preview") {
+    const { runCloudPreview } = await import("./cloud.js");
+    await runCloudPreview(cloudOptions);
+  } else if (parsedCommand.command === "cloud" && subcommand === "sync") {
+    const { syncCloudConfig } = await import("./cloud.js");
+    await syncCloudConfig(cloudOptions);
+  } else if (parsedCommand.command === "cloud") {
+    console.error(pc.red(`Unknown cloud subcommand: ${subcommand ?? "(missing)"}`));
+    console.error();
+    const { printCloudHelp } = await import("./cloud.js");
+    printCloudHelp();
+    process.exit(1);
   } else if (parsedCommand.command === "mcp") {
     const { runMcp } = await import("./mcp.js");
     await runMcp(mcpOptions);
@@ -254,6 +280,8 @@ ${pc.dim("Usage:")}
 ${pc.dim("Commands:")}
   ${pc.cyan("init")}     Scaffold docs in your project (default)
   ${pc.cyan("dev")}      Run frameworkless docs locally from ${pc.dim("docs.json")}
+  ${pc.cyan("preview")}  Sync cloud config and request a hosted Docs Cloud preview
+  ${pc.cyan("cloud")}    Docs Cloud utilities (${pc.dim("preview")}, ${pc.dim("sync")})
   ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} to generate sibling agent.md files)
   ${pc.cyan("agents")}   AGENTS.md utilities (${pc.dim("generate")} for static agent instructions)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
@@ -286,6 +314,15 @@ ${pc.dim("Options for dev:")}
   ${pc.cyan("--hostname <host>")}   Bind the preview server to a custom hostname
   ${pc.cyan("--host [host]")}       Expose the preview on your network; optionally pass a host value
   ${pc.cyan("--verbose")}           Show raw runtime logs in addition to branded CLI output
+
+${pc.dim("Options for cloud preview:")}
+  ${pc.cyan("preview")}                              Sync ${pc.dim("docs.config.ts")} into ${pc.dim("docs.json")} and request a hosted preview
+  ${pc.cyan("cloud preview")}                        Same as ${pc.cyan("preview")}
+  ${pc.cyan("cloud sync")}                           Only materialize cloud settings into ${pc.dim("docs.json")}
+  ${pc.cyan("--config <path>")}                      Use a custom docs config path
+  ${pc.cyan("--api-base-url <url>")}                 Override the Docs Cloud API base URL
+  ${pc.cyan("--api-key <key>")}                      Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
+  ${pc.cyan("--json")}                              Print machine-readable output
 
 ${pc.dim("Options for agent compact:")}
   ${pc.cyan("agent compact <page...>")}             Compact pages and write sibling ${pc.dim("agent.md")} files

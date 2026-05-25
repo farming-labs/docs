@@ -26,7 +26,12 @@ In this example, `docs.json` separates the docs project from the hosted cloud la
     "root": ".docs/site"
   },
   "cloud": {
-    "enabled": false,
+    "apiKey": {
+      "env": "DOCS_CLOUD_API_KEY"
+    },
+    "preview": {
+      "enabled": false
+    },
     "analytics": {
       "enabled": true,
       "console": "info",
@@ -38,10 +43,11 @@ In this example, `docs.json` separates the docs project from the hosted cloud la
 
 - `docs.mode` describes how the project is authored
 - `docs.runtime` is the generated docs runtime choice
-- `cloud.enabled` turns the Docs Cloud service layer on or off
+- `cloud.apiKey.env` tells CLI/CI where to read the Docs Cloud API key without writing secrets to JSON
+- `cloud.preview.enabled` controls whether Docs Cloud should request live preview deployments
 - `cloud.analytics` is the Docs Cloud analytics contract for the serializable runtime subset
 
-Even with `cloud.enabled: false`, frameworkless local preview can still materialize the serializable
+Even with `cloud.preview.enabled: false`, frameworkless local preview can still materialize the serializable
 `cloud.analytics` subset into the generated hidden runtime.
 
 See the full contract in the

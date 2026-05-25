@@ -1,15 +1,15 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold, upgrade, downgrade, run doctor audits, compact agent docs, validate code blocks, generate AGENTS.md, generate sitemaps, generate robots.txt, sync external search indexes, and run MCP for docs. Use when running init, upgrade, downgrade, doctor, agent compact, codeblocks validate, agents generate, sitemap generate, robots generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --version, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
+description: @farming-labs/docs CLI — scaffold, upgrade, downgrade, request Docs Cloud previews, run doctor audits, compact agent docs, validate code blocks, generate AGENTS.md, generate sitemaps, generate robots.txt, sync external search indexes, and run MCP for docs. Use when running init, preview, cloud preview, cloud sync, upgrade, downgrade, doctor, agent compact, codeblocks validate, agents generate, sitemap generate, robots generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --version, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
 ---
 
 # @farming-labs/docs — CLI
 
 The `@farming-labs/docs` CLI scaffolds, upgrades, downgrades, audits agent and reader readiness, compacts
-page-level agent docs, validates fenced code blocks, reviews docs PR changes, generates `AGENTS.md`, syncs external search indexes, generates robots.txt policy files, and can
+page-level agent docs, validates fenced code blocks, reviews docs PR changes, generates `AGENTS.md`, syncs external search indexes, generates robots.txt policy files, requests Docs Cloud previews, and can
 run the built-in MCP server for documentation projects. Use this skill when the user asks about CLI
 commands, init, upgrade, downgrade, `doctor`, `agent compact`, `codeblocks validate`, `agents generate`, `sitemap generate`, `robots generate`, search
-sync, mcp, review, or scaffolding.
+sync, mcp, review, cloud preview, cloud sync, or scaffolding.
 
 ---
 
@@ -201,6 +201,34 @@ when a snippet has a target file, framework, package manager, or is safe to copy
 example. This metadata is for markdown/MCP consumers and does not require a UI change.
 
 Use the docs config `mcp` block when you also want the HTTP route version at `/mcp` or `/.well-known/mcp`.
+
+## Docs Cloud preview
+
+Use `docs preview` from a docs project root to sync the serializable `cloud` block from
+`docs.config.ts` into `docs.json`, validate the configured API key, and request a hosted Docs Cloud
+preview.
+
+```bash
+pnpm exec docs preview
+pnpm exec docs cloud preview
+pnpm exec docs cloud sync
+```
+
+Config shape:
+
+```ts
+cloud: {
+  apiKey: { env: "DOCS_CLOUD_API_KEY" },
+  preview: { enabled: true },
+  publish: { mode: "draft-pr", baseBranch: "main" },
+}
+```
+
+- `docs cloud sync` only writes or updates `docs.json`.
+- `docs preview` auto-creates `docs.json` if the project has not run a cloud command before.
+- The API key value must live in the named env var, `.env.local`, or CI secrets. Never write the raw key into config.
+- Use `--config <path>` when `docs.config.ts` lives outside the project root.
+- Use `--api-base-url <url>` for staging/self-hosted cloud API testing.
 
 ## Code block validation
 

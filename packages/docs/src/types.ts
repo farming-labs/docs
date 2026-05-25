@@ -870,6 +870,58 @@ export interface DocsAnalyticsConfig {
   onEvent?: (event: DocsAnalyticsEvent) => void | Promise<void>;
 }
 
+export interface DocsCloudApiKeyConfig {
+  /**
+   * Environment variable that stores the Docs Cloud API key.
+   *
+   * The key value is never written to docs.json; only this env var name is
+   * mirrored for CLI and CI workflows.
+   *
+   * @default "DOCS_CLOUD_API_KEY"
+   */
+  env?: string;
+}
+
+export interface DocsCloudPreviewConfig {
+  /** Whether Docs Cloud should request live preview deployments. @default true */
+  enabled?: boolean;
+}
+
+export interface DocsCloudPublishConfig {
+  /** How Docs Cloud should publish generated docs changes. @default "draft-pr" */
+  mode?: "draft-pr" | "direct-commit";
+  /** Branch that generated docs work should target. @default "main" */
+  baseBranch?: string;
+}
+
+export interface DocsCloudFeatureConfig {
+  /** Whether the hosted cloud feature is enabled. @default true */
+  enabled?: boolean;
+}
+
+export interface DocsCloudConfig {
+  /**
+   * Optional explicit cloud toggle.
+   *
+   * Prefer omitting this in new projects; the presence of `cloud` opts the
+   * project into cloud-aware CLI flows. This remains available for backwards
+   * compatibility with older docs.json files.
+   */
+  enabled?: boolean;
+  /** API key lookup used by `docs preview` and other cloud CLI commands. */
+  apiKey?: DocsCloudApiKeyConfig;
+  /** Hosted preview deployment settings. */
+  preview?: DocsCloudPreviewConfig;
+  /** Generated docs publishing settings. */
+  publish?: DocsCloudPublishConfig;
+  /** Hosted analytics settings that can be mirrored to docs.json. */
+  analytics?: boolean | Omit<DocsAnalyticsConfig, "onEvent">;
+  /** Hosted AI feature toggle. */
+  ai?: DocsCloudFeatureConfig;
+  /** Hosted deployment feature toggle. */
+  deploy?: DocsCloudFeatureConfig;
+}
+
 export interface DocsObservabilityConfig {
   /** Enable trace emission. Defaults to `true` when this object is provided. */
   enabled?: boolean;
@@ -2502,6 +2554,23 @@ export interface DocsConfig {
    * included unless `includeInputs: true` is set.
    */
   analytics?: boolean | DocsAnalyticsConfig;
+  /**
+   * Docs Cloud integration settings.
+   *
+   * Use this to configure the API key env var and cloud preview defaults once
+   * in `docs.config.ts`; cloud CLI commands mirror the serializable subset into
+   * `docs.json` automatically.
+   *
+   * @example
+   * ```ts
+   * cloud: {
+   *   apiKey: { env: "DOCS_CLOUD_API_KEY" },
+   *   preview: { enabled: true },
+   *   publish: { mode: "draft-pr", baseBranch: "main" },
+   * }
+   * ```
+   */
+  cloud?: DocsCloudConfig;
   /**
    * Built-in observability stream for agent traces, timing, errors, and runtime debugging.
    * This is separate from `analytics`; it emits span-like Ask AI and MCP trace events.

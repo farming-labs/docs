@@ -51,6 +51,20 @@ describe("parseFlags", () => {
     expect(flags.collection).toBe("docs");
   });
 
+  it("parses cloud preview flags", () => {
+    const flags = parseFlags([
+      "preview",
+      "--config",
+      "src/lib/docs.config.ts",
+      "--api-base-url",
+      "https://docs-app.example.com",
+      "--json",
+    ]);
+    expect(flags.config).toBe("src/lib/docs.config.ts");
+    expect(flags["api-base-url"]).toBe("https://docs-app.example.com");
+    expect(flags.json).toBe(true);
+  });
+
   it("parses dev flags including verbose and hostname aliases", () => {
     const flags = parseFlags(["dev", "--verbose", "--port", "4010", "--host", "0.0.0.0"]);
     expect(flags.verbose).toBe(true);

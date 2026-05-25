@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   extractNestedObjectLiteral,
   readBooleanProperty,
+  readTopLevelBooleanProperty,
   readEnvReferenceProperty,
   readNavTitle,
   readStringProperty,
@@ -89,6 +90,22 @@ describe("property readers", () => {
 
     expect(readTopLevelStringProperty(content, "entry")).toBe("docs");
     expect(readTopLevelStringProperty(content, "contentDir")).toBeUndefined();
+  });
+
+  it("reads top-level boolean properties without picking nested matches", () => {
+    const content = `
+      export default defineDocs({
+        cloud: {
+          preview: {
+            enabled: false,
+          },
+          enabled: true,
+        },
+      });
+    `;
+
+    const cloudBlock = extractNestedObjectLiteral(content, ["cloud"]) ?? "";
+    expect(readTopLevelBooleanProperty(cloudBlock, "enabled")).toBe(true);
   });
 
   it("matches exact boolean property names", () => {
