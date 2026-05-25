@@ -446,8 +446,7 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
     path: "cloud",
     name: "cloud",
     type: "DocsCloudConfig",
-    description:
-      "Docs Cloud integration settings mirrored into docs.json by cloud CLI commands.",
+    description: "Docs Cloud integration settings mirrored into docs.json by cloud CLI commands.",
     children: [
       {
         path: "cloud.apiKey.env",

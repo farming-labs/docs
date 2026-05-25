@@ -115,7 +115,10 @@ function readPackageName(rootDir: string): string | undefined {
 
 function titleFromPackageName(name: string | undefined): string | undefined {
   if (!name) return undefined;
-  const normalized = name.replace(/^@[^/]+\//, "").replace(/[-_]+/g, " ").trim();
+  const normalized = name
+    .replace(/^@[^/]+\//, "")
+    .replace(/[-_]+/g, " ")
+    .trim();
   if (!normalized) return undefined;
   return normalized.replace(/\b\w/g, (match) => match.toUpperCase());
 }
@@ -293,7 +296,9 @@ function readStaticCloudConfig(content: string | undefined): DocsCloudConfig | u
     cloud.ai = { enabled: aiEnabled };
   }
 
-  const deployEnabled = deployBlock ? readTopLevelBooleanProperty(deployBlock, "enabled") : undefined;
+  const deployEnabled = deployBlock
+    ? readTopLevelBooleanProperty(deployBlock, "enabled")
+    : undefined;
   if (typeof deployEnabled === "boolean") {
     cloud.deploy = { enabled: deployEnabled };
   }
@@ -301,7 +306,10 @@ function readStaticCloudConfig(content: string | undefined): DocsCloudConfig | u
   return cloud;
 }
 
-function resolveCloudConfig(snapshot: DocsConfigSnapshot, existing?: ManagedDocsJson): DocsCloudConfig {
+function resolveCloudConfig(
+  snapshot: DocsConfigSnapshot,
+  existing?: ManagedDocsJson,
+): DocsCloudConfig {
   const moduleCloud = snapshot.config?.cloud;
   const staticCloud = readStaticCloudConfig(snapshot.content);
   const existingCloud = existing?.cloud;
@@ -352,7 +360,8 @@ function resolveDocsRoot(
   snapshot: DocsConfigSnapshot,
   existing?: ManagedDocsJson,
 ): string {
-  const entry = snapshot.config?.entry ?? readTopLevelStringProperty(snapshot.content ?? "", "entry") ?? "docs";
+  const entry =
+    snapshot.config?.entry ?? readTopLevelStringProperty(snapshot.content ?? "", "entry") ?? "docs";
   if (snapshot.config?.contentDir) return snapshot.config.contentDir;
   if (snapshot.content) return resolveDocsContentDir(rootDir, snapshot.content, entry);
   if (typeof existing?.content?.docsRoot === "string") return existing.content.docsRoot;
@@ -603,7 +612,9 @@ async function requestPreview(params: {
 }
 
 function createSpinner(initialMessage: string, options: { json?: boolean } = {}): Spinner {
-  const interactive = Boolean(process.stdout.isTTY && !options.json && process.env.NODE_ENV !== "test");
+  const interactive = Boolean(
+    process.stdout.isTTY && !options.json && process.env.NODE_ENV !== "test",
+  );
   const frames = ["-", "\\", "|", "/"];
   let frame = 0;
   let message = initialMessage;
@@ -661,7 +672,9 @@ export async function syncCloudConfig(options: CloudCommandOptions = {}) {
   }
 
   const action = result.created ? "Created" : result.updated ? "Synced" : "Checked";
-  console.log(`${pc.green("ok")} ${action} ${pc.cyan(path.relative(process.cwd(), result.docsJsonPath) || DOCS_JSON_FILE)}`);
+  console.log(
+    `${pc.green("ok")} ${action} ${pc.cyan(path.relative(process.cwd(), result.docsJsonPath) || DOCS_JSON_FILE)}`,
+  );
   console.log(`${pc.dim("api key env")} ${result.apiKeyEnv}`);
   return result;
 }

@@ -28,7 +28,14 @@ export function parseCommandAlias(rawCommand?: string): {
 /** Parse flags like --template next, --name my-docs, --theme concrete, --entry docs, --framework astro (exported for tests). */
 export function parseFlags(argv: string[]): Record<string, string | boolean | undefined> {
   const flags: Record<string, string | boolean | undefined> = {};
-  const booleanFlags = new Set(["api-reference", "typesense", "algolia", "verbose", "host", "json"]);
+  const booleanFlags = new Set([
+    "api-reference",
+    "typesense",
+    "algolia",
+    "verbose",
+    "host",
+    "json",
+  ]);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg.startsWith("--") && arg.includes("=")) {
