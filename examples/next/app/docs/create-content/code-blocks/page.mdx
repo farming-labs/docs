@@ -57,6 +57,59 @@ export default function Page() {
 ```
 ````
 
+## Code Groups
+
+Group related code blocks into tabs with the Mintlify-style `<CodeGroup>` syntax. The tab label can
+come from a bare filename after the language, `title`, or `filename`.
+
+<CodeGroup dropdown>
+
+```bash npm
+npm install better-auth
+```
+
+```bash pnpm
+pnpm add better-auth
+```
+
+```ts title="auth.ts"
+import { betterAuth } from "better-auth";
+
+export const auth = betterAuth({
+  emailAndPassword: {
+    enabled: true,
+  },
+});
+```
+
+</CodeGroup>
+
+The authoring syntax is just regular fenced code inside the group:
+
+````mdx
+<CodeGroup dropdown>
+
+```bash npm
+npm install better-auth
+```
+
+```bash pnpm
+pnpm add better-auth
+```
+
+```ts title="auth.ts"
+import { betterAuth } from "better-auth";
+
+export const auth = betterAuth({
+  emailAndPassword: {
+    enabled: true,
+  },
+});
+```
+
+</CodeGroup>
+````
+
 ## Agent Metadata
 
 Code fences can include extra metadata for agents and MCP tools. The rendered code block keeps the

@@ -11,6 +11,7 @@ export default defineConfig({
     "src/config.ts",
     "src/layout.tsx",
     "src/mdx-plugins/remark-heading.ts",
+    "src/mdx-plugins/remark-code-group.ts",
     "src/mdx-plugins/rehype-toc.ts",
     "src/mdx-plugins/rehype-code.ts",
     "src/mdx-plugins/remark-og.ts",

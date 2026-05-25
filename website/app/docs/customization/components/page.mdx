@@ -101,7 +101,39 @@ The following components are available by default (from `fumadocs-ui`):
 - `HoverLink` — hover-triggered popover link card with title, description, and CTA
 - `Prompt` — reusable AI prompt card with copy/open actions
 - `Tab`, `Tabs` — tabbed content
+- `CodeGroup` — Mintlify-compatible tabbed code groups powered by the built-in code block UI
 - `Callout` — callout/admonition boxes
+
+### Example: Use `CodeGroup`
+
+`CodeGroup` lets you wrap multiple fenced code blocks in one tabbed block. The tab label comes from
+`title`, `filename`, or the bare filename after the language, so Mintlify-style docs can move over
+without custom components.
+
+````mdx title="page.mdx"
+<CodeGroup>
+
+```bash npm
+npm install @farming-labs/docs
+```
+
+```bash pnpm
+pnpm add @farming-labs/docs
+```
+
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "app/docs",
+});
+```
+
+</CodeGroup>
+````
+
+Use `<CodeGroup dropdown>` when you want to preserve Mintlify-authored MDX that includes the
+`dropdown` prop. It is accepted by the renderer and exposed as a data attribute for theme styling.
 
 ### Example: Use `HoverLink`
 

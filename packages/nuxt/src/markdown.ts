@@ -419,9 +419,43 @@ function highlightCode(hl: Highlighter, code: string, lang: string): { html: str
 }
 
 function parseMeta(meta: string): { lang: string; title: string | null } {
-  const lang = (meta.split(/\s/)[0] || "text").toLowerCase();
-  const titleMatch = meta.match(/title=["']([^"']+)["']/);
+  const trimmed = meta.trim();
+  const lang = (trimmed.split(/\s/)[0] || "text").toLowerCase();
+  const titleMatch = trimmed.match(/\b(?:title|filename|file|name|label)=["']([^"']+)["']/);
   return { lang, title: titleMatch ? titleMatch[1] : null };
+}
+
+function parseCodeGroupMeta(meta: string): { lang: string; title: string | null } {
+  const parsed = parseMeta(meta);
+  if (parsed.title) return parsed;
+
+  const trimmed = meta.trim();
+  const language = trimmed.split(/\s+/, 1)[0] ?? "";
+  const bareTitle = trimmed
+    .slice(language.length)
+    .trim()
+    .replace(/\{[^}]*\}/g, " ")
+    .split(/\s+/)
+    .find((part) => part && !part.includes("="));
+
+  return {
+    ...parsed,
+    title: bareTitle ? bareTitle.replace(/^["']|["']$/g, "") : null,
+  };
+}
+
+function createCodeGroupTabValue(label: string, used: Set<string>): string {
+  const slug = slugify(label) || `code-${used.size + 1}`;
+  let value = slug;
+  let suffix = 2;
+
+  while (used.has(value)) {
+    value = `${slug}-${suffix}`;
+    suffix += 1;
+  }
+
+  used.add(value);
+  return value;
 }
 
 function wrapCodeWithCopy(
@@ -471,8 +505,51 @@ export async function renderMarkdown(
   const hl = await getHighlighter();
   let result = resolveDocsAgentMdxContent(content, "human");
 
-  // ── Tabs blocks: <Tabs items={[...]}> ... </Tabs> ──
+  // ── Mintlify-style code groups: <CodeGroup> fenced code blocks </CodeGroup> ──
   const tabsBlocks: string[] = [];
+  result = result.replace(
+    /<CodeGroup(?:\s+([^>]*?))?>([\s\S]*?)<\/CodeGroup>/g,
+    (_: string, attrSource: string | undefined, body: string) => {
+      const attrs = parseJsxAttributes(attrSource ?? "");
+      const dropdown = toBoolean(attrs.dropdown, false);
+      const usedValues = new Set<string>();
+      const panels: { label: string; value: string; html: string }[] = [];
+      const codeRegex = /```([^\n]*)\n([\s\S]*?)```/g;
+      let codeMatch: RegExpExecArray | null;
+
+      while ((codeMatch = codeRegex.exec(body)) !== null) {
+        const { lang, title } = parseCodeGroupMeta(codeMatch[1]);
+        const label = title || lang || `Code ${panels.length + 1}`;
+        const value = createCodeGroupTabValue(label, usedValues);
+        const dedented = dedentCode(codeMatch[2]);
+        const { html, raw } = highlightCode(hl, dedented, lang);
+        panels.push({
+          label,
+          value,
+          html: wrapCodeWithCopy(html, raw, null, lang),
+        });
+      }
+
+      if (panels.length === 0) return body;
+
+      let tabsHtml = `<div class="fd-tabs" data-tabs data-code-group${dropdown ? ' data-dropdown="true"' : ""}>`;
+      tabsHtml += `<div class="fd-tabs-list" role="tablist">`;
+      for (let i = 0; i < panels.length; i++) {
+        tabsHtml += `<button role="tab" class="fd-tab-trigger${i === 0 ? " fd-tab-active" : ""}" data-tab-value="${escapeHtml(panels[i].value)}" aria-selected="${i === 0}">${escapeHtml(panels[i].label)}</button>`;
+      }
+      tabsHtml += `</div>`;
+      for (let i = 0; i < panels.length; i++) {
+        tabsHtml += `<div class="fd-tab-panel${i === 0 ? " fd-tab-panel-active" : ""}" data-tab-panel="${escapeHtml(panels[i].value)}" role="tabpanel">${panels[i].html}</div>`;
+      }
+      tabsHtml += `</div>`;
+
+      const placeholder = `%%TABS_${tabsBlocks.length}%%`;
+      tabsBlocks.push(tabsHtml);
+      return placeholder;
+    },
+  );
+
+  // ── Tabs blocks: <Tabs items={[...]}> ... </Tabs> ──
   result = result.replace(
     /<Tabs\s+items=\{?\[([^\]]+)\]\}?>([\s\S]*?)<\/Tabs>/g,
     (_: string, itemsStr: string, body: string) => {
