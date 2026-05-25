@@ -47,6 +47,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `agent` | `DocsAgentConfig` | — | Defaults for `docs agent compact` |
 | `review` | `boolean \| DocsReviewConfig` | `true` | Docs Review scoring, GitHub Actions workflow generation, and rule severities |
 | `pageActions` | `PageActionsConfig` | — | Copy Markdown, Open in LLM (see `page-actions` skill) |
+| `devTools` | `boolean \| DevToolsConfig` | `false` | Local visual MDX editor with Apply Changes and Publish Preview actions |
 | `ai` | `AIConfig` | — | RAG-powered AI chat (see `ask-ai` skill) |
 | `search` | `boolean \| DocsSearchConfig` | `true` | Built-in simple search, Typesense, Algolia, or a custom adapter |
 | `llmsTxt` | `boolean \| LlmsTxtConfig` | `true` | Generated `/llms.txt`, `/llms-full.txt`, and optional section-level llms files |
@@ -136,6 +137,29 @@ export default defineDocs({
 - Search (Cmd+K) and AI chat are hidden in the layout.
 - Next.js: with `output: "export"` in `next.config`, the `/api/docs` route is not generated.
 - Do not deploy the docs API route when using static export.
+
+---
+
+## DevTools
+
+Use `devTools: true` for the built-in local visual MDX editor.
+
+```ts
+export default defineDocs({
+  entry: "docs",
+  devTools: true,
+  theme: fumadocs(),
+});
+```
+
+Important notes:
+
+- renders a floating DevTools button on docs pages during local development
+- loads the current page source through `/api/docs?devtools=page`
+- replaces the page body with an inline editing canvas for MDX block editing, drag/reorder, and raw source mode
+- writes changes back with Apply Changes
+- Publish Preview forwards through `/api/docs?devtools=publish` and requires `FARMING_CLOUD_API_KEY` or `FARMING_API_KEY`
+- hidden when `staticExport: true`; the API rejects requests unless DevTools are enabled and the request is local or non-production
 
 ---
 

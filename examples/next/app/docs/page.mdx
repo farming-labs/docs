@@ -5,9 +5,7 @@ description: A comprehensive authentication and authorization framework for Type
 icon: book
 ---
 
-# Introduction
-
-Better Auth is a framework-agnostic, universal authentication and authorization framework for TypeScript. It provides a comprehensive set of features out of the box and includes a plugin ecosystem that simplifies adding advanced functionalities.
+# Introduction intro
 
 <Agent>
 You are reading the example docs entry page as an implementation agent.
@@ -21,24 +19,16 @@ Prefer markdown reads over HTML scraping. For Next.js, `/docs.md`, `/docs/<slug>
 page-level machine-readable entry points when reported by the spec.
 </Agent>
 
-## Features
+###### Features:
 
-- **Framework Agnostic** — Support for most popular frameworks
-- **Email & Password** — Built-in support for secure email and password authentication
-- **Account & Session Management** — Manage user accounts and sessions with ease
-- **Built-In Rate Limiter** — Built-in rate limiter with custom rules
-- **Automatic Database Management** — Automatic database management and migrations
-- **Social Sign-on** — Multiple social sign-on providers
-- **Plugin Ecosystem** — Even more capabilities with plugins
+Better Auth is a framework-agnostic, universal authentication and authorization framework for TypeScript. It provides a comprehensive set of features out of the box and includes a plugin ecosystem that simplifies adding advanced functionalities. **lets do it.** someone here.
 
 ---
-
-## Quick Start
 
 Get up and running in under 5 minutes:
 
 ```bash title="terminal"
-npm install better-auth
+npm install demo - hello world
 ```
 
 ```ts title="auth.ts"
@@ -46,7 +36,7 @@ import { betterAuth } from "better-auth";
 
 export const auth = betterAuth({
   database: {
-    provider: "postgresql",
+    provider: "psg",
     url: process.env.DATABASE_URL,
   },
   emailAndPassword: {
@@ -57,8 +47,38 @@ export const auth = betterAuth({
 
 ---
 
-## Next Steps
+## Next Steps:
 
 - Read the [Installation](/docs/installation) guide
 - Follow the [Get Started](/docs/getting-started) guide
 - Explore [Concepts](/docs/concepts)
+
+<HoverLink href="/docs" title="Related guide" description="A useful related documentation page.">
+  Read the related guide
+</HoverLink>
+
+<Prompt title="Try this prompt">
+Use this docs page to implement the feature.
+</Prompt>
+
+<Callout type="note" title="hello world">
+Write a helpful callout.
+</Callout>
+
+<Tabs items={["npm", "pnpm", "drag.ts"]}>
+  <Tab value="npm">
+    ```bash
+                        npm install my-package
+                        ```
+  </Tab>
+
+  <Tab value="pnpm">
+    ```bash
+                        pnpm add my-package
+                        ```
+  </Tab>
+
+  <Tab value="drag.ts">
+    Content
+  </Tab>
+</Tabs>

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { DocsAnalyticsEvent, DocsObservabilityEvent } from "@farming-labs/docs";
@@ -365,6 +365,154 @@ Install and configure the docs framework.
       type: "heading",
     });
     expect(payload[0]?.content).toContain("Quickstart");
+  });
+
+  it("reads and writes MDX pages through DevTools when enabled", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-devtools-route-"));
+    tempDirs.push(rootDir);
+
+    const pagePath = join(rootDir, "app", "docs", "guide", "page.mdx");
+    mkdirSync(join(rootDir, "app", "docs", "guide"), { recursive: true });
+    writeFileSync(
+      pagePath,
+      `---
+title: "Guide"
+---
+
+# Guide
+
+Original content.
+`,
+    );
+
+    const { GET, POST } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      devTools: true,
+    });
+
+    const readResponse = await GET(
+      new Request("http://localhost/api/docs?devtools=page&path=/docs/guide"),
+    );
+    expect(readResponse.status).toBe(200);
+    const readPayload = (await readResponse.json()) as {
+      relativePath?: string;
+      content?: string;
+    };
+    expect(readPayload.relativePath).toBe("app/docs/guide/page.mdx");
+    expect(readPayload.content).toContain("Original content.");
+
+    const nextContent = `---
+title: "Guide"
+---
+
+# Guide
+
+Updated from DevTools.
+`;
+    const writeResponse = await POST(
+      new Request("http://localhost/api/docs?devtools=page&path=/docs/guide", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ content: nextContent }),
+      }),
+    );
+
+    expect(writeResponse.status).toBe(200);
+    expect(await writeResponse.json()).toMatchObject({
+      ok: true,
+      relativePath: "app/docs/guide/page.mdx",
+    });
+    expect(readFileSync(pagePath, "utf-8")).toBe(nextContent);
+  });
+
+  it("maps custom public docs paths back to source files for DevTools writes", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-devtools-public-path-"));
+    tempDirs.push(rootDir);
+
+    const pagePath = join(rootDir, "app", "docs", "guide", "page.mdx");
+    mkdirSync(join(rootDir, "app", "docs", "guide"), { recursive: true });
+    writeFileSync(pagePath, "# Guide\n\nOriginal public path content.\n");
+
+    const { POST } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      docsPath: "learn",
+      devTools: true,
+    });
+
+    const writeResponse = await POST(
+      new Request("http://localhost/api/docs?devtools=page&path=/learn/guide", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ content: "# Guide\n\nUpdated through /learn.\n" }),
+      }),
+    );
+
+    expect(writeResponse.status).toBe(200);
+    expect(readFileSync(pagePath, "utf-8")).toBe("# Guide\n\nUpdated through /learn.\n");
+  });
+
+  it("keeps DevTools API disabled unless the config enables it", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-devtools-disabled-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(join(rootDir, "app", "docs", "page.mdx"), "# Home\n");
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs?devtools=page&path=/docs"));
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({
+      error: expect.stringContaining("devTools: true"),
+    });
+  });
+
+  it("requires cloud credentials before DevTools can publish a preview", async () => {
+    const previousCloudKey = process.env.FARMING_CLOUD_API_KEY;
+    const previousApiKey = process.env.FARMING_API_KEY;
+    delete process.env.FARMING_CLOUD_API_KEY;
+    delete process.env.FARMING_API_KEY;
+
+    try {
+      const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-devtools-publish-"));
+      tempDirs.push(rootDir);
+
+      const { POST } = createDocsAPI({
+        rootDir,
+        entry: "docs",
+        devTools: true,
+      });
+
+      const response = await POST(
+        new Request("http://localhost/api/docs?devtools=publish", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ path: "/docs" }),
+        }),
+      );
+
+      expect(response.status).toBe(401);
+      expect(await response.json()).toMatchObject({
+        error: expect.stringContaining("FARMING_CLOUD_API_KEY"),
+      });
+    } finally {
+      if (previousCloudKey === undefined) {
+        delete process.env.FARMING_CLOUD_API_KEY;
+      } else {
+        process.env.FARMING_CLOUD_API_KEY = previousCloudKey;
+      }
+
+      if (previousApiKey === undefined) {
+        delete process.env.FARMING_API_KEY;
+      } else {
+        process.env.FARMING_API_KEY = previousApiKey;
+      }
+    }
   });
 
   it("omits hidden folder index pages from search and markdown lookups", async () => {

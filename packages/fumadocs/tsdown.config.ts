@@ -11,6 +11,7 @@ export default defineConfig({
     "src/code-block-copy-wrapper.tsx",
     "src/docs-ai-features.tsx",
     "src/docs-command-search.tsx",
+    "src/devtools.tsx",
     "src/docs-layout.tsx",
     "src/docs-page-client.tsx",
     "src/mdx-img.tsx",

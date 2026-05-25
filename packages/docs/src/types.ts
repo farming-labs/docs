@@ -238,6 +238,19 @@ export interface DocsMetadata {
   twitterCard?: "summary" | "summary_large_image";
 }
 
+export interface DevToolsConfig {
+  /**
+   * Enables the built-in visual docs editor in development.
+   *
+   * When enabled, the docs UI renders a floating action button that can edit
+   * the current MDX page and apply changes back to the source file through the
+   * local docs API.
+   *
+   * @default false
+   */
+  enabled?: boolean;
+}
+
 export interface OGConfig {
   enabled?: boolean;
   type?: "static" | "dynamic";
@@ -2929,6 +2942,13 @@ export interface DocsConfig {
   review?: boolean | DocsReviewConfig;
   /** SEO metadata - separate from theme */
   metadata?: DocsMetadata;
+  /**
+   * Built-in visual docs editor.
+   *
+   * Use `devTools: true` during local development to edit MDX pages with the
+   * floating docs editor and write changes back to the page source file.
+   */
+  devTools?: boolean | DevToolsConfig;
   /** Open Graph image handling */
   og?: OGConfig;
 }

@@ -58,6 +58,7 @@ Top-level configuration object passed to `defineDocs()`.
 | `review`      | `boolean \| DocsReviewConfig`                   | `true`           | Docs Review scoring, rule severity, and GitHub Actions workflow generation           |
 | `readingTime` | `boolean \| ReadingTimeConfig`                  | `false`          | Opt-in estimated reading-time label with per-page overrides                          |
 | `pageActions` | `PageActionsConfig`                             | —                | "Copy Markdown" and "Open in LLM" buttons                                            |
+| `devTools`    | `boolean \| DevToolsConfig`                     | `false`          | Local visual MDX editor with Apply Changes and Publish Preview actions               |
 | `ai`          | `AIConfig`                                      | —                | RAG-powered AI chat                                                                  |
 | `search`      | `boolean \| DocsSearchConfig`                   | `true`           | Built-in simple search, Typesense, Algolia, or a custom adapter                     |
 | `mcp`         | `boolean \| DocsMcpConfig`                      | enabled          | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp`                       |
@@ -111,6 +112,34 @@ That keeps the files under `app/docs` and serves them from the public root:
 ---
 
 `components` is merged into the default MDX component map, so you can both add your own components and replace built-ins such as `Callout`, `Tabs`, `HoverLink`, or `Prompt`. For built-in defaults like `theme.ui.components.HoverLink` and `theme.ui.components.Prompt`, see [Creating themes](/docs/themes/creating-themes). For usage examples and a live demo, see [Components](/docs/customization/components).
+
+---
+
+## `devTools` and `DevToolsConfig`
+
+Local visual MDX editor for docs authors.
+
+| Option    | Type      | Default | Description                                    |
+| --------- | --------- | ------- | ---------------------------------------------- |
+| `enabled` | `boolean` | `true`  | Set `false` when using object form to opt out. |
+
+```ts title="docs.config.ts"
+devTools: true,
+
+// or
+devTools: {
+  enabled: true,
+},
+```
+
+When enabled, docs pages render a floating DevTools button in local development. Opening it replaces
+the page body with an inline MDX editing canvas, so authors can edit the current page as blocks or
+raw source, apply changes back to the page file through `/api/docs?devtools=page`, and publish
+previews through `/api/docs?devtools=publish` when `FARMING_CLOUD_API_KEY` or `FARMING_API_KEY` is
+available.
+
+DevTools are hidden when `staticExport: true` and API requests are rejected unless the feature is
+enabled and the request is local or the app is running outside production.
 
 ---
 

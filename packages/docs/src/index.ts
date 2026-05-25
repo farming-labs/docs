@@ -219,6 +219,7 @@ export type {
   DocsNav,
   DocsTheme,
   DocsMetadata,
+  DevToolsConfig,
   OGConfig,
   OpenGraphImage,
   PageOpenGraph,
