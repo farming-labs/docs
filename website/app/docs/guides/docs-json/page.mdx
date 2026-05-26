@@ -3,6 +3,7 @@ title: "docs.json"
 description: "How the shared docs.json contract separates docs structure from Docs Cloud services"
 related:
   - /docs/guides
+  - /docs/cloud
   - /docs/configuration
   - /docs/cli
 order: 2
@@ -142,6 +143,9 @@ apps, `docs.config.ts` remains the canonical place for advanced runtime analytic
 
 Set `cloud.enabled` to `false` when the repo is using `docs.json` only as a local project contract.
 Set it to `true` once the repo is actually connected to Docs Cloud services.
+
+To connect a repo, create an API key, and request hosted previews, see
+[Docs Cloud](/docs/cloud).
 
 ## Current Note
 
