@@ -343,6 +343,7 @@ No separate config flag is required for machine-readable page markdown.
 - Successful markdown responses include a `Link: <canonical-page-url>; rel="canonical"` response header so agents can read the markdown mirror but cite the normal docs page
 - In Next.js, sending `Accept: text/markdown` to `/docs/<slug>` returns the same markdown response
 - In Next.js, sending a non-empty `Signature-Agent` header to `/docs/<slug>` also returns the same markdown response
+- In Next.js, known AI user agents and conservative bot-like agent heuristics also receive markdown from normal docs URLs
 - These negotiated Next.js reads are handled by the existing `/api/docs` route; `withDocs()` does not create a separate `/api/docs/markdown` wrapper
 - Embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI but are included in the `.md` fallback and MCP `read_page`
 - When a page folder has `agent.md`, that file is returned instead of the normal page markdown
@@ -354,20 +355,23 @@ No separate config flag is required for machine-readable page markdown.
   ```bash
   curl "https://docs.example.com/docs/installation" -H "Accept: text/markdown"
   curl "https://docs.example.com/docs/installation" -H "Signature-Agent: https://chatgpt.com"
+  curl "https://docs.example.com/docs/installation" -H "User-Agent: ClaudeBot/1.0"
   ```
 
   In Next.js, browsers still receive HTML from `/docs/installation`; agents, scripts, and crawlers
-  that send `Accept: text/markdown` or `Signature-Agent` receive the same machine-readable output
-  as `/docs/installation.md`. The request is resolved by the shared `/api/docs` handler, so custom
-  apps should keep one docs API route instead of adding a second markdown-only wrapper. Other
-  adapters should use the `.md` URL or the API format route.
+  that send `Accept: text/markdown`, send `Signature-Agent`, identify as a known AI user agent, or
+  match a conservative bot-like agent heuristic receive the same machine-readable output as
+  `/docs/installation.md`. The request is resolved by the shared `/api/docs` handler, so custom apps
+  should keep one docs API route instead of adding a second markdown-only wrapper. Other adapters
+  should use the `.md` URL or the API format route.
 
   Successful markdown responses also include a canonical `Link` response header. The body is still
   the full markdown document; the header simply tells agents that `/docs/installation` is the
   source-of-truth URL for `/docs/installation.md` or a negotiated markdown read.
 
   Negotiated markdown responses include cache-safe `Vary` headers: `Accept` for
-  `Accept: text/markdown`, and `Accept, Signature-Agent` for `Signature-Agent`.
+  `Accept: text/markdown`, `Accept, Signature-Agent` for `Signature-Agent`, `User-Agent` for known
+  AI user agents, and `User-Agent, Sec-Fetch-Mode` for heuristic agent detection.
 
   That means a CDN can cache the HTML and markdown versions separately even though the URL is the
   same:
@@ -376,6 +380,7 @@ No separate config flag is required for machine-readable page markdown.
   /docs/installation + normal browser headers      -> cached HTML
   /docs/installation + Accept: text/markdown       -> cached markdown
   /docs/installation + Signature-Agent: <agent-id> -> cached markdown
+  /docs/installation + User-Agent: ClaudeBot/1.0   -> cached markdown
   ```
 
   If a markdown request misses, the 404 response is still markdown. It points agents at the agent
