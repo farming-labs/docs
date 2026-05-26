@@ -1293,6 +1293,7 @@ export function getDocsMarkdownVaryHeader(request: Request): string | null {
 
 const DOCS_MARKDOWN_RECOVERY_MATCH_LIMIT = 5;
 const DOCS_MARKDOWN_RECOVERY_REDIRECT_CONFIDENCE = 0.99;
+const DOCS_MARKDOWN_RECOVERY_SLUG_MAX_LENGTH = 256;
 
 function normalizeDocsRecoveryText(value: string): string {
   return value
@@ -1319,6 +1320,10 @@ function normalizeDocsRecoverySlug(entry: string, value: string): string {
   }
 
   return normalizeDocsPathSegment(normalizedPath);
+}
+
+function limitDocsRecoverySlug(value: string): string {
+  return value.slice(0, DOCS_MARKDOWN_RECOVERY_SLUG_MAX_LENGTH);
 }
 
 function tokenizeDocsRecoveryText(value: string): string[] {
@@ -1378,8 +1383,8 @@ function scoreDocsMarkdownRecoveryMatch({
   requestedPath: string;
   page: DocsMarkdownPage;
 }): number {
-  const requestedSlug = normalizeDocsRecoverySlug(entry, requestedPath);
-  const pageSlug = normalizeDocsRecoverySlug(entry, page.url);
+  const requestedSlug = limitDocsRecoverySlug(normalizeDocsRecoverySlug(entry, requestedPath));
+  const pageSlug = limitDocsRecoverySlug(normalizeDocsRecoverySlug(entry, page.url));
   const requestedLast = requestedSlug.split("/").filter(Boolean).at(-1) ?? requestedSlug;
   const pageLast = pageSlug.split("/").filter(Boolean).at(-1) ?? pageSlug;
   const title = normalizeDocsRecoveryText(page.title);

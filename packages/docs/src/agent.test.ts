@@ -584,6 +584,25 @@ describe("agent route helpers", () => {
     expect(recovery.redirect?.confidence).toBeGreaterThanOrEqual(0.99);
   });
 
+  it("bounds oversized requested paths during markdown recovery scoring", () => {
+    const recovery = resolveDocsMarkdownRecovery({
+      entry: "docs",
+      requestedPath: `install/${"x".repeat(20_000)}`,
+      pages: [
+        {
+          slug: "install",
+          url: "/docs/install",
+          title: "Install",
+          description: "Install the framework",
+          content: "Install docs",
+        },
+      ],
+    });
+
+    expect(recovery.redirect).toBeUndefined();
+    expect(recovery.matches[0]?.markdownUrl).toBe("/docs/install.md");
+  });
+
   it("renders agent-specific markdown documents", () => {
     const human = resolveDocsAgentMdxContent("Visible\n\n<Agent>\nHidden\n</Agent>", "human");
     const agent = resolveDocsAgentMdxContent("Visible\n\n<Agent>\nHidden\n</Agent>", "agent");
