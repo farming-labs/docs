@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDocsAgentDiscoverySpec,
   buildDocsMcpEndpointCandidates,
+  detectDocsMarkdownAgentRequest,
   findDocsMarkdownPage,
   getDocsMarkdownCanonicalLinkHeader,
   getDocsMarkdownVaryHeader,
@@ -373,6 +374,59 @@ describe("agent route helpers", () => {
       }),
     );
     expect(signatureAgentRoute).toEqual({ requestedPath: "install" });
+    expect(
+      detectDocsMarkdownAgentRequest(
+        new Request("https://example.com/docs/install", {
+          headers: { "Signature-Agent": "https://chatgpt.com" },
+        }),
+      ),
+    ).toEqual({ detected: true, method: "signature_agent" });
+
+    const userAgentRoute = resolveDocsMarkdownRequest(
+      "docs",
+      new URL("https://example.com/docs/install"),
+      new Request("https://example.com/docs/install", {
+        headers: { "user-agent": "ClaudeBot/1.0" },
+      }),
+    );
+    expect(userAgentRoute).toEqual({ requestedPath: "install" });
+    expect(
+      detectDocsMarkdownAgentRequest(
+        new Request("https://example.com/docs/install", {
+          headers: { "user-agent": "ClaudeBot/1.0" },
+        }),
+      ),
+    ).toEqual({ detected: true, method: "user_agent" });
+
+    const heuristicAgentRoute = resolveDocsMarkdownRequest(
+      "docs",
+      new URL("https://example.com/docs/install"),
+      new Request("https://example.com/docs/install", {
+        headers: { "user-agent": "AcmeAgentFetcher/1.0" },
+      }),
+    );
+    expect(heuristicAgentRoute).toEqual({ requestedPath: "install" });
+    expect(
+      detectDocsMarkdownAgentRequest(
+        new Request("https://example.com/docs/install", {
+          headers: { "user-agent": "AcmeAgentFetcher/1.0" },
+        }),
+      ),
+    ).toEqual({ detected: true, method: "heuristic" });
+    expect(
+      detectDocsMarkdownAgentRequest(
+        new Request("https://example.com/docs/install", {
+          headers: { "user-agent": "AcmeAgentFetcher/1.0", "sec-fetch-mode": "navigate" },
+        }),
+      ),
+    ).toEqual({ detected: false, method: null });
+    expect(
+      detectDocsMarkdownAgentRequest(
+        new Request("https://example.com/docs/install", {
+          headers: { "user-agent": "Googlebot/2.1" },
+        }),
+      ),
+    ).toEqual({ detected: false, method: null });
 
     expect(
       hasDocsMarkdownSignatureAgent(
@@ -395,6 +449,20 @@ describe("agent route helpers", () => {
         }),
       ),
     ).toBe("Accept, Signature-Agent");
+    expect(
+      getDocsMarkdownVaryHeader(
+        new Request("https://example.com/docs/install", {
+          headers: { "user-agent": "ClaudeBot/1.0" },
+        }),
+      ),
+    ).toBe("User-Agent");
+    expect(
+      getDocsMarkdownVaryHeader(
+        new Request("https://example.com/docs/install", {
+          headers: { "user-agent": "AcmeAgentFetcher/1.0" },
+        }),
+      ),
+    ).toBe("User-Agent, Sec-Fetch-Mode");
     expect(getDocsMarkdownVaryHeader(new Request("https://example.com/docs/install"))).toBeNull();
 
     const apiFormatRoute = resolveDocsMarkdownRequest(

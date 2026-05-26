@@ -31,6 +31,7 @@ import {
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
   createDocsRobotsResponse,
+  detectDocsMarkdownAgentRequest,
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
   getDocsMarkdownVaryHeader,
@@ -1591,9 +1592,25 @@ function acceptsMarkdown(request: Request): boolean {
     });
 }
 
+function resolveMarkdownHeaderDelivery(request: Request): MarkdownRequest["delivery"] | null {
+  if (hasDocsMarkdownSignatureAgent(request)) return "signature_agent";
+  if (acceptsMarkdown(request)) return "accept_header";
+
+  const agentDetection = detectDocsMarkdownAgentRequest(request);
+  if (!agentDetection.detected) return null;
+
+  return agentDetection.method === "heuristic" ? "heuristic" : "user_agent";
+}
+
 type MarkdownRequest = {
   requestedPath: string;
-  delivery: "api_format" | "md_route" | "accept_header" | "signature_agent";
+  delivery:
+    | "api_format"
+    | "md_route"
+    | "accept_header"
+    | "signature_agent"
+    | "user_agent"
+    | "heuristic";
 };
 
 type DocsContext = {
@@ -1628,9 +1645,9 @@ function resolveMarkdownRequest(entry: string, url: URL, request: Request): Mark
     };
   }
 
-  const hasSignatureAgent = hasDocsMarkdownSignatureAgent(request);
-  if (acceptsMarkdown(request) || hasSignatureAgent) {
-    const delivery = hasSignatureAgent ? "signature_agent" : "accept_header";
+  const headerDelivery = resolveMarkdownHeaderDelivery(request);
+  if (headerDelivery) {
+    const delivery = headerDelivery;
 
     if (pathname === normalizedEntry) {
       return { requestedPath: "", delivery };
@@ -1731,9 +1748,9 @@ function resolvePublicMarkdownRequest(
       };
     }
 
-    const hasSignatureAgent = hasDocsMarkdownSignatureAgent(request);
-    if (acceptsMarkdown(request) || hasSignatureAgent) {
-      const delivery = hasSignatureAgent ? "signature_agent" : "accept_header";
+    const headerDelivery = resolveMarkdownHeaderDelivery(request);
+    if (headerDelivery) {
+      const delivery = headerDelivery;
       return {
         requestedPath: pathname === "/" ? "" : pathname.slice(1),
         delivery,
@@ -1755,9 +1772,9 @@ function resolvePublicMarkdownRequest(
     };
   }
 
-  const hasSignatureAgent = hasDocsMarkdownSignatureAgent(request);
-  if (acceptsMarkdown(request) || hasSignatureAgent) {
-    const delivery = hasSignatureAgent ? "signature_agent" : "accept_header";
+  const headerDelivery = resolveMarkdownHeaderDelivery(request);
+  if (headerDelivery) {
+    const delivery = headerDelivery;
 
     if (pathname === docsPath) {
       return { requestedPath: "", delivery };

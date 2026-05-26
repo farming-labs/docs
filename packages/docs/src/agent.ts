@@ -89,6 +89,72 @@ export const DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA: Record<string, unknown> = {
   required: ["task", "outcome"],
 };
 export const DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER = "Signature-Agent";
+const DOCS_AI_AGENT_USER_AGENT_PATTERNS = [
+  "claudebot",
+  "claude-searchbot",
+  "claude-user",
+  "anthropic-ai",
+  "claude-web",
+  "chatgpt",
+  "gptbot",
+  "oai-searchbot",
+  "openai",
+  "gemini",
+  "bard",
+  "google-cloudvertexbot",
+  "google-extended",
+  "meta-externalagent",
+  "meta-externalfetcher",
+  "meta-webindexer",
+  "perplexity",
+  "youbot",
+  "you.com",
+  "deepseekbot",
+  "cursor",
+  "github-copilot",
+  "codeium",
+  "tabnine",
+  "sourcegraph",
+  "cohere-ai",
+  "bytespider",
+  "amazonbot",
+  "ai2bot",
+  "diffbot",
+  "omgili",
+  "omgilibot",
+] as const;
+const DOCS_TRADITIONAL_BOT_USER_AGENT_PATTERNS = [
+  "googlebot",
+  "bingbot",
+  "yandexbot",
+  "baiduspider",
+  "duckduckbot",
+  "slurp",
+  "msnbot",
+  "facebot",
+  "twitterbot",
+  "linkedinbot",
+  "whatsapp",
+  "telegrambot",
+  "pingdom",
+  "uptimerobot",
+  "newrelic",
+  "datadog",
+  "statuspage",
+  "site24x7",
+  "applebot",
+] as const;
+const DOCS_BOT_LIKE_USER_AGENT_PATTERN = /bot|agent|fetch|crawl|spider|search/i;
+const DOCS_BOT_LIKE_USER_AGENT_TERMS = ["bot", "agent", "fetch", "crawl", "spider", "search"];
+export const DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN = buildDocsUserAgentHeaderPattern(
+  DOCS_AI_AGENT_USER_AGENT_PATTERNS,
+);
+export const DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN = buildDocsUserAgentHeaderPattern(
+  DOCS_TRADITIONAL_BOT_USER_AGENT_PATTERNS,
+);
+export const DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN = buildDocsUserAgentHeaderPattern(
+  DOCS_BOT_LIKE_USER_AGENT_TERMS,
+);
 const DOCS_LLMS_TXT_DIRECTIVE_LINE = "LLM index: /llms.txt";
 
 const DOCS_MCP_SERVICE_SUBDOMAIN_LABELS = new Set([
@@ -1143,7 +1209,11 @@ export function resolveDocsMarkdownRequest(
     };
   }
 
-  if (acceptsMarkdown(request) || hasDocsMarkdownSignatureAgent(request)) {
+  if (
+    acceptsMarkdown(request) ||
+    hasDocsMarkdownSignatureAgent(request) ||
+    detectDocsMarkdownAgentRequest(request).detected
+  ) {
     if (pathname === normalizedEntry) {
       return { requestedPath: "" };
     }
@@ -1162,12 +1232,48 @@ export function hasDocsMarkdownSignatureAgent(request: Request): boolean {
   return Boolean(request.headers.get(DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER)?.trim());
 }
 
-export function getDocsMarkdownVaryHeader(request: Request): string | null {
-  if (hasDocsMarkdownSignatureAgent(request)) {
-    return `Accept, ${DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER}`;
+export type DocsMarkdownAgentDetection =
+  | { detected: true; method: "signature_agent" | "user_agent" | "heuristic" }
+  | { detected: false; method: null };
+
+export function detectDocsMarkdownAgentRequest(request: Request): DocsMarkdownAgentDetection {
+  if (hasDocsMarkdownSignatureAgent(request)) return { detected: true, method: "signature_agent" };
+
+  const userAgent = request.headers.get("user-agent")?.trim().toLowerCase() ?? "";
+  if (!userAgent) return { detected: false, method: null };
+
+  if (DOCS_AI_AGENT_USER_AGENT_PATTERNS.some((pattern) => userAgent.includes(pattern))) {
+    return { detected: true, method: "user_agent" };
   }
 
-  return acceptsMarkdown(request) ? "Accept" : null;
+  const secFetchMode = request.headers.get("sec-fetch-mode");
+  if (!secFetchMode && DOCS_BOT_LIKE_USER_AGENT_PATTERN.test(userAgent)) {
+    const isTraditionalBot = DOCS_TRADITIONAL_BOT_USER_AGENT_PATTERNS.some((pattern) =>
+      userAgent.includes(pattern),
+    );
+    if (!isTraditionalBot) return { detected: true, method: "heuristic" };
+  }
+
+  return { detected: false, method: null };
+}
+
+export function getDocsMarkdownVaryHeader(request: Request): string | null {
+  const values = new Set<string>();
+
+  if (acceptsMarkdown(request)) values.add("Accept");
+
+  if (hasDocsMarkdownSignatureAgent(request)) {
+    values.add("Accept");
+    values.add(DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER);
+  }
+
+  const agentDetection = detectDocsMarkdownAgentRequest(request);
+  if (agentDetection.detected && agentDetection.method !== "signature_agent") {
+    values.add("User-Agent");
+    if (agentDetection.method === "heuristic") values.add("Sec-Fetch-Mode");
+  }
+
+  return values.size > 0 ? Array.from(values).join(", ") : null;
 }
 
 export function renderDocsMarkdownNotFound({
@@ -1998,6 +2104,24 @@ function acceptsMarkdown(request: Request): boolean {
       const quality = Number.parseFloat(qualityValue);
       return Number.isFinite(quality) ? quality > 0 : true;
     });
+}
+
+function buildDocsUserAgentHeaderPattern(patterns: readonly string[]): string {
+  return `.*(?:${patterns.map(toCaseInsensitiveHeaderPattern).join("|")}).*`;
+}
+
+function toCaseInsensitiveHeaderPattern(value: string): string {
+  return value
+    .split("")
+    .map((char) => {
+      if (/^[a-z]$/i.test(char)) return `[${char.toLowerCase()}${char.toUpperCase()}]`;
+      return escapeRegex(char);
+    })
+    .join("");
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
 }
 
 function normalizeRequestedMarkdownPath(entry: string, requestedPath: string): string {

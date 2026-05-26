@@ -1126,6 +1126,40 @@ Config content.
       "Use this page as the implementation map.\n",
     );
 
+    const userAgentPageResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: { "user-agent": "ClaudeBot/1.0" },
+      }),
+    );
+    expect(userAgentPageResponse.status).toBe(200);
+    expect(userAgentPageResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(userAgentPageResponse.headers.get("link")).toBe(
+      '<http://localhost/docs/overview>; rel="canonical"',
+    );
+    expect(userAgentPageResponse.headers.get("vary")).toBe("User-Agent");
+    expect(await userAgentPageResponse.text()).toBe("Use this page as the implementation map.\n");
+
+    const heuristicPageResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: { "user-agent": "AcmeAgentFetcher/1.0" },
+      }),
+    );
+    expect(heuristicPageResponse.status).toBe(200);
+    expect(heuristicPageResponse.headers.get("content-type")).toContain("text/markdown");
+    expect(heuristicPageResponse.headers.get("vary")).toBe("User-Agent, Sec-Fetch-Mode");
+    expect(await heuristicPageResponse.text()).toBe("Use this page as the implementation map.\n");
+
+    const browserLikeHeuristicResponse = await GET(
+      new Request("http://localhost/docs/overview", {
+        headers: {
+          "user-agent": "AcmeAgentFetcher/1.0",
+          "sec-fetch-mode": "navigate",
+        },
+      }),
+    );
+    expect(browserLikeHeuristicResponse.headers.get("content-type")).not.toContain("text/markdown");
+    expect(await browserLikeHeuristicResponse.text()).toBe("[]");
+
     const zeroQualityAcceptResponse = await GET(
       new Request("http://localhost/docs/overview", {
         headers: { accept: "application/json, text/markdown;profile=agent;q=0" },
@@ -1186,13 +1220,19 @@ Install the package.
         headers: { accept: "text/markdown" },
       }),
     );
+    await GET(
+      new Request("http://localhost/docs/guides/setup", {
+        headers: { "user-agent": "ClaudeBot/1.0" },
+      }),
+    );
 
     const agentReads = events.filter((event) => event.type === "agent_read");
-    expect(agentReads).toHaveLength(3);
+    expect(agentReads).toHaveLength(4);
     expect(agentReads.map((event) => event.properties?.delivery)).toEqual([
       "api_format",
       "md_route",
       "accept_header",
+      "user_agent",
     ]);
     expect(agentReads).toEqual(
       expect.arrayContaining([

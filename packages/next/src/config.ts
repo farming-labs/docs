@@ -32,6 +32,11 @@ import {
 } from "node:fs";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
+  DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
+  DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
+} from "@farming-labs/docs";
 import { ensureDocsReviewWorkflow } from "@farming-labs/docs/server";
 import matter from "gray-matter";
 import type { NextConfig } from "next";
@@ -1366,6 +1371,25 @@ function buildDocsMarkdownRewrites(entry: string, docsPath: string): NextRewrite
     key: "signature-agent",
     value: ".+",
   };
+  const markdownAgentUserAgentHeader = {
+    type: "header",
+    key: "user-agent",
+    value: DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
+  };
+  const markdownBotLikeUserAgentHeader = {
+    type: "header",
+    key: "user-agent",
+    value: DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
+  };
+  const markdownTraditionalBotUserAgentHeader = {
+    type: "header",
+    key: "user-agent",
+    value: DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
+  };
+  const markdownSecFetchModeHeader = {
+    type: "header",
+    key: "sec-fetch-mode",
+  };
 
   if (publicBase === "") {
     const rootPageSource = docsRootSource(normalizedEntry);
@@ -1399,6 +1423,28 @@ function buildDocsMarkdownRewrites(entry: string, docsPath: string): NextRewrite
         has: [markdownSignatureAgentHeader],
         destination: "/api/docs?format=markdown&path=:slug",
       },
+      {
+        source: "/",
+        has: [markdownAgentUserAgentHeader],
+        destination: "/api/docs?format=markdown",
+      },
+      {
+        source: rootPageSource,
+        has: [markdownAgentUserAgentHeader],
+        destination: "/api/docs?format=markdown&path=:slug",
+      },
+      {
+        source: "/",
+        has: [markdownBotLikeUserAgentHeader],
+        missing: [markdownTraditionalBotUserAgentHeader, markdownSecFetchModeHeader],
+        destination: "/api/docs?format=markdown",
+      },
+      {
+        source: rootPageSource,
+        has: [markdownBotLikeUserAgentHeader],
+        missing: [markdownTraditionalBotUserAgentHeader, markdownSecFetchModeHeader],
+        destination: "/api/docs?format=markdown&path=:slug",
+      },
     ];
   }
 
@@ -1429,6 +1475,28 @@ function buildDocsMarkdownRewrites(entry: string, docsPath: string): NextRewrite
     {
       source: `${publicBase}/:slug*`,
       has: [markdownSignatureAgentHeader],
+      destination: "/api/docs?format=markdown&path=:slug*",
+    },
+    {
+      source: publicBase,
+      has: [markdownAgentUserAgentHeader],
+      destination: "/api/docs?format=markdown",
+    },
+    {
+      source: `${publicBase}/:slug*`,
+      has: [markdownAgentUserAgentHeader],
+      destination: "/api/docs?format=markdown&path=:slug*",
+    },
+    {
+      source: publicBase,
+      has: [markdownBotLikeUserAgentHeader],
+      missing: [markdownTraditionalBotUserAgentHeader, markdownSecFetchModeHeader],
+      destination: "/api/docs?format=markdown",
+    },
+    {
+      source: `${publicBase}/:slug*`,
+      has: [markdownBotLikeUserAgentHeader],
+      missing: [markdownTraditionalBotUserAgentHeader, markdownSecFetchModeHeader],
       destination: "/api/docs?format=markdown&path=:slug*",
     },
   ];

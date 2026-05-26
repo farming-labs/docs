@@ -58,6 +58,7 @@ export {
   stripGeneratedAgentProvenance,
 } from "./agent-provenance.js";
 export {
+  type DocsMarkdownAgentDetection,
   DEFAULT_AGENT_FEEDBACK_ROUTE,
   DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA,
   DEFAULT_AGENT_MD_ROUTE,
@@ -79,10 +80,14 @@ export {
   DEFAULT_MCP_WELL_KNOWN_ROUTE,
   DEFAULT_SKILL_MD_ROUTE,
   DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
+  DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
+  DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
   DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER,
+  DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
   buildDocsAgentDiscoverySpec,
   buildDocsAgentFeedbackSchema,
   buildDocsMcpEndpointCandidates,
+  detectDocsMarkdownAgentRequest,
   findDocsMarkdownPage,
   getDocsMarkdownCanonicalLinkHeader,
   getDocsMarkdownVaryHeader,

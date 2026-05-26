@@ -10,12 +10,18 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
+import {
+  DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
+  DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
+  DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
+} from "@farming-labs/docs";
 import { withDocs } from "./config.js";
 
 type TestRewrite = {
   source: string;
   destination: string;
   has?: Array<Record<string, string>>;
+  missing?: Array<Record<string, string>>;
 };
 
 type TestRewriteResult =
@@ -80,6 +86,29 @@ const MARKDOWN_SIGNATURE_AGENT_HEADER = {
   type: "header",
   key: "signature-agent",
   value: ".+",
+};
+
+const MARKDOWN_AGENT_USER_AGENT_HEADER = {
+  type: "header",
+  key: "user-agent",
+  value: DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
+};
+
+const MARKDOWN_BOT_LIKE_USER_AGENT_HEADER = {
+  type: "header",
+  key: "user-agent",
+  value: DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
+};
+
+const MARKDOWN_TRADITIONAL_BOT_USER_AGENT_HEADER = {
+  type: "header",
+  key: "user-agent",
+  value: DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
+};
+
+const MARKDOWN_SEC_FETCH_MODE_HEADER = {
+  type: "header",
+  key: "sec-fetch-mode",
 };
 
 const DOCS_CONFIG_WITH_API_REFERENCE = `export default {
@@ -403,6 +432,28 @@ describe("withDocs (app dir: src/app vs app)", () => {
           has: [MARKDOWN_SIGNATURE_AGENT_HEADER],
           destination: "/api/docs?format=markdown&path=:slug*",
         }),
+        expect.objectContaining({
+          source: "/docs",
+          has: [MARKDOWN_AGENT_USER_AGENT_HEADER],
+          destination: "/api/docs?format=markdown",
+        }),
+        expect.objectContaining({
+          source: "/docs/:slug*",
+          has: [MARKDOWN_AGENT_USER_AGENT_HEADER],
+          destination: "/api/docs?format=markdown&path=:slug*",
+        }),
+        expect.objectContaining({
+          source: "/docs",
+          has: [MARKDOWN_BOT_LIKE_USER_AGENT_HEADER],
+          missing: [MARKDOWN_TRADITIONAL_BOT_USER_AGENT_HEADER, MARKDOWN_SEC_FETCH_MODE_HEADER],
+          destination: "/api/docs?format=markdown",
+        }),
+        expect.objectContaining({
+          source: "/docs/:slug*",
+          has: [MARKDOWN_BOT_LIKE_USER_AGENT_HEADER],
+          missing: [MARKDOWN_TRADITIONAL_BOT_USER_AGENT_HEADER, MARKDOWN_SEC_FETCH_MODE_HEADER],
+          destination: "/api/docs?format=markdown&path=:slug*",
+        }),
       ]),
     );
     expect(afterFiles).toEqual(
@@ -461,6 +512,20 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(acceptPattern.test("application/json, text/markdown;profile=agent;q=0")).toBe(false);
     expect(acceptPattern.test("text/markdown-v2")).toBe(false);
     expect(acceptPattern.test("application/not-text/markdownish")).toBe(false);
+
+    const agentUserAgentPattern = new RegExp(MARKDOWN_AGENT_USER_AGENT_HEADER.value);
+    expect(agentUserAgentPattern.test("ClaudeBot/1.0")).toBe(true);
+    expect(agentUserAgentPattern.test("Mozilla/5.0")).toBe(false);
+
+    const botLikeUserAgentPattern = new RegExp(MARKDOWN_BOT_LIKE_USER_AGENT_HEADER.value);
+    expect(botLikeUserAgentPattern.test("AcmeAgentFetcher/1.0")).toBe(true);
+    expect(botLikeUserAgentPattern.test("Mozilla/5.0")).toBe(false);
+
+    const traditionalBotUserAgentPattern = new RegExp(
+      MARKDOWN_TRADITIONAL_BOT_USER_AGENT_HEADER.value,
+    );
+    expect(traditionalBotUserAgentPattern.test("Googlebot/2.1")).toBe(true);
+    expect(traditionalBotUserAgentPattern.test("AcmeAgentFetcher/1.0")).toBe(false);
   });
 
   it("exposes docs from the site root when docsPath is empty", async () => {
@@ -1207,6 +1272,17 @@ describe("withDocs (app dir: src/app vs app)", () => {
         expect.objectContaining({
           source: "/docs/:slug*",
           has: [MARKDOWN_SIGNATURE_AGENT_HEADER],
+          destination: "/api/docs?format=markdown&path=:slug*",
+        }),
+        expect.objectContaining({
+          source: "/docs/:slug*",
+          has: [MARKDOWN_AGENT_USER_AGENT_HEADER],
+          destination: "/api/docs?format=markdown&path=:slug*",
+        }),
+        expect.objectContaining({
+          source: "/docs/:slug*",
+          has: [MARKDOWN_BOT_LIKE_USER_AGENT_HEADER],
+          missing: [MARKDOWN_TRADITIONAL_BOT_USER_AGENT_HEADER, MARKDOWN_SEC_FETCH_MODE_HEADER],
           destination: "/api/docs?format=markdown&path=:slug*",
         }),
       ]),
