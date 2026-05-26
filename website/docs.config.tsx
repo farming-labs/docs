@@ -34,6 +34,7 @@ import {
   ChartNoAxesColumn,
   DollarSign,
   Activity,
+  Cloud,
 } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 import { Callout } from "@/components/ui/callout";
@@ -154,6 +155,7 @@ export default defineDocs({
     arrowUpRight: <ArrowUpRight size={16} />,
     "chart-no-axes-column": <ChartNoAxesColumn size={16} />,
     activity: <Activity size={16} />,
+    cloud: <Cloud size={16} />,
     dollarSign: <DollarSign size={16} />,
   },
   github: {

@@ -141,6 +141,7 @@ All configuration lives in a single `docs.config.ts` file.
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
 | `search`      | `boolean \| DocsSearchConfig`  | `true`          | Built-in simple search, Typesense, Algolia, or a custom adapter |
+| `cloud`       | `DocsCloudConfig`              | —               | Docs Cloud API key env, preview, and publish defaults mirrored into `docs.json` |
 | `llmsTxt`     | `boolean \| LlmsTxtConfig`     | `true`          | Generated root and optional section-level `llms.txt` files with markdown page links |
 | `changelog`   | `boolean \| ChangelogConfig`   | `false`         | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
 | `mcp`         | `boolean \| DocsMcpConfig`     | enabled         | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp` |
