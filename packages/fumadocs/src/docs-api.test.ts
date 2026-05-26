@@ -411,7 +411,8 @@ Surge overview child.
     const markdownResponse = await GET(
       new Request("http://localhost/api/docs?format=markdown&path=overview"),
     );
-    expect(markdownResponse.status).toBe(404);
+    expect(markdownResponse.status).toBe(200);
+    expect(await markdownResponse.text()).toContain("# Docs Page Not Found");
   });
 
   it("serves llms.txt aliases through the shared docs api handler", async () => {
@@ -1047,7 +1048,9 @@ Config content.
       new Request("http://localhost/api/docs?format=markdown&path=overview"),
     );
     expect(agentResponse.status).toBe(200);
-    expect(await agentResponse.text()).toBe("Use this page as the implementation map.\n");
+    const agentDocument = await agentResponse.text();
+    expect(agentDocument).toContain("Use this page as the implementation map.");
+    expect(agentDocument).toContain("## Sitemap");
 
     const rewrittenFallbackResponse = await GET(
       new Request("http://localhost/docs/getting-started/quickstart.md"),
@@ -1064,7 +1067,9 @@ Config content.
 
     const rewrittenAgentResponse = await GET(new Request("http://localhost/docs/overview.md"));
     expect(rewrittenAgentResponse.status).toBe(200);
-    expect(await rewrittenAgentResponse.text()).toBe("Use this page as the implementation map.\n");
+    expect(await rewrittenAgentResponse.text()).toContain(
+      "Use this page as the implementation map.",
+    );
 
     const acceptFallbackResponse = await GET(
       new Request("http://localhost/docs/getting-started/quickstart", {
@@ -1088,7 +1093,7 @@ Config content.
     );
     expect(acceptAgentResponse.status).toBe(200);
     expect(acceptAgentResponse.headers.get("vary")).toBe("Accept");
-    expect(await acceptAgentResponse.text()).toBe("Use this page as the implementation map.\n");
+    expect(await acceptAgentResponse.text()).toContain("Use this page as the implementation map.");
 
     const weightedAcceptAgentResponse = await GET(
       new Request("http://localhost/docs/overview", {
@@ -1098,8 +1103,8 @@ Config content.
     expect(weightedAcceptAgentResponse.status).toBe(200);
     expect(weightedAcceptAgentResponse.headers.get("content-type")).toContain("text/markdown");
     expect(weightedAcceptAgentResponse.headers.get("vary")).toBe("Accept");
-    expect(await weightedAcceptAgentResponse.text()).toBe(
-      "Use this page as the implementation map.\n",
+    expect(await weightedAcceptAgentResponse.text()).toContain(
+      "Use this page as the implementation map.",
     );
 
     const signatureAgentResponse = await GET(
@@ -1109,7 +1114,9 @@ Config content.
     );
     expect(signatureAgentResponse.status).toBe(200);
     expect(signatureAgentResponse.headers.get("vary")).toBe("Accept, Signature-Agent");
-    expect(await signatureAgentResponse.text()).toBe("Use this page as the implementation map.\n");
+    expect(await signatureAgentResponse.text()).toContain(
+      "Use this page as the implementation map.",
+    );
 
     const signatureAgentPageResponse = await GET(
       new Request("http://localhost/docs/overview", {
@@ -1122,8 +1129,8 @@ Config content.
       '<http://localhost/docs/overview>; rel="canonical"',
     );
     expect(signatureAgentPageResponse.headers.get("vary")).toBe("Accept, Signature-Agent");
-    expect(await signatureAgentPageResponse.text()).toBe(
-      "Use this page as the implementation map.\n",
+    expect(await signatureAgentPageResponse.text()).toContain(
+      "Use this page as the implementation map.",
     );
 
     const userAgentPageResponse = await GET(
@@ -1137,7 +1144,9 @@ Config content.
       '<http://localhost/docs/overview>; rel="canonical"',
     );
     expect(userAgentPageResponse.headers.get("vary")).toBe("User-Agent");
-    expect(await userAgentPageResponse.text()).toBe("Use this page as the implementation map.\n");
+    expect(await userAgentPageResponse.text()).toContain(
+      "Use this page as the implementation map.",
+    );
 
     const heuristicPageResponse = await GET(
       new Request("http://localhost/docs/overview", {
@@ -1147,7 +1156,9 @@ Config content.
     expect(heuristicPageResponse.status).toBe(200);
     expect(heuristicPageResponse.headers.get("content-type")).toContain("text/markdown");
     expect(heuristicPageResponse.headers.get("vary")).toBe("User-Agent, Sec-Fetch-Mode");
-    expect(await heuristicPageResponse.text()).toBe("Use this page as the implementation map.\n");
+    expect(await heuristicPageResponse.text()).toContain(
+      "Use this page as the implementation map.",
+    );
 
     const browserLikeHeuristicResponse = await GET(
       new Request("http://localhost/docs/overview", {
@@ -1712,11 +1723,12 @@ Install the framework with pnpm.
     }
   });
 
-  it("returns 404 for markdown mode when the requested page does not exist", async () => {
+  it("returns actionable markdown recovery when the requested page does not exist", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-markdown-missing-"));
     tempDirs.push(rootDir);
 
     mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    mkdirSync(join(rootDir, "app", "docs", "guides", "quickstart"), { recursive: true });
     writeFileSync(
       join(rootDir, "app", "docs", "page.mdx"),
       `---
@@ -1724,6 +1736,16 @@ title: "Home"
 ---
 
 # Home
+`,
+    );
+    writeFileSync(
+      join(rootDir, "app", "docs", "guides", "quickstart", "page.mdx"),
+      `---
+title: "Quickstart"
+description: "Start building quickly"
+---
+
+# Quickstart
 `,
     );
 
@@ -1734,17 +1756,26 @@ title: "Home"
       entry: "docs",
     });
 
-    const response = await GET(
-      new Request("http://localhost/api/docs?format=markdown&path=missing"),
-    );
-    expect(response.status).toBe(404);
+    const response = await GET(new Request("http://localhost/api/docs?format=markdown&path=quick"));
+    expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/markdown");
     const notFoundDocument = await response.text();
     expect(notFoundDocument).toContain("# Docs Page Not Found");
-    expect(notFoundDocument).toContain("`/docs/missing.md`");
+    expect(notFoundDocument).toContain("`/docs/quick.md`");
+    expect(notFoundDocument).toContain("## Closest Matches");
+    expect(notFoundDocument).toContain("[Quickstart](/docs/guides/quickstart.md)");
     expect(notFoundDocument).toContain("`/.well-known/agent.json`");
     expect(notFoundDocument).toContain("`/api/docs?query={query}`");
     expect(notFoundDocument).toContain("`/sitemap.md`");
+    expect(notFoundDocument).toContain("## Sitemap");
+
+    const redirectResponse = await GET(
+      new Request("http://localhost/api/docs?format=markdown&path=guides/quikstart"),
+    );
+    expect(redirectResponse.status).toBe(307);
+    expect(redirectResponse.headers.get("location")).toBe(
+      "http://localhost/docs/guides/quickstart.md",
+    );
   });
 
   it("serves the agent discovery spec through the shared docs api handler", async () => {

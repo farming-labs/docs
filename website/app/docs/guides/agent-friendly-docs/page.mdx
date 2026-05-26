@@ -320,10 +320,14 @@ All successful markdown page responses include a canonical `Link` response heade
 the normal HTML page. Agents still receive the full markdown body, but the header tells citation and
 deduplication systems that `/docs/installation` is the canonical URL for the content.
 
-If a markdown request misses, the response is still markdown. The 404 points the agent to
-`/.well-known/agent.json`, `/.well-known/agent`, `/api/docs/agent/spec`, search, the requested API
-markdown route, and sitemap routes so the agent can recover instead of treating the site as a dead
-end.
+If a markdown request misses, the response is still markdown. Uncertain misses return HTTP `200`
+with closest-match suggestions, recovery steps, `/.well-known/agent.json`, `/.well-known/agent`,
+`/api/docs/agent/spec`, search, the requested API markdown route, and sitemap routes. Very
+high-confidence typo matches redirect to the corrected `.md` page so the agent can continue without
+treating the site as a dead end.
+
+Every successful markdown page also ends with a `## Sitemap` footer. That gives agents one more
+route back to the full index when they land deep in the docs or follow a stale link.
 
 ## Keep The Sitemap In The Build
 

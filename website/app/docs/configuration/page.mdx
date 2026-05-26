@@ -345,9 +345,12 @@ No separate config flag is required for machine-readable page markdown.
 - In Next.js, sending a non-empty `Signature-Agent` header to `/docs/<slug>` also returns the same markdown response
 - In Next.js, known AI user agents and conservative bot-like agent heuristics also receive markdown from normal docs URLs
 - These negotiated Next.js reads are handled by the existing `/api/docs` route; `withDocs()` does not create a separate `/api/docs/markdown` wrapper
+- Successful markdown page responses append a `## Sitemap` footer that links agents back to the configured markdown sitemap routes
+- Missing markdown pages return actionable markdown with HTTP `200`, closest-match suggestions, recovery instructions, discovery links, and sitemap links
+- Very high-confidence missing slugs redirect to the closest `.md` page
 - Embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI but are included in the `.md` fallback and MCP `read_page`
 - When a page folder has `agent.md`, that file is returned instead of the normal page markdown
-- Page frontmatter `related` is rendered as a comma-separated markdown metadata line beside `Description` when the page uses normal markdown or embedded `<Agent>` fallback, so agents can discover adjacent pages without scraping the UI. A sibling `agent.md` remains a full override; include any `Related:` line manually inside `agent.md` when needed.
+- Page frontmatter `related` is rendered as a comma-separated markdown metadata line beside `Description` when the page uses normal markdown or embedded `<Agent>` fallback, so agents can discover adjacent pages without scraping the UI. A sibling `agent.md` remains the page-content override; include any `Related:` line manually inside `agent.md` when needed.
 
 <Callout type="info" title="Markdown via content negotiation">
   You can keep the canonical docs URL and ask for markdown with an HTTP header:
@@ -383,9 +386,10 @@ No separate config flag is required for machine-readable page markdown.
   /docs/installation + User-Agent: ClaudeBot/1.0   -> cached markdown
   ```
 
-  If a markdown request misses, the 404 response is still markdown. It points agents at the agent
-  discovery spec, search endpoint, and sitemap routes so they can recover instead of stopping at a
-  plain `Not Found`.
+  If a markdown request misses, the recovery response is still markdown and returns HTTP `200`
+  unless a very high-confidence match redirects to the corrected `.md` page. The body lists closest
+  matches, recovery steps, the agent discovery spec, search endpoint, and sitemap routes so agents
+  can recover instead of stopping at a plain `Not Found`.
 </Callout>
 
 ```mdx title="page.mdx"

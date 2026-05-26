@@ -20,6 +20,7 @@ import {
   renderDocsLlmsTxt,
   renderDocsAgentsDocument,
   renderDocsSkillDocument,
+  resolveDocsMarkdownRecovery,
   resolveDocsAgentFeedbackConfig,
   resolveDocsAgentFeedbackRequest,
   resolveDocsAgentMdxContent,
@@ -528,14 +529,25 @@ describe("agent route helpers", () => {
     ).toBe('<https://docs.example.com/docs/install>; rel="canonical"');
   });
 
-  it("renders recovery links for markdown 404 responses", () => {
+  it("renders recovery links for missing markdown responses", () => {
     const document = renderDocsMarkdownNotFound({
       entry: "docs",
       requestedPath: "missing/page",
+      pages: [
+        {
+          slug: "missing-pages",
+          url: "/docs/missing-pages",
+          title: "Missing Pages",
+          description: "Recover from missing docs pages",
+          content: "Recovery guide",
+        },
+      ],
       sitemap: { routePrefix: "/docs-map" },
     });
 
     expect(document).toContain("# Docs Page Not Found");
+    expect(document).toContain("## Closest Matches");
+    expect(document).toContain("[Missing Pages](/docs/missing-pages.md)");
     expect(document).toContain("`/docs/missing/page.md`");
     expect(document).toContain("`/.well-known/agent.json`");
     expect(document).toContain("`/api/docs?query={query}`");
@@ -543,6 +555,52 @@ describe("agent route helpers", () => {
     expect(document).toContain("`/docs-map/sitemap.md`");
     expect(document).toContain("`/docs-map/.well-known/sitemap.md`");
     expect(document).toContain("`/docs-map/sitemap.xml`");
+    expect(document).toContain("## Sitemap");
+    expect(document).toContain("See the full [sitemap](/docs-map/sitemap.md)");
+  });
+
+  it("resolves high-confidence markdown recovery redirects", () => {
+    const recovery = resolveDocsMarkdownRecovery({
+      entry: "docs",
+      requestedPath: "instal",
+      pages: [
+        {
+          slug: "install",
+          url: "/docs/install",
+          title: "Install",
+          description: "Install the framework",
+          content: "Install docs",
+        },
+        {
+          slug: "configuration",
+          url: "/docs/configuration",
+          title: "Configuration",
+          content: "Config docs",
+        },
+      ],
+    });
+
+    expect(recovery.redirect?.markdownUrl).toBe("/docs/install.md");
+    expect(recovery.redirect?.confidence).toBeGreaterThanOrEqual(0.99);
+  });
+
+  it("bounds oversized requested paths during markdown recovery scoring", () => {
+    const recovery = resolveDocsMarkdownRecovery({
+      entry: "docs",
+      requestedPath: `install/${"x".repeat(20_000)}`,
+      pages: [
+        {
+          slug: "install",
+          url: "/docs/install",
+          title: "Install",
+          description: "Install the framework",
+          content: "Install docs",
+        },
+      ],
+    });
+
+    expect(recovery.redirect).toBeUndefined();
+    expect(recovery.matches[0]?.markdownUrl).toBe("/docs/install.md");
   });
 
   it("renders agent-specific markdown documents", () => {
@@ -578,6 +636,7 @@ describe("agent route helpers", () => {
     );
     expect(renderDocsMarkdownDocument(page!)).toContain("Related: /docs/configuration");
     expect(renderDocsMarkdownDocument(page!)).toContain("Hidden");
+    expect(renderDocsMarkdownDocument(page!)).toContain("## Sitemap");
   });
 
   it("renders the generated skill.md document", () => {

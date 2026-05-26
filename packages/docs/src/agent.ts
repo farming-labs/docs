@@ -342,12 +342,27 @@ export interface DocsMarkdownPage {
 
 export interface DocsMarkdownDocumentOptions {
   llms?: boolean | DocsLlmsDiscoveryConfig | LlmsTxtConfig;
+  sitemap?: boolean | DocsSitemapConfig;
 }
 
 export interface DocsMarkdownNotFoundOptions {
   entry?: string;
   requestedPath: string;
+  pages?: DocsMarkdownPage[];
   sitemap?: boolean | DocsSitemapConfig;
+}
+
+export interface DocsMarkdownRecoveryMatch {
+  title: string;
+  url: string;
+  markdownUrl: string;
+  description?: string;
+  confidence: number;
+}
+
+export interface DocsMarkdownRecoveryResult {
+  matches: DocsMarkdownRecoveryMatch[];
+  redirect?: DocsMarkdownRecoveryMatch;
 }
 
 export interface DocsMarkdownCanonicalUrlOptions {
@@ -1276,9 +1291,214 @@ export function getDocsMarkdownVaryHeader(request: Request): string | null {
   return values.size > 0 ? Array.from(values).join(", ") : null;
 }
 
+const DOCS_MARKDOWN_RECOVERY_MATCH_LIMIT = 5;
+const DOCS_MARKDOWN_RECOVERY_REDIRECT_CONFIDENCE = 0.99;
+const DOCS_MARKDOWN_RECOVERY_SLUG_MAX_LENGTH = 256;
+
+function normalizeDocsRecoveryText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\.md$/i, "")
+    .replace(/[#?].*$/g, "")
+    .replace(/['"`]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function normalizeDocsRecoverySlug(entry: string, value: string): string {
+  const withoutHash = value.split("#", 1)[0] ?? value;
+  const withoutQuery = withoutHash.split("?", 1)[0] ?? withoutHash;
+  const withoutMarkdown = withoutQuery.replace(/\.md$/i, "");
+  const normalizedPath = normalizeDocsUrlPath(
+    withoutMarkdown.startsWith("/") ? withoutMarkdown : `/${withoutMarkdown}`,
+  );
+  const normalizedEntry = `/${normalizeDocsPathSegment(entry) || "docs"}`;
+
+  if (normalizedPath === normalizedEntry) return "";
+  if (normalizedPath.startsWith(`${normalizedEntry}/`)) {
+    return normalizeDocsPathSegment(normalizedPath.slice(normalizedEntry.length + 1));
+  }
+
+  return normalizeDocsPathSegment(normalizedPath);
+}
+
+function limitDocsRecoverySlug(value: string): string {
+  return value.slice(0, DOCS_MARKDOWN_RECOVERY_SLUG_MAX_LENGTH);
+}
+
+function tokenizeDocsRecoveryText(value: string): string[] {
+  return normalizeDocsRecoveryText(value)
+    .split(/\s+/)
+    .filter((token) => token.length > 1);
+}
+
+function levenshteinDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a) return b.length;
+  if (!b) return a.length;
+
+  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  let current = new Array<number>(b.length + 1);
+
+  for (let i = 1; i <= a.length; i += 1) {
+    current[0] = i;
+    for (let j = 1; j <= b.length; j += 1) {
+      const substitution = previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1);
+      current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, substitution);
+    }
+    [previous, current] = [current, previous];
+  }
+
+  return previous[b.length] ?? Math.max(a.length, b.length);
+}
+
+function normalizedEditSimilarity(a: string, b: string): number {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const maxLength = Math.max(a.length, b.length);
+  if (maxLength === 0) return 1;
+  return Math.max(0, 1 - levenshteinDistance(a, b) / maxLength);
+}
+
+function tokenOverlapScore(requestedTokens: string[], candidateTokens: string[]): number {
+  if (requestedTokens.length === 0 || candidateTokens.length === 0) return 0;
+  const candidates = new Set(candidateTokens);
+  const matches = requestedTokens.filter((token) => candidates.has(token)).length;
+  return matches / requestedTokens.length;
+}
+
+function sameDocsRecoveryParent(a: string, b: string): boolean {
+  const aParts = a.split("/").filter(Boolean);
+  const bParts = b.split("/").filter(Boolean);
+  if (aParts.length !== bParts.length || aParts.length === 0) return false;
+  return aParts.slice(0, -1).join("/") === bParts.slice(0, -1).join("/");
+}
+
+function scoreDocsMarkdownRecoveryMatch({
+  entry,
+  requestedPath,
+  page,
+}: {
+  entry: string;
+  requestedPath: string;
+  page: DocsMarkdownPage;
+}): number {
+  const requestedSlug = limitDocsRecoverySlug(normalizeDocsRecoverySlug(entry, requestedPath));
+  const pageSlug = limitDocsRecoverySlug(normalizeDocsRecoverySlug(entry, page.url));
+  const requestedLast = requestedSlug.split("/").filter(Boolean).at(-1) ?? requestedSlug;
+  const pageLast = pageSlug.split("/").filter(Boolean).at(-1) ?? pageSlug;
+  const title = normalizeDocsRecoveryText(page.title);
+  const requestedText = normalizeDocsRecoveryText(requestedSlug.replace(/\//g, " "));
+  const requestedTokens = tokenizeDocsRecoveryText(requestedText);
+  const candidateTokens = tokenizeDocsRecoveryText(
+    [pageSlug.replace(/\//g, " "), page.title, page.description ?? ""].join(" "),
+  );
+
+  const pathDistance = levenshteinDistance(requestedSlug, pageSlug);
+  const segmentDistance = levenshteinDistance(requestedLast, pageLast);
+  if (
+    requestedSlug &&
+    pageSlug &&
+    ((sameDocsRecoveryParent(requestedSlug, pageSlug) && segmentDistance <= 1) || pathDistance <= 1)
+  ) {
+    return 0.995;
+  }
+
+  const pathSimilarity = normalizedEditSimilarity(requestedSlug, pageSlug);
+  const segmentSimilarity = normalizedEditSimilarity(requestedLast, pageLast);
+  const titleSimilarity = normalizedEditSimilarity(requestedText, title);
+  const overlap = tokenOverlapScore(requestedTokens, candidateTokens);
+  const substringBoost =
+    requestedText &&
+    (pageSlug.includes(requestedSlug) ||
+      title.includes(requestedText) ||
+      requestedText.includes(title))
+      ? 0.12
+      : 0;
+
+  return Math.min(
+    0.98,
+    Math.max(
+      pathSimilarity * 0.86,
+      segmentSimilarity * 0.8,
+      titleSimilarity * 0.72,
+      overlap * 0.75,
+    ) + substringBoost,
+  );
+}
+
+export function resolveDocsMarkdownRecovery({
+  entry = "docs",
+  requestedPath,
+  pages = [],
+}: DocsMarkdownNotFoundOptions): DocsMarkdownRecoveryResult {
+  const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
+  const matches = pages
+    .map((page) => ({
+      page,
+      confidence: scoreDocsMarkdownRecoveryMatch({
+        entry: normalizedEntry,
+        requestedPath,
+        page,
+      }),
+    }))
+    .filter((item) => item.confidence >= 0.35)
+    .sort((a, b) => {
+      if (b.confidence !== a.confidence) return b.confidence - a.confidence;
+      return a.page.url.localeCompare(b.page.url);
+    })
+    .slice(0, DOCS_MARKDOWN_RECOVERY_MATCH_LIMIT)
+    .map(({ page, confidence }) => ({
+      title: page.title,
+      url: normalizeDocsUrlPath(page.url),
+      markdownUrl: toDocsMarkdownUrl(page.url),
+      description: page.description,
+      confidence,
+    }));
+
+  const redirect =
+    matches[0] && matches[0].confidence >= DOCS_MARKDOWN_RECOVERY_REDIRECT_CONFIDENCE
+      ? matches[0]
+      : undefined;
+
+  return { matches, redirect };
+}
+
+function renderDocsMarkdownSitemapFooter(sitemap?: boolean | DocsSitemapConfig): string {
+  const sitemapConfig = resolveDocsSitemapConfig(sitemap);
+  const lines = ["## Sitemap", ""];
+
+  if (sitemapConfig.enabled && sitemapConfig.markdown.enabled) {
+    lines.push(`See the full [sitemap](${sitemapConfig.markdown.route}) for all pages.`);
+    if (sitemapConfig.markdown.docsRoute) {
+      lines.push(
+        `Docs-scoped sitemap: [${sitemapConfig.markdown.docsRoute}](${sitemapConfig.markdown.docsRoute}).`,
+      );
+    }
+    lines.push(
+      `Well-known sitemap: [${sitemapConfig.markdown.wellKnownRoute}](${sitemapConfig.markdown.wellKnownRoute}).`,
+    );
+  } else if (sitemapConfig.enabled && sitemapConfig.xml.enabled) {
+    lines.push(`See the XML [sitemap](${sitemapConfig.xml.route}) for all pages.`);
+  } else {
+    lines.push("Sitemap discovery is not enabled for this deployment.");
+  }
+
+  return lines.join("\n");
+}
+
+function appendDocsMarkdownSitemapFooter(
+  markdown: string,
+  sitemap?: boolean | DocsSitemapConfig,
+): string {
+  if (/^##\s+Sitemap\s*$/im.test(markdown)) return markdown;
+  return `${markdown.replace(/\s+$/g, "")}\n\n${renderDocsMarkdownSitemapFooter(sitemap)}\n`;
+}
+
 export function renderDocsMarkdownNotFound({
   entry = "docs",
   requestedPath,
+  pages,
   sitemap,
 }: DocsMarkdownNotFoundOptions): string {
   const normalizedEntry = normalizeDocsPathSegment(entry) || "docs";
@@ -1292,10 +1512,38 @@ export function renderDocsMarkdownNotFound({
     ? `${DEFAULT_DOCS_API_ROUTE}?format=markdown&path=${encodedRequestedSlug}`
     : `${DEFAULT_DOCS_API_ROUTE}?format=markdown`;
   const sitemapConfig = resolveDocsSitemapConfig(sitemap);
+  const recovery = resolveDocsMarkdownRecovery({
+    entry: normalizedEntry,
+    requestedPath,
+    pages,
+  });
   const lines = [
     "# Docs Page Not Found",
     "",
     `Could not find a markdown page for \`${requestedMarkdownRoute}\`.`,
+  ];
+
+  if (recovery.matches.length > 0) {
+    lines.push("", "## Closest Matches", "");
+    for (const match of recovery.matches) {
+      const confidence = `${Math.round(match.confidence * 1000) / 10}%`;
+      lines.push(
+        `- [${match.title}](${match.markdownUrl}) (${confidence} confidence)${
+          match.description ? ` - ${match.description}` : ""
+        }`,
+      );
+    }
+  }
+
+  lines.push(
+    "",
+    "## Recovery",
+    "",
+    "- If a closest match looks right, fetch that markdown URL directly.",
+    "- If the match is uncertain, search the docs first and then fetch the smallest page that answers the task.",
+    "- Use the sitemap routes below to browse the full docs index before guessing another slug.",
+    "",
+    "## Discovery Routes",
     "",
     "Use these discovery routes to find the right page:",
     "",
@@ -1306,7 +1554,7 @@ export function renderDocsMarkdownNotFound({
     `- Search endpoint: \`${DEFAULT_DOCS_API_ROUTE}?query={query}\``,
     `- Docs index markdown: \`/${normalizedEntry}.md\``,
     `- Requested markdown API route: \`${requestedApiRoute}\``,
-  ];
+  );
 
   if (sitemapConfig.enabled) {
     if (sitemapConfig.markdown.enabled) {
@@ -1333,7 +1581,7 @@ export function renderDocsMarkdownNotFound({
     "The agent discovery spec is the safest first step because it lists the active markdown, sitemap, robots, search, MCP, and feedback routes for this deployment.",
   );
 
-  return lines.join("\n");
+  return appendDocsMarkdownSitemapFooter(lines.join("\n"), sitemap);
 }
 
 export function findDocsMarkdownPage<T extends DocsMarkdownPage>(
@@ -1704,7 +1952,9 @@ export function renderDocsMarkdownDocument(
   page: DocsMarkdownPage,
   options?: DocsMarkdownDocumentOptions,
 ): string {
-  if (page.agentRawContent !== undefined) return page.agentRawContent;
+  if (page.agentRawContent !== undefined) {
+    return appendDocsMarkdownSitemapFooter(page.agentRawContent, options?.sitemap);
+  }
 
   const relatedLines = renderDocsRelatedMarkdownLines(page.related);
   const lines = [`# ${page.title}`, `URL: ${page.url}`];
@@ -1712,7 +1962,7 @@ export function renderDocsMarkdownDocument(
   if (page.description) lines.push(`Description: ${page.description}`);
   lines.push(...relatedLines);
   lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);
-  return lines.join("\n");
+  return appendDocsMarkdownSitemapFooter(lines.join("\n"), options?.sitemap);
 }
 
 export function renderDocsSkillDocument(options: DocsSkillDocumentOptions): string {
@@ -1780,7 +2030,7 @@ export function renderDocsAgentsDocument(options: DocsAgentsDocumentOptions): st
     "- Prefer markdown routes, llms.txt, sitemap.md, OpenAPI schemas, and MCP tools over scraping rendered HTML.",
     "- Treat generated context files as discovery aids, then fetch the smallest page or section that answers the task.",
     "- Preserve canonical docs URLs when citing pages back to humans.",
-    "- If a route returns a markdown 404, use the sitemap and discovery spec before guessing a slug.",
+    "- If a markdown route returns a recovery page, use its closest matches, sitemap, and discovery spec before guessing another slug.",
     "",
     "## Public Routes",
   );

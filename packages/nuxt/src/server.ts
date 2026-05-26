@@ -44,6 +44,7 @@ import {
   performDocsSearch,
   renderDocsMarkdownDocument,
   renderDocsMarkdownNotFound,
+  resolveDocsMarkdownRecovery,
   renderDocsLlmsTxt,
   renderDocsAgentsDocument,
   renderDocsSkillDocument,
@@ -904,7 +905,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     requestedPath: string,
   ) {
     const page = findDocsMarkdownPage(entry, getSearchIndex(ctx), requestedPath);
-    return page ? renderDocsMarkdownDocument(page) : null;
+    return page ? renderDocsMarkdownDocument(page, { sitemap: config.sitemap }) : null;
   }
 
   // ─── GET /api/docs?query=… | ?format=llms | ?format=llms-full ──
@@ -1097,14 +1098,33 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       });
 
       if (!document) {
+        const recovery = resolveDocsMarkdownRecovery({
+          entry,
+          requestedPath: markdownRequest.requestedPath,
+          pages: getSearchIndex(ctx),
+          sitemap: config.sitemap,
+        });
+
+        if (recovery.redirect) {
+          return new Response(null, {
+            status: 307,
+            headers: {
+              Location: new URL(recovery.redirect.markdownUrl, url.origin).toString(),
+              ...(varyHeader ? { Vary: varyHeader } : {}),
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
+
         return new Response(
           renderDocsMarkdownNotFound({
             entry,
             requestedPath: markdownRequest.requestedPath,
+            pages: getSearchIndex(ctx),
             sitemap: config.sitemap,
           }),
           {
-            status: 404,
+            status: 200,
             headers: {
               "Content-Type": "text/markdown; charset=utf-8",
               ...(varyHeader ? { Vary: varyHeader } : {}),

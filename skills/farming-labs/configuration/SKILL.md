@@ -176,12 +176,15 @@ Default behavior:
 - **Next.js:** `Accept: text/markdown` on `/docs/<slug>` returns the same markdown response; other adapters should use the `.md` URL or API format route
 - Requests with `Signature-Agent` on normal docs URLs return the same markdown response, so agent fetchers can read canonical URLs without appending `.md`
 - Next.js also auto-serves markdown on normal docs URLs for known AI user agents and conservative bot-like agent heuristics
+- successful markdown page responses append a `## Sitemap` footer that links to the configured markdown sitemap routes
+- missing markdown pages return actionable markdown with HTTP `200`, closest-match suggestions, recovery instructions, discovery links, and sitemap links
+- very high-confidence missing markdown slugs redirect to the closest `.md` page instead of returning a recovery body
 - embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI and are included in the markdown fallback
 - if a page folder has `agent.md`, that file becomes the markdown response for that page
 - if `agent.md` is missing, the markdown response falls back to the normal page markdown
 - page frontmatter `related` is rendered into a comma-separated machine-readable markdown metadata line beside `Description` for normal page markdown and embedded `<Agent>` fallback
 - MCP `read_page("/docs/<slug>")` uses the same page source and sees the same override
-- a sibling `agent.md` remains a full override; include any `Related:` line manually inside `agent.md` when needed
+- a sibling `agent.md` remains the page-content override; include any `Related:` line manually inside `agent.md` when needed
 - `docs agent compact` can generate those sibling `agent.md` files from the resolved page output
 
 Folder example:
