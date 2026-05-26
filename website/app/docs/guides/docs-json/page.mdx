@@ -70,7 +70,6 @@ Hosted features live under `cloud`:
 ```json
 {
   "cloud": {
-    "enabled": true,
     "analytics": {
       "enabled": true,
       "console": "info",
@@ -107,7 +106,6 @@ Cloud and for frameworkless generated runtimes.
 ```json
 {
   "cloud": {
-    "enabled": true,
     "analytics": true
   }
 }
@@ -118,7 +116,6 @@ Or, when you need the serializable subset:
 ```json
 {
   "cloud": {
-    "enabled": true,
     "analytics": {
       "enabled": true,
       "console": "info",
@@ -141,8 +138,10 @@ For frameworkless projects, this serializable subset can be materialized into th
 runtime even before the repo is fully connected to hosted Docs Cloud services. For framework-owned
 apps, `docs.config.ts` remains the canonical place for advanced runtime analytics behavior.
 
-Set `cloud.enabled` to `false` when the repo is using `docs.json` only as a local project contract.
-Set it to `true` once the repo is actually connected to Docs Cloud services.
+The presence of a `cloud` block opts the project into Cloud-aware CLI flows. Leave
+`cloud.enabled` unset for normal connected projects. Set it to `false` only when the repo is using
+`docs.json` as a local project contract and should explicitly disable Cloud previews and publish
+commands.
 
 To connect a repo, create an API key, and request hosted previews, see
 [Docs Cloud](/docs/cloud).

@@ -1,7 +1,7 @@
 ---
 title: "Docs Cloud"
 description: "Connect your docs project to Docs Cloud previews, API keys, and publish workflows"
-icon: "activity"
+icon: "cloud"
 order: 3.6
 related:
   - /docs/guides/docs-json
@@ -124,6 +124,10 @@ This creates or updates `docs.json`:
 
 Commit `docs.json` when you want the Cloud contract to be reviewed with the repo. The file is safe
 to commit because it contains only configuration and environment variable names.
+
+The generated `cloud` block intentionally omits `enabled`. The block itself opts the project into
+Cloud-aware CLI flows; set `"enabled": false` only when you need to disable Cloud operations while
+keeping the rest of the contract in place.
 
 ## Request A Preview
 
