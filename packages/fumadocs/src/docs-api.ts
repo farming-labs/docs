@@ -26,7 +26,6 @@ import matter from "gray-matter";
 import { getNextAppDir } from "./get-app-dir.js";
 import {
   normalizeDocsRelated,
-  renderDocsRelatedMarkdownLines,
   resolveChangelogConfig,
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
@@ -38,6 +37,8 @@ import {
   hasDocsMarkdownSignatureAgent,
   getDocsLlmsTxtMaxCharsIssue,
   renderDocsMarkdownNotFound,
+  renderDocsMarkdownDocument,
+  resolveDocsMarkdownRecovery,
   renderDocsLlmsTxt,
   resolveDocsI18n,
   resolveDocsLlmsTxtRequest,
@@ -1793,19 +1794,12 @@ function resolvePublicMarkdownRequest(
 
 function renderMarkdownDocument(
   page: DocsMcpPage | DocsSearchSourcePage,
-  options: { llmsEnabled?: boolean } = {},
+  options: { llmsEnabled?: boolean; sitemap?: boolean | DocsSitemapConfig } = {},
 ): string {
-  if ("agentRawContent" in page && page.agentRawContent !== undefined) {
-    return page.agentRawContent;
-  }
-
-  const relatedLines = renderDocsRelatedMarkdownLines(page.related);
-  const lines = [`# ${page.title}`, `URL: ${page.url}`];
-  if (options.llmsEnabled !== false) lines.push("LLM index: /llms.txt");
-  if (page.description) lines.push(`Description: ${page.description}`);
-  lines.push(...relatedLines);
-  lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);
-  return lines.join("\n");
+  return renderDocsMarkdownDocument(page, {
+    llms: options.llmsEnabled !== false,
+    sitemap: options.sitemap,
+  });
 }
 
 function renderSkillDocument({
@@ -3178,6 +3172,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       if (page)
         return renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
           llmsEnabled: llmsConfig.enabled,
+          sitemap: sitemapConfig,
         });
     }
 
@@ -3188,6 +3183,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     if (fallbackPage)
       return renderMarkdownDocument(withPublicDocsUrl(fallbackPage, ctx), {
         llmsEnabled: llmsConfig.enabled,
+        sitemap: sitemapConfig,
       });
 
     const requestedSlug = normalizePublicDocsSlug(ctx, normalizedPublicRequest);
@@ -3196,6 +3192,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       if (slug === requestedSlug)
         return renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
           llmsEnabled: llmsConfig.enabled,
+          sitemap: sitemapConfig,
         });
     }
 
@@ -3421,6 +3418,14 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         });
 
         if (!document) {
+          const recoveryPages = getIndexes(ctx).map((page) => withPublicDocsUrl(page, ctx));
+          const recovery = resolveDocsMarkdownRecovery({
+            entry,
+            requestedPath: markdownRequest.requestedPath,
+            pages: recoveryPages,
+            sitemap: sitemapConfig,
+          });
+
           await emitDocsAnalyticsEvent(analytics, {
             type: "agent_read",
             source: "server",
@@ -3445,14 +3450,26 @@ export function createDocsAPI(options?: DocsAPIOptions) {
               found: false,
             },
           });
+          if (recovery.redirect) {
+            return new Response(null, {
+              status: 307,
+              headers: {
+                Location: new URL(recovery.redirect.markdownUrl, url.origin).toString(),
+                ...(varyHeader ? { Vary: varyHeader } : {}),
+                "X-Robots-Tag": "noindex",
+              },
+            });
+          }
+
           return new Response(
             renderDocsMarkdownNotFound({
               entry,
               requestedPath: markdownRequest.requestedPath,
+              pages: recoveryPages,
               sitemap: sitemapConfig,
             }),
             {
-              status: 404,
+              status: 200,
               headers: {
                 "Content-Type": "text/markdown; charset=utf-8",
                 ...(varyHeader ? { Vary: varyHeader } : {}),
