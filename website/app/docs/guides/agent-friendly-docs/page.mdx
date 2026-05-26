@@ -303,7 +303,7 @@ curl "https://docs.example.com/docs/installation" \
   -H "User-Agent: ClaudeBot/1.0"
 ```
 
-Both requests are served by the existing shared docs API. `withDocs()` forwards the request into the
+These requests are served by the existing shared docs API. `withDocs()` forwards the request into the
 same `/api/docs` handler that already powers search, markdown format routes, `llms.txt`, `AGENTS.md`, `skill.md`,
 sitemaps, MCP, and the agent discovery spec. It does not generate or require another
 `/api/docs/markdown` wrapper route.
