@@ -1794,10 +1794,11 @@ function resolvePublicMarkdownRequest(
 
 function renderMarkdownDocument(
   page: DocsMcpPage | DocsSearchSourcePage,
-  options: { llmsEnabled?: boolean; sitemap?: boolean | DocsSitemapConfig } = {},
+  options: { llmsEnabled?: boolean; origin?: string; sitemap?: boolean | DocsSitemapConfig } = {},
 ): string {
   return renderDocsMarkdownDocument(page, {
     llms: options.llmsEnabled !== false,
+    origin: options.origin,
     sitemap: options.sitemap,
   });
 }
@@ -3153,7 +3154,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     return sources;
   }
 
-  async function getMarkdownDocument(ctx: DocsContext, requestedPath: string) {
+  async function getMarkdownDocument(ctx: DocsContext, requestedPath: string, origin?: string) {
     const normalizedRequest = normalizeRequestedMarkdownPath(ctx.entryPath, requestedPath);
     const normalizedPublicRequest = normalizePublicRequestedMarkdownPath(ctx, requestedPath);
     const normalizedEntry = `/${normalizePathSegment(ctx.entryPath)}`;
@@ -3172,6 +3173,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       if (page)
         return renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
           llmsEnabled: llmsConfig.enabled,
+          origin,
           sitemap: sitemapConfig,
         });
     }
@@ -3183,6 +3185,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     if (fallbackPage)
       return renderMarkdownDocument(withPublicDocsUrl(fallbackPage, ctx), {
         llmsEnabled: llmsConfig.enabled,
+        origin,
         sitemap: sitemapConfig,
       });
 
@@ -3192,6 +3195,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       if (slug === requestedSlug)
         return renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
           llmsEnabled: llmsConfig.enabled,
+          origin,
           sitemap: sitemapConfig,
         });
     }
@@ -3409,7 +3413,12 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         resolvePublicMarkdownRequest(entry, docsPath, url, request);
 
       if (markdownRequest) {
-        const document = await getMarkdownDocument(ctx, markdownRequest.requestedPath);
+        const markdownOrigin = llmsConfig.baseUrl || url.origin;
+        const document = await getMarkdownDocument(
+          ctx,
+          markdownRequest.requestedPath,
+          markdownOrigin,
+        );
         const varyHeader = getDocsMarkdownVaryHeader(request);
         const canonicalLinkHeader = getPublicMarkdownCanonicalLinkHeader({
           origin: url.origin,
@@ -3465,6 +3474,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             renderDocsMarkdownNotFound({
               entry,
               requestedPath: markdownRequest.requestedPath,
+              origin: markdownOrigin,
               pages: recoveryPages,
               sitemap: sitemapConfig,
             }),

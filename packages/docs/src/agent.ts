@@ -331,6 +331,8 @@ export interface DocsMarkdownPage {
   url: string;
   title: string;
   description?: string;
+  lastModified?: string;
+  lastmod?: string;
   related?: ResolvedDocsRelatedLink[];
   content: string;
   rawContent?: string;
@@ -342,12 +344,14 @@ export interface DocsMarkdownPage {
 
 export interface DocsMarkdownDocumentOptions {
   llms?: boolean | DocsLlmsDiscoveryConfig | LlmsTxtConfig;
+  origin?: string;
   sitemap?: boolean | DocsSitemapConfig;
 }
 
 export interface DocsMarkdownNotFoundOptions {
   entry?: string;
   requestedPath: string;
+  origin?: string;
   pages?: DocsMarkdownPage[];
   sitemap?: boolean | DocsSitemapConfig;
 }
@@ -1495,9 +1499,85 @@ function appendDocsMarkdownSitemapFooter(
   return `${markdown.replace(/\s+$/g, "")}\n\n${renderDocsMarkdownSitemapFooter(sitemap)}\n`;
 }
 
+function toDocsMarkdownYamlString(value: string): string {
+  return JSON.stringify(value);
+}
+
+function normalizeDocsMarkdownLastUpdated(value?: string): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  const dateOnly = trimmed.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  if (dateOnly) return dateOnly;
+
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date.toISOString().slice(0, 10);
+}
+
+function resolveDocsMarkdownMetadataUrl(value: string, origin?: string): string {
+  if (!origin) return value;
+  try {
+    return new URL(value, origin).toString();
+  } catch {
+    return value;
+  }
+}
+
+function renderDocsMarkdownFrontmatter({
+  title,
+  description,
+  canonicalUrl,
+  markdownUrl,
+  lastUpdated,
+}: {
+  title: string;
+  description?: string;
+  canonicalUrl: string;
+  markdownUrl: string;
+  lastUpdated?: string;
+}): string {
+  const lines = [
+    "---",
+    `title: ${toDocsMarkdownYamlString(title)}`,
+    ...(description ? [`description: ${toDocsMarkdownYamlString(description)}`] : []),
+    `canonical_url: ${toDocsMarkdownYamlString(canonicalUrl)}`,
+    `markdown_url: ${toDocsMarkdownYamlString(markdownUrl)}`,
+    ...(lastUpdated ? [`last_updated: ${toDocsMarkdownYamlString(lastUpdated)}`] : []),
+    "---",
+  ];
+
+  return lines.join("\n");
+}
+
+function hasDocsMarkdownFrontmatter(markdown: string): boolean {
+  return /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/.test(markdown);
+}
+
+function prependDocsMarkdownFrontmatter(
+  markdown: string,
+  metadata: Parameters<typeof renderDocsMarkdownFrontmatter>[0],
+): string {
+  if (hasDocsMarkdownFrontmatter(markdown)) return markdown;
+  return `${renderDocsMarkdownFrontmatter(metadata)}\n\n${markdown.replace(/^\r?\n+/, "")}`;
+}
+
+function resolveDocsMarkdownPageMetadata(
+  page: DocsMarkdownPage,
+  options?: DocsMarkdownDocumentOptions,
+): Parameters<typeof renderDocsMarkdownFrontmatter>[0] {
+  return {
+    title: page.title,
+    description: page.description,
+    canonicalUrl: resolveDocsMarkdownMetadataUrl(page.url, options?.origin),
+    markdownUrl: resolveDocsMarkdownMetadataUrl(toDocsMarkdownUrl(page.url), options?.origin),
+    lastUpdated: normalizeDocsMarkdownLastUpdated(page.lastmod ?? page.lastModified),
+  };
+}
+
 export function renderDocsMarkdownNotFound({
   entry = "docs",
   requestedPath,
+  origin,
   pages,
   sitemap,
 }: DocsMarkdownNotFoundOptions): string {
@@ -1581,7 +1661,14 @@ export function renderDocsMarkdownNotFound({
     "The agent discovery spec is the safest first step because it lists the active markdown, sitemap, robots, search, MCP, and feedback routes for this deployment.",
   );
 
-  return appendDocsMarkdownSitemapFooter(lines.join("\n"), sitemap);
+  const document = prependDocsMarkdownFrontmatter(lines.join("\n"), {
+    title: "Docs Page Not Found",
+    description: `Could not find a markdown page for ${requestedMarkdownRoute}.`,
+    canonicalUrl: resolveDocsMarkdownMetadataUrl(normalizedRequest, origin),
+    markdownUrl: resolveDocsMarkdownMetadataUrl(requestedMarkdownRoute, origin),
+  });
+
+  return appendDocsMarkdownSitemapFooter(document, sitemap);
 }
 
 export function findDocsMarkdownPage<T extends DocsMarkdownPage>(
@@ -1953,7 +2040,13 @@ export function renderDocsMarkdownDocument(
   options?: DocsMarkdownDocumentOptions,
 ): string {
   if (page.agentRawContent !== undefined) {
-    return appendDocsMarkdownSitemapFooter(page.agentRawContent, options?.sitemap);
+    return appendDocsMarkdownSitemapFooter(
+      prependDocsMarkdownFrontmatter(
+        page.agentRawContent,
+        resolveDocsMarkdownPageMetadata(page, options),
+      ),
+      options?.sitemap,
+    );
   }
 
   const relatedLines = renderDocsRelatedMarkdownLines(page.related);
@@ -1962,7 +2055,13 @@ export function renderDocsMarkdownDocument(
   if (page.description) lines.push(`Description: ${page.description}`);
   lines.push(...relatedLines);
   lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);
-  return appendDocsMarkdownSitemapFooter(lines.join("\n"), options?.sitemap);
+  return appendDocsMarkdownSitemapFooter(
+    prependDocsMarkdownFrontmatter(
+      lines.join("\n"),
+      resolveDocsMarkdownPageMetadata(page, options),
+    ),
+    options?.sitemap,
+  );
 }
 
 export function renderDocsSkillDocument(options: DocsSkillDocumentOptions): string {

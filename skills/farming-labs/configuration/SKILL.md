@@ -176,6 +176,7 @@ Default behavior:
 - **Next.js:** `Accept: text/markdown` on `/docs/<slug>` returns the same markdown response; other adapters should use the `.md` URL or API format route
 - Requests with `Signature-Agent` on normal docs URLs return the same markdown response, so agent fetchers can read canonical URLs without appending `.md`
 - Next.js also auto-serves markdown on normal docs URLs for known AI user agents and conservative bot-like agent heuristics
+- markdown responses start with YAML frontmatter for `title`, optional `description`, `canonical_url`, `markdown_url`, and `last_updated` when a page freshness date is known
 - successful markdown page responses append a `## Sitemap` footer that links to the configured markdown sitemap routes
 - missing markdown pages return actionable markdown with HTTP `200`, closest-match suggestions, recovery instructions, discovery links, and sitemap links
 - very high-confidence missing markdown slugs redirect to the closest `.md` page instead of returning a recovery body
