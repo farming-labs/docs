@@ -568,6 +568,91 @@ function readResponseMessage(body: unknown, fallback: string): string {
   return fallback;
 }
 
+const FAILURE_DETAIL_OBJECT_KEYS = ["job", "run", "preview", "deployment", "build"] as const;
+const FAILURE_DETAIL_ARRAY_KEYS = ["jobs", "runs", "steps", "tasks", "stages", "checks"] as const;
+const FAILURE_DETAIL_MESSAGE_KEYS = ["error", "message", "detail", "reason", "summary"] as const;
+const FAILURE_DETAIL_LABEL_KEYS = [
+  "name",
+  "title",
+  "label",
+  "step",
+  "phase",
+  "stage",
+  "id",
+] as const;
+const FAILURE_DETAIL_STATUS_KEYS = ["status", "state", "conclusion", "result", "outcome"] as const;
+
+type PreviewFailureDetail = {
+  message?: string;
+  path: string[];
+  status?: string;
+};
+
+function readTrimmedString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function readFirstString(
+  record: Record<string, unknown>,
+  keys: readonly string[],
+): string | undefined {
+  for (const key of keys) {
+    const value = readTrimmedString(record[key]);
+    if (value) return value;
+  }
+  return undefined;
+}
+
+function singularizeKey(key: string): string {
+  return key.endsWith("s") ? key.slice(0, -1) : key;
+}
+
+function findPreviewFailureDetail(
+  value: unknown,
+  parentPath: string[] = [],
+  fallbackLabel?: string,
+): PreviewFailureDetail | undefined {
+  if (!isRecord(value)) return undefined;
+
+  const label = readFirstString(value, FAILURE_DETAIL_LABEL_KEYS) ?? fallbackLabel;
+  const path = label ? [...parentPath, label] : parentPath;
+
+  for (const key of FAILURE_DETAIL_OBJECT_KEYS) {
+    const detail = findPreviewFailureDetail(value[key], path, key);
+    if (detail) return detail;
+  }
+
+  for (const key of FAILURE_DETAIL_ARRAY_KEYS) {
+    const children = value[key];
+    if (!Array.isArray(children)) continue;
+    for (const child of children) {
+      const detail = findPreviewFailureDetail(child, path, singularizeKey(key));
+      if (detail) return detail;
+    }
+  }
+
+  const status = readFirstString(value, FAILURE_DETAIL_STATUS_KEYS);
+  if (!isTerminalFailureStatus(status)) return undefined;
+
+  return {
+    message: readFirstString(value, FAILURE_DETAIL_MESSAGE_KEYS),
+    path,
+    status,
+  };
+}
+
+function readPreviewFailureMessage(body: unknown, fallback: string): string {
+  const detail = findPreviewFailureDetail(body);
+  if (!detail) return readResponseMessage(body, fallback);
+
+  const prefix = fallback.replace(/\.+$/g, "");
+  const location = detail.path.length > 0 ? ` at ${detail.path.join(" > ")}` : "";
+  const status = detail.status ? ` (${detail.status})` : "";
+  const message = detail.message ?? readResponseMessage(body, "");
+
+  return message ? `${prefix}${location}${status}: ${message}` : `${prefix}${location}${status}.`;
+}
+
 async function fetchCloudJson(params: {
   url: string;
   apiKey: string;
@@ -662,7 +747,15 @@ function assertPreviewApiKeyScopes(identity: unknown) {
 
 function isTerminalFailureStatus(status: string | undefined): boolean {
   const normalized = status?.toLowerCase();
-  return normalized === "failed" || normalized === "error" || normalized === "canceled";
+  return (
+    normalized === "failed" ||
+    normalized === "failure" ||
+    normalized === "error" ||
+    normalized === "canceled" ||
+    normalized === "cancelled" ||
+    normalized === "timed_out" ||
+    normalized === "timeout"
+  );
 }
 
 function readStatusLabel(body: unknown): string | undefined {
@@ -717,7 +810,7 @@ async function requestPreview(params: {
 
     const status = readStatusLabel(statusBody);
     if (isTerminalFailureStatus(status)) {
-      throw new Error(readResponseMessage(statusBody, "Docs Cloud preview failed."));
+      throw new Error(readPreviewFailureMessage(statusBody, "Docs Cloud preview failed."));
     }
   }
 

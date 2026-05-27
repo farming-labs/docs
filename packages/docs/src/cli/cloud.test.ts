@@ -422,7 +422,24 @@ void missing;
         return new Response(
           JSON.stringify({
             status: "queued",
-            job: { id: "job_1", status: "FAILED" },
+            job: {
+              id: "job_1",
+              status: "FAILED",
+              runs: [
+                {
+                  name: "Build",
+                  status: "FAILED",
+                  steps: [
+                    { name: "Install dependencies", status: "SUCCEEDED" },
+                    {
+                      name: "Compile docs",
+                      status: "FAILED",
+                      message: "next build exited with code 1",
+                    },
+                  ],
+                },
+              ],
+            },
             error: "Build failed",
           }),
           { status: 200, headers: { "content-type": "application/json" } },
@@ -440,7 +457,9 @@ void missing;
         json: true,
         pollIntervalMs: 1,
       }),
-    ).rejects.toThrow("Build failed");
+    ).rejects.toThrow(
+      "Docs Cloud preview failed at job_1 > Build > Compile docs (FAILED): next build exited with code 1",
+    );
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
