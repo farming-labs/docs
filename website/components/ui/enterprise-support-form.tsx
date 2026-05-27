@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Check, Loader2 } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Loader2 } from "lucide-react";
 import PixelCard from "@/components/ui/pixel-card";
 
 const supportOptions = [
@@ -12,6 +12,8 @@ const supportOptions = [
   { value: "migration", label: "Migration support" },
   { value: "private-docs", label: "Private docs workflows" },
 ] as const;
+
+const teamSizeOptions = ["1-10", "10-30", "30-50", "50-100", "100+"] as const;
 
 type SubmitState =
   | { status: "idle"; message: null }
@@ -184,22 +186,23 @@ export function EnterpriseSupportForm() {
             onChange={setRole}
             placeholder="Head of engineering"
           />
-          <Field
+          <SelectField
             id="enterprise-support-team-size"
             label="Team size"
             value={teamSize}
             onChange={setTeamSize}
-            placeholder="25 engineers"
+            placeholder="Select range"
+            options={teamSizeOptions}
           />
         </div>
 
         <Field
           id="enterprise-support-docs-url"
-          label="Current docs URL"
+          label="Their website"
           type="url"
           value={docsUrl}
           onChange={setDocsUrl}
-          placeholder="https://docs.company.com"
+          placeholder="https://company.com"
         />
 
         <SupportNeedList value={supportNeeds} onToggle={toggleSupportNeed} />
@@ -312,6 +315,54 @@ function Field({
         required={required}
         className="w-full rounded-none border border-black/10 bg-transparent px-3 py-2.5 text-sm text-black outline-none transition-colors placeholder:text-black/25 focus:border-black/30 dark:border-white/10 dark:text-white dark:placeholder:text-white/25 dark:focus:border-white/25"
       />
+    </div>
+  );
+}
+
+function SelectField({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+  options,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  options: readonly string[];
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="mb-1 block font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45"
+      >
+        {label}
+      </label>
+      <div className="relative">
+        <select
+          id={id}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="w-full appearance-none rounded-none border border-black/10 bg-transparent px-3 py-2.5 pr-9 text-sm text-black outline-none transition-colors focus:border-black/30 dark:border-white/10 dark:text-white dark:focus:border-white/25"
+        >
+          <option value="" disabled>
+            {placeholder}
+          </option>
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          className="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-black/35 dark:text-white/35"
+          strokeWidth={1.8}
+        />
+      </div>
     </div>
   );
 }

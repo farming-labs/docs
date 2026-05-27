@@ -62,7 +62,7 @@ function formatSupportMessage({
     "Enterprise support request",
     role ? `Role: ${role}` : undefined,
     teamSize ? `Team size: ${teamSize}` : undefined,
-    docsUrl ? `Docs URL: ${docsUrl}` : undefined,
+    docsUrl ? `Website: ${docsUrl}` : undefined,
     supportNeeds.length ? `Support needed: ${supportNeeds.join(", ")}` : undefined,
     message ? `Notes: ${message}` : undefined,
   ]
@@ -110,10 +110,7 @@ export async function POST(request: Request) {
       try {
         new URL(docsUrl);
       } catch {
-        return NextResponse.json(
-          { error: "Current docs URL must be a valid URL" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Their website must be a valid URL" }, { status: 400 });
       }
     }
 
