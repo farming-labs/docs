@@ -61,6 +61,32 @@ model CloudWaitlistEntry {
   @@index([createdAt])
 }
 
+enum EnterpriseSupportStatus {
+  NEW
+  CONTACTED
+  CLOSED
+}
+
+model EnterpriseSupportRequest {
+  id           String                  @id @default(cuid())
+  email        String
+  name         String?
+  company      String
+  role         String?
+  teamSize     String?
+  websiteUrl   String?
+  supportNeeds String[]                @default([])
+  message      String?
+  status       EnterpriseSupportStatus @default(NEW)
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  @@index([createdAt])
+  @@index([email])
+  @@index([company])
+  @@index([status])
+}
+
 model AgentScoreEntry {
   id              String         @id @default(cuid())
   url             String         @unique

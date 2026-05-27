@@ -29,7 +29,7 @@ export function EnterpriseSupportForm() {
   const [company, setCompany] = useState("");
   const [role, setRole] = useState("");
   const [teamSize, setTeamSize] = useState("");
-  const [docsUrl, setDocsUrl] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
   const [supportNeeds, setSupportNeeds] = useState<string[]>(["infrastructure"]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -76,7 +76,7 @@ export function EnterpriseSupportForm() {
           company,
           role,
           teamSize,
-          docsUrl,
+          websiteUrl,
           supportNeeds,
           message,
         }),
@@ -102,7 +102,7 @@ export function EnterpriseSupportForm() {
       setCompany("");
       setRole("");
       setTeamSize("");
-      setDocsUrl("");
+      setWebsiteUrl("");
       setSupportNeeds(["infrastructure"]);
       setMessage("");
 
@@ -197,11 +197,11 @@ export function EnterpriseSupportForm() {
         </div>
 
         <Field
-          id="enterprise-support-docs-url"
+          id="enterprise-support-website-url"
           label="Website URL"
           type="url"
-          value={docsUrl}
-          onChange={setDocsUrl}
+          value={websiteUrl}
+          onChange={setWebsiteUrl}
           placeholder="https://company.com"
         />
 

@@ -10,6 +10,7 @@ type EnterpriseSupportBody = {
   company?: string;
   role?: string;
   teamSize?: string;
+  websiteUrl?: string;
   docsUrl?: string;
   supportNeeds?: string | string[];
   message?: string;
@@ -45,31 +46,6 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function formatSupportMessage({
-  role,
-  teamSize,
-  docsUrl,
-  supportNeeds,
-  message,
-}: {
-  role?: string;
-  teamSize?: string;
-  docsUrl?: string;
-  supportNeeds: string[];
-  message?: string;
-}) {
-  return [
-    "Enterprise support request",
-    role ? `Role: ${role}` : undefined,
-    teamSize ? `Team size: ${teamSize}` : undefined,
-    docsUrl ? `Website: ${docsUrl}` : undefined,
-    supportNeeds.length ? `Support needed: ${supportNeeds.join(", ")}` : undefined,
-    message ? `Notes: ${message}` : undefined,
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
 export async function POST(request: Request) {
   try {
     let body: EnterpriseSupportBody;
@@ -90,7 +66,8 @@ export async function POST(request: Request) {
     const company = companyInput ?? undefined;
     const role = readString(body.role, { max: 120 }) ?? undefined;
     const teamSize = readString(body.teamSize, { max: 80 }) ?? undefined;
-    const docsUrl = readString(body.docsUrl, { max: 2048 }) ?? undefined;
+    const websiteUrl =
+      readString(body.websiteUrl ?? body.docsUrl, { max: 2048 }) ?? undefined;
     const supportNeeds = readStringList(body.supportNeeds, { maxItems: 12, maxItem: 80 });
     const message = readString(body.message, { max: 4000 }) ?? undefined;
 
@@ -106,9 +83,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Please provide a valid work email" }, { status: 400 });
     }
 
-    if (docsUrl) {
+    if (websiteUrl) {
       try {
-        new URL(docsUrl);
+        new URL(websiteUrl);
       } catch {
         return NextResponse.json({ error: "Website URL must be a valid URL" }, { status: 400 });
       }
@@ -126,35 +103,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const interest = ["enterprise-support", ...supportNeeds]
-      .filter(Boolean)
-      .join(", ")
-      .slice(0, 320);
-    const supportMessage = formatSupportMessage({
-      role,
-      teamSize,
-      docsUrl,
-      supportNeeds,
-      message,
-    }).slice(0, 4000);
-
     try {
-      const entry = await prisma.cloudWaitlistEntry.upsert({
-        where: { email },
-        update: {
-          name,
-          company,
-          projectUrl: docsUrl,
-          interest,
-          message: supportMessage,
-        },
-        create: {
+      const entry = await prisma.enterpriseSupportRequest.create({
+        data: {
           email,
           name,
           company,
-          projectUrl: docsUrl,
-          interest,
-          message: supportMessage,
+          role,
+          teamSize,
+          websiteUrl,
+          supportNeeds,
+          message,
         },
       });
 
@@ -166,14 +125,15 @@ export async function POST(request: Request) {
         error instanceof Prisma.PrismaClientValidationError
       ) {
         console.warn(
-          "[enterprise support POST] CloudWaitlistEntry schema or Prisma client is out of date.",
+          "[enterprise support POST] EnterpriseSupportRequest schema or Prisma client is out of date.",
         );
 
         return NextResponse.json(
           {
             ok: true,
             stored: false,
-            warning: "Enterprise support schema or Prisma client is out of date.",
+            warning:
+              "Enterprise support request received, but the dedicated support schema is not synced yet.",
           },
           { status: 202 },
         );
