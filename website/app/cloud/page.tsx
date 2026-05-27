@@ -3,12 +3,19 @@ import Link from "next/link";
 import {
   ArrowRight,
   ArrowUpRight,
+  BadgeCheck,
   Building2,
+  Clock3,
   Cloud,
   Github,
   GithubIcon,
+  Headset,
+  MessageSquareText,
   type LucideIcon,
   Palette,
+  ServerCog,
+  ShieldCheck,
+  Sparkles,
   Workflow,
 } from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
@@ -16,6 +23,7 @@ import { CloudDocsManageIllustration } from "@/components/ui/cloud-feature-illus
 import { CloudFeatures } from "@/components/ui/cloud-features";
 import { CloudTerminalDemo } from "@/components/ui/cloud-terminal-demo";
 import CloudWaitlistForm from "@/components/ui/cloud-waitlist-form";
+import { EnterpriseSupportForm } from "@/components/ui/enterprise-support-form";
 import PixelCard from "@/components/ui/pixel-card";
 import Shuffle from "@/components/ui/shuffle";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
@@ -126,6 +134,31 @@ const accessCards = [
   },
 ] as const;
 
+const enterpriseSupportItems = [
+  {
+    icon: ServerCog,
+    title: "Infrastructure support",
+    body: "Get help with cloud setup, routing, deployment shape, private docs, and production blockers.",
+  },
+  {
+    icon: Sparkles,
+    title: "Brand system support",
+    body: "Bring your own visual language, custom themes, docs IA, and launch polish without losing the open runtime.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Agent + human readiness",
+    body: "Tune markdown routes, MCP, llms.txt, search, recovery paths, and visible docs so both readers work.",
+  },
+] as const;
+
+const enterpriseTrustSignals = [
+  "Fast response for launch-blocking docs infra",
+  "Cloud support without forcing lock-in",
+  "Custom branding and migration help",
+  "Agent-readable and human-first docs",
+] as const;
+
 export default function CloudPage() {
   return (
     <div className="min-h-dvh overflow-x-hidden bg-white text-black dark:bg-black dark:text-white">
@@ -222,6 +255,13 @@ export default function CloudPage() {
                 >
                   Read Docs
                   <ArrowRight className="size-3.5 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
+                </a>
+                <a
+                  href="#enterprise-support"
+                  className="group inline-flex w-full items-center justify-center gap-2 border border-black/10 bg-white/80 px-5 py-3 font-mono text-[11px] uppercase tracking-[0.24em] text-black/65 transition-all hover:border-black/20 hover:bg-black/[0.03] hover:text-black hover:no-underline sm:w-auto sm:justify-start dark:border-white/10 dark:bg-black/40 dark:text-white/65 dark:hover:border-white/20 dark:hover:bg-white/[0.05] dark:hover:text-white"
+                >
+                  Enterprise support
+                  <Headset className="size-3.5" strokeWidth={1.8} />
                 </a>
               </div>
             </div>
@@ -419,6 +459,83 @@ export default function CloudPage() {
             <span className="hidden sm:inline-flex items-center gap-2">no forced upgrade path</span>
           </div>
 
+          <section
+            id="enterprise-support"
+            className="scroll-mt-20 border-y border-black/10 py-8 dark:border-white/10 sm:py-10"
+          >
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,0.96fr)_minmax(360px,0.78fr)] lg:items-start">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-2 border border-black/10 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-black/45 dark:border-white/10 dark:text-white/45">
+                    <Headset className="size-3.5" strokeWidth={1.8} />
+                    Enterprise support
+                  </span>
+                  <span className="inline-flex items-center gap-2 border border-black/10 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-black/45 dark:border-white/10 dark:text-white/45">
+                    <Clock3 className="size-3.5" strokeWidth={1.8} />
+                    Fast response
+                  </span>
+                </div>
+
+                <h2 className="mt-5 max-w-3xl text-3xl font-semibold tracking-[-0.05em] text-black dark:text-white sm:text-4xl lg:text-5xl">
+                  Need docs infrastructure, cloud setup, or a branded agent-ready launch?
+                </h2>
+                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-black/58 dark:text-white/48 sm:text-base">
+                  Tell us where your docs system is stuck. We can help with cloud infrastructure,
+                  migration, custom branding, private docs workflows, and docs that stay optimized
+                  for humans, agents, and AI retrieval.
+                </p>
+
+                <div className="mt-7 grid gap-3">
+                  {enterpriseSupportItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div
+                        key={item.title}
+                        className="grid gap-4 border border-black/10 bg-black/[0.02] px-4 py-4 dark:border-white/10 dark:bg-white/[0.02] sm:grid-cols-[44px_minmax(0,1fr)] sm:items-start"
+                      >
+                        <div className="flex size-11 items-center justify-center border border-black/10 bg-white dark:border-white/10 dark:bg-black">
+                          <Icon
+                            className="size-[18px] text-black/60 dark:text-white/60"
+                            strokeWidth={1.8}
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-pixel text-base font-medium tracking-normal text-black dark:text-white">
+                            {item.title}
+                          </h3>
+                          <p className="mt-1.5 text-sm leading-relaxed text-black/55 dark:text-white/45">
+                            {item.body}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-6 grid gap-2 sm:grid-cols-2">
+                  {enterpriseTrustSignals.map((signal) => (
+                    <div
+                      key={signal}
+                      className="flex min-h-12 items-center gap-3 border border-black/10 px-3 py-2 text-sm text-black/58 dark:border-white/10 dark:text-white/48"
+                    >
+                      <BadgeCheck className="size-4 shrink-0 text-black/50 dark:text-white/50" />
+                      <span>{signal}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 flex items-center gap-3 border border-black/10 bg-black px-4 py-3 text-white dark:border-white/10 dark:bg-white dark:text-black">
+                  <MessageSquareText className="size-4 shrink-0" strokeWidth={1.8} />
+                  <p className="font-mono text-[10px] uppercase tracking-[0.18em]">
+                    Fill the form and we’ll get back to you fast.
+                  </p>
+                </div>
+              </div>
+
+              <EnterpriseSupportForm />
+            </div>
+          </section>
+
           <PixelCard className="border-black/10 bg-white/95 p-4 sm:p-0 dark:border-white/10 dark:bg-black/35">
             <div className="relative">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(125%_125%_at_50%_0%,transparent_40%,rgba(0,0,0,0.03),white_125%)] dark:bg-[radial-gradient(125%_125%_at_50%_0%,transparent_40%,rgba(255,255,255,0.03),rgba(0,0,0,0.92)_125%)]" />
@@ -475,23 +592,23 @@ export default function CloudPage() {
             <div className="relative z-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/55">
-                  Early access
+                  Enterprise path
                 </p>
                 <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-[-0.05em] text-black dark:text-white sm:text-4xl">
-                  Help shape the first release around the parts your team actually needs.
+                  Bring us the blocker. We’ll help you get the docs stack unstuck.
                 </h2>
                 <p className="mt-4 max-w-2xl text-sm leading-relaxed text-black/60 dark:text-white/70">
-                  Tell us which part of your docs stack is hardest today. We’re using that to shape
-                  the first release.
+                  Use the support form for infrastructure questions, cloud rollout, custom branding,
+                  migration planning, and docs that need to serve both humans and agents.
                 </p>
               </div>
 
               <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-8">
                 <a
-                  href="#waitlist"
+                  href="#enterprise-support"
                   className="group inline-flex items-center gap-2 border border-black bg-black px-5 py-3 font-mono text-[10px] uppercase tracking-normal text-white transition-all hover:bg-black/90 hover:no-underline dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/90"
                 >
-                  Join waitlist
+                  Contact support
                   <ArrowRight className="size-3.5 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
                 </a>
                 <Link
@@ -624,6 +741,12 @@ function CloudFooterSection() {
                 className="font-mono text-xs uppercase text-black/30 transition-colors hover:text-black/60 hover:no-underline dark:text-white/30 dark:hover:text-white/60"
               >
                 Documentation
+              </Link>
+              <Link
+                href="/cloud#enterprise-support"
+                className="font-mono text-xs uppercase text-black/30 transition-colors hover:text-black/60 hover:no-underline dark:text-white/30 dark:hover:text-white/60"
+              >
+                Enterprise
               </Link>
               <Link
                 href="https://github.com/farming-labs/docs"
