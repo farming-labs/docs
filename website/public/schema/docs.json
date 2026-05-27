@@ -599,14 +599,16 @@
         "preview": {
           "type": "object",
           "additionalProperties": false,
+          "deprecated": true,
           "default": {
             "enabled": true
           },
+          "description": "Legacy hosted preview deployment gate. Prefer cloud.deploy.enabled in new configs.",
           "properties": {
             "enabled": {
               "type": "boolean",
               "default": true,
-              "description": "Whether Docs Cloud should request preview deployments."
+              "description": "Legacy toggle for hosted preview deployments."
             }
           }
         },
@@ -858,9 +860,6 @@
           "console": "info",
           "includeInputs": false
         },
-        "preview": {
-          "enabled": true
-        },
         "publish": {
           "mode": "draft-pr",
           "baseBranch": "main"
@@ -897,9 +896,6 @@
       "cloud": {
         "enabled": true,
         "analytics": true,
-        "preview": {
-          "enabled": true
-        },
         "publish": {
           "mode": "draft-pr",
           "baseBranch": "main"

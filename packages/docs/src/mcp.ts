@@ -457,13 +457,6 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
           "Environment variable that stores the Docs Cloud API key. The key value is never written to docs.json.",
       },
       {
-        path: "cloud.preview.enabled",
-        name: "enabled",
-        type: "boolean",
-        default: true,
-        description: "Allow hosted preview deployments for docs deploy.",
-      },
-      {
         path: "cloud.deploy.enabled",
         name: "enabled",
         type: "boolean",

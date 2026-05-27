@@ -75,9 +75,6 @@ Hosted features live under `cloud`:
       "console": "info",
       "includeInputs": false
     },
-    "preview": {
-      "enabled": true
-    },
     "publish": {
       "mode": "draft-pr",
       "baseBranch": "main"
@@ -140,10 +137,10 @@ apps, `docs.config.ts` remains the canonical place for advanced runtime analytic
 
 The presence of a `cloud` block opts the project into Cloud-aware CLI flows. Leave
 `cloud.enabled` unset for normal connected projects. Set it to `false` only when the repo is using
-`docs.json` as a local project contract and should explicitly disable Cloud previews and publish
+`docs.json` as a local project contract and should explicitly disable Cloud deploy and publish
 commands.
 
-To connect a repo, create an API key, and request hosted previews, see
+To connect a repo, create an API key, and deploy hosted preview docs, see
 [Docs Cloud](/docs/cloud).
 
 ## Current Note

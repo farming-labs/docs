@@ -40,9 +40,6 @@ export default defineDocs({
     apiKey: {
       env: "DOCS_CLOUD_API_KEY",
     },
-    preview: {
-      enabled: true,
-    },
     deploy: {
       enabled: true,
     },
@@ -54,8 +51,7 @@ export default defineDocs({
 });
 ```
 
-`cloud.preview.enabled` controls whether hosted preview URLs can be requested. `cloud.deploy.enabled`
-is the command-level toggle for `docs deploy`.
+`cloud.deploy.enabled` is the command-level toggle for `docs deploy`.
 
 ## 4. Run the Deploy Command
 

@@ -87,7 +87,7 @@ describe("cloud cli", () => {
     expect(JSON.stringify(docsJson)).not.toContain("sk-");
   });
 
-  it("auto-initializes docs.json for preview commands when docs.json is missing", async () => {
+  it("auto-initializes docs.json for cloud commands when docs.json is missing", async () => {
     writePackageJson({ "@sveltejs/kit": "2.0.0" });
     mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
 
@@ -101,6 +101,7 @@ describe("cloud cli", () => {
       root: ".",
     });
     expect(docsJson.cloud.apiKey.env).toBe("DOCS_CLOUD_API_KEY");
+    expect(docsJson.cloud.preview).toBeUndefined();
   });
 
   it("preserves boolean analytics.console values when static config parsing is used", async () => {
@@ -259,7 +260,6 @@ void missing;
       `export default {
   entry: "docs",
   cloud: {
-    preview: { enabled: true },
     deploy: { enabled: true },
   },
 };

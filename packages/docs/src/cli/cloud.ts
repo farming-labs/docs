@@ -279,7 +279,6 @@ function normalizeAnalyticsConfig(
 function normalizeCloudConfig(cloud: DocsCloudConfig | undefined): DocsCloudConfig {
   const normalized: DocsCloudConfig = {
     apiKey: normalizeApiKeyConfig(cloud?.apiKey),
-    preview: normalizePreviewConfig(cloud?.preview),
     publish: normalizePublishConfig(cloud?.publish),
   };
 
@@ -297,6 +296,10 @@ function normalizeCloudConfig(cloud: DocsCloudConfig | undefined): DocsCloudConf
 
   const deploy = normalizeFeatureConfig(cloud?.deploy);
   if (deploy) normalized.deploy = deploy;
+
+  if (cloud?.preview) {
+    normalized.preview = normalizePreviewConfig(cloud.preview);
+  }
 
   return normalized;
 }
@@ -799,13 +802,13 @@ async function runCloudDeployment(options: CloudCommandOptions = {}) {
 
     if (materialized.config.cloud?.enabled === false) {
       throw new Error(
-        "Docs Cloud is disabled in cloud.enabled. Remove that override or set cloud.enabled: true before requesting a preview.",
+        "Docs Cloud is disabled in cloud.enabled. Remove that override or set cloud.enabled: true before deploying hosted preview docs.",
       );
     }
 
     if (materialized.config.cloud?.preview?.enabled === false) {
       throw new Error(
-        "Docs Cloud preview deployments are disabled in cloud.preview.enabled. Set it to true before deploying hosted preview docs.",
+        "Docs Cloud preview deployments are disabled in cloud.preview.enabled. Remove that legacy override before deploying hosted preview docs.",
       );
     }
 
@@ -894,7 +897,7 @@ ${pc.dim("API key scopes:")}
 ${pc.dim("Config example:")}
   cloud: {
     apiKey: { env: "DOCS_CLOUD_API_KEY" },
-    preview: { enabled: true },
+    deploy: { enabled: true },
     publish: { mode: "draft-pr", baseBranch: "main" },
   }
 `);

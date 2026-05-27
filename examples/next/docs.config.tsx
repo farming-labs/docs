@@ -89,9 +89,6 @@ export default defineDocs({
     apiKey: {
       env: "DOCS_CLOUD_API_KEY",
     },
-    preview: {
-      enabled: true,
-    },
     deploy: {
       enabled: true,
     },

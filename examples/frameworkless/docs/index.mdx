@@ -29,9 +29,6 @@ In this example, `docs.json` separates the docs project from the hosted cloud la
     "apiKey": {
       "env": "DOCS_CLOUD_API_KEY"
     },
-    "preview": {
-      "enabled": false
-    },
     "deploy": {
       "enabled": false
     },
@@ -47,12 +44,11 @@ In this example, `docs.json` separates the docs project from the hosted cloud la
 - `docs.mode` describes how the project is authored
 - `docs.runtime` is the generated docs runtime choice
 - `cloud.apiKey.env` tells CLI/CI where to read the Docs Cloud API key without writing secrets to JSON
-- `cloud.preview.enabled` controls whether Docs Cloud should request live preview deployments
 - `cloud.deploy.enabled` controls whether `docs deploy` can create hosted preview docs
 - `cloud.analytics` is the Docs Cloud analytics contract for the serializable runtime subset
 
-Even with `cloud.preview.enabled: false` and `cloud.deploy.enabled: false`, frameworkless local preview
-can still materialize the serializable `cloud.analytics` subset into the generated hidden runtime.
+Even with `cloud.deploy.enabled: false`, frameworkless local preview can still materialize the
+serializable `cloud.analytics` subset into the generated hidden runtime.
 
 See the full contract in the
 [`docs.json` guide](https://docs.farming-labs.dev/docs/guides/docs-json).
