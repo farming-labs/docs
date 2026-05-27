@@ -1024,6 +1024,14 @@ Config content.
     );
     expect(fallbackResponse.headers.get("vary")).toBeNull();
     const fallbackDocument = await fallbackResponse.text();
+    expect(fallbackDocument).toMatch(/^---\ntitle: "Quickstart"/);
+    expect(fallbackDocument).toContain(
+      'canonical_url: "http://localhost/docs/getting-started/quickstart"',
+    );
+    expect(fallbackDocument).toContain(
+      'markdown_url: "http://localhost/docs/getting-started/quickstart.md"',
+    );
+    expect(fallbackDocument).toMatch(/last_updated: "\d{4}-\d{2}-\d{2}"/);
     expect(fallbackDocument).toContain("# Quickstart\nURL: /docs/getting-started/quickstart");
     expect(fallbackDocument).toContain("LLM index: /llms.txt");
     expect(fallbackDocument).toContain(
@@ -1049,6 +1057,10 @@ Config content.
     );
     expect(agentResponse.status).toBe(200);
     const agentDocument = await agentResponse.text();
+    expect(agentDocument).toMatch(/^---\ntitle: "Overview"/);
+    expect(agentDocument).toContain('description: "Human overview"');
+    expect(agentDocument).toContain('canonical_url: "http://localhost/docs/overview"');
+    expect(agentDocument).toContain('markdown_url: "http://localhost/docs/overview.md"');
     expect(agentDocument).toContain("Use this page as the implementation map.");
     expect(agentDocument).toContain("## Sitemap");
 
@@ -1760,6 +1772,9 @@ description: "Start building quickly"
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/markdown");
     const notFoundDocument = await response.text();
+    expect(notFoundDocument).toMatch(/^---\ntitle: "Docs Page Not Found"/);
+    expect(notFoundDocument).toContain('canonical_url: "http://localhost/docs/quick"');
+    expect(notFoundDocument).toContain('markdown_url: "http://localhost/docs/quick.md"');
     expect(notFoundDocument).toContain("# Docs Page Not Found");
     expect(notFoundDocument).toContain("`/docs/quick.md`");
     expect(notFoundDocument).toContain("## Closest Matches");

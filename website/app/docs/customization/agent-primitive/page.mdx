@@ -42,7 +42,9 @@ The same page model also powers the built-in machine-readable routes:
 
   Successful markdown responses include a canonical `Link` response header pointing to the normal
   docs page, so agents can read `/docs/installation.md` while still citing `/docs/installation`.
-  The body also ends with a `## Sitemap` footer that links back to the configured markdown sitemap.
+  The body starts with YAML frontmatter for `title`, `description`, `canonical_url`, `markdown_url`,
+  and `last_updated` when known, then ends with a `## Sitemap` footer that links back to the
+  configured markdown sitemap.
 
   Missing markdown pages return actionable markdown with HTTP `200`, closest-match suggestions,
   recovery instructions, links to the agent discovery spec, search endpoint, and sitemap routes.

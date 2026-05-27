@@ -913,9 +913,10 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   function getMarkdownDocument(
     ctx: ReturnType<typeof resolveContextFromPath>,
     requestedPath: string,
+    origin?: string,
   ) {
     const page = findDocsMarkdownPage(entry, getSearchIndex(ctx), requestedPath);
-    return page ? renderDocsMarkdownDocument(page, { sitemap: config.sitemap }) : null;
+    return page ? renderDocsMarkdownDocument(page, { origin, sitemap: config.sitemap }) : null;
   }
 
   // ─── GET /api/docs?query=… | ?format=llms | ?format=llms-full ──
@@ -1098,7 +1099,8 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     const markdownRequest = resolveDocsMarkdownRequest(entry, url, context.request);
     if (markdownRequest) {
-      const document = getMarkdownDocument(ctx, markdownRequest.requestedPath);
+      const markdownOrigin = llmsBaseUrl || url.origin;
+      const document = getMarkdownDocument(ctx, markdownRequest.requestedPath, markdownOrigin);
       const varyHeader = getDocsMarkdownVaryHeader(context.request);
       const canonicalLinkHeader = getDocsMarkdownCanonicalLinkHeader({
         origin: url.origin,
@@ -1130,6 +1132,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
           renderDocsMarkdownNotFound({
             entry,
             requestedPath: markdownRequest.requestedPath,
+            origin: markdownOrigin,
             pages: getSearchIndex(ctx),
             sitemap: config.sitemap,
           }),

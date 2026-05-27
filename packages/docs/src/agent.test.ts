@@ -533,6 +533,7 @@ describe("agent route helpers", () => {
     const document = renderDocsMarkdownNotFound({
       entry: "docs",
       requestedPath: "missing/page",
+      origin: "https://docs.example.com",
       pages: [
         {
           slug: "missing-pages",
@@ -545,6 +546,9 @@ describe("agent route helpers", () => {
       sitemap: { routePrefix: "/docs-map" },
     });
 
+    expect(document).toMatch(/^---\ntitle: "Docs Page Not Found"/);
+    expect(document).toContain('canonical_url: "https://docs.example.com/docs/missing/page"');
+    expect(document).toContain('markdown_url: "https://docs.example.com/docs/missing/page.md"');
     expect(document).toContain("# Docs Page Not Found");
     expect(document).toContain("## Closest Matches");
     expect(document).toContain("[Missing Pages](/docs/missing-pages.md)");
@@ -620,6 +624,7 @@ describe("agent route helpers", () => {
           url: "/docs/install",
           title: "Install",
           description: "Install the framework",
+          lastModified: "2026-05-27T12:30:00.000Z",
           related: [{ href: "/docs/configuration" }],
           content: "Visible",
           rawContent: "Visible",
@@ -630,13 +635,19 @@ describe("agent route helpers", () => {
     );
 
     expect(page).not.toBeNull();
-    expect(renderDocsMarkdownDocument(page!)).toContain("LLM index: /llms.txt");
+    const document = renderDocsMarkdownDocument(page!, { origin: "https://docs.example.com" });
+    expect(document).toMatch(/^---\ntitle: "Install"/);
+    expect(document).toContain('description: "Install the framework"');
+    expect(document).toContain('canonical_url: "https://docs.example.com/docs/install"');
+    expect(document).toContain('markdown_url: "https://docs.example.com/docs/install.md"');
+    expect(document).toContain('last_updated: "2026-05-27"');
+    expect(document).toContain("LLM index: /llms.txt");
     expect(renderDocsMarkdownDocument(page!, { llms: false })).not.toContain(
       "LLM index: /llms.txt",
     );
-    expect(renderDocsMarkdownDocument(page!)).toContain("Related: /docs/configuration");
-    expect(renderDocsMarkdownDocument(page!)).toContain("Hidden");
-    expect(renderDocsMarkdownDocument(page!)).toContain("## Sitemap");
+    expect(document).toContain("Related: /docs/configuration");
+    expect(document).toContain("Hidden");
+    expect(document).toContain("## Sitemap");
   });
 
   it("renders the generated skill.md document", () => {

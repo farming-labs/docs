@@ -320,6 +320,10 @@ All successful markdown page responses include a canonical `Link` response heade
 the normal HTML page. Agents still receive the full markdown body, but the header tells citation and
 deduplication systems that `/docs/installation` is the canonical URL for the content.
 
+Markdown responses also start with YAML frontmatter. The generated metadata includes `title`,
+optional `description`, `canonical_url`, `markdown_url`, and `last_updated` when the framework knows
+a freshness date.
+
 If a markdown request misses, the response is still markdown. Uncertain misses return HTTP `200`
 with closest-match suggestions, recovery steps, `/.well-known/agent.json`, `/.well-known/agent`,
 `/api/docs/agent/spec`, search, the requested API markdown route, and sitemap routes. Very
