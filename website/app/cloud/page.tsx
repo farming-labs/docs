@@ -256,7 +256,7 @@ export default function CloudPage() {
                 </a>
                 <a
                   href="#enterprise-support"
-                  className="group inline-flex w-full items-center justify-center gap-2 border border-black/10 bg-white/80 px-5 py-3 font-mono text-[11px] uppercase tracking-[0.24em] text-black/65 transition-all hover:border-black/20 hover:bg-black/[0.03] hover:text-black hover:no-underline sm:w-auto sm:justify-start dark:border-white/10 dark:bg-black/40 dark:text-white/65 dark:hover:border-white/20 dark:hover:bg-white/[0.05] dark:hover:text-white"
+                  className="group inline-flex w-full items-center justify-center gap-2 border border-b-black/25 border-black/10 bg-white/80 px-5 py-3 font-mono text-[11px] uppercase tracking-[0.24em] text-black/65 transition-all hover:border-black/20 hover:border-b-black/35 hover:bg-black/[0.03] hover:text-black hover:no-underline sm:w-auto sm:justify-start dark:border-white/10 dark:border-b-white/25 dark:bg-black/40 dark:text-white/65 dark:hover:border-white/20 dark:hover:border-b-white/35 dark:hover:bg-white/[0.05] dark:hover:text-white"
                 >
                   Enterprise support
                   <Headset className="size-3.5" strokeWidth={1.8} />
