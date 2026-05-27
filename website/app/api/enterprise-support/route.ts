@@ -66,8 +66,7 @@ export async function POST(request: Request) {
     const company = companyInput ?? undefined;
     const role = readString(body.role, { max: 120 }) ?? undefined;
     const teamSize = readString(body.teamSize, { max: 80 }) ?? undefined;
-    const websiteUrl =
-      readString(body.websiteUrl ?? body.docsUrl, { max: 2048 }) ?? undefined;
+    const websiteUrl = readString(body.websiteUrl ?? body.docsUrl, { max: 2048 }) ?? undefined;
     const supportNeeds = readStringList(body.supportNeeds, { maxItems: 12, maxItem: 80 });
     const message = readString(body.message, { max: 4000 }) ?? undefined;
 
