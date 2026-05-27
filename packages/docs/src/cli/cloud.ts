@@ -628,14 +628,14 @@ function readStatusUrl(body: unknown, apiBaseUrl: string): string | undefined {
 
 function readPreviewStatus(body: unknown): string | undefined {
   if (!isRecord(body)) return undefined;
-  const status = body.status;
-  if (typeof status === "string") return status;
-
   const job = body.job;
   if (isRecord(job) && typeof job.status === "string") return job.status;
 
   const preview = body.preview;
   if (isRecord(preview) && typeof preview.status === "string") return preview.status;
+
+  const status = body.status;
+  if (typeof status === "string") return status;
 
   return undefined;
 }

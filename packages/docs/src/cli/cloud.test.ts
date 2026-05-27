@@ -376,6 +376,74 @@ void missing;
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  it("fails when a nested preview job reaches a terminal failure state", async () => {
+    writePackageJson();
+    writeFileSync(
+      path.join(tmpDir, ".env.local"),
+      "DOCS_CLOUD_API_KEY=docs_cloud_test_key\n",
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  cloud: {
+    preview: { enabled: true },
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url === "https://cloud.example.com/api/cloud/me") {
+        return new Response(
+          JSON.stringify({
+            workspace: { id: "workspace_1", name: "Acme" },
+            apiKey: { id: "key_1", scopes: ["project:read", "preview:write", "jobs:read"] },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      if (url === "https://cloud.example.com/api/cloud/preview") {
+        return new Response(
+          JSON.stringify({
+            status: "queued",
+            statusUrl: "/api/cloud/preview/job_1",
+          }),
+          { status: 202, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      if (url === "https://cloud.example.com/api/cloud/preview/job_1") {
+        return new Response(
+          JSON.stringify({
+            status: "queued",
+            job: { id: "job_1", status: "FAILED" },
+            error: "Build failed",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      runCloudPreview({
+        rootDir: tmpDir,
+        apiBaseUrl: "https://cloud.example.com",
+        json: true,
+        pollIntervalMs: 1,
+      }),
+    ).rejects.toThrow("Build failed");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("requires jobs:read so preview polling can use the API key", async () => {
     writePackageJson();
     writeFileSync(
