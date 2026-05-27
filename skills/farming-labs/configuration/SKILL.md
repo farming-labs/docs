@@ -132,13 +132,13 @@ Cloud-aware CLI commands read a serializable `cloud` block from `docs.config.ts`
 ```ts
 cloud: {
   apiKey: { env: "DOCS_CLOUD_API_KEY" },
-  preview: { enabled: true },
+  deploy: { enabled: true },
   publish: { mode: "draft-pr", baseBranch: "main" },
 }
 ```
 
-Run `docs cloud sync` to only update `docs.json`, or `docs preview` to sync, validate the API key,
-and request a hosted preview. The API key value belongs in `.env.local`, CI secrets, or the shell,
+Run `docs cloud sync` to only update `docs.json`, or `docs deploy` to sync, validate the API key,
+and deploy hosted preview docs. The API key value belongs in `.env.local`, CI secrets, or the shell,
 never directly in `docs.config.ts` or `docs.json`.
 
 ---

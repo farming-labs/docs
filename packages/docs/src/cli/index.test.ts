@@ -51,9 +51,9 @@ describe("parseFlags", () => {
     expect(flags.collection).toBe("docs");
   });
 
-  it("parses cloud preview flags", () => {
+  it("parses cloud deploy flags", () => {
     const flags = parseFlags([
-      "preview",
+      "deploy",
       "--config",
       "src/lib/docs.config.ts",
       "--api-base-url",

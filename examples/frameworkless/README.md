@@ -53,7 +53,7 @@ Current example config:
     "apiKey": {
       "env": "DOCS_CLOUD_API_KEY"
     },
-    "preview": {
+    "deploy": {
       "enabled": false
     },
     "publish": {

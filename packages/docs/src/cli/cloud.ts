@@ -22,6 +22,7 @@ const DOCS_CLOUD_DEFAULT_API_KEY_ENV = "DOCS_CLOUD_API_KEY";
 const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://docs-app.farming-labs.dev";
 const DEFAULT_PREVIEW_TIMEOUT_MS = 5 * 60 * 1000;
 const DEFAULT_PREVIEW_POLL_INTERVAL_MS = 2000;
+const REQUIRED_PREVIEW_API_KEY_SCOPES = ["project:read", "preview:write", "jobs:read"] as const;
 
 type JsonPrimitive = string | number | boolean | null;
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue | undefined };
@@ -278,7 +279,6 @@ function normalizeAnalyticsConfig(
 function normalizeCloudConfig(cloud: DocsCloudConfig | undefined): DocsCloudConfig {
   const normalized: DocsCloudConfig = {
     apiKey: normalizeApiKeyConfig(cloud?.apiKey),
-    preview: normalizePreviewConfig(cloud?.preview),
     publish: normalizePublishConfig(cloud?.publish),
   };
 
@@ -296,6 +296,10 @@ function normalizeCloudConfig(cloud: DocsCloudConfig | undefined): DocsCloudConf
 
   const deploy = normalizeFeatureConfig(cloud?.deploy);
   if (deploy) normalized.deploy = deploy;
+
+  if (cloud?.preview) {
+    normalized.preview = normalizePreviewConfig(cloud.preview);
+  }
 
   return normalized;
 }
@@ -419,7 +423,7 @@ function resolveSiteConfig(
   if (!name && !description && !existingSite) return undefined;
 
   return {
-    ...(existingSite ?? {}),
+    ...existingSite,
     ...(typeof name === "string" ? { name } : {}),
     ...(typeof description === "string" ? { description } : {}),
   };
@@ -471,13 +475,13 @@ function materializeDocsJsonObject(params: {
   const site = resolveSiteConfig(params.rootDir, params.snapshot, params.existing);
 
   const content: ManagedDocsJson["content"] = {
-    ...(existingContent ?? {}),
+    ...existingContent,
     docsRoot,
     ...(apiReferenceRoot ? { apiReferenceRoot } : {}),
   };
 
   return {
-    ...(params.existing ?? {}),
+    ...params.existing,
     $schema: params.existing?.$schema ?? DOCS_CLOUD_SCHEMA_URL,
     version: 1,
     docs: resolveDocsBlock(params.rootDir, params.snapshot, params.existing),
@@ -564,6 +568,91 @@ function readResponseMessage(body: unknown, fallback: string): string {
   return fallback;
 }
 
+const FAILURE_DETAIL_OBJECT_KEYS = ["job", "run", "preview", "deployment", "build"] as const;
+const FAILURE_DETAIL_ARRAY_KEYS = ["jobs", "runs", "steps", "tasks", "stages", "checks"] as const;
+const FAILURE_DETAIL_MESSAGE_KEYS = ["error", "message", "detail", "reason", "summary"] as const;
+const FAILURE_DETAIL_LABEL_KEYS = [
+  "name",
+  "title",
+  "label",
+  "step",
+  "phase",
+  "stage",
+  "id",
+] as const;
+const FAILURE_DETAIL_STATUS_KEYS = ["status", "state", "conclusion", "result", "outcome"] as const;
+
+type PreviewFailureDetail = {
+  message?: string;
+  path: string[];
+  status?: string;
+};
+
+function readTrimmedString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function readFirstString(
+  record: Record<string, unknown>,
+  keys: readonly string[],
+): string | undefined {
+  for (const key of keys) {
+    const value = readTrimmedString(record[key]);
+    if (value) return value;
+  }
+  return undefined;
+}
+
+function singularizeKey(key: string): string {
+  return key.endsWith("s") ? key.slice(0, -1) : key;
+}
+
+function findPreviewFailureDetail(
+  value: unknown,
+  parentPath: string[] = [],
+  fallbackLabel?: string,
+): PreviewFailureDetail | undefined {
+  if (!isRecord(value)) return undefined;
+
+  const label = readFirstString(value, FAILURE_DETAIL_LABEL_KEYS) ?? fallbackLabel;
+  const path = label ? [...parentPath, label] : parentPath;
+
+  for (const key of FAILURE_DETAIL_OBJECT_KEYS) {
+    const detail = findPreviewFailureDetail(value[key], path, key);
+    if (detail) return detail;
+  }
+
+  for (const key of FAILURE_DETAIL_ARRAY_KEYS) {
+    const children = value[key];
+    if (!Array.isArray(children)) continue;
+    for (const child of children) {
+      const detail = findPreviewFailureDetail(child, path, singularizeKey(key));
+      if (detail) return detail;
+    }
+  }
+
+  const status = readFirstString(value, FAILURE_DETAIL_STATUS_KEYS);
+  if (!isTerminalFailureStatus(status)) return undefined;
+
+  return {
+    message: readFirstString(value, FAILURE_DETAIL_MESSAGE_KEYS),
+    path,
+    status,
+  };
+}
+
+function readPreviewFailureMessage(body: unknown, fallback: string): string {
+  const detail = findPreviewFailureDetail(body);
+  if (!detail) return readResponseMessage(body, fallback);
+
+  const prefix = fallback.replace(/\.+$/g, "");
+  const location = detail.path.length > 0 ? ` at ${detail.path.join(" > ")}` : "";
+  const status = detail.status ? ` (${detail.status})` : "";
+  const message = detail.message ?? readResponseMessage(body, "");
+
+  return message ? `${prefix}${location}${status}: ${message}` : `${prefix}${location}${status}.`;
+}
+
 async function fetchCloudJson(params: {
   url: string;
   apiKey: string;
@@ -624,7 +713,53 @@ function readStatusUrl(body: unknown, apiBaseUrl: string): string | undefined {
 
 function readPreviewStatus(body: unknown): string | undefined {
   if (!isRecord(body)) return undefined;
+  const job = body.job;
+  if (isRecord(job) && typeof job.status === "string") return job.status;
+
+  const preview = body.preview;
+  if (isRecord(preview) && typeof preview.status === "string") return preview.status;
+
   const status = body.status;
+  if (typeof status === "string") return status;
+
+  return undefined;
+}
+
+function readApiKeyScopes(body: unknown): string[] {
+  if (!isRecord(body)) return [];
+  const apiKey = body.apiKey;
+  if (!isRecord(apiKey) || !Array.isArray(apiKey.scopes)) return [];
+
+  return apiKey.scopes.filter((scope): scope is string => typeof scope === "string");
+}
+
+function assertPreviewApiKeyScopes(identity: unknown) {
+  const scopes = readApiKeyScopes(identity);
+  const missing = REQUIRED_PREVIEW_API_KEY_SCOPES.filter((scope) => !scopes.includes(scope));
+  if (missing.length > 0) {
+    throw new Error(
+      `Docs Cloud API key is missing required preview scope${missing.length === 1 ? "" : "s"}: ${missing.join(", ")}.`,
+    );
+  }
+
+  return scopes;
+}
+
+function isTerminalFailureStatus(status: string | undefined): boolean {
+  const normalized = status?.toLowerCase();
+  return (
+    normalized === "failed" ||
+    normalized === "failure" ||
+    normalized === "error" ||
+    normalized === "canceled" ||
+    normalized === "cancelled" ||
+    normalized === "timed_out" ||
+    normalized === "timeout"
+  );
+}
+
+function readStatusLabel(body: unknown): string | undefined {
+  const status = readPreviewStatus(body);
   return typeof status === "string" ? status : undefined;
 }
 
@@ -673,9 +808,9 @@ async function requestPreview(params: {
     const url = readPreviewUrl(statusBody);
     if (url) return { url, response: statusBody };
 
-    const status = readPreviewStatus(statusBody);
-    if (status === "failed" || status === "error") {
-      throw new Error(readResponseMessage(statusBody, "Docs Cloud preview failed."));
+    const status = readStatusLabel(statusBody);
+    if (isTerminalFailureStatus(status)) {
+      throw new Error(readPreviewFailureMessage(statusBody, "Docs Cloud preview failed."));
     }
   }
 
@@ -750,9 +885,9 @@ export async function syncCloudConfig(options: CloudCommandOptions = {}) {
   return result;
 }
 
-export async function runCloudPreview(options: CloudCommandOptions = {}) {
+async function runCloudDeployment(options: CloudCommandOptions = {}) {
   const rootDir = options.rootDir ?? process.cwd();
-  const spinner = createSpinner("Preparing Docs Cloud preview", options);
+  const spinner = createSpinner("Preparing Docs Cloud deployment", options);
 
   try {
     const materialized = await materializeCloudConfig({ ...options, rootDir });
@@ -760,13 +895,19 @@ export async function runCloudPreview(options: CloudCommandOptions = {}) {
 
     if (materialized.config.cloud?.enabled === false) {
       throw new Error(
-        "Docs Cloud is disabled in cloud.enabled. Remove that override or set cloud.enabled: true before requesting a preview.",
+        "Docs Cloud is disabled in cloud.enabled. Remove that override or set cloud.enabled: true before deploying hosted preview docs.",
       );
     }
 
     if (materialized.config.cloud?.preview?.enabled === false) {
       throw new Error(
-        "Docs Cloud preview is disabled in cloud.preview.enabled. Set it to true before requesting a preview.",
+        "Docs Cloud preview deployments are disabled in cloud.preview.enabled. Remove that legacy override before deploying hosted preview docs.",
+      );
+    }
+
+    if (materialized.config.cloud?.deploy?.enabled === false) {
+      throw new Error(
+        "Docs Cloud deployment is disabled in cloud.deploy.enabled. Set it to true before deploying hosted preview docs.",
       );
     }
 
@@ -778,8 +919,9 @@ export async function runCloudPreview(options: CloudCommandOptions = {}) {
       url: `${apiBaseUrl}/api/cloud/me`,
       apiKey,
     });
+    assertPreviewApiKeyScopes(identity);
 
-    spinner.update("Requesting Docs Cloud preview deployment");
+    spinner.update("Requesting Docs Cloud deployment");
     const preview = await requestPreview({
       apiBaseUrl,
       apiKey,
@@ -791,7 +933,7 @@ export async function runCloudPreview(options: CloudCommandOptions = {}) {
       pollIntervalMs: options.pollIntervalMs ?? DEFAULT_PREVIEW_POLL_INTERVAL_MS,
     });
 
-    spinner.succeed("Docs Cloud preview is ready");
+    spinner.succeed("Docs Cloud deployment is ready");
 
     const result = {
       url: preview.url,
@@ -804,7 +946,7 @@ export async function runCloudPreview(options: CloudCommandOptions = {}) {
     if (options.json) {
       console.log(JSON.stringify(result, null, 2));
     } else {
-      console.log(`${pc.bold("Preview")} ${pc.cyan(preview.url)}`);
+      console.log(`${pc.bold("Deployment")} ${pc.cyan(preview.url)}`);
     }
 
     return result;
@@ -817,13 +959,23 @@ export async function runCloudPreview(options: CloudCommandOptions = {}) {
   }
 }
 
+export async function runCloudDeploy(options: CloudCommandOptions = {}) {
+  return runCloudDeployment(options);
+}
+
+export async function runCloudPreview(options: CloudCommandOptions = {}) {
+  return runCloudDeployment(options);
+}
+
 export function printCloudHelp() {
   console.log(`
 ${pc.bold("@farming-labs/docs cloud")}
 
 ${pc.dim("Usage:")}
-  ${pc.cyan("docs preview")}              Sync ${pc.dim("docs.config.ts")} to ${pc.dim("docs.json")} and request a cloud preview
-  ${pc.cyan("docs cloud preview")}        Same as ${pc.cyan("docs preview")}
+  ${pc.cyan("docs deploy")}               Sync ${pc.dim("docs.config.ts")} to ${pc.dim("docs.json")} and deploy hosted preview docs
+  ${pc.cyan("docs cloud deploy")}         Same as ${pc.cyan("docs deploy")}
+  ${pc.cyan("docs preview")}              Compatibility alias for ${pc.cyan("docs deploy")}
+  ${pc.cyan("docs cloud preview")}        Compatibility alias for ${pc.cyan("docs cloud deploy")}
   ${pc.cyan("docs cloud sync")}           Only materialize cloud settings into ${pc.dim("docs.json")}
 
 ${pc.dim("Options:")}
@@ -832,10 +984,13 @@ ${pc.dim("Options:")}
   ${pc.cyan("--api-key <key>")}           Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
   ${pc.cyan("--json")}                    Print machine-readable output
 
+${pc.dim("API key scopes:")}
+  ${REQUIRED_PREVIEW_API_KEY_SCOPES.join(", ")}
+
 ${pc.dim("Config example:")}
   cloud: {
     apiKey: { env: "DOCS_CLOUD_API_KEY" },
-    preview: { enabled: true },
+    deploy: { enabled: true },
     publish: { mode: "draft-pr", baseBranch: "main" },
   }
 `);

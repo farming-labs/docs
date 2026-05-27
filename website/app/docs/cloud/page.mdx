@@ -1,6 +1,6 @@
 ---
 title: "Docs Cloud"
-description: "Connect your docs project to Docs Cloud previews, API keys, and publish workflows"
+description: "Connect your docs project to Docs Cloud deployments, API keys, and publish workflows"
 icon: "infrastructure"
 order: 3.6
 related:
@@ -13,22 +13,22 @@ related:
 # Docs Cloud
 
 <Agent>
-Use this page when the user asks about this topic: Connect an @farming-labs/docs project to Docs Cloud, create and store a Docs Cloud API key, sync docs.config.ts to docs.json, request hosted previews, or configure publish defaults.
+Use this page when the user asks about this topic: Connect an @farming-labs/docs project to Docs Cloud, create and store a Docs Cloud API key, sync docs.config.ts to docs.json, deploy hosted preview docs, or configure publish defaults.
 Keep answers grounded in the exact commands and config shown here. Never suggest committing raw API key values to docs.config.ts, docs.json, or source control.
 If the request is about the docs.json contract itself, point to /docs/guides/docs-json. If the request is about every config option, point to /docs/configuration.
 </Agent>
 
 Docs Cloud is the hosted layer around `@farming-labs/docs`. Your repo stays the source of truth,
-your app still owns the runtime, and Cloud adds managed previews, publish workflows, analytics, AI,
+your app still owns the runtime, and Cloud adds managed deployments, publish workflows, analytics, AI,
 search, and agent operations on top.
 
-The first integration surface is the Cloud preview flow:
+The first integration surface is the Cloud deploy flow:
 
 1. create a Docs Cloud API key
 2. store the key in an environment variable
 3. add a serializable `cloud` block to `docs.config.ts`
 4. sync that config into `docs.json`
-5. request a hosted preview
+5. deploy hosted preview docs
 
 <Callout type="info" title="Cloud access">
   Docs Cloud is rolling out gradually. If your workspace does not have access yet, join the
@@ -39,7 +39,7 @@ The first integration surface is the Cloud preview flow:
 ## Create An API Key
 
 In Docs Cloud, open your workspace, choose the docs project, then create a project API key from the
-project settings. For previews, the key needs access to read the project and request previews.
+project settings. For deployments, the key needs access to read the project and request previews.
 
 Copy the key once and put it in your local environment:
 
@@ -47,7 +47,7 @@ Copy the key once and put it in your local environment:
 DOCS_CLOUD_API_KEY=docs_cloud_...
 ```
 
-Use the same environment variable name as a CI secret when previews should run from GitHub Actions
+Use the same environment variable name as a CI secret when deployments should run from GitHub Actions
 or another build system.
 
 <Callout type="caution" title="Do not commit secrets">
@@ -66,7 +66,7 @@ export default defineDocs({
   entry: "docs",
   cloud: {
     apiKey: { env: "DOCS_CLOUD_API_KEY" },
-    preview: { enabled: true },
+    deploy: { enabled: true },
     publish: { mode: "draft-pr", baseBranch: "main" },
   },
 });
@@ -111,7 +111,7 @@ This creates or updates `docs.json`:
     "apiKey": {
       "env": "DOCS_CLOUD_API_KEY"
     },
-    "preview": {
+    "deploy": {
       "enabled": true
     },
     "publish": {
@@ -129,15 +129,15 @@ The generated `cloud` block intentionally omits `enabled`. The block itself opts
 Cloud-aware CLI flows; set `"enabled": false` only when you need to disable Cloud operations while
 keeping the rest of the contract in place.
 
-## Request A Preview
+## Deploy Preview Docs
 
-Use `docs preview` from the project root:
+Use `docs deploy` from the project root:
 
 ```bash title="terminal"
-pnpm exec docs preview
+pnpm exec docs deploy
 ```
 
-`docs preview` does three things:
+`docs deploy` does three things:
 
 1. syncs `docs.config.ts` into `docs.json`
 2. validates the configured API key with Docs Cloud
@@ -146,13 +146,13 @@ pnpm exec docs preview
 The explicit Cloud command is equivalent:
 
 ```bash title="terminal"
-pnpm exec docs cloud preview
+pnpm exec docs cloud deploy
 ```
 
 Use JSON output when another tool or CI job needs to read the preview URL:
 
 ```bash title="terminal"
-pnpm exec docs preview --json
+pnpm exec docs deploy --json
 ```
 
 ## Useful Options
@@ -160,11 +160,11 @@ pnpm exec docs preview --json
 | Command                              | Use it when                                      |
 | ------------------------------------ | ------------------------------------------------ |
 | `pnpm exec docs cloud sync`          | You only want to update `docs.json`              |
-| `pnpm exec docs preview`             | You want to sync, validate the key, and preview  |
-| `pnpm exec docs cloud preview`       | You prefer the explicit Cloud namespace          |
-| `pnpm exec docs preview --json`      | CI or automation needs machine-readable output   |
-| `pnpm exec docs preview --config <path>` | Your config file is outside the project root |
-| `pnpm exec docs preview --api-base-url <url>` | You are testing a staging or self-hosted Cloud API |
+| `pnpm exec docs deploy`              | You want to sync, validate the key, and deploy   |
+| `pnpm exec docs cloud deploy`        | You prefer the explicit Cloud namespace          |
+| `pnpm exec docs deploy --json`       | CI or automation needs machine-readable output   |
+| `pnpm exec docs deploy --config <path>` | Your config file is outside the project root  |
+| `pnpm exec docs deploy --api-base-url <url>` | You are testing a staging or self-hosted Cloud API |
 
 `--api-key <key>` also exists for local testing, but prefer `cloud.apiKey.env` plus an environment
 variable so the key does not end up in shell history, logs, or docs.
@@ -181,9 +181,9 @@ export DOCS_CLOUD_API_KEY=docs_cloud_...
 
 or add it to `.env.local`.
 
-**Preview disabled**
+**Deploy disabled**
 
-If `cloud.preview.enabled` is `false`, `docs preview` stops before making a hosted preview request.
+If `cloud.deploy.enabled` is `false`, `docs deploy` stops before making a hosted deployment request.
 Set it back to `true` or remove the override.
 
 **Wrong Cloud host**
@@ -191,7 +191,7 @@ Set it back to `true` or remove the override.
 For staging or self-hosted testing, pass:
 
 ```bash title="terminal"
-pnpm exec docs preview --api-base-url https://cloud.example.com
+pnpm exec docs deploy --api-base-url https://cloud.example.com
 ```
 
 You can also set `DOCS_CLOUD_API_URL` in the environment.

@@ -883,7 +883,13 @@ export interface DocsCloudApiKeyConfig {
 }
 
 export interface DocsCloudPreviewConfig {
-  /** Whether Docs Cloud should request live preview deployments. @default true */
+  /**
+   * Legacy hosted preview deployment gate.
+   *
+   * Prefer `cloud.deploy.enabled` in new configs.
+   *
+   * @default true when this legacy object is provided
+   */
   enabled?: boolean;
 }
 
@@ -908,9 +914,9 @@ export interface DocsCloudConfig {
    * compatibility with older docs.json files.
    */
   enabled?: boolean;
-  /** API key lookup used by `docs preview` and other cloud CLI commands. */
+  /** API key lookup used by `docs deploy` and other cloud CLI commands. */
   apiKey?: DocsCloudApiKeyConfig;
-  /** Hosted preview deployment settings. */
+  /** Legacy hosted preview deployment settings. Prefer `deploy` in new configs. */
   preview?: DocsCloudPreviewConfig;
   /** Generated docs publishing settings. */
   publish?: DocsCloudPublishConfig;
@@ -918,7 +924,7 @@ export interface DocsCloudConfig {
   analytics?: boolean | Omit<DocsAnalyticsConfig, "onEvent">;
   /** Hosted AI feature toggle. */
   ai?: DocsCloudFeatureConfig;
-  /** Hosted deployment feature toggle. */
+  /** Hosted deployment feature toggle used by `docs deploy`. */
   deploy?: DocsCloudFeatureConfig;
 }
 
@@ -2557,7 +2563,7 @@ export interface DocsConfig {
   /**
    * Docs Cloud integration settings.
    *
-   * Use this to configure the API key env var and cloud preview defaults once
+   * Use this to configure the API key env var and cloud deploy defaults once
    * in `docs.config.ts`; cloud CLI commands mirror the serializable subset into
    * `docs.json` automatically.
    *
@@ -2565,7 +2571,7 @@ export interface DocsConfig {
    * ```ts
    * cloud: {
    *   apiKey: { env: "DOCS_CLOUD_API_KEY" },
-   *   preview: { enabled: true },
+   *   deploy: { enabled: true },
    *   publish: { mode: "draft-pr", baseBranch: "main" },
    * }
    * ```

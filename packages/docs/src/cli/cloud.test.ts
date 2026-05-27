@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { materializeCloudConfig, runCloudPreview } from "./cloud.js";
+import { materializeCloudConfig, runCloudDeploy, runCloudPreview } from "./cloud.js";
 
 describe("cloud cli", () => {
   const originalEnv = { ...process.env };
@@ -87,7 +87,7 @@ describe("cloud cli", () => {
     expect(JSON.stringify(docsJson)).not.toContain("sk-");
   });
 
-  it("auto-initializes docs.json for preview commands when docs.json is missing", async () => {
+  it("auto-initializes docs.json for cloud commands when docs.json is missing", async () => {
     writePackageJson({ "@sveltejs/kit": "2.0.0" });
     mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
 
@@ -101,6 +101,7 @@ describe("cloud cli", () => {
       root: ".",
     });
     expect(docsJson.cloud.apiKey.env).toBe("DOCS_CLOUD_API_KEY");
+    expect(docsJson.cloud.preview).toBeUndefined();
   });
 
   it("preserves boolean analytics.console values when static config parsing is used", async () => {
@@ -165,7 +166,7 @@ void missing;
     });
   });
 
-  it("validates the configured API key and prints the preview URL", async () => {
+  it("validates the configured API key and prints the deployment URL", async () => {
     writePackageJson();
     execFileSync("git", ["init"], { cwd: tmpDir, stdio: "ignore" });
     execFileSync("git", ["checkout", "-b", "preview-branch"], { cwd: tmpDir, stdio: "ignore" });
@@ -199,7 +200,7 @@ void missing;
         return new Response(
           JSON.stringify({
             workspace: { id: "workspace_1", name: "Acme" },
-            apiKey: { id: "key_1", scopes: ["project:read", "preview:write"] },
+            apiKey: { id: "key_1", scopes: ["project:read", "preview:write", "jobs:read"] },
           }),
           { status: 200, headers: { "content-type": "application/json" } },
         );
@@ -241,6 +242,273 @@ void missing;
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("deploy command requests the hosted preview deployment", async () => {
+    writePackageJson();
+    execFileSync("git", ["init"], { cwd: tmpDir, stdio: "ignore" });
+    execFileSync("git", ["checkout", "-b", "deploy-branch"], { cwd: tmpDir, stdio: "ignore" });
+    execFileSync("git", ["remote", "add", "origin", "https://github.com/acme/docs-app.git"], {
+      cwd: tmpDir,
+      stdio: "ignore",
+    });
+    writeFileSync(
+      path.join(tmpDir, ".env.local"),
+      "DOCS_CLOUD_API_KEY=docs_cloud_test_key\n",
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  cloud: {
+    deploy: { enabled: true },
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url === "https://cloud.example.com/api/cloud/me") {
+        return new Response(
+          JSON.stringify({
+            workspace: { id: "workspace_1", name: "Acme" },
+            apiKey: { id: "key_1", scopes: ["project:read", "preview:write", "jobs:read"] },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      if (url === "https://cloud.example.com/api/cloud/preview") {
+        return new Response(JSON.stringify({ url: "https://docs-cloud-acme.preview.test" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runCloudDeploy({
+      rootDir: tmpDir,
+      apiBaseUrl: "https://cloud.example.com",
+      json: true,
+    });
+
+    expect(result.url).toBe("https://docs-cloud-acme.preview.test");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("polls queued previews until the live URL is ready", async () => {
+    writePackageJson();
+    execFileSync("git", ["init"], { cwd: tmpDir, stdio: "ignore" });
+    execFileSync("git", ["checkout", "-b", "queued-preview"], { cwd: tmpDir, stdio: "ignore" });
+    execFileSync("git", ["remote", "add", "origin", "https://github.com/acme/docs-app.git"], {
+      cwd: tmpDir,
+      stdio: "ignore",
+    });
+    writeFileSync(
+      path.join(tmpDir, ".env.local"),
+      "DOCS_CLOUD_API_KEY=docs_cloud_test_key\n",
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  cloud: {
+    preview: { enabled: true },
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url === "https://cloud.example.com/api/cloud/me") {
+        return new Response(
+          JSON.stringify({
+            workspace: { id: "workspace_1", name: "Acme" },
+            apiKey: { id: "key_1", scopes: ["project:read", "preview:write", "jobs:read"] },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      if (url === "https://cloud.example.com/api/cloud/preview") {
+        return new Response(
+          JSON.stringify({
+            status: "queued",
+            statusUrl: "/api/cloud/preview/job_1",
+            preview: { status: "queued", url: null },
+          }),
+          { status: 202, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      if (url === "https://cloud.example.com/api/cloud/preview/job_1") {
+        return new Response(
+          JSON.stringify({
+            job: { id: "job_1", status: "SUCCEEDED" },
+            url: "https://docs-cloud-acme.preview.test",
+            preview: { status: "ready", url: "https://docs-cloud-acme.preview.test" },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runCloudPreview({
+      rootDir: tmpDir,
+      apiBaseUrl: "https://cloud.example.com",
+      json: true,
+      pollIntervalMs: 1,
+    });
+
+    expect(result.url).toBe("https://docs-cloud-acme.preview.test");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("fails when a nested preview job reaches a terminal failure state", async () => {
+    writePackageJson();
+    writeFileSync(
+      path.join(tmpDir, ".env.local"),
+      "DOCS_CLOUD_API_KEY=docs_cloud_test_key\n",
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  cloud: {
+    preview: { enabled: true },
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url === "https://cloud.example.com/api/cloud/me") {
+        return new Response(
+          JSON.stringify({
+            workspace: { id: "workspace_1", name: "Acme" },
+            apiKey: { id: "key_1", scopes: ["project:read", "preview:write", "jobs:read"] },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      if (url === "https://cloud.example.com/api/cloud/preview") {
+        return new Response(
+          JSON.stringify({
+            status: "queued",
+            statusUrl: "/api/cloud/preview/job_1",
+          }),
+          { status: 202, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      if (url === "https://cloud.example.com/api/cloud/preview/job_1") {
+        return new Response(
+          JSON.stringify({
+            status: "queued",
+            job: {
+              id: "job_1",
+              status: "FAILED",
+              runs: [
+                {
+                  name: "Build",
+                  status: "FAILED",
+                  steps: [
+                    { name: "Install dependencies", status: "SUCCEEDED" },
+                    {
+                      name: "Compile docs",
+                      status: "FAILED",
+                      message: "next build exited with code 1",
+                    },
+                  ],
+                },
+              ],
+            },
+            error: "Build failed",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      runCloudPreview({
+        rootDir: tmpDir,
+        apiBaseUrl: "https://cloud.example.com",
+        json: true,
+        pollIntervalMs: 1,
+      }),
+    ).rejects.toThrow(
+      "Docs Cloud preview failed at job_1 > Build > Compile docs (FAILED): next build exited with code 1",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("requires jobs:read so preview polling can use the API key", async () => {
+    writePackageJson();
+    writeFileSync(
+      path.join(tmpDir, ".env.local"),
+      "DOCS_CLOUD_API_KEY=docs_cloud_test_key\n",
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  cloud: {
+    preview: { enabled: true },
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url === "https://cloud.example.com/api/cloud/me") {
+        return new Response(
+          JSON.stringify({
+            workspace: { id: "workspace_1", name: "Acme" },
+            apiKey: { id: "key_1", scopes: ["project:read", "preview:write"] },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      runCloudPreview({
+        rootDir: tmpDir,
+        apiBaseUrl: "https://cloud.example.com",
+        json: true,
+      }),
+    ).rejects.toThrow("jobs:read");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("fails before preview when the configured API key env var is missing", async () => {
     writePackageJson();
     writeFileSync(
@@ -264,7 +532,7 @@ void missing;
     ).rejects.toThrow("Missing Docs Cloud API key");
   });
 
-  it("fails clearly when preview is disabled in cloud config", async () => {
+  it("fails clearly when preview deployment is disabled in cloud config", async () => {
     writePackageJson();
     writeFileSync(
       path.join(tmpDir, ".env.local"),
@@ -293,7 +561,40 @@ void missing;
         apiBaseUrl: "https://cloud.example.com",
         json: true,
       }),
-    ).rejects.toThrow("Docs Cloud preview is disabled");
+    ).rejects.toThrow("Docs Cloud preview deployments are disabled");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("fails clearly when deploy is disabled in cloud config", async () => {
+    writePackageJson();
+    writeFileSync(
+      path.join(tmpDir, ".env.local"),
+      "DOCS_CLOUD_API_KEY=docs_cloud_test_key\n",
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  cloud: {
+    apiKey: { env: "DOCS_CLOUD_API_KEY" },
+    deploy: { enabled: false },
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      runCloudDeploy({
+        rootDir: tmpDir,
+        apiBaseUrl: "https://cloud.example.com",
+        json: true,
+      }),
+    ).rejects.toThrow("Docs Cloud deployment is disabled");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
