@@ -12,7 +12,6 @@ type EnterpriseSupportBody = {
   teamSize?: string;
   docsUrl?: string;
   supportNeeds?: string | string[];
-  timeline?: string;
   message?: string;
 };
 
@@ -51,14 +50,12 @@ function formatSupportMessage({
   teamSize,
   docsUrl,
   supportNeeds,
-  timeline,
   message,
 }: {
   role?: string;
   teamSize?: string;
   docsUrl?: string;
   supportNeeds: string[];
-  timeline?: string;
   message?: string;
 }) {
   return [
@@ -67,7 +64,6 @@ function formatSupportMessage({
     teamSize ? `Team size: ${teamSize}` : undefined,
     docsUrl ? `Docs URL: ${docsUrl}` : undefined,
     supportNeeds.length ? `Support needed: ${supportNeeds.join(", ")}` : undefined,
-    timeline ? `Timeline: ${timeline}` : undefined,
     message ? `Notes: ${message}` : undefined,
   ]
     .filter(Boolean)
@@ -95,8 +91,7 @@ export async function POST(request: Request) {
     const role = readString(body.role, { max: 120 }) ?? undefined;
     const teamSize = readString(body.teamSize, { max: 80 }) ?? undefined;
     const docsUrl = readString(body.docsUrl, { max: 2048 }) ?? undefined;
-    const supportNeeds = readStringList(body.supportNeeds, { maxItems: 6, maxItem: 80 });
-    const timeline = readString(body.timeline, { max: 80 }) ?? undefined;
+    const supportNeeds = readStringList(body.supportNeeds, { maxItems: 12, maxItem: 80 });
     const message = readString(body.message, { max: 4000 }) ?? undefined;
 
     if (!email) {
@@ -134,7 +129,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const interest = ["enterprise-support", ...supportNeeds, timeline]
+    const interest = ["enterprise-support", ...supportNeeds]
       .filter(Boolean)
       .join(", ")
       .slice(0, 320);
@@ -143,7 +138,6 @@ export async function POST(request: Request) {
       teamSize,
       docsUrl,
       supportNeeds,
-      timeline,
       message,
     }).slice(0, 4000);
 

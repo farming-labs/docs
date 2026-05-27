@@ -13,8 +13,6 @@ const supportOptions = [
   { value: "private-docs", label: "Private docs workflows" },
 ] as const;
 
-const timelineOptions = ["This week", "Next 2 weeks", "This month", "Exploring"] as const;
-
 type SubmitState =
   | { status: "idle"; message: null }
   | { status: "success"; message: string }
@@ -31,7 +29,6 @@ export function EnterpriseSupportForm() {
   const [teamSize, setTeamSize] = useState("");
   const [docsUrl, setDocsUrl] = useState("");
   const [supportNeeds, setSupportNeeds] = useState<string[]>(["infrastructure"]);
-  const [timeline, setTimeline] = useState<(typeof timelineOptions)[number]>("This week");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [buttonMode, setButtonMode] = useState<ButtonMode>("idle");
@@ -50,7 +47,7 @@ export function EnterpriseSupportForm() {
   function toggleSupportNeed(value: string) {
     setSupportNeeds((current) => {
       if (current.includes(value)) return current.filter((item) => item !== value);
-      return [...current, value].slice(0, 4);
+      return [...current, value];
     });
   }
 
@@ -79,7 +76,6 @@ export function EnterpriseSupportForm() {
           teamSize,
           docsUrl,
           supportNeeds,
-          timeline,
           message,
         }),
       });
@@ -106,7 +102,6 @@ export function EnterpriseSupportForm() {
       setTeamSize("");
       setDocsUrl("");
       setSupportNeeds(["infrastructure"]);
-      setTimeline("This week");
       setMessage("");
 
       if (payload.stored === false && payload.warning) {
@@ -208,8 +203,6 @@ export function EnterpriseSupportForm() {
         />
 
         <SupportNeedList value={supportNeeds} onToggle={toggleSupportNeed} />
-
-        <TimelinePicker value={timeline} onChange={setTimeline} />
 
         <div>
           <label
@@ -362,43 +355,6 @@ function SupportNeedList({
                 {String(index + 1).padStart(2, "0")}
               </span>
               <span>{option.label}</span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function TimelinePicker({
-  value,
-  onChange,
-}: {
-  value: (typeof timelineOptions)[number];
-  onChange: (value: (typeof timelineOptions)[number]) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
-        Timeline
-      </p>
-      <div className="grid grid-cols-2 gap-2">
-        {timelineOptions.map((option) => {
-          const selected = value === option;
-          return (
-            <button
-              key={option}
-              type="button"
-              onClick={() => onChange(option)}
-              aria-pressed={selected}
-              className={[
-                "min-h-10 border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.16em] transition-colors",
-                selected
-                  ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                  : "border-black/10 bg-black/[0.015] text-black/50 hover:border-black/20 dark:border-white/10 dark:bg-white/[0.015] dark:text-white/45 dark:hover:border-white/20",
-              ].join(" ")}
-            >
-              {option}
             </button>
           );
         })}

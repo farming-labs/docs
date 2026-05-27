@@ -10,7 +10,6 @@ import {
   Github,
   GithubIcon,
   Headset,
-  MessageSquareText,
   type LucideIcon,
   Palette,
   ServerCog,
@@ -522,13 +521,6 @@ export default function CloudPage() {
                       <span>{signal}</span>
                     </div>
                   ))}
-                </div>
-
-                <div className="mt-6 flex items-center gap-3 border border-black/10 bg-black px-4 py-3 text-white dark:border-white/10 dark:bg-white dark:text-black">
-                  <MessageSquareText className="size-4 shrink-0" strokeWidth={1.8} />
-                  <p className="font-mono text-[10px] uppercase tracking-[0.18em]">
-                    Fill the form and we’ll get back to you fast.
-                  </p>
                 </div>
               </div>
 
