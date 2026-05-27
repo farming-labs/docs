@@ -186,7 +186,7 @@ export function EnterpriseSupportForm() {
             onChange={setRole}
             placeholder="Head of engineering"
           />
-          <SelectField
+          <SingleSelectDropdown
             id="enterprise-support-team-size"
             label="Team size"
             value={teamSize}
@@ -198,7 +198,7 @@ export function EnterpriseSupportForm() {
 
         <Field
           id="enterprise-support-docs-url"
-          label="Their website"
+          label="Website URL"
           type="url"
           value={docsUrl}
           onChange={setDocsUrl}
@@ -319,7 +319,7 @@ function Field({
   );
 }
 
-function SelectField({
+function SingleSelectDropdown({
   id,
   label,
   value,
@@ -334,34 +334,109 @@ function SelectField({
   placeholder: string;
   options: readonly string[];
 }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
   return (
-    <div>
-      <label
-        htmlFor={id}
-        className="mb-1 block font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45"
-      >
+    <div ref={rootRef} className="min-w-0 space-y-1">
+      <label className="block font-mono text-[10px] uppercase tracking-[0.24em] text-black/45 dark:text-white/45">
         {label}
       </label>
       <div className="relative">
-        <select
+        <button
           id={id}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          className="w-full appearance-none rounded-none border border-black/10 bg-transparent px-3 py-2.5 pr-9 text-sm text-black outline-none transition-colors focus:border-black/30 dark:border-white/10 dark:text-white dark:focus:border-white/25"
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          onClick={() => setOpen((current) => !current)}
+          className="flex w-full touch-manipulation items-center justify-between gap-3 border border-black/10 bg-transparent px-3 py-2.5 text-left text-sm text-black outline-none transition-colors hover:border-black/20 focus:border-black/30 dark:border-white/10 dark:text-white dark:hover:border-white/20 dark:focus:border-white/25"
         >
-          <option value="" disabled>
-            {placeholder}
-          </option>
-          {options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-        <ChevronDown
-          className="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-black/35 dark:text-white/35"
-          strokeWidth={1.8}
-        />
+          <span
+            className={value ? "text-black dark:text-white" : "text-black/25 dark:text-white/25"}
+          >
+            {value || placeholder}
+          </span>
+          <ChevronDown
+            className={[
+              "size-3.5 shrink-0 text-black/35 transition-transform dark:text-white/35",
+              open ? "rotate-180" : "",
+            ].join(" ")}
+            strokeWidth={1.8}
+          />
+        </button>
+
+        {open ? (
+          <div className="relative z-30 mt-2 border border-black/10 bg-white shadow-[0_16px_40px_rgba(0,0,0,0.08)] sm:absolute sm:left-0 sm:right-0 sm:top-[calc(100%+0.4rem)] sm:mt-0 dark:border-white/10 dark:bg-black">
+            <div
+              role="listbox"
+              aria-label={label}
+              className="max-h-72 overflow-y-auto overscroll-contain p-1.5"
+            >
+              {options.map((option, index) => {
+                const selected = value === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onClick={() => {
+                      onChange(option);
+                      setOpen(false);
+                    }}
+                    className={[
+                      "flex w-full touch-manipulation items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors",
+                      selected
+                        ? "bg-black/[0.04] dark:bg-white/[0.06]"
+                        : "hover:bg-black/[0.025] dark:hover:bg-white/[0.04]",
+                    ].join(" ")}
+                  >
+                    <span className="min-w-0 text-sm leading-snug text-black dark:text-white">
+                      <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-black/40 dark:text-white/40">
+                        {String(index + 1).padStart(2, "0")}.
+                      </span>{" "}
+                      {option}
+                    </span>
+                    <span
+                      className={[
+                        "flex size-5 shrink-0 items-center justify-center border transition-colors",
+                        selected
+                          ? "border-black/20 bg-black text-white dark:border-white/20 dark:bg-white dark:text-black"
+                          : "border-black/10 text-transparent dark:border-white/10",
+                      ].join(" ")}
+                    >
+                      <Check className="size-3" strokeWidth={2} />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

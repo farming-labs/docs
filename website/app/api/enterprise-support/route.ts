@@ -110,7 +110,7 @@ export async function POST(request: Request) {
       try {
         new URL(docsUrl);
       } catch {
-        return NextResponse.json({ error: "Their website must be a valid URL" }, { status: 400 });
+        return NextResponse.json({ error: "Website URL must be a valid URL" }, { status: 400 });
       }
     }
 
