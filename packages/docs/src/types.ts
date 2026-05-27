@@ -908,7 +908,7 @@ export interface DocsCloudConfig {
    * compatibility with older docs.json files.
    */
   enabled?: boolean;
-  /** API key lookup used by `docs preview` and other cloud CLI commands. */
+  /** API key lookup used by `docs deploy` and other cloud CLI commands. */
   apiKey?: DocsCloudApiKeyConfig;
   /** Hosted preview deployment settings. */
   preview?: DocsCloudPreviewConfig;
@@ -918,7 +918,7 @@ export interface DocsCloudConfig {
   analytics?: boolean | Omit<DocsAnalyticsConfig, "onEvent">;
   /** Hosted AI feature toggle. */
   ai?: DocsCloudFeatureConfig;
-  /** Hosted deployment feature toggle. */
+  /** Hosted deployment feature toggle used by `docs deploy`. */
   deploy?: DocsCloudFeatureConfig;
 }
 

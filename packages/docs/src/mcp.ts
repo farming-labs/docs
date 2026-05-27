@@ -461,7 +461,14 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
         name: "enabled",
         type: "boolean",
         default: true,
-        description: "Request hosted preview deployments when running docs preview.",
+        description: "Allow hosted preview deployments for docs deploy.",
+      },
+      {
+        path: "cloud.deploy.enabled",
+        name: "enabled",
+        type: "boolean",
+        default: true,
+        description: "Enable the docs deploy command for hosted preview docs.",
       },
       {
         path: "cloud.publish.mode",

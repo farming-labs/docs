@@ -56,6 +56,9 @@ Current example config:
     "preview": {
       "enabled": false
     },
+    "deploy": {
+      "enabled": false
+    },
     "publish": {
       "mode": "draft-pr",
       "baseBranch": "main"

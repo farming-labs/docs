@@ -92,6 +92,9 @@ export default defineDocs({
     preview: {
       enabled: true,
     },
+    deploy: {
+      enabled: true,
+    },
     publish: {
       mode: "draft-pr",
       baseBranch: "main",
