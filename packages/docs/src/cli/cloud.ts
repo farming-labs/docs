@@ -423,7 +423,7 @@ function resolveSiteConfig(
   if (!name && !description && !existingSite) return undefined;
 
   return {
-    ...(existingSite ?? {}),
+    ...existingSite,
     ...(typeof name === "string" ? { name } : {}),
     ...(typeof description === "string" ? { description } : {}),
   };
@@ -475,13 +475,13 @@ function materializeDocsJsonObject(params: {
   const site = resolveSiteConfig(params.rootDir, params.snapshot, params.existing);
 
   const content: ManagedDocsJson["content"] = {
-    ...(existingContent ?? {}),
+    ...existingContent,
     docsRoot,
     ...(apiReferenceRoot ? { apiReferenceRoot } : {}),
   };
 
   return {
-    ...(params.existing ?? {}),
+    ...params.existing,
     $schema: params.existing?.$schema ?? DOCS_CLOUD_SCHEMA_URL,
     version: 1,
     docs: resolveDocsBlock(params.rootDir, params.snapshot, params.existing),
