@@ -1499,10 +1499,6 @@ function appendDocsMarkdownSitemapFooter(
   return `${markdown.replace(/\s+$/g, "")}\n\n${renderDocsMarkdownSitemapFooter(sitemap)}\n`;
 }
 
-function toDocsMarkdownYamlString(value: string): string {
-  return JSON.stringify(value);
-}
-
 function normalizeDocsMarkdownLastUpdated(value?: string): string | undefined {
   if (!value) return undefined;
   const trimmed = value.trim();
@@ -1538,11 +1534,11 @@ function renderDocsMarkdownFrontmatter({
 }): string {
   const lines = [
     "---",
-    `title: ${toDocsMarkdownYamlString(title)}`,
-    ...(description ? [`description: ${toDocsMarkdownYamlString(description)}`] : []),
-    `canonical_url: ${toDocsMarkdownYamlString(canonicalUrl)}`,
-    `markdown_url: ${toDocsMarkdownYamlString(markdownUrl)}`,
-    ...(lastUpdated ? [`last_updated: ${toDocsMarkdownYamlString(lastUpdated)}`] : []),
+    `title: ${toYamlString(title)}`,
+    ...(description ? [`description: ${toYamlString(description)}`] : []),
+    `canonical_url: ${toYamlString(canonicalUrl)}`,
+    `markdown_url: ${toYamlString(markdownUrl)}`,
+    ...(lastUpdated ? [`last_updated: ${toYamlString(lastUpdated)}`] : []),
     "---",
   ];
 

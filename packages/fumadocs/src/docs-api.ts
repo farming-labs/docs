@@ -38,6 +38,7 @@ import {
   getDocsLlmsTxtMaxCharsIssue,
   renderDocsMarkdownNotFound,
   renderDocsMarkdownDocument,
+  resolveDocsMetadataBaseUrl,
   resolveDocsMarkdownRecovery,
   renderDocsLlmsTxt,
   resolveDocsI18n,
@@ -3000,6 +3001,14 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const llmsConfig = resolveLlmsTxtConfig(options?.llmsTxt, readLlmsTxtConfig(root));
   const sitemapConfig = options?.sitemap ?? readSitemapConfig(root);
   const robotsConfig = options?.robots ?? readRobotsConfig(root);
+  const markdownMetadataBaseUrl = resolveDocsMetadataBaseUrl({
+    ...options,
+    entry,
+    ai: aiConfig,
+    llmsTxt: llmsConfig,
+    sitemap: sitemapConfig,
+    robots: robotsConfig,
+  } as DocsConfig);
   const apiReferenceConfig = options?.apiReference ?? readApiReferenceConfig(root);
   const apiReferenceDocsConfig = {
     ...options,
@@ -3413,7 +3422,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         resolvePublicMarkdownRequest(entry, docsPath, url, request);
 
       if (markdownRequest) {
-        const markdownOrigin = llmsConfig.baseUrl || url.origin;
+        const markdownOrigin = markdownMetadataBaseUrl || url.origin;
         const document = await getMarkdownDocument(
           ctx,
           markdownRequest.requestedPath,
@@ -3421,7 +3430,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         );
         const varyHeader = getDocsMarkdownVaryHeader(request);
         const canonicalLinkHeader = getPublicMarkdownCanonicalLinkHeader({
-          origin: url.origin,
+          origin: markdownOrigin,
           ctx,
           requestedPath: markdownRequest.requestedPath,
         });

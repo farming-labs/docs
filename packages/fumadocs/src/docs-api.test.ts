@@ -1042,6 +1042,25 @@ Config content.
     );
     expect(fallbackDocument).not.toContain("<Agent>");
 
+    const { GET: getWithSitemapBaseUrl } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      sitemap: { enabled: true, baseUrl: "https://docs.example.com" },
+    });
+    const sitemapBaseUrlResponse = await getWithSitemapBaseUrl(
+      new Request("http://localhost/api/docs?format=markdown&path=getting-started/quickstart"),
+    );
+    expect(sitemapBaseUrlResponse.headers.get("link")).toBe(
+      '<https://docs.example.com/docs/getting-started/quickstart>; rel="canonical"',
+    );
+    const sitemapBaseUrlDocument = await sitemapBaseUrlResponse.text();
+    expect(sitemapBaseUrlDocument).toContain(
+      'canonical_url: "https://docs.example.com/docs/getting-started/quickstart"',
+    );
+    expect(sitemapBaseUrlDocument).toContain(
+      'markdown_url: "https://docs.example.com/docs/getting-started/quickstart.md"',
+    );
+
     const { GET: getWithLlmsDisabled } = createDocsAPI({
       rootDir,
       entry: "docs",

@@ -861,6 +861,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     | undefined;
 
   const llmsBaseUrl = typeof llmsTxtConfig === "object" ? (llmsTxtConfig.baseUrl ?? "") : "";
+  const markdownMetadataBaseUrl = resolveDocsMetadataBaseUrl(config as any);
   const llmsTitle =
     typeof llmsTxtConfig === "object" ? (llmsTxtConfig.siteTitle ?? llmsSiteTitle) : llmsSiteTitle;
   const llmsDesc = typeof llmsTxtConfig === "object" ? llmsTxtConfig.siteDescription : undefined;
@@ -1099,11 +1100,11 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     const markdownRequest = resolveDocsMarkdownRequest(entry, url, context.request);
     if (markdownRequest) {
-      const markdownOrigin = llmsBaseUrl || url.origin;
+      const markdownOrigin = markdownMetadataBaseUrl || url.origin;
       const document = getMarkdownDocument(ctx, markdownRequest.requestedPath, markdownOrigin);
       const varyHeader = getDocsMarkdownVaryHeader(context.request);
       const canonicalLinkHeader = getDocsMarkdownCanonicalLinkHeader({
-        origin: url.origin,
+        origin: markdownOrigin,
         entry,
         requestedPath: markdownRequest.requestedPath,
         locale: ctx.locale,
