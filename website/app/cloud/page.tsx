@@ -5,7 +5,6 @@ import {
   ArrowUpRight,
   BadgeCheck,
   Building2,
-  Clock3,
   Cloud,
   Github,
   GithubIcon,
@@ -468,10 +467,6 @@ export default function CloudPage() {
                   <span className="inline-flex items-center gap-2 border border-black/10 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-black/45 dark:border-white/10 dark:text-white/45">
                     <Headset className="size-3.5" strokeWidth={1.8} />
                     Enterprise support
-                  </span>
-                  <span className="inline-flex items-center gap-2 border border-black/10 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-black/45 dark:border-white/10 dark:text-white/45">
-                    <Clock3 className="size-3.5" strokeWidth={1.8} />
-                    Fast response
                   </span>
                 </div>
 
