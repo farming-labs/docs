@@ -22,9 +22,10 @@ Analytics answers "what did users or agents do?" Observability answers "what hap
 agent run?"
 
 <Callout type="info" title="Sending events to Docs Cloud">
-  This page covers the runtime event stream and optional custom sinks. Connected Docs Cloud projects
-  send events to Cloud automatically, store them in Cloud, and expose dashboard views. For the hosted
-  pipeline, project IDs, and ClickHouse/Postgres storage, see
+  This page covers the runtime event stream and optional custom destinations. Connected Docs Cloud
+  projects send events to Cloud automatically, store them in Cloud, and show activity in the
+  dashboard. For the plain-language overview of hosted analytics and the managed services around it,
+  see
   [Analytics and Infrastructure](/docs/cloud/infrastructure).
 </Callout>
 
@@ -39,7 +40,7 @@ export default defineDocs({
 `analytics: true` logs usage events to the console with the `[@farming-labs/docs:analytics]`
 prefix.
 
-## Send Events To Your Own Sink
+## Send Events To Another Tool
 
 For connected Docs Cloud projects, this callback is optional and additive. Use it when you want a
 copy of events outside Docs Cloud; you do not need it for Cloud storage.

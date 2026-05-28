@@ -131,8 +131,8 @@ Or, when you need the serializable subset:
 - `includeInputs`
 
 Function hooks such as `onEvent` still belong in `docs.config.ts`, because `docs.json` is a repo
-contract and not an executable config file. Use `onEvent` only for an additional customer-owned sink;
-Cloud storage is handled by the managed Cloud sink.
+contract and not an executable config file. Use `onEvent` only when you want to send an extra copy
+to a tool you own; Cloud storage is handled by the managed Cloud delivery path.
 
 For frameworkless projects, this serializable subset can be materialized into the generated hidden
 runtime even before the repo is fully connected to hosted Docs Cloud services. For framework-owned
