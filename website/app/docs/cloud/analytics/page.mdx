@@ -1,0 +1,126 @@
+---
+title: "Analytics"
+description: "How connected Docs Cloud projects store runtime analytics events"
+icon: "activity"
+order: 2
+related:
+  - /docs/cloud
+  - /docs/cloud/deploy
+  - /docs/customization/analytics
+  - /docs/guides/docs-json
+---
+
+# Analytics
+
+<Agent>
+Use this page when the user asks about this topic: Docs Cloud analytics, project identity, managed Cloud analytics delivery, event storage, dashboard analytics, includeInputs privacy, and customer onEvent callbacks.
+Keep answers technical and avoid exposing internal transport details as public setup steps. If the user asks how to deploy a hosted preview, point to /docs/cloud/deploy. If the user asks about runtime event options outside Cloud, point to /docs/customization/analytics.
+</Agent>
+
+Docs Cloud analytics stores usage events from connected docs projects. The docs runtime emits the
+events; Docs Cloud provides project identity during the managed deploy path; the dashboard reads the
+stored event stream.
+
+Teams do not need to configure internal Cloud transport or add an `onEvent` callback for Cloud
+storage. `onEvent` is only for sending an additional copy of the same events to a system the team
+owns.
+
+## Runtime Contract
+
+The runtime analytics stream is produced by `@farming-labs/docs`. Events cover product usage such as
+page views, search, Ask AI, feedback, page actions, markdown reads, agent reads, and MCP usage.
+
+For a connected Cloud project:
+
+1. the managed deploy flow provides Cloud project identity to the runtime
+2. the runtime enables the built-in Cloud delivery path
+3. Docs Cloud validates the project and analytics state
+4. Docs Cloud stores accepted events
+5. the dashboard reads stored events for counts, filters, and recent activity
+
+The public contract is the runtime analytics configuration and the `cloud.analytics` setting. The
+internal transport is managed by Docs Cloud.
+
+## Configuration
+
+For frameworkless projects, `cloud.analytics` can be stored in `docs.json` because it only contains
+JSON-safe options:
+
+```json title="docs.json"
+{
+  "cloud": {
+    "analytics": {
+      "enabled": true,
+      "console": "info",
+      "includeInputs": false
+    }
+  }
+}
+```
+
+| Option | Meaning |
+| ------ | ------- |
+| `enabled` | Enables or disables Cloud analytics for the project |
+| `console` | Controls runtime console logging for analytics events |
+| `includeInputs` | Allows raw user-authored inputs to be included in analytics events |
+
+Function callbacks do not belong in `docs.json`. If a project needs executable analytics logic, keep
+that logic in `docs.config.ts`.
+
+## Custom `onEvent`
+
+Use `analytics.onEvent` when the project needs a second destination for analytics events:
+
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  analytics: {
+    async onEvent(event) {
+      await sendToCompanyAnalytics(event);
+    },
+  },
+});
+```
+
+For connected Cloud projects, this callback is additive. Docs Cloud still stores its copy of the
+event through the managed Cloud path.
+
+## Privacy Defaults
+
+By default, raw user-authored text is excluded from analytics events. That includes search queries,
+Ask AI questions, feedback comments, and copied content.
+
+Set `includeInputs: true` only when the project has the right consent, retention, and review policy
+for user-authored text:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  analytics: {
+    includeInputs: true,
+  },
+});
+```
+
+## Stored Event Shape
+
+Docs Cloud stores event fields that are useful for dashboard queries:
+
+| Field group | Examples |
+| ----------- | -------- |
+| Project identity | project ID, optional analytics project ID |
+| Event shape | type, source, timestamp |
+| Page context | URL, path, referrer, locale |
+| Optional payloads | input, properties |
+| Timing | event time, received time |
+
+The dashboard can use those fields for totals, recent event lists, source filters, event type
+filters, repository filters, and activity charts.
+
+## Failure Behavior
+
+Analytics delivery should not break the docs runtime. If Cloud analytics delivery fails, rendering,
+search, Ask AI, MCP, and a customer-owned `onEvent` callback should continue independently.
+
+That behavior keeps analytics operationally useful without making analytics availability part of the
+critical path for serving docs.

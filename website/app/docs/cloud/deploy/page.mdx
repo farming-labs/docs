@@ -1,0 +1,178 @@
+---
+title: "Deploy"
+description: "Deploy a Docs Cloud preview from docs.config.ts, docs.json, and a project API key"
+icon: "rocket"
+order: 1
+related:
+  - /docs/cloud
+  - /docs/cloud/analytics
+  - /docs/guides/docs-json
+  - /docs/cli
+---
+
+# Deploy
+
+<Agent>
+Use this page when the user asks about this topic: Docs Cloud deploys, hosted preview docs, Docs Cloud API keys, docs.config.ts cloud config, docs.json sync, publish modes, and deploy troubleshooting.
+Keep answers technical and grounded in the commands and config on this page. Never suggest committing raw API key values to docs.config.ts, docs.json, or source control.
+If the request is about hosted analytics, project identity, or event storage, point to /docs/cloud/analytics. If the request is about the docs.json contract itself, point to /docs/guides/docs-json.
+</Agent>
+
+Docs Cloud deploy creates a hosted preview for a connected docs project. The repo remains the source
+of truth. The CLI syncs the serializable Cloud config into `docs.json`, validates the project API
+key, then asks Docs Cloud to create or update the preview.
+
+## Requirements
+
+- Docs Cloud access for the workspace
+- a Docs Cloud project API key
+- `DOCS_CLOUD_API_KEY` available in your shell, `.env.local`, or CI secrets
+- a `cloud` block in `docs.config.ts`
+- a committed `docs.json` when the repo contract should be reviewed in Git
+
+<Callout type="caution" title="Do not commit secrets">
+  Keep the raw API key in `.env.local`, your shell, or CI secrets. `docs.config.ts` should reference
+  the environment variable name, and `docs.json` should only contain that environment variable name.
+</Callout>
+
+## Configure Cloud
+
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  cloud: {
+    apiKey: { env: "DOCS_CLOUD_API_KEY" },
+    deploy: { enabled: true },
+    publish: { mode: "draft-pr", baseBranch: "main" },
+  },
+});
+```
+
+`cloud.apiKey.env` defaults to `DOCS_CLOUD_API_KEY`. Writing it explicitly makes the contract easier
+to review in CI and pull requests.
+
+## Sync `docs.json`
+
+`docs.json` is the JSON contract that Docs Cloud reads. It mirrors safe Cloud settings from
+`docs.config.ts`; it does not store API key values.
+
+```bash title="terminal"
+pnpm exec docs cloud sync
+```
+
+Example output:
+
+```json title="docs.json"
+{
+  "$schema": "https://docs.farming-labs.dev/schema/docs.json",
+  "version": 1,
+  "docs": {
+    "mode": "framework",
+    "runtime": "nextjs",
+    "root": "."
+  },
+  "content": {
+    "docsRoot": "docs"
+  },
+  "cloud": {
+    "apiKey": {
+      "env": "DOCS_CLOUD_API_KEY"
+    },
+    "deploy": {
+      "enabled": true
+    },
+    "publish": {
+      "mode": "draft-pr",
+      "baseBranch": "main"
+    }
+  }
+}
+```
+
+The generated `cloud` block intentionally omits `enabled`. The presence of the block opts the
+project into Cloud-aware CLI flows. Set `"enabled": false` only when the repo should keep the local
+contract but disable Cloud operations.
+
+## Deploy A Preview
+
+Set the key, then run the deploy command from the project root:
+
+```bash title="terminal"
+export DOCS_CLOUD_API_KEY=docs_cloud_...
+pnpm exec docs deploy
+```
+
+`docs deploy` performs the same sync step before requesting the preview:
+
+1. read `docs.config.ts`
+2. write or update `docs.json`
+3. validate the Docs Cloud API key
+4. request a hosted preview deployment
+
+The explicit Cloud command is equivalent:
+
+```bash title="terminal"
+pnpm exec docs cloud deploy
+```
+
+Use JSON output when CI or another tool needs the preview URL:
+
+```bash title="terminal"
+pnpm exec docs deploy --json
+```
+
+## Commands
+
+| Command | Use it when |
+| ------- | ----------- |
+| `pnpm exec docs cloud sync` | You only want to update `docs.json` |
+| `pnpm exec docs deploy` | You want to sync, validate the key, and request a preview |
+| `pnpm exec docs cloud deploy` | You prefer the explicit Cloud namespace |
+| `pnpm exec docs deploy --json` | CI needs machine-readable output |
+| `pnpm exec docs deploy --config <path>` | The docs config file is outside the project root |
+| `pnpm exec docs deploy --api-base-url <url>` | You are testing a staging or self-hosted Cloud API |
+
+`--api-key <key>` is available for local testing. Prefer `cloud.apiKey.env` plus an environment
+variable for normal use so the key does not end up in shell history or logs.
+
+## Publish Mode
+
+`cloud.publish` controls what Docs Cloud should do when generated docs changes need to go back to
+Git:
+
+| Mode | Behavior |
+| ---- | -------- |
+| `"draft-pr"` | Create a draft pull request targeting `publish.baseBranch` |
+| `"direct-commit"` | Commit directly to `publish.baseBranch` |
+
+Use `draft-pr` for normal team workflows. Reserve `direct-commit` for trusted automation where the
+Cloud project owns the branch policy.
+
+## Troubleshooting
+
+**Missing API key**
+
+Set the environment variable named by `cloud.apiKey.env`:
+
+```bash title="terminal"
+export DOCS_CLOUD_API_KEY=docs_cloud_...
+```
+
+or add it to `.env.local`.
+
+**Deploy disabled**
+
+If `cloud.deploy.enabled` is `false`, `docs deploy` stops before requesting a hosted preview. Set it
+back to `true` or remove the override.
+
+**Wrong Cloud host**
+
+For staging or self-hosted testing, pass:
+
+```bash title="terminal"
+pnpm exec docs deploy --api-base-url https://cloud.example.com
+```
+
+You can also set `DOCS_CLOUD_API_URL` in the environment.
