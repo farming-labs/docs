@@ -17,13 +17,43 @@ Use this page when the user asks about this topic: Docs Cloud analytics, project
 Keep answers technical and avoid exposing internal transport details as public setup steps. If the user asks how to deploy a hosted preview, point to /docs/cloud/deploy. If the user asks about runtime event options outside Cloud, point to /docs/customization/analytics.
 </Agent>
 
-Docs Cloud analytics stores usage events from connected docs projects. The docs runtime emits the
-events; Docs Cloud provides project identity during the managed deploy path; the dashboard reads the
-stored event stream.
+Docs Cloud analytics stores usage events for a Docs Cloud project. The docs runtime emits the
+events; a Docs Cloud project ID tells Cloud which project should own those events; the dashboard
+reads the stored event stream.
 
 Teams do not need to configure internal Cloud transport or add an `onEvent` callback for Cloud
 storage. `onEvent` is only for sending an additional copy of the same events to a system the team
 owns.
+
+## Project ID Requirement
+
+Cloud analytics requires a Docs Cloud project ID. Without one, Cloud cannot attach events to a
+workspace or dashboard.
+
+There are two ways to get the ID:
+
+| Source | How the ID is created | When to use it |
+| ------ | --------------------- | -------------- |
+| Imported repository | Import the repository in Docs Cloud. Cloud creates or reuses the project record and shows its project ID in the Analytics dashboard. | Normal Docs Cloud projects and managed previews |
+| Custom analytics project | Create a custom analytics project from the Docs Cloud Analytics dashboard. Cloud returns an analytics project ID for that source. | A docs site that is not tied to a GitHub import yet |
+
+Managed Docs Cloud deploys provide the project ID to the runtime for you. For a manually hosted or
+custom analytics source, copy the project ID from the Docs Cloud Analytics dashboard and set it in
+the runtime environment:
+
+```bash title=".env.local"
+NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=docs_cloud_project_id
+```
+
+Keep using the dashboard-provided ID. Do not invent one locally; the ID must match an imported
+repository project or a custom analytics project in Docs Cloud.
+
+The project ID is enough to turn on the built-in Cloud delivery path. To opt out from a manual
+runtime environment, set the analytics flag to `false`:
+
+```bash title=".env.local"
+NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED=false
+```
 
 ## Runtime Contract
 
@@ -32,14 +62,15 @@ page views, search, Ask AI, feedback, page actions, markdown reads, agent reads,
 
 For a connected Cloud project:
 
-1. the managed deploy flow provides Cloud project identity to the runtime
-2. the runtime enables the built-in Cloud delivery path
-3. Docs Cloud validates the project and analytics state
-4. Docs Cloud stores accepted events
-5. the dashboard reads stored events for counts, filters, and recent activity
+1. Docs Cloud creates or provides the project ID
+2. the runtime receives that project ID
+3. the runtime enables the built-in Cloud delivery path
+4. Docs Cloud validates the project ID and analytics state
+5. Docs Cloud stores accepted events
+6. the dashboard reads stored events for counts, filters, and recent activity
 
-The public contract is the runtime analytics configuration and the `cloud.analytics` setting. The
-internal transport is managed by Docs Cloud.
+The public contract is the Docs Cloud project ID, the runtime analytics configuration, and the
+`cloud.analytics` setting. The internal transport is managed by Docs Cloud.
 
 ## Configuration
 

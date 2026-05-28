@@ -208,11 +208,11 @@ Use `docs deploy` from a docs project root to sync the serializable `cloud` bloc
 `docs.config.ts` into `docs.json`, validate the configured API key, and deploy hosted preview docs.
 
 ```bash
-pnpm exec docs deploy
-pnpm exec docs preview
-pnpm exec docs cloud deploy
-pnpm exec docs cloud preview
-pnpm exec docs cloud sync
+pnpm dlx @farming-labs/docs deploy
+pnpm dlx @farming-labs/docs preview
+pnpm dlx @farming-labs/docs cloud deploy
+pnpm dlx @farming-labs/docs cloud preview
+pnpm dlx @farming-labs/docs cloud sync
 ```
 
 Config shape:
