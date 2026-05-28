@@ -1,6 +1,6 @@
 ---
 title: "Analytics and Infrastructure"
-description: "How Docs Cloud receives analytics events, stores them, and connects them to previews, jobs, knowledge indexes, and webhooks"
+description: "How Docs Cloud stores analytics events and runs the managed services around your docs"
 icon: "activity"
 order: 1
 related:
@@ -15,86 +15,89 @@ related:
 
 <Agent>
 Use this page when the user asks about this topic: Docs Cloud hosted analytics, project IDs, event ingestion, dashboard analytics, ClickHouse or Postgres storage, runner jobs, previews, knowledge indexes, GraphRAG direction, and outbound webhooks.
-Keep answers grounded in the architecture, managed delivery behavior, and privacy defaults documented here.
+Answer in plain language first. Keep answers grounded in the managed delivery behavior, ownership model, and privacy defaults documented here. Do not expose internal ingest URLs as a public setup step.
 If the user asks how to configure framework-level runtime analytics, point to /docs/customization/analytics. If the user asks about trace events for Ask AI or MCP, point to /docs/customization/observability. If the user asks about the docs.json contract, point to /docs/guides/docs-json.
 </Agent>
 
-Docs Cloud is the managed control plane around `@farming-labs/docs`. The open-source runtime still
-renders the docs site, emits analytics events, exposes markdown and MCP surfaces, and keeps Git as
-the source of truth. Cloud adds the hosted infrastructure around that runtime: project identity,
-event ingestion, dashboards, previews, repository jobs, knowledge indexes, and signed automation
-hooks.
+Docs Cloud is the managed layer around `@farming-labs/docs`. Your repository still owns the docs
+content, design, config, and Git history. Docs Cloud runs the hosted services around that repo:
+analytics storage, dashboards, previews, background jobs, knowledge indexes, and automation hooks.
 
 Use this page to understand how the hosted layer fits together. For the first API key and preview
 deployment flow, start with [Docs Cloud](/docs/cloud).
 
-## What Cloud Adds
+## Plain English Summary
 
-| Layer | What stays in your repo | What Docs Cloud manages |
-| ----- | ----------------------- | ----------------------- |
-| Runtime | `docs.config.ts`, MDX pages, theme, search, AI, page actions | Project registration, API key validation, deploy requests |
-| Analytics | Runtime event emission and optional extra `onEvent` callback | Project identity, managed Cloud delivery, event storage, dashboard views |
-| Repository jobs | Docs source, docs.json, GitHub installation | Checkout, profiling, docs generation, sync jobs, review PRs |
-| Knowledge | Markdown, source files, routes, config, examples | Chunks, source facts, graph nodes, graph edges, retrieval indexes |
-| Previews | Buildable docs app or frameworkless source | Stable preview URLs, Vercel project binding, preview status |
-| Automation | Webhook endpoint URL and chosen events | Signed deliveries for jobs, PRs, failures, and previews |
+When someone uses your docs, the docs site can notice simple actions: a page was viewed, search was
+opened, feedback was submitted, or an agent read a page. Each action becomes a small analytics
+record called an event.
+
+For a connected Docs Cloud project, Docs Cloud stores those events for you and shows them in the
+dashboard. Your team does not need to create a database, copy an internal URL, or write a custom
+callback just to make Cloud analytics work.
+
+The most important rules are:
+
+- Docs Cloud stores the analytics events for connected projects.
+- The docs runtime sends events to Cloud automatically when Cloud provides the project identity.
+- `analytics.onEvent` is optional. Use it only when you also want to send a copy somewhere else.
+- Raw search questions, AI questions, feedback comments, and copied content stay out of events
+  unless `includeInputs: true` is enabled.
+
+## What Cloud Runs For You
+
+| Area | Plain-language version |
+| ---- | ---------------------- |
+| Analytics | Stores usage events and shows them in the dashboard |
+| Previews | Builds a shareable preview URL for a docs project |
+| Jobs | Runs background work such as syncs, generated docs updates, and checks |
+| Knowledge | Builds indexes that help search, Ask AI, and future analysis understand the repo |
+| Webhooks | Notifies your systems when Cloud jobs, previews, or PRs finish |
 
 <Callout type="info" title="Runtime analytics vs Cloud analytics">
-  [`analytics`](/docs/customization/analytics) is the runtime event stream. Docs Cloud is the
-  managed destination for connected projects. You can still send the same events to your own
-  warehouse, log drain, or product analytics system from `analytics.onEvent`.
+  [`analytics`](/docs/customization/analytics) is the event stream created by the docs runtime. Docs
+  Cloud is the managed place where connected projects store that stream. A custom `onEvent` callback
+  is only for teams that want a second copy in another tool.
 </Callout>
 
-## Analytics Event Pipeline
+## How Analytics Works
 
-Cloud analytics is intentionally small at the edge and richer in the control plane:
+For connected projects, the flow is:
 
-1. A docs runtime emits a normalized analytics event from page views, search, Ask AI, feedback,
-   page actions, markdown reads, agent routes, or MCP usage.
-2. When the project is connected to Docs Cloud, the Cloud-managed runtime settings provide the
-   project identity and enable the built-in Cloud sink.
-3. `@farming-labs/docs` delivers the event through the managed Cloud sink.
-4. Cloud validates that the project exists and that analytics is enabled for that source.
-5. Cloud normalizes the event and stores it in `DocsAnalyticsEvent`.
-6. When ClickHouse is configured, Cloud also replicates the event into a warehouse table for
-   higher-volume aggregation.
-7. The dashboard reads recent events, source filters, project filters, 24-hour totals, and activity
-   charts from the stored event stream.
+1. A person or agent uses the docs.
+2. The docs runtime creates an event that describes what happened.
+3. Docs Cloud provides the project identity during the managed deploy flow.
+4. The runtime delivers the event through the built-in Cloud sink.
+5. Docs Cloud stores the event.
+6. The dashboard turns stored events into charts, filters, and recent activity.
 
-Teams do not need to paste Cloud delivery code into their docs config. Connected Cloud projects
-receive the built-in sink automatically.
+Teams do not need to paste Cloud delivery code into `docs.config.ts`. The Cloud sink is part of the
+runtime behavior for connected projects.
 
-## Add Your Own Analytics Sink
+## What You Need To Do
 
-Use `analytics.onEvent` only when you also want a copy of runtime events in your own system:
+| Question | Answer |
+| -------- | ------ |
+| Do I need to set up the Cloud analytics endpoint? | No. It is managed by Docs Cloud. |
+| Do I need to add `onEvent` for Cloud analytics? | No. Cloud storage works without a custom callback. |
+| Do I need to run my own analytics database? | No. Docs Cloud stores the events for connected projects. |
+| Can I also send events to my own analytics tool? | Yes. Add `analytics.onEvent` when you want an extra copy. |
+| Can I turn off analytics? | Yes. Disable analytics in the Cloud-aware project config. |
 
-```ts title="docs.config.ts"
-import { defineDocs } from "@farming-labs/docs";
+## When To Use `onEvent`
 
-export default defineDocs({
-  analytics: {
-    async onEvent(event) {
-      await fetch("https://analytics.example.com/events", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(event),
-      });
-    },
-  },
-});
-```
-
-For a connected Cloud project, that callback is additive. The runtime still sends the event to Docs
-Cloud through the managed sink, Cloud stores it, and the dashboard reads from Cloud storage.
+Most Cloud projects do not need `onEvent`. Use it only when your team wants the same docs activity
+sent to a separate system, such as a company data warehouse, logging service, or product analytics
+tool. When a project is connected to Docs Cloud, that callback is additive: Cloud still stores its
+copy, and your callback receives its own copy.
 
 <Callout type="info" title="Cloud delivery should not break your docs">
   The Cloud sink is best-effort. A Cloud ingestion failure is swallowed by the runtime so a transient
   analytics outage does not break rendering, search, Ask AI, MCP, or a user-owned `onEvent` hook.
 </Callout>
 
-For frameworkless projects, the JSON-safe `cloud.analytics` subset in `docs.json` can be materialized
-into the generated runtime. This controls runtime analytics behavior while Cloud supplies the hosted
-project identity:
+For frameworkless projects, `cloud.analytics` in `docs.json` can turn analytics on or off for the
+generated runtime:
 
 ```json title="docs.json"
 {
@@ -114,22 +117,22 @@ repo contract rather than executable application code.
 Managed Cloud projects do not need to call a Cloud analytics helper in `docs.config.ts`; the hosted
 deploy flow provides the project identity for them.
 
-## Storage Model
+## Where Events Are Stored
 
-The operational store is Postgres through Prisma. Each event records:
+Docs Cloud stores analytics in its operational database. Each stored event includes enough context to
+answer practical dashboard questions:
 
-| Field group | Examples |
-| ----------- | -------- |
-| Identity | `projectId`, custom `analyticsProjectId`, event `id` |
-| Event shape | `type`, `source`, `timestamp` |
-| Page context | `url`, `path`, `referrer`, `locale` |
-| Optional payloads | `input`, `properties` |
-| Timing | `eventAt`, `receivedAt` |
+| What is stored | Examples |
+| -------------- | -------- |
+| Which project it belongs to | project ID, event ID |
+| What happened | event type, source, timestamp |
+| Where it happened | URL, path, referrer, locale |
+| Optional details | input fields, extra properties |
+| When Cloud received it | event time, received time |
 
-ClickHouse is an optional analytics warehouse. When configured, Cloud creates an events table and
-replicates each normalized event as JSON rows. The warehouse table is partitioned by event month and
-ordered by project, event time, and event ID, which keeps project-scoped dashboard queries and future
-rollups predictable.
+For higher-volume reporting, Docs Cloud can also copy normalized events into an analytics warehouse.
+That warehouse is an internal scaling detail; teams still use the Cloud dashboard and managed
+project settings.
 
 <Callout type="warning" title="Inputs stay private by default">
   Raw search queries, AI questions, feedback comments, and copied content are excluded unless
