@@ -58,7 +58,7 @@ export default defineDocs({
 From the docs project root:
 
 ```bash title="terminal"
-pnpm exec docs deploy
+pnpm dlx @farming-labs/docs deploy
 ```
 
 For one-off usage with the published package:
@@ -75,7 +75,7 @@ polls until Docs Cloud returns a live URL.
 Use the same command in CI after exposing `DOCS_CLOUD_API_KEY` as a secret.
 
 ```bash title="terminal"
-pnpm exec docs deploy --json
+pnpm dlx @farming-labs/docs deploy --json
 ```
 
 `--json` prints the deployment URL and job response in a machine-readable shape.

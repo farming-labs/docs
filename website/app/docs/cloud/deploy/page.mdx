@@ -59,7 +59,7 @@ to review in CI and pull requests.
 `docs.config.ts`; it does not store API key values.
 
 ```bash title="terminal"
-pnpm exec docs cloud sync
+pnpm dlx @farming-labs/docs cloud sync
 ```
 
 Example output:
@@ -101,7 +101,7 @@ Set the key, then run the deploy command from the project root:
 
 ```bash title="terminal"
 export DOCS_CLOUD_API_KEY=docs_cloud_...
-pnpm exec docs deploy
+pnpm dlx @farming-labs/docs deploy
 ```
 
 `docs deploy` performs the same sync step before requesting the preview:
@@ -114,25 +114,25 @@ pnpm exec docs deploy
 The explicit Cloud command is equivalent:
 
 ```bash title="terminal"
-pnpm exec docs cloud deploy
+pnpm dlx @farming-labs/docs cloud deploy
 ```
 
 Use JSON output when CI or another tool needs the preview URL:
 
 ```bash title="terminal"
-pnpm exec docs deploy --json
+pnpm dlx @farming-labs/docs deploy --json
 ```
 
 ## Commands
 
 | Command | Use it when |
 | ------- | ----------- |
-| `pnpm exec docs cloud sync` | You only want to update `docs.json` |
-| `pnpm exec docs deploy` | You want to sync, validate the key, and request a preview |
-| `pnpm exec docs cloud deploy` | You prefer the explicit Cloud namespace |
-| `pnpm exec docs deploy --json` | CI needs machine-readable output |
-| `pnpm exec docs deploy --config <path>` | The docs config file is outside the project root |
-| `pnpm exec docs deploy --api-base-url <url>` | You are testing a staging or self-hosted Cloud API |
+| `pnpm dlx @farming-labs/docs cloud sync` | You only want to update `docs.json` |
+| `pnpm dlx @farming-labs/docs deploy` | You want to sync, validate the key, and request a preview |
+| `pnpm dlx @farming-labs/docs cloud deploy` | You prefer the explicit Cloud namespace |
+| `pnpm dlx @farming-labs/docs deploy --json` | CI needs machine-readable output |
+| `pnpm dlx @farming-labs/docs deploy --config <path>` | The docs config file is outside the project root |
+| `pnpm dlx @farming-labs/docs deploy --api-base-url <url>` | You are testing a staging or self-hosted Cloud API |
 
 `--api-key <key>` is available for local testing. Prefer `cloud.apiKey.env` plus an environment
 variable for normal use so the key does not end up in shell history or logs.
@@ -172,7 +172,7 @@ back to `true` or remove the override.
 For staging or self-hosted testing, pass:
 
 ```bash title="terminal"
-pnpm exec docs deploy --api-base-url https://cloud.example.com
+pnpm dlx @farming-labs/docs deploy --api-base-url https://cloud.example.com
 ```
 
 You can also set `DOCS_CLOUD_API_URL` in the environment.

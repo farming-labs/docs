@@ -71,7 +71,7 @@ outside source control.
 Run `cloud sync` to write the serializable Cloud contract:
 
 ```bash title="terminal"
-pnpm exec docs cloud sync
+pnpm dlx @farming-labs/docs cloud sync
 ```
 
 `docs.json` is safe to commit because it contains configuration and environment variable names, not
@@ -82,7 +82,7 @@ secret values.
 Use the deploy page for the full preview flow:
 
 ```bash title="terminal"
-pnpm exec docs deploy
+pnpm dlx @farming-labs/docs deploy
 ```
 
 See [Deploy](/docs/cloud/deploy) for API key setup, command options, preview behavior, publish mode,
