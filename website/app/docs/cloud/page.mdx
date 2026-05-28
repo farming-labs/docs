@@ -1,9 +1,10 @@
 ---
 title: "Docs Cloud"
-description: "Connect your docs project to Docs Cloud deployments, API keys, and publish workflows"
+description: "Connect your docs project to Docs Cloud deployments, API keys, analytics, and publish workflows"
 icon: "infrastructure"
 order: 3.6
 related:
+  - /docs/cloud/infrastructure
   - /docs/guides/docs-json
   - /docs/configuration
   - /docs/cli
@@ -15,6 +16,7 @@ related:
 <Agent>
 Use this page when the user asks about this topic: Connect an @farming-labs/docs project to Docs Cloud, create and store a Docs Cloud API key, sync docs.config.ts to docs.json, deploy hosted preview docs, or configure publish defaults.
 Keep answers grounded in the exact commands and config shown here. Never suggest committing raw API key values to docs.config.ts, docs.json, or source control.
+If the request is about hosted analytics, project IDs, the Cloud event pipeline, runner jobs, previews, knowledge indexes, GraphRAG direction, or webhook infrastructure, point to /docs/cloud/infrastructure.
 If the request is about the docs.json contract itself, point to /docs/guides/docs-json. If the request is about every config option, point to /docs/configuration.
 </Agent>
 
@@ -29,6 +31,10 @@ The first integration surface is the Cloud deploy flow:
 3. add a serializable `cloud` block to `docs.config.ts`
 4. sync that config into `docs.json`
 5. deploy hosted preview docs
+
+For the architecture behind hosted analytics, event storage, repository jobs, knowledge indexes,
+preview infrastructure, and outbound webhooks, see
+[Analytics and Infrastructure](/docs/cloud/infrastructure).
 
 <Callout type="info" title="Cloud access">
   Docs Cloud is rolling out gradually. If your workspace does not have access yet, join the

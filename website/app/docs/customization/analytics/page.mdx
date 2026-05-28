@@ -21,6 +21,13 @@ Analytics is intentionally separate from [Observability](/docs/customization/obs
 Analytics answers "what did users or agents do?" Observability answers "what happened inside this
 agent run?"
 
+<Callout type="info" title="Sending events to Docs Cloud">
+  This page covers the runtime event stream and optional custom sinks. Connected Docs Cloud projects
+  send events to Cloud automatically, store them in Cloud, and expose dashboard views. For the hosted
+  pipeline, project IDs, and ClickHouse/Postgres storage, see
+  [Analytics and Infrastructure](/docs/cloud/infrastructure).
+</Callout>
+
 ## Quick Start
 
 ```ts title="docs.config.ts"
@@ -33,6 +40,9 @@ export default defineDocs({
 prefix.
 
 ## Send Events To Your Own Sink
+
+For connected Docs Cloud projects, this callback is optional and additive. Use it when you want a
+copy of events outside Docs Cloud; you do not need it for Cloud storage.
 
 ```ts title="docs.config.ts"
 export default defineDocs({

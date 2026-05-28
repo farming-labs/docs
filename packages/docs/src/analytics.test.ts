@@ -286,7 +286,7 @@ describe("analytics", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://docs.farming-labs.dev/api/analytics/events",
+      "https://docs-app.farming-labs.dev/api/analytics/events",
       expect.objectContaining({
         method: "POST",
         keepalive: true,
@@ -358,7 +358,7 @@ describe("analytics", () => {
     expect(seen).toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://docs.farming-labs.dev/api/analytics/events",
+      "https://docs-app.farming-labs.dev/api/analytics/events",
       expect.objectContaining({
         method: "POST",
       }),

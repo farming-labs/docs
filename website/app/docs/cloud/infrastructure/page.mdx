@@ -1,0 +1,244 @@
+---
+title: "Analytics and Infrastructure"
+description: "How Docs Cloud receives analytics events, stores them, and connects them to previews, jobs, knowledge indexes, and webhooks"
+icon: "activity"
+order: 1
+related:
+  - /docs/cloud
+  - /docs/customization/analytics
+  - /docs/customization/observability
+  - /docs/guides/docs-json
+  - /docs/cli
+---
+
+# Analytics and Infrastructure
+
+<Agent>
+Use this page when the user asks about this topic: Docs Cloud hosted analytics, project IDs, event ingestion, dashboard analytics, ClickHouse or Postgres storage, runner jobs, previews, knowledge indexes, GraphRAG direction, and outbound webhooks.
+Keep answers grounded in the architecture, endpoint shape, and privacy defaults documented here.
+If the user asks how to configure framework-level runtime analytics, point to /docs/customization/analytics. If the user asks about trace events for Ask AI or MCP, point to /docs/customization/observability. If the user asks about the docs.json contract, point to /docs/guides/docs-json.
+</Agent>
+
+Docs Cloud is the managed control plane around `@farming-labs/docs`. The open-source runtime still
+renders the docs site, emits analytics events, exposes markdown and MCP surfaces, and keeps Git as
+the source of truth. Cloud adds the hosted infrastructure around that runtime: project identity,
+event ingestion, dashboards, previews, repository jobs, knowledge indexes, and signed automation
+hooks.
+
+Use this page to understand how the hosted layer fits together. For the first API key and preview
+deployment flow, start with [Docs Cloud](/docs/cloud).
+
+## What Cloud Adds
+
+| Layer | What stays in your repo | What Docs Cloud manages |
+| ----- | ----------------------- | ----------------------- |
+| Runtime | `docs.config.ts`, MDX pages, theme, search, AI, page actions | Project registration, API key validation, deploy requests |
+| Analytics | Runtime event emission and optional extra `onEvent` callback | Project IDs, managed Cloud sink, ingestion endpoint, event storage, dashboard views |
+| Repository jobs | Docs source, docs.json, GitHub installation | Checkout, profiling, docs generation, sync jobs, review PRs |
+| Knowledge | Markdown, source files, routes, config, examples | Chunks, source facts, graph nodes, graph edges, retrieval indexes |
+| Previews | Buildable docs app or frameworkless source | Stable preview URLs, Vercel project binding, preview status |
+| Automation | Webhook endpoint URL and chosen events | Signed deliveries for jobs, PRs, failures, and previews |
+
+<Callout type="info" title="Runtime analytics vs Cloud analytics">
+  [`analytics`](/docs/customization/analytics) is the runtime event stream. Docs Cloud is the
+  managed destination for connected projects. You can still send the same events to your own
+  warehouse, log drain, or product analytics system from `analytics.onEvent`.
+</Callout>
+
+## Analytics Event Pipeline
+
+Cloud analytics is intentionally small at the edge and richer in the control plane:
+
+1. A docs runtime emits a normalized analytics event from page views, search, Ask AI, feedback,
+   page actions, markdown reads, agent routes, or MCP usage.
+2. When the project is connected to Docs Cloud, the Cloud-managed runtime settings provide the
+   project identity and enable the built-in Cloud sink.
+3. `@farming-labs/docs` posts the event to the Docs Cloud ingestion endpoint with that stable
+   `projectId`.
+4. Cloud validates that the project exists and that analytics is enabled for that source.
+5. Cloud normalizes the event and stores it in `DocsAnalyticsEvent`.
+6. When ClickHouse is configured, Cloud also replicates the event into a warehouse table for
+   higher-volume aggregation.
+7. The dashboard reads recent events, source filters, project filters, 24-hour totals, and activity
+   charts from the stored event stream.
+
+The runtime delivery is still an HTTP request, but it is not setup code teams need to paste into
+their docs config. Connected Cloud projects receive the built-in sink automatically.
+
+The managed ingest endpoint is:
+
+```txt
+https://docs-app.farming-labs.dev/api/analytics/events
+```
+
+## Add Your Own Analytics Sink
+
+Use `analytics.onEvent` only when you also want a copy of runtime events in your own system:
+
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  analytics: {
+    async onEvent(event) {
+      await fetch("https://analytics.example.com/events", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(event),
+      });
+    },
+  },
+});
+```
+
+For a connected Cloud project, that callback is additive. The runtime still sends the event to Docs
+Cloud through the managed sink, Cloud stores it, and the dashboard reads from Cloud storage.
+
+<Callout type="info" title="Cloud delivery should not break your docs">
+  The Cloud sink is best-effort. A Cloud ingestion failure is swallowed by the runtime so a transient
+  analytics outage does not break rendering, search, Ask AI, MCP, or a user-owned `onEvent` hook.
+</Callout>
+
+For frameworkless projects, the JSON-safe `cloud.analytics` subset in `docs.json` can be materialized
+into the generated runtime. This controls runtime analytics behavior while Cloud supplies the hosted
+project identity:
+
+```json title="docs.json"
+{
+  "cloud": {
+    "analytics": {
+      "enabled": true,
+      "console": "info",
+      "includeInputs": false
+    }
+  }
+}
+```
+
+Callbacks such as `onEvent` still belong in `docs.config.ts`, because `docs.json` is a serializable
+repo contract rather than executable application code.
+
+Managed Cloud projects do not need to call a Cloud analytics helper in `docs.config.ts`; the hosted
+deploy flow provides the project identity for them.
+
+## Storage Model
+
+The operational store is Postgres through Prisma. Each event records:
+
+| Field group | Examples |
+| ----------- | -------- |
+| Identity | `projectId`, custom `analyticsProjectId`, event `id` |
+| Event shape | `type`, `source`, `timestamp` |
+| Page context | `url`, `path`, `referrer`, `locale` |
+| Optional payloads | `input`, `properties` |
+| Timing | `eventAt`, `receivedAt` |
+
+ClickHouse is an optional analytics warehouse. When configured, Cloud creates an events table and
+replicates each normalized event as JSON rows. The warehouse table is partitioned by event month and
+ordered by project, event time, and event ID, which keeps project-scoped dashboard queries and future
+rollups predictable.
+
+<Callout type="warning" title="Inputs stay private by default">
+  Raw search queries, AI questions, feedback comments, and copied content are excluded unless
+  `includeInputs: true` is set. Keep that off unless your project has consent, retention, and review
+  policies for user-authored text.
+</Callout>
+
+## Dashboard Views
+
+The Cloud dashboard treats analytics as a project operations surface, not just a traffic chart. The
+current console focuses on:
+
+- total stored events and events in the last 24 hours
+- imported repositories and custom analytics projects
+- project ID copy flow for event emitters
+- recent events with type, source, repository, path, URL, and referrer
+- filters by source, event type, repository, URL state, and referrer state
+- activity over the last 14 days, including page views and callback events
+
+The same workspace overview can combine analytics activity with job runs, webhook deliveries, API
+key usage, preview-enabled projects, and connected repositories.
+
+## Repository Jobs And Knowledge
+
+Analytics is only one part of the Cloud infrastructure. The same control plane also coordinates
+long-running repository work:
+
+1. A GitHub import, webhook delivery, manual sync, or Cloud preview request identifies the repo and
+   branch.
+2. A runner checks out the repository and profiles package metadata, docs config, source files,
+   routes, environment variables, commands, and existing docs.
+3. Docs Cloud detects runtime analytics configuration in `docs.config.ts` or the serializable
+   `cloud.analytics` block in `docs.json`.
+4. The job persists a knowledge index with docs chunks, source facts, graph nodes, graph edges, and
+   retrieval metadata.
+5. Publish workflows create a draft PR or direct commit, depending on the configured mode.
+6. Preview workflows attach a stable managed preview hostname to the generated Vercel project.
+
+That knowledge layer is the base for search, docs impact analysis, Ask AI grounding, and the GraphRAG
+work. The GraphRAG direction projects repository chunks and graph edges into documents, text units,
+entities, relationships, communities, and community reports so broad product questions can be
+answered with provenance instead of isolated snippets.
+
+## Preview And Publish Infrastructure
+
+Cloud preview URLs are stable per repository:
+
+```txt
+https://docs-cloud-<owner>-<repo>.preview.farming-labs.dev
+```
+
+Docs Cloud builds or deploys the docs runtime, attaches the generated hostname to the matching
+Vercel project, and records preview status on the job. Publish behavior is controlled by the
+project's `cloud.publish` config:
+
+| Mode | Behavior |
+| ---- | -------- |
+| `draft-pr` | Create a draft pull request against the configured base branch |
+| `direct-commit` | Commit generated docs changes directly to the configured branch |
+
+Use `draft-pr` for normal team workflows. Reserve `direct-commit` for trusted automation where the
+Cloud project owns the target branch policy.
+
+## Outbound Webhooks
+
+Workspaces can register HTTPS webhook endpoints for Cloud automation events. Each delivery is signed
+with HMAC-SHA256 using the endpoint secret shown when the endpoint is created.
+
+Supported events include:
+
+| Event | When it fires |
+| ----- | ------------- |
+| `docs.bootstrap.completed` | A bootstrap job finished successfully |
+| `docs.sync.completed` | A sync job finished successfully |
+| `docs.job.failed` | A Cloud job failed |
+| `docs.pull_request.ready` | A generated docs PR is ready |
+| `docs.preview.ready` | A hosted preview URL is ready |
+
+Every delivery includes the event name, delivery ID, timestamp, and SHA-256 signature headers so
+receivers can reject stale or tampered payloads.
+
+## Which Page Should I Use?
+
+| Need | Page |
+| ---- | ---- |
+| Configure runtime event emission or your own extra sink | [Analytics](/docs/customization/analytics) |
+| Trace Ask AI and MCP internals | [Observability](/docs/customization/observability) |
+| Connect a project, API key, and preview deploy | [Docs Cloud](/docs/cloud) |
+| Understand `docs.json` and `cloud.analytics` | [docs.json](/docs/guides/docs-json) |
+| Review CLI commands for Cloud sync/deploy | [CLI](/docs/cli) |
+
+## Roadmap
+
+The infrastructure direction is:
+
+- richer dashboard aggregations backed by the event warehouse
+- first-class custom analytics project management
+- GraphRAG community views with source provenance
+- docs impact analysis from changed files to affected docs pages
+- delivery history and retries for outbound webhooks
+- more explicit health checks for runner, preview, analytics, and warehouse services
+
+The design goal is simple: teams should see how humans and agents use their docs, understand which
+source facts support an answer, and publish improvements back to Git without losing ownership of the
+runtime.

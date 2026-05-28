@@ -9,7 +9,7 @@ export interface DocsCloudAnalyticsOptions {
 }
 
 const DOCS_CLOUD_ANALYTICS_OPTIONS = Symbol.for("@farming-labs/docs/cloud-analytics");
-const DOCS_CLOUD_ANALYTICS_ENDPOINT = "https://docs.farming-labs.dev/api/analytics/events";
+const DOCS_CLOUD_ANALYTICS_ENDPOINT = "https://docs-app.farming-labs.dev/api/analytics/events";
 
 type DocsAnalyticsConfigWithCloud = DocsAnalyticsConfig & {
   [DOCS_CLOUD_ANALYTICS_OPTIONS]?: DocsCloudAnalyticsOptions;
