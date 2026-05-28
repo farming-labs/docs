@@ -10,9 +10,9 @@
     "preview": "nuxt preview"
   },
   "dependencies": {
-    "@farming-labs/docs": "0.1.134",
-    "@farming-labs/nuxt": "0.1.134",
-    "@farming-labs/nuxt-theme": "0.1.134",
+    "@farming-labs/docs": "0.1.135",
+    "@farming-labs/nuxt": "0.1.135",
+    "@farming-labs/nuxt-theme": "0.1.135",
     "three": "^0.180.0"
   },
   "devDependencies": {
