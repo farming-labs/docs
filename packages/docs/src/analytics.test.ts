@@ -58,6 +58,9 @@ describe("analytics", () => {
     delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED;
     delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
     delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY;
+    delete process.env.DOCS_CLOUD_ANALYTICS_ENABLED;
+    delete process.env.DOCS_CLOUD_PROJECT_ID;
+    delete process.env.DOCS_CLOUD_ANALYTICS_KEY;
   });
 
   it("emits every built-in analytics event type through the shared hook", async () => {
@@ -286,7 +289,7 @@ describe("analytics", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://docs.farming-labs.dev/api/analytics/events",
+      "https://docs-app.farming-labs.dev/api/analytics/events",
       expect.objectContaining({
         method: "POST",
         keepalive: true,
@@ -327,8 +330,7 @@ describe("analytics", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("internally wraps analytics with the Docs Cloud sink when cloud env is enabled", async () => {
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "true";
+  it("internally wraps analytics with the Docs Cloud sink when project id env is present", async () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_env";
 
     const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
@@ -358,15 +360,47 @@ describe("analytics", () => {
     expect(seen).toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://docs.farming-labs.dev/api/analytics/events",
+      "https://docs-app.farming-labs.dev/api/analytics/events",
       expect.objectContaining({
         method: "POST",
       }),
     );
   });
 
+  it("treats the Docs Cloud analytics enabled env as an explicit opt-out", async () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "false";
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_env_disabled";
+
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 202 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(resolveDocsAnalyticsConfig()).toMatchObject({
+      enabled: false,
+      console: false,
+    });
+
+    const seen: DocsAnalyticsEvent[] = [];
+    await emitDocsAnalyticsEvent(
+      {
+        console: false,
+        onEvent(event) {
+          seen.push(event);
+        },
+      },
+      {
+        type: "page_view",
+        source: "client",
+        path: "/docs",
+      },
+    );
+
+    expect(seen).toHaveLength(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("preserves the user onEvent callback when Docs Cloud delivery fails", async () => {
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "true";
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_env_failure";
 
     const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(async () => {
@@ -396,7 +430,6 @@ describe("analytics", () => {
   });
 
   it("still sends Docs Cloud analytics when the user onEvent throws", async () => {
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "true";
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_env_user_throw";
 
     const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
@@ -424,8 +457,7 @@ describe("analytics", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("enables analytics by default when Docs Cloud env is enabled and config is omitted", async () => {
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "true";
+  it("enables analytics by default when Docs Cloud project id env is present and config is omitted", async () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_default";
 
     const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(

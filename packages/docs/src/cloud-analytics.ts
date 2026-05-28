@@ -9,7 +9,7 @@ export interface DocsCloudAnalyticsOptions {
 }
 
 const DOCS_CLOUD_ANALYTICS_OPTIONS = Symbol.for("@farming-labs/docs/cloud-analytics");
-const DOCS_CLOUD_ANALYTICS_ENDPOINT = "https://docs.farming-labs.dev/api/analytics/events";
+const DOCS_CLOUD_ANALYTICS_ENDPOINT = "https://docs-app.farming-labs.dev/api/analytics/events";
 
 type DocsAnalyticsConfigWithCloud = DocsAnalyticsConfig & {
   [DOCS_CLOUD_ANALYTICS_OPTIONS]?: DocsCloudAnalyticsOptions;
@@ -28,12 +28,12 @@ function readRuntimeEnv(name: string): string | undefined {
   return undefined;
 }
 
-function isTruthyEnv(value: string | undefined): boolean {
+function isFalsyEnv(value: string | undefined): boolean {
   if (!value) {
     return false;
   }
 
-  return /^(1|true|yes|on)$/i.test(value);
+  return /^(0|false|no|off)$/i.test(value);
 }
 
 export function resolveDocsCloudAnalyticsOptions(
@@ -46,22 +46,16 @@ export function resolveDocsCloudAnalyticsOptions(
     }
   }
 
-  const enabled = isTruthyEnv(
-    readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED") ??
-      readRuntimeEnv("DOCS_CLOUD_ANALYTICS_ENABLED"),
-  );
-
-  if (!enabled) {
-    return null;
-  }
-
   const projectId =
     readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID") ?? readRuntimeEnv("DOCS_CLOUD_PROJECT_ID");
   const apiKey =
     readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY") ??
     readRuntimeEnv("DOCS_CLOUD_ANALYTICS_KEY");
+  const enabled =
+    readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED") ??
+    readRuntimeEnv("DOCS_CLOUD_ANALYTICS_ENABLED");
 
-  if (!projectId) {
+  if (!projectId || isFalsyEnv(enabled)) {
     return null;
   }
 

@@ -2552,7 +2552,8 @@ export interface DocsConfig {
   /**
    * Built-in analytics event stream for docs interactions.
    *
-   * - `false` or omitted -> analytics disabled (default)
+   * - `false` -> analytics disabled
+   * - omitted -> analytics disabled unless Docs Cloud provides project identity
    * - `true` -> log product/usage events to the console
    * - `{ onEvent(event) { ... } }` -> send events to your analytics sink
    *
