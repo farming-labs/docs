@@ -15,7 +15,7 @@ related:
 
 <Agent>
 Use this page when the user asks about this topic: Docs Cloud hosted analytics, project IDs, event ingestion, dashboard analytics, ClickHouse or Postgres storage, runner jobs, previews, knowledge indexes, GraphRAG direction, and outbound webhooks.
-Keep answers grounded in the architecture, endpoint shape, and privacy defaults documented here.
+Keep answers grounded in the architecture, managed delivery behavior, and privacy defaults documented here.
 If the user asks how to configure framework-level runtime analytics, point to /docs/customization/analytics. If the user asks about trace events for Ask AI or MCP, point to /docs/customization/observability. If the user asks about the docs.json contract, point to /docs/guides/docs-json.
 </Agent>
 
@@ -33,7 +33,7 @@ deployment flow, start with [Docs Cloud](/docs/cloud).
 | Layer | What stays in your repo | What Docs Cloud manages |
 | ----- | ----------------------- | ----------------------- |
 | Runtime | `docs.config.ts`, MDX pages, theme, search, AI, page actions | Project registration, API key validation, deploy requests |
-| Analytics | Runtime event emission and optional extra `onEvent` callback | Project IDs, managed Cloud sink, ingestion endpoint, event storage, dashboard views |
+| Analytics | Runtime event emission and optional extra `onEvent` callback | Project identity, managed Cloud delivery, event storage, dashboard views |
 | Repository jobs | Docs source, docs.json, GitHub installation | Checkout, profiling, docs generation, sync jobs, review PRs |
 | Knowledge | Markdown, source files, routes, config, examples | Chunks, source facts, graph nodes, graph edges, retrieval indexes |
 | Previews | Buildable docs app or frameworkless source | Stable preview URLs, Vercel project binding, preview status |
@@ -53,8 +53,7 @@ Cloud analytics is intentionally small at the edge and richer in the control pla
    page actions, markdown reads, agent routes, or MCP usage.
 2. When the project is connected to Docs Cloud, the Cloud-managed runtime settings provide the
    project identity and enable the built-in Cloud sink.
-3. `@farming-labs/docs` posts the event to the Docs Cloud ingestion endpoint with that stable
-   `projectId`.
+3. `@farming-labs/docs` delivers the event through the managed Cloud sink.
 4. Cloud validates that the project exists and that analytics is enabled for that source.
 5. Cloud normalizes the event and stores it in `DocsAnalyticsEvent`.
 6. When ClickHouse is configured, Cloud also replicates the event into a warehouse table for
@@ -62,14 +61,8 @@ Cloud analytics is intentionally small at the edge and richer in the control pla
 7. The dashboard reads recent events, source filters, project filters, 24-hour totals, and activity
    charts from the stored event stream.
 
-The runtime delivery is still an HTTP request, but it is not setup code teams need to paste into
-their docs config. Connected Cloud projects receive the built-in sink automatically.
-
-The managed ingest endpoint is:
-
-```txt
-https://docs-app.farming-labs.dev/api/analytics/events
-```
+Teams do not need to paste Cloud delivery code into their docs config. Connected Cloud projects
+receive the built-in sink automatically.
 
 ## Add Your Own Analytics Sink
 
