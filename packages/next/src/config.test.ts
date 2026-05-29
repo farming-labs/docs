@@ -224,6 +224,13 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
   afterEach(() => {
     process.chdir(originalCwd);
+    delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
+    delete process.env.DOCS_CLOUD_PROJECT_ID;
+    delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT;
+    delete process.env.DOCS_CLOUD_ANALYTICS_ENDPOINT;
+    delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED;
+    delete process.env.DOCS_CLOUD_ANALYTICS_ENABLED;
+
     try {
       rmSync(tmpDir, { recursive: true, force: true });
     } catch {
@@ -1140,6 +1147,52 @@ describe("withDocs (app dir: src/app vs app)", () => {
     expect(existsSync(join(tmpDir, "app/docs/docs-theme.css"))).toBe(false);
   });
 
+  it("serializes public Docs Cloud analytics env into the client bundle", () => {
+    process.env.DOCS_CLOUD_PROJECT_ID = "project_server_only";
+    process.env.DOCS_CLOUD_ANALYTICS_ENDPOINT =
+      "https://docs-cloud.example.com/api/analytics/events";
+    process.env.DOCS_CLOUD_ANALYTICS_ENABLED = "false";
+
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+
+    expect(nextConfig.env).toMatchObject({
+      NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID: "project_server_only",
+      NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT:
+        "https://docs-cloud.example.com/api/analytics/events",
+      NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED: "false",
+    });
+  });
+
+  it("does not serialize Docs Cloud analytics env when analytics is not configured", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+
+    expect(nextConfig.env).toBeUndefined();
+  });
+
+  it("does not override user-provided public Docs Cloud analytics env", () => {
+    process.env.DOCS_CLOUD_PROJECT_ID = "project_server_only";
+
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({
+      env: {
+        NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID: "project_user",
+      },
+    });
+
+    expect(nextConfig.env?.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID).toBe("project_user");
+    expect(nextConfig.env?.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT).toBe(
+      "https://docs-app.farming-labs.dev/api/analytics/events",
+    );
+  });
+
   it("generates a docs API route that forwards search and ai config", () => {
     mkdirSync(join(tmpDir, "app"), { recursive: true });
     process.chdir(tmpDir);
@@ -1340,7 +1393,9 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     writeFileSync(join(workspaceRoot, "packages", "docs", "src", "index.ts"), "export {};\n");
     writeFileSync(join(workspaceRoot, "packages", "fumadocs", "src", "index.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "fumadocs", "src", "search.ts"), "export {};\n");
     writeFileSync(join(workspaceRoot, "packages", "next", "src", "config.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "next", "src", "api.ts"), "export {};\n");
     writeFileSync(join(appRoot, "docs.config.ts"), DOCS_CONFIG, "utf-8");
     process.chdir(appRoot);
 
@@ -1350,10 +1405,56 @@ describe("withDocs (app dir: src/app vs app)", () => {
       | undefined;
 
     expect(turbopack?.root).toBe(realpathSync(workspaceRoot));
-    expect(turbopack?.resolveAlias?.["@farming-labs/docs"]).toBe("./packages/docs/src/index.ts");
-    expect(turbopack?.resolveAlias?.["@farming-labs/next/api"]).toBe("./packages/next/src/api.ts");
+    expect(turbopack?.resolveAlias?.["@farming-labs/docs"]).toBe(
+      "../../packages/docs/src/index.ts",
+    );
+    expect(turbopack?.resolveAlias?.["@farming-labs/next/api"]).toBe(
+      "../../packages/next/src/api.ts",
+    );
     expect(turbopack?.resolveAlias?.["@farming-labs/theme/search"]).toBe(
-      "./packages/fumadocs/src/search.ts",
+      "../../packages/fumadocs/src/search.ts",
+    );
+  });
+
+  it("prefers built workspace turbopack aliases when dist entrypoints exist", () => {
+    const workspaceRoot = join(tmpDir, "repo");
+    const appRoot = join(workspaceRoot, "examples", "next");
+
+    mkdirSync(join(workspaceRoot, "packages", "docs", "src"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "docs", "dist"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "fumadocs", "src"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "fumadocs", "dist"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "next", "src"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "next", "dist"), { recursive: true });
+    mkdirSync(join(appRoot, "app"), { recursive: true });
+
+    writeFileSync(join(workspaceRoot, "packages", "docs", "src", "index.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "docs", "dist", "index.mjs"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "fumadocs", "src", "index.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "fumadocs", "src", "search.ts"), "export {};\n");
+    writeFileSync(
+      join(workspaceRoot, "packages", "fumadocs", "dist", "search.mjs"),
+      "export {};\n",
+    );
+    writeFileSync(join(workspaceRoot, "packages", "next", "src", "config.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "next", "dist", "api.mjs"), "export {};\n");
+    writeFileSync(join(appRoot, "docs.config.ts"), DOCS_CONFIG, "utf-8");
+    process.chdir(appRoot);
+
+    const nextConfig = withDocs({});
+    const turbopack = nextConfig.turbopack as
+      | { root?: string; resolveAlias?: Record<string, string> }
+      | undefined;
+
+    expect(turbopack?.root).toBe(realpathSync(workspaceRoot));
+    expect(turbopack?.resolveAlias?.["@farming-labs/docs"]).toBe(
+      "../../packages/docs/dist/index.mjs",
+    );
+    expect(turbopack?.resolveAlias?.["@farming-labs/next/api"]).toBe(
+      "../../packages/next/dist/api.mjs",
+    );
+    expect(turbopack?.resolveAlias?.["@farming-labs/theme/search"]).toBe(
+      "../../packages/fumadocs/dist/search.mjs",
     );
   });
 });

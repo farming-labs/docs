@@ -56,9 +56,11 @@ describe("analytics", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED;
+    delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT;
     delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
     delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY;
     delete process.env.DOCS_CLOUD_ANALYTICS_ENABLED;
+    delete process.env.DOCS_CLOUD_ANALYTICS_ENDPOINT;
     delete process.env.DOCS_CLOUD_PROJECT_ID;
     delete process.env.DOCS_CLOUD_ANALYTICS_KEY;
   });
@@ -311,7 +313,65 @@ describe("analytics", () => {
     });
   });
 
-  it("no-ops Docs Cloud analytics events when endpoint or project id is missing", async () => {
+  it("posts Docs Cloud analytics events to the public endpoint env when provided", async () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT =
+      "https://docs-cloud.example.com/api/analytics/events";
+
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 202 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await emitDocsAnalyticsEvent(
+      createDocsCloudAnalytics({
+        projectId: "project_endpoint",
+        console: false,
+      }),
+      {
+        type: "page_view",
+        source: "client",
+      },
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://docs-cloud.example.com/api/analytics/events",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+  });
+
+  it("falls back to public env when explicit Docs Cloud options were stripped in the client", async () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT =
+      "https://docs-cloud.example.com/api/analytics/events";
+
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 202 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await emitDocsAnalyticsEvent(
+      createDocsCloudAnalytics({
+        console: false,
+        projectId: undefined,
+      }),
+      {
+        type: "page_view",
+        source: "client",
+      },
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://docs-cloud.example.com/api/analytics/events",
+      expect.objectContaining({
+        body: expect.stringContaining('"projectId":"project_public"'),
+      }),
+    );
+  });
+
+  it("no-ops Docs Cloud analytics events when project id is missing", async () => {
     const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
       async () => new Response(null, { status: 202 }),
     );

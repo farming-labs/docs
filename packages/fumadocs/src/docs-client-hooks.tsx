@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { emitDocsAnalyticsEvent } from "@farming-labs/docs";
+import { emitDocsAnalyticsEvent, resolveDocsAnalyticsConfig } from "@farming-labs/docs";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
 import type {
   CodeBlockCopyData,
@@ -48,10 +48,14 @@ function useWindowHook<K extends keyof DocsWindowHooks>(key: K, handler: DocsWin
   }, [handler, key]);
 }
 
+export function isDocsClientAnalyticsEnabled(analytics?: boolean | DocsAnalyticsConfig) {
+  return resolveDocsAnalyticsConfig(analytics).enabled;
+}
+
 function useAnalyticsHook(analytics?: boolean | DocsAnalyticsConfig) {
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!analytics) return;
+    if (!isDocsClientAnalyticsEnabled(analytics)) return;
 
     const target = window as DocsWindowHooks;
     const handler = (event: DocsAnalyticsEvent) => {
@@ -79,7 +83,7 @@ function useAnalyticsHook(analytics?: boolean | DocsAnalyticsConfig) {
 function useCodeCopyAnalytics(analytics?: boolean | DocsAnalyticsConfig) {
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!analytics) return;
+    if (!isDocsClientAnalyticsEnabled(analytics)) return;
 
     const handleClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
