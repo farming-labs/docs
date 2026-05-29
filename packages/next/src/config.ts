@@ -165,6 +165,8 @@ export default function HiddenChangelogSourceLayout() {
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const INTERNAL_DOCS_CONFIG_ALIAS = "@farming-labs/next-internal-docs-config";
+const DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT =
+  "https://docs-app.farming-labs.dev/api/analytics/events";
 const NEXT_PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
@@ -276,6 +278,39 @@ function findDocsWorkspaceRoot(start: string): string | undefined {
     if (parent === current) return undefined;
     current = parent;
   }
+}
+
+function normalizeEnvValue(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
+function createPublicDocsCloudAnalyticsEnv() {
+  const projectId =
+    normalizeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID) ??
+    normalizeEnvValue(process.env.DOCS_CLOUD_PROJECT_ID);
+  const endpoint =
+    normalizeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT) ??
+    normalizeEnvValue(process.env.DOCS_CLOUD_ANALYTICS_ENDPOINT) ??
+    DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT;
+  const enabled =
+    normalizeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED) ??
+    normalizeEnvValue(process.env.DOCS_CLOUD_ANALYTICS_ENABLED);
+  const env: Record<string, string> = {};
+
+  if (projectId) {
+    env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = projectId;
+  }
+
+  if (endpoint) {
+    env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT = endpoint;
+  }
+
+  if (enabled) {
+    env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = enabled;
+  }
+
+  return env;
 }
 
 function createDocsWorkspaceAliases(root: string, workspaceRoot: string): Record<string, string> {
@@ -2180,6 +2215,14 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
     }
   } else {
     nextConfig.pageExtensions = defaultExts;
+  }
+
+  const publicDocsCloudAnalyticsEnv = createPublicDocsCloudAnalyticsEnv();
+  if (Object.keys(publicDocsCloudAnalyticsEnv).length > 0) {
+    nextConfig.env = {
+      ...publicDocsCloudAnalyticsEnv,
+      ...(nextConfig.env ?? {}),
+    };
   }
 
   const existingTurbopack = (nextConfig.turbopack as Record<string, unknown> | undefined) ?? {};
