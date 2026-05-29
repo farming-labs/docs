@@ -149,18 +149,28 @@ export async function POST(request: Request) {
       try {
         const payload = createEnterpriseSupportEmailPayload(supportRequest, request);
         const email = buildEnterpriseSupportEmail(payload);
+        const recipient = getEnterpriseSupportRecipient();
 
-        await prisma.enterpriseSupportEmailNotification.create({
-          data: {
-            requestId: entry.id,
-            recipient: getEnterpriseSupportRecipient(),
-            subject: email.subject,
-            payload: payload as unknown as Prisma.InputJsonValue,
-          },
-        });
-        queuedEmail = true;
+        if (!recipient) {
+          console.warn(
+            "[enterprise support POST] Saved request but ENTERPRISE_SUPPORT_TO_EMAIL is not configured.",
+          );
+        } else {
+          await prisma.enterpriseSupportEmailNotification.create({
+            data: {
+              requestId: entry.id,
+              recipient,
+              subject: email.subject,
+              payload: payload as unknown as Prisma.InputJsonValue,
+            },
+          });
+          queuedEmail = true;
+        }
       } catch (queueError) {
-        console.warn("[enterprise support POST] Saved request but could not queue email.", queueError);
+        console.warn(
+          "[enterprise support POST] Saved request but could not queue email.",
+          queueError,
+        );
       }
 
       return NextResponse.json(

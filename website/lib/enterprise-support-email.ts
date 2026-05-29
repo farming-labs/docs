@@ -1,5 +1,3 @@
-const ENTERPRISE_SUPPORT_TO_EMAIL =
-  process.env.ENTERPRISE_SUPPORT_TO_EMAIL?.trim() || "kinfetare83@gmail.com";
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 export type EnterpriseSupportEmailInput = {
@@ -20,7 +18,7 @@ export type EnterpriseSupportEmailPayload = EnterpriseSupportEmailInput & {
 };
 
 export function getEnterpriseSupportRecipient() {
-  return ENTERPRISE_SUPPORT_TO_EMAIL;
+  return process.env.ENTERPRISE_SUPPORT_TO_EMAIL?.trim();
 }
 
 export function createEnterpriseSupportEmailPayload(
@@ -148,12 +146,12 @@ export function buildEnterpriseSupportEmail(data: EnterpriseSupportEmailPayload)
 
 export async function sendEnterpriseSupportEmail(
   data: EnterpriseSupportEmailPayload,
-  recipient = ENTERPRISE_SUPPORT_TO_EMAIL,
+  recipient: string,
 ) {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from = process.env.RESEND_FROM_EMAIL?.trim();
 
-  if (!apiKey || !from) {
+  if (!apiKey || !from || !recipient) {
     return { sent: false, error: "Resend is not configured." };
   }
 
