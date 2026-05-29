@@ -14,8 +14,7 @@ const MAX_LIMIT = 25;
 
 function getWorkerSecret() {
   return (
-    process.env.ENTERPRISE_SUPPORT_EMAIL_WORKER_SECRET?.trim() ||
-    process.env.CRON_SECRET?.trim()
+    process.env.ENTERPRISE_SUPPORT_EMAIL_WORKER_SECRET?.trim() || process.env.CRON_SECRET?.trim()
   );
 }
 
@@ -23,7 +22,7 @@ function isAuthorized(request: Request) {
   const secret = getWorkerSecret();
 
   if (!secret) {
-    return true;
+    return false;
   }
 
   return request.headers.get("authorization") === `Bearer ${secret}`;
@@ -154,7 +153,12 @@ async function processQueuedEmails(request: Request) {
       continue;
     }
 
-    const result = await sendEnterpriseSupportEmail(payload, notification.recipient);
+    const result = await sendEnterpriseSupportEmail(payload, notification.recipient).catch(
+      (error: unknown) => ({
+        sent: false,
+        error: error instanceof Error ? error.message : "Unknown email transport error",
+      }),
+    );
 
     if (result.sent) {
       sent += 1;

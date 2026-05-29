@@ -101,7 +101,14 @@ export async function POST(request: Request) {
 
     if (websiteUrl) {
       try {
-        new URL(websiteUrl);
+        const parsedWebsiteUrl = new URL(websiteUrl);
+
+        if (!["http:", "https:"].includes(parsedWebsiteUrl.protocol)) {
+          return NextResponse.json(
+            { error: "Website URL must start with http:// or https://" },
+            { status: 400 },
+          );
+        }
       } catch {
         return NextResponse.json({ error: "Website URL must be a valid URL" }, { status: 400 });
       }
@@ -120,14 +127,8 @@ export async function POST(request: Request) {
 
     if (!process.env.DATABASE_URL) {
       return NextResponse.json(
-        {
-          ok: true,
-          stored: false,
-          queuedEmail: false,
-          warning:
-            "Support request validated, but the enterprise support database is not configured yet.",
-        },
-        { status: 202 },
+        { error: "Enterprise support database is not configured" },
+        { status: 503 },
       );
     }
 
@@ -188,14 +189,8 @@ export async function POST(request: Request) {
         );
 
         return NextResponse.json(
-          {
-            ok: true,
-            stored: false,
-            queuedEmail: false,
-            warning:
-              "Enterprise support request received, but the dedicated support schema is not synced yet.",
-          },
-          { status: 202 },
+          { error: "Enterprise support database schema is not synced yet" },
+          { status: 503 },
         );
       }
 
@@ -203,13 +198,8 @@ export async function POST(request: Request) {
         console.warn("[enterprise support POST] Support database is currently unreachable.");
 
         return NextResponse.json(
-          {
-            ok: true,
-            stored: false,
-            queuedEmail: false,
-            warning: "Enterprise support database is currently unreachable.",
-          },
-          { status: 202 },
+          { error: "Enterprise support database is currently unreachable" },
+          { status: 503 },
         );
       }
 

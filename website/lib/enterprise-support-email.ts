@@ -50,6 +50,20 @@ function formatTextValue(value?: string) {
   return value || "Not provided";
 }
 
+function safeHttpUrl(value?: string) {
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const url = new URL(value);
+
+    return ["http:", "https:"].includes(url.protocol) ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function formatLabel(value: string) {
   return value
     .split("-")
@@ -58,6 +72,7 @@ function formatLabel(value: string) {
 }
 
 function detailsRows(data: EnterpriseSupportEmailPayload) {
+  const websiteUrl = safeHttpUrl(data.websiteUrl);
   const rows: Array<[string, string]> = [
     ["Name", formatValue(data.name)],
     ["Company", escapeHtml(data.company)],
@@ -69,8 +84,8 @@ function detailsRows(data: EnterpriseSupportEmailPayload) {
     ["Team size", formatValue(data.teamSize)],
     [
       "Website",
-      data.websiteUrl
-        ? `<a href="${escapeHtml(data.websiteUrl)}" style="color:#000;text-decoration:underline">${escapeHtml(data.websiteUrl)}</a>`
+      websiteUrl
+        ? `<a href="${escapeHtml(websiteUrl)}" style="color:#000;text-decoration:underline">${escapeHtml(websiteUrl)}</a>`
         : '<span style="color:#7a7a7a">Not provided</span>',
     ],
     [
@@ -156,21 +171,30 @@ export async function sendEnterpriseSupportEmail(
   }
 
   const email = buildEnterpriseSupportEmail(data);
-  const response = await fetch(RESEND_ENDPOINT, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: recipient,
-      reply_to: data.email,
-      subject: email.subject,
-      html: email.html,
-      text: email.text,
-    }),
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(RESEND_ENDPOINT, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: recipient,
+        reply_to: data.email,
+        subject: email.subject,
+        html: email.html,
+        text: email.text,
+      }),
+    });
+  } catch (error) {
+    return {
+      sent: false,
+      error: error instanceof Error ? error.message : "Unknown email transport error",
+    };
+  }
 
   if (!response.ok) {
     const details = await response.text().catch(() => "");
