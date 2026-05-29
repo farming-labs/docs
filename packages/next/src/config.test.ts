@@ -1166,6 +1166,15 @@ describe("withDocs (app dir: src/app vs app)", () => {
     });
   });
 
+  it("does not serialize Docs Cloud analytics env when analytics is not configured", () => {
+    mkdirSync(join(tmpDir, "app"), { recursive: true });
+    process.chdir(tmpDir);
+
+    const nextConfig = withDocs({});
+
+    expect(nextConfig.env).toBeUndefined();
+  });
+
   it("does not override user-provided public Docs Cloud analytics env", () => {
     process.env.DOCS_CLOUD_PROJECT_ID = "project_server_only";
 

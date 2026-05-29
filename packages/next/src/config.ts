@@ -289,10 +289,11 @@ function createPublicDocsCloudAnalyticsEnv() {
   const projectId =
     normalizeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID) ??
     normalizeEnvValue(process.env.DOCS_CLOUD_PROJECT_ID);
-  const endpoint =
+  const configuredEndpoint =
     normalizeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT) ??
-    normalizeEnvValue(process.env.DOCS_CLOUD_ANALYTICS_ENDPOINT) ??
-    DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT;
+    normalizeEnvValue(process.env.DOCS_CLOUD_ANALYTICS_ENDPOINT);
+  const endpoint =
+    configuredEndpoint ?? (projectId ? DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT : undefined);
   const enabled =
     normalizeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED) ??
     normalizeEnvValue(process.env.DOCS_CLOUD_ANALYTICS_ENABLED);
