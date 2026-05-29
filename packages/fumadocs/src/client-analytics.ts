@@ -123,7 +123,7 @@ function normalizeClientAnalyticsProperties(
   const sessionId =
     asString(provided.sessionId) ?? asString(asRecord(provided.session).id) ?? identity?.sessionId;
   const merged = {
-    ...(identity ?? {}),
+    ...identity,
     ...provided,
   };
 
