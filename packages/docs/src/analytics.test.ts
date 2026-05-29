@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createDocsCloudAnalytics } from "./cloud-analytics.js";
 import {
   DOCS_AGENT_TRACE_EVENT_TYPES,
   emitDocsAgentTraceEvent,
@@ -268,17 +267,19 @@ describe("analytics", () => {
   });
 
   it("posts Docs Cloud analytics events to the configured ingestion endpoint", async () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_123";
+
     const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
       async () => new Response(null, { status: 202 }),
     );
     vi.stubGlobal("fetch", fetchMock);
 
     await emitDocsAnalyticsEvent(
-      createDocsCloudAnalytics({
-        projectId: "project_123",
+      {
+        enabled: true,
         console: false,
         includeInputs: true,
-      }),
+      },
       {
         type: "page_view",
         source: "client",
@@ -314,6 +315,7 @@ describe("analytics", () => {
   });
 
   it("posts Docs Cloud analytics events to the public endpoint env when provided", async () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_endpoint";
     process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT =
       "https://docs-cloud.example.com/api/analytics/events";
 
@@ -323,10 +325,10 @@ describe("analytics", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await emitDocsAnalyticsEvent(
-      createDocsCloudAnalytics({
-        projectId: "project_endpoint",
+      {
+        enabled: true,
         console: false,
-      }),
+      },
       {
         type: "page_view",
         source: "client",
@@ -341,7 +343,7 @@ describe("analytics", () => {
     );
   });
 
-  it("falls back to public env when explicit Docs Cloud options were stripped in the client", async () => {
+  it("posts Docs Cloud analytics from plain config when public env is present", async () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
     process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT =
       "https://docs-cloud.example.com/api/analytics/events";
@@ -352,10 +354,10 @@ describe("analytics", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await emitDocsAnalyticsEvent(
-      createDocsCloudAnalytics({
+      {
+        enabled: true,
         console: false,
-        projectId: undefined,
-      }),
+      },
       {
         type: "page_view",
         source: "client",
@@ -378,9 +380,10 @@ describe("analytics", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await emitDocsAnalyticsEvent(
-      createDocsCloudAnalytics({
+      {
+        enabled: true,
         console: false,
-      }),
+      },
       {
         type: "page_view",
         source: "client",

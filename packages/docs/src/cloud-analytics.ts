@@ -1,21 +1,13 @@
 import type { DocsAnalyticsConfig, DocsAnalyticsEvent } from "./types.js";
 
-export interface DocsCloudAnalyticsOptions {
-  enabled?: boolean;
-  console?: DocsAnalyticsConfig["console"];
+interface DocsCloudAnalyticsOptions {
   endpoint?: string;
-  includeInputs?: boolean;
   projectId?: string;
   apiKey?: string;
 }
 
-const DOCS_CLOUD_ANALYTICS_OPTIONS = Symbol.for("@farming-labs/docs/cloud-analytics");
 const DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT =
   "https://docs-app.farming-labs.dev/api/analytics/events";
-
-type DocsAnalyticsConfigWithCloud = DocsAnalyticsConfig & {
-  [DOCS_CLOUD_ANALYTICS_OPTIONS]?: DocsCloudAnalyticsOptions;
-};
 
 function normalizeRuntimeEnvValue(value: string | undefined): string | undefined {
   const normalized = value?.trim();
@@ -60,6 +52,13 @@ function isFalsyEnv(value: string | undefined): boolean {
 export function resolveDocsCloudAnalyticsOptions(
   analytics?: boolean | DocsAnalyticsConfig,
 ): DocsCloudAnalyticsOptions | null {
+  if (
+    analytics === false ||
+    (analytics && typeof analytics === "object" && analytics.enabled === false)
+  ) {
+    return null;
+  }
+
   const projectId =
     readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID") ?? readRuntimeEnv("DOCS_CLOUD_PROJECT_ID");
   const apiKey =
@@ -77,26 +76,7 @@ export function resolveDocsCloudAnalyticsOptions(
     return null;
   }
 
-  if (analytics && typeof analytics === "object") {
-    const explicit = (analytics as DocsAnalyticsConfigWithCloud)[DOCS_CLOUD_ANALYTICS_OPTIONS];
-
-    if (explicit) {
-      const resolvedProjectId = normalizeRuntimeEnvValue(explicit.projectId) ?? projectId;
-
-      if (!resolvedProjectId || explicit.enabled === false) {
-        return null;
-      }
-
-      return {
-        ...explicit,
-        apiKey: normalizeRuntimeEnvValue(explicit.apiKey) ?? apiKey,
-        endpoint: normalizeRuntimeEnvValue(explicit.endpoint) ?? endpoint,
-        projectId: resolvedProjectId,
-      };
-    }
-  }
-
-  if (!projectId || isFalsyEnv(enabled)) {
+  if (!projectId) {
     return null;
   }
 
@@ -141,17 +121,4 @@ export async function sendDocsCloudAnalyticsEvent(
   } catch {
     // Analytics should never break the docs runtime.
   }
-}
-
-export function createDocsCloudAnalytics(
-  options: DocsCloudAnalyticsOptions = {},
-): DocsAnalyticsConfig {
-  const analytics: DocsAnalyticsConfigWithCloud = {
-    enabled: options.enabled,
-    console: options.console,
-    includeInputs: options.includeInputs,
-  };
-
-  analytics[DOCS_CLOUD_ANALYTICS_OPTIONS] = options;
-  return analytics;
 }

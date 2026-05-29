@@ -1,4 +1,3 @@
-export { createDocsCloudAnalytics } from "./cloud-analytics.js";
 export { remarkCodeGroup } from "./code-group-mdx.js";
 export {
   DOCS_AGENT_TRACE_EVENT_TYPES,
@@ -150,4 +149,3 @@ export type {
   ResolvedDocsAnalyticsConfig,
   ResolvedDocsObservabilityConfig,
 } from "./analytics.js";
-export type { DocsCloudAnalyticsOptions } from "./cloud-analytics.js";

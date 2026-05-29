@@ -119,6 +119,14 @@ export function createDocsAgentTraceContext(name = "agent.run"): DocsAgentTraceC
 export function resolveDocsAnalyticsConfig(
   analytics?: boolean | DocsAnalyticsConfig,
 ): ResolvedDocsAnalyticsConfig {
+  if (analytics === false) {
+    return {
+      enabled: false,
+      console: false,
+      includeInputs: false,
+    };
+  }
+
   const cloudOptions = resolveDocsCloudAnalyticsOptions(analytics);
   const cloudOnEvent = cloudOptions
     ? async (event: DocsAnalyticsEvent) => {

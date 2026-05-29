@@ -10,7 +10,6 @@
 import type { DocsConfig } from "./types.js";
 
 export { defineDocs } from "./define-docs.js";
-export { createDocsCloudAnalytics } from "./cloud-analytics.js";
 export {
   DOCS_AGENT_TRACE_EVENT_TYPES,
   createDocsAgentTraceContext,
@@ -320,7 +319,6 @@ export type {
   ResolvedDocsAnalyticsConfig,
   ResolvedDocsObservabilityConfig,
 } from "./analytics.js";
-export type { DocsCloudAnalyticsOptions } from "./cloud-analytics.js";
 export type { ChangelogEntrySummary, ResolvedChangelogConfig } from "./changelog.js";
 export type { ResolvedDocsI18n, DocsPathMatch } from "./i18n.js";
 export type { DocsPageStructuredDataInput, DocsStructuredDataBreadcrumb } from "./metadata.js";
