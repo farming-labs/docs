@@ -112,8 +112,8 @@ export function emitClientAnalyticsEvent(event: DocsAnalyticsEventInput) {
     referrer: event.referrer ?? (document.referrer || undefined),
     timestamp: new Date().toISOString(),
     properties: {
-      ...(identity ?? {}),
-      ...(event.properties ?? {}),
+      ...identity,
+      ...event.properties,
     },
   };
 

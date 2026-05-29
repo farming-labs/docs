@@ -2221,7 +2221,7 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
   if (Object.keys(publicDocsCloudAnalyticsEnv).length > 0) {
     nextConfig.env = {
       ...publicDocsCloudAnalyticsEnv,
-      ...(nextConfig.env ?? {}),
+      ...nextConfig.env,
     };
   }
 
