@@ -1,10 +1,11 @@
 import { Prisma } from "@prisma/client";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import {
   buildEnterpriseSupportEmail,
   createEnterpriseSupportEmailPayload,
   getEnterpriseSupportRecipient,
 } from "@/lib/enterprise-support-email";
+import { processEnterpriseSupportEmailNotification } from "@/lib/enterprise-support-email-queue";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -157,7 +158,7 @@ export async function POST(request: Request) {
             "[enterprise support POST] Saved request but ENTERPRISE_SUPPORT_TO_EMAIL is not configured.",
           );
         } else {
-          await prisma.enterpriseSupportEmailNotification.create({
+          const notification = await prisma.enterpriseSupportEmailNotification.create({
             data: {
               requestId: entry.id,
               recipient,
@@ -166,6 +167,22 @@ export async function POST(request: Request) {
             },
           });
           queuedEmail = true;
+          after(async () => {
+            try {
+              const result = await processEnterpriseSupportEmailNotification(notification.id);
+
+              if (result.failed > 0) {
+                console.warn(
+                  "[enterprise support POST] Queued email was processed but not delivered.",
+                );
+              }
+            } catch (deliveryError) {
+              console.warn(
+                "[enterprise support POST] Queued email could not be processed after save.",
+                deliveryError,
+              );
+            }
+          });
         }
       } catch (queueError) {
         console.warn(
