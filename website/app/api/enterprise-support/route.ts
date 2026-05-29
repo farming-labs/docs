@@ -72,7 +72,7 @@ function escapeHtml(value: string) {
 }
 
 function formatValue(value?: string) {
-  return value ? escapeHtml(value) : "<span style=\"color:#7a7a7a\">Not provided</span>";
+  return value ? escapeHtml(value) : '<span style="color:#7a7a7a">Not provided</span>';
 }
 
 function formatTextValue(value?: string) {
@@ -90,20 +90,23 @@ function detailsRows(data: EnterpriseSupportRequest) {
   const rows: Array<[string, string]> = [
     ["Name", formatValue(data.name)],
     ["Company", escapeHtml(data.company)],
-    ["Email", `<a href="mailto:${escapeHtml(data.email)}" style="color:#000;text-decoration:underline">${escapeHtml(data.email)}</a>`],
+    [
+      "Email",
+      `<a href="mailto:${escapeHtml(data.email)}" style="color:#000;text-decoration:underline">${escapeHtml(data.email)}</a>`,
+    ],
     ["Role", formatValue(data.role)],
     ["Team size", formatValue(data.teamSize)],
     [
       "Website",
       data.websiteUrl
         ? `<a href="${escapeHtml(data.websiteUrl)}" style="color:#000;text-decoration:underline">${escapeHtml(data.websiteUrl)}</a>`
-        : "<span style=\"color:#7a7a7a\">Not provided</span>",
+        : '<span style="color:#7a7a7a">Not provided</span>',
     ],
     [
       "Support needs",
       data.supportNeeds.length > 0
         ? escapeHtml(data.supportNeeds.map(formatLabel).join(", "))
-        : "<span style=\"color:#7a7a7a\">Not provided</span>",
+        : '<span style="color:#7a7a7a">Not provided</span>',
     ],
   ];
 
@@ -126,7 +129,7 @@ function buildEnterpriseSupportEmail(data: EnterpriseSupportRequest, request: Re
   const subject = `Enterprise support request: ${data.company}`;
   const messageHtml = data.message
     ? escapeHtml(data.message).replace(/\n/g, "<br />")
-    : "<span style=\"color:#7a7a7a\">No message provided.</span>";
+    : '<span style="color:#7a7a7a">No message provided.</span>';
   const text = [
     `Enterprise support request: ${data.company}`,
     "",
