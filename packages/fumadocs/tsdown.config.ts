@@ -7,6 +7,7 @@ export default defineConfig({
     "src/mdx.ts",
     "src/search.ts",
     "src/docs-api.ts",
+    "src/docs-client-hooks.tsx",
     "src/ai-search-dialog.tsx",
     "src/code-block-copy-wrapper.tsx",
     "src/docs-ai-features.tsx",

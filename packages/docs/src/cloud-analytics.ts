@@ -15,17 +15,32 @@ type DocsAnalyticsConfigWithCloud = DocsAnalyticsConfig & {
   [DOCS_CLOUD_ANALYTICS_OPTIONS]?: DocsCloudAnalyticsOptions;
 };
 
+function normalizeRuntimeEnvValue(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
 function readRuntimeEnv(name: string): string | undefined {
-  if (
-    typeof process !== "undefined" &&
-    process.env &&
-    typeof process.env[name] === "string" &&
-    process.env[name]!.trim().length > 0
-  ) {
-    return process.env[name]!.trim();
+  if (typeof process === "undefined" || !process.env) {
+    return undefined;
   }
 
-  return undefined;
+  switch (name) {
+    case "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID":
+      return normalizeRuntimeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID);
+    case "DOCS_CLOUD_PROJECT_ID":
+      return normalizeRuntimeEnvValue(process.env.DOCS_CLOUD_PROJECT_ID);
+    case "NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY":
+      return normalizeRuntimeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY);
+    case "DOCS_CLOUD_ANALYTICS_KEY":
+      return normalizeRuntimeEnvValue(process.env.DOCS_CLOUD_ANALYTICS_KEY);
+    case "NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED":
+      return normalizeRuntimeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED);
+    case "DOCS_CLOUD_ANALYTICS_ENABLED":
+      return normalizeRuntimeEnvValue(process.env.DOCS_CLOUD_ANALYTICS_ENABLED);
+    default:
+      return undefined;
+  }
 }
 
 function isFalsyEnv(value: string | undefined): boolean {

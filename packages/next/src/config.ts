@@ -278,32 +278,96 @@ function findDocsWorkspaceRoot(start: string): string | undefined {
   }
 }
 
-function createDocsWorkspaceAliases(): Record<string, string> {
+function createDocsWorkspaceAliases(root: string, workspaceRoot: string): Record<string, string> {
+  const workspaceAlias = (...parts: string[]) =>
+    toTurbopackAliasPath(root, join(workspaceRoot, ...parts));
+
   return {
-    "@farming-labs/docs": "./packages/docs/src/index.ts",
-    "@farming-labs/docs/server": "./packages/docs/src/server.ts",
-    "@farming-labs/next": "./packages/next/src/index.ts",
-    "@farming-labs/next/api": "./packages/next/src/api.ts",
-    "@farming-labs/next/changelog": "./packages/next/src/changelog.tsx",
-    "@farming-labs/next/client-callbacks": "./packages/next/src/client-callbacks.tsx",
-    "@farming-labs/next/layout": "./packages/next/src/layout.tsx",
-    "@farming-labs/next/mdx-plugins/rehype-code": "./packages/next/src/mdx-plugins/rehype-code.ts",
-    "@farming-labs/next/mdx-plugins/rehype-toc": "./packages/next/src/mdx-plugins/rehype-toc.ts",
-    "@farming-labs/next/mdx-plugins/remark-code-group":
-      "./packages/next/src/mdx-plugins/remark-code-group.ts",
-    "@farming-labs/next/mdx-plugins/remark-heading":
-      "./packages/next/src/mdx-plugins/remark-heading.ts",
-    "@farming-labs/next/mdx-plugins/remark-og": "./packages/next/src/mdx-plugins/remark-og.ts",
-    "@farming-labs/next/mdx-plugins/remark-markdown-alternate":
-      "./packages/next/src/mdx-plugins/remark-markdown-alternate.ts",
-    "@farming-labs/theme": "./packages/fumadocs/src/index.ts",
-    "@farming-labs/theme/api": "./packages/fumadocs/src/docs-api.ts",
-    "@farming-labs/theme/client-hooks": "./packages/fumadocs/src/docs-client-hooks.tsx",
-    "@farming-labs/theme/concrete": "./packages/fumadocs/src/concrete/index.ts",
-    "@farming-labs/theme/hardline": "./packages/fumadocs/src/hardline/index.ts",
-    "@farming-labs/theme/ledger": "./packages/fumadocs/src/ledger/index.ts",
-    "@farming-labs/theme/mdx": "./packages/fumadocs/src/mdx.ts",
-    "@farming-labs/theme/search": "./packages/fumadocs/src/search.ts",
+    "@farming-labs/docs": workspaceAlias("packages", "docs", "dist", "index.mjs"),
+    "@farming-labs/docs/server": workspaceAlias("packages", "docs", "dist", "server.mjs"),
+    "@farming-labs/next": workspaceAlias("packages", "next", "dist", "index.mjs"),
+    "@farming-labs/next/api": workspaceAlias("packages", "next", "dist", "api.mjs"),
+    "@farming-labs/next/changelog": workspaceAlias("packages", "next", "dist", "changelog.mjs"),
+    "@farming-labs/next/client-callbacks": workspaceAlias(
+      "packages",
+      "next",
+      "dist",
+      "client-callbacks.mjs",
+    ),
+    "@farming-labs/next/layout": workspaceAlias("packages", "next", "dist", "layout.mjs"),
+    "@farming-labs/next/mdx-plugins/rehype-code": workspaceAlias(
+      "packages",
+      "next",
+      "dist",
+      "mdx-plugins",
+      "rehype-code.mjs",
+    ),
+    "@farming-labs/next/mdx-plugins/rehype-toc": workspaceAlias(
+      "packages",
+      "next",
+      "dist",
+      "mdx-plugins",
+      "rehype-toc.mjs",
+    ),
+    "@farming-labs/next/mdx-plugins/remark-code-group": workspaceAlias(
+      "packages",
+      "next",
+      "dist",
+      "mdx-plugins",
+      "remark-code-group.mjs",
+    ),
+    "@farming-labs/next/mdx-plugins/remark-heading": workspaceAlias(
+      "packages",
+      "next",
+      "dist",
+      "mdx-plugins",
+      "remark-heading.mjs",
+    ),
+    "@farming-labs/next/mdx-plugins/remark-og": workspaceAlias(
+      "packages",
+      "next",
+      "dist",
+      "mdx-plugins",
+      "remark-og.mjs",
+    ),
+    "@farming-labs/next/mdx-plugins/remark-markdown-alternate": workspaceAlias(
+      "packages",
+      "next",
+      "dist",
+      "mdx-plugins",
+      "remark-markdown-alternate.mjs",
+    ),
+    "@farming-labs/theme": workspaceAlias("packages", "fumadocs", "dist", "index.mjs"),
+    "@farming-labs/theme/api": workspaceAlias("packages", "fumadocs", "dist", "docs-api.mjs"),
+    "@farming-labs/theme/client-hooks": workspaceAlias(
+      "packages",
+      "fumadocs",
+      "dist",
+      "docs-client-hooks.mjs",
+    ),
+    "@farming-labs/theme/concrete": workspaceAlias(
+      "packages",
+      "fumadocs",
+      "dist",
+      "concrete",
+      "index.mjs",
+    ),
+    "@farming-labs/theme/hardline": workspaceAlias(
+      "packages",
+      "fumadocs",
+      "dist",
+      "hardline",
+      "index.mjs",
+    ),
+    "@farming-labs/theme/ledger": workspaceAlias(
+      "packages",
+      "fumadocs",
+      "dist",
+      "ledger",
+      "index.mjs",
+    ),
+    "@farming-labs/theme/mdx": workspaceAlias("packages", "fumadocs", "dist", "mdx.mjs"),
+    "@farming-labs/theme/search": workspaceAlias("packages", "fumadocs", "dist", "search.mjs"),
   };
 }
 
@@ -2126,7 +2190,7 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
     ...existingTurbopack,
     ...(workspaceRoot && !existingTurbopack.root ? { root: workspaceRoot } : {}),
     resolveAlias: {
-      ...(workspaceRoot ? createDocsWorkspaceAliases() : {}),
+      ...(workspaceRoot ? createDocsWorkspaceAliases(root, workspaceRoot) : {}),
       ...existingResolveAlias,
       [INTERNAL_DOCS_CONFIG_ALIAS]: docsConfigRelativeAlias,
       "fumadocs-openapi": toTurbopackAliasPath(root, FUMADOCS_OPENAPI_PACKAGE_ALIAS),

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DocsAnalyticsEvent, DocsAnalyticsEventType } from "@farming-labs/docs";
-import { emitClientAnalyticsEvent } from "./client-analytics.js";
+import { emitClientAnalyticsEvent, getDocsClientAnalyticsIdentity } from "./client-analytics.js";
 
 const CLIENT_ANALYTICS_EVENTS = [
   "page_view",
@@ -28,6 +28,8 @@ const CLIENT_ANALYTICS_EVENTS = [
 interface TestWindow extends Partial<Window> {
   __fdAnalytics__?: (event: DocsAnalyticsEvent) => void | Promise<void>;
   __fdAnalyticsQueue__?: DocsAnalyticsEvent[];
+  __fdAnalyticsSessionId__?: string;
+  __fdAnalyticsVisitorId__?: string;
 }
 
 function installClientGlobals(onEvent?: (event: DocsAnalyticsEvent) => void) {
@@ -100,6 +102,57 @@ describe("client analytics", () => {
       type: "page_view",
       source: "client",
       path: "/docs/installation",
+    });
+  });
+
+  it("adds stable anonymous visitor and session ids to client events", () => {
+    const events: DocsAnalyticsEvent[] = [];
+    installClientGlobals((event) => events.push(event));
+
+    emitClientAnalyticsEvent({ type: "page_view" });
+    emitClientAnalyticsEvent({ type: "search_open" });
+
+    const firstProperties = events[0]?.properties;
+    const secondProperties = events[1]?.properties;
+
+    expect(firstProperties?.visitorId).toEqual(expect.stringMatching(/^visitor_/));
+    expect(firstProperties?.sessionId).toEqual(expect.stringMatching(/^session_/));
+    expect(firstProperties?.anonymousId).toBe(firstProperties?.visitorId);
+    expect(firstProperties?.visitor).toMatchObject({ id: firstProperties?.visitorId });
+    expect(firstProperties?.session).toMatchObject({ id: firstProperties?.sessionId });
+    expect(secondProperties?.visitorId).toBe(firstProperties?.visitorId);
+    expect(secondProperties?.sessionId).toBe(firstProperties?.sessionId);
+  });
+
+  it("keeps caller-provided visitor identity when supplied", () => {
+    const events: DocsAnalyticsEvent[] = [];
+    installClientGlobals((event) => events.push(event));
+
+    emitClientAnalyticsEvent({
+      type: "feedback_select",
+      properties: {
+        userId: "user_123",
+        visitorId: "visitor_custom",
+        sessionId: "session_custom",
+      },
+    });
+
+    expect(events[0]?.properties).toMatchObject({
+      userId: "user_123",
+      visitorId: "visitor_custom",
+      sessionId: "session_custom",
+    });
+  });
+
+  it("exposes the current browser analytics identity", () => {
+    installClientGlobals();
+
+    const identity = getDocsClientAnalyticsIdentity();
+
+    expect(identity).toMatchObject({
+      anonymousId: expect.stringMatching(/^visitor_/),
+      visitorId: expect.stringMatching(/^visitor_/),
+      sessionId: expect.stringMatching(/^session_/),
     });
   });
 
