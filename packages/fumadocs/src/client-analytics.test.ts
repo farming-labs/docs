@@ -139,8 +139,15 @@ describe("client analytics", () => {
 
     expect(events[0]?.properties).toMatchObject({
       userId: "user_123",
+      anonymousId: "visitor_custom",
       visitorId: "visitor_custom",
       sessionId: "session_custom",
+      visitor: {
+        id: "visitor_custom",
+      },
+      session: {
+        id: "session_custom",
+      },
     });
   });
 

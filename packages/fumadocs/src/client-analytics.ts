@@ -100,6 +100,57 @@ export function getDocsClientAnalyticsIdentity() {
   };
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function normalizeClientAnalyticsProperties(
+  identity: ReturnType<typeof getDocsClientAnalyticsIdentity>,
+  properties: DocsAnalyticsEventInput["properties"],
+) {
+  const provided = properties ?? {};
+  const visitorId =
+    asString(provided.visitorId) ??
+    asString(asRecord(provided.visitor).id) ??
+    asString(provided.anonymousId) ??
+    identity?.visitorId;
+  const sessionId =
+    asString(provided.sessionId) ?? asString(asRecord(provided.session).id) ?? identity?.sessionId;
+  const merged = {
+    ...(identity ?? {}),
+    ...provided,
+  };
+
+  return {
+    ...merged,
+    ...(visitorId
+      ? {
+          anonymousId: asString(provided.anonymousId) ?? visitorId,
+          visitorId,
+          visitor: {
+            ...asRecord(merged.visitor),
+            id: visitorId,
+          },
+        }
+      : {}),
+    ...(sessionId
+      ? {
+          sessionId,
+          session: {
+            ...asRecord(merged.session),
+            id: sessionId,
+          },
+        }
+      : {}),
+  };
+}
+
 export function emitClientAnalyticsEvent(event: DocsAnalyticsEventInput) {
   if (typeof window === "undefined") return;
 
@@ -111,10 +162,7 @@ export function emitClientAnalyticsEvent(event: DocsAnalyticsEventInput) {
     url: event.url ?? window.location.href,
     referrer: event.referrer ?? (document.referrer || undefined),
     timestamp: new Date().toISOString(),
-    properties: {
-      ...identity,
-      ...event.properties,
-    },
+    properties: normalizeClientAnalyticsProperties(identity, event.properties),
   };
 
   const target = window as DocsAnalyticsWindow;

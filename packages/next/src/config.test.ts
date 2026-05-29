@@ -1384,7 +1384,51 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     writeFileSync(join(workspaceRoot, "packages", "docs", "src", "index.ts"), "export {};\n");
     writeFileSync(join(workspaceRoot, "packages", "fumadocs", "src", "index.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "fumadocs", "src", "search.ts"), "export {};\n");
     writeFileSync(join(workspaceRoot, "packages", "next", "src", "config.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "next", "src", "api.ts"), "export {};\n");
+    writeFileSync(join(appRoot, "docs.config.ts"), DOCS_CONFIG, "utf-8");
+    process.chdir(appRoot);
+
+    const nextConfig = withDocs({});
+    const turbopack = nextConfig.turbopack as
+      | { root?: string; resolveAlias?: Record<string, string> }
+      | undefined;
+
+    expect(turbopack?.root).toBe(realpathSync(workspaceRoot));
+    expect(turbopack?.resolveAlias?.["@farming-labs/docs"]).toBe(
+      "../../packages/docs/src/index.ts",
+    );
+    expect(turbopack?.resolveAlias?.["@farming-labs/next/api"]).toBe(
+      "../../packages/next/src/api.ts",
+    );
+    expect(turbopack?.resolveAlias?.["@farming-labs/theme/search"]).toBe(
+      "../../packages/fumadocs/src/search.ts",
+    );
+  });
+
+  it("prefers built workspace turbopack aliases when dist entrypoints exist", () => {
+    const workspaceRoot = join(tmpDir, "repo");
+    const appRoot = join(workspaceRoot, "examples", "next");
+
+    mkdirSync(join(workspaceRoot, "packages", "docs", "src"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "docs", "dist"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "fumadocs", "src"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "fumadocs", "dist"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "next", "src"), { recursive: true });
+    mkdirSync(join(workspaceRoot, "packages", "next", "dist"), { recursive: true });
+    mkdirSync(join(appRoot, "app"), { recursive: true });
+
+    writeFileSync(join(workspaceRoot, "packages", "docs", "src", "index.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "docs", "dist", "index.mjs"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "fumadocs", "src", "index.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "fumadocs", "src", "search.ts"), "export {};\n");
+    writeFileSync(
+      join(workspaceRoot, "packages", "fumadocs", "dist", "search.mjs"),
+      "export {};\n",
+    );
+    writeFileSync(join(workspaceRoot, "packages", "next", "src", "config.ts"), "export {};\n");
+    writeFileSync(join(workspaceRoot, "packages", "next", "dist", "api.mjs"), "export {};\n");
     writeFileSync(join(appRoot, "docs.config.ts"), DOCS_CONFIG, "utf-8");
     process.chdir(appRoot);
 

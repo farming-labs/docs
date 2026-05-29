@@ -316,93 +316,100 @@ function createPublicDocsCloudAnalyticsEnv() {
 function createDocsWorkspaceAliases(root: string, workspaceRoot: string): Record<string, string> {
   const workspaceAlias = (...parts: string[]) =>
     toTurbopackAliasPath(root, join(workspaceRoot, ...parts));
+  const workspaceEntrypoint = (distParts: string[], sourceParts: string[]) => {
+    const distPath = join(workspaceRoot, ...distParts);
+    const sourcePath = join(workspaceRoot, ...sourceParts);
+
+    return workspaceAlias(
+      ...(existsSync(distPath) || !existsSync(sourcePath) ? distParts : sourceParts),
+    );
+  };
 
   return {
-    "@farming-labs/docs": workspaceAlias("packages", "docs", "dist", "index.mjs"),
-    "@farming-labs/docs/server": workspaceAlias("packages", "docs", "dist", "server.mjs"),
-    "@farming-labs/next": workspaceAlias("packages", "next", "dist", "index.mjs"),
-    "@farming-labs/next/api": workspaceAlias("packages", "next", "dist", "api.mjs"),
-    "@farming-labs/next/changelog": workspaceAlias("packages", "next", "dist", "changelog.mjs"),
-    "@farming-labs/next/client-callbacks": workspaceAlias(
-      "packages",
-      "next",
-      "dist",
-      "client-callbacks.mjs",
+    "@farming-labs/docs": workspaceEntrypoint(
+      ["packages", "docs", "dist", "index.mjs"],
+      ["packages", "docs", "src", "index.ts"],
     ),
-    "@farming-labs/next/layout": workspaceAlias("packages", "next", "dist", "layout.mjs"),
-    "@farming-labs/next/mdx-plugins/rehype-code": workspaceAlias(
-      "packages",
-      "next",
-      "dist",
-      "mdx-plugins",
-      "rehype-code.mjs",
+    "@farming-labs/docs/server": workspaceEntrypoint(
+      ["packages", "docs", "dist", "server.mjs"],
+      ["packages", "docs", "src", "server.ts"],
     ),
-    "@farming-labs/next/mdx-plugins/rehype-toc": workspaceAlias(
-      "packages",
-      "next",
-      "dist",
-      "mdx-plugins",
-      "rehype-toc.mjs",
+    "@farming-labs/next": workspaceEntrypoint(
+      ["packages", "next", "dist", "index.mjs"],
+      ["packages", "next", "src", "index.ts"],
     ),
-    "@farming-labs/next/mdx-plugins/remark-code-group": workspaceAlias(
-      "packages",
-      "next",
-      "dist",
-      "mdx-plugins",
-      "remark-code-group.mjs",
+    "@farming-labs/next/api": workspaceEntrypoint(
+      ["packages", "next", "dist", "api.mjs"],
+      ["packages", "next", "src", "api.ts"],
     ),
-    "@farming-labs/next/mdx-plugins/remark-heading": workspaceAlias(
-      "packages",
-      "next",
-      "dist",
-      "mdx-plugins",
-      "remark-heading.mjs",
+    "@farming-labs/next/changelog": workspaceEntrypoint(
+      ["packages", "next", "dist", "changelog.mjs"],
+      ["packages", "next", "src", "changelog.tsx"],
     ),
-    "@farming-labs/next/mdx-plugins/remark-og": workspaceAlias(
-      "packages",
-      "next",
-      "dist",
-      "mdx-plugins",
-      "remark-og.mjs",
+    "@farming-labs/next/client-callbacks": workspaceEntrypoint(
+      ["packages", "next", "dist", "client-callbacks.mjs"],
+      ["packages", "next", "src", "client-callbacks.tsx"],
     ),
-    "@farming-labs/next/mdx-plugins/remark-markdown-alternate": workspaceAlias(
-      "packages",
-      "next",
-      "dist",
-      "mdx-plugins",
-      "remark-markdown-alternate.mjs",
+    "@farming-labs/next/layout": workspaceEntrypoint(
+      ["packages", "next", "dist", "layout.mjs"],
+      ["packages", "next", "src", "layout.tsx"],
     ),
-    "@farming-labs/theme": workspaceAlias("packages", "fumadocs", "dist", "index.mjs"),
-    "@farming-labs/theme/api": workspaceAlias("packages", "fumadocs", "dist", "docs-api.mjs"),
-    "@farming-labs/theme/client-hooks": workspaceAlias(
-      "packages",
-      "fumadocs",
-      "dist",
-      "docs-client-hooks.mjs",
+    "@farming-labs/next/mdx-plugins/rehype-code": workspaceEntrypoint(
+      ["packages", "next", "dist", "mdx-plugins", "rehype-code.mjs"],
+      ["packages", "next", "src", "mdx-plugins", "rehype-code.ts"],
     ),
-    "@farming-labs/theme/concrete": workspaceAlias(
-      "packages",
-      "fumadocs",
-      "dist",
-      "concrete",
-      "index.mjs",
+    "@farming-labs/next/mdx-plugins/rehype-toc": workspaceEntrypoint(
+      ["packages", "next", "dist", "mdx-plugins", "rehype-toc.mjs"],
+      ["packages", "next", "src", "mdx-plugins", "rehype-toc.ts"],
     ),
-    "@farming-labs/theme/hardline": workspaceAlias(
-      "packages",
-      "fumadocs",
-      "dist",
-      "hardline",
-      "index.mjs",
+    "@farming-labs/next/mdx-plugins/remark-code-group": workspaceEntrypoint(
+      ["packages", "next", "dist", "mdx-plugins", "remark-code-group.mjs"],
+      ["packages", "next", "src", "mdx-plugins", "remark-code-group.ts"],
     ),
-    "@farming-labs/theme/ledger": workspaceAlias(
-      "packages",
-      "fumadocs",
-      "dist",
-      "ledger",
-      "index.mjs",
+    "@farming-labs/next/mdx-plugins/remark-heading": workspaceEntrypoint(
+      ["packages", "next", "dist", "mdx-plugins", "remark-heading.mjs"],
+      ["packages", "next", "src", "mdx-plugins", "remark-heading.ts"],
     ),
-    "@farming-labs/theme/mdx": workspaceAlias("packages", "fumadocs", "dist", "mdx.mjs"),
-    "@farming-labs/theme/search": workspaceAlias("packages", "fumadocs", "dist", "search.mjs"),
+    "@farming-labs/next/mdx-plugins/remark-og": workspaceEntrypoint(
+      ["packages", "next", "dist", "mdx-plugins", "remark-og.mjs"],
+      ["packages", "next", "src", "mdx-plugins", "remark-og.ts"],
+    ),
+    "@farming-labs/next/mdx-plugins/remark-markdown-alternate": workspaceEntrypoint(
+      ["packages", "next", "dist", "mdx-plugins", "remark-markdown-alternate.mjs"],
+      ["packages", "next", "src", "mdx-plugins", "remark-markdown-alternate.ts"],
+    ),
+    "@farming-labs/theme": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "index.mjs"],
+      ["packages", "fumadocs", "src", "index.ts"],
+    ),
+    "@farming-labs/theme/api": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "docs-api.mjs"],
+      ["packages", "fumadocs", "src", "docs-api.ts"],
+    ),
+    "@farming-labs/theme/client-hooks": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "docs-client-hooks.mjs"],
+      ["packages", "fumadocs", "src", "docs-client-hooks.tsx"],
+    ),
+    "@farming-labs/theme/concrete": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "concrete", "index.mjs"],
+      ["packages", "fumadocs", "src", "concrete", "index.ts"],
+    ),
+    "@farming-labs/theme/hardline": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "hardline", "index.mjs"],
+      ["packages", "fumadocs", "src", "hardline", "index.ts"],
+    ),
+    "@farming-labs/theme/ledger": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "ledger", "index.mjs"],
+      ["packages", "fumadocs", "src", "ledger", "index.ts"],
+    ),
+    "@farming-labs/theme/mdx": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "mdx.mjs"],
+      ["packages", "fumadocs", "src", "mdx.ts"],
+    ),
+    "@farming-labs/theme/search": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "search.mjs"],
+      ["packages", "fumadocs", "src", "search.ts"],
+    ),
   };
 }
 
