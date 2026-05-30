@@ -179,6 +179,7 @@ function withDocsCloudAnalyticsHints(event: DocsAnalyticsEvent): DocsAnalyticsEv
   const protocolAgent = isProtocolAgentEvent(event);
   const incomingTrafficType = asString(properties.trafficType)?.toLowerCase();
   const explicitAgent = incomingTrafficType === "agent" || incomingTrafficType === "bot";
+  // Agent-readable routes can still be opened by humans, so event type alone is not identity.
   const agentProvider =
     asString(properties.agentName) ??
     asString(properties.agent) ??
@@ -198,8 +199,8 @@ function withDocsCloudAnalyticsHints(event: DocsAnalyticsEvent): DocsAnalyticsEv
     properties: {
       ...properties,
       trafficType: "agent",
-      ...(agentProvider && !properties.agentName ? { agentName: agentProvider } : {}),
-      ...(agentProvider && !properties.botProvider ? { botProvider: agentProvider } : {}),
+      ...(agentProvider && !asString(properties.agentName) ? { agentName: agentProvider } : {}),
+      ...(agentProvider && !asString(properties.botProvider) ? { botProvider: agentProvider } : {}),
     },
   };
 }

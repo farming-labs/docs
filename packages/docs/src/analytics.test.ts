@@ -373,6 +373,52 @@ describe("analytics", () => {
         console: false,
       },
       {
+        type: "markdown_request",
+        source: "server",
+        path: "/docs/install.md",
+        properties: {
+          delivery: "md_route",
+          userAgent: "Mozilla/5.0",
+        },
+      },
+    );
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "skill_request",
+        source: "server",
+        path: "/skill.md",
+        properties: {
+          userAgent: "CodexTestBot/1.0",
+        },
+      },
+    );
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "llms_request",
+        source: "server",
+        path: "/llms.txt",
+        properties: {
+          trafficType: "agent",
+        },
+      },
+    );
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
         type: "agent_read",
         source: "server",
         path: "/docs/install.md",
@@ -394,6 +440,8 @@ describe("analytics", () => {
         path: "/docs/install",
         properties: {
           tool: "read_page",
+          agentName: " ",
+          botProvider: " ",
         },
       },
     );
@@ -414,6 +462,40 @@ describe("analytics", () => {
     });
     expect(requestBodies[1]).toMatchObject({
       event: {
+        type: "markdown_request",
+        source: "server",
+        properties: {
+          delivery: "md_route",
+          userAgent: "Mozilla/5.0",
+        },
+      },
+    });
+    expect(requestBodies[1].event.properties).not.toHaveProperty("trafficType");
+    expect(requestBodies[2]).toMatchObject({
+      event: {
+        type: "skill_request",
+        source: "server",
+        properties: {
+          userAgent: "CodexTestBot/1.0",
+          trafficType: "agent",
+          agentName: "Codex",
+          botProvider: "Codex",
+        },
+      },
+    });
+    expect(requestBodies[3]).toMatchObject({
+      event: {
+        type: "llms_request",
+        source: "server",
+        properties: {
+          trafficType: "agent",
+          agentName: "Docs reader",
+          botProvider: "Docs reader",
+        },
+      },
+    });
+    expect(requestBodies[4]).toMatchObject({
+      event: {
         type: "agent_read",
         source: "server",
         properties: {
@@ -422,8 +504,8 @@ describe("analytics", () => {
         },
       },
     });
-    expect(requestBodies[1].event.properties).not.toHaveProperty("trafficType");
-    expect(requestBodies[2]).toMatchObject({
+    expect(requestBodies[4].event.properties).not.toHaveProperty("trafficType");
+    expect(requestBodies[5]).toMatchObject({
       event: {
         type: "mcp_tool",
         source: "mcp",
