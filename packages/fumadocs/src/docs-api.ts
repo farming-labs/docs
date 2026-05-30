@@ -2244,9 +2244,7 @@ function safeUrlOrigin(value: string): string {
 function getRequestAnalyticsProperties(request: Request): Record<string, unknown> {
   const userAgent = request.headers.get("user-agent")?.trim();
 
-  return {
-    ...(userAgent ? { userAgent } : {}),
-  };
+  return (userAgent ? { userAgent } : {});
 }
 
 async function handleAskAI(
