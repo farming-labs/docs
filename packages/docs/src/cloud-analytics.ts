@@ -98,7 +98,12 @@ function asString(value: unknown): string | undefined {
 }
 
 function normalizeAnalyticsLabel(value: string | undefined) {
-  return value?.trim().toLowerCase().replace(/[-\s]+/g, "_") ?? "";
+  return (
+    value
+      ?.trim()
+      .toLowerCase()
+      .replace(/[-\s]+/g, "_") ?? ""
+  );
 }
 
 function isAgentAnalyticsEvent(event: DocsAnalyticsEvent) {
