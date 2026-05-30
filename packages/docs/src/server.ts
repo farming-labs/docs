@@ -6,6 +6,7 @@ export {
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
   emitDocsObservabilityEvent,
+  getDocsRequestAnalyticsProperties,
   resolveDocsAnalyticsConfig,
   resolveDocsObservabilityConfig,
 } from "./analytics.js";

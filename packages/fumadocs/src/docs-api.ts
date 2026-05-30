@@ -2241,6 +2241,14 @@ function safeUrlOrigin(value: string): string {
   }
 }
 
+function getRequestAnalyticsProperties(request: Request): Record<string, unknown> {
+  const userAgent = request.headers.get("user-agent")?.trim();
+
+  return {
+    ...(userAgent ? { userAgent } : {}),
+  };
+}
+
 async function handleAskAI(
   request: Request,
   indexes: DocsSearchSourcePage[],
@@ -2251,6 +2259,7 @@ async function handleAskAI(
   analyticsContext: { locale?: string } = {},
 ): Promise<Response> {
   const url = new URL(request.url);
+  const requestAnalyticsProperties = getRequestAnalyticsProperties(request);
   const requestStartedAt = Date.now();
   const trace = createDocsAgentTraceContext("ask-ai");
   const runSpanId = createDocsAgentTraceId("span");
@@ -2330,6 +2339,7 @@ async function handleAskAI(
       path: url.pathname,
       locale: analyticsContext.locale,
       properties: {
+        ...requestAnalyticsProperties,
         reason: "invalid_json",
         durationMs: Math.max(0, Date.now() - requestStartedAt),
       },
@@ -2350,6 +2360,7 @@ async function handleAskAI(
       path: url.pathname,
       locale: analyticsContext.locale,
       properties: {
+        ...requestAnalyticsProperties,
         reason: "missing_messages",
         durationMs: Math.max(0, Date.now() - requestStartedAt),
       },
@@ -2370,6 +2381,7 @@ async function handleAskAI(
       path: url.pathname,
       locale: analyticsContext.locale,
       properties: {
+        ...requestAnalyticsProperties,
         reason: "missing_user_message",
         messageCount: messages.length,
         durationMs: Math.max(0, Date.now() - requestStartedAt),
@@ -2504,6 +2516,7 @@ async function handleAskAI(
       locale: analyticsContext.locale,
       input: { question: query },
       properties: {
+        ...requestAnalyticsProperties,
         reason: "missing_api_key",
         messageCount: messages.length,
         questionLength: query.length,
@@ -2535,6 +2548,7 @@ async function handleAskAI(
     locale: analyticsContext.locale,
     input: { question: query },
     properties: {
+      ...requestAnalyticsProperties,
       messageCount: messages.length,
       questionLength: query.length,
       retrievedCount: scored.length,
@@ -2604,6 +2618,7 @@ async function handleAskAI(
       locale: analyticsContext.locale,
       input: { question: query },
       properties: {
+        ...requestAnalyticsProperties,
         reason: "llm_fetch_error",
         messageCount: messages.length,
         questionLength: query.length,
@@ -2650,6 +2665,7 @@ async function handleAskAI(
       locale: analyticsContext.locale,
       input: { question: query },
       properties: {
+        ...requestAnalyticsProperties,
         reason: "llm_error",
         status: llmResponse.status,
         messageCount: messages.length,
@@ -2681,6 +2697,7 @@ async function handleAskAI(
     locale: analyticsContext.locale,
     input: { question: query },
     properties: {
+      ...requestAnalyticsProperties,
       messageCount: messages.length,
       questionLength: query.length,
       retrievedCount: scored.length,
@@ -3235,6 +3252,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     async GET(request: Request) {
       const ctx = resolveContextFromRequest(request);
       const url = new URL(request.url);
+      const requestAnalyticsProperties = getRequestAnalyticsProperties(request);
       if (resolveAgentSpecRequest(url)) {
         await emitDocsAnalyticsEvent(analytics, {
           type: "agent_spec_request",
@@ -3243,6 +3261,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           path: url.pathname,
           locale: ctx.locale,
           properties: {
+            ...requestAnalyticsProperties,
             method: "GET",
           },
         });
@@ -3316,6 +3335,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           path: url.pathname,
           locale: ctx.locale,
           properties: {
+            ...requestAnalyticsProperties,
             method: "GET",
           },
         });
@@ -3336,6 +3356,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           path: url.pathname,
           locale: ctx.locale,
           properties: {
+            ...requestAnalyticsProperties,
             method: "GET",
           },
         });
@@ -3370,6 +3391,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           path: url.pathname,
           locale: ctx.locale,
           properties: {
+            ...requestAnalyticsProperties,
             method: "GET",
           },
         });
@@ -3451,6 +3473,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             path: url.pathname,
             locale: ctx.locale,
             properties: {
+              ...requestAnalyticsProperties,
               requestedPath: markdownRequest.requestedPath,
               delivery: markdownRequest.delivery,
               found: false,
@@ -3463,6 +3486,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             path: url.pathname,
             locale: ctx.locale,
             properties: {
+              ...requestAnalyticsProperties,
               requestedPath: markdownRequest.requestedPath,
               delivery: markdownRequest.delivery,
               found: false,
@@ -3505,6 +3529,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           path: url.pathname,
           locale: ctx.locale,
           properties: {
+            ...requestAnalyticsProperties,
             requestedPath: markdownRequest.requestedPath,
             delivery: markdownRequest.delivery,
             found: true,
@@ -3518,6 +3543,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           path: url.pathname,
           locale: ctx.locale,
           properties: {
+            ...requestAnalyticsProperties,
             requestedPath: markdownRequest.requestedPath,
             delivery: markdownRequest.delivery,
             found: true,
@@ -3583,6 +3609,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           path: url.pathname,
           locale: ctx.locale,
           properties: {
+            ...requestAnalyticsProperties,
             format: llmsRequest.format,
             section: llmsRequest.section?.route,
             contentLength: selected.content.length,
@@ -3620,6 +3647,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         locale: ctx.locale,
         input: { query },
         properties: {
+          ...requestAnalyticsProperties,
           queryLength: query.length,
           resultCount: results.length,
           pathname: url.searchParams.get("pathname") ?? undefined,
@@ -3639,6 +3667,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
      */
     async POST(request: Request): Promise<Response> {
       const url = new URL(request.url);
+      const requestAnalyticsProperties = getRequestAnalyticsProperties(request);
       const agentFeedbackRequest = resolveAgentFeedbackRequest(url, agentFeedbackConfig);
 
       if (agentFeedbackRequest) {
@@ -3662,6 +3691,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             url: request.url,
             path: url.pathname,
             properties: {
+              ...requestAnalyticsProperties,
               reason: "invalid_body",
             },
           });
@@ -3679,6 +3709,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             url: request.url,
             path: url.pathname,
             properties: {
+              ...requestAnalyticsProperties,
               reason: "invalid_payload",
               error: payloadError,
             },
@@ -3693,6 +3724,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             url: request.url,
             path: url.pathname,
             properties: {
+              ...requestAnalyticsProperties,
               handled: false,
               payloadKeys: Object.keys(parsed.data.payload),
               hasContext: Boolean(parsed.data.context),
@@ -3708,6 +3740,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           url: request.url,
           path: url.pathname,
           properties: {
+            ...requestAnalyticsProperties,
             handled: true,
             payloadKeys: Object.keys(parsed.data.payload),
             hasContext: Boolean(parsed.data.context),
@@ -3723,6 +3756,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           url: request.url,
           path: url.pathname,
           properties: {
+            ...requestAnalyticsProperties,
             reason: "disabled",
           },
         });

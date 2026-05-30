@@ -343,7 +343,7 @@ describe("analytics", () => {
     );
   });
 
-  it("adds agent traffic hints to Docs Cloud agent and MCP events", async () => {
+  it("adds agent traffic hints to Docs Cloud events from caller identity", async () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_agents";
 
     const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
@@ -362,6 +362,23 @@ describe("analytics", () => {
         path: "/docs/install.md",
         properties: {
           delivery: "markdown_route",
+          userAgent: "ChatGPT-User/1.0",
+        },
+      },
+    );
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "agent_read",
+        source: "server",
+        path: "/docs/install.md",
+        properties: {
+          delivery: "markdown_route",
+          userAgent: "Mozilla/5.0",
         },
       },
     );
@@ -388,13 +405,25 @@ describe("analytics", () => {
         source: "server",
         properties: {
           delivery: "markdown_route",
+          userAgent: "ChatGPT-User/1.0",
           trafficType: "agent",
-          agentName: "Docs agent",
-          botProvider: "Docs agent",
+          agentName: "ChatGPT",
+          botProvider: "ChatGPT",
         },
       },
     });
     expect(requestBodies[1]).toMatchObject({
+      event: {
+        type: "agent_read",
+        source: "server",
+        properties: {
+          delivery: "markdown_route",
+          userAgent: "Mozilla/5.0",
+        },
+      },
+    });
+    expect(requestBodies[1].event.properties).not.toHaveProperty("trafficType");
+    expect(requestBodies[2]).toMatchObject({
       event: {
         type: "mcp_tool",
         source: "mcp",

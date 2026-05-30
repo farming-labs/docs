@@ -106,16 +106,11 @@ function normalizeAnalyticsLabel(value: string | undefined) {
   );
 }
 
-function isAgentAnalyticsEvent(event: DocsAnalyticsEvent) {
+function isProtocolAgentEvent(event: DocsAnalyticsEvent) {
   const type = normalizeAnalyticsLabel(event.type);
   const source = normalizeAnalyticsLabel(event.source);
 
-  return (
-    source === "mcp" ||
-    type.startsWith("mcp_") ||
-    type.startsWith("agent_") ||
-    ["agents_request", "llms_request", "markdown_request", "skill_request"].includes(type)
-  );
+  return source === "mcp" || type.startsWith("mcp_");
 }
 
 function inferAgentProvider(event: DocsAnalyticsEvent) {
@@ -137,12 +132,53 @@ function inferAgentProvider(event: DocsAnalyticsEvent) {
   return undefined;
 }
 
-function withDocsCloudAnalyticsHints(event: DocsAnalyticsEvent): DocsAnalyticsEvent {
-  if (!isAgentAnalyticsEvent(event)) {
-    return event;
+function detectAgentProviderFromUserAgent(userAgent: string | undefined) {
+  const value = userAgent?.toLowerCase() ?? "";
+
+  if (!value) {
+    return undefined;
   }
 
+  const providers: Array<[RegExp, string]> = [
+    [/cursor/i, "Cursor"],
+    [/codex/i, "Codex"],
+    [/chatgpt-user|chatgpt/i, "ChatGPT"],
+    [/gptbot/i, "GPTBot"],
+    [/oai-searchbot|openai-search/i, "ChatGPT Search"],
+    [/openai/i, "ChatGPT"],
+    [/github-copilot|githubcopilot|copilot/i, "GitHub Copilot"],
+    [/claudebot|claude-user|anthropic/i, "Claude"],
+    [/perplexitybot|perplexity-user/i, "Perplexity"],
+    [/google-extended|googlebot|apis-google/i, "Google"],
+    [/bingbot|msnbot/i, "Bing"],
+    [/duckduckbot/i, "DuckDuckGo"],
+    [/applebot/i, "Apple"],
+    [/bytespider|bytedance/i, "ByteDance"],
+    [/ccbot|common crawl/i, "Common Crawl"],
+    [/ahrefsbot/i, "Ahrefs"],
+    [/semrushbot/i, "Semrush"],
+  ];
+
+  for (const [pattern, provider] of providers) {
+    if (pattern.test(value)) {
+      return provider;
+    }
+  }
+
+  if (/bot|crawler|spider|slurp|facebookexternalhit|ia_archiver/.test(value)) {
+    return "Other bot";
+  }
+
+  return undefined;
+}
+
+function withDocsCloudAnalyticsHints(event: DocsAnalyticsEvent): DocsAnalyticsEvent {
   const properties = asRecord(event.properties);
+  const userAgent = asString(properties.userAgent) ?? asString(properties.user_agent);
+  const detectedAgent = detectAgentProviderFromUserAgent(userAgent);
+  const protocolAgent = isProtocolAgentEvent(event);
+  const incomingTrafficType = asString(properties.trafficType)?.toLowerCase();
+  const explicitAgent = incomingTrafficType === "agent" || incomingTrafficType === "bot";
   const agentProvider =
     asString(properties.agentName) ??
     asString(properties.agent) ??
@@ -150,7 +186,12 @@ function withDocsCloudAnalyticsHints(event: DocsAnalyticsEvent): DocsAnalyticsEv
     asString(properties.provider) ??
     asString(properties.crawler) ??
     asString(asRecord(properties.bot).provider) ??
-    inferAgentProvider(event);
+    detectedAgent ??
+    (protocolAgent || explicitAgent ? inferAgentProvider(event) : undefined);
+
+  if (!explicitAgent && !protocolAgent && !detectedAgent && !agentProvider) {
+    return event;
+  }
 
   return {
     ...event,
