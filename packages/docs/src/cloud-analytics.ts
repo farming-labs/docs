@@ -87,6 +87,77 @@ export function resolveDocsCloudAnalyticsOptions(
   };
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function normalizeAnalyticsLabel(value: string | undefined) {
+  return value?.trim().toLowerCase().replace(/[-\s]+/g, "_") ?? "";
+}
+
+function isAgentAnalyticsEvent(event: DocsAnalyticsEvent) {
+  const type = normalizeAnalyticsLabel(event.type);
+  const source = normalizeAnalyticsLabel(event.source);
+
+  return (
+    source === "mcp" ||
+    type.startsWith("mcp_") ||
+    type.startsWith("agent_") ||
+    ["agents_request", "llms_request", "markdown_request", "skill_request"].includes(type)
+  );
+}
+
+function inferAgentProvider(event: DocsAnalyticsEvent) {
+  const type = normalizeAnalyticsLabel(event.type);
+  const source = normalizeAnalyticsLabel(event.source);
+
+  if (source === "mcp" || type.startsWith("mcp_")) {
+    return "MCP client";
+  }
+
+  if (type.startsWith("agent_") || type === "agents_request") {
+    return "Docs agent";
+  }
+
+  if (["llms_request", "markdown_request", "skill_request"].includes(type)) {
+    return "Docs reader";
+  }
+
+  return undefined;
+}
+
+function withDocsCloudAnalyticsHints(event: DocsAnalyticsEvent): DocsAnalyticsEvent {
+  if (!isAgentAnalyticsEvent(event)) {
+    return event;
+  }
+
+  const properties = asRecord(event.properties);
+  const agentProvider =
+    asString(properties.agentName) ??
+    asString(properties.agent) ??
+    asString(properties.botProvider) ??
+    asString(properties.provider) ??
+    asString(properties.crawler) ??
+    asString(asRecord(properties.bot).provider) ??
+    inferAgentProvider(event);
+
+  return {
+    ...event,
+    properties: {
+      ...properties,
+      trafficType: "agent",
+      ...(agentProvider && !properties.agentName ? { agentName: agentProvider } : {}),
+      ...(agentProvider && !properties.botProvider ? { botProvider: agentProvider } : {}),
+    },
+  };
+}
+
 export async function sendDocsCloudAnalyticsEvent(
   options: DocsCloudAnalyticsOptions,
   event: DocsAnalyticsEvent,
@@ -102,6 +173,7 @@ export async function sendDocsCloudAnalyticsEvent(
   }
 
   try {
+    const normalizedEvent = withDocsCloudAnalyticsHints(event);
     await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -114,7 +186,7 @@ export async function sendDocsCloudAnalyticsEvent(
       },
       body: JSON.stringify({
         projectId,
-        event,
+        event: normalizedEvent,
       }),
       keepalive: true,
     });

@@ -343,6 +343,71 @@ describe("analytics", () => {
     );
   });
 
+  it("adds agent traffic hints to Docs Cloud agent and MCP events", async () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_agents";
+
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 202 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "agent_read",
+        source: "server",
+        path: "/docs/install.md",
+        properties: {
+          delivery: "markdown_route",
+        },
+      },
+    );
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "mcp_tool",
+        source: "mcp",
+        path: "/docs/install",
+        properties: {
+          tool: "read_page",
+        },
+      },
+    );
+
+    const requestBodies = fetchMock.mock.calls.map((call) => JSON.parse(String(call[1]?.body)));
+    expect(requestBodies[0]).toMatchObject({
+      event: {
+        type: "agent_read",
+        source: "server",
+        properties: {
+          delivery: "markdown_route",
+          trafficType: "agent",
+          agentName: "Docs agent",
+          botProvider: "Docs agent",
+        },
+      },
+    });
+    expect(requestBodies[1]).toMatchObject({
+      event: {
+        type: "mcp_tool",
+        source: "mcp",
+        properties: {
+          tool: "read_page",
+          trafficType: "agent",
+          agentName: "MCP client",
+          botProvider: "MCP client",
+        },
+      },
+    });
+  });
+
   it("posts Docs Cloud analytics from plain config when public env is present", async () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
     process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT =
