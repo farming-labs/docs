@@ -119,7 +119,7 @@ export function createDocsAgentTraceContext(name = "agent.run"): DocsAgentTraceC
 export function getDocsRequestAnalyticsProperties(request: Request): Record<string, unknown> {
   const userAgent = request.headers.get("user-agent")?.trim();
 
-  return (userAgent ? { userAgent } : {});
+  return userAgent ? { userAgent } : {};
 }
 
 export function resolveDocsAnalyticsConfig(
