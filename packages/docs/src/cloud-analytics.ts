@@ -87,6 +87,124 @@ export function resolveDocsCloudAnalyticsOptions(
   };
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function normalizeAnalyticsLabel(value: string | undefined) {
+  return (
+    value
+      ?.trim()
+      .toLowerCase()
+      .replace(/[-\s]+/g, "_") ?? ""
+  );
+}
+
+function isProtocolAgentEvent(event: DocsAnalyticsEvent) {
+  const type = normalizeAnalyticsLabel(event.type);
+  const source = normalizeAnalyticsLabel(event.source);
+
+  return source === "mcp" || type.startsWith("mcp_");
+}
+
+function inferAgentProvider(event: DocsAnalyticsEvent) {
+  const type = normalizeAnalyticsLabel(event.type);
+  const source = normalizeAnalyticsLabel(event.source);
+
+  if (source === "mcp" || type.startsWith("mcp_")) {
+    return "MCP client";
+  }
+
+  if (type.startsWith("agent_") || type === "agents_request") {
+    return "Docs agent";
+  }
+
+  if (["llms_request", "markdown_request", "skill_request"].includes(type)) {
+    return "Docs reader";
+  }
+
+  return undefined;
+}
+
+function detectAgentProviderFromUserAgent(userAgent: string | undefined) {
+  const value = userAgent?.toLowerCase() ?? "";
+
+  if (!value) {
+    return undefined;
+  }
+
+  const providers: Array<[RegExp, string]> = [
+    [/cursor/i, "Cursor"],
+    [/codex/i, "Codex"],
+    [/chatgpt-user|chatgpt/i, "ChatGPT"],
+    [/gptbot/i, "GPTBot"],
+    [/oai-searchbot|openai-search/i, "ChatGPT Search"],
+    [/openai/i, "ChatGPT"],
+    [/github-copilot|githubcopilot|copilot/i, "GitHub Copilot"],
+    [/claudebot|claude-user|anthropic/i, "Claude"],
+    [/perplexitybot|perplexity-user/i, "Perplexity"],
+    [/google-extended|googlebot|apis-google/i, "Google"],
+    [/bingbot|msnbot/i, "Bing"],
+    [/duckduckbot/i, "DuckDuckGo"],
+    [/applebot/i, "Apple"],
+    [/bytespider|bytedance/i, "ByteDance"],
+    [/ccbot|common crawl/i, "Common Crawl"],
+    [/ahrefsbot/i, "Ahrefs"],
+    [/semrushbot/i, "Semrush"],
+  ];
+
+  for (const [pattern, provider] of providers) {
+    if (pattern.test(value)) {
+      return provider;
+    }
+  }
+
+  if (/bot|crawler|spider|slurp|facebookexternalhit|ia_archiver/.test(value)) {
+    return "Other bot";
+  }
+
+  return undefined;
+}
+
+function withDocsCloudAnalyticsHints(event: DocsAnalyticsEvent): DocsAnalyticsEvent {
+  const properties = asRecord(event.properties);
+  const userAgent = asString(properties.userAgent) ?? asString(properties.user_agent);
+  const detectedAgent = detectAgentProviderFromUserAgent(userAgent);
+  const protocolAgent = isProtocolAgentEvent(event);
+  const incomingTrafficType = asString(properties.trafficType)?.toLowerCase();
+  const explicitAgent = incomingTrafficType === "agent" || incomingTrafficType === "bot";
+  // Agent-readable routes can still be opened by humans, so event type alone is not identity.
+  const agentProvider =
+    asString(properties.agentName) ??
+    asString(properties.agent) ??
+    asString(properties.botProvider) ??
+    asString(properties.provider) ??
+    asString(properties.crawler) ??
+    asString(asRecord(properties.bot).provider) ??
+    detectedAgent ??
+    (protocolAgent || explicitAgent ? inferAgentProvider(event) : undefined);
+
+  if (!explicitAgent && !protocolAgent && !detectedAgent && !agentProvider) {
+    return event;
+  }
+
+  return {
+    ...event,
+    properties: {
+      ...properties,
+      trafficType: "agent",
+      ...(agentProvider && !asString(properties.agentName) ? { agentName: agentProvider } : {}),
+      ...(agentProvider && !asString(properties.botProvider) ? { botProvider: agentProvider } : {}),
+    },
+  };
+}
+
 export async function sendDocsCloudAnalyticsEvent(
   options: DocsCloudAnalyticsOptions,
   event: DocsAnalyticsEvent,
@@ -102,6 +220,7 @@ export async function sendDocsCloudAnalyticsEvent(
   }
 
   try {
+    const normalizedEvent = withDocsCloudAnalyticsHints(event);
     await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -114,7 +233,7 @@ export async function sendDocsCloudAnalyticsEvent(
       },
       body: JSON.stringify({
         projectId,
-        event,
+        event: normalizedEvent,
       }),
       keepalive: true,
     });

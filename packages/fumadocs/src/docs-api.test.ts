@@ -1276,6 +1276,11 @@ Install the package.
       "accept_header",
       "user_agent",
     ]);
+    expect(agentReads.find((event) => event.properties?.delivery === "user_agent")).toMatchObject({
+      properties: expect.objectContaining({
+        userAgent: "ClaudeBot/1.0",
+      }),
+    });
     expect(agentReads).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

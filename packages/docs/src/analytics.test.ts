@@ -343,6 +343,182 @@ describe("analytics", () => {
     );
   });
 
+  it("adds agent traffic hints to Docs Cloud events from caller identity", async () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_agents";
+
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 202 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "agent_read",
+        source: "server",
+        path: "/docs/install.md",
+        properties: {
+          delivery: "markdown_route",
+          userAgent: "ChatGPT-User/1.0",
+        },
+      },
+    );
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "markdown_request",
+        source: "server",
+        path: "/docs/install.md",
+        properties: {
+          delivery: "md_route",
+          userAgent: "Mozilla/5.0",
+        },
+      },
+    );
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "skill_request",
+        source: "server",
+        path: "/skill.md",
+        properties: {
+          userAgent: "CodexTestBot/1.0",
+        },
+      },
+    );
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "llms_request",
+        source: "server",
+        path: "/llms.txt",
+        properties: {
+          trafficType: "agent",
+        },
+      },
+    );
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "agent_read",
+        source: "server",
+        path: "/docs/install.md",
+        properties: {
+          delivery: "markdown_route",
+          userAgent: "Mozilla/5.0",
+        },
+      },
+    );
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "mcp_tool",
+        source: "mcp",
+        path: "/docs/install",
+        properties: {
+          tool: "read_page",
+          agentName: " ",
+          botProvider: " ",
+        },
+      },
+    );
+
+    const requestBodies = fetchMock.mock.calls.map((call) => JSON.parse(String(call[1]?.body)));
+    expect(requestBodies[0]).toMatchObject({
+      event: {
+        type: "agent_read",
+        source: "server",
+        properties: {
+          delivery: "markdown_route",
+          userAgent: "ChatGPT-User/1.0",
+          trafficType: "agent",
+          agentName: "ChatGPT",
+          botProvider: "ChatGPT",
+        },
+      },
+    });
+    expect(requestBodies[1]).toMatchObject({
+      event: {
+        type: "markdown_request",
+        source: "server",
+        properties: {
+          delivery: "md_route",
+          userAgent: "Mozilla/5.0",
+        },
+      },
+    });
+    expect(requestBodies[1].event.properties).not.toHaveProperty("trafficType");
+    expect(requestBodies[2]).toMatchObject({
+      event: {
+        type: "skill_request",
+        source: "server",
+        properties: {
+          userAgent: "CodexTestBot/1.0",
+          trafficType: "agent",
+          agentName: "Codex",
+          botProvider: "Codex",
+        },
+      },
+    });
+    expect(requestBodies[3]).toMatchObject({
+      event: {
+        type: "llms_request",
+        source: "server",
+        properties: {
+          trafficType: "agent",
+          agentName: "Docs reader",
+          botProvider: "Docs reader",
+        },
+      },
+    });
+    expect(requestBodies[4]).toMatchObject({
+      event: {
+        type: "agent_read",
+        source: "server",
+        properties: {
+          delivery: "markdown_route",
+          userAgent: "Mozilla/5.0",
+        },
+      },
+    });
+    expect(requestBodies[4].event.properties).not.toHaveProperty("trafficType");
+    expect(requestBodies[5]).toMatchObject({
+      event: {
+        type: "mcp_tool",
+        source: "mcp",
+        properties: {
+          tool: "read_page",
+          trafficType: "agent",
+          agentName: "MCP client",
+          botProvider: "MCP client",
+        },
+      },
+    });
+  });
+
   it("posts Docs Cloud analytics from plain config when public env is present", async () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
     process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT =
