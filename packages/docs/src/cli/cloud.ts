@@ -355,7 +355,7 @@ function stripLeadingPropertyTrivia(content: string): string {
 
     if (trimmed.startsWith("/*")) {
       const blockEnd = trimmed.indexOf("*/");
-      current = blockEnd === -1 ? trimmed : trimmed.slice(blockEnd + 2);
+      current = blockEnd === -1 ? "" : trimmed.slice(blockEnd + 2);
       continue;
     }
 
