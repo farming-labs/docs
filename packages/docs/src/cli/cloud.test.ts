@@ -3,7 +3,12 @@ import { execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { materializeCloudConfig, runCloudDeploy, runCloudPreview } from "./cloud.js";
+import {
+  initCloudConfig,
+  materializeCloudConfig,
+  runCloudDeploy,
+  runCloudPreview,
+} from "./cloud.js";
 
 describe("cloud cli", () => {
   const originalEnv = { ...process.env };
@@ -102,6 +107,103 @@ describe("cloud cli", () => {
     });
     expect(docsJson.cloud.apiKey.env).toBe("DOCS_CLOUD_API_KEY");
     expect(docsJson.cloud.preview).toBeUndefined();
+  });
+
+  it("initializes Docs Cloud config, analytics, and docs.json", async () => {
+    writePackageJson();
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  nav: { title: "Acme Docs" },
+});
+`,
+      "utf-8",
+    );
+
+    const result = await initCloudConfig({ rootDir: tmpDir });
+    const config = readFileSync(path.join(tmpDir, "docs.config.ts"), "utf-8");
+    const docsJson = JSON.parse(readFileSync(path.join(tmpDir, "docs.json"), "utf-8"));
+
+    expect(result).toMatchObject({
+      apiKeyEnv: "DOCS_CLOUD_API_KEY",
+      analyticsProjectIdEnv: "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID",
+      configCreated: false,
+      configUpdated: true,
+      docsJsonCreated: true,
+    });
+    expect(config).toContain("analytics: {");
+    expect(config).toContain("console: false");
+    expect(config).toContain('apiKey: { env: "DOCS_CLOUD_API_KEY" }');
+    expect(config).toContain("deploy: { enabled: true }");
+    expect(config).toContain('publish: { mode: "draft-pr", baseBranch: "main" }');
+    expect(config).not.toContain("createDocsCloudAnalytics");
+    expect(docsJson).toMatchObject({
+      cloud: {
+        apiKey: { env: "DOCS_CLOUD_API_KEY" },
+        deploy: { enabled: true },
+        analytics: {
+          enabled: true,
+          console: false,
+          includeInputs: false,
+        },
+        publish: {
+          mode: "draft-pr",
+          baseBranch: "main",
+        },
+      },
+    });
+  });
+
+  it("creates docs.config.ts during cloud init when config is missing", async () => {
+    writePackageJson({ "@sveltejs/kit": "2.0.0" });
+    mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
+
+    const result = await initCloudConfig({
+      rootDir: tmpDir,
+      apiKeyEnv: "ACME_DOCS_CLOUD_KEY",
+    });
+    const config = readFileSync(path.join(tmpDir, "docs.config.ts"), "utf-8");
+    const docsJson = JSON.parse(readFileSync(path.join(tmpDir, "docs.json"), "utf-8"));
+
+    expect(result.configCreated).toBe(true);
+    expect(config).toContain('apiKey: { env: "ACME_DOCS_CLOUD_KEY" }');
+    expect(config).toContain("analytics: {");
+    expect(docsJson.docs.runtime).toBe("sveltekit");
+    expect(docsJson.cloud.apiKey.env).toBe("ACME_DOCS_CLOUD_KEY");
+    expect(docsJson.cloud.analytics.enabled).toBe(true);
+  });
+
+  it("adds missing cloud init fields without replacing existing cloud settings", async () => {
+    writePackageJson();
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  cloud: {
+    publish: { mode: "draft-pr", baseBranch: "develop" },
+  },
+};
+`,
+      "utf-8",
+    );
+
+    await initCloudConfig({ rootDir: tmpDir });
+
+    const config = readFileSync(path.join(tmpDir, "docs.config.ts"), "utf-8");
+    const docsJson = JSON.parse(readFileSync(path.join(tmpDir, "docs.json"), "utf-8"));
+    expect(config).toContain('baseBranch: "develop"');
+    expect(config).toContain('apiKey: { env: "DOCS_CLOUD_API_KEY" }');
+    expect(config).toContain("deploy: { enabled: true }");
+    expect(docsJson.cloud.publish.baseBranch).toBe("develop");
+    expect(docsJson.cloud.analytics).toEqual({
+      enabled: true,
+      console: false,
+      includeInputs: false,
+    });
   });
 
   it("preserves boolean analytics.console values when static config parsing is used", async () => {
