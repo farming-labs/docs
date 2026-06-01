@@ -108,6 +108,7 @@ async function main() {
           ? flags.url
           : undefined,
     apiKey: typeof flags["api-key"] === "string" ? flags["api-key"] : undefined,
+    apiKeyEnv: typeof flags["api-key-env"] === "string" ? flags["api-key-env"] : undefined,
     json: typeof flags.json === "boolean" ? flags.json : undefined,
   };
 
@@ -129,6 +130,9 @@ async function main() {
   } else if (parsedCommand.command === "cloud" && subcommand === "preview") {
     const { runCloudPreview } = await import("./cloud.js");
     await runCloudPreview(cloudOptions);
+  } else if (parsedCommand.command === "cloud" && subcommand === "init") {
+    const { runCloudInit } = await import("./cloud.js");
+    await runCloudInit(cloudOptions);
   } else if (parsedCommand.command === "cloud" && subcommand === "sync") {
     const { syncCloudConfig } = await import("./cloud.js");
     await syncCloudConfig(cloudOptions);
@@ -295,7 +299,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("dev")}      Run frameworkless docs locally from ${pc.dim("docs.json")}
   ${pc.cyan("deploy")}   Sync cloud config and deploy hosted preview docs
   ${pc.cyan("preview")}  Alias for ${pc.cyan("deploy")}
-  ${pc.cyan("cloud")}    Docs Cloud utilities (${pc.dim("deploy")}, ${pc.dim("preview")}, ${pc.dim("sync")})
+  ${pc.cyan("cloud")}    Docs Cloud utilities (${pc.dim("init")}, ${pc.dim("deploy")}, ${pc.dim("preview")}, ${pc.dim("sync")})
   ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} to generate sibling agent.md files)
   ${pc.cyan("agents")}   AGENTS.md utilities (${pc.dim("generate")} for static agent instructions)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
@@ -330,12 +334,14 @@ ${pc.dim("Options for dev:")}
   ${pc.cyan("--verbose")}           Show raw runtime logs in addition to branded CLI output
 
 ${pc.dim("Options for cloud deploy:")}
+  ${pc.cyan("cloud init")}                           Add Docs Cloud config to ${pc.dim("docs.config.ts")} and ${pc.dim("docs.json")}
   ${pc.cyan("deploy")}                               Sync ${pc.dim("docs.config.ts")} into ${pc.dim("docs.json")} and deploy hosted preview docs
   ${pc.cyan("cloud deploy")}                         Same as ${pc.cyan("deploy")}
   ${pc.cyan("preview")}                              Alias for ${pc.cyan("deploy")}
   ${pc.cyan("cloud preview")}                        Compatibility alias for ${pc.cyan("cloud deploy")}
   ${pc.cyan("cloud sync")}                           Only materialize cloud settings into ${pc.dim("docs.json")}
   ${pc.cyan("--config <path>")}                      Use a custom docs config path
+  ${pc.cyan("--api-key-env <name>")}                 Env var that stores the Docs Cloud API key
   ${pc.cyan("--api-base-url <url>")}                 Override the Docs Cloud API base URL
   ${pc.cyan("--api-key <key>")}                      Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
   ${pc.cyan("--json")}                              Print machine-readable output

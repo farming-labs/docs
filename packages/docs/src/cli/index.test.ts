@@ -58,10 +58,13 @@ describe("parseFlags", () => {
       "src/lib/docs.config.ts",
       "--api-base-url",
       "https://docs-app.example.com",
+      "--api-key-env",
+      "ACME_DOCS_CLOUD_KEY",
       "--json",
     ]);
     expect(flags.config).toBe("src/lib/docs.config.ts");
     expect(flags["api-base-url"]).toBe("https://docs-app.example.com");
+    expect(flags["api-key-env"]).toBe("ACME_DOCS_CLOUD_KEY");
     expect(flags.json).toBe(true);
   });
 

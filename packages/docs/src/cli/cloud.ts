@@ -650,7 +650,9 @@ function ensureDocsConfigCloudInit(options: {
       missingCloudProperties.push(renderAnalyticsConfigProperty(cloudIndent));
     }
 
-    if (!findTopLevelPropertyRange(content, cloudObject.bodyStart, cloudObject.bodyEnd, "publish")) {
+    if (
+      !findTopLevelPropertyRange(content, cloudObject.bodyStart, cloudObject.bodyEnd, "publish")
+    ) {
       missingCloudProperties.push(
         `${cloudIndent}publish: { mode: "draft-pr", baseBranch: "main" },`,
       );
@@ -1346,6 +1348,70 @@ export async function syncCloudConfig(options: CloudCommandOptions = {}) {
   return result;
 }
 
+export async function initCloudConfig(options: CloudCommandOptions = {}): Promise<CloudInitResult> {
+  const rootDir = options.rootDir ?? process.cwd();
+  const apiKeyEnv = normalizeEnvName(options.apiKeyEnv, DOCS_CLOUD_DEFAULT_API_KEY_ENV);
+  const configUpdate = ensureDocsConfigCloudInit({
+    rootDir,
+    configPath: options.configPath,
+    apiKeyEnv,
+  });
+  const materialized = await materializeCloudConfig({
+    ...options,
+    rootDir,
+    configPath: path.relative(rootDir, configUpdate.configPath),
+  });
+
+  return {
+    configPath: configUpdate.configPath,
+    docsJsonPath: materialized.docsJsonPath,
+    apiKeyEnv: materialized.apiKeyEnv,
+    analyticsProjectIdEnv: DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV,
+    configCreated: configUpdate.created,
+    configUpdated: configUpdate.updated,
+    docsJsonCreated: materialized.created,
+    docsJsonUpdated: materialized.updated,
+  };
+}
+
+export async function runCloudInit(options: CloudCommandOptions = {}) {
+  const result = await initCloudConfig(options);
+
+  if (options.json) {
+    console.log(JSON.stringify(result, null, 2));
+    return result;
+  }
+
+  const relativeConfigPath = path.relative(process.cwd(), result.configPath) || "docs.config.ts";
+  const relativeDocsJsonPath = path.relative(process.cwd(), result.docsJsonPath) || DOCS_JSON_FILE;
+  const configAction = result.configCreated
+    ? "Created"
+    : result.configUpdated
+      ? "Updated"
+      : "Checked";
+  const docsJsonAction = result.docsJsonCreated
+    ? "created"
+    : result.docsJsonUpdated
+      ? "updated"
+      : "checked";
+
+  console.log(`${pc.green("ok")} ${configAction} ${pc.cyan(relativeConfigPath)}`);
+  console.log(`${pc.green("ok")} ${docsJsonAction} ${pc.cyan(relativeDocsJsonPath)}`);
+  console.log();
+  console.log(pc.bold("Add these env vars"));
+  console.log(`${pc.cyan(result.apiKeyEnv)}=${pc.dim("paste_your_docs_cloud_api_key")}`);
+  console.log(
+    `${pc.cyan(result.analyticsProjectIdEnv)}=${pc.dim("paste_your_docs_cloud_project_id")}`,
+  );
+  console.log();
+  console.log(
+    pc.dim("Use the same env vars in production. The API key value is never written to config."),
+  );
+  console.log(pc.dim(`Then run ${pc.cyan("pnpm dlx @farming-labs/docs deploy")}.`));
+
+  return result;
+}
+
 async function runCloudDeployment(options: CloudCommandOptions = {}) {
   const rootDir = options.rootDir ?? process.cwd();
   const spinner = createSpinner("Preparing Docs Cloud deployment", options);
@@ -1433,6 +1499,7 @@ export function printCloudHelp() {
 ${pc.bold("@farming-labs/docs cloud")}
 
 ${pc.dim("Usage:")}
+  ${pc.cyan("docs cloud init")}           Add Docs Cloud config to ${pc.dim("docs.config.ts")} and ${pc.dim("docs.json")}
   ${pc.cyan("docs deploy")}               Sync ${pc.dim("docs.config.ts")} to ${pc.dim("docs.json")} and deploy hosted preview docs
   ${pc.cyan("docs cloud deploy")}         Same as ${pc.cyan("docs deploy")}
   ${pc.cyan("docs preview")}              Compatibility alias for ${pc.cyan("docs deploy")}
@@ -1441,6 +1508,7 @@ ${pc.dim("Usage:")}
 
 ${pc.dim("Options:")}
   ${pc.cyan("--config <path>")}           Use a custom docs config path
+  ${pc.cyan("--api-key-env <name>")}      Env var that stores the Docs Cloud API key
   ${pc.cyan("--api-base-url <url>")}      Override Docs Cloud API base URL
   ${pc.cyan("--api-key <key>")}           Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
   ${pc.cyan("--json")}                    Print machine-readable output
@@ -1452,6 +1520,7 @@ ${pc.dim("Config example:")}
   cloud: {
     apiKey: { env: "DOCS_CLOUD_API_KEY" },
     deploy: { enabled: true },
+    analytics: { enabled: true, console: false, includeInputs: false },
     publish: { mode: "draft-pr", baseBranch: "main" },
   }
 `);
