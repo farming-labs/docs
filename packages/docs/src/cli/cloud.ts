@@ -19,6 +19,7 @@ import { detectFramework, type Framework } from "./utils.js";
 const DOCS_JSON_FILE = "docs.json";
 const DOCS_CLOUD_SCHEMA_URL = "https://docs.farming-labs.dev/schema/docs.json";
 const DOCS_CLOUD_DEFAULT_API_KEY_ENV = "DOCS_CLOUD_API_KEY";
+const DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV = "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID";
 const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://docs-app.farming-labs.dev";
 const DEFAULT_PREVIEW_TIMEOUT_MS = 5 * 60 * 1000;
 const DEFAULT_PREVIEW_POLL_INTERVAL_MS = 2000;
@@ -70,10 +71,22 @@ export interface CloudCommandOptions {
   configPath?: string;
   apiBaseUrl?: string;
   apiKey?: string;
+  apiKeyEnv?: string;
   json?: boolean;
   rootDir?: string;
   timeoutMs?: number;
   pollIntervalMs?: number;
+}
+
+export interface CloudInitResult {
+  configPath: string;
+  docsJsonPath: string;
+  apiKeyEnv: string;
+  analyticsProjectIdEnv: string;
+  configCreated: boolean;
+  configUpdated: boolean;
+  docsJsonCreated: boolean;
+  docsJsonUpdated: boolean;
 }
 
 export interface MaterializeCloudConfigResult {
@@ -216,6 +229,454 @@ async function loadDocsConfigSnapshot(
     content,
     config: loaded?.config,
   };
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function findBalancedBraceEnd(content: string, braceStart: number): number {
+  let depth = 0;
+  let stringQuote: '"' | "'" | "`" | null = null;
+  let escaped = false;
+  let lineComment = false;
+  let blockComment = false;
+
+  for (let index = braceStart; index < content.length; index += 1) {
+    const char = content[index];
+    const next = content[index + 1];
+
+    if (lineComment) {
+      if (char === "\n") lineComment = false;
+      continue;
+    }
+
+    if (blockComment) {
+      if (char === "*" && next === "/") {
+        blockComment = false;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (stringQuote) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+
+      if (char === stringQuote) {
+        stringQuote = null;
+      }
+      continue;
+    }
+
+    if (char === "/" && next === "/") {
+      lineComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      blockComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === "`") {
+      stringQuote = char;
+      continue;
+    }
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char !== "}") continue;
+
+    depth -= 1;
+    if (depth === 0) return index;
+  }
+
+  return -1;
+}
+
+interface ObjectRange {
+  braceStart: number;
+  braceEnd: number;
+  bodyStart: number;
+  bodyEnd: number;
+}
+
+interface PropertyRange {
+  start: number;
+  end: number;
+}
+
+function findConfigObjectRange(content: string): ObjectRange | undefined {
+  for (const marker of ["defineDocs(", "export default"]) {
+    const markerIndex = content.indexOf(marker);
+    if (markerIndex === -1) continue;
+
+    const braceStart = content.indexOf("{", markerIndex);
+    if (braceStart === -1) continue;
+
+    const braceEnd = findBalancedBraceEnd(content, braceStart);
+    if (braceEnd === -1) continue;
+
+    return {
+      braceStart,
+      braceEnd,
+      bodyStart: braceStart + 1,
+      bodyEnd: braceEnd,
+    };
+  }
+
+  return undefined;
+}
+
+function stripLeadingPropertyTrivia(content: string): string {
+  let current = content;
+
+  while (true) {
+    const trimmed = current.replace(/^\s+/, "");
+
+    if (trimmed.startsWith("//")) {
+      const lineEnd = trimmed.indexOf("\n");
+      current = lineEnd === -1 ? "" : trimmed.slice(lineEnd + 1);
+      continue;
+    }
+
+    if (trimmed.startsWith("/*")) {
+      const blockEnd = trimmed.indexOf("*/");
+      current = blockEnd === -1 ? trimmed : trimmed.slice(blockEnd + 2);
+      continue;
+    }
+
+    return trimmed;
+  }
+}
+
+function propertyStartsWithKey(property: string, key: string): boolean {
+  return new RegExp(`^${escapeRegExp(key)}\\s*:`).test(stripLeadingPropertyTrivia(property));
+}
+
+function findTopLevelPropertyRange(
+  content: string,
+  bodyStart: number,
+  bodyEnd: number,
+  key: string,
+): PropertyRange | undefined {
+  let start = bodyStart;
+  let stringQuote: '"' | "'" | "`" | null = null;
+  let escaped = false;
+  let lineComment = false;
+  let blockComment = false;
+  let braceDepth = 0;
+  let bracketDepth = 0;
+  let parenDepth = 0;
+
+  const maybeMatch = (end: number): PropertyRange | undefined => {
+    const property = content.slice(start, end);
+    if (!propertyStartsWithKey(property, key)) return undefined;
+    return { start, end };
+  };
+
+  for (let index = bodyStart; index <= bodyEnd; index += 1) {
+    const char = content[index];
+    const next = content[index + 1];
+
+    if (index === bodyEnd) {
+      return maybeMatch(index);
+    }
+
+    if (lineComment) {
+      if (char === "\n") lineComment = false;
+      continue;
+    }
+
+    if (blockComment) {
+      if (char === "*" && next === "/") {
+        blockComment = false;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (stringQuote) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+
+      if (char === stringQuote) {
+        stringQuote = null;
+      }
+      continue;
+    }
+
+    if (char === "/" && next === "/") {
+      lineComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      blockComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === "`") {
+      stringQuote = char;
+      continue;
+    }
+
+    if (char === "{") {
+      braceDepth += 1;
+      continue;
+    }
+
+    if (char === "}") {
+      braceDepth = Math.max(0, braceDepth - 1);
+      continue;
+    }
+
+    if (char === "[") {
+      bracketDepth += 1;
+      continue;
+    }
+
+    if (char === "]") {
+      bracketDepth = Math.max(0, bracketDepth - 1);
+      continue;
+    }
+
+    if (char === "(") {
+      parenDepth += 1;
+      continue;
+    }
+
+    if (char === ")") {
+      parenDepth = Math.max(0, parenDepth - 1);
+      continue;
+    }
+
+    if (char !== "," || braceDepth !== 0 || bracketDepth !== 0 || parenDepth !== 0) {
+      continue;
+    }
+
+    const match = maybeMatch(index);
+    if (match) return match;
+    start = index + 1;
+  }
+
+  return undefined;
+}
+
+function findObjectPropertyRange(
+  content: string,
+  object: ObjectRange,
+  key: string,
+): ObjectRange | undefined {
+  const property = findTopLevelPropertyRange(content, object.bodyStart, object.bodyEnd, key);
+  if (!property) return undefined;
+
+  const colon = content.indexOf(":", property.start);
+  const braceStart = content.indexOf("{", colon);
+  if (colon === -1 || braceStart === -1 || braceStart > property.end) return undefined;
+
+  const braceEnd = findBalancedBraceEnd(content, braceStart);
+  if (braceEnd === -1 || braceEnd > property.end) return undefined;
+
+  return {
+    braceStart,
+    braceEnd,
+    bodyStart: braceStart + 1,
+    bodyEnd: braceEnd,
+  };
+}
+
+function lineIndentAt(content: string, index: number): string {
+  const lineStart = content.lastIndexOf("\n", index - 1) + 1;
+  return content.slice(lineStart, index).match(/^\s*/)?.[0] ?? "";
+}
+
+function insertObjectProperties(
+  content: string,
+  object: ObjectRange,
+  properties: string[],
+): string {
+  if (properties.length === 0) return content;
+
+  const body = content.slice(object.bodyStart, object.bodyEnd);
+  const closingIndent = lineIndentAt(content, object.braceEnd);
+  const beforeObjectClose = content.slice(0, object.bodyEnd).replace(/\s*$/, "");
+  const suffix = content.slice(object.bodyEnd);
+  const needsComma = body.trim().length > 0 && !beforeObjectClose.endsWith(",");
+
+  return `${beforeObjectClose}${needsComma ? "," : ""}\n${properties.join("\n")}\n${closingIndent}${suffix}`;
+}
+
+function renderAnalyticsConfigProperty(indent: string): string {
+  return `${indent}analytics: {
+${indent}  enabled: true,
+${indent}  console: false,
+${indent}  includeInputs: false,
+${indent}},`;
+}
+
+function renderCloudConfigProperty(indent: string, apiKeyEnv: string): string {
+  return `${indent}cloud: {
+${indent}  apiKey: { env: ${JSON.stringify(apiKeyEnv)} },
+${indent}  deploy: { enabled: true },
+${indent}  analytics: {
+${indent}    enabled: true,
+${indent}    console: false,
+${indent}    includeInputs: false,
+${indent}  },
+${indent}  publish: { mode: "draft-pr", baseBranch: "main" },
+${indent}},`;
+}
+
+function renderCloudInitDocsConfig(apiKeyEnv: string): string {
+  return `import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+${renderAnalyticsConfigProperty("  ")}
+${renderCloudConfigProperty("  ", apiKeyEnv)}
+});
+`;
+}
+
+function normalizeEnvName(value: string | undefined, fallback: string): string {
+  const normalized = value?.trim();
+  if (!normalized) return fallback;
+
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(normalized)) {
+    throw new Error(`Invalid environment variable name: ${normalized}`);
+  }
+
+  return normalized;
+}
+
+function ensureDocsConfigCloudInit(options: {
+  rootDir: string;
+  configPath?: string;
+  apiKeyEnv: string;
+}): { configPath: string; created: boolean; updated: boolean } {
+  const resolvedConfigPath = tryResolveDocsConfigPath(options.rootDir, options.configPath);
+  const configPath = resolvedConfigPath ?? path.join(options.rootDir, "docs.config.ts");
+
+  if (!resolvedConfigPath) {
+    fs.writeFileSync(configPath, renderCloudInitDocsConfig(options.apiKeyEnv), "utf-8");
+    return { configPath, created: true, updated: true };
+  }
+
+  const original = fs.readFileSync(configPath, "utf-8");
+  let content = original;
+  let configObject = findConfigObjectRange(content);
+  if (!configObject) {
+    throw new Error(
+      `Could not find an object export in ${path.relative(options.rootDir, configPath)}. Use defineDocs({ ... }) or export default { ... } before running cloud init.`,
+    );
+  }
+
+  const topLevelIndent = `${lineIndentAt(content, configObject.braceEnd)}  `;
+  const cloudProperty = findTopLevelPropertyRange(
+    content,
+    configObject.bodyStart,
+    configObject.bodyEnd,
+    "cloud",
+  );
+  let cloudObject = findObjectPropertyRange(content, configObject, "cloud");
+
+  if (!cloudProperty) {
+    content = insertObjectProperties(content, configObject, [
+      renderCloudConfigProperty(topLevelIndent, options.apiKeyEnv),
+    ]);
+  } else if (!cloudObject) {
+    throw new Error(
+      `Could not update cloud config in ${path.relative(options.rootDir, configPath)} because cloud is not an object literal.`,
+    );
+  }
+
+  configObject = findConfigObjectRange(content);
+  if (!configObject) {
+    throw new Error(`Could not re-read ${path.relative(options.rootDir, configPath)}.`);
+  }
+
+  cloudObject = findObjectPropertyRange(content, configObject, "cloud");
+  if (cloudObject) {
+    const cloudIndent = `${lineIndentAt(content, cloudObject.braceEnd)}  `;
+    const missingCloudProperties: string[] = [];
+
+    if (!findTopLevelPropertyRange(content, cloudObject.bodyStart, cloudObject.bodyEnd, "apiKey")) {
+      missingCloudProperties.push(
+        `${cloudIndent}apiKey: { env: ${JSON.stringify(options.apiKeyEnv)} },`,
+      );
+    } else {
+      const apiKeyObject = findObjectPropertyRange(content, cloudObject, "apiKey");
+      if (
+        apiKeyObject &&
+        !findTopLevelPropertyRange(content, apiKeyObject.bodyStart, apiKeyObject.bodyEnd, "env")
+      ) {
+        content = insertObjectProperties(content, apiKeyObject, [
+          `${lineIndentAt(content, apiKeyObject.braceEnd)}  env: ${JSON.stringify(options.apiKeyEnv)},`,
+        ]);
+        configObject = findConfigObjectRange(content)!;
+        cloudObject = findObjectPropertyRange(content, configObject, "cloud")!;
+      }
+    }
+
+    if (!findTopLevelPropertyRange(content, cloudObject.bodyStart, cloudObject.bodyEnd, "deploy")) {
+      missingCloudProperties.push(`${cloudIndent}deploy: { enabled: true },`);
+    }
+
+    if (
+      !findTopLevelPropertyRange(content, cloudObject.bodyStart, cloudObject.bodyEnd, "analytics")
+    ) {
+      missingCloudProperties.push(renderAnalyticsConfigProperty(cloudIndent));
+    }
+
+    if (!findTopLevelPropertyRange(content, cloudObject.bodyStart, cloudObject.bodyEnd, "publish")) {
+      missingCloudProperties.push(
+        `${cloudIndent}publish: { mode: "draft-pr", baseBranch: "main" },`,
+      );
+    }
+
+    content = insertObjectProperties(content, cloudObject, missingCloudProperties);
+  }
+
+  configObject = findConfigObjectRange(content);
+  if (!configObject) {
+    throw new Error(`Could not re-read ${path.relative(options.rootDir, configPath)}.`);
+  }
+
+  if (
+    !findTopLevelPropertyRange(content, configObject.bodyStart, configObject.bodyEnd, "analytics")
+  ) {
+    content = insertObjectProperties(content, configObject, [
+      renderAnalyticsConfigProperty(`${lineIndentAt(content, configObject.braceEnd)}  `),
+    ]);
+  }
+
+  if (content !== original) {
+    fs.writeFileSync(configPath, content, "utf-8");
+  }
+
+  return { configPath, created: false, updated: content !== original };
 }
 
 function readExistingDocsJson(docsJsonPath: string): ManagedDocsJson | undefined {
