@@ -506,7 +506,7 @@ describe("code block validation", () => {
       process: { executeCommand },
       stop,
     }));
-    const Daytona = vi.fn().mockImplementation((input) => {
+    const Daytona = vi.fn(function (input) {
       expect(input).toMatchObject({
         apiKey: "test-daytona-token",
         target: "us",
