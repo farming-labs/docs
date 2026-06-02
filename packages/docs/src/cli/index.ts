@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
 import pc from "picocolors";
+import { formatCliError, shouldPrintStackTrace, wasCliErrorReported } from "./errors.js";
+
+export { formatCliError } from "./errors.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -436,7 +439,10 @@ function printVersion() {
 }
 
 main().catch((err) => {
-  console.error(pc.red("An unexpected error occurred:"));
-  console.error(err);
+  if (shouldPrintStackTrace()) {
+    console.error(err);
+  } else if (!wasCliErrorReported(err)) {
+    console.error(pc.red(`Error: ${formatCliError(err)}`));
+  }
   process.exit(1);
 });

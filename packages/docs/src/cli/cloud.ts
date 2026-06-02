@@ -14,6 +14,7 @@ import {
   resolveDocsConfigPath,
   resolveDocsContentDir,
 } from "./config.js";
+import { markCliErrorReported } from "./errors.js";
 import { detectFramework, type Framework } from "./utils.js";
 
 const DOCS_JSON_FILE = "docs.json";
@@ -1481,7 +1482,10 @@ async function runCloudDeployment(options: CloudCommandOptions = {}) {
     return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    spinner.fail(message);
+    if (!options.json) {
+      spinner.fail(message);
+      markCliErrorReported(error);
+    }
     throw error;
   } finally {
     spinner.stop();
