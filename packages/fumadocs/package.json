@@ -146,7 +146,7 @@
     "next": ">=14.0.0",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.8"
   },
   "peerDependencies": {
     "@farming-labs/docs": ">=0.0.1",
