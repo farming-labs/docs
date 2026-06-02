@@ -152,7 +152,7 @@ Cloud project owns the branch policy.
 
 ## Troubleshooting
 
-**Missing API key**
+### Missing API key
 
 Set the environment variable named by `cloud.apiKey.env`:
 
@@ -162,12 +162,12 @@ export DOCS_CLOUD_API_KEY=fl_key_...
 
 or add it to `.env.local`.
 
-**Deploy disabled**
+### Deploy disabled
 
 If `cloud.deploy.enabled` is `false`, `docs deploy` stops before requesting a hosted preview. Set it
 back to `true` or remove the override.
 
-**Wrong Cloud host**
+### Wrong Cloud host
 
 For staging or self-hosted testing, pass:
 

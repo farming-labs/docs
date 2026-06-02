@@ -631,7 +631,7 @@ void missing;
         apiBaseUrl: "https://cloud.example.com",
         json: true,
       }),
-    ).rejects.toThrow("Missing Docs Cloud API key");
+    ).rejects.toThrow("https://docs.farming-labs.dev/docs/cloud/deploy#missing-api-key");
   });
 
   it("fails clearly when preview deployment is disabled in cloud config", async () => {

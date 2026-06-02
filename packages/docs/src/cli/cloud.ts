@@ -20,6 +20,8 @@ const DOCS_JSON_FILE = "docs.json";
 const DOCS_CLOUD_SCHEMA_URL = "https://docs.farming-labs.dev/schema/docs.json";
 const DOCS_CLOUD_DEFAULT_API_KEY_ENV = "DOCS_CLOUD_API_KEY";
 const DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV = "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID";
+const DOCS_CLOUD_MISSING_API_KEY_DOCS_URL =
+  "https://docs.farming-labs.dev/docs/cloud/deploy#missing-api-key";
 const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://docs-app.farming-labs.dev";
 const DEFAULT_PREVIEW_TIMEOUT_MS = 5 * 60 * 1000;
 const DEFAULT_PREVIEW_POLL_INTERVAL_MS = 2000;
@@ -1005,7 +1007,7 @@ function resolveApiKey(options: CloudCommandOptions, rootDir: string, envName: s
   if (token) return token;
 
   throw new Error(
-    `Missing Docs Cloud API key. Set ${envName} in your shell or .env.local, or configure cloud.apiKey.env in docs.config.ts.`,
+    `Missing Docs Cloud API key. Set ${envName} in your shell or .env.local, or configure cloud.apiKey.env in docs.config.ts. See ${DOCS_CLOUD_MISSING_API_KEY_DOCS_URL}.`,
   );
 }
 
