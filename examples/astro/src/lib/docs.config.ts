@@ -91,6 +91,7 @@ export default defineDocs({
   sitemap: { enabled: true, baseUrl: "https://docs.farming-labs.dev" },
   lastUpdated: { enabled: true, position: "below-title" },
   themeToggle: { enabled: true, default: "dark" },
+  tweaks: { reader: true, author: process.env.NODE_ENV !== "production" },
   breadcrumb: { enabled: true },
   metadata: {
     titleTemplate: "%s – Docs",
