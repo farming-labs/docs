@@ -9,7 +9,7 @@
  *   - `@farming-labs/theme/concrete`     → brutalist poster-style hard-edge theme
  *   - `@farming-labs/theme/hardline`     → high-contrast hard-edge theme
  *   - `@farming-labs/theme/ledger`       → Stripe Docs-inspired product docs theme
- *   - `@farming-labs/theme/assistant-ui` → assistant-ui docs-inspired compact neutral theme
+ *   - `@farming-labs/theme/threadline`   → compact chat-docs neutral theme
  *
  * This root export provides layout helpers, the RootProvider, and re-exports
  * the base `fumadocs()` preset from `/default` for backward compatibility.
@@ -75,11 +75,7 @@ export { commandGrid, CommandGridUIDefaults } from "./command-grid/index.js";
 export { concrete, ConcreteUIDefaults } from "./concrete/index.js";
 export { hardline, HardlineUIDefaults } from "./hardline/index.js";
 export { ledger, LedgerUIDefaults } from "./ledger/index.js";
-export {
-  assistantUI,
-  assistantUIPageActions,
-  AssistantUIUIDefaults,
-} from "./assistant-ui/index.js";
+export { threadline, threadlinePageActions, ThreadlineUIDefaults } from "./threadline/index.js";
 
 // ─── UI primitives for custom theme layouts ───────────────────────────
 // These are the building blocks theme authors use to compose custom layouts

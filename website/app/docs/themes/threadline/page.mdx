@@ -1,44 +1,44 @@
 ---
-title: "Assistant UI"
-description: "assistant-ui docs-inspired compact neutral theme with right-aligned page actions"
+title: "Threadline"
+description: "Compact neutral theme with right-aligned page actions"
 icon: "bot"
 order: 4.75
 ---
 
-# Assistant UI Theme
+# Threadline Theme
 
 <Agent>
-Use this page when the user asks about this topic: assistant-ui docs-inspired compact neutral theme with page-action defaults.
+Use this page when the user asks about this topic: compact neutral theme with page-action defaults.
 Keep answers grounded in the exact options, routes, commands, and examples documented here.
 If the request moves beyond this page, point to the closest related docs instead of inventing config.
 </Agent>
 
-A compact neutral preset inspired by <HoverLink href="https://www.assistant-ui.com/docs" title="assistant-ui docs" description="assistant-ui's documentation uses a 48px header, compact Geist typography, muted shadcn surfaces, right rail actions, and a clean Fumadocs layout." linkLabel="Visit assistant-ui docs" external>assistant-ui docs</HoverLink>. The preset keeps the visual language neutral so you can use the chrome without adopting assistant-ui branding.
+A compact neutral preset for chat, agent, and product documentation. It uses a 48px header, compact Geist typography, muted shadcn surfaces, and ghost-style page actions, with visual inspiration from <HoverLink href="https://www.assistant-ui.com/docs" title="Reference docs" description="The reference documentation uses compact navigation, muted surfaces, and a clean Fumadocs layout." linkLabel="Visit reference site" external>a public chat UI docs site</HoverLink>.
 
 ## Usage
 
 ```tsx title="docs.config.ts"
 import { defineDocs } from "@farming-labs/docs";
-import { assistantUI, assistantUIPageActions } from "@farming-labs/theme/assistant-ui";
+import { threadline, threadlinePageActions } from "@farming-labs/theme/threadline";
 
 export default defineDocs({
   entry: "docs",
-  theme: assistantUI(),
+  theme: threadline(),
   github: {
     url: "https://github.com/acme/docs",
   },
-  pageActions: assistantUIPageActions,
+  pageActions: threadlinePageActions,
 });
 ```
 
 ```css title="app/global.css"
 @import "tailwindcss";
-@import "@farming-labs/theme/assistant-ui/css";
+@import "@farming-labs/theme/threadline/css";
 ```
 
 ## Page Actions
 
-`assistantUIPageActions` enables:
+`threadlinePageActions` enables:
 
 - Copy page
 - Open in GitHub
@@ -73,7 +73,7 @@ The GitHub action needs top-level `github` config so the theme can resolve `{git
 ## Customizing
 
 ```tsx title="customizing.tsx"
-theme: assistantUI({
+theme: threadline({
   ui: {
     colors: { primary: "#111827" },
     layout: { sidebarWidth: 280, tocWidth: 240 },

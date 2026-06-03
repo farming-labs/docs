@@ -1,16 +1,7 @@
 "use client";
 
 import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page";
-import {
-  Children,
-  Fragment,
-  cloneElement,
-  isValidElement,
-  useEffect,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
+import { Children, Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "fumadocs-core/framework";
 import type { DocsFeedbackData } from "@farming-labs/docs";
@@ -39,11 +30,6 @@ interface TOCItem {
   depth: number;
 }
 
-interface TitleInsertions {
-  description?: ReactNode;
-  belowTitle?: ReactNode;
-}
-
 /** Serializable provider — icon is an HTML string, not JSX. */
 interface SerializedProvider {
   name: string;
@@ -70,7 +56,7 @@ interface DocsPageClientProps {
   openDocsTarget?: "markdown" | "page" | "source" | "github";
   openDocsPrompt?: string;
   /** Where to render page actions relative to the title */
-  pageActionsPosition?: "above-title" | "below-title";
+  pageActionsPosition?: "above-title" | "below-title" | "toc";
   /** Horizontal alignment of page action buttons */
   pageActionsAlignment?: "left" | "right";
   /** GitHub repository URL (e.g. "https://github.com/user/repo") */
@@ -158,7 +144,7 @@ function PathBreadcrumb({
 
   return (
     <nav className="fd-breadcrumb" aria-label="Breadcrumb">
-      <span className="fd-breadcrumb-item">
+      <span key="parent" className="fd-breadcrumb-item">
         <a
           href={localizedParentUrl}
           className="fd-breadcrumb-parent fd-breadcrumb-link"
@@ -170,7 +156,7 @@ function PathBreadcrumb({
           {parentLabel}
         </a>
       </span>
-      <span className="fd-breadcrumb-item">
+      <span key="current" className="fd-breadcrumb-item">
         <span className="fd-breadcrumb-sep">/</span>
         <span className="fd-breadcrumb-current">{currentLabel}</span>
       </span>
@@ -424,73 +410,6 @@ function scrollToHashTarget(hash: string): boolean {
   return true;
 }
 
-function injectTitleDecorations(
-  node: ReactNode,
-  { description, belowTitle }: TitleInsertions,
-): { node: ReactNode; inserted: boolean } {
-  if (!description && !belowTitle) return { node, inserted: false };
-
-  let inserted = false;
-
-  const extras = Children.toArray([description, belowTitle].filter(Boolean));
-  if (extras.length === 0) return { node, inserted: false };
-
-  const insertedExtras = extras.map((extra, index) => (
-    <Fragment key={`fd-title-decoration-${index}`}>{extra}</Fragment>
-  ));
-
-  function visit(current: ReactNode): ReactNode {
-    if (current == null || typeof current === "boolean") return current;
-    if (inserted) return current;
-
-    if (Array.isArray(current)) {
-      return current.flatMap((child) => {
-        const next = visit(child);
-        return Array.isArray(next) ? next : [next];
-      });
-    }
-
-    if (!isValidElement(current)) return current;
-
-    if (typeof current.type === "string" && current.type === "h1") {
-      inserted = true;
-      return (
-        <Fragment key="fd-title-decoration-block">
-          {current}
-          {insertedExtras}
-        </Fragment>
-      );
-    }
-
-    const childProps = (current.props as { children?: ReactNode } | null) ?? null;
-    if (childProps?.children === undefined) return current;
-
-    const nextChildren = Children.toArray(childProps.children).flatMap((child) => {
-      const next = visit(child);
-      return Array.isArray(next) ? next : [next];
-    });
-
-    if (!inserted) return current;
-
-    return cloneElement(current, undefined, nextChildren);
-  }
-
-  if (Array.isArray(node)) {
-    return {
-      node: node.flatMap((child) => {
-        const next = visit(child);
-        return Array.isArray(next) ? next : [next];
-      }),
-      inserted,
-    };
-  }
-
-  return {
-    node: visit(node),
-    inserted,
-  };
-}
-
 function TitleDecorations({
   description,
   belowTitle,
@@ -500,7 +419,62 @@ function TitleDecorations({
 }) {
   if (!description && !belowTitle) return null;
 
-  return <>{Children.toArray([description, belowTitle].filter(Boolean))}</>;
+  return (
+    <>
+      {description && <Fragment key="description">{description}</Fragment>}
+      {belowTitle && <Fragment key="below-title">{belowTitle}</Fragment>}
+    </>
+  );
+}
+
+function ThreadlinePageControls() {
+  return (
+    <div className="fd-threadline-doc-controls not-prose" aria-label="Page controls">
+      <button key="back" type="button" aria-label="Go back" onClick={() => window.history.back()}>
+        <span aria-hidden="true">&lt;</span>
+      </button>
+      <button
+        key="forward"
+        type="button"
+        aria-label="Go forward"
+        onClick={() => window.history.forward()}
+      >
+        <span aria-hidden="true">&gt;</span>
+      </button>
+    </div>
+  );
+}
+
+function findThreadlineTocActionsContainer(): HTMLElement | null {
+  const toc =
+    document.getElementById("nd-toc") ?? document.querySelector<HTMLElement>(".fd-toc, [data-toc]");
+
+  if (!toc) return null;
+
+  const stickyChild = toc.querySelector<HTMLElement>(
+    ":scope > .sticky, :scope > [class*='sticky']",
+  );
+  if (stickyChild) return stickyChild;
+
+  const tocClassName = typeof toc.className === "string" ? toc.className : "";
+  if (tocClassName.includes("grid-area:toc")) return toc;
+
+  let node = toc.parentElement;
+
+  while (node && node.id !== "nd-docs-layout") {
+    const className = typeof node.className === "string" ? node.className : "";
+
+    if (
+      className.includes("grid-area:toc") ||
+      window.getComputedStyle(node).position === "sticky"
+    ) {
+      return node;
+    }
+
+    node = node.parentElement;
+  }
+
+  return toc.parentElement ?? toc;
 }
 
 export function DocsPageClient({
@@ -548,6 +522,8 @@ export function DocsPageClient({
   const fdTocStyle = tocStyle === "directional" ? "clerk" : undefined;
   const [toc, setToc] = useState<TOCItem[]>([]);
   const [titlePortalHost, setTitlePortalHost] = useState<HTMLElement | null>(null);
+  const [titleControlsPortalHost, setTitleControlsPortalHost] = useState<HTMLElement | null>(null);
+  const [tocActionsPortalHost, setTocActionsPortalHost] = useState<HTMLElement | null>(null);
   const [browserPath, setBrowserPath] = useState<string | null>(null);
   const pathname = usePathname();
   const searchParams = useWindowSearchParams();
@@ -686,6 +662,7 @@ export function DocsPageClient({
   const showActions = !isChangelogRoute && (copyMarkdown || openDocs);
   const showActionsBelowTitle = showActions && pageActionsPosition === "below-title";
   const showActionsAboveTitle = showActions && pageActionsPosition === "above-title";
+  const showActionsInToc = showActions && pageActionsPosition === "toc";
   const githubFileUrl =
     editOnGithubUrl ??
     (githubUrl
@@ -700,6 +677,81 @@ export function DocsPageClient({
         )
       : undefined);
 
+  useEffect(() => {
+    if (!showActionsInToc) {
+      setTocActionsPortalHost(null);
+      return;
+    }
+
+    let frame = 0;
+    let attempts = 0;
+    let host: HTMLElement | null = null;
+    let cancelled = false;
+
+    const mountActions = () => {
+      if (cancelled) return;
+
+      const container = findThreadlineTocActionsContainer();
+
+      if (!container) {
+        if (attempts < 12) {
+          attempts += 1;
+          frame = requestAnimationFrame(mountActions);
+        } else {
+          setTocActionsPortalHost(null);
+        }
+        return;
+      }
+
+      host = container.querySelector<HTMLElement>(":scope > .fd-actions-toc-host");
+
+      if (!host) {
+        host = document.createElement("div");
+        host.className = "fd-actions-toc-host";
+        container.append(host);
+      }
+
+      setTocActionsPortalHost(host);
+    };
+
+    frame = requestAnimationFrame(mountActions);
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+
+      if (host?.isConnected) {
+        host.remove();
+      }
+
+      setTocActionsPortalHost(null);
+    };
+  }, [pathname, showActionsInToc, toc.length]);
+
+  useEffect(() => {
+    if (!showActionsInToc) {
+      setTitleControlsPortalHost(null);
+      return;
+    }
+
+    const container = document.getElementById("nd-page");
+    const title = container?.querySelector("h1");
+    if (!title) {
+      setTitleControlsPortalHost(null);
+      return;
+    }
+
+    const host = document.createElement("div");
+    host.className = "fd-threadline-title-controls-host";
+    title.insertAdjacentElement("afterend", host);
+    setTitleControlsPortalHost(host);
+
+    return () => {
+      host.remove();
+      setTitleControlsPortalHost(null);
+    };
+  }, [pathname, showActionsInToc]);
+
   const lastModified =
     !isChangelogRoute && lastUpdatedEnabled
       ? (lastModifiedProp ?? lastModifiedMap?.[normalizedPath])
@@ -711,7 +763,7 @@ export function DocsPageClient({
     !isChangelogRoute && (!!githubFileUrl || showLastUpdatedInFooter || llmsTxtEnabled);
   const readingTimeBlock =
     typeof resolvedReadingTime === "number" ? (
-      <div className="fd-page-meta not-prose">
+      <div key="reading-time" className="fd-page-meta not-prose">
         <span className="fd-page-meta-dot" aria-hidden="true">
           ·
         </span>
@@ -733,13 +785,19 @@ export function DocsPageClient({
 
   const belowTitleBlock =
     showLastUpdatedBelowTitle || showActionsBelowTitle || showReadingTimeBelowTitle ? (
-      <div className="fd-below-title-block not-prose">
+      <div key="below-title" className="fd-below-title-block not-prose">
         {showLastUpdatedBelowTitle && (
-          <p className="fd-last-updated-inline">Last updated {lastModified}</p>
+          <p key="last-updated" className="fd-last-updated-inline">
+            Last updated {lastModified}
+          </p>
         )}
-        <hr className="fd-title-separator" />
+        <hr key="separator" className="fd-title-separator" />
         {showActionsBelowTitle && (
-          <div className="fd-actions-portal" data-actions-alignment={pageActionsAlignment}>
+          <div
+            key="actions"
+            className="fd-actions-portal"
+            data-actions-alignment={pageActionsAlignment}
+          >
             <PageActions
               copyMarkdown={copyMarkdown}
               openDocs={openDocs}
@@ -747,6 +805,7 @@ export function DocsPageClient({
               openDocsTarget={openDocsTarget}
               openDocsPrompt={openDocsPrompt}
               alignment={pageActionsAlignment}
+              variant="default"
               githubFileUrl={githubFileUrl}
               analytics={analytics}
             />
@@ -756,15 +815,8 @@ export function DocsPageClient({
       </div>
     ) : undefined;
 
-  const { node: decoratedChildren, inserted: titleDecorationsInserted } = injectTitleDecorations(
-    children,
-    {
-      description: titleDescription,
-      belowTitle: belowTitleBlock,
-    },
-  );
-  const needsTitleDecorationsPortal =
-    !titleDecorationsInserted && (!!titleDescription || !!belowTitleBlock);
+  const decoratedChildren = children;
+  const needsTitleDecorationsPortal = !!titleDescription || !!belowTitleBlock;
 
   useEffect(() => {
     if (!needsTitleDecorationsPortal) {
@@ -795,20 +847,49 @@ export function DocsPageClient({
       ? createPortal(
           <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />,
           titlePortalHost,
+          "title-decorations",
         )
       : null;
-  const renderedChildren = Children.toArray(decoratedChildren);
+  const titleControlsPortal =
+    showActionsInToc && titleControlsPortalHost
+      ? createPortal(<ThreadlinePageControls />, titleControlsPortalHost, "title-controls")
+      : null;
+  const tocActionsPortal =
+    showActionsInToc && tocActionsPortalHost
+      ? createPortal(
+          <div className="fd-actions-toc-portal not-prose">
+            <PageActions
+              copyMarkdown={copyMarkdown}
+              openDocs={openDocs}
+              providers={openDocsProviders}
+              openDocsTarget={openDocsTarget}
+              openDocsPrompt={openDocsPrompt}
+              alignment="left"
+              variant="rail"
+              githubFileUrl={githubFileUrl}
+              analytics={analytics}
+            />
+          </div>,
+          tocActionsPortalHost,
+          "toc-actions",
+        )
+      : null;
+  const renderedChildren = Children.toArray(decoratedChildren).map((child, index) => (
+    <Fragment key={`fd-rendered-child-${index}`}>{child}</Fragment>
+  ));
 
   return (
     <>
       {structuredDataJson && (
         <script
+          key="structured-data"
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: escapeJsonLdForScript(structuredDataJson) }}
         />
       )}
       {llmsTxtEnabled && (
         <a
+          key="llms-txt"
           href={`/llms.txt${llmsLangQuery}`}
           className="fd-agent-llms-directive"
           style={agentLlmsDirectiveStyle}
@@ -818,7 +899,10 @@ export function DocsPageClient({
           llms.txt
         </a>
       )}
+      {titleControlsPortal}
+      {tocActionsPortal}
       <DocsPage
+        key="docs-page"
         full={false}
         toc={toc}
         tableOfContent={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
@@ -828,14 +912,19 @@ export function DocsPageClient({
       >
         {effectiveBreadcrumbEnabled && (
           <PathBreadcrumb
+            key="breadcrumb"
             pathname={pathname}
             publicPath={resolvedPublicPath}
             locale={activeLocale}
           />
         )}
         {showActionsAboveTitle && (
-          <div className="fd-below-title-block not-prose">
-            <div className="fd-actions-portal" data-actions-alignment={pageActionsAlignment}>
+          <div key="actions-above-title" className="fd-below-title-block not-prose">
+            <div
+              key="actions"
+              className="fd-actions-portal"
+              data-actions-alignment={pageActionsAlignment}
+            >
               <PageActions
                 copyMarkdown={copyMarkdown}
                 openDocs={openDocs}
@@ -843,6 +932,7 @@ export function DocsPageClient({
                 openDocsTarget={openDocsTarget}
                 openDocsPrompt={openDocsPrompt}
                 alignment={pageActionsAlignment}
+                variant="default"
                 githubFileUrl={githubFileUrl}
                 analytics={analytics}
               />
@@ -851,11 +941,14 @@ export function DocsPageClient({
           </div>
         )}
         {!showReadingTimeAboveTitle && !showReadingTimeBelowTitle ? readingTimeBlock : null}
-        <DocsBody style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ flex: 1 }}>{renderedChildren}</div>
+        <DocsBody key="body" style={{ display: "flex", flexDirection: "column" }}>
+          <div key="content" style={{ flex: 1 }}>
+            {renderedChildren}
+          </div>
           {titleDecorationsPortal}
           {!isChangelogRoute && feedbackEnabled && (
             <DocsFeedback
+              key="feedback"
               pathname={normalizedPath}
               entry={entry}
               locale={activeLocale}
@@ -869,10 +962,10 @@ export function DocsPageClient({
             />
           )}
           {showFooter && (
-            <div className="not-prose fd-page-footer">
-              {githubFileUrl && <EditOnGitHub href={githubFileUrl} />}
+            <div key="footer" className="not-prose fd-page-footer">
+              {githubFileUrl && <EditOnGitHub key="github" href={githubFileUrl} />}
               {llmsTxtEnabled && (
-                <span className="fd-llms-txt-links">
+                <span key="llms-links" className="fd-llms-txt-links">
                   <a
                     href={`/llms.txt${llmsLangQuery}`}
                     target="_blank"
@@ -892,7 +985,9 @@ export function DocsPageClient({
                 </span>
               )}
               {showLastUpdatedInFooter && lastModified && (
-                <span className="fd-last-updated-footer">Last updated {lastModified}</span>
+                <span key="last-updated" className="fd-last-updated-footer">
+                  Last updated {lastModified}
+                </span>
               )}
             </div>
           )}

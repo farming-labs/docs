@@ -1,14 +1,14 @@
 /**
- * Assistant UI theme preset.
- * Compact assistant-ui docs-inspired documentation chrome with neutral
+ * Threadline theme preset.
+ * Compact chat-docs-inspired documentation chrome with neutral
  * shadcn-style tokens, Geist typography, soft surfaces, and page-action defaults.
  *
- * CSS: `@import "@farming-labs/theme/assistant-ui/css";`
+ * CSS: `@import "@farming-labs/theme/threadline/css";`
  */
 import { createTheme } from "@farming-labs/docs";
 import type { PageActionsConfig } from "@farming-labs/docs";
 
-const AssistantUIUIDefaults = {
+const ThreadlineUIDefaults = {
   colors: {
     primary: "oklch(0.205 0 0)",
     primaryForeground: "oklch(0.985 0 0)",
@@ -43,7 +43,7 @@ const AssistantUIUIDefaults = {
   },
   radius: "0.625rem",
   layout: {
-    contentWidth: 912,
+    contentWidth: 944,
     sidebarWidth: 260,
     tocWidth: 224,
     toc: { enabled: true, depth: 3, style: "default" as const },
@@ -73,12 +73,13 @@ const githubIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="curren
 const t3ChatIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4.5 5.5h15v9.75h-7.2L8 19.25v-4H4.5V5.5Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/><path d="M8 9h8M8 12h5.5" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"/></svg>`;
 
 /**
- * Page-action defaults that match the assistant-ui docs affordances as closely
+ * Page-action defaults for compact agent-friendly docs affordances as closely
  * as the shared page-actions API allows.
  */
-const assistantUIPageActions = {
+const threadlinePageActions = {
+  position: "toc",
   copyMarkdown: { enabled: true },
-  alignment: "right",
+  alignment: "left",
   openDocs: {
     enabled: true,
     target: "markdown",
@@ -98,9 +99,9 @@ const assistantUIPageActions = {
   },
 } satisfies PageActionsConfig;
 
-export const assistantUI = createTheme({
-  name: "assistant-ui",
-  ui: AssistantUIUIDefaults,
+export const threadline = createTheme({
+  name: "threadline",
+  ui: ThreadlineUIDefaults,
 });
 
-export { AssistantUIUIDefaults, assistantUIPageActions };
+export { ThreadlineUIDefaults, threadlinePageActions };

@@ -88,10 +88,10 @@
       "import": "./dist/ledger/index.mjs",
       "default": "./dist/ledger/index.mjs"
     },
-    "./assistant-ui": {
-      "types": "./dist/assistant-ui/index.d.mts",
-      "import": "./dist/assistant-ui/index.mjs",
-      "default": "./dist/assistant-ui/index.mjs"
+    "./threadline": {
+      "types": "./dist/threadline/index.d.mts",
+      "import": "./dist/threadline/index.mjs",
+      "default": "./dist/threadline/index.mjs"
     },
     "./search": {
       "types": "./dist/search.d.mts",
@@ -126,7 +126,7 @@
     "./concrete/css": "./styles/concrete.css",
     "./command-grid/css": "./styles/command-grid.css",
     "./ledger/css": "./styles/ledger.css",
-    "./assistant-ui/css": "./styles/assistant-ui.css",
+    "./threadline/css": "./styles/threadline.css",
     "./presets/neutral": "./styles/presets/neutral.css",
     "./presets/black": "./styles/presets/black.css",
     "./presets/base": "./styles/presets/base.css"
