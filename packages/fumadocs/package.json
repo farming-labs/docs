@@ -108,6 +108,11 @@
       "import": "./dist/ai-search-dialog.mjs",
       "default": "./dist/ai-search-dialog.mjs"
     },
+    "./tweaks": {
+      "types": "./dist/tweaks-dialog.d.mts",
+      "import": "./dist/tweaks-dialog.mjs",
+      "default": "./dist/tweaks-dialog.mjs"
+    },
     "./css": "./styles/default.css",
     "./base/css": "./styles/base.css",
     "./default/css": "./styles/default.css",
