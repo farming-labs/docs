@@ -551,39 +551,52 @@ export function resetTweaks(): void {
  * Inline `<script>` body that applies saved tweaks before the browser paints —
  * the same trick `next-themes` uses for dark-mode FOUC prevention.
  *
- * The script is self-contained: it reads `localStorage`, parses the saved
- * state, and writes inline styles directly to `documentElement`. Bundle is
- * inlined so the script has no runtime dependencies.
+ * Mirrors `applyFoucVars` exactly: builds a list of declarations from the
+ * saved state and appends a single `<style id="fd-tweaks-vars">` element to
+ * `<head>`. We can't mutate inline styles on `<html>` / `<body>` here because
+ * those attributes would differ between server render and client paint,
+ * triggering a React hydration mismatch that aborts hydration for the entire
+ * tree (every onClick handler stops working). A `<style>` element appended to
+ * `<head>` isn't part of React's hydration diff.
  */
 export function buildFoucScript(storageKey: string = TWEAKS_DEFAULT_STORAGE_KEY): string {
   const bundle = JSON.stringify(TWEAKS_PRESET_BUNDLE);
   const density = JSON.stringify(TWEAKS_DENSITY_SCALE);
+  const colorMap = JSON.stringify(COLOR_KEY_TO_CSS_VAR);
   const key = JSON.stringify(storageKey);
   return (
     "(function(){try{" +
     `var storage=localStorage.getItem(${key});if(!storage)return;` +
     "var tweaks=JSON.parse(storage);if(!tweaks||typeof tweaks!=='object')return;" +
-    "var root=document.documentElement;" +
     `var presets=${bundle};` +
-    "if(tweaks.preset&&presets[tweaks.preset]){var preset=presets[tweaks.preset];" +
-    "root.style.setProperty('--color-fd-primary',preset.primary);" +
-    "root.style.setProperty('--color-fd-primary-foreground',preset.primaryForeground);" +
-    "root.style.setProperty('--color-fd-background',preset.background);" +
-    "root.style.setProperty('--color-fd-foreground',preset.foreground);" +
-    "root.style.setProperty('--color-fd-muted',preset.muted);" +
-    "root.style.setProperty('--color-fd-muted-foreground',preset.mutedForeground);" +
-    "root.style.setProperty('--color-fd-border',preset.border);" +
-    "root.style.setProperty('--color-fd-card',preset.card);" +
-    "root.style.setProperty('--color-fd-ring',preset.ring);" +
-    "root.style.setProperty('--radius',preset.radius);" +
-    "if(document.body){document.body.style.setProperty('--fd-font-sans',preset.fontSans);}}" +
-    "if(tweaks.primary){root.style.setProperty('--color-fd-primary',tweaks.primary);root.style.setProperty('--color-fd-ring',tweaks.primary);}" +
-    "if(tweaks.radius){root.style.setProperty('--radius',tweaks.radius);" +
+    `var densityMap=${density};` +
+    `var colorMap=${colorMap};` +
+    "var declarations=[];" +
+    "if(tweaks.preset&&presets[tweaks.preset]){var p=presets[tweaks.preset];" +
+    "declarations.push('--color-fd-primary:'+p.primary);" +
+    "declarations.push('--color-fd-primary-foreground:'+p.primaryForeground);" +
+    "declarations.push('--color-fd-background:'+p.background);" +
+    "declarations.push('--color-fd-foreground:'+p.foreground);" +
+    "declarations.push('--color-fd-muted:'+p.muted);" +
+    "declarations.push('--color-fd-muted-foreground:'+p.mutedForeground);" +
+    "declarations.push('--color-fd-border:'+p.border);" +
+    "declarations.push('--color-fd-card:'+p.card);" +
+    "declarations.push('--color-fd-ring:'+p.ring);" +
+    "declarations.push('--radius:'+p.radius);" +
+    "declarations.push('--fd-font-sans:'+p.fontSans);}" +
+    "if(tweaks.primary){declarations.push('--color-fd-primary:'+tweaks.primary);declarations.push('--color-fd-ring:'+tweaks.primary);}" +
+    "if(tweaks.radius){declarations.push('--radius:'+tweaks.radius);" +
     `var radiusOverride=document.createElement('style');radiusOverride.id='${RADIUS_OVERRIDE_STYLE_ID}';` +
     "radiusOverride.textContent=':where(.fd-page-action-btn,.fd-page-action-menu,.fd-page-action-menu-item,.fd-feedback-input,.fd-feedback-submit,.fd-feedback-choice,.fd-page-nav-card,.fd-prompt,.fd-prompt-body,.fd-prompt-action-btn,.fd-prompt-menu,.fd-prompt-menu-item,.fd-ai-dialog,.fd-ai-floating-btn,.fd-ai-suggestion,.fd-ai-input-wrap,.fd-tweaks-dialog,.fd-tweaks-swatch,.fd-tweaks-chip,.fd-tweaks-select,.fd-tweaks-reset,.fd-tweaks-chips){border-radius:'+tweaks.radius+' !important;}';" +
     "document.head.appendChild(radiusOverride);}" +
-    `if(tweaks.density){var density=${density};if(density[tweaks.density])root.style.setProperty('--fd-font-scale',density[tweaks.density]);}` +
-    "if(tweaks.fontFamily&&document.body){document.body.style.setProperty('--fd-font-sans',tweaks.fontFamily);}" +
+    "if(tweaks.density&&densityMap[tweaks.density]){declarations.push('--fd-font-scale:'+densityMap[tweaks.density]);}" +
+    "if(tweaks.fontFamily){declarations.push('--fd-font-sans:'+tweaks.fontFamily);}" +
+    "if(tweaks.colors){for(var k in tweaks.colors){if(colorMap[k]&&tweaks.colors[k]){declarations.push(colorMap[k]+':'+tweaks.colors[k]);}}}" +
+    "if(declarations.length){" +
+    `var varsStyle=document.createElement('style');varsStyle.id='${FOUC_VARS_STYLE_ID}';` +
+    "var parts=[];for(var i=0;i<declarations.length;i++){parts.push(declarations[i]+' !important');}" +
+    "varsStyle.textContent=':root, body { '+parts.join('; ')+'; }';" +
+    "document.head.appendChild(varsStyle);}" +
     "}catch(e){}})();"
   );
 }
