@@ -100,6 +100,26 @@ export default defineDocs({
 @import "@farming-labs/theme/shiny/css";`,
   },
   {
+    key: "assistant-ui",
+    name: "Assistant UI",
+    description:
+      "assistant-ui docs-inspired compact neutral shell with dense Geist typography.",
+    cssImport: '@import "@farming-labs/theme/assistant-ui/css";',
+    colors: ["#0a0a0a", "#ffffff", "#737373", "#e5e5e5"],
+    accent: "#0a0a0a",
+    previewEnabled: false,
+    configSnippet: `import { defineDocs } from "@farming-labs/docs";
+import { assistantUI, assistantUIPageActions } from "@farming-labs/theme/assistant-ui";
+
+export default defineDocs({
+  entry: "docs",
+  theme: assistantUI(),
+  pageActions: assistantUIPageActions,
+});`,
+    globalCss: `@import "tailwindcss";
+@import "@farming-labs/theme/assistant-ui/css";`,
+  },
+  {
     key: "ledger",
     name: "Ledger",
     description:

@@ -1,0 +1,82 @@
+---
+title: "Assistant UI"
+description: "assistant-ui docs-inspired compact neutral theme with right-aligned page actions"
+icon: "bot"
+order: 4.75
+---
+
+# Assistant UI Theme
+
+<Agent>
+Use this page when the user asks about this topic: assistant-ui docs-inspired compact neutral theme with page-action defaults.
+Keep answers grounded in the exact options, routes, commands, and examples documented here.
+If the request moves beyond this page, point to the closest related docs instead of inventing config.
+</Agent>
+
+A compact neutral preset inspired by <HoverLink href="https://www.assistant-ui.com/docs" title="assistant-ui docs" description="assistant-ui's documentation uses a 48px header, compact Geist typography, muted shadcn surfaces, right rail actions, and a clean Fumadocs layout." linkLabel="Visit assistant-ui docs" external>assistant-ui docs</HoverLink>. The preset keeps the visual language neutral so you can use the chrome without adopting assistant-ui branding.
+
+## Usage
+
+```tsx title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+import { assistantUI, assistantUIPageActions } from "@farming-labs/theme/assistant-ui";
+
+export default defineDocs({
+  entry: "docs",
+  theme: assistantUI(),
+  github: {
+    url: "https://github.com/acme/docs",
+  },
+  pageActions: assistantUIPageActions,
+});
+```
+
+```css title="app/global.css"
+@import "tailwindcss";
+@import "@farming-labs/theme/assistant-ui/css";
+```
+
+## Page Actions
+
+`assistantUIPageActions` enables:
+
+- Copy page
+- Open in GitHub
+- Open in ChatGPT
+- Open in Claude
+- Open in Cursor
+- Open in T3 Chat
+
+The GitHub action needs top-level `github` config so the theme can resolve `{githubUrl}` for the current page.
+
+## Defaults
+
+| Property      | Value                                  |
+| ------------- | -------------------------------------- |
+| Primary       | `oklch(0.205 0 0)`                     |
+| Background    | `oklch(1 0 0)` (light), `oklch(0.145 0 0)` (dark) |
+| Border        | `oklch(0.922 0 0)`                     |
+| Border radius | `0.625rem`                             |
+| Content width | 912px                                  |
+| Sidebar width | 260px                                  |
+| TOC width     | 224px                                  |
+| Header height | 48px                                   |
+
+## Style Notes
+
+- Geist-first typography with smaller headings and dense prose
+- Transparent sidebar with soft hover and active states
+- Muted cards, tables, inline code, and code blocks
+- Blue documentation links and info callouts on an otherwise neutral shell
+- Ghost-style page-action buttons with a compact Open in menu
+
+## Customizing
+
+```tsx title="customizing.tsx"
+theme: assistantUI({
+  ui: {
+    colors: { primary: "#111827" },
+    layout: { sidebarWidth: 280, tocWidth: 240 },
+  },
+}),
+```

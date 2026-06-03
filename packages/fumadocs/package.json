@@ -88,6 +88,11 @@
       "import": "./dist/ledger/index.mjs",
       "default": "./dist/ledger/index.mjs"
     },
+    "./assistant-ui": {
+      "types": "./dist/assistant-ui/index.d.mts",
+      "import": "./dist/assistant-ui/index.mjs",
+      "default": "./dist/assistant-ui/index.mjs"
+    },
     "./search": {
       "types": "./dist/search.d.mts",
       "import": "./dist/search.mjs",
@@ -121,6 +126,7 @@
     "./concrete/css": "./styles/concrete.css",
     "./command-grid/css": "./styles/command-grid.css",
     "./ledger/css": "./styles/ledger.css",
+    "./assistant-ui/css": "./styles/assistant-ui.css",
     "./presets/neutral": "./styles/presets/neutral.css",
     "./presets/black": "./styles/presets/black.css",
     "./presets/base": "./styles/presets/base.css"
