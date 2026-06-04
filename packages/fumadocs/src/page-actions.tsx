@@ -187,7 +187,9 @@ export function PageActions({
   const pathname = usePathname();
 
   const resolvedProviders = providers ?? DEFAULT_PROVIDERS;
-  const markdownHref = `${(pathname.replace(/\/+$/, "") || pathname).replace(/\.md$/, "")}.md`;
+  const cleanedPathname = pathname.replace(/\/+$/, "") || "/";
+  const markdownHref =
+    cleanedPathname === "/" ? "/index.md" : `${cleanedPathname.replace(/\.md$/, "")}.md`;
 
   const handleCopyMarkdown = useCallback(async () => {
     try {
@@ -288,7 +290,9 @@ export function PageActions({
     const trigger = document.querySelector<HTMLButtonElement>(
       ".fd-ai-fm-trigger-btn, [data-ai-trigger], button[aria-label='Ask AI']",
     );
-    trigger?.click();
+    if (!trigger) return;
+
+    trigger.click();
     if (analytics) {
       emitClientAnalyticsEvent({
         type: "page_action_ask_ai",
@@ -315,7 +319,7 @@ export function PageActions({
     setCopied(false);
   }, [pathname]);
 
-  if (!copyMarkdown && !openDocs) return null;
+  if (variant !== "rail" && !copyMarkdown && !openDocs) return null;
 
   if (variant === "rail") {
     return (

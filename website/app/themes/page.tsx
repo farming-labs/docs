@@ -113,6 +113,7 @@ import { threadline, threadlinePageActions } from "@farming-labs/theme/threadlin
 export default defineDocs({
   entry: "docs",
   theme: threadline(),
+  github: { url: "https://github.com/acme/docs" },
   pageActions: threadlinePageActions,
 });`,
     globalCss: `@import "tailwindcss";

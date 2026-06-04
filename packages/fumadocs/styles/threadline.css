@@ -7,6 +7,15 @@
   --radius: 0.625rem;
   --fd-nav-height: 48px;
   --docs-header-height: 48px;
+  --fd-threadline-main-width: 944px;
+  --fd-threadline-frame-width: calc(
+    var(--fd-sidebar-width, 260px) + var(--fd-threadline-main-width) +
+      var(--fd-toc-width, 224px)
+  );
+  --fd-threadline-frame-gutter: max(
+    0px,
+    calc((100vw - var(--fd-threadline-frame-width)) / 2)
+  );
 
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -128,12 +137,13 @@ body:has(#nd-docs-layout) {
 .fd-layout {
   --fd-banner-height: var(--docs-header-height);
   --fd-layout-width: 9999px;
-  --fd-threadline-main-width: 944px;
   background: var(--background);
 }
 
 @media (min-width: 1280px) {
   #nd-docs-layout {
+    max-width: var(--fd-threadline-frame-width) !important;
+    margin-inline: auto !important;
     grid-template-columns:
       0px var(--fd-sidebar-width, 260px) minmax(0, var(--fd-threadline-main-width))
       var(--fd-toc-width, 224px) 0px !important;
@@ -680,7 +690,7 @@ figure.shiki button[aria-label*="Copy"]:hover {
   body:has(.omni-overlay) #nd-docs-layout > div:has(> aside#nd-sidebar) {
     position: fixed !important;
     inset-block: var(--docs-header-height, 48px) 0 !important;
-    inset-inline-start: 0 !important;
+    inset-inline-start: var(--fd-threadline-frame-gutter) !important;
     width: var(--fd-sidebar-width, 260px) !important;
     height: calc(100vh - var(--docs-header-height, 48px)) !important;
     z-index: 102 !important;
@@ -691,15 +701,33 @@ figure.shiki button[aria-label*="Copy"]:hover {
     pointer-events: none !important;
   }
 
+  body:has(.omni-overlay) #nd-toc {
+    position: fixed !important;
+    inset-block: var(--docs-header-height, 48px) 0 !important;
+    inset-inline-start: calc(
+      var(--fd-threadline-frame-gutter) + var(--fd-sidebar-width, 260px) +
+        var(--fd-threadline-main-width)
+    ) !important;
+    width: var(--fd-toc-width, 224px) !important;
+    height: calc(100vh - var(--docs-header-height, 48px)) !important;
+    pointer-events: none !important;
+  }
+
   body:has(#nd-sidebar) .omni-overlay {
-    left: var(--fd-sidebar-width, 260px) !important;
+    left: calc(var(--fd-threadline-frame-gutter) + var(--fd-sidebar-width, 260px)) !important;
     right: 0 !important;
     width: auto !important;
   }
 
   body:has(#nd-sidebar) .omni-content {
-    left: calc(var(--fd-sidebar-width, 260px) + (100vw - var(--fd-sidebar-width, 260px)) / 2) !important;
-    width: min(720px, calc(100vw - var(--fd-sidebar-width, 260px) - 32px)) !important;
+    left: calc(
+      var(--fd-threadline-frame-gutter) + var(--fd-sidebar-width, 260px) +
+        (var(--fd-threadline-main-width) + var(--fd-toc-width, 224px)) / 2
+    ) !important;
+    width: min(
+      720px,
+      calc(var(--fd-threadline-main-width) + var(--fd-toc-width, 224px) - 32px)
+    ) !important;
   }
 }
 

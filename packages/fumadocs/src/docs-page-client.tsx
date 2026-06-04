@@ -659,7 +659,7 @@ export function DocsPageClient({
     };
   }, [pathname, children]);
 
-  const showActions = !isChangelogRoute && (copyMarkdown || openDocs);
+  const showActions = !isChangelogRoute && (copyMarkdown || openDocs || pageActionsPosition === "toc");
   const showActionsBelowTitle = showActions && pageActionsPosition === "below-title";
   const showActionsAboveTitle = showActions && pageActionsPosition === "above-title";
   const showActionsInToc = showActions && pageActionsPosition === "toc";

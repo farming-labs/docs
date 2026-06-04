@@ -253,6 +253,7 @@ export function LocaleThemeControl({
           <button
             type="button"
             aria-label="Toggle theme"
+            data-theme-toggle
             onClick={() => applyTheme(resolvedTheme === "light" ? "dark" : "light")}
             style={toggleContainerStyle}
           >
@@ -268,6 +269,7 @@ export function LocaleThemeControl({
             <button
               type="button"
               aria-label="light"
+              data-theme-toggle
               style={getToggleItemStyle(themeValue === "light")}
               onClick={() => applyTheme("light")}
             >
@@ -276,6 +278,7 @@ export function LocaleThemeControl({
             <button
               type="button"
               aria-label="dark"
+              data-theme-toggle
               style={getToggleItemStyle(themeValue === "dark")}
               onClick={() => applyTheme("dark")}
             >
@@ -284,6 +287,7 @@ export function LocaleThemeControl({
             <button
               type="button"
               aria-label="system"
+              data-theme-toggle
               style={getToggleItemStyle(themeValue === "system")}
               onClick={() => applyTheme("system")}
             >
