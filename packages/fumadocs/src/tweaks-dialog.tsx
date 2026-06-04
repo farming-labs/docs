@@ -469,7 +469,9 @@ function TweaksSelect<T extends string>({
   onChange: (next: T) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [flipUp, setFlipUp] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -489,6 +491,20 @@ function TweaksSelect<T extends string>({
     };
   }, [isOpen]);
 
+  // Decide flip direction *before* opening so the menu renders in the right
+  // place on the first paint — no jump. The reader-mode dialog floats near
+  // the viewport edge, so the menu often has no room below the trigger.
+  const handleToggle = () => {
+    if (!isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const menuHeight = 244; // max-height (240) + gap (4)
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      setFlipUp(spaceBelow < menuHeight && spaceAbove > spaceBelow);
+    }
+    setIsOpen((v) => !v);
+  };
+
   const selected = options.find((o) => o.value === value);
 
   return (
@@ -496,13 +512,14 @@ function TweaksSelect<T extends string>({
       <span className="fd-tweaks-row-label">{label}</span>
       <div className="fd-tweaks-select-wrap" ref={wrapRef}>
         <button
+          ref={triggerRef}
           type="button"
           className="fd-tweaks-select-trigger"
           aria-haspopup="listbox"
           aria-expanded={isOpen}
           aria-label={label}
           data-open={isOpen || undefined}
-          onClick={() => setIsOpen((v) => !v)}
+          onClick={handleToggle}
         >
           <span className="fd-tweaks-select-trigger-label">
             {selected?.label ?? "Default"}
@@ -523,7 +540,12 @@ function TweaksSelect<T extends string>({
           </svg>
         </button>
         {isOpen && (
-          <div className="fd-tweaks-select-menu" role="listbox" aria-label={label}>
+          <div
+            className="fd-tweaks-select-menu"
+            role="listbox"
+            aria-label={label}
+            data-flip-up={flipUp || undefined}
+          >
             {options.map((option) => {
               const active = option.value === value;
               return (

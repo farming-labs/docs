@@ -363,6 +363,11 @@
     0 4px 10px -4px rgba(0, 0, 0, 0.35);
 }
 
+.fd-tweaks-select-menu[data-flip-up] {
+  top: auto;
+  bottom: calc(100% + 0.25rem);
+}
+
 .fd-tweaks-select-option {
   display: flex;
   align-items: center;
