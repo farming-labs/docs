@@ -8,6 +8,7 @@ export default withDocs({
   // workspace builds don't fail when example dev is already running.
   distDir: process.env.NODE_ENV === "production" && !process.env.VERCEL ? ".next-build" : ".next",
   allowedDevOrigins: ["127.0.0.1"],
+  devIndicators: false,
   turbopack: {
     root: repoRoot,
   },

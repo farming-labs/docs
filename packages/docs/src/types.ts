@@ -718,10 +718,11 @@ export interface PageActionsConfig {
    *
    * - `"below-title"` — render below the first `<h1>` heading (default)
    * - `"above-title"` — render above the page title / content
+   * - `"toc"` — render as a compact rail in the table-of-contents column
    *
    * @default "below-title"
    */
-  position?: "above-title" | "below-title";
+  position?: "above-title" | "below-title" | "toc";
   /**
    * Horizontal alignment of page action buttons.
    *

@@ -33,6 +33,7 @@ export default defineConfig({
     "src/command-grid/index.ts",
     "src/hardline/index.ts",
     "src/ledger/index.ts",
+    "src/threadline/index.ts",
   ],
   format: "esm",
   unbundle: true,
