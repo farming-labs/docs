@@ -1,20 +1,37 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDocsAgentDiscoverySpec,
+  buildDocsMcpEndpointCandidates,
+  detectDocsMarkdownAgentRequest,
   findDocsMarkdownPage,
+  getDocsMarkdownCanonicalLinkHeader,
   getDocsMarkdownVaryHeader,
   hasDocsMarkdownSignatureAgent,
   isDocsAgentDiscoveryRequest,
+  isDocsAgentsRequest,
+  isDocsLlmsTxtPublicRequest,
   isDocsMcpRequest,
   isDocsPublicGetRequest,
   isDocsSkillRequest,
+  getDocsLlmsTxtMaxCharsIssue,
+  matchesDocsLlmsTxtSection,
   renderDocsMarkdownDocument,
   renderDocsMarkdownNotFound,
+  renderDocsLlmsTxt,
+  renderDocsAgentsDocument,
   renderDocsSkillDocument,
+  resolveDocsMarkdownRecovery,
+  resolveDocsAgentFeedbackConfig,
+  resolveDocsAgentFeedbackRequest,
   resolveDocsAgentMdxContent,
+  resolveDocsAgentsFormat,
   resolveDocsLlmsTxtFormat,
+  resolveDocsLlmsTxtRequest,
+  resolveDocsLlmsTxtSections,
+  resolveDocsMarkdownCanonicalUrl,
   resolveDocsSkillFormat,
   resolveDocsMarkdownRequest,
+  selectDocsLlmsTxtContent,
   toDocsMarkdownUrl,
 } from "./agent.js";
 
@@ -36,6 +53,30 @@ describe("agent route helpers", () => {
     expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/.well-known/llms-full.txt"))).toBe(
       "llms-full",
     );
+    expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/docs/llms.txt"), "docs")).toBe(
+      "llms",
+    );
+    expect(
+      resolveDocsLlmsTxtFormat(new URL("https://example.com/docs/llms-full.txt"), "docs"),
+    ).toBe("llms-full");
+    expect(isDocsLlmsTxtPublicRequest(new URL("https://example.com/llms.txt"))).toBe(true);
+    expect(isDocsLlmsTxtPublicRequest(new URL("https://example.com/.well-known/llms.txt"))).toBe(
+      true,
+    );
+    expect(
+      isDocsLlmsTxtPublicRequest(new URL("https://example.com/docs/llms.txt"), undefined, "docs"),
+    ).toBe(true);
+    expect(
+      isDocsPublicGetRequest(
+        "docs",
+        new URL("https://example.com/docs/llms.txt"),
+        new Request("https://example.com/docs/llms.txt"),
+        {},
+      ),
+    ).toBe(true);
+    expect(isDocsLlmsTxtPublicRequest(new URL("https://example.com/api/docs?format=llms"))).toBe(
+      false,
+    );
 
     expect(isDocsSkillRequest(new URL("https://example.com/skill.md"))).toBe(true);
     expect(isDocsSkillRequest(new URL("https://example.com/.well-known/skill.md"))).toBe(true);
@@ -50,6 +91,147 @@ describe("agent route helpers", () => {
     expect(
       resolveDocsSkillFormat(new URL("https://example.com/internal/docs?format=llms")),
     ).toBeNull();
+
+    expect(isDocsAgentsRequest(new URL("https://example.com/AGENTS.md"))).toBe(true);
+    expect(isDocsAgentsRequest(new URL("https://example.com/.well-known/AGENTS.md"))).toBe(true);
+    expect(isDocsAgentsRequest(new URL("https://example.com/AGENT.md"))).toBe(true);
+    expect(isDocsAgentsRequest(new URL("https://example.com/api/docs?format=agents"))).toBe(true);
+    expect(isDocsAgentsRequest(new URL("https://example.com/blog?format=agents"))).toBe(false);
+    expect(resolveDocsAgentsFormat(new URL("https://example.com/api/docs?format=agents"))).toBe(
+      "agents",
+    );
+  });
+
+  it("derives section-level llms.txt routes from URL matchers", () => {
+    const config = {
+      sections: [
+        {
+          title: "API",
+          description: "Endpoint reference",
+          match: "/docs/api/**",
+          maxChars: { mode: "error" as const, chars: 20 },
+        },
+        {
+          title: "Guides",
+          match: ["/docs/guides/**", "/docs/tutorials/**"],
+        },
+      ],
+    };
+
+    const sections = resolveDocsLlmsTxtSections(config);
+    expect(sections.map((section) => [section.route, section.fullRoute])).toEqual([
+      ["/docs/api/llms.txt", "/docs/api/llms-full.txt"],
+      ["/docs/guides/llms.txt", "/docs/guides/llms-full.txt"],
+    ]);
+    expect(sections[0]?.maxChars).toEqual({ mode: "error", chars: 20 });
+
+    expect(
+      resolveDocsLlmsTxtRequest(new URL("https://example.com/docs/api/llms.txt"), config),
+    ).toMatchObject({
+      format: "llms",
+      section: { title: "API", route: "/docs/api/llms.txt" },
+    });
+    expect(
+      resolveDocsLlmsTxtRequest(new URL("https://example.com/docs/api/llms-full.txt"), config),
+    ).toMatchObject({
+      format: "llms-full",
+      section: { title: "API", route: "/docs/api/llms.txt" },
+    });
+    expect(
+      isDocsLlmsTxtPublicRequest(new URL("https://example.com/docs/api/llms.txt"), config),
+    ).toBe(true);
+    expect(
+      isDocsPublicGetRequest(
+        "docs",
+        new URL("https://example.com/docs/api/llms.txt"),
+        new Request("https://example.com/docs/api/llms.txt"),
+        { llms: config },
+      ),
+    ).toBe(true);
+
+    const [rootDeepSection] = resolveDocsLlmsTxtSections({
+      sections: [{ title: "Everything", match: "/**" }],
+    });
+    expect(rootDeepSection).toBeDefined();
+    expect(matchesDocsLlmsTxtSection("/docs/api/users", rootDeepSection!)).toBe(true);
+    expect(matchesDocsLlmsTxtSection("/docs", rootDeepSection!)).toBe(true);
+
+    const [rootShallowSection] = resolveDocsLlmsTxtSections({
+      sections: [{ title: "Top Level", match: "/*" }],
+    });
+    expect(rootShallowSection).toBeDefined();
+    expect(matchesDocsLlmsTxtSection("/docs", rootShallowSection!)).toBe(true);
+    expect(matchesDocsLlmsTxtSection("/docs/api", rootShallowSection!)).toBe(false);
+  });
+
+  it("renders root and section llms.txt content with progressive disclosure", () => {
+    const content = renderDocsLlmsTxt(
+      [
+        {
+          url: "/docs",
+          title: "Overview",
+          description: "Start here",
+          content: "Welcome.",
+        },
+        {
+          url: "/docs/api/users",
+          title: "Users API",
+          description: "User endpoints",
+          content: "Use the Users API.",
+        },
+        {
+          url: "/docs/guides/auth",
+          title: "Auth Guide",
+          content: "Set up auth.",
+        },
+      ],
+      {
+        siteTitle: "Example Docs",
+        baseUrl: "https://docs.example.com",
+        maxChars: { mode: "warn", chars: 80 },
+        openapi: {
+          enabled: true,
+          url: "/api/docs?format=openapi",
+          apiReferencePath: "/api-reference",
+          source: "generated",
+        },
+        sections: [
+          {
+            title: "API",
+            description: "Endpoint reference",
+            match: "/docs/api/**",
+          },
+        ],
+      },
+    );
+
+    expect(content.llmsTxt).toContain("## Sections");
+    expect(content.llmsTxt).toContain(
+      "- [API](https://docs.example.com/docs/api/llms.txt): Endpoint reference",
+    );
+    expect(content.llmsTxt).toContain("- [Overview](https://docs.example.com/docs.md): Start here");
+    expect(content.llmsTxt).toContain("## API Schemas");
+    expect(content.llmsTxt).toContain(
+      "- [OpenAPI schema](https://docs.example.com/api/docs?format=openapi): Machine-readable API schema for tool use and API clients; rendered API reference at https://docs.example.com/api-reference",
+    );
+    expect(content.llmsTxt).not.toContain("Users API");
+
+    const request = resolveDocsLlmsTxtRequest(
+      new URL("https://docs.example.com/docs/api/llms.txt"),
+      {
+        sections: [{ title: "API", match: "/docs/api/**" }],
+      },
+    );
+    expect(request).not.toBeNull();
+    const selected = request ? selectDocsLlmsTxtContent(content, request) : null;
+    expect(selected?.content).toContain("# Example Docs - API");
+    expect(selected?.content).toContain(
+      "- [Users API](https://docs.example.com/docs/api/users.md)",
+    );
+    expect(selected?.content).not.toContain("Overview");
+
+    const issue = getDocsLlmsTxtMaxCharsIssue("/llms.txt", content.llmsTxt, content.maxChars);
+    expect(issue?.mode).toBe("warn");
   });
 
   it("detects public docs forwarder requests without taking over api/docs", () => {
@@ -75,9 +257,23 @@ describe("agent route helpers", () => {
         "docs",
         new URL("https://example.com/sitemap.xml"),
         new Request("https://example.com/sitemap.xml"),
-        { sitemap: true },
       ),
     ).toBe(true);
+    expect(
+      isDocsPublicGetRequest(
+        "docs",
+        new URL("https://example.com/robots.txt"),
+        new Request("https://example.com/robots.txt"),
+      ),
+    ).toBe(true);
+    expect(
+      isDocsPublicGetRequest(
+        "docs",
+        new URL("https://example.com/robots.txt"),
+        new Request("https://example.com/robots.txt"),
+        { robots: false },
+      ),
+    ).toBe(false);
     expect(
       isDocsPublicGetRequest(
         "docs",
@@ -102,6 +298,56 @@ describe("agent route helpers", () => {
         new Request("https://example.com/api/docs?format=llms"),
       ),
     ).toBe(false);
+  });
+
+  it("builds MCP endpoint probes for default routes, origin fallback, and MCP subdomains", () => {
+    expect(
+      buildDocsMcpEndpointCandidates("https://docs.example.com/docs").map(
+        (candidate) => candidate.url,
+      ),
+    ).toEqual([
+      "https://docs.example.com/docs/mcp",
+      "https://docs.example.com/docs/.well-known/mcp",
+      "https://docs.example.com/mcp",
+      "https://docs.example.com/.well-known/mcp",
+      "https://example.com/mcp",
+      "https://example.com/.well-known/mcp",
+      "https://mcp.example.com/mcp",
+      "https://mcp.example.com/",
+    ]);
+
+    expect(
+      buildDocsMcpEndpointCandidates("https://example.com/docs").map((candidate) => candidate.url),
+    ).toEqual([
+      "https://example.com/docs/mcp",
+      "https://example.com/docs/.well-known/mcp",
+      "https://example.com/mcp",
+      "https://example.com/.well-known/mcp",
+      "https://mcp.example.com/mcp",
+      "https://mcp.example.com/",
+    ]);
+
+    expect(
+      buildDocsMcpEndpointCandidates("https://mcp.example.com").map((candidate) => candidate.url),
+    ).toEqual([
+      "https://mcp.example.com/mcp",
+      "https://mcp.example.com/.well-known/mcp",
+      "https://example.com/mcp",
+      "https://example.com/.well-known/mcp",
+      "https://mcp.example.com/",
+    ]);
+
+    expect(
+      buildDocsMcpEndpointCandidates("https://docs.example.co.uk").map(
+        (candidate) => candidate.url,
+      ),
+    ).toContain("https://mcp.example.co.uk/mcp");
+
+    const koreaCandidates = buildDocsMcpEndpointCandidates("https://docs.example.co.kr").map(
+      (candidate) => candidate.url,
+    );
+    expect(koreaCandidates).toContain("https://mcp.example.co.kr/mcp");
+    expect(koreaCandidates).not.toContain("https://mcp.co.kr/mcp");
   });
 
   it("resolves markdown route and Accept-header requests", () => {
@@ -129,6 +375,59 @@ describe("agent route helpers", () => {
       }),
     );
     expect(signatureAgentRoute).toEqual({ requestedPath: "install" });
+    expect(
+      detectDocsMarkdownAgentRequest(
+        new Request("https://example.com/docs/install", {
+          headers: { "Signature-Agent": "https://chatgpt.com" },
+        }),
+      ),
+    ).toEqual({ detected: true, method: "signature_agent" });
+
+    const userAgentRoute = resolveDocsMarkdownRequest(
+      "docs",
+      new URL("https://example.com/docs/install"),
+      new Request("https://example.com/docs/install", {
+        headers: { "user-agent": "ClaudeBot/1.0" },
+      }),
+    );
+    expect(userAgentRoute).toEqual({ requestedPath: "install" });
+    expect(
+      detectDocsMarkdownAgentRequest(
+        new Request("https://example.com/docs/install", {
+          headers: { "user-agent": "ClaudeBot/1.0" },
+        }),
+      ),
+    ).toEqual({ detected: true, method: "user_agent" });
+
+    const heuristicAgentRoute = resolveDocsMarkdownRequest(
+      "docs",
+      new URL("https://example.com/docs/install"),
+      new Request("https://example.com/docs/install", {
+        headers: { "user-agent": "AcmeAgentFetcher/1.0" },
+      }),
+    );
+    expect(heuristicAgentRoute).toEqual({ requestedPath: "install" });
+    expect(
+      detectDocsMarkdownAgentRequest(
+        new Request("https://example.com/docs/install", {
+          headers: { "user-agent": "AcmeAgentFetcher/1.0" },
+        }),
+      ),
+    ).toEqual({ detected: true, method: "heuristic" });
+    expect(
+      detectDocsMarkdownAgentRequest(
+        new Request("https://example.com/docs/install", {
+          headers: { "user-agent": "AcmeAgentFetcher/1.0", "sec-fetch-mode": "navigate" },
+        }),
+      ),
+    ).toEqual({ detected: false, method: null });
+    expect(
+      detectDocsMarkdownAgentRequest(
+        new Request("https://example.com/docs/install", {
+          headers: { "user-agent": "Googlebot/2.1" },
+        }),
+      ),
+    ).toEqual({ detected: false, method: null });
 
     expect(
       hasDocsMarkdownSignatureAgent(
@@ -151,6 +450,20 @@ describe("agent route helpers", () => {
         }),
       ),
     ).toBe("Accept, Signature-Agent");
+    expect(
+      getDocsMarkdownVaryHeader(
+        new Request("https://example.com/docs/install", {
+          headers: { "user-agent": "ClaudeBot/1.0" },
+        }),
+      ),
+    ).toBe("User-Agent");
+    expect(
+      getDocsMarkdownVaryHeader(
+        new Request("https://example.com/docs/install", {
+          headers: { "user-agent": "AcmeAgentFetcher/1.0" },
+        }),
+      ),
+    ).toBe("User-Agent, Sec-Fetch-Mode");
     expect(getDocsMarkdownVaryHeader(new Request("https://example.com/docs/install"))).toBeNull();
 
     const apiFormatRoute = resolveDocsMarkdownRequest(
@@ -189,14 +502,56 @@ describe("agent route helpers", () => {
     );
   });
 
-  it("renders recovery links for markdown 404 responses", () => {
+  it("builds canonical Link headers for markdown mirrors", () => {
+    expect(
+      resolveDocsMarkdownCanonicalUrl({
+        origin: "https://docs.example.com",
+        entry: "docs",
+        requestedPath: "install",
+      }),
+    ).toBe("https://docs.example.com/docs/install");
+
+    expect(
+      resolveDocsMarkdownCanonicalUrl({
+        origin: "https://docs.example.com",
+        entry: "docs",
+        requestedPath: "",
+        locale: "fr",
+      }),
+    ).toBe("https://docs.example.com/docs?lang=fr");
+
+    expect(
+      getDocsMarkdownCanonicalLinkHeader({
+        origin: "https://docs.example.com",
+        entry: "docs",
+        requestedPath: "/docs/install.md",
+      }),
+    ).toBe('<https://docs.example.com/docs/install>; rel="canonical"');
+  });
+
+  it("renders recovery links for missing markdown responses", () => {
     const document = renderDocsMarkdownNotFound({
       entry: "docs",
       requestedPath: "missing/page",
+      origin: "https://docs.example.com",
+      pages: [
+        {
+          slug: "missing-pages",
+          url: "/docs/missing-pages",
+          title: "Missing Pages",
+          description: "Recover from missing docs pages",
+          content: "Recovery guide",
+        },
+      ],
       sitemap: { routePrefix: "/docs-map" },
     });
 
+    expect(document).toMatch(/^---\ntitle: "Docs Page Not Found"/);
+    expect(document).toContain('canonical_url: "https://docs.example.com/docs/missing/page"');
+    expect(document).toContain('markdown_url: "https://docs.example.com/docs/missing/page.md"');
     expect(document).toContain("# Docs Page Not Found");
+    expect(document).toContain("## Closest Matches");
+    expect(document).toContain("[Missing Pages](/docs/missing-pages.md)");
     expect(document).toContain("`/docs/missing/page.md`");
     expect(document).toContain("`/.well-known/agent.json`");
     expect(document).toContain("`/api/docs?query={query}`");
@@ -204,6 +559,52 @@ describe("agent route helpers", () => {
     expect(document).toContain("`/docs-map/sitemap.md`");
     expect(document).toContain("`/docs-map/.well-known/sitemap.md`");
     expect(document).toContain("`/docs-map/sitemap.xml`");
+    expect(document).toContain("## Sitemap");
+    expect(document).toContain("See the full [sitemap](/docs-map/sitemap.md)");
+  });
+
+  it("resolves high-confidence markdown recovery redirects", () => {
+    const recovery = resolveDocsMarkdownRecovery({
+      entry: "docs",
+      requestedPath: "instal",
+      pages: [
+        {
+          slug: "install",
+          url: "/docs/install",
+          title: "Install",
+          description: "Install the framework",
+          content: "Install docs",
+        },
+        {
+          slug: "configuration",
+          url: "/docs/configuration",
+          title: "Configuration",
+          content: "Config docs",
+        },
+      ],
+    });
+
+    expect(recovery.redirect?.markdownUrl).toBe("/docs/install.md");
+    expect(recovery.redirect?.confidence).toBeGreaterThanOrEqual(0.99);
+  });
+
+  it("bounds oversized requested paths during markdown recovery scoring", () => {
+    const recovery = resolveDocsMarkdownRecovery({
+      entry: "docs",
+      requestedPath: `install/${"x".repeat(20_000)}`,
+      pages: [
+        {
+          slug: "install",
+          url: "/docs/install",
+          title: "Install",
+          description: "Install the framework",
+          content: "Install docs",
+        },
+      ],
+    });
+
+    expect(recovery.redirect).toBeUndefined();
+    expect(recovery.matches[0]?.markdownUrl).toBe("/docs/install.md");
   });
 
   it("renders agent-specific markdown documents", () => {
@@ -223,6 +624,7 @@ describe("agent route helpers", () => {
           url: "/docs/install",
           title: "Install",
           description: "Install the framework",
+          lastModified: "2026-05-27T12:30:00.000Z",
           related: [{ href: "/docs/configuration" }],
           content: "Visible",
           rawContent: "Visible",
@@ -233,8 +635,19 @@ describe("agent route helpers", () => {
     );
 
     expect(page).not.toBeNull();
-    expect(renderDocsMarkdownDocument(page!)).toContain("Related: /docs/configuration");
-    expect(renderDocsMarkdownDocument(page!)).toContain("Hidden");
+    const document = renderDocsMarkdownDocument(page!, { origin: "https://docs.example.com" });
+    expect(document).toMatch(/^---\ntitle: "Install"/);
+    expect(document).toContain('description: "Install the framework"');
+    expect(document).toContain('canonical_url: "https://docs.example.com/docs/install"');
+    expect(document).toContain('markdown_url: "https://docs.example.com/docs/install.md"');
+    expect(document).toContain('last_updated: "2026-05-27"');
+    expect(document).toContain("LLM index: /llms.txt");
+    expect(renderDocsMarkdownDocument(page!, { llms: false })).not.toContain(
+      "LLM index: /llms.txt",
+    );
+    expect(document).toContain("Related: /docs/configuration");
+    expect(document).toContain("Hidden");
+    expect(document).toContain("## Sitemap");
   });
 
   it("renders the generated skill.md document", () => {
@@ -248,16 +661,25 @@ describe("agent route helpers", () => {
         name: "docs",
         version: "1.0.0",
         tools: {
+          listDocs: true,
           listPages: true,
           readPage: true,
           searchDocs: true,
           getNavigation: true,
+          getCodeExamples: true,
+          getConfigSchema: true,
         },
       },
       llms: {
         enabled: true,
         siteTitle: "Guides",
         siteDescription: "Machine-readable guides",
+      },
+      openapi: {
+        enabled: true,
+        url: "/api/docs?format=openapi",
+        apiReferencePath: "/api-reference",
+        source: "generated",
       },
     });
 
@@ -268,6 +690,58 @@ describe("agent route helpers", () => {
     expect(document).toContain("/.well-known/agent.json");
     expect(document).toContain("/robots.txt");
     expect(document).toContain("/api/docs?format=skill");
+    expect(document).toContain("OpenAPI schema: /api/docs?format=openapi");
+    expect(document).toContain("API reference: /api-reference");
+    expect(document).toContain("npx skills add farming-labs/docs");
+  });
+
+  it("renders the generated AGENTS.md document", () => {
+    const document = renderDocsAgentsDocument({
+      origin: "https://docs.example.com",
+      entry: "guides",
+      search: true,
+      mcp: {
+        enabled: true,
+        route: "/api/docs/mcp",
+        name: "docs",
+        version: "1.0.0",
+        tools: {
+          listDocs: true,
+          listPages: true,
+          readPage: true,
+          searchDocs: true,
+          getNavigation: true,
+          getCodeExamples: true,
+          getConfigSchema: true,
+        },
+      },
+      feedback: {
+        enabled: true,
+        route: "/api/docs/agent/feedback",
+        schemaRoute: "/api/docs/agent/feedback/schema",
+      },
+      llms: {
+        enabled: true,
+        siteTitle: "Guides",
+        siteDescription: "Machine-readable guides",
+      },
+      openapi: {
+        enabled: true,
+        url: "/api/docs?format=openapi",
+        apiReferencePath: "/api-reference",
+        source: "generated",
+      },
+    });
+
+    expect(document).toContain("# Agent Instructions");
+    expect(document).toContain("Site: Guides");
+    expect(document).toContain("Base URL: https://docs.example.com");
+    expect(document).toContain("/guides.md");
+    expect(document).toContain("/AGENTS.md");
+    expect(document).toContain("/.well-known/AGENTS.md");
+    expect(document).toContain("/api/docs?format=agents");
+    expect(document).toContain("/api/docs?format=openapi");
+    expect(document).toContain("npx @farming-labs/docs@latest upgrade --latest");
     expect(document).toContain("npx skills add farming-labs/docs");
   });
 
@@ -281,21 +755,41 @@ describe("agent route helpers", () => {
         name: "docs",
         version: "1.0.0",
         tools: {
+          listDocs: true,
           listPages: true,
           readPage: true,
           searchDocs: true,
           getNavigation: true,
+          getCodeExamples: true,
+          getConfigSchema: true,
         },
       },
       llms: { enabled: true, siteTitle: "Docs" },
       sitemap: true,
       robots: true,
+      openapi: {
+        enabled: true,
+        url: "/api/docs?format=openapi",
+        apiReferencePath: "/api-reference",
+        source: "generated",
+      },
     });
 
     expect(spec.api.agentSpecDefault).toBe("/.well-known/agent.json");
+    expect(spec.api.agents).toBe("/api/docs?format=agents");
+    expect(spec.api.openapi).toBe("/api/docs?format=openapi");
     expect(spec.markdown.rootPage).toBe("/docs.md");
     expect(spec.markdown.signatureAgentHeader).toBe("Signature-Agent");
     expect(spec.llms.publicTxt).toBe("/llms.txt");
+    expect(spec.agents).toEqual({
+      enabled: true,
+      file: "AGENTS.md",
+      route: "/AGENTS.md",
+      wellKnown: "/.well-known/AGENTS.md",
+      api: "/api/docs?format=agents",
+      generatedFallback: true,
+      aliases: ["/AGENT.md", "/.well-known/AGENT.md"],
+    });
     expect(spec.skills.file).toBe("skill.md");
     expect(spec.skills.route).toBe("/skill.md");
     expect(spec.skills.wellKnown).toBe("/.well-known/skill.md");
@@ -303,12 +797,56 @@ describe("agent route helpers", () => {
     expect(spec.skills.generatedFallback).toBe(true);
     expect(spec.mcp.publicEndpoints).toEqual(["/mcp", "/.well-known/mcp"]);
     expect(spec.sitemap.xml.route).toBe("/sitemap.xml");
+    expect(spec.sitemap.markdown.docsRoute).toBe("/docs/sitemap.md");
     expect(spec.sitemap.markdown.wellKnownRoute).toBe("/.well-known/sitemap.md");
     expect(spec.capabilities.robots).toBe(true);
+    expect(spec.capabilities.agents).toBe(true);
+    expect(spec.capabilities.structuredData).toBe(true);
+    expect(spec.capabilities.apiReference).toBe(true);
+    expect(spec.capabilities.openapi).toBe(true);
+    expect(spec.openapi).toEqual({
+      enabled: true,
+      url: "/api/docs?format=openapi",
+      source: "generated",
+      specUrl: null,
+      apiReferencePath: "/api-reference",
+      format: "OpenAPI 3.1",
+    });
     expect(spec.robots).toEqual({
       enabled: true,
       route: "/robots.txt",
       defaultRoute: "/robots.txt",
     });
+    expect(spec.structuredData).toEqual({
+      enabled: true,
+      format: "application/ld+json",
+      schema: "https://schema.org/TechArticle",
+      fields: ["headline", "description", "url", "dateModified", "breadcrumb"],
+      canonicalUrlField: "url",
+      breadcrumbType: "BreadcrumbList",
+    });
+  });
+
+  it("resolves agent feedback endpoints as default-on with explicit opt-out", () => {
+    const enabled = resolveDocsAgentFeedbackConfig();
+
+    expect(enabled.enabled).toBe(true);
+    expect(enabled.route).toBe("/api/docs/agent/feedback");
+    expect(enabled.schemaRoute).toBe("/api/docs/agent/feedback/schema");
+    expect(
+      resolveDocsAgentFeedbackRequest(
+        new URL("https://example.com/api/docs/agent/feedback/schema"),
+        enabled,
+      ),
+    ).toEqual({ kind: "schema" });
+    expect(
+      resolveDocsAgentFeedbackRequest(
+        new URL("https://example.com/api/docs?feedback=agent"),
+        enabled,
+      ),
+    ).toEqual({ kind: "submit" });
+
+    expect(resolveDocsAgentFeedbackConfig(false).enabled).toBe(false);
+    expect(resolveDocsAgentFeedbackConfig({ agent: false }).enabled).toBe(false);
   });
 });

@@ -241,7 +241,8 @@ Use this docs site through markdown routes and MCP.
 
     expect(report.framework).toBe("nextjs");
     expect(report.grade).toBe("Agent-optimized");
-    expect(report.score).toBeGreaterThanOrEqual(95);
+    expect(report.score).toBeGreaterThanOrEqual(90);
+    expect(report.maxScore).toBe(100);
     expect(report.coverage.totalPages).toBe(3);
     expect(report.coverage.pagesWithAgentFiles).toBe(1);
     expect(report.coverage.pagesWithAgentBlocks).toBe(1);
@@ -254,6 +255,7 @@ Use this docs site through markdown routes and MCP.
     expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "metadata")?.status).toBe("pass");
     expect(report.checks.find((check) => check.id === "compact")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "compact")?.score).toBe(5);
   });
 
   it("checks the local robots.txt agent policy", async () => {
@@ -297,9 +299,11 @@ Allow: /llms.txt
 Allow: /llms-full.txt
 Allow: /sitemap.xml
 Allow: /sitemap.md
+Allow: /docs/sitemap.md
 Allow: /.well-known/sitemap.md
 Allow: /.well-known/agent.json
 Allow: /.well-known/agent
+Allow: /AGENTS.md
 Allow: /skill.md
 Allow: /mcp
 
@@ -323,6 +327,45 @@ Allow: /
     expect(report.checks.find((check) => check.id === "robots")?.detail).toContain(
       "public/robots.txt",
     );
+    expect(report.checks.find((check) => check.id === "feedback")?.status).toBe("pass");
+    expect(report.checks.find((check) => check.id === "skill")?.status).toBe("pass");
+  });
+
+  it("detects agent.compact in static config parsing when feedback.agent appears first", async () => {
+    writePackageJson(tmpDir, "doctor-static-agent", { next: "16.0.0" });
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.tsx"),
+      `export default {
+  entry: "docs",
+  nav: {
+    title: <span>Docs</span>,
+  },
+  feedback: {
+    agent: {
+      enabled: true,
+    },
+  },
+  agent: {
+    compact: {
+      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+      model: "bear-1.2",
+    },
+  },
+};`,
+      "utf-8",
+    );
+
+    writeDocsPage(tmpDir, path.join("app", "docs"));
+
+    process.chdir(tmpDir);
+
+    const report = await inspectAgentReadiness();
+    const compactCheck = report.checks.find((check) => check.id === "compact");
+
+    expect(compactCheck?.status).toBe("pass");
+    expect(compactCheck?.score).toBe(5);
+    expect(compactCheck?.detail).toContain("agent.compact defaults are configured");
   });
 
   it("probes hosted agent surfaces when --url is provided", async () => {
@@ -369,8 +412,22 @@ export const { GET, POST } = createDocsAPI({});
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(
             JSON.stringify({
+              capabilities: {
+                markdownRoutes: true,
+                structuredData: true,
+              },
               mcp: { enabled: true },
               llms: { enabled: true },
+              sitemap: {
+                enabled: true,
+                xml: { enabled: true, route: "/sitemap.xml" },
+                markdown: {
+                  enabled: true,
+                  route: "/sitemap.md",
+                  docsRoute: "/docs/sitemap.md",
+                  wellKnownRoute: "/.well-known/sitemap.md",
+                },
+              },
               robots: { enabled: true, route: "/robots.txt" },
             }),
           );
@@ -386,6 +443,7 @@ export const { GET, POST } = createDocsAPI({});
         if (
           url.pathname === "/sitemap.xml" ||
           url.pathname === "/sitemap.md" ||
+          url.pathname === "/docs/sitemap.md" ||
           url.pathname === "/.well-known/sitemap.md"
         ) {
           res.writeHead(200, { "Content-Type": "text/plain" });
@@ -401,9 +459,11 @@ Allow: /llms.txt
 Allow: /llms-full.txt
 Allow: /sitemap.xml
 Allow: /sitemap.md
+Allow: /docs/sitemap.md
 Allow: /.well-known/sitemap.md
 Allow: /.well-known/agent.json
 Allow: /.well-known/agent
+Allow: /AGENTS.md
 Allow: /skill.md
 Allow: /mcp
 
@@ -425,9 +485,32 @@ Allow: /
           return;
         }
 
-        if (url.pathname === "/docs.md") {
+        if (url.pathname === "/AGENTS.md" || url.pathname === "/.well-known/AGENTS.md") {
           res.writeHead(200, { "Content-Type": "text/markdown" });
+          res.end("# Agent Instructions\n\nUse markdown routes.");
+          return;
+        }
+
+        if (url.pathname === "/docs.md") {
+          const host = req.headers.host ?? "127.0.0.1";
+          res.writeHead(200, {
+            "Content-Type": "text/markdown",
+            Link: `<http://${host}/docs>; rel="canonical"`,
+          });
           res.end("# Overview\n\nMarkdown route content.");
+          return;
+        }
+
+        if (url.pathname === "/docs") {
+          res.writeHead(200, { "Content-Type": "text/html" });
+          res.end(`<!doctype html>
+<html>
+  <head>
+    <link rel="alternate" type="text/markdown" href="/docs.md" />
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Overview"}</script>
+  </head>
+  <body><main><h1>Overview</h1></main></body>
+</html>`);
           return;
         }
       }
@@ -473,20 +556,15 @@ Allow: /
         };
 
         if (payload.method === "initialize") {
-          writeMcpPayload(
-            {
-              jsonrpc: "2.0",
-              id: payload.id,
-              result: {
-                protocolVersion: "2025-11-25",
-                capabilities: {},
-                serverInfo: { name: "doctor-test", version: "1.0.0" },
-              },
+          writeMcpPayload({
+            jsonrpc: "2.0",
+            id: payload.id,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: {},
+              serverInfo: { name: "doctor-test", version: "1.0.0" },
             },
-            {
-              "mcp-session-id": `session-${url.pathname.replace(/\W+/g, "-")}`,
-            },
-          );
+          });
           return;
         }
 
@@ -502,10 +580,13 @@ Allow: /
             id: payload.id,
             result: {
               tools: [
+                { name: "list_docs" },
                 { name: "list_pages" },
                 { name: "get_navigation" },
                 { name: "search_docs" },
                 { name: "read_page" },
+                { name: "get_code_examples" },
+                { name: "get_config_schema" },
               ],
             },
           });
@@ -525,7 +606,9 @@ Allow: /
       const report = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
 
       expect(report.url).toBe(`http://127.0.0.1:${port}`);
-      expect(report.maxScore).toBe(145);
+      expect(report.maxScore).toBe(100);
+      expect(report.score).toBeLessThanOrEqual(100);
+      expect(report.score).toBeGreaterThan(75);
       expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(
         "pass",
       );
@@ -534,9 +617,21 @@ Allow: /
       expect(report.checks.find((check) => check.id === "hosted-robots")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-skill")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-markdown")?.status).toBe("pass");
+      const markdownCanonicalCheck = report.checks.find(
+        (check) => check.id === "hosted-markdown-canonical",
+      );
+      expect(markdownCanonicalCheck?.status).toBe("pass");
+      expect(markdownCanonicalCheck?.score).toBe(1);
+      expect(markdownCanonicalCheck?.maxScore).toBe(1);
+      expect(report.checks.find((check) => check.id === "hosted-structured-data")?.status).toBe(
+        "pass",
+      );
+      expect(report.checks.find((check) => check.id === "hosted-markdown-alternate")?.status).toBe(
+        "pass",
+      );
       expect(report.checks.find((check) => check.id === "hosted-mcp")?.status).toBe("pass");
       expect(report.checks.find((check) => check.id === "hosted-mcp")?.detail).toContain(
-        "/.well-known/mcp initialized",
+        "/.well-known/mcp initialized statelessly",
       );
     } finally {
       await new Promise<void>((resolve, reject) =>
@@ -631,8 +726,8 @@ Use this docs site through markdown routes and MCP.
       process.chdir(tmpDir);
       const report = await inspectAgentReadiness({ url: `http://127.0.0.1:${port}` });
 
-      expect(report.maxScore).toBe(145);
-      expect(report.score).toBeGreaterThanOrEqual(90);
+      expect(report.maxScore).toBe(100);
+      expect(report.score).toBeLessThan(90);
       expect(report.grade).not.toBe("Agent-optimized");
       expect(report.checks.find((check) => check.id === "hosted-agent-discovery")?.status).toBe(
         "fail",

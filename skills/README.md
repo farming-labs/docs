@@ -11,7 +11,7 @@ Skills are organized under **`farming-labs/`** and divided by topic. Use the ski
 | Skill | Path | When to use |
 | ----- | ---- | ----------- |
 | **Getting started** | [farming-labs/getting-started](./farming-labs/getting-started/SKILL.md) | Setup, init, manual install, theme CSS, defineDocs, packages by framework. |
-| **CLI** | [farming-labs/cli](./farming-labs/cli/SKILL.md) | Scaffolding and commands: `init`, `upgrade`, `sitemap generate`, `--template`, `--name`, `--theme`, `--framework`, package manager commands. |
+| **CLI** | [farming-labs/cli](./farming-labs/cli/SKILL.md) | Scaffolding and commands: `init`, `upgrade`, `agents generate`, `sitemap generate`, `--template`, `--name`, `--theme`, `--framework`, package manager commands. |
 | **Creating themes** | [farming-labs/creating-themes](./farming-labs/creating-themes/SKILL.md) | Build and share themes: `createTheme()`, `extendTheme()`, publish as npm, CSS overrides. |
 | **Ask AI** | [farming-labs/ask-ai](./farming-labs/ask-ai/SKILL.md) | RAG-powered AI chat: mode, floatingStyle, providers, models, suggestedQuestions, apiKey. |
 | **Page actions** | [farming-labs/page-actions](./farming-labs/page-actions/SKILL.md) | Copy Markdown and Open in LLM: copyMarkdown, openDocs, providers, urlTemplate. |

@@ -7,7 +7,13 @@ order: 5.8
 
 # llms.txt
 
-Serve <HoverLink href="https://llmstxt.org" title="llms.txt" description="An open convention for exposing website content to language models in a predictable, crawlable text format." linkLabel="Read the llms.txt spec" external><code>llms.txt</code></HoverLink> content through your existing docs API and the default public aliases. Just enable it in your config.
+<Agent>
+Use this page when the user asks about this topic: Auto-generate llms.txt and llms-full.txt for LLM-friendly documentation.
+Keep answers grounded in the exact options, routes, commands, and examples documented here.
+If the request moves beyond this page, point to the closest related docs instead of inventing config.
+</Agent>
+
+Serve <HoverLink href="https://llmstxt.org" title="llms.txt" description="An open convention for exposing website content to language models in a predictable, crawlable text format." linkLabel="Read the llms.txt spec" external><code>llms.txt</code></HoverLink> content through your existing docs API and the default public aliases. It is enabled by default.
 
 ## What is llms.txt?
 
@@ -27,9 +33,11 @@ The shared API handler remains the source of truth:
 
 ## Quick Start
 
+No config is required for the default routes. Add `llmsTxt` only when you want to customize the
+public base URL, title, description, or explicitly opt out.
+
 ```ts title="docs.config.ts"
 llmsTxt: {
-  enabled: true,
   baseUrl: "https://docs.example.com",
 }
 ```
@@ -38,11 +46,26 @@ That's it. The existing API handler serves the content automatically. Next.js ad
 `withDocs()`; TanStack Start, SvelteKit, Astro, and Nuxt add one public forwarder each so the public
 aliases do not need one route file per URL.
 
+## Custom Static Files
+
+You do not need a config flag to replace the generated files. If your app already ships a native
+static file at the same public route, that file wins and the generated route is only used as the
+fallback.
+
+| Framework | Static file location |
+| --------- | -------------------- |
+| Next.js, Astro, Nuxt, TanStack Start | `public/llms.txt`, `public/llms-full.txt` |
+| SvelteKit | `static/llms.txt`, `static/llms-full.txt` |
+
+The same convention applies to `/.well-known/llms.txt` and `/.well-known/llms-full.txt` when you
+publish those files in the framework's static directory. Keep `llmsTxt` configured only when you
+want generated fallback metadata such as `baseUrl`, `siteTitle`, sections, or a size budget.
+
 ---
 
 ## Configuration Reference
 
-All options go inside the `llmsTxt` object in `docs.config.ts`:
+All options go inside the optional `llmsTxt` object in `docs.config.ts`:
 
 ```ts title="docs.config.ts"
 export default defineDocs({
@@ -58,7 +81,7 @@ Enable or disable llms.txt generation.
 
 | Type      | Default |
 | --------- | ------- |
-| `boolean` | `false` |
+| `boolean` | `true`  |
 
 ### `llmsTxt.baseUrl`
 
@@ -70,7 +93,6 @@ Base URL prepended to all page links in the generated files.
 
 ```ts title="llmstxt-baseurl.ts"
 llmsTxt: {
-  enabled: true,
   baseUrl: "https://docs.example.com",
 }
 ```
@@ -91,6 +113,64 @@ Description shown below the title.
 | -------- | ----------- |
 | `string` | `undefined` |
 
+### `llmsTxt.maxChars`
+
+Character budget for generated compact `llms.txt` files. The default warns when a root or section
+file grows past 50,000 characters. `llms-full.txt` is intentionally not budgeted because it is the
+full-content fallback.
+
+| Type                                       | Default                         |
+| ------------------------------------------ | ------------------------------- |
+| `{ mode?: "warn" \| "error" \| "off"; chars?: number }` | `{ mode: "warn", chars: 50000 }` |
+
+```ts title="llmstxt-maxchars.ts"
+llmsTxt: {
+  maxChars: {
+    mode: "warn",
+    chars: 50_000,
+  },
+}
+```
+
+### `llmsTxt.sections`
+
+Optional section-level `llms.txt` files for larger docs. Each matcher is a public URL pattern.
+The framework derives both routes from `match`.
+
+```ts title="llmstxt-sections.ts"
+llmsTxt: {
+  sections: [
+    {
+      title: "API",
+      description: "Endpoint, SDK, and integration reference pages.",
+      match: "/docs/api/**",
+      maxChars: {
+        mode: "warn",
+        chars: 25_000,
+      },
+    },
+    {
+      title: "Guides",
+      description: "Task-based implementation walkthroughs.",
+      match: "/docs/guides/**",
+    },
+  ],
+}
+```
+
+Derived routes:
+
+- `/docs/api/llms.txt`
+- `/docs/api/llms-full.txt`
+- `/docs/guides/llms.txt`
+- `/docs/guides/llms-full.txt`
+
+This docs site dogfoods the section feature with `Guides`, `Customization`, and `Themes` sections.
+For example, the generated compact `Guides` section file is
+[`/docs/guides/llms.txt`](/docs/guides/llms.txt), and the full-content sibling is
+[`/docs/guides/llms-full.txt`](/docs/guides/llms-full.txt). Those routes are not UI pages; they are
+machine-readable text responses served by the same docs API.
+
 ---
 
 ## How It Works
@@ -107,7 +187,7 @@ also expose the crawler-friendly public aliases:
 - `GET /llms-full.txt` — default full-content route
 - `GET /.well-known/llms.txt`
 - `GET /.well-known/llms-full.txt`
-- `GET /.well-known/agent.json` for the preferred agent discovery spec that references those `llms.txt` routes, the `robots.txt` route, and the sitemap routes when enabled
+- `GET /.well-known/agent.json` for the preferred agent discovery spec that references those `llms.txt` routes, the `AGENTS.md` routes, the `robots.txt` route, and the sitemap routes when enabled
 - `GET /.well-known/agent` as the fallback agent discovery alias
 
 Those aliases rewrite to the same shared API output, so there is still only one content pipeline.
@@ -115,6 +195,20 @@ The agent discovery spec also advertises `defaultTxt: "/llms.txt"` and
 `defaultFull: "/llms-full.txt"` so integrations can use the intended defaults without adding their
 own framework-specific routes. TanStack Start, SvelteKit, Astro, and Nuxt can use the shared API
 query routes directly when they do not want to add the public aliases.
+
+The compact `llms.txt` listing links to each page's markdown route by default, for example
+`/docs/installation.md` instead of `/docs/installation`. That gives agents a direct path to the
+machine-readable page and keeps the root index aligned with AFDocs-style checks. `llms-full.txt`
+still includes the canonical page URL in its `URL:` line because the content is already embedded in
+that file.
+
+If `apiReference` is enabled, root `llms.txt` also includes an `API Schemas` section that links to
+`/api/docs?format=openapi`. Agents can fetch the schema before reading rendered endpoint docs.
+
+When `llmsTxt.sections` is configured, root `/llms.txt` lists those section files first and only
+keeps unmatched pages in the root page list. Each section route serves the matching pages, and its
+`llms-full.txt` sibling serves the full matching content. No UI is added; this only changes the
+machine-readable route layer.
 
 When you also want crawlers and AI agents to see an explicit access policy, publish
 `/robots.txt` with `docs robots generate`. The generated policy allows the public `llms.txt`
@@ -131,11 +225,15 @@ aliases along with docs, markdown, sitemap, skill, MCP, and agent discovery rout
 
 > A modern docs framework
 
+## API Schemas
+
+- [OpenAPI schema](https://docs.example.com/api/docs?format=openapi): Machine-readable API schema for tool use and API clients; rendered API reference at https://docs.example.com/api-reference
+
 ## Pages
 
-- [Introduction](https://docs.example.com/docs): Getting started guide
-- [Installation](https://docs.example.com/docs/installation): How to install
-- [Configuration](https://docs.example.com/docs/configuration): Config reference
+- [Introduction](https://docs.example.com/docs.md): Getting started guide
+- [Installation](https://docs.example.com/docs/installation.md): How to install
+- [Configuration](https://docs.example.com/docs/configuration.md): Config reference
 ```
 
 ### `/api/docs?format=llms-full`
@@ -168,7 +266,7 @@ Full page content here...
 
 ## Footer Links
 
-When enabled, `llms.txt` and `llms-full.txt` links automatically appear in the page footer next to "Edit on GitHub", pointing to the public `/llms.txt` and `/llms-full.txt` routes.
+Because `llms.txt` is enabled by default, `llms.txt` and `llms-full.txt` links automatically appear in the page footer next to "Edit on GitHub", pointing to the public `/llms.txt` and `/llms-full.txt` routes.
 
 ## Full Example
 
@@ -176,7 +274,6 @@ When enabled, `llms.txt` and `llms-full.txt` links automatically appear in the p
 export default defineDocs({
   entry: "docs",
   llmsTxt: {
-    enabled: true,
     baseUrl: "https://docs.example.com",
     siteTitle: "My Project Docs",
     siteDescription: "Comprehensive documentation for My Project",

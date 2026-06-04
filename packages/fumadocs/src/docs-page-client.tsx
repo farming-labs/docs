@@ -1,15 +1,7 @@
 "use client";
 
 import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page";
-import {
-  Children,
-  Fragment,
-  cloneElement,
-  isValidElement,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { Children, Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "fumadocs-core/framework";
 import type { DocsFeedbackData } from "@farming-labs/docs";
@@ -18,6 +10,19 @@ import { useWindowSearchParams } from "./client-location.js";
 import { DocsFeedback } from "./docs-feedback.js";
 import { resolveClientLocale, withLangInUrl } from "./i18n.js";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
+import { escapeJsonLdForScript } from "./json-ld.js";
+
+const agentLlmsDirectiveStyle: CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clip: "rect(0, 0, 0, 0)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
 
 interface TOCItem {
   title: string;
@@ -25,16 +30,13 @@ interface TOCItem {
   depth: number;
 }
 
-interface TitleInsertions {
-  description?: ReactNode;
-  belowTitle?: ReactNode;
-}
-
 /** Serializable provider — icon is an HTML string, not JSX. */
 interface SerializedProvider {
   name: string;
   iconHtml?: string;
   urlTemplate: string;
+  target?: "markdown" | "page" | "source" | "github";
+  prompt?: string;
 }
 
 interface DocsPageClientProps {
@@ -44,13 +46,17 @@ interface DocsPageClientProps {
   changelogBasePath?: string;
   /** The docs entry folder name (e.g. "docs") — used to strip from breadcrumb */
   entry?: string;
+  /** Public docs route prefix. Empty string means docs render from the site root. */
+  publicPath?: string;
   /** Active locale (used for llms.txt links) */
   locale?: string;
   copyMarkdown?: boolean;
   openDocs?: boolean;
   openDocsProviders?: SerializedProvider[];
+  openDocsTarget?: "markdown" | "page" | "source" | "github";
+  openDocsPrompt?: string;
   /** Where to render page actions relative to the title */
-  pageActionsPosition?: "above-title" | "below-title";
+  pageActionsPosition?: "above-title" | "below-title" | "toc";
   /** Horizontal alignment of page action buttons */
   pageActionsAlignment?: "left" | "right";
   /** GitHub repository URL (e.g. "https://github.com/user/repo") */
@@ -71,6 +77,10 @@ interface DocsPageClientProps {
   readingTimeMap?: Record<string, number>;
   /** Direct reading-time override for the current page. */
   readingTime?: number | null;
+  /** Map of pathname → serialized Schema.org JSON-LD. */
+  structuredDataMap?: Record<string, string>;
+  /** Direct serialized Schema.org JSON-LD override for the current page. */
+  structuredData?: string;
   /**
    * Whether path-based reading time values should render by default.
    * Explicit `readingTime` overrides can still render when this is false.
@@ -104,17 +114,20 @@ interface DocsPageClientProps {
  */
 function PathBreadcrumb({
   pathname,
-  entry,
+  publicPath,
   locale,
 }: {
   pathname: string;
-  entry: string;
+  publicPath: string;
   locale?: string;
 }) {
   const router = useRouter();
   const segments = pathname.split("/").filter(Boolean);
-  const entryParts = entry.split("/").filter(Boolean);
-  const contentSegments = segments.slice(entryParts.length);
+  const publicParts = publicPath.split("/").filter(Boolean);
+  const hasPublicPrefix =
+    publicParts.length > 0 &&
+    segments.slice(0, publicParts.length).join("/") === publicParts.join("/");
+  const contentSegments = hasPublicPrefix ? segments.slice(publicParts.length) : segments;
 
   if (contentSegments.length < 2) return null;
 
@@ -126,12 +139,12 @@ function PathBreadcrumb({
   const currentLabel = currentSegment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   const parentUrl =
-    "/" + [...segments.slice(0, entryParts.length), ...contentSegments.slice(0, -1)].join("/");
+    "/" + [...publicParts, ...contentSegments.slice(0, -1)].filter(Boolean).join("/");
   const localizedParentUrl = withLangInUrl(parentUrl, locale);
 
   return (
     <nav className="fd-breadcrumb" aria-label="Breadcrumb">
-      <span className="fd-breadcrumb-item">
+      <span key="parent" className="fd-breadcrumb-item">
         <a
           href={localizedParentUrl}
           className="fd-breadcrumb-parent fd-breadcrumb-link"
@@ -143,7 +156,7 @@ function PathBreadcrumb({
           {parentLabel}
         </a>
       </span>
-      <span className="fd-breadcrumb-item">
+      <span key="current" className="fd-breadcrumb-item">
         <span className="fd-breadcrumb-sep">/</span>
         <span className="fd-breadcrumb-current">{currentLabel}</span>
       </span>
@@ -212,6 +225,154 @@ function localizeInternalLinks(root: ParentNode, locale?: string) {
   }
 }
 
+function normalizePublicDocsPath(value: string | undefined, entry: string): string {
+  if (typeof value !== "string") return `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
+  const cleaned = value.trim();
+  if (cleaned === "" || cleaned === "/") return "";
+  return `/${cleaned.replace(/^\/+|\/+$/g, "")}`;
+}
+
+function toPublicDocsPath(pathname: string, entry: string, publicPath: string): string {
+  const normalizedEntry = `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
+  const normalizedPath = pathname.replace(/\/+$/, "") || "/";
+
+  if (publicPath === normalizedEntry) return normalizedPath;
+  if (normalizedPath === normalizedEntry) return publicPath || "/";
+  if (normalizedPath.startsWith(`${normalizedEntry}/`)) {
+    const suffix = normalizedPath.slice(normalizedEntry.length + 1);
+    return publicPath ? `${publicPath}/${suffix}` : `/${suffix}`;
+  }
+
+  return normalizedPath;
+}
+
+function rewriteDocsPathLinks(root: ParentNode, entry: string, publicPath: string) {
+  const anchors = root.querySelectorAll<HTMLAnchorElement>(
+    'a[href]:not([data-fd-docspath="true"])',
+  );
+
+  for (const anchor of anchors) {
+    const href = anchor.getAttribute("href");
+    if (!href || href.startsWith("#")) continue;
+    if (/^(mailto:|tel:|javascript:)/i.test(href)) continue;
+
+    try {
+      const url = new URL(href, window.location.origin);
+      if (url.origin !== window.location.origin) continue;
+
+      const nextPath = toPublicDocsPath(url.pathname, entry, publicPath);
+      if (nextPath === url.pathname) continue;
+
+      anchor.href = `${nextPath}${url.search}${url.hash}`;
+      anchor.dataset.fdDocspath = "true";
+    } catch {
+      // Ignore malformed links and leave them untouched.
+    }
+  }
+}
+
+function normalizeCurrentPath(pathname: string): string {
+  return pathname.replace(/\/+$/, "") || "/";
+}
+
+function syncDocsPathActiveLinks(root: ParentNode, entry: string, publicPath: string) {
+  const currentPath = normalizeCurrentPath(window.location.pathname);
+  const anchors = root.querySelectorAll<HTMLAnchorElement>("a[data-active][href]");
+
+  for (const anchor of anchors) {
+    const href = anchor.getAttribute("href");
+    if (!href || href.startsWith("#")) continue;
+
+    try {
+      const url = new URL(href, window.location.origin);
+      if (url.origin !== window.location.origin) continue;
+      if (!isDocsNavigationPath(url.pathname, entry, publicPath)) continue;
+
+      const publicHrefPath = normalizeCurrentPath(
+        toPublicDocsPath(url.pathname, entry, publicPath),
+      );
+      anchor.dataset.active = publicHrefPath === currentPath ? "true" : "false";
+    } catch {
+      // Ignore malformed links and leave them untouched.
+    }
+  }
+}
+
+function isFrameworkPath(pathname: string): boolean {
+  return (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/.well-known") ||
+    pathname === "/mcp" ||
+    pathname === "/llms.txt" ||
+    pathname === "/llms-full.txt" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    pathname === "/sitemap.md" ||
+    pathname === "/AGENTS.md" ||
+    pathname === "/AGENT.md" ||
+    pathname === "/skill.md" ||
+    /\/[^/]+\.[^/]+$/.test(pathname)
+  );
+}
+
+function isDocsNavigationPath(pathname: string, entry: string, publicPath: string): boolean {
+  if (isFrameworkPath(pathname)) return false;
+
+  const normalizedEntry = `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
+  if (pathname === normalizedEntry || pathname.startsWith(`${normalizedEntry}/`)) return true;
+
+  if (publicPath === "") return pathname.startsWith("/");
+  return pathname === publicPath || pathname.startsWith(`${publicPath}/`);
+}
+
+function installDocsPathNavigationGuard(entry: string, publicPath: string) {
+  const normalizedEntry = `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
+  if (publicPath === normalizedEntry) return undefined;
+
+  function onClick(event: MouseEvent) {
+    if (event.defaultPrevented) return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+
+    const target = event.target instanceof Element ? event.target : null;
+    const anchor = target?.closest<HTMLAnchorElement>("a[href]");
+    if (!anchor) return;
+    if (anchor.target && anchor.target !== "_self") return;
+    if (anchor.hasAttribute("download")) return;
+
+    const href = anchor.getAttribute("href");
+    if (!href || href.startsWith("#")) return;
+    if (/^(mailto:|tel:|javascript:)/i.test(href)) return;
+
+    try {
+      const url = new URL(href, window.location.origin);
+      if (url.origin !== window.location.origin) return;
+      if (!isDocsNavigationPath(url.pathname, entry, publicPath)) return;
+
+      const nextPath = toPublicDocsPath(url.pathname, entry, publicPath);
+      if (nextPath === url.pathname) return;
+
+      const nextHref = `${nextPath}${url.search}${url.hash}`;
+
+      if (
+        nextHref === `${window.location.pathname}${window.location.search}${window.location.hash}`
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      window.location.assign(nextHref);
+    } catch {
+      // Ignore malformed links and leave them untouched.
+    }
+  }
+
+  document.addEventListener("click", onClick, true);
+  return () => document.removeEventListener("click", onClick, true);
+}
+
 function decodeHashTarget(hash: string): string {
   const value = hash.startsWith("#") ? hash.slice(1) : hash;
   try {
@@ -249,73 +410,6 @@ function scrollToHashTarget(hash: string): boolean {
   return true;
 }
 
-function injectTitleDecorations(
-  node: ReactNode,
-  { description, belowTitle }: TitleInsertions,
-): { node: ReactNode; inserted: boolean } {
-  if (!description && !belowTitle) return { node, inserted: false };
-
-  let inserted = false;
-
-  const extras = Children.toArray([description, belowTitle].filter(Boolean));
-  if (extras.length === 0) return { node, inserted: false };
-
-  const insertedExtras = extras.map((extra, index) => (
-    <Fragment key={`fd-title-decoration-${index}`}>{extra}</Fragment>
-  ));
-
-  function visit(current: ReactNode): ReactNode {
-    if (current == null || typeof current === "boolean") return current;
-    if (inserted) return current;
-
-    if (Array.isArray(current)) {
-      return current.flatMap((child) => {
-        const next = visit(child);
-        return Array.isArray(next) ? next : [next];
-      });
-    }
-
-    if (!isValidElement(current)) return current;
-
-    if (typeof current.type === "string" && current.type === "h1") {
-      inserted = true;
-      return (
-        <Fragment key="fd-title-decoration-block">
-          {current}
-          {insertedExtras}
-        </Fragment>
-      );
-    }
-
-    const childProps = (current.props as { children?: ReactNode } | null) ?? null;
-    if (childProps?.children === undefined) return current;
-
-    const nextChildren = Children.toArray(childProps.children).flatMap((child) => {
-      const next = visit(child);
-      return Array.isArray(next) ? next : [next];
-    });
-
-    if (!inserted) return current;
-
-    return cloneElement(current, undefined, nextChildren);
-  }
-
-  if (Array.isArray(node)) {
-    return {
-      node: node.flatMap((child) => {
-        const next = visit(child);
-        return Array.isArray(next) ? next : [next];
-      }),
-      inserted,
-    };
-  }
-
-  return {
-    node: visit(node),
-    inserted,
-  };
-}
-
 function TitleDecorations({
   description,
   belowTitle,
@@ -325,7 +419,62 @@ function TitleDecorations({
 }) {
   if (!description && !belowTitle) return null;
 
-  return <>{Children.toArray([description, belowTitle].filter(Boolean))}</>;
+  return (
+    <>
+      {description && <Fragment key="description">{description}</Fragment>}
+      {belowTitle && <Fragment key="below-title">{belowTitle}</Fragment>}
+    </>
+  );
+}
+
+function ThreadlinePageControls() {
+  return (
+    <div className="fd-threadline-doc-controls not-prose" aria-label="Page controls">
+      <button key="back" type="button" aria-label="Go back" onClick={() => window.history.back()}>
+        <span aria-hidden="true">&lt;</span>
+      </button>
+      <button
+        key="forward"
+        type="button"
+        aria-label="Go forward"
+        onClick={() => window.history.forward()}
+      >
+        <span aria-hidden="true">&gt;</span>
+      </button>
+    </div>
+  );
+}
+
+function findThreadlineTocActionsContainer(): HTMLElement | null {
+  const toc =
+    document.getElementById("nd-toc") ?? document.querySelector<HTMLElement>(".fd-toc, [data-toc]");
+
+  if (!toc) return null;
+
+  const stickyChild = toc.querySelector<HTMLElement>(
+    ":scope > .sticky, :scope > [class*='sticky']",
+  );
+  if (stickyChild) return stickyChild;
+
+  const tocClassName = typeof toc.className === "string" ? toc.className : "";
+  if (tocClassName.includes("grid-area:toc")) return toc;
+
+  let node = toc.parentElement;
+
+  while (node && node.id !== "nd-docs-layout") {
+    const className = typeof node.className === "string" ? node.className : "";
+
+    if (
+      className.includes("grid-area:toc") ||
+      window.getComputedStyle(node).position === "sticky"
+    ) {
+      return node;
+    }
+
+    node = node.parentElement;
+  }
+
+  return toc.parentElement ?? toc;
 }
 
 export function DocsPageClient({
@@ -334,10 +483,13 @@ export function DocsPageClient({
   breadcrumbEnabled = true,
   changelogBasePath,
   entry = "docs",
+  publicPath,
   locale,
   copyMarkdown = false,
   openDocs = false,
   openDocsProviders,
+  openDocsTarget,
+  openDocsPrompt,
   pageActionsPosition = "below-title",
   pageActionsAlignment = "left",
   githubUrl,
@@ -349,6 +501,8 @@ export function DocsPageClient({
   lastModified: lastModifiedProp,
   readingTimeMap,
   readingTime: readingTimeProp,
+  structuredDataMap,
+  structuredData: structuredDataProp,
   readingTimeEnabled = false,
   lastUpdatedEnabled = true,
   lastUpdatedPosition = "footer",
@@ -368,10 +522,13 @@ export function DocsPageClient({
   const fdTocStyle = tocStyle === "directional" ? "clerk" : undefined;
   const [toc, setToc] = useState<TOCItem[]>([]);
   const [titlePortalHost, setTitlePortalHost] = useState<HTMLElement | null>(null);
+  const [titleControlsPortalHost, setTitleControlsPortalHost] = useState<HTMLElement | null>(null);
+  const [tocActionsPortalHost, setTocActionsPortalHost] = useState<HTMLElement | null>(null);
   const [browserPath, setBrowserPath] = useState<string | null>(null);
   const pathname = usePathname();
   const searchParams = useWindowSearchParams();
   const activeLocale = resolveClientLocale(searchParams, locale);
+  const resolvedPublicPath = normalizePublicDocsPath(publicPath, entry);
   const llmsLangQuery = activeLocale ? `?lang=${encodeURIComponent(activeLocale)}` : "";
 
   const pageDescription = description ?? descriptionMap?.[pathname.replace(/\/$/, "") || "/"];
@@ -381,6 +538,9 @@ export function DocsPageClient({
     (normalizedPath === changelogBasePath || normalizedPath.startsWith(`${changelogBasePath}/`))
   );
   const matchedReadingTime = readingTimeMap?.[normalizedPath];
+  const structuredDataJson = !isChangelogRoute
+    ? (structuredDataProp ?? structuredDataMap?.[normalizedPath])
+    : undefined;
 
   useEffect(() => {
     if (!analytics) return;
@@ -395,6 +555,11 @@ export function DocsPageClient({
       },
     });
   }, [analytics, activeLocale, entry, isChangelogRoute, normalizedPath]);
+
+  useEffect(() => {
+    return installDocsPathNavigationGuard(entry, resolvedPublicPath);
+  }, [entry, resolvedPublicPath]);
+
   const resolvedReadingTime = !isChangelogRoute
     ? readingTimeProp !== undefined
       ? readingTimeProp
@@ -426,16 +591,17 @@ export function DocsPageClient({
   }, [effectiveTocEnabled, pathname]);
 
   useEffect(() => {
-    if (!activeLocale) return;
-
     const timer = requestAnimationFrame(() => {
-      const container = document.getElementById("nd-page");
-      if (!container) return;
-      localizeInternalLinks(container, activeLocale);
+      const root = document.body;
+      if (!root) return;
+      rewriteDocsPathLinks(root, entry, resolvedPublicPath);
+      syncDocsPathActiveLinks(root, entry, resolvedPublicPath);
+      if (!activeLocale) return;
+      localizeInternalLinks(root, activeLocale);
     });
 
     return () => cancelAnimationFrame(timer);
-  }, [activeLocale, children, pathname]);
+  }, [activeLocale, browserPath, children, entry, pathname, resolvedPublicPath]);
 
   useEffect(() => {
     setBrowserPath(window.location.pathname);
@@ -493,9 +659,11 @@ export function DocsPageClient({
     };
   }, [pathname, children]);
 
-  const showActions = !isChangelogRoute && (copyMarkdown || openDocs);
+  const showActions =
+    !isChangelogRoute && (copyMarkdown || openDocs || pageActionsPosition === "toc");
   const showActionsBelowTitle = showActions && pageActionsPosition === "below-title";
   const showActionsAboveTitle = showActions && pageActionsPosition === "above-title";
+  const showActionsInToc = showActions && pageActionsPosition === "toc";
   const githubFileUrl =
     editOnGithubUrl ??
     (githubUrl
@@ -510,6 +678,81 @@ export function DocsPageClient({
         )
       : undefined);
 
+  useEffect(() => {
+    if (!showActionsInToc) {
+      setTocActionsPortalHost(null);
+      return;
+    }
+
+    let frame = 0;
+    let attempts = 0;
+    let host: HTMLElement | null = null;
+    let cancelled = false;
+
+    const mountActions = () => {
+      if (cancelled) return;
+
+      const container = findThreadlineTocActionsContainer();
+
+      if (!container) {
+        if (attempts < 12) {
+          attempts += 1;
+          frame = requestAnimationFrame(mountActions);
+        } else {
+          setTocActionsPortalHost(null);
+        }
+        return;
+      }
+
+      host = container.querySelector<HTMLElement>(":scope > .fd-actions-toc-host");
+
+      if (!host) {
+        host = document.createElement("div");
+        host.className = "fd-actions-toc-host";
+        container.append(host);
+      }
+
+      setTocActionsPortalHost(host);
+    };
+
+    frame = requestAnimationFrame(mountActions);
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+
+      if (host?.isConnected) {
+        host.remove();
+      }
+
+      setTocActionsPortalHost(null);
+    };
+  }, [pathname, showActionsInToc, toc.length]);
+
+  useEffect(() => {
+    if (!showActionsInToc) {
+      setTitleControlsPortalHost(null);
+      return;
+    }
+
+    const container = document.getElementById("nd-page");
+    const title = container?.querySelector("h1");
+    if (!title) {
+      setTitleControlsPortalHost(null);
+      return;
+    }
+
+    const host = document.createElement("div");
+    host.className = "fd-threadline-title-controls-host";
+    title.insertAdjacentElement("afterend", host);
+    setTitleControlsPortalHost(host);
+
+    return () => {
+      host.remove();
+      setTitleControlsPortalHost(null);
+    };
+  }, [pathname, showActionsInToc]);
+
   const lastModified =
     !isChangelogRoute && lastUpdatedEnabled
       ? (lastModifiedProp ?? lastModifiedMap?.[normalizedPath])
@@ -521,7 +764,7 @@ export function DocsPageClient({
     !isChangelogRoute && (!!githubFileUrl || showLastUpdatedInFooter || llmsTxtEnabled);
   const readingTimeBlock =
     typeof resolvedReadingTime === "number" ? (
-      <div className="fd-page-meta not-prose">
+      <div key="reading-time" className="fd-page-meta not-prose">
         <span className="fd-page-meta-dot" aria-hidden="true">
           ·
         </span>
@@ -543,18 +786,27 @@ export function DocsPageClient({
 
   const belowTitleBlock =
     showLastUpdatedBelowTitle || showActionsBelowTitle || showReadingTimeBelowTitle ? (
-      <div className="fd-below-title-block not-prose">
+      <div key="below-title" className="fd-below-title-block not-prose">
         {showLastUpdatedBelowTitle && (
-          <p className="fd-last-updated-inline">Last updated {lastModified}</p>
+          <p key="last-updated" className="fd-last-updated-inline">
+            Last updated {lastModified}
+          </p>
         )}
-        <hr className="fd-title-separator" />
+        <hr key="separator" className="fd-title-separator" />
         {showActionsBelowTitle && (
-          <div className="fd-actions-portal" data-actions-alignment={pageActionsAlignment}>
+          <div
+            key="actions"
+            className="fd-actions-portal"
+            data-actions-alignment={pageActionsAlignment}
+          >
             <PageActions
               copyMarkdown={copyMarkdown}
               openDocs={openDocs}
               providers={openDocsProviders}
+              openDocsTarget={openDocsTarget}
+              openDocsPrompt={openDocsPrompt}
               alignment={pageActionsAlignment}
+              variant="default"
               githubFileUrl={githubFileUrl}
               analytics={analytics}
             />
@@ -564,15 +816,8 @@ export function DocsPageClient({
       </div>
     ) : undefined;
 
-  const { node: decoratedChildren, inserted: titleDecorationsInserted } = injectTitleDecorations(
-    children,
-    {
-      description: titleDescription,
-      belowTitle: belowTitleBlock,
-    },
-  );
-  const needsTitleDecorationsPortal =
-    !titleDecorationsInserted && (!!titleDescription || !!belowTitleBlock);
+  const decoratedChildren = children;
+  const needsTitleDecorationsPortal = !!titleDescription || !!belowTitleBlock;
 
   useEffect(() => {
     if (!needsTitleDecorationsPortal) {
@@ -603,84 +848,152 @@ export function DocsPageClient({
       ? createPortal(
           <TitleDecorations description={titleDescription} belowTitle={belowTitleBlock} />,
           titlePortalHost,
+          "title-decorations",
         )
       : null;
-  const renderedChildren = Children.toArray(decoratedChildren);
-
-  return (
-    <DocsPage
-      full={false}
-      toc={toc}
-      tableOfContent={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
-      tableOfContentPopover={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
-      breadcrumb={{ enabled: false }}
-      footer={{ enabled: !isChangelogRoute }}
-    >
-      {effectiveBreadcrumbEnabled && (
-        <PathBreadcrumb pathname={pathname} entry={entry} locale={activeLocale} />
-      )}
-      {showActionsAboveTitle && (
-        <div className="fd-below-title-block not-prose">
-          <div className="fd-actions-portal" data-actions-alignment={pageActionsAlignment}>
+  const titleControlsPortal =
+    showActionsInToc && titleControlsPortalHost
+      ? createPortal(<ThreadlinePageControls />, titleControlsPortalHost, "title-controls")
+      : null;
+  const tocActionsPortal =
+    showActionsInToc && tocActionsPortalHost
+      ? createPortal(
+          <div className="fd-actions-toc-portal not-prose">
             <PageActions
               copyMarkdown={copyMarkdown}
               openDocs={openDocs}
               providers={openDocsProviders}
-              alignment={pageActionsAlignment}
+              openDocsTarget={openDocsTarget}
+              openDocsPrompt={openDocsPrompt}
+              alignment="left"
+              variant="rail"
               githubFileUrl={githubFileUrl}
               analytics={analytics}
             />
-          </div>
-          {readingTimeBlock}
-        </div>
+          </div>,
+          tocActionsPortalHost,
+          "toc-actions",
+        )
+      : null;
+  const renderedChildren = Children.toArray(decoratedChildren).map((child, index) => (
+    <Fragment key={`fd-rendered-child-${index}`}>{child}</Fragment>
+  ));
+
+  return (
+    <>
+      {structuredDataJson && (
+        <script
+          key="structured-data"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: escapeJsonLdForScript(structuredDataJson) }}
+        />
       )}
-      {!showReadingTimeAboveTitle && !showReadingTimeBelowTitle ? readingTimeBlock : null}
-      <DocsBody style={{ display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1 }}>{renderedChildren}</div>
-        {titleDecorationsPortal}
-        {!isChangelogRoute && feedbackEnabled && (
-          <DocsFeedback
-            pathname={normalizedPath}
-            entry={entry}
+      {llmsTxtEnabled && (
+        <a
+          key="llms-txt"
+          href={`/llms.txt${llmsLangQuery}`}
+          className="fd-agent-llms-directive"
+          style={agentLlmsDirectiveStyle}
+          tabIndex={-1}
+          aria-hidden="true"
+        >
+          llms.txt
+        </a>
+      )}
+      {titleControlsPortal}
+      {tocActionsPortal}
+      <DocsPage
+        key="docs-page"
+        full={false}
+        toc={toc}
+        tableOfContent={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
+        tableOfContentPopover={{ enabled: effectiveTocEnabled, style: fdTocStyle }}
+        breadcrumb={{ enabled: false }}
+        footer={{ enabled: !isChangelogRoute }}
+      >
+        {effectiveBreadcrumbEnabled && (
+          <PathBreadcrumb
+            key="breadcrumb"
+            pathname={pathname}
+            publicPath={resolvedPublicPath}
             locale={activeLocale}
-            question={feedbackQuestion}
-            placeholder={feedbackPlaceholder}
-            positiveLabel={feedbackPositiveLabel}
-            negativeLabel={feedbackNegativeLabel}
-            submitLabel={feedbackSubmitLabel}
-            onFeedback={feedbackOnFeedback}
-            analytics={analytics}
           />
         )}
-        {showFooter && (
-          <div className="not-prose fd-page-footer">
-            {githubFileUrl && <EditOnGitHub href={githubFileUrl} />}
-            {llmsTxtEnabled && (
-              <span className="fd-llms-txt-links">
-                <a
-                  href={`/llms.txt${llmsLangQuery}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="fd-llms-txt-link"
-                >
-                  llms.txt
-                </a>
-                <a
-                  href={`/llms-full.txt${llmsLangQuery}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="fd-llms-txt-link"
-                >
-                  llms-full.txt
-                </a>
-              </span>
-            )}
-            {showLastUpdatedInFooter && lastModified && (
-              <span className="fd-last-updated-footer">Last updated {lastModified}</span>
-            )}
+        {showActionsAboveTitle && (
+          <div key="actions-above-title" className="fd-below-title-block not-prose">
+            <div
+              key="actions"
+              className="fd-actions-portal"
+              data-actions-alignment={pageActionsAlignment}
+            >
+              <PageActions
+                copyMarkdown={copyMarkdown}
+                openDocs={openDocs}
+                providers={openDocsProviders}
+                openDocsTarget={openDocsTarget}
+                openDocsPrompt={openDocsPrompt}
+                alignment={pageActionsAlignment}
+                variant="default"
+                githubFileUrl={githubFileUrl}
+                analytics={analytics}
+              />
+            </div>
+            {readingTimeBlock}
           </div>
         )}
-      </DocsBody>
-    </DocsPage>
+        {!showReadingTimeAboveTitle && !showReadingTimeBelowTitle ? readingTimeBlock : null}
+        <DocsBody key="body" style={{ display: "flex", flexDirection: "column" }}>
+          <div key="content" style={{ flex: 1 }}>
+            {renderedChildren}
+          </div>
+          {titleDecorationsPortal}
+          {!isChangelogRoute && feedbackEnabled && (
+            <DocsFeedback
+              key="feedback"
+              pathname={normalizedPath}
+              entry={entry}
+              locale={activeLocale}
+              question={feedbackQuestion}
+              placeholder={feedbackPlaceholder}
+              positiveLabel={feedbackPositiveLabel}
+              negativeLabel={feedbackNegativeLabel}
+              submitLabel={feedbackSubmitLabel}
+              onFeedback={feedbackOnFeedback}
+              analytics={analytics}
+            />
+          )}
+          {showFooter && (
+            <div key="footer" className="not-prose fd-page-footer">
+              {githubFileUrl && <EditOnGitHub key="github" href={githubFileUrl} />}
+              {llmsTxtEnabled && (
+                <span key="llms-links" className="fd-llms-txt-links">
+                  <a
+                    href={`/llms.txt${llmsLangQuery}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="fd-llms-txt-link"
+                  >
+                    llms.txt
+                  </a>
+                  <a
+                    href={`/llms-full.txt${llmsLangQuery}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="fd-llms-txt-link"
+                  >
+                    llms-full.txt
+                  </a>
+                </span>
+              )}
+              {showLastUpdatedInFooter && lastModified && (
+                <span key="last-updated" className="fd-last-updated-footer">
+                  Last updated {lastModified}
+                </span>
+              )}
+            </div>
+          )}
+        </DocsBody>
+      </DocsPage>
+    </>
   );
 }

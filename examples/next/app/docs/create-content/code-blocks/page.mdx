@@ -57,6 +57,90 @@ export default function Page() {
 ```
 ````
 
+## Code Groups
+
+Group related code blocks into tabs with the Mintlify-style `<CodeGroup>` syntax. The tab label can
+come from a bare filename after the language, `title`, or `filename`. `CodeGroup` is built in, so
+you do not need to import it or register it in `docs.config.ts`.
+
+<CodeGroup dropdown>
+
+```bash npm
+npm install better-auth
+```
+
+```bash pnpm
+pnpm add better-auth
+```
+
+```ts title="auth.ts"
+import { betterAuth } from "better-auth";
+
+export const auth = betterAuth({
+  emailAndPassword: {
+    enabled: true,
+  },
+});
+```
+
+</CodeGroup>
+
+The authoring syntax is just regular fenced code inside the group:
+
+````mdx
+<CodeGroup dropdown>
+
+```bash npm
+npm install better-auth
+```
+
+```bash pnpm
+pnpm add better-auth
+```
+
+```ts title="auth.ts"
+import { betterAuth } from "better-auth";
+
+export const auth = betterAuth({
+  emailAndPassword: {
+    enabled: true,
+  },
+});
+```
+
+</CodeGroup>
+````
+
+## Agent Metadata
+
+Code fences can include extra metadata for agents and MCP tools. The rendered code block keeps the
+same visual treatment; the metadata is only parsed from the raw markdown and MCP source.
+
+````markdown
+```ts title="docs.config.ts" framework="nextjs" packageManager="pnpm" runnable
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+});
+```
+````
+
+Agents reading `/docs/<slug>.md` see the metadata directly on the code fence. MCP clients can call
+`get_code_examples` to receive the same example as structured JSON:
+
+```json
+{
+  "language": "ts",
+  "title": "docs.config.ts",
+  "framework": "nextjs",
+  "packageManager": "pnpm",
+  "runnable": true
+}
+```
+
+Use `runnable` only when the snippet is complete enough to copy into the named file or terminal.
+
 ## Line Numbers
 
 Enable line numbers for longer code blocks:

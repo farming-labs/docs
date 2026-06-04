@@ -6,6 +6,7 @@ import type { DocsConfig } from "./types.js";
 export function defineDocs(config: DocsConfig): DocsConfig {
   return {
     entry: config.entry ?? "docs",
+    docsPath: config.docsPath,
     contentDir: config.contentDir,
     i18n: config.i18n,
     theme: config.theme,
@@ -16,8 +17,10 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     sidebar: config.sidebar,
     components: config.components,
     analytics: config.analytics,
+    cloud: config.cloud,
     observability: config.observability,
     onCopyClick: config.onCopyClick,
+    codeBlocks: config.codeBlocks,
     feedback: config.feedback,
     tweaks: config.tweaks,
     search: config.search,
@@ -36,5 +39,6 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     changelog: config.changelog,
     apiReference: config.apiReference,
     agent: config.agent,
+    review: config.review,
   };
 }

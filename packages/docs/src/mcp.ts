@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
@@ -44,6 +43,82 @@ export interface DocsMcpPage {
   agentFallbackRawContent?: string;
 }
 
+export interface DocsMcpCodeExample {
+  id: string;
+  page: {
+    slug: string;
+    url: string;
+    title: string;
+    description?: string;
+    sourcePath?: string;
+    lastModified?: string;
+  };
+  language?: string;
+  title?: string;
+  framework?: string;
+  packageManager?: string;
+  runnable: boolean;
+  meta: Record<string, string | boolean>;
+  code: string;
+}
+
+export interface DocsMcpDocsPageSummary {
+  slug: string;
+  url: string;
+  title: string;
+  description?: string;
+  icon?: string;
+  sourcePath?: string;
+  lastModified?: string;
+}
+
+export interface DocsMcpDocsSection {
+  slug: string;
+  title: string;
+  url?: string;
+  description?: string;
+  icon?: string;
+  pageCount: number;
+  pages: DocsMcpDocsPageSummary[];
+  sections: DocsMcpDocsSection[];
+}
+
+export interface DocsMcpDocsList {
+  section?: string;
+  resultCount: number;
+  sectionCount: number;
+  pages: DocsMcpDocsPageSummary[];
+  rootPages: DocsMcpDocsPageSummary[];
+  sections: DocsMcpDocsSection[];
+}
+
+export interface DocsMcpConfigSchemaOption {
+  path: string;
+  name: string;
+  type: string;
+  default?: string | boolean | number | null;
+  description: string;
+  docs?: string;
+  values?: string[];
+  children?: DocsMcpConfigSchemaOption[];
+}
+
+export interface DocsMcpConfigSchema {
+  schemaVersion: 1;
+  configFile: "docs.config.ts";
+  description: string;
+  filters?: {
+    option?: string;
+    query?: string;
+  };
+  resultCount: number;
+  options: DocsMcpConfigSchemaOption[];
+  examples: Array<{
+    title: string;
+    code: string;
+  }>;
+}
+
 export interface DocsMcpPageNode {
   type: "page";
   name: string;
@@ -80,10 +155,13 @@ export interface DocsMcpResolvedConfig {
   name: string;
   version: string;
   tools: {
+    listDocs: boolean;
     listPages: boolean;
     readPage: boolean;
     searchDocs: boolean;
     getNavigation: boolean;
+    getCodeExamples: boolean;
+    getConfigSchema: boolean;
   };
 }
 
@@ -119,6 +197,543 @@ const DEFAULT_MCP_ROUTE = "/api/docs/mcp";
 const DEFAULT_MCP_VERSION = "0.0.0";
 const DEFAULT_MCP_NAME = "@farming-labs/docs";
 
+const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
+  {
+    path: "entry",
+    name: "entry",
+    type: "string",
+    default: "docs",
+    description: 'URL path prefix for documentation routes, for example "docs" creates /docs.',
+    docs: "/docs/overview",
+  },
+  {
+    path: "contentDir",
+    name: "contentDir",
+    type: "string",
+    default: "same as entry",
+    description:
+      "Path to markdown content files. Adapters outside Next.js usually need this when content does not live under the route prefix.",
+    docs: "/docs/overview",
+  },
+  {
+    path: "staticExport",
+    name: "staticExport",
+    type: "boolean",
+    default: false,
+    description: "Enable full static builds. Search, AI, and runtime API routes are hidden.",
+    docs: "/docs/overview",
+  },
+  {
+    path: "theme",
+    name: "theme",
+    type: "DocsTheme",
+    description: "Theme instance from a theme factory such as fumadocs() or pixelBorder().",
+    docs: "/docs/customization/themes",
+  },
+  {
+    path: "nav",
+    name: "nav",
+    type: "{ title?: string; url?: string }",
+    description:
+      "Sidebar and discovery metadata for the docs site. Non-Next.js adapters usually require it.",
+    children: [
+      {
+        path: "nav.title",
+        name: "title",
+        type: "string",
+        description: "Human-readable docs site title.",
+      },
+      {
+        path: "nav.url",
+        name: "url",
+        type: "string",
+        description: "Public base URL for generated absolute links and metadata.",
+      },
+    ],
+  },
+  {
+    path: "github",
+    name: "github",
+    type: "string | GithubConfig",
+    description:
+      'GitHub repository metadata for "Edit on GitHub" links and page action prompt templates.',
+    docs: "/docs/customization/page-actions",
+  },
+  {
+    path: "themeToggle",
+    name: "themeToggle",
+    type: "boolean | ThemeToggleConfig",
+    default: true,
+    description: "Enable or customize the light/dark mode toggle.",
+  },
+  {
+    path: "breadcrumb",
+    name: "breadcrumb",
+    type: "boolean | BreadcrumbConfig",
+    default: true,
+    description: "Enable or customize breadcrumb navigation.",
+  },
+  {
+    path: "sidebar",
+    name: "sidebar",
+    type: "boolean | SidebarConfig",
+    default: true,
+    description: "Enable or customize the docs sidebar.",
+    children: [
+      {
+        path: "sidebar.style",
+        name: "style",
+        type: "string",
+        description: "Theme-specific sidebar style variant when supported.",
+      },
+      {
+        path: "sidebar.defaultOpen",
+        name: "defaultOpen",
+        type: "boolean",
+        description: "Whether collapsible sidebar groups start open by default.",
+      },
+    ],
+  },
+  {
+    path: "icons",
+    name: "icons",
+    type: "Record<string, Component>",
+    description: "Shared icon registry for frontmatter icon fields and built-in MDX components.",
+  },
+  {
+    path: "components",
+    name: "components",
+    type: "Record<string, Component>",
+    description: "Custom MDX component registry and built-in component overrides.",
+  },
+  {
+    path: "onCopyClick",
+    name: "onCopyClick",
+    type: "(data: CodeBlockCopyData) => void",
+    description:
+      "Callback fired when a visitor copies a code block, including title, content, url, and language.",
+  },
+  {
+    path: "feedback",
+    name: "feedback",
+    type: "boolean | FeedbackConfig",
+    default: false,
+    description:
+      "Human page feedback UI. Agent feedback endpoints remain default-on unless opted out.",
+    docs: "/docs/customization/feedback",
+  },
+  {
+    path: "readingTime",
+    name: "readingTime",
+    type: "boolean | ReadingTimeConfig",
+    default: false,
+    description: "Opt-in estimated reading time label with per-page overrides.",
+  },
+  {
+    path: "agent",
+    name: "agent",
+    type: "DocsAgentConfig",
+    description: "Defaults for docs agent compact and generated agent-facing files.",
+    docs: "/docs/getting-started/agent-ready-docs",
+  },
+  {
+    path: "pageActions",
+    name: "pageActions",
+    type: "PageActionsConfig",
+    description: "Copy Markdown and Open in LLM actions for docs pages.",
+    docs: "/docs/customization/page-actions",
+    children: [
+      {
+        path: "pageActions.copyMarkdown",
+        name: "copyMarkdown",
+        type: "boolean | PageActionConfig",
+        description: "Show a Copy Markdown action for the current page.",
+      },
+      {
+        path: "pageActions.openDocs",
+        name: "openDocs",
+        type: "boolean | OpenDocsActionConfig",
+        description: "Show provider actions that open the current docs page in an LLM.",
+        children: [
+          {
+            path: "pageActions.openDocs.target",
+            name: "target",
+            type: '"page" | "markdown"',
+            default: "page",
+            description:
+              "Whether provider URLs receive the rendered page URL or the .md markdown route.",
+          },
+          {
+            path: "pageActions.openDocs.providers",
+            name: "providers",
+            type: "Array<string | PromptProviderConfig>",
+            description:
+              "Provider IDs or provider objects. Built-ins include chatgpt, claude, cursor, and t3.",
+          },
+          {
+            path: "pageActions.openDocs.prompt",
+            name: "prompt",
+            type: "string",
+            description: "Prompt text prepended to the provider URL when opening docs.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    path: "ai",
+    name: "ai",
+    type: "AIConfig",
+    description: "RAG-powered Ask AI configuration.",
+    docs: "/docs/customization/ask-ai",
+    children: [
+      {
+        path: "ai.enabled",
+        name: "enabled",
+        type: "boolean",
+        description: "Enable or disable Ask AI.",
+      },
+      {
+        path: "ai.model",
+        name: "model",
+        type: "string | AIModelConfig",
+        description: "Model ID or model routing config.",
+      },
+      {
+        path: "ai.providers",
+        name: "providers",
+        type: "Record<string, AIProviderConfig>",
+        description: "Provider base URLs and optional API keys.",
+      },
+      {
+        path: "ai.systemPrompt",
+        name: "systemPrompt",
+        type: "string",
+        description: "Additional instruction text for generated answers.",
+      },
+      {
+        path: "ai.useMcp",
+        name: "useMcp",
+        type: "boolean | DocsAskAIMcpConfig",
+        description: "Use the built-in MCP search tool as Ask AI's retrieval provider.",
+      },
+    ],
+  },
+  {
+    path: "search",
+    name: "search",
+    type: "boolean | DocsSearchConfig",
+    default: true,
+    description: "Built-in simple search, Typesense, Algolia, MCP, or a custom adapter.",
+    docs: "/docs/customization/search",
+    children: [
+      {
+        path: "search.provider",
+        name: "provider",
+        type: '"simple" | "typesense" | "algolia" | "mcp" | "custom"',
+        default: "simple",
+        description: "Search backend used by the docs UI and MCP search tool.",
+      },
+      {
+        path: "search.maxResults",
+        name: "maxResults",
+        type: "number",
+        description: "Maximum result count returned by search requests.",
+      },
+    ],
+  },
+  {
+    path: "cloud",
+    name: "cloud",
+    type: "DocsCloudConfig",
+    description: "Docs Cloud integration settings mirrored into docs.json by cloud CLI commands.",
+    children: [
+      {
+        path: "cloud.apiKey.env",
+        name: "env",
+        type: "string",
+        default: "DOCS_CLOUD_API_KEY",
+        description:
+          "Environment variable that stores the Docs Cloud API key. The key value is never written to docs.json.",
+      },
+      {
+        path: "cloud.deploy.enabled",
+        name: "enabled",
+        type: "boolean",
+        default: true,
+        description: "Enable the docs deploy command for hosted preview docs.",
+      },
+      {
+        path: "cloud.publish.mode",
+        name: "mode",
+        type: '"draft-pr" | "direct-commit"',
+        default: "draft-pr",
+        description: "How Docs Cloud publishes generated docs changes.",
+      },
+      {
+        path: "cloud.publish.baseBranch",
+        name: "baseBranch",
+        type: "string",
+        default: "main",
+        description: "Branch generated docs work should target.",
+      },
+    ],
+  },
+  {
+    path: "llmsTxt",
+    name: "llmsTxt",
+    type: "boolean | LlmsTxtConfig",
+    default: true,
+    description:
+      "Generated /llms.txt, /llms-full.txt, optional section files, and basePath-aware aliases.",
+    docs: "/docs/getting-started/agent-ready-docs",
+  },
+  {
+    path: "changelog",
+    name: "changelog",
+    type: "boolean | ChangelogConfig",
+    default: false,
+    description: "Generate changelog feed and entry pages from dated MDX entries.",
+    docs: "/docs/customization/changelog",
+  },
+  {
+    path: "mcp",
+    name: "mcp",
+    type: "boolean | DocsMcpConfig",
+    default: true,
+    description:
+      "Built-in MCP server over stdio plus HTTP routes at /mcp and /.well-known/mcp, backed by /api/docs/mcp.",
+    docs: "/docs/customization/mcp",
+    children: [
+      {
+        path: "mcp.enabled",
+        name: "enabled",
+        type: "boolean",
+        default: true,
+        description: "Enable the built-in MCP server.",
+      },
+      {
+        path: "mcp.route",
+        name: "route",
+        type: "string",
+        default: "/api/docs/mcp",
+        description: "Canonical Streamable HTTP route used by the MCP endpoint.",
+      },
+      {
+        path: "mcp.name",
+        name: "name",
+        type: "string",
+        default: "nav.title or @farming-labs/docs",
+        description: "Human-readable MCP server name reported to clients.",
+      },
+      {
+        path: "mcp.version",
+        name: "version",
+        type: "string",
+        default: "0.0.0",
+        description: "Version string reported to MCP clients.",
+      },
+      {
+        path: "mcp.tools",
+        name: "tools",
+        type: "DocsMcpToolsConfig",
+        default: "all enabled",
+        description: "Fine-grained built-in MCP tool toggles.",
+        children: [
+          {
+            path: "mcp.tools.listDocs",
+            name: "listDocs",
+            type: "boolean",
+            default: true,
+            description: "Expose the list_docs tool.",
+          },
+          {
+            path: "mcp.tools.listPages",
+            name: "listPages",
+            type: "boolean",
+            default: true,
+            description: "Expose the list_pages tool.",
+          },
+          {
+            path: "mcp.tools.getNavigation",
+            name: "getNavigation",
+            type: "boolean",
+            default: true,
+            description: "Expose the get_navigation tool.",
+          },
+          {
+            path: "mcp.tools.searchDocs",
+            name: "searchDocs",
+            type: "boolean",
+            default: true,
+            description: "Expose the search_docs tool.",
+          },
+          {
+            path: "mcp.tools.readPage",
+            name: "readPage",
+            type: "boolean",
+            default: true,
+            description: "Expose the read_page tool.",
+          },
+          {
+            path: "mcp.tools.getCodeExamples",
+            name: "getCodeExamples",
+            type: "boolean",
+            default: true,
+            description: "Expose the get_code_examples tool.",
+          },
+          {
+            path: "mcp.tools.getConfigSchema",
+            name: "getConfigSchema",
+            type: "boolean",
+            default: true,
+            description: "Expose the get_config_schema tool.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    path: "apiReference",
+    name: "apiReference",
+    type: "boolean | ApiReferenceConfig",
+    default: false,
+    description:
+      "Generated API reference pages from framework route conventions or a hosted OpenAPI document.",
+    docs: "/docs/customization/api-reference",
+    children: [
+      {
+        path: "apiReference.specUrl",
+        name: "specUrl",
+        type: "string",
+        description: "Remote OpenAPI JSON URL when the backend owns the schema.",
+      },
+      {
+        path: "apiReference.path",
+        name: "path",
+        type: "string",
+        description: "Docs route where the API reference is rendered.",
+      },
+    ],
+  },
+  {
+    path: "codeBlocks",
+    name: "codeBlocks",
+    type: "{ validate?: boolean | DocsCodeBlocksValidateConfig }",
+    default: false,
+    description:
+      "Code block intelligence for MD/MDX fences, including execution planning and optional sandboxed validation.",
+    docs: "/docs/configuration#code-block-validation",
+    children: [
+      {
+        path: "codeBlocks.validate",
+        name: "validate",
+        type: "boolean | DocsCodeBlocksValidateConfig",
+        description: "Enable `docs codeblocks validate` for fenced code examples.",
+      },
+      {
+        path: "codeBlocks.validate.planner",
+        name: "planner",
+        type: '"metadata" | "openai" | "openai-compatible" | "cloud" | DocsCodeBlocksPlannerConfig',
+        default: "metadata",
+        description:
+          "Planner that turns code fence metadata into an execution plan. Use OpenAI-compatible providers when metadata alone is not enough.",
+      },
+      {
+        path: "codeBlocks.validate.runner",
+        name: "runner",
+        type: '"local" | "vercel-sandbox" | "e2b" | "daytona" | "cloud" | DocsCodeBlocksRunnerConfig',
+        default: "local",
+        description:
+          "Runner used to execute planned snippets. Vercel Sandbox, E2B, and Daytona use provider tokens from env vars.",
+      },
+      {
+        path: "codeBlocks.validate.env",
+        name: "env",
+        type: "Record<string, string>",
+        description:
+          'Runtime env mapping, for example `{ OPENAI_API_KEY: "OPENAI_TEST_API_KEY" }`.',
+      },
+    ],
+  },
+  {
+    path: "sitemap",
+    name: "sitemap",
+    type: "boolean | DocsSitemapConfig",
+    default: true,
+    description:
+      "Generated sitemap.xml, sitemap.md, /docs/sitemap.md, and /.well-known/sitemap.md.",
+  },
+  {
+    path: "robots",
+    name: "robots",
+    type: "boolean | DocsRobotsConfig",
+    default: true,
+    description:
+      "Runtime or generated robots.txt policy for docs routes, agent-readable files, and AI crawler user agents.",
+  },
+  {
+    path: "metadata",
+    name: "metadata",
+    type: "DocsMetadata",
+    description: "SEO and JSON-LD inputs such as titleTemplate and description.",
+  },
+  {
+    path: "og",
+    name: "og",
+    type: "OGConfig",
+    description: "Dynamic Open Graph image configuration.",
+  },
+];
+
+const DOCS_CONFIG_SCHEMA_EXAMPLES: DocsMcpConfigSchema["examples"] = [
+  {
+    title: "Minimal config",
+    code: `import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/theme";
+
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+});`,
+  },
+  {
+    title: "MCP tool toggles",
+    code: `export default defineDocs({
+  entry: "docs",
+  mcp: {
+    tools: {
+      listDocs: true,
+      getConfigSchema: true,
+      getCodeExamples: true,
+    },
+  },
+});`,
+  },
+  {
+    title: "Code block validation",
+    code: `export default defineDocs({
+  entry: "docs",
+  codeBlocks: {
+    validate: {
+      planner: {
+        provider: "openai",
+        model: "gpt-4.1-mini",
+        apiKeyEnv: "OPENAI_API_KEY",
+      },
+      runner: {
+        provider: "vercel-sandbox",
+        tokenEnv: "VERCEL_TOKEN",
+      },
+      env: {
+        OPENAI_API_KEY: "OPENAI_TEST_API_KEY",
+      },
+    },
+  },
+});`,
+  },
+];
+
 const searchDocsInputSchema = z.object({
   query: z.string().trim().min(1),
   limit: z.number().int().min(1).max(25).optional(),
@@ -134,7 +749,28 @@ const listPagesInputSchema = z.object({
   locale: z.string().min(1).optional(),
 });
 
+const listDocsInputSchema = z.object({
+  section: z.string().trim().min(1).optional(),
+  locale: z.string().min(1).optional(),
+});
+
 const getNavigationInputSchema = z.object({
+  locale: z.string().min(1).optional(),
+});
+
+const getConfigSchemaInputSchema = z.object({
+  option: z.string().trim().min(1).optional(),
+  query: z.string().trim().min(1).optional(),
+});
+
+const getCodeExamplesInputSchema = z.object({
+  query: z.string().trim().min(1).optional(),
+  path: z.string().min(1).optional(),
+  framework: z.string().trim().min(1).optional(),
+  packageManager: z.string().trim().min(1).optional(),
+  language: z.string().trim().min(1).optional(),
+  runnable: z.boolean().optional(),
+  limit: z.number().int().min(1).max(50).optional(),
   locale: z.string().min(1).optional(),
 });
 
@@ -160,10 +796,13 @@ export function resolveDocsMcpConfig(
       name: defaults.defaultName ?? DEFAULT_MCP_NAME,
       version: defaults.defaultVersion ?? DEFAULT_MCP_VERSION,
       tools: {
+        listDocs: true,
         listPages: true,
         readPage: true,
         searchDocs: true,
         getNavigation: true,
+        getCodeExamples: true,
+        getConfigSchema: true,
       },
     };
   }
@@ -176,10 +815,13 @@ export function resolveDocsMcpConfig(
     name: config.name ?? defaults.defaultName ?? DEFAULT_MCP_NAME,
     version: config.version ?? defaults.defaultVersion ?? DEFAULT_MCP_VERSION,
     tools: {
+      listDocs: config.tools?.listDocs ?? true,
       listPages: config.tools?.listPages ?? true,
       readPage: config.tools?.readPage ?? true,
       searchDocs: config.tools?.searchDocs ?? true,
       getNavigation: config.tools?.getNavigation ?? true,
+      getCodeExamples: config.tools?.getCodeExamples ?? true,
+      getConfigSchema: config.tools?.getConfigSchema ?? true,
     },
   };
 }
@@ -371,6 +1013,95 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
     );
   }
 
+  if (resolved.tools.listDocs) {
+    server.registerTool(
+      "list_docs",
+      {
+        title: "List docs by section",
+        description:
+          "List documentation pages grouped by section, optionally narrowed to one section.",
+        inputSchema: listDocsInputSchema,
+        annotations: { readOnlyHint: true },
+      },
+      async ({ section, locale }) => {
+        const startedAt = nowMs();
+        const trace = createDocsAgentTraceContext("mcp.tool.list_docs");
+        const callSpanId = createDocsAgentTraceId("span");
+        await emitDocsAgentTraceEvent(options.observability, {
+          type: "tool.call",
+          source: "mcp",
+          traceId: trace.traceId,
+          spanId: callSpanId,
+          name: "list_docs",
+          startedAt: trace.startedAt,
+          status: "started",
+          locale,
+          inputPreview: { section, locale },
+          metadata: { tool: "list_docs" },
+        });
+
+        try {
+          const docs = listDocsBySection(dedupePages(await options.source.getPages(locale)), {
+            section,
+            entry: options.source.entry,
+          });
+          const elapsed = durationMs(startedAt);
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "mcp_tool",
+            source: "mcp",
+            locale,
+            properties: {
+              tool: "list_docs",
+              section,
+              resultCount: docs.resultCount,
+              sectionCount: docs.sectionCount,
+              durationMs: elapsed,
+            },
+          });
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.result",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "list_docs",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "success",
+            locale,
+            outputPreview: { resultCount: docs.resultCount, sectionCount: docs.sectionCount },
+            metadata: { tool: "list_docs" },
+          });
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(docs, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          const elapsed = durationMs(startedAt);
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.error",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "list_docs",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "error",
+            locale,
+            outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
+            metadata: { tool: "list_docs" },
+          });
+          throw error;
+        }
+      },
+    );
+  }
+
   if (resolved.tools.getNavigation) {
     server.registerTool(
       "get_navigation",
@@ -447,6 +1178,89 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             locale,
             outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
             metadata: { tool: "get_navigation" },
+          });
+          throw error;
+        }
+      },
+    );
+  }
+
+  if (resolved.tools.getConfigSchema) {
+    server.registerTool(
+      "get_config_schema",
+      {
+        title: "Get docs config schema",
+        description:
+          "Return structured docs.config.ts option metadata, optionally filtered by option path or query.",
+        inputSchema: getConfigSchemaInputSchema,
+        annotations: { readOnlyHint: true },
+      },
+      async ({ option, query }) => {
+        const startedAt = nowMs();
+        const trace = createDocsAgentTraceContext("mcp.tool.get_config_schema");
+        const callSpanId = createDocsAgentTraceId("span");
+        await emitDocsAgentTraceEvent(options.observability, {
+          type: "tool.call",
+          source: "mcp",
+          traceId: trace.traceId,
+          spanId: callSpanId,
+          name: "get_config_schema",
+          startedAt: trace.startedAt,
+          status: "started",
+          inputPreview: { option, queryLength: query?.length },
+          metadata: { tool: "get_config_schema" },
+        });
+
+        try {
+          const schema = getDocsConfigSchema({ option, query });
+          const elapsed = durationMs(startedAt);
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "mcp_tool",
+            source: "mcp",
+            input: query ? { query } : undefined,
+            properties: {
+              tool: "get_config_schema",
+              option,
+              queryLength: query?.length,
+              resultCount: schema.resultCount,
+              durationMs: elapsed,
+            },
+          });
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.result",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "get_config_schema",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "success",
+            outputPreview: { resultCount: schema.resultCount },
+            metadata: { tool: "get_config_schema" },
+          });
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(schema, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          const elapsed = durationMs(startedAt);
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.error",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "get_config_schema",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "error",
+            outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
+            metadata: { tool: "get_config_schema" },
           });
           throw error;
         }
@@ -542,6 +1356,131 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
             locale,
             outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
             metadata: { tool: "search_docs" },
+          });
+          throw error;
+        }
+      },
+    );
+  }
+
+  if (resolved.tools.getCodeExamples) {
+    server.registerTool(
+      "get_code_examples",
+      {
+        title: "Get docs code examples",
+        description:
+          "Return fenced code examples from the docs with parsed metadata such as title, framework, packageManager, and runnable.",
+        inputSchema: getCodeExamplesInputSchema,
+        annotations: { readOnlyHint: true },
+      },
+      async ({
+        query,
+        path: requestedPath,
+        framework,
+        packageManager,
+        language,
+        runnable,
+        limit,
+        locale,
+      }) => {
+        const startedAt = nowMs();
+        const resolvedLimit = limit ?? 25;
+        const trace = createDocsAgentTraceContext("mcp.tool.get_code_examples");
+        const callSpanId = createDocsAgentTraceId("span");
+        await emitDocsAgentTraceEvent(options.observability, {
+          type: "tool.call",
+          source: "mcp",
+          traceId: trace.traceId,
+          spanId: callSpanId,
+          name: "get_code_examples",
+          startedAt: trace.startedAt,
+          status: "started",
+          locale,
+          inputPreview: {
+            queryLength: query?.length,
+            path: requestedPath,
+            framework,
+            packageManager,
+            language,
+            runnable,
+            limit: resolvedLimit,
+          },
+          metadata: { tool: "get_code_examples" },
+        });
+
+        try {
+          const pages = dedupePages(await options.source.getPages(locale));
+          const matchedPage = requestedPath
+            ? findDocsPage(pages, requestedPath, options.source.entry)
+            : null;
+          const scopedPages = requestedPath ? (matchedPage ? [matchedPage] : []) : pages;
+          const examples = filterDocsCodeExamples(
+            scopedPages.flatMap((page) => extractDocsMcpCodeExamples(page)),
+            {
+              query,
+              framework,
+              packageManager,
+              language,
+              runnable,
+              limit: resolvedLimit,
+            },
+          );
+          const elapsed = durationMs(startedAt);
+          await emitDocsAnalyticsEvent(options.analytics, {
+            type: "mcp_tool",
+            source: "mcp",
+            locale,
+            input: query ? { query } : undefined,
+            properties: {
+              tool: "get_code_examples",
+              queryLength: query?.length,
+              path: requestedPath,
+              framework,
+              packageManager,
+              language,
+              runnable,
+              limit: resolvedLimit,
+              resultCount: examples.length,
+              durationMs: elapsed,
+            },
+          });
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.result",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "get_code_examples",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "success",
+            locale,
+            outputPreview: { resultCount: examples.length },
+            metadata: { tool: "get_code_examples" },
+          });
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({ examples }, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          const elapsed = durationMs(startedAt);
+          await emitDocsAgentTraceEvent(options.observability, {
+            type: "tool.error",
+            source: "mcp",
+            traceId: trace.traceId,
+            parentSpanId: callSpanId,
+            name: "get_code_examples",
+            startedAt: trace.startedAt,
+            endedAt: new Date().toISOString(),
+            durationMs: elapsed,
+            status: "error",
+            locale,
+            outputPreview: { message: error instanceof Error ? error.message : "Unknown error" },
+            metadata: { tool: "get_code_examples" },
           });
           throw error;
         }
@@ -740,26 +1679,10 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
     };
   }
 
-  const sessions = new Map<
-    string,
-    {
-      server: McpServer;
-      transport: WebStandardStreamableHTTPServerTransport;
-    }
-  >();
-
-  async function createSession() {
+  async function createStatelessTransport() {
     const server = await createDocsMcpServer(options);
     const transport = new WebStandardStreamableHTTPServerTransport({
-      sessionIdGenerator: () => randomUUID(),
-      onsessioninitialized(sessionId) {
-        sessions.set(sessionId, { server, transport });
-      },
-      async onsessionclosed(sessionId) {
-        const session = sessions.get(sessionId);
-        sessions.delete(sessionId);
-        await session?.server.close().catch(() => undefined);
-      },
+      sessionIdGenerator: undefined,
     });
 
     await server.connect(transport);
@@ -771,7 +1694,6 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
     const method = request.method.toUpperCase();
     const sessionId =
       request.headers.get("mcp-session-id") ?? request.headers.get("Mcp-Session-Id");
-    const existing = sessionId ? sessions.get(sessionId) : undefined;
 
     let parsedBody: unknown;
     let bodyParseFailed = false;
@@ -793,43 +1715,22 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
       path: url.pathname,
       properties: {
         method,
-        hasSession: Boolean(existing),
+        hasSession: Boolean(sessionId),
+        stateless: true,
         initialize: Boolean(initializeRequest),
       },
     });
 
-    if (!existing) {
-      if (method === "POST" && bodyParseFailed) {
-        return createJsonRpcErrorResponse({
-          status: 400,
-          code: -32700,
-          message: "Parse error: Invalid JSON",
-        });
-      }
-
-      if (!initializeRequest) {
-        const status = sessionId || method === "DELETE" ? 404 : 400;
-        return createJsonRpcErrorResponse({
-          status,
-          code: sessionId ? -32001 : -32000,
-          message: sessionId
-            ? "Session not found. Reinitialize the MCP client before calling docs tools."
-            : "MCP session not initialized. Start with an initialize request against this endpoint.",
-          id: readJsonRpcId(parsedBody),
-          data: {
-            reason: sessionId ? "session_not_found" : "session_not_initialized",
-          },
-        });
-      }
-
-      const created = await createSession();
-      return created.transport.handleRequest(
-        request,
-        parsedBody === undefined ? undefined : { parsedBody },
-      );
+    if (method === "POST" && bodyParseFailed) {
+      return createJsonRpcErrorResponse({
+        status: 400,
+        code: -32700,
+        message: "Parse error: Invalid JSON",
+      });
     }
 
-    return existing.transport.handleRequest(
+    const created = await createStatelessTransport();
+    return created.transport.handleRequest(
       request,
       parsedBody === undefined ? undefined : { parsedBody },
     );
@@ -1289,6 +2190,119 @@ function toSearchSourcePages(pages: DocsMcpPage[]): DocsSearchSourcePage[] {
   }));
 }
 
+function getDocsConfigSchema(filters: { option?: string; query?: string }): DocsMcpConfigSchema {
+  const option = filters.option?.trim();
+  const query = filters.query?.trim();
+  let options = DOCS_CONFIG_SCHEMA_OPTIONS.map(cloneConfigSchemaOption);
+
+  if (option) {
+    options = selectConfigSchemaOptions(option);
+  }
+
+  if (query) {
+    options = filterConfigSchemaOptionsByQuery(options, query);
+  }
+
+  return {
+    schemaVersion: 1,
+    configFile: "docs.config.ts",
+    description:
+      "Configuration schema for @farming-labs/docs defineDocs(). Use option for an exact top-level or nested path, or query for keyword filtering.",
+    filters:
+      option || query
+        ? {
+            ...(option ? { option } : {}),
+            ...(query ? { query } : {}),
+          }
+        : undefined,
+    resultCount: countConfigSchemaOptions(options),
+    options,
+    examples: DOCS_CONFIG_SCHEMA_EXAMPLES,
+  };
+}
+
+function cloneConfigSchemaOption(option: DocsMcpConfigSchemaOption): DocsMcpConfigSchemaOption {
+  return {
+    ...option,
+    children: option.children?.map(cloneConfigSchemaOption),
+  };
+}
+
+function selectConfigSchemaOptions(optionPath: string): DocsMcpConfigSchemaOption[] {
+  const needle = normalizeConfigSchemaToken(optionPath);
+  return flattenConfigSchemaOptions(DOCS_CONFIG_SCHEMA_OPTIONS)
+    .filter((option) => {
+      const normalizedPath = normalizeConfigSchemaToken(option.path);
+      return normalizedPath === needle;
+    })
+    .map(cloneConfigSchemaOption);
+}
+
+function filterConfigSchemaOptionsByQuery(
+  options: DocsMcpConfigSchemaOption[],
+  query: string,
+): DocsMcpConfigSchemaOption[] {
+  return options.flatMap((option) => {
+    if (configSchemaOptionMatchesQuery(option, query)) {
+      return [cloneConfigSchemaOption(option)];
+    }
+
+    const children = option.children
+      ? filterConfigSchemaOptionsByQuery(option.children, query)
+      : [];
+    if (children.length === 0) return [];
+
+    return [
+      {
+        ...cloneConfigSchemaOption(option),
+        children,
+      },
+    ];
+  });
+}
+
+function configSchemaOptionMatchesQuery(option: DocsMcpConfigSchemaOption, query: string): boolean {
+  const searchText = [
+    option.path,
+    option.name,
+    option.type,
+    option.default,
+    option.description,
+    option.docs,
+    option.values?.join(" "),
+  ]
+    .filter((value) => value !== undefined && value !== null)
+    .join(" ");
+  const lowerSearchText = searchText.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  return (
+    lowerSearchText.includes(lowerQuery) ||
+    normalizeConfigSchemaToken(searchText).includes(normalizeConfigSchemaToken(query))
+  );
+}
+
+function flattenConfigSchemaOptions(
+  options: DocsMcpConfigSchemaOption[],
+): DocsMcpConfigSchemaOption[] {
+  return options.flatMap((option) => [
+    option,
+    ...(option.children ? flattenConfigSchemaOptions(option.children) : []),
+  ]);
+}
+
+function countConfigSchemaOptions(options: DocsMcpConfigSchemaOption[]): number {
+  return flattenConfigSchemaOptions(options).length;
+}
+
+function normalizeConfigSchemaToken(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^docs\.config\.?/, "")
+    .replace(/[`'"]/g, "")
+    .replace(/[_\-\s]+/g, "");
+}
+
 function isSelfMcpSearchEndpoint(search?: boolean | DocsSearchConfig, route?: string): boolean {
   if (!search || search === true || typeof search !== "object" || search.provider !== "mcp") {
     return false;
@@ -1323,6 +2337,421 @@ function toPageSummaries(pages: DocsMcpPage[]) {
     description: page.description,
     icon: page.icon,
   }));
+}
+
+function toDocsListPageSummary(page: DocsMcpPage): DocsMcpDocsPageSummary {
+  return {
+    slug: page.slug,
+    url: page.url,
+    title: page.title,
+    description: page.description,
+    icon: page.icon,
+    sourcePath: page.sourcePath,
+    lastModified: page.lastModified,
+  };
+}
+
+function listDocsBySection(
+  pages: DocsMcpPage[],
+  filters: { section?: string; entry?: string },
+): DocsMcpDocsList {
+  const allPages = pages.map(toDocsListPageSummary);
+  const tree = buildDocsSectionTree(pages);
+  const requestedSection = filters.section?.trim();
+
+  if (!requestedSection) {
+    return {
+      resultCount: allPages.length,
+      sectionCount: countDocsSections(tree.sections),
+      pages: allPages,
+      rootPages: tree.rootPages,
+      sections: tree.sections,
+    };
+  }
+
+  const section = findDocsSection(tree.sections, requestedSection, filters.entry);
+  if (section) {
+    const sections = [cloneDocsSection(section)];
+    const matchedPages = flattenDocsSectionPages(sections[0]);
+    return {
+      section: requestedSection,
+      resultCount: matchedPages.length,
+      sectionCount: countDocsSections(sections),
+      pages: matchedPages,
+      rootPages: [],
+      sections,
+    };
+  }
+
+  const page = allPages.find((candidate) =>
+    docsListPageMatches(candidate, requestedSection, filters.entry),
+  );
+  if (page) {
+    return {
+      section: requestedSection,
+      resultCount: 1,
+      sectionCount: 0,
+      pages: [page],
+      rootPages: [page],
+      sections: [],
+    };
+  }
+
+  return {
+    section: requestedSection,
+    resultCount: 0,
+    sectionCount: 0,
+    pages: [],
+    rootPages: [],
+    sections: [],
+  };
+}
+
+function buildDocsSectionTree(pages: DocsMcpPage[]): {
+  rootPages: DocsMcpDocsPageSummary[];
+  sections: DocsMcpDocsSection[];
+} {
+  const sectionSlugs = new Set<string>();
+  for (const page of pages) {
+    const parts = page.slug.split("/").filter(Boolean);
+    for (let index = 1; index < parts.length; index += 1) {
+      sectionSlugs.add(parts.slice(0, index).join("/"));
+    }
+  }
+
+  const rootPages: DocsMcpDocsPageSummary[] = [];
+  const sections: DocsMcpDocsSection[] = [];
+  const sectionBySlug = new Map<string, DocsMcpDocsSection>();
+
+  function getOrCreateSection(slug: string): DocsMcpDocsSection {
+    const existing = sectionBySlug.get(slug);
+    if (existing) return existing;
+
+    const parts = slug.split("/").filter(Boolean);
+    const section: DocsMcpDocsSection = {
+      slug,
+      title: titleize(parts.at(-1) ?? slug),
+      pageCount: 0,
+      pages: [],
+      sections: [],
+    };
+    sectionBySlug.set(slug, section);
+
+    if (parts.length <= 1) {
+      sections.push(section);
+    } else {
+      getOrCreateSection(parts.slice(0, -1).join("/")).sections.push(section);
+    }
+
+    return section;
+  }
+
+  for (const page of pages) {
+    const summary = toDocsListPageSummary(page);
+    const parts = page.slug.split("/").filter(Boolean);
+
+    if (parts.length === 0) {
+      rootPages.push(summary);
+      continue;
+    }
+
+    const isSectionIndex = sectionSlugs.has(page.slug);
+    if (parts.length === 1 && !isSectionIndex) {
+      rootPages.push(summary);
+      continue;
+    }
+
+    if (isSectionIndex) {
+      const section = getOrCreateSection(page.slug);
+      hydrateDocsSection(section, summary);
+      pushUniqueDocsPage(section.pages, summary, "start");
+      continue;
+    }
+
+    const parentSlug = parts.slice(0, -1).join("/");
+    const parent = getOrCreateSection(parentSlug);
+    pushUniqueDocsPage(parent.pages, summary, "end");
+  }
+
+  updateDocsSectionPageCounts(sections);
+  return { rootPages, sections };
+}
+
+function hydrateDocsSection(section: DocsMcpDocsSection, page: DocsMcpDocsPageSummary): void {
+  section.title = page.title;
+  section.url = page.url;
+  section.description = page.description;
+  section.icon = page.icon;
+}
+
+function pushUniqueDocsPage(
+  pages: DocsMcpDocsPageSummary[],
+  page: DocsMcpDocsPageSummary,
+  position: "start" | "end",
+): void {
+  if (pages.some((candidate) => candidate.url === page.url)) return;
+  if (position === "start") {
+    pages.unshift(page);
+    return;
+  }
+  pages.push(page);
+}
+
+function updateDocsSectionPageCounts(sections: DocsMcpDocsSection[]): number {
+  let total = 0;
+  for (const section of sections) {
+    section.pageCount = section.pages.length + updateDocsSectionPageCounts(section.sections);
+    total += section.pageCount;
+  }
+  return total;
+}
+
+function findDocsSection(
+  sections: DocsMcpDocsSection[],
+  section: string,
+  entry?: string,
+): DocsMcpDocsSection | undefined {
+  for (const candidate of sections) {
+    if (docsListSectionMatches(candidate, section, entry)) return candidate;
+    const child = findDocsSection(candidate.sections, section, entry);
+    if (child) return child;
+  }
+  return undefined;
+}
+
+function docsListSectionMatches(
+  section: DocsMcpDocsSection,
+  value: string,
+  entry?: string,
+): boolean {
+  return docsListCandidates(section, entry).includes(normalizeDocsListMatchValue(value));
+}
+
+function docsListPageMatches(page: DocsMcpDocsPageSummary, value: string, entry?: string): boolean {
+  return docsListCandidates(page, entry).includes(normalizeDocsListMatchValue(value));
+}
+
+function docsListCandidates(
+  value: { slug: string; title: string; url?: string },
+  entry?: string,
+): string[] {
+  return [
+    value.slug,
+    value.url,
+    value.title,
+    value.url ? stripDocsEntryFromPath(value.url, entry) : undefined,
+    stripDocsEntryFromPath(value.slug, entry),
+  ]
+    .filter((candidate): candidate is string => Boolean(candidate))
+    .map(normalizeDocsListMatchValue);
+}
+
+function stripDocsEntryFromPath(value: string, entry?: string): string {
+  const normalized = normalizePathSegment(value.replace(/\.md$/i, ""));
+  const normalizedEntry = normalizePathSegment(entry ?? "");
+  if (!normalizedEntry) return normalized;
+  if (normalized === normalizedEntry) return "";
+  if (normalized.startsWith(`${normalizedEntry}/`)) {
+    return normalized.slice(normalizedEntry.length + 1);
+  }
+  return normalized;
+}
+
+function normalizeDocsListMatchValue(value: string): string {
+  const withoutOrigin = value.replace(/^https?:\/\/[^/]+/i, "");
+  return normalizePathSegment(withoutOrigin.replace(/\.md$/i, ""))
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/_+/g, "-")
+    .replace(/\/+/g, "/")
+    .replace(/^\/+|\/+$/g, "");
+}
+
+function cloneDocsSection(section: DocsMcpDocsSection): DocsMcpDocsSection {
+  return {
+    ...section,
+    pages: section.pages.map((page) => ({ ...page })),
+    sections: section.sections.map(cloneDocsSection),
+  };
+}
+
+function flattenDocsSectionPages(section: DocsMcpDocsSection): DocsMcpDocsPageSummary[] {
+  const seen = new Set<string>();
+  const pages: DocsMcpDocsPageSummary[] = [];
+
+  function add(page: DocsMcpDocsPageSummary) {
+    if (seen.has(page.url)) return;
+    seen.add(page.url);
+    pages.push({ ...page });
+  }
+
+  function visit(current: DocsMcpDocsSection) {
+    current.pages.forEach(add);
+    current.sections.forEach(visit);
+  }
+
+  visit(section);
+  return pages;
+}
+
+function countDocsSections(sections: DocsMcpDocsSection[]): number {
+  return sections.reduce((total, section) => total + 1 + countDocsSections(section.sections), 0);
+}
+
+function extractDocsMcpCodeExamples(page: DocsMcpPage): DocsMcpCodeExample[] {
+  const source = page.agentRawContent ?? page.agentFallbackRawContent ?? page.rawContent;
+  if (!source) return [];
+
+  const examples: DocsMcpCodeExample[] = [];
+  const lines = source.split("\n");
+  let index = 0;
+  let openFence: { marker: string; info: string; code: string[] } | null = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (!openFence) {
+      const openMatch = trimmed.match(/^(`{3,}|~{3,})(.*)$/);
+      if (!openMatch) continue;
+
+      openFence = {
+        marker: openMatch[1],
+        info: openMatch[2]?.trim() ?? "",
+        code: [],
+      };
+      continue;
+    }
+
+    if (isClosingFence(trimmed, openFence.marker)) {
+      const parsed = parseCodeFenceInfo(openFence.info);
+      const meta = parsed.meta;
+      const title = readStringMeta(meta, "title");
+      const framework = readStringMeta(meta, "framework");
+      const packageManager = readStringMeta(meta, "packageManager");
+      const runnable = readBooleanMeta(meta, "runnable") ?? false;
+
+      index += 1;
+      examples.push({
+        id: `${page.url}#code-${index}`,
+        page: {
+          slug: page.slug,
+          url: page.url,
+          title: page.title,
+          description: page.description,
+          sourcePath: page.sourcePath,
+          lastModified: page.lastModified,
+        },
+        language: parsed.language,
+        title,
+        framework,
+        packageManager,
+        runnable,
+        meta,
+        code: openFence.code.join("\n"),
+      });
+      openFence = null;
+      continue;
+    }
+
+    openFence.code.push(line);
+  }
+
+  return examples;
+}
+
+function filterDocsCodeExamples(
+  examples: DocsMcpCodeExample[],
+  filters: {
+    query?: string;
+    framework?: string;
+    packageManager?: string;
+    language?: string;
+    runnable?: boolean;
+    limit: number;
+  },
+): DocsMcpCodeExample[] {
+  const query = filters.query?.toLowerCase();
+  const framework = filters.framework?.toLowerCase();
+  const packageManager = filters.packageManager?.toLowerCase();
+  const language = filters.language?.toLowerCase();
+
+  return examples
+    .filter((example) => {
+      if (framework && example.framework?.toLowerCase() !== framework) return false;
+      if (packageManager && example.packageManager?.toLowerCase() !== packageManager) return false;
+      if (language && example.language?.toLowerCase() !== language) return false;
+      if (filters.runnable !== undefined && example.runnable !== filters.runnable) return false;
+      if (!query) return true;
+      return getCodeExampleSearchText(example).toLowerCase().includes(query);
+    })
+    .slice(0, filters.limit);
+}
+
+function isClosingFence(trimmedLine: string, marker: string): boolean {
+  if (!trimmedLine.startsWith(marker)) return false;
+  return trimmedLine.slice(marker.length).trim().length === 0;
+}
+
+function parseCodeFenceInfo(info: string): {
+  language?: string;
+  meta: Record<string, string | boolean>;
+} {
+  const trimmed = info.trim();
+  if (!trimmed) return { meta: {} };
+
+  const firstTokenMatch = trimmed.match(/^(\S+)/);
+  const firstToken = firstTokenMatch?.[1] ?? "";
+  const language = firstToken && !firstToken.includes("=") ? firstToken : undefined;
+  const attributeSource = language ? trimmed.slice(firstToken.length).trim() : trimmed;
+  const meta: Record<string, string | boolean> = {};
+  const attributePattern = /([A-Za-z_:][\w:.-]*)(?:=(?:"([^"]*)"|'([^']*)'|([^\s"']+)))?/g;
+
+  let match: RegExpExecArray | null;
+  while ((match = attributePattern.exec(attributeSource))) {
+    const key = match[1];
+    const value = match[2] ?? match[3] ?? match[4];
+    meta[key] = value ?? true;
+  }
+
+  return { language, meta };
+}
+
+function readStringMeta(meta: Record<string, string | boolean>, key: string): string | undefined {
+  const value = meta[key];
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function readBooleanMeta(meta: Record<string, string | boolean>, key: string): boolean | undefined {
+  const value = meta[key];
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return undefined;
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized || normalized === "true" || normalized === "1" || normalized === "yes") {
+    return true;
+  }
+  if (normalized === "false" || normalized === "0" || normalized === "no") return false;
+  return true;
+}
+
+function getCodeExampleSearchText(example: DocsMcpCodeExample): string {
+  return [
+    example.id,
+    example.page.slug,
+    example.page.url,
+    example.page.title,
+    example.page.description,
+    example.page.sourcePath,
+    example.language,
+    example.title,
+    example.framework,
+    example.packageManager,
+    ...Object.entries(example.meta).map(([key, value]) => `${key} ${String(value)}`),
+    example.code,
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .join("\n");
 }
 
 function findDocsPage(

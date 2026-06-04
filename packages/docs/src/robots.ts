@@ -1,6 +1,10 @@
 import {
+  DEFAULT_AGENT_MD_ROUTE,
+  DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
+  DEFAULT_AGENTS_MD_ROUTE,
+  DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
   DEFAULT_LLMS_FULL_TXT_ROUTE,
   DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
   DEFAULT_LLMS_TXT_ROUTE,
@@ -51,6 +55,10 @@ export interface DocsRobotsAnalysis {
   hasAgentRoutes: boolean;
   hasAiPolicy: boolean;
   missingRoutes: string[];
+}
+
+export interface CreateDocsRobotsResponseOptions extends DocsRobotsRenderOptions {
+  request: Request;
 }
 
 function normalizeRoute(value: string): string {
@@ -128,6 +136,10 @@ export function getDocsRobotsAllowRoutes(options: DocsRobotsRenderOptions = {}):
     DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
     DEFAULT_SKILL_MD_ROUTE,
     DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
+    DEFAULT_AGENTS_MD_ROUTE,
+    DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
+    DEFAULT_AGENT_MD_ROUTE,
+    DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE,
     DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
     DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
     DEFAULT_MCP_PUBLIC_ROUTE,
@@ -138,6 +150,7 @@ export function getDocsRobotsAllowRoutes(options: DocsRobotsRenderOptions = {}):
     if (sitemapConfig.xml.enabled) routes.push(sitemapConfig.xml.route);
     if (sitemapConfig.markdown.enabled) {
       routes.push(sitemapConfig.markdown.route, sitemapConfig.markdown.wellKnownRoute);
+      if (sitemapConfig.markdown.docsRoute) routes.push(sitemapConfig.markdown.docsRoute);
     }
   }
 
@@ -212,6 +225,41 @@ export function renderDocsRobotsTxt(options: DocsRobotsRenderOptions = {}): stri
   return `${lines.join("\n")}\n`;
 }
 
+export function resolveDocsRobotsRequest(
+  url: URL,
+  robots?: boolean | DocsRobotsConfig,
+): "robots" | null {
+  const pathname = normalizeRoute(url.pathname);
+  const format = url.searchParams.get("format")?.trim();
+  if (pathname === "/api/docs" && format === "robots") return "robots";
+
+  const resolved = resolveDocsRobotsConfig(robots);
+  if (!resolved.enabled) return null;
+
+  return pathname === DEFAULT_ROBOTS_TXT_ROUTE ? "robots" : null;
+}
+
+export function createDocsRobotsResponse({
+  request,
+  ...options
+}: CreateDocsRobotsResponseOptions): Response | null {
+  const url = new URL(request.url);
+  if (!resolveDocsRobotsRequest(url, options.robots)) return null;
+
+  const content = renderDocsRobotsTxt({
+    ...options,
+    baseUrl: options.baseUrl ?? url.origin,
+  });
+  if (!content) return null;
+
+  return new Response(content, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "public, max-age=0, s-maxage=3600",
+    },
+  });
+}
+
 export function renderDocsRobotsGeneratedBlock(options: DocsRobotsRenderOptions = {}): string {
   return `${DOCS_ROBOTS_GENERATED_BLOCK_START}\n${renderDocsRobotsTxt(options).trimEnd()}\n${DOCS_ROBOTS_GENERATED_BLOCK_END}\n`;
 }
@@ -253,6 +301,7 @@ export function analyzeDocsRobotsTxt(
         DEFAULT_LLMS_FULL_TXT_ROUTE,
         DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
         DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
+        DEFAULT_AGENTS_MD_ROUTE,
         DEFAULT_SKILL_MD_ROUTE,
         DEFAULT_MCP_PUBLIC_ROUTE,
       ].includes(route) || route.includes("sitemap"),

@@ -7,6 +7,12 @@ order: 5.64
 
 # Analytics
 
+<Agent>
+Use this page when the user asks about this topic: Track product and usage events from docs, search, AI, feedback, agent, and MCP routes.
+Keep answers grounded in the exact options, routes, commands, and examples documented here.
+If the request moves beyond this page, point to the closest related docs instead of inventing config.
+</Agent>
+
 Use `analytics` when you want to understand how people and agents use your docs. It emits
 product-level usage events: page views, search activity, Ask AI requests, feedback, page actions,
 machine-readable markdown reads, agent feedback routes, and MCP requests.
@@ -14,6 +20,12 @@ machine-readable markdown reads, agent feedback routes, and MCP requests.
 Analytics is intentionally separate from [Observability](/docs/customization/observability).
 Analytics answers "what did users or agents do?" Observability answers "what happened inside this
 agent run?"
+
+<Callout type="info" title="Sending events to Docs Cloud">
+  This page covers the runtime event stream and optional custom destinations. Connected Docs Cloud
+  projects send events to Cloud automatically, store them in Cloud, and show activity in the
+  dashboard. For the Cloud-specific contract, see [Docs Cloud Analytics](/docs/cloud/analytics).
+</Callout>
 
 ## Quick Start
 
@@ -26,7 +38,10 @@ export default defineDocs({
 `analytics: true` logs usage events to the console with the `[@farming-labs/docs:analytics]`
 prefix.
 
-## Send Events To Your Own Sink
+## Send Events To Another Tool
+
+For connected Docs Cloud projects, this callback is optional and additive. Use it when you want a
+copy of events outside Docs Cloud; you do not need it for Cloud storage.
 
 ```ts title="docs.config.ts"
 export default defineDocs({
@@ -114,7 +129,7 @@ whether the action completed.
 | `mcp_tool`                      | An MCP tool call was handled, such as `search_docs` or `read_page`.     |
 
 `agent_read` includes `properties.delivery` so you can see how the page was read: `md_route`,
-`accept_header`, `api_format`, or `mcp_tool`.
+`accept_header`, `signature_agent`, `user_agent`, `heuristic`, `api_format`, or `mcp_tool`.
 
 ## Input Privacy
 

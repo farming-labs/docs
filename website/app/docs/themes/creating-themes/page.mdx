@@ -5,7 +5,15 @@ icon: "lightbulb"
 order: 4.95
 ---
 
+import { WebsiteThemePrompt } from "@/components/website-theme-prompt";
+
 # Creating Your Own Theme
+
+<Agent>
+Use this page when the user asks about this topic: Step-by-step guide to building, publishing, and sharing custom themes.
+Keep answers grounded in the exact options, routes, commands, and examples documented here.
+If the request moves beyond this page, point to the closest related docs instead of inventing config.
+</Agent>
 
 Everything starts with `createTheme()`. No CSS required — just a config object.
 
@@ -44,6 +52,63 @@ theme: myTheme({
   ui: { colors: { primary: "#3b82f6" } },
 });
 ```
+
+---
+
+## Prompt: Match an Existing Website
+
+Use this prompt when you already have a product or marketing website and want the docs to feel like
+the same brand.
+
+<WebsiteThemePrompt>
+Create or update an `@farming-labs/docs` theme so the documentation feels visually consistent with
+my existing website.
+
+Inputs:
+- Website URL: [WEBSITE_URL]
+- Docs entry folder: [DOCS_ENTRY]
+- Framework: [FRAMEWORK]
+- Brandfetch brand context:
+[BRAND_CONTEXT]
+
+Use the @farming-labs/docs markdown routes as implementation context before coding:
+- Framework docs: https://docs.farming-labs.dev/docs.md
+- Theme guide: https://docs.farming-labs.dev/docs/themes/creating-themes.md
+- Components guide: https://docs.farming-labs.dev/docs/customization/components.md
+- CLI guide: https://docs.farming-labs.dev/docs/cli.md
+
+Use the Brandfetch brand context as brand hints, then inspect the existing website directly and
+extract its design system:
+- brand colors, accent colors, background colors, border colors, and focus states
+- typography, font families, heading scale, body size, line height, and code font
+- border radius, shadows, dividers, spacing rhythm, and card/button treatment
+- navigation style, sidebar/header feel, search affordance, tabs, callouts, code blocks, and tables
+- light/dark mode behavior if the site supports it
+
+Then implement the docs theme:
+- choose the closest built-in `@farming-labs/docs` theme as the base, or create a custom theme with
+  `createTheme()` / `extendTheme()`
+- update `docs.config.ts[x]` to use the theme
+- add or update the theme CSS import in the app's global stylesheet
+- add CSS overrides only where the config tokens are not enough
+- keep the docs interface readable, scannable, and documentation-first; do not copy marketing hero
+  sections into docs pages
+- preserve agent-ready docs features such as `.md` routes, `llms.txt`, `AGENTS.md`, `skill.md`, sitemap,
+  `robots.txt`, MCP, JSON-LD, and markdown alternate links
+
+Verification:
+- run the docs dev server
+- check desktop and mobile layouts
+- confirm text does not overflow buttons, cards, sidebars, or code blocks
+- confirm search, sidebar navigation, code blocks, callouts, tabs, and page actions still work
+- list the files changed and explain which website design tokens were mapped into the docs theme
+</WebsiteThemePrompt>
+
+The copy button asks for the website URL, fetches Brandfetch brand details, defaults the docs entry
+folder to `docs`, defaults the framework to `Next.js`, and fills those placeholders before copying.
+If the website uses a very expressive landing page, ask for a docs interpretation of the brand
+instead of a literal copy. Documentation should feel connected to the product while staying calmer,
+denser, and easier to scan.
 
 ---
 

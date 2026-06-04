@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import mdx from "@mdx-js/rollup";
+import { remarkCodeGroup } from "@farming-labs/docs/server";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkMdxFrontmatter from "remark-mdx-frontmatter";
@@ -141,6 +142,7 @@ export function docsMdx(): PluginOption {
         remarkGfm,
         remarkFrontmatter,
         [remarkMdxFrontmatter, { name: "metadata" }],
+        remarkCodeGroup,
         remarkHeading,
       ],
       rehypePlugins: [

@@ -3,9 +3,20 @@ title: "Token Efficiency"
 description: "How @farming-labs/docs keeps your project lean for AI-assisted development — without sacrificing flexibility"
 icon: "zap"
 order: 3.5
+related:
+  - /docs/guides/agent-friendly-docs
+  - /docs/customization/agent-primitive
+  - /docs/customization/llms-txt
+  - /docs/customization/mcp
 ---
 
 # Token Efficiency
+
+<Agent>
+Use this page when the user asks about this topic: How @farming-labs/docs keeps your project lean for AI-assisted development - without sacrificing flexibility.
+Keep answers grounded in the exact options, routes, commands, and examples documented here.
+If the request moves beyond this page, point to the closest related docs instead of inventing config.
+</Agent>
 
 AI tools like Cursor, Copilot, and Claude read your project files to help you write code. Every file they read costs **tokens** — the units that determine response speed, API cost, and how much of your project fits in a single conversation.
 
@@ -207,9 +218,12 @@ Enable `sitemap` when agents and crawlers need a compact inventory before readin
 ```text
 /sitemap.xml  → canonical URLs with lastmod dates
 /sitemap.md   → semantic docs map with descriptions and markdown URLs
+/docs/sitemap.md → docs-scoped alias for agents that look under the docs section
+JSON-LD       → per-page title, canonical URL, freshness, and breadcrumbs
 ```
 
-See the [Sitemaps docs](/docs/customization/sitemaps) for static export and manifest details.
+JSON-LD structured data is injected automatically on docs pages. See the
+[Sitemaps docs](/docs/customization/sitemaps) for static export and manifest details.
 
 ### Robots.txt
 
@@ -217,7 +231,7 @@ Generate `robots.txt` when crawlers and AI agents need an explicit public access
 machine-readable routes:
 
 ```text
-/robots.txt  → allows docs, .md routes, llms.txt, sitemaps, skill.md, MCP, and agent discovery
+/robots.txt  → allows docs, .md routes, llms.txt, sitemaps, AGENTS.md, skill.md, MCP, and agent discovery
 ```
 
 Use `docs robots generate`, or `docs robots generate --append` when the project already owns a

@@ -13,6 +13,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
    - `components`
    - `pageActions`
    - `agent`
+   - `codeBlocks`
    - `search`
    - `ai`
    - `mcp`
@@ -35,13 +36,17 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - When they want AI-facing behavior, distinguish between:
   - `ai` for Ask AI / chat
   - `agent.compact` for defaults used by `docs agent compact`
-  - `mcp` for the built-in MCP server
+  - `codeBlocks.validate` for planning and validating fenced MDX code blocks
+  - `mcp` for the built-in MCP server, including default tools like `list_docs`, `search_docs`,
+    `read_page`, `get_code_examples`, and `get_config_schema`
   - `llmsTxt` for crawler-friendly site summaries
   - `sitemap` for XML and Markdown maps with canonical URLs and freshness dates
   - `robots` plus `docs robots generate` for a static crawler and AI-agent access policy
   - markdown routes for page-level machine-readable content
 - When they ask about generated API docs, use `apiReference`.
 - When they ask about static hosting, mention `staticExport: true`.
+- When they need to edit `docs.config.ts` through MCP, prefer `get_config_schema` before suggesting
+  config changes.
 
 ## Framework notes
 
@@ -52,7 +57,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
 ## Follow-up pages
 
 - Use [/docs/installation](/docs/installation) when the user is still wiring the framework into an app or has not created the docs route yet.
-- Use [/docs/cli](/docs/cli) when they want scaffolding, upgrades, sitemap generation, robots generation, search sync, or MCP commands instead of manual setup.
+- Use [/docs/cli](/docs/cli) when they want scaffolding, upgrades, code block validation, sitemap generation, robots generation, search sync, or MCP commands instead of manual setup.
 - Use [/docs/reference](/docs/reference) when they need the full typed `defineDocs()` surface or nested option details.
 - Use [/docs/customization](/docs/customization) when the question moves from config into layout, sidebar, colors, or page-level polish.
 - Use [/docs/themes](/docs/themes) when they are choosing a preset theme or building their own.
@@ -60,7 +65,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - Use [/docs/customization/agent-primitive](/docs/customization/agent-primitive) when the user wants `.md` routes, hidden `<Agent>` content, or sibling `agent.md` overrides.
 - Use [/docs/customization/mcp](/docs/customization/mcp) when they want machine-readable access through the built-in MCP server.
 - Use [/docs/customization/llms-txt](/docs/customization/llms-txt) when they need crawler-friendly summaries for AI systems.
-- Use [/docs/customization/sitemaps](/docs/customization/sitemaps) when they need `sitemap.xml`, `sitemap.md`, static export files, or `lastmod` behavior.
+- Use [/docs/customization/sitemaps](/docs/customization/sitemaps) when they need `sitemap.xml`, `sitemap.md`, `/docs/sitemap.md`, static export files, or `lastmod` behavior.
 - Use [/docs/customization/ai-chat](/docs/customization/ai-chat) when they are configuring Ask AI or retrieval-backed chat.
 - Use [/docs/customization/page-actions](/docs/customization/page-actions) when they want Copy Markdown or Open in LLM actions.
 - Use [/docs/token-efficiency](/docs/token-efficiency) when they care about retrieval quality, context size, or agent cost.

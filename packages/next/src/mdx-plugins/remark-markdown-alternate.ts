@@ -4,6 +4,7 @@ interface RemarkMarkdownAlternateOptions {
   entry?: string;
   appDir?: string;
   contentDir?: string;
+  docsPath?: string;
   enabled?: boolean;
 }
 
@@ -23,6 +24,23 @@ function normalizePath(value: string): string {
 
 function normalizeSegment(value: string | undefined, fallback: string): string {
   return (value ?? fallback).replace(/^\/+|\/+$/g, "") || fallback;
+}
+
+function normalizeDocsPath(value: string | undefined, entry: string): string {
+  if (typeof value !== "string") return `/${entry}`;
+
+  const cleaned = value
+    .trim()
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\/+/g, "/");
+  if (cleaned === "") return "";
+
+  return `/${cleaned}`;
+}
+
+function joinDocsPath(docsPath: string, slug: string): string {
+  if (!slug) return docsPath || "/";
+  return docsPath ? `${docsPath}/${slug}` : `/${slug}`;
 }
 
 function escapeYamlString(value: string): string {
@@ -57,7 +75,7 @@ function routeFromSourcePath(
     if (!relativePath.endsWith("page.mdx") && !relativePath.endsWith("page.md")) continue;
 
     const slug = relativePath.replace(/\/?page\.mdx?$/, "").replace(/^\/+|\/+$/g, "");
-    return slug ? `/${entry}/${slug}` : `/${entry}`;
+    return joinDocsPath(normalizeDocsPath(options.docsPath, entry), slug);
   }
 
   return null;
@@ -72,11 +90,11 @@ function hasAlternates(yaml: string): boolean {
 }
 
 function alternateYaml(url: string): string {
-  return [
-    "alternates:",
-    "  types:",
-    `    text/markdown: "${escapeYamlString(toDocsMarkdownUrl(url))}"`,
-  ].join("\n");
+  const markdownUrl = url === "/" ? "/docs.md" : toDocsMarkdownUrl(url);
+
+  return ["alternates:", "  types:", `    text/markdown: "${escapeYamlString(markdownUrl)}"`].join(
+    "\n",
+  );
 }
 
 export default function remarkMarkdownAlternate(options: RemarkMarkdownAlternateOptions = {}) {

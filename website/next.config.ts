@@ -7,4 +7,10 @@ export default withDocs({
   turbopack: {
     root: repoRoot,
   },
+  outputFileTracingIncludes: {
+    "/api/agent-score": ["../node_modules/.pnpm/afdocs@*/node_modules/afdocs/package.json"],
+    "/api/agent-score/leaderboard": [
+      "../node_modules/.pnpm/afdocs@*/node_modules/afdocs/package.json",
+    ],
+  },
 });

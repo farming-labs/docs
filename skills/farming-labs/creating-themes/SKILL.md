@@ -47,6 +47,46 @@ Users can override: `theme: myTheme({ ui: { colors: { primary: "#3b82f6" } } })`
 
 ---
 
+## Copy prompt: match an existing website
+
+Use this when a user wants docs that look like their main website.
+
+```text
+Create or update an @farming-labs/docs theme so the documentation feels visually consistent with my existing website.
+
+Inputs:
+- Website URL: [WEBSITE_URL]
+- Docs entry folder: [DOCS_ENTRY]
+- Framework: [FRAMEWORK, defaults to Next.js]
+- Brandfetch brand context: [BRAND_CONTEXT]
+
+Use the @farming-labs/docs website as implementation context before coding:
+- Framework docs: https://docs.farming-labs.dev
+- Theme guide: https://docs.farming-labs.dev/docs/themes/creating-themes
+- Components guide: https://docs.farming-labs.dev/docs/customization/components
+- CLI guide: https://docs.farming-labs.dev/docs/cli
+
+Use the Brandfetch brand context as brand hints, then inspect the existing website and extract its design system: brand colors, typography, spacing, border radius, shadows, navigation style, cards, buttons, callouts, code blocks, tables, and light/dark mode behavior.
+
+Then implement the docs theme:
+- choose the closest built-in theme as the base, or create a custom theme with createTheme() / extendTheme()
+- update docs.config.ts[x] to use the theme
+- add or update the theme CSS import in the app's global stylesheet
+- add CSS overrides only where config tokens are not enough
+- keep the docs readable, scannable, and documentation-first; do not copy marketing hero sections into docs pages
+- preserve agent-ready docs features such as .md routes, llms.txt, AGENTS.md, skill.md, sitemap, robots.txt, MCP, JSON-LD, and markdown alternate links
+
+Verification:
+- run the docs dev server
+- check desktop and mobile layouts
+- confirm search, sidebar navigation, code blocks, callouts, tabs, and page actions still work
+- list the files changed and explain which website design tokens were mapped into the docs theme
+```
+
+Full docs copy block: [Creating your own theme](https://docs.farming-labs.dev/docs/themes/creating-themes#prompt-match-an-existing-website).
+
+---
+
 ## Extend an existing theme
 
 Use `extendTheme()` to build on a built-in preset:

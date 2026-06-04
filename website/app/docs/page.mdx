@@ -4,6 +4,7 @@ description: "An AI-native documentation framework that just works"
 related:
   - /docs/installation
   - /docs/guides
+  - /docs/cloud
   - /docs/configuration
   - /docs/customization/agent-primitive
   - /docs/customization/llms-txt
@@ -23,8 +24,9 @@ You are reading the machine-readable entry page for `@farming-labs/docs`.
 Before implementing from this docs site, fetch `/.well-known/agent.json` from the same origin. If
 that is unavailable, fall back to `/.well-known/agent`. Treat that JSON as the source of truth for
 the docs entry path, markdown route pattern, search endpoint, MCP endpoint, `llms.txt` routes,
-`sitemap.xml` / `sitemap.md` routes, `robots.txt` route, `skill.md` route, skills install command,
-locale handling, `Signature-Agent` support, and feedback endpoints.
+OpenAPI schema route, `sitemap.xml` / `sitemap.md` / `/docs/sitemap.md` routes, `robots.txt` route, `AGENTS.md` route, `skill.md` route,
+skills install command, JSON-LD structured data, locale handling, `Signature-Agent` support, and
+feedback endpoints.
 
 Recommended bootstrap flow:
 
@@ -32,28 +34,36 @@ Recommended bootstrap flow:
 2. Read `spec.skills.route` or `spec.skills.wellKnown` when a concise site skill is useful.
 3. Use `spec.markdown.pagePattern`, `spec.markdown.acceptHeader`, or `spec.markdown.signatureAgentHeader` to read the exact docs pages you need as markdown.
 4. Use `spec.search.endpoint` when you need to find the right page before reading it.
-5. Use `spec.sitemap.markdown.route` for the semantic page map and `spec.sitemap.xml.route` for canonical URL freshness when sitemap is enabled.
-6. Fetch `spec.robots.route` when you need to confirm crawler and AI-agent access policy for the public docs surface.
-7. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and the environment supports MCP.
-8. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
+5. Use `spec.openapi.url` before scraping API reference pages when `spec.openapi.enabled` is true.
+6. Use `spec.sitemap.markdown.route` for the semantic page map and `spec.sitemap.xml.route` for canonical URL freshness when sitemap is enabled.
+7. Fetch `spec.robots.route` when you need to confirm crawler and AI-agent access policy for the public docs surface.
+8. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and the environment supports MCP.
+9. If `spec.feedback.enabled` is true, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
 
-Do not scrape the HTML page when markdown, search, sitemap, robots, MCP, or `llms.txt` routes are
-available in the spec.
+Do not scrape the HTML page when markdown, search, OpenAPI, sitemap, robots, MCP, or `llms.txt`
+routes are available in the spec.
 </Agent>
 
 ## Why @farming-labs/docs?
 
 - **Zero boilerplate** — No layout files, no `[[...slug]]` wrappers except for fully fledged functionality like AI, Search and metadata to work. Just write Markdown or MDX.
 - **One config** — Everything in `docs.config.ts`: theme, colors, typography, icons, components, metadata.
-- **Token efficient** — Your entire docs framework surface is a single config file (~15 lines). AI tools like Cursor, Copilot, and Claude spend less time reading framework plumbing and more time working with your actual content. Built-in [llms.txt](/docs/customization/llms-txt), [sitemaps](/docs/customization/sitemaps), generated `robots.txt`, and `docs agent compact` keep the machine-readable layer lean too. [Learn more →](/docs/token-efficiency)
+- **Token efficient** — Your entire docs framework surface is a single config file (~15 lines). AI tools like Cursor, Copilot, and Claude spend less time reading framework plumbing and more time working with your actual content. Built-in JSON-LD structured data, [llms.txt](/docs/customization/llms-txt), [sitemaps](/docs/customization/sitemaps), generated `robots.txt`, and `docs agent compact` keep the machine-readable layer lean too. [Learn more →](/docs/token-efficiency)
 - **Multiple frameworks** — First-class support for Next.js, TanStack Start, SvelteKit, Astro, and Nuxt that just works.
 - **11 themes** — Default, Darksharp, Pixel Border, Colorful, Shiny, Ledger, DarkBold, GreenTree, Concrete, Command Grid, and Hardline — or build your own with [`createTheme()`](/docs/themes/creating-themes).
 - **Built-in search** — Zero-config simple search by default, or upgrade to Typesense, Algolia, or a custom adapter.
 - **CLI scaffolding** — `npx @farming-labs/docs init` first asks whether you're on an **existing project** or **starting fresh**; then it detects your framework, lets you pick a theme (or create your own), can scaffold locale folders for i18n, and generates config, routes, and sample pages. Use `--template` with `--name` to bootstrap a new project without prompts.
 
+<Callout type="tip" title="Docs Review CI is built in">
+Every docs site gets PR review automation by default. During `next dev` or `next build`, `withDocs()`
+can create a repo-root GitHub Actions wrapper that calls the hosted review workflow, checks changed
+docs files, scores agent-readiness, and reports GitHub annotations. Keep it as warn-only, or set
+`review.ci.mode: "block"` when docs quality should gate merges. See [Docs Review CI](/docs/configuration#docs-review-ci) and the [`docs review` CLI](/docs/cli#docs-review).
+</Callout>
+
 ## Looking Ahead: Cloud
 
-[Cloud](/cloud) is the infrastructure layer we are building around `@farming-labs/docs`.
+[Docs Cloud](/docs/cloud) is the infrastructure layer we are building around `@farming-labs/docs`.
 
 **You ship the code and we write the docs for you.**
 
@@ -62,6 +72,10 @@ search, retrieval, analytics, review workflows, and agent-ready docs operations 
 Git as the source of truth.
 
 [Join the waitlist to be an early user →](/cloud#waitlist)
+
+Already have access? Start with the [Docs Cloud integration guide](/docs/cloud) to create an API
+key and sync `docs.json`. Use [Deploy](/docs/cloud/deploy) for hosted preview docs and
+[Analytics](/docs/cloud/analytics) for Cloud-managed event storage.
 
 ## other docs frameworks?
 
@@ -91,9 +105,10 @@ Modern docs features are built in; you turn them on in [configuration](/docs/con
 - **[Page actions](/docs/customization/page-actions)** — Copy Markdown, open in ChatGPT/other tools. [Customize](/docs/customization/page-actions) which actions appear and their options.
 - **[Sidebar](/docs/customization/sidebar)** — Collapsible, flat or nested, banner, footer. [Customize](/docs/customization/sidebar) structure, style, and content (banner, footer, nav title).
 - **[Components](/docs/customization/components)** — Built-in MDX components like `Callout`, `Tabs`, and `HoverLink`, plus your own custom React components.
-- **[llms.txt](/docs/customization/llms-txt)** — LLM-friendly index of your docs; served when the docs API is enabled. Options described in the [llms.txt docs](/docs/customization/llms-txt).
-- **[Sitemaps](/docs/customization/sitemaps)** — XML and Markdown maps of canonical docs URLs, descriptions, related pages, and freshness metadata.
-- **Robots.txt** — Generate an agent-friendly crawl policy with `docs robots generate`. Configure defaults from [Configuration](/docs/configuration) and see the command in [CLI](/docs/cli).
+- **[llms.txt](/docs/customization/llms-txt)** — LLM-friendly index whose page links point directly to markdown routes. Options described in the [llms.txt docs](/docs/customization/llms-txt).
+- **[Sitemaps](/docs/customization/sitemaps)** — XML and Markdown maps of canonical docs URLs, descriptions, related pages, and freshness metadata. Runtime routes are enabled by default.
+- **Robots.txt** — Runtime agent-friendly crawl policy at `/robots.txt` when no static file already exists; use `docs robots generate` for static export or committed policies.
+- **[Docs Review CI](/docs/configuration#docs-review-ci)** — Generated GitHub Actions wrapper plus hosted `docs review` workflow scoring for changed MDX, broken internal links, frontmatter, code fence metadata, and agent context.
 
 Theme-level customization (colors, typography, components) is covered in [Configuration](/docs/configuration) and [Customization](/docs/customization) (including [Colors](/docs/customization/colors) and [Typography](/docs/customization/typography)). No custom components or routes required — enable and tweak what you need in `docs.config`.
 
@@ -145,7 +160,9 @@ The CLI first asks **existing project or fresh?** — then (for existing) auto-d
 
 - [Guides](/docs/guides) — Long-form playbooks, starting with writing agent-friendly docs
 - [Token Efficiency](/docs/token-efficiency) — Why this is the most AI-friendly docs framework
-- [Cloud](/cloud) — Where the managed infrastructure layer for humans and agents is heading
+- [Docs Cloud](/docs/cloud) — Understand the Cloud project contract
+- [Deploy](/docs/cloud/deploy) — Connect a docs project to hosted previews, API keys, and publish defaults
+- [Analytics](/docs/cloud/analytics) — Understand Cloud-managed analytics storage
 - [Configuration](/docs/configuration) — Customize your theme, colors, typography, sidebar, and more
 - [Themes](/docs/themes) — Browse available themes and learn how to create your own
 - [Customization](/docs/customization) — Colors, typography, sidebar, AI chat, page actions

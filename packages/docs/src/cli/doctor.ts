@@ -3,6 +3,8 @@ import path from "node:path";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 import pc from "picocolors";
 import {
+  DEFAULT_AGENTS_MD_ROUTE,
+  DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
   DEFAULT_AGENT_FEEDBACK_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
   DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
@@ -12,6 +14,7 @@ import {
   DEFAULT_MCP_WELL_KNOWN_ROUTE,
   DEFAULT_SKILL_MD_ROUTE,
   DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
+  buildDocsMcpEndpointCandidates,
 } from "../agent.js";
 import { createFilesystemDocsMcpSource, resolveDocsMcpConfig } from "../server.js";
 import {
@@ -448,21 +451,27 @@ function resolveStaticExport(config: DocsConfig | undefined, content: string): b
 
 function resolveAgentFeedbackEnabled(config: DocsConfig | undefined, content: string): boolean {
   const feedback = config?.feedback;
+  if (feedback === false) return false;
+  if (feedback === true) return true;
   if (feedback && typeof feedback === "object") {
     const agent = feedback.agent;
     if (typeof agent === "boolean") return agent;
     if (agent && typeof agent === "object") return agent.enabled ?? true;
+    return true;
   }
 
+  const topLevelBoolean = readTopLevelBooleanProperty(content, "feedback");
+  if (typeof topLevelBoolean === "boolean") return topLevelBoolean;
+
   const feedbackBlock = extractNestedObjectLiteral(content, ["feedback"]);
-  if (!feedbackBlock) return false;
+  if (!feedbackBlock) return true;
 
   const nestedAgentBlock = extractNestedObjectLiteral(content, ["feedback", "agent"]);
   if (nestedAgentBlock) {
     return readBooleanProperty(nestedAgentBlock, "enabled") ?? true;
   }
 
-  return readBooleanProperty(feedbackBlock, "agent") ?? false;
+  return readBooleanProperty(feedbackBlock, "agent") ?? true;
 }
 
 function resolveHumanFeedbackEnabled(config: DocsConfig | undefined, content: string): boolean {
@@ -620,7 +629,7 @@ function detectRouteSurface(
         apiDetail: "Next static export disables /api/docs and the shared agent endpoints.",
         publicMounted: false,
         publicDetail:
-          "Public .md, llms.txt, sitemap, skill.md, and agent discovery routes depend on /api/docs.",
+          "Public .md, llms.txt, sitemap, AGENTS.md, skill.md, and agent discovery routes depend on /api/docs.",
       };
     }
 
@@ -821,6 +830,13 @@ function percentageScore(score: number, maxScore: number): number {
   return Math.round((score / maxScore) * 100);
 }
 
+function normalizedDoctorScore(score: number, maxScore: number): { score: number; maxScore: 100 } {
+  return {
+    score: percentageScore(score, maxScore),
+    maxScore: 100,
+  };
+}
+
 function formatStatus(status: DoctorStatus): string {
   if (status === "pass") return pc.green("PASS");
   if (status === "warn") return pc.yellow("WARN");
@@ -949,7 +965,7 @@ function compactionFreshnessScore(
   if (coverage.unknownGeneratedPages > 0) {
     return {
       status: "pass",
-      score: compactConfigured ? 4 : 3,
+      score: compactConfigured ? 5 : 3,
     };
   }
 
@@ -1125,7 +1141,7 @@ async function fetchWithTimeout(
 async function probeTextRoute(
   baseUrl: string,
   route: string,
-): Promise<{ ok: boolean; status?: number; detail: string }> {
+): Promise<{ ok: boolean; status?: number; detail: string; body?: string; linkHeader?: string }> {
   const url = joinDoctorUrl(baseUrl, route);
 
   try {
@@ -1156,6 +1172,8 @@ async function probeTextRoute(
       ok: true,
       status: response.status,
       detail: `${route} returned HTTP ${response.status} with ${body.length} characters.`,
+      body,
+      linkHeader: response.headers.get("link") ?? undefined,
     };
   } catch (error) {
     return {
@@ -1163,6 +1181,107 @@ async function probeTextRoute(
       detail: `${route} failed: ${error instanceof Error ? error.message : String(error)}.`,
     };
   }
+}
+
+function decodeHtmlEntity(value: string): string {
+  const named: Record<string, string> = {
+    amp: "&",
+    apos: "'",
+    gt: ">",
+    lt: "<",
+    quot: '"',
+  };
+
+  return value.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (entity, raw: string) => {
+    const lower = raw.toLowerCase();
+    if (lower.startsWith("#x")) {
+      const codePoint = Number.parseInt(lower.slice(2), 16);
+      return Number.isFinite(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff
+        ? String.fromCodePoint(codePoint)
+        : entity;
+    }
+    if (lower.startsWith("#")) {
+      const codePoint = Number.parseInt(lower.slice(1), 10);
+      return Number.isFinite(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff
+        ? String.fromCodePoint(codePoint)
+        : entity;
+    }
+    return named[lower] ?? entity;
+  });
+}
+
+function htmlAttribute(tag: string, name: string): string | undefined {
+  const pattern = /([^\s"'<>/=]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+  for (const match of tag.matchAll(pattern)) {
+    if (match[1]?.toLowerCase() !== name.toLowerCase()) continue;
+    return decodeHtmlEntity(match[2] ?? match[3] ?? match[4] ?? "");
+  }
+  return undefined;
+}
+
+function hasJsonLdScript(html: string): boolean {
+  return /<script\b(?=[^>]*\btype\s*=\s*["']application\/ld\+json["'])[^>]*>/i.test(html);
+}
+
+function markdownAlternateHref(html: string): string | undefined {
+  for (const match of html.matchAll(/<link\b[^>]*>/gi)) {
+    const tag = match[0];
+    const rel = htmlAttribute(tag, "rel") ?? "";
+    const type = htmlAttribute(tag, "type") ?? "";
+    const href = htmlAttribute(tag, "href");
+    const relTokens = rel.toLowerCase().split(/\s+/).filter(Boolean);
+
+    if (href && relTokens.includes("alternate") && /^text\/markdown(?:\s*;|$)/i.test(type.trim())) {
+      return href;
+    }
+  }
+
+  return undefined;
+}
+
+function resolveMarkdownAlternateUrl(href: string | undefined, pageUrl: string): URL | undefined {
+  if (!href) return undefined;
+  try {
+    const url = new URL(href, pageUrl);
+    const page = new URL(pageUrl);
+    return url.origin === page.origin && url.pathname.endsWith(".md") ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function canonicalLinkFromHeader(header: string | undefined): string | undefined {
+  if (!header) return undefined;
+
+  for (const match of header.matchAll(/<([^>]+)>\s*((?:;\s*[^,]+)*)/g)) {
+    const params = match[2] ?? "";
+    const rel = params.match(/(?:^|;)\s*rel\s*=\s*(?:"([^"]*)"|([^;\s,]+))/i);
+    const relValue = rel?.[1] ?? rel?.[2] ?? "";
+    if (relValue.toLowerCase().split(/\s+/).includes("canonical")) return match[1];
+  }
+
+  return undefined;
+}
+
+function normalizeCanonicalUrl(value: string, baseUrl: string): string | undefined {
+  try {
+    const url = new URL(value, baseUrl);
+    url.hash = "";
+    url.search = "";
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return undefined;
+  }
+}
+
+function hasCanonicalLinkHeader(
+  header: string | undefined,
+  pageUrl: string,
+  responseUrl: string,
+): boolean {
+  const canonical = canonicalLinkFromHeader(header);
+  if (!canonical) return false;
+  return normalizeCanonicalUrl(canonical, responseUrl) === normalizeCanonicalUrl(pageUrl, pageUrl);
 }
 
 async function probeRobotsRoute(
@@ -1332,24 +1451,20 @@ async function probeMcpRoute(
       };
     }
 
-    const sessionId = initializeResponse.headers.get("mcp-session-id");
-    if (!sessionId) {
-      return {
-        ok: false,
-        detail: `${route} initialize did not return mcp-session-id.`,
-      };
-    }
+    const sessionId = initializeResponse.headers.get("mcp-session-id") ?? undefined;
 
-    await postMcpJson(
-      baseUrl,
-      route,
-      {
-        jsonrpc: "2.0",
-        method: "notifications/initialized",
-        params: {},
-      },
-      sessionId,
-    ).catch(() => undefined);
+    if (sessionId) {
+      await postMcpJson(
+        baseUrl,
+        route,
+        {
+          jsonrpc: "2.0",
+          method: "notifications/initialized",
+          params: {},
+        },
+        sessionId,
+      ).catch(() => undefined);
+    }
 
     const toolsResponse = await postMcpJson(
       baseUrl,
@@ -1364,13 +1479,15 @@ async function probeMcpRoute(
     );
     const toolsPayload = await parseMcpResponse(toolsResponse);
 
-    await fetchWithTimeout(joinDoctorUrl(baseUrl, route), {
-      method: "DELETE",
-      headers: {
-        "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
-        "mcp-session-id": sessionId,
-      },
-    }).catch(() => undefined);
+    if (sessionId) {
+      await fetchWithTimeout(joinDoctorUrl(baseUrl, route), {
+        method: "DELETE",
+        headers: {
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": sessionId,
+        },
+      }).catch(() => undefined);
+    }
 
     if (!toolsResponse.ok || toolsPayload.error) {
       return {
@@ -1383,7 +1500,15 @@ async function probeMcpRoute(
     const toolNames = Array.isArray(tools)
       ? tools.map((tool) => tool.name).filter((name): name is string => typeof name === "string")
       : [];
-    const expectedTools = ["list_pages", "get_navigation", "search_docs", "read_page"];
+    const expectedTools = [
+      "list_docs",
+      "list_pages",
+      "get_navigation",
+      "search_docs",
+      "read_page",
+      "get_code_examples",
+      "get_config_schema",
+    ];
     const missingTools = expectedTools.filter((tool) => !toolNames.includes(tool));
 
     if (missingTools.length > 0) {
@@ -1395,7 +1520,7 @@ async function probeMcpRoute(
 
     return {
       ok: true,
-      detail: `${route} initialized and exposed ${toolNames.length} MCP tool${toolNames.length === 1 ? "" : "s"}.`,
+      detail: `${route} initialized ${sessionId ? "with a session" : "statelessly"} and exposed ${toolNames.length} MCP tool${toolNames.length === 1 ? "" : "s"}.`,
     };
   } catch (error) {
     return {
@@ -1403,6 +1528,27 @@ async function probeMcpRoute(
       detail: `${route} failed: ${error instanceof Error ? error.message : String(error)}.`,
     };
   }
+}
+
+async function probeMcpRouteCandidates(
+  baseUrl: string,
+  routes: string[],
+): Promise<{ labels: string[]; probes: Array<{ ok: boolean; detail: string }> }> {
+  const candidates = buildDocsMcpEndpointCandidates(baseUrl, routes);
+  const probes = await Promise.all(
+    candidates.map(async (candidate) => {
+      const probe = await probeMcpRoute(candidate.baseUrl, candidate.route);
+      return {
+        ...probe,
+        detail: `${candidate.label}: ${probe.detail}`,
+      };
+    }),
+  );
+
+  return {
+    labels: candidates.map((candidate) => candidate.label),
+    probes,
+  };
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
@@ -1432,6 +1578,7 @@ function hostedSitemapRoutes(discoveryBody: unknown): {
     markdown?.enabled === false
       ? undefined
       : (readDiscoveryRoute(markdown?.route) ?? DEFAULT_SITEMAP_MD_ROUTE),
+    markdown?.enabled === false ? undefined : readDiscoveryRoute(markdown?.docsRoute),
     markdown?.enabled === false
       ? undefined
       : (readDiscoveryRoute(markdown?.wellKnownRoute) ?? DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE),
@@ -1446,6 +1593,139 @@ function hostedRobotsRoute(discoveryBody: unknown): { enabled: boolean; route: s
     enabled: robots?.enabled === false ? false : true,
     route: readDiscoveryRoute(robots?.route) ?? DEFAULT_ROBOTS_TXT_ROUTE,
   };
+}
+
+function hostedMcpRoutes(discoveryBody: unknown): string[] {
+  const mcp = asRecord(asRecord(discoveryBody)?.mcp);
+  const publicEndpoints = (mcp?.publicEndpoints ?? mcp?.endpoints) as unknown;
+  const declaredRoutes = Array.isArray(publicEndpoints)
+    ? publicEndpoints.filter(
+        (value): value is string => typeof value === "string" && value.startsWith("/"),
+      )
+    : [];
+
+  if (declaredRoutes.length > 0) return Array.from(new Set(declaredRoutes));
+
+  return Array.from(
+    new Set([
+      readDiscoveryRoute(mcp?.publicEndpoint) ?? DEFAULT_MCP_PUBLIC_ROUTE,
+      readDiscoveryRoute(mcp?.wellKnownEndpoint) ?? DEFAULT_MCP_WELL_KNOWN_ROUTE,
+    ]),
+  );
+}
+
+function hostedCapability(discoveryBody: unknown, key: string): boolean | undefined {
+  const root = asRecord(discoveryBody);
+  const capabilities = asRecord(root?.capabilities);
+  const capability = capabilities?.[key];
+  if (typeof capability === "boolean") return capability;
+
+  const block = asRecord(root?.[key]);
+  const enabled = block?.enabled;
+  return typeof enabled === "boolean" ? enabled : undefined;
+}
+
+function hostedRootDocsRoute(discoveryBody: unknown): string {
+  const site = asRecord(asRecord(discoveryBody)?.site);
+  const entry = typeof site?.entry === "string" && site.entry.trim() ? site.entry.trim() : "docs";
+  return `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
+}
+
+function hostedPageUrl(baseUrl: string, pageRoute: string): string | undefined {
+  try {
+    const base = new URL(baseUrl);
+    const parsed = new URL(pageRoute, base.origin);
+    if (parsed.origin !== base.origin) return undefined;
+
+    parsed.hash = "";
+    parsed.search = "";
+
+    const basePath = base.pathname.replace(/\/+$/, "");
+    const pagePath = parsed.pathname.replace(/\/+$/, "") || "/";
+    const shouldUsePagePath =
+      !basePath || pagePath === basePath || pagePath.startsWith(`${basePath}/`);
+    const pathname = shouldUsePagePath ? pagePath : `${basePath}${pagePath}`;
+    return new URL(pathname || "/", base.origin).toString().replace(/\/+$/, "");
+  } catch {
+    return undefined;
+  }
+}
+
+function sampleHostedPageUrls(
+  baseUrl: string,
+  discoveryBody: unknown,
+  pages: Array<{ url: string }>,
+  limit = 10,
+): string[] {
+  const pageRoutes = pages
+    .map((page) => page.url)
+    .filter((route) => route.startsWith("/") && !route.endsWith(".md"));
+  const fallback = hostedRootDocsRoute(discoveryBody);
+  const unique = Array.from(new Set(pageRoutes.length > 0 ? pageRoutes : [fallback])).sort();
+  const sampled =
+    unique.length <= limit
+      ? unique
+      : Array.from(
+          { length: limit },
+          (_, index) => unique[Math.floor(index * (unique.length / limit))]!,
+        );
+
+  return sampled
+    .map((route) => hostedPageUrl(baseUrl, route))
+    .filter((url): url is string => typeof url === "string");
+}
+
+interface HostedHtmlPageProbe {
+  ok: boolean;
+  detail: string;
+  hasJsonLd: boolean;
+  hasMarkdownAlternate: boolean;
+}
+
+async function probeHostedHtmlPage(url: string): Promise<HostedHtmlPageProbe> {
+  try {
+    const response = await fetchWithTimeout(url, {
+      headers: { Accept: "text/html, */*" },
+    });
+    const body = await response.text().catch(() => "");
+    const pathname = new URL(url).pathname;
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        detail: `${pathname} returned HTTP ${response.status}.`,
+        hasJsonLd: false,
+        hasMarkdownAlternate: false,
+      };
+    }
+
+    const alternateUrl = resolveMarkdownAlternateUrl(markdownAlternateHref(body), url);
+    return {
+      ok: true,
+      detail: `${pathname} returned HTML with ${body.length} characters.`,
+      hasJsonLd: hasJsonLdScript(body),
+      hasMarkdownAlternate: Boolean(alternateUrl),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      detail: `${url} failed: ${error instanceof Error ? error.message : String(error)}.`,
+      hasJsonLd: false,
+      hasMarkdownAlternate: false,
+    };
+  }
+}
+
+function hostedSurfaceScore(
+  probes: HostedHtmlPageProbe[],
+  predicate: (probe: HostedHtmlPageProbe) => boolean,
+): { status: DoctorStatus; score: number; passed: number; total: number } {
+  const total = probes.length;
+  const passed = probes.filter((probe) => probe.ok && predicate(probe)).length;
+  if (total === 0) return { status: "warn", score: 0, passed: 0, total };
+  if (passed === total) return { status: "pass", score: 5, passed, total };
+  if (passed > 0) return { status: "warn", score: Math.round((passed / total) * 5), passed, total };
+  return { status: "fail", score: 0, passed, total };
 }
 
 async function buildHostedAgentChecks(
@@ -1614,8 +1894,29 @@ async function buildHostedAgentChecks(
     ),
   );
 
+  const agents = await Promise.all([
+    probeTextRoute(baseUrl, DEFAULT_AGENTS_MD_ROUTE),
+    probeTextRoute(baseUrl, DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE),
+  ]);
+  const agentsPassed = agents.filter((result) => result.ok).length;
+  checks.push(
+    makeCheck(
+      "hosted-agents",
+      "Hosted AGENTS.md",
+      agentsPassed === agents.length ? "pass" : agentsPassed > 0 ? "warn" : "fail",
+      agentsPassed === agents.length ? 5 : agentsPassed > 0 ? 3 : 0,
+      5,
+      agents.map((result) => result.detail).join(" "),
+      agentsPassed === agents.length
+        ? undefined
+        : "Verify deployed /AGENTS.md and /.well-known/AGENTS.md routes return non-empty markdown.",
+    ),
+  );
+
   const markdownRoute = toMarkdownRoute(pages[0]?.url);
   if (markdownRoute) {
+    const markdownPageUrl = pages[0]?.url ? joinDoctorUrl(baseUrl, pages[0].url) : undefined;
+    const markdownResponseUrl = joinDoctorUrl(baseUrl, markdownRoute);
     const markdown = await probeTextRoute(baseUrl, markdownRoute);
     checks.push(
       makeCheck(
@@ -1630,6 +1931,28 @@ async function buildHostedAgentChecks(
           : `Verify deployed markdown routes are forwarded, starting with ${markdownRoute}.`,
       ),
     );
+
+    const hasCanonicalHeader =
+      markdown.ok && markdownPageUrl
+        ? hasCanonicalLinkHeader(markdown.linkHeader, markdownPageUrl, markdownResponseUrl)
+        : false;
+    checks.push(
+      makeCheck(
+        "hosted-markdown-canonical",
+        "Hosted markdown canonical header",
+        hasCanonicalHeader ? "pass" : "warn",
+        hasCanonicalHeader ? 1 : 0,
+        1,
+        markdown.ok
+          ? hasCanonicalHeader
+            ? `${markdownRoute} includes a canonical Link header pointing to ${pages[0]?.url}.`
+            : `${markdownRoute} is reachable but is missing a canonical Link response header.`
+          : markdown.detail,
+        hasCanonicalHeader
+          ? undefined
+          : 'Return `Link: <canonical-page-url>; rel="canonical"` on successful markdown page responses so agents can cite the normal docs URL.',
+      ),
+    );
   } else {
     checks.push(
       makeCheck(
@@ -1642,24 +1965,80 @@ async function buildHostedAgentChecks(
         "Add docs pages so the hosted doctor can probe a representative .md route.",
       ),
     );
+    checks.push(
+      makeCheck(
+        "hosted-markdown-canonical",
+        "Hosted markdown canonical header",
+        "warn",
+        0,
+        1,
+        "No local docs page was available to choose a sample .md route.",
+        "Add docs pages so the hosted doctor can probe a markdown canonical Link header.",
+      ),
+    );
   }
 
-  const mcp = await Promise.all([
-    probeMcpRoute(baseUrl, DEFAULT_MCP_PUBLIC_ROUTE),
-    probeMcpRoute(baseUrl, DEFAULT_MCP_WELL_KNOWN_ROUTE),
-  ]);
-  const mcpPassed = mcp.filter((result) => result.ok).length;
+  const htmlPageUrls = sampleHostedPageUrls(baseUrl, discovery.body, pages);
+  const htmlPageProbes = await Promise.all(
+    htmlPageUrls.map((pageUrl) => probeHostedHtmlPage(pageUrl)),
+  );
+  const structuredDataScore = hostedSurfaceScore(htmlPageProbes, (probe) => probe.hasJsonLd);
+  const structuredDataEnabled = hostedCapability(discovery.body, "structuredData");
+  checks.push(
+    makeCheck(
+      "hosted-structured-data",
+      "Hosted structured data",
+      structuredDataEnabled === false ? "warn" : structuredDataScore.status,
+      structuredDataEnabled === false ? 0 : structuredDataScore.score,
+      5,
+      structuredDataEnabled === false
+        ? "The hosted discovery spec reports structured data as disabled."
+        : structuredDataScore.total > 0
+          ? `${structuredDataScore.passed}/${structuredDataScore.total} sampled hosted docs pages include application/ld+json structured data.`
+          : "No hosted docs pages were available to verify application/ld+json structured data.",
+      structuredDataEnabled === false || structuredDataScore.status === "pass"
+        ? undefined
+        : "Keep JSON-LD enabled on every docs page so agents can read canonical title, description, URL, breadcrumbs, and freshness hints.",
+    ),
+  );
+
+  const markdownAlternateScore = hostedSurfaceScore(
+    htmlPageProbes,
+    (probe) => probe.hasMarkdownAlternate,
+  );
+  const markdownRoutesEnabled = hostedCapability(discovery.body, "markdownRoutes");
+  checks.push(
+    makeCheck(
+      "hosted-markdown-alternate",
+      "Hosted markdown alternate links",
+      markdownRoutesEnabled === false ? "warn" : markdownAlternateScore.status,
+      markdownRoutesEnabled === false ? 0 : markdownAlternateScore.score,
+      5,
+      markdownRoutesEnabled === false
+        ? "The hosted discovery spec reports markdown routes as disabled."
+        : markdownAlternateScore.total > 0
+          ? `${markdownAlternateScore.passed}/${markdownAlternateScore.total} sampled hosted docs pages include <link rel="alternate" type="text/markdown"> pointing to .md routes.`
+          : "No hosted docs pages were available to verify markdown alternate links.",
+      markdownRoutesEnabled === false || markdownAlternateScore.status === "pass"
+        ? undefined
+        : "Add a text/markdown alternate link in each docs page head, usually through `alternates.types['text/markdown']`, so agents can discover the page markdown URL from HTML.",
+    ),
+  );
+
+  const mcp = await probeMcpRouteCandidates(baseUrl, hostedMcpRoutes(discovery.body));
+  const mcpPassed = mcp.probes.filter((result) => result.ok).length;
+  const mcpDetailProbes = mcpPassed > 0 ? mcp.probes.filter((result) => result.ok) : mcp.probes;
   checks.push(
     makeCheck(
       "hosted-mcp",
       "Hosted MCP handshake",
-      mcpPassed === mcp.length ? "pass" : mcpPassed > 0 ? "warn" : "fail",
-      mcpPassed === mcp.length ? 10 : mcpPassed > 0 ? 5 : 0,
+      mcpPassed > 0 ? "pass" : "fail",
+      mcpPassed > 0 ? 10 : 0,
       10,
-      mcp.map((result) => result.detail).join(" "),
-      mcpPassed === mcp.length
+      mcpDetailProbes.map((result) => result.detail).join(" "),
+      mcpPassed > 0
         ? undefined
-        : `Verify deployed ${DEFAULT_MCP_PUBLIC_ROUTE} and ${DEFAULT_MCP_WELL_KNOWN_ROUTE} support Streamable HTTP initialize and tools/list.`,
+        : `Verify one of ${mcp.labels.join(" or ")} supports Streamable HTTP initialize and tools/list.`,
     ),
   );
 
@@ -1772,6 +2151,8 @@ export async function inspectAgentReadiness(
   const agentFeedbackEnabled = resolveAgentFeedbackEnabled(config, configContent);
   const compactConfigured = hasAgentCompactDefaults(config, configContent);
   const skillFileExists = existsSync(path.join(rootDir, "skill.md"));
+  const agentsFileExists =
+    existsSync(path.join(rootDir, "AGENTS.md")) || existsSync(path.join(rootDir, "AGENT.md"));
 
   const source = createFilesystemDocsMcpSource({
     rootDir,
@@ -1804,7 +2185,7 @@ export async function inspectAgentReadiness(
     },
   );
   const sitemapConfig = resolveDocsSitemapConfig(
-    config?.sitemap ?? readSitemapConfigFromStatic(configContent) ?? false,
+    config?.sitemap ?? readSitemapConfigFromStatic(configContent) ?? true,
   );
   const robotsInput = config?.robots ?? readRobotsConfigFromStatic(configContent) ?? true;
   const robotsConfig =
@@ -1870,7 +2251,7 @@ export async function inspectAgentReadiness(
       routeSurface.apiDetail,
       routeSurface.apiMounted
         ? undefined
-        : "Wire the framework docs API route so /api/docs can serve markdown, llms.txt, sitemap, skill.md, and discovery responses.",
+        : "Wire the framework docs API route so /api/docs can serve markdown, llms.txt, sitemap, AGENTS.md, skill.md, and discovery responses.",
     ),
   );
 
@@ -1884,7 +2265,7 @@ export async function inspectAgentReadiness(
       routeSurface.publicDetail,
       routeSurface.publicMounted
         ? undefined
-        : "Add the framework public forwarder so /.well-known/*, /llms.txt, /sitemap.xml, /sitemap.md, /skill.md, /mcp, and .md routes resolve from the shared docs API.",
+        : "Add the framework public forwarder so /.well-known/*, /llms.txt, /sitemap.xml, /sitemap.md, /docs/sitemap.md, /AGENTS.md, /skill.md, /mcp, and .md routes resolve from the shared docs API.",
     ),
   );
 
@@ -1933,7 +2314,14 @@ export async function inspectAgentReadiness(
           "pass",
           5,
           5,
-          `Enabled via ${sitemapConfig.xml.route}, ${sitemapConfig.markdown.route}, and ${sitemapConfig.markdown.wellKnownRoute}.`,
+          `Enabled via ${[
+            sitemapConfig.xml.route,
+            sitemapConfig.markdown.route,
+            sitemapConfig.markdown.docsRoute,
+            sitemapConfig.markdown.wellKnownRoute,
+          ]
+            .filter(Boolean)
+            .join(", ")}.`,
         )
       : makeCheck(
           "sitemap",
@@ -1960,17 +2348,30 @@ export async function inspectAgentReadiness(
       ),
     );
   } else if (!existsSync(robotsPath)) {
-    checks.push(
-      makeCheck(
-        "robots",
-        "Robots agent policy",
-        "warn",
-        0,
-        5,
-        `No robots.txt found at ${relativeRobotsPath}.`,
-        `Run docs robots generate --path ${relativeRobotsPath} to publish an agent-friendly crawl policy.`,
-      ),
-    );
+    if (routeSurface.apiMounted && routeSurface.publicMounted && !staticExport) {
+      checks.push(
+        makeCheck(
+          "robots",
+          "Robots agent policy",
+          "pass",
+          5,
+          5,
+          "Runtime /robots.txt is served by the shared docs handler.",
+        ),
+      );
+    } else {
+      checks.push(
+        makeCheck(
+          "robots",
+          "Robots agent policy",
+          "warn",
+          0,
+          5,
+          `No robots.txt found at ${relativeRobotsPath}.`,
+          `Run docs robots generate --path ${relativeRobotsPath} to publish an agent-friendly crawl policy.`,
+        ),
+      );
+    }
   } else {
     const robots = readFileSync(robotsPath, "utf-8");
     const analysis = analyzeDocsRobotsTxt(robots, {
@@ -2014,11 +2415,30 @@ export async function inspectAgentReadiness(
       : makeCheck(
           "skill",
           "Skill document",
-          "warn",
-          3,
+          "pass",
+          5,
           5,
           `No root skill.md found; the framework will serve the generated fallback at ${DEFAULT_SKILL_MD_ROUTE}.`,
-          "Add a root skill.md if you want a custom site-specific bootstrap document instead of the generated fallback.",
+        ),
+  );
+
+  checks.push(
+    agentsFileExists
+      ? makeCheck(
+          "agents",
+          "Agent instructions",
+          "pass",
+          5,
+          5,
+          `Found root AGENTS.md/AGENT.md for ${DEFAULT_AGENTS_MD_ROUTE} and ${DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE}.`,
+        )
+      : makeCheck(
+          "agents",
+          "Agent instructions",
+          "pass",
+          5,
+          5,
+          `No root AGENTS.md found; the framework will serve the generated fallback at ${DEFAULT_AGENTS_MD_ROUTE}.`,
         ),
   );
 
@@ -2138,8 +2558,9 @@ export async function inspectAgentReadiness(
     checks.push(...hosted.checks);
   }
 
-  const score = checks.reduce((total, check) => total + check.score, 0);
-  const maxScore = checks.reduce((total, check) => total + check.maxScore, 0);
+  const rawScore = checks.reduce((total, check) => total + check.score, 0);
+  const rawMaxScore = checks.reduce((total, check) => total + check.maxScore, 0);
+  const { score, maxScore } = normalizedDoctorScore(rawScore, rawMaxScore);
 
   return {
     mode: "agent",
@@ -2150,7 +2571,7 @@ export async function inspectAgentReadiness(
     url: hosted?.baseUrl,
     score,
     maxScore,
-    grade: gradeForAgentScore(percentageScore(score, maxScore)),
+    grade: gradeForAgentScore(score),
     checks,
     coverage,
     recommendations: checks
@@ -2414,8 +2835,9 @@ export async function inspectHumanReadiness(
         ),
   );
 
-  const score = checks.reduce((total, check) => total + check.score, 0);
-  const maxScore = checks.reduce((total, check) => total + check.maxScore, 0);
+  const rawScore = checks.reduce((total, check) => total + check.score, 0);
+  const rawMaxScore = checks.reduce((total, check) => total + check.maxScore, 0);
+  const { score, maxScore } = normalizedDoctorScore(rawScore, rawMaxScore);
 
   return {
     mode: "human",
@@ -2425,7 +2847,7 @@ export async function inspectHumanReadiness(
     contentDir,
     score,
     maxScore,
-    grade: gradeForHumanScore(percentageScore(score, maxScore)),
+    grade: gradeForHumanScore(score),
     checks,
     coverage,
     recommendations: checks
@@ -2438,9 +2860,7 @@ export async function inspectHumanReadiness(
 export function printAgentDoctorReport(report: AgentDoctorReport) {
   console.log(`${pc.bold("@farming-labs/docs doctor")} ${pc.dim("—")} ${pc.bold("agent")}`);
   console.log();
-  console.log(
-    `${pc.bold("Score:")} ${pc.cyan(`${report.score}/${report.maxScore}`)} ${pc.dim(`(${report.grade})`)}`,
-  );
+  console.log(`${pc.bold("Score:")} ${pc.cyan(`${report.score}%`)} ${pc.dim(`(${report.grade})`)}`);
   console.log(
     `${pc.bold("Framework:")} ${report.framework} ${pc.dim("•")} ${pc.bold("Entry:")} ${report.entry ?? "docs"} ${pc.dim("•")} ${pc.bold("Content:")} ${report.contentDir ?? "-"}`,
   );
@@ -2473,7 +2893,7 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
   console.log();
   console.log(
     pc.dim(
-      `Expected public surfaces: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}, ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}, ${DEFAULT_LLMS_TXT_ROUTE}, ${DEFAULT_LLMS_FULL_TXT_ROUTE}, ${DEFAULT_SKILL_MD_ROUTE}, ${DEFAULT_MCP_PUBLIC_ROUTE}`,
+      `Expected public surfaces: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}, ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}, ${DEFAULT_LLMS_TXT_ROUTE}, ${DEFAULT_LLMS_FULL_TXT_ROUTE}, ${DEFAULT_AGENTS_MD_ROUTE}, ${DEFAULT_SKILL_MD_ROUTE}, ${DEFAULT_MCP_PUBLIC_ROUTE}`,
     ),
   );
 }
@@ -2481,9 +2901,7 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
 export function printHumanDoctorReport(report: HumanDoctorReport) {
   console.log(`${pc.bold("@farming-labs/docs doctor")} ${pc.dim("—")} ${pc.bold("site")}`);
   console.log();
-  console.log(
-    `${pc.bold("Score:")} ${pc.cyan(`${report.score}/${report.maxScore}`)} ${pc.dim(`(${report.grade})`)}`,
-  );
+  console.log(`${pc.bold("Score:")} ${pc.cyan(`${report.score}%`)} ${pc.dim(`(${report.grade})`)}`);
   console.log(
     `${pc.bold("Framework:")} ${report.framework} ${pc.dim("•")} ${pc.bold("Entry:")} ${report.entry ?? "docs"} ${pc.dim("•")} ${pc.bold("Content:")} ${report.contentDir ?? "-"}`,
   );

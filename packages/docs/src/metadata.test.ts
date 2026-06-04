@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { resolveTitle, resolveOGImage, buildPageOpenGraph, buildPageTwitter } from "./metadata.js";
+import {
+  buildDocsPageStructuredData,
+  buildPageOpenGraph,
+  buildPageTwitter,
+  renderDocsPageStructuredDataJson,
+  resolveDocsMetadataBaseUrl,
+  resolveOGImage,
+  resolveTitle,
+} from "./metadata.js";
 import type { OGConfig, PageFrontmatter } from "./types.js";
 
 describe("resolveTitle", () => {
@@ -182,5 +190,71 @@ describe("buildPageTwitter", () => {
   it("returns undefined when no twitter and no og source", () => {
     const page: PageFrontmatter = { title: "X" };
     expect(buildPageTwitter(page, undefined)).toBeUndefined();
+  });
+});
+
+describe("buildDocsPageStructuredData", () => {
+  it("builds Vercel-style TechArticle JSON-LD with canonical URL and breadcrumbs", () => {
+    const data = buildDocsPageStructuredData({
+      title: "Agent-friendly docs",
+      description: "Write docs that agents can discover and cite.",
+      url: "/docs/guides/agent-friendly-docs",
+      baseUrl: "https://docs.example.com",
+      entry: "docs",
+      dateModified: "2026-05-10",
+    }) as {
+      "@type": string;
+      headline: string;
+      url: string;
+      dateModified: string;
+      breadcrumb: { itemListElement: Array<{ name: string; item: string }> };
+    };
+
+    expect(data["@type"]).toBe("TechArticle");
+    expect(data.headline).toBe("Agent-friendly docs");
+    expect(data.url).toBe("https://docs.example.com/docs/guides/agent-friendly-docs");
+    expect(data.dateModified).toBe("2026-05-10T00:00:00.000Z");
+    expect(data.breadcrumb.itemListElement).toEqual([
+      expect.objectContaining({ name: "Docs", item: "https://docs.example.com/docs" }),
+      expect.objectContaining({ name: "Guides", item: "https://docs.example.com/docs/guides" }),
+      expect.objectContaining({
+        name: "Agent-friendly docs",
+        item: "https://docs.example.com/docs/guides/agent-friendly-docs",
+      }),
+    ]);
+  });
+
+  it("escapes JSON-LD for script tag insertion", () => {
+    const json = renderDocsPageStructuredDataJson({
+      title: "</script><script>alert(1)</script>",
+      url: "/docs/security",
+    });
+
+    expect(json).toContain("\\u003c/script>");
+    expect(json).not.toContain("</script>");
+  });
+
+  it("reuses existing public URL config for metadata base URL", () => {
+    expect(
+      resolveDocsMetadataBaseUrl({
+        sitemap: { enabled: true, baseUrl: "https://docs.example.com/" },
+        entry: "docs",
+      }),
+    ).toBe("https://docs.example.com");
+
+    expect(
+      resolveDocsMetadataBaseUrl({
+        llmsTxt: { enabled: true, baseUrl: "https://llms.example.com" },
+        entry: "docs",
+      }),
+    ).toBe("https://llms.example.com");
+
+    expect(
+      resolveDocsMetadataBaseUrl({
+        sitemap: { enabled: true, baseUrl: "not a url" },
+        llmsTxt: { enabled: true, baseUrl: "https://llms.example.com" },
+        entry: "docs",
+      }),
+    ).toBe("https://llms.example.com");
   });
 });

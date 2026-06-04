@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   extractNestedObjectLiteral,
   readBooleanProperty,
+  readTopLevelBooleanProperty,
   readEnvReferenceProperty,
   readNavTitle,
   readStringProperty,
@@ -91,6 +92,22 @@ describe("property readers", () => {
     expect(readTopLevelStringProperty(content, "contentDir")).toBeUndefined();
   });
 
+  it("reads top-level boolean properties without picking nested matches", () => {
+    const content = `
+      export default defineDocs({
+        cloud: {
+          preview: {
+            enabled: false,
+          },
+          enabled: true,
+        },
+      });
+    `;
+
+    const cloudBlock = extractNestedObjectLiteral(content, ["cloud"]) ?? "";
+    expect(readTopLevelBooleanProperty(cloudBlock, "enabled")).toBe(true);
+  });
+
   it("matches exact boolean property names", () => {
     const content = `
       export default defineDocs({
@@ -151,5 +168,35 @@ describe("property readers", () => {
     expect(extractNestedObjectLiteral(content, ["agent", "compact"])).toContain(
       'apiKeyEnv: "TOKEN_{COMPANY}_API_KEY"',
     );
+  });
+
+  it("extracts top-level config blocks that are preceded by comments", () => {
+    const content = `
+      export default defineDocs({
+        feedback: {
+          agent: {
+            enabled: true,
+          },
+        },
+        // Global machine-doc defaults.
+        // Keep these readable for automation.
+        agent: {
+          compact: {
+            apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+          },
+        },
+        /*
+         * Generated sitemap settings.
+         */
+        sitemap: {
+          enabled: true,
+        },
+      });
+    `;
+
+    expect(extractNestedObjectLiteral(content, ["agent", "compact"])).toContain(
+      'apiKeyEnv: "TOKEN_COMPANY_API_KEY"',
+    );
+    expect(extractNestedObjectLiteral(content, ["sitemap"])).toContain("enabled: true");
   });
 });

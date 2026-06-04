@@ -1,6 +1,6 @@
 {
   "name": "@farming-labs/theme",
-  "version": "0.1.84",
+  "version": "0.1.143",
   "description": "Theme package for @farming-labs/docs — layout, provider, MDX components, and styles",
   "keywords": [
     "docs",
@@ -88,6 +88,11 @@
       "import": "./dist/ledger/index.mjs",
       "default": "./dist/ledger/index.mjs"
     },
+    "./threadline": {
+      "types": "./dist/threadline/index.d.mts",
+      "import": "./dist/threadline/index.mjs",
+      "default": "./dist/threadline/index.mjs"
+    },
     "./search": {
       "types": "./dist/search.d.mts",
       "import": "./dist/search.mjs",
@@ -126,6 +131,7 @@
     "./concrete/css": "./styles/concrete.css",
     "./command-grid/css": "./styles/command-grid.css",
     "./ledger/css": "./styles/ledger.css",
+    "./threadline/css": "./styles/threadline.css",
     "./presets/neutral": "./styles/presets/neutral.css",
     "./presets/black": "./styles/presets/black.css",
     "./presets/base": "./styles/presets/base.css"
@@ -151,7 +157,7 @@
     "next": ">=14.0.0",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.8"
   },
   "peerDependencies": {
     "@farming-labs/docs": ">=0.0.1",

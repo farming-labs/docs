@@ -1,0 +1,98 @@
+---
+title: "Docs Cloud"
+description: "Overview of Docs Cloud projects, deploys, analytics, and the docs.json contract"
+icon: "infrastructure"
+order: 3.6
+related:
+  - /docs/cloud/deploy
+  - /docs/cloud/analytics
+  - /docs/guides/docs-json
+  - /docs/configuration
+  - /docs/cli
+  - /docs/customization/analytics
+---
+
+# Docs Cloud
+
+<Agent>
+Use this page when the user asks about this topic: Docs Cloud overview, Cloud project shape, Docs Cloud API keys, docs.config.ts cloud config, docs.json, hosted deploys, analytics, and publish defaults.
+Keep answers grounded in the pages linked from this overview. Never suggest committing raw API key values to docs.config.ts, docs.json, or source control.
+If the request is about hosted preview deploys, point to /docs/cloud/deploy. If the request is about hosted analytics, project identity, or event storage, point to /docs/cloud/analytics.
+If the request is about the docs.json contract itself, point to /docs/guides/docs-json. If the request is about every config option, point to /docs/configuration.
+</Agent>
+
+Docs Cloud is the hosted layer around `@farming-labs/docs`. Your repository stays the source of
+truth, your docs app still owns the runtime, and Cloud adds managed deploys, analytics, publish
+workflows, and agent operations around it.
+
+The Cloud contract has three parts:
+
+- `docs.config.ts` stays the executable config for the docs runtime.
+- `docs.json` is the serializable project contract that Cloud can read.
+- Docs Cloud owns hosted services such as deploys, analytics storage, and publish workflows.
+
+<Callout type="info" title="Cloud access">
+  Docs Cloud is rolling out gradually. If your workspace does not have access yet, join the
+  [Cloud waitlist](/cloud#waitlist). Once access is enabled, create the API key from your Docs
+  Cloud project settings.
+</Callout>
+
+## Cloud Sections
+
+| Page | Use it for |
+| ---- | ---------- |
+| [Deploy](/docs/cloud/deploy) | API keys, `docs deploy`, preview deploys, publish mode, and deploy troubleshooting |
+| [Analytics](/docs/cloud/analytics) | Cloud analytics storage, project identity, privacy defaults, and optional customer callbacks |
+| [docs.json](/docs/guides/docs-json) | The repo-level contract that Cloud reads |
+| [CLI](/docs/cli) | The complete command reference |
+
+## Minimal Config
+
+Add a `cloud` block when the project should participate in Cloud-aware CLI flows:
+
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  cloud: {
+    apiKey: { env: "DOCS_CLOUD_API_KEY" },
+    deploy: { enabled: true },
+    publish: { mode: "draft-pr", baseBranch: "main" },
+  },
+});
+```
+
+`cloud.apiKey.env` names the environment variable that stores the project API key. The raw key stays
+outside source control.
+
+## Sync The Contract
+
+Run `cloud sync` to write the serializable Cloud contract:
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs cloud sync
+```
+
+`docs.json` is safe to commit because it contains configuration and environment variable names, not
+secret values.
+
+## Next Step
+
+Use the deploy page for the full preview flow:
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs deploy
+```
+
+See [Deploy](/docs/cloud/deploy) for API key setup, command options, preview behavior, publish mode,
+and troubleshooting.
+
+## Related Docs
+
+- [Deploy](/docs/cloud/deploy) covers hosted preview deployments.
+- [Analytics](/docs/cloud/analytics) covers Cloud-managed analytics storage.
+- [docs.json](/docs/guides/docs-json) explains the repo-level contract that Cloud reads.
+- [Configuration](/docs/configuration) lists the `cloud` config fields.
+- [CLI](/docs/cli) covers the full command surface.
+- [Cloud landing page](/cloud) explains the managed product direction and waitlist.

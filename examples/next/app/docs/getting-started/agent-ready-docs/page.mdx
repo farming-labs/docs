@@ -147,18 +147,134 @@ The example app also exposes the standard MCP surface:
 import docsConfig from "@/docs.config";
 import { createDocsMCPAPI } from "@farming-labs/next/api";
 
-export const { GET, POST, DELETE } = createDocsMCPAPI({
-  entry: docsConfig.entry,
-  contentDir: docsConfig.contentDir,
-  nav: docsConfig.nav,
-  ordering: docsConfig.ordering,
-  search: docsConfig.search,
-  mcp: docsConfig.mcp,
-});
+export const { GET, POST, DELETE } = createDocsMCPAPI(docsConfig);
 ```
 
 When `agent.md` exists, the `.md` route returns that file. MCP remains available for tool-based
 access and parity checks, but the HTTP `.md` route is the simple public contract.
+
+## MCP Code Examples
+
+The MCP server also exposes `get_code_examples`. It scans fenced code blocks from the raw markdown
+source and returns parsed metadata without changing the rendered code block UI.
+
+Use metadata on examples that agents should treat as implementation-ready:
+
+````md
+```ts title="docs.config.ts" framework="nextjs" packageManager="pnpm" runnable
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+});
+```
+````
+
+An MCP client can request only matching examples:
+
+```json
+{
+  "name": "get_code_examples",
+  "arguments": {
+    "path": "getting-started/quickstart",
+    "framework": "nextjs",
+    "packageManager": "pnpm",
+    "runnable": true
+  }
+}
+```
+
+The `get_code_examples` response is JSON, so agents do not need to scrape rendered HTML:
+
+```json
+{
+  "examples": [
+    {
+      "language": "ts",
+      "title": "docs.config.ts",
+      "framework": "nextjs",
+      "packageManager": "pnpm",
+      "runnable": true,
+      "page": {
+        "url": "/docs/getting-started/quickstart"
+      },
+      "code": "import { defineDocs } from \"@farming-labs/docs\";\\n..."
+    }
+  ]
+}
+```
+
+The MCP server also exposes `list_docs` for structured discovery before reading page bodies:
+
+```json
+{
+  "name": "list_docs",
+  "arguments": {
+    "section": "getting-started"
+  }
+}
+```
+
+The response includes matching page summaries plus a section tree:
+
+```json
+{
+  "section": "getting-started",
+  "resultCount": 1,
+  "sectionCount": 1,
+  "pages": [
+    {
+      "slug": "getting-started/quickstart",
+      "url": "/docs/getting-started/quickstart",
+      "title": "Quickstart"
+    }
+  ],
+  "sections": [
+    {
+      "slug": "getting-started",
+      "title": "Getting Started",
+      "pageCount": 1
+    }
+  ]
+}
+```
+
+The MCP server also exposes `get_config_schema` for agents that need to edit `docs.config.ts`
+without guessing option names or defaults:
+
+```json
+{
+  "name": "get_config_schema",
+  "arguments": {
+    "option": "mcp.tools.getConfigSchema"
+  }
+}
+```
+
+Use `query` instead of `option` when the agent only knows the feature area, such as `llms` or
+`page actions`.
+
+A filtered `get_config_schema` response includes the matching option metadata:
+
+```json
+{
+  "schemaVersion": 1,
+  "configFile": "docs.config.ts",
+  "filters": {
+    "option": "mcp.tools.getConfigSchema"
+  },
+  "resultCount": 1,
+  "options": [
+    {
+      "path": "mcp.tools.getConfigSchema",
+      "name": "getConfigSchema",
+      "type": "boolean",
+      "default": true,
+      "description": "Expose the get_config_schema tool."
+    }
+  ]
+}
+```
 
 ## Docs Config
 

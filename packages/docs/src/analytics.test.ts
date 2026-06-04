@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createDocsCloudAnalytics } from "./cloud-analytics.js";
 import {
   DOCS_AGENT_TRACE_EVENT_TYPES,
   emitDocsAgentTraceEvent,
@@ -37,6 +36,7 @@ const ALL_ANALYTICS_EVENTS = [
   "feedback_error",
   "agent_read",
   "agent_spec_request",
+  "agents_request",
   "agent_feedback_schema",
   "agent_feedback_submit",
   "agent_feedback_error",
@@ -55,8 +55,13 @@ describe("analytics", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED;
+    delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT;
     delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
     delete process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY;
+    delete process.env.DOCS_CLOUD_ANALYTICS_ENABLED;
+    delete process.env.DOCS_CLOUD_ANALYTICS_ENDPOINT;
+    delete process.env.DOCS_CLOUD_PROJECT_ID;
+    delete process.env.DOCS_CLOUD_ANALYTICS_KEY;
   });
 
   it("emits every built-in analytics event type through the shared hook", async () => {
@@ -262,17 +267,19 @@ describe("analytics", () => {
   });
 
   it("posts Docs Cloud analytics events to the configured ingestion endpoint", async () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_123";
+
     const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
       async () => new Response(null, { status: 202 }),
     );
     vi.stubGlobal("fetch", fetchMock);
 
     await emitDocsAnalyticsEvent(
-      createDocsCloudAnalytics({
-        projectId: "project_123",
+      {
+        enabled: true,
         console: false,
         includeInputs: true,
-      }),
+      },
       {
         type: "page_view",
         source: "client",
@@ -285,7 +292,7 @@ describe("analytics", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://docs.farming-labs.dev/api/analytics/events",
+      "https://docs-app.farming-labs.dev/api/analytics/events",
       expect.objectContaining({
         method: "POST",
         keepalive: true,
@@ -307,16 +314,252 @@ describe("analytics", () => {
     });
   });
 
-  it("no-ops Docs Cloud analytics events when endpoint or project id is missing", async () => {
+  it("posts Docs Cloud analytics events to the public endpoint env when provided", async () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_endpoint";
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT =
+      "https://docs-cloud.example.com/api/analytics/events";
+
     const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
       async () => new Response(null, { status: 202 }),
     );
     vi.stubGlobal("fetch", fetchMock);
 
     await emitDocsAnalyticsEvent(
-      createDocsCloudAnalytics({
+      {
+        enabled: true,
         console: false,
+      },
+      {
+        type: "page_view",
+        source: "client",
+      },
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://docs-cloud.example.com/api/analytics/events",
+      expect.objectContaining({
+        method: "POST",
       }),
+    );
+  });
+
+  it("adds agent traffic hints to Docs Cloud events from caller identity", async () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_agents";
+
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 202 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "agent_read",
+        source: "server",
+        path: "/docs/install.md",
+        properties: {
+          delivery: "markdown_route",
+          userAgent: "ChatGPT-User/1.0",
+        },
+      },
+    );
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "markdown_request",
+        source: "server",
+        path: "/docs/install.md",
+        properties: {
+          delivery: "md_route",
+          userAgent: "Mozilla/5.0",
+        },
+      },
+    );
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "skill_request",
+        source: "server",
+        path: "/skill.md",
+        properties: {
+          userAgent: "CodexTestBot/1.0",
+        },
+      },
+    );
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "llms_request",
+        source: "server",
+        path: "/llms.txt",
+        properties: {
+          trafficType: "agent",
+        },
+      },
+    );
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "agent_read",
+        source: "server",
+        path: "/docs/install.md",
+        properties: {
+          delivery: "markdown_route",
+          userAgent: "Mozilla/5.0",
+        },
+      },
+    );
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "mcp_tool",
+        source: "mcp",
+        path: "/docs/install",
+        properties: {
+          tool: "read_page",
+          agentName: " ",
+          botProvider: " ",
+        },
+      },
+    );
+
+    const requestBodies = fetchMock.mock.calls.map((call) => JSON.parse(String(call[1]?.body)));
+    expect(requestBodies[0]).toMatchObject({
+      event: {
+        type: "agent_read",
+        source: "server",
+        properties: {
+          delivery: "markdown_route",
+          userAgent: "ChatGPT-User/1.0",
+          trafficType: "agent",
+          agentName: "ChatGPT",
+          botProvider: "ChatGPT",
+        },
+      },
+    });
+    expect(requestBodies[1]).toMatchObject({
+      event: {
+        type: "markdown_request",
+        source: "server",
+        properties: {
+          delivery: "md_route",
+          userAgent: "Mozilla/5.0",
+        },
+      },
+    });
+    expect(requestBodies[1].event.properties).not.toHaveProperty("trafficType");
+    expect(requestBodies[2]).toMatchObject({
+      event: {
+        type: "skill_request",
+        source: "server",
+        properties: {
+          userAgent: "CodexTestBot/1.0",
+          trafficType: "agent",
+          agentName: "Codex",
+          botProvider: "Codex",
+        },
+      },
+    });
+    expect(requestBodies[3]).toMatchObject({
+      event: {
+        type: "llms_request",
+        source: "server",
+        properties: {
+          trafficType: "agent",
+          agentName: "Docs reader",
+          botProvider: "Docs reader",
+        },
+      },
+    });
+    expect(requestBodies[4]).toMatchObject({
+      event: {
+        type: "agent_read",
+        source: "server",
+        properties: {
+          delivery: "markdown_route",
+          userAgent: "Mozilla/5.0",
+        },
+      },
+    });
+    expect(requestBodies[4].event.properties).not.toHaveProperty("trafficType");
+    expect(requestBodies[5]).toMatchObject({
+      event: {
+        type: "mcp_tool",
+        source: "mcp",
+        properties: {
+          tool: "read_page",
+          trafficType: "agent",
+          agentName: "MCP client",
+          botProvider: "MCP client",
+        },
+      },
+    });
+  });
+
+  it("posts Docs Cloud analytics from plain config when public env is present", async () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT =
+      "https://docs-cloud.example.com/api/analytics/events";
+
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 202 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
+      {
+        type: "page_view",
+        source: "client",
+      },
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://docs-cloud.example.com/api/analytics/events",
+      expect.objectContaining({
+        body: expect.stringContaining('"projectId":"project_public"'),
+      }),
+    );
+  });
+
+  it("no-ops Docs Cloud analytics events when project id is missing", async () => {
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 202 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await emitDocsAnalyticsEvent(
+      {
+        enabled: true,
+        console: false,
+      },
       {
         type: "page_view",
         source: "client",
@@ -326,8 +569,7 @@ describe("analytics", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("internally wraps analytics with the Docs Cloud sink when cloud env is enabled", async () => {
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "true";
+  it("internally wraps analytics with the Docs Cloud sink when project id env is present", async () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_env";
 
     const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
@@ -357,15 +599,47 @@ describe("analytics", () => {
     expect(seen).toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://docs.farming-labs.dev/api/analytics/events",
+      "https://docs-app.farming-labs.dev/api/analytics/events",
       expect.objectContaining({
         method: "POST",
       }),
     );
   });
 
+  it("treats the Docs Cloud analytics enabled env as an explicit opt-out", async () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "false";
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_env_disabled";
+
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 202 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(resolveDocsAnalyticsConfig()).toMatchObject({
+      enabled: false,
+      console: false,
+    });
+
+    const seen: DocsAnalyticsEvent[] = [];
+    await emitDocsAnalyticsEvent(
+      {
+        console: false,
+        onEvent(event) {
+          seen.push(event);
+        },
+      },
+      {
+        type: "page_view",
+        source: "client",
+        path: "/docs",
+      },
+    );
+
+    expect(seen).toHaveLength(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("preserves the user onEvent callback when Docs Cloud delivery fails", async () => {
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "true";
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_env_failure";
 
     const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(async () => {
@@ -395,7 +669,6 @@ describe("analytics", () => {
   });
 
   it("still sends Docs Cloud analytics when the user onEvent throws", async () => {
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "true";
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_env_user_throw";
 
     const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
@@ -423,8 +696,7 @@ describe("analytics", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("enables analytics by default when Docs Cloud env is enabled and config is omitted", async () => {
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = "true";
+  it("enables analytics by default when Docs Cloud project id env is present and config is omitted", async () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_default";
 
     const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(

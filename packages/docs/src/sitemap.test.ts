@@ -5,23 +5,32 @@ import {
   renderDocsSitemapMarkdown,
   renderDocsSitemapXml,
   resolveDocsSitemapConfig,
+  resolveDocsSitemapPageLastmod,
   resolveDocsSitemapRequest,
 } from "./sitemap.js";
 
 describe("docs sitemap helpers", () => {
   it("resolves default and prefixed sitemap routes", () => {
+    expect(resolveDocsSitemapConfig().enabled).toBe(true);
+    expect(resolveDocsSitemapConfig().xml.route).toBe("/sitemap.xml");
+    expect(resolveDocsSitemapConfig().markdown.docsRoute).toBe("/docs/sitemap.md");
     expect(resolveDocsSitemapConfig(true).xml.route).toBe("/sitemap.xml");
     expect(resolveDocsSitemapConfig(true).markdown.wellKnownRoute).toBe("/.well-known/sitemap.md");
 
     const prefixed = resolveDocsSitemapConfig({ routePrefix: "/docs" });
     expect(prefixed.xml.route).toBe("/docs/sitemap.xml");
     expect(prefixed.markdown.route).toBe("/docs/sitemap.md");
+    expect(prefixed.markdown.docsRoute).toBeUndefined();
     expect(prefixed.markdown.wellKnownRoute).toBe("/docs/.well-known/sitemap.md");
   });
 
   it("detects public and API sitemap requests", () => {
+    expect(resolveDocsSitemapRequest(new URL("https://example.com/sitemap.xml"))).toBe("xml");
     expect(resolveDocsSitemapRequest(new URL("https://example.com/sitemap.xml"), true)).toBe("xml");
     expect(resolveDocsSitemapRequest(new URL("https://example.com/sitemap.md"), true)).toBe(
+      "markdown",
+    );
+    expect(resolveDocsSitemapRequest(new URL("https://example.com/docs/sitemap.md"), true)).toBe(
       "markdown",
     );
     expect(
@@ -70,5 +79,19 @@ describe("docs sitemap helpers", () => {
     expect(response?.headers.get("content-type")).toContain("application/xml");
     expect(response?.headers.get("etag")).toBeTruthy();
     expect(await response?.text()).toContain("<urlset");
+  });
+
+  it("looks up stable page freshness from a sitemap manifest", () => {
+    const manifest = buildDocsSitemapManifest({
+      entry: "docs",
+      pages: [
+        { url: "/docs", title: "Home", lastmod: "2026-05-08T10:00:00.000Z" },
+        { url: "/docs/configuration", title: "Configuration", lastmod: "2026-05-09" },
+      ],
+    });
+
+    expect(resolveDocsSitemapPageLastmod(manifest, "/docs/configuration")).toBe("2026-05-09");
+    expect(resolveDocsSitemapPageLastmod(manifest, "/docs/missing")).toBeUndefined();
+    expect(resolveDocsSitemapPageLastmod(null, "/docs")).toBeUndefined();
   });
 });

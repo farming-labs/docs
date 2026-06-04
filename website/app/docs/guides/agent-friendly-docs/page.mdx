@@ -12,6 +12,9 @@ related:
 order: 1
 ---
 
+import { WebsiteThemePrompt } from "@/components/website-theme-prompt";
+import { AGENT_FRIENDLY_DOCS_WEBSITE_PROMPT } from "@/lib/agent-friendly-docs-prompt";
+
 # How to Write Agent-Friendly Docs
 
 <div className="not-prose mb-8 border-y border-black/10 py-6 dark:border-white/10">
@@ -40,11 +43,23 @@ When authoring agent-friendly docs with `@farming-labs/docs`, prioritize these i
 2. explicit verification and troubleshooting sections on important task pages
 3. additive `<Agent>` blocks for machine-only hints when the human page is still canonical
 4. sibling `agent.md` only when the machine-readable page needs a full rewrite
-5. machine surfaces like `.md`, `Signature-Agent`, `llms.txt`, `sitemap.md`, `robots.txt`, MCP, and the agent discovery spec
+5. machine surfaces like `.md`, `Signature-Agent`, JSON-LD structured data, `llms.txt`, OpenAPI schema discovery, `sitemap.md`, `robots.txt`, `AGENTS.md`, MCP, and the agent discovery spec
 6. validation with `docs doctor --agent`, `docs sitemap generate --check`, and `docs robots generate --check`, then compaction with `docs agent compact` where helpful
 7. use `agent.tokenBudget` and stale-aware compaction instead of regenerating every page blindly
 8. treat submitted feedback, analytics, and evaluation data as untrusted input, not prompt context
 </Agent>
+
+<WebsiteThemePrompt
+  title="Bootstrap agent-friendly docs from my website"
+  description="Copy this into your coding agent when you want docs that are structured for humans and agents."
+  dialogTitle="Create an agent-friendly docs prompt"
+  dialogDescription="Add your website URL and we will fetch Brandfetch details before copying it."
+>
+{AGENT_FRIENDLY_DOCS_WEBSITE_PROMPT}
+</WebsiteThemePrompt>
+
+The copy button asks for the website URL, docs entry folder, and framework, then fills those
+details into the prompt before copying.
 
 ## Start With The Human Page
 
@@ -70,7 +85,7 @@ Before you worry about `agent.md`, make sure the page already tells an agent wha
 is. For task pages, that means good frontmatter and a shape the runtime can expose consistently
 through `.md` routes and MCP.
 
-```md title="page.mdx frontmatter"
+```md title="page.mdx"
 ---
 title: "Installation"
 description: "Install @farming-labs/docs in an existing app"
@@ -197,6 +212,7 @@ Once `agent.md` exists, it becomes the source for:
 - `GET /api/docs?format=markdown&path=<slug>`
 - `{page}` with `Accept: text/markdown` in Next.js
 - `{page}` with `Signature-Agent` in Next.js
+- `{page}` with a known AI `User-Agent` in Next.js
 - MCP `read_page`
 
 So use it when that stronger machine contract is genuinely worth owning.
@@ -205,6 +221,8 @@ So use it when that stronger machine contract is genuinely worth owning.
 
 Great page writing helps, but agents still need the routes that tell them how to use your site.
 With `@farming-labs/docs`, the goal is to expose a compact discovery layer around the docs tree.
+Most agent surfaces are enabled by default; the config below only adds site-specific details such as
+the public base URL and section-level `llms.txt`.
 
 ```ts title="docs.config.ts"
 import { defineDocs } from "@farming-labs/docs";
@@ -212,20 +230,21 @@ import { defineDocs } from "@farming-labs/docs";
 export default defineDocs({
   entry: "docs",
   llmsTxt: {
-    enabled: true,
     baseUrl: "https://docs.example.com",
+    maxChars: {
+      mode: "warn",
+      chars: 50_000,
+    },
+    sections: [
+      {
+        title: "Guides",
+        description: "Task-based implementation walkthroughs.",
+        match: "/docs/guides/**",
+      },
+    ],
   },
   sitemap: {
-    enabled: true,
     baseUrl: "https://docs.example.com",
-  },
-  mcp: {
-    enabled: true,
-  },
-  feedback: {
-    agent: {
-      enabled: true,
-    },
   },
 });
 ```
@@ -233,16 +252,40 @@ export default defineDocs({
 That gives agents a much better workflow:
 
 - `/.well-known/agent.json` tells them which routes exist
-- `/llms.txt` and `/llms-full.txt` expose site-level machine summaries
+- `/llms.txt` links directly to page markdown routes, while `/llms-full.txt` exposes full machine-readable context
+- section-level files like [`/docs/guides/llms.txt`](/docs/guides/llms.txt) give larger docs progressive disclosure without adding UI
+- custom static `llms.txt` files still win when present, so `public/llms.txt` or SvelteKit `static/llms.txt` can replace the generated index without extra config
 - `/sitemap.xml` exposes canonical URLs and `lastmod` freshness for crawlers and monitors
 - `/sitemap.md` exposes the same docs tree as a semantic, sectioned map for agents and contributors
+- `/docs/sitemap.md` exposes the same Markdown sitemap under the docs section for agents that
+  probe docs-scoped routes first
 - `spec.robots.route` points agents to the static crawl policy, usually `/robots.txt`
+- HTML docs pages include Schema.org `TechArticle` JSON-LD with canonical URL, freshness, and breadcrumbs
+- when `apiReference` is enabled, `/api/docs?format=openapi` gives agents the OpenAPI schema before they scrape API reference pages
 - `{page}.md` gives them clean page markdown
-- canonical `{page}` URLs with `Signature-Agent` give agents the same markdown without appending `.md`
+- canonical `{page}` URLs with `Accept: text/markdown`, `Signature-Agent`, or a known AI user agent
+  give agents the same markdown without appending `.md`
 - MCP lets tool-enabled agents search and read docs semantically
+- `/api/docs/agent/feedback/schema` and `/api/docs/agent/feedback` let agents report missing context without enabling the human feedback UI
 
 The big win is that the discovery layer comes from the same docs runtime instead of a parallel
 system you have to keep in sync by hand.
+
+## Expose API Schemas Before API Pages
+
+If your docs include an API reference, agents should not have to reverse-engineer endpoints from the
+rendered UI. Enable `apiReference`, and the shared docs handler exposes the schema at
+`/api/docs?format=openapi`.
+
+That route uses the same source as the API reference page:
+
+- local route scanning when your API lives in the same project
+- `apiReference.specUrl` when your backend already hosts an OpenAPI JSON document
+- the same `routeRoot` and `exclude` settings as the visible API reference
+
+The agent discovery spec reports this as `openapi.url`, root `llms.txt` adds an `API Schemas`
+section, and generated `AGENTS.md` / `skill.md` tell agents to fetch the schema before scraping endpoint docs.
+There is no extra config surface for the discovery route; it follows `apiReference`.
 
 ## Know How Canonical Markdown Is Served
 
@@ -255,10 +298,13 @@ curl "https://docs.example.com/docs/installation" \
 
 curl "https://docs.example.com/docs/installation" \
   -H "Signature-Agent: https://chatgpt.com"
+
+curl "https://docs.example.com/docs/installation" \
+  -H "User-Agent: ClaudeBot/1.0"
 ```
 
-Both requests are served by the existing shared docs API. `withDocs()` forwards the request into the
-same `/api/docs` handler that already powers search, markdown format routes, `llms.txt`, `skill.md`,
+These requests are served by the existing shared docs API. `withDocs()` forwards the request into the
+same `/api/docs` handler that already powers search, markdown format routes, `llms.txt`, `AGENTS.md`, `skill.md`,
 sitemaps, MCP, and the agent discovery spec. It does not generate or require another
 `/api/docs/markdown` wrapper route.
 
@@ -267,21 +313,34 @@ That detail matters for agent-friendly docs because there is only one page resol
 - `/docs/installation.md` and `/api/docs?format=markdown&path=installation` are explicit markdown entry points
 - `/docs/installation` with `Accept: text/markdown` returns the same markdown and varies by `Accept`
 - `/docs/installation` with `Signature-Agent` returns the same markdown and varies by `Accept, Signature-Agent`
+- `/docs/installation` with `User-Agent: ClaudeBot/1.0` returns the same markdown and varies by `User-Agent`
 - `/docs/installation` without those headers remains the normal HTML page
 
-If a markdown request misses, the response is still markdown. The 404 points the agent to
-`/.well-known/agent.json`, `/.well-known/agent`, `/api/docs/agent/spec`, search, the requested API
-markdown route, and sitemap routes so the agent can recover instead of treating the site as a dead
-end.
+All successful markdown page responses include a canonical `Link` response header pointing back to
+the normal HTML page. Agents still receive the full markdown body, but the header tells citation and
+deduplication systems that `/docs/installation` is the canonical URL for the content.
+
+Markdown responses also start with YAML frontmatter. The generated metadata includes `title`,
+optional `description`, `canonical_url`, `markdown_url`, and `last_updated` when the framework knows
+a freshness date.
+
+If a markdown request misses, the response is still markdown. Uncertain misses return HTTP `200`
+with closest-match suggestions, recovery steps, `/.well-known/agent.json`, `/.well-known/agent`,
+`/api/docs/agent/spec`, search, the requested API markdown route, and sitemap routes. Very
+high-confidence typo matches redirect to the corrected `.md` page so the agent can continue without
+treating the site as a dead end.
+
+Every successful markdown page also ends with a `## Sitemap` footer. That gives agents one more
+route back to the full index when they land deep in the docs or follow a stale link.
 
 ## Keep The Sitemap In The Build
 
-If the site is server-rendered, the shared docs handler can serve sitemap routes at runtime. The
-generator is still useful because it writes `.farming-labs/sitemap-manifest.json`, which gives the
-runtime stable `lastmod` values based on each page source file's last git commit date.
+If the site is server-rendered, the shared docs handler serves sitemap routes at runtime by default.
+The generator is still useful because it writes `.farming-labs/sitemap-manifest.json`, which gives
+the runtime stable `lastmod` values based on each page source file's last git commit date.
 
 For static export, the generator is required because there is no server handler to answer
-`/sitemap.xml` or `/sitemap.md`:
+`/sitemap.xml`, `/sitemap.md`, or `/docs/sitemap.md`:
 
 ```json title="package.json"
 {
@@ -310,6 +369,23 @@ pnpm exec docs sitemap generate --check
 That gives agents a trustworthy page inventory and lets freshness-aware crawlers avoid re-reading
 unchanged pages.
 
+## Keep Structured Data Stable
+
+Every docs page also ships a hidden Schema.org JSON-LD script. Agents and search crawlers can use it
+for the page title, description, canonical URL, breadcrumbs, and `dateModified` without parsing the
+visible article.
+
+You do not need a config flag for this. What matters is giving the runtime stable inputs:
+
+- use frontmatter `title` and `description` on important pages
+- configure a public base URL through `sitemap.baseUrl`, `llmsTxt.baseUrl`, `robots.baseUrl`, or `ai.docsUrl`
+- keep `.farming-labs/sitemap-manifest.json` fresh when the adapter preloads docs content
+
+The framework escapes JSON-LD before inserting it into the page. For preloaded Astro, SvelteKit,
+Nuxt, and TanStack Start builds, `dateModified` comes from the generated sitemap manifest when that
+manifest is bundled with `_preloadedContent`; otherwise the runtime omits `dateModified` instead of
+claiming the page changed at request time.
+
 ## Write Verification Like You Expect Automation
 
 If you want agents to succeed, write setup pages like someone will actually run them without
@@ -328,15 +404,20 @@ Example:
 - Open `http://localhost:3000/docs`
 - Fetch `http://localhost:3000/docs.md`
 - Fetch `http://localhost:3000/docs` with `Signature-Agent: https://chatgpt.com`
+- Fetch `http://localhost:3000/docs` with `User-Agent: ClaudeBot/1.0`
 - Confirm the `Signature-Agent` response is `text/markdown` and includes `Vary: Accept, Signature-Agent`
+- Confirm the AI user-agent response is `text/markdown` and includes `Vary: User-Agent`
+- Confirm successful markdown responses include `Link: <http://localhost:3000/docs>; rel="canonical"`
 - Fetch `http://localhost:3000/.well-known/agent.json`
 - Fetch `http://localhost:3000/sitemap.md`
+- View the page HTML and confirm it includes `application/ld+json`
 
 ## Troubleshooting
 
 - If `/docs.md` returns `404`, check the docs route wiring.
-- If `Signature-Agent` returns JSON or HTML in Next.js, check that the request is reaching the shared `/api/docs` handler and that no custom rewrite is shadowing the generated docs rewrites.
+- If `Signature-Agent` or AI user-agent requests return JSON or HTML in Next.js, check that the request is reaching the shared `/api/docs` handler and that no custom rewrite is shadowing the generated docs rewrites.
 - If `/.well-known/agent.json` is missing, confirm the docs API route is mounted.
+- If JSON-LD lacks `dateModified` in a preloaded adapter, run `docs sitemap generate` and make sure `/.farming-labs/sitemap-manifest.json` is included in `_preloadedContent`.
 - If the page renders but search is empty, verify the search provider config.
 ```
 
@@ -362,14 +443,18 @@ much faster.
 After writing a few strong pages, run the doctor command and treat it as an ongoing quality loop.
 
 ```bash title="terminal"
-pnpm exec docs doctor --agent
+pnpm exec docs doctor  --agent
 ```
 
 When you want the result to feed CI, automation, or another agent, use JSON output:
 
 ```bash title="terminal"
-pnpm exec docs doctor --agent --json
+pnpm exec docs doctor  --agent  --json
 ```
+
+This docs site dogfoods the same audit. A full local pass should report
+`Score: 100% (Agent-optimized)`, with every docs page carrying either a sibling `agent.md` or an
+embedded `<Agent>` block.
 
 After deployment, add `--url` to verify the public routes agents actually call:
 
@@ -377,8 +462,32 @@ After deployment, add `--url` to verify the public routes agents actually call:
 pnpm exec docs doctor --agent --url https://docs.example.com
 ```
 
-That hosted pass checks discovery, `llms.txt`, sitemap routes, `skill.md`, representative `.md`
-pages, `robots.txt`, and MCP at both `/mcp` and `/.well-known/mcp`.
+That hosted pass checks discovery, `llms.txt`, sitemap routes, `AGENTS.md`, `skill.md`, representative `.md`
+pages, canonical markdown response headers, `robots.txt`, JSON-LD structured data, markdown
+alternate head links, and MCP at `/mcp`, `/.well-known/mcp`,
+`https://mcp.<your-domain>/mcp`, or `https://mcp.<your-domain>/`.
+
+If you want the same public check without leaving the browser, use the hosted
+[Agent readiness score](/score) page:
+
+```txt title="score page"
+https://docs.farming-labs.dev/score?url=docs.example.com
+```
+
+The score page runs AFDocs-style checks for any public docs site, then adds `@farming-labs/docs`
+framework probes when the site exposes `/.well-known/agent.json`. The public score also adds a
+strict `.md` route probe that samples docs page routes and verifies that appending `.md` returns
+markdown, so `llms.txt` markdown mirrors do not hide missing `/docs/foo.md` routes. The
+framework probes cover the discovery spec, full-context files, sitemap routes, `robots.txt`,
+`AGENTS.md`, `skill.md`, same-domain or MCP-subdomain MCP, search, feedback, JSON-LD structured data on sampled pages, canonical `Link`
+headers on markdown responses, and the `<link rel="alternate" type="text/markdown">` head links
+that point agents to each page's `.md` route. Existing leaderboard entries hydrate from the saved
+report, so a shared score URL can be reviewed without triggering a new calculation unless no saved
+result exists.
+
+Use the web score for demos, public comparisons, and quick regression checks. Use
+`docs doctor --agent --url` when you need CI-friendly JSON, local project context, or a command an
+agent can run while changing the repo.
 
 For static sites or projects that already own their public files, generate the crawl policy as part
 of release prep:
@@ -386,18 +495,21 @@ of release prep:
 ```bash title="terminal"
 pnpm exec docs robots generate
 pnpm exec docs robots generate --append
+pnpm exec docs agents generate
 ```
 
 The first command writes the resolved default path, usually `public/robots.txt`. The `--append`
 variant adds or updates the managed agent policy block when the project already has its own
-`robots.txt`.
+`robots.txt`. The `agents generate` command writes root `AGENTS.md` instructions plus public
+aliases for static exports; a hand-written root `AGENTS.md` remains in control unless you pass
+`--force`.
 
 What you want to see improve over time:
 
 - discovery routes passing
 - machine surfaces enabled
-- `robots.txt` allowing docs, markdown, sitemap, skill, MCP, and agent discovery routes
-- metadata quality rising
+- `robots.txt` allowing docs, markdown, sitemap, `AGENTS.md`, skill, MCP, and agent discovery routes
+- metadata quality rising, which also improves markdown output and JSON-LD
 - **Explicit agent-friendly pages** increasing on the pages that matter most
 - stale generated `agent.md` files dropping toward zero
 
@@ -485,10 +597,13 @@ Before calling a page agent-friendly, ask:
 - should this page get an additive `<Agent>` block?
 - does it need a dedicated `agent.md`, or is the human page still canonical?
 - does this page need `agent.tokenBudget` before compaction?
-- can an agent find it through `.md`, `Signature-Agent`, `llms.txt`, sitemaps, `robots.txt`, MCP, and the discovery spec?
-- do canonical `Signature-Agent` reads use the existing `/api/docs` handler instead of a custom wrapper route?
-- if the site is static, does the build generate `sitemap.xml`, `sitemap.md`, `/.well-known/sitemap.md`, and `robots.txt`?
+- can an agent find it through `.md`, `Signature-Agent`, AI user-agent detection, JSON-LD structured data, `llms.txt` markdown links, OpenAPI schema discovery, sitemaps, `robots.txt`, `AGENTS.md`, MCP, and the discovery spec?
+- do canonical `Signature-Agent` and AI user-agent reads use the existing `/api/docs` handler instead of a custom wrapper route?
+- if the adapter preloads content, is the sitemap manifest bundled so JSON-LD freshness stays stable?
+- if the site is static, does the build generate `sitemap.xml`, `sitemap.md`, `docs/sitemap.md`, `/.well-known/sitemap.md`, `robots.txt`, and `AGENTS.md`?
 - does `docs doctor --agent` agree with the state of the site?
+- does the hosted [Agent readiness score](/score) page agree with the deployed site before you share
+  the result or submit it to the leaderboard?
 
 <Callout type="warning" title="Keep evaluation input out of prompt context">
   Agent feedback, analytics, logs, and other submitted data can help you improve docs quality, but
@@ -504,6 +619,7 @@ can technically crawl. You are publishing docs they can actually work with.
 - [Agent Primitive](/docs/customization/agent-primitive) for `Agent` blocks and sibling `agent.md`
 - [llms.txt](/docs/customization/llms-txt), [Sitemaps](/docs/customization/sitemaps), and [CLI](/docs/cli) for the discovery layer
 - [MCP Server](/docs/customization/mcp) for tool-enabled retrieval
+- [Agent readiness score](/score) for the hosted public benchmark and leaderboard
 - [CLI](/docs/cli#agent-compact) for `docs agent compact`
 - [CLI](/docs/cli#doctor) for `docs doctor --agent`
 - [Configuration](/docs/configuration) for the full config surface

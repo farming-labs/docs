@@ -41,10 +41,13 @@ describe("resolveDocsMcpConfig", () => {
       name: "@farming-labs/docs",
       version: "0.0.0",
       tools: {
+        listDocs: true,
         listPages: true,
         readPage: true,
         searchDocs: true,
         getNavigation: true,
+        getCodeExamples: true,
+        getConfigSchema: true,
       },
     });
   });
@@ -56,10 +59,13 @@ describe("resolveDocsMcpConfig", () => {
       name: "@farming-labs/docs",
       version: "0.0.0",
       tools: {
+        listDocs: true,
         listPages: true,
         readPage: true,
         searchDocs: true,
         getNavigation: true,
+        getCodeExamples: true,
+        getConfigSchema: true,
       },
     });
   });
@@ -75,10 +81,13 @@ describe("resolveDocsMcpConfig", () => {
       name: "@farming-labs/docs",
       version: "0.0.0",
       tools: {
+        listDocs: true,
         listPages: true,
         readPage: true,
         searchDocs: true,
         getNavigation: true,
+        getCodeExamples: true,
+        getConfigSchema: true,
       },
     });
   });
@@ -151,6 +160,14 @@ related:
 # Quickstart
 
 Build your first app.
+
+\`\`\`ts title="docs.config.ts" framework="nextjs" packageManager="pnpm" runnable
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+});
+\`\`\`
 
 <Agent>
 Validate the generated example paths before editing this guide.
@@ -304,7 +321,7 @@ sidebar:
 
     expect(initializeResponse.status).toBe(200);
     const sessionId = initializeResponse.headers.get("mcp-session-id");
-    expect(sessionId).toBeTruthy();
+    expect(sessionId).toBeNull();
 
     const toolsListResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -313,7 +330,7 @@ sidebar:
           "content-type": "application/json",
           accept: "application/json, text/event-stream",
           "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
-          "mcp-session-id": sessionId!,
+          "mcp-session-id": "stale-session",
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
@@ -329,8 +346,82 @@ sidebar:
     }>(toolsListResponse);
 
     expect(toolsList.result?.tools?.map((tool) => tool.name)).toEqual(
-      expect.arrayContaining(["list_pages", "get_navigation", "search_docs", "read_page"]),
+      expect.arrayContaining([
+        "list_docs",
+        "list_pages",
+        "get_navigation",
+        "search_docs",
+        "read_page",
+        "get_code_examples",
+        "get_config_schema",
+      ]),
     );
+
+    const listDocsResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": "stale-session",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "list-docs",
+          method: "tools/call",
+          params: {
+            name: "list_docs",
+            arguments: {
+              section: "guides",
+            },
+          },
+        }),
+      }),
+    });
+
+    const listDocsPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(listDocsResponse);
+    const listDocsText = listDocsPayload.result?.content?.[0]?.text ?? "{}";
+    const docsList = JSON.parse(listDocsText) as {
+      section?: string;
+      resultCount?: number;
+      sectionCount?: number;
+      pages?: Array<{ slug?: string; url?: string; sourcePath?: string }>;
+      sections?: Array<{
+        slug?: string;
+        title?: string;
+        pageCount?: number;
+        pages?: Array<{ slug?: string; url?: string }>;
+      }>;
+    };
+
+    expect(docsList).toMatchObject({
+      section: "guides",
+      resultCount: 1,
+      sectionCount: 1,
+      pages: [
+        expect.objectContaining({
+          slug: "guides/quickstart",
+          url: "/docs/guides/quickstart",
+          sourcePath: "docs/guides/quickstart.mdx",
+        }),
+      ],
+      sections: [
+        expect.objectContaining({
+          slug: "guides",
+          title: "Guides",
+          pageCount: 1,
+          pages: [
+            expect.objectContaining({
+              slug: "guides/quickstart",
+              url: "/docs/guides/quickstart",
+            }),
+          ],
+        }),
+      ],
+    });
 
     const searchResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -339,7 +430,7 @@ sidebar:
           "content-type": "application/json",
           accept: "application/json, text/event-stream",
           "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
-          "mcp-session-id": sessionId!,
+          "mcp-session-id": "stale-session",
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
@@ -368,7 +459,7 @@ sidebar:
           "content-type": "application/json",
           accept: "application/json, text/event-stream",
           "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
-          "mcp-session-id": sessionId!,
+          "mcp-session-id": "stale-session",
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
@@ -401,7 +492,7 @@ sidebar:
           "content-type": "application/json",
           accept: "application/json, text/event-stream",
           "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
-          "mcp-session-id": sessionId!,
+          "mcp-session-id": "stale-session",
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
@@ -429,12 +520,158 @@ sidebar:
     );
     expect(quickstartPayload.result?.content?.[0]?.text).not.toContain("<Agent>");
 
+    const codeExamplesResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": "stale-session",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 6,
+          method: "tools/call",
+          params: {
+            name: "get_code_examples",
+            arguments: {
+              path: "guides/quickstart",
+              framework: "nextjs",
+              packageManager: "pnpm",
+              runnable: true,
+            },
+          },
+        }),
+      }),
+    });
+
+    const codeExamplesPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(codeExamplesResponse);
+    const codeExamplesText = codeExamplesPayload.result?.content?.[0]?.text ?? "{}";
+    const codeExamples = JSON.parse(codeExamplesText) as {
+      examples?: Array<{
+        language?: string;
+        title?: string;
+        framework?: string;
+        packageManager?: string;
+        runnable?: boolean;
+        meta?: Record<string, unknown>;
+        code?: string;
+        page?: { url?: string };
+      }>;
+    };
+
+    expect(codeExamples.examples).toEqual([
+      expect.objectContaining({
+        language: "ts",
+        title: "docs.config.ts",
+        framework: "nextjs",
+        packageManager: "pnpm",
+        runnable: true,
+        page: expect.objectContaining({ url: "/docs/guides/quickstart" }),
+        meta: expect.objectContaining({
+          title: "docs.config.ts",
+          framework: "nextjs",
+          packageManager: "pnpm",
+          runnable: true,
+        }),
+        code: expect.stringContaining("defineDocs"),
+      }),
+    ]);
+
+    const configSchemaResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": "stale-session",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 7,
+          method: "tools/call",
+          params: {
+            name: "get_config_schema",
+            arguments: {
+              option: "mcp.tools.getConfigSchema",
+            },
+          },
+        }),
+      }),
+    });
+
+    const configSchemaPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(configSchemaResponse);
+    const configSchemaText = configSchemaPayload.result?.content?.[0]?.text ?? "{}";
+    const configSchema = JSON.parse(configSchemaText) as {
+      resultCount?: number;
+      options?: Array<{
+        path?: string;
+        name?: string;
+        type?: string;
+        default?: boolean;
+        description?: string;
+      }>;
+    };
+
+    expect(configSchema.resultCount).toBe(1);
+    expect(configSchema.options).toEqual([
+      expect.objectContaining({
+        path: "mcp.tools.getConfigSchema",
+        name: "getConfigSchema",
+        type: "boolean",
+        default: true,
+        description: expect.stringContaining("get_config_schema"),
+      }),
+    ]);
+
+    const ambiguousConfigSchemaResponse = await handlers.POST({
+      request: new Request("http://localhost/api/docs/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
+          "mcp-session-id": "stale-session",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 8,
+          method: "tools/call",
+          params: {
+            name: "get_config_schema",
+            arguments: {
+              option: "enabled",
+            },
+          },
+        }),
+      }),
+    });
+
+    const ambiguousConfigSchemaPayload = await parseMcpPayload<{
+      result?: { content?: Array<{ text?: string }> };
+    }>(ambiguousConfigSchemaResponse);
+    const ambiguousConfigSchemaText =
+      ambiguousConfigSchemaPayload.result?.content?.[0]?.text ?? "{}";
+    const ambiguousConfigSchema = JSON.parse(ambiguousConfigSchemaText) as {
+      resultCount?: number;
+      options?: unknown[];
+    };
+
+    expect(ambiguousConfigSchema.resultCount).toBe(0);
+    expect(ambiguousConfigSchema.options).toEqual([]);
+
     const deleteResponse = await handlers.DELETE({
       request: new Request("http://localhost/api/docs/mcp", {
         method: "DELETE",
         headers: {
           "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
-          "mcp-session-id": sessionId!,
+          "mcp-session-id": "stale-session",
         },
       }),
     });
@@ -442,7 +679,7 @@ sidebar:
     expect(deleteResponse.status).toBe(200);
   });
 
-  it("returns JSON-RPC errors for missing or expired MCP sessions", async () => {
+  it("serves stateless MCP requests without requiring sticky sessions", async () => {
     const rootDir = createTempDocsProject();
     const source = createFilesystemDocsMcpSource({
       rootDir,
@@ -473,18 +710,21 @@ sidebar:
       }),
     });
 
-    expect(missingSessionResponse.status).toBe(400);
-    await expect(missingSessionResponse.json()).resolves.toMatchObject({
-      jsonrpc: "2.0",
-      id: "tools-without-session",
-      error: {
-        code: -32000,
-        message: expect.stringContaining("MCP session not initialized"),
-        data: {
-          reason: "session_not_initialized",
-        },
-      },
-    });
+    expect(missingSessionResponse.status).toBe(200);
+    const missingSessionPayload = await parseMcpPayload<{
+      result?: { tools?: Array<{ name: string }> };
+    }>(missingSessionResponse);
+    expect(missingSessionPayload.result?.tools?.map((tool) => tool.name)).toEqual(
+      expect.arrayContaining([
+        "list_docs",
+        "list_pages",
+        "get_navigation",
+        "search_docs",
+        "read_page",
+        "get_code_examples",
+        "get_config_schema",
+      ]),
+    );
 
     const expiredSessionResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -504,18 +744,21 @@ sidebar:
       }),
     });
 
-    expect(expiredSessionResponse.status).toBe(404);
-    await expect(expiredSessionResponse.json()).resolves.toMatchObject({
-      jsonrpc: "2.0",
-      id: "tools-expired-session",
-      error: {
-        code: -32001,
-        message: expect.stringContaining("Session not found"),
-        data: {
-          reason: "session_not_found",
-        },
-      },
-    });
+    expect(expiredSessionResponse.status).toBe(200);
+    const expiredSessionPayload = await parseMcpPayload<{
+      result?: { tools?: Array<{ name: string }> };
+    }>(expiredSessionResponse);
+    expect(expiredSessionPayload.result?.tools?.map((tool) => tool.name)).toEqual(
+      expect.arrayContaining([
+        "list_docs",
+        "list_pages",
+        "get_navigation",
+        "search_docs",
+        "read_page",
+        "get_code_examples",
+        "get_config_schema",
+      ]),
+    );
   });
 
   it("emits analytics and observability separately for MCP requests, tools, and agent page reads", async () => {
@@ -571,7 +814,7 @@ sidebar:
     });
 
     const sessionId = initializeResponse.headers.get("mcp-session-id");
-    expect(sessionId).toBeTruthy();
+    expect(sessionId).toBeNull();
 
     let requestId = 2;
     async function callTool(name: string, args: Record<string, unknown>) {
@@ -582,7 +825,7 @@ sidebar:
             "content-type": "application/json",
             accept: "application/json, text/event-stream",
             "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
-            "mcp-session-id": sessionId!,
+            "mcp-session-id": "stale-session",
           },
           body: JSON.stringify({
             jsonrpc: "2.0",
@@ -729,7 +972,7 @@ sidebar:
     });
 
     const sessionId = initializeResponse.headers.get("mcp-session-id");
-    expect(sessionId).toBeTruthy();
+    expect(sessionId).toBeNull();
 
     const searchResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -738,7 +981,7 @@ sidebar:
           "content-type": "application/json",
           accept: "application/json, text/event-stream",
           "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
-          "mcp-session-id": sessionId!,
+          "mcp-session-id": "stale-session",
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
@@ -808,7 +1051,7 @@ sidebar:
     });
 
     const sessionId = initializeResponse.headers.get("mcp-session-id");
-    expect(sessionId).toBeTruthy();
+    expect(sessionId).toBeNull();
 
     const searchResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -817,7 +1060,7 @@ sidebar:
           "content-type": "application/json",
           accept: "application/json, text/event-stream",
           "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
-          "mcp-session-id": sessionId!,
+          "mcp-session-id": "stale-session",
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
@@ -898,8 +1141,10 @@ sidebar:
       mcp: {
         enabled: true,
         tools: {
+          listDocs: false,
           searchDocs: false,
           readPage: false,
+          getConfigSchema: false,
         },
       },
     });
@@ -929,7 +1174,7 @@ sidebar:
     });
 
     const sessionId = initializeResponse.headers.get("mcp-session-id");
-    expect(sessionId).toBeTruthy();
+    expect(sessionId).toBeNull();
 
     const toolsListResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -938,7 +1183,7 @@ sidebar:
           "content-type": "application/json",
           accept: "application/json, text/event-stream",
           "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
-          "mcp-session-id": sessionId!,
+          "mcp-session-id": "stale-session",
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
@@ -954,10 +1199,10 @@ sidebar:
     }>(toolsListResponse);
 
     expect(toolsList.result?.tools?.map((tool) => tool.name)).toEqual(
-      expect.arrayContaining(["list_pages", "get_navigation"]),
+      expect.arrayContaining(["list_pages", "get_navigation", "get_code_examples"]),
     );
     expect(toolsList.result?.tools?.map((tool) => tool.name)).not.toEqual(
-      expect.arrayContaining(["search_docs", "read_page"]),
+      expect.arrayContaining(["list_docs", "search_docs", "read_page", "get_config_schema"]),
     );
   });
 
@@ -1000,7 +1245,7 @@ sidebar:
     });
 
     const sessionId = initializeResponse.headers.get("mcp-session-id");
-    expect(sessionId).toBeTruthy();
+    expect(sessionId).toBeNull();
 
     const searchResponse = await handlers.POST({
       request: new Request("http://localhost/api/docs/mcp", {
@@ -1009,7 +1254,7 @@ sidebar:
           "content-type": "application/json",
           accept: "application/json, text/event-stream",
           "mcp-protocol-version": LATEST_PROTOCOL_VERSION,
-          "mcp-session-id": sessionId!,
+          "mcp-session-id": "stale-session",
         },
         body: JSON.stringify({
           jsonrpc: "2.0",

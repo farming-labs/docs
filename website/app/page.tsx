@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Bot, FileText, Github, Search } from "lucide-react";
+import { Activity, ArrowRight, ArrowUpRight, Bot, FileText, Github, Search } from "lucide-react";
 import { AnimatedBackground } from "@/components/ui/animated-bg-black";
 import CodeBlock from "@/components/ui/code-block";
 import { FeatureGridCard } from "@/components/ui/feature-grid-card";
@@ -154,6 +154,48 @@ function AgentFeaturesSection() {
           {landingFeatureCards.map((card) => (
             <FeatureGridCard key={card.title} {...card} />
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AgentScoreCalloutSection() {
+  return (
+    <section className="relative z-10 border-t border-black/[8%] bg-white dark:border-white/[8%] dark:bg-black">
+      <div className="w-full py-10 sm:py-12">
+        <div className="grid gap-7 border-y border-black/10 px-4 py-8 dark:border-white/10 sm:px-0 sm:py-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-8 lg:pb-0 lg:pt-8">
+          <div className="max-w-2xl lg:pb-8">
+            <span className="mb-3 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-black/30 dark:text-white/30">
+              <Activity className="h-3.5 w-3.5" strokeWidth={1.8} />
+              Agent score
+            </span>
+            <h2 className="text-2xl font-semibold tracking-tighter text-black dark:text-white sm:text-4xl">
+              How agent-ready are your docs?
+            </h2>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-black/45 dark:text-white/40 sm:text-base">
+              Run a public readiness check for llms.txt, markdown routes, OpenAPI discovery, MCP,
+              sitemap, robots, structure, access, and cache hygiene, then compare your docs on the
+              leaderboard.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
+            <Link
+              href="/score"
+              className="group inline-flex w-full items-center justify-center gap-2 bg-black px-5 py-3 font-mono text-xs uppercase tracking-wider text-white transition-all hover:bg-black/90 hover:no-underline sm:w-auto dark:bg-white dark:text-black dark:hover:bg-white/90"
+            >
+              Score your docs
+              <ArrowRight className="h-3.5 w-3.5 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
+            </Link>
+            <Link
+              href="/score#leaderboard"
+              className="group inline-flex w-full items-center justify-center gap-2 border border-black/10 bg-black/[3%] px-5 py-3 font-mono text-xs uppercase tracking-wider text-black/70 transition-all hover:border-black/20 hover:bg-black/[5%] hover:text-black hover:no-underline sm:w-auto dark:border-white/10 dark:bg-white/[3%] dark:text-white/70 dark:hover:border-white/20 dark:hover:bg-white/[5%] dark:hover:text-white"
+            >
+              Leaderboard
+              <ArrowRight className="h-3.5 w-3.5 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
+            </Link>
+          </div>
         </div>
       </div>
     </section>
@@ -732,7 +774,7 @@ function InstallSection() {
   return (
     <section className="relative z-10 bg-white dark:bg-black border-t border-black/[8%] dark:border-white/[8%]">
       <div className="w-full px-4 py-16 sm:px-0 sm:py-24">
-        <div className="mb-10 sm:mb-16">
+        <div className="mb-4 sm:mb-5">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-black/30 dark:text-white/30 mb-4 block">
             Quick Start
           </span>
@@ -941,6 +983,13 @@ function ThemesSection() {
               <ArrowRight className="w-3.5 h-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
             </span>
           </a>
+          <a className="group" href="/score">
+            <span className="inline-flex group items-center gap-2 rounded-none uppercase font-mono text-xs border border-black/10 dark:border-white/10 bg-black/[3%] dark:bg-white/[3%] px-5 py-2.5 cursor-pointer text-black/80 dark:text-white/80 transition-all hover:bg-black/[4%] dark:hover:bg-white/[4%] hover:text-black dark:hover:text-white hover:border-black/10 dark:hover:border-white/10 hover:no-underline">
+              <Activity className="w-3.5 h-3.5" strokeWidth={1.8} />
+              Agent Score
+              <ArrowRight className="w-3.5 h-3.5 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
+            </span>
+          </a>
         </div>
       </div>
     </section>
@@ -1037,9 +1086,8 @@ export default defineDocs({
     copyMarkdown: { enabled: true },
     openDocs: {
       enabled: true,
-      providers: [
-        { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}" },
-      ],
+      target: "markdown",
+      providers: ["chatgpt", "claude", "cursor"],
     },
   },
 
@@ -1129,8 +1177,9 @@ export default function Home() {
       </div>
       <div className="max-w-[90%] mx-auto">
         <HeroSection />
-        <AgentFeaturesSection />
         <InstallSection />
+        <AgentFeaturesSection />
+        <AgentScoreCalloutSection />
         <ThemesSection />
         <ConfigSection />
         <FooterSection />

@@ -1131,7 +1131,7 @@ export const Route = createFileRoute("${entryUrl}/$")({
     handlers: {
       GET: async ({ request }) => {
         const url = new URL(request.url);
-        if (isDocsPublicGetRequest(${JSON.stringify(opts.entry)}, url, request, { sitemap: docsConfig.sitemap })) {
+        if (isDocsPublicGetRequest(${JSON.stringify(opts.entry)}, url, request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
           return docsServer.GET({ request });
         }
         return undefined;
@@ -1224,7 +1224,7 @@ async function handlePublicDocsRequest(request: Request) {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, url, request, { sitemap: docsConfig.sitemap })) {
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, url, request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
     return docsServer.GET({ request });
   }
 
@@ -1604,7 +1604,7 @@ import { createDocsServer } from "@farming-labs/svelte/server";
 import config from "${configImport}";
 
 // preload for production
-const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx,svx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"], {
+const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx,svx}", "/AGENTS.md", "/AGENT.md", "/skill.md", "/.farming-labs/sitemap-manifest.json"], {
   query: "?raw",
   import: "default",
   eager: true,
@@ -1680,7 +1680,7 @@ export function svelteDocsPublicHookTemplate(filePath: string, useAlias: boolean
   const configImport = svelteRouteConfigImport(filePath, useAlias);
 
   return `\
-import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
 import type { Handle } from "@sveltejs/kit";
 import config from "${configImport}";
 import { GET, MCP } from "${serverImport}";
@@ -1700,7 +1700,12 @@ export const handle: Handle = async ({ event, resolve }) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: config.sitemap })) {
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(event.url, config.llmsTxt, docsEntry)) {
+    const nativeResponse = await resolve(event);
+    if (nativeResponse.status !== 404) return nativeResponse;
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
     return GET({ url: event.url, request: event.request });
   }
 
@@ -1740,7 +1745,7 @@ export function injectSvelteDocsPublicHook(
   }
 
   const imports = [
-    'import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";',
+    'import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";',
     ...(next.includes("Handle") ? [] : ['import type { Handle } from "@sveltejs/kit";']),
     ...(hasExistingHandle && !next.includes("sequence")
       ? ['import { sequence } from "@sveltejs/kit/hooks";']
@@ -1765,7 +1770,12 @@ const docsPublicHandle: Handle = async ({ event, resolve }) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: config.sitemap })) {
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(event.url, docsConfig.llmsTxt, docsEntry)) {
+    const nativeResponse = await resolve(event);
+    if (nativeResponse.status !== 404) return nativeResponse;
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, event.url, event.request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
     return docsGET({ url: event.url, request: event.request });
   }
 
@@ -2097,7 +2107,7 @@ export function astroDocsServerTemplate(cfg: TemplateConfig): string {
 import { createDocsServer } from "@farming-labs/astro/server";
 import config from "${configImport}";
 
-const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx}", "/skill.md", "/.farming-labs/sitemap-manifest.json"], {
+const contentFiles = import.meta.glob(["/${contentDirName}/**/*.{md,mdx}", "/AGENTS.md", "/AGENT.md", "/skill.md", "/.farming-labs/sitemap-manifest.json"], {
   query: "?raw",
   import: "default",
   eager: true,
@@ -2223,7 +2233,7 @@ export function astroDocsMiddlewareTemplate(filePath: string, useAlias: boolean)
   const configImport = astroRouteConfigImport(filePath, useAlias);
 
   return `\
-import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
 import type { MiddlewareHandler } from "astro";
 import config from "${configImport}";
 import { GET, MCP } from "${serverImport}";
@@ -2243,7 +2253,12 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: config.sitemap })) {
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(context.url, config.llmsTxt, docsEntry)) {
+    const nativeResponse = await next();
+    if (nativeResponse.status !== 404) return nativeResponse;
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: config.sitemap, llms: config.llmsTxt, robots: config.robots })) {
     return GET({ request: context.request });
   }
 
@@ -2283,7 +2298,7 @@ export function injectAstroDocsMiddleware(
   }
 
   const imports = [
-    'import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";',
+    'import { isDocsLlmsTxtPublicRequest, isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";',
     ...(next.includes("MiddlewareHandler")
       ? []
       : ['import type { MiddlewareHandler } from "astro";']),
@@ -2310,7 +2325,12 @@ const docsPublicMiddleware: MiddlewareHandler = async (context, next) => {
     });
   }
 
-  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: config.sitemap })) {
+  if ((method === "GET" || method === "HEAD") && isDocsLlmsTxtPublicRequest(context.url, docsConfig.llmsTxt, docsEntry)) {
+    const nativeResponse = await next();
+    if (nativeResponse.status !== 404) return nativeResponse;
+  }
+
+  if ((method === "GET" || method === "HEAD") && isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: docsConfig.sitemap, llms: docsConfig.llmsTxt, robots: docsConfig.robots })) {
     return docsGET({ request: context.request });
   }
 

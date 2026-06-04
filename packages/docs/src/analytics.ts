@@ -116,9 +116,23 @@ export function createDocsAgentTraceContext(name = "agent.run"): DocsAgentTraceC
   };
 }
 
+export function getDocsRequestAnalyticsProperties(request: Request): Record<string, unknown> {
+  const userAgent = request.headers.get("user-agent")?.trim();
+
+  return userAgent ? { userAgent } : {};
+}
+
 export function resolveDocsAnalyticsConfig(
   analytics?: boolean | DocsAnalyticsConfig,
 ): ResolvedDocsAnalyticsConfig {
+  if (analytics === false) {
+    return {
+      enabled: false,
+      console: false,
+      includeInputs: false,
+    };
+  }
+
   const cloudOptions = resolveDocsCloudAnalyticsOptions(analytics);
   const cloudOnEvent = cloudOptions
     ? async (event: DocsAnalyticsEvent) => {

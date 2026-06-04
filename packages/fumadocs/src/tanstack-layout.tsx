@@ -7,16 +7,18 @@ import type {
   TypographyConfig,
   FontStyle,
   AIConfig,
-  OpenDocsProvider,
+  OpenDocsConfig,
 } from "@farming-labs/docs";
 import { applySidebarFolderIndexBehavior, resolveDocsAnalyticsConfig } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
 import { resolveReadingTimeOptions } from "./reading-time.js";
+import { resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
 import { withLangInUrl } from "./i18n.js";
+import { escapeJsonLdForScript } from "./json-ld.js";
 
 interface PageNode {
   type: "page";
@@ -97,6 +99,7 @@ export interface TanstackDocsLayoutProps {
   description?: string;
   readingTime?: number | null;
   lastModified?: string;
+  structuredData?: string;
   editOnGithubUrl?: string;
   children: ReactNode;
 }
@@ -271,6 +274,12 @@ function resolveBool(value: boolean | { enabled?: boolean } | undefined): boolea
   return value.enabled !== false;
 }
 
+function resolveEnabledByDefault(value: boolean | { enabled?: boolean } | undefined): boolean {
+  if (value === undefined) return true;
+  if (typeof value === "boolean") return value;
+  return value.enabled !== false;
+}
+
 function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
   const defaults = {
     enabled: false,
@@ -321,6 +330,7 @@ export function TanstackDocsLayout({
   description,
   readingTime,
   lastModified,
+  structuredData,
   editOnGithubUrl,
   children,
 }: TanstackDocsLayoutProps) {
@@ -370,20 +380,18 @@ export function TanstackDocsLayout({
     typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
   const readingTimeEnabled = resolveReadingTimeOptions(config.readingTime).enabled;
 
-  const llmsTxtEnabled = resolveBool(config.llmsTxt);
+  const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
   const staticExport = !!(config as { staticExport?: boolean }).staticExport;
 
-  const rawProviders =
-    pageActions?.openDocs &&
-    typeof pageActions.openDocs === "object" &&
-    pageActions.openDocs.providers
-      ? pageActions.openDocs.providers
+  const openDocsConfig =
+    pageActions?.openDocs && typeof pageActions.openDocs === "object"
+      ? (pageActions.openDocs as OpenDocsConfig)
       : undefined;
-  const openDocsProviders = rawProviders?.map((provider: OpenDocsProvider) => ({
-    name: provider.name,
-    urlTemplate: provider.urlTemplate,
-  }));
+  const openDocsProviders = resolveOpenDocsProviders(openDocsConfig?.providers, {
+    target: openDocsConfig?.target,
+    prompt: openDocsConfig?.prompt,
+  });
 
   const aiConfig = config.ai as AIConfig | undefined;
   const aiEnabled = !staticExport && !!aiConfig?.enabled;
@@ -456,7 +464,7 @@ export function TanstackDocsLayout({
     }) as ReactNode;
   }
 
-  return (
+  const layout = (
     <DocsLayout
       tree={resolvedTree}
       nav={{ title: navTitle, url: navUrl }}
@@ -504,6 +512,8 @@ export function TanstackDocsLayout({
           copyMarkdown={copyMarkdownEnabled}
           openDocs={openDocsEnabled}
           openDocsProviders={openDocsProviders}
+          openDocsTarget={openDocsConfig?.target}
+          openDocsPrompt={openDocsConfig?.prompt}
           pageActionsPosition={pageActionsPosition}
           pageActionsAlignment={pageActionsAlignment}
           editOnGithubUrl={editOnGithubUrl}
@@ -526,5 +536,17 @@ export function TanstackDocsLayout({
         </DocsPageClient>
       </Suspense>
     </DocsLayout>
+  );
+
+  if (!structuredData) return layout;
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: escapeJsonLdForScript(structuredData) }}
+      />
+      {layout}
+    </>
   );
 }

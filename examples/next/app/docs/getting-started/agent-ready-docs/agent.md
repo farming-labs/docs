@@ -49,7 +49,7 @@ For this page:
 ## Markdown Route Shape
 
 ```ts
-const handlers = createDocsAPI({ ... });
+const handlers = createDocsAPI(docsConfig);
 
 export async function GET(request, { params }) {
   const { slug = [] } = await params;
@@ -96,20 +96,30 @@ Implementation contract:
 The Next example exposes MCP through:
 
 ```ts
-createDocsMCPAPI({
-  entry: docsConfig.entry,
-  contentDir: docsConfig.contentDir,
-  nav: docsConfig.nav,
-  ordering: docsConfig.ordering,
-  search: docsConfig.search,
-  mcp: docsConfig.mcp,
-});
+createDocsMCPAPI(docsConfig);
 ```
 
 Use MCP for tool-based reads and parity checks, but keep the `.md` route as the simple public HTTP
 surface for both cases:
 - `agent.md` when present
 - normal page markdown when `agent.md` is missing
+
+MCP also exposes `get_code_examples` for fenced code blocks with metadata:
+
+````md
+```ts title="docs.config.ts" framework="nextjs" packageManager="pnpm" runnable
+```
+````
+
+Call it with filters such as `path`, `framework`, `packageManager`, `language`, `runnable`, `query`,
+`limit`, and `locale`. The tool returns structured JSON and does not change the rendered docs UI.
+
+MCP also exposes `list_docs` for section-aware discovery. Call it with no arguments for all docs, or
+with `section` such as `getting-started` to get matching page summaries before calling `read_page`.
+
+MCP also exposes `get_config_schema` for `docs.config.ts` metadata. Call it with no arguments for
+the full schema, `option` for paths such as `mcp.tools.getConfigSchema`, or `query` for feature
+areas such as `llms` or `page actions`.
 
 ## Test Commands
 

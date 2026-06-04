@@ -1,4 +1,4 @@
-export { createDocsCloudAnalytics } from "./cloud-analytics.js";
+export { remarkCodeGroup } from "./code-group-mdx.js";
 export {
   DOCS_AGENT_TRACE_EVENT_TYPES,
   createDocsAgentTraceContext,
@@ -6,12 +6,16 @@ export {
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
   emitDocsObservabilityEvent,
+  getDocsRequestAnalyticsProperties,
   resolveDocsAnalyticsConfig,
   resolveDocsObservabilityConfig,
 } from "./analytics.js";
 export {
+  DEFAULT_API_REFERENCE_OPENAPI_ROUTE,
   resolveApiReferenceConfig,
   resolveApiReferenceRenderer,
+  resolveApiReferenceOpenApiDiscovery,
+  isApiReferenceOpenApiRequest,
   buildApiReferenceOpenApiDocument,
   buildApiReferenceOpenApiDocumentAsync,
   buildApiReferenceHtmlDocument,
@@ -21,10 +25,21 @@ export {
 } from "./api-reference.js";
 export type {
   ApiReferenceFramework,
+  ApiReferenceOpenApiDiscovery,
   ApiReferenceRenderer,
   ApiReferenceRoute,
   ResolvedApiReferenceConfig,
 } from "./api-reference.js";
+export {
+  buildDocsReviewWorkflow,
+  buildDocsReviewWorkflowPathFilters,
+  DEFAULT_DOCS_REVIEW_SCORE_THRESHOLD,
+  DEFAULT_DOCS_REVIEW_WORKFLOW_PATH,
+  ensureDocsReviewWorkflow,
+  readDocsReviewConfigFromSource,
+  resolveDocsReviewConfig,
+} from "./review.js";
+export type { ResolvedDocsReviewConfig } from "./review.js";
 export {
   createDocsMcpHttpHandler,
   createDocsMcpServer,
@@ -48,6 +63,9 @@ export {
   resolveSearchRequestConfig,
 } from "./search.js";
 export {
+  DEFAULT_OPEN_DOCS_PROMPT,
+  DEFAULT_OPEN_DOCS_PROVIDER_IDS,
+  DEFAULT_OPEN_DOCS_TARGET,
   DEFAULT_PROMPT_PROVIDER_TEMPLATES,
   normalizePromptProviderName,
   parsePromptStringArray,
@@ -55,10 +73,12 @@ export {
   sanitizePromptText,
   serializeDocsIcon,
   serializeDocsIconRegistry,
+  serializeOpenDocsProvider,
   serializeOpenDocsProviders,
 } from "./prompt-utils.js";
 export {
   DEFAULT_SITEMAP_MANIFEST_PATH,
+  DEFAULT_SITEMAP_MD_DOCS_ROUTE,
   DEFAULT_SITEMAP_MD_ROUTE,
   DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE,
   DEFAULT_SITEMAP_XML_ROUTE,
@@ -67,6 +87,7 @@ export {
   readDocsSitemapManifestFromContentMap,
   renderDocsSitemapMarkdown,
   renderDocsSitemapXml,
+  resolveDocsSitemapPageLastmod,
   resolveDocsSitemapConfig,
   resolveDocsSitemapRequest,
   toDocsSitemapMarkdownUrl,
@@ -80,6 +101,12 @@ export type {
   DocsSitemapResolvedConfig,
 } from "./sitemap.js";
 export type {
+  DocsMcpCodeExample,
+  DocsMcpConfigSchema,
+  DocsMcpConfigSchemaOption,
+  DocsMcpDocsList,
+  DocsMcpDocsPageSummary,
+  DocsMcpDocsSection,
   DocsMcpHttpHandlers,
   DocsMcpNavigationNode,
   DocsMcpNavigationTree,
@@ -90,6 +117,7 @@ export type {
 export type {
   PromptAction,
   PromptProviderChoice,
+  SerializeOpenDocsProviderOptions,
   SerializedOpenDocsProvider,
 } from "./prompt-utils.js";
 export type {
@@ -122,4 +150,3 @@ export type {
   ResolvedDocsAnalyticsConfig,
   ResolvedDocsObservabilityConfig,
 } from "./analytics.js";
-export type { DocsCloudAnalyticsOptions } from "./cloud-analytics.js";

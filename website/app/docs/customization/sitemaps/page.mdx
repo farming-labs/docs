@@ -1,6 +1,6 @@
 ---
 title: "Sitemaps"
-description: "Generate sitemap.xml and sitemap.md for crawlers, agents, and static exports"
+description: "Generate sitemap.xml, sitemap.md, and docs/sitemap.md for crawlers, agents, and static exports"
 icon: "file"
 order: 5.85
 related:
@@ -13,17 +13,19 @@ related:
 
 # Sitemaps
 
-Generate both a standard `sitemap.xml` and a semantic `sitemap.md` from the same docs source. The
-XML file gives search crawlers a canonical URL list with freshness dates. The Markdown file gives
-agents, contributors, and automation a readable map of the docs tree with titles, descriptions,
-markdown URLs, last-updated dates, and related pages.
+Generate a standard `sitemap.xml`, semantic `sitemap.md`, and docs-scoped `/docs/sitemap.md` from
+the same docs source. The XML file gives search crawlers a canonical URL list with freshness dates.
+The Markdown file gives agents, contributors, and automation a readable map of the docs tree with
+titles, descriptions, markdown URLs, last-updated dates, and related pages.
 
 <Agent>
-Use this page when the task is to enable or troubleshoot generated sitemaps.
+Use this page when the task is to customize or troubleshoot generated sitemaps. Runtime sitemap
+routes are enabled by default; use `sitemap: false` only when a project must opt out.
 
 Default public routes:
 - `/sitemap.xml`
 - `/sitemap.md`
+- `/docs/sitemap.md`
 - `/.well-known/sitemap.md`
 
 Static export command:
@@ -34,12 +36,14 @@ crawler and AI-agent access policy at `/robots.txt`.
 
 The command writes `.farming-labs/sitemap-manifest.json` plus public sitemap files unless
 `--manifest-only` is used. Lastmod dates come from `git log -1` for each page source path first,
-then filesystem mtime as a fallback.
+then filesystem mtime as a fallback. Preloaded adapters also use the manifest as the stable source
+for JSON-LD `dateModified`.
 </Agent>
 
 ## Quick Start
 
-Enable sitemaps in `docs.config.ts`:
+No config is required for the default runtime routes. Add `sitemap` only when you want to customize
+the public base URL or route prefix:
 
 ```ts title="docs.config.ts"
 import { defineDocs } from "@farming-labs/docs";
@@ -57,6 +61,7 @@ That exposes these routes through the same docs server wrapper and public forwar
 
 - `GET /sitemap.xml`
 - `GET /sitemap.md`
+- `GET /docs/sitemap.md`
 - `GET /.well-known/sitemap.md`
 - `GET /api/docs?format=sitemap-xml`
 - `GET /api/docs?format=sitemap-md`
@@ -79,6 +84,7 @@ The command writes:
 - `.farming-labs/sitemap-manifest.json`
 - `public/sitemap.xml`
 - `public/sitemap.md`
+- `public/docs/sitemap.md`
 - `public/.well-known/sitemap.md`
 
 SvelteKit uses `static/` instead of `public/`.
@@ -88,6 +94,23 @@ for the default behavior. Use `--manifest-only` when a server-rendered app only 
 manifest for accurate `lastmod` values and should keep the public route handled by the runtime.
 Use `docs robots generate --append` if the project already has its own `robots.txt` and should keep
 site-specific rules around the generated agent policy block.
+
+For Astro, SvelteKit, Nuxt, and TanStack Start deployments that preload docs content, bundle the
+manifest with the markdown files. Current `init` templates do this for you:
+
+```ts title="docs.server.ts"
+const contentFiles = import.meta.glob(
+  ["/docs/**/*.{md,mdx}", "/AGENTS.md", "/AGENT.md", "/skill.md", "/.farming-labs/sitemap-manifest.json"],
+  {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  },
+) as Record<string, string>;
+```
+
+That lets sitemap routes and per-page JSON-LD reuse the same stable `lastmod` dates in serverless
+and static-friendly builds.
 
 ```bash title="terminal"
 pnpm exec docs sitemap generate --manifest-only
@@ -111,8 +134,8 @@ Common build scripts:
     }
     ```
 
-    For `output: "export"`, drop `--manifest-only` so `public/sitemap.xml` and `public/sitemap.md`
-    are written before `next build`.
+    For `output: "export"`, drop `--manifest-only` so `public/sitemap.xml`, `public/sitemap.md`,
+    and `public/docs/sitemap.md` are written before `next build`.
   </Tab>
   <Tab value="Astro">
     ```json title="package.json"
@@ -176,6 +199,8 @@ Freshness is useful because crawlers and agents can:
 - prioritize recently edited documentation
 - avoid re-reading stable pages unnecessarily
 - show contributors where docs may have gone stale
+- reuse the same stable date in each page's JSON-LD `dateModified` when the adapter preloads the
+  generated manifest
 
 If you do not want freshness dates, disable them per output:
 
@@ -212,8 +237,9 @@ This generates:
 - `/docs-map/sitemap.md`
 - `/docs-map/.well-known/sitemap.md`
 
-There is no separate well-known route setting. The prefix applies to all sitemap routes together so
-adapters only need one forwarding rule.
+The default `/docs/sitemap.md` alias is emitted only when `routePrefix` is empty. There is no
+separate well-known route setting. The prefix applies to custom sitemap routes together so adapters
+only need one forwarding rule.
 
 ## Configuration Reference
 
@@ -240,8 +266,8 @@ export default defineDocs({
 
 | Option | Type | Default | Description |
 | ------ | ---- | ------- | ----------- |
-| `sitemap` | `boolean \| DocsSitemapConfig` | `false` | Enable or configure sitemap routes. |
-| `sitemap.enabled` | `boolean` | `true` when `sitemap` is an object | Disable without removing the object. |
+| `sitemap` | `boolean \| DocsSitemapConfig` | `true` | Enable or configure sitemap routes. Set `false` to opt out. |
+| `sitemap.enabled` | `boolean` | `true` | Disable without removing the object. |
 | `sitemap.routePrefix` | `string` | `""` | Prefix all public sitemap routes. |
 | `sitemap.baseUrl` | `string` | request origin at runtime, `llmsTxt.baseUrl` in the CLI | Absolute base URL for XML `<loc>` values. |
 | `sitemap.manifestPath` | `string` | `.farming-labs/sitemap-manifest.json` | Internal generated manifest path. |
@@ -322,11 +348,12 @@ Generated: 2026-05-08
 
 ## Verification
 
-After enabling the feature, check the public routes:
+Check the public routes:
 
 ```bash title="terminal"
 curl "http://127.0.0.1:3000/sitemap.xml"
 curl "http://127.0.0.1:3000/sitemap.md"
+curl "http://127.0.0.1:3000/docs/sitemap.md"
 curl "http://127.0.0.1:3000/.well-known/sitemap.md"
 curl "http://127.0.0.1:3000/robots.txt"
 ```

@@ -51,6 +51,23 @@ describe("parseFlags", () => {
     expect(flags.collection).toBe("docs");
   });
 
+  it("parses cloud deploy flags", () => {
+    const flags = parseFlags([
+      "deploy",
+      "--config",
+      "src/lib/docs.config.ts",
+      "--api-base-url",
+      "https://docs-app.example.com",
+      "--api-key-env",
+      "ACME_DOCS_CLOUD_KEY",
+      "--json",
+    ]);
+    expect(flags.config).toBe("src/lib/docs.config.ts");
+    expect(flags["api-base-url"]).toBe("https://docs-app.example.com");
+    expect(flags["api-key-env"]).toBe("ACME_DOCS_CLOUD_KEY");
+    expect(flags.json).toBe(true);
+  });
+
   it("parses dev flags including verbose and hostname aliases", () => {
     const flags = parseFlags(["dev", "--verbose", "--port", "4010", "--host", "0.0.0.0"]);
     expect(flags.verbose).toBe(true);
@@ -78,6 +95,11 @@ describe("parseFlags", () => {
   it("parses upgrade option: framework", () => {
     expect(parseFlags(["upgrade", "--framework", "nuxt"]).framework).toBe("nuxt");
     expect(parseFlags(["--framework=sveltekit"]).framework).toBe("sveltekit");
+  });
+
+  it("parses upgrade option: version", () => {
+    expect(parseFlags(["upgrade", "--version", "0.1.104"]).version).toBe("0.1.104");
+    expect(parseFlags(["upgrade", "--version=0.1.104-beta.1"]).version).toBe("0.1.104-beta.1");
   });
 
   it("returns empty object for empty argv", () => {

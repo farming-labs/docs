@@ -3,6 +3,11 @@ title: "Configuration"
 description: "Everything lives in docs.config.ts"
 icon: "settings"
 order: 3
+related:
+  - /docs/reference
+  - /docs/cli
+  - /docs/customization
+  - /docs/guides/agent-friendly-docs
 ---
 
 # Configuration
@@ -115,7 +120,8 @@ All configuration lives in a single `docs.config.ts` file.
 
 | Option         | Type                           | Default         | Description                                        |
 | -------------- | ------------------------------ | --------------- | -------------------------------------------------- |
-| `entry`        | `string`                       | `"docs"`        | The docs URL path prefix (e.g. `"docs"` → `/docs`) |
+| `entry`        | `string`                       | `"docs"`        | Docs source route and folder (e.g. `"docs"` -> `app/docs`) |
+| `docsPath`     | `string`                       | same as `entry` | Public docs route prefix in Next.js. Use `""` for root-mounted docs |
 | `contentDir`   | `string`                       | same as `entry` | Path to content files (TanStack Start, SvelteKit, Astro, Nuxt) |
 | `staticExport` | `boolean`                      | `false`         | Set `true` for full static builds (see [Static export](#static-export)) |
 | `theme`        | `DocsTheme`                    | —               | Theme preset from a theme factory                  |
@@ -127,20 +133,189 @@ All configuration lives in a single `docs.config.ts` file.
 | `icons`       | `Record<string, Component>`    | —               | Shared icon registry for frontmatter `icon` fields and built-ins like `Prompt` |
 | `components`  | `Record<string, Component>`    | —               | Custom MDX components and built-in overrides like `HoverLink` and `Prompt` |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | —         | Callback when the user clicks the copy button on a code block |
-| `feedback`    | `boolean \| FeedbackConfig`    | `false`         | Human page feedback UI plus optional agent feedback endpoints |
+| `codeBlocks`  | `DocsCodeBlocksConfig`         | —               | Validate fenced MDX code blocks with metadata planning and optional sandbox execution |
+| `feedback`    | `boolean \| FeedbackConfig`    | `false` for UI  | Human page feedback UI; agent feedback endpoints are default-on unless opted out |
 | `agent`       | `DocsAgentConfig`              | —               | Defaults for `docs agent compact`                  |
+| `review`      | `boolean \| DocsReviewConfig`  | `true`          | Docs Review CI workflow generation, scoring, and rule severity |
 | `readingTime` | `boolean \| ReadingTimeConfig` | `false`         | Opt-in estimated read-time label with optional per-page overrides |
 | `pageActions` | `PageActionsConfig`            | —               | Copy Markdown, Open in LLM buttons                 |
 | `ai`          | `AIConfig`                     | —               | RAG-powered AI chat                                |
 | `search`      | `boolean \| DocsSearchConfig`  | `true`          | Built-in simple search, Typesense, Algolia, or a custom adapter |
+| `cloud`       | `DocsCloudConfig`              | —               | Docs Cloud API key env, deploy, and publish defaults mirrored into `docs.json` |
+| `llmsTxt`     | `boolean \| LlmsTxtConfig`     | `true`          | Generated root and optional section-level `llms.txt` files with markdown page links |
 | `changelog`   | `boolean \| ChangelogConfig`   | `false`         | Generated changelog feed and entry pages from dated MDX entries (Next.js) |
 | `mcp`         | `boolean \| DocsMcpConfig`     | enabled         | Built-in MCP server over stdio, `/mcp`, and `/.well-known/mcp` |
 | `apiReference` | `boolean \| ApiReferenceConfig` | `false`       | Generated API reference from framework route conventions or a hosted OpenAPI JSON |
-| `sitemap`     | `boolean \| DocsSitemapConfig` | `false`         | Generated `sitemap.xml`, `sitemap.md`, and `/.well-known/sitemap.md` |
-| `robots`     | `boolean \| DocsRobotsConfig`  | enabled when configured | Generated `robots.txt` policy for docs and agent-readable routes |
+| `sitemap`     | `boolean \| DocsSitemapConfig` | `true`          | Generated `sitemap.xml`, `sitemap.md`, `/docs/sitemap.md`, and `/.well-known/sitemap.md` |
+| `robots`     | `boolean \| DocsRobotsConfig`  | `true`          | Runtime/generated `robots.txt` policy for docs and agent-readable routes |
 | `i18n`        | `DocsI18nConfig`               | —               | Query-param locale support and locale switcher     |
-| `metadata`    | `DocsMetadata`                 | —               | SEO metadata template                              |
+| `metadata`    | `DocsMetadata`                 | —               | SEO metadata template and JSON-LD page inputs      |
 | `og`          | `OGConfig`                     | —               | Dynamic Open Graph images (see [API Reference](/docs/reference#ogconfig)) |
+
+## Code block validation
+
+`codeBlocks.validate` lets the CLI inspect fenced MDX code blocks, build an execution plan from
+metadata, and optionally run executable snippets with a local or sandbox runner.
+
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "docs",
+  codeBlocks: {
+    validate: {
+      planner: {
+        provider: "openai",
+        model: "gpt-4.1-mini",
+        apiKeyEnv: "OPENAI_API_KEY",
+      },
+      runner: {
+        provider: "vercel-sandbox",
+        tokenEnv: "VERCEL_TOKEN",
+      },
+      envFile: [".env.local", ".env.test", ".env"],
+      env: {
+        OPENAI_API_KEY: "OPENAI_TEST_API_KEY",
+      },
+      missingEnv: "skip",
+    },
+  },
+});
+```
+
+Use metadata on the code fence to tell agents and validators how a snippet should be treated:
+
+````md title="page.mdx"
+```ts title="app/api/chat/route.ts" framework="nextjs" packageManager="pnpm" env="OPENAI_API_KEY" runnable
+const apiKey = process.env.OPENAI_API_KEY;
+```
+````
+
+Small runnable blocks make the check easy to dogfood:
+
+```json title="agent-context.json" runnable
+{
+  "framework": "nextjs",
+  "packageManager": "pnpm",
+  "agentReady": true
+}
+```
+
+```js title="codeblocks-smoke.js" runnable
+const metadata = { framework: "nextjs", runnable: true };
+
+if (!metadata.runnable) {
+  throw new Error("Expected runnable metadata");
+}
+
+console.log("metadata ok");
+```
+
+```bash title="codeblocks-smoke.sh" runnable
+test "docs" = "docs"
+echo "shell ok"
+```
+
+Run the validator locally:
+
+```bash
+pnpm exec docs codeblocks validate --plan
+pnpm exec docs codeblocks validate
+```
+
+The planner never writes secrets into docs. The `env` map means the snippet can keep using
+`process.env.OPENAI_API_KEY`, while validation injects that runtime variable from
+`OPENAI_TEST_API_KEY`. For Vercel Sandbox, `VERCEL_TOKEN` is enough in most projects; the runner
+uses `.vercel/project.json` when present and can auto-discover an accessible Vercel project from
+the token.
+
+Runner providers are explicit, so a remote sandbox never silently falls back to local execution:
+
+```ts title="docs.config.ts"
+codeBlocks: {
+  validate: {
+    runner: { provider: "vercel-sandbox", tokenEnv: "VERCEL_TOKEN" },
+  },
+}
+```
+
+```ts title="docs.config.ts"
+codeBlocks: {
+  validate: {
+    runner: { provider: "e2b", tokenEnv: "E2B_API_KEY" },
+  },
+}
+```
+
+```ts title="docs.config.ts"
+codeBlocks: {
+  validate: {
+    runner: {
+      provider: "daytona",
+      tokenEnv: "DAYTONA_API_KEY",
+      targetEnv: "DAYTONA_TARGET",
+      apiUrlEnv: "DAYTONA_API_URL",
+    },
+  },
+}
+```
+
+E2B uses the `e2b` package and Daytona uses `@daytona/sdk`. Install the provider SDK in the
+project that runs the CLI when you choose one of those runners.
+
+## Public docs path
+
+In Next.js, `entry` controls where the docs live in your app directory. `docsPath` controls the
+public URL where readers see those pages.
+
+The default keeps both values aligned:
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/theme";
+
+export default defineDocs({
+  entry: "docs",
+  theme: fumadocs(),
+});
+```
+
+With the default config, `app/docs/quickstart/page.mdx` is available at `/docs/quickstart`.
+
+Set `docsPath: ""` when the whole deployment is docs-only and should publish pages from the site
+root:
+
+```tsx title="docs.config.tsx"
+import { defineDocs } from "@farming-labs/docs";
+import { fumadocs } from "@farming-labs/theme";
+
+export default defineDocs({
+  entry: "docs",
+  docsPath: "",
+  theme: fumadocs(),
+});
+```
+
+The files still live under `app/docs`, but readers see root URLs:
+
+| Source file                        | Public URL    |
+| ---------------------------------- | ------------- |
+| `app/docs/page.mdx`                | `/`           |
+| `app/docs/quickstart/page.mdx`     | `/quickstart` |
+| `app/docs/reference/auth/page.mdx` | `/reference/auth` |
+
+This is useful for a docs subdomain. Attach `docs.example.com` to the docs deployment, then set
+`docsPath: ""` so the subdomain serves clean URLs like `https://docs.example.com/quickstart`
+instead of `https://docs.example.com/docs/quickstart`.
+
+`withDocs({})` reads this from `docs.config.tsx`, so you do not need to add custom rewrites to
+`next.config.ts`.
+
+<Callout type="warning" title="Use root docs only for docs-first deployments">
+  `docsPath: ""` makes the docs own `/` and other root-level page paths on that deployment. If the
+  same Next.js app also serves a marketing site at `/`, keep the default `/docs` path or use a
+  separate docs deployment for your subdomain.
+</Callout>
 
 For sidebar folder parents that have their own landing page, use
 `sidebar.folderIndexBehavior: "toggle"` if you want parent rows to only open and close their
@@ -165,12 +340,18 @@ No separate config flag is required for machine-readable page markdown.
 
 - The shared docs API supports `GET /api/docs?format=markdown&path=<slug>`
 - Next.js `withDocs()` and the generated TanStack Start, SvelteKit, Astro, and Nuxt forwarding layer serve `/docs.md` and `/docs/<slug>.md`
+- Successful markdown responses include a `Link: <canonical-page-url>; rel="canonical"` response header so agents can read the markdown mirror but cite the normal docs page
 - In Next.js, sending `Accept: text/markdown` to `/docs/<slug>` returns the same markdown response
 - In Next.js, sending a non-empty `Signature-Agent` header to `/docs/<slug>` also returns the same markdown response
+- In Next.js, known AI user agents and conservative bot-like agent heuristics also receive markdown from normal docs URLs
 - These negotiated Next.js reads are handled by the existing `/api/docs` route; `withDocs()` does not create a separate `/api/docs/markdown` wrapper
+- Markdown responses start with YAML frontmatter for `title`, optional `description`, `canonical_url`, `markdown_url`, and `last_updated` when a page freshness date is known
+- Successful markdown page responses append a `## Sitemap` footer that links agents back to the configured markdown sitemap routes
+- Missing markdown pages return actionable markdown with HTTP `200`, closest-match suggestions, recovery instructions, discovery links, and sitemap links
+- Very high-confidence missing slugs redirect to the closest `.md` page
 - Embedded `<Agent>...</Agent>` blocks stay hidden in the normal UI but are included in the `.md` fallback and MCP `read_page`
 - When a page folder has `agent.md`, that file is returned instead of the normal page markdown
-- Page frontmatter `related` is rendered as a comma-separated markdown metadata line beside `Description` when the page uses normal markdown or embedded `<Agent>` fallback, so agents can discover adjacent pages without scraping the UI. A sibling `agent.md` remains a full override; include any `Related:` line manually inside `agent.md` when needed.
+- Page frontmatter `related` is rendered as a comma-separated markdown metadata line beside `Description` when the page uses normal markdown or embedded `<Agent>` fallback, so agents can discover adjacent pages without scraping the UI. A sibling `agent.md` remains the page-content override; include any `Related:` line manually inside `agent.md` when needed.
 
 <Callout type="info" title="Markdown via content negotiation">
   You can keep the canonical docs URL and ask for markdown with an HTTP header:
@@ -178,16 +359,26 @@ No separate config flag is required for machine-readable page markdown.
   ```bash
   curl "https://docs.example.com/docs/installation" -H "Accept: text/markdown"
   curl "https://docs.example.com/docs/installation" -H "Signature-Agent: https://chatgpt.com"
+  curl "https://docs.example.com/docs/installation" -H "User-Agent: ClaudeBot/1.0"
   ```
 
   In Next.js, browsers still receive HTML from `/docs/installation`; agents, scripts, and crawlers
-  that send `Accept: text/markdown` or `Signature-Agent` receive the same machine-readable output
-  as `/docs/installation.md`. The request is resolved by the shared `/api/docs` handler, so custom
-  apps should keep one docs API route instead of adding a second markdown-only wrapper. Other
-  adapters should use the `.md` URL or the API format route.
+  that send `Accept: text/markdown`, send `Signature-Agent`, identify as a known AI user agent, or
+  match a conservative bot-like agent heuristic receive the same machine-readable output as
+  `/docs/installation.md`. The request is resolved by the shared `/api/docs` handler, so custom apps
+  should keep one docs API route instead of adding a second markdown-only wrapper. Other adapters
+  should use the `.md` URL or the API format route.
+
+  Successful markdown responses also include a canonical `Link` response header. The body is still
+  the full markdown document; the header simply tells agents that `/docs/installation` is the
+  source-of-truth URL for `/docs/installation.md` or a negotiated markdown read.
+
+  The markdown body starts with YAML frontmatter. Agents can read `canonical_url`, `markdown_url`,
+  `title`, `description`, and `last_updated` before parsing the page body.
 
   Negotiated markdown responses include cache-safe `Vary` headers: `Accept` for
-  `Accept: text/markdown`, and `Accept, Signature-Agent` for `Signature-Agent`.
+  `Accept: text/markdown`, `Accept, Signature-Agent` for `Signature-Agent`, `User-Agent` for known
+  AI user agents, and `User-Agent, Sec-Fetch-Mode` for heuristic agent detection.
 
   That means a CDN can cache the HTML and markdown versions separately even though the URL is the
   same:
@@ -196,11 +387,13 @@ No separate config flag is required for machine-readable page markdown.
   /docs/installation + normal browser headers      -> cached HTML
   /docs/installation + Accept: text/markdown       -> cached markdown
   /docs/installation + Signature-Agent: <agent-id> -> cached markdown
+  /docs/installation + User-Agent: ClaudeBot/1.0   -> cached markdown
   ```
 
-  If a markdown request misses, the 404 response is still markdown. It points agents at the agent
-  discovery spec, search endpoint, and sitemap routes so they can recover instead of stopping at a
-  plain `Not Found`.
+  If a markdown request misses, the recovery response is still markdown and returns HTTP `200`
+  unless a very high-confidence match redirects to the corrected `.md` page. The body lists closest
+  matches, recovery steps, the agent discovery spec, search endpoint, and sitemap routes so agents
+  can recover instead of stopping at a plain `Not Found`.
 </Callout>
 
 ```mdx title="page.mdx"
@@ -215,9 +408,28 @@ related:
 
 See [Agent Primitive](/docs/customization/agent-primitive) for the page-level authoring model.
 
+## Structured data
+
+Every docs page automatically includes Schema.org JSON-LD using `TechArticle`,
+`BreadcrumbList`, canonical URL, and `dateModified`. This is a hidden
+`application/ld+json` script, not a visible component and not a separate route.
+
+The page `title` and `description` come from frontmatter. The canonical URL uses
+`sitemap.baseUrl`, `llmsTxt.baseUrl`, `robots.baseUrl`, or `ai.docsUrl` when one is configured.
+The agent discovery JSON advertises this as `capabilities.structuredData` so agents know the HTML
+page contains structured metadata.
+
+The JSON-LD script is escaped before insertion so page titles and descriptions cannot break out of
+the `application/ld+json` script tag. For filesystem-backed pages, `dateModified` comes from the
+page source file. For preloaded Astro, SvelteKit, Nuxt, and TanStack Start builds, run
+`docs sitemap generate` and include `/.farming-labs/sitemap-manifest.json` in `_preloadedContent`
+so `dateModified` can reuse stable sitemap `lastmod` values. If no stable freshness date is
+available, the runtime omits `dateModified` instead of using the current request time.
+
 ## Sitemaps
 
-Use `sitemap` when you want both crawler-friendly XML and agent-friendly Markdown maps of your docs:
+Sitemaps are enabled by default. Add `sitemap` only when you want to customize the base URL, route
+prefix, manifest path, or output format details:
 
 ```ts title="docs.config.ts"
 export default defineDocs({
@@ -233,6 +445,7 @@ Default routes:
 
 - `/sitemap.xml`
 - `/sitemap.md`
+- `/docs/sitemap.md`
 - `/.well-known/sitemap.md`
 - `/api/docs?format=sitemap-xml`
 - `/api/docs?format=sitemap-md`
@@ -245,6 +458,7 @@ pnpm exec docs sitemap generate
 
 The command writes `.farming-labs/sitemap-manifest.json` plus public sitemap files. It uses each
 page source file's last git commit date for `lastmod`, with filesystem modified time as a fallback.
+Preloaded adapters can also read the generated manifest for stable JSON-LD `dateModified` values.
 
 Use `routePrefix` to move all sitemap routes together:
 
@@ -257,8 +471,9 @@ export default defineDocs({
 ```
 
 That generates `/docs-map/sitemap.xml`, `/docs-map/sitemap.md`, and
-`/docs-map/.well-known/sitemap.md`. See [Sitemaps](/docs/customization/sitemaps) for static export,
-manifest, `lastmod`, and output examples.
+`/docs-map/.well-known/sitemap.md`. The default `/docs/sitemap.md` alias is emitted only when
+`routePrefix` is empty. See [Sitemaps](/docs/customization/sitemaps) for static export, manifest,
+`lastmod`, and output examples.
 
 ## Robots.txt
 
@@ -275,7 +490,7 @@ export default defineDocs({
 ```
 
 The generated policy explicitly allows the docs entry, `.md` routes, `llms.txt`, sitemap routes,
-`skill.md`, MCP aliases, and agent discovery routes. It also includes common AI crawler user agents
+`AGENTS.md`, `skill.md`, MCP aliases, and agent discovery routes. It also includes common AI crawler user agents
 such as `GPTBot`, `ChatGPT-User`, `ClaudeBot`, `CCBot`, and `Google-Extended`.
 
 Generate the file with:
@@ -283,6 +498,10 @@ Generate the file with:
 ```bash title="terminal"
 pnpm exec docs robots generate
 ```
+
+Server-rendered apps also serve `/robots.txt` through the shared docs handler by default when no
+static file already owns that route. The generator is still the right tool for static export or when
+you want to commit a policy file.
 
 If a project already owns `public/robots.txt`, the command leaves it alone. Use `--append` to add or
 update the generated block inside the existing file, or `--force` when you intentionally want to
@@ -305,8 +524,8 @@ export default defineDocs({
 });
 ```
 
-`docs doctor --agent` checks the resolved `robots.txt` path, warns when it is missing, and flags
-policies that block agent-readable docs routes or common AI crawlers.
+`docs doctor --agent` checks the resolved `robots.txt` path or runtime route and flags policies that
+block agent-readable docs routes or common AI crawlers.
 
 ## Static export
 
@@ -466,7 +685,7 @@ Notes:
 - Use `pnpm dlx @farming-labs/docs search sync --typesense` or `--algolia` when you want manual indexing as a CLI step
 - `provider: "mcp"` can target a relative route like `/mcp` or `/.well-known/mcp` or an absolute remote MCP endpoint
 - when MCP search points at the same site's relative MCP route, the MCP `search_docs` tool falls back to built-in simple search to avoid recursive loops
-- If you use a custom Next.js docs API route, import `createDocsAPI` from `@farming-labs/next/api` and pass `search: docsConfig.search` so your adapter config reaches the route handler
+- If you use a custom Next.js docs API route, import `createDocsAPI` from `@farming-labs/next/api` and pass the whole config: `createDocsAPI(docsConfig)`
 - Search requires the docs API route; with `staticExport: true` the UI is hidden because there is no server route
 
 <Callout type="warning" title="@farming-labs/theme/api compatibility">
@@ -508,7 +727,13 @@ Default behavior:
 - **Well-known HTTP route:** `/.well-known/mcp`
 - **Canonical HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
-- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`
+- **Built-in tools:** `list_docs`, `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`
+
+Useful built-in tool calls:
+
+- `list_docs` returns page summaries grouped by docs section, with optional `section` filtering
+- `get_code_examples` returns fenced code blocks plus parsed metadata such as `title`, `framework`, `packageManager`, and `runnable`
+- `get_config_schema` returns structured `docs.config.ts` option metadata for agents editing config safely
 
 Framework notes:
 
@@ -520,6 +745,53 @@ Framework notes:
 - **Custom routes:** set `mcp.route` in `docs.config` and update the framework public forwarder so the configured path and the actual endpoint stay aligned
 
 See the full [MCP Server guide](/docs/customization/mcp) for the route snippets and stdio usage.
+
+## Docs Review CI
+
+Docs Review is enabled by default. During `next dev` or `next build`, `withDocs()` creates
+`.github/workflows/docs-review.yml` when the workflow does not already exist. The generated workflow
+is intentionally tiny: it calls the hosted reusable workflow at
+`farming-labs/docs/.github/workflows/docs-review-reusable.yml@main` and passes the docs config path,
+package manager, check name, and working directory as inputs. In monorepos, the file is written at
+the repository root and the job runs from the docs app directory.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  review: true,
+  theme: fumadocs(),
+});
+```
+
+The generated wrapper only triggers on docs-related PR changes such as `docs.config.*`,
+`app/docs/**`, `src/app/docs/**`, `content/docs/**`, and the workflow files themselves. By default
+it runs in `warn` mode, posts GitHub annotations, uses `docs-review` as the GitHub check name, and
+keeps CI green.
+
+Use `block` mode when the team wants docs PRs to fail below the configured score threshold or when
+error-level findings exist:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  entry: "docs",
+  review: {
+    ci: {
+      name: "agent-docs-review",
+      mode: "block",
+    },
+    score: { threshold: 90 },
+    rules: {
+      brokenLinks: "error",
+      frontmatter: "error",
+      codeFenceMetadata: "warn",
+      agentContext: "suggestion",
+    },
+  },
+  theme: fumadocs(),
+});
+```
+
+Set `review: false` to opt out of review and workflow generation.
 
 ## API Reference
 
@@ -1199,6 +1471,10 @@ Supported fields:
   renders the normal page.
 </Callout>
 
+Handwritten `agent.md` files are also valid. They count as explicit machine context in
+`docs doctor --agent`, but their freshness is reported as `unknown` because there is no generated
+provenance block to compare against the page source.
+
 The CLI loads `.env` and `.env.local` before resolving the key, so `TOKEN_COMPANY_API_KEY` works
 out of the box. Use positional page args by default:
 
@@ -1239,25 +1515,28 @@ when to use compaction instead of writing `agent.md` by hand.
 
 ## Agent Feedback Endpoints
 
-Use `feedback.agent` when you want machine-readable feedback routes for coding agents or docs-aware
-automation. This is separate from the built-in page footer UI.
+Machine-readable feedback routes are enabled by default for coding agents and docs-aware automation.
+The default submit route is a no-op `202` response until you add a callback. This is separate from
+the built-in page footer UI, which remains opt-in.
+
+Use `feedback.agent` only when you want to customize the callback, routes, schema, or explicitly opt
+out.
 
 Agents should discover the configured routes first with `GET /.well-known/agent.json`.
 `GET /.well-known/agent` is the fallback public alias, and `GET /api/docs/agent/spec` is the
 canonical framework route. Generated projects wire all three to the same JSON. The spec includes
 site identity, locale config, capability flags, the search endpoint, markdown route pattern,
-`Accept: text/markdown` contract, `Signature-Agent` support, API and public `llms.txt` routes,
-sitemap routes, the `robots.txt` route, root `skill.md` metadata, Skills CLI install metadata, MCP
-public/well-known endpoints and enabled tools, and the active agent feedback schema and submit
-endpoints. Publish `/robots.txt` with `docs robots generate` when crawlers and AI agents need an
-explicit access policy at the advertised route.
+`Accept: text/markdown` contract, `Signature-Agent` support, API, public, and section-level
+`llms.txt` routes, sitemap routes, the `robots.txt` route, generated `AGENTS.md` metadata, root
+`skill.md` metadata, Skills CLI install metadata, MCP public/well-known endpoints and enabled tools,
+and the active agent feedback schema and submit endpoints. Use `docs robots generate` when a static export or committed policy
+file should own the advertised route.
 
 ```ts title="docs.config.ts"
 export default defineDocs({
   entry: "docs",
   feedback: {
     agent: {
-      enabled: true,
       async onFeedback(data) {
         console.log(data.context?.source, data.payload);
       },
@@ -1271,14 +1550,18 @@ Default behavior:
 - `GET /.well-known/agent.json` is the preferred public agent discovery URL
 - `GET /.well-known/agent` is the public fallback discovery URL
 - `GET /api/docs/agent/spec` returns the canonical framework discovery document
+- `GET /AGENTS.md` serves a root `AGENTS.md` or `AGENT.md` file when present, and otherwise returns a generated fallback
+- `GET /.well-known/AGENTS.md` and `GET /api/docs?format=agents` return the same agent instructions
 - `GET /skill.md` serves a root `skill.md` file when present, and otherwise returns a generated fallback
 - `GET /.well-known/skill.md` and `GET /api/docs?format=skill` return the same skill document
-- the discovery JSON advertises `agentSpecDefault`, `agentSpecFallback`, `skills.file`, `skills.route`, the `llms.txt` defaults, `robots.route`, and sitemap routes when enabled
+- the discovery JSON advertises `agentSpecDefault`, `agentSpecFallback`, `agents.file`, `agents.route`, `skills.file`, `skills.route`, the root and section `llms.txt` routes, `robots.route`, and sitemap routes when enabled
 - `GET /api/docs/agent/feedback/schema` returns the feedback schema
-- `POST /api/docs/agent/feedback` accepts `{ context?, payload }`
+- `POST /api/docs/agent/feedback` accepts `{ context?, payload }`; without `onFeedback` it returns `{ ok: true, handled: false }`
+- non-Next server adapters also expose the same contract through `GET /api/docs?feedback=agent&schema=1` and `POST /api/docs?feedback=agent`
 - the shared `/api/docs` handler is still the source of truth
 - in Next.js, `withDocs()` adds the public rewrites automatically
 - `feedback.agent` alone does not enable the human footer UI
+- set `feedback: false` or `feedback: { agent: false }` to opt out of the agent feedback routes
 
 <Callout type="info" title="Safe by default">
   Agent feedback submissions are validated data passed to `feedback.agent.onFeedback`; they are not
@@ -1419,30 +1702,25 @@ pageActions: {
   copyMarkdown: { enabled: true },
   openDocs: {
     enabled: true,
-    providers: [
-      {
-        name: "ChatGPT",
-        urlTemplate: "https://chatgpt.com/?q=Read+this:+{url}",
-      },
-    ],
+    target: "markdown",
+    providers: ["chatgpt", "claude", "cursor"],
   },
 },
 ```
 
-Use `openDocs: true` for the built-in ChatGPT + Claude provider list, or pass `providers` to fully customize it.
+Use `openDocs: true` for the built-in ChatGPT + Claude provider list, or pass provider strings and `target: "markdown"` to send tools directly to the public `.md` route for the page.
 
-If you use the built-in `Prompt` component, you can also add `promptUrlTemplate` to a provider so the same provider name and icon can open prompt text directly:
+For deeper customization, use provider objects. This keeps the built-in preset but opens Cursor through the app deeplink:
 
 ```ts
 pageActions: {
   openDocs: {
     enabled: true,
+    target: "markdown",
     providers: [
-      {
-        name: "Cursor",
-        urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}",
-        promptUrlTemplate: "https://cursor.com/link/prompt?text={prompt}",
-      },
+      "chatgpt",
+      "claude",
+      { id: "cursor", mode: "app" },
     ],
   },
 },

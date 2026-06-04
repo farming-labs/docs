@@ -168,10 +168,13 @@ export default defineDocs({
     route: "/api/docs/mcp",
     name: "My Docs MCP",
     tools: {
+      listDocs: true,
       listPages: true,
       getNavigation: true,
       searchDocs: true,
       readPage: true,
+      getCodeExamples: true,
+      getConfigSchema: true,
     },
   },
 });
@@ -181,16 +184,25 @@ export default defineDocs({
 
 | Property        | Type      | Description |
 | --------------- | --------- | ----------- |
+| `listDocs`      | `boolean` | Expose the `list_docs` tool |
 | `listPages`     | `boolean` | Expose the `list_pages` tool |
 | `getNavigation` | `boolean` | Expose the `get_navigation` tool |
 | `searchDocs`    | `boolean` | Expose the `search_docs` tool |
 | `readPage`      | `boolean` | Expose the `read_page` tool |
+| `getCodeExamples` | `boolean` | Expose the `get_code_examples` tool |
+| `getConfigSchema` | `boolean` | Expose the `get_config_schema` tool |
 
 Default MCP surface:
 
 - **HTTP route:** `/api/docs/mcp`
 - **stdio command:** `pnpx @farming-labs/docs mcp`
-- **Built-in tools:** `list_pages`, `get_navigation`, `search_docs`, `read_page`
+- **Built-in tools:** `list_docs`, `list_pages`, `get_navigation`, `search_docs`, `read_page`, `get_code_examples`, `get_config_schema`
+
+`list_docs` returns docs page summaries grouped by section. Agents can call it with no arguments
+to see the whole docs tree, or pass `section`, such as `getting-started`, before reading a page.
+
+`get_config_schema` returns structured `docs.config.ts` option metadata. Agents can call it with
+`option`, such as `mcp.tools.getConfigSchema`, or with `query` for keyword filtering.
 
 Framework notes:
 
@@ -400,10 +412,10 @@ Notes:
 
 - `search: false` disables search entirely
 - Search requires the docs API route; static export hides the UI because there is no server route
-- On Next.js, generated routes from `withDocs()` already forward `docsConfig.search`
+- On Next.js, generated routes from `withDocs()` pass `docsConfig` directly into `createDocsAPI`
 - MCP-backed search works with relative endpoints like `/api/docs/mcp` and absolute remote endpoints like `https://docs.example.com/api/docs/mcp`
 - If MCP-backed search points at the same relative MCP route, the built-in `search_docs` tool falls back to simple search internally to avoid recursive loops
-- On custom/manual Next routes, import `createDocsAPI` from `@farming-labs/next/api` and pass `search: docsConfig.search`
+- On custom/manual Next routes, import `createDocsAPI` from `@farming-labs/next/api` and pass the whole config: `createDocsAPI(docsConfig)`
 
 <Callout type="warning" title="@farming-labs/theme/api still works for now">
   `@farming-labs/theme/api` remains supported as a compatibility import path today, but prefer
@@ -1051,17 +1063,17 @@ Action buttons shown on each docs page. See [Page Actions](/docs/customization/p
 | ------------- | ----------- | --------------------------------------------------------------------------------- |
 | `name`        | `string`    | Display name (e.g. `"ChatGPT"`, `"Claude"`)                                       |
 | `icon`        | `ReactNode` | Icon rendered next to the name                                                    |
-| `urlTemplate` | `string`    | URL template. `{url}` is replaced with the page URL, `{mdxUrl}` with the MDX URL, and `{githubUrl}` with the GitHub edit URL when `github` is configured. |
+| `target` | `"markdown" \| "page" \| "source" \| "github"` | URL inserted into `{url}` for built-in provider prompts. |
+| `prompt` | `string` | Prompt text for built-in providers. Defaults to `"Read this documentation: {url}"`. |
+| `urlTemplate` | `string` | Custom URL template. Supports `{prompt}`, `{url}`, `{pageUrl}`, `{markdownUrl}`, `{sourceUrl}`, `{mdxUrl}`, and `{githubUrl}`. |
 
 ```ts
 pageActions: {
   copyMarkdown: { enabled: true },
   openDocs: {
     enabled: true,
-    providers: [
-      { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}" },
-      { name: "Claude", urlTemplate: "https://claude.ai/new?q=Read+this:+{url}" },
-    ],
+    target: "markdown",
+    providers: ["chatgpt", "claude", "cursor"],
   },
 },
 ```

@@ -7,6 +7,12 @@ order: 5.4
 
 # Components
 
+<Agent>
+Use this page when the user asks about this topic: Override built-in or add custom MDX components.
+Keep answers grounded in the exact options, routes, commands, and examples documented here.
+If the request moves beyond this page, point to the closest related docs instead of inventing config.
+</Agent>
+
 Pass custom React components that become available in **all MDX files** — no imports needed.
 
 ## How It Works
@@ -83,7 +89,8 @@ You can replace any built-in MDX component by registering one with the **same na
 
 ### Available built-in components
 
-The following components are available by default (from `fumadocs-ui`):
+The following components are available by default through `getMDXComponents()`. You can use them in
+MDX without imports or `docs.config.ts` registration:
 
 - `h1`, `h2`, `h3`, `h4`, `h5`, `h6` — heading elements
 - `p`, `a`, `ul`, `ol`, `li` — text and list elements
@@ -95,7 +102,39 @@ The following components are available by default (from `fumadocs-ui`):
 - `HoverLink` — hover-triggered popover link card with title, description, and CTA
 - `Prompt` — reusable AI prompt card with copy/open actions
 - `Tab`, `Tabs` — tabbed content
+- `CodeGroup` — Mintlify-compatible tabbed code groups powered by the built-in code block UI
 - `Callout` — callout/admonition boxes
+
+### Example: Use `CodeGroup`
+
+`CodeGroup` lets you wrap multiple fenced code blocks in one tabbed block. The tab label comes from
+`title`, `filename`, or the bare filename after the language, so Mintlify-style docs can move over
+without custom components or MDX component registration.
+
+````mdx title="page.mdx"
+<CodeGroup>
+
+```bash npm
+npm install @farming-labs/docs
+```
+
+```bash pnpm
+pnpm add @farming-labs/docs
+```
+
+```ts title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+
+export default defineDocs({
+  entry: "app/docs",
+});
+```
+
+</CodeGroup>
+````
+
+Use `<CodeGroup dropdown>` when you want to preserve Mintlify-authored MDX that includes the
+`dropdown` prop. It is accepted by the renderer and exposed as a data attribute for theme styling.
 
 ### Example: Use `HoverLink`
 
@@ -190,23 +229,8 @@ export default defineDocs({
   pageActions: {
     openDocs: {
       enabled: true,
-      providers: [
-        {
-          name: "ChatGPT",
-          urlTemplate: "https://chatgpt.com/?q=Read+this+documentation:+{url}",
-          promptUrlTemplate: "https://chatgpt.com/?q={prompt}",
-        },
-        {
-          name: "Claude",
-          urlTemplate: "https://claude.ai/new?q=Read+this+documentation:+{url}",
-          promptUrlTemplate: "https://claude.ai/new?q={prompt}",
-        },
-        {
-          name: "Cursor",
-          urlTemplate: "https://cursor.com/link/prompt?text=Read+this+documentation:+{url}",
-          promptUrlTemplate: "https://cursor.com/link/prompt?text={prompt}",
-        },
-      ],
+      target: "markdown",
+      providers: ["chatgpt", "claude", "cursor"],
     },
   },
 });

@@ -11,7 +11,7 @@
  * import { createDocsServer } from "@farming-labs/astro/server";
  * import config from "./docs.config";
  *
- * const contentFiles = import.meta.glob(["/docs/**\/*.{md,mdx}", "/skill.md"], {
+ * const contentFiles = import.meta.glob(["/docs/**\/*.{md,mdx}", "/AGENTS.md", "/skill.md"], {
  *   query: "?raw", import: "default", eager: true,
  * }) as Record<string, string>;
  *
@@ -35,6 +35,7 @@ import {
   applySidebarFolderIndexBehavior,
   buildDocsAskAIContext,
   buildDocsAgentDiscoverySpec,
+  createDocsRobotsResponse,
   createDocsSitemapResponse,
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
@@ -42,33 +43,50 @@ import {
   emitDocsAnalyticsEvent,
   formatDocsAskAIPackageHints,
   findDocsMarkdownPage,
+  getDocsLlmsTxtMaxCharsIssue,
+  getDocsMarkdownCanonicalLinkHeader,
   getDocsMarkdownVaryHeader,
   isDocsAgentDiscoveryRequest,
+  isDocsAgentsRequest,
   isDocsSkillRequest,
   normalizeDocsRelated,
+  parseDocsAgentFeedbackData,
   performDocsSearch,
   renderDocsMarkdownDocument,
   renderDocsMarkdownNotFound,
+  resolveDocsMarkdownRecovery,
+  renderDocsLlmsTxt,
+  renderDocsAgentsDocument,
   renderDocsSkillDocument,
   readDocsSitemapManifestFromContentMap,
   stripGeneratedAgentProvenance,
   resolveDocsAgentMdxContent,
+  resolveDocsAgentFeedbackConfig,
+  resolveDocsAgentFeedbackRequest,
   resolvePageSidebarFolderIndexBehavior,
   resolveAskAISearchRequestConfig,
   resolveSearchRequestConfig,
   resolveDocsI18n,
-  resolveDocsLlmsTxtFormat,
+  resolveDocsLlmsTxtRequest,
   resolveDocsLocale,
   resolveDocsMarkdownRequest,
+  resolveDocsMetadataBaseUrl,
   resolveDocsPath,
   resolvePageReadingTime,
   resolveReadingTimeOptions,
+  resolveDocsSitemapPageLastmod,
+  resolveDocsAgentsFormat,
   resolveDocsSkillFormat,
+  renderDocsPageStructuredDataJson,
+  selectDocsLlmsTxtContent,
+  validateDocsAgentFeedbackPayload,
 } from "@farming-labs/docs";
 import type { DocsAgentTraceEventInput, DocsAskAIMcpConfig } from "@farming-labs/docs";
 import {
+  buildApiReferenceOpenApiDocumentAsync,
   createDocsMcpHttpHandler,
   readDocsSitemapManifest,
+  resolveApiReferenceConfig,
   resolveDocsMcpConfig,
   serializeDocsIconRegistry,
   serializeOpenDocsProviders,
@@ -78,6 +96,23 @@ import { loadDocsNavTree, loadDocsContent, flattenNavTree } from "./content.js";
 import { renderMarkdown } from "./markdown.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
 export { createAstroApiReference } from "./api-reference.js";
+
+function isApiReferenceOpenApiRequest(url: URL): boolean {
+  return url.searchParams.get("format")?.trim() === "openapi";
+}
+
+function resolveApiReferenceOpenApiDiscovery(value: unknown) {
+  const apiReference = resolveApiReferenceConfig(value as any);
+  if (!apiReference.enabled) return { enabled: false };
+
+  return {
+    enabled: true,
+    url: "/api/docs?format=openapi",
+    source: apiReference.specUrl ? ("configured" as const) : ("generated" as const),
+    specUrl: apiReference.specUrl,
+    apiReferencePath: `/${apiReference.path}`,
+  };
+}
 
 interface GithubConfigObj {
   url: string;
@@ -169,6 +204,7 @@ export interface DocsServer {
     nextPage: PageNode | null;
     editOnGithub?: string;
     lastModified: string;
+    structuredData: string;
   }>;
   GET: (context: { request: Request }) => Promise<Response>;
   POST: (context: { request: Request }) => Promise<Response>;
@@ -236,6 +272,38 @@ function readRootSkillDocument(
     }
   } catch {
     return null;
+  }
+
+  return null;
+}
+
+function readRootAgentsDocument(
+  contentMap: ContentFileMap | undefined,
+  rootDir: string,
+): string | null {
+  if (contentMap) {
+    for (const key of [
+      "/AGENTS.md",
+      "AGENTS.md",
+      "./AGENTS.md",
+      "/AGENT.md",
+      "AGENT.md",
+      "./AGENT.md",
+    ]) {
+      const raw = contentMap[key];
+      if (typeof raw === "string") return raw;
+    }
+  }
+
+  for (const fileName of ["AGENTS.md", "AGENT.md"]) {
+    const candidate = path.join(rootDir, fileName);
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        return fs.readFileSync(candidate, "utf-8");
+      }
+    } catch {
+      continue;
+    }
   }
 
   return null;
@@ -525,6 +593,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
 
   const preloaded = config._preloadedContent as ContentFileMap | undefined;
+  const preloadedSitemapManifest = readDocsSitemapManifestFromContentMap(preloaded);
 
   const ordering = config.ordering as
     | "alphabetical"
@@ -609,10 +678,12 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
     const slug = ctx.slug;
     const isIndex = slug === "";
+    const currentUrl = isIndex ? `/${entry}` : `/${entry}/${slug}`;
 
     let raw: string;
     let relPath: string;
     let lastModified: string;
+    let lastModifiedIso: string | undefined;
 
     if (preloaded) {
       const result = findPageInMap(preloaded, ctx.dirPrefix, slug);
@@ -625,11 +696,16 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       }
       raw = result.raw;
       relPath = result.relPath;
-      lastModified = new Date().toLocaleDateString("en-US", {
+      const manifestLastmod = resolveDocsSitemapPageLastmod(preloadedSitemapManifest, currentUrl);
+      const lastModifiedDate = manifestLastmod
+        ? new Date(`${manifestLastmod}T00:00:00`)
+        : new Date();
+      lastModified = lastModifiedDate.toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
         day: "numeric",
       });
+      lastModifiedIso = manifestLastmod ? `${manifestLastmod}T00:00:00.000Z` : undefined;
     } else {
       let filePath: string | null = null;
       relPath = "";
@@ -671,6 +747,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
       raw = fs.readFileSync(filePath, "utf-8");
       const stat = fs.statSync(filePath);
+      lastModifiedIso = stat.mtime.toISOString();
       lastModified = stat.mtime.toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
@@ -691,10 +768,15 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         config.pageActions?.openDocs && typeof config.pageActions.openDocs === "object"
           ? config.pageActions.openDocs.providers
           : undefined,
+        config.pageActions?.openDocs && typeof config.pageActions.openDocs === "object"
+          ? {
+              target: config.pageActions.openDocs.target,
+              prompt: config.pageActions.openDocs.prompt,
+            }
+          : undefined,
       ),
     });
 
-    const currentUrl = isIndex ? `/${entry}` : `/${entry}/${slug}`;
     const currentIndex = flatPages.findIndex((p) => p.url === currentUrl);
     const previousPage = currentIndex > 0 ? flatPages[currentIndex - 1] : null;
     const nextPage = currentIndex < flatPages.length - 1 ? flatPages[currentIndex + 1] : null;
@@ -709,13 +791,23 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     const fallbackTitle = isIndex
       ? "Documentation"
       : (slug.split("/").pop()?.replace(/-/g, " ") ?? "Documentation");
+    const title = (data.title as string) ?? fallbackTitle;
+    const description = data.description as string | undefined;
+    const structuredData = renderDocsPageStructuredDataJson({
+      title,
+      description,
+      url: currentUrl,
+      baseUrl: resolveDocsMetadataBaseUrl(config as any),
+      entry,
+      dateModified: lastModifiedIso,
+    });
 
     return {
       tree,
       flatPages,
       url: currentUrl,
-      title: (data.title as string) ?? fallbackTitle,
-      description: data.description as string | undefined,
+      title,
+      description,
       html,
       rawMarkdown: humanRawContent,
       readingTime,
@@ -726,6 +818,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       nextPage,
       editOnGithub,
       lastModified,
+      structuredData,
     };
   }
 
@@ -752,51 +845,62 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
   const llmsTxtConfig = (config as Record<string, unknown>).llmsTxt as
     | boolean
-    | { enabled?: boolean; baseUrl?: string; siteTitle?: string; siteDescription?: string }
+    | {
+        enabled?: boolean;
+        baseUrl?: string;
+        siteTitle?: string;
+        siteDescription?: string;
+        maxChars?: { mode?: "warn" | "error" | "off"; chars?: number };
+        sections?: Array<{
+          title: string;
+          description?: string;
+          match: string | string[];
+          maxChars?: { mode?: "warn" | "error" | "off"; chars?: number };
+        }>;
+      }
     | undefined;
 
   const llmsBaseUrl = typeof llmsTxtConfig === "object" ? (llmsTxtConfig.baseUrl ?? "") : "";
+  const markdownMetadataBaseUrl = resolveDocsMetadataBaseUrl(config as any);
   const llmsTitle =
     typeof llmsTxtConfig === "object" ? (llmsTxtConfig.siteTitle ?? llmsSiteTitle) : llmsSiteTitle;
   const llmsDesc = typeof llmsTxtConfig === "object" ? llmsTxtConfig.siteDescription : undefined;
   const llmsEnabled =
     llmsTxtConfig !== false &&
     !(llmsTxtConfig && typeof llmsTxtConfig === "object" && llmsTxtConfig.enabled === false);
+  const openapiDiscovery = resolveApiReferenceOpenApiDiscovery(
+    (config as Record<string, unknown>).apiReference as any,
+  );
   const mcpConfig = resolveDocsMcpConfig(
     (config as Record<string, unknown>).mcp as Record<string, unknown> | boolean | undefined,
     {
       defaultName: llmsTitle,
     },
   );
+  const agentFeedbackConfig = resolveDocsAgentFeedbackConfig(
+    (config as Record<string, unknown>).feedback as Record<string, unknown> | boolean | undefined,
+  );
+  const agentFeedbackDiscovery = {
+    enabled: agentFeedbackConfig.enabled,
+    route: "/api/docs?feedback=agent",
+    schemaRoute: "/api/docs?feedback=agent&schema=1",
+  };
 
-  const llmsCache = new Map<string, { llmsTxt: string; llmsFullTxt: string }>();
+  const llmsCache = new Map<string, ReturnType<typeof renderDocsLlmsTxt>>();
 
   function getLlmsContent(ctx: ReturnType<typeof resolveContextFromPath>) {
     const key = ctx.locale ?? "__default__";
     const cached = llmsCache.get(key);
     if (cached) return cached;
 
-    const pages = getSearchIndex(ctx);
-    let llmsTxt = `# ${llmsTitle}\n\n`;
-    let llmsFullTxt = `# ${llmsTitle}\n\n`;
-    if (llmsDesc) {
-      llmsTxt += `> ${llmsDesc}\n\n`;
-      llmsFullTxt += `> ${llmsDesc}\n\n`;
-    }
-
-    llmsTxt += `## Pages\n\n`;
-    for (const page of pages) {
-      llmsTxt += `- [${page.title}](${llmsBaseUrl}${page.url})`;
-      if (page.description) llmsTxt += `: ${page.description}`;
-      llmsTxt += `\n`;
-
-      llmsFullTxt += `## ${page.title}\n\n`;
-      llmsFullTxt += `URL: ${llmsBaseUrl}${page.url}\n\n`;
-      if (page.description) llmsFullTxt += `${page.description}\n\n`;
-      llmsFullTxt += `${page.content}\n\n---\n\n`;
-    }
-
-    const next = { llmsTxt, llmsFullTxt };
+    const next = renderDocsLlmsTxt(getSearchIndex(ctx), {
+      siteTitle: llmsTitle,
+      siteDescription: llmsDesc,
+      baseUrl: llmsBaseUrl,
+      maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
+      sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
+      openapi: openapiDiscovery,
+    } as any);
     llmsCache.set(key, next);
     return next;
   }
@@ -810,9 +914,10 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   function getMarkdownDocument(
     ctx: ReturnType<typeof resolveContextFromPath>,
     requestedPath: string,
+    origin?: string,
   ) {
     const page = findDocsMarkdownPage(entry, getSearchIndex(ctx), requestedPath);
-    return page ? renderDocsMarkdownDocument(page) : null;
+    return page ? renderDocsMarkdownDocument(page, { origin, sitemap: config.sitemap }) : null;
   }
 
   // ─── GET /api/docs?query=… | ?format=llms | ?format=llms-full ──
@@ -829,24 +934,109 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
             i18n,
             search: config.search,
             mcp: mcpConfig,
+            feedback: agentFeedbackDiscovery,
             llms: {
               enabled: llmsEnabled,
               baseUrl: llmsBaseUrl || undefined,
               siteTitle: llmsTitle,
               siteDescription: llmsDesc,
+              maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
+              sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
             },
             sitemap: config.sitemap,
             robots: config.robots,
+            openapi: openapiDiscovery,
             markdown: {
               acceptHeader: false,
             },
-          }),
+          } as any),
           null,
           2,
         ),
         {
           headers: {
             "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            "X-Robots-Tag": "noindex",
+          },
+        },
+      );
+    }
+
+    if (isApiReferenceOpenApiRequest(url)) {
+      if (!openapiDiscovery.enabled) {
+        return new Response("Not Found", {
+          status: 404,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "X-Robots-Tag": "noindex",
+          },
+        });
+      }
+
+      const document = await buildApiReferenceOpenApiDocumentAsync(config as any, {
+        framework: "astro",
+        rootDir,
+        baseUrl: url.origin,
+      });
+
+      return new Response(JSON.stringify(document, null, 2), {
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "public, max-age=0, s-maxage=3600",
+          "X-Robots-Tag": "noindex",
+        },
+      });
+    }
+
+    const agentFeedbackRequest = resolveDocsAgentFeedbackRequest(url, agentFeedbackConfig);
+    if (agentFeedbackRequest) {
+      if (agentFeedbackRequest.kind === "submit") {
+        return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
+          status: 405,
+          headers: {
+            Allow: "POST",
+            "Content-Type": "application/json; charset=utf-8",
+          },
+        });
+      }
+
+      return new Response(JSON.stringify(agentFeedbackConfig.schema, null, 2), {
+        headers: {
+          "Content-Type": "application/schema+json; charset=utf-8",
+          "Cache-Control": "public, max-age=0, s-maxage=3600",
+          "X-Robots-Tag": "noindex",
+        },
+      });
+    }
+
+    if (isDocsAgentsRequest(url) || resolveDocsAgentsFormat(url) === "agents") {
+      return new Response(
+        readRootAgentsDocument(preloaded, rootDir) ??
+          renderDocsAgentsDocument({
+            origin: url.origin,
+            entry,
+            search: config.search,
+            mcp: mcpConfig,
+            feedback: agentFeedbackDiscovery,
+            llms: {
+              enabled: llmsEnabled,
+              baseUrl: llmsBaseUrl || undefined,
+              siteTitle: llmsTitle,
+              siteDescription: llmsDesc,
+              maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
+              sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
+            },
+            sitemap: config.sitemap,
+            robots: config.robots,
+            openapi: openapiDiscovery,
+            markdown: {
+              acceptHeader: false,
+            },
+          } as any),
+        {
+          headers: {
+            "Content-Type": "text/markdown; charset=utf-8",
             "Cache-Control": "public, max-age=0, s-maxage=3600",
             "X-Robots-Tag": "noindex",
           },
@@ -862,18 +1052,22 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
             entry,
             search: config.search,
             mcp: mcpConfig,
+            feedback: agentFeedbackDiscovery,
             llms: {
               enabled: llmsEnabled,
               baseUrl: llmsBaseUrl || undefined,
               siteTitle: llmsTitle,
               siteDescription: llmsDesc,
+              maxChars: typeof llmsTxtConfig === "object" ? llmsTxtConfig.maxChars : undefined,
+              sections: typeof llmsTxtConfig === "object" ? llmsTxtConfig.sections : undefined,
             },
             sitemap: config.sitemap,
             robots: config.robots,
+            openapi: openapiDiscovery,
             markdown: {
               acceptHeader: false,
             },
-          }),
+          } as any),
         {
           headers: {
             "Content-Type": "text/markdown; charset=utf-8",
@@ -891,26 +1085,60 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       siteTitle: llmsTitle,
       baseUrl: llmsBaseUrl || url.origin,
       pages: getSearchIndex(ctx),
-      manifest:
-        readDocsSitemapManifestFromContentMap(preloaded) ??
-        readDocsSitemapManifest(rootDir, config.sitemap),
+      manifest: preloadedSitemapManifest ?? readDocsSitemapManifest(rootDir, config.sitemap),
     });
     if (sitemapResponse) return sitemapResponse;
 
+    const robotsResponse = createDocsRobotsResponse({
+      request: context.request,
+      entry,
+      sitemap: config.sitemap,
+      baseUrl: llmsBaseUrl || url.origin,
+      robots: config.robots,
+    });
+    if (robotsResponse) return robotsResponse;
+
     const markdownRequest = resolveDocsMarkdownRequest(entry, url, context.request);
     if (markdownRequest) {
-      const document = getMarkdownDocument(ctx, markdownRequest.requestedPath);
+      const markdownOrigin = markdownMetadataBaseUrl || url.origin;
+      const document = getMarkdownDocument(ctx, markdownRequest.requestedPath, markdownOrigin);
       const varyHeader = getDocsMarkdownVaryHeader(context.request);
+      const canonicalLinkHeader = getDocsMarkdownCanonicalLinkHeader({
+        origin: markdownOrigin,
+        entry,
+        requestedPath: markdownRequest.requestedPath,
+        locale: ctx.locale,
+      });
 
       if (!document) {
+        const recovery = resolveDocsMarkdownRecovery({
+          entry,
+          requestedPath: markdownRequest.requestedPath,
+          pages: getSearchIndex(ctx),
+          sitemap: config.sitemap,
+        });
+
+        if (recovery.redirect) {
+          return new Response(null, {
+            status: 307,
+            headers: {
+              Location: new URL(recovery.redirect.markdownUrl, url.origin).toString(),
+              ...(varyHeader ? { Vary: varyHeader } : {}),
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
+
         return new Response(
           renderDocsMarkdownNotFound({
             entry,
             requestedPath: markdownRequest.requestedPath,
+            origin: markdownOrigin,
+            pages: getSearchIndex(ctx),
             sitemap: config.sitemap,
           }),
           {
-            status: 404,
+            status: 200,
             headers: {
               "Content-Type": "text/markdown; charset=utf-8",
               ...(varyHeader ? { Vary: varyHeader } : {}),
@@ -924,14 +1152,15 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         headers: {
           "Content-Type": "text/markdown; charset=utf-8",
           "Cache-Control": "public, max-age=0, s-maxage=3600",
+          Link: canonicalLinkHeader,
           ...(varyHeader ? { Vary: varyHeader } : {}),
           "X-Robots-Tag": "noindex",
         },
       });
     }
 
-    const llmsFormat = resolveDocsLlmsTxtFormat(url);
-    if (llmsFormat === "llms" || llmsFormat === "llms-full") {
+    const llmsRequest = resolveDocsLlmsTxtRequest(url, llmsTxtConfig, entry);
+    if (llmsRequest) {
       if (!llmsEnabled) {
         return new Response("Not Found", {
           status: 404,
@@ -942,16 +1171,41 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
         });
       }
 
-      const llmsContent = getLlmsContent(ctx);
-      return new Response(
-        llmsFormat === "llms-full" ? llmsContent.llmsFullTxt : llmsContent.llmsTxt,
-        {
+      const selected = selectDocsLlmsTxtContent(getLlmsContent(ctx), llmsRequest);
+      if (!selected) {
+        return new Response("Not Found", {
+          status: 404,
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
-            "Cache-Control": "public, max-age=3600",
+            "X-Robots-Tag": "noindex",
           },
-        },
+        });
+      }
+
+      const budgetIssue = getDocsLlmsTxtMaxCharsIssue(
+        selected.label,
+        selected.content,
+        selected.maxChars,
       );
+      if (budgetIssue?.mode === "error") {
+        return new Response(budgetIssue.message, {
+          status: 500,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "X-Robots-Tag": "noindex",
+          },
+        });
+      }
+      if (budgetIssue?.mode === "warn") {
+        console.warn(`[docs] ${budgetIssue.message}`);
+      }
+
+      return new Response(selected.content, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "public, max-age=3600",
+        },
+      });
     }
 
     const query = url.searchParams.get("query")?.trim();
@@ -1032,6 +1286,35 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
   async function POST(context: { request: Request }): Promise<Response> {
     const requestUrl = new URL(context.request.url);
+    const agentFeedbackRequest = resolveDocsAgentFeedbackRequest(requestUrl, agentFeedbackConfig);
+    if (agentFeedbackRequest) {
+      if (agentFeedbackRequest.kind === "schema") {
+        return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
+          status: 405,
+          headers: {
+            Allow: "GET",
+            "Content-Type": "application/json; charset=utf-8",
+          },
+        });
+      }
+
+      const parsed = await parseDocsAgentFeedbackData(context.request);
+      if (!parsed.ok) return parsed.response;
+
+      const payloadError = validateDocsAgentFeedbackPayload(
+        parsed.data.payload,
+        agentFeedbackConfig.payloadSchema,
+      );
+      if (payloadError) return Response.json({ error: payloadError }, { status: 400 });
+
+      if (!agentFeedbackConfig.onFeedback) {
+        return Response.json({ ok: true, handled: false }, { status: 202 });
+      }
+
+      await agentFeedbackConfig.onFeedback(parsed.data);
+      return Response.json({ ok: true, handled: true }, { status: 201 });
+    }
+
     const requestStartedAt = Date.now();
     const trace = createDocsAgentTraceContext("ask-ai");
     const runSpanId = createDocsAgentTraceId("span");

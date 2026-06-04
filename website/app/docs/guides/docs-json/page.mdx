@@ -3,12 +3,21 @@ title: "docs.json"
 description: "How the shared docs.json contract separates docs structure from Docs Cloud services"
 related:
   - /docs/guides
+  - /docs/cloud
+  - /docs/cloud/deploy
+  - /docs/cloud/analytics
   - /docs/configuration
   - /docs/cli
 order: 2
 ---
 
 # docs.json
+
+<Agent>
+Use this page when the user asks about this topic: How the shared docs.json contract separates docs structure from Docs Cloud services.
+Keep answers grounded in the exact options, routes, commands, and examples documented here.
+If the request moves beyond this page, point to the closest related docs instead of inventing config.
+</Agent>
 
 Use `docs.json` when you want a repo-level contract for frameworkless docs or for connecting
 an existing docs app to Docs Cloud services.
@@ -63,14 +72,10 @@ Hosted features live under `cloud`:
 ```json
 {
   "cloud": {
-    "enabled": true,
     "analytics": {
       "enabled": true,
       "console": "info",
       "includeInputs": false
-    },
-    "preview": {
-      "enabled": true
     },
     "publish": {
       "mode": "draft-pr",
@@ -95,12 +100,13 @@ This keeps product packaging separate from docs structure:
 ## Cloud Analytics
 
 Use `cloud.analytics` when you want the shared repo contract to carry analytics settings for Docs
-Cloud and for frameworkless generated runtimes.
+Cloud and for frameworkless generated runtimes. Connected Cloud projects use these settings with the
+Cloud-provided project identity so events are stored by Docs Cloud without requiring an `onEvent`
+callback in the repo.
 
 ```json
 {
   "cloud": {
-    "enabled": true,
     "analytics": true
   }
 }
@@ -111,7 +117,6 @@ Or, when you need the serializable subset:
 ```json
 {
   "cloud": {
-    "enabled": true,
     "analytics": {
       "enabled": true,
       "console": "info",
@@ -128,22 +133,21 @@ Or, when you need the serializable subset:
 - `includeInputs`
 
 Function hooks such as `onEvent` still belong in `docs.config.ts`, because `docs.json` is a repo
-contract and not an executable config file.
+contract and not an executable config file. Use `onEvent` only when you want to send an extra copy
+to a tool you own; Cloud storage is handled by the managed Cloud delivery path.
 
 For frameworkless projects, this serializable subset can be materialized into the generated hidden
 runtime even before the repo is fully connected to hosted Docs Cloud services. For framework-owned
 apps, `docs.config.ts` remains the canonical place for advanced runtime analytics behavior.
 
-Set `cloud.enabled` to `false` when the repo is using `docs.json` only as a local project contract.
-Set it to `true` once the repo is actually connected to Docs Cloud services.
+The presence of a `cloud` block opts the project into Cloud-aware CLI flows. Leave
+`cloud.enabled` unset for normal connected projects. Set it to `false` only when the repo is using
+`docs.json` as a local project contract and should explicitly disable Cloud deploy and publish
+commands.
 
-## Compatibility
-
-`docs.json` is the canonical config name and contract going forward.
-
-Older repos that still use `docs.cloud.json`, `docs.framework`, or top-level `preview` and `publish`
-can still be read for compatibility, but new examples and generated configs should use the
-`docs.mode`, `docs.runtime`, and `cloud.*` shape shown here.
+To connect a repo, create an API key, and deploy hosted preview docs, see
+[Docs Cloud](/docs/cloud) and [Deploy](/docs/cloud/deploy). For hosted analytics storage, see
+[Docs Cloud Analytics](/docs/cloud/analytics).
 
 ## Current Note
 

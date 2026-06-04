@@ -8,7 +8,7 @@ datasource db {
 }
 
 enum ApprovalStatus {
-  IDLE    
+  IDLE
   APPROVED
   REJECTED
 }
@@ -58,5 +58,78 @@ model CloudWaitlistEntry {
   message    String?
   createdAt  DateTime @default(now())
 
+  @@index([createdAt])
+}
+
+enum EnterpriseSupportStatus {
+  NEW
+  CONTACTED
+  CLOSED
+}
+
+enum EnterpriseSupportEmailStatus {
+  PENDING
+  SENT
+  FAILED
+  EXHAUSTED
+}
+
+model EnterpriseSupportRequest {
+  id                 String                               @id @default(cuid())
+  email              String
+  name               String?
+  company            String
+  role               String?
+  teamSize           String?
+  websiteUrl         String?
+  supportNeeds       String[]                             @default([])
+  message            String?
+  status             EnterpriseSupportStatus              @default(NEW)
+  emailNotifications EnterpriseSupportEmailNotification[]
+  createdAt          DateTime                             @default(now())
+  updatedAt          DateTime                             @updatedAt
+
+  @@index([createdAt])
+  @@index([email])
+  @@index([company])
+  @@index([status])
+}
+
+model EnterpriseSupportEmailNotification {
+  id            String                       @id @default(cuid())
+  requestId     String
+  request       EnterpriseSupportRequest     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  status        EnterpriseSupportEmailStatus @default(PENDING)
+  recipient     String
+  subject       String
+  payload       Json
+  attempts      Int                          @default(0)
+  maxAttempts   Int                          @default(5)
+  nextAttemptAt DateTime                     @default(now())
+  sentAt        DateTime?
+  lastError     String?
+  createdAt     DateTime                     @default(now())
+  updatedAt     DateTime                     @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([requestId])
+}
+
+model AgentScoreEntry {
+  id              String         @id @default(cuid())
+  url             String         @unique
+  name            String
+  score           Int
+  grade           String
+  framework       String?
+  checks          Json
+  recommendations Json?
+  submitterName   String?
+  submitterUrl    String?
+  approvalStatus  ApprovalStatus @default(APPROVED)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([score])
   @@index([createdAt])
 }

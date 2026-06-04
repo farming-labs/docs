@@ -13,6 +13,80 @@ describe("getMDXComponents", () => {
     expect(AgentComponent({ children: "hidden agent-only context" })).toBeNull();
   });
 
+  it("includes a Mintlify-compatible CodeGroup primitive by default without user registration", () => {
+    const components = getMDXComponents();
+
+    expect(typeof components.CodeGroup).toBe("function");
+
+    const CodeGroup = components.CodeGroup as React.ComponentType<{
+      children?: React.ReactNode;
+      dropdown?: boolean;
+    }>;
+    const Pre = components.pre as React.ComponentType<React.ComponentPropsWithoutRef<"pre">>;
+
+    const html = renderToStaticMarkup(
+      React.createElement(
+        CodeGroup,
+        { dropdown: true },
+        React.createElement(
+          Pre,
+          { title: "npm" },
+          React.createElement("code", null, "npm install @farming-labs/docs"),
+        ),
+        React.createElement(
+          Pre,
+          { filename: "pnpm" } as React.ComponentPropsWithoutRef<"pre"> & {
+            filename: string;
+          },
+          React.createElement("code", null, "pnpm add @farming-labs/docs"),
+        ),
+      ),
+    );
+
+    expect(html).toContain("data-fd-code-group");
+    expect(html).toContain("data-dropdown");
+    expect(html).toContain("fd-code-group-panel");
+    expect(html).toContain(">npm</button>");
+    expect(html).toContain(">pnpm</button>");
+    expect(html).toContain("npm install @farming-labs/docs");
+    expect(html).toContain("pnpm add @farming-labs/docs");
+  });
+
+  it("uses bare code fence metadata as CodeGroup tab labels", () => {
+    const components = getMDXComponents({
+      pre: (props: React.ComponentPropsWithoutRef<"pre"> & { metastring?: string }) =>
+        React.createElement("pre", props),
+    });
+    const CodeGroup = components.CodeGroup as React.ComponentType<{
+      children?: React.ReactNode;
+    }>;
+    const Pre = components.pre as React.ComponentType<
+      React.ComponentPropsWithoutRef<"pre"> & { metastring?: string }
+    >;
+
+    const html = renderToStaticMarkup(
+      React.createElement(
+        CodeGroup,
+        null,
+        React.createElement(
+          Pre,
+          { metastring: "javascript helloWorld.js", className: "language-javascript" },
+          React.createElement("code", null, "console.log('Hello World');"),
+        ),
+        React.createElement(
+          Pre,
+          { metastring: "python hello_world.py", className: "language-python" },
+          React.createElement("code", null, "print('Hello World!')"),
+        ),
+      ),
+    );
+
+    expect(html).toContain(">helloWorld.js</button>");
+    expect(html).toContain(">hello_world.py</button>");
+    expect(html).toContain("console.log");
+    expect(html).toContain("print");
+  });
+
   it("includes the Prompt primitive by default and applies shared defaults", () => {
     const components = getMDXComponents(undefined, {
       theme: {
@@ -120,5 +194,35 @@ describe("getMDXComponents", () => {
     );
 
     expect(html).toContain("Open in Internal");
+  });
+
+  it("renders leading Shiki flag spaces as explicit code spacers", () => {
+    const components = getMDXComponents({
+      pre: (props: React.ComponentPropsWithoutRef<"pre">) => React.createElement("pre", props),
+    });
+    const Pre = components.pre as React.ComponentType<React.ComponentPropsWithoutRef<"pre">>;
+
+    const html = renderToStaticMarkup(
+      React.createElement(
+        Pre,
+        null,
+        React.createElement(
+          "code",
+          null,
+          React.createElement(
+            "span",
+            { className: "line" },
+            React.createElement("span", null, "lim"),
+            React.createElement("span", null, " xcode"),
+            React.createElement("span", null, " --upload"),
+          ),
+        ),
+      ),
+    );
+
+    expect(html).toContain('data-fd-code-space="gap"');
+    expect(html).toContain("--upload");
+    expect(html).not.toContain("> --upload</span>");
+    expect(html).toContain("> xcode</span>");
   });
 });

@@ -142,14 +142,48 @@ article small,
 
 figure.shiki pre {
   padding: 0.15rem 0.5rem;
+  white-space: pre;
 }
 
 figure.shiki pre > code {
+  display: block;
+  white-space: inherit;
+}
+
+/* Wrapped Shiki lines can use grid rows; unwrapped token spans need inline flow for spaces. */
+figure.shiki pre > code:has(> .line),
+figure.shiki pre > code:has(> [data-line]) {
   display: grid;
+}
+
+figure.shiki pre > code > .line,
+figure.shiki pre > code > [data-line] {
+  white-space: inherit;
+}
+
+figure.shiki [data-fd-code-space] {
+  display: inline-block;
+  white-space: pre;
+}
+
+figure.shiki [data-fd-code-space="gap"] {
+  width: var(--fd-code-token-gap, 1.75ch);
+}
+
+figure.shiki [data-fd-code-space="indent"] {
+  width: calc(var(--fd-code-space-count, 1) * 1ch);
 }
 
 figure.shiki pre > code > [data-line] {
   padding: 0 0.25rem;
+}
+
+.fd-code-group-panel[data-state="inactive"] {
+  display: none;
+}
+
+.fd-code-group-panel[data-state="active"] {
+  display: block;
 }
 
 /* Titled code blocks: diagonal stripe background on the title bar */
@@ -523,7 +557,7 @@ figure.shiki:has(figcaption) figcaption {
 }
 
 .fd-prompt-description {
-  margin: 0.25rem 0 0;
+  margin: -0.05rem 0 0;
   color: var(--color-fd-muted-foreground);
   font-size: 0.875rem;
   line-height: 1.55;

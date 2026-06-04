@@ -563,34 +563,69 @@ export interface SidebarConfig {
   folderIndexBehaviorOverrides?: SidebarFolderIndexBehaviorOverrides;
 }
 
+export type OpenDocsTarget = "markdown" | "page" | "source" | "github";
+
+export type OpenDocsProviderId = "chatgpt" | "claude" | "cursor" | "gemini" | "copilot" | "github";
+
 /**
  * A single "Open in …" provider shown in the Open dropdown.
+ *
+ * Pass a string for a built-in provider preset, or pass an object to customize a known provider
+ * or keep using a custom `urlTemplate`.
+ *
+ * @example
+ * ```ts
+ * "cursor"
+ * ```
+ *
+ * @example
+ * ```ts
+ * {
+ *   id: "cursor",
+ *   prompt: "Use this docs page while editing the codebase: {url}",
+ * }
+ * ```
  *
  * @example
  * ```ts
  * {
  *   name: "Claude",
  *   icon: <ClaudeIcon />,
- *   urlTemplate: "https://claude.ai?url={url}",
+ *   urlTemplate: "https://claude.ai?url={url}.md",
  *   promptUrlTemplate: "https://claude.ai/new?q={prompt}",
  * }
  * ```
  */
-export interface OpenDocsProvider {
+export type OpenDocsProvider = OpenDocsProviderId | OpenDocsProviderConfig;
+
+export interface OpenDocsProviderConfig {
+  /** Built-in provider preset to use as the base. */
+  id?: OpenDocsProviderId | string;
   /** Display name (e.g. "ChatGPT", "Claude", "Cursor") */
-  name: string;
+  name?: string;
+  /** Alias for `name` when configuring a preset provider. */
+  label?: string;
   /** Icon element rendered next to the name */
   icon?: unknown; // ReactNode
+  /** Override the target URL inserted into `{url}` for this provider. */
+  target?: OpenDocsTarget;
+  /** Prompt text used by known provider presets. Supports `{url}`, `{pageUrl}`, `{markdownUrl}`, `{sourceUrl}`, `{mdxUrl}`, and `{githubUrl}`. */
+  prompt?: string;
+  /** Cursor-specific mode. `"web"` opens cursor.com; `"app"` opens the Cursor app deeplink. */
+  mode?: "web" | "app";
   /**
    * URL template. Placeholders:
-   * - `{url}` — current page URL (encoded).
-   * - `{mdxUrl}` — page URL with `.mdx` suffix (encoded).
+   * - `{url}` — selected target URL, controlled by `openDocs.target` or provider `target` (encoded).
+   * - `{pageUrl}` — rendered docs page URL (encoded).
+   * - `{markdownUrl}` — public `.md` route for the page (encoded).
+   * - `{sourceUrl}` / `{mdxUrl}` — page URL with `.mdx` suffix (encoded).
    * - `{githubUrl}` — GitHub edit URL for the current page (same as "Edit on GitHub"). Requires `github` in config.
+   * - `{prompt}` — prompt text after resolving the target URL placeholders (encoded).
    *
-   * @example "https://claude.ai/new?q=Read+this+doc:+{url}"
+   * @example "https://claude.ai/new?q=Read+this+doc:+{url}.md"
    * @example "{githubUrl}" — open current page file on GitHub (edit view)
    */
-  urlTemplate: string;
+  urlTemplate?: string;
   /**
    * Optional URL template used by the built-in `Prompt` MDX component.
    * When omitted, known providers such as ChatGPT, Claude, Cursor, Gemini,
@@ -612,9 +647,11 @@ export interface OpenDocsProvider {
  * ```ts
  * openDocs: {
  *   enabled: true,
+ *   target: "markdown",
  *   providers: [
- *     { name: "ChatGPT", icon: <ChatGPTIcon />, urlTemplate: "https://chatgpt.com/?q={url}" },
- *     { name: "Claude", icon: <ClaudeIcon />, urlTemplate: "https://claude.ai/new?q={url}" },
+ *     "chatgpt",
+ *     "claude",
+ *     "cursor",
  *   ],
  * }
  * ```
@@ -622,6 +659,19 @@ export interface OpenDocsProvider {
 export interface OpenDocsConfig {
   /** Whether to show the "Open" dropdown. @default false */
   enabled?: boolean;
+  /**
+   * Which URL should be inserted into `{url}` for preset providers and provider templates.
+   * @default "markdown"
+   */
+  target?: OpenDocsTarget;
+  /**
+   * Prompt text used by built-in provider presets.
+   * Supports `{url}`, `{pageUrl}`, `{markdownUrl}`, `{sourceUrl}`, `{mdxUrl}`,
+   * and `{githubUrl}`.
+   *
+   * @default "Read this documentation: {url}"
+   */
+  prompt?: string;
   /**
    * List of LLM / tool providers to show in the dropdown.
    * If not provided, a sensible default list is used.
@@ -648,8 +698,11 @@ export interface CopyMarkdownConfig {
  *   copyMarkdown: { enabled: true },
  *   openDocs: {
  *     enabled: true,
+ *     target: "markdown",
  *     providers: [
- *       { name: "Claude", urlTemplate: "https://claude.ai/new?q={url}" },
+ *       "chatgpt",
+ *       "claude",
+ *       { id: "cursor", mode: "app" },
  *     ],
  *   },
  * }
@@ -665,10 +718,11 @@ export interface PageActionsConfig {
    *
    * - `"below-title"` — render below the first `<h1>` heading (default)
    * - `"above-title"` — render above the page title / content
+   * - `"toc"` — render as a compact rail in the table-of-contents column
    *
    * @default "below-title"
    */
-  position?: "above-title" | "below-title";
+  position?: "above-title" | "below-title" | "toc";
   /**
    * Horizontal alignment of page action buttons.
    *
@@ -728,6 +782,7 @@ export type DocsAnalyticsEventType =
   | "feedback_error"
   | "agent_read"
   | "agent_spec_request"
+  | "agents_request"
   | "agent_feedback_schema"
   | "agent_feedback_submit"
   | "agent_feedback_error"
@@ -816,6 +871,64 @@ export interface DocsAnalyticsConfig {
   onEvent?: (event: DocsAnalyticsEvent) => void | Promise<void>;
 }
 
+export interface DocsCloudApiKeyConfig {
+  /**
+   * Environment variable that stores the Docs Cloud API key.
+   *
+   * The key value is never written to docs.json; only this env var name is
+   * mirrored for CLI and CI workflows.
+   *
+   * @default "DOCS_CLOUD_API_KEY"
+   */
+  env?: string;
+}
+
+export interface DocsCloudPreviewConfig {
+  /**
+   * Legacy hosted preview deployment gate.
+   *
+   * Prefer `cloud.deploy.enabled` in new configs.
+   *
+   * @default true when this legacy object is provided
+   */
+  enabled?: boolean;
+}
+
+export interface DocsCloudPublishConfig {
+  /** How Docs Cloud should publish generated docs changes. @default "draft-pr" */
+  mode?: "draft-pr" | "direct-commit";
+  /** Branch that generated docs work should target. @default "main" */
+  baseBranch?: string;
+}
+
+export interface DocsCloudFeatureConfig {
+  /** Whether the hosted cloud feature is enabled. @default true */
+  enabled?: boolean;
+}
+
+export interface DocsCloudConfig {
+  /**
+   * Optional explicit cloud toggle.
+   *
+   * Prefer omitting this in new projects; the presence of `cloud` opts the
+   * project into cloud-aware CLI flows. This remains available for backwards
+   * compatibility with older docs.json files.
+   */
+  enabled?: boolean;
+  /** API key lookup used by `docs deploy` and other cloud CLI commands. */
+  apiKey?: DocsCloudApiKeyConfig;
+  /** Legacy hosted preview deployment settings. Prefer `deploy` in new configs. */
+  preview?: DocsCloudPreviewConfig;
+  /** Generated docs publishing settings. */
+  publish?: DocsCloudPublishConfig;
+  /** Hosted analytics settings that can be mirrored to docs.json. */
+  analytics?: boolean | Omit<DocsAnalyticsConfig, "onEvent">;
+  /** Hosted AI feature toggle. */
+  ai?: DocsCloudFeatureConfig;
+  /** Hosted deployment feature toggle used by `docs deploy`. */
+  deploy?: DocsCloudFeatureConfig;
+}
+
 export interface DocsObservabilityConfig {
   /** Enable trace emission. Defaults to `true` when this object is provided. */
   enabled?: boolean;
@@ -848,6 +961,7 @@ export interface DocsObservabilityConfig {
  */
 /**
  * Configuration for auto-generated `/llms.txt` and `/llms-full.txt` routes.
+ * Native static files at the same public routes take precedence.
  *
  * @see https://llmstxt.org
  */
@@ -871,6 +985,64 @@ export interface LlmsTxtConfig {
    * Site description shown below the title.
    */
   siteDescription?: string;
+  /**
+   * Character budget for generated compact `llms.txt` files.
+   *
+   * `mode: "warn"` logs a warning when the generated content is over budget.
+   * `mode: "error"` returns an error response for that generated file.
+   * `mode: "off"` disables the budget check.
+   *
+   * @default { mode: "warn", chars: 50000 }
+   */
+  maxChars?: LlmsTxtMaxCharsConfig;
+  /**
+   * Optional section-level llms.txt files for progressive disclosure.
+   *
+   * Each section is matched against public docs URLs, for example
+   * `/docs/api/**` derives `/docs/api/llms.txt` and
+   * `/docs/api/llms-full.txt`.
+   */
+  sections?: LlmsTxtSectionConfig[];
+}
+
+export type LlmsTxtMaxCharsMode = "warn" | "error" | "off";
+
+export interface LlmsTxtMaxCharsConfig {
+  /**
+   * How to handle generated llms.txt content that exceeds `chars`.
+   *
+   * @default "warn"
+   */
+  mode?: LlmsTxtMaxCharsMode;
+  /**
+   * Maximum recommended character count.
+   *
+   * @default 50000
+   */
+  chars?: number;
+}
+
+export interface LlmsTxtSectionConfig {
+  /**
+   * Human-readable section title shown in the root and section files.
+   */
+  title: string;
+  /**
+   * Optional description shown next to the section link in root llms.txt.
+   */
+  description?: string;
+  /**
+   * Public URL matcher for pages included in this section.
+   *
+   * Supported forms include exact paths such as `/docs/reference` and
+   * prefix globs such as `/docs/api/**`.
+   */
+  match: string | string[];
+  /**
+   * Optional section-specific character budget. Inherits `llmsTxt.maxChars`
+   * when omitted.
+   */
+  maxChars?: LlmsTxtMaxCharsConfig;
 }
 
 export interface SitemapXmlConfig {
@@ -910,13 +1082,13 @@ export interface SitemapMarkdownConfig {
 }
 
 /**
- * Configuration for generated `/sitemap.xml`, `/sitemap.md`, and
+ * Configuration for generated `/sitemap.xml`, `/sitemap.md`, `/docs/sitemap.md`, and
  * `/.well-known/sitemap.md` routes.
  */
 export interface DocsSitemapConfig {
   /**
    * Whether to enable sitemap routes.
-   * @default true when `sitemap` is an object
+   * @default true
    */
   enabled?: boolean;
   /**
@@ -993,6 +1165,8 @@ export interface DocsRobotsConfig {
  * All tools default to `true` when omitted.
  */
 export interface DocsMcpToolsConfig {
+  /** Expose a `list_docs` tool that returns docs pages grouped by section. */
+  listDocs?: boolean;
   /** Expose a `list_pages` tool that returns the known docs pages. */
   listPages?: boolean;
   /** Expose a `read_page` tool that returns a page by slug or URL path. */
@@ -1001,6 +1175,10 @@ export interface DocsMcpToolsConfig {
   searchDocs?: boolean;
   /** Expose a `get_navigation` tool for the docs tree. */
   getNavigation?: boolean;
+  /** Expose a `get_code_examples` tool for fenced code blocks and their metadata. */
+  getCodeExamples?: boolean;
+  /** Expose a `get_config_schema` tool for docs.config option metadata. */
+  getConfigSchema?: boolean;
 }
 
 /**
@@ -1861,7 +2039,7 @@ export interface DocsAgentFeedbackData {
  * route wrapper.
  */
 export interface AgentFeedbackConfig {
-  /** Enable the agent feedback endpoints. Defaults to `true` when provided. */
+  /** Enable the agent feedback endpoints. Defaults to `true`; set to `false` to opt out. */
   enabled?: boolean;
   /**
    * Public HTTP route for posting agent feedback.
@@ -1920,7 +2098,8 @@ export interface FeedbackConfig {
   onFeedback?: (data: DocsFeedbackData) => void | Promise<void>;
   /**
    * Machine-oriented feedback endpoints exposed through the shared `/api/docs`
-   * route when configured.
+   * route. The shared docs API exposes the default no-op schema/submit routes
+   * unless this is set to `false`.
    *
    * This does not enable the human page feedback UI by itself. To show the
    * built-in footer prompt, keep using `feedback: true` or `feedback.enabled`.
@@ -2203,9 +2382,248 @@ export interface DocsAgentConfig {
   compact?: DocsAgentCompactConfig;
 }
 
+export type DocsReviewSeverity = "off" | "suggestion" | "warn" | "error";
+
+export type DocsReviewCiMode = "off" | "warn" | "block";
+
+export interface DocsReviewRulesConfig {
+  /** Check internal markdown/docs links. */
+  brokenLinks?: DocsReviewSeverity;
+  /** Check required page frontmatter such as title and description. */
+  frontmatter?: DocsReviewSeverity;
+  /** Check duplicate docs slugs in the resolved docs tree. */
+  duplicateSlugs?: DocsReviewSeverity;
+  /** Check whether changed markdown/MDX files can be parsed. */
+  invalidMdx?: DocsReviewSeverity;
+  /** Check docs.config examples against known config options when possible. */
+  configExamples?: DocsReviewSeverity;
+  /** Check code fences for useful metadata such as title and framework. */
+  codeFenceMetadata?: DocsReviewSeverity;
+  /** Check runnable command/code fences for package manager context. */
+  runnableMetadata?: DocsReviewSeverity;
+  /** Suggest machine-facing context for implementation-heavy pages. */
+  agentContext?: DocsReviewSeverity;
+}
+
+export interface DocsReviewScoreConfig {
+  /**
+   * Minimum healthy score.
+   * CI reports the threshold in warn mode and blocks below it only when `ci.mode` is `"block"`.
+   *
+   * @default 80
+   */
+  threshold?: number;
+  /**
+   * Point deductions by finding severity.
+   *
+   * @default { error: 20, warn: 8, suggestion: 2 }
+   */
+  weights?: Partial<Record<"error" | "warn" | "suggestion", number>>;
+}
+
+export interface DocsReviewCiConfig {
+  /**
+   * Enable Docs Review CI workflow generation.
+   *
+   * @default true
+   */
+  enabled?: boolean;
+  /**
+   * GitHub Actions job/check name for the generated workflow.
+   *
+   * @default "docs-review"
+   */
+  name?: string;
+  /**
+   * How CI should treat unhealthy review results.
+   *
+   * - `"off"`: do not create/report CI output
+   * - `"warn"`: report annotations but pass CI
+   * - `"block"`: fail CI when errors exist or the score is below threshold
+   *
+   * @default "warn"
+   */
+  mode?: DocsReviewCiMode;
+  /**
+   * Emit GitHub workflow command annotations in CI.
+   *
+   * @default true
+   */
+  annotations?: boolean;
+  /**
+   * Reserved for GitHub PR comments from the official action/bot.
+   *
+   * @default true
+   */
+  comment?: boolean;
+}
+
+export interface DocsReviewConfig {
+  /**
+   * Enable Docs Review.
+   *
+   * Omitted review config is treated as enabled so docs sites get PR review CI by default.
+   * Set `review: false` to opt out.
+   *
+   * @default true
+   */
+  enabled?: boolean;
+  /** Score threshold and severity weights. */
+  score?: DocsReviewScoreConfig;
+  /** GitHub Actions behavior. */
+  ci?: boolean | DocsReviewCiConfig;
+  /** Optional rule severity overrides. */
+  rules?: DocsReviewRulesConfig;
+}
+
+export type DocsCodeBlocksPlannerProvider = "metadata" | "openai" | "openai-compatible" | "cloud";
+
+export type DocsCodeBlocksRunnerProvider = "local" | "vercel-sandbox" | "e2b" | "daytona" | "cloud";
+
+export type DocsCodeBlocksValidationMode = "plan" | "report";
+
+export type DocsCodeBlocksValidationPolicy = "skip" | "warn" | "error";
+
+export interface DocsCodeBlocksPlannerConfig {
+  /**
+   * Planner used to turn code fence metadata into an execution plan.
+   *
+   * - `"metadata"` reads the fence language and metadata locally.
+   * - `"openai"` calls OpenAI's chat completions API.
+   * - `"openai-compatible"` calls an OpenAI-compatible chat completions endpoint.
+   * - `"cloud"` is reserved for the hosted Farming Labs planner.
+   *
+   * @default "metadata"
+   */
+  provider?: DocsCodeBlocksPlannerProvider;
+  /** Model name for LLM-backed planners. */
+  model?: string;
+  /** OpenAI-compatible base URL. Defaults to `https://api.openai.com/v1` for `provider: "openai"`. */
+  baseUrl?: string;
+  /** Environment variable containing the OpenAI-compatible base URL. */
+  baseUrlEnv?: string;
+  /** API key value. Prefer `apiKeyEnv` so secrets stay out of docs.config. */
+  apiKey?: string;
+  /** Environment variable containing the planner API key. */
+  apiKeyEnv?: string;
+}
+
+export interface DocsCodeBlocksRunnerConfig {
+  /**
+   * Runner used to execute planned code blocks.
+   *
+   * @default "local"
+   */
+  provider?: DocsCodeBlocksRunnerProvider;
+  /** Environment variable containing the sandbox provider token. */
+  tokenEnv?: string;
+  /** Advanced override for the Vercel project id env var used by `provider: "vercel-sandbox"`. */
+  projectIdEnv?: string;
+  /** Advanced override for the Vercel team/org id env var used by `provider: "vercel-sandbox"`. */
+  teamIdEnv?: string;
+  /**
+   * Path to a Vercel project metadata file. When enabled, the runner reads
+   * `projectId` and `orgId` from `.vercel/project.json`. If those are not
+   * available, the runner can auto-discover an accessible project from
+   * `VERCEL_TOKEN`.
+   *
+   * @default ".vercel/project.json"
+   */
+  projectJson?: string | false;
+  /** Vercel Sandbox runtime. */
+  runtime?: "node24" | "node22" | "python3.13";
+  /** Daytona API URL env var used by `provider: "daytona"`. */
+  apiUrlEnv?: string;
+  /** Daytona target/region env var used by `provider: "daytona"`. */
+  targetEnv?: string;
+  /** Per-command timeout in milliseconds. */
+  timeoutMs?: number;
+}
+
+export interface DocsCodeBlocksValidateConfig {
+  /**
+   * Enable code block validation.
+   *
+   * @default true when `codeBlocks.validate` is an object or `true`
+   */
+  enabled?: boolean;
+  /** Planner config. Use `"metadata"` for local deterministic planning. */
+  planner?: DocsCodeBlocksPlannerProvider | DocsCodeBlocksPlannerConfig;
+  /** Runner config. Use `"vercel-sandbox"` for isolated runtime checks. */
+  runner?: DocsCodeBlocksRunnerProvider | DocsCodeBlocksRunnerConfig;
+  /**
+   * Env files loaded for validation. These are read locally and never committed.
+   *
+   * @default [".env.local", ".env.test", ".env"]
+   */
+  envFile?: string | string[];
+  /**
+   * Runtime env mapping.
+   *
+   * The key is the env var used by the docs code block. The value is the local
+   * env var to read from. For example, `{ OPENAI_API_KEY: "OPENAI_TEST_API_KEY" }`
+   * injects `OPENAI_API_KEY` into the runner from `OPENAI_TEST_API_KEY`.
+   */
+  env?: Record<string, string>;
+  /**
+   * Behavior when a runnable block declares an env var that cannot be resolved.
+   *
+   * @default "skip"
+   */
+  missingEnv?: DocsCodeBlocksValidationPolicy;
+  /**
+   * Behavior when a language cannot be executed by the selected runner.
+   *
+   * @default "skip"
+   */
+  unsupportedLanguage?: DocsCodeBlocksValidationPolicy;
+  /**
+   * Default command mode.
+   *
+   * - `"plan"` builds execution plans without running them.
+   * - `"report"` runs executable plans and reports pass/skip/fail.
+   *
+   * @default "report"
+   */
+  mode?: DocsCodeBlocksValidationMode;
+}
+
+export interface DocsCodeBlocksConfig {
+  /**
+   * Validate fenced code blocks from MD/MDX docs.
+   *
+   * @example
+   * ```ts
+   * codeBlocks: {
+   *   validate: {
+   *     planner: {
+   *       provider: "openai",
+   *       model: "gpt-4.1-mini",
+   *       apiKeyEnv: "OPENAI_API_KEY",
+   *     },
+   *     runner: {
+   *       provider: "vercel-sandbox",
+   *       tokenEnv: "VERCEL_TOKEN",
+   *     },
+   *     env: {
+   *       OPENAI_API_KEY: "OPENAI_TEST_API_KEY",
+   *     },
+   *   },
+   * }
+   * ```
+   */
+  validate?: boolean | DocsCodeBlocksValidateConfig;
+}
+
 export interface DocsConfig {
   /** Entry folder for docs (e.g. "docs" → /docs) */
   entry: string;
+  /**
+   * Public route prefix for docs pages. Defaults to the `entry` path.
+   * Set to "" or "/" to serve docs from the site root while keeping the
+   * source files and generated app route under `entry`.
+   */
+  docsPath?: string;
   /** Path to the content directory. Defaults to `entry` value. */
   contentDir?: string;
   /**
@@ -2225,7 +2643,8 @@ export interface DocsConfig {
   /**
    * Built-in analytics event stream for docs interactions.
    *
-   * - `false` or omitted -> analytics disabled (default)
+   * - `false` -> analytics disabled
+   * - omitted -> analytics disabled unless Docs Cloud provides project identity
    * - `true` -> log product/usage events to the console
    * - `{ onEvent(event) { ... } }` -> send events to your analytics sink
    *
@@ -2233,6 +2652,23 @@ export interface DocsConfig {
    * included unless `includeInputs: true` is set.
    */
   analytics?: boolean | DocsAnalyticsConfig;
+  /**
+   * Docs Cloud integration settings.
+   *
+   * Use this to configure the API key env var and cloud deploy defaults once
+   * in `docs.config.ts`; cloud CLI commands mirror the serializable subset into
+   * `docs.json` automatically.
+   *
+   * @example
+   * ```ts
+   * cloud: {
+   *   apiKey: { env: "DOCS_CLOUD_API_KEY" },
+   *   deploy: { enabled: true },
+   *   publish: { mode: "draft-pr", baseBranch: "main" },
+   * }
+   * ```
+   */
+  cloud?: DocsCloudConfig;
   /**
    * Built-in observability stream for agent traces, timing, errors, and runtime debugging.
    * This is separate from `analytics`; it emits span-like Ask AI and MCP trace events.
@@ -2349,6 +2785,11 @@ export interface DocsConfig {
    */
   onCopyClick?: (data: CodeBlockCopyData) => void;
   /**
+   * Code block intelligence for MD/MDX fences, including validation planning
+   * and optional sandboxed execution.
+   */
+  codeBlocks?: DocsCodeBlocksConfig;
+  /**
    * Built-in page feedback prompt shown at the end of a docs page.
    *
    * - `false` or `undefined` → hidden (default)
@@ -2445,9 +2886,11 @@ export interface DocsConfig {
    *   copyMarkdown: { enabled: true },
    *   openDocs: {
    *     enabled: true,
+   *     target: "markdown",
    *     providers: [
-   *       { name: "ChatGPT", urlTemplate: "https://chatgpt.com/?q={url}" },
-   *       { name: "Claude", urlTemplate: "https://claude.ai/new?q={url}" },
+   *       "chatgpt",
+   *       "claude",
+   *       "cursor",
    *     ],
    *   },
    * }
@@ -2564,12 +3007,13 @@ export interface DocsConfig {
   ordering?: "alphabetical" | "numeric" | OrderingItem[];
   /**
    * Auto-generate `/llms.txt` and `/llms-full.txt` routes for LLM-friendly
-   * documentation. These files let AI tools quickly understand your docs.
+   * documentation. Native static files at those routes take precedence, so
+   * `public/llms.txt` or SvelteKit `static/llms.txt` can override the
+   * generated output without extra config.
    *
    * @example
    * ```ts
    * llmsTxt: {
-   *   enabled: true,
    *   baseUrl: "https://docs.example.com",
    * }
    * ```
@@ -2579,6 +3023,8 @@ export interface DocsConfig {
   llmsTxt?: boolean | LlmsTxtConfig;
   /**
    * Generated XML and Markdown sitemaps for crawlers, agents, and static export.
+   *
+   * Enabled by default. Set `sitemap: false` to opt out.
    *
    * @example
    * ```ts
@@ -2593,6 +3039,10 @@ export interface DocsConfig {
   sitemap?: boolean | DocsSitemapConfig;
   /**
    * Generated robots.txt policy for docs and agent-readable routes.
+   *
+   * Served by the runtime by default when no static `robots.txt` exists. Use
+   * `docs robots generate` for static export or when you want to append to an
+   * existing file.
    *
    * @example
    * ```ts
@@ -2655,6 +3105,22 @@ export interface DocsConfig {
    * Agent-oriented configuration, including defaults for `docs agent compact`.
    */
   agent?: DocsAgentConfig;
+  /**
+   * Docs Review checks changed docs files in CI/local runs and can auto-create
+   * a GitHub Actions workflow during dev/build startup.
+   *
+   * - omitted or `true` → enabled with warn-mode CI and an 80 score threshold
+   * - `false` → disable review and workflow generation
+   *
+   * @example
+   * ```ts
+   * review: {
+   *   ci: { mode: "block" },
+   *   score: { threshold: 90 },
+   * }
+   * ```
+   */
+  review?: boolean | DocsReviewConfig;
   /** SEO metadata - separate from theme */
   metadata?: DocsMetadata;
   /** Open Graph image handling */

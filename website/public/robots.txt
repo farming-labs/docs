@@ -12,6 +12,10 @@ Allow: /llms.txt
 Allow: /llms-full.txt
 Allow: /.well-known/llms.txt
 Allow: /.well-known/llms-full.txt
+Allow: /AGENTS.md
+Allow: /.well-known/AGENTS.md
+Allow: /AGENT.md
+Allow: /.well-known/AGENT.md
 Allow: /skill.md
 Allow: /.well-known/skill.md
 Allow: /.well-known/agent.json
@@ -20,6 +24,7 @@ Allow: /mcp
 Allow: /.well-known/mcp
 Allow: /sitemap.xml
 Allow: /sitemap.md
+Allow: /docs/sitemap.md
 Allow: /.well-known/sitemap.md
 
 User-agent: GPTBot

@@ -100,6 +100,26 @@ export default defineDocs({
 @import "@farming-labs/theme/shiny/css";`,
   },
   {
+    key: "threadline",
+    name: "Threadline",
+    description: "Compact neutral shell for chat and agent docs with dense Geist typography.",
+    cssImport: '@import "@farming-labs/theme/threadline/css";',
+    colors: ["#0a0a0a", "#ffffff", "#737373", "#e5e5e5"],
+    accent: "#0a0a0a",
+    previewEnabled: false,
+    configSnippet: `import { defineDocs } from "@farming-labs/docs";
+import { threadline, threadlinePageActions } from "@farming-labs/theme/threadline";
+
+export default defineDocs({
+  entry: "docs",
+  theme: threadline(),
+  github: { url: "https://github.com/acme/docs" },
+  pageActions: threadlinePageActions,
+});`,
+    globalCss: `@import "tailwindcss";
+@import "@farming-labs/theme/threadline/css";`,
+  },
+  {
     key: "ledger",
     name: "Ledger",
     description:

@@ -7,6 +7,12 @@ order: 5
 
 # Customization
 
+<Agent>
+Use this page when the user asks about this topic: Colors, typography, sidebar, components, analytics, observability, agent primitives, robots.txt, OG images, AI chat, and page actions.
+Keep answers grounded in the exact options, routes, commands, and examples documented here.
+If the request moves beyond this page, point to the closest related docs instead of inventing config.
+</Agent>
+
 Everything is customizable from `docs.config.ts`. No CSS files to edit, no layout files to create.
 
 ## What You Can Customize
@@ -15,7 +21,7 @@ Everything is customizable from `docs.config.ts`. No CSS files to edit, no layou
 - **[Typography](/docs/customization/typography)** — Font families, heading sizes, weights, spacing
 - **[Sidebar](/docs/customization/sidebar)** — Title, icons, collapsible groups, style
 - **[Components](/docs/customization/components)** — Override built-in or add custom MDX components, including live `HoverLink` previews
-- **[Agent Primitive](/docs/customization/agent-primitive)** — Built-in `<Agent>` blocks for additive machine context and sibling `agent.md` files for full page overrides
+- **[Agent Primitive](/docs/customization/agent-primitive)** — Built-in `<Agent>` blocks, sibling `agent.md` page overrides, generated `AGENTS.md`, and discovery routes for coding agents
 - **[OG Images](/docs/customization/og-images)** — Dynamic or static Open Graph images; what context your image generator receives; how the docs website does it
 - **[Ask AI](/docs/customization/ai-chat)** — RAG-powered AI chat with configurable LLM, floating/search modes, and more
 - **[Page Actions](/docs/customization/page-actions)** — "Copy Markdown" and "Open in LLM" buttons on doc pages
@@ -23,7 +29,7 @@ Everything is customizable from `docs.config.ts`. No CSS files to edit, no layou
 - **[Observability](/docs/customization/observability)** — Trace Ask AI and MCP runs with span IDs, timing, status, previews, and errors
 - **[MCP Server](/docs/customization/mcp)** — Built-in MCP tools/resources over stdio, `/mcp`, and `/.well-known/mcp`
 - **[llms.txt](/docs/customization/llms-txt)** — Auto-generate `llms.txt` and `llms-full.txt` for LLM-friendly documentation
-- **[Sitemaps](/docs/customization/sitemaps)** — Generate `sitemap.xml` and `sitemap.md` for crawlers, agents, and static exports
-- **Robots.txt** — Generate an agent-friendly crawl policy with `docs robots generate`; configure defaults in [Configuration](/docs/configuration)
+- **[Sitemaps](/docs/customization/sitemaps)** — Runtime `sitemap.xml`, `sitemap.md`, and `/docs/sitemap.md` for crawlers and agents, plus static export generation
+- **Robots.txt** — Runtime agent-friendly crawl policy at `/robots.txt`; use `docs robots generate` for static export or committed policies
 
 All customization happens through the `theme` and top-level config options in `docs.config.ts`.

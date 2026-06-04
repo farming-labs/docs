@@ -8,9 +8,11 @@ import {
   applySidebarFolderIndexBehavior,
   buildPageOpenGraph,
   buildPageTwitter,
+  renderDocsPageStructuredDataJson,
   resolveChangelogConfig,
   resolveDocsAgentMdxContent,
   resolveDocsAnalyticsConfig,
+  resolveDocsMetadataBaseUrl,
   resolvePageSidebarFolderIndexBehavior,
   toDocsMarkdownUrl,
 } from "@farming-labs/docs";
@@ -24,10 +26,12 @@ import type {
   OrderingItem,
   PageFrontmatter,
   TweaksConfig,
+  OpenDocsConfig,
 } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
+import { resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { resolvePageReadingTime, resolveReadingTimeOptions } from "./reading-time.js";
 import { SidebarSearchWithAI } from "./sidebar-search-ai.js";
 import { LocaleThemeControl } from "./locale-theme-control.js";
@@ -123,6 +127,7 @@ function hasChildPages(dir: string, excludedDirs: string[]): boolean {
 
 interface DocsLocaleContext {
   entryPath: string;
+  publicPath: string;
   docsDir: string;
   locale?: string;
 }
@@ -154,6 +159,7 @@ function resolveDocsI18nConfig(i18n?: DocsI18nLike | null) {
 
 function resolveDocsLocaleContext(config: DocsConfig, locale?: string): DocsLocaleContext {
   const entryBase = config.entry ?? "docs";
+  const publicPath = normalizeDocsPublicPath(config.docsPath, entryBase);
   const i18n = resolveDocsI18nConfig(getDocsI18n(config));
   const contentDir = (config as DocsConfig & { contentDir?: string }).contentDir;
 
@@ -170,6 +176,7 @@ function resolveDocsLocaleContext(config: DocsConfig, locale?: string): DocsLoca
   if (!i18n) {
     return {
       entryPath: entryBase,
+      publicPath,
       docsDir: resolveContentDir(),
     };
   }
@@ -178,9 +185,42 @@ function resolveDocsLocaleContext(config: DocsConfig, locale?: string): DocsLoca
   const entryPath = entryBase;
   return {
     entryPath,
+    publicPath,
     locale: resolvedLocale,
     docsDir: resolveContentDir(resolvedLocale),
   };
+}
+
+function normalizeDocsPublicPath(value: string | undefined, entry: string): string {
+  if (typeof value !== "string") return `/${entry.replace(/^\/+|\/+$/g, "") || "docs"}`;
+
+  const cleaned = value
+    .trim()
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\/+/g, "/");
+  if (cleaned === "") return "";
+
+  return `/${cleaned}`;
+}
+
+function publicDocsRoute(ctx: DocsLocaleContext, slugParts: string[] = []): string {
+  const slug = slugParts.join("/");
+  if (!slug) return ctx.publicPath || "/";
+  return ctx.publicPath ? `${ctx.publicPath}/${slug}` : `/${slug}`;
+}
+
+function toPublicDocsPath(pathname: string, ctx: DocsLocaleContext): string {
+  const normalizedEntry = `/${ctx.entryPath.replace(/^\/+|\/+$/g, "")}`;
+  const normalizedPath = pathname.replace(/\/+$/, "") || "/";
+
+  if (ctx.publicPath === normalizedEntry) return normalizedPath;
+  if (normalizedPath === normalizedEntry) return ctx.publicPath || "/";
+  if (normalizedPath.startsWith(`${normalizedEntry}/`)) {
+    const suffix = normalizedPath.slice(normalizedEntry.length + 1);
+    return publicDocsRoute(ctx, suffix.split("/").filter(Boolean));
+  }
+
+  return normalizedPath;
 }
 
 function getExcludedDocsDirs(config: DocsConfig, ctx: DocsLocaleContext): string[] {
@@ -246,7 +286,7 @@ function buildChangelogTree(
   const entries = readChangelogTreeEntries(config, ctx);
   if (entries.length === 0) return null;
 
-  const url = `/${ctx.entryPath}/${changelog.path}`;
+  const url = publicDocsRoute(ctx, [changelog.path]);
   const children: PageNode[] = entries.map((entry) => ({
     type: "page",
     name: entry.title,
@@ -279,7 +319,7 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
       rootChildren.push({
         type: "page",
         name: (data.title as string) ?? "Documentation",
-        url: `/${ctx.entryPath}`,
+        url: publicDocsRoute(ctx),
         icon: resolveIcon(data.icon as string | undefined, icons),
       });
     }
@@ -300,7 +340,7 @@ function buildTree(config: DocsConfig, ctx: DocsLocaleContext, flat = false) {
 
     const data = readFrontmatter(pagePath);
     const slug = [...baseSlug, name];
-    const url = `/${ctx.entryPath}/${slug.join("/")}`;
+    const url = publicDocsRoute(ctx, slug);
     const icon = resolveIcon(data.icon as string | undefined, icons);
     const displayName = (data.title as string) ?? name.replace(/-/g, " ");
     const hasChildren = hasChildPages(full, excludedDirs);
@@ -457,8 +497,7 @@ function buildLastModifiedMap(config: DocsConfig, ctx: DocsLocaleContext): Recor
 
     const pagePath = path.join(dir, "page.mdx");
     if (fs.existsSync(pagePath)) {
-      const url =
-        slugParts.length === 0 ? `/${ctx.entryPath}` : `/${ctx.entryPath}/${slugParts.join("/")}`;
+      const url = publicDocsRoute(ctx, slugParts);
       const stat = fs.statSync(pagePath);
       map[url] = formatDate(stat.mtime);
     }
@@ -493,8 +532,7 @@ function buildDescriptionMap(config: DocsConfig, ctx: DocsLocaleContext): Record
       const data = readFrontmatter(pagePath);
       const desc = data.description as string | undefined;
       if (desc) {
-        const url =
-          slugParts.length === 0 ? `/${ctx.entryPath}` : `/${ctx.entryPath}/${slugParts.join("/")}`;
+        const url = publicDocsRoute(ctx, slugParts);
         map[url] = desc;
       }
     }
@@ -535,10 +573,60 @@ function buildReadingTimeMap(
       const minutes = resolvePageReadingTime(data as PageFrontmatter, humanContent, options);
 
       if (typeof minutes === "number") {
-        const url =
-          slugParts.length === 0 ? `/${ctx.entryPath}` : `/${ctx.entryPath}/${slugParts.join("/")}`;
+        const url = publicDocsRoute(ctx, slugParts);
         map[url] = minutes;
       }
+    }
+
+    for (const name of fs.readdirSync(dir)) {
+      const full = path.join(dir, name);
+      if (fs.statSync(full).isDirectory()) {
+        scan(full, [...slugParts, name]);
+      }
+    }
+  }
+
+  scan(docsDir, []);
+  return map;
+}
+
+function findDocsPageFile(dir: string): string | undefined {
+  return ["page.mdx", "page.md"].map((fileName) => path.join(dir, fileName)).find(fs.existsSync);
+}
+
+function buildStructuredDataMap(
+  config: DocsConfig,
+  ctx: DocsLocaleContext,
+): Record<string, string> {
+  const docsDir = ctx.docsDir;
+  const map: Record<string, string> = {};
+  const excludedDirs = getExcludedDocsDirs(config, ctx);
+  const baseUrl = resolveDocsMetadataBaseUrl(config);
+
+  function scan(dir: string, slugParts: string[]) {
+    if (!fs.existsSync(dir)) return;
+    if (isExcludedDir(dir, excludedDirs)) return;
+
+    const pagePath = findDocsPageFile(dir);
+    if (pagePath) {
+      const source = fs.readFileSync(pagePath, "utf-8");
+      const { data } = matter(source);
+      const route = publicDocsRoute(ctx, slugParts);
+      const title =
+        typeof data.title === "string"
+          ? data.title
+          : slugParts.at(-1)?.replace(/-/g, " ") || "Documentation";
+      const description = typeof data.description === "string" ? data.description : undefined;
+      const stat = fs.statSync(pagePath);
+
+      map[route] = renderDocsPageStructuredDataJson({
+        title,
+        description,
+        url: withLangInUrl(route, ctx.locale),
+        baseUrl,
+        entry: ctx.entryPath,
+        dateModified: stat.mtime.toISOString(),
+      });
     }
 
     for (const name of fs.readdirSync(dir)) {
@@ -819,11 +907,14 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const docsApiUrl = withLangInUrl("/api/docs", activeLocale);
   const changelogConfig = resolveChangelogConfig(config.changelog);
   const changelogBasePath = changelogConfig.enabled
-    ? `/${localeContext.entryPath}/${changelogConfig.path}`
+    ? publicDocsRoute(localeContext, [changelogConfig.path])
     : undefined;
   // Nav title: supports string or ReactNode (component)
   const navTitle = (config.nav?.title as ReactNode) ?? "Docs";
-  const navUrl = withLangInUrl(config.nav?.url ?? `/${localeContext.entryPath}`, activeLocale);
+  const configuredNavUrl = config.nav?.url
+    ? toPublicDocsPath(config.nav.url, localeContext)
+    : publicDocsRoute(localeContext);
+  const navUrl = withLangInUrl(configuredNavUrl, activeLocale);
 
   // Theme toggle
   const themeSwitch = resolveThemeSwitch(config.themeToggle);
@@ -878,28 +969,21 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const readingTimeWordsPerMinute = readingTimeOptions.wordsPerMinute ?? 220;
 
   // llms.txt config
-  const llmsTxtEnabled = resolveBool(config.llmsTxt);
+  const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
   const tweaksConfig = resolveTweaksConfig(config.tweaks);
 
   // Serialize provider icons to HTML strings so they survive the
   // server → client component boundary.
-  const rawProviders =
-    pageActions?.openDocs &&
-    typeof pageActions.openDocs === "object" &&
-    pageActions.openDocs.providers
-      ? (pageActions.openDocs.providers as Array<{
-          name: string;
-          icon?: unknown;
-          urlTemplate: string;
-        }>)
+  const openDocsConfig =
+    pageActions?.openDocs && typeof pageActions.openDocs === "object"
+      ? (pageActions.openDocs as OpenDocsConfig)
       : undefined;
-
-  const openDocsProviders = rawProviders?.map((p) => ({
-    name: p.name,
-    urlTemplate: p.urlTemplate,
-    iconHtml: p.icon ? serializeIcon(p.icon) : undefined,
-  }));
+  const openDocsProviders = resolveOpenDocsProviders(openDocsConfig?.providers, {
+    target: openDocsConfig?.target,
+    prompt: openDocsConfig?.prompt,
+    serializeIcon,
+  });
 
   // GitHub config — normalize string shorthand to object
   const githubRaw = config.github;
@@ -964,6 +1048,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
     enabledByDefault: readingTimeEnabledByDefault,
     wordsPerMinute: readingTimeWordsPerMinute,
   });
+  const structuredDataMap = buildStructuredDataMap(config, localeContext);
   const readingTimeEnabled = readingTimeEnabledByDefault || Object.keys(readingTimeMap).length > 0;
 
   return function DocsLayoutWrapper({ children }: { children: ReactNode }) {
@@ -1083,10 +1168,13 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             breadcrumbEnabled={breadcrumbEnabled}
             changelogBasePath={changelogBasePath}
             entry={localeContext.entryPath}
+            publicPath={localeContext.publicPath}
             locale={activeLocale}
             copyMarkdown={copyMarkdownEnabled}
             openDocs={openDocsEnabled}
             openDocsProviders={openDocsProviders as any}
+            openDocsTarget={openDocsConfig?.target}
+            openDocsPrompt={openDocsConfig?.prompt}
             pageActionsPosition={pageActionsPosition}
             pageActionsAlignment={pageActionsAlignment}
             githubUrl={githubUrl}
@@ -1098,6 +1186,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             lastUpdatedPosition={lastUpdatedPosition}
             readingTimeEnabled={readingTimeEnabled}
             readingTimeMap={readingTimeMap}
+            structuredDataMap={structuredDataMap}
             llmsTxtEnabled={llmsTxtEnabled}
             descriptionMap={descriptionMap}
             feedbackEnabled={feedbackConfig.enabled}
@@ -1119,6 +1208,12 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
 /** Resolve `boolean | { enabled?: boolean }` to a simple boolean. */
 function resolveBool(v: boolean | { enabled?: boolean } | undefined): boolean {
   if (v === undefined) return false;
+  if (typeof v === "boolean") return v;
+  return v.enabled !== false;
+}
+
+function resolveEnabledByDefault(v: boolean | { enabled?: boolean } | undefined): boolean {
+  if (v === undefined) return true;
   if (typeof v === "boolean") return v;
   return v.enabled !== false;
 }

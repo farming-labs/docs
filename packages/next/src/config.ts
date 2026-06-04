@@ -32,6 +32,12 @@ import {
 } from "node:fs";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
+  DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
+  DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
+} from "@farming-labs/docs";
+import { ensureDocsReviewWorkflow } from "@farming-labs/docs/server";
 import matter from "gray-matter";
 import type { NextConfig } from "next";
 
@@ -97,19 +103,7 @@ ${GENERATED_BANNER}
 import docsConfig from "@/docs.config";
 import { createDocsAPI } from "@farming-labs/next/api";
 
-export const { GET, POST } = createDocsAPI({
-  entry: docsConfig.entry,
-  contentDir: docsConfig.contentDir,
-  i18n: docsConfig.i18n,
-  changelog: docsConfig.changelog,
-  feedback: docsConfig.feedback,
-  mcp: docsConfig.mcp,
-  sitemap: docsConfig.sitemap,
-  search: docsConfig.search,
-  analytics: docsConfig.analytics,
-  observability: docsConfig.observability,
-  ai: docsConfig.ai,
-});
+export const { GET, POST } = createDocsAPI(docsConfig);
 
 export const revalidate = false;
 `;
@@ -119,16 +113,7 @@ ${GENERATED_BANNER}
 import docsConfig from "@/docs.config";
 import { createDocsMCPAPI } from "@farming-labs/next/api";
 
-export const { GET, POST, DELETE } = createDocsMCPAPI({
-  entry: docsConfig.entry,
-  contentDir: docsConfig.contentDir,
-  nav: docsConfig.nav,
-  ordering: docsConfig.ordering,
-  search: docsConfig.search,
-  analytics: docsConfig.analytics,
-  observability: docsConfig.observability,
-  mcp: docsConfig.mcp,
-});
+export const { GET, POST, DELETE } = createDocsMCPAPI(docsConfig);
 
 export const revalidate = false;
 `;
@@ -180,6 +165,8 @@ export default function HiddenChangelogSourceLayout() {
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const INTERNAL_DOCS_CONFIG_ALIAS = "@farming-labs/next-internal-docs-config";
+const DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT =
+  "https://docs-app.farming-labs.dev/api/analytics/events";
 const NEXT_PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
@@ -194,8 +181,14 @@ const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms-full.txt";
 const DEFAULT_SKILL_MD_ROUTE = "/skill.md";
 const DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE = "/.well-known/skill.md";
+const DEFAULT_AGENTS_MD_ROUTE = "/AGENTS.md";
+const DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE = "/.well-known/AGENTS.md";
+const DEFAULT_AGENT_MD_ROUTE = "/AGENT.md";
+const DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE = "/.well-known/AGENT.md";
+const DEFAULT_ROBOTS_TXT_ROUTE = "/robots.txt";
 const DEFAULT_SITEMAP_XML_ROUTE = "/sitemap.xml";
 const DEFAULT_SITEMAP_MD_ROUTE = "/sitemap.md";
+const DEFAULT_SITEMAP_MD_DOCS_ROUTE = "/docs/sitemap.md";
 const DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE = "/.well-known/sitemap.md";
 const DEFAULT_SITEMAP_MANIFEST_PATH = ".farming-labs/sitemap-manifest.json";
 const MARKDOWN_ACCEPT_HEADER_VALUE = [
@@ -287,30 +280,137 @@ function findDocsWorkspaceRoot(start: string): string | undefined {
   }
 }
 
-function createDocsWorkspaceAliases(): Record<string, string> {
+function normalizeEnvValue(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
+function createPublicDocsCloudAnalyticsEnv() {
+  const projectId =
+    normalizeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID) ??
+    normalizeEnvValue(process.env.DOCS_CLOUD_PROJECT_ID);
+  const configuredEndpoint =
+    normalizeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT) ??
+    normalizeEnvValue(process.env.DOCS_CLOUD_ANALYTICS_ENDPOINT);
+  const endpoint =
+    configuredEndpoint ?? (projectId ? DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT : undefined);
+  const enabled =
+    normalizeEnvValue(process.env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED) ??
+    normalizeEnvValue(process.env.DOCS_CLOUD_ANALYTICS_ENABLED);
+  const env: Record<string, string> = {};
+
+  if (projectId) {
+    env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = projectId;
+  }
+
+  if (endpoint) {
+    env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT = endpoint;
+  }
+
+  if (enabled) {
+    env.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED = enabled;
+  }
+
+  return env;
+}
+
+function createDocsWorkspaceAliases(root: string, workspaceRoot: string): Record<string, string> {
+  const workspaceAlias = (...parts: string[]) =>
+    toTurbopackAliasPath(root, join(workspaceRoot, ...parts));
+  const workspaceEntrypoint = (distParts: string[], sourceParts: string[]) => {
+    const distPath = join(workspaceRoot, ...distParts);
+    const sourcePath = join(workspaceRoot, ...sourceParts);
+
+    return workspaceAlias(
+      ...(existsSync(distPath) || !existsSync(sourcePath) ? distParts : sourceParts),
+    );
+  };
+
   return {
-    "@farming-labs/docs": "./packages/docs/src/index.ts",
-    "@farming-labs/docs/server": "./packages/docs/src/server.ts",
-    "@farming-labs/next": "./packages/next/src/index.ts",
-    "@farming-labs/next/api": "./packages/next/src/api.ts",
-    "@farming-labs/next/changelog": "./packages/next/src/changelog.tsx",
-    "@farming-labs/next/client-callbacks": "./packages/next/src/client-callbacks.tsx",
-    "@farming-labs/next/layout": "./packages/next/src/layout.tsx",
-    "@farming-labs/next/mdx-plugins/rehype-code": "./packages/next/src/mdx-plugins/rehype-code.ts",
-    "@farming-labs/next/mdx-plugins/rehype-toc": "./packages/next/src/mdx-plugins/rehype-toc.ts",
-    "@farming-labs/next/mdx-plugins/remark-heading":
-      "./packages/next/src/mdx-plugins/remark-heading.ts",
-    "@farming-labs/next/mdx-plugins/remark-og": "./packages/next/src/mdx-plugins/remark-og.ts",
-    "@farming-labs/next/mdx-plugins/remark-markdown-alternate":
-      "./packages/next/src/mdx-plugins/remark-markdown-alternate.ts",
-    "@farming-labs/theme": "./packages/fumadocs/src/index.ts",
-    "@farming-labs/theme/api": "./packages/fumadocs/src/docs-api.ts",
-    "@farming-labs/theme/client-hooks": "./packages/fumadocs/src/docs-client-hooks.tsx",
-    "@farming-labs/theme/concrete": "./packages/fumadocs/src/concrete/index.ts",
-    "@farming-labs/theme/hardline": "./packages/fumadocs/src/hardline/index.ts",
-    "@farming-labs/theme/ledger": "./packages/fumadocs/src/ledger/index.ts",
-    "@farming-labs/theme/mdx": "./packages/fumadocs/src/mdx.ts",
-    "@farming-labs/theme/search": "./packages/fumadocs/src/search.ts",
+    "@farming-labs/docs": workspaceEntrypoint(
+      ["packages", "docs", "dist", "index.mjs"],
+      ["packages", "docs", "src", "index.ts"],
+    ),
+    "@farming-labs/docs/server": workspaceEntrypoint(
+      ["packages", "docs", "dist", "server.mjs"],
+      ["packages", "docs", "src", "server.ts"],
+    ),
+    "@farming-labs/next": workspaceEntrypoint(
+      ["packages", "next", "dist", "index.mjs"],
+      ["packages", "next", "src", "index.ts"],
+    ),
+    "@farming-labs/next/api": workspaceEntrypoint(
+      ["packages", "next", "dist", "api.mjs"],
+      ["packages", "next", "src", "api.ts"],
+    ),
+    "@farming-labs/next/changelog": workspaceEntrypoint(
+      ["packages", "next", "dist", "changelog.mjs"],
+      ["packages", "next", "src", "changelog.tsx"],
+    ),
+    "@farming-labs/next/client-callbacks": workspaceEntrypoint(
+      ["packages", "next", "dist", "client-callbacks.mjs"],
+      ["packages", "next", "src", "client-callbacks.tsx"],
+    ),
+    "@farming-labs/next/layout": workspaceEntrypoint(
+      ["packages", "next", "dist", "layout.mjs"],
+      ["packages", "next", "src", "layout.tsx"],
+    ),
+    "@farming-labs/next/mdx-plugins/rehype-code": workspaceEntrypoint(
+      ["packages", "next", "dist", "mdx-plugins", "rehype-code.mjs"],
+      ["packages", "next", "src", "mdx-plugins", "rehype-code.ts"],
+    ),
+    "@farming-labs/next/mdx-plugins/rehype-toc": workspaceEntrypoint(
+      ["packages", "next", "dist", "mdx-plugins", "rehype-toc.mjs"],
+      ["packages", "next", "src", "mdx-plugins", "rehype-toc.ts"],
+    ),
+    "@farming-labs/next/mdx-plugins/remark-code-group": workspaceEntrypoint(
+      ["packages", "next", "dist", "mdx-plugins", "remark-code-group.mjs"],
+      ["packages", "next", "src", "mdx-plugins", "remark-code-group.ts"],
+    ),
+    "@farming-labs/next/mdx-plugins/remark-heading": workspaceEntrypoint(
+      ["packages", "next", "dist", "mdx-plugins", "remark-heading.mjs"],
+      ["packages", "next", "src", "mdx-plugins", "remark-heading.ts"],
+    ),
+    "@farming-labs/next/mdx-plugins/remark-og": workspaceEntrypoint(
+      ["packages", "next", "dist", "mdx-plugins", "remark-og.mjs"],
+      ["packages", "next", "src", "mdx-plugins", "remark-og.ts"],
+    ),
+    "@farming-labs/next/mdx-plugins/remark-markdown-alternate": workspaceEntrypoint(
+      ["packages", "next", "dist", "mdx-plugins", "remark-markdown-alternate.mjs"],
+      ["packages", "next", "src", "mdx-plugins", "remark-markdown-alternate.ts"],
+    ),
+    "@farming-labs/theme": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "index.mjs"],
+      ["packages", "fumadocs", "src", "index.ts"],
+    ),
+    "@farming-labs/theme/api": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "docs-api.mjs"],
+      ["packages", "fumadocs", "src", "docs-api.ts"],
+    ),
+    "@farming-labs/theme/client-hooks": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "docs-client-hooks.mjs"],
+      ["packages", "fumadocs", "src", "docs-client-hooks.tsx"],
+    ),
+    "@farming-labs/theme/concrete": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "concrete", "index.mjs"],
+      ["packages", "fumadocs", "src", "concrete", "index.ts"],
+    ),
+    "@farming-labs/theme/hardline": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "hardline", "index.mjs"],
+      ["packages", "fumadocs", "src", "hardline", "index.ts"],
+    ),
+    "@farming-labs/theme/ledger": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "ledger", "index.mjs"],
+      ["packages", "fumadocs", "src", "ledger", "index.ts"],
+    ),
+    "@farming-labs/theme/mdx": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "mdx.mjs"],
+      ["packages", "fumadocs", "src", "mdx.ts"],
+    ),
+    "@farming-labs/theme/search": workspaceEntrypoint(
+      ["packages", "fumadocs", "dist", "search.mjs"],
+      ["packages", "fumadocs", "src", "search.ts"],
+    ),
   };
 }
 
@@ -354,6 +454,22 @@ function readDocsContentDir(root: string): string | undefined {
       const content = readFileSync(configPath, "utf-8");
       const contentDir = readTopLevelStringProperty(content, "contentDir");
       if (contentDir) return contentDir;
+    } catch {
+      // fall through
+    }
+  }
+
+  return undefined;
+}
+
+function readDocsPath(root: string): string | undefined {
+  for (const ext of FILE_EXTS) {
+    const configPath = join(root, `docs.config.${ext}`);
+    if (!existsSync(configPath)) continue;
+
+    try {
+      const content = readFileSync(configPath, "utf-8");
+      return readTopLevelStringProperty(content, "docsPath");
     } catch {
       // fall through
     }
@@ -592,10 +708,7 @@ function extractRootObjectLiteral(content: string): string | undefined {
   return undefined;
 }
 
-function readTopLevelStringProperty(content: string, key: string): string | undefined {
-  const block = extractRootObjectLiteral(content);
-  if (!block) return undefined;
-
+function findTopLevelPropertyValueIndex(block: string, key: string): number | undefined {
   let objectDepth = 0;
   let arrayDepth = 0;
   let parenDepth = 0;
@@ -700,31 +813,133 @@ function readTopLevelStringProperty(content: string, key: string): string | unde
     cursor += 1;
     while (/\s/.test(block[cursor] ?? "")) cursor += 1;
 
-    const quote = block[cursor];
-    if (quote !== '"' && quote !== "'") continue;
-
-    cursor += 1;
-    let value = "";
-
-    for (; cursor < block.length; cursor += 1) {
-      const valueChar = block[cursor];
-      if (valueChar === "\\") {
-        const escapedChar = block[cursor + 1];
-        if (escapedChar) {
-          value += escapedChar;
-          cursor += 1;
-        }
-        continue;
-      }
-
-      if (valueChar === quote) return value;
-      value += valueChar;
-    }
-
-    return undefined;
+    return cursor;
   }
 
   return undefined;
+}
+
+function findMatchingObjectEnd(block: string, start: number): number | undefined {
+  let depth = 0;
+  let inString: '"' | "'" | "`" | null = null;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let escaped = false;
+
+  for (let index = start; index < block.length; index += 1) {
+    const char = block[index];
+    const next = block[index + 1];
+
+    if (inLineComment) {
+      if (char === "\n") inLineComment = false;
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (char === "*" && next === "/") {
+        inBlockComment = false;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+
+      if (char === inString) inString = null;
+      continue;
+    }
+
+    if (char === "/" && next === "/") {
+      inLineComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      inBlockComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === "`") {
+      inString = char;
+      continue;
+    }
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char !== "}") continue;
+
+    depth -= 1;
+    if (depth === 0) return index;
+  }
+
+  return undefined;
+}
+
+function readTopLevelStringProperty(content: string, key: string): string | undefined {
+  const block = extractRootObjectLiteral(content);
+  if (!block) return undefined;
+
+  const cursor = findTopLevelPropertyValueIndex(block, key);
+  if (cursor === undefined) return undefined;
+
+  const quote = block[cursor];
+  if (quote !== '"' && quote !== "'") return undefined;
+
+  let value = "";
+
+  for (let index = cursor + 1; index < block.length; index += 1) {
+    const valueChar = block[index];
+    if (valueChar === "\\") {
+      const escapedChar = block[index + 1];
+      if (escapedChar) {
+        value += escapedChar;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (valueChar === quote) return value;
+    value += valueChar;
+  }
+
+  return undefined;
+}
+
+function readTopLevelBooleanProperty(content: string, key: string): boolean | undefined {
+  const block = extractRootObjectLiteral(content);
+  if (!block) return undefined;
+
+  const cursor = findTopLevelPropertyValueIndex(block, key);
+  if (cursor === undefined) return undefined;
+
+  if (block.startsWith("true", cursor)) return true;
+  if (block.startsWith("false", cursor)) return false;
+  return undefined;
+}
+
+function extractTopLevelObjectLiteral(content: string, key: string): string | undefined {
+  const block = extractRootObjectLiteral(content);
+  if (!block) return undefined;
+
+  const cursor = findTopLevelPropertyValueIndex(block, key);
+  if (cursor === undefined || block[cursor] !== "{") return undefined;
+
+  const end = findMatchingObjectEnd(block, cursor);
+  return end === undefined ? undefined : block.slice(cursor + 1, end);
 }
 
 function extractObjectLiteral(content: string, key: string): string | undefined {
@@ -1027,11 +1242,53 @@ function readSitemapConfig(root: string): {
         routePrefix: normalizeRoutePrefix(routePrefixMatch?.[1]),
       };
     } catch {
-      return { enabled: false, routePrefix: "" };
+      return { enabled: true, routePrefix: "" };
     }
   }
 
-  return { enabled: false, routePrefix: "" };
+  return { enabled: true, routePrefix: "" };
+}
+
+function readRobotsConfig(root: string): {
+  enabled: boolean;
+  hasStaticFile: boolean;
+} {
+  const publicStaticPath = join(root, "public", "robots.txt");
+  const appDir = getNextAppDir(root);
+  const appStaticPath = join(root, appDir, "robots.txt");
+  const appRouteExists = FILE_EXTS.some((ext) => existsSync(join(root, appDir, `robots.${ext}`)));
+  const hasStaticFile = existsSync(publicStaticPath) || existsSync(appStaticPath) || appRouteExists;
+
+  for (const ext of FILE_EXTS) {
+    const configPath = join(root, `docs.config.${ext}`);
+    if (!existsSync(configPath)) continue;
+
+    try {
+      const content = readFileSync(configPath, "utf-8");
+
+      if (content.match(/robots\s*:\s*false/)) {
+        return { enabled: false, hasStaticFile };
+      }
+
+      if (content.match(/robots\s*:\s*true/)) {
+        return { enabled: true, hasStaticFile };
+      }
+
+      const block = extractObjectLiteral(content, "robots");
+      if (!block) continue;
+
+      const enabledMatch = block.match(/enabled\s*:\s*(true|false)/);
+
+      return {
+        enabled: enabledMatch ? enabledMatch[1] !== "false" : true,
+        hasStaticFile,
+      };
+    } catch {
+      return { enabled: true, hasStaticFile };
+    }
+  }
+
+  return { enabled: true, hasStaticFile };
 }
 
 function normalizeAgentFeedbackRoute(
@@ -1050,6 +1307,11 @@ function readAgentFeedbackConfig(root: string): {
   schemaRoute: string;
 } {
   const defaultRoute = normalizeAgentFeedbackRoute();
+  const enabled = {
+    enabled: true,
+    route: defaultRoute,
+    schemaRoute: `${defaultRoute}/schema`,
+  };
   const disabled = {
     enabled: false,
     route: defaultRoute,
@@ -1062,20 +1324,18 @@ function readAgentFeedbackConfig(root: string): {
 
     try {
       const content = readFileSync(configPath, "utf-8");
-      const feedbackBlock = extractObjectLiteral(content, "feedback");
-      if (!feedbackBlock) continue;
+      const feedbackBoolean = readTopLevelBooleanProperty(content, "feedback");
+      if (feedbackBoolean === false) return disabled;
+      if (feedbackBoolean === true) return enabled;
+
+      const feedbackBlock = extractTopLevelObjectLiteral(content, "feedback");
+      if (!feedbackBlock) return enabled;
 
       if (feedbackBlock.match(/agent\s*:\s*false/)) return disabled;
-      if (feedbackBlock.match(/agent\s*:\s*true/)) {
-        return {
-          enabled: true,
-          route: defaultRoute,
-          schemaRoute: `${defaultRoute}/schema`,
-        };
-      }
+      if (feedbackBlock.match(/agent\s*:\s*true/)) return enabled;
 
       const agentBlock = extractObjectLiteral(feedbackBlock, "agent");
-      if (!agentBlock) continue;
+      if (!agentBlock) return enabled;
 
       const enabledMatch = agentBlock.match(/enabled\s*:\s*(true|false)/);
       const routeMatch = agentBlock.match(/route\s*:\s*["']([^"']+)["']/);
@@ -1092,7 +1352,7 @@ function readAgentFeedbackConfig(root: string): {
     }
   }
 
-  return disabled;
+  return enabled;
 }
 
 type NextRewrite = {
@@ -1116,8 +1376,97 @@ type NextRewriteResult =
       fallback?: NextRewrite[];
     };
 
-function buildDocsMarkdownRewrites(entry: string): NextRewrite[] {
-  const normalizedEntry = entry.replace(/^\/+|\/+$/g, "") || "docs";
+function normalizeRouteSegment(value: string | undefined, fallback = "docs"): string {
+  return (value ?? fallback).replace(/^\/+|\/+$/g, "") || fallback;
+}
+
+function normalizeDocsPath(value: string | undefined, entry: string): string {
+  if (typeof value !== "string") return `/${normalizeRouteSegment(entry)}`;
+
+  const cleaned = value
+    .trim()
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\/+/g, "/");
+  if (cleaned === "") return "";
+
+  return `/${cleaned}`;
+}
+
+function docsRootSource(entry: string): string {
+  const normalizedEntry = normalizeRouteSegment(entry);
+  return [
+    "/:slug((?!",
+    "_next/",
+    "|api/",
+    `|${normalizedEntry}(?:/|$)`,
+    "|favicon\\.ico",
+    "|robots\\.txt",
+    "|sitemap\\.xml",
+    "|sitemap\\.md",
+    "|docs\\.md",
+    "|llms\\.txt",
+    "|llms-full\\.txt",
+    "|mcp(?:/|$)",
+    "|AGENTS\\.md",
+    "|AGENT\\.md",
+    "|skill\\.md",
+    "|\\.well-known/",
+    "|.*\\..*",
+    ").*)",
+  ].join("");
+}
+
+function docsRootMarkdownSource(entry: string): string {
+  const normalizedEntry = normalizeRouteSegment(entry);
+  return [
+    "/:slug((?!",
+    "_next/",
+    "|api/",
+    `|${normalizedEntry}/`,
+    "|docs\\.md",
+    "|sitemap\\.md",
+    "|AGENTS\\.md",
+    "|AGENT\\.md",
+    "|skill\\.md",
+    "|\\.well-known/",
+    ").*)\\.md",
+  ].join("");
+}
+
+function buildDocsPathRewrites(entry: string, docsPath: string): NextRewrite[] {
+  const normalizedEntry = normalizeRouteSegment(entry);
+  const internalBase = `/${normalizedEntry}`;
+
+  if (docsPath === internalBase) return [];
+
+  if (docsPath === "") {
+    return [
+      {
+        source: "/",
+        destination: `${internalBase}/`,
+      },
+      {
+        source: docsRootSource(normalizedEntry),
+        destination: `${internalBase}/:slug`,
+      },
+    ];
+  }
+
+  return [
+    {
+      source: docsPath,
+      destination: internalBase,
+    },
+    {
+      source: `${docsPath}/:slug*`,
+      destination: `${internalBase}/:slug*`,
+    },
+  ];
+}
+
+function buildDocsMarkdownRewrites(entry: string, docsPath: string): NextRewrite[] {
+  const normalizedEntry = normalizeRouteSegment(entry);
+  const publicBase = docsPath || "";
   const markdownAcceptHeader = {
     type: "header",
     key: "accept",
@@ -1129,34 +1478,132 @@ function buildDocsMarkdownRewrites(entry: string): NextRewrite[] {
     key: "signature-agent",
     value: ".+",
   };
+  const markdownAgentUserAgentHeader = {
+    type: "header",
+    key: "user-agent",
+    value: DOCS_AI_AGENT_USER_AGENT_HEADER_PATTERN,
+  };
+  const markdownBotLikeUserAgentHeader = {
+    type: "header",
+    key: "user-agent",
+    value: DOCS_BOT_LIKE_USER_AGENT_HEADER_PATTERN,
+  };
+  const markdownTraditionalBotUserAgentHeader = {
+    type: "header",
+    key: "user-agent",
+    value: DOCS_TRADITIONAL_BOT_USER_AGENT_HEADER_PATTERN,
+  };
+  const markdownSecFetchModeHeader = {
+    type: "header",
+    key: "sec-fetch-mode",
+  };
+
+  if (publicBase === "") {
+    const rootPageSource = docsRootSource(normalizedEntry);
+
+    return [
+      {
+        source: `/${normalizedEntry}.md`,
+        destination: "/api/docs?format=markdown",
+      },
+      {
+        source: docsRootMarkdownSource(normalizedEntry),
+        destination: "/api/docs?format=markdown&path=:slug",
+      },
+      {
+        source: "/",
+        has: [markdownAcceptHeader],
+        destination: "/api/docs?format=markdown",
+      },
+      {
+        source: rootPageSource,
+        has: [markdownAcceptHeader],
+        destination: "/api/docs?format=markdown&path=:slug",
+      },
+      {
+        source: "/",
+        has: [markdownSignatureAgentHeader],
+        destination: "/api/docs?format=markdown",
+      },
+      {
+        source: rootPageSource,
+        has: [markdownSignatureAgentHeader],
+        destination: "/api/docs?format=markdown&path=:slug",
+      },
+      {
+        source: "/",
+        has: [markdownAgentUserAgentHeader],
+        destination: "/api/docs?format=markdown",
+      },
+      {
+        source: rootPageSource,
+        has: [markdownAgentUserAgentHeader],
+        destination: "/api/docs?format=markdown&path=:slug",
+      },
+      {
+        source: "/",
+        has: [markdownBotLikeUserAgentHeader],
+        missing: [markdownTraditionalBotUserAgentHeader, markdownSecFetchModeHeader],
+        destination: "/api/docs?format=markdown",
+      },
+      {
+        source: rootPageSource,
+        has: [markdownBotLikeUserAgentHeader],
+        missing: [markdownTraditionalBotUserAgentHeader, markdownSecFetchModeHeader],
+        destination: "/api/docs?format=markdown&path=:slug",
+      },
+    ];
+  }
 
   return [
     {
-      source: `/${normalizedEntry}.md`,
+      source: `${publicBase}.md`,
       destination: "/api/docs?format=markdown",
     },
     {
-      source: `/${normalizedEntry}/:slug*.md`,
+      source: `${publicBase}/:slug*.md`,
       destination: "/api/docs?format=markdown&path=:slug*",
     },
     {
-      source: `/${normalizedEntry}`,
+      source: publicBase,
       has: [markdownAcceptHeader],
       destination: "/api/docs?format=markdown",
     },
     {
-      source: `/${normalizedEntry}/:slug*`,
+      source: `${publicBase}/:slug*`,
       has: [markdownAcceptHeader],
       destination: "/api/docs?format=markdown&path=:slug*",
     },
     {
-      source: `/${normalizedEntry}`,
+      source: publicBase,
       has: [markdownSignatureAgentHeader],
       destination: "/api/docs?format=markdown",
     },
     {
-      source: `/${normalizedEntry}/:slug*`,
+      source: `${publicBase}/:slug*`,
       has: [markdownSignatureAgentHeader],
+      destination: "/api/docs?format=markdown&path=:slug*",
+    },
+    {
+      source: publicBase,
+      has: [markdownAgentUserAgentHeader],
+      destination: "/api/docs?format=markdown",
+    },
+    {
+      source: `${publicBase}/:slug*`,
+      has: [markdownAgentUserAgentHeader],
+      destination: "/api/docs?format=markdown&path=:slug*",
+    },
+    {
+      source: publicBase,
+      has: [markdownBotLikeUserAgentHeader],
+      missing: [markdownTraditionalBotUserAgentHeader, markdownSecFetchModeHeader],
+      destination: "/api/docs?format=markdown",
+    },
+    {
+      source: `${publicBase}/:slug*`,
+      has: [markdownBotLikeUserAgentHeader],
+      missing: [markdownTraditionalBotUserAgentHeader, markdownSecFetchModeHeader],
       destination: "/api/docs?format=markdown&path=:slug*",
     },
   ];
@@ -1179,7 +1626,12 @@ function buildAgentSpecRewrites(): NextRewrite[] {
   ];
 }
 
-function buildLlmsTxtRewrites(): NextRewrite[] {
+function buildLlmsTxtRewrites(entry: string, docsPath: string): NextRewrite[] {
+  const normalizedEntry = normalizeRouteSegment(entry);
+  const internalBase = `/${normalizedEntry}`;
+  const publicBase = docsPath;
+  const baseRoutes = Array.from(new Set([internalBase, publicBase].filter(Boolean)));
+
   return [
     {
       source: DEFAULT_LLMS_TXT_ROUTE,
@@ -1197,6 +1649,24 @@ function buildLlmsTxtRewrites(): NextRewrite[] {
       source: DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
       destination: "/api/docs?format=llms-full",
     },
+    ...baseRoutes.flatMap((baseRoute) => [
+      {
+        source: `${baseRoute}/llms.txt`,
+        destination: "/api/docs?format=llms",
+      },
+      {
+        source: `${baseRoute}/llms-full.txt`,
+        destination: "/api/docs?format=llms-full",
+      },
+      {
+        source: `${baseRoute}/:section*/llms.txt`,
+        destination: `/api/docs?format=llms&section=${baseRoute}/:section*/llms.txt`,
+      },
+      {
+        source: `${baseRoute}/:section*/llms-full.txt`,
+        destination: `/api/docs?format=llms-full&section=${baseRoute}/:section*/llms-full.txt`,
+      },
+    ]),
   ];
 }
 
@@ -1209,6 +1679,27 @@ function buildSkillMdRewrites(): NextRewrite[] {
     {
       source: DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
       destination: "/api/docs?format=skill",
+    },
+  ];
+}
+
+function buildAgentsMdRewrites(): NextRewrite[] {
+  return [
+    {
+      source: DEFAULT_AGENTS_MD_ROUTE,
+      destination: "/api/docs?format=agents",
+    },
+    {
+      source: DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
+      destination: "/api/docs?format=agents",
+    },
+    {
+      source: DEFAULT_AGENT_MD_ROUTE,
+      destination: "/api/docs?format=agents",
+    },
+    {
+      source: DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE,
+      destination: "/api/docs?format=agents",
     },
   ];
 }
@@ -1226,9 +1717,28 @@ function buildSitemapRewrites(config: { enabled: boolean; routePrefix: string })
       source: joinPublicRoute(prefix, DEFAULT_SITEMAP_MD_ROUTE),
       destination: "/api/docs?format=sitemap-md",
     },
+    ...(prefix
+      ? []
+      : [
+          {
+            source: DEFAULT_SITEMAP_MD_DOCS_ROUTE,
+            destination: "/api/docs?format=sitemap-md",
+          },
+        ]),
     {
       source: joinPublicRoute(prefix, DEFAULT_SITEMAP_MD_WELL_KNOWN_ROUTE),
       destination: "/api/docs?format=sitemap-md",
+    },
+  ];
+}
+
+function buildRobotsRewrites(config: { enabled: boolean; hasStaticFile: boolean }): NextRewrite[] {
+  if (!config.enabled || config.hasStaticFile) return [];
+
+  return [
+    {
+      source: DEFAULT_ROBOTS_TXT_ROUTE,
+      destination: "/api/docs?format=robots",
     },
   ];
 }
@@ -1378,7 +1888,13 @@ function findFirstVisibleDocsChildSlug(dir: string, slugParts: string[]): string
   return undefined;
 }
 
-function buildHiddenFolderRedirects(docsDir: string, entry: string): NextRedirect[] {
+function publicDocsRoute(docsPath: string, slugParts: string[] = []): string {
+  const slug = slugParts.join("/");
+  if (!slug) return docsPath || "/";
+  return docsPath ? `${docsPath}/${slug}` : `/${slug}`;
+}
+
+function buildHiddenFolderRedirects(docsDir: string, docsPath: string): NextRedirect[] {
   const redirects: NextRedirect[] = [];
 
   function scan(dir: string, slugParts: string[]) {
@@ -1390,9 +1906,8 @@ function buildHiddenFolderRedirects(docsDir: string, entry: string): NextRedirec
       if (resolveDocsPageFolderIndexBehavior(data) === "hidden") {
         const destinationSlug = findFirstVisibleDocsChildSlug(dir, slugParts);
         if (destinationSlug && destinationSlug.join("/") !== slugParts.join("/")) {
-          const source = slugParts.length > 0 ? `/${entry}/${slugParts.join("/")}` : `/${entry}`;
-          const destination =
-            destinationSlug.length > 0 ? `/${entry}/${destinationSlug.join("/")}` : `/${entry}`;
+          const source = publicDocsRoute(docsPath, slugParts);
+          const destination = publicDocsRoute(docsPath, destinationSlug);
 
           redirects.push({
             source,
@@ -1414,6 +1929,7 @@ function buildHiddenFolderRedirects(docsDir: string, entry: string): NextRedirec
 
 function mergeDocsMarkdownRewrites(
   entry: string,
+  docsPath: string,
   mcp: {
     enabled: boolean;
     route: string;
@@ -1427,33 +1943,42 @@ function mergeDocsMarkdownRewrites(
     route: string;
     schemaRoute: string;
   },
+  robots: {
+    enabled: boolean;
+    hasStaticFile: boolean;
+  },
   result?: NextRewriteResult,
 ): NextRewriteResult {
-  const autoRewrites = [
+  const autoBeforeFilesRewrites = [
     ...buildAgentSpecRewrites(),
     ...buildMcpRewrites(mcp),
-    ...buildLlmsTxtRewrites(),
+    ...buildAgentsMdRewrites(),
     ...buildSkillMdRewrites(),
     ...buildSitemapRewrites(sitemap),
-    ...buildDocsMarkdownRewrites(entry),
+    ...buildRobotsRewrites(robots),
+    ...buildDocsMarkdownRewrites(entry, docsPath),
+    ...buildDocsPathRewrites(entry, docsPath),
     ...buildAgentFeedbackRewrites(agentFeedback),
   ];
+  const autoAfterFilesRewrites = buildLlmsTxtRewrites(entry, docsPath);
+
   if (!result) {
     return {
-      beforeFiles: dedupeRewrites(autoRewrites),
+      beforeFiles: dedupeRewrites(autoBeforeFilesRewrites),
+      afterFiles: dedupeRewrites(autoAfterFilesRewrites),
     };
   }
 
   if (Array.isArray(result)) {
     return {
-      beforeFiles: dedupeRewrites(autoRewrites),
-      afterFiles: result,
+      beforeFiles: dedupeRewrites(autoBeforeFilesRewrites),
+      afterFiles: dedupeRewrites([...result, ...autoAfterFilesRewrites]),
     };
   }
 
   return {
-    beforeFiles: dedupeRewrites([...autoRewrites, ...(result.beforeFiles ?? [])]),
-    afterFiles: result.afterFiles ?? [],
+    beforeFiles: dedupeRewrites([...autoBeforeFilesRewrites, ...(result.beforeFiles ?? [])]),
+    afterFiles: dedupeRewrites([...(result.afterFiles ?? []), ...autoAfterFilesRewrites]),
     fallback: result.fallback ?? [],
   };
 }
@@ -1478,6 +2003,15 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
       ? docsConfigPath
       : `./${docsConfigPath}`;
 
+  ensureDocsReviewWorkflow({
+    rootDir: root,
+    configPath: docsConfigPath,
+    configContent: existsSync(docsConfigAbsolutePath)
+      ? readFileSync(docsConfigAbsolutePath, "utf-8")
+      : undefined,
+    log: process.env.NODE_ENV === "test" ? undefined : (message) => console.log(message),
+  });
+
   // ── 1. Auto-generate mdx-components.tsx if missing ──────────────
   if (!hasFile(root, "mdx-components")) {
     writeFileSync(join(root, "mdx-components.tsx"), MDX_COMPONENTS_TEMPLATE);
@@ -1485,6 +2019,7 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
 
   // ── 2. Auto-generate app/{entry}/layout.tsx if missing (or src/app when using src dir) ──
   const entry = readDocsEntry(root);
+  const docsPath = normalizeDocsPath(readDocsPath(root), entry);
   const configuredContentDir = readDocsContentDir(root);
   const appDir = getNextAppDir(root);
   const docsContentDir = configuredContentDir ?? join(appDir, entry);
@@ -1510,6 +2045,7 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
 
   const mcp = readMcpConfig(root);
   const sitemap = readSitemapConfig(root);
+  const robots = readRobotsConfig(root);
   const docsMcpRouteDir = join(root, appDir, "api", "docs", "mcp");
   if (
     mcp.enabled &&
@@ -1652,10 +2188,11 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
   }
   remarkPlugins.push([
     "@farming-labs/next/mdx-plugins/remark-markdown-alternate",
-    { entry, appDir, contentDir: docsContentDir, enabled: !isStaticExport },
+    { entry, appDir, contentDir: docsContentDir, docsPath, enabled: !isStaticExport },
   ]);
   remarkPlugins.push(
     ["remark-mdx-frontmatter", { name: "metadata" }],
+    "@farming-labs/next/mdx-plugins/remark-code-group",
     "@farming-labs/next/mdx-plugins/remark-heading",
   );
   const rehypePlugins: MdxPluginEntry[] = [
@@ -1688,6 +2225,14 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
     nextConfig.pageExtensions = defaultExts;
   }
 
+  const publicDocsCloudAnalyticsEnv = createPublicDocsCloudAnalyticsEnv();
+  if (Object.keys(publicDocsCloudAnalyticsEnv).length > 0) {
+    nextConfig.env = {
+      ...publicDocsCloudAnalyticsEnv,
+      ...nextConfig.env,
+    };
+  }
+
   const existingTurbopack = (nextConfig.turbopack as Record<string, unknown> | undefined) ?? {};
   const existingResolveAlias =
     (existingTurbopack.resolveAlias as Record<string, string> | undefined) ?? {};
@@ -1696,7 +2241,7 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
     ...existingTurbopack,
     ...(workspaceRoot && !existingTurbopack.root ? { root: workspaceRoot } : {}),
     resolveAlias: {
-      ...(workspaceRoot ? createDocsWorkspaceAliases() : {}),
+      ...(workspaceRoot ? createDocsWorkspaceAliases(root, workspaceRoot) : {}),
       ...existingResolveAlias,
       [INTERNAL_DOCS_CONFIG_ALIAS]: docsConfigRelativeAlias,
       "fumadocs-openapi": toTurbopackAliasPath(root, FUMADOCS_OPENAPI_PACKAGE_ALIAS),
@@ -1786,6 +2331,8 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
     {};
   const docsTraceGlob = docsContentDir.replace(/\\/g, "/").replace(/^\.?\//, "") + "/**/*";
   const skillTraceFile = "skill.md";
+  const agentsTraceFile = "AGENTS.md";
+  const agentTraceFile = "AGENT.md";
   const sitemapManifestTraceFile = DEFAULT_SITEMAP_MANIFEST_PATH;
   const docsContentRoot = isAbsolute(docsContentDir) ? docsContentDir : join(root, docsContentDir);
 
@@ -1797,10 +2344,18 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
     nextConfig.rewrites = async () => {
       const rewrites =
         typeof existingRewrites === "function" ? await existingRewrites() : existingRewrites;
-      return mergeDocsMarkdownRewrites(entry, mcp, sitemap, agentFeedback, rewrites);
+      return mergeDocsMarkdownRewrites(
+        entry,
+        docsPath,
+        mcp,
+        sitemap,
+        agentFeedback,
+        robots,
+        rewrites,
+      );
     };
 
-    const autoRedirects = buildHiddenFolderRedirects(docsContentRoot, entry);
+    const autoRedirects = buildHiddenFolderRedirects(docsContentRoot, docsPath);
     if (autoRedirects.length > 0) {
       const existingRedirects = nextConfig.redirects as
         | NextRedirect[]
@@ -1822,6 +2377,8 @@ export function withDocs(nextConfig: NextConfig = {}): NextConfig {
         ...(existingTracingIncludes["/api/docs"] ?? []),
         docsTraceGlob,
         skillTraceFile,
+        agentsTraceFile,
+        agentTraceFile,
         sitemapManifestTraceFile,
       ]),
     ],

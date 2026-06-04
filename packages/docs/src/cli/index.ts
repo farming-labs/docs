@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
 import pc from "picocolors";
+import { formatCliError, shouldPrintStackTrace, wasCliErrorReported } from "./errors.js";
+
+export { formatCliError } from "./errors.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -28,7 +31,14 @@ export function parseCommandAlias(rawCommand?: string): {
 /** Parse flags like --template next, --name my-docs, --theme concrete, --entry docs, --framework astro (exported for tests). */
 export function parseFlags(argv: string[]): Record<string, string | boolean | undefined> {
   const flags: Record<string, string | boolean | undefined> = {};
-  const booleanFlags = new Set(["api-reference", "typesense", "algolia", "verbose", "host"]);
+  const booleanFlags = new Set([
+    "api-reference",
+    "typesense",
+    "algolia",
+    "verbose",
+    "host",
+    "json",
+  ]);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg.startsWith("--") && arg.includes("=")) {
@@ -92,6 +102,18 @@ async function main() {
     indexName: typeof flags["index-name"] === "string" ? flags["index-name"] : undefined,
     searchApiKey: typeof flags["search-api-key"] === "string" ? flags["search-api-key"] : undefined,
   };
+  const cloudOptions = {
+    configPath: typeof flags.config === "string" ? flags.config : undefined,
+    apiBaseUrl:
+      typeof flags["api-base-url"] === "string"
+        ? flags["api-base-url"]
+        : typeof flags.url === "string"
+          ? flags.url
+          : undefined,
+    apiKey: typeof flags["api-key"] === "string" ? flags["api-key"] : undefined,
+    apiKeyEnv: typeof flags["api-key-env"] === "string" ? flags["api-key-env"] : undefined,
+    json: typeof flags.json === "boolean" ? flags.json : undefined,
+  };
 
   if (!parsedCommand.command || parsedCommand.command === "init") {
     const { init } = await import("./init.js");
@@ -99,6 +121,30 @@ async function main() {
   } else if (parsedCommand.command === "dev") {
     const { dev } = await import("./dev.js");
     await dev(devOptions);
+  } else if (parsedCommand.command === "deploy") {
+    const { runCloudDeploy } = await import("./cloud.js");
+    await runCloudDeploy(cloudOptions);
+  } else if (parsedCommand.command === "preview") {
+    const { runCloudPreview } = await import("./cloud.js");
+    await runCloudPreview(cloudOptions);
+  } else if (parsedCommand.command === "cloud" && subcommand === "deploy") {
+    const { runCloudDeploy } = await import("./cloud.js");
+    await runCloudDeploy(cloudOptions);
+  } else if (parsedCommand.command === "cloud" && subcommand === "preview") {
+    const { runCloudPreview } = await import("./cloud.js");
+    await runCloudPreview(cloudOptions);
+  } else if (parsedCommand.command === "cloud" && subcommand === "init") {
+    const { runCloudInit } = await import("./cloud.js");
+    await runCloudInit(cloudOptions);
+  } else if (parsedCommand.command === "cloud" && subcommand === "sync") {
+    const { syncCloudConfig } = await import("./cloud.js");
+    await syncCloudConfig(cloudOptions);
+  } else if (parsedCommand.command === "cloud") {
+    console.error(pc.red(`Unknown cloud subcommand: ${subcommand ?? "(missing)"}`));
+    console.error();
+    const { printCloudHelp } = await import("./cloud.js");
+    printCloudHelp();
+    process.exit(1);
   } else if (parsedCommand.command === "mcp") {
     const { runMcp } = await import("./mcp.js");
     await runMcp(mcpOptions);
@@ -117,6 +163,21 @@ async function main() {
     const { printAgentCompactHelp } = await import("./agent.js");
     printAgentCompactHelp();
     process.exit(1);
+  } else if (parsedCommand.command === "agents" && subcommand === "generate") {
+    const { generateAgents, parseAgentsGenerateArgs, printAgentsGenerateHelp } =
+      await import("./agents.js");
+    const agentsOptions = parseAgentsGenerateArgs(args.slice(2));
+    if (agentsOptions.help) {
+      printAgentsGenerateHelp();
+      return;
+    }
+    await generateAgents(agentsOptions);
+  } else if (parsedCommand.command === "agents") {
+    console.error(pc.red(`Unknown agents subcommand: ${subcommand ?? "(missing)"}`));
+    console.error();
+    const { printAgentsGenerateHelp } = await import("./agents.js");
+    printAgentsGenerateHelp();
+    process.exit(1);
   } else if (parsedCommand.command === "doctor") {
     const { parseDoctorArgs, printDoctorHelp, runDoctor } = await import("./doctor.js");
     const doctorOptions = parseDoctorArgs(args.slice(1));
@@ -125,6 +186,32 @@ async function main() {
       return;
     }
     await runDoctor(doctorOptions);
+  } else if (parsedCommand.command === "review") {
+    const { parseReviewArgs, printReviewHelp, runReview } = await import("./review.js");
+    const reviewOptions = parseReviewArgs(args.slice(1));
+    if (reviewOptions.help) {
+      printReviewHelp();
+      return;
+    }
+    await runReview(reviewOptions);
+  } else if (
+    (parsedCommand.command === "codeblocks" || parsedCommand.command === "code-blocks") &&
+    subcommand === "validate"
+  ) {
+    const { parseCodeBlocksValidateArgs, printCodeBlocksValidateHelp, runCodeBlocksValidate } =
+      await import("./codeblocks.js");
+    const codeBlocksOptions = parseCodeBlocksValidateArgs(args.slice(2));
+    if (codeBlocksOptions.help) {
+      printCodeBlocksValidateHelp();
+      return;
+    }
+    await runCodeBlocksValidate(codeBlocksOptions);
+  } else if (parsedCommand.command === "codeblocks" || parsedCommand.command === "code-blocks") {
+    console.error(pc.red(`Unknown codeblocks subcommand: ${subcommand ?? "(missing)"}`));
+    console.error();
+    const { printCodeBlocksValidateHelp } = await import("./codeblocks.js");
+    printCodeBlocksValidateHelp();
+    process.exit(1);
   } else if (parsedCommand.command === "search" && subcommand === "sync") {
     const { syncSearch } = await import("./search.js");
     await syncSearch(searchSyncOptions);
@@ -163,17 +250,34 @@ async function main() {
     const { printRobotsGenerateHelp } = await import("./robots.js");
     printRobotsGenerateHelp();
     process.exit(1);
+  } else if (parsedCommand.command === "downgrade") {
+    const { downgrade } = await import("./downgrade.js");
+    const framework =
+      (typeof flags.framework === "string" ? flags.framework : undefined) ??
+      (args[1] && !args[1].startsWith("--") ? args[1] : undefined);
+    const hasVersionFlag =
+      args.includes("--version") || args.some((arg) => arg.startsWith("--version="));
+    const version =
+      typeof flags.version === "string" ? flags.version : hasVersionFlag ? "" : undefined;
+    await downgrade({ framework, version });
   } else if (parsedCommand.command === "upgrade") {
     const { upgrade } = await import("./upgrade.js");
     const framework =
       (typeof flags.framework === "string" ? flags.framework : undefined) ??
       (args[1] && !args[1].startsWith("--") ? args[1] : undefined);
-    const tag = args.includes("--beta")
-      ? "beta"
-      : args.includes("--latest")
-        ? "latest"
-        : (parsedCommand.tag ?? "latest");
-    await upgrade({ framework, tag });
+    const hasVersionFlag =
+      args.includes("--version") || args.some((arg) => arg.startsWith("--version="));
+    const version =
+      typeof flags.version === "string" ? flags.version : hasVersionFlag ? "" : undefined;
+    const tag =
+      version !== undefined
+        ? undefined
+        : args.includes("--beta")
+          ? "beta"
+          : args.includes("--latest")
+            ? "latest"
+            : (parsedCommand.tag ?? "latest");
+    await upgrade({ framework, tag, version });
   } else if (parsedCommand.command === "--help" || parsedCommand.command === "-h") {
     printHelp();
   } else if (parsedCommand.command === "--version" || parsedCommand.command === "-v") {
@@ -196,13 +300,20 @@ ${pc.dim("Usage:")}
 ${pc.dim("Commands:")}
   ${pc.cyan("init")}     Scaffold docs in your project (default)
   ${pc.cyan("dev")}      Run frameworkless docs locally from ${pc.dim("docs.json")}
+  ${pc.cyan("deploy")}   Sync cloud config and deploy hosted preview docs
+  ${pc.cyan("preview")}  Alias for ${pc.cyan("deploy")}
+  ${pc.cyan("cloud")}    Docs Cloud utilities (${pc.dim("init")}, ${pc.dim("deploy")}, ${pc.dim("preview")}, ${pc.dim("sync")})
   ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} to generate sibling agent.md files)
+  ${pc.cyan("agents")}   AGENTS.md utilities (${pc.dim("generate")} for static agent instructions)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
+  ${pc.cyan("review")}   Review changed docs files and wire Docs Review CI
+  ${pc.cyan("codeblocks")} Validate fenced MDX code blocks (${pc.dim("validate")})
   ${pc.cyan("mcp")}      Run the built-in docs MCP server over stdio
   ${pc.cyan("robots")}   Robots.txt utilities (${pc.dim("generate")} for agent access policy)
   ${pc.cyan("search")}   Search utilities (${pc.dim("sync")} for external indexes)
   ${pc.cyan("sitemap")}  Sitemap utilities (${pc.dim("generate")} for sitemap XML/Markdown data)
-  ${pc.cyan("upgrade")}  Upgrade @farming-labs/* packages to latest (auto-detect or use --framework)
+  ${pc.cyan("upgrade")}  Upgrade @farming-labs/* packages (auto-detect or use --framework)
+  ${pc.cyan("downgrade")} Downgrade @farming-labs/* packages (auto-detect or use --framework)
 
 ${pc.dim("Supported frameworks:")}
   Next.js, TanStack Start, SvelteKit, Astro, Nuxt
@@ -224,6 +335,20 @@ ${pc.dim("Options for dev:")}
   ${pc.cyan("--hostname <host>")}   Bind the preview server to a custom hostname
   ${pc.cyan("--host [host]")}       Expose the preview on your network; optionally pass a host value
   ${pc.cyan("--verbose")}           Show raw runtime logs in addition to branded CLI output
+
+${pc.dim("Options for cloud deploy:")}
+  ${pc.cyan("cloud init")}                           Add Docs Cloud config to ${pc.dim("docs.config.ts")} and ${pc.dim("docs.json")}
+  ${pc.cyan("deploy")}                               Sync ${pc.dim("docs.config.ts")} into ${pc.dim("docs.json")} and deploy hosted preview docs
+  ${pc.cyan("cloud deploy")}                         Same as ${pc.cyan("deploy")}
+  ${pc.cyan("preview")}                              Alias for ${pc.cyan("deploy")}
+  ${pc.cyan("cloud preview")}                        Compatibility alias for ${pc.cyan("cloud deploy")}
+  ${pc.cyan("cloud sync")}                           Only materialize cloud settings into ${pc.dim("docs.json")}
+  ${pc.cyan("--config <path>")}                      Use a custom docs config path
+  ${pc.cyan("--api-key-env <name>")}                 Env var that stores the Docs Cloud API key
+  ${pc.cyan("--api-base-url <url>")}                 Override the Docs Cloud API base URL
+  ${pc.cyan("--api-key <key>")}                      Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
+  ${pc.cyan("--json")}                              Print machine-readable output
+  ${pc.dim("required scopes")}                       project:read, preview:write, jobs:read
 
 ${pc.dim("Options for agent compact:")}
   ${pc.cyan("agent compact <page...>")}             Compact pages and write sibling ${pc.dim("agent.md")} files
@@ -249,6 +374,15 @@ ${pc.dim("Options for doctor:")}
   ${pc.cyan("doctor human")}                        Legacy alias for reader-facing scoring
   ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
 
+${pc.dim("Options for review:")}
+  ${pc.cyan("review")}                              Review docs changed in git
+  ${pc.cyan("review setup")}                        Create ${pc.dim(".github/workflows/docs-review.yml")} when enabled
+  ${pc.cyan("--ci")}                                Use docs.config review.ci behavior and GitHub annotations
+  ${pc.cyan("--json")}                              Print the review report as JSON
+  ${pc.cyan("--config <path>")}                     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
+  ${pc.cyan("--mode <off|warn|block>")}             Override ${pc.dim("review.ci.mode")}
+  ${pc.cyan("--score-threshold <0-100>")}           Override ${pc.dim("review.score.threshold")}
+
 ${pc.dim("Options for search sync:")}
   ${pc.cyan("search sync --typesense")}             Sync docs content to Typesense using env/flags
   ${pc.cyan("search sync --algolia")}              Sync docs content to Algolia using env/flags
@@ -268,8 +402,8 @@ ${pc.dim("Options for search sync:")}
   ${pc.cyan("--search-api-key <key>")}             Algolia search key (or use ${pc.dim("ALGOLIA_SEARCH_API_KEY")})
 
 ${pc.dim("Options for sitemap generate:")}
-  ${pc.cyan("sitemap generate")}                   Generate sitemap manifest and public ${pc.dim("sitemap.xml")}/${pc.dim("sitemap.md")}
-  ${pc.cyan("--public")}                           Explicitly write public ${pc.dim("sitemap.xml")} and ${pc.dim("sitemap.md")} files
+  ${pc.cyan("sitemap generate")}                   Generate sitemap manifest and public ${pc.dim("sitemap.xml")}/${pc.dim("sitemap.md")}/${pc.dim("docs/sitemap.md")}
+  ${pc.cyan("--public")}                           Explicitly write public ${pc.dim("sitemap.xml")}, ${pc.dim("sitemap.md")}, and ${pc.dim("docs/sitemap.md")} files
   ${pc.cyan("--manifest-only")}                    Only write the internal sitemap manifest
   ${pc.cyan("--check")}                            Fail if generated sitemap output is stale
   ${pc.cyan("--config <path>")}                    Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
@@ -284,10 +418,16 @@ ${pc.dim("Options for robots generate:")}
 
 ${pc.dim("Options for upgrade:")}
   ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
+  ${pc.cyan("--version <version>")} Install an exact version (e.g. ${pc.dim("0.1.104")})
   ${pc.cyan("--latest")}            Install latest stable (default)
   ${pc.cyan("--beta")}             Install beta versions
   ${pc.cyan("upgrade@beta")}       Shortcut for ${pc.cyan("upgrade --beta")}
   ${pc.cyan("upgrade@latest")}     Shortcut for ${pc.cyan("upgrade --latest")}
+
+${pc.dim("Options for downgrade:")}
+  ${pc.cyan("downgrade")}           Install the published version immediately below the current installed version
+  ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
+  ${pc.cyan("--version <version>")} Install an exact lower version (e.g. ${pc.dim("0.1.103")})
 
   ${pc.cyan("-h, --help")}         Show this help message
   ${pc.cyan("-v, --version")}     Show version
@@ -299,7 +439,10 @@ function printVersion() {
 }
 
 main().catch((err) => {
-  console.error(pc.red("An unexpected error occurred:"));
-  console.error(err);
+  if (shouldPrintStackTrace()) {
+    console.error(err);
+  } else if (!wasCliErrorReported(err)) {
+    console.error(pc.red(`Error: ${formatCliError(err)}`));
+  }
   process.exit(1);
 });

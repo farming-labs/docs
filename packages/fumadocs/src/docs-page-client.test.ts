@@ -40,7 +40,32 @@ describe("DocsPageClient llms.txt footer links", () => {
 
     expect(html).toContain('href="/llms.txt?lang=en"');
     expect(html).toContain('href="/llms-full.txt?lang=en"');
+    expect(html).toContain('class="fd-agent-llms-directive"');
     expect(html).not.toContain("/api/docs?format=llms");
+  });
+});
+
+describe("DocsPageClient structured data", () => {
+  it("renders serialized Schema.org JSON-LD for the active docs page", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DocsPageClient, {
+        tocEnabled: false,
+        breadcrumbEnabled: false,
+        structuredDataMap: {
+          "/docs/installation": JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "TechArticle",
+            headline: "</script><script>alert(1)</script>",
+          }),
+        },
+        children: React.createElement("article", null, "Docs"),
+      }),
+    );
+
+    expect(html).toContain('type="application/ld+json"');
+    expect(html).toContain('"@type":"TechArticle"');
+    expect(html).toContain('"headline":"\\u003c/script>');
+    expect(html).not.toContain("</script><script>");
   });
 });
 

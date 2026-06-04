@@ -1,4 +1,8 @@
-import { isDocsMcpRequest, isDocsPublicGetRequest } from "@farming-labs/docs";
+import {
+  isDocsLlmsTxtPublicRequest,
+  isDocsMcpRequest,
+  isDocsPublicGetRequest,
+} from "@farming-labs/docs";
 import type { MiddlewareHandler } from "astro";
 import config from "./lib/docs.config";
 import { GET, MCP } from "./lib/docs.server";
@@ -20,7 +24,18 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
 
   if (
     (method === "GET" || method === "HEAD") &&
-    isDocsPublicGetRequest(docsEntry, context.url, context.request, { sitemap: config.sitemap })
+    isDocsLlmsTxtPublicRequest(context.url, config.llmsTxt, docsEntry)
+  ) {
+    const nativeResponse = await next();
+    if (nativeResponse.status !== 404) return nativeResponse;
+  }
+
+  if (
+    (method === "GET" || method === "HEAD") &&
+    isDocsPublicGetRequest(docsEntry, context.url, context.request, {
+      sitemap: config.sitemap,
+      llms: config.llmsTxt,
+    })
   ) {
     return GET({ request: context.request });
   }

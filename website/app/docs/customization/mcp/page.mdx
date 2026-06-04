@@ -7,14 +7,23 @@ order: 8
 
 # MCP Server
 
-`@farming-labs/docs` can expose your docs as a built-in MCP server, so AI clients can search the docs, read pages, and inspect the nav tree without scraping HTML.
+<Agent>
+Use this page when the user asks about this topic: Expose your docs as MCP tools and resources over stdio, /mcp, or /.well-known/mcp.
+Keep answers grounded in the exact options, routes, commands, and examples documented here.
+If the request moves beyond this page, point to the closest related docs instead of inventing config.
+</Agent>
+
+`@farming-labs/docs` can expose your docs as a built-in MCP server, so AI clients can search the docs, read pages, list sections, inspect code examples, and understand config options without scraping HTML.
 
 The current built-in surface includes:
 
+- `list_docs`
 - `list_pages`
 - `get_navigation`
 - `search_docs`
 - `read_page`
+- `get_code_examples`
+- `get_config_schema`
 
 It also exposes resources for:
 
@@ -204,14 +213,7 @@ Example custom Next.js route:
 import docsConfig from "@/docs.config";
 import { createDocsMCPAPI } from "@farming-labs/next/api";
 
-export const { GET, POST, DELETE } = createDocsMCPAPI({
-  entry: docsConfig.entry,
-  contentDir: docsConfig.contentDir,
-  nav: docsConfig.nav,
-  ordering: docsConfig.ordering,
-  search: docsConfig.search,
-  mcp: docsConfig.mcp,
-});
+export const { GET, POST, DELETE } = createDocsMCPAPI(docsConfig);
 
 export const revalidate = false;
 ```
@@ -288,9 +290,10 @@ export default defineDocs({
 });
 ```
 
-The custom MCP endpoint must support Streamable HTTP MCP, return an `mcp-session-id` on
-`initialize`, and expose a search tool that returns docs results. The default tool name is
-`search_docs`; override `toolName` only if your server uses a different name.
+The custom MCP endpoint must support Streamable HTTP MCP and expose a search tool that returns docs
+results. The default tool name is `search_docs`; override `toolName` only if your server uses a
+different name. Stateful MCP servers may return an `mcp-session-id` on `initialize`; stateless
+servers can omit it, and the docs client will only send the session header when one is provided.
 
 For local self-hosted setups, relative MCP endpoints like `/mcp` and `/.well-known/mcp` are
 supported. The canonical `/api/docs/mcp` route remains available too. The built-in `search_docs`
@@ -392,19 +395,25 @@ http://127.0.0.1:3000/.well-known/mcp
 
 The built-in HTTP route exposes the full MCP surface:
 
+- `list_docs`
 - `list_pages`
 - `get_navigation`
 - `search_docs`
 - `read_page`
+- `get_code_examples`
+- `get_config_schema`
 
 ## What to ask it
 
 Once your MCP client is connected, these are good first checks:
 
+- `list_docs` for `getting-started` before deciding which page to read
 - `search_docs` for `feedback`, `page actions`, or `mcp`
 - `read_page` for `/docs/configuration` or `installation`
 - `get_navigation` to inspect the docs tree
 - `list_pages` to confirm the server is loading the expected docs set
+- `get_code_examples` for runnable Next.js or pnpm snippets
+- `get_config_schema` for `mcp.tools` before editing `docs.config.ts`
 
 In Cursor or VS Code, natural prompts like these work well too:
 
@@ -414,12 +423,45 @@ In Cursor or VS Code, natural prompts like these work well too:
 
 ## What the tools return
 
+- `list_docs` returns page summaries grouped by section; pass `section` such as `getting-started` to narrow the result
 - `list_pages` returns page titles, slugs, and URLs
 - `get_navigation` returns the docs tree in a readable text outline
 - `search_docs` ranks pages by title, description, and content matches
 - `read_page` accepts either a slug like `installation` or a full docs path like `/docs/installation`
+- `get_code_examples` returns fenced code blocks with parsed metadata like `title`, `framework`, `packageManager`, and `runnable`
+- `get_config_schema` returns `docs.config.ts` option metadata with paths, types, defaults, descriptions, and examples
 
-The built-in resources mirror that same data:
+Example tool calls:
+
+```json title="list_docs"
+{
+  "name": "list_docs",
+  "arguments": {
+    "section": "getting-started"
+  }
+}
+```
+
+```json title="get_code_examples"
+{
+  "name": "get_code_examples",
+  "arguments": {
+    "topic": "docs.config.ts",
+    "framework": "nextjs"
+  }
+}
+```
+
+```json title="get_config_schema"
+{
+  "name": "get_config_schema",
+  "arguments": {
+    "option": "mcp.tools.listDocs"
+  }
+}
+```
+
+The built-in resources mirror the navigation and page content data:
 
 - `docs://navigation`
 - `docs://docs`

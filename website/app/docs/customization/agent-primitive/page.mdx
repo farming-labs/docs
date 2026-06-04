@@ -1,6 +1,6 @@
 ---
 title: "Agent Primitive"
-description: "Author page-level agent context with the built-in Agent block or a sibling agent.md override."
+description: "Author page-level agent context, generated AGENTS.md instructions, and machine-readable route discovery."
 icon: "bot"
 order: 5.65
 ---
@@ -18,6 +18,9 @@ The same page model also powers the built-in machine-readable routes:
 - Next.js `withDocs()` and the generated TanStack Start, SvelteKit, Astro, and Nuxt forwarding layer serve `/docs.md` and `/docs/<slug>.md`
 - in Next.js, `Accept: text/markdown` on `/docs/<slug>` returns the same markdown
 - in Next.js, `Signature-Agent` on `/docs/<slug>` returns the same markdown for agents that fetch canonical URLs
+- in Next.js, known AI user agents and conservative bot-like agent heuristics also receive markdown from normal docs URLs
+- coding agents can fetch site-level instructions with `GET /AGENTS.md`, fall back to
+  `GET /.well-known/AGENTS.md`, or use `GET /api/docs?format=agents`
 - agents can fetch the site skill with `GET /skill.md`, fall back to
   `GET /.well-known/skill.md`, or use `GET /api/docs?format=skill`
 - agents can discover the configured contract with `GET /.well-known/agent.json`, fall back to
@@ -25,9 +28,9 @@ The same page model also powers the built-in machine-readable routes:
 
 <Callout type="info" title="Same URL, different representation">
   `/docs/installation` stays the human HTML page by default. In Next.js, send
-  `Accept: text/markdown` or `Signature-Agent` to that same URL when an agent or script wants the
-  machine-readable version without appending `.md`. In the other adapters, use
-  `/docs/installation.md` or the `format=markdown` API route.
+  `Accept: text/markdown`, send `Signature-Agent`, or identify with a known AI user agent on that
+  same URL when an agent or script wants the machine-readable version without appending `.md`. In the
+  other adapters, use `/docs/installation.md` or the `format=markdown` API route.
 
   These reads go through the existing shared `/api/docs` handler. You do not need another
   markdown-specific API wrapper, and adding one usually makes discovery, caching, and 404 recovery
@@ -37,8 +40,15 @@ The same page model also powers the built-in machine-readable routes:
   markdown representations for the same URL. A browser can keep receiving cached HTML while an
   agent receives cached markdown for `/docs/installation`.
 
-  Missing markdown pages return a markdown 404 with recovery links to the agent discovery spec,
-  search endpoint, and sitemap routes.
+  Successful markdown responses include a canonical `Link` response header pointing to the normal
+  docs page, so agents can read `/docs/installation.md` while still citing `/docs/installation`.
+  The body starts with YAML frontmatter for `title`, `description`, `canonical_url`, `markdown_url`,
+  and `last_updated` when known, then ends with a `## Sitemap` footer that links back to the
+  configured markdown sitemap.
+
+  Missing markdown pages return actionable markdown with HTTP `200`, closest-match suggestions,
+  recovery instructions, links to the agent discovery spec, search endpoint, and sitemap routes.
+  Very high-confidence typo matches redirect to the corrected `.md` page.
 </Callout>
 
 Use `Agent` when the human page is already mostly correct and just needs a little extra implementation
@@ -75,6 +85,7 @@ That gives you:
 - `/docs/installation.md` for machine-readable markdown that includes the `Agent` block
 - `/docs/installation` with `Accept: text/markdown` for the same machine-readable markdown
 - `/docs/installation` with `Signature-Agent` for agents that read the canonical URL
+- `/docs/installation` with `User-Agent: ClaudeBot/1.0` for AI user-agent auto-detection
 - MCP `read_page("/docs/installation")` with the same page-level machine context
 
 ## Bootstrap Agents With The Spec
@@ -94,7 +105,7 @@ You are reading this docs site as an implementation agent.
 Before implementing from these docs, fetch `/.well-known/agent.json` from the same origin. If that
 is unavailable, fall back to `/.well-known/agent`. Use that JSON as the source of truth for the docs
 entry path, markdown route pattern, search endpoint, MCP endpoints, `llms.txt` routes, skills install
-command, `sitemap.xml` / `sitemap.md` routes, `robots.txt` route, `skill.md` route, locale
+command, `sitemap.xml` / `sitemap.md` / `/docs/sitemap.md` routes, `robots.txt` route, `AGENTS.md` route, `skill.md` route, locale
 handling, and feedback endpoints.
 
 Recommended bootstrap flow:
@@ -106,7 +117,7 @@ Recommended bootstrap flow:
 5. Use `spec.sitemap.markdown.route` for the semantic docs map and `spec.sitemap.xml.route` for canonical freshness when sitemap is enabled.
 6. Fetch `spec.robots.route` when you need to confirm crawler and AI-agent access policy.
 7. Use `spec.mcp.wellKnownEndpoint` or `spec.mcp.publicEndpoint` when available, otherwise `spec.mcp.endpoint`, when MCP is enabled and your environment supports MCP.
-8. If feedback is enabled, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
+8. If `spec.feedback.enabled` is true, fetch `spec.feedback.schema` before submitting to `spec.feedback.submit`.
 
 Do not scrape the HTML page when markdown, search, sitemap, robots, MCP, or `llms.txt` routes are
 available in the spec.
@@ -115,7 +126,8 @@ available in the spec.
 
 This works well on `/docs` because many agents start there first. The instruction stays hidden from
 the human UI, but it appears when an agent reads `/docs.md`, requests `/docs` with
-`Accept: text/markdown` or `Signature-Agent`, or reads the page through MCP.
+`Accept: text/markdown`, sends `Signature-Agent`, identifies with a known AI user agent, or reads
+the page through MCP.
 
 ## Use `agent.md` For A Full Override
 
@@ -169,7 +181,7 @@ The visible UI page still renders `page.mdx`. Only the machine-readable surface 
 
 ## Audit The Agent Surface
 
-After you add `<Agent>` blocks, `agent.md`, `skill.md`, or discovery endpoints, use the
+After you add `<Agent>` blocks, `agent.md`, `AGENTS.md`, `skill.md`, or discovery endpoints, use the
 [Doctor section of the CLI docs](/docs/cli#doctor) to audit whether the machine-facing layer is
 actually wired and visible the way you expect.
 
@@ -182,8 +194,8 @@ coverage instead of only looking correct in the UI.
 Page primitives are also a good place to tell agents how to report whether the docs were enough to
 complete a task.
 
-If `feedback.agent` is enabled in `docs.config`, agents can read the schema first and then post
-structured feedback back into the shared docs API:
+Agent feedback is enabled by default unless the site opts out. Agents can read the schema first and
+then post structured feedback back into the shared docs API:
 
 - schema: `/api/docs/agent/feedback/schema`
 - submit: `/api/docs/agent/feedback`
@@ -230,11 +242,12 @@ Agents should fetch it before choosing a transport. It tells them:
 - which agent discovery URL is the default and which public route to use as fallback
 - where to search the docs with a query
 - which markdown URL pattern to use for page reads
-- whether the same docs URLs support `Accept: text/markdown` or `Signature-Agent`
+- whether the same docs URLs support `Accept: text/markdown`, `Signature-Agent`, or AI user-agent detection
+- whether HTML pages include Schema.org `TechArticle` JSON-LD structured data
 - where to fetch `llms.txt` and `llms-full.txt` content, including the default public URLs and the
   public `/.well-known` aliases when available
-- where to fetch `sitemap.xml`, `sitemap.md`, and the `/.well-known/sitemap.md` alias when sitemap is enabled
-- where to fetch `robots.txt` and the `skill.md` document for this site
+- where to fetch `sitemap.xml`, `sitemap.md`, `/docs/sitemap.md`, and the `/.well-known/sitemap.md` alias when sitemap is enabled
+- where to fetch `robots.txt`, `AGENTS.md`, and the `skill.md` document for this site
 - how to install the published Skills pack and which skill is recommended first
 - whether MCP is enabled, which public/well-known endpoint to call, and which tools are available
 - whether agent feedback is enabled, plus the schema and submit endpoints to use
@@ -251,6 +264,13 @@ file is missing, the framework generates a short fallback from config that point
 markdown, search, MCP, `llms.txt`, sitemap routes, `robots.txt`, feedback, and the reusable Skills
 CLI install command.
 
+`AGENTS.md` is available at `GET /AGENTS.md`, with `GET /.well-known/AGENTS.md` as the well-known
+alias and `GET /api/docs?format=agents` as the shared API format. It is generated by default as a
+coding-agent operating guide that points to markdown routes, `llms.txt`, sitemap routes,
+`robots.txt`, OpenAPI, MCP, feedback, and upgrade guidance. Put `AGENTS.md` at the project root when
+you want fully custom instructions; that root file overrides both dynamic endpoints. `AGENT.md` is
+also accepted as a compatibility alias.
+
 ## Choosing Between Them
 
 - Use `Agent` when the normal page should stay the source of truth and you only need extra machine context
@@ -262,9 +282,10 @@ CLI install command.
 `Agent` and `agent.md` are page-scoped primitives. They are the right fit when the machine context
 belongs to a single docs route.
 
-Use `/skill.md` when an agent needs a concise operating guide for this hosted docs site. Use an
-installable skill when the guidance should be reusable across many pages or workflows, such as
-setup, CLI usage, theme creation, page actions, or deeper configuration tasks.
+Use `/AGENTS.md` when a coding agent needs site-level operating instructions for this repo or docs
+deployment. Use `/skill.md` when an agent needs a concise installable-skill style guide for this
+hosted docs site. Use an installable skill when the guidance should be reusable across many pages or
+workflows, such as setup, CLI usage, theme creation, page actions, or deeper configuration tasks.
 
 In practice, the two features work well together:
 

@@ -13,7 +13,7 @@ experience for humans, IDEs, and agents without maintaining a pile of routing bo
 - Built-in search with simple, Typesense, Algolia, MCP, and custom provider options
 - Generated API reference from framework route handlers or a hosted OpenAPI JSON document
 - Next.js changelog pages from dated MDX entries
-- Machine-readable docs through `.md` routes, `llms.txt`, sitemaps, `robots.txt`, `skill.md`, agent discovery, and MCP
+- Machine-readable docs through `.md` routes, JSON-LD structured data, `llms.txt`, sitemaps, `robots.txt`, `skill.md`, agent discovery, and MCP
 - Page-level agent compaction with `docs agent compact` and `agent.compact` defaults
 - Agent and reader-facing docs scoring with `docs doctor --agent` and `docs doctor --site`
 
@@ -116,14 +116,16 @@ The framework exposes machine-readable docs in Next.js, with sitemap routes avai
 - `/docs/<slug>.md`
 - `/docs/<slug>` with `Accept: text/markdown`
 - `/docs/<slug>` with `Signature-Agent`
+- Schema.org JSON-LD on each docs page
 - generated `robots.txt` via `docs robots generate`
 
 The canonical API routes remain available under `/api/docs`, including `/api/docs?format=skill`,
 `/api/docs/mcp`, and `/api/docs/agent/spec`.
 Canonical Next.js markdown reads with `Accept: text/markdown` or `Signature-Agent` are handled by
 that same shared `/api/docs` route, so apps do not need a second markdown-only API wrapper.
-The agent discovery JSON also includes `robots.enabled`, `robots.route`, and
-`robots.defaultRoute` so agents can find the static crawl policy without guessing.
+The agent discovery JSON also includes structured-data capability metadata plus `robots.enabled`,
+`robots.route`, and `robots.defaultRoute` so agents can find page metadata and the static crawl
+policy without guessing.
 
 For a custom site-specific skill, place `skill.md` at the project root beside `docs.config.ts`.
 When it is missing, the framework serves a generated fallback based on the docs config.

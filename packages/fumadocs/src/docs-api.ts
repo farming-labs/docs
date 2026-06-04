@@ -4,6 +4,7 @@
  * A single route handler that serves **both** search and AI chat:
  *
  * - `GET  /api/docs?query=…` → full-text search over indexed MDX pages
+ * - `GET  /api/docs?format=agents` → AGENTS.md for coding-agent instructions
  * - `GET  /api/docs?format=skill` → skill.md for agent discovery
  * - `POST /api/docs` → RAG-powered "Ask AI" (searches relevant docs,
  *   then streams an LLM response using the docs as context)
@@ -25,19 +26,29 @@ import matter from "gray-matter";
 import { getNextAppDir } from "./get-app-dir.js";
 import {
   normalizeDocsRelated,
-  renderDocsRelatedMarkdownLines,
   resolveChangelogConfig,
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
+  createDocsRobotsResponse,
+  detectDocsMarkdownAgentRequest,
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
   getDocsMarkdownVaryHeader,
   hasDocsMarkdownSignatureAgent,
+  getDocsLlmsTxtMaxCharsIssue,
   renderDocsMarkdownNotFound,
+  renderDocsMarkdownDocument,
+  resolveDocsMetadataBaseUrl,
+  resolveDocsMarkdownRecovery,
+  renderDocsLlmsTxt,
   resolveDocsI18n,
+  resolveDocsLlmsTxtRequest,
+  resolveDocsLlmsTxtSections,
   resolveDocsLocale,
   resolvePageSidebarFolderIndexBehavior,
+  selectDocsLlmsTxtContent,
   createDocsSitemapResponse,
+  DEFAULT_SITEMAP_MD_DOCS_ROUTE,
   resolveDocsSitemapConfig,
 } from "@farming-labs/docs";
 import type {
@@ -46,14 +57,18 @@ import type {
   DocsAnalyticsConfig,
   DocsAgentFeedbackContext,
   DocsAgentFeedbackData,
+  DocsConfig,
   DocsI18nConfig,
+  LlmsTxtConfig,
   DocsObservabilityConfig,
   FeedbackConfig,
 } from "@farming-labs/docs";
 import {
+  buildApiReferenceOpenApiDocumentAsync,
   createDocsMcpHttpHandler,
   createFilesystemDocsMcpSource,
   readDocsSitemapManifest,
+  resolveApiReferenceConfig,
   resolveDocsMcpConfig,
   type DocsMcpPage,
 } from "@farming-labs/docs/server";
@@ -114,6 +129,8 @@ interface DocsAPIOptions {
   rootDir?: string;
   /** Docs entry folder (default: read from docs.config) */
   entry?: string;
+  /** Public docs route prefix. Defaults to the docs entry path. */
+  docsPath?: string;
   /** Override the docs content directory when it does not live in app/<entry>. */
   contentDir?: string;
   /** Changelog configuration. */
@@ -134,10 +151,16 @@ interface DocsAPIOptions {
   feedback?: boolean | FeedbackConfig;
   /** MCP configuration used for the agent discovery spec. */
   mcp?: boolean | DocsMcpConfig;
-  /** Sitemap configuration used for sitemap.xml and sitemap.md. */
+  /** llms.txt configuration. Enabled by default; set false to opt out. */
+  llmsTxt?: boolean | LlmsTxtOptions;
+  /** Sitemap configuration used for sitemap.xml, sitemap.md, and docs/sitemap.md. */
   sitemap?: boolean | DocsSitemapConfig;
   /** Robots.txt generation policy used for the agent discovery spec. */
   robots?: boolean | DocsRobotsConfig;
+  /** API reference / OpenAPI schema configuration used for agent discovery. */
+  apiReference?: DocsConfig["apiReference"];
+  /** Metadata used in generated OpenAPI documents. */
+  metadata?: DocsConfig["metadata"];
 }
 
 interface DocsMCPAPIOptions {
@@ -168,6 +191,10 @@ const DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms.txt";
 const DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE = "/.well-known/llms-full.txt";
 const DEFAULT_SKILL_MD_ROUTE = "/skill.md";
 const DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE = "/.well-known/skill.md";
+const DEFAULT_AGENTS_MD_ROUTE = "/AGENTS.md";
+const DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE = "/.well-known/AGENTS.md";
+const DEFAULT_AGENT_MD_ROUTE = "/AGENT.md";
+const DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE = "/.well-known/AGENT.md";
 const DEFAULT_ROBOTS_TXT_ROUTE = "/robots.txt";
 const DEFAULT_AGENT_FEEDBACK_ROUTE = "/api/docs/agent/feedback";
 const DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA: Record<string, unknown> = {
@@ -237,9 +264,11 @@ interface AgentSpecOptions {
   llms: LlmsTxtOptions & { enabled: boolean };
   sitemap?: boolean | DocsSitemapConfig;
   robots?: boolean | DocsRobotsConfig;
+  openapi: ReturnType<typeof resolveApiReferenceOpenApiDiscovery>;
 }
 
 interface SkillDocumentOptions extends AgentSpecOptions {}
+interface AgentsDocumentOptions extends Omit<AgentSpecOptions, "i18n"> {}
 
 function normalizeAgentFeedbackRoute(
   route?: string,
@@ -277,6 +306,13 @@ function resolveAgentFeedbackConfig(
   feedback?: boolean | FeedbackConfig,
 ): ResolvedAgentFeedbackConfig {
   const route = normalizeAgentFeedbackRoute();
+  const enabled = {
+    enabled: true,
+    route,
+    schemaRoute: `${route}/schema`,
+    payloadSchema: DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA,
+    schema: buildAgentFeedbackSchema(DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA),
+  } satisfies ResolvedAgentFeedbackConfig;
   const disabled = {
     enabled: false,
     route,
@@ -285,19 +321,15 @@ function resolveAgentFeedbackConfig(
     schema: buildAgentFeedbackSchema(DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA),
   } satisfies ResolvedAgentFeedbackConfig;
 
-  if (!feedback || typeof feedback !== "object") return disabled;
+  if (feedback === false) return disabled;
+  if (!feedback || feedback === true || typeof feedback !== "object") return enabled;
 
   const agent = feedback.agent;
-  if (!agent) return disabled;
+  if (agent === false) return disabled;
+  if (!agent) return enabled;
 
   if (agent === true) {
-    return {
-      enabled: true,
-      route,
-      schemaRoute: `${route}/schema`,
-      payloadSchema: DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA,
-      schema: buildAgentFeedbackSchema(DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA),
-    };
+    return enabled;
   }
 
   const resolvedRoute = normalizeAgentFeedbackRoute(agent.route, route);
@@ -358,6 +390,20 @@ function resolveSkillRequest(url: URL): boolean {
   return url.searchParams.get("format")?.trim() === "skill";
 }
 
+function resolveAgentsRequest(url: URL): boolean {
+  const pathname = normalizeUrlPath(url.pathname);
+  if (
+    pathname === DEFAULT_AGENTS_MD_ROUTE ||
+    pathname === DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE ||
+    pathname === DEFAULT_AGENT_MD_ROUTE ||
+    pathname === DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE
+  ) {
+    return true;
+  }
+
+  return url.searchParams.get("format")?.trim() === "agents";
+}
+
 function isSearchEnabled(search?: boolean | DocsSearchConfig): boolean {
   if (search === false) return false;
   if (search && typeof search === "object" && search.enabled === false) return false;
@@ -370,6 +416,29 @@ function isRobotsDiscoveryEnabled(robots?: boolean | DocsRobotsConfig): boolean 
   return true;
 }
 
+function isApiReferenceOpenApiRequest(url: URL): boolean {
+  return url.searchParams.get("format")?.trim() === "openapi";
+}
+
+function resolveApiReferenceOpenApiDiscovery(value: DocsConfig["apiReference"]): {
+  enabled: boolean;
+  url?: string;
+  source?: "generated" | "configured";
+  specUrl?: string;
+  apiReferencePath?: string;
+} {
+  const apiReference = resolveApiReferenceConfig(value);
+  if (!apiReference.enabled) return { enabled: false };
+
+  return {
+    enabled: true,
+    url: `${DEFAULT_DOCS_API_ROUTE}?format=openapi`,
+    source: apiReference.specUrl ? "configured" : "generated",
+    specUrl: apiReference.specUrl,
+    apiReferencePath: `/${apiReference.path}`,
+  };
+}
+
 function buildAgentSpec({
   origin,
   entry,
@@ -380,12 +449,14 @@ function buildAgentSpec({
   llms,
   sitemap,
   robots,
+  openapi,
 }: AgentSpecOptions) {
   const normalizedEntry = normalizePathSegment(entry) || "docs";
   const localesEnabled = i18n !== null;
   const searchEnabled = isSearchEnabled(search);
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms.baseUrl });
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
+  const llmsSections = resolveDocsLlmsTxtSections(llms);
 
   return {
     version: "1",
@@ -408,12 +479,16 @@ function buildAgentSpec({
       markdownRoutes: true,
       agentMdOverrides: true,
       agentBlocks: true,
+      agents: true,
       llms: llms.enabled,
       skills: true,
       mcp: mcp.enabled,
       search: searchEnabled,
       sitemap: sitemapConfig.enabled,
       robots: robotsEnabled,
+      structuredData: true,
+      apiReference: openapi.enabled,
+      openapi: openapi.enabled,
       agentFeedback: feedback.enabled,
       locales: localesEnabled,
     },
@@ -425,6 +500,8 @@ function buildAgentSpec({
       agentSpecWellKnown: DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
       agentSpecWellKnownJson: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
       agentSpecQuery: `${DEFAULT_DOCS_API_ROUTE}?agent=spec`,
+      agents: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+      openapi: `${DEFAULT_DOCS_API_ROUTE}?format=openapi`,
     },
     // Always-on agent content surfaces. If these ever become configurable,
     // this spec must be wired to the same docs.config toggles instead of
@@ -447,6 +524,17 @@ function buildAgentSpec({
       publicFull: DEFAULT_LLMS_FULL_TXT_ROUTE,
       wellKnownTxt: DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE,
       wellKnownFull: DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE,
+      ...(llmsSections.length > 0
+        ? {
+            sections: llmsSections.map((section) => ({
+              title: section.title,
+              description: section.description,
+              match: section.match,
+              txt: section.route,
+              full: section.fullRoute,
+            })),
+          }
+        : {}),
     },
     sitemap: {
       enabled: sitemapConfig.enabled,
@@ -458,8 +546,10 @@ function buildAgentSpec({
       markdown: {
         enabled: sitemapConfig.markdown.enabled,
         route: sitemapConfig.markdown.route,
+        docsRoute: sitemapConfig.markdown.docsRoute,
         wellKnownRoute: sitemapConfig.markdown.wellKnownRoute,
         api: `${DEFAULT_DOCS_API_ROUTE}?format=sitemap-md`,
+        defaultDocsRoute: DEFAULT_SITEMAP_MD_DOCS_ROUTE,
       },
     },
     robots: {
@@ -467,12 +557,37 @@ function buildAgentSpec({
       route: DEFAULT_ROBOTS_TXT_ROUTE,
       defaultRoute: DEFAULT_ROBOTS_TXT_ROUTE,
     },
+    structuredData: {
+      enabled: true,
+      format: "application/ld+json",
+      schema: "https://schema.org/TechArticle",
+      fields: ["headline", "description", "url", "dateModified", "breadcrumb"],
+      canonicalUrlField: "url",
+      breadcrumbType: "BreadcrumbList",
+    },
+    openapi: {
+      enabled: openapi.enabled,
+      url: openapi.url ?? null,
+      source: openapi.source ?? null,
+      specUrl: openapi.specUrl ?? null,
+      apiReferencePath: openapi.apiReferencePath ?? null,
+      format: "OpenAPI 3.1",
+    },
     search: {
       enabled: searchEnabled,
       endpoint: `${DEFAULT_DOCS_API_ROUTE}?query={query}`,
       method: "GET",
       queryParam: "query",
       localeParam: "lang",
+    },
+    agents: {
+      enabled: true,
+      file: "AGENTS.md",
+      route: DEFAULT_AGENTS_MD_ROUTE,
+      wellKnown: DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
+      api: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+      generatedFallback: true,
+      aliases: [DEFAULT_AGENT_MD_ROUTE, DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE],
     },
     // Skills metadata is bundled with this package today; there is no runtime
     // config switch for disabling it from the discovery spec.
@@ -515,6 +630,7 @@ function buildAgentSpec({
     instructions: {
       preferMarkdownRoutes: true,
       useMcpWhenAvailable: true,
+      useOpenApiWhenAvailable: true,
       readFeedbackSchemaBeforeSubmitting: true,
       doNotAssumeFeedbackPayloadShape: true,
     },
@@ -791,10 +907,13 @@ function readMcpConfig(root: string): boolean | DocsMcpConfig | undefined {
         name: readStringFromBlock(block, "name"),
         version: readStringFromBlock(block, "version"),
         tools: {
+          listDocs: readBooleanFromBlock(block, "listDocs"),
           listPages: readBooleanFromBlock(block, "listPages"),
           readPage: readBooleanFromBlock(block, "readPage"),
           searchDocs: readBooleanFromBlock(block, "searchDocs"),
           getNavigation: readBooleanFromBlock(block, "getNavigation"),
+          getCodeExamples: readBooleanFromBlock(block, "getCodeExamples"),
+          getConfigSchema: readBooleanFromBlock(block, "getConfigSchema"),
         },
       };
     } catch {
@@ -1191,6 +1310,7 @@ function scanDocsDir(
   entry: string,
   locale?: string,
   excludedDirs: string[] = [],
+  publicPath = `/${normalizePathSegment(entry) || "docs"}`,
 ): DocsSearchSourcePage[] {
   const indexes: Array<DocsSearchSourcePage & { relatedInput?: unknown }> = [];
 
@@ -1227,7 +1347,7 @@ function scanDocsDir(
           const rawContent = resolveAgentMdxContent(fileContent, "human");
           const agentRawContent = resolveAgentMdxContent(fileContent, "agent");
           const content = stripMdx(rawContent);
-          const baseUrl = slugParts.length === 0 ? `/${entry}` : `/${entry}/${slugParts.join("/")}`;
+          const baseUrl = publicDocsRoute(publicPath, slugParts);
           const url = withLangInUrl(baseUrl, locale);
 
           indexes.push({
@@ -1276,6 +1396,7 @@ function scanChangelogDir(
   entryPath: string,
   changelogPath: string,
   locale?: string,
+  publicPath = `/${normalizePathSegment(entryPath) || "docs"}`,
 ): DocsSearchSourcePage[] {
   if (!fs.existsSync(changelogDir)) return [];
 
@@ -1314,7 +1435,7 @@ function scanChangelogDir(
       const rawContent = resolveAgentMdxContent(fileContent, "human");
       const agentRawContent = resolveAgentMdxContent(fileContent, "agent");
       const content = stripMdx(rawContent);
-      const url = withLangInUrl(`/${entryPath}/${changelogPath}/${name}`, locale);
+      const url = withLangInUrl(publicDocsRoute(publicPath, [changelogPath, name]), locale);
       const tags = Array.isArray(data.tags)
         ? data.tags.filter((value): value is string => typeof value === "string")
         : undefined;
@@ -1373,6 +1494,66 @@ function normalizeRequestedMarkdownPath(entry: string, requestedPath: string): s
   return slug ? normalizeUrlPath(`${normalizedEntry}/${slug}`) : normalizedEntry;
 }
 
+function normalizePublicRequestedMarkdownPath(ctx: DocsContext, requestedPath: string): string {
+  const trimmed = requestedPath.trim().replace(/\.md$/i, "");
+  if (!trimmed) return ctx.publicPath || "/";
+
+  const normalized = normalizeUrlPath(trimmed.startsWith("/") ? trimmed : `/${trimmed}`);
+  const normalizedEntry = `/${normalizePathSegment(ctx.entryPath)}`;
+  if (normalized === normalizedEntry) return ctx.publicPath || "/";
+
+  if (normalized.startsWith(`${normalizedEntry}/`)) {
+    const suffix = normalized.slice(normalizedEntry.length + 1);
+    return publicDocsRoute(ctx.publicPath, suffix.split("/").filter(Boolean));
+  }
+
+  if (ctx.publicPath) {
+    if (normalized === ctx.publicPath || normalized.startsWith(`${ctx.publicPath}/`)) {
+      return normalized;
+    }
+  } else if (normalized === "/") {
+    return "/";
+  }
+
+  const slug = normalizePathSegment(trimmed);
+  return publicDocsRoute(ctx.publicPath, slug ? slug.split("/").filter(Boolean) : []);
+}
+
+function normalizePublicDocsSlug(ctx: DocsContext, value: string): string {
+  const pathname = normalizeUrlPath(value);
+  const normalizedEntry = `/${normalizePathSegment(ctx.entryPath)}`;
+
+  if (ctx.publicPath) {
+    if (pathname === ctx.publicPath) return "";
+    if (pathname.startsWith(`${ctx.publicPath}/`)) {
+      return normalizePathSegment(pathname.slice(ctx.publicPath.length + 1));
+    }
+  } else if (pathname === "/") {
+    return "";
+  }
+
+  if (pathname === normalizedEntry) return "";
+  if (pathname.startsWith(`${normalizedEntry}/`)) {
+    return normalizePathSegment(pathname.slice(normalizedEntry.length + 1));
+  }
+
+  return normalizePathSegment(pathname);
+}
+
+function getPublicMarkdownCanonicalLinkHeader({
+  origin,
+  ctx,
+  requestedPath,
+}: {
+  origin: string;
+  ctx: DocsContext;
+  requestedPath: string;
+}): string {
+  const canonicalUrl = new URL(normalizePublicRequestedMarkdownPath(ctx, requestedPath), origin);
+  if (ctx.locale) canonicalUrl.searchParams.set("lang", ctx.locale);
+  return `<${canonicalUrl.toString()}>; rel="canonical"`;
+}
+
 function findDocsMcpPage(
   entry: string,
   pages: DocsMcpPage[],
@@ -1413,9 +1594,33 @@ function acceptsMarkdown(request: Request): boolean {
     });
 }
 
+function resolveMarkdownHeaderDelivery(request: Request): MarkdownRequest["delivery"] | null {
+  if (hasDocsMarkdownSignatureAgent(request)) return "signature_agent";
+  if (acceptsMarkdown(request)) return "accept_header";
+
+  const agentDetection = detectDocsMarkdownAgentRequest(request);
+  if (!agentDetection.detected) return null;
+
+  return agentDetection.method === "heuristic" ? "heuristic" : "user_agent";
+}
+
 type MarkdownRequest = {
   requestedPath: string;
-  delivery: "api_format" | "md_route" | "accept_header" | "signature_agent";
+  delivery:
+    | "api_format"
+    | "md_route"
+    | "accept_header"
+    | "signature_agent"
+    | "user_agent"
+    | "heuristic";
+};
+
+type DocsContext = {
+  entryPath: string;
+  publicPath: string;
+  docsDirs: string[];
+  changelogDirs: string[];
+  locale?: string;
 };
 
 function resolveMarkdownRequest(entry: string, url: URL, request: Request): MarkdownRequest | null {
@@ -1442,9 +1647,9 @@ function resolveMarkdownRequest(entry: string, url: URL, request: Request): Mark
     };
   }
 
-  const hasSignatureAgent = hasDocsMarkdownSignatureAgent(request);
-  if (acceptsMarkdown(request) || hasSignatureAgent) {
-    const delivery = hasSignatureAgent ? "signature_agent" : "accept_header";
+  const headerDelivery = resolveMarkdownHeaderDelivery(request);
+  if (headerDelivery) {
+    const delivery = headerDelivery;
 
     if (pathname === normalizedEntry) {
       return { requestedPath: "", delivery };
@@ -1461,35 +1666,142 @@ function resolveMarkdownRequest(entry: string, url: URL, request: Request): Mark
   return null;
 }
 
-function resolveLlmsTxtFormat(url: URL): "llms" | "llms-full" | null {
-  const pathname = normalizeUrlPath(url.pathname);
+function normalizeDocsPublicPath(value: string | undefined, entry: string): string {
+  if (typeof value !== "string") return `/${normalizePathSegment(entry)}`;
 
-  if (pathname === DEFAULT_LLMS_TXT_ROUTE || pathname === DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE) {
-    return "llms";
-  }
+  const cleaned = value
+    .trim()
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\/+/g, "/");
+  if (cleaned === "") return "";
 
-  if (
-    pathname === DEFAULT_LLMS_FULL_TXT_ROUTE ||
-    pathname === DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE
-  ) {
-    return "llms-full";
-  }
-
-  const format = url.searchParams.get("format");
-  return format === "llms" || format === "llms-full" ? format : null;
+  return `/${cleaned}`;
 }
 
-function renderMarkdownDocument(page: DocsMcpPage | DocsSearchSourcePage): string {
-  if ("agentRawContent" in page && page.agentRawContent !== undefined) {
-    return page.agentRawContent;
+function publicDocsRoute(publicPath: string, slugParts: string[] = []): string {
+  const slug = slugParts.join("/");
+  if (!slug) return publicPath || "/";
+  return publicPath ? `${publicPath}/${slug}` : `/${slug}`;
+}
+
+function toPublicDocsUrl(value: string, entry: string, publicPath: string): string {
+  const normalizedEntry = `/${normalizePathSegment(entry)}`;
+  const hashIndex = value.indexOf("#");
+  const hash = hashIndex >= 0 ? value.slice(hashIndex) : "";
+  const withoutHash = hashIndex >= 0 ? value.slice(0, hashIndex) : value;
+  const queryIndex = withoutHash.indexOf("?");
+  const query = queryIndex >= 0 ? withoutHash.slice(queryIndex) : "";
+  const pathname = normalizeUrlPath(
+    queryIndex >= 0 ? withoutHash.slice(0, queryIndex) : withoutHash,
+  );
+
+  if (publicPath === normalizedEntry) return value;
+  if (pathname === normalizedEntry) return `${publicPath || "/"}${query}${hash}`;
+  if (pathname.startsWith(`${normalizedEntry}/`)) {
+    const suffix = pathname.slice(normalizedEntry.length + 1);
+    const publicPathname = publicPath ? `${publicPath}/${suffix}` : `/${suffix}`;
+    return `${publicPathname}${query}${hash}`;
   }
 
-  const relatedLines = renderDocsRelatedMarkdownLines(page.related);
-  const lines = [`# ${page.title}`, `URL: ${page.url}`];
-  if (page.description) lines.push(`Description: ${page.description}`);
-  lines.push(...relatedLines);
-  lines.push("", page.agentFallbackRawContent ?? page.rawContent ?? page.content);
-  return lines.join("\n");
+  return value;
+}
+
+function withPublicDocsUrl<T extends { url: string }>(page: T, ctx: DocsContext): T {
+  const url = toPublicDocsUrl(page.url, ctx.entryPath, ctx.publicPath);
+  return url === page.url ? page : { ...page, url };
+}
+
+function readDocsPath(root: string): string | undefined {
+  for (const ext of FILE_EXTS) {
+    const configPath = path.join(root, `docs.config.${ext}`);
+    if (!fs.existsSync(configPath)) continue;
+
+    try {
+      const content = fs.readFileSync(configPath, "utf-8");
+      const match = content.match(/docsPath\s*:\s*["']([^"']*)["']/);
+      if (match) return match[1];
+    } catch {
+      // fall through
+    }
+  }
+
+  return undefined;
+}
+
+function resolvePublicMarkdownRequest(
+  entry: string,
+  docsPath: string,
+  url: URL,
+  request: Request,
+): MarkdownRequest | null {
+  if (docsPath === `/${normalizePathSegment(entry)}`) return null;
+
+  const pathname = normalizeUrlPath(url.pathname);
+
+  if (docsPath === "") {
+    if (pathname === `/${normalizePathSegment(entry)}.md`) {
+      return { requestedPath: "", delivery: "md_route" };
+    }
+
+    if (pathname !== "/docs.md" && pathname.endsWith(".md")) {
+      return {
+        requestedPath: pathname.slice(1, -3),
+        delivery: "md_route",
+      };
+    }
+
+    const headerDelivery = resolveMarkdownHeaderDelivery(request);
+    if (headerDelivery) {
+      const delivery = headerDelivery;
+      return {
+        requestedPath: pathname === "/" ? "" : pathname.slice(1),
+        delivery,
+      };
+    }
+
+    return null;
+  }
+
+  if (pathname === `${docsPath}.md`) {
+    return { requestedPath: "", delivery: "md_route" };
+  }
+
+  const slugPrefix = `${docsPath}/`;
+  if (pathname.startsWith(slugPrefix) && pathname.endsWith(".md")) {
+    return {
+      requestedPath: pathname.slice(slugPrefix.length, -3),
+      delivery: "md_route",
+    };
+  }
+
+  const headerDelivery = resolveMarkdownHeaderDelivery(request);
+  if (headerDelivery) {
+    const delivery = headerDelivery;
+
+    if (pathname === docsPath) {
+      return { requestedPath: "", delivery };
+    }
+
+    if (pathname.startsWith(slugPrefix)) {
+      return {
+        requestedPath: pathname.slice(slugPrefix.length),
+        delivery,
+      };
+    }
+  }
+
+  return null;
+}
+
+function renderMarkdownDocument(
+  page: DocsMcpPage | DocsSearchSourcePage,
+  options: { llmsEnabled?: boolean; origin?: string; sitemap?: boolean | DocsSitemapConfig } = {},
+): string {
+  return renderDocsMarkdownDocument(page, {
+    llms: options.llmsEnabled !== false,
+    origin: options.origin,
+    sitemap: options.sitemap,
+  });
 }
 
 function renderSkillDocument({
@@ -1501,6 +1813,7 @@ function renderSkillDocument({
   llms,
   sitemap,
   robots,
+  openapi,
 }: SkillDocumentOptions): string {
   const normalizedEntry = normalizePathSegment(entry) || "docs";
   const siteTitle = compactSkillText(llms.siteTitle ?? "Documentation");
@@ -1508,6 +1821,7 @@ function renderSkillDocument({
   const searchEnabled = isSearchEnabled(search);
   const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms.baseUrl });
   const robotsEnabled = isRobotsDiscoveryEnabled(robots);
+  const llmsSections = resolveDocsLlmsTxtSections(llms);
   const description = truncateSkillDescription(
     `Use ${siteTitle} through markdown routes, llms.txt, robots.txt, agent discovery, search, and MCP when available.`,
   );
@@ -1544,11 +1858,20 @@ function renderSkillDocument({
     );
   }
 
+  if (openapi.enabled && openapi.url) {
+    lines.push(
+      `- Fetch ${openapi.url} for the machine-readable OpenAPI schema before scraping API reference pages.`,
+    );
+  }
+
   if (llms.enabled) {
     lines.push(
       `- Use ${DEFAULT_LLMS_TXT_ROUTE} for a compact docs index.`,
       `- Use ${DEFAULT_LLMS_FULL_TXT_ROUTE} for full markdown context.`,
     );
+    for (const section of llmsSections) {
+      lines.push(`- Use ${section.route} for the ${section.title} llms.txt section.`);
+    }
   }
 
   if (sitemapConfig.enabled) {
@@ -1579,6 +1902,9 @@ function renderSkillDocument({
   lines.push(
     "",
     "## Routes",
+    `- Agent instructions: ${DEFAULT_AGENTS_MD_ROUTE}`,
+    `- Agent instructions well-known alias: ${DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE}`,
+    `- Agent instructions API format: ${DEFAULT_DOCS_API_ROUTE}?format=agents`,
     `- Skill document: ${DEFAULT_SKILL_MD_ROUTE}`,
     `- Skill well-known alias: ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}`,
     `- Skill API format: ${DEFAULT_DOCS_API_ROUTE}?format=skill`,
@@ -1598,6 +1924,17 @@ function renderSkillDocument({
       `- llms-full.txt: ${DEFAULT_LLMS_FULL_TXT_ROUTE}`,
       `- llms well-known aliases: ${DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE}, ${DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE}`,
     );
+    for (const section of llmsSections) {
+      lines.push(`- ${section.title} llms.txt: ${section.route}`);
+      lines.push(`- ${section.title} llms-full.txt: ${section.fullRoute}`);
+    }
+  }
+
+  if (openapi.enabled && openapi.url) {
+    lines.push(`- OpenAPI schema: ${openapi.url}`);
+    if (openapi.apiReferencePath) {
+      lines.push(`- API reference: ${openapi.apiReferencePath}`);
+    }
   }
 
   if (sitemapConfig.enabled) {
@@ -1605,6 +1942,9 @@ function renderSkillDocument({
     if (sitemapConfig.markdown.enabled) {
       lines.push(
         `- Sitemap Markdown: ${sitemapConfig.markdown.route}`,
+        ...(sitemapConfig.markdown.docsRoute
+          ? [`- Sitemap docs alias: ${sitemapConfig.markdown.docsRoute}`]
+          : []),
         `- Sitemap well-known alias: ${sitemapConfig.markdown.wellKnownRoute}`,
       );
     }
@@ -1627,6 +1967,160 @@ function renderSkillDocument({
   return lines.join("\n");
 }
 
+function renderAgentsDocument({
+  origin,
+  entry,
+  search,
+  mcp,
+  feedback,
+  llms,
+  sitemap,
+  robots,
+  openapi,
+}: AgentsDocumentOptions): string {
+  const normalizedEntry = normalizePathSegment(entry) || "docs";
+  const siteTitle = compactSkillText(llms.siteTitle ?? "Documentation");
+  const siteDescription = llms.siteDescription ? compactSkillText(llms.siteDescription) : undefined;
+  const searchEnabled = isSearchEnabled(search);
+  const sitemapConfig = resolveDocsSitemapConfig(sitemap, { baseUrl: llms.baseUrl });
+  const robotsEnabled = isRobotsDiscoveryEnabled(robots);
+  const llmsSections = resolveDocsLlmsTxtSections(llms);
+  const lines = ["# Agent Instructions", "", `Site: ${siteTitle}`, `Base URL: ${origin}`];
+
+  if (siteDescription) {
+    lines.push(`Description: ${siteDescription}`);
+  }
+
+  lines.push(
+    "",
+    "## Start Here",
+    `- Read ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE} first; fall back to ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE} or ${DEFAULT_AGENT_SPEC_ROUTE}.`,
+    `- Read /${normalizedEntry}.md for the root docs page.`,
+    `- Read /${normalizedEntry}/{slug}.md for page-specific context.`,
+  );
+
+  if (llms.enabled) {
+    lines.push(
+      `- Use ${DEFAULT_LLMS_TXT_ROUTE} as the compact docs map.`,
+      `- Use ${DEFAULT_LLMS_FULL_TXT_ROUTE} when you need the full markdown bundle.`,
+    );
+    for (const section of llmsSections) {
+      lines.push(`- Use ${section.route} for the ${section.title} section map.`);
+    }
+  }
+
+  if (sitemapConfig.enabled) {
+    if (sitemapConfig.markdown.enabled) {
+      lines.push(`- Use ${sitemapConfig.markdown.route} for a semantic sitemap with sections.`);
+    }
+    if (sitemapConfig.xml.enabled) {
+      lines.push(`- Use ${sitemapConfig.xml.route} for canonical URLs and freshness metadata.`);
+    }
+  }
+
+  if (robotsEnabled) {
+    lines.push(`- Check ${DEFAULT_ROBOTS_TXT_ROUTE} before crawling broadly.`);
+  }
+
+  if (searchEnabled) {
+    lines.push(`- Search with ${DEFAULT_DOCS_API_ROUTE}?query={query} when the route is unknown.`);
+  }
+
+  if (openapi.enabled && openapi.url) {
+    lines.push(
+      `- Fetch ${openapi.url} before scraping API reference pages; prefer schemas over prose.`,
+    );
+  }
+
+  if (mcp.enabled) {
+    lines.push(
+      `- Use MCP at ${DEFAULT_MCP_PUBLIC_ROUTE} or ${DEFAULT_MCP_WELL_KNOWN_ROUTE} when your environment supports MCP tools.`,
+    );
+  }
+
+  if (feedback.enabled) {
+    lines.push(`- Read ${feedback.schemaRoute} before posting feedback to ${feedback.route}.`);
+  }
+
+  lines.push(
+    "",
+    "## Working Rules",
+    "- Prefer markdown routes, llms.txt, sitemap.md, OpenAPI schemas, and MCP tools over scraping rendered HTML.",
+    "- Treat generated context files as discovery aids, then fetch the smallest page or section that answers the task.",
+    "- Preserve canonical docs URLs when citing pages back to humans.",
+    "- If a route returns a markdown 404, use the sitemap and discovery spec before guessing a slug.",
+    "",
+    "## Public Routes",
+    `- Agent instructions: ${DEFAULT_AGENTS_MD_ROUTE}`,
+    `- Agent instructions well-known alias: ${DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE}`,
+    `- Agent instructions API format: ${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+    `- Agent instructions aliases: ${DEFAULT_AGENT_MD_ROUTE}, ${DEFAULT_AGENT_MD_WELL_KNOWN_ROUTE}`,
+    `- Site skill: ${DEFAULT_SKILL_MD_ROUTE}`,
+    `- Site skill well-known alias: ${DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE}`,
+    `- Site skill API format: ${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+    `- Markdown root: /${normalizedEntry}.md`,
+    `- Markdown pages: /${normalizedEntry}/{slug}.md`,
+    `- Agent discovery: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE}`,
+    `- Agent discovery fallback: ${DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE}`,
+  );
+
+  if (llms.enabled) {
+    lines.push(
+      `- llms.txt: ${DEFAULT_LLMS_TXT_ROUTE}`,
+      `- llms-full.txt: ${DEFAULT_LLMS_FULL_TXT_ROUTE}`,
+      `- llms well-known aliases: ${DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE}, ${DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE}`,
+    );
+    for (const section of llmsSections) {
+      lines.push(`- ${section.title} llms.txt: ${section.route}`);
+      lines.push(`- ${section.title} llms-full.txt: ${section.fullRoute}`);
+    }
+  }
+
+  if (robotsEnabled) {
+    lines.push(`- Robots policy: ${DEFAULT_ROBOTS_TXT_ROUTE}`);
+  }
+
+  if (sitemapConfig.enabled) {
+    if (sitemapConfig.xml.enabled) lines.push(`- Sitemap XML: ${sitemapConfig.xml.route}`);
+    if (sitemapConfig.markdown.enabled) {
+      lines.push(
+        `- Sitemap Markdown: ${sitemapConfig.markdown.route}`,
+        ...(sitemapConfig.markdown.docsRoute
+          ? [`- Sitemap docs alias: ${sitemapConfig.markdown.docsRoute}`]
+          : []),
+        `- Sitemap well-known alias: ${sitemapConfig.markdown.wellKnownRoute}`,
+      );
+    }
+  }
+
+  if (openapi.enabled && openapi.url) {
+    lines.push(`- OpenAPI schema: ${openapi.url}`);
+    if (openapi.apiReferencePath) lines.push(`- API reference: ${openapi.apiReferencePath}`);
+  }
+
+  if (mcp.enabled) {
+    lines.push(`- MCP: ${DEFAULT_MCP_PUBLIC_ROUTE}, ${DEFAULT_MCP_WELL_KNOWN_ROUTE}`);
+  }
+
+  lines.push(
+    "",
+    "## Framework Maintenance",
+    "- For @farming-labs/docs projects, keep the framework package current before debugging missing agent surfaces.",
+    "",
+    "```sh",
+    "npx @farming-labs/docs@latest upgrade --latest",
+    "```",
+    "",
+    "- For framework setup, configuration, CLI, Ask AI, page actions, or theme work, install the reusable Skills pack:",
+    "",
+    "```sh",
+    "npx skills add farming-labs/docs",
+    "```",
+  );
+
+  return lines.join("\n");
+}
+
 function readRootSkillDocument(rootDir: string): string | null {
   const candidate = path.join(rootDir, "skill.md");
   try {
@@ -1635,6 +2129,21 @@ function readRootSkillDocument(rootDir: string): string | null {
     }
   } catch {
     return null;
+  }
+
+  return null;
+}
+
+function readRootAgentsDocument(rootDir: string): string | null {
+  for (const fileName of ["AGENTS.md", "AGENT.md"]) {
+    const candidate = path.join(rootDir, fileName);
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        return fs.readFileSync(candidate, "utf-8");
+      }
+    } catch {
+      continue;
+    }
   }
 
   return null;
@@ -1732,6 +2241,12 @@ function safeUrlOrigin(value: string): string {
   }
 }
 
+function getRequestAnalyticsProperties(request: Request): Record<string, unknown> {
+  const userAgent = request.headers.get("user-agent")?.trim();
+
+  return userAgent ? { userAgent } : {};
+}
+
 async function handleAskAI(
   request: Request,
   indexes: DocsSearchSourcePage[],
@@ -1742,6 +2257,7 @@ async function handleAskAI(
   analyticsContext: { locale?: string } = {},
 ): Promise<Response> {
   const url = new URL(request.url);
+  const requestAnalyticsProperties = getRequestAnalyticsProperties(request);
   const requestStartedAt = Date.now();
   const trace = createDocsAgentTraceContext("ask-ai");
   const runSpanId = createDocsAgentTraceId("span");
@@ -1821,6 +2337,7 @@ async function handleAskAI(
       path: url.pathname,
       locale: analyticsContext.locale,
       properties: {
+        ...requestAnalyticsProperties,
         reason: "invalid_json",
         durationMs: Math.max(0, Date.now() - requestStartedAt),
       },
@@ -1841,6 +2358,7 @@ async function handleAskAI(
       path: url.pathname,
       locale: analyticsContext.locale,
       properties: {
+        ...requestAnalyticsProperties,
         reason: "missing_messages",
         durationMs: Math.max(0, Date.now() - requestStartedAt),
       },
@@ -1861,6 +2379,7 @@ async function handleAskAI(
       path: url.pathname,
       locale: analyticsContext.locale,
       properties: {
+        ...requestAnalyticsProperties,
         reason: "missing_user_message",
         messageCount: messages.length,
         durationMs: Math.max(0, Date.now() - requestStartedAt),
@@ -1995,6 +2514,7 @@ async function handleAskAI(
       locale: analyticsContext.locale,
       input: { question: query },
       properties: {
+        ...requestAnalyticsProperties,
         reason: "missing_api_key",
         messageCount: messages.length,
         questionLength: query.length,
@@ -2026,6 +2546,7 @@ async function handleAskAI(
     locale: analyticsContext.locale,
     input: { question: query },
     properties: {
+      ...requestAnalyticsProperties,
       messageCount: messages.length,
       questionLength: query.length,
       retrievedCount: scored.length,
@@ -2095,6 +2616,7 @@ async function handleAskAI(
       locale: analyticsContext.locale,
       input: { question: query },
       properties: {
+        ...requestAnalyticsProperties,
         reason: "llm_fetch_error",
         messageCount: messages.length,
         questionLength: query.length,
@@ -2141,6 +2663,7 @@ async function handleAskAI(
       locale: analyticsContext.locale,
       input: { question: query },
       properties: {
+        ...requestAnalyticsProperties,
         reason: "llm_error",
         status: llmResponse.status,
         messageCount: messages.length,
@@ -2172,6 +2695,7 @@ async function handleAskAI(
     locale: analyticsContext.locale,
     input: { question: query },
     properties: {
+      ...requestAnalyticsProperties,
       messageCount: messages.length,
       questionLength: query.length,
       retrievedCount: scored.length,
@@ -2261,11 +2785,7 @@ async function handleAskAI(
 
 // ─── llms.txt generation ────────────────────────────────────────────
 
-interface LlmsTxtOptions {
-  siteTitle?: string;
-  siteDescription?: string;
-  baseUrl?: string;
-}
+type LlmsTxtOptions = LlmsTxtConfig;
 
 function readLlmsTxtConfig(root: string): LlmsTxtOptions & { enabled: boolean } {
   for (const ext of FILE_EXTS) {
@@ -2273,11 +2793,25 @@ function readLlmsTxtConfig(root: string): LlmsTxtOptions & { enabled: boolean } 
     if (fs.existsSync(configPath)) {
       try {
         const content = fs.readFileSync(configPath, "utf-8");
+        const navTitleMatch = content.match(/nav\s*:\s*\{[^}]*title\s*:\s*["']([^"']+)["']/s);
 
-        if (!content.includes("llmsTxt")) return { enabled: false };
+        if (!content.includes("llmsTxt")) {
+          return {
+            enabled: true,
+            siteTitle: navTitleMatch?.[1],
+          };
+        }
 
         const isBoolTrue = /llmsTxt\s*:\s*true/.test(content);
-        if (isBoolTrue) return { enabled: true };
+        if (isBoolTrue) {
+          return {
+            enabled: true,
+            siteTitle: navTitleMatch?.[1],
+          };
+        }
+
+        const isBoolFalse = /llmsTxt\s*:\s*false/.test(content);
+        if (isBoolFalse) return { enabled: false };
 
         const enabledMatch = content.match(/llmsTxt\s*:\s*\{[^}]*enabled\s*:\s*(true|false)/s);
         if (enabledMatch && enabledMatch[1] === "false") return { enabled: false };
@@ -2290,8 +2824,6 @@ function readLlmsTxtConfig(root: string): LlmsTxtOptions & { enabled: boolean } 
           /llmsTxt\s*:\s*\{[^}]*siteDescription\s*:\s*["']([^"']+)["']/s,
         );
 
-        const navTitleMatch = content.match(/nav\s*:\s*\{[^}]*title\s*:\s*["']([^"']+)["']/s);
-
         return {
           enabled: true,
           baseUrl: baseUrlMatch?.[1],
@@ -2303,7 +2835,23 @@ function readLlmsTxtConfig(root: string): LlmsTxtOptions & { enabled: boolean } 
       }
     }
   }
-  return { enabled: false };
+  return { enabled: true };
+}
+
+function resolveLlmsTxtConfig(
+  input: boolean | LlmsTxtOptions | undefined,
+  fallback: LlmsTxtOptions & { enabled: boolean },
+): LlmsTxtOptions & { enabled: boolean } {
+  if (input === undefined) return fallback;
+  if (typeof input === "boolean") {
+    return input ? { ...fallback, enabled: true } : { enabled: false };
+  }
+
+  return {
+    ...fallback,
+    ...input,
+    enabled: input.enabled ?? true,
+  };
 }
 
 function readSitemapConfig(root: string): boolean | DocsSitemapConfig | undefined {
@@ -2368,31 +2916,56 @@ function readRobotsConfig(root: string): boolean | DocsRobotsConfig | undefined 
   return undefined;
 }
 
+function readApiReferenceConfig(root: string): DocsConfig["apiReference"] | undefined {
+  for (const ext of FILE_EXTS) {
+    const configPath = path.join(root, `docs.config.${ext}`);
+    if (!fs.existsSync(configPath)) continue;
+
+    try {
+      const content = fs.readFileSync(configPath, "utf-8");
+      if (!content.includes("apiReference")) return undefined;
+      if (/apiReference\s*:\s*false/.test(content)) return false;
+      if (/apiReference\s*:\s*true/.test(content)) return true;
+
+      const block = content.match(/apiReference\s*:\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? "";
+      const enabledMatch = block.match(/enabled\s*:\s*(true|false)/);
+      const pathMatch = block.match(/path\s*:\s*["']([^"']+)["']/);
+      const routeRootMatch = block.match(/routeRoot\s*:\s*["']([^"']+)["']/);
+      const specUrlMatch = block.match(/specUrl\s*:\s*["']([^"']+)["']/);
+      const rendererMatch = block.match(/renderer\s*:\s*["'](fumadocs|scalar)["']/);
+      const excludeMatch = block.match(/exclude\s*:\s*\[([\s\S]*?)\]/);
+      const exclude =
+        excludeMatch?.[1] === undefined
+          ? undefined
+          : Array.from(excludeMatch[1].matchAll(/["']([^"']+)["']/g))
+              .map((match) => match[1])
+              .filter(Boolean);
+      const renderer =
+        rendererMatch?.[1] === "fumadocs" || rendererMatch?.[1] === "scalar"
+          ? rendererMatch[1]
+          : undefined;
+
+      return {
+        enabled: enabledMatch ? enabledMatch[1] === "true" : true,
+        path: pathMatch?.[1],
+        routeRoot: routeRootMatch?.[1],
+        specUrl: specUrlMatch?.[1],
+        renderer,
+        exclude,
+      };
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
+}
+
 function generateLlmsTxt(
   indexes: DocsSearchSourcePage[],
   options: LlmsTxtOptions,
-): { llmsTxt: string; llmsFullTxt: string } {
-  const { siteTitle = "Documentation", siteDescription, baseUrl = "" } = options;
-
-  let llmsTxt = `# ${siteTitle}\n\n`;
-  if (siteDescription) llmsTxt += `> ${siteDescription}\n\n`;
-  llmsTxt += `## Pages\n\n`;
-  for (const page of indexes) {
-    llmsTxt += `- [${page.title}](${baseUrl}${page.url})`;
-    if (page.description) llmsTxt += `: ${page.description}`;
-    llmsTxt += `\n`;
-  }
-
-  let llmsFullTxt = `# ${siteTitle}\n\n`;
-  if (siteDescription) llmsFullTxt += `> ${siteDescription}\n\n`;
-  for (const page of indexes) {
-    llmsFullTxt += `## ${page.title}\n\n`;
-    llmsFullTxt += `URL: ${baseUrl}${page.url}\n\n`;
-    if (page.description) llmsFullTxt += `${page.description}\n\n`;
-    llmsFullTxt += `${page.content}\n\n---\n\n`;
-  }
-
-  return { llmsTxt, llmsFullTxt };
+): ReturnType<typeof renderDocsLlmsTxt> {
+  return renderDocsLlmsTxt(indexes, options);
 }
 
 // ─── createDocsAPI ──────────────────────────────────────────────────
@@ -2424,6 +2997,7 @@ function generateLlmsTxt(
 export function createDocsAPI(options?: DocsAPIOptions) {
   const root = options?.rootDir ?? process.cwd();
   const entry = options?.entry ?? readEntry(root);
+  const docsPath = normalizeDocsPublicPath(options?.docsPath ?? readDocsPath(root), entry);
   const analytics = options?.analytics;
   const observability = options?.observability;
   const appDir = getNextAppDir(root);
@@ -2439,19 +3013,27 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   const searchConfig = options?.search;
 
   // Read llms.txt config
-  const llmsConfig = readLlmsTxtConfig(root);
+  const llmsConfig = resolveLlmsTxtConfig(options?.llmsTxt, readLlmsTxtConfig(root));
   const sitemapConfig = options?.sitemap ?? readSitemapConfig(root);
   const robotsConfig = options?.robots ?? readRobotsConfig(root);
+  const markdownMetadataBaseUrl = resolveDocsMetadataBaseUrl({
+    ...options,
+    entry,
+    ai: aiConfig,
+    llmsTxt: llmsConfig,
+    sitemap: sitemapConfig,
+    robots: robotsConfig,
+  } as DocsConfig);
+  const apiReferenceConfig = options?.apiReference ?? readApiReferenceConfig(root);
+  const apiReferenceDocsConfig = {
+    ...options,
+    entry,
+    apiReference: apiReferenceConfig,
+  } as DocsConfig;
+  const openapiDiscovery = resolveApiReferenceOpenApiDiscovery(apiReferenceConfig);
   const mcpConfig = resolveDocsMcpConfig(options?.mcp ?? readMcpConfig(root), {
     defaultName: llmsConfig.siteTitle ?? "Documentation",
   });
-
-  type DocsContext = {
-    entryPath: string;
-    docsDirs: string[];
-    changelogDirs: string[];
-    locale?: string;
-  };
 
   function resolveDocsDirCandidates(locale?: string): string[] {
     const relativeCandidates = new Set<string>();
@@ -2524,6 +3106,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       const docsDirs = resolveDocsDirCandidates();
       return {
         entryPath: entry,
+        publicPath: docsPath,
         docsDirs,
         changelogDirs: resolveChangelogDirCandidates(docsDirs),
       };
@@ -2533,6 +3116,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     const docsDirs = resolveDocsDirCandidates(locale);
     return {
       entryPath: entry,
+      publicPath: docsPath,
       locale,
       docsDirs,
       changelogDirs: resolveChangelogDirCandidates(docsDirs),
@@ -2540,7 +3124,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   }
 
   const indexesByLocale = new Map<string, DocsSearchSourcePage[]>();
-  const llmsCacheByLocale = new Map<string, { llmsTxt: string; llmsFullTxt: string }>();
+  const llmsCacheByLocale = new Map<string, ReturnType<typeof renderDocsLlmsTxt>>();
   const markdownSourcesByLocale = new Map<
     string,
     ReturnType<typeof createFilesystemDocsMcpSource>[]
@@ -2554,7 +3138,13 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     let next: DocsSearchSourcePage[] = [];
     for (const docsDir of ctx.docsDirs) {
       const excludedDirs = ctx.changelogDirs.filter((dir) => isWithinDir(dir, docsDir));
-      const docsPages = scanDocsDir(docsDir, ctx.entryPath, ctx.locale, excludedDirs);
+      const docsPages = scanDocsDir(
+        docsDir,
+        ctx.entryPath,
+        ctx.locale,
+        excludedDirs,
+        ctx.publicPath,
+      );
       if (docsPages.length === 0) continue;
 
       next = docsPages;
@@ -2563,7 +3153,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
     if (changelogConfig.enabled) {
       const changelogPages = ctx.changelogDirs.flatMap((dir) =>
-        scanChangelogDir(dir, ctx.entryPath, changelogConfig.path, ctx.locale),
+        scanChangelogDir(dir, ctx.entryPath, changelogConfig.path, ctx.locale, ctx.publicPath),
       );
       next = [...next, ...changelogPages];
     }
@@ -2588,8 +3178,9 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     return sources;
   }
 
-  async function getMarkdownDocument(ctx: DocsContext, requestedPath: string) {
+  async function getMarkdownDocument(ctx: DocsContext, requestedPath: string, origin?: string) {
     const normalizedRequest = normalizeRequestedMarkdownPath(ctx.entryPath, requestedPath);
+    const normalizedPublicRequest = normalizePublicRequestedMarkdownPath(ctx, requestedPath);
     const normalizedEntry = `/${normalizePathSegment(ctx.entryPath)}`;
     const relativeSlug =
       normalizedRequest === normalizedEntry
@@ -2603,22 +3194,34 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
     for (const source of getMarkdownSources(ctx)) {
       const page = findDocsMcpPage(ctx.entryPath, await source.getPages(), requestedPath);
-      if (page) return renderMarkdownDocument(page);
+      if (page)
+        return renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
+          llmsEnabled: llmsConfig.enabled,
+          origin,
+          sitemap: sitemapConfig,
+        });
     }
 
-    const fallbackPage = getIndexes(ctx).find(
-      (page) => normalizeUrlPath(page.url) === normalizedRequest,
-    );
-    if (fallbackPage) return renderMarkdownDocument(fallbackPage);
+    const fallbackPage = getIndexes(ctx).find((page) => {
+      const pageUrl = normalizeUrlPath(page.url);
+      return pageUrl === normalizedRequest || pageUrl === normalizedPublicRequest;
+    });
+    if (fallbackPage)
+      return renderMarkdownDocument(withPublicDocsUrl(fallbackPage, ctx), {
+        llmsEnabled: llmsConfig.enabled,
+        origin,
+        sitemap: sitemapConfig,
+      });
 
+    const requestedSlug = normalizePublicDocsSlug(ctx, normalizedPublicRequest);
     for (const page of getIndexes(ctx)) {
-      const slug = normalizePathSegment(
-        page.url.replace(/^\/+/, "").replace(`${ctx.entryPath}/`, ""),
-      );
-      const requestedSlug = normalizePathSegment(
-        requestedPath.replace(/^\/+/, "").replace(/\.md$/i, ""),
-      );
-      if (slug === requestedSlug) return renderMarkdownDocument(page);
+      const slug = normalizePublicDocsSlug(ctx, page.url);
+      if (slug === requestedSlug)
+        return renderMarkdownDocument(withPublicDocsUrl(page, ctx), {
+          llmsEnabled: llmsConfig.enabled,
+          origin,
+          sitemap: sitemapConfig,
+        });
     }
 
     return null;
@@ -2632,7 +3235,10 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       siteTitle: llmsConfig.siteTitle ?? "Documentation",
       siteDescription: llmsConfig.siteDescription,
       baseUrl: llmsConfig.baseUrl ?? "",
-    });
+      maxChars: llmsConfig.maxChars,
+      sections: llmsConfig.sections,
+      openapi: openapiDiscovery,
+    } as any);
     llmsCacheByLocale.set(key, next);
     return next;
   }
@@ -2644,6 +3250,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     async GET(request: Request) {
       const ctx = resolveContextFromRequest(request);
       const url = new URL(request.url);
+      const requestAnalyticsProperties = getRequestAnalyticsProperties(request);
       if (resolveAgentSpecRequest(url)) {
         await emitDocsAnalyticsEvent(analytics, {
           type: "agent_spec_request",
@@ -2652,6 +3259,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           path: url.pathname,
           locale: ctx.locale,
           properties: {
+            ...requestAnalyticsProperties,
             method: "GET",
           },
         });
@@ -2666,6 +3274,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             llms: llmsConfig,
             sitemap: sitemapConfig,
             robots: robotsConfig,
+            openapi: openapiDiscovery,
           }),
           {
             headers: {
@@ -2674,6 +3283,32 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             },
           },
         );
+      }
+
+      if (isApiReferenceOpenApiRequest(url)) {
+        if (!openapiDiscovery.enabled) {
+          return new Response("Not Found", {
+            status: 404,
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
+
+        const document = await buildApiReferenceOpenApiDocumentAsync(apiReferenceDocsConfig, {
+          framework: "next",
+          rootDir: root,
+          baseUrl: url.origin,
+        });
+
+        return new Response(JSON.stringify(document, null, 2), {
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            "X-Robots-Tag": "noindex",
+          },
+        });
       }
 
       const agentFeedbackRequest = resolveAgentFeedbackRequest(url, agentFeedbackConfig);
@@ -2698,6 +3333,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           path: url.pathname,
           locale: ctx.locale,
           properties: {
+            ...requestAnalyticsProperties,
             method: "GET",
           },
         });
@@ -2710,6 +3346,41 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         });
       }
 
+      if (resolveAgentsRequest(url)) {
+        await emitDocsAnalyticsEvent(analytics, {
+          type: "agents_request",
+          source: "server",
+          url: request.url,
+          path: url.pathname,
+          locale: ctx.locale,
+          properties: {
+            ...requestAnalyticsProperties,
+            method: "GET",
+          },
+        });
+        return new Response(
+          readRootAgentsDocument(root) ??
+            renderAgentsDocument({
+              origin: url.origin,
+              entry,
+              search: searchConfig,
+              mcp: mcpConfig,
+              feedback: agentFeedbackConfig,
+              llms: llmsConfig,
+              sitemap: sitemapConfig,
+              robots: robotsConfig,
+              openapi: openapiDiscovery,
+            }),
+          {
+            headers: {
+              "Content-Type": "text/markdown; charset=utf-8",
+              "Cache-Control": "public, max-age=0, s-maxage=3600",
+              "X-Robots-Tag": "noindex",
+            },
+          },
+        );
+      }
+
       if (resolveSkillRequest(url)) {
         await emitDocsAnalyticsEvent(analytics, {
           type: "skill_request",
@@ -2718,6 +3389,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           path: url.pathname,
           locale: ctx.locale,
           properties: {
+            ...requestAnalyticsProperties,
             method: "GET",
           },
         });
@@ -2733,6 +3405,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
               llms: llmsConfig,
               sitemap: sitemapConfig,
               robots: robotsConfig,
+              openapi: openapiDiscovery,
             }),
           {
             headers: {
@@ -2743,6 +3416,15 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           },
         );
       }
+
+      const robotsResponse = createDocsRobotsResponse({
+        request,
+        entry,
+        sitemap: sitemapConfig,
+        baseUrl: llmsConfig.baseUrl ?? url.origin,
+        robots: robotsConfig,
+      });
+      if (robotsResponse) return robotsResponse;
 
       const sitemapResponse = createDocsSitemapResponse({
         request,
@@ -2755,13 +3437,33 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       });
       if (sitemapResponse) return sitemapResponse;
 
-      const markdownRequest = resolveMarkdownRequest(entry, url, request);
+      const markdownRequest =
+        resolveMarkdownRequest(entry, url, request) ??
+        resolvePublicMarkdownRequest(entry, docsPath, url, request);
 
       if (markdownRequest) {
-        const document = await getMarkdownDocument(ctx, markdownRequest.requestedPath);
+        const markdownOrigin = markdownMetadataBaseUrl || url.origin;
+        const document = await getMarkdownDocument(
+          ctx,
+          markdownRequest.requestedPath,
+          markdownOrigin,
+        );
         const varyHeader = getDocsMarkdownVaryHeader(request);
+        const canonicalLinkHeader = getPublicMarkdownCanonicalLinkHeader({
+          origin: markdownOrigin,
+          ctx,
+          requestedPath: markdownRequest.requestedPath,
+        });
 
         if (!document) {
+          const recoveryPages = getIndexes(ctx).map((page) => withPublicDocsUrl(page, ctx));
+          const recovery = resolveDocsMarkdownRecovery({
+            entry,
+            requestedPath: markdownRequest.requestedPath,
+            pages: recoveryPages,
+            sitemap: sitemapConfig,
+          });
+
           await emitDocsAnalyticsEvent(analytics, {
             type: "agent_read",
             source: "server",
@@ -2769,6 +3471,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             path: url.pathname,
             locale: ctx.locale,
             properties: {
+              ...requestAnalyticsProperties,
               requestedPath: markdownRequest.requestedPath,
               delivery: markdownRequest.delivery,
               found: false,
@@ -2781,19 +3484,33 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             path: url.pathname,
             locale: ctx.locale,
             properties: {
+              ...requestAnalyticsProperties,
               requestedPath: markdownRequest.requestedPath,
               delivery: markdownRequest.delivery,
               found: false,
             },
           });
+          if (recovery.redirect) {
+            return new Response(null, {
+              status: 307,
+              headers: {
+                Location: new URL(recovery.redirect.markdownUrl, url.origin).toString(),
+                ...(varyHeader ? { Vary: varyHeader } : {}),
+                "X-Robots-Tag": "noindex",
+              },
+            });
+          }
+
           return new Response(
             renderDocsMarkdownNotFound({
               entry,
               requestedPath: markdownRequest.requestedPath,
+              origin: markdownOrigin,
+              pages: recoveryPages,
               sitemap: sitemapConfig,
             }),
             {
-              status: 404,
+              status: 200,
               headers: {
                 "Content-Type": "text/markdown; charset=utf-8",
                 ...(varyHeader ? { Vary: varyHeader } : {}),
@@ -2810,6 +3527,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           path: url.pathname,
           locale: ctx.locale,
           properties: {
+            ...requestAnalyticsProperties,
             requestedPath: markdownRequest.requestedPath,
             delivery: markdownRequest.delivery,
             found: true,
@@ -2823,6 +3541,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           path: url.pathname,
           locale: ctx.locale,
           properties: {
+            ...requestAnalyticsProperties,
             requestedPath: markdownRequest.requestedPath,
             delivery: markdownRequest.delivery,
             found: true,
@@ -2833,33 +3552,54 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           headers: {
             "Content-Type": "text/markdown; charset=utf-8",
             "Cache-Control": "public, max-age=0, s-maxage=3600",
+            Link: canonicalLinkHeader,
             ...(varyHeader ? { Vary: varyHeader } : {}),
             "X-Robots-Tag": "noindex",
           },
         });
       }
 
-      const llmsFormat = resolveLlmsTxtFormat(url);
-      if (llmsFormat === "llms") {
-        await emitDocsAnalyticsEvent(analytics, {
-          type: "llms_request",
-          source: "server",
-          url: request.url,
-          path: url.pathname,
-          locale: ctx.locale,
-          properties: {
-            format: "llms",
-          },
-        });
-        return new Response(getLlmsContent(ctx).llmsTxt, {
-          headers: {
-            "Content-Type": "text/plain; charset=utf-8",
-            "Cache-Control": "public, max-age=3600",
-          },
-        });
-      }
+      const llmsRequest = resolveDocsLlmsTxtRequest(url, llmsConfig, docsPath);
+      if (llmsRequest) {
+        if (!llmsConfig.enabled) {
+          return new Response("Not Found", {
+            status: 404,
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
 
-      if (llmsFormat === "llms-full") {
+        const selected = selectDocsLlmsTxtContent(getLlmsContent(ctx), llmsRequest);
+        if (!selected) {
+          return new Response("Not Found", {
+            status: 404,
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
+
+        const budgetIssue = getDocsLlmsTxtMaxCharsIssue(
+          selected.label,
+          selected.content,
+          selected.maxChars,
+        );
+        if (budgetIssue?.mode === "error") {
+          return new Response(budgetIssue.message, {
+            status: 500,
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
+        if (budgetIssue?.mode === "warn") {
+          console.warn(`[docs] ${budgetIssue.message}`);
+        }
+
         await emitDocsAnalyticsEvent(analytics, {
           type: "llms_request",
           source: "server",
@@ -2867,10 +3607,13 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           path: url.pathname,
           locale: ctx.locale,
           properties: {
-            format: "llms-full",
+            ...requestAnalyticsProperties,
+            format: llmsRequest.format,
+            section: llmsRequest.section?.route,
+            contentLength: selected.content.length,
           },
         });
-        return new Response(getLlmsContent(ctx).llmsFullTxt, {
+        return new Response(selected.content, {
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
             "Cache-Control": "public, max-age=3600",
@@ -2902,6 +3645,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         locale: ctx.locale,
         input: { query },
         properties: {
+          ...requestAnalyticsProperties,
           queryLength: query.length,
           resultCount: results.length,
           pathname: url.searchParams.get("pathname") ?? undefined,
@@ -2921,6 +3665,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
      */
     async POST(request: Request): Promise<Response> {
       const url = new URL(request.url);
+      const requestAnalyticsProperties = getRequestAnalyticsProperties(request);
       const agentFeedbackRequest = resolveAgentFeedbackRequest(url, agentFeedbackConfig);
 
       if (agentFeedbackRequest) {
@@ -2944,6 +3689,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             url: request.url,
             path: url.pathname,
             properties: {
+              ...requestAnalyticsProperties,
               reason: "invalid_body",
             },
           });
@@ -2961,6 +3707,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             url: request.url,
             path: url.pathname,
             properties: {
+              ...requestAnalyticsProperties,
               reason: "invalid_payload",
               error: payloadError,
             },
@@ -2975,6 +3722,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             url: request.url,
             path: url.pathname,
             properties: {
+              ...requestAnalyticsProperties,
               handled: false,
               payloadKeys: Object.keys(parsed.data.payload),
               hasContext: Boolean(parsed.data.context),
@@ -2990,6 +3738,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           url: request.url,
           path: url.pathname,
           properties: {
+            ...requestAnalyticsProperties,
             handled: true,
             payloadKeys: Object.keys(parsed.data.payload),
             hasContext: Boolean(parsed.data.context),
@@ -3005,6 +3754,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           url: request.url,
           path: url.pathname,
           properties: {
+            ...requestAnalyticsProperties,
             reason: "disabled",
           },
         });

@@ -1,15 +1,15 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold, upgrade, run doctor audits, compact agent docs, generate sitemaps, generate robots.txt, sync external search indexes, and run MCP for docs. Use when running init, upgrade, doctor, agent compact, sitemap generate, robots generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
+description: @farming-labs/docs CLI — scaffold, upgrade, downgrade, deploy hosted Docs Cloud previews, run doctor audits, compact agent docs, validate code blocks, generate AGENTS.md, generate sitemaps, generate robots.txt, sync external search indexes, and run MCP for docs. Use when running init, preview, deploy, cloud preview, cloud deploy, cloud sync, upgrade, downgrade, doctor, agent compact, codeblocks validate, agents generate, sitemap generate, robots generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --version, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
 ---
 
 # @farming-labs/docs — CLI
 
-The `@farming-labs/docs` CLI scaffolds, upgrades, audits agent and reader readiness, compacts
-page-level agent docs, syncs external search indexes, generates robots.txt policy files, and can
+The `@farming-labs/docs` CLI scaffolds, upgrades, downgrades, audits agent and reader readiness, compacts
+page-level agent docs, validates fenced code blocks, reviews docs PR changes, generates `AGENTS.md`, syncs external search indexes, generates robots.txt policy files, deploys hosted Docs Cloud previews, and can
 run the built-in MCP server for documentation projects. Use this skill when the user asks about CLI
-commands, init, upgrade, `doctor`, `agent compact`, `sitemap generate`, `robots generate`, search
-sync, mcp, or scaffolding.
+commands, init, upgrade, downgrade, `doctor`, `agent compact`, `codeblocks validate`, `agents generate`, `sitemap generate`, `robots generate`, search
+sync, mcp, review, preview, deploy, cloud preview, cloud deploy, cloud sync, or scaffolding.
 
 ---
 
@@ -118,17 +118,37 @@ npx @farming-labs/docs@latest upgrade tanstack-start
 
 Valid values: `next`, `tanstack-start`, `nuxt`, `sveltekit`, `astro`.
 
-**Version channel:**
+**Version target:**
 
 ```bash
 npx @farming-labs/docs@latest upgrade              # latest stable (default)
 npx @farming-labs/docs@latest upgrade --latest     # same
 npx @farming-labs/docs@latest upgrade --beta       # beta versions
+npx @farming-labs/docs@latest upgrade --version 0.1.104
 npx @farming-labs/docs@latest upgrade@beta         # shorthand for --beta
 npx @farming-labs/docs@latest upgrade@latest       # shorthand for --latest
 ```
 
-If someone uses `pnpx @farming-labs/docs upgrade@beta`, treat it as the supported shorthand for upgrading to the latest beta dist-tag.
+Use `--version <version>` when the user needs an exact release instead of an npm dist-tag. If someone uses `pnpx @farming-labs/docs upgrade@beta`, treat it as the supported shorthand for upgrading to the latest beta dist-tag.
+
+## Downgrade
+
+Downgrade all `@farming-labs/*` docs packages to a lower version. Run from the **project root**. The CLI auto-detects the framework and package manager like `upgrade`.
+
+Without `--version`, `downgrade` fetches published `@farming-labs/docs` versions and installs the highest version lower than the current installed version.
+
+```bash
+npx @farming-labs/docs@latest downgrade
+pnpm dlx @farming-labs/docs@latest downgrade
+```
+
+Use `--version <version>` to choose an exact lower version:
+
+```bash
+npx @farming-labs/docs@latest downgrade --version 0.1.103
+```
+
+If the requested version is equal to or newer than the current installed version, `downgrade` stops and tells the user to use `upgrade --version <version>` for newer versions.
 
 ---
 
@@ -155,12 +175,128 @@ pnpm exec docs mcp --config src/lib/docs.config.ts
 
 The built-in MCP surface currently includes:
 
+- `list_docs`
 - `list_pages`
 - `get_navigation`
 - `search_docs`
 - `read_page`
+- `get_code_examples`
+- `get_config_schema`
+
+`list_docs` returns page summaries grouped by docs section. Call it with no arguments for the full
+section tree, or with `section` such as `getting-started` to narrow the result before `read_page`.
+
+`get_code_examples` parses fenced code block metadata from raw markdown/MDX and returns structured
+examples for agents. Use metadata like
+
+````md
+```ts title="docs.config.ts" framework="nextjs" packageManager="pnpm" runnable
+```
+````
+
+`get_config_schema` returns structured `docs.config.ts` option metadata. Use `option` for an exact
+path such as `mcp.tools.getConfigSchema`, or `query` for keyword filtering.
+
+when a snippet has a target file, framework, package manager, or is safe to copy as a complete
+example. This metadata is for markdown/MCP consumers and does not require a UI change.
 
 Use the docs config `mcp` block when you also want the HTTP route version at `/mcp` or `/.well-known/mcp`.
+
+## Docs Cloud deploy
+
+Use `docs deploy` from a docs project root to sync the serializable `cloud` block from
+`docs.config.ts` into `docs.json`, validate the configured API key, and deploy hosted preview docs.
+
+```bash
+pnpm dlx @farming-labs/docs deploy
+pnpm dlx @farming-labs/docs preview
+pnpm dlx @farming-labs/docs cloud deploy
+pnpm dlx @farming-labs/docs cloud preview
+pnpm dlx @farming-labs/docs cloud sync
+```
+
+Config shape:
+
+```ts
+cloud: {
+  apiKey: { env: "DOCS_CLOUD_API_KEY" },
+  deploy: { enabled: true },
+  publish: { mode: "draft-pr", baseBranch: "main" },
+}
+```
+
+- `docs cloud sync` only writes or updates `docs.json`.
+- `docs deploy` auto-creates `docs.json` if the project has not run a cloud command before.
+- `docs preview` and `docs cloud preview` remain compatibility aliases for hosted preview deployment.
+- The API key value must live in the named env var, `.env.local`, or CI secrets. Never write the raw key into config.
+- Use `--config <path>` when `docs.config.ts` lives outside the project root.
+- Use `--api-base-url <url>` for staging/self-hosted cloud API testing.
+
+## Code block validation
+
+Use `docs codeblocks validate` to scan MD/MDX fences, build execution plans from code fence metadata,
+and run executable snippets when `codeBlocks.validate` is enabled in `docs.config.ts`.
+Supported runners are `local`, `vercel-sandbox`, `e2b`, `daytona`, and the reserved `cloud` runner.
+E2B requires `e2b`; Daytona requires `@daytona/sdk`.
+
+```bash
+pnpm exec docs codeblocks validate --plan
+pnpm exec docs codeblocks validate
+pnpm exec docs codeblocks validate --json
+```
+
+Config example:
+
+```ts
+codeBlocks: {
+  validate: {
+    planner: {
+      provider: "openai",
+      model: "gpt-4.1-mini",
+      apiKeyEnv: "OPENAI_API_KEY",
+    },
+    runner: {
+      provider: "vercel-sandbox",
+      tokenEnv: "VERCEL_TOKEN",
+    },
+    envFile: [".env.local", ".env.test", ".env"],
+    env: {
+      OPENAI_API_KEY: "OPENAI_TEST_API_KEY",
+    },
+  },
+}
+```
+
+Fence metadata example:
+
+````md
+```ts title="app/api/chat/route.ts" framework="nextjs" packageManager="pnpm" env="OPENAI_API_KEY" runnable
+const apiKey = process.env.OPENAI_API_KEY;
+```
+````
+
+The `env` map injects runtime env names from local test env vars. Do not put actual secrets in
+`docs.config.ts`.
+
+## Docs Review
+
+Use `docs review` to score changed docs files, check broken internal links, required frontmatter,
+code fence metadata, runnable snippet metadata, and agent-context suggestions.
+
+```bash
+pnpm exec docs review
+pnpm exec docs review --ci
+pnpm exec docs review setup
+```
+
+`withDocs()` creates `.github/workflows/docs-review.yml` automatically during `next dev` or
+`next build` when `review` CI is enabled and the workflow does not already exist. The generated file
+is a tiny wrapper around `farming-labs/docs/.github/workflows/docs-review-reusable.yml@main`. Omitted
+`review` config is enabled by default; use `review: false` to opt out.
+
+Use `review.ci.mode: "block"` and `review.score.threshold` when the team wants CI to fail below a
+score threshold. Use `review.ci.name` to customize the GitHub Actions job/check name; it defaults
+to `docs-review`.
 
 ## Search Sync
 
@@ -244,7 +380,7 @@ Behavior:
 - reads `docs.config.ts[x]` by default, or the path passed with `--config`
 - scans docs content using `entry` and `contentDir`
 - writes `.farming-labs/sitemap-manifest.json`
-- writes public sitemap files by default: `sitemap.xml`, `sitemap.md`, and `.well-known/sitemap.md`
+- writes public sitemap files by default: `sitemap.xml`, `sitemap.md`, `docs/sitemap.md`, and `.well-known/sitemap.md`
 - writes to `static/` for SvelteKit and `public/` for other frameworks
 - resolves `lastmod` from `git log -1` for each page source path, falling back to filesystem mtime
 - preserves `generatedAt` when the comparable manifest content has not changed
@@ -369,11 +505,34 @@ agent:
 
 ---
 
+## Agents generate
+
+Use `agents generate` when the user wants root and static `AGENTS.md` files for coding agents.
+Server-rendered apps get generated `/AGENTS.md` dynamically by default, but static exports can
+commit the generated files.
+
+```bash
+pnpm exec docs agents generate
+pnpm exec docs agents generate --check
+pnpm exec docs agents generate --force
+pnpm exec docs agents generate --path AGENTS.md
+```
+
+Behavior:
+
+- writes a managed root `AGENTS.md`
+- writes public aliases at `/AGENTS.md`, `/.well-known/AGENTS.md`, `/AGENT.md`, and `/.well-known/AGENT.md`
+- uses `public/` by default, or `static/` for SvelteKit
+- keeps a hand-written root `AGENTS.md` or `AGENT.md` unless `--force` is passed
+- copies a hand-written root file to missing public aliases for static hosting
+
+---
+
 ## Robots generate
 
 Use `robots generate` when the user wants a static `robots.txt` policy that advertises docs routes,
-agent-readable markdown routes, `llms.txt`, sitemap routes, `skill.md`, MCP aliases, and common AI
-crawler user agents.
+agent-readable markdown routes, `llms.txt`, sitemap routes, `AGENTS.md`, `skill.md`, MCP aliases,
+and common AI crawler user agents.
 
 ```bash
 pnpm exec docs robots generate
@@ -427,12 +586,13 @@ What it checks:
 - public agent routes
 - agent discovery spec
 - `llms.txt`
-- `sitemap.xml` and `sitemap.md`
+- `sitemap.xml`, `sitemap.md`, and `docs/sitemap.md`
 - `robots.txt`
+- `AGENTS.md`
 - `skill.md`
 - MCP
 - search
-- agent feedback
+- agent feedback, which is enabled by default and can be explicitly opted out
 - page metadata
 - explicit agent-friendly pages
 - generated `agent.md` freshness and `agent.compact` defaults
@@ -442,17 +602,22 @@ With `--url`, `docs doctor --agent` also probes the deployed public agent surfac
 - `/.well-known/agent.json`
 - `/llms.txt`
 - `/llms-full.txt`
-- sitemap routes from the discovery spec, usually `/sitemap.xml`, `/sitemap.md`, and `/.well-known/sitemap.md`
+- sitemap routes from the discovery spec, usually `/sitemap.xml`, `/sitemap.md`, `/docs/sitemap.md`, and `/.well-known/sitemap.md`
 - the robots route from the discovery spec, usually `/robots.txt`
+- `/AGENTS.md`
+- `/.well-known/AGENTS.md`
 - `/skill.md`
 - `/.well-known/skill.md`
 - one representative `.md` page route, such as `/docs.md`
 - `/mcp`
 - `/.well-known/mcp`
+- `https://mcp.<your-domain>/mcp`
+- `https://mcp.<your-domain>/`
 
 For hosted MCP, the command performs a Streamable HTTP initialize handshake, checks for
-`mcp-session-id`, calls `tools/list`, and expects `list_pages`, `get_navigation`, `search_docs`,
-and `read_page`. Hosted checks raise the agent max score from `105` to `145`.
+`mcp-session-id`, calls `tools/list`, and expects `list_docs`, `list_pages`, `get_navigation`,
+`search_docs`, `read_page`, `get_code_examples`, and `get_config_schema`. Hosted checks raise the
+agent max score from `105` to `145`.
 
 Hosted JSON check IDs include `hosted-agent-discovery`, `hosted-llms`, `hosted-sitemap`,
 `hosted-robots`, `hosted-skill`, `hosted-markdown`, and `hosted-mcp`.

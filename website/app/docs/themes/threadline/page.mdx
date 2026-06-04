@@ -1,0 +1,82 @@
+---
+title: "Threadline"
+description: "Compact neutral theme with right-aligned page actions"
+icon: "bot"
+order: 4.75
+---
+
+# Threadline Theme
+
+<Agent>
+Use this page when the user asks about this topic: compact neutral theme with page-action defaults.
+Keep answers grounded in the exact options, routes, commands, and examples documented here.
+If the request moves beyond this page, point to the closest related docs instead of inventing config.
+</Agent>
+
+A compact neutral preset for chat, agent, and product documentation. It uses a 48px header, compact Geist typography, muted shadcn surfaces, and ghost-style page actions for dense, readable docs.
+
+## Usage
+
+```tsx title="docs.config.ts"
+import { defineDocs } from "@farming-labs/docs";
+import { threadline, threadlinePageActions } from "@farming-labs/theme/threadline";
+
+export default defineDocs({
+  entry: "docs",
+  theme: threadline(),
+  github: {
+    url: "https://github.com/acme/docs",
+  },
+  pageActions: threadlinePageActions,
+});
+```
+
+```css title="app/global.css"
+@import "tailwindcss";
+@import "@farming-labs/theme/threadline/css";
+```
+
+## Page Actions
+
+`threadlinePageActions` enables:
+
+- Copy page
+- Open in GitHub
+- Open in ChatGPT
+- Open in Claude
+- Open in Cursor
+- Open in T3 Chat
+
+The GitHub action needs top-level `github` config so the theme can resolve `{githubUrl}` for the current page.
+
+## Defaults
+
+| Property      | Value                                  |
+| ------------- | -------------------------------------- |
+| Primary       | `oklch(0.205 0 0)`                     |
+| Background    | `oklch(1 0 0)` (light), `oklch(0.145 0 0)` (dark) |
+| Border        | `oklch(0.922 0 0)`                     |
+| Border radius | `0.625rem`                             |
+| Content width | 912px                                  |
+| Sidebar width | 260px                                  |
+| TOC width     | 224px                                  |
+| Header height | 48px                                   |
+
+## Style Notes
+
+- Geist-first typography with smaller headings and dense prose
+- Transparent sidebar with soft hover and active states
+- Muted cards, tables, inline code, and code blocks
+- Blue documentation links and info callouts on an otherwise neutral shell
+- Ghost-style page-action buttons with a compact Open in menu
+
+## Customizing
+
+```tsx title="customizing.tsx"
+theme: threadline({
+  ui: {
+    colors: { primary: "#111827" },
+    layout: { sidebarWidth: 280, tocWidth: 240 },
+  },
+}),
+```
