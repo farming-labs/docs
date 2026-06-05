@@ -267,7 +267,7 @@ export function getDocsCloudConfigPathForFramework(framework: Framework): string
 
 function docsCloudDeployCommand(pm: PackageManager): string {
   if (pm === "pnpm") return "pnpm dlx @farming-labs/docs deploy";
-  if (pm === "yarn") return "yarn dlx @farming-labs/docs deploy";
+  if (pm === "yarn") return "npx @farming-labs/docs deploy";
   if (pm === "bun") return "bunx @farming-labs/docs deploy";
   return "npx @farming-labs/docs deploy";
 }
