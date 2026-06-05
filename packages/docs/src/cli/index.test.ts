@@ -26,11 +26,13 @@ describe("parseFlags", () => {
       "darksharp",
       "--entry",
       "docs",
+      "--cloud",
     ]);
     expect(flags.template).toBe("astro");
     expect(flags.name).toBe("my-app");
     expect(flags.theme).toBe("darksharp");
     expect(flags.entry).toBe("docs");
+    expect(flags.cloud).toBe(true);
   });
 
   it("parses api reference flags", () => {
@@ -38,6 +40,10 @@ describe("parseFlags", () => {
     expect(flags["api-reference"]).toBe(true);
     expect(flags["api-route-root"]).toBe("internal-api");
     expect(flags.other).toBe(false);
+  });
+
+  it("parses --no-cloud", () => {
+    expect(parseFlags(["init", "--no-cloud"]).cloud).toBe(false);
   });
 
   it("parses mcp flags", () => {
@@ -81,8 +87,9 @@ describe("parseFlags", () => {
   });
 
   it("parses boolean values in --key=value form", () => {
-    const flags = parseFlags(["--api-reference=false", "--theme=colorful"]);
+    const flags = parseFlags(["--api-reference=false", "--cloud=true", "--theme=colorful"]);
     expect(flags["api-reference"]).toBe(false);
+    expect(flags.cloud).toBe(true);
     expect(flags.theme).toBe("colorful");
   });
 

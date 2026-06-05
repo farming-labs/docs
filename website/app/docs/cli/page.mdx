@@ -115,6 +115,7 @@ Run that from your app root. The CLI will:
 3. ask where docs should live, usually `docs`
 4. ask about aliases, global CSS, and optional i18n when supported
 5. generate the docs files and install the correct `@farming-labs/*` packages
+6. optionally add Docs Cloud infrastructure support and print the auth plus `.env.local` steps
 
 ### Upgrade an existing docs project
 
@@ -739,6 +740,8 @@ Use these to skip the matching prompts during `init`:
 | `--api-reference` | Enable API reference scaffold during `init` |
 | `--no-api-reference` | Explicitly skip API reference scaffold |
 | `--api-route-root <path>` | Set the detected API route root written to `apiReference.routeRoot` |
+| `--cloud` | Add Docs Cloud infrastructure support during `init` |
+| `--no-cloud` | Skip the Docs Cloud infrastructure prompt |
 
 Example:
 
@@ -752,6 +755,26 @@ When API reference is enabled through `init`:
 
 - **Next.js** writes the `apiReference` block and `app/api-reference/[[...slug]]/route.ts` (or `src/app/...`).
 - **TanStack Start, SvelteKit, Astro, and Nuxt** write the `apiReference` block and also scaffold the minimal `/{path}` handler files so the reference works immediately.
+
+### Optional Docs Cloud infrastructure
+
+During `init`, the CLI asks whether you want Docs Cloud infrastructure support. If you answer yes,
+or pass `--cloud`, it adds the `cloud` block to your docs config, writes the safe `docs.json`
+contract, and prints the authentication steps.
+
+The CLI does not write secret values. Sign in to `https://docs-app.farming-labs.dev`, create a
+project API key from your Docs Cloud project settings, then add it to `.env.local` or your shell:
+
+```bash title=".env.local"
+DOCS_CLOUD_API_KEY=fl_key_...
+NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=docs_cloud_project_id
+```
+
+Keep local env files out of git and set the same env names in production or CI. When ready, run:
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs deploy
+```
 
 ### Optional i18n scaffold
 

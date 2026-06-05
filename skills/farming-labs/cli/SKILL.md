@@ -1,6 +1,6 @@
 ---
 name: cli
-description: @farming-labs/docs CLI — scaffold, upgrade, downgrade, deploy hosted Docs Cloud previews, run doctor audits, compact agent docs, validate code blocks, generate AGENTS.md, generate sitemaps, generate robots.txt, sync external search indexes, and run MCP for docs. Use when running init, preview, deploy, cloud preview, cloud deploy, cloud sync, upgrade, downgrade, doctor, agent compact, codeblocks validate, agents generate, sitemap generate, robots generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --framework, --latest, --beta, --version, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
+description: @farming-labs/docs CLI — scaffold, upgrade, downgrade, deploy hosted Docs Cloud previews, run doctor audits, compact agent docs, validate code blocks, generate AGENTS.md, generate sitemaps, generate robots.txt, sync external search indexes, and run MCP for docs. Use when running init, preview, deploy, cloud preview, cloud deploy, cloud sync, upgrade, downgrade, doctor, agent compact, codeblocks validate, agents generate, sitemap generate, robots generate, search sync, mcp, or flags like --template, --name, --theme, --entry, --api-reference, --api-route-root, --cloud, --framework, --latest, --beta, --version, --config, --url, --page, --all, --api-key, or --dry-run. Covers init flow, Create your own theme, optional defaults, npm/pnpm/yarn/bun, and framework detection.
 ---
 
 # @farming-labs/docs — CLI
@@ -31,8 +31,8 @@ yarn dlx @farming-labs/docs@latest init
 bunx @farming-labs/docs@latest init
 ```
 
-- **Existing project** — Add docs to the current directory. CLI then detects framework (or prompts), asks for theme (including **Create your own theme**, which prompts for theme name and scaffolds `themes/<name>.ts` and `themes/<name>.css`), entry path (default `docs`), optional i18n scaffolding, path aliases, and global CSS. TanStack Start follows the same flow, but the CLI currently skips the built-in i18n scaffold there so the generated routes stay minimal and working. **Prompts that show a placeholder use it as the default** — press **Enter** to accept (e.g. entry path `docs`, theme name `my-theme`, project name `my-docs`).
-- **Fresh project** — Bootstrap a new app. CLI asks for framework (Next.js, Nuxt, SvelteKit, Astro, TanStack Start), then project name (default `my-docs`; press Enter to accept), creates the folder, clones the template with degit, and runs install using the package manager you chose. You then `cd <name>` and run the matching dev command for that package manager.
+- **Existing project** — Add docs to the current directory. CLI then detects framework (or prompts), asks for theme (including **Create your own theme**, which prompts for theme name and scaffolds `themes/<name>.ts` and `themes/<name>.css`), entry path (default `docs`), optional i18n scaffolding, path aliases, global CSS, and optional Docs Cloud infrastructure support. TanStack Start follows the same flow, but the CLI currently skips the built-in i18n scaffold there so the generated routes stay minimal and working. **Prompts that show a placeholder use it as the default** — press **Enter** to accept (e.g. entry path `docs`, theme name `my-theme`, project name `my-docs`).
+- **Fresh project** — Bootstrap a new app. CLI asks for framework (Next.js, Nuxt, SvelteKit, Astro, TanStack Start), then project name (default `my-docs`; press Enter to accept), creates the folder, clones the template with degit, runs install using the package manager you chose, and can optionally add Docs Cloud infrastructure support. You then `cd <name>` and run the matching dev command for that package manager.
 
 If you use **`--template`** with **`--name`**, the CLI skips the existing-vs-fresh prompt and goes straight to bootstrap (same as choosing Fresh and then framework + name).
 
@@ -61,6 +61,8 @@ Replace `my-docs` with the desired folder name. Same pattern with `pnpm dlx`, `y
 | `--api-reference` | Enable API reference scaffold during `init`. |
 | `--no-api-reference` | Explicitly skip the API reference scaffold. |
 | `--api-route-root <path>` | Override the detected API route root written to `apiReference.routeRoot` (e.g. `api`, `internal-api`). |
+| `--cloud` | Add Docs Cloud infrastructure support during `init` without prompting. |
+| `--no-cloud` | Skip the Docs Cloud infrastructure prompt during `init`. |
 
 Example (non-interactive bootstrap with theme):
 
@@ -73,6 +75,17 @@ Example (existing project with API reference):
 ```bash
 npx @farming-labs/docs@latest init --theme greentree --entry docs --api-reference --api-route-root internal-api
 ```
+
+If Docs Cloud support is enabled during `init`, the CLI updates the docs config, writes the safe
+`docs.json` contract, and prints the next steps: sign in to `https://docs-app.farming-labs.dev`,
+create a project API key, and add it to `.env.local` or the shell:
+
+```bash
+DOCS_CLOUD_API_KEY=fl_key_...
+NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=docs_cloud_project_id
+```
+
+The raw key is never written to `docs.config.ts` or `docs.json`.
 
 ---
 

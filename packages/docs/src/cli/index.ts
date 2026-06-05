@@ -33,6 +33,7 @@ export function parseFlags(argv: string[]): Record<string, string | boolean | un
   const flags: Record<string, string | boolean | undefined> = {};
   const booleanFlags = new Set([
     "api-reference",
+    "cloud",
     "typesense",
     "algolia",
     "verbose",
@@ -74,6 +75,7 @@ async function main() {
     entry: typeof flags.entry === "string" ? flags.entry : undefined,
     apiReference: typeof flags["api-reference"] === "boolean" ? flags["api-reference"] : undefined,
     apiRouteRoot: typeof flags["api-route-root"] === "string" ? flags["api-route-root"] : undefined,
+    cloud: typeof flags.cloud === "boolean" ? flags.cloud : undefined,
   };
   const mcpOptions = {
     configPath: typeof flags.config === "string" ? flags.config : undefined,
@@ -326,6 +328,8 @@ ${pc.dim("Options for init:")}
   ${pc.cyan("--api-reference")}    Scaffold API reference support during ${pc.cyan("init")}
   ${pc.cyan("--no-api-reference")} Skip API reference scaffold during ${pc.cyan("init")}
   ${pc.cyan("--api-route-root <path>")}  Override the API route root scanned by ${pc.cyan("apiReference.routeRoot")} (e.g. ${pc.dim("api")}, ${pc.dim("internal-api")})
+  ${pc.cyan("--cloud")}            Add Docs Cloud infrastructure support during ${pc.cyan("init")}
+  ${pc.cyan("--no-cloud")}         Skip the Docs Cloud infrastructure prompt during ${pc.cyan("init")}
 
 ${pc.dim("Options for mcp:")}
   ${pc.cyan("--config <path>")}     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
