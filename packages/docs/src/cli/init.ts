@@ -29,6 +29,7 @@ export interface InitOptions {
   entry?: string;
   apiReference?: boolean;
   apiRouteRoot?: string;
+  cloud?: boolean;
 }
 
 import {
@@ -108,6 +109,8 @@ import {
   injectNuxtCssImport,
   type TemplateConfig,
 } from "./templates.js";
+
+const DOCS_CLOUD_DASHBOARD_URL = "https://docs-app.farming-labs.dev";
 
 const COMMON_LOCALE_OPTIONS = [
   { value: "en", label: "English", hint: "en" },
@@ -247,6 +250,92 @@ function detectApiRouteRoot(
         entry.isFile(),
     ) ?? defaultRoot
   );
+}
+
+function frameworkForTemplate(template: TemplateName): Framework {
+  if (template === "next") return "nextjs";
+  if (template === "tanstack-start") return "tanstack-start";
+  if (template === "sveltekit") return "sveltekit";
+  if (template === "astro") return "astro";
+  return "nuxt";
+}
+
+export function getDocsCloudConfigPathForFramework(framework: Framework): string | undefined {
+  if (framework === "sveltekit" || framework === "astro") return "src/lib/docs.config.ts";
+  return undefined;
+}
+
+function docsCloudDeployCommand(pm: PackageManager): string {
+  if (pm === "pnpm") return "pnpm dlx @farming-labs/docs deploy";
+  if (pm === "yarn") return "npx @farming-labs/docs deploy";
+  if (pm === "bun") return "bunx @farming-labs/docs deploy";
+  return "npx @farming-labs/docs deploy";
+}
+
+function printDocsCloudOnboardingInstructions(
+  result: {
+    configPath: string;
+    docsJsonPath: string;
+    apiKeyEnv: string;
+    analyticsProjectIdEnv: string;
+  },
+  rootDir: string,
+  pm: PackageManager,
+) {
+  const relativeConfigPath =
+    path.relative(rootDir, result.configPath) || path.basename(result.configPath);
+  const relativeDocsJsonPath =
+    path.relative(rootDir, result.docsJsonPath) || path.basename(result.docsJsonPath);
+
+  p.log.success(
+    `Docs Cloud infrastructure support configured:\n` +
+      `  ${pc.green("+")} ${relativeConfigPath}\n` +
+      `  ${pc.green("+")} ${relativeDocsJsonPath}`,
+  );
+
+  console.log();
+  console.log(pc.bold("Finish Docs Cloud authentication"));
+  console.log(`1. Sign in to ${pc.cyan(DOCS_CLOUD_DASHBOARD_URL)}.`);
+  console.log("2. Open your Docs Cloud project settings and create a project API key.");
+  console.log(`3. Add the key to ${pc.cyan(".env.local")} or your shell:`);
+  console.log(`   ${pc.cyan(result.apiKeyEnv)}=${pc.dim("fl_key_...")}`);
+  console.log(`   ${pc.cyan(result.analyticsProjectIdEnv)}=${pc.dim("docs_cloud_project_id")}`);
+  console.log("4. Keep local env files out of git and use the same env names in production.");
+  console.log(`5. Deploy when ready with ${pc.cyan(docsCloudDeployCommand(pm))}.`);
+  console.log();
+}
+
+async function configureDocsCloudOnboarding(options: {
+  rootDir: string;
+  framework: Framework;
+  packageManager: PackageManager;
+  enabled?: boolean;
+}) {
+  let enabled = options.enabled;
+
+  if (typeof enabled !== "boolean") {
+    const cloudAnswer = await p.confirm({
+      message: `Do you want Docs Cloud infrastructure support? ${pc.dim("Adds cloud config and docs.json")}`,
+      initialValue: false,
+    });
+
+    if (p.isCancel(cloudAnswer)) {
+      p.outro(pc.red("Init cancelled."));
+      process.exit(0);
+    }
+
+    enabled = cloudAnswer;
+  }
+
+  if (!enabled) return;
+
+  const { initCloudConfig } = await import("./cloud.js");
+  const result = await initCloudConfig({
+    rootDir: options.rootDir,
+    configPath: getDocsCloudConfigPathForFramework(options.framework),
+  });
+
+  printDocsCloudOnboardingInstructions(result, options.rootDir, options.packageManager);
 }
 
 export async function init(options: InitOptions = {}) {
@@ -406,11 +495,26 @@ export async function init(options: InitOptions = {}) {
             ? "bun install"
             : "pnpm install";
 
+    let installSucceeded = true;
     try {
       exec(installCmd, targetDir);
     } catch {
+      installSucceeded = false;
       p.log.warn(
         `${pmFresh} install failed. Run ${pc.cyan(installCmd)} manually inside the project.`,
+      );
+    }
+
+    if (installSucceeded) {
+      await configureDocsCloudOnboarding({
+        rootDir: targetDir,
+        framework: frameworkForTemplate(template),
+        packageManager: pmFresh,
+        enabled: options.cloud,
+      });
+    } else if (options.cloud) {
+      p.log.warn(
+        `Skipping Docs Cloud onboarding until dependencies are installed. Then run ${pc.cyan("docs cloud init")}.`,
       );
     }
 
@@ -1096,6 +1200,13 @@ export async function init(options: InitOptions = {}) {
   }
 
   s2.stop("Dependencies installed");
+
+  await configureDocsCloudOnboarding({
+    rootDir: cwd,
+    framework,
+    packageManager: pm,
+    enabled: options.cloud,
+  });
 
   // -----------------------------------------------------------------------
   // Step 10: Start dev server
