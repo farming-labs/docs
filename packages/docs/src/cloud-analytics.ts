@@ -6,8 +6,7 @@ interface DocsCloudAnalyticsOptions {
   apiKey?: string;
 }
 
-const DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT =
-  "https://api.farming-labs.dev/v1/analytics/events";
+const DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT = "https://api.farming-labs.dev/v1/analytics/events";
 
 function normalizeRuntimeEnvValue(value: string | undefined): string | undefined {
   const normalized = value?.trim();
