@@ -63,6 +63,40 @@ const searchConfig =
         endpoint: "/api/docs/mcp",
       };
 
+const T3ChatLogoIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 512 512" fill="none" aria-hidden="true">
+    <rect width="512" height="512" rx="96" fill="url(#fd-t3-chat-bg)" />
+    <path
+      d="M115.3 407.6c-4.7 2.7-10.4-1.1-9.7-6.5l11.7-87.8C100.9 292.3 92 267.9 92 242c0-80.7 83.7-146.2 187-146.2S466 161.3 466 242 382.3 388.2 279 388.2c-28.2 0-55-4.9-78.9-13.6l-84.8 33Z"
+      fill="url(#fd-t3-chat-bubble)"
+    />
+    <defs>
+      <linearGradient
+        id="fd-t3-chat-bg"
+        x1="86"
+        x2="420"
+        y1="32"
+        y2="482"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop stopColor="#ff2bb5" />
+        <stop offset="1" stopColor="#85005d" />
+      </linearGradient>
+      <linearGradient
+        id="fd-t3-chat-bubble"
+        x1="176"
+        x2="341"
+        y1="113"
+        y2="393"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop stopColor="#ffd3ff" />
+        <stop offset="1" stopColor="#f66ce7" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
 export default defineDocs({
   entry: "docs",
   search: searchConfig,
@@ -222,23 +256,7 @@ export default defineDocs({
           name: "T3 Chat",
           urlTemplate: "https://t3.chat/new?q={prompt}",
           promptUrlTemplate: "https://t3.chat/new?q={prompt}",
-          icon: (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M4.5 5.5h15v9.75h-7.2L8 19.25v-4H4.5V5.5Z"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.8"
-              />
-              <path
-                d="M8 9h8M8 12h5.5"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeWidth="1.8"
-              />
-            </svg>
-          ),
+          icon: <T3ChatLogoIcon />,
         },
       ],
     },
