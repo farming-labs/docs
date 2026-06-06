@@ -476,4 +476,19 @@ export default defineDocs({
     DocsMcpAccess,
     GuideCard,
   },
+  cloud: {
+    apiKey: { env: "DOCS_CLOUD_API_KEY" },
+    deploy: { enabled: true },
+    analytics: {
+      enabled: true,
+      console: false,
+      includeInputs: false,
+    },
+    publish: { mode: "draft-pr", baseBranch: "main" },
+  },
+  analytics: {
+    enabled: true,
+    console: false,
+    includeInputs: false,
+  },
 });
