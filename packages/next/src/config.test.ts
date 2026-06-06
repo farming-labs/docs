@@ -1189,7 +1189,7 @@ describe("withDocs (app dir: src/app vs app)", () => {
 
     expect(nextConfig.env?.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID).toBe("project_user");
     expect(nextConfig.env?.NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT).toBe(
-      "https://docs-app.farming-labs.dev/api/analytics/events",
+      "https://api.farming-labs.dev/v1/analytics/events",
     );
   });
 
