@@ -165,8 +165,7 @@ export default function HiddenChangelogSourceLayout() {
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const INTERNAL_DOCS_CONFIG_ALIAS = "@farming-labs/next-internal-docs-config";
-const DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT =
-  "https://docs-app.farming-labs.dev/api/analytics/events";
+const DEFAULT_DOCS_CLOUD_ANALYTICS_ENDPOINT = "https://api.farming-labs.dev/v1/analytics/events";
 const NEXT_PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";

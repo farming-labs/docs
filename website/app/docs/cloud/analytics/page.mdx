@@ -55,6 +55,9 @@ runtime environment, set the analytics flag to `false`:
 NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED=false
 ```
 
+Only set `NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT` when the docs app should send events to a
+custom or self-hosted Docs Cloud API. The hosted Docs Cloud endpoint is the default.
+
 ## Runtime Contract
 
 The runtime analytics stream is produced by `@farming-labs/docs`. Events cover product usage such as

@@ -165,6 +165,19 @@
       "required": [
         "title"
       ]
+    },
+    "cloudApiKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Docs Cloud API key lookup. The secret value stays in the named environment variable.",
+      "properties": {
+        "env": {
+          "type": "string",
+          "minLength": 1,
+          "default": "DOCS_CLOUD_API_KEY",
+          "description": "Environment variable that stores the Docs Cloud API key."
+        }
+      }
     }
   },
   "properties": {
@@ -589,12 +602,15 @@
       "default": {
         "enabled": false
       },
-      "description": "Hosted Docs Cloud services layered on top of the docs project. Authentication and API keys are handled outside this file.",
+      "description": "Hosted Docs Cloud services layered on top of the docs project. API key secrets stay outside this file; this config can name the environment variable that stores them.",
       "properties": {
         "enabled": {
           "type": "boolean",
           "default": false,
           "description": "Whether this project is connected to Docs Cloud services."
+        },
+        "apiKey": {
+          "$ref": "#/$defs/cloudApiKey"
         },
         "preview": {
           "type": "object",
