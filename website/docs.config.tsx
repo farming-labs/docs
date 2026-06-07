@@ -316,6 +316,7 @@ export default defineDocs({
   ai: {
     enabled: true,
     provider: "docs-cloud",
+    stream: true,
     mode: "floating",
     position: "bottom-right",
     floatingStyle: "full-modal",

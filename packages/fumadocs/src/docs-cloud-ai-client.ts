@@ -8,6 +8,7 @@ export interface DocsCloudAIClientRequest {
   api: string;
   requestMode?: "openai-chat" | "docs-cloud";
   requestHeaders?: Record<string, string>;
+  requestStream?: boolean;
 }
 
 function readRuntimeEnv(name: string): string | undefined {
@@ -38,6 +39,12 @@ function resolvePublicDocsCloudApiKey(config: DocsConfig): string | undefined {
   return readRuntimeEnv(configuredEnv);
 }
 
+function resolveDocsCloudAIStream(config: DocsConfig): boolean {
+  const aiConfig = config.ai as { stream?: unknown; streaming?: unknown } | undefined;
+  const stream = aiConfig?.stream ?? aiConfig?.streaming;
+  return typeof stream === "boolean" ? stream : true;
+}
+
 export function resolveDocsCloudAIClientRequest(
   config: DocsConfig,
   fallbackApi: string = DEFAULT_DOCS_API_ROUTE,
@@ -49,14 +56,16 @@ export function resolveDocsCloudAIClientRequest(
 
   const projectId = resolveDocsCloudProjectId();
   const apiKey = resolvePublicDocsCloudApiKey(config);
+  const requestStream = resolveDocsCloudAIStream(config);
   if (!projectId || !apiKey) {
-    return { api: fallbackApi };
+    return { api: fallbackApi, requestStream };
   }
 
   const apiBaseUrl = resolveDocsCloudApiBaseUrl();
   return {
     api: `${apiBaseUrl}/v1/projects/${encodeURIComponent(projectId)}/knowledge/ask`,
     requestMode: "docs-cloud",
+    requestStream,
     requestHeaders: {
       Authorization: `Bearer ${apiKey}`,
     },

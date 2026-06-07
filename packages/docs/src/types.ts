@@ -1665,6 +1665,17 @@ export interface AIConfig {
   provider?: "docs-cloud" | (string & {});
 
   /**
+   * Whether Ask AI should request streaming responses when the selected
+   * provider supports them.
+   *
+   * Docs Cloud streams token deltas by default for `provider: "docs-cloud"`.
+   * Set this to `false` to request a single JSON answer instead.
+   *
+   * @default true
+   */
+  stream?: boolean;
+
+  /**
    * The LLM model configuration.
    *
    * **Simple** — pass a plain string for a single model:

@@ -494,6 +494,7 @@ export function TanstackDocsLayout({
             api={aiClientRequest.api}
             requestMode={aiClientRequest.requestMode}
             requestHeaders={aiClientRequest.requestHeaders}
+            requestStream={aiClientRequest.requestStream}
             locale={locale}
             position={aiPosition}
             floatingStyle={aiFloatingStyle}

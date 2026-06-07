@@ -17,7 +17,7 @@ Add a built-in AI chat that lets users ask questions about your documentation. T
 
 ## Quick Start
 
-```ts title="docs.config.ts"
+```tstitle="docs.config.ts"
 ai: {
   enabled: true,
 }
@@ -45,7 +45,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
 
     Pass it through `src/lib/docs.server.ts`:
 
-    ```ts title="src/lib/docs.server.ts"
+    ```tstitle="src/lib/docs.server.ts"
     import { createDocsServer } from "@farming-labs/tanstack-start/server";
     import docsConfig from "../../docs.config";
 
@@ -66,7 +66,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
 
     Pass it through `docs.server.ts` (SvelteKit requires server-only env access):
 
-    ```ts title="src/lib/docs.server.ts"
+    ```tstitle="src/lib/docs.server.ts"
     import { createDocsServer } from "@farming-labs/svelte/server";
     import { env } from "$env/dynamic/private";
     import config from "./docs.config";
@@ -97,7 +97,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
 
     Pass it through `docs.server.ts`:
 
-    ```ts title="src/lib/docs.server.ts"
+    ```tstitle="src/lib/docs.server.ts"
     import { createDocsServer } from "@farming-labs/astro/server";
     import config from "./docs.config";
 
@@ -127,7 +127,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
 
     Nuxt automatically reads environment variables via Nitro's runtime config. The `defineDocsHandler` reads `process.env.OPENAI_API_KEY` on the server.
 
-    ```ts title="server/api/docs.ts"
+    ```tstitle="server/api/docs.ts"
     import { defineDocsHandler } from "@farming-labs/nuxt/server";
     import config from "../../docs.config";
 
@@ -142,7 +142,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
 Use Docs Cloud when you want the Ask AI UI to query the knowledge index built from your imported
 repository instead of running the local OpenAI-compatible RAG handler inside the docs app.
 
-```ts title="docs.config.ts"
+```tstitle="docs.config.ts"
 export default defineDocs({
   cloud: {
     apiKey: { env: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY" },
@@ -151,6 +151,7 @@ export default defineDocs({
   ai: {
     enabled: true,
     provider: "docs-cloud",
+    stream: true,
     mode: "floating",
     floatingStyle: "full-modal",
     suggestedQuestions: [
@@ -171,13 +172,14 @@ NEXT_PUBLIC_DOCS_CLOUD_API_KEY=fl_key_...
 `provider: "docs-cloud"` keeps OpenAI, Anthropic, embeddings, and retrieval credentials on the
 Docs Cloud server. The Ask AI widget sends the user's question directly to
 `/v1/projects/{projectId}/knowledge/ask` using the configured project-scoped Docs Cloud API key and
-reads an OpenAI-compatible event stream.
+reads an OpenAI-compatible event stream. Streaming is enabled by default for Docs Cloud; set
+`stream: false` if you need a single JSON answer.
 
 ## Configuration Reference
 
 All options go inside the `ai` object in `docs.config.ts`:
 
-```ts title="docs.config.ts"
+```tstitle="docs.config.ts"
 export default defineDocs({
   ai: {
     // ... options
@@ -193,7 +195,7 @@ Whether to enable AI chat functionality.
 | --------- | ------- |
 | `boolean` | `false` |
 
-```ts 
+```ts
 ai: {
   enabled: true,
 }
@@ -210,7 +212,7 @@ How the AI chat UI is presented.
 - **`"search"`** — AI tab integrated into the `Cmd+K` search dialog. Users switch between "Search" and "AI" tabs.
 - **`"floating"`** — A floating chat widget with a button on screen. Opens as a panel, modal, or full-screen overlay.
 
-```ts 
+```ts
 ai: {
   enabled: true,
   mode: "floating",
@@ -225,7 +227,7 @@ Position of the floating chat button on screen. Only used when `mode` is `"float
 | ---------------------------------------------------- | ---------------- |
 | `"bottom-right" \| "bottom-left" \| "bottom-center"` | `"bottom-right"` |
 
-```ts 
+```ts
 ai: {
   enabled: true,
   mode: "floating",
@@ -246,11 +248,28 @@ Visual style of the floating chat when opened. Only used when `mode` is `"floati
 - **`"popover"`** — A compact popover near the button. Suitable for quick questions.
 - **`"full-modal"`** — A full-screen immersive overlay. Messages scroll in the center, input is pinned at the bottom, suggested questions appear as horizontal pills.
 
-```ts 
+```ts
 ai: {
   enabled: true,
   mode: "floating",
   floatingStyle: "full-modal",
+}
+```
+
+### `stream`
+
+Whether Ask AI should request a streaming response when the provider supports it. Docs Cloud streams
+token deltas by default.
+
+| Type      | Default |
+| --------- | ------- |
+| `boolean` | `true`  |
+
+```ts
+ai: {
+  enabled: true,
+  provider: "docs-cloud",
+  stream: true,
 }
 ```
 
@@ -264,7 +283,7 @@ The LLM model configuration. Can be a simple string (single model) or an object 
 | -------- | --------------- |
 | `string` | `"gpt-4o-mini"` |
 
-```ts 
+```ts
 ai: {
   enabled: true,
   model: "gpt-4o",
@@ -277,7 +296,7 @@ ai: {
 | -------- | ------- |
 | `object` | —       |
 
-```ts 
+```ts
 ai: {
   enabled: true,
   model: {
@@ -306,7 +325,7 @@ Named provider configurations. Each provider has its own `baseUrl` and `apiKey`,
 | -------- | ------- |
 | `object` | —       |
 
-```ts title="providers.ts"
+```tstitle="providers.ts"
 ai: {
   enabled: true,
   providers: {
@@ -339,7 +358,7 @@ Default base URL for an OpenAI-compatible API endpoint. Used when no per-model `
 | -------- | ----------------------------- |
 | `string` | `"https://api.openai.com/v1"` |
 
-```ts title="baseurl.ts"
+```tstitle="baseurl.ts"
 ai: {
   enabled: true,
   model: "llama-3.1-70b-versatile",
@@ -355,7 +374,7 @@ Default API key for the LLM provider. Used when no per-model `provider` is confi
 | -------- | ---------------------------- |
 | `string` | `process.env.OPENAI_API_KEY` |
 
-```ts title="apikey.ts"
+```tstitle="apikey.ts"
 ai: {
   enabled: true,
   apiKey: process.env.GROQ_API_KEY,
@@ -372,7 +391,7 @@ Custom system prompt prepended to the AI conversation. Documentation context is 
 | -------- | ------------------------------------------------ |
 | `string` | `"You are a helpful documentation assistant..."` |
 
-```ts 
+```ts
 ai: {
   enabled: true,
   systemPrompt: "You are a friendly assistant for Acme Corp. Always mention our support email for complex issues.",
@@ -387,7 +406,7 @@ Maximum number of search results to include as context for the AI. More results 
 | -------- | ------- |
 | `number` | `5`     |
 
-```ts title="maxresults.ts"
+```tstitle="maxresults.ts"
 ai: {
   enabled: true,
   maxResults: 10,
@@ -403,7 +422,7 @@ normal docs search API.
 | ---- | ------- |
 | `boolean \| DocsAskAIMcpConfig` | `false` |
 
-```ts title="docs.config.ts"
+```tstitle="docs.config.ts"
 export default defineDocs({
   ai: {
     enabled: true,
@@ -416,7 +435,7 @@ export default defineDocs({
 context. By default that is the canonical `mcp.route` at `/api/docs/mcp`; if you configure
 `mcp.route`, Ask AI uses that route automatically:
 
-```ts title="docs.config.ts"
+```tstitle="docs.config.ts"
 export default defineDocs({
   mcp: {
     route: "/custom/docs/mcp",
@@ -432,7 +451,7 @@ Pass an object only when Ask AI should use a hosted or external MCP endpoint ins
 own MCP route. MCP handles retrieval only; the `model`, `apiKey`, `baseUrl`, or `providers` config
 still controls the LLM generation request.
 
-```ts title="docs.config.ts"
+```tstitle="docs.config.ts"
 export default defineDocs({
   ai: {
     enabled: true,
@@ -473,7 +492,7 @@ building the model context.
 The context passed to the model is hydrated from the local docs page or matching section, preserving
 fenced code blocks so install commands, config snippets, and examples can be quoted accurately.
 
-```ts title="docs.config.ts"
+```tstitle="docs.config.ts"
 import { createCustomSearchAdapter } from "@farming-labs/docs";
 
 export default defineDocs({
@@ -508,7 +527,7 @@ to hide the action row.
 Single callback for Ask AI response actions. Use `data.type` to handle `"copy"`, `"like"`, and
 `"dislike"` from one place.
 
-```ts title="docs.config.ts"
+```tstitle="docs.config.ts"
 ai: {
   enabled: true,
   onActions(data) {
@@ -538,7 +557,7 @@ Pre-filled suggested questions shown in the AI chat when the conversation is emp
 | ---------- | ------- |
 | `string[]` | `[]`    |
 
-```ts 
+```ts
 ai: {
   enabled: true,
   suggestedQuestions: [
@@ -606,7 +625,7 @@ Loading indicator variant shown while the AI generates a response.
 
 Available variants: `"shimmer-dots"`, `"circular"`, `"dots"`, `"typing"`, `"wave"`, `"bars"`, `"pulse"`, `"pulse-dot"`, `"terminal"`, `"text-blink"`, `"text-shimmer"`, `"loading-dots"`.
 
-```ts 
+```ts
 ai: {
   enabled: true,
   loader: "wave",
@@ -716,7 +735,7 @@ Custom trigger button for the floating chat. Replaces the default sparkles butto
 
 ## Full Example — Single Provider
 
-```ts title="docs.config.ts"
+```tstitle="docs.config.ts"
 export default defineDocs({
   ai: {
     enabled: true,
@@ -739,7 +758,7 @@ export default defineDocs({
 
 ## Full Example — Multiple Providers
 
-```ts title="docs.config.ts"
+```tstitle="docs.config.ts"
 export default defineDocs({
   ai: {
     enabled: true,
@@ -786,7 +805,7 @@ Users see a model dropdown in the AI chat interface. When they pick a model, the
 
 Use any OpenAI-compatible API by setting `baseUrl` and `model`:
 
-```ts title="docs.config.ts"
+```tstitle="docs.config.ts"
 ai: {
   enabled: true,
   baseUrl: "https://api.groq.com/openai/v1",
@@ -802,7 +821,7 @@ OPENAI_API_KEY=gsk_...
 
 Use the `providers` map to configure multiple APIs, then reference them from each model entry:
 
-```ts title="docs.config.ts"
+```tstitle="docs.config.ts"
 ai: {
   enabled: true,
   providers: {

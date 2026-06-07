@@ -46,6 +46,7 @@ describe("resolveDocsCloudAIClientRequest", () => {
     expect(resolveDocsCloudAIClientRequest(createDocsCloudConfig())).toEqual({
       api: "https://docs-app.farming-labs.dev/v1/projects/project_public/knowledge/ask",
       requestMode: "docs-cloud",
+      requestStream: true,
       requestHeaders: {
         Authorization: "Bearer public-key",
       },
@@ -65,6 +66,26 @@ describe("resolveDocsCloudAIClientRequest", () => {
       ),
     ).toEqual({
       api: "/api/docs",
+      requestStream: true,
+    });
+  });
+
+  it("allows Docs Cloud streaming to be disabled from ai.stream", () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_API_KEY = "public-key";
+
+    expect(
+      resolveDocsCloudAIClientRequest({
+        ...createDocsCloudConfig(),
+        ai: {
+          enabled: true,
+          provider: "docs-cloud",
+          stream: false,
+        } as unknown as DocsConfig["ai"],
+      }),
+    ).toMatchObject({
+      requestMode: "docs-cloud",
+      requestStream: false,
     });
   });
 });

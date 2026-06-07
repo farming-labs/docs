@@ -124,6 +124,7 @@ interface AIOptions {
   apiKey?: string;
   maxResults?: number;
   useMcp?: boolean | DocsAskAIMcpConfig;
+  stream?: boolean;
 }
 
 interface DocsAPIOptions {
@@ -862,6 +863,7 @@ function readAIConfig(root: string): AIOptions {
         const apiKeyMatch = content.match(/ai\s*:\s*\{[^}]*apiKey\s*:\s*process\.env\.(\w+)/s);
         const maxResultsMatch = content.match(/ai\s*:\s*\{[^}]*maxResults\s*:\s*(\d+)/s);
         const useMcpMatch = content.match(/ai\s*:\s*\{[^}]*useMcp\s*:\s*(true|false)/s);
+        const streamMatch = content.match(/ai\s*:\s*\{[^}]*stream\s*:\s*(true|false)/s);
         const systemPromptMatch = content.match(
           /ai\s*:\s*\{[^}]*systemPrompt\s*:\s*["'`]([^"'`]+)["'`]/s,
         );
@@ -878,6 +880,7 @@ function readAIConfig(root: string): AIOptions {
           apiKey: apiKeyMatch?.[1] ? process.env[apiKeyMatch[1]] : undefined,
           maxResults: maxResultsMatch ? parseInt(maxResultsMatch[1], 10) : undefined,
           useMcp: useMcpMatch ? useMcpMatch[1] === "true" : undefined,
+          stream: streamMatch ? streamMatch[1] === "true" : undefined,
           systemPrompt: systemPromptMatch?.[1],
           packageName: packageNameMatch?.[1],
           docsUrl: docsUrlMatch?.[1],
@@ -2526,7 +2529,7 @@ async function handleAskAI(
   });
 
   // ── Parse request ──────────────────────────────────────────────
-  let body: { messages?: ChatMessage[]; model?: string };
+  let body: { messages?: ChatMessage[]; model?: string; stream?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -2550,6 +2553,9 @@ async function handleAskAI(
   }
 
   const messages = body.messages;
+  const shouldStreamResponse =
+    body.stream !== false &&
+    (request.headers.get("accept")?.toLowerCase().includes("text/event-stream") ?? true);
   if (!Array.isArray(messages) || messages.length === 0) {
     await emitDocsAnalyticsEvent(analytics, {
       type: "api_ai_error",
@@ -2691,7 +2697,7 @@ async function handleAskAI(
       status: "started",
       inputPreview: {
         messageCount: messages.length,
-        stream: true,
+        stream: shouldStreamResponse,
         providerOrigin,
       },
       metadata: {
@@ -2705,7 +2711,9 @@ async function handleAskAI(
       cloudResponse = await fetch(cloudAskUrl, {
         method: "POST",
         headers: {
-          Accept: "text/event-stream, application/json",
+          Accept: shouldStreamResponse
+            ? "text/event-stream, application/json"
+            : "application/json",
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
@@ -2714,6 +2722,7 @@ async function handleAskAI(
           answerMode: "auto",
           answerStyle: "public",
           modelPreference: requestedModel,
+          stream: shouldStreamResponse,
         }),
       });
     } catch (error) {
@@ -2845,7 +2854,7 @@ async function handleAskAI(
       status: "success",
       outputPreview: {
         status: cloudResponse.status,
-        stream: true,
+        stream: shouldStreamResponse,
         contentType,
       },
       metadata: {
@@ -2863,7 +2872,7 @@ async function handleAskAI(
       durationMs: modelDurationMs,
       status: "success",
       outputPreview: {
-        stream: true,
+        stream: shouldStreamResponse,
       },
       metadata: {
         model,
@@ -2881,7 +2890,7 @@ async function handleAskAI(
       durationMs: runDurationMs,
       status: "success",
       outputPreview: {
-        stream: true,
+        stream: shouldStreamResponse,
         provider: "docs-cloud",
       },
       metadata: {
@@ -2898,7 +2907,7 @@ async function handleAskAI(
       durationMs: runDurationMs,
       status: "success",
       outputPreview: {
-        stream: true,
+        stream: shouldStreamResponse,
         provider: "docs-cloud",
       },
       metadata: {
@@ -2907,19 +2916,23 @@ async function handleAskAI(
       },
     });
 
-    if (contentType?.includes("text/event-stream")) {
+    if (shouldStreamResponse && contentType?.includes("text/event-stream")) {
       return createDocsCloudSseProxyResponse(cloudResponse.body);
     }
 
     const cloudBody = await cloudResponse.text();
     let answer = cloudBody;
+    let cloudPayload: unknown;
     try {
-      answer = getDocsCloudAnswerFromPayload(JSON.parse(cloudBody) as unknown);
+      cloudPayload = JSON.parse(cloudBody) as unknown;
+      answer = getDocsCloudAnswerFromPayload(cloudPayload);
     } catch {
       // Treat non-JSON Docs Cloud responses as the answer text.
     }
 
-    return createOpenAICompatibleSseResponse(answer);
+    return shouldStreamResponse
+      ? createOpenAICompatibleSseResponse(answer)
+      : Response.json(isPlainObject(cloudPayload) ? cloudPayload : { answer });
   }
 
   const retrievalStartedAt = Date.now();

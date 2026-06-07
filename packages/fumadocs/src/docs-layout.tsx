@@ -1116,6 +1116,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
               api={aiClientRequest.api}
               requestMode={aiClientRequest.requestMode}
               requestHeaders={aiClientRequest.requestHeaders}
+              requestStream={aiClientRequest.requestStream}
               locale={activeLocale}
               position={aiPosition}
               floatingStyle={aiFloatingStyle}
