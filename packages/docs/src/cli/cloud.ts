@@ -1676,15 +1676,6 @@ export async function checkCloudConfig(
             { apiKeyEnv: directApiKeyEnv },
           ),
         );
-      } else {
-        checks.push(
-          createCheck(
-            "askAi.direct",
-            "warn",
-            `cloud.apiKey.env is server-only (${configuredApiKeyEnv}); the browser will fall back through /api/docs instead of calling the knowledge endpoint directly.`,
-            configuredApiKeyEnv ? { apiKeyEnv: configuredApiKeyEnv } : undefined,
-          ),
-        );
       }
     } else if (aiProvider) {
       checks.push(createCheck("askAi.provider", "pass", `Ask AI provider is ${aiProvider}.`));

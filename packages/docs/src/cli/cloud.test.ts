@@ -417,7 +417,7 @@ void missing;
     expect(checkNames).not.toContain("deploy.enabled");
   });
 
-  it("warns when docs-cloud Ask AI uses a server-only API key env", async () => {
+  it("does not warn when docs-cloud Ask AI uses a server-only API key env", async () => {
     writePackageJson();
     writeFileSync(
       path.join(tmpDir, ".env.local"),
@@ -453,13 +453,11 @@ void missing;
     expect(result.ok).toBe(true);
     expect(result.checks).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          name: "askAi.direct",
-          status: "warn",
-          message: expect.stringContaining("/api/docs"),
-        }),
+        expect.objectContaining({ name: "askAi.provider", status: "pass" }),
+        expect.objectContaining({ name: "project.env", status: "pass" }),
       ]),
     );
+    expect(result.checks.some((check) => check.name === "askAi.direct")).toBe(false);
   });
 
   it("prints json and exits non-zero when cloud check fails", async () => {
