@@ -117,6 +117,43 @@ The explicit Cloud command is equivalent:
 pnpm dlx @farming-labs/docs cloud deploy
 ```
 
+## Check Cloud Setup
+
+Run a read-only health check before deploying or debugging Ask AI:
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs cloud check
+```
+
+The check validates `docs.config.ts`, `docs.json` freshness, `cloud.apiKey.env`, the Docs Cloud API
+key, required deploy scopes, analytics project envs, and `ai.provider: "docs-cloud"` wiring. Use
+`--json` in CI or `--no-network` when you only want local config checks.
+
+Scope the report when you only want one integration area:
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs cloud check --analytics
+pnpm dlx @farming-labs/docs cloud check --ask-ai
+pnpm dlx @farming-labs/docs cloud check --deploy
+```
+
+Example focused report:
+
+```txt title="terminal"
+Docs Cloud check
+api https://docs-app.farming-labs.dev
+scope analytics
+
+ok config Loaded docs.config.ts
+warn docs.json docs.json is missing. Run docs cloud sync to materialize cloud config.
+ok cloud.enabled Docs Cloud is enabled.
+ok analytics.runtime Runtime analytics is not disabled.
+ok analytics.cloud Docs Cloud analytics is enabled in cloud.analytics.
+ok project.env Docs Cloud project id is present in NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID.
+
+ok Docs Cloud check passed with 1 warning.
+```
+
 Use JSON output when CI or another tool needs the preview URL:
 
 ```bash title="terminal"
@@ -128,6 +165,10 @@ pnpm dlx @farming-labs/docs deploy --json
 | Command | Use it when |
 | ------- | ----------- |
 | `pnpm dlx @farming-labs/docs cloud sync` | You only want to update `docs.json` |
+| `pnpm dlx @farming-labs/docs cloud check` | You want to validate config, analytics envs, API key scopes, and Ask AI wiring without deploying |
+| `pnpm dlx @farming-labs/docs cloud check --analytics` | You only want to validate Docs Cloud analytics wiring |
+| `pnpm dlx @farming-labs/docs cloud check --ask-ai` | You only want to validate Docs Cloud Ask AI wiring |
+| `pnpm dlx @farming-labs/docs cloud check --deploy` | You only want to validate deploy flags, API key presence, and deploy scopes |
 | `pnpm dlx @farming-labs/docs deploy` | You want to sync, validate the key, and request a preview |
 | `pnpm dlx @farming-labs/docs cloud deploy` | You prefer the explicit Cloud namespace |
 | `pnpm dlx @farming-labs/docs deploy --json` | CI needs machine-readable output |

@@ -39,6 +39,10 @@ export function parseFlags(argv: string[]): Record<string, string | boolean | un
     "verbose",
     "host",
     "json",
+    "network",
+    "analytics",
+    "ask-ai",
+    "deploy",
   ]);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -115,6 +119,12 @@ async function main() {
     apiKey: typeof flags["api-key"] === "string" ? flags["api-key"] : undefined,
     apiKeyEnv: typeof flags["api-key-env"] === "string" ? flags["api-key-env"] : undefined,
     json: typeof flags.json === "boolean" ? flags.json : undefined,
+    network: typeof flags.network === "boolean" ? flags.network : undefined,
+    checkTargets: [
+      ...(flags.deploy === true ? (["deploy"] as const) : []),
+      ...(flags.analytics === true ? (["analytics"] as const) : []),
+      ...(flags["ask-ai"] === true ? (["ask-ai"] as const) : []),
+    ],
   };
 
   if (!parsedCommand.command || parsedCommand.command === "init") {
@@ -141,6 +151,9 @@ async function main() {
   } else if (parsedCommand.command === "cloud" && subcommand === "sync") {
     const { syncCloudConfig } = await import("./cloud.js");
     await syncCloudConfig(cloudOptions);
+  } else if (parsedCommand.command === "cloud" && subcommand === "check") {
+    const { runCloudCheck } = await import("./cloud.js");
+    await runCloudCheck(cloudOptions);
   } else if (parsedCommand.command === "cloud") {
     console.error(pc.red(`Unknown cloud subcommand: ${subcommand ?? "(missing)"}`));
     console.error();
@@ -304,7 +317,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("dev")}      Run frameworkless docs locally from ${pc.dim("docs.json")}
   ${pc.cyan("deploy")}   Sync cloud config and deploy hosted preview docs
   ${pc.cyan("preview")}  Alias for ${pc.cyan("deploy")}
-  ${pc.cyan("cloud")}    Docs Cloud utilities (${pc.dim("init")}, ${pc.dim("deploy")}, ${pc.dim("preview")}, ${pc.dim("sync")})
+  ${pc.cyan("cloud")}    Docs Cloud utilities (${pc.dim("init")}, ${pc.dim("check")}, ${pc.dim("deploy")}, ${pc.dim("preview")}, ${pc.dim("sync")})
   ${pc.cyan("agent")}    Agent utilities (${pc.dim("compact")} to generate sibling agent.md files)
   ${pc.cyan("agents")}   AGENTS.md utilities (${pc.dim("generate")} for static agent instructions)
   ${pc.cyan("doctor")}   Inspect and score agent or reader-facing docs quality
@@ -340,17 +353,22 @@ ${pc.dim("Options for dev:")}
   ${pc.cyan("--host [host]")}       Expose the preview on your network; optionally pass a host value
   ${pc.cyan("--verbose")}           Show raw runtime logs in addition to branded CLI output
 
-${pc.dim("Options for cloud deploy:")}
+${pc.dim("Options for cloud:")}
   ${pc.cyan("cloud init")}                           Add Docs Cloud config to ${pc.dim("docs.config.ts")} and ${pc.dim("docs.json")}
   ${pc.cyan("deploy")}                               Sync ${pc.dim("docs.config.ts")} into ${pc.dim("docs.json")} and deploy hosted preview docs
   ${pc.cyan("cloud deploy")}                         Same as ${pc.cyan("deploy")}
   ${pc.cyan("preview")}                              Alias for ${pc.cyan("deploy")}
   ${pc.cyan("cloud preview")}                        Compatibility alias for ${pc.cyan("cloud deploy")}
   ${pc.cyan("cloud sync")}                           Only materialize cloud settings into ${pc.dim("docs.json")}
+  ${pc.cyan("cloud check")}                          Validate Docs Cloud config, analytics envs, API key, and Ask AI wiring
   ${pc.cyan("--config <path>")}                      Use a custom docs config path
   ${pc.cyan("--api-key-env <name>")}                 Env var that stores the Docs Cloud API key
   ${pc.cyan("--api-base-url <url>")}                 Override the Docs Cloud API base URL
   ${pc.cyan("--api-key <key>")}                      Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
+  ${pc.cyan("--analytics")}                          Only check Docs Cloud analytics integration
+  ${pc.cyan("--ask-ai")}                             Only check Docs Cloud Ask AI integration
+  ${pc.cyan("--deploy")}                             Only check Docs Cloud deploy integration
+  ${pc.cyan("--no-network")}                         Skip live Docs Cloud API validation for ${pc.cyan("cloud check")}
   ${pc.cyan("--json")}                              Print machine-readable output
   ${pc.dim("required scopes")}                       project:read, preview:write, jobs:read
 
