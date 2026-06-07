@@ -17,7 +17,7 @@ Add a built-in AI chat that lets users ask questions about your documentation. T
 
 ## Quick Start
 
-```tstitle="docs.config.ts"
+```ts title="docs.config.ts"
 ai: {
   enabled: true,
 }
@@ -45,7 +45,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
 
     Pass it through `src/lib/docs.server.ts`:
 
-    ```tstitle="src/lib/docs.server.ts"
+    ```ts title="src/lib/docs.server.ts"
     import { createDocsServer } from "@farming-labs/tanstack-start/server";
     import docsConfig from "../../docs.config";
 
@@ -66,7 +66,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
 
     Pass it through `docs.server.ts` (SvelteKit requires server-only env access):
 
-    ```tstitle="src/lib/docs.server.ts"
+    ```ts title="src/lib/docs.server.ts"
     import { createDocsServer } from "@farming-labs/svelte/server";
     import { env } from "$env/dynamic/private";
     import config from "./docs.config";
@@ -97,7 +97,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
 
     Pass it through `docs.server.ts`:
 
-    ```tstitle="src/lib/docs.server.ts"
+    ```ts title="src/lib/docs.server.ts"
     import { createDocsServer } from "@farming-labs/astro/server";
     import config from "./docs.config";
 
@@ -127,7 +127,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
 
     Nuxt automatically reads environment variables via Nitro's runtime config. The `defineDocsHandler` reads `process.env.OPENAI_API_KEY` on the server.
 
-    ```tstitle="server/api/docs.ts"
+    ```ts title="server/api/docs.ts"
     import { defineDocsHandler } from "@farming-labs/nuxt/server";
     import config from "../../docs.config";
 
@@ -142,7 +142,7 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
 Use Docs Cloud when you want the Ask AI UI to query the knowledge index built from your imported
 repository instead of running the local OpenAI-compatible RAG handler inside the docs app.
 
-```tstitle="docs.config.ts"
+```ts title="docs.config.ts"
 export default defineDocs({
   cloud: {
     apiKey: { env: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY" },
@@ -179,7 +179,7 @@ reads an OpenAI-compatible event stream. Streaming is enabled by default for Doc
 
 All options go inside the `ai` object in `docs.config.ts`:
 
-```tstitle="docs.config.ts"
+```ts title="docs.config.ts"
 export default defineDocs({
   ai: {
     // ... options
@@ -325,7 +325,7 @@ Named provider configurations. Each provider has its own `baseUrl` and `apiKey`,
 | -------- | ------- |
 | `object` | —       |
 
-```tstitle="providers.ts"
+```ts title="providers.ts"
 ai: {
   enabled: true,
   providers: {
@@ -358,7 +358,7 @@ Default base URL for an OpenAI-compatible API endpoint. Used when no per-model `
 | -------- | ----------------------------- |
 | `string` | `"https://api.openai.com/v1"` |
 
-```tstitle="baseurl.ts"
+```ts title="baseurl.ts"
 ai: {
   enabled: true,
   model: "llama-3.1-70b-versatile",
@@ -374,7 +374,7 @@ Default API key for the LLM provider. Used when no per-model `provider` is confi
 | -------- | ---------------------------- |
 | `string` | `process.env.OPENAI_API_KEY` |
 
-```tstitle="apikey.ts"
+```ts title="apikey.ts"
 ai: {
   enabled: true,
   apiKey: process.env.GROQ_API_KEY,
@@ -406,7 +406,7 @@ Maximum number of search results to include as context for the AI. More results 
 | -------- | ------- |
 | `number` | `5`     |
 
-```tstitle="maxresults.ts"
+```ts title="maxresults.ts"
 ai: {
   enabled: true,
   maxResults: 10,
@@ -422,7 +422,7 @@ normal docs search API.
 | ---- | ------- |
 | `boolean \| DocsAskAIMcpConfig` | `false` |
 
-```tstitle="docs.config.ts"
+```ts title="docs.config.ts"
 export default defineDocs({
   ai: {
     enabled: true,
@@ -435,7 +435,7 @@ export default defineDocs({
 context. By default that is the canonical `mcp.route` at `/api/docs/mcp`; if you configure
 `mcp.route`, Ask AI uses that route automatically:
 
-```tstitle="docs.config.ts"
+```ts title="docs.config.ts"
 export default defineDocs({
   mcp: {
     route: "/custom/docs/mcp",
@@ -451,7 +451,7 @@ Pass an object only when Ask AI should use a hosted or external MCP endpoint ins
 own MCP route. MCP handles retrieval only; the `model`, `apiKey`, `baseUrl`, or `providers` config
 still controls the LLM generation request.
 
-```tstitle="docs.config.ts"
+```ts title="docs.config.ts"
 export default defineDocs({
   ai: {
     enabled: true,
@@ -492,7 +492,7 @@ building the model context.
 The context passed to the model is hydrated from the local docs page or matching section, preserving
 fenced code blocks so install commands, config snippets, and examples can be quoted accurately.
 
-```tstitle="docs.config.ts"
+```ts title="docs.config.ts"
 import { createCustomSearchAdapter } from "@farming-labs/docs";
 
 export default defineDocs({
@@ -527,7 +527,7 @@ to hide the action row.
 Single callback for Ask AI response actions. Use `data.type` to handle `"copy"`, `"like"`, and
 `"dislike"` from one place.
 
-```tstitle="docs.config.ts"
+```ts title="docs.config.ts"
 ai: {
   enabled: true,
   onActions(data) {
@@ -735,7 +735,7 @@ Custom trigger button for the floating chat. Replaces the default sparkles butto
 
 ## Full Example — Single Provider
 
-```tstitle="docs.config.ts"
+```ts title="docs.config.ts"
 export default defineDocs({
   ai: {
     enabled: true,
@@ -758,7 +758,7 @@ export default defineDocs({
 
 ## Full Example — Multiple Providers
 
-```tstitle="docs.config.ts"
+```ts title="docs.config.ts"
 export default defineDocs({
   ai: {
     enabled: true,
@@ -805,7 +805,7 @@ Users see a model dropdown in the AI chat interface. When they pick a model, the
 
 Use any OpenAI-compatible API by setting `baseUrl` and `model`:
 
-```tstitle="docs.config.ts"
+```ts title="docs.config.ts"
 ai: {
   enabled: true,
   baseUrl: "https://api.groq.com/openai/v1",
@@ -821,7 +821,7 @@ OPENAI_API_KEY=gsk_...
 
 Use the `providers` map to configure multiple APIs, then reference them from each model entry:
 
-```tstitle="docs.config.ts"
+```ts title="docs.config.ts"
 ai: {
   enabled: true,
   providers: {

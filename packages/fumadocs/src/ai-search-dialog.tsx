@@ -210,14 +210,10 @@ function createSmoothAIStreamRenderer(onRender: (content: string) => void) {
   const nextRevealCount = (gap: number, elapsedMs: number): number => {
     if (gap <= 0) return 0;
 
-    const charsPerSecond =
-      finishing || gap > 1600
-        ? 7800
-        : gap > 700
-          ? 4800
-          : gap > 180
-            ? 2600
-            : 1500;
+    let charsPerSecond = 900;
+    if (gap > 2400) charsPerSecond = finishing ? 3600 : 3000;
+    else if (gap > 1000) charsPerSecond = finishing ? 2400 : 2000;
+    else if (gap > 220) charsPerSecond = finishing ? 1600 : 1300;
 
     return Math.max(1, Math.min(gap, Math.ceil((charsPerSecond * elapsedMs) / 1000)));
   };
@@ -1043,8 +1039,8 @@ function AIChat({
     selectedModel || (Array.isArray(models) && models.length > 0 ? models[0]!.id : undefined);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: isStreaming ? "auto" : "smooth" });
+  }, [isStreaming, messages]);
   useEffect(() => {
     aiInputRef.current?.focus();
   }, []);
@@ -1077,6 +1073,7 @@ function AIChat({
         });
       }
 
+      let streamRenderer: ReturnType<typeof createSmoothAIStreamRenderer> | undefined;
       try {
         const res = await fetch(api, {
           method: "POST",
@@ -1112,24 +1109,30 @@ function AIChat({
           return;
         }
 
-        const assistantContent = await readAIResponseContent(res, (content) => {
+        streamRenderer = createSmoothAIStreamRenderer((content) => {
           setMessages([...newMessages, { ...assistantMessage, content }]);
         });
-        if (assistantContent)
-          setMessages([...newMessages, { ...assistantMessage, content: assistantContent }]);
+        const assistantContent = await readAIResponseContent(res, (content) => {
+          streamRenderer?.push(content);
+        });
+        const renderedContent = await streamRenderer.finish();
+        const finalContent = renderedContent || assistantContent;
+        if (finalContent)
+          setMessages([...newMessages, { ...assistantMessage, content: finalContent }]);
         if (analytics) {
           emitClientAnalyticsEvent({
             type: "ai_response",
             properties: {
               surface,
               questionLength: question.length,
-              responseLength: assistantContent.length,
+              responseLength: finalContent.length,
               durationMs: Math.max(0, Date.now() - startedAt),
               model: effectiveModelId,
             },
           });
         }
       } catch {
+        streamRenderer?.cancel();
         setMessages([
           ...newMessages,
           {
@@ -1974,9 +1977,12 @@ function FullModalAIChat({
   // Auto-scroll on new messages
   useEffect(() => {
     if (listRef.current) {
-      listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+      listRef.current.scrollTo({
+        top: listRef.current.scrollHeight,
+        behavior: isStreaming ? "auto" : "smooth",
+      });
     }
-  }, [messages]);
+  }, [isStreaming, messages]);
 
   const submitQuestion = useCallback(
     async (question: string) => {
@@ -2006,6 +2012,7 @@ function FullModalAIChat({
         });
       }
 
+      let streamRenderer: ReturnType<typeof createSmoothAIStreamRenderer> | undefined;
       try {
         const res = await fetch(api, {
           method: "POST",
@@ -2041,24 +2048,30 @@ function FullModalAIChat({
           return;
         }
 
-        const assistantContent = await readAIResponseContent(res, (content) => {
+        streamRenderer = createSmoothAIStreamRenderer((content) => {
           setMessages([...newMessages, { ...assistantMessage, content }]);
         });
-        if (assistantContent)
-          setMessages([...newMessages, { ...assistantMessage, content: assistantContent }]);
+        const assistantContent = await readAIResponseContent(res, (content) => {
+          streamRenderer?.push(content);
+        });
+        const renderedContent = await streamRenderer.finish();
+        const finalContent = renderedContent || assistantContent;
+        if (finalContent)
+          setMessages([...newMessages, { ...assistantMessage, content: finalContent }]);
         if (analytics) {
           emitClientAnalyticsEvent({
             type: "ai_response",
             properties: {
               surface: "full-modal",
               questionLength: question.length,
-              responseLength: assistantContent.length,
+              responseLength: finalContent.length,
               durationMs: Math.max(0, Date.now() - startedAt),
               model: effectiveModelId,
             },
           });
         }
       } catch {
+        streamRenderer?.cancel();
         setMessages([
           ...newMessages,
           {
