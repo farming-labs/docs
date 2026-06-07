@@ -1645,6 +1645,23 @@ export interface AIConfig {
   triggerComponent?: unknown;
 
   /**
+   * Server-side answer provider used by Ask AI.
+   *
+   * - `"docs-cloud"` — send questions to the configured Docs Cloud project
+   *   using `cloud.apiKey.env` and `NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID`.
+   * - Omit this option to use the built-in OpenAI-compatible RAG handler.
+   *
+   * @example
+   * ```ts
+   * ai: {
+   *   enabled: true,
+   *   provider: "docs-cloud",
+   * }
+   * ```
+   */
+  provider?: "docs-cloud" | (string & {});
+
+  /**
    * The LLM model configuration.
    *
    * **Simple** — pass a plain string for a single model:

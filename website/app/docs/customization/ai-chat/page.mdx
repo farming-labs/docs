@@ -137,6 +137,42 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
   </Tab>
 </Tabs>
 
+## Hosted Docs Cloud provider
+
+Use Docs Cloud when you want the Ask AI UI to query the knowledge index built from your imported
+repository instead of running the local OpenAI-compatible RAG handler inside the docs app.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  cloud: {
+    apiKey: { env: "DOCS_CLOUD_API_KEY" },
+    ai: { enabled: true },
+  },
+  ai: {
+    enabled: true,
+    provider: "docs-cloud",
+    mode: "floating",
+    floatingStyle: "full-modal",
+    suggestedQuestions: [
+      "How do I get started?",
+      "How do I configure this?",
+    ],
+  },
+});
+```
+
+Set the Docs Cloud project id and API key in environment variables:
+
+```bash title=".env"
+NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=docs_cloud_project_id
+DOCS_CLOUD_API_KEY=fl_key_...
+```
+
+`provider: "docs-cloud"` keeps OpenAI, Anthropic, embeddings, and retrieval credentials on the
+Docs Cloud server. Your docs app sends the user's question to
+`/v1/projects/{projectId}/knowledge/ask` using the configured Docs Cloud API key, then returns an
+OpenAI-compatible event stream to the Ask AI widget.
+
 ## Configuration Reference
 
 All options go inside the `ai` object in `docs.config.ts`:

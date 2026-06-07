@@ -1594,6 +1594,94 @@ Install the framework with pnpm.
     }
   });
 
+  it("uses Docs Cloud provider config for Ask AI while keeping the chat SSE contract", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-api-ai-docs-cloud-"));
+    tempDirs.push(rootDir);
+
+    mkdirSync(join(rootDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      join(rootDir, "app", "docs", "page.mdx"),
+      `---
+title: "Installation"
+---
+
+# Installation
+
+Install the framework with pnpm.
+`,
+    );
+
+    const originalFetch = globalThis.fetch;
+    const originalProjectId = process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
+    const originalServerProjectId = process.env.DOCS_CLOUD_PROJECT_ID;
+    const originalApiKey = process.env.CUSTOM_DOCS_CLOUD_KEY;
+
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_cloud";
+    delete process.env.DOCS_CLOUD_PROJECT_ID;
+    process.env.CUSTOM_DOCS_CLOUD_KEY = "cloud-key";
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ answer: "Use Docs Cloud for hosted Ask AI." }), {
+        status: 200,
+        headers: {
+          "content-type": "application/json",
+        },
+      }),
+    ) as typeof fetch;
+
+    try {
+      const { POST } = createDocsAPI({
+        rootDir,
+        entry: "docs",
+        ai: {
+          enabled: true,
+          provider: "docs-cloud",
+        },
+        cloud: {
+          apiKey: { env: "CUSTOM_DOCS_CLOUD_KEY" },
+        },
+        analytics: false,
+      });
+
+      const response = await POST(
+        new Request("http://localhost/api/docs", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: "How do I install it?" }],
+          }),
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("text/event-stream");
+      expect(await response.text()).toContain("Use Docs Cloud for hosted Ask AI.");
+
+      const [cloudUrl, cloudInit] = vi.mocked(globalThis.fetch).mock.calls[0] ?? [];
+      expect(cloudUrl).toBe(
+        "https://docs-app.farming-labs.dev/v1/projects/project_cloud/knowledge/ask",
+      );
+      expect(cloudInit?.headers).toMatchObject({
+        Authorization: "Bearer cloud-key",
+      });
+      expect(JSON.parse(String(cloudInit?.body))).toMatchObject({
+        question: "How do I install it?",
+        answerMode: "auto",
+        answerStyle: "public",
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+      if (originalProjectId === undefined) delete process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID;
+      else process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = originalProjectId;
+      if (originalServerProjectId === undefined) delete process.env.DOCS_CLOUD_PROJECT_ID;
+      else process.env.DOCS_CLOUD_PROJECT_ID = originalServerProjectId;
+      if (originalApiKey === undefined) delete process.env.CUSTOM_DOCS_CLOUD_KEY;
+      else process.env.CUSTOM_DOCS_CLOUD_KEY = originalApiKey;
+      vi.restoreAllMocks();
+    }
+  });
+
   it("infers package guidance from Ask AI context so examples avoid placeholder imports", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-api-ai-package-prompt-"));
     tempDirs.push(rootDir);

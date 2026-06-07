@@ -110,6 +110,7 @@ interface AIModelConfig {
 
 interface AIOptions {
   enabled?: boolean;
+  provider?: string;
   model?: string | AIModelConfig;
   providers?: Record<string, AIProviderConfig>;
   systemPrompt?: string;
@@ -139,6 +140,8 @@ interface DocsAPIOptions {
   language?: string;
   /** AI chat configuration */
   ai?: AIOptions;
+  /** Hosted Docs Cloud configuration. */
+  cloud?: DocsConfig["cloud"];
   /** i18n config (optional) */
   i18n?: DocsI18nConfig;
   /** Search configuration */
@@ -179,6 +182,8 @@ interface DocsMCPAPIOptions {
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const DEFAULT_DOCS_API_ROUTE = "/api/docs";
+const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://docs-app.farming-labs.dev";
+const DEFAULT_DOCS_CLOUD_API_KEY_ENV = "DOCS_CLOUD_API_KEY";
 const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
 const DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE = "/.well-known/agent.json";
@@ -850,6 +855,7 @@ function readAIConfig(root: string): AIOptions {
         const enabledMatch = content.match(/ai\s*:\s*\{[^}]*enabled\s*:\s*(true|false)/s);
         if (enabledMatch && enabledMatch[1] === "false") return {};
 
+        const providerMatch = content.match(/ai\s*:\s*\{[^}]*provider\s*:\s*["']([^"']+)["']/s);
         const modelMatch = content.match(/ai\s*:\s*\{[^}]*model\s*:\s*["']([^"']+)["']/s);
         const baseUrlMatch = content.match(/ai\s*:\s*\{[^}]*baseUrl\s*:\s*["']([^"']+)["']/s);
         // Match `apiKey: process.env.SOME_VAR` and resolve it at runtime
@@ -866,6 +872,7 @@ function readAIConfig(root: string): AIOptions {
 
         return {
           enabled: true,
+          provider: providerMatch?.[1],
           model: modelMatch?.[1],
           baseUrl: baseUrlMatch?.[1],
           apiKey: apiKeyMatch?.[1] ? process.env[apiKeyMatch[1]] : undefined,
@@ -2233,6 +2240,170 @@ function resolveModelAndProvider(
   return { model: modelId, baseUrl, apiKey };
 }
 
+function readRuntimeEnv(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  return value ? value : undefined;
+}
+
+function resolveDocsCloudApiBaseUrl(): string {
+  return (
+    readRuntimeEnv("DOCS_CLOUD_API_URL") ??
+    readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_URL") ??
+    DEFAULT_DOCS_CLOUD_API_BASE_URL
+  ).replace(/\/+$/, "");
+}
+
+function resolveDocsCloudProjectId(): string | undefined {
+  return (
+    readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID") ?? readRuntimeEnv("DOCS_CLOUD_PROJECT_ID")
+  );
+}
+
+function resolveDocsCloudApiKey(cloudConfig?: DocsConfig["cloud"]): {
+  envName: string;
+  apiKey: string | undefined;
+} {
+  const envName = cloudConfig?.apiKey?.env?.trim() || DEFAULT_DOCS_CLOUD_API_KEY_ENV;
+  return { envName, apiKey: readRuntimeEnv(envName) };
+}
+
+function createOpenAICompatibleSseChunk(content: string): string {
+  return `data: ${JSON.stringify({
+    choices: [
+      {
+        delta: { content },
+      },
+    ],
+  })}\n\n`;
+}
+
+function createOpenAICompatibleSseResponse(content: string): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      if (content) {
+        controller.enqueue(encoder.encode(createOpenAICompatibleSseChunk(content)));
+      }
+      controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+}
+
+function getOpenAICompatibleDeltaContent(value: unknown): string | undefined {
+  if (!isPlainObject(value)) return undefined;
+
+  const firstChoice = Array.isArray(value.choices) ? value.choices[0] : undefined;
+  if (!isPlainObject(firstChoice)) return undefined;
+  const delta = firstChoice.delta;
+  if (!isPlainObject(delta)) return undefined;
+
+  return typeof delta.content === "string" ? delta.content : undefined;
+}
+
+function getDocsCloudStreamContent(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (!isPlainObject(value)) return undefined;
+
+  for (const key of ["content", "text", "answer", "delta"]) {
+    const content = value[key];
+    if (typeof content === "string") return content;
+  }
+
+  return undefined;
+}
+
+function createDocsCloudSseProxyResponse(body: ReadableStream<Uint8Array> | null): Response {
+  if (!body) return createOpenAICompatibleSseResponse("");
+
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const reader = body.getReader();
+      let buffer = "";
+      let doneSent = false;
+
+      const enqueue = (chunk: string) => {
+        controller.enqueue(encoder.encode(chunk));
+      };
+
+      const flushEvent = (event: string) => {
+        const data = event
+          .split(/\r?\n/)
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice("data:".length).trim())
+          .filter(Boolean)
+          .join("\n")
+          .trim();
+
+        if (!data) return;
+        if (data === "[DONE]") {
+          doneSent = true;
+          enqueue("data: [DONE]\n\n");
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(data) as unknown;
+          if (getOpenAICompatibleDeltaContent(parsed) !== undefined) {
+            enqueue(`data: ${data}\n\n`);
+            return;
+          }
+
+          const content = getDocsCloudStreamContent(parsed);
+          if (content) enqueue(createOpenAICompatibleSseChunk(content));
+        } catch {
+          enqueue(createOpenAICompatibleSseChunk(data));
+        }
+      };
+
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split(/\r?\n\r?\n/);
+          buffer = events.pop() ?? "";
+          for (const event of events) flushEvent(event);
+        }
+
+        buffer += decoder.decode();
+        if (buffer.trim()) flushEvent(buffer);
+        if (!doneSent) enqueue("data: [DONE]\n\n");
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+}
+
+function getDocsCloudAnswerFromPayload(payload: unknown): string {
+  if (!isPlainObject(payload)) return "";
+  const answer = payload.answer;
+  if (typeof answer === "string") return answer;
+  const text = payload.text;
+  return typeof text === "string" ? text : "";
+}
+
 function safeUrlOrigin(value: string): string {
   try {
     return new URL(value).origin;
@@ -2251,6 +2422,7 @@ async function handleAskAI(
   request: Request,
   indexes: DocsSearchSourcePage[],
   aiConfig: AIOptions,
+  cloudConfig: DocsConfig["cloud"] | undefined,
   search: boolean | DocsSearchConfig | undefined,
   analytics?: boolean | DocsAnalyticsConfig,
   observability?: boolean | DocsObservabilityConfig,
@@ -2409,6 +2581,318 @@ async function handleAskAI(
           : undefined,
     },
   });
+
+  if (aiConfig.provider === "docs-cloud") {
+    const requestedModel =
+      typeof body.model === "string" && body.model.trim().length > 0
+        ? body.model.trim()
+        : undefined;
+    const model = requestedModel ?? "docs-cloud";
+    const projectId = resolveDocsCloudProjectId();
+    const { envName, apiKey } = resolveDocsCloudApiKey(cloudConfig);
+    const cloudApiBaseUrl = resolveDocsCloudApiBaseUrl();
+    const cloudAskUrl = projectId
+      ? `${cloudApiBaseUrl}/v1/projects/${encodeURIComponent(projectId)}/knowledge/ask`
+      : undefined;
+
+    if (!projectId || !apiKey || !cloudAskUrl) {
+      const reason = !projectId ? "missing_docs_cloud_project_id" : "missing_docs_cloud_api_key";
+      await emitDocsAnalyticsEvent(analytics, {
+        type: "api_ai_error",
+        source: "server",
+        url: request.url,
+        path: url.pathname,
+        locale: analyticsContext.locale,
+        input: { question: query },
+        properties: {
+          ...requestAnalyticsProperties,
+          reason,
+          provider: "docs-cloud",
+          messageCount: messages.length,
+          questionLength: query.length,
+          model,
+          envName: !apiKey ? envName : undefined,
+          durationMs: Math.max(0, Date.now() - requestStartedAt),
+        },
+      });
+      await emitRunError(reason, {
+        status: 500,
+        provider: "docs-cloud",
+        messageCount: messages.length,
+        questionLength: query.length,
+        model,
+        envName: !apiKey ? envName : undefined,
+      });
+
+      return Response.json(
+        {
+          error: !projectId
+            ? "AI provider docs-cloud requires NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID or DOCS_CLOUD_PROJECT_ID."
+            : `AI provider docs-cloud requires ${envName} to be set on the server.`,
+        },
+        { status: 500 },
+      );
+    }
+
+    await emitDocsAnalyticsEvent(analytics, {
+      type: "api_ai_request",
+      source: "server",
+      url: request.url,
+      path: url.pathname,
+      locale: analyticsContext.locale,
+      input: { question: query },
+      properties: {
+        ...requestAnalyticsProperties,
+        provider: "docs-cloud",
+        messageCount: messages.length,
+        questionLength: query.length,
+        model,
+      },
+    });
+
+    const modelStartedAt = Date.now();
+    const modelStartedAtIso = new Date().toISOString();
+    const modelSpanId = createDocsAgentTraceId("span");
+    const providerOrigin = safeUrlOrigin(cloudApiBaseUrl);
+    await emitTrace({
+      type: "model.call",
+      name: model,
+      spanId: modelSpanId,
+      parentSpanId: runSpanId,
+      startedAt: modelStartedAtIso,
+      status: "started",
+      inputPreview: {
+        messageCount: messages.length,
+        stream: true,
+        providerOrigin,
+      },
+      metadata: {
+        model,
+        provider: "docs-cloud",
+      },
+    });
+
+    let cloudResponse: Response;
+    try {
+      cloudResponse = await fetch(cloudAskUrl, {
+        method: "POST",
+        headers: {
+          Accept: "text/event-stream, application/json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          question: query,
+          answerMode: "auto",
+          answerStyle: "public",
+          modelPreference: requestedModel,
+        }),
+      });
+    } catch (error) {
+      const elapsed = Math.max(0, Date.now() - modelStartedAt);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      await emitTrace({
+        type: "model.error",
+        name: model,
+        parentSpanId: modelSpanId,
+        startedAt: modelStartedAtIso,
+        endedAt: new Date().toISOString(),
+        durationMs: elapsed,
+        status: "error",
+        outputPreview: {
+          message,
+        },
+        metadata: {
+          model,
+          provider: "docs-cloud",
+          providerOrigin,
+        },
+      });
+      await emitDocsAnalyticsEvent(analytics, {
+        type: "api_ai_error",
+        source: "server",
+        url: request.url,
+        path: url.pathname,
+        locale: analyticsContext.locale,
+        input: { question: query },
+        properties: {
+          ...requestAnalyticsProperties,
+          reason: "docs_cloud_fetch_error",
+          provider: "docs-cloud",
+          messageCount: messages.length,
+          questionLength: query.length,
+          model,
+          durationMs: Math.max(0, Date.now() - requestStartedAt),
+        },
+      });
+      await emitRunError("docs_cloud_fetch_error", {
+        status: 502,
+        provider: "docs-cloud",
+        messageCount: messages.length,
+        questionLength: query.length,
+        model,
+      });
+      return Response.json({ error: "Docs Cloud Ask AI request failed." }, { status: 502 });
+    }
+
+    if (!cloudResponse.ok) {
+      const errText = await cloudResponse.text().catch(() => "Unknown error");
+      const elapsed = Math.max(0, Date.now() - modelStartedAt);
+      await emitTrace({
+        type: "model.error",
+        name: model,
+        parentSpanId: modelSpanId,
+        startedAt: modelStartedAtIso,
+        endedAt: new Date().toISOString(),
+        durationMs: elapsed,
+        status: "error",
+        outputPreview: {
+          status: cloudResponse.status,
+          errorChars: errText.length,
+        },
+        metadata: {
+          model,
+          provider: "docs-cloud",
+          providerOrigin,
+        },
+      });
+      await emitDocsAnalyticsEvent(analytics, {
+        type: "api_ai_error",
+        source: "server",
+        url: request.url,
+        path: url.pathname,
+        locale: analyticsContext.locale,
+        input: { question: query },
+        properties: {
+          ...requestAnalyticsProperties,
+          reason: "docs_cloud_error",
+          provider: "docs-cloud",
+          status: cloudResponse.status,
+          messageCount: messages.length,
+          questionLength: query.length,
+          model,
+          durationMs: Math.max(0, Date.now() - requestStartedAt),
+        },
+      });
+      await emitRunError("docs_cloud_error", {
+        status: 502,
+        modelStatus: cloudResponse.status,
+        provider: "docs-cloud",
+        messageCount: messages.length,
+        questionLength: query.length,
+        model,
+      });
+      return Response.json(
+        { error: `Docs Cloud Ask AI error (${cloudResponse.status}).` },
+        { status: 502 },
+      );
+    }
+
+    await emitDocsAnalyticsEvent(analytics, {
+      type: "api_ai_response",
+      source: "server",
+      url: request.url,
+      path: url.pathname,
+      locale: analyticsContext.locale,
+      input: { question: query },
+      properties: {
+        ...requestAnalyticsProperties,
+        provider: "docs-cloud",
+        messageCount: messages.length,
+        questionLength: query.length,
+        model,
+        durationMs: Math.max(0, Date.now() - requestStartedAt),
+      },
+    });
+    const responseEndedAt = new Date().toISOString();
+    const modelDurationMs = Math.max(0, Date.now() - modelStartedAt);
+    const contentType = cloudResponse.headers.get("content-type") ?? undefined;
+    await emitTrace({
+      type: "model.response",
+      name: model,
+      parentSpanId: modelSpanId,
+      startedAt: modelStartedAtIso,
+      endedAt: responseEndedAt,
+      durationMs: modelDurationMs,
+      status: "success",
+      outputPreview: {
+        status: cloudResponse.status,
+        stream: true,
+        contentType,
+      },
+      metadata: {
+        model,
+        provider: "docs-cloud",
+        providerOrigin,
+      },
+    });
+    await emitTrace({
+      type: "model.stream",
+      name: model,
+      parentSpanId: modelSpanId,
+      startedAt: modelStartedAtIso,
+      endedAt: responseEndedAt,
+      durationMs: modelDurationMs,
+      status: "success",
+      outputPreview: {
+        stream: true,
+      },
+      metadata: {
+        model,
+        provider: "docs-cloud",
+      },
+    });
+
+    const runDurationMs = Math.max(0, Date.now() - requestStartedAt);
+    await emitTrace({
+      type: "agent.final",
+      name: "ask-ai",
+      parentSpanId: runSpanId,
+      startedAt: trace.startedAt,
+      endedAt: new Date().toISOString(),
+      durationMs: runDurationMs,
+      status: "success",
+      outputPreview: {
+        stream: true,
+        provider: "docs-cloud",
+      },
+      metadata: {
+        model,
+        provider: "docs-cloud",
+      },
+    });
+    await emitTrace({
+      type: "run.end",
+      name: "ask-ai",
+      spanId: runSpanId,
+      startedAt: trace.startedAt,
+      endedAt: new Date().toISOString(),
+      durationMs: runDurationMs,
+      status: "success",
+      outputPreview: {
+        stream: true,
+        provider: "docs-cloud",
+      },
+      metadata: {
+        model,
+        provider: "docs-cloud",
+      },
+    });
+
+    if (contentType?.includes("text/event-stream")) {
+      return createDocsCloudSseProxyResponse(cloudResponse.body);
+    }
+
+    const cloudBody = await cloudResponse.text();
+    let answer = cloudBody;
+    try {
+      answer = getDocsCloudAnswerFromPayload(JSON.parse(cloudBody) as unknown);
+    } catch {
+      // Treat non-JSON Docs Cloud responses as the answer text.
+    }
+
+    return createOpenAICompatibleSseResponse(answer);
+  }
 
   const retrievalStartedAt = Date.now();
   const retrievalStartedAtIso = new Date().toISOString();
@@ -3010,6 +3494,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
   // Read AI config from docs.config if not explicitly provided
   const aiConfig: AIOptions = options?.ai ?? readAIConfig(root);
+  const cloudConfig = options?.cloud;
   const searchConfig = options?.search;
 
   // Read llms.txt config
@@ -3772,6 +4257,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
         request,
         getIndexes(ctx),
         aiConfig,
+        cloudConfig,
         resolveAskAISearchRequestConfig({
           search: searchConfig,
           useMcp: aiConfig.useMcp,
