@@ -2711,9 +2711,7 @@ async function handleAskAI(
       cloudResponse = await fetch(cloudAskUrl, {
         method: "POST",
         headers: {
-          Accept: shouldStreamResponse
-            ? "text/event-stream, application/json"
-            : "application/json",
+          Accept: shouldStreamResponse ? "text/event-stream, application/json" : "application/json",
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
