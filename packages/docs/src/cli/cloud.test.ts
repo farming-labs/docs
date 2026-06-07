@@ -380,6 +380,43 @@ void missing;
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("can narrow cloud check to analytics integration only", async () => {
+    writePackageJson();
+    writeFileSync(
+      path.join(tmpDir, ".env.local"),
+      "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud\n",
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  analytics: { enabled: true, console: false },
+  cloud: {
+    analytics: { enabled: true },
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const result = await checkCloudConfig({
+      rootDir: tmpDir,
+      apiBaseUrl: "https://cloud.example.com",
+      checkTargets: ["analytics"],
+    });
+    const checkNames = result.checks.map((check) => check.name);
+
+    expect(result.ok).toBe(true);
+    expect(result.targets).toEqual(["analytics"]);
+    expect(checkNames).toContain("analytics.runtime");
+    expect(checkNames).toContain("analytics.cloud");
+    expect(checkNames).toContain("project.env");
+    expect(checkNames).not.toContain("apiKey.value");
+    expect(checkNames).not.toContain("askAi.provider");
+    expect(checkNames).not.toContain("deploy.enabled");
+  });
+
   it("warns when docs-cloud Ask AI uses a server-only API key env", async () => {
     writePackageJson();
     writeFileSync(

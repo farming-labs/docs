@@ -74,6 +74,13 @@ describe("parseFlags", () => {
     expect(flags.json).toBe(true);
   });
 
+  it("parses cloud check target flags", () => {
+    const flags = parseFlags(["cloud", "check", "--analytics", "--ask-ai", "--deploy"]);
+    expect(flags.analytics).toBe(true);
+    expect(flags["ask-ai"]).toBe(true);
+    expect(flags.deploy).toBe(true);
+  });
+
   it("parses dev flags including verbose and hostname aliases", () => {
     const flags = parseFlags(["dev", "--verbose", "--port", "4010", "--host", "0.0.0.0"]);
     expect(flags.verbose).toBe(true);

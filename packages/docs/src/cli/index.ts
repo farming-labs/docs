@@ -40,6 +40,9 @@ export function parseFlags(argv: string[]): Record<string, string | boolean | un
     "host",
     "json",
     "network",
+    "analytics",
+    "ask-ai",
+    "deploy",
   ]);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -117,6 +120,11 @@ async function main() {
     apiKeyEnv: typeof flags["api-key-env"] === "string" ? flags["api-key-env"] : undefined,
     json: typeof flags.json === "boolean" ? flags.json : undefined,
     network: typeof flags.network === "boolean" ? flags.network : undefined,
+    checkTargets: [
+      ...(flags.deploy === true ? (["deploy"] as const) : []),
+      ...(flags.analytics === true ? (["analytics"] as const) : []),
+      ...(flags["ask-ai"] === true ? (["ask-ai"] as const) : []),
+    ],
   };
 
   if (!parsedCommand.command || parsedCommand.command === "init") {
@@ -357,6 +365,9 @@ ${pc.dim("Options for cloud:")}
   ${pc.cyan("--api-key-env <name>")}                 Env var that stores the Docs Cloud API key
   ${pc.cyan("--api-base-url <url>")}                 Override the Docs Cloud API base URL
   ${pc.cyan("--api-key <key>")}                      Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
+  ${pc.cyan("--analytics")}                          Only check Docs Cloud analytics integration
+  ${pc.cyan("--ask-ai")}                             Only check Docs Cloud Ask AI integration
+  ${pc.cyan("--deploy")}                             Only check Docs Cloud deploy integration
   ${pc.cyan("--no-network")}                         Skip live Docs Cloud API validation for ${pc.cyan("cloud check")}
   ${pc.cyan("--json")}                              Print machine-readable output
   ${pc.dim("required scopes")}                       project:read, preview:write, jobs:read
