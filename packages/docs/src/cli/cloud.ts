@@ -1654,11 +1654,7 @@ export async function checkCloudConfig(
   if (checkAskAi) {
     if (aiProvider === "docs-cloud") {
       checks.push(
-        createCheck(
-          "askAi.provider",
-          "pass",
-          'Ask AI is configured with provider: "docs-cloud".',
-        ),
+        createCheck("askAi.provider", "pass", 'Ask AI is configured with provider: "docs-cloud".'),
       );
 
       const configuredApiKeyEnv = readConfiguredCloudApiKeyEnv(snapshot);
@@ -1741,8 +1737,8 @@ export async function checkCloudConfig(
             ),
           );
         } else {
-          const missing = REQUIRED_PREVIEW_API_KEY_SCOPES.filter((scope) =>
-            !scopes.includes(scope),
+          const missing = REQUIRED_PREVIEW_API_KEY_SCOPES.filter(
+            (scope) => !scopes.includes(scope),
           );
           checks.push(
             createCheck(
