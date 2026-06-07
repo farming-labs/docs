@@ -1638,11 +1638,7 @@ export async function checkCloudConfig(
   const aiProvider = readAiProvider(snapshot);
   if (aiProvider === "docs-cloud") {
     checks.push(
-      createCheck(
-        "askAi.provider",
-        "pass",
-        'Ask AI is configured with provider: "docs-cloud".',
-      ),
+      createCheck("askAi.provider", "pass", 'Ask AI is configured with provider: "docs-cloud".'),
     );
 
     const configuredApiKeyEnv = readConfiguredCloudApiKeyEnv(snapshot);

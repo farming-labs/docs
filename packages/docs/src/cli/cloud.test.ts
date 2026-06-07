@@ -306,9 +306,7 @@ void missing;
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       expect(String(input)).toBe("https://cloud.example.com/api/cloud/me");
-      expect(new Headers(init?.headers).get("authorization")).toBe(
-        "Bearer docs_cloud_public_key",
-      );
+      expect(new Headers(init?.headers).get("authorization")).toBe("Bearer docs_cloud_public_key");
       return new Response(
         JSON.stringify({
           workspace: { id: "workspace_1", name: "Acme" },
