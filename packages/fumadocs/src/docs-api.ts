@@ -890,6 +890,34 @@ function readAIConfig(root: string): AIOptions {
   return {};
 }
 
+function readCloudConfig(root: string): DocsConfig["cloud"] | undefined {
+  for (const ext of FILE_EXTS) {
+    const configPath = path.join(root, `docs.config.${ext}`);
+    if (!fs.existsSync(configPath)) continue;
+
+    try {
+      const content = fs.readFileSync(configPath, "utf-8");
+      const sanitized = stripCommentsAndStrings(content);
+      const configObject = extractRootConfigObject(content, sanitized);
+      const scopedContent = configObject?.content ?? content;
+      const scopedSanitized = configObject?.sanitized ?? sanitized;
+      const cloudBlock = extractObjectLiteral(scopedContent, scopedSanitized, "cloud");
+
+      if (!cloudBlock) continue;
+
+      const cloudBlockSanitized = stripCommentsAndStrings(cloudBlock);
+      const apiKeyBlock = extractObjectLiteral(cloudBlock, cloudBlockSanitized, "apiKey");
+      const apiKeyEnv = apiKeyBlock ? readStringFromBlock(apiKeyBlock, "env") : undefined;
+
+      return apiKeyEnv ? { apiKey: { env: apiKeyEnv } } : {};
+    } catch {
+      // fall through
+    }
+  }
+
+  return undefined;
+}
+
 function readMcpConfig(root: string): boolean | DocsMcpConfig | undefined {
   for (const ext of FILE_EXTS) {
     const configPath = path.join(root, `docs.config.${ext}`);
@@ -3494,7 +3522,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
 
   // Read AI config from docs.config if not explicitly provided
   const aiConfig: AIOptions = options?.ai ?? readAIConfig(root);
-  const cloudConfig = options?.cloud;
+  const cloudConfig = options?.cloud ?? readCloudConfig(root);
   const searchConfig = options?.search;
 
   // Read llms.txt config

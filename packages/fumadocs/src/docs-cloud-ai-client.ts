@@ -31,11 +31,11 @@ function resolveDocsCloudProjectId(): string | undefined {
 
 function resolvePublicDocsCloudApiKey(config: DocsConfig): string | undefined {
   const configuredEnv = config.cloud?.apiKey?.env?.trim();
-  const publicEnv = configuredEnv?.startsWith("NEXT_PUBLIC_")
-    ? configuredEnv
-    : DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV;
 
-  return readRuntimeEnv(publicEnv);
+  if (!configuredEnv) return readRuntimeEnv(DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV);
+  if (!configuredEnv.startsWith("NEXT_PUBLIC_")) return undefined;
+
+  return readRuntimeEnv(configuredEnv);
 }
 
 export function resolveDocsCloudAIClientRequest(
