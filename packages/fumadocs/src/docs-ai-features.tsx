@@ -24,6 +24,8 @@ import { emitClientAnalyticsEvent } from "./client-analytics.js";
 interface DocsAIFeaturesProps {
   mode: "search" | "floating" | "sidebar-icon";
   api?: string;
+  requestMode?: "openai-chat" | "docs-cloud";
+  requestHeaders?: Record<string, string>;
   locale?: string;
   position?: "bottom-right" | "bottom-left" | "bottom-center";
   floatingStyle?: "panel" | "modal" | "popover" | "full-modal";
@@ -41,6 +43,8 @@ interface DocsAIFeaturesProps {
 export function DocsAIFeatures({
   mode,
   api = "/api/docs",
+  requestMode,
+  requestHeaders,
   locale,
   position = "bottom-right",
   floatingStyle = "panel",
@@ -62,6 +66,8 @@ export function DocsAIFeatures({
     return (
       <SearchModeAI
         api={localizedApi}
+        requestMode={requestMode}
+        requestHeaders={requestHeaders}
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
         loaderVariant={loaderVariant}
@@ -78,6 +84,8 @@ export function DocsAIFeatures({
     return (
       <SidebarIconModeAI
         api={localizedApi}
+        requestMode={requestMode}
+        requestHeaders={requestHeaders}
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
         loaderVariant={loaderVariant}
@@ -93,6 +101,8 @@ export function DocsAIFeatures({
   return (
     <FloatingAIChat
       api={localizedApi}
+      requestMode={requestMode}
+      requestHeaders={requestHeaders}
       position={position}
       floatingStyle={floatingStyle}
       triggerComponentHtml={triggerComponentHtml}
@@ -110,6 +120,8 @@ export function DocsAIFeatures({
 
 function SearchModeAI({
   api,
+  requestMode,
+  requestHeaders,
   suggestedQuestions,
   aiLabel,
   loaderVariant,
@@ -120,6 +132,8 @@ function SearchModeAI({
   feedbackEnabled,
 }: {
   api: string;
+  requestMode?: "openai-chat" | "docs-cloud";
+  requestHeaders?: Record<string, string>;
   suggestedQuestions?: string[];
   aiLabel?: string;
   loaderVariant?: string;
@@ -184,6 +198,8 @@ function SearchModeAI({
       open={open}
       onOpenChange={setOpen}
       api={api}
+      requestMode={requestMode}
+      requestHeaders={requestHeaders}
       suggestedQuestions={suggestedQuestions}
       aiLabel={aiLabel}
       loaderVariant={loaderVariant as any}
@@ -198,6 +214,8 @@ function SearchModeAI({
 
 function SidebarIconModeAI({
   api,
+  requestMode,
+  requestHeaders,
   suggestedQuestions,
   aiLabel,
   loaderVariant,
@@ -208,6 +226,8 @@ function SidebarIconModeAI({
   feedbackEnabled,
 }: {
   api: string;
+  requestMode?: "openai-chat" | "docs-cloud";
+  requestHeaders?: Record<string, string>;
   suggestedQuestions?: string[];
   aiLabel?: string;
   loaderVariant?: string;
@@ -272,6 +292,8 @@ function SidebarIconModeAI({
         open={searchOpen}
         onOpenChange={setSearchOpen}
         api={api}
+        requestMode={requestMode}
+        requestHeaders={requestHeaders}
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
         loaderVariant={loaderVariant as any}
@@ -285,6 +307,8 @@ function SidebarIconModeAI({
         open={aiOpen}
         onOpenChange={setAiOpen}
         api={api}
+        requestMode={requestMode}
+        requestHeaders={requestHeaders}
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
         loaderVariant={loaderVariant as any}

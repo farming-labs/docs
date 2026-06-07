@@ -12,6 +12,7 @@ import type {
 import { applySidebarFolderIndexBehavior, resolveDocsAnalyticsConfig } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
+import { resolveDocsCloudAIClientRequest } from "./docs-cloud-ai-client.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
 import { resolveReadingTimeOptions } from "./reading-time.js";
 import { resolveOpenDocsProviders } from "./open-docs-providers.js";
@@ -339,6 +340,7 @@ export function TanstackDocsLayout({
   const tocStyle = tocConfig?.style as "default" | "directional" | undefined;
   const analyticsEnabled = resolveDocsAnalyticsConfig(config.analytics).enabled;
   const docsApiUrl = withLangInUrl("/api/docs", locale);
+  const aiClientRequest = resolveDocsCloudAIClientRequest(config, docsApiUrl);
   const navTitle = (config.nav?.title as ReactNode) ?? "Docs";
   const navUrl = withLangInUrl(config.nav?.url ?? `/${config.entry ?? "docs"}`, locale);
 
@@ -489,7 +491,9 @@ export function TanstackDocsLayout({
         <Suspense fallback={null}>
           <DocsAIFeatures
             mode={aiMode}
-            api={docsApiUrl}
+            api={aiClientRequest.api}
+            requestMode={aiClientRequest.requestMode}
+            requestHeaders={aiClientRequest.requestHeaders}
             locale={locale}
             position={aiPosition}
             floatingStyle={aiFloatingStyle}

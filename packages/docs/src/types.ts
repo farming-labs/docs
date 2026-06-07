@@ -1648,7 +1648,10 @@ export interface AIConfig {
    * Server-side answer provider used by Ask AI.
    *
    * - `"docs-cloud"` — send questions to the configured Docs Cloud project
-   *   using `cloud.apiKey.env` and `NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID`.
+   *   using `NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID` and a browser-safe
+   *   Docs Cloud API key env such as `NEXT_PUBLIC_DOCS_CLOUD_API_KEY`.
+   *   If only a server-side key is configured, framework integrations may
+   *   proxy through the local docs API route.
    * - Omit this option to use the built-in OpenAI-compatible RAG handler.
    *
    * @example

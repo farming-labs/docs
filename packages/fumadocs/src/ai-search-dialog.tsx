@@ -50,6 +50,8 @@ interface ChatMessage {
 }
 
 type AIModelOption = { id: string; label: string };
+type AIRequestMode = "openai-chat" | "docs-cloud";
+type AIRequestHeaders = Record<string, string>;
 
 interface DocsWindowHooks extends Window {
   __fdOnAIActions__?: (data: DocsAskAIActionData) => void | Promise<void>;
@@ -61,6 +63,113 @@ let aiMessageId = 0;
 function createAIMessageId(): string {
   aiMessageId += 1;
   return `ai_${Date.now().toString(36)}_${aiMessageId.toString(36)}`;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function buildAIRequestHeaders(requestHeaders?: AIRequestHeaders): HeadersInit {
+  return {
+    Accept: "text/event-stream, application/json",
+    "Content-Type": "application/json",
+    ...requestHeaders,
+  };
+}
+
+function buildAIRequestBody(options: {
+  requestMode?: AIRequestMode;
+  question: string;
+  messages: ChatMessage[];
+  model?: string;
+}): string {
+  const messages = options.messages.map((message) => ({
+    role: message.role,
+    content: message.content,
+  }));
+
+  if (options.requestMode === "docs-cloud") {
+    return JSON.stringify({
+      question: options.question,
+      messages,
+      answerMode: "auto",
+      answerStyle: "public",
+      modelPreference: options.model,
+    });
+  }
+
+  return JSON.stringify({
+    messages,
+    model: options.model,
+  });
+}
+
+function getOpenAICompatibleDeltaContent(value: unknown): string | undefined {
+  if (!isPlainObject(value)) return undefined;
+
+  const firstChoice = Array.isArray(value.choices) ? value.choices[0] : undefined;
+  if (!isPlainObject(firstChoice)) return undefined;
+  const delta = firstChoice.delta;
+  if (!isPlainObject(delta)) return undefined;
+
+  return typeof delta.content === "string" ? delta.content : undefined;
+}
+
+function getDocsCloudAnswerContent(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (!isPlainObject(value)) return undefined;
+
+  for (const key of ["answer", "content", "text", "delta"]) {
+    const content = value[key];
+    if (typeof content === "string") return content;
+  }
+
+  return undefined;
+}
+
+async function readAIResponseContent(
+  response: Response,
+  onContent: (content: string) => void,
+): Promise<string> {
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  if (contentType.includes("application/json")) {
+    const payload = await response.json().catch(() => null);
+    const answer = getDocsCloudAnswerContent(payload) ?? "";
+    if (answer) onContent(answer);
+    return answer;
+  }
+
+  if (!response.body) {
+    return "";
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let assistantContent = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6).trim();
+      if (!data || data === "[DONE]") continue;
+      try {
+        const json = JSON.parse(data);
+        const content = getOpenAICompatibleDeltaContent(json) ?? getDocsCloudAnswerContent(json);
+        if (content) {
+          assistantContent += content;
+          onContent(assistantContent);
+        }
+      } catch {}
+    }
+  }
+
+  return assistantContent;
 }
 
 function getLastUserQuestion(messages: ChatMessage[], assistantIndex: number): string {
@@ -777,6 +886,8 @@ function AIFeedbackControls({
 
 function AIChat({
   api,
+  requestMode,
+  requestHeaders,
   messages,
   setMessages,
   aiInput,
@@ -794,6 +905,8 @@ function AIChat({
   surface = "chat",
 }: {
   api: string;
+  requestMode?: AIRequestMode;
+  requestHeaders?: AIRequestHeaders;
   messages: ChatMessage[];
   setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
   aiInput: string;
@@ -860,9 +973,11 @@ function AIChat({
       try {
         const res = await fetch(api, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          headers: buildAIRequestHeaders(requestHeaders),
+          body: buildAIRequestBody({
+            requestMode,
+            question,
+            messages: newMessages,
             model: effectiveModelId,
           }),
         });
@@ -889,32 +1004,9 @@ function AIChat({
           return;
         }
 
-        const reader = res.body!.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let assistantContent = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6).trim();
-              if (data === "[DONE]") continue;
-              try {
-                const json = JSON.parse(data);
-                const content = json.choices?.[0]?.delta?.content;
-                if (content) {
-                  assistantContent += content;
-                  setMessages([...newMessages, { ...assistantMessage, content: assistantContent }]);
-                }
-              } catch {}
-            }
-          }
-        }
+        const assistantContent = await readAIResponseContent(res, (content) => {
+          setMessages([...newMessages, { ...assistantMessage, content }]);
+        });
         if (assistantContent)
           setMessages([...newMessages, { ...assistantMessage, content: assistantContent }]);
         if (analytics) {
@@ -954,6 +1046,8 @@ function AIChat({
     [
       messages,
       api,
+      requestMode,
+      requestHeaders,
       isStreaming,
       setMessages,
       setAiInput,
@@ -1140,6 +1234,8 @@ export function DocsSearchDialog({
   open,
   onOpenChange,
   api = "/api/docs",
+  requestMode,
+  requestHeaders,
   suggestedQuestions,
   aiLabel,
   loaderVariant,
@@ -1152,6 +1248,8 @@ export function DocsSearchDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   api?: string;
+  requestMode?: AIRequestMode;
+  requestHeaders?: AIRequestHeaders;
   suggestedQuestions?: string[];
   aiLabel?: string;
   loaderVariant?: LoaderVariant;
@@ -1405,6 +1503,8 @@ export function DocsSearchDialog({
         {tab === "ai" && (
           <AIChat
             api={api}
+            requestMode={requestMode}
+            requestHeaders={requestHeaders}
             messages={messages}
             setMessages={setMessages}
             aiInput={aiInput}
@@ -1485,6 +1585,8 @@ function getAnimation(style: FloatingStyle): string {
 
 export function FloatingAIChat({
   api = "/api/docs",
+  requestMode,
+  requestHeaders,
   position = "bottom-right",
   floatingStyle = "panel",
   triggerComponentHtml,
@@ -1498,6 +1600,8 @@ export function FloatingAIChat({
   feedbackEnabled = true,
 }: {
   api?: string;
+  requestMode?: AIRequestMode;
+  requestHeaders?: AIRequestHeaders;
   position?: FloatingPosition;
   floatingStyle?: FloatingStyle;
   triggerComponentHtml?: string;
@@ -1563,6 +1667,8 @@ export function FloatingAIChat({
     return (
       <FullModalAIChat
         api={api}
+        requestMode={requestMode}
+        requestHeaders={requestHeaders}
         isOpen={isOpen}
         setIsOpen={setIsOpen}
         closeAI={closeFloatingAI}
@@ -1614,6 +1720,8 @@ export function FloatingAIChat({
 
           <AIChat
             api={api}
+            requestMode={requestMode}
+            requestHeaders={requestHeaders}
             messages={messages}
             setMessages={setMessages}
             aiInput={aiInput}
@@ -1683,6 +1791,8 @@ export function FloatingAIChat({
 
 function FullModalAIChat({
   api,
+  requestMode,
+  requestHeaders,
   isOpen,
   setIsOpen,
   closeAI,
@@ -1704,6 +1814,8 @@ function FullModalAIChat({
   feedbackEnabled = true,
 }: {
   api: string;
+  requestMode?: AIRequestMode;
+  requestHeaders?: AIRequestHeaders;
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
   closeAI: (trigger: "button" | "escape" | "overlay") => void;
@@ -1779,9 +1891,11 @@ function FullModalAIChat({
       try {
         const res = await fetch(api, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          headers: buildAIRequestHeaders(requestHeaders),
+          body: buildAIRequestBody({
+            requestMode,
+            question,
+            messages: newMessages,
             model: effectiveModelId,
           }),
         });
@@ -1808,32 +1922,9 @@ function FullModalAIChat({
           return;
         }
 
-        const reader = res.body!.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let assistantContent = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6).trim();
-              if (data === "[DONE]") continue;
-              try {
-                const json = JSON.parse(data);
-                const content = json.choices?.[0]?.delta?.content;
-                if (content) {
-                  assistantContent += content;
-                  setMessages([...newMessages, { ...assistantMessage, content: assistantContent }]);
-                }
-              } catch {}
-            }
-          }
-        }
+        const assistantContent = await readAIResponseContent(res, (content) => {
+          setMessages([...newMessages, { ...assistantMessage, content }]);
+        });
         if (assistantContent)
           setMessages([...newMessages, { ...assistantMessage, content: assistantContent }]);
         if (analytics) {
@@ -1873,6 +1964,8 @@ function FullModalAIChat({
     [
       messages,
       api,
+      requestMode,
+      requestHeaders,
       isStreaming,
       setMessages,
       setAiInput,
@@ -2157,6 +2250,8 @@ export function AIModalDialog({
   open,
   onOpenChange,
   api = "/api/docs",
+  requestMode,
+  requestHeaders,
   suggestedQuestions,
   aiLabel,
   loaderVariant,
@@ -2169,6 +2264,8 @@ export function AIModalDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   api?: string;
+  requestMode?: AIRequestMode;
+  requestHeaders?: AIRequestHeaders;
   suggestedQuestions?: string[];
   aiLabel?: string;
   loaderVariant?: LoaderVariant;
@@ -2247,6 +2344,8 @@ export function AIModalDialog({
 
         <AIChat
           api={api}
+          requestMode={requestMode}
+          requestHeaders={requestHeaders}
           messages={messages}
           setMessages={setMessages}
           aiInput={aiInput}
