@@ -137,6 +137,44 @@ That's it. The AI reads your `OPENAI_API_KEY` environment variable and uses `gpt
   </Tab>
 </Tabs>
 
+## Hosted Docs Cloud provider
+
+Use Docs Cloud when you want the Ask AI UI to query the knowledge index built from your imported
+repository instead of running the local OpenAI-compatible RAG handler inside the docs app.
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  cloud: {
+    apiKey: { env: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY" },
+    ai: { enabled: true },
+  },
+  ai: {
+    enabled: true,
+    provider: "docs-cloud",
+    stream: true,
+    mode: "floating",
+    floatingStyle: "full-modal",
+    suggestedQuestions: [
+      "How do I get started?",
+      "How do I configure this?",
+    ],
+  },
+});
+```
+
+Set the Docs Cloud project id and API key in environment variables:
+
+```bash title=".env"
+NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=docs_cloud_project_id
+NEXT_PUBLIC_DOCS_CLOUD_API_KEY=fl_key_...
+```
+
+`provider: "docs-cloud"` keeps OpenAI, Anthropic, embeddings, and retrieval credentials on the
+Docs Cloud server. The Ask AI widget sends the user's question directly to
+`/v1/projects/{projectId}/knowledge/ask` using the configured project-scoped Docs Cloud API key and
+reads an OpenAI-compatible event stream. Streaming is enabled by default for Docs Cloud; set
+`stream: false` if you need a single JSON answer.
+
 ## Configuration Reference
 
 All options go inside the `ai` object in `docs.config.ts`:
@@ -157,7 +195,7 @@ Whether to enable AI chat functionality.
 | --------- | ------- |
 | `boolean` | `false` |
 
-```ts 
+```ts
 ai: {
   enabled: true,
 }
@@ -174,7 +212,7 @@ How the AI chat UI is presented.
 - **`"search"`** — AI tab integrated into the `Cmd+K` search dialog. Users switch between "Search" and "AI" tabs.
 - **`"floating"`** — A floating chat widget with a button on screen. Opens as a panel, modal, or full-screen overlay.
 
-```ts 
+```ts
 ai: {
   enabled: true,
   mode: "floating",
@@ -189,7 +227,7 @@ Position of the floating chat button on screen. Only used when `mode` is `"float
 | ---------------------------------------------------- | ---------------- |
 | `"bottom-right" \| "bottom-left" \| "bottom-center"` | `"bottom-right"` |
 
-```ts 
+```ts
 ai: {
   enabled: true,
   mode: "floating",
@@ -210,11 +248,28 @@ Visual style of the floating chat when opened. Only used when `mode` is `"floati
 - **`"popover"`** — A compact popover near the button. Suitable for quick questions.
 - **`"full-modal"`** — A full-screen immersive overlay. Messages scroll in the center, input is pinned at the bottom, suggested questions appear as horizontal pills.
 
-```ts 
+```ts
 ai: {
   enabled: true,
   mode: "floating",
   floatingStyle: "full-modal",
+}
+```
+
+### `stream`
+
+Whether Ask AI should request a streaming response when the provider supports it. Docs Cloud streams
+token deltas by default.
+
+| Type      | Default |
+| --------- | ------- |
+| `boolean` | `true`  |
+
+```ts
+ai: {
+  enabled: true,
+  provider: "docs-cloud",
+  stream: true,
 }
 ```
 
@@ -228,7 +283,7 @@ The LLM model configuration. Can be a simple string (single model) or an object 
 | -------- | --------------- |
 | `string` | `"gpt-4o-mini"` |
 
-```ts 
+```ts
 ai: {
   enabled: true,
   model: "gpt-4o",
@@ -241,7 +296,7 @@ ai: {
 | -------- | ------- |
 | `object` | —       |
 
-```ts 
+```ts
 ai: {
   enabled: true,
   model: {
@@ -336,7 +391,7 @@ Custom system prompt prepended to the AI conversation. Documentation context is 
 | -------- | ------------------------------------------------ |
 | `string` | `"You are a helpful documentation assistant..."` |
 
-```ts 
+```ts
 ai: {
   enabled: true,
   systemPrompt: "You are a friendly assistant for Acme Corp. Always mention our support email for complex issues.",
@@ -502,7 +557,7 @@ Pre-filled suggested questions shown in the AI chat when the conversation is emp
 | ---------- | ------- |
 | `string[]` | `[]`    |
 
-```ts 
+```ts
 ai: {
   enabled: true,
   suggestedQuestions: [
@@ -570,7 +625,7 @@ Loading indicator variant shown while the AI generates a response.
 
 Available variants: `"shimmer-dots"`, `"circular"`, `"dots"`, `"typing"`, `"wave"`, `"bars"`, `"pulse"`, `"pulse-dot"`, `"terminal"`, `"text-blink"`, `"text-shimmer"`, `"loading-dots"`.
 
-```ts 
+```ts
 ai: {
   enabled: true,
   loader: "wave",

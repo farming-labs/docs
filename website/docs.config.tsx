@@ -315,22 +315,11 @@ export default defineDocs({
   ordering: "numeric",
   ai: {
     enabled: true,
+    provider: "docs-cloud",
+    stream: true,
     mode: "floating",
     position: "bottom-right",
     floatingStyle: "full-modal",
-    providers: {
-      openai: {
-        baseUrl: "https://api.openai.com/v1",
-        apiKey: process.env.OPENAI_API_KEY,
-      },
-    },
-    model: {
-      models: [
-        { id: "gpt-4o-mini", label: "GPT-4o mini (fast)", provider: "openai" },
-        { id: "gpt-4o", label: "GPT-4o (quality)", provider: "openai" },
-      ],
-      defaultModel: "gpt-4o-mini",
-    },
     aiLabel: "DocsBot",
     onActions(data) {
       console.log("[@farming-labs/docs:ask-ai-action]", data);

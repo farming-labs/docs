@@ -24,6 +24,9 @@ import { emitClientAnalyticsEvent } from "./client-analytics.js";
 interface DocsAIFeaturesProps {
   mode: "search" | "floating" | "sidebar-icon";
   api?: string;
+  requestMode?: "openai-chat" | "docs-cloud";
+  requestHeaders?: Record<string, string>;
+  requestStream?: boolean;
   locale?: string;
   position?: "bottom-right" | "bottom-left" | "bottom-center";
   floatingStyle?: "panel" | "modal" | "popover" | "full-modal";
@@ -41,6 +44,9 @@ interface DocsAIFeaturesProps {
 export function DocsAIFeatures({
   mode,
   api = "/api/docs",
+  requestMode,
+  requestHeaders,
+  requestStream,
   locale,
   position = "bottom-right",
   floatingStyle = "panel",
@@ -62,6 +68,9 @@ export function DocsAIFeatures({
     return (
       <SearchModeAI
         api={localizedApi}
+        requestMode={requestMode}
+        requestHeaders={requestHeaders}
+        requestStream={requestStream}
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
         loaderVariant={loaderVariant}
@@ -78,6 +87,9 @@ export function DocsAIFeatures({
     return (
       <SidebarIconModeAI
         api={localizedApi}
+        requestMode={requestMode}
+        requestHeaders={requestHeaders}
+        requestStream={requestStream}
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
         loaderVariant={loaderVariant}
@@ -93,6 +105,9 @@ export function DocsAIFeatures({
   return (
     <FloatingAIChat
       api={localizedApi}
+      requestMode={requestMode}
+      requestHeaders={requestHeaders}
+      requestStream={requestStream}
       position={position}
       floatingStyle={floatingStyle}
       triggerComponentHtml={triggerComponentHtml}
@@ -110,6 +125,9 @@ export function DocsAIFeatures({
 
 function SearchModeAI({
   api,
+  requestMode,
+  requestHeaders,
+  requestStream,
   suggestedQuestions,
   aiLabel,
   loaderVariant,
@@ -120,6 +138,9 @@ function SearchModeAI({
   feedbackEnabled,
 }: {
   api: string;
+  requestMode?: "openai-chat" | "docs-cloud";
+  requestHeaders?: Record<string, string>;
+  requestStream?: boolean;
   suggestedQuestions?: string[];
   aiLabel?: string;
   loaderVariant?: string;
@@ -184,6 +205,9 @@ function SearchModeAI({
       open={open}
       onOpenChange={setOpen}
       api={api}
+      requestMode={requestMode}
+      requestHeaders={requestHeaders}
+      requestStream={requestStream}
       suggestedQuestions={suggestedQuestions}
       aiLabel={aiLabel}
       loaderVariant={loaderVariant as any}
@@ -198,6 +222,9 @@ function SearchModeAI({
 
 function SidebarIconModeAI({
   api,
+  requestMode,
+  requestHeaders,
+  requestStream,
   suggestedQuestions,
   aiLabel,
   loaderVariant,
@@ -208,6 +235,9 @@ function SidebarIconModeAI({
   feedbackEnabled,
 }: {
   api: string;
+  requestMode?: "openai-chat" | "docs-cloud";
+  requestHeaders?: Record<string, string>;
+  requestStream?: boolean;
   suggestedQuestions?: string[];
   aiLabel?: string;
   loaderVariant?: string;
@@ -272,6 +302,9 @@ function SidebarIconModeAI({
         open={searchOpen}
         onOpenChange={setSearchOpen}
         api={api}
+        requestMode={requestMode}
+        requestHeaders={requestHeaders}
+        requestStream={requestStream}
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
         loaderVariant={loaderVariant as any}
@@ -285,6 +318,9 @@ function SidebarIconModeAI({
         open={aiOpen}
         onOpenChange={setAiOpen}
         api={api}
+        requestMode={requestMode}
+        requestHeaders={requestHeaders}
+        requestStream={requestStream}
         suggestedQuestions={suggestedQuestions}
         aiLabel={aiLabel}
         loaderVariant={loaderVariant as any}

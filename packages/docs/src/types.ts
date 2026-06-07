@@ -1645,6 +1645,37 @@ export interface AIConfig {
   triggerComponent?: unknown;
 
   /**
+   * Server-side answer provider used by Ask AI.
+   *
+   * - `"docs-cloud"` — send questions to the configured Docs Cloud project
+   *   using `NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID` and a browser-safe
+   *   Docs Cloud API key env such as `NEXT_PUBLIC_DOCS_CLOUD_API_KEY`.
+   *   If only a server-side key is configured, framework integrations may
+   *   proxy through the local docs API route.
+   * - Omit this option to use the built-in OpenAI-compatible RAG handler.
+   *
+   * @example
+   * ```ts
+   * ai: {
+   *   enabled: true,
+   *   provider: "docs-cloud",
+   * }
+   * ```
+   */
+  provider?: "docs-cloud" | (string & {});
+
+  /**
+   * Whether Ask AI should request streaming responses when the selected
+   * provider supports them.
+   *
+   * Docs Cloud streams token deltas by default for `provider: "docs-cloud"`.
+   * Set this to `false` to request a single JSON answer instead.
+   *
+   * @default true
+   */
+  stream?: boolean;
+
+  /**
    * The LLM model configuration.
    *
    * **Simple** — pass a plain string for a single model:

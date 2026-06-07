@@ -29,6 +29,7 @@ import type {
 } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
+import { resolveDocsCloudAIClientRequest } from "./docs-cloud-ai-client.js";
 import { DocsCommandSearch } from "./docs-command-search.js";
 import { resolveOpenDocsProviders } from "./open-docs-providers.js";
 import { resolvePageReadingTime, resolveReadingTimeOptions } from "./reading-time.js";
@@ -902,6 +903,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const i18n = resolveDocsI18nConfig(getDocsI18n(config));
   const activeLocale = localeContext.locale ?? i18n?.defaultLocale;
   const docsApiUrl = withLangInUrl("/api/docs", activeLocale);
+  const aiClientRequest = resolveDocsCloudAIClientRequest(config, docsApiUrl);
   const changelogConfig = resolveChangelogConfig(config.changelog);
   const changelogBasePath = changelogConfig.enabled
     ? publicDocsRoute(localeContext, [changelogConfig.path])
@@ -1111,7 +1113,10 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
           <Suspense fallback={null}>
             <DocsAIFeatures
               mode={aiMode}
-              api={docsApiUrl}
+              api={aiClientRequest.api}
+              requestMode={aiClientRequest.requestMode}
+              requestHeaders={aiClientRequest.requestHeaders}
+              requestStream={aiClientRequest.requestStream}
               locale={activeLocale}
               position={aiPosition}
               floatingStyle={aiFloatingStyle}
