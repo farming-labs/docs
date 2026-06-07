@@ -27,6 +27,12 @@ const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://docs-app.farming-labs.dev";
 const DEFAULT_PREVIEW_TIMEOUT_MS = 5 * 60 * 1000;
 const DEFAULT_PREVIEW_POLL_INTERVAL_MS = 2000;
 const REQUIRED_PREVIEW_API_KEY_SCOPES = ["project:read", "preview:write", "jobs:read"] as const;
+const DOCS_CLOUD_PROJECT_ID_ENVS = [
+  "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID",
+  "DOCS_CLOUD_PROJECT_ID",
+] as const;
+const DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV = "NEXT_PUBLIC_DOCS_CLOUD_API_KEY";
+const CLOUD_CHECK_TARGETS = ["auth", "deploy", "analytics", "ask-ai"] as const;
 
 type JsonPrimitive = string | number | boolean | null;
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue | undefined };
@@ -76,6 +82,8 @@ export interface CloudCommandOptions {
   apiKey?: string;
   apiKeyEnv?: string;
   json?: boolean;
+  network?: boolean;
+  checkTargets?: CloudCheckTarget[];
   rootDir?: string;
   timeoutMs?: number;
   pollIntervalMs?: number;
@@ -99,6 +107,29 @@ export interface MaterializeCloudConfigResult {
   apiKeyEnv: string;
   created: boolean;
   updated: boolean;
+}
+
+export type CloudCheckStatus = "pass" | "warn" | "fail";
+export type CloudCheckTarget = "auth" | "deploy" | "analytics" | "ask-ai";
+
+export interface CloudCheckItem {
+  name: string;
+  status: CloudCheckStatus;
+  message: string;
+  details?: JsonRecord;
+}
+
+export interface CloudCheckResult {
+  ok: boolean;
+  apiBaseUrl: string;
+  configPath: string;
+  docsJsonPath: string;
+  apiKeyEnv: string;
+  analyticsProjectIdEnv?: string;
+  network: boolean;
+  targets: CloudCheckTarget[];
+  checks: CloudCheckItem[];
+  identity?: JsonRecord;
 }
 
 interface DocsConfigSnapshot {
@@ -987,6 +1018,135 @@ export async function materializeCloudConfig(
   };
 }
 
+function readCombinedEnv(rootDir: string): Record<string, string> {
+  const env: Record<string, string> = {
+    ...loadProjectEnv(rootDir),
+  };
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (typeof value === "string") env[key] = value;
+  }
+
+  return env;
+}
+
+function readEnvValue(env: Record<string, string>, name: string | undefined): string | undefined {
+  if (!name) return undefined;
+  const value = env[name]?.trim();
+  return value ? value : undefined;
+}
+
+function readFirstEnv(
+  env: Record<string, string>,
+  names: readonly string[],
+): { name: string; value: string } | undefined {
+  for (const name of names) {
+    const value = readEnvValue(env, name);
+    if (value) return { name, value };
+  }
+  return undefined;
+}
+
+function readConfiguredCloudApiKeyEnv(snapshot: DocsConfigSnapshot): string | undefined {
+  const moduleEnv = snapshot.config?.cloud?.apiKey?.env?.trim();
+  if (moduleEnv) return moduleEnv;
+
+  const apiKeyBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["cloud", "apiKey"]);
+  const staticEnv = apiKeyBlock ? readStringProperty(apiKeyBlock, "env") : undefined;
+  return staticEnv?.trim() || undefined;
+}
+
+function readAiProvider(snapshot: DocsConfigSnapshot): string | undefined {
+  const moduleProvider = (snapshot.config?.ai as { provider?: unknown } | undefined)?.provider;
+  if (typeof moduleProvider === "string" && moduleProvider.trim()) return moduleProvider.trim();
+
+  const aiBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["ai"]);
+  const staticProvider = aiBlock ? readStringProperty(aiBlock, "provider") : undefined;
+  return staticProvider?.trim() || undefined;
+}
+
+function readRuntimeAnalyticsDisabled(snapshot: DocsConfigSnapshot): boolean {
+  const moduleAnalytics = snapshot.config?.analytics;
+  if (moduleAnalytics === false) return true;
+  if (isRecord(moduleAnalytics) && moduleAnalytics.enabled === false) return true;
+
+  const staticBoolean = readTopLevelBooleanProperty(snapshot.content ?? "", "analytics");
+  if (staticBoolean === false) return true;
+
+  const analyticsBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["analytics"]);
+  const staticEnabled = analyticsBlock
+    ? readTopLevelBooleanProperty(analyticsBlock, "enabled")
+    : undefined;
+  return staticEnabled === false;
+}
+
+function isCloudAnalyticsEnabled(analytics: DocsCloudConfig["analytics"] | undefined): boolean {
+  if (analytics === false) return false;
+  if (isRecord(analytics) && analytics.enabled === false) return false;
+  return typeof analytics !== "undefined";
+}
+
+function createCheck(
+  name: string,
+  status: CloudCheckStatus,
+  message: string,
+  details?: JsonRecord,
+): CloudCheckItem {
+  return {
+    name,
+    status,
+    message,
+    ...(details ? { details } : {}),
+  };
+}
+
+function summarizeIdentity(identity: unknown): JsonRecord | undefined {
+  if (!isRecord(identity)) return undefined;
+
+  const workspace = isRecord(identity.workspace) ? identity.workspace : undefined;
+  const apiKey = isRecord(identity.apiKey) ? identity.apiKey : undefined;
+  const scopes = readApiKeyScopes(identity);
+
+  return {
+    ...(workspace
+      ? {
+          workspace: {
+            ...(typeof workspace.id === "string" ? { id: workspace.id } : {}),
+            ...(typeof workspace.name === "string" ? { name: workspace.name } : {}),
+          },
+        }
+      : {}),
+    ...(apiKey
+      ? {
+          apiKey: {
+            ...(typeof apiKey.id === "string" ? { id: apiKey.id } : {}),
+            ...(scopes.length > 0 ? { scopes } : {}),
+          },
+        }
+      : {}),
+  };
+}
+
+function formatCheckStatus(status: CloudCheckStatus): string {
+  if (status === "pass") return pc.green("ok");
+  if (status === "warn") return pc.yellow("warn");
+  return pc.red("fail");
+}
+
+function countChecks(checks: CloudCheckItem[], status: CloudCheckStatus): number {
+  return checks.filter((check) => check.status === status).length;
+}
+
+function resolveCloudCheckTargets(options: CloudCommandOptions): Set<CloudCheckTarget> {
+  const targets = new Set(options.checkTargets);
+  if (targets.size > 0) return targets;
+  return new Set(CLOUD_CHECK_TARGETS);
+}
+
+function formatCloudCheckTargets(targets: readonly CloudCheckTarget[]): string {
+  return targets.join(", ");
+}
+
 function resolveApiBaseUrl(options: CloudCommandOptions): string {
   const value =
     options.apiBaseUrl ??
@@ -1335,6 +1495,306 @@ function createSpinner(initialMessage: string, options: { json?: boolean } = {})
   };
 }
 
+export async function checkCloudConfig(
+  options: CloudCommandOptions = {},
+): Promise<CloudCheckResult> {
+  const rootDir = options.rootDir ?? process.cwd();
+  const docsJsonPath = path.join(rootDir, DOCS_JSON_FILE);
+  const existing = readExistingDocsJson(docsJsonPath);
+  const snapshot = await loadDocsConfigSnapshot(rootDir, options.configPath);
+  const config = materializeDocsJsonObject({ rootDir, snapshot, existing });
+  const serialized = serializeMaterializedDocsJson(config);
+  const previous = existing ? fs.readFileSync(docsJsonPath, "utf-8") : undefined;
+  const apiBaseUrl = resolveApiBaseUrl(options);
+  const apiKeyEnv = config.cloud?.apiKey?.env ?? DOCS_CLOUD_DEFAULT_API_KEY_ENV;
+  const env = readCombinedEnv(rootDir);
+  const checks: CloudCheckItem[] = [];
+  const configPath = snapshot.path ?? docsJsonPath;
+  const network = options.network !== false;
+  const explicitApiKey = options.apiKey?.trim();
+  let identity: JsonRecord | undefined;
+
+  checks.push(
+    createCheck(
+      "config",
+      snapshot.path ? "pass" : "warn",
+      snapshot.path
+        ? `Loaded ${path.relative(rootDir, snapshot.path) || "docs.config.ts"}`
+        : `No docs.config.* found; checking ${DOCS_JSON_FILE} defaults instead.`,
+    ),
+  );
+
+  checks.push(
+    createCheck(
+      "docs.json",
+      !existing ? "warn" : previous === serialized ? "pass" : "warn",
+      !existing
+        ? `${DOCS_JSON_FILE} is missing. Run docs cloud sync to materialize cloud config.`
+        : previous === serialized
+          ? `${DOCS_JSON_FILE} is in sync with docs.config.`
+          : `${DOCS_JSON_FILE} is stale. Run docs cloud sync before deploying.`,
+    ),
+  );
+
+  try {
+    normalizeEnvName(apiKeyEnv, DOCS_CLOUD_DEFAULT_API_KEY_ENV);
+    checks.push(createCheck("apiKey.config", "pass", `Using cloud.apiKey.env ${apiKeyEnv}.`));
+  } catch (error) {
+    checks.push(
+      createCheck(
+        "apiKey.config",
+        "fail",
+        error instanceof Error ? error.message : `Invalid API key env ${apiKeyEnv}.`,
+      ),
+    );
+  }
+
+  const apiKey = explicitApiKey || readEnvValue(env, apiKeyEnv);
+  checks.push(
+    createCheck(
+      "apiKey.value",
+      apiKey ? "pass" : "fail",
+      apiKey
+        ? explicitApiKey
+          ? "Docs Cloud API key was provided with --api-key."
+          : `Docs Cloud API key is present in ${apiKeyEnv}.`
+        : `Missing Docs Cloud API key. Set ${apiKeyEnv} or pass --api-key.`,
+      {
+        env: apiKeyEnv,
+        source: explicitApiKey ? "flag" : apiKey ? "env" : "missing",
+      },
+    ),
+  );
+
+  checks.push(
+    createCheck(
+      "cloud.enabled",
+      config.cloud?.enabled === false ? "fail" : "pass",
+      config.cloud?.enabled === false
+        ? "Docs Cloud is disabled by cloud.enabled: false."
+        : "Docs Cloud is enabled.",
+    ),
+  );
+
+  if (config.cloud?.deploy?.enabled === false) {
+    checks.push(
+      createCheck(
+        "deploy.enabled",
+        "fail",
+        "Docs Cloud deployment is disabled by cloud.deploy.enabled: false.",
+      ),
+    );
+  } else {
+    checks.push(createCheck("deploy.enabled", "pass", "Docs Cloud deployment is enabled."));
+  }
+
+  if (config.cloud?.preview?.enabled === false) {
+    checks.push(
+      createCheck(
+        "preview.enabled",
+        "fail",
+        "Docs Cloud preview deployment is disabled by cloud.preview.enabled: false.",
+      ),
+    );
+  }
+
+  const runtimeAnalyticsDisabled = readRuntimeAnalyticsDisabled(snapshot);
+  const cloudAnalyticsEnabled = isCloudAnalyticsEnabled(config.cloud?.analytics);
+  if (runtimeAnalyticsDisabled) {
+    checks.push(
+      createCheck(
+        "analytics.runtime",
+        "fail",
+        "Runtime analytics is disabled by analytics: false or analytics.enabled: false.",
+      ),
+    );
+  } else {
+    checks.push(createCheck("analytics.runtime", "pass", "Runtime analytics is not disabled."));
+  }
+
+  checks.push(
+    createCheck(
+      "analytics.cloud",
+      cloudAnalyticsEnabled ? "pass" : "warn",
+      cloudAnalyticsEnabled
+        ? "Docs Cloud analytics is enabled in cloud.analytics."
+        : "cloud.analytics is not enabled; run docs cloud init to add the recommended analytics config.",
+    ),
+  );
+
+  const projectEnv = readFirstEnv(env, DOCS_CLOUD_PROJECT_ID_ENVS);
+  const analyticsNeedsProjectId = cloudAnalyticsEnabled && !runtimeAnalyticsDisabled;
+  checks.push(
+    createCheck(
+      "project.env",
+      projectEnv ? "pass" : analyticsNeedsProjectId ? "fail" : "warn",
+      projectEnv
+        ? `Docs Cloud project id is present in ${projectEnv.name}.`
+        : `Missing Docs Cloud project id. Set ${DOCS_CLOUD_PROJECT_ID_ENVS.join(" or ")} for analytics and docs-cloud Ask AI.`,
+      projectEnv ? { env: projectEnv.name } : undefined,
+    ),
+  );
+
+  const aiProvider = readAiProvider(snapshot);
+  if (aiProvider === "docs-cloud") {
+    checks.push(
+      createCheck(
+        "askAi.provider",
+        "pass",
+        'Ask AI is configured with provider: "docs-cloud".',
+      ),
+    );
+
+    const configuredApiKeyEnv = readConfiguredCloudApiKeyEnv(snapshot);
+    const directApiKeyEnv = configuredApiKeyEnv
+      ? configuredApiKeyEnv.startsWith("NEXT_PUBLIC_")
+        ? configuredApiKeyEnv
+        : undefined
+      : DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV;
+    const directApiKey = readEnvValue(env, directApiKeyEnv);
+
+    if (directApiKeyEnv) {
+      checks.push(
+        createCheck(
+          "askAi.direct",
+          directApiKey && projectEnv ? "pass" : "fail",
+          directApiKey && projectEnv
+            ? `Ask AI can call the Docs Cloud knowledge endpoint directly with ${directApiKeyEnv}.`
+            : `Ask AI docs-cloud direct mode needs ${directApiKeyEnv} and a Docs Cloud project id.`,
+          { apiKeyEnv: directApiKeyEnv },
+        ),
+      );
+    } else {
+      checks.push(
+        createCheck(
+          "askAi.direct",
+          "warn",
+          `cloud.apiKey.env is server-only (${configuredApiKeyEnv}); the browser will fall back through /api/docs instead of calling the knowledge endpoint directly.`,
+          configuredApiKeyEnv ? { apiKeyEnv: configuredApiKeyEnv } : undefined,
+        ),
+      );
+    }
+  } else if (aiProvider) {
+    checks.push(createCheck("askAi.provider", "pass", `Ask AI provider is ${aiProvider}.`));
+  } else {
+    checks.push(
+      createCheck(
+        "askAi.provider",
+        "warn",
+        'Ask AI is not configured with provider: "docs-cloud".',
+      ),
+    );
+  }
+
+  if (!network) {
+    checks.push(
+      createCheck(
+        "apiKey.network",
+        "warn",
+        "Skipped Docs Cloud API validation because --no-network was passed.",
+      ),
+    );
+  } else if (!apiKey) {
+    checks.push(
+      createCheck(
+        "apiKey.network",
+        "warn",
+        "Skipped Docs Cloud API validation because no API key value was available.",
+      ),
+    );
+  } else {
+    try {
+      const response = await fetchCloudJson({
+        url: `${apiBaseUrl}/api/cloud/me`,
+        apiKey,
+      });
+      identity = summarizeIdentity(response);
+      checks.push(
+        createCheck("apiKey.network", "pass", `Validated API key with ${apiBaseUrl}.`, identity),
+      );
+
+      const scopes = readApiKeyScopes(response);
+      if (scopes.length === 0) {
+        checks.push(
+          createCheck(
+            "apiKey.scopes",
+            "warn",
+            "Docs Cloud validated the API key but did not return scope metadata.",
+          ),
+        );
+      } else {
+        const missing = REQUIRED_PREVIEW_API_KEY_SCOPES.filter((scope) => !scopes.includes(scope));
+        checks.push(
+          createCheck(
+            "apiKey.scopes",
+            missing.length === 0 ? "pass" : "fail",
+            missing.length === 0
+              ? `API key has required deploy scopes: ${REQUIRED_PREVIEW_API_KEY_SCOPES.join(", ")}.`
+              : `API key is missing required deploy scope${missing.length === 1 ? "" : "s"}: ${missing.join(", ")}.`,
+            { scopes },
+          ),
+        );
+      }
+    } catch (error) {
+      checks.push(
+        createCheck(
+          "apiKey.network",
+          "fail",
+          error instanceof Error ? error.message : "Could not validate Docs Cloud API key.",
+        ),
+      );
+    }
+  }
+
+  return {
+    ok: countChecks(checks, "fail") === 0,
+    apiBaseUrl,
+    configPath,
+    docsJsonPath,
+    apiKeyEnv,
+    analyticsProjectIdEnv: projectEnv?.name,
+    network,
+    checks,
+    ...(identity ? { identity } : {}),
+  };
+}
+
+export async function runCloudCheck(options: CloudCommandOptions = {}) {
+  const result = await checkCloudConfig(options);
+
+  if (options.json) {
+    console.log(JSON.stringify(result, null, 2));
+  } else {
+    console.log(pc.bold("Docs Cloud check"));
+    console.log(`${pc.dim("api")} ${result.apiBaseUrl}`);
+    console.log();
+
+    for (const check of result.checks) {
+      console.log(`${formatCheckStatus(check.status)} ${pc.bold(check.name)} ${check.message}`);
+    }
+
+    console.log();
+    if (result.ok) {
+      const warnings = countChecks(result.checks, "warn");
+      const suffix = warnings > 0 ? ` with ${warnings} warning${warnings === 1 ? "" : "s"}` : "";
+      console.log(`${pc.green("ok")} Docs Cloud check passed${suffix}.`);
+    } else {
+      const failures = countChecks(result.checks, "fail");
+      console.log(
+        `${pc.red("fail")} Docs Cloud check failed with ${failures} failed check${failures === 1 ? "" : "s"}.`,
+      );
+    }
+  }
+
+  if (!result.ok) {
+    const error = new Error("Docs Cloud check failed.");
+    markCliErrorReported(error);
+    throw error;
+  }
+
+  return result;
+}
+
 export async function syncCloudConfig(options: CloudCommandOptions = {}) {
   const result = await materializeCloudConfig(options);
 
@@ -1506,6 +1966,7 @@ ${pc.bold("@farming-labs/docs cloud")}
 
 ${pc.dim("Usage:")}
   ${pc.cyan("docs cloud init")}           Add Docs Cloud config to ${pc.dim("docs.config.ts")} and ${pc.dim("docs.json")}
+  ${pc.cyan("docs cloud check")}          Validate Docs Cloud config, analytics envs, API key, and Ask AI wiring
   ${pc.cyan("docs deploy")}               Sync ${pc.dim("docs.config.ts")} to ${pc.dim("docs.json")} and deploy hosted preview docs
   ${pc.cyan("docs cloud deploy")}         Same as ${pc.cyan("docs deploy")}
   ${pc.cyan("docs preview")}              Compatibility alias for ${pc.cyan("docs deploy")}
@@ -1517,6 +1978,7 @@ ${pc.dim("Options:")}
   ${pc.cyan("--api-key-env <name>")}      Env var that stores the Docs Cloud API key
   ${pc.cyan("--api-base-url <url>")}      Override Docs Cloud API base URL
   ${pc.cyan("--api-key <key>")}           Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
+  ${pc.cyan("--no-network")}              Skip live Docs Cloud API validation for ${pc.cyan("cloud check")}
   ${pc.cyan("--json")}                    Print machine-readable output
 
 ${pc.dim("API key scopes:")}

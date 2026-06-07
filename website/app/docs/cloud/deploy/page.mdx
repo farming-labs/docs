@@ -117,6 +117,18 @@ The explicit Cloud command is equivalent:
 pnpm dlx @farming-labs/docs cloud deploy
 ```
 
+## Check Cloud Setup
+
+Run a read-only health check before deploying or debugging Ask AI:
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs cloud check
+```
+
+The check validates `docs.config.ts`, `docs.json` freshness, `cloud.apiKey.env`, the Docs Cloud API
+key, required deploy scopes, analytics project envs, and `ai.provider: "docs-cloud"` wiring. Use
+`--json` in CI or `--no-network` when you only want local config checks.
+
 Use JSON output when CI or another tool needs the preview URL:
 
 ```bash title="terminal"
@@ -128,6 +140,7 @@ pnpm dlx @farming-labs/docs deploy --json
 | Command | Use it when |
 | ------- | ----------- |
 | `pnpm dlx @farming-labs/docs cloud sync` | You only want to update `docs.json` |
+| `pnpm dlx @farming-labs/docs cloud check` | You want to validate config, analytics envs, API key scopes, and Ask AI wiring without deploying |
 | `pnpm dlx @farming-labs/docs deploy` | You want to sync, validate the key, and request a preview |
 | `pnpm dlx @farming-labs/docs cloud deploy` | You prefer the explicit Cloud namespace |
 | `pnpm dlx @farming-labs/docs deploy --json` | CI needs machine-readable output |

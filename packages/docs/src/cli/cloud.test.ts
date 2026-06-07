@@ -4,9 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  checkCloudConfig,
   initCloudConfig,
   materializeCloudConfig,
   runCloudDeploy,
+  runCloudCheck,
   runCloudPreview,
 } from "./cloud.js";
 
@@ -266,6 +268,188 @@ void missing;
       console: true,
       includeInputs: false,
     });
+  });
+
+  it("checks Docs Cloud config, analytics envs, API key scopes, and direct Ask AI wiring", async () => {
+    writePackageJson();
+    mkdirSync(path.join(tmpDir, "app", "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, ".env.local"),
+      [
+        "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
+        "NEXT_PUBLIC_DOCS_CLOUD_API_KEY=docs_cloud_public_key",
+      ].join("\n"),
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  analytics: { enabled: true, console: false },
+  ai: {
+    enabled: true,
+    provider: "docs-cloud",
+  },
+  cloud: {
+    apiKey: { env: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY" },
+    deploy: { enabled: true },
+    analytics: {
+      enabled: true,
+      console: false,
+      includeInputs: false,
+    },
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe("https://cloud.example.com/api/cloud/me");
+      expect(new Headers(init?.headers).get("authorization")).toBe(
+        "Bearer docs_cloud_public_key",
+      );
+      return new Response(
+        JSON.stringify({
+          workspace: { id: "workspace_1", name: "Acme" },
+          apiKey: { id: "key_1", scopes: ["project:read", "preview:write", "jobs:read"] },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await checkCloudConfig({
+      rootDir: tmpDir,
+      apiBaseUrl: "https://cloud.example.com",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.analyticsProjectIdEnv).toBe("NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID");
+    expect(result.identity).toMatchObject({
+      workspace: { id: "workspace_1", name: "Acme" },
+      apiKey: { id: "key_1", scopes: ["project:read", "preview:write", "jobs:read"] },
+    });
+    expect(result.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "analytics.cloud", status: "pass" }),
+        expect.objectContaining({ name: "project.env", status: "pass" }),
+        expect.objectContaining({ name: "askAi.direct", status: "pass" }),
+        expect.objectContaining({ name: "apiKey.network", status: "pass" }),
+        expect.objectContaining({ name: "apiKey.scopes", status: "pass" }),
+      ]),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports missing analytics project envs and can skip network checks", async () => {
+    writePackageJson();
+    writeFileSync(
+      path.join(tmpDir, ".env.local"),
+      "DOCS_CLOUD_API_KEY=docs_cloud_test_key\n",
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  analytics: { enabled: true, console: false },
+  cloud: {
+    apiKey: { env: "DOCS_CLOUD_API_KEY" },
+    analytics: { enabled: true },
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await checkCloudConfig({
+      rootDir: tmpDir,
+      apiBaseUrl: "https://cloud.example.com",
+      network: false,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "project.env", status: "fail" }),
+        expect.objectContaining({ name: "apiKey.network", status: "warn" }),
+      ]),
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("warns when docs-cloud Ask AI uses a server-only API key env", async () => {
+    writePackageJson();
+    writeFileSync(
+      path.join(tmpDir, ".env.local"),
+      [
+        "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
+        "DOCS_CLOUD_API_KEY=docs_cloud_test_key",
+      ].join("\n"),
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  ai: {
+    enabled: true,
+    provider: "docs-cloud",
+  },
+  cloud: {
+    apiKey: { env: "DOCS_CLOUD_API_KEY" },
+    analytics: { enabled: true },
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const result = await checkCloudConfig({
+      rootDir: tmpDir,
+      apiBaseUrl: "https://cloud.example.com",
+      network: false,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "askAi.direct",
+          status: "warn",
+          message: expect.stringContaining("/api/docs"),
+        }),
+      ]),
+    );
+  });
+
+  it("prints json and exits non-zero when cloud check fails", async () => {
+    writePackageJson();
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  cloud: {
+    analytics: { enabled: true },
+  },
+};
+`,
+      "utf-8",
+    );
+
+    await expect(
+      runCloudCheck({
+        rootDir: tmpDir,
+        apiBaseUrl: "https://cloud.example.com",
+        json: true,
+        network: false,
+      }),
+    ).rejects.toThrow("Docs Cloud check failed");
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('"ok": false'));
   });
 
   it("validates the configured API key and prints the deployment URL", async () => {
@@ -656,6 +840,17 @@ void missing;
 
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
+
+    const check = await checkCloudConfig({
+      rootDir: tmpDir,
+      apiBaseUrl: "https://cloud.example.com",
+      network: false,
+    });
+    expect(check.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "preview.enabled", status: "fail" }),
+      ]),
+    );
 
     await expect(
       runCloudPreview({
