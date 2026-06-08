@@ -471,13 +471,13 @@ export default defineDocs({
     analytics: {
       enabled: true,
       console: false,
-      includeInputs: false,
+      includeInputs: true,
     },
     publish: { mode: "draft-pr", baseBranch: "main" },
   },
   analytics: {
     enabled: true,
     console: false,
-    includeInputs: false,
+    includeInputs: true,
   },
 });
