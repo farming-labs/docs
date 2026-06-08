@@ -89,6 +89,25 @@ function buildFeedbackPayload(
   };
 }
 
+function buildFeedbackAnalyticsProperties(data: DocsFeedbackData) {
+  return {
+    feedbackKind: "page",
+    value: data.value,
+    feedbackValue: data.value,
+    comment: data.comment,
+    feedbackComment: data.comment,
+    hasComment: Boolean(data.comment),
+    commentLength: data.comment?.length ?? 0,
+    title: data.title,
+    description: data.description,
+    url: data.url,
+    pathname: data.pathname,
+    path: data.path,
+    entry: data.entry,
+    slug: data.slug,
+  };
+}
+
 function ThumbUpIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -160,13 +179,22 @@ export function DocsFeedback({
     setSelected(value);
     if (status !== "idle") setStatus("idle");
     if (analytics) {
+      const slug = resolveSlug(entry, normalizedPathname);
       emitClientAnalyticsEvent({
         type: "feedback_select",
         locale,
         path: normalizedPathname,
+        input: {
+          feedbackValue: value,
+        },
         properties: {
+          feedbackKind: "page",
           value,
-          slug: resolveSlug(entry, normalizedPathname),
+          feedbackValue: value,
+          entry,
+          pathname: normalizedPathname,
+          path: normalizedPathname,
+          slug,
         },
       });
     }
@@ -176,21 +204,20 @@ export function DocsFeedback({
     if (!selected || status === "submitting") return;
 
     setStatus("submitting");
+    const payload = buildFeedbackPayload(selected, normalizedPathname, entry, comment, locale);
 
     try {
-      const payload = buildFeedbackPayload(selected, normalizedPathname, entry, comment, locale);
       await emitFeedback(payload, onFeedback);
       if (analytics) {
         emitClientAnalyticsEvent({
           type: "feedback_submit",
           locale,
           path: normalizedPathname,
-          properties: {
-            value: payload.value,
-            slug: payload.slug,
-            hasComment: Boolean(payload.comment),
-            commentLength: payload.comment?.length ?? 0,
+          input: {
+            feedbackValue: payload.value,
+            feedbackComment: payload.comment,
           },
+          properties: buildFeedbackAnalyticsProperties(payload),
         });
       }
       setStatus("submitted");
@@ -200,12 +227,11 @@ export function DocsFeedback({
           type: "feedback_error",
           locale,
           path: normalizedPathname,
-          properties: {
-            value: selected,
-            slug: resolveSlug(entry, normalizedPathname),
-            hasComment: Boolean(comment.trim()),
-            commentLength: comment.trim().length,
+          input: {
+            feedbackValue: payload.value,
+            feedbackComment: payload.comment,
           },
+          properties: buildFeedbackAnalyticsProperties(payload),
         });
       }
       setStatus("error");

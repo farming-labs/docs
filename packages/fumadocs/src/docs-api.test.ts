@@ -1465,7 +1465,23 @@ Install the package.
     });
     expect(events.find((event) => event.type === "agent_feedback_submit")).toMatchObject({
       properties: expect.objectContaining({
+        feedbackKind: "agent",
         handled: true,
+        hasContext: true,
+        context: {
+          page: "/docs/guides/setup",
+        },
+        payload: {
+          task: "validate analytics",
+          outcome: "implemented",
+        },
+        agentFeedbackContext: {
+          page: "/docs/guides/setup",
+        },
+        agentFeedbackPayload: {
+          task: "validate analytics",
+          outcome: "implemented",
+        },
         payloadKeys: ["task", "outcome"],
       }),
     });

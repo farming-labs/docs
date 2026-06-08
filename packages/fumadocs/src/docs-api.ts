@@ -700,6 +700,34 @@ async function parseAgentFeedbackData(
   };
 }
 
+function buildAgentFeedbackAnalyticsProperties(
+  data: DocsAgentFeedbackData,
+  options: {
+    requestProperties?: Record<string, unknown>;
+    handled?: boolean;
+    reason?: string;
+    error?: string;
+  } = {},
+): Record<string, unknown> {
+  const payloadKeys = Object.keys(data.payload);
+
+  return {
+    ...options.requestProperties,
+    feedbackKind: "agent",
+    agentFeedbackContext: data.context,
+    agentFeedbackPayload: data.payload,
+    feedbackContext: data.context,
+    feedbackPayload: data.payload,
+    context: data.context,
+    payload: data.payload,
+    payloadKeys,
+    hasContext: Boolean(data.context),
+    ...(typeof options.handled === "boolean" ? { handled: options.handled } : {}),
+    ...(options.reason ? { reason: options.reason } : {}),
+    ...(options.error ? { error: options.error } : {}),
+  };
+}
+
 function validateAgentFeedbackPayload(
   value: unknown,
   schema: Record<string, unknown>,
@@ -4214,6 +4242,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             path: url.pathname,
             properties: {
               ...requestAnalyticsProperties,
+              feedbackKind: "agent",
               reason: "invalid_body",
             },
           });
@@ -4230,11 +4259,11 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             source: "server",
             url: request.url,
             path: url.pathname,
-            properties: {
-              ...requestAnalyticsProperties,
+            properties: buildAgentFeedbackAnalyticsProperties(parsed.data, {
+              requestProperties: requestAnalyticsProperties,
               reason: "invalid_payload",
               error: payloadError,
-            },
+            }),
           });
           return Response.json({ error: payloadError }, { status: 400 });
         }
@@ -4245,12 +4274,10 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             source: "server",
             url: request.url,
             path: url.pathname,
-            properties: {
-              ...requestAnalyticsProperties,
+            properties: buildAgentFeedbackAnalyticsProperties(parsed.data, {
+              requestProperties: requestAnalyticsProperties,
               handled: false,
-              payloadKeys: Object.keys(parsed.data.payload),
-              hasContext: Boolean(parsed.data.context),
-            },
+            }),
           });
           return Response.json({ ok: true, handled: false }, { status: 202 });
         }
@@ -4261,12 +4288,10 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           source: "server",
           url: request.url,
           path: url.pathname,
-          properties: {
-            ...requestAnalyticsProperties,
+          properties: buildAgentFeedbackAnalyticsProperties(parsed.data, {
+            requestProperties: requestAnalyticsProperties,
             handled: true,
-            payloadKeys: Object.keys(parsed.data.payload),
-            hasContext: Boolean(parsed.data.context),
-          },
+          }),
         });
         return Response.json({ ok: true, handled: true }, { status: 201 });
       }
