@@ -1220,11 +1220,7 @@ function readDocsSiteOrigin(
   snapshot: DocsConfigSnapshot,
   env: Record<string, string>,
 ): { origin: string; source: string } | undefined {
-  const envSite = readFirstEnv(env, [
-    "NEXT_PUBLIC_BASE_URL",
-    "NEXT_PUBLIC_SITE_URL",
-    "SITE_URL",
-  ]);
+  const envSite = readFirstEnv(env, ["NEXT_PUBLIC_BASE_URL", "NEXT_PUBLIC_SITE_URL", "SITE_URL"]);
   const sitemapBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["sitemap"]);
   const llmsTxtBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["llmsTxt"]);
   const robotsBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["robots"]);
@@ -1268,7 +1264,12 @@ async function checkCorsPreflight(params: {
   url: string;
   origin: string;
   requestHeaders: string;
-}): Promise<{ ok: boolean; status: number; allowOrigin: string | null; allowMethods: string | null }> {
+}): Promise<{
+  ok: boolean;
+  status: number;
+  allowOrigin: string | null;
+  allowMethods: string | null;
+}> {
   const response = await fetch(params.url, {
     method: "OPTIONS",
     headers: {
@@ -1672,8 +1673,8 @@ export async function checkCloudConfig(
       apiBaseUrlResolution.source === "default"
         ? `Using the hosted Docs Cloud API at ${apiBaseUrl}.`
         : isLocalhostUrl(apiBaseUrl)
-        ? `Docs Cloud API base URL is ${apiBaseUrl}; production docs should use the hosted API base URL.`
-        : `Docs Cloud API base URL is ${apiBaseUrl}.`,
+          ? `Docs Cloud API base URL is ${apiBaseUrl}; production docs should use the hosted API base URL.`
+          : `Docs Cloud API base URL is ${apiBaseUrl}.`,
       {
         source: apiBaseUrlResolution.source,
         ...(apiBaseUrlResolution.env ? { env: apiBaseUrlResolution.env } : {}),
@@ -1817,10 +1818,8 @@ export async function checkCloudConfig(
       const configuredApiKeyEnv = readConfiguredCloudApiKeyEnv(snapshot);
       const directApiKeyEnv =
         configuredApiKeyEnv ??
-        readFirstEnv(env, [
-          DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV,
-          DOCS_CLOUD_DEFAULT_API_KEY_ENV,
-        ])?.name ??
+        readFirstEnv(env, [DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV, DOCS_CLOUD_DEFAULT_API_KEY_ENV])
+          ?.name ??
         DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV;
       const directApiKey = readEnvValue(env, directApiKeyEnv);
 

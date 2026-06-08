@@ -1659,9 +1659,7 @@ Install the framework with pnpm.
       expect(await response.text()).toContain("Use Docs Cloud for hosted Ask AI.");
 
       const [cloudUrl, cloudInit] = vi.mocked(globalThis.fetch).mock.calls[0] ?? [];
-      expect(cloudUrl).toBe(
-        "https://api.farming-labs.dev/v1/projects/project_cloud/knowledge/ask",
-      );
+      expect(cloudUrl).toBe("https://api.farming-labs.dev/v1/projects/project_cloud/knowledge/ask");
       expect(cloudInit?.headers).toMatchObject({
         Authorization: "Bearer cloud-key",
       });
