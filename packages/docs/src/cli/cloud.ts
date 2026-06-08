@@ -23,7 +23,7 @@ const DOCS_CLOUD_DEFAULT_API_KEY_ENV = "DOCS_CLOUD_API_KEY";
 const DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV = "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID";
 const DOCS_CLOUD_MISSING_API_KEY_DOCS_URL =
   "https://docs.farming-labs.dev/docs/cloud/deploy#missing-api-key";
-const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://docs-app.farming-labs.dev";
+const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://api.farming-labs.dev";
 const DEFAULT_PREVIEW_TIMEOUT_MS = 5 * 60 * 1000;
 const DEFAULT_PREVIEW_POLL_INTERVAL_MS = 2000;
 const REQUIRED_PREVIEW_API_KEY_SCOPES = ["project:read", "preview:write", "jobs:read"] as const;
@@ -1300,9 +1300,9 @@ async function fetchCloudJson(params: {
 
   if (!response.ok) {
     const requestPath = new URL(params.url).pathname;
-    if (response.status === 404 && requestPath === "/api/cloud/preview") {
+    if (response.status === 404 && requestPath === "/v1/cloud/preview") {
       throw new Error(
-        "Docs Cloud preview API is not available on this cloud host yet. The API key was validated, but the host did not expose /api/cloud/preview.",
+        "Docs Cloud preview API is not available on this cloud host yet. The API key was validated, but the host did not expose /v1/cloud/preview.",
       );
     }
 
@@ -1400,7 +1400,7 @@ async function requestPreview(params: {
   pollIntervalMs: number;
 }): Promise<{ url: string; response: unknown }> {
   const initial = await fetchCloudJson({
-    url: `${params.apiBaseUrl}/api/cloud/preview`,
+    url: `${params.apiBaseUrl}/v1/cloud/preview`,
     apiKey: params.apiKey,
     init: {
       method: "POST",
@@ -1710,7 +1710,7 @@ export async function checkCloudConfig(
     } else {
       try {
         const response = await fetchCloudJson({
-          url: `${apiBaseUrl}/api/cloud/me`,
+          url: `${apiBaseUrl}/v1/cloud/me`,
           apiKey,
         });
         identity = summarizeIdentity(response);
@@ -1916,7 +1916,7 @@ async function runCloudDeployment(options: CloudCommandOptions = {}) {
 
     spinner.update("Validating Docs Cloud API key");
     const identity = await fetchCloudJson({
-      url: `${apiBaseUrl}/api/cloud/me`,
+      url: `${apiBaseUrl}/v1/cloud/me`,
       apiKey,
     });
     assertPreviewApiKeyScopes(identity);
