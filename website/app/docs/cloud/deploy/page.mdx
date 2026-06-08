@@ -125,11 +125,11 @@ Run a read-only health check before deploying or debugging Ask AI:
 pnpm dlx @farming-labs/docs cloud check
 ```
 
-The check validates `docs.config.ts`, `docs.json` freshness, the Docs Cloud API base URL,
+The check validates `docs.config.ts`, `docs.json` freshness, the hosted Docs Cloud API target,
 `cloud.apiKey.env`, the Docs Cloud API key, required deploy scopes, analytics project envs,
-`ai.provider: "docs-cloud"` direct knowledge endpoint wiring, and browser CORS preflight for
-Cloud analytics/Ask AI. Use `--json` in CI or `--no-network` when you only want local config
-checks.
+the public docs origin used for browser CORS, `ai.provider: "docs-cloud"` direct knowledge
+endpoint wiring, and browser CORS preflight for Cloud analytics/Ask AI. Use `--json` in CI or
+`--no-network` when you only want local config checks.
 
 Scope the report when you only want one integration area:
 
@@ -148,7 +148,8 @@ scope analytics
 
 ok config Loaded docs.config.ts
 warn docs.json docs.json is missing. Run docs cloud sync to materialize cloud config.
-ok cloud.apiBaseUrl Docs Cloud API base URL is https://api.farming-labs.dev.
+ok cloud.apiBaseUrl Using the hosted Docs Cloud API at https://api.farming-labs.dev.
+ok docs.siteOrigin Public docs origin is https://docs.example.com.
 ok cloud.enabled Docs Cloud is enabled.
 ok analytics.runtime Runtime analytics is not disabled.
 ok analytics.cloud Docs Cloud analytics is enabled in cloud.analytics.
@@ -169,7 +170,7 @@ pnpm dlx @farming-labs/docs deploy --json
 | Command | Use it when |
 | ------- | ----------- |
 | `pnpm dlx @farming-labs/docs cloud sync` | You only want to update `docs.json` |
-| `pnpm dlx @farming-labs/docs cloud check` | You want to validate config, API base URL, analytics envs, API key scopes, CORS, and Ask AI wiring without deploying |
+| `pnpm dlx @farming-labs/docs cloud check` | You want to validate config, hosted API access, analytics envs, API key scopes, CORS, and Ask AI wiring without deploying |
 | `pnpm dlx @farming-labs/docs cloud check --analytics` | You only want to validate Docs Cloud analytics wiring and analytics CORS |
 | `pnpm dlx @farming-labs/docs cloud check --ask-ai` | You only want to validate Docs Cloud Ask AI direct endpoint wiring and Ask AI CORS |
 | `pnpm dlx @farming-labs/docs cloud check --deploy` | You only want to validate deploy flags, API key presence, and deploy scopes |
@@ -212,6 +213,15 @@ or add it to `.env.local`.
 If `cloud.deploy.enabled` is `false`, `docs deploy` stops before requesting a hosted preview. Set it
 back to `true` or remove the override.
 
+### Browser CORS blocked
+
+Make sure the public docs URL is set in one of the places the check can read:
+`NEXT_PUBLIC_BASE_URL`, `NEXT_PUBLIC_SITE_URL`, `SITE_URL`, `sitemap.baseUrl`,
+`llmsTxt.baseUrl`, or `robots.baseUrl`.
+
+For the hosted Docs Cloud API, you do not need to set a Docs Cloud API URL. If you are
+self-hosting the API, allow the same public docs origin in the API service CORS config.
+
 ### Wrong Cloud host
 
 For staging or self-hosted testing, pass:
@@ -219,5 +229,3 @@ For staging or self-hosted testing, pass:
 ```bash title="terminal"
 pnpm dlx @farming-labs/docs deploy --api-base-url https://cloud.example.com
 ```
-
-You can also set `DOCS_CLOUD_API_URL` in the environment.

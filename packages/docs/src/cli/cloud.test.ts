@@ -518,6 +518,14 @@ void missing;
     expect(result.checks).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: "cloud.apiBaseUrl", status: "pass" }),
+        expect.objectContaining({
+          name: "docs.siteOrigin",
+          status: "pass",
+          details: {
+            origin: "https://docs.example.com",
+            source: "sitemap.baseUrl",
+          },
+        }),
         expect.objectContaining({ name: "cors.analytics", status: "pass" }),
         expect.objectContaining({ name: "cors.askAi", status: "pass" }),
       ]),

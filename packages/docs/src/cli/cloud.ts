@@ -1669,7 +1669,9 @@ export async function checkCloudConfig(
     createCheck(
       "cloud.apiBaseUrl",
       isLocalhostUrl(apiBaseUrl) ? "warn" : "pass",
-      isLocalhostUrl(apiBaseUrl)
+      apiBaseUrlResolution.source === "default"
+        ? `Using the hosted Docs Cloud API at ${apiBaseUrl}.`
+        : isLocalhostUrl(apiBaseUrl)
         ? `Docs Cloud API base URL is ${apiBaseUrl}; production docs should use the hosted API base URL.`
         : `Docs Cloud API base URL is ${apiBaseUrl}.`,
       {
@@ -1678,6 +1680,24 @@ export async function checkCloudConfig(
       },
     ),
   );
+
+  if (checkAnalytics || checkAskAi) {
+    checks.push(
+      createCheck(
+        "docs.siteOrigin",
+        siteOrigin ? "pass" : "warn",
+        siteOrigin
+          ? `Public docs origin is ${siteOrigin.origin}.`
+          : "Could not infer the public docs origin for CORS checks. Set NEXT_PUBLIC_BASE_URL, NEXT_PUBLIC_SITE_URL, SITE_URL, or a docs config baseUrl.",
+        siteOrigin
+          ? {
+              origin: siteOrigin.origin,
+              source: siteOrigin.source,
+            }
+          : undefined,
+      ),
+    );
+  }
 
   const apiKey = explicitApiKey || readEnvValue(env, apiKeyEnv);
 
