@@ -37,6 +37,11 @@ const CLOUD_CHECK_TARGETS = ["deploy", "analytics", "ask-ai"] as const;
 type JsonPrimitive = string | number | boolean | null;
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue | undefined };
 type JsonRecord = Record<string, JsonValue | undefined>;
+type ApiBaseUrlResolution = {
+  url: string;
+  source: "flag" | "env" | "default";
+  env?: string;
+};
 
 type CloudAnalyticsConfig =
   | boolean
@@ -1147,13 +1152,33 @@ function formatCloudCheckTargets(targets: readonly CloudCheckTarget[]): string {
   return targets.join(", ");
 }
 
-function resolveApiBaseUrl(options: CloudCommandOptions): string {
-  const value =
-    options.apiBaseUrl ??
-    process.env.DOCS_CLOUD_API_URL ??
-    process.env.NEXT_PUBLIC_DOCS_CLOUD_URL ??
-    DEFAULT_DOCS_CLOUD_API_BASE_URL;
-  return value.replace(/\/+$/, "");
+function resolveApiBaseUrl(
+  options: CloudCommandOptions,
+  rootDir: string = process.cwd(),
+): ApiBaseUrlResolution {
+  if (options.apiBaseUrl?.trim()) {
+    return {
+      url: options.apiBaseUrl.trim().replace(/\/+$/, ""),
+      source: "flag",
+    };
+  }
+
+  const projectEnv = loadProjectEnv(rootDir);
+  for (const envName of ["DOCS_CLOUD_API_URL", "NEXT_PUBLIC_DOCS_CLOUD_URL"] as const) {
+    const value = process.env[envName]?.trim() ?? projectEnv[envName]?.trim();
+    if (value) {
+      return {
+        url: value.replace(/\/+$/, ""),
+        source: "env",
+        env: envName,
+      };
+    }
+  }
+
+  return {
+    url: DEFAULT_DOCS_CLOUD_API_BASE_URL,
+    source: "default",
+  };
 }
 
 function resolveApiKey(options: CloudCommandOptions, rootDir: string, envName: string): string {
@@ -1170,6 +1195,102 @@ function resolveApiKey(options: CloudCommandOptions, rootDir: string, envName: s
   throw new Error(
     `Missing Docs Cloud API key. Set ${envName} in your shell or .env.local, or configure cloud.apiKey.env in docs.config.ts. See ${DOCS_CLOUD_MISSING_API_KEY_DOCS_URL}.`,
   );
+}
+
+function isLocalhostUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function readNestedString(value: unknown, pathSegments: readonly string[]): string | undefined {
+  let current: unknown = value;
+  for (const segment of pathSegments) {
+    if (!isRecord(current)) return undefined;
+    current = current[segment];
+  }
+
+  return typeof current === "string" && current.trim() ? current.trim() : undefined;
+}
+
+function readDocsSiteOrigin(
+  snapshot: DocsConfigSnapshot,
+  env: Record<string, string>,
+): { origin: string; source: string } | undefined {
+  const envSite = readFirstEnv(env, [
+    "NEXT_PUBLIC_BASE_URL",
+    "NEXT_PUBLIC_SITE_URL",
+    "SITE_URL",
+  ]);
+  const sitemapBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["sitemap"]);
+  const llmsTxtBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["llmsTxt"]);
+  const robotsBlock = extractNestedObjectLiteral(snapshot.content ?? "", ["robots"]);
+  const candidates: Array<{ value?: string; source: string }> = [
+    { value: envSite?.value, source: envSite ? envSite.name : "env" },
+    { value: readNestedString(snapshot.config, ["site", "url"]), source: "site.url" },
+    { value: readNestedString(snapshot.config, ["sitemap", "baseUrl"]), source: "sitemap.baseUrl" },
+    { value: readNestedString(snapshot.config, ["llmsTxt", "baseUrl"]), source: "llmsTxt.baseUrl" },
+    { value: readNestedString(snapshot.config, ["robots", "baseUrl"]), source: "robots.baseUrl" },
+    {
+      value: sitemapBlock ? readStringProperty(sitemapBlock, "baseUrl") : undefined,
+      source: "sitemap.baseUrl",
+    },
+    {
+      value: llmsTxtBlock ? readStringProperty(llmsTxtBlock, "baseUrl") : undefined,
+      source: "llmsTxt.baseUrl",
+    },
+    {
+      value: robotsBlock ? readStringProperty(robotsBlock, "baseUrl") : undefined,
+      source: "robots.baseUrl",
+    },
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate.value) continue;
+
+    try {
+      return {
+        origin: new URL(candidate.value).origin,
+        source: candidate.source,
+      };
+    } catch {
+      // Keep looking for a valid absolute URL.
+    }
+  }
+
+  return undefined;
+}
+
+async function checkCorsPreflight(params: {
+  url: string;
+  origin: string;
+  requestHeaders: string;
+}): Promise<{ ok: boolean; status: number; allowOrigin: string | null; allowMethods: string | null }> {
+  const response = await fetch(params.url, {
+    method: "OPTIONS",
+    headers: {
+      Origin: params.origin,
+      "Access-Control-Request-Method": "POST",
+      "Access-Control-Request-Headers": params.requestHeaders,
+    },
+  });
+  const allowOrigin = response.headers.get("access-control-allow-origin");
+  const allowMethods = response.headers.get("access-control-allow-methods");
+  const normalizedAllowOrigin = allowOrigin?.toLowerCase();
+  const normalizedOrigin = params.origin.toLowerCase();
+
+  return {
+    ok:
+      response.ok &&
+      (normalizedAllowOrigin === "*" || normalizedAllowOrigin === normalizedOrigin) &&
+      Boolean(allowMethods?.toUpperCase().includes("POST")),
+    status: response.status,
+    allowOrigin,
+    allowMethods,
+  };
 }
 
 async function readJsonResponse(response: Response): Promise<unknown> {
@@ -1505,9 +1626,11 @@ export async function checkCloudConfig(
   const config = materializeDocsJsonObject({ rootDir, snapshot, existing });
   const serialized = serializeMaterializedDocsJson(config);
   const previous = existing ? fs.readFileSync(docsJsonPath, "utf-8") : undefined;
-  const apiBaseUrl = resolveApiBaseUrl(options);
+  const apiBaseUrlResolution = resolveApiBaseUrl(options, rootDir);
+  const apiBaseUrl = apiBaseUrlResolution.url;
   const apiKeyEnv = config.cloud?.apiKey?.env ?? DOCS_CLOUD_DEFAULT_API_KEY_ENV;
   const env = readCombinedEnv(rootDir);
+  const siteOrigin = readDocsSiteOrigin(snapshot, env);
   const checks: CloudCheckItem[] = [];
   const configPath = snapshot.path ?? docsJsonPath;
   const network = options.network !== false;
@@ -1539,6 +1662,20 @@ export async function checkCloudConfig(
         : previous === serialized
           ? `${DOCS_JSON_FILE} is in sync with docs.config.`
           : `${DOCS_JSON_FILE} is stale. Run docs cloud sync before deploying.`,
+    ),
+  );
+
+  checks.push(
+    createCheck(
+      "cloud.apiBaseUrl",
+      isLocalhostUrl(apiBaseUrl) ? "warn" : "pass",
+      isLocalhostUrl(apiBaseUrl)
+        ? `Docs Cloud API base URL is ${apiBaseUrl}; production docs should use the hosted API base URL.`
+        : `Docs Cloud API base URL is ${apiBaseUrl}.`,
+      {
+        source: apiBaseUrlResolution.source,
+        ...(apiBaseUrlResolution.env ? { env: apiBaseUrlResolution.env } : {}),
+      },
     ),
   );
 
@@ -1658,25 +1795,25 @@ export async function checkCloudConfig(
       );
 
       const configuredApiKeyEnv = readConfiguredCloudApiKeyEnv(snapshot);
-      const directApiKeyEnv = configuredApiKeyEnv
-        ? configuredApiKeyEnv.startsWith("NEXT_PUBLIC_")
-          ? configuredApiKeyEnv
-          : undefined
-        : DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV;
+      const directApiKeyEnv =
+        configuredApiKeyEnv ??
+        readFirstEnv(env, [
+          DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV,
+          DOCS_CLOUD_DEFAULT_API_KEY_ENV,
+        ])?.name ??
+        DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV;
       const directApiKey = readEnvValue(env, directApiKeyEnv);
 
-      if (directApiKeyEnv) {
-        checks.push(
-          createCheck(
-            "askAi.direct",
-            directApiKey && projectEnv ? "pass" : "fail",
-            directApiKey && projectEnv
-              ? `Ask AI can call the Docs Cloud knowledge endpoint directly with ${directApiKeyEnv}.`
-              : `Ask AI docs-cloud direct mode needs ${directApiKeyEnv} and a Docs Cloud project id.`,
-            { apiKeyEnv: directApiKeyEnv },
-          ),
-        );
-      }
+      checks.push(
+        createCheck(
+          "askAi.direct",
+          directApiKey && projectEnv ? "pass" : "fail",
+          directApiKey && projectEnv
+            ? `Ask AI can call the Docs Cloud knowledge endpoint directly with ${directApiKeyEnv}.`
+            : `Ask AI docs-cloud direct mode needs ${directApiKeyEnv} and a Docs Cloud project id.`,
+          { apiKeyEnv: directApiKeyEnv },
+        ),
+      );
     } else if (aiProvider) {
       checks.push(createCheck("askAi.provider", "pass", `Ask AI provider is ${aiProvider}.`));
     } else {
@@ -1687,6 +1824,98 @@ export async function checkCloudConfig(
           'Ask AI is not configured with provider: "docs-cloud".',
         ),
       );
+    }
+  }
+
+  if (checkAnalytics || checkAskAi) {
+    if (!network) {
+      checks.push(
+        createCheck(
+          "cloud.cors",
+          "warn",
+          "Skipped Docs Cloud CORS validation because --no-network was passed.",
+        ),
+      );
+    } else if (!siteOrigin) {
+      checks.push(
+        createCheck(
+          "cloud.cors",
+          "warn",
+          "Could not infer the docs site origin for CORS checks. Set NEXT_PUBLIC_BASE_URL or a docs config baseUrl.",
+        ),
+      );
+    } else {
+      if (checkAnalytics) {
+        try {
+          const cors = await checkCorsPreflight({
+            url: `${apiBaseUrl}/v1/analytics/events`,
+            origin: siteOrigin.origin,
+            requestHeaders: "content-type",
+          });
+          checks.push(
+            createCheck(
+              "cors.analytics",
+              cors.ok ? "pass" : "fail",
+              cors.ok
+                ? `Analytics CORS allows ${siteOrigin.origin}.`
+                : `Analytics CORS blocked ${siteOrigin.origin}.`,
+              {
+                origin: siteOrigin.origin,
+                originSource: siteOrigin.source,
+                status: cors.status,
+                allowOrigin: cors.allowOrigin,
+                allowMethods: cors.allowMethods,
+              },
+            ),
+          );
+        } catch (error) {
+          checks.push(
+            createCheck(
+              "cors.analytics",
+              "fail",
+              error instanceof Error
+                ? `Analytics CORS check failed: ${error.message}`
+                : "Analytics CORS check failed.",
+            ),
+          );
+        }
+      }
+
+      if (checkAskAi && projectEnv) {
+        try {
+          const cors = await checkCorsPreflight({
+            url: `${apiBaseUrl}/v1/projects/${encodeURIComponent(projectEnv.value)}/knowledge/ask`,
+            origin: siteOrigin.origin,
+            requestHeaders: "authorization, content-type",
+          });
+          checks.push(
+            createCheck(
+              "cors.askAi",
+              cors.ok ? "pass" : "fail",
+              cors.ok
+                ? `Ask AI CORS allows ${siteOrigin.origin}.`
+                : `Ask AI CORS blocked ${siteOrigin.origin}.`,
+              {
+                origin: siteOrigin.origin,
+                originSource: siteOrigin.source,
+                status: cors.status,
+                allowOrigin: cors.allowOrigin,
+                allowMethods: cors.allowMethods,
+              },
+            ),
+          );
+        } catch (error) {
+          checks.push(
+            createCheck(
+              "cors.askAi",
+              "fail",
+              error instanceof Error
+                ? `Ask AI CORS check failed: ${error.message}`
+                : "Ask AI CORS check failed.",
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -1912,7 +2141,7 @@ async function runCloudDeployment(options: CloudCommandOptions = {}) {
     }
 
     const apiKey = resolveApiKey(options, rootDir, materialized.apiKeyEnv);
-    const apiBaseUrl = resolveApiBaseUrl(options);
+    const apiBaseUrl = resolveApiBaseUrl(options, rootDir).url;
 
     spinner.update("Validating Docs Cloud API key");
     const identity = await fetchCloudJson({

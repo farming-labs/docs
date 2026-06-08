@@ -1660,7 +1660,7 @@ Install the framework with pnpm.
 
       const [cloudUrl, cloudInit] = vi.mocked(globalThis.fetch).mock.calls[0] ?? [];
       expect(cloudUrl).toBe(
-        "https://docs-app.farming-labs.dev/v1/projects/project_cloud/knowledge/ask",
+        "https://api.farming-labs.dev/v1/projects/project_cloud/knowledge/ask",
       );
       expect(cloudInit?.headers).toMatchObject({
         Authorization: "Bearer cloud-key",
@@ -1761,7 +1761,7 @@ export default defineDocs({
 
       const [cloudUrl, cloudInit] = vi.mocked(globalThis.fetch).mock.calls[0] ?? [];
       expect(cloudUrl).toBe(
-        "https://docs-app.farming-labs.dev/v1/projects/project_config/knowledge/ask",
+        "https://api.farming-labs.dev/v1/projects/project_config/knowledge/ask",
       );
       expect(cloudInit?.headers).toMatchObject({
         Authorization: "Bearer config-cloud-key",

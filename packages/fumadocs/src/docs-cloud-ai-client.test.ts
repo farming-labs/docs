@@ -44,7 +44,7 @@ describe("resolveDocsCloudAIClientRequest", () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_API_KEY = "public-key";
 
     expect(resolveDocsCloudAIClientRequest(createDocsCloudConfig())).toEqual({
-      api: "https://docs-app.farming-labs.dev/v1/projects/project_public/knowledge/ask",
+      api: "https://api.farming-labs.dev/v1/projects/project_public/knowledge/ask",
       requestMode: "docs-cloud",
       requestStream: true,
       requestHeaders: {
@@ -53,7 +53,7 @@ describe("resolveDocsCloudAIClientRequest", () => {
     });
   });
 
-  it("falls back to the server proxy when configured API key env is not public", () => {
+  it("uses the configured Docs Cloud API key env for direct requests", () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
     process.env.NEXT_PUBLIC_DOCS_CLOUD_API_KEY = "public-key";
     process.env.SERVER_DOCS_CLOUD_KEY = "server-key";
@@ -65,8 +65,37 @@ describe("resolveDocsCloudAIClientRequest", () => {
         }),
       ),
     ).toEqual({
-      api: "/api/docs",
+      api: "https://api.farming-labs.dev/v1/projects/project_public/knowledge/ask",
+      requestMode: "docs-cloud",
       requestStream: true,
+      requestHeaders: {
+        Authorization: "Bearer server-key",
+      },
+    });
+  });
+
+  it("keeps non-cloud providers on the docs API route", () => {
+    expect(
+      resolveDocsCloudAIClientRequest({
+        entry: "docs",
+        ai: {
+          enabled: true,
+          provider: "openai",
+        } as unknown as DocsConfig["ai"],
+      }),
+    ).toEqual({
+      api: "/api/docs",
+    });
+  });
+
+  it("does not fall back to the docs API route when docs-cloud env is incomplete", () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
+
+    expect(resolveDocsCloudAIClientRequest(createDocsCloudConfig())).toEqual({
+      api: "https://api.farming-labs.dev/v1/projects/project_public/knowledge/ask",
+      requestMode: "docs-cloud",
+      requestStream: true,
+      requestHeaders: undefined,
     });
   });
 

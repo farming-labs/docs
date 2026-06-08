@@ -125,9 +125,11 @@ Run a read-only health check before deploying or debugging Ask AI:
 pnpm dlx @farming-labs/docs cloud check
 ```
 
-The check validates `docs.config.ts`, `docs.json` freshness, `cloud.apiKey.env`, the Docs Cloud API
-key, required deploy scopes, analytics project envs, and `ai.provider: "docs-cloud"` wiring. Use
-`--json` in CI or `--no-network` when you only want local config checks.
+The check validates `docs.config.ts`, `docs.json` freshness, the Docs Cloud API base URL,
+`cloud.apiKey.env`, the Docs Cloud API key, required deploy scopes, analytics project envs,
+`ai.provider: "docs-cloud"` direct knowledge endpoint wiring, and browser CORS preflight for
+Cloud analytics/Ask AI. Use `--json` in CI or `--no-network` when you only want local config
+checks.
 
 Scope the report when you only want one integration area:
 
@@ -141,15 +143,17 @@ Example focused report:
 
 ```txt title="terminal"
 Docs Cloud check
-api https://docs-app.farming-labs.dev
+api https://api.farming-labs.dev
 scope analytics
 
 ok config Loaded docs.config.ts
 warn docs.json docs.json is missing. Run docs cloud sync to materialize cloud config.
+ok cloud.apiBaseUrl Docs Cloud API base URL is https://api.farming-labs.dev.
 ok cloud.enabled Docs Cloud is enabled.
 ok analytics.runtime Runtime analytics is not disabled.
 ok analytics.cloud Docs Cloud analytics is enabled in cloud.analytics.
 ok project.env Docs Cloud project id is present in NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID.
+ok cors.analytics Analytics CORS allows https://docs.example.com.
 
 ok Docs Cloud check passed with 1 warning.
 ```
@@ -165,9 +169,9 @@ pnpm dlx @farming-labs/docs deploy --json
 | Command | Use it when |
 | ------- | ----------- |
 | `pnpm dlx @farming-labs/docs cloud sync` | You only want to update `docs.json` |
-| `pnpm dlx @farming-labs/docs cloud check` | You want to validate config, analytics envs, API key scopes, and Ask AI wiring without deploying |
-| `pnpm dlx @farming-labs/docs cloud check --analytics` | You only want to validate Docs Cloud analytics wiring |
-| `pnpm dlx @farming-labs/docs cloud check --ask-ai` | You only want to validate Docs Cloud Ask AI wiring |
+| `pnpm dlx @farming-labs/docs cloud check` | You want to validate config, API base URL, analytics envs, API key scopes, CORS, and Ask AI wiring without deploying |
+| `pnpm dlx @farming-labs/docs cloud check --analytics` | You only want to validate Docs Cloud analytics wiring and analytics CORS |
+| `pnpm dlx @farming-labs/docs cloud check --ask-ai` | You only want to validate Docs Cloud Ask AI direct endpoint wiring and Ask AI CORS |
 | `pnpm dlx @farming-labs/docs cloud check --deploy` | You only want to validate deploy flags, API key presence, and deploy scopes |
 | `pnpm dlx @farming-labs/docs deploy` | You want to sync, validate the key, and request a preview |
 | `pnpm dlx @farming-labs/docs cloud deploy` | You prefer the explicit Cloud namespace |

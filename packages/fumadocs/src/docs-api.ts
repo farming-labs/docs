@@ -183,7 +183,7 @@ interface DocsMCPAPIOptions {
 
 const FILE_EXTS = ["tsx", "ts", "jsx", "js"];
 const DEFAULT_DOCS_API_ROUTE = "/api/docs";
-const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://docs-app.farming-labs.dev";
+const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://api.farming-labs.dev";
 const DEFAULT_DOCS_CLOUD_API_KEY_ENV = "DOCS_CLOUD_API_KEY";
 const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
