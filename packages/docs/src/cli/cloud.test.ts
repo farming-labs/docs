@@ -457,8 +457,8 @@ void missing;
         expect.objectContaining({ name: "project.env", status: "pass" }),
         expect.objectContaining({
           name: "askAi.direct",
-          status: "pass",
-          details: { apiKeyEnv: "DOCS_CLOUD_API_KEY" },
+          status: "warn",
+          details: { apiKeyEnv: "DOCS_CLOUD_API_KEY", projectIdEnv: "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID", proxy: true },
         }),
       ]),
     );
@@ -503,6 +503,7 @@ void missing;
         headers: {
           "access-control-allow-origin": "https://docs.example.com",
           "access-control-allow-methods": "POST, OPTIONS",
+          "access-control-allow-headers": "authorization, content-type",
         },
       });
     });
@@ -538,6 +539,69 @@ void missing;
     expect(fetchMock).toHaveBeenCalledWith(
       "https://cloud.example.com/v1/projects/project_cloud/knowledge/ask",
       expect.any(Object),
+    );
+  });
+
+  it("fails Docs Cloud Ask AI CORS when preflight does not allow authorization", async () => {
+    writePackageJson();
+    writeFileSync(
+      path.join(tmpDir, ".env.local"),
+      [
+        "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
+        "NEXT_PUBLIC_DOCS_CLOUD_API_KEY=docs_cloud_public_key",
+      ].join("\n"),
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  ai: {
+    enabled: true,
+    provider: "docs-cloud",
+  },
+  cloud: {
+    apiKey: { env: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY" },
+  },
+  site: {
+    url: "https://docs.example.com",
+  },
+};
+`,
+      "utf-8",
+    );
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            "access-control-allow-origin": "https://docs.example.com",
+            "access-control-allow-methods": "POST, OPTIONS",
+            "access-control-allow-headers": "content-type",
+          },
+        });
+      }),
+    );
+
+    const result = await checkCloudConfig({
+      rootDir: tmpDir,
+      apiBaseUrl: "https://cloud.example.com",
+      checkTargets: ["ask-ai"],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "cors.askAi",
+          status: "fail",
+          details: expect.objectContaining({
+            allowHeaders: "content-type",
+          }),
+        }),
+      ]),
     );
   });
 

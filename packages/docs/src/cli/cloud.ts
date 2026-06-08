@@ -1105,6 +1105,10 @@ function createCheck(
   };
 }
 
+function isBrowserSafeEnvName(name: string): boolean {
+  return name.startsWith("NEXT_PUBLIC_");
+}
+
 function summarizeIdentity(identity: unknown): JsonRecord | undefined {
   if (!isRecord(identity)) return undefined;
 
@@ -1269,6 +1273,7 @@ async function checkCorsPreflight(params: {
   status: number;
   allowOrigin: string | null;
   allowMethods: string | null;
+  allowHeaders: string | null;
 }> {
   const response = await fetch(params.url, {
     method: "OPTIONS",
@@ -1280,6 +1285,7 @@ async function checkCorsPreflight(params: {
   });
   const allowOrigin = response.headers.get("access-control-allow-origin");
   const allowMethods = response.headers.get("access-control-allow-methods");
+  const allowHeaders = response.headers.get("access-control-allow-headers");
   const normalizedAllowOrigin = allowOrigin?.toLowerCase();
   const normalizedOrigin = params.origin.toLowerCase();
 
@@ -1287,11 +1293,31 @@ async function checkCorsPreflight(params: {
     ok:
       response.ok &&
       (normalizedAllowOrigin === "*" || normalizedAllowOrigin === normalizedOrigin) &&
-      Boolean(allowMethods?.toUpperCase().includes("POST")),
+      Boolean(allowMethods?.toUpperCase().includes("POST")) &&
+      areCorsRequestHeadersAllowed(params.requestHeaders, allowHeaders),
     status: response.status,
     allowOrigin,
     allowMethods,
+    allowHeaders,
   };
+}
+
+function areCorsRequestHeadersAllowed(requestHeaders: string, allowHeaders: string | null): boolean {
+  const requested = parseCorsHeaderList(requestHeaders);
+  if (requested.length === 0) return true;
+  if (!allowHeaders) return false;
+
+  const allowed = parseCorsHeaderList(allowHeaders);
+  if (allowed.includes("*")) return true;
+
+  return requested.every((header) => allowed.includes(header));
+}
+
+function parseCorsHeaderList(value: string): string[] {
+  return value
+    .split(",")
+    .map((header) => header.trim().toLowerCase())
+    .filter(Boolean);
 }
 
 async function readJsonResponse(response: Response): Promise<unknown> {
@@ -1816,23 +1842,44 @@ export async function checkCloudConfig(
       );
 
       const configuredApiKeyEnv = readConfiguredCloudApiKeyEnv(snapshot);
-      const directApiKeyEnv =
-        configuredApiKeyEnv ??
-        readFirstEnv(env, [DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV, DOCS_CLOUD_DEFAULT_API_KEY_ENV])
-          ?.name ??
-        DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV;
-      const directApiKey = readEnvValue(env, directApiKeyEnv);
+      const publicApiKeyEnv =
+        configuredApiKeyEnv && isBrowserSafeEnvName(configuredApiKeyEnv)
+          ? configuredApiKeyEnv
+          : readFirstEnv(env, [DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV])?.name ??
+            DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV;
+      const publicApiKey = readEnvValue(env, publicApiKeyEnv);
+      const publicProjectEnv = readFirstEnv(env, [DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV]);
+      const serverApiKeyEnv = configuredApiKeyEnv ?? DOCS_CLOUD_DEFAULT_API_KEY_ENV;
+      const serverApiKey = readEnvValue(env, serverApiKeyEnv);
 
-      checks.push(
-        createCheck(
-          "askAi.direct",
-          directApiKey && projectEnv ? "pass" : "fail",
-          directApiKey && projectEnv
-            ? `Ask AI can call the Docs Cloud knowledge endpoint directly with ${directApiKeyEnv}.`
-            : `Ask AI docs-cloud direct mode needs ${directApiKeyEnv} and a Docs Cloud project id.`,
-          { apiKeyEnv: directApiKeyEnv },
-        ),
-      );
+      if (publicApiKey && publicProjectEnv) {
+        checks.push(
+          createCheck(
+            "askAi.direct",
+            "pass",
+            `Ask AI can call the Docs Cloud knowledge endpoint directly with ${publicApiKeyEnv}.`,
+            { apiKeyEnv: publicApiKeyEnv, projectIdEnv: publicProjectEnv.name },
+          ),
+        );
+      } else if (serverApiKey && projectEnv) {
+        checks.push(
+          createCheck(
+            "askAi.direct",
+            "warn",
+            `Direct browser Ask AI needs ${DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV} and ${DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV}; this app can use the local docs API route with ${serverApiKeyEnv}.`,
+            { apiKeyEnv: serverApiKeyEnv, projectIdEnv: projectEnv.name, proxy: true },
+          ),
+        );
+      } else {
+        checks.push(
+          createCheck(
+            "askAi.direct",
+            "fail",
+            `Ask AI docs-cloud direct mode needs ${DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV} and ${DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV}.`,
+            { apiKeyEnv: publicApiKeyEnv },
+          ),
+        );
+      }
     } else if (aiProvider) {
       checks.push(createCheck("askAi.provider", "pass", `Ask AI provider is ${aiProvider}.`));
     } else {
@@ -1884,6 +1931,7 @@ export async function checkCloudConfig(
                 status: cors.status,
                 allowOrigin: cors.allowOrigin,
                 allowMethods: cors.allowMethods,
+                allowHeaders: cors.allowHeaders,
               },
             ),
           );
@@ -1920,6 +1968,7 @@ export async function checkCloudConfig(
                 status: cors.status,
                 allowOrigin: cors.allowOrigin,
                 allowMethods: cors.allowMethods,
+                allowHeaders: cors.allowHeaders,
               },
             ),
           );

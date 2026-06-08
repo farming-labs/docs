@@ -127,8 +127,8 @@ pnpm dlx @farming-labs/docs cloud check
 
 The check validates `docs.config.ts`, `docs.json` freshness, the hosted Docs Cloud API target,
 `cloud.apiKey.env`, the Docs Cloud API key, required deploy scopes, analytics project envs,
-the public docs origin used for browser CORS, `ai.provider: "docs-cloud"` direct knowledge
-endpoint wiring, and browser CORS preflight for Cloud analytics/Ask AI. Use `--json` in CI or
+the public docs origin used for browser CORS, `ai.provider: "docs-cloud"` direct or proxied
+knowledge endpoint wiring, and browser CORS preflight for Cloud analytics/Ask AI. Use `--json` in CI or
 `--no-network` when you only want local config checks.
 
 Scope the report when you only want one integration area:
@@ -172,7 +172,7 @@ pnpm dlx @farming-labs/docs deploy --json
 | `pnpm dlx @farming-labs/docs cloud sync` | You only want to update `docs.json` |
 | `pnpm dlx @farming-labs/docs cloud check` | You want to validate config, hosted API access, analytics envs, API key scopes, CORS, and Ask AI wiring without deploying |
 | `pnpm dlx @farming-labs/docs cloud check --analytics` | You only want to validate Docs Cloud analytics wiring and analytics CORS |
-| `pnpm dlx @farming-labs/docs cloud check --ask-ai` | You only want to validate Docs Cloud Ask AI direct endpoint wiring and Ask AI CORS |
+| `pnpm dlx @farming-labs/docs cloud check --ask-ai` | You only want to validate Docs Cloud Ask AI endpoint wiring and Ask AI CORS |
 | `pnpm dlx @farming-labs/docs cloud check --deploy` | You only want to validate deploy flags, API key presence, and deploy scopes |
 | `pnpm dlx @farming-labs/docs deploy` | You want to sync, validate the key, and request a preview |
 | `pnpm dlx @farming-labs/docs cloud deploy` | You prefer the explicit Cloud namespace |
@@ -216,7 +216,7 @@ back to `true` or remove the override.
 ### Browser CORS blocked
 
 Make sure the public docs URL is set in one of the places the check can read:
-`NEXT_PUBLIC_BASE_URL`, `NEXT_PUBLIC_SITE_URL`, `SITE_URL`, `sitemap.baseUrl`,
+`NEXT_PUBLIC_BASE_URL`, `NEXT_PUBLIC_SITE_URL`, `SITE_URL`, `site.url`, `sitemap.baseUrl`,
 `llmsTxt.baseUrl`, or `robots.baseUrl`.
 
 For the hosted Docs Cloud API, you do not need to set a Docs Cloud API URL. If you are

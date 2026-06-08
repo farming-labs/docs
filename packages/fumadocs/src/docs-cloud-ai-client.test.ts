@@ -9,6 +9,7 @@ const ENV_KEYS = [
   "DOCS_CLOUD_API_URL",
   "DOCS_CLOUD_API_KEY",
   "SERVER_DOCS_CLOUD_KEY",
+  "NEXT_PUBLIC_CUSTOM_DOCS_CLOUD_API_KEY",
 ] as const;
 
 const originalEnv = new Map<string, string | undefined>(
@@ -53,9 +54,29 @@ describe("resolveDocsCloudAIClientRequest", () => {
     });
   });
 
-  it("uses the configured Docs Cloud API key env for direct requests", () => {
+  it("uses a configured browser-safe Docs Cloud API key env for direct requests", () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
     process.env.NEXT_PUBLIC_DOCS_CLOUD_API_KEY = "public-key";
+    process.env.NEXT_PUBLIC_CUSTOM_DOCS_CLOUD_API_KEY = "custom-public-key";
+
+    expect(
+      resolveDocsCloudAIClientRequest(
+        createDocsCloudConfig({
+          apiKey: { env: "NEXT_PUBLIC_CUSTOM_DOCS_CLOUD_API_KEY" },
+        }),
+      ),
+    ).toEqual({
+      api: "https://api.farming-labs.dev/v1/projects/project_public/knowledge/ask",
+      requestMode: "docs-cloud",
+      requestStream: true,
+      requestHeaders: {
+        Authorization: "Bearer custom-public-key",
+      },
+    });
+  });
+
+  it("falls back to the docs API route when the configured API key env is server-only", () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
     process.env.SERVER_DOCS_CLOUD_KEY = "server-key";
 
     expect(
@@ -65,12 +86,8 @@ describe("resolveDocsCloudAIClientRequest", () => {
         }),
       ),
     ).toEqual({
-      api: "https://api.farming-labs.dev/v1/projects/project_public/knowledge/ask",
-      requestMode: "docs-cloud",
+      api: "/api/docs",
       requestStream: true,
-      requestHeaders: {
-        Authorization: "Bearer server-key",
-      },
     });
   });
 
@@ -88,14 +105,21 @@ describe("resolveDocsCloudAIClientRequest", () => {
     });
   });
 
-  it("does not fall back to the docs API route when docs-cloud env is incomplete", () => {
+  it("falls back to the docs API route when the public API key is missing", () => {
     process.env.NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID = "project_public";
 
     expect(resolveDocsCloudAIClientRequest(createDocsCloudConfig())).toEqual({
-      api: "https://api.farming-labs.dev/v1/projects/project_public/knowledge/ask",
-      requestMode: "docs-cloud",
+      api: "/api/docs",
       requestStream: true,
-      requestHeaders: undefined,
+    });
+  });
+
+  it("falls back to the docs API route when the public project id is missing", () => {
+    process.env.NEXT_PUBLIC_DOCS_CLOUD_API_KEY = "public-key";
+
+    expect(resolveDocsCloudAIClientRequest(createDocsCloudConfig())).toEqual({
+      api: "/api/docs",
+      requestStream: true,
     });
   });
 
