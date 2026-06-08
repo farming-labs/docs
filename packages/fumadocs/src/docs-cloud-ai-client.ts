@@ -1,7 +1,8 @@
 import type { DocsConfig } from "@farming-labs/docs";
 
 const DEFAULT_DOCS_API_ROUTE = "/api/docs";
-const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://docs-app.farming-labs.dev";
+const DEFAULT_DOCS_CLOUD_API_BASE_URL = "https://api.farming-labs.dev";
+const DEFAULT_PUBLIC_DOCS_CLOUD_PROJECT_ID_ENV = "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID";
 const DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV = "NEXT_PUBLIC_DOCS_CLOUD_API_KEY";
 
 export interface DocsCloudAIClientRequest {
@@ -25,18 +26,21 @@ function resolveDocsCloudApiBaseUrl(): string {
 }
 
 function resolveDocsCloudProjectId(): string | undefined {
-  return (
-    readRuntimeEnv("NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID") ?? readRuntimeEnv("DOCS_CLOUD_PROJECT_ID")
-  );
+  return readRuntimeEnv(DEFAULT_PUBLIC_DOCS_CLOUD_PROJECT_ID_ENV);
 }
 
-function resolvePublicDocsCloudApiKey(config: DocsConfig): string | undefined {
+function resolveDocsCloudApiKey(config: DocsConfig): string | undefined {
   const configuredEnv = config.cloud?.apiKey?.env?.trim();
 
-  if (!configuredEnv) return readRuntimeEnv(DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV);
-  if (!configuredEnv.startsWith("NEXT_PUBLIC_")) return undefined;
+  if (configuredEnv && isPublicRuntimeEnvName(configuredEnv)) {
+    return readRuntimeEnv(configuredEnv);
+  }
 
-  return readRuntimeEnv(configuredEnv);
+  return readRuntimeEnv(DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV);
+}
+
+function isPublicRuntimeEnvName(name: string): boolean {
+  return name.startsWith("NEXT_PUBLIC_");
 }
 
 function resolveDocsCloudAIStream(config: DocsConfig): boolean {
@@ -55,19 +59,18 @@ export function resolveDocsCloudAIClientRequest(
   }
 
   const projectId = resolveDocsCloudProjectId();
-  const apiKey = resolvePublicDocsCloudApiKey(config);
+  const apiKey = resolveDocsCloudApiKey(config);
   const requestStream = resolveDocsCloudAIStream(config);
   if (!projectId || !apiKey) {
     return { api: fallbackApi, requestStream };
   }
 
   const apiBaseUrl = resolveDocsCloudApiBaseUrl();
+
   return {
     api: `${apiBaseUrl}/v1/projects/${encodeURIComponent(projectId)}/knowledge/ask`,
     requestMode: "docs-cloud",
     requestStream,
-    requestHeaders: {
-      Authorization: `Bearer ${apiKey}`,
-    },
+    requestHeaders: { Authorization: `Bearer ${apiKey}` },
   };
 }

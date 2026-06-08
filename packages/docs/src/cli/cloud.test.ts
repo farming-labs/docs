@@ -305,7 +305,7 @@ void missing;
     );
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      expect(String(input)).toBe("https://cloud.example.com/api/cloud/me");
+      expect(String(input)).toBe("https://cloud.example.com/v1/cloud/me");
       expect(new Headers(init?.headers).get("authorization")).toBe("Bearer docs_cloud_public_key");
       return new Response(
         JSON.stringify({
@@ -417,7 +417,135 @@ void missing;
     expect(checkNames).not.toContain("deploy.enabled");
   });
 
-  it("does not warn when docs-cloud Ask AI uses a server-only API key env", async () => {
+  it("checks direct Docs Cloud Ask AI with a browser-safe configured API key env", async () => {
+    writePackageJson();
+    writeFileSync(
+      path.join(tmpDir, ".env.local"),
+      [
+        "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
+        "NEXT_PUBLIC_DOCS_CLOUD_API_KEY=docs_cloud_public_key",
+      ].join("\n"),
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  ai: {
+    enabled: true,
+    provider: "docs-cloud",
+  },
+  cloud: {
+    apiKey: { env: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY" },
+    analytics: { enabled: true },
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const result = await checkCloudConfig({
+      rootDir: tmpDir,
+      apiBaseUrl: "https://cloud.example.com",
+      network: false,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "askAi.provider", status: "pass" }),
+        expect.objectContaining({ name: "project.env", status: "pass" }),
+        expect.objectContaining({
+          name: "askAi.direct",
+          status: "pass",
+          details: {
+            apiKeyEnv: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY",
+            projectIdEnv: "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID",
+          },
+        }),
+      ]),
+    );
+  });
+
+  it("checks Docs Cloud browser CORS for analytics and Ask AI", async () => {
+    writePackageJson();
+    writeFileSync(
+      path.join(tmpDir, ".env.local"),
+      [
+        "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
+        "NEXT_PUBLIC_DOCS_CLOUD_API_KEY=docs_cloud_public_key",
+      ].join("\n"),
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  ai: {
+    enabled: true,
+    provider: "docs-cloud",
+  },
+  cloud: {
+    apiKey: { env: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY" },
+    analytics: { enabled: true },
+  },
+  sitemap: {
+    baseUrl: "https://docs.example.com",
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(init?.method).toBe("OPTIONS");
+      expect(new Headers(init?.headers).get("origin")).toBe("https://docs.example.com");
+
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "access-control-allow-origin": "https://docs.example.com",
+          "access-control-allow-methods": "POST, OPTIONS",
+          "access-control-allow-headers": "authorization, content-type",
+        },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await checkCloudConfig({
+      rootDir: tmpDir,
+      apiBaseUrl: "https://cloud.example.com",
+      checkTargets: ["analytics", "ask-ai"],
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "cloud.apiBaseUrl", status: "pass" }),
+        expect.objectContaining({
+          name: "docs.siteOrigin",
+          status: "pass",
+          details: {
+            origin: "https://docs.example.com",
+            source: "sitemap.baseUrl",
+          },
+        }),
+        expect.objectContaining({ name: "cors.analytics", status: "pass" }),
+        expect.objectContaining({ name: "cors.askAi", status: "pass" }),
+      ]),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://cloud.example.com/v1/analytics/events",
+      expect.any(Object),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://cloud.example.com/v1/projects/project_cloud/knowledge/ask",
+      expect.any(Object),
+    );
+  });
+
+  it("skips Docs Cloud Ask AI browser CORS when server-key config uses proxy fallback", async () => {
     writePackageJson();
     writeFileSync(
       path.join(tmpDir, ".env.local"),
@@ -437,27 +565,103 @@ void missing;
   },
   cloud: {
     apiKey: { env: "DOCS_CLOUD_API_KEY" },
-    analytics: { enabled: true },
+  },
+  site: {
+    url: "https://docs.example.com",
   },
 };
 `,
       "utf-8",
     );
 
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
     const result = await checkCloudConfig({
       rootDir: tmpDir,
       apiBaseUrl: "https://cloud.example.com",
-      network: false,
+      checkTargets: ["ask-ai"],
     });
 
     expect(result.ok).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(result.checks).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ name: "askAi.provider", status: "pass" }),
-        expect.objectContaining({ name: "project.env", status: "pass" }),
+        expect.objectContaining({
+          name: "askAi.direct",
+          status: "warn",
+          details: expect.objectContaining({ proxy: true }),
+        }),
+        expect.objectContaining({
+          name: "cors.askAi",
+          status: "pass",
+          details: { proxy: true },
+        }),
       ]),
     );
-    expect(result.checks.some((check) => check.name === "askAi.direct")).toBe(false);
+  });
+
+  it("fails Docs Cloud Ask AI CORS when preflight does not allow authorization", async () => {
+    writePackageJson();
+    writeFileSync(
+      path.join(tmpDir, ".env.local"),
+      [
+        "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
+        "NEXT_PUBLIC_DOCS_CLOUD_API_KEY=docs_cloud_public_key",
+      ].join("\n"),
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  ai: {
+    enabled: true,
+    provider: "docs-cloud",
+  },
+  cloud: {
+    apiKey: { env: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY" },
+  },
+  site: {
+    url: "https://docs.example.com",
+  },
+};
+`,
+      "utf-8",
+    );
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            "access-control-allow-origin": "https://docs.example.com",
+            "access-control-allow-methods": "POST, OPTIONS",
+            "access-control-allow-headers": "content-type",
+          },
+        });
+      }),
+    );
+
+    const result = await checkCloudConfig({
+      rootDir: tmpDir,
+      apiBaseUrl: "https://cloud.example.com",
+      checkTargets: ["ask-ai"],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "cors.askAi",
+          status: "fail",
+          details: expect.objectContaining({
+            allowHeaders: "content-type",
+          }),
+        }),
+      ]),
+    );
   });
 
   it("prints json and exits non-zero when cloud check fails", async () => {
@@ -515,7 +719,7 @@ void missing;
       const url = String(input);
       expect(new Headers(init?.headers).get("authorization")).toBe("Bearer docs_cloud_test_key");
 
-      if (url === "https://cloud.example.com/api/cloud/me") {
+      if (url === "https://cloud.example.com/v1/cloud/me") {
         return new Response(
           JSON.stringify({
             workspace: { id: "workspace_1", name: "Acme" },
@@ -525,7 +729,7 @@ void missing;
         );
       }
 
-      if (url === "https://cloud.example.com/api/cloud/preview") {
+      if (url === "https://cloud.example.com/v1/cloud/preview") {
         const requestBody = JSON.parse(String(init?.body)) as {
           repository?: {
             owner?: string;
@@ -589,7 +793,7 @@ void missing;
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
 
-      if (url === "https://cloud.example.com/api/cloud/me") {
+      if (url === "https://cloud.example.com/v1/cloud/me") {
         return new Response(
           JSON.stringify({
             workspace: { id: "workspace_1", name: "Acme" },
@@ -599,7 +803,7 @@ void missing;
         );
       }
 
-      if (url === "https://cloud.example.com/api/cloud/preview") {
+      if (url === "https://cloud.example.com/v1/cloud/preview") {
         return new Response(JSON.stringify({ url: "https://docs-cloud-acme.preview.test" }), {
           status: 200,
           headers: { "content-type": "application/json" },
@@ -648,7 +852,7 @@ void missing;
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
 
-      if (url === "https://cloud.example.com/api/cloud/me") {
+      if (url === "https://cloud.example.com/v1/cloud/me") {
         return new Response(
           JSON.stringify({
             workspace: { id: "workspace_1", name: "Acme" },
@@ -658,18 +862,18 @@ void missing;
         );
       }
 
-      if (url === "https://cloud.example.com/api/cloud/preview") {
+      if (url === "https://cloud.example.com/v1/cloud/preview") {
         return new Response(
           JSON.stringify({
             status: "queued",
-            statusUrl: "/api/cloud/preview/job_1",
+            statusUrl: "/v1/cloud/preview/job_1",
             preview: { status: "queued", url: null },
           }),
           { status: 202, headers: { "content-type": "application/json" } },
         );
       }
 
-      if (url === "https://cloud.example.com/api/cloud/preview/job_1") {
+      if (url === "https://cloud.example.com/v1/cloud/preview/job_1") {
         return new Response(
           JSON.stringify({
             job: { id: "job_1", status: "SUCCEEDED" },
@@ -717,7 +921,7 @@ void missing;
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
 
-      if (url === "https://cloud.example.com/api/cloud/me") {
+      if (url === "https://cloud.example.com/v1/cloud/me") {
         return new Response(
           JSON.stringify({
             workspace: { id: "workspace_1", name: "Acme" },
@@ -727,17 +931,17 @@ void missing;
         );
       }
 
-      if (url === "https://cloud.example.com/api/cloud/preview") {
+      if (url === "https://cloud.example.com/v1/cloud/preview") {
         return new Response(
           JSON.stringify({
             status: "queued",
-            statusUrl: "/api/cloud/preview/job_1",
+            statusUrl: "/v1/cloud/preview/job_1",
           }),
           { status: 202, headers: { "content-type": "application/json" } },
         );
       }
 
-      if (url === "https://cloud.example.com/api/cloud/preview/job_1") {
+      if (url === "https://cloud.example.com/v1/cloud/preview/job_1") {
         return new Response(
           JSON.stringify({
             status: "queued",
@@ -804,7 +1008,7 @@ void missing;
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
 
-      if (url === "https://cloud.example.com/api/cloud/me") {
+      if (url === "https://cloud.example.com/v1/cloud/me") {
         return new Response(
           JSON.stringify({
             workspace: { id: "workspace_1", name: "Acme" },
