@@ -710,21 +710,33 @@ function buildAgentFeedbackAnalyticsProperties(
   } = {},
 ): Record<string, unknown> {
   const payloadKeys = Object.keys(data.payload);
+  const context = data.context;
 
   return {
     ...options.requestProperties,
     feedbackKind: "agent",
-    agentFeedbackContext: data.context,
-    agentFeedbackPayload: data.payload,
-    feedbackContext: data.context,
-    feedbackPayload: data.payload,
-    context: data.context,
-    payload: data.payload,
+    agentFeedbackContext: context,
+    contextPage: context?.page,
+    contextUrl: context?.url,
+    contextSlug: context?.slug,
+    contextLocale: context?.locale,
+    contextSource: context?.source,
     payloadKeys,
+    payloadFieldCount: payloadKeys.length,
     hasContext: Boolean(data.context),
+    hasPayload: payloadKeys.length > 0,
     ...(typeof options.handled === "boolean" ? { handled: options.handled } : {}),
     ...(options.reason ? { reason: options.reason } : {}),
     ...(options.error ? { error: options.error } : {}),
+  };
+}
+
+function buildAgentFeedbackAnalyticsInput(data: DocsAgentFeedbackData) {
+  return {
+    feedbackContext: data.context,
+    feedbackPayload: data.payload,
+    agentFeedbackContext: data.context,
+    agentFeedbackPayload: data.payload,
   };
 }
 
@@ -4259,6 +4271,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             source: "server",
             url: request.url,
             path: url.pathname,
+            input: buildAgentFeedbackAnalyticsInput(parsed.data),
             properties: buildAgentFeedbackAnalyticsProperties(parsed.data, {
               requestProperties: requestAnalyticsProperties,
               reason: "invalid_payload",
@@ -4274,6 +4287,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             source: "server",
             url: request.url,
             path: url.pathname,
+            input: buildAgentFeedbackAnalyticsInput(parsed.data),
             properties: buildAgentFeedbackAnalyticsProperties(parsed.data, {
               requestProperties: requestAnalyticsProperties,
               handled: false,
@@ -4288,6 +4302,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
           source: "server",
           url: request.url,
           path: url.pathname,
+          input: buildAgentFeedbackAnalyticsInput(parsed.data),
           properties: buildAgentFeedbackAnalyticsProperties(parsed.data, {
             requestProperties: requestAnalyticsProperties,
             handled: true,

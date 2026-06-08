@@ -94,8 +94,6 @@ function buildFeedbackAnalyticsProperties(data: DocsFeedbackData) {
     feedbackKind: "page",
     value: data.value,
     feedbackValue: data.value,
-    comment: data.comment,
-    feedbackComment: data.comment,
     hasComment: Boolean(data.comment),
     commentLength: data.comment?.length ?? 0,
     title: data.title,

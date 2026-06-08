@@ -801,6 +801,10 @@ export interface DocsAnalyticsInput {
   question?: string;
   feedbackValue?: string;
   feedbackComment?: string;
+  feedbackContext?: DocsAgentFeedbackContext;
+  feedbackPayload?: Record<string, unknown>;
+  agentFeedbackContext?: DocsAgentFeedbackContext;
+  agentFeedbackPayload?: Record<string, unknown>;
   content?: string;
 }
 

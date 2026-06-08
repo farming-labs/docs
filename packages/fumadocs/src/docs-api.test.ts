@@ -1463,28 +1463,24 @@ Install the package.
         queryLength: 7,
       }),
     });
-    expect(events.find((event) => event.type === "agent_feedback_submit")).toMatchObject({
+    const agentFeedbackSubmitEvent = events.find((event) => event.type === "agent_feedback_submit");
+    expect(agentFeedbackSubmitEvent).toMatchObject({
       properties: expect.objectContaining({
         feedbackKind: "agent",
         handled: true,
         hasContext: true,
-        context: {
-          page: "/docs/guides/setup",
-        },
-        payload: {
-          task: "validate analytics",
-          outcome: "implemented",
-        },
+        hasPayload: true,
         agentFeedbackContext: {
           page: "/docs/guides/setup",
         },
-        agentFeedbackPayload: {
-          task: "validate analytics",
-          outcome: "implemented",
-        },
+        contextPage: "/docs/guides/setup",
         payloadKeys: ["task", "outcome"],
+        payloadFieldCount: 2,
       }),
     });
+    expect(agentFeedbackSubmitEvent?.input).toBeUndefined();
+    expect(agentFeedbackSubmitEvent?.properties).not.toHaveProperty("payload");
+    expect(agentFeedbackSubmitEvent?.properties).not.toHaveProperty("agentFeedbackPayload");
     expect(events.find((event) => event.type === "api_ai_error")).toMatchObject({
       properties: expect.objectContaining({
         reason: "disabled",
