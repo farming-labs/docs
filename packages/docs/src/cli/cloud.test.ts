@@ -458,7 +458,11 @@ void missing;
         expect.objectContaining({
           name: "askAi.direct",
           status: "warn",
-          details: { apiKeyEnv: "DOCS_CLOUD_API_KEY", projectIdEnv: "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID", proxy: true },
+          details: {
+            apiKeyEnv: "DOCS_CLOUD_API_KEY",
+            projectIdEnv: "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID",
+            proxy: true,
+          },
         }),
       ]),
     );

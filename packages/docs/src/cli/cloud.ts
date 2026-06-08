@@ -1302,7 +1302,10 @@ async function checkCorsPreflight(params: {
   };
 }
 
-function areCorsRequestHeadersAllowed(requestHeaders: string, allowHeaders: string | null): boolean {
+function areCorsRequestHeadersAllowed(
+  requestHeaders: string,
+  allowHeaders: string | null,
+): boolean {
   const requested = parseCorsHeaderList(requestHeaders);
   if (requested.length === 0) return true;
   if (!allowHeaders) return false;
@@ -1845,8 +1848,8 @@ export async function checkCloudConfig(
       const publicApiKeyEnv =
         configuredApiKeyEnv && isBrowserSafeEnvName(configuredApiKeyEnv)
           ? configuredApiKeyEnv
-          : readFirstEnv(env, [DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV])?.name ??
-            DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV;
+          : (readFirstEnv(env, [DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV])?.name ??
+            DEFAULT_PUBLIC_DOCS_CLOUD_API_KEY_ENV);
       const publicApiKey = readEnvValue(env, publicApiKeyEnv);
       const publicProjectEnv = readFirstEnv(env, [DOCS_CLOUD_DEFAULT_ANALYTICS_PROJECT_ID_ENV]);
       const serverApiKeyEnv = configuredApiKeyEnv ?? DOCS_CLOUD_DEFAULT_API_KEY_ENV;
