@@ -330,7 +330,7 @@ export default defineDocs({
       "How do I create a custom component?",
       "How do I configure the sidebar?",
       "Why is this better than other documentation frameworks?",
-      "How to create a custom component?",
+      "How do I enable Ask AI?",
     ],
   },
   sidebar: {

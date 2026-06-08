@@ -1286,10 +1286,10 @@ export function ThemeCustomizer() {
           floatingStyle={state.ai.floatingStyle}
           suggestedQuestions={[
             "How do I get started?",
-            "What to create my own theme?",
+            "How do I create my own theme?",
             "How do I create a custom component?",
             "How do I configure the sidebar?",
-            "How to add custom components?",
+            "How do I customize colors?",
           ]}
           aiLabel="DocsBot"
           models={[
