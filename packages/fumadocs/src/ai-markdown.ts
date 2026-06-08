@@ -6,6 +6,8 @@ type CodeFence = {
   lang: string;
 };
 
+const codeBlockTokenBoundary = String.fromCharCode(0);
+
 function buildCodeBlock(lang: string, code: string): string {
   const trimmed = code.replace(/\n$/, "");
   // Strip newlines between sh__line spans. <pre> preserves whitespace and
@@ -91,19 +93,46 @@ function replaceFencedCodeBlocks(
 }
 
 export function renderAIResponseMarkdown(text: string): string {
-  const codeBlockTokenBoundary = String.fromCharCode(0);
-  const codeBlockTokenPattern = new RegExp(
-    `${codeBlockTokenBoundary}CB(\\d+)${codeBlockTokenBoundary}`,
-    "g",
-  );
   const codeBlocks: string[] = [];
   const processed = replaceFencedCodeBlocks(text, codeBlocks, codeBlockTokenBoundary);
 
-  const lines = processed.split("\n");
+  return renderMarkdownBlocks(processed, codeBlocks);
+}
+
+function renderMarkdownBlocks(text: string, codeBlocks: string[]): string {
+  const lines = text.split("\n");
   const output: string[] = [];
   let i = 0;
 
   while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      i++;
+      continue;
+    }
+
+    const codeBlockIndex = getCodeBlockTokenIndex(trimmed);
+    if (codeBlockIndex !== null) {
+      output.push(codeBlocks[codeBlockIndex] ?? "");
+      i++;
+      continue;
+    }
+
+    if (isHorizontalRule(trimmed)) {
+      output.push('<hr class="fd-ai-hr" />');
+      i++;
+      continue;
+    }
+
+    const heading = getHeading(trimmed);
+    if (heading) {
+      output.push(`<h${heading.level}>${renderInlineMarkdown(heading.text)}</h${heading.level}>`);
+      i++;
+      continue;
+    }
+
     if (isTableRow(lines[i]) && i + 1 < lines.length && isTableSeparator(lines[i + 1])) {
       const tableLines: string[] = [lines[i]];
       i++; // separator
@@ -115,38 +144,123 @@ export function renderAIResponseMarkdown(text: string): string {
       output.push(renderTable(tableLines));
       continue;
     }
-    output.push(lines[i]);
+
+    const unorderedItems = collectListItems(lines, i, "unordered");
+    if (unorderedItems) {
+      output.push(
+        `<ul>${unorderedItems.items.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join("")}</ul>`,
+      );
+      i = unorderedItems.nextIndex;
+      continue;
+    }
+
+    const orderedItems = collectListItems(lines, i, "ordered");
+    if (orderedItems) {
+      output.push(
+        `<ol>${orderedItems.items.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join("")}</ol>`,
+      );
+      i = orderedItems.nextIndex;
+      continue;
+    }
+
+    const paragraphLines: string[] = [];
+    while (i < lines.length && lines[i].trim() && !isMarkdownBlockStart(lines, i)) {
+      paragraphLines.push(lines[i].trim());
+      i++;
+    }
+
+    output.push(
+      `<p>${paragraphLines.map((paragraphLine) => renderInlineMarkdown(paragraphLine)).join("<br>")}</p>`,
+    );
+  }
+
+  return output.join("");
+}
+
+function getCodeBlockTokenIndex(line: string): number | null {
+  const prefix = `${codeBlockTokenBoundary}CB`;
+  if (!line.startsWith(prefix) || !line.endsWith(codeBlockTokenBoundary)) return null;
+
+  const rawIndex = line.slice(prefix.length, -codeBlockTokenBoundary.length);
+  if (!/^\d+$/.test(rawIndex)) return null;
+
+  return Number(rawIndex);
+}
+
+function getHeading(line: string): { level: number; text: string } | null {
+  const match = /^(#{1,4})\s+(.+)$/.exec(line);
+  if (!match) return null;
+
+  return {
+    level: match[1].length + 1,
+    text: match[2],
+  };
+}
+
+function collectListItems(
+  lines: string[],
+  startIndex: number,
+  type: "ordered" | "unordered",
+): { items: string[]; nextIndex: number } | null {
+  const pattern = type === "ordered" ? /^(?: {0,3})\d+\.\s+(.+)$/ : /^(?: {0,3})[-*+]\s+(.+)$/;
+  const items: string[] = [];
+  let i = startIndex;
+
+  while (i < lines.length) {
+    const match = pattern.exec(lines[i]);
+    if (!match) break;
+
+    items.push(match[1]);
     i++;
   }
 
-  let result = output.join("\n");
+  return items.length > 0 ? { items, nextIndex: i } : null;
+}
+
+function isMarkdownBlockStart(lines: string[], index: number): boolean {
+  const line = lines[index];
+  const trimmed = line.trim();
+
+  return (
+    getCodeBlockTokenIndex(trimmed) !== null ||
+    isHorizontalRule(trimmed) ||
+    Boolean(getHeading(trimmed)) ||
+    (isTableRow(line) && index + 1 < lines.length && isTableSeparator(lines[index + 1])) ||
+    Boolean(collectListItems(lines, index, "unordered")) ||
+    Boolean(collectListItems(lines, index, "ordered"))
+  );
+}
+
+function renderInlineMarkdown(text: string): string {
+  const inlineCodeTokens: string[] = [];
+  let result = escapeHtml(text).replace(/`([^`]+)`/g, (_match, code) => {
+    inlineCodeTokens.push(`<code>${code}</code>`);
+    return `${codeBlockTokenBoundary}IC${inlineCodeTokens.length - 1}${codeBlockTokenBoundary}`;
+  });
 
   result = result
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<em>$1</em>")
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-    .replace(/^### (.*$)/gm, "<h4>$1</h4>")
-    .replace(/^## (.*$)/gm, "<h3>$1</h3>")
-    .replace(/^# (.*$)/gm, "<h2>$1</h2>")
-    .replace(
-      /^[-*] (.*$)/gm,
-      '<div style="display:flex;gap:8px;padding:2px 0"><span style="opacity:0.5">•</span><span>$1</span></div>',
-    )
-    .replace(
-      /^(\d+)\. (.*$)/gm,
-      '<div style="display:flex;gap:8px;padding:2px 0"><span style="opacity:0.5">$1.</span><span>$2</span></div>',
-    )
-    .replace(/\n\n/g, '<div style="height:8px"></div>')
-    .replace(/\n/g, "<br>");
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label, href) => {
+      return `<a href="${escapeAttribute(href)}">${label}</a>`;
+    });
 
-  result = result.replace(codeBlockTokenPattern, (_m, idx) => codeBlocks[Number(idx)]);
-
-  return result;
+  return result.replace(
+    new RegExp(`${codeBlockTokenBoundary}IC(\\d+)${codeBlockTokenBoundary}`, "g"),
+    (_match, idx) => inlineCodeTokens[Number(idx)] ?? "",
+  );
 }
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function escapeAttribute(s: string): string {
+  return escapeHtml(s).replace(/"/g, "&quot;");
+}
+
+function isHorizontalRule(line: string): boolean {
+  return /^(?:-{3,}|\*{3,}|_{3,})$/.test(line);
 }
 
 function isTableRow(line: string): boolean {
@@ -168,13 +282,13 @@ function renderTable(rows: string[]): string {
       .map((c) => c.trim());
 
   const headerCells = parseRow(rows[0]);
-  const thead = `<thead><tr>${headerCells.map((c) => `<th>${c}</th>`).join("")}</tr></thead>`;
+  const thead = `<thead><tr>${headerCells.map((c) => `<th>${renderInlineMarkdown(c)}</th>`).join("")}</tr></thead>`;
 
   const bodyRows = rows
     .slice(1)
     .map((row) => {
       const cells = parseRow(row);
-      return `<tr>${cells.map((c) => `<td>${c}</td>`).join("")}</tr>`;
+      return `<tr>${cells.map((c) => `<td>${renderInlineMarkdown(c)}</td>`).join("")}</tr>`;
     })
     .join("");
 
