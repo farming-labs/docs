@@ -417,13 +417,13 @@ void missing;
     expect(checkNames).not.toContain("deploy.enabled");
   });
 
-  it("checks direct Docs Cloud Ask AI with the configured API key env", async () => {
+  it("checks direct Docs Cloud Ask AI with a browser-safe configured API key env", async () => {
     writePackageJson();
     writeFileSync(
       path.join(tmpDir, ".env.local"),
       [
         "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
-        "DOCS_CLOUD_API_KEY=docs_cloud_test_key",
+        "NEXT_PUBLIC_DOCS_CLOUD_API_KEY=docs_cloud_public_key",
       ].join("\n"),
       "utf-8",
     );
@@ -436,7 +436,7 @@ void missing;
     provider: "docs-cloud",
   },
   cloud: {
-    apiKey: { env: "DOCS_CLOUD_API_KEY" },
+    apiKey: { env: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY" },
     analytics: { enabled: true },
   },
 };
@@ -457,11 +457,10 @@ void missing;
         expect.objectContaining({ name: "project.env", status: "pass" }),
         expect.objectContaining({
           name: "askAi.direct",
-          status: "warn",
+          status: "pass",
           details: {
-            apiKeyEnv: "DOCS_CLOUD_API_KEY",
+            apiKeyEnv: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY",
             projectIdEnv: "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID",
-            proxy: true,
           },
         }),
       ]),
@@ -474,7 +473,7 @@ void missing;
       path.join(tmpDir, ".env.local"),
       [
         "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
-        "DOCS_CLOUD_API_KEY=docs_cloud_test_key",
+        "NEXT_PUBLIC_DOCS_CLOUD_API_KEY=docs_cloud_public_key",
       ].join("\n"),
       "utf-8",
     );
@@ -487,7 +486,7 @@ void missing;
     provider: "docs-cloud",
   },
   cloud: {
-    apiKey: { env: "DOCS_CLOUD_API_KEY" },
+    apiKey: { env: "NEXT_PUBLIC_DOCS_CLOUD_API_KEY" },
     analytics: { enabled: true },
   },
   sitemap: {
@@ -543,6 +542,62 @@ void missing;
     expect(fetchMock).toHaveBeenCalledWith(
       "https://cloud.example.com/v1/projects/project_cloud/knowledge/ask",
       expect.any(Object),
+    );
+  });
+
+  it("skips Docs Cloud Ask AI browser CORS when server-key config uses proxy fallback", async () => {
+    writePackageJson();
+    writeFileSync(
+      path.join(tmpDir, ".env.local"),
+      [
+        "NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=project_cloud",
+        "DOCS_CLOUD_API_KEY=docs_cloud_test_key",
+      ].join("\n"),
+      "utf-8",
+    );
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  ai: {
+    enabled: true,
+    provider: "docs-cloud",
+  },
+  cloud: {
+    apiKey: { env: "DOCS_CLOUD_API_KEY" },
+  },
+  site: {
+    url: "https://docs.example.com",
+  },
+};
+`,
+      "utf-8",
+    );
+
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await checkCloudConfig({
+      rootDir: tmpDir,
+      apiBaseUrl: "https://cloud.example.com",
+      checkTargets: ["ask-ai"],
+    });
+
+    expect(result.ok).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "askAi.direct",
+          status: "warn",
+          details: expect.objectContaining({ proxy: true }),
+        }),
+        expect.objectContaining({
+          name: "cors.askAi",
+          status: "pass",
+          details: { proxy: true },
+        }),
+      ]),
     );
   });
 

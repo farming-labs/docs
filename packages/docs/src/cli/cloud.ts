@@ -1838,6 +1838,7 @@ export async function checkCloudConfig(
   }
 
   const aiProvider = readAiProvider(snapshot);
+  let askAiCorsMode: "none" | "direct" | "proxy" = "none";
   if (checkAskAi) {
     if (aiProvider === "docs-cloud") {
       checks.push(
@@ -1864,6 +1865,7 @@ export async function checkCloudConfig(
             { apiKeyEnv: publicApiKeyEnv, projectIdEnv: publicProjectEnv.name },
           ),
         );
+        askAiCorsMode = "direct";
       } else if (serverApiKey && projectEnv) {
         checks.push(
           createCheck(
@@ -1873,6 +1875,7 @@ export async function checkCloudConfig(
             { apiKeyEnv: serverApiKeyEnv, projectIdEnv: projectEnv.name, proxy: true },
           ),
         );
+        askAiCorsMode = "proxy";
       } else {
         checks.push(
           createCheck(
@@ -1951,7 +1954,7 @@ export async function checkCloudConfig(
         }
       }
 
-      if (checkAskAi && projectEnv) {
+      if (checkAskAi && projectEnv && askAiCorsMode === "direct") {
         try {
           const cors = await checkCorsPreflight({
             url: `${apiBaseUrl}/v1/projects/${encodeURIComponent(projectEnv.value)}/knowledge/ask`,
@@ -1986,6 +1989,15 @@ export async function checkCloudConfig(
             ),
           );
         }
+      } else if (checkAskAi && askAiCorsMode === "proxy") {
+        checks.push(
+          createCheck(
+            "cors.askAi",
+            "pass",
+            "Ask AI uses the local docs API route, so Docs Cloud browser CORS is not required.",
+            { proxy: true },
+          ),
+        );
       }
     }
   }
