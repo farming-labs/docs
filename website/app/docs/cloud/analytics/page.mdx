@@ -43,6 +43,7 @@ the runtime environment:
 
 ```bash title=".env.local"
 NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=docs_cloud_project_id
+# Use DOCS_CLOUD_PROJECT_ID instead when only the server runtime needs the id.
 ```
 
 Keep using the dashboard-provided ID. Do not invent one locally; the ID must match an imported
@@ -57,6 +58,10 @@ NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENABLED=false
 
 Only set `NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_ENDPOINT` when the docs app should send events to a
 custom or self-hosted Docs Cloud API. The hosted Docs Cloud endpoint is the default.
+
+If your Cloud workspace issues a dedicated analytics key, set
+`NEXT_PUBLIC_DOCS_CLOUD_ANALYTICS_KEY` for browser delivery or `DOCS_CLOUD_ANALYTICS_KEY` for
+server-only delivery. The project ID is still required; the key only authenticates the event write.
 
 ## Runtime Contract
 
@@ -146,10 +151,16 @@ Docs Cloud stores event fields that are useful for dashboard queries:
 | Event shape | type, source, timestamp |
 | Page context | URL, path, referrer, locale |
 | Optional payloads | input, properties |
+| Agent traffic hints | `trafficType`, `agentName`, `botProvider` when Cloud can infer an agent or bot source |
 | Timing | event time, received time |
 
 The dashboard can use those fields for totals, recent event lists, source filters, event type
 filters, repository filters, and activity charts.
+
+Agent-readable routes and MCP events are marked as agent traffic when the runtime can infer that from
+the event source, event type, explicit properties, or known AI crawler user agents. That lets the
+dashboard separate human docs usage from ChatGPT, Codex, Copilot, Claude, MCP clients, and crawler
+activity without requiring a custom `onEvent` callback.
 
 ## Failure Behavior
 

@@ -773,8 +773,13 @@ NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID=docs_cloud_project_id
 Keep local env files out of git and set the same env names in production or CI. When ready, run:
 
 ```bash title="terminal"
+pnpm dlx @farming-labs/docs cloud check --deploy --analytics --ask-ai
 pnpm dlx @farming-labs/docs deploy
 ```
+
+The check command verifies the generated `docs.json`, deploy key scope, Cloud analytics project id,
+Ask AI provider wiring, and any required browser CORS preflights before the deploy command requests a
+hosted preview.
 
 ### Optional i18n scaffold
 

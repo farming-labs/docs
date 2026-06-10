@@ -71,13 +71,22 @@ interface DocsAnalyticsEvent {
   input?: {
     query?: string;
     question?: string;
+    feedbackValue?: string;
     feedbackComment?: string;
+    feedbackContext?: Record<string, unknown>;
+    feedbackPayload?: Record<string, unknown>;
+    agentFeedbackContext?: Record<string, unknown>;
+    agentFeedbackPayload?: Record<string, unknown>;
     content?: string;
   };
   metadata?: Record<string, unknown>;
   properties?: Record<string, unknown>;
 }
 ```
+
+`properties` carries safe operational details such as status, durations, result counts, model ids,
+provider names, message counts, content lengths, and route or delivery metadata. Raw user-authored
+text stays in `input` and is excluded unless `includeInputs: true` is set.
 
 ## Event Types
 
@@ -118,6 +127,7 @@ whether the action completed.
 | `api_ai_response`               | The docs API returned a successful Ask AI response.                     |
 | `api_ai_error`                  | The docs API rejected or failed an Ask AI request.                      |
 | `agent_read`                    | A page was read through a machine-readable docs surface.                |
+| `agents_request`                | An agent-facing generated instruction file was requested.               |
 | `markdown_request`              | A markdown route or API markdown request was served.                    |
 | `llms_request`                  | `/llms.txt` or `/llms-full.txt` was requested.                          |
 | `skill_request`                 | An Agent Skills file or skill index was requested.                      |
@@ -130,6 +140,10 @@ whether the action completed.
 
 `agent_read` includes `properties.delivery` so you can see how the page was read: `md_route`,
 `accept_header`, `signature_agent`, `user_agent`, `heuristic`, `api_format`, or `mcp_tool`.
+
+Ask AI API events include the provider, model, message count, question length, status or error
+reason, and `durationMs` when available. When `ai.provider` is `"docs-cloud"`, those events identify
+the provider as `docs-cloud` even if the request is served through the local docs API proxy.
 
 ## Input Privacy
 

@@ -170,10 +170,20 @@ NEXT_PUBLIC_DOCS_CLOUD_API_KEY=fl_key_...
 ```
 
 `provider: "docs-cloud"` keeps OpenAI, Anthropic, embeddings, and retrieval credentials on the
-Docs Cloud server. The Ask AI widget sends the user's question directly to
-`/v1/projects/{projectId}/knowledge/ask` using the configured project-scoped Docs Cloud API key and
-reads an OpenAI-compatible event stream. Streaming is enabled by default for Docs Cloud; set
+Docs Cloud server. The Ask AI widget resolves one of two request paths:
+
+| Available runtime env | Request path | Use it when |
+| --------------------- | ------------ | ----------- |
+| `NEXT_PUBLIC_DOCS_CLOUD_PROJECT_ID` plus `NEXT_PUBLIC_DOCS_CLOUD_API_KEY` or another browser-safe `cloud.apiKey.env` | The browser posts directly to `/v1/projects/{projectId}/knowledge/ask` with the project-scoped Docs Cloud API key | You want the lowest-latency Cloud path and the key is safe to expose to the browser |
+| `DOCS_CLOUD_PROJECT_ID` plus the server env named by `cloud.apiKey.env` | The browser posts to the local docs API route and the server proxies the Docs Cloud request | You want the API key to stay server-only or you need same-origin browser requests |
+
+The local docs API route is also the fallback when the project id or API key is not available to the
+browser. In both paths, Docs Cloud reads the same project knowledge index and returns either an
+OpenAI-compatible event stream or a JSON answer. Streaming is enabled by default for Docs Cloud; set
 `stream: false` if you need a single JSON answer.
+
+For staging or self-hosted Cloud APIs, direct browser requests read `NEXT_PUBLIC_DOCS_CLOUD_URL`.
+Server-routed requests read `DOCS_CLOUD_API_URL` first, then `NEXT_PUBLIC_DOCS_CLOUD_URL`.
 
 ## Configuration Reference
 
@@ -272,6 +282,10 @@ ai: {
   stream: true,
 }
 ```
+
+Streaming answers render as markdown while tokens arrive. Headings, tables, lists, horizontal rules,
+inline code, and fenced code blocks stay readable during the stream; fenced code blocks render with a
+language label and copy button.
 
 ### `model`
 
