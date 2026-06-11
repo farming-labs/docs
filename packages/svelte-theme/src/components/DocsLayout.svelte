@@ -194,7 +194,7 @@
       vars.push(`${COLOR_MAP[key]}: ${value};`);
     }
     if (vars.length === 0) return "";
-    return `.dark {\n  ${vars.join("\n  ")}\n}`;
+    return `html.dark body:has(#nd-docs-layout),\nbody.dark:has(#nd-docs-layout),\nbody:has(#nd-docs-layout.dark),\n:is(html.dark, body.dark) #nd-docs-layout,\n#nd-docs-layout.dark {\n  ${vars.join("\n  ")}\n}`;
   }
 
   function buildFontStyleVars(prefix, style) {
@@ -221,7 +221,7 @@
       }
     }
     if (vars.length === 0) return "";
-    return `:root {\n  ${vars.join("\n  ")}\n}`;
+    return `body:has(#nd-docs-layout),\n#nd-docs-layout {\n  ${vars.join("\n  ")}\n}`;
   }
 
   function buildLayoutCSS(layout) {
@@ -233,8 +233,8 @@
     if (layout.tocWidth) desktopVars.push(`--fd-toc-width: ${layout.tocWidth}px;`);
     if (rootVars.length === 0 && desktopVars.length === 0) return "";
     const parts = [];
-    if (rootVars.length > 0) parts.push(`:root {\n  ${rootVars.join("\n  ")}\n}`);
-    if (desktopVars.length > 0) parts.push(`@media (min-width: 1024px) {\n  :root {\n    ${desktopVars.join("\n    ")}\n  }\n}`);
+    if (rootVars.length > 0) parts.push(`#nd-docs-layout {\n  ${rootVars.join("\n  ")}\n}`);
+    if (desktopVars.length > 0) parts.push(`@media (min-width: 1024px) {\n  #nd-docs-layout {\n    ${desktopVars.join("\n    ")}\n  }\n}`);
     return parts.join("\n");
   }
 
@@ -259,7 +259,7 @@
   {/if}
 </svelte:head>
 
-<div class="fd-layout">
+<div id="nd-docs-layout" class="fd-layout">
   <!-- Mobile header -->
   <header class="fd-header">
     <button class="fd-menu-btn" onclick={toggleSidebar} aria-label="Toggle sidebar">
@@ -505,19 +505,19 @@
   <main class="fd-main">
     {@render children()}
   </main>
+
+  {#if showFloatingAI}
+    <FloatingAIChat
+      api={localizedApi}
+      suggestedQuestions={config.ai.suggestedQuestions ?? []}
+      aiLabel={config.ai.aiLabel ?? "AI"}
+      position={config.ai.position ?? "bottom-right"}
+      floatingStyle={config.ai.floatingStyle ?? "panel"}
+      {triggerComponent}
+    />
+  {/if}
+
+  {#if showSearch && searchOpen}
+    <SearchDialog onclose={closeSearch} />
+  {/if}
 </div>
-
-{#if showFloatingAI}
-  <FloatingAIChat
-    api={localizedApi}
-    suggestedQuestions={config.ai.suggestedQuestions ?? []}
-    aiLabel={config.ai.aiLabel ?? "AI"}
-    position={config.ai.position ?? "bottom-right"}
-    floatingStyle={config.ai.floatingStyle ?? "panel"}
-    {triggerComponent}
-  />
-{/if}
-
-{#if showSearch && searchOpen}
-  <SearchDialog onclose={closeSearch} />
-{/if}
