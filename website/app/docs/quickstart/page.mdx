@@ -1,0 +1,109 @@
+---
+title: "Quickstart"
+description: "Get @farming-labs/docs running in under two minutes"
+icon: "zap"
+order: 10
+---
+
+# Quickstart
+
+After this page you will have a working docs site — configured, themed, and running locally.
+
+## Run the CLI
+
+The fastest path is the `init` command inside an existing Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project. The CLI detects your framework, installs the right packages, creates `docs.config.ts`, adds the theme CSS, scaffolds starter pages, and optionally starts the dev server.
+
+<Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+  <Tab value="npm">
+    ```bash title="terminal"
+    npx @farming-labs/docs init
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash title="terminal"
+    pnpm dlx @farming-labs/docs init
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash title="terminal"
+    yarn dlx @farming-labs/docs init
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash title="terminal"
+    bunx @farming-labs/docs init
+    ```
+  </Tab>
+</Tabs>
+
+The CLI will ask whether you are adding docs to an existing project or starting fresh, then walk you through framework detection, theme selection, and an optional dev server start.
+
+## Start from a template
+
+To bootstrap a brand-new project with no existing app, pass `--template` and `--name`:
+
+<Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+  <Tab value="npm">
+    ```bash title="terminal"
+    npx @farming-labs/docs init --template next --name my-docs
+    npx @farming-labs/docs init --template tanstack-start --name my-docs
+    npx @farming-labs/docs init --template nuxt --name my-docs
+    npx @farming-labs/docs init --template sveltekit --name my-docs
+    npx @farming-labs/docs init --template astro --name my-docs
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash title="terminal"
+    pnpm dlx @farming-labs/docs init --template next --name my-docs
+    pnpm dlx @farming-labs/docs init --template tanstack-start --name my-docs
+    pnpm dlx @farming-labs/docs init --template nuxt --name my-docs
+    pnpm dlx @farming-labs/docs init --template sveltekit --name my-docs
+    pnpm dlx @farming-labs/docs init --template astro --name my-docs
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash title="terminal"
+    yarn dlx @farming-labs/docs init --template next --name my-docs
+    yarn dlx @farming-labs/docs init --template tanstack-start --name my-docs
+    yarn dlx @farming-labs/docs init --template nuxt --name my-docs
+    yarn dlx @farming-labs/docs init --template sveltekit --name my-docs
+    yarn dlx @farming-labs/docs init --template astro --name my-docs
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash title="terminal"
+    bunx @farming-labs/docs init --template next --name my-docs
+    bunx @farming-labs/docs init --template tanstack-start --name my-docs
+    bunx @farming-labs/docs init --template nuxt --name my-docs
+    bunx @farming-labs/docs init --template sveltekit --name my-docs
+    bunx @farming-labs/docs init --template astro --name my-docs
+    ```
+  </Tab>
+</Tabs>
+
+The CLI creates the project folder, installs dependencies, and writes everything needed to run immediately.
+
+## What the CLI sets up
+
+- **`docs.config.ts`** — single config file for routing, theme, search, metadata, feedback, and AI surfaces
+- **Theme CSS** — imported in your root layout
+- **Starter pages** — a minimal MDX file so the docs route renders immediately
+- **Framework adapter** — the correct package for your stack (`@farming-labs/next`, `@farming-labs/astro`, `@farming-labs/nuxt`, `@farming-labs/svelte`, or `@farming-labs/tanstack-start`)
+
+## Verify it works
+
+Navigate to the docs route your framework uses (typically `/docs`) in your browser. You should see the starter page rendered inside the docs layout.
+
+To run checks before committing:
+
+```bash title="terminal"
+pnpm test
+pnpm typecheck
+```
+
+## Next steps
+
+- [Configuration](/docs/configuration) — full `docs.config.ts` reference
+- [Themes](/docs/themes) — swap or customise the visual theme
+- [CLI](/docs/cli) — all init, upgrade, and agent commands
+- [Installation](/docs/installation) — manual setup and per-framework details
