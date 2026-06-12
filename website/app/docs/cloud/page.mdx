@@ -77,6 +77,18 @@ pnpm dlx @farming-labs/docs cloud sync
 `docs.json` is safe to commit because it contains configuration and environment variable names, not
 secret values.
 
+## Check Before Deploy
+
+Run a read-only check when you want to validate Cloud wiring without creating a preview:
+
+```bash title="terminal"
+pnpm dlx @farming-labs/docs cloud check
+```
+
+Use `--analytics`, `--ask-ai`, or `--deploy` when you only want to validate one part of the Cloud
+setup. The check reports stale `docs.json`, missing project/API key env vars, hosted API reachability,
+and CORS issues before you spend time on a deploy.
+
 ## Next Step
 
 Use the deploy page for the full preview flow:
