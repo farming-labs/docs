@@ -53,6 +53,7 @@ export interface DoctorOptions {
   configPath?: string;
   mode?: DoctorMode;
   json?: boolean;
+  strict?: boolean;
   url?: string;
 }
 
@@ -180,6 +181,11 @@ export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
       continue;
     }
 
+    if (arg === "--strict") {
+      parsed.strict = true;
+      continue;
+    }
+
     if (arg === "--human" || arg === "human" || arg === "--site" || arg === "site") {
       parsed.mode = "human";
       continue;
@@ -242,6 +248,7 @@ ${pc.dim("Usage:")}
   pnpm exec docs doctor --agent
   pnpm exec docs doctor --site
   pnpm exec docs doctor --agent --json
+  pnpm exec docs doctor --agent --strict
   pnpm exec docs doctor agent
   pnpm exec docs doctor site
 
@@ -250,6 +257,7 @@ ${pc.dim("Options:")}
   ${pc.cyan("--site")}             Score reader-facing docs quality for the current docs app
   ${pc.cyan("--human")}            Alias for ${pc.cyan("--site")}
   ${pc.cyan("--json")}             Print the report as JSON for CI, scripts, and other agents
+  ${pc.cyan("--strict")}           Exit with failure when any check warns or fails
   ${pc.cyan("--url <url>")}        Probe hosted agent surfaces, e.g. ${pc.dim("https://docs.example.com")}
   ${pc.cyan("--config <path>")}    Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
   ${pc.cyan("-h, --help")}         Show this help message
@@ -2941,9 +2949,23 @@ export function printDoctorJsonReport(report: AgentDoctorReport | HumanDoctorRep
   console.log(JSON.stringify(serializeDoctorJsonReport(report), null, 2));
 }
 
+function hasNonPassingDoctorCheck(report: AgentDoctorReport | HumanDoctorReport) {
+  return report.checks.some((check) => check.status !== "pass");
+}
+
+function applyStrictExitCode(
+  report: AgentDoctorReport | HumanDoctorReport,
+  options: DoctorOptions,
+) {
+  if (options.strict && hasNonPassingDoctorCheck(report)) {
+    process.exitCode = 1;
+  }
+}
+
 export async function runDoctor(options: DoctorOptions = {}) {
   if (options.mode === "human") {
     const report = await inspectHumanReadiness(options);
+    applyStrictExitCode(report, options);
     if (options.json) {
       printDoctorJsonReport(report);
       return report;
@@ -2953,6 +2975,7 @@ export async function runDoctor(options: DoctorOptions = {}) {
   }
 
   const report = await inspectAgentReadiness(options);
+  applyStrictExitCode(report, options);
   if (options.json) {
     printDoctorJsonReport(report);
     return report;
