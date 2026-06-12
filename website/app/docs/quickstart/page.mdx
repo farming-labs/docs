@@ -1,0 +1,112 @@
+---
+title: "Quickstart"
+description: "Run @farming-labs/docs for the first time"
+icon: "play"
+order: 0
+---
+
+# Quickstart
+
+By the end of this page you will have a working docs site running locally and a passing `docs doctor` check.
+
+## 1. Scaffold into an existing app
+
+Run the init command from your project root. The CLI detects your framework, installs the right packages, creates `docs.config.ts`, adds the theme CSS, and scaffolds starter pages.
+
+```bash
+npx @farming-labs/docs@latest init
+```
+
+The CLI will ask:
+
+1. **Existing project or fresh start?** — Choose **Existing project** to add docs to the current directory, or use `--template` to bootstrap from scratch (see below).
+2. **Framework** — Next.js, TanStack Start, SvelteKit, Astro, or Nuxt (auto-detected if possible).
+3. **Theme** — Pick from the built-in options or choose **Create your own**.
+4. **Docs entry path** — Default is `docs`; press Enter to accept.
+
+When it finishes, start your dev server as normal (`next dev`, `vite`, etc.).
+
+### Starting from scratch
+
+Use `--template` with `--name` to create a new project folder without prompts:
+
+```bash
+npx @farming-labs/docs@latest init --template next --name my-docs
+npx @farming-labs/docs@latest init --template tanstack-start --name my-docs
+npx @farming-labs/docs@latest init --template nuxt --name my-docs
+npx @farming-labs/docs@latest init --template sveltekit --name my-docs
+npx @farming-labs/docs@latest init --template astro --name my-docs
+```
+
+## 2. Write your first page
+
+Add an MDX file under your docs entry directory. Frontmatter controls metadata:
+
+```md title="docs/introduction.mdx"
+---
+title: "Introduction"
+description: "What this project does"
+---
+
+# Introduction
+
+Welcome to the docs.
+```
+
+The sidebar, nav, and search index update automatically from the file structure.
+
+## 3. Verify your setup with `docs doctor`
+
+`docs doctor` inspects your docs site end to end — config resolution, content discovery, API route wiring, `llms.txt`, sitemaps, `robots.txt`, MCP, and agent discovery.
+
+```bash
+pnpm exec docs doctor --agent
+```
+
+Expected output:
+
+```
+@farming-labs/docs doctor — agent
+
+Score: 92/105 (Agent-ready)
+Framework: nextjs • Entry: docs • Content: app/docs
+Explicit agent-friendly pages: 10/41 pages (24%)
+```
+
+To gate CI on any warning or failure, add `--strict`:
+
+```bash
+pnpm exec docs doctor --agent --strict
+```
+
+With `--strict`, the process exits non-zero if any check warns or fails. Without it, the command always exits `0`.
+
+<Callout type="tip" title="Add doctor to your CI pipeline">
+A minimal CI step looks like:
+
+```bash
+pnpm exec docs doctor --agent --strict
+```
+
+Or for structured output you can parse:
+
+```bash
+pnpm exec docs doctor --agent --json --strict
+```
+</Callout>
+
+## 4. Read the docs quality report
+
+To audit the reader-facing side — navigation descriptions, page structure, trust signals — run:
+
+```bash
+pnpm exec docs doctor --site
+```
+
+## Next steps
+
+- [Configuration](/docs/configuration) — Everything that lives in `docs.config.ts`
+- [Installation](/docs/installation) — Manual setup and framework-specific options
+- [CLI](/docs/cli) — Full command reference including `agent compact`, `sitemap`, and `robots`
+- [Themes](/docs/themes) — Built-in themes and how to create your own
+- [Docs Cloud](/docs/cloud) — Hosted preview deploys and analytics
