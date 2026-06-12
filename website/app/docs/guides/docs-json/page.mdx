@@ -97,6 +97,10 @@ This keeps product packaging separate from docs structure:
 - `nextjs` is a runtime
 - Docs Cloud is the hosted layer that can add preview, publish, AI, and deploy services
 
+Theme names, CSS imports, and component styling belong in `docs.config.ts` and the framework theme
+packages. Keep `docs.json` focused on repo shape and hosted Cloud services so the contract stays
+runtime-neutral.
+
 ## Cloud Analytics
 
 Use `cloud.analytics` when you want the shared repo contract to carry analytics settings for Docs
