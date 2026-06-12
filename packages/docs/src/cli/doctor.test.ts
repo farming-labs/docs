@@ -72,6 +72,18 @@ describe("parseDoctorArgs", () => {
     });
   });
 
+  it("parses strict CI mode", () => {
+    expect(parseDoctorArgs(["--strict"])).toEqual({
+      mode: "agent",
+      strict: true,
+    });
+    expect(parseDoctorArgs(["--site", "--json", "--strict"])).toEqual({
+      mode: "human",
+      json: true,
+      strict: true,
+    });
+  });
+
   it("parses hosted URL probes", () => {
     expect(parseDoctorArgs(["--agent", "--url", "https://docs.example.com"])).toEqual({
       mode: "agent",
@@ -1602,6 +1614,50 @@ description: "Docs home"
       expect(payload.mode).toBe("site");
       expect(Array.isArray(payload.checks)).toBe(true);
     } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  it("sets a failing exit code in strict mode when checks warn", async () => {
+    writePackageJson(tmpDir, "doctor-site-strict-warnings", { next: "16.0.0" });
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  contentDir: "docs",
+};`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "docs", "page.mdx"),
+      `---
+title: "Overview"
+description: "Docs home"
+---
+
+# Overview
+
+Welcome to the docs.
+`,
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+
+    const previousExitCode = process.exitCode;
+    process.exitCode = undefined;
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    try {
+      const report = await runDoctor({ mode: "human", json: true, strict: true });
+
+      expect(report.checks.some((check) => check.status === "warn")).toBe(true);
+      expect(process.exitCode).toBe(1);
+    } finally {
+      process.exitCode = previousExitCode;
       logSpy.mockRestore();
     }
   });
