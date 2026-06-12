@@ -1,0 +1,186 @@
+---
+title: "CLI usage"
+description: "All flags and options exposed by the @farming-labs/docs CLI"
+---
+
+# CLI usage
+
+After reading this page you can run any `docs` subcommand with confidence — knowing which flags are available, what each one does, and when to combine them.
+
+The CLI is invoked via your package manager's executor. All commands run from your project root.
+
+```bash
+pnpm exec docs <command> [options]
+# or
+npx @farming-labs/docs@latest <command> [options]
+```
+
+## Commands
+
+| Command | Description |
+|---|---|
+| `init` | Scaffold docs in an existing project or from a template |
+| `dev` | Run frameworkless docs locally from `docs.json` |
+| `deploy` / `preview` | Sync cloud config and deploy hosted preview docs |
+| `cloud` | Docs Cloud utilities: `init`, `check`, `deploy`, `preview`, `sync` |
+| `agent` | Agent utilities: `compact` to generate sibling `agent.md` files |
+| `doctor` | Audit agent-readiness or reader-facing docs quality |
+| `upgrade` | Upgrade all docs packages to the latest version |
+| `robots` | Generate or update `robots.txt` |
+| `sitemap` | Generate `sitemap.xml`, `sitemap.md`, and `docs/sitemap.md` |
+| `search` | Sync search index (Typesense, Algolia, or custom) |
+| `mcp` | Run the MCP server over stdio |
+| `review` | Run docs review on changed pages |
+
+---
+
+## `docs doctor`
+
+Audit your docs site. By default the command scores agent-readiness. Pass `--site` to audit reader-facing quality instead.
+
+```bash
+pnpm exec docs doctor
+pnpm exec docs doctor --agent
+pnpm exec docs doctor --site
+pnpm exec docs doctor --agent --json
+pnpm exec docs doctor --agent --strict
+pnpm exec docs doctor --agent --url https://docs.example.com
+```
+
+### Doctor options
+
+| Flag | Description |
+|---|---|
+| `--agent` | Score agent-readiness for the current docs app (default) |
+| `--site` / `--human` | Score reader-facing docs quality |
+| `--json` | Print the report as JSON for CI, scripts, and other agents |
+| `--strict` | Exit with a failing code when any check warns or fails |
+| `--url <url>` | Probe a hosted deployment, e.g. `https://docs.example.com` |
+| `--analytics` | Validate Docs Cloud analytics wiring and analytics CORS only |
+| `--ask-ai` | Validate Docs Cloud Ask AI endpoint wiring and CORS only |
+| `--api-base-url <url>` | Target a staging or self-hosted Cloud API |
+
+### Subcommand aliases
+
+```bash
+pnpm exec docs doctor agent   # same as --agent
+pnpm exec docs doctor site    # same as --site
+```
+
+### Strict mode
+
+`--strict` causes the process to exit with a non-zero code whenever any check in the report has a `warn` or `fail` status. Without `--strict`, the command always exits `0` regardless of check results.
+
+Use it in CI when you want warnings to block the pipeline:
+
+```bash
+pnpm exec docs doctor --agent --strict
+pnpm exec docs doctor --site --json --strict
+```
+
+<Callout type="tip" title="Combine with --json for structured CI output">
+Pair `--strict` with `--json` to get a machine-readable report and a failing exit code in a single run. A downstream step can parse the JSON while the non-zero exit still fails the job.
+</Callout>
+
+---
+
+## `docs init`
+
+Scaffold docs into an existing project or bootstrap a new one from a template.
+
+```bash
+npx @farming-labs/docs init
+npx @farming-labs/docs init --template next --name my-docs
+```
+
+### Init options
+
+| Flag | Description |
+|---|---|
+| `--template <name>` | Bootstrap from a template: `next`, `tanstack-start`, `nuxt`, `sveltekit`, `astro` |
+| `--name <project>` | Project folder name when using `--template` |
+| `--api-reference` | Enable API reference scaffold |
+| `--api-route-root <path>` | Set the detected API route root written to `apiReference.routeRoot` |
+| `--cloud` | Add Docs Cloud infrastructure support |
+
+---
+
+## `docs agent compact`
+
+Generate or refresh sibling `agent.md` files from resolved docs pages.
+
+```bash
+pnpm exec docs agent compact installation
+pnpm exec docs agent compact --changed
+pnpm exec docs agent compact --stale
+pnpm exec docs agent compact --stale --include-missing
+pnpm exec docs agent compact --all
+```
+
+### Agent compact options
+
+| Flag | Description |
+|---|---|
+| `--all` | Compact all pages (mutually exclusive with page arguments) |
+| `--changed` | Compact pages changed in the current git branch |
+| `--stale` | Compact pages whose `agent.md` is out of date |
+| `--include-missing` | Also compact pages that have no `agent.md` yet |
+| `--aggressiveness <n>` | Compaction aggressiveness level |
+| `--api-key <key>` | Override the LLM API key |
+| `--base-url <url>` | Override the LLM base URL |
+| `--cached` | Use cached responses where available |
+
+---
+
+## `docs robots`
+
+Generate a `robots.txt` file from your docs config.
+
+```bash
+pnpm exec docs robots generate
+pnpm exec docs robots generate --append
+```
+
+| Flag | Description |
+|---|---|
+| `--append` | Add or update the generated block inside an existing `robots.txt` |
+
+---
+
+## `docs sitemap`
+
+Generate `sitemap.xml`, `sitemap.md`, and `docs/sitemap.md`.
+
+```bash
+pnpm exec docs sitemap generate
+pnpm exec docs sitemap generate --check
+```
+
+| Flag | Description |
+|---|---|
+| `--check` | Fail if the generated manifest or public sitemap files are stale |
+
+---
+
+## `docs deploy`
+
+Sync `docs.json` and deploy a hosted Docs Cloud preview.
+
+```bash
+pnpm exec docs deploy
+pnpm exec docs deploy --api-key-env MY_DOCS_KEY
+pnpm exec docs deploy --analytics
+pnpm exec docs deploy --ask-ai
+pnpm exec docs deploy --api-base-url https://api.staging.example.com
+```
+
+| Flag | Description |
+|---|---|
+| `--api-key-env <var>` | Name of the env var holding the deploy key |
+| `--analytics` | Validate analytics wiring and CORS only |
+| `--ask-ai` | Validate Ask AI endpoint wiring and CORS only |
+| `--api-base-url <url>` | Target a staging or self-hosted Cloud API |
+
+---
+
+See [CLI overview](/docs/cli) for the complete feature-level walkthrough, or [Configuration](/docs/configuration) for the `docs.config.ts` fields that these commands read.
