@@ -1,0 +1,60 @@
+---
+title: "CLI reference"
+description: "Commands and flags for running @farming-labs/docs workflows from the terminal"
+---
+
+# CLI reference
+
+This section covers the commands, subcommands, and flags exposed by the `@farming-labs/docs` CLI. After reading here you will know which command to reach for and which flags it accepts.
+
+## Available commands
+
+| Command | What it does |
+|---|---|
+| [`init`](/docs/api/cli/usage#docs-init) | Scaffold docs in an existing project or from a template |
+| [`dev`](/docs/cli#dev) | Run frameworkless docs locally from `docs.json` |
+| [`deploy`](/docs/api/cli/usage#docs-deploy) / `preview` | Sync cloud config and push a hosted preview |
+| [`cloud`](/docs/cloud/deploy) | Docs Cloud utilities |
+| [`agent compact`](/docs/api/cli/usage#docs-agent-compact) | Generate sibling `agent.md` compaction files |
+| [`doctor`](/docs/api/cli/usage#docs-doctor) | Audit agent-readiness or reader-facing docs quality |
+| [`upgrade`](/docs/cli#upgrade) | Upgrade all docs packages |
+| [`robots`](/docs/api/cli/usage#docs-robots) | Generate `robots.txt` |
+| [`sitemap`](/docs/api/cli/usage#docs-sitemap) | Generate `sitemap.xml` and `sitemap.md` |
+| [`search`](/docs/cli#search-sync) | Sync the search index |
+| [`mcp`](/docs/customization/mcp) | Run the MCP server over stdio |
+| [`review`](/docs/cli#docs-review) | Run docs review on changed pages |
+
+## Quick examples
+
+```bash
+# Scaffold into an existing Next.js app
+npx @farming-labs/docs init
+
+# Check agent-readiness locally
+pnpm exec docs doctor --agent
+
+# Check agent-readiness and fail CI on any warning
+pnpm exec docs doctor --agent --strict
+
+# Generate sibling agent.md files for changed pages
+pnpm exec docs agent compact --changed
+
+# Deploy a Docs Cloud preview
+pnpm exec docs deploy
+```
+
+## `docs doctor` at a glance
+
+`docs doctor` is the primary quality gate. It has two modes:
+
+- **`--agent`** (default) — scores machine-facing readiness: docs config, API route wiring, `llms.txt`, `sitemap.xml`, `robots.txt`, MCP, `skill.md`, agent discovery, and compaction coverage.
+- **`--site`** — scores reader-facing quality: navigation descriptions, page structure, trust signals, and feedback wiring.
+
+Add **`--strict`** to any doctor invocation to make the process exit with a non-zero code when checks warn or fail. This is the recommended CI posture.
+
+```bash
+pnpm exec docs doctor --agent --strict
+pnpm exec docs doctor --site --json --strict
+```
+
+See [CLI usage](/docs/api/cli/usage#docs-doctor) for the full flag reference, or [CLI](/docs/cli) for the feature-level walkthrough.
