@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { inspectHostedAgentReadiness } from "@/lib/agent-score";
 
 export const dynamic = "force-dynamic";
-// Probing seven endpoints over the network needs room to breathe.
+// Public scoring performs bounded network probes and should return JSON before
+// the platform timeout can replace the response with plain text.
 export const maxDuration = 30;
 
 type AgentScoreBody = {

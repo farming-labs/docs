@@ -32,10 +32,12 @@ import {
 // Kept in sync with @modelcontextprotocol/sdk; the deployed MCP server
 // negotiates any version it advertises so bumps are safe.
 const MCP_PROTOCOL_VERSION = "2025-11-25";
-const PROBE_TIMEOUT_MS = 9000;
-const AF_DOCS_MAX_LINKS_TO_TEST = 10;
-const AF_DOCS_REQUEST_DELAY_MS = 50;
-const AF_DOCS_MAX_CONCURRENCY = 6;
+const PROBE_TIMEOUT_MS = 5000;
+const AGENT_SCORE_TOTAL_BUDGET_MS = 26000;
+const AF_DOCS_MAX_LINKS_TO_TEST = 3;
+const AF_DOCS_REQUEST_DELAY_MS = 0;
+const AF_DOCS_MAX_CONCURRENCY = 8;
+const AF_DOCS_REQUEST_TIMEOUT_MS = 2500;
 const ADJACENT_MARKDOWN_MAX_SCORE = 3;
 const MAX_SAFE_REDIRECTS = 5;
 const FARMING_LABS_DOCS_UPGRADE_RECOMMENDATION =
@@ -300,6 +302,7 @@ async function fetchPublicAgentScoreUrl(
   const request = input instanceof Request ? input : undefined;
   const redirectMode = currentInit.redirect ?? request?.redirect ?? "follow";
 
+  assertPublicAgentScoreBudget();
   await assertPublicAgentScoreUrl(currentUrl);
 
   if (redirectMode === "manual") {
@@ -310,6 +313,7 @@ async function fetchPublicAgentScoreUrl(
   }
 
   for (let redirectCount = 0; redirectCount <= MAX_SAFE_REDIRECTS; redirectCount++) {
+    assertPublicAgentScoreBudget();
     await assertPublicAgentScoreUrl(currentUrl);
     const response = await fetcher(currentUrl, { ...currentInit, redirect: "manual" });
     const location = response.headers.get("location");
@@ -335,9 +339,22 @@ async function fetchPublicAgentScoreUrl(
 
 let fetchGuardDepth = 0;
 let fetchBeforeGuard: typeof fetch | undefined;
+let fetchGuardDeadline = 0;
+
+function remainingPublicAgentScoreTime(): number | undefined {
+  return fetchGuardDeadline > 0 ? Math.max(0, fetchGuardDeadline - Date.now()) : undefined;
+}
+
+function assertPublicAgentScoreBudget(): void {
+  const remaining = remainingPublicAgentScoreTime();
+  if (remaining !== undefined && remaining <= 0) {
+    throw new Error("Agent score timed out before all probes completed.");
+  }
+}
 
 async function withPublicAgentScoreFetch<T>(callback: () => Promise<T>): Promise<T> {
   if (fetchGuardDepth === 0) {
+    fetchGuardDeadline = Date.now() + AGENT_SCORE_TOTAL_BUDGET_MS;
     fetchBeforeGuard = globalThis.fetch.bind(globalThis);
     const guardedFetch = ((input: RequestInfo | URL, init?: RequestInit) =>
       fetchPublicAgentScoreUrl(
@@ -356,6 +373,7 @@ async function withPublicAgentScoreFetch<T>(callback: () => Promise<T>): Promise
     if (fetchGuardDepth === 0 && fetchBeforeGuard) {
       globalThis.fetch = fetchBeforeGuard;
       fetchBeforeGuard = undefined;
+      fetchGuardDeadline = 0;
     }
   }
 }
@@ -388,8 +406,11 @@ async function fetchWithTimeout(
   init: RequestInit = {},
   timeoutMs = PROBE_TIMEOUT_MS,
 ): Promise<Response> {
+  const remainingBudget = remainingPublicAgentScoreTime();
+  const effectiveTimeoutMs =
+    remainingBudget === undefined ? timeoutMs : Math.max(1, Math.min(timeoutMs, remainingBudget));
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const timeout = setTimeout(() => controller.abort(), effectiveTimeoutMs);
 
   try {
     return await fetch(url, {
@@ -2024,11 +2045,11 @@ export async function inspectHostedAgentReadiness(rawUrl: string): Promise<Agent
   const { afdocsReport, adjacentMarkdownChecks, framework } = await withPublicAgentScoreFetch(
     async () => {
       const report = await runChecks(baseUrl, {
-        samplingStrategy: "deterministic",
+        samplingStrategy: "none",
         maxLinksToTest: AF_DOCS_MAX_LINKS_TO_TEST,
         maxConcurrency: AF_DOCS_MAX_CONCURRENCY,
         requestDelay: AF_DOCS_REQUEST_DELAY_MS,
-        requestTimeout: PROBE_TIMEOUT_MS,
+        requestTimeout: AF_DOCS_REQUEST_TIMEOUT_MS,
       });
       const adjacentMarkdownProbes = await probeAdjacentMarkdownRoutes(baseUrl, report);
       return {

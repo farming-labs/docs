@@ -139,6 +139,23 @@ const SCORE_LOADING_STEPS = [
   "Calculating final score",
 ] as const;
 
+function fallbackApiErrorMessage(response: Response, body: string): string {
+  const compactBody = body.trim().replace(/\s+/g, " ");
+  const status = `HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ""}`;
+  return compactBody ? `${status}: ${compactBody.slice(0, 240)}` : status;
+}
+
+async function readApiJson<T extends object>(response: Response): Promise<T & { error?: string }> {
+  const body = await response.text();
+  if (!body.trim()) return {} as T & { error?: string };
+
+  try {
+    return JSON.parse(body) as T & { error?: string };
+  } catch {
+    return { error: fallbackApiErrorMessage(response, body) } as T & { error?: string };
+  }
+}
+
 const BREAKDOWN_HELP_ITEMS = [
   {
     title: "Discovery",
@@ -909,10 +926,17 @@ export function AgentScorePage() {
       const response = await fetch("/api/agent-score/leaderboard?limit=100", {
         cache: "no-store",
       });
-      const data = (await response.json()) as {
+      const data = await readApiJson<{
         entries?: LeaderboardEntry[];
         notConfigured?: boolean;
-      };
+      }>(response);
+      if (
+        !response.ok ||
+        data.error ||
+        (!Array.isArray(data.entries) && data.notConfigured !== true)
+      ) {
+        throw new Error(data.error ?? "Failed to load the leaderboard.");
+      }
       setLeaderboardNotConfigured(Boolean(data.notConfigured));
       setEntries(Array.isArray(data.entries) ? data.entries : []);
     } catch {
@@ -939,7 +963,7 @@ export function AgentScorePage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: trimmed }),
         });
-        const data = (await response.json()) as { error?: string } & AgentScoreReport;
+        const data = await readApiJson<Partial<AgentScoreReport>>(response);
         if (!response.ok) {
           setFetchState({
             status: "error",
@@ -948,11 +972,24 @@ export function AgentScorePage() {
           return;
         }
 
-        setFetchState({ status: "success", report: data });
+        if (
+          typeof data.baseUrl !== "string" ||
+          typeof data.score !== "number" ||
+          !Array.isArray(data.checks)
+        ) {
+          setFetchState({
+            status: "error",
+            message: data.error ?? "The scorer returned an unexpected response.",
+          });
+          return;
+        }
+
+        const report = data as AgentScoreReport;
+        setFetchState({ status: "success", report });
         hydratedSelectionRef.current = null;
 
         if (options.historyMode !== "none") {
-          writeScoreUrl(data.baseUrl, {
+          writeScoreUrl(report.baseUrl, {
             source: "input",
             ...(options.historyMode === "replace" ? { mode: "replace" as const } : {}),
           });
@@ -1080,14 +1117,14 @@ export function AgentScorePage() {
           url: fetchState.report.baseUrl,
         }),
       });
-      const data = (await response.json()) as {
+      const data = await readApiJson<{
         error?: string;
         warning?: string;
         stored?: boolean;
         action?: "created" | "updated";
         previousScore?: number;
         report?: AgentScoreReport;
-      };
+      }>(response);
 
       if (!response.ok) {
         setSubmitState({
