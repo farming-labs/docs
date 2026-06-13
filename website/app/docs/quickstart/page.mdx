@@ -1,0 +1,98 @@
+---
+title: "Quickstart"
+description: "Get @farming-labs/docs running in under five minutes"
+icon: "bolt"
+order: 0
+---
+
+# Quickstart
+
+By the end of this page you will have a running docs site — either added to an existing app or bootstrapped as a new project — using the `@farming-labs/docs` CLI.
+
+## Add docs to an existing project
+
+Run the init command from your project root. The CLI detects your framework, installs the right packages, creates `docs.config.ts`, adds the theme CSS, scaffolds starter pages, and offers to start the dev server.
+
+<Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+  <Tab value="npm">
+    ```bash title="terminal"
+    npx @farming-labs/docs init
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash title="terminal"
+    pnpm dlx @farming-labs/docs init
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash title="terminal"
+    yarn dlx @farming-labs/docs init
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash title="terminal"
+    bunx @farming-labs/docs init
+    ```
+  </Tab>
+</Tabs>
+
+Supported frameworks: **Next.js**, **TanStack Start**, **SvelteKit**, **Astro**, and **Nuxt**.
+
+## Start a new project from a template
+
+Pass `--template` and `--name` to create a ready-to-run project folder without any prompts:
+
+<Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+  <Tab value="npm">
+    ```bash title="terminal"
+    npx @farming-labs/docs init --template next --name my-docs
+    npx @farming-labs/docs init --template tanstack-start --name my-docs
+    npx @farming-labs/docs init --template nuxt --name my-docs
+    npx @farming-labs/docs init --template sveltekit --name my-docs
+    npx @farming-labs/docs init --template astro --name my-docs
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash title="terminal"
+    pnpm dlx @farming-labs/docs init --template next --name my-docs
+    pnpm dlx @farming-labs/docs init --template tanstack-start --name my-docs
+    pnpm dlx @farming-labs/docs init --template nuxt --name my-docs
+    pnpm dlx @farming-labs/docs init --template sveltekit --name my-docs
+    pnpm dlx @farming-labs/docs init --template astro --name my-docs
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash title="terminal"
+    yarn dlx @farming-labs/docs init --template next --name my-docs
+    yarn dlx @farming-labs/docs init --template tanstack-start --name my-docs
+    yarn dlx @farming-labs/docs init --template nuxt --name my-docs
+    yarn dlx @farming-labs/docs init --template sveltekit --name my-docs
+    yarn dlx @farming-labs/docs init --template astro --name my-docs
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash title="terminal"
+    bunx @farming-labs/docs init --template next --name my-docs
+    bunx @farming-labs/docs init --template tanstack-start --name my-docs
+    bunx @farming-labs/docs init --template nuxt --name my-docs
+    bunx @farming-labs/docs init --template sveltekit --name my-docs
+    bunx @farming-labs/docs init --template astro --name my-docs
+    ```
+  </Tab>
+</Tabs>
+
+## What the CLI sets up
+
+Regardless of path, `init` produces:
+
+- **`docs.config.ts`** — single config file for routing, theme, search, metadata, feedback, and AI surfaces
+- **Theme CSS** — imported once in your root layout
+- **Starter MDX pages** — ready to edit under your chosen docs entry path (default: `docs/`)
+- **Framework adapter** — the correct package for your runtime (`@farming-labs/next`, `@farming-labs/astro`, `@farming-labs/svelte`, `@farming-labs/nuxt`, or `@farming-labs/tanstack-start`)
+
+## Next steps
+
+- [Installation](/docs/installation) — manual setup and framework-by-framework package details
+- [Configuration](/docs/configuration) — every field available in `docs.config.ts`
+- [Themes](/docs/themes) — built-in themes and how to create your own
+- [CLI](/docs/cli) — all commands: upgrade, compact, review, search sync, and more
