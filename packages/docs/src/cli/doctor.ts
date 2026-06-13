@@ -3022,9 +3022,8 @@ function applyDoctorExitCode(
     return;
   }
 
-  const shouldFail = failOn === "warn"
-    ? hasNonPassingDoctorCheck(report)
-    : hasFailingDoctorCheck(report);
+  const shouldFail =
+    failOn === "warn" ? hasNonPassingDoctorCheck(report) : hasFailingDoctorCheck(report);
 
   if (shouldFail) {
     process.exitCode = 1;
