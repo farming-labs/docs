@@ -41,6 +41,7 @@ export const DEFAULT_PROMPT_PROVIDER_TEMPLATES: Record<string, string> = {
   cursor: "https://cursor.com/link/prompt?text={prompt}",
   gemini: "https://gemini.google.com/app?q={prompt}",
   copilot: "https://github.com/copilot?prompt={prompt}",
+  perplexity: "https://www.perplexity.ai/search/?q={prompt}",
 };
 
 export const DEFAULT_OPEN_DOCS_TARGET: OpenDocsTarget = "markdown";
@@ -74,6 +75,11 @@ const DEFAULT_OPEN_DOCS_PROVIDER_PRESETS: Record<string, OpenDocsProviderPreset>
     name: "Copilot",
     urlTemplate: "https://github.com/copilot?prompt={prompt}",
     promptUrlTemplate: DEFAULT_PROMPT_PROVIDER_TEMPLATES.copilot,
+  },
+  perplexity: {
+    name: "Perplexity",
+    urlTemplate: "https://www.perplexity.ai/search/?q={prompt}",
+    promptUrlTemplate: DEFAULT_PROMPT_PROVIDER_TEMPLATES.perplexity,
   },
   github: {
     name: "GitHub",
