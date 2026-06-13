@@ -160,6 +160,12 @@ function parseInlineFlag(arg: string): { key: string; value?: string } {
   return { key: rawKey.trim(), value };
 }
 
+function parseDoctorOnlyMode(value: string): DoctorMode {
+  if (value === "agent") return "agent";
+  if (value === "site") return "human";
+  throw new Error("Invalid value for --only. Expected agent or site.");
+}
+
 export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
   const parsed: ParsedDoctorArgs = {};
 
@@ -183,6 +189,25 @@ export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
 
     if (arg === "--strict") {
       parsed.strict = true;
+      continue;
+    }
+
+    if (arg.startsWith("--only=")) {
+      const value = parseInlineFlag(arg).value;
+      if (!value) {
+        throw new Error("Missing value for --only.");
+      }
+      parsed.mode = parseDoctorOnlyMode(value);
+      continue;
+    }
+
+    if (arg === "--only") {
+      const value = argv[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error("Missing value for --only.");
+      }
+      parsed.mode = parseDoctorOnlyMode(value);
+      index += 1;
       continue;
     }
 
@@ -249,6 +274,8 @@ ${pc.dim("Usage:")}
   pnpm exec docs doctor --site
   pnpm exec docs doctor --agent --json
   pnpm exec docs doctor --agent --strict
+  pnpm exec docs doctor --only agent
+  pnpm exec docs doctor --only site
   pnpm exec docs doctor agent
   pnpm exec docs doctor site
 
@@ -256,6 +283,7 @@ ${pc.dim("Options:")}
   ${pc.cyan("--agent")}            Score agent-readiness for the current docs app (default)
   ${pc.cyan("--site")}             Score reader-facing docs quality for the current docs app
   ${pc.cyan("--human")}            Alias for ${pc.cyan("--site")}
+  ${pc.cyan("--only <mode>")}      Run only one doctor suite: ${pc.cyan("agent")} or ${pc.cyan("site")}
   ${pc.cyan("--json")}             Print the report as JSON for CI, scripts, and other agents
   ${pc.cyan("--strict")}           Exit with failure when any check warns or fails
   ${pc.cyan("--url <url>")}        Probe hosted agent surfaces, e.g. ${pc.dim("https://docs.example.com")}
