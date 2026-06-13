@@ -1,0 +1,85 @@
+---
+title: "Quickstart"
+description: "Run @farming-labs/docs for the first time"
+icon: "zap"
+order: 0
+---
+
+# Quickstart
+
+After this page you will have a working docs site running locally. The fastest path is the CLI — it detects your framework, installs packages, creates `docs.config.ts`, and scaffolds starter pages in one step.
+
+## Add docs to an existing project
+
+Run the init command inside your Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project root:
+
+<Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+  <Tab value="npm">
+    ```bash title="terminal"
+    npx @farming-labs/docs init
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash title="terminal"
+    pnpm dlx @farming-labs/docs init
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash title="terminal"
+    yarn dlx @farming-labs/docs init
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash title="terminal"
+    bunx @farming-labs/docs init
+    ```
+  </Tab>
+</Tabs>
+
+The CLI will:
+
+1. Detect your framework, or ask you to pick one
+2. Let you choose a theme
+3. Ask for the docs entry path (default: `docs`)
+4. Generate `docs.config.ts`, layout files, theme CSS, and sample pages
+5. Install dependencies and offer to start the dev server
+
+## Start from a template
+
+To bootstrap a new project without an existing app, pass `--template` and `--name`:
+
+<CodeGroup>
+```bash title="Next.js"
+npx @farming-labs/docs init --template next --name my-docs
+```
+```bash title="TanStack Start"
+npx @farming-labs/docs init --template tanstack-start --name my-docs
+```
+```bash title="SvelteKit"
+npx @farming-labs/docs init --template sveltekit --name my-docs
+```
+```bash title="Astro"
+npx @farming-labs/docs init --template astro --name my-docs
+```
+```bash title="Nuxt"
+npx @farming-labs/docs init --template nuxt --name my-docs
+```
+</CodeGroup>
+
+The CLI creates the project folder, sets up the chosen framework, and runs install.
+
+## What you get
+
+After `init` completes your project has:
+
+- `docs.config.ts` — the single configuration file for routing, theme, search, metadata, and AI surfaces
+- A `docs/` folder with starter Markdown pages
+- Framework-specific layout and route files
+- Theme CSS imported in the root layout
+
+## Next steps
+
+- [Configuration](/docs/configuration) — learn every option in `docs.config.ts`
+- [Themes](/docs/themes) — pick or build a theme
+- [CLI](/docs/cli) — full reference for `init`, `upgrade`, `agent`, `sitemap`, and more
+- [Sitemaps](/docs/customization/sitemaps) — enable `sitemap.xml`, `sitemap.md`, and agent discovery routes
