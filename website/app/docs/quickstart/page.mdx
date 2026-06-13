@@ -1,0 +1,89 @@
+---
+title: "Quickstart"
+description: "Run @farming-labs/docs for the first time"
+order: 10
+---
+
+# Quickstart
+
+By the end of this page you will have a working docs site running locally and a passing `docs doctor` health check.
+
+## Install into an existing app
+
+Run the init command from inside your Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project root:
+
+<CodeGroup>
+```bash title="npm"
+npx @farming-labs/docs init
+```
+```bash title="pnpm"
+pnpm dlx @farming-labs/docs init
+```
+```bash title="yarn"
+yarn dlx @farming-labs/docs init
+```
+```bash title="bun"
+bunx @farming-labs/docs init
+```
+</CodeGroup>
+
+The CLI detects your framework, installs the right packages, creates `docs.config.ts`, adds the theme CSS, scaffolds starter pages, and optionally starts the dev server.
+
+## Bootstrap a new project
+
+Use `--template` with `--name` to create a ready-to-run project without prompts:
+
+```bash
+npx @farming-labs/docs init --template next --name my-docs
+npx @farming-labs/docs init --template tanstack-start --name my-docs
+npx @farming-labs/docs init --template nuxt --name my-docs
+npx @farming-labs/docs init --template sveltekit --name my-docs
+npx @farming-labs/docs init --template astro --name my-docs
+```
+
+## Run the dev server
+
+After init completes, start the dev server the usual way for your framework. For Next.js:
+
+```bash
+npm run dev
+```
+
+Your docs will be available at the path configured in `docs.config.ts` (default: `/docs`).
+
+## Verify with `docs doctor`
+
+Run the health check to confirm your agent surface and docs quality are wired correctly:
+
+```bash
+pnpm exec docs doctor
+```
+
+Expected output:
+
+```
+@farming-labs/docs doctor — agent
+
+Score: 92/105 (Agent-ready)
+Framework: nextjs • Entry: docs • Content: app/docs
+Explicit agent-friendly pages: 10/41 pages (24%)
+```
+
+`docs doctor` checks config resolution, content discovery, API route wiring, public agent routes, `llms.txt`, `sitemap.xml`, `robots.txt`, `skill.md`, and MCP.
+
+For CI use, pass `--fail-on` to control when the command exits non-zero:
+
+```bash
+# Fail on warnings or failures
+pnpm exec docs doctor --agent --fail-on warn
+
+# Fail on hard failures only, tolerate warnings
+pnpm exec docs doctor --agent --fail-on fail
+```
+
+## Next steps
+
+- [Installation](/docs/installation) — manual setup, framework-specific packages, and i18n scaffolding
+- [Configuration](/docs/configuration) — everything in `docs.config.ts`
+- [CLI reference](/docs/cli) — full command documentation
+- [Themes](/docs/themes) — pick or create a theme
