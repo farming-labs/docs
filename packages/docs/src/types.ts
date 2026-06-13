@@ -565,7 +565,14 @@ export interface SidebarConfig {
 
 export type OpenDocsTarget = "markdown" | "page" | "source" | "github";
 
-export type OpenDocsProviderId = "chatgpt" | "claude" | "cursor" | "gemini" | "copilot" | "github";
+export type OpenDocsProviderId =
+  | "chatgpt"
+  | "claude"
+  | "cursor"
+  | "gemini"
+  | "copilot"
+  | "perplexity"
+  | "github";
 
 /**
  * A single "Open in …" provider shown in the Open dropdown.
@@ -629,7 +636,7 @@ export interface OpenDocsProviderConfig {
   /**
    * Optional URL template used by the built-in `Prompt` MDX component.
    * When omitted, known providers such as ChatGPT, Claude, Cursor, Gemini,
-   * and Copilot fall back to a built-in `{prompt}` template by provider name.
+   * Copilot, and Perplexity fall back to a built-in `{prompt}` template by provider name.
    *
    * Placeholders:
    * - `{prompt}` — prompt text (encoded).

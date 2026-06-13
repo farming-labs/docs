@@ -28,4 +28,14 @@ describe("resolveOpenDocsProvider", () => {
       target: "page",
     });
   });
+
+  it("resolves Perplexity as a built-in open docs provider", () => {
+    expect(resolveOpenDocsProvider("perplexity")).toEqual({
+      name: "Perplexity",
+      urlTemplate: "https://www.perplexity.ai/search/?q={prompt}",
+      promptUrlTemplate: "https://www.perplexity.ai/search/?q={prompt}",
+      target: undefined,
+      prompt: undefined,
+    });
+  });
 });

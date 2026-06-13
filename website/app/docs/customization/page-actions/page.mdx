@@ -145,7 +145,7 @@ pageActions: {
 }
 ```
 
-Built-in provider ids are `"chatgpt"`, `"claude"`, `"cursor"`, `"gemini"`, `"copilot"`, and `"github"`.
+Built-in provider ids are `"chatgpt"`, `"claude"`, `"cursor"`, `"gemini"`, `"copilot"`, `"perplexity"`, and `"github"`.
 
 ### `pageActions.openDocs.target`
 
@@ -174,7 +174,7 @@ pageActions: {
     enabled: true,
     target: "markdown",
     prompt: "Use this documentation while editing the codebase: {url}",
-    providers: ["chatgpt", "claude", { id: "cursor", mode: "app" }],
+    providers: ["chatgpt", "claude", "perplexity", { id: "cursor", mode: "app" }],
   },
 }
 ```
