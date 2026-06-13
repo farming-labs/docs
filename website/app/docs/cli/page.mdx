@@ -446,6 +446,10 @@ docs site.
 Use `docs doctor --site` when you want a reader-facing audit of navigation, descriptions,
 structure, trust signals, feedback, and reading-time cues.
 
+Use `docs doctor --only agent` or `docs doctor --only site` when scripts need an explicit
+single-suite selector. These forms are equivalent to `--agent` and `--site`; `--only` accepts only
+`agent` or `site`.
+
 This command does not generate files. It inspects the current project and scores how ready the docs
 are for agents, IDEs, and GEO-style crawlers.
 
@@ -476,6 +480,8 @@ pnpm exec docs doctor --agent
 pnpm exec docs doctor --site
 pnpm exec docs doctor --agent --json
 pnpm exec docs doctor --agent --strict
+pnpm exec docs doctor --only agent
+pnpm exec docs doctor --only=site
 pnpm exec docs doctor agent
 pnpm exec docs doctor site
 pnpm exec docs doctor --agent --config docs.config.tsx
