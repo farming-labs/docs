@@ -48,12 +48,14 @@ type DoctorStatus = "pass" | "warn" | "fail";
 type AgentDoctorGrade = "Agent-optimized" | "Agent-ready" | "Promising" | "Needs work";
 type HumanDoctorGrade = "Human-optimized" | "Reader-ready" | "Promising" | "Needs work";
 type DoctorMode = "agent" | "human";
+type DoctorFailOn = "warn" | "fail";
 
 export interface DoctorOptions {
   configPath?: string;
   mode?: DoctorMode;
   json?: boolean;
   strict?: boolean;
+  failOn?: DoctorFailOn;
   url?: string;
 }
 
@@ -166,6 +168,11 @@ function parseDoctorOnlyMode(value: string): DoctorMode {
   throw new Error("Invalid value for --only. Expected agent or site.");
 }
 
+function parseDoctorFailOn(value: string): DoctorFailOn {
+  if (value === "warn" || value === "fail") return value;
+  throw new Error("Invalid value for --fail-on. Expected warn or fail.");
+}
+
 export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
   const parsed: ParsedDoctorArgs = {};
 
@@ -189,6 +196,25 @@ export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
 
     if (arg === "--strict") {
       parsed.strict = true;
+      continue;
+    }
+
+    if (arg.startsWith("--fail-on=")) {
+      const value = parseInlineFlag(arg).value;
+      if (!value) {
+        throw new Error("Missing value for --fail-on.");
+      }
+      parsed.failOn = parseDoctorFailOn(value);
+      continue;
+    }
+
+    if (arg === "--fail-on") {
+      const value = argv[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error("Missing value for --fail-on.");
+      }
+      parsed.failOn = parseDoctorFailOn(value);
+      index += 1;
       continue;
     }
 
@@ -274,6 +300,7 @@ ${pc.dim("Usage:")}
   pnpm exec docs doctor --site
   pnpm exec docs doctor --agent --json
   pnpm exec docs doctor --agent --strict
+  pnpm exec docs doctor --agent --fail-on fail
   pnpm exec docs doctor --only agent
   pnpm exec docs doctor --only site
   pnpm exec docs doctor agent
@@ -286,6 +313,7 @@ ${pc.dim("Options:")}
   ${pc.cyan("--only <mode>")}      Run only one doctor suite: ${pc.cyan("agent")} or ${pc.cyan("site")}
   ${pc.cyan("--json")}             Print the report as JSON for CI, scripts, and other agents
   ${pc.cyan("--strict")}           Exit with failure when any check warns or fails
+  ${pc.cyan("--fail-on <level>")}  Exit with failure on ${pc.cyan("warn")} or only on ${pc.cyan("fail")}
   ${pc.cyan("--url <url>")}        Probe hosted agent surfaces, e.g. ${pc.dim("https://docs.example.com")}
   ${pc.cyan("--config <path>")}    Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
   ${pc.cyan("-h, --help")}         Show this help message
@@ -2981,11 +3009,24 @@ function hasNonPassingDoctorCheck(report: AgentDoctorReport | HumanDoctorReport)
   return report.checks.some((check) => check.status !== "pass");
 }
 
-function applyStrictExitCode(
+function hasFailingDoctorCheck(report: AgentDoctorReport | HumanDoctorReport) {
+  return report.checks.some((check) => check.status === "fail");
+}
+
+function applyDoctorExitCode(
   report: AgentDoctorReport | HumanDoctorReport,
   options: DoctorOptions,
 ) {
-  if (options.strict && hasNonPassingDoctorCheck(report)) {
+  const failOn = options.failOn ?? (options.strict ? "warn" : undefined);
+  if (!failOn) {
+    return;
+  }
+
+  const shouldFail = failOn === "warn"
+    ? hasNonPassingDoctorCheck(report)
+    : hasFailingDoctorCheck(report);
+
+  if (shouldFail) {
     process.exitCode = 1;
   }
 }
@@ -2993,7 +3034,7 @@ function applyStrictExitCode(
 export async function runDoctor(options: DoctorOptions = {}) {
   if (options.mode === "human") {
     const report = await inspectHumanReadiness(options);
-    applyStrictExitCode(report, options);
+    applyDoctorExitCode(report, options);
     if (options.json) {
       printDoctorJsonReport(report);
       return report;
@@ -3003,7 +3044,7 @@ export async function runDoctor(options: DoctorOptions = {}) {
   }
 
   const report = await inspectAgentReadiness(options);
-  applyStrictExitCode(report, options);
+  applyDoctorExitCode(report, options);
   if (options.json) {
     printDoctorJsonReport(report);
     return report;
