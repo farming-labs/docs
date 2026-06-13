@@ -450,6 +450,10 @@ Use `docs doctor --only agent` or `docs doctor --only site` when scripts need an
 single-suite selector. These forms are equivalent to `--agent` and `--site`; `--only` accepts only
 `agent` or `site`.
 
+Use `docs doctor --fail-on warn` when any warning should fail CI. Use
+`docs doctor --fail-on fail` when warnings should stay visible but only hard failures should exit
+non-zero. `--strict` remains a shortcut for `--fail-on warn`.
+
 This command does not generate files. It inspects the current project and scores how ready the docs
 are for agents, IDEs, and GEO-style crawlers.
 
@@ -480,6 +484,8 @@ pnpm exec docs doctor --agent
 pnpm exec docs doctor --site
 pnpm exec docs doctor --agent --json
 pnpm exec docs doctor --agent --strict
+pnpm exec docs doctor --agent --fail-on warn
+pnpm exec docs doctor --site --json --fail-on fail
 pnpm exec docs doctor --only agent
 pnpm exec docs doctor --only=site
 pnpm exec docs doctor agent
@@ -489,11 +495,15 @@ pnpm exec docs doctor --agent --url https://docs.example.com
 pnpm exec docs doctor --agent --url https://docs.example.com --json
 ```
 
-Use `--strict` in CI when warnings should fail the job. Strict mode sets a non-zero exit code when any doctor check reports `warn` or `fail`, and it can be combined with `--json` for machine-readable output.
+Use `--strict` or `--fail-on warn` in CI when warnings should fail the job. Both forms set a
+non-zero exit code when any doctor check reports `warn` or `fail`. Use `--fail-on fail` when
+warnings should print without failing the job, while hard failures still exit non-zero.
 
 ```bash title="terminal"
 pnpm exec docs doctor --agent --strict
 pnpm exec docs doctor --site --json --strict
+pnpm exec docs doctor --agent --fail-on warn
+pnpm exec docs doctor --site --json --fail-on fail
 ```
 
 Expected output:
