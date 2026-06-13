@@ -84,6 +84,16 @@ describe("parseDoctorArgs", () => {
     });
   });
 
+  it("parses explicit only mode", () => {
+    expect(parseDoctorArgs(["--only", "agent"])).toEqual({
+      mode: "agent",
+    });
+    expect(parseDoctorArgs(["--only=site", "--json"])).toEqual({
+      mode: "human",
+      json: true,
+    });
+  });
+
   it("parses hosted URL probes", () => {
     expect(parseDoctorArgs(["--agent", "--url", "https://docs.example.com"])).toEqual({
       mode: "agent",
@@ -116,6 +126,14 @@ describe("parseDoctorArgs", () => {
   it("rejects missing URL values", () => {
     expect(() => parseDoctorArgs(["--url"])).toThrow("Missing value for --url.");
     expect(() => parseDoctorArgs(["--url="])).toThrow("Missing value for --url.");
+  });
+
+  it("rejects invalid only mode values", () => {
+    expect(() => parseDoctorArgs(["--only"])).toThrow("Missing value for --only.");
+    expect(() => parseDoctorArgs(["--only="])).toThrow("Missing value for --only.");
+    expect(() => parseDoctorArgs(["--only", "human"])).toThrow(
+      "Invalid value for --only. Expected agent or site.",
+    );
   });
 });
 
