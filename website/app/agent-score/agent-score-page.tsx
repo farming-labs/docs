@@ -930,6 +930,13 @@ export function AgentScorePage() {
         entries?: LeaderboardEntry[];
         notConfigured?: boolean;
       }>(response);
+      if (
+        !response.ok ||
+        data.error ||
+        (!Array.isArray(data.entries) && data.notConfigured !== true)
+      ) {
+        throw new Error(data.error ?? "Failed to load the leaderboard.");
+      }
       setLeaderboardNotConfigured(Boolean(data.notConfigured));
       setEntries(Array.isArray(data.entries) ? data.entries : []);
     } catch {
