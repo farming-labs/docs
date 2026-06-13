@@ -1,0 +1,114 @@
+---
+title: "Quickstart"
+description: "Get @farming-labs/docs running in under five minutes"
+icon: "bolt"
+order: 0
+---
+
+# Quickstart
+
+After this page you will have a working docs site — config file, theme CSS, sample pages, and a running dev server — inside an existing Next.js, TanStack Start, SvelteKit, Astro, or Nuxt project.
+
+## Run the CLI
+
+The fastest path is the `init` command. Run it inside your existing app:
+
+<CodeGroup>
+```bash title="npm"
+npx @farming-labs/docs init
+```
+```bash title="pnpm"
+pnpm dlx @farming-labs/docs init
+```
+```bash title="yarn"
+yarn dlx @farming-labs/docs init
+```
+```bash title="bun"
+bunx @farming-labs/docs init
+```
+</CodeGroup>
+
+The CLI detects your framework, installs the right packages, creates `docs.config.ts`, adds the theme CSS, scaffolds starter pages, and starts the dev server.
+
+## Start from a template
+
+If you want a fresh project rather than adding docs to an existing app, pass `--template` and `--name`:
+
+<CodeGroup>
+```bash title="npm"
+npx @farming-labs/docs init --template next --name my-docs
+npx @farming-labs/docs init --template tanstack-start --name my-docs
+npx @farming-labs/docs init --template nuxt --name my-docs
+npx @farming-labs/docs init --template sveltekit --name my-docs
+npx @farming-labs/docs init --template astro --name my-docs
+```
+```bash title="pnpm"
+pnpm dlx @farming-labs/docs init --template next --name my-docs
+pnpm dlx @farming-labs/docs init --template tanstack-start --name my-docs
+pnpm dlx @farming-labs/docs init --template nuxt --name my-docs
+pnpm dlx @farming-labs/docs init --template sveltekit --name my-docs
+pnpm dlx @farming-labs/docs init --template astro --name my-docs
+```
+</CodeGroup>
+
+The CLI creates the project folder, bootstraps it from the chosen template, and runs install.
+
+## What gets created
+
+After `init` completes, your project has:
+
+- **`docs.config.ts`** — single config file for routing, theme, search, metadata, feedback, and AI surfaces
+- **Theme CSS** — imported automatically for the theme you picked
+- **Starter MDX pages** — a `docs/` folder with an index page and one sample page
+- **Framework adapter** — the right package for your stack (`@farming-labs/next`, `@farming-labs/astro`, `@farming-labs/svelte`, `@farming-labs/nuxt`, or `@farming-labs/tanstack-start`)
+
+## Basic config shape
+
+All frameworks share the same `defineDocs()` call:
+
+```ts title="docs.config.ts"
+import { defineDocs } from '@farming-labs/docs'
+
+export default defineDocs({
+  docs: {
+    dir: 'docs',
+  },
+})
+```
+
+Next.js projects also wrap `next.config.ts`:
+
+```ts title="next.config.ts"
+import { withDocs } from '@farming-labs/next'
+import docsConfig from './docs.config'
+
+export default withDocs(docsConfig)({
+  // your existing Next.js config
+})
+```
+
+See [Configuration](/docs/configuration) for the full option set, or [Installation](/docs/installation) for the detailed framework-by-framework manual path.
+
+## Write your first page
+
+Docs are plain Markdown or MDX files. Add frontmatter for metadata:
+
+```mdx title="docs/my-page.mdx"
+---
+title: My Page
+description: A short description used in search and OG images.
+---
+
+# My Page
+
+Content here.
+```
+
+The sidebar is auto-generated from your file structure. See [Sidebar](/docs/customization/sidebar) for ordering, icons, and collapsible groups.
+
+## Next steps
+
+- [Configuration](/docs/configuration) — all `docs.config.ts` options
+- [Themes](/docs/themes) — switch or create a theme
+- [CLI](/docs/cli) — upgrade, compact agent docs, generate sitemaps, sync search
+- [Docs Cloud](/docs/cloud) — deploy a hosted preview
