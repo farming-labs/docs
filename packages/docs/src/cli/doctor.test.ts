@@ -84,6 +84,17 @@ describe("parseDoctorArgs", () => {
     });
   });
 
+  it("parses explicit fail-on thresholds", () => {
+    expect(parseDoctorArgs(["--fail-on", "warn"])).toEqual({
+      mode: "agent",
+      failOn: "warn",
+    });
+    expect(parseDoctorArgs(["--site", "--fail-on=fail"])).toEqual({
+      mode: "human",
+      failOn: "fail",
+    });
+  });
+
   it("parses explicit only mode", () => {
     expect(parseDoctorArgs(["--only", "agent"])).toEqual({
       mode: "agent",
@@ -133,6 +144,14 @@ describe("parseDoctorArgs", () => {
     expect(() => parseDoctorArgs(["--only="])).toThrow("Missing value for --only.");
     expect(() => parseDoctorArgs(["--only", "human"])).toThrow(
       "Invalid value for --only. Expected agent or site.",
+    );
+  });
+
+  it("rejects invalid fail-on values", () => {
+    expect(() => parseDoctorArgs(["--fail-on"])).toThrow("Missing value for --fail-on.");
+    expect(() => parseDoctorArgs(["--fail-on="])).toThrow("Missing value for --fail-on.");
+    expect(() => parseDoctorArgs(["--fail-on", "error"])).toThrow(
+      "Invalid value for --fail-on. Expected warn or fail.",
     );
   });
 });
@@ -1406,6 +1425,34 @@ describe("inspectHumanReadiness", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
+  function writeWarningSiteFixture(name: string) {
+    writePackageJson(tmpDir, name, { next: "16.0.0" });
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+  entry: "docs",
+  contentDir: "docs",
+};`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "docs", "page.mdx"),
+      `---
+title: "Overview"
+description: "Docs home"
+---
+
+# Overview
+
+Welcome to the docs.
+`,
+      "utf-8",
+    );
+  }
+
   it("scores a healthy docs app as reader-ready", async () => {
     writePackageJson(tmpDir, "doctor-human", { next: "16.0.0" });
 
@@ -1637,31 +1684,7 @@ description: "Docs home"
   });
 
   it("sets a failing exit code in strict mode when checks warn", async () => {
-    writePackageJson(tmpDir, "doctor-site-strict-warnings", { next: "16.0.0" });
-
-    writeFileSync(
-      path.join(tmpDir, "docs.config.ts"),
-      `export default {
-  entry: "docs",
-  contentDir: "docs",
-};`,
-      "utf-8",
-    );
-
-    mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
-    writeFileSync(
-      path.join(tmpDir, "docs", "page.mdx"),
-      `---
-title: "Overview"
-description: "Docs home"
----
-
-# Overview
-
-Welcome to the docs.
-`,
-      "utf-8",
-    );
+    writeWarningSiteFixture("doctor-site-strict-warnings");
 
     process.chdir(tmpDir);
 
@@ -1673,6 +1696,67 @@ Welcome to the docs.
       const report = await runDoctor({ mode: "human", json: true, strict: true });
 
       expect(report.checks.some((check) => check.status === "warn")).toBe(true);
+      expect(process.exitCode).toBe(1);
+    } finally {
+      process.exitCode = previousExitCode;
+      logSpy.mockRestore();
+    }
+  });
+
+  it("sets a failing exit code with fail-on warn when checks warn", async () => {
+    writeWarningSiteFixture("doctor-site-fail-on-warn");
+
+    process.chdir(tmpDir);
+
+    const previousExitCode = process.exitCode;
+    process.exitCode = undefined;
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    try {
+      const report = await runDoctor({ mode: "human", json: true, failOn: "warn" });
+
+      expect(report.checks.some((check) => check.status === "warn")).toBe(true);
+      expect(process.exitCode).toBe(1);
+    } finally {
+      process.exitCode = previousExitCode;
+      logSpy.mockRestore();
+    }
+  });
+
+  it("keeps exit code passing with fail-on fail when checks only warn", async () => {
+    writeWarningSiteFixture("doctor-site-fail-on-fail-warnings");
+
+    process.chdir(tmpDir);
+
+    const previousExitCode = process.exitCode;
+    process.exitCode = undefined;
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    try {
+      const report = await runDoctor({ mode: "human", json: true, failOn: "fail" });
+
+      expect(report.checks.some((check) => check.status === "warn")).toBe(true);
+      expect(report.checks.every((check) => check.status !== "fail")).toBe(true);
+      expect(process.exitCode).toBeUndefined();
+    } finally {
+      process.exitCode = previousExitCode;
+      logSpy.mockRestore();
+    }
+  });
+
+  it("sets a failing exit code with fail-on fail when checks fail", async () => {
+    writePackageJson(tmpDir, "doctor-agent-fail-on-fail", { next: "16.0.0" });
+
+    process.chdir(tmpDir);
+
+    const previousExitCode = process.exitCode;
+    process.exitCode = undefined;
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    try {
+      const report = await runDoctor({ mode: "agent", json: true, failOn: "fail" });
+
+      expect(report.checks.some((check) => check.status === "fail")).toBe(true);
       expect(process.exitCode).toBe(1);
     } finally {
       process.exitCode = previousExitCode;
