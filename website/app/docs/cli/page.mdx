@@ -475,11 +475,19 @@ pnpm exec docs doctor
 pnpm exec docs doctor --agent
 pnpm exec docs doctor --site
 pnpm exec docs doctor --agent --json
+pnpm exec docs doctor --agent --strict
 pnpm exec docs doctor agent
 pnpm exec docs doctor site
 pnpm exec docs doctor --agent --config docs.config.tsx
 pnpm exec docs doctor --agent --url https://docs.example.com
 pnpm exec docs doctor --agent --url https://docs.example.com --json
+```
+
+Use `--strict` in CI when warnings should fail the job. Strict mode sets a non-zero exit code when any doctor check reports `warn` or `fail`, and it can be combined with `--json` for machine-readable output.
+
+```bash title="terminal"
+pnpm exec docs doctor --agent --strict
+pnpm exec docs doctor --site --json --strict
 ```
 
 Expected output:
