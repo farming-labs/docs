@@ -59,3 +59,18 @@ describe("PageActions alignment", () => {
     expect(html).toContain("Ask AI");
   });
 });
+
+describe("PageActions copy markdown labels", () => {
+  it("renders a custom copy button label", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(PageActions, {
+        copyMarkdown: true,
+        copyMarkdownLabel: "Copy docs",
+        providers: [],
+      }),
+    );
+
+    expect(html).toContain("Copy docs");
+    expect(html).not.toContain("Copy page");
+  });
+});

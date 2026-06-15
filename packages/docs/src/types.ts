@@ -693,6 +693,10 @@ export interface OpenDocsConfig {
 export interface CopyMarkdownConfig {
   /** Whether to show the "Copy Markdown" button. @default false */
   enabled?: boolean;
+  /** Button label shown before the page is copied. @default "Copy page" */
+  label?: string;
+  /** Button label shown after a successful copy. @default "Copied!" */
+  copiedLabel?: string;
 }
 
 /**

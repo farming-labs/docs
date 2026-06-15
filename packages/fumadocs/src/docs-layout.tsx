@@ -26,6 +26,7 @@ import type {
   OrderingItem,
   PageFrontmatter,
   OpenDocsConfig,
+  CopyMarkdownConfig,
 } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
 import { DocsAIFeatures } from "./docs-ai-features.js";
@@ -952,6 +953,10 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   // Page actions (Copy Markdown, Open in …)
   const pageActions = config.pageActions;
   const copyMarkdownEnabled = resolveBool(pageActions?.copyMarkdown);
+  const copyMarkdownConfig =
+    pageActions?.copyMarkdown && typeof pageActions.copyMarkdown === "object"
+      ? (pageActions.copyMarkdown as CopyMarkdownConfig)
+      : undefined;
   const openDocsEnabled = resolveBool(pageActions?.openDocs);
   const pageActionsPosition = pageActions?.position ?? "below-title";
   const pageActionsAlignment = pageActions?.alignment ?? "left";
@@ -1143,6 +1148,8 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             publicPath={localeContext.publicPath}
             locale={activeLocale}
             copyMarkdown={copyMarkdownEnabled}
+            copyMarkdownLabel={copyMarkdownConfig?.label}
+            copyMarkdownCopiedLabel={copyMarkdownConfig?.copiedLabel}
             openDocs={openDocsEnabled}
             openDocsProviders={openDocsProviders as any}
             openDocsTarget={openDocsConfig?.target}

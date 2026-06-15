@@ -51,6 +51,8 @@ interface DocsPageClientProps {
   /** Active locale (used for llms.txt links) */
   locale?: string;
   copyMarkdown?: boolean;
+  copyMarkdownLabel?: string;
+  copyMarkdownCopiedLabel?: string;
   openDocs?: boolean;
   openDocsProviders?: SerializedProvider[];
   openDocsTarget?: "markdown" | "page" | "source" | "github";
@@ -489,6 +491,8 @@ export function DocsPageClient({
   publicPath,
   locale,
   copyMarkdown = false,
+  copyMarkdownLabel,
+  copyMarkdownCopiedLabel,
   openDocs = false,
   openDocsProviders,
   openDocsTarget,
@@ -808,6 +812,8 @@ export function DocsPageClient({
           >
             <PageActions
               copyMarkdown={copyMarkdown}
+              copyMarkdownLabel={copyMarkdownLabel}
+              copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
               openDocs={openDocs}
               providers={openDocsProviders}
               openDocsTarget={openDocsTarget}
@@ -868,6 +874,8 @@ export function DocsPageClient({
           <div className="fd-actions-toc-portal not-prose">
             <PageActions
               copyMarkdown={copyMarkdown}
+              copyMarkdownLabel={copyMarkdownLabel}
+              copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
               openDocs={openDocs}
               providers={openDocsProviders}
               openDocsTarget={openDocsTarget}
@@ -935,6 +943,8 @@ export function DocsPageClient({
             >
               <PageActions
                 copyMarkdown={copyMarkdown}
+                copyMarkdownLabel={copyMarkdownLabel}
+                copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
                 openDocs={openDocs}
                 providers={openDocsProviders}
                 openDocsTarget={openDocsTarget}

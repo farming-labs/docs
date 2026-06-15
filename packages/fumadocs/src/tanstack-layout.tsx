@@ -8,6 +8,7 @@ import type {
   FontStyle,
   AIConfig,
   OpenDocsConfig,
+  CopyMarkdownConfig,
 } from "@farming-labs/docs";
 import { applySidebarFolderIndexBehavior, resolveDocsAnalyticsConfig } from "@farming-labs/docs";
 import { DocsPageClient } from "./docs-page-client.js";
@@ -373,6 +374,10 @@ export function TanstackDocsLayout({
 
   const pageActions = config.pageActions;
   const copyMarkdownEnabled = resolveBool(pageActions?.copyMarkdown);
+  const copyMarkdownConfig =
+    pageActions?.copyMarkdown && typeof pageActions.copyMarkdown === "object"
+      ? (pageActions.copyMarkdown as CopyMarkdownConfig)
+      : undefined;
   const openDocsEnabled = resolveBool(pageActions?.openDocs);
   const pageActionsPosition = pageActions?.position ?? "below-title";
   const pageActionsAlignment = pageActions?.alignment ?? "left";
@@ -519,6 +524,8 @@ export function TanstackDocsLayout({
           entry={config.entry ?? "docs"}
           locale={locale}
           copyMarkdown={copyMarkdownEnabled}
+          copyMarkdownLabel={copyMarkdownConfig?.label}
+          copyMarkdownCopiedLabel={copyMarkdownConfig?.copiedLabel}
           openDocs={openDocsEnabled}
           openDocsProviders={openDocsProviders}
           openDocsTarget={openDocsConfig?.target}
