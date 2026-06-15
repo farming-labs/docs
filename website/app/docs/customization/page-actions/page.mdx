@@ -137,6 +137,25 @@ pageActions: {
 }
 ```
 
+### `pageActions.copyMarkdown.includeTitle`
+
+Whether to prepend the current page title to the copied content.
+
+| Type      | Default |
+| --------- | ------- |
+| `boolean` | `false` |
+
+When enabled:
+- In `"markdown"` format a `# Title` heading is added before the page content.
+- In `"text"` format the plain title is prepended as a first line.
+
+The title is not added if the content already begins with it.
+
+```ts
+pageActions: {
+  copyMarkdown: { enabled: true, includeTitle: true },
+}
+```
 ---
 
 ## Open in LLM
