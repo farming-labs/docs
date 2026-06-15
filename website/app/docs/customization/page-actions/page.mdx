@@ -97,6 +97,30 @@ pageActions: {
 }
 ```
 
+The object form also lets you customize the button text.
+
+### `pageActions.copyMarkdown.label`
+
+Button label shown before the page has been copied.
+
+| Type     | Default        |
+| -------- | -------------- |
+| `string` | `"Copy page"` |
+
+### `pageActions.copyMarkdown.copiedLabel`
+
+Button label shown after a successful copy.
+
+| Type     | Default      |
+| -------- | ------------ |
+| `string` | `"Copied!"` |
+
+```ts
+pageActions: {
+  copyMarkdown: { enabled: true, label: "Copy docs", copiedLabel: "Copied docs" },
+}
+```
+
 ---
 
 ## Open in LLM
