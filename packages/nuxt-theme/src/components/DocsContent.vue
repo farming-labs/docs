@@ -61,7 +61,9 @@ function resolveReadingTimeFormat(
   config: Record<string, unknown> | null | undefined,
   data: { readingTimeFormat?: "long" | "short" },
 ) {
-  if (data.readingTimeFormat === "short") return "short";
+  if (data.readingTimeFormat === "short" || data.readingTimeFormat === "long") {
+    return data.readingTimeFormat;
+  }
 
   const readingTime = config?.readingTime;
   return readingTime &&

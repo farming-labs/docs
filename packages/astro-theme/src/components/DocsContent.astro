@@ -143,12 +143,13 @@ const readingTimeValue =
     : null;
 const readingTimeConfig = config?.readingTime;
 const readingTimeFormat =
-  data.readingTimeFormat === "short" ||
-  (readingTimeConfig &&
-    typeof readingTimeConfig === "object" &&
-    (readingTimeConfig as { format?: string }).format === "short")
-    ? "short"
-    : "long";
+  data.readingTimeFormat === "short" || data.readingTimeFormat === "long"
+    ? data.readingTimeFormat
+    : readingTimeConfig &&
+        typeof readingTimeConfig === "object" &&
+        (readingTimeConfig as { format?: string }).format === "short"
+      ? "short"
+      : "long";
 const readingTimeLabel = readingTimeValue
   ? readingTimeFormat === "short"
     ? `${readingTimeValue} min`

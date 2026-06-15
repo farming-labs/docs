@@ -75,7 +75,9 @@
   }
 
   function resolveReadingTimeFormat(config, data) {
-    if (data?.readingTimeFormat === "short") return "short";
+    if (data?.readingTimeFormat === "short" || data?.readingTimeFormat === "long") {
+      return data.readingTimeFormat;
+    }
 
     const readingTime = config?.readingTime;
     return readingTime && typeof readingTime === "object" && readingTime.format === "short"
