@@ -115,6 +115,22 @@ Button label shown after a successful copy.
 | -------- | ------------ |
 | `string` | `"Copied!"` |
 
+### `pageActions.copyMarkdown.format`
+
+Content format that the button copies to the clipboard.
+
+| Type                       | Default        |
+| -------------------------- | -------------- |
+| `"markdown" \| "text"` | `"markdown"` |
+
+- `"markdown"` — fetches the page's public `.md` route and copies its markdown source.
+- `"text"` — reads the visible text content of the rendered page without a network request.
+
+```ts
+pageActions: {
+  copyMarkdown: { enabled: true, format: "text" },
+}
+```
 ```ts
 pageActions: {
   copyMarkdown: { enabled: true, label: "Copy docs", copiedLabel: "Copied docs" },
