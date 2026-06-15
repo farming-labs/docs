@@ -54,7 +54,6 @@ Top-level configuration object passed to `defineDocs()`.
 | `observability` | `boolean \| DocsObservabilityConfig`          | `false`          | Trace event stream for Ask AI and MCP runs, including spans, timing, status, and errors |
 | `onCopyClick` | `(data: CodeBlockCopyData) => void`              | —                | Callback when the user clicks the copy button on a code block (runs in addition to copy) |
 | `feedback`    | `boolean \| FeedbackConfig`                     | `false` for UI   | Human page feedback UI; agent feedback endpoints are default-on unless opted out     |
-| `requireComment` | `boolean`                               | `false`           | Require a non-empty comment before feedback can be submitted |
 | `agent`       | `DocsAgentConfig`                               | —                | Defaults for `docs agent compact` and related machine-docs workflows                 |
 | `review`      | `boolean \| DocsReviewConfig`                   | `true`           | Docs Review scoring, rule severity, and GitHub Actions workflow generation           |
 | `readingTime` | `boolean \| ReadingTimeConfig`                  | `false`          | Opt-in estimated reading-time label with per-page overrides                          |
@@ -966,6 +965,7 @@ Optional docs page feedback UI. When enabled, a built-in "Good / Bad" prompt is 
 | `question`      | `string`                                 | `"How is this guide?"` | Prompt shown above the buttons          |
 | `positiveLabel` | `string`                                 | `"Good"`          | Label for the positive button                |
 | `negativeLabel` | `string`                                 | `"Bad"`           | Label for the negative button                |
+| `requireComment` | `boolean`                              | `false`           | Require a non-empty comment before feedback can be submitted |
 | `onFeedback`    | `(data: DocsFeedbackData) => void`       | —                 | Callback fired when the user clicks a button |
 | `agent`         | `boolean \| AgentFeedbackConfig`         | `true`            | Agent feedback routes served through `/api/docs` |
 
