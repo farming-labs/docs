@@ -1411,6 +1411,8 @@ export interface LastUpdatedConfig {
   position?: "footer" | "below-title";
 }
 
+export type ReadingTimeFormat = "long" | "short";
+
 /**
  * Configuration for estimated page reading time.
  *
@@ -1430,6 +1432,14 @@ export interface ReadingTimeConfig {
    * @default 220
    */
   wordsPerMinute?: number;
+  /**
+   * Label style used when rendering the reading-time estimate.
+   *
+   * `"long"` renders labels like `3 min read`; `"short"` renders `3 min`.
+   *
+   * @default "long"
+   */
+  format?: ReadingTimeFormat;
 }
 
 /**

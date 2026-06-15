@@ -1,9 +1,10 @@
 import matter from "gray-matter";
-import type { PageFrontmatter, ReadingTimeConfig } from "@farming-labs/docs";
+import type { PageFrontmatter, ReadingTimeConfig, ReadingTimeFormat } from "@farming-labs/docs";
 
 export interface ResolvedReadingTimeOptions {
   enabled: boolean;
   wordsPerMinute?: number;
+  format: ReadingTimeFormat;
 }
 
 function hasExplicitReadingTime(frontmatter: Partial<PageFrontmatter> | undefined): boolean {
@@ -38,11 +39,11 @@ export function estimateReadingTimeMinutes(content: string, wordsPerMinute?: num
 export function resolveReadingTimeOptions(
   readingTime: boolean | ReadingTimeConfig | null | undefined,
 ): ResolvedReadingTimeOptions {
-  if (readingTime === true) return { enabled: true };
+  if (readingTime === true) return { enabled: true, format: "long" };
   if (readingTime === false || readingTime === undefined || readingTime === null) {
-    return { enabled: false };
+    return { enabled: false, format: "long" };
   }
-  if (typeof readingTime !== "object") return { enabled: false };
+  if (typeof readingTime !== "object") return { enabled: false, format: "long" };
 
   return {
     enabled: readingTime.enabled !== false,
@@ -50,6 +51,7 @@ export function resolveReadingTimeOptions(
       typeof readingTime.wordsPerMinute === "number" && Number.isFinite(readingTime.wordsPerMinute)
         ? readingTime.wordsPerMinute
         : undefined,
+    format: readingTime.format === "short" ? "short" : "long",
   };
 }
 

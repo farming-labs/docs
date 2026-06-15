@@ -4,7 +4,7 @@ import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page"
 import { Children, Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "fumadocs-core/framework";
-import type { DocsFeedbackData } from "@farming-labs/docs";
+import type { DocsFeedbackData, ReadingTimeFormat } from "@farming-labs/docs";
 import { PageActions } from "./page-actions.js";
 import { useWindowSearchParams } from "./client-location.js";
 import { DocsFeedback } from "./docs-feedback.js";
@@ -77,6 +77,8 @@ interface DocsPageClientProps {
   readingTimeMap?: Record<string, number>;
   /** Direct reading-time override for the current page. */
   readingTime?: number | null;
+  /** Reading-time label style. */
+  readingTimeFormat?: ReadingTimeFormat;
   /** Map of pathname → serialized Schema.org JSON-LD. */
   structuredDataMap?: Record<string, string>;
   /** Direct serialized Schema.org JSON-LD override for the current page. */
@@ -382,9 +384,9 @@ function decodeHashTarget(hash: string): string {
   }
 }
 
-function formatReadingTimeLabel(minutes: number): string {
+function formatReadingTimeLabel(minutes: number, format: ReadingTimeFormat = "long"): string {
   const normalized = Math.max(1, Math.ceil(minutes));
-  return `${normalized} min read`;
+  return format === "short" ? `${normalized} min` : `${normalized} min read`;
 }
 
 function escapeIdSelector(value: string): string {
@@ -501,6 +503,7 @@ export function DocsPageClient({
   lastModified: lastModifiedProp,
   readingTimeMap,
   readingTime: readingTimeProp,
+  readingTimeFormat = "long",
   structuredDataMap,
   structuredData: structuredDataProp,
   readingTimeEnabled = false,
@@ -768,7 +771,9 @@ export function DocsPageClient({
         <span className="fd-page-meta-dot" aria-hidden="true">
           ·
         </span>
-        <span className="fd-page-meta-item">{formatReadingTimeLabel(resolvedReadingTime)}</span>
+        <span className="fd-page-meta-item">
+          {formatReadingTimeLabel(resolvedReadingTime, readingTimeFormat)}
+        </span>
       </div>
     ) : undefined;
 

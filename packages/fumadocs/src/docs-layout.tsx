@@ -966,6 +966,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
   const readingTimeEnabledByDefault = readingTimeOptions.enabled;
   const readingTimeWordsPerMinute = readingTimeOptions.wordsPerMinute ?? 220;
+  const readingTimeFormat = readingTimeOptions.format;
 
   // llms.txt config
   const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
@@ -1156,6 +1157,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             lastUpdatedEnabled={lastUpdatedEnabled}
             lastUpdatedPosition={lastUpdatedPosition}
             readingTimeEnabled={readingTimeEnabled}
+            readingTimeFormat={readingTimeFormat}
             readingTimeMap={readingTimeMap}
             structuredDataMap={structuredDataMap}
             llmsTxtEnabled={llmsTxtEnabled}

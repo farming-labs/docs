@@ -45,7 +45,18 @@ describe("reading time helpers", () => {
   });
 
   it("treats null config as disabled", () => {
-    expect(resolveReadingTimeOptions(null)).toEqual({ enabled: false });
+    expect(resolveReadingTimeOptions(null)).toEqual({ enabled: false, format: "long" });
+  });
+
+  it("resolves short reading-time labels from config", () => {
+    expect(resolveReadingTimeOptions({ enabled: true, format: "short" })).toMatchObject({
+      enabled: true,
+      format: "short",
+    });
+    expect(resolveReadingTimeOptions({ enabled: true, format: "verbose" as never })).toMatchObject({
+      enabled: true,
+      format: "long",
+    });
   });
 
   it("ignores four-backtick fenced code blocks", () => {

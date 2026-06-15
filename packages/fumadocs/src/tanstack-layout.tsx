@@ -380,7 +380,8 @@ export function TanstackDocsLayout({
     (typeof lastUpdatedRaw !== "object" || lastUpdatedRaw.enabled !== false);
   const lastUpdatedPosition: "footer" | "below-title" =
     typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
-  const readingTimeEnabled = resolveReadingTimeOptions(config.readingTime).enabled;
+  const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
+  const readingTimeEnabled = readingTimeOptions.enabled;
 
   const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
   const feedbackConfig = resolveFeedbackConfig(config.feedback);
@@ -526,6 +527,7 @@ export function TanstackDocsLayout({
           lastUpdatedPosition={lastUpdatedPosition}
           lastModified={lastModified}
           readingTimeEnabled={readingTimeEnabled}
+          readingTimeFormat={readingTimeOptions.format}
           readingTime={typeof readingTime === "number" ? readingTime : undefined}
           llmsTxtEnabled={llmsTxtEnabled}
           description={description}

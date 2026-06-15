@@ -205,6 +205,7 @@ export interface DocsServer {
     description?: string;
     html: string;
     readingTime?: number | null;
+    readingTimeFormat?: "long" | "short";
     entry?: string;
     locale?: string;
     slug?: string;
@@ -820,6 +821,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       description,
       html,
       readingTime,
+      readingTimeFormat: readingTimeOptions.format,
       entry,
       locale: ctx.locale,
       ...(isIndex ? {} : { slug }),

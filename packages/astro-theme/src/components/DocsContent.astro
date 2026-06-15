@@ -141,7 +141,20 @@ const readingTimeValue =
   typeof data.readingTime === "number"
     ? Math.max(1, Math.ceil(data.readingTime))
     : null;
-const readingTimeLabel = readingTimeValue ? `${readingTimeValue} min read` : null;
+const readingTimeConfig = config?.readingTime;
+const readingTimeFormat =
+  data.readingTimeFormat === "short" || data.readingTimeFormat === "long"
+    ? data.readingTimeFormat
+    : readingTimeConfig &&
+        typeof readingTimeConfig === "object" &&
+        (readingTimeConfig as { format?: string }).format === "short"
+      ? "short"
+      : "long";
+const readingTimeLabel = readingTimeValue
+  ? readingTimeFormat === "short"
+    ? `${readingTimeValue} min`
+    : `${readingTimeValue} min read`
+  : null;
 const showReadingTimeAbove = !!readingTimeLabel && showActionsAbove;
 const showReadingTimeBelow =
   !!readingTimeLabel &&

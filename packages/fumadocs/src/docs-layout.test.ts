@@ -319,6 +319,21 @@ describe("createDocsLayout pageActions", () => {
     });
   });
 
+  it("passes the configured reading-time label format through to DocsPageClient", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      readingTime: { enabled: true, format: "short" },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.readingTimeFormat).toBe("short");
+  });
+
   it("lets per-page frontmatter override a disabled global reading-time config", () => {
     mkdirSync(join(tmpDir, "app", "docs", "guide"), { recursive: true });
     writeFileSync(
