@@ -30,19 +30,6 @@ describe("PageActions alignment", () => {
     expect(html).toContain('data-actions-alignment="right"');
   });
 
-  it("renders a custom copy button label", () => {
-    const html = renderToStaticMarkup(
-      React.createElement(PageActions, {
-        copyMarkdown: true,
-        copyMarkdownLabel: "Copy docs",
-        providers: [],
-      }),
-    );
-
-    expect(html).toContain("Copy docs");
-    expect(html).not.toContain("Copy page");
-  });
-
   it("uses /index.md for root markdown links", () => {
     mockRouterState.pathname = "/";
 
@@ -70,5 +57,20 @@ describe("PageActions alignment", () => {
 
     expect(html).toContain('data-page-actions-variant="rail"');
     expect(html).toContain("Ask AI");
+  });
+});
+
+describe("PageActions copy markdown labels", () => {
+  it("renders a custom copy button label", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(PageActions, {
+        copyMarkdown: true,
+        copyMarkdownLabel: "Copy docs",
+        providers: [],
+      }),
+    );
+
+    expect(html).toContain("Copy docs");
+    expect(html).not.toContain("Copy page");
   });
 });
