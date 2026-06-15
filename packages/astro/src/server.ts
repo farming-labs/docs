@@ -197,6 +197,7 @@ export interface DocsServer {
     html: string;
     rawMarkdown?: string;
     readingTime?: number | null;
+    readingTimeFormat?: "long" | "short";
     entry?: string;
     locale?: string;
     slug?: string;
@@ -811,6 +812,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
       html,
       rawMarkdown: humanRawContent,
       readingTime,
+      readingTimeFormat: readingTimeOptions.format,
       entry,
       locale: ctx.locale,
       ...(isIndex ? {} : { slug }),

@@ -29,6 +29,7 @@ const props = defineProps<{
     html: string;
     rawMarkdown?: string;
     readingTime?: number | null;
+    readingTimeFormat?: "long" | "short";
     previousPage?: { name: string; url: string } | null;
     nextPage?: { name: string; url: string } | null;
     editOnGithub?: string;
@@ -55,6 +56,20 @@ type FeedbackPayload = {
   slug: string;
   locale?: string;
 };
+
+function resolveReadingTimeFormat(
+  config: Record<string, unknown> | null | undefined,
+  data: { readingTimeFormat?: "long" | "short" },
+) {
+  if (data.readingTimeFormat === "short") return "short";
+
+  const readingTime = config?.readingTime;
+  return readingTime &&
+    typeof readingTime === "object" &&
+    (readingTime as { format?: unknown }).format === "short"
+    ? "short"
+    : "long";
+}
 
 interface DocsWindowHooks extends Window {
   __fdOnFeedback__?: (payload: FeedbackPayload) => void | Promise<void>;
@@ -239,8 +254,13 @@ const readingTimeValue = computed(() =>
     ? Math.max(1, Math.ceil(props.data.readingTime))
     : null,
 );
+const readingTimeFormat = computed(() => resolveReadingTimeFormat(props.config, props.data));
 const readingTimeLabel = computed(() =>
-  readingTimeValue.value ? `${readingTimeValue.value} min read` : null,
+  readingTimeValue.value
+    ? readingTimeFormat.value === "short"
+      ? `${readingTimeValue.value} min`
+      : `${readingTimeValue.value} min read`
+    : null,
 );
 const showReadingTimeAbove = computed(() => !!readingTimeLabel.value && showActionsAbove.value);
 const showReadingTimeBelow = computed(

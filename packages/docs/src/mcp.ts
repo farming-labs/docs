@@ -327,7 +327,7 @@ const DOCS_CONFIG_SCHEMA_OPTIONS: DocsMcpConfigSchemaOption[] = [
     name: "readingTime",
     type: "boolean | ReadingTimeConfig",
     default: false,
-    description: "Opt-in estimated reading time label with per-page overrides.",
+    description: "Opt-in estimated reading time label with per-page overrides and label format.",
   },
   {
     path: "agent",

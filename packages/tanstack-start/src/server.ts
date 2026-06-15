@@ -159,6 +159,7 @@ export interface DocsServerLoadResult {
   description?: string;
   rawContent: string;
   readingTime?: number | null;
+  readingTimeFormat?: "long" | "short";
   sourcePath: string;
   entry?: string;
   locale?: string;
@@ -781,6 +782,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
       description,
       rawContent: content,
       readingTime,
+      readingTimeFormat: readingTimeOptions.format,
       sourcePath: toSourcePath(ctx.contentDirRel, relPath, rootDir),
       entry,
       locale: ctx.locale,
