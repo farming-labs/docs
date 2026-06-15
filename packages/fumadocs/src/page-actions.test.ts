@@ -10,7 +10,7 @@ vi.mock("fumadocs-core/framework", () => ({
   usePathname: () => mockRouterState.pathname,
 }));
 
-import { PageActions } from "./page-actions.js";
+import { formatCopyMarkdownContent, PageActions } from "./page-actions.js";
 
 describe("PageActions alignment", () => {
   beforeEach(() => {
@@ -84,5 +84,61 @@ describe("PageActions copy markdown labels", () => {
     );
 
     expect(html).toContain('data-copy-markdown-format="text"');
+  });
+
+  it("marks when copied content should include the page title", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(PageActions, {
+        copyMarkdown: true,
+        copyMarkdownIncludeTitle: true,
+        providers: [],
+      }),
+    );
+
+    expect(html).toContain('data-copy-markdown-include-title="true"');
+  });
+
+  it("prepends a markdown title when requested", () => {
+    expect(
+      formatCopyMarkdownContent({
+        content: "Body copy",
+        format: "markdown",
+        includeTitle: true,
+        title: "Install",
+      }),
+    ).toBe("# Install\n\nBody copy");
+  });
+
+  it("prepends a plain title for text copies", () => {
+    expect(
+      formatCopyMarkdownContent({
+        content: "Body copy",
+        format: "text",
+        includeTitle: true,
+        title: "Install",
+      }),
+    ).toBe("Install\n\nBody copy");
+  });
+
+  it("does not duplicate an existing copied title", () => {
+    expect(
+      formatCopyMarkdownContent({
+        content: "# Install\n\nBody copy",
+        format: "markdown",
+        includeTitle: true,
+        title: "Install",
+      }),
+    ).toBe("# Install\n\nBody copy");
+  });
+
+  it("does not duplicate a plain title when markdown falls back to page text", () => {
+    expect(
+      formatCopyMarkdownContent({
+        content: "Install\n\nBody copy",
+        format: "markdown",
+        includeTitle: true,
+        title: "Install",
+      }),
+    ).toBe("Install\n\nBody copy");
   });
 });

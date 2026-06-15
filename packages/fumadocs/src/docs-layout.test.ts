@@ -100,6 +100,7 @@ describe("createDocsLayout pageActions", () => {
         copyMarkdown: {
           enabled: true,
           format: "text",
+          includeTitle: true,
           label: "Copy docs",
           copiedLabel: "Copied docs",
         },
@@ -115,6 +116,7 @@ describe("createDocsLayout pageActions", () => {
     expect(props).toBeTruthy();
     expect(props?.copyMarkdown).toBe(true);
     expect(props?.copyMarkdownFormat).toBe("text");
+    expect(props?.copyMarkdownIncludeTitle).toBe(true);
     expect(props?.copyMarkdownLabel).toBe("Copy docs");
     expect(props?.copyMarkdownCopiedLabel).toBe("Copied docs");
     expect(props?.openDocs).toBe(true);
