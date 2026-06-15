@@ -524,6 +524,8 @@ export function TanstackDocsLayout({
           entry={config.entry ?? "docs"}
           locale={locale}
           copyMarkdown={copyMarkdownEnabled}
+          copyMarkdownFormat={copyMarkdownConfig?.format}
+          copyMarkdownIncludeTitle={copyMarkdownConfig?.includeTitle}
           copyMarkdownLabel={copyMarkdownConfig?.label}
           copyMarkdownCopiedLabel={copyMarkdownConfig?.copiedLabel}
           openDocs={openDocsEnabled}

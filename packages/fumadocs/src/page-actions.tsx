@@ -18,6 +18,7 @@ interface SerializedProvider {
 interface PageActionsProps {
   copyMarkdown?: boolean;
   copyMarkdownFormat?: CopyMarkdownFormat;
+  copyMarkdownIncludeTitle?: boolean;
   copyMarkdownLabel?: string;
   copyMarkdownCopiedLabel?: string;
   openDocs?: boolean;
@@ -174,9 +175,54 @@ function fillPromptTemplate(template: string, values: Record<string, string>): s
     .replace(/\{url\}/g, values.url);
 }
 
+function firstContentLine(content: string) {
+  return content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean);
+}
+
+export function formatCopyMarkdownContent(params: {
+  content: string;
+  format: CopyMarkdownFormat;
+  includeTitle?: boolean;
+  title?: string | null;
+}) {
+  const title = params.title?.trim();
+  if (!params.includeTitle || !title) {
+    return params.content;
+  }
+
+  const firstLine = firstContentLine(params.content);
+  if (params.format === "markdown") {
+    const heading = `# ${title}`;
+    if (firstLine === heading || firstLine === title) {
+      return params.content;
+    }
+
+    return `${heading}\n\n${params.content.trimStart()}`;
+  }
+
+  if (firstLine === title) {
+    return params.content;
+  }
+
+  return `${title}\n\n${params.content.trimStart()}`;
+}
+
+function currentPageTitle() {
+  const title =
+    document.querySelector<HTMLElement>("#nd-page h1") ??
+    document.querySelector<HTMLElement>("article h1") ??
+    document.querySelector<HTMLElement>("h1");
+
+  return title?.innerText?.trim() || title?.textContent?.trim() || "";
+}
+
 export function PageActions({
   copyMarkdown,
   copyMarkdownFormat = "markdown",
+  copyMarkdownIncludeTitle = false,
   copyMarkdownLabel = "Copy page",
   copyMarkdownCopiedLabel = "Copied!",
   openDocs,
@@ -223,6 +269,13 @@ export function PageActions({
 
       if (!content) return;
 
+      content = formatCopyMarkdownContent({
+        content,
+        format: copyMarkdownFormat,
+        includeTitle: copyMarkdownIncludeTitle,
+        title: currentPageTitle(),
+      });
+
       await navigator.clipboard.writeText(content);
       if (analytics) {
         emitClientAnalyticsEvent({
@@ -230,6 +283,7 @@ export function PageActions({
           properties: {
             contentLength: content.length,
             format: copyMarkdownFormat,
+            includeTitle: copyMarkdownIncludeTitle,
             pathname,
           },
         });
@@ -239,7 +293,7 @@ export function PageActions({
     } catch {
       // silent
     }
-  }, [analytics, copyMarkdownFormat, markdownHref, pathname]);
+  }, [analytics, copyMarkdownFormat, copyMarkdownIncludeTitle, markdownHref, pathname]);
 
   const handleOpen = useCallback(
     (provider: SerializedProvider) => {
@@ -345,6 +399,7 @@ export function PageActions({
             className="fd-page-action-btn"
             data-copied={copied}
             data-copy-markdown-format={copyMarkdownFormat}
+            data-copy-markdown-include-title={copyMarkdownIncludeTitle || undefined}
           >
             {copied ? <CheckIcon /> : <CopyIcon />}
             <span>{copied ? copyMarkdownCopiedLabel : copyMarkdownLabel}</span>
@@ -382,6 +437,7 @@ export function PageActions({
           className="fd-page-action-btn"
           data-copied={copied}
           data-copy-markdown-format={copyMarkdownFormat}
+          data-copy-markdown-include-title={copyMarkdownIncludeTitle || undefined}
         >
           {copied ? <CheckIcon /> : <CopyIcon />}
           <span>{copied ? copyMarkdownCopiedLabel : copyMarkdownLabel}</span>

@@ -52,6 +52,7 @@ interface DocsPageClientProps {
   locale?: string;
   copyMarkdown?: boolean;
   copyMarkdownFormat?: CopyMarkdownFormat;
+  copyMarkdownIncludeTitle?: boolean;
   copyMarkdownLabel?: string;
   copyMarkdownCopiedLabel?: string;
   openDocs?: boolean;
@@ -493,6 +494,7 @@ export function DocsPageClient({
   locale,
   copyMarkdown = false,
   copyMarkdownFormat,
+  copyMarkdownIncludeTitle,
   copyMarkdownLabel,
   copyMarkdownCopiedLabel,
   openDocs = false,
@@ -815,6 +817,7 @@ export function DocsPageClient({
             <PageActions
               copyMarkdown={copyMarkdown}
               copyMarkdownFormat={copyMarkdownFormat}
+              copyMarkdownIncludeTitle={copyMarkdownIncludeTitle}
               copyMarkdownLabel={copyMarkdownLabel}
               copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
               openDocs={openDocs}
@@ -878,6 +881,7 @@ export function DocsPageClient({
             <PageActions
               copyMarkdown={copyMarkdown}
               copyMarkdownFormat={copyMarkdownFormat}
+              copyMarkdownIncludeTitle={copyMarkdownIncludeTitle}
               copyMarkdownLabel={copyMarkdownLabel}
               copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
               openDocs={openDocs}
@@ -948,6 +952,7 @@ export function DocsPageClient({
               <PageActions
                 copyMarkdown={copyMarkdown}
                 copyMarkdownFormat={copyMarkdownFormat}
+                copyMarkdownIncludeTitle={copyMarkdownIncludeTitle}
                 copyMarkdownLabel={copyMarkdownLabel}
                 copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
                 openDocs={openDocs}

@@ -697,6 +697,8 @@ export interface CopyMarkdownConfig {
   enabled?: boolean;
   /** Content format copied by the button. @default "markdown" */
   format?: CopyMarkdownFormat;
+  /** Whether to prepend the current page title to copied content. @default false */
+  includeTitle?: boolean;
   /** Button label shown before the page is copied. @default "Copy page" */
   label?: string;
   /** Button label shown after a successful copy. @default "Copied!" */
