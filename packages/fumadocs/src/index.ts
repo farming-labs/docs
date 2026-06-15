@@ -113,6 +113,7 @@ export type {
   SidebarConfig,
   PageActionsConfig,
   CopyMarkdownConfig,
+  CopyMarkdownFormat,
   OpenDocsConfig,
   OpenDocsProvider,
   AIConfig,

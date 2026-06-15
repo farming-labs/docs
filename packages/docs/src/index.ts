@@ -249,6 +249,7 @@ export type {
   SidebarFolderNode,
   PageActionsConfig,
   CopyMarkdownConfig,
+  CopyMarkdownFormat,
   OpenDocsConfig,
   OpenDocsProvider,
   OpenDocsProviderConfig,

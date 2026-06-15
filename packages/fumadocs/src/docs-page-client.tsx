@@ -4,7 +4,7 @@ import { DocsBody, DocsPage, EditOnGitHub } from "fumadocs-ui/layouts/docs/page"
 import { Children, Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "fumadocs-core/framework";
-import type { DocsFeedbackData, ReadingTimeFormat } from "@farming-labs/docs";
+import type { CopyMarkdownFormat, DocsFeedbackData, ReadingTimeFormat } from "@farming-labs/docs";
 import { PageActions } from "./page-actions.js";
 import { useWindowSearchParams } from "./client-location.js";
 import { DocsFeedback } from "./docs-feedback.js";
@@ -51,6 +51,7 @@ interface DocsPageClientProps {
   /** Active locale (used for llms.txt links) */
   locale?: string;
   copyMarkdown?: boolean;
+  copyMarkdownFormat?: CopyMarkdownFormat;
   copyMarkdownLabel?: string;
   copyMarkdownCopiedLabel?: string;
   openDocs?: boolean;
@@ -491,6 +492,7 @@ export function DocsPageClient({
   publicPath,
   locale,
   copyMarkdown = false,
+  copyMarkdownFormat,
   copyMarkdownLabel,
   copyMarkdownCopiedLabel,
   openDocs = false,
@@ -812,6 +814,7 @@ export function DocsPageClient({
           >
             <PageActions
               copyMarkdown={copyMarkdown}
+              copyMarkdownFormat={copyMarkdownFormat}
               copyMarkdownLabel={copyMarkdownLabel}
               copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
               openDocs={openDocs}
@@ -874,6 +877,7 @@ export function DocsPageClient({
           <div className="fd-actions-toc-portal not-prose">
             <PageActions
               copyMarkdown={copyMarkdown}
+              copyMarkdownFormat={copyMarkdownFormat}
               copyMarkdownLabel={copyMarkdownLabel}
               copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
               openDocs={openDocs}
@@ -943,6 +947,7 @@ export function DocsPageClient({
             >
               <PageActions
                 copyMarkdown={copyMarkdown}
+                copyMarkdownFormat={copyMarkdownFormat}
                 copyMarkdownLabel={copyMarkdownLabel}
                 copyMarkdownCopiedLabel={copyMarkdownCopiedLabel}
                 openDocs={openDocs}

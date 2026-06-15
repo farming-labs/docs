@@ -1148,6 +1148,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             publicPath={localeContext.publicPath}
             locale={activeLocale}
             copyMarkdown={copyMarkdownEnabled}
+            copyMarkdownFormat={copyMarkdownConfig?.format}
             copyMarkdownLabel={copyMarkdownConfig?.label}
             copyMarkdownCopiedLabel={copyMarkdownConfig?.copiedLabel}
             openDocs={openDocsEnabled}

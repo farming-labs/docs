@@ -690,9 +690,13 @@ export interface OpenDocsConfig {
  * Configuration for the "Copy Markdown" button that copies
  * the current page's content as Markdown to the clipboard.
  */
+export type CopyMarkdownFormat = "markdown" | "text";
+
 export interface CopyMarkdownConfig {
   /** Whether to show the "Copy Markdown" button. @default false */
   enabled?: boolean;
+  /** Content format copied by the button. @default "markdown" */
+  format?: CopyMarkdownFormat;
   /** Button label shown before the page is copied. @default "Copy page" */
   label?: string;
   /** Button label shown after a successful copy. @default "Copied!" */
