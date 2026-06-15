@@ -2133,6 +2133,8 @@ export interface FeedbackConfig {
   question?: string;
   /** Placeholder shown in the optional free-form feedback field. @default "Leave your feedback..." */
   placeholder?: string;
+  /** Require a non-empty comment before feedback can be submitted. @default false */
+  requireComment?: boolean;
   /** Label for the positive button. @default "Good" */
   positiveLabel?: string;
   /** Label for the negative button. @default "Bad" */

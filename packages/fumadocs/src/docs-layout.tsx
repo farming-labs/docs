@@ -1165,6 +1165,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             feedbackEnabled={feedbackConfig.enabled}
             feedbackQuestion={feedbackConfig.question}
             feedbackPlaceholder={feedbackConfig.placeholder}
+            feedbackRequireComment={feedbackConfig.requireComment}
             feedbackPositiveLabel={feedbackConfig.positiveLabel}
             feedbackNegativeLabel={feedbackConfig.negativeLabel}
             feedbackSubmitLabel={feedbackConfig.submitLabel}
@@ -1196,6 +1197,7 @@ function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
     enabled: false,
     question: "How is this guide?",
     placeholder: "Leave your feedback...",
+    requireComment: false,
     positiveLabel: "Good",
     negativeLabel: "Bad",
     submitLabel: "Submit",
@@ -1208,6 +1210,7 @@ function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
     feedback.enabled !== undefined ||
     feedback.question !== undefined ||
     feedback.placeholder !== undefined ||
+    feedback.requireComment !== undefined ||
     feedback.positiveLabel !== undefined ||
     feedback.negativeLabel !== undefined ||
     feedback.submitLabel !== undefined ||
@@ -1217,6 +1220,7 @@ function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
     enabled: feedback.enabled === true || (feedback.enabled !== false && hasHumanFeedbackConfig),
     question: feedback.question ?? defaults.question,
     placeholder: feedback.placeholder ?? defaults.placeholder,
+    requireComment: feedback.requireComment ?? defaults.requireComment,
     positiveLabel: feedback.positiveLabel ?? defaults.positiveLabel,
     negativeLabel: feedback.negativeLabel ?? defaults.negativeLabel,
     submitLabel: feedback.submitLabel ?? defaults.submitLabel,
