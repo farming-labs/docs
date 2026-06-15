@@ -965,6 +965,7 @@ Optional docs page feedback UI. When enabled, a built-in "Good / Bad" prompt is 
 | `question`      | `string`                                 | `"How is this guide?"` | Prompt shown above the buttons          |
 | `positiveLabel` | `string`                                 | `"Good"`          | Label for the positive button                |
 | `negativeLabel` | `string`                                 | `"Bad"`           | Label for the negative button                |
+| `requireComment` | `boolean`                              | `false`           | Require a non-empty comment before feedback can be submitted |
 | `onFeedback`    | `(data: DocsFeedbackData) => void`       | —                 | Callback fired when the user clicks a button |
 | `agent`         | `boolean \| AgentFeedbackConfig`         | `true`            | Agent feedback routes served through `/api/docs` |
 
