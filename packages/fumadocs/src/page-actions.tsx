@@ -16,6 +16,8 @@ interface SerializedProvider {
 
 interface PageActionsProps {
   copyMarkdown?: boolean;
+  copyMarkdownLabel?: string;
+  copyMarkdownCopiedLabel?: string;
   openDocs?: boolean;
   providers?: SerializedProvider[];
   openDocsTarget?: "markdown" | "page" | "source" | "github";
@@ -172,6 +174,8 @@ function fillPromptTemplate(template: string, values: Record<string, string>): s
 
 export function PageActions({
   copyMarkdown,
+  copyMarkdownLabel = "Copy page",
+  copyMarkdownCopiedLabel = "Copied!",
   openDocs,
   providers,
   openDocsTarget = DEFAULT_OPEN_DOCS_TARGET,
@@ -336,7 +340,7 @@ export function PageActions({
             data-copied={copied}
           >
             {copied ? <CheckIcon /> : <CopyIcon />}
-            <span>{copied ? "Copied!" : "Copy page"}</span>
+            <span>{copied ? copyMarkdownCopiedLabel : copyMarkdownLabel}</span>
           </button>
         )}
 
@@ -372,7 +376,7 @@ export function PageActions({
           data-copied={copied}
         >
           {copied ? <CheckIcon /> : <CopyIcon />}
-          <span>{copied ? "Copied!" : "Copy page"}</span>
+          <span>{copied ? copyMarkdownCopiedLabel : copyMarkdownLabel}</span>
         </button>
       )}
 

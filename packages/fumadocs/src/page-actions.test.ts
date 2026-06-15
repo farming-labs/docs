@@ -30,6 +30,19 @@ describe("PageActions alignment", () => {
     expect(html).toContain('data-actions-alignment="right"');
   });
 
+  it("renders a custom copy button label", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(PageActions, {
+        copyMarkdown: true,
+        copyMarkdownLabel: "Copy docs",
+        providers: [],
+      }),
+    );
+
+    expect(html).toContain("Copy docs");
+    expect(html).not.toContain("Copy page");
+  });
+
   it("uses /index.md for root markdown links", () => {
     mockRouterState.pathname = "/";
 
