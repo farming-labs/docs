@@ -126,6 +126,26 @@ Content format that the button copies to the clipboard.
 - `"markdown"` — fetches the page's public `.md` route and copies its markdown source.
 - `"text"` — reads the visible text content of the rendered page without a network request.
 
+### `pageActions.copyMarkdown.includeTitle`
+
+Whether to prepend the current page title to the copied content.
+
+| Type      | Default |
+| --------- | ------- |
+| `boolean` | `false` |
+
+When enabled, the title is added before the rest of the content:
+
+- `format: "markdown"` — prepends `# Title` followed by a blank line.
+- `format: "text"` — prepends the plain title followed by a newline.
+
+If the content already begins with the title, it is not duplicated.
+
+```ts
+pageActions: {
+  copyMarkdown: { enabled: true, includeTitle: true },
+}
+```
 ```ts
 pageActions: {
   copyMarkdown: { enabled: true, format: "text" },
