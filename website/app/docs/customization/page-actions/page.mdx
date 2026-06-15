@@ -101,6 +101,27 @@ pageActions: {
 
 ## Open in LLM
 
+### `pageActions.copyMarkdown.label`
+
+Button label shown before the page has been copied.
+
+| Type     | Default        |
+| -------- | -------------- |
+| `string` | `"Copy page"` |
+
+### `pageActions.copyMarkdown.copiedLabel`
+
+Button label shown after a successful copy.
+
+| Type     | Default      |
+| -------- | ------------ |
+| `string` | `"Copied!"` |
+
+```ts
+pageActions: {
+  copyMarkdown: { enabled: true, label: "Copy docs", copiedLabel: "Copied docs" },
+}
+```
 The **Open in...** dropdown lets users send the current page to an LLM or tool. Built-in providers can target the public `.md` route, the rendered page, the source `.mdx` URL, or the GitHub edit URL.
 
 ### `pageActions.openDocs`
