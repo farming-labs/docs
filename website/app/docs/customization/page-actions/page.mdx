@@ -121,6 +121,22 @@ pageActions: {
 }
 ```
 
+### `pageActions.copyMarkdown.format`
+
+Content format used when the button is clicked.
+
+| Type                         | Default        |
+| ---------------------------- | -------------- |
+| `"markdown" \| "text"` | `"markdown"` |
+
+- **`"markdown"`** — fetches the page's `.md` route and copies the raw Markdown source.
+- **`"text"`** — copies the page's visible text content directly from the DOM, without a network request.
+
+```ts
+pageActions: {
+  copyMarkdown: { enabled: true, format: "text" },
+}
+```
 ---
 
 ## Open in LLM
