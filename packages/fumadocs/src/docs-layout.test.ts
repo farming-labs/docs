@@ -254,6 +254,24 @@ describe("createDocsLayout pageActions", () => {
     expect(props?.openDocs).toBe(false);
   });
 
+  it("passes required feedback comments through to DocsPageClient", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      feedback: {
+        requireComment: true,
+      },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.feedbackEnabled).toBe(true);
+    expect(props?.feedbackRequireComment).toBe(true);
+  });
+
   it("keeps reading time disabled when the config is unconfigured", () => {
     const Layout = createDocsLayout({
       entry: "docs",

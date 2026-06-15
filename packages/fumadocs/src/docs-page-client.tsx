@@ -102,6 +102,7 @@ interface DocsPageClientProps {
   feedbackEnabled?: boolean;
   feedbackQuestion?: string;
   feedbackPlaceholder?: string;
+  feedbackRequireComment?: boolean;
   feedbackPositiveLabel?: string;
   feedbackNegativeLabel?: string;
   feedbackSubmitLabel?: string;
@@ -515,6 +516,7 @@ export function DocsPageClient({
   feedbackEnabled = false,
   feedbackQuestion,
   feedbackPlaceholder,
+  feedbackRequireComment,
   feedbackPositiveLabel,
   feedbackNegativeLabel,
   feedbackSubmitLabel,
@@ -960,6 +962,7 @@ export function DocsPageClient({
               locale={activeLocale}
               question={feedbackQuestion}
               placeholder={feedbackPlaceholder}
+              requireComment={feedbackRequireComment}
               positiveLabel={feedbackPositiveLabel}
               negativeLabel={feedbackNegativeLabel}
               submitLabel={feedbackSubmitLabel}

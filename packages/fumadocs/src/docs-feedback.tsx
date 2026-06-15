@@ -14,6 +14,7 @@ export interface DocsFeedbackProps {
   locale?: string;
   question?: string;
   placeholder?: string;
+  requireComment?: boolean;
   positiveLabel?: string;
   negativeLabel?: string;
   submitLabel?: string;
@@ -154,6 +155,7 @@ export function DocsFeedback({
   locale,
   question = "How is this guide?",
   placeholder = "Leave your feedback...",
+  requireComment = false,
   positiveLabel = "Good",
   negativeLabel = "Bad",
   submitLabel = "Submit",
@@ -165,6 +167,7 @@ export function DocsFeedback({
   const [status, setStatus] = useState<"idle" | "submitting" | "submitted" | "error">("idle");
   const normalizedPathname = useMemo(() => normalizePathname(pathname), [pathname]);
   const showForm = selected !== null;
+  const commentRequired = requireComment && comment.trim().length === 0;
   const submitButtonLabel = status === "submitted" ? "Submitted" : submitLabel;
 
   useEffect(() => {
@@ -199,7 +202,7 @@ export function DocsFeedback({
   }
 
   async function handleSubmit() {
-    if (!selected || status === "submitting") return;
+    if (!selected || status === "submitting" || commentRequired) return;
 
     setStatus("submitting");
     const payload = buildFeedbackPayload(selected, normalizedPathname, entry, comment, locale);
@@ -274,6 +277,8 @@ export function DocsFeedback({
             className="fd-feedback-input"
             aria-label="Additional feedback"
             placeholder={placeholder}
+            required={requireComment}
+            aria-required={requireComment}
             value={comment}
             disabled={status === "submitting"}
             onChange={(event) => {
@@ -285,7 +290,7 @@ export function DocsFeedback({
             <button
               type="button"
               className="fd-page-action-btn fd-feedback-submit"
-              disabled={status === "submitting" || status === "submitted"}
+              disabled={status === "submitting" || status === "submitted" || commentRequired}
               onClick={() => void handleSubmit()}
             >
               {status === "submitting" && (
