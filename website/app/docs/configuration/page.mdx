@@ -1646,6 +1646,7 @@ export default defineDocs({
   readingTime: {
     enabled: true,
     wordsPerMinute: 220,
+    format: "short",
   },
 });
 ```
@@ -1654,6 +1655,7 @@ Default behavior:
 
 - the feature is **opt-in**
 - the estimate uses `220` words per minute unless you override it
+- labels render as `5 min read` by default; set `format: "short"` to render `5 min`
 - fenced code blocks, inline code, links, images, and raw HTML are stripped before counting words
 - changelog pages do not render the reading-time label
 - page frontmatter wins when `readingTime` is present, even if the global config is disabled
@@ -1692,6 +1694,9 @@ That gives you a simple override model:
 - page `readingTime: false` -> hide the label for that page
 - page `readingTime: true` -> force a computed label for that page
 - page `readingTime: 12` -> force an exact `12 min read` label for that page
+
+The global `format` setting applies to computed labels and exact per-page values. With
+`format: "short"`, the same `readingTime: 12` override renders as `12 min`.
 
 <Callout type="info" title="Placement with page actions">
   Reading time follows the same title-area slot as page actions. With
