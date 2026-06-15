@@ -97,7 +97,12 @@ describe("createDocsLayout pageActions", () => {
       entry: "docs",
       pageActions: {
         alignment: "right",
-        copyMarkdown: { enabled: true, label: "Copy docs", copiedLabel: "Copied docs" },
+        copyMarkdown: {
+          enabled: true,
+          format: "text",
+          label: "Copy docs",
+          copiedLabel: "Copied docs",
+        },
         openDocs: { enabled: true },
       },
     });
@@ -109,6 +114,7 @@ describe("createDocsLayout pageActions", () => {
 
     expect(props).toBeTruthy();
     expect(props?.copyMarkdown).toBe(true);
+    expect(props?.copyMarkdownFormat).toBe("text");
     expect(props?.copyMarkdownLabel).toBe("Copy docs");
     expect(props?.copyMarkdownCopiedLabel).toBe("Copied docs");
     expect(props?.openDocs).toBe(true);

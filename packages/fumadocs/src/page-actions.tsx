@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { usePathname } from "fumadocs-core/framework";
+import type { CopyMarkdownFormat } from "@farming-labs/docs";
 import { emitClientAnalyticsEvent } from "./client-analytics.js";
 import { sanitizeIconHtml } from "./safe-icon-html.js";
 
@@ -16,6 +17,7 @@ interface SerializedProvider {
 
 interface PageActionsProps {
   copyMarkdown?: boolean;
+  copyMarkdownFormat?: CopyMarkdownFormat;
   copyMarkdownLabel?: string;
   copyMarkdownCopiedLabel?: string;
   openDocs?: boolean;
@@ -174,6 +176,7 @@ function fillPromptTemplate(template: string, values: Record<string, string>): s
 
 export function PageActions({
   copyMarkdown,
+  copyMarkdownFormat = "markdown",
   copyMarkdownLabel = "Copy page",
   copyMarkdownCopiedLabel = "Copied!",
   openDocs,
@@ -199,16 +202,18 @@ export function PageActions({
     try {
       let content = "";
 
-      try {
-        const response = await fetch(markdownHref, {
-          headers: { Accept: "text/markdown" },
-        });
+      if (copyMarkdownFormat === "markdown") {
+        try {
+          const response = await fetch(markdownHref, {
+            headers: { Accept: "text/markdown" },
+          });
 
-        if (response.ok) {
-          content = await response.text();
+          if (response.ok) {
+            content = await response.text();
+          }
+        } catch {
+          // Fall back to rendered article text below.
         }
-      } catch {
-        // Fall back to rendered article text below.
       }
 
       if (!content) {
@@ -224,6 +229,7 @@ export function PageActions({
           type: "page_action_copy_markdown",
           properties: {
             contentLength: content.length,
+            format: copyMarkdownFormat,
             pathname,
           },
         });
@@ -233,7 +239,7 @@ export function PageActions({
     } catch {
       // silent
     }
-  }, [analytics, markdownHref, pathname]);
+  }, [analytics, copyMarkdownFormat, markdownHref, pathname]);
 
   const handleOpen = useCallback(
     (provider: SerializedProvider) => {
@@ -338,6 +344,7 @@ export function PageActions({
             onClick={handleCopyMarkdown}
             className="fd-page-action-btn"
             data-copied={copied}
+            data-copy-markdown-format={copyMarkdownFormat}
           >
             {copied ? <CheckIcon /> : <CopyIcon />}
             <span>{copied ? copyMarkdownCopiedLabel : copyMarkdownLabel}</span>
@@ -374,6 +381,7 @@ export function PageActions({
           onClick={handleCopyMarkdown}
           className="fd-page-action-btn"
           data-copied={copied}
+          data-copy-markdown-format={copyMarkdownFormat}
         >
           {copied ? <CheckIcon /> : <CopyIcon />}
           <span>{copied ? copyMarkdownCopiedLabel : copyMarkdownLabel}</span>

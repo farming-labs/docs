@@ -73,4 +73,16 @@ describe("PageActions copy markdown labels", () => {
     expect(html).toContain("Copy docs");
     expect(html).not.toContain("Copy page");
   });
+
+  it("marks the configured copy format", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(PageActions, {
+        copyMarkdown: true,
+        copyMarkdownFormat: "text",
+        providers: [],
+      }),
+    );
+
+    expect(html).toContain('data-copy-markdown-format="text"');
+  });
 });
