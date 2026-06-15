@@ -58,6 +58,7 @@
       "fast-uri": "3.1.2",
       "rollup": "^4.59.0",
       "tar": "^7.5.11",
+      "ws": "^8.21.0",
       "readdir-glob>minimatch": "^5.1.8",
       "glob@10>minimatch": "^9.0.7",
       "glob@13>minimatch": "^10.2.3"
