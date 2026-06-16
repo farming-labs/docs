@@ -110,6 +110,8 @@ interface DocsPageClientProps {
   feedbackPositiveLabel?: string;
   feedbackNegativeLabel?: string;
   feedbackSubmitLabel?: string;
+  feedbackSuccessMessage?: string;
+  feedbackErrorMessage?: string;
   feedbackOnFeedback?: (data: DocsFeedbackData) => void | Promise<void>;
   analytics?: boolean;
   children: ReactNode;
@@ -528,6 +530,8 @@ export function DocsPageClient({
   feedbackPositiveLabel,
   feedbackNegativeLabel,
   feedbackSubmitLabel,
+  feedbackSuccessMessage,
+  feedbackErrorMessage,
   feedbackOnFeedback,
   analytics = false,
   children,
@@ -986,6 +990,8 @@ export function DocsPageClient({
               positiveLabel={feedbackPositiveLabel}
               negativeLabel={feedbackNegativeLabel}
               submitLabel={feedbackSubmitLabel}
+              successMessage={feedbackSuccessMessage}
+              errorMessage={feedbackErrorMessage}
               onFeedback={feedbackOnFeedback}
               analytics={analytics}
             />

@@ -2,6 +2,35 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 import { TanstackDocsLayout } from "./tanstack-layout.js";
 
+function findDocsPageClientProps(node: unknown): Record<string, unknown> | null {
+  if (!node || typeof node !== "object") return null;
+
+  const candidate = node as {
+    type?: unknown;
+    props?: Record<string, unknown> & { children?: unknown };
+  };
+
+  if (
+    candidate.type &&
+    candidate.props &&
+    "copyMarkdown" in candidate.props &&
+    "openDocs" in candidate.props
+  ) {
+    return candidate.props;
+  }
+
+  const children = candidate.props?.children;
+  if (Array.isArray(children)) {
+    for (const child of children) {
+      const found = findDocsPageClientProps(child);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  return children ? findDocsPageClientProps(children) : null;
+}
+
 describe("TanstackDocsLayout", () => {
   it("does not add an extra display: contents wrapper above the docs layout root", () => {
     const tree = TanstackDocsLayout({
@@ -174,5 +203,29 @@ describe("TanstackDocsLayout", () => {
         }),
       ],
     });
+  });
+
+  it("passes feedback status messages through to DocsPageClient", () => {
+    const tree = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+        feedback: {
+          successMessage: "Thanks, we logged this.",
+          errorMessage: "Feedback could not be recorded.",
+        },
+      },
+      tree: {
+        name: "Docs",
+        children: [],
+      },
+      children: React.createElement("div", null, "child"),
+    });
+
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.feedbackEnabled).toBe(true);
+    expect(props?.feedbackSuccessMessage).toBe("Thanks, we logged this.");
+    expect(props?.feedbackErrorMessage).toBe("Feedback could not be recorded.");
   });
 });
