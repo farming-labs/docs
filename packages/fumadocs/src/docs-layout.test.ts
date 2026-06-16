@@ -302,6 +302,24 @@ describe("createDocsLayout pageActions", () => {
     expect(props?.feedbackErrorMessage).toBe("Feedback could not be recorded.");
   });
 
+  it("passes the configured feedback placeholder through to DocsPageClient", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      feedback: {
+        placeholder: "Tell us what felt unclear.",
+      },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.feedbackEnabled).toBe(true);
+    expect(props?.feedbackPlaceholder).toBe("Tell us what felt unclear.");
+  });
+
   it("passes the configured last-updated label through to DocsPageClient", () => {
     const Layout = createDocsLayout({
       entry: "docs",

@@ -286,7 +286,7 @@ function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
   const defaults = {
     enabled: false,
     question: "How is this guide?",
-    placeholder: "Leave your feedback...",
+    placeholder: "Share what could be clearer...",
     requireComment: false,
     positiveLabel: "Good",
     negativeLabel: "Bad",

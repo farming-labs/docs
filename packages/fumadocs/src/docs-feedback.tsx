@@ -156,7 +156,7 @@ export function DocsFeedback({
   entry,
   locale,
   question = "How is this guide?",
-  placeholder = "Leave your feedback...",
+  placeholder = "Share what could be clearer...",
   requireComment = false,
   positiveLabel = "Good",
   negativeLabel = "Bad",
