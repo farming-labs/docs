@@ -48,6 +48,19 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - When they need to edit `docs.config.ts` through MCP, prefer `get_config_schema` before suggesting
   config changes.
 
+## `readingTime` fields
+
+The `readingTime` config accepts `boolean | ReadingTimeConfig`. When set to an object, the supported fields are:
+
+| Field            | Type                  | Default  | Notes                                                                                                   |
+| ---------------- | --------------------- | -------- | ------------------------------------------------------------------------------------------------------- |
+| `enabled`        | `boolean`             | `false`  | Enables reading-time labels globally                                                                    |
+| `wordsPerMinute` | `number`              | `220`    | Reading speed for estimates                                                                             |
+| `format`         | `"long" \| "short"`  | `"long"` | `"long"` → `5 min read`; `"short"` → `5 min`                                                           |
+| `includeCode`    | `boolean`             | `false`  | When `true`, fenced code blocks and inline code count toward the word total. Use for code-heavy guides. |
+
+Default: fenced code blocks and inline code are **excluded** from the estimate. Set `includeCode: true` only when the page's code examples are meaningful to reading time (e.g. a step-by-step setup guide where the reader is expected to work through every snippet).
+
 ## Framework notes
 
 - Next.js uses `withDocs()` and can expose page-level `.md`, `Accept: text/markdown`, and `Signature-Agent` markdown routes automatically.
