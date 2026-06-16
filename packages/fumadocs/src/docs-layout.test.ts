@@ -282,6 +282,26 @@ describe("createDocsLayout pageActions", () => {
     expect(props?.feedbackRequireComment).toBe(true);
   });
 
+  it("passes feedback status messages through to DocsPageClient", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      feedback: {
+        successMessage: "Thanks, we logged this.",
+        errorMessage: "Feedback could not be recorded.",
+      },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.feedbackEnabled).toBe(true);
+    expect(props?.feedbackSuccessMessage).toBe("Thanks, we logged this.");
+    expect(props?.feedbackErrorMessage).toBe("Feedback could not be recorded.");
+  });
+
   it("keeps reading time disabled when the config is unconfigured", () => {
     const Layout = createDocsLayout({
       entry: "docs",

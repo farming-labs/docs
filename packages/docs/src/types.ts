@@ -2160,6 +2160,10 @@ export interface FeedbackConfig {
   negativeLabel?: string;
   /** Label for the submit button. @default "Submit" */
   submitLabel?: string;
+  /** Message shown after feedback is submitted successfully. @default "Thanks for the feedback." */
+  successMessage?: string;
+  /** Message shown when feedback submission fails. @default "Could not send feedback. Please try again." */
+  errorMessage?: string;
   /**
    * Callback fired when the user submits the feedback form.
    *

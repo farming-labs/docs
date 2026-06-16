@@ -18,6 +18,8 @@ export interface DocsFeedbackProps {
   positiveLabel?: string;
   negativeLabel?: string;
   submitLabel?: string;
+  successMessage?: string;
+  errorMessage?: string;
   onFeedback?: (data: DocsFeedbackData) => void | Promise<void>;
   analytics?: boolean;
 }
@@ -159,6 +161,8 @@ export function DocsFeedback({
   positiveLabel = "Good",
   negativeLabel = "Bad",
   submitLabel = "Submit",
+  successMessage = "Thanks for the feedback.",
+  errorMessage = "Could not send feedback. Please try again.",
   onFeedback,
   analytics = false,
 }: DocsFeedbackProps) {
@@ -306,13 +310,13 @@ export function DocsFeedback({
                 role="status"
                 aria-live="polite"
               >
-                Thanks for the feedback.
+                {successMessage}
               </p>
             )}
           </div>
           {status === "error" && (
             <p className="fd-feedback-status" data-status="error" role="status" aria-live="polite">
-              Could not send feedback. Please try again.
+              {errorMessage}
             </p>
           )}
         </div>

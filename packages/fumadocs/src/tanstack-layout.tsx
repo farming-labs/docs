@@ -291,6 +291,8 @@ function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
     positiveLabel: "Good",
     negativeLabel: "Bad",
     submitLabel: "Submit",
+    successMessage: "Thanks for the feedback.",
+    errorMessage: "Could not send feedback. Please try again.",
   };
 
   if (feedback === undefined || feedback === false) return defaults;
@@ -304,6 +306,8 @@ function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
     feedback.positiveLabel !== undefined ||
     feedback.negativeLabel !== undefined ||
     feedback.submitLabel !== undefined ||
+    feedback.successMessage !== undefined ||
+    feedback.errorMessage !== undefined ||
     feedback.onFeedback !== undefined;
 
   return {
@@ -314,6 +318,8 @@ function resolveFeedbackConfig(feedback: DocsConfig["feedback"]) {
     positiveLabel: feedback.positiveLabel ?? defaults.positiveLabel,
     negativeLabel: feedback.negativeLabel ?? defaults.negativeLabel,
     submitLabel: feedback.submitLabel ?? defaults.submitLabel,
+    successMessage: feedback.successMessage ?? defaults.successMessage,
+    errorMessage: feedback.errorMessage ?? defaults.errorMessage,
   };
 }
 
@@ -550,6 +556,8 @@ export function TanstackDocsLayout({
           feedbackPositiveLabel={feedbackConfig.positiveLabel}
           feedbackNegativeLabel={feedbackConfig.negativeLabel}
           feedbackSubmitLabel={feedbackConfig.submitLabel}
+          feedbackSuccessMessage={feedbackConfig.successMessage}
+          feedbackErrorMessage={feedbackConfig.errorMessage}
           analytics={analyticsEnabled}
         >
           {children}
