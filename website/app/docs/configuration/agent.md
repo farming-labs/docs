@@ -47,6 +47,12 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - When they ask about static hosting, mention `staticExport: true`.
 - When they need to edit `docs.config.ts` through MCP, prefer `get_config_schema` before suggesting
   config changes.
+- When they ask about reading time, note that `readingTime` is opt-in (`enabled: true` required).
+  The `includeCode` field inside `ReadingTimeConfig` defaults to `false`, which means fenced and
+  inline code blocks are stripped before counting words so the label reflects human prose length.
+  Recommend `includeCode: true` only for code-heavy guides where examples make up a large part of
+  the page and should count toward the estimate. Do not recommend setting it globally when prose
+  length is the primary signal the team cares about.
 
 ## Framework notes
 
