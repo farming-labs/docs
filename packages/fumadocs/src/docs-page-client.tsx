@@ -781,9 +781,8 @@ export function DocsPageClient({
   const showLastUpdatedBelowTitle = !!lastModified && lastUpdatedPosition === "below-title";
   const showLastUpdatedInFooter = !!lastModified && lastUpdatedPosition === "footer";
   const lastUpdatedLabelText = lastUpdatedLabel.trim();
-  const lastUpdatedText = lastUpdatedLabelText && lastModified
-    ? `${lastUpdatedLabelText} ${lastModified}`
-    : lastModified;
+  const lastUpdatedText =
+    lastUpdatedLabelText && lastModified ? `${lastUpdatedLabelText} ${lastModified}` : lastModified;
   const showFooter =
     !isChangelogRoute && (!!githubFileUrl || showLastUpdatedInFooter || llmsTxtEnabled);
   const readingTimeBlock =
