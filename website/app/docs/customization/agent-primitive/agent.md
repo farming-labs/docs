@@ -22,6 +22,12 @@ Use this page when you need the page-level authoring contract for agent-facing d
 - Choose `Agent` when the human page should stay canonical and only needs extra machine context
 - Choose `agent.md` when agents need a shorter, stricter, or more operational document
 
+## Choosing Between Them
+
+- Use `Agent` when the normal page should stay the source of truth and you only need extra machine context
+- Use `agent.md` when the machine-readable page should become its own focused document
+- Use both patterns page-by-page; you do not need a global config flag to turn them on
+
 ## Automation
 
 If the team wants to generate or refresh page-level `agent.md` files automatically, use
@@ -40,6 +46,14 @@ pnpm exec docs agent compact customization/agent-primitive
 pnpm exec docs agent compact --all
 ```
 
+## Audit The Agent Surface
+
+After adding or changing page-level primitives, run `docs doctor --agent` to confirm the
+machine-facing layer is actually discoverable. Watch the `Explicit agent-friendly pages` metric
+improve as more routes gain `<Agent>` blocks or sibling `agent.md` files.
+
+See [the CLI docs](/docs/cli#doctor) for the full audit workflow.
+
 ## Validation
 
 - Human page: `/docs/customization/agent-primitive`
@@ -48,10 +62,39 @@ pnpm exec docs agent compact --all
 - API route: `/api/docs?format=markdown&path=customization/agent-primitive`
 - MCP read target: `/docs/customization/agent-primitive`
 
-After adding or changing page-level primitives, see [the CLI docs](/docs/cli) and the `Doctor`
-section for the audit workflow. Use it to confirm the machine-facing layer is actually discoverable
-and to watch the `Explicit agent-friendly pages` metric improve as more routes gain `<Agent>`
-blocks or sibling `agent.md` files.
+## Feedback Contract
+
+Agent feedback is enabled by default unless the site opts out. Use these default endpoints:
+
+- schema: `/api/docs/agent/feedback/schema`
+- submit: `/api/docs/agent/feedback`
+
+The shared docs API also accepts the same feature through query parameters:
+
+- schema: `/api/docs?feedback=agent&schema=1`
+- submit: `/api/docs?feedback=agent`
+
+Fetch the schema endpoint first and use the returned schema as the source of truth for the body you
+submit. Do not assume the payload fields are fixed, because the site can customize
+`feedback.agent.schema`.
+
+For the default schema, the body looks like:
+
+```json
+{
+  "context": {
+    "page": "/docs/customization/agent-primitive",
+    "source": "md-route"
+  },
+  "payload": {
+    "task": "understand page-level agent docs",
+    "outcome": "implemented"
+  }
+}
+```
+
+If the project customizes `feedback.agent.route` or `feedback.agent.schemaRoute`, use those
+configured paths instead of the defaults.
 
 ## Let Agents Discover The Spec
 
@@ -107,39 +150,20 @@ available in the spec.
 </Agent>
 ```
 
-## Feedback Contract
+## Page Primitives Vs Skills
 
-Agent feedback is enabled by default unless the site opts out. Use these default endpoints:
+`Agent` and `agent.md` are page-scoped primitives. They are the right fit when the machine context
+belongs to a single docs route.
 
-- schema: `/api/docs/agent/feedback/schema`
-- submit: `/api/docs/agent/feedback`
+Use `/AGENTS.md` when a coding agent needs site-level operating instructions for this repo or docs
+deployment. Use `/skill.md` when an agent needs a concise installable-skill style guide for this
+hosted docs site. Use an installable skill when the guidance should be reusable across many pages or
+workflows, such as setup, CLI usage, theme creation, page actions, or deeper configuration tasks.
 
-The shared docs API also accepts the same feature through query parameters:
+In practice, the two features work well together:
 
-- schema: `/api/docs?feedback=agent&schema=1`
-- submit: `/api/docs?feedback=agent`
-
-Fetch the schema endpoint first and use the returned schema as the source of truth for the body you
-submit. Do not assume the payload fields are fixed, because the site can customize
-`feedback.agent.schema`.
-
-For the default schema, the body looks like:
-
-```json
-{
-  "context": {
-    "page": "/docs/customization/agent-primitive",
-    "source": "md-route"
-  },
-  "payload": {
-    "task": "understand page-level agent docs",
-    "outcome": "implemented"
-  }
-}
-```
-
-If the project customizes `feedback.agent.route` or `feedback.agent.schemaRoute`, use those
-configured paths instead of the defaults.
+- use `Agent` or `agent.md` to make one page more useful to agents
+- use skills when the knowledge should be bundled as a reusable workflow outside a single page
 
 ## Skills
 
