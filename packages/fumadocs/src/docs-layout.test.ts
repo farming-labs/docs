@@ -302,6 +302,26 @@ describe("createDocsLayout pageActions", () => {
     expect(props?.feedbackErrorMessage).toBe("Feedback could not be recorded.");
   });
 
+  it("passes the configured last-updated label through to DocsPageClient", () => {
+    const Layout = createDocsLayout({
+      entry: "docs",
+      lastUpdated: {
+        label: "Updated",
+        position: "below-title",
+      },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.lastUpdatedEnabled).toBe(true);
+    expect(props?.lastUpdatedLabel).toBe("Updated");
+    expect(props?.lastUpdatedPosition).toBe("below-title");
+  });
+
   it("keeps reading time disabled when the config is unconfigured", () => {
     const Layout = createDocsLayout({
       entry: "docs",

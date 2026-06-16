@@ -228,4 +228,28 @@ describe("TanstackDocsLayout", () => {
     expect(props?.feedbackSuccessMessage).toBe("Thanks, we logged this.");
     expect(props?.feedbackErrorMessage).toBe("Feedback could not be recorded.");
   });
+
+  it("passes the configured last-updated label through to DocsPageClient", () => {
+    const tree = TanstackDocsLayout({
+      config: {
+        entry: "docs",
+        lastUpdated: {
+          label: "Updated",
+          position: "below-title",
+        },
+      },
+      tree: {
+        name: "Docs",
+        children: [],
+      },
+      children: React.createElement("div", null, "child"),
+    });
+
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.lastUpdatedEnabled).toBe(true);
+    expect(props?.lastUpdatedLabel).toBe("Updated");
+    expect(props?.lastUpdatedPosition).toBe("below-title");
+  });
 });

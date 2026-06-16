@@ -392,6 +392,8 @@ export function TanstackDocsLayout({
   const lastUpdatedEnabled =
     lastUpdatedRaw !== false &&
     (typeof lastUpdatedRaw !== "object" || lastUpdatedRaw.enabled !== false);
+  const lastUpdatedLabel =
+    typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.label ?? "Last updated") : "Last updated";
   const lastUpdatedPosition: "footer" | "below-title" =
     typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
   const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
@@ -542,6 +544,7 @@ export function TanstackDocsLayout({
           pageActionsAlignment={pageActionsAlignment}
           editOnGithubUrl={editOnGithubUrl}
           lastUpdatedEnabled={lastUpdatedEnabled}
+          lastUpdatedLabel={lastUpdatedLabel}
           lastUpdatedPosition={lastUpdatedPosition}
           lastModified={lastModified}
           readingTimeEnabled={readingTimeEnabled}
