@@ -1490,6 +1490,25 @@ pageActions: {
 
 ---
 
+## `LastUpdatedConfig`
+
+Controls the "Last updated" date shown on docs pages.
+
+| Property   | Type                        | Default          | Description                                                     |
+| ---------- | --------------------------- | ---------------- | --------------------------------------------------------------- |
+| `enabled`  | `boolean`                   | `true`           | Show or hide the last-updated date                              |
+| `label`    | `string`                    | `"Last updated"` | Text prefix shown before the formatted date                     |
+| `position` | `"footer" \| "below-title"` | `"footer"`       | Where to render the date: next to "Edit on GitHub" or below the page title |
+
+```ts title="docs.config.ts"
+lastUpdated: {
+  label: "Updated",
+  position: "below-title",
+},
+```
+
+Set `label` to an empty string to show only the formatted date with no prefix. Use any locale-appropriate string to rebrand the prefix text (e.g. `"Dernière mise à jour"` for French docs).
+
 ## `ReadingTimeConfig`
 
 Estimated reading-time label shown on docs pages.
