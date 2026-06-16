@@ -25,6 +25,7 @@ Use this machine-oriented page when the user needs implementation guidance for `
    - `i18n`
    - `metadata`
    - `og`
+   - `readingTime`
 3. If the config contains JSX, prefer `docs.config.tsx`.
 4. If the user only needs machine-readable page content, prefer `.md` routes or MCP `read_page` over scraping HTML.
 5. For Next.js docs routes, mention `Signature-Agent` when the user wants agents to read canonical URLs as markdown.
@@ -47,6 +48,11 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - When they ask about static hosting, mention `staticExport: true`.
 - When they need to edit `docs.config.ts` through MCP, prefer `get_config_schema` before suggesting
   config changes.
+- When they ask about reading-time labels, use `readingTime`. Key sub-fields:
+  - `enabled` (boolean, default `false`) — turns the feature on globally
+  - `wordsPerMinute` (number, default `220`) — reading speed for the estimate
+  - `format` (`"long"` | `"short"`, default `"long"`) — `"long"` renders `5 min read`, `"short"` renders `5 min`
+  - `includeCode` (boolean, default `false`) — when `true`, fenced code blocks and inline code count toward the estimate; use for code-heavy guides where examples are a meaningful portion of the reading work
 
 ## Framework notes
 
