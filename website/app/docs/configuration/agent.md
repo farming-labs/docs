@@ -48,23 +48,6 @@ Use this machine-oriented page when the user needs implementation guidance for `
 - When they need to edit `docs.config.ts` through MCP, prefer `get_config_schema` before suggesting
   config changes.
 
-## Key config areas
-
-| Area | Option | What it controls |
-| ---- | ------ | ----------------- |
-| Routing | `entry`, `contentDir` | Where docs pages live |
-| Theme | `theme`, `components` | Visual preset and custom MDX components |
-| Search | `search` | Simple, Typesense, Algolia, MCP, or custom |
-| AI chat | `ai` | Ask AI model, API key env var, and retrieval |
-| Agent compaction | `agent.compact` | Defaults for `docs agent compact` |
-| MCP server | `mcp` | Enabled tools, endpoint, and server name |
-| Machine-readable maps | `llmsTxt`, `sitemap` | `llms.txt`, `llms-full.txt`, `sitemap.xml`, `sitemap.md` |
-| Crawler policy | `robots` | Allows/denies for bots and AI agents |
-| API reference | `apiReference` | Route scanning or hosted OpenAPI spec |
-| Metadata | `metadata`, `og` | `<title>`, Open Graph, structured data |
-| Review | `review` | GitHub Actions docs review workflow |
-| Static export | `staticExport` | For hosting on Netlify, Cloudflare Pages, etc. |
-
 ## Framework notes
 
 - Next.js uses `withDocs()` and can expose page-level `.md`, `Accept: text/markdown`, and `Signature-Agent` markdown routes automatically.
@@ -94,14 +77,6 @@ Use this machine-oriented page when the user needs implementation guidance for `
 3. Move to `search`, `ai`, `mcp`, `pageActions`, `llmsTxt`, `sitemap`, or `robots` only after the base project shape is correct.
 4. Use customization and theme pages once routing and content structure are stable.
 5. Use markdown routes, sitemaps, `robots.txt`, `agent.compact`, MCP, and token-efficiency docs when the user is optimizing for agents or machine-readable access.
-
-## Validation
-
-- Human page: `/docs/configuration`
-- Markdown route: `/docs/configuration.md`
-- Canonical markdown request: `/docs/configuration` with `Signature-Agent`
-- API route: `/api/docs?format=markdown&path=configuration`
-- MCP read target: `/docs/configuration`
 
 ## Output style
 
