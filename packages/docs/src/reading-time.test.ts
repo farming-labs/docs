@@ -28,6 +28,27 @@ describe("reading time helpers", () => {
     expect(minutes).toBe(4);
   });
 
+  it("counts code blocks and inline code when includeCode is enabled", () => {
+    const minutes = estimateReadingTimeMinutes(
+      [
+        "# Install",
+        "",
+        "Read these words carefully before setup.",
+        "",
+        "```bash",
+        "pnpm install",
+        "pnpm dev",
+        "```",
+        "",
+        "Run `docs dev` to preview locally.",
+      ].join("\n"),
+      3,
+      { includeCode: true },
+    );
+
+    expect(minutes).toBe(6);
+  });
+
   it("respects per-page numeric overrides", () => {
     expect(
       resolveReadingTimeFromSource(
@@ -45,17 +66,30 @@ describe("reading time helpers", () => {
   });
 
   it("treats null config as disabled", () => {
-    expect(resolveReadingTimeOptions(null)).toEqual({ enabled: false, format: "long" });
+    expect(resolveReadingTimeOptions(null)).toEqual({
+      enabled: false,
+      format: "long",
+      includeCode: false,
+    });
   });
 
   it("resolves short reading-time labels from config", () => {
     expect(resolveReadingTimeOptions({ enabled: true, format: "short" })).toMatchObject({
       enabled: true,
       format: "short",
+      includeCode: false,
     });
     expect(resolveReadingTimeOptions({ enabled: true, format: "verbose" as never })).toMatchObject({
       enabled: true,
       format: "long",
+      includeCode: false,
+    });
+  });
+
+  it("resolves includeCode from reading-time config", () => {
+    expect(resolveReadingTimeOptions({ enabled: true, includeCode: true })).toMatchObject({
+      enabled: true,
+      includeCode: true,
     });
   });
 
@@ -79,6 +113,29 @@ describe("reading time helpers", () => {
     );
 
     expect(minutes).toBe(3);
+  });
+
+  it("passes includeCode through page-level reading time resolution", () => {
+    const minutes = resolvePageReadingTime(
+      { title: "Code Guide" },
+      [
+        "# Code Guide",
+        "",
+        "Short intro.",
+        "",
+        "```ts",
+        "const readingTime = { includeCode: true };",
+        "export default readingTime;",
+        "```",
+      ].join("\n"),
+      {
+        enabledByDefault: true,
+        wordsPerMinute: 3,
+        includeCode: true,
+      },
+    );
+
+    expect(minutes).toBe(4);
   });
 
   it("allows per-page overrides to opt into reading time even when disabled globally", () => {
