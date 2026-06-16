@@ -1411,6 +1411,11 @@ export interface LastUpdatedConfig {
    */
   enabled?: boolean;
   /**
+   * Label shown before the formatted date.
+   * @default "Last updated"
+   */
+  label?: string;
+  /**
    * Where to render the "Last updated" date.
    *
    * - `"footer"` — next to the "Edit on GitHub" link at the bottom (default)

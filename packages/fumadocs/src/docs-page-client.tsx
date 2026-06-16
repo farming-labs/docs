@@ -94,6 +94,8 @@ interface DocsPageClientProps {
   readingTimeEnabled?: boolean;
   /** Whether to show "Last updated" at all */
   lastUpdatedEnabled?: boolean;
+  /** Label shown before the formatted last-updated date */
+  lastUpdatedLabel?: string;
   /** Where to show the "Last updated" date: "footer" (next to Edit on GitHub) or "below-title" */
   lastUpdatedPosition?: "footer" | "below-title";
   /** Whether llms.txt is enabled — shows links in footer */
@@ -519,6 +521,7 @@ export function DocsPageClient({
   structuredData: structuredDataProp,
   readingTimeEnabled = false,
   lastUpdatedEnabled = true,
+  lastUpdatedLabel = "Last updated",
   lastUpdatedPosition = "footer",
   llmsTxtEnabled = false,
   descriptionMap,
@@ -777,6 +780,9 @@ export function DocsPageClient({
 
   const showLastUpdatedBelowTitle = !!lastModified && lastUpdatedPosition === "below-title";
   const showLastUpdatedInFooter = !!lastModified && lastUpdatedPosition === "footer";
+  const lastUpdatedLabelText = lastUpdatedLabel.trim();
+  const lastUpdatedText =
+    lastUpdatedLabelText && lastModified ? `${lastUpdatedLabelText} ${lastModified}` : lastModified;
   const showFooter =
     !isChangelogRoute && (!!githubFileUrl || showLastUpdatedInFooter || llmsTxtEnabled);
   const readingTimeBlock =
@@ -808,7 +814,7 @@ export function DocsPageClient({
       <div key="below-title" className="fd-below-title-block not-prose">
         {showLastUpdatedBelowTitle && (
           <p key="last-updated" className="fd-last-updated-inline">
-            Last updated {lastModified}
+            {lastUpdatedText}
           </p>
         )}
         <hr key="separator" className="fd-title-separator" />
@@ -1021,7 +1027,7 @@ export function DocsPageClient({
               )}
               {showLastUpdatedInFooter && lastModified && (
                 <span key="last-updated" className="fd-last-updated-footer">
-                  Last updated {lastModified}
+                  {lastUpdatedText}
                 </span>
               )}
             </div>

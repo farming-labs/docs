@@ -967,6 +967,8 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const lastUpdatedEnabled =
     lastUpdatedRaw !== false &&
     (typeof lastUpdatedRaw !== "object" || lastUpdatedRaw.enabled !== false);
+  const lastUpdatedLabel =
+    typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.label ?? "Last updated") : "Last updated";
   const lastUpdatedPosition: "footer" | "below-title" =
     typeof lastUpdatedRaw === "object" ? (lastUpdatedRaw.position ?? "footer") : "footer";
   const readingTimeOptions = resolveReadingTimeOptions(config.readingTime);
@@ -1167,6 +1169,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
             githubDirectory={githubDirectory}
             lastModifiedMap={lastModifiedMap}
             lastUpdatedEnabled={lastUpdatedEnabled}
+            lastUpdatedLabel={lastUpdatedLabel}
             lastUpdatedPosition={lastUpdatedPosition}
             readingTimeEnabled={readingTimeEnabled}
             readingTimeFormat={readingTimeFormat}
