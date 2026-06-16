@@ -1636,6 +1636,25 @@ curl -X POST "http://127.0.0.1:3000/api/docs/agent/feedback" \
   -d '{"payload":{"task":"demo","outcome":"implemented"}}'
 ```
 
+## Last Updated
+
+Use `lastUpdated` to control the date shown at the bottom of each docs page. The optional `label` field lets you replace the default `"Last updated"` prefix with any string — useful for localization or rebranding.
+
+```ts title="docs.config.ts"
+lastUpdated: {
+  label: "Updated",
+  position: "below-title",
+},
+```
+
+| Property   | Type                        | Default          | Description                                              |
+| ---------- | --------------------------- | ---------------- | -------------------------------------------------------- |
+| `enabled`  | `boolean`                   | `true`           | Show or hide the last-updated date                       |
+| `label`    | `string`                    | `"Last updated"` | Text prefix shown before the formatted date              |
+| `position` | `"footer" \| "below-title"` | `"footer"`       | Render beside "Edit on GitHub" or below the page title   |
+
+Set `label` to an empty string to display only the formatted date with no prefix text.
+
 ## Reading Time
 
 Use `readingTime` when you want an estimated label like `5 min read` on docs pages.
