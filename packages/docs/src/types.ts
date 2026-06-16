@@ -2155,7 +2155,7 @@ export interface FeedbackConfig {
   enabled?: boolean;
   /** Prompt shown above the feedback buttons. @default "How is this guide?" */
   question?: string;
-  /** Placeholder shown in the optional free-form feedback field. @default "Leave your feedback..." */
+  /** Placeholder shown in the optional free-form feedback field. @default "Share what could be clearer..." */
   placeholder?: string;
   /** Require a non-empty comment before feedback can be submitted. @default false */
   requireComment?: boolean;
