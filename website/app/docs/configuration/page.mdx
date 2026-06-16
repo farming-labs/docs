@@ -1647,6 +1647,7 @@ export default defineDocs({
     enabled: true,
     wordsPerMinute: 220,
     format: "short",
+    includeCode: true,
   },
 });
 ```
@@ -1656,7 +1657,8 @@ Default behavior:
 - the feature is **opt-in**
 - the estimate uses `220` words per minute unless you override it
 - labels render as `5 min read` by default; set `format: "short"` to render `5 min`
-- fenced code blocks, inline code, links, images, and raw HTML are stripped before counting words
+- fenced code blocks, inline code, links, images, and raw HTML are stripped before counting words unless you set `includeCode: true`
+- set `includeCode: true` for code-heavy guides where examples are a meaningful part of the reading work
 - changelog pages do not render the reading-time label
 - page frontmatter wins when `readingTime` is present, even if the global config is disabled
 

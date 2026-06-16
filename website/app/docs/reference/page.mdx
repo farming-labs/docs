@@ -1499,19 +1499,22 @@ Estimated reading-time label shown on docs pages.
 | `enabled`        | `boolean` | `true`  | Show the computed read-time label when `readingTime` is configured |
 | `wordsPerMinute` | `number`  | `220`   | Word-count rate used for the estimate |
 | `format`         | `"long" \| "short"` | `"long"` | Label style: `3 min read` for `"long"` or `3 min` for `"short"` |
+| `includeCode`    | `boolean` | `false` | Count fenced code blocks and inline code in the estimate |
 
 ```ts
 readingTime: {
   enabled: true,
   wordsPerMinute: 220,
   format: "short",
+  includeCode: true,
 },
 ```
 
 Notes:
 
 - `readingTime` is **disabled by default** until you configure it in `DocsConfig`
-- the estimate strips code blocks, inline code, links, images, HTML, and URLs before counting
+- the estimate strips code blocks, inline code, links, images, HTML, and URLs before counting unless `includeCode: true`
+- use `includeCode: true` for code-heavy guides where examples are a meaningful part of the reading work
 - `format` changes only the rendered label; it does not affect word counting or per-page overrides
 - page frontmatter can disable or override the value with `readingTime: false`, `readingTime: true`, or `readingTime: 8`, even when the global config is off
 - placement follows the page title slot: it sits directly below the page actions row when page actions are shown above or below the title
