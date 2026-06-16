@@ -554,6 +554,7 @@ function buildReadingTimeMap(
   options: {
     enabledByDefault: boolean;
     wordsPerMinute: number;
+    includeCode: boolean;
   },
 ): Record<string, number> {
   const docsDir = ctx.docsDir;
@@ -972,6 +973,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const readingTimeEnabledByDefault = readingTimeOptions.enabled;
   const readingTimeWordsPerMinute = readingTimeOptions.wordsPerMinute ?? 220;
   const readingTimeFormat = readingTimeOptions.format;
+  const readingTimeIncludeCode = readingTimeOptions.includeCode;
 
   // llms.txt config
   const llmsTxtEnabled = resolveEnabledByDefault(config.llmsTxt);
@@ -1051,6 +1053,7 @@ export function createDocsLayout(config: DocsConfig, options?: { locale?: string
   const readingTimeMap = buildReadingTimeMap(config, localeContext, {
     enabledByDefault: readingTimeEnabledByDefault,
     wordsPerMinute: readingTimeWordsPerMinute,
+    includeCode: readingTimeIncludeCode,
   });
   const structuredDataMap = buildStructuredDataMap(config, localeContext);
   const readingTimeEnabled = readingTimeEnabledByDefault || Object.keys(readingTimeMap).length > 0;

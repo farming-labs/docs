@@ -746,6 +746,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     const readingTime = resolvePageReadingTime(data, humanRawContent, {
       enabledByDefault: readingTimeOptions.enabled,
       wordsPerMinute: readingTimeOptions.wordsPerMinute,
+      includeCode: readingTimeOptions.includeCode,
     });
 
     const currentIndex = flatPages.findIndex((page) => page.url === currentUrl);

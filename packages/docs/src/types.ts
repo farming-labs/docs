@@ -1450,6 +1450,15 @@ export interface ReadingTimeConfig {
    * @default "long"
    */
   format?: ReadingTimeFormat;
+  /**
+   * Whether fenced and inline code should count toward the estimate.
+   *
+   * Code is ignored by default so the label reflects human prose. Set this to
+   * `true` when code-heavy guides should include examples in the estimate.
+   *
+   * @default false
+   */
+  includeCode?: boolean;
 }
 
 /**

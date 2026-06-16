@@ -362,6 +362,43 @@ describe("createDocsLayout pageActions", () => {
     expect(props?.readingTimeFormat).toBe("short");
   });
 
+  it("includes code examples in reading-time estimates when configured", () => {
+    mkdirSync(join(tmpDir, "app", "docs", "code-heavy"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "app", "docs", "code-heavy", "page.mdx"),
+      [
+        "---",
+        "title: Code Heavy",
+        "---",
+        "",
+        "# Code Heavy",
+        "",
+        "Short intro.",
+        "",
+        "```ts",
+        "const readingTime = { includeCode: true };",
+        "export default readingTime;",
+        "```",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    const Layout = createDocsLayout({
+      entry: "docs",
+      readingTime: { enabled: true, wordsPerMinute: 3, includeCode: true },
+    });
+
+    const tree = Layout({
+      children: React.createElement("div", null, "child"),
+    });
+    const props = findDocsPageClientProps(tree);
+
+    expect(props).toBeTruthy();
+    expect(props?.readingTimeMap).toMatchObject({
+      "/docs/code-heavy": 4,
+    });
+  });
+
   it("lets per-page frontmatter override a disabled global reading-time config", () => {
     mkdirSync(join(tmpDir, "app", "docs", "guide"), { recursive: true });
     writeFileSync(

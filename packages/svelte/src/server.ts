@@ -771,6 +771,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     const readingTime = resolvePageReadingTime(data, humanRawContent, {
       enabledByDefault: readingTimeOptions.enabled,
       wordsPerMinute: readingTimeOptions.wordsPerMinute,
+      includeCode: readingTimeOptions.includeCode,
     });
     const html = await renderMarkdown(humanRawContent, {
       theme: config.theme,
