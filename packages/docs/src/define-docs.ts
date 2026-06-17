@@ -17,6 +17,7 @@ export function defineDocs(config: DocsConfig): DocsConfig {
     sidebar: config.sidebar,
     components: config.components,
     analytics: config.analytics,
+    telemetry: config.telemetry,
     cloud: config.cloud,
     observability: config.observability,
     onCopyClick: config.onCopyClick,

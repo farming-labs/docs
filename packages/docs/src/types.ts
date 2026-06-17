@@ -892,6 +892,92 @@ export interface DocsAnalyticsConfig {
   onEvent?: (event: DocsAnalyticsEvent) => void | Promise<void>;
 }
 
+export type DocsTelemetryFramework =
+  | "next"
+  | "tanstack-start"
+  | "sveltekit"
+  | "astro"
+  | "nuxt"
+  | "mcp"
+  | (string & {});
+
+export type DocsTelemetryEventType =
+  | "project_detected"
+  | "agent_surface_used"
+  | "mcp_request"
+  | "mcp_tool_used"
+  | (string & {});
+
+export type DocsTelemetryAgentSurface =
+  | "agent_spec"
+  | "agents"
+  | "skill"
+  | "markdown"
+  | "llms"
+  | "agent_feedback_schema"
+  | "agent_feedback_submit"
+  | "ask_ai"
+  | "mcp";
+
+export interface DocsTelemetryConfig {
+  /** Enable Farming Labs maintainer telemetry. Defaults to production-only enabled. */
+  enabled?: boolean;
+  /**
+   * Override the telemetry ingestion endpoint.
+   *
+   * This is mostly useful for self-hosting, development verification, or tests.
+   */
+  endpoint?: string;
+}
+
+export interface DocsTelemetryFeatures {
+  search: boolean;
+  ai: boolean;
+  mcp: boolean;
+  llmsTxt: boolean;
+  pageActions: boolean;
+  feedback: boolean;
+  agentFeedback: boolean;
+  sitemap: boolean;
+  robots: boolean;
+  apiReference: boolean;
+  staticExport: boolean;
+  changelog: boolean;
+  cloud: boolean;
+  review: boolean;
+  codeBlocksValidate: boolean;
+}
+
+export interface DocsTelemetryEvent {
+  type: DocsTelemetryEventType;
+  timestamp: string;
+  package: {
+    name: "@farming-labs/docs";
+    version?: string;
+  };
+  framework?: DocsTelemetryFramework;
+  runtime?: {
+    name?: string;
+    version?: string;
+  };
+  site?: {
+    origin?: string;
+  };
+  deployment?: {
+    provider?: string;
+    environment?: string;
+    id?: string;
+    region?: string;
+  };
+  features?: Partial<DocsTelemetryFeatures>;
+  properties?: Record<string, unknown>;
+}
+
+export type DocsTelemetryEventInput = Omit<DocsTelemetryEvent, "timestamp" | "package"> & {
+  timestamp?: string;
+  package?: Partial<DocsTelemetryEvent["package"]>;
+};
+
 export interface DocsCloudApiKeyConfig {
   /**
    * Environment variable that stores the Docs Cloud API key.
@@ -2645,6 +2731,16 @@ export interface DocsConfig {
    * included unless `includeInputs: true` is set.
    */
   analytics?: boolean | DocsAnalyticsConfig;
+  /**
+   * Farming Labs maintainer telemetry for production adoption and coarse
+   * agent-optimized feature usage.
+   *
+   * This is separate from project-owned `analytics`. It avoids visitor
+   * identities, page views, raw inputs, docs content, cookies, and per-user
+   * sessions. Disable with `telemetry: false`, `DOCS_TELEMETRY=false`, or
+   * `DOCS_TELEMETRY_DISABLED=1`.
+   */
+  telemetry?: boolean | DocsTelemetryConfig;
   /**
    * Docs Cloud integration settings.
    *

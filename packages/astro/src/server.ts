@@ -41,6 +41,8 @@ import {
   createDocsAgentTraceId,
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
+  emitDocsTelemetryAgentSurfaceEvent,
+  emitDocsTelemetryProjectEvent,
   formatDocsAskAIPackageHints,
   findDocsMarkdownPage,
   getDocsLlmsTxtMaxCharsIssue,
@@ -77,6 +79,7 @@ import {
   resolveDocsSitemapPageLastmod,
   resolveDocsAgentsFormat,
   resolveDocsSkillFormat,
+  inferDocsTelemetryAgentSurface,
   renderDocsPageStructuredDataJson,
   selectDocsLlmsTxtContent,
   validateDocsAgentFeedbackPayload,
@@ -891,6 +894,27 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
   const llmsCache = new Map<string, ReturnType<typeof renderDocsLlmsTxt>>();
 
+  function trackTelemetryRequest(request: Request) {
+    emitDocsTelemetryProjectEvent(config, {
+      framework: "astro",
+      request,
+    });
+
+    const surface = inferDocsTelemetryAgentSurface(request, {
+      entry,
+      llmsTxt: config.llmsTxt,
+      feedback: config.feedback,
+    });
+
+    if (!surface) return;
+
+    emitDocsTelemetryAgentSurfaceEvent(config, {
+      framework: "astro",
+      request,
+      surface,
+    });
+  }
+
   function getLlmsContent(ctx: ReturnType<typeof resolveContextFromPath>) {
     const key = ctx.locale ?? "__default__";
     const cached = llmsCache.get(key);
@@ -925,6 +949,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
 
   // ─── GET /api/docs?query=… | ?format=llms | ?format=llms-full ──
   async function GET(context: { request: Request }): Promise<Response> {
+    trackTelemetryRequest(context.request);
     const ctx = resolveContextFromRequest(context.request);
     const url = new URL(context.request.url);
 
@@ -1288,6 +1313,7 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
   }
 
   async function POST(context: { request: Request }): Promise<Response> {
+    trackTelemetryRequest(context.request);
     const requestUrl = new URL(context.request.url);
     const agentFeedbackRequest = resolveDocsAgentFeedbackRequest(requestUrl, agentFeedbackConfig);
     if (agentFeedbackRequest) {
@@ -1852,6 +1878,8 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     },
     mcp: (config as Record<string, unknown>).mcp as Record<string, unknown> | boolean | undefined,
     analytics,
+    telemetry: config.telemetry,
+    telemetryFramework: "astro",
     observability,
     defaultName: mcpSiteTitle,
   });

@@ -33,6 +33,9 @@ import {
   detectDocsMarkdownAgentRequest,
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
+  emitDocsTelemetryAgentSurfaceEvent,
+  emitDocsTelemetryProjectEvent,
+  inferDocsTelemetryAgentSurface,
   getDocsMarkdownVaryHeader,
   hasDocsMarkdownSignatureAgent,
   getDocsLlmsTxtMaxCharsIssue,
@@ -61,6 +64,7 @@ import type {
   DocsI18nConfig,
   LlmsTxtConfig,
   DocsObservabilityConfig,
+  DocsTelemetryConfig,
   FeedbackConfig,
 } from "@farming-labs/docs";
 import {
@@ -149,6 +153,8 @@ interface DocsAPIOptions {
   search?: boolean | DocsSearchConfig;
   /** Analytics configuration */
   analytics?: boolean | DocsAnalyticsConfig;
+  /** Farming Labs maintainer telemetry configuration. */
+  telemetry?: boolean | DocsTelemetryConfig;
   /** Observability configuration for logs, traces, and metrics callbacks. */
   observability?: boolean | DocsObservabilityConfig;
   /** Feedback configuration */
@@ -176,6 +182,7 @@ interface DocsMCPAPIOptions {
   mcp?: boolean | DocsMcpConfig;
   search?: boolean | DocsSearchConfig;
   analytics?: boolean | DocsAnalyticsConfig;
+  telemetry?: boolean | DocsTelemetryConfig;
   observability?: boolean | DocsObservabilityConfig;
 }
 
@@ -3595,9 +3602,48 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     apiReference: apiReferenceConfig,
   } as DocsConfig;
   const openapiDiscovery = resolveApiReferenceOpenApiDiscovery(apiReferenceConfig);
-  const mcpConfig = resolveDocsMcpConfig(options?.mcp ?? readMcpConfig(root), {
+  const rawMcpConfig = options?.mcp ?? readMcpConfig(root);
+  const mcpConfig = resolveDocsMcpConfig(rawMcpConfig, {
     defaultName: llmsConfig.siteTitle ?? "Documentation",
   });
+  const telemetryConfig: Partial<DocsConfig> = {
+    entry,
+    docsPath,
+    contentDir,
+    telemetry: options?.telemetry,
+    search: searchConfig,
+    ai: aiConfig as DocsConfig["ai"],
+    cloud: cloudConfig,
+    i18n: i18nConfig ?? undefined,
+    feedback: options?.feedback,
+    mcp: rawMcpConfig,
+    llmsTxt: llmsConfig as DocsConfig["llmsTxt"],
+    sitemap: sitemapConfig,
+    robots: robotsConfig,
+    apiReference: apiReferenceConfig,
+    metadata: options?.metadata,
+  };
+
+  function trackTelemetryRequest(request: Request) {
+    emitDocsTelemetryProjectEvent(telemetryConfig, {
+      framework: "next",
+      request,
+    });
+
+    const surface = inferDocsTelemetryAgentSurface(request, {
+      entry,
+      llmsTxt: llmsConfig,
+      feedback: options?.feedback,
+    });
+
+    if (!surface) return;
+
+    emitDocsTelemetryAgentSurfaceEvent(telemetryConfig, {
+      framework: "next",
+      request,
+      surface,
+    });
+  }
 
   function resolveDocsDirCandidates(locale?: string): string[] {
     const relativeCandidates = new Set<string>();
@@ -3812,6 +3858,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
      * GET handler — search, markdown, llms.txt, llms-full.txt, or skill.md.
      */
     async GET(request: Request) {
+      trackTelemetryRequest(request);
       const ctx = resolveContextFromRequest(request);
       const url = new URL(request.url);
       const requestAnalyticsProperties = getRequestAnalyticsProperties(request);
@@ -4228,6 +4275,7 @@ export function createDocsAPI(options?: DocsAPIOptions) {
      * Response: SSE stream of chat completion chunks.
      */
     async POST(request: Request): Promise<Response> {
+      trackTelemetryRequest(request);
       const url = new URL(request.url);
       const requestAnalyticsProperties = getRequestAnalyticsProperties(request);
       const agentFeedbackRequest = resolveAgentFeedbackRequest(url, agentFeedbackConfig);
@@ -4387,6 +4435,8 @@ export function createDocsMCPAPI(options: DocsMCPAPIOptions = {}) {
     mcp: options.mcp ?? readMcpConfig(rootDir),
     search: options.search,
     analytics: options.analytics,
+    telemetry: options.telemetry,
+    telemetryFramework: "next",
     observability: options.observability,
     defaultName: navTitle,
   });

@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, readingTime, agent.compact, metadata, og, apiReference, MCP, llmsTxt, sitemap, robots, codeBlocks.validate, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, telemetry, readingTime, agent.compact, metadata, og, apiReference, MCP, llmsTxt, sitemap, robots, codeBlocks.validate, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration
@@ -43,6 +43,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | — | Callback when user copies a code block (title, content, url, language) |
 | `codeBlocks` | `DocsCodeBlocksConfig` | — | Validate fenced MDX code blocks with metadata planning and optional sandbox execution |
 | `feedback` | `boolean \| FeedbackConfig` | `false` for UI | Human page feedback UI; agent feedback endpoints are default-on unless opted out |
+| `telemetry` | `boolean \| DocsTelemetryConfig` | production-only enabled | Farming Labs maintainer telemetry for package adoption and coarse agent-surface usage |
 | `readingTime` | `boolean \| ReadingTimeConfig` | `false` | Opt-in estimated read-time label with per-page overrides |
 | `agent` | `DocsAgentConfig` | — | Defaults for `docs agent compact` |
 | `review` | `boolean \| DocsReviewConfig` | `true` | Docs Review scoring, GitHub Actions workflow generation, and rule severities |

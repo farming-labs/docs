@@ -1,0 +1,107 @@
+---
+title: "Telemetry"
+description: "Production maintainer telemetry for @farming-labs/docs adoption and agent-surface usage"
+icon: "activity"
+order: 5.65
+related:
+  - /docs/reference
+  - /docs/customization/analytics
+  - /docs/customization/mcp
+  - /docs/customization/llms-txt
+---
+
+# Telemetry
+
+<Agent>
+Use this page when the user asks about this topic: Farming Labs maintainer telemetry, production
+package adoption, opt-out configuration, DOCS_TELEMETRY, and coarse agent-surface usage. Keep this
+separate from project-owned analytics.
+</Agent>
+
+`@farming-labs/docs` includes limited production telemetry so Farming Labs can understand which
+frameworks, deployments, and agent-optimized features are used in real projects.
+
+Telemetry is separate from [Analytics](/docs/customization/analytics). Analytics is a project-owned
+event stream for page views, search, Ask AI, feedback, and MCP usage. Telemetry is a low-volume
+maintainer signal for package adoption and coarse feature usage.
+
+## Opt Out
+
+Disable telemetry with an environment variable:
+
+```bash title=".env.local"
+DOCS_TELEMETRY=false
+# or
+DOCS_TELEMETRY_DISABLED=1
+```
+
+Or disable it in `docs.config.ts`:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  telemetry: false,
+});
+```
+
+Environment opt-out wins over config. Telemetry delivery failures are ignored and never affect
+rendering, builds, routing, search, Ask AI, or MCP behavior.
+
+## What Telemetry Includes
+
+Telemetry may include:
+
+- package name and version
+- framework adapter, such as Next.js, TanStack Start, SvelteKit, Astro, or Nuxt
+- production/runtime and deployment provider signals
+- public site origin or deployment URL when available
+- enabled feature flags such as search, Ask AI, MCP, llms.txt, page actions, feedback, sitemap,
+  robots, API reference, static export, changelog, Docs Cloud, and Docs Review
+- coarse agent-surface usage such as `markdown`, `llms`, `agents`, `skill`, `agent_spec`,
+  `agent_feedback_submit`, `ask_ai`, `mcp`, and MCP tool names
+
+Telemetry does not collect:
+
+- visitor identities
+- end-user page views
+- search queries
+- Ask AI questions
+- feedback comments
+- copied code or markdown content
+- documentation source content
+- cookies or cross-site tracking identifiers
+- per-user sessions
+
+## Options
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  telemetry: {
+    enabled: true,
+  },
+});
+```
+
+| Option     | Type      | Default                  |
+| ---------- | --------- | ------------------------ |
+| `enabled`  | `boolean` | production-only enabled  |
+| `endpoint` | `string`  | Farming Labs ingestion endpoint |
+
+Use `endpoint` only for self-hosting, local verification, or tests:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  telemetry: {
+    endpoint: "https://telemetry.example.com/events",
+  },
+});
+```
+
+If a self-hosted ingestion endpoint requires a shared key, set the same environment variable in
+the docs runtime and the ingestion app:
+
+```bash title=".env"
+DOCS_TELEMETRY_INGEST_KEY=your-shared-ingest-key
+```
+
+When present, telemetry requests include the key as `x-docs-telemetry-key`. Failed telemetry
+requests are still ignored by the docs runtime.

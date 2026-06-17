@@ -76,6 +76,10 @@ describe("defineDocs", () => {
         console: "info",
         onEvent: onAnalyticsEvent,
       },
+      telemetry: {
+        enabled: true,
+        endpoint: "https://telemetry.example.com/events",
+      },
       observability: {
         console: "debug",
         onEvent: onObservabilityEvent,
@@ -85,6 +89,10 @@ describe("defineDocs", () => {
     expect(config.analytics).toEqual({
       console: "info",
       onEvent: onAnalyticsEvent,
+    });
+    expect(config.telemetry).toEqual({
+      enabled: true,
+      endpoint: "https://telemetry.example.com/events",
     });
     expect(config.observability).toEqual({
       console: "debug",
