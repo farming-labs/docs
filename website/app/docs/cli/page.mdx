@@ -722,6 +722,7 @@ If you select **Existing project**, the CLI stays in the current folder and wire
 7. **Global CSS** — Which file to use (auto-detected if there’s only one, otherwise you pick or type the path; Enter uses the default).
 8. The CLI generates config, layout, and sample pages, then detects the package manager from a lockfile when possible. If no lockfile is found, it asks which package manager you want to use before installing dependencies, and can then start the dev server.
 
+   The CLI checks the current directory and walks up parent directories looking for a lockfile (`pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, `package-lock.json`) or the `packageManager` field in `package.json`. The log message shows the relative path to the detected file. If no package manager signal is found anywhere in the directory tree, it prompts you to choose.
 Typical flow:
 
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
@@ -823,8 +824,10 @@ The generated project gets:
 
 Upgrade all `@farming-labs/*` docs packages to the latest version, beta channel, or an exact version. Run from your project root; the CLI **auto-detects** your framework from `package.json` and upgrades the right packages for Next.js, TanStack Start, Nuxt, SvelteKit, and Astro.
 
+> In a monorepo, run from the app or package directory that contains your framework `package.json` (e.g. `apps/web`). The CLI will walk up to find the workspace lockfile automatically.
 The CLI also detects your package manager from the lockfile in the current directory (`pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, or `package-lock.json`). If no lockfile is found, it asks which package manager you want to use instead of defaulting to npm.
 
+> **Monorepo note:** Run `upgrade` and `downgrade` from the app or package directory that contains the framework `package.json` (e.g. `apps/web`), not the workspace root. The CLI walks up parent directories automatically to find a lockfile (`pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, `package-lock.json`) or the `packageManager` field in `package.json`. The log message shows the relative path to the detected file, e.g. `Detected pnpm from ../pnpm-lock.yaml`.
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
   <Tab value="npm">
     ```bash title="terminal"
