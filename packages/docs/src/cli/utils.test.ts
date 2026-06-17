@@ -6,6 +6,7 @@ import {
   detectFramework,
   detectPackageManager,
   detectPackageManagerFromLockfile,
+  detectPackageManagerFromProject,
   installCommand,
   devInstallCommand,
   runCommand,
@@ -94,7 +95,7 @@ describe("utils", () => {
   });
 
   describe("detectPackageManager", () => {
-    it("returns null from lockfile-only detection when no lockfile exists", () => {
+    it("returns null when no package manager signal exists", () => {
       fs.writeFileSync(path.join(tmpDir, "package.json"), "{}");
       expect(detectPackageManagerFromLockfile(tmpDir)).toBeNull();
     });
@@ -125,6 +126,44 @@ describe("utils", () => {
       fs.writeFileSync(path.join(tmpDir, "package-lock.json"), "");
       expect(detectPackageManagerFromLockfile(tmpDir)).toBe("npm");
       expect(detectPackageManager(tmpDir)).toBe("npm");
+    });
+
+    it("walks up to detect a monorepo root lockfile", () => {
+      const appDir = path.join(tmpDir, "apps", "web");
+      fs.mkdirSync(appDir, { recursive: true });
+      fs.writeFileSync(path.join(appDir, "package.json"), "{}");
+      fs.writeFileSync(path.join(tmpDir, "pnpm-lock.yaml"), "");
+
+      const detected = detectPackageManagerFromProject(appDir);
+
+      expect(detectPackageManagerFromLockfile(appDir)).toBe("pnpm");
+      expect(detected).toMatchObject({
+        packageManager: "pnpm",
+        directory: tmpDir,
+        filePath: path.join(tmpDir, "pnpm-lock.yaml"),
+        source: "lockfile",
+      });
+      expect(detectPackageManager(appDir)).toBe("pnpm");
+    });
+
+    it("walks up to detect packageManager in a monorepo root package.json", () => {
+      const appDir = path.join(tmpDir, "apps", "web");
+      fs.mkdirSync(appDir, { recursive: true });
+      fs.writeFileSync(path.join(appDir, "package.json"), "{}");
+      fs.writeFileSync(
+        path.join(tmpDir, "package.json"),
+        JSON.stringify({ packageManager: "bun@1.2.0" }),
+      );
+
+      const detected = detectPackageManagerFromProject(appDir);
+
+      expect(detected).toMatchObject({
+        packageManager: "bun",
+        directory: tmpDir,
+        filePath: path.join(tmpDir, "package.json"),
+        source: "packageManager",
+      });
+      expect(detectPackageManager(appDir)).toBe("bun");
     });
 
     it("returns npm when no lock file (default)", () => {

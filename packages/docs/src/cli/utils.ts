@@ -33,18 +33,120 @@ export function detectFramework(cwd: string): Framework | null {
 
 export type PackageManager = "pnpm" | "yarn" | "npm" | "bun";
 
-export function detectPackageManagerFromLockfile(cwd: string): PackageManager | null {
-  if (fs.existsSync(path.join(cwd, "pnpm-lock.yaml"))) return "pnpm";
-  if (fs.existsSync(path.join(cwd, "bun.lockb")) || fs.existsSync(path.join(cwd, "bun.lock")))
-    return "bun";
-  if (fs.existsSync(path.join(cwd, "yarn.lock"))) return "yarn";
-  if (fs.existsSync(path.join(cwd, "package-lock.json"))) return "npm";
+export type PackageManagerDetectionSource = "lockfile" | "packageManager";
+
+export interface PackageManagerDetection {
+  packageManager: PackageManager;
+  directory: string;
+  filePath: string;
+  source: PackageManagerDetectionSource;
+}
+
+const PACKAGE_MANAGER_LOCKFILES: Array<{ fileName: string; packageManager: PackageManager }> = [
+  { fileName: "pnpm-lock.yaml", packageManager: "pnpm" },
+  { fileName: "bun.lockb", packageManager: "bun" },
+  { fileName: "bun.lock", packageManager: "bun" },
+  { fileName: "yarn.lock", packageManager: "yarn" },
+  { fileName: "package-lock.json", packageManager: "npm" },
+];
+
+function readPackageManagerName(value: unknown): PackageManager | null {
+  if (typeof value !== "string") return null;
+
+  const name = value.trim().split("@")[0];
+  if (name === "pnpm" || name === "yarn" || name === "npm" || name === "bun") {
+    return name;
+  }
+
   return null;
 }
 
+function detectPackageManagerLockfileInDirectory(
+  directory: string,
+): PackageManagerDetection | null {
+  for (const { fileName, packageManager } of PACKAGE_MANAGER_LOCKFILES) {
+    const filePath = path.join(directory, fileName);
+    if (fs.existsSync(filePath)) {
+      return {
+        packageManager,
+        directory,
+        filePath,
+        source: "lockfile",
+      };
+    }
+  }
+
+  return null;
+}
+
+function detectPackageManagerInDirectory(directory: string): PackageManagerDetection | null {
+  const lockfile = detectPackageManagerLockfileInDirectory(directory);
+  if (lockfile) return lockfile;
+
+  const packageJsonPath = path.join(directory, "package.json");
+  if (!fs.existsSync(packageJsonPath)) return null;
+
+  try {
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8")) as {
+      packageManager?: unknown;
+    };
+    const packageManager = readPackageManagerName(packageJson.packageManager);
+    if (!packageManager) return null;
+
+    return {
+      packageManager,
+      directory,
+      filePath: packageJsonPath,
+      source: "packageManager",
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function detectPackageManagerFromProject(cwd: string): PackageManagerDetection | null {
+  let current = path.resolve(cwd);
+
+  while (true) {
+    const detected = detectPackageManagerInDirectory(current);
+    if (detected) return detected;
+
+    const parent = path.dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+}
+
+export function formatPackageManagerDetection(
+  cwd: string,
+  detection: PackageManagerDetection,
+): string {
+  const relativePath = path.relative(path.resolve(cwd), detection.filePath);
+  const displayPath = relativePath || path.basename(detection.filePath);
+
+  if (detection.source === "packageManager") {
+    return `packageManager in ${displayPath}`;
+  }
+
+  return displayPath;
+}
+
+export function detectPackageManagerFromLockfile(cwd: string): PackageManager | null {
+  let current = path.resolve(cwd);
+
+  while (true) {
+    const detected = detectPackageManagerLockfileInDirectory(current);
+    if (detected) return detected.packageManager;
+
+    const parent = path.dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+}
+
 export function detectPackageManager(cwd: string): PackageManager {
-  const detected = detectPackageManagerFromLockfile(cwd);
-  if (detected) return detected;
+  const detected = detectPackageManagerFromProject(cwd);
+  if (detected) return detected.packageManager;
   return "npm";
 }
 

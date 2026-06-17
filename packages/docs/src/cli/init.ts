@@ -6,9 +6,10 @@ import {
   type Framework,
   type PackageManager,
   detectFramework,
-  detectPackageManagerFromLockfile,
+  detectPackageManagerFromProject,
   detectGlobalCssFiles,
   detectNextAppDir,
+  formatPackageManagerDetection,
   installCommand,
   devInstallCommand,
   writeFileSafe,
@@ -1110,9 +1111,12 @@ export async function init(options: InitOptions = {}) {
   // Step 9: Choose package manager (existing project)
   // -----------------------------------------------------------------------
 
-  let pm = detectPackageManagerFromLockfile(cwd);
-  if (pm) {
-    p.log.info(`Detected ${pc.cyan(pm)}`);
+  const detectedPackageManager = detectPackageManagerFromProject(cwd);
+  let pm = detectedPackageManager?.packageManager ?? null;
+  if (detectedPackageManager) {
+    p.log.info(
+      `Detected ${pc.cyan(detectedPackageManager.packageManager)} from ${formatPackageManagerDetection(cwd, detectedPackageManager)}`,
+    );
   }
 
   const pmAnswerExisting = await p.select({

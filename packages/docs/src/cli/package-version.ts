@@ -4,7 +4,8 @@ import {
   type Framework,
   type PackageManager,
   detectFramework,
-  detectPackageManagerFromLockfile,
+  detectPackageManagerFromProject,
+  formatPackageManagerDetection,
   installCommand,
 } from "./utils.js";
 
@@ -97,10 +98,12 @@ export async function resolveDocsPackageManager(
   cwd: string,
   command: "upgrade" | "downgrade",
 ): Promise<PackageManager> {
-  const detected = detectPackageManagerFromLockfile(cwd);
+  const detected = detectPackageManagerFromProject(cwd);
   if (detected) {
-    p.log.info(`Detected ${pc.cyan(detected)} from lockfile`);
-    return detected;
+    p.log.info(
+      `Detected ${pc.cyan(detected.packageManager)} from ${formatPackageManagerDetection(cwd, detected)}`,
+    );
+    return detected.packageManager;
   }
 
   const pmAnswer = await p.select({

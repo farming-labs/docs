@@ -13,7 +13,7 @@ import {
   tsconfigTemplate,
   type TemplateConfig,
 } from "./templates.js";
-import { detectPackageManagerFromLockfile, type PackageManager } from "./utils.js";
+import { detectPackageManagerFromProject, type PackageManager } from "./utils.js";
 
 const PRIMARY_MANAGED_CONFIG_FILE = "docs.json";
 const LEGACY_MANAGED_CONFIG_FILE = "docs.cloud.json";
@@ -649,14 +649,7 @@ function findLocalFrameworkRoot(startDir: string): string | null {
 }
 
 function detectNearestPackageManager(startDir: string): PackageManager {
-  let current = path.resolve(startDir);
-  while (true) {
-    const detected = detectPackageManagerFromLockfile(current);
-    if (detected) return detected;
-    const parent = path.dirname(current);
-    if (parent === current) return "npm";
-    current = parent;
-  }
+  return detectPackageManagerFromProject(startDir)?.packageManager ?? "npm";
 }
 
 function resolveManagedConfigPath(projectRoot: string): {

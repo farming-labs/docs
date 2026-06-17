@@ -21,6 +21,7 @@ vi.mock("./utils.js", async () => {
   return {
     ...actual,
     detectFramework: vi.fn(actual.detectFramework),
+    detectPackageManagerFromProject: vi.fn(actual.detectPackageManagerFromProject),
     detectPackageManagerFromLockfile: vi.fn(actual.detectPackageManagerFromLockfile),
     exec: vi.fn(),
   };
@@ -46,6 +47,15 @@ vi.mock("node:fs", () => {
   };
 });
 
+function packageManagerDetection(packageManager: "npm" | "pnpm" | "yarn" | "bun") {
+  return {
+    packageManager,
+    directory: process.cwd(),
+    filePath: `${packageManager === "pnpm" ? "pnpm-lock.yaml" : "package.json"}`,
+    source: "lockfile" as const,
+  };
+}
+
 describe("init", () => {
   describe("VALID_TEMPLATES", () => {
     it("includes next, nuxt, sveltekit, astro, tanstack-start", () => {
@@ -70,6 +80,7 @@ describe("init", () => {
       vi.mocked(prompts.log.error).mockReset();
       vi.mocked(prompts.isCancel).mockImplementation((value: unknown) => value === cancelSymbol);
       vi.mocked(utils.detectFramework).mockReset();
+      vi.mocked(utils.detectPackageManagerFromProject).mockReset();
       vi.mocked(utils.detectPackageManagerFromLockfile).mockReset();
       vi.mocked(utils.exec).mockReset();
       vi.mocked(cloud.initCloudConfig).mockReset();
@@ -135,7 +146,9 @@ describe("init", () => {
       const utils = await import("./utils.js");
 
       vi.mocked(utils.detectFramework).mockReturnValue("nextjs");
-      vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+      vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(
+        packageManagerDetection("pnpm"),
+      );
 
       vi.mocked(prompts.select)
         .mockResolvedValueOnce("existing" as never)
@@ -164,7 +177,7 @@ describe("init", () => {
       const utils = await import("./utils.js");
 
       vi.mocked(utils.detectFramework).mockReturnValue("nextjs");
-      vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue(null);
+      vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(null);
 
       vi.mocked(prompts.select)
         .mockResolvedValueOnce("existing" as never)
@@ -193,7 +206,9 @@ describe("init", () => {
       const utils = await import("./utils.js");
 
       vi.mocked(utils.detectFramework).mockReturnValue("nextjs");
-      vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+      vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(
+        packageManagerDetection("pnpm"),
+      );
 
       vi.mocked(prompts.select)
         .mockResolvedValueOnce("existing" as never)
@@ -234,7 +249,9 @@ describe("init", () => {
       const utils = await import("./utils.js");
 
       vi.mocked(utils.detectFramework).mockReturnValue("nextjs");
-      vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+      vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(
+        packageManagerDetection("pnpm"),
+      );
 
       vi.mocked(prompts.select)
         .mockResolvedValueOnce("existing" as never)
@@ -264,7 +281,9 @@ describe("init", () => {
       const utils = await import("./utils.js");
 
       vi.mocked(utils.detectFramework).mockReturnValue("nextjs");
-      vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+      vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(
+        packageManagerDetection("pnpm"),
+      );
 
       vi.mocked(prompts.select)
         .mockResolvedValueOnce("existing" as never)
@@ -296,7 +315,9 @@ describe("init", () => {
       const cloud = await import("./cloud.js");
 
       vi.mocked(utils.detectFramework).mockReturnValue("nextjs");
-      vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+      vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(
+        packageManagerDetection("pnpm"),
+      );
       vi.mocked(cloud.initCloudConfig).mockResolvedValueOnce({
         configPath: `${process.cwd()}/docs.config.ts`,
         docsJsonPath: `${process.cwd()}/docs.json`,
@@ -339,7 +360,9 @@ describe("init", () => {
       const utils = await import("./utils.js");
 
       vi.mocked(utils.detectFramework).mockReturnValue("nextjs");
-      vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+      vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(
+        packageManagerDetection("pnpm"),
+      );
       vi.mocked(utils.exec).mockImplementationOnce(() => {
         throw new Error("install failed");
       });

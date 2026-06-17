@@ -25,6 +25,7 @@ vi.mock("./utils.js", async () => {
   return {
     ...actual,
     detectFramework: vi.fn(),
+    detectPackageManagerFromProject: vi.fn(),
     detectPackageManagerFromLockfile: vi.fn(),
     exec: vi.fn(),
     execOutput: vi.fn(),
@@ -33,6 +34,18 @@ vi.mock("./utils.js", async () => {
 });
 
 import { downgrade } from "./downgrade.js";
+
+function packageManagerDetection(packageManager: "npm" | "pnpm" | "yarn" | "bun") {
+  return {
+    packageManager,
+    directory: process.cwd(),
+    filePath: join(
+      process.cwd(),
+      `${packageManager === "pnpm" ? "pnpm-lock.yaml" : "package.json"}`,
+    ),
+    source: "lockfile" as const,
+  };
+}
 
 function writePackageJson(project: string, version: string) {
   writeFileSync(
@@ -82,13 +95,16 @@ describe("downgrade", () => {
 
     vi.mocked(utils.fileExists).mockReset();
     vi.mocked(utils.detectFramework).mockReset();
+    vi.mocked(utils.detectPackageManagerFromProject).mockReset();
     vi.mocked(utils.detectPackageManagerFromLockfile).mockReset();
     vi.mocked(utils.exec).mockReset();
     vi.mocked(utils.execOutput).mockReset();
 
     vi.mocked(utils.fileExists).mockImplementation((filePath: string) => existsSync(filePath));
     vi.mocked(utils.detectFramework).mockReturnValue("nextjs");
-    vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+    vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(
+      packageManagerDetection("pnpm"),
+    );
     vi.mocked(utils.execOutput).mockReturnValue('["0.1.103","0.1.104","0.1.105"]');
 
     exitMock = vi.spyOn(process, "exit").mockImplementation((() => {
@@ -149,7 +165,7 @@ describe("downgrade", () => {
     const prompts = await import("@clack/prompts");
     const utils = await import("./utils.js");
 
-    vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue(null);
+    vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(null);
     vi.mocked(prompts.select).mockResolvedValueOnce("bun" as never);
 
     await downgrade({ version: "0.1.104" });

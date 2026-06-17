@@ -91,9 +91,9 @@ The raw key is never written to `docs.config.ts` or `docs.json`.
 
 ## Upgrade
 
-Upgrade all `@farming-labs/*` docs packages to the latest version. Run from the **project root**. The CLI auto-detects the framework from `package.json` and upgrades the correct packages.
+Upgrade all `@farming-labs/*` docs packages to the latest version. Run from the app/package directory that contains the framework `package.json` (for monorepos, for example `apps/web`). The CLI auto-detects the framework from that `package.json` and upgrades the correct packages.
 
-For the package manager, the CLI first checks lockfiles in the current directory (`pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, `package-lock.json`). If no lockfile is found, it prompts the user to choose instead of defaulting to npm.
+For the package manager, the CLI checks the current directory and then walks up parent directories looking for lockfiles (`pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, `package-lock.json`) or `package.json#packageManager`. If no package manager signal is found, it prompts the user to choose instead of defaulting to npm.
 
 ```bash
 # npm
@@ -146,7 +146,7 @@ Use `--version <version>` when the user needs an exact release instead of an npm
 
 ## Downgrade
 
-Downgrade all `@farming-labs/*` docs packages to a lower version. Run from the **project root**. The CLI auto-detects the framework and package manager like `upgrade`.
+Downgrade all `@farming-labs/*` docs packages to a lower version. Run from the app/package directory that contains the framework `package.json`. The CLI auto-detects the framework and package manager like `upgrade`.
 
 Without `--version`, `downgrade` fetches published `@farming-labs/docs` versions and installs the highest version lower than the current installed version.
 
