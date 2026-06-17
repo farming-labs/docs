@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 
 const MAX_TELEMETRY_BODY_BYTES = 32_768;
 const TELEMETRY_RATE_LIMIT_WINDOW_MS = 60_000;
-const TELEMETRY_RATE_LIMIT_MAX_REQUESTS = 120;
+const TELEMETRY_GLOBAL_RATE_LIMIT_MAX_REQUESTS = 2_000;
+const TELEMETRY_IDENTITY_RATE_LIMIT_MAX_REQUESTS = 120;
 const TELEMETRY_RATE_LIMIT_MAX_KEYS = 4_096;
 
 interface TelemetryRateLimitEntry {
@@ -77,17 +78,6 @@ function hasValidTelemetryIngestKey(request: Request) {
   return readTelemetryIngestKey(request) === requiredKey;
 }
 
-function readClientIp(request: Request) {
-  const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0];
-
-  return (
-    readString(request.headers.get("cf-connecting-ip"), { max: 100 }) ??
-    readString(request.headers.get("x-real-ip"), { max: 100 }) ??
-    readString(forwardedFor, { max: 100 }) ??
-    "unknown"
-  );
-}
-
 function pruneExpiredRateLimitEntries(store: Map<string, TelemetryRateLimitEntry>, now: number) {
   for (const [key, entry] of store) {
     if (entry.resetAt <= now) {
@@ -104,12 +94,11 @@ function trimRateLimitStore(store: Map<string, TelemetryRateLimitEntry>) {
   }
 }
 
-function isTelemetryRateLimited(request: Request) {
+function isTelemetryRateLimited(key: string, maxRequests: number) {
   const now = Date.now();
   const store = getRateLimitStore();
   pruneExpiredRateLimitEntries(store, now);
 
-  const key = readClientIp(request);
   const current = store.get(key);
 
   if (!current || current.resetAt <= now) {
@@ -126,10 +115,39 @@ function isTelemetryRateLimited(request: Request) {
     return false;
   }
 
-  if (current.count >= TELEMETRY_RATE_LIMIT_MAX_REQUESTS) return true;
+  if (current.count >= maxRequests) return true;
 
   current.count += 1;
   return false;
+}
+
+function createTelemetryIdentityRateLimitKey(
+  eventBody: Record<string, unknown>,
+  eventType: string,
+) {
+  const packageInfo = readNestedRecord(eventBody, "package");
+  const site = readNestedRecord(eventBody, "site");
+  const deployment = readNestedRecord(eventBody, "deployment");
+
+  const packageName = readString(packageInfo?.name, { max: 120 });
+  const packageVersion = readString(packageInfo?.version, { max: 80 });
+  const framework = readString(eventBody.framework, { max: 80 });
+  const siteOrigin = readString(site?.origin, { max: 512 });
+  const deploymentId = readString(deployment?.id, { max: 160 });
+  const deploymentProvider = readString(deployment?.provider, { max: 80 });
+  const deploymentEnvironment = readString(deployment?.environment, { max: 120 });
+  const deploymentKey =
+    deploymentId ??
+    (deploymentProvider || deploymentEnvironment
+      ? `${deploymentProvider ?? ""}:${deploymentEnvironment ?? ""}`
+      : undefined);
+  const stableIdentity = siteOrigin ?? deploymentKey;
+
+  if (!packageName || !packageVersion || !stableIdentity) return undefined;
+
+  return ["identity", packageName, packageVersion, eventType, framework ?? "", stableIdentity].join(
+    "|",
+  );
 }
 
 export async function POST(request: Request) {
@@ -143,7 +161,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Telemetry ingest key is invalid" }, { status: 401 });
     }
 
-    if (isTelemetryRateLimited(request)) {
+    if (isTelemetryRateLimited("global", TELEMETRY_GLOBAL_RATE_LIMIT_MAX_REQUESTS)) {
       return NextResponse.json({ error: "Telemetry rate limit exceeded" }, { status: 429 });
     }
 
@@ -174,6 +192,14 @@ export async function POST(request: Request) {
     const eventType = readString(eventBody.type, { max: 80 });
     if (!eventType) {
       return NextResponse.json({ error: "Telemetry event type is required" }, { status: 400 });
+    }
+
+    const identityRateLimitKey = createTelemetryIdentityRateLimitKey(eventBody, eventType);
+    if (
+      identityRateLimitKey &&
+      isTelemetryRateLimited(identityRateLimitKey, TELEMETRY_IDENTITY_RATE_LIMIT_MAX_REQUESTS)
+    ) {
+      return NextResponse.json({ error: "Telemetry rate limit exceeded" }, { status: 429 });
     }
 
     const packageInfo = readNestedRecord(eventBody, "package");
