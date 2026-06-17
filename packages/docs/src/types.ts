@@ -923,6 +923,12 @@ export interface DocsTelemetryConfig {
   /** Enable Farming Labs maintainer telemetry. Defaults to production-only enabled. */
   enabled?: boolean;
   /**
+   * Public site origin to include in telemetry events.
+   *
+   * When omitted, the runtime request origin or deployment URL is used when available.
+   */
+  siteOrigin?: string;
+  /**
    * Override the telemetry ingestion endpoint.
    *
    * This is mostly useful for self-hosting, development verification, or tests.

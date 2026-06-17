@@ -135,10 +135,11 @@ or:
 telemetry: false,
 ```
 
-| Option     | Type      | Default | Description                                  |
-| ---------- | --------- | ------- | -------------------------------------------- |
-| `enabled`  | `boolean` | production-only enabled | Enable or disable maintainer telemetry       |
-| `endpoint` | `string`  | Farming Labs endpoint | Override the ingestion endpoint for self-hosting or tests |
+| Option       | Type      | Default                   | Description                                                     |
+| ------------ | --------- | ------------------------- | --------------------------------------------------------------- |
+| `enabled`    | `boolean` | production-only enabled   | Enable or disable maintainer telemetry                          |
+| `siteOrigin` | `string`  | request/deployment origin | Stable public origin to include in telemetry events             |
+| `endpoint`   | `string`  | Farming Labs endpoint     | Override the ingestion endpoint for self-hosting or tests       |
 
 Set `DOCS_TELEMETRY_INGEST_KEY` in both the docs runtime and self-hosted ingestion app when the
 endpoint should require a shared `x-docs-telemetry-key` header.

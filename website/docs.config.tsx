@@ -48,6 +48,7 @@ const algoliaSearchApiKey = process.env.ALGOLIA_SEARCH_API_KEY;
 const algoliaAdminApiKey = process.env.ALGOLIA_ADMIN_API_KEY;
 const docsSearchProvider =
   process.env.DOCS_SEARCH_PROVIDER ?? (algoliaAppId && algoliaSearchApiKey ? "algolia" : "mcp");
+const docsSiteOrigin = process.env.NEXT_PUBLIC_BASE_URL ?? "https://docs.farming-labs.dev";
 
 const searchConfig =
   docsSearchProvider === "algolia" && algoliaAppId && algoliaSearchApiKey
@@ -77,6 +78,9 @@ export default defineDocs({
   search: searchConfig,
   observability: {
     console: "info",
+  },
+  telemetry: {
+    siteOrigin: docsSiteOrigin,
   },
   codeBlocks: {
     validate: {

@@ -16,7 +16,14 @@ function resetEnv() {
   delete process.env.DOCS_TELEMETRY_DISABLED;
   delete process.env.DOCS_TELEMETRY_ENDPOINT;
   delete process.env.DOCS_TELEMETRY_INGEST_KEY;
+  delete process.env.DOCS_SITE_URL;
+  delete process.env.NEXT_PUBLIC_BASE_URL;
+  delete process.env.NEXT_PUBLIC_SITE_URL;
+  delete process.env.SITE_URL;
+  delete process.env.URL;
   delete process.env.VERCEL_ENV;
+  delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  delete process.env.VERCEL_URL;
   delete process.env.NETLIFY;
   delete process.env.CONTEXT;
   delete process.env.CF_PAGES;
@@ -36,7 +43,7 @@ function telemetryEvent(overrides: Partial<DocsTelemetryEvent> = {}): DocsTeleme
     timestamp: "2026-06-17T00:00:00.000Z",
     package: {
       name: "@farming-labs/docs",
-      version: "0.2.24",
+      version: "0.2.25",
     },
     ...overrides,
   };
@@ -99,7 +106,39 @@ describe("telemetry", () => {
         framework: "next",
         package: {
           name: "@farming-labs/docs",
-          version: "0.2.24",
+          version: "0.2.25",
+        },
+      },
+    });
+  });
+
+  it("uses configured site origin for project events", async () => {
+    process.env.NODE_ENV = "production";
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(null, { status: 202 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    emitDocsTelemetryProjectEvent(
+      {
+        entry: "docs",
+        telemetry: {
+          siteOrigin: "docs.example.com/path",
+        },
+      },
+      {
+        framework: "next",
+        request: new Request("https://preview.example.com/api/docs"),
+      },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      event: {
+        site: {
+          origin: "https://docs.example.com",
         },
       },
     });
