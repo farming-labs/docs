@@ -43,6 +43,7 @@ TanStack Start, SvelteKit, Astro, and Nuxt require `contentDir` (path to markdow
 | `onCopyClick` | `(data: CodeBlockCopyData) => void` | — | Callback when user copies a code block (title, content, url, language) |
 | `codeBlocks` | `DocsCodeBlocksConfig` | — | Validate fenced MDX code blocks with metadata planning and optional sandbox execution |
 | `feedback` | `boolean \| FeedbackConfig` | `false` for UI | Human page feedback UI; agent feedback endpoints are default-on unless opted out |
+| `telemetry` | `boolean \| DocsTelemetryConfig` | production-only enabled | Farming Labs maintainer telemetry for package adoption and coarse agent-surface usage |
 | `readingTime` | `boolean \| ReadingTimeConfig` | `false` | Opt-in estimated read-time label with per-page overrides |
 | `agent` | `DocsAgentConfig` | — | Defaults for `docs agent compact` |
 | `review` | `boolean \| DocsReviewConfig` | `true` | Docs Review scoring, GitHub Actions workflow generation, and rule severities |

@@ -11,6 +11,8 @@ import {
   createDocsAgentTraceId,
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
+  emitDocsTelemetryAgentSurfaceEvent,
+  emitDocsTelemetryProjectEvent,
   formatDocsAskAIPackageHints,
   findDocsMarkdownPage,
   getDocsLlmsTxtMaxCharsIssue,
@@ -47,6 +49,7 @@ import {
   resolveDocsSitemapPageLastmod,
   resolveDocsAgentsFormat,
   resolveDocsSkillFormat,
+  inferDocsTelemetryAgentSurface,
   renderDocsPageStructuredDataJson,
   selectDocsLlmsTxtContent,
   validateDocsAgentFeedbackPayload,
@@ -852,6 +855,27 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
 
   const llmsCache = new Map<string, ReturnType<typeof renderDocsLlmsTxt>>();
 
+  function trackTelemetryRequest(request: Request) {
+    emitDocsTelemetryProjectEvent(config, {
+      framework: "tanstack-start",
+      request,
+    });
+
+    const surface = inferDocsTelemetryAgentSurface(request, {
+      entry,
+      llmsTxt: config.llmsTxt,
+      feedback: config.feedback,
+    });
+
+    if (!surface) return;
+
+    emitDocsTelemetryAgentSurfaceEvent(config, {
+      framework: "tanstack-start",
+      request,
+      surface,
+    });
+  }
+
   function getLlmsContent(ctx: ReturnType<typeof resolveContextFromPath>) {
     const key = ctx.locale ?? "__default__";
     const cached = llmsCache.get(key);
@@ -885,6 +909,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
   }
 
   async function GET(event: { request: Request }): Promise<Response> {
+    trackTelemetryRequest(event.request);
     const ctx = resolveContextFromRequest(event.request);
     const url = new URL(event.request.url);
 
@@ -1243,6 +1268,7 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
   }
 
   async function POST(event: { request: Request }): Promise<Response> {
+    trackTelemetryRequest(event.request);
     const requestUrl = new URL(event.request.url);
     const agentFeedbackRequest = resolveDocsAgentFeedbackRequest(requestUrl, agentFeedbackConfig);
     if (agentFeedbackRequest) {
@@ -1802,6 +1828,8 @@ export function createDocsServer(config: Record<string, any>): DocsServer {
     },
     mcp: config.mcp,
     analytics,
+    telemetry: config.telemetry,
+    telemetryFramework: "tanstack-start",
     observability,
     defaultName: mcpSiteTitle,
   });

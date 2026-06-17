@@ -21,6 +21,15 @@ export {
   resolveDocsAnalyticsConfig,
   resolveDocsObservabilityConfig,
 } from "./analytics.js";
+export {
+  emitDocsTelemetryAgentSurfaceEvent,
+  emitDocsTelemetryEvent,
+  emitDocsTelemetryMcpToolEvent,
+  emitDocsTelemetryProjectEvent,
+  getDocsTelemetryFeatures,
+  inferDocsTelemetryAgentSurface,
+  resolveDocsTelemetryConfig,
+} from "./telemetry.js";
 export { resolveChangelogConfig } from "./changelog.js";
 export { deepMerge } from "./utils.js";
 export { createTheme, extendTheme } from "./create-theme.js";
@@ -297,6 +306,13 @@ export type {
   DocsAnalyticsEventType,
   DocsAnalyticsInput,
   DocsAnalyticsSource,
+  DocsTelemetryAgentSurface,
+  DocsTelemetryConfig,
+  DocsTelemetryEvent,
+  DocsTelemetryEventInput,
+  DocsTelemetryEventType,
+  DocsTelemetryFeatures,
+  DocsTelemetryFramework,
   DocsCloudApiKeyConfig,
   DocsCloudConfig,
   DocsCloudFeatureConfig,
@@ -322,6 +338,12 @@ export type {
   ResolvedDocsAnalyticsConfig,
   ResolvedDocsObservabilityConfig,
 } from "./analytics.js";
+export type {
+  DocsTelemetryAgentSurfaceRequestOptions,
+  DocsTelemetryContext,
+  DocsTelemetryAgentSurfaceContext,
+  ResolvedDocsTelemetryConfig,
+} from "./telemetry.js";
 export type { ChangelogEntrySummary, ResolvedChangelogConfig } from "./changelog.js";
 export type { ResolvedDocsI18n, DocsPathMatch } from "./i18n.js";
 export type { DocsPageStructuredDataInput, DocsStructuredDataBreadcrumb } from "./metadata.js";

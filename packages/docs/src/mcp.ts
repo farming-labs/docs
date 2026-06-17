@@ -16,12 +16,19 @@ import {
   emitDocsAgentTraceEvent,
   emitDocsAnalyticsEvent,
 } from "./analytics.js";
+import {
+  emitDocsTelemetryAgentSurfaceEvent,
+  emitDocsTelemetryMcpToolEvent,
+  emitDocsTelemetryProjectEvent,
+} from "./telemetry.js";
 import type {
   DocsAnalyticsConfig,
   DocsMcpConfig,
   DocsObservabilityConfig,
   DocsSearchConfig,
   DocsSearchSourcePage,
+  DocsTelemetryConfig,
+  DocsTelemetryFramework,
   McpDocsSearchConfig,
   OrderingItem,
 } from "./types.js";
@@ -176,6 +183,8 @@ interface CreateDocsMcpServerOptions {
   mcp?: boolean | DocsMcpConfig;
   search?: boolean | DocsSearchConfig;
   analytics?: boolean | DocsAnalyticsConfig;
+  telemetry?: boolean | DocsTelemetryConfig;
+  telemetryFramework?: DocsTelemetryFramework;
   observability?: boolean | DocsObservabilityConfig;
   defaultName?: string;
   defaultVersion?: string;
@@ -885,6 +894,21 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
     name: resolved.name,
     version: resolved.version,
   });
+  const telemetryConfig = {
+    telemetry: options.telemetry,
+    mcp: options.mcp,
+    search: options.search,
+  };
+  const telemetryFramework = options.telemetryFramework ?? "mcp";
+
+  function trackMcpTool(tool: string, values?: { locale?: string; resultCount?: number }) {
+    emitDocsTelemetryMcpToolEvent(telemetryConfig, {
+      framework: telemetryFramework,
+      tool,
+      locale: values?.locale,
+      resultCount: values?.resultCount,
+    });
+  }
 
   const defaultPages = dedupePages(await options.source.getPages());
   const defaultTree = await options.source.getNavigation();
@@ -969,6 +993,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               durationMs: elapsed,
             },
           });
+          trackMcpTool("list_pages", { locale, resultCount: pages.length });
           await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.result",
             source: "mcp",
@@ -1058,6 +1083,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               durationMs: elapsed,
             },
           });
+          trackMcpTool("list_docs", { locale, resultCount: docs.resultCount });
           await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.result",
             source: "mcp",
@@ -1141,6 +1167,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               durationMs: elapsed,
             },
           });
+          trackMcpTool("get_navigation", { locale });
           await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.result",
             source: "mcp",
@@ -1226,6 +1253,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               durationMs: elapsed,
             },
           });
+          trackMcpTool("get_config_schema", { resultCount: schema.resultCount });
           await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.result",
             source: "mcp",
@@ -1319,6 +1347,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               durationMs: elapsed,
             },
           });
+          trackMcpTool("search_docs", { locale, resultCount: results.length });
           await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.result",
             source: "mcp",
@@ -1444,6 +1473,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               durationMs: elapsed,
             },
           });
+          trackMcpTool("get_code_examples", { locale, resultCount: examples.length });
           await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.result",
             source: "mcp",
@@ -1543,6 +1573,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
                 durationMs: elapsed,
               },
             });
+            trackMcpTool("read_page", { locale, resultCount: 0 });
             await emitDocsAgentTraceEvent(options.observability, {
               type: "tool.error",
               source: "mcp",
@@ -1606,6 +1637,7 @@ export async function createDocsMcpServer(options: CreateDocsMcpServerOptions): 
               durationMs: elapsed,
             },
           });
+          trackMcpTool("read_page", { locale, resultCount: 1 });
           await emitDocsAgentTraceEvent(options.observability, {
             type: "tool.result",
             source: "mcp",
@@ -1660,6 +1692,12 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
     defaultName: options.defaultName ?? options.source.siteTitle ?? DEFAULT_MCP_NAME,
     defaultVersion: options.defaultVersion,
   });
+  const telemetryConfig = {
+    telemetry: options.telemetry,
+    mcp: options.mcp,
+    search: options.search,
+  };
+  const telemetryFramework = options.telemetryFramework ?? "mcp";
 
   const disabledMessage =
     "MCP is disabled. Remove `mcp: false` or set `mcp: { enabled: true }` in docs.config to enable it again.";
@@ -1707,6 +1745,20 @@ export function createDocsMcpHttpHandler(options: CreateDocsMcpServerOptions): D
     }
 
     const initializeRequest = method === "POST" && parsedBody && isInitializeRequest(parsedBody);
+
+    emitDocsTelemetryProjectEvent(telemetryConfig, {
+      framework: telemetryFramework,
+      request,
+    });
+    emitDocsTelemetryAgentSurfaceEvent(telemetryConfig, {
+      framework: telemetryFramework,
+      request,
+      surface: "mcp",
+      properties: {
+        method,
+        initialize: Boolean(initializeRequest),
+      },
+    });
 
     await emitDocsAnalyticsEvent(options.analytics, {
       type: "mcp_request",
