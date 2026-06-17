@@ -721,6 +721,9 @@ deployed elsewhere and already exposes an `openapi.json`.
   **Nuxt**.
 </Callout>
 
+<Callout type="info" title="Renderer dependencies are bundled">
+  You do not need to install `fumadocs-openapi`, `fumadocs-ui`, `@scalar/core`, or related packages separately. The `"fumadocs"` renderer is bundled by `@farming-labs/next`; the `"scalar"` renderer is bundled by `@farming-labs/docs` and the other framework adapters.
+</Callout>
 <Callout type="info" title="Important">
   `apiReference` in `docs.config` controls scanning, theming, `routeRoot`, and `exclude`.
 
@@ -744,6 +747,7 @@ deployed elsewhere and already exposes an `openapi.json`.
 | Property    | Type       | Default           | Description |
 | ----------- | ---------- | ----------------- | ----------- |
 | `enabled`   | `boolean`  | `true` inside the object | Enable generated API reference pages |
+| `renderer`  | `"fumadocs" \| "scalar"` | framework-aware | Which renderer to use: `"fumadocs"` is bundled by `@farming-labs/next`; `"scalar"` is bundled by `@farming-labs/docs` and the other adapters. Defaults to `"fumadocs"` for Next.js and `"scalar"` for other frameworks |
 | `path`      | `string`   | `"api-reference"` | URL path where the generated API reference lives |
 | `specUrl`   | `string`   | —                 | Absolute URL to a hosted OpenAPI JSON document. When set, local route scanning is skipped |
 | `routeRoot` | `string`   | `"api"`           | Filesystem route root to scan. Bare values like `"api"` resolve inside `app/` or `src/app/`; full values like `"app/internal-api"` and `"src/app/v2/api"` are supported |

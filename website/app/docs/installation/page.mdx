@@ -112,6 +112,9 @@ Replace `my-docs` with your project name. Then run `cd my-docs` and start the de
 
 ## Option B: Manual Setup
 
+<Callout type="warning" title="Do not install renderer packages directly">
+  Install only the Farming Labs packages for your chosen framework (listed in each tab below). Do **not** separately install `fumadocs-openapi`, `fumadocs-ui`, `fumadocs-core`, `@scalar/core`, or `@scalar/nextjs-api-reference`. The API reference renderers are bundled inside `@farming-labs/docs` and the framework adapters; adding those packages directly can cause version conflicts.
+</Callout>
 <Callout type="info" title="Theme CSS in global styles">
   For each framework below, add your **theme's CSS** to your global stylesheet (e.g. `app/global.css`, `src/app.css`, or `nuxt.config`). The import path must match the theme you use in `docs.config` — e.g. `default`, `greentree`, `darksharp`. Without it, docs pages will lack the correct styling.
 </Callout>
