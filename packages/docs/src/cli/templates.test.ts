@@ -365,9 +365,7 @@ describe("installationPageTemplate", () => {
   it("lists the Next.js adapter and theme packages", () => {
     const out = installationPageTemplate(baseConfig);
 
-    expect(out).toContain(
-      "pnpm add @farming-labs/docs @farming-labs/next @farming-labs/theme",
-    );
+    expect(out).toContain("pnpm add @farming-labs/docs @farming-labs/next @farming-labs/theme");
     expect(out).not.toContain("pnpm add fumadocs");
     expect(out).not.toContain("pnpm add @scalar");
   });
