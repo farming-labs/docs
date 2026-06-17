@@ -3,6 +3,7 @@ import {
   type TemplateConfig,
   docsConfigTemplate,
   docsLayoutTemplate,
+  installationPageTemplate,
   nextApiReferencePageTemplate,
   nextApiReferenceRouteTemplate,
   rootLayoutTemplate,
@@ -357,6 +358,16 @@ describe("docsConfigTemplate", () => {
     expect(out).toContain('path: "api-reference"');
     expect(out).toContain('renderer: "fumadocs"');
     expect(out).toContain('routeRoot: "internal-api"');
+  });
+});
+
+describe("installationPageTemplate", () => {
+  it("lists the Next.js adapter and theme packages", () => {
+    const out = installationPageTemplate(baseConfig);
+
+    expect(out).toContain("pnpm add @farming-labs/docs @farming-labs/next @farming-labs/theme");
+    expect(out).not.toContain("pnpm add fumadocs");
+    expect(out).not.toContain("pnpm add @scalar");
   });
 });
 

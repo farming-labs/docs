@@ -848,7 +848,7 @@ Follow these steps to install and configure ${cfg.projectName}.
 ## Install Dependencies
 
 \`\`\`bash
-pnpm add @farming-labs/docs
+pnpm add @farming-labs/docs @farming-labs/next @farming-labs/theme
 \`\`\`
 
 ## Configuration

@@ -71,6 +71,7 @@ describe("init", () => {
       vi.mocked(prompts.isCancel).mockImplementation((value: unknown) => value === cancelSymbol);
       vi.mocked(utils.detectFramework).mockReset();
       vi.mocked(utils.detectPackageManagerFromLockfile).mockReset();
+      vi.mocked(utils.exec).mockReset();
       vi.mocked(cloud.initCloudConfig).mockReset();
       exitMock = vi.spyOn(process, "exit").mockImplementation((() => {
         throw new Error("process.exit");
@@ -330,6 +331,38 @@ describe("init", () => {
       });
       expect(prompts.log.success).toHaveBeenCalledWith(
         expect.stringContaining("Docs Cloud infrastructure support configured"),
+      );
+    });
+
+    it("prints the framework-specific install command when dependency installation fails", async () => {
+      const prompts = await import("@clack/prompts");
+      const utils = await import("./utils.js");
+
+      vi.mocked(utils.detectFramework).mockReturnValue("nextjs");
+      vi.mocked(utils.detectPackageManagerFromLockfile).mockReturnValue("pnpm");
+      vi.mocked(utils.exec).mockImplementationOnce(() => {
+        throw new Error("install failed");
+      });
+
+      vi.mocked(prompts.select)
+        .mockResolvedValueOnce("existing" as never)
+        .mockResolvedValueOnce("fumadocs" as never)
+        .mockResolvedValueOnce("pnpm" as never);
+      vi.mocked(prompts.confirm)
+        .mockResolvedValueOnce(false as never)
+        .mockResolvedValueOnce(false as never)
+        .mockResolvedValueOnce(false as never)
+        .mockResolvedValueOnce(false as never);
+      vi.mocked(prompts.text)
+        .mockResolvedValueOnce("docs" as never)
+        .mockResolvedValueOnce("app/globals.css" as never);
+
+      await expect(init({})).rejects.toThrow("process.exit");
+
+      expect(prompts.log.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "pnpm add @farming-labs/docs @farming-labs/next @farming-labs/theme",
+        ),
       );
     });
   });

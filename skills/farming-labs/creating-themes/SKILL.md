@@ -161,7 +161,7 @@ Export your own defaults so others can extend: `export { MyThemeDefaults };`.
 ### Package layout
 
 ```
-my-fumadocs-theme/
+my-docs-theme/
   src/
     index.ts       ← createTheme() and exports
     theme.css      ← optional CSS overrides
@@ -172,7 +172,7 @@ my-fumadocs-theme/
 
 ```json
 {
-  "name": "my-fumadocs-theme",
+  "name": "my-docs-theme",
   "version": "1.0.0",
   "type": "module",
   "exports": {
@@ -190,12 +190,12 @@ If the theme has no CSS, omit the `"./css"` export. If it does, users import it 
 ### How users install and use
 
 ```bash
-npm install my-fumadocs-theme
+npm install my-docs-theme
 # or pnpm add / yarn add / bun add
 ```
 
 ```ts title="docs.config.ts"
-import { myTheme } from "my-fumadocs-theme";
+import { myTheme } from "my-docs-theme";
 
 export default defineDocs({
   entry: "docs",
@@ -205,7 +205,7 @@ export default defineDocs({
 
 ```css title="app/global.css (if theme ships CSS)"
 @import "tailwindcss";
-@import "my-fumadocs-theme/css";
+@import "my-docs-theme/css";
 ```
 
 ---
