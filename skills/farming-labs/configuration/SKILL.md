@@ -875,6 +875,7 @@ Notes:
 - **Next.js:** `withDocs()` auto-generates the `/{path}` route when `apiReference` is enabled
 - **TanStack Start / SvelteKit / Astro / Nuxt:** `docs.config` controls scanning, remote spec rendering, and styling, but the app must still add the framework route handler for `/{path}`
 - **CLI:** `init --api-reference` writes the `apiReference` block and scaffolds the non-Next route handler files automatically
+- **Packages:** install the Farming Labs docs packages for the framework only. Do not ask users to install `fumadocs-openapi`, `fumadocs-ui`, `fumadocs-core`, `@scalar/core`, or `@scalar/nextjs-api-reference` directly; those renderer dependencies are bundled by `@farming-labs/docs` and the adapters
 - `path` controls the public URL for the generated reference
 - `GET /api/docs?format=openapi` returns the machine-readable OpenAPI schema when `apiReference` is enabled
 - agent discovery, generated `llms.txt`, generated `AGENTS.md`, and generated `skill.md` advertise the OpenAPI schema route so agents can fetch schemas before scraping API pages

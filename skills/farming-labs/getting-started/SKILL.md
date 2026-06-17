@@ -33,6 +33,10 @@ description: Get started with @farming-labs/docs — MDX-based documentation for
 | Astro | `@farming-labs/docs`, `@farming-labs/astro` | `@farming-labs/astro-theme` |
 | Nuxt | `@farming-labs/docs`, `@farming-labs/nuxt` | `@farming-labs/nuxt-theme` |
 
+Install only the Farming Labs package set for the chosen framework. Do not ask users to install
+Fumadocs or Scalar packages directly; API reference renderers are bundled by `@farming-labs/docs`
+and the framework adapters.
+
 ### Built-in themes
 
 Eleven built-in theme entrypoints: `fumadocs` (default), `darksharp`, `pixel-border`, `colorful`, `greentree`, `darkbold`, `shiny`, `ledger`, `concrete`, `command-grid`, and `hardline`. `hardline` is the existing hard-edge preset, `concrete` is the louder brutalist poster-style variant, `command-grid` is the mono-first paper-grid preset inspired by the better-cmdk landing page, and `ledger` is a Stripe Docs-inspired product docs shell. The init CLI offers **Create your own theme** — it prompts for a theme name (default `my-theme`) and scaffolds `themes/<name>.ts` and `themes/<name>.css`. The theme name in config must match the theme's CSS import path (e.g. `greentree` → `@farming-labs/theme/greentree/css` for Next.js).

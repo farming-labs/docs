@@ -1137,13 +1137,21 @@ export async function init(options: InitOptions = {}) {
   const s2 = p.spinner();
   s2.start("Installing dependencies");
 
-  try {
-    if (framework === "tanstack-start") {
-      exec(
-        `${installCommand(pm)} @farming-labs/docs @farming-labs/theme @farming-labs/tanstack-start`,
-        cwd,
-      );
+  const docsRuntimeInstallCommand =
+    framework === "tanstack-start"
+      ? `${installCommand(pm)} @farming-labs/docs @farming-labs/theme @farming-labs/tanstack-start`
+      : framework === "sveltekit"
+        ? `${installCommand(pm)} @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme`
+        : framework === "astro"
+          ? `${installCommand(pm)} @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme ${getAstroAdapterPkg(cfg.astroAdapter ?? "vercel")}`
+          : framework === "nuxt"
+            ? `${installCommand(pm)} @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme`
+            : `${installCommand(pm)} @farming-labs/docs @farming-labs/next @farming-labs/theme`;
 
+  try {
+    exec(docsRuntimeInstallCommand, cwd);
+
+    if (framework === "tanstack-start") {
       const devDeps = ["@tailwindcss/vite", "tailwindcss"];
       if (useAlias) {
         devDeps.push("vite-tsconfig-paths");
@@ -1155,25 +1163,7 @@ export async function init(options: InitOptions = {}) {
       if (missingDevDeps.length > 0) {
         exec(`${devInstallCommand(pm)} ${missingDevDeps.join(" ")}`, cwd);
       }
-    } else if (framework === "sveltekit") {
-      exec(
-        `${installCommand(pm)} @farming-labs/docs @farming-labs/svelte @farming-labs/svelte-theme`,
-        cwd,
-      );
-    } else if (framework === "astro") {
-      const adapterPkg = getAstroAdapterPkg(cfg.astroAdapter ?? "vercel");
-      exec(
-        `${installCommand(pm)} @farming-labs/docs @farming-labs/astro @farming-labs/astro-theme ${adapterPkg}`,
-        cwd,
-      );
-    } else if (framework === "nuxt") {
-      exec(
-        `${installCommand(pm)} @farming-labs/docs @farming-labs/nuxt @farming-labs/nuxt-theme`,
-        cwd,
-      );
-    } else {
-      exec(`${installCommand(pm)} @farming-labs/docs @farming-labs/next @farming-labs/theme`, cwd);
-
+    } else if (framework === "nextjs") {
       const devDeps = [
         "@tailwindcss/postcss",
         "postcss",
@@ -1193,7 +1183,7 @@ export async function init(options: InitOptions = {}) {
     s2.stop("Failed to install dependencies");
     p.log.error(
       "Dependency installation failed. Run the install command manually:\n" +
-        `  ${pc.cyan(`${installCommand(pm)} @farming-labs/docs`)}`,
+        `  ${pc.cyan(docsRuntimeInstallCommand)}`,
     );
     p.outro(pc.yellow("Setup partially complete. Install deps and run dev server manually."));
     process.exit(1);

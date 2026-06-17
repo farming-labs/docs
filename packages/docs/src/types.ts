@@ -2267,7 +2267,8 @@ export type ApiReferenceRenderer = "fumadocs" | "scalar";
 export interface ApiReferenceConfig {
   /**
    * Whether to enable generated API reference pages.
-   * The initial implementation is wired for Next.js route handlers.
+   * Supported adapters can generate references from framework route handlers
+   * or a hosted OpenAPI JSON document.
    * @default false
    */
   enabled?: boolean;
@@ -2299,8 +2300,8 @@ export interface ApiReferenceConfig {
   /**
    * Which renderer to use for the API reference UI.
    *
-   * - `"fumadocs"` uses `fumadocs-openapi`
-   * - `"scalar"` uses the existing Scalar renderer
+   * - `"fumadocs"` uses the Fumadocs OpenAPI renderer bundled by `@farming-labs/next`
+   * - `"scalar"` uses the Scalar renderer bundled by `@farming-labs/docs` and the adapters
    *
    * Defaults are framework-aware:
    * - Next.js: `"fumadocs"`
