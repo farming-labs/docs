@@ -59,8 +59,13 @@ function isPrismaUnavailable(error: unknown) {
   return error instanceof Prisma.PrismaClientInitializationError;
 }
 
-function isPrismaColumnMissing(error: unknown) {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2022";
+function isPrismaIdentityHashColumnMissing(error: unknown) {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2022") {
+    return false;
+  }
+
+  const missingColumn = String(error.meta?.column ?? "");
+  return missingColumn.includes("identityHash");
 }
 
 function getRateLimitStore() {
@@ -311,7 +316,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json({ ok: true, stored: true, id: entry.id }, { status: 201 });
     } catch (error) {
-      if (identityHash && isPrismaColumnMissing(error)) {
+      if (identityHash && isPrismaIdentityHashColumnMissing(error)) {
         console.warn(
           "[telemetry POST] DocsTelemetryEvent.identityHash is missing. Storing telemetry without identityHash until the database schema is synced.",
         );
