@@ -22,6 +22,8 @@ import type {
 const DOCS_PACKAGE_NAME = "@farming-labs/docs";
 const DOCS_PACKAGE_VERSION = "0.2.24";
 const DEFAULT_DOCS_TELEMETRY_ENDPOINT = "https://docs.farming-labs.dev/api/telemetry/events";
+const PROJECT_TELEMETRY_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const PROJECT_TELEMETRY_CACHE_MAX_KEYS = 256;
 
 export interface ResolvedDocsTelemetryConfig {
   enabled: boolean;
@@ -324,13 +326,27 @@ function projectEventKey(event: DocsTelemetryEvent): string {
   ].join("|");
 }
 
-function getSentProjectKeys(): Set<string> {
+function getSentProjectKeys(): Map<string, number> {
   const globalValue = globalThis as typeof globalThis & {
-    __farmingLabsDocsTelemetryProjectKeys__?: Set<string>;
+    __farmingLabsDocsTelemetryProjectKeys__?: Map<string, number>;
   };
 
-  globalValue.__farmingLabsDocsTelemetryProjectKeys__ ??= new Set<string>();
+  globalValue.__farmingLabsDocsTelemetryProjectKeys__ ??= new Map();
   return globalValue.__farmingLabsDocsTelemetryProjectKeys__;
+}
+
+function pruneSentProjectKeys(sent: Map<string, number>, now: number): void {
+  for (const [key, expiresAt] of sent) {
+    if (expiresAt <= now) {
+      sent.delete(key);
+    }
+  }
+
+  while (sent.size >= PROJECT_TELEMETRY_CACHE_MAX_KEYS) {
+    const oldestKey = sent.keys().next().value;
+    if (!oldestKey) return;
+    sent.delete(oldestKey);
+  }
 }
 
 export async function emitDocsTelemetryEvent(
@@ -341,11 +357,18 @@ export async function emitDocsTelemetryEvent(
   if (!resolved.enabled || !resolved.endpoint || typeof fetch !== "function") return;
 
   try {
+    const ingestKey = readRuntimeEnv("DOCS_TELEMETRY_INGEST_KEY");
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+    };
+
+    if (ingestKey) {
+      headers["x-docs-telemetry-key"] = ingestKey;
+    }
+
     await fetch(resolved.endpoint, {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
+      headers,
       body: JSON.stringify({ event }),
       keepalive: true,
     });
@@ -367,9 +390,16 @@ export function emitDocsTelemetryProjectEvent(
   );
   const key = projectEventKey(event);
   const sent = getSentProjectKeys();
+  const now = Date.now();
+  const expiresAt = sent.get(key);
 
-  if (sent.has(key)) return;
-  sent.add(key);
+  if (expiresAt && expiresAt > now) return;
+  if (typeof expiresAt === "number") {
+    sent.delete(key);
+  }
+
+  pruneSentProjectKeys(sent, now);
+  sent.set(key, now + PROJECT_TELEMETRY_CACHE_TTL_MS);
 
   void emitDocsTelemetryEvent(config.telemetry, event);
 }

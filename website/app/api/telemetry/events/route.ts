@@ -6,6 +6,14 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 const MAX_TELEMETRY_BODY_BYTES = 32_768;
+const TELEMETRY_RATE_LIMIT_WINDOW_MS = 60_000;
+const TELEMETRY_RATE_LIMIT_MAX_REQUESTS = 120;
+const TELEMETRY_RATE_LIMIT_MAX_KEYS = 4_096;
+
+interface TelemetryRateLimitEntry {
+  count: number;
+  resetAt: number;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -28,9 +36,8 @@ function readNestedRecord(value: unknown, key: string) {
 
 function isPrismaSchemaMissing(error: unknown) {
   return (
-    (error instanceof Prisma.PrismaClientKnownRequestError &&
-      (error.code === "P2021" || error.code === "P2022")) ||
-    error instanceof Prisma.PrismaClientValidationError
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    (error.code === "P2021" || error.code === "P2022")
   );
 }
 
@@ -38,11 +45,106 @@ function isPrismaUnavailable(error: unknown) {
   return error instanceof Prisma.PrismaClientInitializationError;
 }
 
+function getRateLimitStore() {
+  const globalValue = globalThis as typeof globalThis & {
+    __farmingLabsDocsTelemetryRateLimit__?: Map<string, TelemetryRateLimitEntry>;
+  };
+
+  globalValue.__farmingLabsDocsTelemetryRateLimit__ ??= new Map();
+  return globalValue.__farmingLabsDocsTelemetryRateLimit__;
+}
+
+function readBearerToken(value: string | null) {
+  if (!value) return undefined;
+
+  const [scheme, token] = value.split(/\s+/, 2);
+  if (!scheme || scheme.toLowerCase() !== "bearer") return undefined;
+
+  return readString(token, { max: 512 });
+}
+
+function readTelemetryIngestKey(request: Request) {
+  return (
+    readString(request.headers.get("x-docs-telemetry-key"), { max: 512 }) ??
+    readBearerToken(request.headers.get("authorization"))
+  );
+}
+
+function hasValidTelemetryIngestKey(request: Request) {
+  const requiredKey = readString(process.env.DOCS_TELEMETRY_INGEST_KEY, { max: 512 });
+  if (!requiredKey) return true;
+
+  return readTelemetryIngestKey(request) === requiredKey;
+}
+
+function readClientIp(request: Request) {
+  const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0];
+
+  return (
+    readString(request.headers.get("cf-connecting-ip"), { max: 100 }) ??
+    readString(request.headers.get("x-real-ip"), { max: 100 }) ??
+    readString(forwardedFor, { max: 100 }) ??
+    "unknown"
+  );
+}
+
+function pruneExpiredRateLimitEntries(store: Map<string, TelemetryRateLimitEntry>, now: number) {
+  for (const [key, entry] of store) {
+    if (entry.resetAt <= now) {
+      store.delete(key);
+    }
+  }
+}
+
+function trimRateLimitStore(store: Map<string, TelemetryRateLimitEntry>) {
+  while (store.size >= TELEMETRY_RATE_LIMIT_MAX_KEYS) {
+    const oldestKey = store.keys().next().value;
+    if (!oldestKey) return;
+    store.delete(oldestKey);
+  }
+}
+
+function isTelemetryRateLimited(request: Request) {
+  const now = Date.now();
+  const store = getRateLimitStore();
+  pruneExpiredRateLimitEntries(store, now);
+
+  const key = readClientIp(request);
+  const current = store.get(key);
+
+  if (!current || current.resetAt <= now) {
+    if (current) {
+      store.delete(key);
+    }
+
+    trimRateLimitStore(store);
+
+    store.set(key, {
+      count: 1,
+      resetAt: now + TELEMETRY_RATE_LIMIT_WINDOW_MS,
+    });
+    return false;
+  }
+
+  if (current.count >= TELEMETRY_RATE_LIMIT_MAX_REQUESTS) return true;
+
+  current.count += 1;
+  return false;
+}
+
 export async function POST(request: Request) {
   try {
     const contentLength = Number(request.headers.get("content-length") ?? "0");
     if (Number.isFinite(contentLength) && contentLength > MAX_TELEMETRY_BODY_BYTES) {
       return NextResponse.json({ error: "Telemetry body is too large" }, { status: 413 });
+    }
+
+    if (!hasValidTelemetryIngestKey(request)) {
+      return NextResponse.json({ error: "Telemetry ingest key is invalid" }, { status: 401 });
+    }
+
+    if (isTelemetryRateLimited(request)) {
+      return NextResponse.json({ error: "Telemetry rate limit exceeded" }, { status: 429 });
     }
 
     if (!process.env.DATABASE_URL) {

@@ -95,3 +95,13 @@ export default defineDocs({
   },
 });
 ```
+
+If a self-hosted ingestion endpoint requires a shared key, set the same environment variable in
+the docs runtime and the ingestion app:
+
+```bash title=".env"
+DOCS_TELEMETRY_INGEST_KEY=your-shared-ingest-key
+```
+
+When present, telemetry requests include the key as `x-docs-telemetry-key`. Failed telemetry
+requests are still ignored by the docs runtime.

@@ -140,6 +140,9 @@ telemetry: false,
 | `enabled`  | `boolean` | production-only enabled | Enable or disable maintainer telemetry       |
 | `endpoint` | `string`  | Farming Labs endpoint | Override the ingestion endpoint for self-hosting or tests |
 
+Set `DOCS_TELEMETRY_INGEST_KEY` in both the docs runtime and self-hosted ingestion app when the
+endpoint should require a shared `x-docs-telemetry-key` header.
+
 Telemetry may include package/framework versions, deployment provider signals, site origin, enabled
 docs features, and coarse agent-surface events such as `llms`, `markdown`, `mcp`, or `skill`.
 It does not collect visitor identities, page views, search queries, Ask AI questions, feedback

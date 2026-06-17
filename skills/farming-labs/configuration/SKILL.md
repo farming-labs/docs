@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, readingTime, agent.compact, metadata, og, apiReference, MCP, llmsTxt, sitemap, robots, codeBlocks.validate, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
+description: docs.config.ts options for @farming-labs/docs. Use when configuring entry, contentDir, theme, staticExport, nav, github, themeToggle, breadcrumb, sidebar, icons, components, search, changelog, feedback, telemetry, readingTime, agent.compact, metadata, og, apiReference, MCP, llmsTxt, sitemap, robots, codeBlocks.validate, onCopyClick, pageActions, or ai. Covers Next.js, TanStack Start, SvelteKit, Astro, Nuxt config file location.
 ---
 
 # @farming-labs/docs — Configuration

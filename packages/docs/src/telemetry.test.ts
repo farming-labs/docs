@@ -15,10 +15,19 @@ function resetEnv() {
   delete process.env.DOCS_TELEMETRY;
   delete process.env.DOCS_TELEMETRY_DISABLED;
   delete process.env.DOCS_TELEMETRY_ENDPOINT;
+  delete process.env.DOCS_TELEMETRY_INGEST_KEY;
   delete process.env.VERCEL_ENV;
   delete process.env.NETLIFY;
   delete process.env.CONTEXT;
   delete process.env.CF_PAGES;
+}
+
+function resetTelemetryGlobals() {
+  const globalValue = globalThis as typeof globalThis & {
+    __farmingLabsDocsTelemetryProjectKeys__?: Map<string, number>;
+  };
+
+  delete globalValue.__farmingLabsDocsTelemetryProjectKeys__;
 }
 
 function telemetryEvent(overrides: Partial<DocsTelemetryEvent> = {}): DocsTelemetryEvent {
@@ -36,11 +45,13 @@ function telemetryEvent(overrides: Partial<DocsTelemetryEvent> = {}): DocsTeleme
 describe("telemetry", () => {
   beforeEach(() => {
     resetEnv();
+    resetTelemetryGlobals();
     vi.unstubAllGlobals();
   });
 
   afterEach(() => {
     resetEnv();
+    resetTelemetryGlobals();
     vi.unstubAllGlobals();
   });
 
@@ -94,6 +105,24 @@ describe("telemetry", () => {
     });
   });
 
+  it("sends an ingest key header when configured", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.DOCS_TELEMETRY_INGEST_KEY = "secret-key";
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(null, { status: 202 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await emitDocsTelemetryEvent(undefined, telemetryEvent());
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(init?.headers).toMatchObject({
+      "content-type": "application/json",
+      "x-docs-telemetry-key": "secret-key",
+    });
+  });
+
   it("deduplicates project detected events per runtime key", async () => {
     process.env.NODE_ENV = "production";
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
@@ -107,6 +136,29 @@ describe("telemetry", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("bounds the project detected dedupe cache", async () => {
+    process.env.NODE_ENV = "production";
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(null, { status: 202 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    for (let index = 0; index < 300; index += 1) {
+      emitDocsTelemetryProjectEvent(
+        { entry: "docs" },
+        { framework: "next", siteOrigin: `https://site-${index}.example.com` },
+      );
+    }
+
+    emitDocsTelemetryProjectEvent(
+      { entry: "docs" },
+      { framework: "next", siteOrigin: "https://site-0.example.com" },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fetchMock).toHaveBeenCalledTimes(301);
   });
 
   it("summarizes enabled docs features without raw user content", () => {
