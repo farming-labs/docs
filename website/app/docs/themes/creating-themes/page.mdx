@@ -407,6 +407,20 @@ export const myTheme = createTheme({
 ## Publishing as an npm Package
 
 ```text
+my-docs-theme/
+  src/
+    index.ts       ← createTheme() + exported defaults
+    theme.css      ← CSS overrides (optional)
+  package.json
+```
+
+```json title="package.json"
+{
+  "name": "my-docs-theme",
+
+## Publishing as an npm Package
+
+```text
 my-fumadocs-theme/
   src/
     index.ts       ← createTheme() + exported defaults
@@ -430,7 +444,19 @@ my-fumadocs-theme/
 ```
 
 Users install and use:
+```bash title="terminal"
+npm install my-docs-theme
+```
 
+```tsx title="docs.config.tsx"
+import { myTheme } from "my-docs-theme";
+export default defineDocs({ entry: "docs", theme: myTheme() });
+```
+
+```css title="app/global.css"
+@import "tailwindcss";
+@import "my-docs-theme/css";
+```
 ```bash title="terminal"
 npm install my-fumadocs-theme
 ```
