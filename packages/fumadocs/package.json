@@ -139,8 +139,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "fumadocs-core": "^16.6.1",
-    "fumadocs-ui": "^16.6.1",
+    "fumadocs-core": "16.7.16",
+    "fumadocs-ui": "16.7.16",
     "gray-matter": "^4.0.3",
     "sugar-high": "^0.9.5",
     "zod": "^4.3.6"

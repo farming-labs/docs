@@ -56,7 +56,7 @@
   "dependencies": {
     "@scalar/core": "^0.4.3",
     "@mdx-js/rollup": "^3.1.1",
-    "fumadocs-core": "^16.6.1",
+    "fumadocs-core": "16.7.16",
     "gray-matter": "^4.0.3",
     "remark-frontmatter": "^5.0.0",
     "remark-gfm": "^4.0.1",
