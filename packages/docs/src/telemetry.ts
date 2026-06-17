@@ -20,7 +20,7 @@ import type {
 } from "./types.js";
 
 const DOCS_PACKAGE_NAME = "@farming-labs/docs";
-const DOCS_PACKAGE_VERSION = "0.2.24";
+const DOCS_PACKAGE_VERSION = "0.2.25";
 const DEFAULT_DOCS_TELEMETRY_ENDPOINT = "https://docs.farming-labs.dev/api/telemetry/events";
 const PROJECT_TELEMETRY_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const PROJECT_TELEMETRY_CACHE_MAX_KEYS = 256;
@@ -131,9 +131,21 @@ function readRequestOrigin(request: Request | undefined): string | undefined {
   }
 }
 
+function normalizeTelemetryOrigin(candidate: string | undefined): string | undefined {
+  if (!candidate) return undefined;
+
+  try {
+    const withProtocol = /^https?:\/\//i.test(candidate) ? candidate : `https://${candidate}`;
+    return new URL(withProtocol).origin;
+  } catch {
+    return undefined;
+  }
+}
+
 function readDeploymentOrigin(): string | undefined {
   const candidates = [
     readRuntimeEnv("DOCS_SITE_URL"),
+    readRuntimeEnv("NEXT_PUBLIC_BASE_URL"),
     readRuntimeEnv("NEXT_PUBLIC_SITE_URL"),
     readRuntimeEnv("SITE_URL"),
     readRuntimeEnv("URL"),
@@ -144,14 +156,8 @@ function readDeploymentOrigin(): string | undefined {
   ];
 
   for (const candidate of candidates) {
-    if (!candidate) continue;
-
-    try {
-      const withProtocol = /^https?:\/\//i.test(candidate) ? candidate : `https://${candidate}`;
-      return new URL(withProtocol).origin;
-    } catch {
-      // Try the next candidate.
-    }
+    const origin = normalizeTelemetryOrigin(candidate);
+    if (origin) return origin;
   }
 
   return undefined;
@@ -283,9 +289,12 @@ function createDocsTelemetryEvent(
   input: DocsTelemetryEventInput,
   context: DocsTelemetryContext = {},
 ): DocsTelemetryEvent {
+  const telemetryConfig =
+    config.telemetry && typeof config.telemetry === "object" ? config.telemetry : undefined;
   const siteOrigin =
     context.siteOrigin ??
     input.site?.origin ??
+    normalizeTelemetryOrigin(telemetryConfig?.siteOrigin) ??
     readRequestOrigin(context.request) ??
     readDeploymentOrigin();
   const deployment = input.deployment ?? detectDeployment();

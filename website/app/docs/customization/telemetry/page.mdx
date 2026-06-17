@@ -81,10 +81,21 @@ export default defineDocs({
 });
 ```
 
-| Option     | Type      | Default                  |
-| ---------- | --------- | ------------------------ |
-| `enabled`  | `boolean` | production-only enabled  |
-| `endpoint` | `string`  | Farming Labs ingestion endpoint |
+| Option       | Type      | Default                   |
+| ------------ | --------- | ------------------------- |
+| `enabled`    | `boolean` | production-only enabled   |
+| `siteOrigin` | `string`  | request/deployment origin |
+| `endpoint`   | `string`  | Farming Labs ingestion endpoint |
+
+Use `siteOrigin` when production requests should be grouped under a stable custom domain:
+
+```ts title="docs.config.ts"
+export default defineDocs({
+  telemetry: {
+    siteOrigin: "https://docs.example.com",
+  },
+});
+```
 
 Use `endpoint` only for self-hosting, local verification, or tests:
 
