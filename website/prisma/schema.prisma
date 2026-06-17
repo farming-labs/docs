@@ -51,6 +51,7 @@ model DocsFeedback {
 model DocsTelemetryEvent {
   id                    String   @id @default(cuid())
   eventType             String
+  identityHash          String?
   packageName           String?
   packageVersion        String?
   framework             String?
@@ -67,6 +68,7 @@ model DocsTelemetryEvent {
   @@index([createdAt])
   @@index([eventType])
   @@index([framework])
+  @@index([identityHash])
   @@index([siteOrigin])
   @@index([packageName, packageVersion])
 }

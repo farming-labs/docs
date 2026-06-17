@@ -1,5 +1,6 @@
 import type { DocsTelemetryEvent } from "@farming-labs/docs";
 import { Prisma } from "@prisma/client";
+import { createHash, createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -10,6 +11,7 @@ const TELEMETRY_RATE_LIMIT_WINDOW_MS = 60_000;
 const TELEMETRY_GLOBAL_RATE_LIMIT_MAX_REQUESTS = 2_000;
 const TELEMETRY_IDENTITY_RATE_LIMIT_MAX_REQUESTS = 120;
 const TELEMETRY_RATE_LIMIT_MAX_KEYS = 4_096;
+const TELEMETRY_IDENTITY_HASH_VERSION = "v1";
 
 interface TelemetryRateLimitEntry {
   count: number;
@@ -35,6 +37,17 @@ function readNestedRecord(value: unknown, key: string) {
   return isRecord(next) ? next : undefined;
 }
 
+function normalizeOrigin(value: string | undefined) {
+  if (!value) return undefined;
+
+  try {
+    const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+    return new URL(withProtocol).origin.toLowerCase();
+  } catch {
+    return undefined;
+  }
+}
+
 function isPrismaSchemaMissing(error: unknown) {
   return (
     error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -44,6 +57,10 @@ function isPrismaSchemaMissing(error: unknown) {
 
 function isPrismaUnavailable(error: unknown) {
   return error instanceof Prisma.PrismaClientInitializationError;
+}
+
+function isPrismaColumnMissing(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2022";
 }
 
 function getRateLimitStore() {
@@ -150,6 +167,51 @@ function createTelemetryIdentityRateLimitKey(
   );
 }
 
+function createTelemetryIdentityHash({
+  packageName,
+  framework,
+  siteOrigin,
+  deploymentProvider,
+  deploymentEnvironment,
+  deploymentId,
+}: {
+  packageName?: string;
+  framework?: string;
+  siteOrigin?: string;
+  deploymentProvider?: string;
+  deploymentEnvironment?: string;
+  deploymentId?: string;
+}) {
+  if (!packageName) return undefined;
+
+  const normalizedSiteOrigin = normalizeOrigin(siteOrigin);
+  const stableProjectIdentity = normalizedSiteOrigin
+    ? `site:${normalizedSiteOrigin}`
+    : deploymentId
+      ? [
+          "deployment",
+          deploymentProvider?.toLowerCase() ?? "",
+          deploymentEnvironment?.toLowerCase() ?? "",
+          deploymentId,
+        ].join(":")
+      : undefined;
+
+  if (!stableProjectIdentity) return undefined;
+
+  const identityInput = [
+    TELEMETRY_IDENTITY_HASH_VERSION,
+    packageName.toLowerCase(),
+    framework?.toLowerCase() ?? "",
+    stableProjectIdentity,
+  ].join("|");
+  const salt = readString(process.env.DOCS_TELEMETRY_IDENTITY_SALT, { max: 512 });
+  const hash = salt
+    ? createHmac("sha256", salt).update(identityInput).digest("hex")
+    : createHash("sha256").update(identityInput).digest("hex");
+
+  return `${TELEMETRY_IDENTITY_HASH_VERSION}:${hash}`;
+}
+
 export async function POST(request: Request) {
   try {
     const contentLength = Number(request.headers.get("content-length") ?? "0");
@@ -208,29 +270,62 @@ export async function POST(request: Request) {
     const deployment = readNestedRecord(eventBody, "deployment");
     const features = readNestedRecord(eventBody, "features");
     const properties = readNestedRecord(eventBody, "properties");
+    const packageName = readString(packageInfo?.name, { max: 120 });
+    const packageVersion = readString(packageInfo?.version, { max: 80 });
+    const framework = readString(eventBody.framework, { max: 80 });
+    const runtimeName = readString(runtime?.name, { max: 80 });
+    const siteOrigin = readString(site?.origin, { max: 512 });
+    const deploymentProvider = readString(deployment?.provider, { max: 80 });
+    const deploymentEnvironment = readString(deployment?.environment, { max: 120 });
+    const deploymentId = readString(deployment?.id, { max: 160 });
+    const identityHash = createTelemetryIdentityHash({
+      packageName,
+      framework,
+      siteOrigin,
+      deploymentProvider,
+      deploymentEnvironment,
+      deploymentId,
+    });
 
     const event = eventBody as unknown as DocsTelemetryEvent;
+    const data = {
+      eventType,
+      identityHash,
+      packageName,
+      packageVersion,
+      framework,
+      runtimeName,
+      siteOrigin,
+      deploymentProvider,
+      deploymentEnvironment,
+      deploymentId,
+      features: features as unknown as Prisma.InputJsonValue,
+      properties: properties as unknown as Prisma.InputJsonValue,
+      payload: event as unknown as Prisma.InputJsonValue,
+    };
 
     try {
       const entry = await prisma.docsTelemetryEvent.create({
-        data: {
-          eventType,
-          packageName: readString(packageInfo?.name, { max: 120 }),
-          packageVersion: readString(packageInfo?.version, { max: 80 }),
-          framework: readString(event.framework, { max: 80 }),
-          runtimeName: readString(runtime?.name, { max: 80 }),
-          siteOrigin: readString(site?.origin, { max: 512 }),
-          deploymentProvider: readString(deployment?.provider, { max: 80 }),
-          deploymentEnvironment: readString(deployment?.environment, { max: 120 }),
-          deploymentId: readString(deployment?.id, { max: 160 }),
-          features: features as unknown as Prisma.InputJsonValue,
-          properties: properties as unknown as Prisma.InputJsonValue,
-          payload: event as unknown as Prisma.InputJsonValue,
-        },
+        data,
       });
 
       return NextResponse.json({ ok: true, stored: true, id: entry.id }, { status: 201 });
     } catch (error) {
+      if (identityHash && isPrismaColumnMissing(error)) {
+        console.warn(
+          "[telemetry POST] DocsTelemetryEvent.identityHash is missing. Storing telemetry without identityHash until the database schema is synced.",
+        );
+
+        const entry = await prisma.docsTelemetryEvent.create({
+          data: {
+            ...data,
+            identityHash: undefined,
+          },
+        });
+
+        return NextResponse.json({ ok: true, stored: true, id: entry.id }, { status: 201 });
+      }
+
       if (isPrismaSchemaMissing(error)) {
         console.warn(
           "[telemetry POST] DocsTelemetryEvent schema or Prisma client is out of date. Run `pnpm --dir website exec prisma generate` and `pnpm --dir website exec prisma db push` to sync it.",
