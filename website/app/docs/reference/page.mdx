@@ -144,10 +144,11 @@ telemetry: false,
 Set `DOCS_TELEMETRY_INGEST_KEY` in both the docs runtime and self-hosted ingestion app when the
 endpoint should require a shared `x-docs-telemetry-key` header.
 
-Telemetry may include package/framework versions, deployment provider signals, site origin, enabled
-docs features, and coarse agent-surface events such as `llms`, `markdown`, `mcp`, or `skill`.
-It does not collect visitor identities, page views, search queries, Ask AI questions, feedback
-comments, copied content, docs source content, cookies, or per-user sessions.
+Telemetry may include an anonymous project identity hash, package/framework versions, deployment
+provider signals, site origin, enabled docs features, and coarse agent-surface events such as
+`llms`, `markdown`, `mcp`, or `skill`. It does not collect visitor identities, page views, device
+fingerprints, search queries, Ask AI questions, feedback comments, copied content, docs source
+content, cookies, or per-user sessions.
 
 ---
 

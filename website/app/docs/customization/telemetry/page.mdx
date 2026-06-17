@@ -50,6 +50,7 @@ rendering, builds, routing, search, Ask AI, or MCP behavior.
 
 Telemetry may include:
 
+- an anonymous project identity hash derived by the ingestion service from stable project metadata
 - package name and version
 - framework adapter, such as Next.js, TanStack Start, SvelteKit, Astro, or Nuxt
 - production/runtime and deployment provider signals
@@ -63,6 +64,7 @@ Telemetry does not collect:
 
 - visitor identities
 - end-user page views
+- device fingerprints
 - search queries
 - Ask AI questions
 - feedback comments
@@ -116,3 +118,10 @@ DOCS_TELEMETRY_INGEST_KEY=your-shared-ingest-key
 
 When present, telemetry requests include the key as `x-docs-telemetry-key`. Failed telemetry
 requests are still ignored by the docs runtime.
+
+The ingestion service computes the anonymous identity hash server-side. Clients do not send a
+device id, cookie, browser fingerprint, or session id; the hash exists only to group repeated
+telemetry events from the same docs project/site.
+
+For self-hosted ingestion, set `DOCS_TELEMETRY_IDENTITY_SALT` on the ingestion service to derive the
+identity hash with HMAC-SHA256. Without it, ingestion uses a deterministic SHA-256 hash.
