@@ -393,21 +393,42 @@ function GroupTable({
   );
 }
 
+function PageRails() {
+  return (
+    <div className="pointer-events-none fixed inset-0 z-0 hidden lg:block">
+      <div className="absolute inset-y-0 left-0 w-3 border-r border-neutral-200 bg-[repeating-linear-gradient(-45deg,rgba(0,0,0,0.45),rgba(0,0,0,0.45)_1px,transparent_1px,transparent_5px)] opacity-[0.08] dark:border-white/[8%] dark:bg-[repeating-linear-gradient(-45deg,rgba(255,255,255,0.7),rgba(255,255,255,0.7)_1px,transparent_1px,transparent_5px)] dark:opacity-[0.1]" />
+      <div className="absolute inset-y-0 right-0 w-3 border-l border-neutral-200 bg-[repeating-linear-gradient(-45deg,rgba(0,0,0,0.45),rgba(0,0,0,0.45)_1px,transparent_1px,transparent_5px)] opacity-[0.08] dark:border-white/[8%] dark:bg-[repeating-linear-gradient(-45deg,rgba(255,255,255,0.7),rgba(255,255,255,0.7)_1px,transparent_1px,transparent_5px)] dark:opacity-[0.1]" />
+      <div className="absolute inset-y-0 left-3 w-px bg-neutral-200 dark:bg-white/[8%]" />
+      <div className="absolute inset-y-0 right-3 w-px bg-neutral-200 dark:bg-white/[8%]" />
+    </div>
+  );
+}
+
 function StatusPanel({
   data,
 }: {
   data: Extract<TelemetryData, { status: Exclude<TelemetryData["status"], "ready"> }>;
 }) {
   return (
-    <div className="mx-auto flex min-h-dvh max-w-3xl items-center px-6 py-16">
-      <div className="w-full border border-neutral-200 bg-white p-6 dark:border-white/10 dark:bg-black">
-        <div className="flex items-center gap-3">
-          <AlertTriangle className="size-5 text-neutral-500 dark:text-white/50" strokeWidth={1.8} />
-          <h1 className="text-lg font-semibold text-neutral-950 dark:text-white">Usage metrics</h1>
+    <main className="relative min-h-dvh overflow-hidden bg-neutral-50 text-neutral-950 dark:bg-black dark:text-white">
+      <PageRails />
+      <div className="relative z-10 flex min-h-dvh items-center px-4 py-16 sm:px-6 lg:px-8 xl:px-10">
+        <div className="mx-auto w-full max-w-3xl border border-neutral-200 bg-white p-6 dark:border-white/10 dark:bg-black">
+          <div className="flex items-center gap-3">
+            <AlertTriangle
+              className="size-5 text-neutral-500 dark:text-white/50"
+              strokeWidth={1.8}
+            />
+            <h1 className="text-lg font-semibold text-neutral-950 dark:text-white">
+              Usage metrics
+            </h1>
+          </div>
+          <p className="mt-4 text-sm leading-6 text-neutral-600 dark:text-white/60">
+            {data.message}
+          </p>
         </div>
-        <p className="mt-4 text-sm leading-6 text-neutral-600 dark:text-white/60">{data.message}</p>
       </div>
-    </div>
+    </main>
   );
 }
 
@@ -423,8 +444,9 @@ export default async function TelemetryPage({ searchParams }: TelemetryPageProps
   }
 
   return (
-    <main className="min-h-dvh bg-neutral-50 px-4 py-6 text-neutral-950 dark:bg-black dark:text-white sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+    <main className="relative min-h-dvh overflow-hidden bg-neutral-50 text-neutral-950 dark:bg-black dark:text-white">
+      <PageRails />
+      <div className="relative z-10 w-full px-3 py-4 sm:px-5 lg:px-8 xl:px-10">
         <header className="border border-neutral-200 bg-white p-5 dark:border-white/10 dark:bg-black">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
@@ -453,7 +475,7 @@ export default async function TelemetryPage({ searchParams }: TelemetryPageProps
           <StatCard label="Unique sites" value={formatNumber(data.uniqueSites)} icon={Globe2} />
         </section>
 
-        <section className="mt-4 grid gap-4 xl:grid-cols-2">
+        <section className="mt-4 grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
           <GroupTable title="Event types" groups={data.eventTypes} />
           <GroupTable title="Frameworks" groups={data.frameworks} />
           <GroupTable title="Package versions" groups={data.packageVersions} />
