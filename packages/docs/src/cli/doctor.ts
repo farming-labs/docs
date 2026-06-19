@@ -58,6 +58,7 @@ export interface DoctorOptions {
   failOn?: DoctorFailOn;
   url?: string;
   fix?: boolean;
+  dryRun?: boolean;
 }
 
 export interface ParsedDoctorArgs extends DoctorOptions {
@@ -213,6 +214,11 @@ export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
       continue;
     }
 
+    if (arg === "--dry-run") {
+      parsed.dryRun = true;
+      continue;
+    }
+
     if (arg.startsWith("--fail-on=")) {
       const value = parseInlineFlag(arg).value;
       if (!value) {
@@ -315,6 +321,7 @@ ${pc.dim("Usage:")}
   pnpm exec docs doctor --agent --json
   pnpm exec docs doctor --agent --strict
   pnpm exec docs doctor --agent --fix
+  pnpm exec docs doctor --agent --fix --dry-run
   pnpm exec docs doctor --agent --fail-on fail
   pnpm exec docs doctor --only agent
   pnpm exec docs doctor --only site
@@ -329,6 +336,7 @@ ${pc.dim("Options:")}
   ${pc.cyan("--json")}             Print the report as JSON for CI, scripts, and other agents
   ${pc.cyan("--strict")}           Exit with failure when any check warns or fails
   ${pc.cyan("--fix")}              Refresh stale generated agent.md files and token-budget missing outputs
+  ${pc.cyan("--dry-run")}          With ${pc.cyan("--fix")}, report the compaction command without writing files
   ${pc.cyan("--fail-on <level>")}  Exit with failure on ${pc.cyan("warn")} or only on ${pc.cyan("fail")}
   ${pc.cyan("--url <url>")}        Probe hosted agent surfaces, e.g. ${pc.dim("https://docs.example.com")}
   ${pc.cyan("--config <path>")}    Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
@@ -3084,6 +3092,22 @@ async function runAgentDoctorFixes(
       stale: true,
       includeMissing: compaction.tokenBudgetMissingPages > 0,
     });
+  const command = `docs agent compact --stale${compaction.tokenBudgetMissingPages > 0 ? " --include-missing" : ""}`;
+
+  if (options.dryRun) {
+    const missingOutputDetail = compaction.tokenBudgetMissingPages > 0
+      ? " and create token-budget missing outputs"
+      : "";
+
+    fixes.push({
+      id: "agent-compact",
+      title: "agent compact",
+      status: "skipped",
+      detail: `Dry run: would run ${command} to refresh stale generated agent.md files${missingOutputDetail}.`,
+    });
+
+    return fixes;
+  }
 
   if (options.json) {
     const originalLog = console.log;
