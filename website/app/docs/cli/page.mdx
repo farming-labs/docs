@@ -487,6 +487,7 @@ pnpm exec docs doctor --agent --strict
 pnpm exec docs doctor --agent --fail-on warn
 pnpm exec docs doctor --site --json --fail-on fail
 pnpm exec docs doctor --fix
+pnpm exec docs doctor --agent --fix --dry-run
 pnpm exec docs doctor --agent --fix
 pnpm exec docs doctor --only agent
 pnpm exec docs doctor --only=site
@@ -503,6 +504,7 @@ stale generated `agent.md` files and fills in token-budget missing outputs. Each
 with a status of `applied` or `skipped`. `--fix` is agent-only, so `docs doctor --site --fix`
 exits with an error instead of modifying reader-facing docs.
 
+Add `--dry-run` together with `--agent --fix` when you want to preview which `agent.md` files would be refreshed or generated without actually writing any files to disk. The command reports the same fix plan — including which pages are stale or missing — but leaves all files unchanged.
 Use `--strict` or `--fail-on warn` in CI when warnings should fail the job. Both forms set a
 non-zero exit code when any doctor check reports `warn` or `fail`. Use `--fail-on fail` when
 warnings should print without failing the job, while hard failures still exit non-zero.
