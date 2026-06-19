@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createServer } from "node:http";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { AddressInfo } from "node:net";
@@ -88,6 +96,11 @@ describe("parseDoctorArgs", () => {
     expect(parseDoctorArgs(["--agent", "--fix"])).toEqual({
       mode: "agent",
       fix: true,
+    });
+    expect(parseDoctorArgs(["--agent", "--fix", "--dry-run"])).toEqual({
+      mode: "agent",
+      fix: true,
+      dryRun: true,
     });
   });
 
@@ -1137,6 +1150,27 @@ Updated body.
           ).replace("Page actions initial", "Manual page actions edit"),
           "utf-8",
         );
+
+        const dryRunReport = await runDoctor({ mode: "agent", fix: true, dryRun: true });
+        expect(dryRunReport.mode).toBe("agent");
+        if (dryRunReport.mode !== "agent") {
+          throw new Error("Expected an agent doctor report.");
+        }
+
+        expect(dryRunReport.fixes).toEqual([
+          expect.objectContaining({
+            id: "agent-compact",
+            status: "skipped",
+            detail: expect.stringContaining("Dry run: would run docs agent compact --stale --include-missing"),
+          }),
+        ]);
+        expect(dryRunReport.coverage.compaction.staleGeneratedPages).toBe(1);
+        expect(dryRunReport.coverage.compaction.tokenBudgetMissingPages).toBe(1);
+        expect(seenInputs).toHaveLength(0);
+        expect(
+          readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
+        ).toContain("Installation initial");
+        expect(existsSync(path.join(tmpDir, "app", "docs", "budgeted", "agent.md"))).toBe(false);
 
         const report = await runDoctor({ mode: "agent", fix: true });
         expect(report.mode).toBe("agent");

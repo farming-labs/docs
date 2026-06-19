@@ -396,6 +396,7 @@ ${pc.dim("Options for doctor:")}
   ${pc.cyan("doctor --json")}                       Print the report as JSON for CI, scripts, and automation
   ${pc.cyan("doctor --strict")}                     Exit with failure when any doctor check warns or fails
   ${pc.cyan("doctor --agent --fix")}                Refresh stale generated ${pc.dim("agent.md")} files and token-budget missing outputs
+  ${pc.cyan("doctor --agent --fix --dry-run")}      Report the fix command without writing generated ${pc.dim("agent.md")} files
   ${pc.cyan("doctor --fail-on warn|fail")}          Choose whether warnings or only failures fail CI
   ${pc.cyan("doctor agent")}                        Subcommand alias for agent scoring
   ${pc.cyan("doctor site")}                         Subcommand alias for reader-facing scoring
