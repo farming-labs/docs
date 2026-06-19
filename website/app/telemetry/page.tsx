@@ -345,31 +345,44 @@ function GroupTable({
   title,
   groups,
   keyLabel = "Name",
+  className = "",
+  truncateKey = false,
 }: {
   title: string;
   groups: GroupCount[];
   keyLabel?: string;
+  className?: string;
+  truncateKey?: boolean;
 }) {
   return (
-    <section className="border border-neutral-200 bg-white dark:border-white/10 dark:bg-black">
+    <section
+      className={`border border-neutral-200 bg-white dark:border-white/10 dark:bg-black ${className}`}
+    >
       <div className="border-b border-neutral-200 px-4 py-3 dark:border-white/10">
         <h2 className="text-sm font-semibold text-neutral-950 dark:text-white">{title}</h2>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[420px] text-left text-sm">
+        <table className="w-full min-w-[420px] table-fixed text-left text-sm">
           <thead className="bg-neutral-50 text-[10px] uppercase tracking-wider text-neutral-500 dark:bg-white/[0.03] dark:text-white/40">
             <tr>
               <th className="px-4 py-2 font-medium">{keyLabel}</th>
-              <th className="px-4 py-2 text-right font-medium">Events</th>
-              <th className="px-4 py-2 text-right font-medium">Last seen</th>
+              <th className="w-24 px-4 py-2 text-right font-medium">Events</th>
+              <th className="w-40 px-4 py-2 text-right font-medium">Last seen</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100 dark:divide-white/10">
             {groups.length > 0 ? (
               groups.map((group) => (
                 <tr key={group.key}>
-                  <td className="max-w-[260px] px-4 py-2 font-mono text-xs text-neutral-700 dark:text-white/70">
-                    {shortText(group.key, 84)}
+                  <td
+                    className="px-4 py-2 font-mono text-xs text-neutral-700 dark:text-white/70"
+                    title={group.key}
+                  >
+                    {truncateKey ? (
+                      <span className="block truncate">{group.key}</span>
+                    ) : (
+                      shortText(group.key, 84)
+                    )}
                   </td>
                   <td className="px-4 py-2 text-right font-mono text-xs text-neutral-950 dark:text-white">
                     {formatNumber(group.count)}
@@ -487,6 +500,8 @@ export default async function TelemetryPage({ searchParams }: TelemetryPageProps
             title="Top identity hashes"
             groups={data.topIdentities}
             keyLabel="Identity hash"
+            className="xl:col-span-2 2xl:col-span-3"
+            truncateKey
           />
         </section>
 
