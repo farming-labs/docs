@@ -9,9 +9,9 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@farming-labs/docs": "0.2.27",
-    "@farming-labs/theme": "0.2.27",
-    "@farming-labs/next": "0.2.27",
+    "@farming-labs/docs": "0.2.28",
+    "@farming-labs/theme": "0.2.28",
+    "@farming-labs/next": "0.2.28",
     "lucide-react": "^0.564.0",
     "next": "16.2.6",
     "react": "^19.0.0",
