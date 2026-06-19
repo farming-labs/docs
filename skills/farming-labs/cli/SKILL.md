@@ -138,11 +138,14 @@ npx @farming-labs/docs@latest upgrade              # latest stable (default)
 npx @farming-labs/docs@latest upgrade --latest     # same
 npx @farming-labs/docs@latest upgrade --beta       # beta versions
 npx @farming-labs/docs@latest upgrade --version 0.1.104
+npx @farming-labs/docs@latest upgrade --dry-run    # print the install command only
 npx @farming-labs/docs@latest upgrade@beta         # shorthand for --beta
 npx @farming-labs/docs@latest upgrade@latest       # shorthand for --latest
 ```
 
 Use `--version <version>` when the user needs an exact release instead of an npm dist-tag. If someone uses `pnpx @farming-labs/docs upgrade@beta`, treat it as the supported shorthand for upgrading to the latest beta dist-tag.
+
+Use `--dry-run` to resolve the framework, package manager, target packages, and install command without changing `package.json` or lockfiles. This is useful in monorepos before running the real upgrade from an app directory like `apps/web`.
 
 ## Downgrade
 
@@ -159,6 +162,12 @@ Use `--version <version>` to choose an exact lower version:
 
 ```bash
 npx @farming-labs/docs@latest downgrade --version 0.1.103
+```
+
+Preview the downgrade command without changing dependencies:
+
+```bash
+npx @farming-labs/docs@latest downgrade --version 0.1.103 --dry-run
 ```
 
 If the requested version is equal to or newer than the current installed version, `downgrade` stops and tells the user to use `upgrade --version <version>` for newer versions.

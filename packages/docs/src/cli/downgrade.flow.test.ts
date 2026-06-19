@@ -145,6 +145,21 @@ describe("downgrade", () => {
     );
   });
 
+  it("prints the install command without executing when dry-run is enabled", async () => {
+    const prompts = await import("@clack/prompts");
+    const utils = await import("./utils.js");
+
+    await downgrade({ version: "0.1.104", dryRun: true });
+
+    expect(utils.execOutput).not.toHaveBeenCalled();
+    expect(utils.exec).not.toHaveBeenCalled();
+    expect(prompts.log.info).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "pnpm add @farming-labs/docs@0.1.104 @farming-labs/theme@0.1.104 @farming-labs/next@0.1.104",
+      ),
+    );
+  });
+
   it("rejects a version newer than the current version", async () => {
     const utils = await import("./utils.js");
 

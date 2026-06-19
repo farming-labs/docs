@@ -152,6 +152,24 @@ describe("upgrade package manager selection", () => {
     );
   });
 
+  it("prints the install command without executing when dry-run is enabled", async () => {
+    const prompts = await import("@clack/prompts");
+    const utils = await import("./utils.js");
+
+    vi.mocked(utils.detectPackageManagerFromProject).mockReturnValue(
+      packageManagerDetection("pnpm"),
+    );
+
+    await upgrade({ tag: "latest", dryRun: true });
+
+    expect(utils.exec).not.toHaveBeenCalled();
+    expect(prompts.log.info).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "pnpm add @farming-labs/docs@latest @farming-labs/theme@latest @farming-labs/next@latest",
+      ),
+    );
+  });
+
   it("rejects invalid exact versions", async () => {
     const utils = await import("./utils.js");
 

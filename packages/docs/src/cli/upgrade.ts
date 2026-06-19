@@ -53,6 +53,8 @@ export interface UpgradeOptions {
   tag?: UpgradeTag;
   /** Exact package version to install, e.g. 0.1.104. Overrides tag when provided. */
   version?: string;
+  /** Print the resolved install command without running it. */
+  dryRun?: boolean;
 }
 
 export async function upgrade(options: UpgradeOptions = {}) {
@@ -82,6 +84,12 @@ export async function upgrade(options: UpgradeOptions = {}) {
 
   p.log.step(`Upgrading ${preset} docs packages to ${target}...`);
   p.log.message(pc.dim(packages.join(", ")));
+
+  if (options.dryRun) {
+    p.log.info("Dry run. Would run:\n  " + pc.cyan(cmd));
+    p.outro(pc.green("Dry run complete. No changes made."));
+    return;
+  }
 
   try {
     exec(cmd, cwd);

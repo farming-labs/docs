@@ -116,6 +116,11 @@ describe("parseFlags", () => {
     expect(parseFlags(["upgrade", "--version=0.1.104-beta.1"]).version).toBe("0.1.104-beta.1");
   });
 
+  it("parses package version dry-run flag", () => {
+    expect(parseFlags(["upgrade", "--dry-run"])["dry-run"]).toBe(true);
+    expect(parseFlags(["downgrade", "--version", "0.1.104", "--dry-run"])["dry-run"]).toBe(true);
+  });
+
   it("returns empty object for empty argv", () => {
     expect(parseFlags([])).toEqual({});
   });

@@ -825,7 +825,7 @@ The generated project gets:
 Upgrade all `@farming-labs/*` docs packages to the latest version, beta channel, or an exact version. Run from your project root; the CLI **auto-detects** your framework from `package.json` and upgrades the right packages for Next.js, TanStack Start, Nuxt, SvelteKit, and Astro.
 
 > In a monorepo, run from the app or package directory that contains your framework `package.json` (e.g. `apps/web`). The CLI will walk up to find the workspace lockfile automatically.
-The CLI also detects your package manager from the lockfile in the current directory (`pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, or `package-lock.json`). If no lockfile is found, it asks which package manager you want to use instead of defaulting to npm.
+The CLI also detects your package manager from lockfiles (`pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, or `package-lock.json`) or `package.json#packageManager` in the current directory or parent directories. If no package manager signal is found, it asks which package manager you want to use instead of defaulting to npm.
 
 > **Monorepo note:** Run `upgrade` and `downgrade` from the app or package directory that contains the framework `package.json` (e.g. `apps/web`), not the workspace root. The CLI walks up parent directories automatically to find a lockfile (`pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, `package-lock.json`) or the `packageManager` field in `package.json`. The log message shows the relative path to the detected file, e.g. `Detected pnpm from ../pnpm-lock.yaml`.
 <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
@@ -903,6 +903,7 @@ Use **`--latest`** (default) to install the latest stable release, **`--beta`** 
     npx @farming-labs/docs upgrade --latest     # same
     npx @farming-labs/docs upgrade --beta       # beta versions
     npx @farming-labs/docs upgrade --version 0.1.104
+    npx @farming-labs/docs upgrade --dry-run    # print the install command only
     ```
   </Tab>
   <Tab value="pnpm">
@@ -911,6 +912,7 @@ Use **`--latest`** (default) to install the latest stable release, **`--beta`** 
     pnpm dlx @farming-labs/docs upgrade --latest     # same
     pnpm dlx @farming-labs/docs upgrade --beta       # beta versions
     pnpm dlx @farming-labs/docs upgrade --version 0.1.104
+    pnpm dlx @farming-labs/docs upgrade --dry-run    # print the install command only
     ```
   </Tab>
   <Tab value="yarn">
@@ -919,6 +921,7 @@ Use **`--latest`** (default) to install the latest stable release, **`--beta`** 
     yarn dlx @farming-labs/docs upgrade --latest     # same
     yarn dlx @farming-labs/docs upgrade --beta       # beta versions
     yarn dlx @farming-labs/docs upgrade --version 0.1.104
+    yarn dlx @farming-labs/docs upgrade --dry-run    # print the install command only
     ```
   </Tab>
   <Tab value="bun">
@@ -927,9 +930,12 @@ Use **`--latest`** (default) to install the latest stable release, **`--beta`** 
     bunx @farming-labs/docs upgrade --latest     # same
     bunx @farming-labs/docs upgrade --beta       # beta versions
     bunx @farming-labs/docs upgrade --version 0.1.104
+    bunx @farming-labs/docs upgrade --dry-run    # print the install command only
     ```
   </Tab>
 </Tabs>
+
+Use `--dry-run` when you want to preview the exact package manager command before changing `package.json` or the lockfile.
 
 If you prefer the shorter command form, the CLI also accepts `upgrade@beta` and `upgrade@latest`. For example, `pnpx @farming-labs/docs upgrade@beta` behaves like `pnpx @farming-labs/docs upgrade --beta`.
 
@@ -966,7 +972,10 @@ Pass `--version` to choose an exact lower version:
 
 ```bash title="terminal"
 npx @farming-labs/docs downgrade --version 0.1.103
+npx @farming-labs/docs downgrade --version 0.1.103 --dry-run
 ```
+
+Use `--dry-run` to preview the downgrade install command without changing dependencies. Without `--version`, dry-run still resolves the previous published version first.
 
 If the requested version is newer than the current installed version, the command stops and points you to `upgrade --version <version>` instead.
 
