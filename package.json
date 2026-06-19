@@ -60,6 +60,7 @@
       "hono": "4.12.25",
       "rollup": "^4.59.0",
       "tar": "^7.5.11",
+      "undici": "7.28.0",
       "ws": "^8.21.0",
       "readdir-glob>minimatch": "^5.1.8",
       "glob@10>minimatch": "^9.0.7",
