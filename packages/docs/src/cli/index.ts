@@ -43,6 +43,7 @@ export function parseFlags(argv: string[]): Record<string, string | boolean | un
     "analytics",
     "ask-ai",
     "deploy",
+    "dry-run",
   ]);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -274,7 +275,8 @@ async function main() {
       args.includes("--version") || args.some((arg) => arg.startsWith("--version="));
     const version =
       typeof flags.version === "string" ? flags.version : hasVersionFlag ? "" : undefined;
-    await downgrade({ framework, version });
+    const dryRun = flags["dry-run"] === true;
+    await downgrade({ framework, version, dryRun });
   } else if (parsedCommand.command === "upgrade") {
     const { upgrade } = await import("./upgrade.js");
     const framework =
@@ -292,7 +294,8 @@ async function main() {
           : args.includes("--latest")
             ? "latest"
             : (parsedCommand.tag ?? "latest");
-    await upgrade({ framework, tag, version });
+    const dryRun = flags["dry-run"] === true;
+    await upgrade({ framework, tag, version, dryRun });
   } else if (parsedCommand.command === "--help" || parsedCommand.command === "-h") {
     printHelp();
   } else if (parsedCommand.command === "--version" || parsedCommand.command === "-v") {
@@ -445,6 +448,7 @@ ${pc.dim("Options for upgrade:")}
   ${pc.cyan("--version <version>")} Install an exact version (e.g. ${pc.dim("0.1.104")})
   ${pc.cyan("--latest")}            Install latest stable (default)
   ${pc.cyan("--beta")}             Install beta versions
+  ${pc.cyan("--dry-run")}          Print the install command without changing dependencies
   ${pc.cyan("upgrade@beta")}       Shortcut for ${pc.cyan("upgrade --beta")}
   ${pc.cyan("upgrade@latest")}     Shortcut for ${pc.cyan("upgrade --latest")}
 
@@ -452,6 +456,7 @@ ${pc.dim("Options for downgrade:")}
   ${pc.cyan("downgrade")}           Install the published version immediately below the current installed version
   ${pc.cyan("--framework <name>")}  Explicit framework (${pc.dim("next")}, ${pc.dim("tanstack-start")}, ${pc.dim("nuxt")}, ${pc.dim("sveltekit")}, ${pc.dim("astro")}); omit to auto-detect
   ${pc.cyan("--version <version>")} Install an exact lower version (e.g. ${pc.dim("0.1.103")})
+  ${pc.cyan("--dry-run")}          Print the install command without changing dependencies
 
   ${pc.cyan("-h, --help")}         Show this help message
   ${pc.cyan("-v, --version")}     Show version

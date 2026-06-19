@@ -21,6 +21,8 @@ export interface DowngradeOptions {
   framework?: string;
   /** Exact package version to install, e.g. 0.1.104. Must be lower than the current installed version. */
   version?: string;
+  /** Print the resolved install command without running it. */
+  dryRun?: boolean;
 }
 
 interface ParsedSemver {
@@ -249,6 +251,12 @@ export async function downgrade(options: DowngradeOptions = {}) {
 
   p.log.step(`Downgrading ${preset} docs packages from ${currentVersion} to ${targetVersion}...`);
   p.log.message(pc.dim(packages.join(", ")));
+
+  if (options.dryRun) {
+    p.log.info("Dry run. Would run:\n  " + pc.cyan(cmd));
+    p.outro(pc.green("Dry run complete. No changes made."));
+    return;
+  }
 
   try {
     exec(cmd, cwd);
