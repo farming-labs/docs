@@ -454,6 +454,7 @@ Use `docs doctor --fail-on warn` when any warning should fail CI. Use
 `docs doctor --fail-on fail` when warnings should stay visible but only hard failures should exit
 non-zero. `--strict` remains a shortcut for `--fail-on warn`.
 
+Use `docs doctor --agent --fix` when you want the doctor to automatically repair issues it finds instead of only reporting them. In fix mode, the command refreshes stale generated `agent.md` files and regenerates pages that are missing token-budget outputs, then reports the results in a `fixes` array on the JSON report.
 This command does not generate files. It inspects the current project and scores how ready the docs
 are for agents, IDEs, and GEO-style crawlers.
 
@@ -493,6 +494,7 @@ pnpm exec docs doctor site
 pnpm exec docs doctor --agent --config docs.config.tsx
 pnpm exec docs doctor --agent --url https://docs.example.com
 pnpm exec docs doctor --agent --url https://docs.example.com --json
+pnpm exec docs doctor --agent --fix
 ```
 
 Use `--strict` or `--fail-on warn` in CI when warnings should fail the job. Both forms set a
@@ -580,6 +582,35 @@ Sample shape:
     "Add page-level Agent blocks or agent.md files for workflows where the rendered docs need machine-only hints."
   ]
 }
+  When `--fix` is passed, the report also includes a `fixes` array:
+
+  ```json title="~"
+  {
+  "fixes": [
+    {
+      "id": "stale-agent-md:docs/installation",
+      "title": "Refreshed stale agent.md for docs/installation",
+      "status": "applied",
+      "detail": "Recompacted from updated page source."
+    },
+    {
+      "id": "missing-token-budget:docs/quickstart",
+      "title": "Generated missing token-budget output for docs/quickstart",
+      "status": "skipped",
+      "detail": "No compact config found; skipped."
+    }
+  ]
+  }
+  ```
+
+  Each entry in `fixes` contains:
+
+  | Field | Type | Description |
+  | ----- | ---- | ----------- |
+  | `id` | `string` | Unique identifier for the fix, including the affected page path |
+  | `title` | `string` | Human-readable description of what was attempted |
+  | `status` | `"applied" \| "skipped"` | Whether the fix was written (`applied`) or left unchanged (`skipped`) |
+  | `detail` | `string` | Additional context about why the fix was applied or skipped |
 ```
 
 The JSON report itself is written to stdout. Separate loader notices, such as config fallback
