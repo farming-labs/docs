@@ -40,7 +40,7 @@ import {
   resolveDocsConfigPath,
   resolveDocsContentDir,
 } from "./config.js";
-import { inspectAgentCompactionState, scanDocsPageTargets } from "./agent.js";
+import { compactAgentDocs, inspectAgentCompactionState, scanDocsPageTargets } from "./agent.js";
 import type { AgentCompactOptions } from "./agent.js";
 import { detectFramework, type Framework } from "./utils.js";
 
@@ -57,6 +57,7 @@ export interface DoctorOptions {
   strict?: boolean;
   failOn?: DoctorFailOn;
   url?: string;
+  fix?: boolean;
 }
 
 export interface ParsedDoctorArgs extends DoctorOptions {
@@ -104,6 +105,14 @@ export interface AgentDoctorReport {
   checks: AgentDoctorCheck[];
   coverage: AgentDoctorCoverage;
   recommendations: string[];
+  fixes?: AgentDoctorFix[];
+}
+
+export interface AgentDoctorFix {
+  id: string;
+  title: string;
+  status: "applied" | "skipped";
+  detail: string;
 }
 
 export interface HumanDoctorCheck {
@@ -196,6 +205,11 @@ export function parseDoctorArgs(argv: string[]): ParsedDoctorArgs {
 
     if (arg === "--strict") {
       parsed.strict = true;
+      continue;
+    }
+
+    if (arg === "--fix") {
+      parsed.fix = true;
       continue;
     }
 
@@ -300,6 +314,7 @@ ${pc.dim("Usage:")}
   pnpm exec docs doctor --site
   pnpm exec docs doctor --agent --json
   pnpm exec docs doctor --agent --strict
+  pnpm exec docs doctor --agent --fix
   pnpm exec docs doctor --agent --fail-on fail
   pnpm exec docs doctor --only agent
   pnpm exec docs doctor --only site
@@ -313,6 +328,7 @@ ${pc.dim("Options:")}
   ${pc.cyan("--only <mode>")}      Run only one doctor suite: ${pc.cyan("agent")} or ${pc.cyan("site")}
   ${pc.cyan("--json")}             Print the report as JSON for CI, scripts, and other agents
   ${pc.cyan("--strict")}           Exit with failure when any check warns or fails
+  ${pc.cyan("--fix")}              Refresh stale generated agent.md files and token-budget missing outputs
   ${pc.cyan("--fail-on <level>")}  Exit with failure on ${pc.cyan("warn")} or only on ${pc.cyan("fail")}
   ${pc.cyan("--url <url>")}        Probe hosted agent surfaces, e.g. ${pc.dim("https://docs.example.com")}
   ${pc.cyan("--config <path>")}    Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
@@ -2937,6 +2953,15 @@ export function printAgentDoctorReport(report: AgentDoctorReport) {
   console.log(
     `${pc.bold("Generated agent.md freshness:")} ${report.coverage.compaction.freshGeneratedPages} fresh ${pc.dim("•")} ${report.coverage.compaction.staleGeneratedPages} stale ${pc.dim("•")} ${report.coverage.compaction.modifiedGeneratedPages} modified ${pc.dim("•")} ${report.coverage.compaction.tokenBudgetMissingPages} token-budget missing`,
   );
+
+  if (report.fixes && report.fixes.length > 0) {
+    console.log(
+      `${pc.bold("Fixes:")} ${report.fixes
+        .map((fix) => `${fix.status === "applied" ? "applied" : "skipped"} ${fix.title}`)
+        .join(pc.dim(" • "))}`,
+    );
+  }
+
   console.log();
 
   for (const check of report.checks) {
@@ -3030,8 +3055,69 @@ function applyDoctorExitCode(
   }
 }
 
+async function runAgentDoctorFixes(
+  report: AgentDoctorReport,
+  options: DoctorOptions,
+): Promise<AgentDoctorFix[]> {
+  const fixes: AgentDoctorFix[] = [];
+  const compaction = report.coverage.compaction;
+  const shouldRunCompaction =
+    compaction.staleGeneratedPages > 0 || compaction.tokenBudgetMissingPages > 0;
+
+  if (!shouldRunCompaction) {
+    if (compaction.modifiedGeneratedPages > 0 || compaction.unknownGeneratedPages > 0) {
+      fixes.push({
+        id: "agent-compact",
+        title: "agent compact",
+        status: "skipped",
+        detail:
+          "Only modified or unknown generated agent.md files need attention; doctor --fix leaves those for manual review.",
+      });
+    }
+
+    return fixes;
+  }
+
+  const runCompaction = () =>
+    compactAgentDocs({
+      configPath: options.configPath,
+      stale: true,
+      includeMissing: compaction.tokenBudgetMissingPages > 0,
+    });
+
+  if (options.json) {
+    const originalLog = console.log;
+    console.log = () => undefined;
+    try {
+      await runCompaction();
+    } finally {
+      console.log = originalLog;
+    }
+  } else {
+    console.log();
+    console.log(pc.bold("Applying doctor --fix"));
+    await runCompaction();
+  }
+
+  fixes.push({
+    id: "agent-compact",
+    title: "agent compact",
+    status: "applied",
+    detail:
+      compaction.tokenBudgetMissingPages > 0
+        ? "Ran docs agent compact --stale --include-missing to refresh stale generated agent.md files and create token-budget missing outputs."
+        : "Ran docs agent compact --stale to refresh stale generated agent.md files.",
+  });
+
+  return fixes;
+}
+
 export async function runDoctor(options: DoctorOptions = {}) {
   if (options.mode === "human") {
+    if (options.fix) {
+      throw new Error("doctor --fix is currently only supported with --agent.");
+    }
+
     const report = await inspectHumanReadiness(options);
     applyDoctorExitCode(report, options);
     if (options.json) {
@@ -3042,7 +3128,17 @@ export async function runDoctor(options: DoctorOptions = {}) {
     return report;
   }
 
-  const report = await inspectAgentReadiness(options);
+  let report = await inspectAgentReadiness(options);
+  let fixes: AgentDoctorFix[] | undefined;
+
+  if (options.fix) {
+    fixes = await runAgentDoctorFixes(report, options);
+    report = {
+      ...(await inspectAgentReadiness(options)),
+      fixes,
+    };
+  }
+
   applyDoctorExitCode(report, options);
   if (options.json) {
     printDoctorJsonReport(report);

@@ -84,6 +84,13 @@ describe("parseDoctorArgs", () => {
     });
   });
 
+  it("parses agent fix mode", () => {
+    expect(parseDoctorArgs(["--agent", "--fix"])).toEqual({
+      mode: "agent",
+      fix: true,
+    });
+  });
+
   it("parses explicit fail-on thresholds", () => {
     expect(parseDoctorArgs(["--fail-on", "warn"])).toEqual({
       mode: "agent",
@@ -996,6 +1003,176 @@ Updated body.
     expect(report.coverage.compaction.modifiedGeneratedPages).toBe(1);
     expect(report.coverage.compaction.unknownGeneratedPages).toBe(1);
     expect(report.coverage.compaction.tokenBudgetMissingPages).toBe(1);
+  });
+
+  it("fixes stale generated agent docs and token-budget missing outputs", async () => {
+    writePackageJson(tmpDir, "doctor-fix", { next: "16.0.0" });
+
+    const seenInputs: string[] = [];
+    const server = createServer(async (req, res) => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+
+      const payload = JSON.parse(Buffer.concat(chunks).toString("utf-8")) as { input: string };
+      seenInputs.push(payload.input);
+
+      let output = "Generic compacted";
+      if (payload.input.includes("/docs/installation")) {
+        output = payload.input.includes("Updated body.")
+          ? "Installation refreshed"
+          : "Installation initial";
+      } else if (payload.input.includes("/docs/page-actions")) {
+        output = "Page actions initial";
+      } else if (payload.input.includes("/docs/budgeted")) {
+        output = "Budgeted compacted";
+      }
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          output,
+          original_input_tokens: 100,
+          output_tokens: 25,
+        }),
+      );
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      writeFileSync(
+        path.join(tmpDir, "docs.config.ts"),
+        `export default {
+  entry: "docs",
+  agent: {
+    compact: {
+      apiKey: "test-key",
+      baseUrl: "http://127.0.0.1:${port}",
+    },
+  },
+};`,
+        "utf-8",
+      );
+
+      for (const slug of ["installation", "page-actions", "budgeted"]) {
+        mkdirSync(path.join(tmpDir, "app", "docs", slug), { recursive: true });
+      }
+
+      writeFileSync(
+        path.join(tmpDir, "app", "docs", "installation", "page.mdx"),
+        `---
+title: "Installation"
+description: "Install the framework"
+---
+
+# Installation
+
+Original body.
+`,
+        "utf-8",
+      );
+
+      writeFileSync(
+        path.join(tmpDir, "app", "docs", "page-actions", "page.mdx"),
+        `---
+title: "Page Actions"
+description: "Customize page actions"
+---
+
+# Page Actions
+
+Original page actions body.
+`,
+        "utf-8",
+      );
+
+      writeFileSync(
+        path.join(tmpDir, "app", "docs", "budgeted", "page.mdx"),
+        `---
+title: "Budgeted"
+description: "Needs compaction output"
+agent:
+  tokenBudget: 250
+---
+
+# Budgeted
+
+Budgeted body.
+`,
+        "utf-8",
+      );
+
+      process.chdir(tmpDir);
+
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+      try {
+        await compactAgentDocs({
+          pages: ["installation", "page-actions"],
+        });
+        seenInputs.length = 0;
+
+        writeFileSync(
+          path.join(tmpDir, "app", "docs", "installation", "page.mdx"),
+          `---
+title: "Installation"
+description: "Install the framework"
+---
+
+# Installation
+
+Updated body.
+`,
+          "utf-8",
+        );
+
+        writeFileSync(
+          path.join(tmpDir, "app", "docs", "page-actions", "agent.md"),
+          readFileSync(
+            path.join(tmpDir, "app", "docs", "page-actions", "agent.md"),
+            "utf-8",
+          ).replace("Page actions initial", "Manual page actions edit"),
+          "utf-8",
+        );
+
+        const report = await runDoctor({ mode: "agent", fix: true });
+        expect(report.mode).toBe("agent");
+        if (report.mode !== "agent") throw new Error("Expected an agent doctor report.");
+
+        expect(report.fixes).toEqual([
+          expect.objectContaining({
+            id: "agent-compact",
+            status: "applied",
+          }),
+        ]);
+        expect(report.coverage.compaction.staleGeneratedPages).toBe(0);
+        expect(report.coverage.compaction.tokenBudgetMissingPages).toBe(0);
+        expect(report.coverage.compaction.modifiedGeneratedPages).toBe(1);
+      } finally {
+        logSpy.mockRestore();
+      }
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+
+    expect(seenInputs).toHaveLength(2);
+    expect(seenInputs.some((input) => input.includes("/docs/installation"))).toBe(true);
+    expect(seenInputs.some((input) => input.includes("/docs/budgeted"))).toBe(true);
+    expect(seenInputs.some((input) => input.includes("/docs/page-actions"))).toBe(false);
+    expect(
+      readFileSync(path.join(tmpDir, "app", "docs", "installation", "agent.md"), "utf-8"),
+    ).toContain("Installation refreshed");
+    expect(
+      readFileSync(path.join(tmpDir, "app", "docs", "budgeted", "agent.md"), "utf-8"),
+    ).toContain("Budgeted compacted");
+    expect(
+      readFileSync(path.join(tmpDir, "app", "docs", "page-actions", "agent.md"), "utf-8"),
+    ).toContain("Manual page actions edit");
   });
 
   it("returns a failing report when docs config is missing", async () => {
