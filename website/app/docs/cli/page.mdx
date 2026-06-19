@@ -486,6 +486,8 @@ pnpm exec docs doctor --agent --json
 pnpm exec docs doctor --agent --strict
 pnpm exec docs doctor --agent --fail-on warn
 pnpm exec docs doctor --site --json --fail-on fail
+pnpm exec docs doctor --fix
+pnpm exec docs doctor --agent --fix
 pnpm exec docs doctor --only agent
 pnpm exec docs doctor --only=site
 pnpm exec docs doctor agent
@@ -494,6 +496,12 @@ pnpm exec docs doctor --agent --config docs.config.tsx
 pnpm exec docs doctor --agent --url https://docs.example.com
 pnpm exec docs doctor --agent --url https://docs.example.com --json
 ```
+
+Use `docs doctor --fix` or `docs doctor --agent --fix` when you want the agent doctor to
+repair issues it finds instead of only reporting them. Fix mode re-runs agent doc compaction for
+stale generated `agent.md` files and fills in token-budget missing outputs. Each repair is reported
+with a status of `applied` or `skipped`. `--fix` is agent-only, so `docs doctor --site --fix`
+exits with an error instead of modifying reader-facing docs.
 
 Use `--strict` or `--fail-on warn` in CI when warnings should fail the job. Both forms set a
 non-zero exit code when any doctor check reports `warn` or `fail`. Use `--fail-on fail` when
