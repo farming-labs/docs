@@ -159,12 +159,17 @@ pnpm exec docs agent compact --stale
 pnpm exec docs agent compact --stale --include-missing
 ```
 
-Optional defaults live in `docs.config.ts`:
+The API key comes from the root Docs Cloud config. Optional compression defaults live under
+`agent.compact`:
 
 ```ts
+cloud: {
+  apiKey: { env: "DOCS_CLOUD_API_KEY" },
+},
 agent: {
   compact: {
-    apiKeyEnv: "DOCS_CLOUD_API_KEY",
+    model: "docs-cloud-compress-v1",
+    aggressiveness: 0.3,
   },
 },
 ```

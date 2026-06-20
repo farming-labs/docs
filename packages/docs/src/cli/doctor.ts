@@ -1075,7 +1075,7 @@ function compactionFreshnessScore(
     status: "warn",
     score: 0,
     recommendation:
-      "Add agent.compact defaults if you want docs agent compact and stale detection to run without repeating model and key settings.",
+      "Add agent.compact defaults if you want docs agent compact and stale detection to run without repeating model and compression settings.",
   };
 }
 
@@ -3095,9 +3095,8 @@ async function runAgentDoctorFixes(
   const command = `docs agent compact --stale${compaction.tokenBudgetMissingPages > 0 ? " --include-missing" : ""}`;
 
   if (options.dryRun) {
-    const missingOutputDetail = compaction.tokenBudgetMissingPages > 0
-      ? " and create token-budget missing outputs"
-      : "";
+    const missingOutputDetail =
+      compaction.tokenBudgetMissingPages > 0 ? " and create token-budget missing outputs" : "";
 
     fixes.push({
       id: "agent-compact",

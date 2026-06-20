@@ -501,16 +501,18 @@ Body.
     expect(logs.some((line) => line.includes("Dry run complete: 1 page processed."))).toBe(true);
   });
 
-  it("reads compact defaults including apiKeyEnv from docs.config.ts", async () => {
+  it("reads the root cloud API key env with compact defaults from docs.config.ts", async () => {
     process.env.CUSTOM_COMPRESSION_KEY = "config-key";
 
     writeFileSync(
       path.join(tmpDir, "docs.config.ts"),
       `export default defineDocs({
         entry: "docs",
+        cloud: {
+          apiKey: { env: "CUSTOM_COMPRESSION_KEY" },
+        },
         agent: {
           compact: {
-            apiKeyEnv: "CUSTOM_COMPRESSION_KEY",
             baseUrl: "http://127.0.0.1:0",
             model: "docs-cloud-compress-test",
             aggressiveness: 0.55,
@@ -564,9 +566,11 @@ Body.
       path.join(tmpDir, "docs.config.ts"),
       `export default defineDocs({
         entry: "docs",
+        cloud: {
+          apiKey: { env: "CUSTOM_COMPRESSION_KEY" },
+        },
         agent: {
           compact: {
-            apiKeyEnv: "CUSTOM_COMPRESSION_KEY",
             baseUrl: "http://127.0.0.1:${port}",
             model: "docs-cloud-compress-test",
             aggressiveness: 0.55,
@@ -694,9 +698,11 @@ Body.
       path.join(tmpDir, "docs.config.ts"),
       `export default defineDocs({
         entry: "docs",
+        cloud: {
+          apiKey: { env: "DOCS_CLOUD_API_KEY" },
+        },
         agent: {
           compact: {
-            apiKeyEnv: "DOCS_CLOUD_API_KEY",
             baseUrl: "http://127.0.0.1:0",
             model: "docs-cloud-compress-v1",
           },
@@ -747,9 +753,11 @@ Body.
       path.join(tmpDir, "docs.config.ts"),
       `export default defineDocs({
         entry: "docs",
+        cloud: {
+          apiKey: { env: "DOCS_CLOUD_API_KEY" },
+        },
         agent: {
           compact: {
-            apiKeyEnv: "DOCS_CLOUD_API_KEY",
             baseUrl: "http://127.0.0.1:${port}",
             model: "docs-cloud-compress-v1",
           },
@@ -778,7 +786,7 @@ Body.
     );
   });
 
-  it("requires the compression key to be declared in root compact config or CLI options", async () => {
+  it("requires the compression key to be declared in root cloud config or CLI options", async () => {
     process.env.DOCS_CLOUD_API_KEY = "ambient-key";
 
     writeFileSync(
@@ -805,7 +813,42 @@ Body.
     process.chdir(tmpDir);
 
     await expect(compactAgentDocs({ pages: ["installation"] })).rejects.toThrow(
-      "Set agent.compact.apiKey/apiKeyEnv in docs config or pass --api-key",
+      "Configure cloud.apiKey.env in your root docs config",
+    );
+  });
+
+  it("explains when the configured root cloud API key env is missing", async () => {
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default {
+        entry: "docs",
+        cloud: {
+          apiKey: { env: "DOCS_CLOUD_API_KEY" },
+        },
+      };`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "app", "docs", "installation"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "installation", "page.mdx"),
+      `---
+title: "Installation"
+description: "Install it"
+---
+
+# Installation
+
+Body.
+`,
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+    delete process.env.DOCS_CLOUD_API_KEY;
+
+    await expect(compactAgentDocs({ pages: ["installation"] })).rejects.toThrow(
+      'The configured API key env "DOCS_CLOUD_API_KEY" was not found in your shell or project .env/.env.local files',
     );
   });
 

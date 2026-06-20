@@ -382,8 +382,8 @@ ${pc.dim("Options for agent compact:")}
   ${pc.cyan("agent compact --stale")}               Refresh only stale generated ${pc.dim("agent.md")} files
   ${pc.cyan("--page <slug|path>")}                  Repeatable explicit page flag; positional page args work too
   ${pc.cyan("--include-missing")}                   With ${pc.cyan("--stale")}, also create explicit or token-budget pages missing ${pc.dim("agent.md")}
-  ${pc.cyan("--api-key <key>")}                     Docs Cloud API key; ${pc.dim("agent.compact.apiKey")} is preferred
-  ${pc.cyan("--api-key-env <name>")}                Env var name for the Docs Cloud API key; ${pc.dim("agent.compact.apiKeyEnv")} is preferred
+  ${pc.cyan("--api-key <key>")}                     Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
+  ${pc.cyan("--api-key-env <name>")}                Env var name for the Docs Cloud API key; prefer ${pc.dim("cloud.apiKey.env")}
   ${pc.cyan("--base-url <url>")}                    Override the compression API base URL
   ${pc.cyan("--aggressiveness <0-1>")}              Compression intensity for compacted output
   ${pc.cyan("--dry-run")}                           Resolve and compress pages without writing files

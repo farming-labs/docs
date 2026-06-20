@@ -467,7 +467,9 @@ Behavior:
 - page identifiers can be a slug, docs path, `.md` path, full docs URL, or `.` for the root docs
   page
 - the command loads `.env` and `.env.local`
-- defaults can come from `agent.compact` in `docs.config.ts` or `docs.config.tsx`
+- the Docs Cloud API key comes from root `cloud.apiKey.env`; `--api-key` and `--api-key-env` are
+  one-off overrides
+- compression defaults can come from `agent.compact` in `docs.config.ts` or `docs.config.tsx`
 - `--changed` compacts only docs pages changed in the current git working tree, including staged,
   unstaged, and untracked docs changes plus handwritten `agent.md` sources
 - `--stale` refreshes only generated `agent.md` files whose page source or compaction settings
@@ -487,22 +489,14 @@ Behavior:
 Recommended config:
 
 ```ts
+cloud: {
+  apiKey: { env: "DOCS_CLOUD_API_KEY" },
+},
 agent: {
   compact: {
-    apiKeyEnv: "DOCS_CLOUD_API_KEY",
     model: "docs-cloud-compress-v1",
     aggressiveness: 0.3,
     protectJson: true,
-  },
-}
-```
-
-Alternative `docs.config.tsx` form:
-
-```tsx
-agent: {
-  compact: {
-    apiKey: process.env.DOCS_CLOUD_API_KEY,
   },
 }
 ```

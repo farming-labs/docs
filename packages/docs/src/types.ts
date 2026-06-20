@@ -2422,13 +2422,18 @@ export interface ApiReferenceConfig {
 
 export interface DocsAgentCompactConfig {
   /**
-   * Direct API key for the Docs Cloud compression API.
+   * Direct API key for the Docs Cloud compression API. Prefer `cloud.apiKey.env`
+   * so all Docs Cloud CLI commands share the same root API key configuration.
    *
-   * Prefer `apiKeyEnv` for checked-in config files so secrets stay in the environment.
+   * @deprecated Configure `cloud.apiKey.env` instead.
    */
   apiKey?: string;
   /**
-   * Environment variable name that stores the Docs Cloud API key.
+   * Environment variable name that stores the Docs Cloud API key. Prefer
+   * `cloud.apiKey.env` so all Docs Cloud CLI commands share the same root API
+   * key configuration.
+   *
+   * @deprecated Configure `cloud.apiKey.env` instead.
    */
   apiKeyEnv?: string;
   /**

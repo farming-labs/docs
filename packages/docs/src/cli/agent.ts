@@ -32,6 +32,7 @@ import type { DocsConfig, PageFrontmatter } from "../types.js";
 const DEFAULT_COMPRESSION_BASE_URL = "https://api.farming-labs.dev";
 const DEFAULT_COMPRESSION_MODEL = "docs-cloud-compress-v1";
 const DEFAULT_COMPRESSION_AGGRESSIVENESS = 0.3;
+const DEFAULT_DOCS_CLOUD_API_KEY_ENV = "DOCS_CLOUD_API_KEY";
 const INDEX_PAGE_BASENAMES = new Set(["index", "page", "+page"]);
 
 export interface AgentCompactOptions {
@@ -383,12 +384,30 @@ function resolveCompressionApiKey(explicitApiKey?: string, explicitApiKeyEnv?: s
       : undefined);
 
   if (!apiKey) {
+    if (explicitApiKeyEnv && explicitApiKeyEnv.length > 0) {
+      throw new Error(
+        `Missing Docs Cloud API key. The configured API key env "${explicitApiKeyEnv}" was not found in your shell or project .env/.env.local files. Add ${explicitApiKeyEnv}=fl_key_... to .env.local, configure cloud.apiKey.env in your root docs config, or pass --api-key.`,
+      );
+    }
+
     throw new Error(
-      "Missing Docs Cloud API key. Set agent.compact.apiKey/apiKeyEnv in docs config or pass --api-key.",
+      "Missing Docs Cloud API key. Configure cloud.apiKey.env in your root docs config and set DOCS_CLOUD_API_KEY=fl_key_... in .env/.env.local, or pass --api-key.",
     );
   }
 
   return apiKey;
+}
+
+function readCloudApiKeyConfig(content: string): AgentCompactOptions {
+  const cloudBlock = extractNestedObjectLiteral(content, ["cloud"]);
+  if (!cloudBlock) return {};
+
+  const apiKeyBlock = extractNestedObjectLiteral(content, ["cloud", "apiKey"]);
+  return {
+    apiKeyEnv: apiKeyBlock
+      ? (readStringProperty(apiKeyBlock, "env") ?? DEFAULT_DOCS_CLOUD_API_KEY_ENV)
+      : DEFAULT_DOCS_CLOUD_API_KEY_ENV,
+  };
 }
 
 function readAgentCompactConfig(content: string): AgentCompactOptions {
@@ -409,6 +428,14 @@ function readAgentCompactConfig(content: string): AgentCompactOptions {
     maxOutputTokens: readNumberProperty(compactBlock, "maxOutputTokens"),
     minOutputTokens: readNumberProperty(compactBlock, "minOutputTokens"),
     protectJson: readBooleanProperty(compactBlock, "protectJson"),
+  };
+}
+
+function readCloudApiKeyConfigFromModule(config: DocsConfig): AgentCompactOptions {
+  if (!config.cloud) return {};
+
+  return {
+    apiKeyEnv: config.cloud.apiKey?.env?.trim() || DEFAULT_DOCS_CLOUD_API_KEY_ENV,
   };
 }
 
@@ -633,10 +660,7 @@ function protectForCompression(input: string): string {
   result = result.replace(/https?:\/\/[^\s)]+/g, stash);
 
   for (let index = 0; index < segments.length; index += 1) {
-    result = result.replace(
-      `__DOCS_SAFE_${index}__`,
-      `<docs_safe>${segments[index]}</docs_safe>`,
-    );
+    result = result.replace(`__DOCS_SAFE_${index}__`, `<docs_safe>${segments[index]}</docs_safe>`);
   }
 
   return result;
@@ -776,10 +800,15 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
   const loadedConfigModule = await loadDocsConfigModule(rootDir, options.configPath);
   const configPath = loadedConfigModule?.path ?? resolveDocsConfigPath(rootDir, options.configPath);
   const configContent = readFileSync(configPath, "utf-8");
-  const configDefaults = mergeAgentCompactOptions(
+  const cloudApiKeyDefaults = mergeAgentCompactOptions(
+    readCloudApiKeyConfig(configContent),
+    loadedConfigModule?.config ? readCloudApiKeyConfigFromModule(loadedConfigModule.config) : {},
+  );
+  const compactDefaults = mergeAgentCompactOptions(
     readAgentCompactConfig(configContent),
     loadedConfigModule?.config ? readAgentCompactConfigFromModule(loadedConfigModule.config) : {},
   );
+  const configDefaults = mergeAgentCompactOptions(cloudApiKeyDefaults, compactDefaults);
   const resolvedOptions = mergeAgentCompactOptions(configDefaults, options);
   const entry =
     normalizePathSegment(
@@ -973,8 +1002,8 @@ ${pc.dim("Options:")}
   ${pc.cyan("--stale")}                  Re-compact only stale generated agent.md files
   ${pc.cyan("--include-missing")}        With ${pc.cyan("--stale")}, also create missing agent.md files for explicit pages or pages that define ${pc.cyan("agent.tokenBudget")}
   ${pc.cyan("--config <path>")}          Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
-  ${pc.cyan("--api-key <key>")}          Docs Cloud API key; ${pc.dim("agent.compact.apiKey")} is preferred
-  ${pc.cyan("--api-key-env <name>")}     Env var name for the Docs Cloud API key; ${pc.dim("agent.compact.apiKeyEnv")} is preferred
+  ${pc.cyan("--api-key <key>")}          Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
+  ${pc.cyan("--api-key-env <name>")}     Env var name for the Docs Cloud API key; prefer ${pc.dim("cloud.apiKey.env")}
   ${pc.cyan("--base-url <url>")}         Override the compression API base URL (useful for tests)
   ${pc.cyan("--model <name>")}           Compression model (${pc.dim("docs-cloud-compress-v1")} by default)
   ${pc.cyan("--aggressiveness <0-1>")}   Compression intensity (${pc.dim("0.3")} by default)
