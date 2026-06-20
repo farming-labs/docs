@@ -3630,8 +3630,11 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     apiReference: apiReferenceConfig,
     metadata: options?.metadata,
   };
-  const { rootDir: _rootDir, language: _language, ...docsConfigMapOptions } = (options ?? {}) as
-    Record<string, unknown>;
+  const {
+    rootDir: _rootDir,
+    language: _language,
+    ...docsConfigMapOptions
+  } = (options ?? {}) as Record<string, unknown>;
   const docsConfigMapInput: Record<string, unknown> = { ...docsConfigMapOptions };
   const setConfigMapFallback = (key: keyof DocsConfig, value: unknown) => {
     if (Object.prototype.hasOwnProperty.call(docsConfigMapInput, key) || value === undefined) {

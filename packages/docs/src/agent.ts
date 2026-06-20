@@ -538,7 +538,7 @@ function serializeDocsConfigMapValue(
   if (shouldRedactDocsConfigKey(key) && value !== null && typeof value !== "object") {
     setPointer("secret");
     return {
-      "$kind": "secret",
+      $kind: "secret",
       value: "[redacted]",
     };
   }
@@ -556,7 +556,7 @@ function serializeDocsConfigMapValue(
   if (typeof value === "bigint") {
     setPointer("bigint");
     return {
-      "$kind": "bigint",
+      $kind: "bigint",
       value: value.toString(),
     };
   }
@@ -564,7 +564,7 @@ function serializeDocsConfigMapValue(
   if (typeof value === "symbol") {
     setPointer("symbol");
     return {
-      "$kind": "symbol",
+      $kind: "symbol",
       value: String(value),
     };
   }
@@ -572,7 +572,7 @@ function serializeDocsConfigMapValue(
   if (typeof value === "function") {
     setPointer("function");
     return {
-      "$kind": "function",
+      $kind: "function",
       name: getDocsConfigFunctionName(value),
     };
   }
@@ -580,7 +580,7 @@ function serializeDocsConfigMapValue(
   if (value instanceof Date) {
     setPointer("date");
     return {
-      "$kind": "date",
+      $kind: "date",
       value: value.toISOString(),
     };
   }
@@ -593,7 +593,7 @@ function serializeDocsConfigMapValue(
   if (depth >= 10) {
     setPointer("truncated");
     return {
-      "$kind": "truncated",
+      $kind: "truncated",
       reason: "Exceeded max depth of 10.",
     };
   }
@@ -610,7 +610,7 @@ function serializeDocsConfigMapValue(
   if (isDocsConfigReactElement(value)) {
     setPointer("jsx");
     return {
-      "$kind": "jsx",
+      $kind: "jsx",
       component: getDocsConfigReactElementName(value),
     };
   }
@@ -618,7 +618,7 @@ function serializeDocsConfigMapValue(
   if (seen.has(value)) {
     setPointer("circular");
     return {
-      "$kind": "circular",
+      $kind: "circular",
     };
   }
 
@@ -641,7 +641,7 @@ function serializeDocsConfigMapValue(
   if (path.length === 1 && path[0] === "theme") {
     setPointer("theme");
     return {
-      "$kind": "theme",
+      $kind: "theme",
       ...output,
     };
   }

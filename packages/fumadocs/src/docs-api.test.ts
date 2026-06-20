@@ -2327,13 +2327,13 @@ description: "Start building quickly"
       appId: "APP_ID",
       indexName: "docs",
       searchApiKey: {
-        "$kind": "secret",
+        $kind: "secret",
         value: "[redacted]",
       },
     });
     expect(config.values.feedback).toMatchObject({
       onFeedback: {
-        "$kind": "function",
+        $kind: "function",
         name: "onFeedback",
       },
     });

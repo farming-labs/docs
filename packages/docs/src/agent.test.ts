@@ -163,12 +163,12 @@ describe("agent route helpers", () => {
       values: {
         entry: "docs",
         theme: {
-          "$kind": "theme",
+          $kind: "theme",
           name: "pixel-border",
         },
         nav: {
           title: {
-            "$kind": "jsx",
+            $kind: "jsx",
             component: "div",
           },
           url: "/",
@@ -176,7 +176,7 @@ describe("agent route helpers", () => {
         feedback: {
           enabled: true,
           onFeedback: {
-            "$kind": "function",
+            $kind: "function",
             name: "submitDocsFeedback",
           },
         },
@@ -186,7 +186,7 @@ describe("agent route helpers", () => {
       provider: "algolia",
       appId: "APP_ID",
       searchApiKey: {
-        "$kind": "secret",
+        $kind: "secret",
         value: "[redacted]",
       },
       apiKeyEnv: "ALGOLIA_SEARCH_API_KEY",
