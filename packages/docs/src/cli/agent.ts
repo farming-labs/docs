@@ -620,7 +620,7 @@ export function inspectAgentCompactionState(
 function protectForCompression(input: string): string {
   const segments: string[] = [];
   const stash = (value: string) => {
-    const token = `__TTC_SAFE_${segments.length}__`;
+    const token = `__DOCS_SAFE_${segments.length}__`;
     segments.push(value);
     return token;
   };
@@ -634,8 +634,8 @@ function protectForCompression(input: string): string {
 
   for (let index = 0; index < segments.length; index += 1) {
     result = result.replace(
-      `__TTC_SAFE_${index}__`,
-      `<ttc_safe>${segments[index]}</ttc_safe>`,
+      `__DOCS_SAFE_${index}__`,
+      `<docs_safe>${segments[index]}</docs_safe>`,
     );
   }
 
@@ -643,7 +643,7 @@ function protectForCompression(input: string): string {
 }
 
 function sanitizeCompressedOutput(output: string): string {
-  return output.replace(/<\/?(?:ttc_safe|docs_safe)>/g, "");
+  return output.replace(/<\/?docs_safe>/g, "");
 }
 
 async function compressDocument(

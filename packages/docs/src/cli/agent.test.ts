@@ -248,7 +248,7 @@ Keep this focused.
     expect(seenInputs[0]).toContain("URL: /docs/installation");
     expect(seenInputs[0]).toContain("Description: Install the framework");
     expect(seenInputs[0]).toContain("Related: /docs/configuration");
-    expect(seenInputs[0]).toContain("<ttc_safe>```bash");
+    expect(seenInputs[0]).toContain("<docs_safe>```bash");
 
     expect(seenInputs[1]).toContain("URL: /docs/configuration");
     expect(seenInputs[1]).toContain("Hidden agent notes should appear in the resolved markdown.");
@@ -809,7 +809,7 @@ Body.
     );
   });
 
-  it("strips protected safe tags from compressed output before writing agent.md", async () => {
+  it("strips docs_safe tags from compressed output before writing agent.md", async () => {
     writeFileSync(
       path.join(tmpDir, "docs.config.ts"),
       `export default { entry: "docs" };`,
@@ -835,7 +835,7 @@ Body.
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(
         JSON.stringify({
-          output: "<ttc_safe>Clean output</ttc_safe><docs_safe> Legacy</docs_safe>",
+          output: "<docs_safe>Clean output</docs_safe>",
           original_input_tokens: 10,
           output_tokens: 5,
         }),
@@ -860,7 +860,7 @@ Body.
 
     expectGeneratedAgentFile(
       path.join(tmpDir, "app", "docs", "installation", "agent.md"),
-      "Clean output Legacy",
+      "Clean output",
       "resolved-page",
     );
   });
