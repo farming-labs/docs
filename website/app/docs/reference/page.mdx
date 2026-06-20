@@ -72,6 +72,60 @@ Top-level configuration object passed to `defineDocs()`.
 
 ---
 
+## `DocsConfigMap`, `DocsConfigMapPointer`, and config-map constants
+
+The config-map endpoint (`GET /api/docs?format=config`) returns a `DocsConfigMap` JSON document
+built from the active docs config. All five framework server adapters handle this request
+automatically.
+
+### Constants
+
+| Constant | Value | Description |
+| -------- | ----- | ----------- |
+| `DEFAULT_DOCS_CONFIG_FORMAT` | `"docs-config-map.v1"` | Schema version identifier included in the response and in the agent discovery spec |
+| `DEFAULT_DOCS_CONFIG_ROUTE` | `"/api/docs?format=config"` | Canonical route for the config-map endpoint |
+
+### `DocsConfigMap`
+
+The JSON response shape. Contains a `format` field set to `"docs-config-map.v1"` and a `pointers`
+array of `DocsConfigMapPointer` entries. Sensitive config values are redacted before serialization.
+
+### `DocsConfigMapPointer`
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `path` | `string` | Dot-path to the config field, e.g. `"mcp.tools.readPage"` |
+| `kind` | `string` | Coarse value kind at this pointer, e.g. `"boolean"`, `"string"`, `"object"` |
+
+### Response headers
+
+| Header | Value |
+| ------ | ----- |
+| `Content-Type` | `application/json; charset=utf-8` |
+| `Cache-Control` | `public, max-age=0, s-maxage=3600` |
+| `X-Robots-Tag` | `noindex` |
+
+### Agent discovery spec
+
+The agent discovery spec (`GET /.well-known/agent.json`) now includes:
+
+```json
+{
+  "api": {
+    "config": "/api/docs?format=config"
+  },
+  "config": {
+    "format": "docs-config-map.v1",
+    "endpoint": "/api/docs?format=config"
+  }
+}
+```
+
+Agents that read the discovery spec can use `spec.config.endpoint` and `spec.config.format` to
+fetch and identify the config map without hard-coding the route.
+
+---
+
 ## `entry` and `docsPath`
 
 `entry` is the source route and app folder. In a Next.js app with `entry: "docs"`, the framework
