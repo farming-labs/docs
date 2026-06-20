@@ -1161,7 +1161,9 @@ Updated body.
           expect.objectContaining({
             id: "agent-compact",
             status: "skipped",
-            detail: expect.stringContaining("Dry run: would run docs agent compact --stale --include-missing"),
+            detail: expect.stringContaining(
+              "Dry run: would run docs agent compact --stale --include-missing",
+            ),
           }),
         ]);
         expect(dryRunReport.coverage.compaction.staleGeneratedPages).toBe(1);
