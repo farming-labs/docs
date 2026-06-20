@@ -1484,8 +1484,9 @@ Handwritten `agent.md` files are also valid. They count as explicit machine cont
 `docs doctor --agent`, but their freshness is reported as `unknown` because there is no generated
 provenance block to compare against the page source.
 
-The CLI loads `.env` and `.env.local` before resolving the key, so `DOCS_CLOUD_API_KEY` works
-out of the box. Use positional page args by default:
+The CLI loads `.env` and `.env.local` before resolving the root `agent.compact` config, so
+`apiKeyEnv: "DOCS_CLOUD_API_KEY"` works without exporting the key manually. Keep compression keys in
+`agent.compact.apiKey` or `agent.compact.apiKeyEnv`; use positional page args by default:
 
 ```bash title="terminal"
 pnpm exec docs agent compact installation configuration

@@ -778,6 +778,37 @@ Body.
     );
   });
 
+  it("requires the compression key to be declared in root compact config or CLI options", async () => {
+    process.env.DOCS_CLOUD_API_KEY = "ambient-key";
+
+    writeFileSync(
+      path.join(tmpDir, "docs.config.ts"),
+      `export default { entry: "docs" };`,
+      "utf-8",
+    );
+
+    mkdirSync(path.join(tmpDir, "app", "docs", "installation"), { recursive: true });
+    writeFileSync(
+      path.join(tmpDir, "app", "docs", "installation", "page.mdx"),
+      `---
+title: "Installation"
+description: "Install it"
+---
+
+# Installation
+
+Body.
+`,
+      "utf-8",
+    );
+
+    process.chdir(tmpDir);
+
+    await expect(compactAgentDocs({ pages: ["installation"] })).rejects.toThrow(
+      "Set agent.compact.apiKey/apiKeyEnv in docs config or pass --api-key",
+    );
+  });
+
   it("strips docs_safe tags from compressed output before writing agent.md", async () => {
     writeFileSync(
       path.join(tmpDir, "docs.config.ts"),

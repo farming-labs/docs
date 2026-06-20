@@ -192,7 +192,8 @@ pnpm exec docs agent compact --all
 ```
 
 The CLI also loads `.env` and `.env.local`, so `DOCS_CLOUD_API_KEY` can stay out of checked-in
-config. Use `--dry-run` when you want to preview the compression call without writing files. For the
+config while `agent.compact.apiKeyEnv` remains the root source of truth. Use `--dry-run` when you
+want to preview the compression call without writing files. For the
 full command surface, see the [CLI page](/docs/cli). For the `agent.compact` config shape, see
 [Configuration](/docs/configuration).
 

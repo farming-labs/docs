@@ -376,18 +376,15 @@ function listGitChangedFiles(rootDir: string, contentDir: string): Set<string> {
 }
 
 function resolveCompressionApiKey(explicitApiKey?: string, explicitApiKeyEnv?: string): string {
-  const candidateKeys = [
-    explicitApiKeyEnv,
-    "DOCS_CLOUD_API_KEY",
-    "FARMING_LABS_DOCS_API_KEY",
-    "FARMING_LABS_API_KEY",
-  ].filter((value): value is string => typeof value === "string" && value.length > 0);
-
-  const apiKey = explicitApiKey ?? candidateKeys.map((key) => process.env[key]).find(Boolean);
+  const apiKey =
+    explicitApiKey ??
+    (explicitApiKeyEnv && explicitApiKeyEnv.length > 0
+      ? process.env[explicitApiKeyEnv]
+      : undefined);
 
   if (!apiKey) {
     throw new Error(
-      "Missing Docs Cloud API key. Pass --api-key, set agent.compact.apiKey/apiKeyEnv, or set DOCS_CLOUD_API_KEY.",
+      "Missing Docs Cloud API key. Set agent.compact.apiKey/apiKeyEnv in docs config or pass --api-key.",
     );
   }
 
@@ -976,8 +973,8 @@ ${pc.dim("Options:")}
   ${pc.cyan("--stale")}                  Re-compact only stale generated agent.md files
   ${pc.cyan("--include-missing")}        With ${pc.cyan("--stale")}, also create missing agent.md files for explicit pages or pages that define ${pc.cyan("agent.tokenBudget")}
   ${pc.cyan("--config <path>")}          Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
-  ${pc.cyan("--api-key <key>")}          Docs Cloud API key (or set ${pc.dim("DOCS_CLOUD_API_KEY")})
-  ${pc.cyan("--api-key-env <name>")}     Custom env var name for the Docs Cloud API key
+  ${pc.cyan("--api-key <key>")}          Docs Cloud API key; ${pc.dim("agent.compact.apiKey")} is preferred
+  ${pc.cyan("--api-key-env <name>")}     Env var name for the Docs Cloud API key; ${pc.dim("agent.compact.apiKeyEnv")} is preferred
   ${pc.cyan("--base-url <url>")}         Override the compression API base URL (useful for tests)
   ${pc.cyan("--model <name>")}           Compression model (${pc.dim("docs-cloud-compress-v1")} by default)
   ${pc.cyan("--aggressiveness <0-1>")}   Compression intensity (${pc.dim("0.3")} by default)
