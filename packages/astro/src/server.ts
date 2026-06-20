@@ -35,6 +35,7 @@ import {
   applySidebarFolderIndexBehavior,
   buildDocsAskAIContext,
   buildDocsAgentDiscoverySpec,
+  buildDocsConfigMap,
   createDocsRobotsResponse,
   createDocsSitemapResponse,
   createDocsAgentTraceContext,
@@ -50,6 +51,7 @@ import {
   getDocsMarkdownVaryHeader,
   isDocsAgentDiscoveryRequest,
   isDocsAgentsRequest,
+  isDocsConfigRequest,
   isDocsSkillRequest,
   normalizeDocsRelated,
   parseDocsAgentFeedbackData,
@@ -952,6 +954,16 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
     trackTelemetryRequest(context.request);
     const ctx = resolveContextFromRequest(context.request);
     const url = new URL(context.request.url);
+
+    if (isDocsConfigRequest(url)) {
+      return new Response(JSON.stringify(buildDocsConfigMap(config as any), null, 2), {
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "public, max-age=0, s-maxage=3600",
+          "X-Robots-Tag": "noindex",
+        },
+      });
+    }
 
     if (isDocsAgentDiscoveryRequest(url)) {
       return new Response(

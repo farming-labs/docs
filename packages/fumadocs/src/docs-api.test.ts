@@ -2086,6 +2086,7 @@ description: "Start building quickly"
       };
       capabilities: Record<string, boolean>;
       api: Record<string, string>;
+      config: { format: string; endpoint: string };
       openapi: Record<string, unknown>;
       markdown: Record<string, unknown>;
       llms: Record<string, string | boolean>;
@@ -2165,8 +2166,13 @@ description: "Start building quickly"
       agentSpecWellKnown: "/.well-known/agent",
       agentSpecWellKnownJson: "/.well-known/agent.json",
       agentSpecQuery: "/api/docs?agent=spec",
+      config: "/api/docs?format=config",
       agents: "/api/docs?format=agents",
       openapi: "/api/docs?format=openapi",
+    });
+    expect(spec.config).toMatchObject({
+      format: "docs-config-map.v1",
+      endpoint: "/api/docs?format=config",
     });
     expect(spec.openapi).toEqual({
       enabled: true,
@@ -2278,6 +2284,63 @@ description: "Start building quickly"
       expect(wellKnownResponse.headers.get("content-type")).toContain("application/json");
       expect(await wellKnownResponse.json()).toEqual(spec);
     }
+  });
+
+  it("serves a docs config map through the shared GET handler", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-config-map-"));
+    tempDirs.push(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      search: {
+        provider: "algolia",
+        appId: "APP_ID",
+        indexName: "docs",
+        searchApiKey: "search-secret",
+      },
+      feedback: {
+        onFeedback() {},
+      },
+      mcp: {
+        enabled: true,
+        tools: {
+          readPage: true,
+        },
+      },
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs?format=config"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/json");
+
+    const config = (await response.json()) as {
+      format: string;
+      values: Record<string, any>;
+      pointers: Record<string, { path: string; kind: string }>;
+    };
+
+    expect(config.format).toBe("docs-config-map.v1");
+    expect(config.values.entry).toBe("docs");
+    expect(config.values.search).toMatchObject({
+      provider: "algolia",
+      appId: "APP_ID",
+      indexName: "docs",
+      searchApiKey: {
+        "$kind": "secret",
+        value: "[redacted]",
+      },
+    });
+    expect(config.values.feedback).toMatchObject({
+      onFeedback: {
+        "$kind": "function",
+        name: "onFeedback",
+      },
+    });
+    expect(config.pointers["/mcp/tools/readPage"]).toEqual({
+      path: "mcp.tools.readPage",
+      kind: "boolean",
+    });
   });
 
   it("serves the agent discovery spec through the rewritten query form", async () => {

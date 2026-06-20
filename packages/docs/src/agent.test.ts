@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDocsAgentDiscoverySpec,
+  buildDocsConfigMap,
   buildDocsMcpEndpointCandidates,
   detectDocsMarkdownAgentRequest,
   findDocsMarkdownPage,
@@ -9,6 +10,7 @@ import {
   hasDocsMarkdownSignatureAgent,
   isDocsAgentDiscoveryRequest,
   isDocsAgentsRequest,
+  isDocsConfigRequest,
   isDocsLlmsTxtPublicRequest,
   isDocsMcpRequest,
   isDocsPublicGetRequest,
@@ -44,6 +46,10 @@ describe("agent route helpers", () => {
       true,
     );
     expect(isDocsAgentDiscoveryRequest(new URL("https://example.com/blog?agent=spec"))).toBe(false);
+    expect(isDocsConfigRequest(new URL("https://example.com/api/docs?format=config"))).toBe(true);
+    expect(isDocsConfigRequest(new URL("https://example.com/api/docs?format=markdown"))).toBe(
+      false,
+    );
 
     expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/llms.txt"))).toBe("llms");
     expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/api/docs?format=llms"))).toBe(
@@ -100,6 +106,103 @@ describe("agent route helpers", () => {
     expect(resolveDocsAgentsFormat(new URL("https://example.com/api/docs?format=agents"))).toBe(
       "agents",
     );
+  });
+
+  it("builds a JSON-safe docs config map with pointers and redaction", () => {
+    function submitDocsFeedback() {}
+    const navTitle = {
+      $$typeof: Symbol.for("react.element"),
+      type: "div",
+      props: {},
+    };
+
+    const map = buildDocsConfigMap(
+      {
+        entry: "docs",
+        theme: {
+          name: "pixel-border",
+          ui: {
+            layout: {
+              sidebarWidth: 320,
+              toc: { enabled: true, depth: 3 },
+            },
+          },
+        },
+        nav: {
+          title: navTitle,
+          url: "/",
+        },
+        search: {
+          provider: "algolia",
+          appId: "APP_ID",
+          searchApiKey: "secret-key",
+          apiKeyEnv: "ALGOLIA_SEARCH_API_KEY",
+        },
+        feedback: {
+          enabled: true,
+          onFeedback: submitDocsFeedback,
+        },
+        llmsTxt: {
+          sections: [{ title: "Guides", match: "/docs/guides/**" }],
+        },
+        rootDir: "/tmp/site",
+        _preloadedContent: {
+          "/docs/page.mdx": "# Internal content",
+        },
+      },
+      { file: "docs.config.tsx" },
+    );
+
+    expect(map).toMatchObject({
+      schemaVersion: 1,
+      format: "docs-config-map.v1",
+      source: {
+        file: "docs.config.tsx",
+        language: "tsx",
+      },
+      values: {
+        entry: "docs",
+        theme: {
+          "$kind": "theme",
+          name: "pixel-border",
+        },
+        nav: {
+          title: {
+            "$kind": "jsx",
+            component: "div",
+          },
+          url: "/",
+        },
+        feedback: {
+          enabled: true,
+          onFeedback: {
+            "$kind": "function",
+            name: "submitDocsFeedback",
+          },
+        },
+      },
+    });
+    expect(map.values.search).toMatchObject({
+      provider: "algolia",
+      appId: "APP_ID",
+      searchApiKey: {
+        "$kind": "secret",
+        value: "[redacted]",
+      },
+      apiKeyEnv: "ALGOLIA_SEARCH_API_KEY",
+    });
+    expect(map.pointers["/entry"]).toEqual({ path: "entry", kind: "string" });
+    expect(map.pointers["/theme"]).toEqual({ path: "theme", kind: "theme" });
+    expect(map.pointers["/search/searchApiKey"]).toEqual({
+      path: "search.searchApiKey",
+      kind: "secret",
+    });
+    expect(map.pointers["/llmsTxt/sections/0/title"]).toEqual({
+      path: "llmsTxt.sections[0].title",
+      kind: "string",
+    });
+    expect(map.values).not.toHaveProperty("rootDir");
+    expect(map.values).not.toHaveProperty("_preloadedContent");
   });
 
   it("derives section-level llms.txt routes from URL matchers", () => {
@@ -776,8 +879,13 @@ describe("agent route helpers", () => {
     });
 
     expect(spec.api.agentSpecDefault).toBe("/.well-known/agent.json");
+    expect(spec.api.config).toBe("/api/docs?format=config");
     expect(spec.api.agents).toBe("/api/docs?format=agents");
     expect(spec.api.openapi).toBe("/api/docs?format=openapi");
+    expect(spec.config).toMatchObject({
+      format: "docs-config-map.v1",
+      endpoint: "/api/docs?format=config",
+    });
     expect(spec.markdown.rootPage).toBe("/docs.md");
     expect(spec.markdown.signatureAgentHeader).toBe("Signature-Agent");
     expect(spec.llms.publicTxt).toBe("/llms.txt");
