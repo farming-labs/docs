@@ -26,6 +26,9 @@ The same page model also powers the built-in machine-readable routes:
 - agents can discover the configured contract with `GET /.well-known/agent.json`, fall back to
   `GET /.well-known/agent`, or use the canonical framework route at `GET /api/docs/agent/spec`
 
+- agents can fetch a machine-readable map of the active docs config with
+  `GET /api/docs?format=config` (returns `docs-config-map.v1` JSON, `X-Robots-Tag: noindex`,
+  CDN-cached at `s-maxage=3600`)
 <Callout type="info" title="Same URL, different representation">
   `/docs/installation` stays the human HTML page by default. In Next.js, send
   `Accept: text/markdown`, send `Signature-Agent`, or identify with a known AI user agent on that
@@ -252,11 +255,17 @@ Agents should fetch it before choosing a transport. It tells them:
 - whether MCP is enabled, which public/well-known endpoint to call, and which tools are available
 - whether agent feedback is enabled, plus the schema and submit endpoints to use
 
+- where to fetch the machine-readable docs config map, including the format identifier
+  (`docs-config-map.v1`) and endpoint (`/api/docs?format=config`), advertised under the top-level
+  `config` field of the spec
 The generated spec includes `agentSpecDefault: "/.well-known/agent.json"` and
 `agentSpecFallback: "/.well-known/agent"` so downstream integrations do not need to hard-code the
 preference themselves. It also includes `robots.route` so agents can find the static crawl policy
 without guessing.
 
+The spec also includes `api.config: "/api/docs?format=config"` and a top-level `config` object
+with `format: "docs-config-map.v1"` and `endpoint: "/api/docs?format=config"` so agents can
+discover and fetch the config map without hard-coding the route.
 The skill document is available at `GET /skill.md`, with `GET /.well-known/skill.md` as the
 well-known alias and `GET /api/docs?format=skill` as the shared API format. Put a `skill.md` file at
 the project root, beside `docs.config.ts`, when you want custom site-specific instructions. If that
