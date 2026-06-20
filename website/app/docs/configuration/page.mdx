@@ -1440,8 +1440,8 @@ export default defineDocs({
   entry: "docs",
   agent: {
     compact: {
-      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
-      model: "bear-1.2",
+      apiKeyEnv: "DOCS_CLOUD_API_KEY",
+      model: "docs-cloud-compress-v1",
       aggressiveness: 0.3,
       protectJson: true,
     },
@@ -1456,7 +1456,7 @@ export default defineDocs({
   entry: "docs",
   agent: {
     compact: {
-      apiKey: process.env.TOKEN_COMPANY_API_KEY,
+      apiKey: process.env.DOCS_CLOUD_API_KEY,
     },
   },
 });
@@ -1484,7 +1484,7 @@ Handwritten `agent.md` files are also valid. They count as explicit machine cont
 `docs doctor --agent`, but their freshness is reported as `unknown` because there is no generated
 provenance block to compare against the page source.
 
-The CLI loads `.env` and `.env.local` before resolving the key, so `TOKEN_COMPANY_API_KEY` works
+The CLI loads `.env` and `.env.local` before resolving the key, so `DOCS_CLOUD_API_KEY` works
 out of the box. Use positional page args by default:
 
 ```bash title="terminal"

@@ -2422,22 +2422,22 @@ export interface ApiReferenceConfig {
 
 export interface DocsAgentCompactConfig {
   /**
-   * Direct API key for the Token Company compression API.
+   * Direct API key for the Docs Cloud compression API.
    *
    * Prefer `apiKeyEnv` for checked-in config files so secrets stay in the environment.
    */
   apiKey?: string;
   /**
-   * Environment variable name that stores the Token Company API key.
+   * Environment variable name that stores the Docs Cloud API key.
    */
   apiKeyEnv?: string;
   /**
-   * Base URL for the Token Company API.
+   * Base URL for the compression API.
    */
   baseUrl?: string;
   /**
    * Compression model name.
-   * @default "bear-1.2"
+   * @default "docs-cloud-compress-v1"
    */
   model?: string;
   /**

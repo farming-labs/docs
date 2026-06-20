@@ -164,7 +164,7 @@ Optional defaults live in `docs.config.ts`:
 ```ts
 agent: {
   compact: {
-    apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+    apiKeyEnv: "DOCS_CLOUD_API_KEY",
   },
 },
 ```

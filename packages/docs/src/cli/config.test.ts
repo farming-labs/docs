@@ -124,13 +124,13 @@ describe("property readers", () => {
       export default defineDocs({
         agent: {
           compact: {
-            apiKey: process.env.TOKEN_COMPANY_API_KEY,
+            apiKey: process.env.DOCS_CLOUD_API_KEY,
           },
         },
       });
     `;
 
-    expect(readEnvReferenceProperty(content, "apiKey")).toBe("TOKEN_COMPANY_API_KEY");
+    expect(readEnvReferenceProperty(content, "apiKey")).toBe("DOCS_CLOUD_API_KEY");
   });
 
   it("reads bracketed import.meta.env property references", () => {
@@ -138,13 +138,13 @@ describe("property readers", () => {
       export default defineDocs({
         agent: {
           compact: {
-            apiKey: import.meta.env["PUBLIC_TTC_KEY"],
+            apiKey: import.meta.env["PUBLIC_DOCS_CLOUD_KEY"],
           },
         },
       });
     `;
 
-    expect(readEnvReferenceProperty(content, "apiKey")).toBe("PUBLIC_TTC_KEY");
+    expect(readEnvReferenceProperty(content, "apiKey")).toBe("PUBLIC_DOCS_CLOUD_KEY");
   });
 
   it("ignores braces inside strings when extracting config blocks", () => {
@@ -182,7 +182,7 @@ describe("property readers", () => {
         // Keep these readable for automation.
         agent: {
           compact: {
-            apiKeyEnv: "TOKEN_COMPANY_API_KEY",
+            apiKeyEnv: "DOCS_CLOUD_API_KEY",
           },
         },
         /*
@@ -195,7 +195,7 @@ describe("property readers", () => {
     `;
 
     expect(extractNestedObjectLiteral(content, ["agent", "compact"])).toContain(
-      'apiKeyEnv: "TOKEN_COMPANY_API_KEY"',
+      'apiKeyEnv: "DOCS_CLOUD_API_KEY"',
     );
     expect(extractNestedObjectLiteral(content, ["sitemap"])).toContain("enabled: true");
   });

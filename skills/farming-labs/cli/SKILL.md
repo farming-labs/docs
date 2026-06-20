@@ -489,8 +489,8 @@ Recommended config:
 ```ts
 agent: {
   compact: {
-    apiKeyEnv: "TOKEN_COMPANY_API_KEY",
-    model: "bear-1.2",
+    apiKeyEnv: "DOCS_CLOUD_API_KEY",
+    model: "docs-cloud-compress-v1",
     aggressiveness: 0.3,
     protectJson: true,
   },
@@ -502,7 +502,7 @@ Alternative `docs.config.tsx` form:
 ```tsx
 agent: {
   compact: {
-    apiKey: process.env.TOKEN_COMPANY_API_KEY,
+    apiKey: process.env.DOCS_CLOUD_API_KEY,
   },
 }
 ```

@@ -209,8 +209,8 @@ describe("inspectAgentReadiness", () => {
   },
   agent: {
     compact: {
-      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
-      model: "bear-1.2",
+      apiKeyEnv: "DOCS_CLOUD_API_KEY",
+      model: "docs-cloud-compress-v1",
     },
   },
 };`,
@@ -417,8 +417,8 @@ Allow: /
   },
   agent: {
     compact: {
-      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
-      model: "bear-1.2",
+      apiKeyEnv: "DOCS_CLOUD_API_KEY",
+      model: "docs-cloud-compress-v1",
     },
   },
 };`,
@@ -727,8 +727,8 @@ Allow: /
   },
   agent: {
     compact: {
-      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
-      model: "bear-1.2",
+      apiKeyEnv: "DOCS_CLOUD_API_KEY",
+      model: "docs-cloud-compress-v1",
     },
   },
 };`,
@@ -820,8 +820,8 @@ Use this docs site through markdown routes and MCP.
   mcp: { enabled: true },
   agent: {
     compact: {
-      apiKeyEnv: "TOKEN_COMPANY_API_KEY",
-      model: "bear-1.2",
+      apiKeyEnv: "DOCS_CLOUD_API_KEY",
+      model: "docs-cloud-compress-v1",
     },
   },
 };`,
