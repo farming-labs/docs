@@ -1,4 +1,5 @@
 import type {
+  DocsConfig,
   DocsRobotsConfig,
   DocsAgentFeedbackContext,
   DocsAgentFeedbackData,
@@ -25,6 +26,8 @@ import {
 import type { DocsSitemapConfig } from "./types.js";
 
 export const DEFAULT_DOCS_API_ROUTE = "/api/docs";
+export const DEFAULT_DOCS_CONFIG_FORMAT = "docs-config-map.v1";
+export const DEFAULT_DOCS_CONFIG_ROUTE = `${DEFAULT_DOCS_API_ROUTE}?format=config`;
 export const DEFAULT_OPENAPI_SCHEMA_ROUTE = `${DEFAULT_DOCS_API_ROUTE}?format=openapi`;
 export const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 export const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
@@ -239,6 +242,78 @@ export interface DocsOpenApiResolvedDiscoveryConfig {
   apiReferencePath?: string;
 }
 
+export type DocsConfigMapJsonPrimitive = string | number | boolean | null;
+
+export type DocsConfigMapJsonValue =
+  | DocsConfigMapJsonPrimitive
+  | DocsConfigMapJsonValue[]
+  | { [key: string]: DocsConfigMapJsonValue };
+
+export interface DocsConfigMapPointer {
+  /** Dot-path form for humans and TypeScript users, e.g. `mcp.tools.readPage`. */
+  path: string;
+  /** Coarse value kind at this pointer. */
+  kind: string;
+}
+
+export interface DocsConfigMap {
+  schemaVersion: 1;
+  format: typeof DEFAULT_DOCS_CONFIG_FORMAT;
+  source: {
+    /** Best-effort source label; adapters only receive the runtime config object. */
+    file: string;
+    /** Best-effort language hint based on serializing the runtime config object. */
+    language: "ts" | "tsx";
+  };
+  serialization: {
+    mode: "json-safe";
+    redacted: string;
+    nonSerializable: "described";
+  };
+  values: { [key: string]: DocsConfigMapJsonValue };
+  /** RFC 6901 JSON Pointer index for mapping response values back to docs.config paths. */
+  pointers: Record<string, DocsConfigMapPointer>;
+}
+
+const DOCS_CONFIG_MAP_TOP_LEVEL_KEYS = [
+  "entry",
+  "docsPath",
+  "contentDir",
+  "i18n",
+  "staticExport",
+  "theme",
+  "analytics",
+  "telemetry",
+  "cloud",
+  "observability",
+  "github",
+  "nav",
+  "themeToggle",
+  "breadcrumb",
+  "sidebar",
+  "components",
+  "onCopyClick",
+  "codeBlocks",
+  "feedback",
+  "mcp",
+  "icons",
+  "pageActions",
+  "search",
+  "lastUpdated",
+  "readingTime",
+  "ai",
+  "ordering",
+  "llmsTxt",
+  "sitemap",
+  "robots",
+  "changelog",
+  "apiReference",
+  "agent",
+  "review",
+  "metadata",
+  "og",
+] as const satisfies readonly (keyof DocsConfig)[];
+
 export interface DocsLlmsTxtResolvedMaxChars {
   mode: LlmsTxtMaxCharsMode;
   chars: number;
@@ -388,6 +463,259 @@ export function normalizeDocsUrlPath(value: string): string {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function isDocsConfigRequest(url: URL): boolean {
+  return url.searchParams.get("format")?.trim() === "config";
+}
+
+export function buildDocsConfigMap(
+  config: DocsConfig | Record<string, unknown>,
+  options: { file?: string } = {},
+): DocsConfigMap {
+  const pointers: Record<string, DocsConfigMapPointer> = {};
+  const values = serializeDocsConfigMapValue(
+    pickDocsConfigMapValues(config),
+    [],
+    new WeakSet(),
+    pointers,
+  );
+  const mappedValues = isPlainObject(values) ? values : {};
+  const language = containsDocsConfigKind(mappedValues, "jsx") ? "tsx" : "ts";
+
+  return {
+    schemaVersion: 1,
+    format: DEFAULT_DOCS_CONFIG_FORMAT,
+    source: {
+      file: options.file ?? (language === "tsx" ? "docs.config.tsx" : "docs.config.ts"),
+      language,
+    },
+    serialization: {
+      mode: "json-safe",
+      redacted:
+        "Scalar values under secret-like keys such as apiKey, token, secret, password, authorization, and credential are redacted unless the key ends with Env.",
+      nonSerializable: "described",
+    },
+    values: mappedValues,
+    pointers,
+  };
+}
+
+function pickDocsConfigMapValues(
+  config: DocsConfig | Record<string, unknown>,
+): Record<string, unknown> {
+  const output: Record<string, unknown> = {};
+
+  for (const key of DOCS_CONFIG_MAP_TOP_LEVEL_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(config, key)) {
+      output[key] = config[key];
+    }
+  }
+
+  return output;
+}
+
+function serializeDocsConfigMapValue(
+  value: unknown,
+  path: string[],
+  seen: WeakSet<object>,
+  pointers: Record<string, DocsConfigMapPointer>,
+  depth = 0,
+): DocsConfigMapJsonValue | undefined {
+  const key = path.at(-1) ?? "";
+  const pointerPath = toDocsConfigJsonPointer(path);
+  const setPointer = (kind: string) => {
+    if (path.length > 0) {
+      pointers[pointerPath] = {
+        path: toDocsConfigDotPath(path),
+        kind,
+      };
+    }
+  };
+
+  if (value === undefined) return undefined;
+
+  if (shouldRedactDocsConfigKey(key) && value !== null && typeof value !== "object") {
+    setPointer("secret");
+    return {
+      $kind: "secret",
+      value: "[redacted]",
+    };
+  }
+
+  if (value === null || typeof value === "string" || typeof value === "boolean") {
+    setPointer(typeof value);
+    return value;
+  }
+
+  if (typeof value === "number") {
+    setPointer("number");
+    return Number.isFinite(value) ? value : String(value);
+  }
+
+  if (typeof value === "bigint") {
+    setPointer("bigint");
+    return {
+      $kind: "bigint",
+      value: value.toString(),
+    };
+  }
+
+  if (typeof value === "symbol") {
+    setPointer("symbol");
+    return {
+      $kind: "symbol",
+      value: String(value),
+    };
+  }
+
+  if (typeof value === "function") {
+    setPointer("function");
+    return {
+      $kind: "function",
+      name: getDocsConfigFunctionName(value),
+    };
+  }
+
+  if (value instanceof Date) {
+    setPointer("date");
+    return {
+      $kind: "date",
+      value: value.toISOString(),
+    };
+  }
+
+  if (value instanceof URL) {
+    setPointer("url");
+    return value.toString();
+  }
+
+  if (depth >= 10) {
+    setPointer("truncated");
+    return {
+      $kind: "truncated",
+      reason: "Exceeded max depth of 10.",
+    };
+  }
+
+  if (Array.isArray(value)) {
+    setPointer("array");
+    return value
+      .map((entry, index) =>
+        serializeDocsConfigMapValue(entry, [...path, String(index)], seen, pointers, depth + 1),
+      )
+      .filter((entry): entry is DocsConfigMapJsonValue => entry !== undefined);
+  }
+
+  if (isDocsConfigReactElement(value)) {
+    setPointer("jsx");
+    return {
+      $kind: "jsx",
+      component: getDocsConfigReactElementName(value),
+    };
+  }
+
+  if (seen.has(value)) {
+    setPointer("circular");
+    return {
+      $kind: "circular",
+    };
+  }
+
+  seen.add(value);
+
+  const output: { [key: string]: DocsConfigMapJsonValue } = {};
+  for (const [childKey, childValue] of Object.entries(value)) {
+    const serialized = serializeDocsConfigMapValue(
+      childValue,
+      [...path, childKey],
+      seen,
+      pointers,
+      depth + 1,
+    );
+    if (serialized !== undefined) output[childKey] = serialized;
+  }
+
+  seen.delete(value);
+
+  if (path.length === 1 && path[0] === "theme") {
+    setPointer("theme");
+    return {
+      $kind: "theme",
+      ...output,
+    };
+  }
+
+  setPointer("object");
+  return output;
+}
+
+function shouldRedactDocsConfigKey(key: string): boolean {
+  const normalized = key.replace(/[-_]/g, "").toLowerCase();
+  if (!normalized || normalized === "env" || normalized.endsWith("env")) return false;
+
+  return (
+    normalized.includes("apikey") ||
+    normalized.includes("token") ||
+    normalized.includes("secret") ||
+    normalized.includes("password") ||
+    normalized.includes("authorization") ||
+    normalized.includes("credential")
+  );
+}
+
+function isDocsConfigReactElement(value: unknown): value is { type?: unknown; $$typeof?: unknown } {
+  if (!isPlainObject(value) || !("$$typeof" in value)) return false;
+  return String(value.$$typeof).includes("react.");
+}
+
+function getDocsConfigReactElementName(value: { type?: unknown }): string {
+  const type = value.type;
+  if (typeof type === "string") return type;
+  if (typeof type === "function") return getDocsConfigFunctionName(type);
+
+  if (isPlainObject(type)) {
+    const displayName = type.displayName;
+    if (typeof displayName === "string") return displayName;
+
+    const render = type.render;
+    if (typeof render === "function") return getDocsConfigFunctionName(render);
+  }
+
+  return "unknown";
+}
+
+function getDocsConfigFunctionName(value: Function): string {
+  const displayName = (value as { displayName?: unknown }).displayName;
+  return typeof displayName === "string" ? displayName : value.name || "anonymous";
+}
+
+function toDocsConfigJsonPointer(path: string[]): string {
+  return path.length === 0 ? "" : `/${path.map(escapeDocsConfigJsonPointerPart).join("/")}`;
+}
+
+function escapeDocsConfigJsonPointerPart(value: string): string {
+  return value.replace(/~/g, "~0").replace(/\//g, "~1");
+}
+
+function toDocsConfigDotPath(path: string[]): string {
+  return path
+    .map((part, index) => (/^\d+$/.test(part) ? `[${part}]` : index === 0 ? part : `.${part}`))
+    .join("");
+}
+
+function containsDocsConfigKind(value: DocsConfigMapJsonValue, kind: string): boolean {
+  if (!isPlainObject(value)) {
+    if (!Array.isArray(value)) return false;
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((entry) => containsDocsConfigKind(entry, kind));
+  }
+
+  if (value["$kind"] === kind) return true;
+
+  return Object.values(value).some((entry) => containsDocsConfigKind(entry, kind));
 }
 
 function normalizeDocsAgentFeedbackRoute(
@@ -2289,6 +2617,7 @@ export function buildDocsAgentDiscoverySpec({
     },
     api: {
       docs: DEFAULT_DOCS_API_ROUTE,
+      config: DEFAULT_DOCS_CONFIG_ROUTE,
       agentSpec: DEFAULT_AGENT_SPEC_ROUTE,
       agentSpecDefault: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
       agentSpecFallback: DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
@@ -2297,6 +2626,10 @@ export function buildDocsAgentDiscoverySpec({
       agentSpecQuery: `${DEFAULT_DOCS_API_ROUTE}?agent=spec`,
       agents: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
       openapi: DEFAULT_OPENAPI_SCHEMA_ROUTE,
+    },
+    config: {
+      format: DEFAULT_DOCS_CONFIG_FORMAT,
+      endpoint: DEFAULT_DOCS_CONFIG_ROUTE,
     },
     markdown: {
       enabled: true,

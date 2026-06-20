@@ -26,6 +26,7 @@ import matter from "gray-matter";
 import { getNextAppDir } from "./get-app-dir.js";
 import {
   normalizeDocsRelated,
+  buildDocsConfigMap,
   resolveChangelogConfig,
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
@@ -53,6 +54,7 @@ import {
   createDocsSitemapResponse,
   DEFAULT_SITEMAP_MD_DOCS_ROUTE,
   resolveDocsSitemapConfig,
+  isDocsConfigRequest,
 } from "@farming-labs/docs";
 import type {
   ChangelogConfig,
@@ -507,6 +509,7 @@ function buildAgentSpec({
     },
     api: {
       docs: DEFAULT_DOCS_API_ROUTE,
+      config: `${DEFAULT_DOCS_API_ROUTE}?format=config`,
       agentSpec: DEFAULT_AGENT_SPEC_ROUTE,
       agentSpecDefault: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
       agentSpecFallback: DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
@@ -515,6 +518,10 @@ function buildAgentSpec({
       agentSpecQuery: `${DEFAULT_DOCS_API_ROUTE}?agent=spec`,
       agents: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
       openapi: `${DEFAULT_DOCS_API_ROUTE}?format=openapi`,
+    },
+    config: {
+      format: "docs-config-map.v1",
+      endpoint: `${DEFAULT_DOCS_API_ROUTE}?format=config`,
     },
     // Always-on agent content surfaces. If these ever become configurable,
     // this spec must be wired to the same docs.config toggles instead of
@@ -3623,6 +3630,26 @@ export function createDocsAPI(options?: DocsAPIOptions) {
     apiReference: apiReferenceConfig,
     metadata: options?.metadata,
   };
+  const {
+    rootDir: _rootDir,
+    language: _language,
+    ...docsConfigMapOptions
+  } = (options ?? {}) as Record<string, unknown>;
+  const docsConfigMapInput: Record<string, unknown> = { ...docsConfigMapOptions };
+  const setConfigMapFallback = (key: keyof DocsConfig, value: unknown) => {
+    if (Object.prototype.hasOwnProperty.call(docsConfigMapInput, key) || value === undefined) {
+      return;
+    }
+
+    docsConfigMapInput[key] = value;
+  };
+  setConfigMapFallback("entry", entry);
+  setConfigMapFallback("ai", Object.keys(aiConfig).length > 0 ? aiConfig : undefined);
+  setConfigMapFallback("cloud", cloudConfig);
+  setConfigMapFallback("search", searchConfig);
+  setConfigMapFallback("i18n", i18nConfig ?? undefined);
+  setConfigMapFallback("mcp", rawMcpConfig);
+  setConfigMapFallback("apiReference", apiReferenceConfig);
 
   function trackTelemetryRequest(request: Request) {
     emitDocsTelemetryProjectEvent(telemetryConfig, {
@@ -3862,6 +3889,15 @@ export function createDocsAPI(options?: DocsAPIOptions) {
       const ctx = resolveContextFromRequest(request);
       const url = new URL(request.url);
       const requestAnalyticsProperties = getRequestAnalyticsProperties(request);
+      if (isDocsConfigRequest(url)) {
+        return Response.json(buildDocsConfigMap(docsConfigMapInput), {
+          headers: {
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            "X-Robots-Tag": "noindex",
+          },
+        });
+      }
+
       if (resolveAgentSpecRequest(url)) {
         await emitDocsAnalyticsEvent(analytics, {
           type: "agent_spec_request",
