@@ -29,9 +29,10 @@ import {
 } from "./config.js";
 import type { DocsConfig, PageFrontmatter } from "../types.js";
 
-const DEFAULT_TTC_BASE_URL = "https://api.thetokencompany.com";
-const DEFAULT_TTC_MODEL = "bear-1.2";
-const DEFAULT_TTC_AGGRESSIVENESS = 0.3;
+const DEFAULT_COMPRESSION_BASE_URL = "https://api.farming-labs.dev";
+const DEFAULT_COMPRESSION_MODEL = "docs-cloud-compress-v1";
+const DEFAULT_COMPRESSION_AGGRESSIVENESS = 0.3;
+const DEFAULT_DOCS_CLOUD_API_KEY_ENV = "DOCS_CLOUD_API_KEY";
 const INDEX_PAGE_BASENAMES = new Set(["index", "page", "+page"]);
 
 export interface AgentCompactOptions {
@@ -304,11 +305,12 @@ export function scanDocsPageTargets(
 function resolveCompressionEndpoint(rawBaseUrl?: string): string {
   const baseUrl =
     rawBaseUrl ??
-    process.env.TOKEN_COMPANY_BASE_URL ??
-    process.env.THE_TOKEN_COMPANY_BASE_URL ??
-    DEFAULT_TTC_BASE_URL;
+    process.env.DOCS_CLOUD_COMPRESSION_BASE_URL ??
+    process.env.DOCS_CLOUD_API_BASE_URL ??
+    process.env.FARMING_LABS_DOCS_API_BASE_URL ??
+    DEFAULT_COMPRESSION_BASE_URL;
 
-  if (/\/v1\/compress\/?$/i.test(baseUrl)) {
+  if (/\/v1\/(?:compress|agent\/compact)\/?$/i.test(baseUrl)) {
     return baseUrl.replace(/\/+$/, "");
   }
 
@@ -375,22 +377,37 @@ function listGitChangedFiles(rootDir: string, contentDir: string): Set<string> {
 }
 
 function resolveCompressionApiKey(explicitApiKey?: string, explicitApiKeyEnv?: string): string {
-  const candidateKeys = [
-    explicitApiKeyEnv,
-    "TOKEN_COMPANY_API_KEY",
-    "THE_TOKEN_COMPANY_API_KEY",
-    "TTC_API_KEY",
-  ].filter((value): value is string => typeof value === "string" && value.length > 0);
-
-  const apiKey = explicitApiKey ?? candidateKeys.map((key) => process.env[key]).find(Boolean);
+  const apiKey =
+    explicitApiKey ??
+    (explicitApiKeyEnv && explicitApiKeyEnv.length > 0
+      ? process.env[explicitApiKeyEnv]
+      : undefined);
 
   if (!apiKey) {
+    if (explicitApiKeyEnv && explicitApiKeyEnv.length > 0) {
+      throw new Error(
+        `Missing Docs Cloud API key. The configured API key env "${explicitApiKeyEnv}" was not found in your shell or project .env/.env.local files. Add ${explicitApiKeyEnv}=fl_key_... to .env.local, configure cloud.apiKey.env in your root docs config, or pass --api-key.`,
+      );
+    }
+
     throw new Error(
-      "Missing Token Company API key. Pass --api-key, set agent.compact.apiKey/apiKeyEnv, or set TOKEN_COMPANY_API_KEY.",
+      "Missing Docs Cloud API key. Configure cloud.apiKey.env in your root docs config and set DOCS_CLOUD_API_KEY=fl_key_... in .env/.env.local, or pass --api-key.",
     );
   }
 
   return apiKey;
+}
+
+function readCloudApiKeyConfig(content: string): AgentCompactOptions {
+  const cloudBlock = extractNestedObjectLiteral(content, ["cloud"]);
+  if (!cloudBlock) return {};
+
+  const apiKeyBlock = extractNestedObjectLiteral(content, ["cloud", "apiKey"]);
+  return {
+    apiKeyEnv: apiKeyBlock
+      ? (readStringProperty(apiKeyBlock, "env") ?? DEFAULT_DOCS_CLOUD_API_KEY_ENV)
+      : DEFAULT_DOCS_CLOUD_API_KEY_ENV,
+  };
 }
 
 function readAgentCompactConfig(content: string): AgentCompactOptions {
@@ -411,6 +428,14 @@ function readAgentCompactConfig(content: string): AgentCompactOptions {
     maxOutputTokens: readNumberProperty(compactBlock, "maxOutputTokens"),
     minOutputTokens: readNumberProperty(compactBlock, "minOutputTokens"),
     protectJson: readBooleanProperty(compactBlock, "protectJson"),
+  };
+}
+
+function readCloudApiKeyConfigFromModule(config: DocsConfig): AgentCompactOptions {
+  if (!config.cloud) return {};
+
+  return {
+    apiKeyEnv: config.cloud.apiKey?.env?.trim() || DEFAULT_DOCS_CLOUD_API_KEY_ENV,
   };
 }
 
@@ -454,8 +479,8 @@ export function readPageTokenBudget(pagePath: string): number | undefined {
 function buildCompactionSettingsHash(options: AgentCompactOptions): string {
   return hashGeneratedAgentContent(
     JSON.stringify({
-      model: options.model ?? DEFAULT_TTC_MODEL,
-      aggressiveness: options.aggressiveness ?? DEFAULT_TTC_AGGRESSIVENESS,
+      model: options.model ?? DEFAULT_COMPRESSION_MODEL,
+      aggressiveness: options.aggressiveness ?? DEFAULT_COMPRESSION_AGGRESSIVENESS,
       maxOutputTokens: options.maxOutputTokens ?? null,
       minOutputTokens: options.minOutputTokens ?? null,
       protectJson: options.protectJson ?? null,
@@ -622,7 +647,7 @@ export function inspectAgentCompactionState(
 function protectForCompression(input: string): string {
   const segments: string[] = [];
   const stash = (value: string) => {
-    const token = `__TTC_SAFE_${segments.length}__`;
+    const token = `__DOCS_SAFE_${segments.length}__`;
     segments.push(value);
     return token;
   };
@@ -635,14 +660,14 @@ function protectForCompression(input: string): string {
   result = result.replace(/https?:\/\/[^\s)]+/g, stash);
 
   for (let index = 0; index < segments.length; index += 1) {
-    result = result.replace(`__TTC_SAFE_${index}__`, `<ttc_safe>${segments[index]}</ttc_safe>`);
+    result = result.replace(`__DOCS_SAFE_${index}__`, `<docs_safe>${segments[index]}</docs_safe>`);
   }
 
   return result;
 }
 
 function sanitizeCompressedOutput(output: string): string {
-  return output.replace(/<\/?ttc_safe>/g, "");
+  return output.replace(/<\/?docs_safe>/g, "");
 }
 
 async function compressDocument(
@@ -651,14 +676,14 @@ async function compressDocument(
 ): Promise<CompressResponse> {
   const apiKey = resolveCompressionApiKey(options.apiKey, options.apiKeyEnv);
   const endpoint = resolveCompressionEndpoint(options.baseUrl);
-  const aggressiveness = options.aggressiveness ?? DEFAULT_TTC_AGGRESSIVENESS;
+  const aggressiveness = options.aggressiveness ?? DEFAULT_COMPRESSION_AGGRESSIVENESS;
 
   if (aggressiveness < 0 || aggressiveness > 1) {
     throw new Error("Aggressiveness must be between 0.0 and 1.0.");
   }
 
   const payload = {
-    model: options.model ?? DEFAULT_TTC_MODEL,
+    model: options.model ?? DEFAULT_COMPRESSION_MODEL,
     input: protectForCompression(input),
     compression_settings: {
       aggressiveness,
@@ -684,7 +709,7 @@ async function compressDocument(
   if (!response.ok) {
     const body = await response.text();
     throw new Error(
-      `Token Company request failed (${response.status}): ${body || response.statusText}`,
+      `Docs Cloud compression request failed (${response.status}): ${body || response.statusText}`,
     );
   }
 
@@ -693,7 +718,7 @@ async function compressDocument(
     typeof result.output === "string" ? sanitizeCompressedOutput(result.output) : result.output;
 
   if (typeof sanitizedOutput !== "string" || sanitizedOutput.trim().length === 0) {
-    throw new Error("Token Company response did not include a compressed output.");
+    throw new Error("Docs Cloud compression response did not include a compressed output.");
   }
 
   return {
@@ -775,10 +800,15 @@ export async function compactAgentDocs(options: AgentCompactOptions = {}): Promi
   const loadedConfigModule = await loadDocsConfigModule(rootDir, options.configPath);
   const configPath = loadedConfigModule?.path ?? resolveDocsConfigPath(rootDir, options.configPath);
   const configContent = readFileSync(configPath, "utf-8");
-  const configDefaults = mergeAgentCompactOptions(
+  const cloudApiKeyDefaults = mergeAgentCompactOptions(
+    readCloudApiKeyConfig(configContent),
+    loadedConfigModule?.config ? readCloudApiKeyConfigFromModule(loadedConfigModule.config) : {},
+  );
+  const compactDefaults = mergeAgentCompactOptions(
     readAgentCompactConfig(configContent),
     loadedConfigModule?.config ? readAgentCompactConfigFromModule(loadedConfigModule.config) : {},
   );
+  const configDefaults = mergeAgentCompactOptions(cloudApiKeyDefaults, compactDefaults);
   const resolvedOptions = mergeAgentCompactOptions(configDefaults, options);
   const entry =
     normalizePathSegment(
@@ -972,13 +1002,13 @@ ${pc.dim("Options:")}
   ${pc.cyan("--stale")}                  Re-compact only stale generated agent.md files
   ${pc.cyan("--include-missing")}        With ${pc.cyan("--stale")}, also create missing agent.md files for explicit pages or pages that define ${pc.cyan("agent.tokenBudget")}
   ${pc.cyan("--config <path>")}          Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
-  ${pc.cyan("--api-key <key>")}          Token Company API key (or set ${pc.dim("TOKEN_COMPANY_API_KEY")})
-  ${pc.cyan("--api-key-env <name>")}     Custom env var name for the Token Company API key
-  ${pc.cyan("--base-url <url>")}         Override the Token Company API base URL (useful for tests)
-  ${pc.cyan("--model <name>")}           Compression model (${pc.dim("bear-1.2")} by default)
+  ${pc.cyan("--api-key <key>")}          Use an API key directly; prefer ${pc.dim("cloud.apiKey.env")}
+  ${pc.cyan("--api-key-env <name>")}     Env var name for the Docs Cloud API key; prefer ${pc.dim("cloud.apiKey.env")}
+  ${pc.cyan("--base-url <url>")}         Override the compression API base URL (useful for tests)
+  ${pc.cyan("--model <name>")}           Compression model (${pc.dim("docs-cloud-compress-v1")} by default)
   ${pc.cyan("--aggressiveness <0-1>")}   Compression intensity (${pc.dim("0.3")} by default)
-  ${pc.cyan("--max-output-tokens <n>")}  Pass through to Token Company compression settings
-  ${pc.cyan("--min-output-tokens <n>")}  Pass through to Token Company compression settings
+  ${pc.cyan("--max-output-tokens <n>")}  Pass through to compression settings
+  ${pc.cyan("--min-output-tokens <n>")}  Pass through to compression settings
   ${pc.cyan("--protect-json <bool>")}    Preserve JSON objects during compression
   ${pc.cyan("--dry-run")}                Resolve pages and call the compressor without writing files
 `);

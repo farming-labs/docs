@@ -401,8 +401,8 @@ files from resolved docs pages.
 ```ts
 agent: {
   compact: {
-    apiKeyEnv: "TOKEN_COMPANY_API_KEY",
-    model: "bear-1.2",
+    apiKeyEnv: "DOCS_CLOUD_API_KEY",
+    model: "docs-cloud-compress-v1",
     aggressiveness: 0.3,
     protectJson: true,
   },
@@ -423,7 +423,7 @@ Supported fields:
 Notes:
 
 - `.env` and `.env.local` are loaded before the CLI resolves the key
-- `apiKey: process.env.TOKEN_COMPANY_API_KEY` is supported in `docs.config.tsx`
+- `apiKey: process.env.DOCS_CLOUD_API_KEY` is supported in `docs.config.tsx`
 - the command creates missing `agent.md` files and overwrites existing ones
 - generated `agent.md` becomes the machine-readable source for `.md` routes,
   `GET /api/docs?format=markdown&path=...`, and MCP `read_page()`

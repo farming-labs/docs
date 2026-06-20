@@ -301,8 +301,8 @@ function createDocsTelemetryEvent(
   const properties =
     context.properties || input.properties
       ? {
-          ...(input.properties ?? {}),
-          ...(context.properties ?? {}),
+          ...input.properties,
+          ...context.properties,
         }
       : undefined;
 
