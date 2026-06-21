@@ -84,6 +84,15 @@ async function main() {
   };
   const mcpOptions = {
     configPath: typeof flags.config === "string" ? flags.config : undefined,
+    setup: subcommand === "setup",
+    deploymentId: typeof flags.deployment === "string" ? flags.deployment : undefined,
+    apiBaseUrl:
+      typeof flags["api-base-url"] === "string"
+        ? flags["api-base-url"]
+        : typeof flags.url === "string"
+          ? flags.url
+          : undefined,
+    json: typeof flags.json === "boolean" ? flags.json : undefined,
   };
   const devOptions = {
     verbose: typeof flags.verbose === "boolean" ? flags.verbose : undefined,
@@ -349,6 +358,9 @@ ${pc.dim("Options for init:")}
 
 ${pc.dim("Options for mcp:")}
   ${pc.cyan("--config <path>")}     Use a custom docs config path instead of ${pc.dim("docs.config.ts[x]")}
+  ${pc.cyan("mcp setup --deployment <id>")} Print Docs Cloud hosted MCP setup for a deployment id
+  ${pc.cyan("--api-base-url <url>")} Override the hosted Docs Cloud API base URL for ${pc.cyan("mcp setup")}
+  ${pc.cyan("--json")}              Print MCP client JSON only for ${pc.cyan("mcp setup")}
 
 ${pc.dim("Options for dev:")}
   ${pc.cyan("--port <number>")}     Run the frameworkless preview on a custom port
