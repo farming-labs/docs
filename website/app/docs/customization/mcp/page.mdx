@@ -329,6 +329,13 @@ https://docs.farming-labs.dev/mcp
 https://docs.farming-labs.dev/.well-known/mcp
 ```
 
+To print the MCP client setup instructions for your own Docs Cloud deployment, use `mcp setup`:
+
+```bash title="terminal"
+pnpm exec docs mcp setup --deployment <your-deployment-id>
+```
+
+Add `--json` to print only the JSON config block, or `--api-base-url <url>` to target a self-hosted Docs Cloud API. See [CLI](/docs/cli#print-hosted-mcp-client-config-with-mcp-setup) for the full flag reference.
 <DocsMcpAccess />
 
 ### More setup docs
