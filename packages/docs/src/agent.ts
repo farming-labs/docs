@@ -28,6 +28,8 @@ import type { DocsSitemapConfig } from "./types.js";
 export const DEFAULT_DOCS_API_ROUTE = "/api/docs";
 export const DEFAULT_DOCS_CONFIG_FORMAT = "docs-config-map.v1";
 export const DEFAULT_DOCS_CONFIG_ROUTE = `${DEFAULT_DOCS_API_ROUTE}?format=config`;
+export const DEFAULT_DOCS_DIAGNOSTICS_FORMAT = "docs-diagnostics.v1";
+export const DEFAULT_DOCS_DIAGNOSTICS_ROUTE = `${DEFAULT_DOCS_API_ROUTE}?format=diagnostics`;
 export const DEFAULT_OPENAPI_SCHEMA_ROUTE = `${DEFAULT_DOCS_API_ROUTE}?format=openapi`;
 export const DEFAULT_AGENT_SPEC_ROUTE = "/api/docs/agent/spec";
 export const DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE = "/.well-known/agent";
@@ -91,6 +93,15 @@ export const DEFAULT_AGENT_FEEDBACK_PAYLOAD_SCHEMA: Record<string, unknown> = {
   },
   required: ["task", "outcome"],
 };
+const DEFAULT_DOCS_DIAGNOSTICS_MCP_TOOLS = {
+  listDocs: true,
+  listPages: true,
+  readPage: true,
+  searchDocs: true,
+  getNavigation: true,
+  getCodeExamples: true,
+  getConfigSchema: true,
+} satisfies DocsMcpResolvedConfig["tools"];
 export const DOCS_MARKDOWN_SIGNATURE_AGENT_HEADER = "Signature-Agent";
 const DOCS_AI_AGENT_USER_AGENT_PATTERNS = [
   "claudebot",
@@ -273,6 +284,82 @@ export interface DocsConfigMap {
   values: { [key: string]: DocsConfigMapJsonValue };
   /** RFC 6901 JSON Pointer index for mapping response values back to docs.config paths. */
   pointers: Record<string, DocsConfigMapPointer>;
+}
+
+export type DocsDiagnosticsStatus = "enabled" | "disabled";
+export type DocsDiagnosticsIssueSeverity = "warning" | "error";
+
+export interface DocsDiagnosticsIssue {
+  severity: DocsDiagnosticsIssueSeverity;
+  code: string;
+  path?: string;
+  message: string;
+}
+
+export interface DocsDiagnosticsFeature {
+  status: DocsDiagnosticsStatus;
+  reason?: string;
+  route?: string | null;
+  routes?: Record<string, string | null>;
+  provider?: string;
+  mode?: string;
+  transport?: "GET" | "POST" | "GET/POST";
+  tools?: Record<string, boolean>;
+  human?: boolean;
+  agent?: boolean;
+}
+
+export interface DocsDiagnostics {
+  schemaVersion: 1;
+  format: typeof DEFAULT_DOCS_DIAGNOSTICS_FORMAT;
+  ok: boolean;
+  adapter: string | null;
+  routes: {
+    docs: string;
+    api: string;
+    config: string;
+    diagnostics: string;
+    agentSpec: string;
+    agents: string;
+    skill: string;
+    search: string | null;
+    askAi: string | null;
+    mcp: string | null;
+    llmsTxt: string | null;
+    llmsFullTxt: string | null;
+    sitemapXml: string | null;
+    sitemapMarkdown: string | null;
+    robots: string | null;
+    openapi: string | null;
+    apiReference: string | null;
+  };
+  features: {
+    staticExport: DocsDiagnosticsFeature;
+    config: DocsDiagnosticsFeature;
+    diagnostics: DocsDiagnosticsFeature;
+    search: DocsDiagnosticsFeature;
+    ai: DocsDiagnosticsFeature;
+    mcp: DocsDiagnosticsFeature;
+    feedback: DocsDiagnosticsFeature;
+    llmsTxt: DocsDiagnosticsFeature;
+    sitemap: DocsDiagnosticsFeature;
+    robots: DocsDiagnosticsFeature;
+    apiReference: DocsDiagnosticsFeature;
+    agents: DocsDiagnosticsFeature;
+    skills: DocsDiagnosticsFeature;
+    locales: DocsDiagnosticsFeature;
+  };
+  warnings: DocsDiagnosticsIssue[];
+  errors: DocsDiagnosticsIssue[];
+}
+
+export interface DocsDiagnosticsOptions {
+  adapter?: string;
+  entry?: string;
+  i18n?: ResolvedDocsI18n | null;
+  mcp?: DocsMcpResolvedConfig;
+  feedback?: DocsAgentFeedbackDiscoveryConfig;
+  openapi?: boolean | DocsOpenApiDiscoveryConfig;
 }
 
 const DOCS_CONFIG_MAP_TOP_LEVEL_KEYS = [
@@ -469,6 +556,10 @@ export function isDocsConfigRequest(url: URL): boolean {
   return url.searchParams.get("format")?.trim() === "config";
 }
 
+export function isDocsDiagnosticsRequest(url: URL): boolean {
+  return url.searchParams.get("format")?.trim() === "diagnostics";
+}
+
 export function buildDocsConfigMap(
   config: DocsConfig | Record<string, unknown>,
   options: { file?: string } = {},
@@ -499,6 +590,226 @@ export function buildDocsConfigMap(
     values: mappedValues,
     pointers,
   };
+}
+
+export function buildDocsDiagnostics(
+  config: DocsConfig | Record<string, unknown>,
+  options: DocsDiagnosticsOptions = {},
+): DocsDiagnostics {
+  const input = config as Record<string, unknown>;
+  const entry = normalizeDocsPathSegment(stringConfigValue(input.entry) ?? options.entry ?? "docs");
+  const docsRoute = routeFromConfigPath(stringConfigValue(input.docsPath) ?? entry);
+  const staticExport = input.staticExport === true;
+  const i18n = options.i18n ?? null;
+  const localesEnabled = Boolean(i18n?.locales.length);
+  const search = resolveDocsDiagnosticsSearch(input.search, staticExport);
+  const ai = resolveDocsDiagnosticsAi(input.ai, staticExport);
+  const llms = resolveDocsDiagnosticsLlms(input.llmsTxt);
+  const sitemapConfig = resolveDocsSitemapConfig(input.sitemap as boolean | DocsSitemapConfig);
+  const robotsEnabled = isRobotsDiscoveryEnabled(input.robots as boolean | DocsRobotsConfig);
+  const openapiConfig = resolveDocsOpenApiDiscoveryConfig(
+    options.openapi ?? (input.apiReference as boolean | DocsOpenApiDiscoveryConfig),
+  );
+  const apiReferenceRoute = resolveDocsDiagnosticsApiReferenceRoute(input.apiReference);
+  const mcp = options.mcp ?? resolveDocsDiagnosticsMcp(input.mcp);
+  const feedback = options.feedback ?? resolveDocsAgentFeedbackConfig(input.feedback as any);
+  const agentFeedbackEnabled = feedback.enabled === true;
+  const agentFeedbackRoute = feedback.route ?? DEFAULT_AGENT_FEEDBACK_ROUTE;
+  const agentFeedbackSchemaRoute = feedback.schemaRoute ?? `${agentFeedbackRoute}/schema`;
+  const humanFeedback = isDocsDiagnosticsHumanFeedbackEnabled(input.feedback);
+  const warnings: DocsDiagnosticsIssue[] = [];
+  const errors: DocsDiagnosticsIssue[] = [];
+
+  if (staticExport) {
+    warnings.push({
+      severity: "warning",
+      code: "static-export-runtime-api",
+      path: "/staticExport",
+      message:
+        "staticExport is enabled; runtime API-backed capabilities are unavailable in production static export builds.",
+    });
+  }
+
+  if (staticExport && ai.configured) {
+    errors.push({
+      severity: "error",
+      code: "ai-static-export",
+      path: "/ai/enabled",
+      message:
+        "Ask AI requires the runtime /api/docs POST handler and will not run in static export builds.",
+    });
+  }
+
+  if (ai.enabled && !search.enabled) {
+    warnings.push({
+      severity: "warning",
+      code: "ai-without-search",
+      path: "/ai",
+      message:
+        "Ask AI is enabled while docs search is disabled, so retrieval context may be unavailable.",
+    });
+  }
+
+  const adapter = options.adapter?.trim() || null;
+  if (adapter && adapter !== "next") {
+    if (!stringConfigValue(input.contentDir)) {
+      warnings.push({
+        severity: "warning",
+        code: "missing-content-dir",
+        path: "/contentDir",
+        message: `${adapter} docs usually need contentDir so the server can find markdown content.`,
+      });
+    }
+
+    if (!isPlainObject(input.nav)) {
+      warnings.push({
+        severity: "warning",
+        code: "missing-nav",
+        path: "/nav",
+        message: `${adapter} docs usually need nav.title and nav.url for sidebar branding and root navigation.`,
+      });
+    }
+  }
+
+  validateDocsDiagnosticsSearchConfig(input.search, errors);
+
+  const diagnostics: DocsDiagnostics = {
+    schemaVersion: 1,
+    format: DEFAULT_DOCS_DIAGNOSTICS_FORMAT,
+    ok: errors.length === 0,
+    adapter,
+    routes: {
+      docs: docsRoute,
+      api: DEFAULT_DOCS_API_ROUTE,
+      config: DEFAULT_DOCS_CONFIG_ROUTE,
+      diagnostics: DEFAULT_DOCS_DIAGNOSTICS_ROUTE,
+      agentSpec: DEFAULT_AGENT_SPEC_ROUTE,
+      agents: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+      skill: `${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+      search: search.enabled ? `${DEFAULT_DOCS_API_ROUTE}?query={query}` : null,
+      askAi: ai.enabled ? DEFAULT_DOCS_API_ROUTE : null,
+      mcp: mcp.enabled ? mcp.route : null,
+      llmsTxt: llms.enabled ? DEFAULT_LLMS_TXT_ROUTE : null,
+      llmsFullTxt: llms.enabled ? DEFAULT_LLMS_FULL_TXT_ROUTE : null,
+      sitemapXml:
+        sitemapConfig.enabled && sitemapConfig.xml.enabled ? sitemapConfig.xml.route : null,
+      sitemapMarkdown:
+        sitemapConfig.enabled && sitemapConfig.markdown.enabled
+          ? sitemapConfig.markdown.route
+          : null,
+      robots: robotsEnabled ? DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE : null,
+      openapi: openapiConfig.enabled ? (openapiConfig.url ?? DEFAULT_OPENAPI_SCHEMA_ROUTE) : null,
+      apiReference: openapiConfig.enabled ? apiReferenceRoute : null,
+    },
+    features: {
+      staticExport: {
+        status: staticExport ? "enabled" : "disabled",
+      },
+      config: {
+        status: "enabled",
+        route: DEFAULT_DOCS_CONFIG_ROUTE,
+      },
+      diagnostics: {
+        status: "enabled",
+        route: DEFAULT_DOCS_DIAGNOSTICS_ROUTE,
+      },
+      search: {
+        status: search.enabled ? "enabled" : "disabled",
+        reason: search.reason,
+        route: search.enabled ? `${DEFAULT_DOCS_API_ROUTE}?query={query}` : null,
+        provider: search.provider,
+        transport: "GET",
+      },
+      ai: {
+        status: ai.enabled ? "enabled" : "disabled",
+        reason: ai.reason,
+        route: ai.enabled ? DEFAULT_DOCS_API_ROUTE : null,
+        mode: ai.mode,
+        transport: "POST",
+      },
+      mcp: {
+        status: mcp.enabled ? "enabled" : "disabled",
+        route: mcp.enabled ? mcp.route : null,
+        transport: "GET/POST",
+        tools: mcp.tools as Record<string, boolean>,
+      },
+      feedback: {
+        status: agentFeedbackEnabled || humanFeedback ? "enabled" : "disabled",
+        human: humanFeedback,
+        agent: agentFeedbackEnabled,
+        routes: {
+          agentSubmit: agentFeedbackEnabled ? agentFeedbackRoute : null,
+          agentSchema: agentFeedbackEnabled ? agentFeedbackSchemaRoute : null,
+        },
+      },
+      llmsTxt: {
+        status: llms.enabled ? "enabled" : "disabled",
+        reason: llms.reason,
+        routes: {
+          txt: llms.enabled ? DEFAULT_LLMS_TXT_ROUTE : null,
+          full: llms.enabled ? DEFAULT_LLMS_FULL_TXT_ROUTE : null,
+          wellKnownTxt: llms.enabled ? DEFAULT_LLMS_TXT_WELL_KNOWN_ROUTE : null,
+          wellKnownFull: llms.enabled ? DEFAULT_LLMS_FULL_TXT_WELL_KNOWN_ROUTE : null,
+        },
+      },
+      sitemap: {
+        status: sitemapConfig.enabled ? "enabled" : "disabled",
+        routes: {
+          xml: sitemapConfig.enabled && sitemapConfig.xml.enabled ? sitemapConfig.xml.route : null,
+          markdown:
+            sitemapConfig.enabled && sitemapConfig.markdown.enabled
+              ? sitemapConfig.markdown.route
+              : null,
+          docsMarkdown:
+            sitemapConfig.enabled && sitemapConfig.markdown.enabled
+              ? (sitemapConfig.markdown.docsRoute ?? null)
+              : null,
+          wellKnownMarkdown:
+            sitemapConfig.enabled && sitemapConfig.markdown.enabled
+              ? sitemapConfig.markdown.wellKnownRoute
+              : null,
+        },
+      },
+      robots: {
+        status: robotsEnabled ? "enabled" : "disabled",
+        route: robotsEnabled ? DEFAULT_AGENT_DISCOVERY_ROBOTS_TXT_ROUTE : null,
+      },
+      apiReference: {
+        status: openapiConfig.enabled ? "enabled" : "disabled",
+        route: openapiConfig.enabled ? apiReferenceRoute : null,
+        routes: {
+          openapi: openapiConfig.enabled
+            ? (openapiConfig.url ?? DEFAULT_OPENAPI_SCHEMA_ROUTE)
+            : null,
+        },
+        provider: openapiConfig.source,
+      },
+      agents: {
+        status: "enabled",
+        routes: {
+          default: DEFAULT_AGENTS_MD_ROUTE,
+          wellKnown: DEFAULT_AGENTS_MD_WELL_KNOWN_ROUTE,
+          api: `${DEFAULT_DOCS_API_ROUTE}?format=agents`,
+        },
+      },
+      skills: {
+        status: "enabled",
+        routes: {
+          default: DEFAULT_SKILL_MD_ROUTE,
+          wellKnown: DEFAULT_SKILL_MD_WELL_KNOWN_ROUTE,
+          api: `${DEFAULT_DOCS_API_ROUTE}?format=skill`,
+        },
+      },
+      locales: {
+        status: localesEnabled ? "enabled" : "disabled",
+        provider: localesEnabled ? "query-param" : undefined,
+      },
+    },
+    warnings,
+    errors,
+  };
+
+  return diagnostics;
 }
 
 function pickDocsConfigMapValues(
@@ -716,6 +1027,193 @@ function containsDocsConfigKind(value: DocsConfigMapJsonValue, kind: string): bo
   if (value["$kind"] === kind) return true;
 
   return Object.values(value).some((entry) => containsDocsConfigKind(entry, kind));
+}
+
+function stringConfigValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function routeFromConfigPath(value: string): string {
+  const normalized = normalizeDocsPathSegment(value);
+  return normalized ? `/${normalized}` : "/";
+}
+
+interface ResolvedDocsDiagnosticsSearch {
+  enabled: boolean;
+  configured: boolean;
+  provider?: string;
+  reason?: string;
+}
+
+function resolveDocsDiagnosticsSearch(
+  search: unknown,
+  staticExport: boolean,
+): ResolvedDocsDiagnosticsSearch {
+  const provider = isPlainObject(search) ? stringConfigValue(search.provider) : "simple";
+  const configured =
+    search !== false &&
+    !(isPlainObject(search) && (search as { enabled?: unknown }).enabled === false);
+
+  if (staticExport) {
+    return {
+      enabled: false,
+      configured,
+      provider,
+      reason: "static-export",
+    };
+  }
+
+  if (!configured) {
+    return {
+      enabled: false,
+      configured,
+      provider,
+      reason: "configured-disabled",
+    };
+  }
+
+  return {
+    enabled: true,
+    configured,
+    provider,
+  };
+}
+
+interface ResolvedDocsDiagnosticsAi {
+  enabled: boolean;
+  configured: boolean;
+  mode?: string;
+  reason?: string;
+}
+
+function resolveDocsDiagnosticsAi(ai: unknown, staticExport: boolean): ResolvedDocsDiagnosticsAi {
+  const configured = isPlainObject(ai) && ai.enabled === true;
+  const mode = isPlainObject(ai) ? stringConfigValue(ai.mode) : undefined;
+
+  if (!configured) {
+    return {
+      enabled: false,
+      configured,
+      reason: "not-configured",
+    };
+  }
+
+  if (staticExport) {
+    return {
+      enabled: false,
+      configured,
+      mode,
+      reason: "static-export",
+    };
+  }
+
+  return {
+    enabled: true,
+    configured,
+    mode,
+  };
+}
+
+function resolveDocsDiagnosticsLlms(llmsTxt: unknown): {
+  enabled: boolean;
+  reason?: string;
+} {
+  const enabled =
+    llmsTxt !== false &&
+    !(isPlainObject(llmsTxt) && (llmsTxt as { enabled?: unknown }).enabled === false);
+
+  return enabled
+    ? { enabled: true }
+    : {
+        enabled: false,
+        reason: "configured-disabled",
+      };
+}
+
+function resolveDocsDiagnosticsMcp(mcp: unknown): DocsMcpResolvedConfig {
+  const config = isPlainObject(mcp) ? mcp : {};
+  const tools = isPlainObject(config.tools) ? config.tools : {};
+
+  return {
+    enabled: typeof mcp === "boolean" ? mcp : config.enabled !== false,
+    route: normalizeDocsDiagnosticsMcpRoute(config.route),
+    name: stringConfigValue(config.name) ?? "Documentation",
+    version: stringConfigValue(config.version) ?? "0.0.0",
+    tools: {
+      ...DEFAULT_DOCS_DIAGNOSTICS_MCP_TOOLS,
+      listDocs: tools.listDocs !== false,
+      listPages: tools.listPages !== false,
+      readPage: tools.readPage !== false,
+      searchDocs: tools.searchDocs !== false,
+      getNavigation: tools.getNavigation !== false,
+      getCodeExamples: tools.getCodeExamples !== false,
+      getConfigSchema: tools.getConfigSchema !== false,
+    },
+  };
+}
+
+function normalizeDocsDiagnosticsMcpRoute(route: unknown): string {
+  const value = stringConfigValue(route);
+  if (!value) return DEFAULT_MCP_ROUTE;
+
+  const normalized = `/${value}`.replace(/\/+/g, "/");
+  return normalized !== "/" ? normalized.replace(/\/+$/, "") : DEFAULT_MCP_ROUTE;
+}
+
+function isDocsDiagnosticsHumanFeedbackEnabled(feedback: unknown): boolean {
+  return feedback === true || (isPlainObject(feedback) && feedback.enabled !== false);
+}
+
+function resolveDocsDiagnosticsApiReferenceRoute(apiReference: unknown): string {
+  if (isPlainObject(apiReference)) {
+    return routeFromConfigPath(stringConfigValue(apiReference.path) ?? "api-reference");
+  }
+
+  return "/api-reference";
+}
+
+function validateDocsDiagnosticsSearchConfig(
+  search: unknown,
+  errors: DocsDiagnosticsIssue[],
+): void {
+  if (!isPlainObject(search) || search.enabled === false) return;
+
+  const provider = stringConfigValue(search.provider) ?? "simple";
+  const requireString = (key: string) => {
+    if (!stringConfigValue(search[key])) {
+      errors.push({
+        severity: "error",
+        code: `missing-search-${key.replace(/[A-Z]/g, (value) => `-${value.toLowerCase()}`)}`,
+        path: `/search/${key}`,
+        message: `Search provider "${provider}" requires search.${key}.`,
+      });
+    }
+  };
+
+  if (provider === "algolia") {
+    requireString("appId");
+    requireString("indexName");
+    requireString("searchApiKey");
+  }
+
+  if (provider === "typesense") {
+    requireString("baseUrl");
+    requireString("collection");
+    requireString("apiKey");
+  }
+
+  if (provider === "mcp") {
+    requireString("endpoint");
+  }
+
+  if (provider === "custom" && !("adapter" in search)) {
+    errors.push({
+      severity: "error",
+      code: "missing-search-adapter",
+      path: "/search/adapter",
+      message: 'Search provider "custom" requires search.adapter.',
+    });
+  }
 }
 
 function normalizeDocsAgentFeedbackRoute(
@@ -2618,6 +3116,7 @@ export function buildDocsAgentDiscoverySpec({
     api: {
       docs: DEFAULT_DOCS_API_ROUTE,
       config: DEFAULT_DOCS_CONFIG_ROUTE,
+      diagnostics: DEFAULT_DOCS_DIAGNOSTICS_ROUTE,
       agentSpec: DEFAULT_AGENT_SPEC_ROUTE,
       agentSpecDefault: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
       agentSpecFallback: DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
