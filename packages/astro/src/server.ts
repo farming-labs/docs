@@ -36,6 +36,7 @@ import {
   buildDocsAskAIContext,
   buildDocsAgentDiscoverySpec,
   buildDocsConfigMap,
+  buildDocsDiagnostics,
   createDocsRobotsResponse,
   createDocsSitemapResponse,
   createDocsAgentTraceContext,
@@ -52,6 +53,7 @@ import {
   isDocsAgentDiscoveryRequest,
   isDocsAgentsRequest,
   isDocsConfigRequest,
+  isDocsDiagnosticsRequest,
   isDocsSkillRequest,
   normalizeDocsRelated,
   parseDocsAgentFeedbackData,
@@ -963,6 +965,30 @@ export function createDocsServer(config: Record<string, any> = {}): DocsServer {
           "X-Robots-Tag": "noindex",
         },
       });
+    }
+
+    if (isDocsDiagnosticsRequest(url)) {
+      return new Response(
+        JSON.stringify(
+          buildDocsDiagnostics(config as any, {
+            adapter: "astro",
+            entry,
+            i18n,
+            mcp: mcpConfig,
+            feedback: agentFeedbackDiscovery,
+            openapi: openapiDiscovery,
+          }),
+          null,
+          2,
+        ),
+        {
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "public, max-age=0, s-maxage=3600",
+            "X-Robots-Tag": "noindex",
+          },
+        },
+      );
     }
 
     if (isDocsAgentDiscoveryRequest(url)) {

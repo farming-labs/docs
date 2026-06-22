@@ -27,6 +27,7 @@ import { getNextAppDir } from "./get-app-dir.js";
 import {
   normalizeDocsRelated,
   buildDocsConfigMap,
+  buildDocsDiagnostics,
   resolveChangelogConfig,
   createDocsAgentTraceContext,
   createDocsAgentTraceId,
@@ -55,6 +56,7 @@ import {
   DEFAULT_SITEMAP_MD_DOCS_ROUTE,
   resolveDocsSitemapConfig,
   isDocsConfigRequest,
+  isDocsDiagnosticsRequest,
 } from "@farming-labs/docs";
 import type {
   ChangelogConfig,
@@ -141,6 +143,8 @@ interface DocsAPIOptions {
   docsPath?: string;
   /** Override the docs content directory when it does not live in app/<entry>. */
   contentDir?: string;
+  /** Set when the docs site is built without runtime API routes. */
+  staticExport?: boolean;
   /** Changelog configuration. */
   changelog?: boolean | ChangelogConfig;
   /** Search language (default: "english") */
@@ -510,6 +514,7 @@ function buildAgentSpec({
     api: {
       docs: DEFAULT_DOCS_API_ROUTE,
       config: `${DEFAULT_DOCS_API_ROUTE}?format=config`,
+      diagnostics: `${DEFAULT_DOCS_API_ROUTE}?format=diagnostics`,
       agentSpec: DEFAULT_AGENT_SPEC_ROUTE,
       agentSpecDefault: DEFAULT_AGENT_SPEC_WELL_KNOWN_JSON_ROUTE,
       agentSpecFallback: DEFAULT_AGENT_SPEC_WELL_KNOWN_ROUTE,
@@ -3650,6 +3655,15 @@ export function createDocsAPI(options?: DocsAPIOptions) {
   setConfigMapFallback("i18n", i18nConfig ?? undefined);
   setConfigMapFallback("mcp", rawMcpConfig);
   setConfigMapFallback("apiReference", apiReferenceConfig);
+  const docsDiagnosticsInput: Record<string, unknown> = {
+    ...docsConfigMapInput,
+    contentDir: docsConfigMapInput.contentDir ?? contentDir,
+    feedback: docsConfigMapInput.feedback ?? options?.feedback,
+    llmsTxt: docsConfigMapInput.llmsTxt ?? llmsConfig,
+    sitemap: docsConfigMapInput.sitemap ?? sitemapConfig,
+    robots: docsConfigMapInput.robots ?? robotsConfig,
+    staticExport: docsConfigMapInput.staticExport ?? options?.staticExport,
+  };
 
   function trackTelemetryRequest(request: Request) {
     emitDocsTelemetryProjectEvent(telemetryConfig, {
@@ -3896,6 +3910,25 @@ export function createDocsAPI(options?: DocsAPIOptions) {
             "X-Robots-Tag": "noindex",
           },
         });
+      }
+
+      if (isDocsDiagnosticsRequest(url)) {
+        return Response.json(
+          buildDocsDiagnostics(docsDiagnosticsInput, {
+            adapter: "next",
+            entry,
+            i18n,
+            mcp: mcpConfig,
+            feedback: agentFeedbackConfig,
+            openapi: openapiDiscovery,
+          }),
+          {
+            headers: {
+              "Cache-Control": "public, max-age=0, s-maxage=3600",
+              "X-Robots-Tag": "noindex",
+            },
+          },
+        );
       }
 
       if (resolveAgentSpecRequest(url)) {

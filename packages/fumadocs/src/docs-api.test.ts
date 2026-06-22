@@ -2167,6 +2167,7 @@ description: "Start building quickly"
       agentSpecWellKnownJson: "/.well-known/agent.json",
       agentSpecQuery: "/api/docs?agent=spec",
       config: "/api/docs?format=config",
+      diagnostics: "/api/docs?format=diagnostics",
       agents: "/api/docs?format=agents",
       openapi: "/api/docs?format=openapi",
     });
@@ -2341,6 +2342,91 @@ description: "Start building quickly"
       path: "mcp.tools.readPage",
       kind: "boolean",
     });
+  });
+
+  it("serves docs diagnostics through the shared GET handler", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "fumadocs-diagnostics-"));
+    tempDirs.push(rootDir);
+
+    const { GET } = createDocsAPI({
+      rootDir,
+      entry: "docs",
+      search: {
+        provider: "algolia",
+        appId: "APP_ID",
+        indexName: "docs",
+        searchApiKey: "search-secret",
+      },
+      ai: {
+        enabled: true,
+        model: "gpt-4o-mini",
+      },
+      mcp: {
+        enabled: true,
+        tools: {
+          readPage: true,
+          searchDocs: false,
+        },
+      },
+      feedback: {
+        agent: false,
+      },
+    });
+
+    const response = await GET(new Request("http://localhost/api/docs?format=diagnostics"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(response.headers.get("x-robots-tag")).toBe("noindex");
+
+    const diagnostics = (await response.json()) as {
+      format: string;
+      ok: boolean;
+      adapter: string | null;
+      routes: Record<string, string | null>;
+      features: Record<string, any>;
+      warnings: Array<{ code: string }>;
+      errors: Array<{ code: string }>;
+    };
+
+    expect(diagnostics).toMatchObject({
+      format: "docs-diagnostics.v1",
+      ok: true,
+      adapter: "next",
+      routes: {
+        docs: "/docs",
+        api: "/api/docs",
+        config: "/api/docs?format=config",
+        diagnostics: "/api/docs?format=diagnostics",
+        search: "/api/docs?query={query}",
+        askAi: "/api/docs",
+      },
+      features: {
+        search: {
+          status: "enabled",
+          provider: "algolia",
+          transport: "GET",
+        },
+        ai: {
+          status: "enabled",
+          transport: "POST",
+        },
+        mcp: {
+          status: "enabled",
+          tools: {
+            readPage: true,
+            searchDocs: false,
+          },
+        },
+        feedback: {
+          status: "enabled",
+          human: true,
+          agent: false,
+        },
+      },
+    });
+    expect(diagnostics.warnings).toEqual([]);
+    expect(diagnostics.errors).toEqual([]);
+    expect(JSON.stringify(diagnostics)).not.toContain("search-secret");
   });
 
   it("serves the agent discovery spec through the rewritten query form", async () => {

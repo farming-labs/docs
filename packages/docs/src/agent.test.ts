@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDocsAgentDiscoverySpec,
   buildDocsConfigMap,
+  buildDocsDiagnostics,
   buildDocsMcpEndpointCandidates,
   detectDocsMarkdownAgentRequest,
   findDocsMarkdownPage,
@@ -11,6 +12,7 @@ import {
   isDocsAgentDiscoveryRequest,
   isDocsAgentsRequest,
   isDocsConfigRequest,
+  isDocsDiagnosticsRequest,
   isDocsLlmsTxtPublicRequest,
   isDocsMcpRequest,
   isDocsPublicGetRequest,
@@ -50,6 +52,12 @@ describe("agent route helpers", () => {
     expect(isDocsConfigRequest(new URL("https://example.com/api/docs?format=markdown"))).toBe(
       false,
     );
+    expect(
+      isDocsDiagnosticsRequest(new URL("https://example.com/api/docs?format=diagnostics")),
+    ).toBe(true);
+    expect(
+      isDocsDiagnosticsRequest(new URL("https://example.com/api/docs?format=config")),
+    ).toBe(false);
 
     expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/llms.txt"))).toBe("llms");
     expect(resolveDocsLlmsTxtFormat(new URL("https://example.com/api/docs?format=llms"))).toBe(
@@ -203,6 +211,125 @@ describe("agent route helpers", () => {
     });
     expect(map.values).not.toHaveProperty("rootDir");
     expect(map.values).not.toHaveProperty("_preloadedContent");
+  });
+
+  it("builds docs diagnostics from config-derived capabilities", () => {
+    const diagnostics = buildDocsDiagnostics(
+      {
+        entry: "docs",
+        staticExport: true,
+        search: {
+          provider: "algolia",
+          appId: "APP_ID",
+          indexName: "docs",
+          searchApiKey: "search-secret",
+        },
+        ai: {
+          enabled: true,
+          mode: "floating",
+        },
+        feedback: {
+          agent: false,
+        },
+        llmsTxt: false,
+        sitemap: {
+          routePrefix: "docs",
+        },
+        robots: false,
+        apiReference: {
+          enabled: true,
+          path: "reference",
+        },
+      },
+      { adapter: "next" },
+    );
+
+    expect(diagnostics).toMatchObject({
+      schemaVersion: 1,
+      format: "docs-diagnostics.v1",
+      ok: false,
+      adapter: "next",
+      routes: {
+        docs: "/docs",
+        api: "/api/docs",
+        config: "/api/docs?format=config",
+        diagnostics: "/api/docs?format=diagnostics",
+        search: null,
+        askAi: null,
+        llmsTxt: null,
+        robots: null,
+        openapi: "/api/docs?format=openapi",
+        apiReference: "/reference",
+      },
+      features: {
+        staticExport: { status: "enabled" },
+        search: {
+          status: "disabled",
+          reason: "static-export",
+          provider: "algolia",
+        },
+        ai: {
+          status: "disabled",
+          reason: "static-export",
+          mode: "floating",
+        },
+        feedback: {
+          status: "enabled",
+          human: true,
+          agent: false,
+        },
+        llmsTxt: {
+          status: "disabled",
+          reason: "configured-disabled",
+        },
+        sitemap: {
+          status: "enabled",
+        },
+        robots: {
+          status: "disabled",
+        },
+        apiReference: {
+          status: "enabled",
+          route: "/reference",
+        },
+      },
+    });
+    expect(diagnostics.warnings.map((issue) => issue.code)).toContain(
+      "static-export-runtime-api",
+    );
+    expect(diagnostics.errors).toEqual([
+      {
+        severity: "error",
+        code: "ai-static-export",
+        path: "/ai/enabled",
+        message:
+          "Ask AI requires the runtime /api/docs POST handler and will not run in static export builds.",
+      },
+    ]);
+  });
+
+  it("reports invalid search provider diagnostics without leaking configured values", () => {
+    const diagnostics = buildDocsDiagnostics(
+      {
+        entry: "docs",
+        search: {
+          provider: "typesense",
+          baseUrl: "https://search.example.com",
+        },
+      },
+      { adapter: "next" },
+    );
+
+    expect(diagnostics.ok).toBe(false);
+    expect(diagnostics.features.search).toMatchObject({
+      status: "enabled",
+      provider: "typesense",
+    });
+    expect(diagnostics.errors.map((issue) => issue.code)).toEqual([
+      "missing-search-collection",
+      "missing-search-api-key",
+    ]);
+    expect(JSON.stringify(diagnostics)).not.toContain("https://search.example.com");
   });
 
   it("derives section-level llms.txt routes from URL matchers", () => {
@@ -880,6 +1007,7 @@ describe("agent route helpers", () => {
 
     expect(spec.api.agentSpecDefault).toBe("/.well-known/agent.json");
     expect(spec.api.config).toBe("/api/docs?format=config");
+    expect(spec.api.diagnostics).toBe("/api/docs?format=diagnostics");
     expect(spec.api.agents).toBe("/api/docs?format=agents");
     expect(spec.api.openapi).toBe("/api/docs?format=openapi");
     expect(spec.config).toMatchObject({
